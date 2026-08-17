@@ -12,10 +12,12 @@
 }
 
 /* On the dated axis the FRAME owns its height and the timeline is the scroll box, so
-   the pane scrolls neither way in the ordinary case. The vertical fallback stays: a
-   floor plus four maxima can exceed a short or embedded pane, and no allocation makes
-   that fit — so the pane scrolls rather than clipping, because `.pbl-view` clips and a
-   region nobody can reach is the one thing this must never produce. */
+   the pane scrolls neither way in the ordinary case. The vertical fallback stays: the
+   timeline's own floor plus every capped band can exceed a short or embedded pane, and
+   no allocation makes that fit — so the pane scrolls rather than clipping, because
+   `.pbl-view` clips and a region nobody can reach is the one thing this must never
+   produce. The RULE rather than a count: this sentence said "a floor plus four maxima"
+   and was off by one when it was written and by two after the advisory left the cap. */
 .pbl-roadmap-dates .pbl-tree {
 	overflow-x: hidden;
 	overflow-y: auto;
@@ -52,9 +54,13 @@
 	min-height: 180px;
 }
 
-/* `.pbl-view` raises this to the same specificity as `.pbl-roadmap .pbl-shelf` etc.
-   below, which is otherwise later in source and would win outright: on the dated axis
-   these bands are NOT pinned, since the frame no longer scrolls sideways under them. */
+/* `.pbl-view` raises this ABOVE `.pbl-roadmap .pbl-shelf` etc. — (0,3,0) against (0,2,0)
+   — which is what lets it beat a rule that comes later in source: on the dated axis these
+   bands are NOT pinned, since the frame no longer scrolls sideways under them.
+   What it takes back is named declaration by declaration, and that is now load-bearing
+   rather than tidy: the band rule's `overflow-y` shares that rule, so listing the pinning
+   terms one by one is what leaves the scrollport standing on this axis. Resetting the
+   pinning with a shorthand or an `all` would take the band rule with it. */
 .pbl-view.pbl-roadmap-dates .pbl-shelf,
 .pbl-view.pbl-roadmap-dates .pbl-roadmap-context,
 .pbl-view.pbl-roadmap-dates .pbl-board-advisory {
@@ -114,12 +120,21 @@
    rather than a second, different margin. Width is reduced by twice the gutter so
    the margin box still fits the scrollport exactly; a bare 100cqw with a margin
    added on top would overflow by 2 * the gutter and reintroduce a scrollbar. */
-/* And THE BAND RULE's scrollport, once, for both axes — the dated axis's own reset below
-   takes the pinning back and deliberately leaves this: a band that is squeezed scrolls
-   rather than clipping, because `.pbl-view` clips and a region nobody can reach is the one
-   thing this must never produce. Declared in this rule rather than a second one with the
-   same selector list, so a check that addresses these three bands by their selectors
-   cannot land on the wrong one. */
+/* And THE BAND RULE's scrollport, once, for both axes — `.pbl-view.pbl-roadmap-dates
+   .pbl-shelf` and its two siblings take the pinning back and deliberately leave this: a
+   band that is squeezed scrolls rather than clipping, because `.pbl-view` clips and a
+   region nobody can reach is the one thing this must never produce. Declared in this rule
+   rather than a second one with the same selector list, so a check that addresses these
+   three bands by their selectors cannot land on the wrong one.
+
+   **This scrollport is now beatable from `shelf.css`, which it was not before.** It used
+   to be declared at (0,3,0) on the two axis rules; here it is (0,2,0), and `index.css`
+   imports `shelf.css` AFTER this file. So a rule there at (0,2,0) or above on this same
+   element wins on source order — `.pbl-dragging .pbl-shelf-empty` is already exactly that
+   — and an `overflow` written beside it for the bare drop strip would put back the
+   unreachable region the paragraph above forbids. Nothing enforces it: this is a fact
+   about where the declaration sits, said here because this is where someone would be
+   standing when it mattered. */
 .pbl-roadmap .pbl-shelf,
 .pbl-roadmap .pbl-roadmap-context,
 .pbl-roadmap .pbl-board-advisory {
@@ -211,21 +226,35 @@
 	flex-direction: column;
 	gap: var(--size-4-2);
 	padding: var(--size-4-3) 0;
-	/* See the board column's own folded header — the same pair, doing the same work, and
+	/* See the board column's own folded header — the same two declarations, and
 	   load-bearing here TODAY rather than held against a future edit. The bucket caps at
 	   the pane (`max-height: 100%`, shared with `.pbl-board-col` in `board.css`) and a flex
-	   item will not shrink below its own content, so without the pair a long horizon would
-	   run the rotated name past that cap and take the count out of the strip with it.
-	   Shrinking lands on the NAME: `.pbl-bucket-count` declares `flex: 0 0 auto`, so the
-	   name absorbs the whole reduction and ellipsises.
-	   Measured in the browser harness with a 51-character horizon, sweeping the pane from
-	   560px down to 320px: the header's `scrollHeight` equals its `clientHeight` at every
-	   step, so nothing clips; the name's own `clientHeight` falls from 290px to 138px
-	   against an unchanged 290px `scrollHeight`, which is the ellipsis happening; and the
-	   count is inside the header's box the whole way. This paragraph said the opposite until
-	   2026-08-17 — that the row had no definite height to clip against, so a long horizon
-	   grew the band from 220px to 383px instead of ellipsising. That was measured before
-	   the cap existed, and the cap is what makes the pair earn its place. */
+	   item whose `overflow` is `visible` will not shrink below its own content, so a long
+	   horizon runs the rotated name past that cap and takes the count out of the bucket
+	   with it. Shrinking lands on the NAME: `.pbl-bucket-count` declares `flex: 0 0 auto`,
+	   so the name absorbs the whole reduction and ellipsises through its OWN
+	   `overflow: hidden` (`.pbl-board-col-name, .pbl-bucket-name` in `board.css`).
+
+	   All four states measured in the browser harness, 51-character horizon, folded bucket,
+	   900x320 pane — the count's own bottom edge against the bucket's:
+
+	       both              header 218px   count 13px INSIDE the bucket
+	       neither           header 370px   count 139px OUTSIDE it (151px of overhang)
+	       `overflow` alone  header 218px   count 13px inside
+	       `min-height` alone   header 218px   count 13px inside
+
+	   So the without-case is a measured fact and not a story — and so is the part that was
+	   NOT settled before: **either declaration alone is sufficient here.** They are not a
+	   pair in which each does half. `min-height: 0` lifts the automatic minimum directly;
+	   `overflow: hidden` lifts it as a side effect, because a flex item's automatic minimum
+	   applies only while `overflow` is `visible`. Both are kept because they state one
+	   intent two ways and neither costs anything, not because the layout needs both.
+	   The board column's twin says "Both terms are load-bearing and neither works alone",
+	   which is the same structure and is contradicted by the table above; that claim is
+	   about the COLUMN and has not been re-measured, so it is flagged rather than edited.
+	   This paragraph said something else again until 2026-08-17 — that the row had no
+	   definite height to clip against, so a long horizon grew the band from 220px to 383px
+	   instead of ellipsising. That was measured before the cap existed. */
 	min-height: 0;
 	overflow: hidden;
 }

@@ -145,7 +145,8 @@ export interface TimelineDrawing {
 	 * Normally, not always: `renderRoadmap` measures AFTER `treeEl.empty()`, so a
 	 * vertical scrollbar the pane had at resize time is gone at render time and the two
 	 * differ by its width. `.pbl-roadmap-dates .pbl-tree` is `overflow-y: auto` as a
-	 * deliberate fallback (a floor plus four maxima can exceed a short or embedded pane),
+	 * deliberate fallback (this grid's own floor plus every capped band can exceed a short
+	 * or embedded pane — the rule rather than a count, which was already stale twice),
 	 * so this is confined to that case, and it costs at most one extra rebuild — the
 	 * resize branch's idempotence check fails once — and a day track reserved a scrollbar
 	 * too narrow. 0 or less reads as "not measured" — see `effectiveLeadWidth`.

@@ -67,17 +67,31 @@ describe('the horizon board boxes that must not size from card content', () => {
 		expect(ruleBody(SCROLLING_BANDS)).toContain('overflow-y: auto;');
 	});
 
-	it('caps the two bands that compete with the axis, and only those two', () => {
+	it('caps the two bands that compete with the axis', () => {
 		// A band with no maximum in a frame that owns the pane's height squeezes the buckets
 		// out instead — true of the shelf and the context strip, which draw beside a
-		// populated axis. NOT true of the advisory: `renderRoadmapAdvisory` draws it only
-		// when the axis, the shelf and the context strip are all empty, so a cap on it can
-		// only clip the one thing on screen. It did — at a 553px pane the empty state was cut
-		// mid-sentence with the ✨ CTA and the manual link below the fold of a box most
-		// readers would not know scrolls. `bodyOf` matches the selector list EXACTLY, so
-		// re-adding the advisory to this rule fails here rather than passing on a prefix.
+		// populated axis. `bodyOf` matches the selector list EXACTLY, so adding a third band
+		// to this rule fails here rather than passing on a prefix.
 		expect(ruleBody(CAPPED_BANDS)).toContain('max-height: 30%;');
-		expect(ruleBody(SCROLLING_BANDS)).not.toContain('max-height');
+	});
+
+	it('caps the advisory nowhere in the file, not merely in the rule we thought of', () => {
+		// `renderRoadmapAdvisory` draws the advisory only when the axis, the shelf and the
+		// context strip are all empty, so a cap on it can only ever clip the one thing on
+		// screen. It did — at a 553px pane the empty state was cut mid-sentence with the ✨
+		// CTA and the manual link below the fold of a box most readers would not know
+		// scrolls.
+		// At the FORBIDDEN THING rather than at the two rules that happen to exist today:
+		// asserting `SCROLLING_BANDS` carries no `max-height` says nothing about a fresh
+		// `.pbl-roadmap .pbl-board-advisory { max-height: … }` written anywhere else in this
+		// file, which is exactly how the cap would come back. This pattern reads every rule
+		// whose selector list names the advisory and refuses a `max-height` in any of them.
+		// Its one imprecision, stated rather than left to be discovered: the class name
+		// written inside a COMMENT would make the pattern read on to the next rule's body.
+		// Every mention in this file is a selector today, and that failure direction is a
+		// false ALARM rather than a false pass — which is the right way round for a guard
+		// whose whole job is to hold for rules nobody has written yet.
+		expect(css).not.toMatch(/pbl-board-advisory[^{]*\{[^}]*max-height/);
 	});
 
 	it('refuses to let a horizon band be shrunk below the maximum it declared', () => {

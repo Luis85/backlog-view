@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { Menu } from 'obsidian';
 import { FakeVault } from '../helpers/vault';
 import {
@@ -14,6 +14,7 @@ import {
 	useViewHarness,
 } from '../helpers/view';
 import { bucketNames, bucketsOf, roadmapView, shelfTitles } from '../helpers/roadmap';
+import { CardDragController } from '../../src/view/interactions/cardDrag';
 import { TIMELINE_LEAD_PX } from '../../src/view/render/timeline';
 
 useViewHarness();
@@ -424,5 +425,54 @@ describe('a shared card is finished by ITS OWN workflow, on every projection tha
 		view.setShelfCollapsed(false);
 
 		expect(doneClasses(containerEl)).toEqual({ Shipped: true, Open: false, Shelved: true });
+	});
+});
+
+describe('a scrollport a card can be dragged into auto-scrolls', () => {
+	/**
+	 * Driven through `CardDragController.prototype.wireScroller` — `linkDrag.test.ts`'s own
+	 * seam — because nothing on the rendered DOM distinguishes a registered auto-scroller
+	 * from none: the drag library keeps its registry to itself, and jsdom lays out nothing,
+	 * so the OVERFLOW this exists for cannot be observed here at all.
+	 *
+	 * That is the whole reach of this test and it is worth stating: it asserts the shelf is
+	 * WIRED, never that a held card scrolls it. The scrolling itself was measured in the
+	 * browser harness — 19 unplaced cards, a 143px scrollport over 1301px of content, 0px
+	 * scrolled before and ~910px after, holding a real drag at the bottom edge for 1.2s.
+	 */
+	function scrollersWiredOn(collapsed: boolean): HTMLElement[] {
+		const { view } = makeView(roadmapVault(), { ...AXES }, { collapsed: true });
+		view.setProjection('roadmap');
+		// Settled into the OPPOSITE state first, so the observed call re-renders rather
+		// than no-opping on the state it is already in — which is what it did when this
+		// asked for `true` against the collapsed default and read zero calls.
+		view.setShelfCollapsed(!collapsed);
+		// The spy starts after the projection is on screen, so the calls counted are one
+		// settled render's and not the mount's — `linkDrag.test.ts` states the same rule
+		// for the same seam.
+		const spy = vi.spyOn(CardDragController.prototype, 'wireScroller');
+		view.setShelfCollapsed(collapsed);
+		return spy.mock.calls.map(([el]) => el);
+	}
+
+	it('wires the shelf, and not only the pane and the buckets', () => {
+		// The shelf caps at 30% of the frame and scrolls itself (`styles/roadmap.css`), and
+		// on the horizon axis it is what a card is dragged FROM — so a drag held at its
+		// bottom edge has to reach the cards below the fold. It had no auto-scroll at all
+		// until 2026-08-17, which nothing in the suite could have told anyone: every other
+		// card container had one and none of the seven call sites was asserted anywhere.
+		const wired = scrollersWiredOn(false);
+		expect(wired.filter((el) => el.classList.contains('pbl-shelf'))).toHaveLength(1);
+		// The buckets keep theirs, so the assertion above is about the shelf rather than
+		// about `wireScroller` having been called at all.
+		expect(wired.filter((el) => el.classList.contains('pbl-bucket-cards')).length).toBeGreaterThan(0);
+	});
+
+	it('wires it collapsed too, because collapsing must never gate the drag machinery', () => {
+		// `renderShelf` wires the drop target and the scroller BEFORE its collapsed/empty
+		// return, on purpose: a collapsed shelf scrolls nothing, but splitting the two
+		// across that return is how one of them comes to be forgotten. Asserted so the
+		// order is a checked property of the function rather than a claim in its comment.
+		expect(scrollersWiredOn(true).filter((el) => el.classList.contains('pbl-shelf'))).toHaveLength(1);
 	});
 });

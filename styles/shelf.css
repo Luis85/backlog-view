@@ -36,8 +36,12 @@
    The shelf leads because it is what a card is dragged FROM; with nothing on it there is
    nothing to drag, so leading buys the reader nothing and costs them the board's position.
    On the dated axis this only moves the strip below the context strip, which is the same
-   foot it already sat at. Nothing focusable is reordered out of its reading order either:
-   the strip is `display: none` until a pointer is already down on a card. */
+   foot it already sat at. And nothing focusable is reordered out of its reading order,
+   which is a fact about the ELEMENT rather than about drag timing: `renderShelfControls`
+   (`src/view/render/shelfControls.ts`) returns after an icon and a label when
+   `shelf.length === 0`, so an empty shelf has no disclosure, no sort or type picker and no
+   search box — there is nothing on this element for `order` to separate from its place in
+   the document. Give the empty shelf a control and this sentence is what contradicts you. */
 .pbl-dragging .pbl-shelf-empty {
 	display: flex;
 	border-style: dashed;
