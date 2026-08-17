@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { mountHarness } from './mount';
+import { mountEstimationHarness, EstimationConfigVariant } from './mountEstimation';
 import { applyPlatform } from './theme';
-import { applyWantedFilter, openWantedDialog } from './knobs';
+import { applyWantedFilter, applyWantedEstimationSelection, openWantedDialog } from './knobs';
 import { Modal } from '../helpers/obsidian-mock';
 import { installObsidianDom } from '../helpers/dom';
 import { ExtraButtonComponent } from '../helpers/obsidian-mock';
@@ -149,6 +150,111 @@ describe('the browser harness mounts', () => {
 		projectionButton(containerEl, 'Show as kanban boards').dispatchEvent(new MouseEvent('click', { bubbles: true }));
 
 		expect(containerEl.querySelector('.pbl-board-cols')).not.toBeNull();
+	});
+});
+
+/** The estimation table's own row/title accessor — `rowFor` above reads `.pbl-row`,
+ *  the tree's class, which this view never draws. */
+function estRowFor(containerEl: HTMLElement, title: string): HTMLElement {
+	const row = Array.from(containerEl.querySelectorAll<HTMLElement>('.pbl-est-row')).find(
+		(r) => r.querySelector('.pbl-est-title')?.textContent === title,
+	);
+	if (!row) throw new Error(`estimation row not found: ${title}`);
+	return row;
+}
+
+/**
+ * The estimation entry's own guarantees, `describe('the browser harness mounts', ...)`'s
+ * shape for the second view: it still mounts, the fixture still draws the cases it
+ * exists for, and the URL knobs still make their state.
+ */
+describe('the estimation harness mounts', () => {
+	function mount(variant?: EstimationConfigVariant) {
+		const root = document.createElement('div');
+		document.body.appendChild(root);
+		return mountEstimationHarness(root, variant);
+	}
+
+	it('draws a table row for every fixture note, and the widened dimension bound to it', () => {
+		const { view, containerEl } = mount();
+
+		expect(containerEl.querySelectorAll('.pbl-est-row').length).toBe(11);
+		expect(view.settings.model.dimensions.find((d) => d.id === 'enablement')?.max).toBe(12);
+	});
+
+	it('draws the currency vocabulary end to end — current, stale, foreign, handwritten, orphan, none', () => {
+		const { containerEl } = mount();
+		const currency = (title: string) => estRowFor(containerEl, title).querySelector('.pbl-est-currency')?.textContent;
+
+		expect(currency('Full profile')).toBe('Current');
+		expect(currency('Stale total')).toBe('Needs re-estimation');
+		expect(currency('Foreign stamp')).toBe('Another model');
+		expect(currency('Hand-written total')).toBe('Hand-written');
+		expect(currency('Orphan total')).toBe('Inputs gone');
+		expect(currency('Nothing answered')).toBe('');
+	});
+
+	it('draws the clamp note and the between-points note the panel exists to show', () => {
+		const { containerEl } = mount();
+
+		estRowFor(containerEl, 'Out-of-range answer').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		expect(containerEl.querySelector('.pbl-est-panel')?.textContent).toContain('Out of range');
+
+		estRowFor(containerEl, 'Fractional score').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		expect(containerEl.querySelector('.pbl-est-panel')?.textContent).toContain('Between points');
+	});
+
+	it('omits the value-to-effort line for a zero and a negative effort', () => {
+		const { containerEl } = mount();
+
+		for (const title of ['Zero effort', 'Negative effort']) {
+			estRowFor(containerEl, title).dispatchEvent(new MouseEvent('click', { bubbles: true }));
+			const derived = containerEl.querySelector('.pbl-est-derived')?.textContent ?? '';
+			expect(derived).toContain('Confidence-adjusted value');
+			expect(derived).not.toContain('Value to effort');
+		}
+	});
+
+	it('selects a row through the ?select= knob, the same panel a click draws', () => {
+		const { view, containerEl } = mount();
+
+		applyWantedEstimationSelection(view, '?select=Full profile');
+
+		expect(estRowFor(containerEl, 'Full profile').classList.contains('pbl-selected')).toBe(true);
+		expect(containerEl.querySelector('.pbl-est-panel')).not.toBeNull();
+	});
+
+	it('draws the guided empty state for ?config=empty, with the shared shell’s own title class', () => {
+		const { containerEl } = mount('empty');
+
+		expect(containerEl.querySelector('.pbl-est-empty')).not.toBeNull();
+		expect(containerEl.querySelector('.pbl-empty-title')?.textContent).toBe(
+			'No estimation model is configured for this view.',
+		);
+		expect(containerEl.querySelector('.pbl-est-table')).toBeNull();
+	});
+
+	it('draws the config-warning block for ?config=problems, naming the missing stamp', () => {
+		const { containerEl } = mount('problems');
+
+		const warning = containerEl.querySelector('.pbl-est-problems');
+		expect(warning).not.toBeNull();
+		expect(warning?.textContent).toMatch(/stamp/i);
+		expect(containerEl.querySelector('.pbl-est-table')).toBeNull();
+	});
+
+	it('resolves every icon it asks for, across the unconfigured, configured and selected states', () => {
+		const missing = new Set<string>();
+		const collect = (containerEl: HTMLElement) => {
+			for (const el of containerEl.querySelectorAll<HTMLElement>('[data-icon-missing]')) missing.add(el.dataset.iconMissing ?? '');
+		};
+
+		collect(mount('empty').containerEl); // the guided empty state's icon
+		const { containerEl } = mount();
+		estRowFor(containerEl, 'Full profile').dispatchEvent(new MouseEvent('click', { bubbles: true })); // the clear buttons' icon
+		collect(containerEl);
+
+		expect([...missing]).toEqual([]);
 	});
 });
 

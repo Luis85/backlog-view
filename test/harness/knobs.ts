@@ -18,6 +18,7 @@ import { ProductBacklogView } from '../../src/view/backlogView';
 import { openManual } from '../../src/ui/manualDialog';
 import { manualSections } from '../../src/view/manual/sections';
 import { openStateColors } from '../../src/view/interactions/stateColors';
+import { EstimationView } from '../../src/view/estimation/estimationView';
 
 const DIALOGS = ['manual', 'colors', 'new'] as const;
 type Dialog = (typeof DIALOGS)[number];
@@ -68,4 +69,18 @@ export function applyWantedState(view: ProductBacklogView, search: string): void
 export function applyWantedFilter(view: ProductBacklogView, search: string): void {
 	const text = new URLSearchParams(search).get('filter');
 	if (text !== null && text !== '') view.setFilter(text);
+}
+
+/**
+ * `?select=<title>` — select a row in the ESTIMATION view by its note's title, the same
+ * assignment a click makes (`renderTable.ts`'s `selectRow`) without a pointer to drive
+ * it: the one way a screenshot reaches "a row selected, panel on screen" without
+ * clicking one. `title` is turned into the fixture's own flat `<title>.md` path, which
+ * is the only shape `estimationVault()`'s notes have.
+ */
+export function applyWantedEstimationSelection(view: EstimationView, search: string): void {
+	const title = new URLSearchParams(search).get('select');
+	if (!title) return;
+	view.selectedPath = `${title}.md`;
+	view.render();
 }

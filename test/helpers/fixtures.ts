@@ -19,7 +19,9 @@
  *
  * No existing suite is rewritten onto it. It is a fourth fixture, not a replacement.
  */
-import { FakeVault } from './vault';
+import { FakeVault, FakeViewConfig } from './vault';
+import { resolveEstimationSettings } from '../../src/domain/estimationSettings';
+import { computeTotal, stampValue } from '../../src/domain/weightedScore';
 
 /** The one note the Base does not return — the parent that renders as a context row. */
 const OUTSIDE = 'Retired platform';
@@ -484,5 +486,147 @@ export function edgeCaseVault(): FakeVault {
 			add(`${parent} ${i}`, { type: 'PBI', order: i * 10, status: i % 3 === 0 ? 'Done' : 'Active' }, parent);
 		}
 	}
+	return vault;
+}
+
+/**
+ * The estimation view's own thirteen write targets, all bound, plus a WIDENED range on
+ * one dimension so `.pbl-est-points` has something to wrap — the shipped 1-5 default
+ * never spills past one row of buttons. `estimationVault()` below is the notes this
+ * configures against, and it is a NAMED VARIANT rather than more properties on the
+ * backlog's own notes — this file's own header rule ("or a named variant if it would
+ * distort the backlog fixtures"): a stale total, a foreign stamp, an orphan and a
+ * clamped answer say nothing about the backlog `demoVault()` exists to draw, and the
+ * estimation view reads none of `demoVault()`'s notes anyway — it is a second Bases
+ * view, mounted on its own, never the tree/board/roadmap's projections of one backlog.
+ * `edgeCaseVault()`'s reasoning below, applied to a second, unrelated view.
+ */
+export function estimationOptions(): Record<string, unknown> {
+	return {
+		valueProperty: 'note.business-value',
+		stampProperty: 'note.business-value-model',
+		'dimProperty.strategic-alignment': 'note.strategic-alignment',
+		'dimProperty.customer-value': 'note.customer-value',
+		'dimProperty.business-impact': 'note.business-impact',
+		'dimProperty.reach': 'note.reach',
+		'dimProperty.risk-reduction': 'note.risk-reduction',
+		'dimProperty.compliance': 'note.compliance',
+		'dimProperty.time-criticality': 'note.time-criticality',
+		'dimProperty.enablement': 'note.enablement',
+		confidenceProperty: 'note.confidence',
+		effortProperty: 'note.effort',
+		complexityProperty: 'note.complexity',
+		'dimRange.enablement': '1-12',
+		...Object.fromEntries(ENABLEMENT_WIDE_RUBRIC.map((sentence, i) => [`dimRubric.enablement.${i + 1}`, sentence])),
+	};
+}
+
+/** Twelve sentences for `enablement`'s widened range — `modelProblems` refuses a range
+ *  whose rubric is shorter than its point count, so a wide range needs one per point
+ *  rather than falling back to the shipped five. */
+const ENABLEMENT_WIDE_RUBRIC: string[] = [
+	'No dependencies at all',
+	'Minor dependencies',
+	'A few optional dependents',
+	'Enables a couple of related items',
+	'Enables several items',
+	'Enables many items',
+	'Meaningful platform capability',
+	'Significant platform capability',
+	'Broad platform capability',
+	'Foundational prerequisite for one major capability',
+	'Foundational prerequisite for several capabilities',
+	'Foundational prerequisite for everything the roadmap depends on',
+];
+
+/**
+ * Eleven notes, each one state the estimation view's own vocabulary needs to be looked
+ * at whole — the currency word end to end (current, stale, foreign, handwritten, orphan,
+ * none), the clamp note, the between-points note, and the derived-line guards for a
+ * zero and a negative effort. Flat and parentless: this view builds no tree and reads
+ * every result straight off `vault.entries()`, so there is nothing here for `parent` or
+ * `order` to do.
+ *
+ * The stamps are computed through the real `resolveEstimationSettings` /
+ * `computeTotal` / `stampValue`, against the SAME `estimationOptions()` the harness
+ * configures the view with — the one way to hand-author a "current" or a "stale" note
+ * without silently drifting from what the real model would compute for it.
+ */
+export function estimationVault(): FakeVault {
+	const vault = new FakeVault();
+	const model = resolveEstimationSettings(new FakeViewConfig(estimationOptions())).model;
+
+	const FULL: Record<string, number> = {
+		'strategic-alignment': 5,
+		'customer-value': 4,
+		'business-impact': 4,
+		reach: 3,
+		'risk-reduction': 2,
+		compliance: 1,
+		'time-criticality': 4,
+		enablement: 3,
+	};
+
+	// The 8/8 profile: scored, stamped and matching, so `currencyOf` reads it 'current'.
+	// The only note with a positive effort, so it is also where the adjusted-value and
+	// value-to-effort derived lines are on screen at all — and, whichever note is
+	// selected, `enablement`'s widened range draws on every panel, so this is also
+	// where the wrapped row is looked at.
+	const full = computeTotal(model, new Map(Object.entries(FULL)))!;
+	vault.addFile('Full profile.md', {
+		frontmatter: {
+			...FULL,
+			confidence: 4,
+			effort: 3,
+			complexity: 2,
+			'business-value': full.total,
+			'business-value-model': stampValue(model, full.coverage),
+		},
+	});
+
+	// 3 of 8, nothing stored yet — the coverage cell reads "3/8" beside an empty total.
+	vault.addFile('Partial profile.md', { frontmatter: { 'strategic-alignment': 5, 'customer-value': 3, reach: 2 } });
+
+	// Nothing answered at all — coverage, total and currency all draw the empty dash.
+	vault.addFile('Nothing answered.md', { frontmatter: {} });
+
+	// Scored and stamped from FULL, then one answer changed afterwards: the coverage
+	// count still matches (8/8), so the stamp's own fingerprint still resolves — only
+	// the TOTAL disagrees, which is what makes this stale rather than foreign.
+	const stale = computeTotal(model, new Map(Object.entries(FULL)))!;
+	vault.addFile('Stale total.md', {
+		frontmatter: {
+			...FULL,
+			'customer-value': 2,
+			'business-value': stale.total,
+			'business-value-model': stampValue(model, stale.coverage),
+		},
+	});
+
+	// A well-formed stamp naming a fingerprint no model here produced.
+	vault.addFile('Foreign stamp.md', { frontmatter: { ...FULL, 'business-value': 61, 'business-value-model': '8/8 deadbeef' } });
+
+	// A total with no stamp key at all — typed by hand rather than written by this view.
+	vault.addFile('Hand-written total.md', { frontmatter: { 'strategic-alignment': 4, 'business-value': 72 } });
+
+	// A total (and a stamp) with every scored key since deleted out of band — the
+	// inputs are gone, so `item.result` is null and this reads 'orphan' regardless of
+	// what the stamp says.
+	vault.addFile('Orphan total.md', { frontmatter: { 'business-value': 50, 'business-value-model': '0/8 deadbeef' } });
+
+	// Answered past its own declared range (1-5) — clamps to 5 and reports it.
+	vault.addFile('Out-of-range answer.md', { frontmatter: { 'strategic-alignment': 9, 'customer-value': 3 } });
+
+	// Answered BETWEEN two points — counted as it stands, named as a fraction rather
+	// than clamped.
+	vault.addFile('Fractional score.md', { frontmatter: { 'customer-value': 3.5, reach: 2 } });
+
+	// Effort 0 — the value-to-effort line's own guard: a stored zero would divide into
+	// `Infinity`, so the line is omitted rather than shown.
+	vault.addFile('Zero effort.md', { frontmatter: { 'strategic-alignment': 4, confidence: 3, effort: 0 } });
+
+	// A negative effort — the same guard, the other side of zero.
+	vault.addFile('Negative effort.md', { frontmatter: { 'strategic-alignment': 4, confidence: 3, effort: -2 } });
+
 	return vault;
 }
