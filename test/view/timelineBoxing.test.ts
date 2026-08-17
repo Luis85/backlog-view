@@ -203,7 +203,7 @@ describe('the legend swatch keeps its size in a narrow pane', () => {
 	const css = readFileSync(new URL('../../styles/legend.css', import.meta.url), 'utf8');
 
 	it('refuses to shrink, rather than relying on there being room', () => {
-		const body = css.slice(css.indexOf('.pbl-legend-swatch {'), css.indexOf('}', css.indexOf('.pbl-legend-swatch {')));
+		const body = bodyOf(css, '.pbl-legend-swatch', 'styles/legend.css');
 		expect(body, 'the swatch declares no size at all').toContain('width: 10px;');
 		expect(body, 'the swatch is a flex item with nothing stopping it shrinking to 0').toMatch(
 			/flex(-shrink)?\s*:\s*0/,

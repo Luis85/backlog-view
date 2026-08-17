@@ -15,23 +15,38 @@
  * cycle. What it deliberately does not model is specificity — see `declarations`.
  *
  * `bodyOf` is the plainest thing here and is why this file is now the home for every
- * stylesheet READ rather than for custom properties alone: three suites assert whole
- * declarations in a named rule (`roadmapBoxing`, `timelineBoxing`, `shelfSearch`), and
- * between them they carried four copies of it.
+ * stylesheet READ rather than for custom properties alone: five suites assert whole
+ * declarations in a named rule, and between them they carried SEVEN copies of it.
  */
 
 /**
  * The declarations of one rule, addressed by its selector LIST — pass the whole list,
- * newlines and all, for a grouped rule. Exact rather than a prefix match, which is
- * load-bearing now that two rules in `roadmap.css` open on `.pbl-roadmap .pbl-shelf,`
- * and differ in nothing but which bands follow it.
+ * newlines and all, for a grouped rule.
  *
- * The one rule reader the stylesheet suites share, and deliberately not built on
- * `declarations` or `rules` above: those answer for custom properties and for property
- * NAMES, and every caller here asserts a whole declaration — `max-height: 30%;`,
- * `contain: inline-size;` — which only the text of the body carries. It was hand-rolled
- * in four places until 2026-08-17, one of them slicing from the SELECTOR rather than
- * from the `{`, so any needle that could appear in a selector passed on the prelude.
+ * **Two requirements, both inherited and both failing toward a loud throw.** The match is
+ * EXACT rather than a prefix, which is load-bearing now that two rules in `roadmap.css`
+ * open on `.pbl-roadmap .pbl-shelf,` and differ in nothing but which bands follow it; and
+ * the rule must start at LINE START, so one indented into an `@media` block reads as
+ * absent. `test/view/rendering.test.ts` is the suite that genuinely asks an `@media`
+ * question and is deliberately not a caller — it wants the rule NEAREST an enclosing
+ * wrapper, which is a different question rather than a stricter one.
+ *
+ * The one rule reader the stylesheet suites share, and deliberately not built on anything
+ * above it. `declarations` answers for custom properties and `rules` for property NAMES,
+ * while every caller asserts declaration TEXT — `max-height: 30%;`,
+ * `contain: inline-size;` — which only the body carries. `eachBlock` is the one that
+ * could plausibly have carried this, and was declined for the reason that matters when
+ * an INSTRUMENT is what changes: it strips comments and normalises selector whitespace,
+ * so every assertion reading a body would have been re-pointed at a subtly different
+ * string by the commit that was supposed to leave them alone. This body was lifted
+ * verbatim from the copy two suites already shared, byte for byte, so their assertions
+ * are provably untouched.
+ *
+ * It was hand-rolled in seven places until 2026-08-17 across five suites, three of them
+ * slicing from the SELECTOR rather than from the `{`, so any needle that could appear in
+ * a prelude passed on the prelude. The count reads seven because it was re-measured with
+ * `grep -rn "\.indexOf(" test/` — the brief named four, and a narrower grep for one
+ * spelling is how a count like this goes wrong.
  *
  * `file` is passed rather than recovered from the text: the caller already knows which
  * stylesheet it read, and a miss has to name it to be actionable. It THROWS on a miss —

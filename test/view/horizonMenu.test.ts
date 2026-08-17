@@ -33,19 +33,34 @@ describe('the horizon board’s card menu carries no children section', () => {
 	}
 
 	/**
-	 * Every card lookup here goes through a helper that THROWS on a miss, and the type
-	 * of this parameter is the other half of that. Both were hand-rolled until
-	 * 2026-08-17 — `querySelector('.pbl-card')` and a `find` over `.pbl-shelf .pbl-card`
-	 * by path, each answering a miss with `null`, which this function then turned into
-	 * `[]`: three of the four cases below assert that a title is NOT in the list, so a
-	 * lookup that found nothing would have satisfied every one of them. They were all
-	 * finding their card — checked by removing the gate and watching the three fail on
-	 * real menus — but nothing here said so, and a renamed class would have taken the
-	 * evidence away silently rather than loudly.
+	 * **Nothing on this path may answer a miss with an empty list.** Three of the four
+	 * cases below assert that a title is NOT in the menu, so every step that could
+	 * quietly produce `[]` satisfies all three at once — and this suite had TWO such
+	 * steps until 2026-08-17, one behind the other.
+	 *
+	 * The first was the LOOKUP: `querySelector('.pbl-card')` in a bucket and a `find`
+	 * over `.pbl-shelf .pbl-card` by path, each answering `null`. Measured rather than
+	 * argued — with all three lookups pointed at things no fixture draws, all four cases
+	 * passed, the `cardChildrenShown` control included, because that control reads the
+	 * VIEW and never the DOM. Closed by a non-nullable parameter and lookups that throw.
+	 *
+	 * The second was this function's own `?? []` for a card that drew no menu — with
+	 * `wireItemMenu`'s listener disabled, three of four passed with nothing on screen at
+	 * all. Closed by the throw below, which is what makes the first sentence a rule
+	 * rather than a note about two call sites: a fifth `not.toContain` case gets both
+	 * guarantees from the helper it has to go through.
+	 *
+	 * The stale-menu door is the same door: `Menu.lastShown` outlives the call that set
+	 * it, so a second probe in one test would read the first probe's menu. Cleared here
+	 * rather than trusted to `useViewHarness`'s per-test reset, which cannot see a
+	 * second call.
 	 */
 	const menuTitles = (card: HTMLElement): string[] => {
+		Menu.lastShown = null;
 		card.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
-		return Menu.lastShown?.items.map((i) => i.titleText) ?? [];
+		const menu = Menu.lastShown;
+		if (!menu) throw new Error('no menu shown');
+		return menu.items.map((i) => i.titleText);
 	};
 
 	/** A card on the shelf, by title — scoped, because "on the shelf" is the claim. */

@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { FakeVault } from '../helpers/vault';
 import { fixture, makeView, rowByTitle, treeOf, useViewHarness } from '../helpers/view';
+import { bodyOf } from '../helpers/cssVars';
 
 useViewHarness();
 
@@ -23,11 +24,7 @@ useViewHarness();
  */
 describe('the declarations that pin the bar', () => {
 	const css = readFileSync('styles/columns.css', 'utf8');
-	const rule = (selector: string): string => {
-		const at = css.indexOf(`\n${selector} {`);
-		if (at === -1) throw new Error(`no rule for ${selector}`);
-		return css.slice(css.indexOf('{', at) + 1, css.indexOf('}', at));
-	};
+	const rule = (selector: string): string => bodyOf(css, selector, 'styles/columns.css');
 
 	it('fills the lane and pins the bar to its start', () => {
 		expect(rule('.pbl-progress')).toContain('justify-content: space-between');
