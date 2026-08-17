@@ -2,12 +2,12 @@
 type: PBI
 parent: "[[An Iterations board]]"
 order: 15
-status: Active
+status: Done
 priority: P2
 created: 2026-08-16
 source: user request
 started: ""
-finished: ""
+finished: 2026-08-16
 horizon: ""
 start: ""
 due: ""
