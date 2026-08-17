@@ -68,8 +68,11 @@ export async function runEstimationInit(view: EstimationView): Promise<void> {
 	const problems = modelProblems(model);
 	// Said rather than left silent: the guided empty state is still what is on screen, so
 	// with nothing bound and nothing written there would be no surface reporting anything
-	// and the button would simply look dead.
-	if (problems.length > 0) return void new Notice(t('estimation.problems.blocked', { problem: problems[0] }));
+	// and the button would simply look dead. `runInit`'s own shape.
+	if (problems.length > 0) {
+		new Notice(t('estimation.problems.blocked', { problem: problems[0] }));
+		return;
+	}
 	for (const [option, value] of pending) view.config.set(option, value);
 	view.refresh(); // the just-bound model is what the table renders from
 	const keys = boundKeys(model);

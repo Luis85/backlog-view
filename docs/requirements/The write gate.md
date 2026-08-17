@@ -51,9 +51,15 @@ property of whichever code path happened to run.
   — those notes are on disk and the tree has to show them.
 - **5a — data updates arrive mid-batch.** Every file `applyWrites` touches comes back as
   its own change event; rebuilding the tree on each would render a half-applied backlog
-  hundreds of times. They are recorded and flushed once at the end instead.
-- **6a — the batch is undo.** Same gate, minus the context-row check — see
-  [[Undo and redo]] for why that one is capture-time.
+  hundreds of times. They are recorded and flushed once at the end instead — in every view
+  that recorded one, not only in the view that wrote: a batch is one at a time across the
+  whole plugin ([[A view per capability]]), so a second view defers on a batch it is not
+  running and only the end of that batch can release it.
+- **6a — the batch is undo.** Same gate, minus the context-row check AND minus the
+  configuration check — see [[Undo and redo]] for why both are capture-time. A replay
+  restores raw captured keys rather than planning against these settings, so the collision
+  3a exists to prevent cannot be reached by one, and asking it let a problem in one view's
+  options veto taking back another view's batch.
 
 ## Acceptance criteria
 
