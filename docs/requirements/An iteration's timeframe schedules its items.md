@@ -163,6 +163,8 @@ reaches the gate through `src/view/writeGate.ts`. The menu that triggers it is
 `src/view/interactions/labels.ts`, and the create path is
 `src/view/interactions/create.ts` — `promptCreateItem`, which is where a `NewItemSpec` is
 built; `src/view/interactions/structure.ts` carries the structural moves and never
-constructs one. Driven in `test/domain/writePlanProperties.test.ts`
-beside the other optional-property plans, with the entry points in
-`test/view/contextRowWrites.test.ts` and `test/view/contextCardWrites.test.ts`.
+constructs one. Driven in `test/domain/iterationDates.test.ts` — its own file once the
+dated-axis suites neared the per-file test budget, the same reason
+`test/view/markerLabels.test.ts` split off `roadmap.test.ts` — with the entry points in
+`test/view/contextRowWrites.test.ts` and `test/view/contextCardWrites.test.ts`, and the
+batch's own undo, all three keys restored by one call, in `test/storage/restore.test.ts`.

@@ -2,7 +2,7 @@
 type: Feature
 parent: "[[Product Kanban]]"
 order: 65
-status: Active
+status: Done
 created: 2026-08-15
 source: user request
 started: ""
@@ -26,12 +26,12 @@ beside the projection toggle rather than from a toggle position of its own: `Pro
 one of the iterations, the way the roadmap offers its two axes from one control
 ([[Horizons or dates]]).
 
-**Nothing yet.** The work extends the seams [[A Deliverables board]] already cut — a
-second column builder in `src/domain/board.ts` and two more list options beside the
-Deliverables group's — plus one control in `src/view/render/toolbarControls.ts` that the
-roadmap's axis picker is the template for. It cuts no new seam of its own: the board
-reads the product board's own state key, and the only new write path is the date pair
-that joining an iteration stamps.
+**Built.** A twelfth type, a link property that puts a work item in one, and a board
+scoped to a single sprint — reached from the scope picker beside the projection toggle,
+columned by the product board's own workflow narrowed to three buckets — landed first.
+Joining a sprint then took over the item's dates too, one undoable batch for the link and
+both, and the roadmap learned to draw that commitment as a line and diamond by default
+or, under its own view option, as a start→target bar with a grip on each end.
 
 ## Why a scope, and not a fifth toggle position
 
@@ -94,12 +94,12 @@ backlog column because it has not been started, never because joining stamped it
 
 ## Outcome
 
-**Four of five use cases landed on 2026-08-16.** A vault that names an iteration
-property has a twelfth type, a link that puts work in a time box and takes its dates with
-it, and a board scoped to one sprint reached from a picker beside the projection
-switcher. `An iteration draws as a bar or a line` has not landed, which is why this
-Feature is still `Active` rather than `Done` — a Feature closed over an unbuilt use case
-is a defect this register has recorded before.
+**Four of five use cases landed on 2026-08-16, the fifth on 2026-08-17.** A vault that
+names an iteration property has a twelfth type, a link that puts work in a time box and
+takes its dates with it, and a board scoped to one sprint reached from a picker beside the
+projection switcher. `An iteration draws as a bar or a line` was the holdout — a Feature
+closed over an unbuilt use case is a defect this register has recorded before — and
+closing it is what moves this Feature to `Done`.
 
 **What the build settled that the design could not.** Three of them are worth carrying
 forward, because each was a place a value was defined once and read another way.

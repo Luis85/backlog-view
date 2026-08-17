@@ -35,6 +35,17 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   backfills it like every other optional property, clearing removes the key rather than
   blanking it, and every write is one undoable batch.
 
+- **Set iteration is one undoable step, wherever it happens.** Picking a sprint from
+  `Set iteration` writes the link and both of its dates as a single batch behind a single
+  undo, and a card created straight onto an iteration board carries that same link and
+  both dates in its first write — never a create followed by a second write of its own.
+
+- **Draw a sprint as a bar, not only a line.** A new "Draw iterations as bars" view
+  option turns an `Iteration` from a point at its target date into a start→target bar on
+  the roadmap's grid axes, with a grip on each configured end. Either way, the marker
+  row's caption, the legend swatch and the announced sentence now name what is actually
+  drawn — Milestone, Iteration, or both — instead of calling every marker a milestone.
+
 - **The Deliverables board moved into the scope picker.** Its toolbar toggle position is
   gone: every board is the `Board` button now, and the picker beside it says which —
   `Product` and `Deliverables` lead the menu, each under its own icon, with the
