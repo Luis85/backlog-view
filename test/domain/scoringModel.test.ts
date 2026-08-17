@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { modelProblems, estimationUnconfigured, pointCount } from '../../src/domain/scoringModel';
+import { boundKeys, modelProblems, estimationUnconfigured, pointCount } from '../../src/domain/scoringModel';
 import { dimRubricOption, resolveEstimationSettings, scaleRubricOption } from '../../src/domain/estimationSettings';
 import { SUGGESTED_KEYS } from '../../src/domain/defaultModel';
 import { FakeViewConfig } from '../helpers/vault';
@@ -54,6 +54,19 @@ describe('the scoring model configuration', () => {
 	it('refuses an output range that is not increasing whole integers', () => {
 		const s = resolveEstimationSettings(new FakeViewConfig({ outputRange: '5-1' }));
 		expect(modelProblems(s.model).join(' ')).toMatch(/output range/i);
+	});
+});
+
+describe('boundKeys', () => {
+	it('lists every dimension, scale, value and stamp key the model binds, unbound ("") filtered out', () => {
+		expect(boundKeys(configured())).toEqual([
+			'strategic-alignment', 'customer-value', 'business-impact', 'reach',
+			'risk-reduction', 'compliance', 'time-criticality', 'enablement',
+			'business-value', 'business-value-model',
+		]);
+	});
+	it('an unbound model binds nothing', () => {
+		expect(boundKeys(resolveEstimationSettings(new FakeViewConfig({})).model)).toEqual([]);
 	});
 });
 

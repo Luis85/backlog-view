@@ -1,6 +1,6 @@
 import { App, BasesEntry, TFile } from 'obsidian';
 import { ownValue, readNumber, readString } from './noteFields';
-import { ScoringModel } from './scoringModel';
+import { boundKeys, ScoringModel } from './scoringModel';
 import { computeTotal, Currency, currencyOf, TotalResult } from './weightedScore';
 
 /**
@@ -40,7 +40,7 @@ export interface EstimationModel {
  * a second time.
  */
 export function buildEstimationModel(app: App, entries: BasesEntry[], model: ScoringModel): EstimationModel {
-	const boundKeys = modelKeys(model);
+	const bound = boundKeys(model);
 	const items: EstimationItem[] = [];
 	const byPath = new Map<string, EstimationItem>();
 	for (const entry of entries) {
@@ -66,22 +66,10 @@ export function buildEstimationModel(app: App, entries: BasesEntry[], model: Sco
 			storedStamp,
 			result,
 			currency: currencyOf(model, { storedTotal, storedStamp, result }),
-			ownKeys: new Set(boundKeys.filter((key) => ownValue(fm, key) !== undefined)),
+			ownKeys: new Set(bound.filter((key) => ownValue(fm, key) !== undefined)),
 		};
 		items.push(item);
 		byPath.set(file.path, item);
 	}
 	return { items, byPath };
-}
-
-/** Every key this model can bind to, minus whichever are left unconfigured. */
-function modelKeys(model: ScoringModel): string[] {
-	return [
-		...model.dimensions.map((d) => d.key),
-		model.confidence.key,
-		model.effort.key,
-		model.complexity.key,
-		model.valueKey,
-		model.stampKey,
-	].filter((key) => key !== '');
 }

@@ -70,6 +70,21 @@ this ADR already defers. `src/view/estimation/panel.ts` is the free function ove
 `performScore`/`performScale`/`performOrphanCleanup`, `renderTable.ts`'s shape a second
 time: imported by `estimationView.ts`, never the reverse.
 
+The guided empty state's own setup action is a fourth file on the same free-function
+shape: `src/view/estimation/init.ts` (`runEstimationInit`) binds every suggested key
+nobody has touched (`domain/defaultModel.ts`'s `SUGGESTED_KEYS`, over
+`adoptableProperties`' own never-set/taken rules from `domain/optionalProperties.ts`)
+and then stubs those keys onto every result through `EstimationView.applySafely` — the
+backlog's own `runInit` (`interactions/structure.ts`) narrowed to this view's table and
+this view's gate rather than reused directly, since that function reaches
+`BacklogViewHost` and `computeInitWrites`, neither of which this model needs. `import
+type` only against `estimationView.ts`, `renderTable.ts`'s and `panel.ts`'s own shape.
+`boundKeys` — every key the model binds, unbound (`''`) filtered out — is
+`domain/scoringModel.ts`'s own pure function rather than living beside `runInit`:
+`estimationItems.ts` already computed the identical list under its own name for
+`EstimationItem.ownKeys`, so the setup action reuses it rather than carrying a second
+copy of the same nine lines.
+
 ## Consequences
 
 The SDD's directory tree is not adopted. Modules this refactor adds are named

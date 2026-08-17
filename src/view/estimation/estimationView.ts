@@ -9,6 +9,7 @@ import { WriteGate } from '../writeGate';
 import { WriteLock } from '../writeLock';
 import { renderTable } from './renderTable';
 import { renderPanel } from './panel';
+import { runEstimationInit } from './init';
 import { planOrphanCleanup, planScaleWrite, planScoreWrite } from './scoring';
 
 export const ESTIMATION_VIEW_TYPE = 'product-estimation';
@@ -110,14 +111,15 @@ export class EstimationView extends BasesView {
 
 	/**
 	 * The view's write path, delegated straight to the gate — `writeGate.ts`'s own
-	 * shape, so a later consumer (the toolbar, Task 8) needs nothing from the gate
-	 * itself. Nothing in this task calls these three from outside the class yet — the
-	 * panel's own picks go through `performScore`/`performScale`/`performOrphanCleanup`
-	 * below — so fallow reads them as unused class members until Task 8 wires a caller;
-	 * suppressed rather than hidden behind `usedClassMembers`, which is for members a
-	 * FRAMEWORK invokes, not ones a later task in this same epic will.
+	 * shape. `applySafely` now has its production caller (`init.ts`'s
+	 * `runEstimationInit`, the guided empty state's setup action), so it needs no
+	 * suppression any more. `canUndo` and `undoLast` still have none outside a test —
+	 * the panel's own picks go through `performScore`/`performScale`/
+	 * `performOrphanCleanup` below, none of which reads the undo slot — so fallow still
+	 * reads them as unused class members; suppressed rather than hidden behind
+	 * `usedClassMembers`, which is for members a FRAMEWORK invokes, not ones a later
+	 * consumer (the toolbar) will.
 	 */
-	// fallow-ignore-next-line unused-class-member
 	applySafely(writes: PropertyWrite[]): Promise<WriteOutcome | null> {
 		return this.gate.applySafely(writes);
 	}
@@ -162,8 +164,9 @@ export class EstimationView extends BasesView {
 	private renderUnconfigured(): void {
 		const box = this.viewEl.createDiv({ cls: 'pbl-empty pbl-est-empty' });
 		box.createDiv({ text: t('estimation.empty.unconfigured') });
-		// The init button lands in a later task; until then the guidance names the options menu.
 		box.createDiv({ cls: 'pbl-empty-hint', text: t('estimation.empty.hint') });
+		const btn = box.createEl('button', { cls: 'mod-cta', text: t('estimation.empty.useDefaults') });
+		btn.addEventListener('click', () => void runEstimationInit(this));
 	}
 
 	private renderProblems(problems: string[]): void {

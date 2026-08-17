@@ -43,6 +43,25 @@ export function estimationUnconfigured(model: ScoringModel): boolean {
 	return model.valueKey === '' && model.stampKey === '' && model.dimensions.every((d) => d.key === '');
 }
 
+/**
+ * Every frontmatter key this model binds — '' (unbound) filtered out. `estimationItems.ts`
+ * reads it to know which keys a note's OWN presence counts against
+ * (`EstimationItem.ownKeys`); `view/estimation/init.ts` reads the identical list to know
+ * what the guided empty state's setup action must stub. One function rather than two: a
+ * private near-copy here (`modelKeys`) and the setup action's own were the same nine
+ * lines, caught as a clone by `npm run analyze` the day the second one was written.
+ */
+export function boundKeys(model: ScoringModel): string[] {
+	return [
+		...model.dimensions.map((d) => d.key),
+		model.confidence.key,
+		model.effort.key,
+		model.complexity.key,
+		model.valueKey,
+		model.stampKey,
+	].filter((key) => key !== '');
+}
+
 /** One dimension's own problems: its range, its rubric coverage, its property, its weight. */
 function dimensionProblems(d: ScoringDimension): string[] {
 	const problems: string[] = [];

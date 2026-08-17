@@ -33,10 +33,13 @@ fresh says about that stored value — read off the vault the same one-cache-rea
 way the backlog's own model is) · `src/view/estimation/renderTable.ts` (the header, one
 row per item with its total, coverage, confidence, effort and currency word, and the
 delegated click and keyboard that set `EstimationView.selectedPath` —
-[[Why this item scored what it scored]]'s panel reads it next).
+[[Why this item scored what it scored]]'s panel reads it next) ·
+`src/view/estimation/init.ts` (`runEstimationInit`, the guided empty state's own setup
+action: bind every suggested property nobody has touched, then stub the bound keys onto
+every result — one gated batch, so it is a single undo).
 
 Sorting by column is not built yet: the header's labels are plain text this round, not
 controls, so nothing here claims a column the reader cannot yet click.
 
 Tests: **`test/view/estimation/states.test.ts`**, `test/view/estimation/register.test.ts`,
-`test/view/estimation/table.test.ts`.
+`test/view/estimation/table.test.ts`, `test/view/estimation/init.test.ts`.

@@ -95,7 +95,9 @@ export const en = {
 	 * own empty result set. */
 	'estimation.loading': 'Loading estimation view…',
 	'estimation.empty.unconfigured': 'No estimation model is configured for this view.',
-	'estimation.empty.hint': 'Name the score properties in the view options, or use the setup action once it is available.',
+	'estimation.empty.hint':
+		'Bind the suggested properties and stub them onto the results, or name your own in the view options.',
+	'estimation.empty.useDefaults': 'Use recommended defaults',
 	'estimation.problems.lead': 'Fix the estimation model first:',
 	'estimation.empty.noResults': 'No results to estimate.',
 
