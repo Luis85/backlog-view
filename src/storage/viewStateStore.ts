@@ -206,7 +206,7 @@ export interface ViewPrefs {
 	 */
 	scope?: string;
 	/**
-	 * Which board the `Board` position opens when no iteration scope is set — today the
+	 * Which board the `Boards` position opens when no iteration scope is set — today the
 	 * one legal value is {@link DELIVERABLES_MODE}, and absence means the product board.
 	 * A WORD, never a path, so unlike `scope` beside it neither the prune nor the rename
 	 * walk may touch it. The two clear each other on the way in (`ViewStateController`),

@@ -45,12 +45,12 @@ that shape, and the roadmap's axis picker is the one to copy.
 **The count argument then took the Deliverables position too** (2026-08-16, user
 request). Once the picker existed, one row held two controls both answering "which
 board": a toggle position for one board and a picker for the rest is two doors with a
-rule about which board uses which, and the user chose one door — the `Board` button is
+rule about which board uses which, and the user chose one door — the `Boards` button is
 every board, and its picker leads with `Product` and `Deliverables` (each under the icon
 its surface already wears) above the iteration scopes. The original argument above is
 kept, not overwritten: it was the right reason to build a picker at all, and it never
 said the toggle position had to survive the picker's arrival. The pick is retained
-exactly as an iteration scope is — `Board` reopens the board this view was last on — as
+exactly as an iteration scope is — `Boards` reopens the board this view was last on — as
 a stored word beside the stored path, never a fifth `mode`, so the two cannot
 contradict.
 

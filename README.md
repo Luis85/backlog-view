@@ -513,7 +513,7 @@ Items without an `order` sort after ranked siblings, alphabetically.
 ## The board
 
 The same backlog read as a kanban board: one column per workflow state, and one card per
-item the view is showing. Switch with the toolbar's **Show as kanban board** button.
+item the view is showing. Switch with the toolbar's **Show as kanban boards** button.
 
 **Focus decides what a card is.** With no focus set, every result gets a card. Focus a
 level — *Feature*, say — and the cards are the features, with their PBIs and tasks

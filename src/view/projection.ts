@@ -93,7 +93,7 @@ export function hasRollup(projection: Projection): boolean {
 }
 
 /**
- * Which toolbar POSITION draws this projection. Every board is the `Board` button's
+ * Which toolbar POSITION draws this projection. Every board is the `Boards` button's
  * position now: the scope picker beside that button chooses WHICH — the product's, the
  * Deliverables board's, or one iteration's — so the control the reader sees is one.
  * The Deliverables board held a toggle position of its own until 2026-08-16, when the
