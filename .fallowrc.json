@@ -7,6 +7,7 @@
 	},
 	"usedClassMembers": [
 		{ "extends": "ViewStateSurface", "members": ["type"] },
+		{ "extends": "BasesView", "members": ["type"] },
 		{
 			"extends": "AbstractInputSuggest",
 			"members": ["getSuggestions", "renderSuggestion", "selectSuggestion"]

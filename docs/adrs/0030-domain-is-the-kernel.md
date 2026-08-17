@@ -39,6 +39,15 @@ A second view nests under `view/` (`view/estimation/`). The per-view split of
 the extraction feature, where a third directory earns it. Until then, "views
 import nothing of each other" is convention here and checked nowhere.
 
+That second view's model configuration and its own registration land as one
+piece: `src/domain/scoringModel.ts`, `src/domain/defaultModel.ts`,
+`src/domain/estimationSettings.ts` and `src/domain/estimationOptions.ts` are the
+estimation view's own half of `domain/`'s configuration split (ADR 0026's
+shape, applied a second time — a shape, a resolver reading `BasesViewConfig`,
+and the options schema it is read from); `src/view/estimation/estimationView.ts`
+is the view itself and `src/view/estimation/register.ts` is
+`registerEstimationView`, called from `main.ts` beside the backlog's own.
+
 ## Consequences
 
 The SDD's directory tree is not adopted. Modules this refactor adds are named

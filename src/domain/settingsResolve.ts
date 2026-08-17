@@ -158,10 +158,15 @@ function resolveSecondaryWorkflow(inputs: SecondaryWorkflowInputs, names: Second
 	return { key: own, states: fallsBack && statesRaw.length === 0 ? states : statesRaw, doneValues };
 }
 
-/** Read the persisted view config into a BacklogSettings, applying defaults for anything unset. */
-export function resolveSettings(config: BasesViewConfig): BacklogSettings {
-	const fallback = defaultSettings();
-
+/**
+ * The primitive readers every option in this `.base` is read through — property ids,
+ * clearable defaults, plain strings, booleans, comma lists, and the dedupe every
+ * declared vocabulary needs. `resolveSettings` is their first and largest caller, but not
+ * their only one any more: `estimationSettings.ts` reads a second view's options through
+ * the identical rules, so the closures are the exported unit rather than something only
+ * this function could reach into.
+ */
+export function configReaders(config: BasesViewConfig) {
 	const propKey = (key: string, def: string): string => {
 		try {
 			const pid = config.getAsPropertyId(key);
@@ -215,6 +220,13 @@ export function resolveSettings(config: BasesViewConfig): BacklogSettings {
 			return true;
 		});
 	};
+	return { propKey, clearablePropKey, clearable, str, bool, list, dedupe };
+}
+
+/** Read the persisted view config into a BacklogSettings, applying defaults for anything unset. */
+export function resolveSettings(config: BasesViewConfig): BacklogSettings {
+	const fallback = defaultSettings();
+	const { propKey, clearablePropKey, clearable, str, bool, list, dedupe } = configReaders(config);
 
 	const doneValues = list('doneValues');
 	// The EFFECTIVE list, not the raw config value: `doneValues` below falls back to

@@ -90,4 +90,13 @@ export const en = {
 	'init.updatedItems': { one: 'updated {count} item', other: 'updated {count} items' },
 
 	'settings.sharedKey': 'The {properties} properties share the key "{key}".',
+
+	/** The estimation view's own states — loading, unconfigured, misconfigured, and its
+	 * own empty result set. The table's row and cell text is not here yet: it lands with
+	 * the table in a later task. */
+	'estimation.loading': 'Loading estimation view…',
+	'estimation.empty.unconfigured': 'No estimation model is configured for this view.',
+	'estimation.empty.hint': 'Name the score properties in the view options, or use the setup action once it is available.',
+	'estimation.problems.lead': 'Fix the estimation model first:',
+	'estimation.empty.noResults': 'No results to estimate.',
 } as const;

@@ -4,6 +4,7 @@ import { WRITE_README_COMMAND_ID, writeBacklogReadmeCommand } from './commands/r
 import { rekeyBase } from './storage/viewStateStore';
 import { initLocale } from './i18n/t';
 import { registerBacklogView } from './view/registerBacklogView';
+import { registerEstimationView } from './view/estimation/register';
 import { WriteLock } from './view/writeLock';
 
 export default class ProductBacklogPlugin extends Plugin {
@@ -13,6 +14,7 @@ export default class ProductBacklogPlugin extends Plugin {
 		// the undo slot is the vault's last batch, whichever view wrote it (ADR 0030).
 		const lock = new WriteLock();
 		registerBacklogView(this, lock);
+		registerEstimationView(this, lock);
 		// View state is keyed on the base's path, so it has to follow the file.
 		// The open view re-resolves its own identity when it saves; this covers the
 		// bases that are not open, whose entries would otherwise be orphaned and then
