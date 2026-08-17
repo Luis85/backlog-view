@@ -195,9 +195,17 @@ things as equal — and its definition of done is mostly about what a number may
 derivation leaves the view and the rest are recomputed on read, a written total records
 the model that made it and says `Needs re-estimation` when that model moves on, a merged
 number never stands in for its inputs, and nothing ranks the backlog on its own behalf.
-Specification only, from a product requirements document of 2026-08-16, with **eight
-features** under it: the scoring model and its rubrics, the weighted score, the presets, the
-ranked list, the matrix, the scenarios and the decomposition.
+From a product requirements document of 2026-08-16, with **eight features** under it: the
+scoring model and its rubrics, the weighted score, the presets, the ranked list, the
+matrix, the scenarios and the decomposition. **The scoring model, the weighted score, the
+ranked list and the decomposition ship**: the view (`product-estimation`) carries its own
+options binding each dimension's property, range, weight and direction, a panel shows the
+rubric sentence at the picked point and writes the total and its model stamp back to the
+note with the decomposition beside it, and a sortable table remembers its sort per saved
+view, reached through a guided setup action that binds and backfills the dozen-odd
+properties in one batch. A rubric's own sentences are shown but stay hand-edited in the
+`.base` rather than configured through an options box; the presets, the matrix and the
+scenarios remain design.
 
 **Two** of the five questions it opened are answered there. The partial profile is settled
 outright: the score renormalizes over the answered dimensions and reports its coverage, and
