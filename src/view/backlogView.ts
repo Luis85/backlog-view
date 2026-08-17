@@ -12,6 +12,7 @@ import {
 } from './host';
 import { OpenController } from './openTarget';
 import { WriteGate } from './writeGate';
+import { WriteLock } from './writeLock';
 import { CardMoveController } from './cardMoves';
 import { CardDragController } from './interactions/cardDrag';
 import { DragDropController } from './interactions/dragDrop';
@@ -43,8 +44,9 @@ import { wireChipEvents, wireRowEvents } from './render/rows';
 import { BacklogSettings, defaultSettings } from '../domain/settings';
 import { adoptableProperties, notePropertyId, OptionalField, OptionalProperty } from '../domain/optionalProperties';
 import { resolveSettings } from '../domain/settingsResolve';
+import { configProblems } from '../domain/settingsConsistency';
 import { OpenTarget } from '../domain/itemHandling';
-import { WriteOutcome } from '../storage/frontmatter';
+import { applyWrites, WriteOutcome } from '../storage/frontmatter';
 
 export { PRODUCT_BACKLOG_VIEW_TYPE } from './host';
 
@@ -96,7 +98,7 @@ export class ProductBacklogView extends ViewStateSurface implements BacklogViewH
 	groupingIgnored = false;
 	private readonly state: ViewState;
 	/** The write path: validation, serialization, progress and the undo slot. */
-	private readonly gate: WriteGate;
+	private readonly gate: WriteGate<ItemWrite>;
 	/** Card-move write orchestration: plans, applies and announces board/horizon/schedule moves. */
 	private readonly cardMoves: CardMoveController;
 	/** The view-state-backed UI state — projection, axis pick, focus, shelf, zoom,
@@ -142,7 +144,7 @@ export class ProductBacklogView extends ViewStateSurface implements BacklogViewH
 	 */
 	private refitting = false;
 
-	constructor(controller: QueryController, containerEl: HTMLElement) {
+	constructor(controller: QueryController, containerEl: HTMLElement, lock: WriteLock = new WriteLock()) {
 		super(controller);
 		this.viewEl = containerEl.createDiv({ cls: 'pbl-view' });
 		this.toolbarEl = this.viewEl.createDiv({ cls: 'pbl-toolbar' });
@@ -158,10 +160,16 @@ export class ProductBacklogView extends ViewStateSurface implements BacklogViewH
 
 		this.selection = new SelectionController(this.treeEl, this.rowEls, () => this.board?.colEls ?? []);
 		this.state = new ViewState(this);
-		this.gate = new WriteGate(this, {
-			syncBusy: () => this.syncBusyUi(),
-			flushDataUpdate: () => this.refreshFromData(),
-		});
+		this.gate = new WriteGate<ItemWrite>(
+			{
+				app: () => this.app,
+				writeProblems: () => configProblems(this.settings),
+				outsideFilter: (path) => this.model?.byPath.get(path)?.outsideFilter === true,
+			},
+			{ syncBusy: () => this.syncBusyUi(), flushDataUpdate: () => this.refreshFromData() },
+			lock,
+			(writes, onProgress, onInverse) => applyWrites(this.app, this.settings, writes, onProgress, onInverse),
+		);
 		this.cardMoves = new CardMoveController(this, this.rowEls);
 		this.ui = new ViewStateController(this.state, {
 			render: () => this.render(),
@@ -207,6 +215,7 @@ export class ProductBacklogView extends ViewStateSurface implements BacklogViewH
 		this.state.dispose();
 		this.dnd.dispose();
 		this.cardDnd.dispose();
+		this.gate.dispose();
 		this.viewEl.detach();
 	}
 

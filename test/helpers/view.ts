@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, vi } from 'vitest';
 import { cleanup as liveRegionCleanup } from '@atlaskit/pragmatic-drag-and-drop-live-region';
 import { ProductBacklogView } from '../../src/view/backlogView';
+import { WriteLock } from '../../src/view/writeLock';
 import { OPTIONAL_PROPERTIES } from '../../src/domain/optionalProperties';
 import { installObsidianDom } from './dom';
 import { FakeVault, FakeViewConfig } from './vault';
@@ -61,6 +62,7 @@ export function makeView(
 		widths,
 		only,
 		order,
+		lock,
 	}: {
 		collapsed?: boolean;
 		base?: string;
@@ -71,6 +73,8 @@ export function makeView(
 		widths?: Record<string, number>;
 		only?: string[];
 		order?: string[];
+		/** The plugin-wide write lock to share with another view; a fresh one by default. */
+		lock?: WriteLock;
 	} = {},
 ): Harness {
 	// Bases mounts the view inside the leaf showing the .base file; that leaf is how
@@ -78,7 +82,7 @@ export function makeView(
 	const leafEl = document.body.createDiv();
 	const containerEl = leafEl.createDiv();
 	if (base) vault.addLeaf(new FileView(vault.addFile(base), leafEl));
-	const view = new ProductBacklogView({} as never, containerEl);
+	const view = new ProductBacklogView({} as never, containerEl, lock);
 	const config = new FakeViewConfig(configValues);
 	if (viewName) config.name = viewName;
 	// The Bases properties menu decides which properties are columns, chips included, so

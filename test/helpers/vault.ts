@@ -93,6 +93,8 @@ export class FakeVault {
 	failWrites = new Set<string>();
 	/** Called as each write or creation lands — how tests interleave a Bases update with a batch. */
 	afterWrite: ((path: string) => void) | null = null;
+	/** Awaited before each write lands — how a test stalls a batch to interleave a second one. */
+	beforeWrite: ((path: string) => Promise<void> | void) | null = null;
 	/** Handlers registered through vault.on('rename'), fired by `renameFile`. */
 	private renameHandlers: ((file: TFile, oldPath: string) => void)[] = [];
 	/**
@@ -229,6 +231,11 @@ export class FakeVault {
 		},
 		fileManager: {
 			processFrontMatter: async (file: TFile, fn: (fm: Record<string, unknown>) => void) => {
+				// Guarded rather than `await this.beforeWrite?.(...)`: awaiting `undefined`
+				// still yields a microtask, which is one more than the unhooked path had
+				// before this hook existed — and at least one test depends on a write
+				// landing synchronously within the same tick as the drop that triggers it.
+				if (this.beforeWrite) await this.beforeWrite(file.path);
 				// Injected failure, for the partial-batch paths a real vault produces.
 				if (this.failWrites.has(file.path)) throw new Error(`write failed: ${file.path}`);
 				const fm = this.frontmatter.get(file.path) ?? {};

@@ -105,14 +105,20 @@ free of runtime code so imports stay cycle-free.
   `Element.prototype` and dispatches `mouseover` at every descendant of a row. That is
   hover, on the tree, for two properties — narrower than the sentence, which is why the
   sentence states the rule rather than the spy's reach.
-- The write gate is `writeGate.ts`, not the view: `WriteGate` holds `applying`, the undo
-  slot, `recovery`, the deferred update and the busy state — five fields serving one
-  concern, of which only `busy` was ever read from outside it — and the view owns one,
+- The write gate is `writeGate.ts`, not the view: `WriteGate` holds the deferred update
+  and the busy state, and reads a narrow `GateHost` — `app`, `writeProblems`,
+  `outsideFilter` — rather than the whole `BacklogViewHost`, so a second view can hand
+  it its own settings and its own filter question. `applying`, the undo slot and
+  `recovery` moved out to a plugin-wide `WriteLock` (`writeLock.ts`), created once and
+  shared by every view's gate: a gate per view would be two views racing on one vault
+  with two ideas of what "the last batch" was (ADR 0030). The view owns one gate,
   delegates `applySafely`, `canUndo` and `undoLast` to it, and publishes its progress
-  through `syncBusyUi`. The gate touches none of the view's ELEMENTS (Notices are its
-  own; the toolbar and the tree are the view's, reached through the two hooks it is
-  constructed with) and reads view state through `BacklogViewHost` like every other
-  module.
+  through `syncBusyUi` — reached through the lock's subscription now, rather than a
+  direct call, which is what lets a batch one view writes keep every OTHER subscribed
+  view's busy indicator and undo button in sync too, without either view's own
+  `syncBusy` running twice for its own change. The gate touches none of the view's
+  ELEMENTS (Notices are its own; the toolbar and the tree are the view's, reached
+  through the two hooks it is constructed with).
 - **Two shapes take work out of `backlogView.ts`, and which one applies is decided by the
   interface rather than by taste.** Anything the modules do NOT ask the host for can leave
   as a delegate the view owns — `WriteGate`, `CardMoveController`, `ViewStateController` —

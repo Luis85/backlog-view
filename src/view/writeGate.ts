@@ -1,14 +1,13 @@
-import { Notice } from 'obsidian';
-import { BacklogViewHost, BusyState } from './host';
-import { ItemWrite } from '../domain/writePlan';
-import { configProblems } from '../domain/settingsConsistency';
-import { applyWrites, RestoreWrite, WriteOutcome } from '../storage/frontmatter';
-import { ReplayTracker, replayRun, UndoRecovery } from './interactions/undo';
+import { App, Notice, TFile } from 'obsidian';
+import { BusyState } from './host';
+import { RestoreWrite, WriteOutcome } from '../storage/frontmatter';
+import { ReplayTracker, replayRun } from './interactions/undo';
+import { WriteLock } from './writeLock';
 
 /**
  * How the gate reaches the view it guards. Both are the view's own elements — the
  * toolbar's indicator and the tree — which the gate never touches: it owns the write
- * path, the undo slot and the busy VALUE, and hands the publishing back.
+ * path and the busy VALUE, and hands the publishing back.
  */
 export interface WriteGateHooks {
 	/** Publish the gate's current progress and undo availability to the chrome. */
@@ -17,31 +16,50 @@ export interface WriteGateHooks {
 	flushDataUpdate(): void;
 }
 
+/** How the gate reaches the view it guards — narrow on purpose, so a second view can supply its own. */
+export interface GateHost {
+	/** The app, read at call time — a Bases view is handed its `app` after construction. */
+	app(): App;
+	/** Problems that block every write; each view validates its own settings. */
+	writeProblems(): string[];
+	/** True when this path is context this view's Base excluded — forward batches refuse whole. */
+	outsideFilter(path: string): boolean;
+}
+
+/** The writer a forward batch runs — `applyWrites` for the backlog, `applyPropertyWrites` for estimation. */
+export type ApplyRun<W> = (
+	writes: W[],
+	onProgress: (done: number, total: number) => void,
+	onInverse: (inverse: RestoreWrite) => void,
+) => Promise<WriteOutcome>;
+
 /**
- * The write gate every batch passes: config validation, one batch at a time,
- * progress publication, and the single-level undo slot. Extracted from the view
- * because it is the one cluster there with state of its own — nothing outside
- * reads `applying`, the slot or the deferred update — and the view is the hub
- * every projection increment has to add a line to.
+ * The write gate every batch passes: config validation, progress publication, and the
+ * outside-filter refusal — the per-view half of the write path. The vault-wide half —
+ * one batch at a time and the single-level undo slot, shared by every view — lives on
+ * `WriteLock` (`writeLock.ts`), because a gate per view would be two views racing on one
+ * vault with two ideas of what "the last batch" was (ADR 0030).
  */
-export class WriteGate {
-	private applying = false;
-	/**
-	 * Inverses of the most recent effective batch, in write order — the single-level,
-	 * session-only undo. Replaced only by a batch that actually changed something.
-	 */
-	private lastUndo: RestoreWrite[] | null = null;
-	/** Keeps undo and redo coherent when a replay fails partway — see UndoRecovery. */
-	private readonly recovery = new UndoRecovery();
+export class WriteGate<W extends { file: TFile }> {
 	/** A data update that arrived mid-batch and is waiting for it to finish. */
 	private pendingDataUpdate = false;
 	/** Progress of the batch in flight; null when idle. Drives the toolbar indicator. */
 	busy: BusyState | null = null;
+	private readonly unsubscribe: () => void;
 
 	constructor(
-		private readonly host: BacklogViewHost,
+		private readonly host: GateHost,
 		private readonly hooks: WriteGateHooks,
-	) {}
+		private readonly lock: WriteLock,
+		private readonly apply: ApplyRun<W>,
+	) {
+		this.unsubscribe = lock.subscribe(() => this.hooks.syncBusy());
+	}
+
+	/** Stop following the lock — called from the view's own `onunload`. */
+	dispose(): void {
+		this.unsubscribe();
+	}
 
 	/**
 	 * Record a data update, answering whether it has to wait. Every file a batch
@@ -52,33 +70,31 @@ export class WriteGate {
 	 * the final state.
 	 */
 	deferUpdate(): boolean {
-		if (!this.applying) return false;
+		if (!this.lock.applying) return false;
 		this.pendingDataUpdate = true;
 		return true;
 	}
 
-	async applySafely(writes: ItemWrite[]): Promise<WriteOutcome | null> {
+	async applySafely(writes: W[]): Promise<WriteOutcome | null> {
 		if (writes.length === 0) return null;
 		// Notes the Base excluded are context, and nothing may write to them: the
 		// controls that could are withheld and the auto-type cascade stops at them.
 		// If one still arrives, the batch is refused whole — dropping just that write
 		// would apply the rest and leave the hierarchy half-updated.
-		if (writes.some((w) => this.host.model?.byPath.get(w.file.path)?.outsideFilter === true)) {
+		if (writes.some((w) => this.host.outsideFilter(w.file.path))) {
 			console.error('Product Backlog: refused a batch writing to a note outside the filter', writes);
 			new Notice('That change would edit a note outside this base’s filter, so nothing was written.');
 			return null;
 		}
-		return this.runExclusively(writes.length, (onProgress, onInverse) =>
-			applyWrites(this.host.app, this.host.settings, writes, onProgress, onInverse),
-		);
+		return this.runExclusively(writes.length, (onProgress, onInverse) => this.apply(writes, onProgress, onInverse));
 	}
 
 	canUndo(): boolean {
-		return this.lastUndo !== null && this.lastUndo.length > 0;
+		return this.lock.lastUndo !== null && this.lock.lastUndo.length > 0;
 	}
 
 	async undoLast(): Promise<boolean> {
-		const restores = this.lastUndo;
+		const restores = this.lock.lastUndo;
 		if (!restores || restores.length === 0) {
 			new Notice('Nothing to undo.');
 			return false;
@@ -90,16 +106,16 @@ export class WriteGate {
 		// model's verdict on those files answers a different question.
 		const batch = [...restores].reverse();
 		const tracker: ReplayTracker = { finished: 0 };
-		const ok = (await this.runExclusively(batch.length, replayRun(this.host.app, batch, tracker), restores)) !== null;
+		const ok = (await this.runExclusively(batch.length, replayRun(this.host.app(), batch, tracker), restores)) !== null;
 		// What the slot becomes is the recovery's question, not the gate's: a
 		// completed replay rejoins any redo stranded by the failure it recovered
 		// from, and one that failed partway holds its place with the unfinished
 		// remainder, so the next undo finishes taking the change back.
-		this.lastUndo = this.recovery.settle(ok, restores, batch, tracker, this.lastUndo);
+		this.lock.lastUndo = this.lock.recovery.settle(ok, restores, batch, tracker, this.lock.lastUndo);
 		// The closing sync ran before this bookkeeping settled the slot — a consumed
 		// retry re-arms the carried redo AFTER setBusy(null) disabled the button — so
 		// publish the settled answer.
-		this.hooks.syncBusy();
+		this.lock.notify();
 		return ok;
 	}
 
@@ -118,17 +134,17 @@ export class WriteGate {
 		) => Promise<T>,
 		replaying?: RestoreWrite[],
 	): Promise<T | null> {
-		const problems = configProblems(this.host.settings);
+		const problems = this.host.writeProblems();
 		if (problems.length > 0) {
 			// Writing with e.g. parent and order on the same key would corrupt notes.
 			new Notice(`Fix the view options first: ${problems[0]}`);
 			return null;
 		}
-		if (this.applying) {
+		if (this.lock.applying) {
 			new Notice('Still applying the previous change — try again in a moment.');
 			return null;
 		}
-		this.applying = true;
+		this.lock.applying = true;
 		this.setBusy({ done: 0, total });
 		const inverses: RestoreWrite[] = [];
 		let installed = false;
@@ -136,7 +152,7 @@ export class WriteGate {
 		const onInverse = (inverse: RestoreWrite) => {
 			if (!installed) {
 				installed = true;
-				this.lastUndo = inverses;
+				this.lock.lastUndo = inverses;
 			}
 			inverses.push(inverse);
 		};
@@ -155,10 +171,10 @@ export class WriteGate {
 			// A forward batch that changed nothing keeps the slot (the whole point of
 			// effective-only inverses), and so does a replay that FAILED — a
 			// transient write error deserves its retry.
-			if (replaying && completed && !installed && this.lastUndo === replaying) {
-				this.lastUndo = null;
+			if (replaying && completed && !installed && this.lock.lastUndo === replaying) {
+				this.lock.lastUndo = null;
 			}
-			this.applying = false;
+			this.lock.applying = false;
 			this.setBusy(null);
 			// Whatever landed while the batch ran gets one rebuild, now, against the
 			// finished state. A failed batch takes this path too: the writes before the
@@ -170,9 +186,9 @@ export class WriteGate {
 		}
 	}
 
-	/** Publish batch progress through the hook; the gate itself renders nothing. */
+	/** Publish batch progress through the lock; the gate itself renders nothing. */
 	private setBusy(state: BusyState | null): void {
 		this.busy = state;
-		this.hooks.syncBusy();
+		this.lock.notify();
 	}
 }
