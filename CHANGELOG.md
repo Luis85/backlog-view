@@ -11,6 +11,18 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ## [Unreleased]
 
+### Changed
+
+- **The unplaced shelf now leads the horizon board.** It renders above the buckets — and
+  first in the keyboard's reading order — so the untriaged rest sits where a drag into a
+  column starts, instead of below the tallest column. Alt+arrow moves are unchanged: the
+  shelf was already their first stop.
+- **The horizon board's right-click menus no longer carry a children section.** No
+  `Show/Hide children` toggle and no `Open child` entries there — the card's own
+  disclosure still lists children on its face. While the quick filter runs, a matched
+  child with no card of its own is offered as `Open match` instead. The kanban board and
+  the dated axis keep their menus as they were.
+
 ### Fixed
 
 - **The horizon board no longer sizes itself from its cards.** Buckets share the pane's

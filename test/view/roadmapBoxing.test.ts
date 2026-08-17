@@ -49,10 +49,24 @@ describe('the horizon board boxes that must not size from card content', () => {
 	it('makes the horizon bands declare a maximum and scroll themselves', () => {
 		// The dated axis's band rule, extended to the axis that was exempt: a band with no
 		// maximum in a frame that owns the pane's height squeezes the buckets out instead.
+		expect(horizonBands()).toContain('max-height: 30%;');
+		expect(horizonBands()).toContain('overflow-y: auto;');
+	});
+
+	it('refuses to let a horizon band be shrunk below the maximum it declared', () => {
+		// `flex-shrink` is the default, and a cap is not a size: with the buckets band
+		// asking for room, the shelf was squeezed to 109px of its own 225px allowance —
+		// enough for its header and a 35px sliver of a 139px card, on the axis where the
+		// shelf is the thing a card is dragged FROM. Measured in the harness at ~800 notes
+		// in a 766px pane. The buckets keep `flex: 1 1 auto` and their 220px floor, so the
+		// remainder still lands on them and the pane still scrolls past it.
+		expect(horizonBands()).toContain('flex: 0 0 auto;');
+	});
+
+	/** The horizon axis's band rule — the three bands beside the buckets, in one rule. */
+	function horizonBands(): string {
 		const at = css.indexOf('.pbl-roadmap-mode:not(.pbl-roadmap-dates) .pbl-shelf,');
 		expect(at).toBeGreaterThan(-1);
-		const body = css.slice(css.indexOf('{', at) + 1, css.indexOf('}', at));
-		expect(body).toContain('max-height: 30%;');
-		expect(body).toContain('overflow-y: auto;');
-	});
+		return css.slice(css.indexOf('{', at) + 1, css.indexOf('}', at));
+	}
 });

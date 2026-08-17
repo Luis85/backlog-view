@@ -28,7 +28,7 @@ import { addShelfSearchItems, addShelfSortItems, addShelfTypeItems } from './she
 import { addHorizonItems, canSchedule, carriesDates, promptSchedule, unschedule } from './plan';
 import { addTagItems, tagsColumnVisible } from './tags';
 import { addDependencyItems, dependenciesAvailable } from './dependencies';
-import { matchesFor, menuChildren, cardedPaths } from '../childrenList';
+import { horizonBoardShowing, matchesFor, menuChildren, cardedPaths } from '../childrenList';
 import { offerableTypes, retypeChoices, rowVocabulary, treeShaped } from '../projection';
 
 /**
@@ -436,8 +436,16 @@ function addMatchSection(host: BacklogViewHost, menu: Menu, item: BacklogItem): 
  * while the quick filter runs, exactly as the disclosure itself goes `disabled` there and
  * for the same reason — both `isCollapsed` and `isCardCollapsed` report false while it
  * runs, so the write would look inert and then take effect once the filter cleared.
+ *
+ * The HORIZON BOARD carries none of this (asked for directly, 2026-08-17): its menus
+ * name no children, so the whole section returns before the separator. `menuChildren`
+ * carries the same gate for `matchesFor`'s sake — see its comment — and the two costs
+ * are recorded in the task note rather than smoothed over: on this board the face
+ * disclosure has no keyboard path, and under a focus an unmatched, uncarded child is
+ * reachable only from the other projections.
  */
 function addChildrenSection(host: BacklogViewHost, menu: Menu, item: BacklogItem): void {
+	if (horizonBoardShowing(host)) return;
 	if (!host.cardChildrenShown.has(item.file.path)) return;
 	const isBar = (host.roadmap?.roadmap.bars ?? []).some((bar) => bar.item.file.path === item.file.path);
 	menu.addSeparator();

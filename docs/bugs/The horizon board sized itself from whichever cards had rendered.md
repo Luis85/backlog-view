@@ -66,6 +66,24 @@ layouts, the floor case (620px pane) scrolls a stable 888px to a reachable end, 
 is on screen at the foot, and every bucket scrolls internally. A folded bucket still takes
 its 44px strip, and the dated axis still draws its shelf `static` and un-capped-sideways.
 
+## A cap is not a size, found by looking at the fix
+
+The band rule above shipped as `max-height` plus `overflow-y`, the dated axis's pair — and
+the picture showed a **109px** shelf where its own allowance was 225px: the header plus a
+35px sliver of a 139px card, in a 766px pane at ~800 notes. A maximum bounds a band; it
+does not stop the buckets asking for the room inside it, and `flex-shrink` defaults to 1,
+so the band with `flex: 1 1 auto` beside it won. `flex: 0 0 auto` on the three horizon
+bands is the missing half — 223px shelf, 507px buckets, a whole card row to drag from —
+and it is deliberately not the dated axis's `0 1 auto`, which was copied without asking
+what shrink meant next to a cap. A pane too short for both still overflows and scrolls: at
+a 273px pane the shelf takes 75px and the buckets hold their 220px floor.
+
+That mattered here rather than being cosmetic, because the shelf is what a card is dragged
+FROM on this axis, and [[The shelf leads the horizon board]] had just put it at the top for
+exactly that reason. Nothing in the suite could see it — jsdom computes no layout — and no
+assertion was wrong; the declaration that states the invariant is now pinned beside the
+other five.
+
 ## What is checked, and what is not
 
 `test/view/roadmapBoxing.test.ts` pins the five declarations as text over the stylesheet,

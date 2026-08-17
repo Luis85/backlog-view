@@ -126,6 +126,17 @@ export function cardedPaths(host: BacklogViewHost): Set<string> {
 }
 
 /**
+ * Whether the horizon board is what is on screen — the axis whose card menu carries no
+ * children section at all (asked for directly, 2026-08-17; the task note records what
+ * that withholds). The spelling is `interactions/plan.ts`'s own for the same question:
+ * the snapshot alone cannot answer it, since `host.roadmap` describes the last roadmap
+ * render, and the projection alone cannot either, since the dated axis keeps the section.
+ */
+export function horizonBoardShowing(host: BacklogViewHost): boolean {
+	return host.projection === 'roadmap' && host.roadmap?.roadmap.axis === 'horizons';
+}
+
+/**
  * What the row MENU will list as `Open child "…"` — the gate and the narrowing together,
  * so the two surfaces below cannot disagree about it.
  *
@@ -134,8 +145,16 @@ export function cardedPaths(host: BacklogViewHost): Set<string> {
  * menu's already-listed set is not the face's, and why this is asked rather than reusing
  * `listedChildren`. `unreachableChildren` is the second half: the menu names only a child
  * with no card of its own.
+ *
+ * Empty on the horizon board, and stated HERE rather than only in `addChildrenSection`,
+ * because `matchesFor` below subtracts exactly this list: gating the section alone would
+ * leave the match walk still ceding a matched child to entries no menu draws, and the
+ * child would be named nowhere. With the list empty, ownership of a matched uncarded
+ * child moves to `Open match "…"` — the count invariant ("exactly one entry ends in its
+ * title") holds, the owner moves, which is the drift the invariant was written to allow.
  */
 export function menuChildren(host: BacklogViewHost, item: BacklogItem, carded: Set<string>): BacklogItem[] {
+	if (horizonBoardShowing(host)) return [];
 	return host.cardChildrenShown.has(item.file.path) ? unreachableChildren(host, item, carded) : [];
 }
 

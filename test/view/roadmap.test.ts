@@ -218,18 +218,19 @@ describe('roadmap keyboard support', () => {
 		const { containerEl } = roadmapView(vault, { ...AXES });
 		const tree = treeOf(containerEl);
 
-		// Reading order: the placed card, then the shelf.
-		key(tree, 'ArrowDown');
-		expect(containerEl.querySelector('.pbl-selected .pbl-card-title')?.textContent).toBe('Placed');
+		// Reading order: the shelf leads this board, then the buckets — the walk matches
+		// the frame, where the shelf renders first so a drop target is always in reach.
 		key(tree, 'ArrowDown');
 		expect(containerEl.querySelector('.pbl-selected .pbl-card-title')?.textContent).toBe('Untriaged');
+		key(tree, 'ArrowDown');
+		expect(containerEl.querySelector('.pbl-selected .pbl-card-title')?.textContent).toBe('Placed');
 		key(tree, 'ArrowUp');
-		expect(containerEl.querySelector('.pbl-selected .pbl-card-title')?.textContent).toBe('Placed');
-		key(tree, 'End');
 		expect(containerEl.querySelector('.pbl-selected .pbl-card-title')?.textContent).toBe('Untriaged');
+		key(tree, 'End');
+		expect(containerEl.querySelector('.pbl-selected .pbl-card-title')?.textContent).toBe('Placed');
 		key(tree, 'Home');
 		key(tree, 'Enter');
-		expect(vault.opened.map((o) => o.path)).toEqual(['Placed.md']);
+		expect(vault.opened.map((o) => o.path)).toEqual(['Untriaged.md']);
 	});
 
 	it('opens the card menu from the keyboard: ContextMenu, and Shift+F10', () => {

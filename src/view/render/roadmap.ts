@@ -78,7 +78,18 @@ export function renderRoadmap(
 	// Built once, drawn from by the bars and then carried out on the snapshot for the
 	// legend — see `RoadmapSnapshot.palettes`. Empty on the horizon axis, which draws no bar.
 	let palettes: StatePalette[] = [];
+	const removal = shelfRemoval(host, axis);
+	let shelf: { cards: BacklogItem[]; el: HTMLElement };
 	if (axis === 'horizons') {
+		// The shelf LEADS this board — first in the frame and first in the keyboard walk
+		// (asked for directly, 2026-08-17): a drag from the untriaged rest into a bucket is
+		// the board's whole job, so its source sits above the columns rather than after the
+		// tallest of them. The board's own no-state strip leads its columns for the same
+		// reason, and the Alt+arrow ladder has led with the shelf all along — the frame now
+		// says what the ladder already did. `dependencyConflicts` is still its initial
+		// empty map here, which is this axis's value of it.
+		shelf = renderShelf(ctx, frameEl, { cards: roadmap.shelf, conflicts: dependencyConflicts, axis }, dnd, removal);
+		cards.push(...shelf.cards);
 		// The layout pick rides the ROW rather than each bucket: one class where the buckets
 		// are created, read by `.pbl-bucket-cards` in `styles/roadmap.css`, so a bucket that
 		// renders knows nothing about it.
@@ -103,6 +114,11 @@ export function renderRoadmap(
 		leadWidth = timeline.leadWidth;
 		drawn = timeline.drawn;
 		dependencyConflicts = timeline.dependencyConflicts;
+		// After the grid, which is where this axis's conflicts come from — the order the
+		// shelf has always rendered in here, and the reason it cannot be hoisted above the
+		// branch the way the horizon axis's was.
+		shelf = renderShelf(ctx, frameEl, { cards: roadmap.shelf, conflicts: dependencyConflicts, axis }, dnd, removal);
+		cards.push(...shelf.cards);
 	}
 	// What the axis HOLDS, which is no longer what it drew on any of the three:
 	// `axisPopulation` (`domain/roadmap.ts`) counts the model rather than the cards pushed
@@ -113,9 +129,6 @@ export function renderRoadmap(
 	// until 2026-08-15, with `cards.length` for the grid axes and a sentence beside it saying
 	// they fold nothing — true when it was written and untrue since bands learnt to.
 	const population = axisPopulation(roadmap);
-	const removal = shelfRemoval(host, axis);
-	const shelf = renderShelf(ctx, frameEl, { cards: roadmap.shelf, conflicts: dependencyConflicts, axis }, dnd, removal);
-	cards.push(...shelf.cards);
 	const context = renderContextStrip(ctx, frameEl, roadmap.context);
 	cards.push(...context.cards);
 	nameMatches(ctx);

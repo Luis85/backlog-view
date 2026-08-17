@@ -474,10 +474,11 @@ describe('children on the card', () => {
 		// because `renderBoard` publishes the DRAWN board as the snapshot, folded columns
 		// emptied, and `cardedPaths` reads that rather than the model.
 		['board with the child’s column folded', (v: FakeVault) => makeBoard(v, {}, { foldedColumns: true }), [BOTH[0]]],
-		// The roadmap draws no match links on a card face at all, so its menu has no
-		// second route the board's `Open match` could stand in as — the projection Codex
-		// pointed at on PR #137.
-		['roadmap under a focus', (v: FakeVault) => makeRoadmap(v, {}, { focus: 'Epic' }), BOTH],
+		// The HORIZON board is exempt from the whole section since 2026-08-17 (asked for
+		// directly): its card menu names no children, focused or not — the boundary
+		// `test/view/horizonMenu.test.ts` owns, so a focused uncarded child here expects
+		// nothing where the board rows above expect BOTH.
+		['roadmap under a focus', (v: FakeVault) => makeRoadmap(v, {}, { focus: 'Epic' }), []],
 		['roadmap unfocused', (v: FakeVault) => makeRoadmap(v), []],
 	] as const)('offers Open child only where the child has no card of its own — %s', (_name, mount, offered) => {
 		const vault = boardVault();

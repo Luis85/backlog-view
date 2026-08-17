@@ -90,10 +90,20 @@
 /* The dated axis's band rule, on the axis that was exempt: the shelf, the context strip
    and the advisory each declare a maximum and scroll themselves, so a full shelf cannot
    squeeze the buckets down to their floor. The pinning above stays — this axis still
-   scrolls sideways under these bands, which is what the dated axis's own reset is about. */
+   scrolls sideways under these bands, which is what the dated axis's own reset is about.
+
+   `flex: 0 0 auto` is the half a cap cannot state on its own, and it is why this rule is
+   not the dated axis's `0 1 auto` copied over. A maximum bounds a band; it does not stop
+   the buckets asking for the room inside it. Shrinkable, the shelf came out 109px of its
+   own 225px allowance — its header plus a 35px sliver of a 139px card — on the axis where
+   the shelf is what a card is dragged FROM, and where it now leads the frame. Unshrinkable
+   it takes its content up to the cap and no more; the buckets keep `flex: 1 1 auto` and
+   their own floor, so the remainder still lands on them and a pane too short for both
+   still scrolls rather than clipping. */
 .pbl-roadmap-mode:not(.pbl-roadmap-dates) .pbl-shelf,
 .pbl-roadmap-mode:not(.pbl-roadmap-dates) .pbl-roadmap-context,
 .pbl-roadmap-mode:not(.pbl-roadmap-dates) .pbl-board-advisory {
+	flex: 0 0 auto;
 	max-height: 30%;
 	overflow-y: auto;
 }

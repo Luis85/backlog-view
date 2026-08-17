@@ -385,7 +385,7 @@ describe('the row menu carries the same matches, asked of matchesFor', () => {
 		expect(titles.filter((t) => t.includes('Feature Login')).length).toBe(1);
 	});
 
-	it('does NOT offer a direct child as a match on a BUCKET CARD — its own disclosure already lists it', () => {
+	it('offers a matched child ONCE on a BUCKET CARD — as a match, now that this menu names no children', () => {
 		const vault = new FakeVault();
 		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10, horizon: 'Now' } });
 		vault.addFile('Feature Login.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Epic A' });
@@ -396,8 +396,14 @@ describe('the row menu carries the same matches, asked of matchesFor', () => {
 		card?.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
 		const titles = Menu.lastShown?.items.map((i) => i.titleText) ?? [];
 
-		expect(titles).not.toContain('Open match "Feature Login"');
-		expect(titles).toContain('Open child "Feature Login"');
+		// Ownership moved on 2026-08-17, when the horizon board's menu dropped its children
+		// section: `matchesFor` subtracts `menuChildren`, which is empty here, so the match
+		// walk takes the child back — the count invariant is the stable claim, the owner is
+		// not. `Open child` asserted absent, because both entries at once was the live bug
+		// the subtraction exists against.
+		expect(titles).toContain('Open match "Feature Login"');
+		expect(titles).not.toContain('Open child "Feature Login"');
+		expect(titles.filter((t) => t.includes('Feature Login')).length).toBe(1);
 	});
 
 	it('offers navigation and no write action on a CONTEXT ROW’s menu, matches included', () => {

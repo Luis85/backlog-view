@@ -1026,6 +1026,11 @@ free of runtime code so imports stay cycle-free.
   in `interactions/menu.ts`, which serves a card's Show/Hide children and a bar row's from
   one function and tells them apart by asking `host.roadmap`'s own `bars` whether the path
   it is menuing is a drawn bar — every other caller is wired to one pair and never asks.
+  **The HORIZON board's menus carry none of it** (asked for directly, 2026-08-17):
+  `horizonBoardShowing` in `childrenList.ts` returns the whole section unbuilt AND
+  empties `menuChildren`, the second half being what hands a matched uncarded child to
+  `Open match` instead of naming it nowhere — the costs are in
+  [[Drop the children section from the horizon board's card menu]].
   The quick filter still overrides whichever is being asked. The register is
   `RowContext.cardKids` — "what drew a disclosure this pass", never "which projection is
   this" — which is what makes the toolbar's bulk controls and the row menu's section serve
@@ -1078,9 +1083,11 @@ free of runtime code so imports stay cycle-free.
 - Roles are earned, not assumed: the pane is a `listbox` only while cards render
   (snapshot decided after the render pass), a labelled `region` otherwise — the
   board's no-workflow reasoning, applied to an empty frame. Keyboard is a linear walk
-  of `roadmap.cards` (axis order, then shelf, then context) with both arrow pairs,
-  Home/End, Enter to open, and the shared chrome keys; the 2D treegrid semantics come
-  with the scheduling feature.
+  of `roadmap.cards` in the order the frame renders — the shelf LEADS on the horizon
+  axis (2026-08-17, so the untriaged source sits above the columns it feeds; the grid
+  axes stay axis-then-shelf), then context — with both arrow pairs, Home/End, Enter to
+  open, and the shared chrome keys; the 2D treegrid semantics come with the scheduling
+  feature.
 - `todayCivil()` is computed in the view and INJECTED into the domain: nothing under
   `domain/` reads a clock, which is what keeps every window and geometry test able to
   say which day today is. The timeline centres on today only when the drawn content
