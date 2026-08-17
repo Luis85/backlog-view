@@ -1,5 +1,5 @@
 ---
-type: PBI
+type: Feature
 parent: "[[A view per capability]]"
 order: 5
 status: Open

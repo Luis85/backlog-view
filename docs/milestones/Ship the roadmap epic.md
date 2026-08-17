@@ -11,7 +11,6 @@ horizon: ""
 start: ""
 risk: ""
 assignee: Igmar
-parent: "[[Product Roadmap]]"
 ---
 
 # Ship the roadmap epic
