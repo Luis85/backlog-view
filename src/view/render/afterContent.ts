@@ -14,15 +14,11 @@ import { BacklogViewHost } from '../host';
  * comments a reader has to notice agree.
  *
  * Every path that redraws CONTENT calls it — not only a full render — and the caller does
- * not have to work out which of the four its own change touches. The content-only paths
- * are the shelf's four picks (its disclosure, its sort, its type filter and its search), a
- * band fold on the resources axis, and a column fold on either board; `ViewStateController`
- * is where they are, each on `renderTreeContent`. Two of the four move on them today:
- * they change which cards and rows drew a disclosure, so the collapse controls go inert or
- * come back, and they change which bars are left on the grid, so the last bar drawing a
- * colour can leave the legend or the first arrive. The count and the fit do not move on
- * those paths — they are here because this is also the full render's post-content step,
- * and because a seventh content-only path must not have to prove which two it may skip.
+ * not have to work out which of these its own change touches. So nothing below is
+ * conditional on where the render came from, and no list of those paths is kept here: one
+ * stood here until 2026-08-17, naming the paths a controller happened to hold and missing
+ * the view's own, and a longer list is the same defect with more entries. The next
+ * content-only path must not have to prove which steps it may skip.
  */
 export function syncAfterContent(host: BacklogViewHost, els: { toolbarEl: HTMLElement; legendEl: HTMLElement }): void {
 	syncCountLabel(host, els.toolbarEl);

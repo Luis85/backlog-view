@@ -250,9 +250,8 @@
 	   `overflow: hidden` lifts it as a side effect, because a flex item's automatic minimum
 	   applies only while `overflow` is `visible`. Both are kept because they state one
 	   intent two ways and neither costs anything, not because the layout needs both.
-	   The board column's twin says "Both terms are load-bearing and neither works alone",
-	   which is the same structure and is contradicted by the table above; that claim is
-	   about the COLUMN and has not been re-measured, so it is flagged rather than edited.
+	   The board column's twin was re-measured the same day and agrees: its own table, the
+	   same conclusion, and one reason for keeping the pair that this rule does not restate.
 	   This paragraph said something else again until 2026-08-17 — that the row had no
 	   definite height to clip against, so a long horizon grew the band from 220px to 383px
 	   instead of ellipsising. That was measured before the cap existed. */

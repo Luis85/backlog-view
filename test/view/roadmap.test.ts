@@ -471,8 +471,10 @@ describe('a scrollport a card can be dragged into auto-scrolls', () => {
 	it('wires it collapsed too, because collapsing must never gate the drag machinery', () => {
 		// `renderShelf` wires the drop target and the scroller BEFORE its collapsed/empty
 		// return, on purpose: a collapsed shelf scrolls nothing, but splitting the two
-		// across that return is how one of them comes to be forgotten. Asserted so the
-		// order is a checked property of the function rather than a claim in its comment.
+		// across that return is how one of them comes to be forgotten. This asserts the
+		// SCROLLER half of that order and only it; the drop target's half is checked by
+		// `shelfUx.test.ts`'s "the shelf as a drop target while collapsed", which drops a
+		// card on the folded shelf and reddens if that wiring moves below the return.
 		expect(scrollersWiredOn(true).filter((el) => el.classList.contains('pbl-shelf'))).toHaveLength(1);
 	});
 });

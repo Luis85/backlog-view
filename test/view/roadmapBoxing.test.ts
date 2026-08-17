@@ -77,13 +77,19 @@ describe('the horizon board boxes that must not size from card content', () => {
 		// asserting `SCROLLING_BANDS` carries no `max-height` says nothing about a fresh
 		// `.pbl-roadmap .pbl-board-advisory { max-height: … }` written anywhere else in this
 		// file, which is exactly how the cap would come back. This pattern reads every rule
-		// whose selector list names the advisory and refuses a `max-height` in any of them.
-		// Its one imprecision, stated rather than left to be discovered: the class name
-		// written inside a COMMENT would make the pattern read on to the next rule's body.
-		// Every mention in this file is a selector today, and that failure direction is a
-		// false ALARM rather than a false pass — which is the right way round for a guard
-		// whose whole job is to hold for rules nobody has written yet.
-		expect(css).not.toMatch(/pbl-board-advisory[^{]*\{[^}]*max-height/);
+		// whose selector list names the advisory and refuses a height cap in any of them.
+		// A cap is not only spelled `max-height`, and the pattern read only that until
+		// 2026-08-17: `.pbl-roadmap .pbl-board-advisory { height: 30% }` clips the advisory
+		// exactly the same way and passed. `block-size` is in it because it would cap the
+		// same way too, not because anything here writes one — `styles/` has no logical SIZE
+		// property anywhere, and the live half of the gap was the bare `height`.
+		// Its imprecisions, stated rather than left to be discovered: the class name written
+		// inside a COMMENT would make the pattern read on to the next rule's body, and any
+		// other `height` in a matched rule — a `min-height` floor, a `line-height` — trips it
+		// without capping anything. Both are false ALARMS rather than false passes, which is
+		// the right way round for a guard whose whole job is to hold for rules nobody has
+		// written yet.
+		expect(css).not.toMatch(/pbl-board-advisory[^{]*\{[^}]*(max-)?(height|block-size)/);
 	});
 
 	it('refuses to let a horizon band be shrunk below the maximum it declared', () => {
