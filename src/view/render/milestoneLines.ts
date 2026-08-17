@@ -1,6 +1,6 @@
 import { setTooltip } from 'obsidian';
 import { TimelineBar } from '../../domain/bars';
-import { isIterationType, isMarkerType } from '../../domain/itemTypes';
+import { drawsAsPoint, isIterationType } from '../../domain/itemTypes';
 import { CivilDate } from '../../domain/noteFields';
 import { barGeometry, daysBetween, TimelineScale, TimelineWindow } from '../../domain/timeline';
 
@@ -26,6 +26,13 @@ import { barGeometry, daysBetween, TimelineScale, TimelineWindow } from '../../d
  * milestone does not have. Nothing here is focusable and nothing is written: the line is
  * decoration of a row, and every fact it shows is in that row's accessible name.
  *
+ * **The loop asks `drawsAsPoint`, not `isMarkerType`.** The two used to agree, because
+ * `Milestone` was the only marker — an Iteration with bar mode on is a marker that draws
+ * no line at all, its dates already stated by the bar itself, so admitting it here would
+ * claim a boundary the reader turned off. `isMarkerType` still decides which row an item
+ * lives in ([[Milestones out of the resource rows]]); this asks only whether that item
+ * draws as a POINT.
+ *
  * **The return is per TYPE, not one boolean.** The caller seeds `DrawnColors` with it
  * before the diamond's own report runs (`renderTimeline`): the line stays cyan even where
  * a marker's DIAMOND is repainted green by the done override, so a grid whose only marker
@@ -40,19 +47,19 @@ export function renderMilestoneLines(
 	window: TimelineWindow,
 	bars: TimelineBar[],
 	today: CivilDate,
-	// `scale` and `leadWidth` grouped into one param — both are "how a day converts to a
-	// pixel here", and the pair is what keeps this under the five-parameter budget.
-	ruler: { scale: TimelineScale; leadWidth: number },
+	// `scale` and `leadWidth` are both "how a day converts to a pixel here"; `iterationBars`
+	// joins them here rather than as a sixth parameter, for the same five-parameter budget.
+	ruler: { scale: TimelineScale; leadWidth: number; iterationBars: boolean },
 ): { milestone: boolean; iteration: boolean } {
 	const { grid, headerTrack } = mounts;
-	const { scale, leadWidth } = ruler;
+	const { scale, leadWidth, iterationBars } = ruler;
 	// Insertion order is bar order, which is row order — so a shared line names its
 	// milestones the way the rows read.
 	const byDay = new Map<number, string[]>();
 	let milestone = false;
 	let iteration = false;
 	for (const bar of bars) {
-		if (!isMarkerType(bar.item.typeName)) continue;
+		if (!drawsAsPoint(bar.item.typeName, iterationBars)) continue;
 		const geometry = barGeometry(window, bar.span);
 		if (geometry.outside) continue;
 		byDay.set(geometry.startDay, [...(byDay.get(geometry.startDay) ?? []), bar.item.title]);
