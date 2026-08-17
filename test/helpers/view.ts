@@ -4,8 +4,8 @@ import { ProductBacklogView } from '../../src/view/backlogView';
 import { WriteLock } from '../../src/view/writeLock';
 import { OPTIONAL_PROPERTIES } from '../../src/domain/optionalProperties';
 import { installObsidianDom } from './dom';
-import { FakeVault, FakeViewConfig } from './vault';
-import { FileView, Menu, Modal, Notice } from './obsidian-mock';
+import { FakeVault, FakeViewConfig, mountLeaf } from './vault';
+import { Menu, Modal, Notice } from './obsidian-mock';
 
 installObsidianDom();
 
@@ -13,6 +13,20 @@ export interface Harness {
 	view: ProductBacklogView;
 	config: FakeViewConfig;
 	containerEl: HTMLElement;
+}
+
+/**
+ * A `registerBasesView`-compatible plugin double that records every registration by
+ * type — `registerBacklogView.test.ts`'s and the estimation view's own register test's
+ * identical three lines, generic over each suite's own `BasesViewRegistration`-shaped
+ * spec so neither loses its typing to a shared `unknown`.
+ */
+export function captureRegistrations<Spec>(): {
+	plugin: { registerBasesView: (type: string, spec: Spec) => void };
+	specs: Map<string, Spec>;
+} {
+	const specs = new Map<string, Spec>();
+	return { plugin: { registerBasesView: (type, spec) => specs.set(type, spec) }, specs };
 }
 
 /**
@@ -79,9 +93,7 @@ export function makeView(
 ): Harness {
 	// Bases mounts the view inside the leaf showing the .base file; that leaf is how
 	// the view identifies which base it is, so persistence tests need the real nesting.
-	const leafEl = document.body.createDiv();
-	const containerEl = leafEl.createDiv();
-	if (base) vault.addLeaf(new FileView(vault.addFile(base), leafEl));
+	const containerEl = mountLeaf(vault, base);
 	const view = new ProductBacklogView({} as never, containerEl, lock);
 	const config = new FakeViewConfig(configValues);
 	if (viewName) config.name = viewName;

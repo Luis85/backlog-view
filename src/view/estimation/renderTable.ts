@@ -35,6 +35,16 @@ import { resolveViewIdentity } from '../../storage/viewIdentity';
  * order it carries, is never mutated.
  */
 
+/** The table-wide state a pick needs, bundled into one param the way `HeaderSpec` bundles
+ *  one header button's shape below — `selectRow` otherwise sits one over the parameter
+ *  budget. */
+interface TableCtx {
+	view: EstimationView;
+	tableEl: HTMLElement;
+	model: EstimationModel;
+	rows: Map<string, HTMLElement>;
+}
+
 /**
  * Delegated click and keydown, both wired once per render pass — the table's own root.
  * `items` is this pass's SORTED order (a copy, or `model.items` itself when unsorted —
@@ -49,13 +59,14 @@ function wireEvents(
 	items: EstimationItem[],
 	rows: Map<string, HTMLElement>,
 ): void {
+	const ctx: TableCtx = { view, tableEl, model, rows };
 	// Resolved by `data-path` against THIS pass's model, never a per-row closure over an
 	// item — the same rule `render/rows.ts` states for the tree, restated here because
 	// this table wires no per-row listener at all to forget it.
 	tableEl.addEventListener('click', (evt) => {
 		const rowEl = evt.target instanceof Element ? evt.target.closest('.pbl-est-row') : null;
 		const path = rowEl instanceof HTMLElement ? rowEl.dataset.path : undefined;
-		if (path && model.byPath.has(path)) selectRow(view, tableEl, rows, model, path);
+		if (path && model.byPath.has(path)) selectRow(ctx, path, false);
 	});
 	tableEl.addEventListener('keydown', (evt) => {
 		// A sort header is a real button living inside this same root now, so its own
@@ -67,7 +78,7 @@ function wireEvents(
 			const path = step(items, view.selectedPath, evt.key === 'ArrowDown' ? 1 : -1);
 			if (path) {
 				evt.preventDefault();
-				selectRow(view, tableEl, rows, model, path);
+				selectRow(ctx, path, true);
 			}
 			return;
 		}
@@ -87,30 +98,40 @@ function step(items: EstimationItem[], selectedPath: string | null, delta: 1 | -
 }
 
 /**
- * Move `pbl-selected`/`aria-selected` off the old row and onto the new one, publish
- * `view.selectedPath`, and rebuild the panel beside it — the fast path a click or an
- * arrow key takes, never a full `view.render()`. Both callers already guarantee `path`
- * is a key of `rows` — the click handler checks `model.byPath.has(path)` first, and
- * `step` only ever returns a path drawn from this pass's `items` — and `rows` is built
- * from that same (possibly sorted) list, so there is no state in which the lookup below
- * can miss.
+ * The one place a row's selected-ness is APPLIED: the class, the ARIA state, and — only
+ * for the row becoming selected — the id `aria-activedescendant` points at. Both the
+ * initial build (`renderRows`, every row, so an unselected one still states
+ * `aria-selected="false"`) and a pick's fast path (`selectRow`, the old row and the new
+ * one) call this, rather than one spelling it as a class string at creation and the other
+ * as a DOM mutation at pick time — the double spelling this used to be.
  */
-function selectRow(
-	view: EstimationView,
-	tableEl: HTMLElement,
-	rows: Map<string, HTMLElement>,
-	model: EstimationModel,
-	path: string,
-): void {
-	const row = rows.get(path)!;
-	const previous = view.selectedPath ? rows.get(view.selectedPath) : undefined;
-	previous?.removeClass('pbl-selected');
-	previous?.setAttribute('aria-selected', 'false');
-	view.selectedPath = path;
-	row.addClass('pbl-selected');
-	row.setAttribute('aria-selected', 'true');
+function applySelection(tableEl: HTMLElement, row: HTMLElement, selected: boolean): void {
+	row.toggleClass('pbl-selected', selected);
+	row.setAttribute('aria-selected', String(selected));
+	if (!selected) return;
 	if (!row.id) row.id = uniqueElementId('pbl-est-row');
 	tableEl.setAttribute('aria-activedescendant', row.id);
+}
+
+/**
+ * Move the selection off the old row and onto the new one, publish `view.selectedPath`,
+ * and rebuild the panel beside it — the fast path a click or an arrow key takes, never a
+ * full `view.render()`. Both callers already guarantee `path` is a key of `rows` — the
+ * click handler checks `model.byPath.has(path)` first, and `step` only ever returns a
+ * path drawn from this pass's `items` — and `rows` is built from that same (possibly
+ * sorted) list, so there is no state in which the lookup below can miss.
+ *
+ * `scroll` is true only from the keyboard: a click already lands on a row the pointer
+ * could reach, so nothing off screen needs to be brought into view for it.
+ */
+function selectRow(ctx: TableCtx, path: string, scroll: boolean): void {
+	const { view, tableEl, model, rows } = ctx;
+	const row = rows.get(path)!;
+	const previous = view.selectedPath ? rows.get(view.selectedPath) : undefined;
+	if (previous) applySelection(tableEl, previous, false);
+	view.selectedPath = path;
+	applySelection(tableEl, row, true);
+	if (scroll) row.scrollIntoView({ block: 'nearest' });
 	renderPanel(view, model);
 }
 
@@ -277,21 +298,11 @@ function renderHead(view: EstimationView, tableEl: HTMLElement, pick: SortPick |
 	sortHeader(view, head, { column: 'currency', cls: 'pbl-est-currency', label: t('estimation.column.currency') }, pick);
 }
 
+/** `Currency` is a union of string literals, so the template key is exactly one of the
+ *  six `estimation.currency.*` entries — checked by the same compiler that would refuse
+ *  a switch case naming a key `en.ts` does not have. */
 function currencyWord(currency: Currency): string {
-	switch (currency) {
-		case 'current':
-			return t('estimation.currency.current');
-		case 'stale':
-			return t('estimation.currency.stale');
-		case 'foreign':
-			return t('estimation.currency.foreign');
-		case 'handwritten':
-			return t('estimation.currency.handwritten');
-		case 'orphan':
-			return t('estimation.currency.orphan');
-		case 'none':
-			return t('estimation.currency.none');
-	}
+	return t(`estimation.currency.${currency}`);
 }
 
 /**
@@ -304,12 +315,8 @@ function numberCell(el: HTMLElement, value: number | null): void {
 	if (value !== null) el.setText(String(value));
 }
 
-function renderRow(tableEl: HTMLElement, item: EstimationItem, selectedPath: string | null): HTMLElement {
-	const selected = item.file.path === selectedPath;
-	const row = tableEl.createDiv({
-		cls: 'pbl-est-row' + (selected ? ' pbl-selected' : ''),
-		attr: { role: 'option', 'aria-selected': String(selected) },
-	});
+function renderRow(tableEl: HTMLElement, item: EstimationItem): HTMLElement {
+	const row = tableEl.createDiv({ cls: 'pbl-est-row', attr: { role: 'option' } });
 	row.dataset.path = item.file.path;
 	row.createDiv({ cls: 'pbl-est-title', text: item.title });
 	numberCell(row.createDiv({ cls: 'pbl-est-total' }), item.result?.total ?? null);
@@ -317,10 +324,12 @@ function renderRow(tableEl: HTMLElement, item: EstimationItem, selectedPath: str
 	if (item.result) coverage.setText(`${item.result.coverage.answered}/${item.result.coverage.enabled}`);
 	numberCell(row.createDiv({ cls: 'pbl-est-cell', attr: { 'data-col': 'confidence' } }), item.confidence);
 	numberCell(row.createDiv({ cls: 'pbl-est-cell', attr: { 'data-col': 'effort' } }), item.effort);
-	row.createDiv({
-		cls: 'pbl-est-currency' + (item.currency === 'stale' ? ' pbl-est-stale' : ''),
-		text: currencyWord(item.currency),
-	});
+	const currencyEl = row.createDiv({ cls: 'pbl-est-currency' + (item.currency === 'stale' ? ' pbl-est-stale' : '') });
+	// Empty rather than the catalog's own dash for 'none': the cell then qualifies for
+	// the same `:empty::before` rule as every other "nothing to show" cell in this row,
+	// instead of a hand-written em dash sitting beside the CSS's en dash — two different
+	// glyphs for the same absence, one row apart.
+	if (item.currency !== 'none') currencyEl.setText(currencyWord(item.currency));
 	return row;
 }
 
@@ -336,12 +345,9 @@ function renderRows(tableEl: HTMLElement, items: EstimationItem[], selectedPath:
 	}
 	const rows = new Map<string, HTMLElement>();
 	for (const item of items) {
-		const row = renderRow(tableEl, item, selectedPath);
+		const row = renderRow(tableEl, item);
 		rows.set(item.file.path, row);
-		if (item.file.path === selectedPath) {
-			row.id = uniqueElementId('pbl-est-row');
-			tableEl.setAttribute('aria-activedescendant', row.id);
-		}
+		applySelection(tableEl, row, item.file.path === selectedPath);
 	}
 	return rows;
 }
@@ -349,6 +355,13 @@ function renderRows(tableEl: HTMLElement, items: EstimationItem[], selectedPath:
 /** The table frame: header, one row per result (or the empty state), selection and keyboard. */
 export function renderTable(view: EstimationView, model: EstimationModel): void {
 	restoreSort(view);
+	// Validated once, here, rather than left for `step`'s own `-1` fallback to paper
+	// over: a path from a previous pass that this one's model no longer has (the note
+	// left the base's results) used to reach `step` unresolved and teleport an arrow
+	// press to row 0 regardless of direction — a stale selection silently discarded
+	// rather than an honest "nothing is selected". Cleared here, the same key press
+	// means what it already means for that honest case: select the first row.
+	if (view.selectedPath !== null && !model.byPath.has(view.selectedPath)) view.selectedPath = null;
 	const pick = parseSort(view.sortPick);
 	const tableEl = view.viewEl.createDiv({ cls: 'pbl-est-table', attr: { role: 'listbox', tabindex: '0' } });
 	renderHead(view, tableEl, pick);

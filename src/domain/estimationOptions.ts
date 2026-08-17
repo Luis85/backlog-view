@@ -1,6 +1,7 @@
-import { BasesAllOptions, BasesPropertyId, BasesViewConfig } from 'obsidian';
+import { BasesAllOptions, BasesViewConfig } from 'obsidian';
 import { DEFAULT_DIMENSIONS, defaultDimension } from './defaultModel';
-import { dimOption, resolveEstimationSettings } from './estimationSettings';
+import { DEFAULT_POINT_RANGE, dimOption, resolveEstimationSettings } from './estimationSettings';
+import { notePropsOnly } from './optionalProperties';
 
 /**
  * What Bases shows in the estimation view's own options menu — this view's half of what
@@ -9,10 +10,10 @@ import { dimOption, resolveEstimationSettings } from './estimationSettings';
  * model is configuration.md`'s "Where it lives" says so).
  */
 
-const notePropsOnly = (prop: BasesPropertyId) => prop.startsWith('note.');
-
-/** The default range every dimension and the model's own output ship with. */
-const DEFAULT_RANGE_TEXT = '1-5';
+/** The default range every dimension and the model's own output ship with, spelled from
+ *  the same `DEFAULT_POINT_RANGE` `estimationSettings.ts` resolves an unparsed range to
+ *  — one number pair rather than two, which used to differ if only one were ever edited. */
+const DEFAULT_RANGE_TEXT = `${DEFAULT_POINT_RANGE[0]}-${DEFAULT_POINT_RANGE[1]}`;
 
 export function getEstimationViewOptions(config: BasesViewConfig): BasesAllOptions[] {
 	// Config-aware, the WIP-boxes precedent (`viewOptions.ts`'s `progressGroup`): a

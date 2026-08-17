@@ -33,7 +33,10 @@ export function scaleRubricOption(scale: ScaleName, point: number): string {
 	return `scaleRubric.${scale}.${point}`;
 }
 
-const DEFAULT_POINT_RANGE: [number, number] = [1, 5];
+/** The fixed scales' own range, and the fallback for a dimension's unparsed one — shared
+ *  with `estimationOptions.ts` so the shipped range text shown in the view options is
+ *  spelled from this pair rather than as an independent `'1-5'` literal. */
+export const DEFAULT_POINT_RANGE: [number, number] = [1, 5];
 
 /**
  * `min-max`, both whole numbers. Unparseable text keeps the fallback; a WRONG range

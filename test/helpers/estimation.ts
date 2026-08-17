@@ -1,8 +1,7 @@
 import { EstimationView } from '../../src/view/estimation/estimationView';
 import { WriteLock } from '../../src/view/writeLock';
 import { installObsidianDom } from './dom';
-import { FakeVault, FakeViewConfig } from './vault';
-import { FileView } from './obsidian-mock';
+import { FakeVault, FakeViewConfig, mountLeaf } from './vault';
 
 installObsidianDom();
 
@@ -20,13 +19,11 @@ export interface EstimationHarness {
 export function makeEstimationView(
 	vault: FakeVault,
 	configValues: Record<string, unknown> = {},
-	{ lock, base, viewName }: { lock?: WriteLock; base?: string; viewName?: string } = {},
+	{ lock = new WriteLock(), base, viewName }: { lock?: WriteLock; base?: string; viewName?: string } = {},
 ): EstimationHarness {
 	// Bases mounts the view inside the leaf showing the .base file, the same nesting
-	// `makeView` builds — a later task's persistence needs the real leaf to identify it.
-	const leafEl = document.body.createDiv();
-	const containerEl = leafEl.createDiv();
-	if (base) vault.addLeaf(new FileView(vault.addFile(base), leafEl));
+	// `makeView` builds (`mountLeaf`, shared) — persistence needs the real leaf to identify it.
+	const containerEl = mountLeaf(vault, base);
 	const view = new EstimationView({} as never, containerEl, lock);
 	const config = new FakeViewConfig(configValues);
 	if (viewName) config.name = viewName;

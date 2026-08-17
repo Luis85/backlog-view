@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { makeEstimationView } from '../../helpers/estimation';
 import { configured, configuredValues } from '../../helpers/estimationModel';
 import { FakeVault } from '../../helpers/vault';
@@ -55,10 +55,12 @@ describe('the estimation table', () => {
 		expect(partial.querySelector('.pbl-est-coverage')?.textContent).toBe('2/8');
 	});
 
-	it("shows the none currency word for a note with nothing answered, with its total cell genuinely empty", () => {
+	it("shows the none currency as an empty chip — the CSS-drawn dash every other empty cell in the row gets, not a hand-written one", () => {
 		const { containerEl } = makeEstimationView(fixture(), configuredValues());
 		const empty = row(containerEl, 'Empty.md');
-		expect(empty.querySelector('.pbl-est-currency')?.textContent).toBe('—');
+		const currency = empty.querySelector('.pbl-est-currency') as HTMLElement;
+		expect(currency.textContent).toBe('');
+		expect(currency.matches(':empty')).toBe(true);
 		const total = empty.querySelector('.pbl-est-total') as HTMLElement;
 		expect(total.textContent).toBe('');
 		// The dash on screen is `styles/estimation.css`'s `:empty::before` rule; this proves
@@ -217,5 +219,51 @@ describe('keyboard on the estimation table', () => {
 		expect(view.selectedPath).toBeNull();
 		key(table, 'ArrowUp');
 		expect(view.selectedPath).toBeNull();
+	});
+
+	describe('bringing the new row into view', () => {
+		afterEach(() => vi.restoreAllMocks());
+
+		it('scrolls the newly selected row into view on an arrow step, never on a click', () => {
+			const { containerEl } = makeEstimationView(fixture(), configuredValues());
+			const scrollIntoView = vi.spyOn(HTMLElement.prototype, 'scrollIntoView').mockImplementation(() => {});
+			const table = containerEl.querySelector('.pbl-est-table') as HTMLElement;
+
+			key(table, 'ArrowDown');
+			expect(scrollIntoView).toHaveBeenCalledTimes(1);
+			expect(scrollIntoView).toHaveBeenCalledWith({ block: 'nearest' });
+
+			scrollIntoView.mockClear();
+			row(containerEl, 'Partial.md').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+			// Already visible to the pointer that clicked it — nothing to bring into view.
+			expect(scrollIntoView).not.toHaveBeenCalled();
+		});
+	});
+});
+
+describe('the selection when its own row leaves the results', () => {
+	it('clears a stale selectedPath instead of teleporting the next arrow press to row 0', () => {
+		const vault = fixture();
+		const { view, containerEl } = makeEstimationView(vault, configuredValues());
+		row(containerEl, 'Partial.md').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		expect(view.selectedPath).toBe('Partial.md');
+
+		// The selected note leaves the base's results — deleted, or filtered out — the
+		// same "onDataUpdated with a narrower set" shape a real vault change has.
+		(view as unknown as { data: unknown }).data = {
+			data: vault.entries().filter((e) => e.file.path !== 'Partial.md'),
+		};
+		view.onDataUpdated();
+
+		expect(view.selectedPath).toBeNull();
+		expect(containerEl.querySelector('.pbl-selected')).toBeNull();
+		expect(containerEl.querySelector('.pbl-est-panel')).toBeNull();
+
+		// Honest afterwards too: nothing is selected, so the next arrow press means what
+		// it always means for that state — select the first row — not a teleport away
+		// from a row the reader still believed was held.
+		const table = containerEl.querySelector('.pbl-est-table') as HTMLElement;
+		key(table, 'ArrowDown');
+		expect(view.selectedPath).toBe('Full.md');
 	});
 });
