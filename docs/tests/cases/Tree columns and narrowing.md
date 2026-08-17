@@ -59,10 +59,13 @@ the repository is open as a vault with `docs/Product Backlog.base` showing the t
 - Widen back out and confirm every column returns in the same order it left.
 - A dropped column is not rendered at all, so Tab and the screen reader should find
   nothing where it was — check with a checkbox-rendering property in the last column.
-- **The resize grips** ([[Resizable property columns]]): hover the trailing edge of a
-  column header and confirm the cursor becomes a resize cursor and the strip paints;
-  drag it and confirm every row's cell in that column follows the pointer, live, with the
-  header still above its own values when you let go. Reopen the base and confirm the
+- **The resize grips** ([[Resizable property columns]]): hover a column header and
+  confirm the whole column band washes in the hover colour — the strip's full height,
+  square corners, no gap above or below — and the mark paints at its leading edge;
+  on the mark, confirm the cursor becomes a resize cursor and the accent confirms it;
+  drag it and confirm the boundary under the pointer follows it, live, with every row's
+  cell in that column moving too and the header still above its own values when you let
+  go. Reopen the base and confirm the
   width came back. Then Tab into the tree, confirm the grips are reachable in order,
   step one with the arrow keys, and press Home to put it back. Then resize one by pointer
   again and double click the same grip, which is the reset a mouse has.
