@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { FakeVault, FakeViewConfig } from '../helpers/vault';
+import { bodyOf } from '../helpers/cssVars';
 import { settingsFrom, settingsWith } from '../helpers/settings';
 import { buildModel } from '../../src/domain/model';
 import { paletteFor, stateColorPaint, statePalettes } from '../../src/domain/board';
@@ -47,11 +48,16 @@ describe('a picked colour', () => {
 		// bar that nothing paints. `--pbl-state-color` is what makes the bar and the legend
 		// swatch one mapping — a rule setting `background-color` instead would colour the
 		// swatch and leave the bar on its fallback accent.
+		// Through the shared reader (`test/helpers/cssVars.ts`), which anchors the selector
+		// at LINE START. The regular expression this replaced did not, so
+		// `.pbl-state-c-red` would have matched inside `.pbl-x .pbl-state-c-red` — the same
+		// latent suffix match `boardColumnWidth.test.ts` carried, spelled as a pattern
+		// instead of an `indexOf`. Latent and never live: every rule here is standalone.
+		// The name and the file survive the swap — `bodyOf` throws with both — so what is
+		// lost is an assertion message and what is gained is the anchor.
 		const css = readFileSync(new URL('../../styles/stateColors.css', import.meta.url), 'utf8');
 		for (const name of STATE_COLOR_NAMES) {
-			const rule = new RegExp(`\\.pbl-state-c-${name}\\s*\\{([^}]*)\\}`).exec(css);
-			expect(rule, `styles/stateColors.css has no rule for ${name}`).not.toBeNull();
-			expect(rule?.[1]).toContain('--pbl-state-color:');
+			expect(bodyOf(css, `.pbl-state-c-${name}`, 'styles/stateColors.css')).toContain('--pbl-state-color:');
 		}
 	});
 

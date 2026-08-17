@@ -15,8 +15,9 @@
  * cycle. What it deliberately does not model is specificity — see `declarations`.
  *
  * `bodyOf` is the plainest thing here and is why this file is now the home for every
- * stylesheet READ rather than for custom properties alone: five suites assert whole
- * declarations in a named rule, and between them they carried SEVEN copies of it.
+ * stylesheet READ rather than for custom properties alone: every suite asserting a whole
+ * declaration in a named rule had hand-rolled its own reader, and several of those copies
+ * were subtly wrong in ways their own callers could not see.
  */
 
 /**
@@ -42,11 +43,26 @@
  * verbatim from the copy two suites already shared, byte for byte, so their assertions
  * are provably untouched.
  *
- * It was hand-rolled in seven places until 2026-08-17 across five suites, three of them
- * slicing from the SELECTOR rather than from the `{`, so any needle that could appear in
- * a prelude passed on the prelude. The count reads seven because it was re-measured with
- * `grep -rn "\.indexOf(" test/` — the brief named four, and a narrower grep for one
- * spelling is how a count like this goes wrong.
+ * **What belongs here is ONE rule addressed by its whole selector; a question about a SET
+ * of rules, or about a rule's position under a wrapper, is a different instrument and
+ * stays where it is.** That is the rule rather than a count, because the count was wrong
+ * twice: the brief that started this sweep named four copies, `grep -rn "css.indexOf"`
+ * found three more, and `grep -rn "\.indexOf("` and `grep -rn "new RegExp(\`"` each found
+ * further ones again. A number here would be the fourth version of it.
+ *
+ * The three surviving readers are survivors by the rule above, not leftovers.
+ * `test/view/rendering.test.ts` wants the rule NEAREST an enclosing `@media`, which the
+ * line-start requirement above puts out of reach. `leadTintRules` and the focused-grip
+ * `tokens` in `test/view/timelineBoxing.test.ts` want EVERY rule whose selector ends at a
+ * given class — a set, where this returns one body — which is why both walk `split('}')`
+ * instead. A fourth spelling was swept rather than kept: `test/domain/stateColors.test.ts`
+ * matched `\.pbl-state-c-${name}\s*\{([^}]*)\}` with no line anchor, so it carried the
+ * suffix-match hazard as a pattern rather than as an `indexOf`.
+ *
+ * The copies that WERE swept were wrong in two ways, both invisible from their call sites:
+ * three sliced from the SELECTOR rather than from the `{`, so a needle that could appear
+ * in a prelude passed on the prelude; and two asserted inside the helper, so a renamed
+ * selector failed with no test name attached.
  *
  * `file` is passed rather than recovered from the text: the caller already knows which
  * stylesheet it read, and a miss has to name it to be actionable. It THROWS on a miss —
