@@ -193,10 +193,17 @@ export function renderChevron(
 		return;
 	}
 	const { label } = state;
+	// The button form is a real control, off the tab order like every other per-row control:
+	// `tabindex="-1"` keeps the pane's single tab stop while leaving it activatable by
+	// assistive tech, with the row menu as the documented keyboard path. `styles/tree.css`
+	// strips Obsidian's button chrome from `button.pbl-chevron`.
 	const chevron: HTMLElement =
 		label === undefined
 			? rowEl.createDiv({ cls })
-			: disclosureButton(rowEl, cls, { expanded: !state.collapsed, label });
+			: rowEl.createEl('button', {
+					cls,
+					attr: { type: 'button', tabindex: '-1', 'aria-expanded': String(!state.collapsed), 'aria-label': label },
+				});
 	drawIcon(chevron, 'chevron-right');
 	chevron.toggleClass('pbl-expanded', !state.collapsed);
 	// eslint-disable-next-line no-restricted-syntax -- closes over state.toggle, redraw and the element, never a BacklogItem.
@@ -211,25 +218,6 @@ export function renderChevron(
 		redraw(heldFocus);
 	});
 }
-
-/**
- * The button form of the disclosure: a real control, off the tab order like every other
- * per-row control, carrying the state its row's role cannot. `tabindex="-1"` keeps the
- * pane's single tab stop while leaving it activatable by assistive tech, with the row
- * menu as the documented keyboard path. `styles/tree.css` strips Obsidian's button
- * chrome from `button.pbl-chevron`.
- */
-function disclosureButton(
-	rowEl: HTMLElement,
-	cls: string,
-	said: { expanded: boolean; label: string },
-): HTMLElement {
-	return rowEl.createEl('button', {
-		cls,
-		attr: { type: 'button', tabindex: '-1', 'aria-expanded': String(said.expanded), 'aria-label': said.label },
-	});
-}
-
 
 /** Shared with the board's cards: one badge chain, so a type cannot look different per projection. */
 export function renderBadge(host: BacklogViewHost, row: HTMLElement, item: BacklogItem): void {

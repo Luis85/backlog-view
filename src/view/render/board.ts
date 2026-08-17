@@ -19,7 +19,6 @@ import {
 	boardColumns,
 	BoardColumn,
 	BoardModel,
-	cardPaths,
 	deliverablesWorkflow,
 	columnFoldValue,
 	emptyNoState,
@@ -74,12 +73,11 @@ interface BoardRenderOptions {
 /**
  * Everything `renderColumn`/`renderCard` need beyond `ctx` and the element/model
  * they are rendering — bundled so both stay within the repo's `max-params: 5` lint
- * rule. Found by review: the first draft threaded `dnd`, `carded` and `opts` as three
- * separate trailing parameters, which pushed both functions to six.
+ * rule. Found by review: the first draft threaded these as separate trailing
+ * parameters, which pushed both functions to six.
  */
 interface ColumnRenderCtx {
 	dnd: CardDragController;
-	carded: Set<string>;
 	opts: BoardRenderOptions;
 }
 
@@ -147,10 +145,7 @@ export function renderBoard(
 	// selection landing on a card no longer on screen — without any of them asking about a
 	// fold. `renderShelf` contributes to the roadmap's own card list the same way.
 	const drawn: BoardModel = { ...board, columns: board.columns.map((col, i) => (folds[i] ? { ...col, cards: [] } : col)) };
-	// Which items have a card of their own, so a card naming the matches below it can
-	// skip the ones already on screen. Built once per pass rather than searched per card,
-	// and off the DRAWN board: a match folded away is not on screen and may be named again.
-	const render: ColumnRenderCtx = { dnd, carded: cardPaths(drawn), opts };
+	const render: ColumnRenderCtx = { dnd, opts };
 	const colEls = drawn.columns.map((col, i) => renderColumn(ctx, colsEl, col, render, folds[i]));
 	dnd.wireScroller(boardEl);
 	// The UNFOLDED board: "why has this board no cards" must never be answered about a
