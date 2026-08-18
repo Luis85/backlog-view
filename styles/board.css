@@ -34,6 +34,23 @@
 	height: 100%;
 }
 
+/* A board column and a horizon bucket are ONE box, and it is said here once — the way
+   their headers, names and counts below already are. `max-height: 100%` is the term worth
+   naming: each row stretches every member to the tallest, a stretched flex item will not
+   shrink below its content, and the cap is what lets `.pbl-board-col-cards` and
+   `.pbl-bucket-cards` actually scroll on their own `overflow-y` instead of the column
+   growing past the pane. What the two do NOT share is their floor width and the bucket's
+   own `contain` — those stay in `roadmap.css`. */
+.pbl-board-col,
+.pbl-bucket {
+	display: flex;
+	flex-direction: column;
+	max-height: 100%;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-m);
+	background-color: var(--background-secondary);
+}
+
 /* Columns share the row's full width equally, down to a floor of 260px — the width they
    used to be fixed at, so nothing is ever narrower than before, only wider. The explicit
    min-width is load-bearing: flex-basis is not a floor once shrinking is enabled, and the
@@ -42,12 +59,6 @@
 .pbl-board-col {
 	flex: 1 1 260px;
 	min-width: 260px;
-	display: flex;
-	flex-direction: column;
-	max-height: 100%;
-	border: 1px solid var(--background-modifier-border);
-	border-radius: var(--radius-m);
-	background-color: var(--background-secondary);
 }
 
 .pbl-board-col-header,
@@ -147,12 +158,21 @@
 	flex-direction: column;
 	gap: var(--size-4-2);
 	padding: var(--size-4-3) 0;
-	/* Both terms are load-bearing and neither works alone. The column caps at the pane's
-	   height, but a flex item will not shrink below its own content, so the header ran
-	   past that cap and took the count with it — and clipping it needs somewhere for the
-	   overflow to go. Shrinking lands on the NAME rather than the count, which is what
-	   makes this the right place to allow it: the count declares `flex: 0 0 auto`, so the
-	   rotated name absorbs the whole reduction and ellipsises. */
+	/* The column caps at the pane's height, but a flex item's automatic minimum will not
+	   let it shrink below its own content — so the header ran past that cap and took the
+	   count with it. Shrinking lands on the NAME rather than the count, which is what makes
+	   this the right place to allow it: the count declares `flex: 0 0 auto`, so the rotated
+	   name absorbs the whole reduction and ellipsises.
+	   **Either declaration alone is enough today**, measured in a real browser at 900x320
+	   with a 51-character state name: both 249px, neither 418px (156px outside the column),
+	   `overflow` alone 249px, `min-height` alone 249px. That is not two belts — the
+	   automatic minimum applies only while `overflow` is `visible`, so `hidden` lifts it by
+	   itself and `min-height: 0` is saying the same thing a second way.
+	   **`min-height: 0` is still not dead weight, and this is the edit it is insurance
+	   against**: `overflow: clip` is NOT a scroll container, so it does not lift the
+	   minimum, and a `hidden` → `clip` tidy-up — the exact swap `.pbl-toolbar` in
+	   `toolbarFit.css` makes, for reasons that do not apply here — silently puts the 156px
+	   overhang back. Measured, not reasoned. */
 	min-height: 0;
 	overflow: hidden;
 }

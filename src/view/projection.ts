@@ -24,26 +24,6 @@ import { ALL_TYPES } from '../domain/typeVocabulary';
  * runtime code so imports cannot cycle.
  */
 
-/**
- * Which forest a question is asked about. **Not a preference — the two surfaces are
- * asking about different populations**, and one index cannot answer for both.
- *
- * `focused` is the rendered forest (`model.roots`), which a focus level narrows: the
- * tree, the requirements board and the roadmap all render out of it. `whole` is the
- * entire tree (`model.realRoots`), which is what the Deliverables board's population
- * (`model.deliverableResults`) is built from — deliberately focus-immune, so that a
- * focus set on another projection can never hide a Deliverable there.
- *
- * This started as one index that the Deliverables board also consulted, and it took
- * three separate fixes to keep patching the gap: the out-of-focus Deliverable that was
- * never indexed, then its matching ANCESTOR that was not either, then a focused row
- * BELOW one that the patch wrote to and should not have. Each fix was correct and each
- * was one case short, because a single set was being asked two questions. Two indexes
- * over one rule cannot drift: neither is a special case of the other, and neither can
- * write into the other.
- */
-export type FilterScope = 'focused' | 'whole';
-
 /** Whether this projection draws ROWS — indentation, disclosure, a rank somebody chose. */
 export function treeShaped(projection: Projection): boolean {
 	return projection === 'tree' || projection === 'catalog';
@@ -78,6 +58,34 @@ export function hidesCompleted(projection: Projection): boolean {
 	// would empty the column the board exists to show — a sprint review reading as a
 	// sprint nobody finished.
 	return projection !== 'deliverables' && projection !== 'catalog' && projection !== 'iteration';
+}
+
+/**
+ * Whether this projection's card menus list children — the `Show/Hide children` toggle
+ * and the `Open child "…"` entries under it. The horizon board is the one that declines
+ * (asked for directly, 2026-08-17); every other projection, tree or card, carries them.
+ *
+ * Both terms are load-bearing and neither answers alone: the dated and resources axes
+ * keep the section, so `'roadmap'` is not the rule, and no other projection has an axis
+ * for the second term to read.
+ *
+ * **It is not the question `chooseHorizon` (`interactions/plan.ts`) spells the same way.**
+ * That one reads identically today — roadmap plus horizons — and asks where a horizon
+ * PICK goes: whether the move needs `performHorizonMove`'s announcing path. A later axis
+ * could list children and still need announcing, or announce and list none, so the two
+ * stay two statements rather than one helper to be split the first time they disagree.
+ * `onResourceAxis` (`interactions/labels.ts`) is a third and coincides with neither: it
+ * names the `'resources'` axis, and its own comment records that it is asked twice — for
+ * the assignee menu's VOCABULARY as well as for the write route — so "menu versus write"
+ * does not separate it either. This function names `'horizons'` outright, so it could not
+ * serve that axis whatever the questions turned out to be.
+ *
+ * The `axis` a caller passes comes off the last roadmap render (`host.roadmap`), and
+ * naming the rule here does nothing about that: a snapshot stale across a projection
+ * switch is a hazard in the caller's READ, before the call, and this closes none of it.
+ */
+export function menusListChildren(projection: Projection, axis: RoadmapAxis | null): boolean {
+	return !(projection === 'roadmap' && axis === 'horizons');
 }
 
 /**
@@ -120,7 +128,7 @@ export function toolbarPosition(projection: Projection): Projection {
  * their own rules — and none of them roots a tree.
  *
  * Every consumer that walks the tree from its roots to decide what the user SEES or ACTS
- * ON takes this: the renderer, the quick filter's match index, the keyboard's visible-row
+ * ON takes this: the renderer, the keyboard's visible-row
  * walk, the drop targets, the indent/outdent sibling lists, and which roots a new one is
  * created among. A consumer left on `model.roots` does not fail visibly — it disagrees
  * with the screen, which is the failure this rule exists to prevent, arriving one surface
@@ -142,7 +150,7 @@ export function projectionPopulation(projection: Projection, model: BacklogModel
  * direction the caller happens to be facing, so the catalog and the plan cannot both
  * claim a row or both disown one.
  *
- * It is asked in `rowHidden` beside the quick filter and the completed toggle rather than
+ * It is asked in `rowHidden` beside the completed toggle rather than
  * at each surface, and that placement is what makes the rest of this feature small: the
  * renderer, the keyboard's move targets, the board's cards, the roadmap's rows and every
  * count measured against them all consult that one predicate already. A membership test
@@ -163,7 +171,7 @@ export function projectionMember(
 	// **The iteration board's membership is the LINK**, not merely "a row of the plan",
 	// and it has to be asked here rather than only where the cards are chosen. Every
 	// consumer of this predicate reads the answer for something other than a card:
-	// `listedChildren` puts a carrier's children on its face, the quick filter's index
+	// `listedChildren` puts a carrier's children on its face, the keyboard's walk
 	// decides which rows a needle keeps, and a drop target asks what may receive a row.
 	// With the plan's own answer, a carrier's child that names no iteration — or names
 	// ANOTHER one — was listed on the card, which is the no-inheritance rule broken at
@@ -182,7 +190,7 @@ export function projectionMember(
 	// The grid axes draw an `Iteration` in the shared marker row — the one admission,
 	// axis-aware because the horizons axis (buckets and its shelf alike) still refuses
 	// one. Everything downstream inherits this through `rowHidden`, which is the point:
-	// the filter index, the counts and the shelf all read the same predicate.
+	// the rows, the counts and the shelf all read the same predicate.
 	if (projection === 'roadmap' && axis !== null && drawsGrid(axis)) {
 		return (item) => inPlan(item) || isIterationType(item.typeName);
 	}
@@ -304,23 +312,3 @@ export function retypeChoices(host: BacklogViewHost, item: BacklogItem): string[
 	return offerableTypes(host, ALL_TYPES, item);
 }
 
-/**
- * Which of the quick filter's two indexes this projection's questions are answered from.
- *
- * Decided ONCE rather than at each of the three call sites, because getting it wrong at
- * one of them is invisible until somebody types into the box on that exact projection.
- * The Deliverables board renders `deliverableResults`, built from the whole unfocused
- * tree; every other projection renders out of the forest a focus level narrows. The
- * catalog is `'focused'` like the rest and that is not an oversight — its own forest is
- * what `recompute` indexed, and a focus level cannot narrow it, so the two agree.
- *
- * Beside `treeShaped` and `hidesCompleted` rather than on the view, for the reason all
- * three share: it is a fact about the projection, not about the object drawing it.
- */
-export function filterScopeFor(projection: Projection): FilterScope {
-	// The iteration board answers `'whole'` for the Deliverables board's reason, arrived at
-	// from its own population: `iterationResults` is read off `realRoots`, so a focus set
-	// on another projection narrows neither. An index built on the focused forest would
-	// hold the promise for the cards and break it for the search.
-	return projection === 'deliverables' || projection === 'iteration' ? 'whole' : 'focused';
-}

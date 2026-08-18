@@ -455,7 +455,7 @@ describe('rendering', () => {
 		// applies to (that would mean parsing every selector against every
 		// button-producing call site, which this regex instrument does not do) — only
 		// that these four, the ones the closed issue named, are shaped that way.
-		for (const selector of ['button.pbl-state-chip', 'button.pbl-horizon-chip', 'button.pbl-tag-remove', 'button.pbl-card-match']) {
+		for (const selector of ['button.pbl-state-chip', 'button.pbl-horizon-chip', 'button.pbl-tag-remove']) {
 			const color = ruleAt(selector, 'color:');
 			const background = ruleAt(selector, 'background-color:');
 			const shadow = ruleAt(selector, 'box-shadow:');

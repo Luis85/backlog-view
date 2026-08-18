@@ -2,15 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { STATE_COLOR_SLOTS } from '../../src/domain/settings';
 import { LABEL_RESERVE_PX } from '../../src/view/render/barLabel';
-import { BODY_SELECTORS, declarations, resolvesValue } from '../helpers/cssVars';
-
-/** The declarations of one rule, by selector — good enough for a single-selector rule. */
-function bodyOf(css: string, selector: string, file: string): string {
-	const at = css.indexOf(`\n${selector} {`);
-	if (at === -1) throw new Error(`no rule for ${selector} in ${file}`);
-	const open = css.indexOf('{', at);
-	return css.slice(open + 1, css.indexOf('}', open));
-}
+import { BODY_SELECTORS, bodyOf, declarations, resolvesValue } from '../helpers/cssVars';
 
 /**
  * The dated axis positions everything it draws — bars, the today line, milestone lines,
@@ -73,37 +65,6 @@ describe('the two boxes sized from TypeScript arithmetic', () => {
 		// the absence row's own version of this rule went with the row itself on 2026-08-14,
 		// since a stretch is drawn in its header's track now and has no row to mute.
 		expect(dimmed).toContain('.pbl-lane-context .pbl-timeline-lead > *');
-	});
-
-	it('lets a row’s match affordance YIELD rather than cross the column boundary', () => {
-		// The lead is a fixed-width column, so an item that cannot shrink cannot do
-		// anything but overflow once the column is full. Measured in Chromium through
-		// `npm run harness` at the 160px floor: a `flex: 0 0 auto` chip hung 28.95px over
-		// the day track on every row that had one. `flex: 0 1 auto` with `min-width: 0`
-		// and `overflow: hidden` is what makes it give way to the icon alone instead.
-		//
-		// WHERE it sits is the code's (`renderMatchCount` swaps it for `.pbl-bar-count`),
-		// and the two have to agree about the end of the lead, so the anchor is asserted
-		// against the slot's own rather than against a literal.
-		//
-		// Text again, and the reach is exactly that: it sees the declarations and cannot
-		// tell you what the column came out looking like. That is the narrow-lead case in
-		// `docs/tests/suites/Smoke test the roadmap.md`.
-		const cards = readFileSync(new URL('../../styles/cards.css', import.meta.url), 'utf8');
-		const chip = bodyOf(cards, '.pbl-row-matches,\nbutton.pbl-row-matches', 'styles/cards.css');
-		expect(chip).toContain('flex: 0 1 auto;');
-		expect(chip).toContain('min-width: 0;');
-		expect(chip).toContain('overflow: hidden;');
-		// The slot it replaces anchors the end of the lead; the replacement has to too.
-		const band = readFileSync(new URL('../../styles/barProgress.css', import.meta.url), 'utf8');
-		expect(bodyOf(band, '.pbl-bar-count', 'styles/barProgress.css')).toContain('margin-inline-start: auto;');
-		expect(chip).toContain('margin-inline-start: auto;');
-		// Not vacuous, and the pairing is the point: a CARD has the room, so its own list
-		// still wraps to as many titles as it holds. Only the ROW trades them for a count.
-		expect(bodyOf(cards, '.pbl-card-matches', 'styles/cards.css')).toContain('flex-wrap: wrap;');
-		// And nothing is left pinned to the rule this replaced — a row renders no
-		// `.pbl-card-matches` at all now, so CSS for it here would be dead.
-		expect(cards).not.toContain('.pbl-timeline-lead .pbl-card-matches');
 	});
 
 	it('lays a row out from being a ROW, never from being a card', () => {
@@ -242,7 +203,7 @@ describe('the legend swatch keeps its size in a narrow pane', () => {
 	const css = readFileSync(new URL('../../styles/legend.css', import.meta.url), 'utf8');
 
 	it('refuses to shrink, rather than relying on there being room', () => {
-		const body = css.slice(css.indexOf('.pbl-legend-swatch {'), css.indexOf('}', css.indexOf('.pbl-legend-swatch {')));
+		const body = bodyOf(css, '.pbl-legend-swatch', 'styles/legend.css');
 		expect(body, 'the swatch declares no size at all').toContain('width: 10px;');
 		expect(body, 'the swatch is a flex item with nothing stopping it shrinking to 0').toMatch(
 			/flex(-shrink)?\s*:\s*0/,

@@ -255,13 +255,6 @@ describe('renderInputs', () => {
 		);
 	});
 
-	it('differs when the filter text changes', () => {
-		const { view } = viewOf({});
-		const before = renderInputs(view);
-		view.setFilter('alp');
-		expect(renderInputs(view)).not.toBe(before);
-	});
-
 	it('differs when the kind of value a column draws changes, the frontmatter untouched', () => {
 		// The property's TYPE is Obsidian's, not the note's. What this harness can vary is
 		// the CONSTRUCTOR of what a fake entry hands back, which is what `valueKinds`

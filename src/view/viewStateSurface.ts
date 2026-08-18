@@ -22,18 +22,10 @@ import { ScaleId } from '../domain/timeline';
  * projection increment already has to edit. This is the seam that block was always on;
  * it was one file up until now only because nothing had moved it.
  *
- * The two collapse questions consult the quick filter first, exactly as `isCollapsed`
- * does for a row: while a search runs, everything on a path to a match renders open, and
- * asking BEFORE the controller is what keeps a narrowed board from settling a default.
- * They ask it through {@link isFiltering}, the host's own member, so the filter itself
- * stays private to the view.
  */
 export abstract class ViewStateSurface extends BasesView {
 	/** Built by the view, read here: the state store plus the render-depth choice. */
 	protected abstract readonly ui: ViewStateController;
-
-	/** `BacklogViewHost`'s own, implemented by the view — see the class comment. */
-	abstract isFiltering(): boolean;
 
 	/**
 	 * Which projection this view shows. UI state, not a base setting: it lives
@@ -119,9 +111,7 @@ export abstract class ViewStateSurface extends BasesView {
 	}
 
 	isLaneCollapsed(name: string): boolean {
-		// The quick filter overrides every fold, exactly as `isCollapsed` does for a row:
-		// while a search runs, everything on a path to a match renders open.
-		return !this.isFiltering() && this.ui.isLaneCollapsed(name);
+		return this.ui.isLaneCollapsed(name);
 	}
 
 	setLaneCollapsed(name: string, collapsed: boolean): void {
@@ -129,10 +119,7 @@ export abstract class ViewStateSurface extends BasesView {
 	}
 
 	columnCollapsed(scope: ColumnScope, value: string | null, autoCollapse: boolean): boolean {
-		// The filter overrides this fold like every other, and short-circuiting BEFORE the
-		// controller is what keeps a narrowed board from settling a default: while a search
-		// runs, a column is open because the search says so and not because anyone ruled.
-		return !this.isFiltering() && this.ui.columnCollapsed(scope, value, autoCollapse);
+		return this.ui.columnCollapsed(scope, value, autoCollapse);
 	}
 
 	setColumnCollapsed(scope: ColumnScope, value: string | null, collapsed: boolean): void {

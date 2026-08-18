@@ -103,6 +103,9 @@ export interface ScrollBox {
  * `TimelineRender.drawn` (`render/timeline.ts`) for where each is decided. Declared
  * here, beside `RoadmapSnapshot`, rather than imported from `render/timeline.ts`: that
  * module reaches `host.ts` (through `RowContext`), so the other direction would cycle.
+ * Measured rather than assumed, on the type that tried it the other way first: a `render/`
+ * type imported back into `host.ts` turned the `columns.ts` ↔ `menu.ts` ↔ `host.ts` web
+ * into **sixteen** cycles `npm run analyze` refuses.
  */
 export interface DrawnColors {
 	/** A bar overridden green by `.pbl-timeline-row.pbl-done .pbl-bar` — wins outright. */
@@ -162,70 +165,36 @@ export interface DrawnColors {
 export type BarColors = Omit<DrawnColors, 'absence' | 'daysLost'>;
 
 /**
- * A surface that put an item on screen, and where that item's match links go: the card
- * itself, or a row's sticky lead cell.
- *
- * `listsChildren` is whether that surface shows the item's children on its own face,
- * which decides whether a match already on the card is named twice. It cannot be read off
- * `RowContext.cardKids`: a timeline row joins that set for its FOLD chevron, which lists
- * nothing.
- *
- * Declared HERE, beside `RoadmapSnapshot` and beside `DrawnColors` above, for that type's
- * own reason rather than a new one: the render modules produce it, but they all reach
- * `host.ts` (through `RowContext`), so an import the other way turns the whole
- * `columns.ts` ↔ `menu.ts` ↔ `host.ts` web into sixteen cycles `npm run analyze` refuses.
- * Measured, not assumed — it was written in `render/columns.ts` first and fallow named
- * every one of them.
- */
-export interface PlacedMount {
-	item: BacklogItem;
-	mount: HTMLElement;
-	listsChildren: boolean;
-	/**
-	 * How this surface shows what the filter found BELOW the item — a separate question
-	 * from `listsChildren`, and deliberately not inferred from it. `'links'` is a button
-	 * per match, which a card has the width for; `'count'` is one fixed-width chip that
-	 * opens the row menu, which is all a sticky lead COLUMN can afford.
-	 *
-	 * Measured, not preferred. The lead's only shrinkable items are the row's title and
-	 * whatever names the matches, so they shrink together: with titles in the lead, a row
-	 * that gained a match rendered one character of its own name at the default 220px
-	 * width while its neighbours showed theirs in full. A row that gains matches must not
-	 * lose its identity, so the row's face costs a fixed width or nothing.
-	 *
-	 * `'none'` is a surface that DREW the item and can show nothing on it — a milestone's
-	 * diamond, which is 12px of rotated mark with no lead, no count slot and no room for a
-	 * chip. It registers all the same, and that is the whole reason the value exists:
-	 * `nameMatches` reads `carded` off this register, so an item drawn and not registered
-	 * reads as an item NOT drawn, and its parent names a match the reader is already
-	 * looking at. Registering is about what is on screen; `face` is about what can be
-	 * written on it. What it costs — a match BENEATH a milestone gets no affordance
-	 * anywhere on the grid — is stated in [[Milestones in one row on the dated axis]] 3d.
-	 */
-	face: 'links' | 'count' | 'none';
-}
-
-/**
- * The roadmap as last rendered: the derived model, and the rendered cards in
- * reading order — axis first, then the shelf, then the context strip — which is
- * the order the keyboard walks.
+ * The roadmap as last rendered: the derived model, and the rendered cards in the
+ * order the frame drew them, which is the order the keyboard walks. {@link
+ * RoadmapSnapshot.cards} is where that order is stated.
  */
 export interface RoadmapSnapshot {
 	roadmap: RoadmapModel;
 	/**
-	 * The NAVIGABLE cards, in reading order — axis first, then the shelf, then
-	 * context. A collapsed shelf contributes none, exactly as an empty one does, so
+	 * The NAVIGABLE cards, in reading order, and this field is the ONE statement of what
+	 * that order is: the render pushes onto it in draw order and nothing sorts it
+	 * afterwards, so the two cannot disagree. It differs by axis — the shelf leads on the
+	 * HORIZON axis (2026-08-17, [[The shelf leads the horizon board]]), the grid axes stay
+	 * axis-then-shelf because their shelf reads conflicts the grid render produces — and
+	 * the context strip is last on all three. The Alt+arrow ladder is NOT derived from it
+	 * and leads with the shelf everywhere; see `horizonStops` for why that is its own rule.
+	 *
+	 * A collapsed shelf contributes none, exactly as an empty one does, so
 	 * the keyboard walk and `aria-activedescendant` never reach past what is on screen.
 	 */
 	cards: BacklogItem[];
 	/**
-	 * What the pass drew, by path — the register `nameMatches` built, kept so the row
-	 * menu can offer the same matches the faces do. The menu is handed an item and no
-	 * surface, so `listsChildren` has to travel with the mount or the menu would have
-	 * to guess: always subtracting loses a row's direct-child match, never subtracting
-	 * offers a card's disclosure entries a second time.
+	 * Which paths this pass put on screen — a card, a timeline row or a marker's diamond.
+	 * `cardedPaths` reads exactly this, so `Open child "…"` names only a child no surface
+	 * has already drawn.
+	 *
+	 * Paths and nothing else. It was a map to the item and the ELEMENT it was drawn on
+	 * until 2026-08-17, which nothing ever read: a snapshot outlives its frame on the
+	 * host, so that retained a detached subtree per drawn row for a value only
+	 * `.keys()` was ever asked for.
 	 */
-	placed: ReadonlyMap<string, PlacedMount>;
+	placed: ReadonlySet<string>;
 	/**
 	 * The shelf's own element for THIS render. Carried so a control that rebuilt the
 	 * pane can find its own replacement afterwards — the pressed button is gone by
@@ -308,13 +277,11 @@ export interface BacklogViewHost {
 	readonly columnFit: ColumnFit | null;
 	setColumnFit(fit: ColumnFit | null): void;
 	readonly selectedPath: string | null;
-	/** Current quick-filter text ('' when inactive). Dragging is disabled while filtering. */
-	readonly filterText: string;
 	/** True when the Base has a group-by configured, which this view does not apply. */
 	readonly groupingIgnored: boolean;
 
 	/**
-	 * True when this item's row is not rendered: excluded by the quick filter or,
+	 * True when this item's row is not rendered: not drawn by this projection at all or,
 	 * while completed items are hidden, part of a fully-done subtree. Rendering,
 	 * keyboard navigation and menus consult this; data operations never do —
 	 * order math always runs over the full sibling lists.
@@ -326,28 +293,6 @@ export interface BacklogViewHost {
 	 * emptied a Deliverable card's child disclosure from a setting flipped elsewhere.
 	 */
 	isRowHidden(item: BacklogItem): boolean;
-	/**
-	 * The same rule with the quick filter suspended: the population a filtered count
-	 * is "of". Everything else that hides rows still applies — a stage's full count
-	 * is the work in it, not the work in it plus what another setting is hiding.
-	 */
-	isRowHiddenUnfiltered(item: BacklogItem): boolean;
-	/**
-	 * True when the quick filter matched this item ITSELF, rather than keeping it on
-	 * screen for a relative that matched. The distinction is what lets a card say
-	 * which of the things below it the search actually found.
-	 */
-	isFilterMatch(item: BacklogItem): boolean;
-	/**
-	 * True while the quick filter is narrowing the tree. Collapse state, dragging
-	 * and their affordances pause on exactly this condition — not on the raw input
-	 * text, which may be whitespace that filters nothing.
-	 */
-	isFiltering(): boolean;
-	/** Update the quick filter, sync the toolbar input, and re-render the tree. */
-	setFilter(text: string): void;
-	/** Move keyboard focus into the toolbar filter input. */
-	focusFilter(): void;
 
 	/**
 	 * Whether this item's ROW is folded — a tree row, or a dated-axis timeline bar. A
@@ -471,11 +416,13 @@ export interface BacklogViewHost {
 	/**
 	 * The shelf's own title search — a second narrowing beside the type filter, scoped to
 	 * the shelf rather than to the view, so a reader can dig through untriaged work without
-	 * the toolbar's quick filter narrowing the plan beside it.
+	 * a narrowing of the plan beside it.
 	 *
 	 * SESSION state, and the one shelf pick the view-state store does not hold: a search is
-	 * something someone is doing right now, not a property of the view — `FilterState`'s own
-	 * rule, applied to the same kind of value.
+	 * something someone is doing right now, not a property of the view. Persisting it would
+	 * open a saved view onto a shelf silently narrowed by a search nobody remembers typing —
+	 * the rule the toolbar's own quick filter kept until it was withdrawn (2026-08-17), and
+	 * the one part of it this box inherits.
 	 */
 	readonly shelfSearch: string;
 	/** Narrow the shelf by title and re-render the content pane; '' clears it. */

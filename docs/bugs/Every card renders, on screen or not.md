@@ -121,12 +121,20 @@ placeholders do shrink the band — 5055px of scroll range becomes 4829px, ~1.7p
 — and that was not enough to cost a card at any depth tried.
 
 Two stand-ins in that probe, and neither is hidden. The shelf the probe scrolled was the
-HORIZON axis's, which does not scroll on its own: the band rule — a maximum plus an
-`overflow-y` per band — is written for `.pbl-roadmap-dates`, and on the horizon axis the
-shelf is sticky and sized by its content, in a vault exactly as here. It was given the
-dated axis's own cap to make a long shelf scroll at all. The dated shelf this fixture
-really draws then holds 20 cards rather than 134, and drifts by nothing at 60% depth too.
-So what is measured is a 134-card scrolling shelf, not this vault's dated one.
+HORIZON axis's, which did not scroll on its own at the time: the band rule — a maximum
+plus an `overflow-y` per band — was written for `.pbl-roadmap-dates` alone, and on the
+horizon axis the shelf was sticky and sized by its content, in a vault exactly as here. It
+was given the dated axis's own cap to make a long shelf scroll at all. The dated shelf
+this fixture really draws then holds 20 cards rather than 134, and drifts by nothing at
+60% depth too. So what is measured is a 134-card scrolling shelf, not this vault's dated
+one.
+
+**That first stand-in has since stopped being one, which does not make the measurement
+retroactively better.** [[The horizon board sized itself from whichever cards had
+rendered]] gave the horizon axis its own band rule the next day, so its shelf now caps and
+scrolls without a probe pasting the cap in. The number above was still taken through a
+pasted declaration; what changed is that the same configuration is now what ships. Re-run
+it rather than promoting it.
 
 That first sentence said "the harness pane has no height cap" until it was checked: the
 leaf is the window's height and clips, `.pbl-view` with it, so the harness pane is a pane.

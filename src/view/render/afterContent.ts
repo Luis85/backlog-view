@@ -13,10 +13,12 @@ import { BacklogViewHost } from '../host';
  * makes "after the content, not in the toolbar pass" one decision instead of four
  * comments a reader has to notice agree.
  *
- * Every path that redraws CONTENT calls it — not only a full render. A filter re-renders
- * the content alone, and it can change every one of these: the count becomes "3 of 18",
- * the collapse controls go inert, the last bar drawing a colour can leave the grid (or the
- * first arrive), and all three change the row's width.
+ * Every path that redraws CONTENT calls it — not only a full render — and the caller does
+ * not have to work out which of these its own change touches. So nothing below is
+ * conditional on where the render came from, and no list of those paths is kept here: one
+ * stood here until 2026-08-17, naming the paths a controller happened to hold and missing
+ * the view's own, and a longer list is the same defect with more entries. The next
+ * content-only path must not have to prove which steps it may skip.
  */
 export function syncAfterContent(host: BacklogViewHost, els: { toolbarEl: HTMLElement; legendEl: HTMLElement }): void {
 	syncCountLabel(host, els.toolbarEl);

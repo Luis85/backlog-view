@@ -85,12 +85,6 @@ const MOVING: ManualSection = {
 				'own ladder wherever it lands and is refused none of them. Indent is not among them: ' +
 				'it nests under the row above, which is on this screen already.',
 		},
-		{
-			term: 'While a quick filter is active',
-			text:
-				'Dragging is off entirely, because rows next to each other under a filter are not ' +
-				'siblings. A row that will not lift is the filter, not a fault.',
-		},
 	],
 };
 
@@ -176,19 +170,16 @@ const FINDING: ManualSection = {
 				'remembered per view per device, and never written to the base.',
 		},
 		{
-			term: 'Quick filter',
+			term: 'Searching',
 			text:
-				'Narrows to matching titles — but keeps the whole match path visible: a match, its ' +
-				'ancestors and its entire subtree all stay on screen, and collapsed rows are forced ' +
-				'open while it runs. Most of what remains did not match itself. On the board and the ' +
-				"roadmap, a match a card is not already showing on its own face gets named there " +
-				'instead of disappearing.',
+				"Use the Base's own search: it narrows the results this view is given, and the " +
+				'ancestors a narrowed result needs are loaded around it, so a search still reads as ' +
+				'a tree rather than a flat list. The roadmap\'s unplaced shelf has a search of its ' +
+				'own, scoped to the untriaged work beside it.',
 		},
 		{
 			term: 'Show completed items',
-			text:
-				'When off, a subtree that is entirely done is hidden. The quick filter overrides it ' +
-				'while it runs.',
+			text: 'When off, a subtree that is entirely done is hidden.',
 		},
 		{
 			term: 'The ignored-notes count',
@@ -211,12 +202,12 @@ const FINDING: ManualSection = {
 		{
 			term: 'Nothing showing at all',
 			text:
-				'Five causes, each with its own one-press fix. Focused on a type nothing matches — ' +
+				'Four causes, each with its own one-press fix. Focused on a type nothing matches — ' +
 				'the rest of the backlog is untouched elsewhere (switch focus back to "All types", ' +
 				'or create one). Unfocused: the Base returned nothing (point its filter at the ' +
 				'backlog folder), or returned only ignored notes (turn off Ignore notes outside the ' +
-				'hierarchy, per the count above). With items present: a quick filter matching none ' +
-				'of them (Clear filter), or every subtree done (Show completed items).',
+				'hierarchy, per the count above). With items present: every subtree done ' +
+				'(Show completed items).',
 		},
 		{
 			term: 'Empty differently, on the board and the roadmap',

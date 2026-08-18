@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { ProductBacklogView } from '../../src/view/backlogView';
 import { FakeVault, FakeViewConfig } from '../helpers/vault';
 import { makeView, useViewHarness } from '../helpers/view';
-import { cardByTitle, cardTitles, columnByName, countOf } from '../helpers/board';
+import { cardTitles, columnByName, countOf } from '../helpers/board';
 
 useViewHarness();
 
@@ -35,7 +35,7 @@ describe('an excluded Deliverable still carries a matching descendant', () => {
 		return vault;
 	}
 
-	function excludedDeliverableView(focus: string, filter: string) {
+	function excludedDeliverableView(focus: string) {
 		const vault = contextVault();
 		const containerEl = document.body.createDiv();
 		const view = new ProductBacklogView({} as never, containerEl);
@@ -47,33 +47,14 @@ describe('an excluded Deliverable still carries a matching descendant', () => {
 		view.onDataUpdated();
 		view.setFocusLevel(focus);
 		view.setProjection('board');
-		view.setFilter(filter);
 		return { view, config, containerEl, vault };
 	}
 
-	it('still renders the Deliverable as a context card, and names the hidden match on its face', () => {
-		const { containerEl } = excludedDeliverableView('PBI', 'Widget');
-
-		// Excluding Deliverables from the requirements board must not remove the
-		// context-row scaffolding an outsideFilter Deliverable is entitled to like any
-		// other excluded ancestor — its Task child has no card of its own under focus
-		// (only PBI-rank roots are candidates), so this card is the only way to reach it.
-		const card = cardByTitle(containerEl, 'D');
-		expect(card.hasClass('pbl-card-context')).toBe(true);
-		// Named by the disclosure rather than the match list: the match is a DIRECT
-		// child, so the card lists it there and `undisclosedMatches` refuses to say the
-		// same thing twice. What this test is about is that the excluded Deliverable
-		// names it at all — either list is that.
-		expect(card.querySelector('.pbl-card-kids-list')?.textContent).toContain('Widget');
-		expect(card.querySelector('.pbl-card-matches')).toBeNull();
-	});
-
 	it('never counts the exempted Deliverable — the rule the fix must not break', () => {
-		const { containerEl } = excludedDeliverableView('PBI', 'Widget');
+		const { containerEl } = excludedDeliverableView('PBI');
 
-		// A rendered context card still contributes 0 to its column's count AND its
-		// fullCount — the filter is active, so the header speaks the pair.
-		expect(countOf(columnByName(containerEl, 'No state'))).toBe('0 of 0');
+		// A rendered context card still contributes 0 to its column's count.
+		expect(countOf(columnByName(containerEl, 'No state'))).toBe('0');
 		// ...and 0 to the toolbar's item count: only the Task it places is a real result,
 		// and the Deliverable itself was never in `model.results` to begin with.
 		expect(containerEl.querySelector('.pbl-count-label')?.textContent).toBe('1 item');

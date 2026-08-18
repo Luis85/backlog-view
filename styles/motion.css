@@ -10,7 +10,6 @@
 	.pbl-grip,
 	.pbl-add,
 	.pbl-chevron,
-	.pbl-filter-input,
 	.pbl-col-grip::before {
 		transition: none;
 	}

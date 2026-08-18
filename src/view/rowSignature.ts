@@ -119,7 +119,7 @@ import { BacklogViewHost, Column } from './host';
  *
  * It exists so {@link rowSignature} below can stay strictly per-item. A row draws from more
  * than its own note — `showCounts` turns the rollup cell on and off, a changed done value
- * repaints `.pbl-done`, the filter text decides which substring lights up, the fit verdict
+ * repaints `.pbl-done`, the projection decides what a row may draw at all, the fit verdict
  * sizes every cell — and `refreshFromData` re-resolves the settings on the same
  * argument-less update path, so a view-option change arrives looking like a data change.
  *
@@ -132,7 +132,6 @@ export function renderInputs(host: BacklogViewHost): string {
 		host.settings,
 		host.columns,
 		host.projection,
-		host.filterText,
 		host.columnFit,
 		// The HEADER's, not the rows': a cell points at its column's published custom
 		// property rather than holding a number, so a resize moves every row without

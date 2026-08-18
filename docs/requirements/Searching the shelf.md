@@ -58,7 +58,8 @@ open-pick, and "show me only Epics" had no entry at all.
    insensitively; a group with nothing left goes with its cards.
 3. The count on the disclosure does not move: it is the shelf's statement about the
    results, not about what is currently on screen.
-4. Escape in the box clears it and every card comes back.
+4. Escape in the box clears it and every card comes back, and so does an **x** button
+   that appears beside the box while — and only while — there is something to clear.
 5. The type filter offers **Show all types** and **Hide all types** above its per-type
    entries, and stays open across a pick — so "only the type I want" is hide-all then
    one, in one open menu.
@@ -104,6 +105,13 @@ open-pick, and "show me only Epics" had no entry at all.
 - Escape clears the search — except while an IME composition is live, where it is the
   IME's own cancel and passes through untouched. The card menu offers the same clear while
   a search runs.
+- A clear button renders beside the box exactly while the search is non-empty, clears it
+  on a click, and leaves focus in the box it emptied. It is the pickers' equal in every
+  other respect — a real named `<button>`, `tabindex="-1"` inside the composite and lifted
+  with them where the pane draws no card, which is the state a search matching nothing
+  produces and the one this button is the only way out of.
+- The field never wears two clear affordances: the platform's own is suppressed, so the
+  one on screen is the one that narrows the shelf.
 - The search box is `tabindex="-1"` wherever the pane is a composite and returns to the
   tab order wherever the pane draws no card, exactly as the two pickers do.
 - The type picker reopens after each pick, carrying the checkmarks that pick produced,
@@ -129,7 +137,19 @@ and persisting it would open a saved view onto a shelf narrowed by a search nobo
 remembers typing.
 
 The box renders in `src/view/render/shelfControls.ts`, beside the two pickers, and is the
-one FORM control the shelf's header may hold — a menu cannot be typed into. It therefore
+one FORM control the shelf's header may hold — a menu cannot be typed into. `input[type=
+'search']` is what it is, for the semantics and for whatever a theme gives one; what that
+type is NOT is the clear affordance. It was chosen believing the platform drew one
+"only while there is something to clear", a claim nothing checked and a vault did not
+keep (2026-08-17). `renderSearchClear` beside it draws the plugin's own on the toolbar
+filter's pattern — gated on `host.shelfSearch !== ''` rather than hidden by a class, since
+every keystroke rebuilds this header anyway and an absent control cannot be focused by
+assistive tech while it does nothing — landing on the same `runSearch` Escape uses, so the
+two inputs cannot disagree about what a clear is or where focus goes after one.
+`styles/shelf.css` suppresses `::-webkit-search-cancel-button` so the field can never wear
+two: a headless Chromium here draws no native button even for a bare `input[type=
+'search']`, which makes the premise unverifiable from this repository in both directions
+rather than merely false, and a drawn control must not rest on it. It therefore
 keeps the half of that header's rule that is about Tab (`tabindex="-1"`, lifted with the
 pickers by `syncShelfTabStops` wherever the pane draws no card) and pays the ARIA cost the
 disclosure and the two resize grips already pay: a focusable non-`option` inside a

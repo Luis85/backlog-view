@@ -13,7 +13,67 @@
  * review found it getting wrong: the element a rule matches, the at-rule above it, the
  * two branches of a `var()`, and the difference between resolving a value and finding a
  * cycle. What it deliberately does not model is specificity — see `declarations`.
+ *
+ * `bodyOf` is the plainest thing here and is why this file is now the home for every
+ * stylesheet READ rather than for custom properties alone: every suite asserting a whole
+ * declaration in a named rule had hand-rolled its own reader, and several of those copies
+ * were subtly wrong in ways their own callers could not see.
  */
+
+/**
+ * The declarations of one rule, addressed by its selector LIST — pass the whole list,
+ * newlines and all, for a grouped rule.
+ *
+ * **Two requirements, both inherited and both failing toward a loud throw.** The match is
+ * EXACT rather than a prefix, which is load-bearing now that two rules in `roadmap.css`
+ * open on `.pbl-roadmap .pbl-shelf,` and differ in nothing but which bands follow it; and
+ * the rule must start at LINE START, so one indented into an `@media` block reads as
+ * absent. `test/view/rendering.test.ts` is the suite that genuinely asks an `@media`
+ * question and is deliberately not a caller — it wants the rule NEAREST an enclosing
+ * wrapper, which is a different question rather than a stricter one.
+ *
+ * The one rule reader the stylesheet suites share, and deliberately not built on anything
+ * above it. `declarations` answers for custom properties and `rules` for property NAMES,
+ * while every caller asserts declaration TEXT — `max-height: 30%;`,
+ * `contain: inline-size;` — which only the body carries. `eachBlock` is the one that
+ * could plausibly have carried this, and was declined for the reason that matters when
+ * an INSTRUMENT is what changes: it strips comments and normalises selector whitespace,
+ * so every assertion reading a body would have been re-pointed at a subtly different
+ * string by the commit that was supposed to leave them alone. This body was lifted
+ * verbatim from the copy two suites already shared, byte for byte, so their assertions
+ * are provably untouched.
+ *
+ * **What belongs here is ONE rule addressed by its whole selector; a question about a SET
+ * of rules, or about a rule's position under a wrapper, is a different instrument and
+ * stays where it is.** That is the rule rather than a count, because the count was wrong
+ * twice: the brief that started this sweep named four copies, `grep -rn "css.indexOf"`
+ * found three more, and `grep -rn "\.indexOf("` and `grep -rn "new RegExp(\`"` each found
+ * further ones again. A number here would be the fourth version of it.
+ *
+ * The three surviving readers are survivors by the rule above, not leftovers.
+ * `test/view/rendering.test.ts` wants the rule NEAREST an enclosing `@media`, which the
+ * line-start requirement above puts out of reach. `leadTintRules` and the focused-grip
+ * `tokens` in `test/view/timelineBoxing.test.ts` want EVERY rule whose selector ends at a
+ * given class — a set, where this returns one body — which is why both walk `split('}')`
+ * instead. A fourth spelling was swept rather than kept: `test/domain/stateColors.test.ts`
+ * matched `\.pbl-state-c-${name}\s*\{([^}]*)\}` with no line anchor, so it carried the
+ * suffix-match hazard as a pattern rather than as an `indexOf`.
+ *
+ * The copies that WERE swept were wrong in two ways, both invisible from their call sites:
+ * three sliced from the SELECTOR rather than from the `{`, so a needle that could appear
+ * in a prelude passed on the prelude; and two asserted inside the helper, so a renamed
+ * selector failed with no test name attached.
+ *
+ * `file` is passed rather than recovered from the text: the caller already knows which
+ * stylesheet it read, and a miss has to name it to be actionable. It THROWS on a miss —
+ * a helper that asserted would report a renamed selector with no test name attached.
+ */
+export function bodyOf(css: string, selector: string, file: string): string {
+	const at = css.indexOf(`\n${selector} {`);
+	if (at === -1) throw new Error(`no rule for ${selector} in ${file}`);
+	const open = css.indexOf('{', at);
+	return css.slice(open + 1, css.indexOf('}', open));
+}
 
 /**
  * The selectors a harness page matches, by the ELEMENT they match — which is two

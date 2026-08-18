@@ -10,7 +10,6 @@ files:
   - src/view/render/toolbar.ts
   - src/view/render/toolbarBusy.ts
   - src/view/render/toolbarStatus.ts
-  - src/view/render/toolbarFilter.ts
   - src/view/render/toolbarControls.ts
   - src/view/render/toolbarFit.ts
 started: ""
@@ -63,8 +62,8 @@ today's icon size, add up to.
    `clientWidth` it advances a step, up to five, and writes the step as `data-pbl-fit` on
    the toolbar element.
 3. `styles/toolbarFit.css` reads that attribute. Each step hides more of the row — the
-   switcher's four words first, then the remaining labels together with the filter and
-   the dated axis's two singles, then the backfill, the bulk-collapse buttons and the
+   switcher's four words first, then the remaining labels together with the dated axis's
+   two singles, then the backfill, the bulk-collapse buttons and the
    click-action toggle, then the
    two advisory notes with the divider that separated them from the count, then the count
    with the divider that led its zone — and `overflow: clip` on the bar means anything a
@@ -111,8 +110,7 @@ today's icon size, add up to.
 - **2a — a rung would remove the control that currently holds focus.** The row does not
   drop a keyboard user on the floor: `syncToolbarFit` sends focus to the `⋯` whenever
   the newly-written step hides the element that had it, because the `⋯` is where that
-  control's command actually went. A filter that has focus is the one control this can
-  never fire for — see 4a.
+  control's command actually went.
 - **2b — the rung changes while the `⋯` menu is open.** A pane widened or a theme
   swapped under an open menu can hide the `⋯` itself, and focus is in the menu rather
   than in the row, so 2a's handoff does not fire. The pick that follows still lands
@@ -125,11 +123,7 @@ today's icon size, add up to.
   disabled and checked state is read off that button's own attributes rather than
   re-derived — the write gate refuses a stray write on its own, but a mis-checked
   Compact-rows entry would say the opposite of what pressing it does.
-- **4a — the filter has focus when a narrower rung would collapse it.** It is never
-  collapsed while focused. The flag that keeps it open is set at the one place focus
-  *arrives* — not at each of the four places that could otherwise take it away, which
-  is how this shipped broken four times before the rule moved there.
-- **4b — the pane keeps narrowing past the last rung.** The row clips rather than
+- **4a — the pane keeps narrowing past the last rung.** The row clips rather than
   wrapping, so one row still holds, and what it clips is its RIGHT end. Moving the
   primary action to the head of the row is what settled this: New used to be last and
   was therefore the first thing cut, which no arrangement of rungs could fix — a rung
@@ -141,7 +135,11 @@ today's icon size, add up to.
 
   Measured in the harness, one row (47px) at every width down to 320px, on both
   projections: at 500px nothing is clipped at all; at 420px nothing; at 380px the clip
-  reaches **undo**; at 320px the completed toggle and the filter's button go with it.
+  reaches **undo**; at 320px the completed toggle goes with it. Those widths were measured
+  while the quick filter was still a rung of this ladder — it was withdrawn on 2026-08-17
+  ([[Remove the quick filter, now that Bases has its own search]]), taking about 130px of
+  shedable width off the row, so the clip now arrives LATER than the figures say and the
+  next harness pass is what would make them current.
   The switcher, New and the `⋯` survive every one of them, which is the property this
   extension exists to state — the two controls that say what you are looking at and
   what you can add, plus the way back to everything shed. Those figures were taken
@@ -268,9 +266,7 @@ Nothing in `toolbarFit.ts` calls the ladder. It is driven from six places outsid
 and they divide by whether a render follows the width change. One does: the call at the
 end of `renderTreeContent` (`backlogView.ts`), placed after the content because the
 count is one of the things being measured, and covering a full render and a content-only
-one alike. The other five have no render behind them — `revealFilter` and the filter
-input's blur handler (`src/view/render/toolbarFilter.ts`), which open and collapse an
-input worth about 130px; `syncBusy` (`src/view/render/toolbarBusy.ts`), on the busy
+one alike. The other four have no render behind them — `syncBusy` (`src/view/render/toolbarBusy.ts`), on the busy
 indicator's visibility transition and deliberately not on the per-file ticks between;
 `ResizePolicy.shouldRebuildOnResize` (`view/resize.ts`), which re-measures the row on
 every resize notification before deciding whether the tree itself needs rebuilding; and
@@ -279,16 +275,16 @@ rendered text this ladder measures without moving any box the `ResizeObserver` w
 
 **`src/view/render/toolbar.ts` is the orchestrator**, split by subject (2026-08-10) once
 it became the repository's top churn hotspot despite sitting well under the 400-line
-budget — the busy indicator, the status readouts and the filter each grew their own file
+budget — the busy indicator and the status readouts each grew their own file
 so a change to one no longer means opening the other two. What stays here is
 `renderToolbar` itself (the render order, the zones in the sequence the main flow
 states) and the controls it composes directly — the New button, the mode toggle, the
 focus picker, the completed toggle — plus `syncCollapseCtls`, because the bulk collapse
 BUTTONS are drawn in `renderToolbar`'s own body rather than by a picker function of
-their own, so both stay native exports of this file. It also re-exports the five
-symbols the split moved out from under it — `syncBusy`, `syncFilterUi`, `syncCountLabel`,
-`revealFilter`, `detectIgnoredGrouping` — so `backlogView.ts` and the test suite keep one
-import path into the toolbar rather than one per subject file.
+their own, so both stay native exports of this file. It also re-exports the symbols the
+split moved out from under it — `syncBusy`, `syncCountLabel`, `detectIgnoredGrouping` — so
+`backlogView.ts` and the test suite keep one import path into the toolbar rather than one
+per subject file.
 
 `src/view/render/toolbarBusy.ts` is the write-in-flight indicator end to end:
 `renderBusyIndicator`, `syncBusy`, and the two internals only it calls —
@@ -306,19 +302,17 @@ read by the count label, the completed toggle's "(N hidden)" and `renderToolbar`
 paint alike, so the three cannot disagree about what they are counting) and
 `levelBreakdown` (the count's tooltip).
 
-`src/view/render/toolbarFilter.ts` holds the quick filter's toolbar half:
-`renderFilterBox`, `syncFilterUi`, `revealFilter`.
-
 `setTextIfChanged` — the live-region-safe text write both `toolbarBusy.ts` and
 `toolbarStatus.ts` need — moved to `src/view/render/toolbarControls.ts` when the split
 put its two call sites in two different files; a two-line local repeated in both would
 be the DRY violation the original "one file" version was written to avoid.
 
-Two projection-specific notes own their own slice of this row rather than being restated
+One projection-specific note owns its own slice of this row rather than being restated
 here: [[Collapsing a bar's subtree]] for the bulk collapse controls'
-`expandAll`/`collapseAll`/`collapseButton`/`collapseCtlsDisabled`
-(`toolbarControls.ts`), and [[Quick filter]] for `revealFilter` and why the filter is
-the one control this ladder cannot simply hide.
+`expandAll`/`collapseAll`/`collapseButton`/`collapseCtlsDisabled` (`toolbarControls.ts`).
+The quick filter was a second such slice and the one control this ladder could not simply
+hide; it is [[Quick filter]], withdrawn on 2026-08-17, and the rung that shed it is gone
+with it.
 
 Driven in `test/view/toolbar.test.ts` (the render order and the four sync functions,
 across whichever file each now lives in), `test/view/toolbarZone.test.ts` (the

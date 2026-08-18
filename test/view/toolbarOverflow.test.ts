@@ -11,8 +11,8 @@ useViewHarness();
  * The `⋯` is what makes "the ladder sheds controls" survive the rule that a responsive
  * hide is a space decision and no COMMAND is withheld for it. Two questions, and the
  * second is the one that can go quietly wrong: an entry that stays enabled while the
- * button it duplicates is disabled would write collapse state a quick filter is
- * overriding, from a pane too narrow to show the button refusing it.
+ * button it duplicates is disabled would write collapse state onto a projection with no
+ * disclosure to show it, from a pane too narrow to show the button refusing it.
  */
 describe('the toolbar overflow menu', () => {
 	const openOverflow = (containerEl: HTMLElement) => {
@@ -93,13 +93,13 @@ describe('the toolbar overflow menu', () => {
 		const enabled = openOverflow(containerEl);
 		expect(enabled.find((i) => i.titleText === 'Expand all')?.disabled).toBe(false);
 
-		// A running quick filter overrides collapse state, so both bulk controls refuse
-		// the press — and the menu has to refuse it too.
-		view.setFilter('Epic');
+		// A card projection that drew no row disclosure has nothing for either bulk
+		// control to fold, so both buttons refuse the press — and the menu has to too.
+		view.setProjection('board');
 
-		const filtering = openOverflow(containerEl);
-		expect(filtering.find((i) => i.titleText === 'Expand all')?.disabled).toBe(true);
-		expect(filtering.find((i) => i.titleText === 'Collapse all')?.disabled).toBe(true);
+		const carded = openOverflow(containerEl);
+		expect(carded.find((i) => i.titleText === 'Expand all')?.disabled).toBe(true);
+		expect(carded.find((i) => i.titleText === 'Collapse all')?.disabled).toBe(true);
 	});
 
 	/**
@@ -111,41 +111,38 @@ describe('the toolbar overflow menu', () => {
 	 * listener), and the entries had no such guard at all.
 	 *
 	 * Expand/collapse is the pair that matters. A mis-enabled ✨ is refused by the write
-	 * gate; a mis-enabled Expand all really writes collapse state a quick filter is
-	 * overriding, which the user then discovers when they clear the filter.
+	 * gate; a mis-enabled Expand all really writes collapse state nothing on this screen
+	 * can show, which the user then discovers back on the tree.
 	 */
 	it('refuses a disabled bulk-collapse entry even when the menu hands the click through', () => {
 		const vault = fixture();
 		const { view, containerEl } = makeView(vault, {}, { collapsed: true });
 		expect(view.isCollapsed('Epic B.md')).toBe(true);
 
-		// A running quick filter overrides collapse state, so both bulk controls refuse
-		// the press — the state the entry above asserts is mirrored into the menu.
-		view.setFilter('Epic');
+		// A card projection with no row disclosure: both bulk controls refuse the press —
+		// the state the entry above asserts is mirrored into the menu.
+		view.setProjection('board');
 		openOverflow(containerEl)
 			.find((i) => i.titleText === 'Expand all')
 			?.click();
 
-		// Asked with the filter gone, because `isCollapsed` reports false while one is
-		// running: what is being checked is the stored state, not the overridden view of
-		// it.
-		view.setFilter('');
 		expect(view.isCollapsed('Epic B.md')).toBe(true);
 
 		// Both entries, from the state each one would visibly change: a refused Collapse
 		// all has to leave an expanded tree expanded, and one guard covering one of the
-		// pair is how the other comes to lose it.
+		// pair is how the other comes to lose it. Expanded on the TREE, where the control
+		// is live, and then refused back on the card projection where it is not.
+		view.setProjection('tree');
 		openOverflow(containerEl)
 			.find((i) => i.titleText === 'Expand all')
 			?.click();
 		expect(view.isCollapsed('Epic B.md')).toBe(false);
 
-		view.setFilter('Epic');
+		view.setProjection('board');
 		openOverflow(containerEl)
 			.find((i) => i.titleText === 'Collapse all')
 			?.click();
 
-		view.setFilter('');
 		expect(view.isCollapsed('Epic B.md')).toBe(false);
 	});
 

@@ -2,17 +2,16 @@
  * URL knobs that drive the VIEW, for states a screenshot cannot click its way to.
  *
  * `?view=` and `?axis=` in `page.ts` are the same idea for the projection and the axis.
- * These two are here rather than there because they are worth a test: what each does is a
+ * These are here rather than there because they are worth a test: what each does is a
  * real call into the view, and a knob that silently stopped making its state is a page
  * that looks fine and answers nothing.
  *
- * Both exist because of a measurement (2026-08-15): of the `.pbl-*` classes the stylesheet
+ * They exist because of a measurement (2026-08-15): of the `.pbl-*` classes the stylesheet
  * writes, 98 were rendered by no fixture in any projection. About twenty of those are a
- * DIALOG's — the manual, the state-colours editor, the creation prompt — and another
- * handful belong to a running quick filter. Neither group needs new data; both were simply
- * unreachable without a pointer, which is what a knob is for. The gestures are a different
- * problem and stay unreachable: a drag, a link drag, a hover reveal and a selection ring
- * are what a person does, and no URL can stand in for one.
+ * DIALOG's — the manual, the state-colours editor, the creation prompt — needing no new
+ * data and simply unreachable without a pointer, which is what a knob is for. The gestures
+ * are a different problem and stay unreachable: a drag, a link drag, a hover reveal and a
+ * selection ring are what a person does, and no URL can stand in for one.
  */
 import { ProductBacklogView } from '../../src/view/backlogView';
 import { openManual } from '../../src/ui/manualDialog';
@@ -56,19 +55,6 @@ export function applyWantedState(view: ProductBacklogView, search: string): void
 	if (params.has('shelf')) view.setShelfCollapsed(false);
 	const focus = params.get('focus');
 	if (focus !== null && focus !== '') view.setFocusLevel(focus);
-}
-
-/**
- * `?filter=auth` — run the quick filter, which is the view's own `setFilter`.
- *
- * A filter is not only an input with text in it: it re-renders the tree expanded to the
- * matches, marks each one, puts a match count on the cards that hide one, and — with a
- * term nothing matches — draws an empty state of its own. `?filter=zzz` is how that last
- * one is reached at all.
- */
-export function applyWantedFilter(view: ProductBacklogView, search: string): void {
-	const text = new URLSearchParams(search).get('filter');
-	if (text !== null && text !== '') view.setFilter(text);
 }
 
 /**

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { FakeVault } from '../helpers/vault';
-import { fixture, makeView, titlesOf, useViewHarness } from '../helpers/view';
+import { makeView, useViewHarness } from '../helpers/view';
 import { boardVault, cardByTitle, makeBoard } from '../helpers/board';
 import { horizonVault, makeRoadmap, shelfTitles, timelineTitles } from '../helpers/roadmap';
 import { expandAll } from '../../src/view/render/toolbarControls';
@@ -174,33 +174,3 @@ describe('the bulk collapse controls disable where nothing but a card would answ
 	});
 });
 
-describe('the collapse controls stay honest under a filter', () => {
-	it('really disables the collapse controls while a filter overrides them', () => {
-		const vault = fixture();
-		const { view, containerEl } = makeView(vault);
-
-		expect(collapseCtls(containerEl)).toHaveLength(2);
-		expect(collapseCtls(containerEl).every((b) => b.disabled)).toBe(false);
-
-		// Dimming them with CSS was enough while they were unreachable divs; a
-		// focusable button has to refuse the press itself.
-		view.setFilter('Feature');
-		expect(collapseCtls(containerEl).every((b) => b.disabled)).toBe(true);
-
-		view.setFilter('');
-		expect(collapseCtls(containerEl).some((b) => b.disabled)).toBe(false);
-	});
-
-	// `disabled` only stops a click dispatched at the button itself; one on a child still
-	// bubbles to the listener. The real icon is a child `<svg>`, but the mock only stamps
-	// `data-icon` on the button (`test/CLAUDE.md`), so a stand-in child reproduces the shape.
-	it('collapses nothing when a click lands on a descendant of a disabled collapse control', () => {
-		const { view, containerEl } = makeView(fixture());
-
-		view.setFilter('Feature');
-		collapseCtl(containerEl, 'Collapse all')?.createSpan().dispatchEvent(new MouseEvent('click', { bubbles: true }));
-		view.setFilter(''); // clearing is what would surface a stray write
-
-		expect(titlesOf(containerEl)).toEqual(['Epic A', 'Epic B', 'Feature B1', 'Feature B2']);
-	});
-});

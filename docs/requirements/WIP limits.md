@@ -59,9 +59,14 @@ rule.
 - **3a — the move would put the column over its limit.** It still happens: no drop,
   keyboard move or menu write is ever refused because of a limit. The Kanban Guide
   sanctions rare exceedance, and a board that refuses teaches people to work around it.
-- **4a — a quick filter is active.** The signal keeps reading the full population, not the
-  matches ([[The quick filter on the board]]). A filter that made an over-limit column
-  look under its limit would turn a search into a lie about the work.
+- **4a — something is narrowing what the column shows.** The signal keeps reading what the
+  stage HOLDS, never what is drawn in it: `overBy` is measured off `held`, the count taken
+  through membership alone, so the completed-items toggle, a focus level and a Base's own
+  search all leave it standing. A narrowing that made an over-limit column look under its
+  limit would turn a way of reading into a lie about the work. This was written about the
+  plugin's own quick filter, dropped on 2026-08-17
+  ([[The quick filter on the board]]) — the principle outlived the control, and it is the
+  one every later narrowing has had to satisfy since.
 
 ## Acceptance criteria
 

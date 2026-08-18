@@ -67,8 +67,9 @@
 	display: none;
 }
 
-/* Step 2 — the remaining words, the filter collapsing to its own button, and the dated
-   axis's two singles going to the `⋯`.
+/* Step 2 — the remaining words, and the single-purpose buttons going to the `⋯`: the
+   manual, the config help, the horizon axis's bucket-grid toggle and the grid axes' own
+   density and jump-to-today.
 
    The words here are the value-naming ones — which axis, which zoom, which focus level —
    and they go together rather than in some order of usefulness among themselves: they are
@@ -90,8 +91,6 @@
 	display: none;
 }
 
-.pbl-toolbar[data-pbl-fit]:not([data-pbl-fit='1']) .pbl-filter-input,
-.pbl-toolbar[data-pbl-fit]:not([data-pbl-fit='1']) .pbl-filter-icon,
 .pbl-toolbar[data-pbl-fit]:not([data-pbl-fit='1']) .pbl-bucket-grid-toggle,
 .pbl-toolbar[data-pbl-fit]:not([data-pbl-fit='1']) .pbl-density-toggle,
 .pbl-toolbar[data-pbl-fit]:not([data-pbl-fit='1']) .pbl-today-btn,
@@ -100,33 +99,11 @@
 	display: none;
 }
 
-.pbl-toolbar[data-pbl-fit]:not([data-pbl-fit='1']) .pbl-filter-reveal,
 .pbl-toolbar[data-pbl-fit]:not([data-pbl-fit='1']) .pbl-overflow-btn {
 	display: inline-flex;
 }
 
-/* …and back again in two cases, not one, and the two live on different elements on
-   purpose.
 
-   `pbl-filter-open` is the reveal having been used, and it sits on the TOOLBAR beside
-   `data-pbl-fit` — `renderToolbar` empties the bar on every full render, so a flag on
-   the `.pbl-filter` box would not survive a data refresh and the input would come back
-   hidden with focus pointing at it.
-
-   `pbl-filter-active` is the box's existing class for "this input has text in it", and
-   it stays on the box because `renderFilterBox` re-derives it from the value every
-   render. Without it, someone who typed a filter at step 0 and then narrowed the pane
-   would arrive here with a non-empty, possibly focused input and watch the rung hide
-   it. What a step collapses is only ever an EMPTY filter. */
-.pbl-toolbar[data-pbl-fit]:not([data-pbl-fit='1']).pbl-filter-open .pbl-filter-input,
-.pbl-toolbar[data-pbl-fit]:not([data-pbl-fit='1']) .pbl-filter-active .pbl-filter-input {
-	display: inline-block;
-}
-
-.pbl-toolbar[data-pbl-fit]:not([data-pbl-fit='1']).pbl-filter-open .pbl-filter-reveal,
-.pbl-toolbar[data-pbl-fit]:not([data-pbl-fit='1']) .pbl-filter-active .pbl-filter-reveal {
-	display: none;
-}
 
 /* Step 3 — the backfill, both bulk collapse controls and the click-action toggle go to
    the `⋯`. Undo stays: it is the only control on the row that takes something back.

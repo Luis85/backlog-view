@@ -230,10 +230,13 @@ the above has an `Iteration` to ask about until the grid admits one, which happe
 in `src/domain/model.ts`: `BacklogModel.iterations`, a population parallel to `results`
 rather than a wider version of it, read only where a grid axis (`drawsGrid`) asks for it.
 `src/view/projection.ts`'s `projectionMember` takes that axis for the same reason, folded
-into one `member` parameter by `src/view/rowVisibility.ts` to hold its five-parameter
-budget; `src/view/filterState.ts` appends the same population to its own search index,
-because that index walks from `model.roots` and a marker with no parent is never reached
-by walking from one. The three surfaces this note opens by calling wrong are
+into one `member` parameter by `src/view/rowVisibility.ts` — a bundling that was a
+five-parameter budget necessity when the quick filter still added a sixth, and is kept for
+reading rather than for the budget since that filter was withdrawn
+([[Remove the quick filter, now that Bases has its own search]]). The filter had a third
+half of this admission — appending the same population to its own search index, since that
+index walked from `model.roots` and a marker with no parent is never reached by walking from
+one — and it went with the filter; the DRAWING half above is untouched. The three surfaces this note opens by calling wrong are
 `markerLaneCaption` in `src/domain/roadmap.ts`, read by `renderLaneHead` in
 `src/view/render/lanes.ts` (which also hosts `spanText`), and the swatch in
 `src/view/render/legend.ts`.
