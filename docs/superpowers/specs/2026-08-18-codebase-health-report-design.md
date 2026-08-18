@@ -82,9 +82,12 @@ is still worth reading without it.
 
 ### Page sections
 
-1. **Vital signs** — fallow's `vital_signs` as gauges (maintainability, average and p90
-   cyclomatic, dead-code %, duplication %, unit-size risk profile, p95 fan-in), plus
-   each coverage figure against its threshold with the margin.
+1. **Vital signs** — fallow's `vital_signs` as one thin strip of figures, not gauges
+   (maintainability, average and p90 cyclomatic, dead-code %, duplication %, p95
+   fan-in), plus each coverage figure against its threshold with the margin. The
+   unit-size risk profile is the one bar on the page — four proportions are a shape,
+   not a number — drawn as inline SVG. A figure inside its limit is grey; see
+   **Visual design**.
 2. **Act on this** — one ranked list. Rows come from fallow's own `hotspots[].actions`,
    from files nearest their cap, from the lowest-covered modules, and from open bugs.
    Every row names what, where, why (the number) and which tool said so. No invented
@@ -119,10 +122,93 @@ added together.
 ### Output
 
 `.health/report.json` and `.health/report.html`, in a gitignored `.health/` directory
-beside the existing `.harness/`. The page is self-contained: inline CSS, inline SVG for
-the bars, about fifteen lines of vanilla JavaScript for the sortable table. No CDN, no
-chart library, no build step. Following `harness.mjs`, the script prints the path
-rather than opening a browser.
+beside the existing `.harness/`. The page carries its own layout CSS inline, plus about
+fifteen lines of vanilla JavaScript for the sortable table, and links one stylesheet —
+see **Visual design** below. No CDN, no chart library, no build step. Following
+`harness.mjs`, the script prints the path rather than opening a browser.
+
+## Visual design
+
+Mode is **Operate**: one person, or an agent, deciding what to work on next.
+Scanability and a straight answer outrank expression.
+
+**The world is borrowed, like everything else here.** The page links
+`test/harness/obsidian.css` — Obsidian's real `app.css`, already vendored for the
+harness — which supplies the whole token set and `color-scheme` for both schemes. So
+the report reads in the product's own visual language and owns no palette, exactly as
+`DESIGN.md`'s Borrowed Palette Rule requires of everything else. Linked rather than
+inlined: the 142 KB stays one file, and a report that silently carried a stale copy of
+the palette is the failure `test/harness/theme.css` already had once and deleted.
+
+**But nothing may lean on that stylesheet for layout.** It is *reduced* to the rules
+the harness exercises, so an element the plugin's markup never uses has whatever
+survived reduction, which may be nothing. A card-children disclosure shipped looking
+right in the harness and wrong in a vault on 2026-08-08 for exactly this reason. Every
+box, every table and every disclosure on this page writes its own layout; only colour,
+type scale, spacing steps and radii come from the tokens.
+
+### Health is the absence of colour
+
+`DESIGN.md`: *"A screen with no problems on it is monochrome apart from its badges."*
+That is the whole design, and it inverts the usual dashboard on purpose. **There are no
+green gauges** — green means *done* in this system and is explicitly never "good",
+"success" or emphasis. A clean codebase renders grey, and every spot of colour on the
+page is a thing to act on.
+
+The three bands of the ranking take existing state hues; no hue is invented:
+
+| Band | Token | Why that one |
+| --- | --- | --- |
+| high | `--text-error` | a file over its line cap is over an agreed limit — the same meaning as a column over its WIP limit, on a different subject |
+| medium | `--color-orange-rgb` | `DESIGN.md` defines orange as "look at this", not "this failed" — a cooling hotspot exactly |
+| low | `--text-muted` | reported, not urgent |
+
+The eight ladder hues are **not used**. They are work-item identity, and a module is
+not a work item.
+
+**One amendment to record rather than slip in:** `DESIGN.md` says Over-Limit Red has
+"exactly two jobs". This makes three. The concept is unchanged — a stated limit,
+exceeded — but the sentence in `DESIGN.md` is now false and should be widened when this
+ships.
+
+Two further idioms are inherited whole. **Dashed means present but not asserted**, in
+eight places already — so absent coverage renders the coverage figures dashed rather
+than hidden or zeroed. **One signal per state** — a high-band row is red *or* heavier,
+never both.
+
+### Layout
+
+Single column. The header states the answer as one literal sentence — "3 things to act
+on, 154 modules clean" — then vital signs as a thin strip of inline figures, then the
+ranked list as the hero, visible without scrolling.
+
+Sections 4, 5 and 6 are native `<details>`, closed by default. 157 module rows, 104
+hotspots and 26 type leaks must not compete with the three rows that matter, and a
+platform disclosure costs no JavaScript. The fifteen lines of script sort the modules
+table and do nothing else.
+
+`font-variant-numeric: tabular-nums` on every column of figures. Each row's `file:line`
+is a `vscode://file/<abs>:<line>` link, which turns the list from a report into a
+worklist; it hardcodes an editor, which is acceptable in a gitignored local artifact and
+is one attribute to change.
+
+### States that must read well
+
+- **Nothing to act on.** The goal state, and it must look deliberate rather than broken.
+- **Coverage absent** — figures dashed, `npm run test:coverage` named.
+- **No git history** — `hotspots` is empty; the section says so rather than rendering a
+  void.
+- **`schema_version` ≠ 7** — the page says fallow's shape changed and the report may be
+  reading it wrong.
+
+### Anti-goals
+
+- **No mobile design.** `PRODUCT.md` records desktop-first with mobile unverified, and
+  this is a laptop tool. It must not break at a narrow width; it gets no layout work
+  there.
+- **No sparklines, no trend axes.** There is no history, and an axis with one point is
+  a lie.
+- No print stylesheet. No independent palette. No green for good.
 
 ## The check
 
