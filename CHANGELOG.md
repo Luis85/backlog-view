@@ -62,6 +62,14 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ### Changed
 
+- **Fold controls read as whole sentences.** Expanding or collapsing a board column, the
+  roadmap's unplaced shelf, or a resource's band on the roadmap now takes its wording from
+  the message catalog rather than swapping a verb inside one. Nothing about the wording
+  changes in English; what changes is that a translation can reorder or inflect the whole
+  sentence instead of being handed two halves. A resource band's chevron also stopped
+  carrying an unreachable second label for the milestones row, which draws no chevron at
+  all.
+
 - **The board toggle is now called Boards.** Since the scope picker moved every board —
   Product, Deliverables, and each iteration — behind one toggle position, the switcher
   says so: the button reads **Boards** and its accessible name is

@@ -468,7 +468,7 @@ export function renderColumnFold(
 	const state = {
 		hasChildren: true,
 		collapsed: col.folded,
-		label: `${col.folded ? 'Expand' : 'Collapse'} ${col.label}`,
+		label: t(col.folded ? 'fold.expandColumn' : 'fold.collapseColumn', { name: col.label }),
 		toggle: () => host.setColumnCollapsed(scope, value, !col.folded),
 	};
 	// Focus to the PANE and never to the replacement control, `render/shelfControls.ts`'
