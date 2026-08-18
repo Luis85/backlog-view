@@ -76,7 +76,7 @@ function wasteFigures(report) {
 
 /** The three clusters, grouped because ten equal figures in a row are a wall, not a strip. */
 export function vitalSigns(report) {
-	return `<div class="clusters">
+	return `<div class="grid">
 		${cluster("Coverage", coverageFigures(report.coverage))}
 		${cluster("Complexity", complexityFigures(report.fallow.vitalSigns))}
 		${cluster("Waste", wasteFigures(report))}

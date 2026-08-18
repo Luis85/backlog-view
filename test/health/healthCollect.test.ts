@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { layerMatrix } from '../../scripts/health-charts.mjs';
 import { capFor, coverageRatios, layerOf, rank, toRepoPath } from '../../scripts/health-collect.mjs';
 
 /**
@@ -160,5 +161,49 @@ describe('rank', () => {
 
 	it('returns nothing at all when there is nothing to act on', () => {
 		expect(rank({ topCount: 2, hotspots: [], caps: [], coverage: [], debt: [] })).toEqual([]);
+	});
+});
+
+describe('layerMatrix', () => {
+	const report = {
+		graph: [
+			{ from: 'view', to: 'domain', count: 223 },
+			{ from: 'storage', to: 'domain', count: 23 },
+			{ from: 'view', to: 'view', count: 40 },
+			{ from: 'domain', to: 'view', count: 2 },
+		],
+		layers: [{ layer: 'view', files: 64 }, { layer: 'domain', files: 28 }],
+	};
+
+	/**
+	 * **The figure has to agree with its own caption.**
+	 *
+	 * It did not. The counts were written into a map keyed with a NUL separator and read
+	 * back with a space, so every lookup missed and every cell rendered empty — while the
+	 * caption, counted from the array rather than the map, still said fifteen edges. An
+	 * empty matrix is what a CLEAN result looks like, so the drawing was wrong in the
+	 * direction that reassures, which is the direction nobody checks.
+	 */
+	it('draws one filled cell per cross-layer edge', () => {
+		const html = layerMatrix(report);
+		// A filled cell is one carrying a COUNT, which is either a legal edge or a
+		// violation — the first version of this assertion counted only the legal class and
+		// so quietly expected the violation to vanish.
+		const filled = html.match(/class="mx-cell (mx-on|mx-violation)/g) ?? [];
+		expect(filled).toHaveLength(3);
+	});
+
+	it('marks an upward import as a violation and says so', () => {
+		// domain -> view points up the ladder, which lint forbids and this must not hide.
+		const html = layerMatrix(report);
+		expect(html).toContain('mx-violation');
+		expect(html).toContain('1 edge(s) break the layer rule');
+	});
+
+	it('says nothing is wrong only when nothing is', () => {
+		const clean = { ...report, graph: report.graph.filter((e) => e.from !== 'domain') };
+		const html = layerMatrix(clean);
+		expect(html).not.toContain('mx-violation');
+		expect(html).toContain('none in the shaded region');
 	});
 });
