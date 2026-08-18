@@ -9,6 +9,8 @@ source: user request
 files:
   - scripts/health-collect.mjs
   - scripts/health-render.mjs
+  - scripts/health-sections.mjs
+  - scripts/health-charts.mjs
 started: ""
 finished: ""
 horizon: ""
@@ -48,9 +50,12 @@ another's, so the judgement — which of these matters most today — has never 
 6. They read down the list, ordered by band with the high band first, and within a band by
    each row's own figure.
 7. They click a row, and their editor opens the named file at the named line.
-8. Where they want the evidence rather than the verdict, they switch to the **Tables**
-   view, which carries every table grouped under its own heading, and narrow all of them
-   at once with one filter.
+8. Where a shape would answer faster than a figure, they read it off the dashboard's
+   drawn views: imports between layers, complexity against coverage, and the two
+   distributions.
+9. Where they want the evidence rather than the verdict, they switch to the **Tables**
+   view, which carries every table grouped under its own heading, narrows all of them at
+   once with one filter, and groups the modules by layer on request.
 
 **Extensions**
 
@@ -83,13 +88,26 @@ another's, so the judgement — which of these matters most today — has never 
 - **7a — the reader is not in the editor the link names.** The link is a `vscode://` URL.
   The path is also written as plain text on the row, so the row stays usable where that
   scheme is not registered.
-- **8a — the filter matches nothing.** Every group hides itself, which would leave a
+- **8a — a figure would say what a number cannot.** A drawing earns its place only where
+  the SHAPE says something the rows do not. Imports between layers qualifies and is the
+  only view here that can falsify a claim: `fan_in` and `fan_out` are counts and can never
+  name what is at the other end of an edge, so the real graph is read from fallow's own
+  `viz` output and aggregated. Complexity against coverage qualifies because neither
+  number alone identifies a risky module and a table sorted by either one hides the
+  pairing. Two distributions qualify. A trend line does not: the report has no history,
+  and an axis with one point is a lie.
+- **8b — the layer rule is already enforced, so the map can only ever confirm it.** That
+  is the point rather than an objection. `eslint.config.mjs` fails the build on an upward
+  import, so a violation cannot reach this page; what the drawing adds is the shape the
+  rule produces and the weight of traffic between layers, and it would render an upward
+  arc in the error colour the day the rule was relaxed.
+- **9a — the filter matches nothing.** Every group hides itself, which would leave a
   filter box over an empty page reading as a broken load. A line names what was searched
   for instead. The same rule as 6a, one level down: an empty result says so.
-- **8b — a group matches nothing but its neighbours do.** The group removes itself rather
+- **9b — a group matches nothing but its neighbours do.** The group removes itself rather
   than leaving a heading over an empty table, and each surviving heading reports its own
   match count in place of its total, so the counts never describe rows that are hidden.
-- **8c — the two views are one page, not two files.** A second file would have to travel
+- **9c — the two views are one page, not two files.** A second file would have to travel
   with the first, which is the coupling that already broke the stylesheet — see the
   feature's landmines. The switch is a class on `body`, so exactly one view is in the
   document flow and nothing has to be kept in step.
@@ -117,11 +135,28 @@ another's, so the judgement — which of these matters most today — has never 
   filter matching nothing anywhere says so rather than leaving an empty page.
 - Clearing the filter restores every row and every original count.
 - Sorting a column still works inside the Tables view.
+- The dashboard draws four figures: imports between layers, complexity against coverage,
+  and the coverage and line-cap distributions. Each is drawn from data already collected,
+  in Obsidian tokens, and repaints with the reader's scheme.
+- The layer map states how many cross-layer edges there are and whether any points
+  upward; an upward edge renders in the error colour.
+- Grouping the modules by layer inserts one heading per layer with that layer's count,
+  and composes with the filter and the sort rather than replacing them: headings are
+  rebuilt from the rows currently visible, in their current order.
+- The page says how old it is, computed when it is OPENED rather than when it was
+  written, and names the commit it describes and whether that tree was dirty. It makes no
+  claim about whether the tree has changed since.
 
 ## Where it lives
 
-- `scripts/health-collect.mjs` — the four collectors, and the ranking rules that decide
-  which findings become rows.
-- `scripts/health-render.mjs` — the page, and the only module that knows markup.
+- `scripts/health-collect.mjs` — the collectors, and the ranking rules that decide which
+  findings become rows. The layer graph is gathered here rather than derived later,
+  because it needs a second fallow run: `viz --viz-format dot` is the only output
+  carrying real edges.
+- `scripts/health-render.mjs` — the shell, the two views, and every behaviour on the
+  page: the tablist, the filter, the sorting, the grouping and the age.
+- `scripts/health-sections.mjs` — the blocks, and nothing about the page that holds them.
+- `scripts/health-charts.mjs` — the four drawn figures. SVG only, in tokens, so a theme
+  change repaints them with the page.
 - `test/health/healthCollect.test.ts` — the pure functions, against fixtures sampled from
   real tool output rather than invented.

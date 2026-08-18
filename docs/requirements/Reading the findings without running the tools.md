@@ -9,6 +9,8 @@ source: user request
 files:
   - scripts/health-collect.mjs
   - scripts/health-render.mjs
+  - scripts/health-sections.mjs
+  - scripts/health-charts.mjs
 started: ""
 finished: ""
 horizon: ""
@@ -63,8 +65,12 @@ has to scrape is a page whose wording is an interface.
 
 ## Acceptance criteria
 
-- `.health/report.json` carries `generated`, `root`, `fallow`, `coverage`, `caps`, `debt`,
-  `layers` and `actions`.
+- `.health/report.json` carries `generated`, `root`, `commit`, `fallow`, `coverage`,
+  `caps`, `debt`, `layers`, `graph` and `actions`.
+- `graph` holds one entry per layer pair that actually imports, with a count — the real
+  edges, not a restatement of `fan_in`.
+- `commit` names the head the report describes and whether that tree was dirty, or holds
+  nulls outside a git checkout rather than being absent.
 - `coverage.present` is `false`, with a `reason` naming `npm run test:coverage`, when the
   coverage file is absent — the key is never simply missing.
 - `fallow.schemaVersion` is present, and is the value fallow reported.
@@ -80,6 +86,9 @@ has to scrape is a page whose wording is an interface.
 
 - `scripts/health-collect.mjs` — writes the file, and guards its own CLI entry so the
   module can be imported safely.
-- `scripts/health-render.mjs` — consumes it, and imports `layerOf` from the collector
-  rather than restating the layer map.
-- `test/health/healthCollect.test.ts` — the pure functions both depend on.
+- `scripts/health-render.mjs` and `scripts/health-sections.mjs` — consume it, and import
+  `layerOf` from the collector rather than restating the layer map.
+- `scripts/health-charts.mjs` — reads `graph`, `caps` and `coverage` from the same JSON
+  and derives nothing the collector did not already write, which is what keeps a figure
+  on the page and a figure in the file from disagreeing.
+- `test/health/healthCollect.test.ts` — the pure functions they all depend on.
