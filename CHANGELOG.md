@@ -11,6 +11,14 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ## [Unreleased]
 
+### Changed
+
+- **A new iteration is named for its goal.** `New iteration…` names the note
+  `1 - Iteration - Ship the board` rather than `1 - Iteration`, so a folder of sprints says
+  what each one was for without opening one. The goal is appended to the name you confirm,
+  sanitized into a legal file name and capped at 60 characters; with no goal, or with no
+  goal property configured, the name is unchanged.
+
 ## [0.9.1] - 2026-08-17
 
 ### Removed

@@ -7,7 +7,7 @@ import { BacklogItem, BacklogModel } from '../../domain/model';
 import { focusTarget, folderForType, isIterationType } from '../../domain/itemTypes';
 import { AxisWrite, computeIterationNoteWrites, ORDER_SPACING } from '../../domain/writePlan';
 import { createBacklogItem } from '../../storage/createNote';
-import { nextIterationDates, nextIterationName, previousIteration } from '../../domain/iterations';
+import { iterationNoteName, nextIterationDates, nextIterationName, previousIteration } from '../../domain/iterations';
 import { ITERATION_TYPE, LEVELS } from '../../domain/typeVocabulary';
 import { daysBetween, formatCivil } from '../../domain/timeline';
 import { readDate, todayCivil } from '../../domain/noteFields';
@@ -391,7 +391,7 @@ async function createIteration(host: BacklogViewHost, result: IterationResult): 
 	try {
 		const file = await createBacklogItem(host.app, host.settings, {
 			folder: folderForType(ITERATION_TYPE, host.settings) || host.settings.homeFolder,
-			title: result.name,
+			title: iterationNoteName(result.name, result.goal),
 			typeName: ITERATION_TYPE,
 			parent: null,
 			order: endOfSiblingsOrder(host.model?.realRoots ?? []),
