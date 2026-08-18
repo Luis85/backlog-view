@@ -2,6 +2,7 @@ import { Absence } from './absences';
 import { firstPlacedIndex } from './board';
 import { deriveBars, placeItem, ShelfCard, statedEnds, TimelineBar } from './bars';
 import { isIterationType, isMarkerType } from './itemTypes';
+import { ITERATION_TYPE, MILESTONE_TYPE } from './typeVocabulary';
 import { BacklogItem, BacklogModel } from './model';
 import { FieldReading, sameValue } from './noteFields';
 import { BacklogSettings } from './settings';
@@ -154,8 +155,14 @@ export function markerLane(bars: TimelineBar[]): ResourceLane {
 export function markerLaneCaption(bars: TimelineBar[]): string {
 	const iterations = bars.some((bar) => isIterationType(bar.item.typeName));
 	const milestones = bars.some((bar) => !isIterationType(bar.item.typeName));
-	if (milestones && iterations) return 'Milestones · Iterations';
-	return iterations ? 'Iterations' : 'Milestones';
+	// Built from the vocabulary, not spelled here: a type name is data, and the legend's
+	// swatch one element over builds its own caption from the same two constants — so
+	// renaming either would have desynced a row header from the swatch that explains it
+	// while both looked right in isolation. The trailing `s` is the known ceiling
+	// `count.childrenOfType` and the manual's `{deepest}s` already carry: it pluralizes a
+	// word this plugin did not write, which is `Type names are data`'s to answer.
+	if (milestones && iterations) return `${MILESTONE_TYPE}s · ${ITERATION_TYPE}s`;
+	return iterations ? `${ITERATION_TYPE}s` : `${MILESTONE_TYPE}s`;
 }
 
 export interface ResourceLane {

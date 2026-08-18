@@ -1,4 +1,5 @@
 import { Menu, MenuItem } from 'obsidian';
+import { t } from '../../i18n/t';
 import { hasPriorityLevels, hasRiskLevels, menuValues, stateMenuValues } from '../../domain/settings';
 import { BacklogViewHost, PRODUCT_BACKLOG_VIEW_TYPE } from '../host';
 import { inferFolderParent } from '../../domain/folderNotes';
@@ -421,7 +422,7 @@ function addChildrenSection(host: BacklogViewHost, menu: Menu, item: BacklogItem
 	const collapsed = isBar ? host.isCollapsed(item.file.path) : host.isCardCollapsed(item.file.path);
 	menu.addItem((mi) =>
 		mi
-			.setTitle(collapsed ? 'Show children' : 'Hide children')
+			.setTitle(collapsed ? t('fold.showChildren') : t('fold.hideChildren'))
 			.setIcon(collapsed ? 'chevron-right' : 'chevron-down')
 			.onClick(() => {
 				if (isBar) host.setCollapsed(item.file.path, !collapsed);

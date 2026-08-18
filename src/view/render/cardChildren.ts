@@ -67,7 +67,16 @@ export function renderCardChildren(ctx: RowContext, card: HTMLElement, item: Bac
 	// view, and a third question added to `isRowHidden` would put the two back out of step.
 	const drawn = item.children.filter(projectionMember(host.projection, host.effectiveScope));
 	const omitted = drawn.length - children.length;
-	const note = omitted > 0 ? ` — ${t('card.hiddenChildren', { count: omitted })}` : '';
+	// Four whole sentences rather than a phrase plus a note joined with an em dash: the
+	// dash and the clause after it are English punctuation and English grammar, and a
+	// locale that leads with the count, or that punctuates an aside differently, cannot
+	// reach either half through a `+` at this call site.
+	const tooltip = (collapsed: boolean): string => {
+		if (omitted <= 0) return collapsed ? t('card.showChildren', { title: item.title }) : t('card.hideChildren');
+		return collapsed
+			? t('card.showChildrenHiding', { title: item.title, count: omitted })
+			: t('card.hideChildrenHiding', { count: omitted });
+	};
 
 	const draw = (): void => {
 		// Read live, never captured at wire time: a surrounding refresh can change this
@@ -75,7 +84,7 @@ export function renderCardChildren(ctx: RowContext, card: HTMLElement, item: Bac
 		const collapsed = host.isCardCollapsed(item.file.path);
 		toggle.setAttribute('aria-expanded', String(!collapsed));
 		chevron.toggleClass('pbl-expanded', !collapsed);
-		setTooltip(toggle, (collapsed ? `Show what is under "${item.title}"` : 'Hide these') + note);
+		setTooltip(toggle, tooltip(collapsed));
 		list.empty();
 		if (collapsed) return;
 		for (const child of children) renderChildEntry(host, list, child);

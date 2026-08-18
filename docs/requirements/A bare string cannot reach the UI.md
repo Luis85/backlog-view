@@ -473,26 +473,39 @@ merge. What this note still asks for is the harder thing: a bare string reaching
 SINK it was never routed through the catalog for, which no AST shape can see. Read the ban
 as evidence the mechanism works in this config, not as the requirement met.
 
-Four limits, stated because each is a place the next one gets in:
+Four limits, stated because each is a place the next one gets in. They have changed twice
+since the ban landed, so read them against `eslint.config.mjs` rather than from memory —
+the selector is two rules now, not one.
 
-- **`src/view/render/` only.** `src/view/manual/typesSection.ts` still holds an `are`/`is`
-  agreement inside a concatenated prose block — a real instance, left because the correct
-  fix is one catalog key for the whole paragraph rather than a patched clause, which is its
-  own slice. `interactions/`, `ui/` and `commands/` are unswept and unbanned, and so is
-  `domain/settingsConsistency.ts`, which held one of the nineteen.
-- **The TEMPLATE is half the selector, and dropping it is the plainest way past the
-  rule.** `` `${a ? 'x' : 'y'} …` `` is refused; `const label = a ? 'x' : 'y'` one line
-  above is not, and it renders the same sentence. Two live instances sit in the swept
-  directory — `render/timeline.ts`'s `'Show children'`/`'Hide children'` and
-  `render/cardChildren.ts`'s tooltip, which also concatenates with `+`. Neither is a
-  regression this ban let in; both predate it, and naming them is what stops the ban being
-  read as "render/ is clean". Widening the selector to a bare `ConditionalExpression`
-  between two `Literal`s means sweeping those two first, which is the next slice.
-- **It cannot tell a class name from a sentence.** `render/toolbar.ts` built a CSS class
-  that way and now uses `addClass`; that is the accepted cost of checking a shape rather
-  than a meaning.
-- **It sees one spelling.** Beyond the two above, a sentence assembled by `+`, by
-  `.join()`, or by a ternary between two template literals passes untouched.
+- **Scope is three regions, and a region joins only once it is swept.** `render/`,
+  `interactions/menu.ts` and `manual/typesSection.ts`. The menu came in with
+  `render/timeline.ts` because the two hold one fold label between them and a ban over half
+  of that guarantee is not the guarantee. The types section came in on 2026-08-18, when its
+  `are`/`is` agreement became one catalog key — that order is the rule and not the
+  accident: ban a directory before sweeping it and the result is a wall of errors somebody
+  switches off. Still unbanned: the rest of `interactions/` (`structure.ts` holds
+  `runInit`'s outcome notice, whose OUTER sentence is assembled too — keying the fragment
+  alone would be this defect one level up), `ui/`, `commands/`, `manual/sections.ts`, and
+  `domain/` — where the count was wrong and so was the reason. It is **six** instances, and
+  **five** are generated README prose that must stay English; the sixth,
+  `markerLaneCaption` in `domain/roadmap.ts`, is live roadmap UI text and is owed to
+  `Every surface translated` like any other rendered string. Measured on 2026-08-18 after
+  "seven, all README prose" had been restated twice — a claim of that shape is exactly what
+  tells the next sweeper a directory is safe to skip.
+- **A capital letter is what separates a sentence from an identifier, and that is a
+  heuristic.** Every identifier this plugin writes is lowercase — CSS class, icon id, ARIA
+  value, `data-` key, catalog key — so a capital in a picked literal reads as prose. Its
+  ceiling is a lowercase sentence, and one is live inside a banned directory:
+  `' — inferred from children'` in `render/lanes.ts`. Not a regression the rule let in, and
+  naming it is what stops the ban being read as "`render/` is clean".
+- **It still cannot tell a class name from a sentence** where the class is capitalized, and
+  the `t()` exclusion is what keeps a key ternary — `t(a ? 'k.one' : 'k.two')` — legal at
+  all. Checking a shape rather than a meaning is what buys the rule its reach, and this is
+  the bill.
+- **It sees one spelling.** A sentence assembled by `+`, by `.join()`, or by a ternary
+  between two template literals passes untouched. `render/cardChildren.ts` was the worked
+  example until it was swept: a ternary AND a `+` joining a translated fragment on with an
+  em dash, of which this rule could only ever have seen the first half.
 
 The rest of this note is still design.
 

@@ -1,4 +1,5 @@
 import { setTooltip } from 'obsidian';
+import { t } from '../../i18n/t';
 import { drawIcon } from './icons';
 import { BacklogViewHost, Column } from '../host';
 import { showAssigneeMenu, showPriorityMenu, showRiskMenu } from '../interactions/menu';
@@ -117,7 +118,7 @@ export function renderHorizonChip(host: BacklogViewHost, col: HTMLElement, item:
 	// why — rather than showing a horizon the axis would not honor.
 	const value = item.horizon.value;
 	const unplaced = value === null;
-	const reason = item.horizon.invalid ? 'Unreadable horizon value' : null;
+	const reason = item.horizon.invalid ? t('chip.horizonUnreadable') : null;
 	const cls = 'pbl-horizon-chip' + (unplaced ? ' pbl-horizon-unset' : '');
 
 	// A note the Base excluded is context: show where it sits, never offer to move

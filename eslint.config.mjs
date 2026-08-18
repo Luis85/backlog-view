@@ -311,31 +311,75 @@ const CARD_MOVES = 'src/view/cardMoves.ts';
 // second file in the directory earns the same exemption on its own facts.
 const TYPES_SECTION = 'src/view/manual/typesSection.ts';
 
-// A sentence assembled inside a template literal by picking between two string
-// literals — `${n === 1 ? '' : 's'}`, `${folded ? 'Expand' : 'Collapse'} ${label}`. Both
-// are the same defect: a two-form rule with the forms hard-coded at the call site, which
-// no locale can reorder, inflect, or give a third form to. Nineteen of the first shape
-// were swept into the catalog and the twentieth still arrived, in a merge, written the
-// old way because the old way was the only way when it was written — so the rule is put
-// on the SHAPE rather than left to a grep somebody remembers to run.
+// A sentence assembled by picking between two string literals — `${n === 1 ? '' : 's'}`,
+// `${folded ? 'Expand' : 'Collapse'} ${label}`, `const label = a ? 'Show' : 'Hide'`. All
+// the same defect: a two-form rule with the forms hard-coded at the call site, which no
+// locale can reorder, inflect, or give a third form to. Nineteen of the first shape were
+// swept into the catalog and the twentieth still arrived, in a merge, written the old way
+// because the old way was the only way when it was written — so the rule is put on the
+// SHAPE rather than left to a grep somebody remembers to run.
 //
-// **It is scoped to render/, and that is narrower than the invariant.** It says nothing
-// about `src/view/manual/`, which still holds one (`typesSection.ts`, an `are`/`is`
-// agreement inside a prose block that has to become one key rather than a patched
-// clause), nor about `interactions/`, `domain/` or anywhere else a sentence may yet be
-// built this way. render/ is where all nineteen lived and where the churn is; widen it a
-// directory at a time as each is swept, and until `A bare string cannot reach the UI`
-// lands this is the whole of what stops the next one.
+// Two selectors, because they refuse different things and neither contains the other.
 //
-// It cannot tell a class name from a sentence — `styles`-bound interpolation has to be
-// written another way under it, which `render/toolbar.ts` now is. That is the accepted
-// cost of checking the shape: the alternative is a rule that reads the string's meaning,
-// and there is no such selector.
-const TEXT_TERNARY = {
-	selector: "TemplateLiteral > ConditionalExpression[consequent.type='Literal'][alternate.type='Literal']",
-	message:
-		'A sentence picked between two literals inside a template cannot be translated — no locale can reorder or inflect either half. Give each direction its own catalog key in src/i18n/en.ts and call t(). If this is a class name rather than text, build it with addClass instead.',
-};
+// TEMPLATE is the original: any ternary between two literals INSIDE a template. It is what
+// catches the plural suffix, whose two forms are `''` and `'s'` and so carry no capital
+// between them.
+//
+// PICKED drops the template — the half a contributor gets past by assigning to a local
+// one line above, which is not an exotic workaround but the first thing anyone writes
+// when a sentence needs a conditional. What it cannot drop with it is the literal's
+// SHAPE, and the numbers are why: a bare ConditionalExpression between two Literals fires
+// **97 times across `src/`, 70 in `src/view/` alone**, and only ten of those are text.
+// The rest are class fragments (`cond ? ' pbl-done' : ''`), Lucide icon ids, ARIA and
+// `data-` values, and — five times — a ternary between two CATALOG KEYS, which is the
+// correct post-sweep idiom the rule would be refusing. A ban with fifty-seven false
+// positives is a ban that gets switched off, so the shape is narrowed by the one property
+// that separates the two sets here: **every identifier this plugin writes is lowercase**
+// (CSS class, icon id, ARIA value, `data-` key, catalog key), so a capital letter in a
+// picked literal is prose. The `t()` exclusion is what keeps the key ternaries legal.
+//
+// That property is a heuristic and its ceiling is a lowercase sentence. It had two live
+// examples; one is left. `' — inferred from children'` in `render/lanes.ts` still passes
+// inside a banned directory, and `'are'`/`'is'` in `manual/typesSection.ts` did until
+// 2026-08-18, when that paragraph became one catalog key. Naming what slips through is
+// what stops this rule being read as "these directories are clean" — the remaining one is
+// not a regression it let in.
+//
+// **Scope: `render/`, `interactions/menu.ts`, and `manual/typesSection.ts`.** The menu is
+// not decoration — it holds the twin of `render/timeline.ts`'s fold label, so a ban
+// stopping at render/ would leave half of a guarantee two surfaces are supposed to keep
+// together. The types section joined when its own last instance went, which is the only
+// order this can happen in: a directory is banned once it is swept, never before, or the
+// ban is a wall of errors somebody switches off. It stops short of the
+// rest of `interactions/`: `structure.ts` holds `runInit`'s outcome notice, whose OUTER
+// sentence is assembled too and is owed to `Every surface translated` — keying the
+// fragment alone would be this same defect one level up. `domain/` stays unbanned on SIX
+// instances rather than the seven this comment claimed, and they are not all README prose:
+// five are, and `markerLaneCaption` (`domain/roadmap.ts`) is live roadmap UI text. Counted
+// on 2026-08-18 rather than recalled, after the wrong figure was restated twice — "all
+// README prose" is what would tell the next sweeper this directory is safe to skip.
+// `ui/`, `commands/` stay unbanned too, as does the rest of
+// `manual/` — `sections.ts` is unswept and the ban is named to the ONE FILE for the
+// reason `TYPES_SECTION` itself is.
+//
+// Neither selector can tell a class name from a sentence, only lowercase from capitalised
+// — `styles`-bound interpolation has to be written another way under TEMPLATE, which
+// `render/toolbar.ts` now is. That is the accepted cost of checking a shape: the
+// alternative is a rule that reads the string's meaning, and there is no such selector.
+const TEXT_TERNARY_MESSAGE =
+	'A sentence picked between two literals cannot be translated — no locale can reorder or inflect either half. Give each direction its own catalog key in src/i18n/en.ts and call t(). If this is a class name rather than text, build it with addClass instead.';
+
+const TEXT_TERNARY = [
+	{
+		selector: "TemplateLiteral > ConditionalExpression[consequent.type='Literal'][alternate.type='Literal']",
+		message: TEXT_TERNARY_MESSAGE,
+	},
+	{
+		selector:
+			"ConditionalExpression[consequent.type='Literal'][alternate.type='Literal']:matches([consequent.value=/[A-Z]/],[alternate.value=/[A-Z]/]):not(CallExpression[callee.name='t'] > *)",
+		message: TEXT_TERNARY_MESSAGE,
+	},
+];
 
 const syntaxRules = (selectors) => ({ 'no-restricted-syntax': ['error', ...selectors] });
 
@@ -426,6 +470,7 @@ export default defineConfig([
 			DELIVERABLE_FIELD_READ,
 			ALL_TYPES_IMPORT,
 			CHILD_TYPE_CHOICES_NULL,
+			...TEXT_TERNARY,
 		]),
 	},
 	{
@@ -474,7 +519,7 @@ export default defineConfig([
 			ALL_TYPES_IMPORT,
 			CHILD_TYPE_CHOICES_NULL,
 			DELIVERABLE_FIELD_READ,
-			TEXT_TERNARY,
+			...TEXT_TERNARY,
 		]),
 	},
 	{
@@ -483,7 +528,7 @@ export default defineConfig([
 		// cards — it is the board's workflow, not a per-item type dispatch, so
 		// DELIVERABLE_FIELD_READ does not apply here. Everything else RENDER carries does.
 		files: [RENDER_BOARD],
-		rules: syntaxRules([...SVG_CLASS_TOKENS, ...WRITE_BOUNDARY, MENU_ANCHOR, TREE_SCAN, ALL_TYPES_IMPORT, CHILD_TYPE_CHOICES_NULL, TEXT_TERNARY]),
+		rules: syntaxRules([...SVG_CLASS_TOKENS, ...WRITE_BOUNDARY, MENU_ANCHOR, TREE_SCAN, ALL_TYPES_IMPORT, CHILD_TYPE_CHOICES_NULL, ...TEXT_TERNARY]),
 	},
 	{
 		// The row's own controls, carved out of RENDER: everything RENDER carries, plus
@@ -501,7 +546,7 @@ export default defineConfig([
 			CHILD_TYPE_CHOICES_NULL,
 			DELIVERABLE_FIELD_READ,
 			ROW_LISTENER,
-			TEXT_TERNARY,
+			...TEXT_TERNARY,
 		]),
 	},
 	{
@@ -548,6 +593,7 @@ export default defineConfig([
 			TREE_SCAN,
 			CHILD_TYPE_CHOICES_NULL,
 			DELIVERABLE_FIELD_READ,
+			...TEXT_TERNARY,
 		]),
 	},
 	{

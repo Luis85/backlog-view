@@ -1,4 +1,5 @@
 import { setTooltip } from 'obsidian';
+import { t } from '../../i18n/t';
 import { drawIcon } from './icons';
 import { renderBarLabel } from './barLabel';
 import { bandMount, renderBarProgress } from './barProgress';
@@ -763,10 +764,12 @@ function renderRowChevron(ctx: RowContext, lead: HTMLElement, entry: TimelineRow
 	const item = entry.bar.item;
 	if (entry.hasChildren) ctx.cardKids.add(item.file.path);
 	// A LABEL is passed, which is what makes this the button form — see `renderChevron`,
-	// which also states what that does and does not buy on a `role="option"` row. Worded
-	// exactly as the row menu's own entry, because the row's NAME is the part a screen
+	// which also states what that does and does not buy on a `role="option"` row. The row
+	// menu's own entry reads the SAME two keys, because the row's NAME is the part a screen
 	// reader gets either way and the two surfaces must not describe one act differently.
-	const label = entry.collapsed ? 'Show children' : 'Hide children';
+	// One catalog key each way is what makes that impossible rather than merely agreed —
+	// two literals kept in step by a comment is what this used to be.
+	const label = entry.collapsed ? t('fold.showChildren') : t('fold.hideChildren');
 	const fold = (): void => void host.setCollapsed(item.file.path, !host.isCollapsed(item.file.path));
 	renderChevron(host, lead, { ...entry, label, toggle: fold }, (heldFocus) => {
 		host.render();
