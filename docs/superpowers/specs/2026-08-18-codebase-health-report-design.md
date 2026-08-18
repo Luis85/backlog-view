@@ -72,7 +72,7 @@ entry points from `package.json` — so neither reports as an unused file.
 
 | Source | How | On failure |
 | --- | --- | --- |
-| fallow | `execFile('npx', ['fallow', '--format', 'json', '--quiet'])` | non-zero exit → abort with the stderr |
+| fallow | `execFile` on fallow's own Node shim, run by `process.execPath` | non-zero exit → abort with the stderr. Not `npx`: it resolves to `npx.cmd`, which Node 24 refuses to spawn without a shell and deprecates spawning with one |
 | coverage | read `coverage/coverage-final.json`; thresholds from the config import | absent → page renders with coverage marked stale and names `npm run test:coverage` |
 | caps | ESLint's own `max-lines` counter — see below | — |
 | debt | frontmatter of `docs/issues/*.md` and `docs/bugs/*.md` via `docs-markdown.mjs` | — |
@@ -99,8 +99,8 @@ the number the gate enforces.
    (maintainability, average and p90 cyclomatic, dead-code %, duplication %, p95
    fan-in), plus each coverage figure against its threshold with the margin. The
    unit-size risk profile is the one bar on the page — four proportions are a shape,
-   not a number — drawn as inline SVG. A figure inside its limit is grey; see
-   **Visual design**.
+   not a number — drawn as flex segments. Its low band is grey rather than green, by the
+   same rule as everything else; see **Visual design**.
 2. **Act on this** — one ranked list. Rows come from fallow's own `hotspots[].actions`,
    from files nearest their cap, from the lowest-covered modules, and from open bugs.
    Every row names what, where, why (the number) and which tool said so. No invented
@@ -124,9 +124,11 @@ with a total.
 
 | Band | Assigned when |
 | --- | --- |
-| high | an open note in `docs/bugs`; a file within 20 lines of its cap; a hotspot whose `trend` is heating |
-| medium | a hotspot whose `trend` is cooling; a module below 90% statement coverage; an open note in `docs/issues` |
+| high | an open note in `docs/bugs`; a file within 20 lines of its cap; a hotspot whose `trend` is `accelerating` |
+| medium | a hotspot whose `trend` is `cooling` or `stable`; a file within a tenth of its cap; a module below 90% statement coverage |
 | low | everything else fallow reported and did not gate on |
+
+**A row exists only where a rule FIRES**, never one per input — the correction that mattered most. The first build emitted a row per capped file (311), per hotspot entry (104, on a repository whose `hotspot_count` is 0) and per open issue (46): 464 rows, on a page whose first job is to answer what to do next. Open issues left the list entirely — the `Codebase health` Epic calls its own "recorded decisions and limitations waiting on evidence rather than on effort" — and hotspots are bounded by fallow's own `hotspot_top_pct_count`. 25 rows.
 
 Within a band, rows sort by their own source's number, descending — hotspot score,
 lines over the cap, coverage shortfall. Numbers from different sources are never
@@ -145,13 +147,20 @@ see **Visual design** below. No CDN, no chart library, no build step. Following
 Mode is **Operate**: one person, or an agent, deciding what to work on next.
 Scanability and a straight answer outrank expression.
 
-**The world is borrowed, like everything else here.** The page links
+**The world is borrowed, like everything else here.** The page carries
 `test/harness/obsidian.css` — Obsidian's real `app.css`, already vendored for the
 harness — which supplies the whole token set and `color-scheme` for both schemes. So
 the report reads in the product's own visual language and owns no palette, exactly as
-`DESIGN.md`'s Borrowed Palette Rule requires of everything else. Linked rather than
-inlined: the 142 KB stays one file, and a report that silently carried a stale copy of
-the palette is the failure `test/harness/theme.css` already had once and deleted.
+`DESIGN.md`'s Borrowed Palette Rule requires of everything else.
+
+**Inlined, not linked, and that was decided the hard way.** This section said the
+opposite until the page met a real browser: a `<link>` to a sibling `file://`
+stylesheet is refused with *"'file:' URLs are treated as unique security origins"*, and
+the page renders with no tokens at all. Three headless checks had already cleared it —
+Edge with `--allow-file-access-from-files`, Edge without it, and `--headless=new` —
+so **headless cannot see this class of defect at any flag**, and the verification for
+this page is *open it*, not *probe it*. Inlining also makes the page one file with no
+subresources whatsoever, which is what "self-contained" was supposed to mean.
 
 **But nothing may lean on that stylesheet for layout.** It is *reduced* to the rules
 the harness exercises, so an element the plugin's markup never uses has whatever
@@ -159,6 +168,16 @@ survived reduction, which may be nothing. A card-children disclosure shipped loo
 right in the harness and wrong in a vault on 2026-08-08 for exactly this reason. Every
 box, every table and every disclosure on this page writes its own layout; only colour,
 type scale, spacing steps and radii come from the tokens.
+
+**And inlining brings the application shell along with the colours**, which is the
+other half of that rule and was missed. Obsidian's `body` does not scroll, cannot be
+selected, and is `contain: strict` — correct for a window, wrong for a document. Four
+declarations are taken back in the page's own `body` rule. `contain: strict` is the one
+no symptom names: size containment makes the body's height independent of its contents,
+so the page collapsed to 64px holding 25 rows and reported itself as *not scrollable*
+rather than as clipped. `app.css` undoes the same four in its own `@media print` block,
+which is what confirms the set. Exactly eleven of its rules can match a page carrying
+no Obsidian classes — ten on `body`, one on `a`.
 
 ### Health is the absence of colour
 
@@ -191,14 +210,25 @@ never both.
 
 ### Layout
 
-Single column. The header states the answer as one literal sentence — "3 things to act
-on, 154 modules clean" — then vital signs as a thin strip of inline figures, then the
-ranked list as the hero, visible without scrolling.
+Single column, and — amended 2026-08-18, after the first version shipped — **two views
+behind one toggle, in one file.** The header states the answer as one literal sentence
+— "25 things to act on, 122 modules clean" — and then a `Dashboard` / `Tables` switch.
 
-Sections 4, 5 and 6 are native `<details>`, closed by default. 157 module rows, 104
-hotspots and 26 type leaks must not compete with the three rows that matter, and a
-platform disclosure costs no JavaScript. The fifteen lines of script sort the modules
-table and do nothing else.
+*Dashboard* is the hero: vital signs as a thin strip of inline figures, then the ranked
+list, visible without scrolling. *Tables* is the evidence: every table under its own
+heading, always expanded, over one filter box that narrows all of them at once. Each
+heading reports its own count and switches it to "N matching" while a filter is active,
+so a heading never describes rows the filter is hiding. A group with no matches removes
+itself rather than leaving a heading over an empty table; a filter matching nothing
+anywhere names what it searched for rather than leaving a box over a blank page.
+
+This replaces the native `<details>` version. That version was right about the problem —
+112 module rows must not compete with the nine that matter — and wrong about the remedy:
+collapsing the evidence made it hard to USE as evidence, and a filter cannot search what
+is closed. The two views share one file for the same reason the stylesheet is inlined:
+two files must travel together, and that coupling has already broken this page once. The
+switch is a class on `body`, so exactly one view is in the document flow and nothing has
+to be kept in step.
 
 `font-variant-numeric: tabular-nums` on every column of figures. Each row's `file:line`
 is a `vscode://file/<abs>:<line>` link, which turns the list from a report into a

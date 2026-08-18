@@ -9,6 +9,9 @@ styles.css
 # the browser page `npm run harness` builds
 .harness/
 
+# the report `npm run health` writes
+.health/
+
 # dependencies
 node_modules/
 
