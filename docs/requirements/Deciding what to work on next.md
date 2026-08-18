@@ -43,11 +43,14 @@ another's, so the judgement — which of these matters most today — has never 
    line total, and reads the open notes in `docs/bugs` and `docs/issues`.
 3. It writes `.health/report.json` and prints how many things there are to act on.
 4. The renderer writes `.health/report.html` and prints its path.
-5. The maintainer opens the page: a one-sentence answer, a strip of vital signs, then the
-   ranked list.
+5. The maintainer opens the page on its **Dashboard** view: a one-sentence answer, a strip
+   of vital signs, then the ranked list.
 6. They read down the list, ordered by band with the high band first, and within a band by
    each row's own figure.
 7. They click a row, and their editor opens the named file at the named line.
+8. Where they want the evidence rather than the verdict, they switch to the **Tables**
+   view, which carries every table grouped under its own heading, and narrow all of them
+   at once with one filter.
 
 **Extensions**
 
@@ -80,6 +83,16 @@ another's, so the judgement — which of these matters most today — has never 
 - **7a — the reader is not in the editor the link names.** The link is a `vscode://` URL.
   The path is also written as plain text on the row, so the row stays usable where that
   scheme is not registered.
+- **8a — the filter matches nothing.** Every group hides itself, which would leave a
+  filter box over an empty page reading as a broken load. A line names what was searched
+  for instead. The same rule as 6a, one level down: an empty result says so.
+- **8b — a group matches nothing but its neighbours do.** The group removes itself rather
+  than leaving a heading over an empty table, and each surviving heading reports its own
+  match count in place of its total, so the counts never describe rows that are hidden.
+- **8c — the two views are one page, not two files.** A second file would have to travel
+  with the first, which is the coupling that already broke the stylesheet — see the
+  feature's landmines. The switch is a class on `body`, so exactly one view is in the
+  document flow and nothing has to be kept in step.
 
 ## Acceptance criteria
 
@@ -95,7 +108,15 @@ another's, so the judgement — which of these matters most today — has never 
 - With no rows to show, the page says so in a sentence rather than rendering an empty list.
 - Every custom property the page reads resolves against `test/harness/obsidian.css`, in
   both `theme-light` and `theme-dark`.
-- The four detail sections are closed when the page opens.
+- The page opens on the Dashboard view, and the Tables view is not in the document flow
+  until it is asked for.
+- The Tables view carries every table under its own heading, each heading reporting its
+  own count.
+- Typing in the filter narrows every table at once; a heading then reports how many of its
+  rows match rather than how many it has; a group with no matches removes itself; and a
+  filter matching nothing anywhere says so rather than leaving an empty page.
+- Clearing the filter restores every row and every original count.
+- Sorting a column still works inside the Tables view.
 
 ## Where it lives
 

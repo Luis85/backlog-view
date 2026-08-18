@@ -75,9 +75,46 @@ const CSS = `
 	        font-size: var(--font-ui-smaller); font-weight: var(--font-medium);
 	        border-radius: var(--radius-s); padding: 0 var(--size-4-1); }
 	.clear { color: var(--text-muted); padding: var(--size-4-4) 0; }
-	details { border-top: 1px solid var(--background-modifier-border); padding: var(--size-4-2) 0; }
-	summary { cursor: pointer; font-weight: var(--font-medium); color: var(--text-normal); }
-	summary .count { color: var(--text-muted); font-weight: normal; }
+	.risk { margin-bottom: var(--size-4-8); }
+	.risk-label, .risk-legend { color: var(--text-muted); font-size: var(--font-ui-smaller); }
+	.risk-label { font-weight: var(--font-medium); margin-bottom: var(--size-2-2); }
+	.risk-legend { font-variant-numeric: tabular-nums; margin-top: var(--size-2-2); }
+	.bar { display: flex; gap: 2px; height: 14px; }
+	.seg { border-radius: var(--radius-s); }
+	/* Low risk is NOT green. Green means done in this system, never good. */
+	.seg-low { background: var(--background-modifier-border); }
+	.seg-medium { background: var(--text-faint); }
+	.seg-high { background: rgb(var(--color-orange-rgb)); }
+	.seg-very_high { background: var(--text-error); }
+	/* The two views. Only one is in the document flow at a time; the switch is a class on
+	   body rather than per-element hidden attributes, so nothing has to be kept in step. */
+	nav { display: flex; gap: var(--size-2-2); margin-bottom: var(--size-4-8); }
+	nav button { background: var(--background-secondary); color: var(--text-muted);
+	             border: 1px solid var(--background-modifier-border);
+	             border-radius: var(--radius-s); cursor: pointer;
+	             font-family: inherit; font-size: var(--font-ui-smaller);
+	             font-weight: var(--font-medium);
+	             padding: var(--size-2-1) var(--size-4-2); }
+	nav button:hover { border-color: var(--background-modifier-border-hover);
+	                   color: var(--text-normal); }
+	nav button[aria-pressed="true"] { background: var(--background-primary);
+	                                  color: var(--text-normal);
+	                                  border-color: var(--text-muted); }
+	body.show-dashboard #tables, body.show-tables #dashboard { display: none; }
+	.filter { display: block; width: 100%; box-sizing: border-box;
+	          background: var(--background-primary); color: var(--text-normal);
+	          border: 1px solid var(--background-modifier-border);
+	          border-radius: var(--radius-s); font-family: inherit;
+	          font-size: var(--font-ui-small); margin-bottom: var(--size-4-4);
+	          padding: var(--size-2-2) var(--size-4-2); }
+	.filter:focus { outline: none; border-color: var(--text-muted); }
+	.group { margin-bottom: var(--size-4-8); }
+	.group > h2 { border-bottom: 1px solid var(--background-modifier-border);
+	              font-size: var(--font-ui-medium); font-weight: var(--font-medium);
+	              margin: 0 0 var(--size-4-2); padding-bottom: var(--size-2-2); }
+	.group[data-matches="0"] { display: none; }
+	.count { color: var(--text-muted); font-weight: normal; }
+	tr[hidden] { display: none; }
 	h3 { font-size: var(--font-ui-small); font-weight: var(--font-medium);
 	     margin: var(--size-4-4) 0 0; }
 	table { border-collapse: collapse; width: 100%; margin-top: var(--size-4-2); }
@@ -115,6 +152,39 @@ function signs(report) {
 	return `<dl class="signs">${out.join("")}</dl>`;
 }
 
+/**
+ * The unit-size risk profile, and the only bar on the page.
+ *
+ * Four proportions are a shape rather than a number, and the shape is the point: what
+ * matters is how much of the tree sits in the two right-hand bands, which a reader sees
+ * at a glance and could not get from four percentages in the strip above. Everything
+ * else in the vital signs is one figure and stays one figure.
+ *
+ * It obeys the same colour rule as the rest of the page. Low risk is not green, because
+ * green means done here; it is the muted neutral, and only the two risky bands spend a
+ * colour at all.
+ */
+function riskBar(report) {
+	const p = report.fallow.vitalSigns.unit_size_profile;
+	const bands = [
+		{ key: "low_risk", label: "low" },
+		{ key: "medium_risk", label: "medium" },
+		{ key: "high_risk", label: "high" },
+		{ key: "very_high_risk", label: "very high" },
+	];
+	const parts = bands
+		.filter((b) => p[b.key] > 0)
+		.map(
+			(b) =>
+				`<span class="seg seg-${b.key.replace("_risk", "")}" style="flex: ${p[b.key]}"
+				  title="${escape(b.label)} risk: ${escape(p[b.key])}%"></span>`,
+		);
+	const legend = bands.map((b) => `${escape(b.label)} ${escape(p[b.key])}%`).join(" · ");
+	return `<div class="risk"><div class="risk-label">unit size, by risk</div>
+		<div class="bar">${parts.join("")}</div>
+		<div class="risk-legend">${legend}</div></div>`;
+}
+
 function actions(report) {
 	if (report.actions.length === 0) {
 		return `<p class="clear">Nothing to act on. Every tool ran and found no work.</p>`;
@@ -149,8 +219,15 @@ const table = (headings, rows) => `<div class="wide"><table>
 	<tbody>${rows.map((r) => `<tr>${r.map((v, i) => cell(v, headings[i].num)).join("")}</tr>`).join("")}</tbody>
 </table></div>`;
 
-const section = (title, count, body) =>
-	`<details><summary>${escape(title)} <span class="count">${escape(count)}</span></summary>${body}</details>`;
+/**
+ * One titled group in the tables view.
+ *
+ * `data-matches` is what the filter writes and the stylesheet reads, so a section whose
+ * every row is filtered out removes itself rather than leaving a heading over nothing.
+ * It starts at the unfiltered count so the page is correct before any script runs.
+ */
+const group = (title, count, body, rows) =>
+	`<section class="group" data-matches="${rows}"><h2>${escape(title)} <span class="count">${escape(count)}</span></h2>${body}</section>`;
 
 function architecture(report) {
 	const headings = [
@@ -163,7 +240,7 @@ function architecture(report) {
 		{ label: "fan-out", num: true },
 	];
 	const rows = report.layers.map((l) => [l.layer, l.files, l.lines, l.statements, l.avgMaintainability, l.fanIn, l.fanOut]);
-	return section("Architecture", `${report.layers.length} layers`, table(headings, rows));
+	return group("Architecture", `${report.layers.length} layers`, table(headings, rows), rows.length);
 }
 
 function modules(report) {
@@ -197,18 +274,19 @@ function modules(report) {
 				s.fan_out,
 			];
 		});
-	return section("Modules", `${rows.length} files`, table(headings, rows));
+	return group("Modules", `${rows.length} files`, table(headings, rows), rows.length);
 }
 
 function debt(report) {
 	if (report.debt.length === 0) {
-		return section("Debt", "0 open", `<p class="empty">Nothing open in docs/bugs or docs/issues.</p>`);
+		return group("Debt", "0 open", `<p class="empty">Nothing open in docs/bugs or docs/issues.</p>`, 0);
 	}
 	const rows = report.debt.map((d) => [d.kind, d.title, d.path]);
-	return section(
+	return group(
 		"Debt",
 		`${report.debt.length} open`,
 		table([{ label: "kind" }, { label: "title" }, { label: "note" }], rows),
+		rows.length,
 	);
 }
 
@@ -229,8 +307,42 @@ function findings(report) {
 		report.fallow.schemaVersion === 7
 			? ""
 			: `<p class="empty">Fallow's schema is version ${escape(report.fallow.schemaVersion)}, not the 7 this report was written against. Its shape may have changed.</p>`;
-	return section("All findings", `${nonZero.length} non-zero`, schema + detail.join("") + allClear);
+	const rowCount = nonZero.reduce((n, f) => n + f.items.length, 0);
+	return group("All findings", `${nonZero.length} non-zero`, schema + detail.join("") + allClear, rowCount);
 }
+
+const VIEW_SCRIPT = `
+	const body = document.body;
+	document.querySelectorAll('nav button').forEach((b) => b.addEventListener('click', () => {
+		body.className = 'show-' + b.dataset.view;
+		document.querySelectorAll('nav button').forEach((o) =>
+			o.setAttribute('aria-pressed', String(o === b)));
+		if (b.dataset.view === 'tables') document.querySelector('.filter').focus();
+	}));
+
+	const filter = document.querySelector('.filter');
+	const nothing = document.getElementById('nomatch');
+	filter.addEventListener('input', () => {
+		const q = filter.value.trim().toLowerCase();
+		let total = 0;
+		document.querySelectorAll('.group').forEach((g) => {
+			let matches = 0;
+			g.querySelectorAll('tbody tr').forEach((row) => {
+				const hit = q === '' || row.textContent.toLowerCase().includes(q);
+				row.hidden = !hit;
+				if (hit) matches++;
+			});
+			g.dataset.matches = String(matches);
+			total += matches;
+			const shown = g.querySelector('h2 .count');
+			if (shown) shown.textContent = q === '' ? shown.dataset.all : matches + ' matching';
+		});
+		// A filter box over nothing at all reads as a broken page, so say what happened.
+		nothing.hidden = total > 0;
+		nothing.textContent = 'Nothing matches ' + JSON.stringify(filter.value) + '.';
+	});
+	document.querySelectorAll('.group h2 .count').forEach((c) => { c.dataset.all = c.textContent; });
+`;
 
 const SORT_SCRIPT = `
 	document.querySelectorAll('table').forEach((t) => {
@@ -290,19 +402,30 @@ export function page(report, obsidianCss) {
 <style>${obsidianCss}</style>
 <style>${CSS}</style>
 </head>
-<body>
+<body class="show-dashboard">
 <main>
 <h1>Codebase health</h1>
 <p class="answer">${report.actions.length} thing(s) to act on, ${clean} module(s) clean.
 Generated ${escape(report.generated)} from fallow ${escape(report.fallow.version)}.</p>
+<nav>
+<button type="button" data-view="dashboard" aria-pressed="true">Dashboard</button>
+<button type="button" data-view="tables" aria-pressed="false">Tables</button>
+</nav>
+<div id="dashboard">
 ${signs(report)}
+${riskBar(report)}
 ${actions(report)}
+</div>
+<div id="tables">
+<input class="filter" type="search" placeholder="Filter every table — a path, a layer, a rule name">
+<p class="empty" id="nomatch" hidden></p>
 ${architecture(report)}
 ${modules(report)}
 ${debt(report)}
 ${findings(report)}
+</div>
 </main>
-<script>${SORT_SCRIPT}</script>
+<script>${VIEW_SCRIPT}${SORT_SCRIPT}</script>
 </body>
 </html>`;
 }
