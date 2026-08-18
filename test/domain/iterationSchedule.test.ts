@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { nextIterationDates, previousIteration } from '../../src/domain/iterations';
+import { iterationNoteName, nextIterationDates, previousIteration } from '../../src/domain/iterations';
 import { CivilDate } from '../../src/domain/noteFields';
 import { buildModel } from '../../src/domain/model';
 import { resolveSettings } from '../../src/domain/settingsResolve';
@@ -89,5 +89,21 @@ describe('nextIterationDates', () => {
 
 	it('runs a one-day iteration from its own start', () => {
 		expect(nextIterationDates(null, civil('2026-09-07'), 1)).toEqual({ start: '2026-09-07', target: '2026-09-07' });
+	});
+});
+
+describe('iterationNoteName', () => {
+	it('appends the goal, and leaves a name with no goal alone', () => {
+		expect(iterationNoteName('1 - Iteration', 'Ship the board')).toBe('1 - Iteration - Ship the board');
+		// Blank, whitespace, or a goal property nobody configured: the name is the name.
+		expect(iterationNoteName('1 - Iteration', '')).toBe('1 - Iteration');
+		expect(iterationNoteName('1 - Iteration', '   ')).toBe('1 - Iteration');
+	});
+
+	it('caps the goal it appends, because a file name is limited and a goal is not', () => {
+		const essay = 'x'.repeat(400);
+		const named = iterationNoteName('1 - Iteration', essay);
+		expect(named.length).toBeLessThan(100);
+		expect(named.startsWith('1 - Iteration - xxx')).toBe(true);
 	});
 });
