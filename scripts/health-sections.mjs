@@ -223,9 +223,19 @@ const head = (c) =>
  * `scope`, `aria-sort` and `tabindex` are on the header because sorting is a real control
  * and a control a keyboard cannot reach is a control half the readers do not have.
  */
-const table = (columns, rows) => `<div class="wide"><table>
+const bodyRow = (r, columns, groupBy) => {
+	const key = groupBy === undefined ? "" : ` data-group="${escape(r[groupBy])}"`;
+	return `<tr${key}>${r.map((v, i) => cell(v, columns[i])).join("")}</tr>`;
+};
+
+/**
+ * A table. `groupBy` names the column whose value each row carries as `data-group`, which
+ * is all the markup a grouped view needs — the headings themselves are inserted by script
+ * so grouping composes with filtering and sorting instead of fighting them.
+ */
+const table = (columns, rows, groupBy) => `<div class="wide"><table${groupBy === undefined ? "" : ' data-groupable="1"'}>
 	<thead><tr>${columns.map(head).join("")}</tr></thead>
-	<tbody>${rows.map((r) => `<tr>${r.map((v, i) => cell(v, columns[i])).join("")}</tr>`).join("")}</tbody>
+	<tbody>${rows.map((r) => bodyRow(r, columns, groupBy)).join("")}</tbody>
 </table></div>`;
 
 const group = (id, title, count, body, rows) =>
@@ -275,7 +285,12 @@ export function modules(report) {
 			s.fan_in,
 			s.fan_out,
 		]);
-	return group("modules", "Modules", `${rows.length} files`, table(columns, rows), rows.length);
+	// Column 1 is the layer, so grouping by it needs no second source of truth.
+	const control = `<div class="group-by">
+		<button type="button" class="gb" data-group-by="off" aria-pressed="true">Flat</button>
+		<button type="button" class="gb" data-group-by="1" aria-pressed="false">By layer</button>
+	</div>`;
+	return group("modules", "Modules", `${rows.length} files`, control + table(columns, rows, 1), rows.length);
 }
 
 export function debt(report) {

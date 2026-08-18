@@ -132,6 +132,7 @@ const run = promisify(execFile);
 const ROOT = process.cwd();
 
 const COVERAGE_FILE = "coverage/coverage-final.json";
+const FALLOW = path.join("node_modules", "fallow", "bin", "fallow");
 
 /**
  * Everything fallow emits, in one pass. Its non-zero exit is this script's failure.
@@ -155,7 +156,7 @@ async function collectFallow(coveragePresent) {
 	// `npx` resolves to `npx.cmd`, which Node 24 refuses to spawn without a shell
 	// (EINVAL) and deprecates spawning WITH one, and `@fallow-cli/win32-x64-msvc` is one
 	// platform's package name out of however many CI runs. The shim picks the binary.
-	const { stdout } = await run(process.execPath, [path.join("node_modules", "fallow", "bin", "fallow"), ...args], {
+	const { stdout } = await run(process.execPath, [FALLOW, ...args], {
 		cwd: ROOT,
 		maxBuffer: 32 * 1024 * 1024,
 	});
@@ -244,6 +245,63 @@ async function collectCoverage() {
 	return { present: true, thresholds: config.test.coverage.thresholds, totals: coverageRatios(pool), files };
 }
 
+/**
+ * The layer-to-layer import graph, which is the one thing the combined JSON cannot say.
+ *
+ * `fan_in` and `fan_out` are COUNTS: they answer how many edges touch a file and never
+ * which files are at the other end, so no arrangement of them can show whether `domain`
+ * imports `view`. `fallow viz --viz-format dot` emits the real graph — 1549 edges here —
+ * as node declarations carrying the path and plain `nA -> nB` lines, which is cheap to
+ * read and stable enough to depend on.
+ *
+ * It costs a second fallow run. That is the price of the only picture in this report that
+ * can falsify an architectural claim, and `npm run health` is not in the gate.
+ */
+async function collectGraph() {
+	const out = path.join(".health", "graph.dot");
+	await mkdir(".health", { recursive: true });
+	await run(process.execPath, [FALLOW, "viz", "--viz-format", "dot", "--no-open", "--out", out, "--quiet"], {
+		cwd: ROOT,
+		maxBuffer: 32 * 1024 * 1024,
+	});
+	const dot = await readFile(out, "utf8");
+	const layerByNode = new Map();
+	for (const [, node, label] of dot.matchAll(/(n\d+) \[label="([^"]+)"/g)) {
+		const layer = layerOf(label.split("\\").join("/"));
+		if (layer) layerByNode.set(node, layer);
+	}
+	const edges = new Map();
+	for (const [, from, to] of dot.matchAll(/(n\d+) -> (n\d+)/g)) {
+		const a = layerByNode.get(from);
+		const b = layerByNode.get(to);
+		if (!a || !b) continue;
+		const key = `${a}\u0000${b}`;
+		edges.set(key, (edges.get(key) ?? 0) + 1);
+	}
+	return [...edges].map(([key, count]) => {
+		const [from, to] = key.split("\u0000");
+		return { from, to, count };
+	});
+}
+
+/**
+ * The commit this report describes, so a reader can tell what it is a report OF.
+ *
+ * A static page cannot know whether the tree moved after it was written, so it must not
+ * claim to. What it can do is name the commit and whether the tree was dirty at the time,
+ * and let the reader compare. Failing softly is right: a report is still useful outside a
+ * git checkout.
+ */
+async function collectCommit() {
+	try {
+		const { stdout: head } = await run("git", ["rev-parse", "--short", "HEAD"], { cwd: ROOT });
+		const { stdout: status } = await run("git", ["status", "--porcelain"], { cwd: ROOT });
+		return { head: head.trim(), dirty: status.trim().length > 0 };
+	} catch {
+		return { head: null, dirty: null };
+	}
+}
+
 /** The human-written debt: what is open in the register's own two folders. */
 async function collectDebt() {
 	const debt = [];
@@ -287,15 +345,19 @@ function rollup(fileScores, coverage) {
 async function main() {
 	// Coverage is resolved first: whether its file exists decides how fallow is invoked.
 	const coverage = await collectCoverage();
-	const [fallow, caps, debt] = await Promise.all([
+	const [fallow, caps, debt, graph, commit] = await Promise.all([
 		collectFallow(coverage.present),
 		collectCaps(),
 		collectDebt(),
+		collectGraph(),
+		collectCommit(),
 	]);
 	const thin = coverage.present ? coverage.files.filter((f) => layerOf(f.path) && f.statements < 90) : [];
 	const report = {
 		generated: new Date().toISOString(),
 		root: ROOT,
+		commit,
+		graph,
 		fallow,
 		coverage,
 		caps,

@@ -2,6 +2,7 @@ import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
+import { capHistogram, coverageHistogram, layerMap, riskScatter } from "./health-charts.mjs";
 import { architecture, debt, escape, findings, layerStrip, modules, riskBar, vitalSigns, worklist } from "./health-sections.mjs";
 
 /**
@@ -86,6 +87,7 @@ const CSS = `
 	.answer { font-size: var(--font-ui-medium); margin: var(--size-4-2) 0 0;
 	          max-width: 68ch; }
 	.answer b { font-weight: var(--font-medium); }
+	.provenance .is-old, .is-old { color: rgb(var(--color-orange-rgb)); }
 	.provenance { color: var(--text-muted); font-size: var(--font-ui-smaller);
 	              margin: var(--size-2-2) 0 0; }
 
@@ -219,6 +221,40 @@ const CSS = `
 	.empty { color: var(--text-muted); margin: var(--size-4-2) 0; max-width: 68ch; }
 	.warn-text { color: rgb(var(--color-orange-rgb)); }
 
+	/* Charts. Everything is drawn in tokens, so a theme change repaints them with the
+	   page and no SVG carries a colour of its own. */
+	.chart { block-size: auto; display: block; inline-size: 100%; margin-top: var(--size-4-2); }
+	.chart text { fill: var(--text-muted); font-family: inherit; font-size: 11px; }
+	.lm-box rect { fill: var(--background-primary);
+	               stroke: var(--background-modifier-border); }
+	.lm-name { fill: var(--text-normal) !important; font-weight: var(--font-medium); }
+	.lm-files { fill: var(--text-muted) !important; font-variant-numeric: tabular-nums; }
+	.lm-edge { fill: none; stroke: var(--text-faint); opacity: 0.75; }
+	.lm-violation { stroke: var(--text-error); opacity: 1; }
+	.lm-divider { stroke: var(--background-modifier-border); stroke-dasharray: 3 3; }
+	.lm-note { fill: var(--text-muted) !important; }
+	.hg-label { fill: var(--text-muted) !important; }
+	.hg-count { fill: var(--text-muted) !important; font-variant-numeric: tabular-nums; }
+	.hg-bar { fill: var(--text-faint); }
+	.hg-warn { fill: rgb(var(--color-orange-rgb)); }
+	.sc-axis { stroke: var(--background-modifier-border); }
+	.sc-zone { fill: rgb(var(--color-orange-rgb)); opacity: 0.07; }
+	.sc-dot { fill: var(--text-faint); }
+	.sc-risky { fill: rgb(var(--color-orange-rgb)); }
+
+	/* Group-by. */
+	.group-by { display: flex; gap: var(--size-2-1); margin-bottom: var(--size-4-2); }
+	.gb { background: none; border: 1px solid var(--background-modifier-border);
+	      border-radius: var(--radius-s); color: var(--text-muted); cursor: pointer;
+	      font-family: inherit; font-size: var(--font-ui-smaller);
+	      padding: var(--size-2-1) var(--size-4-1); }
+	.gb[aria-pressed="true"] { background: var(--background-secondary);
+	                           border-color: var(--text-muted); color: var(--text-normal); }
+	tr.group-head td { background: var(--background-secondary);
+	                   color: var(--text-normal); font-weight: var(--font-medium);
+	                   position: sticky; top: 30px; }
+	tr.group-head .g-count { color: var(--text-muted); font-weight: normal; }
+
 	@media (prefers-reduced-motion: no-preference) {
 		#dashboard, #tables { animation: rise 160ms cubic-bezier(0.2, 0, 0, 1); }
 		@keyframes rise { from { opacity: 0; transform: translateY(4px); } }
@@ -255,7 +291,7 @@ const SCRIPT = `
 		let total = 0;
 		groups.forEach((g) => {
 			let matches = 0;
-			g.querySelectorAll('tbody tr').forEach((row) => {
+			g.querySelectorAll('tbody tr:not(.group-head)').forEach((row) => {
 				const hit = q === '' || row.textContent.toLowerCase().includes(q);
 				row.hidden = !hit;
 				if (hit) matches++;
@@ -266,6 +302,7 @@ const SCRIPT = `
 			count.textContent = q === '' ? count.dataset.all : matches + ' matching';
 		});
 		// A filter box over nothing at all reads as a broken page, so say what happened.
+		regroupAll();
 		nothing.hidden = total > 0;
 		nothing.textContent = 'Nothing matches ' + JSON.stringify(filter.value) + '.';
 	});
@@ -276,6 +313,58 @@ const SCRIPT = `
 		select(tabs[1]);
 		filter.focus();
 	});
+
+	// Age is computed when the page is OPENED, not when it was written — a static page
+	// that says "just now" forever is worse than one that says nothing.
+	const age = document.getElementById('age');
+	const ms = Date.now() - Date.parse(age.dataset.generated);
+	const hours = ms / 3600000;
+	const plural = (n, unit) => n + ' ' + unit + (n === 1 ? '' : 's') + ' ago';
+	const say = hours < 1 ? plural(Math.max(1, Math.round(ms / 60000)), 'minute')
+		: hours < 24 ? plural(Math.round(hours), 'hour')
+		: plural(Math.round(hours / 24), 'day');
+	age.textContent = 'generated ' + say;
+	age.title = age.dataset.generated;
+	if (hours >= 24) age.classList.add('is-old');
+
+	// Grouping is applied AFTER filtering and after sorting, never instead of them: the
+	// headings are inserted from whatever rows are currently visible and in whatever
+	// order they currently sit, so the three controls compose.
+	const regroup = (t) => {
+		t.querySelectorAll('tr.group-head').forEach((r) => r.remove());
+		const on = t.dataset.groupOn;
+		if (!on) return;
+		const tbody = t.tBodies[0];
+		const width = t.tHead.rows[0].cells.length;
+		let last = null;
+		[...tbody.rows].filter((r) => !r.hidden).forEach((row) => {
+			const key = row.dataset.group;
+			if (key === last) return;
+			last = key;
+			const head = tbody.insertRow(row.rowIndex - 1);
+			head.className = 'group-head';
+			const count = [...tbody.rows].filter((r) => !r.hidden && r.dataset.group === key).length;
+			head.innerHTML = '<td colspan="' + width + '">' + key +
+				' <span class="g-count">' + count + '</span></td>';
+		});
+	};
+	const regroupAll = () => document.querySelectorAll('table[data-groupable]').forEach(regroup);
+
+	document.querySelectorAll('.gb').forEach((b) => b.addEventListener('click', () => {
+		const t = b.closest('.group').querySelector('table[data-groupable]');
+		const column = b.dataset.groupBy;
+		b.parentElement.querySelectorAll('.gb').forEach((o) => o.setAttribute('aria-pressed', String(o === b)));
+		if (column === 'off') delete t.dataset.groupOn;
+		else {
+			t.dataset.groupOn = column;
+			// Grouping only reads if like sits with like, so it sorts by the key first.
+			const tbody = t.tBodies[0];
+			[...tbody.rows]
+				.sort((x, y) => (x.dataset.group || '').localeCompare(y.dataset.group || ''))
+				.forEach((r) => tbody.appendChild(r));
+		}
+		regroup(t);
+	}));
 
 	document.querySelectorAll('table').forEach((t) => {
 		t.querySelectorAll('th').forEach((th, i) => {
@@ -291,6 +380,7 @@ const SCRIPT = `
 						? dir * ((parseFloat(value(a)) || 0) - (parseFloat(value(b)) || 0))
 						: dir * value(a).localeCompare(value(b)))
 					.forEach((row) => tbody.appendChild(row));
+				regroup(t);
 			};
 			th.addEventListener('click', sort);
 			th.addEventListener('keydown', (e) => {
@@ -303,6 +393,19 @@ const SCRIPT = `
 const tab = (view, label, selected) =>
 	`<button type="button" role="tab" id="tab-${view}" data-view="${view}"
 		aria-controls="${view}" aria-selected="${selected}" tabindex="${selected ? 0 : -1}">${escape(label)}</button>`;
+
+/**
+ * What the report is a report OF.
+ *
+ * A static page cannot know whether the tree moved after it was written, so it does not
+ * claim to. It names the commit and whether that tree was already dirty, and lets the
+ * reader compare — which is the honest version of "is this still true".
+ */
+function commitNote(report) {
+	if (!report.commit?.head) return "";
+	const dirty = report.commit.dirty ? ", working tree dirty" : "";
+	return ` · ${escape(report.commit.head)}${dirty}`;
+}
 
 /** The one sentence the page exists to say, before anything has to be read. */
 function answer(report) {
@@ -328,7 +431,7 @@ export function page(report, obsidianCss) {
 <header>
 <h1>Codebase health</h1>
 <p class="answer">${answer(report)}</p>
-<p class="provenance">${escape(report.generated)} · fallow ${escape(report.fallow.version)} · schema ${escape(report.fallow.schemaVersion)}</p>
+<p class="provenance"><span id="age" data-generated="${escape(report.generated)}">${escape(report.generated)}</span>${commitNote(report)} · fallow ${escape(report.fallow.version)} · schema ${escape(report.fallow.schemaVersion)}</p>
 </header>
 <div role="tablist" aria-label="Report views">
 ${tab("dashboard", "Dashboard", true)}
@@ -337,6 +440,12 @@ ${tab("tables", "Tables", false)}
 <div id="dashboard" role="tabpanel" aria-labelledby="tab-dashboard">
 ${vitalSigns(report)}
 ${layerStrip(report)}
+${layerMap(report)}
+${riskScatter(report)}
+<div class="clusters">
+${coverageHistogram(report)}
+${capHistogram(report)}
+</div>
 ${riskBar(report)}
 ${worklist(report)}
 </div>
