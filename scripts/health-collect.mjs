@@ -1,4 +1,11 @@
+import { execFile } from "node:child_process";
+import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
+import process from "node:process";
+import { fileURLToPath, pathToFileURL } from "node:url";
+import { promisify } from "node:util";
+import tsParser from "@typescript-eslint/parser";
+import { ESLint } from "eslint";
 
 /**
  * The pure half of `npm run health` — everything that turns a tool's output into a
@@ -64,11 +71,14 @@ const BANDS = ["high", "medium", "low"];
  * Sorting is by band, then by each source's OWN figure descending. Figures from
  * different sources are never added, and never compared across a band boundary.
  */
-export function rank({ hotspots = [], caps = [], coverage = [], debt = [] }) {
+export function rank({ hotspots = [], topCount = 0, caps = [], coverage = [], debt = [] }) {
 	const rows = [];
-	for (const h of hotspots) {
+	// Fallow's `hotspots` array is every file it ranked, not every file that IS one:
+	// this repository's `hotspot_count` is 0 across 104 entries. `hotspot_top_pct_count`
+	// is fallow's own answer to how many of them qualify, so that is what is read.
+	for (const h of [...hotspots].sort((a, b) => b.score - a.score).slice(0, topCount)) {
 		rows.push({
-			band: h.trend === "heating" ? "high" : "medium",
+			band: h.trend === "accelerating" ? "high" : "medium",
 			title: h.actions?.[0]?.description ?? `Review ${h.path}`,
 			where: h.path,
 			why: `hotspot score ${h.score}, ${h.trend}`,
@@ -78,8 +88,11 @@ export function rank({ hotspots = [], caps = [], coverage = [], debt = [] }) {
 	}
 	for (const c of caps) {
 		const left = c.cap - c.counted;
+		// A file at half its cap is not a thing to act on, and a row for every capped
+		// file buries the eight that are close in three hundred that are not.
+		if (c.counted / c.cap < 0.9) continue;
 		rows.push({
-			band: left <= 20 ? "high" : "low",
+			band: left <= 20 ? "high" : "medium",
 			title: `${c.path} is ${left} lines from its ${c.cap}-line cap`,
 			where: c.path,
 			why: `${c.counted} counted lines`,
@@ -97,9 +110,12 @@ export function rank({ hotspots = [], caps = [], coverage = [], debt = [] }) {
 			sort: 100 - m.statements,
 		});
 	}
-	for (const d of debt) {
+	// Bugs only. An open ISSUE in this register is frequently a recorded decision or a
+	// limitation waiting on evidence — the `Codebase health` Epic says so of its own —
+	// so the 46 of them are a section to read, not 46 things to do next.
+	for (const d of debt.filter((x) => x.kind === "bug")) {
 		rows.push({
-			band: d.kind === "bug" ? "high" : "medium",
+			band: "high",
 			title: d.title,
 			where: d.path,
 			why: `open ${d.kind}`,
@@ -109,3 +125,180 @@ export function rank({ hotspots = [], caps = [], coverage = [], debt = [] }) {
 	}
 	return rows.sort((a, b) => BANDS.indexOf(a.band) - BANDS.indexOf(b.band) || b.sort - a.sort);
 }
+
+// ------------------------------------------------------------------- the collectors
+
+const run = promisify(execFile);
+const ROOT = process.cwd();
+
+/** Everything fallow emits, in one pass. Its non-zero exit is this script's failure. */
+async function collectFallow() {
+	// Fallow's own Node shim, run by the node already running this — not `npx`, and not
+	// the platform binary. Both alternatives were tried and both are Windows traps:
+	// `npx` resolves to `npx.cmd`, which Node 24 refuses to spawn without a shell
+	// (EINVAL) and deprecates spawning WITH one, and `@fallow-cli/win32-x64-msvc` is one
+	// platform's package name out of however many CI runs. The shim picks the binary.
+	const { stdout } = await run(process.execPath, [path.join("node_modules", "fallow", "bin", "fallow"), "--format", "json", "--quiet"], {
+		cwd: ROOT,
+		maxBuffer: 32 * 1024 * 1024,
+	});
+	const j = JSON.parse(stdout);
+	const findings = Object.entries(j.check.summary)
+		.filter(([key]) => key !== "total_issues")
+		.map(([key, count]) => ({ key, count, items: Array.isArray(j.check[key]) ? j.check[key] : [] }));
+	return {
+		schemaVersion: j.schema_version,
+		version: j.version,
+		vitalSigns: j.health.vital_signs,
+		fileScores: j.health.file_scores,
+		hotspots: j.health.hotspots,
+		dupes: j.dupes.stats,
+		findings,
+	};
+}
+
+/**
+ * ESLint's OWN counter, never a raw line count.
+ *
+ * `max-lines` is configured with `skipBlankLines` and `skipComments`, and this
+ * repository comments heavily: `src/view/backlogView.ts` is 569 raw lines and lint
+ * counts 310 of them against the 400 cap. Fallow's `file_scores[].lines` is a raw count
+ * too. Reporting either as headroom would put a false alarm on the hero section.
+ *
+ * The throwaway config is deliberate — `overrideConfigFile: true` ignores the project's
+ * own, which is type-aware and slow, and `max: 0` makes every file report so the count
+ * can be read out of the message. Because it is lint's counter, this number cannot
+ * drift from the number the gate enforces.
+ */
+async function collectCaps() {
+	const eslint = new ESLint({
+		overrideConfigFile: true,
+		overrideConfig: [
+			{
+				files: ["**/*.ts"],
+				languageOptions: { parser: tsParser },
+				rules: { "max-lines": ["error", { max: 0, skipBlankLines: true, skipComments: true }] },
+			},
+		],
+	});
+	const results = await eslint.lintFiles(["src/**/*.ts", "test/**/*.ts"]);
+	const caps = [];
+	for (const result of results) {
+		const message = result.messages.find((m) => m.ruleId === "max-lines");
+		const counted = message && /\((\d+)\)/.exec(message.message)?.[1];
+		if (!counted) continue;
+		const repoPath = toRepoPath(result.filePath, ROOT);
+		const cap = capFor(repoPath);
+		if (cap) caps.push({ path: repoPath, counted: Number(counted), cap });
+	}
+	return caps.sort((a, b) => b.counted / b.cap - a.counted / a.cap);
+}
+
+/**
+ * Coverage is optional. Its absence is a reported state, never a guess and never a crash.
+ *
+ * `lines` is deliberately absent from the totals. `coverage-final.json` carries statement,
+ * function and branch maps and no line map, and deriving lines from `statementMap` would
+ * be an approximation of istanbul's own definition rather than the figure the threshold
+ * gates. The page shows the floor and says the file cannot answer it — a narrowed sentence
+ * beats a number that looks measured.
+ */
+async function collectCoverage() {
+	let raw;
+	try {
+		raw = JSON.parse(await readFile("coverage/coverage-final.json", "utf8"));
+	} catch {
+		return { present: false, reason: "No coverage/coverage-final.json. Run `npm run test:coverage`." };
+	}
+	// Resolved from the WORKING DIRECTORY, which is the rule every script here follows —
+	// a bare relative specifier would resolve against this file instead.
+	const { default: config } = await import(pathToFileURL(path.resolve("vitest.config.mts")).href);
+	const files = Object.entries(raw).map(([absolute, entry]) => ({
+		path: toRepoPath(absolute, ROOT),
+		...coverageRatios(entry),
+	}));
+	const pool = { s: {}, f: {}, b: {} };
+	let n = 0;
+	for (const entry of Object.values(raw)) {
+		for (const key of ["s", "f", "b"]) {
+			for (const value of Object.values(entry[key] ?? {})) pool[key][n++] = value;
+		}
+	}
+	return { present: true, thresholds: config.test.coverage.thresholds, totals: coverageRatios(pool), files };
+}
+
+/** The human-written debt: what is open in the register's own two folders. */
+async function collectDebt() {
+	const debt = [];
+	for (const kind of ["bug", "issue"]) {
+		const dir = `docs/${kind}s`;
+		for (const name of await readdir(dir)) {
+			if (!name.endsWith(".md") || name === "README.md") continue;
+			const text = await readFile(`${dir}/${name}`, "utf8");
+			const status = /^status:\s*(.+)$/m.exec(text)?.[1]?.trim() ?? "";
+			if (status !== "Open") continue;
+			debt.push({ path: `${dir}/${name}`, title: name.replace(/\.md$/, ""), kind, status });
+		}
+	}
+	return debt;
+}
+
+/** The per-layer rollup, which is the one view of this data nothing else offers. */
+function rollup(fileScores, coverage) {
+	const byLayer = new Map();
+	for (const score of fileScores) {
+		const layer = layerOf(score.path);
+		if (!layer) continue;
+		const acc = byLayer.get(layer) ?? { layer, files: 0, lines: 0, fanIn: 0, fanOut: 0, mi: [], statements: [] };
+		acc.files += 1;
+		acc.lines += score.lines;
+		acc.fanIn += score.fan_in;
+		acc.fanOut += score.fan_out;
+		acc.mi.push(score.maintainability_index);
+		const covered = coverage.present && coverage.files.find((f) => f.path === score.path);
+		if (covered) acc.statements.push(covered.statements);
+		byLayer.set(layer, acc);
+	}
+	const mean = (xs) => (xs.length ? Math.round((xs.reduce((a, b) => a + b, 0) / xs.length) * 10) / 10 : null);
+	return [...byLayer.values()].map(({ mi, statements, ...rest }) => ({
+		...rest,
+		avgMaintainability: mean(mi),
+		statements: mean(statements),
+	}));
+}
+
+async function main() {
+	const [fallow, caps, coverage, debt] = await Promise.all([
+		collectFallow(),
+		collectCaps(),
+		collectCoverage(),
+		collectDebt(),
+	]);
+	const thin = coverage.present ? coverage.files.filter((f) => layerOf(f.path) && f.statements < 90) : [];
+	const report = {
+		generated: new Date().toISOString(),
+		root: ROOT,
+		fallow,
+		coverage,
+		caps,
+		debt,
+		layers: rollup(fallow.fileScores, coverage),
+		actions: rank({
+			hotspots: fallow.hotspots,
+			topCount: fallow.vitalSigns.hotspot_top_pct_count,
+			caps,
+			coverage: thin,
+			debt,
+		}),
+	};
+	await mkdir(".health", { recursive: true });
+	await writeFile(".health/report.json", JSON.stringify(report, null, "\t"));
+	console.log(`✓ .health/report.json — ${report.actions.length} thing(s) to act on`);
+}
+
+// CLI entry only. `test/health/healthCollect.test.ts` imports this module for its pure
+// exports, and without this guard that import would shell fallow, run ESLint and write
+// `.health/` on every test run. Guarded on the real path rather than by comparing
+// `import.meta.url` directly, which breaks on Windows — `file:///C:/...` never equals
+// argv's `C:\...`. Same shape as `scripts/changelog-notes.mjs`.
+if (process.argv[1] === fileURLToPath(import.meta.url)) await main();
