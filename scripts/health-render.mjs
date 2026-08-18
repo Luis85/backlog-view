@@ -27,9 +27,26 @@ export const escape = (text) =>
 	String(text).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 
 const CSS = `
+	/* app.css is an APPLICATION SHELL, and inlining it brings the shell's behaviour along
+	   with its colours. Obsidian's body deliberately does not scroll, deliberately cannot
+	   be selected, and is deliberately size-contained — all correct for a window and all
+	   wrong for a document. Four declarations have to be taken back, and this rule wins
+	   because it is equal specificity and later.
+
+	   contain: strict is the one that is not guessable from the symptom. Size containment
+	   makes the body's height independent of its contents, so the page collapsed to its
+	   padding — 64px holding 25 rows — and reported itself as not scrollable rather than
+	   as clipped. app.css undoes these same four in its own @media print block, which is
+	   the confirmation that this is the document-shaped set rather than a hunch.
+
+	   The set is bounded and was counted rather than guessed: of app.css's rules, exactly
+	   eleven have a bare-element selector able to match a page carrying no Obsidian
+	   classes — ten on the body element, one on the a element, which .act a outranks. */
 	body { background: var(--background-primary); color: var(--text-normal);
 	       font-size: var(--font-ui-small); line-height: 1.4; margin: 0;
-	       padding: var(--size-4-8) var(--size-4-4); }
+	       padding: var(--size-4-8) var(--size-4-4);
+	       overflow: visible; height: auto; width: auto; contain: none;
+	       user-select: text; -webkit-user-select: text; }
 	main { max-width: 1100px; margin-inline: auto; }
 	h1 { font-size: var(--font-ui-large); font-weight: var(--font-medium); margin: 0 0 var(--size-2-2); }
 	.answer { color: var(--text-muted); margin: 0 0 var(--size-4-8); }
@@ -242,20 +259,19 @@ const SORT_SCRIPT = `
  * is one file with no subresources at all — no `url()`, no `@import`, nothing to fetch —
  * which is what "self-contained" was supposed to mean and did not.
  *
- * **What this is NOT known to fix.** It was written in response to a reported
- * `'file:' URLs are treated as unique security origins` error on 2026-08-18, and that
- * error is UNREPRODUCED. Three instruments, none of which saw it: headless Edge with
- * `--allow-file-access-from-files`, headless Edge without it, and `--headless=new`,
- * which enforces closest to a headed profile. The linked version loaded its stylesheet
- * under all three, `--text-normal` resolving to `#222222` every time.
+ * **And it is what fixed a real defect, which no check here could see.** Opened in a
+ * headed Edge on 2026-08-18, the linked version failed with `'file:' URLs are treated
+ * as unique security origins` and rendered with no tokens at all. Three headless
+ * instruments had already cleared it: Edge headless with
+ * `--allow-file-access-from-files`, headless without it, and `--headless=new`, which is
+ * supposed to enforce closest to a headed profile. All three loaded the stylesheet
+ * happily, `--text-normal` resolving to `#222222` every time.
  *
- * Two details argue it was never this link. The reported error names the SAME url as
- * both the loader and the loaded — a page loading itself, not a page loading a
- * stylesheet. And the machine is AzureAD-joined, where an Edge enterprise policy can
- * restrict local file access in ways no flag here reproduces.
- *
- * So: recorded as unexplained rather than as fixed. The inlining is justified by the
- * paragraph above it and by nothing below it.
+ * **So headless is not an instrument that can see this class of defect, at any flag.**
+ * A `file://` page's access to a sibling `file://` resource is the specific thing to
+ * check in a real browser window, and the report of it was right while three
+ * measurements were wrong. That is the standing lesson here, and it is why the
+ * verification for this page is "open it" rather than "probe it".
  *
  * 142 KB of duplication into a gitignored artifact buys the first reason on its own.
  */
