@@ -57,6 +57,24 @@ it is not an error, is not a warning, and simply has no effect — the link hove
 and looked deliberate. Of the nineteen tokens the page reads, it was the only one that
 failed, which is the argument for asking the page rather than trusting the list.
 
+**Inlining that stylesheet brings Obsidian's application shell with it.** The page
+carries the whole of the vendored `app.css`, and Obsidian's `body` does not scroll,
+cannot be selected and is `contain: strict` — every one of those correct for a window
+and wrong for a document. `contain: strict` is the one no symptom names: size
+containment makes the body's height independent of its contents, so the page collapsed
+to its padding, 64 pixels holding twenty-five rows, and reported itself as *not
+scrollable* rather than as clipped. `app.css` undoes the same four declarations in its
+own `@media print` block, which is what confirms the set is document-shaped rather than
+guessed. Exactly eleven of its rules can match a page carrying no Obsidian classes.
+
+**Headless cannot verify this page, at any flag.** A `<link>` to a sibling `file://`
+stylesheet is refused in a real browser window — *"'file:' URLs are treated as unique
+security origins"* — and the page then renders with no tokens at all. Three headless
+runs had already pronounced it fine: Edge with `--allow-file-access-from-files`, Edge
+without it, and `--headless=new`, which is meant to enforce closest to a headed
+profile. All three loaded the stylesheet happily. The defect was found by a person
+opening the file, which is the only instrument that has ever seen it.
+
 **A missing coverage file kills far more than the coverage figures.** `.fallowrc.json`
 points fallow's health analysis at `coverage/coverage-final.json`, and fallow exits 2 when
 it cannot read it. So a contributor who has not run the suite loses the vital signs, the
