@@ -131,14 +131,31 @@ export function rank({ hotspots = [], topCount = 0, caps = [], coverage = [], de
 const run = promisify(execFile);
 const ROOT = process.cwd();
 
-/** Everything fallow emits, in one pass. Its non-zero exit is this script's failure. */
-async function collectFallow() {
+const COVERAGE_FILE = "coverage/coverage-final.json";
+
+/**
+ * Everything fallow emits, in one pass. Its non-zero exit is this script's failure.
+ *
+ * The `--coverage` override is what keeps "coverage absent" a reported state rather
+ * than a dead report. `.fallowrc.json` points fallow's health analysis at
+ * `coverage/coverage-final.json`, and with that file missing fallow exits 2 —
+ * "failed to read coverage file" — so the vital signs, the hotspots and every finding
+ * would be lost to a missing file none of them need. There is no `--no-coverage`, so
+ * the substitute is an empty istanbul map: CRAP scores degrade, and nothing else does.
+ */
+async function collectFallow(coveragePresent) {
+	const args = ["--format", "json", "--quiet"];
+	if (!coveragePresent) {
+		await mkdir(".health", { recursive: true });
+		await writeFile(".health/empty-coverage.json", "{}");
+		args.push("--coverage", ".health/empty-coverage.json");
+	}
 	// Fallow's own Node shim, run by the node already running this — not `npx`, and not
 	// the platform binary. Both alternatives were tried and both are Windows traps:
 	// `npx` resolves to `npx.cmd`, which Node 24 refuses to spawn without a shell
 	// (EINVAL) and deprecates spawning WITH one, and `@fallow-cli/win32-x64-msvc` is one
 	// platform's package name out of however many CI runs. The shim picks the binary.
-	const { stdout } = await run(process.execPath, [path.join("node_modules", "fallow", "bin", "fallow"), "--format", "json", "--quiet"], {
+	const { stdout } = await run(process.execPath, [path.join("node_modules", "fallow", "bin", "fallow"), ...args], {
 		cwd: ROOT,
 		maxBuffer: 32 * 1024 * 1024,
 	});
@@ -206,7 +223,7 @@ async function collectCaps() {
 async function collectCoverage() {
 	let raw;
 	try {
-		raw = JSON.parse(await readFile("coverage/coverage-final.json", "utf8"));
+		raw = JSON.parse(await readFile(COVERAGE_FILE, "utf8"));
 	} catch {
 		return { present: false, reason: "No coverage/coverage-final.json. Run `npm run test:coverage`." };
 	}
@@ -268,10 +285,11 @@ function rollup(fileScores, coverage) {
 }
 
 async function main() {
-	const [fallow, caps, coverage, debt] = await Promise.all([
-		collectFallow(),
+	// Coverage is resolved first: whether its file exists decides how fallow is invoked.
+	const coverage = await collectCoverage();
+	const [fallow, caps, debt] = await Promise.all([
+		collectFallow(coverage.present),
 		collectCaps(),
-		collectCoverage(),
 		collectDebt(),
 	]);
 	const thin = coverage.present ? coverage.files.filter((f) => layerOf(f.path) && f.statements < 90) : [];

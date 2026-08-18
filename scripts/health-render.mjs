@@ -2,6 +2,7 @@ import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
+import { layerOf } from "./health-collect.mjs";
 
 /**
  * `.health/report.json` → `.health/report.html`. This file knows about markup and
@@ -48,7 +49,7 @@ const CSS = `
 	.act .medium .rail { background: rgb(var(--color-orange-rgb)); }
 	.act .where { color: var(--text-muted); font-size: var(--font-ui-smaller); }
 	.act a { color: inherit; text-decoration: none; border-bottom: 1px solid var(--background-modifier-border); }
-	/* `--text-accent` is NOT in the vendored app.css -- DESIGN.md declares it, the
+	/* The --text-accent token is NOT in the vendored app.css -- DESIGN.md declares it, the
 	   reduced stub does not define it, and a hover that reads it changes nothing.
 	   Measured 2026-08-18: it is the ONLY token this page names that fails to
 	   resolve. The affordance is the underline instead, which needs no new token. */
@@ -57,6 +58,19 @@ const CSS = `
 	        font-size: var(--font-ui-smaller); font-weight: var(--font-medium);
 	        border-radius: var(--radius-s); padding: 0 var(--size-4-1); }
 	.clear { color: var(--text-muted); padding: var(--size-4-4) 0; }
+	details { border-top: 1px solid var(--background-modifier-border); padding: var(--size-4-2) 0; }
+	summary { cursor: pointer; font-weight: var(--font-medium); color: var(--text-normal); }
+	summary .count { color: var(--text-muted); font-weight: normal; }
+	h3 { font-size: var(--font-ui-small); font-weight: var(--font-medium);
+	     margin: var(--size-4-4) 0 0; }
+	table { border-collapse: collapse; width: 100%; margin-top: var(--size-4-2); }
+	th, td { text-align: left; padding: var(--size-2-1) var(--size-4-1);
+	         border-bottom: 1px solid var(--background-modifier-border); }
+	th { color: var(--text-muted); font-size: var(--font-ui-smaller);
+	     font-weight: var(--font-medium); cursor: pointer; user-select: none; }
+	td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+	.wide { overflow-x: auto; }
+	.empty { color: var(--text-muted); padding: var(--size-4-2) 0; }
 `;
 
 const sign = (label, value, stale) =>
@@ -98,6 +112,127 @@ function actions(report) {
 	return `<ul class="act">${rows.join("")}</ul>`;
 }
 
+/**
+ * The first value that is actually there, or the em dash.
+ *
+ * Extracted because a chain of `??` fallbacks is a branch each, and nothing in
+ * `scripts/` carries coverage: `vitest.config.mts` includes only `src/**`, so fallow
+ * estimates these functions at its lowest coverage tier and CRAP is then
+ * `cyclomatic² + cyclomatic`. That crosses the configured threshold of 30 at a
+ * cyclomatic of 5 — which is low, and is the budget every function in this directory
+ * is working inside. Written inline, this one scored 42.
+ */
+const firstOf = (...values) => values.find((v) => v !== null && v !== undefined) ?? "—";
+
+const cell = (value, numeric) =>
+	`<td${numeric ? ' class="num"' : ""}>${value === null || value === undefined ? "—" : escape(value)}</td>`;
+
+const table = (headings, rows) => `<div class="wide"><table>
+	<thead><tr>${headings.map((h) => `<th class="${h.num ? "num" : ""}">${escape(h.label)}</th>`).join("")}</tr></thead>
+	<tbody>${rows.map((r) => `<tr>${r.map((v, i) => cell(v, headings[i].num)).join("")}</tr>`).join("")}</tbody>
+</table></div>`;
+
+const section = (title, count, body) =>
+	`<details><summary>${escape(title)} <span class="count">${escape(count)}</span></summary>${body}</details>`;
+
+function architecture(report) {
+	const headings = [
+		{ label: "layer" },
+		{ label: "files", num: true },
+		{ label: "lines", num: true },
+		{ label: "statements %", num: true },
+		{ label: "maintainability", num: true },
+		{ label: "fan-in", num: true },
+		{ label: "fan-out", num: true },
+	];
+	const rows = report.layers.map((l) => [l.layer, l.files, l.lines, l.statements, l.avgMaintainability, l.fanIn, l.fanOut]);
+	return section("Architecture", `${report.layers.length} layers`, table(headings, rows));
+}
+
+function modules(report) {
+	const cap = new Map(report.caps.map((c) => [c.path, c]));
+	const cov = new Map((report.coverage.files ?? []).map((f) => [f.path, f]));
+	const headings = [
+		{ label: "module" },
+		{ label: "layer" },
+		{ label: "lines / cap", num: true },
+		{ label: "statements %", num: true },
+		{ label: "maintainability", num: true },
+		{ label: "cyclomatic", num: true },
+		{ label: "fan-in", num: true },
+		{ label: "fan-out", num: true },
+	];
+	// `layerOf` is imported from the collector rather than restated here. Two spellings
+	// of the layer map is how the modules table and the architecture rollup start
+	// disagreeing about which layer a file is in.
+	const rows = report.fallow.fileScores
+		.filter((s) => layerOf(s.path))
+		.map((s) => {
+			const c = cap.get(s.path);
+			return [
+				s.path,
+				layerOf(s.path),
+				c ? `${c.counted} / ${c.cap}` : "—",
+				cov.get(s.path)?.statements ?? null,
+				s.maintainability_index,
+				s.total_cyclomatic,
+				s.fan_in,
+				s.fan_out,
+			];
+		});
+	return section("Modules", `${rows.length} files`, table(headings, rows));
+}
+
+function debt(report) {
+	if (report.debt.length === 0) {
+		return section("Debt", "0 open", `<p class="empty">Nothing open in docs/bugs or docs/issues.</p>`);
+	}
+	const rows = report.debt.map((d) => [d.kind, d.title, d.path]);
+	return section(
+		"Debt",
+		`${report.debt.length} open`,
+		table([{ label: "kind" }, { label: "title" }, { label: "note" }], rows),
+	);
+}
+
+function findings(report) {
+	const nonZero = report.fallow.findings.filter((f) => f.count > 0);
+	const zero = report.fallow.findings.filter((f) => f.count === 0);
+	const detail = nonZero.map((f) => {
+		const rows = f.items.map((i) => [firstOf(i.path, i.package_name), i.line, firstOf(i.actions?.[0]?.description)]);
+		return (
+			`<h3>${escape(f.key)} <span class="count">${escape(f.count)}</span></h3>` +
+			table([{ label: "where" }, { label: "line", num: true }, { label: "suggested action" }], rows)
+		);
+	});
+	// The zero counters collapse rather than disappear: it must stay visible that they
+	// ran, or a check quietly dropped from fallow reads the same as a check that passed.
+	const allClear = `<p class="empty">${zero.length} other check(s) reported nothing: ${escape(zero.map((f) => f.key).join(", "))}.</p>`;
+	const schema =
+		report.fallow.schemaVersion === 7
+			? ""
+			: `<p class="empty">Fallow's schema is version ${escape(report.fallow.schemaVersion)}, not the 7 this report was written against. Its shape may have changed.</p>`;
+	return section("All findings", `${nonZero.length} non-zero`, schema + detail.join("") + allClear);
+}
+
+const SORT_SCRIPT = `
+	document.querySelectorAll('table').forEach((t) => {
+		t.querySelectorAll('th').forEach((th, i) => th.addEventListener('click', () => {
+			const body = t.tBodies[0];
+			const dir = th.dataset.dir === 'asc' ? -1 : 1;
+			t.querySelectorAll('th').forEach((o) => delete o.dataset.dir);
+			th.dataset.dir = dir === 1 ? 'asc' : 'desc';
+			const value = (row) => row.cells[i].textContent.trim();
+			const numeric = th.classList.contains('num');
+			[...body.rows]
+				.sort((a, b) => numeric
+					? dir * ((parseFloat(value(a)) || 0) - (parseFloat(value(b)) || 0))
+					: dir * value(a).localeCompare(value(b)))
+				.forEach((row) => body.appendChild(row));
+		}));
+	});
+`;
+
 export function page(report) {
 	const clean = report.fallow.fileScores.length - report.actions.length;
 	return `<!doctype html>
@@ -116,7 +251,12 @@ export function page(report) {
 Generated ${escape(report.generated)} from fallow ${escape(report.fallow.version)}.</p>
 ${signs(report)}
 ${actions(report)}
+${architecture(report)}
+${modules(report)}
+${debt(report)}
+${findings(report)}
 </main>
+<script>${SORT_SCRIPT}</script>
 </body>
 </html>`;
 }
