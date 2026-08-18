@@ -74,11 +74,24 @@ entry points from `package.json` — so neither reports as an unused file.
 | --- | --- | --- |
 | fallow | `execFile('npx', ['fallow', '--format', 'json', '--quiet'])` | non-zero exit → abort with the stderr |
 | coverage | read `coverage/coverage-final.json`; thresholds from the config import | absent → page renders with coverage marked stale and names `npm run test:coverage` |
-| caps | count lines in the three trees, compare to each tree's cap | — |
+| caps | ESLint's own `max-lines` counter — see below | — |
 | debt | frontmatter of `docs/issues/*.md` and `docs/bugs/*.md` via `docs-markdown.mjs` | — |
 
 Coverage absent is a reported state, not a guess and not a crash: the rest of the page
 is still worth reading without it.
+
+**A raw line count is the wrong instrument for the caps, and using one would put a
+false alarm on the hero.** `max-lines` is configured with `skipBlankLines` and
+`skipComments`, and this repository comments heavily: `src/view/backlogView.ts` is 569
+raw lines and lint counts **310** of them against the 400 cap. Fallow's
+`file_scores[].lines` is a raw count too (570 for the same file), so it cannot answer
+this either. The only instrument that sees what the gate sees is ESLint itself, so the
+collector runs ESLint's Node API over the three trees with one throwaway config —
+`max-lines` set to `max: 0`, so every file reports, and the count is read out of the
+message — and never the project config, which is type-aware and slow. Measured
+2026-08-18: 399 ms for two files with `@typescript-eslint/parser` and no type
+information. Because it is lint's own counter, the number on the page cannot drift from
+the number the gate enforces.
 
 ### Page sections
 
