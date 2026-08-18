@@ -233,7 +233,37 @@ const SORT_SCRIPT = `
 	});
 `;
 
-export function page(report) {
+/**
+ * Obsidian's vendored app.css, INLINED rather than linked.
+ *
+ * The reason is the plain one: a `<link href="../test/harness/obsidian.css">` makes the
+ * report two files that must keep their relative positions, so it renders unstyled the
+ * moment anyone moves it, copies it out, or attaches it to anything. Inlined, the page
+ * is one file with no subresources at all — no `url()`, no `@import`, nothing to fetch —
+ * which is what "self-contained" was supposed to mean and did not.
+ *
+ * **What this is NOT known to fix.** It was written in response to a reported
+ * `'file:' URLs are treated as unique security origins` error on 2026-08-18, and that
+ * error is UNREPRODUCED. Three instruments, none of which saw it: headless Edge with
+ * `--allow-file-access-from-files`, headless Edge without it, and `--headless=new`,
+ * which enforces closest to a headed profile. The linked version loaded its stylesheet
+ * under all three, `--text-normal` resolving to `#222222` every time.
+ *
+ * Two details argue it was never this link. The reported error names the SAME url as
+ * both the loader and the loaded — a page loading itself, not a page loading a
+ * stylesheet. And the machine is AzureAD-joined, where an Edge enterprise policy can
+ * restrict local file access in ways no flag here reproduces.
+ *
+ * So: recorded as unexplained rather than as fixed. The inlining is justified by the
+ * paragraph above it and by nothing below it.
+ *
+ * 142 KB of duplication into a gitignored artifact buys the first reason on its own.
+ */
+async function tokens() {
+	return readFile(path.join("test", "harness", "obsidian.css"), "utf8");
+}
+
+export function page(report, obsidianCss) {
 	const clean = report.fallow.fileScores.length - report.actions.length;
 	return `<!doctype html>
 <html lang="en" class="theme-light">
@@ -241,7 +271,7 @@ export function page(report) {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Codebase health</title>
-<link rel="stylesheet" href="../test/harness/obsidian.css">
+<style>${obsidianCss}</style>
 <style>${CSS}</style>
 </head>
 <body>
@@ -264,6 +294,6 @@ ${findings(report)}
 // CLI entry only, for the same reason and in the same shape as the collector's guard.
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
 	const report = JSON.parse(await readFile(".health/report.json", "utf8"));
-	await writeFile(".health/report.html", page(report));
+	await writeFile(".health/report.html", page(report, await tokens()));
 	console.log(`✓ .health/report.html — open it at ${path.resolve(".health/report.html")}`);
 }
