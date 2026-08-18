@@ -16,7 +16,7 @@ import { ESLint } from "eslint";
  * and hands the result to a function here.
  */
 
-/** Repo-relative and forward-slashed, from either platform's absolute path. */
+/** Repo-relative and forward-slashed, from the HOST platform's absolute path. */
 export function toRepoPath(absolute, root) {
 	return path.relative(root, absolute).split(path.sep).join("/");
 }
