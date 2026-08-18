@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { layerMatrix } from '../../scripts/health-charts.mjs';
+import { architecture, worklist } from '../../scripts/health-sections.mjs';
+import { churnScatter } from '../../scripts/health-scatter.mjs';
 import { capFor, coverageRatios, layerOf, rank, toRepoPath } from '../../scripts/health-collect.mjs';
 
 /**
@@ -205,5 +207,161 @@ describe('layerMatrix', () => {
 		const html = layerMatrix(clean);
 		expect(html).not.toContain('mx-violation');
 		expect(html).toContain('none in the shaded region');
+	});
+});
+
+describe('worklist', () => {
+	const report = {
+		root: 'C:/repo',
+		actions: [
+			{ band: 'high', title: 'a is over its cap', where: 'src/view/a.ts', why: '401 lines', source: 'eslint' },
+			{ band: 'high', title: 'b is thinly covered', where: 'src/domain/b.ts', why: '78%', source: 'vitest' },
+			{ band: 'medium', title: 'c is near its cap', where: 'src/view/c.ts', why: '380 lines', source: 'eslint' },
+		],
+	};
+
+	/**
+	 * **The markup IS the wiring.** The tabs and the grouping are driven by the inline
+	 * script, which nothing here can run — so what this file can check is the contract the
+	 * script reads: an `aria-controls` that resolves, exactly one visible panel, and the
+	 * two grouping keys plus the rank on every row. Break any of those and the control
+	 * silently does nothing in a browser. The INTERACTION still needs the page opened.
+	 */
+	it('gives every present band a tab that names a panel, and shows exactly one', () => {
+		const html = worklist(report);
+		const controls = [...html.matchAll(/aria-controls="([^"]+)"/g)].map((m) => m[1]);
+		expect(controls).toEqual(['band-high', 'band-medium']);
+		for (const id of controls) expect(html).toContain(`id="${id}"`);
+		expect(html.match(/role="tabpanel"/g)).toHaveLength(2);
+		// Every panel but the first carries `hidden`, so the page opens on one band.
+		expect(html.match(/ hidden>/g)).toHaveLength(1);
+	});
+
+	it('omits a band with no rows rather than showing an empty tab', () => {
+		// `low` has no rows in the fixture, so nothing may offer to show it.
+		expect(worklist(report)).not.toContain('wt-low');
+	});
+
+	/**
+	 * The rank is what makes "Flat" a restoration. Without it the only order the list can
+	 * return to is whatever the last grouping sorted it into — the hole the tables view
+	 * still has.
+	 */
+	it('carries the rank and both grouping keys on every row', () => {
+		const html = worklist(report);
+		const rows = [...html.matchAll(/<li data-rank="(\d+)" data-tool="([^"]+)" data-dir="([^"]+)"/g)];
+		expect(rows.map((m) => [m[1], m[2], m[3]])).toEqual([
+			['0', 'eslint', 'src/view'],
+			['1', 'vitest', 'src/domain'],
+			['2', 'eslint', 'src/view'],
+		]);
+	});
+
+	it('says so when there is nothing to act on', () => {
+		const html = worklist({ ...report, actions: [] });
+		expect(html).toContain('Nothing to act on');
+		expect(html).not.toContain('role="tab"');
+	});
+});
+
+describe('architecture table', () => {
+	const report = {
+		layers: [
+			{ layer: 'view', files: 64, lines: 19554, statements: 98.2, avgMaintainability: 87.7, fanIn: 255, fanOut: 532 },
+			{ layer: 'domain', files: 28, lines: 9249, statements: 99.7, avgMaintainability: 89.6, fanIn: 552, fanOut: 112 },
+		],
+	};
+
+	/**
+	 * **Every row knows the order the report put it in.** Without it, the grouping
+	 * control's "Flat" has nothing to return to: it used to only delete the headings and
+	 * leave the rows in whatever order grouping had sorted them into, so the third state
+	 * of a three-state control was a fourth arbitrary order.
+	 */
+	it('ranks every row in the order the report emitted it', () => {
+		const ranks = [...architecture(report).matchAll(/<tr data-rank="(\d+)"/g)].map((m) => m[1]);
+		expect(ranks).toEqual(['0', '1']);
+	});
+
+	/**
+	 * A layer name is a word. `td:first-child` monospaced it because it happened to be
+	 * first, and left the debt table's note PATH in the body face for the same reason —
+	 * a position is not a description. See CLAUDE.md, address code by name.
+	 */
+	it('leaves a layer name in the body face', () => {
+		expect(architecture(report)).not.toContain('<td class="mono">view</td>');
+		expect(architecture(report)).toContain('<td class="">view</td>');
+	});
+});
+
+describe('churnScatter', () => {
+	const report = {
+		fallow: {
+			vitalSigns: { hotspot_top_pct_count: 1, hotspot_count: 0 },
+			hotspots: [
+				{ path: 'src/a.ts', score: 40, weighted_commits: 100, complexity_density: 0.3, commits: 120, lines_added: 9, lines_deleted: 8, trend: 'accelerating' },
+				{ path: 'src/b.ts', score: 10, weighted_commits: 10, complexity_density: 0.05, commits: 12, lines_added: 3, lines_deleted: 1, trend: 'cooling' },
+			],
+		},
+	};
+
+	/**
+	 * **Colour marks what the worklist already carries, and nothing else.** The list takes
+	 * fallow's top `hotspot_top_pct_count` by score; if the figure coloured a different set
+	 * — its own idea of "busy", say — the page would hold two definitions of a hotspot and
+	 * the reader would have no way to tell which one the row in front of them used.
+	 */
+	it('colours exactly the files fallow puts in its top percentile', () => {
+		const html = churnScatter(report);
+		expect(html.match(/sc-dot sc-attention/g)).toHaveLength(1);
+		expect(html.match(/sc-dot sc-plain/g)).toHaveLength(1);
+	});
+
+	/**
+	 * **No boundary, and the caption says why.** The risk scatter's filled quadrant was
+	 * removed because its edge was an arbitrary half-of-maximum. Fallow's own hotspot
+	 * threshold is the only one in evidence here, and it is met by nothing — so a box would
+	 * be an invention, and the figure has to admit that rather than draw one.
+	 */
+	it('shades no region, and reports the direction as counts rather than a slope', () => {
+		const html = churnScatter(report);
+		expect(html).not.toContain('sc-band');
+		expect(html).toContain('1 accelerating, 0 stable, 1 cooling');
+	});
+
+	it('draws nothing at all when there is no history to draw', () => {
+		expect(churnScatter({ fallow: { vitalSigns: {}, hotspots: [] } })).toBe('');
+	});
+});
+
+describe('rank, with fallow direction', () => {
+	const hotspots = [
+		{ path: 'src/a.ts', score: 40, trend: 'accelerating', actions: [{ description: 'Refactor a' }] },
+		{ path: 'src/b.ts', score: 10, trend: 'cooling', actions: [{ description: 'Refactor b' }] },
+	];
+
+	/**
+	 * The direction reaches every source that can know it, not only the rows fallow itself
+	 * contributed: "20 lines from its cap" and "and still accelerating" are one decision,
+	 * and on two different pages they are two facts nobody holds at once.
+	 */
+	it('carries the trend onto a row a different tool reported', () => {
+		const rows = rank({ hotspots, topCount: 0, caps: [{ path: 'src/a.ts', counted: 395, cap: 400 }] });
+		expect(rows).toHaveLength(1);
+		expect(rows[0].source).toBe('eslint');
+		expect(rows[0].trend).toBe('accelerating');
+	});
+
+	/** A file fallow has no history for carries no trend, rather than a guessed one. */
+	it('leaves the trend absent where it cannot be known', () => {
+		const rows = rank({ hotspots, caps: [{ path: 'test/x.test.ts', counted: 445, cap: 450 }] });
+		expect(rows[0].trend).toBeUndefined();
+	});
+
+	/** The hotspot row's own `why` stops repeating what the row now carries as a field. */
+	it('does not say the direction twice on a hotspot row', () => {
+		const rows = rank({ hotspots, topCount: 1 });
+		expect(rows[0].why).toBe('hotspot score 40');
+		expect(rows[0].trend).toBe('accelerating');
 	});
 });

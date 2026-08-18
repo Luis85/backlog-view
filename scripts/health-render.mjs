@@ -2,7 +2,8 @@ import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
-import { capDistribution, coverageDistribution, layerMatrix, riskScatter } from "./health-charts.mjs";
+import { capDistribution, coverageDistribution, layerMatrix } from "./health-charts.mjs";
+import { churnScatter, riskScatter } from "./health-scatter.mjs";
 import { architecture, debt, escape, findings, layerStrip, modules, riskBar, vitalSigns, worklist } from "./health-sections.mjs";
 
 /**
@@ -66,6 +67,7 @@ const CSS = `
 		--critical: #d03b3b;
 		--attention: #ec835a;
 		--seq: 42 120 214;
+		--sticky: 64px;
 		--shadow: 0 1px 2px rgba(11, 11, 11, 0.05), 0 4px 12px rgba(11, 11, 11, 0.04);
 	}
 	/* Dark is SELECTED, not an inversion: its own steps, each measured against the dark
@@ -108,31 +110,38 @@ const CSS = `
 	*, *::before, *::after { box-sizing: border-box; }
 	body { background: var(--plane); color: var(--ink);
 	       font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
-	       font-size: 14px; line-height: 1.5; margin: 0; padding: 40px 24px 96px;
+	       font-size: 14px; line-height: 1.5; margin: 0; padding: 32px 24px 72px;
 	       -webkit-font-smoothing: antialiased; }
 	main { margin-inline: auto; max-width: 1120px; }
 	:focus-visible { border-radius: 4px; outline: 2px solid var(--accent); outline-offset: 2px; }
 
 	/* Type. Four steps and two weights; no display face, per the palette's own rule that
 	   everything including the largest figure stays in the system sans. */
-	h1 { font-size: 22px; font-weight: 600; letter-spacing: -0.015em; margin: 0; }
+	h1 { font-size: 24px; font-weight: 600; letter-spacing: -0.015em; margin: 0; }
 	h2 { font-size: 16px; font-weight: 600; letter-spacing: -0.01em; margin: 0; }
 	h3 { align-items: baseline; display: flex; font-size: 11px; font-weight: 600;
-	     gap: 8px; justify-content: space-between; letter-spacing: 0.08em; margin: 0 0 14px;
-	     text-transform: uppercase; color: var(--ink-3); }
+	     gap: 8px; justify-content: space-between; letter-spacing: 0.08em; margin: 0 0 16px;
+	     text-transform: uppercase; color: var(--ink-2); }
 	.count { color: var(--ink-3); font-size: 11px; font-weight: 400; letter-spacing: 0;
 	         text-transform: none; }
 
-	header { display: flex; align-items: flex-start; gap: 24px;
-	         justify-content: space-between; margin-bottom: 28px; }
+	/* Two columns, two rows — NOT four flex items. The title, the answer and the
+	   provenance were siblings of the controls in one row, so each of the four shrank to
+	   its share: a two-word h1 wrapped, and the sentence that is the report's whole point
+	   broke mid-clause. The text is one column now, the controls are the other, and the
+	   provenance is a footing line under both. */
+	header { align-items: start; border-bottom: 1px solid var(--rule); column-gap: 32px;
+	         display: grid; grid-template-columns: minmax(0, 1fr) auto; margin-bottom: 24px;
+	         padding-bottom: 20px; row-gap: 16px; }
+	.head { min-inline-size: 0; }
 	.answer { font-size: 16px; margin: 8px 0 0; max-width: 62ch; }
 	.answer b { font-weight: 600; }
-	.provenance { color: var(--ink-3); font-size: 12px; margin: 8px 0 0;
+	.provenance { color: var(--ink-3); font-size: 12px; grid-column: 1 / -1; margin: 0;
 	              font-variant-numeric: tabular-nums; }
 	.is-old { color: var(--attention); }
 
 	/* Controls. */
-	.controls { align-items: center; display: flex; gap: 8px; }
+	.controls { align-items: center; display: flex; gap: 8px; justify-self: end; }
 	.tabs { background: var(--sunken); border-radius: 8px; display: flex; gap: 2px; padding: 3px; }
 	[role="tab"] { background: none; border: none; border-radius: 6px; color: var(--ink-2);
 	               cursor: pointer; font: inherit; font-size: 13px; font-weight: 500;
@@ -142,18 +151,18 @@ const CSS = `
 	                                     color: var(--ink); }
 	.icon-button { background: var(--surface); border: 1px solid var(--rule);
 	               border-radius: 8px; color: var(--ink-2); cursor: pointer; font: inherit;
-	               font-size: 13px; padding: 7px 12px; }
+	               font-size: 13px; padding: 5px 12px; }
 	.icon-button:hover { border-color: var(--rule-2); color: var(--ink); }
 	body.show-dashboard #tables, body.show-tables #dashboard { display: none; }
 
 	/* Cards. One surface, one hairline, one soft shadow — no nested cards. */
-	.grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-	        margin-bottom: 16px; }
+	#dashboard > * { margin-bottom: 16px; }
+	#dashboard > :last-child { margin-bottom: 0; }
+	.grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
 	.cluster, .figure { background: var(--surface); border: 1px solid var(--rule);
-	                    border-radius: 12px; box-shadow: var(--shadow); padding: 18px 20px; }
-	.figure { margin-bottom: 16px; }
+	                    border-radius: 12px; box-shadow: var(--shadow); padding: 20px; }
 	.figure-wide, .wide-cluster { grid-column: 1 / -1; }
-	.fig-note { color: var(--ink-3); font-size: 12px; margin: 14px 0 0; max-width: 74ch; }
+	.fig-note { color: var(--ink-3); font-size: 12px; margin: 16px 0 0; max-width: 74ch; }
 	.fig-note.is-critical { color: var(--critical); }
 
 	.cluster dl { display: grid; gap: 10px; margin: 0; }
@@ -176,11 +185,13 @@ const CSS = `
 	.seg-high { background: var(--attention); }
 	.seg-very_high { background: var(--critical); }
 
-	.meter { background: var(--rule); block-size: 4px; border-radius: 2px; display: block;
+	.meter { background: var(--sunken); block-size: 8px; border-radius: 4px; display: block;
 	         inline-size: 100%; margin-block-end: 3px; overflow: hidden; }
-	.meter i { background: var(--ink-3); block-size: 100%; display: block; }
+	.meter i { background: var(--rule-2); block-size: 100%; display: block; }
 	.meter-warn i { background: var(--attention); }
-	.has-meter { min-inline-size: 88px; }
+	.has-meter { min-inline-size: 88px; white-space: nowrap; }
+	.has-meter .meter { display: inline-block; inline-size: 56px; margin: 0 8px 0 0;
+	                    vertical-align: middle; }
 	.has-meter b { font-weight: 400; }
 
 	/* Layers. */
@@ -262,58 +273,82 @@ const CSS = `
 	.dist-count { color: var(--ink-2); font-size: 12px; font-variant-numeric: tabular-nums;
 	              text-align: right; }
 
-	/* Scatter. Natural size; it may shrink and may never grow. */
-	.scatter { block-size: auto; display: block; inline-size: 100%; max-inline-size: 680px; }
+	/* Scatter. Full width of its card; main's max-width is the only cap. */
+	.scatter { block-size: auto; display: block; inline-size: 100%; }
 	.scatter text { fill: var(--ink-3); font-family: inherit; font-size: 11px; }
 	.sc-grid { stroke: var(--rule); }
 	.sc-axis { stroke: var(--rule-2); }
-	.sc-band { fill: var(--critical); opacity: 0.08; }
-	.sc-band-label { fill: var(--ink-3) !important; font-size: 11px; }
-	.sc-dot { fill: var(--ink-3); fill-opacity: 0.55; }
-	.sc-risky { fill: var(--critical); fill-opacity: 1; stroke: var(--surface); stroke-width: 2; }
+	.sc-threshold { stroke: var(--rule-2); }
+	.sc-threshold-label, .sc-tick, .sc-axis-label { fill: var(--ink-3) !important; font-size: 11px; }
+	.sc-hit { fill: transparent; }
+	/* A 2px surface ring so overlapping marks stay countable. */
+	.sc-dot { stroke: var(--surface); stroke-width: 1.5; }
+	.sc-plain { fill: var(--ink-3); fill-opacity: 0.5; }
+	.sc-attention { fill: var(--attention); }
+	.sc-critical { fill: var(--critical); }
+	.sc-label { fill: var(--ink-2) !important; font-size: 11px; }
 
-	/* The worklist. Colour once per band, on the heading that names the rule. */
-	.band { margin-bottom: 20px; }
-	.band h3 { justify-content: flex-start; }
-	.band .swatch { block-size: 8px; inline-size: 8px; }
-	.band-high .swatch { background: var(--critical); }
-	.band-medium .swatch { background: var(--attention); }
-	.band-low .swatch { background: var(--rule-2); }
+	/* The worklist. One band at a time, and the colour rides on the control that selects
+	   it — the same place the count does. */
+	.wl-bar { align-items: center; column-gap: 16px; display: flex; flex-wrap: wrap;
+	          justify-content: space-between; margin-bottom: 16px; row-gap: 8px; }
+	#band-tabs { flex-wrap: wrap; }
+	#band-tabs [role="tab"] { align-items: center; display: flex; gap: 8px; }
+	#band-tabs .swatch { block-size: 8px; inline-size: 8px; }
+	#band-tabs #wt-high .swatch { background: var(--critical); }
+	#band-tabs #wt-medium .swatch { background: var(--attention); }
+	#band-tabs #wt-low .swatch { background: var(--rule-2); }
+	.wl-why { color: var(--ink-3); font-size: 12px; margin: 0 0 16px; }
+	.worklist .act { background: none; border: 0; border-radius: 0; border-top: 1px solid var(--rule);
+	                 box-shadow: none; margin-inline: -20px; }
+	/* A heading inside the list, so it scrolls with the rows it heads. */
+	.wl-head { background: var(--sunken); color: var(--ink); display: block; font-size: 12px;
+	           font-weight: 600; letter-spacing: 0.02em; padding: 8px 20px; }
+	.wl-head .g-count { color: var(--ink-3); font-weight: 400; }
 	.act { background: var(--surface); border: 1px solid var(--rule); border-radius: 12px;
 	       box-shadow: var(--shadow); list-style: none; margin: 0; overflow: hidden; padding: 0; }
-	.act li { align-items: baseline; display: grid; gap: 4px 14px;
-	          grid-template-columns: 1fr auto auto; padding: 12px 18px; }
+	.act li { align-items: baseline; display: grid; gap: 4px 16px;
+	          grid-template-columns: 1fr auto auto; padding: 12px 20px; }
 	.act li + li { border-top: 1px solid var(--rule); }
 	.act li:hover { background: var(--sunken); }
 	.row-title { color: var(--ink); font-weight: 500; grid-column: 1; text-decoration: none; }
 	.row-title:hover { color: var(--accent); text-decoration: underline; }
 	.row-where { color: var(--ink-2); font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-	             font-size: 11px; grid-column: 1; grid-row: 2; }
+	             font-size: 12px; grid-column: 1; grid-row: 2; }
 	.row-why { color: var(--ink-3); font-size: 12px; font-variant-numeric: tabular-nums; grid-row: 2; }
 	.chip { background: var(--sunken); border-radius: 5px; color: var(--ink-2); font-size: 11px;
 	        grid-row: 1 / span 2; padding: 2px 8px; }
 
-	/* Filter and tables. */
-	.filter-bar { background: var(--plane); margin-bottom: 16px; padding-block: 10px;
-	              position: sticky; top: 0; z-index: 3; }
+	/* Filter and tables. Two sticky layers, one origin: --sticky is the filter bar's own
+	   height, and the table head and the group headings stack from it. Both used to be
+	   pinned to top: 0, so the head — which is the sort control — slid underneath the bar
+	   and could not be clicked. */
+	.filter-bar { align-items: center; background: var(--plane); block-size: var(--sticky);
+	              display: flex; margin-bottom: 12px; position: sticky; top: 0; z-index: 3; }
 	.filter { background: var(--surface); border: 1px solid var(--rule); border-radius: 8px;
 	          color: var(--ink); display: block; font: inherit; inline-size: 100%;
 	          padding: 10px 14px; }
-	.filter:focus { border-color: var(--accent); outline: none; }
-	.filter-hint { color: var(--ink-3); font-size: 12px; margin: 8px 0 0; }
-	kbd { background: var(--sunken); border: 1px solid var(--rule); border-radius: 4px;
+	/* The ring stays. A 1px border turning blue is not a focus indicator. */
+	.filter:focus-visible { border-color: var(--accent); }
+	.filter-hint { color: var(--ink-3); font-size: 12px; margin: 0 0 16px; }
+	kbd, code { background: var(--sunken); border: 1px solid var(--rule); border-radius: 4px;
 	      font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px;
 	      padding: 1px 5px; }
 
 	.group { margin-bottom: 32px; }
 	.group[data-matches="0"] { display: none; }
-	.group > h2 { border-bottom: 1px solid var(--rule); margin-bottom: 14px;
+	.group > h2 { border-bottom: 1px solid var(--rule); margin-bottom: 16px;
 	              padding-bottom: 10px; }
 	.group h3 { margin: 20px 0 8px; }
+	/* The head sticks INSIDE this box, never to the page: overflow-x: auto already made
+	   .wide a scroll container, so it is the sticky head's scrollport. A page-relative
+	   offset therefore pushed the head down into its own first row, and the top: 0 it
+	   replaced only looked correct because it was a no-op — the pane could not scroll
+	   vertically, so nothing ever pinned. A bounded height makes it a pane that does. */
 	.wide { background: var(--surface); border: 1px solid var(--rule); border-radius: 12px;
-	        box-shadow: var(--shadow); overflow-x: auto; }
+	        box-shadow: var(--shadow); max-block-size: min(70vh, 720px); overflow: auto; }
 	table { border-collapse: collapse; inline-size: 100%; }
-	th, td { padding: 9px 14px; text-align: left; vertical-align: baseline; }
+	th, td { padding: 8px 16px; text-align: left; vertical-align: baseline; }
 	thead th { background: var(--surface); border-bottom: 1px solid var(--rule);
 	           color: var(--ink-3); cursor: pointer; font-size: 11px; font-weight: 600;
 	           letter-spacing: 0.04em; position: sticky; text-transform: uppercase; top: 0;
@@ -321,6 +356,8 @@ const CSS = `
 	thead th:hover { color: var(--ink); }
 	thead th::after { border: 3px solid transparent; content: ""; display: inline-block;
 	                  margin-inline-start: 6px; opacity: 0; vertical-align: middle; }
+	thead th:hover::after { border-block-end-color: var(--rule-2); margin-block-end: 3px;
+	                        opacity: 1; }
 	thead th[aria-sort="ascending"]::after { border-block-end-color: var(--accent);
 	                                         margin-block-end: 3px; opacity: 1; }
 	thead th[aria-sort="descending"]::after { border-block-start-color: var(--accent);
@@ -328,27 +365,29 @@ const CSS = `
 	tbody tr + tr { border-top: 1px solid var(--rule); }
 	tbody tr:hover { background: var(--sunken); }
 	td.num, th.num { font-variant-numeric: tabular-nums; text-align: right; }
-	td:first-child { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+	td.mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
 	.empty { color: var(--ink-2); margin: 12px 0; max-width: 68ch; }
 	.warn-text { color: var(--attention); }
 
 	.group-by { display: flex; gap: 4px; margin-bottom: 12px; }
+	.wl-bar .group-by { margin-bottom: 0; }
 	.gb { background: var(--surface); border: 1px solid var(--rule); border-radius: 6px;
 	      color: var(--ink-2); cursor: pointer; font: inherit; font-size: 12px; padding: 5px 10px; }
 	.gb:hover { border-color: var(--rule-2); color: var(--ink); }
 	.gb[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
 	tr.group-head td { background: var(--sunken); color: var(--ink); font-weight: 600;
 	                   font-size: 12px; letter-spacing: 0.02em; position: sticky; top: 33px; }
-	tr.group-head td:first-child { font-family: inherit; }
 	tr.group-head .g-count { color: var(--ink-3); font-weight: 400; }
 
 	@media (max-width: 720px) {
-		header { flex-direction: column; gap: 16px; }
+		header { grid-template-columns: minmax(0, 1fr); }
+		.controls { justify-self: start; }
 		.layers li { grid-template-columns: 5rem 1fr 3.5rem; }
 		.layer-lines, .layer-mi { display: none; }
 	}
 	@media (prefers-reduced-motion: no-preference) {
-		#dashboard, #tables { animation: rise 180ms cubic-bezier(0.2, 0, 0, 1); }
+		body.show-dashboard #dashboard, body.show-tables #tables {
+			animation: rise 180ms cubic-bezier(0.2, 0, 0, 1); }
 		@keyframes rise { from { opacity: 0; transform: translateY(6px); } }
 	}
 
@@ -356,7 +395,7 @@ const CSS = `
 
 const SCRIPT = `
 	const body = document.body;
-	const tabs = [...document.querySelectorAll('[role="tab"]')];
+	const tabs = [...document.querySelectorAll('#view-tabs [role="tab"]')];
 	const select = (tab) => {
 		body.className = 'show-' + tab.dataset.view;
 		tabs.forEach((t) => {
@@ -411,11 +450,68 @@ const SCRIPT = `
 	// their choice that wins in both directions — light over an OS-dark preference too,
 	// which is why the stylesheet guards the media block rather than relying on order.
 	const themed = document.documentElement;
-	document.getElementById('theme').addEventListener('click', () => {
-		const dark = matchMedia('(prefers-color-scheme: dark)').matches;
-		const current = themed.dataset.theme || (dark ? 'dark' : 'light');
-		themed.dataset.theme = current === 'dark' ? 'light' : 'dark';
+	const themeButton = document.getElementById('theme');
+	const current = () => themed.dataset.theme ||
+		(matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+	// A button labelled "Theme" says what it is about and not what it does, and after the
+	// click nothing on the page says which mode is now chosen. It names the other mode.
+	const nameTheme = () => { themeButton.textContent = current() === 'dark' ? 'Light' : 'Dark'; };
+	themeButton.addEventListener('click', () => {
+		themed.dataset.theme = current() === 'dark' ? 'light' : 'dark';
+		nameTheme();
 	});
+	nameTheme();
+
+	// The worklist's bands, as one panel at a time. Arrow keys move focus, a click does
+	// not — a mouse user who lands on a tab did not ask for the focus ring.
+	const bands = [...document.querySelectorAll('#band-tabs [role="tab"]')];
+	const showBand = (tab) => bands.forEach((t) => {
+		const on = t === tab;
+		t.setAttribute('aria-selected', String(on));
+		t.tabIndex = on ? 0 : -1;
+		document.getElementById(t.getAttribute('aria-controls')).hidden = !on;
+	});
+	bands.forEach((tab, i) => {
+		tab.addEventListener('click', () => showBand(tab));
+		tab.addEventListener('keydown', (e) => {
+			const step = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
+			if (!step) return;
+			e.preventDefault();
+			const next = bands[(i + step + bands.length) % bands.length];
+			showBand(next);
+			next.focus();
+		});
+	});
+
+	// Grouping the list. Rows carry data-rank, so Flat restores the ranking rather than
+	// leaving whatever order the last grouping sorted them into.
+	const rank = (row) => Number(row.dataset.rank);
+	const groupList = (list, key) => {
+		list.querySelectorAll('li.wl-head').forEach((h) => h.remove());
+		const rows = [...list.children].sort((a, b) => (key
+			? a.dataset[key].localeCompare(b.dataset[key]) || rank(a) - rank(b)
+			: rank(a) - rank(b)));
+		rows.forEach((r) => list.appendChild(r));
+		if (!key) return;
+		let last = null;
+		rows.forEach((row) => {
+			const value = row.dataset[key];
+			if (value === last) return;
+			last = value;
+			const head = document.createElement('li');
+			head.className = 'wl-head';
+			const count = rows.filter((r) => r.dataset[key] === value).length;
+			head.append(value, ' ');
+			head.appendChild(document.createElement('span')).className = 'g-count';
+			head.lastChild.textContent = count;
+			list.insertBefore(head, row);
+		});
+	};
+	document.querySelectorAll('#wl-group .gb').forEach((b) => b.addEventListener('click', () => {
+		const key = b.dataset.groupBy === 'off' ? '' : b.dataset.groupBy;
+		document.querySelectorAll('#wl-group .gb').forEach((o) => o.setAttribute('aria-pressed', String(o === b)));
+		document.querySelectorAll('.worklist .act').forEach((list) => groupList(list, key));
+	}));
 
 	// Age is computed when the page is OPENED, not when it was written — a static page
 	// that says "just now" forever is worse than one that says nothing.
@@ -453,19 +549,26 @@ const SCRIPT = `
 	};
 	const regroupAll = () => document.querySelectorAll('table[data-groupable]').forEach(regroup);
 
-	document.querySelectorAll('.gb').forEach((b) => b.addEventListener('click', () => {
-		const t = b.closest('.group').querySelector('table[data-groupable]');
+	document.querySelectorAll('.group .gb').forEach((b) => b.addEventListener('click', () => {
+		const t = b.closest('.group')?.querySelector('table[data-groupable]');
+		if (!t) return;
 		const column = b.dataset.groupBy;
 		b.parentElement.querySelectorAll('.gb').forEach((o) => o.setAttribute('aria-pressed', String(o === b)));
+		t.querySelectorAll('tr.group-head').forEach((r) => r.remove());
 		if (column === 'off') delete t.dataset.groupOn;
-		else {
-			t.dataset.groupOn = column;
-			// Grouping only reads if like sits with like, so it sorts by the key first.
-			const tbody = t.tBodies[0];
-			[...tbody.rows]
-				.sort((x, y) => (x.dataset.group || '').localeCompare(y.dataset.group || ''))
-				.forEach((r) => tbody.appendChild(r));
-		}
+		else t.dataset.groupOn = column;
+		// Grouping only reads if like sits with like, so it sorts by the key first — and
+		// Flat sorts back to the ranked order rather than leaving whatever the last
+		// grouping produced, which is the order it used to call flat.
+		const tbody = t.tBodies[0];
+		const at = (r) => Number(r.dataset.rank);
+		[...tbody.rows]
+			.sort((x, y) => (t.dataset.groupOn
+				? (x.dataset.group || '').localeCompare(y.dataset.group || '') || at(x) - at(y)
+				: at(x) - at(y)))
+			.forEach((r) => tbody.appendChild(r));
+		// The rows no longer follow the sorted column, so the arrow saying they do is a lie.
+		t.querySelectorAll('th').forEach((o) => o.setAttribute('aria-sort', 'none'));
 		regroup(t);
 	}));
 
@@ -531,22 +634,25 @@ export function page(report) {
 <body class="show-dashboard">
 <main>
 <header>
+<div class="head">
 <h1>Codebase health</h1>
 <p class="answer">${answer(report)}</p>
-<p class="provenance"><span id="age" data-generated="${escape(report.generated)}">${escape(report.generated)}</span>${commitNote(report)} · fallow ${escape(report.fallow.version)} · schema ${escape(report.fallow.schemaVersion)}</p>
+</div>
 <div class="controls">
-<div class="tabs" role="tablist" aria-label="Report views">
+<div class="tabs" id="view-tabs" role="tablist" aria-label="Report views">
 ${tab("dashboard", "Dashboard", true)}
 ${tab("tables", "Tables", false)}
 </div>
-<button type="button" class="icon-button" id="theme" aria-label="Switch between light and dark">Theme</button>
+<button type="button" class="icon-button" id="theme" aria-label="Switch between light and dark">Dark</button>
 </div>
+<p class="provenance"><span id="age" data-generated="${escape(report.generated)}">${escape(report.generated)}</span>${commitNote(report)} · fallow ${escape(report.fallow.version)} · schema ${escape(report.fallow.schemaVersion)}</p>
 </header>
 <div id="dashboard" role="tabpanel" aria-labelledby="tab-dashboard">
 ${vitalSigns(report)}
 ${layerStrip(report)}
 ${layerMatrix(report)}
 ${riskScatter(report)}
+${churnScatter(report)}
 <div class="grid">
 ${coverageDistribution(report)}
 ${capDistribution(report)}
@@ -557,8 +663,8 @@ ${worklist(report)}
 <div id="tables" role="tabpanel" aria-labelledby="tab-tables">
 <div class="filter-bar">
 <input class="filter" type="search" aria-label="Filter every table" placeholder="Filter every table — a path, a layer, a rule name">
-<p class="filter-hint">Press <kbd>/</kbd> from anywhere to search. Click a column to sort.</p>
 </div>
+<p class="filter-hint">Press <kbd>/</kbd> from anywhere to search. Click a column to sort.</p>
 <p class="empty" id="nomatch" hidden></p>
 ${architecture(report)}
 ${modules(report)}

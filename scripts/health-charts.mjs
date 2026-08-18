@@ -7,9 +7,9 @@ import { escape } from "./health-sections.mjs";
  * stretched a 620-unit viewBox across an 1100px container and scaled every 11px label to
  * about 20px along with the stroke widths — the reason they read as crude. Bars and cells
  * are rectangles with text in them, which is what HTML is, so they are HTML: the type
- * renders at its real size and hairlines stay hairlines. Only the scatter stays SVG,
- * because a hundred positioned marks is what SVG is for, and it is given a natural size
- * it may shrink from and never grow past.
+ * renders at its real size and hairlines stay hairlines. The two SVG figures live in
+ * `health-scatter.mjs`, because a hundred positioned marks is the one thing here that HTML
+ * cannot draw.
  *
  * **Every figure here is ONE series plus status.** That is not a limitation, it is the
  * page's rule made structural: colour marks a problem and nothing else. So there is no
@@ -22,7 +22,8 @@ import { escape } from "./health-sections.mjs";
  * point is a lie.
  */
 
-const figure = (title, note, body, extra = "") =>
+/** One figure card. Exported for `health-scatter.mjs`, the only other module that draws one. */
+export const figure = (title, note, body, extra = "") =>
 	`<section class="figure${extra}">
 		<h3>${escape(title)}<span class="count">${escape(note)}</span></h3>
 		${body}
@@ -71,7 +72,7 @@ const isLegal = (from, to) => LEAVES.includes(to) || rank(from) < rank(to);
 function emptyCell(from, to) {
 	if (from === to) return `<div class="mx-cell mx-self" aria-hidden="true"></div>`;
 	const shade = isLegal(from, to) ? "" : " mx-forbidden";
-	return `<div class="mx-cell${shade}"><span class="mx-none">·</span></div>`;
+	return `<div class="mx-cell${shade}"><span class="mx-none" aria-hidden="true">·</span></div>`;
 }
 
 const cellClass = (legal, step) => (legal ? `mx-on mx-s${step}` : "mx-violation");
@@ -166,70 +167,21 @@ export function capDistribution(report) {
 	return distribution("Line-cap headroom", `${values.length} capped files`, buckets);
 }
 
-// ------------------------------------------------------------------------- risk scatter
 
 /**
- * Natural size, never stretched.
+ * What is missing, and the one command that brings it back.
  *
- * The chart may shrink on a narrow window and may never grow past these numbers, which is
- * what keeps the labels at their real size. The previous version set `inline-size: 100%`
- * and scaled everything on the page's own width.
+ * Without `coverage/coverage-final.json` this page loses two figures and four vital signs
+ * — and used to lose them in silence, leaving the reader to conclude the report was
+ * thinner than it is. A fresh clone is in this state, so it is a first-run state and not
+ * an error.
  */
-const PLOT = { w: 680, h: 340, left: 52, bottom: 40, top: 16, right: 16 };
-const inner = { w: PLOT.w - PLOT.left - PLOT.right, h: PLOT.h - PLOT.top - PLOT.bottom };
-
-const RISKY_COVERAGE = 90;
-
-const dot = (file, maxDensity) => {
-	const x = PLOT.left + (file.density / maxDensity) * inner.w;
-	const y = PLOT.top + (1 - file.coverage / 100) * inner.h;
-	const risky = file.coverage < RISKY_COVERAGE && file.density > maxDensity / 2;
-	return `<circle class="sc-dot${risky ? " sc-risky" : ""}" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${risky ? 5 : 3.5}">
-		<title>${escape(file.path)} — ${escape(file.coverage)}% covered, complexity density ${escape(file.density)}</title>
-	</circle>`;
-};
-
-const gridline = (share) => {
-	const y = PLOT.top + (1 - share / 100) * inner.h;
-	return `<line class="sc-grid" x1="${PLOT.left}" y1="${y}" x2="${PLOT.left + inner.w}" y2="${y}"></line>
-		<text class="sc-tick" x="${PLOT.left - 10}" y="${y + 4}" text-anchor="end">${share}%</text>`;
-};
-
-/**
- * Complexity against coverage, which is CRAP as a picture.
- *
- * A module is risky when it is both complex and untested; neither number alone says so,
- * and a table sorted by either one hides the pairing. The band is drawn rather than
- * outlined because its edge is a heuristic, not a threshold anything enforces — and the
- * few marks inside it are enlarged and coloured, so the answer survives being read at a
- * glance or in greyscale.
- */
-export function riskScatter(report) {
-	if (!report.coverage.present) return "";
-	const coverageBy = new Map(report.coverage.files.map((f) => [f.path, f.statements]));
-	const files = report.fallow.fileScores
-		.filter((s) => coverageBy.has(s.path))
-		.map((s) => ({ path: s.path, density: s.complexity_density, coverage: coverageBy.get(s.path) }));
-	if (files.length === 0) return "";
-	const maxDensity = Math.max(...files.map((f) => f.density), 0.01);
-	const risky = files.filter((f) => f.coverage < RISKY_COVERAGE && f.density > maxDensity / 2);
-	const bandX = PLOT.left + inner.w / 2;
-	const bandY = PLOT.top + (1 - RISKY_COVERAGE / 100) * inner.h;
-	const band = `<rect class="sc-band" x="${bandX}" y="${bandY}" width="${inner.w / 2}" height="${PLOT.top + inner.h - bandY}"></rect>
-		<text class="sc-band-label" x="${bandX + 10}" y="${bandY + 18}">complex and thinly covered</text>`;
-	const axes = `<line class="sc-axis" x1="${PLOT.left}" y1="${PLOT.top + inner.h}" x2="${PLOT.left + inner.w}" y2="${PLOT.top + inner.h}"></line>
-		<text class="sc-axis-label" x="${PLOT.left}" y="${PLOT.h - 8}">← simpler</text>
-		<text class="sc-axis-label" x="${PLOT.left + inner.w}" y="${PLOT.h - 8}" text-anchor="end">more complex →</text>
-		<text class="sc-axis-label sc-vertical" transform="translate(14,${PLOT.top + inner.h / 2}) rotate(-90)" text-anchor="middle">statements covered</text>`;
-	const note = risky.length === 0 ? "nothing in the band" : `${risky.length} in the band`;
-	return figure(
+const missingCoverage = (coverage) =>
+	figure(
 		"Complexity against coverage",
-		note,
-		`<svg class="scatter" viewBox="0 0 ${PLOT.w} ${PLOT.h}" role="img"
-			aria-label="Every module plotted by complexity density and statement coverage">
-			${[100, 90, 50, 0].map(gridline).join("")}${band}${axes}
-			${files.map((f) => dot(f, maxDensity)).join("")}
-		</svg>`,
+		"not measured",
+		`<p class="empty">${escape(coverage.reason).replace(/`([^`]+)`/g, "<code>$1</code>")}
+		Coverage by module and the four coverage vital signs come from that file; nothing
+		else on this page needs it.</p>`,
 		" figure-wide",
 	);
-}

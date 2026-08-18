@@ -166,23 +166,53 @@ const BAND_TITLES = {
 	low: { title: "Noted", why: "reported, not urgent" },
 };
 
-function worklistRow(row, root) {
+/** The directory a row is about, which is the second thing a reader groups by. */
+const dirOf = (where) => {
+	const parts = where.replace(/\\/g, "/").split("/");
+	return parts.length > 1 ? parts.slice(0, -1).join("/") : ".";
+};
+
+/**
+ * One row, carrying the two grouping keys and its RANK.
+ *
+ * `data-rank` is the position the report ranked it at, and it is what makes "Flat" a
+ * restoration rather than a third arbitrary order: the tables view sorts its rows to group
+ * them and cannot get the original order back, and a list that loses the ranking has lost
+ * the one thing the worklist is for.
+ */
+function worklistRow(row, root, rank) {
 	const target = `${root}/${row.where}`.replace(/\\/g, "/");
-	return `<li>
+	return `<li data-rank="${rank}" data-tool="${escape(row.source)}" data-dir="${escape(dirOf(row.where))}">
 		<a class="row-title" href="vscode://file/${escape(target)}">${escape(row.title)}</a>
 		<span class="row-where">${escape(row.where)}</span>
-		<span class="row-why">${escape(row.why)}</span>
+		<span class="row-why">${escape(row.why)}${row.trend ? ` · ${escape(row.trend)}` : ""}</span>
 		<span class="chip">${escape(row.source)}</span>
 	</li>`;
 }
 
+const bandTab = (band, rows, first) =>
+	`<button type="button" role="tab" id="wt-${band}" aria-controls="band-${band}"
+		aria-selected="${first}" tabindex="${first ? 0 : -1}"><i class="swatch"></i>${escape(BAND_TITLES[band].title)}
+		<span class="count">${rows.length}</span></button>`;
+
+const bandPanel = (band, rows, root, first) =>
+	`<div class="band band-${band}" id="band-${band}" role="tabpanel"
+		aria-labelledby="wt-${band}"${first ? "" : " hidden"}>
+		<p class="wl-why">${escape(BAND_TITLES[band].why)}</p>
+		<ul class="act">${rows.map((r) => worklistRow(r, root, r.rank)).join("")}</ul>
+	</div>`;
+
 /**
- * The worklist, grouped by band under a heading that names the RULE.
+ * The worklist: one band at a time, groupable by the tool that reported it or the
+ * directory it is in.
  *
- * It was twenty-five flat rows behind a three-pixel coloured rail, which is the coloured
- * left border the craft floor refuses and which also made every row look equally urgent.
- * Grouping puts the colour once, on the heading, where it can carry a word explaining
- * what the band means — so the reader learns the rule instead of decoding a stripe.
+ * It was twenty-five flat rows behind a three-pixel coloured rail — the coloured left
+ * border the craft floor refuses, and which made every row look equally urgent. Banding
+ * put the colour once, on a heading that names the rule. Tabbing goes one step further for
+ * the same reason: three stacked lists make the reader scroll past nine urgent rows to
+ * learn there are four unurgent ones, and the count belongs on the control rather than in
+ * the thing being counted. The band's rule stays visible inside the panel, because a tab
+ * label short enough to read is too short to explain itself.
  */
 export function worklist(report) {
 	if (report.actions.length === 0) {
@@ -190,26 +220,32 @@ export function worklist(report) {
 			<p class="empty">Every tool ran and found no work. The vital signs above are all inside their limits.</p>
 		</section>`;
 	}
-	const groups = ["high", "medium", "low"].map((band) => {
-		const rows = report.actions.filter((a) => a.band === band);
-		if (rows.length === 0) return "";
-		const { title, why } = BAND_TITLES[band];
-		return `<section class="band band-${band}">
-			<h3><i class="swatch"></i>${escape(title)}
-				<span class="count">${rows.length} · ${escape(why)}</span></h3>
-			<ul class="act">${rows.map((r) => worklistRow(r, report.root)).join("")}</ul>
-		</section>`;
-	});
-	return groups.join("");
+	const ranked = report.actions.map((a, rank) => ({ ...a, rank }));
+	const present = ["high", "medium", "low"]
+		.map((band) => ({ band, rows: ranked.filter((a) => a.band === band) }))
+		.filter((b) => b.rows.length > 0);
+	const tabs = present.map((b, i) => bandTab(b.band, b.rows, i === 0)).join("");
+	const panels = present.map((b, i) => bandPanel(b.band, b.rows, report.root, i === 0)).join("");
+	return `<section class="cluster wide-cluster worklist">
+		<h3>What to work on <span class="count">${ranked.length} ranked</span></h3>
+		<div class="wl-bar">
+			<div class="tabs" id="band-tabs" role="tablist" aria-label="Worklist bands">${tabs}</div>
+			<div class="group-by" id="wl-group">
+				<button type="button" class="gb" data-group-by="off" aria-pressed="true">Flat</button>
+				<button type="button" class="gb" data-group-by="tool" aria-pressed="false">By tool</button>
+				<button type="button" class="gb" data-group-by="dir" aria-pressed="false">By directory</button>
+			</div>
+		</div>${panels}
+	</section>`;
 }
 
 // ------------------------------------------------------------------ the tables view
 
-const align = (column) => (column.num ? "num" : "");
+const classOf = (column) => `${column.num ? "num " : ""}${column.mono ? "mono" : ""}`.trim();
 
 const cell = (value, column) => {
-	if (blank(value)) return `<td class="${align(column)}">—</td>`;
-	if (!column.meter) return `<td class="${align(column)}">${escape(value)}</td>`;
+	if (blank(value)) return `<td class="${classOf(column)}">—</td>`;
+	if (!column.meter) return `<td class="${classOf(column)}">${escape(value)}</td>`;
 	const { amount, max, state } = column.meter(value);
 	return `<td class="num has-meter">${meter(amount, max, state)}<b>${escape(value)}</b></td>`;
 };
@@ -223,9 +259,9 @@ const head = (c) =>
  * `scope`, `aria-sort` and `tabindex` are on the header because sorting is a real control
  * and a control a keyboard cannot reach is a control half the readers do not have.
  */
-const bodyRow = (r, columns, groupBy) => {
+const bodyRow = (r, columns, groupBy, rank) => {
 	const key = groupBy === undefined ? "" : ` data-group="${escape(r[groupBy])}"`;
-	return `<tr${key}>${r.map((v, i) => cell(v, columns[i])).join("")}</tr>`;
+	return `<tr data-rank="${rank}"${key}>${r.map((v, i) => cell(v, columns[i])).join("")}</tr>`;
 };
 
 /**
@@ -235,7 +271,7 @@ const bodyRow = (r, columns, groupBy) => {
  */
 const table = (columns, rows, groupBy) => `<div class="wide"><table${groupBy === undefined ? "" : ' data-groupable="1"'}>
 	<thead><tr>${columns.map(head).join("")}</tr></thead>
-	<tbody>${rows.map((r) => bodyRow(r, columns, groupBy)).join("")}</tbody>
+	<tbody>${rows.map((r, i) => bodyRow(r, columns, groupBy, i)).join("")}</tbody>
 </table></div>`;
 
 const group = (id, title, count, body, rows) =>
@@ -259,8 +295,9 @@ export function architecture(report) {
 export function modules(report) {
 	const cap = new Map(report.caps.map((c) => [c.path, c]));
 	const cov = new Map((report.coverage.files ?? []).map((f) => [f.path, f]));
+	const trend = new Map(report.fallow.hotspots.map((h) => [h.path, h.trend]));
 	const columns = [
-		{ label: "module" },
+		{ label: "module", mono: true },
 		{ label: "layer" },
 		{ label: "lines", num: true, meter: (v) => ({ amount: v, max: 400, state: v > 360 ? "warn" : "neutral" }) },
 		{ label: "cap", num: true },
@@ -269,6 +306,7 @@ export function modules(report) {
 		{ label: "cyclomatic", num: true },
 		{ label: "fan-in", num: true },
 		{ label: "fan-out", num: true },
+		{ label: "churn" },
 	];
 	// `layerOf` is imported rather than restated: two spellings of the layer map is how
 	// this table and the rollup above start disagreeing about where a file lives.
@@ -284,6 +322,7 @@ export function modules(report) {
 			s.total_cyclomatic,
 			s.fan_in,
 			s.fan_out,
+			trend.get(s.path),
 		]);
 	// Column 1 is the layer, so grouping by it needs no second source of truth.
 	const control = `<div class="group-by">
@@ -298,7 +337,7 @@ export function debt(report) {
 		return group("debt", "Debt", "0 open", `<p class="empty">Nothing open in docs/bugs or docs/issues.</p>`, 0);
 	}
 	const rows = report.debt.map((d) => [d.kind, d.title, d.path]);
-	const columns = [{ label: "kind" }, { label: "title" }, { label: "note" }];
+	const columns = [{ label: "kind" }, { label: "title" }, { label: "note", mono: true }];
 	return group("debt", "Debt", `${report.debt.length} open`, table(columns, rows), rows.length);
 }
 
@@ -323,7 +362,7 @@ const firstOf = (...values) => values.find((v) => v !== null && v !== undefined)
 export function findings(report) {
 	const nonZero = report.fallow.findings.filter((f) => f.count > 0);
 	const zero = report.fallow.findings.filter((f) => f.count === 0);
-	const columns = [{ label: "where" }, { label: "line", num: true }, { label: "suggested action" }];
+	const columns = [{ label: "where", mono: true }, { label: "line", num: true }, { label: "suggested action" }];
 	const detail = nonZero.map(
 		(f) =>
 			`<h3>${escape(f.key)} <span class="count">${escape(f.count)}</span></h3>` +

@@ -81,7 +81,9 @@ export function rank({ hotspots = [], topCount = 0, caps = [], coverage = [], de
 			band: h.trend === "accelerating" ? "high" : "medium",
 			title: h.actions?.[0]?.description ?? `Review ${h.path}`,
 			where: h.path,
-			why: `hotspot score ${h.score}, ${h.trend}`,
+			// The trend is a FIELD on the row now, set for every source below that can know
+			// it — so saying it here too would be the page saying one thing twice.
+			why: `hotspot score ${h.score}`,
 			source: "fallow",
 			sort: h.score,
 		});
@@ -123,7 +125,13 @@ export function rank({ hotspots = [], topCount = 0, caps = [], coverage = [], de
 			sort: 0,
 		});
 	}
-	return rows.sort((a, b) => BANDS.indexOf(a.band) - BANDS.indexOf(b.band) || b.sort - a.sort);
+	// Fallow's direction, on every row it can be known for. The word, never a slope: it is
+	// computed from the commit history, so it is not the trend line a one-snapshot axis
+	// cannot honestly draw.
+	const trendOf = new Map(hotspots.map((h) => [h.path, h.trend]));
+	return rows
+		.map((r) => (trendOf.has(r.where) ? { ...r, trend: trendOf.get(r.where) } : r))
+		.sort((a, b) => BANDS.indexOf(a.band) - BANDS.indexOf(b.band) || b.sort - a.sort);
 }
 
 // ------------------------------------------------------------------- the collectors
