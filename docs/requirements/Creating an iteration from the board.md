@@ -52,7 +52,11 @@ user confirmed, never a rule applied at write time that the reader could not see
    **target** is start + `iterationLengthDays` **− 1**.
 3. Confirming creates the note through the plugin's own creation path — typed
    `Iteration`, into the `iterations` subfolder the type declares, with both dates and the
-   goal in the **same** write. It is **not opened**: making a sprint is a planning act,
+   goal in the **same** write. The note is **named for what it is for**: the confirmed
+   name, then the confirmed goal (`1 - Iteration - Ship the board`), so a folder of sprints
+   says what each one was about without opening one. The goal is the name's **tail** — the
+   numeric prefix is what makes the folder sort in the order they run, and a goal in front
+   of it would break that. It is **not opened**: making a sprint is a planning act,
    and taking the reader off the board they are planning on is what opening it would cost.
    That reverses this step as written until 2026-08-16, when the argument for opening was
    that an iteration draws nowhere and would otherwise be a note to go and find — true,
@@ -121,7 +125,14 @@ user confirmed, never a rule applied at write time that the reader could not see
 - **2d — the name collides with an existing note.** The creation path's own answer holds,
   unchanged and unrestated: this dialog creates notes the way every other creation
   surface does ([[Creating items]]).
-- **3a — the goal is left empty.** Nothing is written under the goal key, and the board
+- **2e — the goal names the note.** The goal is appended to the confirmed name, never
+  substituted for it, and it is **sanitized like every other title** — it becomes a file
+  name through `sanitizeTitle`, the one place a title becomes a path, so a goal holding
+  `/` or `#` costs a character rather than a failed create. It is also **capped**: a goal
+  is free text and a file name is not, so only the first 60 characters reach the name. The
+  frontmatter still carries the goal in full — the name is a label, not the value.
+- **3a — the goal is left empty.** The name is exactly what was typed, with no trailing
+  separator, by 2e's rule and not a second one. Nothing is written under the goal key, and the board
   draws no goal line — never an empty one and never a placeholder inviting a value.
   Clearing a goal that was set removes the key.
 - **3b — the goal property is unconfigured.** The field is absent from the dialog. An
@@ -193,6 +204,9 @@ user confirmed, never a rule applied at write time that the reader could not see
   `applySafely`, taken back by the one undo slot, and **no item is re-stamped** — checked
   by editing an iteration holding several members and asserting the batch names one file.
 - The name field is on the create path only; nothing here renames a note.
+- The created note is named `<name> - <goal>`, with the goal sanitized into the file name
+  and capped — checked with a goal holding characters a path cannot hold, with a blank
+  goal, where the name is unchanged, and over the cap in `iterationNoteName`.
 - A field whose property is unconfigured is **absent from the dialog** — checked for the
   goal and for each date separately, and with all three unset, where the dialog is a name
   alone and the action still works. No unconfigured key is ever written on either path.
@@ -211,7 +225,7 @@ one form for making and for editing, because the validator and the field list ar
 questions whether the note exists yet or not.
 
 The derivation IS a module of its own, `src/domain/iterations.ts`: the previous-iteration
-rule and the two date sums, reading the model's items and the settings, so they are
+rule, the two date sums and the note name a confirmed name and goal compose into, reading the model's items and the settings, so they are
 answered by a function rather than by a screen. The actions that open the dialog are
 `promptNewIteration` and `promptEditIteration` in `src/view/interactions/create.ts` — the
 module that already owns every gated creation flow — and both run `configProblems` before

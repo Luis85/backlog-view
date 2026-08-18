@@ -78,7 +78,8 @@ describe('New iteration…', () => {
 		const harness = open();
 		Menu.lastShown?.item('New iteration…')?.click();
 		await submitDialog({ Name: 'Sprint 13', Goal: 'Finish the importer' });
-		expect(harness.vault.fm('Sprint 13.md')).toEqual({
+		// Named for what it is FOR: the confirmed name, then the confirmed goal.
+		expect(harness.vault.fm('Sprint 13 - Finish the importer.md')).toEqual({
 			type: 'Iteration',
 			order: expect.any(Number),
 			// The day after Sprint 12's target, running fourteen inclusive days.
@@ -112,6 +113,20 @@ describe('New iteration…', () => {
 		Menu.lastShown?.item('New iteration…')?.click();
 		expect(Modal.lastOpened?.contentEl.querySelector('input')?.value).toBe('1 - Iteration');
 		expect(harness.vault.writeLog).toEqual([]);
+	});
+
+	it('sanitizes the goal it names the note with, and leaves the name alone without one', async () => {
+		// The goal is free text and a file name is not: `sanitizeTitle` is what stands
+		// between the two, and this is the path that hands it a goal to sanitize.
+		const harness = open();
+		Menu.lastShown?.item('New iteration…')?.click();
+		await submitDialog({ Name: 'Sprint 13', Goal: 'Ship #1: the board/shelf' });
+		expect(harness.vault.fm('Sprint 13 - Ship -1- the board-shelf.md')).toMatchObject({ type: 'Iteration' });
+
+		// And with the goal blank the name is exactly what was typed — no trailing dash.
+		Menu.lastShown?.item('New iteration…')?.click();
+		await submitDialog({ Name: 'Sprint 14' });
+		expect(harness.vault.fm('Sprint 14.md')).toMatchObject({ type: 'Iteration' });
 	});
 
 	it('writes no goal KEY when the goal is left blank and the property IS configured', async () => {
