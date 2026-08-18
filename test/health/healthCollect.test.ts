@@ -1,3 +1,4 @@
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { layerMatrix } from '../../scripts/health-charts.mjs';
 import { architecture, worklist } from '../../scripts/health-sections.mjs';
@@ -18,15 +19,17 @@ import { capFor, coverageRatios, layerOf, rank, toRepoPath } from '../../scripts
  */
 
 describe('toRepoPath', () => {
-	it('makes a Windows absolute path repo-relative and forward-slashed', () => {
-		// The shape coverage-final.json actually holds on Windows, measured 2026-08-18.
-		expect(toRepoPath('C:\\Projects\\backlog-view\\src\\commands\\readme.ts', 'C:\\Projects\\backlog-view'))
+	/**
+	 * The separator is the HOST's, both in and out: every path here comes from a tool
+	 * this machine just ran, so a Windows path on a POSIX runner is a shape that cannot
+	 * arrive — and `path.relative` cannot read one anyway. `path.join` builds the input
+	 * CI actually holds on each platform; the claim under test is the forward slash on
+	 * the way out.
+	 */
+	it('makes an absolute path repo-relative and forward-slashed', () => {
+		const root = path.resolve('repo');
+		expect(toRepoPath(path.join(root, 'src', 'commands', 'readme.ts'), root))
 			.toBe('src/commands/readme.ts');
-	});
-
-	it('does the same on a POSIX path, because CI runs both', () => {
-		expect(toRepoPath('/home/runner/work/bv/src/domain/model.ts', '/home/runner/work/bv'))
-			.toBe('src/domain/model.ts');
 	});
 });
 
