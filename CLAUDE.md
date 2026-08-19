@@ -110,11 +110,14 @@ writes, matches or persists — type names, state values, option keys, tags, fil
 test when it is not obvious: **ask what breaks if two people with different Obsidian
 languages open the same vault.** "One sees different words" is text; "one writes notes the
 other's view cannot read" is data. 82 keys are in it (counted 2026-08-19) and `ui/` and
-`commands/` are swept, so `view/` and `domain/` are what is left — the sweep across those
-call sites is `docs/requirements/Every surface translated.md`, and an English literal beside
-a `t()` call there is work not yet done rather than a rule being broken. In a SWEPT
-directory it is neither: `UI_TEXT_LITERAL` in `eslint.config.mjs` refuses one at the
-spellings it can see, and a directory joins that ban only after its own sweep.
+`commands/` are swept, so `view/`, `domain/` and `main.ts` are what is left — the last of
+those being two command NAMES, which is easy to read past because the directory beside it
+is done. The sweep across those call sites is `docs/requirements/Every surface translated.md`,
+and an English literal beside a `t()` call there is work not yet done rather than a rule
+being broken. In a SWEPT directory it is neither: `UI_TEXT_LITERAL` in `eslint.config.mjs`
+refuses one at the spellings it can see, and a directory joins that ban only after its own
+sweep — and it sees a quoted or backticked sentence at the setter names and `new Notice`,
+never one built in a helper and returned, which is why the runtime half beside it exists.
 
 **`domain/`** is the backlog itself — what the tree *is*, what a change *would* mean, what
 each projection derives — and it reads the vault without ever writing it or touching the

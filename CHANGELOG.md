@@ -18,7 +18,9 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   manual's title, and the notices from `Create backlog` and `Write backlog readme`. Nothing
   reads differently in English except one line of punctuation: the readme command's
   configuration refusal used to run its problems together as `"…".; "…"..` and now joins
-  them as a list. The plugin's own name is still its name in every language.
+  them as a list. With more than one problem that list still reads a little oddly, since
+  what it joins are whole sentences; the rest of it waits on those sentences being
+  translated. The plugin's own name is still its name in every language.
 
 - **The words the plugin uses for "no placement" come from the message catalog now** —
   `Unplaced`, `Unscheduled`, `No state` and the `Unset` a real state collides with, plus

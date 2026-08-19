@@ -392,17 +392,29 @@ const TEXT_TERNARY = [
 // than by cleverness — and it is what makes the swept region stay swept for code nobody
 // has written yet, instead of for the call sites someone thought to check.
 //
-// **It sees the SPELLINGS listed and no others.** The setter calls and `new Notice`, with
-// the same lowercase-is-an-identifier heuristic TEXT_TERNARY uses. A literal reaching the
-// DOM through a `text:` or `'aria-label'` property is NOT covered, and that is a choice
-// with one live instance: `ui/manualDialog.ts`'s nav heading is the plugin's own NAME,
-// which `Every surface translated` says is not translated, so a rule covering the property
-// would open on an exemption for the one thing that is allowed to be there. A wider rule
-// belongs to `A bare string cannot reach the UI`, which makes a bare string unable to
-// reach the UI at all rather than naming where it may not be written.
+// **It sees the SPELLINGS listed and no others.** The setter calls and `new Notice`, quoted
+// or backticked, with the same lowercase-is-an-identifier heuristic TEXT_TERNARY uses.
+// Three shapes stay outside it, and each is stated rather than implied because a reader who
+// assumes otherwise stops checking:
+//
+//   - A literal reaching the DOM through a `text:` or `'aria-label'` property. That is a
+//     choice with one live instance: `ui/manualDialog.ts`'s nav heading is the plugin's own
+//     NAME, which `Every surface translated` says is not translated, so a rule covering the
+//     property would open on an exemption for the one thing allowed to be there.
+//   - A template whose FIRST quasi is empty — `` `${name} was moved` `` — since the capital
+//     test has nothing to read at the position it reads. The interpolation-first sentence is
+//     rarer than the ban is worth widening for; it is not covered by accident.
+//   - A sentence built in a helper and returned to the call site (`outcomeNotice` in
+//     `commands/readme.ts`). Lint sees the return, not the `new Notice` two frames up.
+//
+// The runtime half is what holds those: a call site spelling its own English renders it
+// beside overridden neighbours in `test/i18n/sweptSurfaces.test.ts`. Neither half covers
+// what the other does. A wider rule belongs to `A bare string cannot reach the UI`, which
+// makes a bare string unable to reach the UI at all rather than naming where it may not be
+// written.
 const UI_TEXT_LITERAL = {
 	selector:
-		"CallExpression[callee.property.name=/^(setName|setDesc|setPlaceholder|setTooltip|setButtonText|setText|setTitle)$/] > Literal[value=/^[A-Z]/], NewExpression[callee.name='Notice'] > Literal[value=/^[A-Z]/]",
+		"CallExpression[callee.property.name=/^(setName|setDesc|setPlaceholder|setTooltip|setButtonText|setText|setTitle)$/] > :matches(Literal[value=/^[A-Z]/], TemplateLiteral[quasis.0.value.raw=/^[A-Z]/]), NewExpression[callee.name='Notice'] > :matches(Literal[value=/^[A-Z]/], TemplateLiteral[quasis.0.value.raw=/^[A-Z]/])",
 	message:
 		'A sentence spelled where it is used cannot be translated. Add a key to src/i18n/en.ts and call t() — and if this is a value the plugin writes, matches or persists rather than text, it belongs in neither place.',
 };

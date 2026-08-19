@@ -12,11 +12,14 @@ import {
 import { openManual } from '../../src/ui/manualDialog';
 import { openStateColorsDialog } from '../../src/ui/stateColorsDialog';
 import { promptCreateBacklogBase } from '../../src/commands/scaffold';
+import { writeBacklogReadmeCommand } from '../../src/commands/readme';
 import { installObsidianDom } from '../helpers/dom';
 import { Modal, Notice } from '../helpers/obsidian-mock';
 import { FakeVault } from '../helpers/vault';
+import { flush, makeView, useViewHarness } from '../helpers/view';
 
 installObsidianDom();
+useViewHarness();
 
 /**
  * The surfaces `ui/` and `commands/` spell for themselves, driven under a catalog that is
@@ -41,10 +44,11 @@ installObsidianDom();
  * untouched and `{name}`-style substitution still happens; what is asserted is the marker,
  * never the wording after it.
  *
- * Three of them are overridden and never read back. `prompt.newItemFolderDesc` and
+ * Five of them are overridden and never read back. `prompt.newItemFolderDesc` and
  * `scaffold.folderDesc` go through `Setting.setDesc`, which the mock deliberately does not
- * render, and `scaffold.failed` needs a vault whose write throws. Lint is what holds those
- * three; naming them is what stops this list reading as the assertion set.
+ * render; `scaffold.failed` needs a vault whose write throws; `readme.updated` and
+ * `readme.replaced` need a second write over a file this plugin already wrote. Lint is what
+ * holds those five; naming them is what stops this list reading as the assertion set.
  */
 const SWEPT = [
 	'prompt.folderField',
@@ -72,6 +76,13 @@ const SWEPT = [
 	'scaffold.cta',
 	'scaffold.created',
 	'scaffold.failed',
+	'readme.created',
+	'readme.updated',
+	'readme.unchanged',
+	'readme.foreign',
+	'readme.replaced',
+	'readme.configProblems',
+	'readme.failed',
 ] as const;
 
 const MARK = 'XX ';
@@ -243,5 +254,51 @@ describe('the scaffold command reads its prompt and its notice from the catalog'
 
 		// The path is vault content: it arrives as a parameter and is not the catalog's.
 		expect(Notice.messages).toEqual([`${MARK}Created "docs/Product Backlog.base". Add your first epic from the view.`]);
+	});
+});
+
+/**
+ * The readme command is driven through the REAL view, the way `test/commands/readme.test.ts`
+ * drives it: its notices name what a view resolved, so there is no honest way to reach them
+ * without a configured view behind them.
+ *
+ * That file asserts the same two outcomes against English literals, which cannot tell a
+ * swept call site from a missed one — `startsWith('Fix the view configuration first')` reads
+ * identically whether the sentence came from the catalog or was spelled at the call site.
+ * These two say it came from the catalog. Lint does not reach them either: `outcomeNotice`
+ * returns the sentence and `new Notice` receives an identifier, which is the third shape
+ * `UI_TEXT_LITERAL` states it cannot see.
+ */
+describe('the readme command reads its outcome notices from the catalog', () => {
+	it('names the file it wrote in the catalog s words', async () => {
+		const vault = new FakeVault();
+		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10 } });
+		makeView(vault, { homeFolder: 'work' }, { base: 'work/Product Backlog.base' });
+		vault.activeView = vault.leaves[vault.leaves.length - 1].view;
+
+		writeBacklogReadmeCommand(vault.app as never, false);
+		await flush();
+
+		// The path is vault content and arrives as a parameter; the sentence around it is
+		// the catalog's, and the marker is the only part asserted.
+		expect(Notice.messages.some((m) => m.startsWith(MARK))).toBe(true);
+		expect(Notice.messages.some((m) => m === marked('readme.created').replace('{path}', 'work/README_PRODUCT_BACKLOG.md'))).toBe(true);
+	});
+
+	it('refuses a contradictory configuration in the catalog s words', async () => {
+		const vault = new FakeVault();
+		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10 } });
+		// Parent and order on one key: the gate every write path passes.
+		makeView(
+			vault,
+			{ homeFolder: 'work', parentProperty: 'note.rank', orderProperty: 'note.rank' },
+			{ base: 'work/Product Backlog.base' },
+		);
+		vault.activeView = vault.leaves[vault.leaves.length - 1].view;
+
+		writeBacklogReadmeCommand(vault.app as never, false);
+		await flush();
+
+		expect(Notice.messages.some((m) => m.startsWith(MARK))).toBe(true);
 	});
 });

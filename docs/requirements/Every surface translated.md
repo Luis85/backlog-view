@@ -131,12 +131,20 @@ which is correct: Obsidian needs a restart to change language.
 
 ## What has been swept
 
-**`ui/` and `commands/`, on 2026-08-19.** Both directories are done: 30 keys, and the two
-lint bans below now hold them. What went in was wider than the count this note was planned
-from — the measurement it used could not see a double-quoted `setDesc`, a template-literal
-tooltip, or a label handed to a local `field()` helper, so `ui/prompts.ts` gave 19 sites
-rather than the 13 tabulated above. Re-derive before planning the next directory; the
-tables here are the shape of the answer, not the answer.
+**`ui/` and `commands/`, on 2026-08-19.** Both directories are done: 32 keys, taking the
+catalog to 82, and the two lint bans below now hold them. What went in was wider than the
+count this note was planned from — the measurement it used could not see a double-quoted
+`setDesc`, a template-literal tooltip, or a label handed to a local `field()` helper, so
+`ui/prompts.ts` gave 18 sites rather than the 13 tabulated above. Re-derive before planning
+the next directory; the tables here are the shape of the answer, not the answer.
+
+**Both of those numbers were first written wrong, and the same way.** This section said 30
+keys and 19 sites — a count of the diff's added lines, which includes a key's continuation
+line, and a grep for the setter names, which counts the four `setText('')` that clear a
+field and spell nothing. Neither was checked a second way. The counts above were taken by
+two instruments that agree (a tab-aware pattern and a parse of the object), which is the
+standard `CLAUDE.md` sets for a measurement used as evidence and which the paragraph
+warning about instruments did not meet.
 
 Three things are deliberately NOT in the catalog after that sweep:
 
@@ -154,6 +162,15 @@ The one thing in those two directories that is not a pure text move is punctuati
 `Fix the view configuration first: …` joined its problems with `'; '` and then added a
 period, so it rendered `"…".; "…"..`. The key has no terminal period and the list is joined
 as grammar.
+
+**That is better rather than finished, and the remainder is stated so nobody reads it as
+closed.** What the list joins are complete sentences that end in periods, so one problem
+reads correctly and two read `… is unset. and The B property is unset.` — a full stop in
+front of a conjunction. The fix is not on this side of the boundary: it needs the problems
+to be FRAGMENTS, and they are `domain/`'s, still English and still shaped for the other
+places that show them. Whoever runs `View options and config warnings` is translating those
+strings anyway and should decide their shape then; keying a fragment here first would key
+somebody else's string, which the bullet above already refuses for headings.
 
 **The remaining English is `view/` and `domain/`.** 75 sites in `view/` and one in `ui/`
 (the plugin name) by the narrow measurement this note's numbers came from; a wider net that
