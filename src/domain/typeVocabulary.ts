@@ -61,7 +61,14 @@ export const ITERATION_TYPE = 'Iteration';
  * (`itemTypes.ts` states it), so adding a marker to it would not extend the contract but
  * falsify it, and `isExtraType` would start meaning two things at four call sites.
  */
-export const MARKER_TYPES = ['Milestone', ITERATION_TYPE];
+/**
+ * The first declared marker, named for the same reason `ITERATION_TYPE` is: a surface
+ * that captions what it drew names the TYPE, and a type name is data — matched in
+ * frontmatter, never translated — so the name has to come from here rather than be
+ * spelled a second time beside the swatch that shows it.
+ */
+export const MILESTONE_TYPE = 'Milestone';
+export const MARKER_TYPES = [MILESTONE_TYPE, ITERATION_TYPE];
 /**
  * The one DECLARED name that is not a work-item type at all — a resource's own
  * unavailable stretch. It joins none of the lists above and, deliberately, not

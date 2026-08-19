@@ -64,6 +64,24 @@ they are changing at all. [[A browser harness without Obsidian]] closes the *loo
 half of that and deliberately not the *checking* half — the live-vault verifications are
 untouched, and ADR 0020 says why adding assertions there was refused.
 
+**Fourth round, opened 2026-08-18 by a user request**, the same way the third was. The
+three rounds above each asked what this repository states without checking, and each
+answered it with a new check. This one asks a different question and does not pretend to
+be more: **the checks all pass, and nobody can see what they collectively say.** Five
+tools run in `npm run check`, four of them know something about where the debt is, and
+each reports it into its own terminal output — so a file that is a churn hotspot, close
+to its line cap and thinly covered is three separate facts nobody holds at once.
+[[One page for what the tools already know]] relates them, and deliberately stops short
+of scoring anything.
+
+Worth recording, because it is this round's own evidence: building it found three things
+none of the five gates report. `scripts/` has an invisible complexity budget of cyclomatic
+4, far tighter than `src/`. A custom property `DESIGN.md` declares, `--text-accent`, does
+not exist in the vendored `app.css` the harness draws against. And a missing coverage file
+made fallow exit 2, which would have cost a contributor every finding rather than four
+figures. All three are the shape the first round named: true today, stated nowhere,
+nothing that would notice.
+
 ## Reading this as a backlog
 
 These notes carry the plugin's own frontmatter vocabulary, so the plugin can display

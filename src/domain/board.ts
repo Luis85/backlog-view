@@ -1,3 +1,4 @@
+import { t } from '../i18n/t';
 import { inCatalog, isDeliverableType } from './itemTypes';
 import { BacklogItem, BacklogModel } from './model';
 import { sameValue } from './noteFields';
@@ -177,7 +178,10 @@ export function bucketRepresentative(bucket: IterationBucket, settings: BacklogS
 }
 
 /** The label of the leading column for items without the state property. */
-export const NO_STATE_LABEL = 'No state';
+/** See `shelfLabel` in `./roadmap` for why this is a function and not a `const`. */
+export function noStateLabel(): string {
+	return t('placement.noState');
+}
 /**
  * Its label when a real state claims the natural name: state values are the
  * user's own strings, so a workflow can legitimately contain one called
@@ -187,7 +191,9 @@ export const NO_STATE_LABEL = 'No state';
  * one's is not. (A vocabulary containing both strings at once is a collision
  * this cannot untangle, accepted as vanishingly unlikely.)
  */
-export const NO_STATE_COLLISION_LABEL = 'Unset';
+export function noStateCollisionLabel(): string {
+	return t('placement.noStateCollision');
+}
 
 /**
  * What a board's columns are drawn from: how to read a card's state, the configured
@@ -776,7 +782,7 @@ function workflowColumns(
 	const done = new Set(workflow.doneValues.map((v) => v.toLowerCase()));
 	const column = (state: string | null, outsideWorkflow: boolean): BoardColumn => ({
 		state,
-		label: state ?? NO_STATE_LABEL,
+		label: state ?? noStateLabel(),
 		done: state !== null && done.has(state.toLowerCase()),
 		// Every column of a state-matched board takes a drop: it exists because a state
 		// names it, and that state is what the drop writes.
@@ -806,7 +812,7 @@ function workflowColumns(
 		byValue.set(value.toLowerCase(), col);
 		columns.push(col);
 	}
-	if (byValue.has(NO_STATE_LABEL.toLowerCase())) noState.label = NO_STATE_COLLISION_LABEL;
+	if (byValue.has(noStateLabel().toLowerCase())) noState.label = noStateCollisionLabel();
 	return { columns, byValue, noState };
 }
 
@@ -839,7 +845,7 @@ export function cardPaths(board: BoardModel): Set<string> {
  */
 export function columnLabelFor(board: BoardModel, state: string | null): string {
 	// Columns always lead with the no-state column — `boardColumns` builds it first.
-	const noState = board.columns[0]?.label ?? NO_STATE_LABEL;
+	const noState = board.columns[0]?.label ?? noStateLabel();
 	if (state === null) return noState;
 	return board.columns.find((col) => col.state?.toLowerCase() === state.toLowerCase())?.label ?? noState;
 }

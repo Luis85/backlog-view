@@ -459,9 +459,55 @@ needed three rounds of review to abandon.
 
 ## Where it lives
 
-**Nothing yet — this note is design.** The rule belongs in `eslint.config.mjs`, beside the
+**The first of the bans is in, and it is the narrowest one.** `TEXT_TERNARY` in
+`eslint.config.mjs` refuses a `ConditionalExpression` between two string literals inside a
+template literal, in `src/view/render/**` — the shape that assembles a sentence at the call
+site, whether the two halves are `''`/`'s'` or `'Expand'`/`'Collapse'`. It sits beside the
 `no-restricted-syntax` bans on `processFrontMatter`, `vault.create` and `showAtMouseEvent`
-that it copies.
+that it copies, and it is checked in both directions: a planted ternary was watched failing
+lint, and the swept tree passes.
+
+It is **not** this PBI. What that ban does is stop the twentieth instance of the shape
+already swept — `Plurals and interpolation` records the nineteenth arriving mid-flight in a
+merge. What this note still asks for is the harder thing: a bare string reaching a text
+SINK it was never routed through the catalog for, which no AST shape can see. Read the ban
+as evidence the mechanism works in this config, not as the requirement met.
+
+Four limits, stated because each is a place the next one gets in. They have changed twice
+since the ban landed, so read them against `eslint.config.mjs` rather than from memory —
+the selector is two rules now, not one.
+
+- **Scope is three regions, and a region joins only once it is swept.** `render/`,
+  `interactions/menu.ts` and `manual/typesSection.ts`. The menu came in with
+  `render/timeline.ts` because the two hold one fold label between them and a ban over half
+  of that guarantee is not the guarantee. The types section came in on 2026-08-18, when its
+  `are`/`is` agreement became one catalog key — that order is the rule and not the
+  accident: ban a directory before sweeping it and the result is a wall of errors somebody
+  switches off. Still unbanned: the rest of `interactions/` (`structure.ts` holds
+  `runInit`'s outcome notice, whose OUTER sentence is assembled too — keying the fragment
+  alone would be this defect one level up), `ui/`, `commands/`, `manual/sections.ts`, and
+  `domain/` — where the count was wrong and so was the reason. It is **six** instances, and
+  **five** are generated README prose that must stay English; the sixth,
+  `markerLaneCaption` in `domain/roadmap.ts`, is live roadmap UI text and is owed to
+  `Every surface translated` like any other rendered string. Measured on 2026-08-18 after
+  "seven, all README prose" had been restated twice — a claim of that shape is exactly what
+  tells the next sweeper a directory is safe to skip.
+- **A capital letter is what separates a sentence from an identifier, and that is a
+  heuristic.** Every identifier this plugin writes is lowercase — CSS class, icon id, ARIA
+  value, `data-` key, catalog key — so a capital in a picked literal reads as prose. Its
+  ceiling is a lowercase sentence, and one is live inside a banned directory:
+  `' — inferred from children'` in `render/lanes.ts`. Not a regression the rule let in, and
+  naming it is what stops the ban being read as "`render/` is clean".
+- **It still cannot tell a class name from a sentence** where the class is capitalized, and
+  the `t()` exclusion is what keeps a key ternary — `t(a ? 'k.one' : 'k.two')` — legal at
+  all. Checking a shape rather than a meaning is what buys the rule its reach, and this is
+  the bill.
+- **It sees one spelling.** A sentence assembled by `+`, by `.join()`, or by a ternary
+  between two template literals passes untouched. `render/cardChildren.ts` was the worked
+  example until it was swept: a ternary AND a `+` joining a translated fragment on with an
+  em dash, of which this rule could only ever have seen the first half.
+
+The rest of this note is still design.
 
 What it constrains is every rendering module — `src/view/render/toolbar.ts`,
 `src/view/render/rows.ts`, `src/view/render/columns.ts`,

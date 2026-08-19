@@ -1,4 +1,5 @@
 import { setTooltip } from 'obsidian';
+import { t } from '../../i18n/t';
 import { drawIcon } from './icons';
 import { BacklogViewHost, Column } from '../host';
 import { showAssigneeMenu, showPriorityMenu, showRiskMenu } from '../interactions/menu';
@@ -6,7 +7,7 @@ import { ownWorkflowReading, stateKeyFor } from '../../domain/board';
 import { PlacementEnd, placementEnds } from '../../domain/itemTypes';
 import { BacklogItem } from '../../domain/model';
 import { CivilDate, FieldReading } from '../../domain/noteFields';
-import { SHELF_LABEL } from '../../domain/roadmap';
+import { shelfLabel } from '../../domain/roadmap';
 import { formatCivil } from '../../domain/timeline';
 
 /**
@@ -117,7 +118,7 @@ export function renderHorizonChip(host: BacklogViewHost, col: HTMLElement, item:
 	// why — rather than showing a horizon the axis would not honor.
 	const value = item.horizon.value;
 	const unplaced = value === null;
-	const reason = item.horizon.invalid ? 'Unreadable horizon value' : null;
+	const reason = item.horizon.invalid ? t('chip.horizonUnreadable') : null;
 	const cls = 'pbl-horizon-chip' + (unplaced ? ' pbl-horizon-unset' : '');
 
 	// A note the Base excluded is context: show where it sits, never offer to move
@@ -254,7 +255,7 @@ function fillLabelChip(chip: HTMLElement, value: string | null, spec: LabelChip)
  */
 function fillHorizonChip(chip: HTMLElement, value: string | null): void {
 	drawIcon(chip.createSpan({ cls: 'pbl-state-icon' }), value === null ? 'inbox' : 'milestone');
-	chip.createSpan({ cls: 'pbl-state-text', text: value ?? SHELF_LABEL });
+	chip.createSpan({ cls: 'pbl-state-text', text: value ?? shelfLabel() });
 }
 
 /**

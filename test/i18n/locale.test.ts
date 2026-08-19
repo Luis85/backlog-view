@@ -1,6 +1,9 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { intlLocale, resolveCatalog } from '../../src/i18n/locale';
 import { list, setLocale, t, activeLocale } from '../../src/i18n/t';
+import { shelfLabel } from '../../src/domain/roadmap';
+import { unscheduledLabel } from '../../src/domain/bars';
+import { noStateCollisionLabel, noStateLabel } from '../../src/domain/board';
 import { pt, reordered, ru, sparse } from './fixtures';
 
 /**
@@ -194,5 +197,37 @@ describe('English, which is what actually ships', () => {
 			expect(activeLocale().catalog).toBe('en');
 			expect(t('count.items', { count: 1 })).toBe('1 item');
 		}
+	});
+});
+
+/**
+ * The placement labels are FUNCTIONS in `domain/`, and this is what that buys. A
+ * `const X = t(…)` is evaluated when its module is first imported, which happens before
+ * `main.ts`'s `onload` calls `initLocale()` — so a constant would hold English no matter
+ * what Obsidian's language is, and nothing else in the suite would notice: every
+ * assertion elsewhere runs under the English catalog, where a frozen value and a live one
+ * are the same string.
+ *
+ * Reverting any of these four to a `const` fails here and nowhere else.
+ */
+describe('a placement label reads the locale that is active when it is CALLED', () => {
+	afterEach(() => setLocale('en'));
+
+	const placements: Catalog = {
+		'placement.unplaced': 'Nicht geplant',
+		'placement.unscheduled': 'Ohne Termin',
+		'placement.noState': 'Kein Status',
+		'placement.noStateCollision': 'Nicht gesetzt',
+	};
+
+	it('follows a locale set after the module was imported', () => {
+		// Imported at the top of this file, so any module constant has already been
+		// evaluated by the time this runs — which is the whole point.
+		expect(shelfLabel()).toBe('Unplaced');
+		setLocale('de', { de: placements });
+		expect(shelfLabel()).toBe('Nicht geplant');
+		expect(unscheduledLabel()).toBe('Ohne Termin');
+		expect(noStateLabel()).toBe('Kein Status');
+		expect(noStateCollisionLabel()).toBe('Nicht gesetzt');
 	});
 });

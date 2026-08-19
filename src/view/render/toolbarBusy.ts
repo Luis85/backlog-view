@@ -1,4 +1,5 @@
 import { setIcon } from 'obsidian';
+import { t } from '../../i18n/t';
 import { BacklogViewHost, BusyState } from '../host';
 import { manualLink } from '../../ui/manualDialog';
 import { manualSections } from '../manual/sections';
@@ -153,8 +154,8 @@ function syncBusyLabel(el: HTMLElement, busy: BusyState | null): boolean {
 	// it is settled at the transition and constant across every tick between. The counted
 	// form drops the ellipsis because the count follows it and reads as the continuation.
 	const counting = busy !== null && busy.total > 1;
-	if (labelEl) setTextIfChanged(labelEl, busy ? (counting ? 'Updating' : 'Updating…') : '');
-	if (busy && counting) labelEl?.setAttribute('title', `Updating ${busy.done} of ${busy.total}…`);
+	if (labelEl) setTextIfChanged(labelEl, busy ? (counting ? t('toolbar.updatingCounted') : t('toolbar.updating')) : '');
+	if (busy && counting) labelEl?.setAttribute('title', t('toolbar.updatingProgress', { done: busy.done, total: busy.total }));
 	else labelEl?.removeAttribute('title');
 	// EITHER thing can change the row's width, so either is worth a re-measure: the
 	// indicator appearing or going, and the count gaining or losing a digit.

@@ -130,9 +130,36 @@ config report split out.
 The nineteenth arrived **during** this work, which is the number's real lesson: merging
 main brought the shelf's new type-group fold, and its `aria-label` was written the old way
 because the old way was still the only way when it was written. It reused
-`roadmap.groupLabel` unchanged. Until `A bare string cannot reach the UI` lands there is
-nothing stopping the twentieth, so a merge that touches a rendering module is worth
-grepping — and that PBI is the reason this note does not have to keep saying so.
+`roadmap.groupLabel` unchanged.
+
+**A twentieth in `render/` is now refused by lint, and the count stayed at nineteen
+through 250 commits of main.** That was measured after a rebase onto 0.9.0 — iterations,
+the MoSCoW priority, the scope picker and the shelf search all landed in between — with
+the regex checked against a planted instance first, since a grep that silently matches
+nothing reads exactly like a clean tree. `TEXT_TERNARY` in `eslint.config.mjs` is the
+refusal, and **`render/` is where MOST of the nineteen lived rather than all of them**:
+the `' and '` joiner named above was in `domain/settingsConsistency.ts`, which the ban
+does not cover, and neither did an earlier draft of this paragraph that said "all". The
+scoping is a claim about churn, not about completeness — the four limits are on
+`A bare string cannot reach the UI`, and the two to carry here are that
+`view/manual/typesSection.ts` still holds an `are`/`is` agreement, and that a ternary
+written OUTSIDE a template literal is the plainest way past the rule and is live in the
+swept directory twice.
+
+**The ban is a wider rule than plurals, and the sweep that turned it on found that out.**
+Clearing `render/` of the shape meant clearing three sentences built by choosing between
+two WORDS — `Expand`/`Collapse` on a board column and on the shelf, `Show`/`Hide` on a
+resource band — which are the same defect with a verb in place of a suffix, and were never
+counted among the nineteen because nobody was counting that shape. Each became two whole
+keys per direction rather than one with the verb interpolated.
+
+A fourth was **dead**. `renderLaneChevron` chose between a marker lane's lowercased name
+and `{name}'s work`, and its only call site is guarded by `!lane.markers` — so the marker
+half had no reachable caller and had not had one since the markers row stopped folding.
+Translating it faithfully would have put two keys in the catalog for a string nothing can
+render; asking what the other branch SAID is what exposed it. That is the sweep's own
+argument: reading every rendered string once is a pass over the UI that nothing else in
+this repository performs.
 
 The `${n} item${s}` shape occurred five times over the same meaning and is **one key**,
 `count.items`. That is not the deduplication `The string catalog` forbids: that rule is

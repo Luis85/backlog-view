@@ -252,16 +252,11 @@ export function renderEmptyIterationState(treeEl: HTMLElement, name: string): vo
  */
 export function renderRoadmapNoAxisState(host: BacklogViewHost, treeEl: HTMLElement): void {
 	const halfConfigured = host.settings.horizonKey !== '' && host.settings.horizonValues.length === 0;
-	const horizonHalf = halfConfigured
-		? 'A horizon property is set, but "Horizons (in order)" is empty — fill it to get Now-Next-Later buckets'
-		: 'Set "Horizon property" and "Horizons (in order)" for Now-Next-Later buckets';
-	const empty = guidanceShell(
-		treeEl,
-		'map',
-		'No axis to show',
-		'The roadmap draws whichever axis the view options declare — confidence horizons, or dates. ' +
-			`${horizonHalf}, or set "Start date property" or "Target date property" for a timeline.`,
-	);
+	// One key per whole body, never a clause spliced into a shared frame: which half is
+	// missing decides the sentence, and a locale that names the dates first has no way
+	// into a middle the caller assembled.
+	const body = halfConfigured ? t('emptyState.noAxisBodyHalfSet') : t('emptyState.noAxisBody');
+	const empty = guidanceShell(treeEl, 'map', 'No axis to show', body);
 	renderSetupCta(host, empty, ['horizon', 'start', 'target']);
 }
 

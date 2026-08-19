@@ -1,3 +1,4 @@
+import { t } from '../i18n/t';
 import { drawsAsPoint, PlacementEnd, placementEnds } from './itemTypes';
 import { BacklogItem } from './model';
 import { absentReading, CivilDate, FieldReading, readDate } from './noteFields';
@@ -80,11 +81,14 @@ export function plannedEnds(item: BacklogItem, plan: Partial<Record<PlacementEnd
 /** Where one item lands on this axis. */
 /**
  * What the dated axis calls an item with no placement, wherever one is named out loud.
- * The shelf's own word is `SHELF_LABEL` ("Unplaced") and this is deliberately not it:
+ * The shelf's own word is `shelfLabel()` ("Unplaced") and this is deliberately not it:
  * a horizon is triage and a date is a plan, so an item with neither is unplaced on one
  * axis and unscheduled on the other.
  */
-export const UNSCHEDULED_LABEL = 'Unscheduled';
+/** See `shelfLabel` in `./roadmap` for why this is a function and not a `const`. */
+export function unscheduledLabel(): string {
+	return t('placement.unscheduled');
+}
 
 export type Placement = { kind: 'bar'; bar: TimelineBar } | { kind: 'shelf'; reason: string | null };
 

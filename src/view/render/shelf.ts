@@ -10,10 +10,10 @@ import { BacklogViewHost } from '../host';
 import { CardDragController, CardSource } from '../interactions/cardDrag';
 import { canSchedule, unschedulePlan } from '../interactions/plan';
 import { BacklogItem } from '../../domain/model';
-import { placeItem, ShelfCard, statedEnds, UNSCHEDULED_LABEL, withoutEnds } from '../../domain/bars';
+import { placeItem, ShelfCard, statedEnds, unscheduledLabel, withoutEnds } from '../../domain/bars';
 import { placementEnds } from '../../domain/itemTypes';
 import { BacklogSettings } from '../../domain/settings';
-import { drawsGrid, RoadmapAxis, SHELF_LABEL } from '../../domain/roadmap';
+import { drawsGrid, RoadmapAxis, shelfLabel } from '../../domain/roadmap';
 import { organizeShelf, searchShelf, ShelfGroup } from '../../domain/shelf';
 
 /** What dropping a card on the shelf MEANS, the words that promise it, and its preview. */
@@ -133,7 +133,7 @@ export function shelfRemoval(host: BacklogViewHost, axis: RoadmapAxis): ShelfRem
 function removalOutcome(item: BacklogItem, settings: BacklogSettings): string {
 	const ends = placementEnds(item.typeName, settings.iterationBars);
 	const left = placeItem(item, withoutEnds(statedEnds(item), ends), settings.iterationBars);
-	return left.kind === 'shelf' ? UNSCHEDULED_LABEL : `Keeps ${spanText(left.bar)}`;
+	return left.kind === 'shelf' ? unscheduledLabel() : `Keeps ${spanText(left.bar)}`;
 }
 
 /**
@@ -175,7 +175,7 @@ export function renderShelf(
 		cls: 'pbl-shelf' + (empty ? ' pbl-shelf-empty' : '') + (collapsed ? ' pbl-shelf-collapsed' : ''),
 		attr: {
 			role: 'group',
-			'aria-label': t('roadmap.groupLabel', { name: SHELF_LABEL, count: shelfCards.length }),
+			'aria-label': t('roadmap.groupLabel', { name: shelfLabel(), count: shelfCards.length }),
 		},
 	});
 	const header = shelfEl.createDiv({ cls: 'pbl-shelf-header' });
