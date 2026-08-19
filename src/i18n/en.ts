@@ -239,4 +239,84 @@ export const en = {
 	'lane.markersHeaderBoth': '{first}s · {second}s',
 
 	'settings.sharedKey': 'The {properties} properties share the key "{key}".',
+
+	/**
+	 * The dialogs in `ui/`. Every one of them takes its heading and its description from
+	 * the caller, so what is keyed here is only what `ui/` spells for itself: the field
+	 * labels, the placeholders and the buttons.
+	 *
+	 * **A field's LABEL is here; the key it submits under is not.** `DateFieldSpec.field`,
+	 * `AbsenceResult.resource` and the rest are the caller's own vocabulary, read back by
+	 * the layer that asked — data, and a locale that changed one would hand back an object
+	 * its caller cannot destructure.
+	 *
+	 * `prompt.save` is one key for two forms because it is one act. `prompt.folderField` is
+	 * one key for two forms for the same reason — both name the folder the thing lands in.
+	 * The date ends are NOT shared: an absence has a start and an end, an iteration has a
+	 * start and a target, and a language that inflects a label for what it belongs to needs
+	 * them apart.
+	 */
+	'prompt.folderField': 'Folder',
+	'prompt.save': 'Save',
+	'prompt.create': 'Create',
+	/** Empties one date field. `{name}` is the field's own label, handed in by the caller. */
+	'prompt.clearDate': 'Clear {name}',
+	'prompt.absenceResource': 'Resource',
+	'prompt.absenceStart': 'Start',
+	'prompt.absenceEnd': 'End',
+	'prompt.iterationName': 'Name',
+	'prompt.iterationStart': 'Start',
+	'prompt.iterationTarget': 'Target',
+	'prompt.iterationGoal': 'Goal',
+	'prompt.newItemType': 'Type',
+	'prompt.newItemTitle': 'Title',
+	'prompt.newItemTitlePlaceholder': 'Item title',
+	/**
+	 * The folder placeholder is an EXAMPLE, not a default: the field submits empty as the
+	 * vault root, and nothing reads this string back. A locale is free to suggest a folder
+	 * name its readers would recognise.
+	 */
+	'prompt.newItemFolderPlaceholder': 'Backlog',
+	'prompt.newItemFolderDesc':
+		"New items are created here, and the choice is saved to the view options. Point this base's filter at the same folder so items show up. Leave empty for the vault root.",
+
+	'stateColors.title': 'State colours',
+	'stateColors.intro':
+		'The colour each workflow state is drawn in on the roadmap’s dated axis, and in its legend. A chosen colour is fixed: unlike the default, it does not follow the theme between light and dark. Finished states are not listed: they are always green.',
+	'stateColors.useDefault': 'Use the default colour',
+
+	/** The manual dialog's accessible name. Sentence case, and not the view's registered name. */
+	'manual.dialogTitle': 'Product backlog manual',
+
+	/**
+	 * The scaffold command. `{path}` is the file it made — vault content, so it arrives as
+	 * a parameter and is never spelled here.
+	 */
+	'scaffold.heading': 'Create product backlog',
+	'scaffold.folderDesc': 'A folder for your backlog items and a configured .base file will be created here.',
+	'scaffold.cta': 'Create backlog',
+	'scaffold.created': 'Created "{path}". Add your first epic from the view.',
+	'scaffold.failed': 'Could not create the backlog. See the developer console for details.',
+
+	/**
+	 * The readme command, one whole sentence per outcome. `{path}` and `{previous}` are
+	 * file paths and view names — vault content, parameters both.
+	 *
+	 * `{problems}` is a LIST, joined by `Intl.ListFormat` in the catalog's own locale
+	 * rather than by a separator at the call site. The problems themselves are still
+	 * English until `View options and config warnings` runs.
+	 */
+	'readme.created': 'Wrote "{path}".',
+	'readme.updated': 'Updated "{path}".',
+	'readme.unchanged': '"{path}" already matches this view. Nothing was written.',
+	'readme.foreign': '"{path}" was not written by this plugin, so it was left alone. Move it aside to generate one.',
+	'readme.replaced':
+		'Updated "{path}", which documented "{previous}". A folder has one readme, so two views sharing it take turns.',
+	/**
+	 * No terminal period: each problem is a whole sentence with one of its own, so the
+	 * `'; '` this replaced rendered `"…".; "…"..`. That is the one thing about this notice
+	 * that is not a pure text move, and it is the punctuation rather than the wording.
+	 */
+	'readme.configProblems': 'Fix the view configuration first: {problems}',
+	'readme.failed': 'Could not write the readme. See the developer console for details.',
 } as const;

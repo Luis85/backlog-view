@@ -1,4 +1,5 @@
 import { App, ColorComponent, ExtraButtonComponent, Modal, Setting } from 'obsidian';
+import { t } from '../i18n/t';
 
 /**
  * One row: a state, the colour to open its swatch on, the colour the reset restores, and
@@ -53,16 +54,10 @@ class StateColorsDialog extends Modal {
 
 	onOpen(): void {
 		const { contentEl } = this;
-		this.titleEl.setText('State colours');
+		this.titleEl.setText(t('stateColors.title'));
 		contentEl.empty();
 		contentEl.addClass('pbl-state-colors');
-		contentEl.createEl('p', {
-			cls: 'pbl-state-colors-intro',
-			text:
-				'The colour each workflow state is drawn in on the roadmap’s dated axis, and in ' +
-				'its legend. A chosen colour is fixed: unlike the default, it does not follow the ' +
-				'theme between light and dark. Finished states are not listed: they are always green.',
-		});
+		contentEl.createEl('p', { cls: 'pbl-state-colors-intro', text: t('stateColors.intro') });
 		for (const row of this.rows) this.renderRow(row);
 	}
 
@@ -92,7 +87,7 @@ class StateColorsDialog extends Modal {
 		setting.addExtraButton((btn) => {
 			reset = btn;
 			btn.setIcon('rotate-ccw')
-				.setTooltip('Use the default colour')
+				.setTooltip(t('stateColors.useDefault'))
 				// A reset with nothing to reset is a control that lies about being available.
 				.setDisabled(!isSet)
 				.onClick(() => {

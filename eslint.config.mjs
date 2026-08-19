@@ -261,6 +261,11 @@ const ROW_LISTENER = {
  * `syntaxRules` wrapper exists so that is the only decision, and the shape is uniform.
  */
 const STORAGE = 'src/storage/**/*.ts';
+// The two regions outside view/ that render text and have been SWEPT, so the ternary ban
+// lands on a clean file rather than opening with a wall of errors. Carved out of the
+// general region for that one rule and nothing else. domain/ and main.ts stay out until
+// their own sweeps run — `docs/requirements/Every surface translated.md`.
+const SWEPT = ['src/ui/**/*.ts', 'src/commands/**/*.ts'];
 const MENU = 'src/view/interactions/menu.ts';
 // Ranking code lives in one domain file and one view file; split so a view-only rule
 // (ALL_TYPES_IMPORT) can apply to the latter without reaching into domain/.
@@ -358,9 +363,9 @@ const TYPES_SECTION = 'src/view/manual/typesSection.ts';
 // five are, and `markerLaneCaption` (`domain/roadmap.ts`) is live roadmap UI text. Counted
 // on 2026-08-18 rather than recalled, after the wrong figure was restated twice — "all
 // README prose" is what would tell the next sweeper this directory is safe to skip.
-// `ui/`, `commands/` stay unbanned too, as does the rest of
-// `manual/` — `sections.ts` is unswept and the ban is named to the ONE FILE for the
-// reason `TYPES_SECTION` itself is.
+// `ui/` and `commands/` joined on 2026-08-19, when their own sweep ran; the rest of
+// `manual/` stays out — `sections.ts` is unswept and the ban is named to the ONE FILE for
+// the reason `TYPES_SECTION` itself is.
 //
 // Neither selector can tell a class name from a sentence, only lowercase from capitalised
 // — `styles`-bound interpolation has to be written another way under TEMPLATE, which
@@ -380,6 +385,27 @@ const TEXT_TERNARY = [
 		message: TEXT_TERNARY_MESSAGE,
 	},
 ];
+
+// A sentence spelled AT the place it is used, in a directory that has none left. The
+// ternary ban above catches a sentence PICKED between two literals; this one catches the
+// ordinary case underneath it, which is the one a sweep leaves behind by omission rather
+// than by cleverness — and it is what makes the swept region stay swept for code nobody
+// has written yet, instead of for the call sites someone thought to check.
+//
+// **It sees the SPELLINGS listed and no others.** The setter calls and `new Notice`, with
+// the same lowercase-is-an-identifier heuristic TEXT_TERNARY uses. A literal reaching the
+// DOM through a `text:` or `'aria-label'` property is NOT covered, and that is a choice
+// with one live instance: `ui/manualDialog.ts`'s nav heading is the plugin's own NAME,
+// which `Every surface translated` says is not translated, so a rule covering the property
+// would open on an exemption for the one thing that is allowed to be there. A wider rule
+// belongs to `A bare string cannot reach the UI`, which makes a bare string unable to
+// reach the UI at all rather than naming where it may not be written.
+const UI_TEXT_LITERAL = {
+	selector:
+		"CallExpression[callee.property.name=/^(setName|setDesc|setPlaceholder|setTooltip|setButtonText|setText|setTitle)$/] > Literal[value=/^[A-Z]/], NewExpression[callee.name='Notice'] > Literal[value=/^[A-Z]/]",
+	message:
+		'A sentence spelled where it is used cannot be translated. Add a key to src/i18n/en.ts and call t() — and if this is a value the plugin writes, matches or persists rather than text, it belongs in neither place.',
+};
 
 const syntaxRules = (selectors) => ({ 'no-restricted-syntax': ['error', ...selectors] });
 
@@ -444,8 +470,23 @@ export default defineConfig([
 		// Everything that is not view/ and not one of the other special cases: domain/,
 		// storage/, ui/, commands/, main.ts.
 		files: ['src/**/*.ts'],
-		ignores: [STORAGE, VIEW, ...RANKING_DOMAIN],
+		ignores: [STORAGE, VIEW, ...RANKING_DOMAIN, ...SWEPT],
 		rules: syntaxRules([...WRITE_BOUNDARY, ...SVG_CLASS_TOKENS, MENU_ANCHOR, OVERBY, TREE_SCAN]),
+	},
+	{
+		// ui/ and commands/, carved out of the general region for the two text bans alone:
+		// both were swept into the catalog on 2026-08-19, so the bans have a clean file to
+		// hold. Everything else the general region carries applies here unchanged.
+		files: SWEPT,
+		rules: syntaxRules([
+			...WRITE_BOUNDARY,
+			...SVG_CLASS_TOKENS,
+			MENU_ANCHOR,
+			OVERBY,
+			TREE_SCAN,
+			...TEXT_TERNARY,
+			UI_TEXT_LITERAL,
+		]),
 	},
 	{
 		// storage/ IS the writer, so the write boundary cannot apply to it. Nothing else

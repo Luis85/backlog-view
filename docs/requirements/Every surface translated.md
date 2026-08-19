@@ -129,9 +129,43 @@ which is correct: Obsidian needs a restart to change language.
 - No behaviour changes. This is a text move; anything else found on the way is its own
   note.
 
+## What has been swept
+
+**`ui/` and `commands/`, on 2026-08-19.** Both directories are done: 30 keys, and the two
+lint bans below now hold them. What went in was wider than the count this note was planned
+from — the measurement it used could not see a double-quoted `setDesc`, a template-literal
+tooltip, or a label handed to a local `field()` helper, so `ui/prompts.ts` gave 19 sites
+rather than the 13 tabulated above. Re-derive before planning the next directory; the
+tables here are the shape of the answer, not the answer.
+
+Three things are deliberately NOT in the catalog after that sweep:
+
+- **The manual dialog's nav heading**, `Product Backlog`. It is the plugin's own name, which
+  the criteria above say is not translated. The dialog's TITLE beside it — `Product backlog
+  manual` — is a sentence about the plugin and did move.
+- **Every heading and description these dialogs are HANDED.** `ui/` takes them from its
+  callers, which are in `view/` and unswept; a key here would be keying somebody else's
+  string.
+- **The configuration problems themselves.** `readme.configProblems` is one key with the
+  list as a parameter, joined by `Intl.ListFormat`; what it joins is still English until
+  `View options and config warnings` runs.
+
+The one thing in those two directories that is not a pure text move is punctuation:
+`Fix the view configuration first: …` joined its problems with `'; '` and then added a
+period, so it rendered `"…".; "…"..`. The key has no terminal period and the list is joined
+as grammar.
+
+**The remaining English is `view/` and `domain/`.** 75 sites in `view/` and one in `ui/`
+(the plugin name) by the narrow measurement this note's numbers came from; a wider net that
+also sees double quotes, template literals and the option-bag properties returns ~209
+across `src/`, of which 51 are `domain/viewOptions.ts` — which is
+[[View options and config warnings]] and not this note.
+
 ## Where it lives
 
-**Nothing yet — this note is design.** The sweep touches every rendering module without
+**`src/i18n/en.ts`** carries the keys; the swept call sites are `src/ui/prompts.ts`,
+`src/ui/stateColorsDialog.ts`, `src/ui/manualDialog.ts`, `src/commands/scaffold.ts` and
+`src/commands/readme.ts`. The rest of the sweep touches every rendering module without
 changing what any of them does.
 
 `src/view/render/toolbar.ts` · `src/view/render/rows.ts` · `src/view/render/columns.ts` ·
@@ -143,3 +177,12 @@ changing what any of them does.
 `src/main.ts`.
 Tests: `test/view/contextRowWrites.test.ts` and `test/view/creation.test.ts` must pass
 untouched — they guard the two behaviours this sweep is most likely to disturb.
+`test/i18n/sweptSurfaces.test.ts` is the swept half's own check, and it is a PAIR with
+lint rather than a substitute for it: it drives each surface under a fixture catalog, so a
+literal left at a call site renders English beside overridden neighbours, while
+`UI_TEXT_LITERAL` in `eslint.config.mjs` refuses a NEW one. A test cannot see a call site
+nobody has written; lint cannot tell whether a key is read. `UI_TEXT_LITERAL` sees the
+setter calls and `new Notice` and **not** a `text:` or `'aria-label'` property — the one
+live instance of that shape is the plugin name above, so covering the property would open
+the rule on an exemption for the thing that is allowed to be there. Making a bare string
+unable to reach the UI at all is [[A bare string cannot reach the UI]].

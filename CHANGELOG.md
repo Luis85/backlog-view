@@ -13,6 +13,13 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ### Changed
 
+- **Every dialog and both commands take their words from the message catalog now** — the
+  new-item, folder, schedule, absence and iteration prompts, the state-colour dialog, the
+  manual's title, and the notices from `Create backlog` and `Write backlog readme`. Nothing
+  reads differently in English except one line of punctuation: the readme command's
+  configuration refusal used to run its problems together as `"…".; "…"..` and now joins
+  them as a list. The plugin's own name is still its name in every language.
+
 - **The words the plugin uses for "no placement" come from the message catalog now** —
   `Unplaced`, `Unscheduled`, `No state` and the `Unset` a real state collides with, plus
   the shelf's search labels and the marker row's header. Nothing reads differently in
