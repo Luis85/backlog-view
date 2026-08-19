@@ -13,6 +13,21 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ### Changed
 
+- **The words the plugin uses for "no placement" come from the message catalog now** —
+  `Unplaced`, `Unscheduled`, `No state` and the `Unset` a real state collides with, plus
+  the shelf's search labels and the marker row's header. Nothing reads differently in
+  English. What changes is that they can be translated at all: they were constants in the
+  code, and a constant is fixed before the plugin has read which language Obsidian is in.
+
+- **The manual's item-types paragraph is built from the type vocabulary, not written around
+  it.** It reads the same, with two small improvements the change came with: the lists in it
+  now join the way English joins lists (`Issue, Bug, Idea, and Deliverable`), and the rungs
+  the `+` offers under are named from the ladder itself rather than spelled out, so adding a
+  rung to the ladder or a type beside it describes the new one instead of leaving the
+  sentence quietly wrong. One thing it still does not adapt to: the paragraph says markers
+  "are" neither, so a vocabulary reduced to a single marker type would read oddly until the
+  sentence is rewritten.
+
 - **A new iteration is named for its goal.** `New iteration…` names the note
   `1 - Iteration - Ship the board` rather than `1 - Iteration`, so a folder of sprints says
   what each one was for without opening one. The goal is appended to the name you confirm,

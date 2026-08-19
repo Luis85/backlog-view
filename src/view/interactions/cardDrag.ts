@@ -15,7 +15,7 @@ import {
 	RoadmapModel,
 	targetLabel,
 } from '../../domain/roadmap';
-import { BarHold, Placement, StatedEnds, UNSCHEDULED_LABEL } from '../../domain/bars';
+import { BarHold, Placement, StatedEnds, unscheduledLabel } from '../../domain/bars';
 import { PlacementEnd, placementEnds } from '../../domain/itemTypes';
 import { DateSpan, daysBetween, formatCivil } from '../../domain/timeline';
 import { DateChange } from '../../storage/frontmatter';
@@ -644,7 +644,7 @@ function destinationWords(after: StatedEnds, placement: Placement | null, ends: 
 
 /** A placement that answered neither `invalid` check above: a bar, or a plain shelf. */
 function placementWords(placement: Placement, ends: PlacementEnd[]): string {
-	return placement.kind === 'shelf' ? UNSCHEDULED_LABEL : spanWords(placement.bar.span, ends);
+	return placement.kind === 'shelf' ? unscheduledLabel() : spanWords(placement.bar.span, ends);
 }
 
 /**
@@ -687,7 +687,7 @@ function spanWords(span: DateSpan, ends: PlacementEnd[]): string {
 			: `${formatCivil(span.start)} to ${formatCivil(span.target)}`;
 	}
 	const only = span.start ?? span.target;
-	if (only === null) return UNSCHEDULED_LABEL;
+	if (only === null) return unscheduledLabel();
 	if (ends.length < 2) return formatCivil(only);
 	// Neither phrase may begin with `from` or `to`: `announceMove` already wraps both
 	// sides in "from … to …", and an open end that spelled itself that way would say

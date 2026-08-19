@@ -5,7 +5,7 @@ import { showMenuAtElement, showMenuForClick } from '../interactions/menu';
 import { addShelfSortItems, addShelfTypeItems } from '../interactions/shelfMenu';
 import { organizeShelf } from '../../domain/shelf';
 import { ShelfCard } from '../../domain/bars';
-import { SHELF_LABEL } from '../../domain/roadmap';
+import { shelfLabel } from '../../domain/roadmap';
 
 /**
  * The shelf's own header chrome: the disclosure that names it, counts it and opens it,
@@ -45,7 +45,7 @@ export function renderShelfControls(host: BacklogViewHost, headerEl: HTMLElement
 	// and a disclosure over nothing would offer to open what has no content.
 	if (shelf.length === 0) {
 		setIcon(headerEl.createSpan({ cls: 'pbl-shelf-icon' }), 'inbox');
-		headerEl.createSpan({ cls: 'pbl-shelf-name', text: SHELF_LABEL });
+		headerEl.createSpan({ cls: 'pbl-shelf-name', text: shelfLabel() });
 		return;
 	}
 	const collapsed = host.shelfCollapsed;
@@ -62,12 +62,12 @@ export function renderShelfControls(host: BacklogViewHost, headerEl: HTMLElement
 	});
 	setIcon(disclosure.createSpan({ cls: 'pbl-shelf-collapse-icon' }), collapsed ? 'chevron-right' : 'chevron-down');
 	setIcon(disclosure.createSpan({ cls: 'pbl-shelf-icon' }), 'inbox');
-	disclosure.createSpan({ cls: 'pbl-shelf-name', text: SHELF_LABEL });
+	disclosure.createSpan({ cls: 'pbl-shelf-name', text: shelfLabel() });
 	disclosure.createSpan({ cls: 'pbl-shelf-count', text: String(shelf.length) });
 	// `aria-expanded` carries the state an icon and a chevron only show: without it a
 	// screen-reader user at this button cannot tell a shut shelf from an open one.
 	const action = t(collapsed ? 'fold.expandShelf' : 'fold.collapseShelf', {
-		name: SHELF_LABEL,
+		name: shelfLabel(),
 		count: shelf.length,
 	});
 	disclosure.setAttribute('aria-label', action);
@@ -222,7 +222,7 @@ function showTypeMenu(host: BacklogViewHost): void {
  * not that. Nothing is written; `searchShelf` (`domain/shelf.ts`) is the whole rule.
  */
 function renderSearch(host: BacklogViewHost, headerEl: HTMLElement): void {
-	const label = `Search ${SHELF_LABEL.toLowerCase()}`;
+	const label = t('shelf.search');
 	// The input IS the box — no wrapper drawing a second one around it. Obsidian styles
 	// `input[type='search']` itself, and that selector outranks a single class, so a
 	// wrapper with its own border and background put a bordered field inside a bordered
@@ -293,7 +293,7 @@ function renderSearch(host: BacklogViewHost, headerEl: HTMLElement): void {
  */
 function renderSearchClear(host: BacklogViewHost, headerEl: HTMLElement): void {
 	if (host.shelfSearch === '') return;
-	const btn = headerButton(headerEl, 'pbl-shelf-search-clear', 'x', `Clear ${SHELF_LABEL.toLowerCase()} search`);
+	const btn = headerButton(headerEl, 'pbl-shelf-search-clear', 'x', t('shelf.clearSearch'));
 	btn.addEventListener('click', () => runSearch(host, '', 0));
 }
 

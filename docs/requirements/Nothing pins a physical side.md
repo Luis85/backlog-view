@@ -87,10 +87,21 @@ left-to-right:
 
 | Where | Construct |
 | --- | --- |
-| `styles/toolbar.css`, `.pbl-filter` | `margin-left` |
 | `styles/board.css`, `.pbl-board-col-count` / `.pbl-bucket-count` / `.pbl-shelf-count` | `margin-left: auto` |
 | `styles/timeline.css`, `.pbl-timeline-lead` | `border-right` |
-| `styles/timeline.css`, `.pbl-timeline-month` | `border-left` |
+| `styles/timeline.css`, `.pbl-timeline-cell` and the tier headers | `border-left` |
+
+**Two rows of these tables were stale when they were checked on 2026-08-18**, which is the
+hazard a table of selectors carries and the reason to re-derive rather than read: `.pbl-filter`
+went with the quick filter in 0.9.1, and `.pbl-timeline-month` was replaced by the tiered
+header (`.pbl-timeline-super` / `.pbl-timeline-tiers`) — the row now names the cell that
+carries the rule. Every other selector named here was verified to still exist. The counts
+against the current tree are **16** physical box declarations (`margin`/`padding`/`border`
+with a `-left`/`-right`, plus `text-align: left|right`) and **24** bare `left:`/`right:`
+placements, against **21** logical ones already in place (`inline-start` ×15,
+`inline-end` ×6). Nothing in `styles/` reads `--direction` or `.mod-rtl`, the two hooks
+Obsidian documents for this; the one direction-aware decision in the plugin is `widenSign`
+(`view/interactions/columnResize.ts`), which asks `getComputedStyle().direction`.
 
 **A value that names a side, with no logical twin to swap to.** Each needs a construct,
 not a substitution:

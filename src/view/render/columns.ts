@@ -1,4 +1,5 @@
 import { BasesPropertyId, NullValue, setTooltip, Value } from 'obsidian';
+import { t } from '../../i18n/t';
 import { drawIcon } from './icons';
 import { BacklogViewHost, Column, ColumnFit, ColumnKind } from '../host';
 import { columnWidth, columnWidthVar, renderColumnResize, widenSign } from '../interactions/columnResize';
@@ -377,7 +378,7 @@ export function renderColumnHeader(ctx: RowContext, containerEl: HTMLElement): H
 	if (rollup) {
 		header.createDiv({
 			cls: 'pbl-meta-col pbl-col-label',
-			text: settings.stateKey ? 'Progress' : 'Items',
+			text: settings.stateKey ? t('column.rollupProgress') : t('column.rollupItems'),
 			attr: { 'aria-hidden': 'true' },
 		});
 	}
