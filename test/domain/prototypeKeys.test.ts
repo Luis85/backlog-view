@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { BacklogSettings } from '../../src/domain/settings';
 import { settingsWith } from '../helpers/settings';
 import { buildModel } from '../../src/domain/model';
-import { buildRoadmap, horizonSource, placementLabel, SHELF_LABEL } from '../../src/domain/roadmap';
+import { buildRoadmap, horizonSource, placementLabel, shelfLabel } from '../../src/domain/roadmap';
 import { FakeVault } from '../helpers/vault';
 
 /** A view whose configured keys are all names `Object.prototype` already owns. */
@@ -37,7 +37,7 @@ describe('a horizon property named off Object.prototype', () => {
 		expect(roadmap.shelf).toHaveLength(1);
 		// null reason is plain absence — work not yet triaged, not a value we refused.
 		expect(roadmap.shelf[0].reason).toBeNull();
-		expect(placementLabel(roadmap, horizonSource(item))).toBe(SHELF_LABEL);
+		expect(placementLabel(roadmap, horizonSource(item))).toBe(shelfLabel());
 	});
 
 	it('still reads the value on a note that genuinely owns the key', () => {

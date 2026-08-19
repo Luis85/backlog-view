@@ -7,7 +7,7 @@ import { ownWorkflowReading, stateKeyFor } from '../../domain/board';
 import { PlacementEnd, placementEnds } from '../../domain/itemTypes';
 import { BacklogItem } from '../../domain/model';
 import { CivilDate, FieldReading } from '../../domain/noteFields';
-import { SHELF_LABEL } from '../../domain/roadmap';
+import { shelfLabel } from '../../domain/roadmap';
 import { formatCivil } from '../../domain/timeline';
 
 /**
@@ -255,7 +255,7 @@ function fillLabelChip(chip: HTMLElement, value: string | null, spec: LabelChip)
  */
 function fillHorizonChip(chip: HTMLElement, value: string | null): void {
 	drawIcon(chip.createSpan({ cls: 'pbl-state-icon' }), value === null ? 'inbox' : 'milestone');
-	chip.createSpan({ cls: 'pbl-state-text', text: value ?? SHELF_LABEL });
+	chip.createSpan({ cls: 'pbl-state-text', text: value ?? shelfLabel() });
 }
 
 /**

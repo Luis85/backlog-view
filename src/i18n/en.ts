@@ -190,5 +190,53 @@ export const en = {
 	'manual.typesIntro':
 		'{ladder} is a ladder: each level holds the next one down. {extras} sit beside it — the + offers one under any of {parents}, but its rank is pinned: its children are always {deepest}s, wherever it hangs. {markers} are neither: no + offers to create one as a child, and none draws a + of its own — though nothing stops a drag or Set type from doing either by hand.',
 
+	/**
+	 * The placement labels — what the plugin calls a card with nowhere to sit, a state it
+	 * has no column for, and the readings a horizon key can hold that are not a value.
+	 *
+	 * **These are FUNCTIONS at their call sites, never module constants**, and that is
+	 * load order rather than taste: `initLocale()` runs in `main.ts`'s `onload`, while a
+	 * `const X = t(…)` is evaluated when its module is first imported — which is earlier,
+	 * so the constant would freeze English before Obsidian's language was ever read. Every
+	 * one of these was a `const` in `domain/` until 2026-08-19.
+	 *
+	 * Safe to translate because none is ever compared: `docs/requirements/Type names are
+	 * data` draws the line at what the plugin writes or matches, and no equality test in
+	 * `src/` names any of them. `noStateCollisionLabel` is the closest thing to an
+	 * exception and is the opposite — `boardColumns` asks whether a real state COLLIDES
+	 * with the words on screen, so it has to compare the translated label rather than the
+	 * English one, and translating makes that check more correct rather than less.
+	 */
+	'placement.unplaced': 'Unplaced',
+	'placement.unscheduled': 'Unscheduled',
+	'placement.noState': 'No state',
+	/** What the no-state column is called when a real state is already named `No state`. */
+	'placement.noStateCollision': 'Unset',
+	/**
+	 * Three readings of a horizon key that are not a placement, each written to drop into
+	 * "moved from …" — which is why they carry their own article. A locale that forms that
+	 * sentence differently owns the whole phrase, not a noun the caller prefixes.
+	 */
+	'placement.unreadableHorizon': 'an unreadable horizon',
+	'placement.emptyHorizon': 'an empty horizon',
+	'placement.emptyAssignee': 'an empty assignee',
+
+	/**
+	 * The shelf's search affordances. They read `Search unplaced` and `Clear unplaced
+	 * search`, and they are whole keys rather than `placement.unplaced` lowercased and
+	 * concatenated: case is not a transformation every language survives — German
+	 * capitalizes every noun — and the word order around it is not universal either.
+	 */
+	'shelf.search': 'Search unplaced',
+	'shelf.clearSearch': 'Clear unplaced search',
+
+	/**
+	 * The marker row's header on both grid axes. The TYPE names inside it are data and
+	 * arrive as parameters; only the separator and the pluralizing `s` are this catalog's,
+	 * the same ceiling `count.childrenOfType` carries.
+	 */
+	'lane.markersHeader': '{markers}s',
+	'lane.markersHeaderBoth': '{first}s · {second}s',
+
 	'settings.sharedKey': 'The {properties} properties share the key "{key}".',
 } as const;

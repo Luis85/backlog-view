@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
 	boardColumns,
 	deliverablesWorkflow,
-	NO_STATE_COLLISION_LABEL,
-	NO_STATE_LABEL,
+	noStateCollisionLabel,
+	noStateLabel,
 	overBy,
 	requirementsWorkflow,
 } from '../../src/domain/board';
@@ -49,7 +49,7 @@ describe('boardColumns', () => {
 			everything,
 		);
 
-		expect(labels(board)).toEqual([NO_STATE_LABEL, 'New', 'Active', 'Done']);
+		expect(labels(board)).toEqual([noStateLabel(), 'New', 'Active', 'Done']);
 		// A configured state's column exists cards or none.
 		expect(board.columns[1].cards).toHaveLength(0);
 		expect(board.columns[2].cards.map((c) => c.title)).toEqual(['A']);
@@ -84,7 +84,7 @@ describe('boardColumns', () => {
 		);
 
 		// The same fallback the state menus use: observed values, then a done state.
-		expect(labels(board)).toEqual([NO_STATE_LABEL, 'Doing', 'Done']);
+		expect(labels(board)).toEqual([noStateLabel(), 'Doing', 'Done']);
 		expect(board.columns.some((c) => c.outsideWorkflow)).toBe(false);
 	});
 
@@ -101,7 +101,7 @@ describe('boardColumns', () => {
 
 		const doneCol = board.columns.find((c) => c.label === 'Done');
 		expect(doneCol?.cards.map((c) => c.title)).toEqual(['A']);
-		expect(labels(board)).toEqual([NO_STATE_LABEL, 'New', 'Active', 'Done']);
+		expect(labels(board)).toEqual([noStateLabel(), 'New', 'Active', 'Done']);
 	});
 
 	it('yields the unset column’s label when a real state claims “No state”', () => {
@@ -119,7 +119,7 @@ describe('boardColumns', () => {
 
 		// Two columns with the same name and opposite drop semantics would make
 		// targeting a coin toss; the synthetic one yields, the user's stays.
-		expect(labels(board)).toEqual([NO_STATE_COLLISION_LABEL, 'No state', 'Done']);
+		expect(labels(board)).toEqual([noStateCollisionLabel(), 'No state', 'Done']);
 		expect(board.columns[0].state).toBeNull();
 		expect(board.columns[0].cards.map((c) => c.title)).toEqual(['Bare']);
 		expect(board.columns[1].cards.map((c) => c.title)).toEqual(['Named']);
@@ -154,7 +154,7 @@ describe('boardColumns', () => {
 		);
 
 		// After the configured columns, visibly outside the workflow — never a dropped card.
-		expect(labels(board)).toEqual([NO_STATE_LABEL, 'New', 'Active', 'Done', 'Blocked']);
+		expect(labels(board)).toEqual([noStateLabel(), 'New', 'Active', 'Done', 'Blocked']);
 		const stray = board.columns[4];
 		expect(stray.outsideWorkflow).toBe(true);
 		expect(stray.cards.map((c) => c.title)).toEqual(['A']);
@@ -226,7 +226,7 @@ describe('boardColumns', () => {
 		);
 
 		// Unfocused, a context ancestor is not a card at all — it labels its child's card.
-		expect(labels(board)).toEqual([NO_STATE_LABEL, 'New', 'Active', 'Done']);
+		expect(labels(board)).toEqual([noStateLabel(), 'New', 'Active', 'Done']);
 		expect(board.cardCount).toBe(1);
 		const all = board.columns.flatMap((c) => c.cards.map((card) => card.title));
 		expect(all).toEqual(['PBI']);
@@ -278,7 +278,7 @@ describe('boardColumns', () => {
 			expect(active?.count).toBe(0);
 			// F2's state names no column, and an excluded note's value must not mint one:
 			// it gathers under no-state instead.
-			expect(labels(board)).toEqual([NO_STATE_LABEL, 'New', 'Active', 'Done']);
+			expect(labels(board)).toEqual([noStateLabel(), 'New', 'Active', 'Done']);
 			expect(board.columns[0].cards.map((c) => c.title)).toEqual(['F2']);
 			expect(board.columns[0].count).toBe(0);
 			expect(board.cardCount).toBe(0);
@@ -379,7 +379,7 @@ describe('a column carries its own agreement', () => {
 	it('gives the no-state column neither, without reading a key off Object.prototype', () => {
 		const vault = new FakeVault();
 		vault.addFile('A.md', { frontmatter: { type: 'Epic', order: 10 } });
-		const col = column(vault, NO_STATE_LABEL);
+		const col = column(vault, noStateLabel());
 		expect(col.limit).toBeNull();
 		expect(col.policy).toBe('');
 	});

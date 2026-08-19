@@ -1,3 +1,4 @@
+import { t } from '../i18n/t';
 import { Absence } from './absences';
 import { firstPlacedIndex } from './board';
 import { deriveBars, placeItem, ShelfCard, statedEnds, TimelineBar } from './bars';
@@ -161,8 +162,8 @@ export function markerLaneCaption(bars: TimelineBar[]): string {
 	// while both looked right in isolation. The trailing `s` is the known ceiling
 	// `count.childrenOfType` and the manual's `{deepest}s` already carry: it pluralizes a
 	// word this plugin did not write, which is `Type names are data`'s to answer.
-	if (milestones && iterations) return `${MILESTONE_TYPE}s · ${ITERATION_TYPE}s`;
-	return iterations ? `${ITERATION_TYPE}s` : `${MILESTONE_TYPE}s`;
+	if (milestones && iterations) return t('lane.markersHeaderBoth', { first: MILESTONE_TYPE, second: ITERATION_TYPE });
+	return t('lane.markersHeader', { markers: iterations ? ITERATION_TYPE : MILESTONE_TYPE });
 }
 
 export interface ResourceLane {
@@ -223,11 +224,19 @@ export interface RoadmapModel {
 }
 
 /** What the shelf is called wherever a placement is named out loud. */
-export const SHELF_LABEL = 'Unplaced';
+/**
+ * What the shelf is called. A FUNCTION and not a `const`, which is load order rather
+ * than style: `initLocale()` runs in `onload`, and a module constant is evaluated when
+ * the module is first imported — earlier — so a `const` here would freeze English
+ * before Obsidian's language was read.
+ */
+export function shelfLabel(): string {
+	return t('placement.unplaced');
+}
 /** A key holding something this axis refuses to read. */
-const UNREADABLE_LABEL = 'an unreadable horizon';
+
 /** A key that is there and says nothing — the stub the backfill leaves. */
-const EMPTY_LABEL = 'an empty horizon';
+
 
 /** The drawn bucket a value belongs to, matched as the cards were placed. */
 function bucketFor(roadmap: RoadmapModel, value: string): string | null {
@@ -256,7 +265,7 @@ function bucketFor(roadmap: RoadmapModel, value: string): string | null {
  * a place, and the write puts the note there whether or not the frame shows it yet.
  */
 export function targetLabel(roadmap: RoadmapModel, value: string | null): string {
-	if (value === null) return SHELF_LABEL;
+	if (value === null) return shelfLabel();
 	return bucketFor(roadmap, value) ?? value;
 }
 
@@ -272,9 +281,9 @@ export function targetLabel(roadmap: RoadmapModel, value: string | null): string
  */
 export function placementLabel(roadmap: RoadmapModel, source: HorizonSource): string {
 	const { reading, keyPresent } = source;
-	if (reading.invalid) return UNREADABLE_LABEL;
-	if (reading.value !== null) return bucketFor(roadmap, reading.value) ?? SHELF_LABEL;
-	return keyPresent ? EMPTY_LABEL : SHELF_LABEL;
+	if (reading.invalid) return t('placement.unreadableHorizon');
+	if (reading.value !== null) return bucketFor(roadmap, reading.value) ?? shelfLabel();
+	return keyPresent ? t('placement.emptyHorizon') : shelfLabel();
 }
 
 /** What a note's horizon key said, and whether it was there at all. */
@@ -292,7 +301,7 @@ export function horizonSource(item: BacklogItem): HorizonSource {
 }
 
 /** A key that is there and names nobody — the stub the backfill leaves. */
-const EMPTY_ASSIGNEE_LABEL = 'an empty assignee';
+
 
 /**
  * The drawn rows whose name is a RESOURCE — every one but the milestones', which is a fact
@@ -362,7 +371,7 @@ function resourceLabel(roadmap: RoadmapModel, value: string): string {
 
 /** Where a pick sends a card. Nobody named is the shelf, under the name the frame gives it. */
 export function resourceTargetLabel(roadmap: RoadmapModel, name: string | null): string {
-	return name === null ? SHELF_LABEL : resourceLabel(roadmap, name);
+	return name === null ? shelfLabel() : resourceLabel(roadmap, name);
 }
 
 /** What a note's assignee key said, and whether it was there at all. */
@@ -390,7 +399,7 @@ export function resourceSource(item: BacklogItem): ResourceSource {
  */
 export function resourcePlacementLabel(roadmap: RoadmapModel, source: ResourceSource): string {
 	if (source.value !== null) return resourceLabel(roadmap, source.value);
-	return source.keyPresent ? EMPTY_ASSIGNEE_LABEL : SHELF_LABEL;
+	return source.keyPresent ? t('placement.emptyAssignee') : shelfLabel();
 }
 
 /**

@@ -13,6 +13,12 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ### Changed
 
+- **The words the plugin uses for "no placement" come from the message catalog now** —
+  `Unplaced`, `Unscheduled`, `No state` and the `Unset` a real state collides with, plus
+  the shelf's search labels and the marker row's header. Nothing reads differently in
+  English. What changes is that they can be translated at all: they were constants in the
+  code, and a constant is fixed before the plugin has read which language Obsidian is in.
+
 - **The manual's item-types paragraph is built from the type vocabulary, not written around
   it.** It reads the same, with two small improvements the change came with: the lists in it
   now join the way English joins lists (`Issue, Bug, Idea, and Deliverable`), and the rungs
