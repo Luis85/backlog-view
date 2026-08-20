@@ -206,12 +206,24 @@ describe('the currency chip', () => {
 		// The Shape-Before-Colour Rule (DESIGN.md): every state that matters survives a
 		// monochrome screenshot. `current` deliberately has NO colour class — green means
 		// finished in this system, and a fully estimated backlog must stay monochrome.
-		const vault = new FakeVault();
-		vault.addFile('Orphan.md', { frontmatter: { 'business-value': 3, 'business-value-model': 'x' } });
-		const { containerEl } = makeEstimationView(vault, configuredValues());
-		const chip = row(containerEl, 'Orphan.md').querySelector('.pbl-est-chip')!;
-		expect(chip.classList.contains('pbl-est-cur-orphan')).toBe(true);
-		expect(chip.querySelector('[data-icon]'), 'orphan carries an icon').not.toBeNull();
+		const { containerEl } = makeEstimationView(currencyFixture(), configuredValues());
+
+		// Both attention currencies, not just one — and by IDENTITY, not mere presence: the
+		// two states carry DIFFERENT icons (a refresh for "re-estimate", a broken link for
+		// "the inputs are gone"), so a chip that only proved "some icon exists" would still
+		// pass if both currencies collapsed onto the same glyph. `[data-icon]` is the mock's
+		// stand-in for Obsidian's `setIcon` (`test/helpers/obsidian-mock.ts`).
+		const staleIcon = row(containerEl, 'Stale.md').querySelector('.pbl-est-chip [data-icon]');
+		expect(staleIcon?.getAttribute('data-icon')).toBe('refresh-cw');
+		const orphanIcon = row(containerEl, 'Orphan.md').querySelector('.pbl-est-chip [data-icon]');
+		expect(orphanIcon?.getAttribute('data-icon')).toBe('unlink');
+
+		// The other three currencies carry a colour, if any, but never this icon shape —
+		// `current` is the one this rule most needs holding: no colour class AND no icon,
+		// so a fully estimated backlog stays monochrome apart from its badges.
+		const current = row(containerEl, 'Current.md').querySelector('.pbl-est-chip')!;
+		expect(current.className).toBe('pbl-est-chip pbl-est-cur-current');
+		expect(current.querySelector('[data-icon]')).toBeNull();
 	});
 });
 
