@@ -27,6 +27,14 @@
  * panel ever loses its 320px floor — graceful, not stacked. A real breakpoint wants
  * a live vault's actual pane widths, not a guess made here.
  */
+/* The shell: `.pbl-view`'s flex column (`view.css`) now carries the toolbar above the
+   grid below it, rather than being the grid itself — `.pbl-est-view` keeps every rule
+   below unchanged, it is just no longer the view's root element. */
+.pbl-est-shell > .pbl-est-view {
+	flex: 1 1 auto;
+	min-height: 0;
+}
+
 .pbl-est-view {
 	display: grid;
 	/* 320–420px, from 280–360px. A label, five point buttons and the clear control do not fit
@@ -312,4 +320,15 @@ button.pbl-est-sort[aria-sort] {
 button.pbl-est-sort:focus-visible {
 	outline: 1px solid var(--interactive-accent);
 	outline-offset: 1px;
+}
+
+/* The toolbar's own count (`toolbar.ts`) — everything else it draws is
+   `styles/toolbar.css`'s existing `.pbl-toolbar`/`.pbl-icon-btn`/`.pbl-toolbar-spacer`
+   vocabulary, so this is the only new rule the toolbar needs here. `tabular-nums`
+   because the pair changes in place as items are scored — DESIGN.md's Tabular Number
+   Rule, the same treatment the filtered count and the WIP limit take. */
+.pbl-est-count {
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+	font-variant-numeric: tabular-nums;
 }

@@ -75,11 +75,12 @@ export function renderPanel(view: EstimationView, model: EstimationModel, previo
 	const item = view.selectedPath ? model.byPath.get(view.selectedPath) : undefined;
 	// The grid's second track is reserved whether or not a panel occupies it
 	// (`styles/estimation.css`); this is the one place that knows whether one is about
-	// to render, so it is the one place that can say so.
-	view.viewEl.toggleClass('pbl-est-no-panel', !item);
+	// to render, so it is the one place that can say so. On `contentEl` (the grid), which
+	// is what carries `.pbl-est-view` — never `viewEl` (the shell above it).
+	view.contentEl.toggleClass('pbl-est-no-panel', !item);
 	if (!item) return;
 	const scoringModel = view.settings.model;
-	const panelEl = view.viewEl.createDiv({ cls: 'pbl-est-panel' });
+	const panelEl = view.contentEl.createDiv({ cls: 'pbl-est-panel' });
 	panelEl.dataset.path = item.file.path;
 	view.panelEl = panelEl;
 

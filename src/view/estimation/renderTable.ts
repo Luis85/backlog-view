@@ -411,8 +411,11 @@ export function renderTable(view: EstimationView, model: EstimationModel, previo
 	// means what it already means for that honest case: select the first row.
 	if (view.selectedPath !== null && !model.byPath.has(view.selectedPath)) view.selectedPath = null;
 	const pick = parseSort(view.sortPick);
-	// Nothing here reads `view.tableEl` for its position: see the note above.
-	const tableEl = view.viewEl.createDiv({ cls: 'pbl-est-table', attr: { role: 'listbox', tabindex: '0' } });
+	// Nothing here reads `view.tableEl` for its position: see the note above. Into
+	// `contentEl` (the grid), never `viewEl` (the shell) directly — the toolbar sits
+	// beside `viewEl`'s other child, not inside the grid whose tracks this table shares
+	// with the panel.
+	const tableEl = view.contentEl.createDiv({ cls: 'pbl-est-table', attr: { role: 'listbox', tabindex: '0' } });
 	view.tableEl = tableEl;
 	renderHead(view, tableEl, pick);
 	const items = sortedItems(model.items, pick);

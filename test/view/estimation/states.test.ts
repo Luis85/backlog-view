@@ -20,7 +20,9 @@ describe('the estimation view renders its own states', () => {
 		// view has nothing but the constructor's own placeholder to show.
 		const containerEl = document.body.createDiv();
 		new EstimationView({} as never, containerEl, new WriteLock());
-		expect(containerEl.querySelector('.pbl-est-view')?.textContent).toBe('Loading estimation view…');
+		// `.pbl-est-shell` is the root now (`viewEl`) — no grid exists yet at this point,
+		// so the loading text sits directly on the shell.
+		expect(containerEl.querySelector('.pbl-est-shell')?.textContent).toBe('Loading estimation view…');
 	});
 
 	it('an unconfigured view shows the guided empty state, with the shared shell’s own title class', () => {
@@ -55,30 +57,36 @@ describe('the estimation view renders its own states', () => {
 
 	it('detaches its root element on unload', () => {
 		const { view, containerEl } = makeEstimationView(new FakeVault());
-		expect(containerEl.querySelector('.pbl-est-view')).not.toBeNull();
+		// `.pbl-est-shell` is `viewEl` — the root this task made the shell, not the grid.
+		expect(containerEl.querySelector('.pbl-est-shell')).not.toBeNull();
 		view.onunload();
-		expect(containerEl.querySelector('.pbl-est-view')).toBeNull();
+		expect(containerEl.querySelector('.pbl-est-shell')).toBeNull();
 	});
 });
 
 /**
  * `.pbl-est-no-panel` collapses `.pbl-est-view`'s grid to one column — otherwise the
- * second `minmax(280px, 360px)` track sits reserved and empty, which jsdom cannot see
+ * second `minmax(320px, 420px)` track sits reserved and empty, which jsdom cannot see
  * (nothing here lays out a grid track) and which the browser harness did: the guided
- * empty state and the config-warning block used to leave it reserved on the right,
- * because only `renderPanel` ever cleared the class and neither state reaches it. Fixed
- * by defaulting the class on at the top of every `render()` pass; what is checkable here
- * is the class itself, never the dead space it used to leave.
+ * empty state and the config-warning block used to leave it reserved on the right, back
+ * when both drew straight into the one element that carried `.pbl-est-view` itself.
+ *
+ * Since this task, that reservation is structurally impossible for those two states
+ * rather than merely defaulted away: `render()` creates NO grid at all until the model is
+ * fully configured (`gridEl` stays null, and `contentEl` falls back to the shell), so
+ * there is no `.pbl-est-view` element for either state to leave a track reserved on. The
+ * two tests below assert exactly that absence. Only the configured state ever has a grid,
+ * so it is the only one still checked for the class itself.
  */
 describe('the no-panel class the grid layout reads', () => {
-	it('is set on the guided empty state', () => {
+	it('the guided empty state draws no grid at all', () => {
 		const { containerEl } = makeEstimationView(new FakeVault(), {});
-		expect(containerEl.querySelector('.pbl-est-view')?.classList.contains('pbl-est-no-panel')).toBe(true);
+		expect(containerEl.querySelector('.pbl-est-view')).toBeNull();
 	});
 
-	it('is set on the config-warning block', () => {
+	it('the config-warning block draws no grid at all', () => {
 		const { containerEl } = makeEstimationView(new FakeVault(), { valueProperty: 'note.business-value' });
-		expect(containerEl.querySelector('.pbl-est-view')?.classList.contains('pbl-est-no-panel')).toBe(true);
+		expect(containerEl.querySelector('.pbl-est-view')).toBeNull();
 	});
 
 	it('is set on the configured table with nothing selected, and cleared once a row is', () => {

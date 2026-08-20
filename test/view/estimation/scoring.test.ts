@@ -295,7 +295,10 @@ describe('the write path exposed for other callers', () => {
 		vault.beforeWrite = () => new Promise<void>((r) => (release = r));
 		const { containerEl } = makeEstimationView(vault, configuredValues());
 		selectItem(containerEl, 'Item.md');
-		const pane = containerEl.querySelector('.pbl-est-view') as HTMLElement;
+		// `.pbl-est-shell` (`viewEl`) is where `syncBusy` sets `aria-busy` — the whole pane,
+		// not the grid inside it (`.pbl-est-view`), which is a different element since the
+		// toolbar (Task 8) made the shell the view's root.
+		const pane = containerEl.querySelector('.pbl-est-shell') as HTMLElement;
 
 		click(pointButton(containerEl, 'strategic-alignment', 4));
 		expect(pane.getAttribute('aria-busy')).toBe('true');

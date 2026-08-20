@@ -41,7 +41,14 @@ CHIP drawn inside it — the word, and an icon for the two currencies that need
 an action — stays sized to its own content; the same builder Task 4 reuses) ·
 `src/view/estimation/init.ts` (`runEstimationInit`, the guided empty state's own setup
 action: bind every suggested property nobody has touched, then stub the bound keys onto
-every result — one gated batch, so it is a single undo).
+every result — one gated batch, so it is a single undo) ·
+`src/view/estimation/toolbar.ts` (`renderEstimationToolbar`, above the table once a model
+is configured: a second way to reach the same setup action for a view that gained a
+dimension after its guided empty state ran, the undo button `WriteGate.canUndo()`/
+`undoLast()` had no other caller for, and the count of results that are scored —
+`syncEstimationToolbar`, re-read from the gate and republished by `syncBusy` alongside
+`aria-busy`, is what disables both buttons while a batch is running and re-enables undo to
+the slot it left, never merely to "a batch finished").
 
 A click sorts a COPY of the model's own items, never the Base's own order underneath it;
 a second click on the same column flips direction, and a number column's first click is
@@ -57,4 +64,4 @@ session-only wherever that identity cannot be resolved.
 
 Tests: **`test/view/estimation/states.test.ts`**, `test/view/estimation/register.test.ts`,
 `test/view/estimation/table.test.ts`, `test/view/estimation/init.test.ts`,
-`test/view/estimation/sort.test.ts`.
+`test/view/estimation/sort.test.ts`, `test/view/estimation/toolbar.test.ts`.

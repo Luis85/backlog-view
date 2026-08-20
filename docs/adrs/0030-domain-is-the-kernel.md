@@ -91,6 +91,21 @@ type` only against `estimationView.ts`, `renderTable.ts`'s and `panel.ts`'s own 
 `EstimationItem.ownKeys`, so the setup action reuses it rather than carrying a second
 copy of the same nine lines.
 
+A toolbar is a fifth file on the same free-function shape: `src/view/estimation/toolbar.ts`
+(`renderEstimationToolbar`, `syncEstimationToolbar`) draws above the table once a model is
+configured, over `EstimationView.gate` and `runEstimationInit` — never a method on the view
+itself, `renderTable.ts`'s own reason for staying a free function. It closes the two gaps
+the view had before it: `runEstimationInit` was reachable only from the guided empty
+state, so a view that gained a dimension after setup could not reach it again, and
+`WriteGate.canUndo()`/`undoLast()` were public with no production caller at all. Reaching
+either now makes `viewEl` a flex column (`.pbl-est-shell`) holding the toolbar above a
+second element, `gridEl` (`.pbl-est-view`, read through `EstimationView.contentEl`) —
+never the grid itself, whose two-track layout applies to direct children only.
+`syncEstimationToolbar` is queried by class under `viewEl` rather than held as fields,
+so `EstimationView.syncBusy` (already the gate's `WriteGateHooks` callback) publishes to
+it the same way it already publishes `aria-busy`, with no new plumbing between the gate
+and the view.
+
 ## Consequences
 
 The SDD's directory tree is not adopted. Modules this refactor adds are named

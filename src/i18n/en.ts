@@ -464,4 +464,10 @@ export const en = {
 	'estimation.panel.adjustedValue': 'Confidence-adjusted value: {value}',
 	'estimation.panel.valueToEffort': 'Value to effort: {value}',
 	'estimation.panel.removeOrphan': 'Remove the orphaned total',
+
+	/** The toolbar's own two actions and its count. `{scored} of {total} scored` is the
+	 *  filtered count's idiom — one quantity in two parts, so the pair reads as one fact. */
+	'estimation.toolbar.init': 'Bind and backfill the estimation properties',
+	'estimation.toolbar.undo': 'Undo last estimation change',
+	'estimation.toolbar.scored': '{scored} of {total} scored',
 } as const;

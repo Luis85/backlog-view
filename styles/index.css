@@ -94,11 +94,14 @@
    property, resolved by value regardless of which partial's rule set it) and defines no
    selector any other partial also targets, so it can sit anywhere in this list. */
 @import "./legend.css";
-/* Position IS load-bearing: `.pbl-est-view` and `.pbl-view` are equal-specificity single
-   classes on the SAME element (`estimationView.ts`'s `cls: 'pbl-view pbl-est-view'`), and
-   `view.css`'s `display: flex` only loses to this partial's `display: grid` because this
-   import comes after it — moved earlier and the estimation view's two-column layout
-   collapses back to the tree's flex column. */
+/* Position NOT load-bearing, and it stopped being so once the toolbar gave the estimation
+   view a shell of its own (Task 8): `.pbl-view` and `.pbl-est-view` used to be equal-
+   specificity classes on the SAME element, which made this partial's `display: grid` beat
+   `view.css`'s `display: flex` only by coming after it in this list. Now `.pbl-view` sits
+   on `viewEl` (`.pbl-est-shell`, the flex column holding the toolbar and the grid) and
+   `.pbl-est-view` sits on `gridEl`, a child of it — two different elements, so nothing
+   here is decided by import order any more. Kept at this position anyway: nothing else in
+   this list has a reason to move it. */
 @import "./estimation.css";
 /* Position NOT load-bearing: nothing outside `estimationChip.css` declares
    `.pbl-est-chip`, and the `.pbl-est-currency` declarations in the two partials are
