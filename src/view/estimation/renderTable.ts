@@ -83,6 +83,16 @@ function wireEvents(
 			}
 			return;
 		}
+		// Into the panel beside this row. `Enter` keeps opening the note (extension 4a), so
+		// this adds a key rather than reassigning one.
+		if (evt.key === 'ArrowRight') {
+			const first = view.panelEl?.querySelector<HTMLElement>('button.pbl-est-point[tabindex="0"], button');
+			if (first) {
+				evt.preventDefault();
+				first.focus();
+			}
+			return;
+		}
 		if (evt.key === 'Enter') {
 			const item = view.selectedPath ? model.byPath.get(view.selectedPath) : undefined;
 			if (item) void view.app.workspace.getLeaf(false).openFile(item.file);

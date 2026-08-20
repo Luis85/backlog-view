@@ -85,14 +85,14 @@ describe('scoring a dimension', () => {
 
 		const held = pointButton(containerEl, 'customer-value', 4);
 		expect(held.classList.contains('is-active')).toBe(true);
-		expect(held.getAttribute('aria-pressed')).toBe('true');
+		expect(held.getAttribute('aria-checked')).toBe('true');
 		expect(document.activeElement).toBe(held);
 		expect(dimRow(containerEl, 'Customer value').querySelector('.pbl-est-rubric')?.textContent).toBe(
 			'Solves a significant user problem',
 		);
 		const unheld = pointButton(containerEl, 'customer-value', 3);
 		expect(unheld.classList.contains('is-active')).toBe(false);
-		expect(unheld.hasAttribute('aria-pressed')).toBe(false);
+		expect(unheld.getAttribute('aria-checked')).toBe('false');
 	});
 
 	it('picking the point already held plans nothing: writeLog and the undo slot are untouched', async () => {

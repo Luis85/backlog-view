@@ -156,15 +156,26 @@ function renderScoreRow(panelEl: HTMLElement, spec: RowSpec): void {
 	const head = row.createDiv({ cls: 'pbl-est-dim-head' });
 	head.createDiv({ cls: 'pbl-est-dim-label', text: spec.label });
 	if (spec.key === '') return; // bare label row: nothing bound, nothing to click or show
-	const points = head.createDiv({ cls: 'pbl-est-points' });
+	const points = head.createDiv({ cls: 'pbl-est-points', attr: { role: 'radiogroup', 'aria-label': spec.label } });
+	// A stored value outside the scale leaves no button active, so the stop would land
+	// nowhere and the group would be unreachable — exactly the silent row `scaleSpec`'s own
+	// comment describes. The FIRST point is the fallback.
+	const stopValue =
+		spec.held !== null && spec.held >= spec.min && spec.held <= spec.max && Number.isInteger(spec.held) ? spec.held : spec.min;
 	for (let value = spec.min; value <= spec.max; value++) {
 		const active = spec.held === value;
 		const sentence = `${value} — ${spec.rubric[value - spec.min]}`;
-		const btn = points.createEl('button', {
+		points.createEl('button', {
 			cls: 'pbl-est-point' + (active ? ' is-active' : ''),
 			text: String(value),
 			attr: {
 				type: 'button',
+				role: 'radio',
+				'aria-checked': String(active),
+				// Roving: exactly one member is a tab stop. The held point where there is one,
+				// the first point where there is not — so a group is always reachable and a
+				// group is never five stops.
+				tabindex: value === stopValue ? '0' : '-1',
 				'data-dim': spec.id,
 				'data-kind': spec.kind,
 				'data-value': String(value),
@@ -172,7 +183,6 @@ function renderScoreRow(panelEl: HTMLElement, spec: RowSpec): void {
 				title: sentence,
 			},
 		});
-		if (active) btn.setAttribute('aria-pressed', 'true');
 	}
 	// On the HEAD, not inside `points`: inside, it is a sixth arrow-key stop on a five-point
 	// scale once the group becomes a radiogroup.
@@ -312,6 +322,21 @@ function wirePanelEvents(view: EstimationView, panelEl: HTMLElement, item: Estim
 		if (dim === undefined || kind === undefined) return;
 		const value = target.dataset.value === '' ? null : Number(target.dataset.value);
 		void handlePick(view, item, kind, dim, value);
+	});
+	// One delegated keydown for every radiogroup on the panel, the same "never a per-control
+	// closure" rule the click above follows. A pick reuses the click path so nothing plans a
+	// write beside `performScore`/`performScale`.
+	panelEl.addEventListener('keydown', (evt) => {
+		const delta = evt.key === 'ArrowRight' ? 1 : evt.key === 'ArrowLeft' ? -1 : 0;
+		if (delta === 0) return;
+		const group = evt.target instanceof Element ? evt.target.closest('.pbl-est-points') : null;
+		if (!group) return;
+		evt.preventDefault();
+		const radios = Array.from(group.querySelectorAll<HTMLElement>('button.pbl-est-point'));
+		const at = radios.findIndex((btn) => btn.tabIndex === 0);
+		// Holds at either edge rather than wrapping — the table's own rule for this walk.
+		const next = radios[Math.min(Math.max((at === -1 ? 0 : at) + delta, 0), radios.length - 1)];
+		next?.click();
 	});
 }
 
