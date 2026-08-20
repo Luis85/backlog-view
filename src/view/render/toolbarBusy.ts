@@ -173,8 +173,9 @@ function syncBusyLabel(el: HTMLElement, busy: BusyState | null): boolean {
  * says; `writing` is whether a batch is in flight anywhere in the plugin (`WriteGate`'s
  * own reading of the vault-wide lock) and is what the disabled flags follow. They differ
  * exactly in a second view, whose `busy` is null throughout somebody else's batch — the
- * gate would refuse its ✨ all the same. It defaults to the one where there is only one
- * gate to ask, which is what a caller with no lock in hand can honestly say.
+ * gate would refuse its ✨ all the same. Both are REQUIRED parameters: there is no
+ * default, because the one a caller could compute from `busy` alone is precisely the
+ * answer that is wrong in the view that is not writing.
  *
  * **This is also where a focus stranded by the indicator hiding is caught.** `.pbl-busy`
  * carries the busy-help link — the first focusable element it has ever held — and

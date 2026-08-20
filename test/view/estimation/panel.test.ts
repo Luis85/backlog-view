@@ -8,6 +8,7 @@ import {
 	pickButton,
 	pointButton,
 	rowNote,
+	scrollReads,
 	selectItem,
 } from '../../helpers/estimation';
 import { configured, configuredValues } from '../../helpers/estimationModel';
@@ -146,6 +147,24 @@ describe('the two derived lines', () => {
 			expect(derived.textContent).not.toMatch(/-\d/);
 		}
 	});
+
+	it('adjusts by the confidence the row REPORTS, never by a stored value the scale cannot hold', () => {
+		const vault = new FakeVault();
+		// 9 on a five-point scale. The confidence row directly above these lines already
+		// says it reads as 5, so a derived number computed from the raw 9 prints a value
+		// above the model's own maximum, two lines under the warning that it cannot be one.
+		vault.addFile('Item.md', { frontmatter: { 'strategic-alignment': 5, confidence: 9 } });
+		const values = configuredValues({ confidenceProperty: 'note.confidence' }); // effort left unbound
+		const { containerEl } = makeEstimationView(vault, values);
+		selectItem(containerEl, 'Item.md');
+
+		const result = computeTotal(configured(), new Map([['strategic-alignment', 5]]))!;
+		expect(rowNote(containerEl, 'Confidence')).toBe('Out of range — read as 5');
+		// Read as 5 of 5, so the adjustment is the identity and the line is the total
+		// itself — which is the model's own output maximum, so an unclamped 9 shows up as
+		// a number no answer on this model could produce.
+		expect(containerEl.querySelector('.pbl-est-derived')?.textContent).toBe(`Confidence-adjusted value: ${result.total}`);
+	});
 });
 
 describe('the decomposition block', () => {
@@ -170,6 +189,25 @@ describe('the decomposition block', () => {
 		expect(summary.querySelector('.pbl-est-coverage')?.textContent).toBe('2/8');
 		const result = computeTotal(configured(), new Map([['strategic-alignment', 5], ['customer-value', 4]]))!;
 		expect(summary.querySelector('.pbl-est-total')?.textContent).toBe(String(result.total));
+	});
+
+	it('lists the values the total was computed FROM — mirrored where the dimension counts down, clamped where the note is out of range', () => {
+		const vault = new FakeVault();
+		// `reach` counts down here, so an answer of 2 is worth 4 of 5 to the total, and
+		// `compliance` holds 7 on a five-point scale, which the total reads as 5. A term
+		// printing either raw describes arithmetic the total did not do, so the terms and
+		// the total two lines below them disagree about the same note.
+		vault.addFile('Item.md', { frontmatter: { 'strategic-alignment': 4, reach: 2, compliance: 7 } });
+		const { containerEl } = makeEstimationView(vault, configuredValues({ 'dimLessIsBetter.reach': true }));
+		selectItem(containerEl, 'Item.md');
+
+		const decomp = containerEl.querySelector('.pbl-est-decomp') as HTMLElement;
+		const terms = Array.from(decomp.children).filter((el) => el.tagName === 'SPAN');
+		expect(terms.map((el) => el.textContent)).toEqual([
+			'Strategic alignment 4 × 20%',
+			'Reach 4 × 10%',
+			'Compliance 5 × 10%',
+		]);
 	});
 });
 
@@ -287,5 +325,22 @@ describe('the panel scroll position across a rebuild', () => {
 		await flush();
 
 		expect((containerEl.querySelector('.pbl-est-panel') as HTMLElement).scrollTop).toBe(120);
+	});
+
+	it('reads the old panel’s position while it is still in the document — the ORDER, because jsdom has no layout to check the number against', () => {
+		const vault = new FakeVault();
+		vault.addFile('Item.md', { frontmatter: { 'strategic-alignment': 3 } });
+		const { view, containerEl } = makeEstimationView(vault, configuredValues());
+		selectItem(containerEl, 'Item.md');
+		const reads = scrollReads(containerEl.querySelector('.pbl-est-panel') as HTMLElement);
+
+		view.onDataUpdated();
+
+		// The three tests above assert the restored NUMBER, and every one of them passed
+		// over a read taken after `render()` had already emptied `viewEl` — jsdom answers
+		// `scrollTop` with whatever was assigned whether the node is connected or not, so
+		// the number cannot tell a working restore from one a browser answers 0 to. This
+		// is the part that is checkable here; real layout is still owed a vault check.
+		expect(reads).toEqual([true]);
 	});
 });

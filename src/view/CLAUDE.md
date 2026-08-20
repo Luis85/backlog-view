@@ -121,7 +121,12 @@ free of runtime code so imports stay cycle-free.
   **What the chrome asks of which half is decided by whose batch it is.** `gate.busy` is
   this view's own progress and is what the indicator SAYS; `gate.writing` is the lock's
   `applying` and is what every disabled flag and both `aria-busy` attributes follow, in
-  the backlog view and the estimation view alike. They differ exactly in a view that is
+  the backlog view and the estimation view alike. **In the estimation view that is
+  `aria-busy` and nothing else**, because it has no toolbar and no `.pbl-write-ctl`: its
+  own write controls are the panel's point buttons, content rebuilt wholesale on every
+  render rather than chrome synced in place, and a pick made mid-batch is refused by the
+  shared gate with its own notice. So the sentence above is about which FACT the chrome
+  follows, never a promise that this view disables anything. They differ exactly in a view that is
   not the one writing — `busy` is null there for a batch the gate would refuse its ✨ for
   all the same, and whose data update it has already deferred. Same reading makes
   `canUndo()` false mid-batch: inverses install as they land, so the slot holds the

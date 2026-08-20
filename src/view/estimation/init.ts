@@ -52,14 +52,19 @@ function withPending(config: BasesViewConfig, pending: Map<string, string>): Bas
  * config warning about a state the button itself had just created.
  */
 export async function runEstimationInit(view: EstimationView): Promise<void> {
-	// Keys already spoken for come from the RESOLVED settings (which keys are taken);
-	// which options were ever touched is asked of the config — the generic adoption rule
-	// (`adoptCandidates`, `domain/optionalProperties.ts`, shared with the backlog's own
-	// `adoptableProperties`), over this view's own key list rather than the backlog's.
-	// `config.get(option) !== undefined` is deliberate, not `settings`: cleared and
+	// BOTH questions are asked of the LIVE config, and that is the rule rather than a
+	// spelling: which keys are taken, from the model this config resolves to right now,
+	// and which options were ever touched, from the same config — the generic adoption
+	// rule (`adoptCandidates`, `domain/optionalProperties.ts`, shared with the backlog's
+	// own `adoptableProperties`), over this view's own key list rather than the backlog's.
+	// `view.settings` is a SNAPSHOT taken at the last data update, so a property bound
+	// since then reads as free here and its key is offered to a second slot as well — the
+	// exact mix `adoptCandidates` documents, caught by the collision check and refused
+	// whole, so the button did nothing and blamed the configuration.
+	// `config.get(option) !== undefined` is deliberate, not a resolved key: cleared and
 	// never-set resolve to the same '' key, and only never-set may adopt a suggestion —
 	// turning a property off is a decision this action must not overrule.
-	const taken = new Set(boundKeys(view.settings.model));
+	const taken = new Set(boundKeys(resolveEstimationSettings(view.config).model));
 	const pending = new Map<string, string>();
 	for (const { option, suggested } of adoptCandidates(view.config, SUGGESTED_KEYS, taken)) {
 		pending.set(option, notePropertyId(suggested));

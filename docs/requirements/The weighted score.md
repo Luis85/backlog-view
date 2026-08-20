@@ -46,7 +46,10 @@ readable without knowing how much of the model it rests on.
 
 `src/domain/weightedScore.ts` (`computeTotal`, `round2`, `modelFingerprint`, `stampValue`,
 `parseStamp`, `currencyOf`) — this note's rules as arithmetic, independent of any note or
-vault: given a model and an answer for each dimension, one total and its coverage; given a
+vault: given a model and an answer for each dimension, one total, its coverage and the
+per-dimension terms it summed — reported rather than left to be re-derived, so a
+decomposition beside the total cannot describe arithmetic the total did not do
+([[Taking a total apart]]); given a
 model alone, a fingerprint that moves with everything the total's arithmetic depends on, so
 a stored total can be judged current, stale, foreign, hand-written or orphaned against it.
 Confidence, effort and complexity never reach this module — they play no part in the total,

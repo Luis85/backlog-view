@@ -85,6 +85,29 @@ describe('the guided empty state’s setup action', () => {
 		expect(Notice.messages.at(-1)).toMatch(/business value property/i);
 	});
 
+	it('asks what is already bound of the same config it asks what is untouched', async () => {
+		const vault = new FakeVault();
+		vault.addFile('A.md');
+		const { view, config } = makeEstimationView(vault, {});
+		Notice.reset();
+		// Bound in the config AFTER the view resolved its settings — the mix
+		// `adoptCandidates` documents as a defect: `strategic-alignment` now holds the very
+		// key `confidenceProperty` is about to be offered, and only the live config knows.
+		config.set('dimProperty.strategic-alignment', 'note.confidence');
+
+		await runEstimationInit(view);
+
+		// `confidence` is spoken for, so the confidence scale is left unbound — an unbound
+		// scale is no problem at all, and every dimension still gets a key of its own.
+		// Reading `taken` off the stale snapshot instead offered `confidence` twice, and
+		// the collision check refused the whole action: a refusal that has to keep working
+		// (the test above it) and that this must never need.
+		expect(Notice.messages.some((m) => m.includes('Fix the estimation model'))).toBe(false);
+		expect(config.get('confidenceProperty')).toBeUndefined();
+		expect(config.get('dimProperty.reach')).toBe('note.reach');
+		expect(vault.fm('A.md')['reach']).toBe('');
+	});
+
 	it('pressing it twice binds nothing the second time', async () => {
 		const vault = new FakeVault();
 		vault.addFile('A.md');

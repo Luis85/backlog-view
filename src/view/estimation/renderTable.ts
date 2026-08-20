@@ -132,7 +132,9 @@ function selectRow(ctx: TableCtx, path: string, scroll: boolean): void {
 	view.selectedPath = path;
 	applySelection(tableEl, row, true);
 	if (scroll) row.scrollIntoView({ block: 'nearest' });
-	renderPanel(view, model);
+	// Straight off the panel on screen: this path tears nothing down first, so the element
+	// still has a layout box and its own `scrollTop` is the honest answer.
+	renderPanel(view, model, view.panelEl?.scrollTop ?? 0);
 }
 
 /**
@@ -352,8 +354,18 @@ function renderRows(tableEl: HTMLElement, items: EstimationItem[], selectedPath:
 	return rows;
 }
 
-/** The table frame: header, one row per result (or the empty state), selection and keyboard. */
-export function renderTable(view: EstimationView, model: EstimationModel): void {
+/**
+ * The table frame: header, one row per result (or the empty state), selection and keyboard.
+ *
+ * `previousScrollTop` is the OLD table's position and is the CALLER's to read, for the
+ * reason `panel.ts` states at length: `EstimationView.render()` empties `viewEl` before
+ * this runs, and a detached element has no layout box — so a browser answers 0 to
+ * `scrollTop` there however far the reader had scrolled, and this restored nothing while
+ * jsdom (which answers with whatever was assigned) reported it working. Every rebuild
+ * here redraws the same list rather than a different note's own content, so — unlike the
+ * panel — there is no "different item" case that should start it back at row one.
+ */
+export function renderTable(view: EstimationView, model: EstimationModel, previousScrollTop: number): void {
 	restoreSort(view);
 	// Validated once, here, rather than left for `step`'s own `-1` fallback to paper
 	// over: a path from a previous pass that this one's model no longer has (the note
@@ -363,14 +375,7 @@ export function renderTable(view: EstimationView, model: EstimationModel): void 
 	// means what it already means for that honest case: select the first row.
 	if (view.selectedPath !== null && !model.byPath.has(view.selectedPath)) view.selectedPath = null;
 	const pick = parseSort(view.sortPick);
-	// Read off the OLD table before it is replaced. `estimationView.ts`'s `render()`
-	// already emptied `viewEl` by the time this runs, but an emptied, detached node keeps
-	// whatever `scrollTop` it last had, so this is still the reader's real position — the
-	// same fact `panel.ts` leans on for `view.panelEl`. Every rebuild here (a data update,
-	// a sort, a pick made in the panel beside it) redraws the same list rather than a
-	// different note's own content, so — unlike the panel — there is no "different item"
-	// case that should start it back at row one.
-	const previousScrollTop = view.tableEl?.scrollTop ?? 0;
+	// Nothing here reads `view.tableEl` for its position: see the note above.
 	const tableEl = view.viewEl.createDiv({ cls: 'pbl-est-table', attr: { role: 'listbox', tabindex: '0' } });
 	view.tableEl = tableEl;
 	renderHead(view, tableEl, pick);

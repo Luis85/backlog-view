@@ -3,7 +3,7 @@ import type { EstimationView } from './estimationView';
 import { t } from '../../i18n/t';
 import { EstimationItem, EstimationModel } from '../../domain/estimationItems';
 import { ScaleName } from '../../domain/estimationSettings';
-import { ScoringModel } from '../../domain/scoringModel';
+import { ScaleConfig, ScoringModel } from '../../domain/scoringModel';
 import { round2 } from '../../domain/weightedScore';
 
 /**
@@ -50,18 +50,25 @@ interface RowSpec {
  *
  * The teardown is survivable now rather than free of consequence: `refocusPick` (below)
  * already put keyboard focus back on the picked address, and this rebuild carries the
- * OLD panel's `scrollTop` onto the new one too — read off `view.panelEl` before it is
- * removed, clamped to the fresh `scrollHeight` so a rebuild that comes out SHORTER (a
- * clear removing its own row's clamp note, say) cannot park the pane below its last row
- * — but only while the two panels are the SAME item's, compared by the `dataset.path`
- * stamped on the panel itself rather than by a second field to keep in step. A different
- * `view.selectedPath` still starts its panel at the top, on purpose: nothing else about
- * the old nodes survives either, because every one of them really is new.
+ * OLD panel's `scrollTop` onto the new one too — clamped to the fresh `scrollHeight` so a
+ * rebuild that comes out SHORTER (a clear removing its own row's clamp note, say) cannot
+ * park the pane below its last row — but only while the two panels are the SAME item's,
+ * compared by the `dataset.path` stamped on the panel itself rather than by a second field
+ * to keep in step. A different `view.selectedPath` still starts its panel at the top, on
+ * purpose: nothing else about the old nodes survives either, because every one of them
+ * really is new.
+ *
+ * **The position is a PARAMETER, and that is the whole fix.** `scrollTop` is a layout
+ * question, so a detached element answers 0 to it however far it was scrolled — and
+ * `EstimationView.render()` empties `viewEl` before it calls this, so reading the old
+ * panel here read a node that had already lost its box: the restore was a no-op in a
+ * browser, and the jsdom suite could not see it because jsdom answers with whatever was
+ * last assigned. So each caller reads its own: `render()` before its `empty()`, and the
+ * table's fast-path pick straight off the panel still on screen. `dataset.path` below is
+ * an attribute and survives the teardown, which is why only the number moved out.
  */
-export function renderPanel(view: EstimationView, model: EstimationModel): void {
-	const previousPanel = view.panelEl;
-	const previousPath = previousPanel?.dataset.path;
-	const previousScrollTop = previousPanel?.scrollTop ?? 0;
+export function renderPanel(view: EstimationView, model: EstimationModel, previousScrollTop: number): void {
+	const previousPath = view.panelEl?.dataset.path;
 	view.panelEl?.remove();
 	view.panelEl = null;
 	const item = view.selectedPath ? model.byPath.get(view.selectedPath) : undefined;
@@ -83,8 +90,8 @@ export function renderPanel(view: EstimationView, model: EstimationModel): void 
 	renderScoreRow(panelEl, scaleSpec(item, scoringModel, 'effort', t('estimation.panel.effort')));
 	renderScoreRow(panelEl, scaleSpec(item, scoringModel, 'complexity', t('estimation.panel.complexity')));
 
-	renderDecomposition(panelEl, item, scoringModel);
-	renderDerived(panelEl, item);
+	renderDecomposition(panelEl, item);
+	renderDerived(panelEl, item, scoringModel.confidence);
 	if (item.currency === 'orphan') renderCleanupButton(panelEl);
 
 	if (previousPath === item.file.path) panelEl.scrollTop = Math.min(previousScrollTop, panelEl.scrollHeight);
@@ -166,9 +173,19 @@ function renderScoreRow(panelEl: HTMLElement, spec: RowSpec): void {
  * so indexed `rubric[1.5]` — `undefined`, drawn as an empty box beside a row where no
  * point looks held either.
  */
+/**
+ * What a value out of its scale's range is READ as — the number `estimation.clamped`
+ * names, and the only clamp on this panel. `renderDerived` divides by the same scale it
+ * is asked of, so a second clamp beside it is exactly how a derived line came to be
+ * computed from a raw 9 two rows under a note saying the row reads as 5.
+ */
+function readAs(value: number, min: number, max: number): number {
+	return Math.min(max, Math.max(min, value));
+}
+
 function rubricNote(spec: RowSpec): string | null {
 	if (spec.held === null) return null;
-	if (spec.clamped) return t('estimation.clamped', { value: Math.min(spec.max, Math.max(spec.min, spec.held)) });
+	if (spec.clamped) return t('estimation.clamped', { value: readAs(spec.held, spec.min, spec.max) });
 	// In range and counted as it stands (`computeTotal` takes the raw proportion), so this
 	// is not a clamp — it is a value the rubric has no sentence for.
 	if (!Number.isInteger(spec.held)) return t('estimation.betweenPoints', { value: spec.held });
@@ -192,14 +209,13 @@ function renderClearButton(container: HTMLElement, spec: RowSpec): void {
  *  item spanning both of the summary's columns pulls those columns wide enough to fit a
  *  whole term sentence), so the total — the whole point of the block — stopped reading as
  *  though it belonged to whichever dimension happened to render last (2026-08-17). */
-function renderDecomposition(panelEl: HTMLElement, item: EstimationItem, model: ScoringModel): void {
+function renderDecomposition(panelEl: HTMLElement, item: EstimationItem): void {
 	if (!item.result) return;
 	const decomp = panelEl.createDiv({ cls: 'pbl-est-decomp' });
-	for (const dimension of model.dimensions) {
-		const score = item.answers.get(dimension.id);
-		if (score === null || score === undefined) continue;
-		decomp.createSpan({ text: t('estimation.panel.term', { label: dimension.label, score, weight: dimension.weight }) });
-	}
+	// `computeTotal`'s own terms, never the answers map: a term is only a decomposition of
+	// the total if it is the value the total was computed from, and the raw answer is not
+	// that value wherever a clamp or a `lessIsBetter` dimension applied.
+	for (const term of item.result.terms) decomp.createSpan({ text: t('estimation.panel.term', term) });
 	const summary = decomp.createDiv({ cls: 'pbl-est-summary' });
 	summary.createDiv({ cls: 'pbl-est-coverage', text: `${item.result.coverage.answered}/${item.result.coverage.enabled}` });
 	summary.createDiv({ cls: 'pbl-est-total', text: String(item.result.total) });
@@ -211,10 +227,14 @@ function renderDecomposition(panelEl: HTMLElement, item: EstimationItem, model: 
  * never written. Value-to-effort's own formula divides the ADJUSTED value, so it can
  * never exist without confidence either — nothing here is a second, independent guard
  * on `adjusted`, because there is no state in which one renders without the other.
+ *
+ * The adjustment is the confidence AS THE ROW ABOVE READS IT, over the scale's own
+ * maximum — both from the `ScaleConfig`, never a literal 5: a stored 9 printed a value
+ * above the model's own output range, directly under the row saying that 9 reads as 5.
  */
-function renderDerived(panelEl: HTMLElement, item: EstimationItem): void {
+function renderDerived(panelEl: HTMLElement, item: EstimationItem, scale: ScaleConfig): void {
 	if (!item.result || item.confidence === null) return;
-	const adjusted = round2((item.result.total * item.confidence) / 5);
+	const adjusted = round2((item.result.total * readAs(item.confidence, scale.min, scale.max)) / scale.max);
 	const derived = panelEl.createDiv({ cls: 'pbl-est-derived' });
 	// One catalog key per line, {value} substituted rather than glued on beside a
 	// separately-translated label — the i18n rule this file's rubric notes already

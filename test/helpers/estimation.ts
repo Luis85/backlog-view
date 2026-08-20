@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { EstimationView } from '../../src/view/estimation/estimationView';
 import { WriteLock } from '../../src/view/writeLock';
 import { installObsidianDom } from './dom';
@@ -80,4 +81,26 @@ export function dimRow(containerEl: HTMLElement, label: string): HTMLElement {
  *  one slot all three land in, so a row saying NOTHING is `null` rather than an empty box. */
 export function rowNote(containerEl: HTMLElement, label: string): string | null {
 	return dimRow(containerEl, label).querySelector('.pbl-est-rubric')?.textContent ?? null;
+}
+
+/**
+ * Every `scrollTop` READ of one element, recorded as whether that element was still in
+ * the document at the moment of the read.
+ *
+ * The number itself is not checkable here: a detached element has no layout box, so a
+ * browser's getter answers 0 however far it was scrolled, while jsdom answers with
+ * whatever was last assigned to it — connected or not. So an assertion on the restored
+ * position passes over a restore that cannot work in a real vault, which is what happened.
+ * The ORDER is checkable, and this is what checks it: the read has to happen before the
+ * teardown that detaches the node. Restore the spy with `vi.restoreAllMocks()`.
+ */
+export function scrollReads(el: HTMLElement): boolean[] {
+	const reads: boolean[] = [];
+	const original = Object.getOwnPropertyDescriptor(Element.prototype, 'scrollTop')?.get;
+	if (!original) throw new Error('jsdom defines no scrollTop getter to spy on');
+	vi.spyOn(Element.prototype, 'scrollTop', 'get').mockImplementation(function (this: Element): number {
+		if (this === el) reads.push(this.isConnected);
+		return original.call(this) as number;
+	});
+	return reads;
 }

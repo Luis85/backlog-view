@@ -38,8 +38,9 @@ export class EstimationView extends BasesView {
 	 *  field so `renderPanel` removes it by reference rather than by `querySelector`. */
 	panelEl: HTMLElement | null = null;
 	/** The mounted `.pbl-est-table` — `renderTable.ts`'s own field, read for its
-	 *  `scrollTop` before every rebuild so a pick made in the panel beside it does not
-	 *  throw a scrolled reader back to row one. Mirrors `panelEl`, one track over. */
+	 *  `scrollTop` by `render()` below BEFORE it empties the pane, so a pick made in the
+	 *  panel beside it does not throw a scrolled reader back to row one. Mirrors
+	 *  `panelEl`, one track over. */
 	tableEl: HTMLElement | null = null;
 	/**
 	 * The table's active sort, as `${column}:${direction}` — null for Base order,
@@ -107,6 +108,13 @@ export class EstimationView extends BasesView {
 	 * once something else is bound.
 	 */
 	render(): void {
+		// BEFORE the teardown, and that order is the whole of why these are read here
+		// rather than where they are used: `empty()` detaches the table and the panel, a
+		// detached element has no layout box, and `scrollTop` on one answers 0 in a browser
+		// however far the reader had scrolled. Read after it, the restore was a no-op that
+		// jsdom could not see — it answers with whatever was last assigned, connected or not.
+		const tableScrollTop = this.tableEl?.scrollTop ?? 0;
+		const panelScrollTop = this.panelEl?.scrollTop ?? 0;
 		this.viewEl.empty();
 		// Defaults every frame to the single-column grid; `renderPanel` is the only place
 		// that ever clears it, and only that call ever draws a second column's worth of
@@ -127,8 +135,8 @@ export class EstimationView extends BasesView {
 			return this.renderProblems(problems);
 		}
 		this.model = buildEstimationModel(this.app, this.data?.data ?? [], model);
-		renderTable(this, this.model);
-		renderPanel(this, this.model);
+		renderTable(this, this.model, tableScrollTop);
+		renderPanel(this, this.model, panelScrollTop);
 	}
 
 	/**

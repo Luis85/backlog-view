@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { makeEstimationView } from '../../helpers/estimation';
+import { makeEstimationView, scrollReads } from '../../helpers/estimation';
 import { configured, configuredValues } from '../../helpers/estimationModel';
 import { FakeVault } from '../../helpers/vault';
 import { key } from '../../helpers/view';
@@ -298,5 +298,19 @@ describe('the table scroll position across a rebuild', () => {
 		view.onDataUpdated();
 
 		expect((containerEl.querySelector('.pbl-est-table') as HTMLElement).scrollTop).toBe(80);
+	});
+
+	it('reads the old table’s position while it is still in the document — the ORDER, because jsdom has no layout to check the number against', () => {
+		const { view, containerEl } = makeEstimationView(fixture(), configuredValues());
+		const reads = scrollReads(containerEl.querySelector('.pbl-est-table') as HTMLElement);
+
+		view.onDataUpdated();
+
+		// The two tests above assert the restored NUMBER, and both passed over a read taken
+		// after `render()` had already emptied `viewEl`: a detached element has no layout
+		// box, so a browser answers 0 there however far it was scrolled, while jsdom answers
+		// with whatever was last assigned to it. Only the order is checkable here — real
+		// layout is still owed a live-vault check.
+		expect(reads).toEqual([true]);
 	});
 });

@@ -17,12 +17,29 @@ export interface Coverage {
 	enabled: number;
 }
 
+/**
+ * One answered dimension as the total actually counted it: the score AFTER the clamp and
+ * after the direction, which is not the answer on the note whenever either applied.
+ * Reported rather than left to be re-derived, because a decomposition beside the total is
+ * only a decomposition if it lists the same values the sum used — the panel's own version
+ * of this arithmetic printed the raw answer and disagreed with the number two lines below
+ * it (`docs/requirements/Taking a total apart.md`).
+ */
+export interface Term {
+	label: string;
+	/** In the dimension's own units, so `label score × weight%` reads as one sentence. */
+	score: number;
+	weight: number;
+}
+
 export interface TotalResult {
 	/** Rounded to two decimals — see `round2`. */
 	total: number;
 	coverage: Coverage;
 	/** Dimension ids whose answer fell outside its own declared range. */
 	clamped: string[];
+	/** One per answered dimension, in the model's own order — see {@link Term}. */
+	terms: Term[];
 }
 
 /** Two decimals, once — `docs/requirements/The scoring model is configuration.md` states why. */
@@ -44,6 +61,7 @@ export function computeTotal(model: ScoringModel, answers: ReadonlyMap<string, n
 	let weightSum = 0;
 	let answered = 0;
 	const clamped: string[] = [];
+	const terms: Term[] = [];
 	for (const d of model.dimensions) {
 		const raw = answers.get(d.id);
 		if (raw === null || raw === undefined) continue;
@@ -51,7 +69,11 @@ export function computeTotal(model: ScoringModel, answers: ReadonlyMap<string, n
 		const value = Math.min(d.max, Math.max(d.min, raw));
 		if (value !== raw) clamped.push(d.id);
 		const proportion = (value - d.min) / (d.max - d.min);
-		weighted += (d.lessIsBetter ? 1 - proportion : proportion) * d.weight;
+		const counted = d.lessIsBetter ? 1 - proportion : proportion;
+		// The same proportion, back in the dimension's own units — reported rather than
+		// the raw answer, because that is the number this sum used.
+		terms.push({ label: d.label, score: round2(d.min + counted * (d.max - d.min)), weight: d.weight });
+		weighted += counted * d.weight;
 		weightSum += d.weight;
 	}
 	if (answered === 0) return null;
@@ -60,6 +82,7 @@ export function computeTotal(model: ScoringModel, answers: ReadonlyMap<string, n
 		total: round2(model.outputMin + proportion * (model.outputMax - model.outputMin)),
 		coverage: { answered, enabled: model.dimensions.length },
 		clamped,
+		terms,
 	};
 }
 
