@@ -76,29 +76,13 @@ function wireEvents(
 		// (`src/view/CLAUDE.md`, "both `handleRoadmapKeydown` and `handleTreeKeydown`…").
 		if (evt.target !== tableEl) return;
 		if (evt.key === 'ArrowDown' || evt.key === 'ArrowUp') {
-			const path = step(items, view.selectedPath, evt.key === 'ArrowDown' ? 1 : -1);
-			if (path) {
-				evt.preventDefault();
-				selectRow(ctx, path, true);
-			}
+			stepAndSelect(ctx, items, evt, evt.key === 'ArrowDown' ? 1 : -1);
 			return;
 		}
 		// Into the panel beside this row. `Enter` keeps opening the note (extension 4a), so
 		// this adds a key rather than reassigning one.
 		if (evt.key === 'ArrowRight') {
-			// Two separate lookups, never a selector LIST: `querySelector('a, b')` returns the
-			// first match in document order across either branch rather than trying "a" before
-			// falling back to "b" — since every radio is also a `button`, that collapsed to the
-			// panel's first button regardless of which one actually held the roving tab stop.
-			// The fallback (any button — reaches the orphan cleanup control on a panel with no
-			// radiogroup) is a deliberate "land somewhere plain" over swallowing the key.
-			const first =
-				view.panelEl?.querySelector<HTMLElement>('button.pbl-est-point[tabindex="0"]') ??
-				view.panelEl?.querySelector<HTMLElement>('button');
-			if (first) {
-				evt.preventDefault();
-				first.focus();
-			}
+			focusPanelTabStop(view, evt);
 			return;
 		}
 		if (evt.key === 'Enter') {
@@ -106,6 +90,38 @@ function wireEvents(
 			if (item) void view.app.workspace.getLeaf(false).openFile(item.file);
 		}
 	});
+}
+
+/**
+ * `ArrowDown`/`ArrowUp`'s branch body: step the selection, holding at either edge
+ * rather than wrapping (see {@link step}), and only call `preventDefault()` when a
+ * step actually happened — held at an edge, the key should still do whatever a
+ * browser default does with it.
+ */
+function stepAndSelect(ctx: TableCtx, items: EstimationItem[], evt: KeyboardEvent, delta: 1 | -1): void {
+	const path = step(items, ctx.view.selectedPath, delta);
+	if (!path) return;
+	evt.preventDefault();
+	selectRow(ctx, path, true);
+}
+
+/**
+ * `ArrowRight`'s branch body: focus the panel's roving tab stop.
+ *
+ * Two separate lookups, never a selector LIST: `querySelector('a, b')` returns the
+ * first match in document order across either branch rather than trying "a" before
+ * falling back to "b" — since every radio is also a `button`, that collapsed to the
+ * panel's first button regardless of which one actually held the roving tab stop.
+ * The fallback (any button — reaches the orphan cleanup control on a panel with no
+ * radiogroup) is a deliberate "land somewhere plain" over swallowing the key.
+ */
+function focusPanelTabStop(view: EstimationView, evt: KeyboardEvent): void {
+	const first =
+		view.panelEl?.querySelector<HTMLElement>('button.pbl-est-point[tabindex="0"]') ??
+		view.panelEl?.querySelector<HTMLElement>('button');
+	if (!first) return;
+	evt.preventDefault();
+	first.focus();
 }
 
 /**
