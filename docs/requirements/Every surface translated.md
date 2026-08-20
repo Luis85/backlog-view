@@ -172,7 +172,7 @@ places that show them. Whoever runs `View options and config warnings` is transl
 strings anyway and should decide their shape then; keying a fragment here first would key
 somebody else's string, which the bullet above already refuses for headings.
 
-**`view/render/emptyStates.ts`, on 2026-08-20.** 24 keys, taking the catalog to 106 —
+**`view/render/emptyStates.ts`, on 2026-08-20.** 25 keys, taking the catalog to 107 —
 measured by asking the loaded module for `Object.keys(en).length` before and after, and
 agreeing with a count of the diff's added key lines. A third instrument, an AST walk for
 the catalog object's own properties, returned **0**, because `en` is declared `as const`
