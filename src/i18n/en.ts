@@ -100,17 +100,36 @@ export const en = {
 	 * "the Deliverables board" names a PROJECTION and stays in the sentence; the quoted
 	 * `{type}` beside it is the value `type:` frontmatter holds and is a parameter. The two
 	 * read as the same word in English and are different kinds of thing.
+	 *
+	 * Which is why a BARE `Deliverables` may not appear here at all. This sentence used to
+	 * carry one — "Deliverables are managed on their own board" — that the paragraph above
+	 * did not cover and read as neither: not the board's name, and not the parameter, but
+	 * the type spelled as ordinary translatable prose. It says "items of that type" now, so
+	 * every remaining mention is one kind or the other.
 	 */
 	'emptyState.excludedFocus': 'Nothing to show under this focus',
 	'emptyState.excludedFocusBody':
-		'The focus level is "{type}", and Deliverables are managed on their own board — this one never shows them. Clear the focus to see the rest of the backlog, or switch to the Deliverables board.',
+		'The focus level is "{type}", and items of that type are managed on the Deliverables board — this one never shows them. Clear the focus to see the rest of the backlog, or switch to that board.',
 	'emptyState.showAllTypes': 'Show all types',
 
+	/**
+	 * Both mentions are the same `{type}` parameter, and the second one is the reason: it
+	 * tells the user which value to PICK from a menu, so a translated word there names a
+	 * type the plugin cannot match. "Set type" beside it is the menu's own label and is
+	 * prose, the same split the focus sentence above makes.
+	 */
 	'emptyState.noDeliverables': 'No deliverables yet',
 	'emptyState.noDeliverablesBody':
-		'Nothing in this base is typed "{type}". Create one from the toolbar\'s New button, or type an existing note as a Deliverable from its Set type menu.',
+		'Nothing in this base is typed "{type}". Create one from the toolbar\'s New button, or type an existing note as "{type}" from its Set type menu.',
 
-	/** `{name}` is the iteration note's own title — vault content, never translated. */
+	/**
+	 * `{name}` is the iteration note's own title — vault content, never translated. When
+	 * there is no note to name, the caller passes `emptyState.thisIteration` rather than a
+	 * literal: a parameter is not exempt from the catalog just because it usually carries
+	 * vault content, and an English fallback spliced into a translated sentence is the one
+	 * shape that reads as correct in every test written under the English catalog.
+	 */
+	'emptyState.thisIteration': 'this iteration',
 	'emptyState.emptyIteration': 'No items in this iteration yet',
 	'emptyState.emptyIterationBody':
 		"Nothing names {name} yet. Put work in it with Set iteration from any row's or card's menu, which also takes the iteration's own start and target dates.",

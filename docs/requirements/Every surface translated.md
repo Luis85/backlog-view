@@ -195,7 +195,14 @@ string and template literal in a file, filtered to what reads as prose, calibrat
 `view/render/` holds **321** prose literals across 25 files, against the 72 + 34 the two
 narrow greps saw for all of `view/`. The instrument counts a concatenated sentence's
 FRAGMENTS, so it over-reports keys and under-reports nothing: `emptyStates.ts` gave 43
-literals and 22 keys.
+literals, from which it projected 22 keys.
+
+**The sweep produced 24, and the 22 above is kept as what the instrument PREDICTED rather
+than corrected to match.** The two are different quantities — a projection made before the
+work and a count taken after it — and the gap between them is the calibration this note
+projects onto the rest of `view/`: about a tenth low, because a sentence assembled from
+fragments can collapse to one key or split into two and the walk cannot tell which. Read
+the 321 above with that margin on it, and re-derive rather than trust either number.
 
 **The lint half is narrower here than in `ui/` and `commands/`, and it had to be a
 different rule.** `UI_TEXT_LITERAL` sees setter calls and `new Notice`; this file spells

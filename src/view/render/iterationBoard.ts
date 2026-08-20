@@ -56,7 +56,7 @@ export function renderIterationBoard(
 		// and a move planned from the state would rewrite one as the other.
 		move: (item, col) => void (col.bucket && host.performIterationBoardMove(item, col.bucket)),
 		stateOptionLabel: 'Workflow states (in order)',
-		drawEmpty: (_h, aside) => renderEmptyIterationState(aside, iteration?.title ?? 'this iteration'),
+		drawEmpty: (_h, aside) => renderEmptyIterationState(aside, iteration?.title ?? null),
 	});
 }
 

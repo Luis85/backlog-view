@@ -225,8 +225,14 @@ export function renderNoDeliverablesState(treeEl: HTMLElement): void {
  * SPRINT is what is empty, so that sentence would report finished work where none has
  * been committed.
  */
-export function renderEmptyIterationState(treeEl: HTMLElement, name: string): void {
-	guidanceShell(treeEl, 'calendar-clock', t('emptyState.emptyIteration'), t('emptyState.emptyIterationBody', { name }));
+export function renderEmptyIterationState(treeEl: HTMLElement, name: string | null): void {
+	// The fallback is HERE rather than at the call site, and that is what makes it checkable:
+	// a caller spelling `?? 'this iteration'` splices English into a translated sentence, and
+	// a test that passes the fallback in asserts its own argument — it stays green with the
+	// caller reverted. One `null` reaches this line instead, so the key is the only way to
+	// name an iteration no note carries.
+	const named = name ?? t('emptyState.thisIteration');
+	guidanceShell(treeEl, 'calendar-clock', t('emptyState.emptyIteration'), t('emptyState.emptyIterationBody', { name: named }));
 }
 
 /**

@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { ProductBacklogView } from '../../src/view/backlogView';
 import { en } from '../../src/i18n/en';
 import { Catalog, setLocale } from '../../src/i18n/t';
+import { renderEmptyIterationState } from '../../src/view/render/emptyStates';
 import { boardVault } from '../helpers/board';
 import { installObsidianDom } from '../helpers/dom';
 import { FakeVault } from '../helpers/vault';
@@ -29,7 +30,12 @@ useViewHarness();
  */
 
 /**
- * Every key the module spells. The value is English behind a marker, so a parameter's own
+ * Every key the module spells — computed against `en.ts` rather than kept by hand, since
+ * this list said "every key" for four it did not hold. The empty-iteration frame was the
+ * one that mattered: it is reached through `guidanceShell` ARGUMENTS, the third shape the
+ * docstring above says neither lint rule can see, so those keys had no check of any kind.
+ *
+ * The value is English behind a marker, so a parameter's own
  * text is untouched and `{name}` substitution still happens; what is asserted is the
  * marker, never the wording after it.
  *
@@ -63,6 +69,10 @@ const SWEPT = [
 	'emptyState.addDefaults',
 	'emptyState.allDone',
 	'emptyState.showCompleted',
+	'emptyState.emptyIteration',
+	'emptyState.emptyIterationBody',
+	'emptyState.thisIteration',
+	'emptyState.noAxisBodyHalfSet',
 ] as const;
 
 const MARK = 'XX ';
@@ -184,7 +194,12 @@ describe('the card-projection empty states read their own text from the catalog'
 		harness.view.setProjection('deliverables');
 
 		expect(titleOf(harness.containerEl)).toBe(MARK + en['emptyState.noDeliverables']);
-		expect(hintOf(harness.containerEl)).toBe(MARK + en['emptyState.noDeliverablesBody'].replace('{type}', 'Deliverable'));
+		// `replaceAll`, not `replace`: the sentence names the type TWICE — once as what is
+		// missing and once as the value to pick from the menu — and a string-pattern
+		// `replace` substitutes only the first, which passed while there was only one.
+		expect(hintOf(harness.containerEl)).toBe(
+			MARK + en['emptyState.noDeliverablesBody'].replaceAll('{type}', 'Deliverable'),
+		);
 		expectAllMarked(harness.containerEl);
 	});
 
@@ -223,5 +238,51 @@ describe('the setup call to action reads its label from the catalog', () => {
 
 		const cta = harness.containerEl.querySelector('.pbl-empty button');
 		expect(cta?.textContent).toBe(MARK + en['emptyState.addDefaults']);
+	});
+});
+
+/**
+ * The two frames reached through `guidanceShell` ARGUMENTS rather than through a property
+ * bag — the shape the docstring at the top names as this file's alone to hold, since
+ * `UI_TEXT_PROPERTY` cannot see a prose literal handed in as an argument.
+ *
+ * `renderEmptyIterationState` is called directly. Driving it through the iteration board
+ * would need a vault with an iteration note and a projection switch, and would assert the
+ * same two keys through more machinery; the fallback below is the part worth reaching, and
+ * a direct call is the only way to reach it without a board that has no iteration at all.
+ */
+describe('the empty-iteration frame reads its text from the catalog', () => {
+	it('names the iteration, and falls back to a key rather than to English', () => {
+		const named = document.body.createDiv();
+		renderEmptyIterationState(named, 'Sprint 4');
+		expectAllMarked(named);
+		// The iteration's own title is vault content and passes through unmarked inside a
+		// marked sentence.
+		expect(named.textContent).toContain('Sprint 4');
+
+		// `null` is what the board passes when no note names the iteration. The fallback
+		// lives in the renderer rather than at that call site precisely so this line
+		// reaches it: passing the fallback in would assert this test's own argument.
+		const unnamed = document.body.createDiv();
+		renderEmptyIterationState(unnamed, null);
+		expectAllMarked(unnamed);
+		// The MARKED form, never the bare one: under the English catalog the key's value and
+		// a literal 'this iteration' are the same string, so asserting the bare value passes
+		// on both branches — the exact vacuousness this file exists to catch, committed once
+		// here before the revert caught it.
+		expect(unnamed.textContent).toContain(MARK + en['emptyState.thisIteration']);
+	});
+});
+
+describe('the roadmap names the half of the axis that is missing, from the catalog', () => {
+	it('draws the half-set body from its own key, not the unconfigured one', () => {
+		// A horizon property set with its values cleared: the one state that picks the
+		// half-set sentence over the general one.
+		const harness = makeView(fixture(), { horizonProperty: 'note.horizon', horizonValues: '' });
+		harness.view.setProjection('roadmap');
+
+		const body = harness.containerEl.querySelector('.pbl-empty')?.textContent ?? '';
+		expect(body).toContain(MARK + en['emptyState.noAxisBodyHalfSet']);
+		expect(body).not.toContain(en['emptyState.noAxisBody']);
 	});
 });
