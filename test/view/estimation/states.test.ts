@@ -5,6 +5,7 @@ import { WriteLock } from '../../../src/view/writeLock';
 import { makeEstimationView } from '../../helpers/estimation';
 import { configuredValues } from '../../helpers/estimationModel';
 import { FakeVault } from '../../helpers/vault';
+import { viewStateKey } from '../../../src/storage/viewIdentity';
 
 /** Two scored notes, "Bravo" before "Alpha" in the base's own (insertion) order — enough
  *  to tell "the first row drawn" apart from "the first item the base returned" when a
@@ -36,7 +37,7 @@ describe('the estimation view renders its own states', () => {
 	});
 
 	it('an unconfigured view shows the guided empty state, with the shared shell’s own title class', () => {
-		const { containerEl } = makeEstimationView(new FakeVault(), {});
+		const { view, containerEl } = makeEstimationView(new FakeVault(), {});
 		expect(containerEl.querySelector('.pbl-est-empty')).not.toBeNull();
 		expect(containerEl.querySelector('.pbl-config-warning')).toBeNull();
 		expect(containerEl.querySelector('.pbl-est-table')).toBeNull();
@@ -44,10 +45,14 @@ describe('the estimation view renders its own states', () => {
 		// every other empty state's does, which the hand-written version never did.
 		const title = containerEl.querySelector('.pbl-empty-title');
 		expect(title?.textContent).toBe('No estimation model is configured for this view.');
+		// A batch in the backlog view fires `syncBusy` on every subscribed gate, this
+		// unconfigured estimation view's included — no toolbar drawn here to publish to,
+		// so the call must be a genuine no-op rather than a throw.
+		expect(() => view.syncBusy()).not.toThrow();
 	});
 
 	it('a half-configured view (value property only) warns and names the missing stamp', () => {
-		const { containerEl } = makeEstimationView(new FakeVault(), { valueProperty: 'note.business-value' });
+		const { view, containerEl } = makeEstimationView(new FakeVault(), { valueProperty: 'note.business-value' });
 		// A block, not the toolbar's inline-flex pill — `estimationView.ts`'s own class.
 		expect(containerEl.querySelector('.pbl-config-warning')).toBeNull();
 		const warning = containerEl.querySelector('.pbl-est-problems');
@@ -55,6 +60,7 @@ describe('the estimation view renders its own states', () => {
 		expect(warning?.textContent).toMatch(/stamp/i);
 		expect(containerEl.querySelector('.pbl-est-empty')).toBeNull();
 		expect(containerEl.querySelector('.pbl-est-table')).toBeNull();
+		expect(() => view.syncBusy()).not.toThrow();
 	});
 
 	it('the fully configured model (Step 1\'s shape) renders the placeholder table frame', () => {
@@ -134,9 +140,20 @@ describe('the first row is selected on a fresh render', () => {
 	});
 
 	it('follows the active sort rather than the base order', () => {
-		// `items` is this pass's sorted order, so "the first row" is the first row DRAWN.
-		const { containerEl, view } = makeEstimationView(fixture(), configuredValues());
+		// `items` is this pass's sorted order, so "the first row" is the first row DRAWN —
+		// which only differs from the base order (Bravo, Alpha) once a sort is actually in
+		// effect on the FIRST render. A sort applied by a later click can't tell this apart
+		// from base order, since auto-selection only fires while `selectedPath` is still
+		// null (`renderTable`'s guard) — so the pick has to be pre-seeded through the same
+		// store `restoreSort` reads, exactly as `sort.test.ts`'s persistence suite does.
+		const vault = fixture();
+		const id = { base: 'Plan.base', view: 'Prioritized' };
+		vault.localStorage.set('product-backlog:view-state', {
+			[viewStateKey(id)]: { base: 'Plan.base', folds: {}, prefs: { estimationSort: 'title:asc' } },
+		});
+		const { containerEl, view } = makeEstimationView(vault, configuredValues(), { base: 'Plan.base', viewName: 'Prioritized' });
 		const firstDrawn = containerEl.querySelector('.pbl-est-row') as HTMLElement;
+		expect(firstDrawn.dataset.path).toBe('Alpha.md'); // title:asc puts Alpha before Bravo, base order's opposite
 		expect(view.selectedPath).toBe(firstDrawn.dataset.path);
 	});
 });

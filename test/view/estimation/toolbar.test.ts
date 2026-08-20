@@ -13,6 +13,14 @@ function fixture(): FakeVault {
 }
 
 describe("the estimation view's toolbar", () => {
+	it('selection writes nothing: a fresh render never spends the undo slot', () => {
+		// The rule `renderTable.ts`'s own comment and the spec both state — a pick is a
+		// click on a point button, so auto-selecting the first row must be no more a write
+		// surface than a clicked one.
+		const { view } = makeEstimationView(fixture(), configuredValues());
+		expect(view.gate.canUndo()).toBe(false);
+	});
+
 	it('states how many of the results are scored, as one quantity in two parts', () => {
 		// The filtered count's own idiom ("3 of 12"): never two quantities joined by a
 		// separator, which is what "2 items - 1 scored" was.
@@ -85,10 +93,9 @@ describe("the estimation view's toolbar", () => {
 		// The toolbar makes `viewEl` a flex column with a grid inside it. `.pbl-est-view`'s
 		// track sizing applies to DIRECT children, so a table nested one div deeper than the
 		// grid lands in its single first cell — the defect `estimationView.ts`'s own header
-		// warns about for exactly this reason. A row is selected first: `renderPanel` draws
-		// nothing with nothing selected, and auto-selection is not this task's.
+		// warns about for exactly this reason. No explicit selection needed: auto-selection
+		// lands on the first drawn row (`Scored.md`) so the panel is already on screen.
 		const { containerEl } = makeEstimationView(fixture(), configuredValues());
-		selectItem(containerEl, 'Scored.md');
 		const grid = containerEl.querySelector('.pbl-est-view')!;
 		expect(grid.querySelector(':scope > .pbl-est-table')).not.toBeNull();
 		expect(grid.querySelector(':scope > .pbl-est-panel')).not.toBeNull();
