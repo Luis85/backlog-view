@@ -93,6 +93,10 @@ state, the config warning, the table for a configured model, and `selectedPath`)
 registration file, ADR 0030, sharing the plugin-wide `WriteLock`) ·
 `src/view/estimation/renderTable.ts` (the six header buttons, `aria-sort`, one row per
 item, `CURRENCY_ORDER`, and the delegated click and keyboard) ·
+`src/view/estimation/currencyChip.ts` (`renderCurrencyChip`, split out once
+`renderTable.ts` neared its 400-line cap — the currency CELL `renderTable.ts` draws is
+the fixed-width column; this module draws the CHIP inside it, sized to its own word,
+with an icon for the two currencies — stale, orphan — that need an action) ·
 `src/domain/estimationItems.ts` (`buildEstimationModel`, the items being sorted) ·
 `src/storage/viewStateStore.ts` (the `estimationSort` pref, resolved through the same
 `resolveViewIdentity` the backlog's tree restores by).

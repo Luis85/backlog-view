@@ -35,6 +35,10 @@ six real, clickable buttons now, one per column, `aria-sort` on whichever is act
 one row per item with its total, coverage, confidence, effort and currency word, and
 the delegated click and keyboard that set `EstimationView.selectedPath` —
 [[Why this item scored what it scored]]'s panel reads it next) ·
+`src/view/estimation/currencyChip.ts` (`renderCurrencyChip`, split out of
+`renderTable.ts` so the currency CELL can stay a fixed-width column while the
+CHIP drawn inside it — the word, and an icon for the two currencies that need
+an action — stays sized to its own content; the same builder Task 4 reuses) ·
 `src/view/estimation/init.ts` (`runEstimationInit`, the guided empty state's own setup
 action: bind every suggested property nobody has touched, then stub the bound keys onto
 every result — one gated batch, so it is a single undo).

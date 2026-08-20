@@ -185,7 +185,7 @@ describe('the estimation harness mounts', () => {
 
 	it('draws the currency vocabulary end to end — current, stale, foreign, handwritten, orphan, none', () => {
 		const { containerEl } = mount();
-		const currency = (title: string) => estRowFor(containerEl, title).querySelector('.pbl-est-currency')?.textContent;
+		const currency = (title: string) => estRowFor(containerEl, title).querySelector('.pbl-est-chip')?.textContent ?? '';
 
 		expect(currency('Full profile')).toBe('Current');
 		expect(currency('Stale total')).toBe('Needs re-estimation');

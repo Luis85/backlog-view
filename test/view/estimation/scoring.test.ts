@@ -21,7 +21,7 @@ function cleanupButton(containerEl: HTMLElement): HTMLElement | null {
 }
 
 function currencyText(containerEl: HTMLElement): string | null {
-	return containerEl.querySelector('.pbl-est-row.pbl-selected .pbl-est-currency')?.textContent ?? null;
+	return containerEl.querySelector('.pbl-est-row.pbl-selected .pbl-est-chip')?.textContent ?? null;
 }
 
 /** A minimal `EstimationItem` for testing the planners directly — the shapes

@@ -152,17 +152,66 @@ describe('the currency chip', () => {
 	}
 
 	function chipOf(containerEl: HTMLElement, path: string): { text: string | null; stale: boolean } {
-		const chip = row(containerEl, path).querySelector('.pbl-est-currency');
-		return { text: chip?.textContent ?? null, stale: chip?.classList.contains('pbl-est-stale') ?? false };
+		const chip = row(containerEl, path).querySelector('.pbl-est-chip');
+		return { text: chip?.textContent ?? null, stale: chip?.classList.contains('pbl-est-cur-stale') ?? false };
 	}
 
-	it('shows the right word for every currency, and marks only stale with pbl-est-stale', () => {
+	it('shows the right word for every currency, and marks only stale with pbl-est-cur-stale', () => {
 		const { containerEl } = makeEstimationView(currencyFixture(), configuredValues());
 		expect(chipOf(containerEl, 'Current.md')).toEqual({ text: 'Current', stale: false });
 		expect(chipOf(containerEl, 'Stale.md')).toEqual({ text: 'Needs re-estimation', stale: true });
 		expect(chipOf(containerEl, 'Foreign.md')).toEqual({ text: 'Another model', stale: false });
 		expect(chipOf(containerEl, 'Handwritten.md')).toEqual({ text: 'Hand-written', stale: false });
 		expect(chipOf(containerEl, 'Orphan.md')).toEqual({ text: 'Inputs gone', stale: false });
+	});
+
+	it('puts the currency word in a chip INSIDE the cell, so the cell can be a fixed column', () => {
+		// The alignment defect's structural cause. One element cannot be both a fixed-width
+		// column and a pill sized to its own words: `Needs re-estimation` made its cell 125.8px
+		// against `Current`'s 96px, and because the title is the row's only shrinkable item,
+		// every numeric column on that row slid 29.8px left of its own header. Geometry is
+		// unmeasurable here (jsdom lays nothing out — see `test/CLAUDE.md`), so what is pinned
+		// is the structure that makes the fix possible: the cell holds a chip, and the word is
+		// never the cell's own text.
+		const vault = new FakeVault();
+		const model = configured();
+		const answers = new Map(Object.entries({ 'strategic-alignment': 5 }));
+		const total = computeTotal(model, answers)!;
+		vault.addFile('Stale.md', {
+			frontmatter: {
+				'strategic-alignment': 5,
+				'business-value': total.total + 1,
+				'business-value-model': stampValue(model, total.coverage),
+			},
+		});
+		const { containerEl } = makeEstimationView(vault, configuredValues());
+		const cell = row(containerEl, 'Stale.md').querySelector('.pbl-est-currency')!;
+		const chip = cell.querySelector('.pbl-est-chip');
+		expect(chip, 'the cell holds a chip').not.toBeNull();
+		expect(chip!.classList.contains('pbl-est-cur-stale')).toBe(true);
+		// The cell itself carries no text of its own — only the chip does.
+		expect(Array.from(cell.childNodes).some((n) => n.nodeType === Node.TEXT_NODE)).toBe(false);
+	});
+
+	it('draws no chip at all when there is no stored total to judge', () => {
+		// An empty outlined pill beside four marked ones reads as an empty input field. The
+		// cell stays, so `:empty::before` still supplies the dash every other absent value uses.
+		const { containerEl } = makeEstimationView(fixture(), configuredValues());
+		const cell = row(containerEl, 'Empty.md').querySelector('.pbl-est-currency')!;
+		expect(cell.querySelector('.pbl-est-chip')).toBeNull();
+		expect(cell.textContent).toBe('');
+	});
+
+	it('marks the two currencies that need an action with an icon as well as a colour', () => {
+		// The Shape-Before-Colour Rule (DESIGN.md): every state that matters survives a
+		// monochrome screenshot. `current` deliberately has NO colour class — green means
+		// finished in this system, and a fully estimated backlog must stay monochrome.
+		const vault = new FakeVault();
+		vault.addFile('Orphan.md', { frontmatter: { 'business-value': 3, 'business-value-model': 'x' } });
+		const { containerEl } = makeEstimationView(vault, configuredValues());
+		const chip = row(containerEl, 'Orphan.md').querySelector('.pbl-est-chip')!;
+		expect(chip.classList.contains('pbl-est-cur-orphan')).toBe(true);
+		expect(chip.querySelector('[data-icon]'), 'orphan carries an icon').not.toBeNull();
 	});
 });
 

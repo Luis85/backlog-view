@@ -1,5 +1,6 @@
 import type { EstimationView } from './estimationView';
 import { renderPanel } from './panel';
+import { renderCurrencyChip } from './currencyChip';
 import { t } from '../../i18n/t';
 import { EstimationItem, EstimationModel } from '../../domain/estimationItems';
 import { Currency } from '../../domain/weightedScore';
@@ -300,13 +301,6 @@ function renderHead(view: EstimationView, tableEl: HTMLElement, pick: SortPick |
 	sortHeader(view, head, { column: 'currency', cls: 'pbl-est-currency', label: t('estimation.column.currency') }, pick);
 }
 
-/** `Currency` is a union of string literals, so the template key is exactly one of the
- *  six `estimation.currency.*` entries — checked by the same compiler that would refuse
- *  a switch case naming a key `en.ts` does not have. */
-function currencyWord(currency: Currency): string {
-	return t(`estimation.currency.${currency}`);
-}
-
 /**
  * Left EMPTY rather than a literal dash when there is no value: `styles/estimation.css`'s
  * `:empty::before` rule supplies the dash, so a computed absence and a row still mid-render
@@ -326,12 +320,11 @@ function renderRow(tableEl: HTMLElement, item: EstimationItem): HTMLElement {
 	if (item.result) coverage.setText(`${item.result.coverage.answered}/${item.result.coverage.enabled}`);
 	numberCell(row.createDiv({ cls: 'pbl-est-cell', attr: { 'data-col': 'confidence' } }), item.confidence);
 	numberCell(row.createDiv({ cls: 'pbl-est-cell', attr: { 'data-col': 'effort' } }), item.effort);
-	const currencyEl = row.createDiv({ cls: 'pbl-est-currency' + (item.currency === 'stale' ? ' pbl-est-stale' : '') });
-	// Empty rather than the catalog's own dash for 'none': the cell then qualifies for
-	// the same `:empty::before` rule as every other "nothing to show" cell in this row,
-	// instead of a hand-written em dash sitting beside the CSS's en dash — two different
-	// glyphs for the same absence, one row apart.
-	if (item.currency !== 'none') currencyEl.setText(currencyWord(item.currency));
+	// The cell is the COLUMN and keeps a fixed width; the chip inside it hugs its own words.
+	// `.pbl-est-stale` is gone with them: the state is now one class per currency on the
+	// chip, so five treatments are declared in one place instead of one being special-cased
+	// in the markup.
+	renderCurrencyChip(row.createDiv({ cls: 'pbl-est-currency' }), item.currency);
 	return row;
 }
 
