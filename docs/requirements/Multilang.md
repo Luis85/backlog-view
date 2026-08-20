@@ -113,8 +113,24 @@ hundred strings get moved against an interface that then changes.
 catalog, `locale.ts` as the pure resolution and `t.ts` as the lookup — plus the fixture
 catalogs that let a one-locale layer fail a test. Roughly eighteen call sites moved with
 it: every inline plural ternary in `src/view/`, and the `' and '` joiner. The remaining
-~120 sites are the sweep, which is `Every surface translated` onwards, and the honest
-count of catalog keys so far is **21**.
+~120 sites were the sweep, which is `Every surface translated` onwards, and the count of
+catalog keys at that date was **21**.
+
+**Where the sweep stands (2026-08-20).** `ui/`, `commands/` and
+`view/render/emptyStates.ts` are swept and the catalog holds **107** keys — so the two
+numbers in the paragraph above are that date's and not this one's, kept because a
+statement with a date on it is history and one without is a claim.
+
+What is LEFT cannot honestly be given as one number, and the disagreement is the useful
+part. The narrow greps — the setter names and `new Notice`, plus the `text:`/`label:`/
+`title:`/`'aria-label':` properties — see 72 and 43 in `view/`, 51 in `domain/`
+(`viewOptions.ts`'s `displayName:`, which is that directory's whole shape), and 2 in
+`main.ts`. That last one is measured as 3 and is 2: the instrument counts
+`name: 'Product Backlog'`, the plugin's own name, which this epic says is never
+translated. The AST walk recorded in `Every surface translated` sees 321 prose literals in
+`view/render/` alone, because it counts a concatenated sentence's FRAGMENTS. Neither is
+wrong; they answer different questions, and a slice is planned by re-deriving with the
+instrument that fits it rather than by quoting either.
 
 The branding spike `A bare string cannot reach the UI` asks for has also run, and its
 result is recorded there: the design holds unchanged, and no nominal wrapper is needed.
