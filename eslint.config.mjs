@@ -279,11 +279,28 @@ const MENU = 'src/view/interactions/menu.ts';
 // unswept remainder of `view/interactions/` — `create.ts`, `absences.ts`,
 // `dependencies.ts`, `plan.ts`, `structure.ts` and the drag modules — stays under VIEW
 // with no text ban at all, which is why this is a file list rather than a glob.
+// `view/interactions/` is swept WHOLE as of 2026-08-20 — the menu surface first, then the
+// prompts, notices and the backfill's outcome. Enumerated rather than globbed on purpose:
+// `menu.ts` and `create.ts` carry rule sets of their own, and a second block matching the
+// same file would OVERRIDE `no-restricted-syntax` rather than merge with it, silently
+// dropping whichever set lost. A glob replaces this list the day the rest of `view/` is
+// swept and the three rule sets can be one.
+//
+// A file ADDED to this directory is therefore not covered until it is named here. That is
+// the cost of the override rule above, and it is why the runtime halves exist:
+// `test/i18n/menus.test.ts` and `test/i18n/interactions.test.ts` read rendered strings back
+// rather than trusting the region list.
 const MENU_SWEPT = [
 	'src/view/interactions/shelfMenu.ts',
 	'src/view/interactions/columnMenu.ts',
 	'src/view/interactions/tags.ts',
 	'src/view/interactions/labels.ts',
+	'src/view/interactions/absences.ts',
+	'src/view/interactions/dependencies.ts',
+	'src/view/interactions/structure.ts',
+	'src/view/interactions/plan.ts',
+	'src/view/interactions/undo.ts',
+	'src/view/interactions/stateColors.ts',
 ];
 // Ranking code lives in one domain file and one view file; split so a view-only rule
 // (ALL_TYPES_IMPORT) can apply to the latter without reaching into domain/.
@@ -602,6 +619,13 @@ export default defineConfig([
 			ALL_TYPES_IMPORT,
 			CHILD_TYPE_CHOICES_NULL,
 			DELIVERABLE_FIELD_READ,
+			// `create.ts` is in `view/interactions/` and was swept with the rest of it; it
+			// keeps its own block for the ranking rules above, so the three text bans are
+			// repeated here rather than inherited. The repetition is the override rule
+			// stated at MENU_SWEPT: one file, one block.
+			...TEXT_TERNARY,
+			UI_TEXT_LITERAL,
+			UI_TEXT_PROPERTY,
 		]),
 	},
 	{

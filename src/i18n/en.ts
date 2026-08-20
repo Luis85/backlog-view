@@ -512,4 +512,106 @@ export const en = {
 	 */
 	'readme.configProblems': 'Fix the view configuration first: {problems}',
 	'readme.failed': 'Could not write the readme. See the developer console for details.',
+	/**
+	 * One refusal, five call sites — the dependency picker, both absence flows, both
+	 * creation flows and the backfill all gate on `configProblems` and all report the
+	 * FIRST problem rather than the list. `readme.configProblems` above is the other
+	 * shape deliberately: it names every problem, because a generated document is worth
+	 * fixing the configuration for outright.
+	 */
+	'config.fixFirst': 'Fix the view options first: {problem}',
+
+	'dependency.dependsOn': 'Depends on…',
+	'dependency.remove': 'Remove dependency…',
+	'dependency.removeEmpty': 'Remove the empty property',
+	'dependency.propertyChanged':
+		'The dependency property changed while the picker was open, so nothing was written.',
+	/** `{property}` is the suggested KEY, which the plugin writes — never translated. */
+	'dependency.setUp': 'Product Backlog: set up {property} to hold dependencies.',
+	'dependency.noneLeft':
+		'Nothing left to depend on: every other item would repeat this one or close a loop.',
+	/** `{title}` is the note's own title in both — vault content, never translated. */
+	'dependency.addPlaceholder': 'What must come before {title}?',
+	'dependency.removePlaceholder': 'Stop {title} waiting for…',
+	/**
+	 * Two refusals that read alike in English and are different moments: the picker's
+	 * choice went stale while it was open, and the note changed between the plan and the
+	 * write landing. A language that marks the tense will separate them.
+	 */
+	'dependency.noteChanged': 'That note changed while the picker was open, so nothing was written.',
+	'dependency.noteChangedBeforeWrite': 'That note changed before the write landed, so nothing was written.',
+
+	/**
+	 * Two whole sentences rather than one with the location spliced in: the filed-in
+	 * clause was a ternary inside a template, which is the shape `TEXT_TERNARY` refuses
+	 * and the shape a locale that puts the place first has no way into.
+	 */
+	'absence.addHeading': 'Add absence',
+	'absence.addInFolder': 'Marks the resource unavailable for a stretch. Filed in "{folder}".',
+	'absence.addInRoot': 'Marks the resource unavailable for a stretch. Filed in the vault root.',
+	/**
+	 * `absence.editHeading` is a DIALOG's heading and `absence.edit` is a MENU command;
+	 * identical English is expected here and must not be deduplicated, since a language
+	 * that inflects an imperative differently from a noun phrase separates them.
+	 */
+	'absence.editHeading': 'Edit absence',
+	'absence.editDescription': 'Changes who is away and for how long. The note is renamed to match.',
+	'absence.edit': 'Edit absence',
+	'absence.delete': 'Delete absence',
+	'absence.needsProperties': 'Name the assignee and both date properties before recording absences.',
+	'absence.deleted': 'Deleted "{title}".',
+	'absence.deleteFailed': 'Could not delete the absence. See the developer console for details.',
+	'absence.updated': 'Updated "{name}".',
+	'absence.saveFailed': 'Could not save the absence. See the developer console for details.',
+	'absence.created': 'Marked {resource} away — "{name}".',
+	'absence.createFailed': 'Could not create the absence. See the developer console for details.',
+
+	'create.whereLabel': 'Where will this go?',
+	'create.created': 'Created "{name}".',
+	'create.failed': 'Could not create the item. See the developer console for details.',
+	/**
+	 * The iteration flow's own words. `create.iterationCreated` reads exactly like
+	 * `create.created` above and is a separate key for the rule stated at the top of this
+	 * file: what was made is a different thing, and a language that agrees the participle
+	 * with its object separates them. Its call-to-action pair is likewise not
+	 * `prompt.create` / `prompt.save`, which are the PROMPT's own buttons; these are handed
+	 * in by this caller.
+	 */
+	'create.iterationHeading': 'New iteration',
+	'create.iterationCta': 'Create',
+	'create.iterationEditHeading': 'Edit "{title}"',
+	'create.iterationEditCta': 'Save',
+	'create.iterationDates':
+		'Dates are inclusive: an iteration runs from its start to its target, both days included.',
+	'create.iterationGone': 'That iteration is no longer there. Nothing was written.',
+	'create.iterationCreated': 'Created "{name}".',
+	'create.iterationFailed': 'Could not create the iteration. See the developer console for details.',
+
+	/**
+	 * The backfill's outcome, as two WHOLE sentences picked between rather than one frame
+	 * with a clause appended — `emptyState.noAxisBody` and its half-set sibling are the
+	 * same decision, and for the same reason: a locale that leads with the follow-up has no
+	 * way into a middle the caller assembled.
+	 *
+	 * `{summary}` is still a list of fragments joined by `list()`, which is grammar and
+	 * follows the catalog's locale. `init.adopted` is one of those fragments;
+	 * `init.updatedItems` above is the other. The plugin's own NAME leads both sentences
+	 * and is not translated — it is the name, in every language.
+	 */
+	'init.adopted': 'set up {properties}',
+	'init.outcome': 'Product Backlog: {summary}.',
+	'init.outcomeWithColumns':
+		'Product Backlog: {summary}. Add them in the properties menu to show them as columns.',
+	'init.nothingToDo': 'All items already have the properties this view writes.',
+
+	/** `{parts}` is joined by `list()` — grammar, so it follows the catalog's locale. */
+	'undo.outcome': 'Undo: {parts}.',
+
+	'plan.clearHorizon': 'Clear horizon',
+	/** `{title}` is the note's own title — vault content, never translated. */
+	'plan.scheduleHeading': 'Schedule "{title}"',
+	'plan.scheduleDescription': 'Pick a date for each end, or clear a field to remove that date.',
+
+	'stateColors.noStates':
+		'No workflow states to colour yet. Name a state property and list its states in the view options.',
 } as const;

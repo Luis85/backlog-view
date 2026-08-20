@@ -303,14 +303,41 @@ which 60 are `domain/viewOptions.ts` and 186 the generated README in
 it is a text one. `viewOptions.ts` is [[View options and config warnings]] and not this
 note.
 
+**`view/interactions/`, WHOLE, on 2026-08-20.** The menu surface first, then the prompts,
+the notices and the backfill's outcome: 47 sites and 47 keys, taking the catalog to 202.
+Both text bans now cover every file in the directory — `create.ts` repeats them in its own
+block rather than inheriting, because two flat-config blocks matching one file OVERRIDE
+`no-restricted-syntax` rather than merge, which would silently drop whichever set lost.
+
+**Most of this slice was invisible to both bans, and that is the finding.** The prompts
+take their heading, description, placeholder and call to action as an OPTION BAG, and of
+those only `title:` is a property `UI_TEXT_PROPERTY` reads — a literal at `heading:`,
+`description:`, `placeholder:` or `cta:` fails no rule at all. Verified by planting:
+reverting one placeholder to its template literal leaves `eslint` silent and fails
+`test/i18n/interactions.test.ts`. The narrow greps that planned this slice saw 34 sites
+until `placeholder:` was added to the pattern, and then 47 — the fourth time in this epic
+a count was short because the instrument could not see a shape.
+
+**Two assembled sentences were the other half.** `runInit`'s outcome was
+`` `Product Backlog: ${list(done)}.${next}` `` — a template frame around keyed fragments,
+which passes every rule and leaves the sentence in English. It is now two WHOLE keys
+picked between (`init.outcome` / `init.outcomeWithColumns`), the shape
+`emptyState.noAxisBody` and its half-set sibling already use. The undo report was
+`` `Undo: ${parts.join('; ')}.` `` and is now one key whose parts are joined by `list()`,
+so the joining follows the catalog's grammar rather than a hardcoded `'; '`.
+
 ## Where it lives
 
 **`src/i18n/en.ts`** carries the keys; the swept call sites are `src/ui/prompts.ts`,
 `src/ui/stateColorsDialog.ts`, `src/ui/manualDialog.ts`, `src/commands/scaffold.ts`,
 `src/commands/readme.ts`, `src/view/render/emptyStates.ts`,
 `src/view/interactions/menu.ts`, `src/view/interactions/shelfMenu.ts`,
-`src/view/interactions/columnMenu.ts`, `src/view/interactions/tags.ts` and
-`src/view/interactions/labels.ts`. The rest of the sweep
+`src/view/interactions/columnMenu.ts`, `src/view/interactions/tags.ts`,
+`src/view/interactions/labels.ts`, `src/view/interactions/absences.ts`,
+`src/view/interactions/dependencies.ts`, `src/view/interactions/create.ts`,
+`src/view/interactions/structure.ts`, `src/view/interactions/plan.ts`,
+`src/view/interactions/undo.ts` and `src/view/interactions/stateColors.ts` — which is
+`view/interactions/` WHOLE. The rest of the sweep
 touches every rendering module without changing what any of them does.
 
 `src/view/render/toolbar.ts` · `src/view/render/rows.ts` · `src/view/render/columns.ts` ·
@@ -322,8 +349,8 @@ touches every rendering module without changing what any of them does.
 `src/main.ts`.
 Tests: `test/view/contextRowWrites.test.ts` and `test/view/creation.test.ts` must pass
 untouched — they guard the two behaviours this sweep is most likely to disturb.
-`test/i18n/sweptSurfaces.test.ts`, `test/i18n/emptyStates.test.ts` and
-`test/i18n/menus.test.ts` are the swept half's
+`test/i18n/sweptSurfaces.test.ts`, `test/i18n/emptyStates.test.ts`,
+`test/i18n/menus.test.ts` and `test/i18n/interactions.test.ts` are the swept half's
 own checks, and each is a PAIR with lint rather than a substitute for it: they drive each
 surface under a fixture catalog, so a literal left at a call site renders English beside
 overridden neighbours, while `UI_TEXT_LITERAL` and `UI_TEXT_PROPERTY` in
