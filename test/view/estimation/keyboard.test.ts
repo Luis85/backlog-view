@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { makeEstimationView, selectItem } from '../../helpers/estimation';
 import { configuredValues } from '../../helpers/estimationModel';
 import { FakeVault } from '../../helpers/vault';
-import { key } from '../../helpers/view';
+import { flush, key } from '../../helpers/view';
 
 function fixture(): FakeVault {
 	const vault = new FakeVault();
@@ -44,6 +44,36 @@ describe('the estimation view from the keyboard', () => {
 		// Held is 1, the first point: ArrowLeft must not wrap to the last.
 		key(group, 'ArrowLeft');
 		expect(containerEl.querySelector('[data-dim="compliance"][data-value="1"]')!.getAttribute('tabindex')).toBe('0');
+	});
+
+	it('arrows inward from a held value: moves the tab stop and writes the value it moved to', async () => {
+		// The primary radiogroup behaviour the two edge tests above never exercise: an arrow
+		// that CAN move must move the stop and commit the value it moved to, through the
+		// same click path a pointer pick uses.
+		const vault = fixture();
+		const { containerEl } = makeEstimationView(vault, configuredValues());
+		selectItem(containerEl, 'Full.md');
+		const group = containerEl.querySelector('[data-dim="strategic-alignment"]')!.closest('.pbl-est-points') as HTMLElement;
+		key(group, 'ArrowLeft'); // held is 5, the max; this moves inward to 4
+		await flush();
+		expect(containerEl.querySelector('[data-dim="strategic-alignment"][data-value="4"]')!.getAttribute('tabindex')).toBe('0');
+		expect(vault.fm('Full.md')['strategic-alignment']).toBe(4);
+	});
+
+	it('an edge arrow on an UNANSWERED row writes nothing and spends no undo slot', async () => {
+		// The bug this guards: `stopValue` puts the roving stop on `min` when nothing is
+		// held, so an edge ArrowLeft's clamped target is that same min button — not a HELD
+		// button — and used to reach `next.click()` anyway, planning a real write where
+		// nothing visibly moved.
+		const vault = fixture();
+		const { view, containerEl } = makeEstimationView(vault, configuredValues());
+		selectItem(containerEl, 'Full.md');
+		const group = containerEl.querySelector('[data-dim="reach"]')!.closest('.pbl-est-points') as HTMLElement; // unanswered on Full.md
+		key(group, 'ArrowLeft');
+		await flush();
+		expect(containerEl.querySelector('[data-dim="reach"][data-value="1"]')!.getAttribute('tabindex')).toBe('0');
+		expect(vault.fm('Full.md').reach).toBeUndefined();
+		expect(view.gate.canUndo()).toBe(false);
 	});
 
 	it('reaches the panel from a table row with ArrowRight, and still opens the note with Enter', () => {

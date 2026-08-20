@@ -336,8 +336,14 @@ function wirePanelEvents(view: EstimationView, panelEl: HTMLElement, item: Estim
 		const radios = Array.from(group.querySelectorAll<HTMLElement>('button.pbl-est-point'));
 		const at = radios.findIndex((btn) => btn.tabIndex === 0);
 		// Holds at either edge rather than wrapping — the table's own rule for this walk.
-		const next = radios[Math.min(Math.max((at === -1 ? 0 : at) + delta, 0), radios.length - 1)];
-		next?.click();
+		const currentIndex = at === -1 ? 0 : at;
+		const targetIndex = Math.min(Math.max(currentIndex + delta, 0), radios.length - 1);
+		// The click path is the write path, so an arrow that moves nothing must not reach it:
+		// on an unanswered row the roving stop already sits on the min button, and an edge
+		// arrow's clamped target is that SAME button rather than the held one, so clicking
+		// it would plan a real write where nothing visibly moved.
+		if (targetIndex === currentIndex) return;
+		radios[targetIndex]?.click();
 	});
 }
 
