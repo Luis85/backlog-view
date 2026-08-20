@@ -275,6 +275,12 @@ describe('the estimation harness mounts', () => {
 		for (const cls of ['pbl-est-title', 'pbl-est-total', 'pbl-est-coverage', 'pbl-est-currency']) {
 			expect(lines.filter((l) => l.startsWith(`BOX ${cls} `)).length, `${cls} boxes`).toBeGreaterThan(1);
 		}
+		// Confidence and effort share the bare `.pbl-est-cell` class (`renderTable.ts`'s own
+		// `data-col` disambiguation) — asserted on BOTH disambiguated labels so a probe that
+		// silently went back to reporting only one of the two columns fails here.
+		for (const cls of ['pbl-est-cell[confidence]', 'pbl-est-cell[effort]']) {
+			expect(lines.filter((l) => l.startsWith(`BOX ${cls} `)).length, `${cls} boxes`).toBeGreaterThan(1);
+		}
 		expect(lines.filter((l) => l.startsWith('BOX pbl-est-title head '))).toHaveLength(1);
 		for (const probe of ['row title', 'panel total', 'panel title', 'decomp term']) {
 			expect(lines.filter((l) => l.startsWith(`TYPE ${probe} `)), `${probe} type`).toHaveLength(1);

@@ -84,8 +84,10 @@ export function applyWantedEstimationSelection(view: EstimationView, search: str
  * repository has for two whole classes of defect: jsdom lays nothing out, so
  * `getBoundingClientRect` answers zeros and a column that slides under its own header is
  * invisible to the suite; and jsdom applies no stylesheet, so a computed `font-size` cannot
- * be read there at all. Both shipped once — a 29.8px column slide and five wrong type sizes,
- * three of them rules that had silently stopped matching. Read with:
+ * be read there at all. Both shipped once — a currency cell 29.8px wider than its ten
+ * siblings, which slides the columns beside it or overflows the row's end edge depending on
+ * whether the title still has room to shrink, and five wrong type sizes, three of them rules
+ * that had silently stopped matching. Read with:
  *
  *   chrome --headless=new --dump-dom '<page>?measure'
  *
@@ -100,12 +102,25 @@ export function drawEstimationMeasurements(view: EstimationView): void {
 	const rows = Array.from(table?.querySelectorAll('.pbl-est-row') ?? []);
 	const hosts: Array<[string, Element | null | undefined]> = [['head', head], ...rows.map((r, i) => [`row${i}`, r] as [string, Element])];
 
+	// `querySelectorAll`, not `querySelector`: confidence and effort both wear
+	// `.pbl-est-cell` (`renderTable.ts`'s own disambiguation is `data-col`), so a single
+	// match per host would silently measure only the first of the two and never notice
+	// the second had vanished. The disambiguator is keyed on genuine ambiguity — MORE
+	// THAN ONE match for this class under this host — rather than on `data-col` merely
+	// being present: every header button carries `data-col` too (`renderTable.ts`'s
+	// `sortHeader`, for the CLICK target, one per column including the unambiguous
+	// ones), so keying on presence alone would also split `pbl-est-title head` into
+	// `pbl-est-title[title] head` and break the one-line-per-column head row this
+	// module already promises.
 	for (const cls of ['pbl-est-title', 'pbl-est-total', 'pbl-est-coverage', 'pbl-est-cell', 'pbl-est-currency']) {
 		for (const [name, host] of hosts) {
-			const el = host?.querySelector(`.${cls}`);
-			if (!(el instanceof HTMLElement)) continue;
-			const box = el.getBoundingClientRect();
-			lines.push(`BOX ${cls} ${name} left=${box.left.toFixed(1)} right=${box.right.toFixed(1)} w=${box.width.toFixed(1)}`);
+			const matches = Array.from(host?.querySelectorAll(`.${cls}`) ?? []);
+			for (const el of matches) {
+				if (!(el instanceof HTMLElement)) continue;
+				const label = matches.length > 1 && el.dataset.col ? `${cls}[${el.dataset.col}]` : cls;
+				const box = el.getBoundingClientRect();
+				lines.push(`BOX ${label} ${name} left=${box.left.toFixed(1)} right=${box.right.toFixed(1)} w=${box.width.toFixed(1)}`);
+			}
 		}
 	}
 
