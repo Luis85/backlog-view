@@ -126,6 +126,11 @@ button.pbl-est-point.is-active {
 	gap: var(--size-2-2);
 	padding-top: var(--size-4-3);
 	border-top: 1px solid var(--background-modifier-border);
+	/* The decomposition annotates; it does not name. It had no size of its own, so eight
+	   term sentences rendered at 15px beside the `--font-ui-smaller` rubric sentences
+	   directly above them. */
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
 }
 
 /* Coverage and the total stay beside each other exactly as before — only the

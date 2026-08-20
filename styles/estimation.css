@@ -123,6 +123,18 @@
    `--pbl-depth` or an indent guide the way tree.css's rows do.
    ========================================================================== */
 
+/* The table declares a UI size. Measured without this rule: every row title and every
+   number rendered at 15px — the READING size inherited from the pane — under a header that
+   declares `--font-ui-smaller`. `--font-ui-small` is DESIGN.md's Body entry for exactly
+   these ("row titles, card titles") and what `tree.css`'s own rows use, so the estimation
+   table was the one list in the plugin set two steps larger than the rest.
+
+   On the table rather than on each cell: one declaration the header then overrides for
+   itself, instead of five that can drift apart. */
+.pbl-est-table {
+	font-size: var(--font-ui-small);
+}
+
 .pbl-est-head,
 .pbl-est-row {
 	display: flex;
