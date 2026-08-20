@@ -1,4 +1,5 @@
 import { Menu } from 'obsidian';
+import { t } from '../../i18n/t';
 import { BacklogViewHost } from '../host';
 import { inCatalog, isIterationType, isMarkerType } from '../../domain/itemTypes';
 import { BacklogItem } from '../../domain/model';
@@ -238,7 +239,7 @@ export function addRiskItems(host: BacklogViewHost, menu: Menu, item: BacklogIte
 		choices: declaredChoices(host.settings.riskValues, item.riskValue),
 		writes: (value) => computeRiskWrites(item, value),
 		present: item.ownKeys.risk,
-		clearTitle: 'Clear risk',
+		clearTitle: t('menu.clearRisk'),
 	});
 }
 
@@ -248,7 +249,7 @@ export function addPriorityItems(host: BacklogViewHost, menu: Menu, item: Backlo
 		choices: declaredChoices(host.settings.priorityValues, item.priorityValue),
 		writes: (value) => computePriorityWrites(item, value),
 		present: item.ownKeys.priority,
-		clearTitle: 'Clear priority',
+		clearTitle: t('menu.clearPriority'),
 	});
 }
 
@@ -266,12 +267,12 @@ export function addAssigneeItems(host: BacklogViewHost, menu: Menu, item: Backlo
 		choices: assigneeChoices(host, item),
 		writes: (value) => computeAssigneeWrites(item, value),
 		present: item.ownKeys.assignee,
-		clearTitle: 'Clear assignee',
+		clearTitle: t('menu.clearAssignee'),
 		apply: (value) => void chooseAssignee(host, item, value),
 		extra: () =>
 			menu.addItem((si) =>
 				si
-					.setTitle('New assignee...')
+					.setTitle(t('menu.newAssignee'))
 					.setIcon('plus')
 					.onClick(() => promptNewAssignee(host, item)),
 			),
@@ -287,10 +288,10 @@ export function addAssigneeItems(host: BacklogViewHost, menu: Menu, item: Backlo
  */
 function promptNewAssignee(host: BacklogViewHost, item: BacklogItem): void {
 	new ValuePromptModal(host.app, {
-		title: 'Assign item',
-		fieldName: 'Assignee',
-		placeholder: 'Alex',
-		ctaLabel: 'Assign',
+		title: t('menu.assignTitle'),
+		fieldName: t('menu.assignField'),
+		placeholder: t('menu.assignPlaceholder'),
+		ctaLabel: t('menu.assignCta'),
 		known: assigneeChoices(host, item),
 		onSubmit: (value) => void chooseAssignee(host, item, value.trim()),
 	}).open();
@@ -418,7 +419,7 @@ export function addIterationItems(host: BacklogViewHost, menu: Menu, item: Backl
 	}
 	if (targets.length > 0) menu.addSeparator();
 	menu.addItem((si) => {
-		si.setTitle('None')
+		si.setTitle(t('menu.clearIteration'))
 			.setIcon('eraser')
 			.onClick(() => void host.applySafely(writes(null)));
 		if (writes(null).length === 0) si.setChecked(true);

@@ -30,6 +30,15 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ### Changed
 
+- **Every menu takes its words from the message catalog now** — the row and card menu, the
+  board column's fold, the shelf's sort, type filter and search, and the Set state, Set
+  risk, Set priority, Set assignee, Set iteration, Set horizon, Set type and Edit tags
+  submenus, along with the prompts they open. Nothing reads differently in English, and
+  nothing a menu LISTS is translated: your type names, workflow states, risk and priority
+  rungs, assignees, iterations, horizon buckets and tags are what your notes hold, so they
+  appear exactly as you wrote them in every language. Two entries are still English —
+  `Clear horizon` and `Depends on…` — and follow with the rest of their own files.
+
 - **Everything the view says when it has nothing to show comes from the message catalog
   now** — the empty backlog and its focused form, the empty test catalog, the guidance both
   boards show without a workflow, the roadmap without an axis, the empty Deliverables board

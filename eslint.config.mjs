@@ -267,6 +267,41 @@ const STORAGE = 'src/storage/**/*.ts';
 // their own sweeps run — `docs/requirements/Every surface translated.md`.
 const SWEPT = ['src/ui/**/*.ts', 'src/commands/**/*.ts'];
 const MENU = 'src/view/interactions/menu.ts';
+// The rest of the menu surface, carved out of VIEW for the two text bans alone — swept
+// into the catalog on 2026-08-20 alongside `menu.ts` itself, so the bans land on clean
+// files rather than opening with a wall of errors on the rest of a directory nobody has
+// swept yet. That ORDER is the rule, and `RENDER_EMPTY_STATES` above states it: a ban
+// ahead of its sweep is a ban somebody switches off. Everything else VIEW carries applies
+// here unchanged.
+//
+// The four files are one subject: `shelfMenu.ts` and `columnMenu.ts` are menus of their
+// own, and `tags.ts` and `labels.ts` are the submenu builders `menu.ts` delegates to. The
+// unswept remainder of `view/interactions/` — `create.ts`, `absences.ts`,
+// `dependencies.ts`, `plan.ts`, `structure.ts` and the drag modules — stays under VIEW
+// with no text ban at all, which is why this is a file list rather than a glob.
+// `view/interactions/` is swept WHOLE as of 2026-08-20 — the menu surface first, then the
+// prompts, notices and the backfill's outcome. Enumerated rather than globbed on purpose:
+// `menu.ts` and `create.ts` carry rule sets of their own, and a second block matching the
+// same file would OVERRIDE `no-restricted-syntax` rather than merge with it, silently
+// dropping whichever set lost. A glob replaces this list the day the rest of `view/` is
+// swept and the three rule sets can be one.
+//
+// A file ADDED to this directory is therefore not covered until it is named here. That is
+// the cost of the override rule above, and it is why the runtime halves exist:
+// `test/i18n/menus.test.ts` and `test/i18n/interactions.test.ts` read rendered strings back
+// rather than trusting the region list.
+const MENU_SWEPT = [
+	'src/view/interactions/shelfMenu.ts',
+	'src/view/interactions/columnMenu.ts',
+	'src/view/interactions/tags.ts',
+	'src/view/interactions/labels.ts',
+	'src/view/interactions/absences.ts',
+	'src/view/interactions/dependencies.ts',
+	'src/view/interactions/structure.ts',
+	'src/view/interactions/plan.ts',
+	'src/view/interactions/undo.ts',
+	'src/view/interactions/stateColors.ts',
+];
 // Ranking code lives in one domain file and one view file; split so a view-only rule
 // (ALL_TYPES_IMPORT) can apply to the latter without reaching into domain/.
 const RANKING_DOMAIN = ['src/domain/writePlan.ts'];
@@ -436,6 +471,14 @@ const UI_TEXT_LITERAL = {
 // no such instance to open on.
 //
 // **It sees that property shape and no other.** The two that remain uncovered in this file:
+// The property list covers the option-bag names too — `heading:`, `description:`,
+// `placeholder:`, `cta:`, `ctaLabel:`, `fieldName:` — and that was the whole of this rule's
+// blind spot rather than a corner of it. `ui/`'s prompts take their frame as an option bag,
+// so a swept caller could hand any of them a literal and fail nothing; the runtime half
+// caught it and lint did not, which made the "pair" one mechanism wearing two names for
+// every prompt in the plugin. Verified by planting at each name, and the swept tree stays
+// clean, so the widening costs no exemption.
+//
 // a template whose first quasi is empty (`UI_TEXT_LITERAL`'s own second exemption, for the
 // same reason — the capital test has nothing to read), and a prose literal handed to a
 // helper as a positional ARGUMENT, which is how `guidanceShell` takes every title and hint
@@ -444,7 +487,7 @@ const UI_TEXT_LITERAL = {
 // that every string a frame drew carries the fixture catalog's marker.
 const UI_TEXT_PROPERTY = {
 	selector:
-		"Property[key.name=/^(text|label|title)$/]:matches([value.type='Literal'][value.value=/^[A-Z]/], [value.type='TemplateLiteral'][value.quasis.0.value.raw=/^[A-Z]/]), Property[key.value='aria-label']:matches([value.type='Literal'][value.value=/^[A-Z]/], [value.type='TemplateLiteral'][value.quasis.0.value.raw=/^[A-Z]/])",
+		"Property[key.name=/^(text|label|title|heading|description|placeholder|cta|ctaLabel|fieldName)$/]:matches([value.type='Literal'][value.value=/^[A-Z]/], [value.type='TemplateLiteral'][value.quasis.0.value.raw=/^[A-Z]/]), Property[key.value='aria-label']:matches([value.type='Literal'][value.value=/^[A-Z]/], [value.type='TemplateLiteral'][value.quasis.0.value.raw=/^[A-Z]/])",
 	message:
 		'A sentence spelled where it is used cannot be translated. Add a key to src/i18n/en.ts and call t() — and if this is a value the plugin writes, matches or persists rather than text, it belongs in neither place.',
 };
@@ -554,6 +597,8 @@ export default defineConfig([
 			ALL_TYPES_IMPORT,
 			CHILD_TYPE_CHOICES_NULL,
 			...TEXT_TERNARY,
+			UI_TEXT_LITERAL,
+			UI_TEXT_PROPERTY,
 		]),
 	},
 	{
@@ -582,6 +627,13 @@ export default defineConfig([
 			ALL_TYPES_IMPORT,
 			CHILD_TYPE_CHOICES_NULL,
 			DELIVERABLE_FIELD_READ,
+			// `create.ts` is in `view/interactions/` and was swept with the rest of it; it
+			// keeps its own block for the ranking rules above, so the three text bans are
+			// repeated here rather than inherited. The repetition is the override rule
+			// stated at MENU_SWEPT: one file, one block.
+			...TEXT_TERNARY,
+			UI_TEXT_LITERAL,
+			UI_TEXT_PROPERTY,
 		]),
 	},
 	{
@@ -655,7 +707,7 @@ export default defineConfig([
 		// DELIVERABLE_FIELD_READ (any of these files is a candidate third hand-written
 		// workflow ternary).
 		files: [VIEW],
-		ignores: [MENU, RENDER, ...RANKING_VIEW, CARD_MOVES, TYPES_SECTION],
+		ignores: [MENU, ...MENU_SWEPT, RENDER, ...RANKING_VIEW, CARD_MOVES, TYPES_SECTION],
 		rules: syntaxRules([
 			...SVG_CLASS_TOKENS,
 			...WRITE_BOUNDARY,
@@ -665,6 +717,31 @@ export default defineConfig([
 			ALL_TYPES_IMPORT,
 			CHILD_TYPE_CHOICES_NULL,
 			DELIVERABLE_FIELD_READ,
+		]),
+	},
+	{
+		// The rest of the swept menu surface: VIEW's own rules plus the two text bans.
+		//
+		// **Between them they still miss this slice's commonest prompt shape**, and saying
+		// so is the point of writing it here: `ValuePromptModal` takes its heading, its
+		// field name, its placeholder and its call to action as an option bag, and of those
+		// four only `title:` is a property `UI_TEXT_PROPERTY` reads. `fieldName:`,
+		// `placeholder:` and `ctaLabel:` are named nowhere in either selector and a literal
+		// at any of them fails no rule. `test/i18n/menus.test.ts` is what holds those, by
+		// opening each prompt under a marked catalog and reading the rendered strings back.
+		files: MENU_SWEPT,
+		rules: syntaxRules([
+			...SVG_CLASS_TOKENS,
+			...WRITE_BOUNDARY,
+			MENU_ANCHOR,
+			OVERBY,
+			TREE_SCAN,
+			ALL_TYPES_IMPORT,
+			CHILD_TYPE_CHOICES_NULL,
+			DELIVERABLE_FIELD_READ,
+			...TEXT_TERNARY,
+			UI_TEXT_LITERAL,
+			UI_TEXT_PROPERTY,
 		]),
 	},
 	{

@@ -324,6 +324,116 @@ export const en = {
 	'settings.sharedKey': 'The {properties} properties share the key "{key}".',
 
 	/**
+	 * The menus — the row and card menu in `view/interactions/menu.ts`, the shelf's picks
+	 * in `shelfMenu.ts`, and the two submenu builders `menu.ts` delegates to (`tags.ts`,
+	 * `labels.ts`). The board column's menu is here in spirit and in no key of its own: it
+	 * offers one act, the fold, and reads `fold.expandColumn` — the key the column HEADER's
+	 * disclosure already draws from.
+	 *
+	 * **What is NOT here is everything these menus list.** A type name, a state, a horizon
+	 * bucket, a tag, an assignee, an iteration and a column's own label all arrive as data
+	 * and are titled raw; a locale that translated one would offer a pick that writes a
+	 * value another locale's vault cannot read. Only the frame around them is text — the
+	 * verbs, the submenu names, the clears, and the prompts these entries open.
+	 *
+	 * The prompts are here rather than under `prompt.*` because that section is what `ui/`
+	 * spells for ITSELF, and a heading, a field name and a call to action handed to
+	 * `ValuePromptModal` are this caller's own words. `ui/`'s sweep said so and left them.
+	 */
+	'menu.newChild': 'New {type}',
+	'menu.openInNewTab': 'Open in new tab',
+	'menu.openToTheRight': 'Open to the right',
+	'menu.clearParentLink': 'Clear parent link',
+	'menu.useFolderPosition': 'Use folder position',
+	/**
+	 * The move section. `Move up` and `Indent under "…"` are separate keys rather than one
+	 * verb with a direction spliced in, the rule `fold.expandColumn` states: a language
+	 * that inflects the verb for its object cannot reach a half-sentence.
+	 *
+	 * `{title}` is the neighbour's own title — vault content, untouched.
+	 */
+	'menu.moveUp': 'Move up',
+	'menu.moveDown': 'Move down',
+	'menu.moveToTop': 'Move to top',
+	'menu.moveToBottom': 'Move to bottom',
+	'menu.indentUnder': 'Indent under "{title}"',
+	'menu.outdent': 'Outdent',
+	/** One child of a card, by its own title. */
+	'menu.openChild': 'Open child "{title}"',
+	/**
+	 * The way back off a test state. It is the LABEL half of a `StateChoice` whose `state`
+	 * is `null` — the label is drawn, the null is written, and only the drawn half is text.
+	 */
+	'menu.clearTestState': 'Clear test state',
+	/** The submenu names, each opening onto values that are data. */
+	'menu.setState': 'Set state',
+	'menu.setRisk': 'Set risk',
+	'menu.setPriority': 'Set priority',
+	'menu.setAssignee': 'Set assignee',
+	'menu.setIteration': 'Set iteration',
+	'menu.setHorizon': 'Set horizon',
+	'menu.setType': 'Set type',
+	'menu.editTags': 'Edit tags',
+	'menu.schedule': 'Schedule',
+	'menu.unschedule': 'Unschedule',
+	/**
+	 * The shelf's own section. `menu.shelfSort*` are the three sort LABELS; the
+	 * `ShelfSort` values beside them (`tree`, `title`, `modified`) are persisted view
+	 * state and stay as written.
+	 */
+	'menu.sortUnplaced': 'Sort unplaced',
+	'menu.filterUnplacedByType': 'Filter unplaced by type',
+	'menu.shelfSortTree': 'Sibling order',
+	'menu.shelfSortTitle': 'Title (A to Z)',
+	'menu.shelfSortModified': 'Last modified',
+	'menu.showAllTypes': 'Show all types',
+	'menu.hideAllTypes': 'Hide all types',
+	/**
+	 * One type's group on the shelf, counted. Not `count.childrenOfType`: that one
+	 * pluralizes the type name, and this entry names a type exactly once and puts the
+	 * number beside it — the shape `fold.expandShelf` already uses.
+	 */
+	'menu.shelfTypeCount': '{type} ({count})',
+	/**
+	 * The entry that OPENS the shelf's search, distinct from `shelf.search`, which the
+	 * modal it opens is titled with and which the header's own box is labelled with. Same
+	 * words in English; this one is a menu entry promising a dialog, and the trailing
+	 * ellipsis is what says so.
+	 */
+	'menu.searchUnplaced': 'Search unplaced...',
+	'menu.searchField': 'Title contains',
+	'menu.searchPlaceholder': 'Part of a title',
+	'menu.searchCta': 'Search',
+	/**
+	 * Set tags. The tags themselves are titled `#{tag}` at the call site and are not keyed:
+	 * a tag is written into frontmatter, and the sigil is Obsidian's syntax rather than
+	 * this catalog's punctuation.
+	 */
+	'menu.newTag': 'New tag...',
+	'menu.addTagTitle': 'Add tag',
+	'menu.addTagField': 'Tag',
+	'menu.addTagPlaceholder': 'Sprint-12',
+	'menu.addTagCta': 'Add',
+	/** Refused because normalizing left nothing — said rather than closing as if it landed. */
+	'menu.tagRejected': 'Tags need at least one non-numeric character, so that was not added.',
+	/**
+	 * The three label menus' clears, one key each rather than `Clear {property}` with a
+	 * name spliced in: the property names are the view options' own labels, still English
+	 * and owned by [[View options and config warnings]], and a language that inflects the
+	 * noun after `Clear` could not reach it through a parameter either.
+	 */
+	'menu.clearRisk': 'Clear risk',
+	'menu.clearPriority': 'Clear priority',
+	'menu.clearAssignee': 'Clear assignee',
+	/** Set iteration's own clear, which reads as an absence rather than as an act. */
+	'menu.clearIteration': 'None',
+	'menu.newAssignee': 'New assignee...',
+	'menu.assignTitle': 'Assign item',
+	'menu.assignField': 'Assignee',
+	'menu.assignPlaceholder': 'Alex',
+	'menu.assignCta': 'Assign',
+
+	/**
 	 * The dialogs in `ui/`. Every one of them takes its heading and its description from
 	 * the caller, so what is keyed here is only what `ui/` spells for itself: the field
 	 * labels, the placeholders and the buttons.
@@ -402,6 +512,108 @@ export const en = {
 	 */
 	'readme.configProblems': 'Fix the view configuration first: {problems}',
 	'readme.failed': 'Could not write the readme. See the developer console for details.',
+	/**
+	 * One refusal, five call sites — the dependency picker, both absence flows, both
+	 * creation flows and the backfill all gate on `configProblems` and all report the
+	 * FIRST problem rather than the list. `readme.configProblems` above is the other
+	 * shape deliberately: it names every problem, because a generated document is worth
+	 * fixing the configuration for outright.
+	 */
+	'config.fixFirst': 'Fix the view options first: {problem}',
+
+	'dependency.dependsOn': 'Depends on…',
+	'dependency.remove': 'Remove dependency…',
+	'dependency.removeEmpty': 'Remove the empty property',
+	'dependency.propertyChanged':
+		'The dependency property changed while the picker was open, so nothing was written.',
+	/** `{property}` is the suggested KEY, which the plugin writes — never translated. */
+	'dependency.setUp': 'Product Backlog: set up {property} to hold dependencies.',
+	'dependency.noneLeft':
+		'Nothing left to depend on: every other item would repeat this one or close a loop.',
+	/** `{title}` is the note's own title in both — vault content, never translated. */
+	'dependency.addPlaceholder': 'What must come before {title}?',
+	'dependency.removePlaceholder': 'Stop {title} waiting for…',
+	/**
+	 * Two refusals that read alike in English and are different moments: the picker's
+	 * choice went stale while it was open, and the note changed between the plan and the
+	 * write landing. A language that marks the tense will separate them.
+	 */
+	'dependency.noteChanged': 'That note changed while the picker was open, so nothing was written.',
+	'dependency.noteChangedBeforeWrite': 'That note changed before the write landed, so nothing was written.',
+
+	/**
+	 * Two whole sentences rather than one with the location spliced in: the filed-in
+	 * clause was a ternary inside a template, which is the shape `TEXT_TERNARY` refuses
+	 * and the shape a locale that puts the place first has no way into.
+	 */
+	'absence.addHeading': 'Add absence',
+	'absence.addInFolder': 'Marks the resource unavailable for a stretch. Filed in "{folder}".',
+	'absence.addInRoot': 'Marks the resource unavailable for a stretch. Filed in the vault root.',
+	/**
+	 * `absence.editHeading` is a DIALOG's heading and `absence.edit` is a MENU command;
+	 * identical English is expected here and must not be deduplicated, since a language
+	 * that inflects an imperative differently from a noun phrase separates them.
+	 */
+	'absence.editHeading': 'Edit absence',
+	'absence.editDescription': 'Changes who is away and for how long. The note is renamed to match.',
+	'absence.edit': 'Edit absence',
+	'absence.delete': 'Delete absence',
+	'absence.needsProperties': 'Name the assignee and both date properties before recording absences.',
+	'absence.deleted': 'Deleted "{title}".',
+	'absence.deleteFailed': 'Could not delete the absence. See the developer console for details.',
+	'absence.updated': 'Updated "{name}".',
+	'absence.saveFailed': 'Could not save the absence. See the developer console for details.',
+	'absence.created': 'Marked {resource} away — "{name}".',
+	'absence.createFailed': 'Could not create the absence. See the developer console for details.',
+
+	'create.whereLabel': 'Where will this go?',
+	'create.created': 'Created "{name}".',
+	'create.failed': 'Could not create the item. See the developer console for details.',
+	/**
+	 * The iteration flow's own words. `create.iterationCreated` reads exactly like
+	 * `create.created` above and is a separate key for the rule stated at the top of this
+	 * file: what was made is a different thing, and a language that agrees the participle
+	 * with its object separates them. Its call-to-action pair is likewise not
+	 * `prompt.create` / `prompt.save`, which are the PROMPT's own buttons; these are handed
+	 * in by this caller.
+	 */
+	'create.iterationHeading': 'New iteration',
+	'create.iterationCta': 'Create',
+	'create.iterationEditHeading': 'Edit "{title}"',
+	'create.iterationEditCta': 'Save',
+	'create.iterationDates':
+		'Dates are inclusive: an iteration runs from its start to its target, both days included.',
+	'create.iterationGone': 'That iteration is no longer there. Nothing was written.',
+	'create.iterationCreated': 'Created "{name}".',
+	'create.iterationFailed': 'Could not create the iteration. See the developer console for details.',
+
+	/**
+	 * The backfill's outcome, as two WHOLE sentences picked between rather than one frame
+	 * with a clause appended — `emptyState.noAxisBody` and its half-set sibling are the
+	 * same decision, and for the same reason: a locale that leads with the follow-up has no
+	 * way into a middle the caller assembled.
+	 *
+	 * `{summary}` is still a list of fragments joined by `list()`, which is grammar and
+	 * follows the catalog's locale. `init.adopted` is one of those fragments;
+	 * `init.updatedItems` above is the other. The plugin's own NAME leads both sentences
+	 * and is not translated — it is the name, in every language.
+	 */
+	'init.adopted': 'set up {properties}',
+	'init.outcome': 'Product Backlog: {summary}.',
+	'init.outcomeWithColumns':
+		'Product Backlog: {summary}. Add them in the properties menu to show them as columns.',
+	'init.nothingToDo': 'All items already have the properties this view writes.',
+
+	/** `{parts}` is joined by `list()` — grammar, so it follows the catalog's locale. */
+	'undo.outcome': 'Undo: {parts}.',
+
+	'plan.clearHorizon': 'Clear horizon',
+	/** `{title}` is the note's own title — vault content, never translated. */
+	'plan.scheduleHeading': 'Schedule "{title}"',
+	'plan.scheduleDescription': 'Pick a date for each end, or clear a field to remove that date.',
+
+	'stateColors.noStates':
+		'No workflow states to colour yet. Name a state property and list its states in the view options.',
 
 	/** The write gate's own failure notice — every view's batch runs through it, so the
 	 * message names neither "backlog items" nor any other one view's own vocabulary. */
