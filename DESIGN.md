@@ -263,8 +263,10 @@ as much as it is worked, and nothing on screen shouts.
 
 - **Answer** (`var(--font-ui-large)`, `var(--font-semibold)`): the one number a detail panel
   exists to state — today the estimation panel's total, and nothing else. *Added 2026-08-20,
-  documenting a size the stylesheet had already been using in one place
-  (`.pbl-est-decomp .pbl-est-total`) while this hierarchy declared three.* It is deliberately
+  documenting a size the stylesheet had already been using at `.pbl-est-decomp
+  .pbl-est-total` while this hierarchy declared three; that position-addressed rule was
+  since deleted, and the size is now declared on `.pbl-est-header .pbl-est-total`, the
+  header that owns its own type.* It is deliberately
   the narrowest possible entry: a panel that computes one figure from many inputs is a shape
   this system now has, and shrinking that figure to a heading's size loses the hierarchy the
   panel is for. It is **not** a general emphasis size — a second use needs the same argument,
