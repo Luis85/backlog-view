@@ -80,4 +80,17 @@ describe('the panel header owns its own type', () => {
 		expect(ruleAt('.pbl-est-header', 'padding-block-start: var(--size-4-3);')).toBeGreaterThan(-1);
 		expect(ruleAt('.pbl-est-header', 'position: sticky;')).toBeGreaterThan(-1);
 	});
+
+	it('undoes the clear control transition beside it, because motion.css loads too early', () => {
+		// `index.css` imports `motion.css` at position 10 and `estimationPanel.css` at 32. A
+		// media query adds NO specificity, so a `transition` declared here beats motion.css's
+		// `transition: none` at equal specificity and `prefers-reduced-motion` would silently not
+		// apply. `.pbl-add` is safe only because `columns.css` loads at position 6, BEFORE
+		// motion.css — an accident of order this partial does not share. DESIGN.md's documented
+		// exception ("unless it must sit beside the rule it overrides") is exactly this case.
+		const transition = ruleAt('.pbl-est-clear', 'transition: opacity 120ms ease-in-out;');
+		const stopped = ruleAt('.pbl-est-clear', 'transition: none;');
+		expect(transition).toBeGreaterThan(-1);
+		expect(stopped, 'the reduced-motion override must come after the transition').toBeGreaterThan(transition);
+	});
 });

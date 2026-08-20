@@ -267,6 +267,7 @@ describe('rendering', () => {
 			'.pbl-tag-remove',
 			'.pbl-tag-add',
 			'button.pbl-bar-connector',
+			'.pbl-est-clear',
 		]) {
 			const hides = ruleAt(selector, 'opacity: 0;');
 			const reveals = ruleAt(selector, 'opacity: 1;', '(hover: none)');

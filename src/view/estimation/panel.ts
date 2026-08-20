@@ -148,13 +148,15 @@ function scaleSpec(item: EstimationItem, model: ScoringModel, scale: ScaleName, 
 	};
 }
 
-/** One `.pbl-est-dim` row: the label always, then — only while the key is bound — the
- *  point buttons, an optional clear control, and the held point's rubric or clamp note. */
+/** One `.pbl-est-dim` row: a head line carrying the label, the point buttons and — only
+ *  while the key is bound and a value is stored — the clear control, then the held point's
+ *  rubric or clamp note on its own line below. */
 function renderScoreRow(panelEl: HTMLElement, spec: RowSpec): void {
 	const row = panelEl.createDiv({ cls: 'pbl-est-dim' });
-	row.createDiv({ cls: 'pbl-est-dim-label', text: spec.label });
+	const head = row.createDiv({ cls: 'pbl-est-dim-head' });
+	head.createDiv({ cls: 'pbl-est-dim-label', text: spec.label });
 	if (spec.key === '') return; // bare label row: nothing bound, nothing to click or show
-	const points = row.createDiv({ cls: 'pbl-est-points' });
+	const points = head.createDiv({ cls: 'pbl-est-points' });
 	for (let value = spec.min; value <= spec.max; value++) {
 		const active = spec.held === value;
 		const sentence = `${value} — ${spec.rubric[value - spec.min]}`;
@@ -172,7 +174,9 @@ function renderScoreRow(panelEl: HTMLElement, spec: RowSpec): void {
 		});
 		if (active) btn.setAttribute('aria-pressed', 'true');
 	}
-	if (spec.present) renderClearButton(points, spec);
+	// On the HEAD, not inside `points`: inside, it is a sixth arrow-key stop on a five-point
+	// scale once the group becomes a radiogroup.
+	if (spec.present) renderClearButton(head, spec);
 	const note = rubricNote(spec);
 	if (note !== null) row.createDiv({ cls: 'pbl-est-rubric', text: note });
 }
@@ -207,7 +211,7 @@ function rubricNote(spec: RowSpec): string | null {
 function renderClearButton(container: HTMLElement, spec: RowSpec): void {
 	const label = t('estimation.panel.clear', { label: spec.label });
 	const btn = container.createEl('button', {
-		cls: 'clickable-icon',
+		cls: 'clickable-icon pbl-est-clear',
 		attr: { type: 'button', 'data-dim': spec.id, 'data-kind': spec.kind, 'data-value': '', 'aria-label': label, title: label },
 	});
 	setIcon(btn, 'x');

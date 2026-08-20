@@ -24,12 +24,15 @@
  * available and neither is a media query that knows the pane's own width here (see
  * `test/CLAUDE.md`, "Looking at it"). What it gives instead: the table's `minmax(0,
  * …)` floor lets it shrink first, so a narrow pane squeezes the table before the
- * panel ever loses its 280px floor — graceful, not stacked. A real breakpoint wants
+ * panel ever loses its 320px floor — graceful, not stacked. A real breakpoint wants
  * a live vault's actual pane widths, not a guess made here.
  */
 .pbl-est-view {
 	display: grid;
-	grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
+	/* 320–420px, from 280–360px. A label, five point buttons and the clear control do not fit
+	   in 360px — measured, not estimated. The table pays, which is what its own `minmax(0,
+	   1fr)` floor already says it should: it shrinks first by design. */
+	grid-template-columns: minmax(0, 1fr) minmax(320px, 420px);
 	align-items: stretch;
 	gap: var(--size-4-3);
 	padding: var(--size-4-3);
@@ -37,7 +40,7 @@
 }
 
 /* No row selected: `renderPanel` (`panel.ts`) draws nothing and toggles this class,
-   because the grid above reserves its second track's 280-360px whether or not anything
+   because the grid above reserves its second track's 320-420px whether or not anything
    occupies it — left alone, an unselected table sits in a narrower left column for no
    reason, with a blank quarter to a third of the pane doing nothing beside it. */
 .pbl-est-view.pbl-est-no-panel {
