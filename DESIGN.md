@@ -28,6 +28,10 @@ colors:
   extra-milestone: "var(--color-cyan-rgb)"
   extra-idea: "var(--color-green-rgb)"
 typography:
+  answer:
+    fontFamily: "inherit"
+    fontSize: "var(--font-ui-large)"
+    fontWeight: "var(--font-semibold)"
   title:
     fontFamily: "inherit"
     fontSize: "var(--font-ui-medium)"
@@ -257,8 +261,17 @@ as much as it is worked, and nothing on screen shouts.
 
 ### Hierarchy
 
-- **Title** (`var(--font-ui-medium)`, `var(--font-medium)`): empty-state headlines only. The
-  one place this interface raises its voice, and it does so when there is nothing to show.
+- **Answer** (`var(--font-ui-large)`, `var(--font-semibold)`): the one number a detail panel
+  exists to state — today the estimation panel's total, and nothing else. *Added 2026-08-20,
+  documenting a size the stylesheet had already been using in one place
+  (`.pbl-est-decomp .pbl-est-total`) while this hierarchy declared three.* It is deliberately
+  the narrowest possible entry: a panel that computes one figure from many inputs is a shape
+  this system now has, and shrinking that figure to a heading's size loses the hierarchy the
+  panel is for. It is **not** a general emphasis size — a second use needs the same argument,
+  which is that the surface's whole purpose is the number.
+- **Title** (`var(--font-ui-medium)`, `var(--font-medium)`): empty-state headlines, and the
+  detail panel's item name above its Answer. Where this interface raises its voice — for a
+  headline when there is nothing to show, and for the name of the thing being scored.
 - **Body** (`var(--font-ui-small)`): row titles, card titles, column and bucket headers,
   toolbar buttons, the filter input, empty hints. The default reading size.
 - **Label** (`var(--font-ui-smaller)`, line-height 1.6–1.7): badges, chips, counts, limits,
