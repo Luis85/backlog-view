@@ -172,7 +172,7 @@ places that show them. Whoever runs `View options and config warnings` is transl
 strings anyway and should decide their shape then; keying a fragment here first would key
 somebody else's string, which the bullet above already refuses for headings.
 
-**`view/render/emptyStates.ts`, on 2026-08-20.** 24 keys, taking the catalog to 106 —
+**`view/render/emptyStates.ts`, on 2026-08-20.** 25 keys, taking the catalog to 107 —
 measured by asking the loaded module for `Object.keys(en).length` before and after, and
 agreeing with a count of the diff's added key lines. A third instrument, an AST walk for
 the catalog object's own properties, returned **0**, because `en` is declared `as const`
@@ -230,8 +230,72 @@ somebody else's string, which the `ui/` sweep above already refuses for headings
 runs [[View options and config warnings]] is translating those labels anyway and should
 take all six then.
 
+**The menu surface, on 2026-08-20.** 50 keys, taking the catalog to 157 — `menu.ts`,
+`shelfMenu.ts`, `columnMenu.ts`, and the two submenu builders `menu.ts` delegates to,
+`tags.ts` and `labels.ts`. Measured twice and after the last edit: `Object.keys(en).length`
+before and after (107 to 157), agreeing with a count of the diff's added key lines. All 50
+are one namespace, `menu.*`, which is what lets the runtime half compute its own swept list
+by prefix instead of keeping one by hand.
+
+`view/interactions/` is NOT finished, and the split was taken rather than found. The AST
+instrument reports 146 prose literals in that directory, against the 73 two narrow greps
+saw — and 13 of the 146 are false positives in `keyboard.ts` and `resizeDrag.ts`, which
+spell `'Escape'`, `'Home'` and `'End'` as `event.key` comparisons and must never be keyed.
+Sweeping the ~133 that remain is roughly a hundred keys and restructures five assembled
+sentences, which is two reviewable pull requests rather than one. This slice is the menus;
+what is left is `create.ts`, `absences.ts`, `dependencies.ts`, `plan.ts`, `structure.ts`
+and the drag modules, and it carries every assembled sentence in the directory —
+`runInit`'s outcome notice in `structure.ts` above all, whose OUTER sentence is built from
+parts, so keying the fragment alone would commit the defect one level up.
+
+Four things about this slice are worth carrying to the next one.
+
+**Four keys were REUSED rather than minted, and that is this slice's own finding.**
+`columnMenu.ts` needed `Expand {name}` / `Collapse {name}`, which `fold.expandColumn` and
+`fold.collapseColumn` already held for the column HEADER's disclosure; `shelfMenu.ts`
+needed `Search unplaced` and `Clear unplaced search`, which `shelf.search` and
+`shelf.clearSearch` already held for the shelf header's own box. Each pair is two surfaces
+over one action, and `src/view/CLAUDE.md` states the rule those have already come apart on
+twice — not "does it say the same thing" but "is it offered exactly when the first one is",
+with the answer somewhere both read. A second key is exactly a place for them to disagree.
+That is not the same as the catalog's no-deduplication rule, which refuses MERGING two keys
+that happen to share English: `menu.searchUnplaced` is a separate key from `shelf.search`
+for that reason, because a menu entry promising a dialog and a box's own label are two
+things that happen to read alike.
+
+**The runtime half asks the CATEGORY, and that is what a menu needs.** A menu is a list, so
+naming the entries checks the ones somebody remembered and not the next one added.
+`test/i18n/menus.test.ts` drains every title each surface draws — through submenus — and
+asserts that the unmarked remainder is exactly the DATA the menu lists, in two lists that
+mean opposite things: `DATA` (the type ladder, the states, the risk and priority rungs, the
+assignee, the iterations, the horizon buckets, the tags) must never shrink, and `UNSWEPT`
+(`Clear horizon` from `plan.ts`, `Depends on…` from `dependencies.ts`) must reach empty.
+Sweeping either of those files fails the test, which is the point — the entry is deleted in
+the same change that keys the string.
+
+**Its swept list is computed against `en.ts`, and its audit had a bug worth stating.** The
+list is `Object.keys(en).filter(k => k.startsWith('menu.'))` plus the four reused keys named
+explicitly, so a key added to the namespace joins it with nobody editing anything. The audit
+beside it then asks which of those keys was watched reaching a surface — and its first form
+compared the catalog's raw TEMPLATE against the rendered string, so every parameterised key
+read as missing while all of them were on screen. It matches the template as a pattern now,
+`{name}` standing for whatever the vault put there. Three keys are genuinely unreached and
+are named in the assertion rather than counted: `menu.useFolderPosition`, `menu.openChild`
+and `menu.clearTestState` each need a state no fixture in the file is in, and all three are
+`setTitle` calls, which is a spelling `UI_TEXT_LITERAL` reads.
+
+**The lint half is both bans, and the gap it leaves is one this directory creates.** These
+files spell `setTitle` and `new Notice`, so `UI_TEXT_LITERAL` holds them where it held
+nothing in `view/render/`; they also reach `ValuePromptModal` through an option bag, so
+`UI_TEXT_PROPERTY` catches `title:`. What NEITHER rule names is the other three properties
+of that same bag — `fieldName:`, `placeholder:` and `ctaLabel:` — and a literal at any of
+them fails no rule. That was watched: reverting `ctaLabel: t('menu.assignCta')` to `'Assign'`
+produces zero lint errors and fails `test/i18n/menus.test.ts`. Those three prompts are the
+part of the test that is load-bearing rather than belt-and-braces, and the ORDER was kept as
+both prior slices kept it — sweep, then ban.
+
 **The remaining English is the rest of `view/` and `domain/`.** By the AST instrument
-above: **299** in `view/render/` after this slice, 135 in `view/interactions/`, 345 in
+above: **299** in `view/render/` after this slice, 146 in `view/interactions/` by a later run of the same walk (13 of them `event.key` names, and about 52 of the rest swept by the menu slice above), 345 in
 `view/manual/` — a body of long-form prose no table in this note has ever counted, and its
 own question rather than an oversight — 19 in the rest of `view/`, and 349 in `domain/`, of
 which 60 are `domain/viewOptions.ts` and 186 the generated README in
@@ -239,11 +303,41 @@ which 60 are `domain/viewOptions.ts` and 186 the generated README in
 it is a text one. `viewOptions.ts` is [[View options and config warnings]] and not this
 note.
 
+**`view/interactions/`, WHOLE, on 2026-08-20.** The menu surface first, then the prompts,
+the notices and the backfill's outcome: 47 sites and 47 keys, taking the catalog to 202.
+Both text bans now cover every file in the directory — `create.ts` repeats them in its own
+block rather than inheriting, because two flat-config blocks matching one file OVERRIDE
+`no-restricted-syntax` rather than merge, which would silently drop whichever set lost.
+
+**Most of this slice was invisible to both bans, and that is the finding.** The prompts
+take their heading, description, placeholder and call to action as an OPTION BAG, and of
+those only `title:` is a property `UI_TEXT_PROPERTY` reads — a literal at `heading:`,
+`description:`, `placeholder:` or `cta:` fails no rule at all. Verified by planting:
+reverting one placeholder to its template literal leaves `eslint` silent and fails
+`test/i18n/interactions.test.ts`. The narrow greps that planned this slice saw 34 sites
+until `placeholder:` was added to the pattern, and then 47 — the fourth time in this epic
+a count was short because the instrument could not see a shape.
+
+**Two assembled sentences were the other half.** `runInit`'s outcome was
+`` `Product Backlog: ${list(done)}.${next}` `` — a template frame around keyed fragments,
+which passes every rule and leaves the sentence in English. It is now two WHOLE keys
+picked between (`init.outcome` / `init.outcomeWithColumns`), the shape
+`emptyState.noAxisBody` and its half-set sibling already use. The undo report was
+`` `Undo: ${parts.join('; ')}.` `` and is now one key whose parts are joined by `list()`,
+so the joining follows the catalog's grammar rather than a hardcoded `'; '`.
+
 ## Where it lives
 
 **`src/i18n/en.ts`** carries the keys; the swept call sites are `src/ui/prompts.ts`,
 `src/ui/stateColorsDialog.ts`, `src/ui/manualDialog.ts`, `src/commands/scaffold.ts`,
-`src/commands/readme.ts` and `src/view/render/emptyStates.ts`. The rest of the sweep
+`src/commands/readme.ts`, `src/view/render/emptyStates.ts`,
+`src/view/interactions/menu.ts`, `src/view/interactions/shelfMenu.ts`,
+`src/view/interactions/columnMenu.ts`, `src/view/interactions/tags.ts`,
+`src/view/interactions/labels.ts`, `src/view/interactions/absences.ts`,
+`src/view/interactions/dependencies.ts`, `src/view/interactions/create.ts`,
+`src/view/interactions/structure.ts`, `src/view/interactions/plan.ts`,
+`src/view/interactions/undo.ts` and `src/view/interactions/stateColors.ts` — which is
+`view/interactions/` WHOLE. The rest of the sweep
 touches every rendering module without changing what any of them does.
 
 `src/view/render/toolbar.ts` · `src/view/render/rows.ts` · `src/view/render/columns.ts` ·
@@ -255,7 +349,8 @@ touches every rendering module without changing what any of them does.
 `src/main.ts`.
 Tests: `test/view/contextRowWrites.test.ts` and `test/view/creation.test.ts` must pass
 untouched — they guard the two behaviours this sweep is most likely to disturb.
-`test/i18n/sweptSurfaces.test.ts` and `test/i18n/emptyStates.test.ts` are the swept half's
+`test/i18n/sweptSurfaces.test.ts`, `test/i18n/emptyStates.test.ts`,
+`test/i18n/menus.test.ts` and `test/i18n/interactions.test.ts` are the swept half's
 own checks, and each is a PAIR with lint rather than a substitute for it: they drive each
 surface under a fixture catalog, so a literal left at a call site renders English beside
 overridden neighbours, while `UI_TEXT_LITERAL` and `UI_TEXT_PROPERTY` in

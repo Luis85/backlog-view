@@ -9,6 +9,7 @@ import { configProblems } from '../../domain/settingsConsistency';
 import { resolveSettings } from '../../domain/settingsResolve';
 import { ItemSuggestModal, SuggestChoice } from '../../ui/itemSuggest';
 import { DependsOnDelta } from '../../domain/writePlan';
+import { t } from '../../i18n/t';
 
 /**
  * The two menu entries that state and clear a prerequisite.
@@ -29,7 +30,7 @@ export function addDependencyItems(host: BacklogViewHost, model: BacklogModel, m
 	if (isMarkerType(item.typeName)) return;
 	menu.addItem((mi) =>
 		mi
-			.setTitle('Depends on…')
+			.setTitle(t('dependency.dependsOn'))
 			.setIcon('link')
 			.onClick(() => promptAddDependency(host, model, item)),
 	);
@@ -39,7 +40,7 @@ export function addDependencyItems(host: BacklogViewHost, model: BacklogModel, m
 	if (item.ownKeys.dependsOn) {
 		menu.addItem((mi) =>
 			mi
-				.setTitle('Remove dependency…')
+				.setTitle(t('dependency.remove'))
 				.setIcon('unlink')
 				.onClick(() => promptRemoveDependency(host, model, item)),
 		);
@@ -122,19 +123,19 @@ function bindDependencyKey(host: BacklogViewHost): boolean {
 	// one where the `.base` is about to be written. (Codex, PR #128.)
 	const problems = configProblems(resolveSettings(host.config));
 	if (problems.length > 0) {
-		new Notice(`Fix the view options first: ${problems[0]}`);
+		new Notice(t('config.fixFirst', { problem: problems[0] }));
 		return false;
 	}
 	const bound = host.adoptDefaultProperties('dependsOn')[0];
 	if (bound === undefined) {
-		new Notice('The dependency property changed while the picker was open, so nothing was written.');
+		new Notice(t('dependency.propertyChanged'));
 		return false;
 	}
 	// After the fact rather than in front of the gesture: the `.base` changed for everyone
 	// who opens this view, so it is never silent — but a confirmation in front of a drag
 	// would put a dialog on the common path, to buy a decision that clearing the option
 	// takes back in one click.
-	new Notice(`Product Backlog: set up ${bound.suggested} to hold dependencies.`);
+	new Notice(t('dependency.setUp', { property: bound.suggested }));
 	return true;
 }
 
@@ -294,11 +295,11 @@ function promptAddDependency(host: BacklogViewHost, model: BacklogModel, item: B
 	}));
 	if (choices.length === 0) {
 		// A fact about the plan, not an empty picker — which reads as a broken picker.
-		new Notice('Nothing left to depend on: every other item would repeat this one or close a loop.');
+		new Notice(t('dependency.noneLeft'));
 		return;
 	}
 	new ItemSuggestModal(host.app, {
-		placeholder: `What must come before ${item.title}?`,
+		placeholder: t('dependency.addPlaceholder', { title: item.title }),
 		choices,
 		onChoose: (choice) => {
 			// The row that built this list can be a refresh behind the note: the graph may
@@ -315,7 +316,7 @@ function promptAddDependency(host: BacklogViewHost, model: BacklogModel, item: B
 			const current = host.model;
 			const stillLegal = current !== null && candidates(host, current, item).some((c) => c.file === choice.file);
 			if (!stillLegal) {
-				new Notice('That note changed while the picker was open, so nothing was written.');
+				new Notice(t('dependency.noteChanged'));
 				return;
 			}
 			applyDependencyWrite(host, item, { add: choice.file });
@@ -451,15 +452,15 @@ function promptRemoveDependency(host: BacklogViewHost, model: BacklogModel, item
 		})),
 	];
 	if (choices.length === 0) {
-		choices.push({ label: 'Remove the empty property', value: removalOfKey(host, item) });
+		choices.push({ label: t('dependency.removeEmpty'), value: removalOfKey(host, item) });
 	}
 	new ItemSuggestModal(host.app, {
-		placeholder: `Stop ${item.title} waiting for…`,
+		placeholder: t('dependency.removePlaceholder', { title: item.title }),
 		choices,
 		onChoose: (plan) => {
 			const delta = plan();
 			if (delta === null) {
-				new Notice('That note changed while the picker was open, so nothing was written.');
+				new Notice(t('dependency.noteChanged'));
 				return;
 			}
 			applyDependencyWrite(host, item, delta);
@@ -507,7 +508,7 @@ export function applyDependencyWrite(host: BacklogViewHost, item: BacklogItem, d
 		// Worded for both callers: the picker's own two Notices above are still true only
 		// of the picker (the window this one names is a suggester staying open), but this
 		// one is reached from the drag too, which has no picker to have stayed open.
-		new Notice('That note changed before the write landed, so nothing was written.');
+		new Notice(t('dependency.noteChangedBeforeWrite'));
 		return;
 	}
 	// After the recheck and before the write: binding rebuilds the model, so doing it

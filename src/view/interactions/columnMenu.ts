@@ -1,4 +1,5 @@
 import { Menu } from 'obsidian';
+import { t } from '../../i18n/t';
 import { BacklogViewHost, BoardSnapshot, ColumnScope } from '../host';
 import { BoardColumn, columnFoldValue, emptyNoState } from '../../domain/board';
 import { showMenuAtElement, showMenuForClick } from './menu';
@@ -74,7 +75,12 @@ function addFoldItem(
 ): void {
 	const { col, folded } = column;
 	menu.addItem((mi) => {
-		mi.setTitle(folded ? `Expand ${col.label}` : `Collapse ${col.label}`)
+		// The key the column HEADER's own disclosure draws from (`render/board.ts`), not a
+		// second one saying the same thing: the rule this pair has already come apart on
+		// twice is that two surfaces over one action must not be able to disagree, and a
+		// second key is exactly a place for them to. `col.label` is the column's value and
+		// stays a parameter.
+		mi.setTitle(t(folded ? 'fold.expandColumn' : 'fold.collapseColumn', { name: col.label }))
 			.setIcon(folded ? 'chevron-down' : 'chevron-right')
 			.onClick(() => host.setColumnCollapsed(scope, columnFoldValue(col), !folded));
 	});

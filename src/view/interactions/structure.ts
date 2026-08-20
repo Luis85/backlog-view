@@ -132,7 +132,7 @@ export async function runInit(host: BacklogViewHost): Promise<void> {
 	// already collide would change the configuration and then refuse every write.
 	const problems = configProblems(host.settings);
 	if (problems.length > 0) {
-		new Notice(`Fix the view options first: ${problems[0]}`);
+		new Notice(t('config.fixFirst', { problem: problems[0] }));
 		return;
 	}
 	// Binding first: an unnamed property has no key for the backfill to fill in, and
@@ -145,17 +145,24 @@ export async function runInit(host: BacklogViewHost): Promise<void> {
 	// success for the writes when the whole batch actually went through.
 	const applied = writes.length > 0 && (await host.applySafely(writes)) !== null;
 	const done: string[] = [];
-	if (adopted.length > 0) done.push(`set up ${adopted.map((property) => property.suggested).join(', ')}`);
+	// The property KEYS are joined by `list()` like the fragments below: they are data, so
+	// the names pass through untranslated while the joining follows the catalog's grammar.
+	if (adopted.length > 0)
+		done.push(t('init.adopted', { properties: adopted.map((property) => property.suggested) }));
 	if (applied) done.push(t('init.updatedItems', { count: writes.length }));
 	// Half the loop this action exists to close is outside it: a bound property draws no
 	// column until the base SHOWS it, and `BasesViewConfig` exposes no way to set the
 	// order from here. Naming the menu is the whole fix.
-	const next = adopted.length > 0 ? ' Add them in the properties menu to show them as columns.' : '';
-	// ponytail: the outer sentence is still assembled from fragments here — `Every surface
-	// translated` is what turns it into one key. The joiner is the half that is grammar,
-	// and it is the half `Plurals and interpolation` asked for.
-	if (done.length > 0) new Notice(`Product Backlog: ${list(done)}.${next}`);
+	//
+	// Two WHOLE sentences rather than one frame with that clause appended — the shape
+	// `emptyState.noAxisBody` and its half-set sibling already use, and the reason is the
+	// same: a locale that leads with the follow-up has no way into a middle assembled
+	// here. The summary inside them is still fragments joined by `list()`, which is
+	// grammar and follows the catalog's locale.
+	const summary = list(done);
+	if (done.length > 0)
+		new Notice(adopted.length > 0 ? t('init.outcomeWithColumns', { summary }) : t('init.outcome', { summary }));
 	// Nothing bound and nothing to write is the one case with no outcome to report;
 	// a failed batch has already reported itself.
-	else if (writes.length === 0) new Notice('All items already have the properties this view writes.');
+	else if (writes.length === 0) new Notice(t('init.nothingToDo'));
 }

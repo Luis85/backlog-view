@@ -114,5 +114,5 @@ function reportRestoreOutcome(outcome: RestoreOutcome): void {
 	const parts: string[] = [];
 	if (outcome.conflicts > 0) parts.push(t('undo.conflicts', { count: outcome.conflicts }));
 	if (outcome.missing > 0) parts.push(t('undo.missing', { count: outcome.missing }));
-	if (parts.length > 0) new Notice(`Undo: ${parts.join('; ')}.`);
+	if (parts.length > 0) new Notice(t('undo.outcome', { parts }));
 }

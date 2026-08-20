@@ -86,7 +86,7 @@ function buildItemMenu(host: BacklogViewHost, item: BacklogItem, childTypes: str
 	for (const type of offerableTypes(host, childTypes)) {
 		menu.addItem((mi) =>
 			mi
-				.setTitle(`New ${type}`)
+				.setTitle(t('menu.newChild', { type }))
 				.setIcon('plus')
 				.onClick(() => promptCreateItem(host, [type], item)),
 		);
@@ -104,13 +104,13 @@ function buildItemMenu(host: BacklogViewHost, item: BacklogItem, childTypes: str
 	menu.addSeparator();
 	menu.addItem((mi) =>
 		mi
-			.setTitle('Open in new tab')
+			.setTitle(t('menu.openInNewTab'))
 			.setIcon('file-plus')
 			.onClick(() => host.openItemIn(item, 'tab')),
 	);
 	menu.addItem((mi) =>
 		mi
-			.setTitle('Open to the right')
+			.setTitle(t('menu.openToTheRight'))
 			.setIcon('separator-vertical')
 			.onClick(() => host.openItemIn(item, 'split')),
 	);
@@ -198,7 +198,7 @@ function addParentLinkSection(host: BacklogViewHost, menu: Menu, item: BacklogIt
 		// returns to its folder position instead of being pinned to the top.
 		menu.addItem((mi) =>
 			mi
-				.setTitle('Clear parent link')
+				.setTitle(t('menu.clearParentLink'))
 				.setIcon('unlink')
 				.onClick(() => void host.applySafely([{ file: item.file, removeParentKey: true }])),
 		);
@@ -207,7 +207,7 @@ function addParentLinkSection(host: BacklogViewHost, menu: Menu, item: BacklogIt
 		// removing the property hands the item back to folder-note inference.
 		menu.addItem((mi) =>
 			mi
-				.setTitle('Use folder position')
+				.setTitle(t('menu.useFolderPosition'))
 				.setIcon('folder')
 				.onClick(() => void host.applySafely([{ file: item.file, removeParentKey: true }])),
 		);
@@ -227,37 +227,37 @@ function addMoveSection(host: BacklogViewHost, menu: Menu, item: BacklogItem): v
 
 	if (ranked && prev) {
 		menu.addItem((mi) =>
-			mi.setTitle('Move up').setIcon('arrow-up').onClick(() => moveWithinSiblings(host, item, -1)),
+			mi.setTitle(t('menu.moveUp')).setIcon('arrow-up').onClick(() => moveWithinSiblings(host, item, -1)),
 		);
 	}
 	if (prev) {
 		menu.addItem((mi) =>
 			mi
-				.setTitle(`Indent under "${prev.title}"`)
+				.setTitle(t('menu.indentUnder', { title: prev.title }))
 				.setIcon('indent-increase')
 				.onClick(() => indent(host, item)),
 		);
 	}
 	if (ranked && next) {
 		menu.addItem((mi) =>
-			mi.setTitle('Move down').setIcon('arrow-down').onClick(() => moveWithinSiblings(host, item, 1)),
+			mi.setTitle(t('menu.moveDown')).setIcon('arrow-down').onClick(() => moveWithinSiblings(host, item, 1)),
 		);
 	}
 	if (ranked && prev) {
 		menu.addItem((mi) =>
-			mi.setTitle('Move to top').setIcon('arrow-up-to-line').onClick(() => moveToEdge(host, item, 'top')),
+			mi.setTitle(t('menu.moveToTop')).setIcon('arrow-up-to-line').onClick(() => moveToEdge(host, item, 'top')),
 		);
 	}
 	if (ranked && next) {
 		menu.addItem((mi) =>
 			mi
-				.setTitle('Move to bottom')
+				.setTitle(t('menu.moveToBottom'))
 				.setIcon('arrow-down-to-line')
 				.onClick(() => moveToEdge(host, item, 'bottom')),
 		);
 	}
 	if (outdentTarget(host, item)) {
-		menu.addItem((mi) => mi.setTitle('Outdent').setIcon('indent-decrease').onClick(() => outdent(host, item)));
+		menu.addItem((mi) => mi.setTitle(t('menu.outdent')).setIcon('indent-decrease').onClick(() => outdent(host, item)));
 	}
 }
 
@@ -433,7 +433,7 @@ function addChildrenSection(host: BacklogViewHost, menu: Menu, item: BacklogItem
 	for (const child of menuChildren(host, item, cardedPaths(host))) {
 		menu.addItem((mi) =>
 			mi
-				.setTitle(`Open child "${child.title}"`)
+				.setTitle(t('menu.openChild', { title: child.title }))
 				.setIcon('corner-down-right')
 				.onClick((evt) => host.openItem(child, evt)),
 		);
@@ -610,7 +610,7 @@ function addStateItems(host: BacklogViewHost, menu: Menu, item: BacklogItem): vo
 	// `testStateProperty` is every catalog member. It is a residue rather than a reason to
 	// switch gates — the presence gate is absent on the shipped default, where nothing is
 	// stubbed because the key falls back — but it is not an edge case somebody has to build.
-	const clear: StateChoice = { state: null, label: 'Clear test state' };
+	const clear: StateChoice = { state: null, label: t('menu.clearTestState') };
 	if (!inCatalog(item) || computeTestStateWrites(item, clear.state).length === 0) return;
 	menu.addSeparator();
 	menu.addItem((si) => si.setTitle(clear.label).setIcon('eraser').onClick(() => void chooseState(host, item, clear)));
@@ -644,11 +644,11 @@ function addShelfSection(host: BacklogViewHost, menu: Menu): void {
 	if (host.shelfCollapsed) return;
 	menu.addSeparator();
 	menu.addItem((mi) => {
-		mi.setTitle('Sort unplaced').setIcon('arrow-up-down');
+		mi.setTitle(t('menu.sortUnplaced')).setIcon('arrow-up-down');
 		addShelfSortItems(host, submenuOf(mi));
 	});
 	menu.addItem((mi) => {
-		mi.setTitle('Filter unplaced by type').setIcon('list-filter');
+		mi.setTitle(t('menu.filterUnplacedByType')).setIcon('list-filter');
 		addShelfTypeItems(host, submenuOf(mi), shelf);
 	});
 	addShelfSearchItems(host, menu);
@@ -665,28 +665,28 @@ function submenuOf(item: MenuItem): Menu {
 
 function addSetStateMenu(host: BacklogViewHost, menu: Menu, item: BacklogItem): void {
 	menu.addItem((mi) => {
-		mi.setTitle('Set state').setIcon('circle-check');
+		mi.setTitle(t('menu.setState')).setIcon('circle-check');
 		addStateItems(host, submenuOf(mi), item);
 	});
 }
 
 function addSetRiskMenu(host: BacklogViewHost, menu: Menu, item: BacklogItem): void {
 	menu.addItem((mi) => {
-		mi.setTitle('Set risk').setIcon('shield-alert');
+		mi.setTitle(t('menu.setRisk')).setIcon('shield-alert');
 		addRiskItems(host, submenuOf(mi), item);
 	});
 }
 
 function addSetPriorityMenu(host: BacklogViewHost, menu: Menu, item: BacklogItem): void {
 	menu.addItem((mi) => {
-		mi.setTitle('Set priority').setIcon('flag');
+		mi.setTitle(t('menu.setPriority')).setIcon('flag');
 		addPriorityItems(host, submenuOf(mi), item);
 	});
 }
 
 function addSetAssigneeMenu(host: BacklogViewHost, menu: Menu, item: BacklogItem): void {
 	menu.addItem((mi) => {
-		mi.setTitle('Set assignee').setIcon('user');
+		mi.setTitle(t('menu.setAssignee')).setIcon('user');
 		addAssigneeItems(host, submenuOf(mi), item);
 	});
 }
@@ -699,7 +699,7 @@ function addSetAssigneeMenu(host: BacklogViewHost, menu: Menu, item: BacklogItem
  */
 function addSetIterationMenu(host: BacklogViewHost, menu: Menu, item: BacklogItem): void {
 	menu.addItem((mi) => {
-		mi.setTitle('Set iteration').setIcon('calendar-clock');
+		mi.setTitle(t('menu.setIteration')).setIcon('calendar-clock');
 		addIterationItems(host, submenuOf(mi), item);
 	});
 }
@@ -712,7 +712,7 @@ function addSetIterationMenu(host: BacklogViewHost, menu: Menu, item: BacklogIte
  */
 function addSetHorizonMenu(host: BacklogViewHost, menu: Menu, item: BacklogItem): void {
 	menu.addItem((mi) => {
-		mi.setTitle('Set horizon').setIcon('signpost');
+		mi.setTitle(t('menu.setHorizon')).setIcon('signpost');
 		addHorizonItems(host, submenuOf(mi), item);
 	});
 }
@@ -720,7 +720,7 @@ function addSetHorizonMenu(host: BacklogViewHost, menu: Menu, item: BacklogItem)
 function addScheduleItems(host: BacklogViewHost, menu: Menu, item: BacklogItem): void {
 	menu.addItem((mi) =>
 		mi
-			.setTitle('Schedule')
+			.setTitle(t('menu.schedule'))
 			.setIcon('calendar-range')
 			.onClick(() => promptSchedule(host, item)),
 	);
@@ -728,7 +728,7 @@ function addScheduleItems(host: BacklogViewHost, menu: Menu, item: BacklogItem):
 	if (!carriesDates(item, host.settings)) return;
 	menu.addItem((mi) =>
 		mi
-			.setTitle('Unschedule')
+			.setTitle(t('menu.unschedule'))
 			.setIcon('calendar-off')
 			.onClick(() => void unschedule(host, item)),
 	);
@@ -737,7 +737,7 @@ function addScheduleItems(host: BacklogViewHost, menu: Menu, item: BacklogItem):
 /** Tag editing on the keyboard path — the same list the row's + button offers. */
 function addEditTagsMenu(host: BacklogViewHost, menu: Menu, item: BacklogItem): void {
 	menu.addItem((mi) => {
-		mi.setTitle('Edit tags').setIcon('tags');
+		mi.setTitle(t('menu.editTags')).setIcon('tags');
 		addTagItems(host, submenuOf(mi), item);
 	});
 }
@@ -757,7 +757,7 @@ function addSetTypeMenu(host: BacklogViewHost, menu: Menu, item: BacklogItem): v
 		void host.applySafely([{ file: item.file, typeName: level }]);
 	};
 	menu.addItem((mi) => {
-		mi.setTitle('Set type').setIcon('tag');
+		mi.setTitle(t('menu.setType')).setIcon('tag');
 		const submenu = submenuOf(mi);
 		for (const level of choices) {
 			submenu.addItem((si) => {

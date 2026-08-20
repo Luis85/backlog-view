@@ -14,6 +14,7 @@ import { readDate, todayCivil } from '../../domain/noteFields';
 import { statedEnds } from '../../domain/bars';
 import { BacklogSettings } from '../../domain/settings';
 import { configProblems } from '../../domain/settingsConsistency';
+import { t } from '../../i18n/t';
 
 /**
  * Type for the primary New button: whatever the view is focused on when it is focused —
@@ -56,7 +57,7 @@ export function promptCreateItem(
 	// Creation writes frontmatter too — the same config guard as applySafely.
 	const problems = configProblems(host.settings);
 	if (problems.length > 0) {
-		new Notice(`Fix the view options first: ${problems[0]}`);
+		new Notice(t('config.fixFirst', { problem: problems[0] }));
 		return;
 	}
 	// Judge existence and infer folders from the FULL tree — a focused view with no
@@ -103,7 +104,7 @@ export function promptCreateItem(
 		// the tree and the toolbar, nothing external rebuilds a modal's content while it is
 		// open, so the shell this door is drawn into IS the container to resolve it from.
 		help: (el) =>
-			manualLink(el, host.app, manualSections(), { sectionId: 'creating', label: 'Where will this go?', root: el }),
+			manualLink(el, host.app, manualSections(), { sectionId: 'creating', label: t('create.whereLabel'), root: el }),
 		onSubmit: ({ title, folder, typeName }) => {
 			void createFromPrompt(host, {
 				levelName: typeName,
@@ -186,10 +187,10 @@ async function createFromPrompt(host: BacklogViewHost, request: CreateRequest): 
 			horizon: request.horizon,
 			...iterationOf(host),
 		});
-		new Notice(`Created "${file.basename}".`);
+		new Notice(t('create.created', { name: file.basename }));
 	} catch (e) {
 		console.error('Product Backlog: failed to create item', e);
-		new Notice('Could not create the item. See the developer console for details.');
+		new Notice(t('create.failed'));
 	}
 }
 
@@ -256,8 +257,8 @@ export function promptNewIteration(host: BacklogViewHost, model: BacklogModel): 
 	const previous = previousIteration(population);
 	const dates = nextIterationDates(previous, todayCivil(), host.settings.iterationLengthDays);
 	openIterationPrompt(host, {
-		heading: 'New iteration',
-		cta: 'Create',
+		heading: t('create.iterationHeading'),
+		cta: t('create.iterationCta'),
 		// Numbered, so a folder of iterations sorts in the order they run — and a prefill
 		// like every other field here, typed over by anyone who names their sprints.
 		name: nextIterationName(population),
@@ -272,8 +273,8 @@ export function promptEditIteration(host: BacklogViewHost, item: BacklogItem): v
 	if (refusedByConfig(host)) return;
 	const ends = statedEnds(item);
 	openIterationPrompt(host, {
-		heading: `Edit "${item.title}"`,
-		cta: 'Save',
+		heading: t('create.iterationEditHeading', { title: item.title }),
+		cta: t('create.iterationEditCta'),
 		// No name field: renaming an iteration is renaming a note, and Obsidian does that
 		// better — the stored scope already follows a rename either way.
 		name: null,
@@ -303,7 +304,7 @@ export function promptEditIteration(host: BacklogViewHost, item: BacklogItem): v
 function saveIteration(host: BacklogViewHost, item: BacklogItem, result: IterationResult): void {
 	const live = host.model?.byPath.get(item.file.path);
 	if (!live || !isIterationType(live.typeName)) {
-		new Notice('That iteration is no longer there. Nothing was written.');
+		new Notice(t('create.iterationGone'));
 		return;
 	}
 	void host.applySafely(
@@ -330,7 +331,7 @@ function reversed(start: string, target: string): boolean {
 function refusedByConfig(host: BacklogViewHost): boolean {
 	const problems = configProblems(host.settings);
 	if (problems.length === 0) return false;
-	new Notice(`Fix the view options first: ${problems[0]}`);
+	new Notice(t('config.fixFirst', { problem: problems[0] }));
 	return true;
 }
 
@@ -362,7 +363,7 @@ function openIterationPrompt(
 ): void {
 	new IterationPromptModal(host.app, {
 		...spec,
-		description: 'Dates are inclusive: an iteration runs from its start to its target, both days included.',
+		description: t('create.iterationDates'),
 		fields: {
 			start: host.settings.startKey !== '',
 			target: host.settings.targetKey !== '',
@@ -403,9 +404,9 @@ async function createIteration(host: BacklogViewHost, result: IterationResult): 
 		// a note to go and find; the user's answer is that making a sprint is a planning
 		// act and taking the reader off the board they are planning ON is the cost that
 		// argument did not count. The scope picker names it either way.
-		new Notice(`Created "${file.basename}".`);
+		new Notice(t('create.iterationCreated', { name: file.basename }));
 	} catch (e) {
 		console.error('Product Backlog: failed to create iteration', e);
-		new Notice('Could not create the iteration. See the developer console for details.');
+		new Notice(t('create.iterationFailed'));
 	}
 }
