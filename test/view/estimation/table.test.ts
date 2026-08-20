@@ -35,6 +35,10 @@ function row(containerEl: HTMLElement, path: string): HTMLElement {
 	return containerEl.querySelector(`.pbl-est-row[data-path="${path}"]`) as HTMLElement;
 }
 
+function progressOf(cell: Element): string | null {
+	return (cell.querySelector('.pbl-est-strip') as HTMLElement | null)?.style.getPropertyValue('--pbl-progress') ?? null;
+}
+
 describe('the estimation table', () => {
 	it('renders one row per result', () => {
 		const { containerEl } = makeEstimationView(fixture(), configuredValues());
@@ -113,6 +117,45 @@ describe('the estimation table', () => {
 		expect(rebuilt.getAttribute('aria-selected')).toBe('true');
 		const table = containerEl.querySelector('.pbl-est-table');
 		expect(table?.getAttribute('aria-activedescendant')).toBe(rebuilt.id);
+	});
+});
+
+describe('the value and coverage strips', () => {
+	it("scales the value strip to the model's declared output range, never to the population", () => {
+		// A bar that follows the population moves when somebody adds an item, so an item nobody
+		// touched changes appearance because of a neighbour — the argument
+		// `docs/requirements/The value against effort matrix.md` already settled for its
+		// threshold lines. Driven the only way that distinguishes the two: add a third item and
+		// assert the first two strips do not move.
+		const base = makeEstimationView(fixture(), configuredValues());
+		const before = progressOf(row(base.containerEl, 'Full.md').querySelector('.pbl-est-total')!);
+
+		const wider = fixture();
+		wider.addFile('Tiny.md', { frontmatter: { compliance: 1 } });
+		const after = progressOf(row(makeEstimationView(wider, configuredValues()).containerEl, 'Full.md').querySelector('.pbl-est-total')!);
+
+		expect(before).not.toBeNull();
+		expect(after).toBe(before);
+	});
+
+	it('gives coverage a strip and gives confidence and effort none', () => {
+		// Measured and cut: at 3px under a right-aligned digit a strip reads as a stray
+		// underline, and a negative effort clamps to an EMPTY strip — which says "low" where the
+		// truth is "invalid", right beside the cell showing the number the user typed.
+		const vault = new FakeVault();
+		vault.addFile('Negative.md', { frontmatter: { compliance: 1, confidence: 3, effort: -2 } });
+		const { containerEl } = makeEstimationView(vault, configuredValues());
+		const r = row(containerEl, 'Negative.md');
+		expect(r.querySelector('.pbl-est-coverage .pbl-est-strip')).not.toBeNull();
+		expect(r.querySelector('.pbl-est-cell[data-col="confidence"] .pbl-est-strip')).toBeNull();
+		expect(r.querySelector('.pbl-est-cell[data-col="effort"] .pbl-est-strip')).toBeNull();
+	});
+
+	it('leaves an unanswered cell with its dash and no strip', () => {
+		const { containerEl } = makeEstimationView(fixture(), configuredValues());
+		const total = row(containerEl, 'Empty.md').querySelector('.pbl-est-total')!;
+		expect(total.querySelector('.pbl-est-strip')).toBeNull();
+		expect(total.textContent).toBe('');
 	});
 });
 

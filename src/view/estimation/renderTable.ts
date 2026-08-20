@@ -302,24 +302,44 @@ function renderHead(view: EstimationView, tableEl: HTMLElement, pick: SortPick |
 }
 
 /**
+ * A row's numeric cell: the exact number, and — where the cell is one of the two the reader
+ * scans for extremes — a strip under it saying how much of a DECLARED range it reached.
+ *
  * Left EMPTY rather than a literal dash when there is no value: `styles/estimation.css`'s
  * `:empty::before` rule supplies the dash, so a computed absence and a row still mid-render
  * are never spelled the same way one keystroke apart from a real value (Task 2's deferred
- * `:empty` case, closed by `test/view/estimation/table.test.ts`).
+ * `:empty` case, closed by `test/view/estimation/table.test.ts`). A cell with no value gets
+ * no strip either — an empty track would read as "low" rather than as "not answered".
+ *
+ * `range` null means no strip at all, which is confidence and effort. Both had one and it
+ * was cut: at 3px under a right-aligned digit it reads as a stray underline, and a stored
+ * `-2` effort clamps to an empty strip, saying *low* where the truth is *invalid* directly
+ * beside the cell showing the number the user typed.
  */
-function numberCell(el: HTMLElement, value: number | null): void {
-	if (value !== null) el.setText(String(value));
+function numberCell(el: HTMLElement, value: number | null, range: [number, number] | null): void {
+	if (value === null) return;
+	el.createSpan({ cls: 'pbl-est-num', text: String(value) });
+	if (!range) return;
+	const [min, max] = range;
+	if (max <= min) return;
+	const ratio = Math.min(1, Math.max(0, (value - min) / (max - min)));
+	el.createDiv({ cls: 'pbl-est-strip' }).style.setProperty('--pbl-progress', `${Math.round(ratio * 100)}%`);
 }
 
-function renderRow(tableEl: HTMLElement, item: EstimationItem): HTMLElement {
+function renderRow(tableEl: HTMLElement, item: EstimationItem, output: [number, number]): HTMLElement {
 	const row = tableEl.createDiv({ cls: 'pbl-est-row', attr: { role: 'option' } });
 	row.dataset.path = item.file.path;
 	row.createDiv({ cls: 'pbl-est-title', text: item.title });
-	numberCell(row.createDiv({ cls: 'pbl-est-total' }), item.result?.total ?? null);
+	// The model's own declared output range, never the spread of what the base returned.
+	numberCell(row.createDiv({ cls: 'pbl-est-total' }), item.result?.total ?? null, output);
 	const coverage = row.createDiv({ cls: 'pbl-est-coverage' });
-	if (item.result) coverage.setText(`${item.result.coverage.answered}/${item.result.coverage.enabled}`);
-	numberCell(row.createDiv({ cls: 'pbl-est-cell', attr: { 'data-col': 'confidence' } }), item.confidence);
-	numberCell(row.createDiv({ cls: 'pbl-est-cell', attr: { 'data-col': 'effort' } }), item.effort);
+	if (item.result) {
+		coverage.createSpan({ cls: 'pbl-est-num', text: `${item.result.coverage.answered}/${item.result.coverage.enabled}` });
+		const ratio = item.result.coverage.enabled === 0 ? 0 : item.result.coverage.answered / item.result.coverage.enabled;
+		coverage.createDiv({ cls: 'pbl-est-strip' }).style.setProperty('--pbl-progress', `${Math.round(ratio * 100)}%`);
+	}
+	numberCell(row.createDiv({ cls: 'pbl-est-cell', attr: { 'data-col': 'confidence' } }), item.confidence, null);
+	numberCell(row.createDiv({ cls: 'pbl-est-cell', attr: { 'data-col': 'effort' } }), item.effort, null);
 	// The cell is the COLUMN and keeps a fixed width; the chip inside it hugs its own words.
 	// `.pbl-est-stale` is gone with them: the state is now one class per currency on the
 	// chip, so five treatments are declared in one place instead of one being special-cased
@@ -333,14 +353,19 @@ function renderRow(tableEl: HTMLElement, item: EstimationItem): HTMLElement {
  * the same key a zero-result base already answers with elsewhere in this view. `items`
  * is this pass's sorted order (see {@link sortedItems}).
  */
-function renderRows(tableEl: HTMLElement, items: EstimationItem[], selectedPath: string | null): Map<string, HTMLElement> {
+function renderRows(
+	tableEl: HTMLElement,
+	items: EstimationItem[],
+	selectedPath: string | null,
+	output: [number, number],
+): Map<string, HTMLElement> {
 	if (items.length === 0) {
 		tableEl.createDiv({ text: t('estimation.empty.noResults') });
 		return new Map();
 	}
 	const rows = new Map<string, HTMLElement>();
 	for (const item of items) {
-		const row = renderRow(tableEl, item);
+		const row = renderRow(tableEl, item, output);
 		rows.set(item.file.path, row);
 		applySelection(tableEl, row, item.file.path === selectedPath);
 	}
@@ -373,7 +398,10 @@ export function renderTable(view: EstimationView, model: EstimationModel, previo
 	view.tableEl = tableEl;
 	renderHead(view, tableEl, pick);
 	const items = sortedItems(model.items, pick);
-	const rows = renderRows(tableEl, items, view.selectedPath);
+	// The model's own declared output range, never the spread of what this base returned —
+	// `EstimationModel` carries no `ScoringModel`, so the range comes off the view.
+	const output: [number, number] = [view.settings.model.outputMin, view.settings.model.outputMax];
+	const rows = renderRows(tableEl, items, view.selectedPath, output);
 	wireEvents(view, tableEl, model, items, rows);
 	// Clamped to the fresh `scrollHeight` so a rebuild with fewer rows (a note leaving the
 	// base's results) cannot park the pane below its own last row.

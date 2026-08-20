@@ -1,0 +1,98 @@
+/* ==========================================================================
+   The currency column, and the chip inside it — split out of `estimation.css` at
+   Task 4 (2026-08-20), the same "one concern, one partial" reason
+   `estimationPanel.css` was split out at the 400-line cap: the table above is one
+   concern, this column and its chip are another. Position in `styles/index.css`'s
+   import list is NOT load-bearing — nothing outside this file declares
+   `.pbl-est-chip`, and this file's `.pbl-est-currency` rules and `estimation.css`'s
+   own (the fixed-width column sizing there, `:empty::before`'s dash here) are
+   DISJOINT property sets, so neither can override the other regardless of order.
+   THEY ARE TWO THINGS, and were one.
+
+   One element cannot be both a fixed-width column and a pill sized to its own words.
+   Sized to its content — `flex: 0 0 auto` with a 96px floor and a 140px ceiling — the cell
+   grew with the word, and because `.pbl-est-title` is the row's only shrinkable item it
+   absorbed the difference: `Needs re-estimation` measured 125.8px against the usual 96px,
+   so that row's numbers sat 29.8px LEFT of the header naming them and of every other row.
+   Measured across all eleven fixture rows with the harness's `?measure` knob, in both
+   directions.
+
+   140px is not a new number. It is the `max-width` this chip already declared and the width
+   `components.chip` declares in DESIGN.md, so the widest word was always budgeted for — it
+   was budgeted per ROW instead of per COLUMN. The chip keeps the content sizing this file
+   used to argue for ("the words are prose, not digits"), which is what that argument was
+   ever about; the COLUMN's width was never the chip's to decide.
+   ========================================================================== */
+
+.pbl-est-row > .pbl-est-currency,
+.pbl-est-head > .pbl-est-currency {
+	flex: 0 0 140px;
+	width: 140px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	overflow: hidden;
+}
+
+.pbl-est-chip {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: var(--size-2-1);
+	max-width: 100%;
+	overflow: hidden;
+	white-space: nowrap;
+	padding: 0 var(--size-4-1);
+	font-size: var(--font-ui-smaller);
+	line-height: 1.6;
+	color: var(--text-muted);
+	/* `--background-modifier-hover`, NOT `--background-secondary`. This chip is drawn on TWO
+	   surfaces — a table row painted `--background-primary`, and the panel painted
+	   `--background-secondary` — and the sunken fill the state and horizon chips use is
+	   invisible against the second of those: the plain `Current` chip vanished into the panel
+	   behind it while the coloured ones still read (harness, both schemes). The hover overlay
+	   is DESIGN.md's own "field behind counts and badges" and reads against either ground.
+	   Those chips live on rows only, so this is a fact about where this one is drawn rather
+	   than a second answer to one question. */
+	background-color: var(--background-modifier-hover);
+	border: 1px solid var(--background-modifier-border);
+	/* `--radius-s`, the state and horizon chips' own shape — not the `--radius-l` pill this
+	   used to be, which DESIGN.md reserves for counts, tags and the tag-add button. A
+	   currency word is a state chip sitting in a column beside two others, and "a second
+	   look would read as a second kind of thing". */
+	border-radius: var(--radius-s);
+}
+
+.pbl-est-chip-text {
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.pbl-est-chip-icon {
+	display: inline-flex;
+	align-items: center;
+	flex: 0 0 auto;
+}
+
+.pbl-est-chip-icon .svg-icon {
+	width: 14px;
+	height: 14px;
+}
+
+/* Attention, and it needs doing — plus the icon above, per the Shape-Before-Colour Rule.
+   `current` appears in no rule here on purpose: colour is spent only where there is
+   something to do, so a healthy screen is monochrome and the eye lands on these two. */
+.pbl-est-chip.pbl-est-cur-stale,
+.pbl-est-chip.pbl-est-cur-orphan {
+	color: var(--text-warning);
+	border-color: var(--text-warning);
+	background-color: rgba(var(--color-orange-rgb), 0.12);
+}
+
+/* The Dashed Line Rule, meant exactly as written: present, but not asserted. A foreign or
+   hand-written total is a number that exists and that this model does not vouch for. */
+.pbl-est-chip.pbl-est-cur-foreign,
+.pbl-est-chip.pbl-est-cur-handwritten {
+	border-style: dashed;
+	background-color: transparent;
+}
