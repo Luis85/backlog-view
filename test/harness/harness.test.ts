@@ -291,7 +291,7 @@ describe('the estimation harness mounts', () => {
 /**
  * One rule's own declarations, matched by an EXACT selector — anchored on the rule
  * boundary (`}` or the start of the file) rather than a bare substring search, because
- * `.pbl-est-title` is also the tail of `.pbl-est-panel > .pbl-est-title`'s selector, and
+ * `.pbl-est-title` is also the tail of `.pbl-est-header .pbl-est-title`'s selector, and
  * an unanchored search would read that rule's declarations instead of the one asked for.
  * Comments are stripped first (`test/helpers/cssVars.ts`'s own `eachBlock` does the same)
  * so a rule documented right above its selector cannot break the anchor.

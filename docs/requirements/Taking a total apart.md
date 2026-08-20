@@ -54,8 +54,10 @@ instead of it.
 
 **Extensions**
 
-- **1a — nothing is selected.** The panel column collapses to one track, and the second
-  track is restored once a row is picked.
+- **1a — the base returns zero results.** With no row to auto-select, nothing is picked
+  and the panel column collapses to one track — the only case this can still happen in,
+  since a base with any result auto-selects the first one drawn (never leaving the
+  reader to click before a panel appears).
 - **2a — the total is not current.** The currency word in the header already says which
   failure it is, and the decomposition below is computed from the scores on the note as
   they are now — so the panel shows what the model *says*, against a stored total that says

@@ -115,9 +115,14 @@ export class EstimationView extends BasesView {
 		this.render();
 	}
 
-	/** Where a projection draws. The grid once one exists (`gridEl`); the shell otherwise
-	 *  (`viewEl`), so the guided empty state and the config warning still land somewhere —
-	 *  neither ever reaches the line below that creates a grid at all. */
+	/** Where a projection draws: the grid once one exists (`gridEl`), the shell otherwise
+	 *  (`viewEl`). The `?? this.viewEl` fallback is defensive rather than exercised —
+	 *  `renderUnconfigured` and `renderProblems` create their own elements straight off
+	 *  `viewEl` and never call this getter, so its only real callers (`renderTable`,
+	 *  `renderPanel`) run after `gridEl` is already assigned. If a caller of this getter
+	 *  is ever added to either early-return branch, `renderPanel`'s
+	 *  `contentEl.toggleClass('pbl-est-no-panel', …)` would then be able to stamp that
+	 *  class on the shell, where no rule reads it. */
 	get contentEl(): HTMLElement {
 		return this.gridEl ?? this.viewEl;
 	}
@@ -138,9 +143,10 @@ export class EstimationView extends BasesView {
 		const panelScrollTop = this.panelEl?.scrollTop ?? 0;
 		this.viewEl.empty();
 		// Cleared with the teardown above and stays null through both early returns below —
-		// the guided empty state and the config-warning block draw into `contentEl`, which
-		// falls back to `viewEl` (the shell) for exactly as long as this is null. Only the
-		// configured path (bottom of this method) ever creates a grid again.
+		// the guided empty state and the config-warning block draw straight into `viewEl`
+		// (the shell), not through `contentEl`, so this null is never actually read by
+		// either. Only the configured path (bottom of this method) ever creates a grid
+		// again and starts reading `contentEl` for real.
 		this.gridEl = null;
 		const model = this.settings.model;
 		if (estimationUnconfigured(model)) {

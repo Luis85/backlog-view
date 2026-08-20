@@ -38,7 +38,8 @@ the delegated click and keyboard that set `EstimationView.selectedPath` —
 `src/view/estimation/currencyChip.ts` (`renderCurrencyChip`, split out of
 `renderTable.ts` so the currency CELL can stay a fixed-width column while the
 CHIP drawn inside it — the word, and an icon for the two currencies that need
-an action — stays sized to its own content; the same builder Task 4 reuses) ·
+an action — stays sized to its own content; the same builder `panel.ts`'s summary
+line reuses) ·
 `src/view/estimation/init.ts` (`runEstimationInit`, the guided empty state's own setup
 action: bind every suggested property nobody has touched, then stub the bound keys onto
 every result — one gated batch, so it is a single undo) ·

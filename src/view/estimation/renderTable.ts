@@ -164,11 +164,14 @@ function applySelection(tableEl: HTMLElement, row: HTMLElement, selected: boolea
  * path drawn from this pass's `items` — and `rows` is built from that same (possibly
  * sorted) list, so there is no state in which the lookup below can miss.
  *
- * `view.selectedPath` and `view.panelEl` are never null here either, since Task 9: this
- * handler is wired in the same render pass that auto-selects `items[0]` (and the panel it
- * draws) whenever `items` is non-empty, and a click or key press cannot reach a row before
- * that pass finishes — so a PREVIOUS selection, and its panel, always already exist by the
- * time a row is picked.
+ * `view.selectedPath` and `view.panelEl` are never null here either, since Task 9 — but not
+ * because the panel is already drawn when this handler is wired: `wireEvents` runs BEFORE
+ * `renderPanel` in `render()`, so it is not. What actually holds this up is that a
+ * dispatched listener can never run before the whole synchronous `render()` call
+ * completes — JS's run-to-completion, not draw order — so by the time a click or a key
+ * press can reach this handler at all, `render()` has finished start to end: `items[0]`
+ * is auto-selected, `renderPanel` has drawn its panel, and a PREVIOUS selection (and its
+ * panel) already exist.
  *
  * `scroll` is true only from the keyboard: a click already lands on a row the pointer
  * could reach, so nothing off screen needs to be brought into view for it.
@@ -371,7 +374,7 @@ function numberCell(el: HTMLElement, value: number | null, range: [number, numbe
 	const [min, max] = range;
 	if (max <= min) return;
 	const ratio = Math.min(1, Math.max(0, (value - min) / (max - min)));
-	el.createDiv({ cls: 'pbl-est-strip' }).style.setProperty('--pbl-progress', `${Math.round(ratio * 100)}%`);
+	el.createDiv({ cls: 'pbl-est-strip' }).setCssProps({ '--pbl-progress': `${Math.round(ratio * 100)}%` });
 }
 
 function renderRow(tableEl: HTMLElement, item: EstimationItem, output: [number, number]): HTMLElement {
@@ -384,7 +387,7 @@ function renderRow(tableEl: HTMLElement, item: EstimationItem, output: [number, 
 	if (item.result) {
 		coverage.createSpan({ cls: 'pbl-est-num', text: `${item.result.coverage.answered}/${item.result.coverage.enabled}` });
 		const ratio = item.result.coverage.enabled === 0 ? 0 : item.result.coverage.answered / item.result.coverage.enabled;
-		coverage.createDiv({ cls: 'pbl-est-strip' }).style.setProperty('--pbl-progress', `${Math.round(ratio * 100)}%`);
+		coverage.createDiv({ cls: 'pbl-est-strip' }).setCssProps({ '--pbl-progress': `${Math.round(ratio * 100)}%` });
 	}
 	numberCell(row.createDiv({ cls: 'pbl-est-cell', attr: { 'data-col': 'confidence' } }), item.confidence, null);
 	numberCell(row.createDiv({ cls: 'pbl-est-cell', attr: { 'data-col': 'effort' } }), item.effort, null);

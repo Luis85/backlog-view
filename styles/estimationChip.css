@@ -5,7 +5,7 @@
    concern, this column and its chip are another. Position in `styles/index.css`'s
    import list is NOT load-bearing — nothing outside this file declares
    `.pbl-est-chip`, and this file's `.pbl-est-currency` rules and `estimation.css`'s
-   own (the fixed-width column sizing there, `:empty::before`'s dash here) are
+   own (the fixed-width column sizing here, `:empty::before`'s dash there) are
    DISJOINT property sets, so neither can override the other regardless of order.
    THEY ARE TWO THINGS, and were one.
 
