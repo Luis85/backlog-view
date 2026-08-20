@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { mountHarness } from './mount';
 import { mountEstimationHarness, EstimationConfigVariant } from './mountEstimation';
 import { applyPlatform } from './theme';
-import { applyWantedEstimationSelection, openWantedDialog } from './knobs';
+import { applyWantedEstimationSelection, drawEstimationMeasurements, openWantedDialog } from './knobs';
 import { Modal } from '../helpers/obsidian-mock';
 import { installObsidianDom } from '../helpers/dom';
 import { ExtraButtonComponent } from '../helpers/obsidian-mock';
@@ -256,6 +256,29 @@ describe('the estimation harness mounts', () => {
 		collect(containerEl);
 
 		expect([...missing]).toEqual([]);
+	});
+
+	it('the ?measure knob reports a box per column and a type per probe', () => {
+		// The instrument this repository has no other way to check. jsdom lays nothing out, so
+		// every number below is 0 and asserting one would measure the runner — what is asserted
+		// is that the knob REPORTS, per column and per probe, because a knob that quietly
+		// stopped emitting is a page that looks fine and answers nothing (`test/CLAUDE.md`).
+		const root = document.body.createDiv();
+		const { view } = mountEstimationHarness(root, 'full');
+		// The panel probes below need a selected row to exist at all — the same click
+		// this file's other panel-reading tests dispatch (e.g. line 201).
+		view.tableEl?.querySelector<HTMLElement>('.pbl-est-row')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		drawEstimationMeasurements(view);
+		const pre = document.getElementById('pbl-measure');
+		expect(pre).not.toBeNull();
+		const lines = (pre!.textContent ?? '').split('\n');
+		for (const cls of ['pbl-est-title', 'pbl-est-total', 'pbl-est-coverage', 'pbl-est-currency']) {
+			expect(lines.filter((l) => l.startsWith(`BOX ${cls} `)).length, `${cls} boxes`).toBeGreaterThan(1);
+		}
+		expect(lines.filter((l) => l.startsWith('BOX pbl-est-title head '))).toHaveLength(1);
+		for (const probe of ['row title', 'panel total', 'panel title', 'decomp term']) {
+			expect(lines.filter((l) => l.startsWith(`TYPE ${probe} `)), `${probe} type`).toHaveLength(1);
+		}
 	});
 });
 

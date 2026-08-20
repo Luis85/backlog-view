@@ -2,7 +2,7 @@
  *  real reachable from a test), over `mountEstimation.ts` instead of `mount.ts`, so the
  *  estimation view stays permanently lookable: `npm run harness -- test/harness/estimation.ts`. */
 import { mountEstimationHarness, EstimationConfigVariant } from './mountEstimation';
-import { applyWantedEstimationSelection } from './knobs';
+import { applyWantedEstimationSelection, drawEstimationMeasurements } from './knobs';
 import { applyPlatform, drawSchemeToggle } from './theme';
 
 /**
@@ -26,6 +26,9 @@ drawSchemeToggle();
 // `?select=<title>` — the one state a screenshot cannot click its way to: a row
 // selected, so the panel beside the table is on screen.
 applyWantedEstimationSelection(view, window.location.search);
+
+// After the selection knob: the panel has to be on screen before its type can be read.
+if (new URLSearchParams(window.location.search).has('measure')) drawEstimationMeasurements(view);
 
 /** The view and its container, for a throwaway probe pasted into a console — `page.ts`'s own hook. */
 (window as unknown as Record<string, unknown>).__pbl = { view, containerEl };
