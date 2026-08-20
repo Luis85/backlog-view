@@ -33,8 +33,10 @@ assignee: ""
 ## Why this exists
 
 The polish pass that added the value and coverage strips, the five-treatment currency
-chip, the sticky panel header and the one-line dimension rows was drawn and checked
-against `test/harness/mock.ts` and the real assembled stylesheet, then verified by
+chip, the sticky panel header and the one-line dimension rows was drawn and argued in
+`npm run harness`, against the real view, the real fixture and the real assembled
+stylesheet, before the code changed — the committed `test/harness/estimation.ts` and an
+uncommitted scratch bundle entry of the kind `test/CLAUDE.md` documents — then verified by
 `npm run check` alone. Both stop at Obsidian's **default** colours (ADR 0020) — a
 community theme, a themed accent, and a real pane at a real width are none of them
 answerable in this repository. This note names exactly what stays unanswered rather than
