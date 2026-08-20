@@ -61,4 +61,86 @@ describe('the estimation view from the keyboard', () => {
 		key(table, 'Enter');
 		expect(vault.opened).toEqual([{ path: 'Full.md', mode: false }]);
 	});
+
+	it('lands ArrowRight on the row’s actual tab stop, never the first button in document order', () => {
+		// `strategic-alignment` is the first-rendered dimension row, and Full.md holds it at
+		// 5 — not `spec.min`. A `querySelector('a, b')` selector LIST (rather than two
+		// separate lookups with a real fallback) returns the first match in document order
+		// across either branch: since every radio is also a plain `button`, that always
+		// resolves to data-value="1" here regardless of tabindex. This pins the real tab
+		// stop, data-value="5".
+		const { containerEl } = makeEstimationView(fixture(), configuredValues());
+		const table = containerEl.querySelector('.pbl-est-table') as HTMLElement;
+		key(table, 'ArrowDown');
+		key(table, 'ArrowRight');
+		expect(document.activeElement).toBe(containerEl.querySelector('[data-dim="strategic-alignment"][data-value="5"]'));
+	});
+
+	it('puts the tab stop on the first point when the stored value is out of range or fractional', () => {
+		// The guard `stopValue` exists for exactly these two shapes: a value the scale cannot
+		// name leaves no button `active`, so without the guard the group would have NO tab
+		// stop at all and become unreachable from the keyboard — silently, since nothing here
+		// throws.
+		const vault = new FakeVault();
+		vault.addFile('OutOfRange.md', { frontmatter: { 'strategic-alignment': 7 } }); // range is 1-5
+		vault.addFile('Fractional.md', { frontmatter: { 'strategic-alignment': 2.5 } });
+		const { containerEl } = makeEstimationView(vault, configuredValues());
+
+		selectItem(containerEl, 'OutOfRange.md');
+		const outOfRangeStops = Array.from(containerEl.querySelectorAll('[data-dim="strategic-alignment"]')).filter(
+			(b) => b.getAttribute('tabindex') === '0',
+		);
+		expect(outOfRangeStops, 'reachable even though the stored value is out of range').toHaveLength(1);
+		expect(outOfRangeStops[0].getAttribute('data-value')).toBe('1');
+
+		selectItem(containerEl, 'Fractional.md');
+		const fractionalStops = Array.from(containerEl.querySelectorAll('[data-dim="strategic-alignment"]')).filter(
+			(b) => b.getAttribute('tabindex') === '0',
+		);
+		expect(fractionalStops, 'reachable even though the stored value is fractional').toHaveLength(1);
+		expect(fractionalStops[0].getAttribute('data-value')).toBe('1');
+	});
+
+	it('holds at the last point too: ArrowRight must not run past the max', () => {
+		const { containerEl } = makeEstimationView(fixture(), configuredValues());
+		selectItem(containerEl, 'Full.md');
+		// Held is 5, the last point of a 1-5 scale.
+		const group = containerEl.querySelector('[data-dim="strategic-alignment"]')!.closest('.pbl-est-points') as HTMLElement;
+		key(group, 'ArrowRight');
+		expect(containerEl.querySelector('[data-dim="strategic-alignment"][data-value="5"]')!.getAttribute('tabindex')).toBe('0');
+	});
+
+	it('does nothing when ArrowRight is pressed with no row selected (no panel to reach)', () => {
+		// `view.panelEl` is null with nothing selected, so the optional-chained lookup short-
+		// circuits to `undefined` and the `if (first)` guard's false branch is what runs —
+		// no throw, no focus change, and the key is not swallowed (not prevented).
+		const { containerEl } = makeEstimationView(new FakeVault(), configuredValues());
+		const table = containerEl.querySelector('.pbl-est-table') as HTMLElement;
+		expect(containerEl.querySelector('.pbl-est-panel')).toBeNull();
+		const before = document.activeElement;
+		const evt = key(table, 'ArrowRight');
+		expect(document.activeElement).toBe(before);
+		expect(evt.defaultPrevented).toBe(false);
+	});
+
+	it('a keydown outside any radiogroup does nothing', () => {
+		// The panel's own delegated keydown only acts when `evt.target` sits inside a
+		// `.pbl-est-points` element; the panel root itself is a real target that is not.
+		const { containerEl } = makeEstimationView(fixture(), configuredValues());
+		selectItem(containerEl, 'Full.md');
+		const panel = containerEl.querySelector('.pbl-est-panel') as HTMLElement;
+		const evt = key(panel, 'ArrowRight');
+		expect(evt.defaultPrevented).toBe(false);
+	});
+
+	it('a non-arrow key inside a radiogroup does nothing', () => {
+		// Only ArrowLeft/ArrowRight compute a nonzero delta; anything else — Tab, a letter,
+		// Space on the button itself — must fall through rather than moving or picking.
+		const { containerEl } = makeEstimationView(fixture(), configuredValues());
+		selectItem(containerEl, 'Full.md');
+		const group = containerEl.querySelector('[data-dim="compliance"]')!.closest('.pbl-est-points') as HTMLElement;
+		const evt = key(group, 'a');
+		expect(evt.defaultPrevented).toBe(false);
+		expect(containerEl.querySelector('[data-dim="compliance"][data-value="1"]')!.getAttribute('tabindex')).toBe('0');
+	});
 });

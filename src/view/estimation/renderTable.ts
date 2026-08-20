@@ -86,7 +86,15 @@ function wireEvents(
 		// Into the panel beside this row. `Enter` keeps opening the note (extension 4a), so
 		// this adds a key rather than reassigning one.
 		if (evt.key === 'ArrowRight') {
-			const first = view.panelEl?.querySelector<HTMLElement>('button.pbl-est-point[tabindex="0"], button');
+			// Two separate lookups, never a selector LIST: `querySelector('a, b')` returns the
+			// first match in document order across either branch rather than trying "a" before
+			// falling back to "b" — since every radio is also a `button`, that collapsed to the
+			// panel's first button regardless of which one actually held the roving tab stop.
+			// The fallback (any button — reaches the orphan cleanup control on a panel with no
+			// radiogroup) is a deliberate "land somewhere plain" over swallowing the key.
+			const first =
+				view.panelEl?.querySelector<HTMLElement>('button.pbl-est-point[tabindex="0"]') ??
+				view.panelEl?.querySelector<HTMLElement>('button');
 			if (first) {
 				evt.preventDefault();
 				first.focus();
