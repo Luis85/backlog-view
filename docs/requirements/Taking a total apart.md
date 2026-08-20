@@ -20,10 +20,11 @@ assignee: ""
 it and how much each one contributed, **so that** I can disagree with a term rather than
 with a number.
 
-The panel shows one term per answered dimension — its label, its score, its weight —
-followed by the total and the coverage it rests on, then the two labelled derived numbers
-beside it. Each derived number carries its own name and sits beside its inputs, never
-instead of them.
+The panel's pinned header states the total and the coverage it rests on, beside the
+currency chip and the two labelled derived numbers; the decomposition below it, under its
+own heading, shows one term per answered dimension — its label, its score, its weight.
+Each derived number carries its own name and sits beside the total it adjusts, never
+instead of it.
 
 ## Use case
 
@@ -37,14 +38,16 @@ instead of them.
 **Main flow**
 
 1. The user selects a row and the panel opens on that item.
-2. The scoring rows draw ([[Scoring an item against its rubric]]).
-3. Below them, one term per answered dimension: label, score, weight — the score the
-   total COUNTED, which is not the answer on the note wherever the value was clamped into
-   range or the dimension counts down.
-4. The summary line follows the terms: the total, and the coverage it rests on.
-5. The confidence-adjusted value draws once confidence is answered, under its own label,
-   beside the value it adjusts rather than in place of it.
-6. The value-to-effort indicator draws once effort is answered too, under its own label.
+2. The header states the total and the coverage it rests on, beside the currency chip,
+   pinned above everything else in the panel while the rest of it scrolls.
+3. The confidence-adjusted value draws in that same header once confidence is answered,
+   under its own label, beside the value it adjusts rather than in place of it.
+4. The value-to-effort indicator draws in the header too, once effort is answered, under
+   its own label.
+5. The scoring rows draw below the header ([[Scoring an item against its rubric]]).
+6. Under its own heading, one term per answered dimension follows: label, score, weight —
+   the score the total COUNTED, which is not the answer on the note wherever the value was
+   clamped into range or the dimension counts down.
 7. The user opens the item's note to read the reasoning behind the numbers, which is prose
    where its author wrote it — this view parses no note bodies and declares no rationale
    property.
@@ -53,21 +56,22 @@ instead of them.
 
 - **1a — nothing is selected.** The panel column collapses to one track, and the second
   track is restored once a row is picked.
-- **3a — no dimension is answered.** There is no decomposition, because there is no total
-  to decompose.
-- **5a — confidence is not answered.** The line is absent rather than drawn at a default.
-  Each derived line appears only once its own inputs exist.
-- **6a — effort is zero or below.** The indicator is omitted and no ratio is printed; the
+- **2a — the total is not current.** The currency word in the header already says which
+  failure it is, and the decomposition below is computed from the scores on the note as
+  they are now — so the panel shows what the model *says*, against a stored total that says
+  what it *said*.
+- **3a — confidence is not answered.** The line is absent from the header rather than
+  drawn at a default. Each derived line appears only once its own inputs exist.
+- **4a — effort is zero or below.** The indicator is omitted and no ratio is printed; the
   effort row's own out-of-range note says why.
-- **7a — the total is not current.** The currency word in the table already says which
-  failure it is, and the decomposition beside it is computed from the scores on the note
-  as they are now — so the panel shows what the model *says*, against a stored total that
-  says what it *said*.
+- **6a — no dimension is answered.** There is no decomposition, because there is no total
+  to decompose.
 
 ## Acceptance criteria
 
 - One term per answered dimension, each its own element, with the coverage wrapped
-  together with the total as the summary line that follows them.
+  together with the total as the summary line that leads them, pinned in the panel's
+  header above.
 - **Every term is a value `computeTotal` used**, asked of it rather than derived a second
   time beside it: a clamped answer reports as the value in range, and a `lessIsBetter`
   dimension as the value its direction gives the sum. A term computed independently of the
@@ -94,11 +98,13 @@ instead of them.
 
 ## Where it lives
 
-`src/view/estimation/panel.ts` (`renderDecomposition` — one term per answered dimension
-and the summary line — and `renderDerived`, the two labelled derived numbers, each drawn
-only once its own inputs exist, with `readAs` the one clamp on that panel, shared with the
-row note that reports it) · `src/domain/weightedScore.ts` (`computeTotal`, whose result,
-coverage and `Term` list the block reports, and `round2`) ·
+`src/view/estimation/panel.ts` (`renderSummary` — the total, its coverage and the currency
+chip, in the panel's pinned header — and `renderDerived`, the two labelled derived numbers
+beside it, each drawn only once its own inputs exist, with `readAs` the one clamp on that
+panel, shared with the row note that reports it; `renderDecomposition`, below the header
+and under its own heading, holds only the terms `computeTotal` produced) ·
+`src/domain/weightedScore.ts` (`computeTotal`, whose result, coverage and `Term` list the
+header and the decomposition both report, and `round2`) ·
 `src/domain/estimationItems.ts` (`EstimationItem`, which carries that result per note).
 
 Tests: `test/view/estimation/panel.test.ts`.

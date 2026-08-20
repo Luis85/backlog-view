@@ -69,6 +69,20 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   sanitized into a legal file name and capped at 60 characters; with no goal, or with no
   goal property configured, the name is unchanged.
 
+- The estimation view's table and panel are readable: a proportional strip on value and
+  coverage, a currency chip that spends colour only where something needs doing, columns
+  that line up across every row, and a panel whose total is stated above its inputs and
+  stays on screen while they scroll.
+- The estimation view has a toolbar — the backfill action, an undo for the last batch, and
+  how many of the results are scored.
+
+### Fixed
+
+- A long currency word pushed every numeric column on its row out of line with the header
+  above it.
+- The estimation panel's total and item name rendered at the wrong size, and the table
+  rendered at the reading size rather than a UI size.
+
 ## [0.9.1] - 2026-08-17
 
 ### Removed

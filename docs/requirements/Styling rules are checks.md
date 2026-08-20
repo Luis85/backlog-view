@@ -88,6 +88,8 @@ argue about.
 | No physical `left`/`right` property where a logical twin exists | Fixed by [[Nothing pins a physical side]], which carries the inventory |
 | No direction-dependent value in a shadow, mask or gradient | The same, and the group that has no twin to swap to |
 | No `:has()` on a container | Already reasoned about in `src/view/CLAUDE.md` |
+| `current` carries no colour class (the Spent Colour Rule, applied to a state word rather than a badge) | 0 — added by the estimation view's UX polish pass (2026-08-20): `renderCurrencyChip` never assigns one for `current`, the one currency that reading a total as trustworthy leaves plain |
+| One radius across the chip family — state, horizon and currency alike (`var(--radius-s)`, never the pill's `var(--radius-l)`) | 0 — added by the same pass: `.pbl-est-chip` took the state and horizon chips' radius once currency joined the family it reads beside |
 
 ### The colour rule needs one word of care
 

@@ -59,7 +59,8 @@ backlog's `order` is untouched by every click on it.
   `aria-sort` moves off the old one rather than marking two.
 - **4a — the arrow keys reach the end of the table.** They hold at the last row and at the
   first rather than wrapping. `Enter` opens the selected note; with nothing selected it
-  opens nothing, and on an empty table nothing happens at all.
+  opens nothing, and on an empty table nothing happens at all. `ArrowRight` moves focus into
+  the selected row's panel. `Enter` still opens the note.
 - **4b — the selected row leaves the results.** The stale selection is cleared, so the
   next arrow press does not teleport to row 0.
 - **5a — the base identity cannot be resolved.** The pick still sorts on screen and
