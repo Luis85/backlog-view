@@ -471,6 +471,14 @@ const UI_TEXT_LITERAL = {
 // no such instance to open on.
 //
 // **It sees that property shape and no other.** The two that remain uncovered in this file:
+// The property list covers the option-bag names too — `heading:`, `description:`,
+// `placeholder:`, `cta:`, `ctaLabel:`, `fieldName:` — and that was the whole of this rule's
+// blind spot rather than a corner of it. `ui/`'s prompts take their frame as an option bag,
+// so a swept caller could hand any of them a literal and fail nothing; the runtime half
+// caught it and lint did not, which made the "pair" one mechanism wearing two names for
+// every prompt in the plugin. Verified by planting at each name, and the swept tree stays
+// clean, so the widening costs no exemption.
+//
 // a template whose first quasi is empty (`UI_TEXT_LITERAL`'s own second exemption, for the
 // same reason — the capital test has nothing to read), and a prose literal handed to a
 // helper as a positional ARGUMENT, which is how `guidanceShell` takes every title and hint
@@ -479,7 +487,7 @@ const UI_TEXT_LITERAL = {
 // that every string a frame drew carries the fixture catalog's marker.
 const UI_TEXT_PROPERTY = {
 	selector:
-		"Property[key.name=/^(text|label|title)$/]:matches([value.type='Literal'][value.value=/^[A-Z]/], [value.type='TemplateLiteral'][value.quasis.0.value.raw=/^[A-Z]/]), Property[key.value='aria-label']:matches([value.type='Literal'][value.value=/^[A-Z]/], [value.type='TemplateLiteral'][value.quasis.0.value.raw=/^[A-Z]/])",
+		"Property[key.name=/^(text|label|title|heading|description|placeholder|cta|ctaLabel|fieldName)$/]:matches([value.type='Literal'][value.value=/^[A-Z]/], [value.type='TemplateLiteral'][value.quasis.0.value.raw=/^[A-Z]/]), Property[key.value='aria-label']:matches([value.type='Literal'][value.value=/^[A-Z]/], [value.type='TemplateLiteral'][value.quasis.0.value.raw=/^[A-Z]/])",
 	message:
 		'A sentence spelled where it is used cannot be translated. Add a key to src/i18n/en.ts and call t() — and if this is a value the plugin writes, matches or persists rather than text, it belongs in neither place.',
 };
