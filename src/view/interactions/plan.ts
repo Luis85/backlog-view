@@ -9,6 +9,7 @@ import { formatCivil } from '../../domain/timeline';
 import { computeHorizonWrites, SchedulePlan } from '../../domain/writePlan';
 import { SchedulePromptModal } from '../../ui/prompts';
 import { rowVocabulary } from '../projection';
+import { t } from '../../i18n/t';
 
 /**
  * Setting the roadmap's placement properties from a row — the horizon it sits in and
@@ -120,7 +121,7 @@ export function addHorizonItems(host: BacklogViewHost, menu: Menu, item: Backlog
 	menu.addSeparator();
 	menu.addItem((si) =>
 		si
-			.setTitle('Clear horizon')
+			.setTitle(t('plan.clearHorizon'))
 			.setIcon('eraser')
 			.onClick(() => void chooseHorizon(host, item, null)),
 	);
@@ -277,8 +278,8 @@ export function promptSchedule(
 	// and the two could disagree, which is the defect this shape exists to remove.
 	const prefill = Object.fromEntries(fields.map((entry) => [entry.field, entry.value]));
 	new SchedulePromptModal(host.app, {
-		heading: `Schedule "${item.title}"`,
-		description: 'Pick a date for each end, or clear a field to remove that date.',
+		heading: t('plan.scheduleHeading', { title: item.title }),
+		description: t('plan.scheduleDescription'),
 		fields,
 		validate: (values) => validateSchedule(values, unshown),
 		onSubmit: (values) => void host.performScheduleMove(item, planFrom(prefill, values)),

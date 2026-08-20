@@ -15,6 +15,7 @@ import {
 	renameAbsenceNote,
 	updateAbsenceNote,
 } from '../../storage/absenceNotes';
+import { t } from '../../i18n/t';
 
 /**
  * The view's half of an absence: opening the prompt from a resource's row header,
@@ -37,8 +38,10 @@ export function promptAddAbsence(host: BacklogViewHost, lane: ResourceLane): voi
 	if (refusedByConfig(host)) return;
 	const folder = absenceFolder(host);
 	new AbsencePromptModal(host.app, {
-		heading: 'Add absence',
-		description: `Marks the resource unavailable for a stretch. Filed ${folder ? `in "${folder}"` : 'in the vault root'}.`,
+		heading: t('absence.addHeading'),
+		// Two whole sentences picked between, never a clause spliced into a shared frame: a
+		// locale that leads with the location has no way into a middle assembled here.
+		description: folder ? t('absence.addInFolder', { folder }) : t('absence.addInRoot'),
 		resource: lane.name,
 		// The declared roster plus the row this was opened on, so a name typed here keeps
 		// the spelling the view options gave it. Deliberately NOT the drawn rows, which
@@ -85,8 +88,8 @@ function absenceFolder(host: BacklogViewHost): string {
 function promptEditAbsence(host: BacklogViewHost, absence: Absence): void {
 	if (refusedByConfig(host)) return;
 	new AbsencePromptModal(host.app, {
-		heading: 'Edit absence',
-		description: 'Changes who is away and for how long. The note is renamed to match.',
+		heading: t('absence.editHeading'),
+		description: t('absence.editDescription'),
 		resource: absence.resource,
 		editing: { start: formatCivil(absence.start), target: formatCivil(absence.target) },
 		known: [...new Set([absence.resource, ...host.settings.resourceNames])],
@@ -108,11 +111,11 @@ function promptEditAbsence(host: BacklogViewHost, absence: Absence): void {
 function refusedByConfig(host: BacklogViewHost): boolean {
 	const problems = configProblems(host.settings);
 	if (problems.length > 0) {
-		new Notice(`Fix the view options first: ${problems[0]}`);
+		new Notice(t('config.fixFirst', { problem: problems[0] }));
 		return true;
 	}
 	if (!absencesConfigured(host.settings)) {
-		new Notice('Name the assignee and both date properties before recording absences.');
+		new Notice(t('absence.needsProperties'));
 		return true;
 	}
 	return false;
@@ -152,13 +155,13 @@ export function showAbsenceMenu(host: BacklogViewHost, absence: Absence, evt: Mo
 	const menu = new Menu();
 	menu.addItem((mi) =>
 		mi
-			.setTitle('Edit absence')
+			.setTitle(t('absence.edit'))
 			.setIcon('pencil')
 			.onClick(() => promptEditAbsence(host, absence)),
 	);
 	menu.addItem((mi) =>
 		mi
-			.setTitle('Delete absence')
+			.setTitle(t('absence.delete'))
 			.setIcon('trash-2')
 			.onClick(() => void removeAbsence(host, absence)),
 	);
@@ -168,10 +171,10 @@ export function showAbsenceMenu(host: BacklogViewHost, absence: Absence, evt: Mo
 async function removeAbsence(host: BacklogViewHost, absence: Absence): Promise<void> {
 	try {
 		await deleteAbsenceNote(host.app, absence.file);
-		new Notice(`Deleted "${absence.title}".`);
+		new Notice(t('absence.deleted', { title: absence.title }));
 	} catch (e) {
 		console.error('Product Backlog: failed to delete the absence', e);
-		new Notice('Could not delete the absence. See the developer console for details.');
+		new Notice(t('absence.deleteFailed'));
 	}
 }
 
@@ -204,10 +207,10 @@ async function editAbsence(host: BacklogViewHost, absence: Absence, result: Abse
 		// looking for a note that does not exist. `writeAbsence` below already reports
 		// `file.basename` for the same reason; a rename mutates the `TFile` in place, so
 		// this reads the name the note now answers to.
-		new Notice(`Updated "${absence.file.basename}".`);
+		new Notice(t('absence.updated', { name: absence.file.basename }));
 	} catch (e) {
 		console.error('Product Backlog: failed to edit the absence', e);
-		new Notice('Could not save the absence. See the developer console for details.');
+		new Notice(t('absence.saveFailed'));
 	}
 }
 
@@ -221,9 +224,9 @@ async function writeAbsence(host: BacklogViewHost, result: AbsenceResult): Promi
 		// compiler rather than assumed, since the opposite was written here first.
 		const spec: AbsenceSpec = { ...result, folder: absenceFolder(host), title: absenceTitle(result) };
 		const file = await createAbsenceNote(host.app, host.settings, spec);
-		new Notice(`Marked ${result.resource} away — "${file.basename}".`);
+		new Notice(t('absence.created', { resource: result.resource, name: file.basename }));
 	} catch (e) {
 		console.error('Product Backlog: failed to create the absence', e);
-		new Notice('Could not create the absence. See the developer console for details.');
+		new Notice(t('absence.createFailed'));
 	}
 }

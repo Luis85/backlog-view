@@ -1,4 +1,5 @@
 import { Menu, Notice } from 'obsidian';
+import { t } from '../../i18n/t';
 import { BacklogViewHost } from '../host';
 import { ValuePromptModal } from '../../ui/prompts';
 import { BacklogItem } from '../../domain/model';
@@ -34,7 +35,7 @@ function addTag(host: BacklogViewHost, item: BacklogItem, raw: string): void {
 	const tag = normalizeTag(raw);
 	if (tag.length === 0) {
 		// Say so rather than closing the prompt as if the tag had been added.
-		if (raw.trim().length > 0) new Notice('Tags need at least one non-numeric character, so that was not added.');
+		if (raw.trim().length > 0) new Notice(t('menu.tagRejected'));
 		return;
 	}
 	if (hasTag(item.tags, tag)) return;
@@ -64,7 +65,7 @@ export function addTagItems(host: BacklogViewHost, menu: Menu, item: BacklogItem
 	}
 	menu.addItem((mi) =>
 		mi
-			.setTitle('New tag...')
+			.setTitle(t('menu.newTag'))
 			.setIcon('plus')
 			.onClick(() => promptNewTag(host, item)),
 	);
@@ -73,10 +74,10 @@ export function addTagItems(host: BacklogViewHost, menu: Menu, item: BacklogItem
 /** Free-text entry, suggesting the tags already in use so spellings stay consistent. */
 function promptNewTag(host: BacklogViewHost, item: BacklogItem): void {
 	new ValuePromptModal(host.app, {
-		title: 'Add tag',
-		fieldName: 'Tag',
-		placeholder: 'Sprint-12',
-		ctaLabel: 'Add',
+		title: t('menu.addTagTitle'),
+		fieldName: t('menu.addTagField'),
+		placeholder: t('menu.addTagPlaceholder'),
+		ctaLabel: t('menu.addTagCta'),
 		sigil: '#',
 		known: tagChoices(host, item).filter((tag) => !hasTag(item.tags, tag)),
 		onSubmit: (tag) => addTag(host, item, tag),

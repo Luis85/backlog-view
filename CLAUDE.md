@@ -109,9 +109,19 @@ language, so nothing re-reads it. What must never enter the catalog is anything 
 writes, matches or persists — type names, state values, option keys, tags, file names. The
 test when it is not obvious: **ask what breaks if two people with different Obsidian
 languages open the same vault.** "One sees different words" is text; "one writes notes the
-other's view cannot read" is data. Only ~21 keys are in it so far — the sweep across the
-remaining call sites is `docs/requirements/Every surface translated.md`, so an English
-literal beside a `t()` call is work not yet done rather than a rule being broken.
+other's view cannot read" is data. 202 keys are in it (counted 2026-08-20); `ui/`,
+`commands/`, `view/interactions/` and `view/render/emptyStates.ts` are swept, so the REST
+of `view/render/`, `view/manual/`, `domain/` and `main.ts` are what is left — the last of those being two command NAMES, which is easy
+to read past because the directories beside it are done. The sweep across those call sites is `docs/requirements/Every surface translated.md`,
+and an English literal beside a `t()` call there is work not yet done rather than a rule
+being broken. In a SWEPT directory it is neither: `UI_TEXT_LITERAL` in `eslint.config.mjs`
+refuses one at the spellings it can see, and a directory joins that ban only after its own
+sweep — and it sees a quoted or backticked sentence at the setter names and `new Notice`,
+never one built in a helper and returned, which is why the runtime half beside it exists.
+`UI_TEXT_PROPERTY` is the second such ban, for the `text:`/`label:`/`'aria-label':`
+properties a module that spells no setter at all reaches the DOM through; between them they
+still miss a prose literal handed to a helper as an ARGUMENT, which is the runtime half's
+alone to hold.
 
 **`domain/`** is the backlog itself — what the tree *is*, what a change *would* mean, what
 each projection derives — and it reads the vault without ever writing it or touching the

@@ -11,7 +11,7 @@ import {
 	hasResourceAxis,
 	placementLabel,
 	RoadmapAxis,
-	SHELF_LABEL,
+	shelfLabel,
 	targetLabel,
 } from '../../src/domain/roadmap';
 import { readPlacement } from '../../src/domain/noteFields';
@@ -314,7 +314,7 @@ describe('the label a placement is named by', () => {
 	it('names a target by the value picked, never by the shelf', () => {
 		const roadmap = roadmapWith(null);
 
-		expect(targetLabel(roadmap, null)).toBe(SHELF_LABEL);
+		expect(targetLabel(roadmap, null)).toBe(shelfLabel());
 		// Hiding can take away a value's only carrier while the menu goes on offering
 		// it, so a pick can name a bucket the frame is not currently drawing. The write
 		// still puts the note there, and saying "Unplaced" would report a different
@@ -329,7 +329,7 @@ describe('the label a placement is named by', () => {
 		// cleanups — `computeHorizonWrites` clears on the KEY, not on the reading — so
 		// naming them all "Unplaced" would report a change as a move that did not
 		// happen, in exactly the words the move to the shelf already uses.
-		expect(placementLabel(roadmap, said(null))).toBe(SHELF_LABEL);
+		expect(placementLabel(roadmap, said(null))).toBe(shelfLabel());
 		expect(placementLabel(roadmap, said('', true))).toBe('an empty horizon');
 		expect(placementLabel(roadmap, { reading: { value: null, invalid: true }, keyPresent: true })).toBe(
 			'an unreadable horizon',

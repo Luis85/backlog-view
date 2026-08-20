@@ -102,6 +102,32 @@ export function nextIterationName(items: Iterable<BacklogItem>): string {
 }
 
 /**
+ * The note name a new iteration takes: the confirmed name, then the confirmed goal.
+ *
+ * `1 - Iteration - Ship the board` rather than `1 - Iteration`, so a folder of sprints
+ * says what each one was FOR without opening it. The goal is the name's tail rather than
+ * its head, because the numeric prefix is what makes the folder sort in the order they
+ * run (`nextIterationName` above) and a goal in front of it would break that.
+ *
+ * Appended, never substituted: the name field is still what the reader typed, and a blank
+ * goal — or a goal property nobody configured, which draws no field at all — leaves the
+ * name exactly as it was.
+ *
+ * Capped, because a goal is free text and a file name is not: the vault refuses a name
+ * over the file system's limit, so an essay typed into the goal would fail the create
+ * that the name is for. Illegal characters are NOT dealt with here — `sanitizeTitle`
+ * (`storage/createNote.ts`) is the one place a title becomes a file name, and this layer
+ * may not reach it.
+ */
+export function iterationNoteName(name: string, goal: string): string {
+	const tail = goal.trim().slice(0, GOAL_NAME_MAX);
+	return tail === '' ? name : `${name} - ${tail}`;
+}
+
+/** How much of a goal a note name carries. A file name is limited; a goal is not. */
+const GOAL_NAME_MAX = 60;
+
+/**
  * The number a title LEADS with, or 0 for one that leads with none. Deliberately blind to
  * a number anywhere else: `Sprint 12 - review of 3` leads with nothing, and reading the
  * `3` out of it would number the next iteration from a word.

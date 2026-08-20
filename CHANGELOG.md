@@ -11,6 +11,54 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ## [Unreleased]
 
+### Changed
+
+- **Every menu takes its words from the message catalog now** — the row and card menu, the
+  board column's fold, the shelf's sort, type filter and search, and the Set state, Set
+  risk, Set priority, Set assignee, Set iteration, Set horizon, Set type and Edit tags
+  submenus, along with the prompts they open. Nothing reads differently in English, and
+  nothing a menu LISTS is translated: your type names, workflow states, risk and priority
+  rungs, assignees, iterations, horizon buckets and tags are what your notes hold, so they
+  appear exactly as you wrote them in every language. Two entries are still English —
+  `Clear horizon` and `Depends on…` — and follow with the rest of their own files.
+
+- **Everything the view says when it has nothing to show comes from the message catalog
+  now** — the empty backlog and its focused form, the empty test catalog, the guidance both
+  boards show without a workflow, the roadmap without an axis, the empty Deliverables board
+  and iteration, and the "all done and hidden" notice. Nothing reads differently in
+  English. Type names are not translated and never will be: they are what `type:` holds in
+  your notes, so a sentence that quotes one takes it as it is written.
+
+- **Every dialog and both commands take their words from the message catalog now** — the
+  new-item, folder, schedule, absence and iteration prompts, the state-colour dialog, the
+  manual's title, and the notices from `Create backlog` and `Write backlog readme`. Nothing
+  reads differently in English except one line of punctuation: the readme command's
+  configuration refusal used to run its problems together as `"…".; "…"..` and now joins
+  them as a list. With more than one problem that list still reads a little oddly, since
+  what it joins are whole sentences; the rest of it waits on those sentences being
+  translated. The plugin's own name is still its name in every language.
+
+- **The words the plugin uses for "no placement" come from the message catalog now** —
+  `Unplaced`, `Unscheduled`, `No state` and the `Unset` a real state collides with, plus
+  the shelf's search labels and the marker row's header. Nothing reads differently in
+  English. What changes is that they can be translated at all: they were constants in the
+  code, and a constant is fixed before the plugin has read which language Obsidian is in.
+
+- **The manual's item-types paragraph is built from the type vocabulary, not written around
+  it.** It reads the same, with two small improvements the change came with: the lists in it
+  now join the way English joins lists (`Issue, Bug, Idea, and Deliverable`), and the rungs
+  the `+` offers under are named from the ladder itself rather than spelled out, so adding a
+  rung to the ladder or a type beside it describes the new one instead of leaving the
+  sentence quietly wrong. One thing it still does not adapt to: the paragraph says markers
+  "are" neither, so a vocabulary reduced to a single marker type would read oddly until the
+  sentence is rewritten.
+
+- **A new iteration is named for its goal.** `New iteration…` names the note
+  `1 - Iteration - Ship the board` rather than `1 - Iteration`, so a folder of sprints says
+  what each one was for without opening one. The goal is appended to the name you confirm,
+  sanitized into a legal file name and capped at 60 characters; with no goal, or with no
+  goal property configured, the name is unchanged.
+
 ## [0.9.1] - 2026-08-17
 
 ### Removed
@@ -53,6 +101,14 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   text by hand. The native button is now suppressed outright, so the field never shows two.
 
 ### Changed
+
+- **Fold controls read as whole sentences.** Expanding or collapsing a board column, the
+  roadmap's unplaced shelf, or a resource's band on the roadmap now takes its wording from
+  the message catalog rather than swapping a verb inside one. Nothing about the wording
+  changes in English; what changes is that a translation can reorder or inflect the whole
+  sentence instead of being handed two halves. A resource band's chevron also stopped
+  carrying an unreachable second label for the milestones row, which draws no chevron at
+  all.
 
 - **The board toggle is now called Boards.** Since the scope picker moved every board —
   Product, Deliverables, and each iteration — behind one toggle position, the switcher

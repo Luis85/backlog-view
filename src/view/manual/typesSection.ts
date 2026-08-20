@@ -1,3 +1,4 @@
+import { t } from '../../i18n/t';
 import { ManualEntry, ManualSection } from '../../ui/manualDialog';
 import { ALL_TYPES, EXTRA_TYPES, LEVELS, MARKER_TYPES } from '../../domain/typeVocabulary';
 import { badgeStyleFor } from '../render/badges';
@@ -77,13 +78,19 @@ export function typesSection(): ManualSection {
 	return {
 		id: 'types',
 		title: 'Item types',
-		intro:
-			`${LEVELS.join(' → ')} is a ladder: each level holds the next one down. ` +
-			`${EXTRA_TYPES.join(', ')} sit beside it — the + offers one under an Epic, a Feature or a ` +
-			`PBI, but its rank is pinned: its children are always ${LEVELS[LEVELS.length - 1]}s, wherever ` +
-			`it hangs. ${MARKER_TYPES.join(', ')} ${MARKER_TYPES.length > 1 ? 'are' : 'is'} neither: no + offers to create one as a child, ` +
-			`and none draws a + of its own — though nothing stops a drag or Set type from doing ` +
-			`either by hand.`,
+		// One key, not four joined pieces: the paragraph is what a translator renders, and
+		// its `are`/`is` was the last inline plural agreement in `src/`. Every type name
+		// rides in as a parameter — they are `type:` values written to notes, so the
+		// catalog may not hold them. `parents` is the ladder minus its deepest rung, which
+		// is what "the + offers one under" has always meant; it was spelled out as
+		// `an Epic, a Feature or a PBI` and drifts the moment a rung is added.
+		intro: t('manual.typesIntro', {
+			ladder: LEVELS.join(' → '),
+			extras: EXTRA_TYPES,
+			parents: LEVELS.slice(0, -1),
+			deepest: LEVELS[LEVELS.length - 1],
+			markers: MARKER_TYPES,
+		}),
 		entries: [
 			...ALL_TYPES.map(entryFor),
 			{

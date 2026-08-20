@@ -1,4 +1,5 @@
 import { App, ButtonComponent, Modal, Setting, TFolder } from 'obsidian';
+import { t } from '../i18n/t';
 import { ValueSuggest } from './valueSuggest';
 
 /**
@@ -248,7 +249,7 @@ export class FolderPromptModal extends PromptModal<FolderPromptOptions> {
 		};
 
 		new Setting(this.contentEl)
-			.setName('Folder')
+			.setName(t('prompt.folderField'))
 			.setDesc(this.options.description)
 			.addText((text) => {
 				text.setValue(this.options.defaultFolder);
@@ -325,7 +326,7 @@ export class SchedulePromptModal extends PromptModal<SchedulePromptOptions> {
 				// later statement it would need a null check that can never fire.
 				setting.addExtraButton((btn) => {
 					btn.setIcon('x')
-						.setTooltip(`Clear ${spec.name}`)
+						.setTooltip(t('prompt.clearDate', { name: spec.name }))
 						.onClick(() => {
 							input.value = '';
 							values[spec.field] = '';
@@ -335,7 +336,7 @@ export class SchedulePromptModal extends PromptModal<SchedulePromptOptions> {
 			});
 		});
 
-		this.cta('Save', submit);
+		this.cta(t('prompt.save'), submit);
 	}
 }
 
@@ -404,14 +405,14 @@ export class AbsencePromptModal extends PromptModal<AbsencePromptOptions> {
 			});
 		};
 
-		field('Resource', 'resource', (input) => new KnownValueSuggest(this.app, input, this.options.known));
+		field(t('prompt.absenceResource'), 'resource', (input) => new KnownValueSuggest(this.app, input, this.options.known));
 		// Autofocused rather than the resource, which the row this was opened on already
 		// answered — and there is no title field to claim it since the name became a
 		// function of these three facts.
-		field('Start', 'start', (input) => (input.type = 'date'));
-		field('End', 'target', (input) => (input.type = 'date'));
+		field(t('prompt.absenceStart'), 'start', (input) => (input.type = 'date'));
+		field(t('prompt.absenceEnd'), 'target', (input) => (input.type = 'date'));
 
-		this.cta('Save', submit);
+		this.cta(t('prompt.save'), submit);
 	}
 }
 
@@ -481,10 +482,10 @@ export class IterationPromptModal extends PromptModal<IterationPromptOptions> {
 			});
 		};
 
-		if (this.options.name !== null) field('Name', 'name');
-		if (this.options.fields.start) field('Start', 'start', (input) => (input.type = 'date'));
-		if (this.options.fields.target) field('Target', 'target', (input) => (input.type = 'date'));
-		if (this.options.fields.goal) field('Goal', 'goal');
+		if (this.options.name !== null) field(t('prompt.iterationName'), 'name');
+		if (this.options.fields.start) field(t('prompt.iterationStart'), 'start', (input) => (input.type = 'date'));
+		if (this.options.fields.target) field(t('prompt.iterationTarget'), 'target', (input) => (input.type = 'date'));
+		if (this.options.fields.goal) field(t('prompt.iterationGoal'), 'goal');
 		this.cta(this.options.cta, submit);
 	}
 }
@@ -517,7 +518,7 @@ export class TitlePromptModal extends PromptModal<NewItemPromptOptions> {
 		// Asked first: the type decides what the item IS, and it is the one field with a
 		// default worth reviewing. A single choice is not a question — it stays out.
 		if (this.options.types.length > 1) {
-			new Setting(this.contentEl).setName('Type').addDropdown((drop) => {
+			new Setting(this.contentEl).setName(t('prompt.newItemType')).addDropdown((drop) => {
 				for (const type of this.options.types) drop.addOption(type, type);
 				drop.setValue(typeName);
 				drop.onChange((v) => {
@@ -529,8 +530,8 @@ export class TitlePromptModal extends PromptModal<NewItemPromptOptions> {
 			});
 		}
 
-		new Setting(this.contentEl).setName('Title').addText((text) => {
-			text.setPlaceholder('Item title');
+		new Setting(this.contentEl).setName(t('prompt.newItemTitle')).addText((text) => {
+			text.setPlaceholder(t('prompt.newItemTitlePlaceholder'));
 			text.onChange((v) => {
 				title = v;
 				createBtn?.setDisabled(title.trim().length === 0);
@@ -540,18 +541,16 @@ export class TitlePromptModal extends PromptModal<NewItemPromptOptions> {
 
 		if (this.options.askFolder) {
 			new Setting(this.contentEl)
-				.setName('Folder')
-				.setDesc(
-					"New items are created here, and the choice is saved to the view options. Point this base's filter at the same folder so items show up. Leave empty for the vault root.",
-				)
+				.setName(t('prompt.folderField'))
+				.setDesc(t('prompt.newItemFolderDesc'))
 				.addText((text) => {
-					text.setPlaceholder('Backlog');
+					text.setPlaceholder(t('prompt.newItemFolderPlaceholder'));
 					text.onChange((v) => (folder = v));
 					new FolderSuggest(this.app, text.inputEl);
 					submitOnEnter(text.inputEl, submit);
 				});
 		}
 
-		createBtn = this.cta('Create', submit).setDisabled(true);
+		createBtn = this.cta(t('prompt.create'), submit).setDisabled(true);
 	}
 }

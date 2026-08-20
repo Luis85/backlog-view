@@ -1,6 +1,7 @@
 import { BacklogViewHost, DrawnColors } from '../host';
 import { paletteDone, stateColorPaint, StatePalette } from '../../domain/board';
 import { activeAxis, drawsGrid } from '../../domain/roadmap';
+import { ITERATION_TYPE, MILESTONE_TYPE } from '../../domain/typeVocabulary';
 
 /**
  * A colour key for the dated axis's bars, rendered under the toolbar and outside the
@@ -69,8 +70,19 @@ export function renderLegend(
 	// own rule one element over, never the fixed "Milestone" word this swatch used to carry
 	// regardless of which marker type a vault actually has.
 	if (drawn.milestone || drawn.iteration) {
+		// The TYPE names, from the vocabulary rather than spelled here: they are data —
+		// matched in frontmatter, renamed by nobody's locale — so a catalog key here would
+		// file a value the plugin matches on as translatable text. `markerLaneCaption`
+		// builds its row header from the same two constants, so renaming either moves both;
+		// it differs in ONE thing, deliberately — the row header pluralizes (`Milestones`)
+		// where a swatch names the type (`Milestone`), which is a label for a row of many
+		// against a key for one kind.
 		const caption =
-			drawn.milestone && drawn.iteration ? 'Milestone · Iteration' : drawn.iteration ? 'Iteration' : 'Milestone';
+			drawn.milestone && drawn.iteration
+				? `${MILESTONE_TYPE} · ${ITERATION_TYPE}`
+				: drawn.iteration
+					? ITERATION_TYPE
+					: MILESTONE_TYPE;
 		addSwatch(legendEl, 'pbl-legend-milestone', caption);
 	}
 	// The hatch, on the same rule and reported the same way: `drawn.absence` is the render's

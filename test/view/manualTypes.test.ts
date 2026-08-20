@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { typesSection } from '../../src/view/manual/typesSection';
-import { ALL_TYPES, LEVELS } from '../../src/domain/typeVocabulary';
+import { ALL_TYPES, EXTRA_TYPES, LEVELS, MARKER_TYPES } from '../../src/domain/typeVocabulary';
+import { en } from '../../src/i18n/en';
 
 describe('the types section', () => {
 	// The check behind "derived, not retyped": a type added to the vocabulary without an
@@ -8,6 +9,30 @@ describe('the types section', () => {
 	it('explains every type in the vocabulary', () => {
 		const explained = typesSection().entries.filter((e) => e.badge).map((e) => e.badge?.text);
 		expect(explained).toEqual(ALL_TYPES);
+	});
+
+	// The intro is one catalog key with every type name as a PARAMETER, and these two
+	// state the halves of that separately because they fail for opposite reasons.
+	//
+	// A type name is data — matched in frontmatter, written to notes — so the rule from
+	// the root guide is that it may never enter the catalog. This checks it at the
+	// forbidden thing rather than by reading the sentence: whatever the paragraph is
+	// reworded to, a vocabulary name appearing in the VALUE fails here.
+	it('keeps every type name out of the catalog entry', () => {
+		const intro = en['manual.typesIntro'];
+		for (const name of ALL_TYPES) {
+			expect(intro, `the catalog spells the type name ${name}`).not.toContain(name);
+		}
+	});
+
+	// And the other half: the parameters actually carry the vocabulary through, so a type
+	// added to any of the three lists is described without anyone editing English. The old
+	// sentence spelled `an Epic, a Feature or a PBI` and would have gone silently stale.
+	it('names the ladder, the extras and the markers from the vocabulary itself', () => {
+		const intro = typesSection().intro;
+		for (const name of [...LEVELS, ...EXTRA_TYPES, ...MARKER_TYPES]) {
+			expect(intro, `the intro never names ${name}`).toContain(name);
+		}
 	});
 
 	it('gives every type entry a non-empty explanation', () => {

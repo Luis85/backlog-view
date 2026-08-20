@@ -4,6 +4,7 @@ import { paletteSlot, stateColorPaint, statePalettes } from '../../domain/board'
 import { colorableStates, stateColorKey } from '../../domain/stateColors';
 import { byName } from '../../domain/typeVocabulary';
 import { openStateColorsDialog, StateColorRow } from '../../ui/stateColorsDialog';
+import { t } from '../../i18n/t';
 
 /**
  * Choosing a colour per workflow state, and writing the choice to the `.base`.
@@ -131,7 +132,7 @@ export function hasColorableStates(host: BacklogViewHost): boolean {
 export function openStateColors(host: BacklogViewHost, onClosed?: () => void): void {
 	const rows = stateColorRows(host);
 	if (rows.length === 0) {
-		new Notice('No workflow states to colour yet. Name a state property and list its states in the view options.');
+		new Notice(t('stateColors.noStates'));
 		return;
 	}
 	openStateColorsDialog(host.app, rows, (state, color) => host.config.set(stateColorKey(state), color), onClosed);

@@ -261,7 +261,47 @@ const ROW_LISTENER = {
  * `syntaxRules` wrapper exists so that is the only decision, and the shape is uniform.
  */
 const STORAGE = 'src/storage/**/*.ts';
+// The two regions outside view/ that render text and have been SWEPT, so the ternary ban
+// lands on a clean file rather than opening with a wall of errors. Carved out of the
+// general region for that one rule and nothing else. domain/ and main.ts stay out until
+// their own sweeps run — `docs/requirements/Every surface translated.md`.
+const SWEPT = ['src/ui/**/*.ts', 'src/commands/**/*.ts'];
 const MENU = 'src/view/interactions/menu.ts';
+// The rest of the menu surface, carved out of VIEW for the two text bans alone — swept
+// into the catalog on 2026-08-20 alongside `menu.ts` itself, so the bans land on clean
+// files rather than opening with a wall of errors on the rest of a directory nobody has
+// swept yet. That ORDER is the rule, and `RENDER_EMPTY_STATES` above states it: a ban
+// ahead of its sweep is a ban somebody switches off. Everything else VIEW carries applies
+// here unchanged.
+//
+// The four files are one subject: `shelfMenu.ts` and `columnMenu.ts` are menus of their
+// own, and `tags.ts` and `labels.ts` are the submenu builders `menu.ts` delegates to. The
+// unswept remainder of `view/interactions/` — `create.ts`, `absences.ts`,
+// `dependencies.ts`, `plan.ts`, `structure.ts` and the drag modules — stays under VIEW
+// with no text ban at all, which is why this is a file list rather than a glob.
+// `view/interactions/` is swept WHOLE as of 2026-08-20 — the menu surface first, then the
+// prompts, notices and the backfill's outcome. Enumerated rather than globbed on purpose:
+// `menu.ts` and `create.ts` carry rule sets of their own, and a second block matching the
+// same file would OVERRIDE `no-restricted-syntax` rather than merge with it, silently
+// dropping whichever set lost. A glob replaces this list the day the rest of `view/` is
+// swept and the three rule sets can be one.
+//
+// A file ADDED to this directory is therefore not covered until it is named here. That is
+// the cost of the override rule above, and it is why the runtime halves exist:
+// `test/i18n/menus.test.ts` and `test/i18n/interactions.test.ts` read rendered strings back
+// rather than trusting the region list.
+const MENU_SWEPT = [
+	'src/view/interactions/shelfMenu.ts',
+	'src/view/interactions/columnMenu.ts',
+	'src/view/interactions/tags.ts',
+	'src/view/interactions/labels.ts',
+	'src/view/interactions/absences.ts',
+	'src/view/interactions/dependencies.ts',
+	'src/view/interactions/structure.ts',
+	'src/view/interactions/plan.ts',
+	'src/view/interactions/undo.ts',
+	'src/view/interactions/stateColors.ts',
+];
 // Ranking code lives in one domain file and one view file; split so a view-only rule
 // (ALL_TYPES_IMPORT) can apply to the latter without reaching into domain/.
 const RANKING_DOMAIN = ['src/domain/writePlan.ts'];
@@ -272,6 +312,12 @@ const RENDER = 'src/view/render/**/*.ts';
 // carved out of RENDER the same way RANKING_VIEW was carved out of RANKING, because a
 // rule applies to the rest of the region and not to this one file.
 const RENDER_BOARD = 'src/view/render/board.ts';
+// The empty states, carved out of RENDER for one text ban alone — swept into the catalog
+// on 2026-08-20, so `UI_TEXT_PROPERTY` lands on a clean file rather than opening with a
+// wall of errors on the rest of a directory nobody has swept yet. That ORDER is the rule:
+// a ban ahead of its sweep is a ban somebody switches off. Everything else RENDER carries
+// applies here unchanged.
+const RENDER_EMPTY_STATES = 'src/view/render/emptyStates.ts';
 // The row's own controls, carved out of RENDER for ROW_LISTENER: `rows.ts` wires the
 // tree's row and chip delegation (the only place a per-row listener may live),
 // `columns.ts` draws the state and horizon chips those delegate for, and `chips.ts`
@@ -310,6 +356,141 @@ const CARD_MOVES = 'src/view/cardMoves.ts';
 // beside them — a permission neither needs, silently. Widen this to a glob only if a
 // second file in the directory earns the same exemption on its own facts.
 const TYPES_SECTION = 'src/view/manual/typesSection.ts';
+
+// A sentence assembled by picking between two string literals — `${n === 1 ? '' : 's'}`,
+// `${folded ? 'Expand' : 'Collapse'} ${label}`, `const label = a ? 'Show' : 'Hide'`. All
+// the same defect: a two-form rule with the forms hard-coded at the call site, which no
+// locale can reorder, inflect, or give a third form to. Nineteen of the first shape were
+// swept into the catalog and the twentieth still arrived, in a merge, written the old way
+// because the old way was the only way when it was written — so the rule is put on the
+// SHAPE rather than left to a grep somebody remembers to run.
+//
+// Two selectors, because they refuse different things and neither contains the other.
+//
+// TEMPLATE is the original: any ternary between two literals INSIDE a template. It is what
+// catches the plural suffix, whose two forms are `''` and `'s'` and so carry no capital
+// between them.
+//
+// PICKED drops the template — the half a contributor gets past by assigning to a local
+// one line above, which is not an exotic workaround but the first thing anyone writes
+// when a sentence needs a conditional. What it cannot drop with it is the literal's
+// SHAPE, and the numbers are why: a bare ConditionalExpression between two Literals fires
+// **97 times across `src/`, 70 in `src/view/` alone**, and only ten of those are text.
+// The rest are class fragments (`cond ? ' pbl-done' : ''`), Lucide icon ids, ARIA and
+// `data-` values, and — five times — a ternary between two CATALOG KEYS, which is the
+// correct post-sweep idiom the rule would be refusing. A ban with fifty-seven false
+// positives is a ban that gets switched off, so the shape is narrowed by the one property
+// that separates the two sets here: **every identifier this plugin writes is lowercase**
+// (CSS class, icon id, ARIA value, `data-` key, catalog key), so a capital letter in a
+// picked literal is prose. The `t()` exclusion is what keeps the key ternaries legal.
+//
+// That property is a heuristic and its ceiling is a lowercase sentence. It had two live
+// examples; one is left. `' — inferred from children'` in `render/lanes.ts` still passes
+// inside a banned directory, and `'are'`/`'is'` in `manual/typesSection.ts` did until
+// 2026-08-18, when that paragraph became one catalog key. Naming what slips through is
+// what stops this rule being read as "these directories are clean" — the remaining one is
+// not a regression it let in.
+//
+// **Scope: `render/`, `interactions/menu.ts`, and `manual/typesSection.ts`.** The menu is
+// not decoration — it holds the twin of `render/timeline.ts`'s fold label, so a ban
+// stopping at render/ would leave half of a guarantee two surfaces are supposed to keep
+// together. The types section joined when its own last instance went, which is the only
+// order this can happen in: a directory is banned once it is swept, never before, or the
+// ban is a wall of errors somebody switches off. It stops short of the
+// rest of `interactions/`: `structure.ts` holds `runInit`'s outcome notice, whose OUTER
+// sentence is assembled too and is owed to `Every surface translated` — keying the
+// fragment alone would be this same defect one level up. `domain/` stays unbanned on SIX
+// instances rather than the seven this comment claimed, and they are not all README prose:
+// five are, and `markerLaneCaption` (`domain/roadmap.ts`) is live roadmap UI text. Counted
+// on 2026-08-18 rather than recalled, after the wrong figure was restated twice — "all
+// README prose" is what would tell the next sweeper this directory is safe to skip.
+// `ui/` and `commands/` joined on 2026-08-19, when their own sweep ran; the rest of
+// `manual/` stays out — `sections.ts` is unswept and the ban is named to the ONE FILE for
+// the reason `TYPES_SECTION` itself is.
+//
+// Neither selector can tell a class name from a sentence, only lowercase from capitalised
+// — `styles`-bound interpolation has to be written another way under TEMPLATE, which
+// `render/toolbar.ts` now is. That is the accepted cost of checking a shape: the
+// alternative is a rule that reads the string's meaning, and there is no such selector.
+const TEXT_TERNARY_MESSAGE =
+	'A sentence picked between two literals cannot be translated — no locale can reorder or inflect either half. Give each direction its own catalog key in src/i18n/en.ts and call t(). If this is a class name rather than text, build it with addClass instead.';
+
+const TEXT_TERNARY = [
+	{
+		selector: "TemplateLiteral > ConditionalExpression[consequent.type='Literal'][alternate.type='Literal']",
+		message: TEXT_TERNARY_MESSAGE,
+	},
+	{
+		selector:
+			"ConditionalExpression[consequent.type='Literal'][alternate.type='Literal']:matches([consequent.value=/[A-Z]/],[alternate.value=/[A-Z]/]):not(CallExpression[callee.name='t'] > *)",
+		message: TEXT_TERNARY_MESSAGE,
+	},
+];
+
+// A sentence spelled AT the place it is used, in a directory that has none left. The
+// ternary ban above catches a sentence PICKED between two literals; this one catches the
+// ordinary case underneath it, which is the one a sweep leaves behind by omission rather
+// than by cleverness — and it is what makes the swept region stay swept for code nobody
+// has written yet, instead of for the call sites someone thought to check.
+//
+// **It sees the SPELLINGS listed and no others.** The setter calls and `new Notice`, quoted
+// or backticked, with the same lowercase-is-an-identifier heuristic TEXT_TERNARY uses.
+// Three shapes stay outside it, and each is stated rather than implied because a reader who
+// assumes otherwise stops checking:
+//
+//   - A literal reaching the DOM through a `text:` or `'aria-label'` property. That is a
+//     choice with one live instance: `ui/manualDialog.ts`'s nav heading is the plugin's own
+//     NAME, which `Every surface translated` says is not translated, so a rule covering the
+//     property would open on an exemption for the one thing allowed to be there.
+//   - A template whose FIRST quasi is empty — `` `${name} was moved` `` — since the capital
+//     test has nothing to read at the position it reads. The interpolation-first sentence is
+//     rarer than the ban is worth widening for; it is not covered by accident.
+//   - A sentence built in a helper and returned to the call site (`outcomeNotice` in
+//     `commands/readme.ts`). Lint sees the return, not the `new Notice` two frames up.
+//
+// The runtime half is what holds those: a call site spelling its own English renders it
+// beside overridden neighbours in `test/i18n/sweptSurfaces.test.ts`. Neither half covers
+// what the other does. A wider rule belongs to `A bare string cannot reach the UI`, which
+// makes a bare string unable to reach the UI at all rather than naming where it may not be
+// written.
+const UI_TEXT_LITERAL = {
+	selector:
+		"CallExpression[callee.property.name=/^(setName|setDesc|setPlaceholder|setTooltip|setButtonText|setText|setTitle)$/] > :matches(Literal[value=/^[A-Z]/], TemplateLiteral[quasis.0.value.raw=/^[A-Z]/]), NewExpression[callee.name='Notice'] > :matches(Literal[value=/^[A-Z]/], TemplateLiteral[quasis.0.value.raw=/^[A-Z]/])",
+	message:
+		'A sentence spelled where it is used cannot be translated. Add a key to src/i18n/en.ts and call t() — and if this is a value the plugin writes, matches or persists rather than text, it belongs in neither place.',
+};
+
+// The FIRST of the three shapes `UI_TEXT_LITERAL` states it cannot see, banned where the
+// exemption that keeps it out of that rule does not apply.
+//
+// `view/render/emptyStates.ts` reaches the DOM entirely through `createDiv`/`createEl`
+// option bags, so it spells no setter and no `new Notice` and `UI_TEXT_LITERAL` would have
+// held nothing in it at all. What it does spell is `text:`, `label:` and `'aria-label':`,
+// which that rule leaves alone for one live instance in `ui/manualDialog.ts` — the plugin's
+// own NAME, which `Every surface translated` says is not translated. Scoped here, there is
+// no such instance to open on.
+//
+// **It sees that property shape and no other.** The two that remain uncovered in this file:
+// The property list covers the option-bag names too — `heading:`, `description:`,
+// `placeholder:`, `cta:`, `ctaLabel:`, `fieldName:` — and that was the whole of this rule's
+// blind spot rather than a corner of it. `ui/`'s prompts take their frame as an option bag,
+// so a swept caller could hand any of them a literal and fail nothing; the runtime half
+// caught it and lint did not, which made the "pair" one mechanism wearing two names for
+// every prompt in the plugin. Verified by planting at each name, and the swept tree stays
+// clean, so the widening costs no exemption.
+//
+// a template whose first quasi is empty (`UI_TEXT_LITERAL`'s own second exemption, for the
+// same reason — the capital test has nothing to read), and a prose literal handed to a
+// helper as a positional ARGUMENT, which is how `guidanceShell` takes every title and hint
+// this module draws. That second one is the file's commonest shape and lint cannot reach
+// it: the runtime half in `test/i18n/emptyStates.test.ts` is what holds it, by asserting
+// that every string a frame drew carries the fixture catalog's marker.
+const UI_TEXT_PROPERTY = {
+	selector:
+		"Property[key.name=/^(text|label|title|heading|description|placeholder|cta|ctaLabel|fieldName)$/]:matches([value.type='Literal'][value.value=/^[A-Z]/], [value.type='TemplateLiteral'][value.quasis.0.value.raw=/^[A-Z]/]), Property[key.value='aria-label']:matches([value.type='Literal'][value.value=/^[A-Z]/], [value.type='TemplateLiteral'][value.quasis.0.value.raw=/^[A-Z]/])",
+	message:
+		'A sentence spelled where it is used cannot be translated. Add a key to src/i18n/en.ts and call t() — and if this is a value the plugin writes, matches or persists rather than text, it belongs in neither place.',
+};
 
 const syntaxRules = (selectors) => ({ 'no-restricted-syntax': ['error', ...selectors] });
 
@@ -374,8 +555,23 @@ export default defineConfig([
 		// Everything that is not view/ and not one of the other special cases: domain/,
 		// storage/, ui/, commands/, main.ts.
 		files: ['src/**/*.ts'],
-		ignores: [STORAGE, VIEW, ...RANKING_DOMAIN],
+		ignores: [STORAGE, VIEW, ...RANKING_DOMAIN, ...SWEPT],
 		rules: syntaxRules([...WRITE_BOUNDARY, ...SVG_CLASS_TOKENS, MENU_ANCHOR, OVERBY, TREE_SCAN]),
+	},
+	{
+		// ui/ and commands/, carved out of the general region for the two text bans alone:
+		// both were swept into the catalog on 2026-08-19, so the bans have a clean file to
+		// hold. Everything else the general region carries applies here unchanged.
+		files: SWEPT,
+		rules: syntaxRules([
+			...WRITE_BOUNDARY,
+			...SVG_CLASS_TOKENS,
+			MENU_ANCHOR,
+			OVERBY,
+			TREE_SCAN,
+			...TEXT_TERNARY,
+			UI_TEXT_LITERAL,
+		]),
 	},
 	{
 		// storage/ IS the writer, so the write boundary cannot apply to it. Nothing else
@@ -400,6 +596,9 @@ export default defineConfig([
 			DELIVERABLE_FIELD_READ,
 			ALL_TYPES_IMPORT,
 			CHILD_TYPE_CHOICES_NULL,
+			...TEXT_TERNARY,
+			UI_TEXT_LITERAL,
+			UI_TEXT_PROPERTY,
 		]),
 	},
 	{
@@ -428,6 +627,13 @@ export default defineConfig([
 			ALL_TYPES_IMPORT,
 			CHILD_TYPE_CHOICES_NULL,
 			DELIVERABLE_FIELD_READ,
+			// `create.ts` is in `view/interactions/` and was swept with the rest of it; it
+			// keeps its own block for the ranking rules above, so the three text bans are
+			// repeated here rather than inherited. The repetition is the override rule
+			// stated at MENU_SWEPT: one file, one block.
+			...TEXT_TERNARY,
+			UI_TEXT_LITERAL,
+			UI_TEXT_PROPERTY,
 		]),
 	},
 	{
@@ -439,7 +645,7 @@ export default defineConfig([
 		// the chip (`columns.ts`) is exactly the surface that must not hand-pick the raw
 		// fields itself.
 		files: [RENDER],
-		ignores: [RENDER_BOARD, ...ROW_CONTROLS],
+		ignores: [RENDER_BOARD, RENDER_EMPTY_STATES, ...ROW_CONTROLS],
 		rules: syntaxRules([
 			...SVG_CLASS_TOKENS,
 			...WRITE_BOUNDARY,
@@ -448,6 +654,22 @@ export default defineConfig([
 			ALL_TYPES_IMPORT,
 			CHILD_TYPE_CHOICES_NULL,
 			DELIVERABLE_FIELD_READ,
+			...TEXT_TERNARY,
+		]),
+	},
+	{
+		// The swept empty states: RENDER's own rules plus the property ban above.
+		files: [RENDER_EMPTY_STATES],
+		rules: syntaxRules([
+			...SVG_CLASS_TOKENS,
+			...WRITE_BOUNDARY,
+			MENU_ANCHOR,
+			TREE_SCAN,
+			ALL_TYPES_IMPORT,
+			CHILD_TYPE_CHOICES_NULL,
+			DELIVERABLE_FIELD_READ,
+			...TEXT_TERNARY,
+			UI_TEXT_PROPERTY,
 		]),
 	},
 	{
@@ -456,7 +678,7 @@ export default defineConfig([
 		// cards — it is the board's workflow, not a per-item type dispatch, so
 		// DELIVERABLE_FIELD_READ does not apply here. Everything else RENDER carries does.
 		files: [RENDER_BOARD],
-		rules: syntaxRules([...SVG_CLASS_TOKENS, ...WRITE_BOUNDARY, MENU_ANCHOR, TREE_SCAN, ALL_TYPES_IMPORT, CHILD_TYPE_CHOICES_NULL]),
+		rules: syntaxRules([...SVG_CLASS_TOKENS, ...WRITE_BOUNDARY, MENU_ANCHOR, TREE_SCAN, ALL_TYPES_IMPORT, CHILD_TYPE_CHOICES_NULL, ...TEXT_TERNARY]),
 	},
 	{
 		// The row's own controls, carved out of RENDER: everything RENDER carries, plus
@@ -474,6 +696,7 @@ export default defineConfig([
 			CHILD_TYPE_CHOICES_NULL,
 			DELIVERABLE_FIELD_READ,
 			ROW_LISTENER,
+			...TEXT_TERNARY,
 		]),
 	},
 	{
@@ -484,7 +707,7 @@ export default defineConfig([
 		// DELIVERABLE_FIELD_READ (any of these files is a candidate third hand-written
 		// workflow ternary).
 		files: [VIEW],
-		ignores: [MENU, RENDER, ...RANKING_VIEW, CARD_MOVES, TYPES_SECTION],
+		ignores: [MENU, ...MENU_SWEPT, RENDER, ...RANKING_VIEW, CARD_MOVES, TYPES_SECTION],
 		rules: syntaxRules([
 			...SVG_CLASS_TOKENS,
 			...WRITE_BOUNDARY,
@@ -494,6 +717,31 @@ export default defineConfig([
 			ALL_TYPES_IMPORT,
 			CHILD_TYPE_CHOICES_NULL,
 			DELIVERABLE_FIELD_READ,
+		]),
+	},
+	{
+		// The rest of the swept menu surface: VIEW's own rules plus the two text bans.
+		//
+		// **Between them they still miss this slice's commonest prompt shape**, and saying
+		// so is the point of writing it here: `ValuePromptModal` takes its heading, its
+		// field name, its placeholder and its call to action as an option bag, and of those
+		// four only `title:` is a property `UI_TEXT_PROPERTY` reads. `fieldName:`,
+		// `placeholder:` and `ctaLabel:` are named nowhere in either selector and a literal
+		// at any of them fails no rule. `test/i18n/menus.test.ts` is what holds those, by
+		// opening each prompt under a marked catalog and reading the rendered strings back.
+		files: MENU_SWEPT,
+		rules: syntaxRules([
+			...SVG_CLASS_TOKENS,
+			...WRITE_BOUNDARY,
+			MENU_ANCHOR,
+			OVERBY,
+			TREE_SCAN,
+			ALL_TYPES_IMPORT,
+			CHILD_TYPE_CHOICES_NULL,
+			DELIVERABLE_FIELD_READ,
+			...TEXT_TERNARY,
+			UI_TEXT_LITERAL,
+			UI_TEXT_PROPERTY,
 		]),
 	},
 	{
@@ -520,6 +768,7 @@ export default defineConfig([
 			TREE_SCAN,
 			CHILD_TYPE_CHOICES_NULL,
 			DELIVERABLE_FIELD_READ,
+			...TEXT_TERNARY,
 		]),
 	},
 	{
