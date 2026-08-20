@@ -309,14 +309,29 @@ Both text bans now cover every file in the directory — `create.ts` repeats the
 block rather than inheriting, because two flat-config blocks matching one file OVERRIDE
 `no-restricted-syntax` rather than merge, which would silently drop whichever set lost.
 
-**Most of this slice was invisible to both bans, and that is the finding.** The prompts
-take their heading, description, placeholder and call to action as an OPTION BAG, and of
-those only `title:` is a property `UI_TEXT_PROPERTY` reads — a literal at `heading:`,
-`description:`, `placeholder:` or `cta:` fails no rule at all. Verified by planting:
-reverting one placeholder to its template literal leaves `eslint` silent and fails
-`test/i18n/interactions.test.ts`. The narrow greps that planned this slice saw 34 sites
-until `placeholder:` was added to the pattern, and then 47 — the fourth time in this epic
-a count was short because the instrument could not see a shape.
+**Most of this slice was invisible to both bans, and fixing THAT was the finding.** The
+prompts take their heading, description, placeholder and call to action as an OPTION BAG,
+and `UI_TEXT_PROPERTY` read only `title:` of the four — so a literal at `heading:`,
+`description:`, `placeholder:` or `cta:` failed no rule anywhere in the plugin. Verified by
+planting, which is also how the scale of it showed: for this whole directory the runtime
+half was holding the sweep and lint was decoration, while the register called the two a
+pair.
+
+The selector was widened to name those properties rather than the gap being written down
+and left (2026-08-20). Planting at each name now errors, and the swept tree stays clean, so
+the widening cost no exemption — with one deliberate line: `ui/manualDialog.ts`'s nav
+heading is the plugin's own NAME, and it carries an `eslint-disable-next-line` rather than
+a carve-out of the file, so a second literal added to that dialog still fails. Extending
+the same ban to `ui/` and `commands/`, which had only ever carried the literal one, found
+that single site and nothing else.
+
+What lint still cannot tell is whether a key is READ — a call site passing the wrong key
+renders the wrong sentence with every rule green — and that is what keeps the runtime half
+necessary rather than redundant.
+
+The narrow greps that planned this slice saw 34 sites until `placeholder:` was added to the
+pattern, and then 47 — the fourth time in this epic a count was short because the
+instrument could not see a shape.
 
 **Two assembled sentences were the other half.** `runInit`'s outcome was
 `` `Product Backlog: ${list(done)}.${next}` `` — a template frame around keyed fragments,

@@ -571,6 +571,7 @@ export default defineConfig([
 			TREE_SCAN,
 			...TEXT_TERNARY,
 			UI_TEXT_LITERAL,
+			UI_TEXT_PROPERTY,
 		]),
 	},
 	{
@@ -722,13 +723,13 @@ export default defineConfig([
 	{
 		// The rest of the swept menu surface: VIEW's own rules plus the two text bans.
 		//
-		// **Between them they still miss this slice's commonest prompt shape**, and saying
-		// so is the point of writing it here: `ValuePromptModal` takes its heading, its
-		// field name, its placeholder and its call to action as an option bag, and of those
-		// four only `title:` is a property `UI_TEXT_PROPERTY` reads. `fieldName:`,
-		// `placeholder:` and `ctaLabel:` are named nowhere in either selector and a literal
-		// at any of them fails no rule. `test/i18n/menus.test.ts` is what holds those, by
-		// opening each prompt under a marked catalog and reading the rendered strings back.
+		// This paragraph used to say the prompt option bag was outside both rules —
+		// `ValuePromptModal` takes its heading, field name, placeholder and call to action
+		// that way, and `UI_TEXT_PROPERTY` read only `title:` of the four. That was the
+		// rule's whole blind spot rather than a corner of it, so the selector was widened
+		// to name them (2026-08-20) and this comment corrected rather than left standing.
+		// `test/i18n/menus.test.ts` still reads each prompt back under a marked catalog:
+		// lint cannot tell whether a key is READ, only that a literal is not spelled.
 		files: MENU_SWEPT,
 		rules: syntaxRules([
 			...SVG_CLASS_TOKENS,
