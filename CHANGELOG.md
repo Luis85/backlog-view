@@ -25,6 +25,9 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   the backlog's own order. Rubric sentences ship with the default model and are edited
   in the `.base` file this round, with no options-menu box for one yet.
 
+- The estimation view has a toolbar — the backfill action, an undo for the last batch, and
+  how many of the results are scored.
+
 ### Changed
 
 - **Everything the view says when it has nothing to show comes from the message catalog
@@ -73,8 +76,6 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   coverage, a currency chip that spends colour only where something needs doing, columns
   that line up across every row, and a panel whose total is stated above its inputs and
   stays on screen while they scroll.
-- The estimation view has a toolbar — the backfill action, an undo for the last batch, and
-  how many of the results are scored.
 
 ### Fixed
 

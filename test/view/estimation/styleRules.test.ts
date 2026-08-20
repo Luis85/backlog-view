@@ -79,6 +79,11 @@ describe('the panel header owns its own type', () => {
 		expect(ruleAt('.pbl-est-panel', 'padding-block-start: 0;')).toBeGreaterThan(-1);
 		expect(ruleAt('.pbl-est-header', 'padding-block-start: var(--size-4-3);')).toBeGreaterThan(-1);
 		expect(ruleAt('.pbl-est-header', 'position: sticky;')).toBeGreaterThan(-1);
+		// The header's own comment also claims opaqueness — "the panel's own fill, so rows
+		// scroll UNDER an opaque header rather than through it". Sticky and the paddings are
+		// checked above; this is the half of that claim a rule CAN see (a real background
+		// paints rather than nothing).
+		expect(ruleAt('.pbl-est-header', 'background-color: var(--background-secondary);')).toBeGreaterThan(-1);
 	});
 
 	it('undoes the clear control transition beside it, because motion.css loads too early', () => {

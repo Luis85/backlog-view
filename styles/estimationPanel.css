@@ -44,8 +44,9 @@
 	padding-block-end: var(--size-4-3);
 	border-bottom: 1px solid var(--background-modifier-border);
 	/* The panel's own fill, so rows scroll UNDER an opaque header rather than through it —
-	   and never a shadow: DESIGN.md's One Shadow Rule, and a pinned strip asserts itself by
-	   painting and drawing a border. */
+	   checked below (`styleRules.test.ts`) — and never a shadow: DESIGN.md's One Shadow
+	   Rule, and a pinned strip asserts itself by painting and drawing a border. The
+	   shadow-absence half is not mechanically checked here and rests on review. */
 	background-color: var(--background-secondary);
 }
 
@@ -91,9 +92,21 @@
 
 /* One sentence per line. Wrapped into a single run the two derived lines read as one long
    muted string — and each is a whole translated sentence that nothing may split into a label
-   and a value, so the line break is the only separation available. */
+   and a value, so the line break is the only separation available.
+
+   Confidence-adjusted value and value-to-effort — derived on read, never written
+   (`CLAUDE.md`'s write-back rule), which is why both are labelled rather than left to
+   stand as bare numbers beside the total they are not. Each line is one `t()` sentence
+   (`estimation.panel.adjustedValue` / `…valueToEffort`) with no markup inside it — the
+   rubric notes' own idiom (`.pbl-est-rubric`), so nothing here splits a translated
+   sentence to bold half of it. */
 .pbl-est-derived {
+	display: flex;
 	flex-direction: column;
+	gap: var(--size-4-1) var(--size-4-3);
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+	font-variant-numeric: tabular-nums;
 }
 
 /* ==========================================================================
@@ -106,12 +119,16 @@
 	flex-direction: column;
 	gap: var(--size-2-2);
 	padding-block: var(--size-4-2);
-	border-bottom: 1px solid var(--background-modifier-border);
 }
 
-.pbl-est-dim:last-of-type {
-	border-bottom: none;
-	padding-bottom: 0;
+/* A divider BEFORE every row but the first, rather than a border-bottom removed from the
+   last: `:last-of-type` matches the last DIV of any class sharing this parent, and
+   `.pbl-est-decomp` — a div too — is that last div whenever a decomposition renders, so
+   the removal silently missed every scored item and stacked two borders above the
+   decomposition instead. The adjacent-sibling form only ever asks what comes BEFORE a
+   row, which nothing after it (a decomposition, the orphan cleanup button) can change. */
+.pbl-est-dim + .pbl-est-dim {
+	border-top: 1px solid var(--background-modifier-border);
 }
 
 .pbl-est-dim-label {
@@ -281,20 +298,4 @@ button.pbl-est-point.is-active {
 	   directly above them. */
 	font-size: var(--font-ui-smaller);
 	color: var(--text-muted);
-}
-
-/* Confidence-adjusted value and value-to-effort — derived on read, never
-   written (`CLAUDE.md`'s write-back rule), which is why both are labelled
-   rather than left to stand as bare numbers beside the total they are not.
-   Each line is one `t()` sentence (`estimation.panel.adjustedValue` /
-   `…valueToEffort`) with no markup inside it — the rubric notes' own idiom
-   (`.pbl-est-rubric`), so nothing here splits a translated sentence to bold
-   half of it. */
-.pbl-est-derived {
-	display: flex;
-	flex-wrap: wrap;
-	gap: var(--size-4-1) var(--size-4-3);
-	font-size: var(--font-ui-smaller);
-	color: var(--text-muted);
-	font-variant-numeric: tabular-nums;
 }

@@ -22,7 +22,7 @@ import { runEstimationInit } from './init';
  * count's.
  */
 export function renderEstimationToolbar(view: EstimationView, host: HTMLElement, model: EstimationModel | null): void {
-	const bar = host.createDiv({ cls: 'pbl-toolbar pbl-est-toolbar' });
+	const bar = host.createDiv({ cls: 'pbl-toolbar' });
 
 	const init = iconButton(bar, 'sparkles', t('estimation.toolbar.init'), 'pbl-est-init');
 	init.addEventListener('click', () => void runEstimationInit(view));
