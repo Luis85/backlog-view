@@ -83,4 +83,5 @@ using assignees today re-declares its people as notes by hand, or loses them.
 That is consistent with this repository's stated position — `minAppVersion` is the only
 compatibility boundary it keeps, and nothing carries compatibility with older plugin versions
 — and it is still a real cost to a real user. It is recorded here so it is a decision rather
-than an omission, and it owes the register an `Issue` of its own in the limitation shape.
+than an omission, and [[No migration off the string assignees]] holds the whole of it — what
+is lost, why a migration is refused, and the backfill that would lift it.
