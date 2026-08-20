@@ -122,16 +122,18 @@ free of runtime code so imports stay cycle-free.
   this view's own progress and is what the indicator SAYS; `gate.writing` is the lock's
   `applying` and is what every disabled flag and both `aria-busy` attributes follow, in
   the backlog view and the estimation view alike. **In the estimation view that is
-  `aria-busy` and nothing else**, because it has no toolbar and no `.pbl-write-ctl`: its
-  own write controls are the panel's point buttons, content rebuilt wholesale on every
-  render rather than chrome synced in place, and a pick made mid-batch is refused by the
-  shared gate with its own notice. So the sentence above is about which FACT the chrome
-  follows, never a promise that this view disables anything. They differ exactly in a view that is
-  not the one writing — `busy` is null there for a batch the gate would refuse its ✨ for
-  all the same, and whose data update it has already deferred. Same reading makes
-  `canUndo()` false mid-batch: inverses install as they land, so the slot holds the
-  applied prefix while the batch runs, and a button armed on the slot alone re-enabled in
-  the middle of the batch it would take half of back.
+  `aria-busy` on the pane AND the toolbar's own disabled flags**, since the toolbar
+  landed: `syncBusy` publishes to it through `syncEstimationToolbar`, which disables the
+  init (✨) and undo buttons while `gate.writing` is true and re-enables undo to
+  whatever slot `canUndo()` reports once the batch settles — that IS chrome synced in
+  place. The panel is not: its own write controls are the point buttons, content rebuilt
+  wholesale on every render, and a pick made mid-batch is refused by the shared gate with
+  its own notice rather than disabled ahead of it. So the sentence above is still about
+  which FACT the chrome follows, not about whether this view disables anything — it
+  does, through the toolbar, off the same fact the panel's refusal reads. They differ
+  exactly in a view that is not the one writing — `busy` is null there for a batch the
+  gate would refuse its ✨ for all the same, and whose data update it has already
+  deferred. Same reading makes
 - **Two shapes take work out of `backlogView.ts`, and which one applies is decided by the
   interface rather than by taste.** Anything the modules do NOT ask the host for can leave
   as a delegate the view owns — `WriteGate`, `CardMoveController`, `ViewStateController` —

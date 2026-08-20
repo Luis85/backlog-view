@@ -8,9 +8,9 @@
  * `performScore`/`performScale`/`performOrphanCleanup` on a panel pick,
  * `runEstimationInit` on the guided empty state's button — already refreshes itself once
  * its own batch resolves (`estimationView.ts`'s own `if (!this.gate.flushedLastBatch)
- * this.refresh()`), because this view has no toolbar and no data update ever arrives
- * from anywhere else. `mount.ts`'s timer exists for a Bases update that lands mid-batch
- * from a DIFFERENT write path; there is no such path here to interleave.
+ * this.refresh()`), because no data update ever arrives from anywhere else in this
+ * harness. `mount.ts`'s timer exists for a Bases update that lands mid-batch from a
+ * DIFFERENT write path; there is no such path here to interleave.
  */
 import { EstimationView } from '../../src/view/estimation/estimationView';
 import { WriteLock } from '../../src/view/writeLock';

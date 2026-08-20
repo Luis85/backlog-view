@@ -15,7 +15,7 @@ export interface EstimationHarness {
 /**
  * The estimation view's own harness — `test/helpers/view.ts`'s `makeView` assignment
  * pattern (`anyView.app/config/data`, then `onDataUpdated()`) narrowed to what this view
- * actually has this task: no toolbar, no collapse state, no focus level to prime.
+ * actually has: no collapse state, no focus level to prime.
  */
 export function makeEstimationView(
 	vault: FakeVault,
