@@ -172,18 +172,72 @@ places that show them. Whoever runs `View options and config warnings` is transl
 strings anyway and should decide their shape then; keying a fragment here first would key
 somebody else's string, which the bullet above already refuses for headings.
 
-**The remaining English is `view/` and `domain/`.** 75 sites in `view/` and one in `ui/`
-(the plugin name) by the narrow measurement this note's numbers came from; a wider net that
-also sees double quotes, template literals and the option-bag properties returns ~209
-across `src/`, of which 51 are `domain/viewOptions.ts` — which is
-[[View options and config warnings]] and not this note.
+**`view/render/emptyStates.ts`, on 2026-08-20.** 24 keys, taking the catalog to 106 —
+measured by asking the loaded module for `Object.keys(en).length` before and after, and
+agreeing with a count of the diff's added key lines. A third instrument, an AST walk for
+the catalog object's own properties, returned **0**, because `en` is declared `as const`
+and its initializer is therefore not an object literal. It was discarded rather than
+reconciled: a count of zero from an instrument is the instrument being broken. What
+the view says when it has nothing to show: the empty tree and its focused form, the empty
+test catalog, both boards' no-workflow guidance, the excluded-focus state, the empty
+Deliverables board and iteration, the roadmap with no axis, the all-done notice, and the
+setup call to action all three guidance frames share.
+
+Three things about that slice are worth carrying to the next one.
+
+**The measurement had to be rebuilt, and the tables above are why.** Every instrument this
+note's numbers came from returns approximately ZERO for `view/render/` — the directory
+reaches the DOM through `createDiv`/`createEl` option bags, so it spells no `setName`, no
+`setTooltip` and no `new Notice` at all. A count near zero from a setter grep is a broken
+instrument, never a swept directory. What replaced it was a TypeScript AST walk over every
+string and template literal in a file, filtered to what reads as prose, calibrated against
+`ui/prompts.ts` — a file known to be swept, which it reports as 0. On that instrument
+`view/render/` holds **321** prose literals across 25 files, against the 72 + 34 the two
+narrow greps saw for all of `view/`. The instrument counts a concatenated sentence's
+FRAGMENTS, so it over-reports keys and under-reports nothing: `emptyStates.ts` gave 43
+literals and 22 keys.
+
+**The lint half is narrower here than in `ui/` and `commands/`, and it had to be a
+different rule.** `UI_TEXT_LITERAL` sees setter calls and `new Notice`; this file spells
+neither, so extending it here would have banned nothing. `UI_TEXT_PROPERTY` beside it
+covers the `text:`, `label:`, `title:` and `'aria-label':` properties the module does use —
+the first of the three shapes `UI_TEXT_LITERAL`'s own comment states it cannot see, banned
+here because the one live instance that keeps it out of that rule (`ui/manualDialog.ts`'s
+plugin name) is in another directory. It is scoped to this one file, carved out of `RENDER`
+the way `RENDER_BOARD` is, because the rest of the directory is unswept and a ban ahead of
+its sweep is a ban somebody switches off. What neither rule reaches is the module's
+commonest shape: a prose literal handed to `guidanceShell` as a positional argument.
+`test/i18n/emptyStates.test.ts` holds that one, by asserting that every string a frame drew
+carries the fixture catalog's marker rather than by naming the selectors somebody
+remembered — a revert of the manual link's label, which no named assertion covers, was
+watched failing it.
+
+**The second acceptance criterion is now owed at six sites rather than two, and it is not
+this note's to pay.** Four of the keys added here quote a view option by its label —
+*"State property"*, *"Workflow states (in order)"*, *"Deliverable state property"*,
+*"Deliverable workflow states (in order)"* — spelled as English inside the sentence, which
+is exactly what `emptyState.ignored` and `toolbar.ignoredTooltip` already do with *"Ignore
+notes outside the hierarchy"*. Making them one parameter from one key means the LABEL needs
+a key, and the labels are `domain/viewOptions.ts`'s: keying them here would be keying
+somebody else's string, which the `ui/` sweep above already refuses for headings. Whoever
+runs [[View options and config warnings]] is translating those labels anyway and should
+take all six then.
+
+**The remaining English is the rest of `view/` and `domain/`.** By the AST instrument
+above: **299** in `view/render/` after this slice, 135 in `view/interactions/`, 345 in
+`view/manual/` — a body of long-form prose no table in this note has ever counted, and its
+own question rather than an oversight — 19 in the rest of `view/`, and 349 in `domain/`, of
+which 60 are `domain/viewOptions.ts` and 186 the generated README in
+`domain/backlogReadme.ts`, which is written INTO the vault and so is a data question before
+it is a text one. `viewOptions.ts` is [[View options and config warnings]] and not this
+note.
 
 ## Where it lives
 
 **`src/i18n/en.ts`** carries the keys; the swept call sites are `src/ui/prompts.ts`,
-`src/ui/stateColorsDialog.ts`, `src/ui/manualDialog.ts`, `src/commands/scaffold.ts` and
-`src/commands/readme.ts`. The rest of the sweep touches every rendering module without
-changing what any of them does.
+`src/ui/stateColorsDialog.ts`, `src/ui/manualDialog.ts`, `src/commands/scaffold.ts`,
+`src/commands/readme.ts` and `src/view/render/emptyStates.ts`. The rest of the sweep
+touches every rendering module without changing what any of them does.
 
 `src/view/render/toolbar.ts` · `src/view/render/rows.ts` · `src/view/render/columns.ts` ·
 `src/view/render/emptyStates.ts` · `src/view/interactions/menu.ts` ·
@@ -194,10 +248,11 @@ changing what any of them does.
 `src/main.ts`.
 Tests: `test/view/contextRowWrites.test.ts` and `test/view/creation.test.ts` must pass
 untouched — they guard the two behaviours this sweep is most likely to disturb.
-`test/i18n/sweptSurfaces.test.ts` is the swept half's own check, and it is a PAIR with
-lint rather than a substitute for it: it drives each surface under a fixture catalog, so a
-literal left at a call site renders English beside overridden neighbours, while
-`UI_TEXT_LITERAL` in `eslint.config.mjs` refuses a NEW one. A test cannot see a call site
+`test/i18n/sweptSurfaces.test.ts` and `test/i18n/emptyStates.test.ts` are the swept half's
+own checks, and each is a PAIR with lint rather than a substitute for it: they drive each
+surface under a fixture catalog, so a literal left at a call site renders English beside
+overridden neighbours, while `UI_TEXT_LITERAL` and `UI_TEXT_PROPERTY` in
+`eslint.config.mjs` refuse a NEW one. A test cannot see a call site
 nobody has written; lint cannot tell whether a key is read. `UI_TEXT_LITERAL` sees the
 setter calls and `new Notice` and **not** a `text:` or `'aria-label'` property — the one
 live instance of that shape is the plugin name above, so covering the property would open

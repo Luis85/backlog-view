@@ -4,7 +4,7 @@ import { BacklogViewHost } from '../host';
 import { newItemType, promptCreateItem } from '../interactions/create';
 import { runInit } from '../interactions/structure';
 import { adoptableProperties, OptionalField } from '../../domain/optionalProperties';
-import { LEVELS, TEST_LEVELS } from '../../domain/typeVocabulary';
+import { DELIVERABLE_TYPE, LEVELS, TEST_LEVELS } from '../../domain/typeVocabulary';
 import { manualLink } from '../../ui/manualDialog';
 import { manualSections } from '../manual/sections';
 
@@ -41,6 +41,22 @@ function noticeShell(treeEl: HTMLElement, icon: string, text: string): HTMLEleme
 }
 
 /**
+ * The one action the two CREATION frames share — the plain tree's and the catalog's. Both
+ * offer the same press over a different top type, and they were two hand-written copies
+ * until the sweep made their labels one key and left them identical; extracted for
+ * `guidanceShell`'s own reason, one place for a rename to land rather than two.
+ *
+ * Never beside `renderSetupCta`: that one offers CONFIGURATION and is withheld when nothing
+ * is adoptable, which is a different question from what type a new note would be.
+ */
+function renderCreateCta(host: BacklogViewHost, empty: HTMLElement, type: string): void {
+	const btn = empty.createEl('button', { cls: 'mod-cta' });
+	setIcon(btn.createSpan({ cls: 'pbl-btn-icon' }), 'plus');
+	btn.createSpan({ text: t('emptyState.newItem', { type }) });
+	btn.addEventListener('click', () => promptCreateItem(host, [type], null));
+}
+
+/**
  * Shown from construction until Bases delivers the first result set. There is no
  * model to render before that, and a blank pane reads as a broken view rather than
  * a working one — the first render replaces this wholesale.
@@ -48,7 +64,7 @@ function noticeShell(treeEl: HTMLElement, icon: string, text: string): HTMLEleme
 export function renderLoadingState(treeEl: HTMLElement): void {
 	const loading = treeEl.createDiv({ cls: 'pbl-loading', attr: { role: 'status', 'aria-live': 'polite' } });
 	setIcon(loading.createDiv({ cls: 'pbl-loading-spinner' }), 'loader-2');
-	loading.createDiv({ text: 'Loading backlog…' });
+	loading.createDiv({ text: t('emptyState.loading') });
 }
 
 /**
@@ -64,17 +80,16 @@ export function renderEmptyState(host: BacklogViewHost, treeEl: HTMLElement, roo
 	const model = host.model;
 	const focused = model?.focused ?? false;
 	const topLevel = focused && model ? newItemType(host.settings, model) : LEVELS[0];
+	// Two whole keys rather than a frame with a slot: a locale that says "no items of type
+	// X" and one that has a dedicated word for an empty backlog cannot share a middle.
 	const empty = guidanceShell(
 		treeEl,
 		'list-tree',
-		focused ? `No ${topLevel} items` : 'No backlog items',
+		focused ? t('emptyState.noTypeItems', { type: topLevel }) : t('emptyState.noItems'),
 		emptyHint(host, focused, topLevel),
 	);
-	const btn = empty.createEl('button', { cls: 'mod-cta' });
-	setIcon(btn.createSpan({ cls: 'pbl-btn-icon' }), 'plus');
-	btn.createSpan({ text: `New ${topLevel}` });
-	btn.addEventListener('click', () => promptCreateItem(host, [topLevel], null));
-	manualLink(empty, host.app, manualSections(), { sectionId: 'finding', label: 'What shows here?', root });
+	renderCreateCta(host, empty, topLevel);
+	manualLink(empty, host.app, manualSections(), { sectionId: 'finding', label: t('emptyState.whatShowsHere'), root });
 }
 
 /**
@@ -97,17 +112,11 @@ function renderCatalogEmptyState(host: BacklogViewHost, treeEl: HTMLElement, roo
 	const empty = guidanceShell(
 		treeEl,
 		'flask-conical',
-		'No tests yet',
-		`The test catalog is a list of its own: a ${suite} holds ${TEST_LEVELS[1]}s, and a case carries ` +
-			'its preconditions, steps and expected result as ordinary markdown. It is not a branch of ' +
-			`the plan — nothing here shows up in the tree, the board or the roadmap. Create your first ${suite} ` +
-			'to start one.',
+		t('emptyState.noTests'),
+		t('emptyState.noTestsBody', { suite, caseType: TEST_LEVELS[1] }),
 	);
-	const btn = empty.createEl('button', { cls: 'mod-cta' });
-	setIcon(btn.createSpan({ cls: 'pbl-btn-icon' }), 'plus');
-	btn.createSpan({ text: `New ${suite}` });
-	btn.addEventListener('click', () => promptCreateItem(host, [suite], null));
-	manualLink(empty, host.app, manualSections(), { sectionId: 'types', label: 'What is a test suite?', root });
+	renderCreateCta(host, empty, suite);
+	manualLink(empty, host.app, manualSections(), { sectionId: 'types', label: t('emptyState.whatIsSuite'), root });
 }
 
 /**
@@ -116,13 +125,13 @@ function renderCatalogEmptyState(host: BacklogViewHost, treeEl: HTMLElement, roo
  */
 function emptyHint(host: BacklogViewHost, focused: boolean, topLevel: string): string {
 	if (focused) {
-		return `Nothing typed "${topLevel}" matches this view. Switch the focus button in the toolbar back to "All types", or create a ${topLevel}.`;
+		return t('emptyState.focusedHint', { type: topLevel });
 	}
 	const ignored = host.model?.ignoredCount ?? 0;
 	if (ignored > 0) {
 		return t('emptyState.ignored', { count: ignored, topLevel });
 	}
-	return `Point this base's filter at your backlog folder, then create your first ${topLevel}. New items automatically get the parent, order and type properties this view needs.`;
+	return t('emptyState.filterHint', { type: topLevel });
 }
 
 /**
@@ -132,14 +141,7 @@ function emptyHint(host: BacklogViewHost, focused: boolean, topLevel: string): s
  * set and where, never a blank pane.
  */
 export function renderBoardNoWorkflowState(host: BacklogViewHost, treeEl: HTMLElement): void {
-	const empty = guidanceShell(
-		treeEl,
-		'square-kanban',
-		'No workflow to show',
-		'The board is a projection of your workflow, and this view has no state property yet. ' +
-			'Set "State property" in the view options — and optionally "Workflow states (in order)" — ' +
-			'and the board will draw one column per state.',
-	);
+	const empty = guidanceShell(treeEl, 'square-kanban', t('emptyState.noWorkflow'), t('emptyState.noWorkflowBody'));
 	renderSetupCta(host, empty, ['state']);
 }
 
@@ -152,12 +154,8 @@ export function renderDeliverablesBoardNoWorkflowState(host: BacklogViewHost, tr
 	const empty = guidanceShell(
 		treeEl,
 		'square-kanban',
-		'No workflow to show',
-		'The Deliverables board projects a workflow, and this view has neither state ' +
-			'property set. Set "Deliverable state property" in the view options to give ' +
-			'Deliverables a workflow of their own, or set "State property" and they share ' +
-			'the requirements one. Either draws a column per state, and "Deliverable ' +
-			'workflow states (in order)" names them.',
+		t('emptyState.noDeliverableWorkflow'),
+		t('emptyState.noDeliverableWorkflowBody'),
 	);
 	// BOTH fields fix this frame, which is `resolvedDeliverableStateKey`'s own rule as a
 	// list: this board resolves through its own key when one is set and through the
@@ -192,12 +190,10 @@ export function renderBoardExcludedFocusState(host: BacklogViewHost, treeEl: HTM
 	const empty = guidanceShell(
 		treeEl,
 		'square-kanban',
-		'Nothing to show under this focus',
-		'The focus level is "Deliverable", and Deliverables are managed on their own board — ' +
-			'this one never shows them. Clear the focus to see the rest of the backlog, or ' +
-			'switch to the Deliverables board.',
+		t('emptyState.excludedFocus'),
+		t('emptyState.excludedFocusBody', { type: DELIVERABLE_TYPE }),
 	);
-	const btn = empty.createEl('button', { cls: 'mod-cta', text: 'Show all types' });
+	const btn = empty.createEl('button', { cls: 'mod-cta', text: t('emptyState.showAllTypes') });
 	btn.addEventListener('click', () => host.setFocusLevel(''));
 }
 
@@ -216,9 +212,8 @@ export function renderNoDeliverablesState(treeEl: HTMLElement): void {
 	guidanceShell(
 		treeEl,
 		'package',
-		'No deliverables yet',
-		'Nothing in this base is typed "Deliverable". Create one from the toolbar\'s New ' +
-			'button, or type an existing note as a Deliverable from its Set type menu.',
+		t('emptyState.noDeliverables'),
+		t('emptyState.noDeliverablesBody', { type: DELIVERABLE_TYPE }),
 	);
 }
 
@@ -231,13 +226,7 @@ export function renderNoDeliverablesState(treeEl: HTMLElement): void {
  * been committed.
  */
 export function renderEmptyIterationState(treeEl: HTMLElement, name: string): void {
-	guidanceShell(
-		treeEl,
-		'calendar-clock',
-		'No items in this iteration yet',
-		`Nothing names ${name} yet. Put work in it with Set iteration from any row's or ` +
-			'card\'s menu, which also takes the iteration\'s own start and target dates.',
-	);
+	guidanceShell(treeEl, 'calendar-clock', t('emptyState.emptyIteration'), t('emptyState.emptyIterationBody', { name }));
 }
 
 /**
@@ -253,7 +242,7 @@ export function renderRoadmapNoAxisState(host: BacklogViewHost, treeEl: HTMLElem
 	// missing decides the sentence, and a locale that names the dates first has no way
 	// into a middle the caller assembled.
 	const body = halfConfigured ? t('emptyState.noAxisBodyHalfSet') : t('emptyState.noAxisBody');
-	const empty = guidanceShell(treeEl, 'map', 'No axis to show', body);
+	const empty = guidanceShell(treeEl, 'map', t('emptyState.noAxis'), body);
 	renderSetupCta(host, empty, ['horizon', 'start', 'target']);
 }
 
@@ -277,7 +266,7 @@ function renderSetupCta(host: BacklogViewHost, empty: HTMLElement, fixes: Option
 	if (!adoptable.some((property) => fixes.includes(property.field))) return;
 	const btn = empty.createEl('button', { cls: 'mod-cta' });
 	setIcon(btn.createSpan({ cls: 'pbl-btn-icon' }), 'sparkles');
-	btn.createSpan({ text: 'Add the default properties' });
+	btn.createSpan({ text: t('emptyState.addDefaults') });
 	btn.addEventListener('click', () => void runInit(host));
 }
 
@@ -290,7 +279,7 @@ export function renderAllDoneState(
 	root: HTMLElement = treeEl,
 ): void {
 	const empty = noticeShell(treeEl, 'circle-check', t('emptyState.allDone', { count: total }));
-	const btn = empty.createEl('button', { text: 'Show completed items' });
+	const btn = empty.createEl('button', { text: t('emptyState.showCompleted') });
 	btn.addEventListener('click', () => host.config.set('showCompleted', true));
-	manualLink(empty, host.app, manualSections(), { sectionId: 'finding', label: 'What shows here?', root });
+	manualLink(empty, host.app, manualSections(), { sectionId: 'finding', label: t('emptyState.whatShowsHere'), root });
 }

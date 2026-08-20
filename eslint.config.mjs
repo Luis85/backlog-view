@@ -277,6 +277,12 @@ const RENDER = 'src/view/render/**/*.ts';
 // carved out of RENDER the same way RANKING_VIEW was carved out of RANKING, because a
 // rule applies to the rest of the region and not to this one file.
 const RENDER_BOARD = 'src/view/render/board.ts';
+// The empty states, carved out of RENDER for one text ban alone — swept into the catalog
+// on 2026-08-20, so `UI_TEXT_PROPERTY` lands on a clean file rather than opening with a
+// wall of errors on the rest of a directory nobody has swept yet. That ORDER is the rule:
+// a ban ahead of its sweep is a ban somebody switches off. Everything else RENDER carries
+// applies here unchanged.
+const RENDER_EMPTY_STATES = 'src/view/render/emptyStates.ts';
 // The row's own controls, carved out of RENDER for ROW_LISTENER: `rows.ts` wires the
 // tree's row and chip delegation (the only place a per-row listener may live),
 // `columns.ts` draws the state and horizon chips those delegate for, and `chips.ts`
@@ -415,6 +421,30 @@ const TEXT_TERNARY = [
 const UI_TEXT_LITERAL = {
 	selector:
 		"CallExpression[callee.property.name=/^(setName|setDesc|setPlaceholder|setTooltip|setButtonText|setText|setTitle)$/] > :matches(Literal[value=/^[A-Z]/], TemplateLiteral[quasis.0.value.raw=/^[A-Z]/]), NewExpression[callee.name='Notice'] > :matches(Literal[value=/^[A-Z]/], TemplateLiteral[quasis.0.value.raw=/^[A-Z]/])",
+	message:
+		'A sentence spelled where it is used cannot be translated. Add a key to src/i18n/en.ts and call t() — and if this is a value the plugin writes, matches or persists rather than text, it belongs in neither place.',
+};
+
+// The FIRST of the three shapes `UI_TEXT_LITERAL` states it cannot see, banned where the
+// exemption that keeps it out of that rule does not apply.
+//
+// `view/render/emptyStates.ts` reaches the DOM entirely through `createDiv`/`createEl`
+// option bags, so it spells no setter and no `new Notice` and `UI_TEXT_LITERAL` would have
+// held nothing in it at all. What it does spell is `text:`, `label:` and `'aria-label':`,
+// which that rule leaves alone for one live instance in `ui/manualDialog.ts` — the plugin's
+// own NAME, which `Every surface translated` says is not translated. Scoped here, there is
+// no such instance to open on.
+//
+// **It sees that property shape and no other.** The two that remain uncovered in this file:
+// a template whose first quasi is empty (`UI_TEXT_LITERAL`'s own second exemption, for the
+// same reason — the capital test has nothing to read), and a prose literal handed to a
+// helper as a positional ARGUMENT, which is how `guidanceShell` takes every title and hint
+// this module draws. That second one is the file's commonest shape and lint cannot reach
+// it: the runtime half in `test/i18n/emptyStates.test.ts` is what holds it, by asserting
+// that every string a frame drew carries the fixture catalog's marker.
+const UI_TEXT_PROPERTY = {
+	selector:
+		"Property[key.name=/^(text|label|title)$/]:matches([value.type='Literal'][value.value=/^[A-Z]/], [value.type='TemplateLiteral'][value.quasis.0.value.raw=/^[A-Z]/]), Property[key.value='aria-label']:matches([value.type='Literal'][value.value=/^[A-Z]/], [value.type='TemplateLiteral'][value.quasis.0.value.raw=/^[A-Z]/])",
 	message:
 		'A sentence spelled where it is used cannot be translated. Add a key to src/i18n/en.ts and call t() — and if this is a value the plugin writes, matches or persists rather than text, it belongs in neither place.',
 };
@@ -563,7 +593,7 @@ export default defineConfig([
 		// the chip (`columns.ts`) is exactly the surface that must not hand-pick the raw
 		// fields itself.
 		files: [RENDER],
-		ignores: [RENDER_BOARD, ...ROW_CONTROLS],
+		ignores: [RENDER_BOARD, RENDER_EMPTY_STATES, ...ROW_CONTROLS],
 		rules: syntaxRules([
 			...SVG_CLASS_TOKENS,
 			...WRITE_BOUNDARY,
@@ -573,6 +603,21 @@ export default defineConfig([
 			CHILD_TYPE_CHOICES_NULL,
 			DELIVERABLE_FIELD_READ,
 			...TEXT_TERNARY,
+		]),
+	},
+	{
+		// The swept empty states: RENDER's own rules plus the property ban above.
+		files: [RENDER_EMPTY_STATES],
+		rules: syntaxRules([
+			...SVG_CLASS_TOKENS,
+			...WRITE_BOUNDARY,
+			MENU_ANCHOR,
+			TREE_SCAN,
+			ALL_TYPES_IMPORT,
+			CHILD_TYPE_CHOICES_NULL,
+			DELIVERABLE_FIELD_READ,
+			...TEXT_TERNARY,
+			UI_TEXT_PROPERTY,
 		]),
 	},
 	{

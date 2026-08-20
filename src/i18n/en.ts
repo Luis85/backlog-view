@@ -54,6 +54,70 @@ export const en = {
 		one: 'All {count} item is done and hidden.',
 		other: 'All {count} items are done and hidden.',
 	},
+	'emptyState.loading': 'Loading backlog…',
+	'emptyState.noItems': 'No backlog items',
+	/**
+	 * `{type}` is a TYPE NAME and arrives as a parameter throughout this block, never as a
+	 * word this catalog spells: the vocabulary is what `type:` frontmatter holds, so a
+	 * locale that translated it would write notes another locale cannot read.
+	 */
+	'emptyState.noTypeItems': 'No {type} items',
+	'emptyState.newItem': 'New {type}',
+	'emptyState.whatShowsHere': 'What shows here?',
+	'emptyState.focusedHint':
+		'Nothing typed "{type}" matches this view. Switch the focus button in the toolbar back to "All types", or create a {type}.',
+	'emptyState.filterHint':
+		"Point this base's filter at your backlog folder, then create your first {type}. New items automatically get the parent, order and type properties this view needs.",
+
+	'emptyState.noTests': 'No tests yet',
+	/**
+	 * The trailing `s` on `{caseType}` pluralizes a word this catalog did not write — the
+	 * same known ceiling `count.childrenOfType` carries, and `Type names are data` owns.
+	 */
+	'emptyState.noTestsBody':
+		'The test catalog is a list of its own: a {suite} holds {caseType}s, and a case carries its preconditions, steps and expected result as ordinary markdown. It is not a branch of the plan — nothing here shows up in the tree, the board or the roadmap. Create your first {suite} to start one.',
+	'emptyState.whatIsSuite': 'What is a test suite?',
+
+	/**
+	 * Two boards, two bodies, one title — and the titles are separate keys on purpose
+	 * (`en.ts`'s own rule: identical English is expected and must not be deduplicated).
+	 *
+	 * Each body quotes a view option by its LABEL, spelled here as English rather than
+	 * taken as a parameter. That matches `emptyState.ignored` and `toolbar.ignoredTooltip`
+	 * above and is the same debt they carry: `Every surface translated`'s second acceptance
+	 * criterion wants one parameter from one key, and the labels are
+	 * `domain/viewOptions.ts`'s, which is [[View options and config warnings]] and unswept.
+	 * Keying them here would be keying somebody else's string.
+	 */
+	'emptyState.noWorkflow': 'No workflow to show',
+	'emptyState.noWorkflowBody':
+		'The board is a projection of your workflow, and this view has no state property yet. Set "State property" in the view options — and optionally "Workflow states (in order)" — and the board will draw one column per state.',
+	'emptyState.noDeliverableWorkflow': 'No workflow to show',
+	'emptyState.noDeliverableWorkflowBody':
+		'The Deliverables board projects a workflow, and this view has neither state property set. Set "Deliverable state property" in the view options to give Deliverables a workflow of their own, or set "State property" and they share the requirements one. Either draws a column per state, and "Deliverable workflow states (in order)" names them.',
+
+	/**
+	 * "the Deliverables board" names a PROJECTION and stays in the sentence; the quoted
+	 * `{type}` beside it is the value `type:` frontmatter holds and is a parameter. The two
+	 * read as the same word in English and are different kinds of thing.
+	 */
+	'emptyState.excludedFocus': 'Nothing to show under this focus',
+	'emptyState.excludedFocusBody':
+		'The focus level is "{type}", and Deliverables are managed on their own board — this one never shows them. Clear the focus to see the rest of the backlog, or switch to the Deliverables board.',
+	'emptyState.showAllTypes': 'Show all types',
+
+	'emptyState.noDeliverables': 'No deliverables yet',
+	'emptyState.noDeliverablesBody':
+		'Nothing in this base is typed "{type}". Create one from the toolbar\'s New button, or type an existing note as a Deliverable from its Set type menu.',
+
+	/** `{name}` is the iteration note's own title — vault content, never translated. */
+	'emptyState.emptyIteration': 'No items in this iteration yet',
+	'emptyState.emptyIterationBody':
+		"Nothing names {name} yet. Put work in it with Set iteration from any row's or card's menu, which also takes the iteration's own start and target dates.",
+
+	'emptyState.noAxis': 'No axis to show',
+	'emptyState.addDefaults': 'Add the default properties',
+	'emptyState.showCompleted': 'Show completed items',
 
 	/** A named group on the roadmap — a horizon bucket, or the shelf — with its count. */
 	'roadmap.groupLabel': { one: '{name}, {count} item', other: '{name}, {count} items' },
