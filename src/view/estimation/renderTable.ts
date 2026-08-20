@@ -108,11 +108,19 @@ function wireEvents(
 	});
 }
 
-/** One row over, holding at either edge rather than wrapping — the roadmap's own rule for this shape of walk. */
+/**
+ * One row over, holding at either edge rather than wrapping — the roadmap's own rule for
+ * this shape of walk. `at` is never -1 in practice since Task 9: `renderTable` auto-selects
+ * `items[0]` whenever `items` is non-empty, before this handler is even wired, so a step
+ * never runs with nothing selected. The arithmetic never needed a special case for it
+ * anyway — `Math.max(at + delta, 0)` already clamps `-1 + delta` to `0` for either
+ * direction, the same answer a dedicated `at === -1` branch would compute by name, which is
+ * why that branch is gone rather than kept and aimed at with a manufactured state.
+ */
 function step(items: EstimationItem[], selectedPath: string | null, delta: 1 | -1): string | null {
 	if (items.length === 0) return null;
 	const at = items.findIndex((item) => item.file.path === selectedPath);
-	const next = at === -1 ? 0 : Math.min(Math.max(at + delta, 0), items.length - 1);
+	const next = Math.min(Math.max(at + delta, 0), items.length - 1);
 	return items[next].file.path;
 }
 
@@ -140,20 +148,26 @@ function applySelection(tableEl: HTMLElement, row: HTMLElement, selected: boolea
  * path drawn from this pass's `items` — and `rows` is built from that same (possibly
  * sorted) list, so there is no state in which the lookup below can miss.
  *
+ * `view.selectedPath` and `view.panelEl` are never null here either, since Task 9: this
+ * handler is wired in the same render pass that auto-selects `items[0]` (and the panel it
+ * draws) whenever `items` is non-empty, and a click or key press cannot reach a row before
+ * that pass finishes — so a PREVIOUS selection, and its panel, always already exist by the
+ * time a row is picked.
+ *
  * `scroll` is true only from the keyboard: a click already lands on a row the pointer
  * could reach, so nothing off screen needs to be brought into view for it.
  */
 function selectRow(ctx: TableCtx, path: string, scroll: boolean): void {
 	const { view, tableEl, model, rows } = ctx;
 	const row = rows.get(path)!;
-	const previous = view.selectedPath ? rows.get(view.selectedPath) : undefined;
-	if (previous) applySelection(tableEl, previous, false);
+	const previous = rows.get(view.selectedPath!)!;
+	applySelection(tableEl, previous, false);
 	view.selectedPath = path;
 	applySelection(tableEl, row, true);
 	if (scroll) row.scrollIntoView({ block: 'nearest' });
 	// Straight off the panel on screen: this path tears nothing down first, so the element
 	// still has a layout box and its own `scrollTop` is the honest answer.
-	renderPanel(view, model, view.panelEl?.scrollTop ?? 0);
+	renderPanel(view, model, view.panelEl!.scrollTop);
 }
 
 /**
@@ -411,6 +425,13 @@ export function renderTable(view: EstimationView, model: EstimationModel, previo
 	// means what it already means for that honest case: select the first row.
 	if (view.selectedPath !== null && !model.byPath.has(view.selectedPath)) view.selectedPath = null;
 	const pick = parseSort(view.sortPick);
+	const items = sortedItems(model.items, pick);
+	// Nothing selected lands the reader on a reserved, empty track with nothing saying a row
+	// is clickable. The FIRST DRAWN row — `items`, this pass's sorted order, not
+	// `model.items` — so the pick follows what is on screen. It writes nothing: a score is a
+	// click on a point button, so an auto-selected row is no more a write surface than a
+	// clicked one.
+	if (view.selectedPath === null && items.length > 0) view.selectedPath = items[0].file.path;
 	// Nothing here reads `view.tableEl` for its position: see the note above. Into
 	// `contentEl` (the grid), never `viewEl` (the shell) directly — the toolbar sits
 	// beside `viewEl`'s other child, not inside the grid whose tracks this table shares
@@ -418,7 +439,6 @@ export function renderTable(view: EstimationView, model: EstimationModel, previo
 	const tableEl = view.contentEl.createDiv({ cls: 'pbl-est-table', attr: { role: 'listbox', tabindex: '0' } });
 	view.tableEl = tableEl;
 	renderHead(view, tableEl, pick);
-	const items = sortedItems(model.items, pick);
 	// The model's own declared output range, never the spread of what this base returned —
 	// `EstimationModel` carries no `ScoringModel`, so the range comes off the view.
 	const output: [number, number] = [view.settings.model.outputMin, view.settings.model.outputMax];

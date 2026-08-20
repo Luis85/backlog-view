@@ -295,16 +295,21 @@ describe('the decomposition block', () => {
 });
 
 describe('the reserved panel column when nothing is selected', () => {
-	it('collapses to one track while unselected, and restores the second once a row is picked', () => {
+	// Since Task 9, a base with results always starts with the first row selected, so
+	// "unselected, then restored once a row is picked" no longer occurs there — a click
+	// has nothing left to restore. The surviving case is a zero-result base, where there
+	// is nothing to auto-select, against a base with results, where the second track is
+	// already filled before any click.
+	it('collapses to one track only when there is nothing to select; a base with results starts with it filled', () => {
+		const { containerEl: emptyContainer } = makeEstimationView(new FakeVault(), configuredValues());
+		const emptyViewEl = emptyContainer.querySelector('.pbl-est-view') as HTMLElement;
+		expect(emptyViewEl.classList.contains('pbl-est-no-panel')).toBe(true);
+		expect(emptyContainer.querySelector('.pbl-est-panel')).toBeNull();
+
 		const vault = new FakeVault();
 		vault.addFile('Item.md', { frontmatter: { 'customer-value': 3 } });
 		const { containerEl } = makeEstimationView(vault, configuredValues());
 		const viewEl = containerEl.querySelector('.pbl-est-view') as HTMLElement;
-
-		expect(viewEl.classList.contains('pbl-est-no-panel')).toBe(true);
-		expect(containerEl.querySelector('.pbl-est-panel')).toBeNull();
-
-		selectItem(containerEl, 'Item.md');
 
 		expect(viewEl.classList.contains('pbl-est-no-panel')).toBe(false);
 		expect(containerEl.querySelector('.pbl-est-panel')).not.toBeNull();

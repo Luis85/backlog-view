@@ -52,10 +52,12 @@ describe('the estimation view from the keyboard', () => {
 		// on `expect(view.app.workspace).toBeDefined()`, which checks almost nothing; the fake
 		// vault records every `openFile` call (`vault.opened`), so this asserts Enter actually
 		// reached it rather than merely that the object exists.
+		//
+		// No `ArrowDown` first: since Task 9 the first row (Full.md) is already selected on a
+		// fresh render, so ArrowRight reaches its panel directly rather than stepping onto it.
 		const vault = fixture();
 		const { containerEl } = makeEstimationView(vault, configuredValues());
 		const table = containerEl.querySelector('.pbl-est-table') as HTMLElement;
-		key(table, 'ArrowDown');
 		key(table, 'ArrowRight');
 		expect(containerEl.querySelector('.pbl-est-panel')!.contains(document.activeElement)).toBe(true);
 		key(table, 'Enter');
@@ -69,9 +71,10 @@ describe('the estimation view from the keyboard', () => {
 		// across either branch: since every radio is also a plain `button`, that always
 		// resolves to data-value="1" here regardless of tabindex. This pins the real tab
 		// stop, data-value="5".
+		//
+		// No `ArrowDown` first: Full.md is already selected on a fresh render (Task 9).
 		const { containerEl } = makeEstimationView(fixture(), configuredValues());
 		const table = containerEl.querySelector('.pbl-est-table') as HTMLElement;
-		key(table, 'ArrowDown');
 		key(table, 'ArrowRight');
 		expect(document.activeElement).toBe(containerEl.querySelector('[data-dim="strategic-alignment"][data-value="5"]'));
 	});

@@ -6,6 +6,16 @@ import { makeEstimationView } from '../../helpers/estimation';
 import { configuredValues } from '../../helpers/estimationModel';
 import { FakeVault } from '../../helpers/vault';
 
+/** Two scored notes, "Bravo" before "Alpha" in the base's own (insertion) order — enough
+ *  to tell "the first row drawn" apart from "the first item the base returned" when a
+ *  sort is not in play, since a table with one row can never distinguish the two. */
+function fixture(): FakeVault {
+	const vault = new FakeVault();
+	vault.addFile('Bravo.md', { frontmatter: { 'strategic-alignment': 5 } });
+	vault.addFile('Alpha.md', { frontmatter: { 'strategic-alignment': 3 } });
+	return vault;
+}
+
 /**
  * The render dispatch this task builds: loading (asserted by construction alone — nothing
  * has called `onDataUpdated` yet) → the guided-unconfigured empty state → a config
@@ -89,14 +99,44 @@ describe('the no-panel class the grid layout reads', () => {
 		expect(containerEl.querySelector('.pbl-est-view')).toBeNull();
 	});
 
-	it('is set on the configured table with nothing selected, and cleared once a row is', () => {
-		const vault = new FakeVault();
-		vault.addFile('Item.md', { frontmatter: { 'strategic-alignment': 5 } });
-		const { containerEl } = makeEstimationView(vault, configuredValues());
+	// Since Task 9, a configured table with results always starts with the first drawn row
+	// selected, so "nothing selected" no longer occurs there — this now pins the one case
+	// where nothing CAN be: a configured base with zero results (`renderRows`' own empty
+	// branch, which selects nothing and draws no panel).
+	it('stays set when a configured base returns zero results, since nothing can be selected', () => {
+		const { containerEl } = makeEstimationView(new FakeVault(), configuredValues());
 		expect(containerEl.querySelector('.pbl-est-view')?.classList.contains('pbl-est-no-panel')).toBe(true);
+		expect(containerEl.querySelector('.pbl-est-panel')).toBeNull();
+	});
 
-		containerEl.querySelector<HTMLElement>('.pbl-est-row')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-
+	it('is cleared on a configured table with results, since the first row starts selected', () => {
+		const { containerEl } = makeEstimationView(fixture(), configuredValues());
 		expect(containerEl.querySelector('.pbl-est-view')?.classList.contains('pbl-est-no-panel')).toBe(false);
+	});
+});
+
+describe('the first row is selected on a fresh render', () => {
+	it('selects the first row so the panel is on screen without a click', () => {
+		// The reader lands on a scored panel that teaches the view by being it. Selection writes
+		// nothing — a pick is a click on a point button — so an auto-selected row is no more a
+		// write surface than a clicked one.
+		const { containerEl, view } = makeEstimationView(fixture(), configuredValues());
+		expect(view.selectedPath).not.toBeNull();
+		expect(containerEl.querySelector('.pbl-est-panel')).not.toBeNull();
+		expect(containerEl.querySelector('.pbl-est-row.pbl-selected')).not.toBeNull();
+	});
+
+	it('selects nothing when the base returned nothing', () => {
+		const { containerEl, view } = makeEstimationView(new FakeVault(), configuredValues());
+		expect(view.selectedPath).toBeNull();
+		expect(containerEl.querySelector('.pbl-est-panel')).toBeNull();
+		expect(containerEl.textContent).toContain('No results to estimate.');
+	});
+
+	it('follows the active sort rather than the base order', () => {
+		// `items` is this pass's sorted order, so "the first row" is the first row DRAWN.
+		const { containerEl, view } = makeEstimationView(fixture(), configuredValues());
+		const firstDrawn = containerEl.querySelector('.pbl-est-row') as HTMLElement;
+		expect(view.selectedPath).toBe(firstDrawn.dataset.path);
 	});
 });

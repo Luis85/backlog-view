@@ -271,11 +271,13 @@ describe('the currency chip', () => {
 });
 
 describe('keyboard on the estimation table', () => {
-	it('ArrowDown selects the first row, then steps to the next', () => {
+	it('starts on the first row already selected, and steps from there', () => {
+		// Since Task 9 the first row is selected on a fresh render (`view.selectedPath` is
+		// already 'Full.md' here, no click or key needed), so the first ArrowDown steps
+		// PAST it rather than landing on it.
 		const { view, containerEl } = makeEstimationView(fixture(), configuredValues());
 		const table = containerEl.querySelector('.pbl-est-table') as HTMLElement;
 
-		key(table, 'ArrowDown');
 		expect(view.selectedPath).toBe('Full.md');
 		key(table, 'ArrowDown');
 		expect(view.selectedPath).toBe('Partial.md');
@@ -300,16 +302,19 @@ describe('keyboard on the estimation table', () => {
 	});
 
 	it('opens the selected note on Enter', () => {
+		// No ArrowDown needed: the first row (Full.md) is already selected on a fresh
+		// render since Task 9.
 		const vault = fixture();
 		const { containerEl } = makeEstimationView(vault, configuredValues());
 		const table = containerEl.querySelector('.pbl-est-table') as HTMLElement;
-		key(table, 'ArrowDown');
 		key(table, 'Enter');
 		expect(vault.opened).toEqual([{ path: 'Full.md', mode: false }]);
 	});
 
 	it('Enter opens nothing while no row is selected', () => {
-		const vault = fixture();
+		// Restated for Task 9: a fixture WITH results now always starts with a selection,
+		// so "no row is selected" only occurs when the base returns zero results.
+		const vault = new FakeVault();
 		const { containerEl } = makeEstimationView(vault, configuredValues());
 		const table = containerEl.querySelector('.pbl-est-table') as HTMLElement;
 		key(table, 'Enter');
@@ -346,7 +351,13 @@ describe('keyboard on the estimation table', () => {
 });
 
 describe('the selection when its own row leaves the results', () => {
-	it('clears a stale selectedPath instead of teleporting the next arrow press to row 0', () => {
+	// Restated for Task 9: the stale path is still cleared first (a path from a previous
+	// pass this one's model no longer has must never survive), but with results still on
+	// screen the same render now auto-selects the first of THEM rather than leaving the
+	// reader at null — replacing the withdrawn row's panel with the next best thing
+	// instead of an empty track. The old expectation (stays null until the next arrow
+	// press) is exactly the placeholder-track gap this task closes, so it is wrong now.
+	it('replaces a stale selectedPath with the first remaining row rather than an empty track', () => {
 		const vault = fixture();
 		const { view, containerEl } = makeEstimationView(vault, configuredValues());
 		row(containerEl, 'Partial.md').dispatchEvent(new MouseEvent('click', { bubbles: true }));
@@ -359,16 +370,23 @@ describe('the selection when its own row leaves the results', () => {
 		};
 		view.onDataUpdated();
 
+		expect(view.selectedPath).toBe('Full.md');
+		expect(containerEl.querySelector('.pbl-selected')).not.toBeNull();
+		expect(containerEl.querySelector('.pbl-est-panel')).not.toBeNull();
+	});
+
+	it('leaves nothing selected when the withdrawn row was the last result', () => {
+		const vault = new FakeVault();
+		vault.addFile('Only.md', { frontmatter: { 'strategic-alignment': 5 } });
+		const { view, containerEl } = makeEstimationView(vault, configuredValues());
+		expect(view.selectedPath).toBe('Only.md');
+
+		(view as unknown as { data: unknown }).data = { data: [] };
+		view.onDataUpdated();
+
 		expect(view.selectedPath).toBeNull();
 		expect(containerEl.querySelector('.pbl-selected')).toBeNull();
 		expect(containerEl.querySelector('.pbl-est-panel')).toBeNull();
-
-		// Honest afterwards too: nothing is selected, so the next arrow press means what
-		// it always means for that state — select the first row — not a teleport away
-		// from a row the reader still believed was held.
-		const table = containerEl.querySelector('.pbl-est-table') as HTMLElement;
-		key(table, 'ArrowDown');
-		expect(view.selectedPath).toBe('Full.md');
 	});
 });
 
