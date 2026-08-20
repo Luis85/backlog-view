@@ -25,13 +25,26 @@ useViewHarness();
  *
  *   - The prompt OPTION BAGS. `heading:`, `description:`, `placeholder:` and `cta:` are
  *     named in neither `UI_TEXT_LITERAL` nor `UI_TEXT_PROPERTY`, so a literal at any of
- *     them fails no rule. Every one of them is read back here.
+ *     them fails no rule. **One of them is read back here** — the dependency picker's
+ *     placeholder — and that is narrower than the shape it stands for: the absence
+ *     dialog's two headings and its filed-in description, the iteration dialog's heading,
+ *     call to action and date note, and the schedule prompt's pair are all the same
+ *     unguarded shape and are held by NOTHING today. Naming them is the point of writing
+ *     this down; closing them is a fixture apiece and is owed.
  *   - The two ASSEMBLED sentences. `runInit`'s outcome and the undo report are built from
  *     keyed fragments joined by `list()`, and lint sees a call rather than a sentence.
  *     Keying only the fragments would leave the frame in English and pass every rule.
+ *     `runInit`'s is covered below; the undo report's is not — it needs a batch that
+ *     fails partway, which no fixture here reaches.
  */
 
-/** Every key the seven swept files spell for themselves. */
+/**
+ * Every key the seven swept files spell for themselves — the FIXTURE, which is wider than
+ * what the two tests below assert. Computed lists are what the other i18n files learned to
+ * use, and this one is hand-kept for a reason that is itself a limitation: the keys span
+ * seven namespaces with no shared prefix, so there is nothing to compute against. A key
+ * added to one of those files and left out of this list is caught by neither half.
+ */
 const OWN: MessageKey[] = [
 	'config.fixFirst',
 	'dependency.dependsOn',
@@ -164,5 +177,56 @@ describe("the backfill's outcome is one sentence, not a frame around fragments",
 		const outcome = Notice.messages.find((m) => m.includes(en['init.adopted'].replace('{properties}', '')));
 		expect(outcome).toBeDefined();
 		expect(outcome?.startsWith(MARK)).toBe(true);
+	});
+});
+
+/**
+ * The iteration dialog's own option bag — its heading, its call to action and the note
+ * under its date fields. All three are `heading:` / `cta:` / `description:` properties, so
+ * all three are outside both lint rules and this is the only thing holding them.
+ *
+ * Its EDIT pair (`create.iterationEditHeading`, `create.iterationEditCta`) is reached the
+ * same way with an existing iteration in scope, and is not driven here.
+ */
+describe('the iteration dialog reads its frame from the catalog', () => {
+	it('names the heading, the call to action and the date note from it', () => {
+		const vault = new FakeVault();
+		vault.addFile('Sprint 12.md', {
+			frontmatter: { type: 'Iteration', order: 10, start: '2026-08-03', due: '2026-08-16' },
+		});
+		const harness = makeView(
+			vault,
+			{
+				stateProperty: 'note.status',
+				stateValues: 'New, Doing, Done',
+				iterationProperty: 'note.iteration',
+				startProperty: 'note.start',
+				targetProperty: 'note.due',
+				homeFolder: '',
+			},
+			{ base: 'Plan.base' },
+		);
+		harness.view.setBoardScope(null);
+		harness.view.setProjection('board');
+		harness.containerEl
+			.querySelector<HTMLElement>('.pbl-scope-btn')
+			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+		// Found by its ENGLISH title, and deliberately so: the scope picker's entry is
+		// `view/render/toolbarControls.ts`'s and is still unswept, which this lookup proves
+		// — it renders unmarked beside a dialog that is marked throughout. It becomes a key
+		// when `render/` is swept, and this line changes with it.
+		const entry = Menu.lastShown?.item('New iteration…');
+		if (!entry) throw new Error('no new-iteration entry');
+		entry.click();
+
+		const modal = Modal.lastOpened;
+		if (!modal) throw new Error('dialog not opened');
+		expect(modal.titleEl.textContent).toBe(MARK + en['create.iterationHeading']);
+		// The call to action is the prompt's own button, and it is this CALLER's key rather
+		// than `prompt.create` — the two read alike in English and are different strings.
+		const cta = modal.contentEl.querySelector('button:not(.extra-setting-button)');
+		expect(cta?.textContent).toBe(MARK + en['create.iterationCta']);
+		expect(modal.contentEl.textContent).toContain(MARK + en['create.iterationDates']);
 	});
 });
