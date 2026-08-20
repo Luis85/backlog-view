@@ -1,4 +1,5 @@
 import { App, Notice } from 'obsidian';
+import { t } from '../i18n/t';
 import { backlogReadmeContent } from '../domain/backlogReadme';
 import { configProblems } from '../domain/settingsConsistency';
 import { BacklogModel } from '../domain/model';
@@ -26,15 +27,15 @@ export const WRITE_README_COMMAND_ID = 'write-backlog-readme';
 function outcomeNotice({ outcome, path, previous }: ReadmeWriteResult): string {
 	switch (outcome) {
 		case 'created':
-			return `Wrote "${path}".`;
+			return t('readme.created', { path });
 		case 'updated':
-			return `Updated "${path}".`;
+			return t('readme.updated', { path });
 		case 'unchanged':
-			return `"${path}" already matches this view. Nothing was written.`;
+			return t('readme.unchanged', { path });
 		case 'foreign':
-			return `"${path}" was not written by this plugin, so it was left alone. Move it aside to generate one.`;
+			return t('readme.foreign', { path });
 		case 'replaced':
-			return `Updated "${path}", which documented "${displaySource(previous ?? '')}". A folder has one readme, so two views sharing it take turns.`;
+			return t('readme.replaced', { path, previous: displaySource(previous ?? '') });
 	}
 }
 
@@ -64,7 +65,7 @@ function viewSource(app: App, view: LiveBacklogView): string {
 async function writeReadmeForView(app: App, view: LoadedBacklogView): Promise<void> {
 	const problems = configProblems(view.settings);
 	if (problems.length > 0) {
-		new Notice(`Fix the view configuration first: ${problems.join('; ')}.`);
+		new Notice(t('readme.configProblems', { problems }));
 		return;
 	}
 	const content = backlogReadmeContent(view.settings, view.model.observedStates, view.source);
@@ -72,7 +73,7 @@ async function writeReadmeForView(app: App, view: LoadedBacklogView): Promise<vo
 		new Notice(outcomeNotice(await writeBacklogReadme(app, view.settings.homeFolder, content)));
 	} catch (e) {
 		console.error('Product Backlog: failed to write the backlog readme', e);
-		new Notice('Could not write the readme. See the developer console for details.');
+		new Notice(t('readme.failed'));
 	}
 }
 

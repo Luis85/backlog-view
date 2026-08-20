@@ -54,6 +54,89 @@ export const en = {
 		one: 'All {count} item is done and hidden.',
 		other: 'All {count} items are done and hidden.',
 	},
+	'emptyState.loading': 'Loading backlog…',
+	'emptyState.noItems': 'No backlog items',
+	/**
+	 * `{type}` is a TYPE NAME and arrives as a parameter throughout this block, never as a
+	 * word this catalog spells: the vocabulary is what `type:` frontmatter holds, so a
+	 * locale that translated it would write notes another locale cannot read.
+	 */
+	'emptyState.noTypeItems': 'No {type} items',
+	'emptyState.newItem': 'New {type}',
+	'emptyState.whatShowsHere': 'What shows here?',
+	'emptyState.focusedHint':
+		'Nothing typed "{type}" matches this view. Switch the focus button in the toolbar back to "All types", or create a {type}.',
+	'emptyState.filterHint':
+		"Point this base's filter at your backlog folder, then create your first {type}. New items automatically get the parent, order and type properties this view needs.",
+
+	'emptyState.noTests': 'No tests yet',
+	/**
+	 * The trailing `s` on `{caseType}` pluralizes a word this catalog did not write — the
+	 * same known ceiling `count.childrenOfType` carries, and `Type names are data` owns.
+	 */
+	'emptyState.noTestsBody':
+		'The test catalog is a list of its own: a {suite} holds {caseType}s, and a case carries its preconditions, steps and expected result as ordinary markdown. It is not a branch of the plan — nothing here shows up in the tree, the board or the roadmap. Create your first {suite} to start one.',
+	'emptyState.whatIsSuite': 'What is a test suite?',
+
+	/**
+	 * Two boards, two bodies, one title — and the titles are separate keys on purpose
+	 * (`en.ts`'s own rule: identical English is expected and must not be deduplicated).
+	 *
+	 * Each body quotes a view option by its LABEL, spelled here as English rather than
+	 * taken as a parameter. That matches `emptyState.ignored` and `toolbar.ignoredTooltip`
+	 * above and is the same debt they carry: `Every surface translated`'s second acceptance
+	 * criterion wants one parameter from one key, and the labels are
+	 * `domain/viewOptions.ts`'s, which is [[View options and config warnings]] and unswept.
+	 * Keying them here would be keying somebody else's string.
+	 */
+	'emptyState.noWorkflow': 'No workflow to show',
+	'emptyState.noWorkflowBody':
+		'The board is a projection of your workflow, and this view has no state property yet. Set "State property" in the view options — and optionally "Workflow states (in order)" — and the board will draw one column per state.',
+	'emptyState.noDeliverableWorkflow': 'No workflow to show',
+	'emptyState.noDeliverableWorkflowBody':
+		'The Deliverables board projects a workflow, and this view has neither state property set. Set "Deliverable state property" in the view options to give Deliverables a workflow of their own, or set "State property" and they share the requirements one. Either draws a column per state, and "Deliverable workflow states (in order)" names them.',
+
+	/**
+	 * "the Deliverables board" names a PROJECTION and stays in the sentence; the quoted
+	 * `{type}` beside it is the value `type:` frontmatter holds and is a parameter. The two
+	 * read as the same word in English and are different kinds of thing.
+	 *
+	 * Which is why a BARE `Deliverables` may not appear here at all. This sentence used to
+	 * carry one — "Deliverables are managed on their own board" — that the paragraph above
+	 * did not cover and read as neither: not the board's name, and not the parameter, but
+	 * the type spelled as ordinary translatable prose. It says "items of that type" now, so
+	 * every remaining mention is one kind or the other.
+	 */
+	'emptyState.excludedFocus': 'Nothing to show under this focus',
+	'emptyState.excludedFocusBody':
+		'The focus level is "{type}", and items of that type are managed on the Deliverables board — this one never shows them. Clear the focus to see the rest of the backlog, or switch to that board.',
+	'emptyState.showAllTypes': 'Show all types',
+
+	/**
+	 * Both mentions are the same `{type}` parameter, and the second one is the reason: it
+	 * tells the user which value to PICK from a menu, so a translated word there names a
+	 * type the plugin cannot match. "Set type" beside it is the menu's own label and is
+	 * prose, the same split the focus sentence above makes.
+	 */
+	'emptyState.noDeliverables': 'No deliverables yet',
+	'emptyState.noDeliverablesBody':
+		'Nothing in this base is typed "{type}". Create one from the toolbar\'s New button, or type an existing note as "{type}" from its Set type menu.',
+
+	/**
+	 * `{name}` is the iteration note's own title — vault content, never translated. When
+	 * there is no note to name, the caller passes `emptyState.thisIteration` rather than a
+	 * literal: a parameter is not exempt from the catalog just because it usually carries
+	 * vault content, and an English fallback spliced into a translated sentence is the one
+	 * shape that reads as correct in every test written under the English catalog.
+	 */
+	'emptyState.thisIteration': 'this iteration',
+	'emptyState.emptyIteration': 'No items in this iteration yet',
+	'emptyState.emptyIterationBody':
+		"Nothing names {name} yet. Put work in it with Set iteration from any row's or card's menu, which also takes the iteration's own start and target dates.",
+
+	'emptyState.noAxis': 'No axis to show',
+	'emptyState.addDefaults': 'Add the default properties',
+	'emptyState.showCompleted': 'Show completed items',
 
 	/** A named group on the roadmap — a horizon bucket, or the shelf — with its count. */
 	'roadmap.groupLabel': { one: '{name}, {count} item', other: '{name}, {count} items' },
@@ -239,4 +322,84 @@ export const en = {
 	'lane.markersHeaderBoth': '{first}s · {second}s',
 
 	'settings.sharedKey': 'The {properties} properties share the key "{key}".',
+
+	/**
+	 * The dialogs in `ui/`. Every one of them takes its heading and its description from
+	 * the caller, so what is keyed here is only what `ui/` spells for itself: the field
+	 * labels, the placeholders and the buttons.
+	 *
+	 * **A field's LABEL is here; the key it submits under is not.** `DateFieldSpec.field`,
+	 * `AbsenceResult.resource` and the rest are the caller's own vocabulary, read back by
+	 * the layer that asked — data, and a locale that changed one would hand back an object
+	 * its caller cannot destructure.
+	 *
+	 * `prompt.save` is one key for two forms because it is one act. `prompt.folderField` is
+	 * one key for two forms for the same reason — both name the folder the thing lands in.
+	 * The date ends are NOT shared: an absence has a start and an end, an iteration has a
+	 * start and a target, and a language that inflects a label for what it belongs to needs
+	 * them apart.
+	 */
+	'prompt.folderField': 'Folder',
+	'prompt.save': 'Save',
+	'prompt.create': 'Create',
+	/** Empties one date field. `{name}` is the field's own label, handed in by the caller. */
+	'prompt.clearDate': 'Clear {name}',
+	'prompt.absenceResource': 'Resource',
+	'prompt.absenceStart': 'Start',
+	'prompt.absenceEnd': 'End',
+	'prompt.iterationName': 'Name',
+	'prompt.iterationStart': 'Start',
+	'prompt.iterationTarget': 'Target',
+	'prompt.iterationGoal': 'Goal',
+	'prompt.newItemType': 'Type',
+	'prompt.newItemTitle': 'Title',
+	'prompt.newItemTitlePlaceholder': 'Item title',
+	/**
+	 * The folder placeholder is an EXAMPLE, not a default: the field submits empty as the
+	 * vault root, and nothing reads this string back. A locale is free to suggest a folder
+	 * name its readers would recognise.
+	 */
+	'prompt.newItemFolderPlaceholder': 'Backlog',
+	'prompt.newItemFolderDesc':
+		"New items are created here, and the choice is saved to the view options. Point this base's filter at the same folder so items show up. Leave empty for the vault root.",
+
+	'stateColors.title': 'State colours',
+	'stateColors.intro':
+		'The colour each workflow state is drawn in on the roadmap’s dated axis, and in its legend. A chosen colour is fixed: unlike the default, it does not follow the theme between light and dark. Finished states are not listed: they are always green.',
+	'stateColors.useDefault': 'Use the default colour',
+
+	/** The manual dialog's accessible name. Sentence case, and not the view's registered name. */
+	'manual.dialogTitle': 'Product backlog manual',
+
+	/**
+	 * The scaffold command. `{path}` is the file it made — vault content, so it arrives as
+	 * a parameter and is never spelled here.
+	 */
+	'scaffold.heading': 'Create product backlog',
+	'scaffold.folderDesc': 'A folder for your backlog items and a configured .base file will be created here.',
+	'scaffold.cta': 'Create backlog',
+	'scaffold.created': 'Created "{path}". Add your first epic from the view.',
+	'scaffold.failed': 'Could not create the backlog. See the developer console for details.',
+
+	/**
+	 * The readme command, one whole sentence per outcome. `{path}` and `{previous}` are
+	 * file paths and view names — vault content, parameters both.
+	 *
+	 * `{problems}` is a LIST, joined by `Intl.ListFormat` in the catalog's own locale
+	 * rather than by a separator at the call site. The problems themselves are still
+	 * English until `View options and config warnings` runs.
+	 */
+	'readme.created': 'Wrote "{path}".',
+	'readme.updated': 'Updated "{path}".',
+	'readme.unchanged': '"{path}" already matches this view. Nothing was written.',
+	'readme.foreign': '"{path}" was not written by this plugin, so it was left alone. Move it aside to generate one.',
+	'readme.replaced':
+		'Updated "{path}", which documented "{previous}". A folder has one readme, so two views sharing it take turns.',
+	/**
+	 * No terminal period: each problem is a whole sentence with one of its own, so the
+	 * `'; '` this replaced rendered `"…".; "…"..`. That is the one thing about this notice
+	 * that is not a pure text move, and it is the punctuation rather than the wording.
+	 */
+	'readme.configProblems': 'Fix the view configuration first: {problems}',
+	'readme.failed': 'Could not write the readme. See the developer console for details.',
 } as const;
