@@ -341,6 +341,78 @@ picked between (`init.outcome` / `init.outcomeWithColumns`), the shape
 `` `Undo: ${parts.join('; ')}.` `` and is now one key whose parts are joined by `list()`,
 so the joining follows the catalog's grammar rather than a hardcoded `'; '`.
 
+**The toolbar, WHOLE, on 2026-08-20.** 59 keys, taking the catalog to 261 — `toolbar.ts`,
+`toolbarControls.ts`, `toolbarBusy.ts`, `toolbarFit.ts` and `toolbarStatus.ts`. Measured
+twice and after the last edit: `Object.keys(en).length` before and after (202 to 261),
+agreeing with a count of the diff's added key lines (59). A third instrument — a pattern
+over `en.ts`'s own text — reported 176 for the file it was pointed at and was discarded
+rather than reconciled, the way the AST walk's zero was: an instrument that cannot see a
+plural entry's two lines is broken, not a second opinion.
+
+The five files are one subject rather than the two the handoff cut this slice at. The
+other three carried one site each — the busy indicator's manual link, the breakdown's
+`Untyped` fallback and its `{count} {type}` reading — and leaving them would have meant a
+ban region that named two files while the row it governs is five.
+
+Four things about this slice are worth carrying to the next one.
+
+**The AST instrument was rebuilt again, and it does not agree with the last run of it.**
+This one reports **136** prose literals in `view/render/` where the figure carried above is
+299, and 69 across the toolbar's five files. It is not the same instrument: the filter here
+refuses a lone lowercase word, a `kebab-case` token and anything holding a slash, so it
+counts sentences where the earlier one counted fragments. Neither number is wrong and
+neither should be quoted as the remainder — what both agree on is the SHAPE the tables at
+the top of this note get wrong, which is that a setter grep sees 31 here. Calibrated
+against three swept files it reports 0, 0 and 0, and its residue on the swept toolbar is
+six CSS class strings and one selector. Re-derive again rather than trusting either
+figure; that is now the third time this note has said so and the second time the
+instrument was rebuilt to say it.
+
+**A comment stating a rule the code beside it breaks, found by writing the check.**
+`renderModeToggle` says each switcher WORD is a substring of its own label, so the visible
+text sits inside the accessible name — what speech control needs to match what a reader can
+see. English has never met it: `Tree` is `tree` in `Show as backlog tree`, and `Tests` is
+not in `Show as test catalog` at all. `test/i18n/toolbar.test.ts` asks it case-insensitively
+and NAMES the catalog position as the one that fails, so keying a fifth position or
+rewording that label fails there rather than quietly joining the exception. Not fixed here:
+the fix is a wording change and this slice is a text move, so it is recorded and owed.
+
+**`UI_TEXT_LITERAL` could not see this directory at all, and the fix was one spelling.**
+Its selector read `setTooltip` as a METHOD, and the `obsidian` export of that name is a free
+function taking the element — which is how every module under `view/render/` calls it. So
+the rule that "holds the toolbar" would have held nothing in it: verified by planting
+`setTooltip(btn, 'Timeline zoom')` in a banned file and watching lint pass. The selector now
+names the bare call beside the method one, planting errors, and the whole swept tree stays
+clean, so the widening cost no exemption. What it still cannot reach is the row's commonest
+shape — a prose literal handed to `iconButton`, `menuButton` or `collapseButton` as a
+positional ARGUMENT — and that was watched too: reverting `t('toolbar.jumpToToday')` to its
+literal produces zero lint errors and fails `test/i18n/toolbar.test.ts` twice.
+
+**The consolidation was considered and DEFERRED, deliberately rather than by drift.** One
+check marking the whole catalog and reporting what renders unmarked would replace four
+fixture lists — but its expected-unmarked set would have to enumerate every English string
+still left in `view/manual/`, `domain/` and `main.ts`, and that list rots on every slice,
+which is the rot the consolidation exists to remove. It is the check to build once the
+sweep is FINISHED, when the expected remainder is data alone. Until then this is a fifth
+per-slice file, computing its own swept list from the `toolbar.*` prefix the way
+`menus.test.ts` does, with one reused key (`count.items`) named explicitly because a prefix
+filter cannot find it.
+
+Its audit names four keys it does not drive rather than counting them. Three are the busy
+indicator's and need a write in FLIGHT, which `test/view/toolbar.test.ts` already drives
+under English. The fourth is a finding: `toolbar.untyped` is `levelBreakdown`'s fallback for
+a note whose type it cannot read, and no fixture reaches it — `displayType` answers `''`
+only for an item on no rung of the ladder that also carries no type name, and every shape
+tried lands on one or the other. The fallback predates this slice and whether anything can
+still reach it is a question about the model rather than about the sweep.
+
+**The remaining English, by the instrument described above and not by the one the tables
+use:** 67 in the rest of `view/render/`, 345 in `view/manual/` (by the earlier walk; not
+re-taken), 19 in the rest of `view/`, and `domain/`, of which `viewOptions.ts` is
+[[View options and config warnings]] and `backlogReadme.ts` is written INTO the vault and so
+a data question first. `main.ts` is two command names and one plugin name that is never
+translated.
+
 ## Where it lives
 
 **`src/i18n/en.ts`** carries the keys; the swept call sites are `src/ui/prompts.ts`,
@@ -355,7 +427,9 @@ so the joining follows the catalog's grammar rather than a hardcoded `'; '`.
 `view/interactions/` WHOLE. The rest of the sweep
 touches every rendering module without changing what any of them does.
 
-`src/view/render/toolbar.ts` · `src/view/render/rows.ts` · `src/view/render/columns.ts` ·
+`src/view/render/toolbar.ts` · `src/view/render/toolbarControls.ts` ·
+`src/view/render/toolbarBusy.ts` · `src/view/render/toolbarFit.ts` ·
+`src/view/render/toolbarStatus.ts` · `src/view/render/rows.ts` · `src/view/render/columns.ts` ·
 `src/view/render/emptyStates.ts` · `src/view/interactions/menu.ts` ·
 `src/view/interactions/create.ts` · `src/view/interactions/tags.ts` ·
 `src/view/interactions/structure.ts` · `src/view/interactions/undo.ts` ·
@@ -365,13 +439,14 @@ touches every rendering module without changing what any of them does.
 Tests: `test/view/contextRowWrites.test.ts` and `test/view/creation.test.ts` must pass
 untouched — they guard the two behaviours this sweep is most likely to disturb.
 `test/i18n/sweptSurfaces.test.ts`, `test/i18n/emptyStates.test.ts`,
-`test/i18n/menus.test.ts` and `test/i18n/interactions.test.ts` are the swept half's
+`test/i18n/menus.test.ts`, `test/i18n/interactions.test.ts` and `test/i18n/toolbar.test.ts`
+are the swept half's
 own checks, and each is a PAIR with lint rather than a substitute for it: they drive each
 surface under a fixture catalog, so a literal left at a call site renders English beside
 overridden neighbours, while `UI_TEXT_LITERAL` and `UI_TEXT_PROPERTY` in
 `eslint.config.mjs` refuse a NEW one. A test cannot see a call site
 nobody has written; lint cannot tell whether a key is read. `UI_TEXT_LITERAL` sees the
-setter calls and `new Notice` and **not** a `text:` or `'aria-label'` property — the one
-live instance of that shape is the plugin name above, so covering the property would open
-the rule on an exemption for the thing that is allowed to be there. Making a bare string
+setter calls, `new Notice` and a bare `setTooltip(el, …)`; `UI_TEXT_PROPERTY` sees the ten
+option-bag properties. Neither sees a sentence handed to a helper as a positional argument,
+which is what leaves the runtime halves load-bearing rather than belt-and-braces. Making a bare string
 unable to reach the UI at all is [[A bare string cannot reach the UI]].
