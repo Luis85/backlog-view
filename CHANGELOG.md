@@ -13,6 +13,13 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ### Changed
 
+- **Everything the view says when it has nothing to show comes from the message catalog
+  now** — the empty backlog and its focused form, the empty test catalog, the guidance both
+  boards show without a workflow, the roadmap without an axis, the empty Deliverables board
+  and iteration, and the "all done and hidden" notice. Nothing reads differently in
+  English. Type names are not translated and never will be: they are what `type:` holds in
+  your notes, so a sentence that quotes one takes it as it is written.
+
 - **Every dialog and both commands take their words from the message catalog now** — the
   new-item, folder, schedule, absence and iteration prompts, the state-colour dialog, the
   manual's title, and the notices from `Create backlog` and `Write backlog readme`. Nothing
