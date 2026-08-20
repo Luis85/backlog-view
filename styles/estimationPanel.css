@@ -3,13 +3,98 @@
    400-line cap (2026-08-17); the boundary is `estimation.css`'s own view grid and
    table above it versus the panel `.pbl-est-panel` holds below it, one concern
    each. Position after `estimation.css` in `styles/index.css`'s import list is NOT
-   load-bearing, but not because the vocabulary is disjoint: `.pbl-est-decomp
-   .pbl-est-total` and `.pbl-est-decomp .pbl-est-coverage` below DO re-target
+   load-bearing, but not because the vocabulary is disjoint: `.pbl-est-header
+   .pbl-est-total` and `.pbl-est-header .pbl-est-coverage` below DO re-target
    `estimation.css`'s `.pbl-est-total` / `.pbl-est-coverage`. What decides it is
    specificity — a two-class descendant selector is (0,2,0) against the single
    class's (0,1,0) — so this partial wins whichever import runs last, and nothing
    here is decided by order — see that file's own header.
    ========================================================================== */
+
+/* ==========================================================================
+   The panel's answer header — the item's name, its total, the total's coverage, the
+   currency verdict, and the two derived sentences — pinned at the top of the panel.
+
+   IT DECLARES ITS OWN TYPE, and that is the whole point of the element. Three rules used to
+   reach these same children by POSITION — `.pbl-est-decomp .pbl-est-total`,
+   `.pbl-est-decomp .pbl-est-coverage`, and `.pbl-est-panel > .pbl-est-title` as a CHILD
+   selector — and moving the summary and the title in here stopped all three from matching.
+   Nothing errored. Measured: the total rendered at 15px/500 where the stylesheet believed it
+   was setting 20px/semibold, and the DESIGN.md entry declaring that size described a screen
+   nobody was seeing. The three rules are DELETED rather than left beside these, because a
+   rule that matches nothing is the thing the next reader trusts.
+
+   Four steps, each doing one job: the answer, the name, the qualifier, the annotation.
+   ========================================================================== */
+
+.pbl-est-header {
+	position: sticky;
+	top: 0;
+	z-index: 1;
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-2-2);
+	/* THE PINNED-EDGE RULE. A sticky child pins at the SCROLLER's content edge, which is
+	   inside `.pbl-est-panel`'s own padding — so with the padding left on the panel, the rows
+	   scrolled through a band ABOVE this header and were visible over it. DESIGN.md states
+	   the fix as a rule: "whatever wants a gap owns it inside the box that pins". The panel
+	   drops its block-start padding and this header draws the same gap itself, which is what
+	   the roadmap's pinned strips already do. */
+	padding-block-start: var(--size-4-3);
+	padding-block-end: var(--size-4-3);
+	border-bottom: 1px solid var(--background-modifier-border);
+	/* The panel's own fill, so rows scroll UNDER an opaque header rather than through it —
+	   and never a shadow: DESIGN.md's One Shadow Rule, and a pinned strip asserts itself by
+	   painting and drawing a border. */
+	background-color: var(--background-secondary);
+}
+
+.pbl-est-header .pbl-est-title {
+	flex: 0 0 auto;
+	font-size: var(--font-ui-medium);
+	font-weight: var(--font-semibold);
+	color: var(--text-normal);
+	white-space: normal;
+}
+
+/* Three members on one baseline, adjacent and in this order: the answer, its coverage, and
+   the chip saying whether the answer can be trusted. */
+.pbl-est-header .pbl-est-summary {
+	display: flex;
+	align-items: baseline;
+	flex-wrap: wrap;
+	gap: var(--size-4-2);
+	margin-top: 0;
+}
+
+/* DESIGN.md's `Answer` step — the one number a detail panel exists to state. */
+.pbl-est-header .pbl-est-total {
+	flex: 0 0 auto;
+	width: auto;
+	text-align: start;
+	font-size: var(--font-ui-large);
+	font-weight: var(--font-semibold);
+	color: var(--text-normal);
+}
+
+.pbl-est-header .pbl-est-coverage {
+	flex: 0 0 auto;
+	width: auto;
+	text-align: start;
+	font-size: var(--font-ui-small);
+	color: var(--text-muted);
+}
+
+.pbl-est-header .pbl-est-chip {
+	align-self: center;
+}
+
+/* One sentence per line. Wrapped into a single run the two derived lines read as one long
+   muted string — and each is a whole translated sentence that nothing may split into a label
+   and a value, so the line break is the only separation available. */
+.pbl-est-derived {
+	flex-direction: column;
+}
 
 /* ==========================================================================
    The panel: one selector row per enabled dimension (plus confidence, effort
@@ -112,12 +197,10 @@ button.pbl-est-point.is-active {
 }
 
 /* ==========================================================================
-   The decomposition: one line per answered dimension's contribution, then a
-   summary line — the coverage and the total, set apart from that list rather
-   than sharing the last dimension's line the way flex-wrap once left them
-   (`"Enablement 3 × 5%  8/8  3.49"`, indistinguishable from Enablement's own
-   contribution — 2026-08-17, `docs/requirements/Why this item scored what it
-   scored.md`).
+   The decomposition: one line per answered dimension's contribution — nothing
+   else. The coverage and the total that used to close this list moved to the
+   header's own `.pbl-est-summary` (`renderSummary` in `panel.ts`, Task 5): the
+   total is the answer and belongs above the inputs, not after them.
    ========================================================================== */
 
 .pbl-est-decomp {
@@ -131,36 +214,6 @@ button.pbl-est-point.is-active {
 	   directly above them. */
 	font-size: var(--font-ui-smaller);
 	color: var(--text-muted);
-}
-
-/* Coverage and the total stay beside each other exactly as before — only the
-   summary's own line moved off the last term's. `panel.ts` wraps the two in
-   this div rather than leaving them flat: nothing here could otherwise say
-   "these last two share a line, every sibling above keeps its own" — a term
-   spanning a two-column grid pulls both columns wide enough for a whole
-   sentence, dragging the total away from coverage instead of stacking it. */
-.pbl-est-summary {
-	display: flex;
-	align-items: baseline;
-	gap: var(--size-4-4);
-	margin-top: var(--size-2-2);
-}
-
-/* The total and its coverage read large here — a glanceable answer, not a
-   table cell — so both drop the 72px column width the table gave them. */
-.pbl-est-decomp .pbl-est-total {
-	flex: 0 0 auto;
-	width: auto;
-	text-align: start;
-	font-size: var(--font-ui-large);
-	font-weight: var(--font-semibold);
-}
-
-.pbl-est-decomp .pbl-est-coverage {
-	flex: 0 0 auto;
-	width: auto;
-	text-align: start;
-	font-size: var(--font-ui-small);
 }
 
 /* Confidence-adjusted value and value-to-effort — derived on read, never

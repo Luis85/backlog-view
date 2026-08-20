@@ -92,20 +92,14 @@
 	min-height: 0;
 	overflow-y: auto;
 	padding: var(--size-4-3);
+	/* THE PINNED-EDGE RULE (`styles/estimationPanel.css`'s `.pbl-est-header`): a sticky
+	   child pins at the SCROLLER's content edge, which sits inside this padding — left here,
+	   rows scrolled through a band ABOVE the header and were visible over it. The header now
+	   draws this same gap itself, so the panel gives up only the block-start side of it. */
+	padding-block-start: 0;
 	border: 1px solid var(--background-modifier-border);
 	border-radius: var(--radius-m);
 	background-color: var(--background-secondary);
-}
-
-/* The panel's own heading reuses the table's title class — both name the same
-   fact about the same note — widened to wrap rather than the table cell's single
-   line, since nothing beside it needs the room back. */
-.pbl-est-panel > .pbl-est-title {
-	flex: 0 0 auto;
-	font-size: var(--font-ui-medium);
-	font-weight: var(--font-semibold);
-	color: var(--text-normal);
-	white-space: normal;
 }
 
 .pbl-est-panel h4 {

@@ -40,6 +40,90 @@ function soleDimension(id: string, overrides: Record<string, unknown> = {}): Rec
 	};
 }
 
+/** `table.test.ts`'s own full profile (8 of 8 dimensions, total 3.55) with confidence
+ *  bound too, so the header's derived line and the confidence scale row both have
+ *  something to render against. */
+function fixture(): FakeVault {
+	const vault = new FakeVault();
+	vault.addFile('Full.md', {
+		frontmatter: {
+			'strategic-alignment': 5,
+			'customer-value': 4,
+			'business-impact': 4,
+			reach: 3,
+			'risk-reduction': 2,
+			compliance: 1,
+			'time-criticality': 4,
+			enablement: 3,
+			confidence: 2,
+		},
+	});
+	return vault;
+}
+
+describe('the sticky answer header', () => {
+	it('puts the answer above the inputs, with the total ahead of its own coverage', () => {
+		// The total is what the reader opened the panel for and it used to sit under eleven rows
+		// of buttons. `panel.ts` drew coverage first, so the header read "8/8 3.49" — the
+		// qualifier ahead of the thing it qualifies.
+		const { containerEl } = makeEstimationView(fixture(), configuredValues({ confidenceProperty: 'note.confidence' }));
+		selectItem(containerEl, 'Full.md');
+		const panel = containerEl.querySelector('.pbl-est-panel')!;
+		const header = panel.firstElementChild!;
+		expect(header.classList.contains('pbl-est-header')).toBe(true);
+		// The three rules deleted in this task address these elements by POSITION, so the
+		// structure is the other half of the guarantee — `styleRules.test.ts` can only prove a
+		// rule exists, never that it matches. Both halves are needed: what shipped was three
+		// correct rules matching nothing.
+		expect(header.querySelector(':scope > .pbl-est-title')).not.toBeNull();
+		expect(header.querySelector(':scope > .pbl-est-summary')).not.toBeNull();
+		expect(header.querySelector(':scope > .pbl-est-derived')).not.toBeNull();
+		const summary = header.querySelector('.pbl-est-summary')!;
+		const order = Array.from(summary.children).map((el) => el.className.split(' ')[0]);
+		expect(order.slice(0, 2)).toEqual(['pbl-est-total', 'pbl-est-coverage']);
+	});
+
+	it('states the currency in the panel, beside the total it is about', () => {
+		// The panel never said it at all, so selecting a stale row lost the one fact that says
+		// its number is wrong. Beside the total rather than after the derived lines: under two
+		// sentences it read as a third one.
+		// No dimension key at all — every scored input is gone, so `item.result` is null and
+		// the stored total reads 'orphan' regardless of what the stamp says
+		// (`test/helpers/fixtures.ts`'s own `Orphan total.md`).
+		const vault = new FakeVault();
+		vault.addFile('Orphan.md', { frontmatter: { 'business-value': 3, 'business-value-model': 'x' } });
+		const { containerEl } = makeEstimationView(vault, configuredValues());
+		selectItem(containerEl, 'Orphan.md');
+		const summary = containerEl.querySelector('.pbl-est-header .pbl-est-summary')!;
+		expect(summary.querySelector('.pbl-est-chip.pbl-est-cur-orphan')).not.toBeNull();
+	});
+
+	it('leaves the decomposition holding only its terms', () => {
+		const { containerEl } = makeEstimationView(fixture(), configuredValues());
+		selectItem(containerEl, 'Full.md');
+		const decomp = containerEl.querySelector('.pbl-est-decomp')!;
+		expect(decomp.querySelector('.pbl-est-summary')).toBeNull();
+		expect(decomp.querySelector('.pbl-est-total')).toBeNull();
+	});
+
+	it('groups the three fixed scales under one heading, and not under the value dimensions', () => {
+		// Nothing computes the total from confidence, so it is not a value dimension — and
+		// `panel.ts` draws it between the dimensions and the old "Effort and complexity"
+		// heading, so a heading above the first dimension swept it in.
+		const { containerEl } = makeEstimationView(fixture(), configuredValues({ confidenceProperty: 'note.confidence' }));
+		selectItem(containerEl, 'Full.md');
+		const headings = Array.from(containerEl.querySelectorAll('.pbl-est-panel h4')).map((h) => h.textContent);
+		expect(headings).toEqual(['Value dimensions', 'Confidence, effort and complexity', 'Why this scored what it scored']);
+		const confidenceRow = containerEl
+			.querySelector('.pbl-est-panel [data-dim="confidence"][data-kind="scale"]')!
+			.closest('.pbl-est-dim')!;
+		const scalesHeading = Array.from(containerEl.querySelectorAll('.pbl-est-panel h4')).find(
+			(h) => h.textContent === 'Confidence, effort and complexity',
+		)!;
+		expect(scalesHeading.compareDocumentPosition(confidenceRow) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+	});
+});
+
 describe('a stored value the scale cannot name', () => {
 	it('a clamped stored value reports itself instead of a rubric sentence, and holds no point active', () => {
 		const vault = new FakeVault();
@@ -168,7 +252,7 @@ describe('the two derived lines', () => {
 });
 
 describe('the decomposition block', () => {
-	it('renders one term per answered dimension, each its own element, and wraps coverage with the total as the summary line that follows them', () => {
+	it('renders one term per answered dimension, each its own element — the coverage and the total moved to the header', () => {
 		const vault = new FakeVault();
 		vault.addFile('Item.md', { frontmatter: { 'strategic-alignment': 5, 'customer-value': 4 } });
 		const { containerEl } = makeEstimationView(vault, configuredValues());
@@ -180,12 +264,11 @@ describe('the decomposition block', () => {
 		const terms = Array.from(decomp.children).filter((el) => el.tagName === 'SPAN');
 		expect(terms.map((el) => el.textContent)).toEqual(['Strategic alignment 5 × 20%', 'Customer value 4 × 20%']);
 
-		// Coverage and the total are the summary's own two children, in that order, and
-		// the summary itself is the last thing in the block — never two more siblings a
-		// term's own line could run into.
-		expect(decomp.lastElementChild?.className).toBe('pbl-est-summary');
-		const summary = decomp.querySelector('.pbl-est-summary') as HTMLElement;
-		expect(Array.from(summary.children).map((el) => el.className)).toEqual(['pbl-est-coverage', 'pbl-est-total']);
+		// Coverage and the total left this block entirely (Task 5) — they now live in the
+		// header's own `.pbl-est-summary`, total first, checked in `panel.test.ts`'s header
+		// describe block below.
+		const header = containerEl.querySelector('.pbl-est-header') as HTMLElement;
+		const summary = header.querySelector('.pbl-est-summary') as HTMLElement;
 		expect(summary.querySelector('.pbl-est-coverage')?.textContent).toBe('2/8');
 		const result = computeTotal(configured(), new Map([['strategic-alignment', 5], ['customer-value', 4]]))!;
 		expect(summary.querySelector('.pbl-est-total')?.textContent).toBe(String(result.total));

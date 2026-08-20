@@ -446,7 +446,13 @@ export const en = {
 	'estimation.panel.confidence': 'Confidence',
 	'estimation.panel.effort': 'Effort',
 	'estimation.panel.complexity': 'Complexity',
-	'estimation.panel.effortComplexity': 'Effort and complexity',
+	'estimation.panel.valueDimensions': 'Value dimensions',
+	/** All three FIXED scales, not just two. Nothing computes the total from confidence, so
+	 *  it is not a value dimension — and it is drawn between the dimensions and this heading,
+	 *  so a heading above the first dimension used to sweep it in. Renamed from
+	 *  `effortComplexity` rather than joined by a second key: one heading, three scales. */
+	'estimation.panel.scales': 'Confidence, effort and complexity',
+	'estimation.panel.whyThisScored': 'Why this scored what it scored',
 	/** A dimension or scale's stored answer fell outside its own declared range. */
 	'estimation.clamped': 'Out of range — read as {value}',
 	/** In range, so counted as it stands, but not one of the points the rubric describes. */

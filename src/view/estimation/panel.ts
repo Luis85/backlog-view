@@ -5,6 +5,7 @@ import { EstimationItem, EstimationModel } from '../../domain/estimationItems';
 import { ScaleName } from '../../domain/estimationSettings';
 import { ScaleConfig, ScoringModel } from '../../domain/scoringModel';
 import { round2 } from '../../domain/weightedScore';
+import { renderCurrencyChip } from './currencyChip';
 
 /**
  * The per-item panel beside the table (`docs/requirements/A rubric for every point.md`,
@@ -81,17 +82,28 @@ export function renderPanel(view: EstimationView, model: EstimationModel, previo
 	const panelEl = view.viewEl.createDiv({ cls: 'pbl-est-panel' });
 	panelEl.dataset.path = item.file.path;
 	view.panelEl = panelEl;
-	panelEl.createDiv({ cls: 'pbl-est-title', text: item.title });
 
+	// The answer, above the inputs and PINNED there. Its own element rather than four flow
+	// siblings, because it is what `position: sticky` is applied to — and because the three
+	// type rules that used to reach the title and the summary addressed them by POSITION,
+	// which is what silently broke when they moved. The header now declares its own type
+	// (`styles/estimationPanel.css`) and nothing depends on where its children sit.
+	const header = panelEl.createDiv({ cls: 'pbl-est-header' });
+	header.createDiv({ cls: 'pbl-est-title', text: item.title });
+	renderSummary(header, item);
+	renderDerived(header, item, scoringModel.confidence);
+
+	panelEl.createEl('h4', { text: t('estimation.panel.valueDimensions') });
 	for (const dimension of scoringModel.dimensions) renderScoreRow(panelEl, dimSpec(item, dimension));
 
+	// The heading comes BEFORE confidence, so all three fixed scales sit under it.
+	panelEl.createEl('h4', { text: t('estimation.panel.scales') });
 	renderScoreRow(panelEl, scaleSpec(item, scoringModel, 'confidence', t('estimation.panel.confidence')));
-	panelEl.createEl('h4', { text: t('estimation.panel.effortComplexity') });
 	renderScoreRow(panelEl, scaleSpec(item, scoringModel, 'effort', t('estimation.panel.effort')));
 	renderScoreRow(panelEl, scaleSpec(item, scoringModel, 'complexity', t('estimation.panel.complexity')));
 
+	if (item.result) panelEl.createEl('h4', { text: t('estimation.panel.whyThisScored') });
 	renderDecomposition(panelEl, item);
-	renderDerived(panelEl, item, scoringModel.confidence);
 	if (item.currency === 'orphan') renderCleanupButton(panelEl);
 
 	if (previousPath === item.file.path) panelEl.scrollTop = Math.min(previousScrollTop, panelEl.scrollHeight);
@@ -201,14 +213,37 @@ function renderClearButton(container: HTMLElement, spec: RowSpec): void {
 	setIcon(btn, 'x');
 }
 
-/** Score × weight per answered dimension, the coverage, and the total — nothing here
- *  when nothing is answered, since there is no decomposition of a total that is not there.
- *  Coverage and the total are wrapped in their own `.pbl-est-summary` line rather than left
- *  as two more flow siblings after the terms: a flat list cannot put its last two members
- *  beside each other while every other member keeps its own line through CSS alone (a grid
- *  item spanning both of the summary's columns pulls those columns wide enough to fit a
- *  whole term sentence), so the total — the whole point of the block — stopped reading as
- *  though it belonged to whichever dimension happened to render last (2026-08-17). */
+/**
+ * The header's one baseline line: the total, its coverage, and the currency chip.
+ *
+ * The total comes FIRST. This block used to be drawn inside `renderDecomposition`, coverage
+ * then total, so the header read `8/8  3.49` — the qualifier ahead of the thing it
+ * qualifies. The chip sits on this line rather than after the derived sentences, because it
+ * is a verdict on the total: under two sentences it read as a third one.
+ *
+ * The line draws whenever there is EITHER a fresh total or a currency worth naming —
+ * never only the first. `currency` describes the STORED total, which an orphan still has
+ * even though its own inputs are gone and `item.result` is null: gating the whole line on
+ * `item.result` would silence the one currency this panel exists to surface (`orphan` is
+ * exactly the case where selecting a stale row must not lose the fact its number is wrong).
+ */
+function renderSummary(header: HTMLElement, item: EstimationItem): void {
+	if (!item.result && item.currency === 'none') return;
+	const summary = header.createDiv({ cls: 'pbl-est-summary' });
+	if (item.result) {
+		summary.createDiv({ cls: 'pbl-est-total', text: String(item.result.total) });
+		summary.createDiv({
+			cls: 'pbl-est-coverage',
+			text: `${item.result.coverage.answered}/${item.result.coverage.enabled}`,
+		});
+	}
+	renderCurrencyChip(summary, item.currency);
+}
+
+/** Score × weight per answered dimension — nothing here when nothing is answered, since
+ *  there is no decomposition of a total that is not there. The coverage and the total moved
+ *  to the header (`renderSummary`): the total is the answer and belonged above the inputs,
+ *  not after them. */
 function renderDecomposition(panelEl: HTMLElement, item: EstimationItem): void {
 	if (!item.result) return;
 	const decomp = panelEl.createDiv({ cls: 'pbl-est-decomp' });
@@ -216,9 +251,6 @@ function renderDecomposition(panelEl: HTMLElement, item: EstimationItem): void {
 	// the total if it is the value the total was computed from, and the raw answer is not
 	// that value wherever a clamp or a `lessIsBetter` dimension applied.
 	for (const term of item.result.terms) decomp.createSpan({ text: t('estimation.panel.term', term) });
-	const summary = decomp.createDiv({ cls: 'pbl-est-summary' });
-	summary.createDiv({ cls: 'pbl-est-coverage', text: `${item.result.coverage.answered}/${item.result.coverage.enabled}` });
-	summary.createDiv({ cls: 'pbl-est-total', text: String(item.result.total) });
 }
 
 /**
