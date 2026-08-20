@@ -7,7 +7,6 @@ priority: P2
 area: verification
 cadence: release
 created: 2026-08-20
-closed: ""
 source: the estimation view's UX/UI polish pass, 2026-08-20 (task 11 of that pass)
 files:
   - src/view/estimation/estimationView.ts
