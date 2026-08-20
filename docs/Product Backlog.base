@@ -2,6 +2,7 @@ filters:
   and:
     - file.inFolder("docs")
     - file.ext == "md"
+    - file.name != "README"
 views:
   - type: product-backlog
     name: Backlog
@@ -53,6 +54,30 @@ views:
     valueProperty: note.business-value
     stampProperty: note.business-value-model
   - type: table
+    name: ADRs
+    filters:
+      and:
+        - file.inFolder("docs/adrs")
+    groupBy:
+      property: area
+      direction: ASC
+    order:
+      - adr
+      - file.name
+      - status
+      - area
+      - superseded-by
+    columnSize:
+      file.name: 422
+      note.status: 122
+      note.area: 152
+      note.superseded-by: 126
+  - type: table
+    name: Implementation Plans
+    filters:
+      and:
+        - file.inFolder("docs/superpowers/plans")
+  - type: table
     name: Data Quality
     groupBy:
       property: type
@@ -66,8 +91,3 @@ views:
       - tags
     columnSize:
       note.area: 152
-  - type: table
-    name: Implementation Plans
-    filters:
-      and:
-        - file.inFolder("docs/superpowers/plans")
