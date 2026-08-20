@@ -1,4 +1,5 @@
 import { Menu } from 'obsidian';
+import { MessageKey, t } from '../../i18n/t';
 import { BacklogViewHost } from '../host';
 import { ShelfCard } from '../../domain/bars';
 import { organizeShelf, ShelfSort } from '../../domain/shelf';
@@ -14,11 +15,17 @@ import { ValuePromptModal } from '../../ui/prompts';
  * apart from either caller.
  */
 
-const SHELF_SORTS: { value: ShelfSort; label: string }[] = [
-	{ value: 'tree', label: 'Sibling order' },
-	{ value: 'title', label: 'Title (A to Z)' },
-	{ value: 'modified', label: 'Last modified' },
-];
+/**
+ * The three sorts. `value` is persisted view state and is not text; `label` is a catalog
+ * KEY rather than the sentence itself, so the list stays data and the lookup happens at
+ * draw time — a module constant holding `t(...)` would freeze English at import, before
+ * `initLocale()` has run.
+ */
+const SHELF_SORTS = [
+	{ value: 'tree', label: 'menu.shelfSortTree' },
+	{ value: 'title', label: 'menu.shelfSortTitle' },
+	{ value: 'modified', label: 'menu.shelfSortModified' },
+] as const satisfies readonly { value: ShelfSort; label: MessageKey }[];
 
 /**
  * The shelf's display picks as menu items. ONE builder serves both surfaces — the
@@ -36,7 +43,7 @@ export function addShelfSortItems(host: BacklogViewHost, menu: Menu, after?: () 
 	for (const { value, label } of SHELF_SORTS) {
 		menu.addItem((mi) =>
 			mi
-				.setTitle(label)
+				.setTitle(t(label))
 				.setChecked(host.shelfSort === value)
 				.onClick(() => {
 					host.setShelfSort(value);
@@ -82,14 +89,14 @@ export function addShelfTypeItems(host: BacklogViewHost, menu: Menu, shelf: Shel
 	};
 	menu.addItem((mi) =>
 		mi
-			.setTitle('Show all types')
+			.setTitle(t('menu.showAllTypes'))
 			.setIcon('eye')
 			.setDisabled(host.shelfHiddenTypes.size === 0)
 			.onClick(() => apply([])),
 	);
 	menu.addItem((mi) =>
 		mi
-			.setTitle('Hide all types')
+			.setTitle(t('menu.hideAllTypes'))
 			.setIcon('eye-off')
 			.setDisabled(groups.every((group) => host.shelfHiddenTypes.has(group.type)))
 			.onClick(() => apply([...host.shelfHiddenTypes, ...groups.map((group) => group.type)])),
@@ -98,7 +105,7 @@ export function addShelfTypeItems(host: BacklogViewHost, menu: Menu, shelf: Shel
 	for (const group of groups) {
 		menu.addItem((mi) =>
 			mi
-				.setTitle(`${group.type} (${group.cards.length})`)
+				.setTitle(t('menu.shelfTypeCount', { type: group.type, count: group.cards.length }))
 				.setChecked(!host.shelfHiddenTypes.has(group.type))
 				.onClick(() => {
 					const hidden = new Set(host.shelfHiddenTypes);
@@ -124,20 +131,21 @@ export function addShelfTypeItems(host: BacklogViewHost, menu: Menu, shelf: Shel
 export function addShelfSearchItems(host: BacklogViewHost, menu: Menu): void {
 	menu.addItem((mi) =>
 		mi
-			.setTitle('Search unplaced...')
+			.setTitle(t('menu.searchUnplaced'))
 			.setIcon('search')
 			.onClick(() =>
 				new ValuePromptModal(host.app, {
-					title: 'Search unplaced',
-					fieldName: 'Title contains',
-					placeholder: 'Part of a title',
-					ctaLabel: 'Search',
+					// `shelf.search` is the header box's own label: one act, one wording.
+					title: t('shelf.search'),
+					fieldName: t('menu.searchField'),
+					placeholder: t('menu.searchPlaceholder'),
+					ctaLabel: t('menu.searchCta'),
 					known: [],
 					onSubmit: (value) => host.setShelfSearch(value),
 				}).open(),
 			),
 	);
 	if (host.shelfSearch === '') return;
-	menu.addItem((mi) => mi.setTitle('Clear unplaced search').setIcon('x').onClick(() => host.setShelfSearch('')));
+	menu.addItem((mi) => mi.setTitle(t('shelf.clearSearch')).setIcon('x').onClick(() => host.setShelfSearch('')));
 }
 

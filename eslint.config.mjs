@@ -267,6 +267,24 @@ const STORAGE = 'src/storage/**/*.ts';
 // their own sweeps run — `docs/requirements/Every surface translated.md`.
 const SWEPT = ['src/ui/**/*.ts', 'src/commands/**/*.ts'];
 const MENU = 'src/view/interactions/menu.ts';
+// The rest of the menu surface, carved out of VIEW for the two text bans alone — swept
+// into the catalog on 2026-08-20 alongside `menu.ts` itself, so the bans land on clean
+// files rather than opening with a wall of errors on the rest of a directory nobody has
+// swept yet. That ORDER is the rule, and `RENDER_EMPTY_STATES` above states it: a ban
+// ahead of its sweep is a ban somebody switches off. Everything else VIEW carries applies
+// here unchanged.
+//
+// The four files are one subject: `shelfMenu.ts` and `columnMenu.ts` are menus of their
+// own, and `tags.ts` and `labels.ts` are the submenu builders `menu.ts` delegates to. The
+// unswept remainder of `view/interactions/` — `create.ts`, `absences.ts`,
+// `dependencies.ts`, `plan.ts`, `structure.ts` and the drag modules — stays under VIEW
+// with no text ban at all, which is why this is a file list rather than a glob.
+const MENU_SWEPT = [
+	'src/view/interactions/shelfMenu.ts',
+	'src/view/interactions/columnMenu.ts',
+	'src/view/interactions/tags.ts',
+	'src/view/interactions/labels.ts',
+];
 // Ranking code lives in one domain file and one view file; split so a view-only rule
 // (ALL_TYPES_IMPORT) can apply to the latter without reaching into domain/.
 const RANKING_DOMAIN = ['src/domain/writePlan.ts'];
@@ -554,6 +572,8 @@ export default defineConfig([
 			ALL_TYPES_IMPORT,
 			CHILD_TYPE_CHOICES_NULL,
 			...TEXT_TERNARY,
+			UI_TEXT_LITERAL,
+			UI_TEXT_PROPERTY,
 		]),
 	},
 	{
@@ -655,7 +675,7 @@ export default defineConfig([
 		// DELIVERABLE_FIELD_READ (any of these files is a candidate third hand-written
 		// workflow ternary).
 		files: [VIEW],
-		ignores: [MENU, RENDER, ...RANKING_VIEW, CARD_MOVES, TYPES_SECTION],
+		ignores: [MENU, ...MENU_SWEPT, RENDER, ...RANKING_VIEW, CARD_MOVES, TYPES_SECTION],
 		rules: syntaxRules([
 			...SVG_CLASS_TOKENS,
 			...WRITE_BOUNDARY,
@@ -665,6 +685,31 @@ export default defineConfig([
 			ALL_TYPES_IMPORT,
 			CHILD_TYPE_CHOICES_NULL,
 			DELIVERABLE_FIELD_READ,
+		]),
+	},
+	{
+		// The rest of the swept menu surface: VIEW's own rules plus the two text bans.
+		//
+		// **Between them they still miss this slice's commonest prompt shape**, and saying
+		// so is the point of writing it here: `ValuePromptModal` takes its heading, its
+		// field name, its placeholder and its call to action as an option bag, and of those
+		// four only `title:` is a property `UI_TEXT_PROPERTY` reads. `fieldName:`,
+		// `placeholder:` and `ctaLabel:` are named nowhere in either selector and a literal
+		// at any of them fails no rule. `test/i18n/menus.test.ts` is what holds those, by
+		// opening each prompt under a marked catalog and reading the rendered strings back.
+		files: MENU_SWEPT,
+		rules: syntaxRules([
+			...SVG_CLASS_TOKENS,
+			...WRITE_BOUNDARY,
+			MENU_ANCHOR,
+			OVERBY,
+			TREE_SCAN,
+			ALL_TYPES_IMPORT,
+			CHILD_TYPE_CHOICES_NULL,
+			DELIVERABLE_FIELD_READ,
+			...TEXT_TERNARY,
+			UI_TEXT_LITERAL,
+			UI_TEXT_PROPERTY,
 		]),
 	},
 	{
