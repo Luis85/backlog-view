@@ -27,6 +27,22 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ### Changed
 
+- **Everything the view says when it has nothing to show comes from the message catalog
+  now** — the empty backlog and its focused form, the empty test catalog, the guidance both
+  boards show without a workflow, the roadmap without an axis, the empty Deliverables board
+  and iteration, and the "all done and hidden" notice. Nothing reads differently in
+  English. Type names are not translated and never will be: they are what `type:` holds in
+  your notes, so a sentence that quotes one takes it as it is written.
+
+- **Every dialog and both commands take their words from the message catalog now** — the
+  new-item, folder, schedule, absence and iteration prompts, the state-colour dialog, the
+  manual's title, and the notices from `Create backlog` and `Write backlog readme`. Nothing
+  reads differently in English except one line of punctuation: the readme command's
+  configuration refusal used to run its problems together as `"…".; "…"..` and now joins
+  them as a list. With more than one problem that list still reads a little oddly, since
+  what it joins are whole sentences; the rest of it waits on those sentences being
+  translated. The plugin's own name is still its name in every language.
+
 - **The write path's serialization and single undo slot are now plugin-wide** — a write
   in one Bases view briefly holds back the other's write controls, and undo always takes
   back the vault's last batch, whichever view wrote it

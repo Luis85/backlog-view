@@ -221,7 +221,12 @@ describe('the requirements board does not offer a type it cannot show', () => {
 		harness.view.setProjection('board');
 		const advisory = harness.containerEl.querySelector('.pbl-board-advisory');
 
-		expect(advisory?.textContent).toContain('Deliverables are managed on their own board');
+		// The sentence names the focused type and points at the board that does show it.
+		// Asserted as those two facts rather than as a phrase: the wording moved once
+		// already, when a bare "Deliverables" in it turned out to be the type spelled as
+		// translatable prose beside the same type passed as a parameter.
+		expect(advisory?.textContent).toContain('Deliverable');
+		expect(advisory?.textContent).toContain('Deliverables board');
 		expect(advisory?.textContent).not.toContain('New Deliverable');
 		// The way out is the focus, so that is the button.
 		const btn = advisory?.querySelector('button');

@@ -1,4 +1,5 @@
 import { App, Modal } from 'obsidian';
+import { t } from '../i18n/t';
 
 /**
  * One line of the manual: a term and what it means. `badge` carries a RESOLVED class
@@ -51,7 +52,7 @@ class ManualDialog extends Modal {
 		// warning about: "Product backlog", not the registered view name's "Product Backlog".
 		// The two differ on purpose — `main.ts` registers the plugin's NAME, which is a proper
 		// noun in Obsidian's own view picker, and this is a sentence about it.
-		this.titleEl.setText('Product backlog manual');
+		this.titleEl.setText(t('manual.dialogTitle'));
 		contentEl.empty();
 		contentEl.addClass('pbl-manual');
 		// Both classes go on the MODAL, not on `contentEl`, and both are needed: Obsidian
