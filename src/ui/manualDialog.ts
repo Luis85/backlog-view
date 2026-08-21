@@ -72,6 +72,11 @@ class ManualDialog extends Modal {
 
 		const split = contentEl.createDiv('pbl-manual-split');
 		const nav = split.createDiv('modal-sidebar-inner pbl-manual-nav');
+		// The plugin's own NAME, which `Every surface translated` says is not translated —
+		// the one string in this directory that may be spelled where it is used. Exempted at
+		// the LINE rather than by carving the file out of the rule: a second literal added to
+		// this dialog tomorrow must still fail, which was watched failing before this was left.
+		// eslint-disable-next-line no-restricted-syntax -- the plugin's own name, which this epic says is never translated
 		nav.createDiv({ cls: 'pbl-manual-navhead', text: 'Product Backlog' });
 		const items = nav.createDiv('vertical-tab-header-group-items');
 		const pane = split.createDiv('pbl-manual-pane');

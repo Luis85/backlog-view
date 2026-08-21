@@ -318,6 +318,32 @@ const RENDER_BOARD = 'src/view/render/board.ts';
 // a ban ahead of its sweep is a ban somebody switches off. Everything else RENDER carries
 // applies here unchanged.
 const RENDER_EMPTY_STATES = 'src/view/render/emptyStates.ts';
+// The toolbar row, carved out of RENDER for the two text bans — swept into the catalog on
+// 2026-08-20, so they land on clean files rather than opening with a wall of errors on the
+// rest of a directory nobody has swept yet. That ORDER is the rule, stated at
+// RENDER_EMPTY_STATES above and kept by every slice of this epic: a ban ahead of its sweep
+// is a ban somebody switches off. Everything else RENDER carries applies here unchanged.
+//
+// The five files are one subject — the row, its controls, the fit ladder that sheds them,
+// the busy indicator and the status readouts — and they are ENUMERATED rather than globbed
+// for MENU_SWEPT's reason: two flat-config blocks matching one file OVERRIDE
+// `no-restricted-syntax` rather than merging, so a file with a rule set of its own has to
+// repeat the bans, and a file ADDED to `view/render/` is uncovered until it is named here.
+// A glob replaces this list the day the REST of the directory is swept and the three
+// render rule sets can be one.
+//
+// What NEITHER ban reaches here is the shape this row is mostly built from: a prose
+// literal handed to `iconButton`, `menuButton` or `collapseButton` as a positional
+// ARGUMENT. `test/i18n/toolbar.test.ts` is what holds that, and it was watched holding it
+// — reverting `t('toolbar.jumpToToday')` to `'Jump to today'` produces zero lint errors
+// and fails that file twice.
+const RENDER_TOOLBAR = [
+	'src/view/render/toolbar.ts',
+	'src/view/render/toolbarControls.ts',
+	'src/view/render/toolbarBusy.ts',
+	'src/view/render/toolbarFit.ts',
+	'src/view/render/toolbarStatus.ts',
+];
 // The row's own controls, carved out of RENDER for ROW_LISTENER: `rows.ts` wires the
 // tree's row and chip delegation (the only place a per-row listener may live),
 // `columns.ts` draws the state and horizon chips those delegate for, and `chips.ts`
@@ -433,20 +459,31 @@ const TEXT_TERNARY = [
 // than by cleverness — and it is what makes the swept region stay swept for code nobody
 // has written yet, instead of for the call sites someone thought to check.
 //
-// **It sees the SPELLINGS listed and no others.** The setter calls and `new Notice`, quoted
-// or backticked, with the same lowercase-is-an-identifier heuristic TEXT_TERNARY uses.
-// Three shapes stay outside it, and each is stated rather than implied because a reader who
+// **It sees the SPELLINGS listed and no others.** The setter calls, `new Notice`, and
+// `setTooltip` as a BARE function — quoted or backticked, with the same
+// lowercase-is-an-identifier heuristic TEXT_TERNARY uses. That last spelling joined on
+// 2026-08-20 with the toolbar's sweep, and it is the same rule read twice rather than a
+// widening: `Setting.setTooltip` is a method and the `obsidian` export of the same name is
+// a free function taking the element, which is how every module under `view/render/` calls
+// it — so the method form alone held NOTHING across the whole directory. Planting proved
+// it: `setTooltip(btn, 'Timeline zoom')` in a banned file produced zero errors before and
+// errors now, and the swept tree stayed clean, so the widening cost no exemption.
+//
+// Two shapes stay outside it, and each is stated rather than implied because a reader who
 // assumes otherwise stops checking:
 //
-//   - A literal reaching the DOM through a `text:` or `'aria-label'` property. That is a
-//     choice with one live instance: `ui/manualDialog.ts`'s nav heading is the plugin's own
-//     NAME, which `Every surface translated` says is not translated, so a rule covering the
-//     property would open on an exemption for the one thing allowed to be there.
 //   - A template whose FIRST quasi is empty — `` `${name} was moved` `` — since the capital
 //     test has nothing to read at the position it reads. The interpolation-first sentence is
 //     rarer than the ban is worth widening for; it is not covered by accident.
 //   - A sentence built in a helper and returned to the call site (`outcomeNotice` in
-//     `commands/readme.ts`). Lint sees the return, not the `new Notice` two frames up.
+//     `commands/readme.ts`), or handed to one as a positional ARGUMENT (`guidanceShell`,
+//     and the toolbar's `iconButton`/`menuButton`/`collapseButton`). Lint sees the call it
+//     is written at, not the `new Notice` or the `aria-label` two frames down.
+//
+// A `text:` or `'aria-label'` property is NOT in that list any more: `UI_TEXT_PROPERTY`
+// below covers it, and `ui/manualDialog.ts`'s nav heading — the plugin's own NAME, which
+// `Every surface translated` says is not translated — carries an `eslint-disable-next-line`
+// rather than an exemption for the file.
 //
 // The runtime half is what holds those: a call site spelling its own English renders it
 // beside overridden neighbours in `test/i18n/sweptSurfaces.test.ts`. Neither half covers
@@ -455,7 +492,7 @@ const TEXT_TERNARY = [
 // written.
 const UI_TEXT_LITERAL = {
 	selector:
-		"CallExpression[callee.property.name=/^(setName|setDesc|setPlaceholder|setTooltip|setButtonText|setText|setTitle)$/] > :matches(Literal[value=/^[A-Z]/], TemplateLiteral[quasis.0.value.raw=/^[A-Z]/]), NewExpression[callee.name='Notice'] > :matches(Literal[value=/^[A-Z]/], TemplateLiteral[quasis.0.value.raw=/^[A-Z]/])",
+		"CallExpression[callee.property.name=/^(setName|setDesc|setPlaceholder|setTooltip|setButtonText|setText|setTitle)$/] > :matches(Literal[value=/^[A-Z]/], TemplateLiteral[quasis.0.value.raw=/^[A-Z]/]), CallExpression[callee.name='setTooltip'] > :matches(Literal[value=/^[A-Z]/], TemplateLiteral[quasis.0.value.raw=/^[A-Z]/]), NewExpression[callee.name='Notice'] > :matches(Literal[value=/^[A-Z]/], TemplateLiteral[quasis.0.value.raw=/^[A-Z]/])",
 	message:
 		'A sentence spelled where it is used cannot be translated. Add a key to src/i18n/en.ts and call t() — and if this is a value the plugin writes, matches or persists rather than text, it belongs in neither place.',
 };
@@ -571,6 +608,7 @@ export default defineConfig([
 			TREE_SCAN,
 			...TEXT_TERNARY,
 			UI_TEXT_LITERAL,
+			UI_TEXT_PROPERTY,
 		]),
 	},
 	{
@@ -645,7 +683,7 @@ export default defineConfig([
 		// the chip (`columns.ts`) is exactly the surface that must not hand-pick the raw
 		// fields itself.
 		files: [RENDER],
-		ignores: [RENDER_BOARD, RENDER_EMPTY_STATES, ...ROW_CONTROLS],
+		ignores: [RENDER_BOARD, RENDER_EMPTY_STATES, ...RENDER_TOOLBAR, ...ROW_CONTROLS],
 		rules: syntaxRules([
 			...SVG_CLASS_TOKENS,
 			...WRITE_BOUNDARY,
@@ -655,6 +693,26 @@ export default defineConfig([
 			CHILD_TYPE_CHOICES_NULL,
 			DELIVERABLE_FIELD_READ,
 			...TEXT_TERNARY,
+		]),
+	},
+	{
+		// The swept toolbar: RENDER's own rules plus both text bans. Unlike the empty
+		// states beside it this row spells `setTooltip` at nearly every control, so
+		// UI_TEXT_LITERAL holds something here rather than nothing — and it reaches the
+		// option bags too, which is where the mode switcher and the focus picker put their
+		// labels.
+		files: RENDER_TOOLBAR,
+		rules: syntaxRules([
+			...SVG_CLASS_TOKENS,
+			...WRITE_BOUNDARY,
+			MENU_ANCHOR,
+			TREE_SCAN,
+			ALL_TYPES_IMPORT,
+			CHILD_TYPE_CHOICES_NULL,
+			DELIVERABLE_FIELD_READ,
+			...TEXT_TERNARY,
+			UI_TEXT_LITERAL,
+			UI_TEXT_PROPERTY,
 		]),
 	},
 	{
@@ -722,13 +780,13 @@ export default defineConfig([
 	{
 		// The rest of the swept menu surface: VIEW's own rules plus the two text bans.
 		//
-		// **Between them they still miss this slice's commonest prompt shape**, and saying
-		// so is the point of writing it here: `ValuePromptModal` takes its heading, its
-		// field name, its placeholder and its call to action as an option bag, and of those
-		// four only `title:` is a property `UI_TEXT_PROPERTY` reads. `fieldName:`,
-		// `placeholder:` and `ctaLabel:` are named nowhere in either selector and a literal
-		// at any of them fails no rule. `test/i18n/menus.test.ts` is what holds those, by
-		// opening each prompt under a marked catalog and reading the rendered strings back.
+		// This paragraph used to say the prompt option bag was outside both rules —
+		// `ValuePromptModal` takes its heading, field name, placeholder and call to action
+		// that way, and `UI_TEXT_PROPERTY` read only `title:` of the four. That was the
+		// rule's whole blind spot rather than a corner of it, so the selector was widened
+		// to name them (2026-08-20) and this comment corrected rather than left standing.
+		// `test/i18n/menus.test.ts` still reads each prompt back under a marked catalog:
+		// lint cannot tell whether a key is READ, only that a literal is not spelled.
 		files: MENU_SWEPT,
 		rules: syntaxRules([
 			...SVG_CLASS_TOKENS,

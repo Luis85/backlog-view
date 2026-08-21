@@ -1,4 +1,5 @@
 import { Menu, setIcon, setTooltip } from 'obsidian';
+import { t } from '../../i18n/t';
 import { hasColorableStates, openStateColors } from '../interactions/stateColors';
 import { BacklogViewHost } from '../host';
 import { BacklogItem, BacklogModel } from '../../domain/model';
@@ -227,7 +228,7 @@ export function renderProjectionZone(host: BacklogViewHost, barEl: HTMLElement):
 function renderStateColorsButton(host: BacklogViewHost, zone: HTMLElement, barEl: HTMLElement): void {
 	const axis = activeAxis(host.settings, host.axisPick);
 	if (axis === null || !drawsGrid(axis) || !hasColorableStates(host)) return;
-	const btn = iconButton(zone, 'palette', 'State colours', 'state-colors');
+	const btn = iconButton(zone, 'palette', t('toolbar.stateColours'), 'state-colors');
 	btn.addClass('pbl-state-colors-btn');
 	// Focus is put back at CLOSE time and looked up then, never captured: every change the
 	// dialog makes writes the `.base`, which rebuilds this toolbar — so the button pressed
@@ -240,22 +241,29 @@ function renderStateColorsButton(host: BacklogViewHost, zone: HTMLElement, barEl
 }
 
 /** Axis labels, one place, so the button and its menu cannot name it differently. */
-const AXIS_LABEL: Record<RoadmapAxis, { icon: string; text: string }> = {
+const AXIS_LABEL = (axis: RoadmapAxis): { icon: string; text: string } => AXIS_LABELS()[axis];
+
+/**
+ * A FUNCTION and not the record it reads as, here and for the zoom below: `initLocale()`
+ * runs in `onload`, so a module-level `const` holding a `t()` call would freeze English
+ * at import time, before Obsidian's language has been read.
+ */
+const AXIS_LABELS = (): Record<RoadmapAxis, { icon: string; text: string }> => ({
 	// `gantt-chart`, not `calendar-range`: that glyph is the zoom's Quarters, and two
 	// controls in one row wearing one icon is what the harness mock caught.
-	dates: { icon: 'gantt-chart', text: 'Timeline' },
-	horizons: { icon: 'columns-3', text: 'Horizons' },
+	dates: { icon: 'gantt-chart', text: t('toolbar.axisDates') },
+	horizons: { icon: 'columns-3', text: t('toolbar.axisHorizons') },
 	// `users`, not `user`: the axis is every resource at once, and no other control in
 	// this row wears it.
-	resources: { icon: 'users', text: 'Resources' },
-};
+	resources: { icon: 'users', text: t('toolbar.axisResources') },
+});
 
 /** Zoom labels, same rule. */
-const ZOOM_LABEL: Record<ScaleId, { icon: string; text: string }> = {
-	week: { icon: 'calendar-days', text: 'Weeks' },
-	month: { icon: 'calendar', text: 'Months' },
-	quarter: { icon: 'calendar-range', text: 'Quarters' },
-};
+const ZOOM_LABEL = (id: ScaleId): { icon: string; text: string } => ({
+	week: { icon: 'calendar-days', text: t('toolbar.zoomWeek') },
+	month: { icon: 'calendar', text: t('toolbar.zoomMonth') },
+	quarter: { icon: 'calendar-range', text: t('toolbar.zoomQuarter') },
+})[id];
 
 /**
  * Which axis this saved view shows — offered only while more than one is configured: with
@@ -275,15 +283,16 @@ function renderAxisPicker(host: BacklogViewHost, zone: HTMLElement, barEl: HTMLE
 	const active = activeAxis(host.settings, host.axisPick);
 	const axes = configuredAxes(host.settings);
 	if (active === null || axes.length < 2) return;
-	const btn = menuButton(zone, AXIS_LABEL[active].icon, AXIS_LABEL[active].text, 'axis', `Roadmap axis: ${AXIS_LABEL[active].text}`);
-	setTooltip(btn, 'Roadmap axis');
+	const label = AXIS_LABEL(active);
+	const btn = menuButton(zone, label.icon, label.text, 'axis', t('toolbar.axisAria', { axis: label.text }));
+	setTooltip(btn, t('toolbar.axisTooltip'));
 	btn.addEventListener('click', (evt) => {
 		const menu = new Menu();
 		const choice = (axis: RoadmapAxis) =>
 			menu.addItem((mi) =>
 				mi
-					.setTitle(AXIS_LABEL[axis].text)
-					.setIcon(AXIS_LABEL[axis].icon)
+					.setTitle(AXIS_LABEL(axis).text)
+					.setIcon(AXIS_LABEL(axis).icon)
 					.setChecked(active === axis)
 					// `barEl`, not `zone`: the zone is destroyed by the rebuild this pick
 					// causes, and the bar is what survives it.
@@ -344,10 +353,10 @@ export function renderBoardScopePicker(host: BacklogViewHost, barEl: HTMLElement
 	const onDeliverables = host.projection === 'deliverables';
 	const current = selectableIteration(iterations, host.boardScope);
 	const scope = current?.file.path ?? null;
-	const name = onDeliverables ? SCOPE_DELIVERABLES : current === null ? SCOPE_PRODUCT : labelOf(current);
-	const btn = menuButton(zoneFor(barEl), 'target', name, 'scope', `Board scope: ${name}`);
+	const name = onDeliverables ? scopeDeliverables() : current === null ? scopeProduct() : labelOf(current);
+	const btn = menuButton(zoneFor(barEl), 'target', name, 'scope', t('toolbar.scopeAria', { scope: name }));
 	btn.addClass('pbl-scope-btn');
-	setTooltip(btn, 'Which board the Board position opens');
+	setTooltip(btn, t('toolbar.scopeTooltip'));
 	btn.addEventListener('click', (evt) => {
 		const menu = new Menu();
 		const choice = (title: string, icon: string | null, checked: boolean, act: () => void) =>
@@ -362,8 +371,8 @@ export function renderBoardScopePicker(host: BacklogViewHost, barEl: HTMLElement
 		// The two whole-population boards lead, each under the icon its toolbar control
 		// wears elsewhere — the Board button's own for the product, the Deliverable type's
 		// for its board — so the entry and the surface it opens say the same thing.
-		choice(SCOPE_PRODUCT, 'square-kanban', !onDeliverables && scope === null, () => host.setBoardScope(null));
-		choice(SCOPE_DELIVERABLES, 'package', onDeliverables, () => host.setProjection('deliverables'));
+		choice(scopeProduct(), 'square-kanban', !onDeliverables && scope === null, () => host.setBoardScope(null));
+		choice(scopeDeliverables(), 'package', onDeliverables, () => host.setProjection('deliverables'));
 		// The boards are not among the iterations, so a rule says so: the scopes below
 		// this line are a list of notes, and each board is the absence of one.
 		if (iterations.length > 0) {
@@ -378,14 +387,14 @@ export function renderBoardScopePicker(host: BacklogViewHost, barEl: HTMLElement
 			// there is nothing else it could be editing.
 			menu.addItem((mi) =>
 				mi
-					.setTitle('New iteration…')
+					.setTitle(t('toolbar.newIteration'))
 					.setIcon('calendar-plus')
 					.onClick(() => promptNewIteration(host, model)),
 			);
 			if (current !== null) {
 				menu.addItem((mi) =>
 					mi
-						.setTitle('Edit iteration…')
+						.setTitle(t('toolbar.editIteration'))
 						.setIcon('pencil')
 						.onClick(() => promptEditIteration(host, current)),
 				);
@@ -395,10 +404,14 @@ export function renderBoardScopePicker(host: BacklogViewHost, barEl: HTMLElement
 	});
 }
 
-/** What the picker calls the whole backlog — the scope every board had before this one. */
-const SCOPE_PRODUCT = 'Product';
-/** The Deliverables board's entry, directly under Product — its toggle position until 2026-08-16. */
-const SCOPE_DELIVERABLES = 'Deliverables';
+/**
+ * What the picker calls the whole backlog — the scope every board had before this one —
+ * and the Deliverables board's entry directly under it, its toggle position until
+ * 2026-08-16. Functions rather than consts, `AXIS_LABELS`' rule: a module-level `const`
+ * calling `t()` evaluates at import, before `initLocale()` has read Obsidian's language.
+ */
+const scopeProduct = (): string => t('toolbar.scopeProduct');
+const scopeDeliverables = (): string => t('toolbar.scopeDeliverables');
 
 /**
  * The picker's own slot in the row, made on demand: it sits with the switcher rather than
@@ -420,7 +433,7 @@ function zoneFor(barEl: HTMLElement): HTMLElement {
  * that inversion, since the store writes nothing for a default), and nothing above the
  * store has to know.
  */
-const BUCKET_GRID_LABEL = 'Grid in buckets';
+const bucketGridLabel = (): string => t('toolbar.bucketGrid');
 
 function bucketGridToggle(host: BacklogViewHost): { grid: boolean; icon: string; flip: () => void } {
 	const grid = host.bucketGrid;
@@ -440,7 +453,7 @@ function bucketGridToggle(host: BacklogViewHost): { grid: boolean; icon: string;
 function renderBucketGridToggle(host: BacklogViewHost, zone: HTMLElement): void {
 	if (activeAxis(host.settings, host.axisPick) !== 'horizons') return;
 	const { grid, icon, flip } = bucketGridToggle(host);
-	const btn = iconButton(zone, icon, BUCKET_GRID_LABEL);
+	const btn = iconButton(zone, icon, bucketGridLabel());
 	btn.addClass('pbl-bucket-grid-toggle');
 	btn.toggleClass('is-active', grid);
 	btn.setAttribute('aria-pressed', String(grid));
@@ -455,21 +468,16 @@ function renderBucketGridToggle(host: BacklogViewHost, zone: HTMLElement): void 
 function renderTimelineControls(host: BacklogViewHost, zone: HTMLElement, barEl: HTMLElement): void {
 	const axis = activeAxis(host.settings, host.axisPick);
 	if (axis === null || !drawsGrid(axis)) return;
-	const btn = menuButton(
-		zone,
-		ZOOM_LABEL[host.zoom].icon,
-		ZOOM_LABEL[host.zoom].text,
-		'zoom',
-		`Timeline zoom: ${ZOOM_LABEL[host.zoom].text}`,
-	);
-	setTooltip(btn, 'Timeline zoom');
+	const zoom = ZOOM_LABEL(host.zoom);
+	const btn = menuButton(zone, zoom.icon, zoom.text, 'zoom', t('toolbar.zoomAria', { zoom: zoom.text }));
+	setTooltip(btn, t('toolbar.zoomTooltip'));
 	btn.addEventListener('click', (evt) => {
 		const menu = new Menu();
 		for (const id of ['week', 'month', 'quarter'] as ScaleId[]) {
 			menu.addItem((mi) =>
 				mi
-					.setTitle(ZOOM_LABEL[id].text)
-					.setIcon(ZOOM_LABEL[id].icon)
+					.setTitle(ZOOM_LABEL(id).text)
+					.setIcon(ZOOM_LABEL(id).icon)
 					.setChecked(host.zoom === id)
 					.onClick(() => pickAndRefocus(barEl, 'zoom', () => host.setZoom(id))),
 			);
@@ -481,12 +489,12 @@ function renderTimelineControls(host: BacklogViewHost, zone: HTMLElement, barEl:
 	// whose name changes to the next action announces "Comfortable rows, pressed" while
 	// compact rows are on, which states the opposite of what is true. The icon still
 	// swaps: it is the sighted affordance, and it says nothing to a reader.
-	const densityBtn = iconButton(zone, compact ? 'rows-2' : 'rows-4', 'Compact rows');
+	const densityBtn = iconButton(zone, compact ? 'rows-2' : 'rows-4', t('toolbar.compactRows'));
 	densityBtn.addClass('pbl-density-toggle');
 	densityBtn.toggleClass('is-active', compact);
 	densityBtn.setAttribute('aria-pressed', String(compact));
 	densityBtn.addEventListener('click', () => host.setDensity(compact ? null : 'compact'));
-	const today = iconButton(zone, 'locate-fixed', 'Jump to today');
+	const today = iconButton(zone, 'locate-fixed', t('toolbar.jumpToToday'));
 	today.addClass('pbl-today-btn');
 	today.addEventListener('click', () => host.jumpToToday());
 }
@@ -496,7 +504,7 @@ function renderTimelineControls(host: BacklogViewHost, zone: HTMLElement, barEl:
  * action, so `aria-pressed` can carry the value without the two contradicting each
  * other. See `renderClickActionToggle`.
  */
-export const CLICK_ACTION_LABEL = 'Clicking a row folds it';
+export const clickActionLabel = (): string => t('toolbar.clickAction');
 
 /**
  * Where the click-action setting has an effect, and therefore where its toggle is drawn:
@@ -693,25 +701,25 @@ function overflowEntries(host: BacklogViewHost, barEl: HTMLElement): OverflowEnt
 			// First, where the horizon axis's own toggle sits in the row. It never shares a
 			// screen with the two below it — they are the grid axes' — so the order between
 			// them is nominal.
-			title: BUCKET_GRID_LABEL,
+			title: bucketGridLabel(),
 			icon: bucketGrid.icon,
 			cls: 'pbl-bucket-grid-toggle',
 			run: bucketGrid.flip,
 		},
 		{
-			title: 'Compact rows',
+			title: t('toolbar.compactRows'),
 			icon: compact ? 'rows-2' : 'rows-4',
 			cls: 'pbl-density-toggle',
 			run: () => host.setDensity(compact ? null : 'compact'),
 		},
 		{
-			title: 'Jump to today',
+			title: t('toolbar.jumpToToday'),
 			icon: 'locate-fixed',
 			cls: 'pbl-today-btn',
 			run: () => host.jumpToToday(),
 		},
 		{
-			title: 'Open the manual',
+			title: t('toolbar.openManual'),
 			icon: 'help-circle',
 			cls: 'pbl-help-btn',
 			// `onClosed` is REQUIRED here, and its absence was a real hole: skipping
@@ -728,13 +736,13 @@ function overflowEntries(host: BacklogViewHost, barEl: HTMLElement): OverflowEnt
 			opensModal: true,
 		},
 		{
-			title: 'Assign missing properties',
+			title: t('toolbar.assignMissing'),
 			icon: 'sparkles',
 			cls: 'pbl-write-ctl',
 			run: () => void runInit(host),
 		},
 		{
-			title: 'Expand all',
+			title: t('toolbar.expandAll'),
 			icon: 'chevrons-up-down',
 			cls: 'pbl-expand-ctl',
 			// The guard `collapseButton` carries, for the same reason it carries it: the
@@ -750,7 +758,7 @@ function overflowEntries(host: BacklogViewHost, barEl: HTMLElement): OverflowEnt
 			},
 		},
 		{
-			title: 'Collapse all',
+			title: t('toolbar.collapseAll'),
 			icon: 'chevrons-down-up',
 			cls: 'pbl-collapse-all-ctl',
 			run: () => {
@@ -763,7 +771,7 @@ function overflowEntries(host: BacklogViewHost, barEl: HTMLElement): OverflowEnt
 			// Last, where it sits in the row. Its checkmark comes from the button's own
 			// `aria-pressed` like the density toggle's, so the entry cannot say a click
 			// folds while the button says it opens.
-			title: CLICK_ACTION_LABEL,
+			title: clickActionLabel(),
 			icon: clickAction.icon,
 			cls: 'pbl-click-action-toggle',
 			run: clickAction.flip,
@@ -778,7 +786,7 @@ function overflowEntries(host: BacklogViewHost, barEl: HTMLElement): OverflowEnt
  * inside the measuring pass.
  */
 export function renderOverflow(host: BacklogViewHost, barEl: HTMLElement): void {
-	const btn = iconButton(barEl, 'ellipsis', 'More toolbar actions', 'overflow');
+	const btn = iconButton(barEl, 'ellipsis', t('toolbar.overflow'), 'overflow');
 	btn.addClass('pbl-overflow-btn');
 	btn.setAttribute('aria-haspopup', 'menu');
 	btn.addEventListener('click', (evt) => {
