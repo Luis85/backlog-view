@@ -42,13 +42,14 @@ import { resolveViewIdentity } from '../../storage/viewIdentity';
  *  budget. */
 interface TableCtx {
 	view: EstimationView;
-	tableEl: HTMLElement;
+	listEl: HTMLElement;
 	model: EstimationModel;
 	rows: Map<string, HTMLElement>;
 }
 
 /**
- * Delegated click and keydown, both wired once per render pass — the table's own root.
+ * Delegated click and keydown, both wired once per render pass — on the ROW WRAPPER
+ * (`.pbl-est-rows`), which is the listbox, not on the scroller that holds the header too.
  * `items` is this pass's SORTED order (a copy, or `model.items` itself when unsorted —
  * see {@link sortedItems}); arrow-key stepping walks it rather than `model.items`, so
  * the keyboard follows the same order the rows are drawn in. `model.byPath` is order-
@@ -56,26 +57,26 @@ interface TableCtx {
  */
 function wireEvents(
 	view: EstimationView,
-	tableEl: HTMLElement,
+	listEl: HTMLElement,
 	model: EstimationModel,
 	items: EstimationItem[],
 	rows: Map<string, HTMLElement>,
 ): void {
-	const ctx: TableCtx = { view, tableEl, model, rows };
+	const ctx: TableCtx = { view, listEl, model, rows };
 	// Resolved by `data-path` against THIS pass's model, never a per-row closure over an
 	// item — the same rule `render/rows.ts` states for the tree, restated here because
 	// this table wires no per-row listener at all to forget it.
-	tableEl.addEventListener('click', (evt) => {
+	listEl.addEventListener('click', (evt) => {
 		const rowEl = evt.target instanceof Element ? evt.target.closest('.pbl-est-row') : null;
 		const path = rowEl instanceof HTMLElement ? rowEl.dataset.path : undefined;
 		if (path && model.byPath.has(path)) selectRow(ctx, path, false);
 	});
-	tableEl.addEventListener('keydown', (evt) => {
-		// A sort header is a real button living inside this same root now, so its own
-		// Enter/Space must stay its own — never fall through to the row list's reading
-		// of Enter, the resize grips' own rule for the identical reason
-		// (`src/view/CLAUDE.md`, "both `handleRoadmapKeydown` and `handleTreeKeydown`…").
-		if (evt.target !== tableEl) return;
+	listEl.addEventListener('keydown', (evt) => {
+		// Only the list's own tab stop. A sort header is a real button and its Enter/Space
+		// must stay its own — the resize grips' rule (`src/view/CLAUDE.md`). Since the
+		// listbox moved off the scroller, the header is not even a descendant of this
+		// element, so this guard now only has to exclude the rows' own descendants.
+		if (evt.target !== listEl) return;
 		if (evt.key === 'ArrowDown' || evt.key === 'ArrowUp') {
 			stepAndSelect(ctx, items, evt, evt.key === 'ArrowDown' ? 1 : -1);
 			return;
@@ -149,12 +150,12 @@ function step(items: EstimationItem[], selectedPath: string | null, delta: 1 | -
  * one) call this, rather than one spelling it as a class string at creation and the other
  * as a DOM mutation at pick time — the double spelling this used to be.
  */
-function applySelection(tableEl: HTMLElement, row: HTMLElement, selected: boolean): void {
+function applySelection(listEl: HTMLElement, row: HTMLElement, selected: boolean): void {
 	row.toggleClass('pbl-selected', selected);
 	row.setAttribute('aria-selected', String(selected));
 	if (!selected) return;
 	if (!row.id) row.id = uniqueElementId('pbl-est-row');
-	tableEl.setAttribute('aria-activedescendant', row.id);
+	listEl.setAttribute('aria-activedescendant', row.id);
 }
 
 /**
@@ -178,12 +179,12 @@ function applySelection(tableEl: HTMLElement, row: HTMLElement, selected: boolea
  * could reach, so nothing off screen needs to be brought into view for it.
  */
 function selectRow(ctx: TableCtx, path: string, scroll: boolean): void {
-	const { view, tableEl, model, rows } = ctx;
+	const { view, listEl, model, rows } = ctx;
 	const row = rows.get(path)!;
 	const previous = rows.get(view.selectedPath!)!;
-	applySelection(tableEl, previous, false);
+	applySelection(listEl, previous, false);
 	view.selectedPath = path;
-	applySelection(tableEl, row, true);
+	applySelection(listEl, row, true);
 	if (scroll) row.scrollIntoView({ block: 'nearest' });
 	// Straight off the panel on screen: this path tears nothing down first, so the element
 	// still has a layout box and its own `scrollTop` is the honest answer.
@@ -346,8 +347,9 @@ function sortHeader(view: EstimationView, head: HTMLElement, spec: HeaderSpec, p
 	btn.setAttribute('aria-sort', active.direction === 'asc' ? 'ascending' : 'descending');
 	// `aria-sort` above stays — the stylesheet's state hook, every direction assertion's hook,
 	// and the attribute a move to real `columnheader` roles would already have. It is NOT read
-	// by anything today: ARIA supports it on `columnheader`/`rowheader`, and this is a button
-	// inside a `role="listbox"`. So the direction is SAID here and SHOWN below.
+	// by anything today: ARIA supports it on `columnheader`/`rowheader`, and this is a plain
+	// button. So the direction is SAID here and SHOWN below. It is no longer PRUNED, which is
+	// the separate thing the wrapper in `renderTable` fixed — the header left the listbox.
 	btn.setAttribute('aria-label', t(active.direction === 'asc' ? 'estimation.sort.ascending' : 'estimation.sort.descending', { column: label }));
 	setIcon(btn.createSpan({ cls: 'pbl-est-sort-dir' }), active.direction === 'asc' ? 'chevron-up' : 'chevron-down');
 	return wireSortClick(view, btn, spec, active);
@@ -416,8 +418,8 @@ function numberCell(el: HTMLElement, value: number | null, range: [number, numbe
 	el.createDiv({ cls: 'pbl-est-strip' }).setCssProps({ '--pbl-progress': `${Math.round(ratio * 100)}%` });
 }
 
-function renderRow(tableEl: HTMLElement, item: EstimationItem, output: [number, number]): HTMLElement {
-	const row = tableEl.createDiv({ cls: 'pbl-est-row', attr: { role: 'option' } });
+function renderRow(listEl: HTMLElement, item: EstimationItem, output: [number, number]): HTMLElement {
+	const row = listEl.createDiv({ cls: 'pbl-est-row', attr: { role: 'option' } });
 	row.dataset.path = item.file.path;
 	row.createDiv({ cls: 'pbl-est-title', text: item.title });
 	// The model's own declared output range, never the spread of what the base returned.
@@ -444,20 +446,20 @@ function renderRow(tableEl: HTMLElement, item: EstimationItem, output: [number, 
  * is this pass's sorted order (see {@link sortedItems}).
  */
 function renderRows(
-	tableEl: HTMLElement,
+	listEl: HTMLElement,
 	items: EstimationItem[],
 	selectedPath: string | null,
 	output: [number, number],
 ): Map<string, HTMLElement> {
 	if (items.length === 0) {
-		tableEl.createDiv({ text: t('estimation.empty.noResults') });
+		listEl.createDiv({ text: t('estimation.empty.noResults') });
 		return new Map();
 	}
 	const rows = new Map<string, HTMLElement>();
 	for (const item of items) {
-		const row = renderRow(tableEl, item, output);
+		const row = renderRow(listEl, item, output);
 		rows.set(item.file.path, row);
-		applySelection(tableEl, row, item.file.path === selectedPath);
+		applySelection(listEl, row, item.file.path === selectedPath);
 	}
 	return rows;
 }
@@ -494,14 +496,30 @@ export function renderTable(view: EstimationView, model: EstimationModel, previo
 	// `contentEl` (the grid), never `viewEl` (the shell) directly — the toolbar sits
 	// beside `viewEl`'s other child, not inside the grid whose tracks this table shares
 	// with the panel.
-	const tableEl = view.contentEl.createDiv({ cls: 'pbl-est-table', attr: { role: 'listbox', tabindex: '0' } });
+	// TWO ELEMENTS FOR TWO JOBS, and the split is an accessibility rule rather than
+	// tidying. The scroller holds the box and the sticky header; the wrapper holds the list
+	// semantics. With `role="listbox"` on the scroller, the six sort buttons were
+	// non-`option` children of a listbox and ARIA pruned them — along with the `aria-sort`
+	// beside them, as `sortHeader`'s own comment says. The header stays INSIDE the
+	// scroller: it is `position: sticky` against that scroller, and moving it out would
+	// also let the scrollbar shift the rows out of line with the labels.
+	//
+	// The wrapper carries NO stylesheet rule, deliberately: a child of the scroller's
+	// column flex is blockified into a flex item, so it stretches to the full inline size,
+	// and each `.pbl-est-row` keeps its own `display: flex` — the boxes are the ones the
+	// scroller laid out when the rows were its own children. `styles/estimation.css` is at
+	// its 400-line cap anyway, so a rule that changes nothing is not worth a partial split.
+	// Appearance is not verified here — jsdom lays nothing out and this owes a vault look.
+	const tableEl = view.contentEl.createDiv({ cls: 'pbl-est-table' });
 	view.tableEl = tableEl;
 	renderHead(view, tableEl, pick);
 	// The model's own declared output range, never the spread of what this base returned —
 	// `EstimationModel` carries no `ScoringModel`, so the range comes off the view.
 	const output: [number, number] = [view.settings.model.outputMin, view.settings.model.outputMax];
-	const rows = renderRows(tableEl, items, view.selectedPath, output);
-	wireEvents(view, tableEl, model, items, rows);
+	const listEl = tableEl.createDiv({ cls: 'pbl-est-rows', attr: { role: 'listbox', tabindex: '0' } });
+	const rows = renderRows(listEl, items, view.selectedPath, output);
+	wireEvents(view, listEl, model, items, rows);
+	// On the SCROLLER, which is what scrolls — `view.tableEl` is read for nothing else.
 	// Clamped to the fresh `scrollHeight` so a rebuild with fewer rows (a note leaving the
 	// base's results) cannot park the pane below its own last row.
 	tableEl.scrollTop = Math.min(previousScrollTop, tableEl.scrollHeight);

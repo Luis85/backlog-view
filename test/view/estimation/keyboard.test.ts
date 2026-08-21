@@ -87,10 +87,10 @@ describe('the estimation view from the keyboard', () => {
 		// fresh render, so ArrowRight reaches its panel directly rather than stepping onto it.
 		const vault = fixture();
 		const { containerEl } = makeEstimationView(vault, configuredValues());
-		const table = containerEl.querySelector('.pbl-est-table') as HTMLElement;
-		key(table, 'ArrowRight');
+		const list = containerEl.querySelector('.pbl-est-rows') as HTMLElement;
+		key(list, 'ArrowRight');
 		expect(containerEl.querySelector('.pbl-est-panel')!.contains(document.activeElement)).toBe(true);
-		key(table, 'Enter');
+		key(list, 'Enter');
 		expect(vault.opened).toEqual([{ path: 'Full.md', mode: false }]);
 	});
 
@@ -104,8 +104,8 @@ describe('the estimation view from the keyboard', () => {
 		//
 		// No `ArrowDown` first: Full.md is already selected on a fresh render (Task 9).
 		const { containerEl } = makeEstimationView(fixture(), configuredValues());
-		const table = containerEl.querySelector('.pbl-est-table') as HTMLElement;
-		key(table, 'ArrowRight');
+		const list = containerEl.querySelector('.pbl-est-rows') as HTMLElement;
+		key(list, 'ArrowRight');
 		expect(document.activeElement).toBe(containerEl.querySelector('[data-dim="strategic-alignment"][data-value="5"]'));
 	});
 
@@ -148,10 +148,10 @@ describe('the estimation view from the keyboard', () => {
 		// circuits to `undefined` and the `if (first)` guard's false branch is what runs —
 		// no throw, no focus change, and the key is not swallowed (not prevented).
 		const { containerEl } = makeEstimationView(new FakeVault(), configuredValues());
-		const table = containerEl.querySelector('.pbl-est-table') as HTMLElement;
+		const list = containerEl.querySelector('.pbl-est-rows') as HTMLElement;
 		expect(containerEl.querySelector('.pbl-est-panel')).toBeNull();
 		const before = document.activeElement;
-		const evt = key(table, 'ArrowRight');
+		const evt = key(list, 'ArrowRight');
 		expect(document.activeElement).toBe(before);
 		expect(evt.defaultPrevented).toBe(false);
 	});

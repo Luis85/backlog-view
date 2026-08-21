@@ -115,8 +115,43 @@ describe('the estimation table', () => {
 		const rebuilt = row(containerEl, 'Partial.md');
 		expect(rebuilt.classList.contains('pbl-selected')).toBe(true);
 		expect(rebuilt.getAttribute('aria-selected')).toBe('true');
-		const table = containerEl.querySelector('.pbl-est-table');
-		expect(table?.getAttribute('aria-activedescendant')).toBe(rebuilt.id);
+		const list = containerEl.querySelector('.pbl-est-rows');
+		expect(list?.getAttribute('aria-activedescendant')).toBe(rebuilt.id);
+	});
+});
+
+describe('the list semantics cover the rows and nothing else', () => {
+	// ARIA prunes non-`option` children of a listbox, so with the role on the scroller the
+	// six sort buttons — and the `aria-sort` on the active one — were invisible to
+	// assistive technology. The scroller keeps the box; a wrapper takes the semantics.
+	it('puts the listbox on a wrapper whose every child is an option', () => {
+		const { containerEl } = makeEstimationView(fixture(), configuredValues());
+
+		expect(containerEl.querySelector('.pbl-est-table')!.getAttribute('role')).toBeNull();
+		const list = containerEl.querySelector('.pbl-est-rows')!;
+		expect(list.getAttribute('role')).toBe('listbox');
+		expect(list.getAttribute('tabindex')).toBe('0');
+
+		// The claim is about EVERY child, not about the rows being present — that is what
+		// the pruning rule is actually sensitive to.
+		const roles = Array.from(list.children).map((el) => el.getAttribute('role'));
+		expect(roles.length).toBeGreaterThan(0);
+		expect(roles.every((role) => role === 'option')).toBe(true);
+	});
+
+	// The header has to stay INSIDE the scroller or it stops being sticky and the
+	// scrollbar starts shifting the columns out of line with it.
+	it('leaves the header inside the scroller, beside the wrapper', () => {
+		const { containerEl } = makeEstimationView(fixture(), configuredValues());
+		const scroller = containerEl.querySelector('.pbl-est-table')!;
+		expect(scroller.querySelector(':scope > .pbl-est-head')).not.toBeNull();
+		expect(scroller.querySelector(':scope > .pbl-est-rows')).not.toBeNull();
+	});
+
+	it('points aria-activedescendant from the listbox, not from the scroller', () => {
+		const { containerEl } = makeEstimationView(fixture(), configuredValues());
+		expect(containerEl.querySelector('.pbl-est-table')!.getAttribute('aria-activedescendant')).toBeNull();
+		expect(containerEl.querySelector('.pbl-est-rows')!.getAttribute('aria-activedescendant')).not.toBeNull();
 	});
 });
 
@@ -276,28 +311,28 @@ describe('keyboard on the estimation table', () => {
 		// already 'Full.md' here, no click or key needed), so the first ArrowDown steps
 		// PAST it rather than landing on it.
 		const { view, containerEl } = makeEstimationView(fixture(), configuredValues());
-		const table = containerEl.querySelector('.pbl-est-table') as HTMLElement;
+		const list = containerEl.querySelector('.pbl-est-rows') as HTMLElement;
 
 		expect(view.selectedPath).toBe('Full.md');
-		key(table, 'ArrowDown');
+		key(list, 'ArrowDown');
 		expect(view.selectedPath).toBe('Partial.md');
-		key(table, 'ArrowUp');
+		key(list, 'ArrowUp');
 		expect(view.selectedPath).toBe('Full.md');
 	});
 
 	it('holds at the last row rather than wrapping', () => {
 		const { view, containerEl } = makeEstimationView(fixture(), configuredValues());
-		const table = containerEl.querySelector('.pbl-est-table') as HTMLElement;
-		for (let i = 0; i < 5; i++) key(table, 'ArrowDown');
+		const list = containerEl.querySelector('.pbl-est-rows') as HTMLElement;
+		for (let i = 0; i < 5; i++) key(list, 'ArrowDown');
 		expect(view.selectedPath).toBe('Empty.md');
 	});
 
 	it('holds at the first row rather than wrapping', () => {
 		const { view, containerEl } = makeEstimationView(fixture(), configuredValues());
-		const table = containerEl.querySelector('.pbl-est-table') as HTMLElement;
-		key(table, 'ArrowUp');
+		const list = containerEl.querySelector('.pbl-est-rows') as HTMLElement;
+		key(list, 'ArrowUp');
 		expect(view.selectedPath).toBe('Full.md');
-		key(table, 'ArrowUp');
+		key(list, 'ArrowUp');
 		expect(view.selectedPath).toBe('Full.md');
 	});
 
@@ -306,8 +341,8 @@ describe('keyboard on the estimation table', () => {
 		// render since Task 9.
 		const vault = fixture();
 		const { containerEl } = makeEstimationView(vault, configuredValues());
-		const table = containerEl.querySelector('.pbl-est-table') as HTMLElement;
-		key(table, 'Enter');
+		const list = containerEl.querySelector('.pbl-est-rows') as HTMLElement;
+		key(list, 'Enter');
 		expect(vault.opened).toEqual([{ path: 'Full.md', mode: false }]);
 	});
 
@@ -316,17 +351,17 @@ describe('keyboard on the estimation table', () => {
 		// so "no row is selected" only occurs when the base returns zero results.
 		const vault = new FakeVault();
 		const { containerEl } = makeEstimationView(vault, configuredValues());
-		const table = containerEl.querySelector('.pbl-est-table') as HTMLElement;
-		key(table, 'Enter');
+		const list = containerEl.querySelector('.pbl-est-rows') as HTMLElement;
+		key(list, 'Enter');
 		expect(vault.opened).toEqual([]);
 	});
 
 	it('does nothing on an empty table — no result to hold a selection', () => {
 		const { view, containerEl } = makeEstimationView(new FakeVault(), configuredValues());
-		const table = containerEl.querySelector('.pbl-est-table') as HTMLElement;
-		key(table, 'ArrowDown');
+		const list = containerEl.querySelector('.pbl-est-rows') as HTMLElement;
+		key(list, 'ArrowDown');
 		expect(view.selectedPath).toBeNull();
-		key(table, 'ArrowUp');
+		key(list, 'ArrowUp');
 		expect(view.selectedPath).toBeNull();
 	});
 
@@ -336,9 +371,9 @@ describe('keyboard on the estimation table', () => {
 		it('scrolls the newly selected row into view on an arrow step, never on a click', () => {
 			const { containerEl } = makeEstimationView(fixture(), configuredValues());
 			const scrollIntoView = vi.spyOn(HTMLElement.prototype, 'scrollIntoView').mockImplementation(() => {});
-			const table = containerEl.querySelector('.pbl-est-table') as HTMLElement;
+			const list = containerEl.querySelector('.pbl-est-rows') as HTMLElement;
 
-			key(table, 'ArrowDown');
+			key(list, 'ArrowDown');
 			expect(scrollIntoView).toHaveBeenCalledTimes(1);
 			expect(scrollIntoView).toHaveBeenCalledWith({ block: 'nearest' });
 
