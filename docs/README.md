@@ -283,9 +283,11 @@ promotion that creates a backlog item and leaves the discovery record linked and
 **Product Strategy** (objectives and jobs to be done as links rather than rungs, and the
 backward read that names work answering to nothing), and **Product Evidence** (what the vault
 already holds — interviews, tickets, analytics — connected to the work it argues for, and the
-three gaps that read exposes). Then planning: **Release Planning** (scope, capacity in the
-vault's own unit, a scenario that writes nothing until it is applied, and a readiness
-checklist that refuses nothing), **Product Dependencies** (one canonical direction, a graph
+three gaps that read exposes). Then planning: **Release Management** (scope, capacity in
+the vault's own unit, a scenario that writes nothing until it is applied, a readiness checklist
+that refuses nothing, and the rest of a release's life the source document stopped short of —
+putting work in one, shipping it, writing up what shipped, and the index of every release the
+other five screens are the detail of), **Product Dependencies** (one canonical direction, a graph
 and a table over it, a stated rule for what counts as blocked, and cycles reported rather
 than resolved). Then governance: **Product Portfolio**, **Product Analytics** (every figure
 naming its population and reporting what it could not measure rather than counting it as
