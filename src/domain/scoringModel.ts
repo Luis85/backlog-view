@@ -160,7 +160,7 @@ export function modelProblems(model: ScoringModel): string[] {
 		// they track the value's own magnitude, so 3 of them keep 13 as 13, turn 0.001 into
 		// 0.001, and cannot collapse a nonzero delta to the string "0". The one thing this does
 		// NOT guarantee is a tidy decimal at every magnitude — a delta smaller than about 1e-6
-		// prints in exponent notation (e.g. "1.00e-7"), which is uglier but still never a false
+		// prints in exponent notation (e.g. "1e-7"), which is uglier but still never a false
 		// zero. `test/domain/scoringModel.test.ts`'s "never prints a false zero for a real
 		// sub-1 delta" pins the 99.999 case this comment used to get wrong.
 		const off = Number(Math.abs(100 - weightSum).toPrecision(3));

@@ -99,8 +99,6 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   own accessible name; `aria-sort` stays as the style hook it always was, but nothing
   depended on it being read aloud any more.
 
-### Changed
-
 - **A dimension problem names the dimension the way its own settings panel does.** A
   refusal used to read `strategic-alignment: the weight must be a positive number`; it now
   reads `Strategic alignment`, and a dimension group in the options menu is headed by that
@@ -108,8 +106,8 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 - **The weight rule is stated at the box that can break it.** Each dimension's `Weight` box
   is now labelled `Weight (% of 100)`, the refusal for a total that is off says the delta
-  (`the weights total 87, not 100 (13 short)`), and the lead sentence on every estimation
-  problem names where to go and fix it.
+  (`the weights total 87, not 100 (13 short)`), and the lead sentence on the view's own
+  problem block names where to go and fix it.
 
 ### Fixed
 

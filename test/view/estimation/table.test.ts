@@ -48,15 +48,15 @@ describe('the estimation table', () => {
 	it("shows the full profile's rounded total and its 8/8 coverage", () => {
 		const { containerEl } = makeEstimationView(fixture(), configuredValues());
 		const full = row(containerEl, 'Full.md');
-		expect(full.querySelector('.pbl-est-total')?.textContent).toBe('3.55');
-		expect(full.querySelector('.pbl-est-coverage')?.textContent).toBe('8/8');
+		expect(full.querySelector(':scope > .pbl-est-total')?.textContent).toBe('3.55');
+		expect(full.querySelector(':scope > .pbl-est-coverage')?.textContent).toBe('8/8');
 	});
 
 	it("shows the partial profile's renormalized total and its 2/8 coverage", () => {
 		const { containerEl } = makeEstimationView(fixture(), configuredValues());
 		const partial = row(containerEl, 'Partial.md');
-		expect(partial.querySelector('.pbl-est-total')?.textContent).toBe('4');
-		expect(partial.querySelector('.pbl-est-coverage')?.textContent).toBe('2/8');
+		expect(partial.querySelector(':scope > .pbl-est-total')?.textContent).toBe('4');
+		expect(partial.querySelector(':scope > .pbl-est-coverage')?.textContent).toBe('2/8');
 	});
 
 	it("shows the none currency as an empty chip — the CSS-drawn dash every other empty cell in the row gets, not a hand-written one", () => {
@@ -65,7 +65,7 @@ describe('the estimation table', () => {
 		const currency = empty.querySelector('.pbl-est-currency') as HTMLElement;
 		expect(currency.textContent).toBe('');
 		expect(currency.matches(':empty')).toBe(true);
-		const total = empty.querySelector('.pbl-est-total') as HTMLElement;
+		const total = empty.querySelector(':scope > .pbl-est-total') as HTMLElement;
 		expect(total.textContent).toBe('');
 		// The dash on screen is `styles/estimation.css`'s `:empty::before` rule; this proves
 		// the cell qualifies for that selector rather than rendering a literal dash itself —
@@ -128,11 +128,11 @@ describe('the value and coverage strips', () => {
 		// threshold lines. Driven the only way that distinguishes the two: add a third item and
 		// assert the first two strips do not move.
 		const base = makeEstimationView(fixture(), configuredValues());
-		const before = progressOf(row(base.containerEl, 'Full.md').querySelector('.pbl-est-total')!);
+		const before = progressOf(row(base.containerEl, 'Full.md').querySelector(':scope > .pbl-est-total')!);
 
 		const wider = fixture();
 		wider.addFile('Tiny.md', { frontmatter: { compliance: 1 } });
-		const after = progressOf(row(makeEstimationView(wider, configuredValues()).containerEl, 'Full.md').querySelector('.pbl-est-total')!);
+		const after = progressOf(row(makeEstimationView(wider, configuredValues()).containerEl, 'Full.md').querySelector(':scope > .pbl-est-total')!);
 
 		expect(before).not.toBeNull();
 		expect(after).toBe(before);
@@ -146,14 +146,14 @@ describe('the value and coverage strips', () => {
 		vault.addFile('Negative.md', { frontmatter: { compliance: 1, confidence: 3, effort: -2 } });
 		const { containerEl } = makeEstimationView(vault, configuredValues());
 		const r = row(containerEl, 'Negative.md');
-		expect(r.querySelector('.pbl-est-coverage .pbl-est-strip')).not.toBeNull();
-		expect(r.querySelector('.pbl-est-cell[data-col="confidence"] .pbl-est-strip')).toBeNull();
-		expect(r.querySelector('.pbl-est-cell[data-col="effort"] .pbl-est-strip')).toBeNull();
+		expect(r.querySelector(':scope > .pbl-est-coverage > .pbl-est-strip')).not.toBeNull();
+		expect(r.querySelector(':scope > .pbl-est-cell[data-col="confidence"] > .pbl-est-strip')).toBeNull();
+		expect(r.querySelector(':scope > .pbl-est-cell[data-col="effort"] > .pbl-est-strip')).toBeNull();
 	});
 
 	it('leaves an unanswered cell with its dash and no strip', () => {
 		const { containerEl } = makeEstimationView(fixture(), configuredValues());
-		const total = row(containerEl, 'Empty.md').querySelector('.pbl-est-total')!;
+		const total = row(containerEl, 'Empty.md').querySelector(':scope > .pbl-est-total')!;
 		expect(total.querySelector('.pbl-est-strip')).toBeNull();
 		expect(total.textContent).toBe('');
 	});
