@@ -118,7 +118,16 @@
    and complexity, which are scales of the same shape), then the decomposition.
    ========================================================================== */
 
+/* THE CONTAINING BLOCK FOR `.pbl-est-clear`, and that is the whole reason for the
+   declaration. An absolute inset resolves against the containing block's PADDING box, so
+   with `position: relative` on `.pbl-est-dim-head` instead, `inset-inline-end: 0`
+   measured from inside the gutter that head reserves — putting the control over the last
+   point button with the reserved space sitting empty beside it (reported from a vault,
+   2026-08-21). This row carries `padding-block` only, so ITS padding box's inline-end
+   edge is the head's border-box edge, and `0` lands in the gutter. `top: 0` still
+   resolves to where the head begins, so the control keeps its corner. */
 .pbl-est-dim {
+	position: relative;
 	display: flex;
 	flex-direction: column;
 	gap: var(--size-2-2);
@@ -145,14 +154,20 @@
    FALLBACK rather than a breakpoint — a range as wide as a legal 1-20 scale cannot share a
    line with its own label, so its points wrap to the line below on their own, and a pane too
    narrow does the same for every row. No media query, no `@container`. */
+/* No `position` here on purpose — see `.pbl-est-dim` above, which is the containing block
+   the clear control resolves against. */
 .pbl-est-dim-head {
-	position: relative;
 	display: flex;
 	flex-wrap: wrap;
 	align-items: center;
 	gap: var(--size-4-2);
-	/* Holds the clear control's gutter open at rest, since the control itself is out of flow. */
-	padding-inline-end: var(--size-4-5);
+	/* Holds the clear control's gutter open at rest, since the control itself is out of
+	   flow. 32px is the CONTROL, not a round number: `.clickable-icon` is
+	   `padding: var(--size-2-2) var(--size-2-3)` (4px 6px) around an icon sized by the
+	   inherited `--icon-size` = `--icon-m`, which is 18px on the desktop root and 20px at
+	   the touch breakpoint. So 30px, and 32px on touch. This was `--size-4-5` (20px),
+	   narrower than the control it reserved for. */
+	padding-inline-end: var(--size-4-8);
 }
 
 /* GROWS and truncates. It had a 40% floor first, which pushed the clear control onto a line

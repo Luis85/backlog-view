@@ -177,6 +177,32 @@ describe('the dimension rows are divided by what comes BEFORE a row', () => {
 	});
 });
 
+describe('the clear control sits in the gutter the row reserves for it', () => {
+	// An absolute inset resolves against the containing block's PADDING box. Positioning
+	// `.pbl-est-clear` against `.pbl-est-dim-head` therefore measured from INSIDE the
+	// gutter that head reserves, putting the control over the last point button and
+	// leaving the reserved space empty beside it (reported from a vault, 2026-08-21).
+	// `.pbl-est-dim` has no inline padding, so its padding box's inline-end edge IS the
+	// head's border-box edge, and `inset-inline-end: 0` lands in the gutter.
+	it('positions the control against the row, not against the head that reserves the gutter', () => {
+		expect(ruleAt('.pbl-est-dim', 'position: relative')).toBeGreaterThan(-1);
+		expect(ruleAt('.pbl-est-dim-head', 'position: relative')).toBe(-1);
+	});
+
+	// 32px is the control, not a round number: `.clickable-icon` is
+	// `padding: var(--size-2-2) var(--size-2-3)` (4px 6px) around an icon sized by the
+	// INHERITED `--icon-size`, which is `--icon-m` — 18px on the desktop root and 20px at
+	// the touch breakpoint. So 30px, and 32px on touch. The previous `--size-4-5` (20px)
+	// was narrower than the control even before the padding-box fault above.
+	//
+	// This pins the TOKEN. It does not prove 32px covers the control, which needs a
+	// layout engine — `npm run harness`, then a vault.
+	it('reserves the control’s real width rather than the 20px it used to', () => {
+		expect(ruleAt('.pbl-est-dim-head', 'padding-inline-end: var(--size-4-8)')).toBeGreaterThan(-1);
+		expect(ruleAt('.pbl-est-dim-head', 'padding-inline-end: var(--size-4-5)')).toBe(-1);
+	});
+});
+
 describe('a decoration never sizes the box the value is centred in', () => {
 	it('takes the strip out of the box model without letting it out of the cell', () => {
 		// The three cell classes share `overflow: hidden`, so a strip hung BELOW its cell is
