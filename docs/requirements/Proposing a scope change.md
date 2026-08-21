@@ -84,4 +84,8 @@ The proposed membership is view state in `src/view/viewState.ts` through
 `src/view/viewStateController.ts`, never persisted as a `.base` setting. The impacts are the
 summary's own derivations in the new `src/domain/` module, called a second time over the
 proposed set. The commit is planned in `src/domain/writePlan.ts` and applied through
-`src/view/writeGate.ts` by `applyLabels` in `src/storage/frontmatter.ts`.
+`src/view/writeGate.ts` by the **same file-backed release-link write**
+[[Setting an item's release]] specifies — the plan carries each target `TFile` and
+`src/storage/frontmatter.ts` spells it with `wikilinkTo`, never as a plain label. A scenario
+that serialized membership a second way could commit a different release from the one it
+showed, which is the one thing a scenario may not do.

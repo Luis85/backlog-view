@@ -29,6 +29,16 @@ storymap's slice rows, which a vault with no storymap never draws.
 an item a release property to hold, and names the rule it is waiting on: **a bulk action
 exists for a property that exists.**
 
+**The view that offers the action names the membership key it writes.** The backlog, the
+board and the roadmap are three projections of **one** registered view, so they share one
+option set and one such key between them — but that key is the backlog view's own, never the
+release view's, and the two may legitimately be pointed at different properties. Each defaults
+to the same suggestion, which is [[Settings scoped to their view]]'s rule exactly: sharing a
+suggestion is not sharing a setting. Where the offering view has no membership key bound the
+action is simply absent there, whatever the release view is configured to do — and a vault
+with no release view at all still gets the action, because nothing about it depends on that
+view existing.
+
 **It is one write, and it obeys the register's shape for one.** One host method plans the
 batch, three inputs reach it — the item's context menu, the keyboard, and a drag where a view
 has somewhere to drag to — and the method is the only place the move is announced. A fourth

@@ -36,7 +36,11 @@ a root by nature, holding nothing.
 
 1. The view reads the type each note declares, and matches it against the **fixed** name
    `Release`, case-insensitively.
-2. Notes of that type become releases; every other note in the results is work.
+2. Notes of that type become releases. **Every other note keeps the category it already had**
+   — plan work, a marker, an iteration, a test-catalog note — because `Release` is one more
+   non-work category beside those, not the only one. "Anything that is not a release is work"
+   would make a `Milestone` assignable to a release, which
+   [[Setting an item's release]] refuses at both ends.
 3. Each release offers its version, its target date and its status, each from a key this view
    names for itself.
 4. A release nothing points at is still a release, and is still drawn.
@@ -82,6 +86,8 @@ a root by nature, holding nothing.
 - Building a model containing releases plans no write.
 - A release note the Base excludes is absent from the model and appears as no row anywhere,
   context row included.
+- Adding `Release` to the vocabulary leaves every other classification unchanged: a
+  `Milestone`, an `Iteration` and a test-catalog note are still none of them plan work.
 
 ## Where it lives
 
