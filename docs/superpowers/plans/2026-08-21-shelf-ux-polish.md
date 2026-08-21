@@ -567,6 +567,28 @@ shelf', ...)`:
 			expect(titles).toContain('Search the shelf...');
 		});
 
+		it('returns the controls to the tab order when the narrowing empties the pane', () => {
+			// The state that makes a `-1` a trap rather than a convention: an iteration with
+			// nothing committed draws empty columns, and a search narrow enough to empty the
+			// shelf leaves no card anywhere — so no card menu, which is the only keyboard path
+			// to these controls, and the column menu carries no shelf section. Without this the
+			// reader cannot clear the search that put them there. (Codex, PR #187.)
+			const { view, containerEl } = onSprint(sprintVault());
+			view.setShelfSearch('nothing matches this');
+			const shelf = shelfOf(containerEl);
+			for (const control of CONTROLS) {
+				expect(shelf?.querySelector(control)?.getAttribute('tabindex')).toBe('0');
+			}
+		});
+
+		it('keeps them out of it while cards are on screen, which is the composite’s rule', () => {
+			const { containerEl } = onSprint(sprintVault());
+			const shelf = shelfOf(containerEl);
+			for (const control of CONTROLS) {
+				expect(shelf?.querySelector(control)?.getAttribute('tabindex')).toBe('-1');
+			}
+		});
+
 		it('withholds the section while the band is shut, as the header withholds the pickers', () => {
 			const { view, containerEl } = onSprint(sprintVault());
 			view.setColumnCollapsed('backlog', null, true);
@@ -636,16 +658,37 @@ In `src/view/render/iterationBoard.ts`, in `renderIterationShelf`, change `picks
  * backlog.
 ```
 
-After the `renderShelf` call and before the return, add the tab-stop sync:
+Add the tab-stop sync — and it is asked of the CARDS, never hard-coded (Codex, PR #187,
+P1). In `renderIterationBoard`, after the `renderBoard(...)` call rather than beside the
+shelf, because the count is not final until the columns have drawn:
 
 ```ts
-	// The rule is about the PANE's state rather than about which projection drew, so it is
-	// asked here too. A board draws columns on every render and is therefore always a
-	// composite, so this resolves to `-1` today — called anyway, because a caller that
-	// omitted it on the ground that the answer is currently fixed is one change away from a
-	// keyboard trap nobody is looking for.
-	syncShelfTabStops(shelf.el, true);
+	const content = renderBoard(ctx, boardEl, dnd, board, {
+		/* … the existing option bag, unchanged … */
+	});
+	// **The controls come back into the tab order when the pane holds no card**, which on this
+	// board is reachable and is a trap rather than a curiosity: an iteration with nothing
+	// committed draws empty columns, and a search or a type filter narrow enough to empty the
+	// shelf then leaves no card anywhere — so no card menu, which is the ONLY keyboard path to
+	// these controls, and `buildColumnMenu` on the empty columns carries folds and policy and
+	// no shelf section at all. A keyboard reader would be left with a search they could not
+	// clear. Hard-coding `true` here is what would do that, and the first draft of this plan
+	// did (Codex, PR #187).
+	//
+	// Asked of what was DRAWN, both bands of it: a folded column contributes no card and
+	// neither does a collapsed shelf, which is the same question `RoadmapSnapshot.cards`
+	// answers on the other surface.
+	syncShelfTabStops(shelf.el, board.cardCount + shelf.cards.length > 0);
+	return { ...content, shelfEl: shelf.el, shelf: shelf.cards };
 ```
+
+Note what this does NOT do. `render/projections.ts` gives every board `role: 'listbox'`
+whenever it renders, unlike the roadmap beside it, which asks its own card count — so on an
+empty iteration board the pane already promises options it does not have, which that file's
+own comment ("the listbox role is a promise of options, so it is made only where…") refuses.
+That is a defect in three boards rather than in this one, with its own tests, and it is not
+this PR's to fix. Report it; do not widen the change. The controls being reachable is the
+half that matters to a reader stranded by their own filter.
 
 and import it:
 
@@ -1454,7 +1497,14 @@ Add to `styles/shelf.css` (or the list partial, if Task 4 split it):
 	gap: 0;
 	margin-top: 0;
 	padding-block-end: var(--size-2-1);
-	padding-inline-start: calc(30px + var(--pbl-shelf-badge, 84px) + var(--size-4-2) + var(--size-4-2));
+	/* **A child's badge starts where its parent's TITLE starts**, which is the summary's own
+	   inline padding, the fold slot, the badge slot and the two flex gaps between them — minus
+	   the child button's own inline padding, since that button carries the last step itself.
+	   Dropping that last term leaves every child 4px left of the line it belongs to, which is
+	   near enough to look like a mistake and far enough to be one. (Codex, PR #187.) */
+	padding-inline-start: calc(
+		var(--size-4-2) + 30px + var(--size-4-2) + var(--pbl-shelf-badge, 84px) + var(--size-4-2) - var(--size-2-1)
+	);
 }
 
 .pbl-shelf-list .pbl-card-kids::before {
@@ -1462,7 +1512,9 @@ Add to `styles/shelf.css` (or the list partial, if Task 4 split it):
 	position: absolute;
 	top: 0;
 	bottom: var(--size-2-1);
-	inset-inline-start: calc(30px + var(--pbl-shelf-badge, 84px) + var(--size-4-2));
+	/* One gap left of where the children start, so the guide runs between the parent's badge
+	   column and its children rather than through them. */
+	inset-inline-start: calc(var(--size-4-2) + 30px + var(--size-4-2) + var(--pbl-shelf-badge, 84px));
 	width: 1px;
 	background-color: var(--background-modifier-border);
 	pointer-events: none;
@@ -1486,10 +1538,14 @@ re-run, watch the second go red, and restore.
 
 - [ ] **Step 8: Measure it in the harness**
 
-Rebuild the harness and confirm: a parent row and a leaf row are the same height at rest, an
-expanded child's badge begins at the parent's title x, and the indent guide is visible in
-both schemes (`?theme=light` too — a 1px border colour that vanishes in one scheme is a
-guide that is not there).
+Rebuild the harness and confirm three things by MEASUREMENT rather than by eye, since the
+one that was wrong in this plan was wrong by 4px:
+
+- a parent row and a leaf row are the same height at rest;
+- `getBoundingClientRect().left` of an expanded child's `.pbl-badge` equals that of its
+  parent's `.pbl-card-title`, exactly — not approximately;
+- the indent guide is visible in BOTH schemes (`?theme=light` too — a 1px border colour that
+  vanishes in one scheme is a guide that is not there).
 
 ```bash
 npm run harness
