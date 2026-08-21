@@ -252,14 +252,21 @@
    classes share `overflow: hidden` above, so a strip hung below its cell would be clipped
    away entirely. `stretch` makes the cell as tall as the row's content box rather than as
    tall as its own contents, and a flex ROW with `align-items: center` is what every plain
-   numeric cell already effectively is — so the number centres identically in all four.
+   numeric cell already EFFECTIVELY is — measured, that "effectively" was the bug: a plain
+   cell centres an INLINE SPAN, whose height is a line box (17.0px), while a strip cell
+   centred a FLEX ITEM, whose height is a content box (16.9px) — two different layout paths
+   for the same-looking number, one device pixel apart (`NUM top` 106.0 vs 105.0). Confidence
+   and effort join this rule for that reason, not for a strip they do not carry: turning them
+   into one-child flex rows too puts every numeric cell's number through the SAME path, and
+   `?measure` reads all four at top=106.0 once they do.
 
    Third instance of one idea, after the panel's clear control: a decoration that annotates a
    value must not be allowed to size the box the value is centred in.
 
-   Scoped to a ROW's cells: these two class names are worn by three different elements — a row
-   cell, a sortable header button, and the panel's decomposition summary — and an unscoped
+   Scoped to a ROW's cells: these three class names are worn by three different elements — a
+   row cell, a sortable header button, and the panel's decomposition summary — and an unscoped
    declaration here restyled all three at once, once. */
+.pbl-est-row > .pbl-est-cell,
 .pbl-est-row > .pbl-est-total,
 .pbl-est-row > .pbl-est-coverage {
 	display: flex;

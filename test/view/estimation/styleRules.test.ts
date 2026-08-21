@@ -186,15 +186,20 @@ describe('a decoration never sizes the box the value is centred in', () => {
 		expect(ruleAt('.pbl-est-strip', 'position: absolute;')).toBeGreaterThan(-1);
 	});
 
-	it('gives the two strip cells the same height and the same centring as the plain two', () => {
-		// The measured cause: a `column` flex holding a number plus a 3px strip and a 3px gap is
-		// ~24px against a plain cell's ~18px, and a row that centres each cell as a whole then
-		// starts the taller cell's number higher. `stretch` makes all four the row's content
-		// height; `align-items: center` centres the number in each identically.
-		expect(ruleAt('.pbl-est-row > .pbl-est-total', 'align-self: stretch;')).toBeGreaterThan(-1);
-		expect(ruleAt('.pbl-est-row > .pbl-est-total', 'align-items: center;')).toBeGreaterThan(-1);
-		// The column flex is what made the cell taller than its siblings, so it must be GONE
-		// rather than overridden — an override is a rule the next reader has to reconcile.
+	it('gives all four numeric cells the same height and the same centring, not just the strip two', () => {
+		// The measured cause was two, not one: the strip cell's `column` flex plus its 3px gap
+		// and 3px strip measured ~24px against a plain cell's ~18px line — but even after that
+		// was fixed, `NUM top` still read 106.0 for the strip cells against 105.0 for the plain
+		// two. A plain cell centres an INLINE SPAN (a line box, 17.0px); a strip cell centred a
+		// FLEX ITEM (a content box, 16.9px) — two different layout paths for the same-looking
+		// number. Confidence and effort join this rule for that reason, carrying no strip of
+		// their own, so every numeric cell's number goes through the ONE path.
+		for (const selector of ['.pbl-est-row > .pbl-est-cell', '.pbl-est-row > .pbl-est-total', '.pbl-est-row > .pbl-est-coverage']) {
+			expect(ruleAt(selector, 'align-self: stretch;'), selector).toBeGreaterThan(-1);
+			expect(ruleAt(selector, 'align-items: center;'), selector).toBeGreaterThan(-1);
+		}
+		// The column flex is what made the strip cell taller than its siblings, so it must be
+		// GONE rather than overridden — an override is a rule the next reader has to reconcile.
 		expect(ruleAt('.pbl-est-row > .pbl-est-total', 'flex-direction: column;')).toBe(-1);
 	});
 });
