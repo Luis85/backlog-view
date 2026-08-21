@@ -1370,6 +1370,17 @@ it already mounts cards and finds toggles):
 		expect(card.querySelector(':scope > .pbl-card-kids > .pbl-card-kids-list')).not.toBeNull();
 	});
 
+	it('draws no wrapper at all while the children are shut', () => {
+		// Only the `<ul>` is hidden by `.pbl-card-kids-list:empty`; the box around it would still
+		// spend its padding and one of the card's flex gaps, so a shut parent would stand taller
+		// than a leaf — which this task's same-height requirement forbids. (Codex, PR #187.)
+		const { view, containerEl } = makeRoadmap(parentOnShelfVault(), {}, { shelfCollapsed: false, shelfList: true });
+		const path = 'Monthly statement.md';
+		view.setCardCollapsed(path, true);
+		const wrap = cardByTitle(containerEl, 'Monthly statement').querySelector('.pbl-card-kids');
+		expect(wrap?.hasClass('pbl-card-kids-shut')).toBe(true);
+	});
+
 	it('reserves the fold slot on a row with no children, so the badges stay on one x', () => {
 		const { containerEl } = makeRoadmap(parentOnShelfVault(), {}, { shelfCollapsed: false, shelfList: true });
 		const leaf = cardByTitle(containerEl, 'Reconcile the ledger');
@@ -1459,6 +1470,33 @@ line with:
 	const onLine = toggleEl !== undefined;
 	toggle.createSpan({ cls: 'pbl-card-kids-count', text: onLine ? String(children.length) : label });
 	if (onLine) toggle.setAttribute('aria-label', label);
+```
+
+- [ ] **Step 3b: Mark the wrapper while the list is shut**
+
+A collapsed parent still has its `.pbl-card-kids` wrapper in the card — only the `<ul>`
+inside it is hidden, by `.pbl-card-kids-list:empty`. On a compact row that wrapper then
+carries the list's own padding AND draws one of the card's flex gaps, so a shut parent is
+taller than a leaf and the indent guide draws a stub with nothing under it. That
+contradicts this task's own same-height requirement. (Codex, PR #187.)
+
+`:has()` would express it in one selector and this plugin does not use it — `src/view/CLAUDE.md`
+says so under "Controls", and `styles/tree.css` states the reason: it invalidates on every
+subtree change and this tree rebuilds on every data update. So the code that knows the state
+says it, which is exactly what `pbl-has-selection` does beside `aria-activedescendant`.
+
+In `src/view/render/cardChildren.ts`, inside `draw()`, beside the two attributes it already
+syncs:
+
+```ts
+		toggle.setAttribute('aria-expanded', String(!collapsed));
+		chevron.toggleClass('pbl-expanded', !collapsed);
+		// The wrapper says whether it is shut, because a stylesheet cannot ask. On a compact
+		// row the wrapper is the indent block: shut, it would still draw its padding and one
+		// of the card's flex gaps, making a shut parent taller than a leaf and drawing an
+		// indent guide with nothing beneath it. `.pbl-card-kids-list:empty` hides the list and
+		// says nothing about the box around it.
+		wrap.toggleClass('pbl-card-kids-shut', collapsed);
 ```
 
 - [ ] **Step 4: Pass it through the body**
@@ -1556,6 +1594,15 @@ Add to `styles/shelf.css` (or the list partial, if Task 4 split it):
 	padding-block: 1px;
 	padding-inline-start: var(--size-2-1);
 }
+
+/* Shut, the wrapper is not there at all — see `renderCardChildren`'s `draw`. Hiding only the
+   `<ul>` (which `.pbl-card-kids-list:empty` already does) leaves a box that still spends this
+   rule's padding and one of the card's flex gaps, so a shut parent stands taller than a leaf
+   and the guide above draws a stub over nothing. Scoped to the list: a CARD's wrapper holds
+   the disclosure itself, and hiding it there would take the control away with the list. */
+.pbl-shelf-list .pbl-card-kids-shut {
+	display: none;
+}
 ```
 
 - [ ] **Step 7: Run, then watch it fail**
@@ -1573,7 +1620,8 @@ re-run, watch the second go red, and restore.
 Rebuild the harness and confirm three things by MEASUREMENT rather than by eye, since the
 one that was wrong in this plan was wrong by 4px:
 
-- a parent row and a leaf row are the same height at rest;
+- a parent row with its children SHUT and a leaf row are the same height, to the pixel — the
+  state where a leftover wrapper costs its padding plus a flex gap;
 - `getBoundingClientRect().left` of an expanded child's `.pbl-badge` equals that of its
   parent's `.pbl-card-title`, exactly — not approximately;
 - the indent guide is visible in BOTH schemes (`?theme=light` too — a 1px border colour that
