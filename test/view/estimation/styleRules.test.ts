@@ -17,10 +17,13 @@ import { assembleStyles } from '../../../scripts/styles-assemble.mjs';
  */
 const styles: string = assembleStyles();
 
-/** The assembled sheet with comments removed — what the CASCADE sees. The absence checks
- *  below must read this rather than `styles`, because this pass deliberately KEEPS a comment
- *  naming the three rules it deleted, and a substring search cannot tell a live selector from
- *  a selector being explained. */
+/** The assembled sheet with comments removed — what the CASCADE sees. EVERYTHING here reads
+ *  this rather than `styles`, `ruleAt` included, because this view's partials deliberately
+ *  KEEP comments naming rules and tokens they no longer declare, and a substring search
+ *  cannot tell a live selector from a selector being explained. The absence checks are what
+ *  make that load-bearing: `padding-inline-end: var(--size-4-5)` is quoted in the very
+ *  comment above the rule that replaced it, and reading `styles` there passed only because
+ *  the prose happened not to spell the whole declaration. */
 const declarations: string = styles.replace(/\/\*[\s\S]*?\*\//g, '');
 
 function ruleAt(selector: string, decl: string): number {
@@ -37,7 +40,7 @@ function ruleAt(selector: string, decl: string): number {
 	// no second `\{` to require afterward.
 	const pattern = new RegExp(`^[\\t]*${escaped}\\s*[,{][^}]*${wanted}`, 'gm');
 	let found = -1;
-	for (const match of styles.matchAll(pattern)) found = match.index ?? found;
+	for (const match of declarations.matchAll(pattern)) found = match.index ?? found;
 	return found;
 }
 
@@ -177,16 +180,21 @@ describe('the dimension rows are divided by what comes BEFORE a row', () => {
 	});
 });
 
-describe('the clear control sits in the gutter the row reserves for it', () => {
-	// An absolute inset resolves against the containing block's PADDING box. Positioning
-	// `.pbl-est-clear` against `.pbl-est-dim-head` therefore measured from INSIDE the
-	// gutter that head reserves, putting the control over the last point button and
-	// leaving the reserved space empty beside it (reported from a vault, 2026-08-21).
-	// `.pbl-est-dim` has no inline padding, so its padding box's inline-end edge IS the
-	// head's border-box edge, and `inset-inline-end: 0` lands in the gutter.
-	it('positions the control against the row, not against the head that reserves the gutter', () => {
-		expect(ruleAt('.pbl-est-dim', 'position: relative')).toBeGreaterThan(-1);
-		expect(ruleAt('.pbl-est-dim-head', 'position: relative')).toBe(-1);
+describe('the clear control sits in the gutter the head reserves for it', () => {
+	// A containing block's padding box INCLUDES the padding area (CSS 2.1 s10.1), so an
+	// inset resolved against `.pbl-est-dim-head` — which declares no border — always landed
+	// on that head's OUTER inline-end edge, never inside the gutter it reserves. The
+	// vault-reported overlap (2026-08-21) was arithmetic alone: a 30px control pinned to
+	// that edge reaches 10px back over the last point button when the gutter is 20px.
+	// Widening the gutter is the whole fix; the containing block was never the fault.
+	//
+	// The head keeps `position: relative` for a second reason, and this one is about the
+	// BLOCK axis: `.pbl-est-dim` carries `padding-block: var(--size-4-2)`, so against the
+	// row `top: 0` resolves 8px above where the head begins — on the divider between rows
+	// rather than level with the point buttons the control belongs to.
+	it('positions the control against the head, not against the row whose padding it would sit in', () => {
+		expect(ruleAt('.pbl-est-dim-head', 'position: relative')).toBeGreaterThan(-1);
+		expect(ruleAt('.pbl-est-dim', 'position: relative')).toBe(-1);
 	});
 
 	// 32px is the control, not a round number: `.clickable-icon` is

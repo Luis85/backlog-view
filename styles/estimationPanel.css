@@ -118,16 +118,7 @@
    and complexity, which are scales of the same shape), then the decomposition.
    ========================================================================== */
 
-/* THE CONTAINING BLOCK FOR `.pbl-est-clear`, and that is the whole reason for the
-   declaration. An absolute inset resolves against the containing block's PADDING box, so
-   with `position: relative` on `.pbl-est-dim-head` instead, `inset-inline-end: 0`
-   measured from inside the gutter that head reserves — putting the control over the last
-   point button with the reserved space sitting empty beside it (reported from a vault,
-   2026-08-21). This row carries `padding-block` only, so ITS padding box's inline-end
-   edge is the head's border-box edge, and `0` lands in the gutter. `top: 0` still
-   resolves to where the head begins, so the control keeps its corner. */
 .pbl-est-dim {
-	position: relative;
 	display: flex;
 	flex-direction: column;
 	gap: var(--size-2-2);
@@ -154,9 +145,17 @@
    FALLBACK rather than a breakpoint — a range as wide as a legal 1-20 scale cannot share a
    line with its own label, so its points wrap to the line below on their own, and a pane too
    narrow does the same for every row. No media query, no `@container`. */
-/* No `position` here on purpose — see `.pbl-est-dim` above, which is the containing block
-   the clear control resolves against. */
+/* THE CONTAINING BLOCK FOR `.pbl-est-clear`, and both axes want it on this element. An
+   inset resolves against the containing block's PADDING box, and a padding box INCLUDES
+   the padding area — this head declares no border, so `inset-inline-end: 0` resolves to
+   its own outer inline-end edge, past the gutter below rather than inside it. On the block
+   axis `top: 0` resolves to this head's own top, so the control resolves against the same
+   box the point buttons are laid out in; against `.pbl-est-dim` it resolved to that ROW's
+   padding-box top instead, `padding-block: var(--size-4-2)` higher, where the divider
+   between rows is drawn. Both halves are arithmetic off these declarations — jsdom lays
+   nothing out, so neither is verified here. */
 .pbl-est-dim-head {
+	position: relative;
 	display: flex;
 	flex-wrap: wrap;
 	align-items: center;
@@ -165,8 +164,10 @@
 	   flow. 32px is the CONTROL, not a round number: `.clickable-icon` is
 	   `padding: var(--size-2-2) var(--size-2-3)` (4px 6px) around an icon sized by the
 	   inherited `--icon-size` = `--icon-m`, which is 18px on the desktop root and 20px at
-	   the touch breakpoint. So 30px, and 32px on touch. This was `--size-4-5` (20px),
-	   narrower than the control it reserved for. */
+	   the touch breakpoint. So 30px, and 32px on touch. This was `--size-4-5` (20px) —
+	   narrower than the control it reserved for, which is the whole of the vault-reported
+	   overlap (2026-08-21): a 30px control pinned to this head's outer edge reaches 10px
+	   back over the last point button when only 20px is held open for it. */
 	padding-inline-end: var(--size-4-8);
 }
 

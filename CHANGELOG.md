@@ -140,8 +140,9 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   numbers across a row.
 
 - **The estimation panel's clear control no longer draws over the last point of its row.**
-  The space the row reserved for it sat empty beside the buttons while the control itself
-  landed on top of one, so pointing at a row took its highest point out of reach.
+  The gutter held open for it at the end of the row was narrower than the control itself,
+  so it reached back over the last button and pointing at a row took that point out of
+  reach.
 
 - **A business value typed in by hand is no longer offered for deletion.** A total with no
   model stamp and no scores behind it reported *Inputs gone*, and the panel offered the
