@@ -317,7 +317,19 @@ const xx: Catalog = Object.fromEntries(
 	]),
 );
 
-/** Every word the menu shows: a group's name, an option's name, and its placeholder. */
+/**
+ * Every word the menu shows: a group's name, an option's name, its placeholder, and the
+ * LABELS a dropdown offers.
+ *
+ * That last one was missing and hid a whole control. `openIn`'s heading was keyed while its
+ * three choices stayed English, and this collector read only `displayName` and
+ * `placeholder`, so the remainder came back clean over a dropdown that was half translated.
+ * A collector that skips a field cannot be corrected by adding cases to the assertion — it
+ * has to read everything a person can see, or it speaks for less than it claims to.
+ *
+ * The dropdown's KEYS are deliberately not collected: they are what a `.base` stores and
+ * what `resolveItemHandling` matches, so they are data and belong unmarked.
+ */
 function shown(options: BasesAllOptions[]): string[] {
 	const words: string[] = [];
 	for (const option of options) {
@@ -326,6 +338,8 @@ function shown(options: BasesAllOptions[]): string[] {
 			for (const item of option.items) {
 				if (item.displayName !== undefined) words.push(item.displayName);
 				if (item.placeholder !== undefined) words.push(item.placeholder);
+				const choices = (item as { options?: Record<string, string> }).options;
+				if (choices) words.push(...Object.values(choices));
 			}
 		}
 	}

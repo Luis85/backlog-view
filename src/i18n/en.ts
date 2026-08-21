@@ -771,7 +771,17 @@ export const en = {
 	'option.homeFolderHint': 'Same folder as existing items',
 	'option.typeFolder': 'Folder for {type} items',
 
+	/**
+	 * The heading and its three CHOICES. The choices are labels only — what a `.base`
+	 * stores and what `resolveItemHandling` matches are the keys `active` / `tab` /
+	 * `split`, which stay in `domain/itemHandling.ts` and are never translated. They were
+	 * left English here when the heading was keyed, because they sat as the VALUES of the
+	 * same object that held the vocabulary.
+	 */
 	'option.openIn': 'Open the note in',
+	'option.openInActive': 'Current tab',
+	'option.openInTab': 'New tab',
+	'option.openInSplit': 'Split to the right',
 	'option.tagsProperty': 'Tags property',
 	'option.showCounts': 'Show descendant counts',
 

@@ -12,7 +12,7 @@ import {
 import { OptionalField, optionalProperty } from './optionalProperties';
 import { resolveSettings } from './settingsResolve';
 import { ABSENCE_TYPE, ALL_TYPES, DEFAULT_HOME_FOLDER, defaultTypeFolder, typeFolderKey } from './typeVocabulary';
-import { defaultItemHandling, OPEN_TARGETS } from './itemHandling';
+import { defaultItemHandling, openTargetOptions } from './itemHandling';
 import { t } from '../i18n/t';
 
 /**
@@ -117,7 +117,7 @@ function handlingItemsGroup(): BasesAllOptions {
 				key: 'openIn',
 				displayName: t('option.openIn'),
 				default: defaults.openIn,
-				options: OPEN_TARGETS,
+				options: openTargetOptions(),
 			},
 		],
 	};
