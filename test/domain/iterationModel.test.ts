@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildModel, iterationResults } from '../../src/domain/model';
+import { iterationCandidates } from '../../src/domain/board';
 import { resolveSettings } from '../../src/domain/settingsResolve';
 import { FakeVault, FakeViewConfig } from '../helpers/vault';
 
@@ -148,5 +149,79 @@ describe('iterationResults', () => {
 		const vault = vaultWithSprints();
 		vault.addFile('Loose.md', { frontmatter: { type: 'PBI', order: 10 } });
 		expect(population(vault)).toEqual([]);
+	});
+});
+
+/**
+ * What the board can still pull IN — the mirror of the population above, and the shelf's
+ * own list. Every refusal here is a refusal `inIteration` already makes, read the other
+ * way round, so the shelf can never offer a card the board would then decline to draw.
+ */
+function candidates(vault: FakeVault, excluded: string[] = []): string[] {
+	const model = buildModel(
+		vault.app,
+		vault.entries().filter((e) => !excluded.includes(e.file.path)),
+		settings,
+	);
+	return iterationCandidates(model).map((item) => item.title);
+}
+
+describe('iterationCandidates', () => {
+	it('holds the work in NO iteration, never the work committed to another', () => {
+		// Work in another fortnight is committed: offering it here would make a pull from
+		// the shelf a silent removal from somebody else's sprint.
+		const vault = vaultWithSprints();
+		vault.addFile('Uncommitted.md', { frontmatter: { type: 'PBI', order: 10 } });
+		vault.addFile('In sprint.md', { frontmatter: { type: 'PBI', order: 20, iteration: '[[Sprint 12]]' } });
+		vault.addFile('Next sprint.md', { frontmatter: { type: 'PBI', order: 30, iteration: '[[Sprint 13]]' } });
+		expect(candidates(vault)).toEqual(['Uncommitted']);
+	});
+
+	it('leaves out finished work, by the item’s OWN workflow', () => {
+		// `item.done` is the requirements reading: a Deliverable finished in its own
+		// workflow would sit on the shelf forever for a `status` it does not hold.
+		const vault = vaultWithSprints();
+		vault.addFile('Done.md', { frontmatter: { type: 'PBI', order: 10, status: 'Done' } });
+		vault.addFile('Open.md', { frontmatter: { type: 'PBI', order: 20, status: 'Doing' } });
+		expect(candidates(vault)).toEqual(['Open']);
+	});
+
+	it('leaves out markers, catalog members and the iterations themselves', () => {
+		// A sprint is a commitment to finish some WORK: a marker is not work, a catalog
+		// member has a projection of its own, and an `Iteration` is the box rather than
+		// what goes in it.
+		const vault = vaultWithSprints();
+		vault.addFile('Release 1.md', { frontmatter: { type: 'Milestone', order: 10, due: '2026-09-01' } });
+		vault.addFile('Suite.md', { frontmatter: { type: 'Test suite', order: 20 } });
+		vault.addFile('Case.md', { frontmatter: { type: 'Test case', order: 10 }, parentLink: 'Suite' });
+		vault.addFile('Work.md', { frontmatter: { type: 'PBI', order: 30 } });
+		expect(candidates(vault)).toEqual(['Work']);
+	});
+
+	it('offers work whose link resolves to a note that is not an Iteration', () => {
+		// It is on no board — `inIteration` matches the scope's path and a scope may only
+		// be an `Iteration` — so reading a malformed link as a commitment hides the item
+		// from the one surface that could reassign it.
+		const vault = vaultWithSprints();
+		vault.addFile('Container.md', { frontmatter: { type: 'PBI', order: 10 } });
+		vault.addFile('Mislinked.md', { frontmatter: { type: 'PBI', order: 20, iteration: '[[Container]]' } });
+		vault.addFile('Broken.md', { frontmatter: { type: 'PBI', order: 30, iteration: '[[No such note]]' } });
+		expect(candidates(vault)).toEqual(['Container', 'Mislinked', 'Broken']);
+	});
+
+	it('treats a link to a note the model does not hold as a commitment', () => {
+		// Nothing here can say what type an unloaded note is, and calling every unreadable
+		// target malformed would put committed work on the shelf of any base whose filter
+		// leaves the other sprints out.
+		const vault = vaultWithSprints();
+		vault.addFile('Committed.md', { frontmatter: { type: 'PBI', order: 10, iteration: '[[Sprint 13]]' } });
+		expect(candidates(vault, ['Sprint 13.md'])).toEqual([]);
+	});
+
+	it('never offers a context row — the shelf is a statement about the results', () => {
+		const vault = vaultWithSprints();
+		vault.addFile('Excluded.md', { frontmatter: { type: 'Feature', order: 10 } });
+		vault.addFile('Result.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: 'Excluded' });
+		expect(candidates(vault, ['Excluded.md'])).toEqual(['Result']);
 	});
 });

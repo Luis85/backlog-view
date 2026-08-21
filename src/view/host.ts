@@ -32,9 +32,12 @@ export type Projection = 'tree' | 'board' | 'roadmap' | 'deliverables' | 'catalo
  *
  * `shelf` is keyed by a TYPE name rather than a state value, which changes nothing about
  * the mechanism: the key space is "a word on one screen", and a type is a word the same
- * way a column's state is.
+ * way a column's state is. `backlog` is the iteration board's shelf ITSELF — one band
+ * rather than a set, so its value is null, and it is here rather than in a view-state
+ * value of its own because a shelf is a foldable band exactly as a column is. Not keyed
+ * per iteration: the work in no iteration is the same population on every sprint.
  */
-export type ColumnScope = 'board' | 'deliverables' | 'horizons' | 'shelf' | 'iteration';
+export type ColumnScope = 'board' | 'deliverables' | 'horizons' | 'shelf' | 'iteration' | 'backlog';
 
 /**
  * A column of the trailing strip: the property id to read, the label the header shows,
@@ -84,6 +87,12 @@ export interface BoardSnapshot {
 	 */
 	board: BoardModel;
 	colEls: HTMLElement[];
+	/**
+	 * The shelf's own element for THIS render — `RoadmapSnapshot.shelfEl`'s reason
+	 * exactly: a header control that rebuilt the pane has to find its replacement, and
+	 * the pressed button is gone by then. Absent on the two boards that draw no shelf.
+	 */
+	shelfEl?: HTMLElement | null;
 	/**
 	 * Which board this is, carried so nothing downstream has to re-derive it from the
 	 * projection. The column menu needs it to key a fold, and the render that produced
@@ -336,6 +345,8 @@ export interface BacklogViewHost {
 	 * is announced from a column the board does not name.
 	 */
 	performIterationBoardMove(item: BacklogItem, bucket: IterationBucket): Promise<boolean>;
+	/** The iteration board's shelf drop: the card leaves the chosen iteration. */
+	performIterationRemove(item: BacklogItem): Promise<boolean>;
 	/** Switch the projection and re-render; the view-state store persists the choice. */
 	setProjection(mode: Projection): void;
 	/**

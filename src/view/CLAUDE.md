@@ -713,6 +713,25 @@ free of runtime code so imports stay cycle-free.
   rather than a condition copied into each. Ask it of any second surface — not just "does
   it say the same thing", but "is it offered exactly when the first one is", and then put
   the answer somewhere both read.
+- **The iteration board draws the roadmap's shelf**, above its columns, over a population
+  that is a LINK rather than an axis (`iterationCandidates` — the work in NO iteration,
+  unfinished, never a marker, a catalog member or a context row). One component, three
+  inputs the caller supplies: which axis is drawing (**null** on a board, which states
+  nothing about dependencies), what the header calls it, and whether the header carries
+  the sort/type/search picks — it does not here, because their keyboard path is the card
+  menu's shelf section and that section is the roadmap's alone. **`picks` therefore also
+  decides the NARROWING**: a shelf without those controls applies neither the search nor
+  the hidden types, since a narrowing whose control is not on screen can be neither seen
+  nor cleared (the sort is not in that rule — it hides nothing). Its own fold is a COLUMN
+  fold (`ColumnScope` `'backlog'`), not a view-state value: a shelf is a foldable band
+  exactly as a column is, and the column machinery already gives it a default, a store and
+  a rename migration. A pull is `performIterationBoardMove` carrying the join, so a card
+  arriving from the shelf joins the iteration and lands in the bucket as ONE write on one
+  note; the shelf's own drop is `performIterationRemove`. What is NOT covered is the
+  keyboard: the board's walk is `columns[col].cards[card]` and a shelf card is in no
+  column, so the shelf is a pointer gesture and `Set iteration` on the item is the
+  keyboard's path to the same writes — see
+  [[The iteration shelf is out of the keyboard's walk]].
 - The whole column is the drop target and the highlight is the only drop signal —
   within-column order is derived from the Base's sort, so there is no between-cards
   edge, no hitbox package, and deliberately no Alt+Up/Down rank shortcut.

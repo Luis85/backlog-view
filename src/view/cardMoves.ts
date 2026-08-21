@@ -9,6 +9,8 @@ import {
 	computeDeliverableStateWrites,
 	computeDropWrites,
 	computeHorizonWrites,
+	computeIterationJoinWrites,
+	computeIterationWrites,
 	computeResourceMoveWrites,
 	computeScheduleWrites,
 	computeStateWrites,
@@ -78,14 +80,50 @@ export class CardMoveController {
 		const settings = this.host.settings;
 		const from = bucketOf(item.stateValue, settings);
 		const state = bucketRepresentative(bucket, settings);
-		if (from === bucket || state === undefined) return false;
+		// A card dragged in from the shelf is JOINING as well as landing, and both halves
+		// ride ONE `ItemWrite`: one gesture, one edit of one note. The plan is what says
+		// whether this is a pull — `computeIterationJoinWrites` returns nothing for a card
+		// already in the scope — so nothing here compares a link beside the planner.
+		const join = computeIterationJoinWrites(item, this.host.model, this.host.effectiveScope, settings);
+		if (state === undefined) return false;
+		if (from === bucket && join.length === 0) return false;
 		// Named from `BUCKET_LABELS` rather than from the drawn board, which is the one
 		// place this move differs from every other in this file: the three labels are
 		// CONSTANTS, not user data, so there is nothing to capture before the await and
 		// nothing a rebuilt board could take away — the sentence says what the header says
 		// by construction.
-		return this.applyCardMove(item, computeStateWrites(item, state, settings, todayStamp()), () =>
-			announceMove(item.title, BUCKET_LABELS[from], BUCKET_LABELS[bucket]),
+		// The bucket it came from is what a card ALREADY on this board left; a card pulled
+		// from the shelf came from no bucket at all, and says so in the shelf's own name.
+		const source = join.length > 0 ? t('shelf.backlog') : BUCKET_LABELS[from];
+		const landing = from === bucket ? [] : computeStateWrites(item, state, settings, todayStamp());
+		// One record for one gesture — merged rather than listed, because two records
+		// naming one file are two `processFrontMatter` calls and two captured inverses.
+		// The fields are disjoint, so this is an assign and not a reconciliation, and the
+		// seed is what keeps a write naming its file however the two halves come out: both
+		// empty is the case the two returns above have already taken.
+		const merged = [...join, ...landing].reduce<ItemWrite>((all, part) => ({ ...all, ...part }), { file: item.file });
+		return this.applyCardMove(item, [merged], () => announceMove(item.title, source, BUCKET_LABELS[bucket]));
+	}
+
+	/**
+	 * The iteration board's shelf drop: the card leaves the sprint and nothing else
+	 * changes. `computeIterationWrites(item, null, …)` plans the removal alone — leaving a
+	 * sprint is not a reschedule — and plans nothing at all where there is no key to
+	 * remove, which is a card already on the shelf being dropped back on it.
+	 *
+	 * The iteration's own title is read BEFORE the batch, `applyCardMove`'s capture rule:
+	 * the refresh that ends this write rebuilds the board, and the card being taken out
+	 * may have been the last one on it.
+	 */
+	async performIterationRemove(item: BacklogItem): Promise<boolean> {
+		// Named from the BUCKET it sat in rather than from the iteration it is leaving:
+		// the three bucket labels are constants, so there is nothing to capture before the
+		// await and nothing a rebuilt board can take away — `performIterationBoardMove`'s
+		// own reason, and it costs the sentence nothing, since the shelf it lands on is
+		// what says the sprint was left.
+		const from = BUCKET_LABELS[bucketOf(item.stateValue, this.host.settings)];
+		return this.applyCardMove(item, computeIterationWrites(item, null, this.host.settings), () =>
+			announceMove(item.title, from, t('shelf.backlog')),
 		);
 	}
 
@@ -293,3 +331,4 @@ function shelvedWords(item: BacklogItem, name: string, placement: Placement): st
 	if (placement.reason === null) return t('move.shelvedNoDates', { title: item.title, name });
 	return t('move.shelvedReason', { title: item.title, name, reason: placement.reason });
 }
+
