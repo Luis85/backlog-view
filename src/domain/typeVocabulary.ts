@@ -72,10 +72,13 @@ export const MILESTONE_TYPE = 'Milestone';
  * The third declared marker, and the first that is not a date. A person occupies no rung,
  * holds no work and hangs from nothing, which is the whole of what a marker is — so the
  * name joins `MARKER_TYPES` and inherits every structural rule rather than declaring one.
- * What it buys over a link to an untyped note is the ability to be LISTED: the resources
- * axis draws a row for somebody with nothing assigned yet, and a row for an empty person
- * needs a set to enumerate. `docs/requirements/Resource as a marker type.md` is the whole
- * argument, including why an eighteenth name is worth its cost.
+ * What a TYPE buys over a link to an untyped note is the ability to be LISTED — the
+ * resources axis will have to draw a row for somebody with nothing assigned yet, and a row
+ * for an empty person needs a set to enumerate. Nothing reads that set yet: this step
+ * declares the name and changes no roster, and `docs/requirements/Rows from the Resource
+ * notes.md` is where the roadmap starts asking.
+ * `docs/requirements/Resource as a marker type.md` is the whole argument, including why an
+ * eighteenth name is worth its cost.
  *
  * Named once for the same reason the other two are: a surface that captions a resource
  * names the TYPE, and a type name is data — matched in frontmatter, never translated.

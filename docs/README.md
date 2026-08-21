@@ -330,10 +330,11 @@ either, and it files into `iterations/`.
 `Resource` is the third, and the first that is not a date: a person. The same three ways —
 no rung, no children, no parent — so it never enters a rollup either, and it files into
 `resources/`. It is a type rather than a plain note for the one reason a link cannot
-supply: the roadmap has to draw a row for somebody with nothing assigned yet, which needs
-a set to enumerate. Nothing yet **links** to one — [[Linking an item to a resource]] is
-the step that changes how an item says who is on it, and until it lands `assignee` is
-still the string it has always been.
+supply: the roadmap will have to draw a row for somebody with nothing assigned yet, and a
+row for an empty person needs a set to enumerate. Neither half is wired up yet — nothing
+**links** to a resource ([[Linking an item to a resource]]) and no roster reads these
+notes ([[Rows from the Resource notes]]) — so `assignee` is still the string it has always
+been, and the roadmap's rows still come from it.
 
 ## The hierarchy is the point
 

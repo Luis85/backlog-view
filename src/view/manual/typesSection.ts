@@ -31,9 +31,10 @@ const INTENT: Record<string, string> = {
 		'no tree row draws: an iteration is the container a board is scoped to rather than work ' +
 		'the backlog holds, and the board\'s own scope picker is what makes one.',
 	Resource:
-		'A person work is assigned to. Like the other markers it holds nothing and hangs from ' +
-		'nothing — it is pointed at rather than ranked, which is what lets the roadmap draw a row ' +
-		'for somebody with nothing assigned yet.',
+		'A person, as a note. Like the other markers it holds nothing and hangs from nothing — ' +
+		'it is pointed at rather than ranked — and unlike them it states no date, so it is drawn ' +
+		'on no timeline. Nothing links to one yet: who is on an item is still the text you type ' +
+		'into the assignee property, and the roadmap builds its rows from that.',
 	'Test suite':
 		'A walkable group of end-to-end tests, and a root by nature — it hangs from nothing and ' +
 		'lives in the test catalog rather than in the plan. Holds Test cases.',

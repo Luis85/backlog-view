@@ -132,6 +132,13 @@ epic states why an eighteenth name is being added against an open P1 direction
   a ROW rather than a card — and that is the note that should answer this, against a roster
   that exists. Written down here so the next reviewer finds a decision rather than a gap.
 
+- **Nothing this step ships may promise the roster.** The type is declared and the roster
+  is not: `deriveLanes` still builds its rows from the declared names, the assignees the
+  results carry and the absences, and it enumerates no `Resource` note. So the in-app
+  manual, the generated README and this register say what a `Resource` IS and name
+  [[Rows from the Resource notes]] for what will read it — an automated reviewer caught the
+  manual entry claiming, in user-facing text, that declaring the note draws the row.
+
 ## Where it lives
 
 `src/domain/typeVocabulary.ts` is the whole of the declaration: `RESOURCE_TYPE` joins
