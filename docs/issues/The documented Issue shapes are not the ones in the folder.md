@@ -41,8 +41,10 @@ grep -l "^## The limitation" docs/issues/*.md | wc -l   # one shape's notes
 ```
 
 …then read a few against the sequence `docs/README.md` names for them. Sections are missing
-throughout, and two notes open with headings (`## The failure mode`, `## The defect`)
-belonging to no documented shape at all.
+throughout, and four notes open with headings belonging to no documented shape at all:
+`## The failure mode`, `## The defect`, and — twice, from the estimation polish pass of
+2026-08-21 — `## The guarantee that was not kept`, for a guarantee that was broken and has
+been restored.
 
 ## Why
 

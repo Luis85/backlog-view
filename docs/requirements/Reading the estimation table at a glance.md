@@ -101,8 +101,9 @@ read as one system rather than a spreadsheet of bare digits nobody has explained
 - A row reached by **keyboard** is clear of the sticky column labels: `.pbl-est-row`
   reserves the header's own height as `scroll-margin-block-start`, so an upward step does
   not park the selected row behind `.pbl-est-head`. The panel deliberately carries no
-  matching declaration — its scroll position is restored on every render, so a refocused
-  point button is already on screen and nothing scrolls.
+  matching declaration — its scroll position is restored whenever it redraws the same
+  item, which is the case a pick creates, so a refocused point button is already on screen
+  and nothing scrolls.
 - `stale` and `foreign` each offer **one action** — recalculate the stored total from the
   answers on the note — and `current`, `handwritten`, `orphan` and `none` offer it on no
   path. The orphan cleanup and this action are mutually exclusive by currency, so the

@@ -163,11 +163,11 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   row behind the column labels.** The header is sticky, and a step upwards scrolled the row
   flush to the top of the list — which is underneath it.
 
-- **The estimation table's sort buttons are announced to assistive technology.** The list role sat on the box
-  holding both the header and the rows, so the six sort buttons were pruned as non-option
-  children of a list, `aria-sort` with them. The role now covers the rows alone, and with
-  no results the element is a plain region instead, so the empty-table message is not
-  pruned either.
+- **The estimation table's sort buttons are no longer pruned from the accessibility
+  tree.** The list role sat on the box holding both the header and the rows, so the six
+  sort buttons were non-option children of a list and dropped, `aria-sort` with them. The
+  role now covers the rows alone, and with no results the element is a plain region
+  instead, so the empty-table message is not dropped either.
 
 ## [0.9.1] - 2026-08-17
 

@@ -69,10 +69,28 @@ Two assertions, each watched failing before the CSS moved:
 
 **Checked by** `test/view/estimation/styleRules.test.ts` — "reserves the control’s real width rather than the 20px it used to"
 
-**Scope of the root cause, measured rather than assumed.** Every other `inset-inline-end: 0`
-and `right: 0` in `styles/` was read: the two in `styles/timeline.css` and
-`styles/timelineFurniture.css` are full-bleed overlays with no reserved gutter, so nothing
-else in the stylesheet holds this mistake.
+**Scope of the root cause, and the test that establishes it.** What makes a neighbour safe
+is not its shape but **whether its containing block declares padding** — that is the only
+way an inset and a reservation can disagree, and it is the question this defect is entirely
+made of. Every other `inset-inline-end: 0` / `right: 0` in `styles/` was read against that
+test, and there are two rules and one comment:
+
+- `.pbl-timeline-drop` (`styles/timeline.css`) is a full-bleed drop overlay — `top: 0`,
+  `bottom: 0`, `left: var(--pbl-tl-lead)`, `right: 0` — covering everything past the lead
+  column and reserving nothing. No gutter, so no gutter to miss.
+- `.pbl-bar-clipped-end .pbl-bar-connector` (`styles/timelineFurniture.css`) is **the
+  closest structural analogue to `.pbl-est-clear` in the whole sheet**: a 9px absolutely
+  positioned button pinned to the inline-end edge of its bar, exactly as this control pins
+  one to the edge of its row. It is safe for the reason the test asks about —
+  **`.pbl-bar` (`styles/timeline.css`) declares no padding at all**, so its padding box and
+  its border box are the same box and `right: 0` lands on the visible edge. Nothing is
+  reserved there and nothing can be hidden.
+- The third grep hit is inside the comment above the grid banding in
+  `styles/timelineFurniture.css`, explaining why `right: 0` was *not* used for that band.
+  Prose, not a rule — worth saying, since a count of matches is not a count of rules.
+
+So nothing else in the stylesheet holds this mistake, and the reason survives a fourth
+edge-pinned control being added tomorrow provided the same question is asked of it.
 
 **What no check here reaches.** jsdom computes no layout, so the tests pin the selector that
 carries `position: relative` and the width of the reserved gutter — never that the control
