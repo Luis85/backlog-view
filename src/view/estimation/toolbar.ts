@@ -53,9 +53,13 @@ export function renderEstimationToolbar(view: EstimationView, host: HTMLElement,
  * Re-reads the gate and republishes its state onto the two write controls — `syncBusy`'s
  * own way of reaching the toolbar, alongside `aria-busy` on the pane. Queried BY CLASS under
  * `view.viewEl` rather than held as fields on the view: the toolbar is redrawn whole on every
- * `render()` pass, so a held reference would go stale the moment one did, and this is called
- * from states — the guided empty state, the config warning — that never draw a toolbar at
- * all, where the query simply finds nothing.
+ * `render()` pass, so a held reference would go stale the moment one did.
+ *
+ * **`.pbl-est-init` is not only the toolbar's.** The guided empty state draws no toolbar and
+ * still carries that class on its own setup button, deliberately, because it runs the same
+ * action and must go quiet on the same fact — so this query DOES find something there, and
+ * disabling it is the whole mechanism that closed the bind-then-refuse hole. The one state
+ * where it finds nothing at all is the config warning, which draws neither button.
  *
  * The undo button re-enables to the UNDO SLOT's own state (`WriteGate.canUndo()`), never
  * merely to "a batch has finished" — the backlog toolbar's own rule, restated here because a

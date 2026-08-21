@@ -14,6 +14,7 @@ files:
   - src/view/estimation/renderTable.ts
   - src/view/estimation/panel.ts
   - src/view/estimation/currencyChip.ts
+  - src/view/estimation/init.ts
   - styles/estimation.css
   - styles/estimationChip.css
   - styles/estimationPanel.css
@@ -82,6 +83,38 @@ rows in every currency treatment.
   dimension, confirm the count changes from e.g. `9 of 11 scored` to `10 of 11 scored`,
   press undo, and confirm both the point button's held state and the count revert
   together.
+- Where does the **clear control** sit? Hover a scored dimension's row in the panel and
+  look at the `x`: it should be level with that row's point buttons rather than up on the
+  divider above them, clear of the last point rather than over it, and revealing it should
+  move nothing on the row. All three are unverified here — jsdom lays nothing out, so the
+  checks under [[The clear control overlaps the last point]] pin the gutter's token and
+  which element the control is positioned against, never where it lands. A theme that sets
+  its own `--icon-size` widens the control without widening the gutter, so look under one.
+- Does the **keyboard scroll offset** clear the column labels? Select a row low in the
+  table and hold `ArrowUp`: the selected row must never park behind the sticky
+  `.pbl-est-head`. `.pbl-est-row` reserves 32px, which is that header's own `min-height`,
+  and whether 32px is ENOUGH is a measurement jsdom cannot make — a theme that moves the
+  row height or the font moves it. The panel deliberately carries no matching declaration,
+  which is a **deviation from the spec** rather than a layout fact ([[Reading the
+  estimation table at a glance]] records the argument): so also pick a dimension low in a
+  long panel and confirm the refocused point button is on screen without scrolling.
+- Does the **two-view lock** hold? Open two Bases views on this vault, one on the
+  estimation view over an unconfigured Base, and start a long write from the other (a
+  drag that renumbers a large subtree, or the backlog's own ✨). While it runs, the
+  estimation view's guided setup button must be disabled, and pressing it must change no
+  configuration at all — check the `.base` afterwards, not just the screen. Both buttons
+  carry `pbl-est-init` for exactly this, and the write lock is vault-wide.
+- **Where is the focus ring, and does it read?** `tabindex="0"` sits on `.pbl-est-rows`
+  now rather than on `.pbl-est-table`, and `.pbl-est-rows` has no rule in any partial and
+  no `:focus-visible` declaration anywhere — so whatever the browser draws by default on
+  an undecorated div is what a reader gets, inside the bordered and rounded
+  `.pbl-est-table` that used to take the stop. Tab into **both** states: the populated
+  table and the zero-results one, which is a `region` rather than a `listbox`. If it reads
+  badly the answer is a `:focus-visible` rule on `.pbl-est-rows`, not a layout rule.
+- Does the **restamp button's label wrap** acceptably? `Recalculate the stored total from
+  the answers on this note` is a 58-character sentence on a bare button in a panel track
+  whose floor is 320px and whose measured comfortable width is about 420px. Nothing here
+  has looked at where it breaks, or at how tall the button becomes when it does.
 - With the panel scrolled, is any row content visible **above** the pinned header? The
   pinned-edge rule — padding never sits on an edge something is pinned to — is
   mechanically checked (`.pbl-est-panel { padding-block-start: 0 }`,

@@ -4,7 +4,7 @@ import { buildEstimationModel } from '../../domain/estimationItems';
 import { resolveEstimationSettings } from '../../domain/estimationSettings';
 import { adoptCandidates, notePropertyId } from '../../domain/optionalProperties';
 import { boundKeys, modelProblems } from '../../domain/scoringModel';
-import { list, t } from '../../i18n/t';
+import { t } from '../../i18n/t';
 import type { EstimationView } from './estimationView';
 
 /**
@@ -48,7 +48,7 @@ function withPending(config: BasesViewConfig, pending: Map<string, string>): Bas
  * a freshly-bound stamp fails the pair check — and an action that changed the
  * configuration and then had every write refused leaves the view worse than it found it,
  * which is the root `CLAUDE.md`'s rule for `runInit`. Running the loop first inverted it:
- * twelve properties bound, nothing stubbed, and the guided empty state replaced by a
+ * 13 properties bound, nothing stubbed, and the guided empty state replaced by a
  * config warning about a state the button itself had just created.
  */
 export async function runEstimationInit(view: EstimationView): Promise<void> {
@@ -76,9 +76,12 @@ export async function runEstimationInit(view: EstimationView): Promise<void> {
 	// and the button would simply look dead. `runInit`'s own shape.
 	if (problems.length > 0) {
 		// Every problem, because `renderProblems` already lists every problem — reporting
-		// one made a two-fault configuration a round trip per fault. Joined by `list()` in
-		// the CATALOG's locale, never by a separator here: list joining is grammar.
-		new Notice(t('estimation.problems.blocked', { problems: list(problems) }));
+		// one made a two-fault configuration a round trip per fault. The ARRAY goes to
+		// `t()`, never a string joined here: `t()` joins it in the locale of the message it
+		// actually rendered (`grammarOf`), which is the source locale whenever the key is
+		// missing from a translated catalog — and `list()` cannot know that, so it would
+		// put the active locale's joining inside a fallback sentence.
+		new Notice(t('estimation.problems.blocked', { problems }));
 		return;
 	}
 	// THE THIRD REFUSAL, asked here for the same reason the two above it are: this action's

@@ -76,7 +76,9 @@ function wireEvents(
 		// must stay its own — the resize grips' rule (`src/view/CLAUDE.md`). Since the
 		// listbox moved off the scroller, the header is not even a descendant of this
 		// element, so this guard now only has to exclude the rows' own descendants — of which
-		// nothing is focusable today, so it stands as defence against the first cell that is.
+		// nothing is focusable today (asserted in `test/view/estimation/keyboard.test.ts`,
+		// which fails the day a cell becomes focusable, which is when this guard starts to
+		// matter), so it stands as defence against the first one that is.
 		if (evt.target !== listEl) return;
 		if (evt.key === 'ArrowDown' || evt.key === 'ArrowUp') {
 			stepAndSelect(ctx, items, evt, evt.key === 'ArrowDown' ? 1 : -1);

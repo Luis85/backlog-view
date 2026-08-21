@@ -87,10 +87,10 @@ export class WriteGate<W extends { file: TFile }> {
 	/**
 	 * True once, right after `applySafely` resolves, when that very batch's own deferred
 	 * update already rebuilt this view (`followLock`'s flush). A caller that always
-	 * refreshes after a write — the estimation view's `performScore`/`performScale`/
-	 * `performOrphanCleanup`, which refresh immediately rather than waiting for a Bases
-	 * refresh to arrive on its own — reads this to skip a second full rebuild of the
-	 * state the flush already drew.
+	 * refreshes after a write reads this to skip a second full rebuild of the state the
+	 * flush already drew. The estimation view is that caller, and it reads this in ONE
+	 * place — `EstimationView.applyPlan`, which every one of its write actions goes
+	 * through — rather than in each of them, so the skip cannot be forgotten by the next.
 	 */
 	get flushedLastBatch(): boolean {
 		return this.flushedOnLastBatch;

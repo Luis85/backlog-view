@@ -170,11 +170,11 @@
 	   flush against this scroller's edge — under `.pbl-est-head`, which is sticky at
 	   `top: 0` inside it. So `ArrowUp` used to park the selected row behind the column
 	   labels. 32px is that header's own `min-height`; a margin here is the platform
-	   answering it, with nothing measured at runtime. Deliberately NOT mirrored on
-	   `.pbl-est-dim` in the panel: `renderPanel` restores the panel's scroll position, so
-	   the rebuilt row is already on screen and `refocusPick`'s `.focus()` scrolls nothing
-	   — and `.pbl-est-header`'s height is content-driven, so a constant there would be a
-	   guess rather than a measurement. */
+	   answering it, with nothing measured at runtime. NOT mirrored on `.pbl-est-dim`,
+	   which is a deliberate DEVIATION from the spec and not a fact about the panel's
+	   layout: the argument is that `renderPanel` restores the panel's scroll position so a
+	   refocused point is already on screen, and that `.pbl-est-header` is content-sized so
+	   a constant would guess. Nothing checks it; no vault look has been made. */
 	scroll-margin-block-start: var(--size-4-8);
 }
 

@@ -753,8 +753,9 @@ export const en = {
 	 * The guided setup action refusing itself: the bindings it would make leave the model
 	 * broken, so nothing is bound and nothing is written.
 	 *
-	 * `{problems}` is a LIST, joined by `list()` (`Intl.ListFormat`, the catalog's own
-	 * locale) rather than by a separator at the call site — the readme notices' own shape.
+	 * `{problems}` is a LIST: the caller hands `t()` the ARRAY and `t()` does the joining
+	 * (`Intl.ListFormat`, in the locale of the message it actually rendered) — the readme
+	 * notices' own shape, and the shape `t.ts` asks callers for.
 	 *
 	 * NO TERMINAL PERIOD: each problem is already a whole sentence carrying one, which is
 	 * what made the `'; '` version of this render `"…".; "…"..`. That is the one thing

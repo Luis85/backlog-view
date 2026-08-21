@@ -201,4 +201,27 @@ describe('the estimation view from the keyboard', () => {
 		click(document.activeElement as HTMLElement);
 		expect(header().getAttribute('aria-sort')).not.toBe(first);
 	});
+	/**
+	 * Every spelling a browser treats as focusable without a tabindex, plus `[tabindex]`
+	 * itself. Enumerated rather than probed, because jsdom computes no focusability at all:
+	 * this is a check on the MARKUP the table draws, and the list is what makes it one.
+	 */
+	const FOCUSABLE = 'a[href], area[href], button, input, select, textarea, iframe, audio[controls], video[controls], summary, [tabindex], [contenteditable]';
+
+	it('draws nothing focusable inside the rows, which is what the keydown guard is defence against', () => {
+		// `wireEvents`' guard returns on any keydown whose target is not `.pbl-est-rows`
+		// itself, and its comment claims nothing under the rows can be that target today.
+		// Asserted AT THE FORBIDDEN THING rather than by driving a path: the first focusable
+		// cell somebody adds is precisely the one no existing test drives, and it is also
+		// exactly when the guard stops being redundant. Both states, because the empty one
+		// draws a different element under the same wrapper.
+		for (const vault of [fixture(), new FakeVault()]) {
+			const { containerEl } = makeEstimationView(vault, configuredValues());
+			const rows = containerEl.querySelector('.pbl-est-rows')!;
+			expect(
+				Array.from(rows.querySelectorAll(FOCUSABLE)).map((el) => el.outerHTML),
+				'a focusable descendant of .pbl-est-rows makes the keydown guard load-bearing — drive it',
+			).toEqual([]);
+		}
+	});
 });

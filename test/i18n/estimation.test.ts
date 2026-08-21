@@ -42,8 +42,9 @@ const OWN = Object.keys(en).filter((key): key is MessageKey => key.startsWith('e
  * The one key this toolbar reads without owning: the undo button shares `toolbar.undo`
  * with the backlog view rather than naming its own scope, because there is one undo slot
  * for the whole vault (ADR 0030) and a per-view key would promise a scope the slot does
- * not have. `toolbar.test.ts`'s own `REUSED` list is the same idea for that view's side
- * of the same key.
+ * not have. On that view's own side the key is not reused at all — it falls inside
+ * `toolbar.test.ts`'s namespace-derived `OWN`, whose `REUSED` list holds `count.items`
+ * alone — so this list is where the shared key is declared once and nowhere else.
  */
 const REUSED = ['toolbar.undo'] as const;
 

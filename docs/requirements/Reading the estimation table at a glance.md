@@ -100,10 +100,15 @@ read as one system rather than a spreadsheet of bare digits nobody has explained
   state, and in the empty state there is deliberately no list at all.
 - A row reached by **keyboard** is clear of the sticky column labels: `.pbl-est-row`
   reserves the header's own height as `scroll-margin-block-start`, so an upward step does
-  not park the selected row behind `.pbl-est-head`. The panel deliberately carries no
-  matching declaration — its scroll position is restored whenever it redraws the same
-  item, which is the case a pick creates, so a refocused point button is already on screen
-  and nothing scrolls.
+  not park the selected row behind `.pbl-est-head`. **The panel half of this criterion did
+  not ship, and that is a deliberate deviation rather than a fact about the layout.** The
+  spec asked for the same declaration on `.pbl-est-dim`; it was declined on the argument
+  that `renderPanel` restores the panel's scroll position whenever it redraws the same item
+  — the case a pick creates — so a refocused point button is already on screen and
+  `refocusPick`'s `.focus()` scrolls nothing, while `.pbl-est-header`'s height is
+  content-driven and a constant there would be a guess. Nothing here checks either half of
+  that argument and no vault look has been made, so it is owed — see
+  [[Smoke test the estimation view's UX polish in a live vault]].
 - `stale` and `foreign` each offer **one action** — recalculate the stored total from the
   answers on the note — and `current`, `handwritten`, `orphan` and `none` offer it on no
   path. The orphan cleanup and this action are mutually exclusive by currency, so the

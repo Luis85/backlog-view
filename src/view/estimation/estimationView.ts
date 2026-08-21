@@ -178,8 +178,11 @@ export class EstimationView extends BasesView {
 	/**
 	 * Publish the gate's progress two ways: `aria-busy` on the whole pane, and — the
 	 * toolbar's own reason to exist — the init and undo buttons' disabled state, via
-	 * `syncEstimationToolbar` (a no-op query while no toolbar is drawn, the guided empty
-	 * state and the config warning). Asks the LOCK rather than this gate's own progress — a
+	 * `syncEstimationToolbar`. That query reaches TWO buttons across two states, not one:
+	 * the toolbar's ✨ and the guided empty state's setup button both carry
+	 * `pbl-est-init` on purpose, so the same action goes quiet on the same fact wherever it
+	 * is drawn (`renderUnconfigured` below says why). Only the config warning, which draws
+	 * neither, leaves it finding nothing. Asks the LOCK rather than this gate's own progress — a
 	 * batch the backlog view is writing changes the very notes this table shows, and this
 	 * view's own data update is deferred on it, so its content is mid-change whoever is
 	 * doing the writing.
