@@ -32,6 +32,19 @@ the plugin's to delete.
 Nothing under this epic is buildable before this exists: a selector without a rubric is the
 arbitrary number the whole epic was opened against.
 
+**"Editable" does not yet mean editable from this view's own options menu, and that stays
+refused rather than fixed with a smaller control.** `estimationOptions.ts` offers 47 boxes
+— the model's own properties, each dimension's five, the three scale properties — and the
+rubric sentences get none: today they are stored keys hand-edited in the `.base`. Making
+that absence legible where the boxes are not was considered (2026-08-21) and refused, for a
+mechanical reason: `BasesOption` is `{ type, displayName, shouldHide? }`, so a menu built
+from it has no way to say anything that is not itself a control. A disabled box reading
+"edit this in the `.base`" would be a new control with its own strings and its own styling,
+and a worse version of the surface [[Editing a dimension's scale]] already specifies. So the
+absence is reported where it already is: at refusal time, by `dimensionProblems`'s
+`8 points need 8 rubric sentences, found 5`, naming its dimension by label the same way
+every other refusal there now does.
+
 **Outcome** — A score is chosen against a definition rather than against a feeling.
 
 ## Where it lives

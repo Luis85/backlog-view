@@ -126,6 +126,28 @@ second half: at a pane width where the row no longer fits, is the currency colum
 by scrolling, cut off, or half-drawn over its neighbour? That is the observation the
 deferred narrow-width work needs, and the one this repository cannot take.
 
+**That second half turned out to be answerable in the harness too, taken 2026-08-21 — a
+harness observation (ADR 0020), not the live-vault walk itself.** The row's minimum is
+**588px**: a 96px title floor, four 72px columns, the 140px currency column, five 8px gaps
+and 24px of padding; the panel keeps its own 320px floor, so the view needs about **940px**
+before the table's track can hold all six columns. `.pbl-est-table` declares
+`overflow-y: auto` and no `overflow-x`, and CSS computes a `visible` overflow on one axis to
+`auto` when the other axis is not visible — so the table has a horizontal scroller nobody
+wrote. Screenshotted at a 900px window: the `Currency` header and every chip on every row
+are past the right edge, and the only trace is a 2px sliver of an orange chip against the
+table's border — the scroll edge, not a partial draw. So the answer to *scrolled, clipped,
+or half-drawn* is **scrolled, with the end column hidden**. The fix is deferred; see
+[[Keeping columns whole under a narrow pane]] for the measurement and the corrected reason.
+What the harness still cannot answer is whether that scroller is acceptable at a real pane
+width — this note stays Open for that reason among the others below.
+
+**The `Current`-chip item's default-colour half is answerable the same way.** Looked at in
+both light and dark schemes at 1200px, the plain `Current` chip reads against the panel's
+`--background-secondary` fill and against a row. The community-theme half of that question
+— whether a theme that tunes `--background-secondary` and the chip's own fill close together
+closes the gap — is exactly what ADR 0020 says the harness cannot answer, and it stays open
+below.
+
 ## What the harness already answers, so this note does not repeat it
 
 `npm run harness` draws the real view against the real stylesheet and answers layout,

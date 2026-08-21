@@ -100,7 +100,13 @@ the view already had and could not reach a second time, plus the `{scored} of {t
 scored` count, all three going quiet or disabled together while a write is running.
 `src/view/estimation/renderTable.ts` gains the value and coverage strips and the currency
 cell split from its chip, so a long currency word can no longer widen the column it sits
-in, plus the `ArrowRight` handler that hands focus to the selected row's panel.
+in, plus the `ArrowRight` handler that hands focus to the selected row's panel. Reading the
+active sort at a glance is not colour alone: the sorted header's `sortHeader` also draws a
+`chevron-up` (ascending) or `chevron-down` (descending) glyph beside its own truncating
+label span, and states the direction in the button's own accessible name rather than
+trusting `aria-sort` to be read by anything. `aria-sort` **stays** — it is the style hook
+the stylesheet selects on, and the hook a future move to real column-header roles would
+already need.
 `src/view/estimation/panel.ts` gains the sticky header that states the title, the total,
 the coverage and the currency chip above the dimension rows — see
 [[Taking a total apart]] and [[Why this item scored what it scored]] for what moved there

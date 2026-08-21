@@ -85,7 +85,11 @@ plugin's existing configuration-warning shape applied to a second view.
 
 - The dimension groups follow the configured id list, not the shipped eight.
 - Each refusal above names the dimension or the property it is about, and the view
-  computes nothing while any of them stands.
+  computes nothing while any of them stands. **By label, not by id** —
+  `strategic-alignment: the weight must be a positive number` is the id talking; the panel
+  that produced the mistake says `Strategic alignment`, and `dimensionProblems` now reads
+  the same resolved `label` the panel does, so a refusal names the dimension the way the
+  reader already knows it rather than the slug it happens to be stored under.
 - A weighted sum reaches the output range as `min + proportion × (max − min)`, where the
   proportion is the weighted sum divided by 100 — the shipped model's worked example
   computes 3.55.

@@ -94,12 +94,35 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   that line up across every row, and a panel whose total is stated above its inputs and
   stays on screen while they scroll.
 
+- **A sorted column header now says which direction, not just that it is active.** The
+  active header draws a chevron pointing the way it sorts and states the direction in its
+  own accessible name; `aria-sort` stays as the style hook it always was, but nothing
+  depended on it being read aloud any more.
+
+### Changed
+
+- **A dimension problem names the dimension the way its own settings panel does.** A
+  refusal used to read `strategic-alignment: the weight must be a positive number`; it now
+  reads `Strategic alignment`, and a dimension group in the options menu is headed by that
+  same resolved label rather than by its id.
+
+- **The weight rule is stated at the box that can break it.** Each dimension's `Weight` box
+  is now labelled `Weight (% of 100)`, the refusal for a total that is off says the delta
+  (`the weights total 87, not 100 (13 short)`), and the lead sentence on every estimation
+  problem names where to go and fix it.
+
 ### Fixed
 
 - A long currency word pushed every numeric column on its row out of line with the header
   above it.
 - The estimation panel's total and item name rendered at the wrong size, and the table
   rendered at the reading size rather than a UI size.
+- **The panel's title now wears the same weight as every other Title-level piece of text.**
+  It rendered semibold against a Title entry that has always declared 500.
+- **The four numeric columns' values now share one baseline.** The value and coverage
+  strips used to make their own cells taller than a plain cell, so their numbers sat about
+  3px above the numbers in Confidence and Effort — in a table whose whole job is comparing
+  numbers across a row.
 
 ## [0.9.1] - 2026-08-17
 
