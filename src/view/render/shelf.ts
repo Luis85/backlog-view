@@ -241,9 +241,17 @@ export function renderShelf(
 	// `renderShelfCard`.
 	const wiring: ShelfWiring = { dnd, removal, conflicts: shelf.conflicts, axis: shelf.axis };
 	const cards: BacklogItem[] = [];
+	// **A narrowing belongs to the control that shows it.** The search and the type filter
+	// both HIDE cards and both say on their own face that they are doing so — the button
+	// goes active, the box keeps the text that caused it — so a shelf drawn without those
+	// controls applies neither: the picks are the roadmap's (see `ShelfInput.picks`), and
+	// a type hidden there would otherwise take cards off the iteration board's shelf with
+	// nothing on screen to show why and nothing to clear it with. Found by review (Codex,
+	// PR #182). The SORT is not in this rule and is applied either way: it orders what is
+	// drawn and hides nothing, so a pick made on the roadmap costs a reader nothing here.
 	// Searched first, then grouped: `searchShelf` states why that order is the rule.
-	const shown = searchShelf(shelfCards, host.shelfSearch);
-	for (const group of organizeShelf(shown, host.shelfSort, host.shelfHiddenTypes)) {
+	const shown = shelf.picks ? searchShelf(shelfCards, host.shelfSearch) : shelfCards;
+	for (const group of organizeShelf(shown, host.shelfSort, shelf.picks ? host.shelfHiddenTypes : NO_HIDDEN)) {
 		cards.push(...renderShelfGroup(ctx, shelfEl, group, wiring));
 	}
 	return { cards, el: shelfEl };
@@ -261,6 +269,9 @@ interface ShelfWiring {
 
 /** Shared by every card with no conflicting prerequisite, so nothing is allocated for the common case. */
 const NO_CONFLICTS: ReadonlySet<string> = new Set();
+
+/** A shelf whose header carries no type filter hides no type — see `renderShelf`. */
+const NO_HIDDEN: ReadonlySet<string> = new Set();
 
 /**
  * One type group inside the expanded shelf: its header, then its cards in sort order —

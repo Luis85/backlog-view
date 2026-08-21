@@ -198,6 +198,26 @@ describe('iterationCandidates', () => {
 		expect(candidates(vault)).toEqual(['Work']);
 	});
 
+	it('offers work whose link resolves to a note that is not an Iteration', () => {
+		// It is on no board — `inIteration` matches the scope's path and a scope may only
+		// be an `Iteration` — so reading a malformed link as a commitment hides the item
+		// from the one surface that could reassign it.
+		const vault = vaultWithSprints();
+		vault.addFile('Container.md', { frontmatter: { type: 'PBI', order: 10 } });
+		vault.addFile('Mislinked.md', { frontmatter: { type: 'PBI', order: 20, iteration: '[[Container]]' } });
+		vault.addFile('Broken.md', { frontmatter: { type: 'PBI', order: 30, iteration: '[[No such note]]' } });
+		expect(candidates(vault)).toEqual(['Container', 'Mislinked', 'Broken']);
+	});
+
+	it('treats a link to a note the model does not hold as a commitment', () => {
+		// Nothing here can say what type an unloaded note is, and calling every unreadable
+		// target malformed would put committed work on the shelf of any base whose filter
+		// leaves the other sprints out.
+		const vault = vaultWithSprints();
+		vault.addFile('Committed.md', { frontmatter: { type: 'PBI', order: 10, iteration: '[[Sprint 13]]' } });
+		expect(candidates(vault, ['Sprint 13.md'])).toEqual([]);
+	});
+
 	it('never offers a context row — the shelf is a statement about the results', () => {
 		const vault = vaultWithSprints();
 		vault.addFile('Excluded.md', { frontmatter: { type: 'Feature', order: 10 } });

@@ -1,5 +1,5 @@
 import { t } from '../i18n/t';
-import { inCatalog, isDeliverableType, isMarkerType } from './itemTypes';
+import { inCatalog, isDeliverableType, isIterationType, isMarkerType } from './itemTypes';
 import { BacklogItem, BacklogModel, inPlan } from './model';
 import { sameValue } from './noteFields';
 import { BacklogSettings, menuValues, STATE_COLOR_SLOTS, stateMenuValues } from './settings';
@@ -690,9 +690,37 @@ export function iterationCandidates(model: BacklogModel): BacklogItem[] {
 			!item.outsideFilter &&
 			!isMarkerType(item.typeName) &&
 			inPlan(item) &&
-			!item.iterationEntry?.file &&
+			!committedToIteration(model, item) &&
 			!ownWorkflowReading(item).done,
 	);
+}
+
+/**
+ * Whether this item's `iteration` link is a COMMITMENT — which is a narrower question
+ * than whether the link resolves, and the difference is work that would otherwise be
+ * plannable nowhere at all.
+ *
+ * A link naming a note the model holds that is **not** an `Iteration` reads as
+ * uncommitted here. Such an item is on no board — `inIteration` matches by the scope's
+ * path, and a scope may only be an `Iteration` — so treating the link as a commitment
+ * hid it from the one surface that could reassign it, with no way for a reader to find
+ * it but the note itself. A broken link already read this way; this puts the resolved
+ * but wrong one beside it. Found by review (Codex, PR #182).
+ *
+ * A note the MODEL does not hold is a commitment all the same, and that asymmetry is
+ * deliberate: nothing here can say what type an unloaded note is, and calling every
+ * unreadable target malformed would put a whole vault's committed work on the shelf of
+ * any base whose filter leaves the other sprints out.
+ *
+ * What it does NOT do is say so on the card. A malformed link draws as ordinary
+ * untriaged work, and the reason belongs beside the roadmap shelf's own — see
+ * `docs/requirements/Pulling work into an iteration.md` extension 2d.
+ */
+function committedToIteration(model: BacklogModel, item: BacklogItem): boolean {
+	const path = item.iterationEntry?.file?.path;
+	if (path === undefined) return false;
+	const target = model.byPath.get(path);
+	return target === undefined || isIterationType(target.typeName);
 }
 
 /**

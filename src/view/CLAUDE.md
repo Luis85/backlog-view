@@ -719,7 +719,10 @@ free of runtime code so imports stay cycle-free.
   inputs the caller supplies: which axis is drawing (**null** on a board, which states
   nothing about dependencies), what the header calls it, and whether the header carries
   the sort/type/search picks — it does not here, because their keyboard path is the card
-  menu's shelf section and that section is the roadmap's alone. Its own fold is a COLUMN
+  menu's shelf section and that section is the roadmap's alone. **`picks` therefore also
+  decides the NARROWING**: a shelf without those controls applies neither the search nor
+  the hidden types, since a narrowing whose control is not on screen can be neither seen
+  nor cleared (the sort is not in that rule — it hides nothing). Its own fold is a COLUMN
   fold (`ColumnScope` `'backlog'`), not a view-state value: a shelf is a foldable band
   exactly as a column is, and the column machinery already gives it a default, a store and
   a rename migration. A pull is `performIterationBoardMove` carrying the join, so a card

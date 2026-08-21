@@ -113,6 +113,16 @@ describe('the iteration shelf', () => {
 		expect(vault.fm('Uncommitted.md')['status']).toBe('New');
 	});
 
+	it('is narrowed by neither the roadmap shelf’s search nor its hidden types', () => {
+		// This header carries no search box and no type filter, so a narrowing made on the
+		// roadmap would take cards off this shelf with nothing on screen to say why and
+		// nothing here to clear it with. A narrowing belongs to the control that shows it.
+		const { containerEl, view } = onSprint(sprintVault());
+		view.setShelfSearch('nothing matches this');
+		view.setShelfHiddenTypes(new Set(['PBI']));
+		expect(shelfTitles(containerEl)).toEqual(['Uncommitted']);
+	});
+
 	it('folds and reopens from its own disclosure, and starts open', () => {
 		// Open until a reader shuts it: a shelf they have to find before they can pull
 		// from it answers nothing. The fold is a COLUMN fold (`ColumnScope` 'backlog'),

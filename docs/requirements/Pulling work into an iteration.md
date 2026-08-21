@@ -76,6 +76,22 @@ finished under its own state property is finished here too.
   not reach this board (extension 5b of [[A board scoped to one iteration]]), and the
   shelf's own population already excludes finished work — one rule rather than two
   answering for the same card.
+- **2d — an item's `iteration` link resolves to a note that is not an `Iteration`.** It
+  is on the shelf, exactly as an item whose link resolves to nothing already is. Such an
+  item is a card on no board — membership matches the scope's path and a scope may only
+  be an `Iteration` — so reading a malformed link as a commitment would hide it from the
+  one surface that could reassign it, leaving the note itself as the only way to find it.
+  A pull then overwrites the bad link, which is the cleanup.
+
+  **A link to a note the model does not hold stays a commitment**, and the asymmetry is
+  deliberate: nothing can say what type an unloaded note is, and calling every unreadable
+  target malformed would put a whole vault's committed work on the shelf of any base whose
+  filter leaves the other sprints out.
+
+  What this does **not** do is say so on the card. A malformed link draws as ordinary
+  untriaged work, where the roadmap's shelf would carry a reason beside it. Recorded as
+  the cost rather than fixed: the reason is a second vocabulary — what makes a link
+  malformed — and nothing has asked to see it yet.
 - **2c — the Base's own search or filter narrows the results.** The shelf narrows with
   them: it is built from `model.results`, so what the base excludes is not offered here.
   That is the search story for a long backlog, and it is why this shelf carries no sort,
@@ -99,6 +115,14 @@ finished under its own state property is finished here too.
   in a one-tab-stop pane and their keyboard path is the card menu's shelf section, which
   is the roadmap's alone. The disclosure and the per-type folds are real controls that
   need no such path.
+
+  **So this shelf applies neither NARROWING either** — not the roadmap's search, not its
+  hidden types. A narrowing belongs to the control that shows it: both of those say on
+  their own face that they are hiding something (the button goes active, the box keeps
+  the text), and without them a type hidden on the roadmap would take cards off this
+  shelf with nothing on screen to explain it and nothing here to clear it with. The SORT
+  is not in that rule and does carry over: it orders what is drawn and hides nothing.
+  Found by review (Codex, PR #182).
 - **5b — the shelf is reached by keyboard.** It is not. The board's roving selection walks
   its columns, and a shelf card is on no column — so a pull is a pointer gesture, and the
   keyboard path to the same write is `Set iteration` on the item, which every plan row
@@ -113,7 +137,11 @@ finished under its own state property is finished here too.
 - An iteration board draws a shelf above its columns, holding exactly the results that
   name no iteration, are unfinished in their own workflow, and are neither a marker, a
   catalog member, an `Iteration` note nor a context row.
-- Work committed to another iteration is never on the shelf.
+- Work committed to another iteration is never on the shelf. A link that resolves to a
+  note the model holds which is **not** an `Iteration` is not a commitment and the item is
+  on the shelf; a link to a note the model does not hold is.
+- Neither the roadmap shelf's search nor its hidden types narrows this shelf, checked with
+  both set.
 - Dragging a shelf card onto a bucket writes the iteration link and that bucket's state as
   **one** record on the note, and one undo takes both back.
 - A pull whose state already reads into the target bucket still joins the iteration.
