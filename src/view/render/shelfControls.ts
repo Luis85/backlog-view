@@ -5,7 +5,6 @@ import { showMenuAtElement, showMenuForClick } from '../interactions/menu';
 import { addShelfSortItems, addShelfTypeItems } from '../interactions/shelfMenu';
 import { organizeShelf } from '../../domain/shelf';
 import { ShelfCard } from '../../domain/bars';
-import { shelfLabel } from '../../domain/roadmap';
 
 /**
  * The shelf's own header chrome: the disclosure that names it, counts it and opens it,
@@ -40,15 +39,20 @@ import { shelfLabel } from '../../domain/roadmap';
  * that caused it — since a shelf whose count and contents disagree with nothing
  * explaining why reads as a bug.
  */
-export function renderShelfControls(host: BacklogViewHost, headerEl: HTMLElement, shelf: ShelfCard[]): void {
+export function renderShelfControls(
+	host: BacklogViewHost,
+	headerEl: HTMLElement,
+	shelf: ShelfCard[],
+	opts: { name: string; picks: boolean; fold: { collapsed: boolean; set: (collapsed: boolean) => void } },
+): void {
 	// An empty shelf is a bare label: it renders only so a drag has somewhere to land,
 	// and a disclosure over nothing would offer to open what has no content.
 	if (shelf.length === 0) {
 		setIcon(headerEl.createSpan({ cls: 'pbl-shelf-icon' }), 'inbox');
-		headerEl.createSpan({ cls: 'pbl-shelf-name', text: shelfLabel() });
+		headerEl.createSpan({ cls: 'pbl-shelf-name', text: opts.name });
 		return;
 	}
-	const collapsed = host.shelfCollapsed;
+	const collapsed = opts.fold.collapsed;
 	// The one header control that is a real tab stop wherever it renders. The card menu
 	// carried this toggle until 2026-08-15 and was its keyboard path; with that entry
 	// dropped to unclutter the menu, `tabindex="-1"` here would have left the shelf
@@ -62,23 +66,23 @@ export function renderShelfControls(host: BacklogViewHost, headerEl: HTMLElement
 	});
 	setIcon(disclosure.createSpan({ cls: 'pbl-shelf-collapse-icon' }), collapsed ? 'chevron-right' : 'chevron-down');
 	setIcon(disclosure.createSpan({ cls: 'pbl-shelf-icon' }), 'inbox');
-	disclosure.createSpan({ cls: 'pbl-shelf-name', text: shelfLabel() });
+	disclosure.createSpan({ cls: 'pbl-shelf-name', text: opts.name });
 	disclosure.createSpan({ cls: 'pbl-shelf-count', text: String(shelf.length) });
 	// `aria-expanded` carries the state an icon and a chevron only show: without it a
 	// screen-reader user at this button cannot tell a shut shelf from an open one.
 	const action = t(collapsed ? 'fold.expandShelf' : 'fold.collapseShelf', {
-		name: shelfLabel(),
+		name: opts.name,
 		count: shelf.length,
 	});
 	disclosure.setAttribute('aria-label', action);
 	setTooltip(disclosure, action);
 	disclosure.addEventListener('click', () => {
-		host.setShelfCollapsed(!collapsed);
+		opts.fold.set(!collapsed);
 		refocus(host, '.pbl-shelf-disclosure');
 	});
 	// Nothing to order or narrow while the cards are shut away, and a control that
 	// visibly does nothing is worse than none — the toolbar's own expand/collapse rule.
-	if (collapsed) return;
+	if (collapsed || !opts.picks) return;
 	renderSortPicker(host, headerEl);
 	renderTypeFilter(host, headerEl, shelf);
 	renderSearch(host, headerEl);
@@ -142,10 +146,13 @@ export function syncShelfTabStops(shelfEl: HTMLElement, paneIsComposite: boolean
  * them another route to it.
  */
 function refocus(host: BacklogViewHost, selector: string): void {
+	// Either frame's shelf, because both draw this header: the roadmap's own, and the
+	// iteration board's, where the pane is a composite whenever it draws columns — which
+	// it always does — so the second term below can only ever be the roadmap's question.
 	const snapshot = host.roadmap;
-	const shelfEl = snapshot?.shelfEl;
-	if (!snapshot || !shelfEl) return;
-	const ownsFocus = selector === '.pbl-shelf-disclosure' || snapshot.cards.length === 0;
+	const shelfEl = snapshot?.shelfEl ?? host.board?.shelfEl;
+	if (!shelfEl) return;
+	const ownsFocus = selector === '.pbl-shelf-disclosure' || snapshot?.cards.length === 0;
 	const target = ownsFocus ? shelfEl.querySelector<HTMLElement>(selector) : shelfEl.closest<HTMLElement>('.pbl-tree');
 	target?.focus();
 }

@@ -97,6 +97,16 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ### Added
 
+- **The iteration board has a shelf, so a sprint is filled by dragging.** Above its three
+  columns it now draws the work in no iteration at all — unfinished, grouped by type and
+  counted, foldable from its own disclosure. Dragging a card from the shelf onto a column
+  puts it in the sprint and in that column at once, as one undoable step; dragging a card
+  back onto the shelf takes it out of the sprint and changes nothing else. Work committed
+  to another iteration is deliberately not on the shelf, so a pull can never quietly empty
+  somebody else's fortnight — moving work between sprints stays `Set iteration`, which
+  names both ends. The shelf is a pointer gesture for now: the keyboard's path to the same
+  writes is still `Set iteration` on the item.
+
 - **Set iteration is one undoable step, wherever it happens.** Picking a sprint from
   `Set iteration` writes the link and both of its dates as a single batch behind a single
   undo, and a card created straight onto an iteration board carries that same link and

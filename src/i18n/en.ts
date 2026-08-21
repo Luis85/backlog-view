@@ -358,6 +358,14 @@ export const en = {
 	'shelf.removeAssignee': 'Results this axis cannot place — dropping a card here removes its assignee',
 	'shelf.removeDates': 'Results this axis cannot place — dropping a bar here removes its dates',
 	'shelf.removalKeeps': 'Keeps {span}',
+	/**
+	 * The iteration board's own shelf: the work in no iteration, and what a drop on it
+	 * means. Its own two keys rather than the roadmap's — this shelf holds results the
+	 * board could pull IN, which is the opposite statement from "the axis cannot place
+	 * these", and `placement.unplaced` names a placement no board has.
+	 */
+	'shelf.backlog': 'Backlog',
+	'shelf.removeIteration': 'Work in no iteration — dropping a card here takes it out of this iteration',
 	'shelf.sort': 'Sort the shelf',
 	'shelf.filterByType': 'Filter the shelf by type',
 	/** One key for the context strip's name, drawn as its heading AND as its group label. */

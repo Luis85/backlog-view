@@ -13,7 +13,7 @@ import { BacklogItem } from '../../domain/model';
 import { placeItem, ShelfCard, statedEnds, unscheduledLabel, withoutEnds } from '../../domain/bars';
 import { placementEnds } from '../../domain/itemTypes';
 import { BacklogSettings } from '../../domain/settings';
-import { drawsGrid, RoadmapAxis, shelfLabel } from '../../domain/roadmap';
+import { drawsGrid, RoadmapAxis } from '../../domain/roadmap';
 import { organizeShelf, searchShelf, ShelfGroup } from '../../domain/shelf';
 
 /** What dropping a card on the shelf MEANS, the words that promise it, and its preview. */
@@ -31,7 +31,35 @@ import { organizeShelf, searchShelf, ShelfGroup } from '../../domain/shelf';
 export interface ShelfInput {
 	cards: ShelfCard[];
 	conflicts: ReadonlyMap<string, ReadonlySet<string>>;
-	axis: RoadmapAxis;
+	/**
+	 * Which axis is drawing, or **null on a board's shelf**, which has no axis at all —
+	 * and so states nothing about what a card waits for, exactly as the horizon axis
+	 * does not.
+	 */
+	axis: RoadmapAxis | null;
+	/**
+	 * What the header calls this shelf. The roadmap's is a PLACEMENT (`shelfLabel`) and
+	 * the iteration board's is a POPULATION (`shelf.backlog`), so the word is the
+	 * caller's rather than this module's — passed rather than defaulted, because a
+	 * default here is the roadmap's own reading arriving unasked on a board.
+	 */
+	name: string;
+	/**
+	 * Whether the header carries the sort, type filter and search. The roadmap's shelf
+	 * does; a board's does not, and that is a scope decision rather than a shape one —
+	 * the pickers' keyboard path is the card menu's shelf section, which is built for
+	 * the roadmap alone, and their focus rule reads the roadmap's own snapshot.
+	 */
+	picks: boolean;
+	/**
+	 * Where this shelf's own collapse is kept, and how it is set. The roadmap's is the
+	 * view-state store's `shelfExpanded`; the iteration board's is a COLUMN fold
+	 * (`ColumnScope` `'backlog'`), which is the same mechanism the type groups inside it
+	 * already use and defaults to OPEN — a shelf a reader has to find before they can
+	 * pull from it answers nothing. Passed rather than read here, so one component can
+	 * draw two bands without either owning the other's bit.
+	 */
+	fold: { collapsed: boolean; set: (collapsed: boolean) => void };
 }
 
 export interface ShelfRemoval {
@@ -170,16 +198,16 @@ export function renderShelf(
 	const host = ctx.host;
 	const shelfCards = shelf.cards;
 	const empty = shelfCards.length === 0;
-	const collapsed = !empty && host.shelfCollapsed;
+	const collapsed = !empty && shelf.fold.collapsed;
 	const shelfEl = frameEl.createDiv({
 		cls: 'pbl-shelf' + (empty ? ' pbl-shelf-empty' : '') + (collapsed ? ' pbl-shelf-collapsed' : ''),
 		attr: {
 			role: 'group',
-			'aria-label': t('roadmap.groupLabel', { name: shelfLabel(), count: shelfCards.length }),
+			'aria-label': t('roadmap.groupLabel', { name: shelf.name, count: shelfCards.length }),
 		},
 	});
 	const header = shelfEl.createDiv({ cls: 'pbl-shelf-header' });
-	renderShelfControls(host, header, shelfCards);
+	renderShelfControls(host, header, shelfCards, { name: shelf.name, picks: shelf.picks, fold: shelf.fold });
 	// The outcome line is only where a removal has one to say — the horizon axis's
 	// drop always un-places, so it has nothing to distinguish before the release.
 	const outcomeEl = removal.outcome ? header.createDiv({ cls: 'pbl-shelf-outcome' }) : null;
@@ -227,8 +255,8 @@ interface ShelfWiring {
 	removal: ShelfRemoval;
 	/** Which of each dependent's prerequisites are in conflict (2b) — see `ShelfInput`. */
 	conflicts: ReadonlyMap<string, ReadonlySet<string>>;
-	/** Which axis is drawing — see `ShelfInput`. */
-	axis: RoadmapAxis;
+	/** Which axis is drawing, null on a board — see `ShelfInput`. */
+	axis: RoadmapAxis | null;
 }
 
 /** Shared by every card with no conflicting prerequisite, so nothing is allocated for the common case. */
@@ -299,7 +327,7 @@ function renderShelfCard(ctx: RowContext, cardsEl: HTMLElement, entry: ShelfCard
 	// one fact wherever it does show. Visible content, like the reason above it, so it
 	// reaches the card's accessible name the same content-derived way.
 	const conflicting = wiring.conflicts.get(entry.item.file.path) ?? NO_CONFLICTS;
-	const waits = drawsGrid(wiring.axis) ? dependencyNote(entry.item, conflicting) : '';
+	const waits = wiring.axis !== null && drawsGrid(wiring.axis) ? dependencyNote(entry.item, conflicting) : '';
 	if (waits) {
 		const dep = card.createDiv({ cls: 'pbl-shelf-dependency' + (conflicting.size > 0 ? ' pbl-shelf-conflict' : '') });
 		drawIcon(dep.createSpan({ cls: 'pbl-shelf-dependency-icon' }), conflicting.size > 0 ? 'alert-triangle' : 'link');

@@ -4,7 +4,7 @@ import { drawIcon } from './icons';
 import { createCard, renderCardBody, renderColumnFold, wireCardActivation } from './board';
 import { RowContext } from './columns';
 import { renderAllDoneState, renderEmptyState } from './emptyStates';
-import { renderContextStrip, renderShelf, shelfRemoval } from './shelf';
+import { renderContextStrip, renderShelf, ShelfInput, shelfRemoval } from './shelf';
 import { syncShelfTabStops } from './shelfControls';
 import { datedEntries, laneEntries } from './lanes';
 import { renderTimeline, TimelineRender } from './timeline';
@@ -15,7 +15,15 @@ import { gestureAt, previewer, submitGesture, TimelineParts, wireTimelineDrag } 
 import { StatePalette, statePalettes } from '../../domain/board';
 import { isMarkerType } from '../../domain/itemTypes';
 import { BacklogItem } from '../../domain/model';
-import { axisPopulation, buildRoadmap, HorizonBucket, ResourceLane, RoadmapAxis, RoadmapModel } from '../../domain/roadmap';
+import {
+	axisPopulation,
+	buildRoadmap,
+	HorizonBucket,
+	ResourceLane,
+	RoadmapAxis,
+	RoadmapModel,
+	shelfLabel,
+} from '../../domain/roadmap';
 import { scaleFor, TimelineScale, TimelineWindow } from '../../domain/timeline';
 import { CivilDate } from '../../domain/noteFields';
 
@@ -88,7 +96,7 @@ export function renderRoadmap(
 		// reason, and the Alt+arrow ladder has led with the shelf all along — the frame now
 		// says what the ladder already did. `dependencyConflicts` is still its initial
 		// empty map here, which is this axis's value of it.
-		shelf = renderShelf(ctx, frameEl, { cards: roadmap.shelf, conflicts: dependencyConflicts, axis }, dnd, removal);
+		shelf = renderShelf(ctx, frameEl, shelfInput(host, roadmap, dependencyConflicts, axis), dnd, removal);
 		cards.push(...shelf.cards);
 		// The layout pick rides the ROW rather than each bucket: one class where the buckets
 		// are created, read by `.pbl-bucket-cards` in `styles/roadmap.css`, so a bucket that
@@ -117,7 +125,7 @@ export function renderRoadmap(
 		// After the grid, which is where this axis's conflicts come from — the order the
 		// shelf has always rendered in here, and the reason it cannot be hoisted above the
 		// branch the way the horizon axis's was.
-		shelf = renderShelf(ctx, frameEl, { cards: roadmap.shelf, conflicts: dependencyConflicts, axis }, dnd, removal);
+		shelf = renderShelf(ctx, frameEl, shelfInput(host, roadmap, dependencyConflicts, axis), dnd, removal);
 		cards.push(...shelf.cards);
 	}
 	// What the axis HOLDS, which is no longer what it drew on any of the three:
@@ -325,6 +333,29 @@ function wireLaneDrop(
 		},
 		{ onDrag: (source, pointer) => ghost.draw(source, pointer), onLeave: () => ghost.clear() },
 	);
+}
+
+
+/**
+ * What the roadmap's shelf is handed, on either axis — one place, so the two branches
+ * cannot come to differ about the name, the picks or the fold. The fold pair is written
+ * once here rather than at each call for the same reason read as code: two identical
+ * closures are two functions where the shelf has one bit.
+ */
+function shelfInput(
+	host: BacklogViewHost,
+	roadmap: RoadmapModel,
+	conflicts: ReadonlyMap<string, ReadonlySet<string>>,
+	axis: RoadmapAxis,
+): ShelfInput {
+	return {
+		cards: roadmap.shelf,
+		conflicts,
+		axis,
+		name: shelfLabel(),
+		picks: true,
+		fold: { collapsed: host.shelfCollapsed, set: (collapsed) => host.setShelfCollapsed(collapsed) },
+	};
 }
 
 /**

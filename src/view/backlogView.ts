@@ -525,6 +525,10 @@ export class ProductBacklogView extends ViewStateSurface implements BacklogViewH
 		return this.cardMoves.performIterationBoardMove(item, bucket);
 	}
 
+	performIterationRemove(item: BacklogItem): Promise<boolean> {
+		return this.cardMoves.performIterationRemove(item);
+	}
+
 	performHorizonMove(item: BacklogItem, horizon: string | null): Promise<boolean> {
 		return this.cardMoves.performHorizonMove(item, horizon);
 	}
