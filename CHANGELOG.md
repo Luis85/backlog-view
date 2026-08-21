@@ -18,7 +18,8 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   and a place in the New menu and in Set type. Like `Milestone` and `Iteration` it is a
   marker: it holds nothing, hangs from nothing, and counts for nothing in any progress bar
   or count, and — unlike the two markers before it — on no date: a `Resource` never draws
-  on the timeline and no schedule, drop or grip will write a date onto a person. Nothing
+  on the timeline, no schedule, drop or grip will write a date onto a person, and the
+  generated README no longer tells you a person reads your target property. Nothing
   about `assignee` changes yet — it is still the text you type, and the roadmap's rows
   still come from it.
 

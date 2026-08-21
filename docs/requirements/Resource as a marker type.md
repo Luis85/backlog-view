@@ -7,6 +7,7 @@ created: 2026-08-20
 source: user request
 files:
   - src/domain/typeVocabulary.ts
+  - src/domain/backlogReadme.ts
   - src/domain/itemTypes.ts
   - src/domain/bars.ts
   - src/view/render/badges.ts
@@ -74,6 +75,9 @@ epic states why an eighteenth name is being added against an open P1 direction
   done — see the acceptance criterion below, which used to be wide enough to read as both.
 - **4b — the focus level is set.** A `Resource` is not a rung, so no level selects it and no
   level hides it. It is accepted as a focus root exactly as the other markers are.
+- **4d — the note carries a horizon.** It places, exactly as a `Milestone` with a horizon
+  does. Not an oversight and not the same case as 4c — see the criterion below for why the
+  two placement properties are answered differently, and which note owns the question.
 - **4c — the note carries something under a date property.** Nothing is drawn. A
   `Resource` is the first marker that is not a date, and until this note said so the
   category answered the DATE questions as well as the structural ones: a person carrying
@@ -111,10 +115,22 @@ epic states why an eighteenth name is being added against an open P1 direction
   `Milestone` already does. An automated reviewer read the wider sentence this criterion used
   to carry and asked for the opposite; excluding one declared type from the toolbar's total
   would make it the one number on screen that lies about what the base holds.
-- **A `Resource` is never placed on either roadmap axis and never takes a date.** Not an
-  extra criterion this note started with — it is 4c, found by automated review on the
-  increment itself, and it is the one place the marker precedent did NOT carry: every
-  marker before this one was a date.
+- **A `Resource` never takes a DATE, and is drawn at none.** Not a criterion this note
+  started with — it is 4c, found by automated review on the increment itself, and it is the
+  one place the marker precedent did NOT carry: every marker before this one was a date. It
+  is stated of dates and NOT of "either roadmap axis", which is how it read first: the
+  HORIZON is deliberately left where the precedent puts it, below.
+- **The horizon is not narrowed, and that is a decision.** A `Resource` places into a bucket
+  and takes a `Set horizon` pick exactly as a `Milestone` does today. The same reviewer asked
+  for the horizon to go with the dates, reading the wider sentence above; the two are not
+  alike. A date on a person is a CLAIM the projection then draws — a diamond, and a line
+  across the plan asserting a deadline nobody set — while a horizon is a bucket the reader
+  puts a card in, meaningless on a person but asserting nothing. Refusing it costs a
+  placement guard, a planner guard and a menu guard for a type nothing links to yet, and it
+  would make `Resource` diverge from the marker precedent a second time with no note asking
+  for it. What a `Resource` IS on the roadmap is [[Rows from the Resource notes]]' question —
+  a ROW rather than a card — and that is the note that should answer this, against a roster
+  that exists. Written down here so the next reviewer finds a decision rather than a gap.
 
 ## Where it lives
 
@@ -133,7 +149,18 @@ of the others is its own, and `drawsAsPoint` and `placementEnds` each except thi
 the first so nothing draws a person at a point, the second so no gesture and no writer puts
 a date on one. `src/domain/bars.ts` asks the second of those at `placeItem`, which is the
 one call both axes make: a guard beside the dated axis alone would still have drawn a person
-in the resources axis's own marker lane. The surfaces needed nothing:
+in the resources axis's own marker lane.
+
+
+`src/domain/backlogReadme.ts` needed one edit for the same reason, and it is the one that
+would have shipped WRONG in silence: `planningSection` spelled `MARKER_TYPES` into two
+date-specific sentences, so the README generated INTO a user's vault said a person is a
+point in time that reads the target key. It names `drawsAsPoint` now — which answers the
+`iterationBars` case as a bonus, since an `Iteration` in bar mode is no more a point than a
+person is. The types section beside it dropped "and states a date rather than work" for what
+is true of all three markers: something the plan points at rather than work it contains.
+
+The rest of the surfaces needed nothing:
 `src/domain/settings.ts` and `src/domain/viewOptions.ts` generate the folder option per type
 from `ALL_TYPES`, and `src/domain/backlogReadme.ts` and `src/view/manual/typesSection.ts`
 document the vocabulary rather than a list beside it. `setupSection.ts`, which this note

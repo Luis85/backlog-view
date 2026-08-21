@@ -1,7 +1,7 @@
 import { BacklogSettings, stateMenuValues } from './settings';
 import { resolvedDeliverableStateKey, resolvedTestStateKey } from './optionalProperties';
 import { ALL_TYPES, EXTRA_TYPES, LEVELS, MARKER_TYPES, TEST_LEVELS } from './typeVocabulary';
-import { childTypeChoices, EXTRA_TYPE_RANK, folderForType, LadderPosition, ladderFor } from './itemTypes';
+import { childTypeChoices, drawsAsPoint, EXTRA_TYPE_RANK, folderForType, LadderPosition, ladderFor } from './itemTypes';
 import { readmeMarker } from './readmeMarker';
 import { stampRows, stampRule, startedStates } from './readmeStamps';
 import { andList, cell, code, list, yamlScalar } from './readmeText';
@@ -124,7 +124,8 @@ function typeSection(settings: BacklogSettings): string[] {
 			`deepest and hold ${code(LEVELS[LEVELS.length - 1])} items wherever they hang, which ` +
 			'is why they are types rather than levels. ' +
 			`${andList(MARKER_TYPES)} ${MARKER_TYPES.length > 1 ? 'are' : 'is'} neither: a ` +
-			`marker hangs from nothing and holds nothing, and states a date rather than work. ` +
+			`marker hangs from nothing and holds nothing — it is something the plan points AT ` +
+			`rather than work the plan contains. ` +
 			`${TEST_LEVELS.slice(0, -1).join(' → ')} is a **second ladder**, for tests rather than ` +
 			`for work: a ${code(TEST_LEVELS[0])} hangs from nothing, and the two ladders share only ` +
 			`${code(LEVELS[LEVELS.length - 1])}, the rung at the bottom of each.`,
@@ -392,9 +393,18 @@ function planningSection(settings: BacklogSettings): string[] {
 	// will never place it by, and the entry that would correct that is withheld for the same
 	// reason, so the document would be promising a placement the projection contradicts.
 	// Say which key a marker actually reads, in the one voice this file has.
+	//
+	// Named from `drawsAsPoint` and NOT from `MARKER_TYPES`, which is the same distinction
+	// this paragraph is already making, one level up: these two sentences are about the
+	// markers that are DATES, and the category stopped meaning that when `Resource` joined
+	// it. Spelled as the category, the generated document told a reader that a person is a
+	// point in time and reads the target key — a claim the view now contradicts on the very
+	// axis the paragraph is about. It also answers the `iterationBars` case for free: in bar
+	// mode an `Iteration` is not a point either, and it was named here regardless.
+	const points = MARKER_TYPES.filter((type) => drawsAsPoint(type, settings.iterationBars));
 	if (dateKeys.length > 0 && settings.targetKey === '') {
 		lines.push(
-			`A **marker** (${andList(MARKER_TYPES.map(code))}) is the exception, and this view cannot ` +
+			`A **marker** (${andList(points.map(code))}) is the exception, and this view cannot ` +
 				`place one: a marker's date is the **target** property, and the only date property ` +
 				`here is ${code(settings.startKey)}. One waits, unplaced, until a target property is ` +
 				'picked — and Schedule is withheld from it rather than opened onto a date its own type ' +
@@ -402,7 +412,7 @@ function planningSection(settings: BacklogSettings): string[] {
 		);
 	} else if (dateKeys.length === 2) {
 		lines.push(
-			`A **marker** (${andList(MARKER_TYPES.map(code))}) is the exception: it is a point by ` +
+			`A **marker** (${andList(points.map(code))}) is the exception: it is a point by ` +
 				`**type** rather than by how many dates it states, so it reads ${code(settings.targetKey)} ` +
 				`alone. A ${code(settings.startKey)} on one is ignored — never rewritten, and never removed.`,
 		);

@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { BacklogSettings, defaultSettings } from '../../src/domain/settings';
 import { settingsWith } from '../helpers/settings';
 import { backlogReadmeContent, readmeStates } from '../../src/domain/backlogReadme';
-import { ALL_TYPES } from '../../src/domain/typeVocabulary';
+import { ALL_TYPES, MARKER_TYPES } from '../../src/domain/typeVocabulary';
+import { drawsAsPoint } from '../../src/domain/itemTypes';
 import { ORDER_SPACING } from '../../src/domain/writePlan';
 
 /**
@@ -159,6 +160,21 @@ describe('backlogReadmeContent', () => {
 		expect(both).toContain('placement actions — Set horizon and Clear horizon, Schedule and Unschedule');
 	});
 
+	it('names only the DATED markers where it says what a marker reads', () => {
+		// The other half of the same sentence, on a two-date view: the point-by-type
+		// paragraph. Driven from the vocabulary rather than from a literal, so a fourth
+		// marker joining `MARKER_TYPES` has to answer this rather than ride in on the
+		// category — which is exactly how `Resource` got into it.
+		const dated = settingsWith({ startKey: 'start', targetKey: 'due', horizonKey: '' });
+		const content = readme(dated, []);
+		const point = 'is the exception: it is a point by';
+		const line = content.split('\n').find((l) => l.includes(point));
+		if (line === undefined) throw new Error('the point-by-type sentence is missing');
+		for (const marker of MARKER_TYPES) {
+			expect(line.includes(`\`${marker}\``)).toBe(drawsAsPoint(marker, dated.iterationBars));
+		}
+	});
+
 	it('describes the timeline when only one date property is configured', () => {
 		// Either key alone is a configured axis, so a view with one must not be told it
 		// has no roadmap at all.
@@ -178,12 +194,20 @@ describe('backlogReadmeContent', () => {
 		// it. Left unsaid, the README tells a user to write the one date it documents and
 		// the milestone stays unplaced with no control offered to correct it.
 		const startOnly = readme(settingsWith({ startKey: 'start', targetKey: '', horizonKey: '' }), []);
-		// Named as the CATEGORY, not as one type — the rule is `placementEnds`'s, which every
-		// declared marker answers alike, so the sentence names the whole list rather than
-		// whichever marker happens to sit first in it.
-		expect(startOnly).toContain(
-			'A **marker** (`Milestone`, `Iteration` and `Resource`) is the exception, and this view cannot place one',
-		);
+		// Named as a LIST, not as one type — the rule is `drawsAsPoint`'s, so the sentence
+		// names every marker that answers it rather than whichever one sits first.
+		//
+		// That list is no longer `MARKER_TYPES`, and the difference is the whole point of
+		// this assertion: `Resource` is a marker that states NO date, so spelling the
+		// category here published into the user's own vault that a person is a point in
+		// time waiting for a target property. An automated reviewer found it on the
+		// increment that declared the type — in generated documentation, which is the copy
+		// nobody re-reads.
+		const exception = startOnly.split('\n').find((l) => l.includes('is the exception, and this view cannot'));
+		expect(exception).toContain('A **marker** (`Milestone` and `Iteration`) is the exception');
+		// On the LINE, not on the document: `Resource` is a declared type and the types
+		// table above names it correctly. What must not name it is this sentence.
+		expect(exception).not.toContain('Resource');
 		expect(startOnly).toContain('the only date property here is `start`');
 	});
 
