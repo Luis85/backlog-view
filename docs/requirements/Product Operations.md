@@ -47,8 +47,11 @@ what it displaced, and how much of the plan operations is consuming.
 - **The lane is a projection over that property.** It draws where the existing projections
   draw, and a move into or out of it is a write like any other move: planned once, announced
   once, refused for a row the Base excluded.
-- **Displacement is inferred from people.** An operational item names an assignee, and that
-  person's other in-flight **plan** work is what it displaced. Operational work is never
+- **Displacement is inferred from people, while it is happening.** An operational item that
+  is **itself in flight** names an assignee, and that person's other in-flight **plan** work
+  is what it displaced. A finished incident displaces nothing: the question this epic exists
+  for is what is running now, and a closed item that kept the property would otherwise go on
+  marking today's work as displaced by last month's fire. Operational work is never
   displaced work: two incidents on one person displace each other under any rule that reads
   "everything else in flight", which would draw operations as the plan it is costing.
   Nothing new is linked and nothing is remembered over time — the claim is exactly as strong as what the vault holds today, and a
