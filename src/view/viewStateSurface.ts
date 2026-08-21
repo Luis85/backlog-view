@@ -2,7 +2,7 @@ import { BasesView } from 'obsidian';
 import { ColumnScope, Projection } from './host';
 import { ViewStateController } from './viewStateController';
 import { RoadmapAxis } from '../domain/roadmap';
-import { ShelfSort } from '../domain/shelf';
+import { ShelfLayout, ShelfSort } from '../domain/shelf';
 import { ScaleId } from '../domain/timeline';
 
 /**
@@ -92,6 +92,22 @@ export abstract class ViewStateSurface extends BasesView {
 
 	setShelfSort(sort: ShelfSort): void {
 		this.ui.setShelfSort(sort);
+	}
+
+	get shelfLayout(): ShelfLayout {
+		return this.ui.shelfLayout;
+	}
+
+	setShelfLayout(layout: ShelfLayout): void {
+		this.ui.setShelfLayout(layout);
+	}
+
+	get shelfHeight(): number | null {
+		return this.ui.shelfHeight;
+	}
+
+	setShelfHeight(height: number | null): void {
+		this.ui.setShelfHeight(height);
 	}
 
 	get shelfHiddenTypes(): ReadonlySet<string> {

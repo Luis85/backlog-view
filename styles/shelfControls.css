@@ -1,0 +1,218 @@
+/* The shelf's HEADER and the grip at its foot — the chrome around the band, where
+   `shelf.css` beside it is the band and its cards. Split when the header grew a third
+   picker and the band grew a resize grip: one file for two concerns had reached the 400
+   line budget, and the seam between "what the shelf shows" and "what a reader presses"
+   was already the seam between `render/shelf.ts` and `render/shelfControls.ts`.
+
+   Position in `index.css` is load-bearing exactly as `shelf.css`'s is: both come after
+   `board.css` and `roadmap.css`, so a rule here at (0,2,0) or above beats the band rule
+   those files state. Nothing here reaches for that, and a rule that did — an `overflow`
+   on `.pbl-shelf`, say — would put back the unreachable region `roadmap.css` forbids. */
+
+/* ONE row height, whether the shelf is open or shut. The header holds the disclosure
+   (19px) in both states and, open, the search box beside it — and Obsidian's own
+   `input[type='search']` rule outranks a bare class, so the box is 30px whatever this
+   stylesheet asks for. Two answers, and both are needed: the field is given a compact
+   height here at a specificity that actually wins, and the header reserves that same row
+   whether or not the field is in it. Reserve without shrinking and the shut band carries
+   30px of nothing; shrink without reserving and the row is still two heights, just closer
+   together. */
+.pbl-shelf-header {
+	display: flex;
+	align-items: center;
+	gap: var(--size-4-1);
+	min-height: var(--size-4-6);
+	font-size: var(--font-ui-small);
+	font-weight: var(--font-medium);
+	color: var(--text-normal);
+}
+
+.pbl-shelf-icon {
+	display: flex;
+	align-items: center;
+	color: var(--text-muted);
+}
+
+/* The shelf's own title search. Nothing here draws a box: the field is a plain
+   `input[type='search']` and wears whatever chrome the theme gives one, which is the
+   only way it cannot end up with two. What is left is size — the WIDTH takes the room the
+   header has left rather than its content, since the header is one row that also
+   carries the disclosure, the three pickers and (on the dated axis) the outcome line, so
+   a fixed width here would push one of them out of a narrow pane.
+
+   `input.` rather than the class alone, and that is load-bearing rather than tidy: this
+   selector competes with Obsidian's own `input[type='search']`, which is also (0,1,1), and
+   what decides it is that `styles.css` is loaded after `app.css`. A bare
+   `.pbl-shelf-search-input` is (0,1,0) and loses outright — which is what the `height`
+   here did, silently, for as long as it has existed: it asked for 20px and the field
+   measured 30px in the harness. The HEIGHT is the header's reserved row above; the two are
+   one decision and must move together. */
+input.pbl-shelf-search-input {
+	flex: 0 1 180px;
+	min-width: 0;
+	height: var(--size-4-6);
+	padding-block: 0;
+	font-size: var(--font-ui-smaller);
+}
+
+/* The field wears exactly ONE clear affordance, and it is the plugin's own
+   (`renderSearchClear`). The type was picked believing the platform drew this button
+   whenever the field had a value; a vault reported no way back out of the search, and
+   what a headless Chromium draws for a bare `input[type='search']` here is nothing at
+   all — so the premise is unverifiable from this repository and the drawn button cannot
+   depend on it. Suppressed rather than left to chance: where the platform DOES draw one,
+   two x's sit side by side and only one of them tells the view anything. `-webkit-`
+   because Obsidian is Chromium on every platform it ships for. */
+.pbl-shelf-search-input::-webkit-search-cancel-button {
+	display: none;
+}
+
+/* What this drop would LEAVE, said before the release — only the dated axis draws one. */
+.pbl-shelf-outcome {
+	margin-inline-start: auto;
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+}
+
+.pbl-shelf-icon .svg-icon {
+	width: 14px;
+	height: 14px;
+}
+
+.pbl-shelf-group {
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-4-1);
+}
+
+.pbl-shelf-group-header {
+	display: flex;
+	align-items: center;
+	gap: var(--size-4-1);
+	font-size: var(--font-ui-smaller);
+	font-weight: var(--font-medium);
+	color: var(--text-muted);
+	text-transform: uppercase;
+}
+
+.pbl-shelf-group-count {
+	color: var(--text-faint);
+}
+
+/* The shelf's own controls, in its own header. The disclosure carries the icon, the
+   name and the count, so it is a text-bearing button rather than the lone glyph
+   `clickable-icon` sizes for — the padding and the auto width are what stop it
+   rendering as a square with the label spilling out of it. */
+.pbl-shelf-disclosure {
+	display: flex;
+	align-items: center;
+	gap: var(--size-4-1);
+	width: auto;
+	height: auto;
+	padding: var(--size-2-1) var(--size-4-1);
+	font-size: var(--font-ui-small);
+	font-weight: var(--font-medium);
+	color: var(--text-normal);
+}
+
+.pbl-shelf-collapse-icon {
+	display: flex;
+	align-items: center;
+	color: var(--text-muted);
+}
+
+.pbl-shelf-collapse-icon .svg-icon {
+	width: 14px;
+	height: 14px;
+}
+
+/* The two pickers sit together, left of the outcome line's `margin-inline-start: auto`.
+   The search's clear button joins them rather than taking a size of its own: it is a
+   header control like the others, and an x drawn at a different weight beside them reads
+   as belonging to something else. */
+.pbl-shelf-sort,
+.pbl-shelf-filter,
+.pbl-shelf-search-clear {
+	color: var(--text-muted);
+}
+
+.pbl-shelf-sort .svg-icon,
+.pbl-shelf-filter .svg-icon,
+.pbl-shelf-search-clear .svg-icon {
+	width: 14px;
+	height: 14px;
+}
+
+/* A filter that is actively hiding a type says so on its face — the shelf's count is
+   the true total, so without this the count and the cards disagree with no reason
+   visible for it. */
+.pbl-shelf-filter.is-active {
+	color: var(--text-accent);
+}
+
+/* The grip along the open band's foot — `src/view/interactions/shelfResize.ts`. Sticky
+   inside the band's own scrollport, so a shelf scrolled halfway down still shows the edge
+   that resizes it; the negative offsets take back the flex gap above it and the band's
+   bottom padding below, so the strip sits ON the boundary rather than inside a margin.
+   `touch-action: none` because this plugin is not desktop-only: without it the scroller
+   under the finger claims the pan and the drag never starts. */
+.pbl-shelf-grip {
+	position: sticky;
+	bottom: calc(-1 * var(--size-4-1));
+	z-index: 1;
+	flex: 0 0 auto;
+	height: var(--size-4-2);
+	margin-block-start: calc(-1 * var(--size-4-2));
+	cursor: ns-resize;
+	touch-action: none;
+}
+
+/* The MARK inside the hit area, the property grip's own arrangement: the strip is the
+   target and this 2px line is what a reader sees. Its own element rather than a border on
+   the strip, so the visible line can be thinner than the area that catches a finger. */
+.pbl-shelf-grip::after {
+	content: '';
+	display: block;
+	height: 2px;
+	margin-block-start: calc(0.5 * var(--size-4-2) - 1px);
+	border-radius: 1px;
+	background-color: transparent;
+}
+
+/* Three reveals, and the WIDEST one is the reason this is not the property grip's rule
+   copied. That grip is revealed by hovering the column NAME, which is a label a few pixels
+   away; this one sits at the foot of a band that can be most of the pane, and a reader who
+   never happens to pass over an 8px transparent strip has no way to learn it is there at
+   all — the first screenshot of it in the harness showed exactly nothing. So the BAND is
+   what reveals it: hovering anywhere on the shelf draws the line faintly, hovering the
+   strip itself firms it, and holding or focusing it confirms in the accent. The keyboard
+   is not left out of that — `:focus-visible` is what a reader who tabbed to it sees, and
+   the tooltip says which keys it answers to.
+
+   Written in one selector list per step so document order decides between equal
+   specificities the way `propertyColumns.css` states for its own pair: each step is
+   (0,2,0) or (0,2,1) and the firmer ones come later. */
+.pbl-shelf:hover > .pbl-shelf-grip::after {
+	background-color: var(--background-modifier-border);
+}
+
+.pbl-shelf-grip:hover::after {
+	background-color: var(--background-modifier-border-hover);
+}
+
+.pbl-shelf-grip:active::after,
+.pbl-shelf-grip:focus-visible::after {
+	background-color: var(--interactive-accent);
+}
+
+/* The three pickers and the clear button all wear the header's muted glyph — the layout
+   picker joins them rather than taking a colour of its own, since it is a pick like the
+   others and the icon it wears is already what tells them apart. */
+.pbl-shelf-layout {
+	color: var(--text-muted);
+}
+
+.pbl-shelf-layout .svg-icon {
+	width: 14px;
+	height: 14px;
+}

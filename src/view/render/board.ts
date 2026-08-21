@@ -568,7 +568,17 @@ export function createCard(ctx: RowContext, containerEl: HTMLElement, item: Back
  * columns, the rollup. One body for the board's cards and the roadmap's, so an
  * item cannot look different per projection.
  */
-export function renderCardBody(ctx: RowContext, card: HTMLElement, item: BacklogItem): void {
+export function renderCardBody(
+	ctx: RowContext,
+	card: HTMLElement,
+	item: BacklogItem,
+	// Where the children disclosure goes, when that is not `card` itself. The shelf's
+	// compact row is the one caller that passes it: its summary is a one-line flex ROW, and
+	// a child list inside that row would sit beside the title rather than beneath it — so
+	// the row hands its own card element here while the summary takes everything else. A
+	// wrapper, never different content: the same children are built either way.
+	{ kidsEl }: { kidsEl?: HTMLElement } = {},
+): void {
 	const host = ctx.host;
 	const head = card.createDiv({ cls: 'pbl-card-head' });
 	renderBadge(host, head, item);
@@ -632,7 +642,7 @@ export function renderCardBody(ctx: RowContext, card: HTMLElement, item: Backlog
 	// One call, three surfaces: board cards, roadmap bucket cards and shelf cards all
 	// come through here. Timeline rows never do — they use the card SHELL with a
 	// bar-grid row layout — which is exactly why they get no disclosure.
-	renderCardChildren(ctx, card, item);
+	renderCardChildren(ctx, kidsEl ?? card, item);
 }
 
 /**

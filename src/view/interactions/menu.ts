@@ -25,7 +25,7 @@ import {
 } from '../../domain/board';
 import { canReorder, indent, moveToEdge, moveWithinSiblings, outdent, outdentTarget, visibleNeighbor } from './structure';
 import { promptCreateItem } from './create';
-import { addShelfSearchItems, addShelfSortItems, addShelfTypeItems } from './shelfMenu';
+import { addShelfLayoutItems, addShelfSearchItems, addShelfSortItems, addShelfTypeItems } from './shelfMenu';
 import { addHorizonItems, canSchedule, carriesDates, promptSchedule, unschedule } from './plan';
 import { addTagItems, tagsColumnVisible } from './tags';
 import { addDependencyItems, dependenciesAvailable } from './dependencies';
@@ -643,6 +643,10 @@ function addShelfSection(host: BacklogViewHost, menu: Menu): void {
 	// same two pickers for the same reason.
 	if (host.shelfCollapsed) return;
 	menu.addSeparator();
+	menu.addItem((mi) => {
+		mi.setTitle(t('menu.shelfLayout')).setIcon('layout-grid');
+		addShelfLayoutItems(host, submenuOf(mi));
+	});
 	menu.addItem((mi) => {
 		mi.setTitle(t('menu.sortUnplaced')).setIcon('arrow-up-down');
 		addShelfSortItems(host, submenuOf(mi));

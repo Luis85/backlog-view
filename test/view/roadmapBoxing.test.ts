@@ -17,7 +17,14 @@ describe('the horizon board boxes that must not size from card content', () => {
 	const ruleBody = (selector: string) => bodyOf(css, selector, 'styles/roadmap.css');
 	/** The bands beside the axis, as their two rules address them. */
 	const SCROLLING_BANDS = '.pbl-roadmap .pbl-shelf,\n.pbl-roadmap .pbl-roadmap-context,\n.pbl-roadmap .pbl-board-advisory';
-	const CAPPED_BANDS = '.pbl-roadmap .pbl-shelf,\n.pbl-roadmap .pbl-roadmap-context';
+	/**
+	 * The two capped bands, one rule each since 2026-08-21: the shelf's cap became a reader's
+	 * own pick and the strip's did not, so they can no longer be one declaration. Both are
+	 * asserted below, and the DEFAULT in the shelf's `var()` fallback is what keeps the two
+	 * agreeing about what an unpicked band takes.
+	 */
+	const CAPPED_SHELF = '.pbl-roadmap .pbl-shelf';
+	const CAPPED_CONTEXT = '.pbl-roadmap .pbl-roadmap-context';
 	/** The horizon axis's own rule over those same three bands. */
 	const HORIZON_BANDS = ['.pbl-shelf', '.pbl-roadmap-context', '.pbl-board-advisory']
 		.map((band) => `.pbl-roadmap-mode:not(.pbl-roadmap-dates) ${band}`)
@@ -62,9 +69,15 @@ describe('the horizon board boxes that must not size from card content', () => {
 	it('caps the two bands that compete with the axis', () => {
 		// A band with no maximum in a frame that owns the pane's height squeezes the buckets
 		// out instead — true of the shelf and the context strip, which draw beside a
-		// populated axis. `bodyOf` matches the selector list EXACTLY, so adding a third band
-		// to this rule fails here rather than passing on a prefix.
-		expect(ruleBody(CAPPED_BANDS)).toContain('max-height: 30%;');
+		// populated axis. `bodyOf` matches the selector list EXACTLY, so adding a band to
+		// either rule fails here rather than passing on a prefix.
+		expect(ruleBody(CAPPED_CONTEXT)).toContain('max-height: 30%;');
+		// The shelf's cap is the reader's own pick, and 30% is what the `var()` falls through
+		// to until the grip at its foot is dragged. Both halves asserted in one needle: a
+		// fallback dropped from the `var()` is a band with no cap at all until a height is
+		// picked, and a custom property renamed here without `shelfResize.ts` is a band whose
+		// grip moves nothing.
+		expect(ruleBody(CAPPED_SHELF)).toContain('max-height: var(--pbl-shelf-h, 30%);');
 	});
 
 	it('caps the advisory nowhere in the file, not merely in the rule we thought of', () => {

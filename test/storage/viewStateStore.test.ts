@@ -38,6 +38,8 @@ const FULL_PREFS: Required<ViewPrefs> = {
 	bucketList: true,
 	shelfExpanded: true,
 	shelfSort: 'modified',
+	shelfList: true,
+	shelfHeight: 320,
 	shelfHiddenTypes: ['Task'],
 	colWidths: { 'note.owner': 200 },
 	// The one pref the VAULT owns — a note path, retained through a note that has gone

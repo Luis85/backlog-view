@@ -1,7 +1,7 @@
 import { ViewState } from './viewState';
 import { ColumnScope, Projection } from './host';
 import { RoadmapAxis } from '../domain/roadmap';
-import { ShelfSort } from '../domain/shelf';
+import { ShelfLayout, ShelfSort } from '../domain/shelf';
 import { ScaleId, scaleFor } from '../domain/timeline';
 
 /**
@@ -169,6 +169,32 @@ export class ViewStateController {
 	setShelfSort(sort: ShelfSort): void {
 		if (sort === this.shelfSort) return;
 		this.state.setShelfSort(sort);
+		this.hooks.renderTreeContent();
+	}
+
+	get shelfLayout(): ShelfLayout {
+		return this.state.shelfLayout();
+	}
+
+	setShelfLayout(layout: ShelfLayout): void {
+		if (layout === this.shelfLayout) return;
+		this.state.setShelfLayout(layout);
+		this.hooks.renderTreeContent();
+	}
+
+	get shelfHeight(): number | null {
+		return this.state.shelfHeightPick();
+	}
+
+	/**
+	 * Content only, like every other shelf pick: the band's cap is a custom property the
+	 * shelf element reads, so nothing in the toolbar depends on it. The grip that asked for
+	 * it is rebuilt by this very call and hands focus to its own replacement, exactly as the
+	 * header's controls do (`interactions/shelfResize.ts`).
+	 */
+	setShelfHeight(height: number | null): void {
+		if (height === this.shelfHeight) return;
+		this.state.setShelfHeight(height);
 		this.hooks.renderTreeContent();
 	}
 
