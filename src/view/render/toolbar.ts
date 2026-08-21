@@ -6,7 +6,7 @@ import { showMenuForClick } from '../interactions/menu';
 import { runInit } from '../interactions/structure';
 import {
 	capturedFocusKey,
-	CLICK_ACTION_LABEL,
+	clickActionLabel,
 	clickActionApplies,
 	clickActionToggle,
 	collapseAll,
@@ -99,13 +99,13 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 	// what fills the set it reads.
 	collapseButton(host, barEl, {
 		icon: 'chevrons-up-down',
-		label: 'Expand all',
+		label: t('toolbar.expandAll'),
 		cls: 'pbl-expand-ctl',
 		mutate: () => expandAll(host),
 	});
 	collapseButton(host, barEl, {
 		icon: 'chevrons-down-up',
-		label: 'Collapse all',
+		label: t('toolbar.collapseAll'),
 		cls: 'pbl-collapse-all-ctl',
 		mutate: () => collapseAll(host),
 	});
@@ -117,7 +117,7 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 	// it is the one control whose use is never urgent, and step 2 is the earliest rung at
 	// which shedding is possible at all, since that is where the `⋯` it sheds into first
 	// renders.
-	const helpBtn = iconButton(barEl, 'help-circle', 'Open the manual', 'help');
+	const helpBtn = iconButton(barEl, 'help-circle', t('toolbar.openManual'), 'help');
 	helpBtn.addClass('pbl-help-btn');
 	helpBtn.addEventListener('click', () => {
 		// Resolved at CLOSE time, not captured. `renderToolbar` empties the bar on any
@@ -136,14 +136,14 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 	// routinely writes hundreds of
 	// notes: it carries the write-control marker so it goes disabled while a batch is
 	// already in flight.
-	const initBtn = iconButton(barEl, 'sparkles', 'Assign missing properties');
+	const initBtn = iconButton(barEl, 'sparkles', t('toolbar.assignMissing'));
 	initBtn.addClass('pbl-write-ctl');
 	initBtn.addEventListener('click', () => {
 		void runInit(host);
 	});
 	// Not a plain write control: it re-enables to the undo slot's state, not to
 	// "idle" — before the first effective batch there is nothing to go back to.
-	const undoBtn = iconButton(barEl, 'undo-2', 'Undo last backlog change');
+	const undoBtn = iconButton(barEl, 'undo-2', t('toolbar.undo'));
 	undoBtn.addClass('pbl-undo-btn');
 	undoBtn.disabled = !host.canUndo();
 	undoBtn.addEventListener('click', () => {
@@ -171,10 +171,10 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 	if (host.groupingIgnored) {
 		const note = barEl.createDiv({ cls: 'pbl-toolbar-note pbl-grouping-note' });
 		setIcon(note.createSpan({ cls: 'pbl-toolbar-note-icon' }), 'info');
-		note.createSpan({ text: 'Grouping ignored' });
+		note.createSpan({ text: t('toolbar.groupingIgnored') });
 		setTooltip(
 			note,
-			"The hierarchy is the tree's grouping and the workflow is the board's — the group by setting has no effect in this view.",
+			t('toolbar.groupingIgnoredTooltip'),
 		);
 	}
 	renderIgnoredNote(barEl, model);
@@ -182,7 +182,7 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 	if (problems.length > 0) {
 		const warn = barEl.createDiv({ cls: 'pbl-config-warning', attr: { 'aria-label': problems.join(' ') } });
 		setIcon(warn.createSpan({ cls: 'pbl-warning-icon' }), 'alert-triangle');
-		warn.createSpan({ text: 'Check view options' });
+		warn.createSpan({ text: t('toolbar.checkViewOptions') });
 		setTooltip(warn, problems.join(' '));
 		// The door into `Help for setting up the view` — deliberately NOT drawn inside
 		// `warn`. `styles/toolbarFit.css`'s last rung shrinks `.pbl-config-warning` and clips
@@ -206,7 +206,7 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 		// `manualLink`'s own root-focus fallback cannot land on it, and a toolbar door
 		// without a real destination of its own has to name one rather than lean on a
 		// default that has nothing to reach.
-		manualLink(barEl, host.app, manualSections(), { sectionId: 'setup', label: 'What to fix', root: barEl }, () =>
+		manualLink(barEl, host.app, manualSections(), { sectionId: 'setup', label: t('toolbar.configHelp'), root: barEl }, () =>
 			focusInBar(barEl, barEl.querySelector<HTMLElement>('.pbl-help-btn')),
 		).setAttribute(KEY_ATTR, 'config-help');
 	}
@@ -282,15 +282,15 @@ function renderNewButton(host: BacklogViewHost, barEl: HTMLElement, model: Backl
 	// for something to focus, and a wrapper div is not it.
 	const newBtn = wrap.createEl('button', {
 		cls: 'clickable-icon pbl-new-btn',
-		attr: { [KEY_ATTR]: 'new', 'aria-label': `New ${newLevel}` },
+		attr: { [KEY_ATTR]: 'new', 'aria-label': t('toolbar.newItem', { type: newLevel }) },
 	});
 	setIcon(newBtn.createSpan({ cls: 'pbl-btn-icon' }), 'plus');
 	// Its own class beside the shared one: this is the label the ladder keeps longest,
 	// and a rung has to be able to name it. See `styles/toolbarFit.css` steps 2 and 6.
-	newBtn.createSpan({ cls: 'pbl-btn-label pbl-new-label', text: `New ${newLevel}` });
+	newBtn.createSpan({ cls: 'pbl-btn-label pbl-new-label', text: t('toolbar.newItem', { type: newLevel }) });
 	newBtn.addEventListener('click', () => promptCreateItem(host, [newLevel], null));
 	if (onDeliverables) return;
-	const pickBtn = iconButton(wrap, 'chevron-down', 'New item of another type');
+	const pickBtn = iconButton(wrap, 'chevron-down', t('toolbar.newOtherType'));
 	pickBtn.addClass('pbl-new-pick');
 	pickBtn.setAttribute('aria-haspopup', 'menu');
 	pickBtn.addEventListener('click', (evt) => {
@@ -306,7 +306,10 @@ function renderNewButton(host: BacklogViewHost, barEl: HTMLElement, model: Backl
 		// re-render behind the menu.
 		for (const type of offerableTypes(host)) {
 			menu.addItem((mi) =>
-				mi.setTitle(`New ${type}`).setIcon('plus').onClick(() => promptCreateItem(host, [type], null)),
+				mi
+					.setTitle(t('toolbar.newItem', { type }))
+					.setIcon('plus')
+					.onClick(() => promptCreateItem(host, [type], null)),
 			);
 		}
 		showMenuForClick(menu, evt);
@@ -355,13 +358,15 @@ function renderCompletedToggle(host: BacklogViewHost, barEl: HTMLElement, model:
 	// requirements board a done Deliverable is not a hidden card, it is not a card at
 	// all, so counting it offered to reveal something pressing the button cannot show.
 	const hidden = countedPopulation(host, model).filter((item) => item.subtreeDone).length;
-	const suffix = hidden > 0 ? ` (${hidden} hidden)` : '';
-	const btn = iconButton(
-		barEl,
-		showing ? 'eye' : 'eye-off',
-		showing ? 'Hide completed items' : `Show completed items${suffix}`,
-		'completed',
-	);
+	// Three whole keys picked between, never a counted suffix appended to one: the count
+	// is a clause inside the sentence, and a locale that leads with it cannot reorder a
+	// fragment the caller has already glued on.
+	const label = showing
+		? t('toolbar.hideCompleted')
+		: hidden > 0
+			? t('toolbar.showCompletedHidden', { count: hidden })
+			: t('toolbar.showCompleted');
+	const btn = iconButton(barEl, showing ? 'eye' : 'eye-off', label, 'completed');
 	btn.addClass('pbl-completed-toggle');
 	btn.toggleClass('is-active', !showing);
 	btn.addEventListener('click', () => host.config.set('showCompleted', !showing));
@@ -389,7 +394,7 @@ function renderCompletedToggle(host: BacklogViewHost, barEl: HTMLElement, model:
 function renderClickActionToggle(host: BacklogViewHost, barEl: HTMLElement): void {
 	if (!clickActionApplies(host)) return;
 	const { folds, icon, flip } = clickActionToggle(host);
-	const btn = iconButton(barEl, icon, CLICK_ACTION_LABEL, 'click-action');
+	const btn = iconButton(barEl, icon, clickActionLabel(), 'click-action');
 	btn.addClass('pbl-click-action-toggle');
 	btn.toggleClass('is-active', folds);
 	btn.setAttribute('aria-pressed', String(folds));
@@ -421,29 +426,33 @@ function renderClickActionToggle(host: BacklogViewHost, barEl: HTMLElement): voi
  * it says. Keyed by projection and PARTIAL — an entry is the exception, so the ordinary
  * picker is what a projection gets by saying nothing.
  *
+ * A FUNCTION rather than the record it reads as: `initLocale()` runs in `onload`, so a
+ * module-level `const` holding a `t()` call would freeze English at import time, before
+ * Obsidian's language has been read. `test/i18n/locale.test.ts` is the guard.
+ *
  * Both entries are the same decision twice: a control that narrowed this screen by
  * matching level indices would hide rows for a reason the user never asked for. On the
  * Deliverables board nothing narrows it at all; in the catalog the levels named are the
  * OTHER ladder's, and a two-rung ladder has no rung called PBI.
  */
-const INERT_FOCUS: Partial<Record<Projection, { label: string; tip: string }>> = {
+const inertFocus = (): Partial<Record<Projection, { label: string; tip: string }>> => ({
 	deliverables: {
-		label: 'Deliverables',
-		tip: 'This board always shows every Deliverable — the focus level has no effect here',
+		label: t('toolbar.focusDeliverablesLabel'),
+		tip: t('toolbar.focusDeliverablesTip', { type: DELIVERABLE_TYPE }),
 	},
 	catalog: {
-		label: 'Tests',
-		tip: 'The focus level names the plan’s own levels, so it has no effect on the test catalog',
+		label: t('toolbar.focusCatalogLabel'),
+		tip: t('toolbar.focusCatalogTip'),
 	},
 	// A third, and the compiler asked for none of them: this is a PARTIAL record, so a
 	// missing row is silent and the symptom is an ordinary focus picker offering settings
 	// that change nothing. The board is scoped by a LINK, and `iterationResults` reads the
 	// whole unfocused tree, so a rung narrows nothing here.
 	iteration: {
-		label: 'Iteration',
-		tip: 'This board shows every item in the chosen iteration — the focus level has no effect here',
+		label: t('toolbar.focusIterationLabel'),
+		tip: t('toolbar.focusIterationTip'),
 	},
-};
+});
 
 function renderFocusPicker(host: BacklogViewHost, barEl: HTMLElement, model: BacklogModel): void {
 	// Working position, not configuration: the view-state store persists it and the view
@@ -456,7 +465,7 @@ function renderFocusPicker(host: BacklogViewHost, barEl: HTMLElement, model: Bac
 	// the same shape: a menu offering choices that would do nothing is worse than no menu.
 	// The focus level is IGNORED in the catalog rather than cleared — its levels are the
 	// plan ladder's, and a focus set for the plan should still be there on the way back.
-	const inert = INERT_FOCUS[host.projection];
+	const inert = inertFocus()[host.projection];
 	if (inert) {
 		const wrap = barEl.createDiv({ cls: 'pbl-focus' });
 		const btn = wrap.createEl('button', { cls: 'clickable-icon pbl-focus-btn', attr: { type: 'button' } });
@@ -477,11 +486,17 @@ function renderFocusPicker(host: BacklogViewHost, barEl: HTMLElement, model: Bac
 	// the text is all that named this control before.
 	const btn = wrap.createEl('button', {
 		cls: 'clickable-icon pbl-focus-btn',
-		attr: { [KEY_ATTR]: 'focus', 'aria-label': `Focus: ${active || 'all types'}`, 'aria-haspopup': 'menu' },
+		attr: {
+			[KEY_ATTR]: 'focus',
+			// Two whole keys, never one frame around a value that is a type name in one
+			// direction and this catalog's own words in the other.
+			'aria-label': active === '' ? t('toolbar.focusAll') : t('toolbar.focusOn', { type: active }),
+			'aria-haspopup': 'menu',
+		},
 	});
 	setIcon(btn.createSpan({ cls: 'pbl-btn-icon' }), 'filter');
-	btn.createSpan({ cls: 'pbl-btn-label', text: active || 'All types' });
-	setTooltip(btn, 'Focus — show one type as the top of the tree');
+	btn.createSpan({ cls: 'pbl-btn-label', text: active || t('toolbar.allTypes') });
+	setTooltip(btn, t('toolbar.focusTooltip'));
 	btn.addEventListener('click', (evt) => {
 		const menu = new Menu();
 		const choice = (level: string, title: string) =>
@@ -491,7 +506,7 @@ function renderFocusPicker(host: BacklogViewHost, barEl: HTMLElement, model: Bac
 					.setChecked(active === level)
 					.onClick(() => setLevel(level)),
 			);
-		choice('', 'All types');
+		choice('', t('toolbar.allTypes'));
 		// Every declared type, read off the vocabulary rather than category by category:
 		// being ACCEPTABLE as a focus (`focusTarget` already reads `ALL_TYPES`) is not the
 		// same as being OFFERABLE, and a name in neither hand-written list was one a saved
@@ -509,10 +524,10 @@ function renderFocusPicker(host: BacklogViewHost, barEl: HTMLElement, model: Bac
 	// without one: nothing narrows that board, so there is nothing to clear.
 	const clear = wrap.createEl('button', {
 		cls: 'pbl-focus-clear clickable-icon',
-		attr: { type: 'button', 'aria-label': 'Show all types', [KEY_ATTR]: 'focus-clear' },
+		attr: { type: 'button', 'aria-label': t('toolbar.showAllTypes'), [KEY_ATTR]: 'focus-clear' },
 	});
 	setIcon(clear, 'x');
-	setTooltip(clear, 'Show all types');
+	setTooltip(clear, t('toolbar.showAllTypes'));
 	clear.addEventListener('click', () => setLevel(''));
 }
 
@@ -525,7 +540,7 @@ function renderFocusPicker(host: BacklogViewHost, barEl: HTMLElement, model: Bac
 function renderModeToggle(host: BacklogViewHost, barEl: HTMLElement): void {
 	const wrap = barEl.createDiv({
 		cls: 'pbl-mode-toggle pbl-btn-group',
-		attr: { role: 'group', 'aria-label': 'Projection' },
+		attr: { role: 'group', 'aria-label': t('toolbar.projection') },
 	});
 	// `word` is the visible name and `label` stays the accessible one, which is why the
 	// two are not the same string: "Tree" alone is not a purpose, and a name that read
@@ -550,13 +565,13 @@ function renderModeToggle(host: BacklogViewHost, barEl: HTMLElement): void {
 		btn.setAttribute('aria-pressed', String(active));
 		btn.addEventListener('click', () => host.setProjection(mode));
 	};
-	position('tree', 'list-tree', 'Show as backlog tree', 'Tree');
-	position('board', 'square-kanban', 'Show as kanban boards', 'Boards');
-	position('roadmap', 'map', 'Show as roadmap', 'Roadmap');
+	position('tree', 'list-tree', t('toolbar.modeTree'), t('toolbar.modeTreeWord'));
+	position('board', 'square-kanban', t('toolbar.modeBoard'), t('toolbar.modeBoardWord'));
+	position('roadmap', 'map', t('toolbar.modeRoadmap'), t('toolbar.modeRoadmapWord'));
 	// No Deliverables position since 2026-08-16, by the user's own call: every board is
 	// the `Boards` button now, and the scope picker beside it says which — `Product`,
 	// `Deliverables`, or an iteration. The projection still exists; only its door moved.
-	position('catalog', 'flask-conical', 'Show as test catalog', 'Tests');
+	position('catalog', 'flask-conical', t('toolbar.modeCatalog'), t('toolbar.modeCatalogWord'));
 }
 
 /**

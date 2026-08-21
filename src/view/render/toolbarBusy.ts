@@ -35,7 +35,7 @@ export function renderBusyIndicator(barEl: HTMLElement, host: BacklogViewHost): 
 	// wins over the default resolve it would drive — but the field is required so every
 	// caller states one rather than a caller-that-overrides being the one place the
 	// question goes unanswered.
-	manualLink(busy, host.app, manualSections(), { sectionId: 'writes', label: 'What is happening', root: barEl }, () =>
+	manualLink(busy, host.app, manualSections(), { sectionId: 'writes', label: t('toolbar.busyHelp'), root: barEl }, () =>
 		focusInBar(barEl, barEl.querySelector<HTMLElement>('.pbl-help-btn')),
 	).setAttribute(KEY_ATTR, 'busy-help');
 }

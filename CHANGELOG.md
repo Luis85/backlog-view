@@ -30,6 +30,14 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ### Changed
 
+- **The whole toolbar takes its words from the message catalog now** — the New button and
+  its type picker, the projection switcher, the focus picker, the board scope picker, the
+  roadmap's axis and zoom pickers, every icon control's tooltip, the `⋯` menu, the item
+  count and its breakdown, the ignored-note and grouping advisories, the configuration
+  warning and the busy indicator. Nothing reads differently in English, and nothing the row
+  shows OF your vault is translated: type names, iteration titles and the type each button
+  offers to create appear exactly as your notes spell them.
+
 - **Every menu takes its words from the message catalog now** — the row and card menu, the
   board column's fold, the shelf's sort, type filter and search, and the Set state, Set
   risk, Set priority, Set assignee, Set iteration, Set horizon, Set type and Edit tags

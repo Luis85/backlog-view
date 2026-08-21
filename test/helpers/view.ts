@@ -130,7 +130,9 @@ export function noOptionalProperties(values: Record<string, unknown> = {}): Reco
 }
 
 export function clickExpandAll(containerEl: HTMLElement): void {
-	const btn = containerEl.querySelector<HTMLElement>('.pbl-collapse-ctl[aria-label="Expand all"]');
+	// By CLASS, never by the label: the label comes from the catalog now, so a suite
+	// driving the toolbar under a fixture catalog would find nothing here.
+	const btn = containerEl.querySelector<HTMLElement>('.pbl-expand-ctl');
 	if (!btn) throw new Error('expand all button not rendered');
 	btn.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 }

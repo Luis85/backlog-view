@@ -242,6 +242,120 @@ export const en = {
 	'toolbar.updating': 'Updating…',
 	'toolbar.updatingCounted': 'Updating',
 	'toolbar.updatingProgress': 'Updating {done} of {total}…',
+	/** The door beside the busy indicator, into the manual's own section on writes. */
+	'toolbar.busyHelp': 'What is happening',
+
+	/**
+	 * `{type}` is the value `type:` frontmatter holds and never a word this file may
+	 * spell — `emptyState.noDeliverablesBody`'s rule, on the one button whose label the
+	 * focus level moves.
+	 */
+	'toolbar.newItem': 'New {type}',
+	'toolbar.newOtherType': 'New item of another type',
+
+	'toolbar.expandAll': 'Expand all',
+	'toolbar.collapseAll': 'Collapse all',
+	'toolbar.openManual': 'Open the manual',
+	'toolbar.assignMissing': 'Assign missing properties',
+	'toolbar.undo': 'Undo last backlog change',
+	'toolbar.overflow': 'More toolbar actions',
+
+	'toolbar.groupingIgnored': 'Grouping ignored',
+	'toolbar.groupingIgnoredTooltip':
+		"The hierarchy is the tree's grouping and the workflow is the board's — the group by setting has no effect in this view.",
+	'toolbar.checkViewOptions': 'Check view options',
+	'toolbar.configHelp': 'What to fix',
+	/**
+	 * A type with a count, for the item-count tooltip's breakdown. Not
+	 * `count.childrenOfType`: that one pluralizes the type name, and this list never does
+	 * — it names each type once as the vault spells it.
+	 */
+	'toolbar.levelCount': '{count} {type}',
+	/** What that breakdown calls a note whose own type is unreadable. */
+	'toolbar.untyped': 'Untyped',
+
+	/**
+	 * The completed toggle, as three whole labels rather than one with a counted suffix:
+	 * the count is a clause inside the sentence, and a locale that puts it first cannot
+	 * reorder a fragment the caller appended.
+	 */
+	'toolbar.hideCompleted': 'Hide completed items',
+	'toolbar.showCompleted': 'Show completed items',
+	'toolbar.showCompletedHidden': 'Show completed items ({count} hidden)',
+	'toolbar.clickAction': 'Clicking a row folds it',
+
+	/**
+	 * The focus picker. Its accessible name is two whole keys picked between rather than
+	 * one frame around a value that is sometimes a type and sometimes the words "all
+	 * types" — `emptyState.noAxisBody`'s shape, for its reason.
+	 */
+	'toolbar.focusAll': 'Focus: all types',
+	'toolbar.focusOn': 'Focus: {type}',
+	'toolbar.allTypes': 'All types',
+	'toolbar.showAllTypes': 'Show all types',
+	'toolbar.focusTooltip': 'Focus — show one type as the top of the tree',
+
+	/**
+	 * The three projections whose focus control is a static label, and the label is the
+	 * PROJECTION's name — the board or the catalog you are looking at, which is the kind
+	 * of thing `emptyState.excludedFocusBody` calls "the Deliverables board" and keeps in
+	 * the sentence. The `type:` values that read alike are never these: the tip beside
+	 * each takes the type as `{type}` where it needs one.
+	 */
+	'toolbar.focusDeliverablesLabel': 'Deliverables',
+	'toolbar.focusDeliverablesTip': 'This board always shows every {type} — the focus level has no effect here',
+	'toolbar.focusCatalogLabel': 'Tests',
+	'toolbar.focusCatalogTip':
+		"The focus level names the plan's own levels, so it has no effect on the test catalog",
+	'toolbar.focusIterationLabel': 'Iteration',
+	'toolbar.focusIterationTip': 'This board shows every item in the chosen iteration — the focus level has no effect here',
+
+	/**
+	 * The projection switcher: an accessible name and the visible word under it, per
+	 * position. **Each word must stay a substring of its own label**, so the visible text
+	 * is inside the accessible name rather than beside it — what speech control needs to
+	 * match what a reader can see. `test/i18n/toolbar.test.ts` asserts that of this
+	 * catalog; a translation that breaks it breaks nothing the compiler can see.
+	 */
+	'toolbar.projection': 'Projection',
+	'toolbar.modeTree': 'Show as backlog tree',
+	'toolbar.modeTreeWord': 'Tree',
+	'toolbar.modeBoard': 'Show as kanban boards',
+	'toolbar.modeBoardWord': 'Boards',
+	'toolbar.modeRoadmap': 'Show as roadmap',
+	'toolbar.modeRoadmapWord': 'Roadmap',
+	'toolbar.modeCatalog': 'Show as test catalog',
+	'toolbar.modeCatalogWord': 'Tests',
+
+	/**
+	 * The three menu buttons in the projection zone and the scope picker beside the
+	 * switcher. Each accessible name is "Purpose: Value" — a frame with the value as a
+	 * parameter, because the value is a different KIND per control: the axis and the zoom
+	 * pass one of the labels below, while the scope passes either a board's name or an
+	 * iteration note's own title, which is vault content.
+	 */
+	'toolbar.axisAria': 'Roadmap axis: {axis}',
+	'toolbar.axisTooltip': 'Roadmap axis',
+	'toolbar.axisDates': 'Timeline',
+	'toolbar.axisHorizons': 'Horizons',
+	'toolbar.axisResources': 'Resources',
+	'toolbar.zoomAria': 'Timeline zoom: {zoom}',
+	'toolbar.zoomTooltip': 'Timeline zoom',
+	'toolbar.zoomWeek': 'Weeks',
+	'toolbar.zoomMonth': 'Months',
+	'toolbar.zoomQuarter': 'Quarters',
+	'toolbar.scopeAria': 'Board scope: {scope}',
+	'toolbar.scopeTooltip': 'Which board the Board position opens',
+	/** Both are board NAMES, the switcher's own rule — never the `type:` value. */
+	'toolbar.scopeProduct': 'Product',
+	'toolbar.scopeDeliverables': 'Deliverables',
+	'toolbar.newIteration': 'New iteration…',
+	'toolbar.editIteration': 'Edit iteration…',
+
+	'toolbar.stateColours': 'State colours',
+	'toolbar.bucketGrid': 'Grid in buckets',
+	'toolbar.compactRows': 'Compact rows',
+	'toolbar.jumpToToday': 'Jump to today',
 
 	/**
 	 * The manual's types paragraph, as ONE key rather than four concatenated template

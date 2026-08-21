@@ -23,14 +23,16 @@ useViewHarness();
  * **This is the half that holds the shapes neither lint rule can see**, which for this
  * slice is most of it:
  *
- *   - The prompt OPTION BAGS. `heading:`, `description:`, `placeholder:` and `cta:` are
- *     named in neither `UI_TEXT_LITERAL` nor `UI_TEXT_PROPERTY`, so a literal at any of
- *     them fails no rule. **One of them is read back here** — the dependency picker's
- *     placeholder — and that is narrower than the shape it stands for: the absence
- *     dialog's two headings and its filed-in description, the iteration dialog's heading,
- *     call to action and date note, and the schedule prompt's pair are all the same
- *     unguarded shape and are held by NOTHING today. Naming them is the point of writing
- *     this down; closing them is a fixture apiece and is owed.
+ *   - The prompt OPTION BAGS — `heading:`, `description:`, `placeholder:` and `cta:`.
+ *     **This paragraph said they were outside both rules, and that stopped being true the
+ *     same day it was written**: `UI_TEXT_PROPERTY` was widened to name them once this file
+ *     showed how much rode on the tests alone. What lint now refuses is a literal SPELLED
+ *     at one of those properties, anywhere in a swept region.
+ *
+ *     What it still cannot tell is whether a key is READ, which is what these tests are
+ *     for: a call site could pass `t('some.other.key')` and render the wrong sentence with
+ *     every rule green. That is a narrower claim than the one it replaces, and it is the
+ *     honest one.
  *   - The two ASSEMBLED sentences. `runInit`'s outcome and the undo report are built from
  *     keyed fragments joined by `list()`, and lint sees a call rather than a sentence.
  *     Keying only the fragments would leave the frame in English and pass every rule.

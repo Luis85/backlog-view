@@ -108,12 +108,21 @@ export function countedPopulation(host: BacklogViewHost, model: BacklogModel): B
 	return projectionPopulation(host.projection, model).results;
 }
 
-/** e.g. "2 Epic · 4 Feature · 9 PBI · 3 Bug" for the item-count tooltip, over whichever population is passed. */
+/**
+ * e.g. "2 Epic · 4 Feature · 9 PBI · 3 Bug" for the item-count tooltip, over whichever
+ * population is passed.
+ *
+ * The ` · ` is a separator between readings and NOT a list joined as grammar, which is
+ * why it stays a literal here while `list()` exists two modules away: this is a row of
+ * labels, not a sentence, and joining it with a conjunction would say "2 Epic, 4 Feature
+ * and 9 PBI" about a tooltip that is counting. Each reading is a key, so a locale that
+ * puts the count after the type can.
+ */
 export function levelBreakdown(items: BacklogItem[]): string {
 	const byLevel = new Map<string, number>();
 	for (const item of items) {
-		const label = displayType(item) || 'Untyped';
+		const label = displayType(item) || t('toolbar.untyped');
 		byLevel.set(label, (byLevel.get(label) ?? 0) + 1);
 	}
-	return [...byLevel].map(([label, n]) => `${n} ${label}`).join(' · ');
+	return [...byLevel].map(([label, n]) => t('toolbar.levelCount', { count: n, type: label })).join(' · ');
 }
