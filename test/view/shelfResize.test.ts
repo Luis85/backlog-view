@@ -232,6 +232,67 @@ describe('the shelf’s resize grip', () => {
 			}
 		});
 
+		it('puts the DRAWN cap back on an uncommitted gesture, not the height it measured', () => {
+			// The origin is a MEASUREMENT now, and `wireResizeGrip` redraws the origin when a
+			// gesture commits nothing — which for the column grips is the stored width and here
+			// is not. Left alone, a tap on a band drawn at 120 under a 600 cap would publish
+			// `--pbl-shelf-h: 120px` while the store still said 600, and no render would come
+			// along to correct it: expanding a card's children redraws that list IN PLACE
+			// (`renderCardChildren`'s own `draw`), so the band would then be unable to grow
+			// toward the cap it still holds. (Codex, PR #183.)
+			const { view, containerEl } = makeRoadmap(horizonVault());
+			view.setShelfHeight(600);
+			const undo = stubDrawnHeight(120);
+			try {
+				view.setShelfLayout('list');
+				const el = grip(containerEl);
+				el.dispatchEvent(pointer('pointerdown', 0));
+				el.dispatchEvent(pointer('pointerup', 0));
+
+				expect(view.shelfHeight).toBe(600);
+				expect(drawn(containerEl)).toBe('600px');
+			} finally {
+				undo();
+			}
+		});
+
+		it('puts it back on a platform cancel too, which commits nothing by design', () => {
+			const { view, containerEl } = makeRoadmap(horizonVault());
+			view.setShelfHeight(600);
+			const undo = stubDrawnHeight(120);
+			try {
+				view.setShelfLayout('list');
+				const el = grip(containerEl);
+				el.dispatchEvent(pointer('pointerdown', 0));
+				el.dispatchEvent(pointer('pointermove', 90));
+				el.dispatchEvent(new PointerEvent('pointercancel', { bubbles: true, pointerId: 1 }));
+
+				expect(view.shelfHeight).toBe(600);
+				expect(drawn(containerEl)).toBe('600px');
+			} finally {
+				undo();
+			}
+		});
+
+		it('publishes nothing back when there was no stored cap to put back', () => {
+			// Absence is the value: with no pick, the stylesheet's own share of the pane is
+			// what the band takes, and a gesture that committed nothing must leave it that way
+			// rather than pinning the measured height as a cap nobody chose.
+			const { view, containerEl } = makeRoadmap(horizonVault());
+			const undo = stubDrawnHeight(120);
+			try {
+				view.setShelfLayout('list');
+				const el = grip(containerEl);
+				el.dispatchEvent(pointer('pointerdown', 0));
+				el.dispatchEvent(pointer('pointerup', 0));
+
+				expect(view.shelfHeight).toBeNull();
+				expect(drawn(containerEl)).toBe('');
+			} finally {
+				undo();
+			}
+		});
+
 		it('leaves a larger cap standing when the gesture changes nothing', () => {
 			// The origin moved; the rule that a no-op commits nothing did not. A tap on a band
 			// drawn shorter than its cap must not quietly rewrite that cap down to the

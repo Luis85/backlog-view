@@ -49,6 +49,19 @@ export function wireResizeGrip(
 		/** An explicit return to the default, which is a commit whatever is on screen. */
 		reset: () => void;
 		/**
+		 * Put the boundary back as the STORE has it, for a gesture that ends without
+		 * committing — a tap, a drag that returns to where it began, a platform cancel.
+		 *
+		 * Only a caller whose `startSize` is a MEASUREMENT needs this, which today is the
+		 * shelf's alone: the two column grips take their origin from the stored width, so
+		 * redrawing that origin already restores exactly what was there and they pass
+		 * nothing. The shelf's band is a `max-height` and draws `min(content, cap)`, so its
+		 * origin is the drawn height and can be far below the cap the store holds —
+		 * redrawing the origin there PUBLISHES a cap nobody committed, and nothing renders
+		 * it away (Codex, PR #183).
+		 */
+		restore?: () => void;
+		/**
 		 * Which axis this boundary moves along: absent or false for a vertical separator
 		 * dragged left and right (both column grips), true for a horizontal one dragged up
 		 * and down (the shelf's foot). It picks the client coordinate the delta is measured
@@ -75,6 +88,10 @@ export function wireResizeGrip(
 	// screen, so pressing Home on a column already at the default still means "the default".
 	const keep = (size: number): void => {
 		if (size !== gesture.startSize) gesture.commit(size);
+		// A gesture that changed nothing has to leave the boundary as it FOUND it, which is
+		// not always the size it started from — see `restore`. Absent, this is a no-op and
+		// the drawn origin stands, which is what the column grips want.
+		else gesture.restore?.();
 	};
 	// The one place the axis is read for the KEYS. `at` below is the same reading for the
 	// pointer, and both are handed the caller's own `sizeAt` — so a grip cannot end up
@@ -135,6 +152,10 @@ export function wireResizeGrip(
 			if (!mine(cancelEvt)) return;
 			end(cancelEvt);
 			show(gesture.startSize);
+			// A cancel commits nothing by definition, so it takes the same restore a no-op
+			// release does — `show` above has just drawn the origin, and for a caller whose
+			// origin is a measurement that is not what was there.
+			gesture.restore?.();
 		};
 		grip.addEventListener('pointermove', onMove);
 		grip.addEventListener('pointerup', onUp);

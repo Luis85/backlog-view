@@ -8,7 +8,7 @@ import { spanText } from './lanes';
 import { dependencyNote } from './timelineArrows';
 import { BacklogViewHost } from '../host';
 import { CardDragController, CardSource } from '../interactions/cardDrag';
-import { renderShelfResize, SHELF_HEIGHT_VAR } from '../interactions/shelfResize';
+import { publishShelfHeight, renderShelfResize } from '../interactions/shelfResize';
 import { canSchedule, unschedulePlan } from '../interactions/plan';
 import { BacklogItem } from '../../domain/model';
 import { placeItem, ShelfCard, statedEnds, unscheduledLabel, withoutEnds } from '../../domain/bars';
@@ -217,7 +217,7 @@ export function renderShelf(
 	// Only once a height has been PICKED. Absent, the stylesheet's own `var()` fallback is
 	// the share of the pane the band has always taken — the store's "a default is written
 	// as nothing at all" rule, kept up here so the two cannot name different defaults.
-	if (host.shelfHeight !== null) shelfEl.setCssProps({ [SHELF_HEIGHT_VAR]: `${host.shelfHeight}px` });
+	publishShelfHeight(shelfEl, host.shelfHeight);
 	const header = shelfEl.createDiv({ cls: 'pbl-shelf-header' });
 	renderShelfControls(host, header, shelfCards, { name: shelf.name, picks: shelf.picks, fold: shelf.fold });
 	// The outcome line is only where a removal has one to say — the horizon axis's

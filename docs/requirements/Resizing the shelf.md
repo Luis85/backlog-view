@@ -79,6 +79,14 @@ about a width.
   another gesture taking over ends the drag with `pointercancel`, and the height it had
   reached is one nobody chose: the band goes back to where the gesture found it and
   nothing is stored.
+- **2d — a gesture that commits nothing, on a band drawn below its cap.** It leaves the
+  STORED cap published, never the height it measured. The two are the same number for the
+  column grips, whose origin is their stored width, and different here for 2c's reason: a
+  tap on a band drawn at 120 under a 600 cap would otherwise publish 120 as a cap nobody
+  committed, and nothing would take it off — expanding a card's children redraws that list
+  in place rather than rebuilding the band, so it would then be unable to grow toward the
+  cap it still holds. With no stored pick the declaration is REMOVED rather than set, which
+  is the same "absence is a value" rule one layer down. (Codex, PR #183.)
 - **4a — the pane is shorter than the stored pick.** The pick is honoured and NOT
   narrowed to a share of the pane, which is where this differs from [[A resizable lead
   column]] deliberately. The axis or the columns are squeezed to their own floor and the
@@ -123,6 +131,8 @@ about a width.
   the document body after the first press.
 - A pointer gesture leaves focus where it was: the grip is never handed a focus the
   reader did not give it.
+- A gesture that commits nothing leaves the band drawn at its STORED cap, or at no
+  declaration at all where there is no pick — never at the height the gesture measured.
 - No grip is drawn on a collapsed or an empty shelf.
 - The iteration board's shelf takes the same stored height — one band, one value.
 - Never written to the `.base`: UI state per saved view per device.
@@ -150,6 +160,14 @@ has not been laid out; an unmeasured one reports 0 and falls through to it, then
 floor. It is one read on one element at the end of one render pass, the same shape as
 `render/roadmap.ts`'s own `treeEl.clientWidth`; what `src/view/CLAUDE.md` bans is a read per
 ROW and a read inside an input handler, and this is neither.
+
+`publishShelfHeight` beside it is the ONE way a height reaches an element — set it, or take
+the declaration away when there is none — and it is what both the render and the gesture's
+own `restore` call, so "a picked height" and "no pick" cannot come to be spelled two ways.
+`restore` is the one thing `wireResizeGrip` gained for this grip beyond its axis: a gesture
+that commits nothing has to leave the boundary as it FOUND it, which is only the same as
+redrawing its origin when that origin came from the store. The column grips pass none and
+are unchanged.
 
 `MIN_SHELF_HEIGHT_PX` / `MAX_SHELF_HEIGHT_PX` and the `shelfHeight` field are in
 `src/storage/viewStateStore.ts`, read back through the same `inRange` `leadWidth` uses;

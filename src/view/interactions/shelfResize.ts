@@ -6,7 +6,10 @@ import { MAX_SHELF_HEIGHT_PX, MIN_SHELF_HEIGHT_PX } from '../../storage/viewStat
 
 /**
  * Where the shelf's own cap is published: one custom property on the shelf element, read
- * by `styles/shelf.css`'s `max-height`.
+ * by the `max-height` in `styles/roadmap.css` and `styles/board.css`. Module-private —
+ * `publishShelfHeight` below is the only way it reaches an element, which is what keeps
+ * "set a height" and "take the declaration away" one decision rather than two spellings
+ * at two call sites.
  *
  * The indirection is what makes a drag show anything, the column grip's reason exactly —
  * nothing re-renders mid-gesture, so the only way the band can follow the pointer is for
@@ -15,7 +18,23 @@ import { MAX_SHELF_HEIGHT_PX, MIN_SHELF_HEIGHT_PX } from '../../storage/viewStat
  * gives it, which is the same "a default is written as nothing at all" rule the store
  * keeps one layer down.
  */
-export const SHELF_HEIGHT_VAR = '--pbl-shelf-h';
+const SHELF_HEIGHT_VAR = '--pbl-shelf-h';
+
+/**
+ * Put a height on the band, or take the declaration away when there is none — the ONE
+ * statement of how a stored pick reaches the DOM, shared by the render that draws the band
+ * and by the gesture that ends without committing.
+ *
+ * Absence is a value here as it is in the store: with no pick the declaration is removed
+ * rather than set to anything, so `styles/shelf.css`'s `var()` falls through to the share
+ * of the pane the band has always taken. `removeProperty` because `setCssProps` only ever
+ * sets — there is no Obsidian helper for taking one off, and an empty string would be a
+ * second spelling of the same intent to keep in step.
+ */
+export function publishShelfHeight(shelfEl: HTMLElement, height: number | null): void {
+	if (height === null) shelfEl.style.removeProperty(SHELF_HEIGHT_VAR);
+	else shelfEl.setCssProps({ [SHELF_HEIGHT_VAR]: `${height}px` });
+}
 
 /**
  * A height clamped to what may be stored, which is also the range the separator
@@ -109,7 +128,13 @@ export function renderShelfResize(host: BacklogViewHost, shelfEl: HTMLElement): 
 		// runs in turns the block axis upside down.
 		sizeAt: (deltaY) => clampShelfHeight(current + deltaY),
 		startSize: current,
-		live: (height) => shelfEl.setCssProps({ [SHELF_HEIGHT_VAR]: `${height}px` }),
+		live: (height) => publishShelfHeight(shelfEl, height),
+		// What a gesture that commits nothing leaves behind. `live` has just drawn the
+		// ORIGIN, which here is the measured height rather than the stored cap, so without
+		// this a tap on a band drawn well below its cap would publish that measurement as a
+		// cap nobody chose — and no render would take it off, since expanding a card's
+		// children redraws that list in place rather than rebuilding the band.
+		restore: () => publishShelfHeight(shelfEl, host.shelfHeight),
 		commit: (height) => commit(host, grip, height),
 		// An explicit hand-back to the stylesheet's own share of the pane, which is what
 		// absence means here — never `MIN`/`MAX` and never the measured number, or Home would
