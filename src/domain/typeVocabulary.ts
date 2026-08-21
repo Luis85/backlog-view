@@ -79,8 +79,10 @@ export const MILESTONE_TYPE = 'Milestone';
  *
  * Named once for the same reason the other two are: a surface that captions a resource
  * names the TYPE, and a type name is data — matched in frontmatter, never translated.
+ * EXPORTED, unlike the other two were at this point, because `isResourceType` needs it:
+ * this is the marker the DATE questions have to be able to tell from the other two.
  */
-const RESOURCE_TYPE = 'Resource';
+export const RESOURCE_TYPE = 'Resource';
 export const MARKER_TYPES = [MILESTONE_TYPE, ITERATION_TYPE, RESOURCE_TYPE];
 /**
  * The one DECLARED name that is not a work-item type at all — a resource's own

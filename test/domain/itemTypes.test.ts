@@ -3,6 +3,7 @@ import { buildModel } from '../../src/domain/model';
 import {
 	childTypeChoices,
 	displayType,
+	drawsAsPoint,
 	EXTRA_TYPE_RANK,
 	focusTarget,
 	folderForType,
@@ -379,6 +380,26 @@ describe('Resource is a declared marker', () => {
 		expect(defaultTypeFolder('Resource')).toBe('docs/resources');
 		expect(defaultTypeFolder('Resource', 'work')).toBe('work/resources');
 		expect(defaultSettings().typeFolders.resource).toBe('docs/resources');
+	});
+
+	it('states no date at either end, so no hand may write one onto a person', () => {
+		// The finding an automated review made on the increment that declared the type:
+		// `MARKER_TYPES` answered the DATE questions as well as the structural ones,
+		// because every marker had been a date until this one. `placementEnds` is what
+		// every scheduling path asks — the row's Schedule and Unschedule, the shelf drop,
+		// the body slide, both grips, and the writer — so the narrowing is stated once,
+		// here, and every one of them inherits it.
+		expect(placementEnds('Resource', false)).toEqual([]);
+		expect(placementEnds('Resource', true)).toEqual([]);
+		expect(placementEnds('resource', false)).toEqual([]);
+		// And it is not a point either: a diamond and a dated timeline's milestone LINE
+		// are both drawn off this answer, and neither means anything about a person.
+		expect(drawsAsPoint('Resource', false)).toBe(false);
+		expect(drawsAsPoint('Resource', true)).toBe(false);
+		// The other two markers are untouched — the narrowing is this type's, not the
+		// category's, and widening it would take the milestone's own diamond with it.
+		expect(placementEnds('Milestone', false)).toEqual(['target']);
+		expect(drawsAsPoint('Milestone', false)).toBe(true);
 	});
 
 	it('is a focus root like the other markers, and no focus LEVEL selects it', () => {

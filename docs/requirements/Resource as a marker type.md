@@ -7,6 +7,8 @@ created: 2026-08-20
 source: user request
 files:
   - src/domain/typeVocabulary.ts
+  - src/domain/itemTypes.ts
+  - src/domain/bars.ts
   - src/view/render/badges.ts
   - src/view/manual/typesSection.ts
 started: 2026-08-21
@@ -70,6 +72,15 @@ epic states why an eighteenth name is being added against an open P1 direction
   contains no work.
 - **4b — the focus level is set.** A `Resource` is not a rung, so no level selects it and no
   level hides it. It is accepted as a focus root exactly as the other markers are.
+- **4c — the note carries something under a date property.** Nothing is drawn. A
+  `Resource` is the first marker that is not a date, and until this note said so the
+  category answered the DATE questions as well as the structural ones: a person carrying
+  the configured target key drew a diamond on the timeline, a milestone LINE across the
+  grid, and a row in the resources axis's own `Milestones` lane — which also minted that
+  lane on a base holding no milestone. It is refused at `placeItem`, the one call every
+  axis makes, and `placementEnds` answers NEITHER end for the type, so no schedule, no
+  drop, no grip and no writer can put a date on a person either. The narrowing is this
+  type's and not the category's: a `Milestone` still reduces to its target point.
 - **5a — the badge palette is full.** It already is. The hue comes from the second axis
   [[A badge when the palette is full]] introduced, not from a colour taken off another type.
 
@@ -91,6 +102,10 @@ epic states why an eighteenth name is being added against an open P1 direction
   sees new type, same rows, same roster, same chips. That is what makes it landable first.
 - A `Resource` contributes to no rollup, no count and no level breakdown, and is selected by
   no focus level.
+- **A `Resource` is never placed on either roadmap axis and never takes a date.** Not an
+  extra criterion this note started with — it is 4c, found by automated review on the
+  increment itself, and it is the one place the marker precedent did NOT carry: every
+  marker before this one was a date.
 
 ## Where it lives
 
@@ -101,10 +116,15 @@ and `ITERATION_TYPE`: nothing outside this file names a resource yet, and an exp
 constant with no reader is what `npm run analyze` is right to call dead. [[Linking an item to
 a resource]] is what gives it one.
 
-**Nothing else in `src/domain/` was touched, and that is the result rather than the plan.**
-Every marker rule is already asked of `isMarkerType` — no rung, no children, no parent, no
-rollup, no dependency, no re-type by position — so `src/domain/itemTypes.ts` needed the
-concept it already had and not a line of code. The same holds for the surfaces:
+**Every STRUCTURAL marker rule is already asked of `isMarkerType`** — no rung, no children,
+no parent, no rollup, no dependency, no re-type by position — so those needed the concept
+`src/domain/itemTypes.ts` already had and not a line of code. **The DATE questions did
+not**, and that is 4c: `isResourceType` joins the predicates there for the same reason each
+of the others is its own, and `drawsAsPoint` and `placementEnds` each except this one type —
+the first so nothing draws a person at a point, the second so no gesture and no writer puts
+a date on one. `src/domain/bars.ts` asks the second of those at `placeItem`, which is the
+one call both axes make: a guard beside the dated axis alone would still have drawn a person
+in the resources axis's own marker lane. The surfaces needed nothing:
 `src/domain/settings.ts` and `src/domain/viewOptions.ts` generate the folder option per type
 from `ALL_TYPES`, and `src/domain/backlogReadme.ts` and `src/view/manual/typesSection.ts`
 document the vocabulary rather than a list beside it. `setupSection.ts`, which this note

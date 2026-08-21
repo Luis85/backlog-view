@@ -41,6 +41,28 @@ describe('placeItem', () => {
 		expect(left.bar.span.start).toEqual({ year: 2026, month: 8, day: 10 });
 	});
 
+	it('shelves a Resource whatever its note says, because a person is not a date', () => {
+		// Stated from the RULE rather than from the guard: the note carries both date
+		// keys and the type is the only thing refusing them, so the axis has to say
+		// nothing about it — no bar, no diamond, and therefore no milestone line, since
+		// that loop runs over bars. Asked at `placeItem` because that is the one call
+		// every axis makes; a check beside the dated axis alone left a person drawn in
+		// the resources axis's own marker lane.
+		const vault = new FakeVault();
+		vault.addFile('Dana.md', { frontmatter: { type: 'Resource', start: '2026-08-01', target: '2026-08-31' } });
+		const { item } = itemFor(vault, 'Dana.md');
+
+		const placed = placeItem(item, statedEnds(item), false);
+		expect(placed.kind).toBe('shelf');
+		// And the same with the target alone, which is the shape that drew a diamond.
+		const targetOnly = placeItem(item, withoutEnds(statedEnds(item), ['start']), false);
+		expect(targetOnly.kind).toBe('shelf');
+		// It shelves as an item this axis has nothing to say about, not as a refusal:
+		// there is no unreadable or reversed date here to report.
+		if (placed.kind !== 'shelf') throw new Error('unreachable');
+		expect(placed.reason).toBeNull();
+	});
+
 	it('shelves a parent whose whole subtree is dateless', () => {
 		const vault = new FakeVault();
 		vault.addFile('Parent.md', { frontmatter: { type: 'Feature', order: 10, start: '2026-08-01' } });

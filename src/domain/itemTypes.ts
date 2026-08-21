@@ -8,6 +8,7 @@ import {
 	ITERATION_TYPE,
 	LEVELS,
 	MARKER_TYPES,
+	RESOURCE_TYPE,
 	TEST_LEVELS,
 } from './typeVocabulary';
 
@@ -209,15 +210,38 @@ export function isIterationType(typeName: string | null): boolean {
 }
 
 /**
+ * True when `typeName` is the one marker that states no DATE (case-insensitive). Its own
+ * predicate for the reason every predicate here has one — the two questions it separates
+ * are opposite: `isMarkerType` says a resource occupies no rung, holds nothing and hangs
+ * from nothing, which stays true and is what the type is FOR; this says the dated axis has
+ * nothing to draw it from and no hand may write a date onto it.
+ *
+ * Module-local: its two readers are the two functions below, and an export with no
+ * consumer outside this file is what `npm run analyze` is right to call dead. Both of
+ * those ARE exported, which is what every caller asks instead.
+ */
+function isResourceType(typeName: string | null): boolean {
+	return typeName !== null && typeName.toLowerCase() === RESOURCE_TYPE.toLowerCase();
+}
+
+/**
  * True when this type is DRAWN at one date rather than across two, and holdable at
  * neither end. A milestone is a point because a milestone IS a point; an iteration has
  * two ends and the reader decides which reading they want (`iterationBars`). Its own
  * predicate rather than a widened `isMarkerType`, for the reason recorded at
  * `isExtraType`: widening a predicate makes it mean two things at every call site.
  * `isMarkerType` keeps the structural question — no rung, no children, no prerequisites.
+ *
+ * **A `Resource` is the marker this predicate has to except, and the reason the two questions
+ * finally came apart.** Every marker used to be a date, so "no rung, no children, no
+ * parent" and "drawn at one date" answered together; a person is the first marker that
+ * states no date at all. Left as a marker alone it drew a diamond and a dated timeline's
+ * milestone LINE from whatever the note happened to carry under the target key, and sat
+ * in the resources axis's own `Milestones` lane — which is what an automated review
+ * caught on the increment that declared the type.
  */
 export function drawsAsPoint(typeName: string | null, iterationBars: boolean): boolean {
-	if (!isMarkerType(typeName)) return false;
+	if (!isMarkerType(typeName) || isResourceType(typeName)) return false;
 	return isIterationType(typeName) ? !iterationBars : true;
 }
 
@@ -342,5 +366,9 @@ const BOTH_ENDS: PlacementEnd[] = ['start', 'target'];
  * this parameter exists to make impossible to ignore.
  */
 export function placementEnds(typeName: string | null, iterationBars: boolean): PlacementEnd[] {
+	// NEITHER end, for the one type that states no date: a person is not scheduled, so
+	// there is no date on a resource note any hand may write, move or delete. Asked first,
+	// because `drawsAsPoint` is already false for it and would otherwise answer *both*.
+	if (isResourceType(typeName)) return [];
 	return drawsAsPoint(typeName, iterationBars) ? ['target'] : [...BOTH_ENDS];
 }

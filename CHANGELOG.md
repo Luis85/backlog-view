@@ -17,8 +17,10 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   badge, its own creation folder (`resources` under your home folder, changeable per view)
   and a place in the New menu and in Set type. Like `Milestone` and `Iteration` it is a
   marker: it holds nothing, hangs from nothing, and counts for nothing in any progress bar
-  or count. Nothing about `assignee` changes yet — it is still the text you type, and the
-  roadmap's rows still come from it.
+  or count, and — unlike the two markers before it — on no date: a `Resource` never draws
+  on the timeline and no schedule, drop or grip will write a date onto a person. Nothing
+  about `assignee` changes yet — it is still the text you type, and the roadmap's rows
+  still come from it.
 
 - **The roadmap's shelf switches between cards and a compact list.** A third picker in the
   shelf's own header, beside the sort and the type filter, and a `Shelf layout` submenu in
