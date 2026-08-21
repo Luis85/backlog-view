@@ -81,6 +81,24 @@ describe('context menu', () => {
 		expect(vault.fm('Epic A.md')['type']).toBe('Task');
 	});
 
+	it('writes the type and nothing else, even for a marker on a nested row', async () => {
+		// The INVERSE of "a move never writes a type", and the half that had no check: a
+		// type write never moves the note. Asked with a MARKER, which is the case an
+		// automated reviewer raised on the increment declaring `Resource` — a marker hangs
+		// from nothing, so surely picking one re-roots the row? No: that is what is
+		// OFFERED, never what is refused or corrected behind the user's back, and joining
+		// the two rules is what the deleted re-typing cascade did.
+		const vault = fixture();
+		const { containerEl } = makeView(vault);
+
+		rowByTitle(containerEl, 'Feature B1').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+		Menu.lastShown?.item('Set type')?.submenu?.item('Resource')?.click();
+		await flush();
+
+		expect(vault.fm('Feature B1.md')['type']).toBe('Resource');
+		expect(vault.fm('Feature B1.md')['parent']).toBe('[[Epic B]]');
+	});
+
 	it('indents under the previous sibling and moves to the bottom', async () => {
 		const vault = fixture();
 		const { containerEl } = makeView(vault);

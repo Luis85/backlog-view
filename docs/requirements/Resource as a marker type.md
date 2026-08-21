@@ -62,9 +62,20 @@ epic states why an eighteenth name is being added against an open P1 direction
 
 **Extensions**
 
-- **2a — the user drops a `Resource` onto an `Epic`, a `Feature` or a `PBI`.** Refused, the
-  same way a `Milestone` is: a marker hangs from nothing, so there is no legal target. The
-  refusal is the existing one and needs no new rule.
+- **2a — the user drops a `Resource` onto an `Epic`, a `Feature` or a `PBI`.** It lands,
+  exactly as a `Milestone` dropped there lands, and the note is left nested. **This
+  extension said "refused" and that was wrong** — no marker is refused a drop, because
+  nothing here is: *the rules decide what is OFFERED, never what is refused*
+  (`src/domain/CLAUDE.md`), and the in-app manual says so to the user in as many words about
+  a `Milestone` — *nothing stops a drag from nesting one under an existing row, or Set type
+  from turning any row into one*. What "hangs from nothing" buys is the OFFER: no `+` offers
+  to create one as a child (`childTypeChoices`), and the same is true of `Set type` on a
+  nested row, which writes the type and keeps the parent because **a move never writes a
+  type and a type write never moves the note** — the two are separate rules and joining them
+  is what the deleted re-typing cascade did. A person nested under a Feature is a legal note
+  in an odd place, put there deliberately, and re-rooting it behind the user's back would be
+  a write nobody asked for. An automated reviewer read the refusal claim as a promise the
+  code owes; it was this note that was wrong, and no code changed.
 - **2b — the user opens a `Resource` row's own creator.** It offers nothing. A marker holds no
   children, and `childTypeChoices` already answers that for the two markers that exist.
 - **4a — a `Resource` sits in a subtree something is rolling up.** It contributes nothing —
