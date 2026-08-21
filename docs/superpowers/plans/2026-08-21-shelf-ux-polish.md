@@ -714,6 +714,79 @@ import { renderShelf, ShelfRemoval } from './shelf';
 import { syncShelfTabStops } from './shelfControls';
 ```
 
+- [ ] **Step 4b: Send focus to the control, not the empty pane**
+
+`syncShelfTabStops` now promotes the header's controls to real tab stops when the board's pane
+holds no rendered card. `refocus` in the same file has to agree with it and does not: it reads
+
+```ts
+	const ownsFocus = selector === '.pbl-shelf-disclosure' || snapshot?.cards.length === 0;
+```
+
+where `snapshot` is `host.roadmap`, which is `null` on a board — so `undefined === 0` is false
+and every pick sends focus to the empty `.pbl-tree` instead of to the replacement control. A
+keyboard reader who narrows the band to nothing then cannot get back to the control that did
+it, which is the exact trap the tab-stop lift exists to prevent, reintroduced one function
+later. Escape out of the type filter's reopening menu lands there too. (Codex, PR #187.)
+
+**The comment above `refocus` is part of the defect and must be rewritten, not left.** It
+currently says "the pane is a composite whenever it draws columns — which it always does — so
+the second term below can only ever be the roadmap's question." That is the same false premise
+this plan was corrected for twice, already shipped in the code beside the line it governs.
+
+`ActiveShelf` (Task 2) gains a fourth member and `BoardSnapshot` gains the count it needs:
+
+```ts
+	/**
+	 * Whether the pane this band sits in drew a card — the question `syncShelfTabStops` is
+	 * handed at render time, asked again here of the published snapshot because focus is
+	 * decided after the rebuild. With no card there is no composite to own the arrows and no
+	 * card menu to reach these controls from, so the control that was pressed is the only way
+	 * back and focus belongs on its replacement.
+	 */
+	paneHasCards: boolean;
+```
+
+```ts
+	/** How many shelf cards were DRAWN — narrowing applied, folds applied. See `shelf`. */
+	shelfDrawn?: number;
+```
+
+`renderIterationBoard` sets `shelfDrawn: shelf.drawn.length` beside `shelf`. In `activeShelf`,
+the roadmap branch answers `roadmap.cards.length > 0` and the board branch
+`board.board.columns.some((col) => col.cards.length > 0) || (board.shelfDrawn ?? 0) > 0` — the
+same two terms `renderIterationBoard` passes to `syncShelfTabStops`, asked of the snapshot
+because that is what exists by the time focus is decided. Say that in a comment at both
+sites: they are one question at two moments, not two questions.
+
+Then `refocus` reads:
+
+```ts
+	const surface = activeShelf(host);
+	if (!surface.el) return;
+	const ownsFocus = selector === '.pbl-shelf-disclosure' || !surface.paneHasCards;
+	const target = ownsFocus ? surface.el.querySelector<HTMLElement>(selector) : surface.el.closest<HTMLElement>('.pbl-tree');
+```
+
+Add a test to `test/view/iterationShelf.test.ts`, in the `its picks` block:
+
+```ts
+		it('puts focus on the control’s replacement when the pane holds no card', () => {
+			// The other half of the tab-stop lift. Promoting the controls and then sending focus
+			// to the empty pane strands the reader exactly as leaving them at -1 would.
+			const { view, containerEl } = onSprint(sprintVault());
+			view.setShelfSearch('nothing matches this');
+			const shelf = shelfOf(containerEl);
+			const filter = shelf?.querySelector<HTMLElement>('.pbl-shelf-filter');
+			filter?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+			expect(containerEl.ownerDocument.activeElement).toBe(
+				shelfOf(containerEl)?.querySelector('.pbl-shelf-filter'),
+			);
+		});
+```
+
+Watch it fail with the old `snapshot?.cards.length === 0` restored.
+
 - [ ] **Step 5: Serve the board from the card menu's shelf section**
 
 In `src/view/interactions/menu.ts`, replace the body of `addShelfSection` up to the first
