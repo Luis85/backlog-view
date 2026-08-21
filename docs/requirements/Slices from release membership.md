@@ -19,7 +19,7 @@ assignee: ""
 **As** someone deciding what ships, **I want** the map's rows to be the releases, **so that**
 the picture I show and the scope I committed to are the same fact.
 
-The rows come from the release-membership property [[Release Planning]] already specifies, so
+The rows come from the release-membership property [[Release Management]] already specifies, so
 this use case stores nothing new. What it owns is the row *order* and the rule that the map
 reads that property without ever becoming a second place it is decided.
 
