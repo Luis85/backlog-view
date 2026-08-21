@@ -7,6 +7,7 @@ created: 2026-08-20
 source: user request
 files:
   - src/domain/typeVocabulary.ts
+  - src/view/interactions/keyboard.ts
   - src/domain/writePlan.ts
   - src/view/render/shelf.ts
   - src/domain/backlogReadme.ts
@@ -100,6 +101,14 @@ epic states why an eighteenth name is being added against an open P1 direction
   axis makes, and `placementEnds` answers NEITHER end for the type, so no schedule, no
   drop, no grip and no writer can put a date on a person either. The narrowing is this
   type's and not the category's: a `Milestone` still reduces to its target point.
+- **4g — Alt+Up/Down on a `Resource` card, on the resources axis.** It writes nothing. The
+  pointer path already refused a marker's ROW write — `deriveLanes` draws every marker in
+  the milestones' row whatever its assignee says, so a positional gesture writing one
+  changes the note and moves nothing the reader can see — and the keyboard did not, which
+  is the register's own *one move, three inputs* rule broken between two of them. `Set
+  assignee` still writes one: a note may record who owns a date. What may not happen is a
+  POSITIONAL gesture writing a value this axis does not read. `Milestone` had the same
+  hole first and had no test.
 - **4f — ✨ Assign missing properties runs over a `Resource`.** It creates neither date
   property. `missingKeyStubs` already carves out two fields on the rule *do not create a
   property that means nothing on the note it lands on* (a prerequisite list, an iteration's

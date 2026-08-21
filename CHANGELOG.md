@@ -47,6 +47,12 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ### Fixed
 
+- **Alt+Up/Down on a milestone's card no longer writes an assignee nothing shows.** The
+  resources axis draws every marker in its own Milestones row whatever the note says, so
+  the keyboard ladder was changing the note, leaving the card exactly where it was, and
+  spending the undo on it. Dragging one already knew this; the keyboard now agrees. Set
+  assignee still writes one — a note may record who owns a date.
+
 - **The shelf's own title no longer moves when the band is opened or closed.** Opening the
   shelf adds its search box, and that box was 11px taller than everything else in the
   header — Obsidian styles `input[type='search']` itself and outranked the height this
