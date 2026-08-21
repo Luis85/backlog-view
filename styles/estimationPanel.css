@@ -53,7 +53,11 @@
 .pbl-est-header .pbl-est-title {
 	flex: 0 0 auto;
 	font-size: var(--font-ui-medium);
-	font-weight: var(--font-semibold);
+	/* DESIGN.md's Title step, whose other wearer (`.pbl-empty-title`) already renders 500 —
+	   measured at 600 here on 2026-08-21, one declared step wearing two weights. 500 under a
+	   20px/600 Answer is also what the Answer entry's own argument asks for: the number is what
+	   the panel exists to state, and a title at the same weight competes with it. */
+	font-weight: var(--font-medium);
 	color: var(--text-normal);
 	white-space: normal;
 }

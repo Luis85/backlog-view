@@ -86,6 +86,15 @@ describe('the panel header owns its own type', () => {
 		expect(ruleAt('.pbl-est-header', 'background-color: var(--background-secondary);')).toBeGreaterThan(-1);
 	});
 
+	it('gives the panel title the Title step WEIGHT, not the Answer beside it', () => {
+		// Measured 15px/600 against a DESIGN.md Title entry declaring `--font-medium`, while
+		// `.pbl-empty-title` — the entry's other wearer — renders 500. One declared step, two
+		// weights on screen; `ruleAt` cannot read a computed weight, so what it reads is the
+		// declaration, and the absence beside it is what stops the old one being left in place.
+		expect(ruleAt('.pbl-est-header .pbl-est-title', 'font-weight: var(--font-medium);')).toBeGreaterThan(-1);
+		expect(ruleAt('.pbl-est-header .pbl-est-title', 'font-weight: var(--font-semibold);')).toBe(-1);
+	});
+
 	it('undoes the clear control transition beside it, because motion.css loads too early', () => {
 		// `index.css` imports `motion.css` at position 10 and `estimationPanel.css` at 32. A
 		// media query adds NO specificity, so a `transition` declared here beats motion.css's
