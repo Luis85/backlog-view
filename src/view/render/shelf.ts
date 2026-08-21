@@ -62,7 +62,7 @@ export function shelfRemoval(host: BacklogViewHost, axis: RoadmapAxis): ShelfRem
 	if (axis === 'horizons') {
 		return {
 			plan: (source) => void host.performHorizonMove(source.item, null),
-			tooltip: 'Results this axis cannot place — dropping a card here removes its horizon',
+			tooltip: t('shelf.removeHorizon'),
 			// A shelf card dropped back on the shelf is NOT refused here, unlike the
 			// dated axis: a horizon-shelved card can still carry an unreadable value
 			// worth clearing (`computeHorizonWrites` plans that write), and refusing the
@@ -79,7 +79,7 @@ export function shelfRemoval(host: BacklogViewHost, axis: RoadmapAxis): ShelfRem
 			// means the ASSIGNEE. A bar's dates are untouched — a row is who, and where the
 			// work sits on the calendar is not a fact this drop was asked about.
 			plan: (source) => void host.performResourceMove(source.item, null),
-			tooltip: 'Results this axis cannot place — dropping a card here removes its assignee',
+			tooltip: t('shelf.removeAssignee'),
 			// Everything but a GRIP. The horizon axis's rule and its reason for the shelf
 			// card: one already DRAWN here can still carry a name — assigned, with no date to
 			// sit beside — so refusing a re-drop would withhold exactly the cleanup its
@@ -105,7 +105,7 @@ export function shelfRemoval(host: BacklogViewHost, axis: RoadmapAxis): ShelfRem
 		// `performScheduleMove`'s own comment on why neither may be recomputed here.
 		plan: (source) =>
 			void host.performScheduleMove(source.item, unschedulePlan(source.item, host.settings, source.ends), undefined, source.ends),
-		tooltip: 'Results this axis cannot place — dropping a bar here removes its dates',
+		tooltip: t('shelf.removeDates'),
 		// The bar BODY alone: a grip released here is a resize, not an unschedule, and
 		// a shelf card's own hold is null — both refused by the same test. Refused
 		// rather than ignored, so the strip never highlights for a drag it would not
@@ -133,7 +133,7 @@ export function shelfRemoval(host: BacklogViewHost, axis: RoadmapAxis): ShelfRem
 function removalOutcome(item: BacklogItem, settings: BacklogSettings): string {
 	const ends = placementEnds(item.typeName, settings.iterationBars);
 	const left = placeItem(item, withoutEnds(statedEnds(item), ends), settings.iterationBars);
-	return left.kind === 'shelf' ? unscheduledLabel() : `Keeps ${spanText(left.bar)}`;
+	return left.kind === 'shelf' ? unscheduledLabel() : t('shelf.removalKeeps', { span: spanText(left.bar) });
 }
 
 /**
@@ -328,11 +328,11 @@ export function renderContextStrip(
 	context: BacklogItem[],
 ): { cards: BacklogItem[]; el: HTMLElement | null } {
 	if (context.length === 0) return { cards: [], el: null };
-	const stripEl = frameEl.createDiv({ cls: 'pbl-roadmap-context', attr: { role: 'group', 'aria-label': 'Context' } });
+	const stripEl = frameEl.createDiv({ cls: 'pbl-roadmap-context', attr: { role: 'group', 'aria-label': t('shelf.context') } });
 	const header = stripEl.createDiv({ cls: 'pbl-shelf-header' });
 	drawIcon(header.createSpan({ cls: 'pbl-shelf-icon' }), 'corner-left-down');
-	header.createSpan({ cls: 'pbl-shelf-name', text: 'Context' });
-	setTooltip(header, "Not in this base's filter — shown for the hierarchy, never counted");
+	header.createSpan({ cls: 'pbl-shelf-name', text: t('shelf.context') });
+	setTooltip(header, t('shelf.contextTooltip'));
 	const cardsEl = stripEl.createDiv({ cls: 'pbl-shelf-cards' });
 	for (const item of context) {
 		const card = createCard(ctx, cardsEl, item);

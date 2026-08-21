@@ -55,7 +55,6 @@ export function renderIterationBoard(
 		// The BUCKET, never the column's state: `Ready` and `New` can both read as Open,
 		// and a move planned from the state would rewrite one as the other.
 		move: (item, col) => void (col.bucket && host.performIterationBoardMove(item, col.bucket)),
-		stateOptionLabel: 'Workflow states (in order)',
 		drawEmpty: (_h, aside) => renderEmptyIterationState(aside, iteration?.title ?? null),
 	});
 }

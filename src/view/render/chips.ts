@@ -41,7 +41,7 @@ import { formatCivil } from '../../domain/timeline';
  * KIND of thing it is.
  */
 function chipLabel(label: string, value: string | null): string {
-	return value === null ? `Set ${label}` : `Change ${label} (currently ${value})`;
+	return value === null ? t('chip.set', { label }) : t('chip.change', { label, value });
 }
 
 
@@ -74,7 +74,7 @@ export function renderStateChip(host: BacklogViewHost, col: HTMLElement, item: B
 		if (value === null) return false;
 		const chip = col.createDiv({ cls: `${cls} pbl-state-static` });
 		fillStateChip(chip, done, value);
-		setTooltip(chip, "Not in this base's filter — state can't be changed here");
+		setTooltip(chip, t('chip.stateStatic'));
 		return true;
 	}
 
@@ -90,14 +90,14 @@ export function renderStateChip(host: BacklogViewHost, col: HTMLElement, item: B
 		},
 	});
 	fillStateChip(chip, done, value);
-	setTooltip(chip, 'Change state');
+	setTooltip(chip, t('chip.stateChange'));
 	return true;
 }
 
 function fillStateChip(chip: HTMLElement, done: boolean, value: string | null): void {
 	const icon = done ? 'circle-check' : value !== null ? 'circle' : 'circle-dashed';
 	drawIcon(chip.createSpan({ cls: 'pbl-state-icon' }), icon);
-	chip.createSpan({ cls: 'pbl-state-text', text: value ?? 'State' });
+	chip.createSpan({ cls: 'pbl-state-text', text: value ?? t('chip.statePlaceholder') });
 }
 
 /**
@@ -128,7 +128,7 @@ export function renderHorizonChip(host: BacklogViewHost, col: HTMLElement, item:
 		if (unplaced) return false;
 		const chip = col.createDiv({ cls: `${cls} pbl-state-static` });
 		fillHorizonChip(chip, value);
-		setTooltip(chip, "Not in this base's filter — horizon can't be changed here");
+		setTooltip(chip, t('chip.horizonStatic'));
 		return true;
 	}
 
@@ -143,7 +143,7 @@ export function renderHorizonChip(host: BacklogViewHost, col: HTMLElement, item:
 		},
 	});
 	fillHorizonChip(chip, value);
-	setTooltip(chip, reason ?? 'Change horizon');
+	setTooltip(chip, reason ?? t('chip.horizonChange'));
 	return true;
 }
 
@@ -161,8 +161,9 @@ export const LABEL_CHIPS: Record<'risk' | 'priority' | 'assignee', LabelChip> = 
 		unsetCls: 'pbl-risk-unset',
 		icon: 'shield-alert',
 		unsetIcon: 'shield',
-		placeholder: 'Risk',
-		noun: 'risk',
+		placeholder: () => t('chip.riskPlaceholder'),
+		staticTip: () => t('chip.riskStatic'),
+		changeTip: () => t('chip.riskChange'),
 		showMenu: showRiskMenu,
 	},
 	priority: {
@@ -171,8 +172,9 @@ export const LABEL_CHIPS: Record<'risk' | 'priority' | 'assignee', LabelChip> = 
 		unsetCls: 'pbl-priority-unset',
 		icon: 'flag',
 		unsetIcon: 'flag-off',
-		placeholder: 'Priority',
-		noun: 'priority',
+		placeholder: () => t('chip.priorityPlaceholder'),
+		staticTip: () => t('chip.priorityStatic'),
+		changeTip: () => t('chip.priorityChange'),
 		showMenu: showPriorityMenu,
 	},
 	assignee: {
@@ -181,8 +183,9 @@ export const LABEL_CHIPS: Record<'risk' | 'priority' | 'assignee', LabelChip> = 
 		unsetCls: 'pbl-assignee-unset',
 		icon: 'user',
 		unsetIcon: 'user-plus',
-		placeholder: 'Assignee',
-		noun: 'assignee',
+		placeholder: () => t('chip.assigneePlaceholder'),
+		staticTip: () => t('chip.assigneeStatic'),
+		changeTip: () => t('chip.assigneeChange'),
 		showMenu: showAssigneeMenu,
 	},
 };
@@ -194,9 +197,10 @@ interface LabelChip {
 	icon: string;
 	unsetIcon: string;
 	/** What an unset chip says — the property, not a value, because there is none. */
-	placeholder: string;
-	/** The property's name in a sentence, for the tooltips. */
-	noun: string;
+	placeholder: () => string;
+	/** This property's two tooltips, whole: what a context row says, and what a result offers. */
+	staticTip: () => string;
+	changeTip: () => string;
 	showMenu: (host: BacklogViewHost, evt: MouseEvent, item: BacklogItem) => void;
 }
 
@@ -218,7 +222,7 @@ export function renderLabelChip(host: BacklogViewHost, col: HTMLElement, item: B
 		if (value === null) return false;
 		const chip = col.createDiv({ cls: `${cls} pbl-state-static` });
 		fillLabelChip(chip, value, spec);
-		setTooltip(chip, `Not in this base's filter — ${spec.noun} can't be changed here`);
+		setTooltip(chip, spec.staticTip());
 		return true;
 	}
 
@@ -233,7 +237,7 @@ export function renderLabelChip(host: BacklogViewHost, col: HTMLElement, item: B
 		},
 	});
 	fillLabelChip(chip, value, spec);
-	setTooltip(chip, `Change ${spec.noun}`);
+	setTooltip(chip, spec.changeTip());
 	return true;
 }
 
@@ -244,7 +248,7 @@ export function renderLabelChip(host: BacklogViewHost, col: HTMLElement, item: B
  */
 function fillLabelChip(chip: HTMLElement, value: string | null, spec: LabelChip): void {
 	drawIcon(chip.createSpan({ cls: 'pbl-state-icon' }), value === null ? spec.unsetIcon : spec.icon);
-	chip.createSpan({ cls: 'pbl-state-text', text: value ?? spec.placeholder });
+	chip.createSpan({ cls: 'pbl-state-text', text: value ?? spec.placeholder() });
 }
 
 /**
@@ -275,16 +279,30 @@ function fillHorizonChip(chip: HTMLElement, value: string | null): void {
  * name agree in every configuration that reaches them.
  */
 const DATE_CHIPS: Record<'start' | 'target', DateChip> = {
-	start: { end: 'start', readingOf: (item) => item.plannedStart, noun: 'start date' },
-	target: { end: 'target', readingOf: (item) => item.plannedTarget, noun: 'target date' },
+	start: {
+		end: 'start',
+		readingOf: (item) => item.plannedStart,
+		staticTip: () => t('chip.startStatic'),
+		changeTip: () => t('chip.startChange'),
+		unreadable: () => t('chip.startUnreadable'),
+	},
+	target: {
+		end: 'target',
+		readingOf: (item) => item.plannedTarget,
+		staticTip: () => t('chip.targetStatic'),
+		changeTip: () => t('chip.targetChange'),
+		unreadable: () => t('chip.targetUnreadable'),
+	},
 };
 
 interface DateChip {
 	/** Which end this chip writes — the one the prompt is narrowed to, and the one the type must use. */
 	end: PlacementEnd;
 	readingOf: (item: BacklogItem) => FieldReading<CivilDate>;
-	/** The end's name in a sentence, for the tooltips. */
-	noun: string;
+	/** This end's three tooltips, whole: the context row's, the result's, and the refusal. */
+	staticTip: () => string;
+	changeTip: () => string;
+	unreadable: () => string;
 }
 
 /**
@@ -316,14 +334,14 @@ export function renderDateChip(host: BacklogViewHost, col: HTMLElement, item: Ba
 	// and differ by tooltip, exactly as they do on the horizon chip.
 	const reading = spec.readingOf(item);
 	const value = reading.value === null ? null : formatCivil(reading.value);
-	const reason = reading.invalid ? `Unreadable ${spec.noun}` : null;
+	const reason = reading.invalid ? spec.unreadable() : null;
 	const cls = 'pbl-date-chip' + (value === null ? ' pbl-date-unset' : '');
 
 	if (item.outsideFilter) {
 		if (value === null) return false;
 		const chip = col.createDiv({ cls: `${cls} pbl-state-static` });
 		fillDateChip(chip, value, label);
-		setTooltip(chip, `Not in this base's filter — ${spec.noun} can't be changed here`);
+		setTooltip(chip, spec.staticTip());
 		return true;
 	}
 
@@ -336,7 +354,7 @@ export function renderDateChip(host: BacklogViewHost, col: HTMLElement, item: Ba
 		},
 	});
 	fillDateChip(chip, value, label);
-	setTooltip(chip, reason ?? `Change ${spec.noun}`);
+	setTooltip(chip, reason ?? spec.changeTip());
 	// Which end this chip writes, read back by the delegated handler
 	// (`wireChipEvents` in `render/rows.ts`) — a modal takes no event to carry it, so
 	// it travels on the element instead. Not inferred from the label: the label is the

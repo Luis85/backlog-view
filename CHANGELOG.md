@@ -13,6 +13,20 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ### Changed
 
+- **Everything the tree, the boards and the roadmap draw takes its words from the message
+  catalog now** — every row marker and property chip, the tag pills, the rollup, each
+  board column's announced name with its limit and overage, the card's parent line and
+  children, the shelf and its context strip, the roadmap's buckets, the timeline's legend,
+  today line, dependency arrows and span sentences, and every notice the write gate shows.
+  With `main.ts`'s two palette commands and a handful of prompts and grip tooltips that a
+  previous round reported as done and had missed, that leaves the plugin's user interface
+  translated apart from the built-in manual. Nothing reads differently in English except
+  where a list is involved: a row's prerequisites and a resource's absences are joined as
+  the language's own grammar joins a list rather than with a fixed separator, so English
+  now reads "A, B, and C" where it read "A, B, C". Nothing OF your vault is translated —
+  titles, type names, workflow states, horizon values, resources, tags and dates appear
+  exactly as your notes spell them.
+
 - **The whole toolbar takes its words from the message catalog now** — the New button and
   its type picker, the projection switcher, the focus picker, the board scope picker, the
   roadmap's axis and zoom pickers, every icon control's tooltip, the `⋯` menu, the item

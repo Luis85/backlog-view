@@ -1,6 +1,7 @@
 import { BasesPropertyId, setTooltip } from 'obsidian';
 import { BacklogViewHost } from '../host';
 import { wireResizeGrip } from './resizeDrag';
+import { t } from '../../i18n/t';
 import {
 	DEFAULT_PROP_COLUMN_WIDTH,
 	MAX_PROP_COLUMN_WIDTH,
@@ -79,7 +80,7 @@ export function renderColumnResize(
 			// The column's own display name, not "this column": two grips are on screen
 			// whenever two columns are, and a reader tabbing onto one has nothing else to
 			// tell them apart by.
-			'aria-label': `Resize the ${label} column`,
+			'aria-label': t('resize.column', { label }),
 			// The storable bounds, unqualified by the pane — unlike the lead column, whose
 			// range narrows with the room it has. A property column too wide for the pane is
 			// DROPPED by the fit ladder rather than covering what it labels, so there is no
@@ -90,7 +91,7 @@ export function renderColumnResize(
 			tabindex: '0',
 		},
 	});
-	setTooltip(grip, 'Drag to resize, or double click to reset. Focus it for the arrow keys and Home');
+	setTooltip(grip, t('resize.gripTooltip'));
 
 	// Live feedback is the published custom property alone — the header cell and this
 	// column's cell on every row all read it, so one declaration moves the whole column

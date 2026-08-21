@@ -26,6 +26,7 @@ function dateVault(): FakeVault {
 	});
 	vault.addFile('Unplanned.md', { frontmatter: { type: 'PBI', order: 20 } });
 	vault.addFile('Garbled.md', { frontmatter: { type: 'PBI', order: 30, start: 'soon' } });
+	vault.addFile('Garbled end.md', { frontmatter: { type: 'PBI', order: 35, due: 'later' } });
 	vault.addFile('Ship 1.0.md', { frontmatter: { type: 'Milestone', order: 40, due: '2026-09-30' } });
 	return vault;
 }
@@ -73,6 +74,12 @@ describe('the date chips on a row', () => {
 		expect(textOf(chip)).toBe('start');
 		expect(chip?.classList.contains('pbl-date-unset')).toBe(true);
 		expect(chip?.dataset.tooltip).toBe('Unreadable start date');
+
+		// The other END, which is a separate sentence rather than the same one with the
+		// noun swapped — asserted here because it was reachable by no test at all while
+		// both ends shared one frame and a `noun` field (2026-08-21).
+		const end = chipOf(containerEl, 'Garbled end', 'target');
+		expect(end?.dataset.tooltip).toBe('Unreadable target date');
 	});
 
 	it('draws NOTHING in a marker’s start cell, and still draws the cell', () => {
@@ -102,7 +109,11 @@ describe('the date chips on a row', () => {
 		const vault = dateVault();
 		vault.addFile('Outside.md', { frontmatter: { type: 'Epic', order: 5, start: '2026-07-01' } });
 		vault.addFile('Inside.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Outside' });
-		const { containerEl } = makeView(vault, DATES, { ...VISIBLE, only: ['Inside.md'] });
+		// A second excluded parent carrying the OTHER end, so both ends' static tooltips are
+		// read back while the first row still holds the "nothing to show" case below.
+		vault.addFile('Outside end.md', { frontmatter: { type: 'Epic', order: 6, due: '2026-07-09' } });
+		vault.addFile('Inside end.md', { frontmatter: { type: 'Feature', order: 20 }, parentLink: 'Outside end' });
+		const { containerEl } = makeView(vault, DATES, { ...VISIBLE, only: ['Inside.md', 'Inside end.md'] });
 
 		const chip = chipOf(containerEl, 'Outside', 'start');
 		// A static div, never a button: shown with the reason, never a write target.
@@ -112,6 +123,10 @@ describe('the date chips on a row', () => {
 		// And with nothing to show it is absent entirely, rather than a button-shaped
 		// invitation to a write the gate would refuse.
 		expect(chipOf(containerEl, 'Outside', 'target')).toBeNull();
+
+		const end = chipOf(containerEl, 'Outside end', 'target');
+		expect(end?.tagName).toBe('DIV');
+		expect(end?.dataset.tooltip).toBe("Not in this base's filter — target date can't be changed here");
 	});
 });
 

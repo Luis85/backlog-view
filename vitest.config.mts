@@ -109,10 +109,10 @@ export default defineConfig({
 			// asks for — diffing `coverage/coverage-final.json` per file across two runs —
 			// not a run count, however large.
 			thresholds: {
-				statements: 98.52,
-				branches: 94.83,
-				functions: 99.81,
-				lines: 99.6,
+				statements: 98.55,
+				branches: 94.94,
+				functions: 99.84,
+				lines: 99.66,
 			},
 		},
 	},

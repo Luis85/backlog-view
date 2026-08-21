@@ -599,24 +599,24 @@ function renderTagCell(host: BacklogViewHost, cell: HTMLElement, item: BacklogIt
 		// menu ("Edit tags") carries the documented keyboard path.
 		const remove = pill.createEl('button', {
 			cls: 'pbl-tag-remove',
-			attr: { type: 'button', tabindex: '-1', 'aria-label': `Remove tag ${tag}` },
+			attr: { type: 'button', tabindex: '-1', 'aria-label': t('column.removeTag', { tag }) },
 		});
 		// The tag this button removes, read back by the delegated handler
 		// (`wireChipEvents` in `render/rows.ts`) rather than parsed off the rendered
 		// `#${tag}` text.
 		remove.dataset.tag = tag;
 		drawIcon(remove, 'x');
-		setTooltip(remove, `Remove #${tag}`);
+		setTooltip(remove, t('column.removeTagTooltip', { tag }));
 	}
 	if (item.tags.length > 0) setTooltip(cell, `${column.label}: ${item.tags.map((t) => `#${t}`).join(', ')}`);
 	if (!editable) return item.tags.length > 0;
 
 	const add = cell.createEl('button', {
 		cls: 'pbl-tag-add',
-		attr: { type: 'button', tabindex: '-1', 'aria-label': 'Add tag' },
+		attr: { type: 'button', tabindex: '-1', 'aria-label': t('column.addTag') },
 	});
 	drawIcon(add, 'plus');
-	setTooltip(add, 'Add tag');
+	setTooltip(add, t('column.addTag'));
 	return item.tags.length > 0;
 }
 
@@ -652,7 +652,7 @@ export function rollupReport(host: BacklogViewHost, item: BacklogItem): RollupRe
 	if (!settings.stateKey) return { label: String(item.descendantCount), tooltip: '', ratio: null };
 	return {
 		label: `${item.doneDescendants}/${item.descendantCount}`,
-		tooltip: `${item.doneDescendants} of ${item.descendantCount} items done`,
+		tooltip: t('column.rollupTooltip', { done: item.doneDescendants, count: item.descendantCount }),
 		ratio: item.doneDescendants / item.descendantCount,
 	};
 }

@@ -1,5 +1,6 @@
 import { renderDeliverablesBoard, renderRequirementsBoard } from './board';
 import { renderIterationBoard } from './iterationBoard';
+import { t } from '../../i18n/t';
 import { RowContext } from './columns';
 import { renderBoardNoWorkflowState, renderDeliverablesBoardNoWorkflowState, renderRoadmapNoAxisState } from './emptyStates';
 import { renderRoadmap } from './roadmap';
@@ -261,10 +262,10 @@ export function renderProjectionContent(
 	// away.
 	if (projection === 'catalog') {
 		renderTree(ctx, treeEl);
-		return { board: null, roadmap: null, role: 'tree', label: 'Test catalog' };
+		return { board: null, roadmap: null, role: 'tree', label: t('projection.catalog') };
 	}
 	renderTree(ctx, treeEl);
-	return { board: null, roadmap: null, role: 'tree', label: 'Product backlog' };
+	return { board: null, roadmap: null, role: 'tree', label: t('projection.tree') };
 }
 
 /**
@@ -273,7 +274,7 @@ export function renderProjectionContent(
  * case with no board, and never a blank pane.
  */
 function renderBoardContent(ctx: RowContext, treeEl: HTMLElement, dnd: CardDragController): ProjectionContent {
-	const label = 'Product backlog board';
+	const label = t('projection.board');
 	if (!ctx.host.settings.stateKey) {
 		renderBoardNoWorkflowState(ctx.host, treeEl);
 		return { board: null, roadmap: null, role: 'region', label };
@@ -292,7 +293,7 @@ function renderBoardContent(ctx: RowContext, treeEl: HTMLElement, dnd: CardDragC
 function renderIterationBoardContent(ctx: RowContext, treeEl: HTMLElement, dnd: CardDragController): ProjectionContent {
 	const scope = ctx.host.effectiveScope;
 	if (scope === null) return renderBoardContent(ctx, treeEl, dnd);
-	const label = 'Iteration board';
+	const label = t('projection.iteration');
 	// The product board's own guidance, reached from a second screen: a vault with no
 	// `stateProperty` at all reaches it on both boards at once, which is the same
 	// condition described twice rather than a second thing to configure.
@@ -310,7 +311,7 @@ function renderIterationBoardContent(ctx: RowContext, treeEl: HTMLElement, dnd: 
  * field `renderBoardContent` uses — there is no second snapshot field.
  */
 function renderDeliverablesBoardContent(ctx: RowContext, treeEl: HTMLElement, dnd: CardDragController): ProjectionContent {
-	const label = 'Deliverables board';
+	const label = t('projection.deliverables');
 	// The RESOLVED key: this guidance is a lie about a workflow that does not exist, and
 	// under the fallback one does exist — the shared requirements one — the moment
 	// either key is configured.
@@ -329,7 +330,7 @@ function renderDeliverablesBoardContent(ctx: RowContext, treeEl: HTMLElement, dn
  */
 function renderRoadmapContent(ctx: RowContext, treeEl: HTMLElement, dnd: CardDragController): ProjectionContent {
 	const host = ctx.host;
-	const label = 'Product backlog roadmap';
+	const label = t('projection.roadmap');
 	const axis = activeAxis(host.settings, host.axisPick);
 	if (axis === null) {
 		renderRoadmapNoAxisState(host, treeEl);
