@@ -51,9 +51,12 @@ what it displaced, and how much of the plan operations is consuming.
   person's other in-flight work is what it displaced. Nothing new is linked and nothing is
   remembered over time — the claim is exactly as strong as what the vault holds today, and a
   child that wants a stronger one declares it rather than guessing harder.
-- **Capacity is claimed, not avoided.** How much of a period operations consumed, and what a
-  team can therefore commit to, is answerable here. That overrides the received requirements
-  document's non-goal — see [[The no-capacity-planning non-goal is overridden]], which is
-  where to argue with it.
+- **Capacity is claimed, and it is reporting.** How much of a period operational work
+  consumed, and what a team can therefore commit to, is answerable here. That needs no
+  exception: capacity against a declared number is already the register's business
+  ([[Capacity against commitment]]), and what the received requirements document refuses is
+  the next step and not this one — leveling, critical path, automatic scheduling, person-hour
+  allocation, timesheets, calendar scheduling. Those stay out, and an item under this epic
+  that needs one of them is out of scope rather than a case for widening it.
 - **What is outside the vault stays outside.** Operational work living only in a ticket tool
   is invisible to every item under this epic. Nothing here promises an import.
