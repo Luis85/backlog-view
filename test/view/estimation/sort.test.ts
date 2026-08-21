@@ -192,9 +192,9 @@ describe('the sort direction has a shape and a name', () => {
 
 	it('draws a DIFFERENT glyph for each direction, so the two are not visually identical', () => {
 		// The defect: `aria-sort` was the only difference between ascending and descending, and
-		// it is not a supported attribute on a button in a `role="listbox"` — so the direction
-		// survived neither a colour screenshot nor a screen reader. `data-icon` is what the
-		// harness's `setIcon` records (`test/helpers/obsidian-mock.ts`).
+		// it is not a supported attribute on a button at all — so the direction survived neither
+		// a colour screenshot nor a screen reader. `data-icon` is what the harness's `setIcon`
+		// records (`test/helpers/obsidian-mock.ts`).
 		const { containerEl } = makeEstimationView(fixture(), values());
 		click(header(containerEl, 'total'));
 		const descending = header(containerEl, 'total').querySelector<HTMLElement>('.pbl-est-sort-dir')?.dataset.icon;
@@ -213,8 +213,8 @@ describe('the sort direction has a shape and a name', () => {
 		expect(header(containerEl, 'total').getAttribute('aria-label')).toContain('ascending');
 		// `aria-sort` stays: it is the stylesheet's state hook and this file's own direction
 		// hook, and the attribute a move to real column-header roles would already have. What
-		// it is NOT is a thing any assistive technology reads on a button in a listbox, which
-		// is why the name above is added rather than the attribute trusted.
+		// it is NOT is a thing any assistive technology reads on a button, which is why the
+		// name above is added rather than the attribute trusted.
 		expect(header(containerEl, 'total').getAttribute('aria-sort')).toBe('ascending');
 	});
 

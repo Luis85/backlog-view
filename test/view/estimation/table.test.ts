@@ -148,6 +148,22 @@ describe('the list semantics cover the rows and nothing else', () => {
 		expect(scroller.querySelector(':scope > .pbl-est-rows')).not.toBeNull();
 	});
 
+	// A composite must not promise options it does not have. That rule is already shipped
+	// and specified: `render/projections.ts`'s
+	// `role: roadmap.cards.length > 0 ? 'listbox' : 'region'`, per
+	// `docs/requirements/The unplaced shelf.md` and `docs/requirements/The shelf,
+	// organized.md`. With no results the wrapper's one child is the empty-state message,
+	// which is not an `option` — so the every-child-is-an-option claim above is only
+	// honest while the role is withdrawn here.
+	it('withdraws the listbox role with no results, and keeps the message reachable', () => {
+		const { containerEl } = makeEstimationView(new FakeVault(), configuredValues());
+		const list = containerEl.querySelector('.pbl-est-rows')!;
+		expect(list.getAttribute('role')).toBe('region');
+		// Still a tab stop, or the message would be the one thing on screen no keyboard reaches.
+		expect(list.getAttribute('tabindex')).toBe('0');
+		expect(list.textContent).toContain('No results to estimate.');
+	});
+
 	it('points aria-activedescendant from the listbox, not from the scroller', () => {
 		const { containerEl } = makeEstimationView(fixture(), configuredValues());
 		expect(containerEl.querySelector('.pbl-est-table')!.getAttribute('aria-activedescendant')).toBeNull();

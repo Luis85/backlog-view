@@ -75,7 +75,8 @@ function wireEvents(
 		// Only the list's own tab stop. A sort header is a real button and its Enter/Space
 		// must stay its own — the resize grips' rule (`src/view/CLAUDE.md`). Since the
 		// listbox moved off the scroller, the header is not even a descendant of this
-		// element, so this guard now only has to exclude the rows' own descendants.
+		// element, so this guard now only has to exclude the rows' own descendants — of which
+		// nothing is focusable today, so it stands as defence against the first cell that is.
 		if (evt.target !== listEl) return;
 		if (evt.key === 'ArrowDown' || evt.key === 'ArrowUp') {
 			stepAndSelect(ctx, items, evt, evt.key === 'ArrowDown' ? 1 : -1);
@@ -516,7 +517,18 @@ export function renderTable(view: EstimationView, model: EstimationModel, previo
 	// The model's own declared output range, never the spread of what this base returned —
 	// `EstimationModel` carries no `ScoringModel`, so the range comes off the view.
 	const output: [number, number] = [view.settings.model.outputMin, view.settings.model.outputMax];
-	const listEl = tableEl.createDiv({ cls: 'pbl-est-rows', attr: { role: 'listbox', tabindex: '0' } });
+	// `listbox` only while there is an option to be in it — `render/projections.ts`'s own
+	// `roadmap.cards.length > 0 ? 'listbox' : 'region'`, specified in
+	// `docs/requirements/The unplaced shelf.md`. With no results this wrapper's one child is
+	// the empty-state message, and a listbox promising an option it has not got prunes that
+	// message exactly the way it used to prune the sort buttons. Still a tab stop either way,
+	// or the message would be the one thing on screen no keyboard reaches. Unlike the
+	// projections, the `region` carries no name: nothing labels this table today, and naming
+	// only the empty half would be the inconsistency rather than the fix.
+	const listEl = tableEl.createDiv({
+		cls: 'pbl-est-rows',
+		attr: { role: items.length > 0 ? 'listbox' : 'region', tabindex: '0' },
+	});
 	const rows = renderRows(listEl, items, view.selectedPath, output);
 	wireEvents(view, listEl, model, items, rows);
 	// On the SCROLLER, which is what scrolls — `view.tableEl` is read for nothing else.

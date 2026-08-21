@@ -761,7 +761,7 @@ export const en = {
 	/** The prioritized list's column labels — also each sort button's own accessible name
 	 * while nothing is sorted BY it. The ACTIVE column's name states the direction instead
 	 * (`estimation.sort.*` below), because `aria-sort` is not a supported attribute on a
-	 * button inside a `role="listbox"` and is announced to nobody. */
+	 * button at all and is announced to nobody. */
 	'estimation.column.item': 'Item',
 	'estimation.column.value': 'Value',
 	'estimation.column.coverage': 'Coverage',
