@@ -2,7 +2,7 @@ import { Menu } from 'obsidian';
 import { MessageKey, t } from '../../i18n/t';
 import { BacklogViewHost } from '../host';
 import { ShelfCard } from '../../domain/bars';
-import { organizeShelf, ShelfSort } from '../../domain/shelf';
+import { organizeShelf, ShelfLayout, ShelfSort } from '../../domain/shelf';
 import { ValuePromptModal } from '../../ui/prompts';
 
 /**
@@ -26,6 +26,43 @@ const SHELF_SORTS = [
 	{ value: 'title', label: 'menu.shelfSortTitle' },
 	{ value: 'modified', label: 'menu.shelfSortModified' },
 ] as const satisfies readonly { value: ShelfSort; label: MessageKey }[];
+
+/**
+ * The two layouts, in the same shape and for the same reason as `SHELF_SORTS` above:
+ * `value` is persisted view state and is not text, `label` is a catalog KEY so the list
+ * stays data and the lookup happens at draw time.
+ */
+const SHELF_LAYOUTS = [
+	{ value: 'cards', label: 'menu.shelfLayoutCards', icon: 'layout-grid' },
+	{ value: 'list', label: 'menu.shelfLayoutList', icon: 'list' },
+] as const satisfies readonly { value: ShelfLayout; label: MessageKey; icon: string }[];
+
+/**
+ * Which layout the shelf draws, as menu items — the sort's own shape one row down, and
+ * offered on the same two surfaces for the same reason. The ICON travels with the entry
+ * because the header's picker wears it too: the button shows the layout currently in
+ * force, so a reader can tell the two apart without opening anything, and one table is
+ * what stops the button and its menu illustrating different picks.
+ */
+export function addShelfLayoutItems(host: BacklogViewHost, menu: Menu, after?: () => void): void {
+	for (const { value, label, icon } of SHELF_LAYOUTS) {
+		menu.addItem((mi) =>
+			mi
+				.setTitle(t(label))
+				.setIcon(icon)
+				.setChecked(host.shelfLayout === value)
+				.onClick(() => {
+					host.setShelfLayout(value);
+					after?.();
+				}),
+		);
+	}
+}
+
+/** The icon the header's picker wears for the layout in force — see {@link addShelfLayoutItems}. */
+export function shelfLayoutIcon(layout: ShelfLayout): string {
+	return SHELF_LAYOUTS.find((entry) => entry.value === layout)?.icon ?? SHELF_LAYOUTS[0].icon;
+}
 
 /**
  * The shelf's display picks as menu items. ONE builder serves both surfaces — the

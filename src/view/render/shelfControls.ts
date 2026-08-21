@@ -2,7 +2,7 @@ import { Menu, setIcon, setTooltip } from 'obsidian';
 import { t } from '../../i18n/t';
 import { BacklogViewHost } from '../host';
 import { showMenuAtElement, showMenuForClick } from '../interactions/menu';
-import { addShelfSortItems, addShelfTypeItems } from '../interactions/shelfMenu';
+import { addShelfLayoutItems, addShelfSortItems, addShelfTypeItems, shelfLayoutIcon } from '../interactions/shelfMenu';
 import { organizeShelf } from '../../domain/shelf';
 import { ShelfCard } from '../../domain/bars';
 
@@ -83,6 +83,7 @@ export function renderShelfControls(
 	// Nothing to order or narrow while the cards are shut away, and a control that
 	// visibly does nothing is worse than none — the toolbar's own expand/collapse rule.
 	if (collapsed || !opts.picks) return;
+	renderLayoutPicker(host, headerEl);
 	renderSortPicker(host, headerEl);
 	renderTypeFilter(host, headerEl, shelf);
 	renderSearch(host, headerEl);
@@ -165,6 +166,28 @@ function headerButton(parent: HTMLElement, cls: string, icon: string, label: str
 	setIcon(btn, icon);
 	setTooltip(btn, label);
 	return btn;
+}
+
+/**
+ * Cards or compact rows — how the shelf DRAWS, never what it draws. It leads the pickers
+ * because it is the only one of the three that changes nothing about which cards are on
+ * screen: the sort orders them, the filter and the search hide them, and this one just
+ * says how much room each takes.
+ *
+ * The button wears the layout in FORCE rather than a fixed glyph, from the same table its
+ * menu is built from (`shelfLayoutIcon`) — so the header answers "which layout is this"
+ * without anything being opened, and the two cannot come to illustrate different picks.
+ * Its `aria-label` is the fixed act rather than the current value: the value is what the
+ * menu's own checkmark says, and a name that changed under a reader would announce the
+ * control as though it were a toggle with two identities.
+ */
+function renderLayoutPicker(host: BacklogViewHost, headerEl: HTMLElement): void {
+	const btn = headerButton(headerEl, 'pbl-shelf-layout', shelfLayoutIcon(host.shelfLayout), t('shelf.layout'));
+	btn.addEventListener('click', (evt) => {
+		const menu = new Menu();
+		addShelfLayoutItems(host, menu, () => refocus(host, '.pbl-shelf-layout'));
+		showMenuForClick(menu, evt);
+	});
 }
 
 /** Display order within each type group — never written to a note. */

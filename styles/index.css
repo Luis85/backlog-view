@@ -90,6 +90,11 @@
    `timelineFurniture.css` already declare. */
 @import "./dependencyArrows.css";
 @import "./shelf.css";
+/* Position load-bearing, and only relative to `shelf.css`: this partial's `.pbl-shelf-grip`
+   sits inside the band `shelf.css` lays out, and its header rules override nothing there —
+   but both must stay AFTER `board.css` and `roadmap.css`, whose band rule they are allowed
+   to beat and deliberately never do. */
+@import "./shelfControls.css";
 /* Position NOT load-bearing: `legend.css` only ever reads `--pbl-state-color` (a custom
    property, resolved by value regardless of which partial's rule set it) and defines no
    selector any other partial also targets, so it can sit anywhere in this list. */

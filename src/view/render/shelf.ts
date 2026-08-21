@@ -2,12 +2,13 @@ import { setTooltip } from 'obsidian';
 import { t } from '../../i18n/t';
 import { drawIcon } from './icons';
 import { createCard, renderCardBody, renderColumnFold, wireCardActivation } from './board';
-import { RowContext } from './columns';
+import { RowContext, renderPropCells } from './columns';
 import { renderShelfControls } from './shelfControls';
 import { spanText } from './lanes';
 import { dependencyNote } from './timelineArrows';
 import { BacklogViewHost } from '../host';
 import { CardDragController, CardSource } from '../interactions/cardDrag';
+import { publishShelfHeight, renderShelfResize } from '../interactions/shelfResize';
 import { canSchedule, unschedulePlan } from '../interactions/plan';
 import { BacklogItem } from '../../domain/model';
 import { placeItem, ShelfCard, statedEnds, unscheduledLabel, withoutEnds } from '../../domain/bars';
@@ -199,8 +200,15 @@ export function renderShelf(
 	const shelfCards = shelf.cards;
 	const empty = shelfCards.length === 0;
 	const collapsed = !empty && shelf.fold.collapsed;
+	// NOT gated on `shelf.picks`, unlike the search and the type filter below — see the
+	// narrowing rule stated at `shown`, which is where the two categories are told apart.
+	const list = host.shelfLayout === 'list';
 	const shelfEl = frameEl.createDiv({
-		cls: 'pbl-shelf' + (empty ? ' pbl-shelf-empty' : '') + (collapsed ? ' pbl-shelf-collapsed' : ''),
+		cls:
+			'pbl-shelf' +
+			(empty ? ' pbl-shelf-empty' : '') +
+			(collapsed ? ' pbl-shelf-collapsed' : '') +
+			(list ? ' pbl-shelf-list' : ''),
 		attr: {
 			role: 'group',
 			'aria-label': t('roadmap.groupLabel', { name: shelf.name, count: shelfCards.length }),
@@ -239,7 +247,7 @@ export function renderShelf(
 	// of them is in conflict (2b) and which axis is drawing — grouped once here rather
 	// than threading a fourth and fifth argument through both `renderShelfGroup` and
 	// `renderShelfCard`.
-	const wiring: ShelfWiring = { dnd, removal, conflicts: shelf.conflicts, axis: shelf.axis };
+	const wiring: ShelfWiring = { dnd, removal, conflicts: shelf.conflicts, axis: shelf.axis, list };
 	const cards: BacklogItem[] = [];
 	// **A narrowing belongs to the control that shows it.** The search and the type filter
 	// both HIDE cards and both say on their own face that they are doing so — the button
@@ -249,11 +257,35 @@ export function renderShelf(
 	// nothing on screen to show why and nothing to clear it with. Found by review (Codex,
 	// PR #182). The SORT is not in this rule and is applied either way: it orders what is
 	// drawn and hides nothing, so a pick made on the roadmap costs a reader nothing here.
+	// **So is the LAYOUT** (`list`, above), for the identical reason and stated here rather
+	// than beside it because this is where the two categories are told apart: cards or rows
+	// changes how much room each card takes and draws every one of them either way, so a
+	// reader who has never seen the picker has lost no work and needs no way back to it. The
+	// shelf's HEIGHT is one value for both bands on that same argument, and gating the layout
+	// on `picks` while sharing the height would be two answers to one question. The register
+	// said the opposite for one commit (Codex, PR #183), and neither direction was checked —
+	// `test/view/shelfLayout.test.ts` drives this one now.
 	// Searched first, then grouped: `searchShelf` states why that order is the rule.
 	const shown = shelf.picks ? searchShelf(shelfCards, host.shelfSearch) : shelfCards;
 	for (const group of organizeShelf(shown, host.shelfSort, shelf.picks ? host.shelfHiddenTypes : NO_HIDDEN)) {
 		cards.push(...renderShelfGroup(ctx, shelfEl, group, wiring));
 	}
+	// Last, and after the groups rather than beside the header: the grip sits at the band's
+	// FOOT, which is the edge a taller shelf moves, and it is the one control here that has
+	// to be measured against a band already built. An empty or collapsed shelf returned
+	// above and gets none — there is no open height to size.
+	//
+	// **The stored height is published HERE, past that same return, rather than up with the
+	// band's other attributes.** A picked height is a real `height` now, so a band carrying
+	// one is exactly that tall — including a band with nothing to show: published
+	// unconditionally, a collapsed shelf drew its 24px header and 376px of blank space under
+	// a 400px pick (measured), and the empty drop strip `.pbl-dragging` reveals would be
+	// 400px of target. The height belongs to precisely the states the GRIP belongs to, so it
+	// is set where the grip is set and the two cannot come apart. (Codex, PR #183 — a
+	// regression from the height model, and the call site I failed to re-read when the
+	// meaning of the value changed under it.)
+	publishShelfHeight(shelfEl, host.shelfHeight);
+	renderShelfResize(host, shelfEl);
 	return { cards, el: shelfEl };
 }
 
@@ -265,6 +297,8 @@ interface ShelfWiring {
 	conflicts: ReadonlyMap<string, ReadonlySet<string>>;
 	/** Which axis is drawing, null on a board — see `ShelfInput`. */
 	axis: RoadmapAxis | null;
+	/** Whether this shelf is drawing compact rows rather than cards — see `renderShelfCard`. */
+	list: boolean;
 }
 
 /** Shared by every card with no conflicting prerequisite, so nothing is allocated for the common case. */
@@ -316,12 +350,25 @@ function renderShelfGroup(ctx: RowContext, shelfEl: HTMLElement, group: ShelfGro
 /** One shelved card: its body, its shelving reason, what it waits for, and its drag source. */
 function renderShelfCard(ctx: RowContext, cardsEl: HTMLElement, entry: ShelfCard, wiring: ShelfWiring): void {
 	const card = createCard(ctx, cardsEl, entry.item);
-	renderCardBody(ctx, card, entry.item);
+	// **A compact row needs its summary in a box of its own, and only a compact row does.**
+	// The row is one flex LINE, and `.pbl-card-kids` is a direct child of the card — so a
+	// shelved parent with children drew its disclosure and its expanded list BESIDE the
+	// title, at the far end of the line, with the whole summary then centred against it
+	// (measured in the harness: 35px against 28px with the list still shut, and taller with
+	// it open). It cannot be solved on the line itself: letting the card wrap so the list
+	// falls beneath it also lets the property cells wrap, which is a 28px row becoming 59px
+	// the moment a Base exposes a few — both measured, and that is why this is a wrapper
+	// rather than a `flex-wrap`. Found by review (Codex, PR #183).
+	//
+	// The card grid creates no wrapper at all (`summary` IS the card), so nothing about it
+	// changes; `kidsEl` is passed either way and resolves to the same element there.
+	const summary = wiring.list ? card.createDiv({ cls: 'pbl-card-summary' }) : card;
+	renderCardBody(ctx, summary, entry.item, { kidsEl: card });
 	ctx.placed.add(entry.item.file.path);
 	// Unreadable is unplaced, and the card says why rather than rendering
 	// somewhere a guess put it.
 	if (entry.reason !== null) {
-		const reason = card.createDiv({ cls: 'pbl-shelf-reason' });
+		const reason = summary.createDiv({ cls: 'pbl-shelf-reason' });
 		drawIcon(reason.createSpan({ cls: 'pbl-shelf-reason-icon' }), 'alert-triangle');
 		reason.createSpan({ text: entry.reason });
 	}
@@ -340,10 +387,21 @@ function renderShelfCard(ctx: RowContext, cardsEl: HTMLElement, entry: ShelfCard
 	const conflicting = wiring.conflicts.get(entry.item.file.path) ?? NO_CONFLICTS;
 	const waits = wiring.axis !== null && drawsGrid(wiring.axis) ? dependencyNote(entry.item, conflicting) : '';
 	if (waits) {
-		const dep = card.createDiv({ cls: 'pbl-shelf-dependency' + (conflicting.size > 0 ? ' pbl-shelf-conflict' : '') });
+		const dep = summary.createDiv({ cls: 'pbl-shelf-dependency' + (conflicting.size > 0 ? ' pbl-shelf-conflict' : '') });
 		drawIcon(dep.createSpan({ cls: 'pbl-shelf-dependency-icon' }), conflicting.size > 0 ? 'alert-triangle' : 'link');
 		dep.createSpan({ text: waits });
 	}
+	// **The one thing a list row shows that a card does not.** A card draws no state chip
+	// because its own POSITION already says the state — a board column is a state and a
+	// bucket is a horizon — and the shelf is precisely where that argument does not hold:
+	// a shelved card is in no column and no bucket, so its state appears nowhere else on
+	// screen. It is drawn here rather than in `renderCardBody` because the row is where
+	// there is a line to spare for it; in the card grid the stacked body already carries
+	// enough, and adding a chip to it would be a change to the card the shelf was not
+	// asked for. Through the resolved columns and `renderPropCells` like every other cell,
+	// so a context row gets the static form and the write gate is the one the tree uses —
+	// this is not a second idea of what a state chip is.
+	if (wiring.list) renderShelfState(ctx, summary, entry.item);
 	wireCardActivation(ctx, card, entry.item);
 	// A gesture whose only possible batch is empty must not begin: `removal.canDrag`
 	// is `canSchedule` on the dated axis, the same gate the row's own Schedule entry
@@ -354,30 +412,21 @@ function renderShelfCard(ctx: RowContext, cardsEl: HTMLElement, entry: ShelfCard
 }
 
 /**
- * Context rows with no place on the axis — a focused item outside the filter
- * whose value names no existing bucket, or whose own dates never place it. They
- * stand beside the shelf, apart from its count: a context row is not a result,
- * and the shelf is a statement about the results. Never grouped, sorted or
- * filtered: the context-row rule (never a ranking peer, never a source of
- * anything derived from the results) applies here exactly as everywhere else.
+ * The state cell a compact row carries at its end, in a wrapper of its own so the
+ * stylesheet can push it there — `renderPropCells` names its own box `.pbl-props`, which
+ * the card body above has already used once, and a rule addressing the second one by
+ * position would be a rule about a sibling count.
+ *
+ * The columns are the RESOLVED ones (`ctx.columns`), never a second reading of the
+ * settings: a Base that draws no state property draws no chip here either, which is the
+ * tree's own answer — the chip IS that property's cell. Both state columns are passed
+ * where two are configured, and `renderStateChip` fills exactly the one whose key this
+ * item's workflow writes, leaving the other empty; `dropEmpty` then detaches it, so a row
+ * never carries a chip-shaped gap for a workflow it is not in.
  */
-export function renderContextStrip(
-	ctx: RowContext,
-	frameEl: HTMLElement,
-	context: BacklogItem[],
-): { cards: BacklogItem[]; el: HTMLElement | null } {
-	if (context.length === 0) return { cards: [], el: null };
-	const stripEl = frameEl.createDiv({ cls: 'pbl-roadmap-context', attr: { role: 'group', 'aria-label': t('shelf.context') } });
-	const header = stripEl.createDiv({ cls: 'pbl-shelf-header' });
-	drawIcon(header.createSpan({ cls: 'pbl-shelf-icon' }), 'corner-left-down');
-	header.createSpan({ cls: 'pbl-shelf-name', text: t('shelf.context') });
-	setTooltip(header, t('shelf.contextTooltip'));
-	const cardsEl = stripEl.createDiv({ cls: 'pbl-shelf-cards' });
-	for (const item of context) {
-		const card = createCard(ctx, cardsEl, item);
-		renderCardBody(ctx, card, item);
-		ctx.placed.add(item.file.path);
-		wireCardActivation(ctx, card, item);
-	}
-	return { cards: context, el: stripEl };
+function renderShelfState(ctx: RowContext, card: HTMLElement, item: BacklogItem): void {
+	const stateColumns = ctx.columns.filter((column) => column.kind === 'state');
+	if (stateColumns.length === 0) return;
+	const stateEl = card.createDiv({ cls: 'pbl-shelf-state' });
+	renderPropCells(ctx, stateEl, item, stateColumns, { dropEmpty: true });
 }

@@ -1,5 +1,5 @@
 import { BacklogItem } from '../domain/model';
-import { ShelfSort } from '../domain/shelf';
+import { ShelfLayout, ShelfSort } from '../domain/shelf';
 import {
 	BOARD_MODE,
 	CATALOG_MODE,
@@ -413,6 +413,29 @@ export class ViewState {
 
 	setShelfSort(sort: ShelfSort): void {
 		this.setPref('shelfSort', sort === 'tree' ? null : sort);
+	}
+
+	/**
+	 * How the shelf lays its cards out. The card grid is the default, so the stored pick is
+	 * its absence — `bucketGrid`'s own rule above, and this is the only place the inversion
+	 * between the stored boolean and the named layout is spelled. Everything above asks for
+	 * a `ShelfLayout`, which is what the picker and the menu entries are named for.
+	 */
+	shelfLayout(): ShelfLayout {
+		return (this.prefs.shelfList ?? false) ? 'list' : 'cards';
+	}
+
+	setShelfLayout(layout: ShelfLayout): void {
+		this.setPref('shelfList', layout === 'list' ? true : null);
+	}
+
+	/** The retained shelf height for this saved view — null means the stylesheet's own share of the pane. */
+	shelfHeightPick(): number | null {
+		return this.prefs.shelfHeight ?? null;
+	}
+
+	setShelfHeight(value: number | null): void {
+		this.setPref('shelfHeight', value);
 	}
 
 	shelfHiddenTypes(): ReadonlySet<string> {
