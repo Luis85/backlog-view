@@ -1,6 +1,7 @@
 import { App, BasesPropertyId, BasesViewConfig } from 'obsidian';
 import { BoardModel, IterationBucket, StatePalette } from '../domain/board';
 import { BacklogItem, BacklogModel } from '../domain/model';
+import { ShelfCard } from '../domain/bars';
 import { DropTarget } from '../domain/dropTargets';
 import { RoadmapAxis, RoadmapModel } from '../domain/roadmap';
 import { ShelfLayout, ShelfSort } from '../domain/shelf';
@@ -93,6 +94,13 @@ export interface BoardSnapshot {
 	 * the pressed button is gone by then. Absent on the two boards that draw no shelf.
 	 */
 	shelfEl?: HTMLElement | null;
+	/**
+	 * The cards that band holds, unnarrowed — the roadmap's snapshot carries its own the
+	 * same way and for the same reason. A control that rebuilt the pane reads what was
+	 * DRAWN rather than re-deriving it, since a second derivation is a second answer to
+	 * keep in step. Empty on the two boards that draw no shelf.
+	 */
+	shelf?: ShelfCard[];
 	/**
 	 * Which board this is, carried so nothing downstream has to re-derive it from the
 	 * projection. The column menu needs it to key a fold, and the render that produced

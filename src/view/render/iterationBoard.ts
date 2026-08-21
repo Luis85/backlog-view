@@ -7,6 +7,7 @@ import { BacklogViewHost, BoardSnapshot } from '../host';
 import { CardDragController } from '../interactions/cardDrag';
 import { iterationBuckets, iterationCandidates } from '../../domain/board';
 import { BacklogItem, BacklogModel, iterationResults } from '../../domain/model';
+import { ShelfCard } from '../../domain/bars';
 
 /**
  * The board for ONE iteration, drawn through `renderBoard` like the other two.
@@ -42,7 +43,7 @@ export function renderIterationBoard(
 	const iteration = model.byPath.get(scope);
 	const population = iterationResults(model, scope);
 	renderIterationGoal(host, boardEl, iteration);
-	const shelfEl = renderIterationShelf(ctx, boardEl, dnd, model);
+	const shelf = renderIterationShelf(ctx, boardEl, dnd, model);
 	const board = iterationBuckets(
 		population,
 		host.settings,
@@ -61,7 +62,8 @@ export function renderIterationBoard(
 			move: (item, col) => void (col.bucket && host.performIterationBoardMove(item, col.bucket)),
 			drawEmpty: (_h, aside) => renderEmptyIterationState(aside, iteration?.title ?? null),
 		}),
-		shelfEl,
+		shelfEl: shelf.el,
+		shelf: shelf.cards,
 	};
 }
 
@@ -89,7 +91,7 @@ function renderIterationShelf(
 	boardEl: HTMLElement,
 	dnd: CardDragController,
 	model: BacklogModel,
-): HTMLElement {
+): { el: HTMLElement; cards: ShelfCard[]; drawn: BacklogItem[] } {
 	const host: BacklogViewHost = ctx.host;
 	const cards = iterationCandidates(model).map((item) => ({ item, reason: null }));
 	const shelf = renderShelf(
@@ -109,7 +111,14 @@ function renderIterationShelf(
 		dnd,
 		iterationRemoval(host),
 	);
-	return shelf.el;
+	// `cards` is the band's whole population, unnarrowed, which is what the card menu's type
+	// filter has to be built from: hiding a type must never remove its own way back. `drawn`
+	// is what `renderShelf` actually put on screen — narrowed by the search and the hidden
+	// types, and empty when the band is collapsed or every group is folded. The tab-stop
+	// decision in Task 3 is about what a reader can REACH, so it is the second of these; the
+	// first stays positive on a band that is drawing nothing and would have kept the controls
+	// out of the tab order in exactly the state they are needed.
+	return { el: shelf.el, cards, drawn: shelf.cards };
 }
 
 /** No board states what a card waits for, so this map is empty on every render. */

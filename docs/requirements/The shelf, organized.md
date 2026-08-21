@@ -10,6 +10,7 @@ files:
   - src/storage/viewStateStore.ts
   - src/view/viewState.ts
   - src/view/host.ts
+  - src/view/shelfSurface.ts
   - src/view/backlogView.ts
   - src/view/render/shelf.ts
   - src/view/render/shelfControls.ts
@@ -116,6 +117,16 @@ from it, is one nobody finds. Nothing about the constraint that put them there c
 `treeEl` still wears `role="listbox"` while any card renders — so what moved had to stop
 being form controls: both pickers are `tabindex="-1"` buttons opening an Obsidian `Menu`,
 the answer the tree's own per-row controls (`.pbl-add`, the state chip) already give.
+
+WHICH band those controls act on is `activeShelf` in `src/view/shelfSurface.ts`, and it is
+one function because there are three bands and two ways of being shut. The roadmap's
+collapse is the view-state store's own bit; the iteration board's is a `'backlog'` column
+fold, the same mechanism its type groups use. The controls read `host.roadmap` directly
+until 2026-08-21, which is why they could not be offered on a board at all: on one, the
+resolution answered null and a drawn picker would have opened a menu over an empty array.
+It sits at the view's root rather than in `render/shelfControls.ts` because
+`interactions/menu.ts` needs it too, and that file is already imported by `shelfControls.ts`
+— the obvious home would be an import cycle.
 
 The DISCLOSURE was lifted out of that rule on 2026-08-15 and is a permanent tab stop:
 the card menu stopped carrying the collapse toggle

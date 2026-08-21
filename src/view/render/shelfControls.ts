@@ -5,6 +5,7 @@ import { showMenuAtElement, showMenuForClick } from '../interactions/menu';
 import { addShelfLayoutItems, addShelfSortItems, addShelfTypeItems, shelfLayoutIcon } from '../interactions/shelfMenu';
 import { organizeShelf } from '../../domain/shelf';
 import { ShelfCard } from '../../domain/bars';
+import { activeShelf } from '../shelfSurface';
 
 /**
  * The shelf's own header chrome: the disclosure that names it, counts it and opens it,
@@ -230,11 +231,14 @@ function renderTypeFilter(host: BacklogViewHost, headerEl: HTMLElement, shelf: S
  *
  * Everything is re-read from the host rather than captured: the button pressed and the
  * element it sat in are both gone with the frame, and a shelf array from before the
- * rebuild would count cards the pane no longer holds.
+ * rebuild would count cards the pane no longer holds. The band itself is re-resolved
+ * too, through `activeShelf`, rather than read off `host.roadmap` directly — the same
+ * band this menu has to act on can be the iteration board's.
  */
 function showTypeMenu(host: BacklogViewHost): void {
-	const shelf = host.roadmap?.roadmap.shelf ?? [];
-	const btn = host.roadmap?.shelfEl?.querySelector<HTMLElement>('.pbl-shelf-filter');
+	const surface = activeShelf(host);
+	const shelf = surface.cards;
+	const btn = surface.el?.querySelector<HTMLElement>('.pbl-shelf-filter');
 	if (shelf.length === 0 || !btn) return;
 	const menu = new Menu();
 	addShelfTypeItems(host, menu, shelf, () => {
@@ -337,7 +341,7 @@ function renderSearchClear(host: BacklogViewHost, headerEl: HTMLElement): void {
  */
 function runSearch(host: BacklogViewHost, text: string, caret: number | null): void {
 	host.setShelfSearch(text);
-	const input = host.roadmap?.shelfEl?.querySelector<HTMLInputElement>('.pbl-shelf-search-input');
+	const input = activeShelf(host).el?.querySelector<HTMLInputElement>('.pbl-shelf-search-input');
 	if (!input) return;
 	input.focus();
 	if (caret !== null) input.setSelectionRange(caret, caret);
