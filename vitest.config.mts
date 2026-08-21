@@ -123,6 +123,14 @@ export default defineConfig({
 			// not. A floor of 94.93 — one unit below the 4792 measurement — was tried and
 			// failed on the 4791 run, which is what put the number below.
 			//
+			// **CI then supplied the cross-environment half the note asks for, on its own.**
+			// The Ubuntu `verify` job on `ce1b222` reported 7590/7701 statements and
+			// 4791/5047 branches where this machine had just measured 7591 and 4792, with
+			// functions (1960/1963) and lines (6328/6349) identical in both. So what varies
+			// is a statement and a branch, one each, and it varies BETWEEN environments as
+			// well as between runs — the pair to diff in `coverage/coverage-final.json` if
+			// anyone chases it further. Every floor below clears the LOW figure from both.
+			//
 			// So branches sits under the LOW observed count rather than under the measurement,
 			// and lines one unit under its own; both remain above the floors they replaced
 			// (94.83, 99.6), so the ratchet still only goes up.
