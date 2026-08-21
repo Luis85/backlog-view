@@ -27,7 +27,7 @@ Nothing yet. It is the view's entry point, so it is also where a release gets pi
 | --- | --- |
 | **Actor** | Anyone planning releases |
 | **Trigger** | Opening the release view with no release picked |
-| **Preconditions** | The release type is configured |
+| **Preconditions** | The property that holds a note's type is mapped |
 | **Guarantee** | One row per release in the results, each figure computed exactly as the single-release screen computes it. Picking a row opens that release and writes nothing to any note. |
 
 **Main flow**
@@ -41,10 +41,13 @@ Nothing yet. It is the view's entry point, so it is also where a release gets pi
 
 **Extensions**
 
-- **1a — the release type is not configured.** No list is drawn, and the empty state says which
+- **1a — the type property is not mapped.** No list is drawn, and the empty state says which
   option to bind.
-- **1b — there are no releases.** The list says so and offers to create one, rather than
-  drawing an empty grid.
+- **1b — there are no releases.** The list says so, and names what a release note is — a note
+  typed `Release` carrying a version and a target date — rather than drawing an empty grid. It
+  offers **no create button**: no use case in this epic specifies creating a release, and an
+  empty state must not promise a write nothing defines. Making one is still a gap, recorded
+  here rather than half-answered by a control with no flow behind it.
 - **2a — a figure's key is unconfigured.** That column is absent for every row, named once,
   rather than blank in each — the same answer the single-release screen gives.
 - **2b — a release has no actual date.** Its slip is absent. Today is never measured against a

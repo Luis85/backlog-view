@@ -31,7 +31,7 @@ no row.
 | --- | --- |
 | **Actor** | Anyone reading the roadmap |
 | **Trigger** | The roadmap drawing its dated axis |
-| **Preconditions** | The roadmap's axis is the dated one, and the roadmap's own release-type and release-date keys are configured |
+| **Preconditions** | The roadmap's axis is the dated one, and the roadmap's own release-date key is configured |
 | **Guarantee** | A marker is a release note the results hold, positioned by that note's own target date. Drawing writes nothing, and no release note is edited to draw it. |
 
 **Main flow**
@@ -43,20 +43,20 @@ no row.
 
 **Extensions**
 
-- **1a — the roadmap's release-type key is not configured.** No markers are drawn at all —
-  absent, not empty — and the roadmap says nothing about releases. It never falls back to the
-  release view's setting: a view that read another view's configuration would be the hidden
-  channel [[A view per capability]] refuses, and the two views may legitimately be pointed at
-  different properties.
+- **1a — no note in the results is typed `Release`.** No markers are drawn at all — absent,
+  not empty — and the roadmap says nothing about releases. The type name is a fixed constant,
+  not an option (ADR 0013), so there is nothing to bind here and nothing that could disagree
+  with the release view about what a release is.
 - **2a — a release has no target date.** No marker is drawn for it. It is not placed at today
   and not shelved: a release without a date has no position on a dated axis, and
   [[Every release at once]] is where it is still visible.
 - **2b — the target date cannot be read as a date.** Treated exactly as 2a, and reported in the
   same place, so a typo is not silently a position.
-- **2c — the roadmap's release-date key is unconfigured while its release-type key is not.**
-  No marker is drawn and the fact is reported as unconfigured, not as a release without a
-  date. Half a mapping is no mapping, the same answer every two-part key in this register
-  gives.
+- **2c — the roadmap's release-date key is unconfigured.** No marker is drawn and the fact is
+  reported as unconfigured, not as a release without a date. It never falls back to the release
+  view's key: a view reading another view's configuration is the hidden channel
+  [[A view per capability]] refuses, and the two may legitimately be pointed at different
+  properties.
 - **3a — two releases fall on the same date.** Both draw, in a stable order that does not
   change between renders, the same tie rule the milestone overlay already keeps.
 - **4a — a release note is outside the Base's filter.** No marker is drawn for it. A member's
@@ -83,6 +83,7 @@ no row.
 The overlay in `src/view/render/milestoneLines.ts`, positioned by `src/domain/timeline.ts`
 against the grid in `src/view/render/timeline.ts`, named in `src/view/render/legend.ts`. The
 releases themselves come from the model in `src/domain/model.ts`. The roadmap declares its
-**own** release-type and release-date keys in `src/domain/viewOptions.ts`, beside the axis
-keys it already names — defaulting to the same suggestions the release view offers, which is
-sharing a suggestion and not a setting.
+**own** release-date key in `src/domain/viewOptions.ts`, beside the axis keys it already names
+— defaulting to the same suggestion the release view offers, which is sharing a suggestion and
+not a setting. The type it matches is the constant in `src/domain/itemTypes.ts`, so no option
+names it.

@@ -35,8 +35,10 @@ one file the plugin owns, written whole.
 
 1. The view collects the members of the open release.
 2. It groups them by each note's own type, using the type vocabulary the view already reads.
-3. Within each group it orders them by `order`, so the notes and the backlog tell the same
-   story in the same sequence.
+3. Within each group it keeps **the order the scope tree draws them in**, so the file and the
+   screen tell the same story in the same sequence. It reads no ordering key of its own: the
+   sequence is one the release view has already derived, and a second key here could disagree
+   with the tree the reader just looked at.
 4. It writes one note into the configured folder, named for the release, opening with a line
    saying it is generated and that edits to it do not survive.
 5. It opens the note, so the result is looked at rather than reported.
@@ -76,8 +78,11 @@ one file the plugin owns, written whole.
 
 ## Acceptance criteria
 
-- The generated note contains exactly the members the Base returned, grouped by type, ordered
-  by `order` within each group, and it names that population in its own text.
+- The generated note contains exactly the members the Base returned, grouped by type, in the
+  sequence [[The scope of a release as a tree]] draws them within each group, and it names that
+  population in its own text.
+- Remapping the vault's order property changes the file's sequence and the tree's together,
+  because both read one derivation — nothing here reads a property named `order` directly.
 - A fixture whose release has a member the Base excludes produces a file that neither lists it
   nor counts it, and adding a context row to the fixture changes no line of the output.
 - Its first lines say it is generated and that edits do not survive regeneration.

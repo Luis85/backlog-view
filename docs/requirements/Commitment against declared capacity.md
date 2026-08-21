@@ -45,8 +45,12 @@ Nothing yet. The commitment is the estimate summed over the members
 - **1a — the capacity key is unconfigured, or the release carries no number there.** There is
   no comparison for that release: the commitment is still shown, and the missing half is
   named.
-- **1b — the capacity is negative.** It is refused where it is entered, since no unit this
-  feature names can be less than none.
+- **1b — the capacity is negative.** Nothing in this plugin writes a capacity, so there is no
+  entry surface that could refuse one: the number is typed into the note by hand. It is
+  therefore handled **on read** — reported as unreadable, exactly as a non-numeric capacity is,
+  with no comparison, no difference and no utilization drawn from it. No unit this feature
+  names can be less than none, so a negative value is a typo rather than a quantity, and
+  showing a difference computed from it would dress the typo as a plan.
 - **1c — the capacity is zero.** Capacity, commitment and difference are shown; utilization is
   not, and it says a percentage needs a capacity. Zero is a real statement, not an error, and
   dividing by it would print an infinity.
@@ -67,7 +71,8 @@ Nothing yet. The commitment is the estimate summed over the members
   the unit, and the difference is +12 in the same unit.
 - With capacity 0, utilization is absent and named as needing a capacity; the other three
   figures still show.
-- A negative capacity is refused at entry.
+- A release whose capacity is negative shows no comparison, and the value is reported as
+  unreadable rather than summed, subtracted or divided by.
 - With the unit unset, no comparison is rendered and the unit is reported missing.
 - An epic and its feature both in the release contribute both estimates, and the possible
   double count is named beside the figure rather than resolved.
@@ -77,6 +82,6 @@ Nothing yet. The commitment is the estimate summed over the members
 
 The same new `src/domain/` derivation as the summary, from the model in
 `src/domain/model.ts`. The capacity key, the estimate key and the unit string are declared in
-`src/domain/viewOptions.ts`, and the negative-capacity refusal belongs with the option
-validation there and in `src/domain/settingsConsistency.ts`. The panel is the summary's own
+`src/domain/viewOptions.ts`, and the capacity is read — and judged
+readable — where every other note value is, in `src/domain/readItems.ts`. The panel is the summary's own
 render module in `src/view/render/`.

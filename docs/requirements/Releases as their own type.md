@@ -29,12 +29,13 @@ a root by nature, holding nothing.
 | --- | --- |
 | **Actor** | Anyone planning a release |
 | **Trigger** | The view building its model from the Base's results |
-| **Preconditions** | The release type name is configured in this view's options |
+| **Preconditions** | The property that holds a note's type is mapped |
 | **Guarantee** | A release is recognised by its own declared type, is never a rung of the backlog ladder, and holds no work. Recognising one writes nothing to any note. |
 
 **Main flow**
 
-1. The view reads the type each note declares, against the type name its options name.
+1. The view reads the type each note declares, and matches it against the **fixed** name
+   `Release`, case-insensitively.
 2. Notes of that type become releases; every other note in the results is work.
 3. Each release offers its version, its target date and its status, each from a key this view
    names for itself.
@@ -42,8 +43,12 @@ a root by nature, holding nothing.
 
 **Extensions**
 
-- **1a — the release type is not configured.** No release exists and no release screen is
-  offered; the empty state says which option to bind. Releases are absent, not empty.
+- **1a — the type property is not mapped.** No note has a readable type, so no release exists
+  and no release screen is offered; the empty state says which option to bind. Releases are
+  absent, not empty.
+- **1b — no note in the results is typed `Release`.** The vocabulary is still there and the
+  screen still exists; there is simply nothing in it. That is a different state from 1a and
+  says so, because one is a configuration to fix and the other is a note to write.
 - **2a — a release note declares a parent.** It is a root by nature, like a `Milestone` and an
   `Iteration`, so the parent places it nowhere and never makes it a rung. The value is left
   alone rather than cleared: this view does not tidy notes it did not write.
@@ -64,8 +69,11 @@ a root by nature, holding nothing.
 
 ## Acceptance criteria
 
-- With the release type unconfigured, the model holds no releases and the release screen is
-  not offered.
+- `Release` is a constant in the shipped vocabulary and appears in no view option: nothing
+  anywhere lets a vault rename the type, per ADR 0013, and the only thing configurable about
+  it is which property holds a note's type.
+- With the type property unmapped, the model holds no releases and the release screen is not
+  offered; with it mapped and no note typed `Release`, the screen is offered and empty.
 - A note of the release type is in the model as a release, is not a child of anything, and
   does not appear as a rung on the backlog ladder at any focus level.
 - A release with no work naming it is present in the model and is drawn.
@@ -77,8 +85,9 @@ a root by nature, holding nothing.
 
 ## Where it lives
 
-The type joins the vocabulary in `src/domain/itemTypes.ts` and `src/domain/typeVocabulary.ts`,
-the way `Milestone` and `Iteration` already do — a root by nature, no legal children. Notes
+The type joins the **fixed** vocabulary in `src/domain/itemTypes.ts` and
+`src/domain/typeVocabulary.ts`, the way `Milestone` and `Iteration` already do — a root by
+nature, no legal children, and a constant rather than an option (ADR 0013). Notes
 are read into the model in `src/domain/readItems.ts` against the shape in
-`src/domain/model.ts`, and the version, target-date and status keys are declared in
-`src/domain/viewOptions.ts` beside every other key this view names.
+`src/domain/model.ts`, and the version, target-date and status keys — the property keys, never the type name —
+are declared in `src/domain/viewOptions.ts` beside every other key this view names.
