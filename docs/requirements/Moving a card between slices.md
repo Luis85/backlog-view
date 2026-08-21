@@ -21,7 +21,7 @@ that** changing the scope of a release is one gesture on the picture I am alread
 
 A vertical move writes one value into one user-named property — the same write shape
 [[Moving between horizons]] and [[Drag a card to a new state]] both specify, on the release
-property [[Release Planning]] owns. One host method, three inputs.
+property [[Release Management]] owns. One host method, three inputs.
 
 ## Use case
 

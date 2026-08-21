@@ -1,6 +1,6 @@
 ---
 type: Feature
-parent: "[[Release Planning]]"
+parent: "[[Release Management]]"
 order: 30
 status: Open
 created: 2026-08-16

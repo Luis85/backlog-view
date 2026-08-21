@@ -23,7 +23,7 @@ one batch if any target is outside the base, and undone as one batch.
 **The set is whatever the vault has configured, and nothing more.** "Assign a milestone" is
 not in it and cannot be: a `Milestone` here holds nothing and is placed by its own date, so
 there is no item-side property such an action could write. A release assignment joins the
-list when [[Release Planning]] gives an item a release property to hold — which is the rule
+list when [[Release Management]] gives an item a release property to hold — which is the rule
 generally, not an exception: a bulk action exists for a property that exists.
 
 The rules that govern a single write govern all of them: nothing is applied that would leave
