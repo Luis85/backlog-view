@@ -1,11 +1,12 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { click, makeEstimationView, pointButton, selectItem } from '../../helpers/estimation';
-import { configuredValues } from '../../helpers/estimationModel';
+import { configured, configuredValues } from '../../helpers/estimationModel';
 import { Notice } from '../../helpers/obsidian-mock';
 import { FakeVault } from '../../helpers/vault';
 import { flush } from '../../helpers/view';
 import { SUGGESTED_KEYS } from '../../../src/domain/defaultModel';
+import { modelProblems } from '../../../src/domain/scoringModel';
 import { runEstimationInit } from '../../../src/view/estimation/init';
 import { WriteLock } from '../../../src/view/writeLock';
 
@@ -85,6 +86,28 @@ describe('the guided empty state’s setup action', () => {
 		expect(vault.fm('A.md')).toEqual({});
 		// Not silent: an action that does nothing has to say so, or the button is dead.
 		expect(Notice.messages.at(-1)).toMatch(/business value property/i);
+	});
+
+	it('names every configuration problem, not only the first', async () => {
+		// `renderProblems` already lists all of them, so reporting one here made the view
+		// hold two ideas of how much to say — and a two-fault configuration was fixed one
+		// round trip at a time.
+		const vault = new FakeVault();
+		vault.addFile('Bare.md', { frontmatter: {} });
+		const configValues = configuredValues({ valueProperty: '', stampProperty: '' });
+		const { view } = makeEstimationView(vault, configValues);
+		Notice.reset();
+
+		await runEstimationInit(view);
+
+		// Two problems from one clean model, both halves of the pair rule cleared
+		// (`pairProblems` in `domain/scoringModel.ts`) — derived here rather than
+		// hard-coded, so a reworded problem cannot fail this test for the wrong reason.
+		const problems = modelProblems(configured({ valueProperty: '', stampProperty: '' }));
+		expect(problems).toHaveLength(2);
+		const [firstProblem, secondProblem] = problems;
+		expect(Notice.messages.at(-1)).toContain(firstProblem);
+		expect(Notice.messages.at(-1)).toContain(secondProblem);
 	});
 
 	it('asks what is already bound of the same config it asks what is untouched', async () => {

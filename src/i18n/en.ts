@@ -749,9 +749,18 @@ export const en = {
 		'Bind the suggested properties and stub them onto the results, or name your own in the view options.',
 	'estimation.empty.useDefaults': 'Use recommended defaults',
 	'estimation.problems.lead': "Fix the estimation model in this view's options first:",
-	/** The guided setup action refusing itself: the bindings it would make leave the model
-	 *  broken, so nothing is bound and nothing is written. {problem} is the first one. */
-	'estimation.problems.blocked': 'Fix the estimation model first: {problem}',
+	/**
+	 * The guided setup action refusing itself: the bindings it would make leave the model
+	 * broken, so nothing is bound and nothing is written.
+	 *
+	 * `{problems}` is a LIST, joined by `list()` (`Intl.ListFormat`, the catalog's own
+	 * locale) rather than by a separator at the call site — the readme notices' own shape.
+	 *
+	 * NO TERMINAL PERIOD: each problem is already a whole sentence carrying one, which is
+	 * what made the `'; '` version of this render `"…".; "…"..`. That is the one thing
+	 * about this message that is not a pure wording change.
+	 */
+	'estimation.problems.blocked': 'Fix the estimation model first: {problems}',
 	/** Said rather than left silent, for `estimation.problems.blocked`'s own reason: the
 	 *  guided empty state is still on screen, so a button that returned quietly would
 	 *  simply look dead. */

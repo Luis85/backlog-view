@@ -4,7 +4,7 @@ import { buildEstimationModel } from '../../domain/estimationItems';
 import { resolveEstimationSettings } from '../../domain/estimationSettings';
 import { adoptCandidates, notePropertyId } from '../../domain/optionalProperties';
 import { boundKeys, modelProblems } from '../../domain/scoringModel';
-import { t } from '../../i18n/t';
+import { list, t } from '../../i18n/t';
 import type { EstimationView } from './estimationView';
 
 /**
@@ -75,7 +75,10 @@ export async function runEstimationInit(view: EstimationView): Promise<void> {
 	// with nothing bound and nothing written there would be no surface reporting anything
 	// and the button would simply look dead. `runInit`'s own shape.
 	if (problems.length > 0) {
-		new Notice(t('estimation.problems.blocked', { problem: problems[0] }));
+		// Every problem, because `renderProblems` already lists every problem — reporting
+		// one made a two-fault configuration a round trip per fault. Joined by `list()` in
+		// the CATALOG's locale, never by a separator here: list joining is grammar.
+		new Notice(t('estimation.problems.blocked', { problems: list(problems) }));
 		return;
 	}
 	// THE THIRD REFUSAL, asked here for the same reason the two above it are: this action's
