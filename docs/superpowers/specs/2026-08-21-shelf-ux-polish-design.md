@@ -83,13 +83,52 @@ its answer to "aligned columns":
   carries a cell for every column the shelf draws and a missing value is a held-open gap
   rather than a shift. That is the TREE's rule for the same reason: a fixed-width,
   header-aligned column cannot skip a row.
-- The badge sits in the tree's own `--pbl-meta-col`, so every title starts at one x.
-- The cells take the tree's stored `--pbl-prop-w-N` widths back. `.pbl-card .pbl-prop`
-  turns those off for a card, correctly — a card stacks its cells and sizes each to
-  content — and list mode is the case where that argument does not hold.
+- The cells take the stored `--pbl-prop-w-N` widths. `.pbl-card .pbl-prop` turns those off
+  for a card, correctly — a card stacks its cells and sizes each to content — and list mode
+  is the case where that argument does not hold.
+- The badge takes a reserved slot of its own, so every title starts at one x.
 - A hairline `border-block-end` per row, a hover background, the state chip last.
 - Group headers become structure: sticky to the band's scrollport, filled, with the count
   in a pill.
+
+**The band publishes its own geometry, and this is the correction that matters.** The first
+draft said the row would read the tree's `--pbl-meta-col` and `--pbl-prop-w-N`, which is
+wrong twice over (Codex, PR #187).
+
+`renderTree` (`src/view/render/reconcile.ts`) is the ONLY publisher of `--pbl-prop-w-N`, and
+`renderPass.ts` runs it for `tree` and `catalog` alone. `.pbl-tree` is built once in the
+constructor and only emptied per pass, so its inline style outlives every render: a saved
+view opened straight into roadmap or iteration mode has no such variables at all and every
+cell falls back to 132px, while one that visited the tree first inherits whatever that pass
+left. Geometry that depends on projection history. The harness measurement did not catch it
+because the harness mounts into the tree and `?view=` switches afterwards — the numbers are
+real and the mechanism behind them was not what this said.
+
+So `renderShelf` publishes `--pbl-prop-w-N` on the BAND, per render, from
+`columnWidth(host, column.prop)` — the same function and the same stored value the tree
+publishes from, so a column resized in tree mode agrees here rather than being a second
+reading. The publish loop is extracted so there is one statement of it and the two cannot
+drift.
+
+`--pbl-meta-col` is not borrowed at all, which is the second half. Its width is
+`metaColWidth(chars)` — a reservation for the ROLLUP LABEL, not for the badge — so reusing
+it would size the shelf's badge column by a number that means something else, and by the
+TREE population's rollup at that. The band reserves `--pbl-shelf-badge` instead, from the
+widest label in `ALL_TYPES`: a fixed vocabulary rather than the band's current cards, so the
+slot does not resize when the last Deliverable leaves and shift every row with it. A badge
+whose type is outside that vocabulary truncates inside the slot rather than pushing its own
+title.
+
+**Narrow panes are answered by controlled shrinkage** (also Codex, PR #187): `columnFit` is
+cleared for every card projection, so no column is ever dropped here, and a fixed width per
+cell would hand the band the horizontal scrollbar [[The shelf, organized]] removed. The
+cells are `flex: 0 1 var(--pbl-prop-w)` with `min-width: 0`, and the title's basis is **0**
+rather than `auto` — with `auto` the basis is the title's own text width, so two rows
+resolve their cells differently under one deficit and the alignment holds at a wide pane
+and comes apart as it narrows. At basis 0 every row's flex configuration is identical and so
+is every resolved column, at any width. The title's existing `min(16ch, 40%)` floor still
+decides who yields first. This is measured across 1400/760/480/380px before the change
+lands, not argued.
 
 Measured on that layout: **median row height 34px → 28px**, title x positions **4 → 1**.
 

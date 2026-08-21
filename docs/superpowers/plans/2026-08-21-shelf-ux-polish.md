@@ -7,8 +7,8 @@ picks the roadmap's already has, lay a compact row out in aligned columns, and s
 shelved parent's children reading as a sibling row.
 
 **Architecture:** Four changes over one surface. Three of them add nothing new — they reuse
-mechanisms this codebase already has: the tree's `--pbl-meta-col` and `--pbl-prop-w-N`
-column widths, the tree's fold chevron and indent guide, and the `kidsEl` parameter's own
+mechanisms this codebase already has: the tree's stored per-column widths (published on the
+band rather than inherited), the tree's fold chevron and indent guide, and the `kidsEl` parameter's own
 shape for a second optional element. The one genuinely new module is a five-line resolver
 that answers "which shelf is on screen", so the header's controls stop reading
 `host.roadmap` directly.
@@ -771,19 +771,42 @@ Claude-Session: https://claude.ai/code/session_01V7fQnXvwEKAcZYLWoPqixS"
 
 **Files:**
 - Modify: `src/view/render/board.ts` (`renderCardBody` takes `holdEmpty`)
-- Modify: `src/view/render/shelf.ts` (pass it in list mode)
+- Modify: `src/view/render/columns.ts` (`publishColumnWidths`, `shelfBadgeWidth`)
+- Modify: `src/view/render/reconcile.ts` (`renderTree` calls the extracted publisher)
+- Modify: `src/view/render/shelf.ts` (pass `holdEmpty`; publish the band's geometry)
 - Modify: `styles/shelf.css`
 - Modify: `docs/requirements/Cards or a list on the shelf.md`
 - Test: `test/view/shelfLayout.test.ts`
 
 **Interfaces:**
 - Consumes: nothing from earlier tasks.
-- Produces: `renderCardBody(ctx, card, item, { kidsEl?, holdEmpty? })` — Task 5 adds a third
-  option to the same bag.
+- Produces:
+  ```ts
+  // src/view/render/board.ts
+  renderCardBody(ctx, card, item, { kidsEl?: HTMLElement; holdEmpty?: boolean }): void;
+  // src/view/render/columns.ts — one statement of the per-column publish, two callers
+  export function publishColumnWidths(el: HTMLElement, columns: Column[], host: BacklogViewHost): void;
+  export function shelfBadgeWidth(): number;
+  ```
+  Task 5 adds a third option to `renderCardBody`'s bag.
 
 **Why:** measured over twenty rows at a 1400px pane, titles begin at 4 distinct x positions
-and state chips at 4; median row height 34px. The fix is the tree's own anatomy, not a new
-mechanism: its `--pbl-meta-col` for the badge and its `--pbl-prop-w-N` for the cells.
+and state chips at 4; median row height 34px. The fix is the tree's own anatomy — the same
+stored per-column widths — but the BAND publishes them, which is the correction Codex found
+on PR #187 and the reason this task is bigger than it first looked.
+
+`renderTree` (`render/reconcile.ts`) is the only publisher of `--pbl-prop-w-N`, and
+`renderPass.ts` runs it for `tree` and `catalog` alone. `.pbl-tree` is built once in the
+constructor and only emptied per pass, so its inline style outlives every render: a view
+opened straight into roadmap mode has no such variables and every cell falls back to 132px,
+while one that visited the tree first inherits whatever that pass left — geometry that
+depends on projection history. So `renderShelf` publishes them itself, from the same
+`columnWidth(host, prop)` the tree publishes from.
+
+And `--pbl-meta-col` is NOT reused: `metaColWidth(chars)` reserves room for the ROLLUP
+LABEL, not for a badge, and for the tree population's rollup at that. The band reserves
+`--pbl-shelf-badge` from the widest label in `ALL_TYPES` — a fixed vocabulary, so the slot
+does not resize when the last Deliverable leaves the band and shift every row with it.
 
 **Not subgrid** — `.pbl-card` carries `content-visibility: auto`, which forces an
 independent formatting context, in which `grid-template-columns: subgrid` computes to
@@ -820,16 +843,35 @@ Add to `test/view/shelfLayout.test.ts`:
 		}
 	});
 
+	it('publishes the column widths on the band, never inheriting the tree’s', () => {
+		// `renderTree` is the ONLY publisher of `--pbl-prop-w-N` and `renderPass` runs it for
+		// the tree and the catalog alone, while `.pbl-tree` is built once in the constructor
+		// and only emptied per pass — so a row reading them off the scroller got 132px on a
+		// view opened into roadmap mode, and whatever a previous tree pass left on one that
+		// had been there. Geometry that depended on projection history. (Codex, PR #187.)
+		const { containerEl } = makeRoadmap(horizonVault(), {}, { shelfCollapsed: false, shelfList: true });
+		const band = shelfOf(containerEl);
+		expect(band?.style.getPropertyValue('--pbl-prop-w-0')).not.toBe('');
+		expect(band?.style.getPropertyValue('--pbl-shelf-badge')).not.toBe('');
+	});
+
+	it('publishes nothing on a band drawing no cells', () => {
+		// Beside the height and for its reason: a band with nothing to show reserves nothing.
+		const { containerEl } = makeRoadmap(horizonVault(), {}, { shelfCollapsed: true, shelfList: true });
+		expect(shelfOf(containerEl)?.style.getPropertyValue('--pbl-shelf-badge')).toBe('');
+	});
+
 	it('states the aligned-column geometry in the stylesheet', () => {
 		// jsdom resolves no cascade and lays nothing out, so the checkable part is the
 		// declaration and its selector. The geometry was measured in the browser harness at a
 		// 1400px pane over the demo backlog's twenty unplaced items: median row height 34px to
 		// 28px, title x positions 4 to 1.
 		const css = readFileSync('styles/shelf.css', 'utf8');
-		// The badge takes the tree's own fixed meta column, which is what puts every title on
-		// one x.
+		// The badge takes the band's own reserved slot, which is what puts every title on one x
+		// — never `--pbl-meta-col`, which reserves for the rollup label and is sized off the
+		// TREE's population.
 		expect(bodyOf(css, '.pbl-shelf-list .pbl-card-head', 'styles/shelf.css')).toContain(
-			'flex: 0 0 var(--pbl-meta-col, 84px);',
+			'flex: 0 0 var(--pbl-shelf-badge, 84px);',
 		);
 		// And the cells take the tree's stored widths back, which `.pbl-card .pbl-prop` turns
 		// off for a card. `0 1` rather than `0 0`: they must shrink together on a narrow pane
@@ -896,6 +938,91 @@ In `src/view/render/shelf.ts`, in `renderShelfCard`, change the body call:
 a workflow that does not write the drawn state property leaves no chip AND no gap, and that
 box is outside `.pbl-props` so it is not one of the shared columns.
 
+- [ ] **Step 4b: Extract the publisher, and give the band a badge slot**
+
+In `src/view/render/columns.ts`, beside `metaColWidth`, add:
+
+```ts
+/**
+ * Publish one custom property per column, on the element whose descendants read them.
+ *
+ * Two callers and one statement of it. `renderTree` puts these on the tree scroller for the
+ * tree's own rows; `renderShelf` puts them on the BAND, because the tree's publisher does
+ * not run for a card projection at all (`renderPass.ts` gates it on `treeShaped`) and
+ * `.pbl-tree` is built once in the constructor, so a view opened straight into roadmap mode
+ * has none of these and one that visited the tree first inherits whatever that pass left.
+ * A compact row reading them off the scroller had geometry that depended on projection
+ * history. (Codex, PR #187.)
+ *
+ * The VALUE is `columnWidth`'s, which is the stored per-property width, so a column resized
+ * in tree mode is the same width on the shelf rather than a second reading of the same
+ * question.
+ */
+export function publishColumnWidths(el: HTMLElement, columns: Column[], host: BacklogViewHost): void {
+	const widths: Record<string, string> = {};
+	for (const [index, column] of columns.entries()) {
+		widths[columnWidthVar(index)] = `${columnWidth(host, column.prop)}px`;
+	}
+	el.setCssProps(widths);
+}
+
+/**
+ * The width a compact row reserves for its type badge, so every title after it starts at
+ * one x.
+ *
+ * NOT `metaColWidth`, which reserves for the ROLLUP LABEL and is sized off the tree
+ * population's widest one — a number about something else. And not the band's own widest
+ * badge either: a slot sized from the cards in front of the reader would resize when the
+ * last Deliverable is placed and shift every remaining row sideways. `ALL_TYPES` is a fixed
+ * vocabulary, so this is one number for the life of the view. A type outside it truncates
+ * inside the slot (`styles/shelf.css`) rather than pushing its own title.
+ */
+export function shelfBadgeWidth(): number {
+	const longest = ALL_TYPES.reduce((widest, type) => Math.max(widest, type.length), 0);
+	return Math.max(META_COL_WIDTH, BADGE_LEAD_PX + Math.ceil(longest * ROLLUP_CHAR_PX));
+}
+```
+
+`BADGE_LEAD_PX` is the badge's own icon, padding and the gap after it — read
+`styles/badges.css` and sum the bounds there rather than guessing, the way `ROW_LEAD_WIDTH`
+in this file already does, and say in a comment which declarations the sum came from.
+
+Import `ALL_TYPES` from `../../domain/typeVocabulary`, and `columnWidth` / `columnWidthVar`
+from `../interactions/columnResize` if they are not already imported here.
+
+Then in `src/view/render/reconcile.ts`, replace `renderTree`'s own per-column loop:
+
+```ts
+	// The tree's own columns, through the shared publisher — see `publishColumnWidths`.
+	publishColumnWidths(treeEl, ctx.columns, ctx.host);
+```
+
+leaving the `--pbl-meta-col`, `--pbl-indent` and `--pbl-rollup-label` writes exactly where
+they are: those three are the tree's own geometry and no other surface asks for them.
+
+- [ ] **Step 4c: Publish the band's geometry from `renderShelf`**
+
+In `src/view/render/shelf.ts`, in `renderShelf`, after the `list` constant is decided and
+before the groups are drawn (put it beside the `publishShelfHeight` call at the foot, which
+is the other thing this function publishes):
+
+```ts
+	// A compact row's columns are shared across rows, so the widths have to be somewhere both
+	// this band and every cell in it can see — and the tree's publisher does not run for a
+	// card projection. Published per render on the band, so nothing here can inherit a stale
+	// number from a tree pass that happened before a projection switch. Only in list mode: a
+	// card sizes its cells to content and would be overruled by a width it never asked for.
+	if (list) {
+		publishColumnWidths(shelfEl, ctx.columns, host);
+		shelfEl.setCssProps({ '--pbl-shelf-badge': `${shelfBadgeWidth()}px` });
+	}
+```
+
+Note this sits ABOVE the `if (empty || collapsed) return;` line only if the cells can be
+drawn at all — they cannot, so put it after that return, beside `publishShelfHeight`, and
+say so in the comment: a band with nothing to show publishes no geometry, exactly as it
+publishes no height.
+
 - [ ] **Step 5: Write the stylesheet**
 
 In `styles/shelf.css`, replace the two existing rules
@@ -905,19 +1032,28 @@ ones being replaced record measurements that stay true and must be carried forwa
 
 ```css
 /* **The row's columns are the TREE's columns**, and reusing them rather than inventing a
-   second set is the whole of this layout. `--pbl-meta-col` and `--pbl-prop-w-N` are
-   published on `.pbl-tree` by the view that draws the tree's own rows, and the shelf sits
-   inside it, so a compact row inherits them for free. Measured in the browser harness at a
-   1400px pane over the demo backlog's twenty unplaced items: titles began at 4 distinct x
-   positions and now begin at 1, and the median row is 34px rather than 28px.
+   second set is the whole of this layout. `--pbl-prop-w-N` and `--pbl-shelf-badge` are
+   published on the BAND by `renderShelf` itself (`publishColumnWidths`, and
+   `--pbl-shelf-badge` beside it), never inherited from `.pbl-tree`: the tree's publisher does
+   not run for a card projection, so a row reading them off the scroller got 132px on a view
+   opened into roadmap mode and a stale number on one that had visited the tree. Measured in
+   the browser harness at a 1400px pane over the demo backlog's twenty unplaced items: titles
+   began at 4 distinct x positions and now begin at 1, and the median row is 34px rather than
+   28px.
 
    Subgrid would be the obvious spelling and cannot be used: `.pbl-card` carries
    `content-visibility: auto`, which forces an independent formatting context, and in one
    `grid-template-columns: subgrid` computes to `none`. Measured — the card reported a single
-   1272px track and every row stacked. Recorded so this is not re-attempted. */
+   1272px track and every row stacked. Recorded so this is not re-attempted.
+
+   The badge slot is the band's OWN reservation and deliberately not `--pbl-meta-col`, whose
+   width is a reservation for the rollup label and is sized off the tree's population. A type
+   outside `ALL_TYPES` truncates in the slot rather than pushing its own title out of line. */
 .pbl-shelf-list .pbl-card-head {
-	flex: 0 0 var(--pbl-meta-col, 84px);
-	width: var(--pbl-meta-col, 84px);
+	flex: 0 0 var(--pbl-shelf-badge, 84px);
+	width: var(--pbl-shelf-badge, 84px);
+	min-width: 0;
+	overflow: hidden;
 }
 
 /* The cells take back the width `.pbl-card .pbl-prop` turns off. That override is right for
@@ -1066,8 +1202,8 @@ In `docs/requirements/Cards or a list on the shelf.md`, replace extension 3a's a
 line and add the alignment guarantee to `## Acceptance criteria`:
 
 ```markdown
-- A compact row's columns are the TREE's columns: the badge in `--pbl-meta-col`, the cells
-  at `--pbl-prop-w-N`, every row holding a cell open for every column so a missing value is
+- A compact row's columns are the tree's stored widths, published on the band: the badge in
+  its own `--pbl-shelf-badge` slot, the cells at `--pbl-prop-w-N`, every row holding a cell open for every column so a missing value is
   a gap rather than a shift. Measured at a 1400px pane over twenty unplaced items: titles at
   one x position where there were four, median row 28px where it was 34px.
 - The cells shrink together rather than forcing a horizontal scrollbar the band has never
@@ -1075,8 +1211,21 @@ line and add the alignment guarantee to `## Acceptance criteria`:
   drops a cell.
 ```
 
-Add to `## Where it lives` the subgrid refusal, verbatim from the spec, and the two rejected
-alternatives with their measured costs.
+Add to `## Where it lives` the subgrid refusal, verbatim from the spec, the two rejected
+alternatives with their measured costs, and the publisher:
+
+```markdown
+The widths are published on the BAND by `renderShelf`, through `publishColumnWidths`
+(`src/view/render/columns.ts`), which `renderTree` now calls too — one statement of the same
+loop. It is not inherited from `.pbl-tree`, and that is a correction rather than a
+preference: `renderPass.ts` runs the tree's publisher for the tree and the catalog alone,
+while the scroller is built once in the constructor and only emptied per pass, so a compact
+row reading those variables got the 132px fallback on a view opened into roadmap mode and a
+stale number on one that had visited the tree — geometry decided by projection history.
+The badge's own slot is `shelfBadgeWidth()`, from `ALL_TYPES` rather than from
+`metaColWidth` (which reserves for the rollup label) or from the band's current cards (which
+would resize the slot as work is placed). Found by review, Codex on PR #187.
+```
 
 - [ ] **Step 9: Full check and commit**
 
@@ -1086,8 +1235,8 @@ git add src/view/render/board.ts src/view/render/shelf.ts styles/ \
         test/view/shelfLayout.test.ts "docs/requirements/Cards or a list on the shelf.md"
 git commit -m "feat: a compact shelf row draws aligned columns
 
-The tree's own anatomy rather than a second mechanism: the badge in
---pbl-meta-col, the cells at --pbl-prop-w-N, and every row holding a cell
+The tree's own stored widths rather than a second mechanism, published
+on the band: the badge in its own slot, the cells at --pbl-prop-w-N, and every row holding a cell
 open for every column so a missing value is a gap and not a shift.
 
 Titles at one x position where there were four; median row 34px to 28px,
@@ -1305,7 +1454,7 @@ Add to `styles/shelf.css` (or the list partial, if Task 4 split it):
 	gap: 0;
 	margin-top: 0;
 	padding-block-end: var(--size-2-1);
-	padding-inline-start: calc(30px + var(--pbl-meta-col, 84px) + var(--size-4-2) + var(--size-4-2));
+	padding-inline-start: calc(30px + var(--pbl-shelf-badge, 84px) + var(--size-4-2) + var(--size-4-2));
 }
 
 .pbl-shelf-list .pbl-card-kids::before {
@@ -1313,7 +1462,7 @@ Add to `styles/shelf.css` (or the list partial, if Task 4 split it):
 	position: absolute;
 	top: 0;
 	bottom: var(--size-2-1);
-	inset-inline-start: calc(30px + var(--pbl-meta-col, 84px) + var(--size-4-2));
+	inset-inline-start: calc(30px + var(--pbl-shelf-badge, 84px) + var(--size-4-2));
 	width: 1px;
 	background-color: var(--background-modifier-border);
 	pointer-events: none;
@@ -1415,8 +1564,7 @@ Claude-Session: https://claude.ai/code/session_01V7fQnXvwEKAcZYLWoPqixS"
 
 ### Changed
 
-- A compact shelf row draws aligned columns, reusing the tree's own `--pbl-meta-col` and
-  property widths: titles at one x position where there were four, and a shorter row.
+- A compact shelf row draws aligned columns, reusing the tree's own stored property widths: titles at one x position where there were four, and a shorter row.
 - A shelved parent's disclosure sits on the line in a leading fold slot, so a parent row
   costs no extra line at rest, and its children are indented to the title.
 
@@ -1462,6 +1610,18 @@ behaviour). §3 list layout → Task 4. §4 children → Task 5. The spec's Test
 distributed across the tasks that own each claim; its Register section is distributed the
 same way, because `npm run docs` runs per commit and a new module with no note fails it in
 the task that adds it.
+
+**What review changed after the first draft (Codex, PR #187).** Two P2 findings, both
+confirmed against the code and both landing on Task 4. `--pbl-prop-w-N` is published only by
+`renderTree`, which `renderPass.ts` runs for `tree` and `catalog` alone, so the first draft's
+"the shelf inherits them for free" was true only because the harness mounts into the tree
+before `?view=` switches — the band publishes its own now (steps 4b and 4c). And the
+narrow-pane policy had to be stated rather than implied: `columnFit` is cleared for card
+projections, so nothing is ever dropped here and controlled shrinkage is the whole answer.
+Reading those findings turned up a third the review did not name: `--pbl-meta-col` is
+`metaColWidth(chars)`, a reservation for the ROLLUP LABEL sized off the tree's population, so
+borrowing it for a badge slot borrows a number about something else. The band reserves its
+own.
 
 **Two things the spec did not name and this plan adds.** The five catalog keys that say
 "unplaced" (Task 3, step 3) — the board's band is a backlog, and a control labelled "Search
