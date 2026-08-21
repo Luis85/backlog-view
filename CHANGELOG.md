@@ -28,6 +28,13 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 - The estimation view has a toolbar — the backfill action, an undo for the last batch, and
   how many of the results are scored.
 
+- **A stored business value can be recalculated where it is reported as out of date.** A
+  total reading *Needs re-estimation* or *Another model* now offers one action that rewrites
+  it and its model stamp from the scores already on the note. The only route out before was
+  to change a score to a value you did not mean and change it back. A *Hand-written* total
+  is never touched by it — that number is yours — and an orphaned total still gets the
+  cleanup that removes it instead.
+
 ### Changed
 
 - **The whole toolbar takes its words from the message catalog now** — the New button and
@@ -109,6 +116,16 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   (`the weights total 87, not 100 (13 short)`), and the lead sentence on the view's own
   problem block names where to go and fix it.
 
+- **Both undo buttons now read `Undo last change`.** There is one undo slot for the whole
+  vault ([ADR 0030](docs/adrs/0030-domain-is-the-kernel.md)), so `Undo last backlog change`
+  and `Undo last estimation change` each promised a scope the slot does not have — either
+  button always took back the vault's last batch, whichever view wrote it. The behaviour is
+  unchanged; the labels were the wrong half, and the two are now one label.
+
+- **A refused estimation setup names every configuration problem, not just the first.** A
+  model with two faults took one round trip per fault to fix; the refusal now lists all of
+  them, joined the way the rest of the plugin joins a list.
+
 ### Fixed
 
 - A long currency word pushed every numeric column on its row out of line with the header
@@ -121,6 +138,36 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   strips used to make their own cells taller than a plain cell, so their numbers sat about
   3px above the numbers in Confidence and Effort — in a table whose whole job is comparing
   numbers across a row.
+
+- **The estimation panel's clear control no longer draws over the last point of its row.**
+  The space the row reserved for it sat empty beside the buttons while the control itself
+  landed on top of one, so pointing at a row took its highest point out of reach.
+
+- **A business value typed in by hand is no longer offered for deletion.** A total with no
+  model stamp and no scores behind it reported *Inputs gone*, and the panel offered the
+  cleanup that removes it. A total with no stamp now reads *Hand-written* whatever its
+  scores say, and only a **stamped** total whose scores are gone can be cleaned up.
+
+- **The guided estimation setup is all-or-nothing.** With another write in flight —
+  including one from a different Bases view, since the write lock is vault-wide — it could
+  bind every suggested property to the view and then have the backfill refused, leaving a
+  configured model over notes carrying none of its keys. It now says a change is being
+  saved and changes nothing at all, and the button on the empty state goes quiet while a
+  write is running, like the toolbar's own.
+
+- **A sorted column header keeps keyboard focus.** Activating a header rebuilds the table,
+  which destroyed the button that was just pressed and dropped focus to the page, so a
+  second `Enter` could not flip the direction back.
+
+- **Stepping through the estimation table with the arrow keys no longer parks the selected
+  row behind the column labels.** The header is sticky, and a step upwards scrolled the row
+  flush to the top of the list — which is underneath it.
+
+- **The estimation table's sort buttons are announced to assistive technology.** The list role sat on the box
+  holding both the header and the rows, so the six sort buttons were pruned as non-option
+  children of a list, `aria-sort` with them. The role now covers the rows alone, and with
+  no results the element is a plain region instead, so the empty-table message is not
+  pruned either.
 
 ## [0.9.1] - 2026-08-17
 

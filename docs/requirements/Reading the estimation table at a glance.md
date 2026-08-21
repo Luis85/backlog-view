@@ -87,6 +87,26 @@ read as one system rather than a spreadsheet of bare digits nobody has explained
   while `EstimationView.gate` is writing.
 - `ArrowRight` on a table row moves focus into that row's panel; `Enter` still opens the
   selected note.
+- The table's **list semantics cover the rows and nothing else.** `.pbl-est-table` is the
+  scroll box; an inner `.pbl-est-rows` wrapper carries the list role, the tab stop and
+  `aria-activedescendant`, so the six sort buttons are outside the list rather than
+  non-`option` children of it. The sticky header stays inside the scroller, beside that
+  wrapper, so no column alignment moves and no scrollbar width can shift the rows out of
+  line with the labels.
+- With **no results** the same wrapper claims `region` rather than `listbox`, and stays a
+  tab stop. A list role promising an option it has not got prunes its one child, which
+  here is the no-results message — the shape `src/view/render/projections.ts` already
+  refuses for the unplaced shelf. So the semantics cover the rows only in the populated
+  state, and in the empty state there is deliberately no list at all.
+- A row reached by **keyboard** is clear of the sticky column labels: `.pbl-est-row`
+  reserves the header's own height as `scroll-margin-block-start`, so an upward step does
+  not park the selected row behind `.pbl-est-head`. The panel deliberately carries no
+  matching declaration — its scroll position is restored on every render, so a refocused
+  point button is already on screen and nothing scrolls.
+- `stale` and `foreign` each offer **one action** — recalculate the stored total from the
+  answers on the note — and `current`, `handwritten`, `orphan` and `none` offer it on no
+  path. The orphan cleanup and this action are mutually exclusive by currency, so the
+  panel shows one or neither, never both.
 
 ## Where it lives
 
@@ -107,6 +127,19 @@ label span, and states the direction in the button's own accessible name rather 
 trusting `aria-sort` to be read by anything. `aria-sort` **stays** — it is the style hook
 the stylesheet selects on, and the hook a future move to real column-header roles would
 already need.
+`src/view/estimation/renderTable.ts` also splits the table into two elements for two
+jobs: `.pbl-est-table` keeps the scroll box, the sticky header and the restored scroll
+position, and an inner `.pbl-est-rows` wrapper carries the list role, the tab stop and
+`aria-activedescendant` — with the role withdrawn to `region` while there are no rows to be
+options of. The delegated click and keydown listeners follow the tab stop onto that
+wrapper, and a sort click refocuses the header it rebuilt, addressed by its own `data-col`.
+`src/domain/estimationWritePlan.ts` gains `planRestamp`, the third planner beside the score
+write and the orphan cleanup: it returns the total-and-stamp pair computed from the answers
+on the note, refused unless the currency reports a stamp problem — and refused again when
+there is no result, since the pair-writer's own removal path would otherwise delete the
+number this action was asked to refresh. `src/view/estimation/estimationView.ts` reaches it
+through `performRestamp`, one of four `perform*` methods now sharing a single private
+`applyPlan` for the plan-gate-refresh tail they all had a copy of.
 `src/view/estimation/panel.ts` gains the sticky header that states the title, the total,
 the coverage and the currency chip above the dimension rows — see
 [[Taking a total apart]] and [[Why this item scored what it scored]] for what moved there
