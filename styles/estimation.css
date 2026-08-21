@@ -352,7 +352,14 @@ button.pbl-est-sort:focus-visible {
 /* The label shrinks and the direction does not. `Confidence` is the widest header word in a
    fixed 72px column and leaves about 10px of slack, so without this split a glyph pushes the
    label into the cell's own ellipsis — and the direction, the smaller of the two, is what a
-   shrink-to-fit would drop first. 10px rather than an icon's usual 12px for the same reason. */
+   shrink-to-fit would drop first. 10px rather than an icon's usual 12px for the same reason.
+   Worth stating plainly, the way `button.pbl-est-title { text-align: start }` (2026-08-17)
+   should have been: `.pbl-est-title`'s and `.pbl-est-cell`/`.pbl-est-total`/`.pbl-est-coverage`'s
+   own `overflow`/`text-overflow` stay for the ROW's plain `<div>`, where they are still live,
+   but are now INERT on a header button, whose own text is this span, not a direct text node.
+   `sort.test.ts`'s "puts the label in its own span so the direction is never what truncates"
+   proves the button side; `test/i18n/estimation.test.ts`'s "leaves a body row carrying nothing
+   but its own data" proves the row's div still draws its text. */
 .pbl-est-sort-label {
 	overflow: hidden;
 	text-overflow: ellipsis;
