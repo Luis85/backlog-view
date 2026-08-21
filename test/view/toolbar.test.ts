@@ -582,6 +582,25 @@ describe('toolbar count breakdown', () => {
 		expect(count?.getAttribute('aria-live')).toBe('polite');
 	});
 
+	it('counts a marker like any other result — never counted is about aggregation', () => {
+		// Asked of BOTH markers on screen at once, which is what makes it a statement of the
+		// rule rather than of one type: `Milestones as their own type` draws the line —
+		// never counted is about a ROLLUP, never an exemption from the reader's own view of
+		// what the base returned — and a `Resource` is on the same side of it. An automated
+		// reviewer read this the other way on the increment that declared the type and asked
+		// for person notes to be dropped from the total; excluding one declared type here
+		// makes the number lie about what the base holds.
+		const vault = new FakeVault();
+		vault.addFile('Onboarding.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('Ship 1.0.md', { frontmatter: { type: 'Milestone' } });
+		vault.addFile('Dana.md', { frontmatter: { type: 'Resource' } });
+		const { containerEl } = makeView(vault);
+		const count = containerEl.querySelector<HTMLElement>('.pbl-count-label');
+
+		expect(count?.textContent).toBe('3 items');
+		expect(count?.dataset.tooltip).toBe('1 Epic · 1 Milestone · 1 Resource');
+	});
+
 	/**
 	 * That `aria-live` is exactly why this test exists. A live region announces on
 	 * MUTATION, not on a changed value — and `setText` assigns `textContent`, which

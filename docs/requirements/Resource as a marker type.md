@@ -67,9 +67,11 @@ epic states why an eighteenth name is being added against an open P1 direction
 - **2b — the user opens a `Resource` row's own creator.** It offers nothing. A marker holds no
   children, and `childTypeChoices` already answers that for the two markers that exist.
 - **4a — a `Resource` sits in a subtree something is rolling up.** It contributes nothing —
-  not to a progress bar, not to a count, not to a level breakdown. This is the same rule
-  [[Milestones as their own type]] states for a point in time, for the same reason: the thing
-  contains no work.
+  not to a progress bar, not to a count of the work below it, not to a done-subtree state.
+  This is the same rule [[Milestones as their own type]] states for a point in time, for the
+  same reason: the thing contains no work. It says nothing about the TOOLBAR's item total or
+  its level-breakdown tooltip, which report what the base returned rather than what has been
+  done — see the acceptance criterion below, which used to be wide enough to read as both.
 - **4b — the focus level is set.** A `Resource` is not a rung, so no level selects it and no
   level hides it. It is accepted as a focus root exactly as the other markers are.
 - **4c — the note carries something under a date property.** Nothing is drawn. A
@@ -100,8 +102,15 @@ epic states why an eighteenth name is being added against an open P1 direction
   from the vocabulary — no second list anywhere.
 - **Nothing about `assignee` changes in this use case.** A vault upgrading to this step alone
   sees new type, same rows, same roster, same chips. That is what makes it landable first.
-- A `Resource` contributes to no rollup, no count and no level breakdown, and is selected by
-  no focus level.
+- A `Resource` contributes to no ROLLUP: no progress figure, no count of the work below it,
+  no done-subtree state, no inferred span. It is selected by no focus level. **Never counted
+  is a rule about aggregation, not about visibility** — the sentence [[Milestones as their
+  own type]] states for the first marker, and it holds here word for word. The toolbar's own
+  item total and its level-breakdown tooltip are the reader's view of what this base
+  returned, not an aggregation of progress, so a `Resource` appears in both exactly as a
+  `Milestone` already does. An automated reviewer read the wider sentence this criterion used
+  to carry and asked for the opposite; excluding one declared type from the toolbar's total
+  would make it the one number on screen that lies about what the base holds.
 - **A `Resource` is never placed on either roadmap axis and never takes a date.** Not an
   extra criterion this note started with — it is 4c, found by automated review on the
   increment itself, and it is the one place the marker precedent did NOT carry: every
@@ -111,10 +120,10 @@ epic states why an eighteenth name is being added against an open P1 direction
 
 `src/domain/typeVocabulary.ts` is the whole of the declaration: `RESOURCE_TYPE` joins
 `MARKER_TYPES` — which puts it in `ALL_TYPES` by construction — and `resources` joins
-`DEFAULT_TYPE_SUBFOLDERS`. It is module-LOCAL rather than exported, unlike `MILESTONE_TYPE`
-and `ITERATION_TYPE`: nothing outside this file names a resource yet, and an exported
-constant with no reader is what `npm run analyze` is right to call dead. [[Linking an item to
-a resource]] is what gives it one.
+`DEFAULT_TYPE_SUBFOLDERS`. It is exported for exactly one reader — `isResourceType` in
+`itemTypes.ts`, which 4c needs — and that predicate is itself module-local for the reason
+the constant would otherwise be: an export with no consumer outside its file is what
+`npm run analyze` calls dead, and it says so rather than leaving it to review.
 
 **Every STRUCTURAL marker rule is already asked of `isMarkerType`** — no rung, no children,
 no parent, no rollup, no dependency, no re-type by position — so those needed the concept
