@@ -63,8 +63,8 @@ which is worse than not translated at all.
 
 **Toolbar** (`toolbar.ts`, 23 sites) — the `New <type>` button and its type picker, the
 tooltips on every icon control (`Assign missing type and order properties`, `Undo last
-change` — retitled 2026-08-21 after the slot it empties, which is vault-wide rather than
-this view's, `Expand all`, `Collapse all`), the `Grouping ignored` advisory and its
+change`, `Expand all`, `Collapse all` — the second of those retitled 2026-08-21 after the
+slot it empties, which is vault-wide rather than this view's), the `Grouping ignored` advisory and its
 explanation, the `Check view options` warning, the item count, and the busy chip's
 `Updating N of M…`.
 

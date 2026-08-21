@@ -88,9 +88,12 @@ export class WriteGate<W extends { file: TFile }> {
 	 * True once, right after `applySafely` resolves, when that very batch's own deferred
 	 * update already rebuilt this view (`followLock`'s flush). A caller that always
 	 * refreshes after a write reads this to skip a second full rebuild of the state the
-	 * flush already drew. The estimation view is that caller, and it reads this in ONE
-	 * place — `EstimationView.applyPlan`, which every one of its write actions goes
-	 * through — rather than in each of them, so the skip cannot be forgotten by the next.
+	 * flush already drew. The estimation view has TWO such readers, and the split follows
+	 * who PLANNED the write rather than taste: the four `perform*` actions all hand a
+	 * planner's output to `EstimationView.applyPlan`, which reads this once for all of
+	 * them, while `runEstimationInit` (`estimation/init.ts`) builds its own backfill batch,
+	 * calls `applySafely` itself and so reads this itself after it. Nothing checks that a
+	 * third caller remembers to — this is a fact about these two, not an invariant.
 	 */
 	get flushedLastBatch(): boolean {
 		return this.flushedOnLastBatch;

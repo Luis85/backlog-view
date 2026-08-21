@@ -113,8 +113,9 @@ rows in every currency treatment.
   badly the answer is a `:focus-visible` rule on `.pbl-est-rows`, not a layout rule.
 - Does the **restamp button's label wrap** acceptably? `Recalculate the stored total from
   the answers on this note` is a 58-character sentence on a bare button in a panel track
-  whose floor is 320px and whose measured comfortable width is about 420px. Nothing here
-  has looked at where it breaks, or at how tall the button becomes when it does.
+  declared `minmax(320px, 420px)` — a 320px floor and a 420px declared ceiling, neither of
+  them a measurement of this label. Nothing here has looked at where it breaks, or at how
+  tall the button becomes when it does.
 - With the panel scrolled, is any row content visible **above** the pinned header? The
   pinned-edge rule — padding never sits on an edge something is pinned to — is
   mechanically checked (`.pbl-est-panel { padding-block-start: 0 }`,
