@@ -668,8 +668,8 @@ function statedSpanWords(stated: StatedEnds, ends: PlacementEnd[]): string {
  * is unreadable, so a caller can fall through to what the value or the placement says.
  */
 function unreadableEndWords(stated: StatedEnds): string | null {
-	if (stated.start.invalid) return 'an unreadable start date';
-	if (stated.target.invalid) return 'an unreadable target date';
+	if (stated.start.invalid) return t('lane.unreadableStart');
+	if (stated.target.invalid) return t('lane.unreadableTarget');
 	return null;
 }
 

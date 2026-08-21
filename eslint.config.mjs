@@ -273,7 +273,8 @@ const MENU = 'src/view/interactions/menu.ts';
 // The rest of the menu surface, carved out of VIEW for the two text bans alone — swept
 // into the catalog on 2026-08-20 alongside `menu.ts` itself, so the bans land on clean
 // files rather than opening with a wall of errors on the rest of a directory nobody has
-// swept yet. That ORDER is the rule, and `RENDER_EMPTY_STATES` above states it: a ban
+// swept yet. That ORDER is the rule, and the empty-states carve-out that used to state it
+// here is gone with the region collapse below: a ban
 // ahead of its sweep is a ban somebody switches off. Everything else VIEW carries applies
 // here unchanged.
 //

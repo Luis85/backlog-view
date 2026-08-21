@@ -343,7 +343,7 @@ function renderAwayPill(lead: HTMLElement, lane: ResourceLane, today: CivilDate)
 	const weeks = awayWeeks(lane.absences, today);
 	if (weeks === 0) return;
 	const busy = lane.bars.length > 0 ? ' pbl-lane-away-busy' : '';
-	lead.createSpan({ cls: `pbl-lane-away${busy}`, text: `${weeks} wk away` });
+	lead.createSpan({ cls: `pbl-lane-away${busy}`, text: t('lane.awayWeeks', { count: weeks }) });
 }
 
 /**
@@ -872,7 +872,11 @@ export function drawMarkerDiamonds(
 		// a `.pbl-sr-only` span in, and done is a green mark and nothing else without it —
 		// colour alone, which WCAG 1.4.1 refuses and a screen reader gets none of.
 		const state = stateNote(stateKeyFor(ctx.host.settings, bar.item), ownWorkflowReading(bar.item));
-		const said = `${bar.item.title} — ${spanText(bar)}${state ? ` — ${state}` : ''}`;
+		// Two whole keys picked between, never a clause appended to a frame: a locale that
+		// leads with the state has no way into a middle assembled here.
+		const said = state
+			? t('lane.barTooltipWithState', { title: bar.item.title, span: spanText(bar), state })
+			: t('lane.barTooltip', { title: bar.item.title, span: spanText(bar) });
 		// **CONTENT, never an `aria-label`** — this repository's own rule about this exact
 		// element, stated at `stateNote` and broken here until 2026-08-16: `.pbl-bar` is a
 		// plain div, so its implicit role is `generic`, and ARIA PROHIBITS an accessible name
@@ -1017,8 +1021,8 @@ function absenceCost(row: TimelineRow, crossed: Absence[]): { short: string; ful
 	const lost = daysLost(row.bar.span, crossed);
 	const whole = lost >= daysBetween((row.bar.span.start ?? row.bar.span.target) as CivilDate, (row.bar.span.target ?? row.bar.span.start) as CivilDate) + 1;
 	return whole
-		? { short: `all ${lost}d`, full: t('lane.daysLostWhole', { count: lost }) }
-		: { short: `${lost}d lost`, full: t('lane.daysLost', { count: lost }) };
+		? { short: t('lane.daysLostWholeShort', { count: lost }), full: t('lane.daysLostWhole', { count: lost }) }
+		: { short: t('lane.daysLostShort', { count: lost }), full: t('lane.daysLost', { count: lost }) };
 }
 
 /**

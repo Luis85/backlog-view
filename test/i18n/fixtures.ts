@@ -46,5 +46,4 @@ export const reordered: Catalog = {
 
 /** A catalog carrying one key, so every other key falls back to English rather than blank. */
 export const sparse: Catalog = {
-	'count.cards': { one: 'SPARSE {count}', other: 'SPARSE {count}' },
 };

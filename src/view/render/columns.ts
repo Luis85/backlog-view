@@ -608,7 +608,10 @@ function renderTagCell(host: BacklogViewHost, cell: HTMLElement, item: BacklogIt
 		drawIcon(remove, 'x');
 		setTooltip(remove, t('column.removeTagTooltip', { tag }));
 	}
-	if (item.tags.length > 0) setTooltip(cell, `${column.label}: ${item.tags.map((t) => `#${t}`).join(', ')}`);
+	// The tags are vault content and join as GRAMMAR, so the separator follows the
+	// catalog's locale rather than a fixed `', '` spelled here.
+	if (item.tags.length > 0)
+		setTooltip(cell, t('column.tagsTooltip', { label: column.label, tags: item.tags.map((tag) => `#${tag}`) }));
 	if (!editable) return item.tags.length > 0;
 
 	const add = cell.createEl('button', {
@@ -649,7 +652,15 @@ export function rollupReport(host: BacklogViewHost, item: BacklogItem): RollupRe
 	const settings = host.settings;
 	if ((!settings.stateKey && !settings.showCounts) || !hasRollup(host.projection)) return null;
 	if (item.descendantCount === 0) return { label: '', tooltip: '', ratio: null };
-	if (!settings.stateKey) return { label: String(item.descendantCount), tooltip: '', ratio: null };
+	// The bare count carries its own long form, so nothing downstream has to paste a noun
+	// onto the label: `progressNote` did, as `${label} items`, which read "1 items" on a
+	// single child and could not pluralize because the label is a rendered string.
+	if (!settings.stateKey)
+		return {
+			label: String(item.descendantCount),
+			tooltip: t('count.items', { count: item.descendantCount }),
+			ratio: null,
+		};
 	return {
 		label: `${item.doneDescendants}/${item.descendantCount}`,
 		tooltip: t('column.rollupTooltip', { done: item.doneDescendants, count: item.descendantCount }),

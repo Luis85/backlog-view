@@ -5,9 +5,9 @@ import { Catalog, setLocale } from '../../src/i18n/t';
 import { BOARD_WORKFLOW, boardVault, expandColumns, makeBoard } from '../helpers/board';
 import { installObsidianDom } from '../helpers/dom';
 import { horizonVault, laneRoadmap, makeRoadmap, roadmapView } from '../helpers/roadmap';
-import { resourceVault } from '../helpers/resources';
+import { countingVault, resourceVault } from '../helpers/resources';
 import { FakeVault } from '../helpers/vault';
-import { clickExpandAll, fixture, makeView } from '../helpers/view';
+import { clickExpandAll, fixture, makeView, treeOf } from '../helpers/view';
 
 installObsidianDom();
 
@@ -211,6 +211,103 @@ describe('the roadmap reads every word it draws from the catalog', () => {
 		);
 	});
 });
+
+/**
+ * The lane surfaces the axis test above does not reach, added 2026-08-21 after review found
+ * six English strings that survived this directory's sweep. Each sat where no fixture drew
+ * it: a bar has to CROSS an absence for the days-lost pair, and a resource has to be away
+ * AHEAD of today for the pill, so `resourceVault` — which has neither — rendered a clean
+ * tree over both.
+ *
+ * That is the limit this construction has and the reason it is worth stating: it asks the
+ * category of everything DRAWN, so a surface no fixture reaches is a surface it cannot
+ * speak for. Marking the whole catalog does not fix that; only a fixture does.
+ */
+describe('a lane with absences reads its own words from the catalog', () => {
+	it('leaves nothing but dates, names and titles unmarked when a bar crosses an absence', () => {
+		// One absence inside the bar's span, one ahead of today: the first draws the
+		// days-lost pair on the bar, the second the away pill on the lane's lead.
+		const vault = countingVault([
+			{ title: 'Away', start: '2026-08-04', target: '2026-08-06' },
+			{ title: 'Later', start: '2099-01-05', target: '2099-01-09' },
+		]);
+		// A MARKER too: its diamond carries the only copy of the span sentence, since it
+		// has no row to put one in, and no other fixture on this axis draws one.
+		// With a STATE on it, so the diamond takes the sentence's with-state form; the
+		// stateless form is what every other fixture on this axis draws.
+		vault.addFile('Ship.md', {
+			frontmatter: { type: 'Milestone', order: 20, assignee: 'Alice', due: '2026-08-08', status: 'Doing' },
+		});
+		// And one with NO state, so both halves of the diamond's sentence are drawn: the
+		// two are a ternary, and a fixture that reaches only one leaves the other's key
+		// free to be reverted without a check noticing.
+		vault.addFile('Cut.md', {
+			frontmatter: { type: 'Milestone', order: 30, assignee: 'Alice', due: '2026-08-09' },
+		});
+		const { containerEl } = laneRoadmap(vault, { stateProperty: 'note.status' }, { shelf: true });
+
+		expect(remainder(containerEl).filter((text) => !/^\d{4}$/.test(text) && !/^\w{3}$/.test(text))).toEqual([
+			// The state VALUES are data — what `status:` holds in the notes.
+			'Alice',
+			'Doing',
+			'Done',
+			'Epic',
+			'Milestone',
+			'Ship',
+			'Work',
+		]);
+	});
+});
+
+/**
+ * Two tree surfaces the tests above cannot reach, for opposite reasons. The tag cell's
+ * tooltip needs a row that HAS tags with the column drawn, and the rollup's bare-count
+ * tooltip needs the configuration with counts and NO workflow — the one shape in which
+ * the rollup states a number rather than a ratio. `fixture()` has a workflow, so its
+ * rollup never takes that branch.
+ */
+describe('the tree surfaces that need their own configuration', () => {
+	it('draws the tag tooltip and the workflow-less rollup from the catalog', () => {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10, tags: ['alpha', 'beta'] } });
+		vault.addFile('Child.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Epic' });
+		// No `stateProperty`: the rollup counts rather than reporting a ratio, which is the
+		// branch whose long form used to be `${label} items` — unpluralizable, and "1 items"
+		// on a single child.
+		const { containerEl, config, view } = makeView(
+			vault,
+			{ tagsProperty: 'note.tags', showCounts: true },
+			{ widths: { 'note.tags': 280 } },
+		);
+		// The column has to be in the Base's own order AND fit, or the cell is not drawn at
+		// all and its tooltip is unreachable — `columnFit` drops a column whole.
+		config.order = ['note.tags'];
+		Object.defineProperty(treeOf(containerEl), 'clientWidth', { value: 900, configurable: true });
+		view.onDataUpdated();
+		clickExpandAll(containerEl);
+
+		// 'tags' is the COLUMN's display name, which the Base config supplies — data, like
+		// the titles and type names beside it.
+		expect(remainder(containerEl)).toEqual(['#alpha', '#beta', 'Child', 'Epic', 'Feature', 'tags']);
+	});
+});
+
+/**
+ * **One string in this slice is held by nothing, and it is named here rather than left to
+ * be discovered.** `progressNote` (`render/barProgress.ts`) used to paste a noun onto the
+ * rollup label as `${label} items`; it now reads the report's own long form, which the
+ * workflow-less branch supplies through `count.items`.
+ *
+ * Nothing above fails if that is reverted, and the reason is structural rather than a
+ * missing fixture: reverting REMOVES a string instead of making one English, and every
+ * check in this file asks what rendered UNMARKED. A sentence that disappears is invisible
+ * to a remainder. Catching it needs a positive assertion on a timeline bar that has
+ * descendants and no workflow — a third fixture shape for one sentence — and an
+ * unpluralized "1 items" is the whole of what regressing would cost.
+ *
+ * Written as a comment rather than as a test on purpose: an `expect` comparing a catalog
+ * value to itself would pass forever and read as coverage.
+ */
 
 describe('what is still English here belongs to domain/, and is named rather than counted', () => {
 	/**

@@ -28,7 +28,6 @@ export const en = {
 	'count.items': { one: '{count} item', other: '{count} items' },
 	/** The same count once hiding has made it a pair — the whole is the point. */
 	'count.shownOfTotal': '{shown} of {total}',
-	'count.cards': { one: '{count} card', other: '{count} cards' },
 	'count.children': { one: '{count} child', other: '{count} children' },
 	/**
 	 * A count of children that all share a type. The type is user data and arrives as a
@@ -630,11 +629,6 @@ export const en = {
 	'shelf.clearSearch': 'Clear unplaced search',
 
 	/**
-	 * The marker row's header on both grid axes. The TYPE names inside it are data and
-	 * arrive as parameters; only the separator and the pluralizing `s` are this catalog's,
-	 * the same ceiling `count.childrenOfType` carries.
-	 */
-	/**
 	 * The resources axis's own furniture. `{name}` is a resource, `{title}` a note's own
 	 * title and `{start}`/`{target}`/`{date}` are rendered dates — all data.
 	 * `lane.undeclaredResource` carries the view-option debt `board.undeclaredColumn`
@@ -889,13 +883,6 @@ export const en = {
 	'gate.updateFailed': 'Failed to update backlog items. See the developer console for details.',
 
 	/**
-	 * What a resources move says when the card lands on the shelf anyway. Two whole
-	 * sentences rather than one prefix with a clause appended: which of them applies is
-	 * decided by whether the axis gave a REASON, and `{reason}` is `domain/bars.ts`'s own
-	 * wording passed through — still English until that layer is swept, which is why it
-	 * is a parameter here rather than a key.
-	 */
-	/**
 	 * Every card move's live-region announcement, in the two shapes a gesture can have:
 	 * one dimension, or the resources axis's two in ONE sentence. `{landing}` is the date
 	 * half, and it is a whole clause from `destinationWords` rather than this catalog's —
@@ -916,6 +903,13 @@ export const en = {
 	'resize.leadColumn': 'Resize the title column',
 	'resize.gripTooltip': 'Drag to resize, or double click to reset. Focus it for the arrow keys and Home',
 
+	/**
+	 * What a resources move says when the card lands on the shelf anyway. Two whole
+	 * sentences rather than one prefix with a clause appended: which of them applies is
+	 * decided by whether the axis gave a REASON, and `{reason}` is `domain/bars.ts`'s own
+	 * wording passed through — still English until that layer is swept, which is why it
+	 * is a parameter here rather than a key.
+	 */
 	'move.shelvedNoDates': '"{title}" is assigned to {name}. Add a start or target date to place it in the row.',
 	'move.shelvedReason': '"{title}" is assigned to {name}. {reason}, so it stays on the shelf.',
 
@@ -1061,4 +1055,26 @@ export const en = {
 
 	'stateColors.noStates':
 		'No workflow states to colour yet. Name a state property and list its states in the view options.',
+	/**
+	 * Four sentences the sweep of `view/` first left as English inside keyed neighbours,
+	 * found by review on 2026-08-21. Each sat in a stated blind spot rather than at a
+	 * spelling any rule reads: two were returned from a helper, one is a template whose
+	 * first quasi is empty, and one is a clause joined at its call site.
+	 */
+	'lane.unreadableStart': 'an unreadable start date',
+	'lane.unreadableTarget': 'an unreadable target date',
+	'lane.daysLostShort': { one: '{count}d lost', other: '{count}d lost' },
+	'lane.daysLostWholeShort': { one: 'all {count}d', other: 'all {count}d' },
+	'lane.awayWeeks': { one: '{count} wk away', other: '{count} wk away' },
+	/**
+	 * The bar's own tooltip, as two WHOLE sentences rather than one frame with a state
+	 * clause appended — the shape `emptyState.noAxisBody` and its half-set sibling set, and
+	 * the reason is the same: a locale that leads with the state has no way into a middle
+	 * the caller assembled with an em dash.
+	 */
+	'lane.barTooltip': '{title} — {span}',
+	'lane.barTooltipWithState': '{title} — {span} — {state}',
+	'timeline.waitsTooltip': '{title} — {waits}',
+	/** The tag cell's own tooltip; `{tags}` is vault content joined as grammar. */
+	'column.tagsTooltip': '{label}: {tags}',
 } as const;
