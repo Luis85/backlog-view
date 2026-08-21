@@ -26,7 +26,7 @@ That includes work not yet built. `Product Kanban` is design-only today, but a b
 new set of rendered surfaces — columns, cards, empty states — and every one of
 them will need a label from the catalog and a colour from a token. Nothing here has to be
 restated in those notes; the point of an epic at this level is that it governs whatever
-the plugin grows next, which is why the two features are written against properties rather
+the plugin grows next, which is why the features here are written against properties rather
 than against a list of screens.
 
 ## Why they belong together
@@ -51,9 +51,10 @@ A concern lands here when it has three properties:
 | --- | --- |
 | `Multilang` | Every string the plugin shows comes out of a per-locale catalog |
 | `Theming and styling` | Every pixel it draws comes from Obsidian's design tokens |
+| `A view per capability` | Every capability is its own view, and views reach each other only through the vault |
 
-They are siblings for a real reason rather than a filing convenience: they meet at the
-layout. Translated text is longer, shorter and sometimes right-to-left, and what absorbs
+The first two are siblings for a real reason rather than a filing convenience: they meet at
+the layout. Translated text is longer, shorter and sometimes right-to-left, and what absorbs
 that is the stylesheet. The seam is drawn once and stated in both places —
 `Theming and styling` owns the *mechanism* (logical properties, no physical direction
 rules, and the lint that keeps it that way), `Multilang` owns the *verification* (that
@@ -61,6 +62,16 @@ the view still reads correctly with long compounds in the columns and the tree r
 the other way). Since English ships alone in the first round, that verification runs
 against a development-only pseudo-locale and a forced `dir="rtl"` rather than against a
 shipped translation.
+
+`A view per capability` joined them on 2026-08-21, having been an Epic of its own. It meets
+the three properties above as squarely as they do: it has no single home (every view and
+every layer below one is bound by it), partial compliance is worse than none (one hidden
+channel between two views is the proprietary database this plugin refuses, and one is
+enough), and it decays by default — nobody adds a shared store on purpose, they add a
+feature that needs to know something the other view already computed. What it does NOT
+share with the other two is a mechanical check: its rule is held by the layer lint and by
+review, and the parts of it nobody has answered yet are filed as Issues under it rather
+than as Features it has promised.
 
 ## Definition of done, for anything under this epic
 

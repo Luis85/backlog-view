@@ -1,5 +1,5 @@
 ---
-type: Feature
+type: Issue
 parent: "[[A view per capability]]"
 order: 60
 status: Open
@@ -16,7 +16,7 @@ assignee: ""
 
 # Extracting the board and the roadmap
 
-The backlog view carries four projections behind one toolbar. Under this epic's rule three
+The backlog view carries four projections behind one toolbar. Under [[A view per capability]]'s rule three
 of them are views of their own — the board, the roadmap, and the Deliverables board — and
 the extraction is staged rather than announced: each moves when its own configuration can
 travel with it, and a base that names the old arrangement keeps working or says what to

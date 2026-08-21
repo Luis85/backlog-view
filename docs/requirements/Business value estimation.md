@@ -68,7 +68,7 @@ section nobody using the tree will read, and the two views share the layers belo
 write boundary, one gate, one undo history, one model of what a work item is.
 
 It is the first capability to follow [[A view per capability]], and the shared kernel that
-epic extracts is what it reads the tree with — which is also why the kernel comes first: an
+rule calls for is what it reads the tree with — which is also why the kernel comes first: an
 estimation view built against the backlog view's own internals would be the second
 implementation of a work item, not the second view of one.
 
