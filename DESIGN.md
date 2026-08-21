@@ -274,11 +274,14 @@ as much as it is worked, and nothing on screen shouts.
 - **Title** (`var(--font-ui-medium)`, `var(--font-medium)`): empty-state headlines, and the
   detail panel's item name above its Answer. Where this interface raises its voice — for a
   headline when there is nothing to show, and for the name of the thing being scored.
-- **Body** (`var(--font-ui-small)`): row titles, card titles, column and bucket headers,
-  toolbar buttons, the filter input, empty hints. The default reading size.
+- **Body** (`var(--font-ui-small)`): row titles, card titles, board column and roadmap
+  bucket headers, toolbar buttons, the filter input, empty hints. The default reading size.
 - **Label** (`var(--font-ui-smaller)`, line-height 1.6–1.7): badges, chips, counts, limits,
-  parent breadcrumbs, match pills, meta cells, the busy indicator. Everything that annotates
-  rather than names.
+  parent breadcrumbs, match pills, meta cells, a TABLE's column headers, the busy indicator.
+  Everything that annotates rather than names. *A table's column header is a Label and a
+  board column's is Body — qualified 2026-08-21, because unqualified "column header"
+  appeared in both entries and an ambiguous entry in a four-step ladder is how the next
+  silent drift gets in.*
 
 ### Named Rules
 
