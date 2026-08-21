@@ -132,6 +132,16 @@ describe('the estimation view reads its own text from the catalog', () => {
 		expect(unmarked(drawn)).toEqual([]);
 	});
 
+	it('names a SORTED header from it, direction and all', () => {
+		// The one string in this view that lint cannot see even in a swept directory: an
+		// `aria-label` built by `sortHeader` from a positional argument. Unsorted, the head row
+		// carries no such name at all, so the existing test above cannot reach it.
+		const { containerEl } = makeEstimationView(fixture(), configuredValues());
+		const head = partOf(containerEl, '.pbl-est-head');
+		partOf(head, '.pbl-est-sort[data-col="total"]').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		expect(unmarked(drawnText(partOf(containerEl, '.pbl-est-head')))).toEqual([]);
+	});
+
 	it('leaves a body row carrying nothing but its own data', () => {
 		const { containerEl } = makeEstimationView(fixture(), configuredValues());
 		const row = partOf(containerEl, '.pbl-est-row[data-path="Full.md"]');

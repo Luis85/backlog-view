@@ -183,3 +183,48 @@ describe('the sort pick, persisted per saved view', () => {
 		expect(header(containerEl, 'total').hasAttribute('aria-sort')).toBe(false);
 	});
 });
+
+describe('the sort direction has a shape and a name', () => {
+	it('draws no direction element on a header nobody has sorted by', () => {
+		const { containerEl } = makeEstimationView(fixture(), values());
+		expect(header(containerEl, 'total').querySelector('.pbl-est-sort-dir')).toBeNull();
+	});
+
+	it('draws a DIFFERENT glyph for each direction, so the two are not visually identical', () => {
+		// The defect: `aria-sort` was the only difference between ascending and descending, and
+		// it is not a supported attribute on a button in a `role="listbox"` — so the direction
+		// survived neither a colour screenshot nor a screen reader. `data-icon` is what the
+		// harness's `setIcon` records (`test/helpers/obsidian-mock.ts`).
+		const { containerEl } = makeEstimationView(fixture(), values());
+		click(header(containerEl, 'total'));
+		const descending = header(containerEl, 'total').querySelector<HTMLElement>('.pbl-est-sort-dir')?.dataset.icon;
+		click(header(containerEl, 'total'));
+		const ascending = header(containerEl, 'total').querySelector<HTMLElement>('.pbl-est-sort-dir')?.dataset.icon;
+		expect(descending).toBe('chevron-down');
+		expect(ascending).toBe('chevron-up');
+		expect(ascending).not.toBe(descending);
+	});
+
+	it('states the direction in the header button\'s accessible name', () => {
+		const { containerEl } = makeEstimationView(fixture(), values());
+		click(header(containerEl, 'total'));
+		expect(header(containerEl, 'total').getAttribute('aria-label')).toContain('descending');
+		click(header(containerEl, 'total'));
+		expect(header(containerEl, 'total').getAttribute('aria-label')).toContain('ascending');
+		// `aria-sort` stays: it is the stylesheet's state hook and this file's own direction
+		// hook, and the attribute a move to real column-header roles would already have. What
+		// it is NOT is a thing any assistive technology reads on a button in a listbox, which
+		// is why the name above is added rather than the attribute trusted.
+		expect(header(containerEl, 'total').getAttribute('aria-sort')).toBe('ascending');
+	});
+
+	it('puts the label in its own span so the direction is never what truncates', () => {
+		// The four numeric columns are a fixed 72px and `Confidence` is the widest header word,
+		// leaving about 10px of slack — so a glyph beside a bare text node pushes the label into
+		// the cell's own ellipsis at some widths and in most translations. The label shrinks;
+		// `.pbl-est-sort-dir` is `flex: 0 0 auto`.
+		const { containerEl } = makeEstimationView(fixture(), values());
+		const label = header(containerEl, 'confidence').querySelector('.pbl-est-sort-label');
+		expect(label?.textContent).toBe('Confidence');
+	});
+});

@@ -1,3 +1,4 @@
+import { setIcon } from 'obsidian';
 import type { EstimationView } from './estimationView';
 import { renderPanel } from './panel';
 import { renderCurrencyChip } from './currencyChip';
@@ -334,10 +335,30 @@ interface HeaderSpec {
 function sortHeader(view: EstimationView, head: HTMLElement, spec: HeaderSpec, pick: SortPick | null): void {
 	const { column, cls, label } = spec;
 	const active = pick && pick.column === column ? pick : null;
-	const btn = head.createEl('button', { cls: `${cls} pbl-est-sort`, text: label, attr: { 'data-col': column } });
-	if (active) btn.setAttribute('aria-sort', active.direction === 'asc' ? 'ascending' : 'descending');
+	const btn = head.createEl('button', { cls: `${cls} pbl-est-sort`, attr: { 'data-col': column } });
+	// The label in its own truncating span, and that is not tidying: the four numeric columns
+	// are a fixed 72px and `Confidence` leaves about 10px of slack, so a glyph beside a bare
+	// text node pushes the label into the cell's own ellipsis at some widths and in most
+	// translations. The span shrinks; the glyph is `flex: 0 0 auto`, so the direction is never
+	// the thing that disappears.
+	btn.createSpan({ cls: 'pbl-est-sort-label', text: label });
+	if (!active) return wireSortClick(view, btn, spec, active);
+	btn.setAttribute('aria-sort', active.direction === 'asc' ? 'ascending' : 'descending');
+	// `aria-sort` above stays — the stylesheet's state hook, every direction assertion's hook,
+	// and the attribute a move to real `columnheader` roles would already have. It is NOT read
+	// by anything today: ARIA supports it on `columnheader`/`rowheader`, and this is a button
+	// inside a `role="listbox"`. So the direction is SAID here and SHOWN below.
+	btn.setAttribute('aria-label', t(active.direction === 'asc' ? 'estimation.sort.ascending' : 'estimation.sort.descending', { column: label }));
+	setIcon(btn.createSpan({ cls: 'pbl-est-sort-dir' }), active.direction === 'asc' ? 'chevron-up' : 'chevron-down');
+	return wireSortClick(view, btn, spec, active);
+}
+
+/** The click half of a header button, split out so `sortHeader` can return early once the
+ *  inactive case has nothing more to draw. A click computes the NEXT pick from the CURRENT
+ *  one — flip if this is already the active column, else that column's own first direction. */
+function wireSortClick(view: EstimationView, btn: HTMLElement, spec: HeaderSpec, active: SortPick | null): void {
 	btn.addEventListener('click', () => {
-		setSort(view, sortValue({ column, direction: active ? flip(active.direction) : firstDirection(column) }));
+		setSort(view, sortValue({ column: spec.column, direction: active ? flip(active.direction) : firstDirection(spec.column) }));
 		view.refresh();
 	});
 }

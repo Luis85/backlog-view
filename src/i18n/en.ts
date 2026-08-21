@@ -746,14 +746,22 @@ export const en = {
 	'estimation.problems.blocked': 'Fix the estimation model first: {problem}',
 	'estimation.empty.noResults': 'No results to estimate.',
 
-	/** The prioritized list's column labels — also each sort button's own accessible
-	 * name, so no separate string names the control. */
+	/** The prioritized list's column labels — also each sort button's own accessible name
+	 * while nothing is sorted BY it. The ACTIVE column's name states the direction instead
+	 * (`estimation.sort.*` below), because `aria-sort` is not a supported attribute on a
+	 * button inside a `role="listbox"` and is announced to nobody. */
 	'estimation.column.item': 'Item',
 	'estimation.column.value': 'Value',
 	'estimation.column.coverage': 'Coverage',
 	'estimation.column.confidence': 'Confidence',
 	'estimation.column.effort': 'Effort',
 	'estimation.column.currency': 'Currency',
+
+	/** The active sort header's accessible name. {column} is the column's own label above —
+	 * a catalog string, not data. The GLYPH beside it carries the same fact for a sighted
+	 * reader (`chevron-up`/`chevron-down`), per DESIGN.md's Shape-Before-Colour Rule. */
+	'estimation.sort.ascending': '{column}, sorted ascending',
+	'estimation.sort.descending': '{column}, sorted descending',
 
 	/** The currency chip's word for what a stored total says about itself — never the
 	 * rubric or a property name, which are data and never enter this catalog. */

@@ -349,6 +349,27 @@ button.pbl-est-sort:focus-visible {
 	outline-offset: 1px;
 }
 
+/* The label shrinks and the direction does not. `Confidence` is the widest header word in a
+   fixed 72px column and leaves about 10px of slack, so without this split a glyph pushes the
+   label into the cell's own ellipsis — and the direction, the smaller of the two, is what a
+   shrink-to-fit would drop first. 10px rather than an icon's usual 12px for the same reason. */
+.pbl-est-sort-label {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.pbl-est-sort-dir {
+	display: inline-flex;
+	align-items: center;
+	flex: 0 0 auto;
+}
+
+.pbl-est-sort-dir .svg-icon {
+	width: 10px;
+	height: 10px;
+}
+
 /* The toolbar's own count (`toolbar.ts`) — everything else it draws is
    `styles/toolbar.css`'s existing `.pbl-toolbar`/`.pbl-icon-btn`/`.pbl-toolbar-spacer`
    vocabulary, so this is the only new rule the toolbar needs here. `tabular-nums`
