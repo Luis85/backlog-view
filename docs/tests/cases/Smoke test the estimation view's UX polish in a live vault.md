@@ -89,6 +89,43 @@ rows in every currency treatment.
   declarations are; the visual result is not. The harness page has **no `?scroll=`
   knob**, so this needs a real vault or a scroll by hand.
 
+## What the harness answered about the narrow pane ahead of the walk
+
+Taken 2026-08-21 with the committed `?measure` knob in headless Chromium at
+`--window-size` 1200, 900, 700, 560, 460 and 380 — a partial answer to the narrow-pane
+item above, recorded so the walk starts from it rather than from nothing. It is NOT the
+observation that item asks for: the harness window is not an Obsidian pane, there is no
+sidebar, no split and no ribbon taking width off it, and the widths below are therefore
+about where the table stops shrinking rather than about which real layouts reach that
+point.
+
+Row geometry (`row0`), left to right, in CSS pixels:
+
+| Window | title | total | coverage | confidence | effort | currency | row right edge |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 1200 | 224 | 72 | 72 | 72 | 72 | 140 | 717 |
+| 900 | **96** | 72 | 72 | 72 | 72 | 140 | 589 |
+| 700 | 96 | 72 | 72 | 72 | 72 | 140 | 589 |
+| 560 | 96 | 72 | 72 | 72 | 72 | 140 | 589 |
+| 460 | 96 | 72 | 72 | 72 | 72 | 140 | 589 |
+| 380 | 96 | 72 | 72 | 72 | 72 | 140 | 589 |
+
+Two things follow, and only the first is settled. **The squeeze is entirely the title's
+and it bottoms out somewhere near 900px**: every other column is fixed (72px four times,
+140px for the currency) and none of them gives up a pixel at any width, which is decision
+11 restated as a measurement — all six columns stay present and the title absorbs the
+whole deficit down to its 96px floor. **Below that the row stops changing at all**, and
+what the row then DOES is the open half: the box is 589px wide in a container narrower
+than that, and whether the currency column ends up scrolled, clipped or partially
+occluding its neighbour is a question about the scroller, not about the columns. Nothing
+here answers it — `getBoundingClientRect` reports the same box whether it overflows into a
+scrollbar or under an edge.
+
+So the walk's narrow-pane item still has to be walked, and what it should record is that
+second half: at a pane width where the row no longer fits, is the currency column reachable
+by scrolling, cut off, or half-drawn over its neighbour? That is the observation the
+deferred narrow-width work needs, and the one this repository cannot take.
+
 ## What the harness already answers, so this note does not repeat it
 
 `npm run harness` draws the real view against the real stylesheet and answers layout,
