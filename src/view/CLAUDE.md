@@ -729,7 +729,11 @@ free of runtime code so imports stay cycle-free.
   menu's shelf section and that section is the roadmap's alone. **`picks` therefore also
   decides the NARROWING**: a shelf without those controls applies neither the search nor
   the hidden types, since a narrowing whose control is not on screen can be neither seen
-  nor cleared (the sort is not in that rule — it hides nothing). Its own fold is a COLUMN
+  nor cleared (the sort is not in that rule — it hides nothing, and neither does the card /
+  list LAYOUT, which this band therefore draws in whatever the reader picked on the roadmap;
+  the register claimed the opposite for one commit and the code was right — Codex, PR #183).
+  Its HEIGHT is the same value the roadmap's band takes, which is the same argument once
+  more: one component, one band on screen at a time. Its own fold is a COLUMN
   fold (`ColumnScope` `'backlog'`), not a view-state value: a shelf is a foldable band
   exactly as a column is, and the column machinery already gives it a default, a store and
   a rename migration. A pull is `performIterationBoardMove` carrying the join, so a card

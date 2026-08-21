@@ -177,6 +177,57 @@ describe('the shelf’s card and list layouts', () => {
 		});
 	});
 
+	/**
+	 * The pick reaches the iteration board's shelf too, and that is the SORT's rule rather
+	 * than the search's — the distinction `renderShelf` states and the one this suite exists
+	 * to keep, since neither direction was checked when the two came apart (Codex, PR #183).
+	 *
+	 * A narrowing is gated on `picks` because a shelf drawn without those controls could hide
+	 * work with nothing on screen to say why and nothing to clear it with. A layout hides
+	 * nothing: the same cards are drawn, so a reader who has never seen the picker has lost
+	 * no work and needs no way back. The shelf HEIGHT in the same change is one value for
+	 * both bands for that same reason, and gating one while sharing the other would be two
+	 * answers to one question.
+	 */
+	describe('the iteration board’s shelf, which carries no picker of its own', () => {
+		function sprintBoard(): Harness {
+			const vault = new FakeVault();
+			vault.addFile('Sprint 12.md', { frontmatter: { type: 'Iteration', order: 10 } });
+			vault.addFile('Uncommitted.md', { frontmatter: { type: 'PBI', order: 30, status: 'New' } });
+			const harness = makeView(
+				vault,
+				{
+					stateProperty: 'note.status',
+					stateValues: 'New, Done',
+					doneValues: 'Done',
+					iterationProperty: 'note.iteration',
+					iterationOpenStates: 'New',
+					iterationResolvedStates: 'Done',
+				},
+				{ base: 'Plan.base', order: ['note.status'] },
+			);
+			harness.view.setProjection('iteration');
+			harness.view.setBoardScope('Sprint 12.md');
+			return harness;
+		}
+
+		it('draws no layout picker, since the pickers are the roadmap’s', () => {
+			const { containerEl } = sprintBoard();
+			expect(shelfOf(containerEl)?.querySelector('.pbl-shelf-layout')).toBeNull();
+		});
+
+		it('still draws the picked layout, because a layout narrows nothing', () => {
+			const { view, containerEl } = sprintBoard();
+			expect(isList(containerEl)).toBe(false);
+
+			view.setShelfLayout('list');
+			expect(isList(containerEl)).toBe(true);
+			// The state chip comes with the row here too, and for the same reason: this board's
+			// columns ARE states, and a card on its shelf is in none of them.
+			expect(stateOf(containerEl, 'Uncommitted')?.textContent).toContain('New');
+		});
+	});
+
 	it('remembers the pick for this saved view, without touching the base', () => {
 		const { view, config } = makeRoadmap(horizonVault());
 		view.setShelfLayout('list');

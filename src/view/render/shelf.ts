@@ -200,6 +200,8 @@ export function renderShelf(
 	const shelfCards = shelf.cards;
 	const empty = shelfCards.length === 0;
 	const collapsed = !empty && shelf.fold.collapsed;
+	// NOT gated on `shelf.picks`, unlike the search and the type filter below — see the
+	// narrowing rule stated at `shown`, which is where the two categories are told apart.
 	const list = host.shelfLayout === 'list';
 	const shelfEl = frameEl.createDiv({
 		cls:
@@ -259,6 +261,14 @@ export function renderShelf(
 	// nothing on screen to show why and nothing to clear it with. Found by review (Codex,
 	// PR #182). The SORT is not in this rule and is applied either way: it orders what is
 	// drawn and hides nothing, so a pick made on the roadmap costs a reader nothing here.
+	// **So is the LAYOUT** (`list`, above), for the identical reason and stated here rather
+	// than beside it because this is where the two categories are told apart: cards or rows
+	// changes how much room each card takes and draws every one of them either way, so a
+	// reader who has never seen the picker has lost no work and needs no way back to it. The
+	// shelf's HEIGHT is one value for both bands on that same argument, and gating the layout
+	// on `picks` while sharing the height would be two answers to one question. The register
+	// said the opposite for one commit (Codex, PR #183), and neither direction was checked —
+	// `test/view/shelfLayout.test.ts` drives this one now.
 	// Searched first, then grouped: `searchShelf` states why that order is the rule.
 	const shown = shelf.picks ? searchShelf(shelfCards, host.shelfSearch) : shelfCards;
 	for (const group of organizeShelf(shown, host.shelfSort, shelf.picks ? host.shelfHiddenTypes : NO_HIDDEN)) {

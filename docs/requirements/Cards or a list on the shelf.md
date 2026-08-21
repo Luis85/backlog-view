@@ -52,7 +52,7 @@ one a reader wants changes by the day and by the task, not by the base.
 | --- | --- |
 | **Actor** | Backlog owner |
 | **Trigger** | The reader presses the layout picker in the shelf's own header, or picks Shelf layout in a card's context menu |
-| **Preconditions** | A shelf with the picks on its header is drawn and open — the roadmap's, on either axis |
+| **Preconditions** | To MAKE the pick: the roadmap's shelf, on either axis, drawn and open — that band is the one carrying the picks. The pick itself applies wherever a shelf draws, the iteration board's included (extension 1b). |
 | **Guarantee** | Every card in the band draws in the picked layout, the pick is remembered for this saved view on this device, and nothing is written to the `.base` or to a note. The layout narrows nothing: the same cards are drawn either way, so the shelf's own count stays the true total in both. |
 
 **Main flow**
@@ -71,10 +71,17 @@ one a reader wants changes by the day and by the task, not by the base.
 - **1a — the shelf is collapsed, or holds nothing.** No picker, exactly as the sort and
   the type filter are withheld: there is nothing to lay out, and a control that visibly
   does nothing is worse than one that is not there.
-- **1b — the shelf is the iteration board's.** No picker either, and the pick is not
-  applied there. That is [[A board scoped to one iteration]]'s existing `picks` rule
-  rather than a new one — the keyboard path for these controls is the card menu's shelf
-  section, which is the roadmap's alone.
+- **1b — the shelf is the iteration board's.** No picker — the keyboard path for these
+  controls is the card menu's shelf section, which is the roadmap's alone — but the pick
+  IS applied there. That is the SORT's half of `renderShelf`'s narrowing rule rather than
+  the search's: a shelf drawn without the controls applies neither the search nor the
+  hidden types, because either could take work off the band with nothing on screen to say
+  why and nothing to clear it with, while a layout draws every card either way. A reader
+  who has never seen the picker has lost nothing and needs no way back to it. The band's
+  HEIGHT in [[Resizing the shelf]] is one value for both shelves on that same argument, so
+  gating this one would be two answers to one question. This extension claimed the
+  opposite when it was written, and the code was right (Codex, PR #183) — what let the two
+  disagree at all is that neither direction had a test, which they now do.
 - **2a — the reader has no pointer.** `Shelf layout` is a submenu of any shelf card's
   context menu, built from the same list, so the two surfaces cannot offer different
   layouts or disagree about which is checked.
@@ -90,6 +97,8 @@ one a reader wants changes by the day and by the task, not by the base.
 
 - The picker draws in the roadmap's shelf header while the band is open and non-empty,
   and on no other screen; it is `tabindex="-1"` like the two pickers beside it.
+- The iteration board's shelf draws no picker and still honours the pick — the sort's rule,
+  not the search's.
 - Picking a layout flips what the band draws and what the picker's own icon shows, under
   one fixed name.
 - The same cards are drawn in both layouts, and the shelf's count is unchanged by the
