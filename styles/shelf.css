@@ -162,10 +162,23 @@
 }
 
 .pbl-shelf-list .pbl-card {
+	padding: var(--size-2-1) var(--size-4-2);
+}
+
+/* The row itself, which is the card's SUMMARY rather than the card — `renderShelfCard`
+   draws that box for a compact row and for nothing else. The card stays a column, so a
+   shelved parent's children list is its second child and falls BENEATH the line instead of
+   sitting at the end of it. Letting the card wrap would have done the same job and cost the
+   one-line guarantee: measured in the harness, `flex-wrap: wrap` put the child list where it
+   belongs and took a row carrying a few property cells from 28px to 59px, because the cells
+   wrap on the same rule. A wrapper breaks the line exactly where it should be broken and
+   nowhere else. */
+.pbl-shelf-list .pbl-card-summary {
+	display: flex;
 	flex-direction: row;
 	align-items: center;
 	gap: var(--size-4-2);
-	padding: var(--size-2-1) var(--size-4-2);
+	min-width: 0;
 }
 
 /* The title is the one thing in the row that yields, and it truncates rather than wraps:
@@ -207,7 +220,7 @@
    sets `wrap`, and a wrapper that can finally be squeezed is a wrapper whose cells wrap to
    a second line — a compact row that grows to 56px the moment it holds two chips. The two
    declarations only work together. */
-.pbl-shelf-list .pbl-card .pbl-props {
+.pbl-shelf-list .pbl-card-summary .pbl-props {
 	flex: 0 1 auto;
 	min-width: 0;
 	overflow: hidden;

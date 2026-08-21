@@ -89,6 +89,14 @@ one a reader wants changes by the day and by the task, not by the base.
   write.** No chip, and no gap where one would have been: the chip IS that property's
   cell, which is the tree's own rule, and the wrapper goes with the cell when the cell is
   dropped.
+- **3b — a shelved parent with children.** Its disclosure and its expanded list stay
+  BENEATH the line rather than at the end of it. `.pbl-card-kids` is a direct child of the
+  card, so a card laid out as a row puts them beside the title: measured in the harness at
+  35px against 28px with the list still shut, and taller with it open, the whole summary
+  then centred against it. It cannot be fixed on the line — letting the card wrap so the
+  list falls beneath also lets the property cells wrap, which took a row carrying a few of
+  them from 28px to 59px, both measured. So the row is the card's SUMMARY box and the list
+  is its sibling: the line breaks exactly where it should and nowhere else.
 - **3a — a title too long for one line.** It truncates with an ellipsis rather than
   wrapping: a row that grew a second line would not be a row. The title yields and the
   property cells keep their content width, which is the TREE's own order — its columns are
@@ -112,8 +120,10 @@ one a reader wants changes by the day and by the task, not by the base.
   one fixed name.
 - The same cards are drawn in both layouts, and the shelf's count is unchanged by the
   pick.
-- A compact row is ONE line whatever it carries, and its title keeps a stated floor rather
-  than being squeezed away by property cells.
+- A compact row is ONE line whatever it carries — property cells included — and its title
+  keeps a stated floor rather than being squeezed away by them.
+- A shelved parent's children list is the card's own child rather than the summary's, so it
+  draws beneath the line; the card grid draws no summary box at all.
 - A compact row carries the state chip; a card does not. The chip is the tree's own — a
   `<button>` with `tabindex="-1"` for a result, whose menu is the one Set state opens.
 - The card menu offers the same two layouts with the same entry checked.
@@ -133,14 +143,28 @@ through `BacklogViewHost` (`src/view/host.ts`) and
 `src/view/viewStateSurface.ts` like every other view-state member, with
 `src/view/viewStateController.ts` rendering the content pane on the flip.
 
-**The layout costs no render branch, and that is the whole design.** `renderShelf`
-(`src/view/render/shelf.ts`) puts `pbl-shelf-list` on the band and nothing else changes:
-the same `renderCardBody` builds the same children either way, and `styles/shelf.css`
-turns the card's own flex COLUMN into a row. So an item cannot look different per layout
-in any way but the one that is drawn deliberately, and the pick cannot come to hide work
-the count still claims.
+**The layout draws the same content either way, and nearly all of it is the stylesheet.**
+`renderShelf` (`src/view/render/shelf.ts`) puts `pbl-shelf-list` on the band, the same
+`renderCardBody` builds the same children, and `styles/shelf.css` lays the card's own
+children out in a row instead of a column. So an item cannot look different per layout in
+any way but the ones drawn deliberately, and the pick cannot come to hide work the count
+still claims.
 
-That one deliberate difference is `renderShelfState`, also in `render/shelf.ts`. A card
+**Nearly**, and the exception is worth stating rather than rounding away, because this note
+claimed "no render branch" for one commit and that was wider than the code
+(Codex, PR #183). A compact row draws ONE extra element — `.pbl-card-summary`, the box the
+line itself is — so that a shelved parent's children list can be the card's second child and
+fall beneath the line rather than sitting at the end of it. It is a wrapper and never
+different content: the same children are built, and the card grid creates no wrapper at all.
+Extension 3b is why it could not be done in CSS alone.
+
+`renderCardBody` takes `kidsEl` for that wrapper — where the children disclosure goes when
+that is not the card itself — and the shelf's row is its only caller: the summary takes the
+body, the card takes the list. The two notes `renderShelfCard` appends after the body (the
+shelving reason and the dependency statement) and the state cell below go to the summary
+too, since they are part of the line.
+
+The first deliberate difference is `renderShelfState`, also in `render/shelf.ts`. A card
 draws no state chip because its own POSITION says the state — a board column IS a state, a
 bucket IS a horizon — and the shelf is exactly where that argument stops: a shelved card is
 in no column and no bucket, so a row is the only place its state appears at all. It is

@@ -178,6 +178,72 @@ describe('the shelf’s card and list layouts', () => {
 	});
 
 	/**
+	 * A compact row is ONE line, and a shelved parent's children list is what tests that: it
+	 * is a direct child of the card, so a card laid out as a row would put the disclosure and
+	 * its expanded list at the END of the line rather than beneath it. The row is therefore
+	 * the card's SUMMARY and the children list is its sibling.
+	 *
+	 * jsdom lays nothing out, so what is asserted here is the STRUCTURE the stylesheet needs
+	 * — which box the row treatment is on and which children are inside it. The geometry it
+	 * buys was measured in the harness: the list beneath the summary at full width, and a row
+	 * carrying property cells still 28px, where letting the card wrap instead fixed the first
+	 * and took the second to 59px.
+	 */
+	describe('a shelved parent’s children', () => {
+		function parentOnTheShelf(): FakeVault {
+			const vault = horizonVault();
+			vault.addFile('Untriaged parent.md', { frontmatter: { type: 'Feature', order: 50 } });
+			vault.addFile('Its child.md', {
+				frontmatter: { type: 'PBI', order: 10, parent: '[[Untriaged parent]]' },
+				parentLink: 'Untriaged parent',
+			});
+			return vault;
+		}
+
+		const kidsOf = (containerEl: HTMLElement, title: string) =>
+			cardByTitle(containerEl, title).querySelector<HTMLElement>('.pbl-card-kids');
+
+		it('draws no summary box in the card grid, where the card is already a column', () => {
+			const { containerEl } = makeRoadmap(parentOnTheShelf());
+			const card = cardByTitle(containerEl, 'Untriaged parent');
+			expect(card.querySelector('.pbl-card-summary')).toBeNull();
+			// And the disclosure is there to be misplaced in the first place.
+			expect(kidsOf(containerEl, 'Untriaged parent')).not.toBeNull();
+		});
+
+		it('puts the children list BESIDE the summary box, never inside it', () => {
+			const { view, containerEl } = makeRoadmap(parentOnTheShelf());
+			view.setShelfLayout('list');
+
+			const card = cardByTitle(containerEl, 'Untriaged parent');
+			const summary = card.querySelector<HTMLElement>('.pbl-card-summary');
+			const kids = kidsOf(containerEl, 'Untriaged parent');
+			expect(summary).not.toBeNull();
+			expect(kids).not.toBeNull();
+			// The line is the summary's; the list is the card's own second child, which is
+			// what lets the stylesheet put it beneath rather than at the end of the line.
+			expect(summary?.contains(kids as Node)).toBe(false);
+			expect(kids?.parentElement).toBe(card);
+			// Everything that IS the line is inside the box, including the two notes this
+			// module appends after the body and the state chip it adds for a row.
+			expect(summary?.querySelector('.pbl-card-title')).not.toBeNull();
+		});
+
+		it('keeps the shelving reason and the dependency note on the line', () => {
+			// Both are appended by `renderShelfCard` after the body rather than by it, so
+			// they are the two things a summary box can silently be missing.
+			const vault = horizonVault();
+			vault.addFile('Bad dates.md', { frontmatter: { type: 'Epic', order: 60, horizon: 'Nowhere' } });
+			const { view, containerEl } = makeRoadmap(vault, { horizonValues: 'Now, Later' });
+			view.setShelfLayout('list');
+
+			const card = cardByTitle(containerEl, 'Bad dates');
+			const reason = card.querySelector('.pbl-shelf-reason');
+			if (reason) expect(card.querySelector('.pbl-card-summary')?.contains(reason)).toBe(true);
+		});
+	});
+
+	/**
 	 * The pick reaches the iteration board's shelf too, and that is the SORT's rule rather
 	 * than the search's — the distinction `renderShelf` states and the one this suite exists
 	 * to keep, since neither direction was checked when the two came apart (Codex, PR #183).

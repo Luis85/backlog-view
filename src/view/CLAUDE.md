@@ -928,12 +928,18 @@ free of runtime code so imports stay cycle-free.
   the keyboard path (`addShelfSection`). The layout pick is cards or one compact row per
   item, and it is the one of the three that narrows NOTHING — the sort orders, the filter
   and the search hide, and this one only says how much room each card takes, so the band's
-  count stays the true total in both. It costs no render branch either: `renderShelf` puts a
-  class on the band and `styles/shelf.css` turns the card's own flex column into a row,
-  which is what keeps an item from looking different per layout in any way but the ONE that
-  is drawn deliberately — the state chip a compact row carries and a card does not
+  count stays the true total in both. It is nearly all stylesheet: `renderShelf` puts a class on the
+  band and `styles/shelf.css` lays the card's own children out in a row, which is what keeps
+  an item from looking different per layout in any way but the two that are drawn
+  deliberately. The first is the state chip a compact row carries and a card does not
   (`renderShelfState`), because a card's own position says its state and a shelved card has
-  no position to say it. One builder feeds both surfaces — all of them in
+  no position to say it. The second is a WRAPPER rather than content — `.pbl-card-summary`,
+  the box the line is, which exists so `.pbl-card-kids` can be the card's second child and
+  fall beneath the line instead of sitting at its end. **That one cannot be done in CSS
+  alone**, and the measurement is the reason to believe it: `flex-wrap` on the card puts the
+  child list where it belongs and takes a row carrying a few property cells from 28px to
+  59px, because the cells wrap on the same rule. `renderCardBody`'s `kidsEl` is what the
+  wrapper costs, and the shelf's row is its only caller. One builder feeds both surfaces — all of them in
   `interactions/shelfMenu.ts`, which is where a shelf pick's menu items live now, the
   section that assembles them staying in `interactions/menu.ts` with the submenus.
   **The SEARCH is the one form control the header may hold**, because a menu cannot be

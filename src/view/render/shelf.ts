@@ -343,12 +343,25 @@ function renderShelfGroup(ctx: RowContext, shelfEl: HTMLElement, group: ShelfGro
 /** One shelved card: its body, its shelving reason, what it waits for, and its drag source. */
 function renderShelfCard(ctx: RowContext, cardsEl: HTMLElement, entry: ShelfCard, wiring: ShelfWiring): void {
 	const card = createCard(ctx, cardsEl, entry.item);
-	renderCardBody(ctx, card, entry.item);
+	// **A compact row needs its summary in a box of its own, and only a compact row does.**
+	// The row is one flex LINE, and `.pbl-card-kids` is a direct child of the card — so a
+	// shelved parent with children drew its disclosure and its expanded list BESIDE the
+	// title, at the far end of the line, with the whole summary then centred against it
+	// (measured in the harness: 35px against 28px with the list still shut, and taller with
+	// it open). It cannot be solved on the line itself: letting the card wrap so the list
+	// falls beneath it also lets the property cells wrap, which is a 28px row becoming 59px
+	// the moment a Base exposes a few — both measured, and that is why this is a wrapper
+	// rather than a `flex-wrap`. Found by review (Codex, PR #183).
+	//
+	// The card grid creates no wrapper at all (`summary` IS the card), so nothing about it
+	// changes; `kidsEl` is passed either way and resolves to the same element there.
+	const summary = wiring.list ? card.createDiv({ cls: 'pbl-card-summary' }) : card;
+	renderCardBody(ctx, summary, entry.item, { kidsEl: card });
 	ctx.placed.add(entry.item.file.path);
 	// Unreadable is unplaced, and the card says why rather than rendering
 	// somewhere a guess put it.
 	if (entry.reason !== null) {
-		const reason = card.createDiv({ cls: 'pbl-shelf-reason' });
+		const reason = summary.createDiv({ cls: 'pbl-shelf-reason' });
 		drawIcon(reason.createSpan({ cls: 'pbl-shelf-reason-icon' }), 'alert-triangle');
 		reason.createSpan({ text: entry.reason });
 	}
@@ -367,7 +380,7 @@ function renderShelfCard(ctx: RowContext, cardsEl: HTMLElement, entry: ShelfCard
 	const conflicting = wiring.conflicts.get(entry.item.file.path) ?? NO_CONFLICTS;
 	const waits = wiring.axis !== null && drawsGrid(wiring.axis) ? dependencyNote(entry.item, conflicting) : '';
 	if (waits) {
-		const dep = card.createDiv({ cls: 'pbl-shelf-dependency' + (conflicting.size > 0 ? ' pbl-shelf-conflict' : '') });
+		const dep = summary.createDiv({ cls: 'pbl-shelf-dependency' + (conflicting.size > 0 ? ' pbl-shelf-conflict' : '') });
 		drawIcon(dep.createSpan({ cls: 'pbl-shelf-dependency-icon' }), conflicting.size > 0 ? 'alert-triangle' : 'link');
 		dep.createSpan({ text: waits });
 	}
@@ -381,7 +394,7 @@ function renderShelfCard(ctx: RowContext, cardsEl: HTMLElement, entry: ShelfCard
 	// asked for. Through the resolved columns and `renderPropCells` like every other cell,
 	// so a context row gets the static form and the write gate is the one the tree uses —
 	// this is not a second idea of what a state chip is.
-	if (wiring.list) renderShelfState(ctx, card, entry.item);
+	if (wiring.list) renderShelfState(ctx, summary, entry.item);
 	wireCardActivation(ctx, card, entry.item);
 	// A gesture whose only possible batch is empty must not begin: `removal.canDrag`
 	// is `canSchedule` on the dated axis, the same gate the row's own Schedule entry
