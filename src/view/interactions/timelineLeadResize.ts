@@ -116,11 +116,13 @@ export function renderLeadResize(
 		// width this render drew — never `host.leadWidth` directly: on a pane too narrow for
 		// the stored pick those two disagree, and starting from the stored one would jump
 		// the column the instant the pointer moved a single pixel.
-		sizeAt: (deltaX) => effectiveLeadWidth(current + deltaX, available),
+		sizeAt: (deltaX, from) => effectiveLeadWidth(from + deltaX, available),
 		// Also the width the gesture will not commit back — at a pane boundary a drag or an
 		// arrow key clamps straight onto it, and writing that clamp back over a wider stored
 		// pick loses a choice made in a wider pane for good.
-		startSize: current,
+		// A constant, the property column's reason exactly: this origin is the stored width
+		// and only a render moves it.
+		origin: () => current,
 		live,
 		commit,
 		reset: () => commit(defaultWidth),

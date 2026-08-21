@@ -99,6 +99,19 @@ about a width.
 - **4b — a stored height this plugin never wrote, or one outside the bounds.** Read
   defensively and dropped, like every stored pick: the band opens at the stylesheet's
   share rather than trusting a corrupt-but-plausible number into the layout.
+- **2e — the band's content changes without a render.** The gesture reads the edge WHEN it
+  starts, never once when the grip was drawn. Expanding a shelved parent's children is
+  `renderCardChildren`'s own `draw`, which replaces that list in place and rebuilds no grip,
+  so a band drawn at 120px can be at 400px by the time a reader grabs it — and an origin
+  captured at the render would jump it back, committing 110px for one step up. The two
+  column grips need none of this and pass a constant: their origin is a stored width that
+  only a render moves, and a render rebuilds them. Reading it per GESTURE rather than per
+  move is also what keeps it out of `pointermove`, where a layout read is banned outright.
+  **What this does not fix**: `aria-valuenow` is the value as of the last render until a
+  gesture takes hold, at which point it is corrected. A reader who only listens hears the
+  render's number. Recorded rather than closed — shutting it needs the in-place redraw to
+  announce itself, which belongs to `render/cardChildren.ts` and not to this grip.
+  (Codex, PR #183.)
 - **1e — the band is sizing to its content when the grip is drawn.** The height is measured
   with the strip already in the band, never before it. The grip is itself a flex item and
   its negative start margin cancels the GAP above it rather than its own height, so it adds
@@ -128,6 +141,8 @@ about a width.
 - `aria-valuenow` and the gesture's origin are the height the band is DRAWN at, not a larger
   stored cap it never reaches — and they are measured with the grip's own strip already in
   the band, which is 8px of it.
+- The origin is read per GESTURE: a band whose content changed since the render is dragged
+  from where its edge is now, and the announcement is corrected at that moment.
 - Dragging updates only the custom property until release: `config.setCalls` and the
   vault's write log stay empty through the whole gesture, and exactly one height is
   persisted, at its end.

@@ -101,6 +101,29 @@ function clampShelfHeight(height: number): number {
  * reports 0 and falls through to the stored pick, then to the floor — a grip that announces
  * the smallest band it could produce rather than one that announces nothing.
  */
+/**
+ * The height the band is DRAWN at — the one layout read, and the number every part of this
+ * grip answers to.
+ *
+ * The band is a `max-height`, so what it draws is `min(content, cap)` and the edge a reader
+ * can put a finger on is the content height whenever the cards need less than the cap
+ * allows. `offsetHeight` is that edge: the border box `max-height` applies to, and every box
+ * here is `border-box`.
+ *
+ * An unmeasured pane (jsdom, or Obsidian rendering before layout settles) reports 0, which
+ * is a non-answer rather than a height — `||` and not `??` on both, or a 0 would be taken
+ * as an answer and pin every gesture to the floor in exactly the case the stored pick exists
+ * for. The stored cap is the fallback, then the floor.
+ *
+ * It is one read on one element, called once when the grip is drawn and once more per
+ * gesture. What `src/view/CLAUDE.md` bans is a read PER ROW and a read inside a
+ * `pointermove` stream; this is neither, and reading it per gesture rather than per move is
+ * what keeps it that way.
+ */
+function drawnHeight(host: BacklogViewHost, shelfEl: HTMLElement): number {
+	return clampShelfHeight(shelfEl.offsetHeight || host.shelfHeight || 0);
+}
+
 export function renderShelfResize(host: BacklogViewHost, shelfEl: HTMLElement): void {
 	const grip = shelfEl.createDiv({
 		cls: 'pbl-shelf-grip',
@@ -117,16 +140,16 @@ export function renderShelfResize(host: BacklogViewHost, shelfEl: HTMLElement): 
 	// flex item: its negative start margin cancels the GAP above it and not its own height,
 	// so it adds 8px to a band that is sizing to its content — measured in the harness at
 	// 236px against 228px with the strip taken out and put back. Read a moment earlier and
-	// every number here is that much short of the edge the reader can actually see: the
-	// separator announces a height the finished band is not drawing, and the first drag
-	// upward moves the edge further than the pointer went. It costs nothing to read it here
-	// instead, and `aria-valuenow` is set from the answer rather than at creation.
+	// this announcement is that much short of the edge the reader can see.
 	//
-	// `||` rather than `??` on both: 0 is what an unmeasured pane reports, and it is a
-	// non-answer rather than a height — `??` would take it as one and pin every gesture to
-	// the floor in exactly the case the stored pick exists for.
-	const current = clampShelfHeight(shelfEl.offsetHeight || host.shelfHeight || 0);
-	grip.setAttribute('aria-valuenow', String(current));
+	// This one is for `aria-valuenow` ALONE. What a gesture starts from is read again when
+	// it starts (`origin` below), because the band's height moves under redraws that rebuild
+	// no grip — so this attribute is the value as of the last RENDER and can be stale
+	// between them. `wireResizeGrip` refreshes it the moment a gesture takes hold, which
+	// leaves a reader who only listens, and never grabs, hearing the render's number. That
+	// is a real gap and it is recorded rather than closed: shutting it needs the in-place
+	// redraw to announce itself, which belongs to `render/cardChildren.ts` rather than here.
+	grip.setAttribute('aria-valuenow', String(drawnHeight(host, shelfEl)));
 	setTooltip(grip, t('resize.gripTooltip'));
 	if (refocus) grip.focus();
 	wireResizeGrip(grip, {
@@ -135,8 +158,14 @@ export function renderShelfResize(host: BacklogViewHost, shelfEl: HTMLElement): 
 		// the shelf grows, so a positive `clientY` delta means more. No `widenSign` mirror
 		// beside it — a pane may be given its own direction, and no writing mode this plugin
 		// runs in turns the block axis upside down.
-		sizeAt: (deltaY) => clampShelfHeight(current + deltaY),
-		startSize: current,
+		sizeAt: (deltaY, from) => clampShelfHeight(from + deltaY),
+		// Read PER GESTURE, which is the one thing the two column grips do not need. Their
+		// origin is a stored width that only a render moves, and a render rebuilds the grip;
+		// this band's is its own drawn height, and it changes under redraws that rebuild
+		// nothing — expanding a card's children is `renderCardChildren`'s own `draw`. Captured
+		// at the render instead, the first drag after such a redraw would jump the band back
+		// to the height it had then.
+		origin: () => drawnHeight(host, shelfEl),
 		live: (height) => publishShelfHeight(shelfEl, height),
 		// What a gesture that commits nothing leaves behind. `live` has just drawn the
 		// ORIGIN, which here is the measured height rather than the stored cap, so without

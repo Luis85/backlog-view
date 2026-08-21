@@ -232,6 +232,45 @@ describe('the shelf’s resize grip', () => {
 			}
 		});
 
+		it('re-reads the edge when a gesture starts, not once when the grip was drawn', () => {
+			// The band's height moves under redraws that rebuild no grip: expanding a shelved
+			// parent's children is `renderCardChildren`'s own `draw`, which replaces that list
+			// in place. An origin captured at the render would then describe an edge the reader
+			// is no longer looking at, and the first drag would jump the band back to it — a
+			// 120px origin on a band now drawn at 400px commits 110px for one step up.
+			// (Codex, PR #183.) The stub grows the band between the render and the gesture,
+			// which is that redraw as far as this can see it.
+			const { view, containerEl } = makeRoadmap(horizonVault());
+			let height = 120;
+			const own = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'offsetHeight');
+			Object.defineProperty(HTMLElement.prototype, 'offsetHeight', {
+				configurable: true,
+				get(this: HTMLElement) {
+					return this.classList.contains('pbl-shelf') ? height : 0;
+				},
+			});
+			try {
+				view.setShelfLayout('list');
+				const el = grip(containerEl);
+				expect(el.getAttribute('aria-valuenow')).toBe('120');
+
+				// The content grew and nothing rebuilt the grip.
+				height = 400;
+				press(el, 'ArrowUp');
+
+				// One step up from where the edge IS, never from where it was.
+				expect(view.shelfHeight).toBe(390);
+				// And the announcement on the element the reader was HOLDING caught up to the
+				// real edge before the step, rather than staying at the render's 120. Asserted
+				// on `el` deliberately: the commit re-rendered and this one is detached now, so
+				// what it records is the correction made at the moment the gesture took hold —
+				// which is the whole of what a per-gesture read buys a screen reader.
+				expect(el.getAttribute('aria-valuenow')).toBe('400');
+			} finally {
+				if (own) Object.defineProperty(HTMLElement.prototype, 'offsetHeight', own);
+			}
+		});
+
 		it('takes the height the band is DRAWN at, not the larger cap it is allowed', () => {
 			const { view, containerEl } = makeRoadmap(horizonVault());
 			// A cap far above what the cards need. The band draws its content; the stored
