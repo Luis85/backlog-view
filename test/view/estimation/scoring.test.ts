@@ -433,7 +433,7 @@ describe('the panel click delegation', () => {
 	});
 });
 
-describe('the view guards its own orphan action', () => {
+describe('the view guards its own currency actions', () => {
 	it('performOrphanCleanup writes nothing when the item is not orphaned', async () => {
 		const vault = new FakeVault();
 		vault.addFile('Item.md');
@@ -442,6 +442,21 @@ describe('the view guards its own orphan action', () => {
 		expect(item.currency).toBe('none');
 
 		await view.performOrphanCleanup(item);
+
+		expect(vault.writeLog).toHaveLength(0);
+	});
+
+	// The sibling of the test above, and the same refusal: what the panel does not OFFER
+	// still has a public method behind it, so `applyPlan`'s `null` arm is what keeps a
+	// caller that ignores the currency from writing anyway.
+	it('performRestamp writes nothing when the currency reports no stamp problem', async () => {
+		const vault = new FakeVault();
+		vault.addFile('Item.md');
+		const { view } = makeEstimationView(vault, configuredValues());
+		const item = view.model!.byPath.get('Item.md')!;
+		expect(item.currency).toBe('none');
+
+		await view.performRestamp(item);
 
 		expect(vault.writeLog).toHaveLength(0);
 	});
@@ -524,7 +539,7 @@ describe('planRestamp', () => {
 		expect(planRestamp(model, item)).toBeNull();
 	});
 
-	it('refuses an orphan, which has no result to restamp from — that is the cleanup’s job', () => {
+	it('refuses an orphan, whose cleanup is the other action', () => {
 		const { model, item } = itemFrom({
 			'business-value': 3,
 			'business-value-model': stampValue(configured(), { answered: 1, enabled: 8 }),
@@ -535,11 +550,14 @@ describe('planRestamp', () => {
 	});
 
 	// The one shape `buildEstimationModel` never produces, so only a direct call can ask it:
-	// a currency that offers the action beside no result to restamp FROM. `currencyOf` reads
-	// a stamped total with no inputs as `orphan` and an unstamped one as `handwritten`, so
-	// this is the guard behind the guard rather than a state any note can be in.
-	it('refuses a stale currency carrying no result, which no note can be', () => {
-		expect(planRestamp(configured(), makeItem({ currency: 'stale', result: null }))).toBeNull();
+	// a currency that offers the action beside no result to restamp FROM. The keys are on the
+	// note, which is what makes this the whole claim — without the second guard,
+	// `totalStampSets` takes its removal path and the restamp DELETES the pair it was asked
+	// to refresh.
+	it('refuses a stale currency carrying no result, rather than deleting the pair', () => {
+		const model = configured();
+		const item = makeItem({ currency: 'stale', result: null, ownKeys: new Set([model.valueKey, model.stampKey]) });
+		expect(planRestamp(model, item)).toBeNull();
 	});
 
 	it('refuses a note with no stored total at all', () => {

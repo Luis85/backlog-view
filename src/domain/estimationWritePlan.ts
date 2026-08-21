@@ -98,20 +98,23 @@ export function planOrphanCleanup(model: ScoringModel, item: EstimationItem): Pr
  * score to a value the reader did not mean and then change it back. This is that route,
  * named.
  *
- * The refusals are each their own reason rather than one convenience test:
- * `current` has nothing to fix; `handwritten` is a person's own number and no action
- * offered beside a render pass may overwrite it (see `currencyOf`, which asks the stamp
- * before the inputs for that reason); `orphan` has no `result` to restamp FROM, which is
- * what `planOrphanCleanup` is for; and `none` has no stored total at all.
+ * Each refusal has its own reason, though ONE guard enforces all four — which is why
+ * deleting it turns three of the four refusal tests red rather than four, the fourth
+ * (`orphan`) being caught by the second guard below. `current` has nothing to fix;
+ * `handwritten` is a person's own number and no action offered beside a render pass may
+ * overwrite it (see `currencyOf`, which asks the stamp before the inputs for that reason);
+ * `orphan` has no `result` to restamp FROM, which is what `planOrphanCleanup` is for; and
+ * `none` has no stored total at all.
  */
 export function planRestamp(model: ScoringModel, item: EstimationItem): PropertyWrite | null {
 	if (item.currency !== 'stale' && item.currency !== 'foreign') return null;
-	// UNREACHABLE while the guard above stands — both those currencies already imply a
-	// result, since `currencyOf` reads a stamped total with none as `orphan` and an
-	// unstamped one as `handwritten`. It is here as the type narrowing `totalStampSets`
-	// needs, and as the statement that this planner restamps from the NOTE rather than
-	// recomputing a model of its own. Deleting the guard above leaves this one refusing the
-	// orphan on its own, which is why only three of the four refusal tests go red for it.
+	// UNREACHABLE from a note — both those currencies already imply a result, since
+	// `currencyOf` reads a stamped total with none as `orphan` and an unstamped one as
+	// `handwritten`. NOT a type narrowing: `totalStampSets` takes `TotalResult | null` and
+	// this function compiles without this line. What it refuses is the OPPOSITE write —
+	// with no result, `totalStampSets` takes its REMOVAL path, so a restamp would delete
+	// the total and stamp it was asked to refresh, which is `planOrphanCleanup`'s write
+	// arriving from the wrong action.
 	if (item.result === null) return null;
 	// No `sets.length > 0` guard, unlike `planOrphanCleanup`: that one can plan an empty
 	// removal, while `totalStampSets` given a result always returns the pair — a guard here

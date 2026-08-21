@@ -194,8 +194,8 @@ export class EstimationView extends BasesView {
 	 * The view's write path, delegated straight to the gate — `writeGate.ts`'s own
 	 * shape. `applySafely` has its production callers (`init.ts`'s `runEstimationInit`,
 	 * the guided empty state's setup action and now the toolbar's own ✨; the panel's own
-	 * picks go through `performScore`/`performScale`/`performOrphanCleanup` below instead,
-	 * since each of those also needs its own refresh-skip on `flushedLastBatch`).
+	 * picks and actions go through `applyPlan` below instead, which adds the refresh-skip
+	 * on `flushedLastBatch` that every one of them needs).
 	 * `canUndo`/`undoLast` are read and called straight off `view.gate` by the toolbar
 	 * (`toolbar.ts`) rather than forwarded through a method here — `writeGate.ts`'s own
 	 * shape, and the reason both are public.
@@ -204,44 +204,48 @@ export class EstimationView extends BasesView {
 		return this.gate.applySafely(writes);
 	}
 
-	/** A dimension pick: plan, write, redraw. `panel.ts` refocuses the rebuilt point
-	 *  button once this settles — `null` from the planner means nothing to do at all.
-	 *  The refresh is skipped when the write's own deferred-update flush already drew
-	 *  this state (`WriteGate.flushedLastBatch`) — otherwise every pick redrew twice. */
-	async performScore(item: EstimationItem, dimensionId: string, value: number | null): Promise<void> {
-		const plan = planScoreWrite(this.settings.model, item, dimensionId, value);
+	/**
+	 * What every panel action DOES with what it planned: nothing at all for a `null` plan,
+	 * or one batch through the gate and a redraw — skipped when the write's own
+	 * deferred-update flush already drew this state (`WriteGate.flushedLastBatch`),
+	 * otherwise every pick redrew twice.
+	 *
+	 * Extracted at the FOURTH copy, which is `CLAUDE.md`'s `applyRisk`/`applyLabels`
+	 * precedent applied here rather than a preference: three restatements of one rule are
+	 * three chances for it to drift, a fifth costs one line now instead of four, and
+	 * fallow's clone detector reported nothing while all four copies stood, so no gate would
+	 * have caught the fifth either. Each method below keeps its own comment for what it
+	 * PLANS; the gate and the refresh are said once, here.
+	 */
+	private async applyPlan(plan: PropertyWrite | null): Promise<void> {
 		if (!plan) return;
 		await this.gate.applySafely([plan]);
 		if (!this.gate.flushedLastBatch) this.refresh();
+	}
+
+	/** A dimension pick: the score, the recomputed total and its stamp in one batch.
+	 *  `panel.ts` refocuses the rebuilt point button once this settles. */
+	performScore(item: EstimationItem, dimensionId: string, value: number | null): Promise<void> {
+		return this.applyPlan(planScoreWrite(this.settings.model, item, dimensionId, value));
 	}
 
 	/** A confidence/effort/complexity pick — the same shape as a score pick, over the
 	 *  scale's own planner (which never touches the total or its stamp). */
-	async performScale(item: EstimationItem, scale: ScaleName, value: number | null): Promise<void> {
-		const plan = planScaleWrite(this.settings.model, item, scale, value);
-		if (!plan) return;
-		await this.gate.applySafely([plan]);
-		if (!this.gate.flushedLastBatch) this.refresh();
+	performScale(item: EstimationItem, scale: ScaleName, value: number | null): Promise<void> {
+		return this.applyPlan(planScaleWrite(this.settings.model, item, scale, value));
 	}
 
 	/** Removes an orphaned total and stamp — offered only while `item.currency` reads
 	 *  'orphan', and only ever a write in response to this action, never on render. */
-	async performOrphanCleanup(item: EstimationItem): Promise<void> {
-		const plan = planOrphanCleanup(this.settings.model, item);
-		if (!plan) return;
-		await this.gate.applySafely([plan]);
-		if (!this.gate.flushedLastBatch) this.refresh();
+	performOrphanCleanup(item: EstimationItem): Promise<void> {
+		return this.applyPlan(planOrphanCleanup(this.settings.model, item));
 	}
 
 	/** Rewrites a stored total and stamp from the answers on the note — offered only while
 	 *  `item.currency` reads 'stale' or 'foreign', and only ever a write in response to
-	 *  this action. `performOrphanCleanup`'s shape exactly: plan, gate, refresh unless the
-	 *  batch's own deferred-update flush already drew it. */
-	async performRestamp(item: EstimationItem): Promise<void> {
-		const plan = planRestamp(this.settings.model, item);
-		if (!plan) return;
-		await this.gate.applySafely([plan]);
-		if (!this.gate.flushedLastBatch) this.refresh();
+	 *  this action. */
+	performRestamp(item: EstimationItem): Promise<void> {
+		return this.applyPlan(planRestamp(this.settings.model, item));
 	}
 
 	private renderUnconfigured(): void {
