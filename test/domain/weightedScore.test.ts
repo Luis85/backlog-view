@@ -225,6 +225,27 @@ describe('currencyOf: what a stored total says about itself', () => {
 			currencyOf(model, { storedTotal: result.total, storedStamp: 'hand-written', result }),
 		).toBe('foreign');
 	});
+
+	it('reads a total with no stamp and no answers as hand-written, never as an orphan', () => {
+		// `computeTotal` returns null at `answered === 0`, so "no answers" and "inputs gone"
+		// arrive at this function as the same `result === null`. The STAMP is what tells them
+		// apart: `docs/requirements/Business value estimation.md` — "an absent one means it
+		// was written by hand or by something else". Asked in the other order, a number
+		// somebody typed into the property editor read as `orphan` and the panel offered to
+		// delete it.
+		const model = configured();
+		const currency = currencyOf(model, { storedTotal: 4, storedStamp: null, result: null });
+		expect(currency).toBe('handwritten');
+	});
+
+	it('still reads a STAMPED total with no answers as an orphan', () => {
+		// The other half of the same swap, so the fix cannot be read as "handwritten always
+		// wins": a stamp vouching for inputs that are gone is exactly what `orphan` is for,
+		// and `planOrphanCleanup` is offered on it.
+		const model = configured();
+		const currency = currencyOf(model, { storedTotal: 4, storedStamp: stampValue(model, { answered: 3, enabled: 8 }), result: null });
+		expect(currency).toBe('orphan');
+	});
 });
 
 describe('buildEstimationModel: one item per result, one getFileCache read per note', () => {

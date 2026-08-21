@@ -157,9 +157,16 @@ export function currencyOf(
 ): Currency {
 	// Currency describes the STORED total; with nothing stored there is nothing to judge.
 	if (item.storedTotal === null) return 'none';
-	// A stored total whose inputs are gone is an orphan — reported, removed only by action.
-	if (item.result === null) return 'orphan';
+	// THE STAMP IS ASKED BEFORE THE INPUTS, and the order is the rule rather than a
+	// preference. `computeTotal` returns null at `answered === 0`, so "nobody has answered
+	// a dimension" and "the answers behind this total were deleted" both arrive here as
+	// `result === null` — and only the stamp tells them apart. Asked the other way round,
+	// a number typed into the property editor by hand read as `orphan`, and the panel
+	// offered the cleanup that deletes it (`docs/requirements/Business value
+	// estimation.md`: "an absent one means it was written by hand or by something else").
 	if (item.storedStamp === null) return 'handwritten';
+	// A STAMPED total whose inputs are gone is an orphan — reported, removed only by action.
+	if (item.result === null) return 'orphan';
 	const parsed = parseStamp(item.storedStamp);
 	if (!parsed || parsed.fingerprint !== (fingerprint ?? modelFingerprint(model))) return 'foreign';
 	if (parsed.answered !== item.result.coverage.answered || parsed.enabled !== item.result.coverage.enabled) return 'stale';
