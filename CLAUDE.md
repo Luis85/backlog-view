@@ -109,15 +109,19 @@ language, so nothing re-reads it. What must never enter the catalog is anything 
 writes, matches or persists — type names, state values, option keys, tags, file names. The
 test when it is not obvious: **ask what breaks if two people with different Obsidian
 languages open the same vault.** "One sees different words" is text; "one writes notes the
-other's view cannot read" is data. 378 keys are in it (counted three ways on 2026-08-21 —
-`Object.keys` at runtime, an AST walk over the `as const` object, and a tab-aware grep).
+other's view cannot read" is data. 476 keys are in it (counted two ways on 2026-08-21 after
+the options menu landed — `Object.keys` at runtime and a tab-aware grep — and the 378 this
+line carried until then was correct in August and stale by the time anyone read it, which
+is what taking a number ONCE buys).
 `ui/`, `commands/`, `view/interactions/`, the whole of `view/render/`, `view/writeGate.ts`,
-`view/cardMoves.ts` and `main.ts` are swept, which leaves **`view/manual/` and `domain/`**
-and nothing else. Neither is a leftover: the manual is 334 literals of authored long-form
+`view/cardMoves.ts`, `main.ts` and `domain/viewOptions.ts` are swept, which leaves
+**`view/manual/` and the REST of `domain/`** and nothing else. Neither is a leftover: the
+manual is 334 literals of authored long-form
 PROSE, and whether several hundred multi-sentence paragraphs belong in a message catalog at
-all is an open question rather than work not yet done; `domain/viewOptions.ts` is
-`docs/requirements/View options and config warnings.md`, and `domain/backlogReadme.ts` is
-written INTO the vault, so it is a data question before a text one. The sweep across those
+all is an open question rather than work not yet done; what is left in `domain/` is
+`backlogReadme.ts`, written INTO the vault, so it is a data question before a text one —
+plus `roadmap.ts`'s shelf label, which `test/i18n/projections.test.ts` asserts is still
+English so that keying it fails a test rather than needing to be remembered. The sweep across those
 call sites is `docs/requirements/Every surface translated.md`, and an English literal beside
 a `t()` call in an UNSWEPT directory is work not yet done rather than a rule being broken.
 
@@ -125,9 +129,9 @@ In a SWEPT directory it is neither, and the bans hold it — but read what each 
 see before trusting it, because every gap has cost this epic a miss. `UI_TEXT_LITERAL` sees
 a capitalised sentence at seven setter names, at `new Notice` and at a BARE
 `setTooltip(el, …)` — the spelling every render module uses, and the one the method form
-alone read as nothing. `UI_TEXT_PROPERTY` is the second ban, for the eleven option-bag
+alone read as nothing. `UI_TEXT_PROPERTY` is the second ban, for the twelve option-bag
 properties (`text`/`label`/`title`/`heading`/`description`/`placeholder`/`cta`/`ctaLabel`/
-`fieldName`/`name`, and `'aria-label'`) a module that spells no setter reaches the DOM
+`fieldName`/`name`/`displayName`, and `'aria-label'`) a module that spells no setter reaches the DOM
 through. Both read through a `ConditionalExpression` as of 2026-08-21, and `TEXT_TERNARY`
 beside them refuses a sentence picked between two literals — including the MIXED shape, one
 literal and one template, which sat in the blind spot of all three at once and shipped six

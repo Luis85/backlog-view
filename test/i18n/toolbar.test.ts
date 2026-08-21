@@ -50,7 +50,7 @@ const OWN = Object.keys(en).filter((key): key is MessageKey => key.startsWith('t
  * the bare count that also stands alone elsewhere; taking it rather than a `toolbar.*`
  * twin is the codebase's own rule about two surfaces over one reading.
  */
-const REUSED = ['count.items'] as const;
+const REUSED = ['count.items', 'config.fixAll'] as const;
 
 const SWEPT: MessageKey[] = [...OWN, ...REUSED];
 
@@ -277,6 +277,12 @@ describe('the advisories and the projections nobody else drives read from it too
 		expect(drawn).toContain(MARK + en['toolbar.ignoredTooltip'].one.replace('{count}', '1'));
 		expect(drawn).toContain(marked('toolbar.checkViewOptions'));
 		expect(drawn).toContain(marked('toolbar.configHelp'));
+		// The warning's accessible name is ONE sentence from the catalog with the problems
+		// listed inside it, not the fragments joined at the call site. The fragment itself
+		// is `domain/`'s and is unmarked here, which is what makes the marked frame visible.
+		expect(containerEl.querySelector('.pbl-config-warning')?.getAttribute('aria-label')).toBe(
+			MARK + 'Fix the view options first: the parent and order properties share the key "rank".',
+		);
 	});
 
 	it('names the test catalog and the iteration board from their own keys', () => {

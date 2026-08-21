@@ -46,8 +46,15 @@ which is worse than not translated at all.
 **Extensions**
 
 - **1a — the string names a view option.** It quotes the *translated* option label, so the
-  sentence points at a control the user can find. Two sentences spell one option's label as
-  a literal today.
+  sentence points at a control the user can find. **Ten catalog keys quote ten distinct
+  option labels** today, not the two this line claimed — counted 2026-08-21 by matching
+  every `option.*` value against the rest of the catalog, an instrument that reads the
+  labels from the catalog rather than from a list and so cannot go stale by wording. It
+  became possible that day and not before: `View options and config warnings` moved those
+  labels into the catalog, so a sentence can take one as a parameter instead of spelling it
+  a second time. Until it does, a copy edit to an option's name leaves ten sentences
+  pointing at a control that no longer reads that way, and a translator has to spell each
+  label identically in two places.
 - **1b — the string is withheld for a context row.** It stays withheld. `Set type`,
   `Set state` and the parent-link actions are *absent* for an `outsideFilter` row, not
   translated and disabled.

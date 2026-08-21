@@ -268,7 +268,7 @@ const STORAGE = 'src/storage/**/*.ts';
 // The directories swept into the catalog, plus `main.ts` — two command NAMES and the
 // plugin's own name, which is never translated and carries an inline disable rather than
 // an exemption for the file, `ui/manualDialog.ts`'s nav heading exactly.
-const SWEPT = ['src/ui/**/*.ts', 'src/commands/**/*.ts', 'src/main.ts'];
+const SWEPT = ['src/ui/**/*.ts', 'src/commands/**/*.ts', 'src/main.ts', 'src/domain/viewOptions.ts'];
 const MENU = 'src/view/interactions/menu.ts';
 // The rest of the menu surface, carved out of VIEW for the two text bans alone — swept
 // into the catalog on 2026-08-20 alongside `menu.ts` itself, so the bans land on clean
@@ -507,7 +507,7 @@ const UI_TEXT_LITERAL = {
 //
 // **It sees that property shape and no other.** The two that remain uncovered in this file:
 // The property list covers the option-bag names too — `heading:`, `description:`,
-// `placeholder:`, `cta:`, `ctaLabel:`, `fieldName:` — and that was the whole of this rule's
+// `placeholder:`, `cta:`, `ctaLabel:`, `fieldName:`, `displayName:` — and that was the whole of this rule's
 // blind spot rather than a corner of it. `ui/`'s prompts take their frame as an option bag,
 // so a swept caller could hand any of them a literal and fail nothing; the runtime half
 // caught it and lint did not, which made the "pair" one mechanism wearing two names for
@@ -522,7 +522,7 @@ const UI_TEXT_LITERAL = {
 // that every string a frame drew carries the fixture catalog's marker.
 const UI_TEXT_PROPERTY = {
 	selector:
-		"Property[key.name=/^(text|label|title|heading|description|placeholder|cta|ctaLabel|fieldName|name)$/]:matches([value.type='Literal'][value.value=/^[A-Z]/], [value.type='TemplateLiteral'][value.quasis.0.value.raw=/^[A-Z]/]), Property[key.name=/^(text|label|title|heading|description|placeholder|cta|ctaLabel|fieldName|name)$/] > ConditionalExpression > :matches(Literal[value=/^[A-Z]/], TemplateLiteral[quasis.0.value.raw=/^[A-Z]/]), Property[key.value='aria-label']:matches([value.type='Literal'][value.value=/^[A-Z]/], [value.type='TemplateLiteral'][value.quasis.0.value.raw=/^[A-Z]/]), Property[key.value='aria-label'] > ConditionalExpression > :matches(Literal[value=/^[A-Z]/], TemplateLiteral[quasis.0.value.raw=/^[A-Z]/])",
+		"Property[key.name=/^(text|label|title|heading|description|placeholder|cta|ctaLabel|fieldName|name|displayName)$/]:matches([value.type='Literal'][value.value=/^[A-Z]/], [value.type='TemplateLiteral'][value.quasis.0.value.raw=/^[A-Z]/]), Property[key.name=/^(text|label|title|heading|description|placeholder|cta|ctaLabel|fieldName|name|displayName)$/] > ConditionalExpression > :matches(Literal[value=/^[A-Z]/], TemplateLiteral[quasis.0.value.raw=/^[A-Z]/]), Property[key.value='aria-label']:matches([value.type='Literal'][value.value=/^[A-Z]/], [value.type='TemplateLiteral'][value.quasis.0.value.raw=/^[A-Z]/]), Property[key.value='aria-label'] > ConditionalExpression > :matches(Literal[value=/^[A-Z]/], TemplateLiteral[quasis.0.value.raw=/^[A-Z]/])",
 	message:
 		'A sentence spelled where it is used cannot be translated. Add a key to src/i18n/en.ts and call t() — and if this is a value the plugin writes, matches or persists rather than text, it belongs in neither place.',
 };
@@ -597,6 +597,12 @@ export default defineConfig([
 		// ui/ and commands/, carved out of the general region for the two text bans alone:
 		// both were swept into the catalog on 2026-08-19, so the bans have a clean file to
 		// hold. Everything else the general region carries applies here unchanged.
+		//
+		// `domain/viewOptions.ts` joined on 2026-08-21 with its own sweep, and it is ONE FILE
+		// out of a directory that stays unbanned for the reason stated above the ternary ban:
+		// `domain/backlogReadme.ts` writes English INTO the vault and `domain/roadmap.ts`
+		// still spells the shelf label. It is also the file that made `displayName` worth
+		// banning — the option-bag property no other module in `src/` spells.
 		files: SWEPT,
 		rules: syntaxRules([
 			...WRITE_BOUNDARY,

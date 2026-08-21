@@ -366,8 +366,11 @@ a node test that did would be measuring the runner.
   the cycle, which is what makes this checked rather than remembered.
 - **Every write target beyond `parent`/`order`/`type` is one vocabulary**, declared once
   in `optionalProperties.ts`: `OptionalField` and the `PROPERTY_TABLE` behind
-  `OPTIONAL_PROPERTIES`, which carries per field the option that names it, the key it
-  suggests, and the label a collision reports it by. Five readers depend on that being
+  `OPTIONAL_PROPERTIES`, which carries per field the option that names it and the key it
+  suggests. What a collision CALLS it is not in the table: `ownedProperties` answers by
+  ROLE — an id, the field itself — and the word comes from `property.<role>` in the
+  catalog, so a translated collision report cannot move a property in or out of the
+  workflow-state exemption. Five readers depend on that being
   one statement — the view options' pickers (whose placeholder IS the suggestion),
   `optionalKeyFor` (the single field → key mapping the planner, the writer, the model's
   presence test and the backfill all share), `configProblems`, `adoptableProperties`,

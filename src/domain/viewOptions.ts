@@ -13,6 +13,7 @@ import { OptionalField, optionalProperty } from './optionalProperties';
 import { resolveSettings } from './settingsResolve';
 import { ABSENCE_TYPE, ALL_TYPES, DEFAULT_HOME_FOLDER, defaultTypeFolder, typeFolderKey } from './typeVocabulary';
 import { defaultItemHandling, OPEN_TARGETS } from './itemHandling';
+import { t } from '../i18n/t';
 
 /**
  * What Bases shows in the view-options menu: pure declaration, no logic. Split from
@@ -22,6 +23,20 @@ import { defaultItemHandling, OPEN_TARGETS } from './itemHandling';
  *
  * Every `key` here is PERSISTED in the user's `.base` file and read back by
  * `resolveSettings`. Renaming one silently resets that option for everyone.
+ *
+ * **Text and data sit on adjacent lines of the same object literal**, which is the
+ * arrangement a sweep makes a mistake in — so the rule is written where the mistake would
+ * be made. A `displayName` and a prose `placeholder` are text and come from `t()`; a
+ * `key`, a `default` and any placeholder something READS BACK are data and are spelled
+ * here. Two kinds of placeholder are data: a property picker's, which is the frontmatter
+ * key the backfill would adopt (`property.suggested`, and the four core keys spelled
+ * inline), and a value list's, which mirrors its own `default` so clearing the box falls
+ * back to the string on screen. Everything left — an example of what to type, a hint —
+ * is text, because nothing parses it.
+ *
+ * The type-folder placeholder is the one that looks like the second kind and is not:
+ * `resolveFolders` falls back to `defaultTypeFolder`, never to the placeholder, so the
+ * `Home folder` half of it is plain UI text with the user's own path in front of it.
  */
 
 const notePropsOnly = (prop: BasesPropertyId) => prop.startsWith('note.');
@@ -93,14 +108,14 @@ function handlingItemsGroup(): BasesAllOptions {
 	const defaults = defaultItemHandling();
 	return {
 		type: 'group',
-		displayName: 'Handling items',
+		displayName: t('option.group.handling'),
 		items: [
 			// The offered vocabulary is `itemHandling.ts`'s own, which is also what reads
 			// a stored value back — so nothing can be offered that cannot be read.
 			{
 				type: 'dropdown',
 				key: 'openIn',
-				displayName: 'Open the note in',
+				displayName: t('option.openIn'),
 				default: defaults.openIn,
 				options: OPEN_TARGETS,
 			},
@@ -111,12 +126,12 @@ function handlingItemsGroup(): BasesAllOptions {
 function hierarchyGroup(): BasesAllOptions {
 	return {
 		type: 'group',
-		displayName: 'Hierarchy',
+		displayName: t('option.group.hierarchy'),
 		items: [
 			{
 				type: 'property',
 				key: 'parentProperty',
-				displayName: 'Parent property',
+				displayName: t('option.parentProperty'),
 				default: 'note.parent',
 				placeholder: 'parent',
 				filter: notePropsOnly,
@@ -124,7 +139,7 @@ function hierarchyGroup(): BasesAllOptions {
 			{
 				type: 'property',
 				key: 'orderProperty',
-				displayName: 'Order property',
+				displayName: t('option.orderProperty'),
 				default: 'note.order',
 				placeholder: 'order',
 				filter: notePropsOnly,
@@ -132,7 +147,7 @@ function hierarchyGroup(): BasesAllOptions {
 			{
 				type: 'property',
 				key: 'typeProperty',
-				displayName: 'Item type property',
+				displayName: t('option.typeProperty'),
 				default: 'note.type',
 				placeholder: 'type',
 				filter: notePropsOnly,
@@ -140,19 +155,19 @@ function hierarchyGroup(): BasesAllOptions {
 			{
 				type: 'toggle',
 				key: 'hierarchyOnly',
-				displayName: 'Ignore notes outside the hierarchy',
+				displayName: t('option.hierarchyOnly'),
 				default: true,
 			},
 			{
 				type: 'toggle',
 				key: 'showOutsideParents',
-				displayName: 'Show parents outside the filter',
+				displayName: t('option.showOutsideParents'),
 				default: true,
 			},
 			{
 				type: 'toggle',
 				key: 'inferFolderHierarchy',
-				displayName: 'Infer hierarchy from folder notes',
+				displayName: t('option.inferFolderHierarchy'),
 				default: false,
 			},
 		],
@@ -163,47 +178,47 @@ function progressGroup(settings: BacklogSettings): BasesAllOptions {
 	const done = new Set(settings.doneValues.map((v) => v.toLowerCase()));
 	return {
 		type: 'group',
-		displayName: 'Progress',
+		displayName: t('option.group.progress'),
 		items: [
-			optionalPropertyOption('state', 'State property'),
+			optionalPropertyOption('state', t('option.stateProperty')),
 			{
 				type: 'text',
 				key: 'stateValues',
-				displayName: 'Workflow states (in order)',
+				displayName: t('option.stateValues'),
 				default: '',
-				placeholder: 'New, Active, Done',
+				placeholder: t('option.stateValuesHint'),
 			},
 			{
 				type: 'text',
 				key: 'doneValues',
-				displayName: 'States that count as done',
+				displayName: t('option.doneValues'),
 				default: DEFAULT_DONE_VALUES.join(', '),
 				placeholder: DEFAULT_DONE_VALUES.join(', '),
 			},
 			{
 				type: 'text',
 				key: 'startedStates',
-				displayName: 'States that count as started',
+				displayName: t('option.startedStates'),
 				default: '',
-				placeholder: 'Active, In review',
+				placeholder: t('option.startedStatesHint'),
 			},
 			// Two properties rather than one, because they answer different questions and
 			// a note may honestly have one and not the other. Both are unset by default:
 			// a stamp writes to a property the user named — or accepted, by pressing
 			// Assign missing properties — never to one this plugin chose for them.
-			optionalPropertyOption('startedDate', 'Started date property'),
-			optionalPropertyOption('finishedDate', 'Finished date property'),
+			optionalPropertyOption('startedDate', t('option.startedDateProperty')),
+			optionalPropertyOption('finishedDate', t('option.finishedDateProperty')),
 			// A property and no list beside it, unlike the state above and the risk
 			// levels below: the names Set assignee offers are the ones the results
 			// already carry, plus whatever the user types, so there is no vocabulary
 			// to declare here and nothing an empty box could turn off. The Roadmap
 			// group's "Resources (in order)" is not that missing list — it declares the
 			// resources AXIS's rows and never narrows what this menu offers.
-			optionalPropertyOption('assignee', 'Assignee property'),
+			optionalPropertyOption('assignee', t('option.assigneeProperty')),
 			{
 				type: 'toggle',
 				key: 'showCompleted',
-				displayName: 'Show completed items',
+				displayName: t('option.showCompleted'),
 				default: true,
 			},
 			// One box per configured state, the mechanism the per-type folder keys use.
@@ -216,17 +231,17 @@ function progressGroup(settings: BacklogSettings): BasesAllOptions {
 							{
 								type: 'text',
 								key: wipLimitKey(state),
-								displayName: `WIP limit for ${state}`,
+								displayName: t('option.wipLimit', { state }),
 								default: '',
-								placeholder: 'No limit',
+								placeholder: t('option.wipLimitHint'),
 							} as BasesOptions,
 						]),
 				{
 					type: 'text',
 					key: columnPolicyKey(state),
-					displayName: `Policy for ${state}`,
+					displayName: t('option.columnPolicy', { state }),
 					default: '',
-					placeholder: 'What has to be true to leave this column',
+					placeholder: t('option.columnPolicyHint'),
 				},
 			]),
 		],
@@ -240,20 +255,20 @@ function progressGroup(settings: BacklogSettings): BasesAllOptions {
 function deliverablesGroup(): BasesAllOptions {
 	return {
 		type: 'group',
-		displayName: 'Deliverables',
+		displayName: t('option.group.deliverables'),
 		items: [
-			optionalPropertyOption('deliverableState', 'Deliverable state property'),
+			optionalPropertyOption('deliverableState', t('option.deliverableStateProperty')),
 			{
 				type: 'text',
 				key: 'deliverableStateValues',
-				displayName: 'Deliverable workflow states (in order)',
+				displayName: t('option.deliverableStateValues'),
 				default: '',
-				placeholder: 'Concept, Draft, Review, Published',
+				placeholder: t('option.deliverableStateValuesHint'),
 			},
 			{
 				type: 'text',
 				key: 'deliverableDoneValues',
-				displayName: 'Deliverable states that count as done',
+				displayName: t('option.deliverableDoneValues'),
 				default: DEFAULT_DONE_VALUES.join(', '),
 				placeholder: DEFAULT_DONE_VALUES.join(', '),
 			},
@@ -283,37 +298,37 @@ function deliverablesGroup(): BasesAllOptions {
 function iterationsGroup(settings: BacklogSettings): BasesAllOptions {
 	return {
 		type: 'group',
-		displayName: 'Iterations',
+		displayName: t('option.group.iterations'),
 		items: [
-			optionalPropertyOption('iteration', 'Iteration property'),
-			optionalPropertyOption('iterationGoal', 'Iteration goal property'),
+			optionalPropertyOption('iteration', t('option.iterationProperty')),
+			optionalPropertyOption('iterationGoal', t('option.iterationGoalProperty')),
 			{
 				type: 'text',
 				key: 'iterationOpenStates',
-				displayName: 'Product states an iteration has not started',
+				displayName: t('option.iterationOpenStates'),
 				default: '',
-				placeholder: 'New, Ready',
+				placeholder: t('option.iterationOpenStatesHint'),
 			},
 			{
 				type: 'text',
 				key: 'iterationResolvedStates',
-				displayName: 'Product states an iteration is finished with',
+				displayName: t('option.iterationResolvedStates'),
 				default: '',
-				placeholder: 'In review, Done',
+				placeholder: t('option.iterationResolvedStatesHint'),
 			},
 			// Bases has no number option, so a length is text and `resolveIterationDays`
 			// is what makes it a number of days.
 			{
 				type: 'text',
 				key: 'iterationLengthDays',
-				displayName: 'Default iteration length in days',
+				displayName: t('option.iterationLengthDays'),
 				default: String(DEFAULT_ITERATION_DAYS),
 				placeholder: String(DEFAULT_ITERATION_DAYS),
 			},
 			{
 				type: 'toggle',
 				key: 'iterationsOnTimeline',
-				displayName: 'Show iterations on the roadmap timeline',
+				displayName: t('option.iterationsOnTimeline'),
 				default: true,
 			},
 			...(settings.iterationsOnTimeline
@@ -321,7 +336,7 @@ function iterationsGroup(settings: BacklogSettings): BasesAllOptions {
 						{
 							type: 'toggle' as const,
 							key: 'iterationBars',
-							displayName: 'Draw iterations as bars',
+							displayName: t('option.iterationBars'),
 							default: false,
 						},
 					]
@@ -343,23 +358,23 @@ function iterationsGroup(settings: BacklogSettings): BasesAllOptions {
 function testManagementGroup(): BasesAllOptions {
 	return {
 		type: 'group',
-		displayName: 'Test management',
+		displayName: t('option.group.testing'),
 		items: [
-			optionalPropertyOption('testState', 'Test state property'),
+			optionalPropertyOption('testState', t('option.testStateProperty')),
 			{
 				type: 'text',
 				key: 'testStateValues',
-				displayName: 'Test workflow states (in order)',
+				displayName: t('option.testStateValues'),
 				default: '',
 				// About whether a case is fit to be WALKED. Deliberately not the plan's
 				// New/Active/Done, and deliberately not Pass/Fail — a result, which this epic
 				// refuses. A placeholder suggests and configures nothing.
-				placeholder: 'Draft, Ready, Approved',
+				placeholder: t('option.testStateValuesHint'),
 			},
 			{
 				type: 'text',
 				key: 'testDoneValues',
-				displayName: 'Test states that count as done',
+				displayName: t('option.testDoneValues'),
 				default: DEFAULT_DONE_VALUES.join(', '),
 				placeholder: DEFAULT_DONE_VALUES.join(', '),
 			},
@@ -382,18 +397,18 @@ function testManagementGroup(): BasesAllOptions {
 function roadmapGroup(): BasesAllOptions {
 	return {
 		type: 'group',
-		displayName: 'Roadmap',
+		displayName: t('option.group.roadmap'),
 		items: [
-			optionalPropertyOption('horizon', 'Horizon property'),
+			optionalPropertyOption('horizon', t('option.horizonProperty')),
 			{
 				type: 'text',
 				key: 'horizonValues',
-				displayName: 'Horizons (in order)',
+				displayName: t('option.horizonValues'),
 				default: DEFAULT_HORIZON_VALUES.join(', '),
 				placeholder: DEFAULT_HORIZON_VALUES.join(', '),
 			},
-			optionalPropertyOption('start', 'Start date property'),
-			optionalPropertyOption('target', 'Target date property'),
+			optionalPropertyOption('start', t('option.startProperty')),
+			optionalPropertyOption('target', t('option.targetProperty')),
 			// The resources axis's ROW list, not a vocabulary: it adds rows nothing has
 			// landed in yet and never narrows what Set assignee offers. No default,
 			// unlike the horizons above — nobody declares who exists, so an empty box is
@@ -401,10 +416,10 @@ function roadmapGroup(): BasesAllOptions {
 			{
 				type: 'text',
 				key: 'resourceNames',
-				displayName: 'Resources (in order)',
-				placeholder: 'Optional, comma separated',
+				displayName: t('option.resourceNames'),
+				placeholder: t('option.resourceNamesHint'),
 			},
-			optionalPropertyOption('dependsOn', 'Depends-on property'),
+			optionalPropertyOption('dependsOn', t('option.dependsOnProperty')),
 		],
 	};
 }
@@ -419,13 +434,13 @@ function roadmapGroup(): BasesAllOptions {
 function riskGroup(): BasesAllOptions {
 	return {
 		type: 'group',
-		displayName: 'Risk management',
+		displayName: t('option.group.risk'),
 		items: [
-			optionalPropertyOption('risk', 'Risk property'),
+			optionalPropertyOption('risk', t('option.riskProperty')),
 			{
 				type: 'text',
 				key: 'riskValues',
-				displayName: 'Risk levels (in order)',
+				displayName: t('option.riskValues'),
 				default: DEFAULT_RISK_VALUES.join(', '),
 				placeholder: DEFAULT_RISK_VALUES.join(', '),
 			},
@@ -448,13 +463,13 @@ function riskGroup(): BasesAllOptions {
 function priorityGroup(): BasesAllOptions {
 	return {
 		type: 'group',
-		displayName: 'Prioritization',
+		displayName: t('option.group.priority'),
 		items: [
-			optionalPropertyOption('priority', 'Priority property'),
+			optionalPropertyOption('priority', t('option.priorityProperty')),
 			{
 				type: 'text',
 				key: 'priorityValues',
-				displayName: 'Priority levels (in order)',
+				displayName: t('option.priorityValues'),
 				default: DEFAULT_PRIORITY_VALUES.join(', '),
 				placeholder: DEFAULT_PRIORITY_VALUES.join(', '),
 			},
@@ -465,14 +480,14 @@ function priorityGroup(): BasesAllOptions {
 function newItemsGroup(homeFolder: string): BasesAllOptions {
 	return {
 		type: 'group',
-		displayName: 'New items',
+		displayName: t('option.group.newItems'),
 		items: [
 			{
 				type: 'folder',
 				key: 'homeFolder',
-				displayName: 'Home folder',
+				displayName: t('option.homeFolder'),
 				default: DEFAULT_HOME_FOLDER,
-				placeholder: 'Same folder as existing items',
+				placeholder: t('option.homeFolderHint'),
 			},
 			// A picker per type, in ladder order then the extras — and then the absence,
 			// which has a folder like any other note this plugin writes and is a type in
@@ -484,10 +499,10 @@ function newItemsGroup(homeFolder: string): BasesAllOptions {
 				(type): BasesOptions => ({
 					type: 'folder',
 					key: typeFolderKey(type),
-					displayName: `Folder for ${type} items`,
+					displayName: t('option.typeFolder', { type }),
 					// Tracks the home folder above: the value shown is the value that applies.
 					default: defaultTypeFolder(type, homeFolder),
-					placeholder: homeFolder || 'Home folder',
+					placeholder: homeFolder || t('option.homeFolder'),
 				}),
 			),
 		],
@@ -497,12 +512,12 @@ function newItemsGroup(homeFolder: string): BasesAllOptions {
 function displayGroup(): BasesAllOptions {
 	return {
 		type: 'group',
-		displayName: 'Display',
+		displayName: t('option.group.display'),
 		items: [
 			{
 				type: 'property',
 				key: 'tagsProperty',
-				displayName: 'Tags property',
+				displayName: t('option.tagsProperty'),
 				default: 'note.tags',
 				placeholder: 'tags',
 				filter: notePropsOnly,
@@ -510,7 +525,7 @@ function displayGroup(): BasesAllOptions {
 			{
 				type: 'toggle',
 				key: 'showCounts',
-				displayName: 'Show descendant counts',
+				displayName: t('option.showCounts'),
 				default: true,
 			},
 		],

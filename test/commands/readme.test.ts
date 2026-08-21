@@ -173,7 +173,9 @@ describe('the write backlog readme command', () => {
 		await flush();
 
 		expect(vault.files.has(README)).toBe(false);
-		expect(Notice.messages.some((m) => m.startsWith('Fix the view configuration first'))).toBe(true);
+		// The whole sentence, fragment and full stop: `config.fixAll` is what closes a
+		// problem that is written to be listed rather than said alone.
+		expect(Notice.messages).toContain('Fix the view options first: the parent and order properties share the key "rank".');
 	});
 
 	it('reports a failed write instead of failing silently', async () => {
