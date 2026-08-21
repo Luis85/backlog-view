@@ -224,6 +224,16 @@ describe('a dimension is named the way the panel names it', () => {
 		expect(modelProblems(model)).toContain('the weights total 110, not 100 (10 over)');
 	});
 
+	it('never prints a false zero for a real sub-1 delta — significant figures, not decimal places', () => {
+		// `toFixed(2)` rounds anything under 0.005 to "0.00", which would tell the reader they
+		// are zero short of 100 while the block above refuses them for not being at 100 — the
+		// exact failure the brief warned against for `Math.round`, reproduced one decimal
+		// place later. `toPrecision` keeps significant figures regardless of magnitude, so
+		// 0.001 prints as 0.001 rather than 0.
+		const model = modelWith({ dimensions: [{ ...dimension('reach'), label: 'Reach', weight: 99.999 }] });
+		expect(modelProblems(model)).toContain('the weights total 99.999, not 100 (0.001 short)');
+	});
+
 	it('puts a dimension inside the collision sentence in lowercase', () => {
 		// `settings.sharedKey` joins the list into ONE sentence, which is why the three scales
 		// and the two pair slots beside it are plain lowercase nouns. `SUGGESTED_KEYS` already

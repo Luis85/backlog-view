@@ -150,11 +150,20 @@ export function modelProblems(model: ScoringModel): string[] {
 	if (problems.length === 0 && Math.abs(weightSum - 100) > 1e-9) {
 		// The delta, not just the sum: eight weight boxes make a transient failure guaranteed,
 		// and the view draws the problem block INSTEAD of the table — so the one number the
-		// reader needs is how far off they are. Arithmetic already in hand. Rounded to two
-		// places because summing floats like 33.3 + 33.3 + 33.4 leaves an artefact
-		// (0.09999999999999432) that a bare `Math.round` would flatten to 0 and misreport a
-		// real mismatch as none — the `1e-9` epsilon above still catches that real case.
-		const off = Number(Math.abs(100 - weightSum).toFixed(2));
+		// reader needs is how far off they are. Arithmetic already in hand.
+		//
+		// `toPrecision(3)` rather than `toFixed(2)`: fixed DECIMAL places round anything under
+		// half of the last one to zero, so a genuine 0.001 short (99.999 total) printed as "0
+		// short" while the block above still refused it for not being at 100 — the exact
+		// failure the brief warned against for a bare `Math.round`, reproduced one decimal
+		// place later and caught in review. SIGNIFICANT figures don't have that failure mode:
+		// they track the value's own magnitude, so 3 of them keep 13 as 13, turn 0.001 into
+		// 0.001, and cannot collapse a nonzero delta to the string "0". The one thing this does
+		// NOT guarantee is a tidy decimal at every magnitude — a delta smaller than about 1e-6
+		// prints in exponent notation (e.g. "1.00e-7"), which is uglier but still never a false
+		// zero. `test/domain/scoringModel.test.ts`'s "never prints a false zero for a real
+		// sub-1 delta" pins the 99.999 case this comment used to get wrong.
+		const off = Number(Math.abs(100 - weightSum).toPrecision(3));
 		problems.push(`the weights total ${weightSum}, not 100 (${off} ${weightSum < 100 ? 'short' : 'over'})`);
 	}
 	if (!Number.isInteger(model.outputMin) || !Number.isInteger(model.outputMax) || model.outputMin >= model.outputMax)
