@@ -59,7 +59,11 @@ export function estimationUnconfigured(model: ScoringModel): boolean {
  */
 function boundEntries(model: ScoringModel): { key: string; label: string }[] {
 	return [
-		...model.dimensions.map((d) => ({ key: d.key, label: d.id })),
+		// The label, lowercased: this entry lands INSIDE a sentence (`settings.sharedKey` joins
+		// the list into one), which is why the three scales and the two pair slots below are
+		// plain lowercase nouns. `SUGGESTED_KEYS` already spells `d.label.toLowerCase()` for the
+		// same reason, so this is the existing shape rather than a new one.
+		...model.dimensions.map((d) => ({ key: d.key, label: d.label.toLowerCase() })),
 		{ key: model.confidence.key, label: 'confidence' },
 		{ key: model.effort.key, label: 'effort' },
 		{ key: model.complexity.key, label: 'complexity' },
@@ -80,15 +84,20 @@ export function boundKeys(model: ScoringModel): string[] {
 	return boundEntries(model).map((entry) => entry.key);
 }
 
-/** One dimension's own problems: its range, its rubric coverage, its property, its weight. */
+/** One dimension's own problems: its range, its rubric coverage, its property, its weight —
+ *  each named by the dimension's LABEL, which is what the options panel that produced the
+ *  mistake calls it. `estimationSettings.ts` resolves the label as
+ *  `read.text(dimOption(id, 'label')) || shipped?.label || id`, so it is never empty and the
+ *  slug is never the only name available. Sentence-initial, so the shipped labels'
+ *  capitalisation is already right. */
 function dimensionProblems(d: ScoringDimension): string[] {
 	const problems: string[] = [];
 	if (!Number.isInteger(d.min) || !Number.isInteger(d.max) || d.min >= d.max)
-		problems.push(`${d.id}: the range must be two whole numbers, low to high`);
+		problems.push(`${d.label}: the range must be two whole numbers, low to high`);
 	else if (d.rubric.length !== pointCount(d.min, d.max))
-		problems.push(`${d.id}: ${pointCount(d.min, d.max)} points need ${pointCount(d.min, d.max)} rubric sentences, found ${d.rubric.length}`);
-	if (d.key === '') problems.push(`${d.id}: no property is bound — bind one or remove the dimension`);
-	if (!(d.weight > 0)) problems.push(`${d.id}: the weight must be a positive number`);
+		problems.push(`${d.label}: ${pointCount(d.min, d.max)} points need ${pointCount(d.min, d.max)} rubric sentences, found ${d.rubric.length}`);
+	if (d.key === '') problems.push(`${d.label}: no property is bound — bind one or remove the dimension`);
+	if (!(d.weight > 0)) problems.push(`${d.label}: the weight must be a positive number`);
 	return problems;
 }
 

@@ -2,6 +2,7 @@ import { BasesAllOptions, BasesViewConfig } from 'obsidian';
 import { DEFAULT_DIMENSIONS, defaultDimension } from './defaultModel';
 import { DEFAULT_POINT_RANGE, dimOption, resolveEstimationSettings } from './estimationSettings';
 import { notePropsOnly } from './optionalProperties';
+import type { ScoringDimension } from './scoringModel';
 
 /**
  * What Bases shows in the estimation view's own options menu — this view's half of what
@@ -20,8 +21,7 @@ export function getEstimationViewOptions(config: BasesViewConfig): BasesAllOptio
 	// dimension group is offered for whichever ids are actually configured, not only the
 	// shipped eight.
 	const settings = resolveEstimationSettings(config);
-	const ids = settings.model.dimensions.map((d) => d.id);
-	return [modelGroup(), ...ids.map(dimensionGroup), scalesGroup()];
+	return [modelGroup(), ...settings.model.dimensions.map(dimensionGroup), scalesGroup()];
 }
 
 function modelGroup(): BasesAllOptions {
@@ -62,16 +62,25 @@ function modelGroup(): BasesAllOptions {
 	};
 }
 
-/** One dimension's group, driven by its id rather than its resolved weight — the shipped
- * weight is the option's `default`, never the CURRENT value, or a dimension already
- * overridden would show its override as though nothing had been chosen. */
-function dimensionGroup(id: string): BasesAllOptions {
+/** One dimension's group. Every BOX's `default` and `placeholder` is the SHIPPED value,
+ * never the CURRENT one, or a dimension already overridden would show its override as
+ * though nothing had been chosen — which is why `shipped` is still read here beside the
+ * resolved `d`.
+ *
+ * The group's HEADING is the exception, and it is not an exception to that rule: a heading
+ * is not a candidate value. It names which dimension the boxes belong to, so it takes the
+ * RESOLVED label — the same words the panel row inside it shows. Headed by
+ * `defaultDimension(id)?.label ?? id`, a dimension outside the shipped eight was headed by
+ * its slug and an overridden one by the shipped word while its own Label box held the
+ * override. */
+function dimensionGroup(d: ScoringDimension): BasesAllOptions {
+	const { id } = d;
 	const shipped = defaultDimension(id);
-	const label = shipped?.label ?? id;
+	const shippedLabel = shipped?.label ?? id;
 	const shippedWeight = shipped ? String(shipped.weight) : '';
 	return {
 		type: 'group',
-		displayName: label,
+		displayName: d.label,
 		items: [
 			{
 				type: 'property',
@@ -104,8 +113,8 @@ function dimensionGroup(id: string): BasesAllOptions {
 				type: 'text',
 				key: dimOption(id, 'label'),
 				displayName: 'Label',
-				default: label,
-				placeholder: label,
+				default: shippedLabel,
+				placeholder: shippedLabel,
 			},
 		],
 	};

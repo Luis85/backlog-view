@@ -1,9 +1,38 @@
 import { describe, expect, it } from 'vitest';
-import { boundKeys, modelProblems, estimationUnconfigured, pointCount } from '../../src/domain/scoringModel';
+import { boundKeys, modelProblems, estimationUnconfigured, pointCount, ScaleConfig, ScoringDimension, ScoringModel } from '../../src/domain/scoringModel';
 import { dimRubricOption, resolveEstimationSettings, scaleRubricOption } from '../../src/domain/estimationSettings';
 import { SUGGESTED_KEYS } from '../../src/domain/defaultModel';
 import { FakeViewConfig } from '../helpers/vault';
 import { configured, configuredValues } from '../helpers/estimationModel';
+
+/** A five-point dimension fixture with every `ScoringDimension` field filled — this suite
+ *  asserts `modelProblems` against a hand-built model, below `resolveEstimationSettings`,
+ *  so nothing here can lean on ITS fallbacks (a shipped label, a shipped weight) to paper
+ *  over a field this helper forgot to set. */
+function dimension(id: string): ScoringDimension {
+	return { id, label: id, key: `note.${id}`, min: 1, max: 5, weight: 10, lessIsBetter: false, rubric: ['a', 'b', 'c', 'd', 'e'] };
+}
+
+function scale(key: string): ScaleConfig {
+	return { key, min: 1, max: 5, rubric: ['a', 'b', 'c', 'd', 'e'] };
+}
+
+/** A valid, empty-dimensions `ScoringModel` fixture — `configured()` in `estimationModel.ts`
+ *  builds the shipped model through the resolver; this one is for a test asserting
+ *  `modelProblems` directly against a shape it built by hand. */
+function modelWith(overrides: Partial<ScoringModel> = {}): ScoringModel {
+	return {
+		dimensions: [],
+		outputMin: 1,
+		outputMax: 100,
+		valueKey: 'note.value',
+		stampKey: 'note.stamp',
+		confidence: scale('note.confidence'),
+		effort: scale('note.effort'),
+		complexity: scale('note.complexity'),
+		...overrides,
+	};
+}
 
 describe('the scoring model configuration', () => {
 	it('resolves the shipped default model: eight dimensions, weights totalling 100, five rubric sentences each', () => {
@@ -164,5 +193,33 @@ describe('the option-key format is a persisted contract', () => {
 		expect(options).toContain('complexityProperty');
 		expect(options).toContain('valueProperty');
 		expect(options).toContain('stampProperty');
+	});
+});
+
+describe('a dimension is named the way the panel names it', () => {
+	it('names each problem by the label, never by the slug', () => {
+		// The existing assertions above match on /reach/i, which passes for the id AND the
+		// label — so this is a NEW assertion naming the label exactly, not a tightening of
+		// one that would have passed either way.
+		const model = modelWith({ dimensions: [{ ...dimension('reach'), label: 'Reach', weight: 0 }] });
+		expect(modelProblems(model)).toContain('Reach: the weight must be a positive number');
+	});
+
+	it('names an OVERRIDDEN label by the override', () => {
+		const model = modelWith({ dimensions: [{ ...dimension('reach'), label: 'Blast radius', weight: 0 }] });
+		expect(modelProblems(model).join(' ')).toContain('Blast radius');
+		expect(modelProblems(model).join(' ')).not.toContain('reach:');
+	});
+
+	it('puts a dimension inside the collision sentence in lowercase', () => {
+		// `settings.sharedKey` joins the list into ONE sentence, which is why the three scales
+		// and the two pair slots beside it are plain lowercase nouns. `SUGGESTED_KEYS` already
+		// spells `d.label.toLowerCase()` for the same reason.
+		const model = modelWith({
+			dimensions: [{ ...dimension('reach'), label: 'Reach', key: 'note.shared' }],
+			confidence: { key: 'note.shared', min: 1, max: 5, rubric: [] },
+		});
+		expect(modelProblems(model).join(' ')).toContain('reach');
+		expect(modelProblems(model).join(' ')).not.toContain('Reach');
 	});
 });

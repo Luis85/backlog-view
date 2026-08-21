@@ -15,6 +15,19 @@ function groupNamed(options: ReturnType<typeof getEstimationViewOptions>, displa
 	return group;
 }
 
+/** Every group's heading, in order — how a test asks what the panel would show as the
+ *  list of dimension (and Model/Scales) headings, without caring which group is at which
+ *  index. */
+function groupNames(options: ReturnType<typeof getEstimationViewOptions>): string[] {
+	return options.filter((g) => 'displayName' in g).map((g) => (g as { displayName: string }).displayName);
+}
+
+/** The `Label` box for one dimension id — the box `dimensionGroup`'s own rule keeps pinned
+ *  to the SHIPPED value in both `default` and `placeholder`, never the current one. */
+function labelItem(options: ReturnType<typeof getEstimationViewOptions>, id: string) {
+	return flatten(options).find((o) => o.key === dimOption(id, 'label')) as { default?: string; placeholder?: string };
+}
+
 describe('getEstimationViewOptions', () => {
 	it('declares the Model group: dimensions, output range, value and stamp properties', () => {
 		const keys = flatten(getEstimationViewOptions(new FakeViewConfig({}))).map((o) => o.key);
@@ -43,7 +56,7 @@ describe('getEstimationViewOptions', () => {
 
 	it('is config-aware: a custom dimensions list drives which groups are offered, unknown ids included', () => {
 		const groups = getEstimationViewOptions(new FakeViewConfig({ dimensions: 'reach, my-custom' }));
-		const names = groups.filter((g) => 'displayName' in g).map((g) => (g as { displayName: string }).displayName);
+		const names = groupNames(groups);
 		expect(names).toContain('Reach');
 		// An id with no shipped row falls back to itself as both the label and the group name.
 		expect(names).toContain('my-custom');
@@ -75,5 +88,29 @@ describe('getEstimationViewOptions', () => {
 	it('rubric sentences get no options-menu box this round — stored keys only, hand-editable in the .base', () => {
 		const keys = flatten(getEstimationViewOptions(new FakeViewConfig({}))).map((o) => o.key);
 		expect(keys.some((k) => k.startsWith('dimRubric.') || k.startsWith('scaleRubric.'))).toBe(false);
+	});
+});
+
+describe('a dimension group is headed the way the panel heads it', () => {
+	it('heads the group by the RESOLVED label, including an override', () => {
+		const options = getEstimationViewOptions(new FakeViewConfig({ 'dimLabel.reach': 'Blast radius' }));
+		expect(groupNames(options)).toContain('Blast radius');
+		expect(groupNames(options)).not.toContain('Reach');
+	});
+
+	it('heads an id outside the shipped eight by its own label rather than its slug', () => {
+		const options = getEstimationViewOptions(new FakeViewConfig({ dimensions: 'novelty', 'dimLabel.novelty': 'Novelty' }));
+		expect(groupNames(options)).toContain('Novelty');
+	});
+
+	it("keeps the SHIPPED label in the Label box's own default and placeholder", () => {
+		// The half a careless fix breaks. `dimensionGroup`'s rule is that a box's `default` and
+		// `placeholder` are the SHIPPED value and never the CURRENT one, or a dimension already
+		// overridden shows its override as though nothing had been chosen. A group HEADING is not
+		// a candidate value — it names which dimension the boxes belong to — so only the heading
+		// moves to the resolved label.
+		const item = labelItem(getEstimationViewOptions(new FakeViewConfig({ 'dimLabel.reach': 'Blast radius' })), 'reach');
+		expect(item.default).toBe('Reach');
+		expect(item.placeholder).toBe('Reach');
 	});
 });
