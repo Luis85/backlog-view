@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import { makeEstimationView, selectItem } from '../../helpers/estimation';
+import { click, makeEstimationView, selectItem } from '../../helpers/estimation';
 import { configuredValues } from '../../helpers/estimationModel';
 import { FakeVault } from '../../helpers/vault';
 import { flush, key } from '../../helpers/view';
@@ -175,5 +175,28 @@ describe('the estimation view from the keyboard', () => {
 		const evt = key(group, 'a');
 		expect(evt.defaultPrevented).toBe(false);
 		expect(containerEl.querySelector('[data-dim="compliance"][data-value="1"]')!.getAttribute('tabindex')).toBe('0');
+	});
+
+	it('keeps focus on a sort header across the rebuild its own click causes', () => {
+		// `view.refresh()` destroys the button that was just activated. Without a refocus,
+		// focus fell to `<body>` and a SECOND Enter reached nothing — so the direction could
+		// be set once by keyboard and never flipped. Every other rebuild-causing control in
+		// this plugin refocuses (`refocusPick`, `pickAndRefocus`).
+		const { containerEl } = makeEstimationView(fixture(), configuredValues());
+
+		const header = () => containerEl.querySelector('.pbl-est-sort[data-col="total"]') as HTMLButtonElement;
+		header().focus();
+		click(header());
+
+		// The button is a NEW element after the rebuild, so this asks the document what holds
+		// focus rather than trusting the old reference.
+		expect(containerEl.ownerDocument.activeElement).toBe(header());
+		const first = header().getAttribute('aria-sort');
+
+		// The second press is the point: it only reaches a header if the first one left focus
+		// on it.
+		key(header(), 'Enter');
+		click(header());
+		expect(header().getAttribute('aria-sort')).not.toBe(first);
 	});
 });

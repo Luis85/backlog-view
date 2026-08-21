@@ -360,7 +360,25 @@ function wireSortClick(view: EstimationView, btn: HTMLElement, spec: HeaderSpec,
 	btn.addEventListener('click', () => {
 		setSort(view, sortValue({ column: spec.column, direction: active ? flip(active.direction) : firstDirection(spec.column) }));
 		view.refresh();
+		refocusSortHeader(view, spec.column);
 	});
+}
+
+/**
+ * Focus back onto the header this click rebuilt. `view.refresh()` above is synchronous and
+ * redraws the whole view, so `btn` is detached by the time this runs and focus has fallen
+ * to `<body>` — which meant a second `Enter` reached nothing and a direction set by
+ * keyboard could never be flipped. `refocusPick` (`panel.ts`) and `pickAndRefocus`
+ * (`view/render/toolbar.ts`) are the same rule for the same reason.
+ *
+ * Read off `dataset` and compared, never interpolated into a selector — `refocusPick`'s
+ * own rule. A column here is one of a fixed six rather than text a user typed, so no
+ * spelling can be a syntax error; the shape stays the one this codebase trusts anyway,
+ * because the next `data-` address may not be a closed vocabulary.
+ */
+function refocusSortHeader(view: EstimationView, column: SortColumn): void {
+	const headers = Array.from(view.viewEl.querySelectorAll<HTMLElement>('.pbl-est-sort'));
+	headers.find((el) => el.dataset.col === column)?.focus();
 }
 
 function renderHead(view: EstimationView, tableEl: HTMLElement, pick: SortPick | null): void {
