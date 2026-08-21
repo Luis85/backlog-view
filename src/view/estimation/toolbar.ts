@@ -27,7 +27,9 @@ export function renderEstimationToolbar(view: EstimationView, host: HTMLElement,
 	const init = iconButton(bar, 'sparkles', t('estimation.toolbar.init'), 'pbl-est-init');
 	init.addEventListener('click', () => void runEstimationInit(view));
 
-	const undo = iconButton(bar, 'undo-2', t('estimation.toolbar.undo'), 'pbl-est-undo');
+	// The SHARED key, not one of this view's own: the undo slot is vault-wide (ADR 0030),
+	// so a label naming this view would promise a scope the slot does not have.
+	const undo = iconButton(bar, 'undo-2', t('toolbar.undo'), 'pbl-est-undo');
 	undo.addEventListener('click', () => void view.gate.undoLast());
 
 	bar.createDiv({ cls: 'pbl-toolbar-spacer' });

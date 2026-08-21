@@ -257,7 +257,15 @@ export const en = {
 	'toolbar.collapseAll': 'Collapse all',
 	'toolbar.openManual': 'Open the manual',
 	'toolbar.assignMissing': 'Assign missing properties',
-	'toolbar.undo': 'Undo last backlog change',
+	/**
+	 * NO VIEW IN THE NAME, because there is one undo slot for the whole vault. ADR 0030
+	 * put `lastUndo` on the plugin-wide `WriteLock` on purpose — a slot per view would be
+	 * two views racing with two ideas of what the last batch was — so this button really
+	 * can take back a batch the reader made in another view, and a label promising
+	 * otherwise was the only wrong part. The estimation toolbar shares this key rather
+	 * than owning a second one saying "estimation".
+	 */
+	'toolbar.undo': 'Undo last change',
 	'toolbar.overflow': 'More toolbar actions',
 
 	'toolbar.groupingIgnored': 'Grouping ignored',
@@ -802,6 +810,5 @@ export const en = {
 	/** The toolbar's own two actions and its count. `{scored} of {total} scored` is the
 	 *  filtered count's idiom — one quantity in two parts, so the pair reads as one fact. */
 	'estimation.toolbar.init': 'Bind and backfill the estimation properties',
-	'estimation.toolbar.undo': 'Undo last estimation change',
 	'estimation.toolbar.scored': '{scored} of {total} scored',
 } as const;

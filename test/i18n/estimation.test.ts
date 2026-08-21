@@ -34,15 +34,24 @@ import { FakeVault } from '../helpers/vault';
 /**
  * Every key this view owns, computed against `en.ts` rather than kept by hand — one
  * namespace is what makes it exact: a key added to `estimation.*` is in this list without
- * anyone editing it. No `REUSED` list beside it, because there is nothing to put in one:
- * every `t()` call under `src/view/estimation/` names this namespace, and no module outside
- * it names any key in it.
+ * anyone editing it.
  */
 const OWN = Object.keys(en).filter((key): key is MessageKey => key.startsWith('estimation.'));
 
+/**
+ * The one key this toolbar reads without owning: the undo button shares `toolbar.undo`
+ * with the backlog view rather than naming its own scope, because there is one undo slot
+ * for the whole vault (ADR 0030) and a per-view key would promise a scope the slot does
+ * not have. `toolbar.test.ts`'s own `REUSED` list is the same idea for that view's side
+ * of the same key.
+ */
+const REUSED = ['toolbar.undo'] as const;
+
+const SWEPT: MessageKey[] = [...OWN, ...REUSED];
+
 const MARK = 'XX ';
 const xx: Catalog = Object.fromEntries(
-	OWN.map((key) => {
+	SWEPT.map((key) => {
 		const entry = en[key];
 		return [
 			key,
@@ -115,7 +124,7 @@ describe('the estimation view reads its own text from the catalog', () => {
 		const drawn = drawnText(partOf(containerEl, '.pbl-toolbar'));
 
 		expect(drawn).toContain(marked('estimation.toolbar.init'));
-		expect(drawn).toContain(marked('estimation.toolbar.undo'));
+		expect(drawn).toContain(marked('toolbar.undo'));
 		// The two numbers are DATA and arrive as parameters, so they survive the override
 		// inside a marked sentence.
 		expect(drawn).toContain(MARK + en['estimation.toolbar.scored'].replace('{scored}', '2').replace('{total}', '3'));
