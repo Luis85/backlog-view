@@ -166,6 +166,16 @@
 .pbl-est-row {
 	border-bottom: 1px solid var(--background-modifier-border);
 	cursor: pointer;
+	/* `selectRow` scrolls a keyboard step with `block: 'nearest'`, which lands the row
+	   flush against this scroller's edge — under `.pbl-est-head`, which is sticky at
+	   `top: 0` inside it. So `ArrowUp` used to park the selected row behind the column
+	   labels. 32px is that header's own `min-height`; a margin here is the platform
+	   answering it, with nothing measured at runtime. Deliberately NOT mirrored on
+	   `.pbl-est-dim` in the panel: `renderPanel` restores the panel's scroll position, so
+	   the rebuilt row is already on screen and `refocusPick`'s `.focus()` scrolls nothing
+	   — and `.pbl-est-header`'s height is content-driven, so a constant there would be a
+	   guess rather than a measurement. */
+	scroll-margin-block-start: var(--size-4-8);
 }
 
 .pbl-est-row:last-child {

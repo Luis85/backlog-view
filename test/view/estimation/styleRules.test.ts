@@ -203,6 +203,20 @@ describe('the clear control sits in the gutter the row reserves for it', () => {
 	});
 });
 
+describe('a row stepped to by keyboard clears the sticky header', () => {
+	// `selectRow` scrolls with `block: 'nearest'`, which lands the row flush against the
+	// scroller's edge — under `.pbl-est-head`, which is `position: sticky; top: 0` in that
+	// same scroller. So an `ArrowUp` step parked the selected row behind the column
+	// labels. `scroll-margin-block-start` is the platform's own answer and needs no
+	// measurement at runtime.
+	//
+	// The VALUE matches the header's own `min-height: 32px`. Whether it is ENOUGH is a
+	// layout question jsdom cannot answer — `npm run harness`, then a vault.
+	it('reserves the header’s height as scroll margin on the row', () => {
+		expect(ruleAt('.pbl-est-row', 'scroll-margin-block-start: var(--size-4-8)')).toBeGreaterThan(-1);
+	});
+});
+
 describe('a decoration never sizes the box the value is centred in', () => {
 	it('takes the strip out of the box model without letting it out of the cell', () => {
 		// The three cell classes share `overflow: hidden`, so a strip hung BELOW its cell is
