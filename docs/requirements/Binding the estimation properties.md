@@ -27,13 +27,19 @@ works alone, so the guided empty state does both in one gated batch — the back
 ✨ ([[Backfill missing properties]]), narrowed to this view's own key list and its own
 gate.
 
+The same two halves are what a *configured* view needs when it gains a dimension, and that
+is the same action rather than a second one: the new dimension's key is bound to nothing,
+which the model reports as a problem, and a key no note carries cannot be picked out of
+that problem by hand. So the action is offered wherever the view cannot score — the guided
+empty state, the toolbar, and the config warning.
+
 ## Use case
 
 | | |
 | --- | --- |
 | **Actor** | Backlog owner |
-| **Trigger** | Pressing the setup action on the estimation view's guided empty state |
-| **Preconditions** | The view is unconfigured — the model binds nothing |
+| **Trigger** | Pressing the setup action — on the guided empty state, the toolbar, or the config warning |
+| **Preconditions** | The view cannot score yet — the model binds nothing, or binds something and reports a problem |
 | **Guarantee** | Either every suggested key is bound *and* stubbed onto the results, or nothing is changed at all. A run that would leave the model broken changes neither the configuration nor a note. |
 
 **Main flow**
@@ -50,9 +56,17 @@ gate.
 
 **Extensions**
 
+- **1a — the view is configured but cannot score.** A dimension added since setup binds
+  no property, so the view draws the config warning rather than the guided empty state or
+  the table. The action is on that block too, and it is the same action: the warning names
+  the unbound dimension, pressing it binds and backfills that dimension's key, and the
+  table draws. Without it that state is a dead end — the toolbar carrying the action is
+  exactly what a model problem replaces, and the picker cannot offer a property no note
+  carries.
 - **2a — the action is a real button.** It is Tab-reachable and pressed like any other,
   never a click handler on a div. The guided empty state is often the first thing a
-  keyboard user meets in this view.
+  keyboard user meets in this view. The config warning's own button is the same button on
+  the same terms, sharing the class that takes both quiet while a batch is in flight.
 - **3a — the bindings would leave the model broken.** Nothing is bound and nothing is
   written, and the view says why. An action that changed the configuration and then had
   every write refused would leave the view worse than it found it.
@@ -77,6 +91,8 @@ gate.
   keys rather than blanking them.
 - A run whose bindings would leave the model broken binds nothing, writes nothing, and
   names the problem.
+- A configured view whose model reports a problem still offers the action, and a run from
+  there that binds the missing key clears the warning and lands in the table.
 - The action is a real, Tab-reachable button.
 - **Not met yet** — no check drives this batch at a path the base excluded. The refusal
   is implemented (`EstimationView`'s `outsideFilter`) and untested, so the category
@@ -85,6 +101,10 @@ gate.
 
 ## Where it lives
 
+`src/view/estimation/estimationView.ts` (`renderUnconfigured` and `renderProblems` — the
+two states that draw the action themselves, which is why neither draws a toolbar) ·
+`src/view/estimation/toolbar.ts` (`renderEstimationToolbar`, `syncEstimationToolbar` — the
+third surface, and the one query that takes all three quiet mid-batch) ·
 `src/view/estimation/init.ts` (`runEstimationInit`, and `withPending` — the model the
 bindings would produce, resolved before any of them is set, so the gate runs before the
 configuration is touched) · `src/domain/optionalProperties.ts` (`adoptCandidates`,

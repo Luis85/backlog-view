@@ -194,6 +194,16 @@ Three quantities stay **outside** that sum and beside it:
   is removed by the next estimation action on that item or by an explicit cleanup the reader
   invokes — never on a render pass, never by a sweep. A gate that writes while nobody is
   looking is a worse failure than a stale number that says it is stale.
+
+  **The pair breaks both ways, and the missing TOTAL is reported like any other failure.**
+  The same external edit can take the total and leave the stamp, which describes a model
+  that wrote nothing — so it is not the absence that `none` means, and reading it as one hid
+  the stray key from the table and from every action that could remove it. Which failure it
+  is depends on what is left on the note rather than on the stamp: with no answers either,
+  nothing can be recomputed and the cleanup takes the stamp on its own; with the answers
+  still there the total is recomputable, so it reads as needing re-estimation and the
+  restamp puts it back. Neither is a write nobody asked for — both are the actions the
+  reader already had.
 - **A result can always be decomposed — on an estimation surface.** Wherever this view shows
   a score, the dimensions and weights that produced it are reachable, and so is the coverage.
   Elsewhere that is not possible and the epic does not pretend otherwise: a backlog row, a

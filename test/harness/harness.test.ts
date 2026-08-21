@@ -326,9 +326,12 @@ function ruleBody(css: string, selector: string): string {
  */
 describe('two layout fixes found in the browser, pinned as declarations jsdom can read', () => {
 	const estimationCss = readFileSync('styles/estimation.css', 'utf8');
+	// The warning block's rules live with the other "nothing to show" states rather than in
+	// `estimation.css`, which is at its line cap — same concern, different partial.
+	const emptyStatesCss = readFileSync('styles/emptyStates.css', 'utf8');
 
 	it('does not stretch the config-warning block to the grid row’s full height', () => {
-		expect(ruleBody(estimationCss, '.pbl-est-problems')).toMatch(/align-self:\s*start/);
+		expect(ruleBody(emptyStatesCss, '.pbl-est-problems')).toMatch(/align-self:\s*start/);
 	});
 
 	it('keeps a floor under the title column so it cannot shrink to nothing', () => {

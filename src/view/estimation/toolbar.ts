@@ -8,7 +8,10 @@ import { runEstimationInit } from './init';
  * The estimation view's toolbar — three things the view already had and could not reach.
  *
  * `runEstimationInit` was reachable only from the guided empty state, so a view that gained
- * a dimension after setup had no way to bind and backfill it. `WriteGate.canUndo()` and
+ * a dimension after setup had no way to bind and backfill it. This bar is half of that fix:
+ * a gained dimension is UNBOUND, which is a model problem, so the state that most needs the
+ * action is the one state this bar does not draw in — the config warning draws its own
+ * setup button (`estimationView.ts`'s `renderProblems`) for that reason. `WriteGate.canUndo()` and
  * `undoLast()` were public with NO production caller at all — `estimationView.ts` said so in
  * a comment, and this is what closes it. And the count is where write progress is published:
  * before it, `syncBusy` had only `aria-busy` on the whole pane to say anything with.
@@ -59,11 +62,12 @@ export function renderEstimationToolbar(view: EstimationView, host: HTMLElement,
  * `view.viewEl` rather than held as fields on the view: the toolbar is redrawn whole on every
  * `render()` pass, so a held reference would go stale the moment one did.
  *
- * **`.pbl-est-init` is not only the toolbar's.** The guided empty state draws no toolbar and
- * still carries that class on its own setup button, deliberately, because it runs the same
- * action and must go quiet on the same fact — so this query DOES find something there, and
- * disabling it is the whole mechanism that closed the bind-then-refuse hole. The one state
- * where it finds nothing at all is the config warning, which draws neither button.
+ * **`.pbl-est-init` is not only the toolbar's.** The guided empty state and the config
+ * warning draw no toolbar and still carry that class on their own setup buttons,
+ * deliberately, because both run the same action and must go quiet on the same fact — so
+ * this query DOES find something in either, and disabling it is the whole mechanism that
+ * closed the bind-then-refuse hole. `undo` is the one this can find nothing for: only the
+ * toolbar draws it, which is what the `if (undo)` guard below is for.
  *
  * The undo button re-enables to the UNDO SLOT's own state (`WriteGate.canUndo()`), never
  * merely to "a batch has finished" — the backlog toolbar's own rule, restated here because a

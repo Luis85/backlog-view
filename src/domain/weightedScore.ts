@@ -140,7 +140,8 @@ export function parseStamp(raw: string): ParsedStamp | null {
  * Whether a STORED total can be trusted. `none` and `orphan` are about there being
  * nothing, or nothing left, to judge; `handwritten` and `foreign` are about a stamp
  * that cannot vouch for the number beside it; `stale` is a stamp that vouches for a
- * different note than the one on disk now, by coverage or by the number itself.
+ * different note than the one on disk now — by coverage, by the number itself, or by
+ * there being no number left beside it at all.
  */
 export type Currency = 'current' | 'stale' | 'foreign' | 'handwritten' | 'orphan' | 'none';
 
@@ -155,8 +156,19 @@ export function currencyOf(
 	item: { storedTotal: number | null; storedStamp: string | null; result: TotalResult | null },
 	fingerprint?: string,
 ): Currency {
-	// Currency describes the STORED total; with nothing stored there is nothing to judge.
-	if (item.storedTotal === null) return 'none';
+	// Currency describes the STORED total; with nothing stored AND no stamp either, there is
+	// nothing to judge. A stamp standing alone is not that case: it describes a total that is
+	// not there, which the pair rule (`docs/requirements/Business value estimation.md`) calls a
+	// model that wrote nothing, and returning 'none' for it hid the inconsistency from the
+	// table and put it out of reach of every action — the note kept the stray key forever.
+	// WHICH failure it is depends on the answers, not on the stamp: with none, there is
+	// nothing left to judge and the cleanup removes the stamp on its own (`totalStampSets`
+	// writes only the keys the note actually carries); with answers still on the note, the
+	// total is recomputable and the restamp puts it back, which is the action that fits.
+	if (item.storedTotal === null) {
+		if (item.storedStamp === null) return 'none';
+		return item.result === null ? 'orphan' : 'stale';
+	}
 	// THE STAMP IS ASKED BEFORE THE INPUTS, and the order is the rule rather than a
 	// preference. `computeTotal` returns null at `answered === 0`, so "nobody has answered
 	// a dimension" and "the answers behind this total were deleted" both arrive here as

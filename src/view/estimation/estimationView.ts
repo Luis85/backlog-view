@@ -160,8 +160,10 @@ export class EstimationView extends BasesView {
 		}
 		this.model = buildEstimationModel(this.app, this.data?.data ?? [], model);
 		// The toolbar renders BEFORE the grid and is `viewEl`'s own child, never the grid's:
-		// unconfigured and config-warning states carry no toolbar (the guided empty state
-		// already has its own ✨, and a second one above it would duplicate it).
+		// unconfigured and config-warning states carry no toolbar, because both draw the
+		// setup action themselves and a second ✨ above it would duplicate it. The count and
+		// the undo are what they give up — neither has anything to say about a view with no
+		// model to count against.
 		renderEstimationToolbar(this, this.viewEl, this.model);
 		const gridEl = this.viewEl.createDiv({ cls: 'pbl-est-view' });
 		// Defaults every frame to the single-column grid; `renderPanel` is the only place
@@ -178,11 +180,12 @@ export class EstimationView extends BasesView {
 	/**
 	 * Publish the gate's progress two ways: `aria-busy` on the whole pane, and — the
 	 * toolbar's own reason to exist — the init and undo buttons' disabled state, via
-	 * `syncEstimationToolbar`. That query reaches TWO buttons across two states, not one:
-	 * the toolbar's ✨ and the guided empty state's setup button both carry
-	 * `pbl-est-init` on purpose, so the same action goes quiet on the same fact wherever it
-	 * is drawn (`renderUnconfigured` below says why). Only the config warning, which draws
-	 * neither, leaves it finding nothing. Asks the LOCK rather than this gate's own progress — a
+	 * `syncEstimationToolbar`. That query reaches ONE button per state and never only the
+	 * toolbar's: the toolbar's ✨, the guided empty state's setup button and the config
+	 * warning's all carry `pbl-est-init` on purpose, so the same action goes quiet on the
+	 * same fact wherever it is drawn (`renderUnconfigured` and `renderProblems` below say
+	 * why). Every state this view can draw is therefore reached; only the UNDO is ever
+	 * missing, which is what the `if (undo)` guard is for. Asks the LOCK rather than this gate's own progress — a
 	 * batch the backlog view is writing changes the very notes this table shows, and this
 	 * view's own data update is deferred on it, so its content is mid-change whoever is
 	 * doing the writing.
@@ -264,11 +267,27 @@ export class EstimationView extends BasesView {
 
 	/** A block, not `.pbl-config-warning`: that class is an inline-flex pill sized for
 	 *  one line beside the toolbar's other controls, and this reads as prose plus a
-	 *  list — `styles/estimation.css`'s own `.pbl-est-problems` states why. */
+	 *  list — `styles/emptyStates.css`'s own `.pbl-est-problems` states why.
+	 *
+	 *  It carries the setup action too, and that is the whole reason this state is not a
+	 *  dead end. The problem this view most often shows is a dimension added after setup:
+	 *  its key is unbound, so `modelProblems` names it and the toolbar's ✨ — the action
+	 *  built to bind and backfill exactly that — is on the state that no longer draws.
+	 *  Obsidian's picker offers the properties a vault HAS, so a key no note carries
+	 *  cannot be bound by hand either, and the reader is left with a warning and no way
+	 *  out. Pressing it when the bindings would NOT fix the model is safe rather than
+	 *  silent: `runEstimationInit` runs its own gate first and names every problem in a
+	 *  notice. `pbl-est-init` for the same reason `renderUnconfigured`'s button carries
+	 *  it — one action goes quiet on one fact wherever it is drawn. */
 	private renderProblems(problems: string[]): void {
 		const box = this.viewEl.createDiv({ cls: 'pbl-est-problems' });
 		box.createDiv({ text: t('estimation.problems.lead') });
 		const list = box.createEl('ul');
 		for (const p of problems) list.createEl('li', { text: p });
+		// The TOOLBAR's label, not the empty state's: `Use recommended defaults` describes a
+		// vault that has chosen nothing, and this view has — what is offered here is the
+		// binding and the backfill of whatever it has not named yet.
+		const btn = box.createEl('button', { cls: 'mod-cta pbl-est-init', text: t('estimation.toolbar.init') });
+		btn.addEventListener('click', () => void runEstimationInit(this));
 	}
 }

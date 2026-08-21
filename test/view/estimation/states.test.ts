@@ -2,9 +2,10 @@
 import { describe, expect, it } from 'vitest';
 import { EstimationView } from '../../../src/view/estimation/estimationView';
 import { WriteLock } from '../../../src/view/writeLock';
-import { makeEstimationView } from '../../helpers/estimation';
+import { click, makeEstimationView } from '../../helpers/estimation';
 import { configuredValues } from '../../helpers/estimationModel';
 import { FakeVault } from '../../helpers/vault';
+import { flush } from '../../helpers/view';
 import { viewStateKey } from '../../../src/storage/viewIdentity';
 
 /** Two scored notes, "Bravo" before "Alpha" in the base's own (insertion) order — enough
@@ -49,6 +50,40 @@ describe('the estimation view renders its own states', () => {
 		// unconfigured estimation view's included — no toolbar drawn here to publish to,
 		// so the call must be a genuine no-op rather than a throw.
 		expect(() => view.syncBusy()).not.toThrow();
+	});
+
+	/**
+	 * The config warning is not a dead end, and the scenario is the one the toolbar was
+	 * built for: a view that GAINED a dimension after setup. Its key is unbound, which is a
+	 * model problem, so the state that most needs the setup action is the one state the
+	 * toolbar does not draw in — and Obsidian's picker offers only the properties a vault
+	 * HAS, so a key no note carries cannot be bound by hand either (Codex, PR #168).
+	 *
+	 * Driven end to end rather than asserted as a button: what is owed here is that pressing
+	 * it CLEARS the warning it is drawn under, which a presence check would pass for a
+	 * control that binds the wrong thing or nothing.
+	 */
+	it('the config warning carries the setup action, and pressing it binds the dimension the warning named', async () => {
+		const vault = new FakeVault();
+		vault.addFile('A.md');
+		const values = configuredValues();
+		delete values['dimProperty.reach']; // declared by the model, bound to nothing — a dimension added since setup
+		const { containerEl, config } = makeEstimationView(vault, values);
+		expect(containerEl.querySelector('.pbl-est-problems')?.textContent).toMatch(/Reach/);
+
+		const btn = containerEl.querySelector<HTMLElement>('.pbl-est-problems button');
+		expect(btn?.tagName).toBe('BUTTON');
+		// The class is how `syncEstimationToolbar` finds it to disable it mid-batch — the
+		// same contract the guided empty state's own button carries.
+		expect(btn?.classList.contains('pbl-est-init')).toBe(true);
+
+		click(btn as HTMLElement);
+		await flush();
+
+		expect(config.get('dimProperty.reach')).toBe('note.reach');
+		expect(vault.fm('A.md').reach).toBe(''); // bound AND backfilled: neither half works alone
+		expect(containerEl.querySelector('.pbl-est-problems')).toBeNull();
+		expect(containerEl.querySelector('.pbl-est-table')).not.toBeNull();
 	});
 
 	it('a half-configured view (value property only) warns and names the missing stamp', () => {

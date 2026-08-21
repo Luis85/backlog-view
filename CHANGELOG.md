@@ -26,7 +26,16 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   in the `.base` file this round, with no options-menu box for one yet.
 
 - The estimation view has a toolbar — the backfill action, an undo for the last batch, and
-  how many of the results are scored.
+  how many of the results are scored. The backfill is offered wherever the view cannot
+  score yet, the configuration warning included: a dimension added after setup binds no
+  property, which is exactly what replaces the toolbar with a warning, and Obsidian's
+  picker cannot offer a property no note carries.
+
+- **A business value model stamp left without its total is reported.** Deleting the
+  business value property outside the plugin used to leave the stamp behind with nothing
+  on screen to say so and no action that would accept it. The row now reports it — *Inputs
+  gone* where the scores are gone too, so the cleanup removes the stray stamp, and *Needs
+  re-estimation* where the scores remain, so the recalculation writes the total back.
 
 - **A stored business value can be recalculated where it is reported as out of date.** A
   total reading *Needs re-estimation* or *Another model* now offers one action that rewrites

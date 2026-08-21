@@ -198,6 +198,31 @@ describe('currencyOf: what a stored total says about itself', () => {
 		expect(currencyOf(model, { storedTotal: null, storedStamp: null, result: null })).toBe('none');
 	});
 
+	/**
+	 * The other half of the pair rule, which `none` used to swallow whole: a stamp standing
+	 * with no total beside it. Reported as `none`, the table drew a dash and neither action
+	 * accepted the item, so the stray key could not be seen or removed — Codex, PR #168.
+	 *
+	 * Two cases and not one, because the ANSWERS decide which failure it is, and each is
+	 * asserted against the ACTION it earns rather than only against the word: with no answers
+	 * the stamp is all that is left and the cleanup takes it; with the answers still on the
+	 * note the total is recomputable and the restamp puts it back. Reading both as `orphan` —
+	 * the shape the review suggested — would offer the second one a cleanup that deletes the
+	 * stamp and leaves the scores unattributed.
+	 */
+	it('a stamp with no total is surfaced, as whichever failure its answers make it', () => {
+		const stamp = stampValue(model, result.coverage);
+
+		// No answers left either: nothing to judge and nothing to recompute from.
+		expect(currencyOf(model, { storedTotal: null, storedStamp: stamp, result: null })).toBe('orphan');
+
+		// The answers are still there — the total alone was deleted, so it can be rewritten.
+		expect(currencyOf(model, { storedTotal: null, storedStamp: stamp, result })).toBe('stale');
+
+		// The control: with no stamp either, absence is still absence and nothing is reported.
+		expect(currencyOf(model, { storedTotal: null, storedStamp: null, result })).toBe('none');
+	});
+
 	// Every fixture above is already a clean two-decimal number, so the `round2(storedTotal)`
 	// comparison in `currencyOf` is never actually exercised by them — dropping that wrap would
 	// leave every one of those assertions passing unchanged. These two pin the comparison
