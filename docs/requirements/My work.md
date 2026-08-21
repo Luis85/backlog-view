@@ -45,10 +45,12 @@ notes is how the two drift.
   the `assignee` strings the results happen to carry. Two spellings must not be two people,
   and somebody with nothing assigned yet must still appear. Nothing under this epic ships
   before that one does; that is the accepted price of a roster that can be asked something.
-- **"What is next" is plan order.** The answer is the first unfinished item of mine when the
-  tree is walked, because plan order already says what the product owner ranked highest.
-  There is no personal rank: a second `order` per person is a second ranking graph, and this
-  register refuses those.
+- **"What is next" is plan order.** The answer is the first unfinished **result** of mine
+  when the tree is walked, because plan order already says what the product owner ranked
+  highest. The walk goes *through* a context row and never stops on one: a row the Base
+  excluded is not actionable, so offering it as what to do next would name a row the same
+  list refuses to write to. There is no personal rank either: a second `order` per person is
+  a second ranking graph, and this register refuses those.
 - **It is a place to work.** An item can be acted on from the list, and every such write goes
   through the same gate and the same context-row refusals as every other projection — a row
   the Base excluded renders, parents, and is never written to.
