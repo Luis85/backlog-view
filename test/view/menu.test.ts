@@ -205,7 +205,26 @@ describe('context menu', () => {
 
 });
 
-describe('placement actions on a milestone', () => {
+describe('placement actions on a marker', () => {
+	it('withholds Schedule from a resource even where both date properties are named', () => {
+		// The generated README states this to the user in as many words — *Schedule is
+		// withheld* — and nothing drove it. The chain under that sentence is `placementEnds`
+		// → `canSchedule` → this menu, and the resource is the case the milestone below
+		// cannot stand in for: that one is withheld because its ONE end has no key, so a
+		// vault with both properties named would give it back. A person has no end to
+		// configure, so a fully configured vault still offers nothing.
+		const vault = new FakeVault();
+		vault.addFile('Dana.md', { frontmatter: { type: 'Resource', order: 10 } });
+		vault.addFile('A story.md', { frontmatter: { type: 'PBI', order: 20 } });
+		const { containerEl } = makeView(vault, { startProperty: 'note.start', targetProperty: 'note.due' });
+
+		rowByTitle(containerEl, 'Dana').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+		expect(Menu.lastShown?.items.map((i) => i.titleText)).not.toContain('Schedule');
+
+		rowByTitle(containerEl, 'A story').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+		expect(Menu.lastShown?.items.map((i) => i.titleText)).toContain('Schedule');
+	});
+
 	it('withholds Schedule from a milestone on a start-only vault, and keeps it for work', () => {
 		const vault = new FakeVault();
 		vault.addFile('Ship 1.0.md', { frontmatter: { type: 'Milestone', order: 10 } });

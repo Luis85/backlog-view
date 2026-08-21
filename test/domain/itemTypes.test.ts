@@ -351,28 +351,23 @@ describe('Iteration is a declared marker', () => {
 });
 
 describe('Resource is a declared marker', () => {
-	it('is a marker type and a member of the whole vocabulary, and of no other list', () => {
-		expect(MARKER_TYPES).toContain('Resource');
+	it('is on neither ladder, which is what keeps it off every rung', () => {
 		expect(ALL_TYPES).toContain('Resource');
-		// The criterion this describe exists for: `EXTRA_TYPES` would pin a resource at
-		// `EXTRA_TYPE_RANK` and let it hold Tasks, which is the opposite of every rule
-		// above, and either ladder would give it a rung.
-		expect(EXTRA_TYPES).not.toContain('Resource');
-		expect(LEVELS).not.toContain('Resource');
+		// The two membership questions no CATEGORY-wide loop asks. `isMarkerType` above
+		// already drives `isMarkerType`, `isExtraType` and case for every marker, and
+		// `settings.test.ts` pins `MARKER_TYPES` itself and loops it against `LEVELS` and
+		// `EXTRA_TYPES` — its own comment says it is written that way so a third marker
+		// needs no new assertion, so repeating those here would pin them twice.
 		expect(TEST_LEVELS).not.toContain('Resource');
-	});
-
-	it('inherits every marker rule rather than declaring one', () => {
-		expect(isMarkerType('Resource')).toBe(true);
-		expect(isMarkerType('resource')).toBe(true);
-		expect(isExtraType('Resource')).toBe(false);
+		// It is on the PLAN's ladder without occupying a rung of it, exactly as the other
+		// two markers are — so nothing re-types it by position, and a resource dropped in
+		// the test catalog stays plan work in the wrong place rather than becoming a Test
+		// case.
+		expect(ladderFor('Resource', TEST_LEVELS)).toBe(LEVELS);
 		// A marker holds nothing, so nothing is offered beneath it.
 		expect(childTypeChoices({ typeName: 'Resource', levelIndex: -1, effectiveLevelIndex: 0, ladder: LEVELS })).toEqual(
 			[],
 		);
-		// And it is on the plan's ladder without occupying a rung of it, exactly as the
-		// other two markers are — so no move re-types it by position.
-		expect(ladderFor('Resource', TEST_LEVELS)).toBe(LEVELS);
 	});
 
 	it('files into its own subfolder', () => {

@@ -489,9 +489,15 @@ describe('moving between resources without a drag', () => {
 
 		for (const path of ['Dana.md', 'Ship 1.0.md']) {
 			view.selectItem(view.model?.byPath.get(path) as never);
-			key(treeOf(containerEl), 'ArrowDown', { altKey: true });
-			key(treeOf(containerEl), 'ArrowUp', { altKey: true });
+			const down = key(treeOf(containerEl), 'ArrowDown', { altKey: true });
+			const up = key(treeOf(containerEl), 'ArrowUp', { altKey: true });
 			await flush();
+			// And it is refused BEFORE `preventDefault`, which the comment on the guard
+			// claims and nothing checked: a chord this projection has nothing to do with is
+			// not this projection's to swallow, so it stays available to whatever else
+			// wants it. Guarding after the call passes every assertion below this one.
+			expect(down.defaultPrevented).toBe(false);
+			expect(up.defaultPrevented).toBe(false);
 		}
 		expect(vault.writeLog).toEqual([]);
 	});

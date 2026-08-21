@@ -197,20 +197,30 @@ epic states why an eighteenth name is being added against an open P1 direction
 
 `src/domain/typeVocabulary.ts` is the whole of the declaration: `RESOURCE_TYPE` joins
 `MARKER_TYPES` — which puts it in `ALL_TYPES` by construction — and `resources` joins
-`DEFAULT_TYPE_SUBFOLDERS`. It is exported for exactly one reader — `isResourceType` in
-`itemTypes.ts`, which 4c needs — and that predicate is itself module-local for the reason
-the constant would otherwise be: an export with no consumer outside its file is what
-`npm run analyze` calls dead, and it says so rather than leaving it to review.
+`DEFAULT_TYPE_SUBFOLDERS`. Beside it is the list 4c actually needs, `DATED_MARKER_TYPES`:
+the markers that state a date, which was every marker until a person became one.
 
 **Every STRUCTURAL marker rule is already asked of `isMarkerType`** — no rung, no children,
 no parent, no rollup, no dependency, no re-type by position — so those needed the concept
 `src/domain/itemTypes.ts` already had and not a line of code. **The DATE questions did
-not**, and that is 4c: `isResourceType` joins the predicates there for the same reason each
-of the others is its own, and `drawsAsPoint` and `placementEnds` each except this one type —
-the first so nothing draws a person at a point, the second so no gesture and no writer puts
-a date on one. `src/domain/bars.ts` asks the second of those at `placeItem`, which is the
-one call both axes make: a guard beside the dated axis alone would still have drawn a person
-in the resources axis's own marker lane.
+not**, and that is 4c. They are answered in ONE place: `placementEnds` gives a marker on the
+dated list its target and a marker off that list NEITHER end, and `drawsAsPoint` is derived
+from it — a point is a placement with exactly one end. Both functions carving out the
+dateless marker for themselves is what this increment shipped first, and the second of them
+needed a comment about the order it asked the first in; a rule stated twice is a rule that
+can come apart, and this one had two callers before it had two statements.
+
+**A list rather than a predicate naming `Resource`, and the direction is the decision.** A
+fourth marker declared in `MARKER_TYPES` alone states no date until somebody puts it in
+`DATED_MARKER_TYPES`, so forgetting ships a type that never places — inert, and visible the
+first time anyone opens the roadmap — instead of one handed two date slots that ✨ then
+writes onto every note of it. Nothing checks the fourth marker's case, because no fourth
+marker exists to drive: what the suite reaches is that all three declared markers agree with
+the list, from six tests that go red together when the list is wrong.
+
+`src/domain/bars.ts` asks `placementEnds` at `placeItem`, which is the one call both axes
+make: a guard beside the dated axis alone would still have drawn a person in the resources
+axis's own marker lane.
 
 
 `src/domain/backlogReadme.ts` needed one edit for the same reason, and it is the one that

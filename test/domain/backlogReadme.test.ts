@@ -2,8 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { BacklogSettings, defaultSettings } from '../../src/domain/settings';
 import { settingsWith } from '../helpers/settings';
 import { backlogReadmeContent, readmeStates } from '../../src/domain/backlogReadme';
-import { ALL_TYPES, MARKER_TYPES } from '../../src/domain/typeVocabulary';
-import { drawsAsPoint } from '../../src/domain/itemTypes';
+import { ALL_TYPES } from '../../src/domain/typeVocabulary';
 import { ORDER_SPACING } from '../../src/domain/writePlan';
 
 /**
@@ -162,17 +161,16 @@ describe('backlogReadmeContent', () => {
 
 	it('names only the DATED markers where it says what a marker reads', () => {
 		// The other half of the same sentence, on a two-date view: the point-by-type
-		// paragraph. Driven from the vocabulary rather than from a literal, so a fourth
-		// marker joining `MARKER_TYPES` has to answer this rather than ride in on the
-		// category — which is exactly how `Resource` got into it.
+		// paragraph. Asserted as the LITERAL the reader gets, not as `MARKER_TYPES` filtered
+		// by the same predicate the sentence is built from — that version was written first
+		// and could not fail, because making `drawsAsPoint` true for a `Resource` moved the
+		// expectation with the defect. A fourth marker has to answer this line by name.
 		const dated = settingsWith({ startKey: 'start', targetKey: 'due', horizonKey: '' });
-		const content = readme(dated, []);
-		const point = 'is the exception: it is a point by';
-		const line = content.split('\n').find((l) => l.includes(point));
-		if (line === undefined) throw new Error('the point-by-type sentence is missing');
-		for (const marker of MARKER_TYPES) {
-			expect(line.includes(`\`${marker}\``)).toBe(drawsAsPoint(marker, dated.iterationBars));
-		}
+		const line = readme(dated, [])
+			.split('\n')
+			.find((l) => l.includes('is the exception: it is a point by'));
+		expect(line).toContain('A **marker** (`Milestone` and `Iteration`) is the exception');
+		expect(line).not.toContain('Resource');
 	});
 
 	it('says a dateless marker is drawn on no timeline, so the generic rule is corrected', () => {

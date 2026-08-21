@@ -82,11 +82,20 @@ export const MILESTONE_TYPE = 'Milestone';
  *
  * Named once for the same reason the other two are: a surface that captions a resource
  * names the TYPE, and a type name is data — matched in frontmatter, never translated.
- * EXPORTED, unlike the other two were at this point, because `isResourceType` needs it:
- * this is the marker the DATE questions have to be able to tell from the other two.
  */
-export const RESOURCE_TYPE = 'Resource';
+const RESOURCE_TYPE = 'Resource';
 export const MARKER_TYPES = [MILESTONE_TYPE, ITERATION_TYPE, RESOURCE_TYPE];
+/**
+ * The markers that state a DATE — which was every marker until a person became one.
+ *
+ * A second LIST rather than a predicate naming the exception, and the direction is the
+ * whole of why: `placementEnds` gives a marker on this list its target and a marker off
+ * it NEITHER end, so a fourth marker declared in `MARKER_TYPES` alone states no date
+ * until somebody puts it here. Forgetting then ships a type that never places — inert,
+ * and visible the first time anyone looks at the roadmap — rather than one handed two
+ * date slots that ✨ writes onto every note of it.
+ */
+export const DATED_MARKER_TYPES = [MILESTONE_TYPE, ITERATION_TYPE];
 /**
  * The one DECLARED name that is not a work-item type at all — a resource's own
  * unavailable stretch. It joins none of the lists above and, deliberately, not

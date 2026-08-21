@@ -260,10 +260,13 @@ export function demoVault(layout: Layout = 'flat', extra = 0): FakeVault {
 	// absent rather than present-and-ignored: the fixture draws what the view supports.
 	add('Ship 1.0', { type: 'Milestone', order: 30, due: '2026-09-30' }, 'Billing');
 	// A RESOURCE — the marker that is not a date, and the only reason it is in this fixture:
-	// the tree is the one screen that draws its badge, so the pill shape beside `Ship 1.0`'s
-	// diamond is what the harness can actually be asked about. It is a root, like every
-	// marker, and nothing points at it yet: this vocabulary step changed no `assignee`, so
-	// `Dana` and the rest of the roster below are still the strings they were.
+	// the tree is the one screen that draws its badge, so the pill is what the harness can
+	// actually be asked about. Beside the other ROOTS, which is what the harness opens on —
+	// `Ship 1.0` below is a child of `Billing` and folded away until somebody expands it, so
+	// the comparison the eye gets for free is a pill against the square badges around it,
+	// not a pill against a diamond. It is a root, like every marker, and nothing points at
+	// it yet: this vocabulary step changed no `assignee`, so `Dana` and the rest of the
+	// roster below are still the strings they were.
 	add('Dana', { type: 'Resource' });
 	// Waits on that milestone — the arrow INTO a diamond, which is the direction a
 	// milestone still takes part in. Also names a note this base does not have, so it
