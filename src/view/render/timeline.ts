@@ -327,7 +327,7 @@ export function renderTimeline(
 	const todayLeft = leadWidth + todayOffset(window, today, scale);
 	const line = content.createDiv({ cls: 'pbl-today', attr: { 'aria-hidden': 'true' } });
 	line.setCssProps({ '--pbl-today-left': `${todayLeft}px` });
-	setTooltip(line, `Today — ${formatCivil(today)}`);
+	setTooltip(line, t('timeline.todayLine', { date: formatCivil(today) }));
 	// One overlay over the day area, spanning the full height of the CONTENT (which is
 	// at least the scrollport, so the blank grid below the last row — the state every
 	// fresh backlog starts in — is a drop target too). Positioned past the sticky lead
@@ -741,7 +741,7 @@ function renderRowFacts(
 		// The words the glyph stands for, so a pointer reader gets what the span gives a
 		// screen reader. The row's own accessible name already carries it, so the tooltip
 		// is a second route to one fact rather than the only route to a hidden one.
-		setTooltip(lead, `${bar.item.title} — ${waits}`);
+		setTooltip(lead, t('timeline.waitsTooltip', { title: bar.item.title, waits }));
 	}
 }
 

@@ -133,9 +133,9 @@ function refusedByConfig(host: BacklogViewHost): boolean {
  * frontmatter and no longer carry that guarantee.
  */
 function absenceProblem(result: AbsenceResult): string | null {
-	if (!result.resource) return 'Name the resource this absence is for.';
-	if (!result.start || !result.target) return 'An absence needs both a start and an end date.';
-	if (result.target < result.start) return 'The end date is before the start date.';
+	if (!result.resource) return t('absence.nameResource');
+	if (!result.start || !result.target) return t('absence.needsBothDates');
+	if (result.target < result.start) return t('absence.endBeforeStart');
 	return null;
 }
 

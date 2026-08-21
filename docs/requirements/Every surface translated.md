@@ -413,6 +413,117 @@ re-taken), 19 in the rest of `view/`, and `domain/`, of which `viewOptions.ts` i
 a data question first. `main.ts` is two command names and one plugin name that is never
 translated.
 
+**`view/` WHOLE except the manual, and `main.ts`, on 2026-08-21.** 117 keys, taking the
+catalog to **378** — the rest of `view/render/` (fifteen files), `view/writeGate.ts`,
+`view/cardMoves.ts`, `main.ts`'s two command names, and six sites in
+`view/interactions/` that the slice above reported as swept and was not. Counted three
+ways and after the last edit: `Object.keys(en).length` at runtime, an AST walk over the
+`as const` object's own properties, and a tab-aware grep for the key lines — 378 on all
+three. The AST walk is the instrument this note discarded at zero in the empty-states
+slice; it returns a real figure once it reads through the `as const`, which is worth
+knowing before discarding it a second time.
+
+Eight things about this slice are worth carrying to the next one.
+
+**The handoff's suggested order was wrong, and the instrument is why.** It named
+`view/manual/` as the small finishable slice on a narrow grep's 9 sites. The AST walk
+reports **334** there: those three files are long-form authored documentation built from
+concatenated `text:` entries, and a setter grep sees only the `title:` lines above them.
+That is the fifth count in this epic short because the instrument could not see a shape,
+and the first where the wrong count would have chosen the wrong work. `view/manual/` is
+untouched here and is stated below as its own question.
+
+**`view/interactions/` was NOT swept whole, and the entry above said it was.** Seventeen
+English literals survived across eight files that entry names, in a directory carrying all
+three text bans: `create.ts`'s modal heading, its `Under "…" · in folder "…"` detail line
+and the iteration entry's two refusals; the absence entry's three; the schedule entry's
+three; `dependencies.ts`'s unresolved detail; `cardDrag.ts`'s `Moved "…" from … to …`
+live-region announcement; `linkDrag.ts`'s connector label; and the two resize grips, whose
+tooltip was spelled identically in each. Twenty-one keys, and they are counted separately
+from the rest because they are a CORRECTION rather than new ground.
+
+What let them through is one gap per shape, and each is now closed at the forbidden thing.
+`UI_TEXT_PROPERTY` matched a property whose VALUE is a literal or a template, so a value
+that is a TERNARY of the two matched nothing; the first `TEXT_TERNARY` rule wants a
+template wrapped AROUND the ternary and the second wants literals on BOTH branches, so a
+ternary picking between a literal and a template sat in the blind spot of all three at
+once. That is exactly what `create.ts`'s modal heading was. Both text bans now read through
+a `ConditionalExpression`, and a third ternary rule names the mixed shape. Planting each
+was watched erroring, and the swept tree stayed clean, so all three widenings cost no
+exemption. The two shapes still outside every rule are unchanged and stated where they
+always were: a template whose first quasi is empty, and a sentence handed to a helper as a
+positional argument — the second of which is what a validator RETURNING its refusal is, and
+what most of these seventeen were.
+
+**The detail line's own acceptance criterion is paid.** `promptDetail` built
+`in folder "…"` and then sentence-cased it with `where[0].toUpperCase()` when there was no
+parent — wrong once the fragment comes from a catalog, since the capital belongs in the
+message and not every script has case. It is four whole keys picked between now, and the
+`toUpperCase` is gone.
+
+**The runtime half asks the CATEGORY and found what neither lint nor the walk could.**
+`test/i18n/projections.test.ts` marks the WHOLE catalog rather than a list of this slice's
+keys, drives the tree, both context surfaces, the board and all three roadmap axes, and
+asserts that everything rendered UNMARKED is data. It failed on its first run: the rollup
+tooltip was `` `${done} of ${total} items done` ``, a template whose FIRST quasi is empty —
+the one shape `UI_TEXT_LITERAL`'s own comment says it cannot see, and one the AST walk
+misses too, because every quasi in it is blank or lowercase. Nothing but reading the
+rendered string back could have found it. Each of eight reverts was watched failing, and
+the context strip is in the file BECAUSE reverting `shelf.contextTooltip` was first watched
+passing everything else.
+
+**`interactions.test.ts`'s hand-kept key list rotted exactly as its own comment predicted**,
+and that is what hid the six above: it named the files while the literals sat in them. It
+marks the whole catalog now and needs no editing when a key is added. Doing that
+immediately falsified a comment beside it claiming the scope picker's `New iteration…` was
+unswept — the toolbar slice had keyed it the day before, and nothing had read the entry
+back since.
+
+**Two dead things fell out of making a data field a call.** `BoardRenderOptions` carried
+`stateOptionLabel`, and the iteration board passed one although `iterationBuckets` sets
+`outsideWorkflow: false` on all three of its fixed buckets, so the hint is unreachable
+there. As a string it cost nothing and nobody saw it; as a function it showed up as
+uncovered. The option is optional now and that board passes none. The date chips' two
+`noun` strings did the same in the other direction: split into whole per-end sentences,
+they exposed that the target end's context tooltip and its unreadable tooltip were driven
+by NO test at all, which `test/view/dateChips.test.ts` now covers.
+
+**What this slice deliberately did not do.** Two `console.error` prefixes stay English, the
+line `commands/scaffold.ts` and `commands/readme.ts` already draw — a developer console is
+not a user surface. `registerBasesView`'s `name` is the plugin's own identity and carries an
+inline disable rather than an exemption for the file, `ui/manualDialog.ts`'s nav heading
+exactly. `name:` joined `UI_TEXT_PROPERTY` for `main.ts`'s two commands and cost that one
+disable across the whole swept tree.
+
+**The lint regions collapsed, which is what the toolbar slice's carve-outs were waiting
+for.** `RENDER_EMPTY_STATES` and `RENDER_TOOLBAR` are gone and `view/render/**` carries the
+three text bans as a GLOB, so a file added to that directory is covered the moment it
+exists. `RENDER_BOARD` and `ROW_CONTROLS` still repeat them, the override rule unchanged.
+One trap on the way, watched in both directions: a file carved out of `VIEW` with no block
+of its own matches NO `no-restricted-syntax` block at all, because the general `src/**`
+region ignores `VIEW` — `showAtMouseEvent` planted in `view/manual/sections.ts` passed lint
+silently until that directory got a block. Its own carve-out comment said the opposite for
+about ten minutes, which is this epic's own rule about prose describing a rule you just
+changed.
+
+**The remaining English, re-derived on 2026-08-21 by the walk described above.** Under
+`view/render/`, `view/*.ts` and `main.ts` the residue is **ten strings and none of them is
+UI text**: six CSS selectors, one `event.key` name, two `console.error` prefixes and the
+plugin's own name. `view/interactions/` is now genuinely clean, its residue being
+`keyboard.ts`'s forty `event.key` comparisons, four more in `resizeDrag.ts`, one selector
+and the console prefixes. What is left in the plugin is **334 in `view/manual/`**
+(169 + 120 + 51) and **`domain/`**, of which `backlogReadme.ts` is 190 and is written INTO
+the vault, so a data question before a text one, and `viewOptions.ts` is 66 and is
+[[View options and config warnings]].
+
+**`view/manual/` is a question, not a backlog item, and this slice did not answer it.**
+Those three files are the manual dialog's authored prose — paragraphs, not labels. Keying
+them means several hundred multi-sentence entries in `en.ts`, which is a different kind of
+thing from every key in it today and worth deciding deliberately: a message catalog and a
+translated document are not obviously the same artifact. Whoever takes it should decide
+that first and count second. Nothing about the rest of the sweep depends on the answer,
+and the three text bans stop at its door.
+
 ## Where it lives
 
 **`src/i18n/en.ts`** carries the keys; the swept call sites are `src/ui/prompts.ts`,
@@ -423,24 +534,34 @@ translated.
 `src/view/interactions/labels.ts`, `src/view/interactions/absences.ts`,
 `src/view/interactions/dependencies.ts`, `src/view/interactions/create.ts`,
 `src/view/interactions/structure.ts`, `src/view/interactions/plan.ts`,
-`src/view/interactions/undo.ts` and `src/view/interactions/stateColors.ts` — which is
-`view/interactions/` WHOLE. The rest of the sweep
-touches every rendering module without changing what any of them does.
+`src/view/interactions/undo.ts`, `src/view/interactions/stateColors.ts`,
+`src/view/interactions/cardDrag.ts`, `src/view/interactions/linkDrag.ts`,
+`src/view/interactions/columnResize.ts` and `src/view/interactions/timelineLeadResize.ts` —
+which is `view/interactions/` whole, this time checked rather than claimed. Then all of
+`view/render/`, `src/view/writeGate.ts`, `src/view/cardMoves.ts` and `src/main.ts`. The
+sweep touches every rendering module without changing what any of them does.
 
 `src/view/render/toolbar.ts` · `src/view/render/toolbarControls.ts` ·
 `src/view/render/toolbarBusy.ts` · `src/view/render/toolbarFit.ts` ·
 `src/view/render/toolbarStatus.ts` · `src/view/render/rows.ts` · `src/view/render/columns.ts` ·
+`src/view/render/chips.ts` · `src/view/render/board.ts` · `src/view/render/iterationBoard.ts` ·
+`src/view/render/projections.ts` · `src/view/render/shelf.ts` ·
+`src/view/render/shelfControls.ts` · `src/view/render/roadmap.ts` ·
+`src/view/render/lanes.ts` · `src/view/render/legend.ts` · `src/view/render/timeline.ts` ·
+`src/view/render/timelineArrows.ts` · `src/view/render/cardChildren.ts` ·
 `src/view/render/emptyStates.ts` · `src/view/interactions/menu.ts` ·
 `src/view/interactions/create.ts` · `src/view/interactions/tags.ts` ·
 `src/view/interactions/structure.ts` · `src/view/interactions/undo.ts` ·
-`src/view/backlogView.ts` · `src/view/writeGate.ts` · `src/ui/prompts.ts` ·
-`src/commands/scaffold.ts` ·
+`src/view/interactions/cardDrag.ts` · `src/view/interactions/linkDrag.ts` ·
+`src/view/interactions/columnResize.ts` · `src/view/interactions/timelineLeadResize.ts` ·
+`src/view/backlogView.ts` · `src/view/writeGate.ts` · `src/view/cardMoves.ts` ·
+`src/ui/prompts.ts` · `src/commands/scaffold.ts` ·
 `src/main.ts`.
 Tests: `test/view/contextRowWrites.test.ts` and `test/view/creation.test.ts` must pass
 untouched — they guard the two behaviours this sweep is most likely to disturb.
 `test/i18n/sweptSurfaces.test.ts`, `test/i18n/emptyStates.test.ts`,
-`test/i18n/menus.test.ts`, `test/i18n/interactions.test.ts` and `test/i18n/toolbar.test.ts`
-are the swept half's
+`test/i18n/menus.test.ts`, `test/i18n/interactions.test.ts`, `test/i18n/toolbar.test.ts`
+and `test/i18n/projections.test.ts` are the swept half's
 own checks, and each is a PAIR with lint rather than a substitute for it: they drive each
 surface under a fixture catalog, so a literal left at a call site renders English beside
 overridden neighbours, while `UI_TEXT_LITERAL` and `UI_TEXT_PROPERTY` in

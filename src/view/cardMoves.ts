@@ -4,6 +4,7 @@ import { placementEnds, PlacementEnd } from '../domain/itemTypes';
 import { Placement, placeItem, plannedEnds } from '../domain/bars';
 import { DropTarget } from '../domain/dropTargets';
 import { horizonSource, resourceSource } from '../domain/roadmap';
+import { t } from '../i18n/t';
 import {
 	computeDeliverableStateWrites,
 	computeDropWrites,
@@ -289,7 +290,6 @@ export class CardMoveController {
  */
 function shelvedWords(item: BacklogItem, name: string, placement: Placement): string | null {
 	if (placement.kind !== 'shelf') return null;
-	const assigned = `"${item.title}" is assigned to ${name}.`;
-	if (placement.reason === null) return `${assigned} Add a start or target date to place it in the row.`;
-	return `${assigned} ${placement.reason}, so it stays on the shelf.`;
+	if (placement.reason === null) return t('move.shelvedNoDates', { title: item.title, name });
+	return t('move.shelvedReason', { title: item.title, name, reason: placement.reason });
 }

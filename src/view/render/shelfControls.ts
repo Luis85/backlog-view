@@ -162,7 +162,7 @@ function headerButton(parent: HTMLElement, cls: string, icon: string, label: str
 
 /** Display order within each type group — never written to a note. */
 function renderSortPicker(host: BacklogViewHost, headerEl: HTMLElement): void {
-	const btn = headerButton(headerEl, 'pbl-shelf-sort', 'arrow-up-down', 'Sort the shelf');
+	const btn = headerButton(headerEl, 'pbl-shelf-sort', 'arrow-up-down', t('shelf.sort'));
 	btn.addEventListener('click', (evt) => {
 		const menu = new Menu();
 		addShelfSortItems(host, menu, () => refocus(host, '.pbl-shelf-sort'));
@@ -172,7 +172,7 @@ function renderSortPicker(host: BacklogViewHost, headerEl: HTMLElement): void {
 
 /** Which type groups show. */
 function renderTypeFilter(host: BacklogViewHost, headerEl: HTMLElement, shelf: ShelfCard[]): void {
-	const btn = headerButton(headerEl, 'pbl-shelf-filter', 'list-filter', 'Filter the shelf by type');
+	const btn = headerButton(headerEl, 'pbl-shelf-filter', 'list-filter', t('shelf.filterByType'));
 	// The filter is the pick that can HIDE work, so it says on its face that it is doing
 	// so — a shelf whose count and contents disagree, with nothing explaining why, reads
 	// as a bug. The UNFILTERED grouping decides that, the same list the menu itself is

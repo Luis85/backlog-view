@@ -2,6 +2,7 @@ import { setTooltip } from 'obsidian';
 import { BacklogViewHost } from '../host';
 import { wireResizeGrip } from './resizeDrag';
 import { MAX_TIMELINE_LEAD_PX, MIN_TIMELINE_LEAD_PX } from '../../storage/viewStateStore';
+import { t } from '../../i18n/t';
 
 /**
  * The lead column's own drag handle, mounted in the timeline HEADER
@@ -50,7 +51,7 @@ export function renderLeadResize(
 		attr: {
 			role: 'separator',
 			'aria-orientation': 'vertical',
-			'aria-label': 'Resize the title column',
+			'aria-label': t('resize.leadColumn'),
 			// BOTH ends come from the pane, not just the ceiling. A reader dragging past
 			// the ceiling would see nothing move, because the render clamps it straight
 			// back; and below `MIN_TIMELINE_LEAD_PX + MIN_DAY_TRACK_PX` the pane cannot
@@ -63,7 +64,7 @@ export function renderLeadResize(
 			tabindex: '0',
 		},
 	});
-	setTooltip(grip, 'Drag to resize, or double click to reset. Focus it for the arrow keys and Home');
+	setTooltip(grip, t('resize.gripTooltip'));
 
 	// Live feedback is the CSS custom property alone — nothing re-renders mid-gesture,
 	// and that splits the frame in two while the gesture lasts. Everything laid out AFTER

@@ -367,7 +367,7 @@ function renderBucket(
 		drawIcon(mark, 'circle-help');
 		setTooltip(
 			colEl,
-			`"${bucket.value}" is not one of the declared horizons. Add it to "Horizons (in order)" in the view options, or re-place its items.`,
+			t('roadmap.undeclaredBucket', { value: bucket.value }),
 		);
 	}
 	renderBucketNew(ctx, header, bucket);
@@ -419,10 +419,10 @@ function renderBucketNew(ctx: RowContext, header: HTMLElement, bucket: HorizonBu
 	const type = newItemType(host.settings, model);
 	const btn = header.createEl('button', {
 		cls: 'clickable-icon pbl-bucket-add',
-		attr: { type: 'button', tabindex: '-1', 'aria-label': `New ${type} in ${bucket.value}` },
+		attr: { type: 'button', tabindex: '-1', 'aria-label': t('roadmap.newInBucket', { type, bucket: bucket.value }) },
 	});
 	drawIcon(btn, 'plus');
-	setTooltip(btn, `New ${type} in "${bucket.value}"`);
+	setTooltip(btn, t('roadmap.newInBucketTooltip', { type, bucket: bucket.value }));
 	btn.addEventListener('click', () => promptCreateItem(host, [type], null, { horizon: bucket.value }));
 }
 

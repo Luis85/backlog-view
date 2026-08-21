@@ -4,6 +4,7 @@ import { ItemWrite } from '../domain/writePlan';
 import { configProblems } from '../domain/settingsConsistency';
 import { applyWrites, RestoreWrite, WriteOutcome } from '../storage/frontmatter';
 import { ReplayTracker, replayRun, UndoRecovery } from './interactions/undo';
+import { t } from '../i18n/t';
 
 /**
  * How the gate reaches the view it guards. Both are the view's own elements — the
@@ -65,7 +66,7 @@ export class WriteGate {
 		// would apply the rest and leave the hierarchy half-updated.
 		if (writes.some((w) => this.host.model?.byPath.get(w.file.path)?.outsideFilter === true)) {
 			console.error('Product Backlog: refused a batch writing to a note outside the filter', writes);
-			new Notice('That change would edit a note outside this base’s filter, so nothing was written.');
+			new Notice(t('gate.outsideFilter'));
 			return null;
 		}
 		return this.runExclusively(writes.length, (onProgress, onInverse) =>
@@ -80,7 +81,7 @@ export class WriteGate {
 	async undoLast(): Promise<boolean> {
 		const restores = this.lastUndo;
 		if (!restores || restores.length === 0) {
-			new Notice('Nothing to undo.');
+			new Notice(t('gate.nothingToUndo'));
 			return false;
 		}
 		// No context-row check here, deliberately: authorization came at capture time.
@@ -121,11 +122,11 @@ export class WriteGate {
 		const problems = configProblems(this.host.settings);
 		if (problems.length > 0) {
 			// Writing with e.g. parent and order on the same key would corrupt notes.
-			new Notice(`Fix the view options first: ${problems[0]}`);
+			new Notice(t('config.fixFirst', { problem: problems[0] }));
 			return null;
 		}
 		if (this.applying) {
-			new Notice('Still applying the previous change — try again in a moment.');
+			new Notice(t('gate.stillApplying'));
 			return null;
 		}
 		this.applying = true;
@@ -146,7 +147,7 @@ export class WriteGate {
 			return result;
 		} catch (e) {
 			console.error('Product Backlog: failed to update items', e);
-			new Notice('Failed to update backlog items. See the developer console for details.');
+			new Notice(t('gate.updateFailed'));
 			return null;
 		} finally {
 			// A replay that completed but restored nothing is SPENT, not retryable:

@@ -96,7 +96,7 @@ export function promptCreateItem(
 	new TitlePromptModal(host.app, {
 		// With a choice to make the heading cannot name the type, since the type is the
 		// thing being chosen; without one it still says exactly what is being created.
-		heading: choices.length > 1 ? 'New item' : `New ${choices[0]}`,
+		heading: choices.length > 1 ? t('create.headingAnyType') : t('create.headingType', { type: choices[0] }),
 		detail: askFolder ? undefined : (typeName: string) => promptDetail(parentItem, folderFor(typeName)),
 		types: choices,
 		askFolder,
@@ -118,10 +118,18 @@ export function promptCreateItem(
 	}).open();
 }
 
-/** Where the new item will land, e.g. `Under "Epic X" · in folder "Backlog"`. */
+/**
+ * Where the new item will land, e.g. `Under "Epic X" · in folder "Backlog"`.
+ *
+ * Four whole keys picked between, never a prefix plus a fragment: this built the tail
+ * first and then sentence-cased it with `where[0].toUpperCase()` when there was no
+ * parent, which is wrong once the tail comes from a catalog — the capital belongs in the
+ * message, and not every script has case at all.
+ */
 function promptDetail(parentItem: BacklogItem | null, folder: string): string {
-	const where = folder ? `in folder "${folder}"` : 'in the vault root';
-	return parentItem ? `Under "${parentItem.title}" · ${where}` : `${where[0].toUpperCase()}${where.substring(1)}`;
+	if (parentItem === null) return folder ? t('create.detailInFolder', { folder }) : t('create.detailRoot');
+	const parent = parentItem.title;
+	return folder ? t('create.detailUnderInFolder', { parent, folder }) : t('create.detailUnderRoot', { parent });
 }
 
 /**
@@ -370,9 +378,9 @@ function openIterationPrompt(
 			goal: host.settings.iterationGoalKey !== '',
 		},
 		validate: (result) => {
-			if (spec.name !== null && result.name === '') return 'Give the iteration a name.';
+			if (spec.name !== null && result.name === '') return t('create.iterationNameRequired');
 			if (result.start && result.target && reversed(result.start, result.target)) {
-				return 'The target is before the start.';
+				return t('create.iterationReversed');
 			}
 			return null;
 		},

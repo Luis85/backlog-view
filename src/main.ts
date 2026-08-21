@@ -3,7 +3,7 @@ import { CREATE_BACKLOG_COMMAND_ID, promptCreateBacklogBase } from './commands/s
 import { WRITE_README_COMMAND_ID, writeBacklogReadmeCommand } from './commands/readme';
 import { rekeyBase } from './storage/viewStateStore';
 import { getViewOptions } from './domain/viewOptions';
-import { initLocale } from './i18n/t';
+import { initLocale, t } from './i18n/t';
 import { PRODUCT_BACKLOG_VIEW_TYPE, ProductBacklogView } from './view/backlogView';
 
 export default class ProductBacklogPlugin extends Plugin {
@@ -12,6 +12,12 @@ export default class ProductBacklogPlugin extends Plugin {
 		// language, so re-reading it per render would be cost with no observable benefit.
 		initLocale();
 		this.registerBasesView(PRODUCT_BACKLOG_VIEW_TYPE, {
+			// The plugin's own NAME, which `Every surface translated` says is never
+			// translated: Obsidian prefixes every command with it in the palette and it is
+			// this plugin's identity in the community list. Disabled at the line rather
+			// than exempting the file, `ui/manualDialog.ts`'s nav heading exactly — a
+			// second literal added to this call still fails.
+			// eslint-disable-next-line no-restricted-syntax -- the plugin's own name, which this epic says is never translated
 			name: 'Product Backlog',
 			icon: 'lucide-list-tree',
 			factory: (controller, containerEl) => new ProductBacklogView(controller, containerEl),
@@ -27,12 +33,12 @@ export default class ProductBacklogPlugin extends Plugin {
 		this.addCommand({
 			id: CREATE_BACKLOG_COMMAND_ID,
 			// Obsidian prefixes command names with the plugin name in the palette.
-			name: 'Create backlog',
+			name: t('command.createBacklog'),
 			callback: () => promptCreateBacklogBase(this.app),
 		});
 		this.addCommand({
 			id: WRITE_README_COMMAND_ID,
-			name: 'Write backlog readme',
+			name: t('command.writeReadme'),
 			// A check callback, not a plain one: the document is generated from the active
 			// view's configuration, so with no such view there is nothing to describe and
 			// the command hides rather than writing something from the defaults.

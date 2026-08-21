@@ -40,68 +40,24 @@ useViewHarness();
  *     fails partway, which no fixture here reaches.
  */
 
-/**
- * Every key the seven swept files spell for themselves — the FIXTURE, which is wider than
- * what the two tests below assert. Computed lists are what the other i18n files learned to
- * use, and this one is hand-kept for a reason that is itself a limitation: the keys span
- * seven namespaces with no shared prefix, so there is nothing to compute against. A key
- * added to one of those files and left out of this list is caught by neither half.
- */
-const OWN: MessageKey[] = [
-	'config.fixFirst',
-	'dependency.dependsOn',
-	'dependency.remove',
-	'dependency.removeEmpty',
-	'dependency.propertyChanged',
-	'dependency.setUp',
-	'dependency.noneLeft',
-	'dependency.addPlaceholder',
-	'dependency.removePlaceholder',
-	'dependency.noteChanged',
-	'dependency.noteChangedBeforeWrite',
-	'absence.addHeading',
-	'absence.addInFolder',
-	'absence.addInRoot',
-	'absence.editHeading',
-	'absence.editDescription',
-	'absence.edit',
-	'absence.delete',
-	'absence.needsProperties',
-	'absence.deleted',
-	'absence.deleteFailed',
-	'absence.updated',
-	'absence.saveFailed',
-	'absence.created',
-	'absence.createFailed',
-	'create.whereLabel',
-	'create.created',
-	'create.failed',
-	'create.iterationHeading',
-	'create.iterationCta',
-	'create.iterationEditHeading',
-	'create.iterationEditCta',
-	'create.iterationDates',
-	'create.iterationGone',
-	'create.iterationCreated',
-	'create.iterationFailed',
-	'init.adopted',
-	'init.updatedItems',
-	'init.outcome',
-	'init.outcomeWithColumns',
-	'init.nothingToDo',
-	'undo.outcome',
-	'undo.conflicts',
-	'undo.missing',
-	'plan.clearHorizon',
-	'plan.scheduleHeading',
-	'plan.scheduleDescription',
-	'stateColors.noStates',
-];
-
 const MARK = 'XX ';
+/**
+ * The WHOLE catalog behind a marker.
+ *
+ * It was a hand-kept list of the keys these seven files spell, and the paragraph beside
+ * it said that list would rot because the keys span seven namespaces with no shared
+ * prefix to compute from. It did: an AST walk on 2026-08-21 found six English literals
+ * still in this directory — `create.ts`'s modal heading and its "where will this land"
+ * detail line, both absence and schedule entries' refusals, and the two resize grips —
+ * in files this list already named, while every test here passed. A list checks the keys
+ * somebody remembered; marking everything checks the ones nobody did.
+ *
+ * Nothing has to be edited when a key is added now, and the assertions are unchanged:
+ * they read the MARKER, never the wording behind it.
+ */
 const xx: Catalog = Object.fromEntries(
-	OWN.map((key) => {
-		const entry = en[key];
+	Object.keys(en).map((key) => {
+		const entry = en[key as MessageKey];
 		return [
 			key,
 			typeof entry === 'string'
@@ -214,11 +170,12 @@ describe('the iteration dialog reads its frame from the catalog', () => {
 			.querySelector<HTMLElement>('.pbl-scope-btn')
 			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 
-		// Found by its ENGLISH title, and deliberately so: the scope picker's entry is
-		// `view/render/toolbarControls.ts`'s and is still unswept, which this lookup proves
-		// — it renders unmarked beside a dialog that is marked throughout. It becomes a key
-		// when `render/` is swept, and this line changes with it.
-		const entry = Menu.lastShown?.item('New iteration…');
+		// Found by its MARKED title. This lookup used the English one and said so — that the
+		// scope picker's entry was `view/render/toolbarControls.ts`'s and still unswept —
+		// which stopped being true when the toolbar was swept on 2026-08-20 and only showed
+		// here once the fixture stopped being a hand-kept key list (2026-08-21). The lookup
+		// is now what proves the opposite: this entry comes from `toolbar.newIteration`.
+		const entry = Menu.lastShown?.item(MARK + en['toolbar.newIteration']);
 		if (!entry) throw new Error('no new-iteration entry');
 		entry.click();
 

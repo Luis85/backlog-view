@@ -110,7 +110,7 @@ function renderChildEntry(host: BacklogViewHost, list: HTMLElement, child: Backl
 	});
 	renderBadge(host, entry, child);
 	entry.createSpan({ cls: 'pbl-card-kid-title', text: child.title });
-	setTooltip(entry, `Open "${child.title}"`);
+	setTooltip(entry, t('card.openChild', { title: child.title }));
 	entry.addEventListener('click', (evt) => host.openItem(child, evt));
 	entry.addEventListener('auxclick', (evt) => {
 		if (evt.button === 1) host.openItemIn(child, 'tab');

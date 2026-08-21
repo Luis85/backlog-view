@@ -4,6 +4,7 @@ import { applyDependencyWrite, dependenciesAvailable, legalTargets } from './dep
 import { RowContext } from '../render/columns';
 import { BacklogViewHost } from '../host';
 import { BacklogItem, BacklogModel } from '../../domain/model';
+import { t } from '../../i18n/t';
 
 /**
  * The Gantt gesture: drag from a bar's connector onto another bar to say *that item
@@ -126,7 +127,7 @@ export function wireBarLink(ctx: RowContext, parts: BarLinkParts): void {
 		? null
 		: barEl.createEl('button', {
 				cls: 'pbl-bar-connector',
-				attr: { 'aria-label': `Draw a dependency from ${item.title}`, tabindex: '-1' },
+				attr: { 'aria-label': t('link.drawDependency', { title: item.title }), tabindex: '-1' },
 			});
 	if (connector) {
 		dnd.wireLinkSource(connector, item, {

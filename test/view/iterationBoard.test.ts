@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { Menu } from 'obsidian';
 import { FakeVault } from '../helpers/vault';
-import { cardTitles, columnByName } from '../helpers/board';
+import { cardTitles, columnByName, columnNames } from '../helpers/board';
 import { clickExpandAll, makeView, refresh, rowByTitle, titlesOf, useViewHarness } from '../helpers/view';
 
 useViewHarness();
@@ -69,6 +69,26 @@ describe('the iteration scope', () => {
 		refresh(harness.view, vault);
 		expect(harness.view.projection).toBe('board');
 		expect(harness.containerEl.querySelector<HTMLButtonElement>('.pbl-focus-btn')?.disabled).toBe(false);
+	});
+
+	it('mints no stray column for a state no list declares, and so explains none', () => {
+		// The product board appends an observed stray as its own column and explains it in a
+		// tooltip; this board's three buckets are FIXED, so every value has a home and
+		// `outsideWorkflow` is false by construction (`iterationBuckets`). That is why
+		// `renderBoard`'s stray-column sentence is optional and this board passes none —
+		// passing one was dead code, invisible while it was a plain string and reported as
+		// an uncovered function the moment it became a call (2026-08-21).
+		const vault = sprintVault();
+		vault.addFile('Blocked one.md', {
+			frontmatter: { type: 'PBI', order: 30, status: 'Blocked', iteration: '[[Sprint 12]]' },
+		});
+		const harness = makeView(vault, OPTIONS, { base: 'Plan.base' });
+		harness.view.setBoardScope(SPRINT);
+
+		expect(columnNames(harness.containerEl)).toEqual(['Open', 'In progress', 'Resolved']);
+		expect(harness.containerEl.querySelector('.pbl-board-col-stray')).toBeNull();
+		// It is still ON the board — bucketed, not dropped.
+		expect(cardTitles(columnByName(harness.containerEl, 'In progress'))).toContain('Blocked one');
 	});
 
 	it('leaves the product board counting the product, with a scope still retained', () => {

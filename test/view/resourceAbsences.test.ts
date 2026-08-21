@@ -318,7 +318,11 @@ describe('an absence on the resources axis', () => {
 		const head = lanesOf(containerEl)[0];
 		const drawn = Array.from(head.querySelectorAll<HTMLElement>('.pbl-absence')).map((mark) => mark.dataset.tooltip);
 
-		expect(head.getAttribute('aria-description')).toBe(`Unavailable: ${drawn.join('; ')}`);
+		// Joined by `Intl.ListFormat` in the CATALOG's locale, not by a literal separator:
+		// a joiner is grammar, and `'; '` was English punctuation spelled at the call site.
+		expect(head.getAttribute('aria-description')).toBe(
+			`Unavailable: ${new Intl.ListFormat('en', { style: 'long', type: 'conjunction' }).format(drawn as string[])}`,
+		);
 	});
 
 	it('draws nothing at all with one date property configured', () => {

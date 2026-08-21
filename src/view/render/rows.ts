@@ -7,15 +7,13 @@ import { promptSchedule } from '../interactions/plan';
 import { removeTag } from '../interactions/tags';
 import { offerableTypes } from '../projection';
 import { badgeStyleFor } from './badges';
+import { t } from '../../i18n/t';
 import { LABEL_CHIPS } from './chips';
 import { BacklogItem } from '../../domain/model';
 import { childTypeChoices, displayType } from '../../domain/itemTypes';
 import { ownWorkflowReading } from '../../domain/board';
 import { renderAddSpacer, renderRowColumns, RowContext } from './columns';
 
-/** Why an implied badge is marked, said once: the render sets the class, the pass reads it. */
-const IMPLIED_TYPE_TOOLTIP =
-	'Type property not set — level implied from position. Use "Assign missing properties" to write it.';
 /** Everything a row element IS, for the walk in `render/reconcile.ts` to place. */
 export function buildRow(
 	ctx: RowContext,
@@ -111,13 +109,13 @@ function renderRowLead(
 	if (item.orphan) {
 		const orphan = row.createSpan({ cls: 'pbl-orphan' });
 		drawIcon(orphan, 'unlink');
-		setTooltip(orphan, 'Parent is set but not part of this view');
+		setTooltip(orphan, t('row.orphan'));
 	}
 
 	if (item.outsideFilter) {
 		const marker = row.createSpan({ cls: 'pbl-outside-marker' });
 		drawIcon(marker, 'corner-left-down');
-		setTooltip(marker, "Not in this base's filter — shown to keep the hierarchy");
+		setTooltip(marker, t('row.contextMarker'));
 	}
 }
 
@@ -245,7 +243,10 @@ export function renderBadge(host: BacklogViewHost, row: HTMLElement, item: Backl
 	// the cap is biting costs a layout read per row. An implied badge says why it is
 	// dashed as well, since the cap hides the very level it is explaining.
 	if (item.impliedType) badge.addClass('pbl-implied');
-	setTooltip(badge, item.impliedType ? `${badgeText} · ${IMPLIED_TYPE_TOOLTIP}` : badgeText);
+	setTooltip(
+		badge,
+		item.impliedType ? t('row.badgeImplied', { type: badgeText, action: t('toolbar.assignMissing') }) : badgeText,
+	);
 }
 
 /** The fixed trailing columns, then the row's own add button. */
@@ -275,7 +276,7 @@ function renderRowTrailing(ctx: RowContext, row: HTMLElement, item: BacklogItem,
 
 /** A row that can hold only one type says so; one with a choice cannot promise which. */
 function addLabel(childTypes: string[]): string {
-	return childTypes.length > 1 ? 'New child item' : `New ${childTypes[0]}`;
+	return childTypes.length > 1 ? t('row.addChild') : t('menu.newChild', { type: childTypes[0] });
 }
 
 /**
