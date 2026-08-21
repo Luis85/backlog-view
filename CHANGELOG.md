@@ -17,9 +17,11 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   badge, its own creation folder (`resources` under your home folder, changeable per view)
   and a place in the New menu and in Set type. Like `Milestone` and `Iteration` it is a
   marker: it holds nothing, hangs from nothing, and counts for nothing in any progress bar
-  or count, and — unlike the two markers before it — on no date: a `Resource` never draws
-  on the timeline, no schedule, drop or grip will write a date onto a person, and the
-  generated README no longer tells you a person reads your target property. Nothing
+  or rollup — the toolbar's item total still counts it, exactly as it counts a milestone,
+  because that number reports what your base returned rather than what has been done. And
+  unlike the two markers before it, it sits on no date: a `Resource` never draws on the
+  timeline, no schedule, drop or grip will write a date onto a person, and the generated
+  README no longer tells you a person reads your target property. Nothing
   about `assignee` changes yet — it is still the text you type, and the roadmap's rows
   still come from it.
 
@@ -54,6 +56,11 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   the title stays exactly where it is. A shut shelf is five pixels taller than it was.
 
 ### Changed
+
+- **Assign missing properties no longer creates a date property on a note that cannot use
+  one.** A `Milestone` is a point, so ✨ gives it the target property and no longer the
+  start one — which this view has never placed a milestone by — and a `Resource` gets
+  neither. Every other type is unchanged, and no existing property is touched either way.
 
 - **Everything the tree, the boards and the roadmap draw takes its words from the message
   catalog now** — every row marker and property chip, the tag pills, the rollup, each

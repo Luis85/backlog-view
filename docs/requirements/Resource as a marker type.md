@@ -7,6 +7,7 @@ created: 2026-08-20
 source: user request
 files:
   - src/domain/typeVocabulary.ts
+  - src/domain/writePlan.ts
   - src/view/render/shelf.ts
   - src/domain/backlogReadme.ts
   - src/domain/itemTypes.ts
@@ -99,6 +100,14 @@ epic states why an eighteenth name is being added against an open P1 direction
   axis makes, and `placementEnds` answers NEITHER end for the type, so no schedule, no
   drop, no grip and no writer can put a date on a person either. The narrowing is this
   type's and not the category's: a `Milestone` still reduces to its target point.
+- **4f — ✨ Assign missing properties runs over a `Resource`.** It creates neither date
+  property. `missingKeyStubs` already carves out two fields on the rule *do not create a
+  property that means nothing on the note it lands on* (a prerequisite list, an iteration's
+  goal); a date slot on a person is the third, and it is reached through `placementEnds`
+  rather than by naming the type, so the backfill cannot drift from the writer and the
+  controls. That also answers a case shipped before this epic and never tested: a
+  `Milestone` was handed the START property ✨ created for it — the key the generated README
+  tells the reader this view will never place a milestone by. Its target is still stubbed.
 - **4e — a `Resource` sits on the resources axis's shelf.** It is not a drag source there.
   A drop on a band writes the ROW for ordinary work and the DATE for a marker
   ([[Milestones out of the resource rows]] — the milestones' row stands for nobody), so a
