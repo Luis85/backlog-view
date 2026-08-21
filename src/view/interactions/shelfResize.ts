@@ -102,10 +102,6 @@ function clampShelfHeight(height: number): number {
  * the smallest band it could produce rather than one that announces nothing.
  */
 export function renderShelfResize(host: BacklogViewHost, shelfEl: HTMLElement): void {
-	// `||` rather than `??` on both: 0 is what an unmeasured pane reports, and it is a
-	// non-answer rather than a height — `??` would take it as one and pin every gesture to
-	// the floor in exactly the case the stored pick exists for.
-	const current = clampShelfHeight(shelfEl.offsetHeight || host.shelfHeight || 0);
 	const grip = shelfEl.createDiv({
 		cls: 'pbl-shelf-grip',
 		attr: {
@@ -114,10 +110,23 @@ export function renderShelfResize(host: BacklogViewHost, shelfEl: HTMLElement): 
 			'aria-label': t('resize.shelf'),
 			'aria-valuemin': String(MIN_SHELF_HEIGHT_PX),
 			'aria-valuemax': String(MAX_SHELF_HEIGHT_PX),
-			'aria-valuenow': String(current),
 			tabindex: '0',
 		},
 	});
+	// **Measured with the grip already in the band, never before it.** The strip is itself a
+	// flex item: its negative start margin cancels the GAP above it and not its own height,
+	// so it adds 8px to a band that is sizing to its content — measured in the harness at
+	// 236px against 228px with the strip taken out and put back. Read a moment earlier and
+	// every number here is that much short of the edge the reader can actually see: the
+	// separator announces a height the finished band is not drawing, and the first drag
+	// upward moves the edge further than the pointer went. It costs nothing to read it here
+	// instead, and `aria-valuenow` is set from the answer rather than at creation.
+	//
+	// `||` rather than `??` on both: 0 is what an unmeasured pane reports, and it is a
+	// non-answer rather than a height — `??` would take it as one and pin every gesture to
+	// the floor in exactly the case the stored pick exists for.
+	const current = clampShelfHeight(shelfEl.offsetHeight || host.shelfHeight || 0);
+	grip.setAttribute('aria-valuenow', String(current));
 	setTooltip(grip, t('resize.gripTooltip'));
 	if (refocus) grip.focus();
 	wireResizeGrip(grip, {

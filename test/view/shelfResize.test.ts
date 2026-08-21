@@ -209,6 +209,29 @@ describe('the shelf’s resize grip', () => {
 			};
 		}
 
+		it('measures with its own strip already in the band', () => {
+			// The grip is a flex item whose negative start margin cancels the GAP above it and
+			// not its own height, so it ADDS to a band sizing to its content — 8px, measured in
+			// the harness at 236px against 228px with the strip removed and restored. Read
+			// before it is inserted, every number here is that much short of the edge a reader
+			// can see. jsdom computes no layout, so the stub answers differently once the strip
+			// is present, which is what tells the two orders apart. (Codex, PR #183.)
+			const own = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'offsetHeight');
+			Object.defineProperty(HTMLElement.prototype, 'offsetHeight', {
+				configurable: true,
+				get(this: HTMLElement) {
+					if (!this.classList.contains('pbl-shelf')) return 0;
+					return this.querySelector('.pbl-shelf-grip') ? 128 : 120;
+				},
+			});
+			try {
+				const { containerEl } = makeRoadmap(horizonVault());
+				expect(grip(containerEl).getAttribute('aria-valuenow')).toBe('128');
+			} finally {
+				if (own) Object.defineProperty(HTMLElement.prototype, 'offsetHeight', own);
+			}
+		});
+
 		it('takes the height the band is DRAWN at, not the larger cap it is allowed', () => {
 			const { view, containerEl } = makeRoadmap(horizonVault());
 			// A cap far above what the cards need. The band draws its content; the stored

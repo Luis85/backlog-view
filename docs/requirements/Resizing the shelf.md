@@ -99,6 +99,13 @@ about a width.
 - **4b — a stored height this plugin never wrote, or one outside the bounds.** Read
   defensively and dropped, like every stored pick: the band opens at the stylesheet's
   share rather than trusting a corrupt-but-plausible number into the layout.
+- **1e — the band is sizing to its content when the grip is drawn.** The height is measured
+  with the strip already in the band, never before it. The grip is itself a flex item and
+  its negative start margin cancels the GAP above it rather than its own height, so it adds
+  8px to a content-sized band — measured in the harness at 236px against 228px with the
+  strip taken out and put back. Read a moment earlier, `aria-valuenow` announces a height
+  the finished band is not drawing and the first upward drag moves the edge further than the
+  pointer went. (Codex, PR #183.)
 - **1b — nobody has dragged it yet.** Nothing is published, so the stylesheet's `var()`
   falls through to the 30% the band has always taken. A grip that published its measured
   height on every render would pin that share to whatever the pane happened to be on the
@@ -119,7 +126,8 @@ about a width.
 - The grip carries `role="separator"`, `aria-orientation="horizontal"`, a real
   `tabindex="0"`, and `aria-value*` matching the current height and the storable bounds.
 - `aria-valuenow` and the gesture's origin are the height the band is DRAWN at, not a larger
-  stored cap it never reaches.
+  stored cap it never reaches — and they are measured with the grip's own strip already in
+  the band, which is 8px of it.
 - Dragging updates only the custom property until release: `config.setCalls` and the
   vault's write log stay empty through the whole gesture, and exactly one height is
   persisted, at its end.
