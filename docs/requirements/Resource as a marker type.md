@@ -54,8 +54,16 @@ epic states why an eighteenth name is being added against an open P1 direction
 **Main flow**
 
 1. The user opens the toolbar's top-level creator, which offers every name in `ALL_TYPES`.
-2. The user picks `Resource`, names it, and the note is written with `type` and nothing else
-   — no `parent`, no `order`, since a marker has neither.
+2. The user picks `Resource`, names it, and the note is written with `type` and an `order`,
+   and no `parent`. **This step said "no `order`, since a marker has neither" and that was
+   wrong on every count.** A marker occupies no RUNG, which is a statement about levels; it
+   still sits in the root sibling group, and `order` is what ranks it there. Both shipped
+   markers are the precedent and both disagree with the old sentence: every creation path
+   writes `endOfSiblingsOrder`, an `Iteration`'s order is load-bearing (`iterationNoteName`
+   derives its number from the highest one), and a test pins it. So does this register — its
+   own `Milestone` notes carry an `order`, and `docs-check.mjs` FAILS a backlog note without
+   one, so a `Resource` written the way this step described could not be filed in `docs/` at
+   all. An automated reviewer read the old sentence as a promise the code owed.
 3. The note is filed in the `Resource` folder, from the per-type folder key the other
    declared types already have ([[Where new items are filed]]).
 4. The row renders with its own badge and hue, ranked nowhere, with no disclosure and no
@@ -101,6 +109,9 @@ epic states why an eighteenth name is being added against an open P1 direction
   axis makes, and `placementEnds` answers NEITHER end for the type, so no schedule, no
   drop, no grip and no writer can put a date on a person either. The narrowing is this
   type's and not the category's: a `Milestone` still reduces to its target point.
+- **2c — the created note carries an `order`.** Intended, and the same value every other
+  creation writes — see step 2. What a marker has no business carrying is a `parent`, and
+  the creator writes none for a top-level pick.
 - **4g — Alt+Up/Down on a `Resource` card, on the resources axis.** It writes nothing. The
   pointer path already refused a marker's ROW write — `deriveLanes` draws every marker in
   the milestones' row whatever its assignee says, so a positional gesture writing one

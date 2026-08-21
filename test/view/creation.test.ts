@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
 import { FakeVault } from '../helpers/vault';
-import { Modal, Notice } from '../helpers/obsidian-mock';
+import { Menu, Modal, Notice } from '../helpers/obsidian-mock';
 import { fixture, flush, makeView, rowByTitle, submitButton, submitPrompt, useViewHarness } from '../helpers/view';
 
 /**
@@ -16,6 +16,30 @@ const NO_TYPE_FOLDERS: Record<string, string> = {
 useViewHarness();
 
 describe('item creation', () => {
+	it('writes a top-level marker with a type and an order, and no parent', async () => {
+		// What `New Resource` actually produces, asked because the note describing it
+		// claimed the opposite — "no `parent`, no `order`, since a marker has neither".
+		// Half right: a marker occupies no RUNG, which is about levels, and it still sits
+		// in the root sibling group where `order` is what ranks it. Both shipped markers
+		// already worked this way, an `Iteration`'s order is load-bearing, and this
+		// register's own gate FAILS a backlog note that has none.
+		const vault = new FakeVault();
+		vault.addFile('docs/Epic A.md', { frontmatter: { type: 'Epic', order: 10 } });
+		const { containerEl } = makeView(vault);
+
+		containerEl.querySelector<HTMLElement>('.pbl-new-pick')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		Menu.lastShown?.item('New Resource')?.click();
+		submitPrompt({ title: 'Dana' });
+		await flush();
+
+		const fm = vault.fm('docs/resources/Dana.md');
+		expect(fm['type']).toBe('Resource');
+		// Ranked after every real root, exactly as any other top-level creation is.
+		expect(fm['order']).toBe(20);
+		// The half of the claim that IS a marker rule: it hangs from nothing.
+		expect('parent' in fm).toBe(false);
+	});
+
 	it('creates a child via the add button with prompt, inferred folder and properties', async () => {
 		const vault = new FakeVault();
 		vault.addFile('Backlog/Epic A.md', { frontmatter: { type: 'Epic', order: 10 } });
