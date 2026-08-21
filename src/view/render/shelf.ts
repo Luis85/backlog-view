@@ -12,7 +12,7 @@ import { publishShelfHeight, renderShelfResize } from '../interactions/shelfResi
 import { canSchedule, unschedulePlan } from '../interactions/plan';
 import { BacklogItem } from '../../domain/model';
 import { placeItem, ShelfCard, statedEnds, unscheduledLabel, withoutEnds } from '../../domain/bars';
-import { placementEnds } from '../../domain/itemTypes';
+import { isMarkerType, placementEnds } from '../../domain/itemTypes';
 import { BacklogSettings } from '../../domain/settings';
 import { drawsGrid, RoadmapAxis } from '../../domain/roadmap';
 import { organizeShelf, searchShelf, ShelfGroup } from '../../domain/shelf';
@@ -119,9 +119,16 @@ export function shelfRemoval(host: BacklogViewHost, axis: RoadmapAxis): ShelfRem
 			accepts: (source) => source.hold !== 'start' && source.hold !== 'end',
 			// Nothing to distinguish before the release: a drop here always un-assigns.
 			outcome: null,
-			// Every shelved item can be re-assigned. Unlike the dated axis there is no type
-			// here whose only writable end might be unconfigured, so no gate is needed.
-			canDrag: () => true,
+			// Every shelved item can be re-assigned — every item that a drop here would
+			// ASSIGN, which is not all of them. A MARKER released in a band never writes a
+			// row (`wireLaneDrop`: the milestones' row stands for nobody, and a marker draws
+			// there whatever its assignee says), so the only write its drag can make is the
+			// DATE the release names — and a marker with no writable end has neither. That
+			// is a `Resource` always, and a `Milestone` in a view with no target key: the
+			// card would pick up, the band would highlight, and the release would write and
+			// announce nothing. This gate used to say no type here could want the dated
+			// axis's own, which was true while every marker was a date.
+			canDrag: (item) => !isMarkerType(item.typeName) || canSchedule(host.settings, item),
 		};
 	}
 	return {

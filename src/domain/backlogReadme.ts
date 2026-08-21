@@ -1,7 +1,7 @@
 import { BacklogSettings, stateMenuValues } from './settings';
 import { resolvedDeliverableStateKey, resolvedTestStateKey } from './optionalProperties';
 import { ALL_TYPES, EXTRA_TYPES, LEVELS, MARKER_TYPES, TEST_LEVELS } from './typeVocabulary';
-import { childTypeChoices, drawsAsPoint, EXTRA_TYPE_RANK, folderForType, LadderPosition, ladderFor } from './itemTypes';
+import { childTypeChoices, drawsAsPoint, EXTRA_TYPE_RANK, folderForType, LadderPosition, ladderFor, placementEnds } from './itemTypes';
 import { readmeMarker } from './readmeMarker';
 import { stampRows, stampRule, startedStates } from './readmeStamps';
 import { andList, cell, code, list, yamlScalar } from './readmeText';
@@ -374,17 +374,30 @@ function planningSection(settings: BacklogSettings): string[] {
 	// Either key alone is a configured axis — a milestone-only roadmap is coherent, and
 	// `configuredAxes` says so — and a view with one would otherwise get no section at all.
 	const dateKeys = [settings.startKey, settings.targetKey].filter(Boolean);
+	// The exception BOTH generic sentences below need, and the half that taking `Resource`
+	// out of the dated-marker list further down opened rather than closed: each says what an
+	// item stating a date is drawn AS, and a type that states none is not covered by either,
+	// nor any longer by the marker exception. It rides inside those sentences rather than
+	// following as a third, because what it corrects is the clause it is attached to. Named
+	// from `placementEnds`, the function the refusal itself is stated in, so it cannot
+	// outlive the rule.
+	//
+	// Worded so the LIST governs no verb, which is why there is no plural arm here and no
+	// empty one: `MARKER_TYPES` always holds a dateless marker, and a branch for the case
+	// where it does not is a branch no test can reach — the coverage floor said so.
+	const dateless = MARKER_TYPES.filter((type) => placementEnds(type, settings.iterationBars).length === 0);
+	const noDate = ` A date property on ${andList(dateless.map(code))} is read by nothing here and written by nothing here — Schedule is withheld, no drag reaches it, and what a note already carries is never rewritten or removed. Nothing of that type is drawn on any timeline.`;
 	if (dateKeys.length === 2) {
 		lines.push(
 			`${code(settings.startKey)} and ${code(settings.targetKey)} are the planned dates, ` +
 				`written ${code('YYYY-MM-DD')}. An item stating only one of the two is drawn as a point ` +
-				'on that date; a target earlier than its start is set aside rather than drawn backwards.',
+				`on that date; a target earlier than its start is set aside rather than drawn backwards.${noDate}`,
 		);
 	} else if (dateKeys.length === 1) {
 		lines.push(
 			`${code(dateKeys[0])} is the planned date, written ${code('YYYY-MM-DD')}. It is the only ` +
 				'date property configured here, so every item that states one is drawn as a ' +
-				'point in time rather than as a span.',
+				`point in time rather than as a span.${noDate}`,
 		);
 	}
 	// Both sentences above describe a point reached by how many dates an item STATES, and a

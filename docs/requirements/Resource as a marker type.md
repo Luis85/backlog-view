@@ -7,6 +7,7 @@ created: 2026-08-20
 source: user request
 files:
   - src/domain/typeVocabulary.ts
+  - src/view/render/shelf.ts
   - src/domain/backlogReadme.ts
   - src/domain/itemTypes.ts
   - src/domain/bars.ts
@@ -98,6 +99,13 @@ epic states why an eighteenth name is being added against an open P1 direction
   axis makes, and `placementEnds` answers NEITHER end for the type, so no schedule, no
   drop, no grip and no writer can put a date on a person either. The narrowing is this
   type's and not the category's: a `Milestone` still reduces to its target point.
+- **4e — a `Resource` sits on the resources axis's shelf.** It is not a drag source there.
+  A drop on a band writes the ROW for ordinary work and the DATE for a marker
+  ([[Milestones out of the resource rows]] — the milestones' row stands for nobody), so a
+  marker with no writable end can produce neither, and the card would pick up, the band
+  would highlight, and the release would write and announce nothing. The gate is the
+  writable END and not the type, which also closes the case that was already open and
+  untested: a `Milestone` in a view with no target key.
 - **5a — the badge palette is full.** It already is. The hue comes from the second axis
   [[A badge when the palette is full]] introduced, not from a colour taken off another type.
 
@@ -126,6 +134,12 @@ epic states why an eighteenth name is being added against an open P1 direction
   `Milestone` already does. An automated reviewer read the wider sentence this criterion used
   to carry and asked for the opposite; excluding one declared type from the toolbar's total
   would make it the one number on screen that lies about what the base holds.
+- **The generated README says so too, in both halves.** Naming only the dated markers where
+  it says what a marker READS is one half; the other is the generic sentence above it — *an
+  item stating only one of the two is drawn as a point on that date* — which is false about
+  a `Resource` and which the marker exception no longer covers now that the type is out of
+  it. Both are named from the functions that state the rule (`drawsAsPoint`,
+  `placementEnds`), so neither sentence can outlive it.
 - **A `Resource` never takes a DATE, and is drawn at none.** Not a criterion this note
   started with — it is 4c, found by automated review on the increment itself, and it is the
   one place the marker precedent did NOT carry: every marker before this one was a date. It

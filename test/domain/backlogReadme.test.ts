@@ -175,6 +175,26 @@ describe('backlogReadmeContent', () => {
 		}
 	});
 
+	it('says a dateless marker is drawn on no timeline, so the generic rule is corrected', () => {
+		// The sentences above this one are generic — "an item stating only one of the two is
+		// drawn as a point on that date" — and `Resource` is the first declared type they
+		// are false about. Taking it OUT of the marker exception (the test above) is what
+		// left the generic claim uncorrected, so the two belong in one change: an automated
+		// reviewer found the second half within minutes of the first landing.
+		for (const settings of [
+			settingsWith({ startKey: 'start', targetKey: 'due', horizonKey: '' }),
+			settingsWith({ startKey: 'start', targetKey: '', horizonKey: '' }),
+			settingsWith({ startKey: '', targetKey: 'due', horizonKey: '' }),
+		]) {
+			expect(readme(settings, [])).toContain('A date property on `Resource` is read by nothing here');
+		}
+		// And not where there is no timeline to be drawn on: a view with no date property
+		// is told nothing about dates at all, which is what every other sentence here does.
+		expect(readme(settingsWith({ startKey: '', targetKey: '', horizonKey: 'horizon' }), [])).not.toContain(
+			'is read by nothing here',
+		);
+	});
+
 	it('describes the timeline when only one date property is configured', () => {
 		// Either key alone is a configured axis, so a view with one must not be told it
 		// has no roadmap at all.

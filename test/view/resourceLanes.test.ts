@@ -148,6 +148,29 @@ describe('the resources axis on screen', () => {
 		expect(removal.outcome).toBeNull();
 	});
 
+	it('refuses to pick up a marker this axis could not write anything for', () => {
+		// A drop on a band writes the ROW for ordinary work and the DATE for a marker —
+		// `wireLaneDrop`'s own rule, since the milestones' row stands for nobody. So a
+		// marker with no writable end can produce neither: the card would pick up, the band
+		// would highlight, and the release would write and announce nothing.
+		//
+		// A `Resource` is that always, which is what an automated review found on the
+		// increment declaring the type; a `Milestone` is it in a view with no target key,
+		// which was already true and had no test. Both asked here, from the rule.
+		const vault = resourceVault();
+		vault.addFile('Dana.md', { frontmatter: { type: 'Resource' } });
+		vault.addFile('Ship 1.0.md', { frontmatter: { type: 'Milestone', due: '2026-08-10' } });
+		const harness = laneRoadmap(vault);
+		const removal = shelfRemoval(harness.view, 'resources');
+		const at = (path: string) => harness.view.model?.byPath.get(path) as never;
+
+		expect(removal.canDrag(at('Dana.md'))).toBe(false);
+		// The marker that CAN take a date keeps its drag, and so does ordinary work — the
+		// gate is the writable end, not the category.
+		expect(removal.canDrag(at('Ship 1.0.md'))).toBe(true);
+		expect(removal.canDrag(at('Undated.md'))).toBe(true);
+	});
+
 	it('withholds every hold from an inferred bar, exactly as the dated axis does', () => {
 		// A bar behaves the same on both grids. `barHolds` withholds every hold from a span
 		// the note does not state — sliding one is a resize wearing a slide's cursor — and
