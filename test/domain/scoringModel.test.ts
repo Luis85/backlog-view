@@ -215,11 +215,18 @@ describe('a dimension is named the way the panel names it', () => {
 		// `settings.sharedKey` joins the list into ONE sentence, which is why the three scales
 		// and the two pair slots beside it are plain lowercase nouns. `SUGGESTED_KEYS` already
 		// spells `d.label.toLowerCase()` for the same reason.
+		//
+		// The fixture's id (`reach`) and label (`Blast radius`) differ by more than case ON
+		// PURPOSE: a label that differs from its id only by capitalisation (`Reach` vs
+		// `reach`) cannot tell "read the id" from "read the label, lowercased" apart — both
+		// readings produce the string `reach`. `Blast radius` is what the id-reading old
+		// `boundEntries` would still spell as `reach`, so only the label-reading spells
+		// `blast radius`.
 		const model = modelWith({
-			dimensions: [{ ...dimension('reach'), label: 'Reach', key: 'note.shared' }],
+			dimensions: [{ ...dimension('reach'), label: 'Blast radius', key: 'note.shared' }],
 			confidence: { key: 'note.shared', min: 1, max: 5, rubric: [] },
 		});
-		expect(modelProblems(model).join(' ')).toContain('reach');
-		expect(modelProblems(model).join(' ')).not.toContain('Reach');
+		expect(modelProblems(model).join(' ')).toContain('blast radius');
+		expect(modelProblems(model).join(' ')).not.toContain('reach');
 	});
 });
