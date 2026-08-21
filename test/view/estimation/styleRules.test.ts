@@ -176,3 +176,25 @@ describe('the dimension rows are divided by what comes BEFORE a row', () => {
 		// asserted in `dimensionRows.test.ts`, and the pair is the guarantee.
 	});
 });
+
+describe('a decoration never sizes the box the value is centred in', () => {
+	it('takes the strip out of the box model without letting it out of the cell', () => {
+		// The three cell classes share `overflow: hidden`, so a strip hung BELOW its cell is
+		// clipped away entirely — absolute against the CELL, which is why the cell is the
+		// positioning context and the strip's offsets are block-end rather than a translate.
+		expect(ruleAt('.pbl-est-row > .pbl-est-total', 'position: relative;')).toBeGreaterThan(-1);
+		expect(ruleAt('.pbl-est-strip', 'position: absolute;')).toBeGreaterThan(-1);
+	});
+
+	it('gives the two strip cells the same height and the same centring as the plain two', () => {
+		// The measured cause: a `column` flex holding a number plus a 3px strip and a 3px gap is
+		// ~24px against a plain cell's ~18px, and a row that centres each cell as a whole then
+		// starts the taller cell's number higher. `stretch` makes all four the row's content
+		// height; `align-items: center` centres the number in each identically.
+		expect(ruleAt('.pbl-est-row > .pbl-est-total', 'align-self: stretch;')).toBeGreaterThan(-1);
+		expect(ruleAt('.pbl-est-row > .pbl-est-total', 'align-items: center;')).toBeGreaterThan(-1);
+		// The column flex is what made the cell taller than its siblings, so it must be GONE
+		// rather than overridden — an override is a rule the next reader has to reconcile.
+		expect(ruleAt('.pbl-est-row > .pbl-est-total', 'flex-direction: column;')).toBe(-1);
+	});
+});

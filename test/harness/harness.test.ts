@@ -258,7 +258,7 @@ describe('the estimation harness mounts', () => {
 		expect([...missing]).toEqual([]);
 	});
 
-	it('the ?measure knob reports a box per column and a type per probe', () => {
+	it('the ?measure knob reports a box per column, a type per probe and a number per numeric column', () => {
 		// The instrument this repository has no other way to check. jsdom lays nothing out, so
 		// every number below is 0 and asserting one would measure the runner — what is asserted
 		// is that the knob REPORTS, per column and per probe, because a knob that quietly
@@ -284,6 +284,12 @@ describe('the estimation harness mounts', () => {
 		expect(lines.filter((l) => l.startsWith('BOX pbl-est-title head '))).toHaveLength(1);
 		for (const probe of ['row title', 'panel total', 'panel title', 'decomp term']) {
 			expect(lines.filter((l) => l.startsWith(`TYPE ${probe} `)), `${probe} type`).toHaveLength(1);
+		}
+		// Decision 6's probe. What is asserted is that the knob REPORTS one number line per
+		// numeric column — never what the numbers are, which is a browser's answer and would be
+		// the screenshot suite ADR 0020 refuses.
+		for (const col of ['total', 'coverage', 'confidence', 'effort']) {
+			expect(lines.filter((l) => l.startsWith(`NUM ${col} `)), `${col} number`).toHaveLength(1);
 		}
 	});
 });

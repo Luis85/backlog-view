@@ -243,18 +243,29 @@
 	font-weight: var(--font-medium);
 }
 
-/* The two cells that carry a strip become a column box, so the number keeps its
-   end-alignment and the strip spans the column under it. Scoped to a ROW's cells: these two
-   class names are worn by three different elements — a row cell, a sortable header button,
-   and the panel's decomposition summary — and an unscoped `display: flex` here restyled all
-   three from one declaration. */
+/* The two cells that carry a strip. A `column` flex holding the number plus a 3px strip and a
+   3px gap measured ~24px against a plain cell's ~18px line, and a row that centres each cell
+   as a whole then starts the taller cell's number higher — every cell centred correctly and
+   the four numbers 3px apart, in a table whose whole job is comparing numbers across a row.
+
+   So the strip leaves the box model and STAYS INSIDE THE CELL while doing it: these three
+   classes share `overflow: hidden` above, so a strip hung below its cell would be clipped
+   away entirely. `stretch` makes the cell as tall as the row's content box rather than as
+   tall as its own contents, and a flex ROW with `align-items: center` is what every plain
+   numeric cell already effectively is — so the number centres identically in all four.
+
+   Third instance of one idea, after the panel's clear control: a decoration that annotates a
+   value must not be allowed to size the box the value is centred in.
+
+   Scoped to a ROW's cells: these two class names are worn by three different elements — a row
+   cell, a sortable header button, and the panel's decomposition summary — and an unscoped
+   declaration here restyled all three at once, once. */
 .pbl-est-row > .pbl-est-total,
 .pbl-est-row > .pbl-est-coverage {
 	display: flex;
-	flex-direction: column;
-	align-items: stretch;
-	justify-content: center;
-	gap: 3px;
+	align-items: center;
+	align-self: stretch;
+	position: relative;
 }
 
 .pbl-est-row > .pbl-est-total > .pbl-est-num,
@@ -263,8 +274,17 @@
 }
 
 /* One element, one declaration: the fill and the track are a hard-stop gradient rather than
-   a nested fill div. `3px` is `rounded.bar` in DESIGN.md — the declared radius for a bar. */
+   a nested fill div. `3px` is `rounded.bar` in DESIGN.md — the declared radius for a bar.
+
+   Against the CELL (`position: relative` above), spanning its inline extent at the block
+   end. The offset is MEASURED, not chosen — headless Chromium at 1200x900, `?measure`, the
+   `NUM` probe: it is what keeps the strip drawing under the number without reopening the
+   3px gap the rest of this change closes (see the commit message for the before/after
+   readings this number came from). */
 .pbl-est-strip {
+	position: absolute;
+	inset-inline: 0;
+	inset-block-end: 0;
 	height: 3px;
 	border-radius: 3px;
 	background: linear-gradient(

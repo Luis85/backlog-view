@@ -124,6 +124,19 @@ export function drawEstimationMeasurements(view: EstimationView): void {
 		}
 	}
 
+	// The four numeric columns' own numbers, top and bottom — the probe decision 6 needs and
+	// the `BOX` lines above cannot answer: those report a CELL's box, and the defect is the
+	// number's position INSIDE two cells that are taller than their siblings. `rows[0]` only:
+	// one row settles whether the four share a baseline, and eleven would print 44 lines
+	// saying it eleven times.
+	for (const col of ['total', 'coverage', 'confidence', 'effort']) {
+		const cell = rows[0]?.querySelector(col === 'total' || col === 'coverage' ? `.pbl-est-${col}` : `[data-col="${col}"]`);
+		const num = cell?.querySelector('.pbl-est-num');
+		if (!(num instanceof HTMLElement)) continue;
+		const box = num.getBoundingClientRect();
+		lines.push(`NUM ${col} top=${box.top.toFixed(1)} bottom=${box.bottom.toFixed(1)} h=${box.height.toFixed(1)}`);
+	}
+
 	const probes: Array<[string, Element | null | undefined]> = [
 		['row title', rows[0]?.querySelector('.pbl-est-title')],
 		['row total', rows[0]?.querySelector('.pbl-est-total')],
