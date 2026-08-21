@@ -183,10 +183,31 @@
 
 /* The title is the one thing in the row that yields, and it truncates rather than wraps:
    a row that grew a second line for a long title would not be a row. `overflow-wrap` is
-   reset because the card's own rule sets `anywhere`, which fights the ellipsis. */
+   reset because the card's own rule sets `anywhere`, which fights the ellipsis.
+
+   `min-width` is the floor that decides WHO yields FIRST, and it is one declaration in this
+   rule rather than a second rule for the same selector — two of those is one edit from a
+   reader (or a check that addresses this selector) taking the wrong one. Every other item
+   in the row can shrink, so without a floor the title and the cells shrink in proportion
+   and the row's own subject ends up sharing the line evenly with its metadata. The cells
+   give way first and go on giving way until this is reached; only then does the title
+   truncate. In `ch` so it is a number of CHARACTERS at whatever size the theme draws them,
+   which is what the reservation is actually about.
+
+   **And the floor yields itself once there is not room for it**, which a bare `16ch` could
+   not and is why this is a `min()`. A reservation is a promise about a container that has
+   the space to keep it: on a phone or a narrow split there is a width below which 16ch plus
+   the badge, the gaps and the cells is more than the row has, and the floor then stops
+   protecting the title and starts overrunning the line instead. Measured across the range
+   rather than argued — at 1200, 640, 480 and 380px the summary's scroll width equals its
+   client width exactly and the floor is doing its job, and at 320px a fixed floor overran by
+   7px. The percentage is of the SUMMARY's own content box, so it answers to the band a
+   reader is looking at rather than to the viewport, which is what a media query would get
+   wrong in a split pane. (Codex, PR #183; the 1200px measurement the first version rested on
+   did not exercise this at all.) */
 .pbl-shelf-list .pbl-card-title {
 	flex: 1 1 auto;
-	min-width: 0;
+	min-width: min(16ch, 40%);
 	overflow: hidden;
 	overflow-wrap: normal;
 	text-overflow: ellipsis;
@@ -225,16 +246,6 @@
 	min-width: 0;
 	overflow: hidden;
 	flex-wrap: nowrap;
-}
-
-/* And the floor that decides WHO yields. Every other item in the row can now shrink, so
-   without this the title and the cells shrink in proportion and the row's own subject ends
-   up sharing the line evenly with its metadata. The title is what a reader is scanning:
-   the cells give way first and go on giving way until this is reached, and only then does
-   the title start to truncate. In `ch` so it is a number of CHARACTERS at whatever size the
-   theme draws them, which is what the reservation is actually about. */
-.pbl-shelf-list .pbl-card-title {
-	min-width: 16ch;
 }
 
 /* The state cell a compact row carries (`renderShelfState`). Empty means the Base draws no

@@ -97,6 +97,15 @@ one a reader wants changes by the day and by the task, not by the base.
   list falls beneath also lets the property cells wrap, which took a row carrying a few of
   them from 28px to 59px, both measured. So the row is the card's SUMMARY box and the list
   is its sibling: the line breaks exactly where it should and nowhere else.
+- **3c — a pane too narrow to keep the floor.** The floor yields itself. A reservation is a
+  promise about a container with the room to keep it, and below some width 16ch plus the
+  badge, the gaps and the cells is more than the row has — at which point a fixed floor
+  stops protecting the title and starts overrunning the line. Measured across the range
+  rather than argued: at 1200, 640, 480 and 380px the summary's scroll width equals its
+  client width exactly, and at 320px a fixed floor overran by 7px. It is capped at a share
+  of the SUMMARY's own box rather than of the viewport, since a shelf in a split pane is
+  narrower than the window around it. (Codex, PR #183 — the 1200px measurement the floor
+  first rested on did not exercise this at all.)
 - **3a — a title too long for one line.** It truncates with an ellipsis rather than
   wrapping: a row that grew a second line would not be a row. The title yields and the
   property cells keep their content width, which is the TREE's own order — its columns are
@@ -121,7 +130,8 @@ one a reader wants changes by the day and by the task, not by the base.
 - The same cards are drawn in both layouts, and the shelf's count is unchanged by the
   pick.
 - A compact row is ONE line whatever it carries — property cells included — and its title
-  keeps a stated floor rather than being squeezed away by them.
+  keeps a stated floor rather than being squeezed away by them. The floor is a share of the
+  row it sits in, so a pane too narrow to honour it gives it up instead of overrunning.
 - A shelved parent's children list is the card's own child rather than the summary's, so it
   draws beneath the line; the card grid draws no summary box at all.
 - A compact row carries the state chip; a card does not. The chip is the tree's own — a

@@ -1,10 +1,12 @@
 // @vitest-environment jsdom
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { Menu, MenuItem } from 'obsidian';
 import { horizonVault, makeRoadmap, shelfCountOf, shelfOf, shelfTitles } from '../helpers/roadmap';
 import { FakeVault } from '../helpers/vault';
 import { cardByTitle } from '../helpers/board';
 import { Harness, makeView, useViewHarness } from '../helpers/view';
+import { bodyOf } from '../helpers/cssVars';
 
 useViewHarness();
 
@@ -292,6 +294,19 @@ describe('the shelf’s card and list layouts', () => {
 			// columns ARE states, and a card on its shelf is in none of them.
 			expect(stateOf(containerEl, 'Uncommitted')?.textContent).toContain('New');
 		});
+	});
+
+	it('gives the row’s title a floor that yields in a pane too narrow to keep it', () => {
+		// jsdom computes no layout and cannot resolve `min()`, so what is checkable here is
+		// the DECLARATION — and it is worth checking, because a bare `16ch` is what this was
+		// and it reads as correct. The behaviour behind it was measured in the harness across
+		// the range: at 1200, 640, 480 and 380px the summary's scroll width equals its client
+		// width and the floor holds the title at 132px; at 320px a fixed floor overran the
+		// line by 7px, and the container-relative one does not. The percentage is of the
+		// summary's own box rather than the viewport, since a shelf in a split pane is
+		// narrower than the window it sits in.
+		const css = readFileSync('styles/shelf.css', 'utf8');
+		expect(bodyOf(css, '.pbl-shelf-list .pbl-card-title', 'styles/shelf.css')).toContain('min-width: min(16ch, 40%);');
 	});
 
 	it('remembers the pick for this saved view, without touching the base', () => {
