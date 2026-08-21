@@ -99,3 +99,71 @@ describe('the panel header owns its own type', () => {
 		expect(stopped, 'the reduced-motion override must come after the transition').toBeGreaterThan(transition);
 	});
 });
+
+describe('the currency chip spends colour only where there is something to do', () => {
+	it('names `current` in no rule at all', () => {
+		// The Spent Colour Rule, applied to a state word rather than a badge: green means
+		// FINISHED in this system, and a current total is trustworthy rather than done, so a
+		// fully estimated backlog stays monochrome apart from its badges. The chip element
+		// still CARRIES `pbl-est-cur-current` — `renderCurrencyChip` builds the class from the
+		// currency name for all six — and this is the checkable half of that: no rule anywhere
+		// in the sheet selects it, so the class paints nothing.
+		//
+		// `estimationChip.css` states the same rule in a comment beside the two coloured
+		// currencies, which is why the search reads `declarations` rather than `styles`.
+		expect(declarations).not.toContain('pbl-est-cur-current');
+	});
+
+	it('colours the two that need an action and dashes the two it does not vouch for', () => {
+		// The other half of the sentence above: absence means "spent elsewhere", not "spent
+		// nowhere", so an assertion that only the absence held would pass over a sheet that
+		// deleted every currency colour.
+		expect(ruleAt('.pbl-est-chip.pbl-est-cur-stale', 'color: var(--text-warning);')).toBeGreaterThan(-1);
+		expect(ruleAt('.pbl-est-chip.pbl-est-cur-foreign', 'border-style: dashed;')).toBeGreaterThan(-1);
+	});
+});
+
+/**
+ * One radius across the chip family. The currency chip joined a column that already had two
+ * neighbours, and DESIGN.md reserves `--radius-l` for counts, tags and the tag-add button —
+ * "a second look would read as a second kind of thing".
+ *
+ * The family is ENUMERATED, and that is the check's ceiling: a seventh chip class added to
+ * `columns.css` is not in this list until somebody puts it there. What the list cannot be
+ * replaced by is a scan for `--radius-l`, which is correct in this sheet on the pill shapes
+ * that are supposed to have it.
+ */
+const CHIP_FAMILY = [
+	'.pbl-state-chip',
+	'.pbl-horizon-chip',
+	'.pbl-risk-chip',
+	'.pbl-priority-chip',
+	'.pbl-assignee-chip',
+	'.pbl-date-chip',
+	'.pbl-est-chip',
+];
+
+describe('the chip family shares one radius', () => {
+	it.each(CHIP_FAMILY)('%s takes --radius-s', (selector) => {
+		expect(ruleAt(selector, 'border-radius: var(--radius-s);')).toBeGreaterThan(-1);
+	});
+
+	it.each(CHIP_FAMILY)('%s never takes the pill radius', (selector) => {
+		expect(ruleAt(selector, 'border-radius: var(--radius-l);')).toBe(-1);
+	});
+});
+
+describe('the dimension rows are divided by what comes BEFORE a row', () => {
+	it('draws the divider with the adjacent-sibling form, and keeps the `:last-of-type` one deleted', () => {
+		// `:last-of-type` matches the last DIV of any class sharing the parent, and
+		// `.pbl-est-decomp` is a div too — so a border removed from "the last row" was removed
+		// from the decomposition instead, and two borders stacked above it, on every scored
+		// item. The rule below only ever asks what comes before a row, which nothing after it
+		// can change.
+		expect(ruleAt('.pbl-est-dim + .pbl-est-dim', 'border-top: 1px solid var(--background-modifier-border);')).toBeGreaterThan(-1);
+		expect(declarations).not.toContain('.pbl-est-dim:last-of-type');
+		// This says the rule EXISTS, never that it matches: no cascade runs here. The structure
+		// it needs — the rows adjacent to each other, the decomposition after them — is
+		// asserted in `dimensionRows.test.ts`, and the pair is the guarantee.
+	});
+});

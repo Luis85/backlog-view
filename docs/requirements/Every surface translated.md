@@ -406,6 +406,38 @@ only for an item on no rung of the ladder that also carries no type name, and ev
 tried lands on one or the other. The fallback predates this slice and whether anything can
 still reach it is a question about the model rather than about the sweep.
 
+**`view/estimation/`, WHOLE — the keys on 2026-08-20, the BAN on 2026-08-21.** 36 keys,
+taking the catalog to 297. The two halves landed a day apart, and the gap is the finding
+worth carrying: the Estimation view's UX polish pass swept the directory into the catalog
+and did NOT add it to `UI_TEXT_LITERAL` / `UI_TEXT_PROPERTY`, so for a day the directory
+was clean by habit with nothing refusing the next literal. The order this note states is
+"a ban ahead of its sweep is a ban somebody switches off"; the inverse — a sweep with no
+ban behind it — has no such name and is what happened here.
+
+Its region is a GLOB (`ESTIMATION` in `eslint.config.mjs`) where `MENU_SWEPT` and
+`RENDER_TOOLBAR` are file lists, and the difference is not a preference: those two share
+their directories with unswept siblings, and a second flat-config block matching one file
+OVERRIDES `no-restricted-syntax` rather than merging with it. Nothing under
+`view/estimation/` is unswept and no file in it carries a rule set of its own, so the glob
+covers a file ADDED there — which is what the two lists say they want the day their own
+directories finish.
+
+The catalog count was re-taken rather than added to (297, two agreeing instruments —
+`Object.keys()` on the esbuild-bundled module and a comment-stripped depth-1 scan of the
+source), because the branch carrying this slice and main's toolbar slice each measured
+before the other landed and 238 + 59 is not a measurement of what shipped.
+
+`test/i18n/estimation.test.ts` is the runtime half, and it is load-bearing rather than
+belt-and-braces here for the usual reason stated at its widest: this view builds most of
+its text through `iconButton`, `guidanceShell`, `scaleSpec` and `sortHeader`, whose labels
+are positional ARGUMENTS, and the currency chip reaches the catalog through a TEMPLATE key
+(`estimation.currency.${currency}`) that no selector could ever check. Both were watched
+failing — reverting `t('estimation.toolbar.init')` to its literal and the template key to a
+hand-written switch produces zero lint errors and fails that file twice. It drains each
+surface and asserts the unmarked remainder is exactly DATA: the note's title, its numbers,
+and the MODEL's own vocabulary, which is user-typed option text (dimension labels, rubric
+sentences) and correctly not in the catalog.
+
 **The remaining English, by the instrument described above and not by the one the tables
 use:** 67 in the rest of `view/render/`, 345 in `view/manual/` (by the earlier walk; not
 re-taken), 19 in the rest of `view/`, and `domain/`, of which `viewOptions.ts` is
@@ -424,7 +456,10 @@ translated.
 `src/view/interactions/dependencies.ts`, `src/view/interactions/create.ts`,
 `src/view/interactions/structure.ts`, `src/view/interactions/plan.ts`,
 `src/view/interactions/undo.ts` and `src/view/interactions/stateColors.ts` — which is
-`view/interactions/` WHOLE. The rest of the sweep
+`view/interactions/` WHOLE — plus `src/view/estimation/estimationView.ts`,
+`src/view/estimation/renderTable.ts`, `src/view/estimation/panel.ts`,
+`src/view/estimation/currencyChip.ts`, `src/view/estimation/toolbar.ts` and
+`src/view/estimation/init.ts`, which is `view/estimation/` WHOLE. The rest of the sweep
 touches every rendering module without changing what any of them does.
 
 `src/view/render/toolbar.ts` · `src/view/render/toolbarControls.ts` ·
@@ -439,7 +474,8 @@ touches every rendering module without changing what any of them does.
 Tests: `test/view/contextRowWrites.test.ts` and `test/view/creation.test.ts` must pass
 untouched — they guard the two behaviours this sweep is most likely to disturb.
 `test/i18n/sweptSurfaces.test.ts`, `test/i18n/emptyStates.test.ts`,
-`test/i18n/menus.test.ts`, `test/i18n/interactions.test.ts` and `test/i18n/toolbar.test.ts`
+`test/i18n/menus.test.ts`, `test/i18n/interactions.test.ts`, `test/i18n/toolbar.test.ts` and
+`test/i18n/estimation.test.ts`
 are the swept half's
 own checks, and each is a PAIR with lint rather than a substitute for it: they drive each
 surface under a fixture catalog, so a literal left at a call site renders English beside

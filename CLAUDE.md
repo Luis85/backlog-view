@@ -110,8 +110,8 @@ writes, matches or persists — type names, state values, option keys, tags, fil
 test when it is not obvious: **ask what breaks if two people with different Obsidian
 languages open the same vault.** "One sees different words" is text; "one writes notes the
 other's view cannot read" is data. 297 keys are in it (counted 2026-08-21); `ui/`,
-`commands/`, `view/interactions/`, `view/render/emptyStates.ts` and the toolbar's own five
-files are swept, so the REST
+`commands/`, `view/interactions/`, `view/estimation/`, `view/render/emptyStates.ts` and the
+toolbar's own five files are swept, so the REST
 of `view/render/`, `view/manual/`, `domain/` and `main.ts` are what is left — the last of those being two command NAMES, which is easy
 to read past because the directories beside it are done. The sweep across those call sites is `docs/requirements/Every surface translated.md`,
 and an English literal beside a `t()` call there is work not yet done rather than a rule

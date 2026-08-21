@@ -60,3 +60,34 @@ describe('a dimension row', () => {
 		expect(containerEl.querySelector('.pbl-est-clear')).toBeNull();
 	});
 });
+
+describe('the rows the divider selects', () => {
+	it('lays them out adjacent to each other, with the decomposition AFTER them', () => {
+		// The other half of `styleRules.test.ts`'s divider check, and the half that broke: the
+		// stylesheet drew `.pbl-est-dim:last-of-type` and the last DIV under this parent is
+		// `.pbl-est-decomp` whenever a decomposition renders, so the "remove the border from
+		// the last row" rule removed it from the decomposition and stacked two above it — on
+		// every scored item, silently. `.pbl-est-dim + .pbl-est-dim` is immune to whatever
+		// follows the rows, and this is the structure that makes it match.
+		const { containerEl } = makeEstimationView(fixture(), configuredValues());
+		selectItem(containerEl, 'Full.md');
+		const panel = containerEl.querySelector('.pbl-est-panel')!;
+		const rows = [...panel.querySelectorAll(':scope > .pbl-est-dim')];
+		expect(rows.length).toBeGreaterThan(1);
+		// What the `+` selector needs is that nothing sits BETWEEN two rows except a group
+		// heading: an `h4` starts a group and legitimately breaks the run, a DIV between rows
+		// would silently take a divider away. Asserted as that property rather than as a count
+		// of divided rows — a count has to predict how many headings interrupt, and the first
+		// version of this line predicted three where the last `h4` sits after every row and
+		// interrupts nothing.
+		const between = rows
+			.map((row) => row.previousElementSibling)
+			.filter((prev): prev is Element => prev !== null)
+			.filter((prev) => !prev.classList.contains('pbl-est-dim'));
+		expect(between.map((el) => el.tagName)).toEqual(between.map(() => 'H4'));
+		// And the last DIV under the parent is NOT a row — the exact condition that made the
+		// deleted `:last-of-type` rule wrong.
+		const divs = [...panel.querySelectorAll(':scope > div')];
+		expect(divs.at(-1)!.classList.contains('pbl-est-dim')).toBe(false);
+	});
+});
