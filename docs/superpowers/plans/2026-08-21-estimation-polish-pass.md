@@ -1694,7 +1694,13 @@ for `usedClassMembers`, which is for members a framework invokes.
 - [ ] **Step 6: Commit the register**
 
 ```bash
-git add docs/bugs docs/issues docs/requirements CHANGELOG.md
+# EXPLICIT PATHS, never `git add docs/`: another session works in this same
+# checkout, so a directory-wide add stages someone else's file.
+git add "docs/bugs/The clear control overlaps the last point.md" \
+        "docs/issues/A hand-typed total was read as an orphan.md" \
+        "docs/issues/The guided setup bound properties it could not stub.md" \
+        "docs/requirements/Reading the estimation table at a glance.md" \
+        CHANGELOG.md
 git commit -m "Register the polish pass: one bug, two broken guarantees, three criteria
 
 Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
