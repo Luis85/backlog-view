@@ -147,6 +147,15 @@ about a width.
   and clearing the pick returns the band to the 30% share (219px). What it costs is the
   space itself — a band dragged to 400px holding two cards is 400px of band — which is what
   the reader asked for by dragging the edge there, and what every resizable panel does.
+- **2f — the band is taller than its cards, and the grip is not at its foot.** It is now.
+  `position: sticky` holds an element inside its scrollport when scrolling would carry it
+  away and does nothing otherwise, so a band with a picked height and less content than that
+  left the grip in flow, under the last group: measured with every type group folded and a
+  400px pick, its bottom sat 139px above the band's foot. An auto start margin puts it on
+  the edge the gesture actually moves — −5px, the same offset it has when the band
+  overflows. Scoped to the band that HAS a pick, because an unpicked band is content-sized
+  and has no spare room to push into, and because the negative pull it would replace is what
+  1e measures. Reported from a vault, 2026-08-21.
 
 ## Acceptance criteria
 
