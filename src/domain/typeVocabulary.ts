@@ -68,7 +68,20 @@ export const ITERATION_TYPE = 'Iteration';
  * spelled a second time beside the swatch that shows it.
  */
 export const MILESTONE_TYPE = 'Milestone';
-export const MARKER_TYPES = [MILESTONE_TYPE, ITERATION_TYPE];
+/**
+ * The third declared marker, and the first that is not a date. A person occupies no rung,
+ * holds no work and hangs from nothing, which is the whole of what a marker is — so the
+ * name joins `MARKER_TYPES` and inherits every structural rule rather than declaring one.
+ * What it buys over a link to an untyped note is the ability to be LISTED: the resources
+ * axis draws a row for somebody with nothing assigned yet, and a row for an empty person
+ * needs a set to enumerate. `docs/requirements/Resource as a marker type.md` is the whole
+ * argument, including why an eighteenth name is worth its cost.
+ *
+ * Named once for the same reason the other two are: a surface that captions a resource
+ * names the TYPE, and a type name is data — matched in frontmatter, never translated.
+ */
+const RESOURCE_TYPE = 'Resource';
+export const MARKER_TYPES = [MILESTONE_TYPE, ITERATION_TYPE, RESOURCE_TYPE];
 /**
  * The one DECLARED name that is not a work-item type at all — a resource's own
  * unavailable stretch. It joins none of the lists above and, deliberately, not
@@ -121,6 +134,7 @@ const DEFAULT_TYPE_SUBFOLDERS: Record<string, string> = Object.assign(Object.cre
 	deliverable: 'deliverables',
 	milestone: 'milestones',
 	iteration: 'iterations',
+	resource: 'resources',
 	// The catalog files under one root of its own, one folder per rung — the shape
 	// `requirements/` already has for the three types that share it.
 	'test suite': 'tests/suites',

@@ -30,6 +30,10 @@ const INTENT: Record<string, string> = {
 		'one, so like a Milestone it holds nothing. It is the only type no New menu offers and ' +
 		'no tree row draws: an iteration is the container a board is scoped to rather than work ' +
 		'the backlog holds, and the board\'s own scope picker is what makes one.',
+	Resource:
+		'A person work is assigned to. Like the other markers it holds nothing and hangs from ' +
+		'nothing — it is pointed at rather than ranked, which is what lets the roadmap draw a row ' +
+		'for somebody with nothing assigned yet.',
 	'Test suite':
 		'A walkable group of end-to-end tests, and a root by nature — it hangs from nothing and ' +
 		'lives in the test catalog rather than in the plan. Holds Test cases.',

@@ -2,19 +2,15 @@
 type: PBI
 parent: "[[Resources as notes]]"
 order: 10
-status: Open
+status: Done
 created: 2026-08-20
 source: user request
 files:
   - src/domain/typeVocabulary.ts
-  - src/domain/itemTypes.ts
-  - src/domain/settings.ts
-  - src/domain/viewOptions.ts
-  - src/domain/backlogReadme.ts
-  - src/view/render/rows.ts
-  - src/view/manual/setupSection.ts
-started: ""
-finished: ""
+  - src/view/render/badges.ts
+  - src/view/manual/typesSection.ts
+started: 2026-08-21
+finished: 2026-08-21
 horizon: ""
 start: ""
 due: ""
@@ -88,8 +84,9 @@ epic states why an eighteenth name is being added against an open P1 direction
   `ROOT_TYPES` gains it too, or the register cannot hold the type the plugin ships.
 - The hierarchy table in `docs/README.md` gains the same pair, since `docs-check.mjs` reads
   that table against `LEGAL_CHILDREN` in both directions.
-- It gets a creation folder key, a badge hue and a row in the generated README and the in-app
-  manual, all from the vocabulary — no second list anywhere.
+- It gets a creation folder key (`typeFolder.resource`, shipped default `resources` under
+  the home folder), a badge hue and a row in the generated README and the in-app manual, all
+  from the vocabulary — no second list anywhere.
 - **Nothing about `assignee` changes in this use case.** A vault upgrading to this step alone
   sees new type, same rows, same roster, same chips. That is what makes it landable first.
 - A `Resource` contributes to no rollup, no count and no level breakdown, and is selected by
@@ -97,12 +94,34 @@ epic states why an eighteenth name is being added against an open P1 direction
 
 ## Where it lives
 
-**Nothing yet — this note is design.** Every module it names exists; none of them knows the
-name.
+`src/domain/typeVocabulary.ts` is the whole of the declaration: `RESOURCE_TYPE` joins
+`MARKER_TYPES` — which puts it in `ALL_TYPES` by construction — and `resources` joins
+`DEFAULT_TYPE_SUBFOLDERS`. It is module-LOCAL rather than exported, unlike `MILESTONE_TYPE`
+and `ITERATION_TYPE`: nothing outside this file names a resource yet, and an exported
+constant with no reader is what `npm run analyze` is right to call dead. [[Linking an item to
+a resource]] is what gives it one.
 
-`src/domain/typeVocabulary.ts` declares the name and adds it to `MARKER_TYPES` ·
-`src/domain/itemTypes.ts` is where marker semantics already live, so it needs the name and no
-new concept · `src/domain/settings.ts` and `src/domain/viewOptions.ts` carry the per-type
-creation folder key · `src/domain/backlogReadme.ts` and `src/view/manual/setupSection.ts`
-document it from the vocabulary · `src/view/render/rows.ts` and `styles/badges.css` draw the
-badge.
+**Nothing else in `src/domain/` was touched, and that is the result rather than the plan.**
+Every marker rule is already asked of `isMarkerType` — no rung, no children, no parent, no
+rollup, no dependency, no re-type by position — so `src/domain/itemTypes.ts` needed the
+concept it already had and not a line of code. The same holds for the surfaces:
+`src/domain/settings.ts` and `src/domain/viewOptions.ts` generate the folder option per type
+from `ALL_TYPES`, and `src/domain/backlogReadme.ts` and `src/view/manual/typesSection.ts`
+document the vocabulary rather than a list beside it. `setupSection.ts`, which this note
+predicted, turned out not to be the manual's types surface at all.
+
+`src/view/render/badges.ts` gains the icon-and-class row (`user`, `pbl-lvl-resource`) and
+`styles/badges.css` the rule it names — cyan, the marker hue, plus a PILL radius, which is
+this type's answer to the second-axis rule [[A badge when the palette is full]] states for a
+lone type: a separator recorded beside the hue it shares. It is the fourth cyan wearer and
+the only one of them that is not a date, so the shape is what carries that and neither the
+icon nor the name is asked to carry it alone.
+
+`src/view/manual/typesSection.ts` gains the English explanation. That directory is
+deliberately outside the message-catalog sweep, so an English literal there is the
+convention rather than a miss.
+
+Outside `src/`: `scripts/docs-check.mjs` gains `Resource` in `LEGAL_CHILDREN` with an empty
+child set and in `ROOT_TYPES`, and `docs/README.md` gains the matching hierarchy row, the
+folder row and the marker paragraph — the register cannot hold a type the plugin ships until
+both sides say so, in both directions.

@@ -351,7 +351,7 @@ describe('what the catalog offers', () => {
 		// offered in the catalog" passed a `not.toContain('Epic')` while being short by five,
 		// and positively implied a `Bug` was assignable there. A type declared without a look
 		// at that entry now fails here.
-		const plan = ['Epic', 'Feature', 'PBI', 'Task', 'Issue', 'Bug', 'Idea', 'Deliverable', 'Milestone'];
+		const plan = ['Epic', 'Feature', 'PBI', 'Task', 'Issue', 'Bug', 'Idea', 'Deliverable', 'Milestone', 'Resource'];
 		expect(setTypeOn('Stray PBI')).toEqual(plan.filter((t) => t !== 'Task'));
 		expect(setTypeOn('A PBI')).toEqual(plan);
 		catalog(containerEl);

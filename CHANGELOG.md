@@ -11,6 +11,15 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ## [Unreleased]
 
+### Added
+
+- **`Resource` is a declared type** — a person is a note the view recognises, with its own
+  badge, its own creation folder (`resources` under your home folder, changeable per view)
+  and a place in the New menu and in Set type. Like `Milestone` and `Iteration` it is a
+  marker: it holds nothing, hangs from nothing, and counts for nothing in any progress bar
+  or count. Nothing about `assignee` changes yet — it is still the text you type, and the
+  roadmap's rows still come from it.
+
 ### Changed
 
 - **Everything the tree, the boards and the roadmap draw takes its words from the message

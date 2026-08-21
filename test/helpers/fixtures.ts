@@ -252,6 +252,12 @@ export function demoVault(layout: Layout = 'flat', extra = 0): FakeVault {
 	// `Launch checklist` below is what waits on it. Its own `dependsOn` is deliberately
 	// absent rather than present-and-ignored: the fixture draws what the view supports.
 	add('Ship 1.0', { type: 'Milestone', order: 30, due: '2026-09-30' }, 'Billing');
+	// A RESOURCE — the marker that is not a date, and the only reason it is in this fixture:
+	// the tree is the one screen that draws its badge, so the pill shape beside `Ship 1.0`'s
+	// diamond is what the harness can actually be asked about. It is a root, like every
+	// marker, and nothing points at it yet: this vocabulary step changed no `assignee`, so
+	// `Dana` and the rest of the roster below are still the strings they were.
+	add('Dana', { type: 'Resource' });
 	// Waits on that milestone — the arrow INTO a diamond, which is the direction a
 	// milestone still takes part in. Also names a note this base does not have, so it
 	// carries the BROKEN case (1d) too: no arrow for that entry, and the row's glyph.

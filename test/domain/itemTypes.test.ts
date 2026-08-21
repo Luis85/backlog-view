@@ -2,10 +2,13 @@ import { describe, expect, it } from 'vitest';
 import { buildModel } from '../../src/domain/model';
 import {
 	childTypeChoices,
+	displayType,
 	EXTRA_TYPE_RANK,
+	focusTarget,
 	folderForType,
 	isExtraType,
 	isMarkerType,
+	ladderFor,
 	placementEnds,
 	PlacementEnd,
 } from '../../src/domain/itemTypes';
@@ -18,8 +21,10 @@ import {
 	ITERATION_TYPE,
 	LEVELS,
 	MARKER_TYPES,
+	TEST_LEVELS,
 	typeFolderKey,
 } from '../../src/domain/typeVocabulary';
+import { settingsWith } from '../helpers/settings';
 import { FakeVault } from '../helpers/vault';
 
 const settings = defaultSettings();
@@ -178,6 +183,7 @@ describe('childTypeChoices', () => {
 			'Deliverable',
 			'Milestone',
 			'Iteration',
+			'Resource',
 			'Test suite',
 			'Test case',
 		]);
@@ -340,6 +346,46 @@ describe('Iteration is a declared marker', () => {
 		expect(defaultTypeFolder('Iteration')).toBe('docs/iterations');
 		expect(defaultTypeFolder('Iteration', 'work')).toBe('work/iterations');
 		expect(defaultSettings().typeFolders.iteration).toBe('docs/iterations');
+	});
+});
+
+describe('Resource is a declared marker', () => {
+	it('is a marker type and a member of the whole vocabulary, and of no other list', () => {
+		expect(MARKER_TYPES).toContain('Resource');
+		expect(ALL_TYPES).toContain('Resource');
+		// The criterion this describe exists for: `EXTRA_TYPES` would pin a resource at
+		// `EXTRA_TYPE_RANK` and let it hold Tasks, which is the opposite of every rule
+		// above, and either ladder would give it a rung.
+		expect(EXTRA_TYPES).not.toContain('Resource');
+		expect(LEVELS).not.toContain('Resource');
+		expect(TEST_LEVELS).not.toContain('Resource');
+	});
+
+	it('inherits every marker rule rather than declaring one', () => {
+		expect(isMarkerType('Resource')).toBe(true);
+		expect(isMarkerType('resource')).toBe(true);
+		expect(isExtraType('Resource')).toBe(false);
+		// A marker holds nothing, so nothing is offered beneath it.
+		expect(childTypeChoices({ typeName: 'Resource', levelIndex: -1, effectiveLevelIndex: 0, ladder: LEVELS })).toEqual(
+			[],
+		);
+		// And it is on the plan's ladder without occupying a rung of it, exactly as the
+		// other two markers are — so no move re-types it by position.
+		expect(ladderFor('Resource', TEST_LEVELS)).toBe(LEVELS);
+	});
+
+	it('files into its own subfolder', () => {
+		expect(typeFolderKey('Resource')).toBe('typeFolder.resource');
+		expect(defaultTypeFolder('Resource')).toBe('docs/resources');
+		expect(defaultTypeFolder('Resource', 'work')).toBe('work/resources');
+		expect(defaultSettings().typeFolders.resource).toBe('docs/resources');
+	});
+
+	it('is a focus root like the other markers, and no focus LEVEL selects it', () => {
+		expect(focusTarget(settingsWith({ focusLevel: 'resource' }))).toBe('Resource');
+		// A resource is not a rung, so nothing indexes it: `displayType` falls through to
+		// the name on the note, which is what keeps a level breakdown from counting one.
+		expect(displayType({ levelIndex: -1, ladder: LEVELS, typeName: 'Resource' })).toBe('Resource');
 	});
 });
 

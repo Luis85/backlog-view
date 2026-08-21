@@ -16,6 +16,7 @@ demonstrating itself:
 | `deliverables/` | Things this project has to produce that are not code | `Deliverable` |
 | `milestones/` | Dates the plan is answerable to, owned by no item | `Milestone` |
 | `iterations/` | Time boxes items are scheduled into, owned by no item | `Iteration` |
+| `resources/` | The people work is assigned to, owned by no item | `Resource` |
 | `tests/suites/` | Walkable groups of end-to-end tests, their own list rather than a branch of the plan | `Test suite` |
 | `tests/cases/` | One executable test each — a Preconditions line plus whatever shape it already had | `Test case` |
 | [`adrs/`](adrs/README.md) | **How** it is built — architecture decision records | *(none — not backlog items)* |
@@ -326,6 +327,14 @@ number reporting progress must only ever count work — and it files into `miles
 Items **link** to an iteration rather than hanging from one, so it never enters a rollup
 either, and it files into `iterations/`.
 
+`Resource` is the third, and the first that is not a date: a person. The same three ways —
+no rung, no children, no parent — so it never enters a rollup either, and it files into
+`resources/`. It is a type rather than a plain note for the one reason a link cannot
+supply: the roadmap has to draw a row for somebody with nothing assigned yet, which needs
+a set to enumerate. Nothing yet **links** to one — [[Linking an item to a resource]] is
+the step that changes how an item says who is on it, and until it lands `assignee` is
+still the string it has always been.
+
 ## The hierarchy is the point
 
 This register is the plugin's own schema, so a wrong parent here is a bug in the example.
@@ -340,6 +349,7 @@ Every pair holds:
 | `Issue` / `Bug` / `Idea` / `Deliverable` | `Epic`, `Feature` or `PBI` | `Task` |
 | `Milestone` | *(nothing — a root by nature)* | *(nothing)* |
 | `Iteration` | *(nothing — a root by nature)* | *(nothing)* |
+| `Resource` | *(nothing — a root by nature)* | *(nothing)* |
 | `Test suite` | *(nothing — a root by nature)* | `Test case` |
 | `Test case` | `Test suite` | `Task` |
 

@@ -1,11 +1,11 @@
 ---
 type: Epic
 order: 220
-status: Open
+status: Active
 area: product
 created: 2026-08-20
 source: user request
-started: ""
+started: 2026-08-21
 finished: ""
 horizon: ""
 start: ""
