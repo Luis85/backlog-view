@@ -78,6 +78,18 @@ export async function runEstimationInit(view: EstimationView): Promise<void> {
 		new Notice(t('estimation.problems.blocked', { problem: problems[0] }));
 		return;
 	}
+	// THE THIRD REFUSAL, asked here for the same reason the two above it are: this action's
+	// two halves are one guarantee (`docs/requirements/Binding the estimation
+	// properties.md`), and `applySafely` can refuse the whole backfill because another view
+	// holds the lock — which would leave 13 properties bound and nothing stubbed.
+	//
+	// A SYNCHRONOUS check is sufficient and not a narrowed race: there is no `await`
+	// between here and `applySafely`, and the lock is taken synchronously on entry to
+	// `runExclusively`, so run-to-completion means no other view can take it in between.
+	if (view.gate.writing) {
+		new Notice(t('estimation.init.busy'));
+		return;
+	}
 	for (const [option, value] of pending) view.config.set(option, value);
 	// Settings AND model, not a full DOM render: the table this would draw is about to be
 	// thrown away the instant the batch below lands, so building it is pure waste — but

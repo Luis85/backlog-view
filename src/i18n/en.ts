@@ -752,6 +752,10 @@ export const en = {
 	/** The guided setup action refusing itself: the bindings it would make leave the model
 	 *  broken, so nothing is bound and nothing is written. {problem} is the first one. */
 	'estimation.problems.blocked': 'Fix the estimation model first: {problem}',
+	/** Said rather than left silent, for `estimation.problems.blocked`'s own reason: the
+	 *  guided empty state is still on screen, so a button that returned quietly would
+	 *  simply look dead. */
+	'estimation.init.busy': 'Another change is being saved. Try the setup again once it finishes.',
 	'estimation.empty.noResults': 'No results to estimate.',
 
 	/** The prioritized list's column labels — also each sort button's own accessible name

@@ -4,6 +4,7 @@ import { click, makeEstimationView, pointButton, selectItem } from '../../helper
 import { configuredValues } from '../../helpers/estimationModel';
 import { FakeVault } from '../../helpers/vault';
 import { flush } from '../../helpers/view';
+import { WriteLock } from '../../../src/view/writeLock';
 
 function fixture(): FakeVault {
 	const vault = new FakeVault();
@@ -100,5 +101,67 @@ describe("the estimation view's toolbar", () => {
 		expect(grid.querySelector(':scope > .pbl-est-table')).not.toBeNull();
 		expect(grid.querySelector(':scope > .pbl-est-panel')).not.toBeNull();
 		expect(grid.previousElementSibling!.classList.contains('pbl-toolbar')).toBe(true);
+	});
+
+	it('disables the guided empty state’s own setup button while a sibling batch runs', async () => {
+		// The toolbar's ✨ carries `pbl-est-init` and `syncEstimationToolbar` disables it. The
+		// empty state's button ran the SAME action with no class at all, so nothing ever
+		// disabled it — which is what made the all-or-nothing hole reachable by a click.
+		const vault = new FakeVault();
+		vault.addFile('Scored.md', { frontmatter: { 'strategic-alignment': 5 } });
+		const lock = new WriteLock();
+
+		// Unconfigured, so this view draws the guided empty state rather than a toolbar — and
+		// drawn BEFORE the batch starts, which is the only order that draws it at all: a view
+		// made while the lock is held defers its data update whole (`WriteGate.deferUpdate`),
+		// so it renders nothing but the loading line until the batch ends and the lock is free.
+		const { containerEl } = makeEstimationView(vault, {}, { lock });
+
+		let release: () => void = () => {};
+		vault.beforeWrite = () => new Promise<void>((r) => (release = r));
+		const writer = makeEstimationView(vault, configuredValues(), { lock });
+		selectItem(writer.containerEl, 'Scored.md');
+		click(pointButton(writer.containerEl, 'strategic-alignment', 4));
+
+		// Nothing calls `syncBusy` by hand: the batch's start is published through the shared
+		// lock to every subscribed gate, and each one hands it to whatever chrome it drew.
+		const setup = containerEl.querySelector('.pbl-est-empty .pbl-est-init') as HTMLButtonElement;
+		expect(setup).not.toBeNull();
+		expect(setup.disabled).toBe(true);
+
+		release();
+		await flush();
+		// And back, off the same fact — a button left dead after a sibling's batch would be
+		// the same defect the other way round.
+		expect(setup.disabled).toBe(false);
+	});
+
+	it('draws nothing while a sibling batch runs, and its setup button arrives enabled', async () => {
+		// Why the test above draws its empty state BEFORE the batch, and why
+		// `renderUnconfigured` publishes no gate state of its own: this state cannot BE drawn
+		// mid-batch. A view opened while the lock is held defers its whole data update
+		// (`WriteGate.deferUpdate`), so nothing renders until the batch's end flushes it —
+		// by which time the lock is free and the button belongs enabled. A
+		// `syncEstimationToolbar` call at the end of `renderUnconfigured` would be dead code,
+		// and this is what would fail first if that ever stopped being true.
+		const vault = new FakeVault();
+		vault.addFile('Scored.md', { frontmatter: { 'strategic-alignment': 5 } });
+
+		const lock = new WriteLock();
+		let release: () => void = () => {};
+		vault.beforeWrite = () => new Promise<void>((r) => (release = r));
+		const writer = makeEstimationView(vault, configuredValues(), { lock });
+		selectItem(writer.containerEl, 'Scored.md');
+		click(pointButton(writer.containerEl, 'strategic-alignment', 4));
+
+		const { containerEl } = makeEstimationView(vault, {}, { lock });
+		expect(containerEl.querySelector('.pbl-est-empty')).toBeNull();
+
+		release();
+		await flush();
+
+		const setup = containerEl.querySelector('.pbl-est-empty .pbl-est-init') as HTMLButtonElement;
+		expect(setup).not.toBeNull();
+		expect(setup.disabled).toBe(false);
 	});
 });

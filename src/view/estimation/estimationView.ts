@@ -236,7 +236,11 @@ export class EstimationView extends BasesView {
 	private renderUnconfigured(): void {
 		const empty = guidanceShell(this.viewEl, 'calculator', t('estimation.empty.unconfigured'), t('estimation.empty.hint'));
 		empty.addClass('pbl-est-empty');
-		const btn = empty.createEl('button', { cls: 'mod-cta', text: t('estimation.empty.useDefaults') });
+		// `pbl-est-init` is not decoration — it is how `syncEstimationToolbar` FINDS this
+		// button to disable it. It runs the same action as the toolbar's ✨, so it has to
+		// go quiet on the same fact; without the class nothing ever disabled it, which is
+		// what made the bind-then-refuse hole reachable by a click.
+		const btn = empty.createEl('button', { cls: 'mod-cta pbl-est-init', text: t('estimation.empty.useDefaults') });
 		btn.addEventListener('click', () => void runEstimationInit(this));
 	}
 

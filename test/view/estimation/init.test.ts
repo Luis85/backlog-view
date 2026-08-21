@@ -1,11 +1,13 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import { makeEstimationView } from '../../helpers/estimation';
+import { click, makeEstimationView, pointButton, selectItem } from '../../helpers/estimation';
+import { configuredValues } from '../../helpers/estimationModel';
 import { Notice } from '../../helpers/obsidian-mock';
 import { FakeVault } from '../../helpers/vault';
 import { flush } from '../../helpers/view';
 import { SUGGESTED_KEYS } from '../../../src/domain/defaultModel';
 import { runEstimationInit } from '../../../src/view/estimation/init';
+import { WriteLock } from '../../../src/view/writeLock';
 
 /**
  * The guided empty state's setup action (`init.ts`): bind every suggested key nobody
@@ -137,5 +139,39 @@ describe('the guided empty state’s setup action', () => {
 
 		expect(undone).toBe(true);
 		expect(vault.fm('A.md')).toEqual({});
+	});
+
+	it('changes no configuration when the lock is already held', async () => {
+		// The all-or-nothing guarantee (`docs/requirements/Binding the estimation
+		// properties.md`). Binding first and gating second left 13 properties bound and
+		// nothing stubbed, and replaced the guided empty state with a config warning about a
+		// state this button had just created.
+		const vault = new FakeVault();
+		vault.addFile('Bare.md', { frontmatter: {} });
+		vault.addFile('Scored.md', { frontmatter: { 'strategic-alignment': 5 } });
+
+		// ONE lock, two views — the scenario the guard is for. The writer is a configured
+		// view mid-batch; the view under test is the unconfigured one whose empty state
+		// offers the ✨.
+		const lock = new WriteLock();
+		let release: () => void = () => {};
+		vault.beforeWrite = () => new Promise<void>((r) => (release = r));
+		const writer = makeEstimationView(vault, configuredValues(), { lock });
+		selectItem(writer.containerEl, 'Scored.md');
+		click(pointButton(writer.containerEl, 'strategic-alignment', 4));
+
+		const { view, config } = makeEstimationView(vault, {}, { lock });
+		Notice.reset();
+		await runEstimationInit(view);
+
+		// Not "fewer writes" — NONE, and no binding either.
+		expect(config.setCalls).toHaveLength(0);
+		expect(vault.fm('Bare.md')['customer-value']).toBeUndefined();
+		// And not silent: the guided empty state is still on screen, so a refusal that said
+		// nothing would leave the button looking dead.
+		expect(Notice.messages.at(-1)).toMatch(/being saved/i);
+
+		release();
+		await flush();
 	});
 });
