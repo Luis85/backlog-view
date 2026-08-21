@@ -341,13 +341,21 @@ function renderIterationShelf(
 	boardEl: HTMLElement,
 	dnd: CardDragController,
 	model: BacklogModel,
-): { el: HTMLElement; cards: ShelfCard[] } {
+): { el: HTMLElement; cards: ShelfCard[]; drawn: BacklogItem[] } {
 ```
 
-and its last two lines:
+and its last two lines — returning BOTH lists, which are two different questions and were
+one array in the first draft (Codex, PR #187, P1):
 
 ```ts
-	return { el: shelf.el, cards };
+	// `cards` is the band's whole population, unnarrowed, which is what the card menu's type
+	// filter has to be built from: hiding a type must never remove its own way back. `drawn`
+	// is what `renderShelf` actually put on screen — narrowed by the search and the hidden
+	// types, and empty when the band is collapsed or every group is folded. The tab-stop
+	// decision in Task 3 is about what a reader can REACH, so it is the second of these; the
+	// first stays positive on a band that is drawing nothing and would have kept the controls
+	// out of the tab order in exactly the state they are needed.
+	return { el: shelf.el, cards, drawn: shelf.cards };
 ```
 
 Add `ShelfCard` to the imports from `../../domain/bars`:
@@ -368,6 +376,8 @@ and in the returned object replace `shelfEl,` with:
 		shelfEl: shelf.el,
 		shelf: shelf.cards,
 ```
+
+Import `BacklogItem` from `../../domain/model` if it is not already imported there.
 
 - [ ] **Step 5: Write the resolver**
 
@@ -675,10 +685,14 @@ shelf, because the count is not final until the columns have drawn:
 	// clear. Hard-coding `true` here is what would do that, and the first draft of this plan
 	// did (Codex, PR #187).
 	//
-	// Asked of what was DRAWN, both bands of it: a folded column contributes no card and
-	// neither does a collapsed shelf, which is the same question `RoadmapSnapshot.cards`
-	// answers on the other surface.
-	syncShelfTabStops(shelf.el, board.cardCount + shelf.cards.length > 0);
+	// Asked of what was DRAWN, both bands of it — `shelf.drawn`, never `shelf.cards`. The
+	// second is the band's whole population, which the card menu needs and which stays
+	// positive while a search hides every one of them, so it would have kept the controls out
+	// of the tab order in exactly the state this exists for. A folded column contributes no
+	// card and neither does a collapsed shelf, the same question `RoadmapSnapshot.cards`
+	// answers on the other surface. (Codex, PR #187, twice — the first fix for this used the
+	// wrong array.)
+	syncShelfTabStops(shelf.el, board.cardCount + shelf.drawn.length > 0);
 	return { ...content, shelfEl: shelf.el, shelf: shelf.cards };
 ```
 
@@ -1114,15 +1128,24 @@ ones being replaced record measurements that stay true and must be carried forwa
 	min-width: 0;
 }
 
-/* And the wrapper stops being the shrinkable thing, since its cells now are. It goes to the
-   line's end so the metadata columns are a block at the right rather than trailing the
-   title at a different x per row. `flex-wrap` stays off: a wrapper that can be squeezed is
-   one whose cells wrap to a second line, which is a 28px row becoming 56px the moment it
-   holds two chips. */
+/* **The wrapper has to shrink for its cells to shrink**, which is the half that makes the
+   narrow-pane policy work at all. `.pbl-props` is itself a flex container: pinned at
+   `flex: 0 0 auto` it is sized from its contents, so its cells never face a deficit inside
+   it, their own `flex-shrink` never engages, and the whole deficit lands on the title —
+   which hits its floor and then the row overflows. `0 1 auto` with `min-width: 0` passes the
+   squeeze through. (Codex, PR #187 — the first draft pinned it and claimed controlled
+   shrinkage in the same breath.)
+
+   No `margin-inline-start: auto` here: the title is `flex: 1 1 0`, so it absorbs every bit of
+   free space and the metadata block is already at the line's end. An auto margin beside that
+   is a declaration that can never fire.
+
+   `flex-wrap` stays off, and it is load-bearing beside the shrink rather than tidy: a wrapper
+   that can finally be squeezed is one whose cells wrap to a second line — a 28px row becoming
+   56px the moment it holds two chips. */
 .pbl-shelf-list .pbl-card-summary .pbl-props {
-	flex: 0 0 auto;
+	flex: 0 1 auto;
 	min-width: 0;
-	margin-inline-start: auto;
 	flex-wrap: nowrap;
 }
 
@@ -1274,8 +1297,14 @@ would resize the slot as work is placed). Found by review, Codex on PR #187.
 
 ```bash
 npm run check
-git add src/view/render/board.ts src/view/render/shelf.ts styles/ \
+git add src/view/render/board.ts src/view/render/columns.ts src/view/render/reconcile.ts \
+        src/view/render/shelf.ts styles/ \
         test/view/shelfLayout.test.ts "docs/requirements/Cards or a list on the shelf.md"
+# Steps 4b and 4c touch columns.ts and reconcile.ts. Left unstaged, `npm run check` still
+# passes against the working tree while the COMMIT holds shelf.ts calling exports that are
+# not in it — a clean checkout of that commit does not build. Confirm with
+# `git status --short` that nothing this task touched is left out before committing.
+# (Codex, PR #187.)
 git commit -m "feat: a compact shelf row draws aligned columns
 
 The tree's own stored widths rather than a second mechanism, published
