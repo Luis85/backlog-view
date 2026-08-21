@@ -685,14 +685,17 @@ shelf, because the count is not final until the columns have drawn:
 	// clear. Hard-coding `true` here is what would do that, and the first draft of this plan
 	// did (Codex, PR #187).
 	//
-	// Asked of what was DRAWN, both bands of it — `shelf.drawn`, never `shelf.cards`. The
-	// second is the band's whole population, which the card menu needs and which stays
-	// positive while a search hides every one of them, so it would have kept the controls out
-	// of the tab order in exactly the state this exists for. A folded column contributes no
-	// card and neither does a collapsed shelf, the same question `RoadmapSnapshot.cards`
-	// answers on the other surface. (Codex, PR #187, twice — the first fix for this used the
-	// wrong array.)
-	syncShelfTabStops(shelf.el, board.cardCount + shelf.drawn.length > 0);
+	// **Asked of what was DRAWN, on both halves, and neither half may be a population count.**
+	// `shelf.drawn` rather than `shelf.cards`: the second is the band's whole population, which
+	// the card menu needs and which stays positive while a search hides every one of them. And
+	// the columns are asked the way `renderBoardAdvisory` in this file already asks them —
+	// `col.cards.length`, which a fold empties — rather than `board.cardCount`, which
+	// `domain/board.ts` sums from the population before anything folds and which that
+	// function's own comment calls "results-only by design". Every committed card in a folded
+	// column plus a search that empties the shelf is the same trap through the other half.
+	// (Codex, PR #187, three rounds — the first fix used the wrong array, the second the wrong
+	// count.)
+	syncShelfTabStops(shelf.el, content.board.columns.some((col) => col.cards.length > 0) || shelf.drawn.length > 0);
 	return { ...content, shelfEl: shelf.el, shelf: shelf.cards };
 ```
 
