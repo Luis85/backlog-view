@@ -271,75 +271,45 @@ describe('the shelf’s resize grip', () => {
 			}
 		});
 
-		it('takes the height the band is DRAWN at, not the larger cap it is allowed', () => {
+		it('takes a PICKED height straight from the store, with no measurement at all', () => {
+			// The band IS the picked height, so the stored number is the edge — the measurement
+			// is only for a band nobody has sized. Asserted with a stub that would answer 120
+			// if anything asked, so a reading of `offsetHeight` here would show up as 120.
 			const { view, containerEl } = makeRoadmap(horizonVault());
-			// A cap far above what the cards need. The band draws its content; the stored
-			// number is only a ceiling it never reaches.
 			view.setShelfHeight(600);
 			const undo = stubDrawnHeight(120);
 			try {
-				// Re-render through a real control so the grip is rebuilt with the stub in force.
 				view.setShelfLayout('list');
-
 				const el = grip(containerEl);
-				// Announced as what is on screen, never as the invisible ceiling.
-				expect(el.getAttribute('aria-valuenow')).toBe('120');
+				expect(el.getAttribute('aria-valuenow')).toBe('600');
 
-				// And one step up moves the edge immediately, rather than after the 480px it
-				// would take to bring a 600px origin down to where the band actually is.
 				press(el, 'ArrowUp');
-				expect(view.shelfHeight).toBe(110);
+				expect(view.shelfHeight).toBe(590);
 			} finally {
 				undo();
 			}
 		});
 
-		it('puts the DRAWN cap back on an uncommitted gesture, not the height it measured', () => {
-			// The origin is a MEASUREMENT now, and `wireResizeGrip` redraws the origin when a
-			// gesture commits nothing — which for the column grips is the stored width and here
-			// is not. Left alone, a tap on a band drawn at 120 under a 600 cap would publish
-			// `--pbl-shelf-h: 120px` while the store still said 600, and no render would come
-			// along to correct it: expanding a card's children redraws that list IN PLACE
-			// (`renderCardChildren`'s own `draw`), so the band would then be unable to grow
-			// toward the cap it still holds. (Codex, PR #183.)
+		it('grows the band downward, which a maximum could not', () => {
+			// The defect this model replaced: under `max-height` a band drawn shorter than its
+			// cap could not grow at all, and ArrowDown committed a number nothing on screen
+			// reflected — silently replacing a larger stored value. Both halves are gone; a
+			// step down is a taller band and nothing else. (Codex, PR #183.)
 			const { view, containerEl } = makeRoadmap(horizonVault());
 			view.setShelfHeight(600);
-			const undo = stubDrawnHeight(120);
 			try {
-				view.setShelfLayout('list');
-				const el = grip(containerEl);
-				el.dispatchEvent(pointer('pointerdown', 0));
-				el.dispatchEvent(pointer('pointerup', 0));
-
-				expect(view.shelfHeight).toBe(600);
-				expect(drawn(containerEl)).toBe('600px');
+				press(grip(containerEl), 'ArrowDown');
+				expect(view.shelfHeight).toBe(610);
 			} finally {
-				undo();
+				// nothing stubbed: a picked height needs no measurement
 			}
 		});
 
-		it('puts it back on a platform cancel too, which commits nothing by design', () => {
-			const { view, containerEl } = makeRoadmap(horizonVault());
-			view.setShelfHeight(600);
-			const undo = stubDrawnHeight(120);
-			try {
-				view.setShelfLayout('list');
-				const el = grip(containerEl);
-				el.dispatchEvent(pointer('pointerdown', 0));
-				el.dispatchEvent(pointer('pointermove', 90));
-				el.dispatchEvent(new PointerEvent('pointercancel', { bubbles: true, pointerId: 1 }));
-
-				expect(view.shelfHeight).toBe(600);
-				expect(drawn(containerEl)).toBe('600px');
-			} finally {
-				undo();
-			}
-		});
-
-		it('publishes nothing back when there was no stored cap to put back', () => {
-			// Absence is the value: with no pick, the stylesheet's own share of the pane is
-			// what the band takes, and a gesture that committed nothing must leave it that way
-			// rather than pinning the measured height as a cap nobody chose.
+		it('publishes nothing back when there was no stored height to put back', () => {
+			// `restore`'s one remaining case, and the reason it still exists. An UNPICKED band
+			// is content-sized, so its origin is a measurement — and drawing that origin on an
+			// uncommitted gesture would pin a band the stylesheet was sizing at whatever height
+			// it happened to have. Absence is the value: the declaration is removed.
 			const { view, containerEl } = makeRoadmap(horizonVault());
 			const undo = stubDrawnHeight(120);
 			try {
@@ -355,23 +325,32 @@ describe('the shelf’s resize grip', () => {
 			}
 		});
 
-		it('leaves a larger cap standing when the gesture changes nothing', () => {
-			// The origin moved; the rule that a no-op commits nothing did not. A tap on a band
-			// drawn shorter than its cap must not quietly rewrite that cap down to the
-			// content height.
+		it('puts an unpicked band back on a platform cancel too', () => {
 			const { view, containerEl } = makeRoadmap(horizonVault());
-			view.setShelfHeight(600);
 			const undo = stubDrawnHeight(120);
 			try {
 				view.setShelfLayout('list');
 				const el = grip(containerEl);
 				el.dispatchEvent(pointer('pointerdown', 0));
-				el.dispatchEvent(pointer('pointerup', 0));
+				el.dispatchEvent(pointer('pointermove', 90));
+				el.dispatchEvent(new PointerEvent('pointercancel', { bubbles: true, pointerId: 1 }));
 
-				expect(view.shelfHeight).toBe(600);
+				expect(view.shelfHeight).toBeNull();
+				expect(drawn(containerEl)).toBe('');
 			} finally {
 				undo();
 			}
+		});
+
+		it('leaves a picked height standing when the gesture changes nothing', () => {
+			const { view, containerEl } = makeRoadmap(horizonVault());
+			view.setShelfHeight(600);
+			const el = grip(containerEl);
+			el.dispatchEvent(pointer('pointerdown', 0));
+			el.dispatchEvent(pointer('pointerup', 0));
+
+			expect(view.shelfHeight).toBe(600);
+			expect(drawn(containerEl)).toBe('600px');
 		});
 	});
 

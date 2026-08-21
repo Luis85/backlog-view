@@ -177,6 +177,7 @@
    comes back in full rather than being written down to the narrow one, `leadWidth`'s own
    guarantee bought without its `ResizeObserver` branch. */
 .pbl-roadmap .pbl-shelf {
+	height: var(--pbl-shelf-h, auto);
 	max-height: var(--pbl-shelf-h, 30%);
 }
 

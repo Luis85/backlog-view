@@ -46,7 +46,7 @@ about a width.
 | **Actor** | Backlog owner |
 | **Trigger** | The reader drags the grip along the open shelf's foot, or focuses it and presses an arrow key or Home |
 | **Preconditions** | A shelf is drawn, open and holding at least one card — the roadmap's on either axis, or the iteration board's |
-| **Guarantee** | The height is UI state — per saved view, per device, beside the shelf's other picks — never the `.base` and never a frontmatter write. It is the CAP the band grows to before it scrolls, so a shelf with fewer cards than the cap is still only as tall as its cards. |
+| **Guarantee** | The height is UI state — per saved view, per device, beside the shelf's other picks — never the `.base` and never a frontmatter write. A picked band is exactly that tall: it scrolls when the cards need more and shows space when they need less. Until one is picked nothing is stored and the stylesheet's own share of the pane is in force. |
 
 **Main flow**
 
@@ -55,7 +55,7 @@ about a width.
    `aria-valuemax` stating the current height and its bounds.
 2. Dragging it downward makes the band taller and upward shorter, live — one custom
    property, so nothing re-renders mid-gesture — and releasing persists the settled
-   height once.
+   height once. Both directions move the edge.
 3. Focused, ArrowUp/ArrowDown step the height by a fixed increment and persist each step
    immediately; Home hands the band back to the stylesheet's own share of the pane.
 4. The pick comes back across a reopen, per saved view per device, exactly like the sort
@@ -79,14 +79,12 @@ about a width.
   another gesture taking over ends the drag with `pointercancel`, and the height it had
   reached is one nobody chose: the band goes back to where the gesture found it and
   nothing is stored.
-- **2d — a gesture that commits nothing, on a band drawn below its cap.** It leaves the
-  STORED cap published, never the height it measured. The two are the same number for the
-  column grips, whose origin is their stored width, and different here for 2c's reason: a
-  tap on a band drawn at 120 under a 600 cap would otherwise publish 120 as a cap nobody
-  committed, and nothing would take it off — expanding a card's children redraws that list
-  in place rather than rebuilding the band, so it would then be unable to grow toward the
-  cap it still holds. With no stored pick the declaration is REMOVED rather than set, which
-  is the same "absence is a value" rule one layer down. (Codex, PR #183.)
+- **2d — a gesture that commits nothing, on a band nobody has sized.** It leaves the
+  declaration OFF, never the height it measured. With a height already picked the origin is
+  that height and redrawing it writes the same number back, so this matters for the unpicked
+  band alone — where the origin is a measurement, and publishing it would pin a band the
+  stylesheet was sizing at whatever height it happened to have. Absence is a value here as
+  it is in the store. (Codex, PR #183.)
 - **4a — the pane is shorter than the stored pick.** The pick is honoured and NOT
   narrowed to a share of the pane, which is where this differs from [[A resizable lead
   column]] deliberately. The axis or the columns are squeezed to their own floor and the
@@ -99,20 +97,20 @@ about a width.
 - **4b — a stored height this plugin never wrote, or one outside the bounds.** Read
   defensively and dropped, like every stored pick: the band opens at the stylesheet's
   share rather than trusting a corrupt-but-plausible number into the layout.
-- **2e — the band's content changes without a render.** The gesture reads the edge WHEN it
-  starts, never once when the grip was drawn. Expanding a shelved parent's children is
-  `renderCardChildren`'s own `draw`, which replaces that list in place and rebuilds no grip,
-  so a band drawn at 120px can be at 400px by the time a reader grabs it — and an origin
-  captured at the render would jump it back, committing 110px for one step up. The two
-  column grips need none of this and pass a constant: their origin is a stored width that
-  only a render moves, and a render rebuilds them. Reading it per GESTURE rather than per
+- **2e — an UNPICKED band's content changes without a render.** The gesture reads the edge
+  when it starts rather than once when the grip was drawn. It applies only to a band nobody
+  has sized, which is the one that is content-shaped: expanding a shelved parent's children
+  is `renderCardChildren`'s own `draw`, which replaces that list in place and rebuilds no
+  grip, so such a band can be at 400px by the time a reader grabs it. A picked band cannot
+  drift — it is its stored height whatever its cards do, and the origin is then a lookup,
+  which is what the two column grips have always had. Reading it per GESTURE rather than per
   move is also what keeps it out of `pointermove`, where a layout read is banned outright.
-  **What this does not fix**: `aria-valuenow` is the value as of the last render until a
-  gesture takes hold, at which point it is corrected. A reader who only listens hears the
-  render's number. Recorded rather than closed — shutting it needs the in-place redraw to
-  announce itself, which belongs to `render/cardChildren.ts` and not to this grip.
-  (Codex, PR #183.)
-- **1e — the band is sizing to its content when the grip is drawn.** The height is measured
+  **What this does not fix**: on an unpicked band `aria-valuenow` is the value as of the
+  last render until a gesture takes hold, at which point it is corrected. A reader who only
+  listens hears the render's number. Recorded rather than closed — shutting it needs the
+  in-place redraw to announce itself, which belongs to `render/cardChildren.ts` and not to
+  this grip. (Codex, PR #183.)
+- **1e — an unpicked band is being measured when the grip is drawn.** The height is measured
   with the strip already in the band, never before it. The grip is itself a flex item and
   its negative start margin cancels the GAP above it rather than its own height, so it adds
   8px to a content-sized band — measured in the harness at 236px against 228px with the
@@ -123,26 +121,32 @@ about a width.
   falls through to the 30% the band has always taken. A grip that published its measured
   height on every render would pin that share to whatever the pane happened to be on the
   first draw.
-- **2c — the band holds less than its cap allows.** The gesture starts from the height the
-  band is DRAWN at, never from the stored cap, and the two differ exactly here: the band is
-  a maximum, so it draws `min(content, cap)`, and with a 600px cap over 120px of cards the
-  grip a reader can touch is at 120. Starting at 600 would mean dragging up 480px before the
-  edge moved, and announcing a height nothing on screen has. A gesture that changes nothing
-  still commits nothing, so a tap leaves the larger cap standing. What this does not buy is
-  dragging DOWNWARD there: raising a maximum above the content cannot make a shelf taller
-  than its cards. That is inherent to sizing the band by a cap rather than a height, and a
-  cap is what it wants — a height would reserve dead space under a nearly empty shelf. The
-  trade is that the direction with no visible effect is the useless one. (Codex, PR #183.)
+- **2c — the band holds less than the height it was given.** It stays at that height and
+  shows the space. That is the model rather than an extension of it: what is stored is a
+  HEIGHT, not a maximum, so the edge, the stored number and `aria-valuenow` are one value.
+  It replaced a `max-height` on 2026-08-21 after five findings in this one module (Codex,
+  PR #183), and the replacement is a deletion rather than an addition — under a cap the band
+  drew `min(content, cap)`, and every one of those findings was that expression: an origin
+  that disagreed with the edge a reader could touch, a downward drag with no visible effect
+  at all, an uncommitted gesture publishing a measurement as a cap, and a growth committed
+  invisibly over a larger stored number. None can be posed against a height. Measured in the
+  harness at a 1200x800 pane with one card on the shelf: a picked 400px draws 400px where a
+  cap drew the content's ~64px, a picked 120px draws 120px and scrolls at 234px of content,
+  and clearing the pick returns the band to the 30% share (219px). What it costs is the
+  space itself — a band dragged to 400px holding two cards is 400px of band — which is what
+  the reader asked for by dragging the edge there, and what every resizable panel does.
 
 ## Acceptance criteria
 
 - The grip carries `role="separator"`, `aria-orientation="horizontal"`, a real
   `tabindex="0"`, and `aria-value*` matching the current height and the storable bounds.
-- `aria-valuenow` and the gesture's origin are the height the band is DRAWN at, not a larger
-  stored cap it never reaches — and they are measured with the grip's own strip already in
-  the band, which is 8px of it.
-- The origin is read per GESTURE: a band whose content changed since the render is dragged
-  from where its edge is now, and the announcement is corrected at that moment.
+- A picked band draws at exactly its stored height — taller than its cards it shows space,
+  shorter it scrolls — and `aria-valuenow`, the gesture's origin and the edge are one number.
+- An UNPICKED band is measured instead, with the grip's own strip already in it (8px of it),
+  per gesture rather than once per render, and the announcement is corrected when a gesture
+  takes hold.
+- ArrowDown makes the band taller on any band, which a maximum could not do on one drawn
+  shorter than its cap.
 - Dragging updates only the custom property until release: `config.setCalls` and the
   vault's write log stay empty through the whole gesture, and exactly one height is
   persisted, at its end.
@@ -174,15 +178,19 @@ size drawn at release rather than at the last move are all the same code
 this grip.
 
 What is this grip's own is `src/view/interactions/shelfResize.ts`: the markup, the bounds,
-where the height goes, and the one layout read. That read is `offsetHeight` — the border box
-`max-height` applies to, and every box here is `border-box` — and it is the gesture's ORIGIN
-rather than a fallback for an unpicked band. Extension 2c is why: the band is a maximum, so
-what it draws is `min(content, cap)`, and a stored cap the cards never reach is a number the
-reader can neither see nor put a finger on. The stored pick is the fallback, for a pane that
-has not been laid out; an unmeasured one reports 0 and falls through to it, then to the
-floor. It is one read on one element at the end of one render pass, the same shape as
-`render/roadmap.ts`'s own `treeEl.clientWidth`; what `src/view/CLAUDE.md` bans is a read per
-ROW and a read inside an input handler, and this is neither.
+where the height goes, and one layout read that is now needed in one case only.
+`gestureOrigin` answers from the STORE when a height has been picked — the band is that tall,
+so the number is exact and nothing is measured — and measures `offsetHeight` when none has,
+which is the only state in which the band is content-shaped. An unmeasured pane reports 0
+and clamps to the floor. It is one read on one element, at the render and once per gesture;
+what `src/view/CLAUDE.md` bans is a read per ROW and a read inside a `pointermove` stream,
+and this is neither.
+
+`styles/roadmap.css` and `styles/board.css` read the same custom property TWICE with
+different fallbacks — `height: var(--pbl-shelf-h, auto)` beside
+`max-height: var(--pbl-shelf-h, 30%)` — which is what makes a picked number a real height
+and its absence the share of the pane the band has always taken, in two declarations and no
+branch.
 
 `publishShelfHeight` beside it is the ONE way a height reaches an element — set it, or take
 the declaration away when there is none — and it is what both the render and the gesture's

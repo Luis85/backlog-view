@@ -25,10 +25,11 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 - **The open shelf's height is yours to set.** A grip along the band's foot, dragged with a
   pointer or stepped with ArrowUp/ArrowDown once it has focus; a double click or Home hands
-  the height back to the share of the pane the shelf has always taken. It sets the CAP the
-  band grows to before it scrolls, so a shelf with few cards is still only as tall as its
-  cards, and a height picked in a tall split comes back in full rather than being written
-  down to a narrow one. It applies to the iteration board's backlog band as well — one
+  the height back to the share of the pane the shelf has always taken. A band you have sized
+  is exactly that tall — it scrolls when the cards need more and shows space when they need
+  less — and a height picked in a tall split comes back in full rather than being written
+  down to a narrow one. Until you drag it, nothing is stored and the shelf takes the share of
+  the pane it always has. It applies to the iteration board's backlog band as well — one
   band, one height — and it is remembered per saved view per device without anything
   reaching the `.base`.
 
