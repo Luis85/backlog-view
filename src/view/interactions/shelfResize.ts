@@ -37,6 +37,15 @@ const SHELF_HEIGHT_VAR = '--pbl-shelf-h';
 export function publishShelfHeight(shelfEl: HTMLElement, height: number | null): void {
 	if (height === null) shelfEl.style.removeProperty(SHELF_HEIGHT_VAR);
 	else shelfEl.setCssProps({ [SHELF_HEIGHT_VAR]: `${height}px` });
+	// The CLASS travels with the value, from the one place that sets either. A picked height
+	// has to survive the flex line it sits on, and on the dated axis alone the bands are
+	// `flex: 0 1 auto` — so a stored 400 drew 222px in a 500px window and 102px in a 380px
+	// one (measured), with the grip still starting its gesture from 400. The two other
+	// surfaces are already `flex: 0 0 auto`; this makes the dated axis agree while a height
+	// is in force, and leaves it shrinking exactly as before when none is. A class rather
+	// than a second custom property because the stylesheet has to WIN a specificity contest
+	// with the axis rule, which a bare `.pbl-shelf-sized` could not — see `styles/shelf.css`.
+	shelfEl.toggleClass('pbl-shelf-sized', height !== null);
 }
 
 /**

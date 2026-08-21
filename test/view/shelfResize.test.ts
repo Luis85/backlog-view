@@ -1,8 +1,10 @@
 // @vitest-environment jsdom
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { horizonVault, makeRoadmap, shelfOf } from '../helpers/roadmap';
 import { FakeVault } from '../helpers/vault';
 import { makeView, useViewHarness } from '../helpers/view';
+import { bodyOf } from '../helpers/cssVars';
 import { MAX_SHELF_HEIGHT_PX, MIN_SHELF_HEIGHT_PX } from '../../src/storage/viewStateStore';
 
 useViewHarness();
@@ -351,6 +353,65 @@ describe('the shelf’s resize grip', () => {
 
 			expect(view.shelfHeight).toBe(600);
 			expect(drawn(containerEl)).toBe('600px');
+		});
+	});
+
+	/**
+	 * A picked height is a real `height`, so a band carrying one is exactly that tall — which
+	 * makes WHERE the value is published a correctness question rather than a tidiness one.
+	 * It belongs to precisely the states the grip belongs to, and is set beside it for that
+	 * reason. Both cases below were regressions from the height model, measured in the
+	 * harness before the fix: a collapsed band drew 400px — its 24px header and 376px of
+	 * blank space — where a collapsed band is 34px. (Codex, PR #183.)
+	 */
+	describe('where the height is not published', () => {
+		it('leaves a collapsed band alone, however tall the reader sized it open', () => {
+			const { view, containerEl } = makeRoadmap(horizonVault(), {}, { shelfCollapsed: true });
+			view.setShelfHeight(400);
+
+			expect(drawn(containerEl)).toBe('');
+			expect(shelfOf(containerEl)?.hasClass('pbl-shelf-sized')).toBe(false);
+		});
+
+		it('leaves the empty drop strip alone, which a drag reveals at full size', () => {
+			// `.pbl-dragging .pbl-shelf-empty` puts the strip back in the layout so a card has
+			// somewhere to land. With a height on it that target would be as tall as the band
+			// the reader last sized, over a shelf holding nothing.
+			const vault = horizonVault();
+			vault.files.delete('Untriaged.md');
+			const { view, containerEl } = makeRoadmap(vault);
+			view.setShelfHeight(400);
+
+			expect(shelfOf(containerEl)?.hasClass('pbl-shelf-empty')).toBe(true);
+			expect(drawn(containerEl)).toBe('');
+			expect(shelfOf(containerEl)?.hasClass('pbl-shelf-sized')).toBe(false);
+		});
+
+		it('marks a sized band so it cannot be shrunk by the line it sits on', () => {
+			// The class travels with the value from the one place that sets either, because the
+			// dated axis leaves these bands `flex: 0 1 auto`: a stored 400 drew 222px in a
+			// 500px window and 102px in a 380px one, with the grip still starting from 400.
+			const { view, containerEl } = makeRoadmap(horizonVault());
+			expect(shelfOf(containerEl)?.hasClass('pbl-shelf-sized')).toBe(false);
+
+			view.setShelfHeight(400);
+			expect(drawn(containerEl)).toBe('400px');
+			expect(shelfOf(containerEl)?.hasClass('pbl-shelf-sized')).toBe(true);
+
+			view.setShelfHeight(null);
+			expect(drawn(containerEl)).toBe('');
+			expect(shelfOf(containerEl)?.hasClass('pbl-shelf-sized')).toBe(false);
+		});
+
+		it('states the shrink refusal at a specificity that beats the dated axis', () => {
+			// jsdom resolves no cascade, so what is checkable is the SELECTOR — and it is the
+			// load-bearing part: `.pbl-view.pbl-roadmap-dates .pbl-shelf` is (0,3,0) and sets
+			// `flex` as a shorthand, so a bare `.pbl-shelf-sized` would lose however late it is
+			// imported. Narrowed to the declaration and its selector; whether the cascade
+			// actually resolves this way was measured in Chromium (400px honoured at 800, 500
+			// and 380px window heights, `flex-shrink: 0`).
+			const css = readFileSync('styles/shelf.css', 'utf8');
+			expect(bodyOf(css, '.pbl-view .pbl-shelf.pbl-shelf-sized', 'styles/shelf.css')).toContain('flex-shrink: 0;');
 		});
 	});
 

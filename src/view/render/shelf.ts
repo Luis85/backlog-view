@@ -214,10 +214,6 @@ export function renderShelf(
 			'aria-label': t('roadmap.groupLabel', { name: shelf.name, count: shelfCards.length }),
 		},
 	});
-	// Only once a height has been PICKED. Absent, the stylesheet's own `var()` fallback is
-	// the share of the pane the band has always taken — the store's "a default is written
-	// as nothing at all" rule, kept up here so the two cannot name different defaults.
-	publishShelfHeight(shelfEl, host.shelfHeight);
 	const header = shelfEl.createDiv({ cls: 'pbl-shelf-header' });
 	renderShelfControls(host, header, shelfCards, { name: shelf.name, picks: shelf.picks, fold: shelf.fold });
 	// The outcome line is only where a removal has one to say — the horizon axis's
@@ -278,6 +274,17 @@ export function renderShelf(
 	// FOOT, which is the edge a taller shelf moves, and it is the one control here that has
 	// to be measured against a band already built. An empty or collapsed shelf returned
 	// above and gets none — there is no open height to size.
+	//
+	// **The stored height is published HERE, past that same return, rather than up with the
+	// band's other attributes.** A picked height is a real `height` now, so a band carrying
+	// one is exactly that tall — including a band with nothing to show: published
+	// unconditionally, a collapsed shelf drew its 24px header and 376px of blank space under
+	// a 400px pick (measured), and the empty drop strip `.pbl-dragging` reveals would be
+	// 400px of target. The height belongs to precisely the states the GRIP belongs to, so it
+	// is set where the grip is set and the two cannot come apart. (Codex, PR #183 — a
+	// regression from the height model, and the call site I failed to re-read when the
+	// meaning of the value changed under it.)
+	publishShelfHeight(shelfEl, host.shelfHeight);
 	renderShelfResize(host, shelfEl);
 	return { cards, el: shelfEl };
 }

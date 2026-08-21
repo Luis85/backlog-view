@@ -63,11 +63,23 @@ about a width.
 
 **Extensions**
 
-- **1a — the shelf is collapsed, or holds nothing.** No grip. A collapsed band has no
-  open height to size, and an empty one is a drop strip the stylesheet keeps out of the
-  layout until a drag is live — a control on it could do nothing, and would be the first
-  focusable thing on an element `styles/shelf.css` reorders mid-drag, which that rule
-  says explicitly must not happen.
+- **1a — the shelf is collapsed, or holds nothing.** No grip AND no published height. A
+  collapsed band has no open height to size, and an empty one is a drop strip the stylesheet
+  keeps out of the layout until a drag is live — a control on it could do nothing, and would
+  be the first focusable thing on an element `styles/shelf.css` reorders mid-drag, which that
+  rule says explicitly must not happen. The height is the same question, and it became one
+  the moment the stored number stopped being a maximum: published to a collapsed band it drew
+  the header and blank space to the picked height — 400px against the 34px a collapsed band
+  is, measured — and it would make the revealed drop strip that tall over a shelf holding
+  nothing. So it is set beside the grip, past the same early return, and the two cannot come
+  apart. (Codex, PR #183 — a regression from the height model itself.)
+- **4c — the picked height meets a flex line that would shrink it.** It does not yield. The
+  horizon axis and both boards already draw their shelf `flex: 0 0 auto`; the dated axis
+  un-pins these bands and leaves them shrinkable, which cost nothing under a maximum and
+  overrules the pick under a height — a stored 400 drew 222px in a 500px window and 102px in
+  a 380px one, measured, with the grip still starting its gesture from 400. A band carrying a
+  height carries a class saying so, from the one place that sets either. A pane too short for
+  both then scrolls, which is 4a's fallback rather than a new one.
 - **2a — dragged past either bound.** Clamped to `MIN_SHELF_HEIGHT_PX` /
   `MAX_SHELF_HEIGHT_PX` rather than accepting whatever the pointer names — the same
   bounds the store refuses on the way back in, so no gesture can persist a height the
@@ -160,7 +172,9 @@ about a width.
   reader did not give it.
 - A gesture that commits nothing leaves the band drawn at its STORED cap, or at no
   declaration at all where there is no pick — never at the height the gesture measured.
-- No grip is drawn on a collapsed or an empty shelf.
+- No grip is drawn on a collapsed or an empty shelf, and no height is published to one:
+  a band with nothing to show is never as tall as the height the reader picked for it open.
+- A picked height survives the flex line it sits on, on every axis.
 - The iteration board's shelf takes the same stored height — one band, one value.
 - Never written to the `.base`: UI state per saved view per device.
 

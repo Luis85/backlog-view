@@ -74,6 +74,28 @@
 	padding-block: var(--size-4-1);
 }
 
+/* A band the reader has SIZED does not yield to the flex line it sits on. `publishShelfHeight`
+   (`src/view/interactions/shelfResize.ts`) puts this class on exactly when it puts a height on,
+   so the two cannot come apart.
+
+   It exists for the dated axis alone: the horizon axis and both boards already make their
+   shelf `flex: 0 0 auto`, while `.pbl-view.pbl-roadmap-dates .pbl-shelf` un-pins these bands
+   and leaves them shrinkable. Under a `max-height` that cost nothing — a maximum a band is
+   not reaching is a maximum flex has no quarrel with — and under a real `height` it is the
+   pick being overruled: a stored 400 drew 222px in a 500px window and 102px in a 380px one,
+   measured, with the grip still starting its gesture from 400. Unshrinkable, a pane too
+   short for both scrolls, which is the band rule's own stated fallback and what extension 4a
+   already promises.
+
+   **The selector is three classes because it has to be.** `.pbl-view.pbl-roadmap-dates
+   .pbl-shelf` is (0,3,0) and sets `flex` as a shorthand, so a bare `.pbl-shelf-sized` at
+   (0,1,0) would lose however late it is imported; `.pbl-view` here ties the specificity and
+   `index.css`'s order — this file after `roadmap.css` — decides it. That is the beat
+   `roadmap.css`'s own note warns is possible from here, taken deliberately and named. */
+.pbl-view .pbl-shelf.pbl-shelf-sized {
+	flex-shrink: 0;
+}
+
 /* A grid, not a wrapping flex row: the previous layout shrank trailing-row cards
    unevenly. The bucket grid in roadmap.css gets the same treatment next, so every
    card in the roadmap ends up sized the same way. `min(240px, 100%)`, not a bare
