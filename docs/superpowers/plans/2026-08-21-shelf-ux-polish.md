@@ -863,10 +863,44 @@ while one that visited the tree first inherits whatever that pass left — geome
 depends on projection history. So `renderShelf` publishes them itself, from the same
 `columnWidth(host, prop)` the tree publishes from.
 
-And `--pbl-meta-col` is NOT reused: `metaColWidth(chars)` reserves room for the ROLLUP
-LABEL, not for a badge, and for the tree population's rollup at that. The band reserves
+And `--pbl-meta-col` is NOT reused for the BADGE: `metaColWidth(chars)` reserves room for the
+ROLLUP LABEL, not for a badge, and for the tree population's rollup at that. The band reserves
 `--pbl-shelf-badge` from the widest label in `ALL_TYPES` — a fixed vocabulary, so the slot
-does not resize when the last Deliverable leaves the band and shift every row with it.
+does not resize when the last Deliverable leaves the band and shift every row with it. It IS
+reused for the rollup's own box, below, where it means what it says.
+
+**Holding cells open aligns nothing on its own, and that is the third correction** (Codex,
+PR #187). Four variable-width things sit AFTER `.pbl-props` in the DOM: the rollup
+(`renderCardBody` appends it after the cells), the shelving reason, the dependency note and
+the state cell. With the title absorbing all free space, the property block's x is
+`right − (everything after it)`, so it lands somewhere different on every row that differs in
+any of the four. The measurement that missed this reported title positions 4 → 1, which is
+true and is bought by the badge slot alone; property-cell positions were never measured, and
+the one hint in the same run — state chips at two x positions — was noted and passed over.
+
+The rule the row actually needs is one sentence: **everything before the flexible region has a
+fixed width, everything after it has a fixed width, and the title and parent between them
+absorb the rest.** Then the trailing block starts at `container − fixed_total`, which is the
+same number on every row. Ordering within the trailing block is irrelevant to that, which is
+why nothing is reordered in the DOM.
+
+Concretely:
+
+| region | width | how |
+| --- | --- | --- |
+| fold slot | fixed 30px | Task 5, reserved on every row |
+| badge | fixed | `--pbl-shelf-badge`, from `ALL_TYPES` |
+| title + parent | flexible | title `flex: 1 1 0`, parent `flex: 0 1 auto` |
+| notes | fixed | NEW box: the rollup, the shelving reason and the dependency note |
+| property cells | fixed | `--pbl-prop-w-N`, every row holding every column |
+| state | fixed | held open per row, see below |
+
+The NOTES box is what makes the three variable middle things one fixed reservation instead of
+three absent-or-present ones. `renderShelfCard` draws it unconditionally and hands it to
+`renderCardBody` as `rollupEl`; `renderRollup` fills it or draws nothing, and the reason and
+the dependency join it. Its width reuses the rollup's own reservation — `--pbl-meta-col` and
+`--pbl-rollup-label`, published on the band from the BAND's items — which is what those two
+variables mean, unlike the badge slot they were first misapplied to.
 
 **Not subgrid** — `.pbl-card` carries `content-visibility: auto`, which forces an
 independent formatting context, in which `grid-template-columns: subgrid` computes to
@@ -986,17 +1020,67 @@ and the `renderPropCells` call inside it:
 	if (cardColumns.length > 0) renderPropCells(ctx, card, item, cardColumns, { dropEmpty: !holdEmpty });
 ```
 
-- [ ] **Step 4: Pass it from the compact row**
+- [ ] **Step 3c: Let the rollup be drawn somewhere else**
 
-In `src/view/render/shelf.ts`, in `renderShelfCard`, change the body call:
+In `src/view/render/board.ts`, add `rollupEl` to the same option bag, and use it:
 
 ```ts
-	renderCardBody(ctx, summary, entry.item, { kidsEl: card, holdEmpty: wiring.list });
+	// Where the ROLLUP goes when that is not the card itself — `kidsEl`'s own shape, for the
+	// third time and the last. A compact row needs its trailing geometry FIXED, and the
+	// rollup is one of three things that are present on some rows and absent on others; a
+	// box that is always drawn and always reserved is what turns three absences into one
+	// width. `renderRollup` fills it or draws nothing into it, and the row is the same either
+	// way.
+	{ kidsEl, holdEmpty = false, toggleEl, rollupEl }: {
+		kidsEl?: HTMLElement;
+		holdEmpty?: boolean;
+		toggleEl?: HTMLElement;
+		rollupEl?: HTMLElement;
+	} = {},
 ```
 
-`renderShelfState`'s own `renderPropCells` call keeps `dropEmpty: true` — extension 4a says
-a workflow that does not write the drawn state property leaves no chip AND no gap, and that
-box is outside `.pbl-props` so it is not one of the shared columns.
+and change its rollup call:
+
+```ts
+	renderRollup(host, rollupEl ?? card, item);
+```
+
+- [ ] **Step 4: Pass it from the compact row**
+
+In `src/view/render/shelf.ts`, in `renderShelfCard`, draw the notes box first and hand it to
+the body:
+
+```ts
+	// **One always-drawn box for the three things that are otherwise absent on some rows.**
+	// The rollup, the shelving reason and the dependency note are each present or not per
+	// item, and each one that is missing takes its width off the row and moves every fixed
+	// column after it. Reserved once, filled by whichever apply, and empty on a row with none
+	// — which is the same trade `holdEmpty` makes for the cells one line down.
+	const notes = wiring.list ? summary.createDiv({ cls: 'pbl-shelf-notes' }) : null;
+	renderCardBody(ctx, summary, entry.item, {
+		kidsEl: card,
+		holdEmpty: wiring.list,
+		rollupEl: notes ?? undefined,
+	});
+```
+
+and append the two notes into that box rather than straight onto the line — both are drawn a
+few lines below, so change `summary.createDiv(...)` to `(notes ?? summary).createDiv(...)` at
+the `.pbl-shelf-reason` and `.pbl-shelf-dependency` calls, leaving the card grid untouched.
+
+**And the state cell is held open in list mode**, which amends extension 4a for this layout:
+
+```ts
+	renderPropCells(ctx, stateEl, item, stateColumns, { dropEmpty: !list });
+```
+
+`renderShelfState` takes the `list` flag to do that. 4a's rule — no chip and no gap where one
+would have been — was written for a CARD, where cells are content-sized and a blank one is a
+gap with nothing to reserve. In a row the state is a shared column, and a column that skips a
+row is not a column: dropping it on the rows whose workflow does not write that property moves
+every row's cells relative to every other's. The whole-band case 4a also covers is unchanged —
+a Base drawing no state column at all still draws no box, because `renderShelfState` returns
+before any of this.
 
 - [ ] **Step 4b: Extract the publisher, and give the band a badge slot**
 
@@ -1074,7 +1158,20 @@ is the other thing this function publishes):
 	// card sizes its cells to content and would be overruled by a width it never asked for.
 	if (list) {
 		publishColumnWidths(shelfEl, ctx.columns, host);
-		shelfEl.setCssProps({ '--pbl-shelf-badge': `${shelfBadgeWidth()}px` });
+		// The badge slot, from the fixed vocabulary — and the ROLLUP's own reservation, which is
+		// what `--pbl-meta-col` and `--pbl-rollup-label` actually mean. `styles/columns.css`
+		// already sizes `.pbl-meta-col` from the pair, so publishing them here makes the box
+		// `renderRollup` draws into a fixed width on this band, computed from THIS band's items
+		// rather than inherited from a tree pass. `rollupChars` returns 0 where nothing reports
+		// one, and the label variable is left off entirely in that case — absent is the only
+		// honest spelling of "none", the same rule `renderTree` keeps.
+		const chars = rollupChars(host, shown.map((entry) => entry.item));
+		shelfEl.setCssProps({
+			'--pbl-shelf-badge': `${shelfBadgeWidth()}px`,
+			'--pbl-meta-col': `${metaColWidth(chars)}px`,
+		});
+		if (chars > 0) shelfEl.setCssProps({ '--pbl-rollup-label': `${chars}ch` });
+		else shelfEl.style.removeProperty('--pbl-rollup-label');
 	}
 ```
 
@@ -1178,6 +1275,64 @@ ones being replaced record measurements that stay true and must be carried forwa
 	min-width: min(16ch, 40%);
 	overflow: hidden;
 	overflow-wrap: normal;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+/* **The trailing reservation**: the rollup, the shelving reason and the dependency note, in
+   one box that is always drawn. Its width is the rollup's own reservation — `.pbl-meta-col`
+   inside it is sized by `styles/columns.css` from `--pbl-meta-col` and `--pbl-rollup-label`,
+   both published on this band by `renderShelf` from this band's items — plus room for the two
+   note icons. Fixed either way: a row with none of the three spends the same width as a row
+   with all three, which is what keeps every property cell after it on one x.
+
+   The two notes show their ICON and not their sentence. There is no room for a sentence in a
+   reservation, and a sentence is what made them variable in the first place; the text stays in
+   the DOM rather than being removed, so it still reaches the card's accessible name the
+   content-derived way `renderShelfCard` relies on, and the tooltip carries it for a reader who
+   can see. */
+.pbl-shelf-list .pbl-shelf-notes {
+	display: flex;
+	align-items: center;
+	gap: var(--size-2-1);
+	flex: 0 0 calc(var(--pbl-meta-col, 84px) + 2 * (12px + var(--size-2-1)));
+}
+
+.pbl-shelf-list .pbl-shelf-reason > span:not(.pbl-shelf-reason-icon),
+.pbl-shelf-list .pbl-shelf-dependency > span:not(.pbl-shelf-dependency-icon) {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+	clip-path: inset(50%);
+	white-space: nowrap;
+}
+
+/* **The visual order, and why moving these two is safe.** The notes box is appended after the
+   property cells in the DOM, and it reads better between the title and them. Nothing about
+   ALIGNMENT depends on the order — every item after the flexible title has a fixed width, so
+   the trailing block starts at the same x whatever sequence it is in — this is legibility
+   alone. `styles/shelf.css` already reorders one element (`.pbl-dragging .pbl-shelf-empty`)
+   and states the test: nothing focusable may be separated from its place in the document.
+   Both boxes moved here hold `tabindex="-1"` controls only, which are out of the tab order by
+   the composite's own rule, and the pane's arrows walk CARDS rather than cells — so no reader
+   traverses these in a sequence this could contradict. */
+.pbl-shelf-list .pbl-card-summary .pbl-props {
+	order: 1;
+}
+
+.pbl-shelf-list .pbl-shelf-state {
+	order: 2;
+}
+
+/* The parent link shares the flexible region with the title rather than sitting in the fixed
+   trailing block: the two together absorb whatever the row has spare, so the boundary between
+   them and the reservations is at one x on every row. It yields before the title does and
+   ellipsises inside itself. */
+.pbl-shelf-list .pbl-card-parent {
+	flex: 0 1 auto;
+	min-width: 0;
+	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
 }
