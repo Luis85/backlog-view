@@ -30,7 +30,7 @@ method, three inputs, one gated batch.
 | --- | --- |
 | **Actor** | Backlog owner |
 | **Trigger** | Picking a release from an item's context menu, from the keyboard, or dropping the item on a release |
-| **Preconditions** | The membership property is configured, and the item is a result |
+| **Preconditions** | The membership property is configured, and the item is **plan work** the Base returned |
 | **Guarantee** | Exactly one value is written to the item's own membership property, through the same gate as every write, undoable as one batch. Nothing else about the item changes — not its parent, not its order, not its state. |
 
 **Main flow**
@@ -55,6 +55,12 @@ method, three inputs, one gated batch.
   naming it is refused whole.
 - **1e — the item is outside the Base's filter.** No such action is offered on it, and a batch
   naming it is refused whole — the context rule, at the entry point and again at the gate.
+- **1f — the row is not plan work** — a `Milestone`, an `Iteration`, another `Release`, or a
+  note from the test catalog. The action is not offered and a batch naming it is refused, the
+  same eligibility `Set iteration` already applies. **The membership reader refuses it too**:
+  a release property hand-written onto a marker does not put the marker in the scope, because
+  a release holds work and those notes are not work. Refusing at only one of the two ends
+  would let a hand-edit do what the menu will not.
 - **2a — the membership property is not configured.** The action is absent from every menu
   rather than present and inert, and the release view's empty state says which option to bind.
 - **2b — several items are selected.** One batch names them all, planned by the same method,
@@ -74,13 +80,21 @@ method, three inputs, one gated batch.
 - Picking "no release" removes the key; it never writes an empty value.
 - A target release the Base excluded is not offered, and a batch naming it — or naming an
   excluded item — is refused whole rather than partly applied.
+- No release action is offered on a `Milestone`, an `Iteration`, a `Release` or a test-catalog
+  note, and such a note carrying a membership value by hand is in no release's member count.
+- Two releases whose notes share a basename are distinguishable in the picker and resolve to
+  the file that was picked — a fixture with `Releases/2.4` and `Archive/2.4` writes a link
+  that resolves to the chosen one.
 - With the membership property unconfigured, no release action appears in any menu.
 
 ## Where it lives
 
 One host method in `src/view/host.ts` over `src/view/cardMoves.ts`, reached from
 `src/view/interactions/menu.ts`, `src/view/interactions/keyboard.ts` and
-`src/view/interactions/cardDrag.ts`. The write is a label property, planned in
-`src/domain/writePlan.ts` against `src/domain/optionalProperties.ts` and applied by
-`applyLabels` in `src/storage/frontmatter.ts`, over the gate in `src/view/writeGate.ts`. The
-selection case reuses `src/view/selection.ts`.
+`src/view/interactions/cardDrag.ts`. The write is a **link**, not a label:
+the plan carries the target `TFile` and `src/storage/frontmatter.ts` spells it with
+`wikilinkTo` from the editing note's own path, exactly as it already does for the iteration —
+a plain string would let Obsidian resolve two same-named release notes to the wrong one. It is
+planned in `src/domain/writePlan.ts` and applied over the gate in `src/view/writeGate.ts`; the
+eligibility predicate is `src/domain/itemTypes.ts`, and the selection case reuses
+`src/view/selection.ts`.

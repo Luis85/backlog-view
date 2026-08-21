@@ -35,7 +35,10 @@ Nothing yet. It is the view's entry point, so it is also where a release gets pi
 1. The view collects the releases in the results.
 2. It draws one row each: name, version, target date, status, progress, commitment against
    capacity, and slip.
-3. It orders the rows by target date, and then by the release note's own `order`.
+3. It orders the rows by target date, and then by each release note's own **rank** — the value
+   under the vault's mapped order property, which the model already reads. No literal `order`
+   is looked for here: a vault that moved that mapping would otherwise get an index ordered
+   against every other screen.
 4. The user picks a row, and that release's screen opens.
 5. The picked release is remembered as view state, per device and per saved view.
 
@@ -55,8 +58,9 @@ Nothing yet. It is the view's entry point, so it is also where a release gets pi
 - **2c — a release has an actual date earlier than its target.** The slip is negative and says
   so: early is a real answer.
 - **3a — a release has no target date.** Its row is drawn after every dated one rather than
-  read as the epoch, and the order among them is its `order`.
-- **3b — two releases share a target date and an `order`.** The tie is broken by a stable
+  read as the epoch, and the order among them is their rank.
+- **3b — two releases share a target date and a rank, or the order property is unmapped so
+  none of them has one.** The tie is broken by a stable
   second key, so the rows do not reorder between renders.
 - **4a — a release is outside the Base's filter.** It has no row. Every column here is read
   from the release note itself, and an excluded release is not in the model and never arrives
@@ -73,8 +77,10 @@ Nothing yet. It is the view's entry point, so it is also where a release gets pi
   a release the Base excludes has none.
 - A row's progress and commitment equal the figures the single-release screen shows for that
   release, from the same fixture.
-- Rows order by target date, then `order`, put an undated release last, and do not reorder
+- Rows order by target date, then rank, put an undated release last, and do not reorder
   across repeated renders.
+- Remapping the vault's order property changes the index's tie-break with it; nothing here
+  reads a property literally named `order`.
 - Slip is absent without an actual date, and negative when a release shipped early.
 - The picked release survives a reload of the same saved view on the same device, and is not
   written into the `.base` file.
