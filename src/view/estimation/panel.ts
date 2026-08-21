@@ -10,10 +10,11 @@ import { renderCurrencyChip } from './currencyChip';
 /**
  * The per-item panel beside the table (`docs/requirements/A rubric for every point.md`,
  * `docs/requirements/The weighted score.md`): one row per dimension and per bound scale,
- * the decomposition, the two derived numbers, and the orphan cleanup action — all read
- * straight off the already-scored `EstimationItem`, nothing recomputed here. A pick's
- * whole write path lives on the view (`performScore`/`performScale`/
- * `performOrphanCleanup`); this module only plans nothing and writes nothing itself.
+ * the decomposition, the two derived numbers, and whichever action the currency earns —
+ * all read straight off the already-scored `EstimationItem`, nothing recomputed here. A
+ * pick's whole write path lives on the view (`performScore`/`performScale`/
+ * `performOrphanCleanup`/`performRestamp`); this module only plans nothing and writes
+ * nothing itself.
  *
  * A free function over `EstimationView`, `renderTable.ts`'s own shape — `import type`
  * only, so `estimationView.ts` calling this stays a one-directional edge.
@@ -105,7 +106,12 @@ export function renderPanel(view: EstimationView, model: EstimationModel, previo
 
 	if (item.result) panelEl.createEl('h4', { text: t('estimation.panel.whyThisScored') });
 	renderDecomposition(panelEl, item);
+	// A BRANCH, because the currencies are disjoint: an orphan has no result to restamp
+	// from and a stale total needs no cleanup, so the panel never shows both. `stale` and
+	// `foreign` share this one action — its label says what it does to the note rather than
+	// naming either word.
 	if (item.currency === 'orphan') renderCleanupButton(panelEl);
+	else if (item.currency === 'stale' || item.currency === 'foreign') renderRestampButton(panelEl);
 
 	if (previousPath === item.file.path) panelEl.scrollTop = Math.min(previousScrollTop, panelEl.scrollHeight);
 
@@ -304,11 +310,18 @@ function renderCleanupButton(panelEl: HTMLElement): void {
 	});
 }
 
+function renderRestampButton(panelEl: HTMLElement): void {
+	panelEl.createEl('button', {
+		text: t('estimation.panel.restamp'),
+		attr: { type: 'button', 'data-action': 'restamp' },
+	});
+}
+
 /**
  * One delegated listener on the panel root — never a per-button closure, so a pick that
  * rebuilds this whole panel cannot leave a stale one behind. Resolves a pick by
- * `data-dim`/`data-kind`/`data-value` (an empty value is the clear sentinel), and the
- * cleanup action separately by `data-action`.
+ * `data-dim`/`data-kind`/`data-value` (an empty value is the clear sentinel), and the two
+ * currency actions separately by `data-action`.
  */
 function wirePanelEvents(view: EstimationView, panelEl: HTMLElement, item: EstimationItem): void {
 	panelEl.addEventListener('click', (evt) => {
@@ -316,6 +329,10 @@ function wirePanelEvents(view: EstimationView, panelEl: HTMLElement, item: Estim
 		if (!(target instanceof HTMLElement)) return;
 		if (target.dataset.action === 'cleanup') {
 			void view.performOrphanCleanup(item);
+			return;
+		}
+		if (target.dataset.action === 'restamp') {
+			void view.performRestamp(item);
 			return;
 		}
 		const dim = target.dataset.dim;

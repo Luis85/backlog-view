@@ -3,7 +3,7 @@ import { t } from '../../i18n/t';
 import { EstimationSettings, ScaleName, resolveEstimationSettings } from '../../domain/estimationSettings';
 import { estimationUnconfigured, modelProblems } from '../../domain/scoringModel';
 import { buildEstimationModel, EstimationItem, EstimationModel } from '../../domain/estimationItems';
-import { planOrphanCleanup, planScaleWrite, planScoreWrite, PropertyWrite } from '../../domain/estimationWritePlan';
+import { planOrphanCleanup, planRestamp, planScaleWrite, planScoreWrite, PropertyWrite } from '../../domain/estimationWritePlan';
 import { WriteOutcome } from '../../storage/frontmatter';
 import { applyPropertyWrites } from '../../storage/propertyWrite';
 import { WriteGate } from '../writeGate';
@@ -228,6 +228,17 @@ export class EstimationView extends BasesView {
 	 *  'orphan', and only ever a write in response to this action, never on render. */
 	async performOrphanCleanup(item: EstimationItem): Promise<void> {
 		const plan = planOrphanCleanup(this.settings.model, item);
+		if (!plan) return;
+		await this.gate.applySafely([plan]);
+		if (!this.gate.flushedLastBatch) this.refresh();
+	}
+
+	/** Rewrites a stored total and stamp from the answers on the note — offered only while
+	 *  `item.currency` reads 'stale' or 'foreign', and only ever a write in response to
+	 *  this action. `performOrphanCleanup`'s shape exactly: plan, gate, refresh unless the
+	 *  batch's own deferred-update flush already drew it. */
+	async performRestamp(item: EstimationItem): Promise<void> {
+		const plan = planRestamp(this.settings.model, item);
 		if (!plan) return;
 		await this.gate.applySafely([plan]);
 		if (!this.gate.flushedLastBatch) this.refresh();

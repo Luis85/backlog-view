@@ -810,6 +810,10 @@ export const en = {
 	'estimation.panel.adjustedValue': 'Confidence-adjusted value: {value}',
 	'estimation.panel.valueToEffort': 'Value to effort: {value}',
 	'estimation.panel.removeOrphan': 'Remove the orphaned total',
+	/** Says what the action does to the NOTE, not which currency word offered it — two
+	 *  currencies (`stale` and `foreign`) offer the same action, so naming either in the
+	 *  label would make it wrong half the time. */
+	'estimation.panel.restamp': 'Recalculate the stored total from the answers on this note',
 
 	/** The toolbar's own two actions and its count. `{scored} of {total} scored` is the
 	 *  filtered count's idiom — one quantity in two parts, so the pair reads as one fact. */

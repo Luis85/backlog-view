@@ -14,7 +14,7 @@ import {
 import { configured, configuredValues } from '../../helpers/estimationModel';
 import { FakeVault } from '../../helpers/vault';
 import { flush } from '../../helpers/view';
-import { computeTotal, round2 } from '../../../src/domain/weightedScore';
+import { computeTotal, round2, stampValue, TotalResult } from '../../../src/domain/weightedScore';
 
 /**
  * What the per-item panel DRAWS for a value already on the note, and where focus lands
@@ -430,5 +430,97 @@ describe('the panel scroll position across a rebuild', () => {
 		// the number cannot tell a working restore from one a browser answers 0 to. This
 		// is the part that is checkable here; real layout is still owed a vault check.
 		expect(reads).toEqual([true]);
+	});
+});
+
+/** One note under the shipped model, at whatever currency its own frontmatter earns. */
+function vaultWith(path: string, frontmatter: Record<string, unknown>): FakeVault {
+	const vault = new FakeVault();
+	vault.addFile(path, { frontmatter });
+	return vault;
+}
+
+describe('the panel offers a restamp where the currency reports a stamp problem', () => {
+	const ANSWER = { 'strategic-alignment': 5 };
+	const fresh = (): TotalResult => computeTotal(configured(), new Map(Object.entries(ANSWER)))!;
+	const restampButton = (containerEl: HTMLElement): HTMLElement | null =>
+		containerEl.querySelector('.pbl-est-panel button[data-action="restamp"]');
+	const cleanupButton = (containerEl: HTMLElement): HTMLElement | null =>
+		containerEl.querySelector('.pbl-est-panel button[data-action="cleanup"]');
+
+	it('offers it on a stale total and writes the recomputed pair', async () => {
+		// Neither the total the one answer produces nor its coverage, so BOTH keys are wrong
+		// and both have to be rewritten — a fixture whose stamp already agreed would let a
+		// planner that touched the total alone pass.
+		const vault = vaultWith('Stale.md', {
+			...ANSWER,
+			'business-value': 1,
+			'business-value-model': stampValue(configured(), { answered: 2, enabled: 8 }),
+		});
+		const { containerEl } = makeEstimationView(vault, configuredValues());
+		selectItem(containerEl, 'Stale.md');
+
+		const button = restampButton(containerEl);
+		expect(button).not.toBeNull();
+		click(button!);
+		await flush();
+
+		// The total the answers produce, through the gate — not merely "something changed".
+		expect(vault.fm('Stale.md')['business-value']).toBe(fresh().total);
+		expect(vault.fm('Stale.md')['business-value-model']).toBe(stampValue(configured(), fresh().coverage));
+		expect(vault.writeLog).toHaveLength(1);
+	});
+
+	it('offers it on a foreign stamp too, and restamps to this model’s own fingerprint', async () => {
+		// A well-formed stamp from a model this is not: the answers on the note are still
+		// what the restamp scores, so the action is the same one.
+		const vault = vaultWith('Foreign.md', {
+			...ANSWER,
+			'business-value': fresh().total,
+			'business-value-model': '1/8 deadbeef',
+		});
+		const { containerEl } = makeEstimationView(vault, configuredValues());
+		selectItem(containerEl, 'Foreign.md');
+
+		click(restampButton(containerEl)!);
+		await flush();
+
+		expect(vault.fm('Foreign.md')['business-value-model']).toBe(stampValue(configured(), fresh().coverage));
+	});
+
+	// Each absence for its own reason: `current` has nothing to fix, and `handwritten` is a
+	// person's number this action must not replace (`currencyOf` asks the stamp first for
+	// exactly that).
+	it('offers nothing on a current total', () => {
+		const vault = vaultWith('Current.md', {
+			...ANSWER,
+			'business-value': fresh().total,
+			'business-value-model': stampValue(configured(), fresh().coverage),
+		});
+		const { containerEl } = makeEstimationView(vault, configuredValues());
+		selectItem(containerEl, 'Current.md');
+
+		expect(restampButton(containerEl)).toBeNull();
+	});
+
+	it('offers nothing on a hand-written total', () => {
+		const { containerEl } = makeEstimationView(vaultWith('Typed.md', { ...ANSWER, 'business-value': 3 }), configuredValues());
+		selectItem(containerEl, 'Typed.md');
+
+		expect(restampButton(containerEl)).toBeNull();
+	});
+
+	it('still offers the orphan cleanup rather than a restamp on an orphan', () => {
+		// No answer at all under a stamped total: nothing to restamp FROM, so the two
+		// controls are alternatives rather than a pair.
+		const vault = vaultWith('Orphan.md', {
+			'business-value': 3,
+			'business-value-model': stampValue(configured(), { answered: 1, enabled: 8 }),
+		});
+		const { containerEl } = makeEstimationView(vault, configuredValues());
+		selectItem(containerEl, 'Orphan.md');
+
+		expect(restampButton(containerEl)).toBeNull();
+		expect(cleanupButton(containerEl)).not.toBeNull();
 	});
 });

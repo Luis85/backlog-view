@@ -90,6 +90,36 @@ export function planOrphanCleanup(model: ScoringModel, item: EstimationItem): Pr
 }
 
 /**
+ * Rewrites a stored total and stamp from the answers currently on the note — the action
+ * the two currencies that report a stamp problem never had.
+ *
+ * `writesNothing` asks `held === value`, so re-picking the score a note already holds
+ * plans nothing and restamps nothing: the only route out of a `stale` total was to change a
+ * score to a value the reader did not mean and then change it back. This is that route,
+ * named.
+ *
+ * The refusals are each their own reason rather than one convenience test:
+ * `current` has nothing to fix; `handwritten` is a person's own number and no action
+ * offered beside a render pass may overwrite it (see `currencyOf`, which asks the stamp
+ * before the inputs for that reason); `orphan` has no `result` to restamp FROM, which is
+ * what `planOrphanCleanup` is for; and `none` has no stored total at all.
+ */
+export function planRestamp(model: ScoringModel, item: EstimationItem): PropertyWrite | null {
+	if (item.currency !== 'stale' && item.currency !== 'foreign') return null;
+	// UNREACHABLE while the guard above stands — both those currencies already imply a
+	// result, since `currencyOf` reads a stamped total with none as `orphan` and an
+	// unstamped one as `handwritten`. It is here as the type narrowing `totalStampSets`
+	// needs, and as the statement that this planner restamps from the NOTE rather than
+	// recomputing a model of its own. Deleting the guard above leaves this one refusing the
+	// orphan on its own, which is why only three of the four refusal tests go red for it.
+	if (item.result === null) return null;
+	// No `sets.length > 0` guard, unlike `planOrphanCleanup`: that one can plan an empty
+	// removal, while `totalStampSets` given a result always returns the pair — a guard here
+	// would be a refusal no input can reach.
+	return { file: item.file, sets: totalStampSets(model, item, item.result) };
+}
+
+/**
  * The total+stamp pair a score change leaves behind: a fresh pair when something is
  * still answered, or their removal when nothing is — and the removal only when the note
  * actually carries the key, so a note that never had a total is not handed a delete for

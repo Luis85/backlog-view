@@ -4,9 +4,10 @@ import { clearButton, click, dimRow, makeEstimationView, pointButton, selectItem
 import { configured, configuredValues } from '../../helpers/estimationModel';
 import { FakeVault } from '../../helpers/vault';
 import { flush } from '../../helpers/view';
-import { computeTotal, stampValue } from '../../../src/domain/weightedScore';
-import type { EstimationItem } from '../../../src/domain/estimationItems';
-import { planOrphanCleanup, planScaleWrite, planScoreWrite } from '../../../src/domain/estimationWritePlan';
+import { computeTotal, stampValue, TotalResult } from '../../../src/domain/weightedScore';
+import { buildEstimationModel, EstimationItem } from '../../../src/domain/estimationItems';
+import type { ScoringModel } from '../../../src/domain/scoringModel';
+import { planOrphanCleanup, planRestamp, planScaleWrite, planScoreWrite } from '../../../src/domain/estimationWritePlan';
 
 /**
  * What a pick WRITES: `estimationWritePlan.ts`'s planners wired through `estimationView.ts`'s gate,
@@ -443,5 +444,108 @@ describe('the view guards its own orphan action', () => {
 		await view.performOrphanCleanup(item);
 
 		expect(vault.writeLog).toHaveLength(0);
+	});
+});
+
+/** The smallest note that can carry a currency: one answered dimension, whatever total and
+ *  stamp the case under test needs beside it. */
+const ONE_ANSWER = { 'strategic-alignment': 5 };
+
+const oneAnswer = (): TotalResult => computeTotal(configured(), new Map(Object.entries(ONE_ANSWER)))!;
+
+/**
+ * The opposite of `makeItem` above: a real item read out of frontmatter, so the currency a
+ * test names is the one `currencyOf` DERIVES from a note a reader could have on disk rather
+ * than a word set by hand — which is what keeps `refuses a hand-written total` a statement
+ * about the guard order `estimationItems.ts` asks the stamp in.
+ */
+function itemFrom(frontmatter: Record<string, unknown>): { model: ScoringModel; item: EstimationItem } {
+	const vault = new FakeVault();
+	vault.addFile('Note.md', { frontmatter });
+	const model = configured();
+	return { model, item: buildEstimationModel(vault.app, vault.entries(), model).items[0] };
+}
+
+describe('planRestamp', () => {
+	// The currency vocabulary had four failure words and one button. `writesNothing`
+	// returns `held === value`, so re-picking the held score restamps nothing, and the only
+	// route out of a stale total was to change a score to something the reader did not mean
+	// and change it back.
+	it('writes the computed total and a fresh stamp for a stale total', () => {
+		const { model, item } = itemFrom({
+			...ONE_ANSWER,
+			// Not the total the answer above produces — that disagreement is what `stale` IS.
+			'business-value': 1,
+			'business-value-model': stampValue(configured(), oneAnswer().coverage),
+		});
+		expect(item.currency).toBe('stale');
+
+		const plan = planRestamp(model, item)!;
+
+		expect(plan.file).toBe(item.file);
+		// The total the ANSWERS produce, not the one on the note — spelled out here rather
+		// than compared against the planner's own helper, which would agree with whatever
+		// arithmetic that helper did. Exactly the pair, and nothing else: a restamp is not a
+		// score change.
+		expect(plan.sets).toEqual([
+			{ key: model.valueKey, value: oneAnswer().total },
+			{ key: model.stampKey, value: stampValue(model, oneAnswer().coverage) },
+		]);
+	});
+
+	it('is offered for a foreign stamp too, since the answers on this note are what it restamps from', () => {
+		const { model, item } = itemFrom({
+			...ONE_ANSWER,
+			'business-value': oneAnswer().total,
+			// A well-formed stamp from a model this is not.
+			'business-value-model': '1/8 deadbeef',
+		});
+		expect(item.currency).toBe('foreign');
+
+		expect(planRestamp(model, item)).not.toBeNull();
+	});
+
+	// Each refusal for its own reason, so the guard cannot be loosened by accident.
+	it('refuses a total that is already current', () => {
+		const { model, item } = itemFrom({
+			...ONE_ANSWER,
+			'business-value': oneAnswer().total,
+			'business-value-model': stampValue(configured(), oneAnswer().coverage),
+		});
+		expect(item.currency).toBe('current');
+
+		expect(planRestamp(model, item)).toBeNull();
+	});
+
+	it('refuses a hand-written total, which is a person’s number and not this action’s to replace', () => {
+		const { model, item } = itemFrom({ ...ONE_ANSWER, 'business-value': 3 });
+		expect(item.currency).toBe('handwritten');
+
+		expect(planRestamp(model, item)).toBeNull();
+	});
+
+	it('refuses an orphan, which has no result to restamp from — that is the cleanup’s job', () => {
+		const { model, item } = itemFrom({
+			'business-value': 3,
+			'business-value-model': stampValue(configured(), { answered: 1, enabled: 8 }),
+		});
+		expect(item.currency).toBe('orphan');
+
+		expect(planRestamp(model, item)).toBeNull();
+	});
+
+	// The one shape `buildEstimationModel` never produces, so only a direct call can ask it:
+	// a currency that offers the action beside no result to restamp FROM. `currencyOf` reads
+	// a stamped total with no inputs as `orphan` and an unstamped one as `handwritten`, so
+	// this is the guard behind the guard rather than a state any note can be in.
+	it('refuses a stale currency carrying no result, which no note can be', () => {
+		expect(planRestamp(configured(), makeItem({ currency: 'stale', result: null }))).toBeNull();
+	});
+
+	it('refuses a note with no stored total at all', () => {
+		const { model, item } = itemFrom(ONE_ANSWER);
+		expect(item.currency).toBe('none');
+
+		expect(planRestamp(model, item)).toBeNull();
 	});
 });
