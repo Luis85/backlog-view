@@ -28,8 +28,8 @@ one file the plugin owns, written whole.
 | --- | --- |
 | **Actor** | Someone who has just shipped |
 | **Trigger** | Choosing to generate the release notes for the open release |
-| **Preconditions** | The membership property and the output folder are configured |
-| **Guarantee** | One note is written whole, derived from the members and from nothing stored. It is never read back by any figure in this view, and no other note is touched. |
+| **Preconditions** | The membership property and the output folder are configured, and the view's configuration holds no problems |
+| **Guarantee** | One note is written whole, through the same `configProblems` gate as every other write path, derived from the members and from nothing stored. It is never read back by any figure in this view, and no other note is touched. |
 
 **Main flow**
 
@@ -54,14 +54,22 @@ one file the plugin owns, written whole.
   a promise the view can keep, where a count of the unseen is not.
 - **2a — a member's type is not in the vocabulary.** It is grouped under an "other" heading
   rather than dropped, because a note that quietly omits work is worse than an untidy heading.
-- **4a — a note of that name already exists in the folder.** It is overwritten whole. That is
-  the point of a generated file, and it is why the file says so at its top.
+- **4a — a note of that name already exists in the folder and its marker names this release.**
+  It is overwritten whole. That is the point of a generated file, and it is why the file says
+  so at its top.
 - **4b — the note that exists is not one this plugin generated** — no generated marker at its
   top. It is not overwritten; the action refuses and names the file, because a whole-file write
   over somebody's prose cannot be undone by the undo slot.
-- **4c — the output folder is unconfigured.** The action is not offered, and it says which
-  option to bind rather than choosing a folder on the user's behalf.
-- **4d — the folder does not exist, or the write fails.** The failure is reported with the path
+- **4c — the note that exists is generated, but its marker names a different release.** Also
+  refused, and for the same reason: Obsidian allows two notes in different folders to share a
+  basename, so two releases can want one output name, and "it carries a marker" would let the
+  second silently destroy the first's notes. **The marker identifies the release it was
+  generated from**, which is what makes a regeneration tell itself from a collision.
+- **4d — the output folder is unconfigured, or the view's configuration holds a problem.** The
+  action is not offered, and it says what to fix rather than choosing a folder on the user's
+  behalf or writing under a configuration the gate refuses. Generation is a write path, so it
+  is gated like every other one — not merely on the two keys it reads.
+- **4e — the folder does not exist, or the write fails.** The failure is reported with the path
   it tried, and nothing partial is left behind.
 - **5a — the note cannot be opened.** It has still been written; opening is a convenience, not
   part of the guarantee.
@@ -74,8 +82,10 @@ one file the plugin owns, written whole.
   nor counts it, and adding a context row to the fixture changes no line of the output.
 - Its first lines say it is generated and that edits do not survive regeneration.
 - Regenerating twice over an unchanged release produces a byte-identical file.
-- A file at that path carrying the generated marker is overwritten; one without it is refused
-  and named.
+- A file at that path whose marker names this release is overwritten; one with no marker, and
+  one whose marker names another release, are both refused and named.
+- With a configuration problem outstanding, the action is not offered and nothing is written,
+  even with both its own keys bound.
 - No figure anywhere in this view is computed from the generated file.
 - With the output folder unconfigured, the action is absent and names the option.
 

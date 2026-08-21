@@ -66,9 +66,11 @@ every write.
   value**, because a list is not a choice and a view that picked from one would write a
   different status depending on how somebody ordered it. A transition value that is not among
   the released values is refused where it is entered.
-- **4a — a member is outside the Base's filter.** It is named in the outstanding list, since
-  the user can see it, and the action offered on it is withheld — the context rule, which is
-  also why this batch never spans the members.
+- **4a — a note the Base excluded names this release.** It is **not** in the outstanding list
+  and not counted in it. The list is derived from the results, and a row outside the filter is
+  never a source of anything so derived — the same answer [[Generating the release notes]]
+  gives, and it has to be the same, because both are reports over one population. An excluded
+  ancestor that surfaces as context stays context here.
 
 ## Acceptance criteria
 
@@ -82,7 +84,10 @@ every write.
 - Releasing with an unsatisfied readiness criterion succeeds, and the criterion is stated
   before the confirmation.
 - Cancelling writes nothing and leaves the undo slot untouched.
-- Undo restores both the previous status and the absence of the actual date.
+- Undo restores the status and the actual date to **the values they held before the batch** —
+  which is the absence of an actual date only where there was none. A release note that
+  already carried an actual date gets that date back, not an empty key.
+- An excluded note naming this release appears nowhere in the outstanding list or its count.
 
 ## Where it lives
 

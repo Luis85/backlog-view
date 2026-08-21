@@ -55,9 +55,12 @@ a root by nature, holding nothing.
 - **3b — the value where a configured key points cannot be read as what the key promises** — a
   target date that is not a date, a version that is an empty string. It is reported as
   unreadable, which is a different answer from absent, because somebody wrote something there.
-- **4a — a release note is outside the Base's filter.** It renders as context wherever it is
-  named, and it is never written to and never counted, the register's context rule applied to
-  a release.
+- **4a — a release note is outside the Base's filter.** It is not in the model at all, and it
+  **never arrives as a context row either**: a release parents nothing, and only an ancestor of
+  a result is drawn as context. A member's link still spells a name, so a name is all any view
+  can show of it — no date, no status, no capacity, and nothing derived from those. That is the
+  same stated limit [[Creating an iteration from the board]] takes for the same reason, and it
+  is a limit rather than a bug: the thing to change is what the base shows.
 
 ## Acceptance criteria
 
@@ -69,6 +72,8 @@ a root by nature, holding nothing.
 - An unconfigured version, target-date or status key reports as unconfigured, and a bound key
   over an unreadable value reports as unreadable — two distinct answers, and neither is blank.
 - Building a model containing releases plans no write.
+- A release note the Base excludes is absent from the model and appears as no row anywhere,
+  context row included.
 
 ## Where it lives
 

@@ -55,15 +55,19 @@ Nothing yet. It is the view's entry point, so it is also where a release gets pi
   read as the epoch, and the order among them is its `order`.
 - **3b — two releases share a target date and an `order`.** The tie is broken by a stable
   second key, so the rows do not reorder between renders.
-- **4a — the picked release is outside the Base's filter.** Its row draws as context and cannot
-  be opened; it is never a write target.
+- **4a — a release is outside the Base's filter.** It has no row. Every column here is read
+  from the release note itself, and an excluded release is not in the model and never arrives
+  as a context row ([[Releases as their own type]]) — so there is nothing to draw a row from
+  and no way to open it. The list's population is the results, stated once at the top of the
+  list rather than implied.
 - **5a — the remembered release is gone at the next open** — renamed, deleted, or filtered out.
   The list is shown instead, and no error is raised. A working position that no longer exists
   is not a failure.
 
 ## Acceptance criteria
 
-- Every release in the results has exactly one row, including a release nothing points at.
+- Every release in the results has exactly one row, including a release nothing points at, and
+  a release the Base excludes has none.
 - A row's progress and commitment equal the figures the single-release screen shows for that
   release, from the same fixture.
 - Rows order by target date, then `order`, put an undated release last, and do not reorder
