@@ -128,12 +128,12 @@ export function renderColumnResize(
 
 	if (refocusIndex === index) grip.focus();
 	wireResizeGrip(grip, {
-		widthAt: (deltaX) => clampColumnWidth(current + widen * deltaX),
+		sizeAt: (deltaX) => clampColumnWidth(current + widen * deltaX),
 		// Also what the gesture will not commit back: `wireResizeGrip` refuses a width
 		// equal to this one, which is what makes ArrowRight at the ceiling, ArrowLeft at
 		// the floor and a drag that ends where it began all cost nothing — no write, no
 		// render, and no undoing of a focus the reader still has.
-		startWidth: current,
+		startSize: current,
 		live,
 		commit,
 		reset: () => commit(DEFAULT_PROP_COLUMN_WIDTH),

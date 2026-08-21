@@ -368,6 +368,7 @@ export const en = {
 	'shelf.removeIteration': 'Work in no iteration — dropping a card here takes it out of this iteration',
 	'shelf.sort': 'Sort the shelf',
 	'shelf.filterByType': 'Filter the shelf by type',
+	'shelf.layout': 'Shelf layout',
 	/** One key for the context strip's name, drawn as its heading AND as its group label. */
 	'shelf.context': 'Context',
 	'shelf.contextTooltip': "Not in this base's filter — shown for the hierarchy, never counted",
@@ -739,6 +740,9 @@ export const en = {
 	 */
 	'menu.sortUnplaced': 'Sort unplaced',
 	'menu.filterUnplacedByType': 'Filter unplaced by type',
+	'menu.shelfLayout': 'Shelf layout',
+	'menu.shelfLayoutCards': 'Cards',
+	'menu.shelfLayoutList': 'List',
 	'menu.shelfSortTree': 'Sibling order',
 	'menu.shelfSortTitle': 'Title (A to Z)',
 	'menu.shelfSortModified': 'Last modified',
@@ -909,6 +913,7 @@ export const en = {
 	 */
 	'resize.column': 'Resize the {label} column',
 	'resize.leadColumn': 'Resize the title column',
+	'resize.shelf': 'Resize the shelf',
 	'resize.gripTooltip': 'Drag to resize, or double click to reset. Focus it for the arrow keys and Home',
 
 	/**

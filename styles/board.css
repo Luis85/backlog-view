@@ -51,7 +51,11 @@
    so it takes its content up to the cap and no further. */
 .pbl-board-mode .pbl-shelf {
 	flex: 0 0 auto;
-	max-height: 30%;
+	/* The reader's own pick, or 30% until the grip at the band's foot has been dragged —
+	   `src/view/interactions/shelfResize.ts` and the note beside `roadmap.css`'s own copy of
+	   this line, which states what a picked height costs. One stored height serves both
+	   bands: it is the same component and only ever one of them is on screen. */
+	max-height: var(--pbl-shelf-h, 30%);
 	overflow-y: auto;
 	margin-block-end: var(--size-4-3);
 }

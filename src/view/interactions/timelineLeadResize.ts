@@ -88,7 +88,7 @@ export function renderLeadResize(
 	// per repeat event. `defaultWidth` back to `null` is `density`'s own rule: the
 	// default needs no stored entry, so dragging back to it clears the pick rather than
 	// writing the number that means the same thing. A width equal to the one on screen
-	// never reaches here at all — `wireResizeGrip` refuses it against `startWidth` below.
+	// never reaches here at all — `wireResizeGrip` refuses it against `startSize` below.
 	const commit = (width: number): void => {
 		// Asked BEFORE the write below, which destroys this element and with it the
 		// answer: focus is restored only to a grip that actually held it. A pointer
@@ -116,11 +116,11 @@ export function renderLeadResize(
 		// width this render drew — never `host.leadWidth` directly: on a pane too narrow for
 		// the stored pick those two disagree, and starting from the stored one would jump
 		// the column the instant the pointer moved a single pixel.
-		widthAt: (deltaX) => effectiveLeadWidth(current + deltaX, available),
+		sizeAt: (deltaX) => effectiveLeadWidth(current + deltaX, available),
 		// Also the width the gesture will not commit back — at a pane boundary a drag or an
 		// arrow key clamps straight onto it, and writing that clamp back over a wider stored
 		// pick loses a choice made in a wider pane for good.
-		startWidth: current,
+		startSize: current,
 		live,
 		commit,
 		reset: () => commit(defaultWidth),

@@ -158,9 +158,26 @@
    axis and 139 against 288 on the dated one — half the empty state cut off, severed
    mid-sentence, with the ✨ `runInit` CTA and the manual link both below the fold of a box
    most readers would not know scrolls. */
-.pbl-roadmap .pbl-shelf,
 .pbl-roadmap .pbl-roadmap-context {
 	max-height: 30%;
+}
+
+/* The shelf's own half of that maximum, split off the strip's since 2026-08-21 because a
+   reader may now say what it is: `--pbl-shelf-h` is set on the band by
+   `src/view/interactions/shelfResize.ts` once its grip has been dragged, and the 30% here
+   is the fallback the `var()` falls through to until then — the store's "a default is
+   written as nothing at all" rule reaching all the way into the stylesheet, so the two
+   cannot name different defaults.
+   A PICKED height is honoured whatever the pane, and is not narrowed to a share of it.
+   That is deliberate and it has a cost worth stating: at the storable ceiling in a short
+   pane the buckets or the timeline are squeezed to their own floor and the frame scrolls,
+   which is the band rule's stated fallback rather than a new failure — but it IS a reader
+   able to push the axis off screen, which 30% alone could not do. What bounds it is
+   `MAX_SHELF_HEIGHT_PX`, and nothing here re-measures the pane: a pick made in a tall split
+   comes back in full rather than being written down to the narrow one, `leadWidth`'s own
+   guarantee bought without its `ResizeObserver` branch. */
+.pbl-roadmap .pbl-shelf {
+	max-height: var(--pbl-shelf-h, 30%);
 }
 
 /* ----- the horizon axis: buckets, styled as the board's columns are */
