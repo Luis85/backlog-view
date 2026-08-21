@@ -109,23 +109,46 @@ language, so nothing re-reads it. What must never enter the catalog is anything 
 writes, matches or persists — type names, state values, option keys, tags, file names. The
 test when it is not obvious: **ask what breaks if two people with different Obsidian
 languages open the same vault.** "One sees different words" is text; "one writes notes the
-other's view cannot read" is data. 299 keys are in it (counted 2026-08-21); `ui/`,
-`commands/`, `view/interactions/`, `view/estimation/`, `view/render/emptyStates.ts` and the
-toolbar's own five files are swept, so the REST
-of `view/render/`, `view/manual/`, `domain/` and `main.ts` are what is left — the last of those being two command NAMES, which is easy
-to read past because the directories beside it are done. The sweep across those call sites is `docs/requirements/Every surface translated.md`,
-and an English literal beside a `t()` call there is work not yet done rather than a rule
-being broken. In a SWEPT directory it is neither: `UI_TEXT_LITERAL` in `eslint.config.mjs`
-refuses one at the spellings it can see, and a directory joins that ban only after its own
-sweep — and it sees a quoted or backticked sentence at the setter names, at `new Notice`
-and at a BARE `setTooltip(el, …)`, which is the spelling every render module uses and the
-method form alone read as nothing. What it never sees is a sentence built in a helper and
-returned, which is why the runtime half beside it exists.
-`UI_TEXT_PROPERTY` is the second such ban, for the ten option-bag properties
-(`text`/`label`/`title`/`heading`/`description`/`placeholder`/`cta`/`ctaLabel`/`fieldName`,
-and `'aria-label'`) a module that spells no setter at all reaches the DOM through; between
-them they still miss a prose literal handed to a helper as an ARGUMENT — `guidanceShell`,
-and the toolbar's `iconButton` — which is the runtime half's alone to hold.
+other's view cannot read" is data. 433 keys are in it (counted 2026-08-21 — a tab-aware
+grep and `Object.keys` at runtime, which agree). `ui/`, `commands/`, `view/interactions/`,
+`view/estimation/`, the whole of `view/render/`, `view/writeGate.ts`, `view/cardMoves.ts`
+and `main.ts` are swept, which leaves **`view/manual/` and `domain/`** and nothing else.
+Neither is a leftover: the manual is 334 literals of authored long-form PROSE, and whether
+several hundred multi-sentence paragraphs belong in a message catalog at all is an open
+question rather than work not yet done; `domain/viewOptions.ts` is
+`docs/requirements/View options and config warnings.md`, and `domain/backlogReadme.ts` is
+written INTO the vault, so it is a data question before a text one. The sweep across those
+call sites is `docs/requirements/Every surface translated.md`, and an English literal beside
+a `t()` call in an UNSWEPT directory is work not yet done rather than a rule being broken.
+
+In a SWEPT directory it is neither, and the bans hold it — but read what each one CANNOT
+see before trusting it, because every gap has cost this epic a miss. `UI_TEXT_LITERAL` sees
+a capitalised sentence at seven setter names, at `new Notice` and at a BARE
+`setTooltip(el, …)` — the spelling every render module uses, and the one the method form
+alone read as nothing. `UI_TEXT_PROPERTY` is the second ban, for the eleven option-bag
+properties (`text`/`label`/`title`/`heading`/`description`/`placeholder`/`cta`/`ctaLabel`/
+`fieldName`/`name`, and `'aria-label'`) a module that spells no setter reaches the DOM
+through — `name` is the widest of them and the only one routinely DATA elsewhere (a
+resource, a lane, a file), so it costs exactly one exemption across the whole swept tree
+(`registerBacklogView.ts`'s own call, disabled at the line) rather than joining the ban
+everywhere: a second `registerBasesView` call is not a second exemption, because only one
+view is the plugin's own identity — `view/estimation/register.ts`'s `name` is ordinary UI
+text and goes through the catalog like any other. Both bans read through a
+`ConditionalExpression` as of 2026-08-21, and `TEXT_TERNARY` beside them refuses a sentence
+picked between two literals — including the MIXED shape, one literal and one template,
+which sat in the blind spot of all three at once and shipped six untranslated sentences in
+a directory the register called swept.
+
+Two shapes are outside every rule and always will be: **a template whose first quasi is
+empty** (`` `${done} of ${total} items done` `` — no capital at the position the ban reads,
+and invisible to a prose-literal AST walk too, since every quasi in it is blank or
+lowercase), and **a sentence handed to a helper as a positional ARGUMENT or returned from
+one** — `guidanceShell`, the toolbar's `iconButton`, and every validator that returns its
+own refusal. Both have shipped. That is why the runtime halves in `test/i18n/` are
+load-bearing rather than belt-and-braces, and why the one that scales is the one that asks
+the CATEGORY: `test/i18n/projections.test.ts` marks the WHOLE catalog, drives every
+projection and asserts that what renders UNMARKED is data. A per-slice list of keys checks
+the ones somebody remembered; that check found the rollup tooltip no rule and no grep could.
 
 **`domain/`** is the backlog itself — what the tree *is*, what a change *would* mean, what
 each projection derives — and it reads the vault without ever writing it or touching the

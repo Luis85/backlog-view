@@ -6,6 +6,7 @@ import { TFile } from 'obsidian';
 import { BacklogViewHost } from '../host';
 import { BoardModel, columnLabelFor } from '../../domain/board';
 import { BacklogItem } from '../../domain/model';
+import { t } from '../../i18n/t';
 import {
 	HorizonSource,
 	placementLabel,
@@ -67,8 +68,10 @@ function at(location: DragLocationHistory): PointerAt {
  * taken, the shelf rather than a horizon nothing shows. No projection on screen, no
  * announcement: there is no vocabulary to say it in.
  */
-export function announceMove(title: string, from: string, to: string, also = ''): void {
-	announce(`Moved "${title}" from ${from} to ${to}${also}`);
+export function announceMove(title: string, from: string, to: string, landing?: string): void {
+	// Two whole sentences picked between, never one with a clause appended: the comma
+	// before the landing is punctuation, and punctuation is the catalog's.
+	announce(landing ? t('move.announcedLanding', { title, from, to, landing }) : t('move.announced', { title, from, to }));
 }
 
 export function announceBoardMove(
@@ -123,8 +126,8 @@ export function announceResourceMove(
 	landed?: { change: DateChange; placement: Placement | null; ends: PlacementEnd[] },
 ): void {
 	if (!roadmap) return;
-	const also = landed ? `, ${destinationWords(landed.change.after, landed.placement, landed.ends)}` : '';
-	announceMove(title, resourcePlacementLabel(roadmap, from), resourceTargetLabel(roadmap, to), also);
+	const landing = landed ? destinationWords(landed.change.after, landed.placement, landed.ends) : undefined;
+	announceMove(title, resourcePlacementLabel(roadmap, from), resourceTargetLabel(roadmap, to), landing);
 }
 
 /**
@@ -665,8 +668,8 @@ function statedSpanWords(stated: StatedEnds, ends: PlacementEnd[]): string {
  * is unreadable, so a caller can fall through to what the value or the placement says.
  */
 function unreadableEndWords(stated: StatedEnds): string | null {
-	if (stated.start.invalid) return 'an unreadable start date';
-	if (stated.target.invalid) return 'an unreadable target date';
+	if (stated.start.invalid) return t('lane.unreadableStart');
+	if (stated.target.invalid) return t('lane.unreadableTarget');
 	return null;
 }
 

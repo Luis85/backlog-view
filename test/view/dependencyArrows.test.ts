@@ -163,7 +163,7 @@ describe("the row's accessible name states what it waits for", () => {
 		const { containerEl } = roadmapView(vault, { ...DATES });
 
 		const row = rowFor(containerEl, 'Waiter')!;
-		expect(waitsFor(row)).toBe('Waits for Clear, Late (conflict)');
+		expect(waitsFor(row)).toBe('Waits for Clear and Late (conflict)');
 		expect(row.hasClass('pbl-row-conflict')).toBe(true);
 	});
 
@@ -185,7 +185,7 @@ describe("the row's accessible name states what it waits for", () => {
 		// A title is a basename. "Waits for A (conflict), A" names the sentence and not
 		// the note, so the row cannot say which of the two contradicts its dates — the
 		// pickers answer the same ambiguity with the path, and so does this.
-		expect(waitsFor(rowFor(containerEl, 'Waiter')!)).toBe('Waits for Work/A.md, Play/A.md (conflict)');
+		expect(waitsFor(rowFor(containerEl, 'Waiter')!)).toBe('Waits for Work/A.md and Play/A.md (conflict)');
 	});
 
 	it('still states the dependency when the prerequisite has no bar at all (1a) — no arrow, no comparison, just the name', () => {
@@ -369,7 +369,7 @@ describe('the shelf card states what it waits for even with no conflict at all',
 		const { containerEl } = roadmapView(vault, { ...DATES });
 
 		expect(shelfCardFor(containerEl, 'B')?.querySelector('.pbl-shelf-conflict')).not.toBeNull();
-		expect(shelfWaitsFor(containerEl, 'B')).toBe('Waits for Clear, Late (conflict)');
+		expect(shelfWaitsFor(containerEl, 'B')).toBe('Waits for Clear and Late (conflict)');
 	});
 });
 
@@ -433,7 +433,7 @@ describe('a broken dependency (1d) is stated on the row, dated or shelved', () =
 		});
 		const { containerEl } = roadmapView(vault, { ...DATES });
 
-		expect(waitsFor(rowFor(containerEl, 'Waiter')!)).toBe('Waits for Clear, Late (conflict), Ghost (broken)');
+		expect(waitsFor(rowFor(containerEl, 'Waiter')!)).toBe('Waits for Clear, Late (conflict), and Ghost (broken)');
 	});
 });
 

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { settingsWith } from '../helpers/settings';
 import { BacklogItem, buildModel } from '../../src/domain/model';
-import { computeIterationWrites } from '../../src/domain/writePlan';
+import { computeIterationJoinWrites, computeIterationWrites } from '../../src/domain/writePlan';
 import { readDate } from '../../src/domain/noteFields';
 import { reversedSpan } from '../../src/domain/timeline';
 import { FakeVault } from '../helpers/vault';
@@ -27,10 +27,41 @@ function fixture(iteration?: string) {
 	});
 	const model = buildModel(vault.app, vault.entries(), settings);
 	return {
+		model,
 		pbi: model.byPath.get('PBI-1.md')!,
 		sprint12: model.byPath.get('Sprint 12.md')!,
 	};
 }
+
+/**
+ * `computeIterationJoinWrites` — the same write, asked for by SCOPE rather than by note,
+ * which is what a pull from the iteration board's shelf plans. Its four refusals are here
+ * rather than at the caller precisely because a view could drive none of them honestly:
+ * on the board that plans a pull there is always a model and always a scope.
+ */
+describe('computeIterationJoinWrites — joining by scope', () => {
+	it('plans the join for the note the scope names', () => {
+		const { model, pbi, sprint12 } = fixture();
+		expect(computeIterationJoinWrites(pbi, model, 'Sprint 12.md', settings)).toEqual([
+			{ file: pbi.file, iteration: sprint12.file },
+		]);
+	});
+
+	it('plans nothing when the item is already in that iteration', () => {
+		// By PATH, so a link spelled another way is the same iteration and still no join.
+		const { model, pbi } = fixture('[[Sprint 12|this sprint]]');
+		expect(computeIterationJoinWrites(pbi, model, 'Sprint 12.md', settings)).toEqual([]);
+	});
+
+	it('plans nothing off an iteration scope, with no model, or for a scope nothing holds', () => {
+		// The product and Deliverables boards pass a null scope; a view before its first
+		// data update has no model; a stored scope can name a note the model does not hold.
+		const { model, pbi } = fixture();
+		expect(computeIterationJoinWrites(pbi, model, null, settings)).toEqual([]);
+		expect(computeIterationJoinWrites(pbi, null, 'Sprint 12.md', settings)).toEqual([]);
+		expect(computeIterationJoinWrites(pbi, model, 'Gone.md', settings)).toEqual([]);
+	});
+});
 
 describe('computeIterationWrites — the link', () => {
 	it('plans the link when the item is not already in that iteration', () => {

@@ -459,12 +459,19 @@ free of runtime code so imports stay cycle-free.
   `syncShelfTabStops` as the one exception, for which see the roadmap section below.
 - **A resize grip is a real tab stop wherever it appears, and it is chrome rather
   than content**: the dated axis's lead-resize grip (`renderLeadResize` in
-  `interactions/timelineLeadResize.ts`) and one per property column in the tree's header
-  (`renderColumnResize` in `interactions/columnResize.ts`), both a `role="separator"` with
-  `tabindex="0"`, and both driving the same gesture — pointer AND keyboard
+  `interactions/timelineLeadResize.ts`), one per property column in the tree's header
+  (`renderColumnResize` in `interactions/columnResize.ts`), and the open shelf's own foot
+  (`renderShelfResize` in `interactions/shelfResize.ts`), all a `role="separator"` with
+  `tabindex="0"`, and all driving the same gesture — pointer AND keyboard
   (`wireResizeGrip` in `interactions/resizeDrag.ts`) — over their own idea of what a
   movement means: the lead clamps against the pane, a property column against the storable
-  bounds and mirrored in a right-to-left layout. The keys go through that same `widthAt`
+  bounds and mirrored in a right-to-left layout, the shelf against its storable height.
+  **The AXIS is `wireResizeGrip`'s only concession to the third one** (`vertical`): it picks
+  which client coordinate carries the delta and which arrow pair the grip claims, and
+  nothing else — the sign, the bounds and the meaning of "more" stay the caller's `sizeAt`,
+  which is what the width-named options were renamed to when a height started flowing
+  through them. A grip claiming BOTH arrow pairs would swallow the movement the pane beneath
+  it uses for its own selection, which is why the pair is picked rather than unioned. The keys go through that same `widthAt`
   rather than repeating the arithmetic, so a caller's clamp or sign cannot be applied to
   one input and forgotten on the other; a double click resets, because `pointerdown`
   prevents default and so a mouse can never focus the strip to press Home. **The property
@@ -495,11 +502,11 @@ free of runtime code so imports stay cycle-free.
   return on any event whose target is not the pane itself
   (`evt.target !== evt.currentTarget`), so the grip's arrow keys stay the grip's. The per-row answer does not fit it either: a continuous "hold the
   arrow key" resize has no menu to be the keyboard path.
-  The **ARIA cost is real and unresolved, and it is now paid three times.** While cards
+  The **ARIA cost is real and unresolved, and it is now paid four times.** While cards
   render the pane is a `listbox` (`render/projections.ts`), so the lead grip is a focusable
-  non-`option` inside it — as is the shelf's disclosure, which is not a grip at all and
-  earns its stop the same way (see the roadmap section below); the tree is a `tree`, so a
-  column grip is a focusable non-`treeitem` inside that. None is what the composite
+  non-`option` inside it — as are the shelf's disclosure, which is not a grip at all and
+  earns its stop the same way (see the roadmap section below), and the shelf's own foot
+  grip; the tree is a `tree`, so a column grip is a focusable non-`treeitem` inside that. None is what the composite
   pattern sanctions. It is a
   known, accepted deviation rather than a clean case: the alternatives were a
   pointer-only grip, which this plugin cannot ship because it is not desktop-only, or no
@@ -742,6 +749,29 @@ free of runtime code so imports stay cycle-free.
   rather than a condition copied into each. Ask it of any second surface — not just "does
   it say the same thing", but "is it offered exactly when the first one is", and then put
   the answer somewhere both read.
+- **The iteration board draws the roadmap's shelf**, above its columns, over a population
+  that is a LINK rather than an axis (`iterationCandidates` — the work in NO iteration,
+  unfinished, never a marker, a catalog member or a context row). One component, three
+  inputs the caller supplies: which axis is drawing (**null** on a board, which states
+  nothing about dependencies), what the header calls it, and whether the header carries
+  the sort/type/search picks — it does not here, because their keyboard path is the card
+  menu's shelf section and that section is the roadmap's alone. **`picks` therefore also
+  decides the NARROWING**: a shelf without those controls applies neither the search nor
+  the hidden types, since a narrowing whose control is not on screen can be neither seen
+  nor cleared (the sort is not in that rule — it hides nothing, and neither does the card /
+  list LAYOUT, which this band therefore draws in whatever the reader picked on the roadmap;
+  the register claimed the opposite for one commit and the code was right — Codex, PR #183).
+  Its HEIGHT is the same value the roadmap's band takes, which is the same argument once
+  more: one component, one band on screen at a time. Its own fold is a COLUMN
+  fold (`ColumnScope` `'backlog'`), not a view-state value: a shelf is a foldable band
+  exactly as a column is, and the column machinery already gives it a default, a store and
+  a rename migration. A pull is `performIterationBoardMove` carrying the join, so a card
+  arriving from the shelf joins the iteration and lands in the bucket as ONE write on one
+  note; the shelf's own drop is `performIterationRemove`. What is NOT covered is the
+  keyboard: the board's walk is `columns[col].cards[card]` and a shelf card is in no
+  column, so the shelf is a pointer gesture and `Set iteration` on the item is the
+  keyboard's path to the same writes — see
+  [[The iteration shelf is out of the keyboard's walk]].
 - The whole column is the drop target and the highlight is the only drop signal —
   within-column order is derived from the Base's sort, so there is no between-cards
   edge, no hitbox package, and deliberately no Alt+Up/Down rank shortcut.
@@ -920,11 +950,25 @@ free of runtime code so imports stay cycle-free.
   keeps it so a drop has somewhere to land, and the stylesheet keeps it out of the layout
   until a drag is live. A target that exists only while it is occupied is one nothing can
   ever reach. Whether it actually appears under a dragged card is a vault check.
-- The shelf's own header carries its controls — a disclosure, a sort pick, a type
-  filter and a title SEARCH — and the two PICKERS follow the per-row control rule exactly:
-  `tabindex="-1"`
+- The shelf's own header carries its controls — a disclosure, a LAYOUT pick, a sort pick, a
+  type filter and a title SEARCH — and the three PICKERS follow the per-row control rule
+  exactly: `tabindex="-1"`
   buttons opening a `Menu`, never form controls, with the card menu's shelf section as
-  the keyboard path (`addShelfSection`). One builder feeds both surfaces — all of them in
+  the keyboard path (`addShelfSection`). The layout pick is cards or one compact row per
+  item, and it is the one of the three that narrows NOTHING — the sort orders, the filter
+  and the search hide, and this one only says how much room each card takes, so the band's
+  count stays the true total in both. It is nearly all stylesheet: `renderShelf` puts a class on the
+  band and `styles/shelf.css` lays the card's own children out in a row, which is what keeps
+  an item from looking different per layout in any way but the two that are drawn
+  deliberately. The first is the state chip a compact row carries and a card does not
+  (`renderShelfState`), because a card's own position says its state and a shelved card has
+  no position to say it. The second is a WRAPPER rather than content — `.pbl-card-summary`,
+  the box the line is, which exists so `.pbl-card-kids` can be the card's second child and
+  fall beneath the line instead of sitting at its end. **That one cannot be done in CSS
+  alone**, and the measurement is the reason to believe it: `flex-wrap` on the card puts the
+  child list where it belongs and takes a row carrying a few property cells from 28px to
+  59px, because the cells wrap on the same rule. `renderCardBody`'s `kidsEl` is what the
+  wrapper costs, and the shelf's row is its only caller. One builder feeds both surfaces — all of them in
   `interactions/shelfMenu.ts`, which is where a shelf pick's menu items live now, the
   section that assembles them staying in `interactions/menu.ts` with the submenus.
   **The SEARCH is the one form control the header may hold**, because a menu cannot be
@@ -958,9 +1002,10 @@ free of runtime code so imports stay cycle-free.
   **The DISCLOSURE is out of that rule and is a permanent tab stop** (2026-08-15), on the
   same terms the resize grips above are — chrome fixed to the frame, never among the
   cards, unable to compete with a roving selection the pane only hears about through
-  itself. It is the THIRD control to earn one and the first that is not a grip, so the
-  accepted ARIA deviation stated up there is paid a third time: a focusable
-  non-`option` inside the roadmap's `listbox`. What earned it is that the card menu
+  itself. It was the THIRD control to earn one and the first that is not a grip, so the
+  accepted ARIA deviation stated up there is paid a third time here and a fourth at the
+  band's own foot grip: a focusable non-`option` inside the roadmap's `listbox`, twice on
+  one band. What earned it is that the card menu
   stopped carrying the collapse toggle, and a collapsed shelf draws no card to menu from,
   so `-1` would have been a shelf no keyboard could reopen. It is therefore its own way
   back too: `refocus` gives it its replacement in BOTH pane shapes, where the pickers

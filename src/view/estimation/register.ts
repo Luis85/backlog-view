@@ -2,6 +2,7 @@ import { Plugin } from 'obsidian';
 import { getEstimationViewOptions } from '../../domain/estimationOptions';
 import { ESTIMATION_VIEW_TYPE, EstimationView } from './estimationView';
 import { WriteLock } from '../writeLock';
+import { t } from '../../i18n/t';
 
 /**
  * The estimation view's own registration — one file per view, so a second capability adds
@@ -13,7 +14,10 @@ import { WriteLock } from '../writeLock';
  */
 export function registerEstimationView(plugin: Plugin, lock: WriteLock): void {
 	plugin.registerBasesView(ESTIMATION_VIEW_TYPE, {
-		name: 'Estimation',
+		// Not the plugin's identity like `registerBacklogView.ts`'s `name` — an ordinary
+		// view-type label, so it is translated rather than exempted (see the key's own
+		// comment in en.ts for why only one `name:` here gets the eslint-disable).
+		name: t('estimation.viewName'),
 		icon: 'lucide-calculator',
 		factory: (controller, containerEl) => new EstimationView(controller, containerEl, lock),
 		options: getEstimationViewOptions,

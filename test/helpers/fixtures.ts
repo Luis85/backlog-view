@@ -243,6 +243,13 @@ export function demoVault(layout: Layout = 'flat', extra = 0): FakeVault {
 	add('Billing', { type: 'Epic', order: 20, status: 'New', horizon: 'Later', start: '2026-10-01', due: '2027-01-31', dependsOn: '[[Sign-up flow]]' });
 	add('Invoicing', { type: 'Feature', order: 10, status: 'New', horizon: 'Later' }, 'Billing');
 	add('Monthly statement', { type: 'PBI', order: 10, status: 'New' }, 'Invoicing');
+	// The one shelved PARENT, and the only reason it exists is that until 2026-08-21 there
+	// was none: every one of the shelf's nineteen cards was a leaf, so the disclosure a card
+	// draws over its children could not be seen on that band at all. What that hid is in
+	// [[Cards or a list on the shelf]] 3b — a compact row laid out as a flex row put the
+	// disclosure and its expanded list at the END of the line rather than beneath it, which
+	// three rounds of screenshots could not show because nothing here drew one.
+	add('Reconcile the ledger', { type: 'Task', order: 10, status: 'New' }, 'Monthly statement');
 	// SHELVED with a stated, readable start (its target precedes it), and its prerequisite
 	// runs past that start — `Arrows between bars` 2b: a conflict stated on the shelf card
 	// with no arrow drawn, since a shelved dependent has no bar to carry one.

@@ -155,6 +155,21 @@ export const MAX_TIMELINE_LEAD_PX = 480;
 export const DEFAULT_PROP_COLUMN_WIDTH = 132;
 export const MIN_PROP_COLUMN_WIDTH = 80;
 export const MAX_PROP_COLUMN_WIDTH = 280;
+/**
+ * Bounds on the `shelfHeight` field, in pixels — the CAP an open shelf grows to before it
+ * scrolls, dragged by the grip at its own foot. Below the minimum the band would be its
+ * header and a sliver of the first card, which is what a collapse already says better;
+ * above the maximum a fat-fingered drag would leave the columns or the axis the shelf
+ * feeds with nothing but their own floor.
+ *
+ * A ceiling in PIXELS cannot bound the band on its own, and deliberately does not try to:
+ * the pane is what a stored 720 has to answer to on a phone, and `styles/shelf.css` holds
+ * this pick under a share of the pane with a CSS `min()` rather than a measurement here.
+ * The stored number is untouched by that, exactly as `leadWidth`'s is — the clamp is what
+ * is DRAWN, and the pick returns in full the moment there is room for it.
+ */
+export const MIN_SHELF_HEIGHT_PX = 72;
+export const MAX_SHELF_HEIGHT_PX = 720;
 
 /** Everything the reader has folded shut — rows by path, and bands and columns by name. */
 export interface ViewFolds {
@@ -203,6 +218,25 @@ export interface ViewPrefs {
 	bucketList?: boolean;
 	shelfExpanded?: boolean;
 	shelfSort?: string;
+	/**
+	 * Whether the shelf draws one compact row per item instead of its card grid. The OFF
+	 * state for the cards, `bucketList`'s own rule above and for its reason: the grid is
+	 * the default and a default is written as nothing at all. `ShelfLayout` in
+	 * `domain/shelf.ts` is the vocabulary above this; the inversion between the two is
+	 * spelled once, in `view/viewState.ts`.
+	 */
+	shelfList?: boolean;
+	/**
+	 * The cap an open shelf grows to before it scrolls, in pixels, or absent for the share
+	 * of the pane the stylesheet gives it until someone drags the grip. A NUMBER like
+	 * `leadWidth` rather than an enum, and read back through the same {@link inRange}.
+	 *
+	 * ONE height for the shelf, not one per projection: the roadmap's shelf and the
+	 * iteration board's are the same band drawn by the same component, only ever one of
+	 * them is on screen, and a reader who sizes the band on one projection is stating how
+	 * much of the pane they want it to take — not something about horizons.
+	 */
+	shelfHeight?: number;
 	shelfHiddenTypes?: string[];
 	/**
 	 * The tree's resized property columns, in pixels, keyed by the Bases property id the
@@ -357,6 +391,8 @@ export const PREF_READERS: { [K in keyof ViewPrefs]-?: Reader<NonNullable<ViewPr
 	bucketList: onlyTrue,
 	shelfExpanded: onlyTrue,
 	shelfSort: oneOf(SHELF_SORT_VALUES),
+	shelfList: onlyTrue,
+	shelfHeight: inRange(MIN_SHELF_HEIGHT_PX, MAX_SHELF_HEIGHT_PX),
 	shelfHiddenTypes: nonEmptyTexts,
 	colWidths: eachInRange(MIN_PROP_COLUMN_WIDTH, MAX_PROP_COLUMN_WIDTH),
 	// Any name, like `focus`: a path is checked by RESOLVING it against the vault, which

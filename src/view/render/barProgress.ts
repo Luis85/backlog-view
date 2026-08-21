@@ -89,7 +89,7 @@ export function renderBarProgress(
  */
 function progressNote(report: RollupReport | null): string {
 	if (!report || !report.label) return '';
-	return report.tooltip || `${report.label} items`;
+	return report.tooltip;
 }
 
 /**

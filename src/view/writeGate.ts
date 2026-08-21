@@ -141,7 +141,7 @@ export class WriteGate<W extends { file: TFile }> {
 		// would apply the rest and leave the hierarchy half-updated.
 		if (writes.some((w) => this.host.outsideFilter(w.file.path))) {
 			console.error('Product Backlog: refused a batch writing to a note outside the filter', writes);
-			new Notice('That change would edit a note outside this base’s filter, so nothing was written.');
+			new Notice(t('gate.outsideFilter'));
 			return null;
 		}
 		return this.runExclusively(writes.length, (onProgress, onInverse) => this.apply(writes, onProgress, onInverse));
@@ -161,7 +161,7 @@ export class WriteGate<W extends { file: TFile }> {
 	async undoLast(): Promise<boolean> {
 		const restores = this.lock.lastUndo;
 		if (!restores || restores.length === 0) {
-			new Notice('Nothing to undo.');
+			new Notice(t('gate.nothingToUndo'));
 			return false;
 		}
 		// No context-row check here, deliberately: authorization came at capture time.
@@ -209,12 +209,12 @@ export class WriteGate<W extends { file: TFile }> {
 			const problems = this.host.writeProblems();
 			if (problems.length > 0) {
 				// Writing with e.g. parent and order on the same key would corrupt notes.
-				new Notice(`Fix the view options first: ${problems[0]}`);
+				new Notice(t('config.fixFirst', { problem: problems[0] }));
 				return null;
 			}
 		}
 		if (this.lock.applying) {
-			new Notice('Still applying the previous change — try again in a moment.');
+			new Notice(t('gate.stillApplying'));
 			return null;
 		}
 		this.lock.applying = true;
@@ -242,6 +242,9 @@ export class WriteGate<W extends { file: TFile }> {
 			return result;
 		} catch (e) {
 			console.error('Product Backlog: failed to update items', e);
+			// Not `gate.updateFailed` — this gate is shared by every view's batch now
+			// (ADR 0030), and that message names "backlog items" specifically. See the
+			// key's own comment in en.ts.
 			new Notice(t('writeGate.applyFailed'));
 			return null;
 		} finally {

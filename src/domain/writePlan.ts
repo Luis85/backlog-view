@@ -440,6 +440,32 @@ export function computeIterationWrites(item: BacklogItem, target: BacklogItem | 
 }
 
 /**
+ * The join a PULL plans: the same link-and-timeframe write above, for the note a board
+ * scope names — and nothing at all where there is nothing to join.
+ *
+ * It exists so the caller holds no `byPath` lookup of its own. A view resolving the scope
+ * before planning would carry two "cannot happen" arms (no model, no scope) that nothing
+ * on screen can reach and no test can drive honestly; here both are arguments, and the
+ * three refusals are one function a domain test drives in every direction.
+ *
+ * Nothing to join, in order: the board is on no iteration scope (`scope === null`, the
+ * product and Deliverables boards), no model has been built yet, the scope names a note
+ * the model does not hold, or the item is already in that iteration — which is asked by
+ * PATH, so two spellings of one link are one iteration, exactly as `inIteration` asks it.
+ * The last one is what makes an ordinary bucket move plan no join.
+ */
+export function computeIterationJoinWrites(
+	item: BacklogItem,
+	model: BacklogModel | null,
+	scope: string | null,
+	settings: BacklogSettings,
+): ItemWrite[] {
+	const target = scope === null ? undefined : model?.byPath.get(scope);
+	if (target === undefined || item.iterationEntry?.file?.path === target.file.path) return [];
+	return computeIterationWrites(item, target, settings);
+}
+
+/**
  * Editing the iteration NOTE itself: its two dates and its goal, in one batch on one file.
  *
  * **It re-stamps no member.** An iteration's dates are copied onto an item when it JOINS

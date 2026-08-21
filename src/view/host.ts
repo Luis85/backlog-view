@@ -3,7 +3,7 @@ import { BoardModel, IterationBucket, StatePalette } from '../domain/board';
 import { BacklogItem, BacklogModel } from '../domain/model';
 import { DropTarget } from '../domain/dropTargets';
 import { RoadmapAxis, RoadmapModel } from '../domain/roadmap';
-import { ShelfSort } from '../domain/shelf';
+import { ShelfLayout, ShelfSort } from '../domain/shelf';
 import { PlacementEnd } from '../domain/itemTypes';
 import { ScaleId, TimelineScale, TimelineWindow } from '../domain/timeline';
 import { ItemWrite, ScheduleGesture, SchedulePlan } from '../domain/writePlan';
@@ -32,9 +32,12 @@ export type Projection = 'tree' | 'board' | 'roadmap' | 'deliverables' | 'catalo
  *
  * `shelf` is keyed by a TYPE name rather than a state value, which changes nothing about
  * the mechanism: the key space is "a word on one screen", and a type is a word the same
- * way a column's state is.
+ * way a column's state is. `backlog` is the iteration board's shelf ITSELF — one band
+ * rather than a set, so its value is null, and it is here rather than in a view-state
+ * value of its own because a shelf is a foldable band exactly as a column is. Not keyed
+ * per iteration: the work in no iteration is the same population on every sprint.
  */
-export type ColumnScope = 'board' | 'deliverables' | 'horizons' | 'shelf' | 'iteration';
+export type ColumnScope = 'board' | 'deliverables' | 'horizons' | 'shelf' | 'iteration' | 'backlog';
 
 /**
  * A column of the trailing strip: the property id to read, the label the header shows,
@@ -84,6 +87,12 @@ export interface BoardSnapshot {
 	 */
 	board: BoardModel;
 	colEls: HTMLElement[];
+	/**
+	 * The shelf's own element for THIS render — `RoadmapSnapshot.shelfEl`'s reason
+	 * exactly: a header control that rebuilt the pane has to find its replacement, and
+	 * the pressed button is gone by then. Absent on the two boards that draw no shelf.
+	 */
+	shelfEl?: HTMLElement | null;
 	/**
 	 * Which board this is, carried so nothing downstream has to re-derive it from the
 	 * projection. The column menu needs it to key a fold, and the render that produced
@@ -336,6 +345,8 @@ export interface BacklogViewHost {
 	 * is announced from a column the board does not name.
 	 */
 	performIterationBoardMove(item: BacklogItem, bucket: IterationBucket): Promise<boolean>;
+	/** The iteration board's shelf drop: the card leaves the chosen iteration. */
+	performIterationRemove(item: BacklogItem): Promise<boolean>;
 	/** Switch the projection and re-render; the view-state store persists the choice. */
 	setProjection(mode: Projection): void;
 	/**
@@ -410,6 +421,26 @@ export interface BacklogViewHost {
 	/** The shelf's display-only sort pick; 'tree' (sibling order) is the default. */
 	readonly shelfSort: ShelfSort;
 	setShelfSort(sort: ShelfSort): void;
+	/**
+	 * How the shelf lays its cards out — the card grid, or one compact row per item.
+	 * Display-only like the sort beside it: it narrows nothing, so the shelf's count is
+	 * the same true total in either layout. 'cards' is the default.
+	 */
+	readonly shelfLayout: ShelfLayout;
+	setShelfLayout(layout: ShelfLayout): void;
+	/**
+	 * The cap an OPEN shelf grows to before it scrolls, in pixels, or null for the share of
+	 * the pane the stylesheet gives it until someone drags the grip at its foot. One value
+	 * for the one band: the roadmap's shelf and the iteration board's are the same
+	 * component and only ever one of them is on screen.
+	 *
+	 * The stored pick is never narrowed by the pane it is drawn in — the stylesheet holds
+	 * it under a share of the pane with a CSS `min()`, so a height picked in a tall split
+	 * comes back in full the moment there is room for it. `leadWidth`'s rule, kept where
+	 * it costs no measurement.
+	 */
+	readonly shelfHeight: number | null;
+	setShelfHeight(height: number | null): void;
 	/** Types currently hidden from the shelf by its own type filter. */
 	readonly shelfHiddenTypes: ReadonlySet<string>;
 	setShelfHiddenTypes(types: ReadonlySet<string>): void;

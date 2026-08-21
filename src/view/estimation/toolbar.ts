@@ -21,7 +21,7 @@ import { runEstimationInit } from './init';
  * `.pbl-icon-btn`, `.pbl-toolbar-spacer` — so the only new rule in the stylesheet is the
  * count's.
  */
-export function renderEstimationToolbar(view: EstimationView, host: HTMLElement, model: EstimationModel | null): void {
+export function renderEstimationToolbar(view: EstimationView, host: HTMLElement, model: EstimationModel): void {
 	const bar = host.createDiv({ cls: 'pbl-toolbar' });
 
 	const init = iconButton(bar, 'sparkles', t('estimation.toolbar.init'), 'pbl-est-init');
@@ -34,7 +34,11 @@ export function renderEstimationToolbar(view: EstimationView, host: HTMLElement,
 
 	bar.createDiv({ cls: 'pbl-toolbar-spacer' });
 
-	const items = model?.items ?? [];
+	// `renderEstimationToolbar`'s one call site (`estimationView.ts`) always renders it right
+	// after `buildEstimationModel`, which never returns null — the guided-empty and
+	// config-warning states return before either draws a toolbar at all. A nullable
+	// parameter here was a branch nothing could take.
+	const items = model.items;
 	bar.createSpan({
 		cls: 'pbl-est-count',
 		text: t('estimation.toolbar.scored', {

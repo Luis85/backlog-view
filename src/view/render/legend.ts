@@ -2,6 +2,7 @@ import { BacklogViewHost, DrawnColors } from '../host';
 import { paletteDone, stateColorPaint, StatePalette } from '../../domain/board';
 import { activeAxis, drawsGrid } from '../../domain/roadmap';
 import { ITERATION_TYPE, MILESTONE_TYPE } from '../../domain/typeVocabulary';
+import { t } from '../../i18n/t';
 
 /**
  * A colour key for the dated axis's bars, rendered under the toolbar and outside the
@@ -62,7 +63,7 @@ export function renderLegend(
 	// a lone Deliverable workflow headed as if a second one existed). `renderStateSwatches`
 	// holds that rule for the vocabularies; the two below hold it for the furniture.
 	renderStateSwatches(host, legendEl, palettes, drawn);
-	addSwatch(legendEl, 'pbl-legend-today', 'Today');
+	addSwatch(legendEl, 'pbl-legend-today', t('legend.today'));
 	// Milestone (and/or Iteration) is likewise the render's own report (`drawn.milestone` /
 	// `drawn.iteration`): a base with no marker in the window draws no cyan mark at all, and
 	// a swatch left unconditional here is defect 2 of this pass — the same rule failing the
@@ -89,7 +90,7 @@ export function renderLegend(
 	// own word for "a stretch drew here", so this appears exactly where the mark does — on
 	// the resources axis, and stays lit through a fold, since a collapsed band's header
 	// keeps drawing its own stretches (2026-08-14).
-	if (drawn.absence) addSwatch(legendEl, 'pbl-legend-absence', 'Unavailable');
+	if (drawn.absence) addSwatch(legendEl, 'pbl-legend-absence', t('legend.unavailable'));
 	// The days-lost swatch keys the TOKEN, not the crossing: `drawn.daysLost` is whether
 	// `drawBandCollision` actually appended `.pbl-days-lost` (`DrawnColors.daysLost`'s own
 	// doc), so a row that crosses a stretch but whose title label was DROPPED —
@@ -97,7 +98,7 @@ export function renderLegend(
 	// feature's own — leaves this unlit even though that row's lead swatch still shows.
 	// Never a predicate over `roadmap.lanes` either, for `drawn.absence`'s own reason: a
 	// fold or a filter taking the token off screen must take the key with it.
-	if (drawn.daysLost) addSwatch(legendEl, 'pbl-legend-days-lost', 'Days lost');
+	if (drawn.daysLost) addSwatch(legendEl, 'pbl-legend-days-lost', t('legend.daysLost'));
 }
 
 /**
@@ -147,7 +148,7 @@ function renderStateSwatches(
 	// on either, and the grid draws one green — named by the first done value any drawn
 	// palette declares.
 	if (!anyDone && drawn.done) {
-		addSwatch(legendEl, 'pbl-legend-done', palettes.flatMap((palette) => palette.doneValues)[0] ?? 'Done');
+		addSwatch(legendEl, 'pbl-legend-done', palettes.flatMap((palette) => palette.doneValues)[0] ?? t('legend.done'));
 	}
 	// The rule's other direction: a bar that draws the plain accent — no slot, no done
 	// override, no milestone cyan — is a colour on the grid the key does not explain.
@@ -155,7 +156,7 @@ function renderStateSwatches(
 	// `TimelineRender`), never a predicate rebuilt here over `results`: that copy of
 	// `barClasses`'s precedence is exactly what missed a marker outside the window drawing
 	// the accent under `.pbl-bar-outside` instead of its own cyan.
-	if (drawn.accent) addSwatch(legendEl, 'pbl-legend-other', 'Other');
+	if (drawn.accent) addSwatch(legendEl, 'pbl-legend-other', t('legend.other'));
 }
 
 /**

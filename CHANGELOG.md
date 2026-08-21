@@ -35,7 +35,41 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   is never touched by it — that number is yours — and an orphaned total still gets the
   cleanup that removes it instead.
 
+- **The roadmap's shelf switches between cards and a compact list.** A third picker in the
+  shelf's own header, beside the sort and the type filter, and a `Shelf layout` submenu in
+  any shelf card's menu for a reader with no pointer. List mode draws one row per item —
+  the type badge, the title, and everything the card already carried on one line — plus the
+  item's workflow state, which a card does not show because a board column or a horizon
+  bucket already says it and a shelved card sits in neither. The pick narrows nothing: the
+  same cards are drawn either way, so the shelf's count is the same true total in both. It
+  is remembered for the saved view on this device, like the sort beside it, and cards stay
+  the default.
+
+- **The open shelf's height is yours to set.** A grip along the band's foot, dragged with a
+  pointer or stepped with ArrowUp/ArrowDown once it has focus; a double click or Home hands
+  the height back to the share of the pane the shelf has always taken. A band you have sized
+  is exactly that tall — it scrolls when the cards need more and shows space when they need
+  less — and a height picked in a tall split comes back in full rather than being written
+  down to a narrow one. Until you drag it, nothing is stored and the shelf takes the share of
+  the pane it always has. It applies to the iteration board's backlog band as well — one
+  band, one height — and it is remembered per saved view per device without anything
+  reaching the `.base`.
+
 ### Changed
+
+- **Everything the tree, the boards and the roadmap draw takes its words from the message
+  catalog now** — every row marker and property chip, the tag pills, the rollup, each
+  board column's announced name with its limit and overage, the card's parent line and
+  children, the shelf and its context strip, the roadmap's buckets, the timeline's legend,
+  today line, dependency arrows and span sentences, and every notice the write gate shows.
+  With `main.ts`'s two palette commands and a handful of prompts and grip tooltips that a
+  previous round reported as done and had missed, that leaves the plugin's user interface
+  translated apart from the built-in manual. Nothing reads differently in English except
+  where a list is involved: a row's prerequisites and a resource's absences are joined as
+  the language's own grammar joins a list rather than with a fixed separator, so English
+  now reads "A, B, and C" where it read "A, B, C". Nothing OF your vault is translated —
+  titles, type names, workflow states, horizon values, resources, tags and dates appear
+  exactly as your notes spell them.
 
 - **The whole toolbar takes its words from the message catalog now** — the New button and
   its type picker, the projection switcher, the focus picker, the board scope picker, the
@@ -128,6 +162,14 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ### Fixed
 
+- **The shelf's own title no longer moves when the band is opened or closed.** Opening the
+  shelf adds its search box, and that box was 11px taller than everything else in the
+  header — Obsidian styles `input[type='search']` itself and outranked the height this
+  plugin asked for — while the band's padding halved when it shut. Together those moved the
+  shelf's name 9.5px down the pane at the moment a reader pressed the disclosure beside it.
+  The header now reserves one row height in both states and the band keeps one padding, so
+  the title stays exactly where it is. A shut shelf is five pixels taller than it was.
+
 - A long currency word pushed every numeric column on its row out of line with the header
   above it.
 - The estimation panel's total and item name rendered at the wrong size, and the table
@@ -185,6 +227,16 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   migrate and no stored setting left behind.
 
 ### Added
+
+- **The iteration board has a shelf, so a sprint is filled by dragging.** Above its three
+  columns it now draws the work in no iteration at all — unfinished, grouped by type and
+  counted, foldable from its own disclosure. Dragging a card from the shelf onto a column
+  puts it in the sprint and in that column at once, as one undoable step; dragging a card
+  back onto the shelf takes it out of the sprint and changes nothing else. Work committed
+  to another iteration is deliberately not on the shelf, so a pull can never quietly empty
+  somebody else's fortnight — moving work between sprints stays `Set iteration`, which
+  names both ends. The shelf is a pointer gesture for now: the keyboard's path to the same
+  writes is still `Set iteration` on the item.
 
 - **Set iteration is one undoable step, wherever it happens.** Picking a sprint from
   `Set iteration` writes the link and both of its dates as a single batch behind a single

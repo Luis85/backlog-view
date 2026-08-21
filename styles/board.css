@@ -19,19 +19,58 @@
 
 /* The same scroller the tree uses, scrolling sideways instead: columns never drop and
    never shrink past their floor — a workflow stage exists whether or not the pane is
-   narrow, so a pane too narrow for all of them scrolls rather than compressing them. */
+   narrow, so a pane too narrow for all of them scrolls rather than compressing them.
+
+   A COLUMN, because the iteration board draws bands above its columns — the goal line and
+   the shelf — and the columns have to take the room those leave rather than a full pane's
+   height on top of them. The roadmap's own frame is the same shape for the same reason.
+   The two boards that draw no band are unaffected: a flex column with one item stretches
+   it exactly as the block flow did. */
 .pbl-board-mode .pbl-tree {
+	display: flex;
+	flex-direction: column;
 	overflow-x: auto;
 	/* Nothing is pinned to the board's top edge, so the gap can live on the scroller */
 	padding-top: var(--size-4-2);
 }
 
+/* `flex` rather than `height: 100%`: the columns take what the bands above them leave.
+   The floor stays a floor — a stage exists whether or not the pane is short. */
 .pbl-board-cols {
 	display: flex;
 	align-items: stretch;
 	gap: var(--size-4-3);
 	min-height: 220px;
-	height: 100%;
+	flex: 1 1 auto;
+}
+
+/* The iteration board's shelf — `src/view/render/iterationBoard.ts`. THE BAND RULE the
+   roadmap states for its own shelf, arrived at here for the same reason: the shelf
+   competes with the columns for the pane, so a long backlog is held to 30% of it and
+   scrolls inside that, rather than squeezing the columns it exists to feed. Unshrinkable,
+   so it takes its content up to the cap and no further. */
+.pbl-board-mode .pbl-shelf {
+	flex: 0 0 auto;
+	/* The reader's own pick, or 30% until the grip at the band's foot has been dragged —
+	   `src/view/interactions/shelfResize.ts` and the note beside `roadmap.css`'s own copy of
+	   this line, which states what a picked height costs. One stored height serves both
+	   bands: it is the same component and only ever one of them is on screen. */
+	height: var(--pbl-shelf-h, auto);
+	max-height: var(--pbl-shelf-h, 30%);
+	overflow-y: auto;
+	margin-block-end: var(--size-4-3);
+}
+
+/* And it stays where it was drawn while a drag is live. `.pbl-dragging .pbl-shelf-empty`
+   in `shelf.css` reveals an empty shelf at the FOOT of the frame — the roadmap's own
+   decision, so that revealing it does not drop the buckets under the pointer — and
+   `shelf.css` is imported after this file, so that `order` would win here on source order
+   and put the strip below the columns. A board has nothing to displace: the shelf is a
+   fixed band above a `flex: 1 1 auto` column row, so the row gives the space up from its
+   own foot and nothing already on screen moves. `.pbl-view` is what raises this over it
+   — (0,3,0) against (0,2,0) — the same lift `roadmap.css` takes for its own bands. */
+.pbl-view.pbl-board-mode .pbl-shelf {
+	order: 0;
 }
 
 /* A board column and a horizon bucket are ONE box, and it is said here once — the way

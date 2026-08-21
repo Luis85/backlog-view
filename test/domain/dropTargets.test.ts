@@ -70,6 +70,17 @@ describe('dropTargetFor', () => {
 		expect(isInvalidParent(get('Feature B1'), epicB)).toBe(true);
 	});
 
+	it('refuses a positional drop of an item onto itself', () => {
+		// `siblingPosition` filters the dragged item OUT of the sibling list before looking
+		// the hovered item up in it — when the two are the same item, that lookup can only
+		// fail. A real pointer can hover the row it is dragging before the release moves
+		// elsewhere, so this is not purely defensive.
+		const { model, get } = fixture();
+		const b1 = get('Feature B1');
+		expect(dropTargetFor(model, b1, 'before', b1, plan)).toBeNull();
+		expect(dropTargetFor(model, b1, 'after', b1, plan)).toBeNull();
+	});
+
 	it('treats the currently occupied slot as a no-op', () => {
 		const { model, get } = fixture();
 		const b1 = get('Feature B1');

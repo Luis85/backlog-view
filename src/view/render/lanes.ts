@@ -310,7 +310,7 @@ export function renderLaneHead(
 		drawIcon(mark, 'circle-help');
 		setTooltip(
 			head,
-			`"${lane.name}" is not one of the declared resources. Add it to "Resources (in order)" in the view options, or re-assign its items.`,
+			t('lane.undeclaredResource', { name: lane.name }),
 		);
 	}
 	renderLaneAbsenceAdd(ctx, lead, lane);
@@ -343,7 +343,7 @@ function renderAwayPill(lead: HTMLElement, lane: ResourceLane, today: CivilDate)
 	const weeks = awayWeeks(lane.absences, today);
 	if (weeks === 0) return;
 	const busy = lane.bars.length > 0 ? ' pbl-lane-away-busy' : '';
-	lead.createSpan({ cls: `pbl-lane-away${busy}`, text: `${weeks} wk away` });
+	lead.createSpan({ cls: `pbl-lane-away${busy}`, text: t('lane.awayWeeks', { count: weeks }) });
 }
 
 /**
@@ -409,10 +409,10 @@ function renderLaneAbsenceAdd(ctx: RowContext, lead: HTMLElement, lane: Resource
 	const host = ctx.host;
 	const btn = lead.createEl('button', {
 		cls: 'clickable-icon pbl-lane-ctl pbl-lane-absence-add',
-		attr: { type: 'button', tabindex: '-1', 'aria-label': `Add absence for ${lane.name}` },
+		attr: { type: 'button', tabindex: '-1', 'aria-label': t('lane.addAbsence', { name: lane.name }) },
 	});
 	drawIcon(btn, 'user-x');
-	setTooltip(btn, `Add absence for "${lane.name}"`);
+	setTooltip(btn, t('lane.addAbsenceTooltip', { name: lane.name }));
 	btn.addEventListener('click', () => promptAddAbsence(host, lane));
 }
 
@@ -500,7 +500,7 @@ function absenceSaid(absence: Absence): string {
 	const target = formatCivil(absence.target);
 	if (absence.title.startsWith(sanitizeTitle(absenceTitle({ resource: absence.resource, start, target }))))
 		return absence.title;
-	return `${absence.title} — ${start} → ${target}`;
+	return t('lane.absenceSaid', { title: absence.title, start, target });
 }
 
 /**
@@ -598,7 +598,7 @@ function renderLaneAbsences(
 		})
 		.sort((a, b) => a.box.left - b.box.left);
 	const sublanes = packLanes(marks.map((mark) => mark.box));
-	head.setAttribute('aria-description', `Unavailable: ${marks.map((mark) => absenceSaid(mark.absence)).join('; ')}`);
+	head.setAttribute('aria-description', t('lane.unavailable', { items: marks.map((mark) => absenceSaid(mark.absence)) }));
 	for (const [index, { absence, geometry }] of marks.entries()) {
 		const mark = track.createDiv({ cls: ['pbl-absence', ...edgeClasses(geometry)].join(' ') });
 		placeSpan(mark, geometry, ruler.scale);
@@ -758,7 +758,7 @@ function noteAbsenceClash(bar: { row: HTMLElement; lead: HTMLElement }, crossed:
  * a resource's name is the only thing this can ever be asked about.
  */
 export function renderLaneRowDescription(row: HTMLElement, name: string): void {
-	row.setAttribute('aria-description', `Assigned to ${name}`);
+	row.setAttribute('aria-description', t('lane.assignedTo', { name }));
 }
 
 /**
@@ -872,7 +872,11 @@ export function drawMarkerDiamonds(
 		// a `.pbl-sr-only` span in, and done is a green mark and nothing else without it —
 		// colour alone, which WCAG 1.4.1 refuses and a screen reader gets none of.
 		const state = stateNote(stateKeyFor(ctx.host.settings, bar.item), ownWorkflowReading(bar.item));
-		const said = `${bar.item.title} — ${spanText(bar)}${state ? ` — ${state}` : ''}`;
+		// Two whole keys picked between, never a clause appended to a frame: a locale that
+		// leads with the state has no way into a middle assembled here.
+		const said = state
+			? t('lane.barTooltipWithState', { title: bar.item.title, span: spanText(bar), state })
+			: t('lane.barTooltip', { title: bar.item.title, span: spanText(bar) });
 		// **CONTENT, never an `aria-label`** — this repository's own rule about this exact
 		// element, stated at `stateNote` and broken here until 2026-08-16: `.pbl-bar` is a
 		// plain div, so its implicit role is `generic`, and ARIA PROHIBITS an accessible name
@@ -1017,8 +1021,8 @@ function absenceCost(row: TimelineRow, crossed: Absence[]): { short: string; ful
 	const lost = daysLost(row.bar.span, crossed);
 	const whole = lost >= daysBetween((row.bar.span.start ?? row.bar.span.target) as CivilDate, (row.bar.span.target ?? row.bar.span.start) as CivilDate) + 1;
 	return whole
-		? { short: `all ${lost}d`, full: t('lane.daysLostWhole', { count: lost }) }
-		: { short: `${lost}d lost`, full: t('lane.daysLost', { count: lost }) };
+		? { short: t('lane.daysLostWholeShort', { count: lost }), full: t('lane.daysLostWhole', { count: lost }) }
+		: { short: t('lane.daysLostShort', { count: lost }), full: t('lane.daysLost', { count: lost }) };
 }
 
 /**
@@ -1083,25 +1087,35 @@ export function barClasses(bar: TimelineBar, geometry: BarGeometry, hasBodyHold:
  */
 export function stateNote(stateKey: string, reading: WorkflowReading): string {
 	if (!stateKey) return '';
-	if (reading.done) return reading.value === null ? 'Done' : `${reading.value} — done`;
+	if (reading.done) return reading.value === null ? t('lane.stateDone') : t('lane.stateValueDone', { value: reading.value });
 	return reading.value ?? '';
 }
 
 /** One sentence about a span, said identically on the grid and in the drop ghost. */
 export function spanText(bar: TimelineBar): string {
 	const span = bar.span;
-	const inferred = bar.inferredStart || bar.inferredEnd ? ' — inferred from children' : '';
+	// Whole sentences picked between, never a frame with the aside appended: the em dash
+	// clause is English punctuation in English word order, and a locale that leads with
+	// "inferred" cannot reach that through a `+`.
+	const inferred = bar.inferredStart || bar.inferredEnd;
 	if (span.start !== null && span.target !== null) {
+		const start = formatCivil(span.start);
+		const target = formatCivil(span.target);
 		// The item's OWN type, never the literal word "Milestone" — a coincident pair draws
 		// the same diamond whatever the item is (an inferred equal span included), so the
 		// sentence has to say what THIS item is rather than what a point used to always mean.
-		if (formatCivil(span.start) === formatCivil(span.target)) {
-			return `${displayType(bar.item)} ${formatCivil(span.start)}${inferred}`;
+		if (start === target) {
+			const type = displayType(bar.item);
+			return inferred ? t('span.pointInferred', { type, date: start }) : t('span.point', { type, date: start });
 		}
-		return `${formatCivil(span.start)} → ${formatCivil(span.target)}${inferred}`;
+		return inferred ? t('span.rangeInferred', { start, target }) : t('span.range', { start, target });
 	}
-	if (span.start !== null) return `Starts ${formatCivil(span.start)}, target not set${inferred}`;
+	if (span.start !== null) {
+		const start = formatCivil(span.start);
+		return inferred ? t('span.startOnlyInferred', { start }) : t('span.startOnly', { start });
+	}
 	// deriveBars admits no fully dateless span, so the remaining end exists.
-	return `Target ${formatCivil(span.target as CivilDate)}, start not set${inferred}`;
+	const target = formatCivil(span.target as CivilDate);
+	return inferred ? t('span.targetOnlyInferred', { target }) : t('span.targetOnly', { target });
 }
 

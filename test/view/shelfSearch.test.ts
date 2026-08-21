@@ -363,12 +363,15 @@ describe("the shelf search's clear button", () => {
 		// that URL is not a `file:` one and `readFileSync` refuses it — which is why the
 		// other stylesheet checks sit in node-env files. vitest runs from the repository
 		// root, the same resolution every script here uses.
-		const css = readFileSync('styles/shelf.css', 'utf8');
+		// `shelfControls.css` since 2026-08-21: the header's chrome and the grip at the band's
+		// foot left `shelf.css` when the two together passed the 400 line budget, and this
+		// field's rules went with the header they are part of.
+		const css = readFileSync('styles/shelfControls.css', 'utf8');
 		// Through the shared reader, which slices from the `{` and throws on a rename. The
 		// copy this replaced sliced from the SELECTOR, so its needle was matched against the
 		// prelude as well as the body — harmless for `display: none;` and a false pass for
 		// any needle a selector could carry.
-		expect(bodyOf(css, '.pbl-shelf-search-input::-webkit-search-cancel-button', 'styles/shelf.css')).toContain(
+		expect(bodyOf(css, '.pbl-shelf-search-input::-webkit-search-cancel-button', 'styles/shelfControls.css')).toContain(
 			'display: none;',
 		);
 	});

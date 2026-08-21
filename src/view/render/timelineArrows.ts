@@ -1,6 +1,7 @@
 import { DependencyArrow } from '../../domain/dependencies';
 import { BacklogItem } from '../../domain/model';
 import { dependencyAnchor, TimelineScale, TimelineWindow } from '../../domain/timeline';
+import { t } from '../../i18n/t';
 
 /**
  * The dated axis's dependency layer: the arrows drawn between two bars, and the words a
@@ -117,11 +118,11 @@ export function dependencyNote(item: BacklogItem, conflicted: ReadonlySet<string
 	for (const p of item.prerequisites) titles.set(p.title, (titles.get(p.title) ?? 0) + 1);
 	const named = item.prerequisites.map((p) => {
 		const name = (titles.get(p.title) ?? 0) > 1 ? p.file.path : p.title;
-		return conflicted.has(p.file.path) ? `${name} (conflict)` : name;
+		return conflicted.has(p.file.path) ? t('timeline.prerequisiteConflict', { name }) : name;
 	});
-	const broken = [...new Set(item.brokenPrerequisites)].map((raw) => `${raw} (broken)`);
+	const broken = [...new Set(item.brokenPrerequisites)].map((raw) => t('timeline.prerequisiteBroken', { name: raw }));
 	const all = [...named, ...broken];
-	return all.length === 0 ? '' : `Waits for ${all.join(', ')}`;
+	return all.length === 0 ? '' : t('timeline.waitsFor', { items: all });
 }
 
 /**

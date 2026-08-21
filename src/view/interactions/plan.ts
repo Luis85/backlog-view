@@ -182,9 +182,9 @@ function validateSchedule(values: Record<string, string>, unshown: Partial<Recor
 	// Name the end the entry did NOT show. A one-end entry is refused against a date the
 	// reader cannot see, and "cannot be before the start date" about a field that is not on
 	// screen reads as a bug rather than as a rule.
-	if (values.start === undefined) return `The target date cannot be before this item's start date (${start}).`;
-	if (values.target === undefined) return `The start date cannot be after this item's target date (${target}).`;
-	return 'The target date cannot be before the start date.';
+	if (values.start === undefined) return t('plan.targetBeforeStartDate', { start });
+	if (values.target === undefined) return t('plan.startAfterTargetDate', { target });
+	return t('plan.targetBeforeStart');
 }
 
 /**

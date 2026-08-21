@@ -49,14 +49,23 @@ interface BoardRenderOptions {
 	// in `render/emptyStates.ts`.
 	drawEmpty: (host: BacklogViewHost, aside: HTMLElement, root: HTMLElement) => void;
 	/**
-	 * The view-options display name of THIS workflow's state list, named in the
-	 * stray-column tooltip (`renderColumnHeader`) so the hint points at the setting
-	 * that actually holds this board's states — found by review: an unparametrized
-	 * tooltip hardcoded the requirements option name, so a stray Deliverables column
-	 * told the user to edit "Workflow states (in order)", a property this board
-	 * ignores entirely.
+	 * The stray-column tooltip for THIS workflow (`renderColumnHeader`), so the hint
+	 * points at the setting that actually holds this board's states — found by review: an
+	 * unparametrized tooltip hardcoded the requirements option name, so a stray
+	 * Deliverables column told the user to edit "Workflow states (in order)", a property
+	 * this board ignores entirely.
+	 *
+	 * The WHOLE sentence per workflow rather than the option's name spliced into a shared
+	 * frame: the name is `domain/viewOptions.ts`'s and still English, so a key for it here
+	 * would be keying somebody else's string — the debt `board.undeclaredColumn` states.
+	 *
+	 * OPTIONAL, because a board whose columns are not a state vocabulary can have no stray
+	 * to explain: `iterationBuckets` sets `outsideWorkflow: false` on all three of its
+	 * fixed buckets, so the hint is unreachable there and a function passed for it would be
+	 * dead. It was passed anyway until 2026-08-21 — invisible while it was a plain string,
+	 * and reported as an uncovered function the moment it became a call.
 	 */
-	stateOptionLabel: string;
+	undeclaredColumn?: (state: string) => string;
 	/**
 	 * Whether a done column holding only finished work folds itself the first time that is
 	 * true of it. The two product-shaped boards say yes — "done columns stay lean", and
@@ -204,7 +213,7 @@ export function renderRequirementsBoard(ctx: RowContext, boardEl: HTMLElement, d
 	return renderBoard(ctx, boardEl, dnd, board, {
 		scope: 'board',
 		move: (item, col) => void host.performBoardMove(item, col.state),
-		stateOptionLabel: 'Workflow states (in order)',
+		undeclaredColumn: (state) => t('board.undeclaredColumn', { state }),
 		drawEmpty: (h, aside, root) => {
 			const m = h.model;
 			if (!m) return;
@@ -248,7 +257,7 @@ export function renderDeliverablesBoard(ctx: RowContext, boardEl: HTMLElement, d
 	return renderBoard(ctx, boardEl, dnd, board, {
 		scope: 'deliverables',
 		move: (item, col) => void host.performDeliverablesBoardMove(item, col.state),
-		stateOptionLabel: 'Deliverable workflow states (in order)',
+		undeclaredColumn: (state) => t('board.undeclaredDeliverableColumn', { state }),
 		drawEmpty: (h, aside, root) => {
 			const m = h.model;
 			if (!m) return;
@@ -276,10 +285,7 @@ function renderBoardInstructions(boardEl: HTMLElement): void {
 	const help = boardEl.createDiv({
 		cls: 'pbl-sr-only',
 		attr: { 'aria-hidden': 'true' },
-		text:
-			'Arrow keys move between cards and columns. Alt with left or right arrow moves the selected card ' +
-			'one column, writing the same change a drop writes. The menu key opens the card menu, where set ' +
-			'state offers every column — the path that works without a drag on every device. Enter opens the note.',
+		text: t('board.instructions'),
 	});
 	help.id = uniqueElementId('pbl-board-help');
 	boardEl.setAttribute('aria-describedby', help.id);
@@ -361,20 +367,34 @@ function columnLabel(col: BoardColumn, frame: ColumnFrame): string {
 	// targets columns by their visible name.
 	// Only where the drop actually clears the key: an unwritable bucket carries the same
 	// `state: null` and would otherwise promise a clearing drop it never takes.
-	const label = col.state === null && col.takesDrop ? `${col.label} — dropping here clears the state` : col.label;
-	const counts = t('count.cards', { count: col.count });
+	const label = col.state === null && col.takesDrop ? t('board.clearingColumn', { label: col.label }) : col.label;
 	// The fold is spoken HERE and not left to the disclosure's own `aria-expanded`, which
 	// nothing on the keyboard path reaches: this string is the stop's `aria-label`, and an
 	// accessible name overrides the children it is set on, so a reader arriving by
 	// `aria-activedescendant` hears the name, the count, and no button at all. Without the
 	// word, a folded column announces cards it is not showing — the one thing a count that
 	// deliberately survives the fold makes worse rather than better.
-	const said = frame.folded ? `${label}, collapsed` : label;
-	if (col.limit === null) return `${said}, ${counts}`;
+	// Whole sentences picked between, never a frame with clauses appended: the fold, the
+	// limit and the overage each change the sentence, and the count is a plural form OF it
+	// rather than a rendered figure spliced in — `roadmap.groupLabel`'s shape.
+	const count = col.count;
+	if (col.limit === null) {
+		return frame.folded
+			? t('board.columnLabelFolded', { name: label, count })
+			: t('board.columnLabel', { name: label, count });
+	}
 	// The overage is spoken because the icon beside it is not: an over-limit column
 	// has to say so to someone who cannot see either the colour or the shape.
 	const over = overBy(col);
-	return `${said}, ${counts}, limit ${col.limit}${over > 0 ? `, over by ${over}` : ''}`;
+	const limit = col.limit;
+	if (over > 0) {
+		return frame.folded
+			? t('board.columnLabelFoldedOver', { name: label, count, limit, over })
+			: t('board.columnLabelOver', { name: label, count, limit, over });
+	}
+	return frame.folded
+		? t('board.columnLabelFoldedLimit', { name: label, count, limit })
+		: t('board.columnLabelLimit', { name: label, count, limit });
 }
 
 function renderColumnHeader(
@@ -400,7 +420,7 @@ function renderColumnHeader(
 	if (col.state === null) drawIcon(header.createSpan({ cls: 'pbl-board-col-icon' }), 'circle-dashed');
 	header.createSpan({ cls: 'pbl-board-col-name', text: col.label });
 	if (!strip) renderColumnCount(header, col);
-	renderColumnHints(colEl, header, col, strip, opts.stateOptionLabel);
+	renderColumnHints(colEl, header, col, strip, opts.undeclaredColumn);
 	renderColumnPolicy(header, col);
 	// On the header rather than inside `renderColumnPolicy`, because the menu is no longer
 	// the policy's: every column has a fold to offer, so every column has a menu — which
@@ -431,17 +451,16 @@ function renderColumnHints(
 	header: HTMLElement,
 	col: BoardColumn,
 	strip: boolean,
-	stateOptionLabel: string,
+	undeclaredColumn?: (state: string) => string,
 ): void {
-	if (col.outsideWorkflow) {
+	// Both halves: a stray column can only exist on a board whose columns came from a
+	// state vocabulary, and only such a board supplies the sentence that explains one.
+	if (col.outsideWorkflow && undeclaredColumn) {
 		drawIcon(header.createSpan({ cls: 'pbl-board-col-stray' }), 'circle-help');
-		setTooltip(
-			colEl,
-			`"${col.label}" is not one of the configured workflow states. Add it to "${stateOptionLabel}" in the view options, or move its cards.`,
-		);
+		setTooltip(colEl, undeclaredColumn(col.label));
 	}
-	if (strip) setTooltip(colEl, 'Drop a card here to clear its state');
-	else if (col.state === null) setTooltip(colEl, 'Items without the state property — dropping a card here removes it');
+	if (strip) setTooltip(colEl, t('board.stripTooltip'));
+	else if (col.state === null) setTooltip(colEl, t('board.noStateColumn'));
 }
 
 /**
@@ -549,18 +568,28 @@ export function createCard(ctx: RowContext, containerEl: HTMLElement, item: Back
  * columns, the rollup. One body for the board's cards and the roadmap's, so an
  * item cannot look different per projection.
  */
-export function renderCardBody(ctx: RowContext, card: HTMLElement, item: BacklogItem): void {
+export function renderCardBody(
+	ctx: RowContext,
+	card: HTMLElement,
+	item: BacklogItem,
+	// Where the children disclosure goes, when that is not `card` itself. The shelf's
+	// compact row is the one caller that passes it: its summary is a one-line flex ROW, and
+	// a child list inside that row would sit beside the title rather than beneath it — so
+	// the row hands its own card element here while the summary takes everything else. A
+	// wrapper, never different content: the same children are built either way.
+	{ kidsEl }: { kidsEl?: HTMLElement } = {},
+): void {
 	const host = ctx.host;
 	const head = card.createDiv({ cls: 'pbl-card-head' });
 	renderBadge(host, head, item);
 	if (item.outsideFilter) {
 		const marker = head.createSpan({ cls: 'pbl-outside-marker' });
 		drawIcon(marker, 'corner-left-down');
-		setTooltip(marker, "Not in this base's filter — shown to place its items");
+		setTooltip(marker, t('board.contextMarker'));
 		// A description, not a label: a label would REPLACE the content-derived
 		// accessible name and cost a screen reader the badge, the parent line and
 		// the rollup — the very details that say what this inert card stands for.
-		card.setAttribute('aria-description', "Outside this base's filter — shown for context");
+		card.setAttribute('aria-description', t('board.contextCard'));
 	}
 	const title = card.createDiv({ cls: 'pbl-card-title' });
 	title.setText(item.title);
@@ -571,7 +600,7 @@ export function renderCardBody(ctx: RowContext, card: HTMLElement, item: Backlog
 		const parent = card.createDiv({ cls: 'pbl-card-parent' });
 		drawIcon(parent.createSpan({ cls: 'pbl-card-parent-icon' }), 'corner-left-up');
 		parent.createSpan({ text: item.parent.title });
-		setTooltip(parent, `Under "${item.parent.title}"`);
+		setTooltip(parent, t('board.cardParent', { title: item.parent.title }));
 	}
 
 	// A card draws the plain columns, the tag pills, and the assignee chip. State and
@@ -613,7 +642,7 @@ export function renderCardBody(ctx: RowContext, card: HTMLElement, item: Backlog
 	// One call, three surfaces: board cards, roadmap bucket cards and shelf cards all
 	// come through here. Timeline rows never do — they use the card SHELL with a
 	// bar-grid row layout — which is exactly why they get no disclosure.
-	renderCardChildren(ctx, card, item);
+	renderCardChildren(ctx, kidsEl ?? card, item);
 }
 
 /**

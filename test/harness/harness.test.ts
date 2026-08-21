@@ -89,6 +89,13 @@ describe('the browser harness mounts', () => {
 		const buckets = Array.from(containerEl.querySelectorAll('.pbl-bucket .pbl-bucket-name')).map((n) => n.textContent);
 		expect(buckets).toEqual(expect.arrayContaining(['Now', 'Next', 'Later']));
 		expect(containerEl.querySelectorAll('.pbl-shelf .pbl-card').length).toBeGreaterThan(0);
+		// And at least one of them is a PARENT, which the band had none of until 2026-08-21.
+		// A shelf of leaves cannot show the disclosure a card draws over its children, and so
+		// could not show that a compact row put that disclosure at the end of its line instead
+		// of beneath it — the defect [[Cards or a list on the shelf]] 3b records. This is the
+		// fixture's own half of that: the case is drawn here, so a screenshot of the harness
+		// reaches it.
+		expect(containerEl.querySelectorAll('.pbl-shelf .pbl-card .pbl-card-kids').length).toBeGreaterThan(0);
 	});
 
 	it('draws the resources axis, with an empty declared row and a row an absence minted', () => {

@@ -447,7 +447,7 @@ function promptRemoveDependency(host: BacklogViewHost, model: BacklogModel, item
 		})),
 		...[...unresolved].map((raw) => ({
 			label: raw,
-			detail: 'Does not resolve in this base',
+			detail: t('dependency.unresolved'),
 			value: removalOfRaw(host, item, raw),
 		})),
 	];

@@ -108,11 +108,42 @@ export default defineConfig({
 			// one OS while CI gates two. A rise still needs the diagnosis the note already
 			// asks for — diffing `coverage/coverage-final.json` per file across two runs —
 			// not a run count, however large.
+			// **Every floor here holds at least one covered unit of headroom, except the one
+			// that cannot.** Measured on 2026-08-21 at 7591/7701 statements, 4792/5047
+			// branches, 1960/1963 functions and 6328/6349 lines. Losing ONE covered unit
+			// gives 98.5586 / 94.9277 / 99.7962 / 99.6535 — so the exact figures failed three
+			// of the four gates, and a floor set to a measurement is a gate that fails on a
+			// legitimate change that removes a single branch.
+			//
+			// **The one-branch flake above is not hypothetical — it was reproduced here.** Four
+			// coverage runs on an UNCHANGED tree gave 4792, 4792, 4792, then 4791 covered
+			// branches. The first two agreeing is exactly why the note above refuses a run
+			// count as the diagnosis: two runs are not evidence of stability, and a floor set
+			// from a run that happened to catch the high value fails the next one that does
+			// not. A floor of 94.93 — one unit below the 4792 measurement — was tried and
+			// failed on the 4791 run, which is what put the number below.
+			//
+			// **CI then supplied the cross-environment half the note asks for, on its own.**
+			// The Ubuntu `verify` job on `ce1b222` reported 7590/7701 statements and
+			// 4791/5047 branches where this machine had just measured 7591 and 4792, with
+			// functions (1960/1963) and lines (6328/6349) identical in both. So what varies
+			// is a statement and a branch, one each, and it varies BETWEEN environments as
+			// well as between runs — the pair to diff in `coverage/coverage-final.json` if
+			// anyone chases it further. Every floor below clears the LOW figure from both.
+			//
+			// So branches sits under the LOW observed count rather than under the measurement,
+			// and lines one unit under its own; both remain above the floors they replaced
+			// (94.83, 99.6), so the ratchet still only goes up.
+			// **Functions cannot have that**: one fewer is 99.7962, which is under the 99.81
+			// this PR raised FROM, so headroom there would be a decrease. It is left at 99.84
+			// and named rather than quietly lowered — the fragility predates this change and
+			// the old floor had no one-function headroom either. If functions ever flake the
+			// way branches just did, that floor is the next one to come down.
 			thresholds: {
-				statements: 98.52,
-				branches: 94.83,
-				functions: 99.81,
-				lines: 99.6,
+				statements: 98.55,
+				branches: 94.92,
+				functions: 99.84,
+				lines: 99.65,
 			},
 		},
 	},

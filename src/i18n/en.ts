@@ -28,7 +28,6 @@ export const en = {
 	'count.items': { one: '{count} item', other: '{count} items' },
 	/** The same count once hiding has made it a pair — the whole is the point. */
 	'count.shownOfTotal': '{shown} of {total}',
-	'count.cards': { one: '{count} card', other: '{count} cards' },
 	'count.children': { one: '{count} child', other: '{count} children' },
 	/**
 	 * A count of children that all share a type. The type is user data and arrives as a
@@ -219,6 +218,217 @@ export const en = {
 
 	/** The horizon chip's reason, when the value on the note is one the axis refuses. */
 	'chip.horizonUnreadable': 'Unreadable horizon value',
+
+	/**
+	 * Every row chip's accessible name. `{label}` is the COLUMN's display name — the
+	 * user's own word for the property — and `{value}` is what the note carries, so both
+	 * are data and neither is this catalog's to translate.
+	 */
+	'chip.set': 'Set {label}',
+	'chip.change': 'Change {label} (currently {value})',
+
+	/**
+	 * A chip's tooltip, per property and in two shapes: what a result's chip offers, and
+	 * what a context row's static chip says instead. Whole sentences per property rather
+	 * than one frame with the property's name spliced in — the name is a word of THIS
+	 * catalog, and a language that inflects it after "change", or orders the clause
+	 * differently, cannot reach either through a parameter.
+	 */
+	'chip.stateStatic': "Not in this base's filter — state can't be changed here",
+	'chip.stateChange': 'Change state',
+	'chip.horizonStatic': "Not in this base's filter — horizon can't be changed here",
+	'chip.horizonChange': 'Change horizon',
+	'chip.riskStatic': "Not in this base's filter — risk can't be changed here",
+	'chip.riskChange': 'Change risk',
+	'chip.priorityStatic': "Not in this base's filter — priority can't be changed here",
+	'chip.priorityChange': 'Change priority',
+	'chip.assigneeStatic': "Not in this base's filter — assignee can't be changed here",
+	'chip.assigneeChange': 'Change assignee',
+	'chip.startStatic': "Not in this base's filter — start date can't be changed here",
+	'chip.startChange': 'Change start date',
+	'chip.startUnreadable': 'Unreadable start date',
+	'chip.targetStatic': "Not in this base's filter — target date can't be changed here",
+	'chip.targetChange': 'Change target date',
+	'chip.targetUnreadable': 'Unreadable target date',
+
+	/**
+	 * What an unset LABEL chip says — the property, because there is no value to show.
+	 * The date chips take the column's display name instead and so have no key here; see
+	 * `DATE_CHIPS` for why a fixed word would name a key the vault does not have.
+	 */
+	'chip.riskPlaceholder': 'Risk',
+	'chip.priorityPlaceholder': 'Priority',
+	'chip.assigneePlaceholder': 'Assignee',
+	/** The state chip's own placeholder, on a result with no state written yet. */
+	'chip.statePlaceholder': 'State',
+
+	/**
+	 * What the pane calls itself, per projection — its accessible name, and the only
+	 * place a reader who switched projections is told which one they are in. Lowercase
+	 * `backlog` throughout: these are sentences about the view, not the plugin's own
+	 * NAME, which `Every surface translated` says is never translated.
+	 */
+	'projection.tree': 'Product backlog',
+	'projection.catalog': 'Test catalog',
+	'projection.board': 'Product backlog board',
+	'projection.iteration': 'Iteration board',
+	'projection.deliverables': 'Deliverables board',
+	'projection.roadmap': 'Product backlog roadmap',
+
+	/**
+	 * The tree row's own markers. `{type}` is the level's shown NAME and is data;
+	 * `{action}` is the toolbar button this sentence tells the reader to press, taken as
+	 * a parameter from `toolbar.assignMissing` so it quotes the label they can actually
+	 * find rather than an English one spelled twice.
+	 *
+	 * `row.badgeImplied` is the whole tooltip including its separator, not the plain
+	 * badge text with an explanation appended: the aside and its punctuation are English
+	 * grammar, and a locale that leads with the reason cannot reach that through a `+`.
+	 */
+	'row.badgeImplied': '{type} · Type property not set — level implied from position. Use "{action}" to write it.',
+	'row.orphan': 'Parent is set but not part of this view',
+	'row.contextMarker': "Not in this base's filter — shown to keep the hierarchy",
+	/**
+	 * The add button, where the row can hold more than one type and so cannot promise
+	 * which. With exactly one it reads `menu.newChild` — the same act the context menu's
+	 * own New entry performs, so the two are one key rather than two that can disagree.
+	 */
+	'row.addChild': 'New child item',
+
+	/**
+	 * The board's own text. `{name}` is a COLUMN's label and `{state}` the value a note
+	 * carries — both data — and the counts are plural entries of the whole sentence
+	 * rather than a rendered count spliced in, `roadmap.groupLabel`'s shape exactly.
+	 *
+	 * Six column labels rather than one frame with clauses appended: the fold, the limit
+	 * and the overage each change the sentence, and a language that orders them
+	 * differently, or that puts the count last, cannot reach any of that through a `+`.
+	 */
+	'board.columnLabel': { one: '{name}, {count} card', other: '{name}, {count} cards' },
+	'board.columnLabelFolded': {
+		one: '{name}, collapsed, {count} card',
+		other: '{name}, collapsed, {count} cards',
+	},
+	'board.columnLabelLimit': {
+		one: '{name}, {count} card, limit {limit}',
+		other: '{name}, {count} cards, limit {limit}',
+	},
+	'board.columnLabelFoldedLimit': {
+		one: '{name}, collapsed, {count} card, limit {limit}',
+		other: '{name}, collapsed, {count} cards, limit {limit}',
+	},
+	'board.columnLabelOver': {
+		one: '{name}, {count} card, limit {limit}, over by {over}',
+		other: '{name}, {count} cards, limit {limit}, over by {over}',
+	},
+	'board.columnLabelFoldedOver': {
+		one: '{name}, collapsed, {count} card, limit {limit}, over by {over}',
+		other: '{name}, collapsed, {count} cards, limit {limit}, over by {over}',
+	},
+	/** The `{name}` above, where a drop on this column is what REMOVES the key. */
+	'board.clearingColumn': '{label} — dropping here clears the state',
+
+	/**
+	 * The two undeclared-column advisories, each quoting its own view option by the
+	 * label spelled here as English. That is the debt `emptyState.noWorkflowBody` and
+	 * its three siblings already carry, paid the same way: the labels belong to
+	 * `domain/viewOptions.ts`, and keying them here would be keying somebody else's
+	 * string. `Every surface translated`'s second acceptance criterion is what collects
+	 * all of them, in [[View options and config warnings]].
+	 */
+	'board.undeclaredColumn':
+		'"{state}" is not one of the configured workflow states. Add it to "Workflow states (in order)" in the view options, or move its cards.',
+	'board.undeclaredDeliverableColumn':
+		'"{state}" is not one of the configured workflow states. Add it to "Deliverable workflow states (in order)" in the view options, or move its cards.',
+
+	'board.stripTooltip': 'Drop a card here to clear its state',
+	'board.noStateColumn': 'Items without the state property — dropping a card here removes it',
+	'board.contextMarker': "Not in this base's filter — shown to place its items",
+	'board.contextCard': "Outside this base's filter — shown for context",
+	'board.cardParent': 'Under "{title}"',
+	/** The board's hidden shortcut instructions, read by `aria-describedby`. */
+	'board.instructions':
+		'Arrow keys move between cards and columns. Alt with left or right arrow moves the selected card one column, writing the same change a drop writes. The menu key opens the card menu, where set state offers every column — the path that works without a drag on every device. Enter opens the note.',
+
+	/**
+	 * The shelf and the context strip beside it. `{span}` is a rendered date range and
+	 * `{type}` / `{bucket}` are vault data; only the frames are this catalog's.
+	 */
+	'shelf.removeHorizon': 'Results this axis cannot place — dropping a card here removes its horizon',
+	'shelf.removeAssignee': 'Results this axis cannot place — dropping a card here removes its assignee',
+	'shelf.removeDates': 'Results this axis cannot place — dropping a bar here removes its dates',
+	'shelf.removalKeeps': 'Keeps {span}',
+	/**
+	 * The iteration board's own shelf: the work in no iteration, and what a drop on it
+	 * means. Its own two keys rather than the roadmap's — this shelf holds results the
+	 * board could pull IN, which is the opposite statement from "the axis cannot place
+	 * these", and `placement.unplaced` names a placement no board has.
+	 */
+	'shelf.backlog': 'Backlog',
+	'shelf.removeIteration': 'Work in no iteration — dropping a card here takes it out of this iteration',
+	'shelf.sort': 'Sort the shelf',
+	'shelf.filterByType': 'Filter the shelf by type',
+	'shelf.layout': 'Shelf layout',
+	/** One key for the context strip's name, drawn as its heading AND as its group label. */
+	'shelf.context': 'Context',
+	'shelf.contextTooltip': "Not in this base's filter — shown for the hierarchy, never counted",
+
+	/**
+	 * The roadmap's bucket furniture. `roadmap.undeclaredBucket` carries the same view
+	 * option debt `board.undeclaredColumn` above states.
+	 */
+	'roadmap.undeclaredBucket':
+		'"{value}" is not one of the declared horizons. Add it to "Horizons (in order)" in the view options, or re-place its items.',
+	'roadmap.newInBucket': 'New {type} in {bucket}',
+	'roadmap.newInBucketTooltip': 'New {type} in "{bucket}"',
+
+	/**
+	 * The timeline's key. Four of the five name FURNITURE this view draws; `legend.done`
+	 * is the fallback caption for the green swatch where no workflow declares a done
+	 * value of its own to name it with.
+	 */
+	'legend.today': 'Today',
+	'legend.unavailable': 'Unavailable',
+	'legend.daysLost': 'Days lost',
+	'legend.done': 'Done',
+	'legend.other': 'Other',
+
+	'timeline.todayLine': 'Today — {date}',
+	/**
+	 * The dependency arrow's tooltip. `{items}` is a LIST and is joined as grammar by
+	 * `Intl.ListFormat` rather than by a `', '` at the call site — the same move the undo
+	 * report made, and for the same reason: a joiner is punctuation and punctuation is a
+	 * locale's. Each entry is one of the three keys below, so the parenthetical that says
+	 * WHY an entry is named is inside the sentence rather than concatenated onto it.
+	 */
+	'timeline.waitsFor': 'Waits for {items}',
+	'timeline.prerequisiteConflict': '{name} (conflict)',
+	'timeline.prerequisiteBroken': '{name} (broken)',
+
+	/** The tag cell's own controls. `{tag}` is vault data throughout. */
+	'column.addTag': 'Add tag',
+	'column.removeTag': 'Remove tag {tag}',
+	'column.removeTagTooltip': 'Remove #{tag}',
+
+	/** A card's children entry, one per child with no card of its own. */
+	'card.openChild': 'Open "{title}"',
+
+	/**
+	 * What an item's rollup says in full — the tree's cell and the bar's row alike.
+	 *
+	 * It was `` `${done} of ${total} items done` ``, a template whose FIRST quasi is empty,
+	 * which is the one shape `UI_TEXT_LITERAL` states it cannot see — and an AST walk over
+	 * the directory missed it for the same reason, since every quasi in it is lowercase or
+	 * blank. The runtime half is what found it (2026-08-21), which is the whole argument
+	 * for having one.
+	 *
+	 * Plural on the TOTAL, which is what `items` agrees with; the fixed `s` it carried
+	 * before was an English defect and is not preserved.
+	 */
+	'column.rollupTooltip': {
+		one: '{done} of {count} item done',
+		other: '{done} of {count} items done',
+	},
 
 	/** The rollup column's header — the progress bar's, and the plain count's. */
 	'column.rollupProgress': 'Progress',
@@ -436,10 +646,43 @@ export const en = {
 	'shelf.clearSearch': 'Clear unplaced search',
 
 	/**
-	 * The marker row's header on both grid axes. The TYPE names inside it are data and
-	 * arrive as parameters; only the separator and the pluralizing `s` are this catalog's,
-	 * the same ceiling `count.childrenOfType` carries.
+	 * The resources axis's own furniture. `{name}` is a resource, `{title}` a note's own
+	 * title and `{start}`/`{target}`/`{date}` are rendered dates — all data.
+	 * `lane.undeclaredResource` carries the view-option debt `board.undeclaredColumn`
+	 * states, and `lane.unavailable` takes a LIST, joined as grammar.
 	 */
+	'lane.undeclaredResource':
+		'"{name}" is not one of the declared resources. Add it to "Resources (in order)" in the view options, or re-assign its items.',
+	'lane.addAbsence': 'Add absence for {name}',
+	'lane.addAbsenceTooltip': 'Add absence for "{name}"',
+	'lane.unavailable': 'Unavailable: {items}',
+	'lane.absenceSaid': '{title} — {start} → {target}',
+	'lane.assignedTo': 'Assigned to {name}',
+
+	/**
+	 * What a bar's state says to a reader who cannot see that it is green. `{value}` is
+	 * the state the note carries and is data; only the word for finished is this
+	 * catalog's, and it is a whole sentence in each shape rather than a suffix appended
+	 * to a value.
+	 */
+	'lane.stateDone': 'Done',
+	'lane.stateValueDone': '{value} — done',
+
+	/**
+	 * One sentence about a bar's span, said identically on the grid and in the drop
+	 * ghost. Four shapes, each in two forms rather than one form with an aside appended:
+	 * whether the ends were INFERRED from children changes the sentence, and the em dash
+	 * clause that says so is English punctuation and English word order.
+	 */
+	'span.range': '{start} → {target}',
+	'span.rangeInferred': '{start} → {target} — inferred from children',
+	'span.point': '{type} {date}',
+	'span.pointInferred': '{type} {date} — inferred from children',
+	'span.startOnly': 'Starts {start}, target not set',
+	'span.startOnlyInferred': 'Starts {start}, target not set — inferred from children',
+	'span.targetOnly': 'Target {target}, start not set',
+	'span.targetOnlyInferred': 'Target {target}, start not set — inferred from children',
+
 	'lane.markersHeader': '{markers}s',
 	'lane.markersHeaderBoth': '{first}s · {second}s',
 
@@ -505,6 +748,9 @@ export const en = {
 	 */
 	'menu.sortUnplaced': 'Sort unplaced',
 	'menu.filterUnplacedByType': 'Filter unplaced by type',
+	'menu.shelfLayout': 'Shelf layout',
+	'menu.shelfLayoutCards': 'Cards',
+	'menu.shelfLayoutList': 'List',
 	'menu.shelfSortTree': 'Sibling order',
 	'menu.shelfSortTitle': 'Title (A to Z)',
 	'menu.shelfSortModified': 'Last modified',
@@ -643,7 +889,65 @@ export const en = {
 	 */
 	'config.fixFirst': 'Fix the view options first: {problem}',
 
+	/**
+	 * The write gate's four refusals. The two `console.error` prefixes beside them stay
+	 * English and are not here: a developer console is not a user surface, the same line
+	 * `commands/scaffold.ts` and `commands/readme.ts` already draw.
+	 *
+	 * `gate.configProblems` is `config.fixFirst` — the same refusal from the same gate,
+	 * one key rather than two that can disagree — so it has no entry of its own.
+	 */
+	'gate.outsideFilter': 'That change would edit a note outside this base’s filter, so nothing was written.',
+	'gate.nothingToUndo': 'Nothing to undo.',
+	'gate.stillApplying': 'Still applying the previous change — try again in a moment.',
+	'gate.updateFailed': 'Failed to update backlog items. See the developer console for details.',
+
+	/**
+	 * Every card move's live-region announcement, in the two shapes a gesture can have:
+	 * one dimension, or the resources axis's two in ONE sentence. `{landing}` is the date
+	 * half, and it is a whole clause from `destinationWords` rather than this catalog's —
+	 * which is why the comma before it is IN the message and not at the call site.
+	 */
+	'move.announced': 'Moved "{title}" from {from} to {to}',
+	'move.announcedLanding': 'Moved "{title}" from {from} to {to}, {landing}',
+
+	/** The bar's dependency connector. `{title}` is the note's own title. */
+	'link.drawDependency': 'Draw a dependency from {title}',
+
+	/**
+	 * The two resize grips. They share a tooltip because they ARE one gesture over two
+	 * geometries (`wireResizeGrip`), and they differ in what each names: `{label}` is a
+	 * property column's own display name, and the timeline's lead has no name but its own.
+	 */
+	'resize.column': 'Resize the {label} column',
+	'resize.leadColumn': 'Resize the title column',
+	'resize.shelf': 'Resize the shelf',
+	'resize.gripTooltip': 'Drag to resize, or double click to reset. Focus it for the arrow keys and Home',
+
+	/**
+	 * What a resources move says when the card lands on the shelf anyway. Two whole
+	 * sentences rather than one prefix with a clause appended: which of them applies is
+	 * decided by whether the axis gave a REASON, and `{reason}` is `domain/bars.ts`'s own
+	 * wording passed through — still English until that layer is swept, which is why it
+	 * is a parameter here rather than a key.
+	 */
+	'move.shelvedNoDates': '"{title}" is assigned to {name}. Add a start or target date to place it in the row.',
+	'move.shelvedReason': '"{title}" is assigned to {name}. {reason}, so it stays on the shelf.',
+
+	/**
+	 * The two palette commands. Obsidian prefixes both with the plugin's own NAME, which
+	 * is never translated and so appears in no key here — `registerBasesView`'s `name` is
+	 * that same identity and stays a literal in `main.ts`.
+	 *
+	 * Resolved once, at `onload`: Obsidian needs a restart to change its language, so a
+	 * command name registered here cannot go stale while the app is running.
+	 */
+	'command.createBacklog': 'Create backlog',
+	'command.writeReadme': 'Write backlog readme',
+
 	'dependency.dependsOn': 'Depends on…',
+	/** A prerequisite whose text names no note this base can see. */
+	'dependency.unresolved': 'Does not resolve in this base',
 	'dependency.remove': 'Remove dependency…',
 	'dependency.removeEmpty': 'Remove the empty property',
 	'dependency.propertyChanged':
@@ -681,6 +985,10 @@ export const en = {
 	'absence.edit': 'Edit absence',
 	'absence.delete': 'Delete absence',
 	'absence.needsProperties': 'Name the assignee and both date properties before recording absences.',
+	/** What the absence entry refuses, one whole sentence per reason. */
+	'absence.nameResource': 'Name the resource this absence is for.',
+	'absence.needsBothDates': 'An absence needs both a start and an end date.',
+	'absence.endBeforeStart': 'The end date is before the start date.',
 	'absence.deleted': 'Deleted "{title}".',
 	'absence.deleteFailed': 'Could not delete the absence. See the developer console for details.',
 	'absence.updated': 'Updated "{name}".',
@@ -688,6 +996,26 @@ export const en = {
 	'absence.created': 'Marked {resource} away — "{name}".',
 	'absence.createFailed': 'Could not create the absence. See the developer console for details.',
 
+	/**
+	 * The new-item modal's heading. Its own key rather than `toolbar.newItem`'s or
+	 * `menu.newChild`'s: identical English across surfaces is expected here and must not
+	 * be deduplicated (this file's own rule) — a dialog heading and a button label
+	 * diverge in the first language that inflects one of them.
+	 */
+	'create.headingAnyType': 'New item',
+	'create.headingType': 'New {type}',
+	/**
+	 * Where the new item will land, as four WHOLE sentences. The call site used to build
+	 * one from a `Under "…" · ` prefix and an `in folder "…"` fragment, then sentence-case
+	 * the fragment with `where[0].toUpperCase()` when the prefix was absent — which is
+	 * wrong the moment the fragment comes from a catalog: the capital belongs IN the
+	 * message, and not every script has case at all. `Every surface translated`'s own
+	 * acceptance criterion.
+	 */
+	'create.detailUnderInFolder': 'Under "{parent}" · in folder "{folder}"',
+	'create.detailUnderRoot': 'Under "{parent}" · in the vault root',
+	'create.detailInFolder': 'In folder "{folder}"',
+	'create.detailRoot': 'In the vault root',
 	'create.whereLabel': 'Where will this go?',
 	'create.created': 'Created "{name}".',
 	'create.failed': 'Could not create the item. See the developer console for details.',
@@ -705,6 +1033,9 @@ export const en = {
 	'create.iterationEditCta': 'Save',
 	'create.iterationDates':
 		'Dates are inclusive: an iteration runs from its start to its target, both days included.',
+	/** What the iteration entry refuses, one whole sentence per reason. */
+	'create.iterationNameRequired': 'Give the iteration a name.',
+	'create.iterationReversed': 'The target is before the start.',
 	'create.iterationGone': 'That iteration is no longer there. Nothing was written.',
 	'create.iterationCreated': 'Created "{name}".',
 	'create.iterationFailed': 'Could not create the iteration. See the developer console for details.',
@@ -733,6 +1064,15 @@ export const en = {
 	/** `{title}` is the note's own title — vault content, never translated. */
 	'plan.scheduleHeading': 'Schedule "{title}"',
 	'plan.scheduleDescription': 'Pick a date for each end, or clear a field to remove that date.',
+	/**
+	 * What the schedule entry refuses. Three whole sentences and not one with the other
+	 * end spliced in: a one-end entry is refused against a date the reader cannot see, so
+	 * it NAMES that date, and "cannot be before the start date" about a field that is not
+	 * on screen reads as a bug rather than as a rule.
+	 */
+	'plan.targetBeforeStartDate': "The target date cannot be before this item's start date ({start}).",
+	'plan.startAfterTargetDate': "The start date cannot be after this item's target date ({target}).",
+	'plan.targetBeforeStart': 'The target date cannot be before the start date.',
 
 	'stateColors.noStates':
 		'No workflow states to colour yet. Name a state property and list its states in the view options.',
@@ -740,6 +1080,12 @@ export const en = {
 	/** The write gate's own failure notice — every view's batch runs through it, so the
 	 * message names neither "backlog items" nor any other one view's own vocabulary. */
 	'writeGate.applyFailed': 'Failed to apply the change. See the developer console for details.',
+
+	/** The Bases view type's own label, shown wherever Obsidian lists view types to add —
+	 * unlike `registerBacklogView.ts`'s `name`, this is not the plugin's identity (only one
+	 * such exemption is sanctioned, and the backlog view holds it), so it is ordinary UI
+	 * text and belongs here rather than behind an eslint-disable. */
+	'estimation.viewName': 'Estimation',
 
 	/** The estimation view's own states — loading, unconfigured, misconfigured, and its
 	 * own empty result set. */
@@ -829,4 +1175,27 @@ export const en = {
 	 *  filtered count's idiom — one quantity in two parts, so the pair reads as one fact. */
 	'estimation.toolbar.init': 'Bind and backfill the estimation properties',
 	'estimation.toolbar.scored': '{scored} of {total} scored',
+
+	/**
+	 * Four sentences the sweep of `view/` first left as English inside keyed neighbours,
+	 * found by review on 2026-08-21. Each sat in a stated blind spot rather than at a
+	 * spelling any rule reads: two were returned from a helper, one is a template whose
+	 * first quasi is empty, and one is a clause joined at its call site.
+	 */
+	'lane.unreadableStart': 'an unreadable start date',
+	'lane.unreadableTarget': 'an unreadable target date',
+	'lane.daysLostShort': { one: '{count}d lost', other: '{count}d lost' },
+	'lane.daysLostWholeShort': { one: 'all {count}d', other: 'all {count}d' },
+	'lane.awayWeeks': { one: '{count} wk away', other: '{count} wk away' },
+	/**
+	 * The bar's own tooltip, as two WHOLE sentences rather than one frame with a state
+	 * clause appended — the shape `emptyState.noAxisBody` and its half-set sibling set, and
+	 * the reason is the same: a locale that leads with the state has no way into a middle
+	 * the caller assembled with an em dash.
+	 */
+	'lane.barTooltip': '{title} — {span}',
+	'lane.barTooltipWithState': '{title} — {span} — {state}',
+	'timeline.waitsTooltip': '{title} — {waits}',
+	/** The tag cell's own tooltip; `{tags}` is vault content joined as grammar. */
+	'column.tagsTooltip': '{label}: {tags}',
 } as const;

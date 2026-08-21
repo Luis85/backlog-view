@@ -5,6 +5,21 @@ import { ShelfCard } from './bars';
 /** Display-only ordering of cards within a group. Never written anywhere. */
 export type ShelfSort = 'tree' | 'title' | 'modified';
 
+/**
+ * How the shelf lays a group's cards out — the card grid it has always drawn, or one
+ * compact row per item. Display-only like the sort and the type filter above it, and it
+ * narrows nothing: every card the sort and the filter leave is drawn either way, which is
+ * what keeps the count above them true in both layouts.
+ *
+ * A TYPE rather than the `bucketList` boolean beside it in the store, because this one is
+ * offered as a named pick on two surfaces — the header's own picker and the card menu's
+ * shelf section — and a menu entry checked against `!shelfList` is a menu entry one edit
+ * from disagreeing with the button it mirrors. The store keeps its own inversion rule
+ * ('cards' is the default and a default is written as nothing at all); `view/viewState.ts`
+ * is where that inversion is spelled, exactly once.
+ */
+export type ShelfLayout = 'cards' | 'list';
+
 export interface ShelfGroup {
 	type: string;
 	cards: ShelfCard[];

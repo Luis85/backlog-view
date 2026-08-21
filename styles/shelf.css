@@ -1,5 +1,6 @@
-/* The unplaced shelf, its type groups, its toolbar controls, and the context strip —
-   `src/view/render/shelf.ts` and `src/view/render/shelfControls.ts`. */
+/* The unplaced shelf itself — the band, its type groups, its two card layouts and the
+   context strip beside it: `src/view/render/shelf.ts` and `src/view/render/contextStrip.ts`.
+   The HEADER's own chrome and the grip at the band's foot are `shelfControls.css`. */
 
 .pbl-shelf,
 .pbl-roadmap-context {
@@ -49,82 +50,50 @@
 }
 
 /* Collapsed keeps its footprint minimal: the header carries the name, the count and
-   the disclosure, so nothing else is on screen until it is opened. */
+   the disclosure, so nothing else is on screen until it is opened.
+
+   It no longer takes a padding of its own, and that is the point rather than a
+   simplification. The band's block padding used to halve when it shut, which moved the
+   header — and the header moved AGAIN, further, because opening it adds the search box and
+   the search box is taller than everything else in the row. Measured in the browser
+   harness at a 1200x800 pane, on Obsidian's own app.css: the header went 19px to 30px and
+   the band's padding 4px to 8px, so the shelf's NAME jumped 9.5px down the moment a reader
+   opened the band they were reading. One padding for both states removes half of that; the
+   header's own reserved row below removes the other half. Measured again after both: the shelf's name sits at the
+   same 62.5px open, shut and reopened. What it costs is a taller shut band — 29px before,
+   34px after — which is the trade this states out loud: five pixels, in exchange for a
+   title that is in the same place whether the band is open or shut. */
 .pbl-shelf-collapsed {
-	padding-block: var(--size-4-1);
 	min-height: 0;
 }
 
-.pbl-shelf-header {
-	display: flex;
-	align-items: center;
-	gap: var(--size-4-1);
-	font-size: var(--font-ui-small);
-	font-weight: var(--font-medium);
-	color: var(--text-normal);
+/* The band's own block padding, stated apart from the inline padding it shares with the
+   context strip: the strip has no second state to stay level with, so this value is the
+   shelf's alone and the rule above is what it is kept level BY. */
+.pbl-shelf {
+	padding-block: var(--size-4-1);
 }
 
-.pbl-shelf-icon {
-	display: flex;
-	align-items: center;
-	color: var(--text-muted);
-}
+/* A band the reader has SIZED does not yield to the flex line it sits on. `publishShelfHeight`
+   (`src/view/interactions/shelfResize.ts`) puts this class on exactly when it puts a height on,
+   so the two cannot come apart.
 
-/* The shelf's own title search. Nothing here draws a box: the field is a plain
-   `input[type='search']` and wears whatever chrome the theme gives one, which is the
-   only way it cannot end up with two. What is left is size — it takes the room the
-   header has left rather than its content, since the header is one row that also
-   carries the disclosure, the two pickers and (on the dated axis) the outcome line, so
-   a fixed width here would push one of them out of a narrow pane. */
-.pbl-shelf-search-input {
-	flex: 0 1 180px;
-	min-width: 0;
-	height: var(--size-4-5);
-	font-size: var(--font-ui-smaller);
-}
+   It exists for the dated axis alone: the horizon axis and both boards already make their
+   shelf `flex: 0 0 auto`, while `.pbl-view.pbl-roadmap-dates .pbl-shelf` un-pins these bands
+   and leaves them shrinkable. Under a `max-height` that cost nothing — a maximum a band is
+   not reaching is a maximum flex has no quarrel with — and under a real `height` it is the
+   pick being overruled: a stored 400 drew 222px in a 500px window and 102px in a 380px one,
+   measured, with the grip still starting its gesture from 400. Unshrinkable, a pane too
+   short for both scrolls, which is the band rule's own stated fallback and what extension 4a
+   already promises.
 
-/* The field wears exactly ONE clear affordance, and it is the plugin's own
-   (`renderSearchClear`). The type was picked believing the platform drew this button
-   whenever the field had a value; a vault reported no way back out of the search, and
-   what a headless Chromium draws for a bare `input[type='search']` here is nothing at
-   all — so the premise is unverifiable from this repository and the drawn button cannot
-   depend on it. Suppressed rather than left to chance: where the platform DOES draw one,
-   two x's sit side by side and only one of them tells the view anything. `-webkit-`
-   because Obsidian is Chromium on every platform it ships for. */
-.pbl-shelf-search-input::-webkit-search-cancel-button {
-	display: none;
-}
-
-/* What this drop would LEAVE, said before the release — only the dated axis draws one. */
-.pbl-shelf-outcome {
-	margin-inline-start: auto;
-	font-size: var(--font-ui-smaller);
-	color: var(--text-muted);
-}
-
-.pbl-shelf-icon .svg-icon {
-	width: 14px;
-	height: 14px;
-}
-
-.pbl-shelf-group {
-	display: flex;
-	flex-direction: column;
-	gap: var(--size-4-1);
-}
-
-.pbl-shelf-group-header {
-	display: flex;
-	align-items: center;
-	gap: var(--size-4-1);
-	font-size: var(--font-ui-smaller);
-	font-weight: var(--font-medium);
-	color: var(--text-muted);
-	text-transform: uppercase;
-}
-
-.pbl-shelf-group-count {
-	color: var(--text-faint);
+   **The selector is three classes because it has to be.** `.pbl-view.pbl-roadmap-dates
+   .pbl-shelf` is (0,3,0) and sets `flex` as a shorthand, so a bare `.pbl-shelf-sized` at
+   (0,1,0) would lose however late it is imported; `.pbl-view` here ties the specificity and
+   `index.css`'s order — this file after `roadmap.css` — decides it. That is the beat
+   `roadmap.css`'s own note warns is possible from here, taken deliberately and named. */
+.pbl-view .pbl-shelf.pbl-shelf-sized {
+	flex-shrink: 0;
 }
 
 /* A grid, not a wrapping flex row: the previous layout shrank trailing-row cards
@@ -191,53 +160,129 @@
 	height: 12px;
 }
 
-/* The shelf's own controls, in its own header. The disclosure carries the icon, the
-   name and the count, so it is a text-bearing button rather than the lone glyph
-   `clickable-icon` sizes for — the padding and the auto width are what stop it
-   rendering as a square with the label spilling out of it. */
-.pbl-shelf-disclosure {
+/* ----- the two layouts, and the grip that sizes the band */
+
+/* List mode: one compact row per item instead of the card grid above. Nothing is drawn
+   differently — the same `renderCardBody` builds the same children, and this turns the
+   card's own column into a row, which is what makes a layout pick cost no render branch and
+   an item impossible to look different per mode. What list mode ADDS is the state cell
+   (`.pbl-shelf-state`, below), and that one is drawn rather than styled, because it is
+   content the card genuinely does not carry.
+   `content-visibility` is the term that has to move with the geometry: the shared rule
+   above records 110px as a card's median drawn height, which is a row's four times over —
+   left standing, a shelf of rows nobody has scrolled to yet would report a scrollport four
+   times too long and a scrollbar that shrinks as the reader drags it. `auto` still records
+   the real height at first draw; this is only the guess before that. */
+.pbl-shelf-list .pbl-shelf-cards {
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-2-1);
+}
+
+.pbl-shelf-list .pbl-shelf-cards > .pbl-card {
+	contain-intrinsic-size: auto 28px;
+}
+
+.pbl-shelf-list .pbl-card {
+	padding: var(--size-2-1) var(--size-4-2);
+}
+
+/* The row itself, which is the card's SUMMARY rather than the card — `renderShelfCard`
+   draws that box for a compact row and for nothing else. The card stays a column, so a
+   shelved parent's children list is its second child and falls BENEATH the line instead of
+   sitting at the end of it. Letting the card wrap would have done the same job and cost the
+   one-line guarantee: measured in the harness, `flex-wrap: wrap` put the child list where it
+   belongs and took a row carrying a few property cells from 28px to 59px, because the cells
+   wrap on the same rule. A wrapper breaks the line exactly where it should be broken and
+   nowhere else. */
+.pbl-shelf-list .pbl-card-summary {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	gap: var(--size-4-2);
+	min-width: 0;
+}
+
+/* The title is the one thing in the row that yields, and it truncates rather than wraps:
+   a row that grew a second line for a long title would not be a row. `overflow-wrap` is
+   reset because the card's own rule sets `anywhere`, which fights the ellipsis.
+
+   `min-width` is the floor that decides WHO yields FIRST, and it is one declaration in this
+   rule rather than a second rule for the same selector — two of those is one edit from a
+   reader (or a check that addresses this selector) taking the wrong one. Every other item
+   in the row can shrink, so without a floor the title and the cells shrink in proportion
+   and the row's own subject ends up sharing the line evenly with its metadata. The cells
+   give way first and go on giving way until this is reached; only then does the title
+   truncate. In `ch` so it is a number of CHARACTERS at whatever size the theme draws them,
+   which is what the reservation is actually about.
+
+   **And the floor yields itself once there is not room for it**, which a bare `16ch` could
+   not and is why this is a `min()`. A reservation is a promise about a container that has
+   the space to keep it: on a phone or a narrow split there is a width below which 16ch plus
+   the badge, the gaps and the cells is more than the row has, and the floor then stops
+   protecting the title and starts overrunning the line instead. Measured across the range
+   rather than argued — at 1200, 640, 480 and 380px the summary's scroll width equals its
+   client width exactly and the floor is doing its job, and at 320px a fixed floor overran by
+   7px. The percentage is of the SUMMARY's own content box, so it answers to the band a
+   reader is looking at rather than to the viewport, which is what a media query would get
+   wrong in a split pane. (Codex, PR #183; the 1200px measurement the first version rested on
+   did not exercise this at all.) */
+.pbl-shelf-list .pbl-card-title {
+	flex: 1 1 auto;
+	min-width: min(16ch, 40%);
+	overflow: hidden;
+	overflow-wrap: normal;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+/* Everything after the title keeps its content width and gives up a share of the line
+   rather than pushing the title out of it — the parent line, the shelving reason and the
+   dependency note all say more than they need to on one row. */
+.pbl-shelf-list .pbl-card-parent,
+.pbl-shelf-list .pbl-shelf-reason,
+.pbl-shelf-list .pbl-shelf-dependency {
+	flex: 0 1 auto;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+/* **The property cells are in that rule too, and they were the one thing left out of it.**
+   `.pbl-props` is `flex: 0 0 auto` and `.pbl-card .pbl-props` gives it `width: auto` and
+   `overflow: visible`, which in a COLUMN is right — a card stacks its cells and sizes them
+   to content. Turned into a row it means an unshrinkable wrapper at its max-content width,
+   and the title is what pays: measured in the harness at a 1200px pane, a row carrying
+   seven cells drew its title at 103px where an untouched row drew 768px. Nothing spilled —
+   `.pbl-card .pbl-prop` is `flex: 0 1 auto` and `.pbl-prop-value` already ellipsises, so
+   the row stayed one 28px line and `scrollWidth` never exceeded `clientWidth` — which is
+   why this is about the TITLE being squeezed rather than about overflow. (Codex, PR #183,
+   which read it as a spill; the measurement is what says which half is real.)
+   `flex-wrap` is load-bearing BESIDE the shrink rather than tidy: `.pbl-card .pbl-props`
+   sets `wrap`, and a wrapper that can finally be squeezed is a wrapper whose cells wrap to
+   a second line — a compact row that grows to 56px the moment it holds two chips. The two
+   declarations only work together. */
+.pbl-shelf-list .pbl-card-summary .pbl-props {
+	flex: 0 1 auto;
+	min-width: 0;
+	overflow: hidden;
+	flex-wrap: nowrap;
+}
+
+/* The state cell a compact row carries (`renderShelfState`). Empty means the Base draws no
+   state column, or draws one this item's workflow does not write — `renderPropCells`
+   detaches its own box for that, and this wrapper has to go with it or the row keeps the
+   gap where the chip would have been. */
+.pbl-shelf-state {
 	display: flex;
 	align-items: center;
-	gap: var(--size-4-1);
-	width: auto;
-	height: auto;
-	padding: var(--size-2-1) var(--size-4-1);
-	font-size: var(--font-ui-small);
-	font-weight: var(--font-medium);
-	color: var(--text-normal);
 }
 
-.pbl-shelf-collapse-icon {
-	display: flex;
-	align-items: center;
-	color: var(--text-muted);
+.pbl-shelf-state:empty {
+	display: none;
 }
 
-.pbl-shelf-collapse-icon .svg-icon {
-	width: 14px;
-	height: 14px;
-}
-
-/* The two pickers sit together, left of the outcome line's `margin-inline-start: auto`.
-   The search's clear button joins them rather than taking a size of its own: it is a
-   header control like the others, and an x drawn at a different weight beside them reads
-   as belonging to something else. */
-.pbl-shelf-sort,
-.pbl-shelf-filter,
-.pbl-shelf-search-clear {
-	color: var(--text-muted);
-}
-
-.pbl-shelf-sort .svg-icon,
-.pbl-shelf-filter .svg-icon,
-.pbl-shelf-search-clear .svg-icon {
-	width: 14px;
-	height: 14px;
-}
-
-/* A filter that is actively hiding a type says so on its face — the shelf's count is
-   the true total, so without this the count and the cards disagree with no reason
-   visible for it. */
-.pbl-shelf-filter.is-active {
-	color: var(--text-accent);
+.pbl-shelf-list .pbl-shelf-state {
+	margin-inline-start: auto;
 }

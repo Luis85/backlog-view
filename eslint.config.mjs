@@ -265,12 +265,16 @@ const STORAGE = 'src/storage/**/*.ts';
 // lands on a clean file rather than opening with a wall of errors. Carved out of the
 // general region for that one rule and nothing else. domain/ and main.ts stay out until
 // their own sweeps run — `docs/requirements/Every surface translated.md`.
-const SWEPT = ['src/ui/**/*.ts', 'src/commands/**/*.ts'];
+// The directories swept into the catalog, plus `main.ts` — two command NAMES and the
+// plugin's own name, which is never translated and carries an inline disable rather than
+// an exemption for the file, `ui/manualDialog.ts`'s nav heading exactly.
+const SWEPT = ['src/ui/**/*.ts', 'src/commands/**/*.ts', 'src/main.ts'];
 const MENU = 'src/view/interactions/menu.ts';
 // The rest of the menu surface, carved out of VIEW for the two text bans alone — swept
 // into the catalog on 2026-08-20 alongside `menu.ts` itself, so the bans land on clean
 // files rather than opening with a wall of errors on the rest of a directory nobody has
-// swept yet. That ORDER is the rule, and `RENDER_EMPTY_STATES` above states it: a ban
+// swept yet. That ORDER is the rule, and the empty-states carve-out that used to state it
+// here is gone with the region collapse below: a ban
 // ahead of its sweep is a ban somebody switches off. Everything else VIEW carries applies
 // here unchanged.
 //
@@ -312,38 +316,6 @@ const RENDER = 'src/view/render/**/*.ts';
 // carved out of RENDER the same way RANKING_VIEW was carved out of RANKING, because a
 // rule applies to the rest of the region and not to this one file.
 const RENDER_BOARD = 'src/view/render/board.ts';
-// The empty states, carved out of RENDER for one text ban alone — swept into the catalog
-// on 2026-08-20, so `UI_TEXT_PROPERTY` lands on a clean file rather than opening with a
-// wall of errors on the rest of a directory nobody has swept yet. That ORDER is the rule:
-// a ban ahead of its sweep is a ban somebody switches off. Everything else RENDER carries
-// applies here unchanged.
-const RENDER_EMPTY_STATES = 'src/view/render/emptyStates.ts';
-// The toolbar row, carved out of RENDER for the two text bans — swept into the catalog on
-// 2026-08-20, so they land on clean files rather than opening with a wall of errors on the
-// rest of a directory nobody has swept yet. That ORDER is the rule, stated at
-// RENDER_EMPTY_STATES above and kept by every slice of this epic: a ban ahead of its sweep
-// is a ban somebody switches off. Everything else RENDER carries applies here unchanged.
-//
-// The five files are one subject — the row, its controls, the fit ladder that sheds them,
-// the busy indicator and the status readouts — and they are ENUMERATED rather than globbed
-// for MENU_SWEPT's reason: two flat-config blocks matching one file OVERRIDE
-// `no-restricted-syntax` rather than merging, so a file with a rule set of its own has to
-// repeat the bans, and a file ADDED to `view/render/` is uncovered until it is named here.
-// A glob replaces this list the day the REST of the directory is swept and the three
-// render rule sets can be one.
-//
-// What NEITHER ban reaches here is the shape this row is mostly built from: a prose
-// literal handed to `iconButton`, `menuButton` or `collapseButton` as a positional
-// ARGUMENT. `test/i18n/toolbar.test.ts` is what holds that, and it was watched holding it
-// — reverting `t('toolbar.jumpToToday')` to `'Jump to today'` produces zero lint errors
-// and fails that file twice.
-const RENDER_TOOLBAR = [
-	'src/view/render/toolbar.ts',
-	'src/view/render/toolbarControls.ts',
-	'src/view/render/toolbarBusy.ts',
-	'src/view/render/toolbarFit.ts',
-	'src/view/render/toolbarStatus.ts',
-];
 // The row's own controls, carved out of RENDER for ROW_LISTENER: `rows.ts` wires the
 // tree's row and chip delegation (the only place a per-row listener may live),
 // `columns.ts` draws the state and horizon chips those delegate for, and `chips.ts`
@@ -379,6 +351,13 @@ const VIEW = 'src/view/**/*.ts';
 // a helper as a positional ARGUMENT. `test/i18n/estimation.test.ts` is the runtime half
 // that holds that.
 const ESTIMATION = 'src/view/estimation/**/*.ts';
+// The manual's authored prose — the ONE part of view/ still holding English, and so the
+// one part the three text bans do not reach. 334 prose literals by an AST walk on
+// 2026-08-21, against the 9 a setter grep sees: this is long-form documentation built
+// from concatenated `text:` entries, not a handful of labels, and whether it belongs in a
+// message catalog at all is `Every surface translated`'s own open question rather than
+// work left undone. `typesSection.ts` is named separately below for ALL_TYPES_IMPORT.
+const MANUAL = ['src/view/manual/sections.ts', 'src/view/manual/setupSection.ts', 'src/view/manual/typesSection.ts'];
 // The card-move orchestration, exempt from DELIVERABLE_FIELD_READ for the same reason
 // RENDER_BOARD is: carved out of VIEW, not out of RENDER, because this file sits in the
 // "rest of view/" region.
@@ -468,6 +447,17 @@ const TEXT_TERNARY = [
 			"ConditionalExpression[consequent.type='Literal'][alternate.type='Literal']:matches([consequent.value=/[A-Z]/],[alternate.value=/[A-Z]/]):not(CallExpression[callee.name='t'] > *)",
 		message: TEXT_TERNARY_MESSAGE,
 	},
+	// The MIXED shape, which is neither of the two above and slipped both: one branch a
+	// literal and the other a template. `view/interactions/create.ts` spelled
+	// `choices.length > 1 ? 'New item' : `New ${choices[0]}`` at a `heading:` property in a
+	// directory carrying all three text bans, and no rule fired — the first rule wants a
+	// template AROUND the ternary and the second wants literals on BOTH sides. Found by an
+	// AST walk over a region the register called swept whole (2026-08-21), not by review.
+	{
+		selector:
+			"ConditionalExpression:matches([consequent.type='TemplateLiteral'],[alternate.type='TemplateLiteral']):matches([consequent.type='Literal'][consequent.value=/^[A-Z]/],[alternate.type='Literal'][alternate.value=/^[A-Z]/]):not(CallExpression[callee.name='t'] > *)",
+		message: TEXT_TERNARY_MESSAGE,
+	},
 ];
 
 // A sentence spelled AT the place it is used, in a directory that has none left. The
@@ -497,6 +487,14 @@ const TEXT_TERNARY = [
 //     and the toolbar's `iconButton`/`menuButton`/`collapseButton`). Lint sees the call it
 //     is written at, not the `new Notice` or the `aria-label` two frames down.
 //
+// `name:` joined that list on 2026-08-21 with `main.ts`'s two command names, and it cost
+// exactly one exemption across the whole swept tree — `registerBasesView`'s own `name`,
+// the plugin's identity, disabled at the line the way `ui/manualDialog.ts`'s nav heading
+// is. It is the widest property name here and the only one that is routinely DATA
+// elsewhere (a resource, a lane, a file), which is why it is safe only while the ban is
+// scoped to swept regions: pointing it at `domain/` without sweeping it first would fire
+// on values the plugin matches on.
+//
 // A `text:` or `'aria-label'` property is NOT in that list any more: `UI_TEXT_PROPERTY`
 // below covers it, and `ui/manualDialog.ts`'s nav heading — the plugin's own NAME, which
 // `Every surface translated` says is not translated — carries an `eslint-disable-next-line`
@@ -509,7 +507,7 @@ const TEXT_TERNARY = [
 // written.
 const UI_TEXT_LITERAL = {
 	selector:
-		"CallExpression[callee.property.name=/^(setName|setDesc|setPlaceholder|setTooltip|setButtonText|setText|setTitle)$/] > :matches(Literal[value=/^[A-Z]/], TemplateLiteral[quasis.0.value.raw=/^[A-Z]/]), CallExpression[callee.name='setTooltip'] > :matches(Literal[value=/^[A-Z]/], TemplateLiteral[quasis.0.value.raw=/^[A-Z]/]), NewExpression[callee.name='Notice'] > :matches(Literal[value=/^[A-Z]/], TemplateLiteral[quasis.0.value.raw=/^[A-Z]/])",
+		"CallExpression[callee.property.name=/^(setName|setDesc|setPlaceholder|setTooltip|setButtonText|setText|setTitle)$/] > :matches(Literal[value=/^[A-Z]/], TemplateLiteral[quasis.0.value.raw=/^[A-Z]/]), CallExpression[callee.property.name=/^(setName|setDesc|setPlaceholder|setTooltip|setButtonText|setText|setTitle)$/] > ConditionalExpression > :matches(Literal[value=/^[A-Z]/], TemplateLiteral[quasis.0.value.raw=/^[A-Z]/]), CallExpression[callee.name='setTooltip'] > :matches(Literal[value=/^[A-Z]/], TemplateLiteral[quasis.0.value.raw=/^[A-Z]/]), CallExpression[callee.name='setTooltip'] > ConditionalExpression > :matches(Literal[value=/^[A-Z]/], TemplateLiteral[quasis.0.value.raw=/^[A-Z]/]), NewExpression[callee.name='Notice'] > :matches(Literal[value=/^[A-Z]/], TemplateLiteral[quasis.0.value.raw=/^[A-Z]/]), NewExpression[callee.name='Notice'] > ConditionalExpression > :matches(Literal[value=/^[A-Z]/], TemplateLiteral[quasis.0.value.raw=/^[A-Z]/])",
 	message:
 		'A sentence spelled where it is used cannot be translated. Add a key to src/i18n/en.ts and call t() — and if this is a value the plugin writes, matches or persists rather than text, it belongs in neither place.',
 };
@@ -541,7 +539,7 @@ const UI_TEXT_LITERAL = {
 // that every string a frame drew carries the fixture catalog's marker.
 const UI_TEXT_PROPERTY = {
 	selector:
-		"Property[key.name=/^(text|label|title|heading|description|placeholder|cta|ctaLabel|fieldName)$/]:matches([value.type='Literal'][value.value=/^[A-Z]/], [value.type='TemplateLiteral'][value.quasis.0.value.raw=/^[A-Z]/]), Property[key.value='aria-label']:matches([value.type='Literal'][value.value=/^[A-Z]/], [value.type='TemplateLiteral'][value.quasis.0.value.raw=/^[A-Z]/])",
+		"Property[key.name=/^(text|label|title|heading|description|placeholder|cta|ctaLabel|fieldName|name)$/]:matches([value.type='Literal'][value.value=/^[A-Z]/], [value.type='TemplateLiteral'][value.quasis.0.value.raw=/^[A-Z]/]), Property[key.name=/^(text|label|title|heading|description|placeholder|cta|ctaLabel|fieldName|name)$/] > ConditionalExpression > :matches(Literal[value=/^[A-Z]/], TemplateLiteral[quasis.0.value.raw=/^[A-Z]/]), Property[key.value='aria-label']:matches([value.type='Literal'][value.value=/^[A-Z]/], [value.type='TemplateLiteral'][value.quasis.0.value.raw=/^[A-Z]/]), Property[key.value='aria-label'] > ConditionalExpression > :matches(Literal[value=/^[A-Z]/], TemplateLiteral[quasis.0.value.raw=/^[A-Z]/])",
 	message:
 		'A sentence spelled where it is used cannot be translated. Add a key to src/i18n/en.ts and call t() — and if this is a value the plugin writes, matches or persists rather than text, it belongs in neither place.',
 };
@@ -699,26 +697,17 @@ export default defineConfig([
 		// and CHILD_TYPE_CHOICES_NULL apply here too, and so does DELIVERABLE_FIELD_READ —
 		// the chip (`columns.ts`) is exactly the surface that must not hand-pick the raw
 		// fields itself.
+		//
+		// **The three text bans are on the GLOB now** (2026-08-21), which is the collapse
+		// the toolbar and empty-state carve-outs were written to wait for: this directory
+		// is swept whole, so a file ADDED to it is covered the moment it exists rather than
+		// when somebody remembers to name it. That was the standing cost of enumerating —
+		// two flat-config blocks matching one file OVERRIDE `no-restricted-syntax` rather
+		// than merging, so a swept file needing rules of its own had to repeat the bans,
+		// and the two blocks below still do. `view/manual/` is the one part of `view/`
+		// still unswept and is not under this glob.
 		files: [RENDER],
-		ignores: [RENDER_BOARD, RENDER_EMPTY_STATES, ...RENDER_TOOLBAR, ...ROW_CONTROLS],
-		rules: syntaxRules([
-			...SVG_CLASS_TOKENS,
-			...WRITE_BOUNDARY,
-			MENU_ANCHOR,
-			TREE_SCAN,
-			ALL_TYPES_IMPORT,
-			CHILD_TYPE_CHOICES_NULL,
-			DELIVERABLE_FIELD_READ,
-			...TEXT_TERNARY,
-		]),
-	},
-	{
-		// The swept toolbar: RENDER's own rules plus both text bans. Unlike the empty
-		// states beside it this row spells `setTooltip` at nearly every control, so
-		// UI_TEXT_LITERAL holds something here rather than nothing — and it reaches the
-		// option bags too, which is where the mode switcher and the focus picker put their
-		// labels.
-		files: RENDER_TOOLBAR,
+		ignores: [RENDER_BOARD, ...ROW_CONTROLS],
 		rules: syntaxRules([
 			...SVG_CLASS_TOKENS,
 			...WRITE_BOUNDARY,
@@ -733,8 +722,11 @@ export default defineConfig([
 		]),
 	},
 	{
-		// The swept empty states: RENDER's own rules plus the property ban above.
-		files: [RENDER_EMPTY_STATES],
+		// The Deliverables board's own render, carved out of RENDER: `doneOf` reads
+		// `item.deliverableDone` directly because this board only ever draws Deliverable
+		// cards — it is the board's workflow, not a per-item type dispatch, so
+		// DELIVERABLE_FIELD_READ does not apply here. Everything else RENDER carries does.
+		files: [RENDER_BOARD],
 		rules: syntaxRules([
 			...SVG_CLASS_TOKENS,
 			...WRITE_BOUNDARY,
@@ -742,18 +734,11 @@ export default defineConfig([
 			TREE_SCAN,
 			ALL_TYPES_IMPORT,
 			CHILD_TYPE_CHOICES_NULL,
-			DELIVERABLE_FIELD_READ,
+			// Repeated rather than inherited from RENDER's glob above: one file, one block.
 			...TEXT_TERNARY,
+			UI_TEXT_LITERAL,
 			UI_TEXT_PROPERTY,
 		]),
-	},
-	{
-		// The Deliverables board's own render, carved out of RENDER: `doneOf` reads
-		// `item.deliverableDone` directly because this board only ever draws Deliverable
-		// cards — it is the board's workflow, not a per-item type dispatch, so
-		// DELIVERABLE_FIELD_READ does not apply here. Everything else RENDER carries does.
-		files: [RENDER_BOARD],
-		rules: syntaxRules([...SVG_CLASS_TOKENS, ...WRITE_BOUNDARY, MENU_ANCHOR, TREE_SCAN, ALL_TYPES_IMPORT, CHILD_TYPE_CHOICES_NULL, ...TEXT_TERNARY]),
 	},
 	{
 		// The row's own controls, carved out of RENDER: everything RENDER carries, plus
@@ -771,7 +756,10 @@ export default defineConfig([
 			CHILD_TYPE_CHOICES_NULL,
 			DELIVERABLE_FIELD_READ,
 			ROW_LISTENER,
+			// Repeated rather than inherited from RENDER's glob above: one file, one block.
 			...TEXT_TERNARY,
+			UI_TEXT_LITERAL,
+			UI_TEXT_PROPERTY,
 		]),
 	},
 	{
@@ -781,8 +769,16 @@ export default defineConfig([
 		// (any of these files is a candidate sixth type-offering surface) and
 		// DELIVERABLE_FIELD_READ (any of these files is a candidate third hand-written
 		// workflow ternary).
+		//
+		// The three text bans joined on 2026-08-21 with the sweep of `writeGate.ts` and
+		// `cardMoves.ts`, which were the last English left in this region. `MANUAL` is what
+		// the ignore holds out, and it has a block of its own below carrying everything
+		// here except those three — a carve-out with no block matches NO
+		// `no-restricted-syntax` block at all, since the general `src/**` region ignores
+		// `VIEW`. That is the sweep order intact rather than an omission: the manual's
+		// prose is unswept, and a ban ahead of a sweep is a ban somebody switches off.
 		files: [VIEW],
-		ignores: [MENU, ...MENU_SWEPT, RENDER, ESTIMATION, ...RANKING_VIEW, CARD_MOVES, TYPES_SECTION],
+		ignores: [MENU, ...MENU_SWEPT, RENDER, ESTIMATION, ...RANKING_VIEW, CARD_MOVES, TYPES_SECTION, ...MANUAL],
 		rules: syntaxRules([
 			...SVG_CLASS_TOKENS,
 			...WRITE_BOUNDARY,
@@ -792,6 +788,9 @@ export default defineConfig([
 			ALL_TYPES_IMPORT,
 			CHILD_TYPE_CHOICES_NULL,
 			DELIVERABLE_FIELD_READ,
+			...TEXT_TERNARY,
+			UI_TEXT_LITERAL,
+			UI_TEXT_PROPERTY,
 		]),
 	},
 	{
@@ -845,7 +844,42 @@ export default defineConfig([
 		// in a second file carrying it. It renders nothing, writes nothing and opens no
 		// menu, so every other rule holds.
 		files: ['src/view/projection.ts'],
-		rules: syntaxRules([...SVG_CLASS_TOKENS, ...WRITE_BOUNDARY, MENU_ANCHOR, OVERBY, TREE_SCAN]),
+		rules: syntaxRules([
+			...SVG_CLASS_TOKENS,
+			...WRITE_BOUNDARY,
+			MENU_ANCHOR,
+			OVERBY,
+			TREE_SCAN,
+			// Repeated rather than inherited from VIEW above: one file, one block. It draws
+			// nothing and holds no text today, so these three ban a shape rather than guard
+			// a sweep — which is the point of putting them on a region instead of a file.
+			...TEXT_TERNARY,
+			UI_TEXT_LITERAL,
+			UI_TEXT_PROPERTY,
+		]),
+	},
+	{
+		// The manual's two authored-prose files, carved out of VIEW for the three text bans
+		// alone — they are the one part of `view/` still holding English, so a ban here
+		// would be a ban ahead of its sweep. Everything else VIEW carries applies here
+		// unchanged, and that is the whole reason this block exists rather than an
+		// `ignores` entry: the general `src/**` region IGNORES `VIEW`, so a file carved out
+		// of VIEW and given no block of its own matches no `no-restricted-syntax` block at
+		// all and silently loses the write boundary, the menu-anchor rule and the rest.
+		// Verified by planting `menu.showAtMouseEvent` here with no block and watching lint
+		// pass (2026-08-21). `typesSection.ts` has its own block below for the same reason.
+		files: MANUAL,
+		ignores: [TYPES_SECTION],
+		rules: syntaxRules([
+			...SVG_CLASS_TOKENS,
+			...WRITE_BOUNDARY,
+			MENU_ANCHOR,
+			OVERBY,
+			TREE_SCAN,
+			ALL_TYPES_IMPORT,
+			CHILD_TYPE_CHOICES_NULL,
+			DELIVERABLE_FIELD_READ,
+		]),
 	},
 	{
 		// The types section, carved out of VIEW: see TYPES_SECTION's own comment above for
@@ -879,6 +913,10 @@ export default defineConfig([
 			TREE_SCAN,
 			ALL_TYPES_IMPORT,
 			CHILD_TYPE_CHOICES_NULL,
+			// Repeated rather than inherited from VIEW above: one file, one block.
+			...TEXT_TERNARY,
+			UI_TEXT_LITERAL,
+			UI_TEXT_PROPERTY,
 		]),
 	},
 	{
@@ -912,6 +950,19 @@ export default defineConfig([
 			// is the one console call this codebase makes on purpose.
 			'no-console': ['error', { allow: ['error'] }],
 		},
+	},
+	{
+		// The catalog is DATA, and the one file rule the size budget exists to enforce is
+		// already true of it: one concern, no imports, no logic. What it grows with is the
+		// number of SURFACES the plugin draws, not the number of things this module does,
+		// so the budget can only ever be met by splitting the file a translator is meant
+		// to copy whole (`en.ts`'s own header) — which trades the property that makes it
+		// translatable for a number. Every other rule above still applies to it.
+		//
+		// `t.ts` beside it is deliberately NOT exempt: it is code, and it is where any
+		// growth in the catalog's own machinery has to justify itself.
+		files: ['src/i18n/en.ts'],
+		rules: { 'max-lines': 'off' },
 	},
 	{
 		files: [`${TESTS}/*.ts`],

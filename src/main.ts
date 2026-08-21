@@ -2,13 +2,15 @@ import { Plugin } from 'obsidian';
 import { CREATE_BACKLOG_COMMAND_ID, promptCreateBacklogBase } from './commands/scaffold';
 import { WRITE_README_COMMAND_ID, writeBacklogReadmeCommand } from './commands/readme';
 import { rekeyBase } from './storage/viewStateStore';
-import { initLocale } from './i18n/t';
+import { initLocale, t } from './i18n/t';
 import { registerBacklogView } from './view/registerBacklogView';
 import { registerEstimationView } from './view/estimation/register';
 import { WriteLock } from './view/writeLock';
 
 export default class ProductBacklogPlugin extends Plugin {
 	onload(): void {
+		// Once, before anything registers a name: Obsidian needs a restart to change its
+		// language, so re-reading it per render would be cost with no observable benefit.
 		initLocale();
 		// ONE lock for the whole plugin: every view's writes serialize against it and
 		// the undo slot is the vault's last batch, whichever view wrote it (ADR 0030).
@@ -25,12 +27,12 @@ export default class ProductBacklogPlugin extends Plugin {
 		this.addCommand({
 			id: CREATE_BACKLOG_COMMAND_ID,
 			// Obsidian prefixes command names with the plugin name in the palette.
-			name: 'Create backlog',
+			name: t('command.createBacklog'),
 			callback: () => promptCreateBacklogBase(this.app),
 		});
 		this.addCommand({
 			id: WRITE_README_COMMAND_ID,
-			name: 'Write backlog readme',
+			name: t('command.writeReadme'),
 			// A check callback, not a plain one: the document is generated from the active
 			// view's configuration, so with no such view there is nothing to describe and
 			// the command hides rather than writing something from the defaults.
