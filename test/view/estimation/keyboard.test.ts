@@ -190,13 +190,15 @@ describe('the estimation view from the keyboard', () => {
 
 		// The button is a NEW element after the rebuild, so this asks the document what holds
 		// focus rather than trusting the old reference.
-		expect(containerEl.ownerDocument.activeElement).toBe(header());
+		expect(document.activeElement).toBe(header());
 		const first = header().getAttribute('aria-sort');
 
-		// The second press is the point: it only reaches a header if the first one left focus
-		// on it.
-		key(header(), 'Enter');
-		click(header());
+		// The second activation goes to whatever HOLDS focus, not to a re-queried selector — so
+		// it reaches a header only if the first click left focus on one. jsdom does not turn
+		// Enter on a button into a click (and this view's keydown handler is delegated to the
+		// list's own tab stop, so a bubbled Enter from a button is inert), which is why this is
+		// the honest spelling of "press it again".
+		click(document.activeElement as HTMLElement);
 		expect(header().getAttribute('aria-sort')).not.toBe(first);
 	});
 });
