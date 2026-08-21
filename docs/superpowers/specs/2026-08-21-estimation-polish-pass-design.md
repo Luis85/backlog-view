@@ -158,6 +158,12 @@ cleanup, through a `view.performRestamp` on `performOrphanCleanup`'s shape (plan
 refresh-unless-flushed). Both controls are mutually exclusive by currency, so the panel
 gains a branch, not a second region.
 
+The control's label is a **new catalog key**, not a literal: `view/estimation/` is a swept
+directory, so `UI_TEXT_PROPERTY` refuses a sentence at the `aria-label` the orphan
+control's own shape uses. It says what the action does to the note — recompute the stored
+total from the answers on disk — rather than naming the currency word that offered it,
+since two currencies offer the same action.
+
 **Check.** `test/view/estimation/scoring.test.ts` (the planners' own suite): refused on `current`,
 `handwritten`, `orphan` and `none`; on `stale` it writes the computed total and a fresh
 stamp and nothing else. `test/view/estimation/panel.test.ts`: the control is offered on
@@ -169,9 +175,15 @@ stamp and nothing else. `test/view/estimation/panel.test.ts`: the control is off
 two faults is fixed one round trip at a time. `renderProblems` already lists all of them,
 so the view holds two ideas of how much to say.
 
-**Fix.** The Notice states the whole list, joined the way the catalog's locale joins a
-list — never by string concatenation in the module (root `CLAUDE.md`: the sentence is the
-unit of translation, and list joining follows the catalog's locale).
+**Fix, and it is smaller than it reads.** `list()` already exists (`src/i18n/t.ts`,
+`Intl.ListFormat` in the catalog's locale), and the readme command's own notice is the
+precedent for exactly this shape. So: `estimation.problems.blocked`'s `{problem}` becomes
+`{problems}` and the call passes `list(problems)`. Nothing is joined in the module.
+
+Take the readme notice's punctuation rule with it: **no terminal period**, because each
+problem is already a whole sentence carrying its own. That catalog comment records the
+`'; '` version rendering `"…".; "…"..`, which is the one part of this that is not a pure
+text move.
 
 **Check.** `test/view/estimation/states.test.ts`: with two problems, both appear.
 
@@ -185,8 +197,11 @@ unit of translation, and list joining follows the catalog's locale).
 
 ## What this pass does not do
 
-- **No split of `renderTable.ts`.** 490 raw lines, and B3 and B5 add to it, but
-  `max-lines` skips comments and it passes. A split is proposed when lint asks for one.
+- **No split of `renderTable.ts`.** 490 raw lines reads alarming and is not the number
+  lint measures: counted the way `max-lines` counts — blanks and comments skipped — it is
+  **241 of 400**, and `panel.ts` is 197. B3 and B5 add roughly a dozen lines between them.
+  There is no budget pressure here, so a split would also cost a `docs/` note (rule 7
+  specifies every module in `src/`) to buy nothing. Proposed when lint asks.
 - **No route back from the panel to the table.** `ArrowRight` enters the panel and
   `Shift+Tab` returns to the table's tab stop. A dedicated key would be a new
   interaction, not a refinement.
@@ -195,6 +210,21 @@ unit of translation, and list joining follows the catalog's locale).
   (arrow moves, Space commits) is a different design question, not polish.
 - **No action on the config-warning state.** It lists problems and offers no button
   because the fix is a decision in the view's own options.
+
+## What the gates ask of this pass
+
+- **`CHANGELOG.md` gains `[Unreleased]` entries.** `RELEASING.md`'s rule is that they are
+  added by the pull request that earns them, never invented at release time, and A alone
+  is a user-visible fix in shipped behaviour. No version bump here — the entries only.
+- **No new module in `src/`.** `planRestamp` joins `domain/estimationWritePlan.ts` and
+  `performRestamp` joins the view, so `docs-check.mjs` rule 7 is answered by editing the
+  notes listed below rather than by adding one. This is the reason C2 goes in an existing
+  file even though it is the pass's only new logic.
+- **One new catalog key, one deleted.** C2 adds the restamp label; B4 deletes
+  `estimation.toolbar.undo`. `test/i18n/` asserts both directions.
+- **`.pbl-est-table` stays the scroller.** B5 moves the role and the tab stop to an inner
+  wrapper and nothing else: `renderTable`'s `tableScrollTop` restore keeps targeting the
+  same element, and moving it would be an unasked-for second change inside an a11y fix.
 
 ## Register notes this pass owes
 
