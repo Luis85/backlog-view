@@ -30,7 +30,7 @@ selected by one property instead of by the whole result set.
 | **Actor** | Anyone reading a release |
 | **Trigger** | Opening a release from the index |
 | **Preconditions** | The membership property is configured and a release is open |
-| **Guarantee** | Every row whose own membership property names this release is a member; every other row on screen is context. Membership never cascades to a parent or a child, and drawing the scope writes nothing. |
+| **Guarantee** | Every row whose own membership property names this release is a member; every other row on screen is context. **Membership is one release** — the property holds a single value. It never cascades to a parent or a child, and drawing the scope writes nothing. |
 
 **Main flow**
 
@@ -48,8 +48,13 @@ selected by one property instead of by the whole result set.
 - **1b — the property holds a link to a note that is not a release.** The item is not a member
   of anything and is reported among the items whose membership could not be resolved, rather
   than silently dropped.
-- **1c — the property holds several values.** The item is a member of each release it names.
-  A release is a set, not a rung, so nothing here forces one.
+- **1c — the property holds several values.** The item is reported among the items whose
+  membership could not be resolved, exactly as 1b, and is a member of none of them. Reading it
+  as membership of each would make every writer in this epic destructive: both
+  [[Setting an item's release]] and [[Moving a card between slices]] write one value and
+  remove the key to clear it, so a second release assigned would silently discard the first,
+  and one removal would discard them all. A list-preserving membership is a different feature
+  with a different write shape; it is not this one wearing a tolerant reader.
 - **2a — a member's ancestor is missing from the results entirely.** The member is drawn at the
   top level rather than hidden, the same answer the backlog gives an orphan.
 - **3a — an ancestor drawn as context is itself in another release.** It is still context here:
@@ -66,6 +71,8 @@ selected by one property instead of by the whole result set.
 - The member count equals the number of notes whose own property names the release — no
   ancestor and no descendant is added to it.
 - An item whose membership names a note that is not a release is reported, not dropped.
+- An item whose membership property holds two values is reported as unresolved and counts
+  towards no release's member total.
 - With the membership property unconfigured, no tree is drawn and the empty state names the
   option.
 - Drawing the scope plans no write.

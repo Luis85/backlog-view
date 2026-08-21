@@ -46,9 +46,12 @@ one file the plugin owns, written whole.
 - **1a — the release has no members.** The note is still written and says the release contained
   nothing, rather than being absent. An empty release notes file is a fact; a missing one is
   ambiguous.
-- **1b — a member is outside the Base's filter.** It is left out, and the note says how many
-  were left out. The view reports what the Base returned, and it says when that is less than
-  the whole.
+- **1b — a note the Base excluded names this release.** It is not in the file, and **the file
+  does not say how many such notes there are**, because nothing can count them: membership
+  lives on the item, so an excluded item is invisible to the view, and one that surfaces as a
+  context row is barred from being a source of any figure derived from the results. Instead
+  the file states its own population once — that it lists what this Base returned — which is
+  a promise the view can keep, where a count of the unseen is not.
 - **2a — a member's type is not in the vocabulary.** It is grouped under an "other" heading
   rather than dropped, because a note that quietly omits work is worse than an untidy heading.
 - **4a — a note of that name already exists in the folder.** It is overwritten whole. That is
@@ -65,8 +68,10 @@ one file the plugin owns, written whole.
 
 ## Acceptance criteria
 
-- The generated note contains exactly the members, grouped by type, ordered by `order` within
-  each group.
+- The generated note contains exactly the members the Base returned, grouped by type, ordered
+  by `order` within each group, and it names that population in its own text.
+- A fixture whose release has a member the Base excludes produces a file that neither lists it
+  nor counts it, and adding a context row to the fixture changes no line of the output.
 - Its first lines say it is generated and that edits do not survive regeneration.
 - Regenerating twice over an unchanged release produces a byte-identical file.
 - A file at that path carrying the generated marker is overwritten; one without it is refused
