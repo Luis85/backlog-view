@@ -40,7 +40,7 @@ empty state, the toolbar, and the config warning.
 | **Actor** | Backlog owner |
 | **Trigger** | Pressing the setup action — on the guided empty state, the toolbar, or the config warning |
 | **Preconditions** | The view cannot score yet — the model binds nothing, or binds something and reports a problem |
-| **Guarantee** | Either every suggested key is bound *and* stubbed onto the results, or nothing is changed at all. A run that would leave the model broken changes neither the configuration nor a note. |
+| **Guarantee** | The gate runs before anything is touched, so a run that would leave the model broken changes neither the configuration nor a note. Past that gate the two halves are one action but not one transaction — see 5d. |
 
 **Main flow**
 
@@ -81,6 +81,19 @@ empty state, the toolbar, and the config warning.
   `outsideFilter` from the built model itself, which holds one item per *result*, so a
   path that is not a result is refused with the whole batch. There is no context row in
   this model to make an exception for.
+- **5d — the backfill fails partway.** The keys stay bound and the notes stubbed up to
+  the failure. That is not a transaction and is not claimed as one: the gate that protects
+  this action runs BEFORE either half, and past it the writes are sequential
+  `processFrontMatter` calls that a disk can refuse at any file. What the state costs is
+  the point rather than the promise, and it is small enough not to buy a rollback — an
+  empty stub asserts no answer, so a note that missed one reads exactly as it did before
+  (`none`), scoring writes its key on demand either way, and the whole vault needs only
+  one note carrying a key for Obsidian's picker to offer it. The prefix that DID land is
+  in the undo slot like any batch's (`installed` on the first inverse, so a failure
+  installs exactly what was applied), and pressing the action again finishes the rest
+  rather than redoing it — every write is `ifMissing`, and 4a leaves the bound keys alone.
+  A rollback would have to un-set thirteen options the user may meanwhile have edited, to
+  reach a state one press already reaches.
 
 ## Acceptance criteria
 
