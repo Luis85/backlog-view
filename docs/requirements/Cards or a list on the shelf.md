@@ -90,8 +90,17 @@ one a reader wants changes by the day and by the task, not by the base.
   cell, which is the tree's own rule, and the wrapper goes with the cell when the cell is
   dropped.
 - **3a — a title too long for one line.** It truncates with an ellipsis rather than
-  wrapping. A row that grew a second line would not be a row, and the title is the one
-  thing in it that yields — everything after it keeps its content width.
+  wrapping: a row that grew a second line would not be a row. The title yields and the
+  property cells keep their content width, which is the TREE's own order — its columns are
+  fixed width and the row's name is the flexible part — but it yields only down to a floor.
+  Without one, a Base exposing several properties squeezed a 768px title to 103px, measured
+  in the harness at a 1200px pane with seven cells on the row. The cells shrink first below
+  that floor: at a 760px pane the same row held its title while the cells went from 700px to
+  348px. Nothing spills either way — every cell ellipsises inside itself — and the row stays
+  one line, which needs the wrapper's `flex-wrap` turned off beside the shrink, since a
+  wrapper that can finally be squeezed is one whose cells wrap to a second line. (Codex,
+  PR #183, which read the squeeze as a horizontal spill; the measurement says which half is
+  real.)
 
 ## Acceptance criteria
 
@@ -103,6 +112,8 @@ one a reader wants changes by the day and by the task, not by the base.
   one fixed name.
 - The same cards are drawn in both layouts, and the shelf's count is unchanged by the
   pick.
+- A compact row is ONE line whatever it carries, and its title keeps a stated floor rather
+  than being squeezed away by property cells.
 - A compact row carries the state chip; a card does not. The chip is the tree's own — a
   `<button>` with `tabindex="-1"` for a result, whose menu is the one Set state opens.
 - The card menu offers the same two layouts with the same entry checked.

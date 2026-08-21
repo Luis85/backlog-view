@@ -95,11 +95,23 @@ about a width.
   falls through to the 30% the band has always taken. A grip that published its measured
   height on every render would pin that share to whatever the pane happened to be on the
   first draw.
+- **2c — the band holds less than its cap allows.** The gesture starts from the height the
+  band is DRAWN at, never from the stored cap, and the two differ exactly here: the band is
+  a maximum, so it draws `min(content, cap)`, and with a 600px cap over 120px of cards the
+  grip a reader can touch is at 120. Starting at 600 would mean dragging up 480px before the
+  edge moved, and announcing a height nothing on screen has. A gesture that changes nothing
+  still commits nothing, so a tap leaves the larger cap standing. What this does not buy is
+  dragging DOWNWARD there: raising a maximum above the content cannot make a shelf taller
+  than its cards. That is inherent to sizing the band by a cap rather than a height, and a
+  cap is what it wants — a height would reserve dead space under a nearly empty shelf. The
+  trade is that the direction with no visible effect is the useless one. (Codex, PR #183.)
 
 ## Acceptance criteria
 
 - The grip carries `role="separator"`, `aria-orientation="horizontal"`, a real
   `tabindex="0"`, and `aria-value*` matching the current height and the storable bounds.
+- `aria-valuenow` and the gesture's origin are the height the band is DRAWN at, not a larger
+  stored cap it never reaches.
 - Dragging updates only the custom property until release: `config.setCalls` and the
   vault's write log stay empty through the whole gesture, and exactly one height is
   persisted, at its end.
@@ -129,14 +141,15 @@ size drawn at release rather than at the last move are all the same code
 this grip.
 
 What is this grip's own is `src/view/interactions/shelfResize.ts`: the markup, the bounds,
-where the height goes, and the one layout read. With no stored pick the cap is a percentage
-the stylesheet owns, so there is no number to announce or to drag from until the band is
-measured — `offsetHeight`, the border box `max-height` applies to. That is one read on one
-element at the end of one render pass, the same shape as `render/roadmap.ts`'s own
-`treeEl.clientWidth`; what `src/view/CLAUDE.md` bans is a read per ROW and a read inside an
-input handler, and this is neither. An unmeasured pane reports 0 and clamps to the floor,
-which is a grip announcing the smallest band it could produce rather than announcing
-nothing.
+where the height goes, and the one layout read. That read is `offsetHeight` — the border box
+`max-height` applies to, and every box here is `border-box` — and it is the gesture's ORIGIN
+rather than a fallback for an unpicked band. Extension 2c is why: the band is a maximum, so
+what it draws is `min(content, cap)`, and a stored cap the cards never reach is a number the
+reader can neither see nor put a finger on. The stored pick is the fallback, for a pane that
+has not been laid out; an unmeasured one reports 0 and falls through to it, then to the
+floor. It is one read on one element at the end of one render pass, the same shape as
+`render/roadmap.ts`'s own `treeEl.clientWidth`; what `src/view/CLAUDE.md` bans is a read per
+ROW and a read inside an input handler, and this is neither.
 
 `MIN_SHELF_HEIGHT_PX` / `MAX_SHELF_HEIGHT_PX` and the `shelfHeight` field are in
 `src/storage/viewStateStore.ts`, read back through the same `inRange` `leadWidth` uses;

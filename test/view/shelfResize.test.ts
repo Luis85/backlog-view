@@ -187,6 +187,71 @@ describe('the shelf’s resize grip', () => {
 		});
 	});
 
+	/**
+	 * The band is `max-height`, so it draws `min(content, cap)` — and with a cap larger than
+	 * the cards the grip a reader can put a finger on is at the CONTENT height, not at the
+	 * stored number. jsdom lays nothing out, so the drawn height is stubbed on the prototype
+	 * and the pane re-rendered through the real control: this asserts the ORIGIN the gesture
+	 * takes, which is the whole of what the stub can stand in for.
+	 */
+	describe('the gesture’s origin', () => {
+		/** Report `height` as the drawn height of every shelf element, until the returned undo runs. */
+		function stubDrawnHeight(height: number): () => void {
+			const own = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'offsetHeight');
+			Object.defineProperty(HTMLElement.prototype, 'offsetHeight', {
+				configurable: true,
+				get(this: HTMLElement) {
+					return this.classList.contains('pbl-shelf') ? height : 0;
+				},
+			});
+			return () => {
+				if (own) Object.defineProperty(HTMLElement.prototype, 'offsetHeight', own);
+			};
+		}
+
+		it('takes the height the band is DRAWN at, not the larger cap it is allowed', () => {
+			const { view, containerEl } = makeRoadmap(horizonVault());
+			// A cap far above what the cards need. The band draws its content; the stored
+			// number is only a ceiling it never reaches.
+			view.setShelfHeight(600);
+			const undo = stubDrawnHeight(120);
+			try {
+				// Re-render through a real control so the grip is rebuilt with the stub in force.
+				view.setShelfLayout('list');
+
+				const el = grip(containerEl);
+				// Announced as what is on screen, never as the invisible ceiling.
+				expect(el.getAttribute('aria-valuenow')).toBe('120');
+
+				// And one step up moves the edge immediately, rather than after the 480px it
+				// would take to bring a 600px origin down to where the band actually is.
+				press(el, 'ArrowUp');
+				expect(view.shelfHeight).toBe(110);
+			} finally {
+				undo();
+			}
+		});
+
+		it('leaves a larger cap standing when the gesture changes nothing', () => {
+			// The origin moved; the rule that a no-op commits nothing did not. A tap on a band
+			// drawn shorter than its cap must not quietly rewrite that cap down to the
+			// content height.
+			const { view, containerEl } = makeRoadmap(horizonVault());
+			view.setShelfHeight(600);
+			const undo = stubDrawnHeight(120);
+			try {
+				view.setShelfLayout('list');
+				const el = grip(containerEl);
+				el.dispatchEvent(pointer('pointerdown', 0));
+				el.dispatchEvent(pointer('pointerup', 0));
+
+				expect(view.shelfHeight).toBe(600);
+			} finally {
+				undo();
+			}
+		});
+	});
+
 	describe('where it is not drawn', () => {
 		it('is absent from a collapsed shelf, which has no open height to size', () => {
 			const { containerEl } = makeRoadmap(horizonVault(), {}, { shelfCollapsed: true });

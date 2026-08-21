@@ -57,18 +57,36 @@ function clampShelfHeight(height: number): number {
  * one the gesture found — is `wireResizeGrip`'s and is therefore the same code the column
  * grips are checked through.
  *
- * **The one layout read.** With no stored pick the band's cap is a percentage the
- * stylesheet owns, so there is no number to announce or to drag from until it is
- * measured — `offsetHeight`, the border box `max-height` itself applies to. It is one
- * read on one element at the end of one render pass, the same shape and the same cost as
- * `render/roadmap.ts`'s own `treeEl.clientWidth`; what `src/view/CLAUDE.md` bans is a read
- * PER ROW and a read inside an input handler, and this is neither. An unmeasured pane
- * (jsdom, or Obsidian rendering before layout settles) reports 0 and clamps to the floor,
- * which is a grip that announces the smallest band it could produce rather than one that
- * announces nothing.
+ * **The gesture starts from the height the band is DRAWN at, never from the stored cap**,
+ * and the two are different exactly when the shelf holds less than it is allowed to. The
+ * band is `max-height`, so what it draws is `min(content, cap)`: with a 600px cap and 120px
+ * of cards, the grip a reader can see and put a finger on is at 120. Starting the gesture at
+ * 600 would mean dragging up 480px before the edge under the pointer moved at all, and an
+ * `aria-valuenow` announcing a height nothing on screen has. `offsetHeight` — the border box
+ * `max-height` applies to, and every box here is `border-box` — is therefore the origin, and
+ * the stored cap is only the fallback for a pane that has not been laid out. A gesture that
+ * changes nothing still commits nothing, so a tap leaves a larger stored cap standing.
+ * (Codex, PR #183.)
+ *
+ * What this does NOT buy is dragging DOWNWARD on a band shorter than its cap: raising a
+ * maximum above the content cannot make a shelf taller than its cards, so the edge stays
+ * where it is. That is inherent to sizing the band by a cap rather than by a height, and a
+ * cap is what the band wants — a `height` would reserve dead space under a nearly empty
+ * shelf. The trade is that the useless direction is the one with no visible effect, rather
+ * than the useful one having none for the first few hundred pixels.
+ *
+ * **It is one layout read**, on one element at the end of one render pass, the same shape
+ * and the same cost as `render/roadmap.ts`'s own `treeEl.clientWidth`; what
+ * `src/view/CLAUDE.md` bans is a read PER ROW and a read inside an input handler, and this
+ * is neither. An unmeasured pane (jsdom, or Obsidian rendering before layout settles)
+ * reports 0 and falls through to the stored pick, then to the floor — a grip that announces
+ * the smallest band it could produce rather than one that announces nothing.
  */
 export function renderShelfResize(host: BacklogViewHost, shelfEl: HTMLElement): void {
-	const current = clampShelfHeight(host.shelfHeight ?? shelfEl.offsetHeight);
+	// `||` rather than `??` on both: 0 is what an unmeasured pane reports, and it is a
+	// non-answer rather than a height — `??` would take it as one and pin every gesture to
+	// the floor in exactly the case the stored pick exists for.
+	const current = clampShelfHeight(shelfEl.offsetHeight || host.shelfHeight || 0);
 	const grip = shelfEl.createDiv({
 		cls: 'pbl-shelf-grip',
 		attr: {

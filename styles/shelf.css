@@ -193,6 +193,37 @@
 	white-space: nowrap;
 }
 
+/* **The property cells are in that rule too, and they were the one thing left out of it.**
+   `.pbl-props` is `flex: 0 0 auto` and `.pbl-card .pbl-props` gives it `width: auto` and
+   `overflow: visible`, which in a COLUMN is right — a card stacks its cells and sizes them
+   to content. Turned into a row it means an unshrinkable wrapper at its max-content width,
+   and the title is what pays: measured in the harness at a 1200px pane, a row carrying
+   seven cells drew its title at 103px where an untouched row drew 768px. Nothing spilled —
+   `.pbl-card .pbl-prop` is `flex: 0 1 auto` and `.pbl-prop-value` already ellipsises, so
+   the row stayed one 28px line and `scrollWidth` never exceeded `clientWidth` — which is
+   why this is about the TITLE being squeezed rather than about overflow. (Codex, PR #183,
+   which read it as a spill; the measurement is what says which half is real.)
+   `flex-wrap` is load-bearing BESIDE the shrink rather than tidy: `.pbl-card .pbl-props`
+   sets `wrap`, and a wrapper that can finally be squeezed is a wrapper whose cells wrap to
+   a second line — a compact row that grows to 56px the moment it holds two chips. The two
+   declarations only work together. */
+.pbl-shelf-list .pbl-card .pbl-props {
+	flex: 0 1 auto;
+	min-width: 0;
+	overflow: hidden;
+	flex-wrap: nowrap;
+}
+
+/* And the floor that decides WHO yields. Every other item in the row can now shrink, so
+   without this the title and the cells shrink in proportion and the row's own subject ends
+   up sharing the line evenly with its metadata. The title is what a reader is scanning:
+   the cells give way first and go on giving way until this is reached, and only then does
+   the title start to truncate. In `ch` so it is a number of CHARACTERS at whatever size the
+   theme draws them, which is what the reservation is actually about. */
+.pbl-shelf-list .pbl-card-title {
+	min-width: 16ch;
+}
+
 /* The state cell a compact row carries (`renderShelfState`). Empty means the Base draws no
    state column, or draws one this item's workflow does not write — `renderPropCells`
    detaches its own box for that, and this wrapper has to go with it or the row keeps the
