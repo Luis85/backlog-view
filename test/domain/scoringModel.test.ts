@@ -211,6 +211,19 @@ describe('a dimension is named the way the panel names it', () => {
 		expect(modelProblems(model).join(' ')).not.toContain('reach:');
 	});
 
+	it('states how far off the weights are, because that is the number to type', () => {
+		// There are eight weight boxes and the view draws the problem block INSTEAD of the
+		// table, so editing one is a guaranteed transient failure state whose only feedback is
+		// the whole view disappearing. The delta is arithmetic already in hand.
+		const model = modelWith({ dimensions: [{ ...dimension('reach'), label: 'Reach', weight: 87 }] });
+		expect(modelProblems(model)).toContain('the weights total 87, not 100 (13 short)');
+	});
+
+	it('says over rather than short when the weights exceed 100', () => {
+		const model = modelWith({ dimensions: [{ ...dimension('reach'), label: 'Reach', weight: 110 }] });
+		expect(modelProblems(model)).toContain('the weights total 110, not 100 (10 over)');
+	});
+
 	it('puts a dimension inside the collision sentence in lowercase', () => {
 		// `settings.sharedKey` joins the list into ONE sentence, which is why the three scales
 		// and the two pair slots beside it are plain lowercase nouns. `SUGGESTED_KEYS` already

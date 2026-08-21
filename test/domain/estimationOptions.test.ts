@@ -28,6 +28,12 @@ function labelItem(options: ReturnType<typeof getEstimationViewOptions>, id: str
 	return flatten(options).find((o) => o.key === dimOption(id, 'label')) as { default?: string; placeholder?: string };
 }
 
+/** The `Weight` box for one dimension id, the same shape as `labelItem` above — this one
+ *  asserts the `displayName`, the box's own rule sentence, rather than its default. */
+function weightItem(options: ReturnType<typeof getEstimationViewOptions>, id: string) {
+	return flatten(options).find((o) => o.key === dimOption(id, 'weight')) as { displayName?: string };
+}
+
 describe('getEstimationViewOptions', () => {
 	it('declares the Model group: dimensions, output range, value and stamp properties', () => {
 		const keys = flatten(getEstimationViewOptions(new FakeViewConfig({}))).map((o) => o.key);
@@ -112,5 +118,12 @@ describe('a dimension group is headed the way the panel heads it', () => {
 		const item = labelItem(getEstimationViewOptions(new FakeViewConfig({ 'dimLabel.reach': 'Blast radius' })), 'reach');
 		expect(item.default).toBe('Reach');
 		expect(item.placeholder).toBe('Reach');
+	});
+
+	it('names the weight rule at the box that produces the mistake', () => {
+		// The refusal stays (extension 3b, register-backed). What changes is that the rule is
+		// legible before the mistake is made rather than only after.
+		const item = weightItem(getEstimationViewOptions(new FakeViewConfig({})), 'reach');
+		expect(item.displayName).toBe('Weight (% of 100)');
 	});
 });

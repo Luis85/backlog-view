@@ -740,7 +740,7 @@ export const en = {
 	'estimation.empty.hint':
 		'Bind the suggested properties and stub them onto the results, or name your own in the view options.',
 	'estimation.empty.useDefaults': 'Use recommended defaults',
-	'estimation.problems.lead': 'Fix the estimation model first:',
+	'estimation.problems.lead': "Fix the estimation model in this view's options first:",
 	/** The guided setup action refusing itself: the bindings it would make leave the model
 	 *  broken, so nothing is bound and nothing is written. {problem} is the first one. */
 	'estimation.problems.blocked': 'Fix the estimation model first: {problem}',

@@ -92,7 +92,13 @@ function dimensionGroup(d: ScoringDimension): BasesAllOptions {
 			{
 				type: 'text',
 				key: dimOption(id, 'weight'),
-				displayName: 'Weight',
+				// The rule at the box that produces the mistake, before it is made. The refusal
+				// itself stays and is register-backed (`Configuring the estimation model`
+				// extension 3b): at a sum of 87 a full profile divides by 87 and the model stops
+				// being the one `The scoring model is configuration` specifies. A live running
+				// total is REFUSED — `BasesOption` is `{ type, displayName, shouldHide? }`, so it
+				// would be a new control, which is a feature.
+				displayName: 'Weight (% of 100)',
 				default: shippedWeight,
 				placeholder: shippedWeight,
 			},

@@ -147,8 +147,16 @@ export function modelProblems(model: ScoringModel): string[] {
 		problems.push(...dimensionProblems(d));
 		if (d.weight > 0) weightSum += d.weight;
 	}
-	if (problems.length === 0 && Math.abs(weightSum - 100) > 1e-9)
-		problems.push(`the weights total ${weightSum}, not 100`);
+	if (problems.length === 0 && Math.abs(weightSum - 100) > 1e-9) {
+		// The delta, not just the sum: eight weight boxes make a transient failure guaranteed,
+		// and the view draws the problem block INSTEAD of the table — so the one number the
+		// reader needs is how far off they are. Arithmetic already in hand. Rounded to two
+		// places because summing floats like 33.3 + 33.3 + 33.4 leaves an artefact
+		// (0.09999999999999432) that a bare `Math.round` would flatten to 0 and misreport a
+		// real mismatch as none — the `1e-9` epsilon above still catches that real case.
+		const off = Number(Math.abs(100 - weightSum).toFixed(2));
+		problems.push(`the weights total ${weightSum}, not 100 (${off} ${weightSum < 100 ? 'short' : 'over'})`);
+	}
 	if (!Number.isInteger(model.outputMin) || !Number.isInteger(model.outputMax) || model.outputMin >= model.outputMax)
 		problems.push('the output range must be two whole numbers, low to high');
 	return problems;
