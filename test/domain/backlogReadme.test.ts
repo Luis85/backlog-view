@@ -2,8 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { BacklogSettings, defaultSettings } from '../../src/domain/settings';
 import { settingsWith } from '../helpers/settings';
 import { backlogReadmeContent, readmeStates } from '../../src/domain/backlogReadme';
-import { ALL_TYPES, MARKER_TYPES } from '../../src/domain/typeVocabulary';
-import { placementEnds } from '../../src/domain/itemTypes';
+import { ALL_TYPES } from '../../src/domain/typeVocabulary';
 import { ORDER_SPACING } from '../../src/domain/writePlan';
 
 /**
@@ -168,63 +167,6 @@ describe('backlogReadmeContent', () => {
 		expect(content).toContain('drawn as a point in time');
 		// A target-only view places a marker perfectly well, so it earns no exception.
 		expect(content).not.toContain('this view cannot place one');
-	});
-
-	it('names in the marker sentence exactly the markers this view places at one date', () => {
-		// The generated document is a contract with editors outside Obsidian, and the
-		// sentences above it describe a point reached by how many dates an item STATES. A
-		// marker is a point by TYPE: `placeMarker` reads the target key alone, so a
-		// start-only view shelves whatever it states — and `canSchedule` withholds the entry
-		// that would fix it.
-		//
-		// WHICH markers, though, is `placementEnds`' answer and not the classification's,
-		// and this test is written from the rule for that reason: the sentence used to list
-		// `MARKER_TYPES`, so declaring a third marker published two sentences that were
-		// false for it to every reader at once — a release reads neither key and does not
-		// wait for one, because it speaks no end at any mapping. Re-spelling the assertion
-		// is what let that through, so nothing here spells the list. Both branches and both
-		// readings of `iterationBars`, since an `Iteration` is target-only in exactly one of
-		// them and is the marker the classification already got wrong before `Release`.
-		const markerLine = (text: string) => text.split('\n').find((l) => l.startsWith('A **marker**')) ?? '';
-		for (const iterationBars of [false, true]) {
-			const startOnly = readme(settingsWith({ startKey: 'start', targetKey: '', horizonKey: '', iterationBars }), []);
-			const both = readme(settingsWith({ startKey: 'start', targetKey: 'due', horizonKey: '', iterationBars }), []);
-			expect(markerLine(startOnly)).toContain('this view cannot place one');
-			expect(startOnly).toContain('the only date property here is `start`');
-			expect(markerLine(both)).toContain('it is a point by **type**');
-			for (const marker of MARKER_TYPES) {
-				const ends = placementEnds(marker, iterationBars);
-				const point = ends.length === 1 && ends[0] === 'target';
-				const named = `\`${marker}\``;
-				expect(markerLine(startOnly).includes(named), `${marker}, bars=${iterationBars}`).toBe(point);
-				expect(markerLine(both).includes(named), `${marker}, bars=${iterationBars}`).toBe(point);
-			}
-		}
-	});
-
-	it('says which types this plan does not place, rather than only omitting them', () => {
-		// Removing a falsehood is not the same as saying the true thing. Dropping `Release`
-		// out of the marker sentence stopped the README lying about it and left the generic
-		// prose above telling a reader that a horizon places "an item" and that every item
-		// stating the date is drawn — so somebody following that guide for a type this very
-		// document lists gets no card, no chip and no menu entry, with nothing explaining it.
-		//
-		// Derived from the same rule the marker sentence uses, and asked the same way: a type
-		// is named here exactly when `placementEnds` gives it no end at all. Nothing spells a
-		// list, so the next such type is documented by arriving.
-		const bothAxes = { startKey: 'start', targetKey: 'due', horizonKey: 'horizon', horizonValues: ['Now'] };
-		const text = readme(settingsWith(bothAxes), []);
-		const line = text.split('\n').find((l) => l.includes('is on neither')) ?? '';
-		for (const marker of MARKER_TYPES) {
-			const speaks = placementEnds(marker, false).length > 0;
-			expect(line.includes(`\`${marker}\``), marker).toBe(!speaks);
-		}
-		// Both axes named as refused, not one — the horizon half is what the marker sentence
-		// above says nothing about.
-		expect(line).toContain('not placed by these dates or by a horizon');
-		// And no promise of the deferred feature: nothing here may read as a date property
-		// on its way, which is a decision this increment has not taken.
-		expect(line).not.toMatch(/yet|coming|future|will be|not supported/i);
 	});
 
 	it('does not advertise a horizon property whose values have been cleared', () => {

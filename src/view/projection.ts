@@ -230,8 +230,10 @@ export function rowVocabulary(model: BacklogModel, item: BacklogItem): Projectio
  * nothing else (`renderDeliverablesBoard`), so it withholds every other — including a
  * Deliverable card's `New Task`, which would write a note that vanishes on the pass that
  * created it. Withheld, not disabled — the "absent rather than inert" rule the state
- * chip and the axis actions already follow. The tree and the roadmap show everything and
- * narrow nothing. A new surface that offers a type calls this rather than reading
+ * chip and the axis actions already follow. The ROADMAP narrows too, and by the same
+ * rule rather than as an exception to it: no axis of it draws a `Release`, so no surface
+ * on it offers one. Only the TREE narrows nothing — it is the projection that draws every
+ * type there is. A new surface that offers a type calls this rather than reading
  * `ALL_TYPES` or `childTypeChoices` straight.
  */
 export function offerableTypes(host: BacklogViewHost, types: string[] = ALL_TYPES, row: BacklogItem | null = null): string[] {

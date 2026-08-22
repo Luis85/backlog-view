@@ -121,17 +121,25 @@ export function planningSection(settings: BacklogSettings): string[] {
 	//
 	// A type that speaks NO placement end is on neither axis: `placementEnds` answering
 	// nothing is what withholds Schedule (`canSchedule`), and the same types are the ones
-	// `computeHorizonWrites` refuses — which is why the sentence can say *neither*, and why
-	// the list is derived rather than spelled. It says what IS, and deliberately promises no
+	// `computeHorizonWrites` refuses — which is why the sentence can refuse both at once,
+	// and why the list is derived rather than spelled. It says what IS, and promises no
 	// date property to come: where a release does get a position is a decision this
 	// increment has not taken, and a README that hinted at one would be documenting it.
+	//
+	// WHICH axes it names is built from the same two predicates every sentence above is,
+	// and that is not tidiness: fixed text saying "these dates or a horizon" points at
+	// dates a horizon-only base does not configure, and names a horizon a dated base has
+	// no axis for — prose asserting something the configuration does not support, which is
+	// the defect this whole paragraph was added to fix, reintroduced one size smaller.
+	// `axes` is non-empty exactly when `lines` is: both are `hasHorizonAxis` or a date key.
 	const unplaced = MARKER_TYPES.filter((type) => placementEnds(type, settings.iterationBars).length === 0);
+	const axes = [...(dateKeys.length > 0 ? ['these dates'] : []), ...(hasHorizonAxis(settings) ? ['a horizon'] : [])];
 	if (lines.length > 0 && unplaced.length > 0) {
 		lines.push(
-			`${andList(unplaced.map(code))} ${unplaced.length > 1 ? 'are' : 'is'} on neither: a note of ` +
-				`that type is not placed by these dates or by a horizon, so it draws no card here and ` +
-				`is offered no control that would give it one. That is what the **type** means, not a ` +
-				`property left unset — there is nothing to fill in.`,
+			`${andList(unplaced.map(code))} ${unplaced.length > 1 ? 'are' : 'is'} outside all of that: a ` +
+				`note of that type is not placed by ${axes.join(' or ')}, so it draws no card on the ` +
+				`roadmap and is offered no control that would give it one. That is what the **type** ` +
+				`means, not a property left unset — there is nothing to fill in.`,
 		);
 	}
 	if (lines.length > 0) {
