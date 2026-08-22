@@ -101,6 +101,37 @@ describe('the three-bucket board', () => {
 		expect(card.querySelector('.pbl-card-kids-count')?.textContent).toContain('1');
 	});
 
+	/**
+	 * The other side of the rule above, and the reach of the walk that traverses through a
+	 * row this projection does not draw. `Loose child` names no sprint, so the board draws
+	 * no card for it and does not list it — unchanged. `Deep work` below it names THIS
+	 * sprint on its own merit, so it is a row this board draws whose nearest DRAWN ancestor
+	 * is the carrier, and the carrier's face is where it belongs.
+	 *
+	 * Nothing is inherited either way: membership is still asked of each note, and the
+	 * loose row between them is passed through rather than promoted onto the face. The
+	 * list is asserted whole, so a walk that carried `Loose child` up as well fails here.
+	 */
+	it('lists a child of a loose child where that child is in the iteration', () => {
+		const vault = new FakeVault();
+		vault.addFile(SPRINT, { frontmatter: { type: 'Iteration', order: 10 } });
+		vault.addFile('Carrier.md', {
+			frontmatter: { type: 'Feature', order: 10, status: 'New', iteration: '[[Sprint 12]]' },
+		});
+		vault.addFile('Loose child.md', { frontmatter: { type: 'PBI', order: 10, status: 'New' }, parentLink: 'Carrier' });
+		vault.addFile('Deep work.md', {
+			frontmatter: { type: 'Task', order: 10, status: 'New', iteration: '[[Sprint 12]]' },
+			parentLink: 'Loose child',
+		});
+		const harness = makeView(vault, OPTIONS, { base: 'Plan.base' });
+		harness.view.setBoardScope(SPRINT);
+		const card = cardByTitle(harness.containerEl, 'Carrier');
+		card.querySelector<HTMLElement>('.pbl-card-kids-toggle')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+		const listed = Array.from(card.querySelectorAll<HTMLElement>('.pbl-card-kid-title')).map((el) => el.textContent);
+		expect(listed).toEqual(['Deep work']);
+	});
+
 	it('draws an empty Open as a column, not as the no-state drop strip', () => {
 		// The DEFAULT configuration reaches this: with `iterationOpenStates` unset, Open's
 		// representative is the key removal — a `state: null` that takes a drop — so with
