@@ -80,30 +80,33 @@ Repeat once with a right-to-left language if one is available. Nothing in the pl
 mirrored yet — see [[Nothing pins a physical side]] — so a broken layout here is expected
 and is worth writing down rather than reporting as a regression.
 
-**Then set the language back and restart, before running anything else.** This case is the
-one place in the sweep where a broken layout is the accepted answer, and every check after
-it — the view options at width in this suite, the whole appearance suite at order 40 — reads
-a broken layout as a regression. Left in a right-to-left locale, this case hands the rest of
-the sweep a screen it has already agreed to excuse.
+**Then take the iteration back out, and only after that put the language back.** The order of
+those two matters and is the opposite of the obvious one — see step 1. The setup above is the
+only part of this case that changes the vault, and it changes the ROADMAP:
+`iterationsOnTimeline` defaults on, so an iteration left behind draws on both grid axes and
+`Smoke test the roadmap` would be re-run against a timeline this case built. Each release run
+would leave another.
 
-**And take the iteration back out.** The setup above is the only part of this case that
-changes the vault, and it changes the ROADMAP: `iterationsOnTimeline` defaults on, so an
-iteration left behind draws on both grid axes and `Smoke test the roadmap` would be re-run
-against a timeline this case built. Each release run would leave another. Three steps, in
-this order, and two of them are not the obvious action:
+Four steps, in this order, and three of them are not the obvious action:
 
-1. **Undo the commit batch** with the toolbar's undo — do NOT set the item's iteration to
-   None. Joining an iteration copies the sprint's dates onto the item, and a None pick
-   deliberately removes the link and nothing else ("leaving a sprint is not a reschedule",
-   `computeIterationWrites`), so picking None leaves the item scheduled to a sprint that no
-   longer exists. Undo is what puts the dates back with the link. Do it before anything else,
-   while it is still the last batch.
-2. **Delete the iteration note.**
-3. **Remove the `iterationProperty` line from `docs/Product Backlog.base`** in a text editor.
-   Clearing the option in the picker is not the same thing: `adoptCandidates` skips a
-   property whose option is `!== undefined`, and a cleared option is defined-and-empty, so
-   the line would sit there permanently stopping ✨ from ever adopting the iteration property
-   on this view again.
+1. **Undo the commit batch** with the toolbar's undo, **before restarting Obsidian** — the
+   undo slot is `lastUndo` on a `WriteLock` built at `onload` and starts `null`, so a restart
+   throws the batch away and the undo button then reports nothing to undo.
+2. Do NOT set the item's iteration to None instead. Joining an iteration copies the sprint's
+   dates onto the item, and a None pick deliberately removes the link and nothing else
+   ("leaving a sprint is not a reschedule", `computeIterationWrites`), so it leaves the item
+   scheduled to a sprint that no longer exists. Undo is what puts the dates back with the
+   link.
+3. **Delete the iteration note**, then **remove the `iterationProperty` line from
+   `docs/Product Backlog.base`** in a text editor. Clearing the option in the picker is not
+   the same thing: `adoptCandidates` skips a property whose option is `!== undefined`, and a
+   cleared option is defined-and-empty, so the line would sit there permanently stopping ✨
+   from ever adopting the iteration property on this view again.
+4. **Now set the language back and restart.** This case is the one place in the sweep where a
+   broken layout is the accepted answer, and every check after it — the view options at width
+   in this suite, the whole appearance suite at order 40 — reads a broken layout as a
+   regression. Left in a right-to-left locale, this case hands the rest of the sweep a screen
+   it has already agreed to excuse.
 
 ## Acceptance criteria
 
