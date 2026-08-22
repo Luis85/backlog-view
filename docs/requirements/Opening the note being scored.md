@@ -2,11 +2,11 @@
 type: PBI
 parent: "[[The prioritized list]]"
 order: 40
-status: Open
+status: Done
 created: 2026-08-22
 source: interview, 2026-08-22
 started: ""
-finished: ""
+finished: 2026-08-22
 horizon: ""
 start: ""
 due: ""
