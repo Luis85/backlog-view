@@ -150,28 +150,51 @@ describe('the indicator', () => {
 		expect(figure).toEqual({ value: null, blockedBy: { operand: 'Effort', reason: 'unanswered' } });
 	});
 
-	it('says ease is unbound too, when effort has no property bound to it — ease is effort reversed', () => {
+	it('blocks a derived ease on EFFORT, unbound — the reader binds Effort, never "Ease"', () => {
+		// A blocker naming 'Ease' told the reader to bind a property to something nothing
+		// binds to; the repair is always Effort, whichever way ease is blocked.
 		const model = configured();
 		const figure = computeIndicator(model, ind({ operands: ['ease'], divisor: null }), inputs({ effort: null }));
-		expect(figure).toEqual({ value: null, blockedBy: { operand: 'Ease', reason: 'unbound' } });
+		expect(figure).toEqual({ value: null, blockedBy: { operand: 'Effort', reason: 'unbound' } });
 	});
 
-	it('still says ease is unanswered when effort IS bound and the note has no value for it', () => {
+	it('still blocks a derived ease on EFFORT when effort IS bound and the note has no value for it', () => {
 		const model = configured({ effortProperty: 'note.effort' });
 		const figure = computeIndicator(model, ind({ operands: ['ease'], divisor: null }), inputs({ effort: null }));
-		expect(figure).toEqual({ value: null, blockedBy: { operand: 'Ease', reason: 'unanswered' } });
+		expect(figure).toEqual({ value: null, blockedBy: { operand: 'Effort', reason: 'unanswered' } });
 	});
 
-	it('says adjustedValue is unbound when confidence has no property bound to it', () => {
+	it('blocks a derived adjustedValue on CONFIDENCE, unbound — the reader answers Confidence, never "Adjusted value"', () => {
 		const model = configured();
 		const figure = computeIndicator(model, ind({ operands: ['adjustedValue'], divisor: null }), inputs({ confidence: null }));
-		expect(figure).toEqual({ value: null, blockedBy: { operand: 'Adjusted value', reason: 'unbound' } });
+		expect(figure).toEqual({ value: null, blockedBy: { operand: 'Confidence', reason: 'unbound' } });
 	});
 
-	it('still says adjustedValue is unanswered when confidence IS bound and the note has no value for it', () => {
+	it('still blocks a derived adjustedValue on CONFIDENCE when confidence IS bound and the note has no value for it', () => {
 		const model = configured({ confidenceProperty: 'note.confidence' });
 		const figure = computeIndicator(model, ind({ operands: ['adjustedValue'], divisor: null }), inputs({ confidence: null }));
+		expect(figure).toEqual({ value: null, blockedBy: { operand: 'Confidence', reason: 'unanswered' } });
+	});
+
+	it('names adjustedValue itself when NO dimension is answered — that failure is not about confidence', () => {
+		// The one adjustedValue block that keeps self-naming: `inputs.result === null` says
+		// nothing about whether confidence is bound, so there is no source scale to blame.
+		const model = configured({ confidenceProperty: 'note.confidence' });
+		const figure = computeIndicator(model, ind({ operands: ['adjustedValue'], divisor: null }), {
+			answers: new Map(),
+			confidence: 4,
+			effort: null,
+			complexity: null,
+			result: null,
+		});
 		expect(figure).toEqual({ value: null, blockedBy: { operand: 'Adjusted value', reason: 'unanswered' } });
+	});
+
+	it('keeps the FORMULA reading the operand the reader configured, even though the blocker now names the source scale', () => {
+		// The blocker and the formula answer different questions on purpose — see
+		// `ResolvedOperand`'s own comment. A "fix" that renamed the operand everywhere would
+		// quietly change what the column header and the preset dialog display too.
+		expect(indicatorFormula(configured(), ind({ operands: ['adjustedValue'], divisor: 'effort' }))).toBe('Adjusted value ÷ Effort');
 	});
 
 	it('divides by a derived ease even when the stored effort is zero — ease has no stored source', () => {

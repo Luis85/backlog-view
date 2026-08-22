@@ -194,7 +194,9 @@ describe('the two derived lines', () => {
 		let derived = containerEl.querySelector('.pbl-est-derived') as HTMLElement;
 		expect(derived).not.toBeNull();
 		expect(derived.children).toHaveLength(1); // no adjusted-value line; the indicator alone, blocked
-		expect(derived.textContent).toContain('Adjusted value is not answered');
+		// The blocker names CONFIDENCE (the source scale, and what the reader can actually
+		// answer), never "Adjusted value" — nothing answers that directly.
+		expect(derived.textContent).toContain('Confidence is not answered');
 
 		selectItem(containerEl, 'ConfidenceOnly.md');
 		derived = containerEl.querySelector('.pbl-est-derived') as HTMLElement;

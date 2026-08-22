@@ -253,12 +253,21 @@ type OperandStatus = 'known' | 'unknown' | 'unbound' | 'unanswered';
 /** What the arithmetic uses, what the note holds, and what to call it when either is
  *  missing. `stored` is null wherever the operand has no stored source at all (`value`,
  *  `adjustedValue`, and `ease` — a note holds an effort, never an ease) — the divisor's
- *  own check skips those. */
+ *  own check skips those.
+ *
+ *  `blockLabel` is the name a BLOCKER should use, distinct from `label` (the DISPLAY name
+ *  `indicatorFormula` reads) because for `ease` and `adjustedValue` the two answer
+ *  different questions. `label` is what the reader configured and must recognise in the
+ *  formula; `blockLabel` is what they can actually REPAIR. Nothing binds a property to
+ *  "Ease" or answers "Adjusted value" on a note — the reader binds Effort or answers
+ *  Confidence, which is the SOURCE scale each derives from. Defaults to `label`, which is
+ *  correct for every operand that names itself when it blocks. */
 interface ResolvedOperand {
 	label: string;
 	value: number | null;
 	stored: number | null;
 	status: OperandStatus;
+	blockLabel?: string;
 }
 
 function operandLabel(model: ScoringModel, id: string): string {
@@ -317,7 +326,12 @@ function resolveBuiltin(model: ScoringModel, inputs: IndicatorInputs, id: string
 		// MAXIMUM, a perfectly good divisor. Carrying the raw 0 through as `stored` reported
 		// a fine ease as nonpositive, describing the effort the reader never configured
 		// rather than the ease they did.
-		return { label, value, stored: null, status: effort.status };
+		//
+		// `blockLabel` names EFFORT, not ease: a blocked ease inherits effort's own status
+		// (unbound or unanswered), and both repairs are things you do to Effort — bind its
+		// property, or answer it on the note. "Ease has no property bound to it yet" names
+		// something nothing can bind.
+		return { label, value, stored: null, status: effort.status, blockLabel: operandLabel(model, 'effort') };
 	}
 	if (id === 'value') {
 		const value = inputs.result?.total ?? null;
@@ -325,12 +339,18 @@ function resolveBuiltin(model: ScoringModel, inputs: IndicatorInputs, id: string
 	}
 	// the remaining builtin is 'adjustedValue', which reads the CONFIDENCE scale — an
 	// unbound confidence blocks it as `unbound` rather than `unanswered`, the same rule
-	// `ease` follows for effort. No dimension answered at all is a different failure
-	// (`inputs.result === null`) and stays `unanswered`: it says nothing about whether
-	// confidence itself is bound.
+	// `ease` follows for effort. No dimension answered at all is a DIFFERENT failure
+	// (`inputs.result === null`), says nothing about whether confidence is bound, and
+	// `adjustedValue` correctly names ITSELF for it — the same rule `value`'s own
+	// `unanswered` follows — so no `blockLabel` override on this branch.
 	if (inputs.result === null) return { label, value: null, stored: null, status: 'unanswered' };
 	const confidenceOperand = scaleOperand(model.confidence, inputs.confidence, label);
-	if (confidenceOperand.value === null) return { label, value: null, stored: null, status: confidenceOperand.status };
+	// Here the failure IS confidence's own status, inherited — so the blocker names
+	// CONFIDENCE, the operand the reader can actually bind or answer, not "Adjusted
+	// value", which is nothing you bind or answer directly.
+	if (confidenceOperand.value === null) {
+		return { label, value: null, stored: null, status: confidenceOperand.status, blockLabel: operandLabel(model, 'confidence') };
+	}
 	// Rounded HERE, before it is multiplied or divided — `renderDerived`'s own order, and
 	// keeping it is what makes "no in-range item's number moves" true rather than nearly
 	// true: at a total of 1.01, confidence 3, effort 2, rounding first gives 0.31 and
@@ -385,9 +405,11 @@ export function computeIndicator(model: ScoringModel, indicator: Indicator, inpu
  *  checks `value === null` first, and resolution always pairs a null `value` with a
  *  non-`'known'` status — so there is no four-way branch to restate here; the ternary
  *  exists only so the return type is provably an `IndicatorBlock` without a cast, since
- *  `'known'` is a member of `status`'s type the compiler cannot see is unreachable. */
+ *  `'known'` is a member of `status`'s type the compiler cannot see is unreachable.
+ *  `blockLabel ?? label` names the REPAIR, not necessarily the operand the reader typed —
+ *  see `ResolvedOperand`'s own comment. */
 function blockOf(operand: ResolvedOperand): { operand: string; reason: IndicatorBlock } {
-	return { operand: operand.label, reason: operand.status === 'known' ? 'unanswered' : operand.status };
+	return { operand: operand.blockLabel ?? operand.label, reason: operand.status === 'known' ? 'unanswered' : operand.status };
 }
 
 /** `Reach × Business impact × Confidence ÷ Effort` — every NAME from the catalog; the two
