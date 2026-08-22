@@ -1,6 +1,7 @@
 import { BasesViewConfig } from 'obsidian';
 import { configReaders } from './settingsResolve';
 import { DEFAULT_DIMENSIONS, DEFAULT_SCALE_RUBRICS, defaultDimension } from './defaultModel';
+import { OpenTarget, resolveItemHandling } from './itemHandling';
 import { Indicator, ScaleConfig, ScoringDimension, ScoringModel } from './scoringModel';
 
 /**
@@ -14,6 +15,9 @@ export interface EstimationSettings {
 	/** BESIDE the model, never inside it: an indicator persists nothing, so nothing that
 	 *  fingerprints or writes the total can reach it (`scoringModel.ts`'s own note). */
 	indicator: Indicator;
+	/** Where opening the note being scored lands — `resolveItemHandling`'s own vocabulary,
+	 *  defaulted to `split` rather than the backlog's `active` (see `resolveEstimationSettings`). */
+	openIn: OpenTarget;
 }
 
 export type DimField = 'property' | 'weight' | 'range' | 'lessIsBetter' | 'label';
@@ -143,5 +147,7 @@ export function resolveEstimationSettings(config: BasesViewConfig): EstimationSe
 			complexity: resolveScale(read, 'complexity', 'complexityProperty'),
 		},
 		indicator: resolveIndicator(read),
+		// `split` rather than `active`: this view is the surface being scored on.
+		openIn: resolveItemHandling(config, 'split').openIn,
 	};
 }

@@ -1,6 +1,7 @@
 import { BasesAllOptions, BasesViewConfig } from 'obsidian';
 import { DEFAULT_DIMENSIONS, defaultDimension } from './defaultModel';
 import { DEFAULT_POINT_RANGE, dimOption, resolveEstimationSettings } from './estimationSettings';
+import { defaultItemHandling, openTargetOptions } from './itemHandling';
 import { notePropsOnly } from './optionalProperties';
 import type { ScoringDimension } from './scoringModel';
 
@@ -57,6 +58,13 @@ function modelGroup(): BasesAllOptions {
 				displayName: 'Business value model stamp property',
 				placeholder: 'business-value-model',
 				filter: notePropsOnly,
+			},
+			{
+				type: 'dropdown',
+				key: 'openIn',
+				displayName: 'Open in',
+				options: openTargetOptions(),
+				default: defaultItemHandling('split').openIn,
 			},
 		],
 	};

@@ -1,6 +1,11 @@
-import { App, Keymap, WorkspaceLeaf } from 'obsidian';
-import { BacklogItem } from '../domain/model';
+import { App, Keymap, TFile, WorkspaceLeaf } from 'obsidian';
 import { OpenTarget } from '../domain/itemHandling';
+
+/** What either entry point needs of an item, which is only where it lives. Narrowed from
+ *  `BacklogItem` when the estimation view became the second caller: this module never read
+ *  anything else off one, and a controller that demands the backlog's own item type cannot
+ *  be reused by a view that has a different one. */
+type Openable = { file: TFile };
 
 /**
  * What opening a note needs of the view: the workspace, where the view is drawn, and
@@ -40,7 +45,7 @@ export class OpenController {
 	 * what an ordinary click does afterwards, since `getLeaf(false)` cannot replace a
 	 * pinned leaf.
 	 */
-	open(ctx: OpenContext, item: BacklogItem, evt: MouseEvent | KeyboardEvent): void {
+	open(ctx: OpenContext, item: Openable, evt: MouseEvent | KeyboardEvent): void {
 		const modifier = Keymap.isModEvent(evt);
 		if (modifier) {
 			void ctx.app.workspace.getLeaf(modifier).openFile(item.file);
@@ -55,7 +60,7 @@ export class OpenController {
 	}
 
 	/** Open in a target the caller NAMED: a fresh leaf every time, and no pin. */
-	openIn(ctx: OpenContext, item: BacklogItem, target: OpenTarget): void {
+	openIn(ctx: OpenContext, item: Openable, target: OpenTarget): void {
 		void ctx.app.workspace.getLeaf(target === 'active' ? false : target).openFile(item.file);
 	}
 

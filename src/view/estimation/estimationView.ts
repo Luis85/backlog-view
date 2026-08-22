@@ -6,6 +6,7 @@ import { buildEstimationModel, EstimationItem, EstimationModel } from '../../dom
 import { planOrphanCleanup, planRestamp, planScaleWrite, planScoreWrite, PropertyWrite } from '../../domain/estimationWritePlan';
 import { WriteOutcome } from '../../storage/frontmatter';
 import { applyPropertyWrites } from '../../storage/propertyWrite';
+import { OpenController } from '../openTarget';
 import { WriteGate } from '../writeGate';
 import { WriteLock } from '../writeLock';
 import { guidanceShell } from '../render/emptyStates';
@@ -62,6 +63,8 @@ export class EstimationView extends BasesView {
 	 *  Null before the first successful render, exactly like `model`, and through both
 	 *  early-return states below — neither one ever draws a grid at all. */
 	gridEl: HTMLElement | null = null;
+	/** One per view, and it holds state between opens — the side pane it last used. */
+	readonly opener = new OpenController();
 
 	// No default: `registerEstimationView` always threads the plugin-wide lock through,
 	// and a silent per-view fallback here is exactly the bug that call exists to avoid —
@@ -113,6 +116,15 @@ export class EstimationView extends BasesView {
 	refresh(): void {
 		this.settings = resolveEstimationSettings(this.config);
 		this.render();
+	}
+
+	/**
+	 * Where a note opens, asked in ONE place: the panel's control and the table's `Enter`
+	 * both land here, so this view has one idea of opening rather than two, and the
+	 * hardcoded `getLeaf(false)` that used to replace this very view is gone.
+	 */
+	openNote(item: EstimationItem, evt: MouseEvent | KeyboardEvent): void {
+		this.opener.open({ app: this.app, viewEl: this.viewEl, settings: { openIn: this.settings.openIn } }, item, evt);
 	}
 
 	/** Where a projection draws: the grid once one exists (`gridEl`), the shell otherwise

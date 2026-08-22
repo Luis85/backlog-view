@@ -41,8 +41,14 @@ export function openTargetOptions(): Record<OpenTarget, string> {
 	return { active: t('option.openInActive'), tab: t('option.openInTab'), split: t('option.openInSplit') };
 }
 
-export function defaultItemHandling(): ItemHandling {
-	return { openIn: 'active' };
+/**
+ * `active` is Obsidian's own default and the backlog's. The estimation view passes
+ * `split`, and the difference is the point rather than an inconsistency: a tree is
+ * something you leave, and a scoring panel is something you come back to between every
+ * point — a note that replaced it would cost the reader the surface they were working on.
+ */
+export function defaultItemHandling(openIn: OpenTarget = 'active'): ItemHandling {
+	return { openIn };
 }
 
 /**
@@ -60,8 +66,8 @@ export function defaultItemHandling(): ItemHandling {
  * (`docs/bugs/A user-named type read off Object.prototype.md`). An array cannot be indexed
  * by `constructor` at all, so the same guarantee now costs no guard.
  */
-export function resolveItemHandling(config: BasesViewConfig): ItemHandling {
+export function resolveItemHandling(config: BasesViewConfig, fallback: OpenTarget = 'active'): ItemHandling {
 	const raw = config.get('openIn');
 	const offered = typeof raw === 'string' && (OPEN_TARGET_KEYS as readonly string[]).includes(raw);
-	return { openIn: offered ? (raw as OpenTarget) : defaultItemHandling().openIn };
+	return { openIn: offered ? (raw as OpenTarget) : defaultItemHandling(fallback).openIn };
 }
