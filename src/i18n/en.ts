@@ -1282,13 +1282,15 @@ export const en = {
 	'estimation.operand.value': 'Value',
 	'estimation.operand.adjustedValue': 'Adjusted value',
 
-	/** A blocked indicator cell's tooltip — three sentences rather than one, because a
+	/** A blocked indicator cell's tooltip — four sentences rather than one, because a
 	 *  reader reading this is trying to repair it: an unanswered operand wants a score, a
-	 *  nonpositive divisor wants the stored value corrected, and an unknown id wants the
-	 *  operands box edited. */
+	 *  nonpositive divisor wants the stored value corrected, an unbound operand wants a
+	 *  property bound to it in the view options, and an unknown id wants the operands box
+	 *  edited. */
 	'estimation.indicator.unanswered': 'No figure: {operand} is not answered',
 	'estimation.indicator.unknown': 'No figure: nothing in this model is called {operand}',
 	'estimation.indicator.nonpositive': 'No figure: {operand} has to be above zero to divide by',
+	'estimation.indicator.unbound': 'No figure: {operand} has no property bound to it yet',
 
 	/** The active sort header's accessible name. {column} is the column's own label above —
 	 * a catalog string, not data. The GLYPH beside it carries the same fact for a sighted
@@ -1329,7 +1331,15 @@ export const en = {
 	'estimation.panel.clear': 'Clear {label}',
 	'estimation.panel.term': '{label} {score} × {weight}%',
 	'estimation.panel.adjustedValue': 'Confidence-adjusted value: {value}',
-	'estimation.panel.valueToEffort': 'Value to effort: {value}',
+	/** The configured indicator's own line — {name} is the configured label, or its
+	 *  formula when unnamed (`indicatorFormula`), never data assembled at the call site.
+	 *  The three block sentences below it say which repair fits: score the operand, fix
+	 *  the stored divisor, or bind a property — never "is not answered" for all three. */
+	'estimation.panel.indicator': '{name}: {value}',
+	'estimation.panel.indicatorUnanswered': '{name}: no figure — {operand} is not answered',
+	'estimation.panel.indicatorUnknown': '{name}: no figure — nothing in this model is called {operand}',
+	'estimation.panel.indicatorNonpositive': '{name}: no figure — {operand} has to be above zero to divide by',
+	'estimation.panel.indicatorUnbound': '{name}: no figure — {operand} has no property bound to it yet',
 	'estimation.panel.removeOrphan': 'Remove the orphaned total',
 	/** Says what the action does to the NOTE, not which currency word offered it — two
 	 *  currencies (`stale` and `foreign`) offer the same action, so naming either in the

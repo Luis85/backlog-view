@@ -71,6 +71,15 @@ describe('the indicator column', () => {
 		expect(containerEl.querySelector('[aria-sort]')).toBeNull();
 	});
 
+	// CONTROLLER AMENDMENT 1: a scale with no key bound to it is a different failure from a
+	// bound scale nobody has answered.
+	it('says a scale is unbound rather than unanswered, when nothing has bound it', () => {
+		// Neither confidenceProperty nor effortProperty is bound here — `values()` above
+		// binds both, so this test deliberately uses the plain `configuredValues()` instead.
+		const { containerEl } = makeEstimationView(fixture(), configuredValues({ indicatorOperands: 'effort', indicatorDivisor: '' }));
+		expect(cell(containerEl, 'Full.md').title).toBe('No figure: Effort has no property bound to it yet');
+	});
+
 	it('sorts by it, putting the item with no figure last in both directions', () => {
 		// A two-item fixture (one valued, one blocked) cannot tell a working sort from no
 		// sort at all: the null always pins to the end regardless of direction, and with

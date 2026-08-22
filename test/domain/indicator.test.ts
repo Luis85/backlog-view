@@ -38,7 +38,11 @@ describe('the indicator', () => {
 	});
 
 	it('has no figure, naming the operand, when one is unanswered', () => {
-		const figure = computeIndicator(configured(), ind({ operands: ['reach', 'confidence'], divisor: null }), inputs({ confidence: null }));
+		// Confidence bound (unlike `configured()`'s own default) so a null answer is truly
+		// unanswered rather than unbound — the pair this test is half of is in the
+		// "CONTROLLER AMENDMENT 1" block below.
+		const model = configured({ confidenceProperty: 'note.confidence' });
+		const figure = computeIndicator(model, ind({ operands: ['reach', 'confidence'], divisor: null }), inputs({ confidence: null }));
 		expect(figure).toEqual({ value: null, blockedBy: { operand: 'Confidence', reason: 'unanswered' } });
 	});
 
@@ -123,6 +127,51 @@ describe('the indicator', () => {
 		});
 		const figure = computeIndicator(model, ind({ operands: ['effort'], divisor: null }), inputs({ effort: 3 }));
 		expect(figure).toEqual({ value: 3, blockedBy: null });
+	});
+
+	// CONTROLLER AMENDMENT 1: a scale with no key bound to it is a different failure from a
+	// bound scale nobody has answered — the repair is not the same, so the reason must not
+	// be either. Three pairs, one per operand that reads a scale.
+	it('says an unbound scale is unbound, not unanswered — the repair is a different one', () => {
+		// `configured()` binds no confidence/effort/complexity property by default, which is
+		// exactly the state this reports on: the panel draws a bare label row for such a scale
+		// (`panel.ts`'s `spec.key === ''` return), so "not answered" sends the reader to a
+		// control that is not there.
+		const model = configured();
+		const figure = computeIndicator(model, ind({ operands: ['effort'], divisor: null }), inputs({ effort: null }));
+		expect(figure).toEqual({ value: null, blockedBy: { operand: 'Effort', reason: 'unbound' } });
+	});
+
+	it('still says unanswered when the scale IS bound and the note simply has no value', () => {
+		// The pair that makes the previous test mean something: same null value, different
+		// reason, decided by whether a property is bound.
+		const model = configured({ effortProperty: 'note.effort' });
+		const figure = computeIndicator(model, ind({ operands: ['effort'], divisor: null }), inputs({ effort: null }));
+		expect(figure).toEqual({ value: null, blockedBy: { operand: 'Effort', reason: 'unanswered' } });
+	});
+
+	it('says ease is unbound too, when effort has no property bound to it — ease is effort reversed', () => {
+		const model = configured();
+		const figure = computeIndicator(model, ind({ operands: ['ease'], divisor: null }), inputs({ effort: null }));
+		expect(figure).toEqual({ value: null, blockedBy: { operand: 'Ease', reason: 'unbound' } });
+	});
+
+	it('still says ease is unanswered when effort IS bound and the note has no value for it', () => {
+		const model = configured({ effortProperty: 'note.effort' });
+		const figure = computeIndicator(model, ind({ operands: ['ease'], divisor: null }), inputs({ effort: null }));
+		expect(figure).toEqual({ value: null, blockedBy: { operand: 'Ease', reason: 'unanswered' } });
+	});
+
+	it('says adjustedValue is unbound when confidence has no property bound to it', () => {
+		const model = configured();
+		const figure = computeIndicator(model, ind({ operands: ['adjustedValue'], divisor: null }), inputs({ confidence: null }));
+		expect(figure).toEqual({ value: null, blockedBy: { operand: 'Adjusted value', reason: 'unbound' } });
+	});
+
+	it('still says adjustedValue is unanswered when confidence IS bound and the note has no value for it', () => {
+		const model = configured({ confidenceProperty: 'note.confidence' });
+		const figure = computeIndicator(model, ind({ operands: ['adjustedValue'], divisor: null }), inputs({ confidence: null }));
+		expect(figure).toEqual({ value: null, blockedBy: { operand: 'Adjusted value', reason: 'unanswered' } });
 	});
 
 	it('composes a formula from operand labels', () => {

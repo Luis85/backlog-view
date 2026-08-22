@@ -98,11 +98,11 @@
    muted string — and each is a whole translated sentence that nothing may split into a label
    and a value, so the line break is the only separation available.
 
-   Confidence-adjusted value and value-to-effort — derived on read, never written
-   (`CLAUDE.md`'s write-back rule), which is why both are labelled rather than left to
-   stand as bare numbers beside the total they are not. Each line is one `t()` sentence
-   (`estimation.panel.adjustedValue` / `…valueToEffort`) with no markup inside it — the
-   rubric notes' own idiom (`.pbl-est-rubric`), so nothing here splits a translated
+   Confidence-adjusted value and the configured indicator — derived on read, never
+   written (`CLAUDE.md`'s write-back rule), which is why both are labelled rather than
+   left to stand as bare numbers beside the total they are not. Each line is one `t()`
+   sentence (`estimation.panel.adjustedValue` / `…indicator*`) with no markup inside it —
+   the rubric notes' own idiom (`.pbl-est-rubric`), so nothing here splits a translated
    sentence to bold half of it. */
 .pbl-est-derived {
 	display: flex;

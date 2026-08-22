@@ -3,8 +3,8 @@ import type { EstimationView } from './estimationView';
 import { t } from '../../i18n/t';
 import { EstimationItem, EstimationModel } from '../../domain/estimationItems';
 import { ScaleName } from '../../domain/estimationSettings';
-import { ScaleConfig, ScoringModel } from '../../domain/scoringModel';
-import { round2 } from '../../domain/weightedScore';
+import { Indicator, ScoringModel } from '../../domain/scoringModel';
+import { IndicatorBlock, indicatorFormula, round2 } from '../../domain/weightedScore';
 import { renderCurrencyChip } from './currencyChip';
 
 /**
@@ -93,7 +93,7 @@ export function renderPanel(view: EstimationView, model: EstimationModel, previo
 	const header = panelEl.createDiv({ cls: 'pbl-est-header' });
 	header.createDiv({ cls: 'pbl-est-title', text: item.title });
 	renderSummary(header, item);
-	renderDerived(header, item, scoringModel.confidence);
+	renderDerived(header, item, scoringModel, view.settings.indicator);
 
 	panelEl.createEl('h4', { text: t('estimation.panel.valueDimensions') });
 	for (const dimension of scoringModel.dimensions) renderScoreRow(panelEl, dimSpec(item, dimension));
@@ -274,33 +274,60 @@ function renderDecomposition(panelEl: HTMLElement, item: EstimationItem): void {
 	for (const term of item.result.terms) decomp.createSpan({ text: t('estimation.panel.term', term) });
 }
 
+/** Which catalog key names a blocked indicator's reason, on the panel's own two-parameter
+ *  sentence family (`{name}` and `{operand}`). A `Record<IndicatorBlock, …>`, the same
+ *  shape `renderTable.ts`'s own copy takes for its one-parameter family below it — so the
+ *  compiler refuses either file the moment a reason joins `IndicatorBlock` without a
+ *  matching entry here, rather than the two silently drifting apart on a case one of them
+ *  forgot. */
+const PANEL_BLOCK_KEY: Record<
+	IndicatorBlock,
+	'estimation.panel.indicatorUnanswered' | 'estimation.panel.indicatorUnknown' | 'estimation.panel.indicatorNonpositive' | 'estimation.panel.indicatorUnbound'
+> = {
+	unanswered: 'estimation.panel.indicatorUnanswered',
+	unknown: 'estimation.panel.indicatorUnknown',
+	nonpositive: 'estimation.panel.indicatorNonpositive',
+	unbound: 'estimation.panel.indicatorUnbound',
+};
+
 /**
- * Confidence-adjusted value and value-to-effort — each only while its OWN inputs exist,
- * per `docs/requirements/The weighted score.md`'s write-back rule: derived on read,
- * never written. Value-to-effort's own formula divides the ADJUSTED value, so it can
- * never exist without confidence either — nothing here is a second, independent guard
- * on `adjusted`, because there is no state in which one renders without the other.
+ * Confidence-adjusted value and the configured indicator — each derived on read and
+ * written nowhere (`docs/requirements/The weighted score.md`). The indicator sits BESIDE
+ * the value it is computed from, never instead of it, which is the epic's rule about a
+ * merged number.
  *
- * The adjustment is the confidence AS THE ROW ABOVE READS IT, over the scale's own
- * maximum — both from the `ScaleConfig`, never a literal 5: a stored 9 printed a value
- * above the model's own output range, directly under the row saying that 9 reads as 5.
+ * A blocked indicator says which operand blocked it rather than dropping the line: a line
+ * that vanishes reads as "this view has no opinion", and the reader is about to score.
  */
-function renderDerived(panelEl: HTMLElement, item: EstimationItem, scale: ScaleConfig): void {
-	if (!item.result || item.confidence === null) return;
-	const adjusted = round2((item.result.total * readAs(item.confidence, scale.min, scale.max)) / scale.max);
+function renderDerived(panelEl: HTMLElement, item: EstimationItem, model: ScoringModel, indicator: Indicator): void {
+	const scale = model.confidence;
+	// TWO independent lines, and the gate on each is its OWN inputs. Sharing one early
+	// return hid the indicator whenever the adjusted value had nothing to say — which is
+	// exactly the item whose indicator is `effort × complexity` and perfectly computable,
+	// and also the item whose default indicator is blocked and most needs to say so.
+	const adjusted =
+		item.result && item.confidence !== null
+			? round2((item.result.total * readAs(item.confidence, scale.min, scale.max)) / scale.max)
+			: null;
+	if (adjusted === null && !item.indicator) return;
 	const derived = panelEl.createDiv({ cls: 'pbl-est-derived' });
 	// One catalog key per line, {value} substituted rather than glued on beside a
 	// separately-translated label — the i18n rule this file's rubric notes already
 	// follow (`estimation.clamped`, `estimation.betweenPoints`): the sentence is the
 	// unit, so nothing here builds one out of two pieces at the call site.
-	derived.createSpan({ text: t('estimation.panel.adjustedValue', { value: adjusted }) });
-	// A POSITIVE effort, asked explicitly: the ratio divides by it, so a stored 0 gives
-	// `Infinity` and a negative gives a negative ratio beside a table showing the number
-	// the user typed. Neither is a value to show, so the line is omitted — the row for
-	// effort itself says the value is out of its range, which is where that belongs.
-	if (item.effort !== null && item.effort > 0) {
-		derived.createSpan({ text: t('estimation.panel.valueToEffort', { value: round2(adjusted / item.effort) }) });
-	}
+	if (adjusted !== null) derived.createSpan({ text: t('estimation.panel.adjustedValue', { value: adjusted }) });
+	if (!item.indicator) return;
+	const name = indicator.label || indicatorFormula(model, indicator);
+	const blocked = item.indicator.blockedBy;
+	// A LOOKUP rather than a nested ternary: three reasons already strained that shape,
+	// and the fourth (`unbound`) made it unreadable. `PANEL_BLOCK_KEY` above is the whole
+	// of the decision; this only applies it.
+	derived.createSpan({
+		text:
+			blocked === null
+				? t('estimation.panel.indicator', { name, value: item.indicator.value as number })
+				: t(PANEL_BLOCK_KEY[blocked.reason], { name, operand: blocked.operand }),
+	});
 }
 
 function renderCleanupButton(panelEl: HTMLElement): void {

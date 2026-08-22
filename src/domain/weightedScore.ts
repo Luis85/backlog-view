@@ -219,20 +219,36 @@ export interface IndicatorInputs {
 }
 
 /**
- * Which of the three ways an operand can block a figure. Carried rather than collapsed,
- * because the three are REPAIRED differently and a reader is looking at this to fix it:
+ * Which of the four ways an operand can block a figure. Carried rather than collapsed,
+ * because the four are REPAIRED differently and a reader is looking at this to fix it:
  * an unanswered operand wants a score on the note, a nonpositive divisor wants the value
- * the note already holds corrected, and an unknown id wants the operands box edited. One
- * message for all three would be wrong about two of them — the currency chip's own rule,
- * which spends a distinct word on each failure rather than a shared one.
+ * the note already holds corrected, an unbound operand wants a property bound to it in
+ * the view options, and an unknown id wants the operands box edited. One message for all
+ * four would be wrong about three of them — the currency chip's own rule, which spends a
+ * distinct word on each failure rather than a shared one.
+ *
+ * `unbound` is distinct from `unanswered` on purpose: `confidence`/`effort`/`complexity`
+ * (and `ease`, which reads `effort`, and `adjustedValue`, which reads `confidence`) can be
+ * bound to no property at all — `modelProblems` does not require it — and "not answered"
+ * sends the reader to a scoring control the panel does not draw for such a scale
+ * (`panel.ts`'s `spec.key === ''` return: "bare label row, nothing bound, nothing to
+ * click"). The repair for `unbound` is binding a property in the view options, a
+ * different place entirely.
  */
-export type IndicatorBlock = 'unanswered' | 'unknown' | 'nonpositive';
+export type IndicatorBlock = 'unanswered' | 'unknown' | 'nonpositive' | 'unbound';
 
 /** A figure, or the ONE operand that blocked it and why. */
 export interface IndicatorFigure {
 	value: number | null;
 	blockedBy: { operand: string; reason: IndicatorBlock } | null;
 }
+
+/** Why an operand has no value, or that it does — the smallest shape that carries the
+ *  REASON rather than only whether one exists, so `blockOf` can read it off directly
+ *  instead of re-deriving it from a scale's key and an item's answer a second time.
+ *  `'known'` covers a real value; the other three are exactly `IndicatorBlock`'s first
+ *  three members, decided at the point resolution already knows which applies. */
+type OperandStatus = 'known' | 'unknown' | 'unbound' | 'unanswered';
 
 /** What the arithmetic uses, what the note holds, and what to call it when either is
  *  missing. `stored` is null wherever the operand has no stored source at all (`value`,
@@ -241,10 +257,7 @@ interface ResolvedOperand {
 	label: string;
 	value: number | null;
 	stored: number | null;
-	/** False only for an id nothing answers to — a typo in the box, or a dimension since
-	 *  removed. Distinct from `value === null`, which is an operand this item has not
-	 *  answered, because the two are repaired in different places. */
-	known: boolean;
+	status: OperandStatus;
 }
 
 function operandLabel(model: ScoringModel, id: string): string {
@@ -272,10 +285,14 @@ function operandLabel(model: ScoringModel, id: string): string {
 
 /** A scale answer, CLAMPED to its declared range — the number the panel row above it
  *  reports. Raw would invert a ranking: a stored confidence of `-2` makes a product fall
- *  as its other operands rise. */
+ *  as its other operands rise.
+ *
+ *  A held value of `null` is ambiguous by itself — a bound scale nobody has answered
+ *  reads the same as an unbound one — so the STATUS is decided here, off the scale's own
+ *  key, once: `unbound` when nothing is bound to it, `unanswered` when it is. */
 function scaleOperand(scale: ScaleConfig, held: number | null, label: string): ResolvedOperand {
-	if (held === null) return { label, value: null, stored: null, known: true };
-	return { label, value: Math.min(scale.max, Math.max(scale.min, held)), stored: held, known: true };
+	if (held === null) return { label, value: null, stored: null, status: scale.key === '' ? 'unbound' : 'unanswered' };
+	return { label, value: Math.min(scale.max, Math.max(scale.min, held)), stored: held, status: 'known' };
 }
 
 /** One of the six `INDICATOR_BUILTINS` — split out of `resolveOperand` so the RESERVED
@@ -287,20 +304,30 @@ function resolveBuiltin(model: ScoringModel, inputs: IndicatorInputs, id: string
 	if (id === 'complexity') return scaleOperand(model.complexity, inputs.complexity, label);
 	if (id === 'ease') {
 		// The effort scale reversed on its OWN range — `lessIsBetter` reaching a scale, not
-		// `1 ÷ effort`, which is a different ranking wearing the name.
+		// `1 ÷ effort`, which is a different ranking wearing the name. An unbound effort
+		// makes `ease` unbound too: it carries the SAME status `scaleOperand` gave effort,
+		// rather than restating the `scale.key === ''` check a second time.
 		const effort = scaleOperand(model.effort, inputs.effort, label);
 		const value = effort.value === null ? null : model.effort.min + model.effort.max - effort.value;
-		return { label, value, stored: effort.stored, known: true };
+		return { label, value, stored: effort.stored, status: effort.status };
 	}
-	if (id === 'value') return { label, value: inputs.result?.total ?? null, stored: null, known: true };
-	// the remaining builtin is 'adjustedValue'
-	if (inputs.result === null || inputs.confidence === null) return { label, value: null, stored: null, known: true };
-	const confidence = scaleOperand(model.confidence, inputs.confidence, label).value as number;
+	if (id === 'value') {
+		const value = inputs.result?.total ?? null;
+		return { label, value, stored: null, status: value === null ? 'unanswered' : 'known' };
+	}
+	// the remaining builtin is 'adjustedValue', which reads the CONFIDENCE scale — an
+	// unbound confidence blocks it as `unbound` rather than `unanswered`, the same rule
+	// `ease` follows for effort. No dimension answered at all is a different failure
+	// (`inputs.result === null`) and stays `unanswered`: it says nothing about whether
+	// confidence itself is bound.
+	if (inputs.result === null) return { label, value: null, stored: null, status: 'unanswered' };
+	const confidenceOperand = scaleOperand(model.confidence, inputs.confidence, label);
+	if (confidenceOperand.value === null) return { label, value: null, stored: null, status: confidenceOperand.status };
 	// Rounded HERE, before it is multiplied or divided — `renderDerived`'s own order, and
 	// keeping it is what makes "no in-range item's number moves" true rather than nearly
 	// true: at a total of 1.01, confidence 3, effort 2, rounding first gives 0.31 and
 	// rounding only the final figure gives 0.30.
-	return { label, value: round2((inputs.result.total * confidence) / model.confidence.max), stored: null, known: true };
+	return { label, value: round2((inputs.result.total * confidenceOperand.value) / model.confidence.max), stored: null, status: 'known' };
 }
 
 function resolveOperand(model: ScoringModel, inputs: IndicatorInputs, id: string): ResolvedOperand {
@@ -310,10 +337,12 @@ function resolveOperand(model: ScoringModel, inputs: IndicatorInputs, id: string
 	// agree with it — the dimension branch below is never reached for one of these six.
 	if ((INDICATOR_BUILTINS as readonly string[]).includes(id)) return resolveBuiltin(model, inputs, id, label);
 	const dimension = model.dimensions.find((d) => d.id === id);
-	if (!dimension) return { label, value: null, stored: null, known: false };
+	// A dimension has no `unbound` reading here: `dimensionProblems` already refuses one
+	// with no key bound, so a dimension operand reaching this point is always bound.
+	if (!dimension) return { label, value: null, stored: null, status: 'unknown' };
 	const raw = inputs.answers.get(dimension.id);
-	if (raw === null || raw === undefined) return { label, value: null, stored: null, known: true };
-	return { label, value: countAnswer(dimension, raw).value, stored: raw, known: true };
+	if (raw === null || raw === undefined) return { label, value: null, stored: null, status: 'unanswered' };
+	return { label, value: countAnswer(dimension, raw).value, stored: raw, status: 'known' };
 }
 
 /**
@@ -343,9 +372,14 @@ export function computeIndicator(model: ScoringModel, indicator: Indicator, inpu
 	return { value: round2(product / divisor.value), blockedBy: null };
 }
 
-/** An operand with no value: unknown where nothing answers to the id, unanswered otherwise. */
+/** An operand with no value: the SINGLE place a `ResolvedOperand` becomes a reason a
+ *  reader is told. `status` already IS the reason by the time this runs — every caller
+ *  checks `value === null` first, and resolution always pairs a null `value` with a
+ *  non-`'known'` status — so there is no four-way branch to restate here; the ternary
+ *  exists only so the return type is provably an `IndicatorBlock` without a cast, since
+ *  `'known'` is a member of `status`'s type the compiler cannot see is unreachable. */
 function blockOf(operand: ResolvedOperand): { operand: string; reason: IndicatorBlock } {
-	return { operand: operand.label, reason: operand.known ? 'unanswered' : 'unknown' };
+	return { operand: operand.label, reason: operand.status === 'known' ? 'unanswered' : operand.status };
 }
 
 /** `Reach × Business impact × Confidence ÷ Effort` — every NAME from the catalog; the two

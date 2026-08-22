@@ -443,14 +443,27 @@ function numberCell(el: HTMLElement, value: number | null, range: [number, numbe
 	el.createDiv({ cls: 'pbl-est-strip' }).setCssProps({ '--pbl-progress': `${Math.round(ratio * 100)}%` });
 }
 
-/** The tooltip for a blocked cell. Three sentences rather than one, because a reader
+/** Which catalog key names a blocked indicator's reason, on this column's own
+ *  one-parameter sentence family (`{operand}`) — `panel.ts`'s `PANEL_BLOCK_KEY` is the
+ *  same shape over its own two-parameter family, so a reason added to `IndicatorBlock`
+ *  fails the compiler in both files rather than drifting in one of them. */
+const COLUMN_BLOCK_KEY: Record<
+	IndicatorBlock,
+	'estimation.indicator.unanswered' | 'estimation.indicator.unknown' | 'estimation.indicator.nonpositive' | 'estimation.indicator.unbound'
+> = {
+	unanswered: 'estimation.indicator.unanswered',
+	unknown: 'estimation.indicator.unknown',
+	nonpositive: 'estimation.indicator.nonpositive',
+	unbound: 'estimation.indicator.unbound',
+};
+
+/** The tooltip for a blocked cell. Four sentences rather than one, because a reader
  *  reading this is trying to repair it: an unanswered operand wants a score, a nonpositive
- *  divisor wants the stored value corrected, and an unknown id wants the operands box
- *  edited. "is not answered" is wrong about two of those. */
+ *  divisor wants the stored value corrected, an unbound operand wants a property bound to
+ *  it, and an unknown id wants the operands box edited. "is not answered" is wrong about
+ *  three of those. */
 function blockedText(blocked: { operand: string; reason: IndicatorBlock }): string {
-	if (blocked.reason === 'unknown') return t('estimation.indicator.unknown', { operand: blocked.operand });
-	if (blocked.reason === 'nonpositive') return t('estimation.indicator.nonpositive', { operand: blocked.operand });
-	return t('estimation.indicator.unanswered', { operand: blocked.operand });
+	return t(COLUMN_BLOCK_KEY[blocked.reason], { operand: blocked.operand });
 }
 
 function renderRow(listEl: HTMLElement, item: EstimationItem, output: [number, number], indicator: Indicator): HTMLElement {
