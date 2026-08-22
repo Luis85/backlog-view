@@ -77,30 +77,55 @@ needs no call site to change. Creation is the one door that does NOT ask it yet:
 spells `isReleaseType` in `createBacklogItem`, which is exactly the narrowing this note is
 about, so option 1 below is that body plus routing the creation seed through it.
 
-**The widened body is not "delete the `isReleaseType` line".** An `Iteration`'s own two
-dates are that note's DEFINITION rather than a placement in somebody's plan, and
-`placementEnds` answers `['target']` for an iteration whose bars are off — so a body that
-asked the placement rule of every type would make an iteration's `start` unholdable and
-refuse the iteration dialog's own save (`axisFrom` in `view/interactions/create.ts` states
-no `ends`, which is precisely the shape the writer's live-type refusal sees). The
-iteration has to be excluded before the placement rule is asked:
+### Widening it: the rule, its exceptions, and how to know you got it right
 
-```ts
-export function mayHoldField(typeName: string | null, field: OptionalField, settings: BacklogSettings): boolean {
-	// An iteration's own dates and goal are what the note IS, not where it sits.
-	if (isIterationType(typeName)) return true;
-	if (field === 'start' || field === 'target') return placementEnds(typeName, settings.iterationBars).includes(field);
-	// The two link-shaped fields, from the rule `canSetIteration` already applies in the UI.
-	if (field === 'iteration' || field === 'iterationGoal') return !isMarkerType(typeName);
-	// A marker CAN hold a horizon — the bucket axis places a milestone like any other row.
-	return true;
-}
-```
+**No code is written down here on purpose.** Two plausible bodies were drafted in this
+note and in `mayHoldField`'s own comment, and both were wrong — the first refused an
+iteration's own `start`, the second let a release take a horizon again, reopening the very
+bug the guard was written to close. A body in a document is a confident sentence with no
+check under it, and this repository refuses those everywhere else. What is safe to write
+down is the rule, the exceptions, and the suites that decide.
 
-Still one site and no call site moves, which is what the parameter list was shaped for —
-but four lines and one exclusion, not one line. Whoever takes this up should run
-`test/view/iterationDialog.test.ts` first and watch it, because that suite is what the
-naive version breaks.
+**The rule.** "May a note of this type hold this key" is `placementEnds`-shaped: the ends
+a type speaks are the ends it may hold, which is why the function already asks
+`placementEnds` for `start` and `target` rather than restating anything. Today it is
+narrowed to a `Release` by the ruling recorded above, and the whole widening is a change of
+which types reach that question.
+
+**The exceptions are what decide the body, and neither is derivable from `placementEnds`.**
+Both drafts died on one of them:
+
+- **An iteration note's own `start` and `target` are its DEFINITION, not a placement in
+  somebody's plan.** `placementEnds('Iteration', …)` answers `['target']` whenever
+  `iterationBars` is off, and `axisFrom` (`src/view/interactions/create.ts`) states both
+  ends on every save with no `ends` — the exact shape the writer's live-type refusal sees.
+  A body that asks the placement rule of an iteration refuses the iteration dialog's own
+  save. `docs/requirements/An iteration's timeframe schedules its items.md` is what those
+  two dates ARE — the timeframe every member is stamped from.
+- **A `Release` may hold NO horizon**, where a marker in general may — the bucket axis
+  places a milestone like any other row. `docs/requirements/Releases as their own type.md`
+  ("draws no point and no bar on the backlog roadmap, **on either axis**, and speaks no
+  placement end") and `A release on the dated axis.md` extension 4b are the citations;
+  `computeHorizonWrites` and `onThisRoadmap` are where the same rule already lives. A body
+  that reasons "a marker may hold a horizon" and lets every marker through has reopened
+  this bug.
+
+**How to know.** Widen the body, then run — and watch, rather than trust:
+
+- `test/view/iterationDialog.test.ts` — catches the iteration exception. Measured: the
+  naive "drop the `isReleaseType` line" version fails 2 of its 15.
+- `test/storage/liveTypeKeys.test.ts` — catches the release exception at both ends, the
+  plan and the write, and holds the removal exemption. Measured: the second draft, the one
+  that let every marker hold a horizon, fails 2 of its 6 —
+  `expected [ 'horizon', 'risk' ] to deeply equal [ 'risk' ]` at the plan and the stubbed
+  key at the write.
+- `test/domain/writePlanProperties.test.ts` and `test/storage/frontmatterDates.test.ts` —
+  the backfill's other stub rules and the dated axis's own refusals, which a widened body
+  passes through.
+- `npm run check`, which is the only claim worth making about a body nobody has run.
+
+Whatever body results, it belongs in `mayHoldField` and nowhere else — that part held
+across both attempts, and no call site moved either time.
 
 Two ways out, and they are not equivalent:
 

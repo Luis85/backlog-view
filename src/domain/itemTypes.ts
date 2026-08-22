@@ -386,15 +386,15 @@ export function placementEnds(typeName: string | null, iterationBars: boolean): 
  * (`placementEnds`, which answers a release NO end), and the three link-shaped fields are
  * what the name still decides. Widening it to every type — a `Milestone`'s `start` is the
  * known case — is an edit to this body and to no call site, which is the whole reason the
- * settings are a parameter rather than a lookup at each call site. It is NOT the one-liner
- * "drop the `isReleaseType` line" looks like: an `Iteration`'s own two dates ARE that
- * note's definition rather than a placement in somebody's plan, and `placementEnds`
- * answers `['target']` for one whose bars are off — so the widened body has to EXCLUDE an
- * iteration before it asks the placement rule, or it refuses the iteration dialog's own
- * save (`axisFrom` in `view/interactions/create.ts` states no `ends`, so this function is
- * exactly what would see it). See
- * `docs/issues/Creation seeds a placement the type may not hold.md`, which carries the
- * corrected body and what it costs.
+ * settings are a parameter rather than a lookup at each call site.
+ *
+ * **Do not widen it from this comment.** The rule generalizes; its EXCEPTIONS are what
+ * decide the body, they are not derivable from `placementEnds`, and two plausible bodies
+ * written here were both wrong — one refused an iteration's own `start`, the next let a
+ * release take a horizon again. `docs/issues/Creation seeds a placement the type may not
+ * hold.md` states the exceptions with their citations and names the suites that catch
+ * each; it deliberately carries no code to paste, because nothing executes a body in a
+ * document.
  */
 export function mayHoldField(typeName: string | null, field: OptionalField, settings: BacklogSettings): boolean {
 	if (!isReleaseType(typeName)) return true;
