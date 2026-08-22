@@ -1351,6 +1351,24 @@ export const en = {
 	'estimation.toolbar.init': 'Bind and backfill the estimation properties',
 	'estimation.toolbar.scored': '{scored} of {total} scored',
 
+	/** The four shipped indicator presets' own description and note — the preset NAME stays
+	 *  a plain literal in `domain/estimationPresets.ts` (it is written into the `.base`), but
+	 *  what a reader is shown ABOUT a preset is catalog text, keyed by id. An empty note means
+	 *  the preset needs none. */
+	'estimation.preset.rice.description':
+		'Favours work that reaches many people, changes something that matters to them, and rests on evidence — then divides by what it costs. Widely used where the audience of one item differs a lot from the next.',
+	'estimation.preset.rice.note': '',
+	'estimation.preset.ice.description':
+		'RICE without reach: a quicker score for a backlog whose items all touch roughly the same audience, so counting that audience adds nothing.',
+	'estimation.preset.ice.note': 'Ease is the effort scale reversed on its own range.',
+	'estimation.preset.wsjf.description':
+		"SAFe's scheduling score: what delay costs, over how big the job is. Answers what to do first when everything in the list is worth doing.",
+	'estimation.preset.wsjf.note':
+		'Cost of delay is read as the value total, job size as effort. Point the numerator at a cost-of-delay dimension to get the real thing.',
+	'estimation.preset.valueOverEffort.description':
+		'The plainest ranking there is — value you are confident in, over what it takes. A reasonable default before a team commits to a named framework.',
+	'estimation.preset.valueOverEffort.note': '',
+
 	/**
 	 * Four sentences the sweep of `view/` first left as English inside keyed neighbours,
 	 * found by review on 2026-08-21. Each sat in a stated blind spot rather than at a
