@@ -726,7 +726,9 @@ export interface ReleaseRow {
 	version: ReleaseFigure<string>;
 	target: ReleaseFigure<CivilDate>;
 	status: ReleaseFigure<string>;
-	members: number;
+	/** A FIGURE, not a bare number: with the membership key unbound the count is
+	 *  unreadable, not zero. See the field's own note in the module. */
+	members: ReleaseFigure<number>;
 }
 export interface ReleaseIndex { rows: ReleaseRow[]; unresolved: BacklogItem[] }
 export function releaseIndex(app: App, model: BacklogModel, settings: ReleaseSettings): ReleaseIndex
@@ -822,8 +824,16 @@ describe('the release index', () => {
 		const vault = new FakeVault();
 		// 3b names the empty version explicitly: somebody wrote something there.
 		vault.addFile('Empty.md', { frontmatter: { type: 'Release', version: '', status: { a: 1 } } });
+		// A LIST is unreadable too, and it is the one `readString` would quietly unwrap to
+		// its first element and call clean.
+		vault.addFile('Listed.md', { frontmatter: { type: 'Release', version: ['0.8.0', '0.9.0'] } });
 		vault.addFile('Missing.md', { frontmatter: { type: 'Release' } });
 		const rows = indexOf(vault).rows;
+		expect(rows.find((r) => r.name === 'Listed')?.version).toEqual({
+			value: null,
+			invalid: true,
+			unconfigured: false,
+		});
 		const empty = rows.find((r) => r.name === 'Empty');
 		expect(empty?.version).toEqual({ value: null, invalid: true, unconfigured: false });
 		expect(empty?.status).toEqual({ value: null, invalid: true, unconfigured: false });
@@ -858,8 +868,18 @@ describe('the release index', () => {
 		vault.addFile('E.md', { frontmatter: { type: 'Epic' } });
 		vault.addFile('Bad.md', { frontmatter: { type: 'Feature', release: '[[E]]' } });
 		vault.addFile('Two.md', { frontmatter: { type: 'Feature', release: ['[[R]]', '[[E]]'] } });
+		// Present but unreadable is a REPORT, not an absence: the note carries the key, so
+		// somebody wrote something there. A key no note carries stays silent.
+		vault.addFile('Blank.md', { frontmatter: { type: 'Feature', release: '' } });
+		vault.addFile('Object.md', { frontmatter: { type: 'Feature', release: { a: 1 } } });
+		vault.addFile('None.md', { frontmatter: { type: 'Feature' } });
 		const { rows, unresolved } = indexOf(vault);
-		expect(unresolved.map((i) => i.file.path).sort()).toEqual(['Bad.md', 'Two.md']);
+		expect(unresolved.map((i) => i.file.path).sort()).toEqual([
+			'Bad.md',
+			'Blank.md',
+			'Object.md',
+			'Two.md',
+		]);
 		expect(rows.find((r) => r.name === 'R')?.members.value).toBe(0);
 	});
 });
@@ -938,13 +958,19 @@ function figure<T>(reading: { value: T | null; invalid: boolean }): ReleaseFigur
  * something there".
  *
  * `readString` alone cannot answer this: it returns null for an object and for `''` alike,
- * so hard-coding `invalid: false` beside it reports malformed data as an unset key. Not
+ * so hard-coding `invalid: false` beside it reports malformed data as an unset key. Worse
+ * for a LIST, which it does not refuse at all — it recurses into the first element, so
+ * `['0.8.0', '0.9.0']` reads as a clean `0.8.0` and the second value disappears. Not
  * `readPlacement` either, which is the closest existing reader and deliberately calls an
  * empty value ABSENCE — right for a roadmap horizon, wrong for a version 3b says is a
  * refusal.
  */
 function readLabel(raw: unknown): { value: string | null; invalid: boolean } {
 	if (raw === null || raw === undefined) return { value: null, invalid: false };
+	// Refused BEFORE `readString`, which would unwrap it to its first element and call the
+	// figure clean. A label is one value; a list of them is somebody writing something the
+	// reader will not guess at, which is 3b's own definition of unreadable.
+	if (Array.isArray(raw)) return { value: null, invalid: true };
 	const text = readString(raw);
 	if (text !== null && text.trim() !== '') return { value: text, invalid: false };
 	return { value: null, invalid: true };
@@ -1026,11 +1052,16 @@ export function releaseIndex(app: App, model: BacklogModel, settings: ReleaseSet
 	});
 
 	rows.sort((a, b) => {
-		const byDate = dateKey(a.target) - dateKey(b.target);
-		if (byDate !== 0 && Number.isFinite(byDate)) return byDate;
+		// Values compared, never their difference — `Infinity - Infinity` is `NaN` and
+		// `Infinity - n` is `Infinity`, and a comparator that returns either sorts at
+		// random. Both keys below use the same shape for the same reason.
 		if (dateKey(a.target) !== dateKey(b.target)) return dateKey(a.target) < dateKey(b.target) ? -1 : 1;
-		const byRank = rank(a.item) - rank(b.item);
-		if (byRank !== 0 && Number.isFinite(byRank)) return byRank;
+		// NOT `rank(a) - rank(b)` guarded by `Number.isFinite`: an unranked release is
+		// `+Infinity`, and `Infinity - 10` is `Infinity`, which that guard rejects — so the
+		// ranked release and the unranked one would fall through to the PATH tie-break
+		// together, and a rank the vault states would decide nothing. Compare the values,
+		// never their difference.
+		if (rank(a.item) !== rank(b.item)) return rank(a.item) < rank(b.item) ? -1 : 1;
 		// The final tie-break, and it is what makes the order STABLE across renders: two
 		// releases sharing a date and a rank — or a vault with the order property unmapped,
 		// where none of them has a rank at all — would otherwise sit in whatever order the
@@ -1078,7 +1109,13 @@ export function membershipTarget(
 		if (raw.length > 1) return UNRESOLVED;
 	}
 	const text = readString(raw);
-	if (text === null || text.trim() === '') return null;
+	// PRESENT but unreadable — an empty string, an object, a list of objects — is
+	// UNRESOLVED, never absent. `readString` answers null to all three exactly as it
+	// answers null to a key the note does not carry, and collapsing them drops a
+	// hand-written mistake in silence: the note HAS the key, so somebody wrote something
+	// there. Only a missing key and an empty list mean "names none", and both are already
+	// returned above.
+	if (text === null || text.trim() === '') return UNRESOLVED;
 	if (!inPlan(item) || isMarkerType(item.typeName)) return UNRESOLVED;
 	const target = resolveReleasePath(app, item, text, model);
 	return target ?? UNRESOLVED;
@@ -1118,7 +1155,7 @@ Import `inPlan` and `linkpathFromRawValue`, plus `isMarkerType` from `./itemType
 - [ ] **Step 4: Run the tests**
 
 Run: `npx vitest run test/domain/releases.test.ts`
-Expected: PASS all seven.
+Expected: PASS all nine.
 
 - [ ] **Step 5: Add the plan-work refusal test and watch it fail**
 
@@ -1260,8 +1297,11 @@ describe("one release's scope", () => {
 		// Filed UNDER the other release by hand, and a member of R.
 		vault.addFile('F.md', { frontmatter: { type: 'Feature', parent: 'Other', release: '[[R]]' } });
 		const rows = scopeOf(vault, 'R.md').rows;
-		// The marker is walked through: the member keeps its place under the real ancestor.
+		// The marker draws no row AND does not take the member down with it. Asserting only
+		// the absence of `Other` passes on an EMPTY list, which is the bug wearing the
+		// test's own clothes, so the member's own row is asserted beside it.
 		expect(rows.map((r) => r.item.file.basename)).not.toContain('Other');
+		expect(rows.map((r) => [r.item.file.basename, r.depth])).toEqual([['F', 0]]);
 	});
 
 	it('marks a context ancestor that is itself in another release as context here', () => {
@@ -1342,9 +1382,16 @@ export function releaseScope(app: App, model: BacklogModel, settings: ReleaseSet
 
 	const rows: ScopeRow[] = [];
 	const walk = (item: BacklogItem, depth: number): void => {
-		if (!keep.has(item.file.path)) return;
-		rows.push({ item, depth, context: !members.has(item.file.path) });
-		for (const child of item.children) walk(child, depth + 1);
+		// A row that is not kept is walked THROUGH, never stopped at. A member filed under a
+		// marker — the hand-written parent edge this plan deliberately keeps — has that
+		// marker as an ancestor, and a marker is never kept; returning here would drop the
+		// MEMBER along with it while the header went on counting it, so the scope and the
+		// index would disagree about one release. That is the one defect this module exists
+		// to prevent. Descending without drawing it leaves the depth alone too, so the
+		// member re-roots at the level the marker occupied.
+		const kept = keep.has(item.file.path);
+		if (kept) rows.push({ item, depth, context: !members.has(item.file.path) });
+		for (const child of item.children) walk(child, kept ? depth + 1 : depth);
 	};
 	// From the model's REAL roots, not its rendered ones: a focus level set on the backlog
 	// view must not decide what a release's scope contains.
@@ -1359,7 +1406,7 @@ A member whose ancestor is absent from the results is an orphan in the model —
 - [ ] **Step 4: Run the tests**
 
 Run: `npx vitest run test/domain/releaseScope.test.ts`
-Expected: PASS all seven.
+Expected: PASS all eight.
 
 - [ ] **Step 5: Commit**
 
