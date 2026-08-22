@@ -21,13 +21,16 @@ longer fits to disappear whole rather than run off the edge, **so that** a squee
 never leaves a column half-drawn with no sign that anything is missing.
 
 Measured 2026-08-21, headless Chromium over the real view and the real stylesheet at window
-widths from 1200px down to 380px (`?measure`, `test/harness/estimation.ts`). The row's six
-columns are all fixed width — four numeric columns at 72px, the title, and a 140px currency
-column — and only the title gives up width as the pane narrows, down to its own 96px floor.
-The row's minimum is therefore **588px**: the 96px title floor, four 72px columns, the
-140px currency column, five 8px gaps between them and 24px of padding. The panel beside the
-table keeps its own 320px floor, so the view needs about **940px** before the track can
-hold all six columns without shrinking further.
+widths from 1200px down to 380px (`?measure`, `test/harness/estimation.ts`), when the row
+still drew six columns. **The estimation indicator shipped the next day (2026-08-22) as a
+seventh column, the same 72px width as the other numeric ones, and the figures below are
+corrected for it by arithmetic rather than by re-running the harness measurement** — the
+row's seven columns are all fixed width — five numeric columns at 72px, the title, and a
+140px currency column — and only the title gives up width as the pane narrows, down to its
+own 96px floor. The row's minimum is therefore **668px**: the 96px title floor, five 72px
+columns, the 140px currency column, six 8px gaps between them and 24px of padding. The
+panel beside the table keeps its own 320px floor, so the view needs about **1020px** before
+the track can hold all seven columns without shrinking further.
 
 Below that width the row does not shrink further — it overflows. `.pbl-est-table` declares
 `overflow-y: auto` and no `overflow-x`, and CSS computes a `visible` overflow on one axis to
@@ -63,14 +66,14 @@ have to say what the sort now means, which nothing in the tree has ever had to a
 
 | | |
 | --- | --- |
-| **Actor** | Whoever is reading the prioritized list on a pane narrower than about 940px |
-| **Trigger** | The pane narrows past the point where all six columns fit at their fixed widths |
+| **Actor** | Whoever is reading the prioritized list on a pane narrower than about 1020px |
+| **Trigger** | The pane narrows past the point where all seven columns fit at their fixed widths |
 | **Preconditions** | The model resolves without problems and the table is drawing rows |
 | **Guarantee** | A column that does not fit is either drawn in full or not drawn at all — never partially occluded, and never reachable only by a scroller nobody intended |
 
 **Main flow**
 
-1. The pane narrows below about 940px. The title has already given up width down to its
+1. The pane narrows below about 1020px. The title has already given up width down to its
    96px floor, and the row as a whole no longer fits.
 2. A measure-then-render pass, the same shape `columnFit`/`syncColumnFit` already gives the
    tree's own property columns, decides how many of the fixed-width columns the pane can
@@ -86,7 +89,7 @@ have to say what the sort now means, which nothing in the tree has ever had to a
 **Extensions**
 
 - **1a — measured today, before this is built.** The table has no such mechanism: below
-  588px the row stops shrinking and CSS's own `overflow-y: auto` / `overflow-x: visible`
+  668px the row stops shrinking and CSS's own `overflow-y: auto` / `overflow-x: visible`
   combination silently computes a horizontal scroller, so the currency column is reachable
   only by scrolling to it and the only on-screen trace at 900px is a 2px sliver of a chip
   against the table's border.
@@ -99,7 +102,7 @@ have to say what the sort now means, which nothing in the tree has ever had to a
 
 ## Acceptance criteria
 
-- Below the width where all six columns fit, a column is either drawn at its full declared
+- Below the width where all seven columns fit, a column is either drawn at its full declared
   width or not drawn at all — never clipped, never scrolled past silently.
 - The header and the rows agree on which columns are drawn, at every width.
 - A persisted sort naming a column the pane currently drops is not silently applied to a

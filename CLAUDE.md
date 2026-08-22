@@ -109,10 +109,10 @@ language, so nothing re-reads it. What must never enter the catalog is anything 
 writes, matches or persists — type names, state values, option keys, tags, file names. The
 test when it is not obvious: **ask what breaks if two people with different Obsidian
 languages open the same vault.** "One sees different words" is text; "one writes notes the
-other's view cannot read" is data. 519 keys are in it (counted two ways on 2026-08-21 —
-`Object.keys` at runtime and a tab-aware grep — after the options menu and the estimation
-view landed on the same day from different branches, which is why neither figure those two
-carried is this one).
+other's view cannot read" is data. 550 keys are in it (counted two ways as of 2026-08-22 —
+`Object.keys` at runtime and a tab-aware grep, agreeing at 550 — after the options menu and
+the estimation view landed on the same day from different branches, which is why neither
+figure those two carried is this one).
 `ui/`, `commands/`, `view/interactions/`, `view/estimation/`, the whole of `view/render/`,
 `view/writeGate.ts`, `view/cardMoves.ts`, `main.ts` and `domain/viewOptions.ts` are swept,
 which leaves **`view/manual/` and the REST of `domain/`** and nothing else. Neither is a

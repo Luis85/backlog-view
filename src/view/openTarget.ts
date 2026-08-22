@@ -65,7 +65,7 @@ export class OpenController {
 	}
 
 	/**
-	 * Pin the leaf this view is drawn in, so the backlog stays put while notes open
+	 * Pin the leaf this view is drawn in, so the calling view stays put while notes open
 	 * beside it. Best effort, hence no report: a base embedded in a note is drawn in
 	 * that note's leaf, and pinning it is still "keep what is on screen on screen" —
 	 * while a view not yet in a workspace has nothing to pin.
@@ -83,9 +83,9 @@ export class OpenController {
 
 	/**
 	 * The pane the configured split target opens into, made once and reused while it is
-	 * still open. `getLeaf('split')` splits whatever is ACTIVE, and the backlog is active
-	 * on every click — so a split per click would fill the window with panes by the
-	 * fourth item. Liveness is asked of the workspace rather than remembered: a closed
+	 * still open. `getLeaf('split')` splits whatever is ACTIVE, and the calling view is
+	 * active on every click — so a split per click would fill the window with panes by
+	 * the fourth item. Liveness is asked of the workspace rather than remembered: a closed
 	 * leaf is still a perfectly good object, and opening a note into one would put it
 	 * nowhere.
 	 */

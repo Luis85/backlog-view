@@ -395,19 +395,29 @@ export function computeIndicator(model: ScoringModel, indicator: Indicator, inpu
 	// its top resolves to 0 and would divide to Infinity while the stored value looks fine.
 	if (divisor.value === null) return { value: null, blockedBy: blockOf(divisor) };
 	if (divisor.value <= 0 || (divisor.stored !== null && divisor.stored <= 0)) {
+		// Built inline rather than through `blockOf`, and deliberately: that helper redirects
+		// a derived operand to its SOURCE scale (`blockLabel`), but the value actually being
+		// divided by is what a reader needs named here, even when it derives from another
+		// scale — an effort scale declared `0-10` and answered at its `lessIsBetter` top
+		// resolves `ease` to 0, and naming Effort at the point of division would blame a
+		// number the reader never saw fail. `divisor.label` is the right answer for this one
+		// branch, not a shortcut past `blockOf`.
 		return { value: null, blockedBy: { operand: divisor.label, reason: 'nonpositive' } };
 	}
 	return { value: round2(product / divisor.value), blockedBy: null };
 }
 
-/** An operand with no value: the SINGLE place a `ResolvedOperand` becomes a reason a
- *  reader is told. `status` already IS the reason by the time this runs — every caller
- *  checks `value === null` first, and resolution always pairs a null `value` with a
- *  non-`'known'` status — so there is no four-way branch to restate here; the ternary
- *  exists only so the return type is provably an `IndicatorBlock` without a cast, since
- *  `'known'` is a member of `status`'s type the compiler cannot see is unreachable.
- *  `blockLabel ?? label` names the REPAIR, not necessarily the operand the reader typed —
- *  see `ResolvedOperand`'s own comment. */
+/** A NULL-valued operand: the single place a `ResolvedOperand` with no value becomes a
+ *  reason a reader is told — not every reason in this file. `computeIndicator`'s own
+ *  nonpositive-divisor check above builds its `{ operand, reason }` inline instead of
+ *  through here, because that branch names the DIVISOR rather than the divisor's source
+ *  scale; see its own comment for why that is deliberate. `status` already IS the reason
+ *  by the time this runs — every caller checks `value === null` first, and resolution
+ *  always pairs a null `value` with a non-`'known'` status — so there is no four-way
+ *  branch to restate here; the ternary exists only so the return type is provably an
+ *  `IndicatorBlock` without a cast, since `'known'` is a member of `status`'s type the
+ *  compiler cannot see is unreachable. `blockLabel ?? label` names the REPAIR, not
+ *  necessarily the operand the reader typed — see `ResolvedOperand`'s own comment. */
 function blockOf(operand: ResolvedOperand): { operand: string; reason: IndicatorBlock } {
 	return { operand: operand.blockLabel ?? operand.label, reason: operand.status === 'known' ? 'unanswered' : operand.status };
 }

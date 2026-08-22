@@ -68,14 +68,16 @@
    carries that class — nothing to add here. */
 
 .pbl-est-header .pbl-est-title {
-	/* `flex` is set by `.pbl-est-title-row .pbl-est-title` above, which wins the
-	   specificity tie by SOURCE ORDER (both are two-class descendant selectors,
-	   (0,0,2,0) each) — not by this rule leaving it unset. The title sits inside
-	   `.pbl-est-title-row` unconditionally now (`panel.ts`), so a `flex` declared here
-	   is dead weight at best and, ordered after the row's own rule, a silent override
-	   at worst: that is exactly what shipped (2026-08-22) — `flex: 0 0 auto` here beat
-	   the row's `flex: 1 1 auto` and the title never grew, so the Open note control
-	   was never actually pinned to the row's end despite the comment above saying so. */
+	/* `flex` is set by `.pbl-est-title-row .pbl-est-title` above, and that rule wins
+	   because THIS one leaves `flex` unset — there is no specificity tie to win, since
+	   only one of the two declares it. The title sits inside `.pbl-est-title-row`
+	   unconditionally now (`panel.ts`), so a `flex` declared here would be dead weight
+	   at best and, ordered after the row's own rule by source order (both are
+	   two-class descendant selectors, (0,0,2,0) each, so order decides), a silent
+	   override at worst: that is exactly what shipped (2026-08-22) — `flex: 0 0 auto`
+	   here beat the row's `flex: 1 1 auto` and the title never grew, so the Open note
+	   control was never actually pinned to the row's end despite the comment above
+	   saying so. */
 	font-size: var(--font-ui-medium);
 	/* DESIGN.md's Title step, whose other wearer (`.pbl-empty-title`) already renders 500 —
 	   measured at 600 here on 2026-08-21, one declared step wearing two weights. 500 under a
