@@ -75,11 +75,14 @@ confidence of `-2` makes RICE fall as impact rises, and a `0` zeroes an item tha
 scored. It would also disagree with the panel, which reports an out-of-range answer as
 clamped in the row directly above.
 
-**The divisor's refusal is asked of the STORED value, before the clamp.** Zero or below is
-no figure, named — and the clamp would otherwise repair exactly the case the rule exists to
-refuse, since a scale's minimum is normally 1 and a clamped divisor could never be ≤ 0. So
-the refusal reads what is on the note; the arithmetic reads what the model says that
-answer means.
+**The divisor is refused TWICE, and both halves are needed.** Zero or below is no figure,
+named — asked of the **stored** value, because the clamp would otherwise repair exactly the
+case the rule exists to refuse (a scale's minimum is normally 1, so a clamped divisor could
+never be ≤ 0), and asked again of the **resolved** value, because resolution itself can
+produce one: a `lessIsBetter` dimension declared over `0-10` turns a stored `10` into a
+direction-applied `0`, which divides to `Infinity` while passing any check on what the note
+holds. One rule read at both ends of the same resolution — what is on the note, and what
+the model makes of it.
 
 **That moves one number, narrowly, and the move is the point.** An item with an
 out-of-range effort — `9` on a 1–5 scale — divides by `5` where `renderDerived` divides by
@@ -299,7 +302,7 @@ mechanism recorded, and it is not pulled in here.
 | The operand shape computes a product over an optional divisor | `test/domain/` over `computeIndicator` |
 | An unanswered operand, a divisor ≤ 0, and an unknown operand id each give no figure and name the operand | the same, one case each |
 | A scale operand reads clamped, so a `-2` confidence never inverts a ranking | a multiplier case per side of the range |
-| A divisor of 0 or below is refused on the STORED value, before the clamp | the fixture's `Zero effort` and `Negative effort` notes |
+| A divisor of 0 or below is refused, stored and resolved alike | the fixture's `Zero effort` and `Negative effort` notes, plus a `lessIsBetter` dimension over `0-10` answered at its top |
 | `ease` reverses effort on its declared range, so ICE needs no divisor | one case at each end of the range |
 | The default indicator equals what `renderDerived` computes today for every in-range item | the shipped fixture's `Full profile`, asserted against the same arithmetic |
 | A dimension id colliding with a built-in resolves to the built-in | one case over a model declaring a dimension called `effort` |
