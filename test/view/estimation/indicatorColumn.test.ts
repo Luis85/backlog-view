@@ -72,13 +72,34 @@ describe('the indicator column', () => {
 	});
 
 	it('sorts by it, putting the item with no figure last in both directions', () => {
-		const { containerEl } = makeEstimationView(fixture(), values());
+		// A two-item fixture (one valued, one blocked) cannot tell a working sort from no
+		// sort at all: the null always pins to the end regardless of direction, and with
+		// only ONE comparable value left, any ordering — correct, wrong, or no sort applied
+		// — puts it before the null and matches the fixture's own insertion order too. A
+		// third, differently-valued item is what makes ascending and descending actually
+		// diverge, so a click that fails to re-sort — or sorts by the wrong column — is
+		// caught by the valued pair failing to flip.
+		//
+		// Full.md: strategic-alignment 5, customer-value 4 → counted 1 and 0.75 at weights
+		// 20/20 → weighted 35/40 → total = 1 + (35/40)*4 = 4.5. adjustedValue = round2(4.5 *
+		// confidence(4) / 5) = round2(3.6) = 3.6. indicator = round2(3.6 / effort(2)) = 1.8.
+		// Higher.md: same two dimensions (same total 4.5), confidence 5 and effort 1 →
+		// adjustedValue = round2(4.5 * 5 / 5) = 4.5, indicator = round2(4.5 / 1) = 4.5.
+		// 1.8 and 4.5 are unambiguously different, so the pair must flip between directions.
+		const vault = fixture();
+		vault.addFile('Higher.md', {
+			frontmatter: { 'strategic-alignment': 5, 'customer-value': 4, confidence: 5, effort: 1 },
+		});
+		const { containerEl } = makeEstimationView(vault, values());
 		const order = (): string[] =>
 			[...containerEl.querySelectorAll('.pbl-est-row')].map((row) => (row as HTMLElement).dataset.path as string);
 		const header = head(containerEl) as HTMLElement;
+		// First click: a non-title column's own first direction is descending (`firstDirection`).
 		header.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-		expect(order()).toEqual(['Full.md', 'NoEffort.md']);
+		expect(order()).toEqual(['Higher.md', 'Full.md', 'NoEffort.md']);
+		// Second click flips to ascending — the valued pair swaps places, and the blocked
+		// item is STILL last.
 		(head(containerEl) as HTMLElement).dispatchEvent(new MouseEvent('click', { bubbles: true }));
-		expect(order()).toEqual(['Full.md', 'NoEffort.md']);
+		expect(order()).toEqual(['Full.md', 'Higher.md', 'NoEffort.md']);
 	});
 });
