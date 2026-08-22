@@ -319,8 +319,8 @@
 	display: inline-flex;
 	align-items: center;
 	flex: 0 0 auto;
-	margin-left: auto;
-	margin-right: var(--size-4-1);
+	margin-inline-start: auto;
+	margin-inline-end: var(--size-4-1);
 	color: var(--text-muted);
 }
 
@@ -360,13 +360,13 @@
    — including this one, which has no `text-overflow` of its own to fall back on and would
    just clip mid-token. The title is the one built to give up room; this is not.
 
-   `margin-left` rather than a leading space baked into the string: a leading space in a
+   `margin-inline-start` rather than a leading space baked into the string: a leading space in a
    text node is not reliably preserved (whitespace collapsing) and is invisible to a reader
    of the code either way, where a margin states the gap as what it is. Without it the
    label's own text and this span run together as one word — `Work3d lost`. */
 .pbl-days-lost {
 	flex: 0 0 auto;
-	margin-left: var(--size-4-1);
+	margin-inline-start: var(--size-4-1);
 	color: var(--text-muted);
 }
 

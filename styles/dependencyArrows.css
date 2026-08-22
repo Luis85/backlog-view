@@ -74,19 +74,20 @@
    all: without a glyph, 1d's "the row carries the broken marker" would be true only for
    a screen reader.
 
-   Pinned to the lead's RIGHT edge (`margin-left: auto`) rather than left to flow after
-   the title, which is what stops it costing the title its width — a flagged row read
+   Pinned to the lead's inline END (`margin-inline-start: auto`) rather than left to flow
+   after the title, which is what stops it costing the title its width — a flagged row read
    `Offline-first s… ⚠` while an unflagged one at the same lead width did not truncate
-   at all, so the mark was quietly narrowing the column it sits in. Against the right
-   edge it also lands in one x across every flagged row, which is what makes a column
-   of them scannable. `margin-right` clears `.pbl-timeline-lead-grip`, which is absolute
-   at `right: -3px` and would otherwise sit under the pointer target. */
+   at all, so the mark was quietly narrowing the column it sits in. Against that end
+   it also lands in one x across every flagged row, which is what makes a column
+   of them scannable. `margin-inline-end` clears `.pbl-timeline-lead-grip`, which is absolute
+   at `right: -3px` and would otherwise sit under the pointer target — the grip is still
+   pinned physically, which [[Nothing pins a physical side]] records rather than swaps. */
 .pbl-timeline-dependency-flag {
 	display: inline-flex;
 	align-items: center;
 	flex: 0 0 auto;
-	margin-left: auto;
-	margin-right: var(--size-4-1);
+	margin-inline-start: auto;
+	margin-inline-end: var(--size-4-1);
 	color: var(--text-warning);
 }
 

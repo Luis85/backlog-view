@@ -120,7 +120,7 @@
 	gap: var(--size-4-2);
 	padding: var(--size-4-1) var(--size-4-2);
 	background-color: var(--background-primary);
-	border-right: 1px solid var(--background-modifier-border);
+	border-inline-end: 1px solid var(--background-modifier-border);
 }
 
 .pbl-timeline-lead .pbl-card-title {
@@ -155,7 +155,7 @@
 	color: var(--text-muted);
 	white-space: nowrap;
 	overflow: hidden;
-	border-left: 1px dashed var(--background-modifier-border);
+	border-inline-start: 1px dashed var(--background-modifier-border);
 }
 
 /* Every row of this grid, whatever KIND of row it is: a sticky lead column beside a day

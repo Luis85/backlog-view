@@ -329,9 +329,11 @@ describe('the furniture declarations whose comments call them load-bearing', () 
 		// `.pbl-bar-label` states no `box-sizing` of its own — Obsidian's own global reset
 		// (`* { box-sizing: border-box }`, real app.css) is what makes it border-box, so
 		// `max-width` already INCLUDES the padding rather than adding to it. For the
-		// `after` variant: 144 (max-width) − 18 (its own `padding-left`, which overrides
-		// the base rule's left side) − 8 (the base rule's `padding: 0 var(--size-4-2)`,
-		// unchanged on the right) = 118 — the number `absenceCost`'s own comment
+		// `after` variant: 144 (max-width) − 18 (its own `padding-inline-start`, which
+		// overrides the base rule's inline-start side — a logical longhand and a physical
+		// shorthand cascade together, so source order decides) − 8 (the base rule's
+		// `padding: 0 var(--size-4-2)`, unchanged on the inline end) = 118 — the number
+		// `absenceCost`'s own comment
 		// (`src/view/render/timeline.ts`) spends on the short tokens' whole budget.
 		// Nothing before this tied that number to the three declarations that produce it,
 		// so changing any one of them would leave the comment wrong with nothing red.
@@ -342,11 +344,11 @@ describe('the furniture declarations whose comments call them load-bearing', () 
 		expect(ruleBody('.pbl-bar-label'), '.pbl-bar-label states a box-sizing of its own').not.toContain('box-sizing');
 		const maxWidth = /max-width:\s*(\d+)px/.exec(ruleBody('.pbl-bar-label'));
 		const padding = /padding:\s*0\s+var\(--size-4-(\d+)\)/.exec(ruleBody('.pbl-bar-label'));
-		const afterPaddingLeft = /padding-left:\s*(\d+)px/.exec(ruleBody('.pbl-bar-label-after'));
-		if (!maxWidth || !padding || !afterPaddingLeft) {
-			throw new Error('missing max-width, base padding, or the after variant’s own padding-left');
+		const afterPaddingStart = /padding-inline-start:\s*(\d+)px/.exec(ruleBody('.pbl-bar-label-after'));
+		if (!maxWidth || !padding || !afterPaddingStart) {
+			throw new Error('missing max-width, base padding, or the after variant’s own padding-inline-start');
 		}
-		const contentBox = Number(maxWidth[1]) - Number(afterPaddingLeft[1]) - Number(padding[1]) * 4;
+		const contentBox = Number(maxWidth[1]) - Number(afterPaddingStart[1]) - Number(padding[1]) * 4;
 		expect(contentBox).toBe(118);
 	});
 

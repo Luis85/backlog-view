@@ -27,7 +27,7 @@
 	top: 0;
 	bottom: 0;
 	left: var(--pbl-grid-left);
-	border-left: 1px dashed var(--background-modifier-border);
+	border-inline-start: 1px dashed var(--background-modifier-border);
 	pointer-events: none;
 }
 
@@ -162,12 +162,12 @@
 	min-width: 0;
 }
 
-/* The left gap clears the connector, which sits in exactly the space `.pbl-bar-label`'s
+/* The leading gap clears the connector, which sits in exactly the space `.pbl-bar-label`'s
    own `padding: 0 var(--size-4-2)` used to be the whole of. Seen in the browser harness
    before it shipped: the dot landed on the first letter of the title. */
 .pbl-bar-label-after {
 	left: var(--pbl-label-left);
-	padding-left: 18px;
+	padding-inline-start: 18px;
 }
 
 .pbl-bar-label-before {

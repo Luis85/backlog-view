@@ -539,9 +539,13 @@ parses.
 - **Don't** say the same thing twice. Done dims; it is not also struck through, greyed *and*
   badged, or moved.
 - **Don't** name a physical side (`left`, `right`, `margin-left`, `padding-right`,
-  `border-left`) where a logical property exists. Several remain —
-  [Nothing pins a physical side](docs/requirements/Nothing%20pins%20a%20physical%20side.md)
-  enumerates them. **Nothing currently checks this.**
+  `border-left`) where a logical property exists. Margins, paddings and text alignment are
+  clean as of 2026-08-22 and `test/view/direction.test.ts` keeps them so — including the
+  four-value `padding` shorthand, whose side is a position in a value list and not a
+  property name. Bare `left:`/`right:` placements, two `border-*: none` and every gradient
+  that names a side remain, each classified in
+  [Nothing pins a physical side](docs/requirements/Nothing%20pins%20a%20physical%20side.md);
+  **nothing checks those**, so read that note before adding one.
 - **Don't** write a raw pixel value without knowing which of three piles it lands in.
   [Obsidian variables, not values](docs/requirements/Obsidian%20variables,%20not%20values.md)
   fixes the classification: **a token** (`--size-*`, `--font-ui-*`) where one fits; **a bound

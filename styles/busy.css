@@ -44,15 +44,15 @@
    figures are what make the `ch` exact rather than approximate: `ch` is the advance of
    "0", and with `tabular-nums` every digit has that same advance, so a `min-width` of
    `digits(total)ch` holds for every value from 1 to the total. `inline-block` because
-   `min-width` does not apply to an inline box, and `text-align: right` so the number
-   grows leftwards into its reservation instead of pushing " of N" sideways. */
+   `min-width` does not apply to an inline box, and `text-align: end` so the number
+   grows back into its reservation instead of pushing " of N" sideways. */
 .pbl-busy-count {
 	font-variant-numeric: tabular-nums;
 }
 
 .pbl-busy-done {
 	display: inline-block;
-	text-align: right;
+	text-align: end;
 	min-width: var(--pbl-busy-digits, 0);
 }
 
