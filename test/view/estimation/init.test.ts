@@ -132,7 +132,7 @@ describe('the guided empty state’s setup action', () => {
 		// Two problems from one clean model, both halves of the pair rule cleared
 		// (`pairProblems` in `domain/scoringModel.ts`) — derived here rather than
 		// hard-coded, so a reworded problem cannot fail this test for the wrong reason.
-		const problems = modelProblems(configured({ valueProperty: '', stampProperty: '' }));
+		const problems = modelProblems(configured({ valueProperty: '', stampProperty: '' }), 'type');
 		expect(problems).toHaveLength(2);
 		const [firstProblem, secondProblem] = problems;
 		expect(Notice.messages.at(-1)).toContain(firstProblem);

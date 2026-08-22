@@ -69,8 +69,12 @@ export async function runEstimationInit(view: EstimationView): Promise<void> {
 	for (const { option, suggested } of adoptCandidates(view.config, SUGGESTED_KEYS, taken)) {
 		pending.set(option, notePropertyId(suggested));
 	}
-	const model = resolveEstimationSettings(withPending(view.config, pending)).model;
-	const problems = modelProblems(model);
+	// Both halves of the settings the pending bindings WOULD produce: the gate has to see
+	// the type key too, since binding a suggested key onto the property this view reads a
+	// type from is exactly the collision it now refuses.
+	const pendingSettings = resolveEstimationSettings(withPending(view.config, pending));
+	const model = pendingSettings.model;
+	const problems = modelProblems(model, pendingSettings.typeKey);
 	// Said rather than left silent: the guided empty state is still what is on screen, so
 	// with nothing bound and nothing written there would be no surface reporting anything
 	// and the button would simply look dead. `runInit`'s own shape.

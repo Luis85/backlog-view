@@ -86,7 +86,7 @@ export class EstimationView extends BasesView {
 		this.gate = new WriteGate<PropertyWrite>(
 			{
 				app: () => this.app,
-				writeProblems: () => modelProblems(this.settings.model),
+				writeProblems: () => modelProblems(this.settings.model, this.settings.typeKey),
 				// Every row is a result; a path not in the model is not this base's to write.
 				outsideFilter: (path) => !this.model || !this.model.byPath.has(path),
 			},
@@ -156,7 +156,7 @@ export class EstimationView extends BasesView {
 			this.model = null;
 			return this.renderUnconfigured();
 		}
-		const problems = modelProblems(model);
+		const problems = modelProblems(model, this.settings.typeKey);
 		if (problems.length > 0) {
 			this.model = null;
 			return this.renderProblems(problems);

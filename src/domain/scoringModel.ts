@@ -124,9 +124,17 @@ function pairProblems(model: ScoringModel): string[] {
  * first (the total silently replacing the score it was computed from) and two inverses
  * for one key in the undo slot.
  */
-function collisionProblems(model: ScoringModel): string[] {
+function collisionProblems(model: ScoringModel, typeKey: string): string[] {
 	const byKey = new Map<string, string[]>();
-	for (const { key, label } of boundEntries(model)) byKey.set(key, [...(byKey.get(key) ?? []), label]);
+	// The TYPE property joins the collision check even though it is not a scoring key and
+	// deliberately lives outside `model` — `modelFingerprint` hashes that object to decide
+	// whether a stored total can still be trusted, and a key unrelated to the score must
+	// not be able to invalidate one. Left out of this list it was invisible here, and
+	// pointing it at a dimension's property passed validation: the next score pick then
+	// wrote a number over the note's own type, which either misclassifies the note or
+	// takes it out of the backlog entirely. Kept out of the fingerprint, checked here.
+	const entries = [...boundEntries(model), ...(typeKey === '' ? [] : [{ key: typeKey, label: 'type' }])];
+	for (const { key, label } of entries) byKey.set(key, [...(byKey.get(key) ?? []), label]);
 	return [...byKey]
 		.filter(([, labels]) => labels.length > 1)
 		// The array, not a joined string: `t` joins it in the locale of the message it
@@ -138,10 +146,10 @@ function collisionProblems(model: ScoringModel): string[] {
  * Why this model computes nothing — each problem names its dimension, the
  * config-warning shape. Empty means the model is fit to score with.
  */
-export function modelProblems(model: ScoringModel): string[] {
+export function modelProblems(model: ScoringModel, typeKey: string): string[] {
 	const problems: string[] = [];
 	if (model.dimensions.length === 0) problems.push('no dimensions are declared');
-	problems.push(...pairProblems(model), ...collisionProblems(model));
+	problems.push(...pairProblems(model), ...collisionProblems(model, typeKey));
 	let weightSum = 0;
 	for (const d of model.dimensions) {
 		problems.push(...dimensionProblems(d));

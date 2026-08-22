@@ -43,7 +43,7 @@ describe('the scoring model configuration', () => {
 		]);
 		expect(model.dimensions.reduce((sum, d) => sum + d.weight, 0)).toBe(100);
 		for (const d of model.dimensions) expect(d.rubric).toHaveLength(5);
-		expect(modelProblems(model)).toEqual([]);
+		expect(modelProblems(model, 'type')).toEqual([]);
 	});
 	it('a fresh view is unconfigured, not broken', () => {
 		const model = resolveEstimationSettings(new FakeViewConfig({})).model;
@@ -51,30 +51,30 @@ describe('the scoring model configuration', () => {
 	});
 	it('refuses a zero or negative weight, naming the dimension', () => {
 		const s = resolveEstimationSettings(new FakeViewConfig({ 'dimWeight.reach': '0', 'dimWeight.compliance': '20' }));
-		expect(modelProblems(s.model).join(' ')).toMatch(/reach/i);
+		expect(modelProblems(s.model, 'type').join(' ')).toMatch(/reach/i);
 	});
 	it('refuses weights that do not total 100', () => {
 		// Every other dimension stays bound and valid — otherwise the unbound-property
 		// problems win the `modelProblems` gate before the weight total is ever checked
 		// (see `configuredValues`).
 		const s = resolveEstimationSettings(new FakeViewConfig(configuredValues({ 'dimWeight.enablement': '10' })));
-		expect(modelProblems(s.model).join(' ')).toMatch(/100/);
+		expect(modelProblems(s.model, 'type').join(' ')).toMatch(/100/);
 	});
 	it('refuses a range that is not increasing whole integers, naming the dimension', () => {
 		const s = resolveEstimationSettings(new FakeViewConfig({ 'dimRange.reach': '5-1' }));
-		expect(modelProblems(s.model).join(' ')).toMatch(/reach/i);
+		expect(modelProblems(s.model, 'type').join(' ')).toMatch(/reach/i);
 	});
 	it('a widened range reports the points with no rubric sentence rather than inventing one', () => {
 		const s = resolveEstimationSettings(new FakeViewConfig({ 'dimRange.reach': '1-7' }));
-		expect(modelProblems(s.model).join(' ')).toMatch(/reach/i);
+		expect(modelProblems(s.model, 'type').join(' ')).toMatch(/reach/i);
 	});
 	it('the total and its stamp are one pair: exactly one bound names the missing other', () => {
 		const s = resolveEstimationSettings(new FakeViewConfig({ valueProperty: 'note.business-value' }));
-		expect(modelProblems(s.model).join(' ')).toMatch(/stamp/i);
+		expect(modelProblems(s.model, 'type').join(' ')).toMatch(/stamp/i);
 	});
 	it('the pair rule holds in the other direction too: a stamp with no total', () => {
 		const s = resolveEstimationSettings(new FakeViewConfig({ stampProperty: 'note.business-value-model' }));
-		expect(modelProblems(s.model).join(' ')).toMatch(/business value property/i);
+		expect(modelProblems(s.model, 'type').join(' ')).toMatch(/business value property/i);
 	});
 	it('refuses a model with dimensions bound and NEITHER of the pair, naming both', () => {
 		// The epic's own sentence: scoring is offered only where both are bound, and the
@@ -91,18 +91,18 @@ describe('the scoring model configuration', () => {
 		// the undo slot holds two inverses for the same key. `configProblems` refuses the
 		// backlog's own collisions for the same reason.
 		const s = resolveEstimationSettings(new FakeViewConfig(configuredValues({ 'dimProperty.reach': 'note.business-value' })));
-		const problems = modelProblems(s.model).join(' ');
+		const problems = modelProblems(s.model, 'type').join(' ');
 		expect(problems).toMatch(/reach/i);
 		expect(problems).toMatch(/business value/i);
 		expect(problems).toMatch(/business-value/);
 	});
 	it('an emptied dimensions list is declared, not defaulted — no dimensions at all', () => {
 		const s = resolveEstimationSettings(new FakeViewConfig({ dimensions: '' }));
-		expect(modelProblems(s.model)).toContain('no dimensions are declared');
+		expect(modelProblems(s.model, 'type')).toContain('no dimensions are declared');
 	});
 	it('refuses an output range that is not increasing whole integers', () => {
 		const s = resolveEstimationSettings(new FakeViewConfig({ outputRange: '5-1' }));
-		expect(modelProblems(s.model).join(' ')).toMatch(/output range/i);
+		expect(modelProblems(s.model, 'type').join(' ')).toMatch(/output range/i);
 	});
 });
 
@@ -126,7 +126,7 @@ describe('unconfigured is "this model binds nothing", one definition', () => {
 		const model = resolveEstimationSettings(new FakeViewConfig({ confidenceProperty: 'note.confidence' })).model;
 		expect(boundKeys(model)).toEqual(['confidence']);
 		expect(estimationUnconfigured(model)).toBe(false);
-		expect(modelProblems(model).length).toBeGreaterThan(0);
+		expect(modelProblems(model, 'type').length).toBeGreaterThan(0);
 	});
 });
 
@@ -202,13 +202,13 @@ describe('a dimension is named the way the panel names it', () => {
 		// label — so this is a NEW assertion naming the label exactly, not a tightening of
 		// one that would have passed either way.
 		const model = modelWith({ dimensions: [{ ...dimension('reach'), label: 'Reach', weight: 0 }] });
-		expect(modelProblems(model)).toContain('Reach: the weight must be a positive number');
+		expect(modelProblems(model, 'type')).toContain('Reach: the weight must be a positive number');
 	});
 
 	it('names an OVERRIDDEN label by the override', () => {
 		const model = modelWith({ dimensions: [{ ...dimension('reach'), label: 'Blast radius', weight: 0 }] });
-		expect(modelProblems(model).join(' ')).toContain('Blast radius');
-		expect(modelProblems(model).join(' ')).not.toContain('reach:');
+		expect(modelProblems(model, 'type').join(' ')).toContain('Blast radius');
+		expect(modelProblems(model, 'type').join(' ')).not.toContain('reach:');
 	});
 
 	it('states how far off the weights are, because that is the number to type', () => {
@@ -216,12 +216,12 @@ describe('a dimension is named the way the panel names it', () => {
 		// table, so editing one is a guaranteed transient failure state whose only feedback is
 		// the whole view disappearing. The delta is arithmetic already in hand.
 		const model = modelWith({ dimensions: [{ ...dimension('reach'), label: 'Reach', weight: 87 }] });
-		expect(modelProblems(model)).toContain('the weights total 87, not 100 (13 short)');
+		expect(modelProblems(model, 'type')).toContain('the weights total 87, not 100 (13 short)');
 	});
 
 	it('says over rather than short when the weights exceed 100', () => {
 		const model = modelWith({ dimensions: [{ ...dimension('reach'), label: 'Reach', weight: 110 }] });
-		expect(modelProblems(model)).toContain('the weights total 110, not 100 (10 over)');
+		expect(modelProblems(model, 'type')).toContain('the weights total 110, not 100 (10 over)');
 	});
 
 	it('never prints a false zero for a real sub-1 delta — significant figures, not decimal places', () => {
@@ -231,7 +231,23 @@ describe('a dimension is named the way the panel names it', () => {
 		// place later. `toPrecision` keeps significant figures regardless of magnitude, so
 		// 0.001 prints as 0.001 rather than 0.
 		const model = modelWith({ dimensions: [{ ...dimension('reach'), label: 'Reach', weight: 99.999 }] });
-		expect(modelProblems(model)).toContain('the weights total 99.999, not 100 (0.001 short)');
+		expect(modelProblems(model, 'type')).toContain('the weights total 99.999, not 100 (0.001 short)');
+	});
+
+	it('refuses a type property that collides with a scoring key', () => {
+		// The type key is deliberately OUTSIDE `model` — `modelFingerprint` hashes that
+		// object to decide whether a stored total can still be trusted, and a key unrelated
+		// to the score must not be able to invalidate one. That is exactly why it was
+		// invisible to this check: point it at a dimension's property and the config passed,
+		// and the next score pick wrote a number over the note's own type — misclassifying
+		// it, or taking it out of the backlog entirely.
+		const model = modelWith({ dimensions: [{ ...dimension('reach'), key: 'note.kind' }] });
+		expect(modelProblems(model, 'note.kind').join(' ')).toMatch(/type/);
+		// And an UNBOUND type key collides with nothing, like every other unnamed key here.
+		// Asserted against the collision sentence rather than an empty list: this fixture's
+		// one dimension weighs 10, so the weights problem is present either way and says
+		// nothing about the subject.
+		expect(modelProblems(model, '').join(' ')).not.toMatch(/type/);
 	});
 
 	it('puts a dimension inside the collision sentence in lowercase', () => {
@@ -249,7 +265,7 @@ describe('a dimension is named the way the panel names it', () => {
 			dimensions: [{ ...dimension('reach'), label: 'Blast radius', key: 'note.shared' }],
 			confidence: { key: 'note.shared', min: 1, max: 5, rubric: [] },
 		});
-		expect(modelProblems(model).join(' ')).toContain('blast radius');
-		expect(modelProblems(model).join(' ')).not.toContain('reach');
+		expect(modelProblems(model, 'type').join(' ')).toContain('blast radius');
+		expect(modelProblems(model, 'type').join(' ')).not.toContain('reach');
 	});
 });

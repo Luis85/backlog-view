@@ -23,7 +23,9 @@ export const SETUP: ManualSection = {
 				'to every optional property you have not named — never one you have set or ' +
 				'deliberately cleared, since Bases tells "untouched" from "set to nothing" — then ' +
 				'backfills type, order and (for slot properties, not relationships) an empty value ' +
-				'onto notes lacking them, overwriting nothing. Never writes to an excluded note, and ' +
+				'onto notes lacking them, overwriting nothing — except a planned date the note\'s own ' +
+				'type cannot use: a milestone is a point, so it is given the target and not the start. ' +
+				'Never writes to an excluded note, and ' +
 				'never guesses a type for a parent link that resolves nowhere. The board and the ' +
 				'roadmap offer the same action, worded "Add the default properties", from their ' +
 				'own unconfigured empty states.',

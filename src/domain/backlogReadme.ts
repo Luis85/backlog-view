@@ -353,7 +353,10 @@ function planningWriters(settings: BacklogSettings): string {
 		...(joinsDates
 			? ["**Set iteration**, which copies the iteration's own dates onto the note in the same write that joins it"]
 			: []),
-		'**Assign missing properties**, which adds the keys *empty* to items that lack them and places nothing',
+		// The exception is named rather than left to the reader: this action is the one
+		// writer here that a TYPE narrows, and the public README and the in-app manual both
+		// say so. A generated document that promises every key is the copy nobody re-reads.
+		'**Assign missing properties**, which adds the keys *empty* to items that lack them and places nothing — except a planned date the type cannot use, so a marker is given its target and not its start',
 	];
 	return `${writers.slice(0, -1).join('; ')}; and ${writers[writers.length - 1]}`;
 }

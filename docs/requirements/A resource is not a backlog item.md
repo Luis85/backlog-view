@@ -15,6 +15,7 @@ files:
   - src/view/estimation/init.ts
   - src/domain/estimationOptions.ts
   - src/storage/propertyWrite.ts
+  - src/domain/scoringModel.ts
 started: 2026-08-21
 finished: 2026-08-22
 horizon: ""
@@ -124,7 +125,12 @@ replaces every one of those narrowings.
   shares none of that path, and the row a score was planned from is the MODEL's, which is
   exactly what is stale about a note retyped since the last Bases pass. Refused per FILE
   there rather than stopping the batch, because a batch here is one note's own scores and
-  ✨'s many-file batch has no ordering between its files.
+  ✨'s many-file batch has no ordering between its files. And its type property joins the
+  COLLISION check while staying out of the fingerprint: pointed at a dimension's own
+  property it passed validation, and the next score pick then wrote a number over the
+  note's type — which either misclassifies the note or takes it out of the backlog
+  entirely. Out of `model` so a stored total cannot be invalidated by it, in the check so a
+  configuration that would destroy a type is refused.
 - **A `Resource` is never WRITTEN to either, and the model gate cannot promise that on
   its own.** A gesture in flight holds the `BacklogItem` it was captured from, so retyping
   a note to `Resource` mid-move leaves a plan aimed at it — and its live shape gives
