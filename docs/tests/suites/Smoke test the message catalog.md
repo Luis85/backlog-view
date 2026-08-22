@@ -33,6 +33,17 @@ Set the vault up with `npm run test-build` — it bundles into `.obsidian/plugin
 repository itself as the vault, so opening this folder in Obsidian and then
 `docs/Product Backlog.base` puts the plugin in front of its own register.
 
+**Every case here leaves the vault as it found it, and each says how in its own steps.** This
+suite is unusual in the folder: most of its checks need a fixture built before the thing they
+look at exists at all — an iteration, three absences, three prerequisites, a fresh view, a
+deliberate collision — and every one of those is saved in a note or in the `.base` rather than
+held for the length of the check. Left behind they do not just accumulate: they change what
+the LATER suites are judged on, because the roadmap's window and arrows, the estimation
+view's table and the busy counter's own backfill are all derived from exactly this kind of
+state. Six review findings on PR #189 were one instance each of that. So a case added here
+states its teardown beside its setup and puts it in its acceptance criteria — undo is not
+enough on its own, since it holds one batch and cannot reach a created note at all.
+
 ## Use cases
 
 - [[The plugin under a non-English Obsidian]] — the one assumption nothing anywhere has

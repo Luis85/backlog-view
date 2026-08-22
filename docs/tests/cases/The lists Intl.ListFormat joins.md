@@ -65,6 +65,13 @@ this row starts) **or break** (a link to a note that does not exist). Only then 
 three ordinary valid dependencies there is no tooltip at all, and the text lives solely in
 a visually hidden span. Hover the lead cell and read the joining.
 
+**Then take those links out again, and put back any date you moved.** No note under `docs/`
+carries `dependsOn` today, so every link here is one this case added, and the roadmap's
+arrows and conflict marks are drawn from exactly those — left in place, `Smoke test the
+roadmap` is re-run against a dependency graph this case invented. The toolbar undo will not
+do it: it holds one batch, and this is three links plus whatever date was moved to make one
+conflict. Clear them by hand.
+
 **The one that is not visible at all.** A resource's absences are joined into the lane
 head's `aria-description` on the resources axis (`lane.unavailable`). **This repository holds
 no absence notes**, so there is nothing to inspect until you make some: on the resources
@@ -88,6 +95,6 @@ On each: check the joining, the spacing, and that none runs a full stop into a c
 - All three joins read, each by the route that actually reaches it.
 - The backfill undone and the fresh view deleted, so the appearance suite still has a
   three-digit ✨ to watch.
-- The three absence notes deleted, so the roadmap suite is judged on the window it had
-  before this case ran.
+- The three absence notes deleted, and the prerequisites and any moved date restored, so the
+  roadmap suite is judged on the window and the dependency graph it had before this case ran.
 - Nothing yet checked.

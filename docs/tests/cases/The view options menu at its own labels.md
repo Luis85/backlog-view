@@ -61,8 +61,14 @@ Open the view options panel for the base and read it top to bottom.
   are keyed now, so they are the newest text on this surface and the likeliest to be wrong.
 - Narrow the Obsidian window until the panel is at its own minimum, and read it again.
 
+**Then delete the view you made**, after both width readings and not before. A view is saved
+in the `.base` with everything done to it — the cleared Home folder and the state configured
+in step 3 — so left behind it is a configured test view in the register's own file, and every
+release run would add another.
+
 ## Acceptance criteria
 
 - The whole panel read at a normal width and at its minimum.
 - The three dropdown choices seen rendered rather than assumed from the catalog.
+- The temporary view deleted, so the `.base` holds what it held before this case ran.
 - Nothing yet checked.
