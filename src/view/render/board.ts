@@ -589,7 +589,16 @@ export function renderCardBody(
 	// present on some rows and absent on others; a box that is always drawn and always
 	// reserved is what turns three absences into one width. `renderRollup` fills it or
 	// draws nothing into it, and the row is the same either way.
-	{ kidsEl, holdEmpty = false, rollupEl }: { kidsEl?: HTMLElement; holdEmpty?: boolean; rollupEl?: HTMLElement } = {},
+	//
+	// `toggleEl` is `renderCardChildren`'s own option, passed straight through: a compact
+	// row's summary is a line, so the toggle belongs ON it while the list stays beneath in
+	// `kidsEl`. Absent, the card stacks and the toggle builds inside its own wrapper.
+	{
+		kidsEl,
+		holdEmpty = false,
+		rollupEl,
+		toggleEl,
+	}: { kidsEl?: HTMLElement; holdEmpty?: boolean; rollupEl?: HTMLElement; toggleEl?: HTMLElement } = {},
 ): void {
 	const host = ctx.host;
 	const head = card.createDiv({ cls: 'pbl-card-head' });
@@ -654,7 +663,7 @@ export function renderCardBody(
 	// One call, three surfaces: board cards, roadmap bucket cards and shelf cards all
 	// come through here. Timeline rows never do — they use the card SHELL with a
 	// bar-grid row layout — which is exactly why they get no disclosure.
-	renderCardChildren(ctx, kidsEl ?? card, item);
+	renderCardChildren(ctx, kidsEl ?? card, item, { toggleEl });
 }
 
 /**

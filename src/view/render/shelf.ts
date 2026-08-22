@@ -386,6 +386,11 @@ function renderShelfCard(ctx: RowContext, cardsEl: HTMLElement, entry: ShelfCard
 	// The card grid creates no wrapper at all (`summary` IS the card), so nothing about it
 	// changes; `kidsEl` is passed either way and resolves to the same element there.
 	const summary = wiring.list ? card.createDiv({ cls: 'pbl-card-summary' }) : card;
+	// The fold slot leads the line and is reserved whether or not this item has children, so
+	// every badge after it starts at one x — the tree's own arrangement. Created here rather
+	// than by `renderCardChildren`, which returns early for a leaf and would leave the row
+	// without one.
+	const fold = wiring.list ? summary.createDiv({ cls: 'pbl-shelf-fold' }) : null;
 	// **One always-drawn box for the three things that are otherwise absent on some rows.**
 	// The rollup, the shelving reason and the dependency note are each present or not per
 	// item, and each one that is missing takes its width off the row and moves every fixed
@@ -393,7 +398,16 @@ function renderShelfCard(ctx: RowContext, cardsEl: HTMLElement, entry: ShelfCard
 	// — which is the same trade `holdEmpty` makes for the cells one line down. Only in list
 	// mode: the card grid stacks its children and has no such trailing geometry to fix.
 	const notes = wiring.list ? summary.createDiv({ cls: 'pbl-shelf-notes' }) : null;
-	renderCardBody(ctx, summary, entry.item, { kidsEl: card, holdEmpty: wiring.list, rollupEl: notes ?? undefined });
+	// **`rollupEl` stays.** Task 4 added it so the rollup lands in the fixed notes reservation;
+	// dropped here, `renderRollup` appends to the summary instead and every row with a rollup
+	// gets its own trailing width back — the exact variation Task 4 exists to remove, undone by
+	// the task after it. (Codex, PR #187.)
+	renderCardBody(ctx, summary, entry.item, {
+		kidsEl: card,
+		holdEmpty: wiring.list,
+		rollupEl: notes ?? undefined,
+		toggleEl: fold ?? undefined,
+	});
 	ctx.placed.add(entry.item.file.path);
 	renderShelfNotes(summary, notes, entry, wiring);
 	// **The one thing a list row shows that a card does not.** A card draws no state chip

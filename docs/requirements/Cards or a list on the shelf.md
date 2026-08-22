@@ -94,14 +94,23 @@ one a reader wants changes by the day and by the task, not by the base.
   alone. A per-row absence is not the band-wide case 4a covers — a column that skips one row
   is not a column, the same rule the aligned-column criterion states for the plain property
   cells.
-- **3b — a shelved parent with children.** Its disclosure and its expanded list stay
-  BENEATH the line rather than at the end of it. `.pbl-card-kids` is a direct child of the
-  card, so a card laid out as a row puts them beside the title: measured in the harness at
-  35px against 28px with the list still shut, and taller with it open, the whole summary
-  then centred against it. It cannot be fixed on the line — letting the card wrap so the
-  list falls beneath also lets the property cells wrap, which took a row carrying a few of
-  them from 28px to 59px, both measured. So the row is the card's SUMMARY box and the list
-  is its sibling: the line breaks exactly where it should and nowhere else.
+- **3b — a shelved parent with children.** Its LIST stays beneath the line and its
+  DISCLOSURE joins it. `.pbl-card-kids` is a direct child of the card, so a card laid out as
+  a row put the whole block beside the title: measured at 35px against 28px with the list
+  still shut, and taller with it open, the whole summary then centred against it. That is
+  what the summary box fixed. What it left was three more: the disclosure was a line of its
+  own even while shut, so a parent row was 48px where every other row was 28px; it sat flush
+  with the card's left edge, further left than the badge column of the row it belongs to,
+  which is what made it read as a sibling; and its top margin separated it from its own row
+  while nothing connected the children back up. So the chevron and its count take a leading
+  fold slot on the line — the tree's own idiom, and the reason a tree row is one line whether
+  or not it has children — the slot is reserved on every row so the badges keep one x, and
+  the list is indented to the title with the tree's own indent guide. The count is a number
+  in the slot and the sentence is the toggle's `aria-label`, which is what the list is named
+  by. Measured in the harness (1400px pane, the demo backlog): a shut `Monthly statement`
+  and a childless `Voice control` both report 28px; expanded, `Reconcile the ledger`'s badge
+  and `Monthly statement`'s own title report the same `left`, to the pixel; the indent guide
+  renders a solid 1px line in both `?theme=light` and the default dark scheme. (2026-08-21.)
 - **3c — a pane too narrow to keep the floor.** The floor yields itself. A reservation is a
   promise about a container with the room to keep it, and below some width 16ch plus the
   badge, the gaps and the cells is more than the row has — at which point a fixed floor
@@ -183,10 +192,23 @@ fall beneath the line rather than sitting at the end of it. It is a wrapper and 
 different content: the same children are built, and the card grid creates no wrapper at all.
 Extension 3b is why it could not be done in CSS alone.
 
-`renderCardBody` takes `kidsEl` for that wrapper — where the children disclosure goes when
-that is not the card itself — and the shelf's row is its only caller: the summary takes the
+`renderCardBody` takes `kidsEl` for that wrapper — where the children LIST falls when that
+is not the card itself — and the shelf's row is its only caller: the summary takes the
 body, the card takes the list. The state cell below goes to the summary too, since it is
 part of the line.
+
+**The DISCLOSURE is a second, later split (Task 5 of this same follow-up).** `kidsEl`
+decided both halves until then — the toggle built inside whichever element it named, so a
+compact row's disclosure sat at the end of the line beside the list it opened, a line of its
+own even shut (48px where every other row was 28px) and further left than the badge column
+it belongs beside. `toggleEl` is `renderCardChildren`'s own option now, naming the toggle's
+home separately from the list's: the shelf's row passes a leading `.pbl-shelf-fold` slot,
+reserved on every row whether or not it holds a disclosure, and passes `kidsEl` as before
+for the list that falls beneath the line. A card passes neither, so its disclosure still
+builds inside its own wrapper exactly as it always has. On the line, the toggle's visible
+count drops to a bare number — the slot has no room for a sentence — and the sentence
+itself moves to the toggle's `aria-label`, which is what `aria-labelledby` still names the
+list by.
 
 **The shelving reason, the dependency statement and the parent breadcrumb go into a fourth
 wrapper, `.pbl-shelf-notes` — Task 4 of this same follow-up, and a correction rather than a

@@ -294,3 +294,74 @@
 	color: var(--text-muted);
 	font-variant-numeric: tabular-nums;
 }
+
+/* The fold slot: the tree's chevron column, on a shelf row. Reserved on every row whether
+   or not it holds a disclosure, which is what keeps the badges on one x — a slot that
+   collapsed for a leaf would put the tree back where the flex line was. */
+.pbl-shelf-list .pbl-shelf-fold {
+	display: flex;
+	align-items: center;
+	flex: 0 0 30px;
+	width: 30px;
+}
+
+/* Inside the slot the disclosure is a chevron and a number, not a sentence in a padded box:
+   the toggle's own rule (`cardChildren.css`) sizes it for a card, where it is a line of its
+   own. */
+.pbl-shelf-list button.pbl-card-kids-toggle {
+	gap: 0;
+	padding: 0;
+	justify-content: flex-start;
+	font-variant-numeric: tabular-nums;
+}
+
+.pbl-shelf-list .pbl-card-kids-count {
+	color: var(--text-faint);
+}
+
+/* And the list is the parent's, visibly: indented so a child's badge begins where the
+   parent's TITLE does, with the tree's own 1px indent guide down the group. It carries no
+   top margin here — the card's rule gives it one so a stacked card's disclosure is not
+   cramped against the body, and on a row that margin is what detached the children from the
+   line they belong to. */
+.pbl-shelf-list .pbl-card-kids {
+	position: relative;
+	gap: 0;
+	margin-top: 0;
+	padding-block-end: var(--size-2-1);
+	/* **A child's badge starts where its parent's TITLE starts**, which is the summary's own
+	   inline padding, the fold slot, the badge slot and the two flex gaps between them — minus
+	   the child button's own inline padding, since that button carries the last step itself.
+	   Dropping that last term leaves every child 4px left of the line it belongs to, which is
+	   near enough to look like a mistake and far enough to be one. (Codex, PR #187.) */
+	padding-inline-start: calc(
+		var(--size-4-2) + 30px + var(--size-4-2) + var(--pbl-shelf-badge, 84px) + var(--size-4-2) - var(--size-2-1)
+	);
+}
+
+.pbl-shelf-list .pbl-card-kids::before {
+	content: '';
+	position: absolute;
+	top: 0;
+	bottom: var(--size-2-1);
+	/* One gap left of where the children start, so the guide runs between the parent's badge
+	   column and its children rather than through them. */
+	inset-inline-start: calc(var(--size-4-2) + 30px + var(--size-4-2) + var(--pbl-shelf-badge, 84px));
+	width: 1px;
+	background-color: var(--background-modifier-border);
+	pointer-events: none;
+}
+
+.pbl-shelf-list button.pbl-card-kid {
+	padding-block: 1px;
+	padding-inline-start: var(--size-2-1);
+}
+
+/* Shut, the wrapper is not there at all — see `renderCardChildren`'s `draw`. Hiding only the
+   `<ul>` (which `.pbl-card-kids-list:empty` already does) leaves a box that still spends this
+   rule's padding and one of the card's flex gaps, so a shut parent stands taller than a leaf
+   and the guide above draws a stub over nothing. Scoped to the list: a CARD's wrapper holds
+   the disclosure itself, and hiding it there would take the control away with the list. */
+.pbl-shelf-list .pbl-card-kids-shut {
+	display: none;
+}
