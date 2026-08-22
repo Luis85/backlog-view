@@ -64,7 +64,10 @@ const DEFAULT_INDICATOR: Indicator = { label: '', operands: ['adjustedValue'], d
  */
 function resolveIndicator(read: Readers): Indicator {
 	return {
-		label: read.text('indicatorLabel'),
+		// Trimmed for the same reason the divisor is: the header draws it with a plain
+		// `indicator.label || …`, so a whitespace-only name would be truthy and suppress the
+		// generic `Indicator` fallback — a blank, blank-named column.
+		label: read.text('indicatorLabel').trim(),
 		operands: read.clearable('indicatorOperands', DEFAULT_INDICATOR.operands, () => read.list('indicatorOperands')),
 		// Trimmed to match: `list` trims every operand id, so an untrimmed divisor would
 		// disagree with the same vocabulary over a hand-edited or pasted space — read as an

@@ -38,6 +38,14 @@ describe('the indicator, read off the view options', () => {
 		expect(resolve({ indicatorDivisor: '   ' }).indicator.divisor).toBeNull();
 	});
 
+	it('trims a padded label', () => {
+		expect(resolve({ indicatorLabel: '  RICE  ' }).indicator.label).toBe('RICE');
+	});
+
+	it('reads a whitespace-only label as unnamed, not as a blank name', () => {
+		expect(resolve({ indicatorLabel: '   ' }).indicator.label).toBe('');
+	});
+
 	it('offers an Indicator group with the three boxes', () => {
 		const groups = getEstimationViewOptions(new FakeViewConfig(configuredValues()) as never);
 		const group = groups.find((g) => g.displayName === 'Indicator');

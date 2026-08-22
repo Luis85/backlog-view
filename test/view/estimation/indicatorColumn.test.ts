@@ -54,6 +54,14 @@ describe('the indicator column', () => {
 		expect(head(containerEl)?.title).toBe('Adjusted value ÷ Effort');
 	});
 
+	it('falls back to the generic word for a whitespace-only name too, not a blank header', () => {
+		// `renderTable.ts` picks the fallback with a plain `indicator.label || …`, so an
+		// untrimmed whitespace-only label would be truthy and draw a blank, blank-named
+		// column — the resolver has to trim it before this `||` ever sees it.
+		const { containerEl } = makeEstimationView(fixture(), values({ indicatorLabel: '   ' }));
+		expect(head(containerEl)?.textContent).toBe('Indicator');
+	});
+
 	it('draws no column at all when no operand is named', () => {
 		const { containerEl } = makeEstimationView(fixture(), values({ indicatorOperands: '' }));
 		expect(head(containerEl)).toBeNull();
