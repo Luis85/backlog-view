@@ -58,6 +58,12 @@ following the list would inspect five projections while reporting six. Bind the 
 property in the view options, then create an iteration and commit one item to it, before
 starting the walk.
 
+**Write down that item's `start` and `due` first.** Committing to an iteration copies the
+sprint's dates onto the item, and those two values are the only way to put them back: the
+undo slot cannot serve here at all, because it is `lastUndo` on a `WriteLock` built at
+`onload` and this case restarts Obsidian at least twice — once to enter the language, once
+more for the right-to-left repeat — and each restart throws the batch away.
+
 Then the view options panel, a row's context menu, and the estimation view.
 
 - **Every catalog SENTENCE should render English.** English is the only catalog that ships,
@@ -80,23 +86,22 @@ Repeat once with a right-to-left language if one is available. Nothing in the pl
 mirrored yet — see [[Nothing pins a physical side]] — so a broken layout here is expected
 and is worth writing down rather than reporting as a regression.
 
-**Then take the iteration back out, and only after that put the language back.** The order of
-those two matters and is the opposite of the obvious one — see step 1. The setup above is the
+**Then take the iteration back out, and put the language back last.** The setup above is the
 only part of this case that changes the vault, and it changes the ROADMAP:
 `iterationsOnTimeline` defaults on, so an iteration left behind draws on both grid axes and
 `Smoke test the roadmap` would be re-run against a timeline this case built. Each release run
 would leave another.
 
-Four steps, in this order, and three of them are not the obvious action:
+Four steps, and none of the first three is the obvious action:
 
-1. **Undo the commit batch** with the toolbar's undo, **before restarting Obsidian** — the
-   undo slot is `lastUndo` on a `WriteLock` built at `onload` and starts `null`, so a restart
-   throws the batch away and the undo button then reports nothing to undo.
-2. Do NOT set the item's iteration to None instead. Joining an iteration copies the sprint's
-   dates onto the item, and a None pick deliberately removes the link and nothing else
-   ("leaving a sprint is not a reschedule", `computeIterationWrites`), so it leaves the item
-   scheduled to a sprint that no longer exists. Undo is what puts the dates back with the
-   link.
+1. **Restore the item's `start` and `due` by hand**, to the values written down at setup —
+   editing the note is the only way, since every restart in this case has already cleared the
+   undo slot.
+2. **Set the item's iteration to None**, which is exactly what that pick is for: it removes
+   the link and nothing else ("leaving a sprint is not a reschedule",
+   `computeIterationWrites`), so it must be paired with step 1 rather than trusted to undo the
+   join. Either order works, but both are needed — on its own, step 2 leaves the item
+   scheduled to a sprint that no longer exists.
 3. **Delete the iteration note**, then **remove the `iterationProperty` line from
    `docs/Product Backlog.base`** in a text editor. Clearing the option in the picker is not
    the same thing: `adoptCandidates` skips a property whose option is `!== undefined`, and a
@@ -114,7 +119,7 @@ Four steps, in this order, and three of them are not the obvious action:
 - Whichever of the three failure shapes appeared, if any, recorded by surface.
 - Obsidian restored to the runner's own language and restarted, so the rest of the sweep
   judges layout against a locale it is allowed to fail in.
-- The commit batch undone, the iteration note deleted and the `iterationProperty` line gone
-  from the `.base`, so the roadmap suite is judged on the timeline it had before this case
-  ran and the committed item keeps its own dates.
+- The item's dates restored and its iteration cleared, the iteration note deleted and the
+  `iterationProperty` line gone from the `.base`, so the roadmap suite is judged on the
+  timeline it had before this case ran and the committed item keeps its own dates.
 - Nothing yet checked; the real `getLanguage()` has never run.

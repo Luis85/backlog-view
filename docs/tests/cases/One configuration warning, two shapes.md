@@ -76,14 +76,26 @@ full stop where the fragment meets the lead's own.
 the `.base`, not held for the length of this check, and while they stand `configProblems`
 refuses every write in the view — including the tree, board and roadmap suites this one
 sits beside in the sweep. Left in place, a deliberate failure here reads as a broken plugin
-three checks later. Restore a distinct property for each option and confirm the toolbar's
-warning chip has gone.
+three checks later.
+
+The two halves are not put back the same way, because only one of the options existed:
+
+- **`startProperty` is already in the `.base`** — set it back to its own value, `note.start`,
+  in the picker.
+- **`parentProperty` is not.** Parent falls back to `parent` with no option in the file, so
+  pointing it anywhere WROTE a line that was never there; picking a distinct property in the
+  picker leaves that line behind with a new value. **Delete the `parentProperty` line from
+  `docs/Product Backlog.base`** in a text editor, the same way the locale case removes
+  `iterationProperty`.
+
+Then confirm the toolbar's warning chip has gone.
 
 ## Acceptance criteria
 
 - Both `config.fixAll` surfaces and at least one `config.fixFirst` surface read with two
   collisions configured.
 - The single-problem gate notice recorded as correct rather than as a defect.
-- The bindings restored and the warning chip gone, so the rest of the sweep runs against a
-  working configuration.
+- `startProperty` set back to `note.start`, the `parentProperty` line deleted from the
+  `.base`, and the warning chip gone — so the rest of the sweep runs against a working
+  configuration and the tracked file holds what it held before.
 - Nothing yet checked.
