@@ -104,4 +104,4 @@ The type joins the **fixed** vocabulary in `src/domain/itemTypes.ts` and
 nature, no legal children, and a constant rather than an option (ADR 0013). Notes
 are read into the model in `src/domain/readItems.ts` against the shape in
 `src/domain/model.ts`, and the version, target-date and status keys — the property keys, never the type name —
-are declared in `src/domain/viewOptions.ts` beside every other key this view names.
+are declared in `src/domain/releaseOptions.ts` beside every other key this view names.

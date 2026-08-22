@@ -721,6 +721,12 @@ export const en = {
 
 	'option.parentProperty': 'Parent property',
 	'option.orderProperty': 'Order property',
+	'release.option.group.model': 'Model',
+	'release.option.group.release': 'Release',
+	'release.option.membership': 'Membership property',
+	'release.option.version': 'Version property',
+	'release.option.targetDate': 'Target date property',
+	'release.option.status': 'Status property',
 	'option.typeProperty': 'Item type property',
 	'option.hierarchyOnly': 'Ignore notes outside the hierarchy',
 	'option.showOutsideParents': 'Show parents outside the filter',
