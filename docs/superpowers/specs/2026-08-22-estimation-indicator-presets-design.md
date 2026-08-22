@@ -67,7 +67,7 @@ parser reads:
 | `confidence`, `effort`, `complexity` | that scale's answer on the item, clamped to its declared range — the number the panel row above it reports |
 | `ease` | the effort scale **reversed** on its own range (`min + max − effort`) |
 | `value` | the model's own output — the weighted total |
-| `adjustedValue` | the confidence-adjusted value |
+| `adjustedValue` | the confidence-adjusted value, **rounded to two decimals before it is used** |
 
 **Every operand reads as the surface beside it reads it — clamped.** An operand is a
 multiplier as often as it is a divisor, and a raw one inverts a ranking: a stored
@@ -90,6 +90,14 @@ out-of-range effort — `9` on a 1–5 scale — divides by `5` where `renderDer
 `9` reads as `5`; the shipped line disagreeing with the surface beside it is the defect,
 not the fix. **No item whose answers are in range moves at all**, which is the promise this
 design makes and the one it keeps.
+
+**`adjustedValue` keeps its intermediate rounding, and that is compatibility rather than
+tidiness.** `renderDerived` rounds the adjusted value to two decimals and then divides, so
+a total of `1.01` at confidence `3` over effort `2` reads `0.31` today; rounding only the
+final figure gives `0.30`. The difference is one hundredth on one item and it is still the
+promise this design made — no in-range item's number moves — so the rounding is stated
+here and checked with a case that can tell the two paths apart. `Full profile` in the
+shipped fixture cannot: it lands on the same figure either way.
 
 **`ease` is the effort scale reversed on its own declared range.** Not `1 ÷ effort`: ICE is
 impact × confidence × ease with NO divisor, which is what the Feature says, and a
@@ -262,6 +270,14 @@ and before currency.
   `columnValue` each gain one entry, and the comparator's existing rule — absence
   partitions after the sorted block in **both** directions — is what puts an uncomputable
   indicator with the unmeasured without a line of new code.
+- **A stored sort naming a column this render does not draw is ignored for that render,
+  and left stored.** The indicator column is the first that can be absent, so this rule is
+  new: clearing the operands box while the table is sorted by the indicator would otherwise
+  leave a persisted `indicator:desc` with no header to show it, no header to change it, and
+  every value comparing absent. Ignored means the pass draws Base order and any other
+  header still replaces the pick. Left stored means putting the operands back brings the
+  sort back — deliberately, since the alternative is a render pass writing to the view-state
+  store, which is the one thing a render must not do.
 - `ESTIMATION_SORT_VALUES` in `src/storage/viewStateStore.ts` gains `indicator:asc` and
   `indicator:desc`, and its comment names seven columns and fourteen values rather than
   six and twelve. Spelled out there independently, as that module's own rule requires:
@@ -304,7 +320,8 @@ mechanism recorded, and it is not pulled in here.
 | A scale operand reads clamped, so a `-2` confidence never inverts a ranking | a multiplier case per side of the range |
 | A divisor of 0 or below is refused, stored and resolved alike | the fixture's `Zero effort` and `Negative effort` notes, plus a `lessIsBetter` dimension over `0-10` answered at its top |
 | `ease` reverses effort on its declared range, so ICE needs no divisor | one case at each end of the range |
-| The default indicator equals what `renderDerived` computes today for every in-range item | the shipped fixture's `Full profile`, asserted against the same arithmetic |
+| The default indicator equals what `renderDerived` computes today for every in-range item | a case where rounding order matters — total `1.01`, confidence `3`, effort `2` — which is `0.31` and not `0.30` |
+| A stored sort naming an undrawn column is ignored, not applied | a saved `indicator:desc` under a cleared operands box |
 | A dimension id colliding with a built-in resolves to the built-in | one case over a model declaring a dimension called `effort` |
 | An indicator preset leaves the value model untouched | a fingerprint asserted equal across every preset applied |
 | An indicator persists nothing | no `PropertyWrite` names an indicator key; applying a preset issues zero note writes |

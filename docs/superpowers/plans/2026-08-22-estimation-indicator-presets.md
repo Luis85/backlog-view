@@ -142,6 +142,21 @@ describe('the indicator', () => {
 		expect(figure).toEqual({ value: 4, blockedBy: null });
 	});
 
+	it('rounds the adjusted value BEFORE dividing, exactly as the panel line did', () => {
+		// total 1.01 at confidence 3 over effort 2: 0.31 through the rounded adjusted value,
+		// 0.30 if only the final figure is rounded. `Full profile` lands on the same number
+		// either way, so it cannot tell these two paths apart and this case is what does.
+		const model = configured();
+		const figure = computeIndicator(model, ind(), {
+			answers: new Map(),
+			confidence: 3,
+			effort: 2,
+			complexity: null,
+			result: { total: 1.01, coverage: { answered: 1, enabled: 8 }, clamped: [], terms: [] },
+		});
+		expect(figure).toEqual({ value: 0.31, blockedBy: null });
+	});
+
 	it('composes a formula from operand labels', () => {
 		expect(indicatorFormula(configured(), ind({ operands: ['reach', 'confidence'], divisor: 'effort' }))).toBe(
 			'Reach × Confidence ÷ Effort',
@@ -314,6 +329,10 @@ function resolveOperand(model: ScoringModel, inputs: IndicatorInputs, id: string
 	if (id === 'adjustedValue') {
 		if (inputs.result === null || inputs.confidence === null) return { label, value: null, stored: null };
 		const confidence = scaleOperand(model.confidence, inputs.confidence, label).value as number;
+		// Rounded HERE, before it is multiplied or divided — `renderDerived`'s own order, and
+		// keeping it is what makes "no in-range item's number moves" true rather than nearly
+		// true: at a total of 1.01, confidence 3, effort 2, rounding first gives 0.31 and
+		// rounding only the final figure gives 0.30.
 		return { label, value: round2((inputs.result.total * confidence) / model.confidence.max), stored: null };
 	}
 	const dimension = model.dimensions.find((d) => d.id === id);
@@ -701,6 +720,17 @@ describe('the indicator column', () => {
 		expect(containerEl.querySelectorAll('[data-col="indicator"]')).toHaveLength(0);
 	});
 
+	it('ignores a stored sort naming the column when no indicator is drawn', () => {
+		const { containerEl } = makeEstimationView(fixture(), values({ indicatorOperands: '' }));
+		// Nothing is drawn for the indicator, so nothing can show or change that pick — the
+		// pass falls back to Base order rather than sorting by a column that is not there.
+		expect([...containerEl.querySelectorAll('.pbl-est-row')].map((row) => (row as HTMLElement).dataset.path)).toEqual([
+			'Full.md',
+			'NoEffort.md',
+		]);
+		expect(containerEl.querySelector('[aria-sort]')).toBeNull();
+	});
+
 	it('sorts by it, putting the item with no figure last in both directions', () => {
 		const { containerEl } = makeEstimationView(fixture(), values());
 		const order = (): string[] =>
@@ -787,6 +817,27 @@ In `renderRow`, between the effort cell and the currency chip — `renderRow` ga
 		if (item.indicator?.blockedBy) cell.title = t('estimation.indicator.blocked', { operand: item.indicator.blockedBy });
 	}
 ```
+
+Narrow the pick to what this pass actually draws — one guard, at the one column that can
+be absent. `restoreSort` keeps loading the stored value, so the pick comes back when the
+operands do; what it must not do is apply a sort no header can show or change:
+
+```ts
+/**
+ * The pick as this PASS can honour it: a stored `indicator:*` under a cleared operands box
+ * names a column that is not drawn, so nothing could show its direction or click it away.
+ * Ignored for the render, never cleared from the store — clearing would be a render pass
+ * writing to the view-state store, which is the one thing a render must not do.
+ */
+function drawablePick(view: EstimationView, pick: SortPick | null): SortPick | null {
+	if (pick?.column !== 'indicator') return pick;
+	return view.settings.indicator.operands.length > 0 ? pick : null;
+}
+```
+
+and use it where `renderTable` resolves the pick, before both `renderHead` and
+`sortedItems` read it — one call, so the header and the rows can never disagree about
+which sort this pass is drawing.
 
 In `columnValue`, add the case:
 
