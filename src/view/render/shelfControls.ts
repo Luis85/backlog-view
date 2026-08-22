@@ -26,7 +26,7 @@ import { activeShelf } from '../shelfSurface';
  * **The search box is a form control and cannot be anything else** — a menu cannot be
  * typed into — so it keeps the half of that rule that is about TAB rather than the half
  * that is about elements: `tabindex="-1"` like the pickers, lifted with them by
- * `syncShelfTabStops`, with the card menu's own Search unplaced entry (a prompt) as the
+ * `syncShelfTabStops`, with the card menu's own Search the shelf entry (a prompt) as the
  * keyboard path, and Escape clearing it. What is left unpaid is the ARIA deviation the
  * shelf's disclosure and the two resize grips already state: a focusable non-`option`
  * inside a `listbox`, here a text field rather than a button. Narrower than it reads —
@@ -44,7 +44,7 @@ export function renderShelfControls(
 	host: BacklogViewHost,
 	headerEl: HTMLElement,
 	shelf: ShelfCard[],
-	opts: { name: string; picks: boolean; fold: { collapsed: boolean; set: (collapsed: boolean) => void } },
+	opts: { name: string; fold: { collapsed: boolean; set: (collapsed: boolean) => void } },
 ): void {
 	// An empty shelf is a bare label: it renders only so a drag has somewhere to land,
 	// and a disclosure over nothing would offer to open what has no content.
@@ -83,7 +83,7 @@ export function renderShelfControls(
 	});
 	// Nothing to order or narrow while the cards are shut away, and a control that
 	// visibly does nothing is worse than none — the toolbar's own expand/collapse rule.
-	if (collapsed || !opts.picks) return;
+	if (collapsed) return;
 	renderLayoutPicker(host, headerEl);
 	renderSortPicker(host, headerEl);
 	renderTypeFilter(host, headerEl, shelf);
@@ -148,14 +148,15 @@ export function syncShelfTabStops(shelfEl: HTMLElement, paneIsComposite: boolean
  * them another route to it.
  */
 function refocus(host: BacklogViewHost, selector: string): void {
-	// Either frame's shelf, because both draw this header: the roadmap's own, and the
-	// iteration board's, where the pane is a composite whenever it draws columns — which
-	// it always does — so the second term below can only ever be the roadmap's question.
-	const snapshot = host.roadmap;
-	const shelfEl = snapshot?.shelfEl ?? host.board?.shelfEl;
-	if (!shelfEl) return;
-	const ownsFocus = selector === '.pbl-shelf-disclosure' || snapshot?.cards.length === 0;
-	const target = ownsFocus ? shelfEl.querySelector<HTMLElement>(selector) : shelfEl.closest<HTMLElement>('.pbl-tree');
+	// Either band, resolved through `activeShelf` rather than read off `host.roadmap`
+	// directly: the iteration board's pane can also hold no card — an iteration with
+	// nothing committed draws empty columns, and a narrow enough search or type filter
+	// empties its shelf too — so "the pane is a composite" is a real question on both
+	// surfaces, never only the roadmap's.
+	const surface = activeShelf(host);
+	if (!surface.el) return;
+	const ownsFocus = selector === '.pbl-shelf-disclosure' || !surface.paneHasCards;
+	const target = ownsFocus ? surface.el.querySelector<HTMLElement>(selector) : surface.el.closest<HTMLElement>('.pbl-tree');
 	target?.focus();
 }
 

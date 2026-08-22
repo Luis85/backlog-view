@@ -101,6 +101,8 @@ export interface BoardSnapshot {
 	 * keep in step. Empty on the two boards that draw no shelf.
 	 */
 	shelf?: ShelfCard[];
+	/** How many shelf cards were DRAWN — narrowing applied, folds applied. See `shelf`. */
+	shelfDrawn?: number;
 	/**
 	 * Which board this is, carried so nothing downstream has to re-derive it from the
 	 * projection. The column menu needs it to key a fold, and the render that produced

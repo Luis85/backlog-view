@@ -28,16 +28,41 @@ export interface ActiveShelf {
 	cards: ShelfCard[];
 	/** Whether it is shut, from whichever bit shuts THIS band. */
 	collapsed: boolean;
+	/**
+	 * Whether the pane this band sits in drew a card — the question `syncShelfTabStops` is
+	 * handed at render time, asked again here of the published snapshot because focus is
+	 * decided after the rebuild. With no card there is no composite to own the arrows and no
+	 * card menu to reach these controls from, so the control that was pressed is the only way
+	 * back and focus belongs on its replacement.
+	 */
+	paneHasCards: boolean;
 }
 
 export function activeShelf(host: BacklogViewHost): ActiveShelf {
 	const roadmap = host.roadmap;
 	if (roadmap) {
-		return { el: roadmap.shelfEl, cards: roadmap.roadmap.shelf, collapsed: host.shelfCollapsed };
+		return {
+			el: roadmap.shelfEl,
+			cards: roadmap.roadmap.shelf,
+			collapsed: host.shelfCollapsed,
+			paneHasCards: roadmap.cards.length > 0,
+		};
 	}
 	const board = host.board;
 	if (board?.shelfEl) {
-		return { el: board.shelfEl, cards: board.shelf ?? [], collapsed: host.columnCollapsed('backlog', null, false) };
+		return {
+			el: board.shelfEl,
+			cards: board.shelf ?? [],
+			collapsed: host.columnCollapsed('backlog', null, false),
+			// The same two terms `renderIterationBoard` passes to `syncShelfTabStops`, asked of
+			// the snapshot because that is what exists by the time focus is decided — one
+			// question at two moments, not two questions. `!!` rather than `(… ?? 0) > 0`:
+			// `shelfDrawn` is a count and never negative, so the two read identically and the
+			// second spelling has no branch a real render can leave untaken — whenever
+			// `shelfEl` is set, `renderIterationBoard` has already set `shelfDrawn` beside it,
+			// in the one return statement that produces both.
+			paneHasCards: board.board.columns.some((col) => col.cards.length > 0) || !!board.shelfDrawn,
+		};
 	}
-	return { el: null, cards: [], collapsed: false };
+	return { el: null, cards: [], collapsed: false, paneHasCards: false };
 }

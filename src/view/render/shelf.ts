@@ -28,6 +28,14 @@ import { organizeShelf, searchShelf, ShelfGroup } from '../../domain/shelf';
  * scope the whole feature — statement included — to "Roadmap mode is on with the
  * dated axis", so a shelf card drawn on the horizon axis must say nothing about what
  * it waits for, not merely leave the conflict half unmarked.
+ *
+ * Carried a fourth field, `picks`, until 2026-08-21: whether the header carried the
+ * sort, type filter and search, withheld on the iteration board because their keyboard
+ * path — the card menu's shelf section — was the roadmap's alone. That reason is gone
+ * (`addShelfSection` serves both surfaces now), and with it the last caller that could
+ * ever pass `false`: every band this module draws carries the picks, unconditionally,
+ * so the field had become a boolean that could only read `true` — removed rather than
+ * left as a distinction nothing can any longer make.
  */
 export interface ShelfInput {
 	cards: ShelfCard[];
@@ -45,13 +53,6 @@ export interface ShelfInput {
 	 * default here is the roadmap's own reading arriving unasked on a board.
 	 */
 	name: string;
-	/**
-	 * Whether the header carries the sort, type filter and search. The roadmap's shelf
-	 * does; a board's does not, and that is a scope decision rather than a shape one —
-	 * the pickers' keyboard path is the card menu's shelf section, which is built for
-	 * the roadmap alone, and their focus rule reads the roadmap's own snapshot.
-	 */
-	picks: boolean;
 	/**
 	 * Where this shelf's own collapse is kept, and how it is set. The roadmap's is the
 	 * view-state store's `shelfExpanded`; the iteration board's is a COLUMN fold
@@ -200,8 +201,6 @@ export function renderShelf(
 	const shelfCards = shelf.cards;
 	const empty = shelfCards.length === 0;
 	const collapsed = !empty && shelf.fold.collapsed;
-	// NOT gated on `shelf.picks`, unlike the search and the type filter below — see the
-	// narrowing rule stated at `shown`, which is where the two categories are told apart.
 	const list = host.shelfLayout === 'list';
 	const shelfEl = frameEl.createDiv({
 		cls:
@@ -215,7 +214,7 @@ export function renderShelf(
 		},
 	});
 	const header = shelfEl.createDiv({ cls: 'pbl-shelf-header' });
-	renderShelfControls(host, header, shelfCards, { name: shelf.name, picks: shelf.picks, fold: shelf.fold });
+	renderShelfControls(host, header, shelfCards, { name: shelf.name, fold: shelf.fold });
 	// The outcome line is only where a removal has one to say — the horizon axis's
 	// drop always un-places, so it has nothing to distinguish before the release.
 	const outcomeEl = removal.outcome ? header.createDiv({ cls: 'pbl-shelf-outcome' }) : null;
@@ -251,23 +250,25 @@ export function renderShelf(
 	const cards: BacklogItem[] = [];
 	// **A narrowing belongs to the control that shows it.** The search and the type filter
 	// both HIDE cards and both say on their own face that they are doing so — the button
-	// goes active, the box keeps the text that caused it — so a shelf drawn without those
-	// controls applies neither: the picks are the roadmap's (see `ShelfInput.picks`), and
-	// a type hidden there would otherwise take cards off the iteration board's shelf with
-	// nothing on screen to show why and nothing to clear it with. Found by review (Codex,
-	// PR #182). The SORT is not in this rule and is applied either way: it orders what is
-	// drawn and hides nothing, so a pick made on the roadmap costs a reader nothing here.
-	// **So is the LAYOUT** (`list`, above), for the identical reason and stated here rather
+	// goes active, the box keeps the text that caused it — which is exactly why they used
+	// to be gated on `ShelfInput.picks`: a shelf drawn without those controls could take
+	// cards off the iteration board's shelf with nothing on screen to show why and nothing
+	// to clear it with (found by review, Codex on PR #182). That gate is gone with the
+	// field (see `ShelfInput`'s own header) because every band this module draws now
+	// carries the controls the narrowing needs — apply them unconditionally rather than
+	// re-deciding a question with only one answer left. The SORT was never in this rule and
+	// is applied either way: it orders what is drawn and hides nothing, so a pick made on
+	// the roadmap costs a reader nothing here.
+	// **Nor is the LAYOUT** (`list`, above), for the identical reason and stated here rather
 	// than beside it because this is where the two categories are told apart: cards or rows
 	// changes how much room each card takes and draws every one of them either way, so a
 	// reader who has never seen the picker has lost no work and needs no way back to it. The
-	// shelf's HEIGHT is one value for both bands on that same argument, and gating the layout
-	// on `picks` while sharing the height would be two answers to one question. The register
-	// said the opposite for one commit (Codex, PR #183), and neither direction was checked —
-	// `test/view/shelfLayout.test.ts` drives this one now.
+	// shelf's HEIGHT is one value for both bands on the same argument. The register said the
+	// opposite of this paragraph for one commit and neither direction was checked at the time
+	// (Codex, PR #183) — `test/view/shelfLayout.test.ts` drives both now.
 	// Searched first, then grouped: `searchShelf` states why that order is the rule.
-	const shown = shelf.picks ? searchShelf(shelfCards, host.shelfSearch) : shelfCards;
-	for (const group of organizeShelf(shown, host.shelfSort, shelf.picks ? host.shelfHiddenTypes : NO_HIDDEN)) {
+	const shown = searchShelf(shelfCards, host.shelfSearch);
+	for (const group of organizeShelf(shown, host.shelfSort, host.shelfHiddenTypes)) {
 		cards.push(...renderShelfGroup(ctx, shelfEl, group, wiring));
 	}
 	// Last, and after the groups rather than beside the header: the grip sits at the band's
@@ -303,9 +304,6 @@ interface ShelfWiring {
 
 /** Shared by every card with no conflicting prerequisite, so nothing is allocated for the common case. */
 const NO_CONFLICTS: ReadonlySet<string> = new Set();
-
-/** A shelf whose header carries no type filter hides no type — see `renderShelf`. */
-const NO_HIDDEN: ReadonlySet<string> = new Set();
 
 /**
  * One type group inside the expanded shelf: its header, then its cards in sort order —

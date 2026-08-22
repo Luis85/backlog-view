@@ -246,18 +246,21 @@ describe('the shelf’s card and list layouts', () => {
 	});
 
 	/**
-	 * The pick reaches the iteration board's shelf too, and that is the SORT's rule rather
-	 * than the search's — the distinction `renderShelf` states and the one this suite exists
-	 * to keep, since neither direction was checked when the two came apart (Codex, PR #183).
+	 * The pick reaches the iteration board's shelf too, and always did — that is the SORT's
+	 * rule rather than the search's, the distinction `renderShelf` states and the one this
+	 * suite exists to keep, since neither direction was checked when the two came apart
+	 * (Codex, PR #183). The picker itself joined the board's header on 2026-08-21, once the
+	 * keyboard path for it — the card menu's shelf section — served both surfaces
+	 * (`docs/requirements/Cards or a list on the shelf.md` extension 1b).
 	 *
-	 * A narrowing is gated on `picks` because a shelf drawn without those controls could hide
-	 * work with nothing on screen to say why and nothing to clear it with. A layout hides
-	 * nothing: the same cards are drawn, so a reader who has never seen the picker has lost
-	 * no work and needs no way back. The shelf HEIGHT in the same change is one value for
-	 * both bands for that same reason, and gating one while sharing the other would be two
-	 * answers to one question.
+	 * The search and the type filter were gated on `ShelfInput.picks` for exactly that
+	 * reason, until that field went with the last caller that could ever pass `false`
+	 * (2026-08-21) — see `renderShelf`'s own header. A layout was never in that rule: it
+	 * hides nothing, the same cards are drawn either way, so a reader who has never seen
+	 * the picker has lost no work and needs no way back. The shelf HEIGHT in the same
+	 * change is one value for both bands for that same reason.
 	 */
-	describe('the iteration board’s shelf, which carries no picker of its own', () => {
+	describe('the iteration board’s shelf', () => {
 		function sprintBoard(): Harness {
 			const vault = new FakeVault();
 			vault.addFile('Sprint 12.md', { frontmatter: { type: 'Iteration', order: 10 } });
@@ -279,9 +282,9 @@ describe('the shelf’s card and list layouts', () => {
 			return harness;
 		}
 
-		it('draws no layout picker, since the pickers are the roadmap’s', () => {
+		it('draws the layout picker too, since 2026-08-21', () => {
 			const { containerEl } = sprintBoard();
-			expect(shelfOf(containerEl)?.querySelector('.pbl-shelf-layout')).toBeNull();
+			expect(shelfOf(containerEl)?.querySelector('.pbl-shelf-layout')).not.toBeNull();
 		});
 
 		it('still draws the picked layout, because a layout narrows nothing', () => {

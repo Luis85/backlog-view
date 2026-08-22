@@ -71,17 +71,17 @@ one a reader wants changes by the day and by the task, not by the base.
 - **1a — the shelf is collapsed, or holds nothing.** No picker, exactly as the sort and
   the type filter are withheld: there is nothing to lay out, and a control that visibly
   does nothing is worse than one that is not there.
-- **1b — the shelf is the iteration board's.** No picker — the keyboard path for these
-  controls is the card menu's shelf section, which is the roadmap's alone — but the pick
-  IS applied there. That is the SORT's half of `renderShelf`'s narrowing rule rather than
-  the search's: a shelf drawn without the controls applies neither the search nor the
-  hidden types, because either could take work off the band with nothing on screen to say
-  why and nothing to clear it with, while a layout draws every card either way. A reader
-  who has never seen the picker has lost nothing and needs no way back to it. The band's
-  HEIGHT in [[Resizing the shelf]] is one value for both shelves on that same argument, so
-  gating this one would be two answers to one question. This extension claimed the
-  opposite when it was written, and the code was right (Codex, PR #183) — what let the two
-  disagree at all is that neither direction had a test, which they now do.
+- **1b — the shelf is the iteration board's.** It draws the picker, and the three beside
+  it, as of 2026-08-21. It did not until then, and the reason was never about this band: the
+  keyboard path for a `tabindex="-1"` control here is the card menu's shelf section, which
+  was built for the roadmap alone, so offering the controls would have made them
+  pointer-only. `addShelfSection` serves both surfaces now, and `activeShelf`
+  (`src/view/shelfSurface.ts`) is what tells them which band they are acting on. The pick
+  itself always applied here — that was the SORT's half of `renderShelf`'s narrowing rule
+  rather than the search's, since a layout draws every card either way. Now that the
+  controls are on screen the search and the hidden types apply here too, which is the same
+  rule reaching its other branch rather than an exception to it: a narrowing may hide work
+  exactly where something on screen says it is doing so.
 - **2a — the reader has no pointer.** `Shelf layout` is a submenu of any shelf card's
   context menu, built from the same list, so the two surfaces cannot offer different
   layouts or disagree about which is checked.
@@ -123,8 +123,8 @@ one a reader wants changes by the day and by the task, not by the base.
 
 - The picker draws in the roadmap's shelf header while the band is open and non-empty,
   and on no other screen; it is `tabindex="-1"` like the two pickers beside it.
-- The iteration board's shelf draws no picker and still honours the pick — the sort's rule,
-  not the search's.
+- The iteration board's shelf draws the same four controls and applies all of them, with
+  the card menu's shelf section as their keyboard path.
 - Picking a layout flips what the band draws and what the picker's own icon shows, under
   one fixed name.
 - The same cards are drawn in both layouts, and the shelf's count is unchanged by the

@@ -157,9 +157,14 @@ The population is `iterationCandidates` in `src/domain/board.ts`, beside the
 `src/domain/model.ts` because it reads a workflow, and `src/domain/board.ts` is where a
 workflow reading is decided. The shelf itself is `renderShelf` in
 `src/view/render/shelf.ts` with its header in `src/view/render/shelfControls.ts`, both
-reused unchanged in everything but three inputs the caller now supplies: which axis is
-drawing (null on a board, which states nothing about dependencies), what the header calls
-this shelf, and whether the header carries the picks. Its fold is a COLUMN fold —
+reused unchanged in everything but two inputs the caller now supplies: which axis is
+drawing (null on a board, which states nothing about dependencies) and what the header
+calls this shelf. A third, whether the header carried the picks, existed until
+2026-08-21 and is gone with `ShelfInput.picks`: this board's shelf withheld the sort,
+type filter and search only because their keyboard path — the card menu's shelf section
+— was the roadmap's alone, and once `addShelfSection` served both surfaces no caller
+could still pass `false`, so the field had nothing left to distinguish
+(`docs/requirements/Cards or a list on the shelf.md` extension 1b). Its fold is a COLUMN fold —
 `ColumnScope` `'backlog'` in `src/view/host.ts`, stored by
 `src/storage/viewStateStore.ts` through `src/view/viewState.ts` like every other fold —
 rather than a view-state value of its own, because a shelf is a foldable band exactly as

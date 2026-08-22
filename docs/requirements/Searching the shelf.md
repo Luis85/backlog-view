@@ -8,6 +8,7 @@ created: 2026-08-16
 files:
   - src/domain/shelf.ts
   - src/view/host.ts
+  - src/view/shelfSurface.ts
   - src/view/viewStateController.ts
   - src/view/viewStateSurface.ts
   - src/view/render/shelf.ts
@@ -127,6 +128,12 @@ applied BEFORE `organizeShelf` rather than inside it. That order is the rule and
 implementation detail: the type picker is built from the unsearched grouping, so a search
 can never take a type's own way back off the list that restores it, which is the same
 guarantee hiding already keeps.
+
+The search is offered on the iteration board's shelf too since 2026-08-21, over the same
+stored value. One value for both bands is [[Resizing the shelf]]'s "one band, one value"
+applied to a narrowing rather than to a height: a query typed on the roadmap narrows the
+board's band as well, and the box carrying that text is on screen either way, which is the
+condition the narrowing rule actually asks for.
 
 Its state is the one shelf pick the view-state store does not hold. `shelfSearch` /
 `setShelfSearch` are on `BacklogViewHost` (`src/view/host.ts`) and forwarded through
