@@ -60,9 +60,30 @@ parser reads:
 | Id | Reads |
 | --- | --- |
 | any configured dimension's id | that dimension's answer on the item, as the total reads it (clamped, direction applied) |
-| `confidence`, `effort`, `complexity` | that scale's answer on the item, as its panel row reads it |
+| `confidence`, `effort`, `complexity` | that scale's answer on the item, **raw** — the stored number, unclamped |
 | `value` | the model's own output — the weighted total |
-| `adjustedValue` | the confidence-adjusted value |
+| `adjustedValue` | the confidence-adjusted value, which keeps its own clamped confidence |
+
+**A scale operand reads raw, and a dimension operand reads clamped.** That asymmetry is
+deliberate and it is what the view already does: `renderDerived` divides by
+`item.effort` untouched while the adjusted value beside it reads confidence through
+`readAs`. Reading a scale operand clamped instead would break both of this design's own
+promises at once — an item with effort `9` would divide by `5` where today it divides by
+`9`, so an existing saved view's number WOULD move; and effort `0` or `-2` would clamp to
+the scale minimum, making the divisor-≤0 refusal below unreachable. A divisor is exactly
+where a value out of its declared range must not be quietly repaired: clamping it hides
+the case the rule exists to refuse. Dimensions have no such history — nothing divides by
+one today — so they read as the total reads them, which is what makes RICE's reach agree
+with the reach in the decomposition beside it.
+
+**The five built-in ids are reserved words.** A model's dimension ids are free text
+(`dimensions` is a text option), so a vault can declare a dimension called `effort` or
+`value`. Resolution asks the built-ins first, and a dimension whose id collides is simply
+not addressable as an operand — its weight in the value model is untouched, and renaming
+it makes it addressable. Stated rather than left to the lookup order it happens to have,
+because the alternative — namespacing every operand (`dim:reach`, `scale:effort`) — puts
+a prefix in four preset definitions and both text boxes to answer a collision nobody has
+had yet.
 
 There is no operator precedence to define, because there are no operators to choose: the
 form is a product over an optional divisor and only that. A framework this shape cannot
@@ -131,9 +152,13 @@ on which locale wrote it.
   entry says it.
 - **WSJF** is cost of delay ÷ job size, and cost of delay is a *sum* of value, time
   criticality and risk/enablement — a form the shape cannot express, and the Feature
-  refuses summed operands rather than growing one. So WSJF ships as the value total over
-  effort: the right shape, read through this model's own value. The entry says it, and the
-  cost-of-delay dimensions arrive with the value preset.
+  refuses summed operands rather than growing one. The Feature itself reads WSJF as one
+  operand over one operand ("WSJF is cost of delay over job size", named among the four
+  expressible "by choosing operands"), so it ships as the value total over effort: the
+  right shape, read through this model's own value. The entry says so. **And the numerator
+  is one text box**: a vault that declares a `cost-of-delay` dimension points the operand
+  at it and gets the real thing, with no preset and no code involved. The value preset is
+  what makes that the default rather than an edit.
 
 A preset stores operand **ids**, not the labels the table above reads with — so RICE names
 `reach`, `business-impact`, `confidence` and `effort`. A preset applied to a model whose
@@ -222,6 +247,9 @@ mechanism recorded, and it is not pulled in here.
 | --- | --- |
 | The operand shape computes a product over an optional divisor | `test/domain/` over `computeIndicator` |
 | An unanswered operand, a divisor ≤ 0, and an unknown operand id each give no figure and name the operand | the same, one case each |
+| A scale operand reads raw, so an out-of-range effort divides as stored and a `-2` still refuses | a case per side of the range, over the default indicator |
+| The default indicator equals what `renderDerived` computes today | the shipped fixture's `Full profile`, asserted against the same arithmetic |
+| A dimension id colliding with a built-in resolves to the built-in | one case over a model declaring a dimension called `effort` |
 | An indicator preset leaves the value model untouched | a fingerprint asserted equal across every preset applied |
 | An indicator persists nothing | no `PropertyWrite` names an indicator key; applying a preset issues zero note writes |
 | An uncomputable indicator sorts with the unmeasured | `test/view/estimation/sort.test.ts`, both directions |
