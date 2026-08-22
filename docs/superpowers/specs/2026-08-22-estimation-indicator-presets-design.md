@@ -18,6 +18,28 @@ written nowhere. This increment does not add an indicator; it makes the one that
 configurable, nameable, sortable and visible in the table, with four presets that set it
 in one pick.
 
+## What the harness answered, and with what
+
+`npm run harness -- test/harness/mock.ts` — an uncommitted entry that mounts the REAL
+estimation view and then hand-draws this increment's markup on top of it: the seventh
+column, the panel line, the toolbar button and the dialog in Obsidian's own `.modal`
+frame. Screenshots at 1200px and 900px, both schemes, headless Chromium. Four things it
+settled, each one a change to what this design said before it was drawn:
+
+1. **A composed formula cannot be a column header.** `Adjusted value ÷ Effort` in the 72px
+   numeric column clips to `Adjusted …`, which names nothing. A short name (`RICE`) fits
+   exactly. So the fallback is a generic word, not the formula — decision below.
+2. **Four presets of one kind do not each need a kind chip.** Every row read `Indicator`,
+   four times, saying nothing. The kind is stated once, above the list.
+3. **The preview's two lines were asymmetric** — the current indicator by name, the new one
+   by name *and* formula. Both are drawn the same way.
+4. **The seventh column worsens a clip that is already there.** At a 900px window the
+   currency column is cut off by the pane's edge **today, before this change** — the same
+   screenshot without the mock shows a sliver of a currency chip at the edge. At 1200px the
+   title column absorbs the new column's ~80px down toward its 96px floor and everything
+   fits. So this increment does not introduce the narrow-pane defect and does not fix it;
+   `Keeping columns whole under a narrow pane` still owns it.
+
 ## What is built
 
 ### 1. The indicator's shape
@@ -127,13 +149,20 @@ written.
 ### 5. The picker and its preview
 
 `src/ui/estimationPresetDialog.ts`, `stateColorsDialog.ts`'s shape — a `Modal` under
-`ui/`, which knows about no layer above it. Four rows, each naming the preset, its kind,
-its composed formula and its line. Picking one draws the preview; **nothing is written
-until Apply**:
+`ui/`, which knows about no layer above it. One sentence above the list says what kind
+these are — *they configure the indicator beside the business value, and the value model is
+untouched* — rather than a kind chip repeating one word on each of four rows. The chip
+comes back the day a second kind is on screen, which is the value-preset PBI.
 
-1. the indicator now — its label or composed formula,
-2. the indicator after — the same, from the preset,
+Then four rows, each naming the preset, its composed formula and its one honest line.
+Picking one draws the preview; **nothing is written until Apply**:
+
+1. the indicator now — its name and its composed formula,
+2. the indicator after — the same two, from the preset,
 3. **the value model is unchanged and no stored total is affected.**
+
+Both lines are drawn the same way, and the preview is drawn only once something is picked:
+reserving its height leaves a hole above the buttons in the state the dialog opens in.
 
 Line 3 is extension 2a: the count is not computed, because for an indicator preset it is
 zero by construction, and it is reported as unchanged rather than as a bare zero. Cancel
@@ -148,8 +177,11 @@ count.
 **The table** (`src/view/estimation/renderTable.ts`) takes a seventh column, after effort
 and before currency.
 
-- Its header is the label, falling back to the composed formula when there is none — so a
-  reader who picked RICE sees `RICE`, and a hand-configured indicator still names itself.
+- Its header is the label, falling back to a generic word — `Indicator` — when nothing has
+  named it. **Not the composed formula**: measured in the harness, `Adjusted value ÷
+  Effort` clips to `Adjusted …` in a 72px column, which names nothing at all, while `RICE`
+  fits with room. The formula is the header's tooltip and its accessible name, and the
+  panel beside the table spells it in full, which is where a decomposition belongs anyway.
 - Its cell is the rounded figure, or an em-dash whose tooltip names the operand that
   blocked it.
 - It sorts through the machinery already there: `SortColumn`, `SORT_COLUMNS` and
@@ -167,8 +199,10 @@ operand that blocked it. It stays where it is, beside the confidence-adjusted va
 is the epic's rule that a merged number appears beside its inputs and never instead of
 them.
 
-A seventh column makes narrow panes one column worse. That is
-`docs/requirements/Keeping columns whole under a narrow pane.md`, already Open with its
+A seventh column makes narrow panes one column worse, and the harness measured how much:
+at 1200px the title column absorbs it and every column is whole; at 900px the currency
+column falls off the pane's edge — which it already does today, without this change. That
+is `docs/requirements/Keeping columns whole under a narrow pane.md`, already Open with its
 mechanism recorded, and it is not pulled in here.
 
 ## What is not built
@@ -195,10 +229,10 @@ mechanism recorded, and it is not pulled in here.
 | Applying writes exactly three config keys | the same test |
 | Preset names are data, kind words and notes are text | `test/i18n/projections.test.ts` |
 
-`npm run check` is the gate, as always. Obsidian does not run here, so the dialog's own
-appearance and the seventh column's fit in a real pane are owed a live-vault check —
-`npm run harness` answers the layout and Obsidian's default colours, and nothing more
-(ADR 0020).
+`npm run check` is the gate, as always. The harness has now answered the layout — the
+column's fit, the header's width, the dialog's shape — in Obsidian's DEFAULT colours. What
+it cannot answer is still owed a live-vault check: those colours under a community theme,
+and the dialog against a real vault's modal chrome (ADR 0020).
 
 ## Register changes
 
