@@ -33,6 +33,20 @@ describe('the indicator column', () => {
 		expect(cell(containerEl, 'NoEffort.md').title).toBe('No figure: Effort is not answered');
 	});
 
+	it('says why it is blank to a reader with no pointer, in the row a screen reader is on', () => {
+		const { containerEl } = makeEstimationView(fixture(), values());
+		// The cell keeps its tooltip and stays EMPTY, so the stylesheet's dash still draws —
+		// and the reason rides in the ROW, which is what `aria-activedescendant` names and
+		// what an option's accessible name is computed from. A `title` on an empty generic
+		// div reaches a pointer and nothing else.
+		const row = containerEl.querySelector('.pbl-est-row[data-path="NoEffort.md"]') as HTMLElement;
+		expect(row.querySelector('.pbl-sr-only')?.textContent).toBe('No figure: Effort is not answered');
+		expect(cell(containerEl, 'NoEffort.md').textContent).toBe('');
+		// A row whose indicator HAS a figure says nothing extra.
+		const scored = containerEl.querySelector('.pbl-est-row[data-path="Full.md"]') as HTMLElement;
+		expect(scored.querySelector('.pbl-sr-only')).toBeNull();
+	});
+
 	it('says which failure blocked it, not "not answered" for all three', () => {
 		const vault = fixture();
 		vault.addFile('ZeroEffort.md', { frontmatter: { 'strategic-alignment': 5, confidence: 4, effort: 0 } });

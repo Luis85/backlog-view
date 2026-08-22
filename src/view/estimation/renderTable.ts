@@ -467,18 +467,28 @@ function renderRow(listEl: HTMLElement, item: EstimationItem, output: [number, n
 	}
 	numberCell(row.createDiv({ cls: 'pbl-est-cell', attr: { 'data-col': 'confidence' } }), item.confidence, null);
 	numberCell(row.createDiv({ cls: 'pbl-est-cell', attr: { 'data-col': 'effort' } }), item.effort, null);
+	let blocked: string | null = null;
 	if (indicator.operands.length > 0) {
 		const cell = row.createDiv({ cls: 'pbl-est-cell', attr: { 'data-col': 'indicator' } });
 		numberCell(cell, item.indicator?.value ?? null, null);
 		// The blocked operand as a tooltip, and the cell left EMPTY so the stylesheet's own
 		// `:empty::before` dash draws the absence exactly as every other numeric column does.
-		if (item.indicator?.blockedBy) cell.title = blockedText(item.indicator.blockedBy);
+		if (item.indicator?.blockedBy) blocked = cell.title = blockedText(item.indicator.blockedBy);
 	}
 	// The cell is the COLUMN and keeps a fixed width; the chip inside it hugs its own words.
 	// `.pbl-est-stale` is gone with them: the state is now one class per currency on the
 	// chip, so five treatments are declared in one place instead of one being special-cased
 	// in the markup.
 	renderCurrencyChip(row.createDiv({ cls: 'pbl-est-currency' }), item.currency);
+	// **The tooltip above is the only thing a POINTER gets, and it is all the cell can give.**
+	// A keyboard never focuses a cell here — focus stays on the listbox and
+	// `aria-activedescendant` names the ROW — and an option's accessible name is computed
+	// from its contents, so an `aria-label` on an empty generic div is read by nothing. The
+	// reason therefore rides in the row itself, visually hidden: the same words the tooltip
+	// carries, announced with the row that cannot otherwise say why its indicator is blank.
+	// LAST, after the currency chip, so it reads as a trailing note rather than interrupting
+	// the numbers. `.pbl-sr-only` is `styles/board.css`'s existing utility, not a new one.
+	if (blocked) row.createSpan({ cls: 'pbl-sr-only', text: blocked });
 	return row;
 }
 
