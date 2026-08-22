@@ -448,20 +448,23 @@ describe('creating from a bucket', () => {
 		expect(vault.fm('docs/requirements/More of it.md')['horizon']).toBe('someday');
 	});
 
-	it('offers no + at all where the type it would make cannot occupy a bucket', () => {
+	it('never names a type the axis cannot hold, whatever focus arrives from elsewhere', () => {
 		// `newItemType` follows the FOCUS and `focusTarget` accepts any declared name, so
 		// focusing `Release` had every bucket header offering "New Release in Now" — into an
-		// axis that draws no releases, through a creation write with no type gate. The
-		// control is ABSENT rather than inert, the empty add button's own rule.
+		// axis that draws no releases, through a creation write with no type gate. It is
+		// closed one layer up now: the roadmap honours no focus on a type it cannot draw
+		// (`honouredFocusLevel`), so the `+` is OFFERED and names a type this axis holds.
+		// The withheld-control version of this was `canPlaceHorizon` guarding the `+`
+		// itself, and it went with the branch nothing could drive any more.
 		const vault = horizonVault();
 		vault.addFile('1.0.md', { frontmatter: { type: 'Release', order: 40 } });
-		const releaseFocus = makeRoadmap(vault, {}, { focus: 'Release' });
-		expect(bucketByName(releaseFocus.containerEl, 'Now').querySelector('.pbl-bucket-add')).toBeNull();
-
-		// The focus it must not disturb: a Milestone IS placed on the bucket axis, so its
-		// `+` stays — which is what says this is about releases and not about markers.
-		const milestoneFocus = makeRoadmap(horizonVault(), {}, { focus: 'Milestone' });
-		expect(bucketByName(milestoneFocus.containerEl, 'Now').querySelector('.pbl-bucket-add')).not.toBeNull();
+		const released = bucketByName(makeRoadmap(vault, {}, { focus: 'Release' }).containerEl, 'Now');
+		expect(released.querySelector('.pbl-bucket-add')?.getAttribute('aria-label')).toBe('New Epic in Now');
+		// The focus it must not disturb: a Milestone IS placed on the bucket axis, so it is
+		// honoured and the `+` makes one — which is what says this is about releases and not
+		// about markers.
+		const marked = bucketByName(makeRoadmap(horizonVault(), {}, { focus: 'Milestone' }).containerEl, 'Now');
+		expect(marked.querySelector('.pbl-bucket-add')?.getAttribute('aria-label')).toBe('New Milestone in Now');
 	});
 
 	it('offers no Release anywhere on the roadmap, since no axis of it draws one', () => {

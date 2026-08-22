@@ -172,11 +172,11 @@ export interface BacklogModel {
 	 * tree, for `iterations`' own reason: which releases exist is a fact about the base,
 	 * not about whichever subtree a focus level set on another projection is narrowing.
 	 * Excludes `outsideFilter` items, same as `results` and `iterations` — a release the
-	 * Base excluded is not this base's to list. That is a guarantee about THIS field only:
-	 * a hand-written parent link can still seat the excluded release elsewhere, as a
-	 * context row above one of its members (`linkAll`/`loadOutsideParents` are not
-	 * type-gated, and nothing here drops that edge) — `releases` excludes it regardless of
-	 * whether it also appears there.
+	 * Base excluded is not this base's to list. It used to be a guarantee about THIS field
+	 * only — a hand-written parent link still seats such a release in the TREE, since
+	 * `linkAll`/`loadOutsideParents` are not type-gated and neither drops that edge, and it
+	 * was drawn there as a context row. `inPlan` refuses it now, so it is a row of no
+	 * projection: the edge stays (the rollup walk needs it) and the membership goes.
 	 */
 	releases: BacklogItem[];
 	/**
@@ -358,8 +358,28 @@ export function iterationResults(model: BacklogModel, path: string): BacklogItem
  * differently, a `PBI` somebody parented to an iteration was hidden along with its parent
  * and appeared nowhere at all — `renderForest` drops a hidden sibling without descending
  * through it, which is the failure `projectionForest`'s own comment exists to name.
+ *
+ * **A release the Base EXCLUDED is a row of no projection** — `Releases as their own type`
+ * 4a, which says a filtered release appears as no row anywhere, a context row included.
+ * `loadOutsideParents` is not type-gated, so a work item that hand-links a release as its
+ * parent pulls that release in as context, and it was drawn: the sentence stating the gap
+ * is on `BacklogModel.releases`, which excluded one from that field and said so about
+ * nowhere else.
+ *
+ * It is refused HERE — membership — and never by cutting the edge in `linkAll`, and the
+ * difference is the whole reason this clause sits in this function. The edge is what
+ * `assignAll` walks: its rollup traverses THROUGH a row it does not count, so an item
+ * unlinked from its excluded parent is stranded from the counts, which is why rooting
+ * markers there was refused. Refusing membership leaves the edge alone and makes
+ * `projectionForest` promote the child instead: no release row, and the work under it
+ * keeps its place as a root of the drawn forest.
+ *
+ * An included release stays a member and is still drawn — in the tree and on both boards,
+ * which is where `byProjectionType` still offers the type. The roadmap refuses every
+ * release, included or not, and says so once in `onThisRoadmap` (`domain/roadmap.ts`).
  */
-export function inPlan(item: { ladder: string[]; typeName: string | null }): boolean {
+export function inPlan(item: { ladder: string[]; typeName: string | null; outsideFilter?: boolean }): boolean {
+	if (item.outsideFilter && isReleaseType(item.typeName)) return false;
 	return !inCatalog(item) && !isIterationType(item.typeName);
 }
 

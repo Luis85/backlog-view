@@ -1,6 +1,6 @@
 import { inCatalog, isDeliverableType, isIterationType, isMarkerType, isReleaseType, ladderFor } from '../domain/itemTypes';
 import { BacklogItem, BacklogModel, inIteration, inPlan, ProjectionPopulation } from '../domain/model';
-import { RoadmapAxis, drawsGrid } from '../domain/roadmap';
+import { RoadmapAxis, drawsGrid, onThisRoadmap } from '../domain/roadmap';
 import { BacklogViewHost, Projection } from './host';
 import { ALL_TYPES } from '../domain/typeVocabulary';
 
@@ -187,18 +187,53 @@ export function projectionMember(
 		// link and stayed listed on its parent's card. One statement, two callers.
 		return (item) => (item.outsideFilter ? inPlan(item) : inIteration(item, scope));
 	}
-	// The grid axes draw an `Iteration` in the shared marker row — the one admission,
-	// axis-aware because the horizons axis (buckets and its shelf alike) still refuses
-	// one. Everything downstream inherits this through `rowHidden`, which is the point:
-	// the rows, the counts and the shelf all read the same predicate.
-	if (projection === 'roadmap' && axis !== null && drawsGrid(axis)) {
-		return (item) => inPlan(item) || isIterationType(item.typeName);
+	// The roadmap's own two narrowings, one branch because they are one predicate: no axis
+	// of it places a `Release` (`onThisRoadmap`, asked rather than restated), and the GRID
+	// axes draw an `Iteration` in the shared marker row — the one admission, axis-aware
+	// because the horizons axis (buckets and its shelf alike) still refuses one, as does a
+	// caller with no axis in hand. Everything downstream inherits both through `rowHidden`,
+	// which is the point: the rows, the counts, the shelf, the keyboard's walk and every
+	// drop target read the same predicate.
+	if (projection === 'roadmap') {
+		const grid = axis !== null && drawsGrid(axis);
+		return (item) => onThisRoadmap(item) && (inPlan(item) || (grid && isIterationType(item.typeName)));
 	}
 	// `inPlan`, which refuses an `Iteration` as well as the catalog — and it is the same
 	// function `projectionForest` builds the plan's forest from, because the forest and
 	// the hiding must agree: promoted by one and hidden by the other, a `PBI` parented to
 	// an iteration would appear nowhere at all.
 	return inPlan;
+}
+
+/**
+ * The focus level this projection actually honours — the stored pick, or nothing where
+ * this projection could not draw the rows a focus on that type would leave.
+ *
+ * The focus is working position on the device (ADR 0011), so it outlives the projection
+ * it was set on and arrives at the next one unrevalidated. `byProjectionType` already
+ * withholds `Release` from the roadmap's own picker, and a pick the picker cannot make is
+ * a state the user cannot leave by picking something else — the roadmap drew `Focus:
+ * Release` over a menu with no such entry, an empty frame, and an empty state offering
+ * `New Release`.
+ *
+ * It answers with `onThisRoadmap` rather than with `offerableTypes`, and the narrowness is
+ * deliberate. A focus a projection does not OFFER is a wider rule and would reach the
+ * requirements board's `Deliverable` focus, which is shipped behaviour and not this
+ * change's to alter — the wider rule is worth having and is owed its own note.
+ *
+ * Read once, in `refreshFromData`, onto the settings everything downstream already reads —
+ * so the row source, the counts, the picker's own label and the empty state's creation
+ * type all follow one decision instead of four guards. The STORE keeps the pick, so the
+ * tree still has it on the way back; this only decides whether the model is re-rooted by
+ * it. `setProjection` rebuilds when this answer changes, since a projection switch
+ * otherwise only re-renders.
+ */
+export function honouredFocusLevel(projection: Projection, level: string): string {
+	// Trimmed for the comparison and never for the value: `focusTarget` reads the stored
+	// pick `.trim().toLowerCase()`, so a padded one still re-roots the model and a
+	// comparison that did not trim would miss exactly the pick that does.
+	if (projection === 'roadmap' && !onThisRoadmap({ typeName: level.trim() })) return '';
+	return level;
 }
 
 /**

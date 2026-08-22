@@ -441,11 +441,11 @@ In `src/domain/model.ts`, in the `BacklogModel` interface beside `iterations`:
 	 * tree, for `iterations`' own reason: which releases exist is a fact about the base,
 	 * not about whichever subtree a focus level set on another projection is narrowing.
 	 * Excludes `outsideFilter` items, same as `results` and `iterations` — a release the
-	 * Base excluded is not this base's to list. That is a guarantee about THIS field only:
-	 * a hand-written parent link can still seat the excluded release elsewhere, as a
-	 * context row above one of its members (`linkAll`/`loadOutsideParents` are not
-	 * type-gated, and nothing here drops that edge) — `releases` excludes it regardless of
-	 * whether it also appears there.
+	 * Base excluded is not this base's to list. It used to be a guarantee about THIS field
+	 * only — a hand-written parent link still seats such a release in the TREE, since
+	 * `linkAll`/`loadOutsideParents` are not type-gated and neither drops that edge, and it
+	 * was drawn there as a context row. `inPlan` refuses it now, so it is a row of no
+	 * projection: the edge stays (the rollup walk needs it) and the membership goes.
 	 */
 	releases: BacklogItem[];
 ```

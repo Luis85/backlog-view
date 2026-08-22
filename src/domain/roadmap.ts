@@ -439,8 +439,21 @@ export function resourcePlacementLabel(roadmap: RoadmapModel, source: ResourceSo
  * an unplaced result, it is not a result of this projection at all. Nothing is orphaned by
  * the drop — this list is flat, and a marker holds no children to strand. An
  * `outsideFilter` release goes with it, which `Releases as their own type` 4a asks for by
- * name: a release parents nothing, so it is never an ancestor drawn as context.
+ * name — though nothing on the roadmap depends on that any more: `inPlan` refuses an
+ * excluded release in every projection now, so one never reaches this list at all.
  * [[A release on the dated axis]] is where a release gets a position of its own.
+ *
+ * **The two branches are not the same shape, and the filter cannot be read as one rule
+ * over both.** `model.results` is a flat walk, so dropping a row drops a row;
+ * `model.roots` is a FOREST, so dropping one takes its whole subtree off the screen with
+ * it — a `PBI` somebody hand-nested under a release was drawn nowhere while
+ * `eligibleResults` went on counting it, and the roadmap said all the work was done and
+ * hidden. What closes that is upstream and not here: `honouredFocusLevel`
+ * (`view/projection.ts`) refuses a focus this roadmap could not draw BEFORE the model is
+ * built, so a release is never a focus root of a model the roadmap is looking at. The
+ * guarantee is the view's — a model built here with a `Release` focus still loses the
+ * subtree, and the check under this sentence is `test/view/releaseRows.test.ts`, which
+ * drives the real view rather than this function.
  */
 function roadmapRows(model: BacklogModel, visible: (item: BacklogItem) => boolean, axis: RoadmapAxis): BacklogItem[] {
 	const source = (model.focused ? model.roots : model.results).filter(visible);
@@ -449,11 +462,29 @@ function roadmapRows(model: BacklogModel, visible: (item: BacklogItem) => boolea
 }
 
 /**
- * Whether any axis of this roadmap places this row at all — the drop `roadmapRows` makes,
- * named so that `RoadmapModel.eligibleResults` can make the same one over the unfiltered
- * results. Two readers of "which rows are on this roadmap", one statement of it.
+ * Whether any axis of this roadmap places this row at all — **the one statement of the
+ * roadmap's population**, and everything that answers "is this on the roadmap" asks it
+ * rather than restating it.
+ *
+ * It was extracted after the second reader was reported and reached only two; four more
+ * findings arrived afterwards, every one of them a reader that had never been told the
+ * population changed — an inflated toolbar count beside an advisory saying the roadmap
+ * was empty, a focus root dropped with its whole subtree, and an empty state offering to
+ * create the very type the frame refuses. So the readers are named here, once, and there
+ * are five: `roadmapRows` and `RoadmapModel.eligibleResults` in this file,
+ * `projectionMember` (`view/projection.ts`) — through which the rows, the shelf, the
+ * keyboard and every drop target inherit it — `countedPopulation`
+ * (`view/render/toolbarStatus.ts`), and `honouredFocusLevel` beside `projectionMember`,
+ * which is what keeps a focus this roadmap cannot draw from re-rooting the model at all.
+ *
+ * A TYPE NAME is all it reads, which is what lets the focus ask it with no row in hand.
+ * The backfill is deliberately NOT a sixth reader: `missingKeyStubs` (`domain/writePlan.ts`)
+ * asks whether a TYPE may hold a planning key, which is `placementEnds`-shaped and has a
+ * note of its own — `docs/issues/Creation seeds a placement the type may not hold.md`.
+ * Two rules, and collapsing them would put a question about a note's keys behind a
+ * question about a screen.
  */
-function onThisRoadmap(item: BacklogItem): boolean {
+export function onThisRoadmap(item: { typeName: string | null }): boolean {
 	return !isReleaseType(item.typeName);
 }
 

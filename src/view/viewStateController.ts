@@ -2,6 +2,7 @@ import { ViewState } from './viewState';
 import { ColumnScope, Projection } from './host';
 import { RoadmapAxis } from '../domain/roadmap';
 import { ShelfLayout, ShelfSort } from '../domain/shelf';
+import { honouredFocusLevel } from './projection';
 import { ScaleId, scaleFor } from '../domain/timeline';
 
 /**
@@ -67,8 +68,17 @@ export class ViewStateController {
 			this.state.setBoardScope(null);
 		}
 		if (mode === this.projection) return;
+		const before = honouredFocusLevel(this.projection, this.state.focusLevel());
 		this.state.setProjection(mode);
-		this.hooks.render();
+		// A render is normally the whole change: no config was set, so no Bases refresh is
+		// coming. The exception is the focus, which re-roots the MODEL rather than only the
+		// render — and which projection is on screen is half of what decides whether it is
+		// honoured at all (`honouredFocusLevel`). Leaving a stale answer standing is the
+		// whole defect on the way IN and on the way back out: the roadmap kept re-rooting on
+		// a `Release` focus its own picker does not offer, and the tree would have lost the
+		// focus it does.
+		if (honouredFocusLevel(mode, this.state.focusLevel()) !== before) this.hooks.refreshFromData();
+		else this.hooks.render();
 	}
 
 	get boardScope(): string | null {

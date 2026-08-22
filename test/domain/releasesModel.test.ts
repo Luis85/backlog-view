@@ -29,12 +29,14 @@ describe('releases on the model', () => {
 		// `loadOutsideParents` pulling in the ANCESTORS of result rows. A note simply absent
 		// from `entries()` with no child among the results never enters the store at all, so
 		// a filter-only fixture passes whether or not `!item.outsideFilter` is in the filter.
-		// A child naming it as parent is what makes it a context row. This is the shape
+		// A child naming it as parent is what puts it in the store as one. This is the shape
 		// `test/domain/dependencies.test.ts` uses.
 		vault.addFile('Child.md', { frontmatter: { type: 'PBI' }, parentLink: 'Outside' });
 		const entries = vault.entries().filter((e) => e.file.path !== 'Outside.md');
 		const model = buildModel(vault.app, entries, settingsWith());
-		// Assert it really IS a context row first — otherwise the line below proves nothing.
+		// Assert it really IS an `outsideFilter` row first — otherwise the line below proves
+		// nothing. It is drawn as no row now (`inPlan`, and `test/view/releaseRows.test.ts`),
+		// which is a question about the projections; this field's guarantee is the model's.
 		expect(model.byPath.get('Outside.md')?.outsideFilter).toBe(true);
 		expect(model.releases.map((r) => r.file.path)).toEqual(['Inside.md']);
 	});

@@ -1,0 +1,98 @@
+// @vitest-environment jsdom
+import { describe, expect, it } from 'vitest';
+import { FakeVault } from '../helpers/vault';
+import { makeView, titlesOf, useViewHarness } from '../helpers/view';
+import { makeRoadmap, shelfTitles } from '../helpers/roadmap';
+
+useViewHarness();
+
+/**
+ * Where a `Release` is a row, and where it is not — asked of the READERS rather than of
+ * the filter, because every defect this file covers was a reader that never heard the
+ * population had changed. The rule itself is two clauses, each stated once: no axis of
+ * the roadmap places a release (`onThisRoadmap`, `domain/roadmap.ts`), and no projection
+ * draws a release the Base excluded (`inPlan`, `domain/model.ts`).
+ *
+ * Four readers, four tests: the toolbar's count, the roadmap's row source under a focus,
+ * the tree's context row, and the empty state's creation type. A fifth reader — the bucket
+ * header's `+`, whose type follows the same focus — is asserted where it already lived,
+ * in `roadmapMoves.test.ts`.
+ */
+
+/** The count label's own text — the readout that has to agree with the advisory. */
+function countText(containerEl: HTMLElement): string {
+	return containerEl.querySelector<HTMLElement>('.pbl-count-label')?.textContent ?? '';
+}
+
+/** A vault holding one release and nothing else. */
+function releaseOnly(): FakeVault {
+	const vault = new FakeVault();
+	vault.addFile('R.md', { frontmatter: { type: 'Release', order: 10 } });
+	return vault;
+}
+
+describe('a release on the roadmap', () => {
+	/**
+	 * The toolbar counts what the projection can DRAW. A base holding one release draws
+	 * no roadmap row at all, so the advisory says the roadmap is empty — and a count
+	 * measured over `model.results` said there was one item in it, on the same screen.
+	 */
+	it('counts nothing where the roadmap draws nothing', () => {
+		const { containerEl } = makeRoadmap(releaseOnly());
+
+		expect(containerEl.querySelector('.pbl-empty-title')?.textContent).toBe('No backlog items');
+		expect(countText(containerEl)).toBe('0 items');
+	});
+
+	/**
+	 * A `Release` focus is a state the roadmap's own picker does not offer, so the
+	 * roadmap does not honour it: the model is rebuilt unfocused on the way in.
+	 *
+	 * Without that, `roadmapRows` filtered the FOCUS ROOTS — `model.roots` is a forest
+	 * where `model.results` is a flat walk, so the same one-line filter dropped a row in
+	 * one branch and a root plus its whole subtree in the other. The hand-nested `PBI`
+	 * below the release was drawn nowhere, while `eligibleResults` counted it, and the
+	 * roadmap announced that all the work was done and hidden.
+	 */
+	it('ignores a focus it does not offer, and keeps the work under it', () => {
+		const vault = releaseOnly();
+		vault.addFile('Hand nested.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: 'R' });
+		const { containerEl } = makeRoadmap(vault, {}, { focus: 'Release' });
+
+		expect(shelfTitles(containerEl)).toEqual(['Hand nested']);
+		// Nothing is hidden, so nothing may say so — that notice offers Show completed
+		// items, which would not have brought the row back.
+		expect(containerEl.querySelector('.pbl-empty-filter')).toBeNull();
+		expect(countText(containerEl)).toBe('1 item');
+	});
+
+	/**
+	 * The empty state's creation type follows the focus, and the focus is what the
+	 * projection honours — so a roadmap that honours no `Release` focus cannot offer
+	 * `New Release` from it. The button used to create a note the same roadmap filtered
+	 * out on the pass that made it, while the toolbar's own creator and the focus picker
+	 * beside it were already withholding that type.
+	 */
+	it('offers no New Release from its empty state', () => {
+		const { containerEl } = makeRoadmap(releaseOnly(), {}, { focus: 'Release' });
+
+		expect(containerEl.querySelector('.pbl-empty button')?.textContent).toBe('New Epic');
+	});
+});
+
+describe('a release the Base excluded', () => {
+	/**
+	 * `Releases as their own type` 4a: a filtered release appears as no row anywhere, a
+	 * context row included. Its child still names it, so the edge stays — cutting it
+	 * would strand the subtree from the rollup walk, which traverses THROUGH a row it
+	 * does not count. The row goes; the child is promoted and keeps its place.
+	 */
+	it('is no context row in the tree, and its child stays', () => {
+		const vault = new FakeVault();
+		vault.addFile('Rel.md', { frontmatter: { type: 'Release', order: 10 } });
+		vault.addFile('Child.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: 'Rel' });
+		const { containerEl } = makeView(vault, {}, { only: ['Child.md'] });
+
+		expect(titlesOf(containerEl)).toEqual(['Child']);
+	});
+});
