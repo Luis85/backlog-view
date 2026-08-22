@@ -216,6 +216,29 @@ whole.
   premise off the PROPERTY rather than the value, so `left: auto` — which declines to
   anchor that side — licensed a physical padding beside it; the value decides now, and the
   CSS-wide keywords are refused with `auto`.
+  **Five more rounds followed, and every one was a SPELLING the patterns did not know**: a
+  rule's final declaration dropping its optional semicolon, `!important` counted as a fifth
+  value, CSS's case-insensitivity (`Margin-Left`, `text-align: RIGHT`), whitespace before a
+  colon, and a `var()` fallback's tokens. All five latent — no rule in `styles/` writes any
+  of those shapes today — and all five therefore invisible to the sweep as well as to the
+  check. The case fix is the one worth reading: it normalises the TEXT once rather than
+  putting a flag on each pattern, because a flag holds for the patterns carrying it and not
+  for the next predicate somebody adds, which is this series in one sentence.
+  **Ten rounds on one check is the finding**, and the count is measured rather than
+  remembered — eleven review threads on PR #196, one against the stylesheet and ten against
+  this test. What they say together is that the check is a hand-rolled CSS parser, and each
+  round has been a spelling it did not know. The two honest upgrades are a real parser over
+  the assembled sheet, or the computed-value check below; an eleventh patch is neither, and
+  is what this paragraph exists to refuse.
+  **One half of the tenth round is refused outright and stays refused**: a shorthand whose
+  sides arrive by SUBSTITUTION is unreachable from the text. `padding: var(--x) var(--y)`
+  is four-sided iff `--x` holds two lengths, and what a custom property holds is not in the
+  file — Obsidian declares the `--size-*` scale, a theme redeclares it, `setCssProps`
+  writes others at runtime. Rejecting every unresolved `var()` shorthand instead was
+  measured before it was refused: it flags all 44 in the stylesheet, each a legitimate
+  symmetric padding, which is the exemption list [[Styling rules are checks]] exists to
+  avoid. The limit is written into the test's header and a planted case asserts the floor,
+  so it stays a STATED limit rather than a silent one.
   **The warning applies to the CHECK and not only to the sweep**, which is the
   sentence this note did not have, and each round is one the check itself could not have
   told anybody about — every one passed green.
