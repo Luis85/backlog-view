@@ -13,6 +13,11 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ### Changed
 
+- **The three notices the writer shows when a note changes mid-move read in your Obsidian's
+  language.** Retype a note while a drag is in flight, or edit one while an estimation score
+  is being saved, and the message explaining that nothing was written now comes from the
+  string catalog like every other notice. Nothing about what is written changes.
+
 - **The estimation view's options menu, the iteration board's columns, the roadmap legend
   and the reasons a card is on the shelf read in your Obsidian's language.** These were the
   last words the view drew from its own code rather than from the string catalog. Nothing a
