@@ -77,21 +77,34 @@ describe('Release is a marker, not a rung', () => {
 		expect(isMarkerType(RELEASE_TYPE)).toBe(true);
 	});
 
-	// NOT "is not a child of anything". `linkAll` attaches every item with a resolved
-	// `parentPath` and special-cases no marker, so a hand-written parent DOES nest a
-	// `Milestone` today and will nest a `Release` the same way. `Releases as their own
-	// type` 2a reads as though the model roots it; it does not, and this increment is not
-	// the place to change `Milestone`'s behaviour to make that sentence true. What IS true
-	// is the pair below, and Task 10 raises the discrepancy against the register.
+	// NOT "is not a child of anything", and the difference is the DESIGN rather than a gap.
+	// `linkAll` attaches every item with a resolved `parentPath` and special-cases no
+	// marker, so a hand-written parent nests a `Milestone` today and nests a `Release` the
+	// same way — deliberately. `Releases as their own type` 2a's "the parent places it
+	// nowhere" means it occupies no rung and counts for nothing, which the model DOES
+	// enforce: `descendantCount`'s walk scores a marker 0 and traverses THROUGH it, so a
+	// work item somebody filed under a release still reaches its real ancestors.
+	// `test/domain/milestones.test.ts` states all three cases for `Milestone`, and rooting
+	// a marker in `linkAll` would break the third outright.
 	it('offers no legal children — a release holds nothing', () => {
 		const release = { ladder: LEVELS, typeName: RELEASE_TYPE, effectiveLevelIndex: -1 };
 		expect(childTypeChoices(release as never)).toEqual([]);
 	});
 
-	it('counts for nothing wherever it sits', () => {
-		// `descendantCount`'s own marker exclusion (`model.ts`), which is the half of "root
-		// by nature" that IS enforced: a marker contributes nothing to a parent's rollup.
-		expect(isMarkerType(RELEASE_TYPE)).toBe(true);
+	it('counts for nothing wherever it sits, and is traversed through', () => {
+		// The three claims `test/domain/milestones.test.ts` makes of a `Milestone`, asked of
+		// a `Release`: nested under an epic it adds nothing to the count, contributes no
+		// date evidence, and does not hide its own subtree from the ancestors above it.
+		const model = buildModelFrom([
+			note('An epic', { type: 'Epic' }),
+			note('1.0', { type: 'Release', parent: 'An epic', due: '2026-12-01' }),
+			note('Prep', { type: 'PBI', parent: '1.0', due: '2026-09-01' }),
+		]);
+		const epic = model.byPath.get('An epic.md') as BacklogItem;
+		// The release itself is not counted; the PBI filed under it still is.
+		expect(epic.descendantCount).toBe(1);
+		// And the release's own date is not evidence for the epic's inferred span.
+		expect(epic.descendantTarget).toEqual({ year: 2026, month: 9, day: 1 });
 	});
 
 	it('leaves every other classification alone', () => {
@@ -1907,21 +1920,7 @@ Three `## Where it lives` sections currently describe code that will not exist:
 
 Every module created in Tasks 3-9 must appear in one of these, or `npm run docs` fails rule 7.
 
-- [ ] **Step 5: Raise one discrepancy against the register**
-
-`Releases as their own type` extension 2a says a release with a declared parent is "a root by
-nature, like a Milestone and an Iteration, so the parent places it nowhere". **`linkAll` does
-not do that** — it attaches every item with a resolved `parentPath` and special-cases no
-marker, so a hand-written parent nests a `Milestone` today and nests a `Release` identically.
-What IS enforced is the other half: a marker offers no legal children and contributes nothing
-to a rollup (`descendantCount`'s marker exclusion).
-
-Do not change `linkAll` here — that would alter `Milestone` behaviour on a branch about
-releases. Open a note under `docs/issues/` recording the discrepancy, what is actually
-enforced, and the two ways out (root every marker in `linkAll`, or reword 2a to describe the
-guarantees the model really makes). Link it from 2a.
-
-- [ ] **Step 6: Add the changelog entry**
+- [ ] **Step 5: Add the changelog entry**
 
 Under `## [Unreleased]` in `CHANGELOG.md`:
 
@@ -1933,18 +1932,18 @@ Under `## [Unreleased]` in `CHANGELOG.md`:
 - `Release` joins the fixed type vocabulary as a marker, beside `Milestone` and `Iteration`.
 ```
 
-- [ ] **Step 7: Run the whole gate**
+- [ ] **Step 6: Run the whole gate**
 
 Run: `npm run check`
 Expected: PASS all five steps. If coverage thresholds moved up, commit the raised numbers — they only ever go up.
 
-- [ ] **Step 8: Look at it, and say what is still owed**
+- [ ] **Step 7: Look at it, and say what is still owed**
 
 Run: `npm run harness` and open the page; then `npm run test-build` and open this repository as a vault, with `docs/Product Backlog.base`, to see the view against real Bases and a real theme.
 
 Neither replaces the other and neither is a test. Report honestly what was checked in a live vault and what was not — a themed vault's colours, its accent, and anything Bases hands the view are unanswerable in the harness.
 
-- [ ] **Step 9: Commit**
+- [ ] **Step 8: Commit**
 
 ```bash
 git add test/ docs/ CHANGELOG.md vitest.config.mts
