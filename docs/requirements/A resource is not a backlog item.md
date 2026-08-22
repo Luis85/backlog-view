@@ -217,3 +217,14 @@ keyboard ladder no longer writes an assignee for a marker that is drawn in the m
 row whatever the note says. Both are `Milestone` defects that predate this epic and had no
 test. They live in `src/domain/writePlan.ts`, `src/domain/itemTypes.ts` (`schemaEnds`) and
 `src/view/interactions/keyboard.ts`, and are specified by [[Milestones as their own type]].
+
+The start-key narrowing above was a PLAN-time answer only, and carried the identical race
+this note's own Guarantee already refuses for a resource: a large ✨ batch plans a start
+stub against an ordinary item, the note is retyped to `Milestone` before that file's write
+lands, and `applyInto`'s stub loop asked only whether the live note already held the key,
+never what the live note now WAS — so it created an empty start property the new type may
+not carry. Closed the same way the five gates above are, and by the same rule read twice
+rather than restated: `applyInto` asks `schemaEnds` of the live type `applyWrites` already
+reads for the resource refusal, and drops a start or target stub the live note's type does
+not answer for. Lives in `src/storage/frontmatter.ts` beside the resource gate. Found by
+automated review.

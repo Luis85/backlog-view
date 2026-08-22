@@ -72,6 +72,23 @@ describe('applyWrites', () => {
 		expect(vault.fm('Item.md')).toEqual({ order: 5 });
 	});
 
+	it('never stubs a start key onto a note the vault retyped to Milestone since the plan', async () => {
+		const vault = new FakeVault();
+		const configured = { ...settings, startKey: 'start', targetKey: 'due' };
+		// The plan was built against an ordinary item and still carries its start stub;
+		// the note has since been retyped to a point type that answers for `target` alone.
+		const item = vault.addFile('Item.md', { frontmatter: { type: 'Milestone', order: 5 } });
+		const inverses: RestoreWrite[] = [];
+
+		await applyWrites(vault.app, configured, [{ file: item, stubs: ['start', 'target'] }], undefined, (inv) =>
+			inverses.push(inv),
+		);
+
+		// `schemaEnds` narrows this the same way it narrows the plan: a Milestone's note
+		// gains no start property, whatever a stale row asked for.
+		expect(vault.fm('Item.md')).toEqual({ type: 'Milestone', order: 5, due: '' });
+	});
+
 	it('leaves a key the note already carries exactly as it is, whatever it holds', async () => {
 		const vault = new FakeVault();
 		const configured = { ...settings, stateKey: 'status', horizonKey: 'horizon' };
