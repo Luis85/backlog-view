@@ -47,6 +47,20 @@ describe('the resources axis', () => {
 		expect(titles(roadmap.lanes[0].bars)).toEqual(['Alice dated', 'Cased']);
 	});
 
+	it('never draws a Resource note in the marker lane, dated or not', () => {
+		// The type is a marker, so it takes the marker BRANCH of `deriveLanes` — which is
+		// right, since a person is in no resource's row either. What must not follow is a
+		// bar: a `Resource` carrying the configured date keys drew a diamond in the
+		// `Milestones` lane and minted that lane on a base with no milestone in it.
+		const settings = resourceSettings({ resourceNames: ['Alice'] });
+		const vault = resourceVault();
+		vault.addFile('Dana.md', { frontmatter: { type: 'Resource', start: '2026-08-01', due: '2026-08-31' } });
+		const roadmap = laneOf(vault, settings);
+
+		expect(roadmap.lanes.every((lane) => !lane.markers)).toBe(true);
+		expect(roadmap.lanes.flatMap((lane) => titles(lane.bars))).not.toContain('Dana');
+	});
+
 	it('positions a bar exactly as the dated axis does — no second date reading', () => {
 		const settings = resourceSettings({ resourceNames: ['Alice'] });
 		const vault = resourceVault();

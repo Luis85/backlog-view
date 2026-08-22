@@ -7,16 +7,42 @@ import { FakeVault } from '../helpers/vault';
 /** Run a batch and hand back the inverses it emitted — `restore.test.ts`'s own helper. */
 async function writeCapturing(vault: FakeVault, writes: PropertyWrite[]): Promise<RestoreWrite[]> {
 	const inverses: RestoreWrite[] = [];
-	await applyPropertyWrites(vault.app, writes, undefined, (inv) => inverses.push(inv));
+	await applyPropertyWrites(vault.app, writes, 'type', undefined, (inv) => inverses.push(inv));
 	return inverses;
 }
 
 describe('applyPropertyWrites', () => {
+	it('refuses a write to a note whose LIVE type is Resource', async () => {
+		// The same race `applyWrites` keeps a guard for, on the writer that shares none of
+		// its path: the row this batch was planned from is the MODEL's, and the model is
+		// stale about a note retyped since the last Bases pass. Without this the score, the
+		// recalculation and the cleanup all land on a person.
+		const vault = new FakeVault();
+		const item = vault.addFile('Dana.md', { frontmatter: { type: 'Resource' } });
+
+		const outcome = await applyPropertyWrites(vault.app, [{ file: item, sets: [{ key: 'score', value: 5 }] }], 'type');
+
+		expect(outcome.changed).toBe(false);
+		expect(vault.fm('Dana.md')).toEqual({ type: 'Resource' });
+	});
+
+	it('reads the type from the key it is given, not from a fixed one', async () => {
+		// The option is per VIEW in Bases, so this view names its own type property and a
+		// vault keeping types under `kind` has to be answered by the key passed in. A fixed
+		// `type` here would refuse nothing in exactly the vaults that renamed it.
+		const vault = new FakeVault();
+		const item = vault.addFile('Dana.md', { frontmatter: { kind: 'Resource' } });
+
+		await applyPropertyWrites(vault.app, [{ file: item, sets: [{ key: 'score', value: 5 }] }], 'kind');
+
+		expect(vault.fm('Dana.md')).toEqual({ kind: 'Resource' });
+	});
+
 	it('sets a value through setOwn semantics, so a __proto__-named key round-trips as data', async () => {
 		const vault = new FakeVault();
 		const item = vault.addFile('Item.md');
 
-		await applyPropertyWrites(vault.app, [{ file: item, sets: [{ key: '__proto__', value: 5 }] }]);
+		await applyPropertyWrites(vault.app, [{ file: item, sets: [{ key: '__proto__', value: 5 }] }], 'type');
 
 		const fm = vault.fm('Item.md');
 		expect(Object.prototype.hasOwnProperty.call(fm, '__proto__')).toBe(true);
@@ -30,7 +56,7 @@ describe('applyPropertyWrites', () => {
 		const vault = new FakeVault();
 		const item = vault.addFile('Item.md', { frontmatter: { score: 4, other: 'x' } });
 
-		await applyPropertyWrites(vault.app, [{ file: item, sets: [{ key: 'score', value: null }] }]);
+		await applyPropertyWrites(vault.app, [{ file: item, sets: [{ key: 'score', value: null }] }], 'type');
 
 		expect(vault.fm('Item.md')).toEqual({ other: 'x' });
 	});
@@ -43,7 +69,7 @@ describe('applyPropertyWrites', () => {
 		await applyPropertyWrites(vault.app, [
 			{ file: held, sets: [{ key: 'score', value: 9, ifMissing: true }] },
 			{ file: bare, sets: [{ key: 'score', value: 9, ifMissing: true }] },
-		]);
+		], 'type');
 
 		expect(vault.fm('Held.md')['score']).toBe(3);
 		expect(vault.fm('Bare.md')['score']).toBe(9);

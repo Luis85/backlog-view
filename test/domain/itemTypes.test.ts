@@ -6,6 +6,7 @@ import {
 	folderForType,
 	isExtraType,
 	isMarkerType,
+	isResourceType,
 	placementEnds,
 	PlacementEnd,
 } from '../../src/domain/itemTypes';
@@ -18,8 +19,10 @@ import {
 	ITERATION_TYPE,
 	LEVELS,
 	MARKER_TYPES,
+	TEST_LEVELS,
 	typeFolderKey,
 } from '../../src/domain/typeVocabulary';
+import { settingsWith } from '../helpers/settings';
 import { FakeVault } from '../helpers/vault';
 
 const settings = defaultSettings();
@@ -340,6 +343,54 @@ describe('Iteration is a declared marker', () => {
 		expect(defaultTypeFolder('Iteration')).toBe('docs/iterations');
 		expect(defaultTypeFolder('Iteration', 'work')).toBe('work/iterations');
 		expect(defaultSettings().typeFolders.iteration).toBe('docs/iterations');
+	});
+});
+
+describe('Resource is recognized in order to be refused', () => {
+	it('keeps the name out of every list the work-item vocabulary drives', () => {
+		// The same sentence `Absence` is checked by, and for the same reason: stated at the
+		// LIST rather than at its consumers. `childTypeChoices` offers every entry at the
+		// top level, `focusTarget` accepts one as a focus root, the shelf groups by it, and
+		// the generated README and the manual document it — so keeping the name out is what
+		// makes each of them need no edit and none of them able to grow the entry back.
+		expect(ALL_TYPES).not.toContain('Resource');
+		expect(MARKER_TYPES).not.toContain('Resource');
+		expect(EXTRA_TYPES).not.toContain('Resource');
+		expect(LEVELS).not.toContain('Resource');
+		expect(TEST_LEVELS).not.toContain('Resource');
+		// And no creation folder, exactly as an absence has none: nothing in this view makes
+		// one, so there is no filing decision to ship an opinion about.
+		expect(defaultSettings().typeFolders.resource).toBeUndefined();
+	});
+
+	it('names the type case-insensitively, and nothing else', () => {
+		expect(isResourceType('Resource')).toBe(true);
+		expect(isResourceType('resource')).toBe(true);
+		expect(isResourceType('Milestone')).toBe(false);
+		expect(isResourceType(null)).toBe(false);
+	});
+
+	it('produces NO item, with hierarchyOnly OFF so the gate is what refuses it', () => {
+		// The whole of "a person is not in the backlog", asked where it is decided rather
+		// than at the tree, the boards, the roadmap, the shelf or the count. Each of those
+		// reads `BacklogItem`s, so a note that never becomes one is absent from all of them
+		// at once and from any projection added later.
+		//
+		// **`hierarchyOnly: false` is what makes this test able to fail**, and it is the
+		// same trap the absence gate records beside it: with the setting ON, a note whose
+		// type this vocabulary does not know and which hangs from nothing is dropped by
+		// `pruneOutsideHierarchy` anyway, so the assertion passes with the gate deleted. Off
+		// is the vault where every note a folder-scoped Base returns becomes an item — the
+		// one case that tells the two apart, and the one where a resource would otherwise
+		// sit in the tree as a real-looking task.
+		const vault = new FakeVault();
+		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('Dana.md', { frontmatter: { type: 'Resource' } });
+		const model = buildModel(vault.app, vault.entries(), settingsWith({ hierarchyOnly: false }));
+
+		expect(model.byPath.has('Dana.md')).toBe(false);
+		expect(model.results.map((item) => item.file.path)).toEqual(['Epic A.md']);
+		expect(model.items.map((item) => item.file.path)).toEqual(['Epic A.md']);
 	});
 });
 

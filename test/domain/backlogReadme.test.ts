@@ -158,6 +158,20 @@ describe('backlogReadmeContent', () => {
 		expect(both).toContain('placement actions — Set horizon and Clear horizon, Schedule and Unschedule');
 	});
 
+	it('names only the DATED markers where it says what a marker reads', () => {
+		// The other half of the same sentence, on a two-date view: the point-by-type
+		// paragraph. Asserted as the LITERAL the reader gets, not as `MARKER_TYPES` filtered
+		// by the same predicate the sentence is built from — that version was written first
+		// and could not fail, because making `drawsAsPoint` true for a `Resource` moved the
+		// expectation with the defect. A fourth marker has to answer this line by name.
+		const dated = settingsWith({ startKey: 'start', targetKey: 'due', horizonKey: '' });
+		const line = readme(dated, [])
+			.split('\n')
+			.find((l) => l.includes('is the exception: it is a point by'));
+		expect(line).toContain('A **marker** (`Milestone` and `Iteration`) is the exception');
+		expect(line).not.toContain('Resource');
+	});
+
 	it('describes the timeline when only one date property is configured', () => {
 		// Either key alone is a configured axis, so a view with one must not be told it
 		// has no roadmap at all.
@@ -177,10 +191,20 @@ describe('backlogReadmeContent', () => {
 		// it. Left unsaid, the README tells a user to write the one date it documents and
 		// the milestone stays unplaced with no control offered to correct it.
 		const startOnly = readme(settingsWith({ startKey: 'start', targetKey: '', horizonKey: '' }), []);
-		// Named as the CATEGORY, not as one type — the rule is `placementEnds`'s, which every
-		// declared marker answers alike, so the sentence names the whole list rather than
-		// whichever marker happens to sit first in it.
-		expect(startOnly).toContain('A **marker** (`Milestone` and `Iteration`) is the exception, and this view cannot place one');
+		// Named as a LIST, not as one type — the rule is `drawsAsPoint`'s, so the sentence
+		// names every marker that answers it rather than whichever one sits first.
+		//
+		// That list is no longer `MARKER_TYPES`, and the difference is the whole point of
+		// this assertion: `Resource` is a marker that states NO date, so spelling the
+		// category here published into the user's own vault that a person is a point in
+		// time waiting for a target property. An automated reviewer found it on the
+		// increment that declared the type — in generated documentation, which is the copy
+		// nobody re-reads.
+		const exception = startOnly.split('\n').find((l) => l.includes('is the exception, and this view cannot'));
+		expect(exception).toContain('A **marker** (`Milestone` and `Iteration`) is the exception');
+		// On the LINE, not on the document: `Resource` is a declared type and the types
+		// table above names it correctly. What must not name it is this sentence.
+		expect(exception).not.toContain('Resource');
 		expect(startOnly).toContain('the only date property here is `start`');
 	});
 
@@ -355,7 +379,33 @@ describe('backlogReadmeContent', () => {
 		// explain a key the view created.
 		const content = readme(settingsWith({ horizonKey: 'horizon', horizonValues: ['Now'] }));
 		expect(content).toContain('**Assign missing properties**');
-		expect(content).toContain('adds the keys *empty* to items that lack them and places nothing');
+		const line = content.split('\n').find((l) => l.includes('**Assign missing properties**'));
+		expect(line).toContain('adds the keys *empty* to items that lack them and places nothing');
+		// A horizon-only view has no target property at all, so there is nothing the
+		// backfill withholds from a Milestone here and nothing to except.
+		expect(line).not.toContain('except');
+	});
+
+	it('names Milestone, not the marker category, in the backfill exception, whichever date key is configured', () => {
+		// schemaEnds narrows a Milestone alone: an Iteration is a span and keeps both ends
+		// whatever iterationBars says, so spelling the marker CATEGORY here would tell the
+		// reader an Iteration loses its start too, which the backfill does not do. Gated on
+		// startKey, the withheld key — present whether or not targetKey also is.
+		const exceptionLine = (over: Partial<BacklogSettings>) =>
+			readme(settingsWith(over)).split('\n').find((l) => l.includes('**Assign missing properties**'));
+		const both = exceptionLine({ startKey: 'start', targetKey: 'due' });
+		expect(both).toContain('except that a `Milestone` never gets a start added');
+		expect(both).not.toContain('Iteration');
+		expect(exceptionLine({ startKey: 'start', targetKey: '' })).toContain('never gets a start added');
+	});
+
+	it('does not narrow the backfill when no start property is configured', () => {
+		// With no startKey, ✨ never stubs a start on anything, marker or not — there is
+		// nothing the type withholds here, so nothing to except. Covers both a target-only
+		// view and (above) a horizon-only one with neither date key.
+		const targetOnly = settingsWith({ startKey: '', targetKey: 'due' });
+		const line = readme(targetOnly).split('\n').find((l) => l.includes('**Assign missing properties**'));
+		expect(line).not.toContain('except');
 	});
 
 	it('names Set iteration among the things that write a planning key, when it can copy dates', () => {

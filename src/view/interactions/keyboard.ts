@@ -1,5 +1,5 @@
 import { BacklogViewHost, BoardSnapshot, RoadmapSnapshot } from '../host';
-import { isDeliverableType } from '../../domain/itemTypes';
+import { isDeliverableType, isMarkerType } from '../../domain/itemTypes';
 import { BacklogItem, BacklogModel } from '../../domain/model';
 import { sameValue } from '../../domain/noteFields';
 import { assignableLanes, RoadmapModel } from '../../domain/roadmap';
@@ -509,6 +509,18 @@ function handleResourceMoveKey(
 	evt: KeyboardEvent,
 ): void {
 	if (evt.key !== 'ArrowUp' && evt.key !== 'ArrowDown') return;
+	// **A MARKER is not moved between rows by this axis, and the pointer already said so.**
+	// `wireLaneDrop` routes a marker's release to the dated gesture rather than to a row
+	// write, because `deriveLanes` draws every marker in the milestones' row whatever its
+	// assignee says — so a row write here changes the note and moves nothing the reader can
+	// see, out of the one undo slot. The register's own rule is that a drop, an Alt+arrow
+	// and a menu pick are ONE move; this input disagreed with the other two. `Set assignee`
+	// still writes one, deliberately: a note may record who owns a date. What may not
+	// happen is a POSITIONAL gesture writing a value this axis does not read.
+	//
+	// Refused before `preventDefault`, like the missing-stops case below: a chord this
+	// projection has nothing to do with is not this projection's to swallow.
+	if (isMarkerType(card.typeName)) return;
 	const stops = resourceStops(roadmap);
 	if (!stops) return;
 	evt.preventDefault();

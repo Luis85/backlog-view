@@ -99,6 +99,14 @@ export type Placement = { kind: 'bar'; bar: TimelineBar } | { kind: 'shelf'; rea
  * could restate correctly beside them.
  */
 export function placeItem(item: BacklogItem, stated: StatedEnds, iterationBars: boolean): Placement {
+	// A type with NO ends never reaches the axis at all, whatever the note happens to
+	// carry under the date keys: a `Resource` is a person, and a person is not a span, a
+	// point or a line. Asked here rather than at each axis, because this is the one call
+	// every placement goes through — the resources axis routes a marker to its own lane
+	// before asking, so a check beside the dated axis alone would still have drawn a
+	// person in the `Milestones` row. Shelved with no reason, which is what an item this
+	// axis simply has nothing to say about already gets.
+	if (placementEnds(item.typeName, iterationBars).length === 0) return { kind: 'shelf', reason: null };
 	// A type that DRAWS AS A POINT is reduced to it before any span rule is asked about
 	// it. A stale start later than the target would otherwise read as a reversed pair
 	// and shelve. The start is ignored, never rewritten — ignoring a value and deleting

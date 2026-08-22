@@ -373,6 +373,33 @@ describe('editing a placed absence', () => {
 		expect(vault.fm(ALICE_AWAY_PATH)['start']).toBe('2026-08-04');
 	});
 
+	it('refuses an edit whose note was retyped to Resource while the modal was open, and does not rename it', async () => {
+		// The race `applyWrites` and `applyPropertyWrites` both close and this writer shares
+		// none of their path: the modal opened against Alice's absence, and the note itself
+		// is retyped between that open and this submit — exactly what an external edit or
+		// another view's own write could do while the form sits open. `updateAbsenceNote`
+		// must refuse rather than silently write the assignee and both dates onto a resource,
+		// and `editAbsence` must not then rename it — half of what the refusal protects.
+		const vault = absenceVault();
+		const { containerEl } = laneRoadmap(vault);
+
+		openEdit(containerEl);
+		vault.fm(ALICE_AWAY_PATH)['type'] = 'Resource';
+		expect(submitAbsence({ resource: 'Bob', start: '2026-08-05', target: '2026-08-09' })).toBe(true);
+		await flush();
+
+		// Neither half landed: the frontmatter is exactly what it was retyped to (assignee
+		// and dates untouched), and the note kept its old name.
+		expect(vault.fm(ALICE_AWAY_PATH)).toEqual({
+			type: 'Resource',
+			assignee: 'Alice',
+			start: '2026-08-04',
+			due: '2026-08-06',
+		});
+		expect(vault.files.has('Bob away 2026-08-05 → 2026-08-09.md')).toBe(false);
+		expect(Notice.messages).toContain('That note became a resource while the edit was in flight, so nothing was changed.');
+	});
+
 	it('re-asks the gate at submit, exactly as the add flow does', async () => {
 		// The edit form outlives the config it opened under for the same reason the add form
 		// does — Obsidian's options pane stays reachable while a modal is up — and the write

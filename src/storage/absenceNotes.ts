@@ -1,5 +1,7 @@
 import { App, stringifyYaml, TFile } from 'obsidian';
 import { AbsenceFacts } from '../domain/absences';
+import { isResourceType } from '../domain/itemTypes';
+import { ownValue, readString } from '../domain/noteFields';
 import { BacklogSettings } from '../domain/settings';
 import { vaultFolder } from '../domain/settingsResolve';
 import { ABSENCE_TYPE } from '../domain/typeVocabulary';
@@ -69,18 +71,36 @@ export async function createAbsenceNote(app: App, settings: BacklogSettings, spe
  * Outside `applyWrites` like the create and the delete beside it: an absence is not a
  * write target of this backlog, so there is no batch, no captured inverse and no undo
  * slot. What takes an edit back is Obsidian's own file history.
+ *
+ * **Returns whether it wrote.** The edit modal that produced `spec` was opened against
+ * this file while it was an absence, and both Obsidian's options pane and the vault
+ * itself stay reachable while it is up — so the note can be retyped to `Resource` between
+ * open and submit. `applyWrites` and `applyPropertyWrites` ask the identical question
+ * inside their own `processFrontMatter` callback, for the identical reason: it is the one
+ * place the live type is readable before the file is touched. This writer shares none of
+ * their path — no batch, no `configProblems` gate, no undo slot — so the question is asked
+ * again here rather than inherited, using the same `readString(ownValue(fm, …))` +
+ * `isResourceType` shape rather than a second reader. The caller (`editAbsence`) must not
+ * rename a note this returns `false` for — the rename is the other half of what the
+ * refusal is protecting a resource from.
  */
 export async function updateAbsenceNote(
 	app: App,
 	settings: BacklogSettings,
 	file: TFile,
 	spec: AbsenceFacts,
-): Promise<void> {
+): Promise<boolean> {
+	let refused = false;
 	await app.fileManager.processFrontMatter(file, (fm: Record<string, unknown>) => {
+		if (isResourceType(readString(ownValue(fm, settings.typeKey)))) {
+			refused = true;
+			return;
+		}
 		setOwn(fm, settings.assigneeKey, spec.resource);
 		setOwn(fm, settings.startKey, spec.start);
 		setOwn(fm, settings.targetKey, spec.target);
 	});
+	return !refused;
 }
 
 /**
@@ -113,6 +133,18 @@ export async function renameAbsenceNote(app: App, file: TFile, title: string): P
  * deletion either. `trashFile` honours the user's own "deleted files" setting, which is
  * the recovery path that belongs to a whole note going away — and the one the user
  * already knows, since it is every other note's.
+ *
+ * **Deliberately NOT given `updateAbsenceNote`'s live-type refusal.** The same race is
+ * reachable here — the menu that names `file` can sit open while the note is retyped to
+ * `Resource` before the click lands — but the Guarantee this refusal exists for
+ * (`docs/requirements/A resource is not a backlog item.md`) is that no forward WRITE lands
+ * on one, and a trash is not a write: it changes no field and leaves nothing for a stray
+ * value to corrupt silently. It is also the coarser and more visible failure of the two —
+ * the note disappearing is immediately obvious, where `updateAbsenceNote`'s hole would have
+ * been a quiet field overwrite with no undo slot behind it — and its recovery path is
+ * already named above rather than borrowed from the write boundary. So this is a
+ * considered "no", not an oversight: the hole editAbsence closed was a write, and this act
+ * has none.
  */
 export async function deleteAbsenceNote(app: App, file: TFile): Promise<void> {
 	await app.fileManager.trashFile(file);

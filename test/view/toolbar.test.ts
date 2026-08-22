@@ -581,6 +581,25 @@ describe('toolbar count breakdown', () => {
 		expect(count?.getAttribute('aria-live')).toBe('polite');
 	});
 
+	it('counts a marker, and does not count a resource the base returned', () => {
+		// The two sides of one line, asserted together because they are easy to confuse and
+		// this increment moved one of them. A `Milestone` IS counted: never counted is a
+		// rule about a ROLLUP, not an exemption from the reader's own view of what the base
+		// returned (`Milestones as their own type`). A `Resource` is not counted, and not
+		// because the toolbar excludes it — nothing here knows the type. It never became an
+		// item at all (`readItems`), so there is nothing for this or any other projection
+		// to leave out.
+		const vault = new FakeVault();
+		vault.addFile('Onboarding.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('Ship 1.0.md', { frontmatter: { type: 'Milestone' } });
+		vault.addFile('Dana.md', { frontmatter: { type: 'Resource' } });
+		const { containerEl } = makeView(vault);
+		const count = containerEl.querySelector<HTMLElement>('.pbl-count-label');
+
+		expect(count?.textContent).toBe('2 items');
+		expect(count?.dataset.tooltip).toBe('1 Epic · 1 Milestone');
+	});
+
 	/**
 	 * That `aria-live` is exactly why this test exists. A live region announces on
 	 * MUTATION, not on a changed value — and `setText` assigns `textContent`, which
