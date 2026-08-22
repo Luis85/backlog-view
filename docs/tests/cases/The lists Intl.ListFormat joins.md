@@ -36,11 +36,19 @@ the repository is open as a vault with `docs/Product Backlog.base` showing the t
 
 ## How to check
 
-**The visible one.** Point a `.base` at a folder whose notes carry none of the optional
-properties, so several are unnamed, and press the toolbar's ✨. The outcome notice names
+**The visible one.** Add a **fresh** `product-backlog` view to a `.base` — a new view, with
+none of its optional bindings touched — and press the toolbar's ✨. The outcome notice names
 the properties it adopted, and those fragments are joined by `list()`
 (`runInit` in `src/view/interactions/structure.ts`). With three or more adopted it should
-read `…, … , and …` and close as one sentence.
+read `…, …, and …` and close as one sentence.
+
+**Fresh, and that is the whole precondition.** `adoptCandidates` skips a property whose
+view OPTION is already set (`config.get(candidate.option) !== undefined`) or whose suggested
+key another binding has taken — what the *notes* carry has nothing to do with it. So this
+cannot be set up by pointing a configured view at emptier notes: the register's own
+`Backlog` view in `docs/Product Backlog.base` has all but four bindings set, and two of the
+four suggest `status`, which `stateProperty` already owns — leaving `iteration` and `goal`
+and a two-item join that never exercises the path. Found in review on PR #189.
 
 **The one that needs a conflict.** On the dated axis, give one row three or more
 prerequisites and make at least one of them **conflict** (a prerequisite that ends after
