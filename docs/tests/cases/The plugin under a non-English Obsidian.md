@@ -50,6 +50,14 @@ reaches three of them:
 - the **Test catalog**;
 - the **roadmap**, on each configured axis.
 
+**The iteration board needs setting up first, and this repository does not have it.** The
+picker's iteration section is gated on `settings.iterationKey`, `docs/Product Backlog.base`
+names no iteration property, and no note here carries `type: Iteration` — so with nothing
+done the picker offers neither an iteration nor the `New iteration…` action, and a runner
+following the list would inspect five projections while reporting six. Bind the iteration
+property in the view options, then create an iteration and commit one item to it, before
+starting the walk.
+
 Then the view options panel, a row's context menu, and the estimation view.
 
 - **Every catalog SENTENCE should render English.** English is the only catalog that ships,

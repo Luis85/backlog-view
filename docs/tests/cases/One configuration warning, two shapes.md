@@ -50,8 +50,10 @@ yields one problem, at which point `config.fixAll` and `config.fixFirst` say the
 and the case can check nothing.
 
 - **The toolbar's warning chip** — its tooltip and its accessible name. Both problems, joined:
-  `Fix the view options first: the parent and order properties share the key "rank", and the
-  start and target properties share the key "…".`
+  `Fix the view options first: the parent and order properties share the key "<the key you
+  pointed them at>", and the start and target properties share the key "<the other>".` The
+  key is whichever property was picked — `settings.sharedKey` prints the real one — so read
+  the joining and the fragment shape, not a particular word.
 - **The readme command** (`Write backlog readme`) — refuses with the same both-problems
   sentence.
 - **A refused write** — drag a row to a new parent. The notice names **one** collision and
