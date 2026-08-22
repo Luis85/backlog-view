@@ -201,7 +201,7 @@ describe('toolbar backfill', () => {
 		// The failure has already reported itself; a count on top of it would claim
 		// the batch landed.
 		expect(Notice.messages.some((m) => m.includes('updated'))).toBe(false);
-		expect(Notice.messages.some((m) => m.includes('Failed to update'))).toBe(true);
+		expect(Notice.messages.some((m) => m.includes('Failed to apply the change'))).toBe(true);
 	});
 
 	it('does not claim success when the backfill is blocked', async () => {

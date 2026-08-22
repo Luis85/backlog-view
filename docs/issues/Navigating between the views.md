@@ -1,5 +1,5 @@
 ---
-type: Feature
+type: Issue
 parent: "[[A view per capability]]"
 order: 40
 status: Open
@@ -22,7 +22,7 @@ in the vault nothing is offered, so this never advertises a capability nobody ad
 
 **It is Obsidian navigation, not a message between views.** Opening a note and opening a
 base are things Obsidian already does; a *selection* handed from one view to another is
-runtime state passed sideways, which this epic allows for exactly one thing and it is not
+runtime state passed sideways, which [[A view per capability]] allows for exactly one thing and it is not
 this. So the promise stops where the architecture does: the target opens, and what it focuses
 is its own business. If focusing the item there turns out to matter, the honest way is a
 property both views can read — the vault, again — not a channel between them.

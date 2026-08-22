@@ -74,12 +74,12 @@ describe('focus safety when the toolbar narrows or a batch ends', () => {
 		const { containerEl } = makeView(fixture());
 		const bar = toolbarOf(containerEl);
 
-		syncBusy(bar, { done: 1, total: 2 }, false);
+		syncBusy(bar, { done: 1, total: 2 }, false, true);
 		const link = bar.querySelector<HTMLElement>('.pbl-busy .pbl-help-link');
 		link?.focus();
 		expect(document.activeElement).toBe(link);
 
-		syncBusy(bar, null, false);
+		syncBusy(bar, null, false, false);
 
 		expect(document.activeElement).toBe(bar.querySelector('.pbl-help-btn'));
 	});

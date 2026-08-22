@@ -1,6 +1,6 @@
 ---
 type: Epic
-order: 68
+order: 5
 status: Open
 created: 2026-08-16
 source: user request

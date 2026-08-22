@@ -655,7 +655,7 @@ describe('the toolbar fit ladder', () => {
 		const label = () => bar.querySelector<HTMLElement>('.pbl-busy-label');
 		const done = () => bar.querySelector<HTMLElement>('.pbl-busy-done');
 
-		syncBusy(bar, { done: 1, total: 340 }, false);
+		syncBusy(bar, { done: 1, total: 340 }, false, true);
 		expect(label()?.textContent).toBe('Updating');
 		expect(done()?.textContent).toBe('1');
 		expect(done()?.style.getPropertyValue('--pbl-busy-digits')).toBe('3ch');
@@ -663,7 +663,7 @@ describe('the toolbar fit ladder', () => {
 
 		// Three digits where there was one: the number grows into the reservation rather
 		// than past it, and the label is still the same string.
-		syncBusy(bar, { done: 340, total: 340 }, false);
+		syncBusy(bar, { done: 340, total: 340 }, false, true);
 		expect(label()?.textContent).toBe('Updating');
 		expect(done()?.textContent).toBe('340');
 		expect(done()?.style.getPropertyValue('--pbl-busy-digits')).toBe('3ch');
@@ -671,8 +671,8 @@ describe('the toolbar fit ladder', () => {
 		// A single-file write is over before it could be read, so it carries no count at
 		// all — and the label wears the ellipsis instead, which is the only thing left
 		// that distinguishes the two.
-		syncBusy(bar, null, false);
-		syncBusy(bar, { done: 1, total: 1 }, false);
+		syncBusy(bar, null, false, false);
+		syncBusy(bar, { done: 1, total: 1 }, false, true);
 		expect(label()?.textContent).toBe('Updating…');
 		expect(done()?.textContent).toBe('');
 		expect(label()?.hasAttribute('title')).toBe(false);
@@ -716,12 +716,12 @@ describe('the toolbar fit ladder', () => {
 		const bar = toolbarOf(containerEl);
 		const label = () => bar.querySelector<HTMLElement>('.pbl-busy-label');
 
-		syncBusy(bar, { done: 1, total: 340 }, false);
+		syncBusy(bar, { done: 1, total: 340 }, false, true);
 		const node = label()?.firstChild;
 		expect(node).not.toBeUndefined();
 
-		syncBusy(bar, { done: 2, total: 340 }, false);
-		syncBusy(bar, { done: 3, total: 340 }, false);
+		syncBusy(bar, { done: 2, total: 340 }, false, true);
+		syncBusy(bar, { done: 3, total: 340 }, false, true);
 
 		expect(label()?.firstChild).toBe(node);
 	});
@@ -735,7 +735,7 @@ describe('the toolbar fit ladder', () => {
 
 		// Idle → busy: the indicator takes room the row was not measured with.
 		stubWidths(bar, 700, { '0': 780, '1': 690, '2': 600, '3': 560, '4': 540, '5': 480 });
-		syncBusy(bar, { done: 1, total: 340 }, false);
+		syncBusy(bar, { done: 1, total: 340 }, false, true);
 		expect(bar.getAttribute('data-pbl-fit')).toBe('1');
 
 		// An ordinary tick, inside the same digit count. Nothing re-measures even though
@@ -743,25 +743,25 @@ describe('the toolbar fit ladder', () => {
 		// holds every value of that width, and measuring here would be a forced layout
 		// read per file.
 		stubWidths(bar, 700, { '0': 900, '1': 880, '2': 860, '3': 840, '4': 820, '5': 800 });
-		syncBusy(bar, { done: 2, total: 340 }, false);
+		syncBusy(bar, { done: 2, total: 340 }, false, true);
 		expect(bar.getAttribute('data-pbl-fit')).toBe('1');
 
 		// The tick that CROSSES a digit count is the one that can be wider than the
 		// reservation — exactly where a font without tabular figures breaks the promise —
 		// so this one does re-measure, and finds the row it was just told about.
 		stubWidths(bar, 700, { '0': 900, '1': 880, '2': 860, '3': 690, '4': 500, '5': 480, '6': 400 });
-		syncBusy(bar, { done: 10, total: 340 }, false);
+		syncBusy(bar, { done: 10, total: 340 }, false, true);
 		expect(bar.getAttribute('data-pbl-fit')).toBe('3');
 
 		// …and the next tick inside the new digit count is quiet again: the row is told it
 		// shrank back and the ladder does not notice, because nothing asked it to.
 		stubWidths(bar, 700, { '0': 690, '1': 600, '2': 560, '3': 520, '4': 500, '5': 480, '6': 400 });
-		syncBusy(bar, { done: 11, total: 340 }, false);
+		syncBusy(bar, { done: 11, total: 340 }, false, true);
 		expect(bar.getAttribute('data-pbl-fit')).toBe('3');
 
 		// Busy → idle: a transition again, so it re-measures.
 		stubWidths(bar, 700, { '0': 690, '1': 600, '2': 560, '3': 520, '4': 500, '5': 480 });
-		syncBusy(bar, null, false);
+		syncBusy(bar, null, false, false);
 		expect(bar.hasAttribute('data-pbl-fit')).toBe(false);
 	});
 
@@ -791,14 +791,14 @@ describe('the toolbar fit ladder', () => {
 
 		// A batch in flight: the indicator is genuinely visible (`.pbl-busy.pbl-busy-on`,
 		// from the real `busy.css` loaded above), so a keyboard user can actually reach it.
-		syncBusy(bar, { done: 1, total: 2 }, false);
+		syncBusy(bar, { done: 1, total: 2 }, false, true);
 		const link = bar.querySelector<HTMLElement>('.pbl-busy .pbl-help-link');
 		link?.focus();
 		expect(document.activeElement).toBe(link);
 
 		// The batch ends: `.pbl-busy` goes back to `display: none`, the link still inside
 		// it and still focused (see the doc comment above for why jsdom leaves it there).
-		syncBusy(bar, null, false);
+		syncBusy(bar, null, false, false);
 
 		// The ordinary full render any data update causes — captures the focused key
 		// BEFORE emptying the bar (`capturedFocusKey`) and restores it by key afterwards

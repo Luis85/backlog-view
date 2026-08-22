@@ -13,6 +13,37 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ### Added
 
+- **A second Bases view, Estimation** (`product-estimation`, its own icon in the view
+  picker) — score each item against a configurable weighted model: eight value
+  dimensions plus confidence, effort and complexity, each scored against a rubric
+  sentence per point. The consolidated business value writes back to the note with a
+  model stamp and its coverage; everything else derives fresh on every read instead —
+  the confidence-adjusted value, the value-to-effort indicator, and whether a stored
+  total can still be trusted (Current, Needs re-estimation, Another model,
+  Hand-written). A guided empty state binds and backfills the properties it needs in one
+  gated batch, and the table ranks by whichever column you sort — reading only, never
+  the backlog's own order. Rubric sentences ship with the default model and are edited
+  in the `.base` file this round, with no options-menu box for one yet.
+
+- The estimation view has a toolbar — the backfill action, an undo for the last batch, and
+  how many of the results are scored. The backfill is offered wherever the view cannot
+  score yet, the configuration warning included: a dimension added after setup binds no
+  property, which is exactly what replaces the toolbar with a warning, and Obsidian's
+  picker cannot offer a property no note carries.
+
+- **A business value model stamp left without its total is reported.** Deleting the
+  business value property outside the plugin used to leave the stamp behind with nothing
+  on screen to say so and no action that would accept it. The row now reports it — *Inputs
+  gone* where the scores are gone too, so the cleanup removes the stray stamp, and *Needs
+  re-estimation* where the scores remain, so the recalculation writes the total back.
+
+- **A stored business value can be recalculated where it is reported as out of date.** A
+  total reading *Needs re-estimation* or *Another model* now offers one action that rewrites
+  it and its model stamp from the scores already on the note. The only route out before was
+  to change a score to a value you did not mean and change it back. A *Hand-written* total
+  is never touched by it — that number is yours — and an orphaned total still gets the
+  cleanup that removes it instead.
+
 - **The roadmap's shelf switches between cards and a compact list.** A third picker in the
   shelf's own header, beside the sort and the type filter, and a `Shelf layout` submenu in
   any shelf card's menu for a reader with no pointer. List mode draws one row per item —
@@ -40,23 +71,6 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   switching projections. Five labels that called a backlog "unplaced" — `Search
   unplaced`, `Sort unplaced`, `Filter unplaced by type` among them — now say `shelf`
   instead, since the board's band is a backlog too, not only the roadmap's.
-
-### Fixed
-
-- **The shelf's resize grip no longer strands itself mid-band when everything inside is
-  collapsed.** `position: sticky` holds an element inside its scrollport, but it never
-  pushes one down — so a band picked taller than its collapsed cards left the grip
-  sitting under the last group instead of at the foot you sized: measured with every
-  type group folded and a 400px pick, it sat 139px short. A scoped margin now pulls it
-  the rest of the way.
-
-- **The shelf's own title no longer moves when the band is opened or closed.** Opening the
-  shelf adds its search box, and that box was 11px taller than everything else in the
-  header — Obsidian styles `input[type='search']` itself and outranked the height this
-  plugin asked for — while the band's padding halved when it shut. Together those moved the
-  shelf's name 9.5px down the pane at the moment a reader pressed the disclosure beside it.
-  The header now reserves one row height in both states and the band keeps one padding, so
-  the title stays exactly where it is. A shut shelf is five pixels taller than it was.
 
 ### Changed
 
@@ -107,6 +121,11 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   what it joins are whole sentences; the rest of it waits on those sentences being
   translated. The plugin's own name is still its name in every language.
 
+- **The write path's serialization and single undo slot are now plugin-wide** — a write
+  in one Bases view briefly holds back the other's write controls, and undo always takes
+  back the vault's last batch, whichever view wrote it
+  ([ADR 0030](docs/adrs/0030-domain-is-the-kernel.md)).
+
 - **The words the plugin uses for "no placement" come from the message catalog now** —
   `Unplaced`, `Unscheduled`, `No state` and the `Unset` a real state collides with, plus
   the shelf's search labels and the marker row's header. Nothing reads differently in
@@ -128,6 +147,36 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   sanitized into a legal file name and capped at 60 characters; with no goal, or with no
   goal property configured, the name is unchanged.
 
+- The estimation view's table and panel are readable: a proportional strip on value and
+  coverage, a currency chip that spends colour only where something needs doing, columns
+  that line up across every row, and a panel whose total is stated above its inputs and
+  stays on screen while they scroll.
+
+- **A sorted column header now says which direction, not just that it is active.** The
+  active header draws a chevron pointing the way it sorts and states the direction in its
+  own accessible name; `aria-sort` stays as the style hook it always was, but nothing
+  depended on it being read aloud any more.
+
+- **A dimension problem names the dimension the way its own settings panel does.** A
+  refusal used to read `strategic-alignment: the weight must be a positive number`; it now
+  reads `Strategic alignment`, and a dimension group in the options menu is headed by that
+  same resolved label rather than by its id.
+
+- **The weight rule is stated at the box that can break it.** Each dimension's `Weight` box
+  is now labelled `Weight (% of 100)`, the refusal for a total that is off says the delta
+  (`the weights total 87, not 100 (13 short)`), and the lead sentence on the view's own
+  problem block names where to go and fix it.
+
+- **Both undo buttons now read `Undo last change`.** There is one undo slot for the whole
+  vault ([ADR 0030](docs/adrs/0030-domain-is-the-kernel.md)), so `Undo last backlog change`
+  and `Undo last estimation change` each promised a scope the slot does not have — either
+  button always took back the vault's last batch, whichever view wrote it. The behaviour is
+  unchanged; the labels were the wrong half, and the two are now one label.
+
+- **A refused estimation setup names every configuration problem, not just the first.** A
+  model with two faults took one round trip per fault to fix; the refusal now lists all of
+  them, joined the way the rest of the plugin joins a list.
+
 - **A compact shelf row draws aligned columns**, reusing the tree's own stored property
   widths instead of sizing each cell to its own content: titles now land at one x
   position where there were four. The row itself grew a little to do it — 28px where it
@@ -138,6 +187,65 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   beside the badge, instead of drawing as a line of its own beneath the title. A shut
   parent now costs no more height than a leaf — both 28px — and its expanded children
   are indented so a child's badge lines up under the parent's own title.
+
+### Fixed
+
+- **The shelf's own title no longer moves when the band is opened or closed.** Opening the
+  shelf adds its search box, and that box was 11px taller than everything else in the
+  header — Obsidian styles `input[type='search']` itself and outranked the height this
+  plugin asked for — while the band's padding halved when it shut. Together those moved the
+  shelf's name 9.5px down the pane at the moment a reader pressed the disclosure beside it.
+  The header now reserves one row height in both states and the band keeps one padding, so
+  the title stays exactly where it is. A shut shelf is five pixels taller than it was.
+
+- A long currency word pushed every numeric column on its row out of line with the header
+  above it.
+- The estimation panel's total and item name rendered at the wrong size, and the table
+  rendered at the reading size rather than a UI size.
+- **The panel's title now wears the same weight as every other Title-level piece of text.**
+  It rendered semibold against a Title entry that has always declared 500.
+- **The four numeric columns' values now share one baseline.** The value and coverage
+  strips used to make their own cells taller than a plain cell, so their numbers sat about
+  3px above the numbers in Confidence and Effort — in a table whose whole job is comparing
+  numbers across a row.
+
+- **The estimation panel's clear control no longer draws over the last point of its row.**
+  The gutter held open for it at the end of the row was narrower than the control itself,
+  so it reached back over the last button and pointing at a row took that point out of
+  reach.
+
+- **A business value typed in by hand is no longer offered for deletion.** A total with no
+  model stamp and no scores behind it reported *Inputs gone*, and the panel offered the
+  cleanup that removes it. A total with no stamp now reads *Hand-written* whatever its
+  scores say, and only a **stamped** total whose scores are gone can be cleaned up.
+
+- **The guided estimation setup is all-or-nothing.** With another write in flight —
+  including one from a different Bases view, since the write lock is vault-wide — it could
+  bind every suggested property to the view and then have the backfill refused, leaving a
+  configured model over notes carrying none of its keys. It now says a change is being
+  saved and changes nothing at all, and the button on the empty state goes quiet while a
+  write is running, like the toolbar's own.
+
+- **A sorted column header keeps keyboard focus.** Activating a header rebuilds the table,
+  which destroyed the button that was just pressed and dropped focus to the page, so a
+  second `Enter` could not flip the direction back.
+
+- **Stepping through the estimation table with the arrow keys no longer parks the selected
+  row behind the column labels.** The header is sticky, and a step upwards scrolled the row
+  flush to the top of the list — which is underneath it.
+
+- **The estimation table's sort buttons are no longer pruned from the accessibility
+  tree.** The list role sat on the box holding both the header and the rows, so the six
+  sort buttons were non-option children of a list and dropped, `aria-sort` with them. The
+  role now covers the rows alone, and with no results the element is a plain region
+  instead, so the empty-table message is not dropped either.
+
+- **The shelf's resize grip no longer strands itself mid-band when everything inside is
+  collapsed.** `position: sticky` holds an element inside its scrollport, but it never
+  pushes one down — so a band picked taller than its collapsed cards left the grip
+  sitting under the last group instead of at the foot you sized: measured with every
+  type group folded and a 400px pick, it sat 139px short. A scoped margin now pulls it
+  the rest of the way.
 
 ## [0.9.1] - 2026-08-17
 

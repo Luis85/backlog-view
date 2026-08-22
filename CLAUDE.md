@@ -109,13 +109,13 @@ language, so nothing re-reads it. What must never enter the catalog is anything 
 writes, matches or persists — type names, state values, option keys, tags, file names. The
 test when it is not obvious: **ask what breaks if two people with different Obsidian
 languages open the same vault.** "One sees different words" is text; "one writes notes the
-other's view cannot read" is data. 378 keys are in it (counted three ways on 2026-08-21 —
-`Object.keys` at runtime, an AST walk over the `as const` object, and a tab-aware grep).
-`ui/`, `commands/`, `view/interactions/`, the whole of `view/render/`, `view/writeGate.ts`,
-`view/cardMoves.ts` and `main.ts` are swept, which leaves **`view/manual/` and `domain/`**
-and nothing else. Neither is a leftover: the manual is 334 literals of authored long-form
-PROSE, and whether several hundred multi-sentence paragraphs belong in a message catalog at
-all is an open question rather than work not yet done; `domain/viewOptions.ts` is
+other's view cannot read" is data. 433 keys are in it (counted 2026-08-21 — a tab-aware
+grep and `Object.keys` at runtime, which agree). `ui/`, `commands/`, `view/interactions/`,
+`view/estimation/`, the whole of `view/render/`, `view/writeGate.ts`, `view/cardMoves.ts`
+and `main.ts` are swept, which leaves **`view/manual/` and `domain/`** and nothing else.
+Neither is a leftover: the manual is 334 literals of authored long-form PROSE, and whether
+several hundred multi-sentence paragraphs belong in a message catalog at all is an open
+question rather than work not yet done; `domain/viewOptions.ts` is
 `docs/requirements/View options and config warnings.md`, and `domain/backlogReadme.ts` is
 written INTO the vault, so it is a data question before a text one. The sweep across those
 call sites is `docs/requirements/Every surface translated.md`, and an English literal beside
@@ -128,10 +128,16 @@ a capitalised sentence at seven setter names, at `new Notice` and at a BARE
 alone read as nothing. `UI_TEXT_PROPERTY` is the second ban, for the eleven option-bag
 properties (`text`/`label`/`title`/`heading`/`description`/`placeholder`/`cta`/`ctaLabel`/
 `fieldName`/`name`, and `'aria-label'`) a module that spells no setter reaches the DOM
-through. Both read through a `ConditionalExpression` as of 2026-08-21, and `TEXT_TERNARY`
-beside them refuses a sentence picked between two literals — including the MIXED shape, one
-literal and one template, which sat in the blind spot of all three at once and shipped six
-untranslated sentences in a directory the register called swept.
+through — `name` is the widest of them and the only one routinely DATA elsewhere (a
+resource, a lane, a file), so it costs exactly one exemption across the whole swept tree
+(`registerBacklogView.ts`'s own call, disabled at the line) rather than joining the ban
+everywhere: a second `registerBasesView` call is not a second exemption, because only one
+view is the plugin's own identity — `view/estimation/register.ts`'s `name` is ordinary UI
+text and goes through the catalog like any other. Both bans read through a
+`ConditionalExpression` as of 2026-08-21, and `TEXT_TERNARY` beside them refuses a sentence
+picked between two literals — including the MIXED shape, one literal and one template,
+which sat in the blind spot of all three at once and shipped six untranslated sentences in
+a directory the register called swept.
 
 Two shapes are outside every rule and always will be: **a template whose first quasi is
 empty** (`` `${done} of ${total} items done` `` — no capital at the position the ban reads,
@@ -159,7 +165,11 @@ them.
 
 **`view/`** is the DOM and every input that reaches it, so it is the layer the jsdom
 harness exists for. `commands/` is the palette's way in, and `main.ts` is the only place
-anything is registered with Obsidian — the view itself and the commands both.
+anything is registered with Obsidian — the view itself and the commands both. Each view
+owns its own registration file — `registerBacklogView.ts`, and now `view/estimation/`'s own
+for the second, Estimation (`product-estimation`) — so a further capability adds a file
+rather than a branch in `main.ts`, which only composes them behind one shared `WriteLock`
+(ADR 0030).
 
 There is deliberately no list of the modules here. `src/` is the list, one file per
 concern, and it cannot go stale; what a module is *for* is stated where its behaviour is
@@ -168,8 +178,10 @@ sections named under **Definition of done** above. Read from the behaviour you a
 changing rather than from an index of the tree.
 
 Rules: never write frontmatter outside `storage/frontmatter.ts` (`applyWrites`, which
-EDITS a note) and `storage/createNote.ts` (`createBacklogItem`, which MAKES one), and
-every write path — including creation — goes through the `configProblems` gate. That rule is also enforced mechanically: `no-restricted-syntax`
+EDITS a note), `storage/createNote.ts` (`createBacklogItem`, which MAKES one) and
+`storage/propertyWrite.ts` (`applyPropertyWrites`, the estimation view's own plain
+key/value batches — a score, its recomputed total and its stamp), and every write path —
+including creation — goes through the `configProblems` gate. That rule is also enforced mechanically: `no-restricted-syntax`
 bans `processFrontMatter`, `vault.create` and `load/saveLocalStorage` everywhere outside
 `storage/`, so a new write path cannot appear by accident. Modules reach view state only
 through `BacklogViewHost`; keep `host.ts` free of runtime code so imports stay cycle-free.
@@ -275,9 +287,14 @@ results.
 ### The write path
 
 Writes go through `applySafely` (forward batches) or `undoLast` (replaying the last
-batch's inverses), both over one gate (`runExclusively`): serialized (`applying` flag)
-and blocked when `configProblems` is non-empty; forward batches are additionally
-refused whole if any write targets an `outsideFilter` item. All three live in
+batch's inverses), both over one gate (`runExclusively`): serialized (`applying` flag,
+which is the plugin-wide `WriteLock`'s and not one view's). **Two of that gate's three
+refusals are the forward path's alone** — blocked when `configProblems` is non-empty, and
+refused whole if any write targets an `outsideFilter` item — and a replay skips both for
+one reason read twice: its authorization came at capture time, and it restores RAW
+captured keys rather than planning against these settings, so a collision that would
+corrupt a note through the planner is unreachable from one. Serialization is the refusal
+all three share. All three live in
 `view/writeGate.ts` — the view owns a `WriteGate`, delegates the host's three write
 methods to it, and publishes its progress; the gate itself touches no DOM. Everything applied was
 planned by `domain/writePlan.ts`, which touches nothing, and applied by

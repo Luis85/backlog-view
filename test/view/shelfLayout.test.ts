@@ -7,6 +7,8 @@ import { FakeVault } from '../helpers/vault';
 import { cardByTitle } from '../helpers/board';
 import { Harness, makeView, useViewHarness } from '../helpers/view';
 import { bodyOf } from '../helpers/cssVars';
+import { shelfLayoutIcon } from '../../src/view/interactions/shelfMenu';
+import { ShelfLayout } from '../../src/domain/shelf';
 
 useViewHarness();
 
@@ -322,6 +324,15 @@ describe('the shelf’s card and list layouts', () => {
 		// Working position on the device, never a `.base` setting — ADR 0011's rule, which
 		// every shelf pick but the search already follows.
 		expect(config.setCalls).toEqual([]);
+	});
+
+	it('shelfLayoutIcon falls back to the first entry for a value outside the vocabulary', () => {
+		// Unreachable from the header button, whose own `host.shelfLayout` is always one of
+		// SHELF_LAYOUTS — reachable only from a stored value an older or hand-edited session
+		// left behind. The fallback keeps the picker's icon a real one rather than blank.
+		expect(shelfLayoutIcon('cards')).toBe('layout-grid');
+		expect(shelfLayoutIcon('list')).toBe('list');
+		expect(shelfLayoutIcon('not-a-real-layout' as ShelfLayout)).toBe(shelfLayoutIcon('cards'));
 	});
 
 	/**
