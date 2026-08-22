@@ -627,6 +627,20 @@ describe('the release index', () => {
 		expect(unbound.target).toEqual({ value: null, invalid: false, unconfigured: true });
 	});
 
+	it('calls an empty or malformed label unreadable, never absent', () => {
+		const vault = new FakeVault();
+		// 3b names the empty version explicitly: somebody wrote something there.
+		vault.addFile('Empty.md', { frontmatter: { type: 'Release', version: '', status: { a: 1 } } });
+		vault.addFile('Missing.md', { frontmatter: { type: 'Release' } });
+		const rows = indexOf(vault).rows;
+		const empty = rows.find((r) => r.name === 'Empty');
+		expect(empty?.version).toEqual({ value: null, invalid: true, unconfigured: false });
+		expect(empty?.status).toEqual({ value: null, invalid: true, unconfigured: false });
+		// A key the note simply does not carry stays absent — the third answer.
+		const missing = rows.find((r) => r.name === 'Missing');
+		expect(missing?.version).toEqual({ value: null, invalid: false, unconfigured: false });
+	});
+
 	it('counts members, and a release nothing points at is still a row', () => {
 		const vault = new FakeVault();
 		vault.addFile('R.md', { frontmatter: { type: 'Release' } });
@@ -710,6 +724,46 @@ function figure<T>(reading: { value: T | null; invalid: boolean }): ReleaseFigur
 	return { value: reading.value, invalid: reading.invalid, unconfigured: false };
 }
 
+/**
+ * A label read with [[Releases as their own type]] 3b's own rule: a configured key holding
+ * SOMETHING that is not a usable label — an object, a list of them, **or an empty string,
+ * which 3b names explicitly** — is unreadable rather than absent, "because somebody wrote
+ * something there".
+ *
+ * `readString` alone cannot answer this: it returns null for an object and for `''` alike,
+ * so hard-coding `invalid: false` beside it reports malformed data as an unset key. Not
+ * `readPlacement` either, which is the closest existing reader and deliberately calls an
+ * empty value ABSENCE — right for a roadmap horizon, wrong for a version 3b says is a
+ * refusal.
+ */
+function readLabel(raw: unknown): { value: string | null; invalid: boolean } {
+	if (raw === null || raw === undefined) return { value: null, invalid: false };
+	const text = readString(raw);
+	if (text !== null && text.trim() !== '') return { value: text, invalid: false };
+	return { value: null, invalid: true };
+}
+
+/**
+ * Every row a membership property may legally be READ from: the whole tree, minus the
+ * context rows.
+ *
+ * NOT `model.results`, and this is the trap. `results` is the PLAN projection —
+ * `projectionForest(focusRoots, inPlan, …)` — so `inPlan` has already dropped every
+ * iteration and every test-catalog row before this module sees them. Scanning it would
+ * make two of the four non-plan cases unreportable: an `Iteration` or a `Test case`
+ * carrying the property by hand would be invisible rather than refused, which is the
+ * silent drop [[Setting an item's release]] 1f exists to prevent. `byPath` is the whole
+ * set `assignAll` built, so the eligibility guard in `membershipTarget` is what refuses a
+ * row — never the population it was never shown.
+ *
+ * `outsideFilter` rows ARE excluded, and that is the context-row rule rather than an
+ * exception to this one: a row the Base excluded is never a source of anything derived
+ * from the results.
+ */
+function scannableRows(model: BacklogModel): BacklogItem[] {
+	return [...model.byPath.values()].filter((item) => !item.outsideFilter);
+}
+
 /** The rank the vault MAPPED, never a literal `order`. A release with no readable rank
  *  sorts after every release that has one, so the path tie-break decides between them. */
 function rank(app: App, item: BacklogItem, orderKey: string): number {
@@ -733,7 +787,7 @@ export function releaseIndex(app: App, model: BacklogModel, settings: ReleaseSet
 	for (const release of model.releases) byPath.set(release.file.path, 0);
 	const unresolved: BacklogItem[] = [];
 
-	for (const item of model.results) {
+	for (const item of scannableRows(model)) {
 		const named = membershipTarget(app, item, model, settings);
 		if (named === null) continue;
 		if (named === UNRESOLVED) {
@@ -749,13 +803,9 @@ export function releaseIndex(app: App, model: BacklogModel, settings: ReleaseSet
 			item,
 			path: item.file.path,
 			name: item.file.basename,
-			version: settings.versionKey
-				? figure({ value: readString(ownValue(fm, settings.versionKey)), invalid: false })
-				: UNCONFIGURED,
+			version: settings.versionKey ? figure(readLabel(ownValue(fm, settings.versionKey))) : UNCONFIGURED,
 			target: settings.targetDateKey ? figure(readDate(ownValue(fm, settings.targetDateKey))) : UNCONFIGURED,
-			status: settings.statusKey
-				? figure({ value: readString(ownValue(fm, settings.statusKey)), invalid: false })
-				: UNCONFIGURED,
+			status: settings.statusKey ? figure(readLabel(ownValue(fm, settings.statusKey))) : UNCONFIGURED,
 			members: byPath.get(item.file.path) ?? 0,
 		};
 	});
@@ -858,7 +908,9 @@ Add to `test/domain/releases.test.ts`:
 	});
 ```
 
-Comment out the `if (!inPlan(item) || …) return UNRESOLVED;` line, run the test, **watch it fail**, then restore the line. An invariant asserted in a comment gets a test that fails without it, and the test is watched failing — this repository has been bitten by confident comments over checks that asserted less than they read as.
+Then comment out the `if (!inPlan(item) || …) return UNRESOLVED;` line, run the test, **watch it fail**, and restore it.
+
+**This test is also what proves `scannableRows` is not `model.results`.** `results` is the plan projection, so `inPlan` has already removed the `Iteration` and the `Test case` before this module runs — scan it and the `I` and `TC` entries can never appear, however correct the guard is. Swap `scannableRows(model)` for `model.results` and watch those two vanish from the expectation: the guard refuses a row, and the population decides whether the row was ever offered to it. An invariant asserted in a comment gets a test that fails without it, and the test is watched failing — this repository has been bitten by confident comments over checks that asserted less than they read as.
 
 Run: `npx vitest run test/domain/releases.test.ts`
 Expected: PASS with the line restored.
@@ -1002,14 +1054,14 @@ export function releaseScope(app: App, model: BacklogModel, settings: ReleaseSet
 	if (release === null) return { release: null, rows: [], members: 0 };
 
 	const members = new Set<string>();
-	for (const item of model.results) {
+	for (const item of scannableRows(model)) {
 		if (membershipTarget(app, item, model, settings) === path) members.add(item.file.path);
 	}
 
 	// Every ancestor of a member, so a member keeps its place. Collected before the walk
 	// because an ancestor may itself be an ancestor of several members.
 	const keep = new Set(members);
-	for (const item of model.results) {
+	for (const item of scannableRows(model)) {
 		if (!members.has(item.file.path)) continue;
 		for (let up = item.parent; up !== null; up = up.parent) keep.add(up.file.path);
 	}
@@ -1165,6 +1217,17 @@ describe('the release view', () => {
 		view.pick('R.md');
 		expect(containerEl.querySelector('.pbl-rel-header')).not.toBeNull();
 		expect(containerEl.querySelector('.pbl-rel-grid')).toBeNull();
+	});
+
+	it('keeps a session-only pick across a data update in an embedded base', () => {
+		const vault = releaseVault();
+		// No `base`, so `mountLeaf` builds no leaf and `resolveViewIdentity` answers null —
+		// the embedded case, where the pick is session-only rather than absent.
+		const { view, containerEl } = makeReleaseView(vault, RELEASE_CONFIG);
+		view.pick('0.8.md');
+		view.onDataUpdated();
+		expect(view.pickedPath).toBe('0.8.md');
+		expect(containerEl.querySelector('.pbl-rel-header')).not.toBeNull();
 	});
 
 	it('returns to the index when the remembered release is gone', () => {
@@ -1328,9 +1391,20 @@ export class ReleaseView extends BasesView {
 		this.render();
 	}
 
+	/**
+	 * Restore the pick from the store — and LEAVE THE FIELD ALONE when there is no identity
+	 * to restore from.
+	 *
+	 * `resolveViewIdentity` returns null for an embedded Base on purpose, which means the
+	 * pick is session-only there rather than absent. Assigning `null` in that branch would
+	 * reset it on every `onDataUpdated`, so any Bases refresh would throw a reader who had
+	 * opened a release straight back to the index. The estimation view's own session-only
+	 * sort pick keeps the field for exactly this reason.
+	 */
 	private restorePick(): void {
 		const id = resolveViewIdentity(this.app, this.viewEl, this.config.name ?? '');
-		this.pickedPath = id ? (loadViewState(this.app, id).prefs.release ?? null) : null;
+		if (!id) return;
+		this.pickedPath = loadViewState(this.app, id).prefs.release ?? null;
 	}
 
 	render(): void {
