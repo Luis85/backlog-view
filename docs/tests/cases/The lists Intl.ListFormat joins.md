@@ -42,6 +42,14 @@ the properties it adopted, and those fragments are joined by `list()`
 (`runInit` in `src/view/interactions/structure.ts`). With three or more adopted it should
 read `…, …, and …` and close as one sentence.
 
+**Then take the backfill back and delete the fresh view.** ✨ is two halves — it binds the
+properties AND writes empty keys across every note the base returns — and the second half is
+what the appearance suite needs later: item 11 of `Smoke test the visual changes` asks for a
+✨ over a few hundred notes so the busy counter reaches three digits, and a backfill already
+run leaves it nothing to do and no counter to watch. Press the toolbar's undo to reverse the
+batch, then delete the view you made — deleting it is what takes the adopted bindings with
+it, since undo reverses the writes and not the options.
+
 **Fresh, and that is the whole precondition.** `adoptCandidates` skips a property whose
 view OPTION is already set (`config.get(candidate.option) !== undefined`) or whose suggested
 key another binding has taken — what the *notes* carry has nothing to do with it. So this
@@ -70,4 +78,6 @@ On each: check the joining, the spacing, and that none runs a full stop into a c
 ## Acceptance criteria
 
 - All three joins read, each by the route that actually reaches it.
+- The backfill undone and the fresh view deleted, so the appearance suite still has a
+  three-digit ✨ to watch.
 - Nothing yet checked.

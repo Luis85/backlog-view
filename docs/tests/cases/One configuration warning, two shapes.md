@@ -39,13 +39,19 @@ the repository is open as a vault with `docs/Product Backlog.base` showing the t
 
 ## How to check
 
-In the view options, point two options at one property — parent and order at the same key is
-the quickest — and then a second pair at another key, so there are **two** collisions to
-tell the two shapes apart.
+In the view options, make **two** collisions, so the two shapes can be told apart: point
+**parent and order** at one key, and **start and target** at another.
+
+Those two pairs are named rather than left to choice, because not every pair collides. The
+three workflow states — state, Deliverable state and test state — are exempt by design
+(`WORKFLOW_STATE_ROLES` in `src/domain/settingsConsistency.ts`): they may share one key on
+purpose, and the shipped default has them doing it. Picking one of those as the second pair
+yields one problem, at which point `config.fixAll` and `config.fixFirst` say the same thing
+and the case can check nothing.
 
 - **The toolbar's warning chip** — its tooltip and its accessible name. Both problems, joined:
-  `Fix the view options first: the parent and order properties share the key "rank", and
-  the …`.
+  `Fix the view options first: the parent and order properties share the key "rank", and the
+  start and target properties share the key "…".`
 - **The readme command** (`Write backlog readme`) — refuses with the same both-problems
   sentence.
 - **A refused write** — drag a row to a new parent. The notice names **one** collision and
