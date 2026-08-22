@@ -140,6 +140,32 @@ describe('children on the card', () => {
 		expect(disclosure(cardByTitle(showing.containerEl, 'Epic B'))?.dataset.tooltip).not.toContain('hidden');
 	});
 
+	/**
+	 * The walk that traverses through a row this projection does not draw STOPS where
+	 * `projectionForest` has already re-rooted the subtree. `Epic C` draws no `Test case`,
+	 * and the `PBI` hand-dropped below that one is a plan row whose parent the plan does
+	 * not draw — so the forest promotes it to a root of its own and it gets a card.
+	 *
+	 * Carrying it up to `Epic C`'s face as well would contradict the forest, which puts
+	 * the two side by side as roots rather than one under the other. This is the case that
+	 * keeps the board and the Deliverables board still under a walk written for the
+	 * roadmap's release, and there is nothing else in `src/` that stops it.
+	 *
+	 * Asserted from BOTH sides in one fixture: no disclosure on the Epic, and the promoted
+	 * row on screen in its own right — a walk that dropped the subtree outright would pass
+	 * the first assertion alone.
+	 */
+	it('stops at a row the forest has already promoted to a root of its own', () => {
+		const vault = new FakeVault();
+		vault.addFile('Epic C.md', { frontmatter: { type: 'Epic', order: 10, status: 'Active' } });
+		vault.addFile('Case C1.md', { frontmatter: { type: 'Test case', order: 10 }, parentLink: 'Epic C' });
+		vault.addFile('Dropped.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: 'Case C1' });
+		const { containerEl } = makeBoard(vault);
+
+		expect(disclosure(cardByTitle(containerEl, 'Epic C'))).toBeNull();
+		expect(cardByTitle(containerEl, 'Dropped')).not.toBeNull();
+	});
+
 	// A count taken by subtracting a filtered list from a RAW one is the shape this branch
 	// has now got wrong seven times: `listedChildren` drops a catalog child on membership,
 	// and the subtraction then reports it as a plan row the view is choosing to hide. The

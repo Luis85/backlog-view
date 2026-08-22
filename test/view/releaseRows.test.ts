@@ -3,7 +3,8 @@ import { describe, expect, it } from 'vitest';
 import { FakeVault } from '../helpers/vault';
 import { makeView, rowByTitle, titlesOf, useViewHarness } from '../helpers/view';
 import { makeRoadmap, shelfTitles } from '../helpers/roadmap';
-import { cardByTitle } from '../helpers/board';
+import { BOARD_WORKFLOW, cardByTitle, cardTitles, makeBoard } from '../helpers/board';
+import { Menu } from '../helpers/obsidian-mock';
 
 useViewHarness();
 
@@ -141,5 +142,135 @@ describe('a release row in the tree', () => {
 		// The column itself is still there, so this is a chip the row refused and not a
 		// column the view dropped.
 		expect(rowByTitle(containerEl, 'R').querySelectorAll('.pbl-prop').length).toBe(1);
+	});
+});
+
+/**
+ * A release BELOW a drawn row, which is a different case from a release the focus roots
+ * at. Nothing promotes here: `inPlan` holds an included release, so `projectionForest`
+ * draws it and only the roadmap's own `onThisRoadmap` refuses it — which used to strand
+ * everything beneath it on a focused roadmap, off every card while its dates went on
+ * reaching the parent's bar.
+ */
+describe('a release the roadmap traverses through', () => {
+	/** The hand-written marker edge the plugin supports: `Feature -> Release -> PBI`. */
+	function nestedUnderRelease(): FakeVault {
+		const vault = new FakeVault();
+		vault.addFile('Ship it.md', { frontmatter: { type: 'Feature', order: 10, horizon: 'Now' } });
+		vault.addFile('1.0.md', { frontmatter: { type: 'Release', order: 10 }, parentLink: 'Ship it' });
+		vault.addFile('Work.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: '1.0' });
+		return vault;
+	}
+
+	/** The disclosure's toggle, or null when the card drew none. */
+	function disclosure(card: HTMLElement): HTMLButtonElement | null {
+		return card.querySelector<HTMLButtonElement>('.pbl-card-kids-toggle');
+	}
+
+	function kidTitles(card: HTMLElement): string[] {
+		return Array.from(card.querySelectorAll<HTMLElement>('.pbl-card-kid-title')).map((el) => el.textContent ?? '');
+	}
+
+	/**
+	 * The defect itself. Under a focus the cards are the focus level's alone, so the card's
+	 * own list is the only place the work below it appears at all.
+	 *
+	 * The LABEL is the reading and not the count: a mixed set has no common name and
+	 * degrades to a bare `2 children`, so `1 pbi` says both that one row is listed and that
+	 * the release is not the row listed. And `cardTitles` is asked for the WHOLE frame, not
+	 * for the release's absence: it proves in one assertion that no release was drawn and
+	 * that the PBI has no card of its own to have been reached through.
+	 */
+	it('lists the work below it on the card, and draws the release nowhere', () => {
+		const { containerEl } = makeRoadmap(nestedUnderRelease(), {}, { focus: 'Feature' });
+
+		expect(cardTitles(containerEl)).toEqual(['Ship it']);
+		const card = cardByTitle(containerEl, 'Ship it');
+		expect(disclosure(card)?.textContent).toContain('1 pbi');
+		disclosure(card)?.click();
+		expect(kidTitles(card)).toEqual(['Work']);
+	});
+
+	/**
+	 * The same answer down the keyboard's own path. The face is a list of `tabindex="-1"`
+	 * buttons, so `Open child "…"` in the card menu is the only route to that PBI without a
+	 * pointer — and it reads `menuChildren`, which is a second caller of the same walk.
+	 *
+	 * The DATED axis rather than the horizon one this suite otherwise takes: the horizon
+	 * board names no children in its menus at all (`menusListChildren`), so a horizon-axis
+	 * fixture would assert nothing about this walk. `Ship it` carries no dates, so it lands
+	 * on the shelf as an ordinary card.
+	 */
+	it('names the same work in the card menu, which is the keyboard path', () => {
+		const axis = { startProperty: 'note.start', targetProperty: 'note.due', horizonProperty: '' };
+		const { containerEl } = makeRoadmap(nestedUnderRelease(), axis, { focus: 'Feature' });
+		cardByTitle(containerEl, 'Ship it').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+
+		const titles = Menu.lastShown?.items.map((i) => i.titleText) ?? [];
+		expect(titles.filter((one) => one.startsWith('Open child'))).toEqual(['Open child "Work"']);
+	});
+
+	/**
+	 * The walk is recursive, so two releases in a row cost nothing. Pinned rather than
+	 * assumed: a single-level descent passes the test above and fails here, and a reader
+	 * cannot tell the two implementations apart from that test alone.
+	 */
+	it('carries on through a second release', () => {
+		const vault = nestedUnderRelease();
+		vault.addFile('1.1.md', { frontmatter: { type: 'Release', order: 20 }, parentLink: '1.0' });
+		vault.addFile('More work.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: '1.1' });
+		const { containerEl } = makeRoadmap(vault, {}, { focus: 'Feature' });
+
+		const card = cardByTitle(containerEl, 'Ship it');
+		expect(disclosure(card)?.textContent).toContain('2 pbis');
+		disclosure(card)?.click();
+		expect(kidTitles(card)).toEqual(['Work', 'More work']);
+	});
+
+	/**
+	 * **The board does not move.** It draws a release — `inPlan` holds one the Base
+	 * returned — so on that projection the release IS the listed child and the PBI is not,
+	 * exactly as before. The fixture has a grandchild that a widened walk would carry up,
+	 * which is what makes this an assertion rather than a list that could not change.
+	 */
+	it('leaves the board where it was: the release is the listed child there', () => {
+		const { containerEl } = makeBoard(nestedUnderRelease());
+
+		const card = cardByTitle(containerEl, 'Ship it');
+		expect(disclosure(card)?.textContent).toContain('1 release');
+		disclosure(card)?.click();
+		expect(kidTitles(card)).toEqual(['1.0']);
+	});
+
+	/**
+	 * **The completed toggle does not move.** `rowHidden` is true for three different
+	 * reasons and this walk asks `isRowUndrawn`, which is the FIRST of them alone — a walk
+	 * that descended through any hidden child would treat `Finished` as a row this
+	 * projection does not draw.
+	 *
+	 * The list is the shape of the claim and the TOOLTIP is what can move, which is why
+	 * both are asserted here. A hidden done subtree is done all the way down, so descending
+	 * into one reaches nothing to draw and the face looks identical — but the DENOMINATOR
+	 * comes off the same walk, so `Finished` stops being counted as a row the view is
+	 * choosing to hide and the card silently stops saying so. Watched failing against
+	 * exactly that mutation.
+	 *
+	 * `Open work` is in the same fixture on purpose: a fix that emptied the list entirely
+	 * would pass an assertion that only said `Task` was absent.
+	 */
+	it('does not descend through a child the completed toggle hid', () => {
+		const vault = new FakeVault();
+		vault.addFile('Ship it.md', { frontmatter: { type: 'Feature', order: 10, horizon: 'Now', status: 'New' } });
+		vault.addFile('Finished.md', { frontmatter: { type: 'PBI', order: 10, status: 'Done' }, parentLink: 'Ship it' });
+		vault.addFile('Task.md', { frontmatter: { type: 'Task', order: 10, status: 'Done' }, parentLink: 'Finished' });
+		vault.addFile('Open work.md', { frontmatter: { type: 'PBI', order: 20, status: 'New' }, parentLink: 'Ship it' });
+		const cfg = { ...BOARD_WORKFLOW, showCompleted: false };
+		const { containerEl } = makeRoadmap(vault, cfg, { focus: 'Feature' });
+
+		const card = cardByTitle(containerEl, 'Ship it');
+		expect(disclosure(card)?.textContent).toContain('1 pbi');
+		expect(disclosure(card)?.dataset.tooltip).toContain('1 more is hidden by the current view');
+		disclosure(card)?.click();
+		expect(kidTitles(card)).toEqual(['Open work']);
 	});
 });

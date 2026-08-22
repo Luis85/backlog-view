@@ -29,7 +29,7 @@ import { forgetBacklogView, rememberBacklogView } from './registry';
 import { honouredFocusLevel } from './projection';
 import { renderPass } from './renderPass';
 import { ResizePolicy } from './resize';
-import { rowHidden, visibilityRule } from './rowVisibility';
+import { rowHidden, VisibilityRule, visibilityRule } from './rowVisibility';
 import { SelectionController } from './selection';
 import { ViewStateController } from './viewStateController';
 import { ViewStateSurface } from './viewStateSurface';
@@ -309,14 +309,30 @@ export class ProductBacklogView extends ViewStateSurface implements BacklogViewH
 		return adopting;
 	}
 
+	isRowHidden(item: BacklogItem): boolean {
+		return rowHidden(item, this.visibility());
+	}
+
 	/**
+	 * Membership alone, off the same rule — never a second reading of the projection
+	 * beside it, or the two could disagree about what this screen draws.
+	 */
+	isRowUndrawn(item: BacklogItem): boolean {
+		return !this.visibility().inProjection(item);
+	}
+
+	/**
+	 * The rule both readings are taken from, assembled per call as `isRowHidden` always
+	 * did. One place, so a caller cannot ask membership against one projection reading
+	 * and the whole question against another.
+	 *
 	 * The axis is part of what "this projection draws" MEANS on the roadmap — main's
 	 * iteration-admission feature (2026-08-17) is what threads it through, since an
 	 * `Iteration` is a row of the grid axes and of nothing else.
 	 */
-	isRowHidden(item: BacklogItem): boolean {
+	private visibility(): VisibilityRule {
 		const axis = this.projection === 'roadmap' ? activeAxis(this.settings, this.axisPick) : null;
-		return rowHidden(item, visibilityRule(this.settings, this.projection, { scope: this.effectiveScope, axis }));
+		return visibilityRule(this.settings, this.projection, { scope: this.effectiveScope, axis });
 	}
 
 	/**
