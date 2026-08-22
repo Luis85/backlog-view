@@ -13,7 +13,9 @@ import { displayType } from '../domain/itemTypes';
  * is the whole of the descent: a `Release` hand-hung between a `Feature` and its `PBI`s
  * is drawn by no axis of the roadmap (`onThisRoadmap`), so on a focused roadmap the PBIs
  * below it were on no card at all — while their dates went on reaching the Feature's own
- * bar, which walks the MODEL. A bar drawn from work the card said was not there.
+ * bar, which walks the MODEL. A bar drawn from work the card said was not there. The
+ * descent terminates because `children` is acyclic — `buildModel` runs `breakCycles`
+ * before `assignAll`, and it is the only producer of a model.
  *
  * The question is `isRowUndrawn` and NEVER `isRowHidden`, and the difference is the trap:
  * `rowHidden` is true for three different reasons and a caller holding the boolean cannot
@@ -42,9 +44,13 @@ import { displayType } from '../domain/itemTypes';
 export function drawnChildren(host: BacklogViewHost, item: BacklogItem, descended = false): BacklogItem[] {
 	return item.children.flatMap((child) => {
 		if (host.isRowUndrawn(child)) return drawnChildren(host, child, true);
-		// Only on the way UP. A card's own direct child can be a focus root — an `Epic`
-		// under an `Epic` with the focus on `Epic` — and it has been listed on that card's
-		// face since the disclosure shipped.
+		// Only on the way UP, where `projectionForest` did the re-rooting this stop is
+		// deferring to. A projection whose walk is NOT the focused forest meets a focus
+		// root as a card's own direct child: the iteration board reads `realRoots` and a
+		// focus set on another projection arrives unrevalidated, so with the focus on
+		// `PBI` an in-sprint `PBI` under an in-sprint `Feature` carries the stamp at
+		// depth 0 — promoted by nothing, and its carrier's face is the only place it is
+		// listed. Checked by `test/view/cardChildren.test.ts`, both halves.
 		return descended && child.focusRoot ? [] : [child];
 	});
 }

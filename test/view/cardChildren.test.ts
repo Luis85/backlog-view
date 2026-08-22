@@ -151,9 +151,11 @@ describe('children on the card', () => {
 	 * keeps the board and the Deliverables board still under a walk written for the
 	 * roadmap's release, and there is nothing else in `src/` that stops it.
 	 *
-	 * Asserted from BOTH sides in one fixture: no disclosure on the Epic, and the promoted
-	 * row on screen in its own right — a walk that dropped the subtree outright would pass
-	 * the first assertion alone.
+	 * The second assertion is a FIXTURE guard rather than a second side of the claim: that
+	 * `Dropped` has a card of its own is `projectionForest`'s doing, and no mutation of
+	 * `drawnChildren` can move it. It says the fixture still poses the question — a
+	 * promoted row exists to be carried up — and the first assertion is what says the walk
+	 * refuses to carry it.
 	 */
 	it('stops at a row the forest has already promoted to a root of its own', () => {
 		const vault = new FakeVault();
@@ -164,6 +166,52 @@ describe('children on the card', () => {
 
 		expect(disclosure(cardByTitle(containerEl, 'Epic C'))).toBeNull();
 		expect(cardByTitle(containerEl, 'Dropped')).not.toBeNull();
+	});
+
+	/**
+	 * The other half of that stop: it is only on the way UP, and this is the shape that
+	 * makes the `descended` term load-bearing rather than decorative.
+	 *
+	 * The iteration board reads `realRoots` — the unfocused tree — so a focus level set on
+	 * another projection reaches it unrevalidated (ADR 0011: the focus is working position
+	 * on the device). `collectFocusRoots` has already stamped `focusRoot` on `Kid`, the
+	 * topmost `PBI` of its branch, while `Carrier` is a `Feature` and keeps its child. So
+	 * this board meets a focus root as a card's OWN direct child, at depth 0 of the walk,
+	 * where `projectionForest` did no re-rooting and there is nothing to contradict.
+	 *
+	 * Applying the stop at depth 0 as well takes `Kid` off the carrier's face and puts it
+	 * on no card at all — the very thing the walk was written to stop.
+	 */
+	it('lists a focus root that is a card’s own direct child, where nothing promoted it', () => {
+		const vault = new FakeVault();
+		vault.addFile('Sprint 12.md', { frontmatter: { type: 'Iteration', order: 10 } });
+		vault.addFile('Carrier.md', {
+			frontmatter: { type: 'Feature', order: 10, status: 'New', iteration: '[[Sprint 12]]' },
+		});
+		vault.addFile('Kid.md', {
+			frontmatter: { type: 'PBI', order: 10, status: 'New', iteration: '[[Sprint 12]]' },
+			parentLink: 'Carrier',
+		});
+		const { view, containerEl } = makeView(
+			vault,
+			{
+				stateProperty: 'note.status',
+				stateValues: 'New, Doing, Done',
+				iterationProperty: 'note.iteration',
+				iterationOpenStates: 'New',
+				iterationResolvedStates: 'Done',
+			},
+			{ base: 'Plan.base', focus: 'PBI' },
+		);
+		view.setBoardScope('Sprint 12.md');
+
+		// The fixture guard: the stamp is what this case turns on, so it is asserted
+		// rather than assumed — with `focusRoot` false the test would pass for no reason.
+		expect(view.model?.byPath.get('Kid.md')?.focusRoot).toBe(true);
+
+		const card = cardByTitle(containerEl, 'Carrier');
+		disclosure(card)?.click();
+		expect(kidTitles(card)).toEqual(['Kid']);
 	});
 
 	// A count taken by subtracting a filtered list from a RAW one is the shape this branch
@@ -497,6 +545,26 @@ describe('children on the card', () => {
 		cardByTitle(containerEl, 'Feature X').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
 
 		expect(Menu.lastShown?.items.map((i) => i.titleText)).toContain('Show children');
+	});
+
+	/**
+	 * The AXIS half of `isRowUndrawn`, which the old denominator had no reading of at all:
+	 * it asked `projectionMember` with no axis, so a grid axis's one admission — an
+	 * `Iteration`, drawn in the shared marker row — read as a row this projection does not
+	 * draw, and the walk descended THROUGH it. Here that would drop `Sprint 12` off the
+	 * shelf card's face and list its children instead.
+	 *
+	 * Asserted as the whole list, since the failure is a row missing rather than a row
+	 * added: with the axis withheld, `Task X1` alone comes back.
+	 */
+	it('lists an iteration child on a grid axis, which is where the axis admits one', () => {
+		const vault = datedVault();
+		vault.addFile('Sprint 12.md', { frontmatter: { type: 'Iteration', order: 20 }, parentLink: 'Feature X' });
+		const { containerEl } = makeRoadmap(vault, DATED_AXIS);
+		const card = cardByTitle(containerEl, 'Feature X');
+		disclosure(card)?.click();
+
+		expect(kidTitles(card)).toEqual(['Task X1', 'Sprint 12']);
 	});
 
 	it('puts the disclosure on the line in list mode, and the list beneath it', () => {
