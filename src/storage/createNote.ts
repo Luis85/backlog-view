@@ -71,21 +71,32 @@ export async function createBacklogItem(app: App, settings: BacklogSettings, spe
 	// same axis list the edit path uses — so it is never momentarily a note sitting in
 	// a bucket its own frontmatter does not name, and never a write to an unconfigured
 	// key. `axisEntries` yields nothing here when the horizon axis is off.
+	//
+	// **A `Release` is seeded NOTHING a surface adds** — not the sprint it was created on,
+	// not that sprint's dates, not the bucket header's horizon. Stated once, here, because
+	// this is the one site all three reach: a `+` on an iteration board seeds the first two
+	// through `iterationOf`, a bucket header seeds the third through `CreatePlacement`, and
+	// creation does not go through `applyWrites`, so nothing downstream would catch either.
+	// The sprint key is the worst of the three rather than the mildest: `canSetIteration`
+	// refuses a marker, so a release joined to a sprint board's population carries a key no
+	// edit path in this plugin will ever write again or offer to clear.
+	//
+	// The check is `isReleaseType` and this sentence claims no more than that. A `Milestone`
+	// created on an iteration board still receives that sprint's `start`, a key
+	// `placementEnds` says it may not hold — recorded in
+	// `docs/issues/Creation seeds a placement the type may not hold.md` and deliberately
+	// left, because changing a shipped type's creation behaviour is not this increment's.
+	const seeded = !isReleaseType(spec.typeName);
+	// Not gated: the goal is the iteration dialog's own field, collected from the user and
+	// only ever passed with `typeName` fixed to `Iteration`. It is not something a surface
+	// adds to a note somebody else asked for.
 	if (spec.iterationGoal && settings.iterationGoalKey) setOwn(fm, settings.iterationGoalKey, spec.iterationGoal);
-	if (spec.iteration && settings.iterationKey) {
+	if (seeded && spec.iteration && settings.iterationKey) {
 		setOwn(fm, settings.iterationKey, wikilinkTo(app, spec.iteration, path));
 	}
 	// One list for both placements, so "which keys may be written" is stated once: a key
-	// no property names is dropped here exactly as it is on the edit path — and so is a
-	// placement the TYPE may not hold. This is the one site every seeded placement reaches:
-	// the bucket header's `+` seeds a horizon, an iteration board's `+` seeds that sprint's
-	// dates, and both arrive as this one loop. A `Release` speaks no placement end
-	// (`placementEnds`) and takes no horizon (`computeHorizonWrites`), so a creation that
-	// wrote either would be the last door left open on the edit path's own rule —
-	// creation does not go through `applyWrites`, so nothing downstream would catch it.
-	const placement = isReleaseType(spec.typeName)
-		? {}
-		: { ...spec.axis, ...(spec.horizon ? { horizon: spec.horizon } : {}) };
+	// no property names is dropped here exactly as it is on the edit path.
+	const placement = seeded ? { ...spec.axis, ...(spec.horizon ? { horizon: spec.horizon } : {}) } : {};
 	for (const { key, value } of axisEntries(settings, placement)) {
 		if (value !== null) setOwn(fm, key, value);
 	}

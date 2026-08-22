@@ -78,8 +78,9 @@ describe('createBacklogItem', () => {
 		// `+` (that sprint's `axis` dates). Reachable in focus mode, where `newItemType`
 		// follows `focusTarget` and that accepts any declared type name.
 		const vault = new FakeVault();
-		const planned = { ...settings, horizonKey: 'horizon', startKey: 'start', targetKey: 'due' };
+		const planned = { ...settings, horizonKey: 'horizon', startKey: 'start', targetKey: 'due', iterationKey: 'iteration' };
 
+		const sprint = vault.addFile('Sprint 12.md', { frontmatter: { type: 'Iteration', order: 5 } });
 		const release = await createBacklogItem(vault.app, planned, {
 			folder: 'Backlog',
 			title: '1.0',
@@ -88,7 +89,12 @@ describe('createBacklogItem', () => {
 			order: 10,
 			horizon: 'Later',
 			axis: { start: '2026-09-01', target: '2026-09-30' },
+			iteration: sprint,
 		});
+		// The sprint key with them, and it is the worst of the three rather than the
+		// mildest: `canSetIteration` refuses a marker, so a release joined to a sprint
+		// board's population would carry a key no edit path will write again or offer to
+		// clear.
 		expect(vault.fm(release.path)).toEqual({ type: 'Release', order: 10 });
 
 		// The type it must not disturb: an ordinary item created the same way keeps both.
@@ -100,6 +106,7 @@ describe('createBacklogItem', () => {
 			order: 20,
 			horizon: 'Later',
 			axis: { start: '2026-09-01', target: '2026-09-30' },
+			iteration: sprint,
 		});
 		expect(vault.fm(work.path)).toEqual({
 			type: 'PBI',
@@ -107,6 +114,7 @@ describe('createBacklogItem', () => {
 			horizon: 'Later',
 			start: '2026-09-01',
 			due: '2026-09-30',
+			iteration: '[[Sprint 12]]',
 		});
 	});
 

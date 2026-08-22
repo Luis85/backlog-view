@@ -221,6 +221,20 @@ export interface RoadmapModel {
 	context: BacklogItem[];
 	/** Results placed on the axis; placed plus shelved equals the visible row set. */
 	placedCount: number;
+	/**
+	 * The Base's own results this roadmap could draw — every result minus the types no axis
+	 * of it places (`onThisRoadmap`). NOT narrowed by `visible`, unlike every other count
+	 * here, because the question it answers is about the BASE and not about the screen: is
+	 * there nothing here at all, or is everything here hidden?
+	 *
+	 * It exists because `roadmapRows` filters and `model.results` does not, and a reader
+	 * that took the second while the frame was drawn from the first told a user "All 1
+	 * items are done and hidden" about a release that is neither — and offered Show
+	 * completed items, which would not have brought it back. One statement of the
+	 * population, two readers; the alternative is two readers deriving eligibility
+	 * separately and drifting, which is exactly how that happened.
+	 */
+	eligibleResults: number;
 }
 
 /** What the shelf is called wherever a placement is named out loud. */
@@ -430,8 +444,17 @@ export function resourcePlacementLabel(roadmap: RoadmapModel, source: ResourceSo
  */
 function roadmapRows(model: BacklogModel, visible: (item: BacklogItem) => boolean, axis: RoadmapAxis): BacklogItem[] {
 	const source = (model.focused ? model.roots : model.results).filter(visible);
-	const rows = source.filter((item) => !isReleaseType(item.typeName));
+	const rows = source.filter(onThisRoadmap);
 	return drawsGrid(axis) ? [...rows, ...model.iterations.filter(visible)] : rows;
+}
+
+/**
+ * Whether any axis of this roadmap places this row at all — the drop `roadmapRows` makes,
+ * named so that `RoadmapModel.eligibleResults` can make the same one over the unfiltered
+ * results. Two readers of "which rows are on this roadmap", one statement of it.
+ */
+function onThisRoadmap(item: BacklogItem): boolean {
+	return !isReleaseType(item.typeName);
 }
 
 /** Project the model onto the given axis. */
@@ -442,7 +465,16 @@ export function buildRoadmap(
 	axis: RoadmapAxis,
 ): RoadmapModel {
 	const rows = roadmapRows(model, visible, axis);
-	const roadmap: RoadmapModel = { axis, buckets: [], bars: [], lanes: [], shelf: [], context: [], placedCount: 0 };
+	const roadmap: RoadmapModel = {
+		axis,
+		buckets: [],
+		bars: [],
+		lanes: [],
+		shelf: [],
+		context: [],
+		placedCount: 0,
+		eligibleResults: model.results.filter(onThisRoadmap).length,
+	};
 	if (axis === 'horizons') deriveBuckets(rows, settings, roadmap, visible);
 	else if (axis === 'resources') deriveLanes(rows, settings, roadmap, model.absences);
 	else {

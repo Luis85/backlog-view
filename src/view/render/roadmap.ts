@@ -57,7 +57,7 @@ export function renderRoadmap(
 	const model = host.model;
 	if (!model) {
 		return {
-			roadmap: { axis, buckets: [], bars: [], lanes: [], shelf: [], context: [], placedCount: 0 },
+			roadmap: { axis, buckets: [], bars: [], lanes: [], shelf: [], context: [], placedCount: 0, eligibleResults: 0 },
 			cards: [],
 			placed: ctx.placed,
 			shelfEl: null,
@@ -149,6 +149,7 @@ export function renderRoadmap(
 		ctx,
 		frameEl,
 		population + roadmap.shelf.length + roadmap.context.length,
+		roadmap.eligibleResults,
 		treeEl,
 	);
 
@@ -484,13 +485,20 @@ function renderRoadmapAdvisory(
 	ctx: RowContext,
 	frameEl: HTMLElement,
 	renderedCards: number,
+	eligibleResults: number,
 	root: HTMLElement,
 ): HTMLElement | null {
 	const host = ctx.host;
 	const model = host.model;
 	if (!model || renderedCards > 0) return null;
 	const aside = frameEl.createDiv({ cls: 'pbl-board-advisory' });
-	if (model.results.length === 0) renderEmptyState(host, aside, root);
-	else renderAllDoneState(host, aside, model.results.length, root);
+	// `roadmap.eligibleResults` and never `model.results.length`: the frame is drawn from
+	// the roadmap's own population, so a count taken from the model counts rows this axis
+	// never offered to draw. That is what claimed a release was "done and hidden" — nothing
+	// was hidden and Show completed items would not have brought it back — and what
+	// inflated the number wherever rows genuinely were. The eligibility is decided once,
+	// where the filter lives; this reads it rather than re-deriving it.
+	if (eligibleResults === 0) renderEmptyState(host, aside, root);
+	else renderAllDoneState(host, aside, eligibleResults, root);
 	return aside;
 }

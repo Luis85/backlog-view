@@ -301,6 +301,29 @@ describe('the advisory beside the frame', () => {
 		expect(advisory?.querySelector('.pbl-empty-title')?.textContent).toBe('No backlog items');
 	});
 
+	it('counts what this roadmap could draw, never what the base returned', () => {
+		// A release is on no axis here, so the frame draws no card for one — and the
+		// advisory used to read `model.results`, which still counts it. Two readers of "what
+		// is on this roadmap" that could disagree, and they did: with a release the only
+		// result, the roadmap announced "All 1 item is done and hidden" about a note that is
+		// neither, over a Show completed items button that would not have brought it back.
+		const only = new FakeVault();
+		only.addFile('1.0.md', { frontmatter: { type: 'Release', order: 10 } });
+		const releaseOnly = roadmapView(only, { ...HORIZONS });
+		expect(releaseOnly.containerEl.querySelector('.pbl-board-advisory .pbl-empty-title')?.textContent).toBe(
+			'No backlog items',
+		);
+
+		// And the other half: where rows genuinely ARE hidden, the number must not be
+		// inflated by the releases beside them. One done epic, one release, one item hidden.
+		const mixed = new FakeVault();
+		mixed.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10, status: 'Done' } });
+		mixed.addFile('1.0.md', { frontmatter: { type: 'Release', order: 20 } });
+		const hidden = roadmapView(mixed, { ...HORIZONS, stateProperty: 'note.status', showCompleted: false });
+		expect(hidden.containerEl.querySelector('.pbl-board-advisory')?.textContent).toContain(
+			'All 1 item is done and hidden.',
+		);
+	});
 });
 
 describe('context rows on the roadmap', () => {
