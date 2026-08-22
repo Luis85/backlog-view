@@ -31,11 +31,12 @@ The type has to exist before anything can look for it. It is a **marker** — no
 
 **Files:**
 - Modify: `src/domain/typeVocabulary.ts` (the `RELEASE_TYPE` constant, `MARKER_TYPES`)
-- Modify: `src/domain/itemTypes.ts` (`isReleaseType`)
 - Modify: `src/view/render/badges.ts` (`NAMED_TYPE_STYLE` entry)
-- Modify: `src/view/manual/typesSection.ts` (`INTENT` entry — required, see Step 1)
+- Modify: `src/domain/itemTypes.ts` (`isReleaseType`, and the `drawsAsPoint` gate)
+- Modify: `src/domain/bars.ts` (the no-bar refusal that gate needs beside it)
+- Modify: `src/view/manual/typesSection.ts` (`INTENT` entry — required, see Step 6)
 - Modify: `styles/badges.css` (the `pbl-lvl-release` colour)
-- Test: `test/domain/itemTypes.test.ts`
+- Test: `test/domain/itemTypes.test.ts`, `test/domain/bars.test.ts`
 
 **Interfaces:**
 - Consumes: nothing.
@@ -76,9 +77,21 @@ describe('Release is a marker, not a rung', () => {
 		expect(isMarkerType(RELEASE_TYPE)).toBe(true);
 	});
 
+	// NOT "is not a child of anything". `linkAll` attaches every item with a resolved
+	// `parentPath` and special-cases no marker, so a hand-written parent DOES nest a
+	// `Milestone` today and will nest a `Release` the same way. `Releases as their own
+	// type` 2a reads as though the model roots it; it does not, and this increment is not
+	// the place to change `Milestone`'s behaviour to make that sentence true. What IS true
+	// is the pair below, and Task 10 raises the discrepancy against the register.
 	it('offers no legal children — a release holds nothing', () => {
 		const release = { ladder: LEVELS, typeName: RELEASE_TYPE, effectiveLevelIndex: -1 };
 		expect(childTypeChoices(release as never)).toEqual([]);
+	});
+
+	it('counts for nothing wherever it sits', () => {
+		// `descendantCount`'s own marker exclusion (`model.ts`), which is the half of "root
+		// by nature" that IS enforced: a marker contributes nothing to a parent's rollup.
+		expect(isMarkerType(RELEASE_TYPE)).toBe(true);
 	});
 
 	it('leaves every other classification alone', () => {
@@ -126,7 +139,69 @@ export function isReleaseType(typeName: string | null): boolean {
 
 Import `RELEASE_TYPE` from `./typeVocabulary` in `itemTypes.ts` — it already imports `ITERATION_TYPE` from there.
 
-- [ ] **Step 4: Add the badge style and the manual entry**
+- [ ] **Step 4: Keep the release off the backlog roadmap**
+
+`MARKER_TYPES` is not only a classification — it is the switch four dated-axis consumers
+read. `drawsAsPoint` returns true for **any** marker that is not an `Iteration`, so without
+this step a `Release` would immediately: draw as a point in `milestoneLines.ts:62`, be placed
+by `placeMarker` in `bars.ts:106`, offer `['target']` from `placementEnds`, and — worst —
+report a writable body from `bars.ts:278`, so a timeline drag on the **backlog** view would
+write a release's date through the **backlog's** target key.
+
+That is [[A release on the dated axis]], which this increment explicitly defers, shipped by
+accident and wired to the wrong view's date mapping. That feature will draw release markers
+from the roadmap's OWN release-date key, which does not exist yet, so there is nothing here
+to draw from and nothing correct to write.
+
+In `src/domain/itemTypes.ts`:
+
+```ts
+export function drawsAsPoint(typeName: string | null, iterationBars: boolean): boolean {
+	if (!isMarkerType(typeName)) return false;
+	// A `Release` is a marker STRUCTURALLY — no rung, no children, no prerequisites — and
+	// draws no point on this roadmap. [[A release on the dated axis]] is where a release
+	// gets a position, from the ROADMAP's own release-date key; until then the backlog's
+	// target key is the wrong mapping to read and a far worse one to write, since
+	// `bars.ts`'s holdable body would let a timeline drag edit a release through it.
+	if (isReleaseType(typeName)) return false;
+	return isIterationType(typeName) ? !iterationBars : true;
+}
+```
+
+`drawsAsPoint` returning false is not enough on its own: `deriveBars` falls THROUGH to the
+ordinary start/target derivation, so a release carrying the backlog's date properties would
+draw as a bar instead of a point — the same leak wearing a different shape. In
+`src/domain/bars.ts`, before the `drawsAsPoint` branch at line 106:
+
+```ts
+	// No bar and no point: see `drawsAsPoint`'s own note. Refused here as well because a
+	// false from that predicate means "not a POINT", which the lines below would otherwise
+	// read as "therefore a bar".
+	if (isReleaseType(item.typeName)) return null;
+```
+
+Match `deriveBars`' actual no-bar return value — read the function before writing this; if it
+returns something other than `null` for an unplaceable item, return that.
+
+- [ ] **Step 5: Test the gate**
+
+```ts
+	it('draws no point and no bar on the backlog roadmap', () => {
+		expect(drawsAsPoint('Release', false)).toBe(false);
+		expect(drawsAsPoint('Release', true)).toBe(false);
+		// Still a marker structurally — no rung, no children, no prerequisites.
+		expect(isMarkerType('Release')).toBe(true);
+		// And a Milestone is untouched, which is what says this gate is about the deferred
+		// feature rather than about markers.
+		expect(drawsAsPoint('Milestone', false)).toBe(true);
+	});
+```
+
+Add a `deriveBars` case in `test/domain/bars.test.ts` for a release carrying the backlog's
+own start and target properties, asserting it places nothing. Watch it fail with the
+`bars.ts` guard commented out — that is the branch that would ship the deferred feature.
+
+- [ ] **Step 6: Add the badge style and the manual entry**
 
 In `src/view/render/badges.ts`, add to `NAMED_TYPE_STYLE` (keys are lowercase):
 
@@ -149,7 +224,7 @@ In `src/view/manual/typesSection.ts`, add to `INTENT`:
 		'nothing. The release view is where one is read; the backlog draws it as an ordinary row.',
 ```
 
-- [ ] **Step 5: Let the toolbar offer it, and update the test that says so**
+- [ ] **Step 7: Let the toolbar offer it, and update the test that says so**
 
 Adding a name to `ALL_TYPES` has a fourth consequence: the backlog toolbar's New menu offers
 `New Release`, because `byProjectionType` (`src/view/projection.ts`) filters only
@@ -186,15 +261,15 @@ The order is `ALL_TYPES`' own — `[...LEVELS, ...EXTRA_TYPES, ...MARKER_TYPES, 
 `Iteration` is absent from that list because the creator filters it, which is the behaviour
 this step is deliberately not copying.
 
-- [ ] **Step 6: Run the full suite**
+- [ ] **Step 8: Run the full suite**
 
-Run: `npx vitest run test/domain/itemTypes.test.ts test/view/manualTypes.test.ts test/view/toolbar.test.ts`
-Expected: PASS all three. `manualTypes.test.ts` is the one that fails if Step 4's `INTENT` entry is missing — watch it fail once by deleting the entry, then put it back.
+Run: `npx vitest run test/domain/itemTypes.test.ts test/domain/bars.test.ts test/view/manualTypes.test.ts test/view/toolbar.test.ts`
+Expected: PASS all four. `manualTypes.test.ts` is the one that fails if Step 6's `INTENT` entry is missing — watch it fail once by deleting the entry, then put it back.
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 9: Commit**
 
 ```bash
-git add src/domain/typeVocabulary.ts src/domain/itemTypes.ts src/view/render/badges.ts src/view/manual/typesSection.ts styles/badges.css test/domain/itemTypes.test.ts test/view/toolbar.test.ts
+git add src/domain/typeVocabulary.ts src/domain/itemTypes.ts src/domain/bars.ts src/view/render/badges.ts src/view/manual/typesSection.ts styles/badges.css test/domain/itemTypes.test.ts test/domain/bars.test.ts test/view/toolbar.test.ts
 git commit -m "Add Release to the vocabulary as a third marker"
 ```
 
@@ -357,6 +432,15 @@ describe('the release view names its own keys', () => {
 		expect(settings.parentKey).toBe('parent');
 		expect(settings.orderKey).toBe('order');
 	});
+
+	it('tells a CLEARED mapping from one never set', () => {
+		// The whole "No type property is mapped" state depends on this, and `propKey` alone
+		// cannot express it — it hands back the default for both.
+		const cleared = resolveReleaseSettings(new FakeViewConfig({ typeProperty: '' }) as never);
+		expect(cleared.typeKey).toBe('');
+		const untouched = resolveReleaseSettings(new FakeViewConfig({}) as never);
+		expect(untouched.typeKey).toBe('type');
+	});
 });
 ```
 
@@ -478,11 +562,19 @@ function releaseGroup(): BasesAllOptions {
 }
 
 export function resolveReleaseSettings(config: BasesViewConfig): ReleaseSettings {
-	const { propKey } = configReaders(config);
+	// `clearablePropKey`, NOT `propKey`, for the three mappings that ship a real default.
+	// `propKey` returns its fallback whenever `getAsPropertyId` gives nothing usable, and
+	// `getAsPropertyId` reports "cleared" and "never set" identically — so with `propKey`
+	// a type property the user deliberately cleared resolves back to `type`, the
+	// "No type property is mapped" state is unreachable, and the view test that binds
+	// `{ typeProperty: '' }` can never pass. `clearablePropKey` draws exactly that
+	// distinction (`config.get(key) === undefined ? def : propKey(key, '')`) and exists
+	// for this: unset takes the suggestion, cleared means off.
+	const { clearablePropKey, propKey } = configReaders(config);
 	return {
-		parentKey: propKey('parentProperty', 'parent'),
-		orderKey: propKey('orderProperty', 'order'),
-		typeKey: propKey('typeProperty', 'type'),
+		parentKey: clearablePropKey('parentProperty', 'parent'),
+		orderKey: clearablePropKey('orderProperty', 'order'),
+		typeKey: clearablePropKey('typeProperty', 'type'),
 		// No fallback: absence is a value, and a suggestion is not a binding. A membership
 		// key nobody bound must read as unconfigured rather than as `release`, or the view
 		// would report a scope from a property the user never named.
@@ -647,8 +739,18 @@ describe('the release index', () => {
 		vault.addFile('Empty.md', { frontmatter: { type: 'Release' } });
 		vault.addFile('F.md', { frontmatter: { type: 'Feature', release: '[[R]]' } });
 		const rows = indexOf(vault).rows;
-		expect(rows.find((r) => r.name === 'R')?.members).toBe(1);
-		expect(rows.find((r) => r.name === 'Empty')?.members).toBe(0);
+		expect(rows.find((r) => r.name === 'R')?.members.value).toBe(1);
+		expect(rows.find((r) => r.name === 'Empty')?.members.value).toBe(0);
+	});
+
+	it('cannot count members at all with the membership key unbound', () => {
+		const vault = releaseVault();
+		const rows = releaseIndex(vault.app, buildModel(vault.app, vault.entries(), settingsWith()), {
+			...KEYS,
+			membershipKey: '',
+		}).rows;
+		// Not zero. Zero is a real answer and this is not one.
+		expect(rows[0].members).toEqual({ value: null, invalid: false, unconfigured: true });
 	});
 
 	it('reports an item whose membership names a non-release, and one holding two values', () => {
@@ -659,7 +761,7 @@ describe('the release index', () => {
 		vault.addFile('Two.md', { frontmatter: { type: 'Feature', release: ['[[R]]', '[[E]]'] } });
 		const { rows, unresolved } = indexOf(vault);
 		expect(unresolved.map((i) => i.file.path).sort()).toEqual(['Bad.md', 'Two.md']);
-		expect(rows.find((r) => r.name === 'R')?.members).toBe(0);
+		expect(rows.find((r) => r.name === 'R')?.members.value).toBe(0);
 	});
 });
 ```
@@ -703,8 +805,14 @@ export interface ReleaseRow {
 	version: ReleaseFigure<string>;
 	target: ReleaseFigure<CivilDate>;
 	status: ReleaseFigure<string>;
-	/** Notes whose OWN membership property names this release. Never an ancestor, never a descendant. */
-	members: number;
+	/**
+	 * Notes whose OWN membership property names this release — never an ancestor, never a
+	 * descendant. A FIGURE like the other three, not a bare number: with the membership key
+	 * unbound every release would otherwise report a truthful-looking `0`, when the honest
+	 * answer is that the count cannot be read at all. Same rule as every other unconfigured
+	 * figure — the column is absent and named once, never zero in each row.
+	 */
+	members: ReleaseFigure<number>;
 }
 
 export interface ReleaseIndex {
@@ -806,7 +914,9 @@ export function releaseIndex(app: App, model: BacklogModel, settings: ReleaseSet
 			version: settings.versionKey ? figure(readLabel(ownValue(fm, settings.versionKey))) : UNCONFIGURED,
 			target: settings.targetDateKey ? figure(readDate(ownValue(fm, settings.targetDateKey))) : UNCONFIGURED,
 			status: settings.statusKey ? figure(readLabel(ownValue(fm, settings.statusKey))) : UNCONFIGURED,
-			members: byPath.get(item.file.path) ?? 0,
+			members: settings.membershipKey
+				? figure({ value: byPath.get(item.file.path) ?? 0, invalid: false })
+				: UNCONFIGURED,
 		};
 	});
 
@@ -869,15 +979,30 @@ export function membershipTarget(
 	return target ?? UNRESOLVED;
 }
 
-/** The linkpath a membership value spells, resolved against the releases this base holds. */
+/**
+ * The linkpath a membership value spells, resolved against the releases this base holds.
+ *
+ * **Obsidian's own resolution wins, and a resolved non-release is an answer, not a miss.**
+ * An earlier draft fell back to a basename match whenever the resolved note was not a
+ * release — so `[[R]]` resolving to a note called `R` that is an Epic would silently be
+ * reassigned to a release called `R` in another folder. That is the view inventing a
+ * membership the vault does not spell, and it is exactly extension 1b's case: the value
+ * names something that is not a release, so it is UNRESOLVED and gets reported.
+ *
+ * The basename fallback survives only where Obsidian resolved NOTHING — the bare-name
+ * spelling `resolveParent` already tolerates — and even there it refuses a tie: two
+ * releases sharing a basename give no answer, because picking the first is arbitrary and
+ * a release contract cannot rest on file order.
+ */
 function resolveReleasePath(app: App, item: BacklogItem, text: string, model: BacklogModel): string | null {
 	const linkpath = linkpathFromRawValue(text);
 	const file = app.metadataCache.getFirstLinkpathDest(linkpath, item.file.path);
-	const path = file?.path ?? null;
-	if (path !== null && model.releases.some((r) => r.file.path === path)) return path;
-	// A bare name, the fallback `resolveParent` already keeps: match a release by basename.
-	const named = model.releases.find((r) => r.file.basename.toLowerCase() === linkpath.toLowerCase());
-	return named?.file.path ?? null;
+	if (file !== null) {
+		// Resolved: the answer is whether THAT note is a release. Never look further.
+		return model.releases.some((r) => r.file.path === file.path) ? file.path : null;
+	}
+	const named = model.releases.filter((r) => r.file.basename.toLowerCase() === linkpath.toLowerCase());
+	return named.length === 1 ? named[0].file.path : null;
 }
 ```
 
@@ -895,6 +1020,27 @@ Expected: PASS all seven.
 Add to `test/domain/releases.test.ts`:
 
 ```ts
+	it('never reassigns a link Obsidian already resolved to a non-release', () => {
+		const vault = new FakeVault();
+		// An Epic named R, and a release ALSO named R one folder over. `[[R]]` resolves to
+		// the Epic; reassigning it to the release would be a membership nobody wrote.
+		vault.addFile('R.md', { frontmatter: { type: 'Epic' } });
+		vault.addFile('Releases/R.md', { frontmatter: { type: 'Release' } });
+		vault.addFile('F.md', { frontmatter: { type: 'Feature', release: '[[R]]' } });
+		const { rows, unresolved } = indexOf(vault);
+		expect(unresolved.map((i) => i.file.basename)).toEqual(['F']);
+		expect(rows[0].members.value).toBe(0);
+	});
+
+	it('refuses a bare name two releases could answer to', () => {
+		const vault = new FakeVault();
+		vault.addFile('A/1.0.md', { frontmatter: { type: 'Release' } });
+		vault.addFile('B/1.0.md', { frontmatter: { type: 'Release' } });
+		vault.addFile('F.md', { frontmatter: { type: 'Feature', release: '1.0' } });
+		// Picking the first would make membership depend on file order.
+		expect(indexOf(vault).unresolved.map((i) => i.file.basename)).toEqual(['F']);
+	});
+
 	it('refuses a membership property hand-written on a non-plan row', () => {
 		const vault = new FakeVault();
 		vault.addFile('R.md', { frontmatter: { type: 'Release' } });
@@ -903,7 +1049,7 @@ Add to `test/domain/releases.test.ts`:
 		vault.addFile('R2.md', { frontmatter: { type: 'Release', release: '[[R]]' } });
 		vault.addFile('TC.md', { frontmatter: { type: 'Test case', release: '[[R]]' } });
 		const { rows, unresolved } = indexOf(vault);
-		expect(rows.find((r) => r.name === 'R')?.members).toBe(0);
+		expect(rows.find((r) => r.name === 'R')?.members.value).toBe(0);
 		expect(unresolved.map((i) => i.file.basename).sort()).toEqual(['I', 'M', 'R2', 'TC']);
 	});
 ```
@@ -1761,7 +1907,21 @@ Three `## Where it lives` sections currently describe code that will not exist:
 
 Every module created in Tasks 3-9 must appear in one of these, or `npm run docs` fails rule 7.
 
-- [ ] **Step 5: Add the changelog entry**
+- [ ] **Step 5: Raise one discrepancy against the register**
+
+`Releases as their own type` extension 2a says a release with a declared parent is "a root by
+nature, like a Milestone and an Iteration, so the parent places it nowhere". **`linkAll` does
+not do that** — it attaches every item with a resolved `parentPath` and special-cases no
+marker, so a hand-written parent nests a `Milestone` today and nests a `Release` identically.
+What IS enforced is the other half: a marker offers no legal children and contributes nothing
+to a rollup (`descendantCount`'s marker exclusion).
+
+Do not change `linkAll` here — that would alter `Milestone` behaviour on a branch about
+releases. Open a note under `docs/issues/` recording the discrepancy, what is actually
+enforced, and the two ways out (root every marker in `linkAll`, or reword 2a to describe the
+guarantees the model really makes). Link it from 2a.
+
+- [ ] **Step 6: Add the changelog entry**
 
 Under `## [Unreleased]` in `CHANGELOG.md`:
 
@@ -1773,18 +1933,18 @@ Under `## [Unreleased]` in `CHANGELOG.md`:
 - `Release` joins the fixed type vocabulary as a marker, beside `Milestone` and `Iteration`.
 ```
 
-- [ ] **Step 6: Run the whole gate**
+- [ ] **Step 7: Run the whole gate**
 
 Run: `npm run check`
 Expected: PASS all five steps. If coverage thresholds moved up, commit the raised numbers — they only ever go up.
 
-- [ ] **Step 7: Look at it, and say what is still owed**
+- [ ] **Step 8: Look at it, and say what is still owed**
 
 Run: `npm run harness` and open the page; then `npm run test-build` and open this repository as a vault, with `docs/Product Backlog.base`, to see the view against real Bases and a real theme.
 
 Neither replaces the other and neither is a test. Report honestly what was checked in a live vault and what was not — a themed vault's colours, its accent, and anything Bases hands the view are unanswerable in the harness.
 
-- [ ] **Step 8: Commit**
+- [ ] **Step 9: Commit**
 
 ```bash
 git add test/ docs/ CHANGELOG.md vitest.config.mts
