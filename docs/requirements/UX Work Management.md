@@ -20,8 +20,15 @@ assignee: ""
 research note, the workflow observation, the prototype write-up are ordinary notes with no
 type and no parent — so by the register's own scope rule ([[What counts as a work item]])
 they are outside the tree, and every rollup, board, roadmap and filter reports that work as
-zero. This epic is the one property that puts it back: **which discipline a piece of work
-belongs to**, and what each existing projection can be asked once it exists.
+zero.
+
+**Two different things put that right, and confusing them is this epic's first trap.** What
+admits a note to the tree is being *work* — a supported type or a parent, which is the only
+test `pruneOutsideHierarchy` makes — and for research that precedes any PBI the missing half
+is a legal parent, which is why reopening `Feature` → `Task` is a feature of this epic rather
+than a footnote. What the discipline property adds is not membership but **legibility**:
+once the work is in the tree, which craft owns it is a question every projection can be
+asked.
 
 **Outcome** — A UX Designer plans and does their work in the same backlog as everyone else,
 and the team can see it while planning rather than when it blocks something.
@@ -61,6 +68,12 @@ work-item types.
   would inherit both blockers and make them unbounded.
   [[A badge when the palette is full]] bought a second axis for exactly two types and
   explicitly refused to close the question generally — this epic does not spend it.
+- **A discipline never makes a note a work item.** The scope rule stands untouched: a note
+  belongs to the backlog when it has a supported type or a parent
+  ([[What counts as a work item]]), and adding a discipline to a loose note admits nothing.
+  Anything under this epic that would extend that test to discipline-bearing notes is
+  refused — the note becomes a `Task` under the item it serves, which is the whole reason
+  the `Feature` → `Task` pair is reopened below.
 - **Absence is a value.** An unconfigured discipline key is never written to a note, and an
   item carrying no discipline is unclassified rather than a discipline of its own: it is
   never counted into one, never grouped under a fabricated bucket, and never backfilled.
