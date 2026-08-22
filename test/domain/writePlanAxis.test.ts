@@ -230,6 +230,25 @@ describe('computeInitWrites and the optional keys', () => {
 		expect(stubsFor('A.md')).toEqual(['horizon', 'start', 'target']);
 	});
 
+	it('stubs BOTH ends on an iteration, whichever way the roadmap draws it', () => {
+		// An iteration is a TIME BOX and carries two dates of its own —
+		// `computeIterationNoteWrites` edits both, and joining one copies both onto the
+		// member. `iterationBars` decides only whether the roadmap draws that box as a span
+		// or reduces it to its target, and it defaults to false.
+		//
+		// So the schema question and the placement question come apart here, for the one
+		// type where they can. Asked in BOTH modes from one fixture: a display option must
+		// never decide whether a property exists on a note, which is what asking
+		// `placementEnds` with the live flag made it do — under the DEFAULT setting, ✨
+		// silently stopped offering an iteration the start key it edits.
+		const files = { 'Sprint 4.md': { type: 'Iteration' } };
+		for (const bars of [false, true]) {
+			const { model } = build(files, settingsWith({ horizonKey: 'horizon', startKey: 'start', targetKey: 'due', iterationBars: bars }));
+			const settings = settingsWith({ horizonKey: 'horizon', startKey: 'start', targetKey: 'due', iterationBars: bars });
+			expect(computeInitWrites(model, settings)[0].stubs).toEqual(['horizon', 'start', 'target']);
+		}
+	});
+
 	it('never writes a key no property names', () => {
 		const settings = settingsWith({ horizonKey: 'horizon' });
 		const { model } = build({ 'A.md': { type: 'Epic', order: 10 } }, settings);

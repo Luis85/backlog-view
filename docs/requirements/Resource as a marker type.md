@@ -129,6 +129,14 @@ epic states why an eighteenth name is being added against an open P1 direction
   controls. That also answers a case shipped before this epic and never tested: a
   `Milestone` was handed the START property ✨ created for it — the key the generated README
   tells the reader this view will never place a milestone by. Its target is still stubbed.
+  **It asks `schemaEnds` and not `placementEnds`, and that distinction was bought twice.**
+  The first version asked the placement question with the live `iterationBars` flag, which
+  made a DISPLAY option decide whether a property exists on a note: under the default
+  (`false`) an `Iteration` reduces to its target, so ✨ stopped offering it the start key
+  its own editor writes and joining one copies onto every member. An automated reviewer
+  caught it on the merge commit. The two questions coincide for every type but that one —
+  a time box carries both dates whichever way the roadmap draws it — so `schemaEnds` names
+  the schema and delegates, and the ends themselves are still stated once.
 - **4e — a `Resource` sits on the resources axis's shelf.** It is not a drag source there.
   A drop on a band writes the ROW for ordinary work and the DATE for a marker
   ([[Milestones out of the resource rows]] — the milestones' row stands for nobody), so a
