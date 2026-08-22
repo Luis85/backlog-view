@@ -126,6 +126,14 @@ and blocks every write; an indicator persists nothing, so a mistyped operand mus
 anyone scoring. Reported per item, naming the operand, it is honest and costs no new
 surface.
 
+**An empty operand list is no indicator at all**, and that is a fourth state rather than a
+fourth failure: the column is not drawn, the panel draws no line, and nothing is uncomputable
+because nothing was asked for. A product of no operands is `1`, so the alternative is a
+column of constant `1`s under a blank header — and a configuration problem is the wrong
+answer too, since that would replace the whole table with a warning over a figure that
+persists nothing. It also gives a reader who wants the six columns back a way to say so:
+clear the box.
+
 An item with no figure **keeps its place in any list, sorted with the unmeasured** — which
 the table's comparator already does for every absent value.
 
@@ -239,7 +247,11 @@ and before currency.
 - Its header is the label, falling back to a generic word — `Indicator` — when nothing has
   named it. **Not the composed formula**: measured in the harness, `Adjusted value ÷
   Effort` clips to `Adjusted …` in a 72px column, which names nothing at all, while `RICE`
-  fits with room. The formula is the header's tooltip and its accessible name, and the
+  fits with room. The formula is the header's TOOLTIP only — its accessible name stays the
+  visible word plus the sort direction when active, which is what `sortHeader` already
+  builds for every other column: a name that replaced `RICE` with the formula would take
+  the visible label away from a screen reader and leave speech input with no way to say
+  which header to click. The
   panel beside the table spells it in full, which is where a decomposition belongs anyway.
 - Its cell is the rounded figure, or an em-dash whose tooltip names the operand that
   blocked it.
@@ -294,6 +306,8 @@ mechanism recorded, and it is not pulled in here.
 | An indicator preset leaves the value model untouched | a fingerprint asserted equal across every preset applied |
 | An indicator persists nothing | no `PropertyWrite` names an indicator key; applying a preset issues zero note writes |
 | An uncomputable indicator sorts with the unmeasured | `test/view/estimation/sort.test.ts`, both directions |
+| An empty operand list draws no column and no panel line | one case over a cleared `indicatorOperands` |
+| The header's accessible name keeps the visible label | one case over a labelled and an unlabelled indicator |
 | Cancelling writes nothing | a view test spying on `config.set` and `applyPropertyWrites` |
 | Applying writes exactly three config keys | the same test |
 | Preset names are data; descriptions, kind sentence and notes are text | `test/i18n/projections.test.ts` |
