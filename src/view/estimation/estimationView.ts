@@ -89,13 +89,16 @@ export class EstimationView extends BasesView {
 		this.gate = new WriteGate<PropertyWrite>(
 			{
 				app: () => this.app,
-				writeProblems: () => modelProblems(this.settings.model),
+				writeProblems: () => modelProblems(this.settings.model, this.settings.typeKey),
 				// Every row is a result; a path not in the model is not this base's to write.
 				outsideFilter: (path) => !this.model || !this.model.byPath.has(path),
 			},
 			{ syncBusy: () => this.syncBusy(), flushDataUpdate: () => this.refresh() },
 			this.lock,
-			(writes, onProgress, onInverse) => applyPropertyWrites(this.app, writes, onProgress, onInverse),
+			// The type key is read at WRITE time rather than captured with the gate: the
+			// `.base` can be re-pointed at another property while this view is open, and the
+			// refusal has to ask the key the user means now.
+			(writes, onProgress, onInverse) => applyPropertyWrites(this.app, writes, this.settings.typeKey, onProgress, onInverse),
 		);
 	}
 
@@ -165,12 +168,12 @@ export class EstimationView extends BasesView {
 			this.model = null;
 			return this.renderUnconfigured();
 		}
-		const problems = modelProblems(model);
+		const problems = modelProblems(model, this.settings.typeKey);
 		if (problems.length > 0) {
 			this.model = null;
 			return this.renderProblems(problems);
 		}
-		this.model = buildEstimationModel(this.app, this.data?.data ?? [], model, this.settings.indicator);
+		this.model = buildEstimationModel(this.app, this.data?.data ?? [], model, this.settings.indicator, this.settings.typeKey);
 		// The toolbar renders BEFORE the grid and is `viewEl`'s own child, never the grid's:
 		// unconfigured and config-warning states carry no toolbar, because both draw the
 		// setup action themselves and a second ✨ above it would duplicate it. The count and

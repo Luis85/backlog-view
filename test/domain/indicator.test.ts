@@ -216,6 +216,27 @@ describe('the indicator', () => {
 		expect(figure?.blockedBy).toEqual({ operand: 'Effort', reason: 'nonpositive' });
 	});
 
+	it('reads complexity as an operand like the other two scales', () => {
+		// The third scale is in the vocabulary and was reachable by no test — every fixture
+		// here divides by effort or multiplies confidence, so nothing had ever asked for it
+		// by name, and its label was the one operand nothing could have named in a blocker.
+		const model = configured();
+		expect(computeIndicator(model, ind({ operands: ['complexity'], divisor: null }), inputs({ complexity: 3 }))).toEqual({
+			value: 3,
+			blockedBy: null,
+		});
+		// Unanswered and UNBOUND are different repairs, and the default fixture binds no
+		// complexity property — so the same missing operand reports differently depending on
+		// whether there is a property to answer in.
+		expect(
+			computeIndicator(model, ind({ operands: ['value', 'complexity'], divisor: null }), inputs({ complexity: null })),
+		).toEqual({ value: null, blockedBy: { operand: 'Complexity', reason: 'unbound' } });
+		const bound = configured({ complexityProperty: 'note.complexity' });
+		expect(
+			computeIndicator(bound, ind({ operands: ['value', 'complexity'], divisor: null }), inputs({ complexity: null })),
+		).toEqual({ value: null, blockedBy: { operand: 'Complexity', reason: 'unanswered' } });
+	});
+
 	it('composes a formula from operand labels', () => {
 		expect(indicatorFormula(configured(), ind({ operands: ['reach', 'confidence'], divisor: 'effort' }))).toBe(
 			'Reach × Confidence ÷ Effort',
@@ -232,9 +253,9 @@ describe('the indicator on a built item', () => {
 		// `weightedScore.test.ts`'s "reads the fixed scales when bound") — bound here so the
 		// item this builds actually carries the effort the frontmatter states.
 		const model = configured({ effortProperty: 'note.effort' });
-		const withOne = buildEstimationModel(vault.app, vault.entries(), model, ind({ operands: ['effort'], divisor: null }));
+		const withOne = buildEstimationModel(vault.app, vault.entries(), model, ind({ operands: ['effort'], divisor: null }), 'type');
 		expect(withOne.items[0].indicator).toEqual({ value: 2, blockedBy: null });
-		const withNone = buildEstimationModel(vault.app, vault.entries(), model, ind({ operands: [] }));
+		const withNone = buildEstimationModel(vault.app, vault.entries(), model, ind({ operands: [] }), 'type');
 		expect(withNone.items[0].indicator).toBeNull();
 	});
 });

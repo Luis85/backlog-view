@@ -70,6 +70,30 @@ export const ITERATION_TYPE = 'Iteration';
 export const MILESTONE_TYPE = 'Milestone';
 export const MARKER_TYPES = [MILESTONE_TYPE, ITERATION_TYPE];
 /**
+ * A person, and the SECOND name recognized in order to be refused — `ABSENCE_TYPE` below
+ * states the whole of that polarity and this shares it. A resource is pointed at by the
+ * plan and contains none of it, so it is not a work item at any rung, beside any rung, or
+ * as a marker: `readItems` drops it before a `BacklogItem` exists, and no projection this
+ * plugin draws has to remember to leave it out.
+ *
+ * **It was a marker for one day and that was wrong.** As a marker it inherited the
+ * structural rules correctly — no rung, no children, no parent — and then had to have the
+ * DATE questions carved back out of it one surface at a time, because every marker before
+ * it was a date. What the carving kept producing was a type that appeared in the tree, in
+ * the New menu, in Set type, in the toolbar's count and on the shelf, none of which is
+ * where a person belongs. The refusal is one gate instead, and it is the same gate an
+ * absence goes through.
+ *
+ * Out of `MARKER_TYPES`, out of `ALL_TYPES` and out of `DEFAULT_TYPE_SUBFOLDERS`, each for
+ * the reason stated at `ABSENCE_TYPE`. Nothing creates one yet: the dedicated resource
+ * view does that, and `docs/requirements/Rows from the Resource notes.md` is where the
+ * roadmap starts READING them — at this same gate, so the roster still comes from the
+ * base's own results and no second read path into the vault is opened.
+ *
+ * Named once because a type name is data — matched in frontmatter, never translated.
+ */
+export const RESOURCE_TYPE = 'Resource';
+/**
  * The one DECLARED name that is not a work-item type at all — a resource's own
  * unavailable stretch. It joins none of the lists above and, deliberately, not
  * `ALL_TYPES` either: that list is what admits a name everywhere a work item's name

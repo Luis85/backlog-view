@@ -1,7 +1,7 @@
 import { BacklogSettings, stateMenuValues } from './settings';
 import { resolvedDeliverableStateKey, resolvedTestStateKey } from './optionalProperties';
-import { ALL_TYPES, EXTRA_TYPES, LEVELS, MARKER_TYPES, TEST_LEVELS } from './typeVocabulary';
-import { childTypeChoices, EXTRA_TYPE_RANK, folderForType, LadderPosition, ladderFor } from './itemTypes';
+import { ALL_TYPES, EXTRA_TYPES, LEVELS, MARKER_TYPES, MILESTONE_TYPE, TEST_LEVELS } from './typeVocabulary';
+import { childTypeChoices, drawsAsPoint, EXTRA_TYPE_RANK, folderForType, LadderPosition, ladderFor } from './itemTypes';
 import { readmeMarker } from './readmeMarker';
 import { stampRows, stampRule, startedStates } from './readmeStamps';
 import { andList, cell, code, list, yamlScalar } from './readmeText';
@@ -327,6 +327,18 @@ function stateSection(settings: BacklogSettings, states: StateEntry[]): string[]
 }
 
 /**
+ * The backfill's one exception to "empty on every note that lacks it" — `MILESTONE_TYPE`
+ * rather than `MARKER_TYPES`, since `schemaEnds` narrows a `Milestone` alone; an
+ * `Iteration` is a span and keeps both ends whatever `iterationBars` says.
+ *
+ * Gated on `startKey`, the withheld key: with none configured ✨ never stubs a start on
+ * anything, marker or not, so there is nothing here to except.
+ */
+function assignException(settings: BacklogSettings): string {
+	return settings.startKey ? ` — except that a ${code(MILESTONE_TYPE)} never gets a start added: it is a point by type and reads only a target` : '';
+}
+
+/**
  * Who writes the planning keys, named only where each can fire — the menu offers per
  * axis, so a horizon-only view has no Schedule and a dated one no Set horizon. Three are
  * not edits to an existing placement at all: **New** inside a bucket writes the horizon
@@ -353,7 +365,7 @@ function planningWriters(settings: BacklogSettings): string {
 		...(joinsDates
 			? ["**Set iteration**, which copies the iteration's own dates onto the note in the same write that joins it"]
 			: []),
-		'**Assign missing properties**, which adds the keys *empty* to items that lack them and places nothing',
+		`**Assign missing properties**, which adds the keys *empty* to items that lack them and places nothing${assignException(settings)}`,
 	];
 	return `${writers.slice(0, -1).join('; ')}; and ${writers[writers.length - 1]}`;
 }
@@ -392,9 +404,18 @@ function planningSection(settings: BacklogSettings): string[] {
 	// will never place it by, and the entry that would correct that is withheld for the same
 	// reason, so the document would be promising a placement the projection contradicts.
 	// Say which key a marker actually reads, in the one voice this file has.
+	//
+	// Named from `drawsAsPoint` and NOT from `MARKER_TYPES`, which is the same distinction
+	// this paragraph is already making, one level up: these two sentences are about the
+	// markers that are DATES, and the category stopped meaning that when `Resource` joined
+	// it. Spelled as the category, the generated document told a reader that a person is a
+	// point in time and reads the target key — a claim the view now contradicts on the very
+	// axis the paragraph is about. It also answers the `iterationBars` case for free: in bar
+	// mode an `Iteration` is not a point either, and it was named here regardless.
+	const points = MARKER_TYPES.filter((type) => drawsAsPoint(type, settings.iterationBars));
 	if (dateKeys.length > 0 && settings.targetKey === '') {
 		lines.push(
-			`A **marker** (${andList(MARKER_TYPES.map(code))}) is the exception, and this view cannot ` +
+			`A **marker** (${andList(points.map(code))}) is the exception, and this view cannot ` +
 				`place one: a marker's date is the **target** property, and the only date property ` +
 				`here is ${code(settings.startKey)}. One waits, unplaced, until a target property is ` +
 				'picked — and Schedule is withheld from it rather than opened onto a date its own type ' +
@@ -402,7 +423,7 @@ function planningSection(settings: BacklogSettings): string[] {
 		);
 	} else if (dateKeys.length === 2) {
 		lines.push(
-			`A **marker** (${andList(MARKER_TYPES.map(code))}) is the exception: it is a point by ` +
+			`A **marker** (${andList(points.map(code))}) is the exception: it is a point by ` +
 				`**type** rather than by how many dates it states, so it reads ${code(settings.targetKey)} ` +
 				`alone. A ${code(settings.startKey)} on one is ignored — never rewritten, and never removed.`,
 		);

@@ -28,6 +28,35 @@ function useDefaultsButton(containerEl: HTMLElement): HTMLElement {
 	return btn as HTMLElement;
 }
 
+describe('a resource is not something this view scores', () => {
+	it('draws no row for one, and stubs no estimation key onto it', async () => {
+		// This view never goes through `readItems`, so the backlog's own refusal cannot
+		// reach it: `buildEstimationModel` reads the Base's results straight into its own
+		// item. Left alone, a person was a scoreable row and ✨ wrote every configured
+		// estimation key onto their note.
+		//
+		// The backfill half is the one that bites twice. Its writes used to be built from
+		// the RAW results, so refusing the resource in the model alone would have made
+		// `applySafely`'s outside-filter check (which reads `view.model.byPath`) refuse the
+		// WHOLE batch — one person in the base and ✨ silently does nothing for anybody.
+		// The writes come from the model now, so the two agree by construction.
+		const vault = new FakeVault();
+		vault.addFile('A story.md');
+		vault.addFile('Dana.md', { frontmatter: { type: 'Resource' } });
+		const { view } = makeEstimationView(vault, {});
+		Notice.reset();
+
+		await runEstimationInit(view);
+
+		expect(view.model?.byPath.has('Dana.md')).toBe(false);
+		expect(view.model?.items.map((i) => i.file.path)).toEqual(['A story.md']);
+		// The work item still got its stubs, so the batch was not refused whole.
+		expect(Object.keys(vault.fm('A story.md')).length).toBeGreaterThan(0);
+		// And the person got nothing at all — not even an empty key.
+		expect(vault.fm('Dana.md')).toEqual({ type: 'Resource' });
+	});
+});
+
 describe('the guided empty state’s setup action', () => {
 	it('renders a real, Tab-reachable button', () => {
 		const { containerEl } = makeEstimationView(new FakeVault(), {});
@@ -103,7 +132,7 @@ describe('the guided empty state’s setup action', () => {
 		// Two problems from one clean model, both halves of the pair rule cleared
 		// (`pairProblems` in `domain/scoringModel.ts`) — derived here rather than
 		// hard-coded, so a reworded problem cannot fail this test for the wrong reason.
-		const problems = modelProblems(configured({ valueProperty: '', stampProperty: '' }));
+		const problems = modelProblems(configured({ valueProperty: '', stampProperty: '' }), 'type');
 		expect(problems).toHaveLength(2);
 		const [firstProblem, secondProblem] = problems;
 		expect(Notice.messages.at(-1)).toContain(firstProblem);

@@ -18,6 +18,20 @@ export interface EstimationSettings {
 	/** Where opening the note being scored lands — `resolveItemHandling`'s own vocabulary,
 	 *  defaulted to `split` rather than the backlog's `active` (see `resolveEstimationSettings`). */
 	openIn: OpenTarget;
+	/**
+	 * The property this view reads a note's TYPE from, for the one question it asks of a
+	 * type: is this note a person, and therefore not something to score. Read from the same
+	 * option name the backlog view uses (`typeProperty`), so a vault that renamed the
+	 * property gets the same answer in both views without mapping it twice — and defaulting
+	 * to the shipped `type` when this view's own `.base` never names one, which is what an
+	 * estimation view set up on its own will have.
+	 *
+	 * It is NOT a scoring key and deliberately not inside `model`: `modelFingerprint` hashes
+	 * that object to decide whether a stored total can still be trusted, so a key that has
+	 * nothing to do with the score must not be able to invalidate one. The indicator above
+	 * sits outside it for the same reason, arrived at from the other direction.
+	 */
+	typeKey: string;
 }
 
 export type DimField = 'property' | 'weight' | 'range' | 'lessIsBetter' | 'label';
@@ -149,5 +163,6 @@ export function resolveEstimationSettings(config: BasesViewConfig): EstimationSe
 		indicator: resolveIndicator(read),
 		// `split` rather than `active`: this view is the surface being scored on.
 		openIn: resolveItemHandling(config, 'split').openIn,
+		typeKey: read.propKey('typeProperty', 'type'),
 	};
 }

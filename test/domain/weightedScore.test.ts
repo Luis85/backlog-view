@@ -296,7 +296,7 @@ describe('buildEstimationModel: one item per result, one getFileCache read per n
 		vault.addFile('Partial.md', { frontmatter: { 'strategic-alignment': 5, 'customer-value': 3 } });
 		vault.addFile('Empty.md');
 
-		const { items, byPath } = buildEstimationModel(vault.app, vault.entries(), model, noIndicator);
+		const { items, byPath } = buildEstimationModel(vault.app, vault.entries(), model, noIndicator, 'type');
 
 		expect(items).toHaveLength(3);
 		expect(byPath.get('Full.md')?.result?.total).toBe(3.55);
@@ -334,7 +334,7 @@ describe('buildEstimationModel: one item per result, one getFileCache read per n
 			},
 		});
 
-		const { byPath } = buildEstimationModel(vault.app, vault.entries(), scaled, noIndicator);
+		const { byPath } = buildEstimationModel(vault.app, vault.entries(), scaled, noIndicator, 'type');
 		const item = byPath.get('Current.md')!;
 		expect(item.currency).toBe('current');
 		expect(item.confidence).toBe(4);
@@ -345,7 +345,7 @@ describe('buildEstimationModel: one item per result, one getFileCache read per n
 	it("collects only the model's own bound keys that the note actually carries", () => {
 		const vault = new FakeVault();
 		vault.addFile('One.md', { frontmatter: { 'strategic-alignment': 5, 'business-value': 3, unrelated: 'x' } });
-		const { byPath } = buildEstimationModel(vault.app, vault.entries(), model, noIndicator);
+		const { byPath } = buildEstimationModel(vault.app, vault.entries(), model, noIndicator, 'type');
 		const ownKeys = byPath.get('One.md')!.ownKeys;
 		expect(ownKeys.has('strategic-alignment')).toBe(true);
 		expect(ownKeys.has('business-value')).toBe(true);
@@ -359,7 +359,7 @@ describe('buildEstimationModel: one item per result, one getFileCache read per n
 		vault.addFile('Note.md', { frontmatter: { 'strategic-alignment': 5 } });
 		vault.addFile('Attachment.png');
 		const entries = vault.entries();
-		const { items } = buildEstimationModel(vault.app, [...entries, entries[0]], model, noIndicator);
+		const { items } = buildEstimationModel(vault.app, [...entries, entries[0]], model, noIndicator, 'type');
 		expect(items).toHaveLength(1);
 		expect(items[0].file.path).toBe('Note.md');
 	});

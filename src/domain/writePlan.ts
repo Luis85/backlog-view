@@ -1,7 +1,7 @@
 import { TFile } from 'obsidian';
 import { DropTarget } from './dropTargets';
 import { BacklogItem, BacklogModel } from './model';
-import { childLevelIndex, PlacementEnd } from './itemTypes';
+import { childLevelIndex, PlacementEnd, schemaEnds } from './itemTypes';
 import { statedEnds } from './bars';
 import { readDate, sameValue } from './noteFields';
 import { daysBetween, formatCivil } from './timeline';
@@ -682,6 +682,29 @@ const WORKFLOW_STATE_KEY: Partial<Record<OptionalField, (settings: BacklogSettin
 	testState: resolvedTestStateKey,
 };
 
+/**
+ * True when `field` is a date END this item's TYPE does not have — the third carve-out
+ * `missingKeyStubs` makes on one rule: do not create a property that means nothing on the
+ * note it lands on. Extracted rather than written inline beside the other two, because the
+ * loop it guards is at its cognitive budget and a compound condition inside it breached
+ * that budget rather than review.
+ *
+ * One type reaches it: a `Milestone`, which is a point and was being handed the START key
+ * ✨ created for it — the one the generated README tells the reader this view will never
+ * place a milestone by. Its target is still stubbed, because that one it can fill.
+ *
+ * Reached through `schemaEnds`, which is where "which date properties this type's note
+ * carries" is stated, so the backfill cannot drift from the writer and the controls.
+ *
+ * `schemaEnds` and NOT `placementEnds`: an `Iteration` is drawn at one date or two
+ * depending on a display option, and carries both either way. Asking the placement
+ * question here made ✨ withhold the start key an iteration's own editor writes.
+ */
+function missingEnd(field: OptionalField, item: BacklogItem): boolean {
+	if (field !== 'start' && field !== 'target') return false;
+	return !schemaEnds(item.typeName).includes(field);
+}
+
 function missingKeyStubs(item: BacklogItem, settings: BacklogSettings): OptionalField[] {
 	const stubs: OptionalField[] = [];
 	for (const field of OPTIONAL_FIELDS) {
@@ -720,7 +743,10 @@ function missingKeyStubs(item: BacklogItem, settings: BacklogSettings): Optional
 		// widening of `dependsOn`'s: that one's reason is that an empty prerequisite list is a
 		// false claim about a relationship. Two rules that agree today are still two rules.
 		if (field === 'iterationGoal') continue;
-		if (optionalKeyFor(settings, field) === '' || item.ownKeys[field]) continue;
+		// Joined to the two general refusals rather than given a guard of its own: this loop
+		// was one `if` below its cognitive budget, and a sixth breached it. Every clause here
+		// is a reason not to stub, and `missingEnd` carries its own.
+		if (missingEnd(field, item) || optionalKeyFor(settings, field) === '' || item.ownKeys[field]) continue;
 		stubs.push(field);
 	}
 	return stubs;

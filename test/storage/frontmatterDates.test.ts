@@ -230,6 +230,36 @@ describe('the writer decides a date against the live note', () => {
 	});
 });
 
+describe('the writer refuses a note that is no longer the backlog’s to write', () => {
+	function dateSettings() {
+		return resolveSettings(new FakeViewConfig({ startProperty: 'note.start', targetProperty: 'note.target' }));
+	}
+
+	it('refuses every write to a note whose LIVE type is Resource', async () => {
+		// The race the model gate cannot close. `readItems` drops a resource before a
+		// `BacklogItem` exists, but a gesture in flight holds the item it was captured
+		// from — so retyping a note to `Resource` mid-move leaves a plan aimed at it. Its
+		// live shape does not give it away either: a resource is no marker, so it answers
+		// BOTH ends, which is exactly the shape an ordinary item was captured under, and
+		// the shape check accepts it.
+		//
+		// Asked of the type rather than of the axis, so it holds for any batch: what makes
+		// a resource unwritable is what the note IS.
+		const vault = new FakeVault();
+		const file = vault.addFile('Dana.md', { frontmatter: { type: 'Resource' } });
+
+		const outcome = await applyWrites(vault.app, dateSettings(), [
+			{ file, axis: { start: '2026-08-01', target: '2026-08-31', ends: ['start', 'target'] } },
+		]);
+
+		expect(outcome.changed).toBe(false);
+		expect(vault.fm('Dana.md').start).toBeUndefined();
+		expect(vault.fm('Dana.md').target).toBeUndefined();
+		// And the type it carried is untouched: a refusal writes nothing at all.
+		expect(vault.fm('Dana.md').type).toBe('Resource');
+	});
+});
+
 describe('the writer refuses a relative gesture whose baseline has gone stale', () => {
 	function dateSettings() {
 		return resolveSettings(new FakeViewConfig({ startProperty: 'note.start', targetProperty: 'note.target' }));

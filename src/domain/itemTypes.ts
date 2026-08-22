@@ -8,6 +8,7 @@ import {
 	ITERATION_TYPE,
 	LEVELS,
 	MARKER_TYPES,
+	RESOURCE_TYPE,
 	TEST_LEVELS,
 } from './typeVocabulary';
 
@@ -209,6 +210,17 @@ export function isIterationType(typeName: string | null): boolean {
 }
 
 /**
+ * True when `typeName` is the declared RESOURCE name (case-insensitive) — a person, and a
+ * note this backlog recognizes in order to REFUSE it. Its own predicate rather than a
+ * widened `isMarkerType`, for that predicate's own reason and with the same polarity as
+ * `isAbsenceType` beside it: the one call site decides whether a note becomes an item at
+ * all, not where it ranks once it is one.
+ */
+export function isResourceType(typeName: string | null): boolean {
+	return typeName !== null && typeName.toLowerCase() === RESOURCE_TYPE.toLowerCase();
+}
+
+/**
  * True when this type is DRAWN at one date rather than across two, and holdable at
  * neither end. A milestone is a point because a milestone IS a point; an iteration has
  * two ends and the reader decides which reading they want (`iterationBars`). Its own
@@ -343,4 +355,25 @@ const BOTH_ENDS: PlacementEnd[] = ['start', 'target'];
  */
 export function placementEnds(typeName: string | null, iterationBars: boolean): PlacementEnd[] {
 	return drawsAsPoint(typeName, iterationBars) ? ['target'] : [...BOTH_ENDS];
+}
+
+/**
+ * The date ends this TYPE's own note carries **as data** — which is not the same question
+ * as which ends a placement may act on, and the two come apart for exactly one type.
+ *
+ * An `Iteration` is a TIME BOX and holds both dates whatever the roadmap does with them:
+ * `computeIterationNoteWrites` edits both and joining one copies both onto the member.
+ * `iterationBars` decides only whether that box is DRAWN as a span or reduced to its
+ * target — and a DISPLAY option must never decide whether a property exists on a note.
+ * Asking `placementEnds` with the live flag made it do exactly that: under the default
+ * (`false`) the backfill silently stopped offering an iteration the start key its own
+ * editor writes.
+ *
+ * Delegates rather than restating, so which type has which ends is still said once:
+ * asking in BARS mode is asking for the iteration's full timeframe, which IS the schema.
+ * A `Milestone` still answers its target alone — a point by type, and the generated README
+ * tells the reader this view never places one by its start.
+ */
+export function schemaEnds(typeName: string | null): PlacementEnd[] {
+	return placementEnds(typeName, true);
 }
