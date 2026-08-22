@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { FakeVault } from '../helpers/vault';
 import { Modal, Notice } from '../helpers/obsidian-mock';
 import { flush, makeView, refresh, submitButton, useViewHarness } from '../helpers/view';
@@ -223,5 +223,18 @@ describe('creating a resource', () => {
 			'Onboarding',
 		]);
 		expect(containerEl.querySelector('.pbl-count-label')?.textContent).toBe('1 item');
+	});
+
+	it('reports a write it could not make, rather than failing silently', async () => {
+		const vault = new FakeVault();
+		const { view } = makeView(vault, {});
+		vi.spyOn(vault.app.vault, 'create').mockRejectedValue(new Error('disk full'));
+		vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+		promptNewResource(view);
+		submitResource('Alex');
+		await flush();
+
+		expect(Notice.messages.some((m) => m.startsWith('Could not create the resource'))).toBe(true);
 	});
 });

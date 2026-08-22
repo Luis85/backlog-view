@@ -16,6 +16,9 @@ files:
   - src/domain/estimationOptions.ts
   - src/storage/propertyWrite.ts
   - src/domain/scoringModel.ts
+  - src/storage/absenceNotes.ts
+  - src/view/interactions/absences.ts
+  - src/i18n/en.ts
 started: 2026-08-21
 finished: 2026-08-22
 horizon: ""
@@ -92,6 +95,19 @@ replaces every one of those narrowings.
 - **2d — a resource note carries dates, a horizon, a state or an assignee.** All read by
   nothing and written by nothing. There is no item to place, so there is no placement rule
   to state and none of the narrowing the marker version needed.
+- **2f — an absence's edit modal is open against a note the user retypes to `Resource`
+  before submitting.** `editAbsence`/`updateAbsenceNote` share none of `applyWrites`'
+  path — no batch, no `configProblems` gate, no undo slot — so they were the one write
+  this note's own Guarantee did not yet cover. `updateAbsenceNote` now asks the live
+  type inside its `processFrontMatter` callback, the same `readString(ownValue(fm,
+  settings.typeKey))` + `isResourceType` shape, and writes nothing when it answers
+  `Resource`; `editAbsence` skips the rename on that refusal too, since renaming a note
+  the write refused would still rename a resource. `deleteAbsenceNote` was weighed
+  against the same race and left ungated on purpose: the Guarantee is about a forward
+  WRITE, and a trash changes no field — it is the coarser, immediately visible failure
+  of the two, and its own recovery path (the user's "deleted files" setting) was already
+  named before this note existed. Raised by automated review against this note's own
+  Guarantee.
 
 ## Acceptance criteria
 
@@ -143,6 +159,13 @@ replaces every one of those narrowings.
 - **Nothing this step ships may promise the roster.** `deriveLanes` still builds its rows
   from the declared names, the assignees the results carry and the absences, and enumerates
   no `Resource` note.
+- **A `Resource` is never written by an absence edit either, and `editAbsence` must not
+  rename one the write refused.** `updateAbsenceNote` shares none of `applyWrites`' path —
+  no batch, no `configProblems` gate, no undo slot — so it asks the live type again rather
+  than inheriting the refusal, using the same reader `applyWrites` and
+  `applyPropertyWrites` do. `deleteAbsenceNote` was weighed against the identical race and
+  left ungated, deliberately: see 2f. Found by automated review, against this note's own
+  Guarantee.
 
 ## Where it lives
 
@@ -172,6 +195,17 @@ rather than the raw results, so the refusal and the batch agree.
 `src/storage/propertyWrite.ts` is the fourth gate — the estimation view's own writer, which
 asks the live type for the same reason `applyWrites` does and cannot inherit it.
 
+`src/storage/absenceNotes.ts` is the fifth gate, and the one an absence's own edit needed:
+`updateAbsenceNote` asks the live type inside its `processFrontMatter` callback, the same
+shape as the other four, and returns whether it wrote so `src/view/interactions/absences.ts`
+can skip the rename on a refusal rather than rename a note the write just refused to touch.
+`deleteAbsenceNote` in the same file states, in its own comment, why it carries no such
+guard — see 2f. Neither act shares `applyWrites`' batch, `configProblems` gate or undo
+slot, which is why each of the five gates above asks the live type again rather than one
+of them standing in for the rest. `src/i18n/en.ts` carries the one new sentence this gate
+reports through — `absence.becameResource` — since every string in this swept directory
+goes through `t()`.
+
 `src/domain/readItems.ts` is the first gate, one line in `addItem` beside the absence
 divert.
 Nothing is KEPT yet, which is the only difference between the two — [[Rows from the
@@ -185,3 +219,14 @@ keyboard ladder no longer writes an assignee for a marker that is drawn in the m
 row whatever the note says. Both are `Milestone` defects that predate this epic and had no
 test. They live in `src/domain/writePlan.ts`, `src/domain/itemTypes.ts` (`schemaEnds`) and
 `src/view/interactions/keyboard.ts`, and are specified by [[Milestones as their own type]].
+
+The start-key narrowing above was a PLAN-time answer only, and carried the identical race
+this note's own Guarantee already refuses for a resource: a large ✨ batch plans a start
+stub against an ordinary item, the note is retyped to `Milestone` before that file's write
+lands, and `applyInto`'s stub loop asked only whether the live note already held the key,
+never what the live note now WAS — so it created an empty start property the new type may
+not carry. Closed the same way the five gates above are, and by the same rule read twice
+rather than restated: `applyInto` asks `schemaEnds` of the live type `applyWrites` already
+reads for the resource refusal, and drops a start or target stub the live note's type does
+not answer for. Lives in `src/storage/frontmatter.ts` beside the resource gate. Found by
+automated review.

@@ -30,11 +30,15 @@ installObsidianDom();
  *
  * **This is not yet the consolidation** that `Every surface translated` defers. That one
  * marks the catalog and drives EVERY surface, and its blocker is unchanged: its expected
- * remainder would have to enumerate the English still in `view/manual/` and `domain/`,
- * and that list rots on each slice. What is here is the same instrument pointed at the
- * three projections alone, where the remainder is fixture data plus the six `domain/`
- * strings named in `UNSWEPT` below — small enough to state, and each one a check that
- * fails when its own sweep lands.
+ * remainder would have to enumerate the English still in `view/manual/`, and that list
+ * rots on each slice. What is here is the same instrument pointed at the three
+ * projections alone, where the remainder is fixture data and nothing else.
+ *
+ * It said "plus the six `domain/` strings named in `UNSWEPT` below" until 2026-08-22, and
+ * there has never been an `UNSWEPT` in this file — the last block DID name one string, in
+ * an assertion that read a note title instead. Both are gone with `domain/`'s own sweep;
+ * what stands in their place is the block at the end, which drives the three surfaces the
+ * tests above render straight past.
  */
 
 const MARK = 'XX ';
@@ -260,6 +264,10 @@ describe('a lane with absences reads its own words from the catalog', () => {
 			'Epic',
 			'Milestone',
 			'Ship',
+			// The note titled `Work` in `countingVault` — the fixture's own word, and NOT the
+			// legend's workflow heading of the same spelling, which this axis never draws
+			// because one configured workflow gets an empty label. The heading has its own
+			// fixture below; removing this entry to "fix" the sweep was watched failing here.
 			'Work',
 		]);
 	});
@@ -315,20 +323,122 @@ describe('the tree surfaces that need their own configuration', () => {
  * value to itself would pass forever and read as coverage.
  */
 
-describe('what is still English here belongs to domain/, and is named rather than counted', () => {
-	/**
-	 * The one `view/` surface word this slice could not key: `shelfLabel` is
-	 * `domain/roadmap.ts`'s, and keying it in a `view/` slice would be keying somebody
-	 * else's string — the rule `ui/`'s own sweep set for the headings it is handed.
-	 *
-	 * Asserted rather than listed, and in the direction that makes it work: sweeping
-	 * `domain/roadmap.ts` makes this string arrive MARKED and fails this test, so the
-	 * entry is deleted in the same change that keys it. A list of exceptions nobody has
-	 * to maintain is a list that outlives what it excepted.
-	 */
-	it('still renders the shelf label in English, from domain/roadmap.ts', () => {
-		const { containerEl } = makeRoadmap(horizonVault(), {});
+/**
+ * The three surfaces `domain/` alone draws the words for, swept 2026-08-22. Each is here
+ * because the tests above rendered a clean tree over it: a shelf REASON needs a note the
+ * axis refuses to read, the legend's workflow heading needs TWO workflows configured, and
+ * the iteration board is a scope no fixture above enters.
+ *
+ * That is this construction's stated limit, met three times in one slice — it asks the
+ * category of everything DRAWN, so a surface no fixture reaches is a surface it cannot
+ * speak for. Marking the whole catalog does not fix that; only a fixture does.
+ *
+ * This block REPLACES one that claimed `domain/roadmap.ts`'s shelf label was still
+ * English and asserted `toContain('Untriaged')` — the fixture's own note title, which is
+ * data and renders unmarked whatever the catalog says. The label had been keyed three
+ * days earlier (`placement.unplaced`, 2026-08-19) and nothing noticed, because the
+ * assertion never read the label at all. A positive `toContain` on a remainder is the
+ * shape that can pass for the wrong reason; the `toEqual`s above cannot.
+ */
+/**
+ * The text at one selector, asserted to be there AND to be marked. The remainder alone
+ * cannot hold these three: a heading that stops being drawn REMOVES a string rather than
+ * making one English, and every `toEqual` in this file asks what rendered unmarked, so a
+ * fixture that quietly drew no legend section at all would pass. The comment above
+ * `progressNote` names that shape; here it is cheap enough to close.
+ */
+function markedAt(el: HTMLElement, selector: string): string[] {
+	const texts = Array.from(el.querySelectorAll<HTMLElement>(selector), (node) => node.textContent?.trim() ?? '');
+	expect(texts.every((text) => text.startsWith(MARK))).toBe(true);
+	return texts;
+}
 
-		expect(remainder(containerEl)).toContain('Untriaged');
+describe('what only domain/ can say, said from the catalog', () => {
+	it('names a shelved card its reason, from domain/roadmap.ts', () => {
+		// A horizon the axis cannot read: the shelf draws the reason under the card and
+		// repeats it as the card's tooltip. `horizonVault`'s untriaged note shelves with no
+		// reason at all, which is why that fixture never reached this string.
+		const vault = horizonVault();
+		// An OBJECT, not a list: `readPlacement` takes a list's first entry, so `['Now',
+		// 'Later']` places in `Now` and reaches no reason at all.
+		vault.addFile('Unreadable.md', { frontmatter: { type: 'Epic', order: 40, horizon: { when: 'soon' } } });
+		const { containerEl } = makeRoadmap(vault, {});
+
+		expect(markedAt(containerEl, '.pbl-shelf-reason')).toHaveLength(1);
+		expect(remainder(containerEl)).toEqual(['Epic', 'Later', 'Later item', 'Next', 'Now', 'Now item', 'Unreadable', 'Untriaged']);
+	});
+
+	it('names a shelved bar its three reasons, from domain/bars.ts', () => {
+		// One per branch of `placeItem`: an unreadable start, an unreadable target, and a
+		// pair the right way round in the note and the wrong way round in time.
+		const vault = new FakeVault();
+		vault.addFile('Bad start.md', { frontmatter: { type: 'Epic', order: 10, start: ['not', 'a date'], due: '2026-08-10' } });
+		vault.addFile('Bad due.md', { frontmatter: { type: 'Epic', order: 20, start: '2026-08-01', due: ['not', 'a date'] } });
+		vault.addFile('Backwards.md', { frontmatter: { type: 'Epic', order: 30, start: '2026-08-10', due: '2026-08-01' } });
+		const { containerEl } = roadmapView(vault, { startProperty: 'note.start', targetProperty: 'note.due' });
+
+		expect(new Set(markedAt(containerEl, '.pbl-shelf-reason'))).toHaveLength(3);
+		expect(remainder(containerEl).filter((text) => !/^\d{4}-\d\d-\d\d$/.test(text) && !/^\w{3}$/.test(text))).toEqual([
+			'Backwards',
+			'Bad due',
+			'Bad start',
+			'Epic',
+		]);
+	});
+
+	it('heads each legend section with its workflow name, from domain/board.ts', () => {
+		// TWO workflows, which is the only configuration that draws the headings at all:
+		// `statePalettes` gives a lone palette an empty label and the legend draws no
+		// section for it, so every other fixture in this file renders past them.
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10, status: 'Doing', start: '2026-08-01', due: '2026-08-20' } });
+		vault.addFile('Doc.md', {
+			frontmatter: { type: 'Deliverable', order: 20, stage: 'Draft', start: '2026-08-01', due: '2026-08-20' },
+		});
+		const { containerEl } = roadmapView(vault, {
+			startProperty: 'note.start',
+			targetProperty: 'note.due',
+			stateProperty: 'note.status',
+			stateValues: 'New, Doing, Done',
+			deliverableStateProperty: 'note.stage',
+			deliverableStateValues: 'Draft, Published',
+			deliverableDoneValues: 'Published',
+		});
+
+		expect(markedAt(containerEl, '.pbl-legend-group')).toHaveLength(2);
+		// The state VALUES of both workflows, and the type names beside them. The two
+		// headings ABOVE them — `Work` and `Deliverables` — are what `markedAt` just read.
+		expect(remainder(containerEl).filter((text) => !/^\d{4}-\d\d-\d\d$/.test(text) && !/^\w{3}$/.test(text))).toEqual([
+			'Deliverable',
+			'Doing',
+			'Done',
+			'Draft',
+			'Epic',
+			'Published',
+		]);
+	});
+
+	it('names the three iteration buckets from it, in domain/board.ts', () => {
+		const vault = new FakeVault();
+		vault.addFile('Sprint 12.md', { frontmatter: { type: 'Iteration', order: 10 } });
+		vault.addFile('Ready.md', { frontmatter: { type: 'PBI', order: 10, status: 'New', iteration: '[[Sprint 12]]' } });
+		const { containerEl, view } = makeView(
+			vault,
+			{
+				stateProperty: 'note.status',
+				stateValues: 'New, Doing, Done',
+				iterationProperty: 'note.iteration',
+				iterationOpenStates: 'New',
+				iterationResolvedStates: 'Done',
+			},
+			{ base: 'Plan.base' },
+		);
+		view.setBoardScope('Sprint 12.md');
+
+		// The three column names are not data: a bucket writes the state its representative
+		// names, never its own label. What is left is the iteration's title, the card's, and
+		// its type.
+		expect(markedAt(containerEl, '.pbl-board-col-name')).toHaveLength(3);
+		expect(remainder(containerEl)).toEqual(['PBI', 'Ready', 'Sprint 12']);
 	});
 });

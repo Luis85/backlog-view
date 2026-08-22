@@ -1,6 +1,6 @@
 import { BacklogSettings, stateMenuValues } from './settings';
 import { resolvedDeliverableStateKey, resolvedTestStateKey } from './optionalProperties';
-import { ALL_TYPES, EXTRA_TYPES, LEVELS, MARKER_TYPES, TEST_LEVELS } from './typeVocabulary';
+import { ALL_TYPES, EXTRA_TYPES, LEVELS, MARKER_TYPES, MILESTONE_TYPE, TEST_LEVELS } from './typeVocabulary';
 import { childTypeChoices, drawsAsPoint, EXTRA_TYPE_RANK, folderForType, LadderPosition, ladderFor } from './itemTypes';
 import { readmeMarker } from './readmeMarker';
 import { stampRows, stampRule, startedStates } from './readmeStamps';
@@ -327,6 +327,18 @@ function stateSection(settings: BacklogSettings, states: StateEntry[]): string[]
 }
 
 /**
+ * The backfill's one exception to "empty on every note that lacks it" — `MILESTONE_TYPE`
+ * rather than `MARKER_TYPES`, since `schemaEnds` narrows a `Milestone` alone; an
+ * `Iteration` is a span and keeps both ends whatever `iterationBars` says.
+ *
+ * Gated on `startKey`, the withheld key: with none configured ✨ never stubs a start on
+ * anything, marker or not, so there is nothing here to except.
+ */
+function assignException(settings: BacklogSettings): string {
+	return settings.startKey ? ` — except that a ${code(MILESTONE_TYPE)} never gets a start added: it is a point by type and reads only a target` : '';
+}
+
+/**
  * Who writes the planning keys, named only where each can fire — the menu offers per
  * axis, so a horizon-only view has no Schedule and a dated one no Set horizon. Three are
  * not edits to an existing placement at all: **New** inside a bucket writes the horizon
@@ -353,10 +365,7 @@ function planningWriters(settings: BacklogSettings): string {
 		...(joinsDates
 			? ["**Set iteration**, which copies the iteration's own dates onto the note in the same write that joins it"]
 			: []),
-		// The exception is named rather than left to the reader: this action is the one
-		// writer here that a TYPE narrows, and the public README and the in-app manual both
-		// say so. A generated document that promises every key is the copy nobody re-reads.
-		'**Assign missing properties**, which adds the keys *empty* to items that lack them and places nothing — except a planned date the type cannot use, so a marker is given its target and not its start',
+		`**Assign missing properties**, which adds the keys *empty* to items that lack them and places nothing${assignException(settings)}`,
 	];
 	return `${writers.slice(0, -1).join('; ')}; and ${writers[writers.length - 1]}`;
 }

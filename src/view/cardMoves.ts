@@ -22,7 +22,7 @@ import { todayStamp } from '../domain/noteFields';
 import { WriteOutcome } from '../storage/frontmatter';
 import { BacklogViewHost } from './host';
 import { declareResource } from './interactions/labels';
-import { BUCKET_LABELS, bucketOf, bucketRepresentative, IterationBucket } from '../domain/board';
+import { bucketLabel, bucketOf, bucketRepresentative, IterationBucket } from '../domain/board';
 import {
 	announceBoardMove,
 	announceHorizonMove,
@@ -87,14 +87,14 @@ export class CardMoveController {
 		const join = computeIterationJoinWrites(item, this.host.model, this.host.effectiveScope, settings);
 		if (state === undefined) return false;
 		if (from === bucket && join.length === 0) return false;
-		// Named from `BUCKET_LABELS` rather than from the drawn board, which is the one
+		// Named from `bucketLabel` rather than from the drawn board, which is the one
 		// place this move differs from every other in this file: the three labels are
 		// CONSTANTS, not user data, so there is nothing to capture before the await and
 		// nothing a rebuilt board could take away — the sentence says what the header says
 		// by construction.
 		// The bucket it came from is what a card ALREADY on this board left; a card pulled
 		// from the shelf came from no bucket at all, and says so in the shelf's own name.
-		const source = join.length > 0 ? t('shelf.backlog') : BUCKET_LABELS[from];
+		const source = join.length > 0 ? t('shelf.backlog') : bucketLabel(from);
 		const landing = from === bucket ? [] : computeStateWrites(item, state, settings, todayStamp());
 		// One record for one gesture — merged rather than listed, because two records
 		// naming one file are two `processFrontMatter` calls and two captured inverses.
@@ -102,7 +102,7 @@ export class CardMoveController {
 		// seed is what keeps a write naming its file however the two halves come out: both
 		// empty is the case the two returns above have already taken.
 		const merged = [...join, ...landing].reduce<ItemWrite>((all, part) => ({ ...all, ...part }), { file: item.file });
-		return this.applyCardMove(item, [merged], () => announceMove(item.title, source, BUCKET_LABELS[bucket]));
+		return this.applyCardMove(item, [merged], () => announceMove(item.title, source, bucketLabel(bucket)));
 	}
 
 	/**
@@ -121,7 +121,7 @@ export class CardMoveController {
 		// await and nothing a rebuilt board can take away — `performIterationBoardMove`'s
 		// own reason, and it costs the sentence nothing, since the shelf it lands on is
 		// what says the sprint was left.
-		const from = BUCKET_LABELS[bucketOf(item.stateValue, this.host.settings)];
+		const from = bucketLabel(bucketOf(item.stateValue, this.host.settings));
 		return this.applyCardMove(item, computeIterationWrites(item, null, this.host.settings), () =>
 			announceMove(item.title, from, t('shelf.backlog')),
 		);

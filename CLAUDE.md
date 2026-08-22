@@ -109,34 +109,43 @@ language, so nothing re-reads it. What must never enter the catalog is anything 
 writes, matches or persists — type names, state values, option keys, tags, file names. The
 test when it is not obvious: **ask what breaks if two people with different Obsidian
 languages open the same vault.** "One sees different words" is text; "one writes notes the
-other's view cannot read" is data. 528 keys are in it (counted two ways on 2026-08-22 —
-`Object.keys` at runtime and a tab-aware grep — after [[Making a resource from the
-timeline]]'s nine landed; that figure is dated the moment it is written and reads as
-historical rather than as a maintained total).
+other's view cannot read" is data. 553 keys are in it (counted two ways on 2026-08-22 and
+agreeing — an AST walk over the `as const` object's own properties, and a match-counting
+`grep -Po` for the key lines; `grep -c` would count LINES, which is one of the three wrong
+numbers this epic has produced from an instrument that looked right). Re-measured when
+[[Making a resource from the timeline]] merged, which is also how the previous figure was
+found to be one short of its own catalog: a count is dated the moment it is written.
 `ui/`, `commands/`, `view/interactions/`, `view/estimation/`, the whole of `view/render/`,
-`view/writeGate.ts`, `view/cardMoves.ts`, `main.ts` and `domain/viewOptions.ts` are swept,
-which leaves **`view/manual/` and the REST of `domain/`** and nothing else. Neither is a
-leftover: the manual is 334 literals of authored long-form
+`view/writeGate.ts`, `view/cardMoves.ts`, `main.ts`, `domain/viewOptions.ts` and — since
+2026-08-22 — `domain/estimationOptions.ts`, `domain/board.ts`, `domain/bars.ts` and
+`domain/roadmap.ts` are swept, **which leaves `view/manual/` and nothing else in `src/`
+that a sweep still owes.** It is not a leftover: those three files are authored long-form
 PROSE, and whether several hundred multi-sentence paragraphs belong in a message catalog at
-all is an open question rather than work not yet done; what is left in `domain/` is the
-estimation model's own options and rubric (`estimationOptions.ts`, `defaultModel.ts`) and
-`board.ts`'s two, all of which arrived with the estimation view and none of which any sweep
-has reached yet, plus `backlogReadme.ts`, written INTO the vault, so it is a data question
-before a text one — plus `roadmap.ts`'s shelf label, which
-`test/i18n/projections.test.ts` asserts is still English so that keying it fails a test
-rather than needing to be remembered. The sweep across those
-call sites is `docs/requirements/Every surface translated.md`, and an English literal beside
-a `t()` call in an UNSWEPT directory is work not yet done rather than a rule being broken.
+all is an open question rather than work not yet done. What is still English in the REST of
+`domain/` was classified rather than swept, and every part of it stays for a stated reason
+— the type names and shipped value lists are data, `defaultModel.ts`'s rubrics are in the
+model FINGERPRINT so two locales would stamp two models, `timeline.ts`'s month names are a
+formatting question that follows the USER's locale through `Intl` and belongs to
+[[Locale-aware sorting and formatting]], and `backlogReadme.ts` and `readmeStamps.ts` write
+authored prose INTO the vault, which is `view/manual/`'s own open question wearing two more
+instances. `roadmap.ts`'s shelf label is NOT among them and this paragraph said it was
+until 2026-08-22: it was keyed on 2026-08-19 and three places went on claiming otherwise,
+one of them a test whose assertion read a note title instead. The whole classification is
+in `docs/requirements/Every surface translated.md`, and an English literal beside a `t()`
+call in an UNSWEPT directory is work not yet done rather than a rule being broken.
 
 In a SWEPT directory it is neither, and the bans hold it — but read what each one CANNOT
 see before trusting it, because every gap has cost this epic a miss. `UI_TEXT_LITERAL` sees
 a capitalised sentence at seven setter names, at `new Notice` and at a BARE
 `setTooltip(el, …)` — the spelling every render module uses, and the one the method form
-alone read as nothing. `UI_TEXT_PROPERTY` is the second ban, for the twelve option-bag
+alone read as nothing. `UI_TEXT_PROPERTY` is the second ban, for the thirteen option-bag
 properties (`text`/`label`/`title`/`heading`/`description`/`placeholder`/`cta`/`ctaLabel`/
-`fieldName`/`name`/`displayName`, and `'aria-label'`) a module that spells no setter reaches
-the DOM through — `name` is the widest of them and the only one routinely DATA elsewhere (a
-resource, a lane, a file), so it costs exemptions rather than joining the ban everywhere.
+`fieldName`/`name`/`displayName`/`reason`, and `'aria-label'`) a module that spells no setter
+reaches the DOM through — `name` is the widest of them and the only one routinely DATA
+elsewhere (a resource, a lane, a file), so it costs exemptions rather than joining the ban
+everywhere. `reason` is the narrowest, added 2026-08-22 with `domain/`'s shelf reasons:
+`bars.ts` and `roadmap.ts` are the only two files in `src/` that spell it as a property at
+all, and in both it is the sentence a shelved card draws about itself.
 There are TWO, both the plugin's own name and both disabled at the line:
 `view/registerBacklogView.ts`'s `registerBasesView` call, and `ui/manualDialog.ts`'s nav
 heading, which needed one the day the property ban reached `ui/`. A second

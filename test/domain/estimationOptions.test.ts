@@ -1,4 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
+import { en } from '../../src/i18n/en';
+import { Catalog, setLocale } from '../../src/i18n/t';
 import { getEstimationViewOptions } from '../../src/domain/estimationOptions';
 import { dimOption } from '../../src/domain/estimationSettings';
 import { DEFAULT_DIMENSIONS } from '../../src/domain/defaultModel';
@@ -131,5 +133,78 @@ describe('a dimension group is headed the way the panel heads it', () => {
 		// legible before the mistake is made rather than only after.
 		const item = weightItem(getEstimationViewOptions(new FakeViewConfig({})), 'reach');
 		expect(item.displayName).toBe('Weight (% of 100)');
+	});
+});
+
+/**
+ * The other half of the same file's subject, `viewOptions.test.ts`'s construction over this
+ * view's own menu: what a `.base` reads back is data and must not move, and everything a
+ * reader SEES is text and comes from the catalog. They sit on adjacent lines of one object
+ * literal, which is the arrangement in which a sweep makes a mistake.
+ *
+ * The whole catalog goes behind a marker and the assertion is on the REMAINDER, so a
+ * literal spelled at a new option fails without anyone naming it, and a key given to a
+ * value the resolver reads back fails too. The expected remainder is DERIVED from
+ * `DEFAULT_DIMENSIONS` rather than spelled out — the shipped model is the one source both
+ * the boxes and this list read, so adding a ninth dimension does not edit this test, and
+ * keying one of its words still fails it.
+ */
+const MARK = 'XX ';
+const xx: Catalog = Object.fromEntries(
+	Object.entries(en).map(([key, entry]) => [
+		key,
+		typeof entry === 'string' ? MARK + entry : Object.fromEntries(Object.entries(entry).map(([f, v]) => [f, MARK + v])),
+	]),
+);
+
+/** Every word the menu shows: a group's heading, an option's name, and its placeholder. */
+function shown(options: ReturnType<typeof getEstimationViewOptions>): string[] {
+	const words: string[] = [];
+	for (const option of options) {
+		if (option.displayName !== undefined) words.push(option.displayName);
+		if (!('items' in option)) continue;
+		for (const item of option.items) {
+			if (item.displayName !== undefined) words.push(item.displayName);
+			if (item.placeholder !== undefined) words.push(item.placeholder);
+		}
+	}
+	return [...new Set(words)].sort();
+}
+
+describe("the estimation view's options menu reads its words from the catalog", () => {
+	afterEach(() => setLocale('en'));
+
+	it('leaves unmarked only the keys a picker suggests and the shipped model a box mirrors', () => {
+		setLocale('xx', { xx });
+		const unmarked = shown(getEstimationViewOptions(new FakeViewConfig({}))).filter((word) => !word.startsWith(MARK));
+
+		expect(unmarked).toEqual(
+			[
+				// The frontmatter keys the fixed pickers suggest — what the backfill adopts
+				// and writes, so a locale that changed one would set up a different property.
+				// `type` is the newest of them: the property this view reads a note's TYPE
+				// from, so that it can refuse a `Resource`. Its own placeholder is a
+				// frontmatter key like the rest and stays out of the catalog; its
+				// displayName is ordinary text and goes through it.
+				'type',
+				'business-value',
+				'business-value-model',
+				'complexity',
+				'confidence',
+				'effort',
+				// The dimensions box mirrors its own default, so clearing it falls back to the
+				// list on screen.
+				DEFAULT_DIMENSIONS.map((d) => d.id).join(', '),
+				// Both range boxes mirror the shipped pair the same way.
+				'1-5',
+				// Per dimension: the property its picker suggests (the id), the shipped weight,
+				// and the shipped LABEL — the group's heading and the Label box's own default.
+				// The label is a value the user may override in that box, so it is a shipped
+				// default like `Now, Next, Later` rather than text.
+				...DEFAULT_DIMENSIONS.flatMap((d) => [d.id, String(d.weight), d.label]),
+			]
+				.filter((word, i, all) => all.indexOf(word) === i)
+				.sort(),
+		);
 	});
 });

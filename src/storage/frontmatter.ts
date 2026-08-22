@@ -1,6 +1,6 @@
 import { App, Notice, TFile } from 'obsidian';
 import { StatedEnds } from '../domain/bars';
-import { isResourceType, placementEnds, PlacementEnd } from '../domain/itemTypes';
+import { isResourceType, placementEnds, PlacementEnd, schemaEnds } from '../domain/itemTypes';
 import {
 	absentReading,
 	CivilDate,
@@ -155,7 +155,7 @@ export async function applyWrites(
 			}
 			const keys = touchedKeys(settings, write);
 			const prior = keys.map((key) => rawValueOf(fm, key));
-			const lists = applyInto(app, fm, settings, write);
+			const lists = applyInto(app, fm, settings, write, liveType);
 			inverse = captureInverse(write.file, keys, prior, fm, lists);
 			if (write.axis && (write.axis.start !== undefined || write.axis.target !== undefined)) {
 				// Narrowed to the ends the placement HAS, on both sides. A marker keeps a
@@ -204,6 +204,7 @@ function applyInto(
 	fm: Record<string, unknown>,
 	settings: BacklogSettings,
 	write: ItemWrite,
+	liveType: string | null,
 ): Pick<RestoreWrite, 'tags' | 'dependsOn'> {
 	// The state this note is actually leaving, read BEFORE the write replaces it. The
 	// model's idea of it can be a refresh behind — an external edit, or a batch still
@@ -226,7 +227,14 @@ function applyInto(
 	// stamp are: the row that planned this can be a refresh behind the note, and a value
 	// written since — by hand, by another view, by a write earlier in this same batch —
 	// would be blanked by a stub that believed the plan.
-	for (const key of stubKeys(settings, write.stubs)) {
+	//
+	// A start/target stub is narrowed the SAME question again, against the LIVE type
+	// rather than the model's: `schemaEnds` is what `missingEnd` already asks the plan,
+	// and a note retyped to a `Milestone` mid-batch must not gain the start key its note
+	// never carries just because a stale row still asked for it.
+	const liveEnds = schemaEnds(liveType);
+	const stubs = write.stubs?.filter((field) => (field !== 'start' && field !== 'target') || liveEnds.includes(field));
+	for (const key of stubKeys(settings, stubs)) {
 		if (!rawValueOf(fm, key).present) setOwn(fm, key, '');
 	}
 	const applied =

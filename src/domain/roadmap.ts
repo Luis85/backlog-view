@@ -491,7 +491,7 @@ function placeResult(
 ): void {
 	const reading = item.horizon;
 	if (reading.invalid) {
-		roadmap.shelf.push({ item, reason: 'Unreadable horizon value' });
+		roadmap.shelf.push({ item, reason: t('placement.reasonUnreadableHorizon') });
 		return;
 	}
 	if (reading.value === null) {

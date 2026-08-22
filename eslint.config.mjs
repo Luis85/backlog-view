@@ -261,14 +261,24 @@ const ROW_LISTENER = {
  * `syntaxRules` wrapper exists so that is the only decision, and the shape is uniform.
  */
 const STORAGE = 'src/storage/**/*.ts';
-// The two regions outside view/ that render text and have been SWEPT, so the ternary ban
-// lands on a clean file rather than opening with a wall of errors. Carved out of the
-// general region for that one rule and nothing else. domain/ and main.ts stay out until
-// their own sweeps run — `docs/requirements/Every surface translated.md`.
+// Everything outside view/ that renders text and has been SWEPT, so the text bans land on
+// clean files rather than opening with a wall of errors. Carved out of the general region
+// for those rules and nothing else — the rest of domain/ stays out, per the block below,
+// and `docs/requirements/Every surface translated.md` says why file by file.
 // The directories swept into the catalog, plus `main.ts` — two command NAMES and the
 // plugin's own name, which is never translated and carries an inline disable rather than
-// an exemption for the file, `ui/manualDialog.ts`'s nav heading exactly.
-const SWEPT = ['src/ui/**/*.ts', 'src/commands/**/*.ts', 'src/main.ts', 'src/domain/viewOptions.ts'];
+// an exemption for the file, `ui/manualDialog.ts`'s nav heading exactly — and the four
+// `domain/` files whose own text is now keyed.
+const SWEPT = [
+	'src/ui/**/*.ts',
+	'src/commands/**/*.ts',
+	'src/main.ts',
+	'src/domain/viewOptions.ts',
+	'src/domain/estimationOptions.ts',
+	'src/domain/board.ts',
+	'src/domain/bars.ts',
+	'src/domain/roadmap.ts',
+];
 const MENU = 'src/view/interactions/menu.ts';
 // The rest of the menu surface, carved out of VIEW for the two text bans alone — swept
 // into the catalog on 2026-08-20 alongside `menu.ts` itself, so the bans land on clean
@@ -539,6 +549,12 @@ const UI_TEXT_LITERAL = {
 // every prompt in the plugin. Verified by planting at each name, and the swept tree stays
 // clean, so the widening costs no exemption.
 //
+// `reason:` joined on 2026-08-22 with `domain/`'s shelf reasons, and it is the narrowest
+// name here rather than a widening of the same kind: `bars.ts` and `roadmap.ts` are the
+// only two files in `src/` that spell it as a property at all, and in both it is the
+// sentence the shelf card draws under its title. Planted at each of the four and watched
+// erroring; nothing else in the tree matches it.
+//
 // a template whose first quasi is empty (`UI_TEXT_LITERAL`'s own second exemption, for the
 // same reason — the capital test has nothing to read), and a prose literal handed to a
 // helper as a positional ARGUMENT, which is how `guidanceShell` takes every title and hint
@@ -547,7 +563,7 @@ const UI_TEXT_LITERAL = {
 // that every string a frame drew carries the fixture catalog's marker.
 const UI_TEXT_PROPERTY = {
 	selector:
-		"Property[key.name=/^(text|label|title|heading|description|placeholder|cta|ctaLabel|fieldName|name|displayName|duplicateWarning)$/]:matches([value.type='Literal'][value.value=/^[A-Z]/], [value.type='TemplateLiteral'][value.quasis.0.value.raw=/^[A-Z]/]), Property[key.name=/^(text|label|title|heading|description|placeholder|cta|ctaLabel|fieldName|name|displayName|duplicateWarning)$/] > ConditionalExpression > :matches(Literal[value=/^[A-Z]/], TemplateLiteral[quasis.0.value.raw=/^[A-Z]/]), Property[key.value='aria-label']:matches([value.type='Literal'][value.value=/^[A-Z]/], [value.type='TemplateLiteral'][value.quasis.0.value.raw=/^[A-Z]/]), Property[key.value='aria-label'] > ConditionalExpression > :matches(Literal[value=/^[A-Z]/], TemplateLiteral[quasis.0.value.raw=/^[A-Z]/])",
+		"Property[key.name=/^(text|label|title|heading|description|placeholder|cta|ctaLabel|fieldName|name|displayName|duplicateWarning|reason)$/]:matches([value.type='Literal'][value.value=/^[A-Z]/], [value.type='TemplateLiteral'][value.quasis.0.value.raw=/^[A-Z]/]), Property[key.name=/^(text|label|title|heading|description|placeholder|cta|ctaLabel|fieldName|name|displayName|duplicateWarning|reason)$/] > ConditionalExpression > :matches(Literal[value=/^[A-Z]/], TemplateLiteral[quasis.0.value.raw=/^[A-Z]/]), Property[key.value='aria-label']:matches([value.type='Literal'][value.value=/^[A-Z]/], [value.type='TemplateLiteral'][value.quasis.0.value.raw=/^[A-Z]/]), Property[key.value='aria-label'] > ConditionalExpression > :matches(Literal[value=/^[A-Z]/], TemplateLiteral[quasis.0.value.raw=/^[A-Z]/])",
 	message:
 		'A sentence spelled where it is used cannot be translated. Add a key to src/i18n/en.ts and call t() — and if this is a value the plugin writes, matches or persists rather than text, it belongs in neither place.',
 };
@@ -623,11 +639,18 @@ export default defineConfig([
 		// both were swept into the catalog on 2026-08-19, so the bans have a clean file to
 		// hold. Everything else the general region carries applies here unchanged.
 		//
-		// `domain/viewOptions.ts` joined on 2026-08-21 with its own sweep, and it is ONE FILE
-		// out of a directory that stays unbanned for the reason stated above the ternary ban:
-		// `domain/backlogReadme.ts` writes English INTO the vault and `domain/roadmap.ts`
-		// still spells the shelf label. It is also the file that made `displayName` worth
-		// banning — the option-bag property no other module in `src/` spells.
+		// `domain/viewOptions.ts` joined on 2026-08-21 with its own sweep, and it is the file
+		// that made `displayName` worth banning — the option-bag property no other module in
+		// `src/` spells. Four more joined on 2026-08-22 with theirs: `estimationOptions.ts`,
+		// which is the same object literal for the other view, and `board.ts`, `bars.ts` and
+		// `roadmap.ts`, which is what made `reason` worth banning.
+		//
+		// The REST of `domain/` stays unbanned, and each part of it for its own reason rather
+		// than for want of a sweep: `backlogReadme.ts` and `readmeStamps.ts` write English
+		// INTO the vault, `defaultModel.ts` is the shipped scoring model's own defaults,
+		// `typeVocabulary.ts` and `settings.ts` are the type names and the shipped value
+		// lists, and `timeline.ts`'s month names are a formatting question rather than a
+		// catalog one. `docs/requirements/Every surface translated.md` states each.
 		files: SWEPT,
 		rules: syntaxRules([
 			...WRITE_BOUNDARY,
