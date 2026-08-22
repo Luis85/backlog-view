@@ -10,6 +10,7 @@ import {
 	inCatalog,
 	isDeliverableType,
 	isIterationType,
+	isReleaseType,
 	isExtraType,
 	isMarkerType,
 	ladderFor,
@@ -166,6 +167,16 @@ export interface BacklogModel {
 	 */
 	iterations: BacklogItem[];
 	/**
+	 * Every `Release` result in the base — the release view's own population, parallel to
+	 * `results` rather than a wider version of it. Read off `items`, the whole unfocused
+	 * tree, for `iterations`' own reason: which releases exist is a fact about the base,
+	 * not about whichever subtree a focus level set on another projection is narrowing.
+	 * Excludes `outsideFilter` items, same as `results` and `iterations` — a release the
+	 * Base excluded is not this base's to list, and it never arrives as a context row
+	 * either, because a release parents nothing.
+	 */
+	releases: BacklogItem[];
+	/**
 	 * The test catalog's own forest — its rendered roots, every row beneath them, and the
 	 * results among those. Computed by the same rule `roots`/`items`/`results` are, with
 	 * the opposite membership predicate, and off the whole UNFOCUSED tree so a focus level
@@ -235,6 +246,8 @@ export function buildModel(app: App, entries: BasesEntry[], settings: BacklogSet
 		deliverableResults: items.filter((item) => !item.outsideFilter && isDeliverableType(item.typeName)),
 		// Same source, same guard, the same reason — see `BacklogModel.iterations`.
 		iterations: items.filter((item) => !item.outsideFilter && isIterationType(item.typeName)),
+		// Same source, same guard, the same reason — see `BacklogModel.releases`.
+		releases: items.filter((item) => !item.outsideFilter && isReleaseType(item.typeName)),
 		// Read off the WHOLE, unfocused tree for the reason `deliverableResults` already
 		// is, and the precedent matters more than the line: `buildModel`'s focus branch
 		// replaces roots, items and results together, so a catalog computed after it would
