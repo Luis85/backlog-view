@@ -1909,6 +1909,20 @@ describe('the release index', () => {
 		expect(view.pickedPath).toBe('0.8.md');
 	});
 
+	it('opens a release from the keyboard, and puts every row in the tab order', () => {
+		// The index-to-scope transition is this view's ENTIRE navigation. A pointer-only
+		// row would make the release view unreachable for a keyboard or screen-reader
+		// user, which no amount of correct derivation behind it makes acceptable.
+		const { view, containerEl } = makeReleaseView(releaseVault(), RELEASE_CONFIG);
+		const rows = [...containerEl.querySelectorAll('.pbl-rel-row')] as HTMLElement[];
+		expect(rows.every((el) => el.tabIndex === 0)).toBe(true);
+		key(containerEl.querySelector('.pbl-rel-row[data-path="0.9.md"]') as HTMLElement, 'Enter');
+		expect(view.pickedPath).toBe('0.9.md');
+		view.pick(null);
+		key(containerEl.querySelector('.pbl-rel-row[data-path="0.9.md"]') as HTMLElement, ' ');
+		expect(view.pickedPath).toBe('0.9.md');
+	});
+
 	it('names an unconfigured column ONCE, and never blanks it per row', () => {
 		const { containerEl } = makeReleaseView(releaseVault(), { ...RELEASE_CONFIG, versionProperty: '' });
 		expect(containerEl.querySelectorAll('.pbl-rel-version')).toHaveLength(0);
@@ -1953,6 +1967,13 @@ Key points a newcomer will not infer:
 - **A column whose key is unconfigured is absent for every row and named once** in a `.pbl-rel-note` line beneath the grid — never an empty cell per row.
 - **A row's `.pbl-state-chip` also carries `.pbl-state-static`.** This view is read-only, so every chip on it is the static one — the same div a context row already renders. It draws grey: `--pbl-state-color` is consumed by the legend and the card projections, not by a row chip.
 - Sort order comes from `releaseIndex` and is never re-sorted here. One denominator, one predicate, one answer.
+- **A row is operable from the keyboard, not only the pointer.** Picking a release is the
+  only navigation this view has, so a `div` with a click listener would make the whole
+  scope screen unreachable without a mouse. Give each row `role="button"`, `tabindex="0"`
+  and an Enter/Space handler beside the click one — or make it a real `<button>` if the
+  five-column grid survives it, which is the better answer where it fits because it brings
+  the semantics and the focus ring for free. Read how `view/render/` already does this
+  before inventing a third spelling; the same rule applies to the back control in Task 9.
 
 - [ ] **Step 4: Run the tests**
 
@@ -2013,6 +2034,16 @@ describe("a release's scope on screen", () => {
 		click(containerEl.querySelector('.pbl-rel-back') as HTMLElement);
 		expect(view.pickedPath).toBeNull();
 		expect(containerEl.querySelector('.pbl-rel-grid')).not.toBeNull();
+	});
+
+	it('returns to the index from the keyboard too', () => {
+		// The only way out of a release. A pointer-only back control strands a keyboard
+		// user on the scope screen — worse than a pointer-only row, which merely blocks
+		// entry.
+		const { view, containerEl } = makeReleaseView(scopeVault(), RELEASE_CONFIG);
+		view.pick('R.md');
+		key(containerEl.querySelector('.pbl-rel-back') as HTMLElement, 'Enter');
+		expect(view.pickedPath).toBeNull();
 	});
 
 	it('says an empty release is empty, and names it', () => {
