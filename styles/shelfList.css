@@ -133,10 +133,24 @@
    `flex-wrap` stays off, and it is load-bearing beside the shrink rather than tidy: a wrapper
    that can finally be squeezed is one whose cells wrap to a second line — a 28px row becoming
    56px the moment it holds two chips. */
+/* **`overflow: hidden` is restated here because the CARD turns it off.** `.pbl-props` clips
+   by default (`propertyColumns.css`), and `.pbl-card .pbl-props` sets `overflow: visible`
+   deliberately — a card stacks its cells and wraps them, so nothing there ever needs
+   clipping. A compact row is inside a card and is the case where that opt-out is wrong: the
+   cells hold a shared width and shrink to 0 under a deficit, and with the card's `visible`
+   in force their contents kept painting past the row's edge.
+
+   Neither half of this was visible alone, which is why it survived Task 4's own review: at
+   the commit where the shrink policy landed the row was still clean at 380px, and the fold
+   slot's 38px of rigid lead (30px + one gap) is what moved the onset up past it. Measured
+   with the declaration off: the summary's scroll width exceeded its client width by 4px at
+   420, 16 at 400, 22 at 390 and 28 at 380, on all 20 rows. With it on, every one of those is
+   0. (Final review, PR #187.) */
 .pbl-shelf-list .pbl-card-summary .pbl-props {
 	flex: 0 1 auto;
 	min-width: 0;
 	flex-wrap: nowrap;
+	overflow: hidden;
 }
 
 /* The title is the one thing that yields, and it truncates rather than wraps: a row that
@@ -155,8 +169,11 @@
    theme draws them. And the floor yields itself once there is not room for it, which a bare
    `16ch` could not: a reservation is a promise about a container with the space to keep it,
    and below some width 16ch plus the badge, the gaps and the cells is more than the row has.
-   Measured across the range rather than argued — at 1200, 640, 480 and 380px the summary's
-   scroll width equals its client width exactly, and at 320px a fixed floor overran by 7px.
+   Measured across the range rather than argued — at 1200, 640, 480, 430, 420, 400, 390 and
+   380px the summary's scroll width equals its client width exactly, and at 320px the row
+   overruns by 16px even with the floor yielding. Re-taken at the end of PR #187: the fold
+   slot added 38px of rigid lead, so the older reading (clean at 380, 7px at 320) is the
+   pre-fold-slot row and does not describe this one.
    The percentage is of the SUMMARY's own content box, so it answers to the band a reader is
    looking at rather than to the viewport, which is what a media query would get wrong in a
    split pane. */

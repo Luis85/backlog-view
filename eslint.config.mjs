@@ -759,6 +759,15 @@ export default defineConfig([
 		// ALL_TYPES_IMPORT does not apply here. Everything else ROW_CONTROLS carries does,
 		// including ROW_LISTENER — this file still draws the state and horizon chips the
 		// tree's delegated listener serves.
+		//
+		// **What this carve-out no longer sees**, stated because a lifted ban that goes
+		// unnamed is the one nobody re-reads: it drops ALL_TYPES_IMPORT for the WHOLE file,
+		// not for `shelfBadgeWidth` alone, and this file also draws state and horizon chips.
+		// A future type-OFFERING surface added here would import `ALL_TYPES` with lint green
+		// — which is the regression ALL_TYPES_IMPORT's own comment exists to stop. eslint
+		// scopes by file and cannot scope by symbol, so the narrower rule is not available;
+		// what protects it is this sentence and a reviewer reading it. (Final review,
+		// PR #187.)
 		files: [COLUMNS],
 		rules: syntaxRules([
 			...SVG_CLASS_TOKENS,

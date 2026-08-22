@@ -115,8 +115,11 @@ one a reader wants changes by the day and by the task, not by the base.
   promise about a container with the room to keep it, and below some width 16ch plus the
   badge, the gaps and the cells is more than the row has — at which point a fixed floor
   stops protecting the title and starts overrunning the line. Measured across the range
-  rather than argued: at 1200, 640, 480 and 380px the summary's scroll width equals its
-  client width exactly, and at 320px a fixed floor overran by 7px. It is capped at a share
+  rather than argued: at 1200, 640, 480, 430, 420, 400, 390 and 380px the summary's scroll
+  width equals its client width exactly, and at 320px the row overruns by 16px even with the
+  floor yielding. Re-taken at the end of PR #187 — the fold slot's 38px of rigid lead moved
+  the onset, so the older reading (clean at 380, 7px at 320) describes the pre-fold-slot row
+  and not this one. It is capped at a share
   of the SUMMARY's own box rather than of the viewport, since a shelf in a split pane is
   narrower than the window around it. (Codex, PR #183 — the 1200px measurement the floor
   first rested on did not exercise this at all.)
@@ -127,11 +130,21 @@ one a reader wants changes by the day and by the task, not by the base.
   Without one, a Base exposing several properties squeezed a 768px title to 103px, measured
   in the harness at a 1200px pane with seven cells on the row. The cells shrink first below
   that floor: at a 760px pane the same row held its title while the cells went from 700px to
-  348px. Nothing spills either way — every cell ellipsises inside itself — and the row stays
-  one line, which needs the wrapper's `flex-wrap` turned off beside the shrink, since a
-  wrapper that can finally be squeezed is one whose cells wrap to a second line. (Codex,
-  PR #183, which read the squeeze as a horizontal spill; the measurement says which half is
-  real.)
+  348px. Nothing spills either way, and that takes TWO declarations on the wrapper rather
+  than one: `flex-wrap` turned off, since a wrapper that can finally be squeezed is one whose
+  cells wrap to a second line, and `overflow: hidden` restated, since `.pbl-card .pbl-props`
+  turns off the clipping `.pbl-props` has by default. "Every cell ellipsises inside itself"
+  is true of a cell's TEXT and not of everything a cell holds — a tag pill does not
+  ellipsise, and with the card's `overflow: visible` in force the pills painted past the
+  row's edge from 420px down. (Codex, PR #183, which read the squeeze as a horizontal spill;
+  the measurement says which half is real. The clipping half is the final review on PR #187.)
+
+  **What the row gives up before it gives up the line is the state cell**, and that is not
+  recovered by the clipping: it is the last top-level item and the one with the least to
+  hold, so it resolves to 2px at 430 and 420 and to 0 from 400 down — the chip is gone on a
+  phone-width pane while the title, the badge and the notes lane are all still drawn.
+  Recorded rather than fixed: the row's rigid lead is the badge and the fold slot, and buying
+  the chip back means shrinking one of those, which costs the alignment Task 5 rests on.
 
 ## Acceptance criteria
 
@@ -155,7 +168,9 @@ one a reader wants changes by the day and by the task, not by the base.
   drops a cell.
 - A compact row is ONE line whatever it carries — property cells included — and its title
   keeps a stated floor rather than being squeezed away by them. The floor is a share of the
-  row it sits in, so a pane too narrow to honour it gives it up instead of overrunning.
+  row it sits in, so a pane too narrow to honour it gives it up instead of overrunning. Down
+  to 380px nothing paints outside the row; below that the row overruns, and the state cell is
+  already at zero width from 400px down.
 - A shelved parent's children list is the card's own child rather than the summary's, so it
   draws beneath the line; the card grid draws no summary box at all.
 - A compact row carries the state chip; a card does not. The chip is the tree's own — a
@@ -231,6 +246,18 @@ never a second reading of the settings, so the context-row refusal, the workflow
 and the `tabindex="-1"` all arrive with `renderStateChip` rather than being restated here.
 A context row is never a shelf card in the first place — `deriveBars` routes one to
 `RoadmapModel.context` before any placement is computed — so this surface cannot reach one.
+
+**The row's anatomy is FIXED, and the state cell is last whatever the Bases order says.**
+Every other cell keeps the configured order — `renderCardBody` walks `ctx.columns` — but a
+state column is lifted out of that walk and drawn after the notes lane, so a Base ordered
+`status, points` draws `points … status` here while the tree draws `status, points`. That is
+the layout this projection was asked for rather than an oversight: the chip is the row's most
+scannable element and a reader scanning a shelf wants it in the same place on every row, which
+a position that moved with the property order could not give. It costs the row nothing in
+alignment either way — every row shares one anatomy, which is the whole mechanism — and the
+tree remains the surface that answers "in what order did I put my columns". (Codex, PR #187,
+which read the lift as a defect; recorded here so the next reader finds the decision rather
+than the code.)
 
 The picker is `renderLayoutPicker` in `src/view/render/shelfControls.ts`, and its menu is
 `addShelfLayoutItems` in `src/view/interactions/shelfMenu.ts`, which

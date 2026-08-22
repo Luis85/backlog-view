@@ -735,8 +735,12 @@ free of runtime code so imports stay cycle-free.
   flag**: `renderShelf` returns before narrowing on `empty || collapsed`, and
   `renderShelfControls` withholds the controls on that same `collapsed` (plus `empty`,
   checked earlier) — so a band that draws no controls is exactly a band that also skipped
-  the narrowing, because they are the same early return rather than two conditions kept in
-  step by hand. The sort was never in that rule — it hides nothing — and neither is the
+  the narrowing. Read that as *derived from one fact*, not as one statement: they are two
+  early returns in two functions, both computed off the same `fold` object, and **nothing
+  checks that they stay in agreement**. The guide said "the same early return" until the
+  final review on PR #187 pointed out that no such return exists — the wider sentence was
+  the repo's own "write the guarantee to the check" rule broken in the guide that states
+  it. The sort was never in that rule — it hides nothing — and neither is the
   card / list LAYOUT, which this band draws in whatever the reader picked on the roadmap;
   the register claimed the opposite for one commit and the code was right — Codex, PR #183.
   Its HEIGHT is the same value the roadmap's band takes, which is the same argument once
