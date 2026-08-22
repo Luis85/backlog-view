@@ -210,12 +210,12 @@ a node test that did would be measuring the runner.
 - A **marker** (`MARKER_TYPES`, `Milestone`) is the third category, and the inverse of an
   extra type on all three counts: no rung, no children, no parent — `isMarkerType` is a
   second predicate rather than a widened `isExtraType`, because the two answer opposite
-  questions. **Those three counts are the whole of what the category means, and a DATE is
-  no longer among them**: `Resource` joined it on 2026-08-21 and states none, so every
-  date-shaped sentence in this bullet is about the markers that ARE dates, and every date
-  question in this layer asks `placementEnds` — one end for a point, two for a span, none
-  for a person — rather than reading `isMarkerType` as an answer to it. Which markers those
-  are is `DATED_MARKER_TYPES`, and a marker off that list gets no date by default. Three consequences follow, each stated once where it holds for every quantity
+  questions. **A `Resource` is NOT one**: a person is recognized and REFUSED at
+  `readItems`, beside an absence, so it never becomes an item at all (`isResourceType`).
+  It was declared a marker for one day, and that cost six rounds of carving the DATE
+  questions back out of a category whose every other member is a date — the refusal
+  replaced all of it, so a marker still means what it always meant here.
+  Three consequences follow, each stated once where it holds for every quantity
   the walk gathers rather than at a call site: it is never counted and never dated evidence
   (the `self` line in `assignAll`, beside the context-row skip it resembles), and any walk
   that hands out rungs must STOP at one rather than guess — a marker supplies no rank to

@@ -29,8 +29,7 @@ Azure DevOps Boards.
   - **`order`** — a number that ranks an item among its siblings.
   - **`type`** — the ladder `Epic → Feature → PBI → Task`, the **extra types** `Issue`,
     `Bug`, `Idea` and `Deliverable` that sit beside it rather than on it, or a **marker**
-    on neither — `Milestone` and `Iteration` — which hangs from nothing, holds nothing and
-    states a date rather than work.
+    on neither — `Milestone` and `Iteration` — which states a date rather than work.
 - **You never have to maintain these properties by hand.** The view assigns them:
   - Creating an item via the view writes `type`, `parent` and `order`.
   - Dragging an item writes its new `parent` and `order`, and leaves `type` alone —

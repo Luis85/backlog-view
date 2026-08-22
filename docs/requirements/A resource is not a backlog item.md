@@ -9,6 +9,7 @@ files:
   - src/domain/typeVocabulary.ts
   - src/domain/itemTypes.ts
   - src/domain/readItems.ts
+  - src/storage/frontmatter.ts
 started: 2026-08-21
 finished: 2026-08-22
 horizon: ""
@@ -89,6 +90,13 @@ replaces every one of those narrowings.
 - **Nothing about `assignee` changes.** A vault upgrading to this step sees the same rows,
   the same roster and the same chips. That is what still makes this the step that lands
   first; [[Linking an item to a resource]] is the breaking one.
+- **A `Resource` is never WRITTEN to either, and the model gate cannot promise that on
+  its own.** A gesture in flight holds the `BacklogItem` it was captured from, so retyping
+  a note to `Resource` mid-move leaves a plan aimed at it — and its live shape gives
+  nothing away, since a resource is no marker and so answers both ends, which is the shape
+  an ordinary item was captured under. `applyWrites` asks the LIVE type and refuses every
+  write to one, beside the axis check that could not see it. Found by automated review on
+  the increment that made the refusal, against this note's own Guarantee.
 - **Nothing this step ships may promise the roster.** `deriveLanes` still builds its rows
   from the declared names, the assignees the results carry and the absences, and enumerates
   no `Resource` note.
@@ -103,7 +111,14 @@ those lists.
 `isAbsenceType` next to it: a predicate whose one call site decides whether a note becomes
 an item at all, rather than where it ranks once it is one.
 
-`src/domain/readItems.ts` is the gate, one line in `addItem` beside the absence divert.
+`src/storage/frontmatter.ts` is the second gate and the one the first cannot stand in for:
+`applyWrites` reads the live type inside the frontmatter callback — the only place it is
+readable before the file is touched — and refuses every write to a resource, not the axis
+alone. What makes a resource unwritable is what the note IS, not which property a batch
+names.
+
+`src/domain/readItems.ts` is the first gate, one line in `addItem` beside the absence
+divert.
 Nothing is KEPT yet, which is the only difference between the two — [[Rows from the
 Resource notes]] is what will collect resources here, at this same gate, so the roster
 comes from the base's own results and no second read path into the vault is opened.
