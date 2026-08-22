@@ -749,7 +749,12 @@ free of runtime code so imports stay cycle-free.
   keyboard: the board's walk is `columns[col].cards[card]` and a shelf card is in no
   column, so the shelf is a pointer gesture and `Set iteration` on the item is the
   keyboard's path to the same writes — see
-  [[The iteration shelf is out of the keyboard's walk]].
+  [[The iteration shelf is out of the keyboard's walk]]. **That same fact is what
+  `syncShelfTabStops` and `activeShelf`'s `paneHasCards` ask of this board** (the card
+  menu's shelf section above): a shelf card can never open that menu, so only a column
+  card counts toward keeping these controls out of the tab order — the roadmap's own
+  shelf cards ARE in its linear keyboard walk, which is why its branch of `paneHasCards`
+  still counts them and this board's does not.
 - The whole column is the drop target and the highlight is the only drop signal —
   within-column order is derived from the Base's sort, so there is no between-cards
   edge, no hitbox package, and deliberately no Alt+Up/Down rank shortcut.
@@ -965,12 +970,17 @@ free of runtime code so imports stay cycle-free.
   honours a real pointer's position, so the menu opened under the cursor and then jumped
   to the button's edge on every pick after it. A menu cannot cover
   every case: an all-shelved, collapsed roadmap draws no card and so opens no card menu,
-  and since 2026-08-21 an iteration board with nothing committed AND a search or type
-  filter that empties its shelf is the same trap on the other surface — no card anywhere,
-  so no card menu there either. In both, the pane is a `region` rather than a composite,
-  and `syncShelfTabStops` puts every picker back in the tab order, decided from the
-  same final card count the role is (the roadmap's own card count on that axis; the
-  board's own columns-or-shelf count, `activeShelf`'s `paneHasCards`, on the board). Both, not one — hiding the
+  and since 2026-08-21 an iteration board with nothing committed is the same trap on the
+  other surface, for a different reason — its shelf may still be drawing cards, but a
+  shelf card is on no column and so is never reachable by this board's keyboard walk at
+  all ([[The iteration shelf is out of the keyboard's walk]]), so there is no card ANY
+  gesture can menu from. `syncShelfTabStops` puts every picker back in the tab order in
+  both cases, but the two are not one question dressed as two: the roadmap's own
+  `paneHasCards` is its rendered card count, the same thing its `listbox`/`region` role
+  is, while the board's is `activeShelf`'s column-cards-only count, which the board's role
+  does NOT track — every board keeps an unconditional `listbox`, because its column
+  headers are permanent `option` stops whatever they hold (see `render/projections.ts`'s
+  own comment). Both, not one — hiding the
   last visible type empties the pane by itself, and rescuing only the sort leaves
   the filter that caused it unreachable. Using either rebuilds the pane and destroys
   the button pressed, so `refocus` puts focus back — on the PANE where cards remain, on

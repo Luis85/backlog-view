@@ -94,8 +94,8 @@ finished under its own state property is finished here too.
   malformed — and nothing has asked to see it yet.
 - **2c — the Base's own search or filter narrows the results.** The shelf narrows with
   them: it is built from `model.results`, so what the base excludes is not offered here.
-  That is the search story for a long backlog, and it is why this shelf carries no sort,
-  type filter or search of its own — see 5a.
+  That is the search story for a long backlog, distinct from the shelf's OWN search and
+  type filter — see 5a for those, present here since 2026-08-21.
 - **3a — the card dropped on a column already carries the target bucket's reading.** It
   still joins: the "already here" guard is about a card ALREADY on this board, and a shelf
   card holding `New` dropped on Open changes no state and has every reason to be
@@ -110,19 +110,22 @@ finished under its own state property is finished here too.
 - **4b — a bucket has no state to write** (extension 4e of [[A board scoped to one
   iteration]]). It takes no drop, from the shelf or from another column: a column that
   accepted a gesture it cannot express would announce a move it did not make.
-- **5a — the shelf's sort, type filter and search.** Deliberately absent here, and the
-  reason is the keyboard rather than the layout: those three controls are `tabindex="-1"`
-  in a one-tab-stop pane and their keyboard path is the card menu's shelf section, which
-  is the roadmap's alone. The disclosure and the per-type folds are real controls that
-  need no such path.
+- **5a — the shelf's sort, type filter and search.** Present here since 2026-08-21,
+  applying the same shared search and hidden-type set the roadmap's own shelf does —
+  narrowed off one stored value for both bands, since the box and the filter button are
+  on screen here now and a narrowing belongs to the control that shows it. Absent until
+  then, and the reason was the keyboard rather than the layout: those three controls are
+  `tabindex="-1"` in a one-tab-stop pane and their keyboard path is the card menu's shelf
+  section, which was the roadmap's alone.
 
-  **So this shelf applies neither NARROWING either** — not the roadmap's search, not its
-  hidden types. A narrowing belongs to the control that shows it: both of those say on
-  their own face that they are hiding something (the button goes active, the box keeps
-  the text), and without them a type hidden on the roadmap would take cards off this
-  shelf with nothing on screen to explain it and nothing here to clear it with. The SORT
-  is not in that rule and does carry over: it orders what is drawn and hides nothing.
-  Found by review (Codex, PR #182).
+  **What 5b keeps true regardless is what makes the fix incomplete rather than free.** The
+  card menu's shelf section is reachable only from a card ALREADY on this board's keyboard
+  walk — a column card — because a shelf card is on no column and the walk never rests a
+  selection on one. So an iteration with nothing committed leaves these controls with no
+  reachable menu even while the shelf itself still draws cards, and the tab-stop lift
+  (`syncShelfTabStops`, `activeShelf`'s `paneHasCards`) counts column cards ALONE for
+  exactly that reason: a shelf card keeping the pane "a composite" would leave the reader
+  at a `-1` control with nothing on the board that can open the menu to reach it. See 5b.
 - **5b — the shelf is reached by keyboard.** It is not. The board's roving selection walks
   its columns, and a shelf card is on no column — so a pull is a pointer gesture, and the
   keyboard path to the same write is `Set iteration` on the item, which every plan row

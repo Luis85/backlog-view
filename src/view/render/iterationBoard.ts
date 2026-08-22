@@ -62,27 +62,29 @@ export function renderIterationBoard(
 		move: (item, col) => void (col.bucket && host.performIterationBoardMove(item, col.bucket)),
 		drawEmpty: (_h, aside) => renderEmptyIterationState(aside, iteration?.title ?? null),
 	});
-	// **The controls come back into the tab order when the pane holds no card**, which on this
-	// board is reachable and is a trap rather than a curiosity: an iteration with nothing
-	// committed draws empty columns, and a search or a type filter narrow enough to empty the
-	// shelf then leaves no card anywhere — so no card menu, which is the ONLY keyboard path to
-	// these controls, and `buildColumnMenu` on the empty columns carries folds and policy and
-	// no shelf section at all. A keyboard reader would be left with a search they could not
-	// clear. Hard-coding `true` here is what would do that, and the first draft of this plan
-	// did (Codex, PR #187).
+	// **The controls come back into the tab order when no COLUMN card can open a menu to
+	// reach them** — the question is reachability, not whether the pane drew a card
+	// anywhere. A shelf card is on no column, so it is out of this board's roving
+	// selection entirely and the card menu can never open from one
+	// ([[The iteration shelf is out of the keyboard's walk]], extension 5b of
+	// [[Pulling work into an iteration]]) — an iteration with nothing committed leaves no
+	// reachable menu even while the shelf still draws cards, which is why the shelf half
+	// of this expression was removed rather than kept beside the columns term. Hard-coding
+	// `true`, or counting the shelf, both leave a reader with a search they could not
+	// clear at `-1` (Codex, PR #187, three rounds, the last of which was this file
+	// counting the shelf too).
 	//
-	// **Asked of what was DRAWN, on both halves, and neither half may be a population count.**
-	// `shelf.drawn` rather than `shelf.cards`: the second is the band's whole population, which
-	// the card menu needs and which stays positive while a search hides every one of them. And
-	// the columns are asked the way `renderBoardAdvisory` in this file already asks them —
-	// `col.cards.length`, which a fold empties — rather than `board.cardCount`, which
+	// The roadmap's own `activeShelf` branch does NOT drop this term: its shelf cards ARE
+	// in its linear keyboard walk (`RoadmapSnapshot.cards`), so there a shelf card genuinely
+	// keeps the pane a composite with a reachable menu. The two surfaces differ because
+	// their keyboard walks do.
+	//
+	// `col.cards.length` the way `renderBoardAdvisory` in this file already asks it — empty
+	// by a FOLD as well as by nothing committed — rather than `board.cardCount`, which
 	// `domain/board.ts` sums from the population before anything folds and which that
-	// function's own comment calls "results-only by design". Every committed card in a folded
-	// column plus a search that empties the shelf is the same trap through the other half.
-	// (Codex, PR #187, three rounds — the first fix used the wrong array, the second the wrong
-	// count.)
-	syncShelfTabStops(shelf.el, content.board.columns.some((col) => col.cards.length > 0) || shelf.drawn.length > 0);
-	return { ...content, shelfEl: shelf.el, shelf: shelf.cards, shelfDrawn: shelf.drawn.length };
+	// function's own comment calls "results-only by design".
+	syncShelfTabStops(shelf.el, content.board.columns.some((col) => col.cards.length > 0));
+	return { ...content, shelfEl: shelf.el, shelf: shelf.cards };
 }
 
 /**
@@ -114,7 +116,7 @@ function renderIterationShelf(
 	boardEl: HTMLElement,
 	dnd: CardDragController,
 	model: BacklogModel,
-): { el: HTMLElement; cards: ShelfCard[]; drawn: BacklogItem[] } {
+): { el: HTMLElement; cards: ShelfCard[] } {
 	const host: BacklogViewHost = ctx.host;
 	const cards = iterationCandidates(model).map((item) => ({ item, reason: null }));
 	const shelf = renderShelf(
@@ -134,13 +136,12 @@ function renderIterationShelf(
 		iterationRemoval(host),
 	);
 	// `cards` is the band's whole population, unnarrowed, which is what the card menu's type
-	// filter has to be built from: hiding a type must never remove its own way back. `drawn`
-	// is what `renderShelf` actually put on screen — narrowed by the search and the hidden
-	// types, and empty when the band is collapsed or every group is folded. The tab-stop
-	// decision in Task 3 is about what a reader can REACH, so it is the second of these; the
-	// first stays positive on a band that is drawing nothing and would have kept the controls
-	// out of the tab order in exactly the state they are needed.
-	return { el: shelf.el, cards, drawn: shelf.cards };
+	// filter has to be built from: hiding a type must never remove its own way back. What
+	// `renderShelf` actually put ON screen is not this function's question any more: the
+	// tab-stop decision reads column cards alone (see `renderIterationBoard`'s own comment),
+	// since a shelf card is never reachable by this board's keyboard walk regardless of
+	// whether it is drawn.
+	return { el: shelf.el, cards };
 }
 
 /** No board states what a card waits for, so this map is empty on every render. */

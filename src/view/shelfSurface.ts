@@ -29,11 +29,20 @@ export interface ActiveShelf {
 	/** Whether it is shut, from whichever bit shuts THIS band. */
 	collapsed: boolean;
 	/**
-	 * Whether the pane this band sits in drew a card — the question `syncShelfTabStops` is
-	 * handed at render time, asked again here of the published snapshot because focus is
-	 * decided after the rebuild. With no card there is no composite to own the arrows and no
-	 * card menu to reach these controls from, so the control that was pressed is the only way
-	 * back and focus belongs on its replacement.
+	 * Whether a card ALREADY on screen can open the card menu these controls need as their
+	 * keyboard path — the question `syncShelfTabStops` is handed at render time, asked
+	 * again here of the published snapshot because focus is decided after the rebuild. With
+	 * no such card there is no menu to reach them from, so the control that was pressed is
+	 * the only way back and focus belongs on its replacement.
+	 *
+	 * The two bands answer this from different populations, and neither may borrow the
+	 * other's: the roadmap's keyboard walk is linear and its shelf cards are IN it
+	 * (`RoadmapSnapshot.cards`), so a shelf card there genuinely keeps the composite and its
+	 * menu reachable. The iteration board's walk is `columns[col].cards[card]`, and a shelf
+	 * card is on no column — out of it entirely
+	 * ([[The iteration shelf is out of the keyboard's walk]]) — so a shelf card there can
+	 * never open the menu regardless of whether it is drawn, and this reads column cards
+	 * alone.
 	 */
 	paneHasCards: boolean;
 }
@@ -54,14 +63,11 @@ export function activeShelf(host: BacklogViewHost): ActiveShelf {
 			el: board.shelfEl,
 			cards: board.shelf ?? [],
 			collapsed: host.columnCollapsed('backlog', null, false),
-			// The same two terms `renderIterationBoard` passes to `syncShelfTabStops`, asked of
-			// the snapshot because that is what exists by the time focus is decided — one
-			// question at two moments, not two questions. `!!` rather than `(… ?? 0) > 0`:
-			// `shelfDrawn` is a count and never negative, so the two read identically and the
-			// second spelling has no branch a real render can leave untaken — whenever
-			// `shelfEl` is set, `renderIterationBoard` has already set `shelfDrawn` beside it,
-			// in the one return statement that produces both.
-			paneHasCards: board.board.columns.some((col) => col.cards.length > 0) || !!board.shelfDrawn,
+			// The same term `renderIterationBoard` passes to `syncShelfTabStops`, asked of the
+			// snapshot because that is what exists by the time focus is decided — one question
+			// at two moments, not two. Column cards only, never the shelf's own — see this
+			// field's own doc comment for why the two bands differ here.
+			paneHasCards: board.board.columns.some((col) => col.cards.length > 0),
 		};
 	}
 	return { el: null, cards: [], collapsed: false, paneHasCards: false };
