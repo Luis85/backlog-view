@@ -4,7 +4,8 @@ import { renderPanel } from './panel';
 import { renderCurrencyChip } from './currencyChip';
 import { t } from '../../i18n/t';
 import { EstimationItem, EstimationModel } from '../../domain/estimationItems';
-import { Currency } from '../../domain/weightedScore';
+import { Indicator } from '../../domain/scoringModel';
+import { Currency, IndicatorBlock, indicatorFormula } from '../../domain/weightedScore';
 import { uniqueElementId } from '../selection';
 import { loadViewState, saveViewState } from '../../storage/viewStateStore';
 import { resolveViewIdentity } from '../../storage/viewIdentity';
@@ -195,13 +196,13 @@ function selectRow(ctx: TableCtx, path: string, scroll: boolean): void {
 }
 
 /**
- * The sortable column vocabulary — the store's own twelve `estimationSort` values are
+ * The sortable column vocabulary — the store's own fourteen `estimationSort` values are
  * this set crossed with `SortDirection`, spelled independently there because stored
  * state is read defensively rather than trusted as a type (`storage/CLAUDE.md`).
  */
-type SortColumn = 'title' | 'total' | 'coverage' | 'confidence' | 'effort' | 'currency';
+type SortColumn = 'title' | 'total' | 'coverage' | 'confidence' | 'effort' | 'indicator' | 'currency';
 type SortDirection = 'asc' | 'desc';
-const SORT_COLUMNS: readonly SortColumn[] = ['title', 'total', 'coverage', 'confidence', 'effort', 'currency'];
+const SORT_COLUMNS: readonly SortColumn[] = ['title', 'total', 'coverage', 'confidence', 'effort', 'indicator', 'currency'];
 
 interface SortPick {
 	column: SortColumn;
@@ -273,6 +274,8 @@ function columnValue(item: EstimationItem, column: SortColumn): number | string 
 			return item.confidence;
 		case 'effort':
 			return item.effort;
+		case 'indicator':
+			return item.indicator?.value ?? null;
 		case 'currency':
 			return CURRENCY_ORDER[item.currency];
 	}
@@ -326,6 +329,10 @@ interface HeaderSpec {
 	/** Keeps the column's own width/alignment rule (`styles/estimation.css`). */
 	cls: string;
 	label: string;
+	/** Supplementary only. The accessible name stays the visible label (plus the direction
+	 *  when active), or a screen reader loses the word the reader can see and speech input
+	 *  has no way to name the header it is looking at. */
+	title?: string;
 }
 
 /**
@@ -346,6 +353,7 @@ function sortHeader(view: EstimationView, head: HTMLElement, spec: HeaderSpec, p
 	// translations. The span shrinks; the glyph is `flex: 0 0 auto`, so the direction is never
 	// the thing that disappears.
 	btn.createSpan({ cls: 'pbl-est-sort-label', text: label });
+	if (spec.title) btn.title = spec.title;
 	if (!active) return wireSortClick(view, btn, spec, active);
 	btn.setAttribute('aria-sort', active.direction === 'asc' ? 'ascending' : 'descending');
 	// `aria-sort` above stays — the stylesheet's state hook, every direction assertion's hook,
@@ -393,6 +401,20 @@ function renderHead(view: EstimationView, tableEl: HTMLElement, pick: SortPick |
 	sortHeader(view, head, { column: 'coverage', cls: 'pbl-est-coverage', label: t('estimation.column.coverage') }, pick);
 	sortHeader(view, head, { column: 'confidence', cls: 'pbl-est-cell', label: t('estimation.column.confidence') }, pick);
 	sortHeader(view, head, { column: 'effort', cls: 'pbl-est-cell', label: t('estimation.column.effort') }, pick);
+	const indicator = view.settings.indicator;
+	if (indicator.operands.length > 0) {
+		sortHeader(
+			view,
+			head,
+			{
+				column: 'indicator',
+				cls: 'pbl-est-cell',
+				label: indicator.label || t('estimation.column.indicator'),
+				title: indicatorFormula(view.settings.model, indicator),
+			},
+			pick,
+		);
+	}
 	sortHeader(view, head, { column: 'currency', cls: 'pbl-est-currency', label: t('estimation.column.currency') }, pick);
 }
 
@@ -421,7 +443,17 @@ function numberCell(el: HTMLElement, value: number | null, range: [number, numbe
 	el.createDiv({ cls: 'pbl-est-strip' }).setCssProps({ '--pbl-progress': `${Math.round(ratio * 100)}%` });
 }
 
-function renderRow(listEl: HTMLElement, item: EstimationItem, output: [number, number]): HTMLElement {
+/** The tooltip for a blocked cell. Three sentences rather than one, because a reader
+ *  reading this is trying to repair it: an unanswered operand wants a score, a nonpositive
+ *  divisor wants the stored value corrected, and an unknown id wants the operands box
+ *  edited. "is not answered" is wrong about two of those. */
+function blockedText(blocked: { operand: string; reason: IndicatorBlock }): string {
+	if (blocked.reason === 'unknown') return t('estimation.indicator.unknown', { operand: blocked.operand });
+	if (blocked.reason === 'nonpositive') return t('estimation.indicator.nonpositive', { operand: blocked.operand });
+	return t('estimation.indicator.unanswered', { operand: blocked.operand });
+}
+
+function renderRow(listEl: HTMLElement, item: EstimationItem, output: [number, number], indicator: Indicator): HTMLElement {
 	const row = listEl.createDiv({ cls: 'pbl-est-row', attr: { role: 'option' } });
 	row.dataset.path = item.file.path;
 	row.createDiv({ cls: 'pbl-est-title', text: item.title });
@@ -435,6 +467,13 @@ function renderRow(listEl: HTMLElement, item: EstimationItem, output: [number, n
 	}
 	numberCell(row.createDiv({ cls: 'pbl-est-cell', attr: { 'data-col': 'confidence' } }), item.confidence, null);
 	numberCell(row.createDiv({ cls: 'pbl-est-cell', attr: { 'data-col': 'effort' } }), item.effort, null);
+	if (indicator.operands.length > 0) {
+		const cell = row.createDiv({ cls: 'pbl-est-cell', attr: { 'data-col': 'indicator' } });
+		numberCell(cell, item.indicator?.value ?? null, null);
+		// The blocked operand as a tooltip, and the cell left EMPTY so the stylesheet's own
+		// `:empty::before` dash draws the absence exactly as every other numeric column does.
+		if (item.indicator?.blockedBy) cell.title = blockedText(item.indicator.blockedBy);
+	}
 	// The cell is the COLUMN and keeps a fixed width; the chip inside it hugs its own words.
 	// `.pbl-est-stale` is gone with them: the state is now one class per currency on the
 	// chip, so five treatments are declared in one place instead of one being special-cased
@@ -453,6 +492,7 @@ function renderRows(
 	items: EstimationItem[],
 	selectedPath: string | null,
 	output: [number, number],
+	indicator: Indicator,
 ): Map<string, HTMLElement> {
 	if (items.length === 0) {
 		listEl.createDiv({ text: t('estimation.empty.noResults') });
@@ -460,11 +500,22 @@ function renderRows(
 	}
 	const rows = new Map<string, HTMLElement>();
 	for (const item of items) {
-		const row = renderRow(listEl, item, output);
+		const row = renderRow(listEl, item, output, indicator);
 		rows.set(item.file.path, row);
 		applySelection(listEl, row, item.file.path === selectedPath);
 	}
 	return rows;
+}
+
+/**
+ * The pick as this PASS can honour it: a stored `indicator:*` under a cleared operands box
+ * names a column that is not drawn, so nothing could show its direction or click it away.
+ * Ignored for the render, never cleared from the store — clearing would be a render pass
+ * writing to the view-state store, which is the one thing a render must not do.
+ */
+function drawablePick(view: EstimationView, pick: SortPick | null): SortPick | null {
+	if (pick?.column !== 'indicator') return pick;
+	return view.settings.indicator.operands.length > 0 ? pick : null;
 }
 
 /**
@@ -487,7 +538,9 @@ export function renderTable(view: EstimationView, model: EstimationModel, previo
 	// rather than an honest "nothing is selected". Cleared here, the same key press
 	// means what it already means for that honest case: select the first row.
 	if (view.selectedPath !== null && !model.byPath.has(view.selectedPath)) view.selectedPath = null;
-	const pick = parseSort(view.sortPick);
+	// Resolved ONCE, before both `renderHead` and `sortedItems` read it, so the header and
+	// the rows can never disagree about which sort this pass is drawing.
+	const pick = drawablePick(view, parseSort(view.sortPick));
 	const items = sortedItems(model.items, pick);
 	// Nothing selected lands the reader on a reserved, empty track with nothing saying a row
 	// is clickable. The FIRST DRAWN row — `items`, this pass's sorted order, not
@@ -531,7 +584,7 @@ export function renderTable(view: EstimationView, model: EstimationModel, previo
 		cls: 'pbl-est-rows',
 		attr: { role: items.length > 0 ? 'listbox' : 'region', tabindex: '0' },
 	});
-	const rows = renderRows(listEl, items, view.selectedPath, output);
+	const rows = renderRows(listEl, items, view.selectedPath, output, view.settings.indicator);
 	wireEvents(view, listEl, model, items, rows);
 	// On the SCROLLER, which is what scrolls — `view.tableEl` is read for nothing else.
 	// Clamped to the fresh `scrollHeight` so a rebuild with fewer rows (a note leaving the

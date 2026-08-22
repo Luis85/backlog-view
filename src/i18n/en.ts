@@ -1282,6 +1282,14 @@ export const en = {
 	'estimation.operand.value': 'Value',
 	'estimation.operand.adjustedValue': 'Adjusted value',
 
+	/** A blocked indicator cell's tooltip — three sentences rather than one, because a
+	 *  reader reading this is trying to repair it: an unanswered operand wants a score, a
+	 *  nonpositive divisor wants the stored value corrected, and an unknown id wants the
+	 *  operands box edited. */
+	'estimation.indicator.unanswered': 'No figure: {operand} is not answered',
+	'estimation.indicator.unknown': 'No figure: nothing in this model is called {operand}',
+	'estimation.indicator.nonpositive': 'No figure: {operand} has to be above zero to divide by',
+
 	/** The active sort header's accessible name. {column} is the column's own label above —
 	 * a catalog string, not data. The GLYPH beside it carries the same fact for a sighted
 	 * reader (`chevron-up`/`chevron-down`), per DESIGN.md's Shape-Before-Colour Rule. */

@@ -116,9 +116,9 @@ const SHELF_SORT_VALUES = ['tree', 'title', 'modified'];
 /**
  * The values the `estimationSort` field may hold: `${column}:${direction}` for the
  * prioritized list's clickable headers — column ∈
- * title|total|coverage|confidence|effort|currency, direction ∈ asc|desc. There is no
+ * title|total|coverage|confidence|effort|indicator|currency, direction ∈ asc|desc. There is no
  * domain type to mirror the way `AXIS_VALUES` mirrors `RoadmapAxis` above: sorting is
- * that OTHER view's own question, answered nowhere under `domain/`, so the twelve
+ * that OTHER view's own question, answered nowhere under `domain/`, so the fourteen
  * combinations are spelled out directly — the same "stored state is not trusted as a
  * type" rule applied to a vocabulary this module is the only owner of.
  */
@@ -133,6 +133,8 @@ const ESTIMATION_SORT_VALUES = [
 	'confidence:desc',
 	'effort:asc',
 	'effort:desc',
+	'indicator:asc',
+	'indicator:desc',
 	'currency:asc',
 	'currency:desc',
 ];
