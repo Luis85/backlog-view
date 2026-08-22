@@ -158,7 +158,7 @@ export class EstimationView extends BasesView {
 			this.model = null;
 			return this.renderProblems(problems);
 		}
-		this.model = buildEstimationModel(this.app, this.data?.data ?? [], model);
+		this.model = buildEstimationModel(this.app, this.data?.data ?? [], model, this.settings.typeKey);
 		// The toolbar renders BEFORE the grid and is `viewEl`'s own child, never the grid's:
 		// unconfigured and config-warning states carry no toolbar, because both draw the
 		// setup action themselves and a second ✨ above it would duplicate it. The count and

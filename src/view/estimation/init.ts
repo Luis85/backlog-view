@@ -105,12 +105,19 @@ export async function runEstimationInit(view: EstimationView): Promise<void> {
 	// a render() rebuilds both together, so skipping it silently broke the second one
 	// until a watched-red run caught an empty vault.fm() where a stub belonged.
 	view.settings = resolveEstimationSettings(view.config);
-	view.model = buildEstimationModel(view.app, view.data?.data ?? [], model);
+	view.model = buildEstimationModel(view.app, view.data?.data ?? [], model, view.settings.typeKey);
 	const keys = boundKeys(model);
 	// Every file gets the identical 13-set array — hoisted once rather than rebuilt per
 	// file, since nothing in `applyPropertyWrites` mutates a write's `sets` in place.
 	const sets = keys.map((key) => ({ key, value: '', ifMissing: true }));
-	const writes = (view.data?.data ?? []).filter((e) => e.file?.extension === 'md').map((e) => ({ file: e.file, sets }));
+	// Built from the MODEL rather than from the raw results, which is the same set plus one
+	// exclusion that matters: a `Resource` is refused before an item exists, so a person is
+	// never handed the estimation keys. Taking the entries directly would stub them onto a
+	// note this view will not even draw — and worse, `applySafely`'s outside-filter check
+	// reads `view.model.byPath`, so a write naming a note the model does not hold refuses
+	// the WHOLE batch. Raw entries would therefore have turned one resource in the base into
+	// a backfill that silently does nothing at all.
+	const writes = view.model.items.map((item) => ({ file: item.file, sets }));
 	await view.applySafely(writes);
 	// The batch's own deferred-update flush already rebuilt this view when one landed
 	// mid-batch (the ordinary case against a real vault); render only when it did not.

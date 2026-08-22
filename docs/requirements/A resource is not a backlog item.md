@@ -10,6 +10,9 @@ files:
   - src/domain/itemTypes.ts
   - src/domain/readItems.ts
   - src/storage/frontmatter.ts
+  - src/domain/estimationItems.ts
+  - src/domain/estimationSettings.ts
+  - src/view/estimation/init.ts
 started: 2026-08-21
 finished: 2026-08-22
 horizon: ""
@@ -100,6 +103,18 @@ replaces every one of those narrowings.
 - **Nothing about `assignee` changes.** A vault upgrading to this step sees the same rows,
   the same roster and the same chips. That is what still makes this the step that lands
   first; [[Linking an item to a resource]] is the breaking one.
+- **The ESTIMATION view refuses one too, and its own gate is what does it.** A second
+  Bases view ships from the same plugin (`product-estimation`), and it never goes through
+  `readItems`: `buildEstimationModel` reads the base's results straight into its own item.
+  So a person in a base opened with that view was a scoreable row, ✨ stubbed every
+  configured estimation key onto their note, and the score actions could write to it
+  through `applyPropertyWrites` — a path `applyWrites`' refusal does not cover either.
+  It asks the type itself now, before its item exists, from a `typeKey` resolved off the
+  same `typeProperty` option the backlog reads. **The backfill is the half that bites
+  twice**: its writes were built from the RAW results, so refusing the resource in the
+  model alone would have made `applySafely`'s outside-filter check refuse the WHOLE batch,
+  and one person in the base would have made ✨ silently do nothing for anybody. The
+  writes come from the model now, so the two cannot disagree. Found by automated review.
 - **A `Resource` is never WRITTEN to either, and the model gate cannot promise that on
   its own.** A gesture in flight holds the `BacklogItem` it was captured from, so retyping
   a note to `Resource` mid-move leaves a plan aimed at it — and its live shape gives
@@ -126,6 +141,14 @@ an item at all, rather than where it ranks once it is one.
 readable before the file is touched — and refuses every write to a resource, not the axis
 alone. What makes a resource unwritable is what the note IS, not which property a batch
 names.
+
+`src/domain/estimationItems.ts` is the third gate, and it exists because the second Bases
+view builds its own items and shares none of the first two paths. `src/domain/estimationSettings.ts`
+gives that view the one thing it never needed before — the property a note's type is read
+from — and deliberately outside `model`, since `modelFingerprint` hashes that object to
+decide whether a stored total can still be trusted and a key unrelated to the score must not
+be able to invalidate one. `src/view/estimation/init.ts` builds ✨'s writes from the model
+rather than the raw results, so the refusal and the batch agree.
 
 `src/domain/readItems.ts` is the first gate, one line in `addItem` beside the absence
 divert.
