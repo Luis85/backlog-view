@@ -121,6 +121,23 @@ describe('context menu', () => {
 		expect(vault.fm('Epic A.md')['type']).toBe('Task');
 	});
 
+	it('writes the type and nothing else, even for a marker on a nested row', async () => {
+		// The INVERSE of "a move never writes a type", and the half that had no check: a
+		// type write never moves the note. Asked with a MARKER — one hangs from nothing, so
+		// surely picking one re-roots the row? No: that is what is OFFERED, never what is
+		// refused or corrected behind the user's back, and joining the two rules is what
+		// the deleted re-typing cascade did.
+		const vault = fixture();
+		const { containerEl } = makeView(vault);
+
+		rowByTitle(containerEl, 'Feature B1').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+		Menu.lastShown?.item('Set type')?.submenu?.item('Milestone')?.click();
+		await flush();
+
+		expect(vault.fm('Feature B1.md')['type']).toBe('Milestone');
+		expect(vault.fm('Feature B1.md')['parent']).toBe('[[Epic B]]');
+	});
+
 	it('indents under the previous sibling and moves to the bottom', async () => {
 		const vault = fixture();
 		const { containerEl } = makeView(vault);
@@ -227,7 +244,7 @@ describe('context menu', () => {
 
 });
 
-describe('placement actions on a milestone', () => {
+describe('placement actions on a marker', () => {
 	it('withholds Schedule from a milestone on a start-only vault, and keeps it for work', () => {
 		const vault = new FakeVault();
 		vault.addFile('Ship 1.0.md', { frontmatter: { type: 'Milestone', order: 10 } });

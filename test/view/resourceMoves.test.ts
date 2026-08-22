@@ -474,6 +474,33 @@ describe('moving between resources without a drag', () => {
 		expect(vault.writeLog.map((w) => w.path)).toEqual(['Alice dated.md']);
 	});
 
+	it('writes nothing for a marker — the three inputs to one move must agree', async () => {
+		// `wireLaneDrop` routes a marker's release to the dated gesture rather than to a row
+		// write, because `deriveLanes` draws every marker in the milestones' row whatever
+		// its assignee says. This ladder did not: it wrote the name and the card stayed
+		// exactly where it was, spending the one undo slot on a change nobody can see.
+		//
+		// The rule is the category's, and `Milestone` is the marker that reaches this ladder:
+		// it had the hole first and had no test.
+		const vault = resourceVault();
+		vault.addFile('Ship 1.0.md', { frontmatter: { type: 'Milestone', due: '2026-08-10' } });
+		const { view, containerEl } = laneRoadmap(vault);
+
+		for (const path of ['Ship 1.0.md']) {
+			view.selectItem(view.model?.byPath.get(path) as never);
+			const down = key(treeOf(containerEl), 'ArrowDown', { altKey: true });
+			const up = key(treeOf(containerEl), 'ArrowUp', { altKey: true });
+			await flush();
+			// And it is refused BEFORE `preventDefault`, which the comment on the guard
+			// claims and nothing checked: a chord this projection has nothing to do with is
+			// not this projection's to swallow, so it stays available to whatever else
+			// wants it. Guarding after the call passes every assertion below this one.
+			expect(down.defaultPrevented).toBe(false);
+			expect(up.defaultPrevented).toBe(false);
+		}
+		expect(vault.writeLog).toEqual([]);
+	});
+
 	it('holds at the last row rather than wrapping', async () => {
 		const vault = resourceVault();
 		const { view, containerEl } = laneRoadmap(vault);

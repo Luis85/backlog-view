@@ -40,6 +40,12 @@ describe('getEstimationViewOptions', () => {
 	it('declares the Model group: dimensions, output range, value and stamp properties', () => {
 		const keys = flatten(getEstimationViewOptions(new FakeViewConfig({}))).map((o) => o.key);
 		expect(keys).toEqual(expect.arrayContaining(['dimensions', 'outputRange', 'valueProperty', 'stampProperty']));
+		// And the one option here that is not a scoring key: the property a note's TYPE is
+		// read from, which is what keeps a `Resource` off this table. It has to be OFFERED
+		// rather than only read — the option is per view in Bases, so the backlog view's own
+		// pick cannot answer for this one, and a vault keeping types under `kind` would
+		// otherwise sit on the shipped fallback and score its people.
+		expect(keys).toContain('typeProperty');
 	});
 
 	it('the dimensions box defaults to the shipped eight ids, comma-joined', () => {
@@ -174,8 +180,13 @@ describe("the estimation view's options menu reads its words from the catalog", 
 
 		expect(unmarked).toEqual(
 			[
-				// The frontmatter keys the four fixed pickers suggest — what the backfill adopts
+				// The frontmatter keys the fixed pickers suggest — what the backfill adopts
 				// and writes, so a locale that changed one would set up a different property.
+				// `type` is the newest of them: the property this view reads a note's TYPE
+				// from, so that it can refuse a `Resource`. Its own placeholder is a
+				// frontmatter key like the rest and stays out of the catalog; its
+				// displayName is ordinary text and goes through it.
+				'type',
 				'business-value',
 				'business-value-model',
 				'complexity',

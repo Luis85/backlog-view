@@ -11,6 +11,19 @@ import { ScaleConfig, ScoringDimension, ScoringModel } from './scoringModel';
 
 export interface EstimationSettings {
 	model: ScoringModel;
+	/**
+	 * The property this view reads a note's TYPE from, for the one question it asks of a
+	 * type: is this note a person, and therefore not something to score. Read from the same
+	 * option name the backlog view uses (`typeProperty`), so a vault that renamed the
+	 * property gets the same answer in both views without mapping it twice — and defaulting
+	 * to the shipped `type` when this view's own `.base` never names one, which is what an
+	 * estimation view set up on its own will have.
+	 *
+	 * It is NOT a scoring key and deliberately not inside `model`: `modelFingerprint` hashes
+	 * that object to decide whether a stored total can still be trusted, so a key that has
+	 * nothing to do with the score must not be able to invalidate one.
+	 */
+	typeKey: string;
 }
 
 export type DimField = 'property' | 'weight' | 'range' | 'lessIsBetter' | 'label';
@@ -115,5 +128,6 @@ export function resolveEstimationSettings(config: BasesViewConfig): EstimationSe
 			effort: resolveScale(read, 'effort', 'effortProperty'),
 			complexity: resolveScale(read, 'complexity', 'complexityProperty'),
 		},
+		typeKey: read.propKey('typeProperty', 'type'),
 	};
 }

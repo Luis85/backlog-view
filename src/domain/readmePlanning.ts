@@ -1,6 +1,6 @@
 import { andList, code } from './readmeText';
 import { hasDateAxis, hasHorizonAxis } from './roadmap';
-import { placementEnds } from './itemTypes';
+import { placementEnds, schemaEnds } from './itemTypes';
 import { MARKER_TYPES } from './typeVocabulary';
 import { BacklogSettings } from './settings';
 
@@ -46,9 +46,32 @@ function planningWriters(settings: BacklogSettings): string {
 		...(joinsDates
 			? ["**Set iteration**, which copies the iteration's own dates onto the note in the same write that joins it"]
 			: []),
-		'**Assign missing properties**, which adds the keys *empty* to items that lack them and places nothing',
+		`**Assign missing properties**, which adds the keys *empty* to items that lack them and places nothing${assignException(settings)}`,
 	];
 	return `${writers.slice(0, -1).join('; ')}; and ${writers[writers.length - 1]}`;
+}
+
+/**
+ * The backfill's one exception to "empty on every note that lacks it".
+ *
+ * Asked of `schemaEnds`, never of `placementEnds` with the live flag: this is a question
+ * about which keys a note of that type CARRIES, and a display option must not decide
+ * whether a property exists. `Iteration` is a span and keeps both ends whatever
+ * `iterationBars` says, so it is not excepted; `Milestone` is the one type the schema
+ * narrows today, and deriving the list means the sentence follows the rule rather than a
+ * name somebody typed.
+ *
+ * Gated on `startKey`, the withheld key: with none configured ✨ never stubs a start on
+ * anything, marker or not, so there is nothing here to except.
+ */
+function assignException(settings: BacklogSettings): string {
+	if (!settings.startKey) return '';
+	const narrowed = MARKER_TYPES.filter((type) => {
+		const ends = schemaEnds(type);
+		return ends.length > 0 && !ends.includes('start');
+	});
+	if (narrowed.length === 0) return '';
+	return ` — except that a ${andList(narrowed.map(code))} never gets a start added: it is a point by type and reads only a target`;
 }
 
 export function planningSection(settings: BacklogSettings): string[] {

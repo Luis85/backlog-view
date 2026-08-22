@@ -11,7 +11,7 @@ import {
 } from './settings';
 import { notePropsOnly, OptionalField, optionalProperty } from './optionalProperties';
 import { resolveSettings } from './settingsResolve';
-import { ABSENCE_TYPE, ALL_TYPES, DEFAULT_HOME_FOLDER, defaultTypeFolder, typeFolderKey } from './typeVocabulary';
+import { ABSENCE_TYPE, ALL_TYPES, DEFAULT_HOME_FOLDER, defaultResourceFolder, defaultTypeFolder, typeFolderKey } from './typeVocabulary';
 import { defaultItemHandling, openTargetOptions } from './itemHandling';
 import { t } from '../i18n/t';
 
@@ -503,6 +503,16 @@ function newItemsGroup(homeFolder: string): BasesAllOptions {
 					placeholder: homeFolder || t('option.homeFolder'),
 				}),
 			),
+			// A `Resource` note's own folder, not one of the type-folder rows above: `Resource`
+			// is never in `ALL_TYPES` (see `defaultResourceFolder`). Same shape as those rows
+			// anyway, so it tracks the home folder above and shares their fallback placeholder.
+			{
+				type: 'folder',
+				key: 'resourceFolder',
+				displayName: t('option.resourceFolder'),
+				default: defaultResourceFolder(homeFolder),
+				placeholder: homeFolder || t('option.homeFolder'),
+			},
 		],
 	};
 }

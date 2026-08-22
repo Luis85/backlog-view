@@ -72,6 +72,23 @@ describe('applyWrites', () => {
 		expect(vault.fm('Item.md')).toEqual({ order: 5 });
 	});
 
+	it('never stubs a start key onto a note the vault retyped to Milestone since the plan', async () => {
+		const vault = new FakeVault();
+		const configured = { ...settings, startKey: 'start', targetKey: 'due' };
+		// The plan was built against an ordinary item and still carries its start stub;
+		// the note has since been retyped to a point type that answers for `target` alone.
+		const item = vault.addFile('Item.md', { frontmatter: { type: 'Milestone', order: 5 } });
+		const inverses: RestoreWrite[] = [];
+
+		await applyWrites(vault.app, configured, [{ file: item, stubs: ['start', 'target'] }], undefined, (inv) =>
+			inverses.push(inv),
+		);
+
+		// `schemaEnds` narrows this the same way it narrows the plan: a Milestone's note
+		// gains no start property, whatever a stale row asked for.
+		expect(vault.fm('Item.md')).toEqual({ type: 'Milestone', order: 5, due: '' });
+	});
+
 	it('leaves a key the note already carries exactly as it is, whatever it holds', async () => {
 		const vault = new FakeVault();
 		const configured = { ...settings, stateKey: 'status', horizonKey: 'horizon' };
@@ -334,6 +351,22 @@ describe('applying date stamps', () => {
 		await applyWrites(vault.app, stamping, [{ file, state: 'Active', startedDate: '2026-08-02' }]);
 
 		expect(vault.fm('A.md')['started']).toEqual(['2026-01-15']);
+	});
+
+	it('declines to stamp over a start already holding a boolean, not just a string or a list', async () => {
+		// `isBlank`'s own comment states the rule this protects: write-once, so a key
+		// already holding SOMETHING must decline a second stamp. A boolean is a plausible
+		// vault shape here — Obsidian's Checkbox property type is exactly this, and a
+		// reader could have the started key pointed at one before ever configuring this
+		// plugin's stamping. `isBlank`'s fallthrough (neither undefined/null, string, nor
+		// array) has to answer `false` for it, or this counts as no start yet and the
+		// stamp overwrites a value the note already carries.
+		const vault = new FakeVault();
+		const file = vault.addFile('A.md', { frontmatter: { status: 'New', started: true } });
+
+		await applyWrites(vault.app, stamping, [{ file, state: 'Active', startedDate: '2026-08-02' }]);
+
+		expect(vault.fm('A.md')['started']).toBe(true);
 	});
 
 	it('treats a date property inherited from Object as absent', async () => {

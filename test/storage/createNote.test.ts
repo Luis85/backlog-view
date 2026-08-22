@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createBacklogItem } from '../../src/storage/createNote';
+import { createBacklogItem, createResourceNote } from '../../src/storage/createNote';
 import { defaultSettings } from '../../src/domain/settings';
 import { FakeVault } from '../helpers/vault';
 
@@ -144,5 +144,33 @@ describe('createBacklogItem', () => {
 			order: 10,
 		});
 		expect(file.path).toBe('Untitled.md');
+	});
+});
+
+describe('createResourceNote', () => {
+	it('writes exactly the type key — no order, no parent, even in folder mode', async () => {
+		// Folder mode is ON so the branch that would pin an explicitly-empty `parent`
+		// (`createBacklogItem`'s own `else if (settings.folderHierarchy)`) is live in this
+		// fixture — a resource must not take that rung either, since it is not on the tree
+		// to be nested onto anything.
+		const vault = new FakeVault();
+
+		const file = await createResourceNote(vault.app, { ...settings, folderHierarchy: true }, {
+			folder: 'People',
+			title: 'Alex',
+		});
+
+		expect(vault.fm(file.path)).toEqual({ type: 'Resource' });
+	});
+
+	it('creates the folder and dedupes a taken title', async () => {
+		const vault = new FakeVault();
+
+		const first = await createResourceNote(vault.app, settings, { folder: 'People', title: 'Alex' });
+		expect(first.path).toBe('People/Alex.md');
+		expect(vault.folders.has('People')).toBe(true);
+
+		const second = await createResourceNote(vault.app, settings, { folder: 'People', title: 'Alex' });
+		expect(second.path).toBe('People/Alex 1.md');
 	});
 });

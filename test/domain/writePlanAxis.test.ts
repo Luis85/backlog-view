@@ -227,6 +227,41 @@ describe('computeInitWrites and the optional keys', () => {
 		expect(computeInitWrites(model, settings)[0].stubs).toEqual(['start', 'target']);
 	});
 
+	it('stubs a date end only where the type has one', () => {
+		// The rule this function already keeps for `goal` — do not create a property that
+		// means nothing on the note it lands on — reached through `placementEnds` so the
+		// backfill cannot drift from the writer and the controls.
+		//
+		// A `Milestone` is a point, so it is handed its target and not the start the
+		// generated README already tells the reader this view will never place it by. That
+		// case was shipped and untested, and an automated reviewer found it.
+		const { model } = build({ 'Ship.md': { type: 'Milestone' }, 'A.md': { type: 'Epic', order: 10 } }, AXES);
+		const stubsFor = (path: string) => computeInitWrites(model, AXES).find((w) => w.file.path === path)?.stubs ?? [];
+
+		expect(stubsFor('Ship.md')).toEqual(['horizon', 'target']);
+		// Ordinary work is untouched: the narrowing is the type's, not the backfill's.
+		expect(stubsFor('A.md')).toEqual(['horizon', 'start', 'target']);
+	});
+
+	it('stubs BOTH ends on an iteration, whichever way the roadmap draws it', () => {
+		// An iteration is a TIME BOX and carries two dates of its own —
+		// `computeIterationNoteWrites` edits both, and joining one copies both onto the
+		// member. `iterationBars` decides only whether the roadmap draws that box as a span
+		// or reduces it to its target, and it defaults to false.
+		//
+		// So the schema question and the placement question come apart here, for the one
+		// type where they can. Asked in BOTH modes from one fixture: a display option must
+		// never decide whether a property exists on a note, which is what asking
+		// `placementEnds` with the live flag made it do — under the DEFAULT setting, ✨
+		// silently stopped offering an iteration the start key it edits.
+		const files = { 'Sprint 4.md': { type: 'Iteration' } };
+		for (const bars of [false, true]) {
+			const { model } = build(files, settingsWith({ horizonKey: 'horizon', startKey: 'start', targetKey: 'due', iterationBars: bars }));
+			const settings = settingsWith({ horizonKey: 'horizon', startKey: 'start', targetKey: 'due', iterationBars: bars });
+			expect(computeInitWrites(model, settings)[0].stubs).toEqual(['horizon', 'start', 'target']);
+		}
+	});
+
 	it('never writes a key no property names', () => {
 		const settings = settingsWith({ horizonKey: 'horizon' });
 		const { model } = build({ 'A.md': { type: 'Epic', order: 10 } }, settings);

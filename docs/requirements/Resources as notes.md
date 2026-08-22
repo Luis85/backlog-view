@@ -2,10 +2,10 @@
 type: Feature
 parent: "[[Resource Management]]"
 order: 10
-status: Open
+status: Active
 created: 2026-08-20
 source: user request
-started: ""
+started: 2026-08-21
 finished: ""
 horizon: ""
 start: ""
@@ -16,10 +16,15 @@ assignee: ""
 
 # Resources as notes
 
-`Resource` joins the type vocabulary as a **marker**, beside `Milestone` and `Iteration`: no
-rung, no children, no parent, never in a rollup. A person gets a note, a badge, a folder and a
-place in every menu that offers a type — and the three places that name a person today stop
-naming a string and start naming that note.
+`Resource` joins the vocabulary as a name **recognised in order to be refused**, beside
+`Absence`: a resource note is dropped before it becomes an item, so it appears in no
+projection the backlog view draws and no write of this view's ever lands on one. A person is
+pointed at by the plan and contains none of it. The three places that name a person today
+stop naming a string and start naming that note.
+
+It was specified as a **marker** first — a badge, a folder, a place in every type menu — and
+that shipped for a day before being reversed; [[A resource is not a backlog item]] records
+what it cost and why. Nothing under this feature should reach for the marker category again.
 
 **Outcome** — Who is on an item is a link to a note the reader can open, and opening it shows
 a person rather than a search result for their name.
@@ -30,8 +35,8 @@ a person rather than a search result for their name.
 cases touch one property from three directions, and two of them are already shipped code.
 
 1. **The type comes first, alone.** `Resource` in the vocabulary changes nothing about
-   `assignee`: notes get a badge and a folder, and every existing string still works exactly
-   as it does today. That is deliberate — it is the one step that can land without breaking a
+   `assignee`: the name is recognised and its notes are kept out of the backlog, and every
+   existing string still works exactly as it does today. That is deliberate — it is the one step that can land without breaking a
    vault, and it is what the other two have to exist against.
 2. **The link is second, and it is the breaking change.** The value shape changes, so every
    reader of the assignee property changes with it: the chip, the menu, the roadmap row and

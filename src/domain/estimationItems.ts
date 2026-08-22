@@ -1,4 +1,5 @@
 import { App, BasesEntry, TFile } from 'obsidian';
+import { isResourceType } from './itemTypes';
 import { ownValue, readNumber, readString } from './noteFields';
 import { boundKeys, ScoringModel } from './scoringModel';
 import { computeTotal, Currency, currencyOf, modelFingerprint, TotalResult } from './weightedScore';
@@ -39,7 +40,7 @@ export interface EstimationModel {
  * build — so every field below reads off the SAME `fm` rather than opening the cache
  * a second time.
  */
-export function buildEstimationModel(app: App, entries: BasesEntry[], model: ScoringModel): EstimationModel {
+export function buildEstimationModel(app: App, entries: BasesEntry[], model: ScoringModel, typeKey: string): EstimationModel {
 	const bound = boundKeys(model);
 	// Loop-invariant: the same model scores every item, so its fingerprint (a JSON.stringify
 	// plus a hash over every dimension) is computed once here rather than once per item
@@ -53,6 +54,19 @@ export function buildEstimationModel(app: App, entries: BasesEntry[], model: Sco
 		// return others; the dedupe guards the same result arriving twice.
 		if (!file || file.extension !== 'md' || byPath.has(file.path)) continue;
 		const fm = app.metadataCache.getFileCache(file)?.frontmatter;
+		// **A RESOURCE is not something to score, and this view has to refuse it itself.**
+		// The backlog's own gate is in `readItems`, which this model never goes through: it
+		// reads the Base's results straight into its own item. So a person in a base opened
+		// with this view would be a scoreable row, ✨ would stub every configured estimation
+		// key onto their note, and the score actions would write to it — none of which the
+		// backlog's refusal can reach, because none of it builds a `BacklogItem`.
+		//
+		// Refused HERE rather than filtered by the caller, for the reason the read gate has:
+		// before the item exists, so the table, the toolbar's count, the backfill and every
+		// write path are all answered at once and a second caller cannot miss it. Read off
+		// the `fm` already open on the line above, which is the one-cache-read-per-note rule
+		// this loop's own comment states.
+		if (isResourceType(readString(ownValue(fm, typeKey)))) continue;
 		const answers = new Map<string, number | null>();
 		for (const d of model.dimensions) answers.set(d.id, readNumber(ownValue(fm, d.key)));
 		const storedTotal = readNumber(ownValue(fm, model.valueKey));

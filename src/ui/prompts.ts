@@ -19,6 +19,13 @@ function submitOnEnter(inputEl: HTMLInputElement, submit: () => void, autofocus 
 }
 
 /**
+ * A per-modal counter rather than a shared element-id helper: `ui/` may import nothing at
+ * all, so the view's own `uniqueElementId` (`view/selection.ts`) is unreachable from here,
+ * and a plain module-scoped counter is the whole of what minting one more id needs.
+ */
+let warningIdSeq = 0;
+
+/**
  * What every prompt in this file is: options handed in at construction, a footer holding
  * one call-to-action button, and a content element emptied on the way out.
  *
@@ -200,6 +207,15 @@ export interface ValuePromptOptions {
 	sigil?: string;
 	/** Values offered as suggestions — for tags, the ones this item does not already carry. */
 	known: string[];
+	/**
+	 * Sentence shown under the field while the trimmed entry matches a `known` value
+	 * case-insensitively, cleared the moment it does not. Warns and never refuses — two
+	 * real people can share a name, and this dialog guides rather than arbitrates who
+	 * exists. Undefined for the two callers this ships with (a tag, an assignee), where a
+	 * repeat is ordinary rather than worth a second look; the resource-name caller is what
+	 * wants it.
+	 */
+	duplicateWarning?: string;
 	onSubmit: (value: string) => void;
 }
 
@@ -219,12 +235,45 @@ export class ValuePromptModal extends PromptModal<ValuePromptOptions> {
 			this.options.onSubmit(value);
 		};
 
+		const warningText = this.options.duplicateWarning;
+		let warningEl: HTMLElement | null = null;
+		const syncWarning = () => {
+			if (!warningEl) return;
+			const isKnown = this.options.known.some((k) => k.toLowerCase() === value.trim().toLowerCase());
+			warningEl.setText(isKnown ? (warningText ?? '') : '');
+		};
+
+		let inputEl!: HTMLInputElement;
 		new Setting(this.contentEl).setName(this.options.fieldName).addText((text) => {
+			inputEl = text.inputEl;
 			text.setPlaceholder(this.options.placeholder);
-			text.onChange((v) => (value = v));
+			text.onChange((v) => {
+				value = v;
+				syncWarning();
+			});
 			new KnownValueSuggest(this.app, text.inputEl, this.options.known, this.options.sigil);
 			submitOnEnter(text.inputEl, submit, true);
 		});
+
+		// Only built when the caller wants the feature, and then kept in the DOM and empty
+		// rather than created on demand — `.pbl-modal-error`'s own reason: a dialog must
+		// not resize under the pointer as the match is typed.
+		//
+		// `aria-live="polite"`, never `.pbl-modal-error`'s `role="alert"`: this text
+		// appears and disappears on every keystroke while the field is otherwise valid —
+		// nothing is refused — so an ASSERTIVE region would interrupt the reader on each
+		// character typed near a match. Polite queues the announcement instead, and
+		// `aria-describedby` ties the (possibly empty) warning to the field itself so a
+		// screen reader user typing a duplicate hears it at all, which is the whole of
+		// what extension 3a is for.
+		if (warningText !== undefined) {
+			const warningId = `pbl-modal-warning-${++warningIdSeq}`;
+			warningEl = this.contentEl.createDiv({
+				cls: 'pbl-modal-warning',
+				attr: { id: warningId, 'aria-live': 'polite' },
+			});
+			inputEl.setAttribute('aria-describedby', warningId);
+		}
 
 		this.cta(this.options.ctaLabel, submit);
 	}

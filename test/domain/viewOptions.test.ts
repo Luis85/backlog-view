@@ -4,7 +4,7 @@ import { en } from '../../src/i18n/en';
 import { Catalog, setLocale } from '../../src/i18n/t';
 import { getViewOptions } from '../../src/domain/viewOptions';
 import { resolveSettings } from '../../src/domain/settingsResolve';
-import { defaultTypeFolder } from '../../src/domain/typeVocabulary';
+import { defaultResourceFolder, defaultTypeFolder } from '../../src/domain/typeVocabulary';
 import { FakeViewConfig } from '../helpers/vault';
 
 
@@ -29,6 +29,10 @@ describe('getViewOptions', () => {
 		expect(shown('typeFolder.epic').default).toBe('Roadmap/requirements');
 		expect(shown('typeFolder.bug').default).toBe('Roadmap/bugs');
 		expect(shown('typeFolder.epic').default).toBe(defaultTypeFolder('Epic', 'Roadmap'));
+		// Not a `typeFolder.*` key — `Resource` is never in `ALL_TYPES` — but it tracks
+		// the same resolved home folder every type folder does.
+		expect(shown('resourceFolder').default).toBe('Roadmap/resources');
+		expect(shown('resourceFolder').default).toBe(defaultResourceFolder('Roadmap'));
 	});
 
 	it('declares every config key the view reads', () => {
@@ -280,6 +284,7 @@ const KEYS = [
 	'typeFolder.test suite',
 	'typeFolder.test case',
 	'typeFolder.absence',
+	'resourceFolder',
 	'openIn',
 	'tagsProperty',
 	'showCounts',

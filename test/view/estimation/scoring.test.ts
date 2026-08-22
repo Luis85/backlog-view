@@ -478,7 +478,7 @@ function itemFrom(frontmatter: Record<string, unknown>): { model: ScoringModel; 
 	const vault = new FakeVault();
 	vault.addFile('Note.md', { frontmatter });
 	const model = configured();
-	return { model, item: buildEstimationModel(vault.app, vault.entries(), model).items[0] };
+	return { model, item: buildEstimationModel(vault.app, vault.entries(), model, 'type').items[0] };
 }
 
 describe('planRestamp', () => {

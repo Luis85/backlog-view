@@ -53,6 +53,20 @@ function modelGroup(): BasesAllOptions {
 				placeholder: DEFAULT_RANGE_TEXT,
 			},
 			{
+				// Not a scoring key, and the one option here that decides what this view
+				// does NOT show: a `Resource` is a person, never something to score, and
+				// this names the property its type is read from. Offered rather than left
+				// at the shipped `type`, because a vault that keeps item types under `kind`
+				// would otherwise get the refusal only by hand-editing the `.base` — the
+				// option is per VIEW in Bases, so the backlog view's own pick cannot answer
+				// for this one.
+				type: 'property',
+				key: 'typeProperty',
+				displayName: t('estimation.option.typeProperty'),
+				placeholder: 'type',
+				filter: notePropsOnly,
+			},
+			{
 				type: 'property',
 				key: 'valueProperty',
 				displayName: t('estimation.option.valueProperty'),

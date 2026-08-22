@@ -3,6 +3,7 @@ import { isReleaseType } from '../domain/itemTypes';
 import { BacklogSettings } from '../domain/settings';
 import { AxisWrite } from '../domain/writePlan';
 import { vaultFolder } from '../domain/settingsResolve';
+import { RESOURCE_TYPE } from '../domain/typeVocabulary';
 import { setOwn } from './ownProperty';
 import { axisEntries } from './writeKeys';
 
@@ -100,6 +101,37 @@ export async function createBacklogItem(app: App, settings: BacklogSettings, spe
 	for (const { key, value } of axisEntries(settings, placement)) {
 		if (value !== null) setOwn(fm, key, value);
 	}
+	return app.vault.create(path, `---\n${stringifyYaml(fm)}---\n`);
+}
+
+/** Everything a NEW resource note needs: where it goes and what it is called. */
+export interface NewResourceSpec {
+	folder: string;
+	title: string;
+}
+
+/**
+ * Create one resource note.
+ *
+ * NOT `createBacklogItem` with fewer fields: that function's `NewItemSpec` requires a
+ * parent, a rank and a type from the ladder, and a resource has none of the three —
+ * `createAbsenceNote`'s own stated reason for standing apart (`storage/absenceNotes.ts`)
+ * holds here too. And unlike `createBacklogItem`, this never writes a `parent` key at
+ * all, not even folder mode's explicitly-empty one (`else if (settings.folderHierarchy)`
+ * above): that branch exists so folder inference cannot nest a top-level WORK ITEM, and a
+ * resource is not on the tree to be nested onto anything — it ranks among nothing and
+ * hangs from nothing. See [[A resource is not a backlog item]].
+ *
+ * `typeKey` always resolves, so there is no gate to ask before writing it — unlike
+ * `createAbsenceNote`, which needs `absencesConfigured` in front of it for the three keys
+ * an absence carries.
+ */
+export async function createResourceNote(app: App, settings: BacklogSettings, spec: NewResourceSpec): Promise<TFile> {
+	const folder = vaultFolder(spec.folder);
+	await ensureFolder(app, folder);
+	const path = uniqueNotePath(app, folder, spec.title);
+	const fm: Record<string, unknown> = {};
+	setOwn(fm, settings.typeKey, RESOURCE_TYPE);
 	return app.vault.create(path, `---\n${stringifyYaml(fm)}---\n`);
 }
 

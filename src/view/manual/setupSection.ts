@@ -23,7 +23,9 @@ export const SETUP: ManualSection = {
 				'to every optional property you have not named — never one you have set or ' +
 				'deliberately cleared, since Bases tells "untouched" from "set to nothing" — then ' +
 				'backfills type, order and (for slot properties, not relationships) an empty value ' +
-				'onto notes lacking them, overwriting nothing. Never writes to an excluded note, and ' +
+				'onto notes lacking them, overwriting nothing — except a planned date the note\'s own ' +
+				'type cannot use: a milestone is a point, so it is given the target and not the start. ' +
+				'Never writes to an excluded note, and ' +
 				'never guesses a type for a parent link that resolves nowhere. The board and the ' +
 				'roadmap offer the same action, worded "Add the default properties", from their ' +
 				'own unconfigured empty states.',
@@ -175,8 +177,9 @@ export const SETUP: ManualSection = {
 			text:
 				"The home folder new items fall back to, and each type's own folder — a picker per " +
 				'type in the fixed vocabulary, one more for absences, and each ranking ahead of ' +
-				'the home folder.',
-			keys: ['homeFolder', 'typeFolder.*'],
+				"the home folder. A resource note has its own folder the same way, ranking ahead of " +
+				'the home folder too.',
+			keys: ['homeFolder', 'typeFolder.*', 'resourceFolder'],
 		},
 		{
 			term: 'How an item opens',

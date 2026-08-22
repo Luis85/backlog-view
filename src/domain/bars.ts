@@ -106,10 +106,19 @@ export type Placement = { kind: 'bar'; bar: TimelineBar } | { kind: 'shelf'; rea
  * without leaving the other placing releases exactly as before.
  */
 export function placeItem(item: BacklogItem, stated: StatedEnds, iterationBars: boolean): Placement | null {
-	// No bar and no point: see `drawsAsPoint`'s own note. Refused here as well because a
-	// false from that predicate means "not a POINT", which the lines below would otherwise
-	// read as "therefore a bar".
+	// No bar, no point, and NOT the shelf either: see this function's own note above. Asked
+	// before the ends check below, which would otherwise answer a release first and shelve
+	// it — a shelved card is one this roadmap is showing, in a counted, drop-targetable
+	// band, and a release is not on this axis at all until [[A release on the dated axis]].
 	if (isReleaseType(item.typeName)) return null;
+	// A type with NO ends never reaches the axis at all, whatever the note happens to
+	// carry under the date keys: a `Resource` is a person, and a person is not a span, a
+	// point or a line. Asked here rather than at each axis, because this is the one call
+	// every placement goes through — the resources axis routes a marker to its own lane
+	// before asking, so a check beside the dated axis alone would still have drawn a
+	// person in the `Milestones` row. Shelved with no reason, which is what an item this
+	// axis simply has nothing to say about already gets.
+	if (placementEnds(item.typeName, iterationBars).length === 0) return { kind: 'shelf', reason: null };
 	// A type that DRAWS AS A POINT is reduced to it before any span rule is asked about
 	// it. A stale start later than the target would otherwise read as a reversed pair
 	// and shelve. The start is ignored, never rewritten — ignoring a value and deleting

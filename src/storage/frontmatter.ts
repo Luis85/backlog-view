@@ -1,6 +1,6 @@
 import { App, Notice, TFile } from 'obsidian';
 import { StatedEnds } from '../domain/bars';
-import { mayHoldField, placementEnds, PlacementEnd } from '../domain/itemTypes';
+import { isResourceType, mayHoldField, placementEnds, PlacementEnd, schemaEnds } from '../domain/itemTypes';
 import {
 	absentReading,
 	CivilDate,
@@ -129,6 +129,21 @@ export async function applyWrites(
 			// them, because a key the projection never drew is not part of what a move
 			// changed — a marker's stale start most of all.
 			const liveType = readString(ownValue(fm, settings.typeKey));
+			// **A RESOURCE is never written to, whatever the batch was planned against.**
+			// `readItems` keeps one out of every projection, but that gate reads the note as
+			// the MODEL was built — and a gesture in flight holds the `BacklogItem` it was
+			// captured from. Retype a note to `Resource` mid-move and the plan aimed at it
+			// survives, while its live shape is an ordinary item's (a resource is no marker,
+			// so it answers both ends) and therefore matches what was captured. The axis
+			// check below cannot see it for exactly that reason.
+			//
+			// Asked HERE because this is the one place the live type is readable before the
+			// file is touched, and asked of EVERY write rather than the axis alone: what
+			// makes a resource unwritable is the type, not which property a batch names.
+			if (isResourceType(liveType)) {
+				refused = true;
+				return;
+			}
 			const ends = placementEnds(liveType, settings.iterationBars);
 			const before = axisReadings(fm, settings);
 			// Asked of the LIVE note before this file is touched, so a note that no longer
@@ -152,7 +167,12 @@ export async function applyWrites(
 			const planned = withHoldableStubs(write, liveType, settings);
 			const keys = touchedKeys(settings, planned);
 			const prior = keys.map((key) => rawValueOf(fm, key));
-			const lists = applyInto(app, fm, settings, planned);
+			// `planned`, not `write`, into main's `liveType` signature: both sides are
+			// needed. Dropping the narrowing would let `touchedKeys` and `applyInto`
+			// disagree about the key list — a key written but not captured is a change no
+			// undo can reach — and dropping `liveType` would take the live-type reading
+			// out of the one place that has the note open.
+			const lists = applyInto(app, fm, settings, planned, liveType);
 			inverse = captureInverse(write.file, keys, prior, fm, lists);
 			if (write.axis && (write.axis.start !== undefined || write.axis.target !== undefined)) {
 				// Narrowed to the ends the placement HAS, on both sides. A marker keeps a
@@ -201,6 +221,7 @@ function applyInto(
 	fm: Record<string, unknown>,
 	settings: BacklogSettings,
 	write: ItemWrite,
+	liveType: string | null,
 ): Pick<RestoreWrite, 'tags' | 'dependsOn'> {
 	// The state this note is actually leaving, read BEFORE the write replaces it. The
 	// model's idea of it can be a refresh behind — an external edit, or a batch still
@@ -223,7 +244,14 @@ function applyInto(
 	// stamp are: the row that planned this can be a refresh behind the note, and a value
 	// written since — by hand, by another view, by a write earlier in this same batch —
 	// would be blanked by a stub that believed the plan.
-	for (const key of stubKeys(settings, write.stubs)) {
+	//
+	// A start/target stub is narrowed the SAME question again, against the LIVE type
+	// rather than the model's: `schemaEnds` is what `missingEnd` already asks the plan,
+	// and a note retyped to a `Milestone` mid-batch must not gain the start key its note
+	// never carries just because a stale row still asked for it.
+	const liveEnds = schemaEnds(liveType);
+	const stubs = write.stubs?.filter((field) => (field !== 'start' && field !== 'target') || liveEnds.includes(field));
+	for (const key of stubKeys(settings, stubs)) {
 		if (!rawValueOf(fm, key).present) setOwn(fm, key, '');
 	}
 	const applied =

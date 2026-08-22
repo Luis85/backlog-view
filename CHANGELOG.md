@@ -65,6 +65,26 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   to change a score to a value you did not mean and change it back. A *Hand-written* total
   is never touched by it — that number is yours — and an orphaned total still gets the
   cleanup that removes it instead.
+- **`Resource` is a declared type, and notes carrying it stay out of the backlog.** A
+  person is something the plan points at rather than work it contains, so a `Resource`
+  note is recognised and then left out of every view this plugin draws — the tree, both
+  boards, both roadmap axes, the shelf, the item count and every menu that offers a type.
+  It is the same treatment an `Absence` already gets, and it is one gate rather than a rule
+  each view has to remember. Resources are for the resource timeline and for a dedicated
+  resource view later. Nothing creates one from the backlog view yet, and nothing about
+  `assignee` changes — it is still the text you type, and the roadmap's rows still come
+  from it.
+
+- **A resource note can be made without leaving the roadmap.** The resources axis's
+  toolbar gets its own **New resource** button, beside the axis controls it already owns.
+  It opens a name prompt — warned rather than refused when the name already matches
+  someone on the roster, since two real people can share a first name — and writes the
+  note into its own `resourceFolder` view option, a subfolder of the home folder by
+  default. The note carries only its type and title: no `order`, no `parent`, and it
+  never enters the backlog, exactly like every other `Resource` note. The roster itself is
+  unchanged for now — the axis still draws its rows from declared names, assignees and
+  absences, so a note made this way earns a row of its own once the axis starts reading
+  resource notes directly.
 
 - **The roadmap's shelf switches between cards and a compact list.** A third picker in the
   shelf's own header, beside the sort and the type filter, and a `Shelf layout` submenu in
@@ -95,6 +115,13 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   instead, since the board's band is a backlog too, not only the roadmap's.
 
 ### Changed
+
+- **Assign missing properties no longer creates a date property on a note that cannot use
+  one.** A `Milestone` is a point, so ✨ gives it the target property and no longer the
+  start one — which this view has never placed a milestone by. An `Iteration` still gets
+  both, whichever way the roadmap is set to draw it: how a thing is drawn must not decide
+  what properties its note carries. Every other type is unchanged, and no existing property
+  is touched either way.
 
 - **Everything the tree, the boards and the roadmap draw takes its words from the message
   catalog now** — every row marker and property chip, the tag pills, the rollup, each
@@ -211,6 +238,12 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   are indented so a child's badge lines up under the parent's own title.
 
 ### Fixed
+
+- **Alt+Up/Down on a milestone's card no longer writes an assignee nothing shows.** The
+  resources axis draws every marker in its own Milestones row whatever the note says, so
+  the keyboard ladder was changing the note, leaving the card exactly where it was, and
+  spending the undo on it. Dragging one already knew this; the keyboard now agrees. Set
+  assignee still writes one — a note may record who owns a date.
 
 - **The shelf's own title no longer moves when the band is opened or closed.** Opening the
   shelf adds its search box, and that box was 11px taller than everything else in the
