@@ -208,7 +208,12 @@ whole.
   declaration went unreported; it counts balanced parentheses now. All three rounds are the
   same instrument failure this note's extension 1a already warns about, one layer down: a
   scan that reads one member of a set, or one spelling of a thing, and reports on all of
-  them. **The warning applies to the CHECK and not only to the sweep**, which is the
+  them. A fourth found the mirror of the second: the licence withheld from the four-value
+  shorthand, so `left: 0; padding: 1px 2px 3px 4px` was reported although the test's own
+  name licensed it — the same licence applied where it should not be, and then withheld
+  where it should. Both helpers take a PREDICATE now, so the licence has one definition and
+  every spelling of a box property reaches it by name.
+  **The warning applies to the CHECK and not only to the sweep**, which is the
   sentence this note did not have, and each round is one the check itself could not have
   told anybody about — every one passed green.
   Deliberately narrower than this PBI: `border-left`/`border-right` and

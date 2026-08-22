@@ -69,21 +69,38 @@ const valueCount = (value: string): number => {
 /** Whether `block` pins a physical side itself, which is what licenses a physical box value. */
 const pinsAPhysicalSide = (block: string): boolean => /(?:^|[;{\s])(?:left|right)\s*:/.test(block);
 
-/** Every block matching `pattern`, licensed or not. */
-const matching = (pattern: RegExp): string[] =>
-	blocks.filter((block) => pattern.test(block)).map((block) => block.trim());
+/** Every block `matches` holds for, licensed or not. */
+const matching = (matches: (block: string) => boolean): string[] =>
+	blocks.filter(matches).map((block) => block.trim());
 
 /**
- * The blocks matching `pattern` that have no physical placement to justify it.
+ * The blocks `matches` holds for that have no physical placement to justify it.
  *
  * Separate from `matching` rather than a flag on it, because ONE of the two categories
  * here is licensed and the other is not — a single helper applying the licence to both
  * silently exempted `left: 0; text-align: left` while the comment below said no exemption
  * was coherent. Caught in review on PR #196; the naming is what keeps the two apart at
  * the call, where a boolean argument would not.
+ *
+ * Both take a PREDICATE rather than a pattern, so that the licence has exactly one
+ * definition and every box-property spelling reaches it by name. The four-value shorthand
+ * reached it by neither, and was filtered inline instead — which review caught in the
+ * round after the one above: the two findings are the same licence applied where it should
+ * not be and then withheld where it should.
  */
-const unlicensed = (pattern: RegExp): string[] =>
-	blocks.filter((block) => pattern.test(block) && !pinsAPhysicalSide(block)).map((block) => block.trim());
+const unlicensed = (matches: (block: string) => boolean): string[] =>
+	blocks.filter((block) => matches(block) && !pinsAPhysicalSide(block)).map((block) => block.trim());
+
+/** Whether `block` sets a four-value `margin`/`padding`, the shorthand form that names a side. */
+const hasFourSidedShorthand = (block: string): boolean =>
+	// EVERY shorthand in the block, not the first: `exec` stops at one, so
+	// `margin: 0; padding: 1px 2px 3px 4px;` passed on the symmetric margin while the
+	// four-value padding went unread — and that is the exact order `.pbl-card-kid` writes
+	// them in, so the one rule this category exists for was a `margin: 0` away from being
+	// invisible to it. Caught in review on PR #196.
+	[...block.matchAll(/(?:^|[;{\s])(?:margin|padding)\s*:\s*([^;]+);/g)].some(
+		(decl) => valueCount(decl[1]) === 4,
+	);
 
 describe('the stylesheet names no physical side', () => {
 	it('sets no margin or padding on a named physical side, unless the same rule pins one', () => {
@@ -91,18 +108,12 @@ describe('the stylesheet names no physical side', () => {
 		// spelling a property-name check misses, and `.pbl-card-kid`'s indent was written
 		// that way. A three-value shorthand is symmetric on the inline axis, so it names
 		// no side and is not matched.
-		expect(unlicensed(/(?:^|[;{\s])(?:margin|padding)-(?:left|right)\s*:/)).toEqual([]);
-		// EVERY shorthand in the block, not the first: `exec` stops at one, so
-		// `margin: 0; padding: 1px 2px 3px 4px;` passed on the symmetric margin while the
-		// four-value padding went unread — and that is the exact order `.pbl-card-kid`
-		// writes them in, so the one rule this category exists for was a `margin: 0` away
-		// from being invisible to it. Caught in review on PR #196.
-		const fourValue = blocks.filter((block) =>
-			[...block.matchAll(/(?:^|[;{\s])(?:margin|padding)\s*:\s*([^;]+);/g)].some(
-				(decl) => valueCount(decl[1]) === 4,
-			),
-		);
-		expect(fourValue).toEqual([]);
+		expect(unlicensed((block) => /(?:^|[;{\s])(?:margin|padding)-(?:left|right)\s*:/.test(block))).toEqual([]);
+		// `unlicensed` for BOTH: the licence is about the declaration, not about how it is
+		// spelled, so `padding: 0 8px 0 18px` in a pinned block is the same licensed
+		// clearance `.pbl-bar-label-after` writes as a longhand. Filtered inline here until
+		// review pointed out the test's own name promised otherwise.
+		expect(unlicensed(hasFourSidedShorthand)).toEqual([]);
 	});
 
 	it('licenses a physical margin or padding only where the placement beside it is physical too', () => {
@@ -127,6 +138,6 @@ describe('the stylesheet names no physical side', () => {
 		// pins the box the text is in. `matching`, NOT `unlicensed` — this line read
 		// `offenders` until review, which applied the placement licence to both categories
 		// and let `left: 0; text-align: left` through the sentence above it.
-		expect(matching(/text-align:\s*(?:left|right)\b/)).toEqual([]);
+		expect(matching((block) => /text-align:\s*(?:left|right)\b/.test(block))).toEqual([]);
 	});
 });
