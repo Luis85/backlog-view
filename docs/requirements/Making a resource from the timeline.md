@@ -2,18 +2,30 @@
 type: PBI
 parent: "[[The roster comes from the notes]]"
 order: 10
-status: Open
+status: Done
 created: 2026-08-22
 source: user request
 files:
-  - src/view/render/toolbarControls.ts
-  - src/storage/createNote.ts
   - src/domain/settings.ts
+  - src/domain/settingsResolve.ts
+  - src/domain/typeVocabulary.ts
   - src/domain/viewOptions.ts
-  - src/view/interactions/resourceNotes.ts
   - src/i18n/en.ts
-started: ""
-finished: ""
+  - src/storage/createNote.ts
+  - src/ui/prompts.ts
+  - src/view/interactions/resourceNotes.ts
+  - src/view/manual/setupSection.ts
+  - src/view/render/toolbarControls.ts
+  - styles/modals.css
+  - test/domain/resourceFolder.test.ts
+  - test/domain/viewOptions.test.ts
+  - test/i18n/toolbar.test.ts
+  - test/storage/createNote.test.ts
+  - test/ui/prompts.test.ts
+  - test/view/newResourceButton.test.ts
+  - test/view/resourceNotes.test.ts
+started: 2026-08-22
+finished: 2026-08-22
 horizon: ""
 start: ""
 due: ""
@@ -37,6 +49,12 @@ colleague in silence.
 backlog item]] declared the name and kept its notes out of every backlog projection; nothing
 created one, deliberately, because there was no surface that should. The resources axis is
 that surface.
+
+**The modal is `ValuePromptModal` reused, not a new dialog.** Extension 2a already says Name
+alone is the whole modal, and Capacity and Role are not settings yet — so the dedicated
+three-field dialog this note's own last paragraph once described arrives with [[Capacity on a
+resource]] and [[A resource's role]], not here. What shipped is the existing prompt plus one
+optional `duplicateWarning` line for extension 3a.
 
 ## Use case
 
@@ -62,10 +80,11 @@ that surface.
 
 **Extensions**
 
-- **1a — any other projection, or the horizons axis.** No control at all. It is drawn from
-  `renderProjectionZone`, which is the one place the toolbar asks which projection this is,
-  and `renderStateColorsButton` is the precedent for gating on the AXIS as well as the mode:
-  a control offered where it means nothing claims a capability the screen does not have.
+- **1a — any other projection, or the horizons or dated axis.** No control at all. It is
+  drawn from `renderProjectionZone`, which is the one place the toolbar asks which
+  projection this is, and `renderStateColorsButton` is the precedent for gating on the AXIS
+  as well as the mode: a control offered where it means nothing claims a capability the
+  screen does not have.
 - **2a — neither optional key is configured.** The modal offers **Name** alone, and that is
   the whole modal rather than a degraded one. [[What a resource carries]] states the rule this
   follows: nothing there is required for a resource to exist, a note with a type and a name is
@@ -122,27 +141,56 @@ that surface.
 
 `src/domain/typeVocabulary.ts` declares the resource folder's shipped default
 (`defaultResourceFolder`, beside `RESOURCE_TYPE`), derived from the home folder the same
-way a type folder is · `src/domain/settings.ts` adds `resourceFolder` to
-`BacklogSettings`, '' meaning no folder of its own · `src/domain/settingsResolve.ts`
-resolves it inside `resolveFolders`, tracking the resolved home folder and clearable back
-to '' · `src/domain/viewOptions.ts` declares the `resourceFolder` option itself, beside
-the per-type folder pickers it is not one of.
+way a type folder is. `src/domain/settings.ts` adds `resourceFolder` to `BacklogSettings`,
+'' meaning no folder of its own, and `src/domain/settingsResolve.ts` resolves it inside
+`resolveFolders`, tracking the resolved home folder and clearable back to ''.
+`src/domain/viewOptions.ts` declares the `resourceFolder` option itself, beside the
+per-type folder pickers it is deliberately not one of — it is never in `ALL_TYPES`, so it
+has no `typeFolder.*` entry of its own. `src/view/manual/setupSection.ts` names the new
+key in the manual's own folder-picker sentence, alongside `homeFolder` and `typeFolder.*`.
 
 `src/storage/createNote.ts` is the only module that may make the note, and
 `createResourceNote` is its OWN creator rather than `createBacklogItem` called with
 fewer fields — corrected from this note's earlier text, which said the opposite.
-`createBacklogItem`'s `NewItemSpec` requires a parent, a rank and a type from the
-ladder, and this use case's own acceptance criterion — no `order`, no `parent` — cannot
-be satisfied by reusing it; the note carries the type key alone. Same reason
+`createBacklogItem`'s `NewItemSpec` requires a parent, a rank and a type from the ladder,
+and this use case's own acceptance criterion — no `order`, no `parent` — cannot be
+satisfied by reusing it; the note carries the type key alone. Same reason
 `createAbsenceNote` (`src/storage/absenceNotes.ts`) stands apart from it.
 
-`src/view/interactions/resourceNotes.ts` is the view's half: `promptNewResource` runs the
-`configProblems` gate before the form opens and again at submit, resolves the folder
-ladder (`resourceFolder` else `homeFolder`) at submit rather than at open, and opens
-`src/ui/prompts.ts`'s existing `ValuePromptModal` — Name-only, since Capacity and Role are
-not settings yet and 2a says that is the whole modal rather than a degraded one, so no new
-dialog was needed for this step.
+`src/ui/prompts.ts` is where 3a actually lives: `ValuePromptOptions` gained one optional
+`duplicateWarning` line, shown under the field while the trimmed entry matches a `known`
+value case-insensitively and cleared the moment it does not — built only when a caller
+asks for it, since the other two `ValuePromptModal` callers (a tag, an assignee) have no
+use for warning about an ordinary repeat. It is drawn as `.pbl-modal-warning`
+(`styles/modals.css`), kept in the DOM and empty rather than created on demand —
+`.pbl-modal-error`'s own reason: a dialog must not resize under the pointer as the match
+is typed.
 
-Not built yet: `src/view/render/toolbarControls.ts` will hold `renderProjectionZone`'s
-**New resource** control, gated on the resources axis and roadmap mode the way
-`renderStateColorsButton` gates on axis and mode, calling `promptNewResource`.
+`src/view/interactions/resourceNotes.ts` is the view's half: `promptNewResource` runs the
+`configProblems` gate before the form opens and again at submit — the write can be refused
+between the two, since Obsidian's options pane stays reachable while the modal is up —
+resolves the folder ladder (`resourceFolder` else `homeFolder`) at submit rather than at
+open for the same reason, and opens `ValuePromptModal` Name-only, passing the drawn
+roster (`assignableLanes(host.roadmap?.roadmap)`, deduped against `host.settings.resourceNames`)
+as `known` so 3a warns against what a reader would actually recognise. `promptNewResource`
+takes no lane and no item: the control that opens it is the resources axis's own, not a
+per-row action.
+
+`src/view/render/toolbarControls.ts`'s `renderNewResourceButton` draws **New resource** in
+`renderProjectionZone`'s roadmap case, gated on `activeAxis(...) === 'resources'` the way
+`renderStateColorsButton` gates on axis and mode, and opens `promptNewResource` on click.
+No focus-restoration dance is needed: `ValuePromptModal` closes before its `onSubmit`
+runs, so the write this opens cannot rebuild the toolbar while the dialog is still open.
+
+`src/i18n/en.ts` carries every sentence this flow shows — the modal's heading, field,
+placeholder and CTA, the duplicate warning, the created and failed notices — plus
+`toolbar.newResource` for the button's tooltip and `option.resourceFolder` for the
+options-pane picker.
+
+Two things still need a LIVE-VAULT check, because the jsdom harness cannot answer either
+one: how **New resource** actually reads in the toolbar row beside its neighbours, and
+under `syncToolbarFit`'s narrowing steps as the pane shrinks; and how the new
+`resourceFolder` picker presents in Obsidian's own options pane, next to the type-folder
+pickers it sits beside but is not one of. Neither has been checked in a live vault as part
+of this PBI — `npm run test-build` is the handover for both, and the harness (ADR 0020)
+answers layout against the stub stylesheet only, never a themed vault's own colours.
