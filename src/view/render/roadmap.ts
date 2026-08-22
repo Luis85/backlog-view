@@ -12,6 +12,7 @@ import { renderTimeline, TimelineRender } from './timeline';
 import { BacklogViewHost, DrawnColors, RoadmapSnapshot, ScrollBox } from '../host';
 import { CardDragController } from '../interactions/cardDrag';
 import { newItemType, promptCreateItem } from '../interactions/create';
+import { canPlaceHorizon } from '../interactions/plan';
 import { gestureAt, previewer, submitGesture, TimelineParts, wireTimelineDrag } from '../interactions/timelineDrag';
 import { StatePalette, statePalettes } from '../../domain/board';
 import { isMarkerType } from '../../domain/itemTypes';
@@ -448,6 +449,14 @@ function renderBucketNew(ctx: RowContext, header: HTMLElement, bucket: HorizonBu
 	const model = host.model;
 	if (!model) return;
 	const type = newItemType(host.settings, model);
+	// `newItemType` follows the FOCUS, and `focusTarget` accepts any declared name — so
+	// focusing `Release` made every bucket header offer to create one in a bucket this
+	// axis does not draw releases in, and `createBacklogItem` wrote the horizon key with
+	// no type gate. The same predicate the chip and the row menu ask, one round earlier:
+	// there is no row yet, only the type this `+` would make. The write is refused
+	// independently in `storage/createNote.ts` — this closes the offer, that closes the
+	// door, and neither is the other's guard.
+	if (!canPlaceHorizon(host.settings, type)) return;
 	const btn = header.createEl('button', {
 		cls: 'clickable-icon pbl-bucket-add',
 		attr: { type: 'button', tabindex: '-1', 'aria-label': t('roadmap.newInBucket', { type, bucket: bucket.value }) },

@@ -1,4 +1,5 @@
 import { App, normalizePath, stringifyYaml, TFile } from 'obsidian';
+import { isReleaseType } from '../domain/itemTypes';
 import { BacklogSettings } from '../domain/settings';
 import { AxisWrite } from '../domain/writePlan';
 import { vaultFolder } from '../domain/settingsResolve';
@@ -75,8 +76,17 @@ export async function createBacklogItem(app: App, settings: BacklogSettings, spe
 		setOwn(fm, settings.iterationKey, wikilinkTo(app, spec.iteration, path));
 	}
 	// One list for both placements, so "which keys may be written" is stated once: a key
-	// no property names is dropped here exactly as it is on the edit path.
-	for (const { key, value } of axisEntries(settings, { ...spec.axis, ...(spec.horizon ? { horizon: spec.horizon } : {}) })) {
+	// no property names is dropped here exactly as it is on the edit path — and so is a
+	// placement the TYPE may not hold. This is the one site every seeded placement reaches:
+	// the bucket header's `+` seeds a horizon, an iteration board's `+` seeds that sprint's
+	// dates, and both arrive as this one loop. A `Release` speaks no placement end
+	// (`placementEnds`) and takes no horizon (`computeHorizonWrites`), so a creation that
+	// wrote either would be the last door left open on the edit path's own rule —
+	// creation does not go through `applyWrites`, so nothing downstream would catch it.
+	const placement = isReleaseType(spec.typeName)
+		? {}
+		: { ...spec.axis, ...(spec.horizon ? { horizon: spec.horizon } : {}) };
+	for (const { key, value } of axisEntries(settings, placement)) {
 		if (value !== null) setOwn(fm, key, value);
 	}
 	return app.vault.create(path, `---\n${stringifyYaml(fm)}---\n`);

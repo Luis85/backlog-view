@@ -70,6 +70,46 @@ describe('createBacklogItem', () => {
 		expect(vault.fm(unconfigured.path)).toEqual({ type: 'Epic', order: 30 });
 	});
 
+	it('seeds no placement onto a release, from either surface that seeds one', async () => {
+		// The last door on the edit path's own rule, and the only write path that does not
+		// go through `applyWrites` — so nothing downstream would have caught it. A `Release`
+		// speaks no placement end and takes no horizon, and BOTH surfaces that seed a
+		// placement land here: a bucket header's `+` (`horizon`) and an iteration board's
+		// `+` (that sprint's `axis` dates). Reachable in focus mode, where `newItemType`
+		// follows `focusTarget` and that accepts any declared type name.
+		const vault = new FakeVault();
+		const planned = { ...settings, horizonKey: 'horizon', startKey: 'start', targetKey: 'due' };
+
+		const release = await createBacklogItem(vault.app, planned, {
+			folder: 'Backlog',
+			title: '1.0',
+			typeName: 'Release',
+			parent: null,
+			order: 10,
+			horizon: 'Later',
+			axis: { start: '2026-09-01', target: '2026-09-30' },
+		});
+		expect(vault.fm(release.path)).toEqual({ type: 'Release', order: 10 });
+
+		// The type it must not disturb: an ordinary item created the same way keeps both.
+		const work = await createBacklogItem(vault.app, planned, {
+			folder: 'Backlog',
+			title: 'Work',
+			typeName: 'PBI',
+			parent: null,
+			order: 20,
+			horizon: 'Later',
+			axis: { start: '2026-09-01', target: '2026-09-30' },
+		});
+		expect(vault.fm(work.path)).toEqual({
+			type: 'PBI',
+			order: 20,
+			horizon: 'Later',
+			start: '2026-09-01',
+			due: '2026-09-30',
+		});
+	});
+
 	it('pins parentless creations in folder mode', async () => {
 		const vault = new FakeVault();
 		vault.addFile('Epics/Alpha/Alpha.md', { frontmatter: { type: 'Epic' } });

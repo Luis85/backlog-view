@@ -164,7 +164,7 @@ function addEditableSections(host: BacklogViewHost, model: BacklogModel, menu: M
 	// chip's own rule. `canPlaceHorizon` rather than `hasHorizonAxis` for the reason
 	// `canSchedule` is asked below: the two agree for work and diverge for a release,
 	// which no axis of this roadmap places.
-	if (canPlaceHorizon(host.settings, item)) addSetHorizonMenu(host, menu, item);
+	if (canPlaceHorizon(host.settings, item.typeName)) addSetHorizonMenu(host, menu, item);
 	// `canSchedule` rather than `hasDateAxis`: the two agree for work and diverge for
 	// a milestone on a start-only vault, where the narrowed entry would open asking
 	// for nothing at all.

@@ -1,7 +1,7 @@
 import { BacklogSettings, stateMenuValues } from './settings';
 import { resolvedDeliverableStateKey, resolvedTestStateKey } from './optionalProperties';
 import { ALL_TYPES, EXTRA_TYPES, LEVELS, MARKER_TYPES, TEST_LEVELS } from './typeVocabulary';
-import { childTypeChoices, EXTRA_TYPE_RANK, folderForType, LadderPosition, ladderFor } from './itemTypes';
+import { childTypeChoices, EXTRA_TYPE_RANK, folderForType, LadderPosition, ladderFor, placementEnds } from './itemTypes';
 import { readmeMarker } from './readmeMarker';
 import { stampRows, stampRule, startedStates } from './readmeStamps';
 import { andList, cell, code, list, yamlScalar } from './readmeText';
@@ -392,9 +392,21 @@ function planningSection(settings: BacklogSettings): string[] {
 	// will never place it by, and the entry that would correct that is withheld for the same
 	// reason, so the document would be promising a placement the projection contradicts.
 	// Say which key a marker actually reads, in the one voice this file has.
+	//
+	// Named from the PLACEMENT rule and never from `MARKER_TYPES`, because the two are not
+	// the same set and this file is written into the user's vault. Both sentences below say
+	// a marker's date is the **target** property, which is `placementEnds` answering
+	// `['target']` — true of a `Milestone` always, of an `Iteration` only while
+	// `iterationBars` is off, and of a `Release` never, since it speaks no end at all. The
+	// classification was what was listed here, so declaring a third marker published two
+	// false sentences to every reader at once.
+	const points = MARKER_TYPES.filter((type) => {
+		const ends = placementEnds(type, settings.iterationBars);
+		return ends.length === 1 && ends[0] === 'target';
+	});
 	if (dateKeys.length > 0 && settings.targetKey === '') {
 		lines.push(
-			`A **marker** (${andList(MARKER_TYPES.map(code))}) is the exception, and this view cannot ` +
+			`A **marker** (${andList(points.map(code))}) is the exception, and this view cannot ` +
 				`place one: a marker's date is the **target** property, and the only date property ` +
 				`here is ${code(settings.startKey)}. One waits, unplaced, until a target property is ` +
 				'picked — and Schedule is withheld from it rather than opened onto a date its own type ' +
@@ -402,7 +414,7 @@ function planningSection(settings: BacklogSettings): string[] {
 		);
 	} else if (dateKeys.length === 2) {
 		lines.push(
-			`A **marker** (${andList(MARKER_TYPES.map(code))}) is the exception: it is a point by ` +
+			`A **marker** (${andList(points.map(code))}) is the exception: it is a point by ` +
 				`**type** rather than by how many dates it states, so it reads ${code(settings.targetKey)} ` +
 				`alone. A ${code(settings.startKey)} on one is ignored — never rewritten, and never removed.`,
 		);

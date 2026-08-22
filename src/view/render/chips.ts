@@ -117,7 +117,7 @@ function fillStateChip(chip: HTMLElement, done: boolean, value: string | null): 
  * key nothing may write for it.
  */
 export function renderHorizonChip(host: BacklogViewHost, col: HTMLElement, item: BacklogItem, label: string): boolean {
-	if (!canPlaceHorizon(host.settings, item)) return false;
+	if (!canPlaceHorizon(host.settings, item.typeName)) return false;
 	// A value the reader refuses is not a placement: the roadmap shelves such a card
 	// with the reason on its face, and the chip says the same thing — unplaced, and
 	// why — rather than showing a horizon the axis would not honor.

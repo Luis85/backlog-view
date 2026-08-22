@@ -46,14 +46,19 @@ export function canSchedule(settings: BacklogSettings, item: BacklogItem): boole
 }
 
 /**
- * The bucket axis's half of the same question, and asked of the ITEM for the same reason
- * `canSchedule` is: `hasHorizonAxis` says whether this base HAS buckets, which is not the
- * same as whether this row may be put in one. A `RELEASE` may not — `computeHorizonWrites`
- * refuses it, so every entry the menu drew would be checked (an entry is checked exactly
- * when picking it would write nothing) and every pick would do nothing.
+ * The bucket axis's half of the same question `canSchedule` asks of the dated one:
+ * `hasHorizonAxis` says whether this base HAS buckets, which is not the same as whether
+ * this TYPE may be put in one. A `RELEASE` may not — `computeHorizonWrites` refuses it, so
+ * every entry the menu drew would be checked (an entry is checked exactly when picking it
+ * would write nothing) and every pick would do nothing.
+ *
+ * A type NAME rather than an item, `placementEnds`' own signature and for its own reason:
+ * the third caller has no row to ask about. The bucket header's `+` knows only which type
+ * it would CREATE, and a `+` offering a type this axis cannot hold is the same defect as a
+ * menu entry that plans nothing — one round earlier, before a note exists.
  */
-export function canPlaceHorizon(settings: BacklogSettings, item: BacklogItem): boolean {
-	return hasHorizonAxis(settings) && !isReleaseType(item.typeName);
+export function canPlaceHorizon(settings: BacklogSettings, typeName: string | null): boolean {
+	return hasHorizonAxis(settings) && !isReleaseType(typeName);
 }
 
 /** True when the note carries a date key this item's placement may take away. */

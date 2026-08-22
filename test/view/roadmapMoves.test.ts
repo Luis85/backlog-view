@@ -448,6 +448,22 @@ describe('creating from a bucket', () => {
 		expect(vault.fm('docs/requirements/More of it.md')['horizon']).toBe('someday');
 	});
 
+	it('offers no + at all where the type it would make cannot occupy a bucket', () => {
+		// `newItemType` follows the FOCUS and `focusTarget` accepts any declared name, so
+		// focusing `Release` had every bucket header offering "New Release in Now" — into an
+		// axis that draws no releases, through a creation write with no type gate. The
+		// control is ABSENT rather than inert, the empty add button's own rule.
+		const vault = horizonVault();
+		vault.addFile('1.0.md', { frontmatter: { type: 'Release', order: 40 } });
+		const releaseFocus = makeRoadmap(vault, {}, { focus: 'Release' });
+		expect(bucketByName(releaseFocus.containerEl, 'Now').querySelector('.pbl-bucket-add')).toBeNull();
+
+		// The focus it must not disturb: a Milestone IS placed on the bucket axis, so its
+		// `+` stays — which is what says this is about releases and not about markers.
+		const milestoneFocus = makeRoadmap(horizonVault(), {}, { focus: 'Milestone' });
+		expect(bucketByName(milestoneFocus.containerEl, 'Now').querySelector('.pbl-bucket-add')).not.toBeNull();
+	});
+
 	it('is blocked by the config gate, exactly as every other creation is', async () => {
 		const vault = horizonVault();
 		const { containerEl } = makeRoadmap(vault, { orderProperty: 'note.parent' });

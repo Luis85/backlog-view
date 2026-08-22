@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { BacklogSettings, defaultSettings } from '../../src/domain/settings';
 import { settingsWith } from '../helpers/settings';
 import { backlogReadmeContent, readmeStates } from '../../src/domain/backlogReadme';
-import { ALL_TYPES } from '../../src/domain/typeVocabulary';
+import { ALL_TYPES, MARKER_TYPES } from '../../src/domain/typeVocabulary';
+import { placementEnds } from '../../src/domain/itemTypes';
 import { ORDER_SPACING } from '../../src/domain/writePlan';
 
 /**
@@ -169,19 +170,36 @@ describe('backlogReadmeContent', () => {
 		expect(content).not.toContain('this view cannot place one');
 	});
 
-	it('tells a start-only view it cannot place a marker at all', () => {
+	it('names in the marker sentence exactly the markers this view places at one date', () => {
 		// The generated document is a contract with editors outside Obsidian, and the
-		// sentences above describe a point reached by how many dates an item STATES. A
-		// marker is a point by TYPE: `placeMarker` reads the target key alone, so here it
-		// shelves whatever it states — and `canSchedule` withholds the entry that would fix
-		// it. Left unsaid, the README tells a user to write the one date it documents and
-		// the milestone stays unplaced with no control offered to correct it.
-		const startOnly = readme(settingsWith({ startKey: 'start', targetKey: '', horizonKey: '' }), []);
-		// Named as the CATEGORY, not as one type — the rule is `placementEnds`'s, which every
-		// declared marker answers alike, so the sentence names the whole list rather than
-		// whichever marker happens to sit first in it.
-		expect(startOnly).toContain('A **marker** (`Milestone`, `Iteration` and `Release`) is the exception, and this view cannot place one');
-		expect(startOnly).toContain('the only date property here is `start`');
+		// sentences above it describe a point reached by how many dates an item STATES. A
+		// marker is a point by TYPE: `placeMarker` reads the target key alone, so a
+		// start-only view shelves whatever it states — and `canSchedule` withholds the entry
+		// that would fix it.
+		//
+		// WHICH markers, though, is `placementEnds`' answer and not the classification's,
+		// and this test is written from the rule for that reason: the sentence used to list
+		// `MARKER_TYPES`, so declaring a third marker published two sentences that were
+		// false for it to every reader at once — a release reads neither key and does not
+		// wait for one, because it speaks no end at any mapping. Re-spelling the assertion
+		// is what let that through, so nothing here spells the list. Both branches and both
+		// readings of `iterationBars`, since an `Iteration` is target-only in exactly one of
+		// them and is the marker the classification already got wrong before `Release`.
+		const markerLine = (text: string) => text.split('\n').find((l) => l.startsWith('A **marker**')) ?? '';
+		for (const iterationBars of [false, true]) {
+			const startOnly = readme(settingsWith({ startKey: 'start', targetKey: '', horizonKey: '', iterationBars }), []);
+			const both = readme(settingsWith({ startKey: 'start', targetKey: 'due', horizonKey: '', iterationBars }), []);
+			expect(markerLine(startOnly)).toContain('this view cannot place one');
+			expect(startOnly).toContain('the only date property here is `start`');
+			expect(markerLine(both)).toContain('it is a point by **type**');
+			for (const marker of MARKER_TYPES) {
+				const ends = placementEnds(marker, iterationBars);
+				const point = ends.length === 1 && ends[0] === 'target';
+				const named = `\`${marker}\``;
+				expect(markerLine(startOnly).includes(named), `${marker}, bars=${iterationBars}`).toBe(point);
+				expect(markerLine(both).includes(named), `${marker}, bars=${iterationBars}`).toBe(point);
+			}
+		}
 	});
 
 	it('does not advertise a horizon property whose values have been cleared', () => {
