@@ -17,6 +17,17 @@ import { assembleStyles } from '../../scripts/styles-assemble.mjs';
  * text alignment names no side at all. The licence belongs to the first only — it exists
  * for a clearance whose neighbour is placed physically, and no such coupling can make
  * `text-align: left` right. Writing them as one sentence is the defect review found here.
+ *
+ * Narrower again in one way no rewrite of the patterns below can widen: a shorthand whose
+ * sides arrive by SUBSTITUTION is invisible here. `padding: var(--x) var(--y)` is
+ * four-sided if `--x` holds two lengths, and what a custom property holds is not in this
+ * text — Obsidian declares the `--size-*` scale these 44 shorthands use, a theme may
+ * redeclare it, and `setCssProps` writes others from TypeScript at runtime. The literal
+ * fallback IS read (`expandFallbacks`), because those tokens are present. Rejecting every
+ * unresolved `var()` shorthand instead was considered on PR #196 and refused: it flags all
+ * 44, every one of them a legitimate symmetric padding, which is the exemption list
+ * [[Styling rules are checks]] exists to avoid. So the sentence is what a scan of the text
+ * can hold, and the rest is the computed-value check nobody has built.
  */
 const styles: string = assembleStyles();
 
@@ -112,6 +123,24 @@ const matching = (matches: (block: string) => boolean): string[] =>
 const unlicensed = (matches: (block: string) => boolean): string[] =>
 	blocks.filter((block) => matches(block) && !pinsAPhysicalSide(block)).map((block) => block.trim());
 
+/**
+ * `value` with every `var()` FALLBACK expanded, because substitution can produce more than
+ * one value: `var(--missing, 1px 2px) 3px 4px` is a four-sided padding, and it counted
+ * three. Innermost first — `[^()]*` cannot cross a nested call, so the loop reduces
+ * `var(--a, var(--b, 1px 2px))` from the inside and stops when nothing changed.
+ *
+ * A `var()` with NO fallback, and one whose fallback itself calls a function, stand as one
+ * token each. That is a floor rather than an answer, and deliberately so — see the header.
+ */
+const expandFallbacks = (value: string): string => {
+	let expanded = value;
+	for (let previous = ''; expanded !== previous; ) {
+		previous = expanded;
+		expanded = expanded.replace(/var\(\s*--[\w-]+\s*,([^()]*)\)/g, ' $1 ');
+	}
+	return expanded;
+};
+
 /** Whether `block` sets a four-value `margin`/`padding`, the shorthand form that names a side. */
 const hasFourSidedShorthand = (block: string): boolean =>
 	// EVERY shorthand in the block, not the first: `exec` stops at one, so
@@ -131,7 +160,10 @@ const hasFourSidedShorthand = (block: string): boolean =>
 	// four-sided declaration reads as something else entirely. Fifth instrument failure
 	// here, caught in review on PR #196 like the four above it.
 	[...block.matchAll(/(?:^|[;{\s])(?:margin|padding)\s*:\s*([^;]+)/g)].some(
-		(decl) => valueCount(decl[1].replace(/!\s*important\s*$/i, '')) === 4,
+		//
+		// The fallback expansion is the sixth, on the same theme: a scan that reads the
+		// easy spelling of a thing and reports as though it had read every spelling.
+		(decl) => valueCount(expandFallbacks(decl[1].replace(/!\s*important\s*$/i, ''))) === 4,
 	);
 
 /**
@@ -191,7 +223,12 @@ describe('the stylesheet names no physical side', () => {
 		expect(hasFourSidedShorthand('margin: 0; padding: 1px 2px 3px 4px')).toBe(true);
 		expect(hasFourSidedShorthand('padding: calc(var(--gap) + 1px) 2px 3px 4px')).toBe(true);
 		expect(hasFourSidedShorthand('padding: 1px 2px 3px 4px !important;')).toBe(true);
+		expect(hasFourSidedShorthand('padding: var(--missing, 1px 2px) 3px 4px')).toBe(true);
 		expect(hasFourSidedShorthand('margin: 0 auto; padding: 1px 2px')).toBe(false);
+		// The floor the header states, asserted so it stays a stated limit rather than a
+		// silent one: an unresolved `var()` is one token, so this is symmetric HERE and
+		// four-sided in a vault where `--gap` holds two lengths.
+		expect(hasFourSidedShorthand('padding: var(--gap) var(--pad)')).toBe(false);
 	});
 
 	it('aligns text to a logical end, never to a physical one', () => {
