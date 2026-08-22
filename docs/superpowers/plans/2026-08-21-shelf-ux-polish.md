@@ -180,7 +180,13 @@ Expected: `✓ register and ADRs consistent`.
 
 ```bash
 npm run check
-git add styles/shelfControls.css test/view/shelfResize.test.ts "docs/requirements/Resizing the shelf.md"
+# Everything you touched, never an enumerated list. `npm run check` runs against the WORKING
+# TREE, so it passes with all your edits present while a commit missing one of them does not
+# build — invisible to every local gate. An explicit list is a second inventory of the change
+# that has to be kept in step with the steps above it, and nothing checks that it is. This
+# went wrong twice in this plan before the form was changed. (Codex, PR #187.)
+git add -A ':!.superpowers'
+git status --short   # must print nothing
 git commit -m "fix: put the shelf grip at a sized band's foot
 
 Sticky holds an element inside its scrollport; it never pushes one down.
@@ -488,9 +494,13 @@ Add `src/view/shelfSurface.ts` to that note's `files:` frontmatter list.
 
 ```bash
 npm run check
-git add src/view/shelfSurface.ts src/view/host.ts src/view/render/iterationBoard.ts \
-        src/view/render/shelfControls.ts test/view/shelfSurface.test.ts \
-        "docs/requirements/The shelf, organized.md"
+# Everything you touched, never an enumerated list. `npm run check` runs against the WORKING
+# TREE, so it passes with all your edits present while a commit missing one of them does not
+# build — invisible to every local gate. An explicit list is a second inventory of the change
+# that has to be kept in step with the steps above it, and nothing checks that it is. This
+# went wrong twice in this plan before the form was changed. (Codex, PR #187.)
+git add -A ':!.superpowers'
+git status --short   # must print nothing
 git commit -m "refactor: resolve which shelf is on screen in one place
 
 The header's type filter and search read host.roadmap directly, so on the
@@ -882,9 +892,13 @@ Add `src/view/shelfSurface.ts` to that note's `files:` list if it names files.
 
 ```bash
 npm run check
-git add src/view/render/iterationBoard.ts src/view/interactions/menu.ts \
-        src/view/interactions/shelfMenu.ts src/i18n/en.ts \
-        test/view/iterationShelf.test.ts docs/requirements/
+# Everything you touched, never an enumerated list. `npm run check` runs against the WORKING
+# TREE, so it passes with all your edits present while a commit missing one of them does not
+# build — invisible to every local gate. An explicit list is a second inventory of the change
+# that has to be kept in step with the steps above it, and nothing checks that it is. This
+# went wrong twice in this plan before the form was changed. (Codex, PR #187.)
+git add -A ':!.superpowers'
+git status --short   # must print nothing
 git commit -m "feat: the iteration board's shelf carries the roadmap's picks
 
 Layout, sort, type filter and search, with the card menu's shelf section
@@ -1684,9 +1698,13 @@ would resize the slot as work is placed). Found by review, Codex on PR #187.
 
 ```bash
 npm run check
-git add src/view/render/board.ts src/view/render/columns.ts src/view/render/reconcile.ts \
-        src/view/render/shelf.ts styles/ \
-        test/view/shelfLayout.test.ts "docs/requirements/Cards or a list on the shelf.md"
+# Everything you touched, never an enumerated list. `npm run check` runs against the WORKING
+# TREE, so it passes with all your edits present while a commit missing one of them does not
+# build — invisible to every local gate. An explicit list is a second inventory of the change
+# that has to be kept in step with the steps above it, and nothing checks that it is. This
+# went wrong twice in this plan before the form was changed. (Codex, PR #187.)
+git add -A ':!.superpowers'
+git status --short   # must print nothing
 # Steps 4b and 4c touch columns.ts and reconcile.ts. Left unstaged, `npm run check` still
 # passes against the working tree while the COMMIT holds shelf.ts calling exports that are
 # not in it — a clean checkout of that commit does not build. Confirm with
@@ -2053,8 +2071,13 @@ whole story:
 
 ```bash
 npm run check
-git add src/view/render/cardChildren.ts src/view/render/board.ts src/view/render/shelf.ts \
-        styles/ test/view/cardChildren.test.ts "docs/requirements/Cards or a list on the shelf.md"
+# Everything you touched, never an enumerated list. `npm run check` runs against the WORKING
+# TREE, so it passes with all your edits present while a commit missing one of them does not
+# build — invisible to every local gate. An explicit list is a second inventory of the change
+# that has to be kept in step with the steps above it, and nothing checks that it is. This
+# went wrong twice in this plan before the form was changed. (Codex, PR #187.)
+git add -A ':!.superpowers'
+git status --short   # must print nothing
 git commit -m "feat: a shelved parent's children read as the row's own
 
 The disclosure joins the line in a leading fold slot, reserved on every
@@ -2114,7 +2137,13 @@ Expected: all five steps pass.
 - [ ] **Step 3: Commit and push**
 
 ```bash
-git add CHANGELOG.md
+# Everything you touched, never an enumerated list. `npm run check` runs against the WORKING
+# TREE, so it passes with all your edits present while a commit missing one of them does not
+# build — invisible to every local gate. An explicit list is a second inventory of the change
+# that has to be kept in step with the steps above it, and nothing checks that it is. This
+# went wrong twice in this plan before the form was changed. (Codex, PR #187.)
+git add -A ':!.superpowers'
+git status --short   # must print nothing
 git commit -m "docs: changelog for the shelf UX polish
 
 Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
