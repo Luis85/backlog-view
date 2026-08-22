@@ -55,9 +55,18 @@ Read all three for the shared lead and the fragment shape rather than for the sa
 each should close as one sentence, with no whole sentence run into another and no doubled
 full stop where the fragment meets the lead's own.
 
+**Then put the bindings back, before running anything else.** The collisions are saved in
+the `.base`, not held for the length of this check, and while they stand `configProblems`
+refuses every write in the view — including the tree, board and roadmap suites this one
+sits beside in the sweep. Left in place, a deliberate failure here reads as a broken plugin
+three checks later. Restore a distinct property for each option and confirm the toolbar's
+warning chip has gone.
+
 ## Acceptance criteria
 
 - Both `config.fixAll` surfaces and at least one `config.fixFirst` surface read with two
   collisions configured.
 - The single-problem gate notice recorded as correct rather than as a defect.
+- The bindings restored and the warning chip gone, so the rest of the sweep runs against a
+  working configuration.
 - Nothing yet checked.

@@ -40,9 +40,17 @@ Set Obsidian to a non-English language in **Settings → About → Language**, t
 Obsidian** — the plugin reads the language once and never re-reads it, so a reload of the
 view is not enough.
 
-Open `docs/Product Backlog.base` and walk the projections: tree, both boards, the roadmap
-on each configured axis, the view options panel, a row's context menu, and the estimation
-view.
+Open `docs/Product Backlog.base` and walk **all six** projections — each has labels of its
+own, so a projection skipped is a set of strings unchecked. The board scope picker is what
+reaches three of them:
+
+- the **tree**;
+- the **Product board**, the **Deliverables board** and an **iteration board**, all through
+  the scope picker;
+- the **Test catalog**;
+- the **roadmap**, on each configured axis.
+
+Then the view options panel, a row's context menu, and the estimation view.
 
 - **Every catalog SENTENCE should render English.** English is the only catalog that ships,
   so a resolution that falls back correctly leaves the words unchanged.

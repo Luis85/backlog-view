@@ -42,11 +42,15 @@ Open the view options panel for the base and read it top to bottom.
 - No option label clipped or truncated, and no group heading wrapping oddly.
 - Every placeholder readable as prose rather than as a fragment. **The ten cannot all be on
   screen at once**, so this part is staged rather than read in one pass:
-  1. On a **fresh** `product-backlog` view, eight of the ten show — a placeholder is visible
+  1. On a **fresh** `product-backlog` view, seven of the ten show — a placeholder is visible
      only while its input is empty, and the register's own `Backlog` view fills four of them
      (`stateValues`, `deliverableStateValues`, `resourceNames`, `homeFolder`), so a fresh
      view is the shorter route than clearing those four.
-  2. The **WIP limit** and **column policy** hints are the other two, and they cannot appear
+  2. **Home folder is the eighth and a fresh view does not give it either**: the option
+     declares `default: DEFAULT_HOME_FOLDER`, which is `docs`, so its input shows `docs`
+     rather than its hint even where nothing has been stored. Clear that one input to read
+     it.
+  3. The **WIP limit** and **column policy** hints are the last two, and they cannot appear
      yet: those inputs are generated one per configured state
      (`settings.states.flatMap` in `src/domain/viewOptions.ts`), so with no workflow there
      are none. Configure at least one **non-done** state — a done state gets a policy input
