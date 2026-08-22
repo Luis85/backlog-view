@@ -40,12 +40,18 @@ the repository is open as a vault with `docs/Product Backlog.base` showing the t
 Open the view options panel for the base and read it top to bottom.
 
 - No option label clipped or truncated, and no group heading wrapping oddly.
-- Every placeholder readable as prose rather than as a fragment. **A placeholder is only
-  visible while its input is empty**, so reading the register's own `Backlog` view top to
-  bottom skips four of the ten: it sets `stateValues`, `deliverableStateValues`,
-  `resourceNames` and `homeFolder`, and those inputs show their stored values instead.
-  Clear those four inputs to read their hints — or use a fresh `product-backlog` view, where
-  every input is empty and all ten show at once.
+- Every placeholder readable as prose rather than as a fragment. **The ten cannot all be on
+  screen at once**, so this part is staged rather than read in one pass:
+  1. On a **fresh** `product-backlog` view, eight of the ten show — a placeholder is visible
+     only while its input is empty, and the register's own `Backlog` view fills four of them
+     (`stateValues`, `deliverableStateValues`, `resourceNames`, `homeFolder`), so a fresh
+     view is the shorter route than clearing those four.
+  2. The **WIP limit** and **column policy** hints are the other two, and they cannot appear
+     yet: those inputs are generated one per configured state
+     (`settings.states.flatMap` in `src/domain/viewOptions.ts`), so with no workflow there
+     are none. Configure at least one **non-done** state — a done state gets a policy input
+     but no WIP input — and read the two boxes that appear, which arrive empty and so show
+     their hints.
 - The **`Open the note in`** dropdown offers its three choices — active pane, new tab,
   split. Those were English literals in `src/domain/itemHandling.ts` until 2026-08-22 and
   are keyed now, so they are the newest text on this surface and the likeliest to be wrong.
