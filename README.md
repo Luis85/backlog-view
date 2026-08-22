@@ -44,7 +44,9 @@ Azure DevOps Boards.
     press: it picks this view's suggested property for every optional feature you have
     not configured yet — the workflow state, the date stamps, and the roadmap's horizon
     and dates — and then backfills `type`, `order` and an **empty** value for each of
-    those properties on the notes that don't carry them. Nothing already set is
+    those properties on the notes that don't carry them, except a planned date a type
+    cannot use: a `Milestone` is a point, so it is given the target and not the start, and
+    a `Resource` states no date at all, so it is given neither. Nothing already set is
     overwritten, no option you have set (or deliberately cleared) is changed, no type is
     guessed for items whose parent is outside the view, and nothing moves: an empty
     property is the "no state, not planned yet" the item was already in — it just becomes
