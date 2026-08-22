@@ -1,0 +1,94 @@
+/* The preset picker's own rules (`src/ui/estimationPresetDialog.ts`). Everything outside
+   this file that the dialog draws — the modal frame, its title, its button container — is
+   Obsidian's own and is deliberately not restyled here. */
+
+.pbl-est-presets-dialog {
+	display: flex;
+	flex-direction: column;
+	max-height: 100%;
+	min-height: 0;
+}
+
+.pbl-est-preset-kinds {
+	margin: 0 0 var(--size-4-3);
+	font-size: var(--font-ui-small);
+	color: var(--text-muted);
+}
+
+/* The LIST is the only scroller, and `min-height: 0` is the load-bearing half: `.modal`
+   caps its own height, so a content block that scrolls as one carries Apply and Cancel
+   below the fold — measured in the harness at a 620px window. Without `min-height: 0` a
+   flex item refuses to shrink below its content and the column overflows exactly as
+   before. */
+.pbl-est-preset-list {
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-4-2);
+	flex: 1 1 auto;
+	min-height: 0;
+	overflow-y: auto;
+}
+
+.pbl-est-preset {
+	padding: var(--size-4-2) var(--size-4-3);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-m);
+	cursor: pointer;
+}
+
+.pbl-est-preset:hover {
+	background-color: var(--background-modifier-hover);
+}
+
+.pbl-est-preset.pbl-selected {
+	border-color: var(--interactive-accent);
+}
+
+.pbl-est-preset-name {
+	font-weight: var(--font-medium);
+	color: var(--text-normal);
+}
+
+.pbl-est-preset-desc {
+	margin: var(--size-2-2) 0;
+	font-size: var(--font-ui-small);
+	color: var(--text-muted);
+}
+
+.pbl-est-preset-formula {
+	font-size: var(--font-ui-small);
+	color: var(--text-normal);
+}
+
+.pbl-est-preset-note {
+	font-size: var(--font-ui-smaller);
+	color: var(--text-faint);
+}
+
+.pbl-est-preview {
+	flex: 0 0 auto;
+	margin-top: var(--size-4-4);
+}
+
+.pbl-est-preview h4 {
+	margin: 0 0 var(--size-4-2);
+	font-size: var(--font-ui-small);
+	color: var(--text-muted);
+}
+
+.pbl-est-preview-row {
+	display: flex;
+	gap: var(--size-4-2);
+	font-size: var(--font-ui-small);
+}
+
+.pbl-est-preview-label {
+	flex: 0 0 120px;
+	color: var(--text-muted);
+}
+
+.pbl-est-preview-note {
+	margin-top: var(--size-4-2);
+	font-size: var(--font-ui-small);
+	color: var(--text-muted);
+}

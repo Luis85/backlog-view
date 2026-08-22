@@ -1350,6 +1350,19 @@ export const en = {
 	 *  filtered count's idiom — one quantity in two parts, so the pair reads as one fact. */
 	'estimation.toolbar.init': 'Bind and backfill the estimation properties',
 	'estimation.toolbar.scored': '{scored} of {total} scored',
+	'estimation.toolbar.presets': 'Start from a known framework',
+
+	/** The preset picker dialog (`ui/estimationPresetDialog.ts`). */
+	'estimation.presets.title': 'Start from a known framework',
+	'estimation.presets.kinds':
+		'These configure the indicator that sits beside the business value. The value model is unchanged, whichever you pick.',
+	'estimation.presets.whatChanges': 'What this changes',
+	'estimation.presets.now': 'Indicator now',
+	'estimation.presets.after': 'Indicator after',
+	'estimation.presets.none': 'None',
+	'estimation.presets.unchanged': 'The value model is unchanged, and no stored total is affected.',
+	'estimation.presets.apply': 'Apply',
+	'estimation.presets.cancel': 'Cancel',
 
 	/** The four shipped indicator presets' own description and note — the preset NAME stays
 	 *  a plain literal in `domain/estimationPresets.ts` (it is written into the `.base`), but
