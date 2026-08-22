@@ -951,9 +951,37 @@ any of the four. The measurement that missed this reported title positions 4 →
 true and is bought by the badge slot alone; property-cell positions were never measured, and
 the one hint in the same run — state chips at two x positions — was noted and passed over.
 
-The rule the row actually needs is one sentence: **everything before the flexible region has a
-fixed width, everything after it has a fixed width, and the title and parent between them
-absorb the rest.** Then the trailing block starts at `container − fixed_total`, which is the
+The rule the row actually needs is one sentence: **every top-level item of the summary has the
+same flex configuration — the same basis, grow and shrink — on every row, and is present on
+every row.**
+
+That is stronger than the "fixed before, fixed after" version this plan carried for several
+rounds, and the difference is what review kept finding one violator at a time. Sameness, not
+rigidity, is what aligns: identical items resolve identically whether there is free space or a
+deficit. But it has to hold for EVERY top-level item, and an item that is present on some rows
+and absent on others fails it just as surely as one whose basis is its own content.
+
+Under that rule the summary's children are:
+
+| item | flex | same on every row because |
+| --- | --- | --- |
+| `.pbl-shelf-fold` | `0 0 30px` | always drawn, occupied or not (Task 5) |
+| `.pbl-card-head` | `0 0 var(--pbl-shelf-badge)` | a constant from `ALL_TYPES` |
+| `.pbl-card-title` | `1 1 0` | basis 0, so its text cannot change the sums |
+| `.pbl-shelf-notes` | `0 1 calc(…)` | always drawn; holds everything that is sometimes absent |
+| `.pbl-props` | `0 1 auto` | `holdEmpty` gives every row every cell, each a fixed width |
+| `.pbl-shelf-state` | `0 1 auto` | held open per row, one fixed cell |
+
+**`.pbl-card-parent` is not in that list, and that is the last correction** (Codex, PR #187).
+`renderCardBody` draws it only for an item that has a parent, and its width is its breadcrumb's
+own — two violations at once. A row with a long breadcrumb absorbs more of a deficit there and
+leaves less for the reservations after it, so their resolved widths diverge from a root card's
+in the same band. It moves into the notes lane, which is always drawn and already a fixed
+reservation: the breadcrumb is metadata about the row like the two notes beside it, it keeps
+its place just after the title, and it ellipsises inside a width that no longer depends on it.
+
+The rule's older half still holds and is worth keeping in words: everything before the flexible
+title is fixed, everything after it is fixed, and the title absorbs the rest. Then the trailing block starts at `container − fixed_total`, which is the
 same number on every row. Ordering within the trailing block is irrelevant to that, which is
 why nothing is reordered in the DOM.
 
@@ -1044,6 +1072,30 @@ Add to `test/view/shelfLayout.test.ts`:
 		// Beside the height and for its reason: a band with nothing to show reserves nothing.
 		const { containerEl } = makeRoadmap(horizonVault(), {}, { shelfCollapsed: true, shelfList: true });
 		expect(shelfOf(containerEl)?.style.getPropertyValue('--pbl-shelf-badge')).toBe('');
+	});
+
+	it('gives every row the same top-level items, which is what alignment rests on', () => {
+		// **The category check, and the one that would have caught six review rounds at once.**
+		// Alignment does not come from any single declaration; it comes from every top-level
+		// item of the summary having the same flex configuration on every row. An item that is
+		// present on some rows and absent on others breaks that as surely as one whose basis is
+		// its own content — which is how the rollup, the shelving reason, the dependency note
+		// and the parent breadcrumb each broke it in turn, one per review round, until they were
+		// all moved into the always-drawn notes lane.
+		//
+		// jsdom lays nothing out, so what is checkable here is PRESENCE: the set of direct
+		// children, by class, must be identical across every row in the band. A new
+		// sometimes-drawn element on the line fails this without anyone predicting it, which a
+		// list of the six known ones could not do.
+		const { containerEl } = makeRoadmap(shelfHeavyVault(), {}, { shelfCollapsed: false, shelfList: true });
+		const shapes = new Set(
+			Array.from(shelfOf(containerEl)?.querySelectorAll('.pbl-card-summary') ?? []).map((summary) =>
+				Array.from(summary.children)
+					.map((child) => child.className)
+					.join('|'),
+			),
+		);
+		expect([...shapes]).toHaveLength(1);
 	});
 
 	it('states the aligned-column geometry in the stylesheet', () => {
@@ -1166,6 +1218,13 @@ the body:
 	// would have left the two disagreeing — invisible to a pointer, and a screen reader in
 	// browse mode announcing a card's shelving reason before its title. (Codex, PR #187.)
 	if (notes) summary.appendChild(notes);
+	// The parent breadcrumb joins them, and for the alignment rule rather than for tidiness: it
+	// is drawn only for an item that HAS a parent and its width is its own text, so left on the
+	// line it is a top-level item that differs from row to row twice over. In the lane it is
+	// metadata beside the two notes, still just after the title, ellipsising inside a width that
+	// no longer depends on it. (Codex, PR #187.)
+	const parent = notes && summary.querySelector<HTMLElement>(':scope > .pbl-card-parent');
+	if (notes && parent) notes.appendChild(parent);
 ```
 
 and append the two notes into that box rather than straight onto the line — both are drawn a
@@ -1441,7 +1500,10 @@ ones being replaced record measurements that stay true and must be carried forwa
 	   row carries this lane at the same basis with the same factor, so a deficit resolves it to
 	   the same width on all of them. The icons inside keep their own size and the rollup's
 	   progress bar is what gives way. */
-	flex: 0 1 calc(var(--pbl-meta-col, 84px) + 2 * (12px + var(--size-2-1)));
+	/* The rollup's own reservation, the two note icons, and room for a parent breadcrumb — every
+	   sometimes-absent thing on the row lives here, so this one width is what makes them all
+	   stop varying. */
+	flex: 0 1 calc(var(--pbl-meta-col, 84px) + 2 * (12px + var(--size-2-1)) + 12ch);
 	min-width: 0;
 	/* And the lane's CONTENTS give way with it, which `min-width: 0` alone does not arrange: it
 	   lets the LANE shrink and says nothing about the boxes inside. `.pbl-meta-col` is
@@ -1494,11 +1556,9 @@ ones being replaced record measurements that stay true and must be carried forwa
 	margin-inline-start: 0;
 }
 
-/* The parent link shares the flexible region with the title rather than sitting in the fixed
-   trailing block: the two together absorb whatever the row has spare, so the boundary between
-   them and the reservations is at one x on every row. It yields before the title does and
-   ellipsises inside itself. */
-.pbl-shelf-list .pbl-card-parent {
+/* The breadcrumb inside the notes lane: it yields before the icons do and ellipsises rather
+   than widening the lane, which is the whole reason it was moved off the line. */
+.pbl-shelf-list .pbl-shelf-notes .pbl-card-parent {
 	flex: 0 1 auto;
 	min-width: 0;
 	overflow: hidden;
