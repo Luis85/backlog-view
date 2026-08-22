@@ -1248,11 +1248,19 @@ export const en = {
 	 * (`Intl.ListFormat`, in the locale of the message it actually rendered) — the readme
 	 * notices' own shape, and the shape `t.ts` asks callers for.
 	 *
-	 * NO TERMINAL PERIOD: each problem is already a whole sentence carrying one, which is
-	 * what made the `'; '` version of this render `"…".; "…"..`. That is the one thing
-	 * about this message that is not a pure wording change.
+	 * IT CARRIES THE TERMINAL PERIOD, and the sentence that said otherwise was wrong about
+	 * its own inputs. It read "no terminal period: each problem is already a whole sentence
+	 * carrying one" — true of exactly one of the five things `modelProblems` returns, and
+	 * that one only until `settings.sharedKey` became a fragment. Its four siblings —
+	 * `no dimensions are declared`, the two pair refusals and the output-range refusal —
+	 * have always been lowercase and unpunctuated, so this notice has been ending without a
+	 * full stop for most of what it can say since it was written.
+	 *
+	 * The history in that sentence belonged to the readme command, whose problems WERE whole
+	 * sentences and whose `'; '` join rendered `"…".; "…"..`. Carried here, it described a
+	 * different message's inputs.
 	 */
-	'estimation.problems.blocked': 'Fix the estimation model first: {problems}',
+	'estimation.problems.blocked': 'Fix the estimation model first: {problems}.',
 	/** Said rather than left silent, for `estimation.problems.blocked`'s own reason: the
 	 *  guided empty state is still on screen, so a button that returned quietly would
 	 *  simply look dead. */

@@ -108,6 +108,12 @@ describe('the guided empty state’s setup action', () => {
 		const [firstProblem, secondProblem] = problems;
 		expect(Notice.messages.at(-1)).toContain(firstProblem);
 		expect(Notice.messages.at(-1)).toContain(secondProblem);
+		// The FRAME, not just the fragments it carries. Every problem `modelProblems`
+		// returns is a lowercase fragment — `no dimensions are declared` and the two pair
+		// refusals here — so the terminal period is this message's to supply, and nothing
+		// held it: the notice ended without one and both assertions above still passed,
+		// because a substring match cannot see the end of a sentence.
+		expect(Notice.messages.at(-1)).toMatch(/^Fix the estimation model first: .+\.$/);
 	});
 
 	it('asks what is already bound of the same config it asks what is untouched', async () => {
