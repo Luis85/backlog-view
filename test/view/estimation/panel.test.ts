@@ -75,7 +75,7 @@ describe('the sticky answer header', () => {
 		// structure is the other half of the guarantee — `styleRules.test.ts` can only prove a
 		// rule exists, never that it matches. Both halves are needed: what shipped was three
 		// correct rules matching nothing.
-		expect(header.querySelector(':scope > .pbl-est-title')).not.toBeNull();
+		expect(header.querySelector(':scope > .pbl-est-title-row > .pbl-est-title')).not.toBeNull();
 		expect(header.querySelector(':scope > .pbl-est-summary')).not.toBeNull();
 		expect(header.querySelector(':scope > .pbl-est-derived')).not.toBeNull();
 		const summary = header.querySelector('.pbl-est-summary')!;

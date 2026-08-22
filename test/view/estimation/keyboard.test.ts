@@ -91,7 +91,7 @@ describe('the estimation view from the keyboard', () => {
 		key(list, 'ArrowRight');
 		expect(containerEl.querySelector('.pbl-est-panel')!.contains(document.activeElement)).toBe(true);
 		key(list, 'Enter');
-		expect(vault.opened).toEqual([{ path: 'Full.md', mode: false }]);
+		expect(vault.opened).toEqual([{ path: 'Full.md', mode: 'split' }]);
 	});
 
 	it('lands ArrowRight on the row’s actual tab stop, never the first button in document order', () => {

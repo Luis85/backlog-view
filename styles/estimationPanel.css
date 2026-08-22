@@ -50,6 +50,24 @@
 	background-color: var(--background-secondary);
 }
 
+/* The title and its Open note control on one line, the control pinned to the end — the
+   header is `position: sticky`, so this row stays reachable however far the reader has
+   scrolled down the dimensions. */
+.pbl-est-title-row {
+	display: flex;
+	align-items: center;
+	gap: var(--size-4-2);
+}
+
+.pbl-est-title-row .pbl-est-title {
+	flex: 1 1 auto;
+	min-width: 0;
+}
+
+.pbl-est-open {
+	flex: 0 0 auto;
+}
+
 .pbl-est-header .pbl-est-title {
 	flex: 0 0 auto;
 	font-size: var(--font-ui-medium);

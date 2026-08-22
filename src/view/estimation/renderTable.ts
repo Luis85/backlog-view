@@ -93,7 +93,7 @@ function wireEvents(
 		}
 		if (evt.key === 'Enter') {
 			const item = view.selectedPath ? model.byPath.get(view.selectedPath) : undefined;
-			if (item) void view.app.workspace.getLeaf(false).openFile(item.file);
+			if (item) view.openNote(item, evt);
 		}
 	});
 }

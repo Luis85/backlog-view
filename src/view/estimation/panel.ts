@@ -91,7 +91,15 @@ export function renderPanel(view: EstimationView, model: EstimationModel, previo
 	// which is what silently broke when they moved. The header now declares its own type
 	// (`styles/estimationPanel.css`) and nothing depends on where its children sit.
 	const header = panelEl.createDiv({ cls: 'pbl-est-header' });
-	header.createDiv({ cls: 'pbl-est-title', text: item.title });
+	const titleRow = header.createDiv({ cls: 'pbl-est-title-row' });
+	titleRow.createDiv({ cls: 'pbl-est-title', text: item.title });
+	// In the STICKY header rather than at the panel's foot: the reader needs the note
+	// exactly when they are eight dimensions down and cannot answer one from the rubric.
+	const open = titleRow.createEl('button', {
+		cls: 'pbl-icon-btn pbl-est-open',
+		attr: { type: 'button', 'aria-label': t('estimation.panel.openNote'), title: t('estimation.panel.openNote'), 'data-action': 'open' },
+	});
+	setIcon(open, 'file-text');
 	renderSummary(header, item);
 	renderDerived(header, item, scoringModel, view.settings.indicator);
 
@@ -367,6 +375,15 @@ function wirePanelEvents(view: EstimationView, panelEl: HTMLElement, item: Estim
 		}
 		if (target.dataset.action === 'restamp') {
 			void view.performRestamp(item);
+			return;
+		}
+		if (target.dataset.action === 'open') {
+			// Resolved against the CURRENT model at click time, never the item this panel
+			// closed over: a Bases pass can remove the row between the draw and the click,
+			// and opening *something* would be worse than opening nothing — the reader is
+			// about to score whatever they read.
+			const live = view.model?.byPath.get(item.file.path);
+			if (live) view.openNote(live, evt);
 			return;
 		}
 		const dim = target.dataset.dim;

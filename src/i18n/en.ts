@@ -1345,6 +1345,7 @@ export const en = {
 	 *  currencies (`stale` and `foreign`) offer the same action, so naming either in the
 	 *  label would make it wrong half the time. */
 	'estimation.panel.restamp': 'Recalculate the stored total from the answers on this note',
+	'estimation.panel.openNote': 'Open note',
 
 	/** The toolbar's own two actions and its count. `{scored} of {total} scored` is the
 	 *  filtered count's idiom — one quantity in two parts, so the pair reads as one fact. */
