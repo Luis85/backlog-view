@@ -24,8 +24,19 @@ const styles: string = assembleStyles();
  * Comments are prose ABOUT the rules and may legitimately name a physical property —
  * a comment explaining why an offset stayed physical is not a violation. Blanked rather
  * than deleted so a reported offset still lands on the right line.
+ *
+ * Lowercased with it, because a property name and a keyword value are case-INSENSITIVE
+ * in CSS: `Margin-Left: 8px` and `text-align: RIGHT` are the physical thing every
+ * predicate below exists to refuse, and each read past them. Normalised HERE rather than
+ * as a flag on each pattern — a flag holds for the four predicates that carry it and not
+ * for the fifth somebody adds, which is the whole failure mode this file keeps repeating.
+ * Nothing case-SENSITIVE is read from this text: the only capitals the assembled
+ * stylesheet holds at all are `translateX`/`translateY`, in transforms no predicate
+ * touches. Sixth instrument failure here, caught in review on PR #196 like the five above.
  */
-const declarations = styles.replace(/\/\*[\s\S]*?\*\//g, (block) => block.replace(/[^\n]/g, ' '));
+const declarations = styles
+	.replace(/\/\*[\s\S]*?\*\//g, (block) => block.replace(/[^\n]/g, ' '))
+	.toLowerCase();
 
 /**
  * Every declaration block, innermost first — `{ … }` containing no brace is a body and
@@ -152,6 +163,14 @@ describe('the stylesheet names no physical side', () => {
 		expect(labelRules.length, '.pbl-bar-label-after is gone, renamed, or now has a second rule').toBe(1);
 		expect(labelRules[0][1]).toMatch(/padding-left:/);
 		expect(labelRules[0][1]).toMatch(/left:\s*var\(--pbl-label-left\)/);
+	});
+
+	it('reads the stylesheet in one case, so no predicate has to spell both', () => {
+		// The guarantee every lowercase pattern above rests on, asserted at the text rather
+		// than at any one of them: a predicate added tomorrow inherits it by reading the
+		// same string, where a per-pattern flag would have to be remembered. It fails today
+		// without the normalisation — `translateX`/`translateY` are in the assembled file.
+		expect(declarations).toBe(declarations.toLowerCase());
 	});
 
 	it('reads a four-value shorthand that a rule spells last and unterminated', () => {
