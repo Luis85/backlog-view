@@ -23,10 +23,19 @@ describe('releases on the model', () => {
 		const vault = new FakeVault();
 		vault.addFile('Inside.md', { frontmatter: { type: 'Release' } });
 		vault.addFile('Outside.md', { frontmatter: { type: 'Release' } });
-		// How every context-row test in this repository excludes a note: filter the entries the
-		// view is handed. There is no `entriesExcept` helper.
+		// TWO HALVES, and the second is what makes this a test of the guard rather than of
+		// nothing. Filtering the entries is how a note is excluded — but `outsideFilter` is
+		// `entry === null` (`readItems.ts:238`), and the only thing that sets it is
+		// `loadOutsideParents` pulling in the ANCESTORS of result rows. A note simply absent
+		// from `entries()` with no child among the results never enters the store at all, so
+		// a filter-only fixture passes whether or not `!item.outsideFilter` is in the filter.
+		// A child naming it as parent is what makes it a context row. This is the shape
+		// `test/domain/dependencies.test.ts` uses.
+		vault.addFile('Child.md', { frontmatter: { type: 'PBI' }, parentLink: 'Outside' });
 		const entries = vault.entries().filter((e) => e.file.path !== 'Outside.md');
 		const model = buildModel(vault.app, entries, settingsWith());
+		// Assert it really IS a context row first — otherwise the line below proves nothing.
+		expect(model.byPath.get('Outside.md')?.outsideFilter).toBe(true);
 		expect(model.releases.map((r) => r.file.path)).toEqual(['Inside.md']);
 	});
 
