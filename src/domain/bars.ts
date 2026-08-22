@@ -1,5 +1,5 @@
 import { t } from '../i18n/t';
-import { drawsAsPoint, PlacementEnd, placementEnds } from './itemTypes';
+import { drawsAsPoint, isReleaseType, PlacementEnd, placementEnds } from './itemTypes';
 import { BacklogItem } from './model';
 import { absentReading, CivilDate, FieldReading, readDate } from './noteFields';
 import { BacklogSettings } from './settings';
@@ -97,8 +97,19 @@ export type Placement = { kind: 'bar'; bar: TimelineBar } | { kind: 'shelf'; rea
  * behind this one call — the marker reduction, the unreadable and reversed refusals,
  * the rollup inference — because they do not compose into a single condition anyone
  * could restate correctly beside them.
+ *
+ * `null` is the third answer and it is NOT the shelf: a shelved card is one this roadmap
+ * is showing, counted in its band and a drop target that un-places. Null is *not on this
+ * axis at all*, which every caller skips. It exists for exactly one type today, and this
+ * is the one site both axes reach — `deriveBars` for the dated one, `placeBar` in
+ * `roadmap.ts` for the resources one — so the refusal cannot be stated at a caller
+ * without leaving the other placing releases exactly as before.
  */
-export function placeItem(item: BacklogItem, stated: StatedEnds, iterationBars: boolean): Placement {
+export function placeItem(item: BacklogItem, stated: StatedEnds, iterationBars: boolean): Placement | null {
+	// No bar and no point: see `drawsAsPoint`'s own note. Refused here as well because a
+	// false from that predicate means "not a POINT", which the lines below would otherwise
+	// read as "therefore a bar".
+	if (isReleaseType(item.typeName)) return null;
 	// A type that DRAWS AS A POINT is reduced to it before any span rule is asked about
 	// it. A stale start later than the target would otherwise read as a reversed pair
 	// and shelve. The start is ignored, never rewritten — ignoring a value and deleting
@@ -130,6 +141,8 @@ export function deriveBars(rows: BacklogItem[], iterationBars: boolean): DatedAx
 			continue;
 		}
 		const placement = placeItem(item, statedEnds(item), iterationBars);
+		// Null is neither a bar nor a shelf card: the row is not on this axis at all.
+		if (placement === null) continue;
 		if (placement.kind === 'bar') axis.bars.push(placement.bar);
 		else axis.shelf.push({ item, reason: placement.reason });
 	}

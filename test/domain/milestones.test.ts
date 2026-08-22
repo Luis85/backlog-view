@@ -81,6 +81,24 @@ describe('a marker aggregates into nothing', () => {
 		expect(epic.descendantCount).toBe(1);
 		expect(epic.descendantTarget).toEqual({ year: 2026, month: 9, day: 1 });
 	});
+
+	it('counts for nothing wherever it sits, and is traversed through — a Release too', () => {
+		// The three claims above, asked of a `Release`. NOT "a release is not a child of
+		// anything": `linkAll` special-cases no marker, so a hand-written parent nests one
+		// exactly as it nests a `Milestone`. What `Releases as their own type` 2a means by
+		// "the parent places it nowhere" is what the model DOES enforce — no rung, no count,
+		// no date evidence, and the walk goes THROUGH it to the work below.
+		const model = buildModelFrom([
+			note('An epic', { type: 'Epic' }),
+			note('1.0', { type: 'Release', parent: 'An epic', due: '2026-12-01' }),
+			note('Prep', { type: 'PBI', parent: '1.0', due: '2026-09-01' }),
+		]);
+		const epic = model.byPath.get('An epic.md') as BacklogItem;
+		// The release itself is not counted; the PBI filed under it still is.
+		expect(epic.descendantCount).toBe(1);
+		// And the release's own date is not evidence for the epic's inferred span.
+		expect(epic.descendantTarget).toEqual({ year: 2026, month: 9, day: 1 });
+	});
 });
 
 describe('a milestone draws as the point it is', () => {

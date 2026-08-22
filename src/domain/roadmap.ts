@@ -594,6 +594,9 @@ function placeAssigned(
  */
 function placeBar(item: BacklogItem, lane: () => ResourceLane, roadmap: RoadmapModel, settings: BacklogSettings): void {
 	const placement = placeItem(item, statedEnds(item), settings.iterationBars);
+	// Not on this axis at all — no row minted, nothing shelved. `deriveBars`' own skip,
+	// reached by the path that never calls it.
+	if (placement === null) return;
 	if (placement.kind === 'shelf') {
 		roadmap.shelf.push({ item, reason: placement.reason });
 		return;

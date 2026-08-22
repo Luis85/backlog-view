@@ -42,6 +42,12 @@ const NAMED_TYPE_STYLE: Record<string, { icon: string; badge: string }> = {
 	milestone: { icon: 'diamond', badge: 'pbl-lvl-milestone' },
 	iteration: { icon: 'calendar-clock', badge: 'pbl-lvl-iteration' },
 	deliverable: { icon: 'package', badge: 'pbl-lvl-deliverable' },
+	// `rocket`, NOT `package`: a release shares Deliverable's green (see `styles/badges.css`
+	// for why that hue), and the icon is the whole of what separates the two badges. The
+	// plan named `package` here, which is the icon Deliverable already carries — the pair
+	// would have been indistinguishable in both hue and glyph, which is the one thing that
+	// stylesheet's sharing rule refuses.
+	release: { icon: 'rocket', badge: 'pbl-lvl-release' },
 	'test suite': { icon: 'folder-check', badge: 'pbl-lvl-test-suite' },
 	'test case': { icon: 'flask-conical', badge: 'pbl-lvl-test-case' },
 };

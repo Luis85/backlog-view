@@ -40,7 +40,7 @@ describe('backlogReadmeContent', () => {
 		// this vocabulary actually has today — four extra types, two markers — including
 		// the verb, which has to agree with a marker count that grew from one to two.
 		expect(content).toContain('Issue, Bug, Idea and Deliverable sit *beside* it');
-		expect(content).toContain('Milestone and Iteration are neither');
+		expect(content).toContain('Milestone, Iteration and Release are neither');
 		expect(content).not.toContain('and Bug and');
 	});
 
@@ -180,7 +180,7 @@ describe('backlogReadmeContent', () => {
 		// Named as the CATEGORY, not as one type — the rule is `placementEnds`'s, which every
 		// declared marker answers alike, so the sentence names the whole list rather than
 		// whichever marker happens to sit first in it.
-		expect(startOnly).toContain('A **marker** (`Milestone` and `Iteration`) is the exception, and this view cannot place one');
+		expect(startOnly).toContain('A **marker** (`Milestone`, `Iteration` and `Release`) is the exception, and this view cannot place one');
 		expect(startOnly).toContain('the only date property here is `start`');
 	});
 

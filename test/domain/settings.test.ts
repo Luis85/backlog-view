@@ -564,7 +564,7 @@ describe('the marker category', () => {
 		// meaning exactly what `Types beside the ladder` says it means. Looped over
 		// MARKER_TYPES rather than named at 'Milestone' alone, so a third marker joining
 		// the category is covered without anyone remembering to extend this test.
-		expect(MARKER_TYPES).toEqual(['Milestone', 'Iteration']);
+		expect(MARKER_TYPES).toEqual(['Milestone', 'Iteration', 'Release']);
 		for (const marker of MARKER_TYPES) {
 			expect(LEVELS).not.toContain(marker);
 			expect(EXTRA_TYPES).not.toContain(marker);

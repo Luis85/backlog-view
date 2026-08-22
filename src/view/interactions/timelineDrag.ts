@@ -425,8 +425,9 @@ function preview(
 	const plan = planFor(host, parts, source, pointer.clientX, pointer.originX);
 	if (!plan) return [];
 	const placement = placeItem(source.item, plannedEnds(source.item, plan.plan), host.settings.iterationBars);
-	// A drop that shelves draws no ghost on the grid; the shelf's own indicator says so.
-	if (placement.kind !== 'bar') return [];
+	// A drop that shelves draws no ghost on the grid; the shelf's own indicator says so —
+	// and neither does one the axis does not place at all (`null`).
+	if (placement?.kind !== 'bar') return [];
 	const bar = placement.bar;
 	const geometry = barGeometry(parts.window, bar.span);
 	const mount = previewMount(parts, source);

@@ -89,6 +89,18 @@
 .pbl-lvl-iteration { --pbl-badge-rgb: var(--color-cyan-rgb); }
 /* Green, which no level uses and no extra type shares now that Idea has moved off it. */
 .pbl-lvl-deliverable { --pbl-badge-rgb: var(--color-green-rgb); }
+/*
+ * THIRTEEN badges, still eight theme tokens, and green gains its second wearer under the
+ * rule below rather than by looking least crowded. Cyan already has three (Milestone,
+ * Iteration, Test case) and every other token is a rung or an extra type, so green is the
+ * one hue whose existing wearer a release is least likely to be confused with — and what
+ * separates them is the ICON, `rocket` against Deliverable's `package`. That separation is
+ * load-bearing here the way the test axis is for cyan: a Deliverable is work, drawn in the
+ * plan tree and on a board of its own; a Release is a marker that holds nothing and is
+ * read in the release view. The two do meet on one screen — the manual's Item types list,
+ * over `ALL_TYPES` — where every badge sits beside its own type name.
+ */
+.pbl-lvl-release { --pbl-badge-rgb: var(--color-green-rgb); }
 
 /*
  * TWELVE badges, still eight theme tokens, and this is where the pair-by-pair answer had to

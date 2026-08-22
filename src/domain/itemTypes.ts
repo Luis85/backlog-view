@@ -8,6 +8,7 @@ import {
 	ITERATION_TYPE,
 	LEVELS,
 	MARKER_TYPES,
+	RELEASE_TYPE,
 	TEST_LEVELS,
 } from './typeVocabulary';
 
@@ -209,6 +210,15 @@ export function isIterationType(typeName: string | null): boolean {
 }
 
 /**
+ * One marker BY NAME, the shape `isIterationType` already has. Asked where a rule is
+ * about RELEASES specifically — which notes the release view lists — rather than the
+ * structural question `isMarkerType` answers for all three alike.
+ */
+export function isReleaseType(typeName: string | null): boolean {
+	return typeName !== null && typeName.toLowerCase() === RELEASE_TYPE.toLowerCase();
+}
+
+/**
  * True when this type is DRAWN at one date rather than across two, and holdable at
  * neither end. A milestone is a point because a milestone IS a point; an iteration has
  * two ends and the reader decides which reading they want (`iterationBars`). Its own
@@ -218,6 +228,12 @@ export function isIterationType(typeName: string | null): boolean {
  */
 export function drawsAsPoint(typeName: string | null, iterationBars: boolean): boolean {
 	if (!isMarkerType(typeName)) return false;
+	// A `Release` is a marker STRUCTURALLY — no rung, no children, no prerequisites — and
+	// draws no point on this roadmap. [[A release on the dated axis]] is where a release
+	// gets a position, from the ROADMAP's own release-date key; until then the backlog's
+	// target key is the wrong mapping to read and a far worse one to write, since
+	// `bars.ts`'s holdable body would let a timeline drag edit a release through it.
+	if (isReleaseType(typeName)) return false;
 	return isIterationType(typeName) ? !iterationBars : true;
 }
 
@@ -342,5 +358,11 @@ const BOTH_ENDS: PlacementEnd[] = ['start', 'target'];
  * this parameter exists to make impossible to ignore.
  */
 export function placementEnds(typeName: string | null, iterationBars: boolean): PlacementEnd[] {
+	// A `Release` speaks NO end here — not one, not two. `drawsAsPoint` refuses it (see
+	// there), and the ternary below reads that refusal as "therefore a span", which would
+	// hand the WRITER both backlog date keys and the menu a Schedule action. The gate has
+	// to be stated at every consumer that reads the predicate through a ternary, or it
+	// makes the very surface it was closing more permissive than before.
+	if (isReleaseType(typeName)) return [];
 	return drawsAsPoint(typeName, iterationBars) ? ['target'] : [...BOTH_ENDS];
 }

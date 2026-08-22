@@ -2,10 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { buildModel } from '../../src/domain/model';
 import {
 	childTypeChoices,
+	drawsAsPoint,
 	EXTRA_TYPE_RANK,
 	folderForType,
 	isExtraType,
 	isMarkerType,
+	isReleaseType,
 	placementEnds,
 	PlacementEnd,
 } from '../../src/domain/itemTypes';
@@ -18,6 +20,7 @@ import {
 	ITERATION_TYPE,
 	LEVELS,
 	MARKER_TYPES,
+	RELEASE_TYPE,
 	typeFolderKey,
 } from '../../src/domain/typeVocabulary';
 import { FakeVault } from '../helpers/vault';
@@ -178,6 +181,7 @@ describe('childTypeChoices', () => {
 			'Deliverable',
 			'Milestone',
 			'Iteration',
+			'Release',
 			'Test suite',
 			'Test case',
 		]);
@@ -360,5 +364,72 @@ describe('placementEnds', () => {
 		// test rather than a behaviour one, because the signature is the invariant.
 		const ends: PlacementEnd[] = placementEnds('Milestone', false);
 		expect(ends).toHaveLength(1);
+	});
+});
+
+describe('Release is a marker, not a rung', () => {
+	it('is a declared marker beside Milestone and Iteration', () => {
+		expect(RELEASE_TYPE).toBe('Release');
+		expect(MARKER_TYPES).toContain(RELEASE_TYPE);
+		expect(ALL_TYPES).toContain(RELEASE_TYPE);
+	});
+
+	it('is on neither ladder and is not an extra type', () => {
+		expect(LEVELS).not.toContain(RELEASE_TYPE);
+		expect(EXTRA_TYPES).not.toContain(RELEASE_TYPE);
+	});
+
+	it('matches its own name case-insensitively and nothing else', () => {
+		expect(isReleaseType('Release')).toBe(true);
+		expect(isReleaseType('release')).toBe(true);
+		expect(isReleaseType('RELEASE')).toBe(true);
+		expect(isReleaseType('Milestone')).toBe(false);
+		expect(isReleaseType('Iteration')).toBe(false);
+		expect(isReleaseType(null)).toBe(false);
+	});
+
+	it('answers the structural marker question too', () => {
+		expect(isMarkerType(RELEASE_TYPE)).toBe(true);
+	});
+
+	// NOT "is not a child of anything", and the difference is the DESIGN rather than a gap.
+	// `linkAll` attaches every item with a resolved `parentPath` and special-cases no
+	// marker, so a hand-written parent nests a `Milestone` today and nests a `Release` the
+	// same way — deliberately. `Releases as their own type` 2a's "the parent places it
+	// nowhere" means it occupies no rung and counts for nothing, which the model DOES
+	// enforce: `descendantCount`'s walk scores a marker 0 and traverses THROUGH it, so a
+	// work item somebody filed under a release still reaches its real ancestors. That is
+	// asserted of a `Release` in `test/domain/milestones.test.ts`, beside the three claims
+	// it already makes of a `Milestone`, because the fixture and the dated settings it
+	// needs are that file's.
+	it('offers no legal children — a release holds nothing', () => {
+		const release = { ladder: LEVELS, typeName: RELEASE_TYPE, effectiveLevelIndex: -1 };
+		expect(childTypeChoices(release as never)).toEqual([]);
+	});
+
+	it('leaves every other classification alone', () => {
+		expect(isReleaseType('Epic')).toBe(false);
+		expect(isReleaseType('Test suite')).toBe(false);
+		expect(isMarkerType('Epic')).toBe(false);
+	});
+
+	it('draws no point and no bar on the backlog roadmap', () => {
+		expect(drawsAsPoint('Release', false)).toBe(false);
+		expect(drawsAsPoint('Release', true)).toBe(false);
+		// Still a marker structurally — no rung, no children, no prerequisites.
+		expect(isMarkerType('Release')).toBe(true);
+		// And a Milestone is untouched, which is what says this gate is about the deferred
+		// feature rather than about markers.
+		expect(drawsAsPoint('Milestone', false)).toBe(true);
+	});
+
+	it('speaks no placement end, so nothing offers or writes a release date', () => {
+		// NOT `['start', 'target']`, which is what the ternary hands back for anything
+		// `drawsAsPoint` refuses. This assertion is the whole reason the gate is safe.
+		expect(placementEnds('Release', false)).toEqual([]);
+		expect(placementEnds('Release', true)).toEqual([]);
+		// The two it must not disturb.
+		expect(placementEnds('Milestone', false)).toEqual(['target']);
+		expect(placementEnds('Epic', false)).toEqual(['start', 'target']);
 	});
 });

@@ -241,6 +241,13 @@ describe('toolbar controls', () => {
 			'New Idea',
 			'New Deliverable',
 			'New Milestone',
+			// Offered, and that is deliberate. `Iteration` is absent because the creator
+			// filters it: the board's scope picker is a dedicated door that derives an
+			// iteration's number, dates and folder, and a second door would be a second set
+			// of defaults. A `Release` has no such door, so excluding it would leave the type
+			// creatable only by hand-editing frontmatter — and `Milestone` is the precedent,
+			// a marker carrying a date the creator does not set, offered anyway.
+			'New Release',
 		]);
 
 		picker?.item('New PBI')?.click();

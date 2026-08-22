@@ -163,7 +163,10 @@ export function shelfRemoval(host: BacklogViewHost, axis: RoadmapAxis): ShelfRem
 function removalOutcome(item: BacklogItem, settings: BacklogSettings): string {
 	const ends = placementEnds(item.typeName, settings.iterationBars);
 	const left = placeItem(item, withoutEnds(statedEnds(item), ends), settings.iterationBars);
-	return left.kind === 'shelf' ? unscheduledLabel() : t('shelf.removalKeeps', { span: spanText(left.bar) });
+	// `null` — a type the axis does not place at all — reads as unscheduled here for the
+	// same reason the shelf does: nothing would be left drawn. Unreachable today, since a
+	// card on this shelf was placed by the same call.
+	return left?.kind !== 'bar' ? unscheduledLabel() : t('shelf.removalKeeps', { span: spanText(left.bar) });
 }
 
 /**

@@ -2,6 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { applyWrites } from '../../src/storage/frontmatter';
 import { resolveSettings } from '../../src/domain/settingsResolve';
 import { FakeVault, FakeViewConfig } from '../helpers/vault';
+import { placementEnds } from '../../src/domain/itemTypes';
+import { BacklogItem } from '../../src/domain/model';
+import { computeScheduleWrites } from '../../src/domain/writePlan';
 
 /**
  * The dated axis's write-time rules — split out of `frontmatter.test.ts` (the
@@ -226,6 +229,39 @@ describe('the writer decides a date against the live note', () => {
 
 		expect(vault.fm('Item.md').start).toBe('2026-08-01');
 		expect(vault.fm('Item.md').target).toBe('2026-08-20');
+		expect(outcome.changed).toBe(false);
+	});
+});
+
+describe('the writer plans no date key for a release', () => {
+	function dateSettings() {
+		return resolveSettings(new FakeViewConfig({ startProperty: 'note.start', targetProperty: 'note.target' }));
+	}
+
+	it('plans nothing, and refuses a batch a retype turned into one', async () => {
+		// `placementEnds` is what `applyWrites` consults, and a release speaks NO end — so
+		// a schedule gesture against one plans an empty batch rather than both keys, which
+		// is the half a menu or a timeline could ever produce. Asserted at the PLANNER and
+		// then at the writer, because the gate that matters is the writer's: it asks the
+		// LIVE type, so a note retyped to `Release` while a gesture was in flight has the
+		// whole batch refused rather than both backlog date keys written to a marker
+		// [[A release on the dated axis]] has not yet given a mapping.
+		//
+		// Narrowed to what each half reaches, watched failing with the gate removed: the
+		// PLANNER assertion is the one the gate decides — without it the batch names the
+		// target. The writer half is the shape check running, not the release rule: a
+		// mismatched `ends` length refuses either way, so it states that a stale batch
+		// never lands on a release rather than that a release is why.
+		const settings = dateSettings();
+		const vault = new FakeVault();
+		const file = vault.addFile('1.0.md', { frontmatter: { type: 'PBI', start: '2026-09-01', target: '2026-09-30' } });
+		const item = { file } as unknown as BacklogItem;
+		expect(computeScheduleWrites(item, { target: '2026-10-15' }, placementEnds('Release', false))).toEqual([]);
+
+		vault.fm('1.0.md').type = 'Release';
+		const outcome = await applyWrites(vault.app, settings, [{ file, axis: { target: '2026-10-15', ends: ['target'] } }]);
+
+		expect(vault.fm('1.0.md')).toEqual({ type: 'Release', start: '2026-09-01', target: '2026-09-30' });
 		expect(outcome.changed).toBe(false);
 	});
 });

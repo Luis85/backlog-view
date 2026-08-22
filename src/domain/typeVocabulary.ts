@@ -68,7 +68,16 @@ export const ITERATION_TYPE = 'Iteration';
  * spelled a second time beside the swatch that shows it.
  */
 export const MILESTONE_TYPE = 'Milestone';
-export const MARKER_TYPES = [MILESTONE_TYPE, ITERATION_TYPE];
+/**
+ * The third declared marker, named for the reason the other two are: a surface that
+ * captions what it drew names the TYPE, and a type name is data — matched in frontmatter,
+ * never translated — so the name lives here rather than being spelled again beside every
+ * reader. A release holds no work: membership is a property on the item
+ * ([[Releases as their own type]]), which is exactly what makes it a marker and not an
+ * extra type.
+ */
+export const RELEASE_TYPE = 'Release';
+export const MARKER_TYPES = [MILESTONE_TYPE, ITERATION_TYPE, RELEASE_TYPE];
 /**
  * The one DECLARED name that is not a work-item type at all — a resource's own
  * unavailable stretch. It joins none of the lists above and, deliberately, not
@@ -121,6 +130,7 @@ const DEFAULT_TYPE_SUBFOLDERS: Record<string, string> = Object.assign(Object.cre
 	deliverable: 'deliverables',
 	milestone: 'milestones',
 	iteration: 'iterations',
+	release: 'releases',
 	// The catalog files under one root of its own, one folder per rung — the shape
 	// `requirements/` already has for the three types that share it.
 	'test suite': 'tests/suites',
