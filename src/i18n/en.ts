@@ -1277,6 +1277,10 @@ export const en = {
 	'estimation.column.confidence': 'Confidence',
 	'estimation.column.effort': 'Effort',
 	'estimation.column.currency': 'Currency',
+	'estimation.column.indicator': 'Indicator',
+	'estimation.operand.ease': 'Ease',
+	'estimation.operand.value': 'Value',
+	'estimation.operand.adjustedValue': 'Adjusted value',
 
 	/** The active sort header's accessible name. {column} is the column's own label above —
 	 * a catalog string, not data. The GLYPH beside it carries the same fact for a sighted

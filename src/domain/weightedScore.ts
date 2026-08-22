@@ -1,4 +1,5 @@
-import { ScoringModel } from './scoringModel';
+import { Indicator, ScaleConfig, ScoringDimension, ScoringModel } from './scoringModel';
+import { t } from '../i18n/t';
 
 /**
  * The weighted total's own arithmetic and the stamp that says whether a written number
@@ -48,6 +49,22 @@ export function round2(value: number): number {
 }
 
 /**
+ * One dimension's answer as the total COUNTS it: clamped to the declared range, direction
+ * applied, and reported back in the dimension's own units.
+ *
+ * Extracted from `computeTotal` rather than restated, because the indicator's operands
+ * must read a dimension exactly as the decomposition beside them reports it — a second
+ * copy of this is a clone `npm run analyze` catches, and a second copy that DRIFTS is a
+ * RICE whose reach disagrees with the reach two lines above it.
+ */
+function countAnswer(d: ScoringDimension, raw: number): { clamped: boolean; counted: number; score: number } {
+	const value = Math.min(d.max, Math.max(d.min, raw));
+	const proportion = (value - d.min) / (d.max - d.min);
+	const counted = d.lessIsBetter ? 1 - proportion : proportion;
+	return { clamped: value !== raw, counted, score: round2(d.min + counted * (d.max - d.min)) };
+}
+
+/**
  * The weighted mean, renormalized over the ANSWERED dimensions and mapped onto the
  * model's own output range. `null` for no answered dimension at all: renormalizing
  * over an empty set is not a value, so nothing is computed and nothing is written.
@@ -66,13 +83,9 @@ export function computeTotal(model: ScoringModel, answers: ReadonlyMap<string, n
 		const raw = answers.get(d.id);
 		if (raw === null || raw === undefined) continue;
 		answered++;
-		const value = Math.min(d.max, Math.max(d.min, raw));
-		if (value !== raw) clamped.push(d.id);
-		const proportion = (value - d.min) / (d.max - d.min);
-		const counted = d.lessIsBetter ? 1 - proportion : proportion;
-		// The same proportion, back in the dimension's own units — reported rather than
-		// the raw answer, because that is the number this sum used.
-		terms.push({ label: d.label, score: round2(d.min + counted * (d.max - d.min)), weight: d.weight });
+		const { clamped: outOfRange, counted, score } = countAnswer(d, raw);
+		if (outOfRange) clamped.push(d.id);
+		terms.push({ label: d.label, score, weight: d.weight });
 		weighted += counted * d.weight;
 		weightSum += d.weight;
 	}
@@ -184,4 +197,144 @@ export function currencyOf(
 	if (parsed.answered !== item.result.coverage.answered || parsed.enabled !== item.result.coverage.enabled) return 'stale';
 	if (item.result.total !== round2(item.storedTotal)) return 'stale';
 	return 'current';
+}
+
+/** What one item brings to an indicator — exactly the subset of `EstimationItem` that
+ *  exists while the item is being built, so `estimationItems.ts` passes the fields it has
+ *  rather than a second shape assembled for this. */
+export interface IndicatorInputs {
+	answers: ReadonlyMap<string, number | null>;
+	confidence: number | null;
+	effort: number | null;
+	complexity: number | null;
+	result: TotalResult | null;
+}
+
+/**
+ * Which of the three ways an operand can block a figure. Carried rather than collapsed,
+ * because the three are REPAIRED differently and a reader is looking at this to fix it:
+ * an unanswered operand wants a score on the note, a nonpositive divisor wants the value
+ * the note already holds corrected, and an unknown id wants the operands box edited. One
+ * message for all three would be wrong about two of them — the currency chip's own rule,
+ * which spends a distinct word on each failure rather than a shared one.
+ */
+export type IndicatorBlock = 'unanswered' | 'unknown' | 'nonpositive';
+
+/** A figure, or the ONE operand that blocked it and why. */
+export interface IndicatorFigure {
+	value: number | null;
+	blockedBy: { operand: string; reason: IndicatorBlock } | null;
+}
+
+/** What the arithmetic uses, what the note holds, and what to call it when either is
+ *  missing. `stored` is null wherever the operand has no stored source at all (`value`,
+ *  `adjustedValue`) — the divisor's own check skips those. */
+interface ResolvedOperand {
+	label: string;
+	value: number | null;
+	stored: number | null;
+	/** False only for an id nothing answers to — a typo in the box, or a dimension since
+	 *  removed. Distinct from `value === null`, which is an operand this item has not
+	 *  answered, because the two are repaired in different places. */
+	known: boolean;
+}
+
+function operandLabel(model: ScoringModel, id: string): string {
+	switch (id) {
+		case 'confidence':
+			return t('estimation.panel.confidence');
+		case 'effort':
+			return t('estimation.panel.effort');
+		case 'complexity':
+			return t('estimation.panel.complexity');
+		case 'ease':
+			return t('estimation.operand.ease');
+		case 'value':
+			return t('estimation.operand.value');
+		case 'adjustedValue':
+			return t('estimation.operand.adjustedValue');
+		default:
+			// The dimension's own label, or the id itself where nothing answers to it: an
+			// operand naming nothing is reported per item rather than as a model problem,
+			// because a model problem replaces the whole table and blocks every write over a
+			// figure that persists nothing.
+			return model.dimensions.find((d) => d.id === id)?.label ?? id;
+	}
+}
+
+/** A scale answer, CLAMPED to its declared range — the number the panel row above it
+ *  reports. Raw would invert a ranking: a stored confidence of `-2` makes a product fall
+ *  as its other operands rise. */
+function scaleOperand(scale: ScaleConfig, held: number | null, label: string): ResolvedOperand {
+	if (held === null) return { label, value: null, stored: null, known: true };
+	return { label, value: Math.min(scale.max, Math.max(scale.min, held)), stored: held, known: true };
+}
+
+function resolveOperand(model: ScoringModel, inputs: IndicatorInputs, id: string): ResolvedOperand {
+	const label = operandLabel(model, id);
+	if (id === 'confidence') return scaleOperand(model.confidence, inputs.confidence, label);
+	if (id === 'effort') return scaleOperand(model.effort, inputs.effort, label);
+	if (id === 'complexity') return scaleOperand(model.complexity, inputs.complexity, label);
+	if (id === 'ease') {
+		// The effort scale reversed on its OWN range — `lessIsBetter` reaching a scale, not
+		// `1 ÷ effort`, which is a different ranking wearing the name.
+		const effort = scaleOperand(model.effort, inputs.effort, label);
+		const value = effort.value === null ? null : model.effort.min + model.effort.max - effort.value;
+		return { label, value, stored: effort.stored, known: true };
+	}
+	if (id === 'value') return { label, value: inputs.result?.total ?? null, stored: null, known: true };
+	if (id === 'adjustedValue') {
+		if (inputs.result === null || inputs.confidence === null) return { label, value: null, stored: null, known: true };
+		const confidence = scaleOperand(model.confidence, inputs.confidence, label).value as number;
+		// Rounded HERE, before it is multiplied or divided — `renderDerived`'s own order, and
+		// keeping it is what makes "no in-range item's number moves" true rather than nearly
+		// true: at a total of 1.01, confidence 3, effort 2, rounding first gives 0.31 and
+		// rounding only the final figure gives 0.30.
+		return { label, value: round2((inputs.result.total * confidence) / model.confidence.max), stored: null, known: true };
+	}
+	const dimension = model.dimensions.find((d) => d.id === id);
+	if (!dimension) return { label, value: null, stored: null, known: false };
+	const raw = inputs.answers.get(dimension.id);
+	if (raw === null || raw === undefined) return { label, value: null, stored: null, known: true };
+	return { label, value: countAnswer(dimension, raw).score, stored: raw, known: true };
+}
+
+/**
+ * The indicator for one item: the product of its operands over its divisor, or the name
+ * of the operand that blocked it — and `null` for an indicator with no operands at all,
+ * which is no indicator rather than a product of one (a product of nothing is 1, which
+ * would draw a column of constant ones under a blank header).
+ */
+export function computeIndicator(model: ScoringModel, indicator: Indicator, inputs: IndicatorInputs): IndicatorFigure | null {
+	if (indicator.operands.length === 0) return null;
+	let product = 1;
+	for (const id of indicator.operands) {
+		const operand = resolveOperand(model, inputs, id);
+		if (operand.value === null) return { value: null, blockedBy: blockOf(operand) };
+		product *= operand.value;
+	}
+	if (indicator.divisor === null) return { value: round2(product), blockedBy: null };
+	const divisor = resolveOperand(model, inputs, indicator.divisor);
+	// Refused at BOTH ends of the same resolution: what the note HOLDS, because a scale's
+	// minimum is normally 1 and the clamp would repair exactly the case this refuses; and
+	// what the model MAKES of it, because a `lessIsBetter` dimension over `0-10` answered at
+	// its top resolves to 0 and would divide to Infinity while the stored value looks fine.
+	if (divisor.value === null) return { value: null, blockedBy: blockOf(divisor) };
+	if (divisor.value <= 0 || (divisor.stored !== null && divisor.stored <= 0)) {
+		return { value: null, blockedBy: { operand: divisor.label, reason: 'nonpositive' } };
+	}
+	return { value: round2(product / divisor.value), blockedBy: null };
+}
+
+/** An operand with no value: unknown where nothing answers to the id, unanswered otherwise. */
+function blockOf(operand: ResolvedOperand): { operand: string; reason: IndicatorBlock } {
+	return { operand: operand.label, reason: operand.known ? 'unanswered' : 'unknown' };
+}
+
+/** `Reach × Business impact × Confidence ÷ Effort` — every NAME from the catalog; the two
+ *  symbols are not words and are the same in every locale this ships in, so nothing here
+ *  is a sentence built out of translated fragments. */
+export function indicatorFormula(model: ScoringModel, indicator: Indicator): string {
+	const product = indicator.operands.map((id) => operandLabel(model, id)).join(' × ');
+	return indicator.divisor === null ? product : `${product} ÷ ${operandLabel(model, indicator.divisor)}`;
 }
