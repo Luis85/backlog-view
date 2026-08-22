@@ -571,6 +571,7 @@ export const en = {
 	'toolbar.editIteration': 'Edit iteration…',
 
 	'toolbar.stateColours': 'State colours',
+	'toolbar.newResource': 'New resource',
 	'toolbar.bucketGrid': 'Grid in buckets',
 	'toolbar.compactRows': 'Compact rows',
 	'toolbar.jumpToToday': 'Jump to today',

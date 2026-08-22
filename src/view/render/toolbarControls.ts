@@ -11,6 +11,7 @@ import { ScaleId } from '../../domain/timeline';
 import { showMenuForClick } from '../interactions/menu';
 import { runInit } from '../interactions/structure';
 import { promptEditIteration, promptNewIteration } from '../interactions/create';
+import { promptNewResource } from '../interactions/resourceNotes';
 import { focusInBar } from './toolbarFit';
 import { openManual } from '../../ui/manualDialog';
 import { manualSections } from '../manual/sections';
@@ -204,6 +205,7 @@ export function renderProjectionZone(host: BacklogViewHost, barEl: HTMLElement):
 			renderBucketGridToggle(host, zone);
 			renderTimelineControls(host, zone, barEl);
 			renderStateColorsButton(host, zone, barEl);
+			renderNewResourceButton(host, zone);
 			break;
 		default:
 			// The tree, the board and the Deliverables board own no toolbar controls of
@@ -238,6 +240,26 @@ function renderStateColorsButton(host: BacklogViewHost, zone: HTMLElement, barEl
 	btn.addEventListener('click', () =>
 		openStateColors(host, () => focusInBar(barEl, barEl.querySelector<HTMLElement>('.pbl-state-colors-btn'))),
 	);
+}
+
+/**
+ * The resources axis's own creation control — a `Resource` note is not a backlog item,
+ * so making one has no ladder to pick a type from, and this button is the whole of it.
+ * It draws only on the axis that reads resource notes, `renderStateColorsButton`'s own
+ * gate one predicate simpler: there is no second question ("is there anything to act
+ * on") to ask beside the axis, since the button always opens onto at least the name
+ * field (2a).
+ *
+ * No focus-restoration dance, unlike the state-colours button above it: verified against
+ * `ValuePromptModal`'s own `onOpen` (`ui/prompts.ts`), whose `submit` calls `this.close()`
+ * BEFORE `options.onSubmit`. So the write this opens — a note, never the `.base` — cannot
+ * start, let alone rebuild this toolbar, before the modal that opened it is already
+ * closed.
+ */
+function renderNewResourceButton(host: BacklogViewHost, zone: HTMLElement): void {
+	if (activeAxis(host.settings, host.axisPick) !== 'resources') return;
+	const btn = iconButton(zone, 'user-plus', t('toolbar.newResource'), 'new-resource');
+	btn.addEventListener('click', () => promptNewResource(host));
 }
 
 /** Axis labels, one place, so the button and its menu cannot name it differently. */
