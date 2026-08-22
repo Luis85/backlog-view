@@ -51,8 +51,17 @@ model has a problem.
   (`estimation.problems.blocked`). It should **end in a full stop**, with the problems it
   names reading as fragments inside one sentence rather than as sentences run together.
 
+**Then put the slot bindings back, before running anything else.** The collision is saved in
+the `.base`, and the very early return this case is built on is what makes leaving it
+expensive: while it stands the estimation view draws no table, toolbar or panel at all — so
+`Smoke test the estimation view's UX polish in a live vault`, in the appearance suite at
+order 40, has nothing to look at. Restore a distinct property per slot and confirm the table
+comes back.
+
 ## Acceptance criteria
 
 - The block's lead, list and button seen with the table deliberately absent.
 - The notice's terminal period confirmed on screen rather than in the catalog.
+- The slot bindings restored and the table back, so the appearance suite has a view to
+  inspect.
 - Nothing yet checked.

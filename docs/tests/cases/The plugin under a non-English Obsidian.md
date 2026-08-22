@@ -72,8 +72,16 @@ Repeat once with a right-to-left language if one is available. Nothing in the pl
 mirrored yet — see [[Nothing pins a physical side]] — so a broken layout here is expected
 and is worth writing down rather than reporting as a regression.
 
+**Then set the language back and restart, before running anything else.** This case is the
+one place in the sweep where a broken layout is the accepted answer, and every check after
+it — the view options at width in this suite, the whole appearance suite at order 40 — reads
+a broken layout as a regression. Left in a right-to-left locale, this case hands the rest of
+the sweep a screen it has already agreed to excuse.
+
 ## Acceptance criteria
 
 - One non-English language checked end to end, with the console read rather than assumed.
 - Whichever of the three failure shapes appeared, if any, recorded by surface.
+- Obsidian restored to the runner's own language and restarted, so the rest of the sweep
+  judges layout against a locale it is allowed to fail in.
 - Nothing yet checked; the real `getLanguage()` has never run.
