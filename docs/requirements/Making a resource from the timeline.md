@@ -10,6 +10,8 @@ files:
   - src/storage/createNote.ts
   - src/domain/settings.ts
   - src/domain/viewOptions.ts
+  - src/view/interactions/resourceNotes.ts
+  - src/i18n/en.ts
 started: ""
 finished: ""
 horizon: ""
@@ -126,13 +128,21 @@ resolves it inside `resolveFolders`, tracking the resolved home folder and clear
 to '' · `src/domain/viewOptions.ts` declares the `resourceFolder` option itself, beside
 the per-type folder pickers it is not one of.
 
+`src/storage/createNote.ts` is the only module that may make the note, and
+`createResourceNote` is its OWN creator rather than `createBacklogItem` called with
+fewer fields — corrected from this note's earlier text, which said the opposite.
+`createBacklogItem`'s `NewItemSpec` requires a parent, a rank and a type from the
+ladder, and this use case's own acceptance criterion — no `order`, no `parent` — cannot
+be satisfied by reusing it; the note carries the type key alone. Same reason
+`createAbsenceNote` (`src/storage/absenceNotes.ts`) stands apart from it.
+
+`src/view/interactions/resourceNotes.ts` is the view's half: `promptNewResource` runs the
+`configProblems` gate before the form opens and again at submit, resolves the folder
+ladder (`resourceFolder` else `homeFolder`) at submit rather than at open, and opens
+`src/ui/prompts.ts`'s existing `ValuePromptModal` — Name-only, since Capacity and Role are
+not settings yet and 2a says that is the whole modal rather than a degraded one, so no new
+dialog was needed for this step.
+
 Not built yet: `src/view/render/toolbarControls.ts` will hold `renderProjectionZone`'s
 **New resource** control, gated on the resources axis and roadmap mode the way
-`renderStateColorsButton` gates on axis and mode · `src/storage/createNote.ts` is the only
-module that may make the note, and `createBacklogItem` is the creator this reuses rather
-than a second one.
-
-The modal itself is a new dialog beside the four in `src/ui/`, which is the leaf of reusable
-Obsidian dialogs that knows about no layer above it — three conditional fields is past what
-`prompts.ts` does, and the prompt it would otherwise strain is shared with every other
-creation path in the view.
+`renderStateColorsButton` gates on axis and mode, calling `promptNewResource`.

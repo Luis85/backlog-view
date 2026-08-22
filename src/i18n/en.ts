@@ -1143,6 +1143,21 @@ export const en = {
 	'absence.createFailed': 'Could not create the absence. See the developer console for details.',
 
 	/**
+	 * The New resource prompt (`view/interactions/resourceNotes.ts`) — the roadmap's
+	 * resources axis is its only way in (Task 4 wires the button; this catalog section
+	 * ships ahead of it). `resource.duplicateWarning` is `ValuePromptOptions.duplicateWarning`:
+	 * shown, never refused, the same *guides rather than arbitrates* rule
+	 * `absence.nameResource`'s modal already keeps.
+	 */
+	'resource.createHeading': 'New resource',
+	'resource.nameField': 'Name',
+	'resource.namePlaceholder': 'Alex',
+	'resource.createCta': 'Create',
+	'resource.duplicateWarning': 'A resource with this name already exists.',
+	'resource.created': 'Created the resource "{name}".',
+	'resource.createFailed': 'Could not create the resource. See the developer console for details.',
+
+	/**
 	 * The new-item modal's heading. Its own key rather than `toolbar.newItem`'s or
 	 * `menu.newChild`'s: identical English across surfaces is expected here and must not
 	 * be deduplicated (this file's own rule) — a dialog heading and a button label
