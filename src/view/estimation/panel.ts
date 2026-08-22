@@ -274,20 +274,27 @@ function renderDecomposition(panelEl: HTMLElement, item: EstimationItem): void {
 	for (const term of item.result.terms) decomp.createSpan({ text: t('estimation.panel.term', term) });
 }
 
-/** Which catalog key names a blocked indicator's reason, on the panel's own two-parameter
- *  sentence family (`{name}` and `{operand}`). A `Record<IndicatorBlock, …>`, the same
- *  shape `renderTable.ts`'s own copy takes for its one-parameter family below it — so the
- *  compiler refuses either file the moment a reason joins `IndicatorBlock` without a
- *  matching entry here, rather than the two silently drifting apart on a case one of them
- *  forgot. */
-const PANEL_BLOCK_KEY: Record<
+/**
+ * Which catalog key names a blocked indicator's reason, on EITHER surface — the column's
+ * one-parameter family (`{operand}`, `estimation.indicator.*`) and the panel's own
+ * two-parameter family (`{name}` and `{operand}`, `estimation.panel.indicator*`). ONE
+ * `Record<IndicatorBlock, …>` rather than two, exported for `renderTable.ts` to read
+ * (which already imports `renderPanel` from here — no new edge), because two independent
+ * copies is exactly the drift CONTROLLER AMENDMENT 1 named: nothing catches two maps
+ * agreeing on which reasons exist while disagreeing about what either sentence says. A
+ * single table states the correspondence once; each call site picks its own column.
+ */
+export const INDICATOR_BLOCK_KEYS: Record<
 	IndicatorBlock,
-	'estimation.panel.indicatorUnanswered' | 'estimation.panel.indicatorUnknown' | 'estimation.panel.indicatorNonpositive' | 'estimation.panel.indicatorUnbound'
+	{
+		column: 'estimation.indicator.unanswered' | 'estimation.indicator.unknown' | 'estimation.indicator.nonpositive' | 'estimation.indicator.unbound';
+		panel: 'estimation.panel.indicatorUnanswered' | 'estimation.panel.indicatorUnknown' | 'estimation.panel.indicatorNonpositive' | 'estimation.panel.indicatorUnbound';
+	}
 > = {
-	unanswered: 'estimation.panel.indicatorUnanswered',
-	unknown: 'estimation.panel.indicatorUnknown',
-	nonpositive: 'estimation.panel.indicatorNonpositive',
-	unbound: 'estimation.panel.indicatorUnbound',
+	unanswered: { column: 'estimation.indicator.unanswered', panel: 'estimation.panel.indicatorUnanswered' },
+	unknown: { column: 'estimation.indicator.unknown', panel: 'estimation.panel.indicatorUnknown' },
+	nonpositive: { column: 'estimation.indicator.nonpositive', panel: 'estimation.panel.indicatorNonpositive' },
+	unbound: { column: 'estimation.indicator.unbound', panel: 'estimation.panel.indicatorUnbound' },
 };
 
 /**
@@ -320,13 +327,13 @@ function renderDerived(panelEl: HTMLElement, item: EstimationItem, model: Scorin
 	const name = indicator.label || indicatorFormula(model, indicator);
 	const blocked = item.indicator.blockedBy;
 	// A LOOKUP rather than a nested ternary: three reasons already strained that shape,
-	// and the fourth (`unbound`) made it unreadable. `PANEL_BLOCK_KEY` above is the whole
-	// of the decision; this only applies it.
+	// and the fourth (`unbound`) made it unreadable. `INDICATOR_BLOCK_KEYS` above is the
+	// whole of the decision; this only applies its `panel` half.
 	derived.createSpan({
 		text:
 			blocked === null
 				? t('estimation.panel.indicator', { name, value: item.indicator.value as number })
-				: t(PANEL_BLOCK_KEY[blocked.reason], { name, operand: blocked.operand }),
+				: t(INDICATOR_BLOCK_KEYS[blocked.reason].panel, { name, operand: blocked.operand }),
 	});
 }
 
