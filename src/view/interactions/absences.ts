@@ -191,15 +191,25 @@ async function removeAbsence(host: BacklogViewHost, absence: Absence): Promise<v
  * Driven, not merely stated: `test/view/resourceAbsences.test.ts` refuses the frontmatter
  * write of an edit that also changes the derived name, and asserts the note still answers
  * to its old name — which is exactly what swapping the two acts breaks.
+ *
+ * A THIRD outcome joins those two: `updateAbsenceNote` can also refuse outright, because
+ * the note it holds a stale reference to was retyped to `Resource` while this modal was
+ * open. That refusal has to reach here rather than stay a silent no-op, because a rename
+ * run anyway would still rename a resource — half of what the refusal exists to stop. So
+ * the rename is skipped and reported exactly like any other failure, never attempted.
  */
 async function editAbsence(host: BacklogViewHost, absence: Absence, result: AbsenceResult): Promise<void> {
 	if (refusedByConfig(host)) return;
 	try {
-		await updateAbsenceNote(host.app, host.settings, absence.file, {
+		const wrote = await updateAbsenceNote(host.app, host.settings, absence.file, {
 			resource: result.resource,
 			start: result.start,
 			target: result.target,
 		});
+		if (!wrote) {
+			new Notice(t('absence.becameResource'));
+			return;
+		}
 		await renameAbsenceNote(host.app, absence.file, absenceTitle(result));
 		// The note's OWN name, never the requested one — `uniqueNotePath` sanitizes the
 		// title and appends a number where one is taken, so a rename onto an existing

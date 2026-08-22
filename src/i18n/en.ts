@@ -1138,6 +1138,12 @@ export const en = {
 	'absence.deleteFailed': 'Could not delete the absence. See the developer console for details.',
 	'absence.updated': 'Updated "{name}".',
 	'absence.saveFailed': 'Could not save the absence. See the developer console for details.',
+	/**
+	 * The note this edit targeted was retyped to `Resource` while the modal was open —
+	 * `updateAbsenceNote`'s live-type refusal, worded like `applyPropertyWrites`'s
+	 * identical race rather than `saveFailed`'s, since nothing here actually failed.
+	 */
+	'absence.becameResource': 'That note became a resource while the edit was in flight, so nothing was changed.',
 	'absence.created': 'Marked {resource} away — "{name}".',
 	'absence.createFailed': 'Could not create the absence. See the developer console for details.',
 
