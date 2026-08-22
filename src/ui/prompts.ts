@@ -200,6 +200,15 @@ export interface ValuePromptOptions {
 	sigil?: string;
 	/** Values offered as suggestions — for tags, the ones this item does not already carry. */
 	known: string[];
+	/**
+	 * Sentence shown under the field while the trimmed entry matches a `known` value
+	 * case-insensitively, cleared the moment it does not. Warns and never refuses — two
+	 * real people can share a name, and this dialog guides rather than arbitrates who
+	 * exists. Undefined for the two callers this ships with (a tag, an assignee), where a
+	 * repeat is ordinary rather than worth a second look; the resource-name caller is what
+	 * wants it.
+	 */
+	duplicateWarning?: string;
 	onSubmit: (value: string) => void;
 }
 
@@ -219,12 +228,30 @@ export class ValuePromptModal extends PromptModal<ValuePromptOptions> {
 			this.options.onSubmit(value);
 		};
 
+		const warningText = this.options.duplicateWarning;
+		let warningEl: HTMLElement | null = null;
+		const syncWarning = () => {
+			if (!warningEl) return;
+			const isKnown = this.options.known.some((k) => k.toLowerCase() === value.trim().toLowerCase());
+			warningEl.setText(isKnown ? (warningText ?? '') : '');
+		};
+
 		new Setting(this.contentEl).setName(this.options.fieldName).addText((text) => {
 			text.setPlaceholder(this.options.placeholder);
-			text.onChange((v) => (value = v));
+			text.onChange((v) => {
+				value = v;
+				syncWarning();
+			});
 			new KnownValueSuggest(this.app, text.inputEl, this.options.known, this.options.sigil);
 			submitOnEnter(text.inputEl, submit, true);
 		});
+
+		// Only built when the caller wants the feature, and then kept in the DOM and empty
+		// rather than created on demand — `.pbl-modal-error`'s own reason: a dialog must
+		// not resize under the pointer as the match is typed.
+		if (warningText !== undefined) {
+			warningEl = this.contentEl.createDiv({ cls: 'pbl-modal-warning' });
+		}
 
 		this.cta(this.options.ctaLabel, submit);
 	}

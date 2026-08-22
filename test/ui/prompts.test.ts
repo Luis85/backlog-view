@@ -126,7 +126,7 @@ describe('ValuePromptModal', () => {
 		const input = modal.contentEl.querySelector('input');
 		const addBtn = modal.contentEl.querySelector('button');
 		if (!input || !addBtn) throw new Error('tag prompt incomplete');
-		return { vault, added, input, addBtn };
+		return { vault, modal, added, input, addBtn };
 	}
 
 	it('submits the typed tag and ignores a blank one', () => {
@@ -166,5 +166,41 @@ describe('ValuePromptModal', () => {
 		suggest.selectSuggestion('alpha', new MouseEvent('click'));
 		expect(input.value).toBe('alpha');
 		expect(inputEvents).toBe(1);
+	});
+
+	it('warns on a case-insensitive duplicate, clears when edited away, and still submits', () => {
+		const vault = new FakeVault();
+		const added: string[] = [];
+		const modal = new ValuePromptModal(vault.app as never, {
+			title: 'New resource',
+			fieldName: 'Name',
+			placeholder: 'Alex Chen',
+			ctaLabel: 'Create',
+			known: ['Alex Chen', 'Sam Rivera'],
+			duplicateWarning: 'A resource with this name already exists.',
+			onSubmit: (name) => added.push(name),
+		});
+		modal.open();
+		const input = modal.contentEl.querySelector('input');
+		const createBtn = modal.contentEl.querySelector('button');
+		if (!input || !createBtn) throw new Error('resource prompt incomplete');
+		const warningEl = () => modal.contentEl.querySelector('.pbl-modal-warning');
+
+		expect(warningEl()?.textContent).toBe('');
+
+		type(input, 'ALEX CHEN');
+		expect(warningEl()?.textContent).toBe('A resource with this name already exists.');
+
+		type(input, 'ALEX CHEN JR');
+		expect(warningEl()?.textContent).toBe('');
+
+		type(input, 'ALEX CHEN');
+		createBtn.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		expect(added).toEqual(['ALEX CHEN']);
+	});
+
+	it('renders no warning element at all when the option is absent', () => {
+		const { modal } = openTagPrompt();
+		expect(modal.contentEl.querySelector('.pbl-modal-warning')).toBeNull();
 	});
 });
