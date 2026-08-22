@@ -2081,6 +2081,30 @@ describe("a release's scope on screen", () => {
 		expect(context.querySelector('.pbl-outside-marker')).not.toBeNull();
 	});
 
+	it('announces the hierarchy, not just an indent', () => {
+		// `--pbl-depth` is styling and says nothing to a screen reader. Without these the
+		// scope is announced as a flat list of divs, on the one screen whose whole promise
+		// is the shape of the work.
+		const { view, containerEl } = makeReleaseView(scopeVault(), RELEASE_CONFIG);
+		view.pick('R.md');
+		expect(containerEl.querySelector('.pbl-tree')?.getAttribute('role')).toBe('tree');
+		const rows = [...containerEl.querySelectorAll('.pbl-row')];
+		expect(rows.map((el) => el.getAttribute('role'))).toEqual(rows.map(() => 'treeitem'));
+		// The Epic is context at level 1; the member beneath it is level 2.
+		expect(rows.map((el) => el.getAttribute('aria-level'))).toEqual(['1', '2']);
+		// Position is among SIBLINGS at that level, never the index in the flat row list.
+		expect(rows[1].getAttribute('aria-posinset')).toBe('1');
+		expect(rows[1].getAttribute('aria-setsize')).toBe('1');
+	});
+
+	it('claims no selection and no collapse, because it offers neither', () => {
+		const { view, containerEl } = makeReleaseView(scopeVault(), RELEASE_CONFIG);
+		view.pick('R.md');
+		const row = containerEl.querySelector('.pbl-row') as HTMLElement;
+		expect(row.hasAttribute('aria-selected')).toBe(false);
+		expect(row.hasAttribute('aria-expanded')).toBe(false);
+	});
+
 	it('states the member count, which excludes every context row', () => {
 		const { view, containerEl } = makeReleaseView(scopeVault(), RELEASE_CONFIG);
 		view.pick('R.md');
@@ -2134,6 +2158,42 @@ Create `src/view/release/renderScope.ts`: a `.pbl-rel-header` (back control, nam
 Its own read-only rows, **not** `src/view/render/rows.ts` — that module takes a `BacklogViewHost` and wires menus, create prompts, tag removal and drag into every row, none of which a read-only screen has. Reuse the *stylesheet* classes (`.pbl-row`, `.pbl-badge`, `.pbl-title`, `.pbl-state-chip.pbl-state-static`, `.pbl-outside-marker`) and `badgeStyleFor` for the icon and badge class.
 
 Set indentation with `setCssProps({ '--pbl-depth': String(row.depth) })` — never an inline `style` attribute, which the marketplace rules ban.
+
+**The tree has to BE a tree, not just look like one.** `--pbl-depth` is a CSS variable: it
+moves a row sideways and tells assistive technology nothing, so a scope drawn with indent
+alone is announced as a flat list of divs — for a screen a whole feature is named after
+showing scope *as the tree it already is*.
+
+This is the cost of the decision to write our own rows instead of calling
+`src/view/render/rows.ts`, and it is the part that decision quietly took on: that module
+already carries the semantics, and declining it means carrying them here. Mirror what it
+does at `rows.ts:36-39`:
+
+```ts
+	const tree = root.createDiv({ cls: 'pbl-tree', attr: { role: 'tree' } });
+	// ... per row, where `place` is the row's position among its siblings AT ITS LEVEL
+	// within this scope — not its index in the flat `rows` array, which would announce
+	// every row as one long list and defeat the point.
+	const el = tree.createDiv({
+		cls: 'pbl-row' + (row.context ? ' pbl-rel-context' : ''),
+		attr: {
+			role: 'treeitem',
+			'aria-level': String(row.depth + 1),
+			'aria-posinset': String(place.pos),
+			'aria-setsize': String(place.count),
+		},
+	});
+```
+
+`aria-level` counts from 1, so it is `row.depth + 1` — and `row.depth` is the SCOPE's depth,
+which re-roots at the release rather than at the backlog, so a member drawn at top level is
+level 1 here even where the backlog would call it level 3. That is correct: the tree being
+announced is this screen's.
+
+Two attributes `rows.ts` sets are deliberately absent, and the reason is the same one that
+made this view read-only. `aria-selected` describes a selection this screen does not have,
+and `aria-expanded` describes a collapse it does not offer — every member is drawn, always.
+Setting either would announce an interaction that does not exist.
 
 - [ ] **Step 4: Run the tests**
 
