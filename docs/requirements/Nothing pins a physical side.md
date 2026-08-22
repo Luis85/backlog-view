@@ -239,6 +239,15 @@ whole.
   symmetric padding, which is the exemption list [[Styling rules are checks]] exists to
   avoid. The limit is written into the test's header and a planted case asserts the floor,
   so it stays a STATED limit rather than a silent one.
+  **The eleventh round is the first REFUSED on the rule above, and it is the worked
+  example of why the rule exists.** An inset does nothing on a `position: static` element,
+  so `left: 0` there licenses a physical padding that nothing pins — true, and unreachable:
+  `position` is not in the licensed block. `.pbl-bar-label` carries `position: absolute`
+  and `.pbl-bar-label-after` carries the licensed `padding-left`, so requiring the two in
+  ONE block revokes the licence from the single rule the licence exists for. Whether an
+  inset takes effect is a question about the CASCADE over an element, and this instrument
+  reads text a rule at a time. Same shape as the substitution refusal above it, and the
+  same answer: it belongs to the computed-value check, not to a twelfth pattern.
   **The warning applies to the CHECK and not only to the sweep**, which is the
   sentence this note did not have, and each round is one the check itself could not have
   told anybody about — every one passed green.
