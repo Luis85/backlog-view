@@ -112,9 +112,14 @@ work-item types.
   per-Feature summary of it are a different question from what happens to a finding
   afterwards, and reducing either to an activity value would lose it. Each is one note
   somebody still has to write, and this bullet is where that debt is recorded until they do.
+  **The cross-discipline overview is a fourth**: a table of every Feature against every
+  discipline, answering what *blocks* a Feature rather than what status it is in, which is a
+  projection and not a by-product of the readiness model — a readiness rule delivered without
+  it leaves the reader with per-item criteria and no way to read across them.
 - **Build a second board.** A board scoped to one discipline is [[Product Kanban]]'s board
-  with a scope, exactly as the Deliverables board and the iteration board already are, and
-  it is that epic's precedent rather than a new implementation.
+  with a scope, as [[A Deliverables board]] already is, and it is that epic's precedent
+  rather than a new implementation. [[An Iterations board]] is the scoped board that is
+  *not* a precedent here, for a reason its own note records.
 - **Become a design tool.** The artifact is made in Figma, in Miro, or in a note; the vault
   stores it and this epic tracks the work that produces it and what it belongs to. That is
   the whole of the source document's closing principle and it is adopted unchanged.
