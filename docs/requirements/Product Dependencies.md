@@ -1,6 +1,6 @@
 ---
 type: Epic
-order: 150
+order: 4.6875
 status: Open
 area: product
 created: 2026-08-16

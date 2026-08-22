@@ -199,9 +199,17 @@ things as equal — and its definition of done is mostly about what a number may
 derivation leaves the view and the rest are recomputed on read, a written total records
 the model that made it and says `Needs re-estimation` when that model moves on, a merged
 number never stands in for its inputs, and nothing ranks the backlog on its own behalf.
-Specification only, from a product requirements document of 2026-08-16, with **eight
-features** under it: the scoring model and its rubrics, the weighted score, the presets, the
-ranked list, the matrix, the scenarios and the decomposition.
+From a product requirements document of 2026-08-16, with **eight features** under it: the
+scoring model and its rubrics, the weighted score, the presets, the ranked list, the
+matrix, the scenarios and the decomposition. **The scoring model, the weighted score, the
+ranked list and the decomposition ship**: the view (`product-estimation`) carries its own
+options binding each dimension's property, range, weight and direction, a panel shows the
+rubric sentence at the picked point and writes the total and its model stamp back to the
+note with the decomposition beside it, and a sortable table remembers its sort per saved
+view, reached through a guided setup action that binds and backfills the dozen-odd
+properties in one batch. A rubric's own sentences are shown but stay hand-edited in the
+`.base` rather than configured through an options box; the presets, the matrix and the
+scenarios remain design.
 
 **Two** of the five questions it opened are answered there. The partial profile is settled
 outright: the score renormalizes over the answered dimensions and reports its coverage, and
@@ -235,18 +243,23 @@ item family and the checklist this register already walks by hand — the smoke 
 suites already living in the catalog — is the evidence that the catalog is the part
 worth having first.
 
-**A view per capability** is the direction the rest of the register now sits inside, from a
+**A view per capability** is the direction the rest of the register sits inside, from a
 product requirements document of 2026-08-16 kept in [`prds/`](prds): the plugin stops being
 one view with a growing toolbar and becomes a family of Bases views over the same notes, one
 per capability, each with its own options, state and empty state, sharing nothing at runtime
 but the layers below the screen. The rule that makes it work is the data contract — **views
 communicate only through the vault** — so a hidden store between two views would be the
-proprietary database this plugin has always refused, arriving by the back door. Its features
-are the shared kernel every view reads the vault with, the registration, settings scoped to
-the view that uses them, a guided empty state that can configure itself, navigation between
-the views a base actually has, one suggested name per concept that the user maps, and the
-staged extraction of the board, the roadmap and the Deliverables board out of the backlog
-view. A software design document of 2026-08-16 in [`sdds/`](sdds) states the architecture it
+proprietary database this plugin has always refused, arriving by the back door. It is a
+**Feature under [[Cross-cutting concerns]]** as of 2026-08-21, having been an Epic of its own
+until then: it states a property every view has to satisfy, including views nobody has
+written, which is what that epic is for, and it promises no body of work with an order of its
+own. Its parts are **Issues** for the same reason — the shared kernel every view would read
+the vault with, the registration, settings scoped to the view that uses them, a guided empty
+state that can configure itself, navigation between the views a base actually has, one
+suggested name per concept that the user maps, and the staged extraction of the board, the
+roadmap and the Deliverables board out of the backlog view. Each is a question the rule has
+not answered rather than a capability a vault could install, and each becomes a Feature again
+on the day a capability is scheduled against it. A software design document of 2026-08-16 in [`sdds/`](sdds) states the architecture it
 is built against, and the epic follows its migration order — kernel first, then the registry,
 then the projections already built, then new views — because a view registered against logic
 still tangled with another view's DOM copies the tangle instead of sharing the logic. What
@@ -261,7 +274,7 @@ is placed in one of three buckets, and the register's own default is that most a
 at all: a type is for something the tree ranks, everything else is a note a property points
 at.
 
-**Nine capability epics** hang off that direction, all specification, in the delivery order
+**Nine capability epics** hang off that rule, all specification, in the delivery order
 the document argues for. **Backlog Health** comes first with prioritization, because every
 later view depends on the quality of the data: stated rules, findings that explain
 themselves, a score that decomposes into them, and repairs offered only where they are
@@ -271,9 +284,11 @@ promotion that creates a backlog item and leaves the discovery record linked and
 **Product Strategy** (objectives and jobs to be done as links rather than rungs, and the
 backward read that names work answering to nothing), and **Product Evidence** (what the vault
 already holds — interviews, tickets, analytics — connected to the work it argues for, and the
-three gaps that read exposes). Then planning: **Release Planning** (scope, capacity in the
-vault's own unit, a scenario that writes nothing until it is applied, and a readiness
-checklist that refuses nothing), **Product Dependencies** (one canonical direction, a graph
+three gaps that read exposes). Then planning: **Release Management** (scope, capacity in
+the vault's own unit, a scenario that writes nothing until it is applied, a readiness checklist
+that refuses nothing, and the rest of a release's life the source document stopped short of —
+putting work in one, shipping it, writing up what shipped, and the index of every release the
+other five screens are the detail of), **Product Dependencies** (one canonical direction, a graph
 and a table over it, a stated rule for what counts as blocked, and cycles reported rather
 than resolved). Then governance: **Product Portfolio**, **Product Analytics** (every figure
 naming its population and reporting what it could not measure rather than counting it as
@@ -300,8 +315,10 @@ everything, or they are true of nothing. `Multilang` (every string comes out of 
 per-locale catalog) and `Theming and styling` (every pixel comes from Obsidian's design
 tokens, from a stylesheet organised like the rest of the codebase) are siblings because
 they meet at the layout: translated text is longer, shorter and sometimes right-to-left,
-and the stylesheet is what absorbs it. Specification only — nothing under this epic is
-built yet, and what it asks for applies to the board as much as to the tree.
+and the stylesheet is what absorbs it. `A view per capability` joined them on 2026-08-21 as
+the third — described above, where the capability epics that hang off it are. What each of
+the three asks for applies to whatever the plugin grows next rather than to a list of
+screens, which is the whole reason they sit at this level.
 
 **The Product Page** is the odd one out: not a projection of the backlog and not a
 property every screen must hold, but a public site — built with Astro, hosted on GitHub

@@ -1,4 +1,4 @@
-import { BasesViewConfig } from 'obsidian';
+import { BasesPropertyId, BasesViewConfig } from 'obsidian';
 import { BacklogSettings } from './settings';
 
 /**
@@ -215,6 +215,51 @@ export function notePropertyId(key: string): string {
 	return `note.${key}`;
 }
 
+/** A property picker's filter, admitting only note-backed properties — the inverse of
+ *  `notePropertyId` above, and shared for the same reason: the backlog's own
+ *  `viewOptions.ts` and the estimation view's `estimationOptions.ts` both declared this
+ *  identical one-line predicate independently. */
+export const notePropsOnly = (prop: BasesPropertyId): boolean => prop.startsWith('note.');
+
+/**
+ * The generic shape of one adoptable suggestion — the option that has to be untouched,
+ * and the key it offers when it is.
+ */
+export interface AdoptionCandidate {
+	option: string;
+	suggested: string;
+}
+
+/**
+ * Adopt every candidate in `candidates` whose option `config` has never touched — "never
+ * set" asked of the CONFIG, never of a resolved settings shape, which cannot tell cleared
+ * from untouched apart — and whose suggested key `taken` does not already hold, mutating
+ * `taken` as it goes so a later candidate in the SAME list sees an earlier one's pick.
+ *
+ * Shared by this view's own `adoptableProperties` below and the estimation view's
+ * `runEstimationInit` (`view/estimation/init.ts`), which apply the identical rule over two
+ * different candidate lists and two different starting "already taken" sets — the two were
+ * a hand-rolled copy of this loop each until 2026-08-17.
+ *
+ * Two suggestions cannot collide within either of today's lists, so the `taken.add` below
+ * never actually fires within one call — and that is what keeps it a property of the two
+ * TABLES' current contents rather than of this function, the moment either grows a row
+ * whose suggested key repeats an earlier one.
+ */
+export function adoptCandidates<T extends AdoptionCandidate>(
+	config: BasesViewConfig,
+	candidates: readonly T[],
+	taken: Set<string>,
+): T[] {
+	const adopted: T[] = [];
+	for (const candidate of candidates) {
+		if (config.get(candidate.option) !== undefined || taken.has(candidate.suggested)) continue;
+		adopted.push(candidate);
+		taken.add(candidate.suggested);
+	}
+	return adopted;
+}
+
 /**
  * The optional properties this view can set up for itself: the suggested key for
  * every option **nobody has ever touched**. Cleared is not untouched — turning the
@@ -240,14 +285,7 @@ export function adoptableProperties(
 ): OptionalProperty[] {
 	const taken = new Set(ownedProperties(settings).map((owned) => owned.key));
 	taken.delete('');
-	const adoptable: OptionalProperty[] = [];
-	for (const property of OPTIONAL_PROPERTIES) {
-		if (config.get(property.option) !== undefined || taken.has(property.suggested)) continue;
-		// Two suggestions cannot collide today, and this is what keeps that a property
-		// of the code rather than of the table's current contents.
-		taken.add(property.suggested);
-		adoptable.push(property);
-	}
+	const adoptable = adoptCandidates(config, OPTIONAL_PROPERTIES, taken);
 	return only === undefined ? adoptable : adoptable.filter((property) => property.field === only);
 }
 

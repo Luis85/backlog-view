@@ -57,8 +57,35 @@ describe('previousIteration', () => {
 		expect(previousIteration(iterations({ 'B.md': sameEnd, 'A.md': sameEnd }))?.title).toBe('B');
 	});
 
+	it('breaks a full tie — same target AND same start — by path alone', () => {
+		// The case the test above does not reach: both without a start never gets past the
+		// absent-start rule to compare dates at all, and different starts settle it before
+		// path is ever asked. Only an identical target AND start reaches `a.path > b.path`.
+		const sameBoth = { due: '2026-08-16', start: '2026-08-01' };
+		expect(previousIteration(iterations({ 'A.md': sameBoth, 'B.md': sameBoth }))?.title).toBe('B');
+		expect(previousIteration(iterations({ 'B.md': sameBoth, 'A.md': sameBoth }))?.title).toBe('B');
+	});
+
 	it('follows a predecessor that has a target and no start', () => {
 		expect(previousIteration(iterations({ 'Sprint 12.md': { due: '2026-08-16' } }))?.title).toBe('Sprint 12');
+	});
+
+	it('on a tied target, a stated start outranks an absent one either way round', () => {
+		// "An absent start sorts first: a predecessor that states only its end is the
+		// weaker claim of the two, and it must not displace one that states both" —
+		// checked in both directions, since `later` is asked with each iteration on
+		// either side as the loop runs.
+		const sameEnd = { due: '2026-08-16' };
+		expect(
+			previousIteration(
+				iterations({ 'NoStart.md': sameEnd, 'HasStart.md': { ...sameEnd, start: '2026-08-01' } }),
+			)?.title,
+		).toBe('HasStart');
+		expect(
+			previousIteration(
+				iterations({ 'HasStart.md': { ...sameEnd, start: '2026-08-01' }, 'NoStart.md': sameEnd }),
+			)?.title,
+		).toBe('HasStart');
 	});
 
 	it('answers nothing when no iteration carries a target', () => {

@@ -1,6 +1,6 @@
 ---
 type: Epic
-order: 220
+order: 3.125
 status: Active
 area: product
 created: 2026-08-20

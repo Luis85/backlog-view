@@ -51,9 +51,15 @@ property of whichever code path happened to run.
   — those notes are on disk and the tree has to show them.
 - **5a — data updates arrive mid-batch.** Every file `applyWrites` touches comes back as
   its own change event; rebuilding the tree on each would render a half-applied backlog
-  hundreds of times. They are recorded and flushed once at the end instead.
-- **6a — the batch is undo.** Same gate, minus the context-row check — see
-  [[Undo and redo]] for why that one is capture-time.
+  hundreds of times. They are recorded and flushed once at the end instead — in every view
+  that recorded one, not only in the view that wrote: a batch is one at a time across the
+  whole plugin ([[A view per capability]]), so a second view defers on a batch it is not
+  running and only the end of that batch can release it.
+- **6a — the batch is undo.** Same gate, minus the context-row check AND minus the
+  configuration check — see [[Undo and redo]] for why both are capture-time. A replay
+  restores raw captured keys rather than planning against these settings, so the collision
+  3a exists to prevent cannot be reached by one, and asking it let a problem in one view's
+  options veto taking back another view's batch.
 
 ## Acceptance criteria
 
@@ -66,16 +72,20 @@ property of whichever code path happened to run.
 
 ## Where it lives
 
-`src/view/writeGate.ts` (`WriteGate` — `runExclusively`, `applySafely`, `undoLast`, the
-undo slot and the deferred mid-batch refresh). It moved out of `src/view/backlogView.ts`
+`src/view/writeGate.ts` (`WriteGate` — `runExclusively`, `applySafely`, `undoLast` and
+the deferred mid-batch refresh). It moved out of `src/view/backlogView.ts`
 when the view hit its 400-line cap, the same extraction `filterState.ts` and
 `viewState.ts` already are: five of that class's fields served this one concern and
 only `busy` was read from outside it. The view now owns a gate, delegates the three host
 methods to it, and publishes its progress — `syncBusyUi`, because the gate reaches none
-of the view's elements ·
+of the view's elements. **The undo slot has since moved again**, out of the gate and
+into `src/view/writeLock.ts` (`WriteLock` — `applying`, `lastUndo`, `recovery`), once a
+second view needed the same one-batch-one-undo guarantee over the same vault (ADR 0030):
+the gate keeps validation, the outside-filter refusal and its own progress, and reads the
+slot through the lock it is constructed with rather than holding one of its own ·
 `src/storage/frontmatter.ts` (`applyWrites` — the only module that writes) ·
 `src/domain/writePlan.ts` (planning) · `src/domain/settingsConsistency.ts` (`configProblems`) ·
 `eslint.config.mjs` (`no-restricted-syntax` banning `processFrontMatter` and
 `vault.create` outside `storage/`).
 Tests: `test/storage/frontmatter.test.ts`, `test/view/contextRowWrites.test.ts`,
-`test/view/toolbar.test.ts`.
+`test/view/toolbar.test.ts`, `test/view/writeLock.test.ts`.

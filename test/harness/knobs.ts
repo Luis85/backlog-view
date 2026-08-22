@@ -12,11 +12,17 @@
  * data and simply unreachable without a pointer, which is what a knob is for. The gestures
  * are a different problem and stay unreachable: a drag, a link drag, a hover reveal and a
  * selection ring are what a person does, and no URL can stand in for one.
+ *
+ * `?measure` belongs here for the same reason as the rest: it is a real call into the view
+ * (`drawEstimationMeasurements`), and it is worth a test that the call still happens even
+ * though jsdom cannot check what it reports — box geometry and computed type, which no
+ * fixture or screenshot reaches either.
  */
 import { ProductBacklogView } from '../../src/view/backlogView';
 import { openManual } from '../../src/ui/manualDialog';
 import { manualSections } from '../../src/view/manual/sections';
 import { openStateColors } from '../../src/view/interactions/stateColors';
+import { EstimationView } from '../../src/view/estimation/estimationView';
 
 const DIALOGS = ['manual', 'colors', 'new'] as const;
 type Dialog = (typeof DIALOGS)[number];
@@ -54,4 +60,106 @@ export function applyWantedState(view: ProductBacklogView, search: string): void
 	if (params.has('shelf')) view.setShelfCollapsed(false);
 	const focus = params.get('focus');
 	if (focus !== null && focus !== '') view.setFocusLevel(focus);
+}
+
+/**
+ * `?select=<title>` — select a row in the ESTIMATION view by its note's title, the same
+ * assignment a click makes (`renderTable.ts`'s `selectRow`) without a pointer to drive
+ * it: the one way a screenshot reaches "a row selected, panel on screen" without
+ * clicking one. `title` is turned into the fixture's own flat `<title>.md` path, which
+ * is the only shape `estimationVault()`'s notes have.
+ */
+export function applyWantedEstimationSelection(view: EstimationView, search: string): void {
+	const title = new URLSearchParams(search).get('select');
+	if (!title) return;
+	view.selectedPath = `${title}.md`;
+	view.render();
+}
+
+/**
+ * `?measure` — every column's own box and every named element's computed type, into one
+ * element a headless `--dump-dom` can read.
+ *
+ * COMMITTED rather than left in a scratch mock, because it is the only instrument this
+ * repository has for two whole classes of defect: jsdom lays nothing out, so
+ * `getBoundingClientRect` answers zeros and a column that slides under its own header is
+ * invisible to the suite; and jsdom applies no stylesheet, so a computed `font-size` cannot
+ * be read there at all. Both shipped once — a currency cell 29.8px wider than its ten
+ * siblings, which slides the columns beside it or overflows the row's end edge depending on
+ * whether the title still has room to shrink, and five wrong type sizes, three of them rules
+ * that had silently stopped matching. Read with:
+ *
+ *   chrome --headless=new --dump-dom '<page>?measure'
+ *
+ * It reports and asserts nothing (ADR 0020). `harness.test.ts` checks that it still
+ * reports a line per column and per probe — never what the numbers are, which would be the
+ * screenshot suite that ADR refuses.
+ */
+export function drawEstimationMeasurements(view: EstimationView): void {
+	const lines: string[] = [];
+	const table = view.tableEl;
+	const head = table?.querySelector('.pbl-est-head');
+	const rows = Array.from(table?.querySelectorAll('.pbl-est-row') ?? []);
+	const hosts: Array<[string, Element | null | undefined]> = [['head', head], ...rows.map((r, i) => [`row${i}`, r] as [string, Element])];
+
+	// `querySelectorAll`, not `querySelector`: confidence and effort both wear
+	// `.pbl-est-cell` (`renderTable.ts`'s own disambiguation is `data-col`), so a single
+	// match per host would silently measure only the first of the two and never notice
+	// the second had vanished. The disambiguator is keyed on genuine ambiguity — MORE
+	// THAN ONE match for this class under this host — rather than on `data-col` merely
+	// being present: every header button carries `data-col` too (`renderTable.ts`'s
+	// `sortHeader`, for the CLICK target, one per column including the unambiguous
+	// ones), so keying on presence alone would also split `pbl-est-title head` into
+	// `pbl-est-title[title] head` and break the one-line-per-column head row this
+	// module already promises.
+	for (const cls of ['pbl-est-title', 'pbl-est-total', 'pbl-est-coverage', 'pbl-est-cell', 'pbl-est-currency']) {
+		for (const [name, host] of hosts) {
+			const matches = Array.from(host?.querySelectorAll(`.${cls}`) ?? []);
+			for (const el of matches) {
+				if (!(el instanceof HTMLElement)) continue;
+				const label = matches.length > 1 && el.dataset.col ? `${cls}[${el.dataset.col}]` : cls;
+				const box = el.getBoundingClientRect();
+				lines.push(`BOX ${label} ${name} left=${box.left.toFixed(1)} right=${box.right.toFixed(1)} w=${box.width.toFixed(1)}`);
+			}
+		}
+	}
+
+	// The four numeric columns' own numbers, top and bottom — the probe decision 6 needs and
+	// the `BOX` lines above cannot answer: those report a CELL's box, and the defect is the
+	// number's position INSIDE two cells that are taller than their siblings. `rows[0]` only:
+	// one row settles whether the four share a baseline, and eleven would print 44 lines
+	// saying it eleven times.
+	for (const col of ['total', 'coverage', 'confidence', 'effort']) {
+		const cell = rows[0]?.querySelector(col === 'total' || col === 'coverage' ? `.pbl-est-${col}` : `[data-col="${col}"]`);
+		const num = cell?.querySelector('.pbl-est-num');
+		if (!(num instanceof HTMLElement)) continue;
+		const box = num.getBoundingClientRect();
+		lines.push(`NUM ${col} top=${box.top.toFixed(1)} bottom=${box.bottom.toFixed(1)} h=${box.height.toFixed(1)}`);
+	}
+
+	const probes: Array<[string, Element | null | undefined]> = [
+		['row title', rows[0]?.querySelector('.pbl-est-title')],
+		['row total', rows[0]?.querySelector('.pbl-est-total')],
+		['row chip', rows[0]?.querySelector('.pbl-est-chip')],
+		['head cell', head?.querySelector('.pbl-est-title')],
+		['panel title', view.panelEl?.querySelector('.pbl-est-title')],
+		['panel total', view.panelEl?.querySelector('.pbl-est-total')],
+		['panel coverage', view.panelEl?.querySelector('.pbl-est-coverage')],
+		['panel derived', view.panelEl?.querySelector('.pbl-est-derived')],
+		['panel heading', view.panelEl?.querySelector('h4')],
+		['dim label', view.panelEl?.querySelector('.pbl-est-dim-label')],
+		['rubric', view.panelEl?.querySelector('.pbl-est-rubric')],
+		['point button', view.panelEl?.querySelector('button.pbl-est-point')],
+		['decomp term', view.panelEl?.querySelector('.pbl-est-decomp span')],
+		['toolbar count', view.viewEl.querySelector('.pbl-est-count')],
+	];
+	for (const [name, el] of probes) {
+		if (!(el instanceof HTMLElement)) continue;
+		const cs = getComputedStyle(el);
+		lines.push(`TYPE ${name} size=${cs.fontSize} weight=${cs.fontWeight} color=${cs.color}`);
+	}
+
+	document.getElementById('pbl-measure')?.remove();
+	const pre = document.body.createEl('pre', { text: lines.join('\n') });
+	pre.id = 'pbl-measure';
 }

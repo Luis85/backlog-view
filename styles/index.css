@@ -99,3 +99,24 @@
    property, resolved by value regardless of which partial's rule set it) and defines no
    selector any other partial also targets, so it can sit anywhere in this list. */
 @import "./legend.css";
+/* Position NOT load-bearing, and it stopped being so once the toolbar gave the estimation
+   view a shell of its own (Task 8): `.pbl-view` and `.pbl-est-view` used to be equal-
+   specificity classes on the SAME element, which made this partial's `display: grid` beat
+   `view.css`'s `display: flex` only by coming after it in this list. Now `.pbl-view` sits
+   on `viewEl` (`.pbl-est-shell`, the flex column holding the toolbar and the grid) and
+   `.pbl-est-view` sits on `gridEl`, a child of it — two different elements, so nothing
+   here is decided by import order any more. Kept at this position anyway: nothing else in
+   this list has a reason to move it. */
+@import "./estimation.css";
+/* Position NOT load-bearing: nothing outside `estimationChip.css` declares
+   `.pbl-est-chip`, and the `.pbl-est-currency` declarations in the two partials are
+   disjoint property sets (the fixed-width column here, the dash in `estimation.css`'s
+   `:empty::before` group) — so neither can win over the other regardless of order. */
+@import "./estimationChip.css";
+/* Position NOT load-bearing, but not because the vocabulary is disjoint:
+   `.pbl-est-panel` itself is declared in `estimation.css`, and this partial's
+   `.pbl-est-header .pbl-est-total` / `.pbl-est-header .pbl-est-coverage` DO re-target
+   that file's `.pbl-est-total` / `.pbl-est-coverage`. What decides it is specificity — a
+   two-class descendant selector is (0,2,0) against the single class's (0,1,0) — so this
+   partial wins whichever import runs last. */
+@import "./estimationPanel.css";

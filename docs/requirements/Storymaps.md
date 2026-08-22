@@ -1,6 +1,6 @@
 ---
 type: Epic
-order: 200
+order: 3.75
 status: Open
 area: product
 created: 2026-08-19
@@ -45,7 +45,7 @@ So the map's rows are the register's own vocabulary read at a different angle:
 | Activities | The PBIs themselves, left to right by `order` **compared across parents**, so one map can span Features. |
 | Steps | `Step` notes, children of the PBI. An extra type, not a rung. |
 | Cards | The `Task` children a `Step` already holds. |
-| Slices | The release-membership property [[Release Planning]] specifies, so "what is in the MVP" has one home — [[A release is a note of its own]] — and this view adds no second idea of it. |
+| Slices | The release-membership property [[Release Management]] specifies, so "what is in the MVP" has one home — [[A release is a note of its own]] — and this view adds no second idea of it. |
 
 ## A step is an extra type, and that was the cheaper of two true answers
 

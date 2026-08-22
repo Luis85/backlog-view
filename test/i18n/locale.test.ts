@@ -164,6 +164,15 @@ describe('lookup is total', () => {
 		setLocale('pt', { pt: { 'count.items': { one: '{count} {nope}', other: '{count} {nope}' } } });
 		expect(t('count.items', { count: 1 })).toBe('1 {nope}');
 	});
+
+	it('selects the 0 category for a plural key called with no count at all', () => {
+		// Unreachable from typed call sites — `Params` demands `count: number` for any key
+		// carrying `{count}` — reachable only from a caller that bypassed the types.
+		// `selectForm`'s own fallback picks a category (English `other` at 0) rather than
+		// throwing; `fill` has no value to substitute, so the placeholder itself stays —
+		// a broken caller reads as an odd label rather than a crash.
+		expect(t('count.items', {} as never)).toBe('{count} items');
+	});
 });
 
 describe('the sentence is the unit of translation', () => {

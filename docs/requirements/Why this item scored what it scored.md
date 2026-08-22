@@ -17,7 +17,9 @@ assignee: ""
 # Why this item scored what it scored
 
 Selecting an item shows the decomposition — each dimension, its score, its weight and its
-contribution — beside the total, its coverage and the confidence.
+contribution — under its own heading, below the panel's pinned header where the total, its
+coverage and the confidence-adjusted value are stated instead, staying on screen while the
+decomposition scrolls beneath it.
 
 **The rationale is not one of those figures, and this surface does not show it.**
 [[Business value estimation]] refuses to parse note bodies, and no rationale property is

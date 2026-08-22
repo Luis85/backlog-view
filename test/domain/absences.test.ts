@@ -272,6 +272,12 @@ describe('how many of a bar’s days an absence takes', () => {
 		expect(daysLost({ start: null, target: civil('2026-08-05') }, [AUG])).toBe(1);
 		expect(daysLost({ start: null, target: civil('2026-08-20') }, [AUG])).toBe(0);
 	});
+
+	it('judges the mirror one-ended bar — a start with no target — the same way', () => {
+		// `to` falls back to `start` exactly as `from` falls back to `target` above.
+		expect(daysLost({ start: civil('2026-08-05'), target: null }, [AUG])).toBe(1);
+		expect(daysLost({ start: civil('2026-08-20'), target: null }, [AUG])).toBe(0);
+	});
 });
 
 describe('how long a resource is away', () => {

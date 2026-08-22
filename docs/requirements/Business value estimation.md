@@ -1,6 +1,6 @@
 ---
 type: Epic
-order: 60
+order: 0
 status: Open
 area: product
 created: 2026-08-16
@@ -68,7 +68,7 @@ section nobody using the tree will read, and the two views share the layers belo
 write boundary, one gate, one undo history, one model of what a work item is.
 
 It is the first capability to follow [[A view per capability]], and the shared kernel that
-epic extracts is what it reads the tree with — which is also why the kernel comes first: an
+rule calls for is what it reads the tree with — which is also why the kernel comes first: an
 estimation view built against the backlog view's own internals would be the second
 implementation of a work item, not the second view of one.
 
@@ -184,8 +184,9 @@ Three quantities stay **outside** that sum and beside it:
   property editor, or by another plugin, moves no stamp, so a stamp comparison alone would
   call a total current that its own inputs contradict. A different stamp means another
   model produced it; an absent one means it was written by hand or by something else. None
-  of these failures is shown as current, and the estimation status is where that
-  surfaces — `Needs re-estimation`, not a silent pass.
+  of these failures is shown as current, and the total's own currency is where that
+  surfaces — a distinct word per failure (`Another model`, `Hand-written`, `Needs
+  re-estimation`, `Inputs gone`), never a silent pass.
 
   **A total whose inputs are gone is reported, and removed by an action.** Scores deleted in
   Obsidian's property editor or by another plugin leave an orphan behind, and no rule here
@@ -193,6 +194,16 @@ Three quantities stay **outside** that sum and beside it:
   is removed by the next estimation action on that item or by an explicit cleanup the reader
   invokes — never on a render pass, never by a sweep. A gate that writes while nobody is
   looking is a worse failure than a stale number that says it is stale.
+
+  **The pair breaks both ways, and the missing TOTAL is reported like any other failure.**
+  The same external edit can take the total and leave the stamp, which describes a model
+  that wrote nothing — so it is not the absence that `none` means, and reading it as one hid
+  the stray key from the table and from every action that could remove it. Which failure it
+  is depends on what is left on the note rather than on the stamp: with no answers either,
+  nothing can be recomputed and the cleanup takes the stamp on its own; with the answers
+  still there the total is recomputable, so it reads as needing re-estimation and the
+  restamp puts it back. Neither is a write nobody asked for — both are the actions the
+  reader already had.
 - **A result can always be decomposed — on an estimation surface.** Wherever this view shows
   a score, the dimensions and weights that produced it are reachable, and so is the coverage.
   Elsewhere that is not possible and the epic does not pretend otherwise: a backlog row, a
@@ -235,8 +246,10 @@ Three quantities stay **outside** that sum and beside it:
 Five questions have to be answered in the features under this epic, because each one can
 make the work twice as large after it starts:
 
-1. **Roughly fourteen new optional properties**, one per dimension plus confidence,
-   effort, complexity, the consolidated value, its model stamp and the estimation status.
+1. **Roughly thirteen new optional properties**, one per dimension plus confidence, effort,
+   complexity, the consolidated value and its model stamp — not fourteen: the word that
+   surfaces a stored total's trustworthiness (`Needs re-estimation` and its siblings,
+   question 4 below) turned out to need no property of its own, derived on read instead.
    Obsidian's picker
    offers only properties a vault already has, so this view needs the same bind-and-backfill
    action the backlog view has in `src/domain/optionalProperties.ts` — reused rather than
@@ -249,8 +262,12 @@ make the work twice as large after it starts:
    moment the parent changes.
 3. **Changing the weights is answered, and what follows from it is not.** The behaviour is
    already settled above and is not reopened here: weights stay editable, nothing is
-   rewritten in the background, and every total the old model produced fails the stamp
-   comparison and reads as `Needs re-estimation` until something rewrites it. What is open
+   rewritten in the background, and an old total is never shown as current until something
+   rewrites it. Which word it reads as depends on WHICH input moved, because the model's own
+   fingerprint is checked before anything about the note is: a changed model — a weight, a
+   range, a rubric sentence, anything the fingerprint covers — fails that check first and
+   reads as `Another model`, not `Needs re-estimation`; an unchanged model whose answered set
+   or stored total has since drifted is what reads as `Needs re-estimation`. What is open
    is the ergonomics of the aftermath — whether a bulk re-estimation exists to clear a
    hundred flags in one gated batch, or whether each item is opened, and whether the weight
    editor says how many stored totals its change is about to invalidate before the change

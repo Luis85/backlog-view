@@ -1,5 +1,5 @@
 ---
-type: Feature
+type: Issue
 parent: "[[A view per capability]]"
 order: 30
 status: Open
@@ -28,7 +28,7 @@ is never overwritten silently.
 question is asked per property, not per view, because most views are partly writable and
 classifying a whole one gets both halves wrong: [[Product Dependencies]] writes the edge and
 nothing else, yet reads a prerequisite state key it must never stamp across the base, and
-Release Planning writes membership while reading an estimate, a risk and a testing state that
+Release Management writes membership while reading an estimate, a risk and a testing state that
 belong to other capabilities. A setup action that backfilled a key its own view does not
 write would put empty workflow data on every note in the base to configure a feature that
 only reads it.

@@ -10,11 +10,19 @@ can be checked by reading one directory.
 
 ## Writing the vault
 
-- Never write frontmatter outside `frontmatter.ts` (`applyWrites` / `applyRestores`) and
-  `createNote.ts` (`createBacklogItem`), and every write path — including creation — goes
+- Never write frontmatter outside `frontmatter.ts` (`applyWrites` / `applyRestores`),
+  `createNote.ts` (`createBacklogItem`) and `propertyWrite.ts` (`applyPropertyWrites`),
+  and every write path — including creation — goes
   through the `configProblems` gate. Two files rather than one since 2026-08-16, on the
   line cap: **editing** a note grows a row in a list per optional property, **making** one
-  grows a field on `NewItemSpec`, and the second was the faster half. The boundary is
+  grows a field on `NewItemSpec`, and the second was the faster half. A third joined
+  2026-08-17 for a different reason than the line cap: `propertyWrite.ts` is the
+  estimation view's own writer — plain key/value batches (a score, its recomputed total,
+  its stamp) with no `BacklogSettings`, no hierarchy, none of `applyInto`'s per-property
+  rules, because that view has none of those concepts. It captures the same
+  `RestoreWrite` inverses `applyWrites` does (`rawValueOf`/`sameRaw`, exported from
+  `frontmatter.ts` for exactly this reuse), so `applyRestores` replays either writer's
+  batches without knowing which one produced them. The boundary is
   unchanged and is still the DIRECTORY's — `no-restricted-syntax` bans the calls
   everywhere outside it, not outside a file.
 - `applyWrites` is serialized but not transactional: a mid-batch failure leaves the
