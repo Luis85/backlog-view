@@ -39,8 +39,10 @@ base.
 
 ## How to check
 
-In the estimation view's options, bind two estimation slots to the same property, so the
-model has a problem.
+In the estimation view's options, point **one** slot at another slot's property, so the model
+has a problem — confidence at `note.effort` is the shortest. **Write down the slot's own
+binding before you change it** (`confidenceProperty: note.confidence`), because that exact
+value is what the teardown has to put back.
 
 - **The view itself draws a problem block, and that block REPLACES the table** — `render()`
   returns through `renderProblems` before it creates the grid or the table at all
@@ -55,13 +57,18 @@ model has a problem.
 the `.base`, and the very early return this case is built on is what makes leaving it
 expensive: while it stands the estimation view draws no table, toolbar or panel at all — so
 `Smoke test the estimation view's UX polish in a live vault`, in the appearance suite at
-order 40, has nothing to look at. Restore a distinct property per slot and confirm the table
-comes back.
+order 40, has nothing to look at.
+
+**Restore the exact binding written down at the start, not merely a distinct one.** Any
+unowned property clears the collision and brings the table back, so "it works again" is not
+evidence the fixture is intact: that case reads real rows in every currency treatment off
+this `.base`, and a slot pointed at some other property scores them differently while the
+tracked file stays modified. Then confirm the table comes back.
 
 ## Acceptance criteria
 
 - The block's lead, list and button seen with the table deliberately absent.
 - The notice's terminal period confirmed on screen rather than in the catalog.
-- The slot bindings restored and the table back, so the appearance suite has a view to
-  inspect.
+- The slot restored to its own recorded binding — not just to something that clears the
+  collision — and the table back, so the appearance suite reads the scores it expects.
 - Nothing yet checked.
