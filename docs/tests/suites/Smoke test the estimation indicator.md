@@ -1,6 +1,6 @@
 ---
 type: Test suite
-order: 34
+order: 35
 status: Open
 created: 2026-08-22
 source: the indicator presets and open-note increment, 2026-08-22
