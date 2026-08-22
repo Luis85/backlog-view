@@ -54,9 +54,15 @@ export function syncProjectionClasses(viewEl: HTMLElement, projection: Projectio
  * pane claims to be while it does. One decision, stated once — the view applies
  * the result (snapshots, role, label) and keeps the state; this module only
  * renders. The listbox role is a promise of options, so it is made only where
- * options exist: the board's columns always are (an empty column's stop is one),
- * the roadmap's only while cards render, and guidance is a plain labelled region
- * rather than an empty listbox a screen reader may announce as nothing at all.
+ * options exist: the Deliverables and requirements boards' columns always are (an
+ * empty column's stop is one — neither draws a shelf, so a column stop is the only
+ * way either can run dry), the roadmap's only while cards render, the iteration
+ * board's only while a column OR its shelf still draws a card (since 2026-08-21;
+ * see `renderIterationBoardContent`'s own comment — this is the one board where an
+ * unconditional promise had become reachably false, once its shelf could be
+ * narrowed to nothing while every column was too), and guidance is a plain
+ * labelled region rather than an empty listbox a screen reader may announce as
+ * nothing at all.
  */
 export interface ProjectionContent {
 	board: BoardSnapshot | null;
@@ -301,7 +307,19 @@ function renderIterationBoardContent(ctx: RowContext, treeEl: HTMLElement, dnd: 
 		renderBoardNoWorkflowState(ctx.host, treeEl);
 		return { board: null, roadmap: null, role: 'region', label };
 	}
-	return { board: renderIterationBoard(ctx, treeEl, dnd, scope), roadmap: null, role: 'listbox', label };
+	const board = renderIterationBoard(ctx, treeEl, dnd, scope);
+	// Asked of what this pass actually DREW, the same two-term question
+	// `syncShelfTabStops` is handed in `renderIterationBoard` and `activeShelf` asks again
+	// in `shelfSurface.ts` — a column with a card, or the shelf with one, since a fold or a
+	// narrowing can empty either independently. Unlike the other two boards' unconditional
+	// `listbox`, because this one's shelf can now be narrowed to nothing while every column
+	// is too (nothing committed and a search or type filter that also empties the shelf),
+	// which the roadmap's own `role` line already treats as a `region`. The Deliverables
+	// and requirements boards keep the unconditional role: neither draws a shelf, and
+	// `board.cardCount` there is a POPULATION count (`domain/board.ts`), never a rendered
+	// one, so it cannot answer this question the way `col.cards.length` can here.
+	const role = board.board.columns.some((col) => col.cards.length > 0) || !!board.shelfDrawn ? 'listbox' : 'region';
+	return { board, roadmap: null, role, label };
 }
 
 /**

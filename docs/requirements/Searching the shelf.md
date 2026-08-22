@@ -81,7 +81,7 @@ open-pick, and "show me only Epics" had no entry at all.
   neither clears the search nor is prevented from reaching the IME. (Found by review,
   Codex on PR #161.)
 - **4a — a keyboard user has no pointer to click the box with.** The card menu carries
-  **Search unplaced...**, which opens a prompt, and **Clear unplaced search** while one
+  **Search the shelf...**, which opens a prompt, and **Clear the shelf search** while one
   runs — the same obligation every `tabindex="-1"` control here carries, and the same
   builder behind both surfaces.
 - **5a — a bulk entry would change nothing.** It is disabled rather than offered, and each

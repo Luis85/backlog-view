@@ -140,8 +140,12 @@ finished under its own state property is finished here too.
 - Work committed to another iteration is never on the shelf. A link that resolves to a
   note the model holds which is **not** an `Iteration` is not a commitment and the item is
   on the shelf; a link to a note the model does not hold is.
-- Neither the roadmap shelf's search nor its hidden types narrows this shelf, checked with
-  both set.
+- The roadmap shelf's search and its hidden types narrow this shelf too, since 2026-08-21
+  — one stored value for each, shared across both bands rather than the roadmap's own,
+  because the search box and the type filter are on screen here now as well and a
+  narrowing belongs to the control that shows it. Before then this board carried no such
+  control, so applying either here would have hidden work with nothing on screen to say
+  why and nothing to clear it with; that reason is gone with the controls themselves.
 - Dragging a shelf card onto a bucket writes the iteration link and that bucket's state as
   **one** record on the note, and one undo takes both back.
 - A pull whose state already reads into the target bucket still joins the iteration.

@@ -33,12 +33,6 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   band, one height — and it is remembered per saved view per device without anything
   reaching the `.base`.
 
-- **The iteration board's own shelf carries the layout, sort, type filter and search too,**
-  with a card's context menu as the keyboard path to all four — the same picks the roadmap's
-  shelf already had. They were withheld before now only because that keyboard path, the
-  card menu's shelf section, was built for the roadmap alone; it serves both surfaces now,
-  so narrowing the sprint's uncommitted backlog no longer means switching projections.
-
 ### Fixed
 
 - **The shelf's own title no longer moves when the band is opened or closed.** Opening the

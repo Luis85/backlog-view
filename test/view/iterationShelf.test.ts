@@ -244,6 +244,87 @@ describe('the iteration shelf', () => {
 			}
 		});
 
+		it('keeps them out of it when a COLUMN holds the only card and the shelf is emptied', () => {
+			// The `||`'s first half alone: `In sprint` keeps a column non-empty while the
+			// search empties the shelf. `columns.some(...)` by itself would already pass this
+			// (it is true here) — the case that actually distinguishes the two terms is the
+			// next test, where this half is false and the other has to carry it.
+			const { view, containerEl } = onSprint(sprintVault());
+			view.setShelfSearch('nothing matches this');
+			const shelf = shelfOf(containerEl);
+			for (const control of CONTROLS) {
+				expect(shelf?.querySelector(control)?.getAttribute('tabindex')).toBe('-1');
+			}
+		});
+
+		it('keeps them out of it when the SHELF holds the only card and every column is empty', () => {
+			// The `||`'s second half alone: nothing is committed, so every column is empty,
+			// and `columns.some(...)` reads false — `shelf.drawn.length > 0` is what has to
+			// keep the controls at `-1` here. Reducing the expression to `columns.some(...)`
+			// alone fails this one; reducing it to `shelf.drawn.length > 0` alone fails the
+			// previous test — together they are what the comment above both call sites claims.
+			const { containerEl } = onSprint(emptySprintVault());
+			const shelf = shelfOf(containerEl);
+			for (const control of CONTROLS) {
+				expect(shelf?.querySelector(control)?.getAttribute('tabindex')).toBe('-1');
+			}
+		});
+
+		/**
+		 * `activeShelf`'s own copy of the same two-term expression (`shelfSurface.ts`,
+		 * consumed by `refocus`) is a second, independent computation from the same two
+		 * facts — a bug in it would not be caught by the tabindex tests above, which read
+		 * `syncShelfTabStops`'s copy in `iterationBoard.ts` instead. Driven the same way,
+		 * through the one place `paneHasCards` is observable: which element a rebuild sends
+		 * focus to.
+		 */
+		function pickSortAndGetFocus(containerEl: HTMLElement): Element | null {
+			const btn = shelfOf(containerEl)?.querySelector<HTMLElement>('.pbl-shelf-sort');
+			Menu.lastShown = null;
+			btn?.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: 10, clientY: 10 }));
+			const entry = Menu.lastShown?.items.find((i) => i.titleText === 'Title (A to Z)');
+			if (!entry) throw new Error('sort menu did not offer Title (A to Z)');
+			entry.click();
+			return containerEl.ownerDocument.activeElement;
+		}
+
+		it('sends focus to the pane, not the button, when a column keeps it a composite', () => {
+			// `columns.some(...)` alone is true here (`In sprint` stays in Open); the shelf
+			// is emptied by the search. If `paneHasCards` read only `shelf.drawn.length > 0`
+			// this would wrongly send focus to the sort button's replacement instead.
+			const { view, containerEl } = onSprint(sprintVault());
+			view.setShelfSearch('nothing matches this');
+			expect(pickSortAndGetFocus(containerEl)).toBe(containerEl.querySelector('.pbl-tree'));
+		});
+
+		it('sends focus to the pane, not the button, when only the shelf keeps it a composite', () => {
+			// The mirror case: every column is empty, so `columns.some(...)` is false, and
+			// only `shelf.drawn.length > 0` (the shelf's own `Uncommitted` card) keeps this a
+			// composite. If `paneHasCards` read only the columns term this would wrongly send
+			// focus to the sort button's replacement instead.
+			const { containerEl } = onSprint(emptySprintVault());
+			expect(pickSortAndGetFocus(containerEl)).toBe(containerEl.querySelector('.pbl-tree'));
+		});
+
+		it('drops the pane to a region when the narrowing empties both halves', () => {
+			// `renderIterationBoardContent` used to hand this board the unconditional
+			// `listbox` the Deliverables and requirements boards still carry — a promise of
+			// options that a narrowing which empties every column AND the shelf broke, since
+			// the tab-stop lift already turns this exact state into a plain region for the
+			// header's own controls. Asked with the same two-term expression as the tab-stop
+			// decision, so the role and the tab stops can no longer disagree.
+			const { view, containerEl } = onSprint(emptySprintVault());
+			view.setShelfSearch('nothing matches this');
+			expect(containerEl.querySelector('.pbl-tree')?.getAttribute('role')).toBe('region');
+		});
+
+		it('keeps the listbox role wherever a column or the shelf still draws a card', () => {
+			const withCommitted = onSprint(sprintVault()).containerEl;
+			expect(withCommitted.querySelector('.pbl-tree')?.getAttribute('role')).toBe('listbox');
+			const shelfOnly = onSprint(emptySprintVault()).containerEl;
+			expect(shelfOnly.querySelector('.pbl-tree')?.getAttribute('role')).toBe('listbox');
+		});
+
 		it('withholds the section while the band is shut, as the header withholds the pickers', () => {
 			// `addShelfSection` is the card menu's own section, so a collapsed shelf draws no
 			// shelf card to menu from at all; the card to right-click has to be a BOARD one —

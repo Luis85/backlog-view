@@ -121,8 +121,9 @@ one a reader wants changes by the day and by the task, not by the base.
 
 ## Acceptance criteria
 
-- The picker draws in the roadmap's shelf header while the band is open and non-empty,
-  and on no other screen; it is `tabindex="-1"` like the two pickers beside it.
+- The picker draws in a shelf header while the band is open and non-empty — the roadmap's
+  or the iteration board's, since 2026-08-21 — and on no other screen; it is
+  `tabindex="-1"` like the two pickers beside it.
 - The iteration board's shelf draws the same four controls and applies all of them, with
   the card menu's shelf section as their keyboard path.
 - Picking a layout flips what the band draws and what the picker's own icon shows, under
