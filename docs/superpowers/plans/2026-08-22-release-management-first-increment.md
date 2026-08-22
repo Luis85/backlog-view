@@ -714,7 +714,7 @@ git commit -m "Give the release view its own seven option keys"
 - Test: `test/domain/releases.test.ts`
 
 **Interfaces:**
-- Consumes: `BacklogModel.releases` (Task 2), `ReleaseSettings` (Task 3), `readString` / `readDate` / `ownValue` / `FieldReading` / `CivilDate` from `src/domain/noteFields.ts`.
+- Consumes: `BacklogModel.releases` (Task 2), `ReleaseSettings` (Task 3), `readString` / `readDate` / `ownValue` / `FieldReading` / `CivilDate` from `src/domain/noteFields.ts`. **Both tolerant readers unwrap an array into its first element (`noteFields.ts:187` and `:269`), so a list must be refused BEFORE either is called** — see `readLabel` and `readTarget` below.
 - Produces:
 
 ```ts
@@ -826,10 +826,18 @@ describe('the release index', () => {
 		vault.addFile('Empty.md', { frontmatter: { type: 'Release', version: '', status: { a: 1 } } });
 		// A LIST is unreadable too, and it is the one `readString` would quietly unwrap to
 		// its first element and call clean.
-		vault.addFile('Listed.md', { frontmatter: { type: 'Release', version: ['0.8.0', '0.9.0'] } });
+		vault.addFile('Listed.md', {
+			frontmatter: { type: 'Release', version: ['0.8.0', '0.9.0'], 'target-date': ['2026-09-01', '2026-10-01'] },
+		});
 		vault.addFile('Missing.md', { frontmatter: { type: 'Release' } });
 		const rows = indexOf(vault).rows;
 		expect(rows.find((r) => r.name === 'Listed')?.version).toEqual({
+			value: null,
+			invalid: true,
+			unconfigured: false,
+		});
+		// And the DATE, which would otherwise report a clean 2026-09-01 and SORT by it.
+		expect(rows.find((r) => r.name === 'Listed')?.target).toEqual({
 			value: null,
 			invalid: true,
 			unconfigured: false,
@@ -965,6 +973,18 @@ function figure<T>(reading: { value: T | null; invalid: boolean }): ReleaseFigur
  * empty value ABSENCE — right for a roadmap horizon, wrong for a version 3b says is a
  * refusal.
  */
+/**
+ * The same refusal for the DATE figure, and it needs its own statement because `readDate`
+ * has `readString`'s habit: `noteFields.ts:269` unwraps an array by recursing into its
+ * first element, so `target-date: [2026-09-01, 2026-10-01]` would report a clean
+ * `2026-09-01` and SORT the index by it. A release states one target date; a list of them
+ * is 3b's configured-but-unreadable, not a value to pick from.
+ */
+function readTarget(raw: unknown): FieldReading<CivilDate> {
+	if (Array.isArray(raw)) return { value: null, invalid: true };
+	return readDate(raw);
+}
+
 function readLabel(raw: unknown): { value: string | null; invalid: boolean } {
 	if (raw === null || raw === undefined) return { value: null, invalid: false };
 	// Refused BEFORE `readString`, which would unwrap it to its first element and call the
@@ -1043,7 +1063,7 @@ export function releaseIndex(app: App, model: BacklogModel, settings: ReleaseSet
 			path: item.file.path,
 			name: item.file.basename,
 			version: settings.versionKey ? figure(readLabel(ownValue(fm, settings.versionKey))) : UNCONFIGURED,
-			target: settings.targetDateKey ? figure(readDate(ownValue(fm, settings.targetDateKey))) : UNCONFIGURED,
+			target: settings.targetDateKey ? figure(readTarget(ownValue(fm, settings.targetDateKey))) : UNCONFIGURED,
 			status: settings.statusKey ? figure(readLabel(ownValue(fm, settings.statusKey))) : UNCONFIGURED,
 			members: settings.membershipKey
 				? figure({ value: byPath.get(item.file.path) ?? 0, invalid: false })
