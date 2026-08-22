@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { FakeVault } from '../helpers/vault';
 import { makeView, titlesOf, useViewHarness } from '../helpers/view';
 import { makeRoadmap, shelfTitles } from '../helpers/roadmap';
+import { cardByTitle } from '../helpers/board';
 
 useViewHarness();
 
@@ -13,10 +14,10 @@ useViewHarness();
  * the roadmap places a release (`onThisRoadmap`, `domain/roadmap.ts`), and no projection
  * draws a release the Base excluded (`inPlan`, `domain/model.ts`).
  *
- * Four readers, four tests: the toolbar's count, the roadmap's row source under a focus,
- * the tree's context row, and the empty state's creation type. A fifth reader — the bucket
- * header's `+`, whose type follows the same focus — is asserted where it already lived,
- * in `roadmapMoves.test.ts`.
+ * Five readers, five tests: the toolbar's count, the roadmap's row source under a focus,
+ * a CARD's listed children, the tree's context row, and the empty state's creation type. A
+ * sixth — the bucket header's `+`, whose type follows the same focus — is asserted where it
+ * already lived, in `roadmapMoves.test.ts`.
  */
 
 /** The count label's own text — the readout that has to agree with the advisory. */
@@ -64,6 +65,27 @@ describe('a release on the roadmap', () => {
 		// items, which would not have brought the row back.
 		expect(containerEl.querySelector('.pbl-empty-filter')).toBeNull();
 		expect(countText(containerEl)).toBe('1 item');
+	});
+
+	/**
+	 * **The clause in `projectionMember` is what every other roadmap reader inherits**, and
+	 * this is the assertion under that sentence. `listedChildren` asks `isRowHidden`, which
+	 * asks that predicate — so a release hand-hung under an epic is off the card's face for
+	 * the same reason it is off the frame, rather than because anything here remembered it.
+	 *
+	 * The disclosure's LABEL is the reading, not the count: two children of different types
+	 * have no common name and degrade to `2 children`, so the number and the type name move
+	 * together and either alone would pass on the broken code.
+	 */
+	it('is no listed child on a card, which is where the shared predicate is felt', () => {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10, horizon: 'Now' } });
+		vault.addFile('Work.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: 'Epic' });
+		vault.addFile('1.0.md', { frontmatter: { type: 'Release', order: 20 }, parentLink: 'Epic' });
+		const { containerEl } = makeRoadmap(vault);
+
+		const toggle = cardByTitle(containerEl, 'Epic').querySelector('.pbl-card-kids-toggle');
+		expect(toggle?.textContent).toContain('1 pbi');
 	});
 
 	/**

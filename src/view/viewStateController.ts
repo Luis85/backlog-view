@@ -98,6 +98,13 @@ export class ViewStateController {
 	 * because the scope is exactly what replaces that population, and no gate anywhere
 	 * would catch the omission: an index is correct when built and wrong when the thing it
 	 * was built FOR changes underneath it.
+	 *
+	 * **It sets the projection too, and does NOT ask the question `setProjection` now
+	 * asks** — whether the honoured focus level changes with the projection
+	 * (`honouredFocusLevel`), which needs a model rebuild rather than a render. Correct
+	 * today by construction: every projection this method can select is a board, and no
+	 * board refuses a focus, so the answer cannot move here. It is the sibling entry point
+	 * the next instance of that rule lands in.
 	 */
 	setBoardScope(path: string | null): void {
 		// The no-op guard asks all three stored values, not two: from the Deliverables

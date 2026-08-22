@@ -53,9 +53,14 @@ export function canSchedule(settings: BacklogSettings, item: BacklogItem): boole
  * would write nothing) and every pick would do nothing.
  *
  * A type NAME rather than an item, `placementEnds`' own signature and for its own reason:
- * the third caller has no row to ask about. The bucket header's `+` knows only which type
- * it would CREATE, and a `+` offering a type this axis cannot hold is the same defect as a
- * menu entry that plans nothing — one round earlier, before a note exists.
+ * a caller can hold a type with no row to ask about. There WAS such a caller — the bucket
+ * header's `+`, which knows only which type it would CREATE — and it went when the roadmap
+ * stopped honouring a focus on a type it cannot draw (`honouredFocusLevel`,
+ * `view/projection.ts`): the only type this predicate refuses is a `Release`, and only that
+ * focus could ever have named one there, so the guard had no reachable input left. The
+ * signature keeps the shape rather than narrowing to an item, because the reason it was
+ * given is a property of the question and not of the call sites that happen to exist.
+ * Both remaining callers hold a row: the row menu's `Set horizon` and the horizon chip.
  */
 export function canPlaceHorizon(settings: BacklogSettings, typeName: string | null): boolean {
 	return hasHorizonAxis(settings) && !isReleaseType(typeName);
