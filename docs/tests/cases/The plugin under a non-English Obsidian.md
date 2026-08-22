@@ -86,10 +86,19 @@ it — the view options at width in this suite, the whole appearance suite at or
 a broken layout as a regression. Left in a right-to-left locale, this case hands the rest of
 the sweep a screen it has already agreed to excuse.
 
+**And take the iteration back out**, in this order: clear the committed item's iteration,
+delete the iteration note, then unbind the iteration property. The setup above is the only
+part of this case that changes the vault, and it changes the ROADMAP: `iterationsOnTimeline`
+defaults on, so an iteration left behind draws on both grid axes and `Smoke test the
+roadmap` would be re-run against a timeline this case built. Each release run would leave
+another.
+
 ## Acceptance criteria
 
 - One non-English language checked end to end, with the console read rather than assumed.
 - Whichever of the three failure shapes appeared, if any, recorded by surface.
 - Obsidian restored to the runner's own language and restarted, so the rest of the sweep
   judges layout against a locale it is allowed to fail in.
+- The iteration cleared, deleted and unbound, so the roadmap suite is judged on the timeline
+  it had before this case ran.
 - Nothing yet checked; the real `getLanguage()` has never run.

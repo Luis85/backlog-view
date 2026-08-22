@@ -73,6 +73,14 @@ record three stretches for that one resource. Then read the lane head's descript
 is no pointer route to it, so use a screen reader or the browser inspector's accessibility
 pane.
 
+**Then delete those three notes.** An absence is a real note in the vault and it is CREATED
+rather than written through the gate, so the toolbar's undo — which replays frontmatter
+batches — cannot take one back; nothing removes them but deleting the files. Leaving them
+costs the sweep twice: `drawnSpans` folds every absence stretch into the resources-axis
+window, so whichever dates were typed here stretch or squeeze the roadmap that
+`Smoke test the roadmap` is about to be judged on, and each release run would add three
+more.
+
 On each: check the joining, the spacing, and that none runs a full stop into a conjunction.
 
 ## Acceptance criteria
@@ -80,4 +88,6 @@ On each: check the joining, the spacing, and that none runs a full stop into a c
 - All three joins read, each by the route that actually reaches it.
 - The backfill undone and the fresh view deleted, so the appearance suite still has a
   three-digit ✨ to watch.
+- The three absence notes deleted, so the roadmap suite is judged on the window it had
+  before this case ran.
 - Nothing yet checked.
