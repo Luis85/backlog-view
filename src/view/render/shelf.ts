@@ -267,8 +267,10 @@ export function renderShelf(
 	// opposite of this paragraph for one commit and neither direction was checked at the time
 	// (Codex, PR #183) — `test/view/shelfLayout.test.ts` drives both now.
 	// Searched first, then grouped: `searchShelf` states why that order is the rule.
-	const shown = searchShelf(shelfCards, host.shelfSearch);
-	for (const group of organizeShelf(shown, host.shelfSort, host.shelfHiddenTypes)) {
+	// Materialized rather than iterated in place: the rollup reservation below is sized from
+	// what the type filter LEFT, and `organizeShelf` is the only thing that applies it.
+	const groups = organizeShelf(searchShelf(shelfCards, host.shelfSearch), host.shelfSort, host.shelfHiddenTypes);
+	for (const group of groups) {
 		cards.push(...renderShelfGroup(ctx, shelfEl, group, wiring));
 	}
 	// Last, and after the groups rather than beside the header: the grip sits at the band's
@@ -302,7 +304,15 @@ export function renderShelf(
 		// rather than inherited from a tree pass. `rollupChars` returns 0 where nothing reports
 		// one, and the label variable is left off entirely in that case — absent is the only
 		// honest spelling of "none", the same rule `renderTree` keeps.
-		const chars = rollupChars(host, shown.map((entry) => entry.item));
+		//
+		// **From the GROUPS, never from the searched list.** Two narrowings reach this band and
+		// only one of them is in `searchShelf`: `organizeShelf` is where `shelfHiddenTypes` is
+		// applied, so sizing off its input let a hidden type's widest ratio go on reserving a
+		// lane nothing draws into — the search moved the columns and the type filter did not.
+		// A FOLDED group still counts, and that is the point of reading the groups rather than
+		// the rendered cards: folding a group is not a narrowing, and a width that moved on it
+		// would jump the columns every time a reader opened one. (Codex, PR #187.)
+		const chars = rollupChars(host, groups.flatMap((group) => group.cards).map((entry) => entry.item));
 		shelfEl.setCssProps({
 			'--pbl-shelf-badge': `${shelfBadgeWidth()}px`,
 			'--pbl-meta-col': `${metaColWidth(chars)}px`,

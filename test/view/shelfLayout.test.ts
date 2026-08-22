@@ -462,6 +462,27 @@ describe('the shelf’s card and list layouts', () => {
 			expect(shelfOf(containerEl)?.style.getPropertyValue('--pbl-rollup-label')).not.toBe('');
 		});
 
+		it('sizes the rollup reservation from what the type filter left', () => {
+			// Two narrowings reach this band and only one of them is in `searchShelf`:
+			// `organizeShelf` is where `shelfHiddenTypes` is applied. Sizing off its INPUT let a
+			// hidden type's widest ratio go on reserving a lane nothing draws into, so the search
+			// moved the columns and the type filter did not. The Epic is the only card here with
+			// a rollup; hiding Epics must take the reservation with it. (Codex, PR #187.)
+			const vault = new FakeVault();
+			vault.addFile('Untriaged parent.md', { frontmatter: { type: 'Epic', order: 10 } });
+			vault.addFile('Child A.md', {
+				frontmatter: { type: 'Feature', order: 10, parent: '[[Untriaged parent]]' },
+				parentLink: 'Untriaged parent',
+			});
+			const { view, containerEl } = makeRoadmap(vault, { stateProperty: 'note.status' }, {
+				shelfCollapsed: false,
+				shelfList: true,
+			});
+			expect(shelfOf(containerEl)?.style.getPropertyValue('--pbl-rollup-label')).not.toBe('');
+			view.setShelfHiddenTypes(new Set(['Epic']));
+			expect(shelfOf(containerEl)?.style.getPropertyValue('--pbl-rollup-label')).toBe('');
+		});
+
 		/**
 		 * Seven flat root Epics with no parent, no children, no horizon, no columns and
 		 * no state property — `shelfHeavyVault()`, this test's fixture until review found

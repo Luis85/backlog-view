@@ -260,6 +260,15 @@ The badge's own slot is `shelfBadgeWidth()`, from `ALL_TYPES` rather than from
 `metaColWidth` (which reserves for the rollup label) or from the band's current cards (which
 would resize the slot as work is placed). Found by review, Codex on PR #187.
 
+**The rollup's own reservation is sized from what the type filter LEFT, never from the
+searched list.** Two narrowings reach this band and only one of them is `searchShelf`'s:
+`organizeShelf` is where `shelfHiddenTypes` is applied, so measuring the widest ratio before
+it let a hidden type go on reserving a lane nothing draws into — the search moved the columns
+and the type filter did not. A **folded** group still counts, which is the reason the width
+is read off the groups rather than off the rendered cards: folding is not a narrowing, and a
+width that moved on it would jump every column each time a reader opened a group. Found by
+review, Codex on PR #187.
+
 **Subgrid was the obvious spelling for the alignment and could not be used.** `.pbl-card`
 carries `content-visibility: auto`, which forces an independent formatting context, and in
 one `grid-template-columns: subgrid` computes to `none` — measured, the card reported a
