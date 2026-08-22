@@ -168,16 +168,13 @@
    and the state box below, since `renderShelfState` only ever runs in list mode but the
    box is not itself list-scoped.
 
-   `:empty` is a guard rather than a case this row still produces: `renderShelfState`
-   (Task 4) now holds a configured state column open even where this item's own workflow
-   writes nothing, so the box it creates always carries at least one cell — the whole-band
-   case (no state property configured at all) never creates the box in the first place.
-   Kept for a caller that draws this class some other way, at no cost to one that does not. */
+   No `:empty` rule here any more (review, Task 4's follow-up): `renderShelfState` now holds
+   a configured state column open even where this item's own workflow writes nothing, so the
+   box it creates always carries at least one cell — the whole-band case (no state property
+   configured at all) never creates the box at all — and its only caller never leaves it
+   truly empty. A rule for a case nothing produces is speculative rather than defensive; add
+   it back with the caller that needs it. */
 .pbl-shelf-state {
 	display: flex;
 	align-items: center;
-}
-
-.pbl-shelf-state:empty {
-	display: none;
 }

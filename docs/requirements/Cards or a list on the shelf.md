@@ -132,8 +132,10 @@ one a reader wants changes by the day and by the task, not by the base.
   pick.
 - A compact row's columns are the tree's stored widths, published on the band: the badge in
   its own `--pbl-shelf-badge` slot, the cells at `--pbl-prop-w-N`, every row holding a cell open for every column so a missing value is
-  a gap rather than a shift. Measured at a 1400px pane over twenty unplaced items: titles at
-  one x position where there were four, median row 28px where it was 34px.
+  a gap rather than a shift. Measured at a 1400px pane over twenty unplaced items, against
+  the commit before this one landed: titles at one x position where there were four, median
+  row 28px where it was 22.4px (not the 34px an earlier draft of this note stated, which
+  does not reproduce).
 - The cells shrink together rather than forcing a horizontal scrollbar the band has never
   had, and they shrink identically row to row because the title's flex basis is 0 and no row
   drops a cell.
