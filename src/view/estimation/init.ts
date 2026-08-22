@@ -105,7 +105,7 @@ export async function runEstimationInit(view: EstimationView): Promise<void> {
 	// a render() rebuilds both together, so skipping it silently broke the second one
 	// until a watched-red run caught an empty vault.fm() where a stub belonged.
 	view.settings = resolveEstimationSettings(view.config);
-	view.model = buildEstimationModel(view.app, view.data?.data ?? [], model);
+	view.model = buildEstimationModel(view.app, view.data?.data ?? [], model, view.settings.indicator);
 	const keys = boundKeys(model);
 	// Every file gets the identical 13-set array — hoisted once rather than rebuilt per
 	// file, since nothing in `applyPropertyWrites` mutates a write's `sets` in place.

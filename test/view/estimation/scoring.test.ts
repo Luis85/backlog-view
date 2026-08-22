@@ -6,7 +6,7 @@ import { FakeVault } from '../../helpers/vault';
 import { flush } from '../../helpers/view';
 import { computeTotal, stampValue, TotalResult } from '../../../src/domain/weightedScore';
 import { buildEstimationModel, EstimationItem } from '../../../src/domain/estimationItems';
-import type { ScoringModel } from '../../../src/domain/scoringModel';
+import type { Indicator, ScoringModel } from '../../../src/domain/scoringModel';
 import { planOrphanCleanup, planRestamp, planScaleWrite, planScoreWrite } from '../../../src/domain/estimationWritePlan';
 
 /**
@@ -40,6 +40,7 @@ function makeItem(overrides: Partial<EstimationItem> = {}): EstimationItem {
 		storedTotal: null,
 		storedStamp: null,
 		result: null,
+		indicator: null,
 		currency: 'none',
 		ownKeys: new Set(),
 		...overrides,
@@ -474,11 +475,15 @@ const oneAnswer = (): TotalResult => computeTotal(configured(), new Map(Object.e
  * than a word set by hand — which is what keeps `refuses a hand-written total` a statement
  * about the guard order `estimationItems.ts` asks the stamp in.
  */
+// This suite tests currency, not the indicator — `test/domain/indicator.test.ts` covers
+// that — so every `buildEstimationModel` call here passes one with no operands.
+const noIndicator: Indicator = { label: '', operands: [], divisor: null };
+
 function itemFrom(frontmatter: Record<string, unknown>): { model: ScoringModel; item: EstimationItem } {
 	const vault = new FakeVault();
 	vault.addFile('Note.md', { frontmatter });
 	const model = configured();
-	return { model, item: buildEstimationModel(vault.app, vault.entries(), model).items[0] };
+	return { model, item: buildEstimationModel(vault.app, vault.entries(), model, noIndicator).items[0] };
 }
 
 describe('planRestamp', () => {

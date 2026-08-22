@@ -3,11 +3,16 @@ import { computeTotal, currencyOf, modelFingerprint, parseStamp, round2, stampVa
 import { buildEstimationModel } from '../../src/domain/estimationItems';
 import { configured } from '../helpers/estimationModel';
 import { FakeVault } from '../helpers/vault';
+import { Indicator } from '../../src/domain/scoringModel';
 
 // The shipped default model, fully bound — shared by every test below the same way
 // `test/domain/scoringModel.test.ts` shares it, so every arithmetic test here argues
 // from the "everything is fine" shape rather than assembling its own dimension list.
 const model = configured();
+// This file's tests are about `buildEstimationModel`'s own fields, not the indicator —
+// `test/domain/indicator.test.ts` covers that — so every call here passes one with no
+// operands, which computes to no figure at all.
+const noIndicator: Indicator = { label: '', operands: [], divisor: null };
 
 describe('computeTotal: the weighted mean, renormalized over what was answered', () => {
 	it('computes the PRD worked example to 3.55', () => {
@@ -291,7 +296,7 @@ describe('buildEstimationModel: one item per result, one getFileCache read per n
 		vault.addFile('Partial.md', { frontmatter: { 'strategic-alignment': 5, 'customer-value': 3 } });
 		vault.addFile('Empty.md');
 
-		const { items, byPath } = buildEstimationModel(vault.app, vault.entries(), model);
+		const { items, byPath } = buildEstimationModel(vault.app, vault.entries(), model, noIndicator);
 
 		expect(items).toHaveLength(3);
 		expect(byPath.get('Full.md')?.result?.total).toBe(3.55);
@@ -329,7 +334,7 @@ describe('buildEstimationModel: one item per result, one getFileCache read per n
 			},
 		});
 
-		const { byPath } = buildEstimationModel(vault.app, vault.entries(), scaled);
+		const { byPath } = buildEstimationModel(vault.app, vault.entries(), scaled, noIndicator);
 		const item = byPath.get('Current.md')!;
 		expect(item.currency).toBe('current');
 		expect(item.confidence).toBe(4);
@@ -340,7 +345,7 @@ describe('buildEstimationModel: one item per result, one getFileCache read per n
 	it("collects only the model's own bound keys that the note actually carries", () => {
 		const vault = new FakeVault();
 		vault.addFile('One.md', { frontmatter: { 'strategic-alignment': 5, 'business-value': 3, unrelated: 'x' } });
-		const { byPath } = buildEstimationModel(vault.app, vault.entries(), model);
+		const { byPath } = buildEstimationModel(vault.app, vault.entries(), model, noIndicator);
 		const ownKeys = byPath.get('One.md')!.ownKeys;
 		expect(ownKeys.has('strategic-alignment')).toBe(true);
 		expect(ownKeys.has('business-value')).toBe(true);
@@ -354,7 +359,7 @@ describe('buildEstimationModel: one item per result, one getFileCache read per n
 		vault.addFile('Note.md', { frontmatter: { 'strategic-alignment': 5 } });
 		vault.addFile('Attachment.png');
 		const entries = vault.entries();
-		const { items } = buildEstimationModel(vault.app, [...entries, entries[0]], model);
+		const { items } = buildEstimationModel(vault.app, [...entries, entries[0]], model, noIndicator);
 		expect(items).toHaveLength(1);
 		expect(items[0].file.path).toBe('Note.md');
 	});

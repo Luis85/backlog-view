@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { configured } from '../helpers/estimationModel';
 import { Indicator } from '../../src/domain/scoringModel';
 import { computeIndicator, computeTotal, IndicatorInputs, indicatorFormula } from '../../src/domain/weightedScore';
+import { buildEstimationModel } from '../../src/domain/estimationItems';
+import { FakeVault } from '../helpers/vault';
 
 const FULL: Record<string, number> = {
 	'strategic-alignment': 5,
@@ -109,5 +111,20 @@ describe('the indicator', () => {
 			'Reach × Confidence ÷ Effort',
 		);
 		expect(indicatorFormula(configured(), ind({ operands: ['value'], divisor: null }))).toBe('Value');
+	});
+});
+
+describe('the indicator on a built item', () => {
+	it('is computed once per item, and is null when no operand is named', () => {
+		const vault = new FakeVault();
+		vault.addFile('Full.md', { frontmatter: { ...FULL, confidence: 4, effort: 2 } });
+		// `effort` is a fixed scale, unbound by `configured()`'s own default (see
+		// `weightedScore.test.ts`'s "reads the fixed scales when bound") — bound here so the
+		// item this builds actually carries the effort the frontmatter states.
+		const model = configured({ effortProperty: 'note.effort' });
+		const withOne = buildEstimationModel(vault.app, vault.entries(), model, ind({ operands: ['effort'], divisor: null }));
+		expect(withOne.items[0].indicator).toEqual({ value: 2, blockedBy: null });
+		const withNone = buildEstimationModel(vault.app, vault.entries(), model, ind({ operands: [] }));
+		expect(withNone.items[0].indicator).toBeNull();
 	});
 });
