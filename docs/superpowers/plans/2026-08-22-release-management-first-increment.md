@@ -1291,11 +1291,43 @@ describe("one release's scope", () => {
 		expect(scope.rows.map((r) => r.item.file.basename)).toEqual(['E']);
 	});
 
-	it('draws a member whose ancestor is missing from the results at top level', () => {
+	it('draws a member whose ancestor does not exist at all at top level', () => {
 		const vault = new FakeVault();
 		vault.addFile('R.md', { frontmatter: { type: 'Release' } });
 		vault.addFile('F.md', { frontmatter: { type: 'Feature', parent: 'Gone', release: '[[R]]' } });
 		expect(scopeOf(vault, 'R.md').rows.map((r) => [r.item.file.basename, r.depth])).toEqual([['F', 0]]);
+	});
+
+	it('draws a member whose ancestor EXISTS but the Base filtered out at top level', () => {
+		// A DIFFERENT PATH from the one above, and the one that actually bites: `parent:
+		// 'Gone'` names no file, so nothing is ever loaded. An excluded Epic is loaded — as a
+		// context row, because `showOutsideParents` defaults to true — and would be rendered
+		// as scope context by an ancestor walk that keeps every ancestor.
+		const vault = new FakeVault();
+		vault.addFile('R.md', { frontmatter: { type: 'Release' } });
+		vault.addFile('E.md', { frontmatter: { type: 'Epic' } });
+		vault.addFile('F.md', { frontmatter: { type: 'Feature', parent: '[[E]]', release: '[[R]]' }, parentLink: 'E' });
+		// The Epic is loaded for placement but is NOT a result: filter it out of the entries.
+		const entries = vault.entries().filter((e) => e.file.path !== 'E.md');
+		const model = buildModel(vault.app, entries, settingsWith());
+		const scope = releaseScope(vault.app, model, KEYS, 'R.md');
+		expect(scope.rows.map((r) => [r.item.file.basename, r.depth])).toEqual([['F', 0]]);
+		expect(scope.members).toBe(1);
+	});
+
+	it('keeps an INCLUDED ancestor above an excluded one, rather than promoting to root', () => {
+		// The walk skips the excluded ancestor and CONTINUES: the member keeps its place
+		// under the Epic that is in the results, which is what "skip" has to mean here.
+		const vault = new FakeVault();
+		vault.addFile('R.md', { frontmatter: { type: 'Release' } });
+		vault.addFile('Top.md', { frontmatter: { type: 'Epic' } });
+		vault.addFile('Mid.md', { frontmatter: { type: 'Feature', parent: '[[Top]]' }, parentLink: 'Top' });
+		vault.addFile('F.md', { frontmatter: { type: 'PBI', parent: '[[Mid]]', release: '[[R]]' }, parentLink: 'Mid' });
+		const entries = vault.entries().filter((e) => e.file.path !== 'Mid.md');
+		const model = buildModel(vault.app, entries, settingsWith());
+		const rows = releaseScope(vault.app, model, KEYS, 'R.md').rows;
+		expect(rows.map((r) => r.item.file.basename)).toEqual(['Top', 'F']);
+		expect(rows.find((r) => r.item.file.basename === 'Top')?.context).toBe(true);
 	});
 
 	it('keeps a context ancestor even when its own state would hide it', () => {
@@ -1407,7 +1439,22 @@ export function releaseScope(app: App, model: BacklogModel, settings: ReleaseSet
 	for (const item of scannableRows(model)) {
 		if (!members.has(item.file.path)) continue;
 		for (let up = item.parent; up !== null; up = up.parent) {
-			if (isMarkerType(up.typeName)) continue;
+			// TWO kinds of ancestor are walked THROUGH rather than kept, and both continue
+			// the walk upward rather than stopping it — an included ancestor further up is
+			// still the member's rightful place.
+			//
+			// A MARKER, because the model traverses through one everywhere else
+			// (`descendantCount` scores it 0) and because a release drawn inside another
+			// release's scope is nonsense.
+			//
+			// An `outsideFilter` ancestor, because it is not in the results. `showOutsideParents`
+			// DEFAULTS TO TRUE (`settings.ts:316`), so an excluded Epic between a member and the
+			// top is loaded as a context row and would otherwise be rendered here — and
+			// extension 2a says a member whose ancestor is missing from the results is drawn at
+			// the top level, not under it. It is also the register's context-row rule verbatim:
+			// such a row is never a source of anything derived from the results, and being
+			// somebody's scaffolding in THIS projection is exactly that.
+			if (isMarkerType(up.typeName) || up.outsideFilter) continue;
 			keep.add(up.file.path);
 		}
 	}
