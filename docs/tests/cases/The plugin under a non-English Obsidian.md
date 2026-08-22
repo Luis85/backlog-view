@@ -44,12 +44,19 @@ Open `docs/Product Backlog.base` and walk the projections: tree, both boards, th
 on each configured axis, the view options panel, a row's context menu, and the estimation
 view.
 
-- **Every surface should render English.** English is the only catalog that ships, so a
-  resolution that falls back correctly looks exactly like no change at all.
+- **Every catalog SENTENCE should render English.** English is the only catalog that ships,
+  so a resolution that falls back correctly leaves the words unchanged.
+- **Numbers are the deliberate exception and must not be reported as a defect.** They follow
+  the USER's locale, not the catalog's: `activate()` builds `Intl.NumberFormat` from the
+  language Obsidian is in and `fill()` applies it to every numeric parameter
+  (`src/i18n/t.ts`). So under a locale with its own numeral conventions the counts, and only
+  the counts, differ from English — different digits, or a different group separator, inside
+  an English sentence. That is the design (grammar follows the catalog, data presentation
+  follows the user) and it is most visible in the right-to-left run below.
 - **The developer console should be clean.** A throw out of `getLanguage()` is the failure
   this exists to find.
-- **No label should be blank, and no label should render as its own key** (`count.items`
-  rather than `3 items`).
+- **No label should be blank, and no label should render as its own key** — `count.items`
+  where a count and a noun belong.
 
 Repeat once with a right-to-left language if one is available. Nothing in the plugin is
 mirrored yet — see [[Nothing pins a physical side]] — so a broken layout here is expected

@@ -58,9 +58,12 @@ three ordinary valid dependencies there is no tooltip at all, and the text lives
 a visually hidden span. Hover the lead cell and read the joining.
 
 **The one that is not visible at all.** A resource's absences are joined into the lane
-head's `aria-description` on the resources axis (`lane.unavailable`). There is no pointer
-route to it: use a screen reader, or the browser inspector's accessibility pane, on a
-resource with three or more absences.
+head's `aria-description` on the resources axis (`lane.unavailable`). **This repository holds
+no absence notes**, so there is nothing to inspect until you make some: on the resources
+axis, press the `Add absence for …` control in one resource's row header three times and
+record three stretches for that one resource. Then read the lane head's description — there
+is no pointer route to it, so use a screen reader or the browser inspector's accessibility
+pane.
 
 On each: check the joining, the spacing, and that none runs a full stop into a conjunction.
 
