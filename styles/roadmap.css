@@ -288,11 +288,11 @@
 }
 
 /* Upright: a count is digits, and a rotated number is read one digit per line. The
-   `margin-left: auto` that pushes it right in a row pushes it to the FOOT in a column,
+   `margin-inline-start: auto` that pushes it to the inline end in a row pushes it to the FOOT in a column,
    so it is reset to sit under the name. */
 .pbl-bucket-collapsed .pbl-bucket-count {
 	writing-mode: horizontal-tb;
-	margin-left: 0;
+	margin-inline-start: 0;
 }
 
 /* The New button and the stray mark both need the bucket's full name to make sense of

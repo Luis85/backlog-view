@@ -96,7 +96,7 @@ button.pbl-card-kids-toggle:hover {
 	display: none;
 }
 
-/* `text-align: left` alone cannot left-align this: the button is a flex container
+/* `text-align: start` alone cannot start-align this: the button is a flex container
    (below) and text-align has no effect on flex ITEMS, only inline content —
    `justify-content` is the property that positions them, and Obsidian's own button
    default sets it to `center`. Kept here anyway because the icon and title are still
@@ -111,8 +111,9 @@ button.pbl-card-kid {
 	appearance: none;
 	border: none;
 	margin: 0;
-	/* The left value is the list's indent, carried by the button so it is clickable. */
-	padding: var(--size-2-1) var(--size-2-1) var(--size-2-1) var(--size-4-3);
+	/* The inline-start value is the list's indent, carried by the button so it is clickable. */
+	padding-block: var(--size-2-1);
+	padding-inline: var(--size-4-3) var(--size-2-1);
 	height: auto;
 	line-height: 1.4;
 	box-shadow: none;
@@ -121,7 +122,7 @@ button.pbl-card-kid {
 	font-weight: inherit;
 	color: var(--text-muted);
 	font-size: var(--font-ui-smaller);
-	text-align: left;
+	text-align: start;
 	cursor: pointer;
 }
 
