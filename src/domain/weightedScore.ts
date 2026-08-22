@@ -50,18 +50,26 @@ export function round2(value: number): number {
 
 /**
  * One dimension's answer as the total COUNTS it: clamped to the declared range, direction
- * applied, and reported back in the dimension's own units.
+ * applied, and reported back in the dimension's own units — twice, at two different
+ * roundings for two different readers. `score` is round2'd, because it is a DISPLAY
+ * number: `computeTotal`'s decomposition prints it beside the weight it multiplies. `value`
+ * is the same figure unrounded, because it is an ARITHMETIC input: an indicator operand
+ * multiplies and divides, and rounding before that is not a rounded answer, it is a
+ * different number — an in-range `reach` of `1.004` scored alone rounds to `1`, but
+ * `reach × confidence(5)` must read `5.02`, not `5`, or two distinguishable answers
+ * collapse onto one figure and silently swap a ranking.
  *
  * Extracted from `computeTotal` rather than restated, because the indicator's operands
  * must read a dimension exactly as the decomposition beside them reports it — a second
  * copy of this is a clone `npm run analyze` catches, and a second copy that DRIFTS is a
  * RICE whose reach disagrees with the reach two lines above it.
  */
-function countAnswer(d: ScoringDimension, raw: number): { clamped: boolean; counted: number; score: number } {
-	const value = Math.min(d.max, Math.max(d.min, raw));
-	const proportion = (value - d.min) / (d.max - d.min);
+function countAnswer(d: ScoringDimension, raw: number): { clamped: boolean; counted: number; value: number; score: number } {
+	const clampedValue = Math.min(d.max, Math.max(d.min, raw));
+	const proportion = (clampedValue - d.min) / (d.max - d.min);
 	const counted = d.lessIsBetter ? 1 - proportion : proportion;
-	return { clamped: value !== raw, counted, score: round2(d.min + counted * (d.max - d.min)) };
+	const value = d.min + counted * (d.max - d.min);
+	return { clamped: clampedValue !== raw, counted, value, score: round2(value) };
 }
 
 /**
@@ -296,7 +304,7 @@ function resolveOperand(model: ScoringModel, inputs: IndicatorInputs, id: string
 	if (!dimension) return { label, value: null, stored: null, known: false };
 	const raw = inputs.answers.get(dimension.id);
 	if (raw === null || raw === undefined) return { label, value: null, stored: null, known: true };
-	return { label, value: countAnswer(dimension, raw).score, stored: raw, known: true };
+	return { label, value: countAnswer(dimension, raw).value, stored: raw, known: true };
 }
 
 /**

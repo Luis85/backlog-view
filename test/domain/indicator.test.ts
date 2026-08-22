@@ -89,6 +89,21 @@ describe('the indicator', () => {
 		expect(figure).toEqual({ value: 0.31, blockedBy: null });
 	});
 
+	it('multiplies the UNROUNDED dimension value, not the display score, so a fractional answer is not lost', () => {
+		// `reach` in range: 1.004 rounds to a `score` of 1, but the arithmetic must carry the
+		// unrounded 1.004 forward — `1.004 × confidence(5) = 5.02`, not `5`. Reading `score`
+		// here would round BEFORE multiplying and collapse two distinguishable answers onto
+		// one figure, exactly the failure `docs/requirements/Ranking the items by value.md`
+		// warns a prioritization order cannot afford.
+		const model = configured();
+		const figure = computeIndicator(
+			model,
+			ind({ operands: ['reach', 'confidence'], divisor: null }),
+			inputs({ confidence: 5 }, { ...FULL, reach: 1.004 }),
+		);
+		expect(figure).toEqual({ value: 5.02, blockedBy: null });
+	});
+
 	it('composes a formula from operand labels', () => {
 		expect(indicatorFormula(configured(), ind({ operands: ['reach', 'confidence'], divisor: 'effort' }))).toBe(
 			'Reach × Confidence ÷ Effort',
