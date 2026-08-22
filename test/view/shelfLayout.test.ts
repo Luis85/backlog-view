@@ -376,10 +376,10 @@ describe('the shelf’s card and list layouts', () => {
 		});
 
 		it('drops the state cell instead, which is not one of the shared columns', () => {
-			// Extension 4a: no chip, and no gap where one would have been. `.pbl-shelf-state` is
-			// its own box outside `.pbl-props`, so holding the shared columns open says nothing
-			// about it — and a row whose workflow does not write the drawn state property must not
-			// keep a chip-shaped hole at the end of the line.
+			// Extension 4b: held open rather than dropped. `.pbl-shelf-state` is its own box
+			// outside `.pbl-props`, so holding the shared columns open (test above) says nothing
+			// about it — and a row whose workflow does not write the drawn state property still
+			// keeps a box with something in it, never a chip-shaped hole at the end of the line.
 			const { containerEl } = makeRoadmap(horizonVault(), { stateProperty: 'note.status' }, {
 				shelfCollapsed: false,
 				shelfList: true,
@@ -398,8 +398,8 @@ describe('the shelf’s card and list layouts', () => {
 			// a result row, a "State" button, and only `false` for a different workflow's
 			// key or a context row), so there was never an empty state cell for `dropEmpty`
 			// to hold open or drop. Two workflows on two distinct keys is what makes a row
-			// genuinely leave one of them undrawn — the case extension 4a's "row is not in
-			// this workflow" is actually about.
+			// genuinely leave one of them undrawn — extension 4b's own case, split from 4a
+			// by review once the two stopped behaving the same way.
 			const vault = new FakeVault();
 			vault.addFile('A deliverable.md', { frontmatter: { type: 'Deliverable', order: 10, deliverableStatus: 'Draft' } });
 			vault.addFile('A pbi.md', { frontmatter: { type: 'PBI', order: 20, status: 'New' } });

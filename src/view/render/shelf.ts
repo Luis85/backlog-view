@@ -486,15 +486,16 @@ function renderShelfNotes(summary: HTMLElement, notes: HTMLElement | null, entry
  * where two are configured, and `renderStateChip` fills exactly the one whose key this
  * item's workflow writes, leaving the other empty.
  *
- * **`dropEmpty` is amended for this layout, and that is extension 4a's own case rather
- * than a second rule.** 4a's "no chip, and no gap where one would have been" was written
- * for a CARD, where cells are content-sized and a blank one is a gap with nothing to
- * reserve. In a ROW the state is a shared column exactly like the ones in `.pbl-props`:
- * dropping it on the rows whose workflow does not write that property would move every
- * row's cells relative to every other's — the very shift `holdEmpty` exists to stop one
- * line up. So `list` holds it open here too. The whole-band case 4a also covers is
- * unchanged: a Base drawing no state column at all still draws no box, decided above
- * before any of this runs.
+ * **`dropEmpty` is amended for extension 4b, and that split from 4a is the register's own
+ * correction (review, Task 4) rather than something this file invented.** 4b's per-row case
+ * — a row's own workflow writes a different key than the one drawn — used to read as 4a's
+ * "no chip, and no gap where one would have been", written for a CARD, where cells are
+ * content-sized and a blank one is a gap with nothing to reserve. In a ROW the state is a
+ * shared column exactly like the ones in `.pbl-props`: dropping it on the rows whose
+ * workflow does not write that property would move every row's cells relative to every
+ * other's — the very shift `holdEmpty` exists to stop one line up. So `list` holds it open
+ * here too. 4a's own case — a Base drawing no state column at ALL — is unchanged: no box at
+ * all, decided above before any of this runs.
  */
 function renderShelfState(ctx: RowContext, card: HTMLElement, item: BacklogItem, list: boolean): void {
 	const stateColumns = ctx.columns.filter((column) => column.kind === 'state');

@@ -52,7 +52,7 @@ one a reader wants changes by the day and by the task, not by the base.
 | --- | --- |
 | **Actor** | Backlog owner |
 | **Trigger** | The reader presses the layout picker in the shelf's own header, or picks Shelf layout in a card's context menu |
-| **Preconditions** | To MAKE the pick: the roadmap's shelf, on either axis, drawn and open — that band is the one carrying the picks. The pick itself applies wherever a shelf draws, the iteration board's included (extension 1b). |
+| **Preconditions** | A shelf drawn, open and non-empty — the roadmap's, on either axis, or the iteration board's; either one carries the picker and either one is where the pick is made. Extension 1a is the only shelf that carries none, and says why. |
 | **Guarantee** | Every card in the band draws in the picked layout, the pick is remembered for this saved view on this device, and nothing is written to the `.base` or to a note. The layout narrows nothing: the same cards are drawn either way, so the shelf's own count stays the true total in both. |
 
 **Main flow**
@@ -85,10 +85,15 @@ one a reader wants changes by the day and by the task, not by the base.
 - **2a — the reader has no pointer.** `Shelf layout` is a submenu of any shelf card's
   context menu, built from the same list, so the two surfaces cannot offer different
   layouts or disagree about which is checked.
-- **4a — the Base draws no state column, or draws one this item's workflow does not
-  write.** No chip, and no gap where one would have been: the chip IS that property's
-  cell, which is the tree's own rule, and the wrapper goes with the cell when the cell is
-  dropped.
+- **4a — the Base draws no state column at all.** No chip and no gap: `renderShelfState`
+  returns before drawing anything, so the row carries no box for one to be missing from — a
+  band-wide absence reserves nothing, because no row on the band has the column either.
+- **4b — a row's own workflow writes a different state key than the one drawn.** Held open
+  rather than dropped, as of Task 4 of this same follow-up: the cell stays, empty, so the
+  property cells after it (and the aligned-column criterion below) do not shift on this row
+  alone. A per-row absence is not the band-wide case 4a covers — a column that skips one row
+  is not a column, the same rule the aligned-column criterion states for the plain property
+  cells.
 - **3b — a shelved parent with children.** Its disclosure and its expanded list stay
   BENEATH the line rather than at the end of it. `.pbl-card-kids` is a direct child of the
   card, so a card laid out as a row puts them beside the title: measured in the harness at
