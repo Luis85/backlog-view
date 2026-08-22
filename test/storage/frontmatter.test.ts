@@ -353,6 +353,22 @@ describe('applying date stamps', () => {
 		expect(vault.fm('A.md')['started']).toEqual(['2026-01-15']);
 	});
 
+	it('declines to stamp over a start already holding a boolean, not just a string or a list', async () => {
+		// `isBlank`'s own comment states the rule this protects: write-once, so a key
+		// already holding SOMETHING must decline a second stamp. A boolean is a plausible
+		// vault shape here — Obsidian's Checkbox property type is exactly this, and a
+		// reader could have the started key pointed at one before ever configuring this
+		// plugin's stamping. `isBlank`'s fallthrough (neither undefined/null, string, nor
+		// array) has to answer `false` for it, or this counts as no start yet and the
+		// stamp overwrites a value the note already carries.
+		const vault = new FakeVault();
+		const file = vault.addFile('A.md', { frontmatter: { status: 'New', started: true } });
+
+		await applyWrites(vault.app, stamping, [{ file, state: 'Active', startedDate: '2026-08-02' }]);
+
+		expect(vault.fm('A.md')['started']).toBe(true);
+	});
+
 	it('treats a date property inherited from Object as absent', async () => {
 		// `toString` is a legal frontmatter name. On a note that lacks it, `fm.toString`
 		// is the inherited FUNCTION — truthy, so a blank test reads it as a date already

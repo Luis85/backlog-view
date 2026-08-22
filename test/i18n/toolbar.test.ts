@@ -315,7 +315,7 @@ describe('the advisories and the projections nobody else drives read from it too
 		vault.addFile('Epic A.md', {
 			frontmatter: { type: 'Epic', order: 10, start: '2026-08-01', due: '2026-08-20', status: 'New', who: 'Ada' },
 		});
-		const { containerEl } = roadmapView(vault, {
+		const { view, containerEl } = roadmapView(vault, {
 			startProperty: 'note.start',
 			targetProperty: 'note.due',
 			assigneeProperty: 'note.who',
@@ -326,6 +326,12 @@ describe('the advisories and the projections nobody else drives read from it too
 
 		expect(drawnText(bar)).toContain(marked('toolbar.stateColours'));
 		expect(titlesOf(openFrom(bar, 'axis'))).toContain(marked('toolbar.axisResources'));
+
+		// `dates` is the default active axis with both configured (`configuredAxes`'s own
+		// priority order), so the resources axis's own creation control draws only once
+		// it is picked.
+		view.setAxisPick('resources');
+		expect(drawnText(barOf(containerEl))).toContain(marked('toolbar.newResource'));
 	});
 
 	it('draws the grouping advisory from the catalog when Bases reports a group-by', () => {

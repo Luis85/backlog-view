@@ -1,5 +1,5 @@
 import { defaultItemHandling, ItemHandling } from './itemHandling';
-import { ALL_TYPES, DEFAULT_HOME_FOLDER, defaultTypeFolder } from './typeVocabulary';
+import { ALL_TYPES, DEFAULT_HOME_FOLDER, defaultResourceFolder, defaultTypeFolder } from './typeVocabulary';
 
 /**
  * What a resolved configuration IS: the shape, the shipped defaults, and the few
@@ -45,6 +45,13 @@ export interface BacklogSettings extends ItemHandling {
 	 * the parent" rule.
 	 */
 	typeFolders: Record<string, string>;
+	/**
+	 * Where a `Resource` note is filed — its own key, not a `typeFolder.*` one, because
+	 * `Resource` is never in `ALL_TYPES` (see `defaultResourceFolder`). '' means no
+	 * folder of its own, and the caller falls back to `homeFolder` — the same ladder
+	 * `absenceFolder` already reads for the one other declared, non-work-item name.
+	 */
+	resourceFolder: string;
 	/**
 	 * Level name to use as the top of the tree, or '' to show the full hierarchy. The
 	 * one field here that is NOT read from the `.base`: focus is working position, so it
@@ -318,6 +325,7 @@ export function defaultSettings(): BacklogSettings {
 		showCounts: true,
 		homeFolder: DEFAULT_HOME_FOLDER,
 		typeFolders: nameTable(ALL_TYPES, (t) => defaultTypeFolder(t) || null),
+		resourceFolder: defaultResourceFolder(),
 		focusLevel: '',
 		stateKey: '',
 		tagsKey: 'tags',

@@ -10,8 +10,10 @@ can be checked by reading one directory.
 
 ## Writing the vault
 
-- Never write frontmatter outside `frontmatter.ts` (`applyWrites` / `applyRestores`),
-  `createNote.ts` (`createBacklogItem`) and `propertyWrite.ts` (`applyPropertyWrites`),
+- Never write frontmatter outside `frontmatter.ts` (`applyWrites` / `applyRestores`), this
+  directory's own note-CREATING modules — `createNote.ts` and `absenceNotes.ts` today, and
+  a symbol list here would only go stale the way the register's own rule warns against —
+  and `propertyWrite.ts` (`applyPropertyWrites`),
   and every write path — including creation — goes
   through the `configProblems` gate. Two files rather than one since 2026-08-16, on the
   line cap: **editing** a note grows a row in a list per optional property, **making** one

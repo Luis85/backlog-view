@@ -62,7 +62,7 @@ function modelGroup(): BasesAllOptions {
 				// for this one.
 				type: 'property',
 				key: 'typeProperty',
-				displayName: 'Type property',
+				displayName: t('estimation.option.typeProperty'),
 				placeholder: 'type',
 				filter: notePropsOnly,
 			},

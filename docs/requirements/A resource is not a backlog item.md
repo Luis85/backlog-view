@@ -115,8 +115,10 @@ replaces every one of those narrowings.
   `EXTRA_TYPES`, not `MARKER_TYPES`, and above all not `ALL_TYPES`. That last one is the
   criterion the others follow from, and it is stated at the LIST rather than at its
   consumers — the same sentence [[Resource absences]] is checked by.
-- It has **no creation folder**. Nothing in this view makes one, so there is no filing
-  decision to ship an opinion about, exactly as an absence has none.
+- It had **no creation folder** as of this step — nothing here made one, so there was no
+  filing decision to ship an opinion about, exactly as an absence has none.
+  [[Making a resource from the timeline]] is what later did: `resourceFolder`, the view
+  option and `createResourceNote` (`src/storage/createNote.ts`) that PBI adds.
 - **A `Resource` note produces no item**, asserted with `hierarchyOnly` OFF so the gate is
   what refuses it rather than the scope prune.
 - **Nothing about `assignee` changes.** A vault upgrading to this step sees the same rows,
