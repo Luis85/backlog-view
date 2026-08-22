@@ -1160,6 +1160,12 @@ the body:
 		holdEmpty: wiring.list,
 		rollupEl: notes ?? undefined,
 	});
+	// To the END of the line, now that the body has filled it. The lane had to exist before the
+	// body ran, which put it between the fold slot and the badge; `appendChild` on an existing
+	// child MOVES it, so the document ends up in the order the row is read in. A CSS `order`
+	// would have left the two disagreeing — invisible to a pointer, and a screen reader in
+	// browse mode announcing a card's shelving reason before its title. (Codex, PR #187.)
+	if (notes) summary.appendChild(notes);
 ```
 
 and append the two notes into that box rather than straight onto the line — both are drawn a
@@ -1437,6 +1443,24 @@ ones being replaced record measurements that stay true and must be carried forwa
 	   progress bar is what gives way. */
 	flex: 0 1 calc(var(--pbl-meta-col, 84px) + 2 * (12px + var(--size-2-1)));
 	min-width: 0;
+	/* And the lane's CONTENTS give way with it, which `min-width: 0` alone does not arrange: it
+	   lets the LANE shrink and says nothing about the boxes inside. `.pbl-meta-col` is
+	   `flex: 0 0 auto` with a fixed `width` (`styles/columns.css`), so the rollup would keep its
+	   full size and spill into the property cells — overlapping metadata rather than a progress
+	   bar giving way. The rule below unpins it; this clip is the backstop for the two icons,
+	   which have an intrinsic size and no give at all. (Codex, PR #187.) */
+	overflow: hidden;
+}
+
+/* The rollup gives way with its lane rather than keeping the width `columns.css` pins it at:
+   that rule is right for a tree row, where the meta column IS the reservation, and this is the
+   one place the box sits inside a reservation of its own. The progress bar is a flex fill and
+   shrinks cleanly; its label ellipsises. */
+.pbl-shelf-list .pbl-shelf-notes .pbl-meta-col {
+	flex: 0 1 auto;
+	width: auto;
+	min-width: 0;
+	overflow: hidden;
 }
 
 .pbl-shelf-list .pbl-shelf-reason > span:not(.pbl-shelf-reason-icon),
@@ -1449,40 +1473,22 @@ ones being replaced record measurements that stay true and must be carried forwa
 	white-space: nowrap;
 }
 
-/* **The visual order, stated for all three trailing boxes rather than two.** The notes box is
-   created BEFORE `renderCardBody` runs — it has to be, since the body is what fills it — so in
-   the DOM it sits between the fold slot and the badge. Left at the default `order: 0` it would
-   draw there too: `fold → notes → badge → title`, which is not the row this plan describes and
-   which puts a lane between the fold slot and the badge that Task 5's child indent does not
-   account for. (Codex, PR #187.) The three are therefore ordered explicitly, and the fold slot,
-   badge, title and parent keep the default 0 in document order ahead of them.
+/* **No `order` here at all, and that is a correction.** An earlier draft reordered the three
+   trailing boxes because the notes lane has to be CREATED before `renderCardBody` (the body is
+   what fills it) and so lands between the fold slot and the badge. The justification offered was
+   that nothing focusable is separated from its place in the document — which reasoned about the
+   TAB order and the pane's arrow keys, and a screen reader in browse mode uses neither.
+   `tabindex="-1"` removes nothing from the accessibility tree and CSS `order` moves nothing in
+   it, so the row would have been SPOKEN as fold → notes → badge → title while being SHOWN as
+   fold → badge → title → notes: a card's shelving reason announced before the title it is
+   about. (Codex, PR #187.)
 
-   Nothing about ALIGNMENT depends on this — every item after the flexible title has the same
-   width on every row, so the trailing block starts at the same x whatever sequence it is in.
-   This is legibility. `styles/shelf.css` already reorders one element
-   (`.pbl-dragging .pbl-shelf-empty`) and states the test: nothing focusable may be separated
-   from its place in the document. These three hold `tabindex="-1"` controls only, out of the
-   tab order by the composite's own rule, and the pane's arrows walk CARDS rather than cells —
-   so no reader traverses them in a sequence this could contradict. */
-.pbl-shelf-list .pbl-shelf-notes {
-	order: 1;
-}
-
-.pbl-shelf-list .pbl-card-summary .pbl-props {
-	order: 2;
-}
-
-/* The state reservation shrinks like the two lanes beside it, and `min-width: 0` is the whole
-   of what makes that true: a flex item's default `min-width: auto` is its CONTENT's minimum, so
-   ordering this box without unsetting that leaves it rigid at the state column's intrinsic
-   width — and its `.pbl-props` child inherits the floor, so the controlled-shrinkage policy
-   stops at it. Worse where a Base configures two workflow state columns. (Codex, PR #187.)
-
-   The `margin-inline-start: auto` this rule carried is gone with it, for `.pbl-props`'s reason:
-   the title is `flex: 1 1 0` and absorbs every spare pixel, so an auto margin here can never
-   fire, and a declaration that cannot fire is one someone later reasons from. */
+   The DOM is put right instead of being overridden — `renderShelfCard` moves the lane to the end
+   of the summary once the body has filled it — and the visual sequence is simply what the
+   document says. Nothing about ALIGNMENT ever depended on the sequence, since every item after
+   the flexible title has the same width on every row, which is what makes removing the
+   reordering free. */
 .pbl-shelf-list .pbl-shelf-state {
-	order: 3;
 	flex: 0 1 auto;
 	min-width: 0;
 	margin-inline-start: 0;
