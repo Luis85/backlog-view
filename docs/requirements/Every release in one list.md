@@ -89,7 +89,7 @@ Nothing yet. It is the view's entry point, so it is also where a release gets pi
 
 ## Where it lives
 
-The rows derive from the same new `src/domain/` module as the single-release figures, from the
+The rows derive from the same `src/domain/releases.ts` as the single-release figures, from the
 model in `src/domain/model.ts`, so no figure is computed twice. The list is a render module in
 `src/view/render/` beside `src/view/render/board.ts`, its empty states in
 `src/view/render/emptyStates.ts`, and the picked release is held in `src/view/viewState.ts`

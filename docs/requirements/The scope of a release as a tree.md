@@ -79,7 +79,7 @@ selected by one property instead of by the whole result set.
 
 ## Where it lives
 
-The membership read is a new derivation in `src/domain/`, beside `src/domain/board.ts` and
+The membership read is `src/domain/releases.ts`, beside `src/domain/board.ts` and
 `src/domain/roadmap.ts` and shaped like them — it derives from the model in
 `src/domain/model.ts` and touches no DOM. The rows reuse `src/view/render/rows.ts` and the
 context marking already there; the empty state is in `src/view/render/emptyStates.ts` and the
