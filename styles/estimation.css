@@ -301,10 +301,11 @@
 	content: '\2013';
 }
 
-/* Six real buttons since Task 9 — sortable headers. `button.pbl-est-point`
-   (`estimationPanel.css`) states the recipe in full: qualifying the reset
-   with the element ties the specificity against Obsidian's
-   `button:not(.clickable-icon)`. */
+/* Six real buttons since Task 9 — sortable headers — plus a seventh, the
+   indicator, while at least one operand is configured (the shipped default
+   configures one). `button.pbl-est-point` (`estimationPanel.css`) states the
+   recipe in full: qualifying the reset with the element ties the specificity
+   against Obsidian's `button:not(.clickable-icon)`. */
 button.pbl-est-sort {
 	appearance: none;
 	padding: 0;

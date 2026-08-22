@@ -359,7 +359,7 @@ describe('keyboard on the estimation table', () => {
 		const { containerEl } = makeEstimationView(vault, configuredValues());
 		const list = containerEl.querySelector('.pbl-est-rows') as HTMLElement;
 		key(list, 'Enter');
-		expect(vault.opened).toEqual([{ path: 'Full.md', mode: false }]);
+		expect(vault.opened).toEqual([{ path: 'Full.md', mode: 'split' }]);
 	});
 
 	it('Enter opens nothing while no row is selected', () => {

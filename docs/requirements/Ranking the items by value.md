@@ -20,9 +20,11 @@ assignee: ""
 sortable table, **so that** the comparison this view exists for is one screen rather than
 eight notes opened side by side.
 
-Six columns — item, value, coverage, confidence, effort, currency — each a real header
-button. A click sorts a copy of the model's own items. Sorting this table is reading; the
-backlog's `order` is untouched by every click on it.
+Seven columns — item, value, coverage, confidence, effort, indicator, currency — each a
+real header button, though the indicator draws only while at least one operand is
+configured (the shipped default configures one, so it draws in practice). A click sorts a
+copy of the model's own items. Sorting this table is reading; the backlog's `order` is
+untouched by every click on it.
 
 ## Use case
 
@@ -48,8 +50,8 @@ backlog's `order` is untouched by every click on it.
 
 - **1a — the base returned nothing.** The results empty state draws in place of the rows.
 - **2a — a number column's first click.** Descending, because the useful first look at a
-  value, a coverage, a confidence or an effort is the top of it. The title column's first
-  click is ascending, for the same reason.
+  value, a coverage, a confidence, an effort or the indicator is the top of it. The title
+  column's first click is ascending, for the same reason.
 - **2b — a row has nothing to show for the active column.** It sorts after every answered
   row, in both directions. Absence is not a low value.
 - **2c — the currency column.** It sorts by a declared reading — current, stale, foreign,
@@ -92,8 +94,9 @@ backlog's `order` is untouched by every click on it.
 state, the config warning, the table for a configured model, and `selectedPath`) ·
 `src/view/estimation/register.ts` (`registerEstimationView` — this view's own
 registration file, ADR 0030, sharing the plugin-wide `WriteLock`) ·
-`src/view/estimation/renderTable.ts` (the six header buttons, `aria-sort`, one row per
-item, `CURRENCY_ORDER`, and the delegated click and keyboard) ·
+`src/view/estimation/renderTable.ts` (the header buttons — seven while the indicator is
+configured — `aria-sort`, one row per item, `CURRENCY_ORDER`, and the delegated click and
+keyboard) ·
 `src/view/estimation/currencyChip.ts` (`renderCurrencyChip`, split out once
 `renderTable.ts` neared its 400-line cap — the currency CELL `renderTable.ts` draws is
 the fixed-width column; this module draws the CHIP inside it, sized to its own word,

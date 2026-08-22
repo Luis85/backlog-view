@@ -1,6 +1,7 @@
 import { BasesAllOptions, BasesViewConfig } from 'obsidian';
 import { DEFAULT_DIMENSIONS, defaultDimension } from './defaultModel';
 import { DEFAULT_POINT_RANGE, dimOption, resolveEstimationSettings } from './estimationSettings';
+import { defaultItemHandling, openTargetOptions } from './itemHandling';
 import { notePropsOnly } from './optionalProperties';
 import type { ScoringDimension } from './scoringModel';
 import { t } from '../i18n/t';
@@ -29,7 +30,7 @@ export function getEstimationViewOptions(config: BasesViewConfig): BasesAllOptio
 	// dimension group is offered for whichever ids are actually configured, not only the
 	// shipped eight.
 	const settings = resolveEstimationSettings(config);
-	return [modelGroup(), ...settings.model.dimensions.map(dimensionGroup), scalesGroup()];
+	return [modelGroup(), ...settings.model.dimensions.map(dimensionGroup), scalesGroup(), indicatorGroup()];
 }
 
 function modelGroup(): BasesAllOptions {
@@ -79,6 +80,13 @@ function modelGroup(): BasesAllOptions {
 				displayName: t('estimation.option.stampProperty'),
 				placeholder: 'business-value-model',
 				filter: notePropsOnly,
+			},
+			{
+				type: 'dropdown',
+				key: 'openIn',
+				displayName: t('option.openIn'),
+				options: openTargetOptions(),
+				default: defaultItemHandling('split').openIn,
 			},
 		],
 	};
@@ -143,6 +151,45 @@ function dimensionGroup(d: ScoringDimension): BasesAllOptions {
 				displayName: t('estimation.option.label'),
 				default: shippedLabel,
 				placeholder: shippedLabel,
+			},
+		],
+	};
+}
+
+/** The indicator's three boxes. Text, not a property picker: an operand is an id from this
+ *  model's own vocabulary, never a frontmatter key. Editing one is what "editable
+ *  afterwards" means — swapping an operand or dropping the divisor is an edit to a box, so
+ *  no new control type is needed. */
+function indicatorGroup(): BasesAllOptions {
+	return {
+		type: 'group',
+		displayName: t('estimation.option.indicator'),
+		items: [
+			{
+				type: 'text',
+				key: 'indicatorLabel',
+				displayName: t('estimation.option.indicatorLabel'),
+				// A preset's NAME, which is what this box holds and what the `.base` stores —
+				// the same string in every language, exactly like the two boxes below whose
+				// placeholders are operand ids. Those pass the ban only because they are
+				// lowercase; this one is capitalised and trips it, so it is disabled at the
+				// line rather than the file, `registerBacklogView.ts`'s own shape.
+				// eslint-disable-next-line no-restricted-syntax -- a preset name is data the base stores, never translated text
+				placeholder: 'RICE',
+			},
+			{
+				type: 'text',
+				key: 'indicatorOperands',
+				displayName: t('estimation.option.indicatorOperands'),
+				default: 'adjustedValue',
+				placeholder: 'adjustedValue',
+			},
+			{
+				type: 'text',
+				key: 'indicatorDivisor',
+				displayName: t('estimation.option.indicatorDivisor'),
+				default: 'effort',
+				placeholder: 'effort',
 			},
 		],
 	};

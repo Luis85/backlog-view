@@ -75,7 +75,7 @@ describe('the sticky answer header', () => {
 		// structure is the other half of the guarantee — `styleRules.test.ts` can only prove a
 		// rule exists, never that it matches. Both halves are needed: what shipped was three
 		// correct rules matching nothing.
-		expect(header.querySelector(':scope > .pbl-est-title')).not.toBeNull();
+		expect(header.querySelector(':scope > .pbl-est-title-row > .pbl-est-title')).not.toBeNull();
 		expect(header.querySelector(':scope > .pbl-est-summary')).not.toBeNull();
 		expect(header.querySelector(':scope > .pbl-est-derived')).not.toBeNull();
 		const summary = header.querySelector('.pbl-est-summary')!;
@@ -178,7 +178,12 @@ describe('a stored value the scale cannot name', () => {
 });
 
 describe('the two derived lines', () => {
-	it('renders each only once its own inputs exist', () => {
+	it('renders each independently — the adjusted value gated on confidence, the indicator on its own operands', () => {
+		// Effort is deliberately left unbound. Under Task 5 the indicator no longer shares
+		// the adjusted value's early return: it draws even where the adjusted value has
+		// nothing to say (`Neither.md`, confidence unanswered), and it draws BLOCKED —
+		// saying which operand — rather than silently dropping where it used to
+		// (`ConfidenceOnly.md`, the old "value-to-effort needs effort too" case).
 		const vault = new FakeVault();
 		vault.addFile('Neither.md', { frontmatter: { 'strategic-alignment': 5 } });
 		vault.addFile('ConfidenceOnly.md', { frontmatter: { 'strategic-alignment': 5, confidence: 4 } });
@@ -186,18 +191,23 @@ describe('the two derived lines', () => {
 		const { containerEl } = makeEstimationView(vault, values);
 
 		selectItem(containerEl, 'Neither.md');
-		expect(containerEl.querySelector('.pbl-est-derived')).toBeNull();
+		let derived = containerEl.querySelector('.pbl-est-derived') as HTMLElement;
+		expect(derived).not.toBeNull();
+		expect(derived.children).toHaveLength(1); // no adjusted-value line; the indicator alone, blocked
+		// The blocker names CONFIDENCE (the source scale, and what the reader can actually
+		// answer), never "Adjusted value" — nothing answers that directly.
+		expect(derived.textContent).toContain('Confidence is not answered');
 
 		selectItem(containerEl, 'ConfidenceOnly.md');
-		const derived = containerEl.querySelector('.pbl-est-derived') as HTMLElement;
-		expect(derived).not.toBeNull();
-		expect(derived.children).toHaveLength(1); // value-to-effort needs effort too
+		derived = containerEl.querySelector('.pbl-est-derived') as HTMLElement;
+		expect(derived.children).toHaveLength(2); // adjusted value, plus the indicator blocked on effort
 		const model = configured({ confidenceProperty: 'note.confidence' });
 		const result = computeTotal(model, new Map([['strategic-alignment', 5]]))!;
 		expect(derived.textContent).toContain(String(round2((result.total * 4) / 5)));
+		expect(derived.textContent).toContain('Effort has no property bound to it yet');
 	});
 
-	it('adds value-to-effort once effort is answered too', () => {
+	it('computes the configured indicator once every operand it names is answered', () => {
 		const vault = new FakeVault();
 		vault.addFile('Item.md', { frontmatter: { 'strategic-alignment': 5, confidence: 4, effort: 2 } });
 		const values = configuredValues({ confidenceProperty: 'note.confidence', effortProperty: 'note.effort' });
@@ -213,7 +223,10 @@ describe('the two derived lines', () => {
 		expect(derived.textContent).toContain(String(round2(adjusted / 2)));
 	});
 
-	it('omits value-to-effort for an effort of zero or less, and prints no ratio for it', () => {
+	it('says the indicator is blocked by a nonpositive effort, rather than dropping the line or printing Infinity', () => {
+		// This used to be `value-to-effort`'s own silent omission for effort ≤ 0; the
+		// indicator says WHY now, and still never prints Infinity or a negative ratio for
+		// a value the note literally holds.
 		const vault = new FakeVault();
 		vault.addFile('Zero.md', { frontmatter: { 'strategic-alignment': 5, confidence: 4, effort: 0 } });
 		vault.addFile('Negative.md', { frontmatter: { 'strategic-alignment': 5, confidence: 4, effort: -2 } });
@@ -223,12 +236,10 @@ describe('the two derived lines', () => {
 		for (const path of ['Zero.md', 'Negative.md']) {
 			selectItem(containerEl, path);
 			const derived = containerEl.querySelector('.pbl-est-derived') as HTMLElement;
-			// The confidence-adjusted value still stands; the ratio has no meaning to show —
-			// zero divides to Infinity and a negative effort prints a negative ratio beside
-			// a table showing the number the user actually typed.
-			expect(derived.children).toHaveLength(1);
+			expect(derived.children).toHaveLength(2);
 			expect(derived.textContent).not.toContain('Infinity');
 			expect(derived.textContent).not.toMatch(/-\d/);
+			expect(derived.textContent).toContain('Effort has to be above zero to divide by');
 		}
 	});
 
@@ -246,8 +257,62 @@ describe('the two derived lines', () => {
 		expect(rowNote(containerEl, 'Confidence')).toBe('Out of range — read as 5');
 		// Read as 5 of 5, so the adjustment is the identity and the line is the total
 		// itself — which is the model's own output maximum, so an unclamped 9 shows up as
-		// a number no answer on this model could produce.
-		expect(containerEl.querySelector('.pbl-est-derived')?.textContent).toBe(`Confidence-adjusted value: ${result.total}`);
+		// a number no answer on this model could produce. The indicator line follows it
+		// (blocked on effort, still unbound here), which is why this checks the FIRST
+		// child's own text rather than the whole line's.
+		const derived = containerEl.querySelector('.pbl-est-derived') as HTMLElement;
+		expect(derived.children[0].textContent).toBe(`Confidence-adjusted value: ${result.total}`);
+	});
+});
+
+describe("the panel's indicator line", () => {
+	it('names the indicator by its configured name, and by its formula when unnamed', () => {
+		const { containerEl } = makeEstimationView(fixture(), configuredValues({
+			confidenceProperty: 'note.confidence',
+			effortProperty: 'note.effort',
+			indicatorLabel: 'RICE',
+		}));
+		selectItem(containerEl, 'Full.md');
+		const lines = [...containerEl.querySelectorAll('.pbl-est-derived span')].map((el) => el.textContent);
+		expect(lines.some((line) => line?.startsWith('RICE:'))).toBe(true);
+	});
+
+	it('draws the indicator even where the adjusted value has nothing to say', () => {
+		// No confidence at all, so no adjusted-value line — and an indicator over effort
+		// alone, which is perfectly computable and used to be hidden with it.
+		const { containerEl } = makeEstimationView(fixture(), configuredValues({
+			effortProperty: 'note.effort',
+			indicatorOperands: 'effort',
+			indicatorDivisor: '',
+		}));
+		selectItem(containerEl, 'Full.md');
+		const lines = [...containerEl.querySelectorAll('.pbl-est-derived span')].map((el) => el.textContent);
+		expect(lines.some((line) => line?.includes('Effort'))).toBe(true);
+	});
+
+	it('says which operand blocked it rather than dropping the line', () => {
+		const { containerEl } = makeEstimationView(fixture(), configuredValues({
+			confidenceProperty: 'note.confidence',
+		}));
+		selectItem(containerEl, 'Full.md');
+		const lines = [...containerEl.querySelectorAll('.pbl-est-derived span')].map((el) => el.textContent);
+		expect(lines.some((line) => line?.includes('Effort'))).toBe(true);
+	});
+
+	// CONTROLLER AMENDMENT 1: a fourth block reason — the scale is UNBOUND rather than
+	// merely unanswered — and the panel has to say the different word, exactly as the
+	// column does (`test/view/estimation/indicatorColumn.test.ts`'s own pair).
+	it('says an unbound scale is unbound, not unanswered, in the panel line too', () => {
+		// Neither confidenceProperty nor effortProperty is bound here, so the default
+		// indicator's own effort operand has no property bound to it at all — a different
+		// repair from "answer it on the note".
+		const { containerEl } = makeEstimationView(fixture(), configuredValues({
+			indicatorOperands: 'effort',
+			indicatorDivisor: '',
+		}));
+		selectItem(containerEl, 'Full.md');
+		const lines = [...containerEl.querySelectorAll('.pbl-est-derived span')].map((el) => el.textContent);
+		expect(lines.some((line) => line?.includes('no property bound to it yet'))).toBe(true);
 	});
 });
 
