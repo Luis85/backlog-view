@@ -66,8 +66,18 @@ const valueCount = (value: string): number => {
 	return values;
 };
 
-/** Whether `block` pins a physical side itself, which is what licenses a physical box value. */
-const pinsAPhysicalSide = (block: string): boolean => /(?:^|[;{\s])(?:left|right)\s*:/.test(block);
+/**
+ * Whether `block` pins a physical side itself, which is what licenses a physical box value.
+ *
+ * The VALUE decides, not the property: `left: auto` declines to anchor that side, so a
+ * block whose only placement is `auto` pins nothing and licenses nothing — it read as
+ * pinned until review on PR #196. The CSS-wide keywords are refused with it for the same
+ * reason. Latent rather than live: the file's one `left: auto` (`.pbl-bar-clipped-end
+ * .pbl-bar-connector`) sits beside a `right: 0` that does pin, and carries no box value
+ * either way. The check exists for the rule nobody has written yet.
+ */
+const pinsAPhysicalSide = (block: string): boolean =>
+	/(?:^|[;{\s])(?:left|right)\s*:\s*(?!auto|inherit|initial|unset|revert)[^;\s]/.test(block);
 
 /** Every block `matches` holds for, licensed or not. */
 const matching = (matches: (block: string) => boolean): string[] =>

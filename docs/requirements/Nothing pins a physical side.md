@@ -212,7 +212,10 @@ whole.
   shorthand, so `left: 0; padding: 1px 2px 3px 4px` was reported although the test's own
   name licensed it — the same licence applied where it should not be, and then withheld
   where it should. Both helpers take a PREDICATE now, so the licence has one definition and
-  every spelling of a box property reaches it by name.
+  every spelling of a box property reaches it by name. A fifth read the licence's own
+  premise off the PROPERTY rather than the value, so `left: auto` — which declines to
+  anchor that side — licensed a physical padding beside it; the value decides now, and the
+  CSS-wide keywords are refused with `auto`.
   **The warning applies to the CHECK and not only to the sweep**, which is the
   sentence this note did not have, and each round is one the check itself could not have
   told anybody about — every one passed green.
