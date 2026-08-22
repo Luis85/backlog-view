@@ -588,6 +588,7 @@ export const en = {
 	'toolbar.editIteration': 'Edit iteration…',
 
 	'toolbar.stateColours': 'State colours',
+	'toolbar.newResource': 'New resource',
 	'toolbar.bucketGrid': 'Grid in buckets',
 	'toolbar.compactRows': 'Compact rows',
 	'toolbar.jumpToToday': 'Jump to today',
@@ -807,6 +808,7 @@ export const en = {
 	'option.homeFolder': 'Home folder',
 	'option.homeFolderHint': 'Same folder as existing items',
 	'option.typeFolder': 'Folder for {type} items',
+	'option.resourceFolder': 'Folder for resource notes',
 
 	/**
 	 * The heading and its three CHOICES. The choices are labels only — what a `.base`
@@ -1175,6 +1177,24 @@ export const en = {
 	'absence.becameResource': 'That note became a resource while the edit was in flight, so nothing was changed.',
 	'absence.created': 'Marked {resource} away — "{name}".',
 	'absence.createFailed': 'Could not create the absence. See the developer console for details.',
+
+	/**
+	 * The New resource prompt (`view/interactions/resourceNotes.ts`) — the roadmap's
+	 * resources axis is its only way in (Task 4 wires the button; this catalog section
+	 * ships ahead of it). `resource.duplicateWarning` is `ValuePromptOptions.duplicateWarning`:
+	 * shown, never refused, the same *guides rather than arbitrates* rule
+	 * `absence.nameResource`'s modal already keeps. Its wording claims only what `known`
+	 * can answer — the roadmap's roster (drawn rows, the declared list, observed
+	 * assignees) — and NOT that a `Resource` note exists: [[Rows from the Resource
+	 * notes]] hasn't shipped, so this dialog cannot see the notes themselves.
+	 */
+	'resource.createHeading': 'New resource',
+	'resource.nameField': 'Name',
+	'resource.namePlaceholder': 'Alex',
+	'resource.createCta': 'Create',
+	'resource.duplicateWarning': 'Someone with this name is already on the roster.',
+	'resource.created': 'Created the resource "{name}".',
+	'resource.createFailed': 'Could not create the resource. See the developer console for details.',
 
 	/**
 	 * The new-item modal's heading. Its own key rather than `toolbar.newItem`'s or

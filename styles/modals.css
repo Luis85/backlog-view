@@ -17,3 +17,14 @@
 .pbl-modal-error:not(:empty) {
 	margin-bottom: var(--size-4-2);
 }
+
+/* Why a duplicate entry is allowed but flagged. Same DOM-stability reason as
+   `.pbl-modal-error`: always present and empty until there is something to say. */
+.pbl-modal-warning {
+	color: var(--text-warning);
+	font-size: var(--font-ui-small);
+}
+
+.pbl-modal-warning:not(:empty) {
+	margin-bottom: var(--size-4-2);
+}

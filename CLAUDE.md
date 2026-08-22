@@ -109,13 +109,15 @@ language, so nothing re-reads it. What must never enter the catalog is anything 
 writes, matches or persists — type names, state values, option keys, tags, file names. The
 test when it is not obvious: **ask what breaks if two people with different Obsidian
 languages open the same vault.** "One sees different words" is text; "one writes notes the
-other's view cannot read" is data. 577 keys are in it (counted two ways on 2026-08-22 and
+other's view cannot read" is data. 588 keys are in it (counted two ways on 2026-08-22 and
 agreeing — a runtime `Object.keys` over the bundled catalog, and a match-counting
 `grep -Po` for the key lines; `grep -c` would count LINES, which is one of the three wrong
 numbers this epic has produced from an instrument that looked right, and 33 of these keys
-carry their value on the FOLLOWING line, which is what such an instrument gets wrong). Two
-branches each counted their own catalog on the same day — 550 and 542 — and this is the
-merged one, which is neither.
+carry their value on the FOLLOWING line, which is exactly what such an instrument gets
+wrong). **A count is dated the moment it is written, and this paragraph has now been a
+merge conflict three times in one day** — 550, 542, 553 and 577 were each true of the
+branch that wrote them and of nothing else. Re-measure on the merged tree rather than
+picking a side.
 `ui/`, `commands/`, `view/interactions/`, `view/estimation/`, the whole of `view/render/`,
 `view/writeGate.ts`, `view/cardMoves.ts`, `main.ts`, `domain/viewOptions.ts` and — since
 2026-08-22 — `domain/estimationOptions.ts`, `domain/board.ts`, `domain/bars.ts` and
@@ -197,8 +199,10 @@ sections named under **Definition of done** above. Read from the behaviour you a
 changing rather than from an index of the tree.
 
 Rules: never write frontmatter outside `storage/frontmatter.ts` (`applyWrites`, which
-EDITS a note), `storage/createNote.ts` (`createBacklogItem`, which MAKES one) and
-`storage/propertyWrite.ts` (`applyPropertyWrites`, the estimation view's own plain
+EDITS a note), any of `storage/`'s own note-CREATING modules (`createNote.ts` and
+`absenceNotes.ts` today — a symbol list here goes stale the way the register's own rule
+warns against; the directory is what is enforced) and `storage/propertyWrite.ts`
+(`applyPropertyWrites`, the estimation view's own plain
 key/value batches — a score, its recomputed total and its stamp), and every write path —
 including creation — goes through the `configProblems` gate. That rule is also enforced mechanically: `no-restricted-syntax`
 bans `processFrontMatter`, `vault.create` and `load/saveLocalStorage` everywhere outside

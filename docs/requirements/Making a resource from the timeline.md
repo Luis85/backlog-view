@@ -2,16 +2,30 @@
 type: PBI
 parent: "[[The roster comes from the notes]]"
 order: 10
-status: Open
+status: Done
 created: 2026-08-22
 source: user request
 files:
-  - src/view/render/toolbarControls.ts
-  - src/storage/createNote.ts
   - src/domain/settings.ts
+  - src/domain/settingsResolve.ts
+  - src/domain/typeVocabulary.ts
   - src/domain/viewOptions.ts
-started: ""
-finished: ""
+  - src/i18n/en.ts
+  - src/storage/createNote.ts
+  - src/ui/prompts.ts
+  - src/view/interactions/resourceNotes.ts
+  - src/view/manual/setupSection.ts
+  - src/view/render/toolbarControls.ts
+  - styles/modals.css
+  - test/domain/resourceFolder.test.ts
+  - test/domain/viewOptions.test.ts
+  - test/i18n/toolbar.test.ts
+  - test/storage/createNote.test.ts
+  - test/ui/prompts.test.ts
+  - test/view/newResourceButton.test.ts
+  - test/view/resourceNotes.test.ts
+started: 2026-08-22
+finished: 2026-08-22
 horizon: ""
 start: ""
 due: ""
@@ -36,6 +50,12 @@ backlog item]] declared the name and kept its notes out of every backlog project
 created one, deliberately, because there was no surface that should. The resources axis is
 that surface.
 
+**The modal is `ValuePromptModal` reused, not a new dialog.** Extension 2a already says Name
+alone is the whole modal, and Capacity and Role are not settings yet — so the dedicated
+three-field dialog this note's own last paragraph once described arrives with [[Capacity on a
+resource]] and [[A resource's role]], not here. What shipped is the existing prompt plus one
+optional `duplicateWarning` line for extension 3a.
+
 ## Use case
 
 | | |
@@ -49,8 +69,12 @@ that surface.
 
 1. The user opens the roadmap on the resources axis. The toolbar's projection zone draws
    **New resource** beside the axis controls it already owns.
-2. The user presses it and a dedicated modal opens: **Name** always, and **Capacity** and
-   **Role** each only where that key is configured.
+2. The user presses it and the modal opens, asking for **Name** — the only field it asks
+   for today, since neither **Capacity** nor **Role** is a configured key yet (see the
+   note above the use case). The design intent stands: the modal is meant to grow a field
+   per configured key rather than list them beside its own code, so this step will
+   describe more fields without an edit here once [[Capacity on a resource]] or
+   [[A resource's role]] ships.
 3. The user names the person, fills whichever other fields are offered, and submits.
 4. A note is written into the resource folder with `type` and the name as its title, plus each
    configured field the user filled.
@@ -60,10 +84,11 @@ that surface.
 
 **Extensions**
 
-- **1a — any other projection, or the horizons axis.** No control at all. It is drawn from
-  `renderProjectionZone`, which is the one place the toolbar asks which projection this is,
-  and `renderStateColorsButton` is the precedent for gating on the AXIS as well as the mode:
-  a control offered where it means nothing claims a capability the screen does not have.
+- **1a — any other projection, or the horizons or dated axis.** No control at all. It is
+  drawn from `renderProjectionZone`, which is the one place the toolbar asks which
+  projection this is, and `renderStateColorsButton` is the precedent for gating on the AXIS
+  as well as the mode: a control offered where it means nothing claims a capability the
+  screen does not have.
 - **2a — neither optional key is configured.** The modal offers **Name** alone, and that is
   the whole modal rather than a degraded one. [[What a resource carries]] states the rule this
   follows: nothing there is required for a resource to exist, a note with a type and a name is
@@ -98,9 +123,14 @@ that surface.
 
 - **The control draws on the resources axis and nowhere else** — not on the tree, not on
   either board, not on the horizons axis, not on the dated axis.
-- **The modal offers Name always, and each optional field only when its key is configured.**
-  Driven from the resolved settings rather than from a list beside them, so a key named later
-  needs no edit here.
+- **The modal offers Name always.** Today that is the whole modal — extension 2a's case,
+  not a narrower reading of a wider one — because neither Capacity nor Role is a
+  configured key yet. **Still owed:** each field growing from the resolved settings
+  rather than from a list beside them, so a key named later needs no edit here. What
+  ships today ([[Capacity on a resource]] and [[A resource's role]] have not) is a
+  hard-coded Name-only `ValuePromptModal`, which WILL need that edit the day either key
+  exists — this criterion is met for the field the plugin has, and owed for the two it
+  does not yet.
 - **A submitted creation writes one note**, carrying the type and the title, plus exactly the
   configured fields the user filled — and no key for a field left empty, since absence is a
   value.
@@ -111,21 +141,71 @@ that surface.
   from nothing, because it is not on the tree at all. This is the one place a `Resource`
   differs from a marker, which does get an `order` — a marker is a row in the backlog and a
   resource is not.
-- **The resource folder is its own view option**, defaulting to `resources` under the home
-  folder. Its own key rather than a `typeFolder.*` one, because those are generated per entry
-  in `ALL_TYPES` and `Resource` is deliberately not in that list.
+- **The resource folder is its own view option** (`resourceFolder`), defaulting to
+  `resources` under the home folder. Its own key rather than a `typeFolder.*` one, because
+  those are generated per entry in `ALL_TYPES` and `Resource` is deliberately not in that
+  list.
 
 ## Where it lives
 
-**Nothing yet — this note is design.** The surfaces it will touch all exist.
+`src/domain/typeVocabulary.ts` declares the resource folder's shipped default
+(`defaultResourceFolder`, beside `RESOURCE_TYPE`), derived from the home folder the same
+way a type folder is. `src/domain/settings.ts` adds `resourceFolder` to `BacklogSettings`,
+'' meaning no folder of its own, and `src/domain/settingsResolve.ts` resolves it inside
+`resolveFolders`, tracking the resolved home folder and clearable back to ''.
+`src/domain/viewOptions.ts` declares the `resourceFolder` option itself, beside the
+per-type folder pickers it is deliberately not one of — it is never in `ALL_TYPES`, so it
+has no `typeFolder.*` entry of its own. `src/view/manual/setupSection.ts` names the new
+key in the manual's own folder-picker sentence, alongside `homeFolder` and `typeFolder.*`.
 
-`src/view/render/toolbarControls.ts` holds `renderProjectionZone`, the one place the toolbar
-asks which projection is on screen, and the roadmap case this control joins ·
-`src/storage/createNote.ts` is the only module that may make a note, and `createBacklogItem`
-is the creator this reuses rather than a second one · `src/domain/settings.ts` and
-`src/domain/viewOptions.ts` are where the resource folder option is declared and resolved.
+`src/storage/createNote.ts` is the only module that may make the note, and
+`createResourceNote` is its OWN creator rather than `createBacklogItem` called with
+fewer fields — corrected from this note's earlier text, which said the opposite.
+`createBacklogItem`'s `NewItemSpec` requires a parent, a rank and a type from the ladder,
+and this use case's own acceptance criterion — no `order`, no `parent` — cannot be
+satisfied by reusing it; the note carries the type key alone. Same reason
+`createAbsenceNote` (`src/storage/absenceNotes.ts`) stands apart from it.
 
-The modal itself is a new dialog beside the four in `src/ui/`, which is the leaf of reusable
-Obsidian dialogs that knows about no layer above it — three conditional fields is past what
-`prompts.ts` does, and the prompt it would otherwise strain is shared with every other
-creation path in the view.
+`src/ui/prompts.ts` is where 3a actually lives: `ValuePromptOptions` gained one optional
+`duplicateWarning` line, shown under the field while the trimmed entry matches a `known`
+value case-insensitively and cleared the moment it does not — built only when a caller
+asks for it, since the other two `ValuePromptModal` callers (a tag, an assignee) have no
+use for warning about an ordinary repeat. It is drawn as `.pbl-modal-warning`
+(`styles/modals.css`), a polite live region tied to the field by `aria-describedby` rather
+than `.pbl-modal-error`'s `role="alert"` — nothing here is refused, so an assistive
+technology user must be told without being interrupted on every keystroke — kept in the
+DOM and empty rather than created on demand — `.pbl-modal-error`'s own reason: a dialog
+must not resize under the pointer as the match is typed. The wording it carries
+(`resource.duplicateWarning`) claims only what `known` can answer — the roadmap's roster —
+never that a `Resource` note exists, since [[Rows from the Resource notes]] has not
+shipped and this dialog cannot see one.
+
+`src/view/interactions/resourceNotes.ts` is the view's half: `promptNewResource` runs the
+`configProblems` gate before the form opens and again at submit — the write can be refused
+between the two, since Obsidian's options pane stays reachable while the modal is up —
+resolves the folder ladder (`resourceFolder` else `homeFolder`) at submit rather than at
+open for the same reason, and opens `ValuePromptModal` Name-only, passing the same
+three-source roster `assigneeChoices` computes (`interactions/labels.ts`) — the drawn
+lanes, the declared `resourceNames` and every observed assignee, merged case-insensitively
+through `mergedValues` (`domain/settings.ts`) — as `known` so 3a warns against what a
+reader would actually recognise. `promptNewResource` takes no lane and no item: the
+control that opens it is the resources axis's own, not a per-row action.
+
+`src/view/render/toolbarControls.ts`'s `renderNewResourceButton` draws **New resource** in
+`renderProjectionZone`'s roadmap case, gated on `activeAxis(...) === 'resources'` the way
+`renderStateColorsButton` gates on axis and mode, and opens `promptNewResource` on click.
+No focus-restoration dance is needed: `ValuePromptModal` closes before its `onSubmit`
+runs, so the write this opens cannot rebuild the toolbar while the dialog is still open.
+
+`src/i18n/en.ts` carries every sentence this flow shows — the modal's heading, field,
+placeholder and CTA, the duplicate warning, the created and failed notices — plus
+`toolbar.newResource` for the button's tooltip and `option.resourceFolder` for the
+options-pane picker.
+
+Two things still need a LIVE-VAULT check, because the jsdom harness cannot answer either
+one: how **New resource** actually reads in the toolbar row beside its neighbours, and
+under `syncToolbarFit`'s narrowing steps as the pane shrinks; and how the new
+`resourceFolder` picker presents in Obsidian's own options pane, next to the type-folder
+pickers it sits beside but is not one of. Neither has been checked in a live vault as part
+of this PBI — `npm run test-build` is the handover for both, and the harness (ADR 0020)
+answers layout against the stub stylesheet only, never a themed vault's own colours.

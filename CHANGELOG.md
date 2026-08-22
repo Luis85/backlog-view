@@ -75,6 +75,17 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   `assignee` changes — it is still the text you type, and the roadmap's rows still come
   from it.
 
+- **A resource note can be made without leaving the roadmap.** The resources axis's
+  toolbar gets its own **New resource** button, beside the axis controls it already owns.
+  It opens a name prompt — warned rather than refused when the name already matches
+  someone on the roster, since two real people can share a first name — and writes the
+  note into its own `resourceFolder` view option, a subfolder of the home folder by
+  default. The note carries only its type and title: no `order`, no `parent`, and it
+  never enters the backlog, exactly like every other `Resource` note. The roster itself is
+  unchanged for now — the axis still draws its rows from declared names, assignees and
+  absences, so a note made this way earns a row of its own once the axis starts reading
+  resource notes directly.
+
 - **The roadmap's shelf switches between cards and a compact list.** A third picker in the
   shelf's own header, beside the sort and the type filter, and a `Shelf layout` submenu in
   any shelf card's menu for a reader with no pointer. List mode draws one row per item —
