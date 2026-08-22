@@ -179,8 +179,12 @@ describe('children on the card', () => {
 	 * this board meets a focus root as a card's OWN direct child, at depth 0 of the walk,
 	 * where `projectionForest` did no re-rooting and there is nothing to contradict.
 	 *
-	 * Applying the stop at depth 0 as well takes `Kid` off the carrier's face and puts it
-	 * on no card at all — the very thing the walk was written to stop.
+	 * Applying the stop at depth 0 as well takes `Kid` off the carrier's face — and NOT off
+	 * the board: probed on this fixture, `iterationResults` gives `Kid` a card of its own
+	 * either way, so the cost is a card's list disagreeing with the board it is drawn on
+	 * rather than work going missing. "On no card at all" is true of the ROADMAP's release
+	 * under a focus (`releaseRows.test.ts` asserts the whole frame there) and was written
+	 * here as well until 2026-08-22, when it was measured.
 	 */
 	it('lists a focus root that is a card’s own direct child, where nothing promoted it', () => {
 		const vault = new FakeVault();

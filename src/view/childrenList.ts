@@ -3,33 +3,18 @@ import { BacklogViewHost } from './host';
 import { BacklogItem } from '../domain/model';
 import { cardPaths } from '../domain/board';
 import { displayType } from '../domain/itemTypes';
+import { drawnDescent } from './rowVisibility';
 
 /**
  * The children a card DRAWS — the level of the tree this projection puts beneath this
- * item, which is one level of `item.children` only where this projection draws every
- * link in it.
- *
- * **A row this projection does not draw is traversed THROUGH, never dropped**, and that
- * is the whole of the descent: a `Release` hand-hung between a `Feature` and its `PBI`s
- * is drawn by no axis of the roadmap (`onThisRoadmap`), so on a focused roadmap the PBIs
- * below it were on no card at all — while their dates went on reaching the Feature's own
- * bar, which walks the MODEL. A bar drawn from work the card said was not there. The
- * descent terminates because `children` is acyclic — `buildModel` runs `breakCycles`
- * before `assignAll`, and it is the only producer of a model.
+ * item, taken by `drawnDescent` (`rowVisibility.ts`), which is where the descent itself
+ * and the two rules it keeps are stated. This is that walk asked with the HOST's
+ * membership question.
  *
  * The question is `isRowUndrawn` and NEVER `isRowHidden`, and the difference is the trap:
  * `rowHidden` is true for three different reasons and a caller holding the boolean cannot
  * tell them apart. Descending through a child the COMPLETED TOGGLE hid would put a done
  * subtree back on every card face, the board's included.
- *
- * **It stops where `projectionForest` has already re-rooted the subtree.** A promoted
- * root carries `focusRoot` — *a root of the rendered forest that is not a root of the
- * model* — so it is drawn in its own right at the top of the forest and is nobody's
- * listed child. That is what keeps the board and the Deliverables board still: their
- * membership IS the forest's (`inPlan`), so every row they refuse promotes what is under
- * it, and this walk finds nothing to carry up. The rows that strand are the ones only a
- * projection's own narrowing refuses — the roadmap's release, and the iteration board's
- * out-of-sprint link — which the forest drew and nothing promoted.
  *
  * This lives in `view/`, not `domain/`, because these functions take a `BacklogViewHost` —
  * a view type `domain/` can never import, so the layering rule rules `domain/` out
@@ -41,18 +26,8 @@ import { displayType } from '../domain/itemTypes';
  * own into either, is what lets `render/cardChildren.ts` (the disclosure) and
  * `interactions/menu.ts` (its keyboard path) share one answer without one.
  */
-export function drawnChildren(host: BacklogViewHost, item: BacklogItem, descended = false): BacklogItem[] {
-	return item.children.flatMap((child) => {
-		if (host.isRowUndrawn(child)) return drawnChildren(host, child, true);
-		// Only on the way UP, where `projectionForest` did the re-rooting this stop is
-		// deferring to. A projection whose walk is NOT the focused forest meets a focus
-		// root as a card's own direct child: the iteration board reads `realRoots` and a
-		// focus set on another projection arrives unrevalidated, so with the focus on
-		// `PBI` an in-sprint `PBI` under an in-sprint `Feature` carries the stamp at
-		// depth 0 — promoted by nothing, and its carrier's face is the only place it is
-		// listed. Checked by `test/view/cardChildren.test.ts`, both halves.
-		return descended && child.focusRoot ? [] : [child];
-	});
+export function drawnChildren(host: BacklogViewHost, item: BacklogItem): BacklogItem[] {
+	return drawnDescent(item, (row) => host.isRowUndrawn(row));
 }
 
 /**

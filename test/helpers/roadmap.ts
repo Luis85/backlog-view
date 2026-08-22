@@ -43,7 +43,9 @@ export function shelfHeavyVault(): FakeVault {
  * same escape hatch `makeView`'s `collapsed` param gives the tree. `shelfList` flips
  * the band to the compact-row layout the same way the header picker does, and `order`
  * forwards to `makeView`'s own — the shelf's column alignment has nothing to align
- * without at least one resolved property column.
+ * without at least one resolved property column. `only` narrows what the Base returns,
+ * so everything else in the vault loads as a context row — `laneRoadmap`'s own
+ * parameter, offered here for the suites that take the horizon axis.
  */
 export function makeRoadmap(
 	vault: FakeVault,
@@ -53,9 +55,10 @@ export function makeRoadmap(
 		focus,
 		shelfList,
 		order,
-	}: { shelfCollapsed?: boolean; focus?: string; shelfList?: boolean; order?: string[] } = {},
+		only,
+	}: { shelfCollapsed?: boolean; focus?: string; shelfList?: boolean; order?: string[]; only?: string[] } = {},
 ): Harness {
-	const harness = makeView(vault, { ...HORIZON_AXIS, ...extra }, { collapsed: true, focus, order });
+	const harness = makeView(vault, { ...HORIZON_AXIS, ...extra }, { collapsed: true, focus, order, only });
 	harness.view.setProjection('roadmap');
 	if (!shelfCollapsed) harness.view.setShelfCollapsed(false);
 	if (shelfList) harness.view.setShelfLayout('list');

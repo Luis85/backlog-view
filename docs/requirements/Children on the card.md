@@ -121,10 +121,25 @@ card — and a count is the half of it that cannot be acted on.
 
 ## Where it lives
 
-`src/view/childrenList.ts` holds three functions, pure and DOM-free: `listedChildren`
-(the visible direct children), `childrenLabel` (what to call them), and
-`undisclosedMatches` (the quick-filter matches a card should still name once its
-disclosure already lists some of them — one card cannot say the same thing twice).
+`src/view/childrenList.ts` is pure and DOM-free, and holds what a card asks about its
+children: `drawnChildren` (the level of the tree this projection puts beneath the item),
+`listedChildren` (those of them the view is showing anyway), `childrenLabel` (what to call
+them), `cardedPaths` (which paths this projection drew a card for) and `menuChildren` (what
+the row menu may name).
+
+**`drawnChildren` is a DESCENT and not one level of `item.children`.** A row this
+projection does not draw is traversed THROUGH, so a `Release` hand-hung between a `Feature`
+and its `PBI`s — drawn by no axis of the roadmap — leaves those `PBI`s on the Feature's face
+rather than on no card at all. The one rule it keeps is where it STOPS: a row
+`projectionForest` has already promoted to a root of the rendered forest carries `focusRoot`
+and is drawn in its own right, so the walk does not also carry it up. The walk itself is
+`drawnDescent` in `src/view/rowVisibility.ts`, because `rowHidden` needs the same descent
+for the same reason — a context row is an empty scaffold only when nothing is visible below
+it, and "below it" has to mean the same thing to the row and to the card. `drawnChildren` is
+that walk asked with the host's own membership question, `isRowUndrawn`
+(`src/view/backlogView.ts`) — membership ALONE, never `isRowHidden`, or a subtree the
+completed toggle hid would come back on every card face.
+
 Living here, rather than in `src/view/render/cardChildren.ts` below, is what lets that
 render module and `src/view/interactions/menu.ts` share one answer without the cycle
 that importing from each other would close. `src/view/render/cardChildren.ts` imports
@@ -139,31 +154,25 @@ disclosure for, and so does that one; the view publishes the set as
 `menu.ts`'s `addChildrenSection` reads it — the same list and the same gate, reached
 through `buildItemMenu` on both the pointer path (`showItemMenu`) and the keyboard path
 (`showContextMenuFor`) — so neither re-derives an answer the screen already has.
-`undisclosedMatches` is read the same way, by `renderCardMatches` in
-`src/view/render/board.ts` for the card face and — through `matchesFor`, also in
-`childrenList.ts` — by `addMatchSection` in `menu.ts` for its menu, so the two surfaces
-cannot both name a match the disclosure already listed.
-
-`matchesFor` is what lets the menu ask ONE question regardless of which projection drew
+`cardedPaths` is what lets the menu ask ONE question regardless of which projection drew
 the row it is on: it reads `host.board` on the board and `host.roadmap.placed` on the
 roadmap — `RoadmapModel` is not what the roadmap draws, so the register `render/roadmap.ts`
-fills as it renders is what the menu reads instead — and it is where the menu's own
-already-listed set is decided, which is NOT the face's. A card's face subtracts what its
-OWN disclosure lists (`listsChildren` on the `PlacedMount` a surface registers,
-`src/view/host.ts`); the menu instead asks `host.cardChildrenShown`, the same set
-`addChildrenSection` above already reads — because a timeline row joins that set through
-its fold chevron while listing nothing on its own face, so a direct child match that the
-face still names on a row would be offered twice in the menu were the two policies not
-kept apart.
+fills as it renders is what the menu reads instead. A card's face and the menu do not share
+an already-listed set: the face lists what its OWN disclosure drew, while the menu asks
+`host.cardChildrenShown` — because a timeline row joins that set through its fold chevron
+while listing nothing on its own face. Two sentences here named `undisclosedMatches` and
+`matchesFor` until 2026-08-22; both went with the quick filter on 2026-08-17
+([[Remove the quick filter, now that Bases has its own search]]) and the note went on
+describing them.
 
-`matchesFor` subtracts `menuChildren` and not `listedChildren`, and the two are the same
+`menuChildren` narrows `listedChildren` rather than repeating it, and the two are the same
 set only until the per-child entries are narrowed — which they were on 2026-08-15
 ([[Drop the per-child entries from the card menu]]): the menu names a listed child only
-where it has **no card of its own**, so subtracting the wider set would silently drop a
-match that the menu is not otherwise naming. `menuChildren` states that gate and that
-narrowing together, in `childrenList.ts` beside the walk, so the loop that adds the
-entries and the walk that subtracts them cannot come apart. `cardedPaths` is the one
-place a projection is asked which cards it drew, and both read it.
+where it has **no card of its own**, so the wider set would name a child the reader can
+already reach. `menuChildren` states that gate and that narrowing together, in
+`childrenList.ts` beside the walk, so the loop that adds the entries and the answer it is
+built from cannot come apart. `cardedPaths` is the one place a projection is asked which
+cards it drew.
 
 The expansion bit itself is `CARD_SCOPE` in `src/view/viewState.ts`, a prefix
 alongside `TIMELINE_SCOPE`, read and written through `BacklogViewHost.isCardCollapsed`/

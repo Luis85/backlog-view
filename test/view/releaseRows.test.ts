@@ -118,6 +118,39 @@ describe('a release the Base excluded', () => {
 
 		expect(titlesOf(containerEl)).toEqual(['Child']);
 	});
+
+	/**
+	 * The same clause asked of a CARD's face, which is where `isRowUndrawn` is read. That
+	 * question is MEMBERSHIP alone and a context row is not exempt from it: a release the
+	 * Base excluded is a row of no projection, so the walk goes THROUGH it — and finds
+	 * nothing to carry up, because `inPlan` refusing that release is exactly what made
+	 * `projectionForest` promote `Deep` to a card of its own.
+	 *
+	 * **The reading that moves is the DENOMINATOR, not the list.** `isRowUndrawn` with
+	 * `&& !item.outsideFilter` on it — "a context row is always drawn" — passes every other
+	 * test in this repository, and it cannot change what the face LISTS: `listedChildren`
+	 * subtracts `isRowHidden`, which refuses that release by its own first clause either
+	 * way. What it changes is `drawn`, the count the disclosure's tooltip subtracts from,
+	 * so the card claims one child is hidden by the current view when the view is hiding
+	 * nothing — the shape `render/cardChildren.ts`'s own comment warns about, one
+	 * membership question over.
+	 *
+	 * `Work` is the second child for that reason: with `1.0` the only one, the face lists
+	 * nothing, no disclosure is drawn at all and there is no tooltip to be wrong.
+	 */
+	it('counts no hidden child for one, which is what the tooltip subtracts', () => {
+		const vault = new FakeVault();
+		vault.addFile('Ship it.md', { frontmatter: { type: 'Feature', order: 10, horizon: 'Now' } });
+		vault.addFile('1.0.md', { frontmatter: { type: 'Release', order: 10 }, parentLink: 'Ship it' });
+		vault.addFile('Deep.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: '1.0' });
+		vault.addFile('Work.md', { frontmatter: { type: 'PBI', order: 20 }, parentLink: 'Ship it' });
+		const { containerEl } = makeRoadmap(vault, {}, { only: ['Ship it.md', 'Deep.md', 'Work.md'] });
+
+		const card = cardByTitle(containerEl, 'Ship it');
+		const toggle = card.querySelector<HTMLElement>('.pbl-card-kids-toggle');
+		expect(toggle?.textContent).toContain('1 pbi');
+		expect(toggle?.dataset.tooltip).toBe('Show what is under "Ship it"');
+	});
 });
 
 describe('a release row in the tree', () => {
@@ -258,6 +291,36 @@ describe('a release the roadmap traverses through', () => {
 	 * `Open work` is in the same fixture on purpose: a fix that emptied the list entirely
 	 * would pass an assertion that only said `Task` was absent.
 	 */
+	/**
+	 * **The scaffold above such a release, which is `rowHidden`'s own last clause and not
+	 * this walk at all.** A context row is kept only while something below it is visible,
+	 * and that question was asked of `item.children` — so the release, a row this roadmap
+	 * draws no axis for, read as a child that is not visible. The context `Epic` called
+	 * itself an empty scaffold and went, and because `roadmapRows` filters a FOREST under a
+	 * focus, the eligible `PBI` beneath it went too.
+	 *
+	 * `cardTitles` is the whole frame rather than the Epic's presence: with the defect it is
+	 * empty. The advisory is the second half and a different reader — `eligibleResults`
+	 * counts that `PBI` off `model.results`, so the roadmap drew nothing and announced
+	 * "All 1 item is done and hidden", offering Show completed items for work that is
+	 * neither done nor hidden. One fix closes both: the row comes back, so the advisory has
+	 * cards to be silent about.
+	 */
+	it('keeps a context row placing work through it, and says nothing is hidden', () => {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('1.0.md', { frontmatter: { type: 'Release', order: 10 }, parentLink: 'Epic' });
+		vault.addFile('Work.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: '1.0' });
+		const { containerEl } = makeRoadmap(vault, {}, { focus: 'Epic', only: ['1.0.md', 'Work.md'] });
+
+		expect(cardTitles(containerEl)).toEqual(['Epic']);
+		expect(containerEl.querySelector('.pbl-board-advisory')).toBeNull();
+		const card = cardByTitle(containerEl, 'Epic');
+		expect(disclosure(card)?.textContent).toContain('1 pbi');
+		disclosure(card)?.click();
+		expect(kidTitles(card)).toEqual(['Work']);
+	});
+
 	it('does not descend through a child the completed toggle hid', () => {
 		const vault = new FakeVault();
 		vault.addFile('Ship it.md', { frontmatter: { type: 'Feature', order: 10, horizon: 'Now', status: 'New' } });

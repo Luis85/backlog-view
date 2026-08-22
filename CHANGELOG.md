@@ -11,16 +11,26 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ## [Unreleased]
 
+### Fixed
+
+- **A focused roadmap no longer loses work beneath a parent the base filtered out.** A
+  parent shown for context, with a release between it and the work below, counted as an
+  empty scaffold and took that work off the screen with it — and the roadmap then said
+  every item was done and hidden, offering to show completed items that would not have
+  brought any of it back. The context row stays for as long as anything below it is on
+  this screen, whatever rows lie in between.
+
 ### Changed
 
 - **A card lists work below a row this screen is not showing.** On the iteration board a
   card now lists a child that names the sprint even where the row between them does not —
-  a task committed to the sprint under a story that is not, for example — instead of
-  leaving it on no card at all. The same walk reaches the roadmap, where a release
-  hand-hung between a feature and its stories used to hide them from the feature's card
-  while their dates still moved its bar. Nothing joins a board or a roadmap it was not
-  already on: each note is still asked for itself, and a row in between is passed through
-  rather than promoted.
+  a task committed to the sprint under a story that is not, for example. That task already
+  had a card of its own on the board; what it did not have was a place under the card it
+  belongs to, so the face and the board disagreed. On the roadmap the gap was wider: a
+  release hand-hung between a feature and its stories left those stories on no card at all
+  under a focus, while their dates went on moving the feature's bar. Nothing joins a board
+  or a roadmap it was not already on: each note is still asked for itself, and a row in
+  between is passed through rather than promoted.
 
 - **The estimation view's options menu, the iteration board's columns, the roadmap legend
   and the reasons a card is on the shelf read in your Obsidian's language.** These were the

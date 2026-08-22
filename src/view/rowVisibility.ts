@@ -112,6 +112,69 @@ export function rowHidden(item: BacklogItem, rule: VisibilityRule): boolean {
 	// A context row is here only to place a result. Once nothing below it is
 	// visible it is an empty scaffold, so it goes with them — whatever hid them.
 	// One visible child is enough: a context child is itself subject to this rule.
-	if (item.outsideFilter) return !item.children.some((child) => !rowHidden(child, rule));
+	//
+	// Asked of the DRAWN DESCENT and never of `item.children`, which is the same
+	// distinction `drawnChildren` was written for one function down: a row this
+	// projection does not draw hides nothing — the results BELOW it are what this
+	// scaffold is still placing. Reading the raw children instead, a context `Epic`
+	// over a `Release` the roadmap draws no axis for saw no visible child, called
+	// itself empty, and took an eligible `PBI` off a focused roadmap with it — while
+	// `eligibleResults` went on counting that `PBI` and the advisory said all the work
+	// was done and hidden.
+	if (item.outsideFilter) {
+		return !drawnDescent(item, (row) => !rule.inProjection(row)).some((child) => !rowHidden(child, rule));
+	}
 	return false;
+}
+
+/**
+ * The rows a projection DRAWS beneath an item — one level of `item.children` only where
+ * this projection draws every link in it.
+ *
+ * **A row this projection does not draw is traversed THROUGH, never dropped**, and that
+ * is the whole of the descent: a `Release` hand-hung between a `Feature` and its `PBI`s
+ * is drawn by no axis of the roadmap (`onThisRoadmap`), so on a focused roadmap the PBIs
+ * below it were on no card at all — while their dates went on reaching the Feature's own
+ * bar, which walks the MODEL. A bar drawn from work the card said was not there. The
+ * descent terminates because `children` is acyclic — `buildModel` runs `breakCycles`
+ * before `assignAll`, and it is the only producer of a model.
+ *
+ * `undrawn` is MEMBERSHIP alone, never the whole of `rowHidden`, and the difference is
+ * the trap: `rowHidden` is true for three different reasons and a caller holding the
+ * boolean cannot tell them apart. Descending through a child the COMPLETED TOGGLE hid
+ * would put a done subtree back on every card face, the board's included.
+ *
+ * **It stops where `projectionForest` has already re-rooted the subtree.** A promoted
+ * root carries `focusRoot` — *a root of the rendered forest that is not a root of the
+ * model* — so it is drawn in its own right at the top of the forest and is nobody's
+ * listed child. That is what keeps the board and the Deliverables board still: their
+ * membership IS the forest's (`inPlan`), so every row they refuse promotes what is under
+ * it, and this walk finds nothing to carry up. The rows that strand are the ones only a
+ * projection's own narrowing refuses — the roadmap's release, and the iteration board's
+ * out-of-sprint link — which the forest drew and nothing promoted.
+ *
+ * Here rather than in `childrenList.ts`, where it was written, because `rowHidden` above
+ * needs the same descent for the same reason and a scaffold judged by a second reading of
+ * "what is below this" is exactly the disagreement this file exists to prevent. Two
+ * callers, one predicate each: the host's `isRowUndrawn` for a card's face, this rule's
+ * own `inProjection` for the row.
+ */
+export function drawnDescent(
+	item: BacklogItem,
+	undrawn: (row: BacklogItem) => boolean,
+	descended = false,
+): BacklogItem[] {
+	return item.children.flatMap((child) => {
+		if (undrawn(child)) return drawnDescent(child, undrawn, true);
+		// Only on the way UP, where `projectionForest` did the re-rooting this stop is
+		// deferring to. A projection whose walk is NOT the focused forest meets a focus
+		// root as a card's own direct child: the iteration board reads `realRoots` and a
+		// focus set on another projection arrives unrevalidated, so with the focus on
+		// `PBI` an in-sprint `PBI` under an in-sprint `Feature` carries the stamp at
+		// depth 0 — promoted by nothing, and drawn on that board in its own right. Applying
+		// the stop there too would take it off its carrier's face, leaving a card whose
+		// list disagrees with the board it is drawn on. Checked by
+		// `test/view/cardChildren.test.ts`, both halves.
+		return descended && child.focusRoot ? [] : [child];
+	});
 }
