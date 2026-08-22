@@ -1,11 +1,12 @@
 import { Menu } from 'obsidian';
 import { BacklogViewHost } from '../host';
 import { BacklogItem } from '../../domain/model';
-import { PlacementEnd, placementEnds } from '../../domain/itemTypes';
+import { isReleaseType, PlacementEnd, placementEnds } from '../../domain/itemTypes';
 import { sameValue } from '../../domain/noteFields';
 import { BacklogSettings, horizonMenuValues } from '../../domain/settings';
 import { optionalKeyFor } from '../../domain/optionalProperties';
 import { formatCivil } from '../../domain/timeline';
+import { hasHorizonAxis } from '../../domain/roadmap';
 import { computeHorizonWrites, SchedulePlan } from '../../domain/writePlan';
 import { SchedulePromptModal } from '../../ui/prompts';
 import { rowVocabulary } from '../projection';
@@ -42,6 +43,27 @@ import { t } from '../../i18n/t';
  */
 export function canSchedule(settings: BacklogSettings, item: BacklogItem): boolean {
 	return placementEnds(item.typeName, settings.iterationBars).some((end) => optionalKeyFor(settings, end) !== '');
+}
+
+/**
+ * The bucket axis's half of the same question `canSchedule` asks of the dated one:
+ * `hasHorizonAxis` says whether this base HAS buckets, which is not the same as whether
+ * this TYPE may be put in one. A `RELEASE` may not — `computeHorizonWrites` refuses it, so
+ * every entry the menu drew would be checked (an entry is checked exactly when picking it
+ * would write nothing) and every pick would do nothing.
+ *
+ * A type NAME rather than an item, `placementEnds`' own signature and for its own reason:
+ * a caller can hold a type with no row to ask about. There WAS such a caller — the bucket
+ * header's `+`, which knows only which type it would CREATE — and it went when the roadmap
+ * stopped honouring a focus on a type it cannot draw (`honouredFocusLevel`,
+ * `view/projection.ts`): the only type this predicate refuses is a `Release`, and only that
+ * focus could ever have named one there, so the guard had no reachable input left. The
+ * signature keeps the shape rather than narrowing to an item, because the reason it was
+ * given is a property of the question and not of the call sites that happen to exist.
+ * Both remaining callers hold a row: the row menu's `Set horizon` and the horizon chip.
+ */
+export function canPlaceHorizon(settings: BacklogSettings, typeName: string | null): boolean {
+	return hasHorizonAxis(settings) && !isReleaseType(typeName);
 }
 
 /** True when the note carries a date key this item's placement may take away. */

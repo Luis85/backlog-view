@@ -637,6 +637,12 @@ export function announceScheduleMove(
  * with `bars.ts` about a string neither owns a shared type for — the same mistake
  * matching on `placementLabel`'s wording would be. The tri-state is the one fact both
  * sides of the sentence already share.
+ *
+ * `placement === null` now carries a SECOND meaning — `placeItem` answers it for a type
+ * this axis does not place at all — and the span it falls back to would be dates for
+ * something that draws nothing. Unreachable: `placementEnds` gives such a type no end, so
+ * no schedule batch is ever planned for one and this is never called with its dates. Said
+ * out loud here for the reason it is said at `shelf.ts` and `timelineDrag.ts`.
  */
 function destinationWords(after: StatedEnds, placement: Placement | null, ends: PlacementEnd[]): string {
 	const unreadable = unreadableEndWords(after);

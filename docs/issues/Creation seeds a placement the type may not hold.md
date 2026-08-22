@@ -1,0 +1,158 @@
+---
+type: Issue
+order: 100
+parent: "[[Creating items]]"
+status: Open
+priority: P3
+area: limitation
+created: 2026-08-22
+source: review of the release-management first increment, task 1 — narrowed rather than widened, by ruling
+files:
+  - src/storage/createNote.ts
+  - src/view/interactions/create.ts
+  - src/domain/itemTypes.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
+---
+
+# Creation seeds a placement the type may not hold
+
+## The limitation
+
+Two surfaces seed a placement onto a note they are creating, so that the note is never
+momentarily one whose frontmatter contradicts the thing that made it: a bucket header's
+`+` seeds that bucket's horizon, and an iteration board's `+` seeds that sprint's `start`
+and `target` through `iterationOf`. Both arrive at one loop in `createBacklogItem`, over
+`axisEntries`.
+
+That loop asks nothing about the TYPE except one question: is this a `Release`. So a
+`Milestone` created on an iteration board is written the sprint's **`start`** — a key
+`placementEnds` answers `['target']` for, which is to say a key this plugin will never
+write to a milestone again, never offer a control over, and which the generated README
+describes to the reader as *"ignored — never rewritten, and never removed"*.
+
+The note is not corrupt and nothing downstream misreads it: `placeMarker` ignores the
+start exactly as it ignores a hand-written one, the timeline draws the milestone at its
+target, and the date chip for the start end is withheld. What is wrong is narrower and
+still real — the plugin wrote, unasked, a value it documents itself as never writing, and
+left no affordance to take it away.
+
+The same shape holds for the horizon in reverse: a marker CAN hold one (the bucket axis
+places a milestone like any other row), so that half is correct as it stands.
+
+## Why it is deliberate
+
+The obvious fix is to make the guard rule-shaped rather than name-shaped — ask
+`placementEnds(spec.typeName, settings.iterationBars)` which ends this type speaks and
+drop the ones it does not, so `Milestone` is covered by the same sentence as `Release` and
+the next type is covered by arriving. That was proposed in review and **refused for this
+increment**: it changes the creation behaviour of a **shipped** type inside a task whose
+subject is a type that does not exist yet.
+
+It is the same reason the marker parent edge was left alone rather than corrected in
+`linkAll` on this branch. A release is new, so refusing it anything costs no user a
+behaviour they have. A milestone is not, and somebody's vault may have milestones created
+on a sprint board carrying a start today; changing what the next one gets is a decision
+that deserves its own change, its own note and its own line in the changelog, rather than
+riding in on a branch nobody would think to look in for it.
+
+What was done instead is the narrower half of the same rule: the comment at
+`createBacklogItem` now claims exactly what the check performs — a `Release` is seeded
+nothing — rather than the wider "a placement the type may not hold", which the code did
+not deliver. *Write the guarantee to the check, never ahead of it.*
+
+## What would lift it
+
+There is now one place to make that decision. `mayHoldField` (`src/domain/itemTypes.ts`)
+answers "may a note of this type hold this optional property", and every door a planning
+key reaches a note through asks it: the writer's TOCTOU refusal, the ✨ backfill's stubs at
+both the planner and the writer. It is name-shaped for the same ruling recorded above —
+only a `Release` is asked — and the settings are a parameter so that the rule-shaped body
+needs no call site to change. Creation is the one door that does NOT ask it yet: it still
+spells `isReleaseType` in `createBacklogItem`, which is exactly the narrowing this note is
+about, so option 1 below is that body plus routing the creation seed through it.
+
+### Widening it: the rule, its exceptions, and how to know you got it right
+
+**No code is written down here on purpose.** Two plausible bodies were drafted in this
+note and in `mayHoldField`'s own comment, and both were wrong — the first refused an
+iteration's own `start`, the second let a release take a horizon again, reopening the very
+bug the guard was written to close. A body in a document is a confident sentence with no
+check under it, and this repository refuses those everywhere else. What is safe to write
+down is the rule, the exceptions, and the suites that decide.
+
+**The rule.** "May a note of this type hold this key" is `placementEnds`-shaped: the ends
+a type speaks are the ends it may hold, which is why the function already asks
+`placementEnds` for `start` and `target` rather than restating anything. Today it is
+narrowed to a `Release` by the ruling recorded above, and the whole widening is a change of
+which types reach that question.
+
+**The exceptions are what decide the body, and neither is derivable from `placementEnds`.**
+Both drafts died on one of them:
+
+- **An iteration note's own `start` and `target` are its DEFINITION, not a placement in
+  somebody's plan.** `placementEnds('Iteration', …)` answers `['target']` whenever
+  `iterationBars` is off, and `axisFrom` (`src/view/interactions/create.ts`) states both
+  ends on every save with no `ends` — the exact shape the writer's live-type refusal sees.
+  A body that asks the placement rule of an iteration refuses the iteration dialog's own
+  save. `docs/requirements/An iteration's timeframe schedules its items.md` is what those
+  two dates ARE — the timeframe every member is stamped from.
+- **A `Release` may hold NO horizon**, where a marker in general may — the bucket axis
+  places a milestone like any other row. `docs/requirements/Releases as their own type.md`
+  ("draws no point and no bar on the backlog roadmap, **on either axis**, and speaks no
+  placement end") and `A release on the dated axis.md` extension 4b are the citations;
+  `computeHorizonWrites` and `onThisRoadmap` are where the same rule already lives. A body
+  that reasons "a marker may hold a horizon" and lets every marker through has reopened
+  this bug.
+
+**How to know.** Widen the body, then run — and watch, rather than trust:
+
+- `test/view/iterationDialog.test.ts` — catches the iteration exception. Measured: the
+  naive "drop the `isReleaseType` line" version fails 2 of its 15.
+- `test/storage/liveTypeKeys.test.ts` — catches the release exception at both ends, the
+  plan and the write, and holds the removal exemption. Measured: the second draft, the one
+  that let every marker hold a horizon, fails 2 of its 6 —
+  `expected [ 'horizon', 'risk' ] to deeply equal [ 'risk' ]` at the plan and the stubbed
+  key at the write.
+- `test/domain/writePlanProperties.test.ts` and `test/storage/frontmatterDates.test.ts` —
+  the backfill's other stub rules and the dated axis's own refusals, which a widened body
+  passes through.
+- `npm run check`, which is the only claim worth making about a body nobody has run.
+
+Whatever body results, it belongs in `mayHoldField` and nowhere else — that part held
+across both attempts, and no call site moved either time.
+
+Two ways out, and they are not equivalent:
+
+1. **Derive the seed from `placementEnds`.** One filter in `createBacklogItem`, covering
+   every type at once, and the `isReleaseType` special case disappears into it. The whole
+   cost is deciding — and stating — that a milestone created on a sprint board no longer
+   records that sprint's start. It also raises a question this note does not answer: the
+   horizon is not a `PlacementEnd`, so a single predicate has to span two vocabularies or
+   stay two clauses.
+2. **Withhold the offer instead**, the way `renderBucketNew` withholds the bucket `+` for a
+   type that cannot occupy a bucket. That is the conservative reading — the note is never
+   created from a surface whose placement it cannot take — but it removes a creation path
+   people use, so it is the larger behaviour change of the two despite touching less.
+
+Either way the pair belongs together: the offer and the write are separate guards today
+([[Releases as their own type]] task 1), and nothing forces them to agree.
+
+## Impact
+
+Reaching it needs an iteration board, a sprint in scope, and a deliberate choice to create
+a `Milestone` there rather than a card. The result is one extra frontmatter key on one
+note, invisible on every screen and harmless to every reader — so this is a
+tidiness-and-honesty defect, not a data one. It is recorded because the comment beside the
+code used to claim it did not happen.
+
+## Acceptance criteria
+
+None; recorded so the trade-off is re-decided knowingly. If it is taken up, decide (1) or
+(2) explicitly rather than reaching for whichever is nearer, and say in the changelog that
+the key is no longer written.

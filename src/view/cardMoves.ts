@@ -326,8 +326,10 @@ export class CardMoveController {
  * string would make two modules agree about wording neither owns a type for, while
  * passing it through leaves `bars.ts` its only author.
  */
-function shelvedWords(item: BacklogItem, name: string, placement: Placement): string | null {
-	if (placement.kind !== 'shelf') return null;
+function shelvedWords(item: BacklogItem, name: string, placement: Placement | null): string | null {
+	// `null` is a type the axis does not place at all, which is not a shelved card and so
+	// says nothing here — the same silence a bar gets.
+	if (placement?.kind !== 'shelf') return null;
 	if (placement.reason === null) return t('move.shelvedNoDates', { title: item.title, name });
 	return t('move.shelvedReason', { title: item.title, name, reason: placement.reason });
 }

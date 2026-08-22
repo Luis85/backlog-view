@@ -267,7 +267,7 @@ const STORAGE = 'src/storage/**/*.ts';
 // and `docs/requirements/Every surface translated.md` says why file by file.
 // The directories swept into the catalog, plus `main.ts` — two command NAMES and the
 // plugin's own name, which is never translated and carries an inline disable rather than
-// an exemption for the file, `ui/manualDialog.ts`'s nav heading exactly — and the four
+// an exemption for the file, `ui/manualDialog.ts`'s nav heading exactly — and the five
 // `domain/` files whose own text is now keyed.
 const SWEPT = [
 	'src/ui/**/*.ts',
@@ -278,6 +278,7 @@ const SWEPT = [
 	'src/domain/board.ts',
 	'src/domain/bars.ts',
 	'src/domain/roadmap.ts',
+	'src/domain/releaseOptions.ts',
 ];
 const MENU = 'src/view/interactions/menu.ts';
 // The rest of the menu surface, carved out of VIEW for the two text bans alone — swept
@@ -643,7 +644,9 @@ export default defineConfig([
 		// that made `displayName` worth banning — the option-bag property no other module in
 		// `src/` spells. Four more joined on 2026-08-22 with theirs: `estimationOptions.ts`,
 		// which is the same object literal for the other view, and `board.ts`, `bars.ts` and
-		// `roadmap.ts`, which is what made `reason` worth banning.
+		// `roadmap.ts`, which is what made `reason` worth banning. `releaseOptions.ts` is the
+		// fifth and joined on arrival rather than after a sweep — it is the release view's
+		// own options bag, the third of the same object literal, and it was written keyed.
 		//
 		// The REST of `domain/` stays unbanned, and each part of it for its own reason rather
 		// than for want of a sweep: `backlogReadme.ts` and `readmeStamps.ts` write English

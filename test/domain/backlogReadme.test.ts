@@ -40,7 +40,7 @@ describe('backlogReadmeContent', () => {
 		// this vocabulary actually has today — four extra types, two markers — including
 		// the verb, which has to agree with a marker count that grew from one to two.
 		expect(content).toContain('Issue, Bug, Idea and Deliverable sit *beside* it');
-		expect(content).toContain('Milestone and Iteration are neither');
+		expect(content).toContain('Milestone, Iteration and Release are neither');
 		expect(content).not.toContain('and Bug and');
 	});
 

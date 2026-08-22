@@ -448,6 +448,58 @@ describe('creating from a bucket', () => {
 		expect(vault.fm('docs/requirements/More of it.md')['horizon']).toBe('someday');
 	});
 
+	it('never names a type the axis cannot hold, whatever focus arrives from elsewhere', () => {
+		// `newItemType` follows the FOCUS and `focusTarget` accepts any declared name, so
+		// focusing `Release` had every bucket header offering "New Release in Now" — into an
+		// axis that draws no releases, through a creation write with no type gate. It is
+		// closed one layer up now: the roadmap honours no focus on a type it cannot draw
+		// (`honouredFocusLevel`), so the `+` is OFFERED and names a type this axis holds.
+		// The withheld-control version of this was `canPlaceHorizon` guarding the `+`
+		// itself, and it went with the branch nothing could drive any more.
+		const vault = horizonVault();
+		vault.addFile('1.0.md', { frontmatter: { type: 'Release', order: 40 } });
+		const released = bucketByName(makeRoadmap(vault, {}, { focus: 'Release' }).containerEl, 'Now');
+		expect(released.querySelector('.pbl-bucket-add')?.getAttribute('aria-label')).toBe('New Epic in Now');
+		// The focus it must not disturb: a Milestone IS placed on the bucket axis, so it is
+		// honoured and the `+` makes one — which is what says this is about releases and not
+		// about markers.
+		const marked = bucketByName(makeRoadmap(horizonVault(), {}, { focus: 'Milestone' }).containerEl, 'Now');
+		expect(marked.querySelector('.pbl-bucket-add')?.getAttribute('aria-label')).toBe('New Milestone in Now');
+	});
+
+	it('offers no Release anywhere on the roadmap, since no axis of it draws one', () => {
+		// A projection does not offer a type it cannot draw — the iteration board's own rule,
+		// reaching a fourth projection. All THREE surfaces `offerableTypes` feeds, because
+		// each fails differently: `New` would make a note that vanished on the next refresh,
+		// `Set type` would vanish the card it was used on, and the focus picker would offer a
+		// `Release`-only scope drawing an empty roadmap with nothing saying why.
+		const vault = horizonVault();
+		const { containerEl, view } = makeRoadmap(vault);
+
+		containerEl.querySelector<HTMLElement>('.pbl-new-pick')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		const created = Menu.lastShown?.items.map((i) => i.titleText) ?? [];
+		expect(created).toContain('New Milestone');
+		expect(created).not.toContain('New Release');
+
+		view.showContextMenuFor(view.model?.byPath.get('Now item.md') as never);
+		const retype = Menu.lastShown?.item('Set type')?.submenu?.items.map((i) => i.titleText) ?? [];
+		expect(retype).toContain('Milestone');
+		expect(retype).not.toContain('Release');
+
+		containerEl.querySelector<HTMLElement>('.pbl-focus-btn')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		const focuses = Menu.lastShown?.items.map((i) => i.titleText) ?? [];
+		expect(focuses).toContain('Milestone');
+		expect(focuses).not.toContain('Release');
+
+		// It narrows THIS projection and no other: the tree still offers the type, which is
+		// the decision step 7 took and this must not undo.
+		const tree = makeView(vault, {});
+		tree.containerEl
+			.querySelector<HTMLElement>('.pbl-new-pick')
+			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		expect(Menu.lastShown?.items.map((i) => i.titleText)).toContain('New Release');
+	});
+
 	it('is blocked by the config gate, exactly as every other creation is', async () => {
 		const vault = horizonVault();
 		const { containerEl } = makeRoadmap(vault, { orderProperty: 'note.parent' });

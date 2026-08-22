@@ -402,7 +402,15 @@ decides what a change would say the same way) · `src/domain/readmeText.ts` (`co
 copyable YAML without it changing meaning: the fence that grows, the pipe an HTML entity
 carries past the row scan, the control characters a quoted scalar still folds. Its own
 module because every defect this document has shipped has been one of those rather than a
-sentence) · `src/domain/readmeStamps.ts` (the dates the view writes by itself — the two predicates, the rows, the rule, and the states that reach them, which have to agree with each other) · `src/domain/readmeMarker.ts` (what the
+sentence) · `src/domain/readmePlanning.ts` (`planningSection` — the **Planning** section alone: the horizon buckets, the
+two date properties, which types those place and which they place on neither axis, and who
+writes any of it. Its own module because `backlogReadme.ts` reached its line cap and this
+is the seam with one subject — every other section there describes the note's own shape,
+and this one describes a projection's reading of it. Everything in it is derived from the
+placement rules rather than from a spelled list of types, which is the defect it exists
+having learned: a sentence naming the marker CATEGORY where it meant *the markers this view
+places* published a falsehood into the user's vault the day a third marker was declared) ·
+`src/domain/readmeStamps.ts` (the dates the view writes by itself — the two predicates, the rows, the rule, and the states that reach them, which have to agree with each other) · `src/domain/readmeMarker.ts` (what the
 file *is* rather than what it says: `README_FILE_NAME`, `readmeMarker`, `readmeSource` and
 the encoding that keeps a source on one line — its own module because the writer needs the
 identity without the prose, and a rule about identity should not be read out of four

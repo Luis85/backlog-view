@@ -230,6 +230,37 @@ describe('barHolds', () => {
 	});
 });
 
+describe('a release is on neither axis', () => {
+	function releaseVault(): FakeVault {
+		const vault = new FakeVault();
+		// Carrying the BACKLOG's own start and target: the whole point is that a release
+		// stating both still draws nothing, because these keys are the wrong mapping to
+		// read and a far worse one to write. [[A release on the dated axis]] is deferred.
+		vault.addFile('1.0.md', { frontmatter: { type: 'Release', order: 10, start: '2026-09-01', target: '2026-09-30' } });
+		return vault;
+	}
+
+	it('is refused by `placeItem` itself, the site both grid axes reach', () => {
+		// `placeItem` is asked directly because it is the ONE site both axes reach:
+		// `deriveBars` for the dated one, and `placeBar` in `roadmap.ts` for the resources
+		// one, which `deriveLanes` routes through without ever calling `deriveBars`. A guard
+		// proved only through `deriveBars` proves nothing about resource lanes or the shelf.
+		const { item } = itemFor(releaseVault(), '1.0.md');
+		expect(placeItem(item, statedEnds(item), false)).toBeNull();
+		expect(placeItem(item, statedEnds(item), true)).toBeNull();
+	});
+
+	it('places no bar and shelves no card on the dated axis', () => {
+		// Neither half is enough alone: the shelf is a counted, drop-targetable band, so a
+		// release sitting there is still a release the roadmap is showing.
+		const { item, settings } = itemFor(releaseVault(), '1.0.md');
+		const axis = deriveBars([item], settings.iterationBars);
+		expect(axis.bars).toEqual([]);
+		expect(axis.shelf).toEqual([]);
+		expect(axis.context).toEqual([]);
+	});
+});
+
 describe('drawsAsPoint', () => {
 	it('splits the drawing question off the structural one', () => {
 		// A milestone IS a point; an iteration is one exactly while the option is off.

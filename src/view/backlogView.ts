@@ -26,6 +26,7 @@ import { DropTarget } from '../domain/dropTargets';
 import { activeAxis, drawsGrid } from '../domain/roadmap';
 import { ItemWrite, ScheduleGesture, SchedulePlan } from '../domain/writePlan';
 import { forgetBacklogView, rememberBacklogView } from './registry';
+import { honouredFocusLevel } from './projection';
 import { renderPass } from './renderPass';
 import { ResizePolicy } from './resize';
 import { rowHidden, visibilityRule } from './rowVisibility';
@@ -237,7 +238,17 @@ export class ProductBacklogView extends ViewStateSurface implements BacklogViewH
 		this.state.restore(this.viewEl);
 		// Focus is working position rather than configuration, so it comes from the store
 		// and not from the `.base`; everything downstream reads it off the settings.
-		this.settings = { ...resolveSettings(this.config), focusLevel: this.state.focusLevel() };
+		// Through `honouredFocusLevel`, because a stored pick outlives the projection it was
+		// made on: the roadmap draws no `Release` and its picker offers none, so a focus
+		// retained from the tree must not re-root the model here. Answered once, on the
+		// settings everything downstream already reads, rather than at each reader.
+		// `this.projection` is read on the RIGHT of this assignment, off the view-state
+		// store rather than off `this.settings` — which is the line being replaced, and
+		// therefore still the PREVIOUS pass's. It cannot matter today: the projection is
+		// not a settings value at all, and the only other term is the focus level, read
+		// from the same store. It would matter the moment this rule widened to something
+		// resolved from the config, so keep the question in mind rather than the answer.
+		this.settings = { ...resolveSettings(this.config), focusLevel: honouredFocusLevel(this.projection, this.state.focusLevel()) };
 		this.model = buildModel(this.app, this.data?.data ?? [], this.settings);
 		// Which properties become columns is a config question, so it is answered once
 		// here rather than per render — and once, so the rows and the tag menu cannot

@@ -88,6 +88,14 @@ a root by nature, holding nothing.
   context row included.
 - Adding `Release` to the vocabulary leaves every other classification unchanged: a
   `Milestone`, an `Iteration` and a test-catalog note are still none of them plan work.
+- It files into its own folder (`typeFolder.release` — shipped default `releases` under the
+  home folder), the option every declared type gets by arriving in the vocabulary rather
+  than by being remembered, exactly as `typeFolder.iteration` did.
+- It draws no point and no bar on the **backlog** roadmap, on either axis, and speaks no
+  placement end: the dated axis reads the backlog's own start and target keys, which are the
+  wrong mapping for a release date and a far worse one to write. Placing a release on a
+  timeline is [[A release on the dated axis]] and needs the roadmap's own release-date key,
+  which does not exist yet.
 
 ## Where it lives
 
@@ -96,4 +104,4 @@ The type joins the **fixed** vocabulary in `src/domain/itemTypes.ts` and
 nature, no legal children, and a constant rather than an option (ADR 0013). Notes
 are read into the model in `src/domain/readItems.ts` against the shape in
 `src/domain/model.ts`, and the version, target-date and status keys — the property keys, never the type name —
-are declared in `src/domain/viewOptions.ts` beside every other key this view names.
+are declared in `src/domain/releaseOptions.ts` beside every other key this view names.

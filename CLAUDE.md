@@ -109,16 +109,19 @@ language, so nothing re-reads it. What must never enter the catalog is anything 
 writes, matches or persists — type names, state values, option keys, tags, file names. The
 test when it is not obvious: **ask what breaks if two people with different Obsidian
 languages open the same vault.** "One sees different words" is text; "one writes notes the
-other's view cannot read" is data. 553 keys are in it (counted two ways on 2026-08-22 and
-agreeing — an AST walk over the `as const` object's own properties, and a match-counting
-`grep -Po` for the key lines; `grep -c` would count LINES, which is one of the three wrong
-numbers this epic has produced from an instrument that looked right). Re-measured when
-[[Making a resource from the timeline]] merged, which is also how the previous figure was
-found to be one short of its own catalog: a count is dated the moment it is written.
+other's view cannot read" is data. 559 keys are in it, counted two ways on 2026-08-22 and
+agreeing — an AST-shaped walk over the `as const` object's own key lines, and a
+match-counting `grep -Po`; `grep -c` would count LINES, which is one of the three wrong
+numbers this epic has produced from an instrument that looked right. **Re-measured at this
+merge rather than added up.** Both sides of it carried a figure that was right when written
+and stale by the time they met — one branch's 548-plus-six and main's 553 — which is the
+rule this paragraph already states arriving as a merge conflict: a count is dated the moment
+it is written, so the merge re-runs the instrument instead of reconciling two arithmetics.
 `ui/`, `commands/`, `view/interactions/`, `view/estimation/`, the whole of `view/render/`,
 `view/writeGate.ts`, `view/cardMoves.ts`, `main.ts`, `domain/viewOptions.ts` and — since
-2026-08-22 — `domain/estimationOptions.ts`, `domain/board.ts`, `domain/bars.ts` and
-`domain/roadmap.ts` are swept, **which leaves `view/manual/` and nothing else in `src/`
+2026-08-22 — `domain/estimationOptions.ts`, `domain/board.ts`, `domain/bars.ts`,
+`domain/roadmap.ts` and `domain/releaseOptions.ts` (the third options bag, written keyed
+rather than swept) are swept, **which leaves `view/manual/` and nothing else in `src/`
 that a sweep still owes.** It is not a leftover: those three files are authored long-form
 PROSE, and whether several hundred multi-sentence paragraphs belong in a message catalog at
 all is an open question rather than work not yet done. What is still English in the REST of
@@ -126,9 +129,9 @@ all is an open question rather than work not yet done. What is still English in 
 — the type names and shipped value lists are data, `defaultModel.ts`'s rubrics are in the
 model FINGERPRINT so two locales would stamp two models, `timeline.ts`'s month names are a
 formatting question that follows the USER's locale through `Intl` and belongs to
-[[Locale-aware sorting and formatting]], and `backlogReadme.ts` and `readmeStamps.ts` write
-authored prose INTO the vault, which is `view/manual/`'s own open question wearing two more
-instances. `roadmap.ts`'s shelf label is NOT among them and this paragraph said it was
+[[Locale-aware sorting and formatting]], and `backlogReadme.ts`, `readmeStamps.ts` and
+`readmePlanning.ts` write authored prose INTO the vault, which is `view/manual/`'s own open
+question wearing three more instances. `roadmap.ts`'s shelf label is NOT among them and this paragraph said it was
 until 2026-08-22: it was keyed on 2026-08-19 and three places went on claiming otherwise,
 one of them a test whose assertion read a note title instead. The whole classification is
 in `docs/requirements/Every surface translated.md`, and an English literal beside a `t()`

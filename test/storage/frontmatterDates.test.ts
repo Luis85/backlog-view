@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { applyWrites } from '../../src/storage/frontmatter';
+import { applyRestores, applyWrites, RestoreWrite } from '../../src/storage/frontmatter';
 import { resolveSettings } from '../../src/domain/settingsResolve';
 import { FakeVault, FakeViewConfig } from '../helpers/vault';
+import { placementEnds } from '../../src/domain/itemTypes';
+import { BacklogItem } from '../../src/domain/model';
+import { computeScheduleWrites } from '../../src/domain/writePlan';
 
 /**
  * The dated axis's write-time rules — split out of `frontmatter.test.ts` (the
@@ -227,6 +230,83 @@ describe('the writer decides a date against the live note', () => {
 		expect(vault.fm('Item.md').start).toBe('2026-08-01');
 		expect(vault.fm('Item.md').target).toBe('2026-08-20');
 		expect(outcome.changed).toBe(false);
+	});
+});
+
+describe('the writer plans no date key for a release', () => {
+	function dateSettings() {
+		return resolveSettings(new FakeViewConfig({ startProperty: 'note.start', targetProperty: 'note.target' }));
+	}
+
+	it('plans nothing, and refuses a batch a retype turned into one', async () => {
+		// `placementEnds` is what `applyWrites` consults, and a release speaks NO end — so
+		// a schedule gesture against one plans an empty batch rather than both keys, which
+		// is the half a menu or a timeline could ever produce. Asserted at the PLANNER and
+		// then at the writer, because the gate that matters is the writer's: it asks the
+		// LIVE type, so a note retyped to `Release` while a gesture was in flight has the
+		// whole batch refused rather than both backlog date keys written to a marker
+		// [[A release on the dated axis]] has not yet given a mapping.
+		//
+		// Narrowed to what each half reaches, watched failing with the gate removed: the
+		// PLANNER assertion is the one the gate decides — without it the batch names the
+		// target. The writer half is the shape check running, not the release rule: a
+		// mismatched `ends` length refuses either way, so it states that a stale batch
+		// never lands on a release rather than that a release is why.
+		const settings = dateSettings();
+		const vault = new FakeVault();
+		const file = vault.addFile('1.0.md', { frontmatter: { type: 'PBI', start: '2026-09-01', target: '2026-09-30' } });
+		const item = { file } as unknown as BacklogItem;
+		expect(computeScheduleWrites(item, { target: '2026-10-15' }, placementEnds('Release', false))).toEqual([]);
+
+		vault.fm('1.0.md').type = 'Release';
+		const outcome = await applyWrites(vault.app, settings, [{ file, axis: { target: '2026-10-15', ends: ['target'] } }]);
+
+		expect(vault.fm('1.0.md')).toEqual({ type: 'Release', start: '2026-09-01', target: '2026-09-30' });
+		expect(outcome.changed).toBe(false);
+	});
+});
+
+describe('the writer asks the LIVE type about a horizon too, not only about dates', () => {
+	it('refuses a horizon batch the note was retyped out from under', async () => {
+		// The date branch of `refusesAxis` returns before it reads the note when a write
+		// carries no `ends`, and a horizon write carries none — so the horizon's type rule
+		// lived at model time alone and a plan captured against a `PBI` still landed on a
+		// note somebody retyped to `Release` in between. Authorization at plan time is not
+		// authorization at write time; that is `applySafely`'s own argument and the reason
+		// the dated axis has had this check all along.
+		const settings = resolveSettings(new FakeViewConfig({ horizonProperty: 'note.horizon' }));
+		const vault = new FakeVault();
+		const file = vault.addFile('1.0.md', { frontmatter: { type: 'PBI', horizon: 'Now' } });
+		vault.fm('1.0.md').type = 'Release';
+
+		const outcome = await applyWrites(vault.app, settings, [{ file, axis: { horizon: 'Next' } }]);
+
+		expect(vault.fm('1.0.md')).toEqual({ type: 'Release', horizon: 'Now' });
+		expect(outcome.changed).toBe(false);
+	});
+
+	it('still writes a horizon to the type the note actually holds', async () => {
+		// The control that says the refusal is about the live TYPE and not about horizons:
+		// the same batch, the same key, a note nobody retyped.
+		const settings = resolveSettings(new FakeViewConfig({ horizonProperty: 'note.horizon' }));
+		const vault = new FakeVault();
+		const file = vault.addFile('Work.md', { frontmatter: { type: 'PBI', horizon: 'Now' } });
+
+		const inverses: RestoreWrite[] = [];
+		const outcome = await applyWrites(vault.app, settings, [{ file, axis: { horizon: 'Next' } }], undefined, (i) =>
+			inverses.push(i),
+		);
+
+		expect(vault.fm('Work.md').horizon).toBe('Next');
+		expect(outcome.changed).toBe(true);
+
+		// And the undo of that legitimate write still works after a retype, which is the
+		// claim the refusal above is written beside: a replay goes through `applyRestores`,
+		// restoring the RAW captured key, and asks nothing of the live type. Breaking that
+		// would make the new gate take away a reader's way back rather than close a hole.
+		vault.fm('Work.md').type = 'Release';
+		await applyRestores(vault.app, inverses);
+		expect(vault.fm('Work.md').horizon).toBe('Now');
 	});
 });
 

@@ -204,6 +204,7 @@ const DATA = [
 	'Issue',
 	'Idea',
 	'Milestone',
+	'Release',
 	'Deliverable',
 	'New',
 	'Active',
