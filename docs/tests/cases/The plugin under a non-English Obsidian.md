@@ -86,12 +86,24 @@ it — the view options at width in this suite, the whole appearance suite at or
 a broken layout as a regression. Left in a right-to-left locale, this case hands the rest of
 the sweep a screen it has already agreed to excuse.
 
-**And take the iteration back out**, in this order: clear the committed item's iteration,
-delete the iteration note, then unbind the iteration property. The setup above is the only
-part of this case that changes the vault, and it changes the ROADMAP: `iterationsOnTimeline`
-defaults on, so an iteration left behind draws on both grid axes and `Smoke test the
-roadmap` would be re-run against a timeline this case built. Each release run would leave
-another.
+**And take the iteration back out.** The setup above is the only part of this case that
+changes the vault, and it changes the ROADMAP: `iterationsOnTimeline` defaults on, so an
+iteration left behind draws on both grid axes and `Smoke test the roadmap` would be re-run
+against a timeline this case built. Each release run would leave another. Three steps, in
+this order, and two of them are not the obvious action:
+
+1. **Undo the commit batch** with the toolbar's undo — do NOT set the item's iteration to
+   None. Joining an iteration copies the sprint's dates onto the item, and a None pick
+   deliberately removes the link and nothing else ("leaving a sprint is not a reschedule",
+   `computeIterationWrites`), so picking None leaves the item scheduled to a sprint that no
+   longer exists. Undo is what puts the dates back with the link. Do it before anything else,
+   while it is still the last batch.
+2. **Delete the iteration note.**
+3. **Remove the `iterationProperty` line from `docs/Product Backlog.base`** in a text editor.
+   Clearing the option in the picker is not the same thing: `adoptCandidates` skips a
+   property whose option is `!== undefined`, and a cleared option is defined-and-empty, so
+   the line would sit there permanently stopping ✨ from ever adopting the iteration property
+   on this view again.
 
 ## Acceptance criteria
 
@@ -99,6 +111,7 @@ another.
 - Whichever of the three failure shapes appeared, if any, recorded by surface.
 - Obsidian restored to the runner's own language and restarted, so the rest of the sweep
   judges layout against a locale it is allowed to fail in.
-- The iteration cleared, deleted and unbound, so the roadmap suite is judged on the timeline
-  it had before this case ran.
+- The commit batch undone, the iteration note deleted and the `iterationProperty` line gone
+  from the `.base`, so the roadmap suite is judged on the timeline it had before this case
+  ran and the committed item keeps its own dates.
 - Nothing yet checked; the real `getLanguage()` has never run.
