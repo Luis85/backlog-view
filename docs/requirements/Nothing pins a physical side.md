@@ -192,7 +192,13 @@ whole.
   that pins a physical side itself, which is exactly the coupling above and cannot go stale
   when a partial is added. A second test asserts the licence's own premise, so
   `.pbl-bar-label-after` going logical on one line and not the other fails rather than
-  passing quietly. Deliberately narrower than this PBI: `border-left`/`border-right` and
+  passing quietly. **The licence reaches the box properties and NOT text alignment**, and
+  that had to be corrected in review on PR #196: one helper applied it to both categories,
+  so `left: 0; text-align: left` passed a test whose own comment said no exemption was
+  coherent — a comment stating a rule the code beside it did not check, which is the failure
+  [[A comment that states a rule is not a check]] records. No placement can make
+  `text-align: left` right, because alignment follows the text and not the box.
+  Deliberately narrower than this PBI: `border-left`/`border-right` and
   every bare `left:`/`right:` are outside it, since a rule over those would open with the
   exemption list [[Styling rules are checks]] exists to avoid. Watched failing in both
   directions — a planted margin in an unpinned block, and the licence's offset turned

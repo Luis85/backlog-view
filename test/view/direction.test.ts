@@ -12,8 +12,11 @@ import { assembleStyles } from '../../scripts/styles-assemble.mjs';
  * `left:`/`right:` placement are still in the file, classified there as coupled to a
  * gradient or to an offset TypeScript computes physically. A rule over those would open
  * with an exemption list, which is what [[Styling rules are checks]] is written to avoid.
- * So the sentence this file can hold is "margins, paddings and text alignment name no
- * side, except where the same rule pins one", and it says only that.
+ * So the sentence this file can hold is two sentences, and they are deliberately not the
+ * same one: a margin or padding names no side EXCEPT where the same rule pins one, and
+ * text alignment names no side at all. The licence belongs to the first only — it exists
+ * for a clearance whose neighbour is placed physically, and no such coupling can make
+ * `text-align: left` right. Writing them as one sentence is the defect review found here.
  */
 const styles: string = assembleStyles();
 
@@ -39,8 +42,20 @@ const blocks = [...declarations.matchAll(/\{([^{}]*)\}/g)].map((m) => m[1]);
 /** Whether `block` pins a physical side itself, which is what licenses a physical box value. */
 const pinsAPhysicalSide = (block: string): boolean => /(?:^|[;{\s])(?:left|right)\s*:/.test(block);
 
-/** The blocks matching `pattern` that have no physical placement to justify it. */
-const offenders = (pattern: RegExp): string[] =>
+/** Every block matching `pattern`, licensed or not. */
+const matching = (pattern: RegExp): string[] =>
+	blocks.filter((block) => pattern.test(block)).map((block) => block.trim());
+
+/**
+ * The blocks matching `pattern` that have no physical placement to justify it.
+ *
+ * Separate from `matching` rather than a flag on it, because ONE of the two categories
+ * here is licensed and the other is not — a single helper applying the licence to both
+ * silently exempted `left: 0; text-align: left` while the comment below said no exemption
+ * was coherent. Caught in review on PR #196; the naming is what keeps the two apart at
+ * the call, where a boolean argument would not.
+ */
+const unlicensed = (pattern: RegExp): string[] =>
 	blocks.filter((block) => pattern.test(block) && !pinsAPhysicalSide(block)).map((block) => block.trim());
 
 describe('the stylesheet names no physical side', () => {
@@ -49,7 +64,7 @@ describe('the stylesheet names no physical side', () => {
 		// spelling a property-name check misses, and `.pbl-card-kid`'s indent was written
 		// that way. A three-value shorthand is symmetric on the inline axis, so it names
 		// no side and is not matched.
-		expect(offenders(/(?:^|[;{\s])(?:margin|padding)-(?:left|right)\s*:/)).toEqual([]);
+		expect(unlicensed(/(?:^|[;{\s])(?:margin|padding)-(?:left|right)\s*:/)).toEqual([]);
 		const fourValue = blocks.filter((block) => {
 			const decl = /(?:^|[;{\s])(?:margin|padding)\s*:\s*([^;]+);/.exec(block);
 			if (!decl) return false;
@@ -72,7 +87,10 @@ describe('the stylesheet names no physical side', () => {
 	});
 
 	it('aligns text to a logical end, never to a physical one', () => {
-		// No exemption here, and none is coherent: text alignment follows the text.
-		expect(offenders(/text-align:\s*(?:left|right)\b/)).toEqual([]);
+		// No licence here, and none is coherent: text alignment follows the text, whatever
+		// pins the box the text is in. `matching`, NOT `unlicensed` — this line read
+		// `offenders` until review, which applied the placement licence to both categories
+		// and let `left: 0; text-align: left` through the sentence above it.
+		expect(matching(/text-align:\s*(?:left|right)\b/)).toEqual([]);
 	});
 });
