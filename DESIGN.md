@@ -539,11 +539,16 @@ parses.
 - **Don't** say the same thing twice. Done dims; it is not also struck through, greyed *and*
   badged, or moved.
 - **Don't** name a physical side (`left`, `right`, `margin-left`, `padding-right`,
-  `border-left`) where a logical property exists. Margins, paddings and text alignment are
-  clean as of 2026-08-22 and `test/view/direction.test.ts` keeps them so — including the
-  four-value `padding` shorthand, whose side is a position in a value list and not a
-  property name. Bare `left:`/`right:` placements, two `border-*: none` and every gradient
-  that names a side remain, each classified in
+  `border-left`) where a logical property exists **and the thing it clears, divides or
+  draws against is not itself pinned physically**. That second clause is the whole rule: a
+  clearance whose neighbour stays at a computed `left` has to stay physical too, or it
+  mirrors away from what it clears. Margins, paddings and text alignment are clean as of
+  2026-08-22 with one such licensed exception, and `test/view/direction.test.ts` keeps them
+  so — including the four-value `padding` shorthand, whose side is a position in a value
+  list and not a property name. It licenses a physical box value only in a block that pins a
+  physical side itself, so a new one needs its `left:`/`right:` beside it or it fails.
+  Bare placements, `border-left`/`border-right` and every gradient that names a side are
+  outside the check, each classified in
   [Nothing pins a physical side](docs/requirements/Nothing%20pins%20a%20physical%20side.md);
   **nothing checks those**, so read that note before adding one.
 - **Don't** write a raw pixel value without knowing which of three piles it lands in.

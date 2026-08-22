@@ -21,13 +21,14 @@
 
 /* The header's cell rhythm, extended down the body. Positioned, so it paints above
    row backgrounds and below the bars (positioned later in the DOM) — a 1px dashed
-   line over a hover tint is the normal gantt look. */
+   line over a hover tint is the normal gantt look. The border IS the line, on a
+   zero-width box at a physical `left` — so it stays physical with the offset. */
 .pbl-grid-line {
 	position: absolute;
 	top: 0;
 	bottom: 0;
 	left: var(--pbl-grid-left);
-	border-inline-start: 1px dashed var(--background-modifier-border);
+	border-left: 1px dashed var(--background-modifier-border);
 	pointer-events: none;
 }
 
@@ -162,12 +163,16 @@
 	min-width: 0;
 }
 
-/* The leading gap clears the connector, which sits in exactly the space `.pbl-bar-label`'s
+/* The left gap clears the connector, which sits in exactly the space `.pbl-bar-label`'s
    own `padding: 0 var(--size-4-2)` used to be the whole of. Seen in the browser harness
-   before it shipped: the dot landed on the first letter of the title. */
+   before it shipped: the dot landed on the first letter of the title. PHYSICAL on
+   purpose, the one margin/padding in the plugin that is: the label is placed by
+   `left: var(--pbl-label-left)` (`barLabel.ts`) and the connector by `left: 100%`, so
+   both stay physical and stay adjacent whichever way the text runs — a logical clearance
+   would mirror away from the dot it clears. [[Nothing pins a physical side]], group 3. */
 .pbl-bar-label-after {
 	left: var(--pbl-label-left);
-	padding-inline-start: 18px;
+	padding-left: 18px;
 }
 
 .pbl-bar-label-before {

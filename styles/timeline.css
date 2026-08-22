@@ -120,7 +120,11 @@
 	gap: var(--size-4-2);
 	padding: var(--size-4-1) var(--size-4-2);
 	background-color: var(--background-primary);
-	border-inline-end: 1px solid var(--background-modifier-border);
+	/* Physical with the `left: 0` two lines up: this column is pinned to the physical
+	   left, so the divider between it and the track is on its physical right. A logical
+	   border would put the divider on the pinned edge and leave the lead and the track
+	   with none between them. [[Nothing pins a physical side]], third group. */
+	border-right: 1px solid var(--background-modifier-border);
 }
 
 .pbl-timeline-lead .pbl-card-title {
@@ -155,7 +159,10 @@
 	color: var(--text-muted);
 	white-space: nowrap;
 	overflow: hidden;
-	border-inline-start: 1px dashed var(--background-modifier-border);
+	/* Physical because it has to line up with `.pbl-grid-line`, which draws the same
+	   rhythm down the body at an offset `timeline.ts` computes in physical pixels. The
+	   two are one grid and move together or not at all. */
+	border-left: 1px dashed var(--background-modifier-border);
 }
 
 /* Every row of this grid, whatever KIND of row it is: a sticky lead column beside a day

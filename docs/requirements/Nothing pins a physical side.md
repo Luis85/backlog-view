@@ -91,13 +91,33 @@ are absent from every partial, which is the same answer 2026-08-18 reached by ha
 
 **The first group is clear, and one member of it was a shape no reading of this note could
 have named.** `margin`/`padding` on a named physical side and `text-align: left|right` are
-now zero across the file — **17** declarations, not the 16 the 2026-08-18 count predicted,
-because `.pbl-card-kid`'s indent (`styles/cardChildren.css`) was written as a **four-value
+now zero across the file except for one declaration the third group licenses, below — 13
+declarations swapped, out of the **17** the sweep returned rather than the 16 the
+2026-08-18 count predicted. The seventeenth is why the count was short:
+`.pbl-card-kid`'s indent (`styles/cardChildren.css`) was written as a **four-value
 `padding` shorthand**. A property-name sweep cannot see it: the string `padding-left` never
 appears, and the side is the fourth position of a value list. Three-value shorthands are
 matched by the same scan and are NOT members — `top / inline / bottom` is symmetric on the
 inline axis and names no side. Logical declarations went from 23 `inline-start` and 10
-`inline-end` to 63 logical constructs in all.
+`inline-end` to 59 logical constructs in all.
+
+**Four of the seventeen were swapped and then put back, and that is the finding worth
+keeping from this round.** Codex review on PR #196 caught `.pbl-bar-label-after`: its 18px
+is a CLEARANCE for the dependency connector, and both the label (`left: var(--pbl-label-left)`,
+computed in `barLabel.ts`) and the connector (`left: 100%`) stay physical — so a logical
+clearance mirrors away from the very thing it clears and puts the dot back on the first
+letter of the title, which is the bug the comment beside it records from the browser
+harness. The same shape held for `.pbl-timeline-lead`'s divider (physical because the
+column is `sticky; left: 0`), `.pbl-timeline-cell`'s (it must line up with `.pbl-grid-line`)
+and `.pbl-grid-line`'s own (the border IS the line, on a zero-width box at a computed
+physical `left`). The inconsistency was inside one diff: the two `border-*: none` on the bar
+ends were held back on exactly this argument while these four were swapped past it. **The
+rule the round produced: a declaration that clears, divides or draws against a physically
+placed thing stays physical, because the pair has to move whole.** Its converse is what
+keeps the two flag margins logical — `.pbl-timeline-dependency-flag` and `.pbl-away-flag`
+sit in the lead's TEXT flow and go to whichever end it ends at, while the grip they clear is
+pinned; where the text runs the other way they are no longer near it, so there is nothing
+left to clear.
 
 | Where | Construct | Became |
 | --- | --- | --- |
@@ -105,16 +125,9 @@ inline axis and names no side. Logical declarations went from 23 `inline-start` 
 | `styles/roadmap.css`, `.pbl-bucket-collapsed .pbl-bucket-count` | `margin-left: 0` | `margin-inline-start: 0` |
 | `styles/dependencyArrows.css`, `.pbl-timeline-dependency-flag` | `margin-left` / `margin-right` | `margin-inline-start` / `margin-inline-end` |
 | `styles/lanes.css`, `.pbl-away-flag` and `.pbl-days-lost` | `margin-left` / `margin-right` | the same pair |
-| `styles/timeline.css`, `.pbl-timeline-lead` and `.pbl-timeline-cell` | `border-right` / `border-left` | `border-inline-end` / `border-inline-start` |
-| `styles/timelineFurniture.css`, `.pbl-grid-line` and `.pbl-bar-label-after` | `border-left` / `padding-left` | `border-inline-start` / `padding-inline-start` |
 | `styles/busy.css`, `.pbl-busy-done` | `text-align: right` | `text-align: end` |
 | `styles/cardChildren.css`, `button.pbl-card-kid` | `text-align: left`, and the four-value `padding` | `text-align: start`, `padding-block` + `padding-inline` |
 
-`.pbl-bar-label-after`'s swap is the one that touched a test rather than only a rule:
-`test/view/timelineBoxing.test.ts` ties a 118px content box to three declarations by
-reading them out of the assembled sheet, and one of the three was that `padding-left`. The
-override still lands because a logical longhand and a physical shorthand cascade together
-and the variant rule comes later — which the test now says in the comment beside the sum.
 
 **Two rows of these tables were stale when they were checked on 2026-08-18**, which is the
 hazard a table of selectors carries and the reason to re-derive rather than read: `.pbl-filter`
@@ -156,6 +169,8 @@ counted on 2026-08-18:
 | `styles/timelineFurniture.css`, `.pbl-grid-line` and the weekend banding | `left: var(--pbl-grid-left)` and a `linear-gradient(to right, …)` measured from the same physical origin |
 | `styles/timeline.css`, `.pbl-timeline-lead` and `styles/roadmap.css`'s pinned strips | `position: sticky; left: 0` |
 | `styles/timelineLeadResize.css`, `.pbl-timeline-lead-grip` | `right: -3px`, the pointer target the swapped `margin-inline-end` above clears |
+| `styles/timelineFurniture.css`, `.pbl-bar-label-after` | `padding-left: 18px`, the connector's clearance — **the one physical margin or padding left in the plugin**, and the reason the check below is a rule and not a clean sweep |
+| `styles/timeline.css`, `.pbl-timeline-lead` and `.pbl-timeline-cell`; `styles/timelineFurniture.css`, `.pbl-grid-line` | `border-right` / `border-left`, each drawn on an edge of a box the two rows above place physically |
 
 The third group is why this PBI stops at recording a decision. Renaming `left` to
 `inset-inline-start` there changes which edge the offset counts from while TypeScript goes
@@ -170,13 +185,18 @@ whole.
 - **Met 2026-08-22.** Every construct in the first group uses its logical twin, and nothing
   in the left-to-right rendering moves — the cascade pins in `test/view/rendering.test.ts`
   and the column-fit behaviour are unchanged, which is what this repository can check.
-  `test/view/direction.test.ts` is what keeps it met: it asserts the two categories that are
-  now EMPTY at the forbidden thing rather than by listing the rules that used to carry one,
-  over the assembled sheet with comments blanked. It is deliberately narrower than this PBI
-  — `border-left`/`border-right` and every bare `left:`/`right:` are still in the file, so a
-  rule over those would open with an exemption list, which is the thing
-  [[Styling rules are checks]] exists to avoid. It was watched failing (9 margin/padding
-  offenders, 2 text alignments) before it was watched passing.
+  `test/view/direction.test.ts` is what keeps it met: it asserts the categories at the
+  forbidden thing rather than by listing the rules that used to carry one, over the
+  assembled sheet with comments blanked. **The one licensed physical padding is licensed by
+  a RULE, not by a name on a list** — a physical margin or padding is legal only in a block
+  that pins a physical side itself, which is exactly the coupling above and cannot go stale
+  when a partial is added. A second test asserts the licence's own premise, so
+  `.pbl-bar-label-after` going logical on one line and not the other fails rather than
+  passing quietly. Deliberately narrower than this PBI: `border-left`/`border-right` and
+  every bare `left:`/`right:` are outside it, since a rule over those would open with the
+  exemption list [[Styling rules are checks]] exists to avoid. Watched failing in both
+  directions — a planted margin in an unpinned block, and the licence's offset turned
+  logical — before it was watched passing.
 - Every construct in the second group names no side in its value. A rule selected on
   direction does not satisfy this: it is the same construct written twice and passes a
   property-name check, which is precisely what [[Styling rules are checks]] must not rely
@@ -200,10 +220,9 @@ offsets are computed outside the stylesheet, which is the reason the third group
 question rather than an edit.
 
 The first group's swap also reached `styles/busy.css`, `styles/cardChildren.css`,
-`styles/dependencyArrows.css`, `styles/lanes.css` and `styles/timelineFurniture.css`, which
-is what a partial-per-concern file costs a sweep and the reason the members are re-derived
-rather than read. `test/view/direction.test.ts` holds the two categories it emptied, and
-`test/view/timelineBoxing.test.ts` reads one of the swapped declarations by name.
+`styles/dependencyArrows.css` and `styles/lanes.css`, which is what a partial-per-concern
+file costs a sweep and the reason the members are re-derived rather than read.
+`test/view/direction.test.ts` holds what it emptied and the rule licensing what it did not.
 
 **Still owed, and this PBI stays Open for it:** the second group is untouched — the
 selection accent at three selectors, the tag mask, the estimation progress strip and the
