@@ -1061,6 +1061,10 @@ Add to `test/view/shelfLayout.test.ts`:
 		// And the notes lane IS shrinkable, which is the other half of the narrow-pane policy:
 		// rigid, it plus the badge and the fold slot pass a 380px pane before a single cell.
 		expect(bodyOf(css, '.pbl-shelf-list .pbl-shelf-notes', 'styles/shelf.css')).toContain('flex: 0 1 calc(');
+		// The state box too, and `min-width: 0` is the load-bearing half: a flex item's default
+		// `min-width: auto` is its content's minimum, so ordering it without unsetting that
+		// leaves the last column rigid however narrow the pane gets.
+		expect(bodyOf(css, '.pbl-shelf-list .pbl-shelf-state', 'styles/shelf.css')).toContain('min-width: 0;');
 		// And the cells take the tree's stored widths back, which `.pbl-card .pbl-prop` turns
 		// off for a card. `0 1` rather than `0 0`: they must shrink together on a narrow pane
 		// rather than force a horizontal scrollbar the band has never had.
@@ -1468,8 +1472,20 @@ ones being replaced record measurements that stay true and must be carried forwa
 	order: 2;
 }
 
+/* The state reservation shrinks like the two lanes beside it, and `min-width: 0` is the whole
+   of what makes that true: a flex item's default `min-width: auto` is its CONTENT's minimum, so
+   ordering this box without unsetting that leaves it rigid at the state column's intrinsic
+   width — and its `.pbl-props` child inherits the floor, so the controlled-shrinkage policy
+   stops at it. Worse where a Base configures two workflow state columns. (Codex, PR #187.)
+
+   The `margin-inline-start: auto` this rule carried is gone with it, for `.pbl-props`'s reason:
+   the title is `flex: 1 1 0` and absorbs every spare pixel, so an auto margin here can never
+   fire, and a declaration that cannot fire is one someone later reasons from. */
 .pbl-shelf-list .pbl-shelf-state {
 	order: 3;
+	flex: 0 1 auto;
+	min-width: 0;
+	margin-inline-start: 0;
 }
 
 /* The parent link shares the flexible region with the title rather than sitting in the fixed
