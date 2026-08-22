@@ -65,13 +65,19 @@ order, before starting the walk:
    the iteration link, and the None pick in the teardown deletes the key rather than restoring
    what was in it.
 2. Create an iteration.
-3. Pick the item you will commit and **write down its `start` and `due` now, before
-   committing it.** Committing copies the sprint's dates over them, so after the commit there
-   is nothing left to read: those two values are the only way to put the item back. The undo
-   slot cannot serve — it is `lastUndo` on a `WriteLock` built at `onload`, and this case
-   restarts Obsidian at least twice, once to enter the language and once more for the
-   right-to-left repeat, each restart throwing the batch away.
-4. Commit that item to the iteration.
+3. Pick the item you will commit — **one whose note already carries BOTH `start` and `due`**,
+   an empty value counting as carrying it. Open the note and check rather than assuming: most
+   notes here have both, and some under `docs/bugs/` have neither. Committing ADDS the two
+   keys to a note that lacks them, and there is no recorded value that would put a missing key
+   back, so an item chosen without looking leaves a tracked note modified whatever the teardown
+   does.
+4. **Write its `start` and `due` down now, before committing it.** Committing copies the
+   sprint's dates over them, so after the commit there is nothing left to read: those two
+   values are the only way to put the item back. The undo slot cannot serve — it is `lastUndo`
+   on a `WriteLock` built at `onload`, and this case restarts Obsidian at least twice, once to
+   enter the language and once more for the right-to-left repeat, each restart throwing the
+   batch away.
+5. Commit that item to the iteration.
 
 Then the view options panel, a row's context menu, and the estimation view.
 
