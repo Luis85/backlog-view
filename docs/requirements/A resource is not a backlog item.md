@@ -46,7 +46,7 @@ replaces every one of those narrowings.
 | **Actor** | Delivery lead |
 | **Trigger** | A base returns a note whose `type` is `Resource` |
 | **Preconditions** | None. The name is recognised whether or not any resource property is configured |
-| **Guarantee** | No projection of the backlog view ever draws, counts, ranks, offers or writes to a `Resource` note — because no `BacklogItem` is ever made from one |
+| **Guarantee** | No projection of the backlog view ever draws, counts, ranks or offers a `Resource` note, and no FORWARD write lands on one. Undo is the stated exception — see 2e |
 
 **Main flow**
 
@@ -73,6 +73,16 @@ replaces every one of those narrowings.
   name is out of `ALL_TYPES`, which is what `childTypeChoices`, `focusTarget`, the shelf's
   grouping, the generated README and the in-app manual all read — so each of them refuses it
   by construction rather than by an exclusion somebody has to remember.
+- **2e — a note is retyped to `Resource` after this view wrote to it, and the user presses
+  undo.** The restore lands, and that is deliberate rather than a hole in the guarantee
+  above. `undoLast` replays through `applyRestores`, which skips the forward gate's refusals
+  for the reason the register already states of the `outsideFilter` one: **its authorization
+  came at capture time**, and it restores RAW captured keys per key by compare-and-swap
+  rather than planning against these settings. So it writes back exactly what this view's own
+  write changed and nothing else, on a note the user could act on when they acted on it.
+  Refusing it would stop a user taking back their own edit, and spend the one undo slot on
+  nothing. Raised by automated review against the wider sentence this note used to carry; the
+  sentence is narrowed rather than the replay gated.
 - **2d — a resource note carries dates, a horizon, a state or an assignee.** All read by
   nothing and written by nothing. There is no item to place, so there is no placement rule
   to state and none of the narrowing the marker version needed.
