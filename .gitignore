@@ -9,6 +9,12 @@ styles.css
 # the browser page `npm run harness` builds
 .harness/
 
+# a hand-drawn mock of a projection that does not exist yet, bundled by
+# `npm run harness -- test/harness/mock.ts`. Uncommitted on purpose: nothing imports it,
+# so `npm run analyze` reports it dead, which is the right answer for a scratch file and
+# the wrong one to suppress. See test/CLAUDE.md, "Looking at it".
+test/harness/mock.ts
+
 # the report `npm run health` writes
 .health/
 
