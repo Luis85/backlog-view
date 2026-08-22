@@ -39,8 +39,17 @@ the repository is open as a vault with `docs/Product Backlog.base` showing the t
 
 ## How to check
 
-In the view options, make **two** collisions, so the two shapes can be told apart: point
-**parent and order** at one key, and **start and target** at another.
+In the view options, make **two** collisions, so the two shapes can be told apart. Point one
+member of each pair at the **other member's existing key**, which is what keeps each group
+to exactly two roles:
+
+- **parent** at the order property's key;
+- **start** at the target property's key.
+
+Do not pick a free-standing key such as `status`, `risk` or `priority`: `configProblems`
+groups by KEY and names **every** role using it, so a key another option already owns
+produces one problem naming three or more properties — correct output that this check would
+read as a failure.
 
 Those two pairs are named rather than left to choice, because not every pair collides. The
 three workflow states — state, Deliverable state and test state — are exempt by design
