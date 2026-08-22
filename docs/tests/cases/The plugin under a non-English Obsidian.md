@@ -54,15 +54,18 @@ reaches three of them:
 picker's iteration section is gated on `settings.iterationKey`, `docs/Product Backlog.base`
 names no iteration property, and no note here carries `type: Iteration` — so with nothing
 done the picker offers neither an iteration nor the `New iteration…` action, and a runner
-following the list would inspect five projections while reporting six. Bind the iteration
-property in the view options, then create an iteration and commit one item to it, before
-starting the walk.
+following the list would inspect five projections while reporting six. Set it up in this
+order, before starting the walk:
 
-**Write down that item's `start` and `due` first.** Committing to an iteration copies the
-sprint's dates onto the item, and those two values are the only way to put them back: the
-undo slot cannot serve here at all, because it is `lastUndo` on a `WriteLock` built at
-`onload` and this case restarts Obsidian at least twice — once to enter the language, once
-more for the right-to-left repeat — and each restart throws the batch away.
+1. Bind the iteration property in the view options.
+2. Create an iteration.
+3. Pick the item you will commit and **write down its `start` and `due` now, before
+   committing it.** Committing copies the sprint's dates over them, so after the commit there
+   is nothing left to read: those two values are the only way to put the item back. The undo
+   slot cannot serve — it is `lastUndo` on a `WriteLock` built at `onload`, and this case
+   restarts Obsidian at least twice, once to enter the language and once more for the
+   right-to-left repeat, each restart throwing the batch away.
+4. Commit that item to the iteration.
 
 Then the view options panel, a row's context menu, and the estimation view.
 
