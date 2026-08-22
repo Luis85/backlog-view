@@ -1,4 +1,4 @@
-import { Indicator, ScaleConfig, ScoringDimension, ScoringModel } from './scoringModel';
+import { INDICATOR_BUILTINS, Indicator, ScaleConfig, ScoringDimension, ScoringModel } from './scoringModel';
 import { t } from '../i18n/t';
 
 /**
@@ -278,8 +278,10 @@ function scaleOperand(scale: ScaleConfig, held: number | null, label: string): R
 	return { label, value: Math.min(scale.max, Math.max(scale.min, held)), stored: held, known: true };
 }
 
-function resolveOperand(model: ScoringModel, inputs: IndicatorInputs, id: string): ResolvedOperand {
-	const label = operandLabel(model, id);
+/** One of the six `INDICATOR_BUILTINS` — split out of `resolveOperand` so the RESERVED
+ *  check that picks this function stays a single flat `if`, readable as one precedence
+ *  rule rather than folded into the six-way chain it guards. */
+function resolveBuiltin(model: ScoringModel, inputs: IndicatorInputs, id: string, label: string): ResolvedOperand {
 	if (id === 'confidence') return scaleOperand(model.confidence, inputs.confidence, label);
 	if (id === 'effort') return scaleOperand(model.effort, inputs.effort, label);
 	if (id === 'complexity') return scaleOperand(model.complexity, inputs.complexity, label);
@@ -291,15 +293,22 @@ function resolveOperand(model: ScoringModel, inputs: IndicatorInputs, id: string
 		return { label, value, stored: effort.stored, known: true };
 	}
 	if (id === 'value') return { label, value: inputs.result?.total ?? null, stored: null, known: true };
-	if (id === 'adjustedValue') {
-		if (inputs.result === null || inputs.confidence === null) return { label, value: null, stored: null, known: true };
-		const confidence = scaleOperand(model.confidence, inputs.confidence, label).value as number;
-		// Rounded HERE, before it is multiplied or divided — `renderDerived`'s own order, and
-		// keeping it is what makes "no in-range item's number moves" true rather than nearly
-		// true: at a total of 1.01, confidence 3, effort 2, rounding first gives 0.31 and
-		// rounding only the final figure gives 0.30.
-		return { label, value: round2((inputs.result.total * confidence) / model.confidence.max), stored: null, known: true };
-	}
+	// the remaining builtin is 'adjustedValue'
+	if (inputs.result === null || inputs.confidence === null) return { label, value: null, stored: null, known: true };
+	const confidence = scaleOperand(model.confidence, inputs.confidence, label).value as number;
+	// Rounded HERE, before it is multiplied or divided — `renderDerived`'s own order, and
+	// keeping it is what makes "no in-range item's number moves" true rather than nearly
+	// true: at a total of 1.01, confidence 3, effort 2, rounding first gives 0.31 and
+	// rounding only the final figure gives 0.30.
+	return { label, value: round2((inputs.result.total * confidence) / model.confidence.max), stored: null, known: true };
+}
+
+function resolveOperand(model: ScoringModel, inputs: IndicatorInputs, id: string): ResolvedOperand {
+	const label = operandLabel(model, id);
+	// RESERVED, asked first: a builtin wins even where a dimension claims the same id, and
+	// this is the one check that makes that true rather than an if-chain that happens to
+	// agree with it — the dimension branch below is never reached for one of these six.
+	if ((INDICATOR_BUILTINS as readonly string[]).includes(id)) return resolveBuiltin(model, inputs, id, label);
 	const dimension = model.dimensions.find((d) => d.id === id);
 	if (!dimension) return { label, value: null, stored: null, known: false };
 	const raw = inputs.answers.get(dimension.id);

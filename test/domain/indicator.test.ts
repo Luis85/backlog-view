@@ -106,6 +106,25 @@ describe('the indicator', () => {
 		expect(figure).toEqual({ value: 5.02, blockedBy: null });
 	});
 
+	it('gives a reserved id to the built-in even when a dimension claims the same name', () => {
+		// The collision INDICATOR_BUILTINS exists to decide. A vault may legitimately declare a
+		// dimension called `effort`; the operand must still resolve to the effort SCALE, and the
+		// dimension must keep its own weight in the value model, untouched.
+		const model = configured();
+		model.dimensions.push({
+			id: 'effort',
+			label: 'Effort',
+			key: 'note.effort-dimension',
+			min: 1,
+			max: 5,
+			weight: 10,
+			lessIsBetter: false,
+			rubric: ['a', 'b', 'c', 'd', 'e'],
+		});
+		const figure = computeIndicator(model, ind({ operands: ['effort'], divisor: null }), inputs({ effort: 3 }));
+		expect(figure).toEqual({ value: 3, blockedBy: null });
+	});
+
 	it('composes a formula from operand labels', () => {
 		expect(indicatorFormula(configured(), ind({ operands: ['reach', 'confidence'], divisor: 'effort' }))).toBe(
 			'Reach × Confidence ÷ Effort',
