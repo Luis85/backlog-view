@@ -211,10 +211,16 @@ Each must refuse rather than fall through — an empty `ends` that reaches
 so use the default" is the same bug again. Add a test at the **writer**, not only at the
 menu: `applyWrites` given a schedule write against a `Release` must plan no date key.
 
-`deriveBars` is the third: it falls THROUGH to the ordinary start/target derivation, so a
-release carrying the backlog's date properties would draw as a bar instead of a point — the
-same leak wearing a different shape. In `src/domain/bars.ts`, before the `drawsAsPoint`
-branch at line 106:
+The third is the placement itself, and **it goes in `placeItem`, not in `deriveBars`.** Both
+matter: `placeItem` (`bars.ts:101`) falls THROUGH to the ordinary start/target derivation once
+`drawsAsPoint` says no, so a release carrying the backlog's date properties would draw as a
+*bar* instead of a point — the same leak wearing a different shape. And `placeItem` is the one
+site every path reaches: `deriveBars` calls it at `bars.ts:132` for the dated axis, and
+`roadmap.ts:596` calls it independently for the **resources** axis, which `deriveLanes` routes
+through without ever touching `deriveBars`. A guard in `deriveBars` would have left the
+resource lanes and the shelf placing releases exactly as before.
+
+In `src/domain/bars.ts`, at the top of `placeItem`, before the `drawsAsPoint` branch:
 
 ```ts
 	// No bar and no point: see `drawsAsPoint`'s own note. Refused here as well because a
@@ -223,8 +229,13 @@ branch at line 106:
 	if (isReleaseType(item.typeName)) return null;
 ```
 
-Match `deriveBars`' actual no-bar return value — read the function before writing this; if it
-returns something other than `null` for an unplaceable item, return that.
+`placeItem` returns a `Placement`, not `null` — read the type before writing this and return
+whatever it uses for "not on this axis at all". If the only unplaceable answer it can give is
+`{ kind: 'shelf', reason: … }`, that is the wrong one: a release on the shelf is still a
+release the roadmap is showing, and the shelf is a counted, drop-targetable band. Prefer a
+`kind` the callers already skip, and if none exists, refuse the item one level up in BOTH
+callers — `deriveBars` at `bars.ts:132` and `roadmap.ts:596` — rather than inventing a
+placement kind for this increment.
 
 - [ ] **Step 5: Test the gate**
 
@@ -237,6 +248,14 @@ returns something other than `null` for an unplaceable item, return that.
 		// And a Milestone is untouched, which is what says this gate is about the deferred
 		// feature rather than about markers.
 		expect(drawsAsPoint('Milestone', false)).toBe(true);
+	});
+
+	it('is placed on neither axis, by the path the resources axis takes', () => {
+		// TWO assertions on purpose. `deriveBars` covers the dated axis; `roadmap.ts:596`
+		// calls `placeItem` independently for the resources axis, so a guard proved only
+		// through `deriveBars` proves nothing about resource lanes or the shelf.
+		const release = { typeName: 'Release', /* plus the backlog's own start and target */ } as BacklogItem;
+		expect(placeItem(release, statedEnds(release), false)).toEqual(/* the not-placed answer */);
 	});
 
 	it('speaks no placement end, so nothing offers or writes a release date', () => {
@@ -764,6 +783,15 @@ describe('the release index', () => {
 		expect(indexOf(vault).rows.map((r) => r.name)).toEqual(names);
 	});
 
+	it('reads a rank the model’s tolerant reader accepts', () => {
+		// `readNumber` is `Number.parseFloat`, so this is rank 10 everywhere else in the
+		// plugin. A `Number()` conversion would make it NaN and sort the release last.
+		const vault = new FakeVault();
+		vault.addFile('A.md', { frontmatter: { type: 'Release', 'target-date': '2026-09-01', order: '10 - first' } });
+		vault.addFile('B.md', { frontmatter: { type: 'Release', 'target-date': '2026-09-01', order: 20 } });
+		expect(indexOf(vault).rows.map((r) => r.name)).toEqual(['A', 'B']);
+	});
+
 	it('reads rank from the MAPPED order key, never a literal `order`', () => {
 		const vault = new FakeVault();
 		vault.addFile('B.md', { frontmatter: { type: 'Release', 'target-date': '2026-09-01', rank: 10, order: 99 } });
@@ -943,15 +971,21 @@ function scannableRows(model: BacklogModel): BacklogItem[] {
 	return [...model.byPath.values()].filter((item) => !item.outsideFilter);
 }
 
-/** The rank the vault MAPPED, never a literal `order`. A release with no readable rank
- *  sorts after every release that has one, so the path tie-break decides between them. */
-function rank(app: App, item: BacklogItem, orderKey: string): number {
-	if (!orderKey) return Number.POSITIVE_INFINITY;
-	const fm = app.metadataCache.getFileCache(item.file)?.frontmatter;
-	const raw = ownValue(fm, orderKey);
-	const text = readString(raw);
-	const parsed = text === null ? Number.NaN : Number(text);
-	return Number.isFinite(parsed) ? parsed : Number.POSITIVE_INFINITY;
+/**
+ * The rank the model already parsed — `item.order`, not a second read of the cache.
+ *
+ * `readItems.ts:241` sets `order: readNumber(ownValue(fm, settings.orderKey))` from the
+ * MAPPED order key, which is exactly the value this sort wants. Re-reading it here was
+ * redundant and, worse, disagreed: `readNumber` uses `Number.parseFloat`, so `10 - first`
+ * is rank 10 everywhere else in the plugin, while a `Number()` conversion makes it `NaN`
+ * and drops the release to the undated tail. One value, parsed once, or the index orders
+ * releases differently from every other screen.
+ *
+ * A release with no readable rank sorts after every release that has one, so the path
+ * tie-break decides between them.
+ */
+function rank(item: BacklogItem): number {
+	return item.order ?? Number.POSITIVE_INFINITY;
 }
 
 /** A civil date as a sortable integer; undated sorts last, never as the epoch. */
@@ -995,7 +1029,7 @@ export function releaseIndex(app: App, model: BacklogModel, settings: ReleaseSet
 		const byDate = dateKey(a.target) - dateKey(b.target);
 		if (byDate !== 0 && Number.isFinite(byDate)) return byDate;
 		if (dateKey(a.target) !== dateKey(b.target)) return dateKey(a.target) < dateKey(b.target) ? -1 : 1;
-		const byRank = rank(app, a.item, settings.orderKey) - rank(app, b.item, settings.orderKey);
+		const byRank = rank(a.item) - rank(b.item);
 		if (byRank !== 0 && Number.isFinite(byRank)) return byRank;
 		// The final tie-break, and it is what makes the order STABLE across renders: two
 		// releases sharing a date and a rank — or a vault with the order property unmapped,
@@ -1218,6 +1252,18 @@ describe("one release's scope", () => {
 		expect(scopeOf(vault, 'Vanished.md').release).toBeNull();
 	});
 
+	it('never draws a release as a row inside a release, excluded or not', () => {
+		const vault = new FakeVault();
+		vault.addFile('R.md', { frontmatter: { type: 'Release' } });
+		vault.addFile('Other.md', { frontmatter: { type: 'Release' } });
+		vault.addFile('E.md', { frontmatter: { type: 'Epic' } });
+		// Filed UNDER the other release by hand, and a member of R.
+		vault.addFile('F.md', { frontmatter: { type: 'Feature', parent: 'Other', release: '[[R]]' } });
+		const rows = scopeOf(vault, 'R.md').rows;
+		// The marker is walked through: the member keeps its place under the real ancestor.
+		expect(rows.map((r) => r.item.file.basename)).not.toContain('Other');
+	});
+
 	it('marks a context ancestor that is itself in another release as context here', () => {
 		const vault = new FakeVault();
 		vault.addFile('R1.md', { frontmatter: { type: 'Release' } });
@@ -1275,12 +1321,23 @@ export function releaseScope(app: App, model: BacklogModel, settings: ReleaseSet
 		if (membershipTarget(app, item, model, settings) === path) members.add(item.file.path);
 	}
 
-	// Every ancestor of a member, so a member keeps its place. Collected before the walk
-	// because an ancestor may itself be an ancestor of several members.
+	// Every ancestor of a member, so a member keeps its place — **except a marker, which is
+	// walked THROUGH rather than kept.**
+	//
+	// Two rules meet here and both say the same thing. `Releases as their own type` 4a: an
+	// excluded release "never arrives as a context row" and "appears as no row anywhere" —
+	// and because this plan keeps the hand-written parent edge, a member filed under a
+	// release would otherwise drag that release in as a context ancestor, excluded or not.
+	// And the model's own rule: `descendantCount` scores a marker 0 and traverses through
+	// it, so a marker is never the thing that holds a row in place; the real ancestor above
+	// it is. Keeping one here would draw a release inside a release's own scope.
 	const keep = new Set(members);
 	for (const item of scannableRows(model)) {
 		if (!members.has(item.file.path)) continue;
-		for (let up = item.parent; up !== null; up = up.parent) keep.add(up.file.path);
+		for (let up = item.parent; up !== null; up = up.parent) {
+			if (isMarkerType(up.typeName)) continue;
+			keep.add(up.file.path);
+		}
 	}
 
 	const rows: ScopeRow[] = [];
