@@ -977,6 +977,15 @@ which costs the alignment nothing for the reason the cells already rest on: iden
 identical factors on every row resolve to identical widths under any deficit. Rigidity was never
 what made the columns line up — sameness was.
 
+**With one exception, and it is the badge slot.** Task 5 indents a shelved parent's children by
+a `padding` computed from that basis, and CSS cannot read back what a flex item actually
+resolved to — so a badge that gives up width moves the parent's title left while its children
+keep the full-basis indent, breaking the exact alignment in the very panes the shrink policy
+is for. It stays `0 0`, and the sums still fit: the fold slot, the badge and three gaps are
+138px against a title floor that is a SHARE of the row, so a 380px pane spends 290px before
+three shrinkable lanes. What overran was the version where the 116px notes lane was rigid
+too.
+
 The NOTES box is what makes the three variable middle things one fixed reservation instead of
 three absent-or-present ones. `renderShelfCard` draws it unconditionally and hands it to
 `renderCardBody` as `rollupEl`; `renderRollup` fills it or draws nothing, and the reason and
@@ -1049,6 +1058,9 @@ Add to `test/view/shelfLayout.test.ts`:
 		expect(bodyOf(css, '.pbl-shelf-list .pbl-card-head', 'styles/shelf.css')).toContain(
 			'flex: 0 0 var(--pbl-shelf-badge, 84px);',
 		);
+		// And the notes lane IS shrinkable, which is the other half of the narrow-pane policy:
+		// rigid, it plus the badge and the fold slot pass a 380px pane before a single cell.
+		expect(bodyOf(css, '.pbl-shelf-list .pbl-shelf-notes', 'styles/shelf.css')).toContain('flex: 0 1 calc(');
 		// And the cells take the tree's stored widths back, which `.pbl-card .pbl-prop` turns
 		// off for a card. `0 1` rather than `0 0`: they must shrink together on a narrow pane
 		// rather than force a horizontal scrollbar the band has never had.
@@ -1307,12 +1319,23 @@ ones being replaced record measurements that stay true and must be carried forwa
    The badge slot is the band's OWN reservation and deliberately not `--pbl-meta-col`, whose
    width is a reservation for the rollup label and is sized off the tree's population. A type
    outside `ALL_TYPES` truncates in the slot rather than pushing its own title out of line. */
+/* **The badge slot is the one reservation that does NOT shrink**, and the reason is Task 5
+   rather than this row. The children's indent is a `padding-inline-start` computed from this
+   basis, and CSS cannot read back what a flex item resolved to — so a shrinking badge moves
+   the parent's title left while the child's badge keeps the full-basis indent, and the exact
+   alignment Task 5 promises fails precisely in the narrow panes the shrink policy exists for.
+   (Codex, PR #187.)
+
+   Rigid here costs the narrow pane nothing, which is what makes this the right one to pin:
+   the fold slot (30px), this (84px) and three gaps are 138px, and the title's floor is a
+   share of the row rather than a fixed number — at a 380px pane that is 290px against 380,
+   with the notes lane, the cells and the state cell all shrinkable below it. The budget that
+   failed was the one where the 116px notes lane was rigid too.
+
+   The badge still truncates inside the slot, which is what keeps an unusual type name from
+   pushing its own title. */
 .pbl-shelf-list .pbl-card-head {
-	/* Shrinkable for the notes lane's reason and by its argument: identical on every row, so a
-	   deficit resolves it identically and the titles stay on one x however narrow the pane. The
-	   badge truncates inside it rather than pushing the title, which is what `overflow` is for
-	   here and what makes giving up width safe. */
-	flex: 0 1 var(--pbl-shelf-badge, 84px);
+	flex: 0 0 var(--pbl-shelf-badge, 84px);
 	width: var(--pbl-shelf-badge, 84px);
 	min-width: 0;
 	overflow: hidden;
@@ -1804,7 +1827,16 @@ In `src/view/render/shelf.ts`, in `renderShelfCard`, immediately after `summary`
 and change the body call (Task 4 already gave it `holdEmpty`):
 
 ```ts
-	renderCardBody(ctx, summary, entry.item, { kidsEl: card, holdEmpty: wiring.list, toggleEl: fold ?? undefined });
+	// **`rollupEl` stays.** Task 4 added it so the rollup lands in the fixed notes reservation;
+	// dropped here, `renderRollup` appends to the summary instead and every row with a rollup
+	// gets its own trailing width back — the exact variation Task 4 exists to remove, undone by
+	// the task after it. (Codex, PR #187.)
+	renderCardBody(ctx, summary, entry.item, {
+		kidsEl: card,
+		holdEmpty: wiring.list,
+		rollupEl: notes ?? undefined,
+		toggleEl: fold ?? undefined,
+	});
 ```
 
 - [ ] **Step 6: Style it**
