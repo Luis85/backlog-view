@@ -4,12 +4,20 @@ import { DEFAULT_POINT_RANGE, dimOption, resolveEstimationSettings } from './est
 import { defaultItemHandling, openTargetOptions } from './itemHandling';
 import { notePropsOnly } from './optionalProperties';
 import type { ScoringDimension } from './scoringModel';
+import { t } from '../i18n/t';
 
 /**
  * What Bases shows in the estimation view's own options menu — this view's half of what
  * `viewOptions.ts` is for the backlog. Rubric sentences get no box here: they are stored
  * keys only, hand-editable in the `.base` this round (`docs/requirements/The scoring
  * model is configuration.md`'s "Where it lives" says so).
+ *
+ * **Text and data sit on adjacent lines of the same object literal** here exactly as they
+ * do in `viewOptions.ts`, and the split is the same: a `displayName` is text and comes
+ * from `t()`; a `key`, a `default` and a `placeholder` are read back by
+ * `resolveEstimationSettings` or adopted by the backfill, so they are spelled here. Every
+ * placeholder in this file is of the data kind — a frontmatter key a picker suggests, or a
+ * box's own default mirrored so clearing it falls back to the string on screen.
  */
 
 /** The default range every dimension and the model's own output ship with, spelled from
@@ -29,40 +37,40 @@ function modelGroup(): BasesAllOptions {
 	const shippedIds = DEFAULT_DIMENSIONS.map((d) => d.id).join(', ');
 	return {
 		type: 'group',
-		displayName: 'Model',
+		displayName: t('estimation.option.model'),
 		items: [
 			{
 				type: 'text',
 				key: 'dimensions',
-				displayName: 'Dimensions (in order)',
+				displayName: t('estimation.option.dimensions'),
 				default: shippedIds,
 				placeholder: shippedIds,
 			},
 			{
 				type: 'text',
 				key: 'outputRange',
-				displayName: 'Output range',
+				displayName: t('estimation.option.outputRange'),
 				default: DEFAULT_RANGE_TEXT,
 				placeholder: DEFAULT_RANGE_TEXT,
 			},
 			{
 				type: 'property',
 				key: 'valueProperty',
-				displayName: 'Business value property',
+				displayName: t('estimation.option.valueProperty'),
 				placeholder: 'business-value',
 				filter: notePropsOnly,
 			},
 			{
 				type: 'property',
 				key: 'stampProperty',
-				displayName: 'Business value model stamp property',
+				displayName: t('estimation.option.stampProperty'),
 				placeholder: 'business-value-model',
 				filter: notePropsOnly,
 			},
 			{
 				type: 'dropdown',
 				key: 'openIn',
-				displayName: 'Open in',
+				displayName: t('option.openIn'),
 				options: openTargetOptions(),
 				default: defaultItemHandling('split').openIn,
 			},
@@ -93,7 +101,7 @@ function dimensionGroup(d: ScoringDimension): BasesAllOptions {
 			{
 				type: 'property',
 				key: dimOption(id, 'property'),
-				displayName: 'Property',
+				displayName: t('estimation.option.property'),
 				placeholder: id,
 				filter: notePropsOnly,
 			},
@@ -106,27 +114,27 @@ function dimensionGroup(d: ScoringDimension): BasesAllOptions {
 				// being the one `The scoring model is configuration` specifies. A live running
 				// total is REFUSED — `BasesOption` is `{ type, displayName, shouldHide? }`, so it
 				// would be a new control, which is a feature.
-				displayName: 'Weight (% of 100)',
+				displayName: t('estimation.option.weight'),
 				default: shippedWeight,
 				placeholder: shippedWeight,
 			},
 			{
 				type: 'text',
 				key: dimOption(id, 'range'),
-				displayName: 'Range',
+				displayName: t('estimation.option.range'),
 				default: DEFAULT_RANGE_TEXT,
 				placeholder: DEFAULT_RANGE_TEXT,
 			},
 			{
 				type: 'toggle',
 				key: dimOption(id, 'lessIsBetter'),
-				displayName: 'Less is better',
+				displayName: t('estimation.option.lessIsBetter'),
 				default: false,
 			},
 			{
 				type: 'text',
 				key: dimOption(id, 'label'),
-				displayName: 'Label',
+				displayName: t('estimation.option.label'),
 				default: shippedLabel,
 				placeholder: shippedLabel,
 			},
@@ -141,25 +149,31 @@ function dimensionGroup(d: ScoringDimension): BasesAllOptions {
 function indicatorGroup(): BasesAllOptions {
 	return {
 		type: 'group',
-		displayName: 'Indicator',
+		displayName: t('estimation.option.indicator'),
 		items: [
 			{
 				type: 'text',
 				key: 'indicatorLabel',
-				displayName: 'Name',
+				displayName: t('estimation.option.indicatorLabel'),
+				// A preset's NAME, which is what this box holds and what the `.base` stores —
+				// the same string in every language, exactly like the two boxes below whose
+				// placeholders are operand ids. Those pass the ban only because they are
+				// lowercase; this one is capitalised and trips it, so it is disabled at the
+				// line rather than the file, `registerBacklogView.ts`'s own shape.
+				// eslint-disable-next-line no-restricted-syntax -- a preset name is data the base stores, never translated text
 				placeholder: 'RICE',
 			},
 			{
 				type: 'text',
 				key: 'indicatorOperands',
-				displayName: 'Operands (multiplied, in order)',
+				displayName: t('estimation.option.indicatorOperands'),
 				default: 'adjustedValue',
 				placeholder: 'adjustedValue',
 			},
 			{
 				type: 'text',
 				key: 'indicatorDivisor',
-				displayName: 'Divisor',
+				displayName: t('estimation.option.indicatorDivisor'),
 				default: 'effort',
 				placeholder: 'effort',
 			},
@@ -170,26 +184,26 @@ function indicatorGroup(): BasesAllOptions {
 function scalesGroup(): BasesAllOptions {
 	return {
 		type: 'group',
-		displayName: 'Scales',
+		displayName: t('estimation.option.scales'),
 		items: [
 			{
 				type: 'property',
 				key: 'confidenceProperty',
-				displayName: 'Confidence property',
+				displayName: t('estimation.option.confidenceProperty'),
 				placeholder: 'confidence',
 				filter: notePropsOnly,
 			},
 			{
 				type: 'property',
 				key: 'effortProperty',
-				displayName: 'Effort property',
+				displayName: t('estimation.option.effortProperty'),
 				placeholder: 'effort',
 				filter: notePropsOnly,
 			},
 			{
 				type: 'property',
 				key: 'complexityProperty',
-				displayName: 'Complexity property',
+				displayName: t('estimation.option.complexityProperty'),
 				placeholder: 'complexity',
 				filter: notePropsOnly,
 			},

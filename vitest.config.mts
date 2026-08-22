@@ -140,10 +140,10 @@ export default defineConfig({
 			// the old floor had no one-function headroom either. If functions ever flake the
 			// way branches just did, that floor is the next one to come down.
 			thresholds: {
-				statements: 98.55,
-				branches: 94.92,
-				functions: 99.84,
-				lines: 99.65,
+				statements: 98.65,
+				branches: 95.04,
+				functions: 99.86,
+				lines: 99.68,
 			},
 		},
 	},

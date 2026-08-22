@@ -13,6 +13,14 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ### Changed
 
+- **The estimation view's options menu, the iteration board's columns, the roadmap legend
+  and the reasons a card is on the shelf read in your Obsidian's language.** These were the
+  last words the view drew from its own code rather than from the string catalog. Nothing a
+  note holds changes: the scoring model's dimension names, its rubric sentences, the type
+  names, the workflow values and the horizon list are the same in every language, so a vault
+  set up in one language still opens correctly in another. English is still the only catalog
+  that ships.
+
 - **The view-options menu reads in your Obsidian's language.** Every group name, every
   option's name and every placeholder that is a hint rather than a value now comes from the
   plugin's string catalog. Nothing that is written down changes: the settings a base stores,

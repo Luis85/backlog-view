@@ -564,6 +564,80 @@ translated document are not obviously the same artifact. Whoever takes it should
 that first and count second. Nothing about the rest of the sweep depends on the answer,
 and the three text bans stop at its door.
 
+**`domain/`, on 2026-08-22 — and the answer is that most of it is not text.** 23 keys,
+taking the catalog to **542** (counted two ways after the last edit and agreeing: an AST
+walk over the `as const` object's own properties, and a `grep -Po` for the key lines — the
+match-counting spelling, since `grep -c` counts lines and two keys have never shared one
+here anyway). Four files: `estimationOptions.ts`'s fourteen `displayName`s,
+`board.ts`'s three iteration-bucket names and two legend workflow headings, and the four
+shelf REASONS in `bars.ts` and `roadmap.ts`.
+
+**The deliverable is the classification, not the count.** "The rest of `domain/`" reads as
+one slice and is six different questions, each answered here against the vault test —
+*what breaks if two people with different Obsidian languages open the same vault*:
+
+| What | Verdict |
+| --- | --- |
+| `estimationOptions.ts`'s option headings | **Text.** The same object literal as `viewOptions.ts`, under the same rule, which is why that rule is now written in both files. |
+| `board.ts`'s bucket labels and palette headings | **Text.** The BUCKET is an id (`open`/`inProgress`/`resolved`) and every branch dispatches on it; the label is only ever drawn. |
+| `bars.ts` and `roadmap.ts` shelf reasons | **Text.** `cardDrag.ts` already says at its own call site that nothing decides anything from this sentence, and `shelf.ts`'s comment already CALLED it translated. |
+| `defaultModel.ts`'s labels and rubrics | **Data.** The rubrics are in the model FINGERPRINT (`weightedScore.ts` hashes `d.rubric`), so two locales would stamp two models. The labels are not in the fingerprint, but each is the `default` of a persisted box the user may override — a shipped default like `Now, Next, Later`, which this epic has never keyed either. |
+| `backlogReadme.ts` and `readmeStamps.ts` | **The `view/manual/` question, second and third instance.** Both write authored PROSE, and one writes it INTO the vault. Stated below rather than decided here. |
+| `timeline.ts`'s month names and `Q1` | **Neither.** Dates are data presentation and follow the USER's locale, so `Jan` comes from `Intl.DateTimeFormat`, not from a key. That is [[Locale-aware sorting and formatting]] and it is not this PBI. |
+| `typeVocabulary.ts`, `settings.ts`, `readmeMarker.ts`, `shelf.ts`'s `Other`, `roadmap.ts`'s `Milestones` | **Data**, and three of the five already say so where they sit. The last two are FOLD KEYS — a band and a shelf group are collapsed by their name — so translating either would move a user's collapsed state on them. |
+| `settingsConsistency.ts`'s two | **Neither.** `settingsInconsistency` reports a `BacklogSettings` the resolver could not have produced; its audience is a fixture author, not a user. |
+
+**Three claims in this repository were false when this slice started, and the check under
+one of them was passing for an unrelated reason.** All three said the same thing —
+`domain/roadmap.ts` still spells the shelf label — and it had been keyed on 2026-08-19,
+three days earlier, by the commit that made the placement labels functions. The root
+`CLAUDE.md` said it, `eslint.config.mjs`'s `SWEPT` comment said it, and
+`test/i18n/projections.test.ts` had a whole `describe` block asserting it, with this body:
+
+```ts
+expect(remainder(containerEl)).toContain('Untriaged');
+```
+
+`Untriaged` is the fixture's own NOTE TITLE. It is data, it renders unmarked whatever the
+catalog holds, and the assertion could never have failed. Its own comment said the entry
+would be "deleted in the same change that keys it" — which is the right design, and it did
+not fire, because the string it read was not the string it named. **A positive `toContain`
+on a remainder is the shape that can pass for the wrong reason**; the `toEqual`s in the
+same file cannot. The block is gone, replaced by four tests that drive what `domain/` alone
+says. That header also referenced an `UNSWEPT` constant which has never existed in the
+file.
+
+**Every one of the four surfaces was rendering past a fixture, and that is this
+construction's stated limit met three times in one slice.** `test/i18n/projections.test.ts`
+asks the category of everything DRAWN, so a surface no fixture reaches is a surface it
+cannot speak for: a shelf REASON needs a note the axis refuses to read (`horizonVault`'s
+untriaged note shelves with no reason at all), the legend's workflow heading needs TWO
+workflows configured (`statePalettes` gives a lone palette an empty label and the legend
+draws no section), and the iteration board is a scope no fixture in that file enters. Each
+of the four reverts was watched failing exactly one test, and both directions were watched
+on the estimation menu — a literal put back at a `displayName`, and a key given to a
+`placeholder` the backfill reads.
+
+Two of the new checks are positive rather than remainder assertions (`markedAt`), and that
+is the shape the file's own `progressNote` comment names: a heading that stops being drawn
+REMOVES a string instead of making one English, and a remainder cannot see a sentence that
+disappeared. Here it was cheap enough to close.
+
+**`reason:` joined `UI_TEXT_PROPERTY`.** It is the narrowest name in that rule: `bars.ts`
+and `roadmap.ts` are the only two files in `src/` that spell it as a property, and in both
+it is the sentence the shelf card draws. Planted at each of the four and watched erroring.
+The four files joined `SWEPT`, and what that ban would have caught on its own is worth
+stating rather than assuming: at the shelf reasons, NOTHING, until `reason` was added —
+`{ kind: 'shelf', reason: '…' }` matches no setter, no `new Notice` and no banned property
+name. Lint held the estimation menu; the runtime half found the rest.
+
+**Still owed, and not claimable from a green build:** the estimation options MENU is drawn
+by Bases and nothing here renders it, so `test/domain/estimationOptions.test.ts` reads the
+declaration rather than the menu. Whether a translated `displayName` fits its box, and
+whether Obsidian ever writes a text option's `default` into the `.base` — which is the one
+fact that would move `defaultModel.ts`'s labels from data to text — are both live-vault
+questions. They join [[Smoke test the message catalog]].
+
 ## Where it lives
 
 **`src/i18n/en.ts`** carries the keys; the swept call sites are `src/ui/prompts.ts`,
@@ -584,6 +658,13 @@ which is `view/interactions/` whole, this time checked rather than claimed. Then
 `src/view/estimation/toolbar.ts` and `src/view/estimation/init.ts`, which is
 `view/estimation/` whole. The sweep touches every rendering module without changing what
 any of them does.
+
+Then `domain/`'s own four, swept 2026-08-22: **`src/domain/estimationOptions.ts`**, which
+declares the estimation view's options menu; **`src/domain/board.ts`**, which names the
+iteration board's three buckets and the legend's two workflow sections; and
+**`src/domain/bars.ts`** and **`src/domain/roadmap.ts`**, which choose the sentence a
+shelved card says about itself. The rest of `domain/` is classified in the entry above and
+none of it is a sweep still owed.
 
 `src/view/render/toolbar.ts` · `src/view/render/toolbarControls.ts` ·
 `src/view/render/toolbarBusy.ts` · `src/view/render/toolbarFit.ts` ·

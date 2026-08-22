@@ -123,15 +123,22 @@ export type IterationBucket = 'open' | 'inProgress' | 'resolved';
 
 /**
  * The label each bucket wears, in the order the board draws them. Exported because the
- * MOVE announcement names its two ends from it: the labels are constants rather than user
- * data, so reading them here says exactly what the column header says, without the
- * announcement having to find a column that may have been rebuilt under it.
+ * MOVE announcement names its two ends from it: the labels belong to this view rather
+ * than to the vault, so reading them here says exactly what the column header says,
+ * without the announcement having to find a column that may have been rebuilt under it.
+ *
+ * A FUNCTION, never a `Record` of `t()` results — see `noStateLabel` below for the load
+ * order that makes that a rule rather than a style. The BUCKET is the data half and stays
+ * an id: `bucketOf` answers one of these three names and every branch dispatches on it.
  */
-export const BUCKET_LABELS: Record<IterationBucket, string> = {
-	open: 'Open',
-	inProgress: 'In progress',
-	resolved: 'Resolved',
-};
+export function bucketLabel(bucket: IterationBucket): string {
+	return t(BUCKET_KEYS[bucket]);
+}
+const BUCKET_KEYS = {
+	open: 'board.bucketOpen',
+	inProgress: 'board.bucketInProgress',
+	resolved: 'board.bucketResolved',
+} as const;
 
 /**
  * Which of the three columns a product state reads into. The precedence is stated once,
@@ -379,7 +386,7 @@ export function statePalettes(model: BacklogModel, settings: BacklogSettings): S
 	const drawable: StatePalette[] = [];
 	if (settings.stateKey !== '') {
 		drawable.push({
-			label: 'Work',
+			label: t('legend.workflowRequirements'),
 			values: requirementsWorkflow(model, settings).values,
 			doneValues: settings.doneValues,
 			offset: 0,
@@ -389,7 +396,7 @@ export function statePalettes(model: BacklogModel, settings: BacklogSettings): S
 	// was declared, there is no first vocabulary for this one to be the same AS.
 	if (resolvedDeliverableStateKey(settings) !== '' && (drawable.length === 0 || declaresOwnWorkflow(settings))) {
 		drawable.push({
-			label: 'Deliverables',
+			label: t('legend.workflowDeliverables'),
 			values: deliverablesWorkflow(model, settings).values,
 			doneValues: settings.deliverableDoneValues,
 			// Past everything already assigned — one statement rather than a second copy
@@ -634,7 +641,7 @@ export function iterationBuckets(
 			// `undefined` is not a state and must never be stored as one: a bucket with
 			// nothing to write holds `null` and says so through `takesDrop`.
 			state: representative ?? null,
-			label: BUCKET_LABELS[bucket],
+			label: bucketLabel(bucket),
 			done: bucket === 'resolved',
 			bucket,
 			takesDrop: representative !== undefined,
