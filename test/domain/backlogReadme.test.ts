@@ -379,7 +379,33 @@ describe('backlogReadmeContent', () => {
 		// explain a key the view created.
 		const content = readme(settingsWith({ horizonKey: 'horizon', horizonValues: ['Now'] }));
 		expect(content).toContain('**Assign missing properties**');
-		expect(content).toContain('adds the keys *empty* to items that lack them and places nothing');
+		const line = content.split('\n').find((l) => l.includes('**Assign missing properties**'));
+		expect(line).toContain('adds the keys *empty* to items that lack them and places nothing');
+		// A horizon-only view has no target property at all, so there is nothing the
+		// backfill withholds from a Milestone here and nothing to except.
+		expect(line).not.toContain('except');
+	});
+
+	it('names Milestone, not the marker category, in the backfill exception, whichever date key is configured', () => {
+		// schemaEnds narrows a Milestone alone: an Iteration is a span and keeps both ends
+		// whatever iterationBars says, so spelling the marker CATEGORY here would tell the
+		// reader an Iteration loses its start too, which the backfill does not do. Gated on
+		// startKey, the withheld key — present whether or not targetKey also is.
+		const exceptionLine = (over: Partial<BacklogSettings>) =>
+			readme(settingsWith(over)).split('\n').find((l) => l.includes('**Assign missing properties**'));
+		const both = exceptionLine({ startKey: 'start', targetKey: 'due' });
+		expect(both).toContain('except that a `Milestone` never gets a start added');
+		expect(both).not.toContain('Iteration');
+		expect(exceptionLine({ startKey: 'start', targetKey: '' })).toContain('never gets a start added');
+	});
+
+	it('does not narrow the backfill when no start property is configured', () => {
+		// With no startKey, ✨ never stubs a start on anything, marker or not — there is
+		// nothing the type withholds here, so nothing to except. Covers both a target-only
+		// view and (above) a horizon-only one with neither date key.
+		const targetOnly = settingsWith({ startKey: '', targetKey: 'due' });
+		const line = readme(targetOnly).split('\n').find((l) => l.includes('**Assign missing properties**'));
+		expect(line).not.toContain('except');
 	});
 
 	it('names Set iteration among the things that write a planning key, when it can copy dates', () => {
