@@ -202,9 +202,15 @@ whole.
   `margin`/`padding` in a block**, so `margin: 0; padding: 1px 2px 3px 4px;` passed on the
   symmetric margin while the four-value padding went unread — and that is the exact order
   `.pbl-card-kid` writes them in, which means the one rule this whole category exists for
-  was a `margin: 0` away from being invisible to its own check. Both rounds are the same
-  instrument failure this note's extension 1a already warns about, one layer down: a scan
-  that reads one member of a set and reports on the set.
+  was a `margin: 0` away from being invisible to its own check. A third round found the
+  VALUE count collapsing `\([^)]*\)`, which stops at the first `)` — so
+  `padding: calc(var(--gap) + 1px) 2px 3px 4px` counted six tokens and a four-sided
+  declaration went unreported; it counts balanced parentheses now. All three rounds are the
+  same instrument failure this note's extension 1a already warns about, one layer down: a
+  scan that reads one member of a set, or one spelling of a thing, and reports on all of
+  them. **The warning applies to the CHECK and not only to the sweep**, which is the
+  sentence this note did not have, and each round is one the check itself could not have
+  told anybody about — every one passed green.
   Deliberately narrower than this PBI: `border-left`/`border-right` and
   every bare `left:`/`right:` are outside it, since a rule over those would open with the
   exemption list [[Styling rules are checks]] exists to avoid. Watched failing in both

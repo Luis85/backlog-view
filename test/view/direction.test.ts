@@ -39,6 +39,33 @@ const declarations = styles.replace(/\/\*[\s\S]*?\*\//g, (block) => block.replac
  */
 const blocks = [...declarations.matchAll(/\{([^{}]*)\}/g)].map((m) => m[1]);
 
+/**
+ * How many top-level values a CSS value list holds — which is what says whether a
+ * `margin`/`padding` shorthand names a side, since only the four-value form does.
+ *
+ * Balanced-parenthesis aware, and that is the whole reason it is a function rather than a
+ * `split`: collapsing `\([^)]*\)` stops at the FIRST `)`, so `calc(var(--gap) + 1px) 2px
+ * 3px 4px` came out as six tokens and a four-sided declaration went unreported. Caught in
+ * review on PR #196, the third instrument failure on this file — a scan that reads the
+ * easy spelling of a thing and reports on all of them.
+ */
+const valueCount = (value: string): number => {
+	let depth = 0;
+	let values = 0;
+	let inValue = false;
+	for (const char of value.trim()) {
+		if (char === '(') depth += 1;
+		else if (char === ')') depth -= 1;
+		// Whitespace inside a function is part of one value — `calc(a + b)` is not three.
+		if (depth === 0 && /\s/.test(char)) inValue = false;
+		else if (!inValue) {
+			values += 1;
+			inValue = true;
+		}
+	}
+	return values;
+};
+
 /** Whether `block` pins a physical side itself, which is what licenses a physical box value. */
 const pinsAPhysicalSide = (block: string): boolean => /(?:^|[;{\s])(?:left|right)\s*:/.test(block);
 
@@ -72,8 +99,7 @@ describe('the stylesheet names no physical side', () => {
 		// from being invisible to it. Caught in review on PR #196.
 		const fourValue = blocks.filter((block) =>
 			[...block.matchAll(/(?:^|[;{\s])(?:margin|padding)\s*:\s*([^;]+);/g)].some(
-				// `var(--x)` holds no spaces once collapsed, so counting words counts VALUES.
-				(decl) => decl[1].trim().replace(/\([^)]*\)/g, 'X').split(/\s+/).length === 4,
+				(decl) => valueCount(decl[1]) === 4,
 			),
 		);
 		expect(fourValue).toEqual([]);
