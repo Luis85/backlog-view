@@ -1,7 +1,8 @@
 import { BasesViewConfig } from 'obsidian';
 import { configReaders } from './settingsResolve';
 import { DEFAULT_DIMENSIONS, DEFAULT_SCALE_RUBRICS, defaultDimension } from './defaultModel';
-import { ScaleConfig, ScoringDimension, ScoringModel } from './scoringModel';
+import { OpenTarget, resolveItemHandling } from './itemHandling';
+import { Indicator, ScaleConfig, ScoringDimension, ScoringModel } from './scoringModel';
 
 /**
  * Reading the estimation view's own options into a `ScoringModel` — this view's half of
@@ -11,6 +12,12 @@ import { ScaleConfig, ScoringDimension, ScoringModel } from './scoringModel';
 
 export interface EstimationSettings {
 	model: ScoringModel;
+	/** BESIDE the model, never inside it: an indicator persists nothing, so nothing that
+	 *  fingerprints or writes the total can reach it (`scoringModel.ts`'s own note). */
+	indicator: Indicator;
+	/** Where opening the note being scored lands — `resolveItemHandling`'s own vocabulary,
+	 *  defaulted to `split` rather than the backlog's `active` (see `resolveEstimationSettings`). */
+	openIn: OpenTarget;
 	/**
 	 * The property this view reads a note's TYPE from, for the one question it asks of a
 	 * type: is this note a person, and therefore not something to score. Read from the same
@@ -21,7 +28,8 @@ export interface EstimationSettings {
 	 *
 	 * It is NOT a scoring key and deliberately not inside `model`: `modelFingerprint` hashes
 	 * that object to decide whether a stored total can still be trusted, so a key that has
-	 * nothing to do with the score must not be able to invalidate one.
+	 * nothing to do with the score must not be able to invalidate one. The indicator above
+	 * sits outside it for the same reason, arrived at from the other direction.
 	 */
 	typeKey: string;
 }
@@ -62,6 +70,30 @@ function parseRange(text: string, fallback: [number, number]): [number, number] 
 }
 
 type Readers = ReturnType<typeof configReaders>;
+
+/** The shipped indicator — exactly what `panel.ts` hardcoded before this: the
+ *  confidence-adjusted value over effort. An existing saved view's number does not move. */
+const DEFAULT_INDICATOR: Indicator = { label: '', operands: ['adjustedValue'], divisor: 'effort' };
+
+/**
+ * `clearable` for both lists, and that is the whole rule: an option whose default is a
+ * REAL value has to tell "never set" from "cleared", or a reader can never turn the
+ * indicator off — and turning it off is how the seventh column goes away again.
+ */
+function resolveIndicator(read: Readers): Indicator {
+	return {
+		// Trimmed for the same reason the divisor is: the header draws it with a plain
+		// `indicator.label || …`, so a whitespace-only name would be truthy and suppress the
+		// generic `Indicator` fallback — a blank, blank-named column.
+		label: read.text('indicatorLabel').trim(),
+		operands: read.clearable('indicatorOperands', DEFAULT_INDICATOR.operands, () => read.list('indicatorOperands')),
+		// Trimmed to match: `list` trims every operand id, so an untrimmed divisor would
+		// disagree with the same vocabulary over a hand-edited or pasted space — read as an
+		// unknown name when padded, and as un-clearable when whitespace-only (`|| null` never
+		// fires on a truthy blank string).
+		divisor: read.clearable('indicatorDivisor', DEFAULT_INDICATOR.divisor, () => read.text('indicatorDivisor').trim() || null),
+	};
+}
 
 /**
  * One dimension's rubric, point by point: an override, else the shipped sentence at that
@@ -128,6 +160,9 @@ export function resolveEstimationSettings(config: BasesViewConfig): EstimationSe
 			effort: resolveScale(read, 'effort', 'effortProperty'),
 			complexity: resolveScale(read, 'complexity', 'complexityProperty'),
 		},
+		indicator: resolveIndicator(read),
+		// `split` rather than `active`: this view is the surface being scored on.
+		openIn: resolveItemHandling(config, 'split').openIn,
 		typeKey: read.propKey('typeProperty', 'type'),
 	};
 }

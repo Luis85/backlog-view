@@ -639,6 +639,71 @@ whether Obsidian ever writes a text option's `default` into the `.base` — whic
 fact that would move `defaultModel.ts`'s labels from data to text — are both live-vault
 questions. They join [[Smoke test the message catalog]].
 
+**`storage/`, on 2026-08-22 — a directory nobody had classified, found by asking the tree
+instead of the register.** 3 keys, taking the catalog to **556** (counted two ways after
+the last edit and agreeing, the same pair as above: an AST walk over the `as const`
+object's own properties, and a match-counting `grep -Po` for the key lines). Two files:
+`frontmatter.ts`'s stale-note refusal, which is one message picked between TWO LITERALS in
+a ternary, and `propertyWrite.ts`'s live-type refusal. Both are `new Notice` — a screen —
+and both landed with a refusal path rather than with a surface, which is how they came to
+sit outside every sweep.
+
+**What is worth keeping is not the three keys, it is why the register said there were
+none.** Every statement in the repository — this note, the root `CLAUDE.md`, the `SWEPT`
+comment in `eslint.config.mjs` — agreed that `view/manual/` was the whole remainder. All
+three were enumerating the surfaces somebody could NAME: the toolbar, the tree, the menus,
+the modals, the empty states. `storage/` renders no DOM and appears in no list of
+surfaces, so it was never classified as text OR as data — it was simply not asked. That
+is a different failure from the one this epic has recorded three times already (an
+inventory that was right when written and was overtaken); this one was never right. The
+vault test would have answered it instantly had anyone put the question: two people with
+different Obsidian languages both get an English notice, which is text.
+
+**The instrument is the deliverable.** The scan was an AST walk over every `.ts` in `src/`
+for a prose-shaped string or template outside a `t()` call — prose being "contains
+whitespace, has a lowercase run, and starts with a capital or ends in terminal
+punctuation". It sees the two shapes stated at the head of this note that no lint rule
+can: a template whose first quasi is empty, and a sentence handed to a helper as a
+positional argument. Over the whole of `src/` it returns 753 hits; with `en.ts` and the
+four classified files (`view/manual/`'s three, `defaultModel.ts`, `backlogReadme.ts`,
+`readmeStamps.ts`) subtracted, **27 before this slice and 24 after**. Of the 24, fifteen
+are `console.error` prefixes (`Product Backlog: …`, which stay English by the line this
+note already draws) and the other nine are each already classified above: `readmeMarker.ts`'s
+generated marker, `settingsConsistency.ts`'s three (its two fixture-author messages plus
+`assertResolvedSettings`' throw, which is the same audience), `typeVocabulary.ts`'s two
+type names, and the plugin's own NAME three times — in `baseFile.ts`, and at the two
+`eslint-disable` lines the root guide already names. So the remainder is nine strings and
+no open questions. **It is a scan, not a check** — it is not in `npm run check` and should not be: it
+has no way to tell a class name from a sentence and would need an exemption list, which is
+the thing the three lint bans were designed to avoid. It is the way to RE-DERIVE the
+remainder at the start of a slice, and the sentence in the root guide now says so.
+
+**`storage/` joined the three text bans, and it cost no exemption.** Everything else
+quoted in that directory is a key, a tag or a wikilink fragment — data by the vault test,
+and none of it capitalised prose at a banned spelling. `baseFile.ts`'s `'Product Backlog'`
+survives because it is the generated view's own title written INTO the `.base`, at no
+setter and no banned property; if it ever moves to one it is data and needs a disable at
+the line, not a key. Planted at four shapes in `propertyWrite.ts` — a bare `new Notice`
+literal, the two-literal ternary, a `title:` and an `'aria-label':` — and watched producing
+six errors, then watched clean on revert.
+
+**The check under these three is lint, and that is the whole of it — deliberately.** The
+runtime halves in `test/i18n/` exist for surfaces lint CANNOT see; both of these are at a
+`new Notice` with a literal, which is `UI_TEXT_LITERAL`'s and `TEXT_TERNARY`'s plainest
+shape. What holds the other half — that the key is READ rather than merely declared — is
+already there without a new file: `test/view/timelineDrag.test.ts` and
+`test/view/absenceEditing.test.ts` drive both refusal paths and assert the sentences, and
+the sentences now exist only in `en.ts`, so a call site that stopped reading the catalog
+would have to re-spell one, which lint refuses. Narrower than a marked-catalog test and
+stated narrowly on purpose: those two tests read ENGLISH, so they cannot tell a swept call
+site from an unswept one on their own — lint is what makes the pair close.
+
+**`gate.becameResource` and `absence.becameResource` are two keys holding near-identical
+English, and that is the catalog's own rule rather than an oversight.**
+`absence.becameResource`'s comment has said since it was keyed that it copies
+`applyPropertyWrites`' wording — which was the sentence left unkeyed. They stay separate:
+they diverge in the first language that separates an edit from a change.
+
 ## Where it lives
 
 **`src/i18n/en.ts`** carries the keys; the swept call sites are `src/ui/prompts.ts`,

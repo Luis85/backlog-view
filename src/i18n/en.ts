@@ -1085,6 +1085,25 @@ export const en = {
 	'gate.updateFailed': 'Failed to update backlog items. See the developer console for details.',
 
 	/**
+	 * The two live-type races the WRITER refuses, one sentence each — reported from
+	 * `storage/`, which is not the gate but is where the note is re-read and found to have
+	 * changed under the batch.
+	 *
+	 * `gate.staleDatesPartial` and `gate.staleDatesNone` are ONE refusal in
+	 * `applyWrites`, picked on whether anything landed before it. Two keys rather than a
+	 * ternary between two literals, for `TEXT_TERNARY`'s own reason: no locale can reorder
+	 * or inflect half a sentence.
+	 *
+	 * `gate.becameResource` is `applyPropertyWrites`' race, and it is worded to match
+	 * `absence.becameResource` — which has said since it was keyed that it copies THIS
+	 * sentence. The two stay separate keys all the same: they diverge in the first
+	 * language that separates an edit from a change.
+	 */
+	'gate.staleDatesPartial': 'That note changed while the move was in flight, so the rest of the move was not written.',
+	'gate.staleDatesNone': 'That note changed while the move was in flight, so nothing was written.',
+	'gate.becameResource': 'That note became a resource while the change was in flight, so nothing was written to it.',
+
+	/**
 	 * Every card move's live-region announcement, in the two shapes a gesture can have:
 	 * one dimension, or the resources axis's two in ONE sentence. `{landing}` is the date
 	 * half, and it is a whole clause from `destinationWords` rather than this catalog's —
@@ -1338,6 +1357,20 @@ export const en = {
 	'estimation.column.confidence': 'Confidence',
 	'estimation.column.effort': 'Effort',
 	'estimation.column.currency': 'Currency',
+	'estimation.column.indicator': 'Indicator',
+	'estimation.operand.ease': 'Ease',
+	'estimation.operand.value': 'Value',
+	'estimation.operand.adjustedValue': 'Adjusted value',
+
+	/** A blocked indicator cell's tooltip — four sentences rather than one, because a
+	 *  reader reading this is trying to repair it: an unanswered operand wants a score, a
+	 *  nonpositive divisor wants the stored value corrected, an unbound operand wants a
+	 *  property bound to it in the view options, and an unknown id wants the operands box
+	 *  edited. */
+	'estimation.indicator.unanswered': 'No figure: {operand} is not answered',
+	'estimation.indicator.unknown': 'No figure: nothing in this model is called {operand}',
+	'estimation.indicator.nonpositive': 'No figure: {operand} has to be above zero to divide by',
+	'estimation.indicator.unbound': 'No figure: {operand} has no property bound to it yet',
 
 	/** The active sort header's accessible name. {column} is the column's own label above —
 	 * a catalog string, not data. The GLYPH beside it carries the same fact for a sighted
@@ -1378,17 +1411,57 @@ export const en = {
 	'estimation.panel.clear': 'Clear {label}',
 	'estimation.panel.term': '{label} {score} × {weight}%',
 	'estimation.panel.adjustedValue': 'Confidence-adjusted value: {value}',
-	'estimation.panel.valueToEffort': 'Value to effort: {value}',
+	/** The configured indicator's own line — {name} is the configured label, or its
+	 *  formula when unnamed (`indicatorFormula`), never data assembled at the call site.
+	 *  The three block sentences below it say which repair fits: score the operand, fix
+	 *  the stored divisor, or bind a property — never "is not answered" for all three. */
+	'estimation.panel.indicator': '{name}: {value}',
+	'estimation.panel.indicatorUnanswered': '{name}: no figure — {operand} is not answered',
+	'estimation.panel.indicatorUnknown': '{name}: no figure — nothing in this model is called {operand}',
+	'estimation.panel.indicatorNonpositive': '{name}: no figure — {operand} has to be above zero to divide by',
+	'estimation.panel.indicatorUnbound': '{name}: no figure — {operand} has no property bound to it yet',
 	'estimation.panel.removeOrphan': 'Remove the orphaned total',
 	/** Says what the action does to the NOTE, not which currency word offered it — two
 	 *  currencies (`stale` and `foreign`) offer the same action, so naming either in the
 	 *  label would make it wrong half the time. */
 	'estimation.panel.restamp': 'Recalculate the stored total from the answers on this note',
+	'estimation.panel.openNote': 'Open note',
 
 	/** The toolbar's own two actions and its count. `{scored} of {total} scored` is the
 	 *  filtered count's idiom — one quantity in two parts, so the pair reads as one fact. */
 	'estimation.toolbar.init': 'Bind and backfill the estimation properties',
 	'estimation.toolbar.scored': '{scored} of {total} scored',
+	'estimation.toolbar.presets': 'Start from a known framework',
+
+	/** The preset picker dialog (`ui/estimationPresetDialog.ts`). */
+	'estimation.presets.title': 'Start from a known framework',
+	'estimation.presets.kinds':
+		'These configure the indicator that sits beside the business value. The value model is unchanged, whichever you pick.',
+	'estimation.presets.whatChanges': 'What this changes',
+	'estimation.presets.now': 'Indicator now',
+	'estimation.presets.after': 'Indicator after',
+	'estimation.presets.none': 'None',
+	'estimation.presets.unchanged': 'The value model is unchanged, and no stored total is affected.',
+	'estimation.presets.apply': 'Apply',
+	'estimation.presets.cancel': 'Cancel',
+
+	/** The four shipped indicator presets' own description and note — the preset NAME stays
+	 *  a plain literal in `domain/estimationPresets.ts` (it is written into the `.base`), but
+	 *  what a reader is shown ABOUT a preset is catalog text, keyed by id. An empty note means
+	 *  the preset needs none. */
+	'estimation.preset.rice.description':
+		'Favours work that reaches many people, changes something that matters to them, and rests on evidence — then divides by what it costs. Widely used where the audience of one item differs a lot from the next.',
+	'estimation.preset.rice.note': '',
+	'estimation.preset.ice.description':
+		'RICE without reach: a quicker score for a backlog whose items all touch roughly the same audience, so counting that audience adds nothing.',
+	'estimation.preset.ice.note': 'Ease is the effort scale reversed on its own range.',
+	'estimation.preset.wsjf.description':
+		"SAFe's scheduling score: what delay costs, over how big the job is. Answers what to do first when everything in the list is worth doing.",
+	'estimation.preset.wsjf.note':
+		'Cost of delay is read as the value total, job size as effort. Point the numerator at a cost-of-delay dimension to get the real thing.',
+	'estimation.preset.valueOverEffort.description':
+		'The plainest ranking there is — value you are confident in, over what it takes. A reasonable default before a team commits to a named framework.',
+	'estimation.preset.valueOverEffort.note': '',
 
 	/**
 	 * The estimation view's own options menu — this view's half of what `option.*` is for
@@ -1415,6 +1488,10 @@ export const en = {
 	'estimation.option.range': 'Range',
 	'estimation.option.lessIsBetter': 'Less is better',
 	'estimation.option.label': 'Label',
+	'estimation.option.indicator': 'Indicator',
+	'estimation.option.indicatorLabel': 'Name',
+	'estimation.option.indicatorOperands': 'Operands (multiplied, in order)',
+	'estimation.option.indicatorDivisor': 'Divisor',
 	'estimation.option.scales': 'Scales',
 	'estimation.option.confidenceProperty': 'Confidence property',
 	'estimation.option.effortProperty': 'Effort property',

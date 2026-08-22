@@ -290,10 +290,12 @@ const MENU = 'src/view/interactions/menu.ts';
 // here unchanged.
 //
 // The four files are one subject: `shelfMenu.ts` and `columnMenu.ts` are menus of their
-// own, and `tags.ts` and `labels.ts` are the submenu builders `menu.ts` delegates to. The
-// unswept remainder of `view/interactions/` — `create.ts`, `absences.ts`,
-// `dependencies.ts`, `plan.ts`, `structure.ts` and the drag modules — stays under VIEW
-// with no text ban at all, which is why this is a file list rather than a glob.
+// own, and `tags.ts` and `labels.ts` are the submenu builders `menu.ts` delegates to.
+// **Nothing under `view/` is without a text ban any more**: VIEW's own block carries all
+// three, so a file added to this directory is covered the day it is written. This comment
+// said the opposite — that `create.ts`, `absences.ts`, the drag modules and the rest
+// "stay under VIEW with no text ban at all" — for as long as it took VIEW to gain them,
+// which made a stale half-sentence contradict the true one directly under it.
 // `view/interactions/` is swept WHOLE as of 2026-08-20 — the menu surface first, then the
 // prompts, notices and the backfill's outcome. Enumerated rather than globbed on purpose:
 // `menu.ts` and `create.ts` carry rule sets of their own, and a second block matching the
@@ -301,10 +303,14 @@ const MENU = 'src/view/interactions/menu.ts';
 // dropping whichever set lost. A glob replaces this list the day the rest of `view/` is
 // swept and the three rule sets can be one.
 //
-// A file ADDED to this directory is therefore not covered until it is named here. That is
-// the cost of the override rule above, and it is why the runtime halves exist:
+// A file ADDED to this directory is therefore not covered by THIS block until it is named
+// here — it falls to VIEW instead, which carries the same three text bans, so the text
+// rules reach it either way and only the rest of this block's set is at stake. That is the
+// cost of the override rule above, and it is why the runtime halves exist:
 // `test/i18n/menus.test.ts` and `test/i18n/interactions.test.ts` read rendered strings back
-// rather than trusting the region list.
+// rather than trusting the region list. `resourceNotes.ts` is the worked example: added
+// with the resource work, named in no list here, and its literals refused all the same
+// (planted 2026-08-22 and watched erroring).
 const MENU_SWEPT = [
 	'src/view/interactions/shelfMenu.ts',
 	'src/view/interactions/columnMenu.ts',
@@ -669,8 +675,23 @@ export default defineConfig([
 	{
 		// storage/ IS the writer, so the write boundary cannot apply to it. Nothing else
 		// about it is special — the menu rule and the overBy rule still do.
+		//
+		// The three text bans joined on 2026-08-22, and this directory is why "swept" has
+		// to be re-derived rather than read: the register called `view/manual/` the only
+		// thing left in `src/`, and `storage/` was spelling three live sentences at two
+		// `new Notice` calls — one of them the exact ternary-between-two-literals shape
+		// `TEXT_TERNARY` exists for, in a directory carrying none of the three. It is not a
+		// missed sweep so much as a directory nobody classified: `storage/` persists what it
+		// is given, so a sentence here reads as plumbing rather than as UI, and both arrived
+		// with a refusal path rather than with a surface.
+		//
+		// It costs no exemption. Everything else quoted in here is a KEY, a tag or a
+		// wikilink fragment — data by the vault test, and none of it capitalised prose at a
+		// banned spelling. `baseFile.ts`'s `'Product Backlog'` is the generated view's own
+		// title written INTO the `.base`, and it survives because it is at no setter and no
+		// banned property.
 		files: [STORAGE],
-		rules: syntaxRules([...SVG_CLASS_TOKENS, MENU_ANCHOR, OVERBY, TREE_SCAN]),
+		rules: syntaxRules([...SVG_CLASS_TOKENS, MENU_ANCHOR, OVERBY, TREE_SCAN, ...TEXT_TERNARY, UI_TEXT_LITERAL, UI_TEXT_PROPERTY]),
 	},
 	{
 		// The menu helper is where the anchoring decision is made, so it is the one place

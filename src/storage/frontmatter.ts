@@ -1,4 +1,5 @@
 import { App, Notice, TFile } from 'obsidian';
+import { t } from '../i18n/t';
 import { StatedEnds } from '../domain/bars';
 import { isResourceType, mayHoldField, placementEnds, PlacementEnd, schemaEnds } from '../domain/itemTypes';
 import {
@@ -190,11 +191,7 @@ export async function applyWrites(
 		});
 		if (refused) {
 			console.error('Product Backlog: refused a batch the note no longer fits', write);
-			new Notice(
-				outcome.changed
-					? 'That note changed while the move was in flight, so the rest of the move was not written.'
-					: 'That note changed while the move was in flight, so nothing was written.',
-			);
+			new Notice(outcome.changed ? t('gate.staleDatesPartial') : t('gate.staleDatesNone'));
 			// The accumulated outcome, not a fresh `changed: false`: writes before this
 			// one landed and emitted their inverses, and reporting otherwise would tell
 			// the caller — and the announcement — that a change nobody can see did not

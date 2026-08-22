@@ -36,6 +36,32 @@ export interface ScoringModel {
 	complexity: ScaleConfig;
 }
 
+/**
+ * A prioritization indicator: a product of named operands over an optional divisor, and
+ * nothing else — no expression, and nothing parses one.
+ *
+ * It lives BESIDE the model rather than inside it (`EstimationSettings`), and that
+ * placement is the mechanical statement of the rule: an indicator persists nothing, so
+ * nothing that fingerprints or writes the total can reach it.
+ */
+export interface Indicator {
+	/** '' = unnamed; the table header falls back to a generic word. */
+	label: string;
+	/** Multiplied together, in order. EMPTY means no indicator at all, not a product of one. */
+	operands: string[];
+	/** Divides the product; null = no divisor. */
+	divisor: string | null;
+}
+
+/**
+ * The operand ids that are not dimension ids, and they are RESERVED: resolution asks this
+ * list first, so a vault that declares a dimension called `effort` gets the scale here and
+ * the dimension keeps its weight in the value model. Namespacing every operand
+ * (`dim:reach`) was the alternative and costs a prefix in four presets and both text boxes
+ * to answer a collision nobody has had.
+ */
+export const INDICATOR_BUILTINS = ['confidence', 'effort', 'complexity', 'ease', 'value', 'adjustedValue'] as const;
+
 export function pointCount(min: number, max: number): number {
 	return max - min + 1;
 }

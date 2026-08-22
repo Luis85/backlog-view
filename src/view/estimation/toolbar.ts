@@ -3,6 +3,7 @@ import { t } from '../../i18n/t';
 import { EstimationModel } from '../../domain/estimationItems';
 import type { EstimationView } from './estimationView';
 import { runEstimationInit } from './init';
+import { openEstimationPresets } from './presets';
 
 /**
  * The estimation view's toolbar — three things the view already had and could not reach.
@@ -34,6 +35,9 @@ export function renderEstimationToolbar(view: EstimationView, host: HTMLElement,
 	// so a label naming this view would promise a scope the slot does not have.
 	const undo = iconButton(bar, 'undo-2', t('toolbar.undo'), 'pbl-est-undo');
 	undo.addEventListener('click', () => void view.gate.undoLast());
+
+	const presets = iconButton(bar, 'calculator', t('estimation.toolbar.presets'), 'pbl-est-presets');
+	presets.addEventListener('click', () => openEstimationPresets(view));
 
 	bar.createDiv({ cls: 'pbl-toolbar-spacer' });
 
