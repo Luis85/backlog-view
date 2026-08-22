@@ -68,34 +68,31 @@ export const ITERATION_TYPE = 'Iteration';
  * spelled a second time beside the swatch that shows it.
  */
 export const MILESTONE_TYPE = 'Milestone';
+export const MARKER_TYPES = [MILESTONE_TYPE, ITERATION_TYPE];
 /**
- * The third declared marker, and the first that is not a date. A person occupies no rung,
- * holds no work and hangs from nothing, which is the whole of what a marker is — so the
- * name joins `MARKER_TYPES` and inherits every structural rule rather than declaring one.
- * What a TYPE buys over a link to an untyped note is the ability to be LISTED — the
- * resources axis will have to draw a row for somebody with nothing assigned yet, and a row
- * for an empty person needs a set to enumerate. Nothing reads that set yet: this step
- * declares the name and changes no roster, and `docs/requirements/Rows from the Resource
- * notes.md` is where the roadmap starts asking.
- * `docs/requirements/Resource as a marker type.md` is the whole argument, including why an
- * eighteenth name is worth its cost.
+ * A person, and the SECOND name recognized in order to be refused — `ABSENCE_TYPE` below
+ * states the whole of that polarity and this shares it. A resource is pointed at by the
+ * plan and contains none of it, so it is not a work item at any rung, beside any rung, or
+ * as a marker: `readItems` drops it before a `BacklogItem` exists, and no projection this
+ * plugin draws has to remember to leave it out.
  *
- * Named once for the same reason the other two are: a surface that captions a resource
- * names the TYPE, and a type name is data — matched in frontmatter, never translated.
- */
-const RESOURCE_TYPE = 'Resource';
-export const MARKER_TYPES = [MILESTONE_TYPE, ITERATION_TYPE, RESOURCE_TYPE];
-/**
- * The markers that state a DATE — which was every marker until a person became one.
+ * **It was a marker for one day and that was wrong.** As a marker it inherited the
+ * structural rules correctly — no rung, no children, no parent — and then had to have the
+ * DATE questions carved back out of it one surface at a time, because every marker before
+ * it was a date. What the carving kept producing was a type that appeared in the tree, in
+ * the New menu, in Set type, in the toolbar's count and on the shelf, none of which is
+ * where a person belongs. The refusal is one gate instead, and it is the same gate an
+ * absence goes through.
  *
- * A second LIST rather than a predicate naming the exception, and the direction is the
- * whole of why: `placementEnds` gives a marker on this list its target and a marker off
- * it NEITHER end, so a fourth marker declared in `MARKER_TYPES` alone states no date
- * until somebody puts it here. Forgetting then ships a type that never places — inert,
- * and visible the first time anyone looks at the roadmap — rather than one handed two
- * date slots that ✨ writes onto every note of it.
+ * Out of `MARKER_TYPES`, out of `ALL_TYPES` and out of `DEFAULT_TYPE_SUBFOLDERS`, each for
+ * the reason stated at `ABSENCE_TYPE`. Nothing creates one yet: the dedicated resource
+ * view does that, and `docs/requirements/Rows from the Resource notes.md` is where the
+ * roadmap starts READING them — at this same gate, so the roster still comes from the
+ * base's own results and no second read path into the vault is opened.
+ *
+ * Named once because a type name is data — matched in frontmatter, never translated.
  */
-export const DATED_MARKER_TYPES = [MILESTONE_TYPE, ITERATION_TYPE];
+export const RESOURCE_TYPE = 'Resource';
 /**
  * The one DECLARED name that is not a work-item type at all — a resource's own
  * unavailable stretch. It joins none of the lists above and, deliberately, not
@@ -148,7 +145,6 @@ const DEFAULT_TYPE_SUBFOLDERS: Record<string, string> = Object.assign(Object.cre
 	deliverable: 'deliverables',
 	milestone: 'milestones',
 	iteration: 'iterations',
-	resource: 'resources',
 	// The catalog files under one root of its own, one folder per rung — the shape
 	// `requirements/` already has for the three types that share it.
 	'test suite': 'tests/suites',

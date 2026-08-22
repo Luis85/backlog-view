@@ -23,7 +23,7 @@ import {
 	resolvedDeliverableStateKey,
 	resolvedTestStateKey,
 } from './optionalProperties';
-import { isAbsenceType, isMarkerType } from './itemTypes';
+import { isAbsenceType, isMarkerType, isResourceType } from './itemTypes';
 import { Absence, readAbsence } from './absences';
 
 /**
@@ -230,6 +230,19 @@ function addItem(
 	// read per note loaded, so a second reader would either double that count or have to
 	// read through `BasesEntry.getValue()`. The cache is open on this line.
 	if (isAbsenceType(typeName)) return divertAbsence(store, file, entry, fm, settings);
+	// **A RESOURCE is refused here too, and this one line is the whole of "a person is not
+	// in the backlog".** Beside the absence gate rather than filtered per projection: the
+	// tree, both boards, both roadmap axes, the shelf, the toolbar's count and every menu
+	// that offers a type all read `BacklogItem`s, so refusing before one exists leaves
+	// nothing for any of them to remember. A filter per view is the shape where the next
+	// projection forgets — which is exactly what the context-row rule was written about.
+	//
+	// Null like the absence's, and for the same reason: a resource has no parent, so it
+	// seeds no ancestor and `loadOutsideParents` is never handed one. Nothing is KEPT yet,
+	// which is the only difference — `docs/requirements/Rows from the Resource notes.md`
+	// is what will collect them here, at this gate, so the roster comes from the base's
+	// own results without a second read path into the vault.
+	if (isResourceType(typeName)) return null;
 	// Every field this note can answer for itself, and no others: the ten that used to
 	// be initialised here as placeholders now belong to the phases that compute them.
 	const item: RawItem = {

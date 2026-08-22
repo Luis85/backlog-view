@@ -37,11 +37,10 @@ describe('backlogReadmeContent', () => {
 		// `Idea` and `Deliverable` were merged into one vocabulary. `andList`'s own arms
 		// (one name, two, three-or-more) are driven directly in `readmeText.test.ts`; what
 		// this test owns is that the SENTENCE built from it reads as English at the lengths
-		// this vocabulary actually has today — four extra types, three markers — including
-		// the verb, which has to agree with a marker count that grew from one to two and
-		// then to three, and the Oxford-less comma `andList` puts before the last name.
+		// this vocabulary actually has today — four extra types, two markers — including
+		// the verb, which has to agree with a marker count that grew from one to two.
 		expect(content).toContain('Issue, Bug, Idea and Deliverable sit *beside* it');
-		expect(content).toContain('Milestone, Iteration and Resource are neither');
+		expect(content).toContain('Milestone and Iteration are neither');
 		expect(content).not.toContain('and Bug and');
 	});
 
@@ -171,26 +170,6 @@ describe('backlogReadmeContent', () => {
 			.find((l) => l.includes('is the exception: it is a point by'));
 		expect(line).toContain('A **marker** (`Milestone` and `Iteration`) is the exception');
 		expect(line).not.toContain('Resource');
-	});
-
-	it('says a dateless marker is drawn on no timeline, so the generic rule is corrected', () => {
-		// The sentences above this one are generic — "an item stating only one of the two is
-		// drawn as a point on that date" — and `Resource` is the first declared type they
-		// are false about. Taking it OUT of the marker exception (the test above) is what
-		// left the generic claim uncorrected, so the two belong in one change: an automated
-		// reviewer found the second half within minutes of the first landing.
-		for (const settings of [
-			settingsWith({ startKey: 'start', targetKey: 'due', horizonKey: '' }),
-			settingsWith({ startKey: 'start', targetKey: '', horizonKey: '' }),
-			settingsWith({ startKey: '', targetKey: 'due', horizonKey: '' }),
-		]) {
-			expect(readme(settings, [])).toContain('A date property on `Resource` is read by nothing here');
-		}
-		// And not where there is no timeline to be drawn on: a view with no date property
-		// is told nothing about dates at all, which is what every other sentence here does.
-		expect(readme(settingsWith({ startKey: '', targetKey: '', horizonKey: 'horizon' }), [])).not.toContain(
-			'is read by nothing here',
-		);
 	});
 
 	it('describes the timeline when only one date property is configured', () => {

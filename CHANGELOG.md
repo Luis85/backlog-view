@@ -57,17 +57,15 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   to change a score to a value you did not mean and change it back. A *Hand-written* total
   is never touched by it — that number is yours — and an orphaned total still gets the
   cleanup that removes it instead.
-- **`Resource` is a declared type** — a person is a note the view recognises, with its own
-  badge, its own creation folder (`resources` under your home folder, changeable per view)
-  and a place in the New menu and in Set type. Like `Milestone` and `Iteration` it is a
-  marker: it holds nothing, hangs from nothing, and counts for nothing in any progress bar
-  or rollup — the toolbar's item total still counts it, exactly as it counts a milestone,
-  because that number reports what your base returned rather than what has been done. And
-  unlike the two markers before it, it sits on no date: a `Resource` never draws on the
-  timeline, no schedule, drop or grip will write a date onto a person, and the generated
-  README no longer tells you a person reads your target property. Nothing
-  about `assignee` changes yet — it is still the text you type, and the roadmap's rows
-  still come from it.
+- **`Resource` is a declared type, and notes carrying it stay out of the backlog.** A
+  person is something the plan points at rather than work it contains, so a `Resource`
+  note is recognised and then left out of every view this plugin draws — the tree, both
+  boards, both roadmap axes, the shelf, the item count and every menu that offers a type.
+  It is the same treatment an `Absence` already gets, and it is one gate rather than a rule
+  each view has to remember. Resources are for the resource timeline and for a dedicated
+  resource view later. Nothing creates one from the backlog view yet, and nothing about
+  `assignee` changes — it is still the text you type, and the roadmap's rows still come
+  from it.
 
 - **The roadmap's shelf switches between cards and a compact list.** A third picker in the
   shelf's own header, beside the sort and the type filter, and a `Shelf layout` submenu in
@@ -101,8 +99,10 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 - **Assign missing properties no longer creates a date property on a note that cannot use
   one.** A `Milestone` is a point, so ✨ gives it the target property and no longer the
-  start one — which this view has never placed a milestone by — and a `Resource` gets
-  neither. Every other type is unchanged, and no existing property is touched either way.
+  start one — which this view has never placed a milestone by. An `Iteration` still gets
+  both, whichever way the roadmap is set to draw it: how a thing is drawn must not decide
+  what properties its note carries. Every other type is unchanged, and no existing property
+  is touched either way.
 
 - **Everything the tree, the boards and the roadmap draw takes its words from the message
   catalog now** — every row marker and property chip, the tag pills, the rollup, each

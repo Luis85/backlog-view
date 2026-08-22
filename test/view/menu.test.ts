@@ -73,7 +73,6 @@ describe('context menu', () => {
 			'Idea',
 			'Deliverable',
 			'Milestone',
-			'Resource',
 		]);
 		expect(submenu.item('Epic')?.checked).toBe(true);
 		submenu.item('Task')?.click();
@@ -83,19 +82,18 @@ describe('context menu', () => {
 
 	it('writes the type and nothing else, even for a marker on a nested row', async () => {
 		// The INVERSE of "a move never writes a type", and the half that had no check: a
-		// type write never moves the note. Asked with a MARKER, which is the case an
-		// automated reviewer raised on the increment declaring `Resource` — a marker hangs
-		// from nothing, so surely picking one re-roots the row? No: that is what is
-		// OFFERED, never what is refused or corrected behind the user's back, and joining
-		// the two rules is what the deleted re-typing cascade did.
+		// type write never moves the note. Asked with a MARKER — one hangs from nothing, so
+		// surely picking one re-roots the row? No: that is what is OFFERED, never what is
+		// refused or corrected behind the user's back, and joining the two rules is what
+		// the deleted re-typing cascade did.
 		const vault = fixture();
 		const { containerEl } = makeView(vault);
 
 		rowByTitle(containerEl, 'Feature B1').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
-		Menu.lastShown?.item('Set type')?.submenu?.item('Resource')?.click();
+		Menu.lastShown?.item('Set type')?.submenu?.item('Milestone')?.click();
 		await flush();
 
-		expect(vault.fm('Feature B1.md')['type']).toBe('Resource');
+		expect(vault.fm('Feature B1.md')['type']).toBe('Milestone');
 		expect(vault.fm('Feature B1.md')['parent']).toBe('[[Epic B]]');
 	});
 
@@ -206,25 +204,6 @@ describe('context menu', () => {
 });
 
 describe('placement actions on a marker', () => {
-	it('withholds Schedule from a resource even where both date properties are named', () => {
-		// The generated README states this to the user in as many words — *Schedule is
-		// withheld* — and nothing drove it. The chain under that sentence is `placementEnds`
-		// → `canSchedule` → this menu, and the resource is the case the milestone below
-		// cannot stand in for: that one is withheld because its ONE end has no key, so a
-		// vault with both properties named would give it back. A person has no end to
-		// configure, so a fully configured vault still offers nothing.
-		const vault = new FakeVault();
-		vault.addFile('Dana.md', { frontmatter: { type: 'Resource', order: 10 } });
-		vault.addFile('A story.md', { frontmatter: { type: 'PBI', order: 20 } });
-		const { containerEl } = makeView(vault, { startProperty: 'note.start', targetProperty: 'note.due' });
-
-		rowByTitle(containerEl, 'Dana').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
-		expect(Menu.lastShown?.items.map((i) => i.titleText)).not.toContain('Schedule');
-
-		rowByTitle(containerEl, 'A story').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
-		expect(Menu.lastShown?.items.map((i) => i.titleText)).toContain('Schedule');
-	});
-
 	it('withholds Schedule from a milestone on a start-only vault, and keeps it for work', () => {
 		const vault = new FakeVault();
 		vault.addFile('Ship 1.0.md', { frontmatter: { type: 'Milestone', order: 10 } });

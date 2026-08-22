@@ -87,22 +87,6 @@
  * as one more collision is a live-vault question, unresolved by this file.
  */
 .pbl-lvl-iteration { --pbl-badge-rgb: var(--color-cyan-rgb); }
-/*
- * THIRTEEN badges, still eight theme tokens, and cyan's FOURTH wearer. A `Resource` is a
- * marker, so the hue follows the rule the two above it set — a marker is not work, and
- * cyan is what says so. What is new is that the other three cyan badges all state a DATE
- * and this one states a person, so the icon and the name are not asked to carry that on
- * their own: a resource badge is a PILL. That is the second axis, applied the way
- * `docs/requirements/A badge when the palette is full.md` says a lone type must apply
- * one — a separator recorded beside the hue it shares, not a hue taken off another type.
- * Round is what a person-chip is everywhere else, so it needs no key to be read.
- *
- * Nothing is minted: the hue is Obsidian's own token and the radius is its own variable.
- */
-.pbl-lvl-resource {
-	--pbl-badge-rgb: var(--color-cyan-rgb);
-	border-radius: var(--radius-l);
-}
 /* Green, which no level uses and no extra type shares now that Idea has moved off it. */
 .pbl-lvl-deliverable { --pbl-badge-rgb: var(--color-green-rgb); }
 

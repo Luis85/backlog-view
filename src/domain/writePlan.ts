@@ -689,12 +689,12 @@ const WORKFLOW_STATE_KEY: Partial<Record<OptionalField, (settings: BacklogSettin
  * loop it guards is at its cognitive budget and a compound condition inside it breached
  * that budget rather than review.
  *
- * Reached through `schemaEnds`, which is where "which date properties this type's note
- * carries" is stated, so the backfill cannot drift from the writer and the controls. Two
- * cases: a `Resource` has NO end and would otherwise be handed both date slots for a
- * projection that draws it at neither; a `Milestone` is a point, and ✨ was creating the
- * START key for it — the one the generated README tells the reader this view will never
+ * One type reaches it: a `Milestone`, which is a point and was being handed the START key
+ * ✨ created for it — the one the generated README tells the reader this view will never
  * place a milestone by. Its target is still stubbed, because that one it can fill.
+ *
+ * Reached through `schemaEnds`, which is where "which date properties this type's note
+ * carries" is stated, so the backfill cannot drift from the writer and the controls.
  *
  * `schemaEnds` and NOT `placementEnds`: an `Iteration` is drawn at one date or two
  * depending on a display option, and carries both either way. Asking the placement

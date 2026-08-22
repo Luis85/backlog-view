@@ -29,10 +29,8 @@ Azure DevOps Boards.
   - **`order`** — a number that ranks an item among its siblings.
   - **`type`** — the ladder `Epic → Feature → PBI → Task`, the **extra types** `Issue`,
     `Bug`, `Idea` and `Deliverable` that sit beside it rather than on it, or a **marker**
-    on neither: something the plan points at rather than contains. A marker holds nothing,
-    hangs from nothing and is counted in no rollup. `Milestone` and `Iteration` state a
-    date; `Resource` is a person and states none, so it is drawn on no timeline and no
-    schedule, drag or grip will write a date onto one.
+    on neither — `Milestone` and `Iteration` — which hangs from nothing, holds nothing and
+    states a date rather than work.
 - **You never have to maintain these properties by hand.** The view assigns them:
   - Creating an item via the view writes `type`, `parent` and `order`.
   - Dragging an item writes its new `parent` and `order`, and leaves `type` alone —
@@ -45,8 +43,8 @@ Azure DevOps Boards.
     not configured yet — the workflow state, the date stamps, and the roadmap's horizon
     and dates — and then backfills `type`, `order` and an **empty** value for each of
     those properties on the notes that don't carry them, except a planned date a type
-    cannot use: a `Milestone` is a point, so it is given the target and not the start, and
-    a `Resource` states no date at all, so it is given neither. Nothing already set is
+    cannot use: a `Milestone` is a point, so it is given the target and not the start.
+    Nothing already set is
     overwritten, no option you have set (or deliberately cleared) is changed, no type is
     guessed for items whose parent is outside the view, and nothing moves: an empty
     property is the "no state, not planned yet" the item was already in — it just becomes

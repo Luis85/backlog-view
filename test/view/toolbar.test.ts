@@ -241,7 +241,6 @@ describe('toolbar controls', () => {
 			'New Idea',
 			'New Deliverable',
 			'New Milestone',
-			'New Resource',
 		]);
 
 		picker?.item('New PBI')?.click();
@@ -582,14 +581,14 @@ describe('toolbar count breakdown', () => {
 		expect(count?.getAttribute('aria-live')).toBe('polite');
 	});
 
-	it('counts a marker like any other result — never counted is about aggregation', () => {
-		// Asked of BOTH markers on screen at once, which is what makes it a statement of the
-		// rule rather than of one type: `Milestones as their own type` draws the line —
-		// never counted is about a ROLLUP, never an exemption from the reader's own view of
-		// what the base returned — and a `Resource` is on the same side of it. An automated
-		// reviewer read this the other way on the increment that declared the type and asked
-		// for person notes to be dropped from the total; excluding one declared type here
-		// makes the number lie about what the base holds.
+	it('counts a marker, and does not count a resource the base returned', () => {
+		// The two sides of one line, asserted together because they are easy to confuse and
+		// this increment moved one of them. A `Milestone` IS counted: never counted is a
+		// rule about a ROLLUP, not an exemption from the reader's own view of what the base
+		// returned (`Milestones as their own type`). A `Resource` is not counted, and not
+		// because the toolbar excludes it — nothing here knows the type. It never became an
+		// item at all (`readItems`), so there is nothing for this or any other projection
+		// to leave out.
 		const vault = new FakeVault();
 		vault.addFile('Onboarding.md', { frontmatter: { type: 'Epic', order: 10 } });
 		vault.addFile('Ship 1.0.md', { frontmatter: { type: 'Milestone' } });
@@ -597,8 +596,8 @@ describe('toolbar count breakdown', () => {
 		const { containerEl } = makeView(vault);
 		const count = containerEl.querySelector<HTMLElement>('.pbl-count-label');
 
-		expect(count?.textContent).toBe('3 items');
-		expect(count?.dataset.tooltip).toBe('1 Epic · 1 Milestone · 1 Resource');
+		expect(count?.textContent).toBe('2 items');
+		expect(count?.dataset.tooltip).toBe('1 Epic · 1 Milestone');
 	});
 
 	/**

@@ -2,14 +2,11 @@ import { describe, expect, it } from 'vitest';
 import { buildModel } from '../../src/domain/model';
 import {
 	childTypeChoices,
-	displayType,
-	drawsAsPoint,
 	EXTRA_TYPE_RANK,
-	focusTarget,
 	folderForType,
 	isExtraType,
 	isMarkerType,
-	ladderFor,
+	isResourceType,
 	placementEnds,
 	PlacementEnd,
 } from '../../src/domain/itemTypes';
@@ -184,7 +181,6 @@ describe('childTypeChoices', () => {
 			'Deliverable',
 			'Milestone',
 			'Iteration',
-			'Resource',
 			'Test suite',
 			'Test case',
 		]);
@@ -350,58 +346,51 @@ describe('Iteration is a declared marker', () => {
 	});
 });
 
-describe('Resource is a declared marker', () => {
-	it('is on neither ladder, which is what keeps it off every rung', () => {
-		expect(ALL_TYPES).toContain('Resource');
-		// The two membership questions no CATEGORY-wide loop asks. `isMarkerType` above
-		// already drives `isMarkerType`, `isExtraType` and case for every marker, and
-		// `settings.test.ts` pins `MARKER_TYPES` itself and loops it against `LEVELS` and
-		// `EXTRA_TYPES` — its own comment says it is written that way so a third marker
-		// needs no new assertion, so repeating those here would pin them twice.
+describe('Resource is recognized in order to be refused', () => {
+	it('keeps the name out of every list the work-item vocabulary drives', () => {
+		// The same sentence `Absence` is checked by, and for the same reason: stated at the
+		// LIST rather than at its consumers. `childTypeChoices` offers every entry at the
+		// top level, `focusTarget` accepts one as a focus root, the shelf groups by it, and
+		// the generated README and the manual document it — so keeping the name out is what
+		// makes each of them need no edit and none of them able to grow the entry back.
+		expect(ALL_TYPES).not.toContain('Resource');
+		expect(MARKER_TYPES).not.toContain('Resource');
+		expect(EXTRA_TYPES).not.toContain('Resource');
+		expect(LEVELS).not.toContain('Resource');
 		expect(TEST_LEVELS).not.toContain('Resource');
-		// It is on the PLAN's ladder without occupying a rung of it, exactly as the other
-		// two markers are — so nothing re-types it by position, and a resource dropped in
-		// the test catalog stays plan work in the wrong place rather than becoming a Test
-		// case.
-		expect(ladderFor('Resource', TEST_LEVELS)).toBe(LEVELS);
-		// A marker holds nothing, so nothing is offered beneath it.
-		expect(childTypeChoices({ typeName: 'Resource', levelIndex: -1, effectiveLevelIndex: 0, ladder: LEVELS })).toEqual(
-			[],
-		);
+		// And no creation folder, exactly as an absence has none: nothing in this view makes
+		// one, so there is no filing decision to ship an opinion about.
+		expect(defaultSettings().typeFolders.resource).toBeUndefined();
 	});
 
-	it('files into its own subfolder', () => {
-		expect(typeFolderKey('Resource')).toBe('typeFolder.resource');
-		expect(defaultTypeFolder('Resource')).toBe('docs/resources');
-		expect(defaultTypeFolder('Resource', 'work')).toBe('work/resources');
-		expect(defaultSettings().typeFolders.resource).toBe('docs/resources');
+	it('names the type case-insensitively, and nothing else', () => {
+		expect(isResourceType('Resource')).toBe(true);
+		expect(isResourceType('resource')).toBe(true);
+		expect(isResourceType('Milestone')).toBe(false);
+		expect(isResourceType(null)).toBe(false);
 	});
 
-	it('states no date at either end, so no hand may write one onto a person', () => {
-		// The finding an automated review made on the increment that declared the type:
-		// `MARKER_TYPES` answered the DATE questions as well as the structural ones,
-		// because every marker had been a date until this one. `placementEnds` is what
-		// every scheduling path asks — the row's Schedule and Unschedule, the shelf drop,
-		// the body slide, both grips, and the writer — so the narrowing is stated once,
-		// here, and every one of them inherits it.
-		expect(placementEnds('Resource', false)).toEqual([]);
-		expect(placementEnds('Resource', true)).toEqual([]);
-		expect(placementEnds('resource', false)).toEqual([]);
-		// And it is not a point either: a diamond and a dated timeline's milestone LINE
-		// are both drawn off this answer, and neither means anything about a person.
-		expect(drawsAsPoint('Resource', false)).toBe(false);
-		expect(drawsAsPoint('Resource', true)).toBe(false);
-		// The other two markers are untouched — the narrowing is this type's, not the
-		// category's, and widening it would take the milestone's own diamond with it.
-		expect(placementEnds('Milestone', false)).toEqual(['target']);
-		expect(drawsAsPoint('Milestone', false)).toBe(true);
-	});
+	it('produces NO item, with hierarchyOnly OFF so the gate is what refuses it', () => {
+		// The whole of "a person is not in the backlog", asked where it is decided rather
+		// than at the tree, the boards, the roadmap, the shelf or the count. Each of those
+		// reads `BacklogItem`s, so a note that never becomes one is absent from all of them
+		// at once and from any projection added later.
+		//
+		// **`hierarchyOnly: false` is what makes this test able to fail**, and it is the
+		// same trap the absence gate records beside it: with the setting ON, a note whose
+		// type this vocabulary does not know and which hangs from nothing is dropped by
+		// `pruneOutsideHierarchy` anyway, so the assertion passes with the gate deleted. Off
+		// is the vault where every note a folder-scoped Base returns becomes an item — the
+		// one case that tells the two apart, and the one where a resource would otherwise
+		// sit in the tree as a real-looking task.
+		const vault = new FakeVault();
+		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('Dana.md', { frontmatter: { type: 'Resource' } });
+		const model = buildModel(vault.app, vault.entries(), settingsWith({ hierarchyOnly: false }));
 
-	it('is a focus root like the other markers, and no focus LEVEL selects it', () => {
-		expect(focusTarget(settingsWith({ focusLevel: 'resource' }))).toBe('Resource');
-		// A resource is not a rung, so nothing indexes it: `displayType` falls through to
-		// the name on the note, which is what keeps a level breakdown from counting one.
-		expect(displayType({ levelIndex: -1, ladder: LEVELS, typeName: 'Resource' })).toBe('Resource');
+		expect(model.byPath.has('Dana.md')).toBe(false);
+		expect(model.results.map((item) => item.file.path)).toEqual(['Epic A.md']);
+		expect(model.items.map((item) => item.file.path)).toEqual(['Epic A.md']);
 	});
 });
 

@@ -210,21 +210,12 @@ describe('computeInitWrites and the optional keys', () => {
 		// means nothing on the note it lands on — reached through `placementEnds` so the
 		// backfill cannot drift from the writer and the controls.
 		//
-		// A `Resource` states no date at all, so it is handed neither slot; a `Milestone`
-		// is a point, so it is handed its target and not the start the generated README
-		// already tells the reader this view will never place it by. That second case was
-		// shipped and untested, and an automated reviewer found it from the first.
-		const { model } = build(
-			{
-				'Dana.md': { type: 'Resource' },
-				'Ship.md': { type: 'Milestone' },
-				'A.md': { type: 'Epic', order: 10 },
-			},
-			AXES,
-		);
+		// A `Milestone` is a point, so it is handed its target and not the start the
+		// generated README already tells the reader this view will never place it by. That
+		// case was shipped and untested, and an automated reviewer found it.
+		const { model } = build({ 'Ship.md': { type: 'Milestone' }, 'A.md': { type: 'Epic', order: 10 } }, AXES);
 		const stubsFor = (path: string) => computeInitWrites(model, AXES).find((w) => w.file.path === path)?.stubs ?? [];
 
-		expect(stubsFor('Dana.md')).toEqual(['horizon']);
 		expect(stubsFor('Ship.md')).toEqual(['horizon', 'target']);
 		// Ordinary work is untouched: the narrowing is the type's, not the backfill's.
 		expect(stubsFor('A.md')).toEqual(['horizon', 'start', 'target']);

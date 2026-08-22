@@ -480,14 +480,13 @@ describe('moving between resources without a drag', () => {
 		// its assignee says. This ladder did not: it wrote the name and the card stayed
 		// exactly where it was, spending the one undo slot on a change nobody can see.
 		//
-		// Both markers, because the rule is the category's: an automated reviewer found it
-		// on `Resource`, and `Milestone` had it first and had no test.
+		// The rule is the category's, and `Milestone` is the marker that reaches this ladder:
+		// it had the hole first and had no test.
 		const vault = resourceVault();
-		vault.addFile('Dana.md', { frontmatter: { type: 'Resource' } });
 		vault.addFile('Ship 1.0.md', { frontmatter: { type: 'Milestone', due: '2026-08-10' } });
 		const { view, containerEl } = laneRoadmap(vault);
 
-		for (const path of ['Dana.md', 'Ship 1.0.md']) {
+		for (const path of ['Ship 1.0.md']) {
 			view.selectItem(view.model?.byPath.get(path) as never);
 			const down = key(treeOf(containerEl), 'ArrowDown', { altKey: true });
 			const up = key(treeOf(containerEl), 'ArrowUp', { altKey: true });

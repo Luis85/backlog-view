@@ -3,12 +3,12 @@ import {
 	ABSENCE_TYPE,
 	ALL_TYPES,
 	byName,
-	DATED_MARKER_TYPES,
 	DELIVERABLE_TYPE,
 	EXTRA_TYPES,
 	ITERATION_TYPE,
 	LEVELS,
 	MARKER_TYPES,
+	RESOURCE_TYPE,
 	TEST_LEVELS,
 } from './typeVocabulary';
 
@@ -210,38 +210,27 @@ export function isIterationType(typeName: string | null): boolean {
 }
 
 /**
- * True when `typeName` is a marker the vocabulary declares as a DATE (case-insensitive).
- * The question `isMarkerType` used to answer as a side effect, until a person joined the
- * category: the structural rules — no rung, no children, no parent — are what a marker IS
- * and every one of them still holds for a resource; stating a date is what only some of
- * them do. Module-local, because {@link placementEnds} is the one function that asks and
- * an export with no consumer outside this file is what `npm run analyze` calls dead.
- *
- * Takes a NAME rather than the nullable field every predicate above it takes: its one
- * caller has already established that this is a marker, so a null guard here is a line
- * nothing can reach — which the coverage floor said before review did.
+ * True when `typeName` is the declared RESOURCE name (case-insensitive) — a person, and a
+ * note this backlog recognizes in order to REFUSE it. Its own predicate rather than a
+ * widened `isMarkerType`, for that predicate's own reason and with the same polarity as
+ * `isAbsenceType` beside it: the one call site decides whether a note becomes an item at
+ * all, not where it ranks once it is one.
  */
-function isDatedMarker(typeName: string): boolean {
-	const name = typeName.toLowerCase();
-	return DATED_MARKER_TYPES.some((t) => t.toLowerCase() === name);
+export function isResourceType(typeName: string | null): boolean {
+	return typeName !== null && typeName.toLowerCase() === RESOURCE_TYPE.toLowerCase();
 }
 
 /**
  * True when this type is DRAWN at one date rather than across two, and holdable at
  * neither end. A milestone is a point because a milestone IS a point; an iteration has
- * two ends and the reader decides which reading they want (`iterationBars`).
- *
- * **DERIVED from {@link placementEnds} rather than stated beside it**, which is the one
- * date rule this file has and the reason it is written down once: a point is a placement
- * with exactly one end, a span has two, and a type that states no date has none. Two
- * functions each carving out the dateless marker is what shipped when `Resource` arrived,
- * and the second of them needed a comment about the order it asked the first in. Its own
- * predicate rather than a widened `isMarkerType` for the reason recorded at `isExtraType`
- * — widening a predicate makes it mean two things at every call site — and `isMarkerType`
- * keeps the structural question: no rung, no children, no prerequisites.
+ * two ends and the reader decides which reading they want (`iterationBars`). Its own
+ * predicate rather than a widened `isMarkerType`, for the reason recorded at
+ * `isExtraType`: widening a predicate makes it mean two things at every call site.
+ * `isMarkerType` keeps the structural question — no rung, no children, no prerequisites.
  */
 export function drawsAsPoint(typeName: string | null, iterationBars: boolean): boolean {
-	return placementEnds(typeName, iterationBars).length === 1;
+	if (!isMarkerType(typeName)) return false;
+	return isIterationType(typeName) ? !iterationBars : true;
 }
 
 /**
@@ -364,6 +353,10 @@ const BOTH_ENDS: PlacementEnd[] = ['start', 'target'];
  * every caller on the old meaning the day the option ships, which is the exact defect
  * this parameter exists to make impossible to ignore.
  */
+export function placementEnds(typeName: string | null, iterationBars: boolean): PlacementEnd[] {
+	return drawsAsPoint(typeName, iterationBars) ? ['target'] : [...BOTH_ENDS];
+}
+
 /**
  * The date ends this TYPE's own note carries **as data** — which is not the same question
  * as which ends a placement may act on, and the two come apart for exactly one type.
@@ -379,21 +372,8 @@ const BOTH_ENDS: PlacementEnd[] = ['start', 'target'];
  * Delegates rather than restating, so which type has which ends is still said once:
  * asking in BARS mode is asking for the iteration's full timeframe, which IS the schema.
  * A `Milestone` still answers its target alone — a point by type, and the generated README
- * tells the reader this view never places one by its start — and a `Resource` neither.
+ * tells the reader this view never places one by its start.
  */
 export function schemaEnds(typeName: string | null): PlacementEnd[] {
 	return placementEnds(typeName, true);
-}
-
-export function placementEnds(typeName: string | null, iterationBars: boolean): PlacementEnd[] {
-	// `isMarkerType` answers null on its own; the test beside it is what lets TypeScript
-	// narrow the name for `isDatedMarker`, which then needs no guard of its own.
-	if (typeName === null || !isMarkerType(typeName)) return [...BOTH_ENDS];
-	// NEITHER end for a marker the vocabulary does not declare a date, which today is the
-	// one that is a person: nothing may write, move or delete a date on a resource note.
-	// Asked as *not on the dated list* rather than *is a Resource*, so this is the answer a
-	// fourth marker gets by default and a date is what it has to be given — see
-	// `DATED_MARKER_TYPES`.
-	if (!isDatedMarker(typeName)) return [];
-	return isIterationType(typeName) && iterationBars ? [...BOTH_ENDS] : ['target'];
 }
