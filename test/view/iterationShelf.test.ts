@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
+import { Menu } from 'obsidian';
 import { FakeVault } from '../helpers/vault';
 import { cardDrag } from '../helpers/dnd';
 import { cardByTitle, cardTitles, columnByName } from '../helpers/board';
-import { shelfOf, shelfTitles } from '../helpers/roadmap';
+import { shelfCountOf, shelfOf, shelfTitles } from '../helpers/roadmap';
 import { flush, key, makeView, refresh, treeOf, useViewHarness } from '../helpers/view';
 
 useViewHarness();
@@ -38,6 +39,14 @@ function sprintVault(): FakeVault {
 	});
 	vault.addFile('Uncommitted.md', { frontmatter: { type: 'PBI', order: 30, status: 'New' } });
 	vault.addFile('Finished.md', { frontmatter: { type: 'PBI', order: 40, status: 'Done' } });
+	return vault;
+}
+
+/** A sprint with nothing committed to it — so the board's columns draw empty. */
+function emptySprintVault(): FakeVault {
+	const vault = new FakeVault();
+	vault.addFile(SPRINT, { frontmatter: { type: 'Iteration', order: 10 } });
+	vault.addFile('Uncommitted.md', { frontmatter: { type: 'PBI', order: 30, status: 'New' } });
 	return vault;
 }
 
@@ -113,16 +122,6 @@ describe('the iteration shelf', () => {
 		expect(vault.fm('Uncommitted.md')['status']).toBe('New');
 	});
 
-	it('is narrowed by neither the roadmap shelf’s search nor its hidden types', () => {
-		// This header carries no search box and no type filter, so a narrowing made on the
-		// roadmap would take cards off this shelf with nothing on screen to say why and
-		// nothing here to clear it with. A narrowing belongs to the control that shows it.
-		const { containerEl, view } = onSprint(sprintVault());
-		view.setShelfSearch('nothing matches this');
-		view.setShelfHiddenTypes(new Set(['PBI']));
-		expect(shelfTitles(containerEl)).toEqual(['Uncommitted']);
-	});
-
 	it('folds and reopens from its own disclosure, and starts open', () => {
 		// Open until a reader shuts it: a shelf they have to find before they can pull
 		// from it answers nothing. The fold is a COLUMN fold (`ColumnScope` 'backlog'),
@@ -166,6 +165,178 @@ describe('the iteration shelf', () => {
 
 		expect(cardTitles(columnByName(containerEl, 'In progress'))).toEqual(['Uncommitted']);
 		expect(shelfTitles(containerEl)).toEqual([]);
+	});
+
+	describe('its picks', () => {
+		/** Every control the roadmap's header carries, by class. */
+		const CONTROLS = ['.pbl-shelf-layout', '.pbl-shelf-sort', '.pbl-shelf-filter', '.pbl-shelf-search-input'];
+
+		it('draws the same four controls the roadmap’s header does', () => {
+			// Withheld until 2026-08-21 because their keyboard path — the card menu's shelf
+			// section — was the roadmap's alone. It is not any more, so the reason is gone and
+			// the band that most needs narrowing (a backlog, not a handful of unplaced notes)
+			// gets the same controls.
+			const { containerEl } = onSprint(sprintVault());
+			const shelf = shelfOf(containerEl);
+			for (const control of CONTROLS) expect(shelf?.querySelector(control)).not.toBeNull();
+		});
+
+		it('narrows the band by the search, and keeps the count the true total', () => {
+			const vault = sprintVault();
+			vault.addFile('Another idea.md', { frontmatter: { type: 'PBI', order: 50, status: 'New' } });
+			const { view, containerEl } = onSprint(vault);
+			expect(shelfTitles(containerEl).sort()).toEqual(['Another idea', 'Uncommitted']);
+			view.setShelfSearch('another');
+			expect(shelfTitles(containerEl)).toEqual(['Another idea']);
+			// The count is what the band HOLDS, never what the narrowing leaves — the roadmap's
+			// own guarantee, and the reason a narrowing has to say on its face that it is one.
+			expect(shelfCountOf(containerEl)).toBe('2');
+		});
+
+		it('narrows the band by the type filter', () => {
+			const vault = sprintVault();
+			vault.addFile('A task.md', { frontmatter: { type: 'Task', order: 60, status: 'New' } });
+			const { view, containerEl } = onSprint(vault);
+			expect(shelfTitles(containerEl).sort()).toEqual(['A task', 'Uncommitted']);
+			view.setShelfHiddenTypes(new Set(['Task']));
+			expect(shelfTitles(containerEl)).toEqual(['Uncommitted']);
+		});
+
+		it('offers the shelf section in a card’s menu, which is the keyboard’s way in', () => {
+			// Every header control here is `tabindex="-1"` inside a composite pane, so this menu
+			// is not a convenience: without it the four controls above are pointer-only and the
+			// feature fails at its own purpose. The board's own rule, stated at its
+			// hidden-match links.
+			const { containerEl } = onSprint(sprintVault());
+			Menu.lastShown = null;
+			cardByTitle(containerEl, 'Uncommitted').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+			const titles = Menu.lastShown?.items.map((item) => item.titleText) ?? [];
+			expect(titles).toContain('Shelf layout');
+			expect(titles).toContain('Sort the shelf');
+			expect(titles).toContain('Filter the shelf by type');
+			expect(titles).toContain('Search the shelf...');
+		});
+
+		it('returns the controls to the tab order when the narrowing empties the pane', () => {
+			// The state that makes a `-1` a trap rather than a convention: an iteration with
+			// nothing committed draws empty columns, and a search narrow enough to empty the
+			// shelf leaves no card anywhere — so no card menu, which is the only keyboard path
+			// to these controls, and the column menu carries no shelf section. Without this the
+			// reader cannot clear the search that put them there. (Codex, PR #187.)
+			//
+			// `emptySprintVault` rather than `sprintVault`: the latter's `In sprint.md` is
+			// committed to this iteration and always draws a card in a column, so
+			// `paneHasCards` would stay true and the controls would correctly stay at `-1` —
+			// asserting the opposite of what this test is for.
+			const { view, containerEl } = onSprint(emptySprintVault());
+			view.setShelfSearch('nothing matches this');
+			const shelf = shelfOf(containerEl);
+			for (const control of CONTROLS) {
+				expect(shelf?.querySelector(control)?.getAttribute('tabindex')).toBe('0');
+			}
+		});
+
+		it('keeps them out of it while cards are on screen, which is the composite’s rule', () => {
+			const { containerEl } = onSprint(sprintVault());
+			const shelf = shelfOf(containerEl);
+			for (const control of CONTROLS) {
+				expect(shelf?.querySelector(control)?.getAttribute('tabindex')).toBe('-1');
+			}
+		});
+
+		it('keeps them out of it while a COLUMN holds a card, even with the shelf emptied', () => {
+			// `In sprint` keeps a column non-empty while the search empties the shelf — the
+			// one term this expression reads is true, so the controls stay `-1`.
+			const { view, containerEl } = onSprint(sprintVault());
+			view.setShelfSearch('nothing matches this');
+			const shelf = shelfOf(containerEl);
+			for (const control of CONTROLS) {
+				expect(shelf?.querySelector(control)?.getAttribute('tabindex')).toBe('-1');
+			}
+		});
+
+		it('returns them to the tab order when only the SHELF draws a card, no column', () => {
+			// The case the shelf term was removed for: nothing is committed, so every column
+			// is empty and no gesture can open a card menu — even though `Uncommitted` still
+			// draws on the shelf itself. A shelf card is on no column and is never reachable
+			// by this board's keyboard walk
+			// ([[The iteration shelf is out of the keyboard's walk]]), so a menu-less card on
+			// screen must not be read as a reason to leave these controls at `-1`. This is
+			// the case that used to (wrongly) assert `-1`, before the shelf term was dropped.
+			const { containerEl } = onSprint(emptySprintVault());
+			const shelf = shelfOf(containerEl);
+			for (const control of CONTROLS) {
+				expect(shelf?.querySelector(control)?.getAttribute('tabindex')).toBe('0');
+			}
+		});
+
+		/**
+		 * `activeShelf`'s own copy of the same expression (`shelfSurface.ts`, consumed by
+		 * `refocus`) is a second, independent computation from the same fact — a bug in it
+		 * would not be caught by the tabindex tests above, which read `syncShelfTabStops`'s
+		 * copy in `iterationBoard.ts` instead. Driven the same way, through the one place
+		 * `paneHasCards` is observable: which element a rebuild sends focus to.
+		 */
+		function pickSortAndGetFocus(containerEl: HTMLElement): Element | null {
+			const btn = shelfOf(containerEl)?.querySelector<HTMLElement>('.pbl-shelf-sort');
+			Menu.lastShown = null;
+			btn?.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: 10, clientY: 10 }));
+			const entry = Menu.lastShown?.items.find((i) => i.titleText === 'Title (A to Z)');
+			if (!entry) throw new Error('sort menu did not offer Title (A to Z)');
+			entry.click();
+			return containerEl.ownerDocument.activeElement;
+		}
+
+		it('sends focus to the pane, not the button, while a column keeps it a composite', () => {
+			// `In sprint` stays in Open, so the pane is a composite regardless of the shelf.
+			const { view, containerEl } = onSprint(sprintVault());
+			view.setShelfSearch('nothing matches this');
+			expect(pickSortAndGetFocus(containerEl)).toBe(containerEl.querySelector('.pbl-tree'));
+		});
+
+		it('sends focus to the button’s replacement when only the shelf draws a card', () => {
+			// The mirror of the tabindex case above: nothing is committed, so `paneHasCards`
+			// is false even though the shelf still shows `Uncommitted` — there is no reachable
+			// card menu, so this control is the only way back and owns its own focus, exactly
+			// as it would with an empty shelf too. If `paneHasCards` still read the shelf this
+			// would wrongly send focus to the pane instead.
+			const { containerEl } = onSprint(emptySprintVault());
+			expect(pickSortAndGetFocus(containerEl)).toBe(shelfOf(containerEl)?.querySelector('.pbl-shelf-sort'));
+		});
+
+		it('withholds the section while the band is shut, as the header withholds the pickers', () => {
+			// `addShelfSection` is the card menu's own section, so a collapsed shelf draws no
+			// shelf card to menu from at all; the card to right-click has to be a BOARD one —
+			// `In sprint`, committed to this iteration and drawn in the Open column.
+			const { view, containerEl } = onSprint(sprintVault());
+			view.setColumnCollapsed('backlog', null, true);
+			Menu.lastShown = null;
+			cardByTitle(containerEl, 'In sprint').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+			const titles = Menu.lastShown?.items.map((item) => item.titleText) ?? [];
+			expect(titles).not.toContain('Sort the shelf');
+		});
+
+		it('puts focus on the control’s replacement when the pane holds no card', () => {
+			// The other half of the tab-stop lift. Promoting the controls and then sending focus
+			// to the empty pane strands the reader exactly as leaving them at -1 would.
+			//
+			// The pick is what matters, not the open: `refocus` runs from the `after` callback
+			// `showTypeMenu` hands `addShelfTypeItems`, so it fires when an ITEM is chosen — a
+			// synthetic click on the button alone only opens the menu and focuses nothing in
+			// jsdom. `emptySprintVault` again, for `paneHasCards`' own reason above.
+			const { view, containerEl } = onSprint(emptySprintVault());
+			view.setShelfSearch('nothing matches this');
+			Menu.lastShown = null;
+			shelfOf(containerEl)
+				?.querySelector<HTMLElement>('.pbl-shelf-filter')
+				?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+			const hideAll = Menu.lastShown?.items.find((item) => item.titleText === 'Hide all types');
+			if (!hideAll) throw new Error('type menu did not offer Hide all types');
+			hideAll.click();
+			expect(containerEl.ownerDocument.activeElement).toBe(
+				shelfOf(containerEl)?.querySelector('.pbl-shelf-filter'),
+			);
+		});
 	});
 });
 

@@ -248,18 +248,21 @@ describe('the shelf’s card and list layouts', () => {
 	});
 
 	/**
-	 * The pick reaches the iteration board's shelf too, and that is the SORT's rule rather
-	 * than the search's — the distinction `renderShelf` states and the one this suite exists
-	 * to keep, since neither direction was checked when the two came apart (Codex, PR #183).
+	 * The pick reaches the iteration board's shelf too, and always did — that is the SORT's
+	 * rule rather than the search's, the distinction `renderShelf` states and the one this
+	 * suite exists to keep, since neither direction was checked when the two came apart
+	 * (Codex, PR #183). The picker itself joined the board's header on 2026-08-21, once the
+	 * keyboard path for it — the card menu's shelf section — served both surfaces
+	 * (`docs/requirements/Cards or a list on the shelf.md` extension 1b).
 	 *
-	 * A narrowing is gated on `picks` because a shelf drawn without those controls could hide
-	 * work with nothing on screen to say why and nothing to clear it with. A layout hides
-	 * nothing: the same cards are drawn, so a reader who has never seen the picker has lost
-	 * no work and needs no way back. The shelf HEIGHT in the same change is one value for
-	 * both bands for that same reason, and gating one while sharing the other would be two
-	 * answers to one question.
+	 * The search and the type filter were gated on `ShelfInput.picks` for exactly that
+	 * reason, until that field went with the last caller that could ever pass `false`
+	 * (2026-08-21) — see `renderShelf`'s own header. A layout was never in that rule: it
+	 * hides nothing, the same cards are drawn either way, so a reader who has never seen
+	 * the picker has lost no work and needs no way back. The shelf HEIGHT in the same
+	 * change is one value for both bands for that same reason.
 	 */
-	describe('the iteration board’s shelf, which carries no picker of its own', () => {
+	describe('the iteration board’s shelf', () => {
 		function sprintBoard(): Harness {
 			const vault = new FakeVault();
 			vault.addFile('Sprint 12.md', { frontmatter: { type: 'Iteration', order: 10 } });
@@ -281,9 +284,9 @@ describe('the shelf’s card and list layouts', () => {
 			return harness;
 		}
 
-		it('draws no layout picker, since the pickers are the roadmap’s', () => {
+		it('draws the layout picker too, since 2026-08-21', () => {
 			const { containerEl } = sprintBoard();
-			expect(shelfOf(containerEl)?.querySelector('.pbl-shelf-layout')).toBeNull();
+			expect(shelfOf(containerEl)?.querySelector('.pbl-shelf-layout')).not.toBeNull();
 		});
 
 		it('still draws the picked layout, because a layout narrows nothing', () => {
@@ -307,8 +310,12 @@ describe('the shelf’s card and list layouts', () => {
 		// line by 7px, and the container-relative one does not. The percentage is of the
 		// summary's own box rather than the viewport, since a shelf in a split pane is
 		// narrower than the window it sits in.
-		const css = readFileSync('styles/shelf.css', 'utf8');
-		expect(bodyOf(css, '.pbl-shelf-list .pbl-card-title', 'styles/shelf.css')).toContain('min-width: min(16ch, 40%);');
+		// The compact-row layout's own selectors live in `shelfList.css` (Task 4's split at
+		// the 400-line cap) — `shelf.css` no longer declares `.pbl-shelf-list ...` at all.
+		const css = readFileSync('styles/shelfList.css', 'utf8');
+		expect(bodyOf(css, '.pbl-shelf-list .pbl-card-title', 'styles/shelfList.css')).toContain(
+			'min-width: min(16ch, 40%);',
+		);
 	});
 
 	it('remembers the pick for this saved view, without touching the base', () => {
@@ -326,5 +333,275 @@ describe('the shelf’s card and list layouts', () => {
 		expect(shelfLayoutIcon('cards')).toBe('layout-grid');
 		expect(shelfLayoutIcon('list')).toBe('list');
 		expect(shelfLayoutIcon('not-a-real-layout' as ShelfLayout)).toBe(shelfLayoutIcon('cards'));
+	});
+
+	/**
+	 * A compact row's columns are the tree's own, published on the BAND — Task 4 of
+	 * [[Cards or a list on the shelf]]'s follow-up. jsdom lays nothing out, so what is
+	 * checkable here is structure (every row holds the same set of cells) and the
+	 * published custom properties, never x positions — those were measured in the
+	 * browser harness, recorded in the register.
+	 *
+	 * Two of these fixtures depart from the brief that produced them: `horizonVault()`
+	 * carries no resolved property column and no state property by default (`makeRoadmap`
+	 * never sets `config.order` unless asked), so a test that wants a real column — or a
+	 * real state chip — to hold open has to configure one, or it passes vacuously with
+	 * zero matched elements. Both tests below configure their own columns for exactly
+	 * that reason; see task-4-report.md for the failure this produced before the fix.
+	 */
+	describe('a compact row’s columns are the tree’s, aligned', () => {
+		/**
+		 * Three shelved items, none with a horizon — `horizonVault()` puts two of its
+		 * three epics into buckets, leaving one lone card on the shelf, which cannot show
+		 * a per-row DIFFERENCE at all. This fixture keeps all three on the shelf and gives
+		 * them different plain-property combinations instead, so `holdEmpty` has real
+		 * variance to erase.
+		 */
+		function unplacedVault(): FakeVault {
+			const vault = new FakeVault();
+			vault.addFile('Has both.md', { frontmatter: { type: 'Epic', order: 10 } });
+			vault.addFile('Has one.md', { frontmatter: { type: 'Epic', order: 20 } });
+			vault.addFile('Has none.md', { frontmatter: { type: 'Epic', order: 30 } });
+			vault.entryValues.set('Has both.md', { 'note.points': 3, 'note.owner': 'Alice' });
+			vault.entryValues.set('Has one.md', { 'note.points': 5 });
+			return vault;
+		}
+
+		it('holds a cell open for a column this row has no value for', () => {
+			// A card DROPS an empty cell, correctly — it stacks its cells and sizes each to
+			// content, so a blank one is a chip-shaped gap with nothing to reserve. A row is the
+			// case where that argument stops: the cells are fixed width and shared across rows, so
+			// a dropped one shifts every cell after it and the column stops being a column. That
+			// is the TREE's rule, arrived at from the same place.
+			const { containerEl } = makeRoadmap(unplacedVault(), {}, {
+				shelfCollapsed: false,
+				shelfList: true,
+				order: ['note.points', 'note.owner'],
+			});
+			const counts = shelfOf(containerEl)
+				?.querySelectorAll<HTMLElement>('.pbl-card-summary > .pbl-props')
+				.values()
+				.map((props) => props.querySelectorAll('.pbl-prop').length);
+			const seen = new Set([...(counts ?? [])]);
+			expect(seen.size).toBe(1);
+		});
+
+		it('drops the state cell instead, which is not one of the shared columns', () => {
+			// Extension 4b: held open rather than dropped. `.pbl-shelf-state` is its own box
+			// outside `.pbl-props`, so holding the shared columns open (test above) says nothing
+			// about it — and a row whose workflow does not write the drawn state property still
+			// keeps a box with something in it, never a chip-shaped hole at the end of the line.
+			const { containerEl } = makeRoadmap(horizonVault(), { stateProperty: 'note.status' }, {
+				shelfCollapsed: false,
+				shelfList: true,
+				order: ['note.status'],
+			});
+			for (const state of Array.from(shelfOf(containerEl)?.querySelectorAll('.pbl-shelf-state') ?? [])) {
+				expect(state.childElementCount).toBeGreaterThan(0);
+			}
+		});
+
+		it('holds BOTH state columns open when a row writes only one of them', () => {
+			// Nothing guarded this before review: reverting `dropEmpty: !list` in
+			// `renderShelfState` back to a bare `true` left this suite at 22/22 —
+			// `horizonVault()`'s single configured workflow means every row's ONE state
+			// column is always drawn (`renderStateChip` returns `true` for an UNSET value on
+			// a result row, a "State" button, and only `false` for a different workflow's
+			// key or a context row), so there was never an empty state cell for `dropEmpty`
+			// to hold open or drop. Two workflows on two distinct keys is what makes a row
+			// genuinely leave one of them undrawn — extension 4b's own case, split from 4a
+			// by review once the two stopped behaving the same way.
+			const vault = new FakeVault();
+			vault.addFile('A deliverable.md', { frontmatter: { type: 'Deliverable', order: 10, deliverableStatus: 'Draft' } });
+			vault.addFile('A pbi.md', { frontmatter: { type: 'PBI', order: 20, status: 'New' } });
+			const { containerEl } = makeRoadmap(
+				vault,
+				{ stateProperty: 'note.status', deliverableStateProperty: 'note.deliverableStatus' },
+				{ shelfCollapsed: false, shelfList: true, order: ['note.status', 'note.deliverableStatus'] },
+			);
+			const counts = Array.from(shelfOf(containerEl)?.querySelectorAll('.pbl-shelf-state') ?? []).map(
+				(state) => state.querySelectorAll('.pbl-prop').length,
+			);
+			// Both rows carry both cells — the Deliverable's own `note.status` cell empty,
+			// the PBI's `note.deliverableStatus` cell empty — never one cell dropped and the
+			// other shifted into its place.
+			expect(counts).toEqual([2, 2]);
+		});
+
+		it('publishes the column widths on the band, never inheriting the tree’s', () => {
+			// `renderTree` is the ONLY publisher of `--pbl-prop-w-N` and `renderPass` runs it for
+			// the tree and the catalog alone, while `.pbl-tree` is built once in the constructor
+			// and only emptied per pass — so a row reading them off the scroller got 132px on a
+			// view opened into roadmap mode, and whatever a previous tree pass left on one that
+			// had been there. Geometry that depended on projection history. (Codex, PR #187.)
+			const { containerEl } = makeRoadmap(horizonVault(), {}, {
+				shelfCollapsed: false,
+				shelfList: true,
+				order: ['note.points'],
+			});
+			const band = shelfOf(containerEl);
+			expect(band?.style.getPropertyValue('--pbl-prop-w-0')).not.toBe('');
+			expect(band?.style.getPropertyValue('--pbl-shelf-badge')).not.toBe('');
+		});
+
+		it('publishes nothing on a band drawing no cells', () => {
+			// Beside the height and for its reason: a band with nothing to show reserves nothing.
+			const { containerEl } = makeRoadmap(horizonVault(), {}, { shelfCollapsed: true, shelfList: true });
+			expect(shelfOf(containerEl)?.style.getPropertyValue('--pbl-shelf-badge')).toBe('');
+		});
+
+		it('publishes the rollup label reservation for a shelved item that has one', () => {
+			// `--pbl-rollup-label` is the one geometry the DATA decides rather than the
+			// stylesheet — `renderTree`'s own rule, kept here for the band: absent when
+			// nothing on the shelf has a rollup, set to this band's widest label otherwise,
+			// never a stale value left over from a previous render (`renderShelf` removes
+			// it before setting it, same as `renderTree`).
+			const vault = new FakeVault();
+			vault.addFile('Untriaged parent.md', { frontmatter: { type: 'Epic', order: 10 } });
+			vault.addFile('Child A.md', {
+				frontmatter: { type: 'Feature', order: 10, parent: '[[Untriaged parent]]' },
+				parentLink: 'Untriaged parent',
+			});
+			vault.addFile('Child B.md', {
+				frontmatter: { type: 'Feature', order: 20, parent: '[[Untriaged parent]]' },
+				parentLink: 'Untriaged parent',
+			});
+			const { containerEl } = makeRoadmap(vault, { stateProperty: 'note.status' }, {
+				shelfCollapsed: false,
+				shelfList: true,
+			});
+			expect(shelfOf(containerEl)?.style.getPropertyValue('--pbl-rollup-label')).not.toBe('');
+		});
+
+		it('sizes the rollup reservation from what the type filter left', () => {
+			// Two narrowings reach this band and only one of them is in `searchShelf`:
+			// `organizeShelf` is where `shelfHiddenTypes` is applied. Sizing off its INPUT let a
+			// hidden type's widest ratio go on reserving a lane nothing draws into, so the search
+			// moved the columns and the type filter did not. The Epic is the only card here with
+			// a rollup; hiding Epics must take the reservation with it. (Codex, PR #187.)
+			const vault = new FakeVault();
+			vault.addFile('Untriaged parent.md', { frontmatter: { type: 'Epic', order: 10 } });
+			vault.addFile('Child A.md', {
+				frontmatter: { type: 'Feature', order: 10, parent: '[[Untriaged parent]]' },
+				parentLink: 'Untriaged parent',
+			});
+			const { view, containerEl } = makeRoadmap(vault, { stateProperty: 'note.status' }, {
+				shelfCollapsed: false,
+				shelfList: true,
+			});
+			expect(shelfOf(containerEl)?.style.getPropertyValue('--pbl-rollup-label')).not.toBe('');
+			view.setShelfHiddenTypes(new Set(['Epic']));
+			expect(shelfOf(containerEl)?.style.getPropertyValue('--pbl-rollup-label')).toBe('');
+		});
+
+		/**
+		 * Seven flat root Epics with no parent, no children, no horizon, no columns and
+		 * no state property — `shelfHeavyVault()`, this test's fixture until review found
+		 * it. Every row's shape was trivially identical because every row had nothing:
+		 * the same lane content (empty), the same absent columns, the same absent state.
+		 * Deleting the parent-breadcrumb move into the lane, and separately making the
+		 * lane conditional on a shelving reason, both left this test at 22/22 green — it
+		 * could not see either mutation, which is exactly the six-violations-in-a-row
+		 * failure mode the brief wrote it to catch. Recorded in task-4-report.md.
+		 *
+		 * This fixture instead gives every row something DIFFERENT to hold: a parent
+		 * (two children of a shelved parent), a rollup (that parent has descendants and a
+		 * configured workflow), a shelving reason on one row and not the others, a
+		 * configured plain column with a value on some rows and not others, and a
+		 * configured state property. If the top-level shape still comes back as ONE set
+		 * across all five rows, the notes lane and the held-open cells are doing their job
+		 * despite genuinely different content — the shape is checkable precisely because
+		 * the CONTENT is not.
+		 */
+		function shelfCategoryVault(): FakeVault {
+			const vault = new FakeVault();
+			// Nothing at all in the lane, and no value on the one configured column: the
+			// row with the least to show.
+			vault.addFile('Root plain.md', { frontmatter: { type: 'Epic', order: 10 } });
+			// Descendants and a workflow give this one a rollup — the lane's OTHER content.
+			vault.addFile('Root with kids.md', { frontmatter: { type: 'Epic', order: 20, status: 'Active' } });
+			vault.addFile('Child one.md', {
+				frontmatter: { type: 'Feature', order: 10, parent: '[[Root with kids]]', status: 'Active' },
+				parentLink: 'Root with kids',
+			});
+			vault.addFile('Child two.md', {
+				frontmatter: { type: 'Feature', order: 20, parent: '[[Root with kids]]' },
+				parentLink: 'Root with kids',
+			});
+			// Both children have no horizon either, so both shelve in their own right —
+			// each with a PARENT breadcrumb the lane has to hold, and a `note.points` value
+			// on only one of them.
+			vault.entryValues.set('Child one.md', { 'note.points': 3 });
+			// An unreadable horizon is a shelving REASON, on a row with no parent and no
+			// children — the fourth distinct combination.
+			// An OBJECT resists `readPlacement`'s string tolerance entirely — a bare string
+			// like 'Nowhere' would just mint an undeclared bucket instead of shelving.
+			vault.addFile('Bad horizon.md', { frontmatter: { type: 'Epic', order: 30, horizon: {} } });
+			return vault;
+		}
+
+		it('gives every row the same top-level items, which is what alignment rests on', () => {
+			// **The category check, and the one that would have caught six review rounds at once.**
+			// Alignment does not come from any single declaration; it comes from every top-level
+			// item of the summary having the same flex configuration on every row. An item that is
+			// present on some rows and absent on others breaks that as surely as one whose basis is
+			// its own content — which is how the rollup, the shelving reason, the dependency note
+			// and the parent breadcrumb each broke it in turn, one per review round, until they were
+			// all moved into the always-drawn notes lane.
+			//
+			// jsdom lays nothing out, so what is checkable here is PRESENCE: the set of direct
+			// children, by class, must be identical across every row in the band. A new
+			// sometimes-drawn element on the line fails this without anyone predicting it, which a
+			// list of the six known ones could not do.
+			const { containerEl } = makeRoadmap(shelfCategoryVault(), { horizonValues: 'Now, Later', stateProperty: 'note.status' }, {
+				shelfCollapsed: false,
+				shelfList: true,
+				order: ['note.points'],
+			});
+			const summaries = Array.from(shelfOf(containerEl)?.querySelectorAll('.pbl-card-summary') ?? []);
+			// Five rows, genuinely different: confirms the fixture itself shelves what it
+			// means to, rather than this test passing because nothing landed on the band.
+			expect(summaries).toHaveLength(5);
+			const shapes = new Set(
+				summaries.map((summary) => Array.from(summary.children).map((child) => child.className).join('|')),
+			);
+			expect([...shapes]).toHaveLength(1);
+		});
+
+		it('states the aligned-column geometry in the stylesheet', () => {
+			// jsdom resolves no cascade and lays nothing out, so the checkable part is the
+			// declaration and its selector. The geometry was measured in the browser harness at a
+			// 1400px pane over the demo backlog's twenty unplaced items, against this commit's
+			// own parent: median row height 22.4px to 28px, title x positions 4 to 1 — see
+			// `styles/shelfList.css`'s own header for why this is not the 34px an earlier draft
+			// of this comment stated.
+			//
+			// `.pbl-shelf-list`'s own rules live in `shelfList.css`, split out of `shelf.css` at
+			// the 400-line cap this task's addition tripped.
+			const css = readFileSync('styles/shelfList.css', 'utf8');
+			const file = 'styles/shelfList.css';
+			// The badge takes the band's own reserved slot, which is what puts every title on one x
+			// — never `--pbl-meta-col`, which reserves for the rollup label and is sized off the
+			// TREE's population.
+			expect(bodyOf(css, '.pbl-shelf-list .pbl-card-head', file)).toContain('flex: 0 0 var(--pbl-shelf-badge, 84px);');
+			// And the notes lane IS shrinkable, which is the other half of the narrow-pane policy:
+			// rigid, it plus the badge and the fold slot pass a 380px pane before a single cell.
+			expect(bodyOf(css, '.pbl-shelf-list .pbl-shelf-notes', file)).toContain('flex: 0 1 calc(');
+			// The state box too, and `min-width: 0` is the load-bearing half: a flex item's default
+			// `min-width: auto` is its content's minimum, so ordering it without unsetting that
+			// leaves the last column rigid however narrow the pane gets.
+			expect(bodyOf(css, '.pbl-shelf-list .pbl-shelf-state', file)).toContain('min-width: 0;');
+			// And the cells take the tree's stored widths back, which `.pbl-card .pbl-prop` turns
+			// off for a card. `0 1` rather than `0 0`: they must shrink together on a narrow pane
+			// rather than force a horizontal scrollbar the band has never had.
+			expect(bodyOf(css, '.pbl-shelf-list .pbl-card-summary .pbl-prop', file)).toContain(
+				'flex: 0 1 var(--pbl-prop-w, 132px);',
+			);
+			// The title's basis is ZERO, and that is what makes the shrink identical row to row:
+			// with `auto` the basis is the title's own text width, so two rows resolve their cells
+			// to different widths under the same deficit and the alignment holds only until the
+			// pane narrows.
+			expect(bodyOf(css, '.pbl-shelf-list .pbl-card-title', file)).toContain('flex: 1 1 0;');
+		});
 	});
 });

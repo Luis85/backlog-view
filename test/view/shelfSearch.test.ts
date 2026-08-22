@@ -154,17 +154,17 @@ describe("the shelf's own search", () => {
 		const { containerEl, view } = makeRoadmap(searchVault());
 		const titles = () => cardMenu(containerEl, 'Login screen').items.map((i) => i.titleText);
 		// The box is `tabindex="-1"` inside the composite, so the menu is its keyboard path.
-		expect(titles()).toContain('Search unplaced...');
+		expect(titles()).toContain('Search the shelf...');
 		// Nothing to clear yet: an entry that would write nothing is not offered.
-		expect(titles()).not.toContain('Clear unplaced search');
+		expect(titles()).not.toContain('Clear the shelf search');
 
 		view.setShelfSearch('login');
-		expect(titles()).toContain('Clear unplaced search');
+		expect(titles()).toContain('Clear the shelf search');
 	});
 
 	it('narrows from the prompt that menu entry opens', () => {
 		const { containerEl } = makeRoadmap(searchVault());
-		cardMenu(containerEl, 'Login screen').items.find((i) => i.titleText === 'Search unplaced...')?.click();
+		cardMenu(containerEl, 'Login screen').items.find((i) => i.titleText === 'Search the shelf...')?.click();
 		const modal = Modal.lastOpened;
 		if (!modal) throw new Error('search prompt not opened');
 		const input = modal.contentEl.querySelector('input');
@@ -186,7 +186,7 @@ describe("the shelf's own search", () => {
 		typeSearch(containerEl, 'login');
 		expect(shelfTitles(containerEl)).toHaveLength(3);
 
-		cardMenu(containerEl, 'Login screen').items.find((i) => i.titleText === 'Clear unplaced search')?.click();
+		cardMenu(containerEl, 'Login screen').items.find((i) => i.titleText === 'Clear the shelf search')?.click();
 
 		expect(shelfTitles(containerEl)).toHaveLength(4);
 	});
@@ -290,7 +290,7 @@ describe("the shelf's type picker", () => {
 
 	it('offers the same bulk entries to the keyboard as to the pointer', () => {
 		const { containerEl } = makeRoadmap(horizonVault());
-		const submenu = cardMenu(containerEl, 'Now item').items.find((i) => i.titleText === 'Filter unplaced by type')
+		const submenu = cardMenu(containerEl, 'Now item').items.find((i) => i.titleText === 'Filter the shelf by type')
 			?.submenu;
 		expect(submenu?.items.map((i) => i.titleText)).toEqual(
 			openTypeMenu(containerEl).items.map((i) => i.titleText),

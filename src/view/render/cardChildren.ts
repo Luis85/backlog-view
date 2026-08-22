@@ -21,7 +21,17 @@ import { ownWorkflowReading } from '../../domain/board';
  * is what makes the context-row rule hold by construction rather than by a check, so a
  * context card gets this like any other card.
  */
-export function renderCardChildren(ctx: RowContext, card: HTMLElement, item: BacklogItem): void {
+export function renderCardChildren(
+	ctx: RowContext,
+	card: HTMLElement,
+	item: BacklogItem,
+	// Where the DISCLOSURE goes when that is not the wrapper — `renderCardBody`'s own
+	// `kidsEl` in the mirror. The shelf's compact row is the one caller: its summary is the
+	// line, so the toggle belongs ON it while the list stays beneath, and a row with no
+	// children still reserves the slot so the badges keep one x. A card passes nothing and
+	// is unchanged: it stacks, so its disclosure belongs with its list.
+	{ toggleEl }: { toggleEl?: HTMLElement } = {},
+): void {
 	// Annotated rather than inferred from `ctx.host` so fallow can see which host
 	// members this file uses — it resolves interface members through an explicit type
 	// and not through a property access. See the root CLAUDE.md.
@@ -34,10 +44,11 @@ export function renderCardChildren(ctx: RowContext, card: HTMLElement, item: Bac
 
 	const wrap = card.createDiv({ cls: 'pbl-card-kids' });
 	// Toggle first, list second — DOM order IS reading order, so the count is met
-	// before the items it counts. Both ids are minted rather than derived: these
-	// attributes resolve across the whole document, and two saved views can sit in
+	// before the items it counts. That still holds when the toggle is lifted onto the line: the
+	// summary precedes the wrapper inside the card. Both ids are minted rather than derived:
+	// these attributes resolve across the whole document, and two saved views can sit in
 	// split panes.
-	const toggle = wrap.createEl('button', {
+	const toggle = (toggleEl ?? wrap).createEl('button', {
 		cls: 'pbl-card-kids-toggle',
 		attr: { type: 'button', tabindex: '-1' },
 	});
@@ -52,7 +63,16 @@ export function renderCardChildren(ctx: RowContext, card: HTMLElement, item: Bac
 	list.setAttribute('aria-labelledby', toggle.id);
 	const chevron = toggle.createSpan({ cls: 'pbl-card-kids-chevron' });
 	drawIcon(chevron, 'chevron-right');
-	toggle.createSpan({ cls: 'pbl-card-kids-count', text: childrenLabel(children) });
+	// The slot on a compact row has room for a number and not for a sentence. The sentence is
+	// what the LIST is named by — `aria-labelledby` points at this toggle — so it moves to
+	// the toggle's own `aria-label` rather than being dropped, and a reader who cannot see the
+	// slot hears exactly what they heard before. In the wrapper it stays the visible text and
+	// no `aria-label` is written, because an accessible name derived from content is the one
+	// that cannot drift from what is on screen.
+	const label = childrenLabel(children);
+	const onLine = toggleEl !== undefined;
+	toggle.createSpan({ cls: 'pbl-card-kids-count', text: onLine ? String(children.length) : label });
+	if (onLine) toggle.setAttribute('aria-label', label);
 	// The disclosure counts what it LISTS and the rollup beside it counts everything
 	// beneath, so with completed work hidden the two disagree on purpose. Said out loud
 	// only when it is true, and only in the one place a user can ask: two numbers
@@ -84,6 +104,12 @@ export function renderCardChildren(ctx: RowContext, card: HTMLElement, item: Bac
 		const collapsed = host.isCardCollapsed(item.file.path);
 		toggle.setAttribute('aria-expanded', String(!collapsed));
 		chevron.toggleClass('pbl-expanded', !collapsed);
+		// The wrapper says whether it is shut, because a stylesheet cannot ask. On a compact
+		// row the wrapper is the indent block: shut, it would still draw its padding and one
+		// of the card's flex gaps, making a shut parent taller than a leaf and drawing an
+		// indent guide with nothing beneath it. `.pbl-card-kids-list:empty` hides the list and
+		// says nothing about the box around it.
+		wrap.toggleClass('pbl-card-kids-shut', collapsed);
 		setTooltip(toggle, tooltip(collapsed));
 		list.empty();
 		if (collapsed) return;

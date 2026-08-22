@@ -2,11 +2,13 @@ import { RowContext } from './columns';
 import { renderBoard } from './board';
 import { renderEmptyIterationState } from './emptyStates';
 import { renderShelf, ShelfRemoval } from './shelf';
+import { syncShelfTabStops } from './shelfControls';
 import { t } from '../../i18n/t';
 import { BacklogViewHost, BoardSnapshot } from '../host';
 import { CardDragController } from '../interactions/cardDrag';
 import { iterationBuckets, iterationCandidates } from '../../domain/board';
 import { BacklogItem, BacklogModel, iterationResults } from '../../domain/model';
+import { ShelfCard } from '../../domain/bars';
 
 /**
  * The board for ONE iteration, drawn through `renderBoard` like the other two.
@@ -42,7 +44,7 @@ export function renderIterationBoard(
 	const iteration = model.byPath.get(scope);
 	const population = iterationResults(model, scope);
 	renderIterationGoal(host, boardEl, iteration);
-	const shelfEl = renderIterationShelf(ctx, boardEl, dnd, model);
+	const shelf = renderIterationShelf(ctx, boardEl, dnd, model);
 	const board = iterationBuckets(
 		population,
 		host.settings,
@@ -52,17 +54,37 @@ export function renderIterationBoard(
 		// completed-items toggle, which is exactly what `held` may not be measured through.
 		() => true,
 	);
-	return {
-		...renderBoard(ctx, boardEl, dnd, board, {
-			scope: 'iteration',
-			foldsFinished: false,
-			// The BUCKET, never the column's state: `Ready` and `New` can both read as Open,
-			// and a move planned from the state would rewrite one as the other.
-			move: (item, col) => void (col.bucket && host.performIterationBoardMove(item, col.bucket)),
-			drawEmpty: (_h, aside) => renderEmptyIterationState(aside, iteration?.title ?? null),
-		}),
-		shelfEl,
-	};
+	const content = renderBoard(ctx, boardEl, dnd, board, {
+		scope: 'iteration',
+		foldsFinished: false,
+		// The BUCKET, never the column's state: `Ready` and `New` can both read as Open,
+		// and a move planned from the state would rewrite one as the other.
+		move: (item, col) => void (col.bucket && host.performIterationBoardMove(item, col.bucket)),
+		drawEmpty: (_h, aside) => renderEmptyIterationState(aside, iteration?.title ?? null),
+	});
+	// **The controls come back into the tab order when no COLUMN card can open a menu to
+	// reach them** — the question is reachability, not whether the pane drew a card
+	// anywhere. A shelf card is on no column, so it is out of this board's roving
+	// selection entirely and the card menu can never open from one
+	// ([[The iteration shelf is out of the keyboard's walk]], extension 5b of
+	// [[Pulling work into an iteration]]) — an iteration with nothing committed leaves no
+	// reachable menu even while the shelf still draws cards, which is why the shelf half
+	// of this expression was removed rather than kept beside the columns term. Hard-coding
+	// `true`, or counting the shelf, both leave a reader with a search they could not
+	// clear at `-1` (Codex, PR #187, three rounds, the last of which was this file
+	// counting the shelf too).
+	//
+	// The roadmap's own `activeShelf` branch does NOT drop this term: its shelf cards ARE
+	// in its linear keyboard walk (`RoadmapSnapshot.cards`), so there a shelf card genuinely
+	// keeps the pane a composite with a reachable menu. The two surfaces differ because
+	// their keyboard walks do.
+	//
+	// `col.cards.length` the way `renderBoardAdvisory` in this file already asks it — empty
+	// by a FOLD as well as by nothing committed — rather than `board.cardCount`, which
+	// `domain/board.ts` sums from the population before anything folds and which that
+	// function's own comment calls "results-only by design".
+	syncShelfTabStops(shelf.el, content.board.columns.some((col) => col.cards.length > 0));
+	return { ...content, shelfEl: shelf.el, shelf: shelf.cards };
 }
 
 /**
@@ -71,11 +93,16 @@ export function renderIterationBoard(
  *
  * Reused rather than rewritten, and what that buys is one component: the type groups and
  * their folds, the card shell, the drop target and the auto-scroll a long shelf needs are
- * the ones already driven on the roadmap. What it is handed differs in the three things
- * that are genuinely this board's — no axis (a board states nothing about dependencies),
- * its own name (this shelf is a POPULATION, never the roadmap's placement), and no sort,
- * filter or search picks: their keyboard path is the card menu's shelf section, which is
- * the roadmap's alone, and the base's own search already narrows what arrives here.
+ * the ones already driven on the roadmap. What it is handed differs in the two things that
+ * are genuinely this board's — no axis (a board states nothing about dependencies) and its
+ * own name (this shelf is a POPULATION, never the roadmap's placement).
+ *
+ * It carries the PICKS as of 2026-08-21. They were withheld because the keyboard path for
+ * a `tabindex="-1"` control here is the card menu's shelf section, which was built for the
+ * roadmap alone — a reason about a missing path rather than about this band, and
+ * `addShelfSection` serves both now. The band that most needs narrowing is this one: the
+ * roadmap shelves what an axis could not place, and this holds the whole uncommitted
+ * backlog.
  *
  * Every card carries `reason: null` — nothing here failed to be placed. The shelf holds
  * what has not been committed to a fortnight, which is a fact about the plan rather than
@@ -89,7 +116,7 @@ function renderIterationShelf(
 	boardEl: HTMLElement,
 	dnd: CardDragController,
 	model: BacklogModel,
-): HTMLElement {
+): { el: HTMLElement; cards: ShelfCard[] } {
 	const host: BacklogViewHost = ctx.host;
 	const cards = iterationCandidates(model).map((item) => ({ item, reason: null }));
 	const shelf = renderShelf(
@@ -100,7 +127,6 @@ function renderIterationShelf(
 			conflicts: NO_CONFLICTS,
 			axis: null,
 			name: t('shelf.backlog'),
-			picks: false,
 			fold: {
 				collapsed: host.columnCollapsed('backlog', null, false),
 				set: (collapsed) => host.setColumnCollapsed('backlog', null, collapsed),
@@ -109,7 +135,13 @@ function renderIterationShelf(
 		dnd,
 		iterationRemoval(host),
 	);
-	return shelf.el;
+	// `cards` is the band's whole population, unnarrowed, which is what the card menu's type
+	// filter has to be built from: hiding a type must never remove its own way back. What
+	// `renderShelf` actually put ON screen is not this function's question any more: the
+	// tab-stop decision reads column cards alone (see `renderIterationBoard`'s own comment),
+	// since a shelf card is never reachable by this board's keyboard walk regardless of
+	// whether it is drawn.
+	return { el: shelf.el, cards };
 }
 
 /** No board states what a card waits for, so this map is empty on every render. */

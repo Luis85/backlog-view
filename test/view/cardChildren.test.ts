@@ -53,6 +53,22 @@ function untypedChildrenVault(): FakeVault {
 	return vault;
 }
 
+/**
+ * A horizon-axis vault where a PBI with no horizon carries one Task child, both
+ * returned by the base. Neither carries a horizon, so both shelve independently — the
+ * PBI as a parent with a disclosure, the Task a second time as its own leaf row —
+ * modelled on `horizonVault()` in `test/helpers/roadmap.ts`.
+ */
+function parentOnShelfVault(): FakeVault {
+	const vault = new FakeVault();
+	vault.addFile('Monthly statement.md', { frontmatter: { type: 'PBI', order: 10 } });
+	vault.addFile('Reconcile the ledger.md', {
+		frontmatter: { type: 'Task', order: 10 },
+		parentLink: 'Monthly statement',
+	});
+	return vault;
+}
+
 describe('children on the card', () => {
 	it('names the visible direct children, by their shared type', () => {
 		const { containerEl } = makeBoard(boardVault());
@@ -455,5 +471,57 @@ describe('children on the card', () => {
 		cardByTitle(containerEl, 'Feature X').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
 
 		expect(Menu.lastShown?.items.map((i) => i.titleText)).toContain('Show children');
+	});
+
+	it('puts the disclosure on the line in list mode, and the list beneath it', () => {
+		// A parent row costs no extra line at rest: the chevron and its count take a leading
+		// fold slot, the tree's own idiom and the reason a tree row is one line whether or not
+		// it has children. The LIST stays the card's own child, so it falls beneath the line
+		// rather than sitting at the end of it — extension 3b, unchanged.
+		const { containerEl } = makeRoadmap(parentOnShelfVault(), {}, { shelfCollapsed: false, shelfList: true });
+		const card = cardByTitle(containerEl, 'Monthly statement');
+		const summary = card.querySelector('.pbl-card-summary');
+		expect(summary?.querySelector('.pbl-shelf-fold > .pbl-card-kids-toggle')).not.toBeNull();
+		expect(summary?.querySelector('.pbl-card-kids-list')).toBeNull();
+		expect(card.querySelector(':scope > .pbl-card-kids > .pbl-card-kids-list')).not.toBeNull();
+	});
+
+	it('draws no wrapper at all while the children are shut', () => {
+		// Only the `<ul>` is hidden by `.pbl-card-kids-list:empty`; the box around it would still
+		// spend its padding and one of the card's flex gaps, so a shut parent would stand taller
+		// than a leaf — which this task's same-height requirement forbids. (Codex, PR #187.)
+		const { view, containerEl } = makeRoadmap(parentOnShelfVault(), {}, { shelfCollapsed: false, shelfList: true });
+		const path = 'Monthly statement.md';
+		view.setCardCollapsed(path, true);
+		const wrap = cardByTitle(containerEl, 'Monthly statement').querySelector('.pbl-card-kids');
+		expect(wrap?.hasClass('pbl-card-kids-shut')).toBe(true);
+	});
+
+	it('reserves the fold slot on a row with no children, so the badges stay on one x', () => {
+		const { containerEl } = makeRoadmap(parentOnShelfVault(), {}, { shelfCollapsed: false, shelfList: true });
+		const leaf = cardByTitle(containerEl, 'Reconcile the ledger');
+		const slot = leaf.querySelector('.pbl-card-summary > .pbl-shelf-fold');
+		expect(slot).not.toBeNull();
+		expect(slot?.childElementCount).toBe(0);
+	});
+
+	it('shows the count as a number on the line and keeps the sentence as the name', () => {
+		// The slot has room for a number and not for a sentence, and the sentence is what the
+		// list is NAMED by (`aria-labelledby` points at this toggle) — so it moves to the
+		// toggle's own `aria-label` rather than being dropped. A reader who cannot see the
+		// slot hears exactly what they heard before.
+		const { containerEl } = makeRoadmap(parentOnShelfVault(), {}, { shelfCollapsed: false, shelfList: true });
+		const toggle = cardByTitle(containerEl, 'Monthly statement').querySelector<HTMLElement>('.pbl-card-kids-toggle');
+		expect(toggle?.querySelector('.pbl-card-kids-count')?.textContent).toBe('1');
+		expect(toggle?.getAttribute('aria-label')).toBe('1 task');
+	});
+
+	it('leaves the card grid’s own disclosure exactly where it was', () => {
+		// The card stacks, so its disclosure belongs in the wrapper with its list and nothing
+		// about this feature is a reason to move it. No fold slot is drawn there at all.
+		const { containerEl } = makeRoadmap(parentOnShelfVault(), {}, { shelfCollapsed: false });
+		const card = cardByTitle(containerEl, 'Monthly statement');
+		expect(card.querySelector('.pbl-shelf-fold')).toBeNull();
+		expect(card.querySelector('.pbl-card-kids > .pbl-card-kids-toggle')).not.toBeNull();
 	});
 });

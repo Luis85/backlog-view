@@ -637,13 +637,13 @@ export const en = {
 	'placement.emptyAssignee': 'an empty assignee',
 
 	/**
-	 * The shelf's search affordances. They read `Search unplaced` and `Clear unplaced
+	 * The shelf's search affordances. They read `Search the shelf` and `Clear the shelf
 	 * search`, and they are whole keys rather than `placement.unplaced` lowercased and
 	 * concatenated: case is not a transformation every language survives — German
 	 * capitalizes every noun — and the word order around it is not universal either.
 	 */
-	'shelf.search': 'Search unplaced',
-	'shelf.clearSearch': 'Clear unplaced search',
+	'shelf.search': 'Search the shelf',
+	'shelf.clearSearch': 'Clear the shelf search',
 
 	/**
 	 * The resources axis's own furniture. `{name}` is a resource, `{title}` a note's own
@@ -746,8 +746,8 @@ export const en = {
 	 * `ShelfSort` values beside them (`tree`, `title`, `modified`) are persisted view
 	 * state and stay as written.
 	 */
-	'menu.sortUnplaced': 'Sort unplaced',
-	'menu.filterUnplacedByType': 'Filter unplaced by type',
+	'menu.sortShelf': 'Sort the shelf',
+	'menu.filterShelfByType': 'Filter the shelf by type',
 	'menu.shelfLayout': 'Shelf layout',
 	'menu.shelfLayoutCards': 'Cards',
 	'menu.shelfLayoutList': 'List',
@@ -768,7 +768,7 @@ export const en = {
 	 * words in English; this one is a menu entry promising a dialog, and the trailing
 	 * ellipsis is what says so.
 	 */
-	'menu.searchUnplaced': 'Search unplaced...',
+	'menu.searchShelf': 'Search the shelf...',
 	'menu.searchField': 'Title contains',
 	'menu.searchPlaceholder': 'Part of a title',
 	'menu.searchCta': 'Search',

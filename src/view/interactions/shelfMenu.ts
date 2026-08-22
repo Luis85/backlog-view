@@ -168,7 +168,7 @@ export function addShelfTypeItems(host: BacklogViewHost, menu: Menu, shelf: Shel
 export function addShelfSearchItems(host: BacklogViewHost, menu: Menu): void {
 	menu.addItem((mi) =>
 		mi
-			.setTitle(t('menu.searchUnplaced'))
+			.setTitle(t('menu.searchShelf'))
 			.setIcon('search')
 			.onClick(() =>
 				new ValuePromptModal(host.app, {

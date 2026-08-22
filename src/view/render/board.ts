@@ -577,7 +577,28 @@ export function renderCardBody(
 	// a child list inside that row would sit beside the title rather than beneath it — so
 	// the row hands its own card element here while the summary takes everything else. A
 	// wrapper, never different content: the same children are built either way.
-	{ kidsEl }: { kidsEl?: HTMLElement } = {},
+	//
+	// `holdEmpty` is the same shape for the same kind of difference, and it is the TREE's
+	// rule rather than a new one. A card DROPS a cell with nothing in it, because it stacks
+	// its cells and sizes each to content, so a blank one is a chip-shaped gap the layout has
+	// no reason to reserve. A ROW's cells are fixed width and shared with every row beside
+	// it, so a dropped cell shifts every cell after it and the column stops being one.
+	//
+	// `rollupEl` is `kidsEl`'s own shape, for the third time and the last. A compact row
+	// needs its trailing geometry FIXED, and the rollup is one of three things that are
+	// present on some rows and absent on others; a box that is always drawn and always
+	// reserved is what turns three absences into one width. `renderRollup` fills it or
+	// draws nothing into it, and the row is the same either way.
+	//
+	// `toggleEl` is `renderCardChildren`'s own option, passed straight through: a compact
+	// row's summary is a line, so the toggle belongs ON it while the list stays beneath in
+	// `kidsEl`. Absent, the card stacks and the toggle builds inside its own wrapper.
+	{
+		kidsEl,
+		holdEmpty = false,
+		rollupEl,
+		toggleEl,
+	}: { kidsEl?: HTMLElement; holdEmpty?: boolean; rollupEl?: HTMLElement; toggleEl?: HTMLElement } = {},
 ): void {
 	const host = ctx.host;
 	const head = card.createDiv({ cls: 'pbl-card-head' });
@@ -637,12 +658,12 @@ export function renderCardBody(
 	// show is not a value that happens to be blank — it is a chip-shaped gap the layout
 	// has no reason to reserve. `dropEmpty` is the tree/card difference stated once, in
 	// `renderPropCells` itself, rather than here as a second opinion about it.
-	if (cardColumns.length > 0) renderPropCells(ctx, card, item, cardColumns, { dropEmpty: true });
-	renderRollup(host, card, item);
+	if (cardColumns.length > 0) renderPropCells(ctx, card, item, cardColumns, { dropEmpty: !holdEmpty });
+	renderRollup(host, rollupEl ?? card, item);
 	// One call, three surfaces: board cards, roadmap bucket cards and shelf cards all
 	// come through here. Timeline rows never do — they use the card SHELL with a
 	// bar-grid row layout — which is exactly why they get no disclosure.
-	renderCardChildren(ctx, kidsEl ?? card, item);
+	renderCardChildren(ctx, kidsEl ?? card, item, { toggleEl });
 }
 
 /**

@@ -340,21 +340,21 @@ describe('the shelf s own section', () => {
 		const menu = openCardMenu(containerEl, 'Anchor');
 		const titles = titlesOf(menu);
 
-		expect(titles).toContain(marked('menu.sortUnplaced'));
-		expect(titles).toContain(marked('menu.filterUnplacedByType'));
+		expect(titles).toContain(marked('menu.sortShelf'));
+		expect(titles).toContain(marked('menu.filterShelfByType'));
 		expect(titles).toContain(marked('menu.shelfSortTree'));
 		expect(titles).toContain(marked('menu.shelfSortTitle'));
 		expect(titles).toContain(marked('menu.shelfSortModified'));
 		expect(titles).toContain(marked('menu.showAllTypes'));
 		expect(titles).toContain(marked('menu.hideAllTypes'));
-		expect(titles).toContain(marked('menu.searchUnplaced'));
+		expect(titles).toContain(marked('menu.searchShelf'));
 		// The type's own name is the vault's; only the frame around the count is text.
 		expect(titles).toContain(`${MARK}Epic (7)`);
 	});
 
 	it('titles the search dialog with the key the shelf header s own box carries', () => {
 		const { containerEl } = makeRoadmap(shelfHeavyVault());
-		entry(openCardMenu(containerEl, 'Anchor'), marked('menu.searchUnplaced')).click();
+		entry(openCardMenu(containerEl, 'Anchor'), marked('menu.searchShelf')).click();
 
 		const modal = Modal.lastOpened;
 		if (!modal) throw new Error('the search prompt did not open');

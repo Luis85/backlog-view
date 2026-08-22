@@ -64,6 +64,14 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   band, one height — and it is remembered per saved view per device without anything
   reaching the `.base`.
 
+- **The iteration board's shelf carries the same four picks as the roadmap's** — layout,
+  sort, type filter and search. They were withheld before now only because their
+  keyboard path, the card menu's shelf section, was built for the roadmap alone; it
+  serves both surfaces now, so narrowing a sprint's uncommitted backlog no longer means
+  switching projections. Five labels that called a backlog "unplaced" — `Search
+  unplaced`, `Sort unplaced`, `Filter unplaced by type` among them — now say `shelf`
+  instead, since the board's band is a backlog too, not only the roadmap's.
+
 ### Changed
 
 - **Everything the tree, the boards and the roadmap draw takes its words from the message
@@ -169,6 +177,17 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   model with two faults took one round trip per fault to fix; the refusal now lists all of
   them, joined the way the rest of the plugin joins a list.
 
+- **A compact shelf row draws aligned columns**, reusing the tree's own stored property
+  widths instead of sizing each cell to its own content: titles now land at one x
+  position where there were four. The row itself grew a little to do it — 28px where it
+  measured 22.4px before — because the fix is the tree's own row anatomy, badge and
+  property cells included, not a narrower one.
+
+- **A shelved parent's disclosure moves onto its own row**, into a leading fold slot
+  beside the badge, instead of drawing as a line of its own beneath the title. A shut
+  parent now costs no more height than a leaf — both 28px — and its expanded children
+  are indented so a child's badge lines up under the parent's own title.
+
 ### Fixed
 
 - **The shelf's own title no longer moves when the band is opened or closed.** Opening the
@@ -220,6 +239,13 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   sort buttons were non-option children of a list and dropped, `aria-sort` with them. The
   role now covers the rows alone, and with no results the element is a plain region
   instead, so the empty-table message is not dropped either.
+
+- **The shelf's resize grip no longer strands itself mid-band when everything inside is
+  collapsed.** `position: sticky` holds an element inside its scrollport, but it never
+  pushes one down — so a band picked taller than its collapsed cards left the grip
+  sitting under the last group instead of at the foot you sized: measured with every
+  type group folded and a 400px pick, it sat 139px short. A scoped margin now pulls it
+  the rest of the way.
 
 ## [0.9.1] - 2026-08-17
 

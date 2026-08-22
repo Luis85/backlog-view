@@ -6,10 +6,10 @@ import {
 	renderEmptyState,
 } from './emptyStates';
 import { buildRow } from './rows';
-import { columnWidth, columnWidthVar } from '../interactions/columnResize';
 import {
 	INDENT_PER_DEPTH,
 	metaColWidth,
+	publishColumnWidths,
 	renderColumnHeader,
 	rollupChars,
 	RowContext,
@@ -57,9 +57,6 @@ export function renderTree(ctx: RowContext, treeEl: HTMLElement): void {
 	// the widths and for the same reason — one declaration per tree, inherited by every row
 	// and by the subtrees a targeted refresh re-renders.
 	if (chars > 0) widths['--pbl-rollup-label'] = `${chars}ch`;
-	for (const [index, column] of ctx.columns.entries()) {
-		widths[columnWidthVar(index)] = `${columnWidth(ctx.host, column.prop)}px`;
-	}
 	// REMOVED rather than left unset, and this is the one declaration here that needs it:
 	// the tree element is built once in the constructor and only emptied per render, so
 	// its inline style outlives every pass, and `setCssProps` writes the keys it is given
@@ -75,6 +72,8 @@ export function renderTree(ctx: RowContext, treeEl: HTMLElement): void {
 	// reuse path does not clear the element either.
 	if (chars === 0) treeEl.style.removeProperty('--pbl-rollup-label');
 	treeEl.setCssProps(widths);
+	// The tree's own columns, through the shared publisher — see `publishColumnWidths`.
+	publishColumnWidths(treeEl, ctx.columns, ctx.host);
 	// Both decisions below used to read
 	// the shared arrays, which hold every item the model kept: a base returning twelve
 	// test notes and no plan work would be told "All 12 items are done and hidden", with a

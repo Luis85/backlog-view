@@ -751,16 +751,27 @@ free of runtime code so imports stay cycle-free.
   the answer somewhere both read.
 - **The iteration board draws the roadmap's shelf**, above its columns, over a population
   that is a LINK rather than an axis (`iterationCandidates` — the work in NO iteration,
-  unfinished, never a marker, a catalog member or a context row). One component, three
+  unfinished, never a marker, a catalog member or a context row). One component, two
   inputs the caller supplies: which axis is drawing (**null** on a board, which states
-  nothing about dependencies), what the header calls it, and whether the header carries
-  the sort/type/search picks — it does not here, because their keyboard path is the card
-  menu's shelf section and that section is the roadmap's alone. **`picks` therefore also
-  decides the NARROWING**: a shelf without those controls applies neither the search nor
-  the hidden types, since a narrowing whose control is not on screen can be neither seen
-  nor cleared (the sort is not in that rule — it hides nothing, and neither does the card /
-  list LAYOUT, which this band therefore draws in whatever the reader picked on the roadmap;
-  the register claimed the opposite for one commit and the code was right — Codex, PR #183).
+  nothing about dependencies) and what the header calls it. **Both bands carry the
+  sort/type/search picks** (since 2026-08-21 for this one — their keyboard path, the card
+  menu's shelf section, was the roadmap's alone until `addShelfSection` learned to resolve
+  whichever band is on screen through `activeShelf`). There is no third input deciding
+  this any more: `ShelfInput` carried a `picks: boolean` field until both callers had to
+  pass `true`, at which point its `false` branch was dead code rather than a live
+  distinction, and it was removed along with the two ternaries it gated. **The
+  narrowing-only-where-its-control-is-visible rule now holds structurally, not by a
+  flag**: `renderShelf` returns before narrowing on `empty || collapsed`, and
+  `renderShelfControls` withholds the controls on that same `collapsed` (plus `empty`,
+  checked earlier) — so a band that draws no controls is exactly a band that also skipped
+  the narrowing. Read that as *derived from one fact*, not as one statement: they are two
+  early returns in two functions, both computed off the same `fold` object, and **nothing
+  checks that they stay in agreement**. The guide said "the same early return" until the
+  final review on PR #187 pointed out that no such return exists — the wider sentence was
+  the repo's own "write the guarantee to the check" rule broken in the guide that states
+  it. The sort was never in that rule — it hides nothing — and neither is the
+  card / list LAYOUT, which this band draws in whatever the reader picked on the roadmap;
+  the register claimed the opposite for one commit and the code was right — Codex, PR #183.
   Its HEIGHT is the same value the roadmap's band takes, which is the same argument once
   more: one component, one band on screen at a time. Its own fold is a COLUMN
   fold (`ColumnScope` `'backlog'`), not a view-state value: a shelf is a foldable band
@@ -771,7 +782,12 @@ free of runtime code so imports stay cycle-free.
   keyboard: the board's walk is `columns[col].cards[card]` and a shelf card is in no
   column, so the shelf is a pointer gesture and `Set iteration` on the item is the
   keyboard's path to the same writes — see
-  [[The iteration shelf is out of the keyboard's walk]].
+  [[The iteration shelf is out of the keyboard's walk]]. **That same fact is what
+  `syncShelfTabStops` and `activeShelf`'s `paneHasCards` ask of this board** (the card
+  menu's shelf section above): a shelf card can never open that menu, so only a column
+  card counts toward keeping these controls out of the tab order — the roadmap's own
+  shelf cards ARE in its linear keyboard walk, which is why its branch of `paneHasCards`
+  still counts them and this board's does not.
 - The whole column is the drop target and the highlight is the only drop signal —
   within-column order is derived from the Base's sort, so there is no between-cards
   edge, no hitbox package, and deliberately no Alt+Up/Down rank shortcut.
@@ -985,11 +1001,19 @@ free of runtime code so imports stay cycle-free.
   surfaces may differ on. **A picker that reopens is anchored to its BUTTON on the first
   open as well**, which is the one place `showMenuForClick` is the wrong helper: it
   honours a real pointer's position, so the menu opened under the cursor and then jumped
-  to the button's edge on every pick after it. The one case a
-  menu cannot cover is an all-shelved, collapsed roadmap, where no card renders and so
-  no card menu opens: there the pane is a `region` rather than a composite, and
-  `syncShelfTabStops` puts every picker back in the tab order, decided from the
-  same final card count the role is. Both, not one — hiding the
+  to the button's edge on every pick after it. A menu cannot cover
+  every case: an all-shelved, collapsed roadmap draws no card and so opens no card menu,
+  and since 2026-08-21 an iteration board with nothing committed is the same trap on the
+  other surface, for a different reason — its shelf may still be drawing cards, but a
+  shelf card is on no column and so is never reachable by this board's keyboard walk at
+  all ([[The iteration shelf is out of the keyboard's walk]]), so there is no card ANY
+  gesture can menu from. `syncShelfTabStops` puts every picker back in the tab order in
+  both cases, but the two are not one question dressed as two: the roadmap's own
+  `paneHasCards` is its rendered card count, the same thing its `listbox`/`region` role
+  is, while the board's is `activeShelf`'s column-cards-only count, which the board's role
+  does NOT track — every board keeps an unconditional `listbox`, because its column
+  headers are permanent `option` stops whatever they hold (see `render/projections.ts`'s
+  own comment). Both, not one — hiding the
   last visible type empties the pane by itself, and rescuing only the sort leaves
   the filter that caused it unreachable. Using either rebuilds the pane and destroys
   the button pressed, so `refocus` puts focus back — on the PANE where cards remain, on
