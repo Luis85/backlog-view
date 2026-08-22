@@ -526,8 +526,11 @@ function staleBase(from: Partial<Record<PlacementEnd, string | null>>, live: Sta
  * The inverse of the write that just mutated `fm`: the keys whose value it
  * effectively changed, prior and written both. Null when nothing changed — a
  * state re-set to itself must not consume the caller's single undo slot.
+ *
+ * Exported for `storage/propertyWrite.ts`'s reuse: the identical before/after key
+ * comparison used to be a parallel copy there, caught as a clone by `npm run analyze`.
  */
-function captureInverse(
+export function captureInverse(
 	file: TFile,
 	keys: string[],
 	before: RawValue[],
@@ -608,7 +611,7 @@ function restoreInto(
 	return { file: restore.file, keys: changed, tags, dependsOn };
 }
 
-function rawValueOf(fm: Record<string, unknown>, key: string): RawValue {
+export function rawValueOf(fm: Record<string, unknown>, key: string): RawValue {
 	// Own properties only: 'toString' is a legal frontmatter name on a note that
 	// lacks it, and `in` would report the inherited function as a prior value.
 	return Object.prototype.hasOwnProperty.call(fm, key)
@@ -616,7 +619,10 @@ function rawValueOf(fm: Record<string, unknown>, key: string): RawValue {
 		: { present: false };
 }
 
-/** Equality on raw frontmatter values — plain YAML data, so structural compare is sound. */
+/** Equality on raw frontmatter values — plain YAML data, so structural compare is sound.
+ *  No longer exported: `propertyWrite.ts` used to import it for its own before/after
+ *  comparison, replaced by a `captureInverse` call that already does this internally —
+ *  the last external consumer, so the boundary closed with it. */
 function sameRaw(a: RawValue, b: RawValue): boolean {
 	if (!a.present || !b.present) return a.present === b.present;
 	return a.value === b.value || JSON.stringify(a.value) === JSON.stringify(b.value);

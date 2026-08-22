@@ -169,6 +169,14 @@ function syncBusyLabel(el: HTMLElement, busy: BusyState | null): boolean {
  * flags — never structure. Controls that would be refused mid-batch go `disabled`
  * with it, so the busy state is something a user reads rather than discovers.
  *
+ * **Two facts, not one.** `busy` is THIS view's own progress and is what the indicator
+ * says; `writing` is whether a batch is in flight anywhere in the plugin (`WriteGate`'s
+ * own reading of the vault-wide lock) and is what the disabled flags follow. They differ
+ * exactly in a second view, whose `busy` is null throughout somebody else's batch — the
+ * gate would refuse its ✨ all the same. Both are REQUIRED parameters: there is no
+ * default, because the one a caller could compute from `busy` alone is precisely the
+ * answer that is wrong in the view that is not writing.
+ *
  * **This is also where a focus stranded by the indicator hiding is caught.** `.pbl-busy`
  * carries the busy-help link — the first focusable element it has ever held — and
  * `syncBusyLabel` drops `pbl-busy-on` the moment a batch ends, which makes the container
@@ -183,7 +191,7 @@ function syncBusyLabel(el: HTMLElement, busy: BusyState | null): boolean {
  * shown-to-hidden edge, onto the same `.pbl-help-btn` destination `focusInBar` already
  * uses for both toolbar doors.
  */
-export function syncBusy(barEl: HTMLElement, busy: BusyState | null, canUndo: boolean): void {
+export function syncBusy(barEl: HTMLElement, busy: BusyState | null, canUndo: boolean, writing: boolean): void {
 	const el = barEl.querySelector<HTMLElement>('.pbl-busy');
 	if (el) {
 		const hadFocus = el.contains(document.activeElement);
@@ -192,10 +200,10 @@ export function syncBusy(barEl: HTMLElement, busy: BusyState | null, canUndo: bo
 		if (hadFocus && busy === null) focusInBar(barEl, barEl.querySelector<HTMLElement>('.pbl-help-btn'));
 	}
 	barEl.querySelectorAll<HTMLButtonElement>('.pbl-write-ctl').forEach((btn) => {
-		btn.disabled = busy !== null;
+		btn.disabled = writing;
 	});
 	// Undo pauses with every other write control, but comes back only when the
 	// slot holds something — which the batch that just finished usually ensures.
 	const undoBtn = barEl.querySelector<HTMLButtonElement>('.pbl-undo-btn');
-	if (undoBtn) undoBtn.disabled = busy !== null || !canUndo;
+	if (undoBtn) undoBtn.disabled = writing || !canUndo;
 }

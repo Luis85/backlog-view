@@ -334,6 +334,23 @@ const ROW_CONTROLS = [
 ];
 // The rest of view/, once menu.ts, render/ and create.ts are carved out below.
 const VIEW = 'src/view/**/*.ts';
+// The Estimation view, carved out of VIEW for the two text bans and the ternary ban —
+// swept into the catalog on 2026-08-20 by its own UX polish pass, so they land on a clean
+// directory rather than opening with a wall of errors. That ORDER is the rule, stated at
+// RENDER_EMPTY_STATES above: a ban ahead of its sweep is a ban somebody switches off.
+// Everything else VIEW carries applies here unchanged.
+//
+// A GLOB, unlike MENU_SWEPT and RENDER_TOOLBAR: those two had to be enumerated because
+// unswept siblings share their directory and a second block matching one file would
+// OVERRIDE `no-restricted-syntax` rather than merge with it. Nothing in `view/estimation/`
+// is unswept and no file in it carries a rule set of its own, so the glob is what those
+// lists say they want the day their own directories are finished — and it covers a file
+// ADDED here, which an enumeration would not.
+//
+// What the bans do NOT reach is the shape RENDER_TOOLBAR names: a prose literal handed to
+// a helper as a positional ARGUMENT. `test/i18n/estimation.test.ts` is the runtime half
+// that holds that.
+const ESTIMATION = 'src/view/estimation/**/*.ts';
 // The manual's authored prose — the ONE part of view/ still holding English, and so the
 // one part the three text bans do not reach. 334 prose literals by an AST walk on
 // 2026-08-21, against the 9 a setter grep sees: this is long-form documentation built
@@ -767,7 +784,26 @@ export default defineConfig([
 		// `VIEW`. That is the sweep order intact rather than an omission: the manual's
 		// prose is unswept, and a ban ahead of a sweep is a ban somebody switches off.
 		files: [VIEW],
-		ignores: [MENU, ...MENU_SWEPT, RENDER, ...RANKING_VIEW, CARD_MOVES, ...MANUAL],
+		ignores: [MENU, ...MENU_SWEPT, RENDER, ESTIMATION, ...RANKING_VIEW, CARD_MOVES, TYPES_SECTION, ...MANUAL],
+		rules: syntaxRules([
+			...SVG_CLASS_TOKENS,
+			...WRITE_BOUNDARY,
+			MENU_ANCHOR,
+			OVERBY,
+			TREE_SCAN,
+			ALL_TYPES_IMPORT,
+			CHILD_TYPE_CHOICES_NULL,
+			DELIVERABLE_FIELD_READ,
+			...TEXT_TERNARY,
+			UI_TEXT_LITERAL,
+			UI_TEXT_PROPERTY,
+		]),
+	},
+	{
+		// The Estimation view: VIEW's own rules plus the two text bans and the ternary ban.
+		// See ESTIMATION above for why this one is a glob where the other swept slices are
+		// file lists.
+		files: [ESTIMATION],
 		rules: syntaxRules([
 			...SVG_CLASS_TOKENS,
 			...WRITE_BOUNDARY,

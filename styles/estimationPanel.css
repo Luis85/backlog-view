@@ -1,0 +1,321 @@
+/* ==========================================================================
+   The estimation view's per-item panel — split out of `estimation.css` at its
+   400-line cap (2026-08-17); the boundary is `estimation.css`'s own view grid and
+   table above it versus the panel `.pbl-est-panel` holds below it, one concern
+   each. Position after `estimation.css` in `styles/index.css`'s import list is NOT
+   load-bearing, but not because the vocabulary is disjoint: `.pbl-est-header
+   .pbl-est-total` and `.pbl-est-header .pbl-est-coverage` below DO re-target
+   `estimation.css`'s `.pbl-est-total` / `.pbl-est-coverage`. What decides it is
+   specificity — a two-class descendant selector is (0,2,0) against the single
+   class's (0,1,0) — so this partial wins whichever import runs last, and nothing
+   here is decided by order — see that file's own header.
+   ========================================================================== */
+
+/* ==========================================================================
+   The panel's answer header — the item's name, its total, the total's coverage, the
+   currency verdict, and the two derived sentences — pinned at the top of the panel.
+
+   IT DECLARES ITS OWN TYPE, and that is the whole point of the element. Three rules used to
+   reach these same children by POSITION — `.pbl-est-decomp .pbl-est-total`,
+   `.pbl-est-decomp .pbl-est-coverage`, and `.pbl-est-panel > .pbl-est-title` as a CHILD
+   selector — and moving the summary and the title in here stopped all three from matching.
+   Nothing errored. Measured: the total rendered at 15px/500 where the stylesheet believed it
+   was setting 20px/semibold, and the DESIGN.md entry declaring that size described a screen
+   nobody was seeing. The three rules are DELETED rather than left beside these, because a
+   rule that matches nothing is the thing the next reader trusts.
+
+   Four steps, each doing one job: the answer, the name, the qualifier, the annotation.
+   ========================================================================== */
+
+.pbl-est-header {
+	position: sticky;
+	top: 0;
+	z-index: 1;
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-2-2);
+	/* THE PINNED-EDGE RULE. A sticky child pins at the SCROLLER's content edge, which is
+	   inside `.pbl-est-panel`'s own padding — so with the padding left on the panel, the rows
+	   scrolled through a band ABOVE this header and were visible over it. DESIGN.md states
+	   the fix as a rule: "whatever wants a gap owns it inside the box that pins". The panel
+	   drops its block-start padding and this header draws the same gap itself, which is what
+	   the roadmap's pinned strips already do. */
+	padding-block-start: var(--size-4-3);
+	padding-block-end: var(--size-4-3);
+	border-bottom: 1px solid var(--background-modifier-border);
+	/* The panel's own fill, so rows scroll UNDER an opaque header rather than through it —
+	   checked below (`styleRules.test.ts`) — and never a shadow: DESIGN.md's One Shadow
+	   Rule, and a pinned strip asserts itself by painting and drawing a border. The
+	   shadow-absence half is not mechanically checked here and rests on review. */
+	background-color: var(--background-secondary);
+}
+
+.pbl-est-header .pbl-est-title {
+	flex: 0 0 auto;
+	font-size: var(--font-ui-medium);
+	/* DESIGN.md's Title step, whose other wearer (`.pbl-empty-title`) already renders 500 —
+	   measured at 600 here on 2026-08-21, one declared step wearing two weights. 500 under a
+	   20px/600 Answer is also what the Answer entry's own argument asks for: the number is what
+	   the panel exists to state, and a title at the same weight competes with it. */
+	font-weight: var(--font-medium);
+	color: var(--text-normal);
+	white-space: normal;
+}
+
+/* Three members on one baseline, adjacent and in this order: the answer, its coverage, and
+   the chip saying whether the answer can be trusted. */
+.pbl-est-header .pbl-est-summary {
+	display: flex;
+	align-items: baseline;
+	flex-wrap: wrap;
+	gap: var(--size-4-2);
+	margin-top: 0;
+}
+
+/* DESIGN.md's `Answer` step — the one number a detail panel exists to state. */
+.pbl-est-header .pbl-est-total {
+	flex: 0 0 auto;
+	width: auto;
+	text-align: start;
+	font-size: var(--font-ui-large);
+	font-weight: var(--font-semibold);
+	color: var(--text-normal);
+}
+
+.pbl-est-header .pbl-est-coverage {
+	flex: 0 0 auto;
+	width: auto;
+	text-align: start;
+	font-size: var(--font-ui-small);
+	color: var(--text-muted);
+}
+
+.pbl-est-header .pbl-est-chip {
+	align-self: center;
+}
+
+/* One sentence per line. Wrapped into a single run the two derived lines read as one long
+   muted string — and each is a whole translated sentence that nothing may split into a label
+   and a value, so the line break is the only separation available.
+
+   Confidence-adjusted value and value-to-effort — derived on read, never written
+   (`CLAUDE.md`'s write-back rule), which is why both are labelled rather than left to
+   stand as bare numbers beside the total they are not. Each line is one `t()` sentence
+   (`estimation.panel.adjustedValue` / `…valueToEffort`) with no markup inside it — the
+   rubric notes' own idiom (`.pbl-est-rubric`), so nothing here splits a translated
+   sentence to bold half of it. */
+.pbl-est-derived {
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-4-1) var(--size-4-3);
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+	font-variant-numeric: tabular-nums;
+}
+
+/* ==========================================================================
+   The panel: one selector row per enabled dimension (plus confidence, effort
+   and complexity, which are scales of the same shape), then the decomposition.
+   ========================================================================== */
+
+.pbl-est-dim {
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-2-2);
+	padding-block: var(--size-4-2);
+}
+
+/* A divider BEFORE every row but the first, rather than a border-bottom removed from the
+   last: `:last-of-type` matches the last DIV of any class sharing this parent, and
+   `.pbl-est-decomp` — a div too — is that last div whenever a decomposition renders, so
+   the removal silently missed every scored item and stacked two borders above the
+   decomposition instead. The adjacent-sibling form only ever asks what comes BEFORE a
+   row, which nothing after it (a decomposition, the orphan cleanup button) can change. */
+.pbl-est-dim + .pbl-est-dim {
+	border-top: 1px solid var(--background-modifier-border);
+}
+
+.pbl-est-dim-label {
+	font-size: var(--font-ui-small);
+	font-weight: var(--font-medium);
+	color: var(--text-normal);
+}
+
+/* One line per row: the name, its points, and the clear control. `flex-wrap` is the
+   FALLBACK rather than a breakpoint — a range as wide as a legal 1-20 scale cannot share a
+   line with its own label, so its points wrap to the line below on their own, and a pane too
+   narrow does the same for every row. No media query, no `@container`. */
+/* THE CONTAINING BLOCK FOR `.pbl-est-clear`, and both axes want it on this element. An
+   inset resolves against the containing block's PADDING box, and a padding box INCLUDES
+   the padding area — this head declares no border, so `inset-inline-end: 0` resolves to
+   its own outer inline-end edge, past the gutter below rather than inside it. On the block
+   axis `top: 0` resolves to this head's own top, so the control resolves against the same
+   box the point buttons are laid out in; against `.pbl-est-dim` it resolved to that ROW's
+   padding-box top instead, `padding-block: var(--size-4-2)` higher, where the divider
+   between rows is drawn. Both halves are arithmetic off these declarations — jsdom lays
+   nothing out, so neither is verified here. */
+.pbl-est-dim-head {
+	position: relative;
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--size-4-2);
+	/* Holds the clear control's gutter open at rest, since the control itself is out of
+	   flow. 32px is the CONTROL, not a round number: `.clickable-icon` is
+	   `padding: var(--size-2-2) var(--size-2-3)` (4px 6px) around an icon sized by the
+	   inherited `--icon-size` = `--icon-m`, which is 18px on the desktop root and 20px at
+	   the touch breakpoint. So 30px, and 32px on touch. This was `--size-4-5` (20px) —
+	   narrower than the control it reserved for, which is the whole of the vault-reported
+	   overlap (2026-08-21): a 30px control pinned to this head's outer edge reaches 10px
+	   back over the last point button when only 20px is held open for it. */
+	padding-inline-end: var(--size-4-8);
+}
+
+/* GROWS and truncates. It had a 40% floor first, which pushed the clear control onto a line
+   of its own and made the row TALLER than the stack it replaced. */
+.pbl-est-dim-head .pbl-est-dim-label {
+	flex: 1 1 auto;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+/* A dimension's own range decides how many buttons this holds, and a wide one (a 0-20
+   scale is legal configuration) must not squeeze into one line: `wrap` moves the
+   overflow onto a second row instead, and each button's own `flex-shrink: 0`
+   (below) is what keeps that a clean wrap rather than every button quietly narrower
+   than its declared 28px. */
+.pbl-est-points {
+	display: flex;
+	flex-wrap: wrap;
+	flex: 0 0 auto;
+	gap: var(--size-2-2);
+}
+
+/* Out of the flow, not a flex item: as a flex item it wrapped to a line of its own, which
+   made the row TALLER than the stack it replaced. Absolutely positioned it sits at the
+   row's top-end corner whether the points fit beside the label or below it — and it can
+   never reflow the row, which is DESIGN.md's No-Reflow Feedback Rule satisfied by
+   construction rather than by reserving space. Quiet until addressed, the same pattern
+   `.pbl-add` already uses: eleven always-visible clear controls break "controls that are
+   not currently needed are not currently visible". */
+.pbl-est-clear {
+	position: absolute;
+	top: 0;
+	inset-inline-end: 0;
+	opacity: 0;
+	transition: opacity 120ms ease-in-out;
+}
+
+/* Immediately after the transition it undoes, NOT in `motion.css` — DESIGN.md's one
+   documented exception. `index.css` imports `motion.css` well before this partial, and a
+   media query adds no specificity: a `transition` declared here beats `motion.css`'s
+   `transition: none` at equal specificity, so `prefers-reduced-motion` would silently not
+   apply if the override lived there instead. `.pbl-add` escapes this only because its own
+   partial loads BEFORE `motion.css` — an accident of order this partial does not share. */
+@media (prefers-reduced-motion: reduce) {
+	.pbl-est-clear {
+		transition: none;
+	}
+}
+
+.pbl-est-dim:hover .pbl-est-clear,
+.pbl-est-clear:focus-visible {
+	opacity: 1;
+}
+
+/* A media query adds no specificity, so this reveal has to come AFTER the `opacity: 0`
+   rule it overrides — written above it, it loses the cascade tie and shows nothing on a
+   device with no hover at all. `test/view/rendering.test.ts` checks this ordering rather
+   than trusting this paragraph. */
+@media (hover: none) {
+	.pbl-est-clear {
+		opacity: 1;
+	}
+}
+
+/*
+ * Real `<button>`s, minus the button chrome — the same recipe
+ * `button.pbl-card-kids-toggle` (cardChildren.css) states in full: `appearance:
+ * none` plus a zeroed border/margin/background is not enough on its own,
+ * because Obsidian's `button:not(.clickable-icon)` sets background-color and
+ * box-shadow at (0,1,1), and a bare class selector is (0,1,0) — losing
+ * regardless of source order. Qualifying with the element ties the
+ * specificity and this partial's later load order wins it (the 2026-08-08
+ * bug this recipe exists to not repeat: a disclosure button that looked right
+ * here and wrong in a vault because nothing had beaten the real default).
+ */
+button.pbl-est-point {
+	appearance: none;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 28px;
+	height: 28px;
+	flex-shrink: 0;
+	padding: 0;
+	margin: 0;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-s);
+	background-color: var(--background-primary);
+	box-shadow: none;
+	color: var(--text-muted);
+	font-family: inherit;
+	font-size: var(--font-ui-small);
+	font-weight: var(--font-medium);
+	font-variant-numeric: tabular-nums;
+	line-height: 1;
+	cursor: pointer;
+}
+
+/* Restated on hover and not left to the rule above: a browser resolves the
+   winning declaration per property, so that rule's win at rest says nothing
+   about Obsidian's own `button:hover` fill, which is also (0,1,1). */
+button.pbl-est-point:hover {
+	color: var(--text-normal);
+	border-color: var(--text-muted);
+	box-shadow: none;
+}
+
+.pbl-est-point:focus-visible {
+	outline: 1px solid var(--interactive-accent);
+	outline-offset: 1px;
+}
+
+/* The point this note's answer names — checked against the write PLAN once a
+   plan exists, never against a comparison written beside it (`CLAUDE.md`, "A
+   Set menu's checkmark is asked of the PLAN"). `.is-active` rather than
+   `.pbl-selected`: this is the chosen VALUE of a control, the same fact
+   `.pbl-mode-btn.is-active` (toolbar.css) marks for a projection toggle, not
+   the keyboard/detail selection `.pbl-selected` marks on a row or a card. */
+button.pbl-est-point.is-active {
+	background-color: var(--interactive-accent);
+	border-color: var(--interactive-accent);
+	color: var(--text-on-accent);
+}
+
+.pbl-est-rubric {
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+}
+
+/* ==========================================================================
+   The decomposition: one line per answered dimension's contribution — nothing
+   else. The coverage and the total that used to close this list moved to the
+   header's own `.pbl-est-summary` (`renderSummary` in `panel.ts`, Task 5): the
+   total is the answer and belongs above the inputs, not after them.
+   ========================================================================== */
+
+.pbl-est-decomp {
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-2-2);
+	padding-top: var(--size-4-3);
+	border-top: 1px solid var(--background-modifier-border);
+	/* The decomposition annotates; it does not name. It had no size of its own, so eight
+	   term sentences rendered at 15px beside the `--font-ui-smaller` rubric sentences
+	   directly above them. */
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+}

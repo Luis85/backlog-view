@@ -49,6 +49,8 @@ const FULL_PREFS: Required<ViewPrefs> = {
 	// set. In live state the two are never both set (the controller clears each on the
 	// other's way in); the fixture holds both because the round trip is per key.
 	board: DELIVERABLES_MODE,
+	// The OTHER Bases view's own pick — see 'the persisted estimation sort' below.
+	estimationSort: 'total:desc',
 };
 
 const FULL_FOLDS: Required<ViewFolds> = {
@@ -400,5 +402,29 @@ describe('the shelf working position', () => {
 			'Backlog.base#Backlog': { base: 'Backlog.base', folds: {}, prefs: { shelfHiddenTypes: 'Task' } },
 		});
 		expect(loadViewState(vault.app, id).prefs.shelfHiddenTypes).toBeUndefined();
+	});
+});
+
+describe('the persisted estimation sort', () => {
+	const id = { base: 'Backlog.base', view: 'Backlog' };
+	const none = { folds: emptyFolds(), prefs: {} };
+
+	it('round-trips a column:direction pick, and needs no entry at its default', () => {
+		vault.addFile('Backlog.base');
+		saveViewState(vault.app, id, { ...none, prefs: { estimationSort: 'currency:asc' } });
+		expect(loadViewState(vault.app, id).prefs.estimationSort).toBe('currency:asc');
+		expect(stored(vault)['Backlog.base#Backlog']).toMatchObject({ prefs: { estimationSort: 'currency:asc' } });
+
+		saveViewState(vault.app, id, none);
+		expect(stored(vault)['Backlog.base#Backlog']).toBeUndefined();
+	});
+
+	it('drops a stored sort it does not recognize', () => {
+		// 'value' is the column's on-screen LABEL, never its stored id ('total') — the
+		// realistic mistake a hand-edited or foreign entry would make.
+		vault.localStorage.set(STORE_KEY, {
+			'Backlog.base#Backlog': { base: 'Backlog.base', folds: {}, prefs: { estimationSort: 'value:desc' } },
+		});
+		expect(loadViewState(vault.app, id).prefs.estimationSort).toBeUndefined();
 	});
 });

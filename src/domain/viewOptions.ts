@@ -1,4 +1,4 @@
-import { BasesAllOptions, BasesOptions, BasesPropertyId, BasesViewConfig } from 'obsidian';
+import { BasesAllOptions, BasesOptions, BasesViewConfig } from 'obsidian';
 import {
 	BacklogSettings,
 	columnPolicyKey,
@@ -9,7 +9,7 @@ import {
 	DEFAULT_RISK_VALUES,
 	wipLimitKey,
 } from './settings';
-import { OptionalField, optionalProperty } from './optionalProperties';
+import { notePropsOnly, OptionalField, optionalProperty } from './optionalProperties';
 import { resolveSettings } from './settingsResolve';
 import { ABSENCE_TYPE, ALL_TYPES, DEFAULT_HOME_FOLDER, defaultTypeFolder, typeFolderKey } from './typeVocabulary';
 import { defaultItemHandling, openTargetOptions } from './itemHandling';
@@ -38,8 +38,6 @@ import { t } from '../i18n/t';
  * `resolveFolders` falls back to `defaultTypeFolder`, never to the placeholder, so the
  * `Home folder` half of it is plain UI text with the user's own path in front of it.
  */
-
-const notePropsOnly = (prop: BasesPropertyId) => prop.startsWith('note.');
 
 /**
  * The picker for one of the optional properties. Its persisted key and the key it

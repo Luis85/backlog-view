@@ -1,4 +1,4 @@
-import { TFile, TFolder } from './obsidian-mock';
+import { FileView, TFile, TFolder } from './obsidian-mock';
 
 interface FakeLink {
 	key: string;
@@ -93,6 +93,8 @@ export class FakeVault {
 	failWrites = new Set<string>();
 	/** Called as each write or creation lands — how tests interleave a Bases update with a batch. */
 	afterWrite: ((path: string) => void) | null = null;
+	/** Awaited before each write lands — how a test stalls a batch to interleave a second one. */
+	beforeWrite: ((path: string) => Promise<void> | void) | null = null;
 	/** Handlers registered through vault.on('rename'), fired by `renameFile`. */
 	private renameHandlers: ((file: TFile, oldPath: string) => void)[] = [];
 	/**
@@ -229,6 +231,11 @@ export class FakeVault {
 		},
 		fileManager: {
 			processFrontMatter: async (file: TFile, fn: (fm: Record<string, unknown>) => void) => {
+				// Guarded rather than `await this.beforeWrite?.(...)`: awaiting `undefined`
+				// still yields a microtask, which is one more than the unhooked path had
+				// before this hook existed — and at least one test depends on a write
+				// landing synchronously within the same tick as the drop that triggers it.
+				if (this.beforeWrite) await this.beforeWrite(file.path);
 				// Injected failure, for the partial-batch paths a real vault produces.
 				if (this.failWrites.has(file.path)) throw new Error(`write failed: ${file.path}`);
 				const fm = this.frontmatter.get(file.path) ?? {};
@@ -440,6 +447,20 @@ function parseMockFrontmatter(content: string): Record<string, unknown> {
 		fm[line.substring(0, sep)] = JSON.parse(line.substring(sep + 2)) as unknown;
 	}
 	return fm;
+}
+
+/**
+ * A view's container element, inside a leaf that (optionally) is showing a `.base`
+ * file — `makeView`'s and `makeEstimationView`'s own first three lines, shared because
+ * both need the real leaf nesting (identity resolution walks `iterateAllLeaves` for it,
+ * `storage/CLAUDE.md`'s own rule), not because the two harnesses share anything about
+ * how they finish constructing their view.
+ */
+export function mountLeaf(vault: FakeVault, base?: string): HTMLElement {
+	const leafEl = document.body.createDiv();
+	const containerEl = leafEl.createDiv();
+	if (base) vault.addLeaf(new FileView(vault.addFile(base), leafEl));
+	return containerEl;
 }
 
 /** In-memory BasesViewConfig double that records set() calls. */

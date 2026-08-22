@@ -144,7 +144,11 @@ understood as *changing where entries are kept*, not as rewriting undo:
   undoable prefix.
 - Authorization is capture-time, not replay-time.
 - Tags restore by effective delta, never by snapshot.
-- Both directions go through `runExclusively`, so the config gate and serialization apply.
+- Both directions go through `runExclusively`, so serialization applies. The config gate
+  does not: it is capture-time authorization read once more — a replay restores raw
+  captured keys rather than planning against the settings a collision would be a collision
+  in, and with one lock across every view, asking it let a problem in one view's options
+  veto taking back another view's batch.
 
 ## Open questions
 

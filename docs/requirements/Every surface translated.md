@@ -70,7 +70,8 @@ which is worse than not translated at all.
 
 **Toolbar** (`toolbar.ts`, 23 sites) — the `New <type>` button and its type picker, the
 tooltips on every icon control (`Assign missing type and order properties`, `Undo last
-backlog change`, `Expand all`, `Collapse all`), the `Grouping ignored` advisory and its
+change`, `Expand all`, `Collapse all` — the second of those retitled 2026-08-21 after the
+slot it empties, which is vault-wide rather than this view's), the `Grouping ignored` advisory and its
 explanation, the `Check view options` warning, the item count, and the busy chip's
 `Updating N of M…`.
 
@@ -413,6 +414,38 @@ only for an item on no rung of the ladder that also carries no type name, and ev
 tried lands on one or the other. The fallback predates this slice and whether anything can
 still reach it is a question about the model rather than about the sweep.
 
+**`view/estimation/`, WHOLE — the keys on 2026-08-20, the BAN on 2026-08-21.** 36 keys,
+taking the catalog to 297. The two halves landed a day apart, and the gap is the finding
+worth carrying: the Estimation view's UX polish pass swept the directory into the catalog
+and did NOT add it to `UI_TEXT_LITERAL` / `UI_TEXT_PROPERTY`, so for a day the directory
+was clean by habit with nothing refusing the next literal. The order this note states is
+"a ban ahead of its sweep is a ban somebody switches off"; the inverse — a sweep with no
+ban behind it — has no such name and is what happened here.
+
+Its region is a GLOB (`ESTIMATION` in `eslint.config.mjs`) where `MENU_SWEPT` and
+`RENDER_TOOLBAR` are file lists, and the difference is not a preference: those two share
+their directories with unswept siblings, and a second flat-config block matching one file
+OVERRIDES `no-restricted-syntax` rather than merging with it. Nothing under
+`view/estimation/` is unswept and no file in it carries a rule set of its own, so the glob
+covers a file ADDED there — which is what the two lists say they want the day their own
+directories finish.
+
+The catalog count was re-taken rather than added to (297, two agreeing instruments —
+`Object.keys()` on the esbuild-bundled module and a comment-stripped depth-1 scan of the
+source), because the branch carrying this slice and main's toolbar slice each measured
+before the other landed and 238 + 59 is not a measurement of what shipped.
+
+`test/i18n/estimation.test.ts` is the runtime half, and it is load-bearing rather than
+belt-and-braces here for the usual reason stated at its widest: this view builds most of
+its text through `iconButton`, `guidanceShell`, `scaleSpec` and `sortHeader`, whose labels
+are positional ARGUMENTS, and the currency chip reaches the catalog through a TEMPLATE key
+(`estimation.currency.${currency}`) that no selector could ever check. Both were watched
+failing — reverting `t('estimation.toolbar.init')` to its literal and the template key to a
+hand-written switch produces zero lint errors and fails that file twice. It drains each
+surface and asserts the unmarked remainder is exactly DATA: the note's title, its numbers,
+and the MODEL's own vocabulary, which is user-typed option text (dimension labels, rubric
+sentences) and correctly not in the catalog.
+
 **The remaining English, by the instrument described above and not by the one the tables
 use:** 67 in the rest of `view/render/`, 345 in `view/manual/` (by the earlier walk; not
 re-taken), 19 in the rest of `view/`, and `domain/`, of which `viewOptions.ts` is
@@ -545,8 +578,12 @@ and the three text bans stop at its door.
 `src/view/interactions/cardDrag.ts`, `src/view/interactions/linkDrag.ts`,
 `src/view/interactions/columnResize.ts` and `src/view/interactions/timelineLeadResize.ts` —
 which is `view/interactions/` whole, this time checked rather than claimed. Then all of
-`view/render/`, `src/view/writeGate.ts`, `src/view/cardMoves.ts` and `src/main.ts`. The
-sweep touches every rendering module without changing what any of them does.
+`view/render/`, `src/view/writeGate.ts`, `src/view/cardMoves.ts` and `src/main.ts`, plus
+`src/view/estimation/estimationView.ts`, `src/view/estimation/renderTable.ts`,
+`src/view/estimation/panel.ts`, `src/view/estimation/currencyChip.ts`,
+`src/view/estimation/toolbar.ts` and `src/view/estimation/init.ts`, which is
+`view/estimation/` whole. The sweep touches every rendering module without changing what
+any of them does.
 
 `src/view/render/toolbar.ts` · `src/view/render/toolbarControls.ts` ·
 `src/view/render/toolbarBusy.ts` · `src/view/render/toolbarFit.ts` ·
@@ -561,20 +598,25 @@ sweep touches every rendering module without changing what any of them does.
 `src/view/interactions/structure.ts` · `src/view/interactions/undo.ts` ·
 `src/view/interactions/cardDrag.ts` · `src/view/interactions/linkDrag.ts` ·
 `src/view/interactions/columnResize.ts` · `src/view/interactions/timelineLeadResize.ts` ·
+`src/view/estimation/estimationView.ts` · `src/view/estimation/renderTable.ts` ·
+`src/view/estimation/panel.ts` · `src/view/estimation/currencyChip.ts` ·
+`src/view/estimation/toolbar.ts` · `src/view/estimation/init.ts` ·
+`src/view/estimation/register.ts` ·
 `src/view/backlogView.ts` · `src/view/writeGate.ts` · `src/view/cardMoves.ts` ·
+`src/view/registerBacklogView.ts` ·
 `src/ui/prompts.ts` · `src/commands/scaffold.ts` ·
 `src/main.ts`.
 Tests: `test/view/contextRowWrites.test.ts` and `test/view/creation.test.ts` must pass
 untouched — they guard the two behaviours this sweep is most likely to disturb.
 `test/i18n/sweptSurfaces.test.ts`, `test/i18n/emptyStates.test.ts`,
-`test/i18n/menus.test.ts`, `test/i18n/interactions.test.ts`, `test/i18n/toolbar.test.ts`
-and `test/i18n/projections.test.ts` are the swept half's
+`test/i18n/menus.test.ts`, `test/i18n/interactions.test.ts`, `test/i18n/toolbar.test.ts`,
+`test/i18n/estimation.test.ts` and `test/i18n/projections.test.ts` are the swept half's
 own checks, and each is a PAIR with lint rather than a substitute for it: they drive each
 surface under a fixture catalog, so a literal left at a call site renders English beside
 overridden neighbours, while `UI_TEXT_LITERAL` and `UI_TEXT_PROPERTY` in
 `eslint.config.mjs` refuse a NEW one. A test cannot see a call site
 nobody has written; lint cannot tell whether a key is read. `UI_TEXT_LITERAL` sees the
-setter calls, `new Notice` and a bare `setTooltip(el, …)`; `UI_TEXT_PROPERTY` sees the ten
-option-bag properties. Neither sees a sentence handed to a helper as a positional argument,
+setter calls, `new Notice` and a bare `setTooltip(el, …)`; `UI_TEXT_PROPERTY` sees the
+eleven option-bag properties. Neither sees a sentence handed to a helper as a positional argument,
 which is what leaves the runtime halves load-bearing rather than belt-and-braces. Making a bare string
 unable to reach the UI at all is [[A bare string cannot reach the UI]].

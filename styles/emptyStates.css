@@ -38,6 +38,46 @@
 	margin-top: var(--size-4-2);
 }
 
+/* ----- what the ESTIMATION view says instead of its table. Here rather than in
+   `estimation.css`, which is at its line cap: this is the same concern as the rules
+   above — the block a view draws when it cannot draw its content. Nothing else
+   selects `.pbl-est-problems`, so the earlier import position changes no cascade. */
+
+/* A configured-but-broken scoring model: a warning BLOCK, not the toolbar's
+   `.pbl-config-warning` pill — that class is `inline-flex` and sized for one line
+   beside other toolbar controls, which is the wrong shape for a lead sentence plus a
+   `<ul>` of problems (`estimationView.ts`'s `renderProblems`). Same warning colour,
+   read as prose instead of squeezed into a chip. */
+.pbl-est-problems {
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-4-2);
+	margin: var(--size-4-3);
+	padding: var(--size-4-3);
+	color: rgb(var(--color-orange-rgb));
+	background-color: rgba(var(--color-orange-rgb), 0.12);
+	border-radius: var(--radius-m);
+	/* `.pbl-est-view`'s `align-items: stretch` is for the table and the panel, which need
+	   the full track height for their own `overflow-y: auto` — this is the one grid item
+	   that draws alone, with no sibling to share the row with, so stretching it the same
+	   way filled the whole pane with background colour below eight lines of text. Seen
+	   only in Chromium: jsdom lays out nothing, so a `.pbl-est-problems` mount there is a
+	   box of whatever height its content demands regardless of this rule either way. */
+	align-self: start;
+}
+
+.pbl-est-problems ul {
+	margin: 0;
+	padding-inline-start: var(--size-4-5);
+}
+
+/* The setup action inside the warning block. `align-self` because the block is a COLUMN
+   flex container: a stretched child is the default there, so the button spanned the whole
+   box and read as a banner rather than as one thing to press. */
+.pbl-est-problems .pbl-est-init {
+	align-self: start;
+}
+
 /* ----- why the board is empty, said beside the columns, never instead of them */
 
 .pbl-board-advisory {

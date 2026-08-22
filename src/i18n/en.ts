@@ -467,7 +467,15 @@ export const en = {
 	'toolbar.collapseAll': 'Collapse all',
 	'toolbar.openManual': 'Open the manual',
 	'toolbar.assignMissing': 'Assign missing properties',
-	'toolbar.undo': 'Undo last backlog change',
+	/**
+	 * NO VIEW IN THE NAME, because there is one undo slot for the whole vault. ADR 0030
+	 * put `lastUndo` on the plugin-wide `WriteLock` on purpose — a slot per view would be
+	 * two views racing with two ideas of what the last batch was — so this button really
+	 * can take back a batch the reader made in another view, and a label promising
+	 * otherwise was the only wrong part. The estimation toolbar shares this key rather
+	 * than owning a second one saying "estimation".
+	 */
+	'toolbar.undo': 'Undo last change',
 	'toolbar.overflow': 'More toolbar actions',
 
 	'toolbar.groupingIgnored': 'Grouping ignored',
@@ -1213,6 +1221,106 @@ export const en = {
 
 	'stateColors.noStates':
 		'No workflow states to colour yet. Name a state property and list its states in the view options.',
+
+	/** The write gate's own failure notice — every view's batch runs through it, so the
+	 * message names neither "backlog items" nor any other one view's own vocabulary. */
+	'writeGate.applyFailed': 'Failed to apply the change. See the developer console for details.',
+
+	/** The Bases view type's own label, shown wherever Obsidian lists view types to add —
+	 * unlike `registerBacklogView.ts`'s `name`, this is not the plugin's identity (only one
+	 * such exemption is sanctioned, and the backlog view holds it), so it is ordinary UI
+	 * text and belongs here rather than behind an eslint-disable. */
+	'estimation.viewName': 'Estimation',
+
+	/** The estimation view's own states — loading, unconfigured, misconfigured, and its
+	 * own empty result set. */
+	'estimation.loading': 'Loading estimation view…',
+	'estimation.empty.unconfigured': 'No estimation model is configured for this view.',
+	'estimation.empty.hint':
+		'Bind the suggested properties and stub them onto the results, or name your own in the view options.',
+	'estimation.empty.useDefaults': 'Use recommended defaults',
+	'estimation.problems.lead': "Fix the estimation model in this view's options first:",
+	/**
+	 * The guided setup action refusing itself: the bindings it would make leave the model
+	 * broken, so nothing is bound and nothing is written.
+	 *
+	 * `{problems}` is a LIST: the caller hands `t()` the ARRAY and `t()` does the joining
+	 * (`Intl.ListFormat`, in the locale of the message it actually rendered) — the readme
+	 * notices' own shape, and the shape `t.ts` asks callers for.
+	 *
+	 * NO TERMINAL PERIOD: each problem is already a whole sentence carrying one, which is
+	 * what made the `'; '` version of this render `"…".; "…"..`. That is the one thing
+	 * about this message that is not a pure wording change.
+	 */
+	'estimation.problems.blocked': 'Fix the estimation model first: {problems}',
+	/** Said rather than left silent, for `estimation.problems.blocked`'s own reason: the
+	 *  guided empty state is still on screen, so a button that returned quietly would
+	 *  simply look dead. */
+	'estimation.init.busy': 'Another change is being saved. Try the setup again once it finishes.',
+	'estimation.empty.noResults': 'No results to estimate.',
+
+	/** The prioritized list's column labels — also each sort button's own accessible name
+	 * while nothing is sorted BY it. The ACTIVE column's name states the direction instead
+	 * (`estimation.sort.*` below), because `aria-sort` is not a supported attribute on a
+	 * button at all and is announced to nobody. */
+	'estimation.column.item': 'Item',
+	'estimation.column.value': 'Value',
+	'estimation.column.coverage': 'Coverage',
+	'estimation.column.confidence': 'Confidence',
+	'estimation.column.effort': 'Effort',
+	'estimation.column.currency': 'Currency',
+
+	/** The active sort header's accessible name. {column} is the column's own label above —
+	 * a catalog string, not data. The GLYPH beside it carries the same fact for a sighted
+	 * reader (`chevron-up`/`chevron-down`), per DESIGN.md's Shape-Before-Colour Rule. */
+	'estimation.sort.ascending': '{column}, sorted ascending',
+	'estimation.sort.descending': '{column}, sorted descending',
+
+	/** The currency chip's word for what a stored total says about itself — never the
+	 * rubric or a property name, which are data and never enter this catalog. */
+	'estimation.currency.current': 'Current',
+	'estimation.currency.stale': 'Needs re-estimation',
+	'estimation.currency.foreign': 'Another model',
+	'estimation.currency.handwritten': 'Hand-written',
+	'estimation.currency.orphan': 'Inputs gone',
+	'estimation.currency.none': '—',
+
+	/** The per-item panel: one row per dimension and per bound scale, the two grouped
+	 * scales' own heading, the clamp note, and the two labelled derived lines. Rubric
+	 * sentences and dimension labels are never here — they are the MODEL's own data
+	 * (`docs/requirements/A rubric for every point.md`), reaching the DOM straight from
+	 * the saved model rather than through this catalog. */
+	'estimation.panel.confidence': 'Confidence',
+	'estimation.panel.effort': 'Effort',
+	'estimation.panel.complexity': 'Complexity',
+	'estimation.panel.valueDimensions': 'Value dimensions',
+	/** All three FIXED scales, not just two. Nothing computes the total from confidence, so
+	 *  it is not a value dimension — and it is drawn between the dimensions and this heading,
+	 *  so a heading above the first dimension used to sweep it in. Renamed from
+	 *  `effortComplexity` rather than joined by a second key: one heading, three scales. */
+	'estimation.panel.scales': 'Confidence, effort and complexity',
+	'estimation.panel.whyThisScored': 'Why this scored what it scored',
+	/** A dimension or scale's stored answer fell outside its own declared range. */
+	'estimation.clamped': 'Out of range — read as {value}',
+	/** In range, so counted as it stands, but not one of the points the rubric describes. */
+	'estimation.betweenPoints': 'Between points — counted as {value}',
+	/** The per-row clear control's accessible name — {label} is the dimension's or
+	 * scale's own (data) label, threaded through rather than joined by this string. */
+	'estimation.panel.clear': 'Clear {label}',
+	'estimation.panel.term': '{label} {score} × {weight}%',
+	'estimation.panel.adjustedValue': 'Confidence-adjusted value: {value}',
+	'estimation.panel.valueToEffort': 'Value to effort: {value}',
+	'estimation.panel.removeOrphan': 'Remove the orphaned total',
+	/** Says what the action does to the NOTE, not which currency word offered it — two
+	 *  currencies (`stale` and `foreign`) offer the same action, so naming either in the
+	 *  label would make it wrong half the time. */
+	'estimation.panel.restamp': 'Recalculate the stored total from the answers on this note',
+
+	/** The toolbar's own two actions and its count. `{scored} of {total} scored` is the
+	 *  filtered count's idiom — one quantity in two parts, so the pair reads as one fact. */
+	'estimation.toolbar.init': 'Bind and backfill the estimation properties',
+	'estimation.toolbar.scored': '{scored} of {total} scored',
+
 	/**
 	 * Four sentences the sweep of `view/` first left as English inside keyed neighbours,
 	 * found by review on 2026-08-21. Each sat in a stated blind spot rather than at a

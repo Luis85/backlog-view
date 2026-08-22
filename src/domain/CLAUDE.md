@@ -358,8 +358,10 @@ a node test that did would be measuring the runner.
 - **The configuration is four modules and the dependencies run one way** (ADR 0026):
   `typeVocabulary.ts` (the fixed type names, `byName`, where a type's notes are filed) is a
   leaf; `settings.ts` is the SHAPE and imports it; `optionalProperties.ts` (the table that
-  grows a row per feature) and `settingsResolve.ts` (the only module that touches
-  `BasesViewConfig`) sit above the shape and are never imported by it. `configProblems`
+  grows a row per feature) and `settingsResolve.ts` (this shape's own reader of
+  `BasesViewConfig` — the estimation view resolves its own config the same way, through
+  `estimationSettings.ts`, ADR 0030's parallel split) sit above the shape and are never
+  imported by it. `configProblems`
   lives with `settingsInconsistency` in `settingsConsistency.ts`, because a collision report
   and a fixture check are the same question — is this combination coherent — asked of the
   two different producers. Put a new piece in the wrong one and `npm run analyze` fails on

@@ -105,14 +105,35 @@ free of runtime code so imports stay cycle-free.
   `Element.prototype` and dispatches `mouseover` at every descendant of a row. That is
   hover, on the tree, for two properties — narrower than the sentence, which is why the
   sentence states the rule rather than the spy's reach.
-- The write gate is `writeGate.ts`, not the view: `WriteGate` holds `applying`, the undo
-  slot, `recovery`, the deferred update and the busy state — five fields serving one
-  concern, of which only `busy` was ever read from outside it — and the view owns one,
+- The write gate is `writeGate.ts`, not the view: `WriteGate` holds the deferred update
+  and the busy state, and reads a narrow `GateHost` — `app`, `writeProblems`,
+  `outsideFilter` — rather than the whole `BacklogViewHost`, so a second view can hand
+  it its own settings and its own filter question. `applying`, the undo slot and
+  `recovery` moved out to a plugin-wide `WriteLock` (`writeLock.ts`), created once and
+  shared by every view's gate: a gate per view would be two views racing on one vault
+  with two ideas of what "the last batch" was (ADR 0030). The view owns one gate,
   delegates `applySafely`, `canUndo` and `undoLast` to it, and publishes its progress
-  through `syncBusyUi`. The gate touches none of the view's ELEMENTS (Notices are its
-  own; the toolbar and the tree are the view's, reached through the two hooks it is
-  constructed with) and reads view state through `BacklogViewHost` like every other
-  module.
+  through `syncBusyUi` — reached through the lock's subscription now, rather than a
+  direct call, which keeps every other subscribed view's undo button following the
+  shared slot; the busy value stays per view deliberately. The gate touches none of the view's
+  ELEMENTS (Notices are its own; the toolbar and the tree are the view's, reached
+  through the two hooks it is constructed with).
+  **What the chrome asks of which half is decided by whose batch it is.** `gate.busy` is
+  this view's own progress and is what the indicator SAYS; `gate.writing` is the lock's
+  `applying` and is what every disabled flag and both `aria-busy` attributes follow, in
+  the backlog view and the estimation view alike. **In the estimation view that is
+  `aria-busy` on the pane AND the toolbar's own disabled flags**, since the toolbar
+  landed: `syncBusy` publishes to it through `syncEstimationToolbar`, which disables the
+  init (✨) and undo buttons while `gate.writing` is true and re-enables undo to
+  whatever slot `canUndo()` reports once the batch settles — that IS chrome synced in
+  place. The panel is not: its own write controls are the point buttons, content rebuilt
+  wholesale on every render, and a pick made mid-batch is refused by the shared gate with
+  its own notice rather than disabled ahead of it. So the sentence above is still about
+  which FACT the chrome follows, not about whether this view disables anything — it
+  does, through the toolbar, off the same fact the panel's refusal reads. They differ
+  exactly in a view that is not the one writing — `busy` is null there for a batch the
+  gate would refuse its ✨ for all the same, and whose data update it has already
+  deferred. Same reading makes
 - **Two shapes take work out of `backlogView.ts`, and which one applies is decided by the
   interface rather than by taste.** Anything the modules do NOT ask the host for can leave
   as a delegate the view owns — `WriteGate`, `CardMoveController`, `ViewStateController` —
@@ -126,10 +147,15 @@ free of runtime code so imports stay cycle-free.
   comes back as its own `onDataUpdated`, so mid-batch the view would rebuild the model
   and every row hundreds of times, each pass rendering a half-applied tree. While
   `applying`, `onDataUpdated` only records the update (`gate.deferUpdate()`); the gate
-  flushes it through `refreshFromData` in `runExclusively`'s `finally`, so a failed batch
-  refreshes too — the writes before the failure are on disk and the tree has to show
-  them. Nothing about interaction pauses: each write awaits, so scrolling and selection
-  keep working against the (briefly stale) model.
+  flushes it through `refreshFromData` when the LOCK reports the batch ended
+  (`followLock`), so a failed batch refreshes too — the writes before the failure are on
+  disk and the tree has to show them. **On the lock rather than in the writing gate's own
+  `finally`, because `applying` is vault-wide**: a view defers on a batch another view is
+  writing and never reaches that `finally`, so the writer released nobody but itself and
+  every sibling's update was swallowed for as long as it kept not being the one writing.
+  The notification comes FROM that `finally` (`setBusy(null)`), so the flush is still
+  synchronous within it. Nothing about interaction pauses: each write awaits, so
+  scrolling and selection keep working against the (briefly stale) model.
 - `applyWrites` reports progress per file and the view publishes it with `syncBusy`,
   which touches text and flags only — never structure. Re-rendering the toolbar per
   tick would reintroduce exactly the jank the deferral removes. The indicator is
@@ -138,8 +164,11 @@ free of runtime code so imports stay cycle-free.
 - The undo slot (`lastUndo`) installs on the first EFFECTIVE inverse of a batch, not
   when the batch starts — so a no-op batch keeps the previous undo, and a batch that
   fails partway has installed exactly the applied prefix. `undoLast` replays through
-  the same `runExclusively` gate minus the context-row check: authorization came at
-  capture time (see the root context-row rule). The toolbar undo button re-enables to
+  the same `runExclusively` gate minus the context-row check AND minus `writeProblems`:
+  authorization came at capture time (see the root context-row rule), and a replay writes
+  raw captured keys rather than planning against the settings a collision would be a
+  collision in — asking it of a replay let one view's config problem veto taking back
+  another view's batch. The toolbar undo button re-enables to
   `canUndo()`, not to "idle" — which is why `syncBusy` takes it as a parameter rather
   than treating undo as one more `.pbl-write-ctl`. A replay that COMPLETED but
   restored nothing consumes the slot (its conflicts stay conflicted, its missing
@@ -1124,8 +1153,9 @@ free of runtime code so imports stay cycle-free.
 ## Lifecycle
 
 - Anything an awaited write reports on has to be **captured before the await**. The
-  Bases update that arrives mid-batch is deferred and then flushed in
-  `runExclusively`'s `finally` — synchronously, before the awaited write resolves — so
+  Bases update that arrives mid-batch is deferred and then flushed from the lock's
+  batch-end notification, which `runExclusively`'s `finally` raises — synchronously,
+  before the awaited write resolves — so
   code reading view state after the await already sees the rebuilt model.
   `performBoardMove` takes both the state being left and the column vocabulary up
   front for that reason: afterwards the stray column the card just vacated may be gone

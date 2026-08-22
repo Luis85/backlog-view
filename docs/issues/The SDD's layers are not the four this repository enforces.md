@@ -2,10 +2,11 @@
 type: Issue
 order: 100
 parent: "[[A view per capability]]"
-status: Open
+status: Done
 priority: P1
 area: architecture
 created: 2026-08-16
+closed: 2026-08-16
 source: software design document, 2026-08-16
 files:
   - eslint.config.mjs
@@ -80,6 +81,23 @@ Not a big-bang rename. The parts that can be answered separately:
 
 Whichever way it goes, the outcome is an ADR that supersedes or confirms 0003, and this
 issue closes naming it.
+
+**Closed on 2026-08-16 by [ADR 0030](../adrs/0030-domain-is-the-kernel.md).**
+
+1. Answered: today's `domain/` already is the shared kernel — pure, node-tested,
+   lint-fenced — under its own name. No directory moves.
+2. Answered: no application layer, not yet. A use case stays a host method plus a pure
+   planner; the test for adding one is two views measurably duplicating the same use
+   case, counted in code once a second view exists rather than predicted now.
+3. Does not trigger: the names do not change, so the layer rules, ADR 0003 and every
+   register path stay where they are.
+
+That answers the three criteria below, in the same order: the first is met by this
+record landing in writing before any directory is created under `src/` — this closing
+task is docs-only, nothing under `src/` moved to reach it. The second holds because
+nothing has moved yet: the one deferral ADR 0030 names, splitting `view/` once a third
+view directory lands, is deferred together with the lint edge that would keep it, never
+split first and fenced after. The third is met — ADR 0003 is confirmed, not superseded.
 
 ## Acceptance criteria
 

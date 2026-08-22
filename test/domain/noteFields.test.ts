@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { hasTag, normalizeTag, readDate, readPlacement, readTags } from '../../src/domain/noteFields';
+import { App, TFile } from 'obsidian';
+import { hasTag, normalizeTag, readDate, readPlacement, readTags, resolveParent } from '../../src/domain/noteFields';
 
 describe('readTags', () => {
 	it('reads a list or a single string, deduped case-insensitively and without the hash', () => {
@@ -120,5 +121,26 @@ describe('readPlacement', () => {
 		expect(readPlacement([])).toEqual({ value: null, invalid: false });
 		expect(readPlacement({ nested: true })).toEqual({ value: null, invalid: true });
 		expect(readPlacement([{ nested: true }])).toEqual({ value: null, invalid: true });
+	});
+});
+
+describe('resolveParent', () => {
+	it('reads absence when the note has no metadata cache at all', () => {
+		// A note with no frontmatter never gets a cache object (`test/CLAUDE.md`'s own
+		// note on the fake vault) — the early return this exercises directly, never
+		// touching `app` or `file` on that path.
+		const result = resolveParent(null as unknown as App, null as unknown as TFile, null, 'parent');
+		expect(result).toEqual({ file: null, hasValue: false, explicitRoot: false });
+	});
+
+	it('carries the key but resolves to nothing for a pure in-note heading link', () => {
+		// `[[#Heading]]` names no note at all — `linkpathFromRawValue` strips the wiki
+		// brackets and everything from `#` on, leaving an empty linkpath. The key is
+		// present (so this is not folder-mode's "top level" marker), it just names
+		// nothing this lookup can resolve.
+		const app = { metadataCache: { getFirstLinkpathDest: () => null } } as unknown as App;
+		const cache = { frontmatterLinks: [], frontmatter: { parent: '[[#Heading]]' } } as never;
+		const result = resolveParent(app, null as unknown as TFile, cache, 'parent');
+		expect(result).toEqual({ file: null, hasValue: true, explicitRoot: false });
 	});
 });

@@ -7,6 +7,7 @@ import {
 	computeDeliverableStateWrites,
 	computeInitWrites,
 	computeAssigneeWrites,
+	computePriorityWrites,
 	computeResourceMoveWrites,
 	computeRiskWrites,
 	computeTestStateWrites,
@@ -285,6 +286,53 @@ describe('computeRiskWrites', () => {
 		// nothing to take away and a pick is not a re-pick of anything.
 		expect(computeRiskWrites(unconfigured, null)).toEqual([]);
 		expect(computeRiskWrites(unconfigured, '1 - High')).toHaveLength(1);
+	});
+});
+
+describe('computePriorityWrites', () => {
+	// `computeRiskWrites`' own two rules, over the priority ladder — see `writePlan.ts`'s
+	// header on why the two are separate functions rather than one shared by field name.
+	const prioritized = { ...settings, priorityKey: 'priority' };
+
+	/** One note with whatever priority frontmatter the case needs. */
+	function item(frontmatter: Record<string, unknown>): BacklogItem {
+		const vault = new FakeVault();
+		vault.addFile('Item.md', { frontmatter: { type: 'PBI', order: 10, ...frontmatter } });
+		const model = buildModel(vault.app, vault.entries(), prioritized);
+		const found = model.items[0];
+		if (!found) throw new Error('fixture item missing');
+		return found;
+	}
+
+	it('writes the rung picked', () => {
+		expect(computePriorityWrites(item({}), '2 - Normal')).toEqual([
+			{ file: expect.objectContaining({ path: 'Item.md' }), priority: '2 - Normal' },
+		]);
+	});
+
+	it('plans nothing for a re-pick of the rung the item holds, whatever its case', () => {
+		expect(computePriorityWrites(item({ priority: '1 - high' }), '1 - High')).toEqual([]);
+	});
+
+	it('removes the key only where there is one to remove', () => {
+		// Presence, not value: the empty key the backfill leaves is a real thing to clear.
+		expect(computePriorityWrites(item({ priority: '' }), null)).toEqual([
+			{ file: expect.objectContaining({ path: 'Item.md' }), priority: null },
+		]);
+		expect(computePriorityWrites(item({}), null)).toEqual([]);
+	});
+
+	it('plans nothing at all when no priority property is configured', () => {
+		const vault = new FakeVault();
+		vault.addFile('Item.md', { frontmatter: { type: 'PBI', order: 10, priority: '1 - High' } });
+		const model = buildModel(vault.app, vault.entries(), settings);
+		const unconfigured = model.items[0];
+		if (!unconfigured) throw new Error('fixture item missing');
+
+		// The note's value is invisible without a property naming it, so a clear has
+		// nothing to take away and a pick is not a re-pick of anything.
+		expect(computePriorityWrites(unconfigured, null)).toEqual([]);
+		expect(computePriorityWrites(unconfigured, '1 - High')).toHaveLength(1);
 	});
 });
 
