@@ -1,7 +1,7 @@
 import { BasesViewConfig } from 'obsidian';
 import { configReaders } from './settingsResolve';
 import { DEFAULT_DIMENSIONS, DEFAULT_SCALE_RUBRICS, defaultDimension } from './defaultModel';
-import { ScaleConfig, ScoringDimension, ScoringModel } from './scoringModel';
+import { Indicator, ScaleConfig, ScoringDimension, ScoringModel } from './scoringModel';
 
 /**
  * Reading the estimation view's own options into a `ScoringModel` — this view's half of
@@ -11,6 +11,9 @@ import { ScaleConfig, ScoringDimension, ScoringModel } from './scoringModel';
 
 export interface EstimationSettings {
 	model: ScoringModel;
+	/** BESIDE the model, never inside it: an indicator persists nothing, so nothing that
+	 *  fingerprints or writes the total can reach it (`scoringModel.ts`'s own note). */
+	indicator: Indicator;
 }
 
 export type DimField = 'property' | 'weight' | 'range' | 'lessIsBetter' | 'label';
@@ -49,6 +52,23 @@ function parseRange(text: string, fallback: [number, number]): [number, number] 
 }
 
 type Readers = ReturnType<typeof configReaders>;
+
+/** The shipped indicator — exactly what `panel.ts` hardcoded before this: the
+ *  confidence-adjusted value over effort. An existing saved view's number does not move. */
+const DEFAULT_INDICATOR: Indicator = { label: '', operands: ['adjustedValue'], divisor: 'effort' };
+
+/**
+ * `clearable` for both lists, and that is the whole rule: an option whose default is a
+ * REAL value has to tell "never set" from "cleared", or a reader can never turn the
+ * indicator off — and turning it off is how the seventh column goes away again.
+ */
+function resolveIndicator(read: Readers): Indicator {
+	return {
+		label: read.text('indicatorLabel'),
+		operands: read.clearable('indicatorOperands', DEFAULT_INDICATOR.operands, () => read.list('indicatorOperands')),
+		divisor: read.clearable('indicatorDivisor', DEFAULT_INDICATOR.divisor, () => read.text('indicatorDivisor') || null),
+	};
+}
 
 /**
  * One dimension's rubric, point by point: an override, else the shipped sentence at that
@@ -115,5 +135,6 @@ export function resolveEstimationSettings(config: BasesViewConfig): EstimationSe
 			effort: resolveScale(read, 'effort', 'effortProperty'),
 			complexity: resolveScale(read, 'complexity', 'complexityProperty'),
 		},
+		indicator: resolveIndicator(read),
 	};
 }

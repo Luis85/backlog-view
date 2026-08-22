@@ -21,7 +21,7 @@ export function getEstimationViewOptions(config: BasesViewConfig): BasesAllOptio
 	// dimension group is offered for whichever ids are actually configured, not only the
 	// shipped eight.
 	const settings = resolveEstimationSettings(config);
-	return [modelGroup(), ...settings.model.dimensions.map(dimensionGroup), scalesGroup()];
+	return [modelGroup(), ...settings.model.dimensions.map(dimensionGroup), scalesGroup(), indicatorGroup()];
 }
 
 function modelGroup(): BasesAllOptions {
@@ -121,6 +121,39 @@ function dimensionGroup(d: ScoringDimension): BasesAllOptions {
 				displayName: 'Label',
 				default: shippedLabel,
 				placeholder: shippedLabel,
+			},
+		],
+	};
+}
+
+/** The indicator's three boxes. Text, not a property picker: an operand is an id from this
+ *  model's own vocabulary, never a frontmatter key. Editing one is what "editable
+ *  afterwards" means — swapping an operand or dropping the divisor is an edit to a box, so
+ *  no new control type is needed. */
+function indicatorGroup(): BasesAllOptions {
+	return {
+		type: 'group',
+		displayName: 'Indicator',
+		items: [
+			{
+				type: 'text',
+				key: 'indicatorLabel',
+				displayName: 'Name',
+				placeholder: 'RICE',
+			},
+			{
+				type: 'text',
+				key: 'indicatorOperands',
+				displayName: 'Operands (multiplied, in order)',
+				default: 'adjustedValue',
+				placeholder: 'adjustedValue',
+			},
+			{
+				type: 'text',
+				key: 'indicatorDivisor',
+				displayName: 'Divisor',
+				default: 'effort',
+				placeholder: 'effort',
 			},
 		],
 	};
