@@ -483,6 +483,9 @@ function narrowReadings(readings: StatedEnds, ends: PlacementEnd[]): StatedEnds 
  * (`iteration`, and the sprint's dates when it maps any) walked straight past it onto a
  * note somebody had retyped to `Release`. `canSetIteration` then refuses to offer the
  * removal, so the key could not be taken off again through any control the view draws.
+ * The iteration NOTE's own goal is the same shape reached through the other field:
+ * `saveIteration` re-reads the model rather than the note, which is authorization at plan
+ * time — exactly what this function exists to stop trusting.
  *
  * The whole batch is refused, loudly, exactly as a stale date batch is — this is a
  * gesture the user made against a note that is no longer the note they made it against.
@@ -493,13 +496,22 @@ function narrowReadings(readings: StatedEnds, ends: PlacementEnd[]): StatedEnds 
  * can still be taken back.
  */
 function refusesLiveType(settings: BacklogSettings, write: ItemWrite, liveType: string | null): boolean {
-	const carried: [OptionalField, boolean][] = [
-		['horizon', write.axis?.horizon !== undefined],
-		['start', write.axis?.start !== undefined],
-		['target', write.axis?.target !== undefined],
-		['iteration', write.iteration !== undefined],
+	// A REMOVAL is exempt, here spelled as "states a value": `null` is how every one of
+	// these keys is taken off a note, and a write that only takes a key off cannot put one
+	// on a type that may not hold it. The point of this guard is that the horizon and the
+	// sprint link, once on a marker, are unclearable — no control the view draws offers to
+	// remove them — so a guard that also refused the removal would stand against its own
+	// reason. It costs nothing to allow: `applyInto` deletes, and a key that is not there
+	// is deleted no differently.
+	const stated = (value: unknown): boolean => value !== undefined && value !== null;
+	const carried: [OptionalField, unknown][] = [
+		['horizon', write.axis?.horizon],
+		['start', write.axis?.start],
+		['target', write.axis?.target],
+		['iteration', write.iteration],
+		['iterationGoal', write.iterationGoal],
 	];
-	return carried.some(([field, present]) => present && !mayHoldField(liveType, field, settings));
+	return carried.some(([field, value]) => stated(value) && !mayHoldField(liveType, field, settings));
 }
 
 /**

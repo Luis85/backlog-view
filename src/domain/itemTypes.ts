@@ -383,14 +383,25 @@ export function placementEnds(typeName: string | null, iterationBars: boolean): 
  *
  * **Name-shaped by ruling, not by oversight.** Only a `Release` is asked, so no shipped
  * type's write behaviour changes here; the dated ends are already asked of the rule
- * (`placementEnds`, which answers a release NO end), and the horizon and the iteration
- * are the two the name still decides. Widening it to every type — a `Milestone`'s `start`
- * is the known case — is an edit to this body and to nothing else, which is the whole
- * reason the settings are a parameter rather than a lookup at each call site. See
- * `docs/issues/Creation seeds a placement the type may not hold.md` for what that costs.
+ * (`placementEnds`, which answers a release NO end), and the three link-shaped fields are
+ * what the name still decides. Widening it to every type — a `Milestone`'s `start` is the
+ * known case — is an edit to this body and to no call site, which is the whole reason the
+ * settings are a parameter rather than a lookup at each call site. It is NOT the one-liner
+ * "drop the `isReleaseType` line" looks like: an `Iteration`'s own two dates ARE that
+ * note's definition rather than a placement in somebody's plan, and `placementEnds`
+ * answers `['target']` for one whose bars are off — so the widened body has to EXCLUDE an
+ * iteration before it asks the placement rule, or it refuses the iteration dialog's own
+ * save (`axisFrom` in `view/interactions/create.ts` states no `ends`, so this function is
+ * exactly what would see it). See
+ * `docs/issues/Creation seeds a placement the type may not hold.md`, which carries the
+ * corrected body and what it costs.
  */
 export function mayHoldField(typeName: string | null, field: OptionalField, settings: BacklogSettings): boolean {
 	if (!isReleaseType(typeName)) return true;
 	if (field === 'start' || field === 'target') return placementEnds(typeName, settings.iterationBars).includes(field);
-	return field !== 'horizon' && field !== 'iteration';
+	// The goal joins the link for its own reason and not by being near it: `saveIteration`
+	// re-reads the MODEL rather than the note, so a goal-only save after a mid-flight
+	// retype puts a `goal` on a `Release` that no dialog will ever offer to clear — the
+	// same unclearable shape as the sprint link, reached through the other field.
+	return field !== 'horizon' && field !== 'iteration' && field !== 'iterationGoal';
 }

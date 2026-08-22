@@ -7,7 +7,7 @@
 import { describe, expect, it } from 'vitest';
 import { applyRestores, applyWrites, RestoreWrite } from '../../src/storage/frontmatter';
 import { buildModel } from '../../src/domain/model';
-import { computeInitWrites, computeIterationWrites } from '../../src/domain/writePlan';
+import { computeInitWrites, computeIterationNoteWrites, computeIterationWrites } from '../../src/domain/writePlan';
 import { settingsFrom } from '../helpers/settings';
 import { FakeVault } from '../helpers/vault';
 
@@ -18,6 +18,7 @@ const settings = settingsFrom({
 	startProperty: 'note.start',
 	targetProperty: 'note.target',
 	riskProperty: 'note.risk',
+	iterationGoalProperty: 'note.goal',
 });
 
 /**
@@ -76,6 +77,48 @@ describe('the writer asks the LIVE type about an iteration too', () => {
 
 		vault.fm('1.0.md').type = 'Release';
 		await applyRestores(vault.app, inverses);
+		expect(vault.fm('1.0.md')).toEqual({ type: 'Release' });
+	});
+});
+
+describe('the writer asks the LIVE type about an iteration NOTE’s own fields', () => {
+	it('refuses a goal the note was retyped out from under', async () => {
+		// `saveIteration` (`view/interactions/create.ts`) re-reads the MODEL and not the
+		// note, so its `isIterationType` gate is authorization at PLAN time — which is the
+		// thing this guard exists to stop trusting. A goal-only save lands the key on a
+		// `Release`, where the dialog that wrote it is never offered again and no other
+		// control mentions a goal at all: the sprint link's unclearable shape, reached
+		// through the other field.
+		//
+		// Driven at the boundary rather than through the dialog, because the rule is stated
+		// on the write; the plan is the real one that dialog makes.
+		const vault = new FakeVault();
+		vault.addFile('1.0.md', { frontmatter: { type: 'Iteration' } });
+		const model = buildModel(vault.app, vault.entries(), settings);
+		const item = model.byPath.get('1.0.md');
+		if (!item) throw new Error('fixture did not build');
+		const writes = computeIterationNoteWrites(item, { axis: {}, goal: 'Ship the thing' });
+		expect(writes[0].iterationGoal).toBe('Ship the thing');
+
+		vault.fm('1.0.md').type = 'Release';
+		const outcome = await applyWrites(vault.app, settings, writes);
+
+		expect(vault.fm('1.0.md')).toEqual({ type: 'Release' });
+		expect(outcome.changed).toBe(false);
+	});
+
+	it('lets a REMOVAL through, which is the only way one of these keys comes off', async () => {
+		// The guard exists because a key on a marker is unclearable — no control the view
+		// draws offers to take it off — so refusing the removal as well would stand against
+		// its own reason. `null` is how every one of these keys is removed, and a write that
+		// only removes cannot put a key on a type that may not hold it.
+		const vault = new FakeVault();
+		const file = vault.addFile('1.0.md', {
+			frontmatter: { type: 'Release', iteration: '[[Sprint 3]]', horizon: 'Now' },
+		});
+
+		await applyWrites(vault.app, settings, [{ file, iteration: null, axis: { horizon: null } }]);
+
 		expect(vault.fm('1.0.md')).toEqual({ type: 'Release' });
 	});
 });

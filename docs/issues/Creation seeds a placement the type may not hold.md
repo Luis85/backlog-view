@@ -75,8 +75,32 @@ both the planner and the writer. It is name-shaped for the same ruling recorded 
 only a `Release` is asked — and the settings are a parameter so that the rule-shaped body
 needs no call site to change. Creation is the one door that does NOT ask it yet: it still
 spells `isReleaseType` in `createBacklogItem`, which is exactly the narrowing this note is
-about, so option 1 below is now two edits rather than one — that body, and routing the
-creation seed through it.
+about, so option 1 below is that body plus routing the creation seed through it.
+
+**The widened body is not "delete the `isReleaseType` line".** An `Iteration`'s own two
+dates are that note's DEFINITION rather than a placement in somebody's plan, and
+`placementEnds` answers `['target']` for an iteration whose bars are off — so a body that
+asked the placement rule of every type would make an iteration's `start` unholdable and
+refuse the iteration dialog's own save (`axisFrom` in `view/interactions/create.ts` states
+no `ends`, which is precisely the shape the writer's live-type refusal sees). The
+iteration has to be excluded before the placement rule is asked:
+
+```ts
+export function mayHoldField(typeName: string | null, field: OptionalField, settings: BacklogSettings): boolean {
+	// An iteration's own dates and goal are what the note IS, not where it sits.
+	if (isIterationType(typeName)) return true;
+	if (field === 'start' || field === 'target') return placementEnds(typeName, settings.iterationBars).includes(field);
+	// The two link-shaped fields, from the rule `canSetIteration` already applies in the UI.
+	if (field === 'iteration' || field === 'iterationGoal') return !isMarkerType(typeName);
+	// A marker CAN hold a horizon — the bucket axis places a milestone like any other row.
+	return true;
+}
+```
+
+Still one site and no call site moves, which is what the parameter list was shaped for —
+but four lines and one exclusion, not one line. Whoever takes this up should run
+`test/view/iterationDialog.test.ts` first and watch it, because that suite is what the
+naive version breaks.
 
 Two ways out, and they are not equivalent:
 
