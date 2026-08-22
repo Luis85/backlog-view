@@ -32,11 +32,11 @@ The type has to exist before anything can look for it. It is a **marker** — no
 **Files:**
 - Modify: `src/domain/typeVocabulary.ts` (the `RELEASE_TYPE` constant, `MARKER_TYPES`)
 - Modify: `src/view/render/badges.ts` (`NAMED_TYPE_STYLE` entry)
-- Modify: `src/domain/itemTypes.ts` (`isReleaseType`, and the `drawsAsPoint` gate)
+- Modify: `src/domain/itemTypes.ts` (`isReleaseType`, the `drawsAsPoint` gate, and `placementEnds`)
 - Modify: `src/domain/bars.ts` (the no-bar refusal that gate needs beside it)
 - Modify: `src/view/manual/typesSection.ts` (`INTENT` entry — required, see Step 6)
 - Modify: `styles/badges.css` (the `pbl-lvl-release` colour)
-- Test: `test/domain/itemTypes.test.ts`, `test/domain/bars.test.ts`
+- Test: `test/domain/itemTypes.test.ts`, `test/domain/bars.test.ts`, `test/storage/frontmatterDates.test.ts`
 
 **Interfaces:**
 - Consumes: nothing.
@@ -181,10 +181,40 @@ export function drawsAsPoint(typeName: string | null, iterationBars: boolean): b
 }
 ```
 
-`drawsAsPoint` returning false is not enough on its own: `deriveBars` falls THROUGH to the
-ordinary start/target derivation, so a release carrying the backlog's date properties would
-draw as a bar instead of a point — the same leak wearing a different shape. In
-`src/domain/bars.ts`, before the `drawsAsPoint` branch at line 106:
+**`drawsAsPoint` returning false is not enough on its own, and getting this half-right is
+worse than not gating at all.** Two other call sites read that predicate through a ternary
+whose *else* branch is the permissive one:
+
+`placementEnds` is `drawsAsPoint(...) ? ['target'] : [...BOTH_ENDS]`. Refusing a release
+there flips it from one end to **both**, and `storage/frontmatter.ts:126` uses that list to
+decide which date keys a write may touch — so the gate meant to keep releases off the dated
+axis would instead have let the writer edit *both* backlog date properties on a release, and
+`canSchedule` would have offered Schedule and Unschedule to go with it. In
+`src/domain/itemTypes.ts`:
+
+```ts
+export function placementEnds(typeName: string | null, iterationBars: boolean): PlacementEnd[] {
+	// A `Release` speaks NO end here — not one, not two. `drawsAsPoint` refuses it (see
+	// there), and the ternary below reads that refusal as "therefore a span", which would
+	// hand the WRITER both backlog date keys and the menu a Schedule action. The gate has
+	// to be stated at every consumer that reads the predicate through a ternary, or it
+	// makes the very surface it was closing more permissive than before.
+	if (isReleaseType(typeName)) return [];
+	return drawsAsPoint(typeName, iterationBars) ? ['target'] : [...BOTH_ENDS];
+}
+```
+
+Then check every caller treats an empty list as "no ends": `storage/frontmatter.ts:126`,
+`view/cardMoves.ts` at 203, 230 and 253, and `canSchedule` in `view/interactions/plan.ts`.
+Each must refuse rather than fall through — an empty `ends` that reaches
+`computeScheduleWrites` and plans nothing is acceptable; one that is read as "unspecified,
+so use the default" is the same bug again. Add a test at the **writer**, not only at the
+menu: `applyWrites` given a schedule write against a `Release` must plan no date key.
+
+`deriveBars` is the third: it falls THROUGH to the ordinary start/target derivation, so a
+release carrying the backlog's date properties would draw as a bar instead of a point — the
+same leak wearing a different shape. In `src/domain/bars.ts`, before the `drawsAsPoint`
+branch at line 106:
 
 ```ts
 	// No bar and no point: see `drawsAsPoint`'s own note. Refused here as well because a
@@ -208,7 +238,35 @@ returns something other than `null` for an unplaceable item, return that.
 		// feature rather than about markers.
 		expect(drawsAsPoint('Milestone', false)).toBe(true);
 	});
+
+	it('speaks no placement end, so nothing offers or writes a release date', () => {
+		// NOT `['start', 'target']`, which is what the ternary hands back for anything
+		// `drawsAsPoint` refuses. This assertion is the whole reason the gate is safe.
+		expect(placementEnds('Release', false)).toEqual([]);
+		expect(placementEnds('Release', true)).toEqual([]);
+		// The two it must not disturb.
+		expect(placementEnds('Milestone', false)).toEqual(['target']);
+		expect(placementEnds('Epic', false)).toEqual(['start', 'target']);
+	});
 ```
+
+And at the writer, in `test/storage/frontmatterDates.test.ts` — the call site that decides
+what lands in a note:
+
+```ts
+	it('writes no date key for a release, at either end', () => {
+		// `placementEnds` is what `applyWrites` consults; a release speaks none, so a
+		// schedule write against one must plan nothing rather than both keys.
+		const vault = new FakeVault();
+		vault.addFile('1.0.md', { frontmatter: { type: 'Release' } });
+		// Build the same schedule write the timeline would, then assert the frontmatter is
+		// untouched. Copy the surrounding file's own helper for planning one.
+		expect(vault.fm('1.0.md')).toEqual({ type: 'Release' });
+	});
+```
+
+Write that last one against the file's real helpers rather than the sketch above — read
+`test/storage/frontmatterDates.test.ts` first and follow how its neighbours plan a write.
 
 Add a `deriveBars` case in `test/domain/bars.test.ts` for a release carrying the backlog's
 own start and target properties, asserting it places nothing. Watch it fail with the
@@ -1378,6 +1436,15 @@ describe('the release view', () => {
 		expect(containerEl.querySelector('.pbl-rel-grid')).toBeNull();
 	});
 
+	it('leaves nothing behind when the view unloads', () => {
+		const vault = releaseVault();
+		const { view, containerEl } = makeReleaseView(vault, RELEASE_CONFIG);
+		expect(containerEl.querySelector('.pbl-rel-view')).not.toBeNull();
+		view.onunload();
+		// The container is Bases', and it is reused by whatever view comes next.
+		expect(containerEl.querySelector('.pbl-rel-view')).toBeNull();
+	});
+
 	it('keeps a session-only pick across a data update in an embedded base', () => {
 		const vault = releaseVault();
 		// No `base`, so `mountLeaf` builds no leaf and `resolveViewIdentity` answers null —
@@ -1533,6 +1600,19 @@ export class ReleaseView extends BasesView {
 		this.viewEl = containerEl.createDiv({ cls: 'pbl-view pbl-rel-view' });
 	}
 
+	/**
+	 * Both existing Bases views detach their own element on unload, and this one has as
+	 * much reason to: `viewEl` is a child appended to a container Bases owns and reuses, so
+	 * a saved Base switching away from this view — or its leaf closing — would otherwise
+	 * leave the old shell, and every row listener on it, attached under the next view.
+	 *
+	 * No gate to dispose and no observers to disconnect, unlike the other two: this view
+	 * holds neither.
+	 */
+	onunload(): void {
+		this.viewEl.detach();
+	}
+
 	onDataUpdated(): void {
 		this.settings = resolveReleaseSettings(this.config);
 		this.restorePick();
@@ -1575,7 +1655,18 @@ export class ReleaseView extends BasesView {
 			guidanceShell(this.viewEl, 'settings-2', t('release.empty.noType.title'), t('release.empty.noType.hint'));
 			return;
 		}
-		this.model = buildModel(this.app, this.data.data, resolveSettings(this.config));
+		// The model is built with THIS view's three mappings, not the backlog resolver's.
+		// `resolveSettings` reads them through `propKey`, which cannot tell a cleared option
+		// from an unset one — so a parent property this view reports as unbound would come
+		// back as `parent` here, and the scope would go on nesting rows by a mapping the
+		// options screen says is off. Two resolvers disagreeing at the model boundary is
+		// the same defect as one view reading another's configuration.
+		this.model = buildModel(this.app, this.data.data, {
+			...resolveSettings(this.config),
+			typeKey: this.settings.typeKey,
+			parentKey: this.settings.parentKey,
+			orderKey: this.settings.orderKey,
+		});
 		if (this.model.releases.length === 0) {
 			// No create button ON THIS VIEW: no use case in this epic specifies creating a
 			// release, and an empty state must not promise a write nothing defines. The
