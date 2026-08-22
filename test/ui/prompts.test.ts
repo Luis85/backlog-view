@@ -199,6 +199,32 @@ describe('ValuePromptModal', () => {
 		expect(added).toEqual(['ALEX CHEN']);
 	});
 
+	it('announces the warning as a polite live region tied to the field, never an alert', () => {
+		// Non-blocking and typed past on every keystroke: `role="alert"` (assertive) would
+		// interrupt the reader on each character near a match, where `.pbl-modal-error`'s
+		// alert is right because it stops a submit. `aria-describedby` is what a screen
+		// reader user needs to hear it at all, since nothing here is refused.
+		const vault = new FakeVault();
+		const modal = new ValuePromptModal(vault.app as never, {
+			title: 'New resource',
+			fieldName: 'Name',
+			placeholder: 'Alex Chen',
+			ctaLabel: 'Create',
+			known: ['Alex Chen'],
+			duplicateWarning: 'A resource with this name already exists.',
+			onSubmit: () => {},
+		});
+		modal.open();
+		const input = modal.contentEl.querySelector('input');
+		const warningEl = modal.contentEl.querySelector('.pbl-modal-warning');
+		if (!input || !warningEl) throw new Error('resource prompt incomplete');
+
+		expect(warningEl.getAttribute('role')).toBeNull();
+		expect(warningEl.getAttribute('aria-live')).toBe('polite');
+		expect(warningEl.id).not.toBe('');
+		expect(input.getAttribute('aria-describedby')).toBe(warningEl.id);
+	});
+
 	it('renders no warning element at all when the option is absent', () => {
 		const { modal } = openTagPrompt();
 		expect(modal.contentEl.querySelector('.pbl-modal-warning')).toBeNull();

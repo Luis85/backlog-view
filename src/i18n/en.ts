@@ -1148,13 +1148,16 @@ export const en = {
 	 * resources axis is its only way in (Task 4 wires the button; this catalog section
 	 * ships ahead of it). `resource.duplicateWarning` is `ValuePromptOptions.duplicateWarning`:
 	 * shown, never refused, the same *guides rather than arbitrates* rule
-	 * `absence.nameResource`'s modal already keeps.
+	 * `absence.nameResource`'s modal already keeps. Its wording claims only what `known`
+	 * can answer — the roadmap's roster (drawn rows, the declared list, observed
+	 * assignees) — and NOT that a `Resource` note exists: [[Rows from the Resource
+	 * notes]] hasn't shipped, so this dialog cannot see the notes themselves.
 	 */
 	'resource.createHeading': 'New resource',
 	'resource.nameField': 'Name',
 	'resource.namePlaceholder': 'Alex',
 	'resource.createCta': 'Create',
-	'resource.duplicateWarning': 'A resource with this name already exists.',
+	'resource.duplicateWarning': 'Someone with this name is already on the roster.',
 	'resource.created': 'Created the resource "{name}".',
 	'resource.createFailed': 'Could not create the resource. See the developer console for details.',
 

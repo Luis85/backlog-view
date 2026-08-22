@@ -106,8 +106,9 @@ describe('creating a resource', () => {
 	});
 
 	it('warns on a name already in the roster, and creates the note anyway', async () => {
-		// 3a: guides rather than arbitrates. `known` is the drawn roadmap lanes (skipping the
-		// markers lane) unioned with the declared `resourceNames`.
+		// 3a: guides rather than arbitrates. `known` is the drawn roadmap lanes (skipping
+		// the markers lane), the declared `resourceNames` and every observed assignee,
+		// merged case-insensitively — `assigneeChoices`' own three sources.
 		const vault = new FakeVault();
 		const harness = laneRoadmap(vault, { resourceFolder: '', homeFolder: '' });
 
@@ -120,12 +121,53 @@ describe('creating a resource', () => {
 
 		input.value = 'alice';
 		input.dispatchEvent(new Event('input', { bubbles: true }));
-		expect(warningEl()?.textContent).toBe('A resource with this name already exists.');
+		expect(warningEl()?.textContent).toBe('Someone with this name is already on the roster.');
 
 		submitButton(modal)?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 		await flush();
 
 		expect(vault.fm('alice.md')['type']).toBe('Resource');
+	});
+
+	it('warns on a name drawn only from an undeclared assignee on the resources axis', () => {
+		// The DRAWN half of `known`, isolated: Casey is on nobody's declared roster, and
+		// is reachable only because an item on the axis carries the name — the case a
+		// union built from `resourceNames` alone cannot warn against.
+		const vault = new FakeVault();
+		vault.addFile('Onboard Casey.md', {
+			frontmatter: { type: 'Epic', order: 10, start: '2026-08-01', due: '2026-08-05', assignee: 'Casey' },
+		});
+		const harness = laneRoadmap(vault, { resourceFolder: '', homeFolder: '' });
+
+		promptNewResource(harness.view);
+		const modal = Modal.lastOpened;
+		if (!modal) throw new Error('prompt not opened');
+		const input = modal.contentEl.querySelector('input');
+		if (!input) throw new Error('no name field');
+		const warningEl = () => modal.contentEl.querySelector('.pbl-modal-warning');
+
+		input.value = 'casey';
+		input.dispatchEvent(new Event('input', { bubbles: true }));
+		expect(warningEl()?.textContent).toBe('Someone with this name is already on the roster.');
+	});
+
+	it('warns on a name only in the declared roster, with no roadmap drawn to draw a lane at all', () => {
+		// The DECLARED half of `known`, isolated: with no roadmap render `host.roadmap` is
+		// null (`assignableLanes` answers `[]`), so nothing is drawn — the case a union
+		// built from the drawn lanes alone cannot warn against.
+		const vault = new FakeVault();
+		const { view } = makeView(vault, { resourceNames: 'Alice, Bob' });
+
+		promptNewResource(view);
+		const modal = Modal.lastOpened;
+		if (!modal) throw new Error('prompt not opened');
+		const input = modal.contentEl.querySelector('input');
+		if (!input) throw new Error('no name field');
+		const warningEl = () => modal.contentEl.querySelector('.pbl-modal-warning');
+
+		input.value = 'alice';
+		input.dispatchEvent(new Event('input', { bubbles: true }));
+		expect(warningEl()?.textContent).toBe('Someone with this name is already on the roster.');
 	});
 
 	it('produces no item, no row and no count once the base returns it', async () => {

@@ -91,6 +91,7 @@ describe('focus survives the toolbar rebuilding itself', () => {
 				horizonProperty: 'note.horizon',
 				startProperty: 'note.start',
 				targetProperty: 'note.due',
+				assigneeProperty: 'note.assignee',
 			},
 			{ focus: 'Feature' },
 		);
@@ -118,6 +119,8 @@ describe('focus survives the toolbar rebuilding itself', () => {
 		view.setAxisPick('horizons');
 		check();
 		view.setAxisPick('dates'); // adds the zoom picker, the density toggle and today
+		check();
+		view.setAxisPick('resources'); // adds New resource beside the axis controls
 		check();
 	});
 

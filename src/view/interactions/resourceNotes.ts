@@ -2,6 +2,7 @@ import { Notice } from 'obsidian';
 import { BacklogViewHost } from '../host';
 import { ValuePromptModal } from '../../ui/prompts';
 import { assignableLanes } from '../../domain/roadmap';
+import { mergedValues } from '../../domain/settings';
 import { configProblems } from '../../domain/settingsConsistency';
 import { createResourceNote } from '../../storage/createNote';
 import { t } from '../../i18n/t';
@@ -33,15 +34,26 @@ export function promptNewResource(host: BacklogViewHost): void {
 		fieldName: t('resource.nameField'),
 		placeholder: t('resource.namePlaceholder'),
 		ctaLabel: t('resource.createCta'),
-		// The drawn roster plus the declared names, deduped — `assignableLanes` is
-		// `roadmap.lanes` with the markers lane already dropped, which is the "skip
-		// `markers`" rule stated once rather than repeated here. `host.roadmap` is
-		// nullable (no roadmap render yet, or an unconfigured axis), and
-		// `assignableLanes` already answers `undefined` with an empty list — so there
-		// is no second branch to invent for a caller that has nothing drawn.
-		known: [...new Set([...assignableLanes(host.roadmap?.roadmap).map((lane) => lane.name), ...host.settings.resourceNames])],
+		// `known` is what this dialog can SEE, not what exists: the drawn roster
+		// ([[Rows from the Resource notes]] hasn't shipped, so no `Resource` note is in
+		// it at all) — the drawn lanes, the declared `resourceNames`, and every assignee
+		// already on a result, `assigneeChoices`' own three sources
+		// (`interactions/labels.ts`), merged through `mergedValues` rather than a second,
+		// case-sensitive dedupe. `assignableLanes` is `roadmap.lanes` with the markers
+		// lane already dropped, which is the "skip `markers`" rule stated once rather
+		// than repeated here. `host.roadmap` is nullable (no roadmap render yet, or an
+		// unconfigured axis), and `assignableLanes` already answers `undefined` with an
+		// empty list — so there is no second branch to invent for a caller that has
+		// nothing drawn. `host.model` is nullable the same way, before the first data
+		// update.
+		known: mergedValues(
+			assignableLanes(host.roadmap?.roadmap).map((lane) => lane.name),
+			host.settings.resourceNames,
+			host.model?.observedAssignees ?? [],
+		),
 		// 3a: warned, and allowed. Two real people can share a name, and this dialog
-		// guides rather than arbitrates who exists.
+		// guides rather than arbitrates who exists. The wording matches what `known`
+		// can actually claim — see `resource.duplicateWarning`'s own comment.
 		duplicateWarning: t('resource.duplicateWarning'),
 		onSubmit: (value) => void writeResource(host, value),
 	}).open();

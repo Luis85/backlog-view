@@ -19,6 +19,13 @@ function submitOnEnter(inputEl: HTMLInputElement, submit: () => void, autofocus 
 }
 
 /**
+ * A per-modal counter rather than a shared element-id helper: `ui/` may import nothing at
+ * all, so the view's own `uniqueElementId` (`view/selection.ts`) is unreachable from here,
+ * and a plain module-scoped counter is the whole of what minting one more id needs.
+ */
+let warningIdSeq = 0;
+
+/**
  * What every prompt in this file is: options handed in at construction, a footer holding
  * one call-to-action button, and a content element emptied on the way out.
  *
@@ -236,7 +243,9 @@ export class ValuePromptModal extends PromptModal<ValuePromptOptions> {
 			warningEl.setText(isKnown ? (warningText ?? '') : '');
 		};
 
+		let inputEl!: HTMLInputElement;
 		new Setting(this.contentEl).setName(this.options.fieldName).addText((text) => {
+			inputEl = text.inputEl;
 			text.setPlaceholder(this.options.placeholder);
 			text.onChange((v) => {
 				value = v;
@@ -249,8 +258,21 @@ export class ValuePromptModal extends PromptModal<ValuePromptOptions> {
 		// Only built when the caller wants the feature, and then kept in the DOM and empty
 		// rather than created on demand — `.pbl-modal-error`'s own reason: a dialog must
 		// not resize under the pointer as the match is typed.
+		//
+		// `aria-live="polite"`, never `.pbl-modal-error`'s `role="alert"`: this text
+		// appears and disappears on every keystroke while the field is otherwise valid —
+		// nothing is refused — so an ASSERTIVE region would interrupt the reader on each
+		// character typed near a match. Polite queues the announcement instead, and
+		// `aria-describedby` ties the (possibly empty) warning to the field itself so a
+		// screen reader user typing a duplicate hears it at all, which is the whole of
+		// what extension 3a is for.
 		if (warningText !== undefined) {
-			warningEl = this.contentEl.createDiv({ cls: 'pbl-modal-warning' });
+			const warningId = `pbl-modal-warning-${++warningIdSeq}`;
+			warningEl = this.contentEl.createDiv({
+				cls: 'pbl-modal-warning',
+				attr: { id: warningId, 'aria-live': 'polite' },
+			});
+			inputEl.setAttribute('aria-describedby', warningId);
 		}
 
 		this.cta(this.options.ctaLabel, submit);

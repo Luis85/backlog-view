@@ -109,10 +109,10 @@ language, so nothing re-reads it. What must never enter the catalog is anything 
 writes, matches or persists — type names, state values, option keys, tags, file names. The
 test when it is not obvious: **ask what breaks if two people with different Obsidian
 languages open the same vault.** "One sees different words" is text; "one writes notes the
-other's view cannot read" is data. 519 keys are in it (counted two ways on 2026-08-21 —
-`Object.keys` at runtime and a tab-aware grep — after the options menu and the estimation
-view landed on the same day from different branches, which is why neither figure those two
-carried is this one).
+other's view cannot read" is data. 528 keys are in it (counted two ways on 2026-08-22 —
+`Object.keys` at runtime and a tab-aware grep — after [[Making a resource from the
+timeline]]'s nine landed; that figure is dated the moment it is written and reads as
+historical rather than as a maintained total).
 `ui/`, `commands/`, `view/interactions/`, `view/estimation/`, the whole of `view/render/`,
 `view/writeGate.ts`, `view/cardMoves.ts`, `main.ts` and `domain/viewOptions.ts` are swept,
 which leaves **`view/manual/` and the REST of `domain/`** and nothing else. Neither is a
@@ -187,8 +187,10 @@ sections named under **Definition of done** above. Read from the behaviour you a
 changing rather than from an index of the tree.
 
 Rules: never write frontmatter outside `storage/frontmatter.ts` (`applyWrites`, which
-EDITS a note), `storage/createNote.ts` (`createBacklogItem`, which MAKES one) and
-`storage/propertyWrite.ts` (`applyPropertyWrites`, the estimation view's own plain
+EDITS a note), any of `storage/`'s own note-CREATING modules (`createNote.ts` and
+`absenceNotes.ts` today — a symbol list here goes stale the way the register's own rule
+warns against; the directory is what is enforced) and `storage/propertyWrite.ts`
+(`applyPropertyWrites`, the estimation view's own plain
 key/value batches — a score, its recomputed total and its stamp), and every write path —
 including creation — goes through the `configProblems` gate. That rule is also enforced mechanically: `no-restricted-syntax`
 bans `processFrontMatter`, `vault.create` and `load/saveLocalStorage` everywhere outside

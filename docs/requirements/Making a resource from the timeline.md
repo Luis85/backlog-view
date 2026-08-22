@@ -69,8 +69,12 @@ optional `duplicateWarning` line for extension 3a.
 
 1. The user opens the roadmap on the resources axis. The toolbar's projection zone draws
    **New resource** beside the axis controls it already owns.
-2. The user presses it and a dedicated modal opens: **Name** always, and **Capacity** and
-   **Role** each only where that key is configured.
+2. The user presses it and the modal opens, asking for **Name** — the only field it asks
+   for today, since neither **Capacity** nor **Role** is a configured key yet (see the
+   note above the use case). The design intent stands: the modal is meant to grow a field
+   per configured key rather than list them beside its own code, so this step will
+   describe more fields without an edit here once [[Capacity on a resource]] or
+   [[A resource's role]] ships.
 3. The user names the person, fills whichever other fields are offered, and submits.
 4. A note is written into the resource folder with `type` and the name as its title, plus each
    configured field the user filled.
@@ -119,9 +123,14 @@ optional `duplicateWarning` line for extension 3a.
 
 - **The control draws on the resources axis and nowhere else** — not on the tree, not on
   either board, not on the horizons axis, not on the dated axis.
-- **The modal offers Name always, and each optional field only when its key is configured.**
-  Driven from the resolved settings rather than from a list beside them, so a key named later
-  needs no edit here.
+- **The modal offers Name always.** Today that is the whole modal — extension 2a's case,
+  not a narrower reading of a wider one — because neither Capacity nor Role is a
+  configured key yet. **Still owed:** each field growing from the resolved settings
+  rather than from a list beside them, so a key named later needs no edit here. What
+  ships today ([[Capacity on a resource]] and [[A resource's role]] have not) is a
+  hard-coded Name-only `ValuePromptModal`, which WILL need that edit the day either key
+  exists — this criterion is met for the field the plugin has, and owed for the two it
+  does not yet.
 - **A submitted creation writes one note**, carrying the type and the title, plus exactly the
   configured fields the user filled — and no key for a field left empty, since absence is a
   value.
@@ -162,19 +171,25 @@ satisfied by reusing it; the note carries the type key alone. Same reason
 value case-insensitively and cleared the moment it does not — built only when a caller
 asks for it, since the other two `ValuePromptModal` callers (a tag, an assignee) have no
 use for warning about an ordinary repeat. It is drawn as `.pbl-modal-warning`
-(`styles/modals.css`), kept in the DOM and empty rather than created on demand —
-`.pbl-modal-error`'s own reason: a dialog must not resize under the pointer as the match
-is typed.
+(`styles/modals.css`), a polite live region tied to the field by `aria-describedby` rather
+than `.pbl-modal-error`'s `role="alert"` — nothing here is refused, so an assistive
+technology user must be told without being interrupted on every keystroke — kept in the
+DOM and empty rather than created on demand — `.pbl-modal-error`'s own reason: a dialog
+must not resize under the pointer as the match is typed. The wording it carries
+(`resource.duplicateWarning`) claims only what `known` can answer — the roadmap's roster —
+never that a `Resource` note exists, since [[Rows from the Resource notes]] has not
+shipped and this dialog cannot see one.
 
 `src/view/interactions/resourceNotes.ts` is the view's half: `promptNewResource` runs the
 `configProblems` gate before the form opens and again at submit — the write can be refused
 between the two, since Obsidian's options pane stays reachable while the modal is up —
 resolves the folder ladder (`resourceFolder` else `homeFolder`) at submit rather than at
-open for the same reason, and opens `ValuePromptModal` Name-only, passing the drawn
-roster (`assignableLanes(host.roadmap?.roadmap)`, deduped against `host.settings.resourceNames`)
-as `known` so 3a warns against what a reader would actually recognise. `promptNewResource`
-takes no lane and no item: the control that opens it is the resources axis's own, not a
-per-row action.
+open for the same reason, and opens `ValuePromptModal` Name-only, passing the same
+three-source roster `assigneeChoices` computes (`interactions/labels.ts`) — the drawn
+lanes, the declared `resourceNames` and every observed assignee, merged case-insensitively
+through `mergedValues` (`domain/settings.ts`) — as `known` so 3a warns against what a
+reader would actually recognise. `promptNewResource` takes no lane and no item: the
+control that opens it is the resources axis's own, not a per-row action.
 
 `src/view/render/toolbarControls.ts`'s `renderNewResourceButton` draws **New resource** in
 `renderProjectionZone`'s roadmap case, gated on `activeAxis(...) === 'resources'` the way
