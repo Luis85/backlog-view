@@ -23,7 +23,7 @@ in one pick.
 `npm run harness -- test/harness/mock.ts` — an uncommitted entry that mounts the REAL
 estimation view and then hand-draws this increment's markup on top of it: the seventh
 column, the panel line, the toolbar button and the dialog in Obsidian's own `.modal`
-frame. Screenshots at 1200px and 900px, both schemes, headless Chromium. Four things it
+frame. Screenshots at 1200px and 900px, both schemes, headless Chromium. Five things it
 settled, each one a change to what this design said before it was drawn:
 
 1. **A composed formula cannot be a column header.** `Adjusted value ÷ Effort` in the 72px
@@ -33,7 +33,10 @@ settled, each one a change to what this design said before it was drawn:
    four times, saying nothing. The kind is stated once, above the list.
 3. **The preview's two lines were asymmetric** — the current indicator by name, the new one
    by name *and* formula. Both are drawn the same way.
-4. **The seventh column worsens a clip that is already there.** At a 900px window the
+4. **A described preset list needs its own scroller.** Once each row carries a description,
+   the four rows plus the preview push Apply and Cancel out of a 620px window — the modal
+   scrolls as one block and the primary action goes with it. The list scrolls instead.
+5. **The seventh column worsens a clip that is already there.** At a 900px window the
    currency column is cut off by the pane's edge **today, before this change** — the same
    screenshot without the mock shows a sliver of a currency chip at the edge. At 1200px the
    title column absorbs the new column's ~80px down toward its 96px floor and everything
@@ -179,7 +182,16 @@ these are — *they configure the indicator beside the business value, and the v
 untouched* — rather than a kind chip repeating one word on each of four rows. The chip
 comes back the day a second kind is on screen, which is the value-preset PBI.
 
-Then four rows, each naming the preset, its composed formula and its one honest line.
+Then four rows, each with **four things in this order**: the preset's name, a
+**description** — what the framework is and when a team uses it, in a sentence or two —
+its composed formula, and its one honest line where it has one. The description is the
+half a formula cannot supply: `Reach × Business impact × Confidence ÷ Effort` says what
+RICE computes and nothing about when it is the right ranking, and someone picking a
+framework from a list of four is choosing between judgements, not between arithmetic. It
+reads as prose above the formula, which is the mechanical detail under it.
+
+Descriptions are **catalog text**, keyed by preset id — shown, never written to the
+`.base` — like the honest lines beside them and unlike the names above them.
 Picking one draws the preview; **nothing is written until Apply**:
 
 1. the indicator now — its name and its composed formula,
@@ -188,6 +200,14 @@ Picking one draws the preview; **nothing is written until Apply**:
 
 Both lines are drawn the same way, and the preview is drawn only once something is picked:
 reserving its height leaves a hole above the buttons in the state the dialog opens in.
+
+**The list is the only scroller.** Four described presets are taller than a short pane, and
+`.modal` caps its own height — so a content block that scrolls as one carries Apply and
+Cancel below the fold, which the harness showed at a 620px window. The dialog's content is
+a flex column, the list takes `flex: 1 1 auto; min-height: 0`, and the intro, the preview
+and the buttons stay put and take their own height first. `min-height: 0` is the
+load-bearing half: without it a flex item refuses to shrink below its content and the
+column overflows exactly as before.
 
 Line 3 is extension 2a: the count is not computed, because for an indicator preset it is
 zero by construction, and it is reported as unchanged rather than as a bare zero. Cancel
@@ -255,7 +275,7 @@ mechanism recorded, and it is not pulled in here.
 | An uncomputable indicator sorts with the unmeasured | `test/view/estimation/sort.test.ts`, both directions |
 | Cancelling writes nothing | a view test spying on `config.set` and `applyPropertyWrites` |
 | Applying writes exactly three config keys | the same test |
-| Preset names are data, kind words and notes are text | `test/i18n/projections.test.ts` |
+| Preset names are data; descriptions, kind sentence and notes are text | `test/i18n/projections.test.ts` |
 
 `npm run check` is the gate, as always. The harness has now answered the layout — the
 column's fit, the header's width, the dialog's shape — in Obsidian's DEFAULT colours. What
