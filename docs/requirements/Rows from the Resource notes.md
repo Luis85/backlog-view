@@ -1,7 +1,7 @@
 ---
 type: PBI
 parent: "[[The roster comes from the notes]]"
-order: 10
+order: 20
 status: Open
 created: 2026-08-20
 source: user request
