@@ -276,6 +276,7 @@ const KEYS = [
 	'typeFolder.deliverable',
 	'typeFolder.milestone',
 	'typeFolder.iteration',
+	'typeFolder.resource',
 	'typeFolder.test suite',
 	'typeFolder.test case',
 	'typeFolder.absence',
