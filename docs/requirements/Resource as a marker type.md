@@ -203,6 +203,15 @@ epic states why an eighteenth name is being added against an open P1 direction
   time an automated reviewer read it was wrong three ways: it omitted `Resource`, omitted
   `Iteration` (stale since that type shipped), and stated *date* of the whole category.
   Nothing derives it and nothing gates it, so it is the surface that goes stale silently.
+  **It went stale twice, and the second was not a list.** A few lines below the type
+  summary, the same file promises that ✨ backfills an empty value for each property it
+  picked "on the notes that don't carry them" — true until this increment narrowed the
+  planned dates by type, and false afterwards for a `Milestone` and a `Resource`. So the
+  question to ask of this file is not only *does it name the new type* but *does it still
+  describe behaviour the new type changes*. Both were found by an automated reviewer, one
+  push apart, and neither the generated README nor the in-app manual needed either edit —
+  they are built from the vocabulary and from `schemaEnds`/`drawsAsPoint`, and a derived
+  surface cannot make a promise the functions have stopped keeping.
 - **Nothing this step ships may promise the roster.** The type is declared and the roster
   is not: `deriveLanes` still builds its rows from the declared names, the assignees the
   results carry and the absences, and it enumerates no `Resource` note. So the in-app
