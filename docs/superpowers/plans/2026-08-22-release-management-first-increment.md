@@ -149,15 +149,52 @@ In `src/view/manual/typesSection.ts`, add to `INTENT`:
 		'nothing. The release view is where one is read; the backlog draws it as an ordinary row.',
 ```
 
-- [ ] **Step 5: Run the full suite**
+- [ ] **Step 5: Let the toolbar offer it, and update the test that says so**
 
-Run: `npx vitest run test/domain/itemTypes.test.ts test/view/manualTypes.test.ts`
-Expected: PASS both. `manualTypes.test.ts` is the one that fails if Step 4's `INTENT` entry is missing — watch it fail once by deleting the entry, then put it back.
+Adding a name to `ALL_TYPES` has a fourth consequence: the backlog toolbar's New menu offers
+`New Release`, because `byProjectionType` (`src/view/projection.ts`) filters only
+`isIterationType` outside the boards. **This is intended — do not add a `Release` exclusion.**
 
-- [ ] **Step 6: Commit**
+`Iteration` is excluded there for a reason that does not apply: the board's scope picker is a
+dedicated door deriving its number, dates and folder, and a second door would be a second set
+of defaults. `Release` has no such door, so excluding it would leave the type creatable only by
+hand-editing frontmatter. `Milestone` is the precedent — a marker carrying a date the creator
+does not set, offered anyway.
+
+`test/view/toolbar.test.ts` asserts the menu's exact contents and will fail until you extend
+it. Add `'New Release'` after `'New Milestone'`:
+
+```ts
+		// Every declared type: this menu is the one place a top-level item of any type
+		// can be made.
+		expect(picker?.items.map((i) => i.titleText)).toEqual([
+			'New Epic',
+			'New Feature',
+			'New PBI',
+			'New Task',
+			'New Issue',
+			'New Bug',
+			'New Idea',
+			'New Deliverable',
+			'New Milestone',
+			'New Release',
+		]);
+```
+
+The order is `ALL_TYPES`' own — `[...LEVELS, ...EXTRA_TYPES, ...MARKER_TYPES, ...]` — and
+`RELEASE_TYPE` goes last in `MARKER_TYPES`, so `New Release` lands after `New Milestone`.
+`Iteration` is absent from that list because the creator filters it, which is the behaviour
+this step is deliberately not copying.
+
+- [ ] **Step 6: Run the full suite**
+
+Run: `npx vitest run test/domain/itemTypes.test.ts test/view/manualTypes.test.ts test/view/toolbar.test.ts`
+Expected: PASS all three. `manualTypes.test.ts` is the one that fails if Step 4's `INTENT` entry is missing — watch it fail once by deleting the entry, then put it back.
+
+- [ ] **Step 7: Commit**
 
 ```bash
-git add src/domain/typeVocabulary.ts src/domain/itemTypes.ts src/view/render/badges.ts src/view/manual/typesSection.ts styles/badges.css test/domain/itemTypes.test.ts
+git add src/domain/typeVocabulary.ts src/domain/itemTypes.ts src/view/render/badges.ts src/view/manual/typesSection.ts styles/badges.css test/domain/itemTypes.test.ts test/view/toolbar.test.ts
 git commit -m "Add Release to the vocabulary as a third marker"
 ```
 
@@ -1116,7 +1153,8 @@ describe('the release view', () => {
 		vault.addFile('E.md', { frontmatter: { type: 'Epic' } });
 		const { containerEl } = makeReleaseView(vault, { typeProperty: 'note.type' });
 		expect(containerEl.querySelector('.pbl-empty-title')?.textContent).toContain('No releases');
-		// No create button: no use case in this epic specifies creating a release.
+		// No create button on THIS view. The backlog toolbar's own New menu still offers
+		// `New Release`, which is a different view's existing creator and is asserted there.
 		expect(containerEl.querySelector('.pbl-empty button')).toBeNull();
 	});
 
@@ -1306,8 +1344,10 @@ export class ReleaseView extends BasesView {
 		}
 		this.model = buildModel(this.app, this.data.data, resolveSettings(this.config));
 		if (this.model.releases.length === 0) {
-			// No create button: no use case in this epic specifies creating a release, and an
-			// empty state must not promise a write nothing defines.
+			// No create button ON THIS VIEW: no use case in this epic specifies creating a
+			// release, and an empty state must not promise a write nothing defines. The
+			// backlog toolbar's New menu does offer `New Release` — deliberately, the way it
+			// offers `New Milestone` — and that is a different view's existing writer.
 			guidanceShell(this.viewEl, 'package', t('release.empty.noReleases.title'), t('release.empty.noReleases.hint'));
 			return;
 		}

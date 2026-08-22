@@ -167,7 +167,7 @@ vanishes without a word is the failure mode this epic keeps naming.
 | Situation | What the screen says |
 | --- | --- |
 | Type property unmapped | No list at all; names the option to bind |
-| Mapped, nothing typed `Release` | The screen exists and is empty; says what a release note is; **no create button** |
+| Mapped, nothing typed `Release` | The screen exists and is empty; says what a release note is; no create button **on this view** |
 | A figure's key unconfigured | That column absent for every row, named **once** — never blank per row |
 | Key bound, value unreadable | Reported as unreadable, per row — somebody wrote something there |
 | Membership key unconfigured | The index still draws; no tree; the empty state names the option |
@@ -175,8 +175,25 @@ vanishes without a word is the failure mode this epic keeps naming.
 | Release has no members | An empty tree naming the release — a legitimate state, not a misconfiguration |
 | Remembered release gone | The index, silently. A working position that no longer exists is not a failure |
 
-No create button anywhere: no use case in this epic specifies creating a release, and an empty
-state must not promise a write nothing defines.
+**The release view offers no create button** — no use case in this epic specifies creating a
+release, and an empty state must not promise a write nothing defines.
+
+That is scoped to this view's own screens, and an earlier draft of this document said
+"anywhere", which was false. Adding `Release` to the vocabulary makes the **backlog**
+toolbar's New menu offer it, because `byProjectionType` filters only `isIterationType`
+outside the boards — and that is the right outcome, kept deliberately rather than tolerated.
+`Iteration` is excluded there for a reason that does not apply here: the board's scope picker
+is a dedicated door that derives an iteration's number, dates and folder, and a second door
+onto the same note would be a second set of defaults to keep in step. `Release` has no such
+door, so excluding it would leave the type creatable only by hand-editing frontmatter.
+`Milestone` is the precedent that fits — a marker carrying a date the creator does not set,
+offered by the one menu the toolbar test calls "the one place a top-level item of any type can
+be made". It also closes, for free, the gap [[Every release in one list]] records as still
+open.
+
+**This increment still plans no write of its own.** The New menu is the backlog view's
+existing creator reached by an existing path; nothing in `view/release/` writes, and the
+invariant test below is what holds that.
 
 ## Testing
 
