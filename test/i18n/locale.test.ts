@@ -149,7 +149,7 @@ describe('lookup is total', () => {
 		// in an English sentence is the mixed-grammar case this asserts against.
 		setLocale('de', { de: {} });
 		expect(t('settings.sharedKey', { properties: ['state', 'parent', 'order'], key: 'k' })).toBe(
-			'The state, parent, and order properties share the key "k".',
+			'the state, parent, and order properties share the key "k"',
 		);
 	});
 

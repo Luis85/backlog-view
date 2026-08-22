@@ -1,6 +1,6 @@
 import { BacklogSettings } from './settings';
 import { t } from '../i18n/t';
-import { ownedProperties } from './optionalProperties';
+import { ownedProperties, OwnedRole } from './optionalProperties';
 import { colorableStates, stateColor } from './stateColors';
 
 /**
@@ -213,7 +213,7 @@ export function assertResolvedSettings(settings: BacklogSettings): void {
 }
 
 /**
- * The labels `configProblems` lets share ONE key: the three workflow states, explicitly
+ * The roles `configProblems` lets share ONE key: the three workflow states, explicitly
  * configured to the same property. Sharing by FALLBACK is already legitimate and never
  * reaches this map (`ownedProperties` reads the raw keys, so an unbound one resolves to
  * ''); this is the same "they can use the same status property" idea asked for explicitly.
@@ -221,34 +221,39 @@ export function assertResolvedSettings(settings: BacklogSettings): void {
  * is a mistake — one property silently overwriting the other's meaning — never applies.
  *
  * A SET rather than a pair, and that is the correction rather than a generalisation for its
- * own sake: written as "exactly these two labels and no more" it reported a collision the
+ * own sake: written as "exactly these two roles and no more" it reported a collision the
  * moment a third workflow defaulted to the same key — blocking every write in the view, on
- * the shipped configuration. Scoped to workflow states only: one more label of any other
+ * the shipped configuration. Scoped to workflow states only: one more role of any other
  * kind (order, tags, an axis key) reports as a collision again, these named in it like any
  * other clash.
  */
-const WORKFLOW_STATE_LABELS = new Set(['state', 'deliverable state', 'test state']);
+const WORKFLOW_STATE_ROLES = new Set<OwnedRole>(['state', 'deliverableState', 'testState']);
 
 /**
  * Configuration mistakes that would corrupt writes (e.g. parent and order stored
  * under the same frontmatter key). The view surfaces these instead of guessing.
+ *
+ * Each problem is a FRAGMENT, not a sentence: `config.fixFirst` and `config.fixAll` are
+ * what put one in a sentence, so a reader that names several does not read as a run of
+ * full stops. No caller may join them — the list goes to `t` whole, for the reason the
+ * roles do one line down.
  */
 export function configProblems(settings: BacklogSettings): string[] {
 	const problems: string[] = [];
-	const keys = new Map<string, string[]>();
-	for (const { label, key } of ownedProperties(settings)) {
+	const keys = new Map<string, OwnedRole[]>();
+	for (const { role, key } of ownedProperties(settings)) {
 		if (!key) continue;
 		const users = keys.get(key) ?? [];
-		users.push(label);
+		users.push(role);
 		keys.set(key, users);
 	}
 	for (const [key, users] of keys) {
-		if (users.every((label) => WORKFLOW_STATE_LABELS.has(label))) continue;
+		if (users.every((role) => WORKFLOW_STATE_ROLES.has(role))) continue;
 		if (users.length > 1) {
 			// The array, not a joined string: `t` joins it in the locale of the message it
 			// lands in, which this call site cannot know — the message may have fallen back
 			// to English while the active catalog is another language.
-			problems.push(t('settings.sharedKey', { properties: users, key }));
+			problems.push(t('settings.sharedKey', { properties: users.map((role) => t(`property.${role}`)), key }));
 		}
 	}
 	return problems;

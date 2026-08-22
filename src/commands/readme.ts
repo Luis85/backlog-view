@@ -65,7 +65,7 @@ function viewSource(app: App, view: LiveBacklogView): string {
 async function writeReadmeForView(app: App, view: LoadedBacklogView): Promise<void> {
 	const problems = configProblems(view.settings);
 	if (problems.length > 0) {
-		new Notice(t('readme.configProblems', { problems }));
+		new Notice(t('config.fixAll', { problems }));
 		return;
 	}
 	const content = backlogReadmeContent(view.settings, view.model.observedStates, view.source);
