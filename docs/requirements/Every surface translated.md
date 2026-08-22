@@ -254,13 +254,13 @@ Four things about this slice are worth carrying to the next one.
 **Four keys were REUSED rather than minted, and that is this slice's own finding.**
 `columnMenu.ts` needed `Expand {name}` / `Collapse {name}`, which `fold.expandColumn` and
 `fold.collapseColumn` already held for the column HEADER's disclosure; `shelfMenu.ts`
-needed `Search unplaced` and `Clear unplaced search`, which `shelf.search` and
+needed `Search the shelf` and `Clear the shelf search`, which `shelf.search` and
 `shelf.clearSearch` already held for the shelf header's own box. Each pair is two surfaces
 over one action, and `src/view/CLAUDE.md` states the rule those have already come apart on
 twice — not "does it say the same thing" but "is it offered exactly when the first one is",
 with the answer somewhere both read. A second key is exactly a place for them to disagree.
 That is not the same as the catalog's no-deduplication rule, which refuses MERGING two keys
-that happen to share English: `menu.searchUnplaced` is a separate key from `shelf.search`
+that happen to share English: `menu.searchShelf` is a separate key from `shelf.search`
 for that reason, because a menu entry promising a dialog and a box's own label are two
 things that happen to read alike.
 

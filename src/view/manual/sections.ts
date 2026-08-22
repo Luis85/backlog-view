@@ -174,8 +174,9 @@ const FINDING: ManualSection = {
 			text:
 				"Use the Base's own search: it narrows the results this view is given, and the " +
 				'ancestors a narrowed result needs are loaded around it, so a search still reads as ' +
-				'a tree rather than a flat list. The roadmap\'s unplaced shelf has a search of its ' +
-				'own, scoped to the untriaged work beside it.',
+				'a tree rather than a flat list. A shelf — the roadmap\'s unplaced band, or an ' +
+				'iteration board\'s uncommitted one — has a search of its own, scoped to the ' +
+				'untriaged work beside it.',
 		},
 		{
 			term: 'Show completed items',

@@ -332,6 +332,14 @@ const ROW_CONTROLS = [
 	'src/view/render/columns.ts',
 	'src/view/render/chips.ts',
 ];
+// `columns.ts` alone, carved out of ROW_CONTROLS below for ALL_TYPES_IMPORT —
+// `shelfBadgeWidth` (Task 4 of [[Cards or a list on the shelf]]'s follow-up) asks
+// TYPES_SECTION's own question, "what does the whole vocabulary contain", not "what can
+// THIS projection offer": the badge slot has to be one number for the life of the view,
+// sized off every declared type rather than off whichever ones the active projection
+// would offer, or the slot would resize as work moves between types the current
+// projection cannot even show. Everything else ROW_CONTROLS carries still applies.
+const COLUMNS = 'src/view/render/columns.ts';
 // The rest of view/, once menu.ts, render/ and create.ts are carved out below.
 const VIEW = 'src/view/**/*.ts';
 // The Estimation view, carved out of VIEW for the two text bans and the ternary ban —
@@ -747,12 +755,42 @@ export default defineConfig([
 		// model the update replaced. See ROW_CONTROLS's own comment above for why all three
 		// files, and render/rows.ts for the delegation and its exemptions.
 		files: ROW_CONTROLS,
+		ignores: [COLUMNS],
 		rules: syntaxRules([
 			...SVG_CLASS_TOKENS,
 			...WRITE_BOUNDARY,
 			MENU_ANCHOR,
 			TREE_SCAN,
 			ALL_TYPES_IMPORT,
+			CHILD_TYPE_CHOICES_NULL,
+			DELIVERABLE_FIELD_READ,
+			ROW_LISTENER,
+			// Repeated rather than inherited from RENDER's glob above: one file, one block.
+			...TEXT_TERNARY,
+			UI_TEXT_LITERAL,
+			UI_TEXT_PROPERTY,
+		]),
+	},
+	{
+		// `columns.ts`, carved out of ROW_CONTROLS above: see COLUMNS's own comment for why
+		// ALL_TYPES_IMPORT does not apply here. Everything else ROW_CONTROLS carries does,
+		// including ROW_LISTENER — this file still draws the state and horizon chips the
+		// tree's delegated listener serves.
+		//
+		// **What this carve-out no longer sees**, stated because a lifted ban that goes
+		// unnamed is the one nobody re-reads: it drops ALL_TYPES_IMPORT for the WHOLE file,
+		// not for `shelfBadgeWidth` alone, and this file also draws state and horizon chips.
+		// A future type-OFFERING surface added here would import `ALL_TYPES` with lint green
+		// — which is the regression ALL_TYPES_IMPORT's own comment exists to stop. eslint
+		// scopes by file and cannot scope by symbol, so the narrower rule is not available;
+		// what protects it is this sentence and a reviewer reading it. (Final review,
+		// PR #187.)
+		files: [COLUMNS],
+		rules: syntaxRules([
+			...SVG_CLASS_TOKENS,
+			...WRITE_BOUNDARY,
+			MENU_ANCHOR,
+			TREE_SCAN,
 			CHILD_TYPE_CHOICES_NULL,
 			DELIVERABLE_FIELD_READ,
 			ROW_LISTENER,

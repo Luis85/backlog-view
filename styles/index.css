@@ -90,6 +90,14 @@
    `timelineFurniture.css` already declare. */
 @import "./dependencyArrows.css";
 @import "./shelf.css";
+/* Position load-bearing, and for `shelf.css`'s own reason: this partial is the compact-row
+   layout split out of `shelf.css` at the 400-line cap (Task 4 of
+   [[Cards or a list on the shelf]]'s follow-up) — every selector in it is `.pbl-shelf-list
+   ...`, so it declares nothing `shelf.css` still does and there is no order to keep between
+   the two files themselves. What it inherits is `shelf.css`'s OWN constraint: it must still
+   come after `board.css` and `roadmap.css`, whose band rule its selectors sit inside and are
+   allowed to beat and deliberately never do, exactly as `shelf.css`'s header states. */
+@import "./shelfList.css";
 /* Position load-bearing, and only relative to `shelf.css`: this partial's `.pbl-shelf-grip`
    sits inside the band `shelf.css` lays out, and its header rules override nothing there —
    but both must stay AFTER `board.css` and `roadmap.css`, whose band rule they are allowed

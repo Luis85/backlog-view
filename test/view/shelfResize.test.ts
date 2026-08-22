@@ -413,6 +413,29 @@ describe('the shelf’s resize grip', () => {
 			const css = readFileSync('styles/shelf.css', 'utf8');
 			expect(bodyOf(css, '.pbl-view .pbl-shelf.pbl-shelf-sized', 'styles/shelf.css')).toContain('flex-shrink: 0;');
 		});
+
+		it('is pushed to the foot of a band taller than its cards', () => {
+			// `position: sticky` never MOVES an element — it holds one inside its scrollport when
+			// scrolling would carry it away, and does nothing at all otherwise. A band with a
+			// picked height and less content than that leaves the grip in flow, directly under the
+			// last group: measured in the browser harness with every type group folded and a 400px
+			// pick, the grip's bottom sat 139px above the band's foot, and −5px with this margin
+			// (which is where it sits when the band DOES overflow, so the two states now agree).
+			//
+			// Scoped to `.pbl-shelf-sized` in both directions. An unpicked band is `height: auto`,
+			// so its grip is already at the foot and there is no free space for an auto margin to
+			// consume — and the base rule's `margin-block-start: calc(-1 * var(--size-4-2))` is the
+			// gap-cancel extension 1e's measurement depends on, which an unscoped `auto` would
+			// silently drop. Measured: the unpicked band stayed at 219px.
+			const css = readFileSync('styles/shelfControls.css', 'utf8');
+			expect(bodyOf(css, '.pbl-shelf-sized .pbl-shelf-grip', 'styles/shelfControls.css')).toContain(
+				'margin-block-start: auto;',
+			);
+			// And the base rule keeps the negative pull, which is what the unpicked band is sized by.
+			expect(bodyOf(css, '.pbl-shelf-grip', 'styles/shelfControls.css')).toContain(
+				'margin-block-start: calc(-1 * var(--size-4-2));',
+			);
+		});
 	});
 
 	describe('where it is not drawn', () => {

@@ -40,16 +40,25 @@ export function shelfHeavyVault(): FakeVault {
  * it is flipped through the host exactly as the toolbar does — never the config.
  * The shelf itself opens collapsed by default (Task 3) — expanded here unless the
  * caller passes `shelfCollapsed: true` to assert on the collapsed state itself, the
- * same escape hatch `makeView`'s `collapsed` param gives the tree.
+ * same escape hatch `makeView`'s `collapsed` param gives the tree. `shelfList` flips
+ * the band to the compact-row layout the same way the header picker does, and `order`
+ * forwards to `makeView`'s own — the shelf's column alignment has nothing to align
+ * without at least one resolved property column.
  */
 export function makeRoadmap(
 	vault: FakeVault,
 	extra: Record<string, unknown> = {},
-	{ shelfCollapsed = false, focus }: { shelfCollapsed?: boolean; focus?: string } = {},
+	{
+		shelfCollapsed = false,
+		focus,
+		shelfList,
+		order,
+	}: { shelfCollapsed?: boolean; focus?: string; shelfList?: boolean; order?: string[] } = {},
 ): Harness {
-	const harness = makeView(vault, { ...HORIZON_AXIS, ...extra }, { collapsed: true, focus });
+	const harness = makeView(vault, { ...HORIZON_AXIS, ...extra }, { collapsed: true, focus, order });
 	harness.view.setProjection('roadmap');
 	if (!shelfCollapsed) harness.view.setShelfCollapsed(false);
+	if (shelfList) harness.view.setShelfLayout('list');
 	return harness;
 }
 

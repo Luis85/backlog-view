@@ -31,6 +31,7 @@ import { addTagItems, tagsColumnVisible } from './tags';
 import { addDependencyItems, dependenciesAvailable } from './dependencies';
 import { menuChildren, cardedPaths } from '../childrenList';
 import { menusListChildren, offerableTypes, retypeChoices, rowVocabulary, treeShaped } from '../projection';
+import { activeShelf } from '../shelfSurface';
 
 /**
  * Whichever board-shaped projection is active, or null off both — `host.board` is the
@@ -632,28 +633,32 @@ function addStateItems(host: BacklogViewHost, menu: Menu, item: BacklogItem): vo
  * entry a decluttering rather than a pointer-only shelf. See
  * [[Drop the shelf's toggle from the card menu]].
  *
- * On the roadmap only, and only while the shelf holds something — an entry for a region
- * that is not on screen is the defect in the other direction.
+ * On any surface that DREW a band, and only while it holds something — an entry for a
+ * region that is not on screen is the defect in the other direction. That is the iteration
+ * board as well as the roadmap since 2026-08-21, and it is what let the board's header
+ * carry the pickers at all: this menu is their keyboard path, so offering the controls
+ * without it would have been the pointer-only shelf the board's own hidden-match links
+ * refuse.
  */
 function addShelfSection(host: BacklogViewHost, menu: Menu): void {
-	if (host.projection !== 'roadmap') return;
-	const shelf = host.roadmap?.roadmap.shelf ?? [];
-	if (shelf.length === 0) return;
+	const surface = activeShelf(host);
+	if (surface.el === null || surface.cards.length === 0) return;
 	// Nothing to order or narrow while the cards are shut away — the header withholds the
-	// same two pickers for the same reason.
-	if (host.shelfCollapsed) return;
+	// same controls for the same reason. Asked of the band on screen, because the roadmap's
+	// collapse and the iteration board's are different bits.
+	if (surface.collapsed) return;
 	menu.addSeparator();
 	menu.addItem((mi) => {
 		mi.setTitle(t('menu.shelfLayout')).setIcon('layout-grid');
 		addShelfLayoutItems(host, submenuOf(mi));
 	});
 	menu.addItem((mi) => {
-		mi.setTitle(t('menu.sortUnplaced')).setIcon('arrow-up-down');
+		mi.setTitle(t('menu.sortShelf')).setIcon('arrow-up-down');
 		addShelfSortItems(host, submenuOf(mi));
 	});
 	menu.addItem((mi) => {
-		mi.setTitle(t('menu.filterUnplacedByType')).setIcon('list-filter');
-		addShelfTypeItems(host, submenuOf(mi), shelf);
+		mi.setTitle(t('menu.filterShelfByType')).setIcon('list-filter');
+		addShelfTypeItems(host, submenuOf(mi), surface.cards);
 	});
 	addShelfSearchItems(host, menu);
 }
