@@ -109,7 +109,7 @@ language, so nothing re-reads it. What must never enter the catalog is anything 
 writes, matches or persists — type names, state values, option keys, tags, file names. The
 test when it is not obvious: **ask what breaks if two people with different Obsidian
 languages open the same vault.** "One sees different words" is text; "one writes notes the
-other's view cannot read" is data. 553 keys are in it (counted two ways on 2026-08-22 and
+other's view cannot read" is data. 556 keys are in it (counted two ways on 2026-08-22 and
 agreeing — an AST walk over the `as const` object's own properties, and a match-counting
 `grep -Po` for the key lines; `grep -c` would count LINES, which is one of the three wrong
 numbers this epic has produced from an instrument that looked right). Re-measured when
@@ -117,9 +117,19 @@ numbers this epic has produced from an instrument that looked right). Re-measure
 found to be one short of its own catalog: a count is dated the moment it is written.
 `ui/`, `commands/`, `view/interactions/`, `view/estimation/`, the whole of `view/render/`,
 `view/writeGate.ts`, `view/cardMoves.ts`, `main.ts`, `domain/viewOptions.ts` and — since
-2026-08-22 — `domain/estimationOptions.ts`, `domain/board.ts`, `domain/bars.ts` and
-`domain/roadmap.ts` are swept, **which leaves `view/manual/` and nothing else in `src/`
-that a sweep still owes.** It is not a leftover: those three files are authored long-form
+2026-08-22 — `domain/estimationOptions.ts`, `domain/board.ts`, `domain/bars.ts`,
+`domain/roadmap.ts` and the whole of `storage/` are swept, **which leaves `view/manual/`
+and nothing else in `src/` that a sweep still owes.** That sentence said the same thing
+before `storage/` was in the list, and it was wrong: `frontmatter.ts` and
+`propertyWrite.ts` were each spelling a live `new Notice` sentence — three of them, one a
+ternary between two literals — in a directory carrying none of the three bans. Not a
+missed sweep so much as a directory nobody classified, which is the hazard the epic has
+now met twice: a slice reads as done when what was actually enumerated was the surfaces
+somebody could NAME. `storage/` renders no DOM, so a sentence in it reads as plumbing;
+what makes it text is that a `Notice` is a screen. **Re-derive the remainder with a
+walk over `src/` rather than reading this paragraph** — the scan that found it was an AST
+sweep for prose-shaped literals outside a `t()` call, which is the one instrument that
+sees the two shapes lint cannot. It is not a leftover: those three files are authored long-form
 PROSE, and whether several hundred multi-sentence paragraphs belong in a message catalog at
 all is an open question rather than work not yet done. What is still English in the REST of
 `domain/` was classified rather than swept, and every part of it stays for a stated reason

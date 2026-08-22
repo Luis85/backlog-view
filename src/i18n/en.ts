@@ -1079,6 +1079,25 @@ export const en = {
 	'gate.updateFailed': 'Failed to update backlog items. See the developer console for details.',
 
 	/**
+	 * The two live-type races the WRITER refuses, one sentence each — reported from
+	 * `storage/`, which is not the gate but is where the note is re-read and found to have
+	 * changed under the batch.
+	 *
+	 * `gate.staleDatesPartial` and `gate.staleDatesNone` are ONE refusal in
+	 * `applyWrites`, picked on whether anything landed before it. Two keys rather than a
+	 * ternary between two literals, for `TEXT_TERNARY`'s own reason: no locale can reorder
+	 * or inflect half a sentence.
+	 *
+	 * `gate.becameResource` is `applyPropertyWrites`' race, and it is worded to match
+	 * `absence.becameResource` — which has said since it was keyed that it copies THIS
+	 * sentence. The two stay separate keys all the same: they diverge in the first
+	 * language that separates an edit from a change.
+	 */
+	'gate.staleDatesPartial': 'That note changed while the move was in flight, so the rest of the move was not written.',
+	'gate.staleDatesNone': 'That note changed while the move was in flight, so nothing was written.',
+	'gate.becameResource': 'That note became a resource while the change was in flight, so nothing was written to it.',
+
+	/**
 	 * Every card move's live-region announcement, in the two shapes a gesture can have:
 	 * one dimension, or the resources axis's two in ONE sentence. `{landing}` is the date
 	 * half, and it is a whole clause from `destinationWords` rather than this catalog's —

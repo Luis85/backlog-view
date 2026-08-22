@@ -1,4 +1,5 @@
 import { App, Notice } from 'obsidian';
+import { t } from '../i18n/t';
 import { PropertyWrite } from '../domain/estimationWritePlan';
 import { isResourceType } from '../domain/itemTypes';
 import { ownValue, readString } from '../domain/noteFields';
@@ -81,7 +82,7 @@ export async function applyPropertyWrites(
 		}
 		if (refused) {
 			console.error('Product Backlog: refused an estimation write to a resource note', write);
-			new Notice('That note became a resource while the change was in flight, so nothing was written to it.');
+			new Notice(t('gate.becameResource'));
 		}
 		if (inverse) {
 			outcome.changed = true;
