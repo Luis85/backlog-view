@@ -38,11 +38,16 @@ export interface ReleaseRow {
 export interface ReleaseIndex {
 	rows: ReleaseRow[];
 	/**
-	 * Items whose membership value named no release this base holds — the RULE rather than
-	 * a list of the ways, because {@link membershipTarget} already enumerates its refusals
-	 * and a second copy beside them drifts: this comment named three while the code made
-	 * five. Reported rather than dropped: they belong to no release, so they appear on no
-	 * release's screen and this is the only place they can be seen.
+	 * Items carrying a membership value this base could not turn into a membership — the
+	 * RULE rather than a list of the ways, because {@link membershipTarget} owns the
+	 * refusals and a second copy beside them drifts: this comment named three while the
+	 * code made five, and then named a NARROWER rule than the code keeps. "Named no
+	 * release this base holds" is false for two of the five — an `Iteration` carrying the
+	 * property is refused before its link is ever resolved, and two values name two
+	 * releases rather than none — so the sentence has to be about what came OUT of the
+	 * reader, never about what the value said. Reported rather than dropped: they belong
+	 * to no release, so they appear on no release's screen and this is the only place they
+	 * can be seen.
 	 */
 	unresolved: BacklogItem[];
 }
@@ -138,9 +143,14 @@ export function releaseIndex(app: App, model: BacklogModel, settings: ReleaseSet
 	// release with 0 first would say the same thing twice.
 	const counts = new Map<string, number>();
 	const unresolved: BacklogItem[] = [];
+	// Built once per index and dead with it: `membershipTarget` runs per scannable row, so
+	// asking `model.releases` itself made the last refusal a scan and the rebuild
+	// O(members x releases). `ReadonlySet` because `.has` is the only thing ever asked of
+	// it — the same reason `cardedPaths` (`view/childrenList.ts`) states for its own.
+	const releasePaths: ReadonlySet<string> = new Set(model.releases.map((r) => r.file.path));
 
 	for (const item of scannableRows(model)) {
-		const named = membershipTarget(app, item, model, settings);
+		const named = membershipTarget(app, item, releasePaths, settings);
 		if (named === null) continue;
 		if (named === UNRESOLVED) {
 			unresolved.push(item);
@@ -166,10 +176,12 @@ export function releaseIndex(app: App, model: BacklogModel, settings: ReleaseSet
 
 	rows.sort((a, b) => {
 		// Values compared, never their difference — two undated releases make
-		// `Infinity - Infinity`, which is `NaN`, and a comparator that returns `NaN` sorts
-		// at random. `Infinity` itself is not the hazard: `sort` reads only the SIGN of the
-		// result, so `Infinity - n` would order correctly. Both keys below use the same
-		// shape, the second one for the further reason stated at it.
+		// `Infinity - Infinity`, which is `NaN`, and `sort` coerces a `NaN` result to `+0`:
+		// the pair reads as EQUAL and silently keeps whatever order it arrived in. Worse
+		// than the "sorts at random" this comment claimed until 2026-08-22, because random
+		// would be noticed. `Infinity` itself is not the hazard: `sort` reads only the SIGN
+		// of the result, so `Infinity - n` would order correctly. Both keys below use the
+		// same shape, the second one for the further reason stated at it.
 		if (dateKey(a.target) !== dateKey(b.target)) return dateKey(a.target) < dateKey(b.target) ? -1 : 1;
 		// NOT `rank(a) - rank(b)` guarded by `Number.isFinite`: an unranked release is
 		// `+Infinity`, and `Infinity - 10` is `Infinity`, which that guard rejects — so the
@@ -198,7 +210,10 @@ const UNRESOLVED = Symbol('unresolved membership');
 /**
  * Which release this item names: a path, {@link UNRESOLVED}, or null for "names none".
  *
- * FOUR refusals, and each is a rule rather than a safeguard:
+ * FIVE refusals, and each is a rule rather than a safeguard. Five counted by READING the
+ * function: `grep -c 'return UNRESOLVED'` answers four, because the last one is the
+ * ternary this function ends on and no grep for one spelling can see it.
+ *
  *   - a value present but unreadable — an empty string, an object, a list of them.
  *     `readString` answers null to all three exactly as it answers null to a key the note
  *     does not carry, and collapsing them drops a hand-written mistake in silence: the
@@ -217,6 +232,10 @@ const UNRESOLVED = Symbol('unresolved membership');
  *     while ADMITTING a `Milestone` and a `Release`, which is right for the backlog tree
  *     and wrong here, and the marker predicate covers a fourth marker added later without
  *     anyone having to remember this call site;
+ *   - a value naming no note at all — `getFirstLinkpathDest` resolved nothing, so the note
+ *     names a release that is not in the vault. Unresolved and not "names none": the key
+ *     holds text somebody wrote, and answering null here would file a broken link beside a
+ *     note that never claimed a release;
  *   - a value naming a note that is not a release.
  *
  * **Obsidian's own resolution wins, and a resolved non-release is an answer, not a miss.**
@@ -230,7 +249,7 @@ const UNRESOLVED = Symbol('unresolved membership');
 function membershipTarget(
 	app: App,
 	item: BacklogItem,
-	model: BacklogModel,
+	releasePaths: ReadonlySet<string>,
 	settings: ReleaseSettings,
 ): string | typeof UNRESOLVED | null {
 	if (!settings.membershipKey) return null;
@@ -247,5 +266,5 @@ function membershipTarget(
 	if (!inPlan(item) || isMarkerType(item.typeName)) return UNRESOLVED;
 	const file = app.metadataCache.getFirstLinkpathDest(linkpathFromRawValue(text), item.file.path);
 	if (file === null) return UNRESOLVED;
-	return model.releases.some((r) => r.file.path === file.path) ? file.path : UNRESOLVED;
+	return releasePaths.has(file.path) ? file.path : UNRESOLVED;
 }
