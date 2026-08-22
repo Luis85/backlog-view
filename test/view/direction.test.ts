@@ -134,6 +134,17 @@ const hasFourSidedShorthand = (block: string): boolean =>
 		(decl) => valueCount(decl[1].replace(/!\s*important\s*$/i, '')) === 4,
 	);
 
+/**
+ * Whether `block` aligns text to a physical side.
+ *
+ * Named rather than inline like the other two placements above it, so the spacing this
+ * spells can be planted and asserted: whitespace is legal on BOTH sides of a declaration's
+ * colon, and this was the one predicate here reading a bare one, so `text-align : right`
+ * went through the invariant its own test states. Seventh instrument failure on this file,
+ * caught in review on PR #196 like the six above it.
+ */
+const alignsToAPhysicalSide = (block: string): boolean => /text-align\s*:\s*(?:left|right)\b/.test(block);
+
 describe('the stylesheet names no physical side', () => {
 	it('sets no margin or padding on a named physical side, unless the same rule pins one', () => {
 		// Longhands (`margin-left`) and the four-value shorthand alike — the second is the
@@ -188,6 +199,11 @@ describe('the stylesheet names no physical side', () => {
 		// pins the box the text is in. `matching`, NOT `unlicensed` — this line read
 		// `offenders` until review, which applied the placement licence to both categories
 		// and let `left: 0; text-align: left` through the sentence above it.
-		expect(matching((block) => /text-align:\s*(?:left|right)\b/.test(block))).toEqual([]);
+		expect(matching(alignsToAPhysicalSide)).toEqual([]);
+		// The spacing, planted: the stylesheet writes none of these, so the line above
+		// cannot show that the predicate reads them and would pass with it blind.
+		expect(alignsToAPhysicalSide('text-align : right')).toBe(true);
+		expect(alignsToAPhysicalSide('text-align:right;')).toBe(true);
+		expect(alignsToAPhysicalSide('text-align: end')).toBe(false);
 	});
 });
