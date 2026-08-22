@@ -11,7 +11,7 @@ import {
 	wipLimitKey,
 } from './settings';
 import { OPTIONAL_PROPERTIES, OptionalSettingsKey } from './optionalProperties';
-import { ABSENCE_TYPE, ALL_TYPES, defaultTypeFolder, typeFolderKey } from './typeVocabulary';
+import { ABSENCE_TYPE, ALL_TYPES, defaultResourceFolder, defaultTypeFolder, typeFolderKey } from './typeVocabulary';
 
 /**
  * Reading a `.base` file's stored options into a `BacklogSettings`.
@@ -59,7 +59,7 @@ function resolveFolders(
 	read: ConfigReaders,
 	types: string[],
 	fallback: BacklogSettings,
-): Pick<BacklogSettings, 'homeFolder' | 'typeFolders'> {
+): Pick<BacklogSettings, 'homeFolder' | 'typeFolders' | 'resourceFolder'> {
 	const { str, clearable } = read;
 	const homeFolder = clearable('homeFolder', fallback.homeFolder, () => vaultFolder(str('homeFolder')));
 	return {
@@ -71,6 +71,12 @@ function resolveFolders(
 			clearable(typeFolderKey(type), defaultTypeFolder(type, homeFolder), () =>
 				vaultFolder(str(typeFolderKey(type))),
 			) || null,
+		),
+		// Resource is deliberately not in `types` (it is not in `ALL_TYPES`), so it has
+		// no `typeFolder.*` entry above — its own key, resolved here anyway because it
+		// tracks the same resolved home folder every type folder does.
+		resourceFolder: clearable('resourceFolder', defaultResourceFolder(homeFolder), () =>
+			vaultFolder(str('resourceFolder')),
 		),
 	};
 }

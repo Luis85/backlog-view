@@ -778,6 +778,7 @@ export const en = {
 	'option.homeFolder': 'Home folder',
 	'option.homeFolderHint': 'Same folder as existing items',
 	'option.typeFolder': 'Folder for {type} items',
+	'option.resourceFolder': 'Folder for resource notes',
 
 	/**
 	 * The heading and its three CHOICES. The choices are labels only — what a `.base`

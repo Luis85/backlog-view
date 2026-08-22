@@ -111,19 +111,26 @@ that surface.
   from nothing, because it is not on the tree at all. This is the one place a `Resource`
   differs from a marker, which does get an `order` — a marker is a row in the backlog and a
   resource is not.
-- **The resource folder is its own view option**, defaulting to `resources` under the home
-  folder. Its own key rather than a `typeFolder.*` one, because those are generated per entry
-  in `ALL_TYPES` and `Resource` is deliberately not in that list.
+- **The resource folder is its own view option** (`resourceFolder`), defaulting to
+  `resources` under the home folder. Its own key rather than a `typeFolder.*` one, because
+  those are generated per entry in `ALL_TYPES` and `Resource` is deliberately not in that
+  list.
 
 ## Where it lives
 
-**Nothing yet — this note is design.** The surfaces it will touch all exist.
+`src/domain/typeVocabulary.ts` declares the resource folder's shipped default
+(`defaultResourceFolder`, beside `RESOURCE_TYPE`), derived from the home folder the same
+way a type folder is · `src/domain/settings.ts` adds `resourceFolder` to
+`BacklogSettings`, '' meaning no folder of its own · `src/domain/settingsResolve.ts`
+resolves it inside `resolveFolders`, tracking the resolved home folder and clearable back
+to '' · `src/domain/viewOptions.ts` declares the `resourceFolder` option itself, beside
+the per-type folder pickers it is not one of.
 
-`src/view/render/toolbarControls.ts` holds `renderProjectionZone`, the one place the toolbar
-asks which projection is on screen, and the roadmap case this control joins ·
-`src/storage/createNote.ts` is the only module that may make a note, and `createBacklogItem`
-is the creator this reuses rather than a second one · `src/domain/settings.ts` and
-`src/domain/viewOptions.ts` are where the resource folder option is declared and resolved.
+Not built yet: `src/view/render/toolbarControls.ts` will hold `renderProjectionZone`'s
+**New resource** control, gated on the resources axis and roadmap mode the way
+`renderStateColorsButton` gates on axis and mode · `src/storage/createNote.ts` is the only
+module that may make the note, and `createBacklogItem` is the creator this reuses rather
+than a second one.
 
 The modal itself is a new dialog beside the four in `src/ui/`, which is the leaf of reusable
 Obsidian dialogs that knows about no layer above it — three conditional fields is past what

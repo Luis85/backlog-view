@@ -190,3 +190,21 @@ export function defaultTypeFolder(typeName: string, homeFolder = DEFAULT_HOME_FO
 	if (!sub) return '';
 	return homeFolder ? `${homeFolder}/${sub}` : sub;
 }
+
+/** The subfolder a `RESOURCE_TYPE` note is filed under, by default. Private like
+ * `DEFAULT_TYPE_SUBFOLDERS` beside it: nothing outside `defaultResourceFolder` needs it. */
+const DEFAULT_RESOURCE_SUBFOLDER = 'resources';
+
+/**
+ * The shipped folder for a `RESOURCE_TYPE` note, under the given home folder.
+ *
+ * Not a `typeFolder.<name>` entry: that list is generated one per `ALL_TYPES` member, and
+ * `RESOURCE_TYPE` is deliberately never added to `ALL_TYPES` (see its own doc comment
+ * above) — the gates that keep it out of the backlog read that list, and joining it would
+ * make a resource a work item. Its folder is its own option (`resourceFolder`) instead,
+ * resolved the same way a type folder is: derived from the home folder so relocating the
+ * backlog moves it too.
+ */
+export function defaultResourceFolder(homeFolder = DEFAULT_HOME_FOLDER): string {
+	return homeFolder ? `${homeFolder}/${DEFAULT_RESOURCE_SUBFOLDER}` : DEFAULT_RESOURCE_SUBFOLDER;
+}

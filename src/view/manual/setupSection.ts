@@ -177,8 +177,9 @@ export const SETUP: ManualSection = {
 			text:
 				"The home folder new items fall back to, and each type's own folder — a picker per " +
 				'type in the fixed vocabulary, one more for absences, and each ranking ahead of ' +
-				'the home folder.',
-			keys: ['homeFolder', 'typeFolder.*'],
+				"the home folder. A resource note has its own folder the same way, ranking ahead of " +
+				'the home folder too.',
+			keys: ['homeFolder', 'typeFolder.*', 'resourceFolder'],
 		},
 		{
 			term: 'How an item opens',
