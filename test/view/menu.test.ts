@@ -60,25 +60,38 @@ describe('context menu', () => {
 	 * end. Both directions, because the entry is offered per direction — `Move up` only
 	 * with a rendered sibling above, `Move down` only with one below — and a single-sided
 	 * test would pass against a menu that wired both to the same handler.
+	 *
+	 * **THREE siblings, not the fixture's two.** With two, a swap and a jump to the edge
+	 * land on the same order, so `fixture()` alone cannot tell the two apart — pointing
+	 * both handlers at `moveToEdge` left the earlier version of this test green. So the
+	 * item moved is an END one and the assertion is that it lands in the MIDDLE, which is
+	 * the one position the edge move can never produce.
 	 */
-	it('swaps an item with the sibling above and below it', async () => {
+	it('swaps an item with its neighbour rather than sending it to the edge', async () => {
 		const vault = fixture();
+		vault.addFile('Feature B3.md', { frontmatter: { type: 'Feature', order: 30 }, parentLink: 'Epic B' });
 		const { view, containerEl } = makeView(vault);
+		const order = (title: string): number => vault.fm(`${title}.md`)['order'] as number;
 
-		rowByTitle(containerEl, 'Feature B2').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+		// Last of three, one step UP: the middle, never the top.
+		rowByTitle(containerEl, 'Feature B3').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
 		Menu.lastShown?.item('Move up')?.click();
 		await flush();
-		expect(vault.fm('Feature B2.md')['order']).toBeLessThan(vault.fm('Feature B1.md')['order'] as number);
+		expect(order('Feature B1')).toBeLessThan(order('Feature B3'));
+		expect(order('Feature B3')).toBeLessThan(order('Feature B2'));
 
 		// Nothing refreshes on its own here, and the entry is gated on the RENDERED
-		// neighbours: without this the model still has B2 last, `Move down` is not offered
-		// at all, and the optional chain below would assert against a click that never
-		// happened.
+		// neighbours: without this the model still holds the old order, so the menu is
+		// built from it and the optional chain below would assert against a click that
+		// never happened.
 		refresh(view, vault);
-		rowByTitle(containerEl, 'Feature B2').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+
+		// First of three, one step DOWN: the middle again, never the bottom.
+		rowByTitle(containerEl, 'Feature B1').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
 		Menu.lastShown?.item('Move down')?.click();
 		await flush();
-		expect(vault.fm('Feature B2.md')['order']).toBeGreaterThan(vault.fm('Feature B1.md')['order'] as number);
+		expect(order('Feature B3')).toBeLessThan(order('Feature B1'));
+		expect(order('Feature B1')).toBeLessThan(order('Feature B2'));
 	});
 
 	it('sets the type through the submenu', async () => {
