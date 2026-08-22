@@ -968,6 +968,15 @@ Concretely:
 | property cells | fixed | `--pbl-prop-w-N`, every row holding every column |
 | state | fixed | held open per row, see below |
 
+**Every reservation shrinks; none of them is rigid.** A reservation is a promise about a
+container with room to keep it, and at a ~380px pane the fold slot, the badge, the notes lane,
+three gaps and the title's floor exceed the row before any property cell is counted — and the
+pane hides horizontal overflow, so that is clipped content rather than a scrollbar (Codex,
+PR #187). Every fixed-width box here is therefore `flex: 0 1 <basis>` with `min-width: 0`,
+which costs the alignment nothing for the reason the cells already rest on: identical bases and
+identical factors on every row resolve to identical widths under any deficit. Rigidity was never
+what made the columns line up — sameness was.
+
 The NOTES box is what makes the three variable middle things one fixed reservation instead of
 three absent-or-present ones. `renderShelfCard` draws it unconditionally and hands it to
 `renderCardBody` as `rollupEl`; `renderRollup` fills it or draws nothing, and the reason and
@@ -1141,6 +1150,25 @@ and append the two notes into that box rather than straight onto the line — bo
 few lines below, so change `summary.createDiv(...)` to `(notes ?? summary).createDiv(...)` at
 the `.pbl-shelf-reason` and `.pbl-shelf-dependency` calls, leaving the card grid untouched.
 
+**Each of the two gets a tooltip, and that is not decoration.** In list mode the stylesheet
+hides their sentence and leaves the icon, so without one a sighted pointer user loses the whole
+explanation — why the card could not be placed, or what it is waiting for. Add it at both
+sites, unconditionally rather than only in list mode: a tooltip repeating text that is also on
+screen costs a card nothing, and a second branch here is one more thing to keep in step.
+
+```ts
+		const reason = (notes ?? summary).createDiv({ cls: 'pbl-shelf-reason' });
+		drawIcon(reason.createSpan({ cls: 'pbl-shelf-reason-icon' }), 'alert-triangle');
+		reason.createSpan({ text: entry.reason });
+		// The sentence is hidden on a compact row and the icon is all that is left, so this is
+		// the only place a pointer reader can still get it. `entry.reason` is already a
+		// translated sentence from `deriveBars`; nothing is composed here.
+		setTooltip(reason, entry.reason);
+```
+
+and the same shape for the dependency, using the `waits` string already in hand. `setTooltip`
+is imported in this file already.
+
 **And the state cell is held open in list mode**, which amends extension 4a for this layout:
 
 ```ts
@@ -1280,7 +1308,11 @@ ones being replaced record measurements that stay true and must be carried forwa
    width is a reservation for the rollup label and is sized off the tree's population. A type
    outside `ALL_TYPES` truncates in the slot rather than pushing its own title out of line. */
 .pbl-shelf-list .pbl-card-head {
-	flex: 0 0 var(--pbl-shelf-badge, 84px);
+	/* Shrinkable for the notes lane's reason and by its argument: identical on every row, so a
+	   deficit resolves it identically and the titles stay on one x however narrow the pane. The
+	   badge truncates inside it rather than pushing the title, which is what `overflow` is for
+	   here and what makes giving up width safe. */
+	flex: 0 1 var(--pbl-shelf-badge, 84px);
 	width: var(--pbl-shelf-badge, 84px);
 	min-width: 0;
 	overflow: hidden;
@@ -1368,7 +1400,16 @@ ones being replaced record measurements that stay true and must be carried forwa
 	display: flex;
 	align-items: center;
 	gap: var(--size-2-1);
-	flex: 0 0 calc(var(--pbl-meta-col, 84px) + 2 * (12px + var(--size-2-1)));
+	/* `0 1`, not `0 0`. Fixed, this lane alone reserves 116px at the defaults, and with the
+	   badge's 84px, the fold slot's 30px, three gaps and the title's own floor the row's minima
+	   pass a 380px pane before a single property cell is counted — the pane hides horizontal
+	   overflow, so that is clipped content rather than a scrollbar. (Codex, PR #187.)
+	   Shrinking costs the alignment nothing, which is the same argument the cells rest on: every
+	   row carries this lane at the same basis with the same factor, so a deficit resolves it to
+	   the same width on all of them. The icons inside keep their own size and the rollup's
+	   progress bar is what gives way. */
+	flex: 0 1 calc(var(--pbl-meta-col, 84px) + 2 * (12px + var(--size-2-1)));
+	min-width: 0;
 }
 
 .pbl-shelf-list .pbl-shelf-reason > span:not(.pbl-shelf-reason-icon),
@@ -1381,21 +1422,31 @@ ones being replaced record measurements that stay true and must be carried forwa
 	white-space: nowrap;
 }
 
-/* **The visual order, and why moving these two is safe.** The notes box is appended after the
-   property cells in the DOM, and it reads better between the title and them. Nothing about
-   ALIGNMENT depends on the order — every item after the flexible title has a fixed width, so
-   the trailing block starts at the same x whatever sequence it is in — this is legibility
-   alone. `styles/shelf.css` already reorders one element (`.pbl-dragging .pbl-shelf-empty`)
-   and states the test: nothing focusable may be separated from its place in the document.
-   Both boxes moved here hold `tabindex="-1"` controls only, which are out of the tab order by
-   the composite's own rule, and the pane's arrows walk CARDS rather than cells — so no reader
-   traverses these in a sequence this could contradict. */
-.pbl-shelf-list .pbl-card-summary .pbl-props {
+/* **The visual order, stated for all three trailing boxes rather than two.** The notes box is
+   created BEFORE `renderCardBody` runs — it has to be, since the body is what fills it — so in
+   the DOM it sits between the fold slot and the badge. Left at the default `order: 0` it would
+   draw there too: `fold → notes → badge → title`, which is not the row this plan describes and
+   which puts a lane between the fold slot and the badge that Task 5's child indent does not
+   account for. (Codex, PR #187.) The three are therefore ordered explicitly, and the fold slot,
+   badge, title and parent keep the default 0 in document order ahead of them.
+
+   Nothing about ALIGNMENT depends on this — every item after the flexible title has the same
+   width on every row, so the trailing block starts at the same x whatever sequence it is in.
+   This is legibility. `styles/shelf.css` already reorders one element
+   (`.pbl-dragging .pbl-shelf-empty`) and states the test: nothing focusable may be separated
+   from its place in the document. These three hold `tabindex="-1"` controls only, out of the
+   tab order by the composite's own rule, and the pane's arrows walk CARDS rather than cells —
+   so no reader traverses them in a sequence this could contradict. */
+.pbl-shelf-list .pbl-shelf-notes {
 	order: 1;
 }
 
-.pbl-shelf-list .pbl-shelf-state {
+.pbl-shelf-list .pbl-card-summary .pbl-props {
 	order: 2;
+}
+
+.pbl-shelf-list .pbl-shelf-state {
+	order: 3;
 }
 
 /* The parent link shares the flexible region with the title rather than sitting in the fixed
