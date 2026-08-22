@@ -38,9 +38,10 @@ export interface ReleaseRow {
 export interface ReleaseIndex {
 	rows: ReleaseRow[];
 	/**
-	 * Items carrying a membership value that named no release — a link to something that
-	 * is not a release, two values at once, or a non-plan row carrying the property by
-	 * hand. Reported rather than dropped: they belong to no release, so they appear on no
+	 * Items whose membership value named no release this base holds — the RULE rather than
+	 * a list of the ways, because {@link membershipTarget} already enumerates its refusals
+	 * and a second copy beside them drifts: this comment named three while the code made
+	 * five. Reported rather than dropped: they belong to no release, so they appear on no
 	 * release's screen and this is the only place they can be seen.
 	 */
 	unresolved: BacklogItem[];
@@ -164,9 +165,11 @@ export function releaseIndex(app: App, model: BacklogModel, settings: ReleaseSet
 	});
 
 	rows.sort((a, b) => {
-		// Values compared, never their difference — `Infinity - Infinity` is `NaN` and
-		// `Infinity - n` is `Infinity`, and a comparator that returns either sorts at
-		// random. Both keys below use the same shape for the same reason.
+		// Values compared, never their difference — two undated releases make
+		// `Infinity - Infinity`, which is `NaN`, and a comparator that returns `NaN` sorts
+		// at random. `Infinity` itself is not the hazard: `sort` reads only the SIGN of the
+		// result, so `Infinity - n` would order correctly. Both keys below use the same
+		// shape, the second one for the further reason stated at it.
 		if (dateKey(a.target) !== dateKey(b.target)) return dateKey(a.target) < dateKey(b.target) ? -1 : 1;
 		// NOT `rank(a) - rank(b)` guarded by `Number.isFinite`: an unranked release is
 		// `+Infinity`, and `Infinity - 10` is `Infinity`, which that guard rejects — so the

@@ -17,8 +17,8 @@ must not appear is a *second* superlinear step beside it.
 
 Two of those properties are checks (`test/domain/modelCost.test.ts`) and the rest of the
 paragraph above is prose. Checked: the vault is read **once per note loaded** — `addItem`
-holds the only `getFileCache` call site in this layer, so a later phase re-reading the
-cache per item shows up as n² — and **every item is sorted exactly once**, the sum of the
+holds the only `getFileCache` call site `buildModel` reaches, so a later phase re-reading
+the cache per item shows up as n² — and **every item is sorted exactly once**, the sum of the
 sibling groups `sortSiblingsDeep` sorts equalling the item count, so a phase that
 re-sorts or a sort that moves into a per-item path fails. Not checked, and deliberately
 not claimed: a traversal phase that turned quadratic without reading the vault again or

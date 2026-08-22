@@ -173,9 +173,14 @@ describe('the release index', () => {
 		addMember(vault, 'F.md', 'Feature', 'R');
 		// The bare-name spelling `resolveParent` already tolerates, resolved the same way.
 		vault.addFile('G.md', { frontmatter: { type: 'PBI', release: 'R' } });
+		// A ONE-element list is a real membership, not two values at once: `readString`
+		// unwraps it, so only a list of two or more is the ambiguity 1c refuses. The cache
+		// is the one a vault really builds for a list value (`release.0`), through
+		// `listLinks`.
+		vault.addFile('H.md', { frontmatter: { type: 'PBI' }, listLinks: { release: ['R'] } });
 		const rows = indexOf(vault).rows;
 		expect(rows.find((r) => r.name === 'R')?.members).toEqual({
-			value: 2,
+			value: 3,
 			invalid: false,
 			unconfigured: false,
 		});
@@ -230,7 +235,7 @@ describe('the release index', () => {
 		expect(rows[0].members.value).toBe(0);
 	});
 
-	it('never counts a release the Base excluded, and never scans one', () => {
+	it('never scans a row the Base excluded, so its membership never counts', () => {
 		const vault = new FakeVault();
 		vault.addFile('R.md', { frontmatter: { type: 'Release' } });
 		// A context row: excluded from the Base, pulled in as the parent of a result.

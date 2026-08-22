@@ -83,4 +83,4 @@ The membership read is `src/domain/releases.ts`, beside `src/domain/board.ts` an
 `src/domain/roadmap.ts` and shaped like them — it derives from the model in
 `src/domain/model.ts` and touches no DOM. The rows reuse `src/view/render/rows.ts` and the
 context marking already there; the empty state is in `src/view/render/emptyStates.ts` and the
-membership key is declared in `src/domain/viewOptions.ts`.
+membership key is declared in `src/domain/releaseOptions.ts`.

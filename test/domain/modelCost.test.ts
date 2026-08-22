@@ -60,8 +60,8 @@ describe('model build cost', () => {
 		expect(small.items).toBe(20);
 		expect(large.items).toBe(400);
 
-		// `addItem` is the only `getFileCache` call site in `domain/`, and it runs once per
-		// note loaded. A later phase re-reading the cache per item shows up here as n².
+		// `addItem` is the only `getFileCache` call site `buildModel` reaches, and it runs
+		// once per note loaded. A later phase re-reading the cache per item shows up here as n².
 		expect(small.reads).toBe(small.items);
 		expect(large.reads).toBe(large.items);
 
