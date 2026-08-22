@@ -35,52 +35,21 @@ repository itself as the vault, so opening this folder in Obsidian and then
 
 ## Use cases
 
-- **`getLanguage()` returns what its typings promise.** This is the one assumption nothing
-  anywhere has tested: `initLocale()` reads Obsidian's language at `onload`, and the jsdom
-  harness mocks that call, so no run of the suite has ever exercised the real one. Set
-  Obsidian to a non-English language, restart it (the plugin reads the language once and
-  never re-reads it), and open a base. **Every surface should render English, and the
-  developer console should be clean.** A thrown error, a blank label or a key rendered as
-  its own name are the three failures worth looking for. **Never checked.**
+- [[The plugin under a non-English Obsidian]] — the one assumption nothing anywhere has
+  tested, because the jsdom harness mocks the call it rests on. **Never checked.**
 
-- **The re-joined lists read correctly.** `Intl.ListFormat` replaced fixed separators, so
-  three items now read `A, B, and C` where they read `A, B, C`. Only ONE of the three
-  joins is plainly visible, which is the thing to know before planning this: press the
-  toolbar's ✨ on a base with three or more unnamed optional properties, and the
-  **adopted-property fragments in the outcome notice** are joined this way. The other two
-  are not ordinary visible text. A row's **prerequisites** (`timeline.waitsFor`) are joined
-  into a visually hidden span on every waiting row, and the lead cell repeats them as a
-  tooltip *only* when a prerequisite conflicts or is broken — so three ordinary valid
-  dependencies produce no tooltip at all, and the visible route needs a conflicting or
-  missing one. A **resource's absences** (`lane.unavailable`) are joined into the lane
-  head's `aria-description` and are visible nowhere: a screen reader or the accessibility
-  inspector is the only route to them. Check the joining, the spacing and that none runs a
-  full stop into a conjunction. **Never checked.**
+- [[The lists Intl.ListFormat joins]] — the three surfaces where three items now read
+  `A, B, and C`, and the different route each one actually needs: only the backfill's
+  outcome notice is ordinary visible text. **Never checked.**
 
-- **The configuration warning reads as one sentence.** Every surface states a bad
-  configuration over one fragment (`settings.sharedKey`) behind one lead now, but they do
-  NOT all say the same thing and a check expecting that would report the intended
-  behaviour as a failure. `config.fixAll` lists every problem and has two surfaces — the
-  toolbar warning chip's tooltip and accessible name, and the readme command's refusal.
-  `config.fixFirst` names the FIRST problem only and is everything else, the write gate
-  among them. So: point two view options at one property, then a second pair at another —
-  parent and order at the same key, plus two more, is the quickest. The chip and the readme
-  should read `Fix the view options first: the parent and order properties share the key
-  "rank", and the …`; a refused write should name one collision and stop. What is shared
-  is the lead and the fragment, never the list. **Never checked.**
+- [[One configuration warning, two shapes]] — one fragment behind one lead, on surfaces
+  that deliberately do not all say the same thing. **Never checked.**
 
-- **The view options menu survives its own labels.** Every group name, option name and
-  prose placeholder comes from the catalog now. Open the options panel and check that no
-  label is clipped, no group heading wraps oddly, and the `Open the note in` dropdown shows
-  its three choices — those were English literals until 2026-08-22 and are keyed now.
-  Partly answerable in English only: a longer translated label is the case this cannot
-  reach. **Never checked.**
+- [[The view options menu at its own labels]] — the densest text surface the plugin has,
+  read at width and at its minimum. **Never checked.**
 
-- **The estimation view's refusals end as sentences.** `Fix the estimation model first: …`
-  gained a terminal period on 2026-08-22 after a merge left it without one. Bind two
-  estimation slots to the same property and press the guided setup: the notice should end
-  in a full stop, and the problem block above the table should list each fault as its own
-  line under its lead. **Never checked.**
+- [[The estimation view's refusals end as sentences]] — a terminal period, and a problem
+  block that replaces the table rather than sitting above it. **Never checked.**
 
 - **Nothing regressed in the ordinary surfaces.** The sweep touched every rendering module
   without changing what any of them does, which is the claim the other five suites in this
