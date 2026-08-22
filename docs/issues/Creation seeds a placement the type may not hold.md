@@ -68,6 +68,16 @@ not deliver. *Write the guarantee to the check, never ahead of it.*
 
 ## What would lift it
 
+There is now one place to make that decision. `mayHoldField` (`src/domain/itemTypes.ts`)
+answers "may a note of this type hold this optional property", and every door a planning
+key reaches a note through asks it: the writer's TOCTOU refusal, the ✨ backfill's stubs at
+both the planner and the writer. It is name-shaped for the same ruling recorded above —
+only a `Release` is asked — and the settings are a parameter so that the rule-shaped body
+needs no call site to change. Creation is the one door that does NOT ask it yet: it still
+spells `isReleaseType` in `createBacklogItem`, which is exactly the narrowing this note is
+about, so option 1 below is now two edits rather than one — that body, and routing the
+creation seed through it.
+
 Two ways out, and they are not equivalent:
 
 1. **Derive the seed from `placementEnds`.** One filter in `createBacklogItem`, covering

@@ -379,6 +379,25 @@ describe('write safety with context rows, across every entry point', () => {
 				}
 			}
 		}
+		// `Set iteration`, aimed and asserted BEFORE the sweep: a submenu whose picks all
+		// no-op would satisfy `commandsDriven` below while writing nothing anywhere.
+		// It cannot be asked after the sweep any more — `Set type` offers `Release`, and a
+		// row the sweep has retyped to one is a note whose LIVE type may hold no iteration
+		// key (`refusesLiveType`, `src/storage/frontmatter.ts`), so every pick after that
+		// is refused exactly as it should be. `Sprint 12` carries two dates, so this is the
+		// link and the timeframe through one pick.
+		for (const row of allRows) {
+			row.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+			const join = Menu.lastShown?.items.find((item) => item.titleText === 'Set iteration');
+			join?.clickHandler?.();
+			await flush();
+			for (const sub of join?.submenu?.items ?? []) {
+				sub.clickHandler?.();
+				await flush();
+			}
+		}
+		expect(vault.writeLog.some((w) => w.fm.iteration === '[[Sprint 12]]' && w.fm.start === '2026-09-07')).toBe(true);
+
 		// Every context-menu command, every chip, every structural shortcut
 		const tree = treeOf(containerEl);
 		// Which chip kinds the sweep actually found. A chip renders only where its
@@ -462,11 +481,6 @@ describe('write safety with context rows, across every entry point', () => {
 		expect(touched.filter((p) => CONTEXT_PATHS.includes(p))).toEqual([]);
 		// Not vacuous: the result rows really were written to along the way
 		expect(touched.length).toBeGreaterThan(0);
-		// And the newest entry point genuinely LANDED a write rather than merely being
-		// offered — a submenu whose picks all no-op would satisfy `commandsDriven` above
-		// while writing nothing anywhere. `Sprint 12` carries two dates, so this is the
-		// link and the timeframe through one pick.
-		expect(vault.writeLog.some((w) => w.fm.iteration === '[[Sprint 12]]' && w.fm.start === '2026-09-07')).toBe(true);
 	}, 20_000);
 });
 

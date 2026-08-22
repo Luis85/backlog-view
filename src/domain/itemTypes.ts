@@ -1,3 +1,4 @@
+import { OptionalField } from './optionalProperties';
 import { BacklogSettings } from './settings';
 import {
 	ABSENCE_TYPE,
@@ -365,4 +366,31 @@ export function placementEnds(typeName: string | null, iterationBars: boolean): 
 	// makes the very surface it was closing more permissive than before.
 	if (isReleaseType(typeName)) return [];
 	return drawsAsPoint(typeName, iterationBars) ? ['target'] : [...BOTH_ENDS];
+}
+
+/**
+ * Whether a note of this type may HOLD this optional property — one question, asked of
+ * the type a note states at the moment it is opened, and the only statement of it.
+ *
+ * Every planning key this plugin writes reaches a note through one of two doors: a
+ * gesture that names it, or the backfill that stubs it. Both used to answer this for
+ * themselves, and a rule answered twice is a rule with a hole in it — the horizon's
+ * live-type check sat inside `refusesAxis` (`storage/frontmatter.ts`), which returns at
+ * its first clause for a write carrying no `axis`, so the iteration assignment and the ✨
+ * backfill both reached a `Release` ungated. What each door DOES about a refusal still
+ * differs, and rightly: a gesture in flight refuses its batch loudly, a backfill stub is
+ * dropped and the rest of the batch goes on. What may not differ is the answer.
+ *
+ * **Name-shaped by ruling, not by oversight.** Only a `Release` is asked, so no shipped
+ * type's write behaviour changes here; the dated ends are already asked of the rule
+ * (`placementEnds`, which answers a release NO end), and the horizon and the iteration
+ * are the two the name still decides. Widening it to every type — a `Milestone`'s `start`
+ * is the known case — is an edit to this body and to nothing else, which is the whole
+ * reason the settings are a parameter rather than a lookup at each call site. See
+ * `docs/issues/Creation seeds a placement the type may not hold.md` for what that costs.
+ */
+export function mayHoldField(typeName: string | null, field: OptionalField, settings: BacklogSettings): boolean {
+	if (!isReleaseType(typeName)) return true;
+	if (field === 'start' || field === 'target') return placementEnds(typeName, settings.iterationBars).includes(field);
+	return field !== 'horizon' && field !== 'iteration';
 }

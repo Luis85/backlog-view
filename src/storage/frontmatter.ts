@@ -1,6 +1,6 @@
 import { App, Notice, TFile } from 'obsidian';
 import { StatedEnds } from '../domain/bars';
-import { isReleaseType, placementEnds, PlacementEnd } from '../domain/itemTypes';
+import { mayHoldField, placementEnds, PlacementEnd } from '../domain/itemTypes';
 import {
 	absentReading,
 	CivilDate,
@@ -13,7 +13,12 @@ import {
 	readTags,
 } from '../domain/noteFields';
 import { BacklogSettings, isDoneValue } from '../domain/settings';
-import { optionalKeyFor, resolvedDeliverableStateKey, resolvedTestStateKey } from '../domain/optionalProperties';
+import {
+	optionalKeyFor,
+	OptionalField,
+	resolvedDeliverableStateKey,
+	resolvedTestStateKey,
+} from '../domain/optionalProperties';
 import { DateSpan, daysBetween, reversedSpan } from '../domain/timeline';
 import { ItemWrite, TagDelta } from '../domain/writePlan';
 import { wikilinkTo } from './createNote';
@@ -134,13 +139,20 @@ export async function applyWrites(
 			// twice. Every date batch today is ONE write, so the two are the same thing —
 			// and the outcome below reports what actually landed rather than claiming
 			// nothing did, which is what makes the difference visible if that changes.
-			if (refusesAxis(fm, settings, write, ends, liveType)) {
+			if (refusesLiveType(settings, write, liveType) || refusesAxis(fm, settings, write, ends)) {
 				refused = true;
 				return;
 			}
-			const keys = touchedKeys(settings, write);
+			// The same question, with the other answer. A stub is not a gesture in flight:
+			// the backfill names hundreds of notes in one batch, so refusing it at the one
+			// release in the base would abandon every note after it, and what a release may
+			// not hold is DROPPED from the plan instead. Narrowed once, into a plan both
+			// halves below read, so `touchedKeys` and `applyInto` cannot come to disagree
+			// about the list — a key written but not captured is a change no undo can reach.
+			const planned = withHoldableStubs(write, liveType, settings);
+			const keys = touchedKeys(settings, planned);
 			const prior = keys.map((key) => rawValueOf(fm, key));
-			const lists = applyInto(app, fm, settings, write);
+			const lists = applyInto(app, fm, settings, planned);
 			inverse = captureInverse(write.file, keys, prior, fm, lists);
 			if (write.axis && (write.axis.start !== undefined || write.axis.target !== undefined)) {
 				// Narrowed to the ends the placement HAS, on both sides. A marker keeps a
@@ -157,7 +169,7 @@ export async function applyWrites(
 			}
 		});
 		if (refused) {
-			console.error('Product Backlog: refused a date batch the note no longer fits', write);
+			console.error('Product Backlog: refused a batch the note no longer fits', write);
 			new Notice(
 				outcome.changed
 					? 'That note changed while the move was in flight, so the rest of the move was not written.'
@@ -461,6 +473,54 @@ function narrowReadings(readings: StatedEnds, ends: PlacementEnd[]): StatedEnds 
 }
 
 /**
+ * Whether this write carries a planning key the note's LIVE type may not hold — the
+ * TOCTOU refusal, asked of the type the note states right now rather than of the type the
+ * plan was made against.
+ *
+ * One question over every such key, because it was two answers and the second had a hole
+ * in it: the horizon's live-type check lived inside {@link refusesAxis}, which returns at
+ * its first clause for a write carrying no `axis` at all, so the iteration assignment
+ * (`iteration`, and the sprint's dates when it maps any) walked straight past it onto a
+ * note somebody had retyped to `Release`. `canSetIteration` then refuses to offer the
+ * removal, so the key could not be taken off again through any control the view draws.
+ *
+ * The whole batch is refused, loudly, exactly as a stale date batch is — this is a
+ * gesture the user made against a note that is no longer the note they made it against.
+ * `mayHoldField` is the rule; what each door does about a refusal is the door's own.
+ *
+ * `undoLast` reaches none of this: a replay goes through `applyRestores`, which restores
+ * the RAW captured keys and asks nothing here, so a legitimate write made before a retype
+ * can still be taken back.
+ */
+function refusesLiveType(settings: BacklogSettings, write: ItemWrite, liveType: string | null): boolean {
+	const carried: [OptionalField, boolean][] = [
+		['horizon', write.axis?.horizon !== undefined],
+		['start', write.axis?.start !== undefined],
+		['target', write.axis?.target !== undefined],
+		['iteration', write.iteration !== undefined],
+	];
+	return carried.some(([field, present]) => present && !mayHoldField(liveType, field, settings));
+}
+
+/**
+ * The same plan with the stubs this note's LIVE type may not hold dropped — the ✨
+ * backfill's half of {@link refusesLiveType}'s question, and the reason it is not that
+ * function: a stub is an empty key the reader is invited to fill, not a placement, so
+ * refusing the batch over one would abandon every note after it for a key that carries no
+ * decision. `missingKeyStubs` (`domain/writePlan.ts`) already declines to plan them;
+ * authorization at plan time is not authorization at write time, and a retype between the
+ * plan and this callback is exactly the window that guard cannot see.
+ *
+ * Returns the write itself where nothing is dropped, so the ordinary batch allocates
+ * nothing and the two readers below are literally handed one object.
+ */
+function withHoldableStubs(write: ItemWrite, liveType: string | null, settings: BacklogSettings): ItemWrite {
+	if (!write.stubs) return write;
+	const stubs = write.stubs.filter((field) => mayHoldField(liveType, field, settings));
+	return stubs.length === write.stubs.length ? write : { ...write, stubs };
+}
+
+/**
  * Why a date batch may not land on this note, asked of the LIVE frontmatter.
  *
  * Two questions, both about the note having moved under the plan:
@@ -487,24 +547,9 @@ function refusesAxis(
 	settings: BacklogSettings,
 	write: ItemWrite,
 	live: PlacementEnd[],
-	liveType: string | null,
 ): boolean {
 	const axis = write.axis;
 	if (!axis) return false;
-	// The HORIZON, before the dates — and before the `ends` test below, which returns for
-	// it: a horizon write carries no `ends`, so every line after that one is the dated
-	// axis's and this branch would never have read the note at all. A `Release` takes no
-	// horizon (`computeHorizonWrites`), and that refusal was model-time only: a batch
-	// planned against a `PBI` the reader retyped mid-flight still landed. Authorization at
-	// plan time is not authorization at write time, which is `applySafely`'s own argument
-	// and the reason the dated axis has had this check all along.
-	//
-	// Not shared with the `ends` comparison below because they are different questions: one
-	// asks whether the SHAPE the gesture was planned under still holds, the other whether
-	// this type may hold a horizon at all. `undoLast` reaches none of this — a replay goes
-	// through `applyRestores`, which restores captured keys and asks nothing here, so a
-	// legitimate horizon write made before a retype can still be taken back.
-	if (axis.horizon !== undefined && isReleaseType(liveType)) return true;
 	if (axis.ends === undefined) return false;
 	if (live.length !== axis.ends.length || live.some((end) => !axis.ends?.includes(end))) return true;
 	const readings = axisReadings(fm, settings);
