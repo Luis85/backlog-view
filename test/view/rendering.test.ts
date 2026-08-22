@@ -246,10 +246,15 @@ describe('rendering', () => {
 		// display: none (which drops out of flow, growing the auto-width card cell around
 		// it on reveal) to this same opacity trade for the same reason.
 		//
-		// The same four also need a `:focus-visible` reveal, checked here rather than
-		// by cascade order: focus can only arrive programmatically (every one is
-		// `tabindex="-1"`), and a control that is focused and invisible is worse than
-		// one merely always shown. `:focus-visible` outranks the plain-class hide on
+		// The same six also need a `:focus-visible` reveal, checked here rather than
+		// by cascade order: for most of them focus can only arrive programmatically
+		// (`tabindex="-1"`), and a control that is focused and invisible is worse than
+		// one merely always shown. `.pbl-est-clear` is the one exception — a plain
+		// `<button>` with NO `tabindex` at all, which is exactly why it sits outside
+		// the panel's radiogroup as a real tab stop — but the same reveal rule still
+		// has to cover it, since a control can be focused either way and this file
+		// checks the rule, not which path got it there.
+		// `:focus-visible` outranks the plain-class hide on
 		// SPECIFICITY (an extra pseudo-class), so unlike the hover: none reveal it wins
 		// regardless of where in the file it is written — the check is only that the
 		// rule exists, which is exactly the gap the tag buttons shipped with.
@@ -267,6 +272,7 @@ describe('rendering', () => {
 			'.pbl-tag-remove',
 			'.pbl-tag-add',
 			'button.pbl-bar-connector',
+			'.pbl-est-clear',
 		]) {
 			const hides = ruleAt(selector, 'opacity: 0;');
 			const reveals = ruleAt(selector, 'opacity: 1;', '(hover: none)');

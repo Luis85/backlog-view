@@ -1,0 +1,371 @@
+/* ==========================================================================
+   The estimation view: a flat results table beside a per-item rubric panel.
+
+   Previewed here before the view exists — `docs/superpowers/specs/2026-08-16-
+   estimation-view-refactor-design.md` is the design, `test/harness/mock.ts`
+   (uncommitted) is the hand-drawn markup that argues this layout against the real
+   stylesheet. The render modules land in `src/view/estimation/` from Task 6 on; this
+   partial is the vocabulary they render into (`.pbl-est-*`, named in the task brief).
+   ========================================================================== */
+
+/*
+ * Table left, panel right — CSS Grid, not flex-wrap, and that choice is load-bearing
+ * rather than a style preference. Flex-wrap was tried first (the panel's floor and
+ * ceiling as its flex-basis, the table given a real floor so the pair could run out
+ * of room and wrap): measured in this harness, a WRAPPING flex row sizes its single
+ * line from the items' own unconstrained content height rather than the container's
+ * — `min-height: 0` does not stop it — so a panel with enough dimensions to need
+ * scrolling instead pulled the whole row (table included) up to its full unclipped
+ * content height. `flex-wrap: nowrap` and grid both measured correctly; grid is the
+ * one of those two that still lays two items side by side.
+ *
+ * The trade this costs: an explicit two-track grid does not reflow on its own, so
+ * "panel stacks below at narrow width" is not what this gives — `@container` is not
+ * available and neither is a media query that knows the pane's own width here (see
+ * `test/CLAUDE.md`, "Looking at it"). What it gives instead: the table's `minmax(0,
+ * …)` floor lets it shrink first, so a narrow pane squeezes the table before the
+ * panel ever loses its 320px floor — graceful, not stacked. A real breakpoint wants
+ * a live vault's actual pane widths, not a guess made here.
+ */
+/* The shell: `.pbl-view`'s flex column (`view.css`) now carries the toolbar above the
+   grid below it, rather than being the grid itself — `.pbl-est-view` keeps every rule
+   below unchanged, it is just no longer the view's root element. */
+.pbl-est-shell > .pbl-est-view {
+	flex: 1 1 auto;
+	min-height: 0;
+}
+
+.pbl-est-view {
+	display: grid;
+	/* 320–420px, from 280–360px. A label, five point buttons and the clear control do not fit
+	   in 360px — measured, not estimated. The table pays, which is what its own `minmax(0,
+	   1fr)` floor already says it should: it shrinks first by design. */
+	grid-template-columns: minmax(0, 1fr) minmax(320px, 420px);
+	align-items: stretch;
+	gap: var(--size-4-3);
+	padding: var(--size-4-3);
+	min-height: 0;
+}
+
+/* No row selected: `renderPanel` (`panel.ts`) draws nothing and toggles this class,
+   because the grid above reserves its second track's 320-420px whether or not anything
+   occupies it — left alone, an unselected table sits in a narrower left column for no
+   reason, with a blank quarter to a third of the pane doing nothing beside it. */
+.pbl-est-view.pbl-est-no-panel {
+	grid-template-columns: minmax(0, 1fr);
+}
+
+.pbl-est-table {
+	display: flex;
+	flex-direction: column;
+	/* A grid item's height floor is its content by default (the same `min-height:
+	   auto` story flex items have), which would grow the row to fit every result
+	   instead of ever reaching `overflow-y: auto` below — zeroed so the track height
+	   `.pbl-est-view` resolves (`align-items: stretch`) is the height it keeps. */
+	min-height: 0;
+	overflow-y: auto;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-m);
+}
+
+.pbl-est-panel {
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-4-3);
+	min-height: 0;
+	overflow-y: auto;
+	padding: var(--size-4-3);
+	/* THE PINNED-EDGE RULE (`styles/estimationPanel.css`'s `.pbl-est-header`): a sticky
+	   child pins at the SCROLLER's content edge, which sits inside this padding — left here,
+	   rows scrolled through a band ABOVE the header and were visible over it. The header now
+	   draws this same gap itself, so the panel gives up only the block-start side of it. */
+	padding-block-start: 0;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-m);
+	background-color: var(--background-secondary);
+}
+
+.pbl-est-panel h4 {
+	margin: 0;
+	font-size: var(--font-ui-smaller);
+	font-weight: var(--font-medium);
+	color: var(--text-muted);
+	text-transform: uppercase;
+	letter-spacing: 0.02em;
+}
+
+/* ==========================================================================
+   The table: a header row plus one flex row per result — no tree, no context
+   rows (every row here is a result, per the design), so nothing here reads
+   `--pbl-depth` or an indent guide the way tree.css's rows do.
+   ========================================================================== */
+
+/* The table declares a UI size. Measured without this rule: every row title and every
+   number rendered at 15px — the READING size inherited from the pane — under a header that
+   declares `--font-ui-smaller`. `--font-ui-small` is DESIGN.md's Body entry for exactly
+   these ("row titles, card titles") and what `tree.css`'s own rows use, so the estimation
+   table was the one list in the plugin set two steps larger than the rest.
+
+   On the table rather than on each cell: one declaration the header then overrides for
+   itself, instead of five that can drift apart. */
+.pbl-est-table {
+	font-size: var(--font-ui-small);
+}
+
+.pbl-est-head,
+.pbl-est-row {
+	display: flex;
+	align-items: center;
+	gap: var(--size-4-2);
+	min-height: 32px;
+	padding: var(--size-4-1) var(--size-4-3);
+}
+
+.pbl-est-head {
+	/* Stays put while the rows below it scroll inside `.pbl-est-table` — an opaque
+	   background is load-bearing here, not decoration, or a scrolled row shows
+	   through the labels. */
+	position: sticky;
+	top: 0;
+	z-index: 1;
+	background-color: var(--background-primary);
+	border-bottom: 1px solid var(--background-modifier-border);
+	font-size: var(--font-ui-smaller);
+	font-weight: var(--font-medium);
+	color: var(--text-muted);
+}
+
+.pbl-est-row {
+	border-bottom: 1px solid var(--background-modifier-border);
+	cursor: pointer;
+	/* `selectRow` scrolls a keyboard step with `block: 'nearest'`, which lands the row
+	   flush against this scroller's edge — under `.pbl-est-head`, which is sticky at
+	   `top: 0` inside it. So `ArrowUp` used to park the selected row behind the column
+	   labels. 32px is that header's own `min-height`; a margin here is the platform
+	   answering it, with nothing measured at runtime. NOT mirrored on `.pbl-est-dim`,
+	   which is a deliberate DEVIATION from the spec and not a fact about the panel's
+	   layout: the argument is that `renderPanel` restores the panel's scroll position so a
+	   refocused point is already on screen, and that `.pbl-est-header` is content-sized so
+	   a constant would guess. Nothing checks it; no vault look has been made. */
+	scroll-margin-block-start: var(--size-4-8);
+}
+
+.pbl-est-row:last-child {
+	border-bottom: none;
+}
+
+.pbl-est-row:hover {
+	background-color: var(--background-modifier-hover);
+}
+
+/* The same idiom `.pbl-row.pbl-selected` (tree.css) and `.pbl-card.pbl-selected`
+   (cards.css) already use: the row whose panel is on screen, not a filter or a
+   write target of its own — the shared class name says so is the same fact
+   everywhere it appears. */
+.pbl-est-row.pbl-selected {
+	background-color: var(--background-modifier-hover);
+	box-shadow: inset 2px 0 0 var(--interactive-accent);
+}
+
+.pbl-est-title {
+	flex: 1 1 auto;
+	/* Not 0. At a pane narrow enough to need it, `flex-shrink` has nowhere else to take
+	   the deficit from — every sibling here is a fixed-width numeric column — so a bare
+	   `min-width: 0` shrank the ONE column naming which row this is to nothing rather
+	   than to a truncated sliver: at 700px the title occupied zero pixels and the row
+	   opened directly on "Value", unreadable rather than merely narrow. Seen only in
+	   Chromium, where flex actually distributes a deficit; jsdom never lays the row out
+	   to shrink it at all. 96px was chosen as the narrowest floor a column here gets away
+	   with; `.pbl-est-currency` below no longer shares it — that column is a fixed 140px
+	   now, not a `min-width`, per the block below naming why. */
+	min-width: 96px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	/* Both properties, because this one class draws two different elements: a plain
+	   `<div>` for a row, where `text-align` positions the text, and — for this column's
+	   sortable header — a real `<button>`, where Obsidian's own default
+	   (`display: inline-flex`) makes `text-align` do nothing at all; `justify-content` is
+	   what actually places a flex item's content, the same fact `cardChildren.css` states
+	   for a card's own disclosure toggle. One column, one rule, read by whichever element
+	   needs it — never two rules that can drift, which is what let a
+	   `button.pbl-est-title { text-align: start }` rule ship and do nothing (2026-08-17):
+	   correct for the row's div, inert on the header's flex item, so "Item" rendered
+	   centred over a flush-left column of titles. */
+	text-align: start;
+	justify-content: flex-start;
+	color: var(--text-normal);
+}
+
+/* The plain numeric columns — confidence and effort carry no state of their own,
+   so they get no dedicated class, only the shared sizing every fixed column
+   needs. `.pbl-est-total` and `.pbl-est-coverage` add their own colour and
+   weight below but share this same box. */
+.pbl-est-cell,
+.pbl-est-total,
+.pbl-est-coverage {
+	flex: 0 0 72px;
+	width: 72px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	text-align: end;
+	/* The header button's own alignment — see `.pbl-est-title`'s comment above for why a
+	   flex-item property has to sit beside `text-align` on this same rule. Harmless on
+	   every plain `<div>` this class also draws (the row cell, the panel's decomposition
+	   summary): `justify-content` does nothing to an element that is not itself a flex or
+	   grid container. */
+	justify-content: flex-end;
+	font-variant-numeric: tabular-nums;
+	color: var(--text-muted);
+}
+
+.pbl-est-total {
+	color: var(--text-normal);
+	font-weight: var(--font-medium);
+}
+
+/* The two cells that carry a strip. A `column` flex holding the number plus a 3px strip and a
+   3px gap measured ~24px against a plain cell's ~18px line, and a row that centres each cell
+   as a whole then starts the taller cell's number higher — every cell centred correctly and
+   the four numbers 3px apart, in a table whose whole job is comparing numbers across a row.
+
+   So the strip leaves the box model and STAYS INSIDE THE CELL while doing it: these three
+   classes share `overflow: hidden` above, so a strip hung below its cell would be clipped
+   away entirely. `stretch` makes the cell as tall as the row's content box rather than as
+   tall as its own contents, and a flex ROW with `align-items: center` is what every plain
+   numeric cell already EFFECTIVELY is — measured, that "effectively" was the bug: a plain
+   cell centres an INLINE SPAN, whose height is a line box (17.0px), while a strip cell
+   centred a FLEX ITEM, whose height is a content box (16.9px) — two different layout paths
+   for the same-looking number, one device pixel apart (`NUM top` 106.0 vs 105.0). Confidence
+   and effort join this rule for that reason, not for a strip they do not carry: turning them
+   into one-child flex rows too puts every numeric cell's number through the SAME path, and
+   `?measure` reads all four at top=106.0 once they do.
+
+   Third instance of one idea, after the panel's clear control: a decoration that annotates a
+   value must not be allowed to size the box the value is centred in.
+
+   Scoped to a ROW's cells: these three class names are worn by three different elements — a
+   row cell, a sortable header button, and the panel's decomposition summary — and an unscoped
+   declaration here restyled all three at once, once. */
+.pbl-est-row > .pbl-est-cell,
+.pbl-est-row > .pbl-est-total,
+.pbl-est-row > .pbl-est-coverage {
+	display: flex;
+	align-items: center;
+	align-self: stretch;
+	position: relative;
+}
+
+/* One element, one declaration: the fill and the track are a hard-stop gradient rather than
+   a nested fill div. `3px` is `rounded.bar` in DESIGN.md — the declared radius for a bar.
+
+   Against the CELL (`position: relative` above), spanning its inline extent at the block
+   end: the strip sits flush with the cell's own block-end edge, and zero is where a harness
+   reading (`?measure`'s `NUM` probe, ADR 0020 — a reading, not a check) put it, keeping the
+   strip drawing under the number rather than reopening the 3px gap the rest of this change
+   closes. No test re-runs that reading, so a future change to the cell's own height is not
+   caught here if it moves the strip again. */
+.pbl-est-strip {
+	position: absolute;
+	inset-inline: 0;
+	inset-block-end: 0;
+	height: 3px;
+	border-radius: 3px;
+	background: linear-gradient(
+		to right,
+		var(--pbl-strip-color, var(--text-faint)) var(--pbl-progress, 0%),
+		var(--background-modifier-border) var(--pbl-progress, 0%)
+	);
+}
+
+/* Value takes the accent; coverage stays faint, so two strips read as one system rather
+   than as two competing claims. The accent on a magnitude is a colour spend and its licence
+   is `components.bar` in DESIGN.md, which already declares the accent for the timeline bar —
+   also a magnitude. Second use of a precedent, not a new meaning. */
+.pbl-est-row > .pbl-est-total .pbl-est-strip {
+	--pbl-strip-color: var(--interactive-accent);
+}
+
+/* A dash rather than an empty box: `test/CLAUDE.md`'s absence rule for the tree
+   applies here too — nothing computed reads as a stated absence, not as a blank
+   cell that could be mistaken for a render that has not finished yet. The mock
+   spells the dash in markup; a real row would test the same case against
+   `result === null`. The currency chip joined this list rather than spelling its
+   own em dash in `en.ts`: two different glyphs for one absence, one row apart, is
+   what a hand-written dash beside this rule cost before. */
+.pbl-est-cell:empty::before,
+.pbl-est-total:empty::before,
+.pbl-est-coverage:empty::before,
+.pbl-est-currency:empty::before {
+	content: '\2013';
+}
+
+/* Six real buttons since Task 9 — sortable headers. `button.pbl-est-point`
+   (`estimationPanel.css`) states the recipe in full: qualifying the reset
+   with the element ties the specificity against Obsidian's
+   `button:not(.clickable-icon)`. */
+button.pbl-est-sort {
+	appearance: none;
+	padding: 0;
+	margin: 0;
+	border: none;
+	background: none;
+	box-shadow: none;
+	font: inherit;
+	color: inherit;
+	cursor: pointer;
+}
+
+button.pbl-est-sort:hover,
+button.pbl-est-sort[aria-sort] {
+	color: var(--text-normal);
+}
+
+button.pbl-est-sort:focus-visible {
+	outline: 1px solid var(--interactive-accent);
+	outline-offset: 1px;
+}
+
+/* The label shrinks and the direction does not. `Confidence` is the widest header word in a
+   fixed 72px column and leaves about 10px of slack, so without this split a glyph pushes the
+   label into the cell's own ellipsis — and the direction, the smaller of the two, is what a
+   shrink-to-fit would drop first. 10px rather than an icon's usual 12px for the same reason.
+   Worth stating plainly, the way `button.pbl-est-title { text-align: start }` (2026-08-17)
+   should have been: only `.pbl-est-title`'s own `overflow`/`text-overflow` are still live on
+   the ROW's plain `<div>`. The numeric three (`.pbl-est-cell`/`.pbl-est-total`/
+   `.pbl-est-coverage`) are flex containers below this point (decision 6, `.pbl-est-row >
+   .pbl-est-cell` and its neighbours) — `text-overflow` applies to a block container's inline
+   content, not to a flex item's, so their copy is now INERT on a row too, exactly as it
+   already was on a header button. `overflow: hidden` still clips in both cases; only the
+   ellipsis is lost. `sort.test.ts`'s "puts the label in its own span so the direction is never
+   what truncates" proves the button side; `test/i18n/estimation.test.ts`'s "leaves a body row
+   carrying nothing but its own data" proves only that the row draws its own text, never that
+   an ellipsis rule on it is live — no check here renders a row narrow enough to truncate. */
+.pbl-est-sort-label {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.pbl-est-sort-dir {
+	display: inline-flex;
+	align-items: center;
+	flex: 0 0 auto;
+}
+
+.pbl-est-sort-dir .svg-icon {
+	width: 10px;
+	height: 10px;
+}
+
+/* The toolbar's own count (`toolbar.ts`) — everything else it draws is
+   `styles/toolbar.css`'s existing `.pbl-toolbar`/`.pbl-icon-btn`/`.pbl-toolbar-spacer`
+   vocabulary, so this is the only new rule the toolbar needs here. `tabular-nums`
+   because the pair changes in place as items are scored — DESIGN.md's Tabular Number
+   Rule, the same treatment the filtered count and the WIP limit take. */
+.pbl-est-count {
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+	font-variant-numeric: tabular-nums;
+}

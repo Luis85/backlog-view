@@ -1,4 +1,4 @@
-import { BasesAllOptions, BasesOptions, BasesPropertyId, BasesViewConfig } from 'obsidian';
+import { BasesAllOptions, BasesOptions, BasesViewConfig } from 'obsidian';
 import {
 	BacklogSettings,
 	columnPolicyKey,
@@ -9,7 +9,7 @@ import {
 	DEFAULT_RISK_VALUES,
 	wipLimitKey,
 } from './settings';
-import { OptionalField, optionalProperty } from './optionalProperties';
+import { notePropsOnly, OptionalField, optionalProperty } from './optionalProperties';
 import { resolveSettings } from './settingsResolve';
 import { ABSENCE_TYPE, ALL_TYPES, DEFAULT_HOME_FOLDER, defaultTypeFolder, typeFolderKey } from './typeVocabulary';
 import { defaultItemHandling, OPEN_TARGETS } from './itemHandling';
@@ -23,8 +23,6 @@ import { defaultItemHandling, OPEN_TARGETS } from './itemHandling';
  * Every `key` here is PERSISTED in the user's `.base` file and read back by
  * `resolveSettings`. Renaming one silently resets that option for everyone.
  */
-
-const notePropsOnly = (prop: BasesPropertyId) => prop.startsWith('note.');
 
 /**
  * The picker for one of the optional properties. Its persisted key and the key it

@@ -61,5 +61,37 @@ A finer scale is a wider range, not a fractional step: a team wanting halves bet
 declares 2–10. Steps of their own are refused for the reason the whole register refuses
 options — nothing needs one that a range cannot already express.
 
+**Two refusals are about the property NAMES rather than the arithmetic, and they are made
+in the same place.** A model whose total and stamp are BOTH unnamed is refused, not only
+one whose pair is half named: [[Business value estimation]] offers scoring only where both
+are bound, and a model with a dimension bound and neither of the pair would compute a total
+and write it under no key at all. And one property bound to two slots is refused, naming
+both — the two writes land in one batch, so the second value silently overwrites the first
+and one key carries two inverses. That is the backlog's own shared-key report, over this
+model's slots.
+
+**A hand-edited option is read as the `.base` spells it.** A weight, a range, a label or a
+rubric sentence typed as an unquoted number is a YAML number, and it resolves to what the
+options box shows rather than falling back to the shipped value behind the user's back.
+
 **Outcome** — A team scores what it actually cares about, under the property names its
 vault already uses, and any two implementations of the model agree on the number.
+
+## Where it lives
+
+`src/domain/scoringModel.ts` (the model's own shape — `ScoringDimension`, `ScaleConfig`,
+`ScoringModel` — and `modelProblems`, which turns this note's arithmetic rules into the
+config-warning shape a saved model that cannot be trusted to score reports instead of
+computing) · `src/domain/defaultModel.ts` (the shipped eight dimensions and their rubric
+sentences, transcribed from this epic's PRD as data rather than catalog text — two
+locales must not write two models) · `src/domain/estimationSettings.ts`
+(`resolveEstimationSettings`, reading a dimension's range, weight, property and rubric
+off the `.base` the way `settingsResolve.ts` reads the backlog's) ·
+`src/domain/estimationOptions.ts` (the options menu those dimensions and the model's
+value/stamp properties are configured through).
+
+Rubric sentences are stored per point in the `.base` and edited there this round — the
+options menu offers no box for one; the editing surface is [[A rubric for every point]]'s
+open half.
+
+Tests: **`test/domain/scoringModel.test.ts`**.

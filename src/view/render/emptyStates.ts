@@ -18,9 +18,12 @@ import { manualSections } from '../manual/sections';
  * The shell every piece of *guidance* shares — icon, title, hint — returned so the
  * caller can add the one action that differs. Written once because the class names are
  * the contract `docs/requirements/One stylesheet per concern.md` maps to this module,
- * and five hand-written copies of them are five places a rename has to land.
+ * and hand-written copies of them are places a rename has to land — which is what the
+ * estimation view's own unconfigured state was until 2026-08-17: exported so
+ * `estimationView.ts` can call it too, rather than hand-rolling the same four classes a
+ * sixth time and drifting from them (it had, missing `.pbl-empty-title`).
  */
-function guidanceShell(treeEl: HTMLElement, icon: string, title: string, hint: string): HTMLElement {
+export function guidanceShell(treeEl: HTMLElement, icon: string, title: string, hint: string): HTMLElement {
 	const empty = treeEl.createDiv({ cls: 'pbl-empty' });
 	setIcon(empty.createDiv({ cls: 'pbl-empty-icon' }), icon);
 	empty.createDiv({ cls: 'pbl-empty-title', text: title });

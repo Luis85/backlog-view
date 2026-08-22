@@ -1,12 +1,13 @@
 {
 	"$schema": "./node_modules/fallow/schema.json",
-	"entry": ["src/main.ts", "test/harness/page.ts"],
+	"entry": ["src/main.ts", "test/harness/page.ts", "test/harness/estimation.ts"],
 	"dynamicallyLoaded": ["styles/**/*.css", "test/harness/theme.css", "test/harness/obsidian.css"],
 	"duplicates": {
 		"ignore": ["test/harness/obsidian.css"]
 	},
 	"usedClassMembers": [
 		{ "extends": "ViewStateSurface", "members": ["type"] },
+		{ "extends": "BasesView", "members": ["type"] },
 		{
 			"extends": "AbstractInputSuggest",
 			"members": ["getSuggestions", "renderSuggestion", "selectSuggestion"]

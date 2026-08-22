@@ -1,5 +1,5 @@
 ---
-type: Feature
+type: Issue
 parent: "[[A view per capability]]"
 order: 20
 status: Open
@@ -25,12 +25,12 @@ Where two views legitimately need the same fact — which property holds the sta
 holds the parent — each names it for itself and may default to the same suggestion.
 Sharing the suggestion is not sharing the setting.
 
-**Two rules follow, and they govern every view under this epic rather than being restated
+**Two rules follow, and they govern every view under [[A view per capability]] rather than being restated
 in each one.** First: **every property a view reads is a key that view names.** Not only the
 ones it writes, and not only the ones its own capability invented — a readiness check that
 reads an estimate, a rollup that reads a health figure, a chain that reads a release
 membership, a summary that reads an evidence kind. A view that reads a property it did not
-name is reading another view's configuration, which is the coupling this epic exists to
+name is reading another view's configuration, which is the coupling that rule exists to
 prevent. Second: **a key nobody configured produces nothing, and says so.** The figure is not
 drawn, the check is not evaluated, the highlight is not applied — and what is missing is
 reported as unconfigured rather than as an answer. The failure this forbids is the loud one:
