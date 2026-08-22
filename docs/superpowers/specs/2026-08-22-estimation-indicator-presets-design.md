@@ -36,12 +36,13 @@ settled, each one a change to what this design said before it was drawn:
 4. **A described preset list needs its own scroller.** Once each row carries a description,
    the four rows plus the preview push Apply and Cancel out of a 620px window — the modal
    scrolls as one block and the primary action goes with it. The list scrolls instead.
-5. **The seventh column worsens a clip that is already there.** At a 900px window the
-   currency column is cut off by the pane's edge **today, before this change** — the same
-   screenshot without the mock shows a sliver of a currency chip at the edge. At 1200px the
-   title column absorbs the new column's ~80px down toward its 96px floor and everything
-   fits. So this increment does not introduce the narrow-pane defect and does not fix it;
-   `Keeping columns whole under a narrow pane` still owns it.
+5. **The seventh column costs a measurable band of pane widths.** At 900px the currency
+   column is cut off **today, before this change**. At 1000px it is not — the baseline
+   still draws it, truncated at the edge, and the seventh column pushes it off entirely.
+   At 1200px the title column absorbs the new column and everything is whole. So the band
+   this increment newly loses is roughly **940px to 1020px**, the view's existing threshold
+   plus one 72px column and its 8px gap. It does not introduce the narrow-pane defect and
+   does not fix it; `Keeping columns whole under a narrow pane` still owns it.
 
 ## What is built
 
@@ -63,25 +64,41 @@ parser reads:
 | Id | Reads |
 | --- | --- |
 | any configured dimension's id | that dimension's answer on the item, as the total reads it (clamped, direction applied) |
-| `confidence`, `effort`, `complexity` | that scale's answer on the item, **raw** — the stored number, unclamped |
+| `confidence`, `effort`, `complexity` | that scale's answer on the item, clamped to its declared range — the number the panel row above it reports |
+| `ease` | the effort scale **reversed** on its own range (`min + max − effort`) |
 | `value` | the model's own output — the weighted total |
-| `adjustedValue` | the confidence-adjusted value, which keeps its own clamped confidence |
+| `adjustedValue` | the confidence-adjusted value |
 
-**A scale operand reads raw, and a dimension operand reads clamped.** That asymmetry is
-deliberate and it is what the view already does: `renderDerived` divides by
-`item.effort` untouched while the adjusted value beside it reads confidence through
-`readAs`. Reading a scale operand clamped instead would break both of this design's own
-promises at once — an item with effort `9` would divide by `5` where today it divides by
-`9`, so an existing saved view's number WOULD move; and effort `0` or `-2` would clamp to
-the scale minimum, making the divisor-≤0 refusal below unreachable. A divisor is exactly
-where a value out of its declared range must not be quietly repaired: clamping it hides
-the case the rule exists to refuse. Dimensions have no such history — nothing divides by
-one today — so they read as the total reads them, which is what makes RICE's reach agree
-with the reach in the decomposition beside it.
+**Every operand reads as the surface beside it reads it — clamped.** An operand is a
+multiplier as often as it is a divisor, and a raw one inverts a ranking: a stored
+confidence of `-2` makes RICE fall as impact rises, and a `0` zeroes an item that is
+scored. It would also disagree with the panel, which reports an out-of-range answer as
+clamped in the row directly above.
 
-**The five built-in ids are reserved words.** A model's dimension ids are free text
-(`dimensions` is a text option), so a vault can declare a dimension called `effort` or
-`value`. Resolution asks the built-ins first, and a dimension whose id collides is simply
+**The divisor's refusal is asked of the STORED value, before the clamp.** Zero or below is
+no figure, named — and the clamp would otherwise repair exactly the case the rule exists to
+refuse, since a scale's minimum is normally 1 and a clamped divisor could never be ≤ 0. So
+the refusal reads what is on the note; the arithmetic reads what the model says that
+answer means.
+
+**That moves one number, narrowly, and the move is the point.** An item with an
+out-of-range effort — `9` on a 1–5 scale — divides by `5` where `renderDerived` divides by
+`9` today, so its value-to-effort figure changes. The panel row above it already says that
+`9` reads as `5`; the shipped line disagreeing with the surface beside it is the defect,
+not the fix. **No item whose answers are in range moves at all**, which is the promise this
+design makes and the one it keeps.
+
+**`ease` is the effort scale reversed on its own declared range.** Not `1 ÷ effort`: ICE is
+impact × confidence × ease with NO divisor, which is what the Feature says, and a
+reciprocal is a different ranking wearing the name. Reversal is not a new idea either —
+`lessIsBetter` already reverses a DIMENSION on its own range, and this is the same rule
+reaching a scale. A team that scores ease as its own judgement declares a dimension for it
+and points the operand there, exactly as WSJF's numerator can be pointed at a cost-of-delay
+dimension.
+
+**The built-in ids are reserved words.** A model's dimension ids are free text
+(`dimensions` is a text option), so a vault can declare a dimension called `effort`, `ease`
+or `value`. Resolution asks the built-ins first, and a dimension whose id collides is simply
 not addressable as an operand — its weight in the value model is untouched, and renaming
 it makes it addressable. Stated rather than left to the lookup order it happens to have,
 because the alternative — namespacing every operand (`dim:reach`, `scale:effort`) — puts
@@ -144,15 +161,12 @@ on which locale wrote it.
 | Name | Operands | Divisor |
 | --- | --- | --- |
 | RICE | reach × business impact × confidence | effort |
-| ICE | business impact × confidence | effort |
+| ICE | business impact × confidence × ease | — |
 | WSJF | value | effort |
 | Value over effort | adjusted value | effort |
 
-**Two of them read a textbook form through this shape, and each says so in one line.**
+**One of them reads a textbook form through this shape, and it says so in one line.**
 
-- **ICE** is impact × confidence × *ease*, and this model has effort rather than ease.
-  Ease is read as `1 ÷ effort`, so ICE ships as a divisor rather than a third factor. The
-  entry says it.
 - **WSJF** is cost of delay ÷ job size, and cost of delay is a *sum* of value, time
   criticality and risk/enablement — a form the shape cannot express, and the Feature
   refuses summed operands rather than growing one. The Feature itself reads WSJF as one
@@ -244,9 +258,14 @@ operand that blocked it. It stays where it is, beside the confidence-adjusted va
 is the epic's rule that a merged number appears beside its inputs and never instead of
 them.
 
-A seventh column makes narrow panes one column worse, and the harness measured how much:
-at 1200px the title column absorbs it and every column is whole; at 900px the currency
-column falls off the pane's edge — which it already does today, without this change. That
+A seventh column makes narrow panes one column worse, and the harness measured the band it
+costs. `Keeping columns whole under a narrow pane` records the row's own minimum at 588px
+and the view's threshold at about **940px**; a fixed 72px column plus its 8px gap raises
+those to 668px and about **1020px**. So panes between roughly 940 and 1020px lose the
+currency column to this change — screenshotted at 1000px, where the baseline still draws
+`Currency` and its chips (truncated at the edge) and the seventh column pushes them off
+entirely. Below 940px it is already gone today, and at 1200px the title column absorbs the
+new column and everything is whole. That
 is `docs/requirements/Keeping columns whole under a narrow pane.md`, already Open with its
 mechanism recorded, and it is not pulled in here.
 
@@ -267,8 +286,10 @@ mechanism recorded, and it is not pulled in here.
 | --- | --- |
 | The operand shape computes a product over an optional divisor | `test/domain/` over `computeIndicator` |
 | An unanswered operand, a divisor ≤ 0, and an unknown operand id each give no figure and name the operand | the same, one case each |
-| A scale operand reads raw, so an out-of-range effort divides as stored and a `-2` still refuses | a case per side of the range, over the default indicator |
-| The default indicator equals what `renderDerived` computes today | the shipped fixture's `Full profile`, asserted against the same arithmetic |
+| A scale operand reads clamped, so a `-2` confidence never inverts a ranking | a multiplier case per side of the range |
+| A divisor of 0 or below is refused on the STORED value, before the clamp | the fixture's `Zero effort` and `Negative effort` notes |
+| `ease` reverses effort on its declared range, so ICE needs no divisor | one case at each end of the range |
+| The default indicator equals what `renderDerived` computes today for every in-range item | the shipped fixture's `Full profile`, asserted against the same arithmetic |
 | A dimension id colliding with a built-in resolves to the built-in | one case over a model declaring a dimension called `effort` |
 | An indicator preset leaves the value model untouched | a fingerprint asserted equal across every preset applied |
 | An indicator persists nothing | no `PropertyWrite` names an indicator key; applying a preset issues zero note writes |
