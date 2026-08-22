@@ -47,6 +47,32 @@ describe('opening and keyboard', () => {
 		expect(vault.opened).toEqual([{ path: 'Epic B.md', mode: false }]);
 	});
 
+	/**
+	 * The mirror of the test above, and it was the untested half: every navigation case
+	 * here drove `ArrowDown`, and `ArrowUp` appeared only with Alt held, which is a
+	 * different action entirely (a reorder). Two rules, both of them the down key's read
+	 * backwards — with nothing selected the far edge in the direction of travel is where
+	 * travel starts, and the near edge is a floor rather than a wrap.
+	 */
+	it('navigates back up with ArrowUp, from the end and down to the floor', () => {
+		const vault = fixture();
+		const { containerEl } = makeView(vault);
+		const tree = treeOf(containerEl);
+		const selected = (): string | undefined =>
+			tree.querySelector<HTMLElement>('.pbl-selected .pbl-title')?.textContent ?? undefined;
+
+		key(tree, 'ArrowUp');
+		expect(selected()).toBe('Feature B2');
+		key(tree, 'ArrowUp');
+		expect(selected()).toBe('Feature B1');
+		key(tree, 'ArrowUp');
+		key(tree, 'ArrowUp');
+		expect(selected()).toBe('Epic A');
+		// The first row is a floor, not a wrap: pressing on holds the selection there.
+		key(tree, 'ArrowUp');
+		expect(selected()).toBe('Epic A');
+	});
+
 	it('reorders siblings with Alt+ArrowDown', async () => {
 		const vault = fixture();
 		const { containerEl } = makeView(vault);

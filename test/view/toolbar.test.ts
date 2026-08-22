@@ -574,6 +574,34 @@ describe('grouping advisory', () => {
 
 		expect(containerEl.querySelector('.pbl-grouping-note')).toBeNull();
 	});
+
+	/**
+	 * `groupedData` is Bases' own shape and `hasKey()` is a call into it, so the detection
+	 * is a question asked of another plugin's object rather than of our model. It is
+	 * wrapped for that reason, and the wrap is load-bearing rather than defensive habit:
+	 * it runs inside `onDataUpdated`, ahead of the render, so a throw would take the whole
+	 * data update with it and leave the view showing the previous pass. Unreadable
+	 * grouping means "no advisory", never "no tree".
+	 */
+	it('treats grouping it cannot read as none, and still draws the tree', () => {
+		const vault = fixture();
+		const { view, containerEl } = makeView(vault);
+		(view as unknown as { data: unknown }).data = {
+			data: vault.entries(),
+			groupedData: [
+				{
+					hasKey: () => {
+						throw new Error('not a shape this version has');
+					},
+					entries: [],
+				},
+			],
+		};
+		view.onDataUpdated();
+
+		expect(containerEl.querySelector('.pbl-grouping-note')).toBeNull();
+		expect(titlesOf(containerEl)).toContain('Epic A');
+	});
 });
 
 describe('toolbar count breakdown', () => {

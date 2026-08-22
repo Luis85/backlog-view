@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { ProductBacklogView } from '../../src/view/backlogView';
 import { FakeVault, FakeViewConfig } from '../helpers/vault';
 import { Menu } from '../helpers/obsidian-mock';
-import { clickExpandAll, fixture, flush, key, makeView, rowByTitle, treeOf, useViewHarness } from '../helpers/view';
+import { clickExpandAll, fixture, flush, key, makeView, refresh, rowByTitle, treeOf, useViewHarness } from '../helpers/view';
 import { cardByTitle } from '../helpers/board';
 
 useViewHarness();
@@ -52,6 +52,33 @@ describe('context menu', () => {
 		await flush();
 
 		expect(vault.fm('Feature B2.md')['order']).toBe(0);
+	});
+
+	/**
+	 * The two entries between `Move to top` and `Move to bottom`, which the suite asserted
+	 * the PRESENCE of and never the effect: a swap with the neighbour, not a jump to the
+	 * end. Both directions, because the entry is offered per direction — `Move up` only
+	 * with a rendered sibling above, `Move down` only with one below — and a single-sided
+	 * test would pass against a menu that wired both to the same handler.
+	 */
+	it('swaps an item with the sibling above and below it', async () => {
+		const vault = fixture();
+		const { view, containerEl } = makeView(vault);
+
+		rowByTitle(containerEl, 'Feature B2').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+		Menu.lastShown?.item('Move up')?.click();
+		await flush();
+		expect(vault.fm('Feature B2.md')['order']).toBeLessThan(vault.fm('Feature B1.md')['order'] as number);
+
+		// Nothing refreshes on its own here, and the entry is gated on the RENDERED
+		// neighbours: without this the model still has B2 last, `Move down` is not offered
+		// at all, and the optional chain below would assert against a click that never
+		// happened.
+		refresh(view, vault);
+		rowByTitle(containerEl, 'Feature B2').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+		Menu.lastShown?.item('Move down')?.click();
+		await flush();
+		expect(vault.fm('Feature B2.md')['order']).toBeGreaterThan(vault.fm('Feature B1.md')['order'] as number);
 	});
 
 	it('sets the type through the submenu', async () => {

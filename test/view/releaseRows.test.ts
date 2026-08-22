@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { FakeVault } from '../helpers/vault';
-import { makeView, titlesOf, useViewHarness } from '../helpers/view';
+import { makeView, rowByTitle, titlesOf, useViewHarness } from '../helpers/view';
 import { makeRoadmap, shelfTitles } from '../helpers/roadmap';
 import { cardByTitle } from '../helpers/board';
 
@@ -116,5 +116,30 @@ describe('a release the Base excluded', () => {
 		const { containerEl } = makeView(vault, {}, { only: ['Child.md'] });
 
 		expect(titlesOf(containerEl)).toEqual(['Child']);
+	});
+});
+
+describe('a release row in the tree', () => {
+	/**
+	 * The horizon chip is a CONTROL over the horizon key, and `canPlaceHorizon` is the
+	 * one predicate that answers both halves of whether it may exist: the axis has to be
+	 * configured, and the type has to be one the axis places. A release fails the second
+	 * half, so the row draws the column and no chip in it — a control whose menu could
+	 * only write a key the roadmap refuses to read.
+	 *
+	 * Asserted as a DIFFERENCE, not an absence: the Epic beside it draws the chip from
+	 * the same column in the same pass, so an unconfigured axis cannot pass this.
+	 */
+	it('draws no horizon chip, where an epic beside it draws one', () => {
+		const vault = new FakeVault();
+		vault.addFile('R.md', { frontmatter: { type: 'Release', order: 10, horizon: 'Now' } });
+		vault.addFile('E.md', { frontmatter: { type: 'Epic', order: 20, horizon: 'Now' } });
+		const { containerEl } = makeView(vault, { horizonProperty: 'note.horizon' }, { order: ['note.horizon'] });
+
+		expect(rowByTitle(containerEl, 'E').querySelector('.pbl-horizon-chip')).not.toBeNull();
+		expect(rowByTitle(containerEl, 'R').querySelector('.pbl-horizon-chip')).toBeNull();
+		// The column itself is still there, so this is a chip the row refused and not a
+		// column the view dropped.
+		expect(rowByTitle(containerEl, 'R').querySelectorAll('.pbl-prop').length).toBe(1);
 	});
 });

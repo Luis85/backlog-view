@@ -343,6 +343,15 @@ export const en = {
 
 	'board.stripTooltip': 'Drop a card here to clear its state',
 	'board.noStateColumn': 'Items without the state property — dropping a card here removes it',
+	/**
+	 * The iteration board's three column names. The BUCKET ids (`open`, `inProgress`,
+	 * `resolved`) are what the code dispatches on and stay in `domain/board.ts`; only the
+	 * words on the header are here. Nothing writes them — a bucket writes the state its
+	 * representative names, never its own label.
+	 */
+	'board.bucketOpen': 'Open',
+	'board.bucketInProgress': 'In progress',
+	'board.bucketResolved': 'Resolved',
 	'board.contextMarker': "Not in this base's filter — shown to place its items",
 	'board.contextCard': "Outside this base's filter — shown for context",
 	'board.cardParent': 'Under "{title}"',
@@ -392,6 +401,14 @@ export const en = {
 	'legend.daysLost': 'Days lost',
 	'legend.done': 'Done',
 	'legend.other': 'Other',
+	/**
+	 * The two workflow names the legend groups its swatches under, drawn only when there
+	 * are two to tell apart. `statePalettes` gives a lone palette an empty label and the
+	 * legend draws no section for it, so these never appear beside a single workflow.
+	 * The state VALUES inside a section are the user's own words and stay data.
+	 */
+	'legend.workflowRequirements': 'Work',
+	'legend.workflowDeliverables': 'Deliverables',
 
 	'timeline.todayLine': 'Today — {date}',
 	/**
@@ -635,6 +652,18 @@ export const en = {
 	'placement.unreadableHorizon': 'an unreadable horizon',
 	'placement.emptyHorizon': 'an empty horizon',
 	'placement.emptyAssignee': 'an empty assignee',
+	/**
+	 * Why a card is on the shelf rather than on the axis, drawn under its title and
+	 * repeated as the card's tooltip. Whole sentences, and their own keys rather than the
+	 * three phrases above them: those drop into "moved from …" and carry an article, these
+	 * stand alone. `domain/bars.ts` and `domain/roadmap.ts` are where they are chosen, and
+	 * `cardDrag.ts` says at its own call site that nothing decides anything from this
+	 * text — which is what makes translating them safe.
+	 */
+	'placement.reasonUnreadableStart': 'Unreadable start date',
+	'placement.reasonUnreadableTarget': 'Unreadable target date',
+	'placement.reasonReversedSpan': 'Target date precedes the start date',
+	'placement.reasonUnreadableHorizon': 'Unreadable horizon value',
 
 	/**
 	 * The shelf's search affordances. They read `Search the shelf` and `Clear the shelf
@@ -1334,6 +1363,35 @@ export const en = {
 	 *  filtered count's idiom — one quantity in two parts, so the pair reads as one fact. */
 	'estimation.toolbar.init': 'Bind and backfill the estimation properties',
 	'estimation.toolbar.scored': '{scored} of {total} scored',
+
+	/**
+	 * The estimation view's own options menu — this view's half of what `option.*` is for
+	 * the backlog, and under the same rule, which is written at `domain/viewOptions.ts`
+	 * because that is where the mistake is made: text and data sit on adjacent lines of
+	 * one object literal. Only the `displayName`s are here. Every `key`, every `default`
+	 * and every `placeholder` in that file is a frontmatter key or a value the resolver
+	 * reads back, so they stay spelled there.
+	 *
+	 * A dimension GROUP's heading is not in this list either, and that is the same rule
+	 * rather than an omission: it is the resolved dimension label, which the user may
+	 * override in the box below it — a shipped default, like the horizon values, not text.
+	 */
+	'estimation.option.model': 'Model',
+	'estimation.option.dimensions': 'Dimensions (in order)',
+	'estimation.option.outputRange': 'Output range',
+	'estimation.option.valueProperty': 'Business value property',
+	'estimation.option.stampProperty': 'Business value model stamp property',
+	'estimation.option.property': 'Property',
+	/** The rule at the box that produces the mistake: the weights are a percentage of 100
+	 *  and a profile scored against a sum of 87 is a different model. */
+	'estimation.option.weight': 'Weight (% of 100)',
+	'estimation.option.range': 'Range',
+	'estimation.option.lessIsBetter': 'Less is better',
+	'estimation.option.label': 'Label',
+	'estimation.option.scales': 'Scales',
+	'estimation.option.confidenceProperty': 'Confidence property',
+	'estimation.option.effortProperty': 'Effort property',
+	'estimation.option.complexityProperty': 'Complexity property',
 
 	/**
 	 * Four sentences the sweep of `view/` first left as English inside keyed neighbours,
