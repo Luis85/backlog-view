@@ -104,10 +104,10 @@ export function placeItem(item: BacklogItem, stated: StatedEnds, iterationBars: 
 	// and shelve. The start is ignored, never rewritten — ignoring a value and deleting
 	// it are different acts, and only the first was specified.
 	if (drawsAsPoint(item.typeName, iterationBars)) return placeMarker(item, stated.target);
-	if (stated.start.invalid) return { kind: 'shelf', reason: 'Unreadable start date' };
-	if (stated.target.invalid) return { kind: 'shelf', reason: 'Unreadable target date' };
+	if (stated.start.invalid) return { kind: 'shelf', reason: t('placement.reasonUnreadableStart') };
+	if (stated.target.invalid) return { kind: 'shelf', reason: t('placement.reasonUnreadableTarget') };
 	if (reversedSpan(stated.start.value, stated.target.value)) {
-		return { kind: 'shelf', reason: 'Target date precedes the start date' };
+		return { kind: 'shelf', reason: t('placement.reasonReversedSpan') };
 	}
 	const bar = inferSpan(item, stated.start.value, stated.target.value);
 	return bar === null ? { kind: 'shelf', reason: null } : { kind: 'bar', bar };
@@ -188,7 +188,7 @@ function barAncestors(item: BacklogItem, drawn: ReadonlySet<string>): string[] {
 }
 
 function placeMarker(item: BacklogItem, target: FieldReading<CivilDate>): Placement {
-	if (target.invalid) return { kind: 'shelf', reason: 'Unreadable target date' };
+	if (target.invalid) return { kind: 'shelf', reason: t('placement.reasonUnreadableTarget') };
 	if (target.value === null) return { kind: 'shelf', reason: null };
 	// Equal ends are what `barGeometry` already reports as a milestone, so the diamond
 	// the timeline draws for a stated pair is the same diamond, reached by the type.
