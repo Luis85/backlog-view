@@ -114,8 +114,13 @@ const hasFourSidedShorthand = (block: string): boolean =>
 	// the declaration a hand-written rule is most likely to spell that way. `[^;]+` cannot
 	// cross a `;`, so dropping it from the pattern is the whole of that. Fourth instrument
 	// failure on this file, caught in review on PR #196 like the three above it.
+	//
+	// `!important` is a priority annotation and not a value, so it is dropped before the
+	// count: with it left on, `padding: 1px 2px 3px 4px !important` counts five and the
+	// four-sided declaration reads as something else entirely. Fifth instrument failure
+	// here, caught in review on PR #196 like the four above it.
 	[...block.matchAll(/(?:^|[;{\s])(?:margin|padding)\s*:\s*([^;]+)/g)].some(
-		(decl) => valueCount(decl[1]) === 4,
+		(decl) => valueCount(decl[1].replace(/!\s*important\s*$/i, '')) === 4,
 	);
 
 describe('the stylesheet names no physical side', () => {
@@ -155,6 +160,7 @@ describe('the stylesheet names no physical side', () => {
 		// block for that reason: the instrument is what is under test here, not `styles/`.
 		expect(hasFourSidedShorthand('margin: 0; padding: 1px 2px 3px 4px')).toBe(true);
 		expect(hasFourSidedShorthand('padding: calc(var(--gap) + 1px) 2px 3px 4px')).toBe(true);
+		expect(hasFourSidedShorthand('padding: 1px 2px 3px 4px !important;')).toBe(true);
 		expect(hasFourSidedShorthand('margin: 0 auto; padding: 1px 2px')).toBe(false);
 	});
 
