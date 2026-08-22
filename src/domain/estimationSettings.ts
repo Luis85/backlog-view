@@ -66,7 +66,11 @@ function resolveIndicator(read: Readers): Indicator {
 	return {
 		label: read.text('indicatorLabel'),
 		operands: read.clearable('indicatorOperands', DEFAULT_INDICATOR.operands, () => read.list('indicatorOperands')),
-		divisor: read.clearable('indicatorDivisor', DEFAULT_INDICATOR.divisor, () => read.text('indicatorDivisor') || null),
+		// Trimmed to match: `list` trims every operand id, so an untrimmed divisor would
+		// disagree with the same vocabulary over a hand-edited or pasted space — read as an
+		// unknown name when padded, and as un-clearable when whitespace-only (`|| null` never
+		// fires on a truthy blank string).
+		divisor: read.clearable('indicatorDivisor', DEFAULT_INDICATOR.divisor, () => read.text('indicatorDivisor').trim() || null),
 	};
 }
 

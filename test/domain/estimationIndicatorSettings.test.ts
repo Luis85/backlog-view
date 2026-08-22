@@ -30,6 +30,14 @@ describe('the indicator, read off the view options', () => {
 		expect(resolve({ indicatorDivisor: '' }).indicator.divisor).toBeNull();
 	});
 
+	it('trims a padded divisor to match the operand vocabulary', () => {
+		expect(resolve({ indicatorDivisor: ' effort ' }).indicator.divisor).toBe('effort');
+	});
+
+	it('reads a whitespace-only divisor as cleared, not as a name', () => {
+		expect(resolve({ indicatorDivisor: '   ' }).indicator.divisor).toBeNull();
+	});
+
 	it('offers an Indicator group with the three boxes', () => {
 		const groups = getEstimationViewOptions(new FakeViewConfig(configuredValues()) as never);
 		const group = groups.find((g) => g.displayName === 'Indicator');
