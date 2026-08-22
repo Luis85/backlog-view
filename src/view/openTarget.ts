@@ -24,7 +24,7 @@ export interface OpenContext {
  *
  * The two entry points are not one with a default, and the difference is the whole
  * design: `open` is what the view is CONFIGURED to do, repeated on every click, so it
- * pins the backlog and reuses one side pane. `openIn` is a target the user NAMED once —
+ * pins the calling view and reuses one side pane. `openIn` is a target the user NAMED once —
  * the menu's two entries, a middle click — so it pins nothing and splits afresh, leaving
  * two deliberately placed notes side by side. Sharing the pane between them would make
  * the second Open to the right replace the first.
