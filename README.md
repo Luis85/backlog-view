@@ -28,8 +28,11 @@ Azure DevOps Boards.
     parent are top-level.
   - **`order`** — a number that ranks an item among its siblings.
   - **`type`** — the ladder `Epic → Feature → PBI → Task`, the **extra types** `Issue`,
-    `Bug`, `Idea` and `Deliverable` that sit beside it rather than on it, or `Milestone`
-    — a marker on neither, which states a date rather than work.
+    `Bug`, `Idea` and `Deliverable` that sit beside it rather than on it, or a **marker**
+    on neither: something the plan points at rather than contains. A marker holds nothing,
+    hangs from nothing and is counted in no rollup. `Milestone` and `Iteration` state a
+    date; `Resource` is a person and states none, so it is drawn on no timeline and no
+    schedule, drag or grip will write a date onto one.
 - **You never have to maintain these properties by hand.** The view assigns them:
   - Creating an item via the view writes `type`, `parent` and `order`.
   - Dragging an item writes its new `parent` and `order`, and leaves `type` alone —

@@ -6,6 +6,7 @@ status: Done
 created: 2026-08-20
 source: user request
 files:
+  - README.md
   - src/domain/typeVocabulary.ts
   - src/view/interactions/keyboard.ts
   - src/domain/writePlan.ts
@@ -186,6 +187,14 @@ epic states why an eighteenth name is being added against an open P1 direction
   a ROW rather than a card — and that is the note that should answer this, against a roster
   that exists. Written down here so the next reviewer finds a decision rather than a gap.
 
+- **Every surface that documents the vocabulary names it.** Three do, and the note found
+  only two: the generated backlog README and the in-app manual are derived from
+  `ALL_TYPES`, so they gained the row for free — and the plugin's own `README.md` is
+  hand-written prose that did not. It said `type` is the ladder, the extra types "or
+  `Milestone` — a marker on neither, which states a date rather than work", which by the
+  time an automated reviewer read it was wrong three ways: it omitted `Resource`, omitted
+  `Iteration` (stale since that type shipped), and stated *date* of the whole category.
+  Nothing derives it and nothing gates it, so it is the surface that goes stale silently.
 - **Nothing this step ships may promise the roster.** The type is declared and the roster
   is not: `deriveLanes` still builds its rows from the declared names, the assignees the
   results carry and the absences, and it enumerates no `Resource` note. So the in-app
