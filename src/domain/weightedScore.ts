@@ -252,7 +252,8 @@ type OperandStatus = 'known' | 'unknown' | 'unbound' | 'unanswered';
 
 /** What the arithmetic uses, what the note holds, and what to call it when either is
  *  missing. `stored` is null wherever the operand has no stored source at all (`value`,
- *  `adjustedValue`) — the divisor's own check skips those. */
+ *  `adjustedValue`, and `ease` — a note holds an effort, never an ease) — the divisor's
+ *  own check skips those. */
 interface ResolvedOperand {
 	label: string;
 	value: number | null;
@@ -309,7 +310,14 @@ function resolveBuiltin(model: ScoringModel, inputs: IndicatorInputs, id: string
 		// rather than restating the `scale.key === ''` check a second time.
 		const effort = scaleOperand(model.effort, inputs.effort, label);
 		const value = effort.value === null ? null : model.effort.min + model.effort.max - effort.value;
-		return { label, value, stored: effort.stored, status: effort.status };
+		// `stored` is null, NOT the raw effort: no note holds an ease, so the effort must
+		// not stand in for a stored source it doesn't have. The divisor check below reads
+		// `stored` to catch a value the note HOLDS that clamping would silently repair —
+		// but a stored effort of 0 clamps to the scale minimum, which is ease's own
+		// MAXIMUM, a perfectly good divisor. Carrying the raw 0 through as `stored` reported
+		// a fine ease as nonpositive, describing the effort the reader never configured
+		// rather than the ease they did.
+		return { label, value, stored: null, status: effort.status };
 	}
 	if (id === 'value') {
 		const value = inputs.result?.total ?? null;

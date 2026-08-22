@@ -174,6 +174,25 @@ describe('the indicator', () => {
 		expect(figure).toEqual({ value: null, blockedBy: { operand: 'Adjusted value', reason: 'unanswered' } });
 	});
 
+	it('divides by a derived ease even when the stored effort is zero — ease has no stored source', () => {
+		// effort 0 clamps to the scale minimum, so ease is at its MAXIMUM. Reporting that as a
+		// nonpositive divisor described the raw effort, not the operand the reader configured.
+		// value operand = FULL profile's total, 3.55; ease = 1 + 5 − clamp(0, 1, 5) = 5;
+		// 3.55 ÷ 5 = 0.71.
+		const model = configured({ effortProperty: 'note.effort' });
+		const figure = computeIndicator(model, ind({ operands: ['value'], divisor: 'ease' }), inputs({ effort: 0 }));
+		expect(figure?.blockedBy).toBeNull();
+		expect(figure?.value).toBe(0.71);
+	});
+
+	it('still refuses a stored effort of zero when EFFORT itself is the divisor', () => {
+		// The pair that keeps the first test honest: the stored check is not being removed, it is
+		// being applied to the operand that actually has a stored source.
+		const model = configured({ effortProperty: 'note.effort' });
+		const figure = computeIndicator(model, ind({ operands: ['value'], divisor: 'effort' }), inputs({ effort: 0 }));
+		expect(figure?.blockedBy).toEqual({ operand: 'Effort', reason: 'nonpositive' });
+	});
+
 	it('composes a formula from operand labels', () => {
 		expect(indicatorFormula(configured(), ind({ operands: ['reach', 'confidence'], divisor: 'effort' }))).toBe(
 			'Reach × Confidence ÷ Effort',
