@@ -43,19 +43,31 @@ repository itself as the vault, so opening this folder in Obsidian and then
   developer console should be clean.** A thrown error, a blank label or a key rendered as
   its own name are the three failures worth looking for. **Never checked.**
 
-- **The two re-joined lists read correctly.** These changed in English and nobody has seen
-  either: `Intl.ListFormat` replaced fixed separators, so three items now read
-  `A, B, and C` where they read `A, B, C`. Both are on the roadmap — a row's
-  **prerequisites**, in the lead cell's tooltip on the dated axis with three or more
-  dependencies, and a **resource's absences** on the resources axis. Check the joining, the
-  spacing and that neither runs a full stop into a conjunction. **Never checked.**
+- **The re-joined lists read correctly.** `Intl.ListFormat` replaced fixed separators, so
+  three items now read `A, B, and C` where they read `A, B, C`. Only ONE of the three
+  joins is plainly visible, which is the thing to know before planning this: press the
+  toolbar's ✨ on a base with three or more unnamed optional properties, and the
+  **adopted-property fragments in the outcome notice** are joined this way. The other two
+  are not ordinary visible text. A row's **prerequisites** (`timeline.waitsFor`) are joined
+  into a visually hidden span on every waiting row, and the lead cell repeats them as a
+  tooltip *only* when a prerequisite conflicts or is broken — so three ordinary valid
+  dependencies produce no tooltip at all, and the visible route needs a conflicting or
+  missing one. A **resource's absences** (`lane.unavailable`) are joined into the lane
+  head's `aria-description` and are visible nowhere: a screen reader or the accessibility
+  inspector is the only route to them. Check the joining, the spacing and that none runs a
+  full stop into a conjunction. **Never checked.**
 
-- **The configuration warning reads as one sentence.** The toolbar's warning chip, the
-  refusal that gates a write and the readme command all state a bad configuration the same
-  way now. Point two view options at one property — parent and order at the same key is the
-  quickest — and read all three surfaces. With two collisions it should read
-  `Fix the view options first: the parent and order properties share the key "rank", and
-  the …` rather than running whole sentences together. **Never checked.**
+- **The configuration warning reads as one sentence.** Every surface states a bad
+  configuration over one fragment (`settings.sharedKey`) behind one lead now, but they do
+  NOT all say the same thing and a check expecting that would report the intended
+  behaviour as a failure. `config.fixAll` lists every problem and has two surfaces — the
+  toolbar warning chip's tooltip and accessible name, and the readme command's refusal.
+  `config.fixFirst` names the FIRST problem only and is everything else, the write gate
+  among them. So: point two view options at one property, then a second pair at another —
+  parent and order at the same key, plus two more, is the quickest. The chip and the readme
+  should read `Fix the view options first: the parent and order properties share the key
+  "rank", and the …`; a refused write should name one collision and stop. What is shared
+  is the lead and the fragment, never the list. **Never checked.**
 
 - **The view options menu survives its own labels.** Every group name, option name and
   prose placeholder comes from the catalog now. Open the options panel and check that no
