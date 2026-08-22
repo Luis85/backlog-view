@@ -7,7 +7,6 @@ import { childTypeChoices, inCatalog, isDeliverableType, keepsProjection } from 
 
 import { BacklogItem, BacklogModel } from '../../domain/model';
 import { sameValue, todayStamp } from '../../domain/noteFields';
-import { hasHorizonAxis } from '../../domain/roadmap';
 import {
 	computeDeliverableStateWrites,
 	computeStateWrites,
@@ -26,7 +25,7 @@ import {
 import { canReorder, indent, moveToEdge, moveWithinSiblings, outdent, outdentTarget, visibleNeighbor } from './structure';
 import { promptCreateItem } from './create';
 import { addShelfLayoutItems, addShelfSearchItems, addShelfSortItems, addShelfTypeItems } from './shelfMenu';
-import { addHorizonItems, canSchedule, carriesDates, promptSchedule, unschedule } from './plan';
+import { addHorizonItems, canPlaceHorizon, canSchedule, carriesDates, promptSchedule, unschedule } from './plan';
 import { addTagItems, tagsColumnVisible } from './tags';
 import { addDependencyItems, dependenciesAvailable } from './dependencies';
 import { menuChildren, cardedPaths } from '../childrenList';
@@ -162,8 +161,10 @@ function addEditableSections(host: BacklogViewHost, model: BacklogModel, menu: M
 	// section sits behind — a context row is never a write target.
 	if (canSetIteration(host, item)) addSetIterationMenu(host, menu, item);
 	// Per axis, and absent rather than inert when one is not configured — the state
-	// chip's own rule.
-	if (hasHorizonAxis(host.settings)) addSetHorizonMenu(host, menu, item);
+	// chip's own rule. `canPlaceHorizon` rather than `hasHorizonAxis` for the reason
+	// `canSchedule` is asked below: the two agree for work and diverge for a release,
+	// which no axis of this roadmap places.
+	if (canPlaceHorizon(host.settings, item)) addSetHorizonMenu(host, menu, item);
 	// `canSchedule` rather than `hasDateAxis`: the two agree for work and diverge for
 	// a milestone on a start-only vault, where the narrowed entry would open asking
 	// for nothing at all.

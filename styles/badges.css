@@ -103,8 +103,8 @@
 .pbl-lvl-release { --pbl-badge-rgb: var(--color-green-rgb); }
 
 /*
- * TWELVE badges, still eight theme tokens, and this is where the pair-by-pair answer had to
- * become a rule: Idea/Task was one sharing decision taken alone, and two more taken the same
+ * THIRTEEN badges, still eight theme tokens, and this is where the pair-by-pair answer had
+ * to become a rule: Idea/Task was one sharing decision taken alone, and two more taken the same
  * way is how Idea and Deliverable both reached for green on branches that could not see each
  * other. The rule: HUE IS IDENTITY, and each sharer relies on whatever else keeps it apart
  * from every other wearer of its hue — the type NAME and the ladder's indentation for Idea

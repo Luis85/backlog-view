@@ -70,6 +70,28 @@ describe('computeHorizonWrites', () => {
 		// Nothing to remove: an item with no key is already untriaged.
 		expect(computeHorizonWrites(get('Untriaged'), null)).toEqual([]);
 	});
+
+	it('plans nothing for a release, at every value and in both directions', () => {
+		// The horizon key is the BACKLOG view's own mapping, and a release is on no axis of
+		// the backlog roadmap — so a horizon write against one would place it through a
+		// mapping that is not its own. Asked at the PLANNER, which is the one site the drag,
+		// the Alt+arrow, the row's Set horizon and the chip's menu all land on: a test that
+		// drove `performHorizonMove` alone would say nothing about the other three.
+		const { get } = build({
+			'1.0.md': { type: 'Release', order: 10 },
+			'1.1.md': { type: 'Release', order: 20, horizon: 'Now' },
+		});
+
+		expect(computeHorizonWrites(get('1.0'), 'Next')).toEqual([]);
+		// Including the removal, which is the direction that would otherwise DELETE a key
+		// somebody set by hand.
+		expect(computeHorizonWrites(get('1.1'), null)).toEqual([]);
+		expect(computeHorizonWrites(get('1.1'), 'Later')).toEqual([]);
+		// The marker it must not disturb: a Milestone is placed on the bucket axis like any
+		// other row, which is what says this gate is about releases and not about markers.
+		const milestone = build({ 'Ship.md': { type: 'Milestone', order: 10 } }).get('Ship');
+		expect(computeHorizonWrites(milestone, 'Next')[0].axis).toEqual({ horizon: 'Next' });
+	});
 });
 
 describe('computeScheduleWrites', () => {

@@ -2,7 +2,7 @@ import { t } from '../i18n/t';
 import { Absence } from './absences';
 import { firstPlacedIndex } from './board';
 import { deriveBars, placeItem, ShelfCard, statedEnds, TimelineBar } from './bars';
-import { isIterationType, isMarkerType } from './itemTypes';
+import { isIterationType, isMarkerType, isReleaseType } from './itemTypes';
 import { ITERATION_TYPE, MILESTONE_TYPE } from './typeVocabulary';
 import { BacklogItem, BacklogModel } from './model';
 import { FieldReading, sameValue } from './noteFields';
@@ -416,9 +416,21 @@ export function resourcePlacementLabel(roadmap: RoadmapModel, source: ResourceSo
  * exactly as well. The horizons axis asks for
  * none of it, placed or shelved, since `drawsGrid('horizons')` is false — the one place
  * this function's own axis argument decides the answer rather than only picking a source.
+ *
+ * A `RELEASE` is dropped here rather than at any one axis, because this is the single
+ * funnel all three take: `buildRoadmap` calls this once and then branches to buckets,
+ * lanes or bars, so the guard at `placeItem` — which the bucket axis never consults —
+ * left a release sitting in a horizon BUCKET, or on the counted, drop-targetable shelf
+ * when it held no horizon. This is also what keeps `placedCount` honest: a release is not
+ * an unplaced result, it is not a result of this projection at all. Nothing is orphaned by
+ * the drop — this list is flat, and a marker holds no children to strand. An
+ * `outsideFilter` release goes with it, which `Releases as their own type` 4a asks for by
+ * name: a release parents nothing, so it is never an ancestor drawn as context.
+ * [[A release on the dated axis]] is where a release gets a position of its own.
  */
 function roadmapRows(model: BacklogModel, visible: (item: BacklogItem) => boolean, axis: RoadmapAxis): BacklogItem[] {
-	const rows = (model.focused ? model.roots : model.results).filter(visible);
+	const source = (model.focused ? model.roots : model.results).filter(visible);
+	const rows = source.filter((item) => !isReleaseType(item.typeName));
 	return drawsGrid(axis) ? [...rows, ...model.iterations.filter(visible)] : rows;
 }
 

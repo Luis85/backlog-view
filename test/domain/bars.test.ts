@@ -240,7 +240,7 @@ describe('a release is on neither axis', () => {
 		return vault;
 	}
 
-	it('is placed on neither axis, by the path the resources axis takes', () => {
+	it('is refused by `placeItem` itself, the site both grid axes reach', () => {
 		// `placeItem` is asked directly because it is the ONE site both axes reach:
 		// `deriveBars` for the dated one, and `placeBar` in `roadmap.ts` for the resources
 		// one, which `deriveLanes` routes through without ever calling `deriveBars`. A guard

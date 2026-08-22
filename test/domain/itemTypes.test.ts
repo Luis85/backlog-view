@@ -239,6 +239,17 @@ describe('childTypeChoices', () => {
 	it('defaults the Deliverable folder to <home>/deliverables', () => {
 		expect(defaultTypeFolder('Deliverable')).toBe('docs/deliverables');
 	});
+
+	it('defaults the Release folder to <home>/releases, the value the register publishes', () => {
+		// `Releases as their own type` names `typeFolder.release` and its shipped default
+		// out loud, and a documented guarantee with no check is the thing this repository
+		// treats as a comment. The resolved VALUE, not only the key, for the reason the
+		// Iteration's own test gives: `typeFolderKey` derives its answer from the NAME, so
+		// a missing row in `DEFAULT_TYPE_SUBFOLDERS` passes a key-only assertion.
+		expect(defaultTypeFolder('Release')).toBe('docs/releases');
+		expect(defaultTypeFolder('Release', 'work')).toBe('work/releases');
+		expect(defaultSettings().typeFolders.release).toBe('docs/releases');
+	});
 });
 
 describe('folders by type', () => {

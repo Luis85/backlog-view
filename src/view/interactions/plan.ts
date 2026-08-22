@@ -1,11 +1,12 @@
 import { Menu } from 'obsidian';
 import { BacklogViewHost } from '../host';
 import { BacklogItem } from '../../domain/model';
-import { PlacementEnd, placementEnds } from '../../domain/itemTypes';
+import { isReleaseType, PlacementEnd, placementEnds } from '../../domain/itemTypes';
 import { sameValue } from '../../domain/noteFields';
 import { BacklogSettings, horizonMenuValues } from '../../domain/settings';
 import { optionalKeyFor } from '../../domain/optionalProperties';
 import { formatCivil } from '../../domain/timeline';
+import { hasHorizonAxis } from '../../domain/roadmap';
 import { computeHorizonWrites, SchedulePlan } from '../../domain/writePlan';
 import { SchedulePromptModal } from '../../ui/prompts';
 import { rowVocabulary } from '../projection';
@@ -42,6 +43,17 @@ import { t } from '../../i18n/t';
  */
 export function canSchedule(settings: BacklogSettings, item: BacklogItem): boolean {
 	return placementEnds(item.typeName, settings.iterationBars).some((end) => optionalKeyFor(settings, end) !== '');
+}
+
+/**
+ * The bucket axis's half of the same question, and asked of the ITEM for the same reason
+ * `canSchedule` is: `hasHorizonAxis` says whether this base HAS buckets, which is not the
+ * same as whether this row may be put in one. A `RELEASE` may not — `computeHorizonWrites`
+ * refuses it, so every entry the menu drew would be checked (an entry is checked exactly
+ * when picking it would write nothing) and every pick would do nothing.
+ */
+export function canPlaceHorizon(settings: BacklogSettings, item: BacklogItem): boolean {
+	return hasHorizonAxis(settings) && !isReleaseType(item.typeName);
 }
 
 /** True when the note carries a date key this item's placement may take away. */

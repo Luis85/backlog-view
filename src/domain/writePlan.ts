@@ -1,7 +1,7 @@
 import { TFile } from 'obsidian';
 import { DropTarget } from './dropTargets';
 import { BacklogItem, BacklogModel } from './model';
-import { childLevelIndex, PlacementEnd } from './itemTypes';
+import { childLevelIndex, isReleaseType, PlacementEnd } from './itemTypes';
 import { statedEnds } from './bars';
 import { readDate, sameValue } from './noteFields';
 import { daysBetween, formatCivil } from './timeline';
@@ -324,6 +324,14 @@ function stampWrites(
  * bucket — so a no-op cannot cost the caller's one undo.
  */
 export function computeHorizonWrites(item: BacklogItem, value: string | null): ItemWrite[] {
+	// A `RELEASE` is placed on no axis of the backlog roadmap, so nothing may write it one
+	// — and this is the site every input lands on, the drag, the key and both menus alike,
+	// so the refusal is stated once here rather than at each of them. The horizon key is
+	// the BACKLOG view's own mapping; a release's placement belongs to
+	// [[A release on the dated axis]] and to the key it has not been given yet. The offer
+	// is withheld to match (`canPlaceHorizon`), because a menu whose every entry plans
+	// nothing would read as every bucket checked at once.
+	if (isReleaseType(item.typeName)) return [];
 	if (value === null) {
 		// Nothing to take away: an item with no horizon key is already untriaged, and
 		// a removal write there would consume an undo slot for a change nobody made.
