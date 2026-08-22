@@ -57,7 +57,13 @@ done the picker offers neither an iteration nor the `New iteration…` action, a
 following the list would inspect five projections while reporting six. Set it up in this
 order, before starting the walk:
 
-1. Bind the iteration property in the view options.
+1. **Add `iterationProperty: note.iteration` to the `Backlog` view in
+   `docs/Product Backlog.base`** in a text editor. The picker cannot do this: Obsidian offers
+   the properties the vault HAS, no note here carries `iteration`, and that is precisely the
+   loop `runInit` exists to break rather than one a runner can step around. Do not point it at
+   some other existing property instead — committing the item would overwrite that field with
+   the iteration link, and the None pick in the teardown deletes the key rather than restoring
+   what was in it.
 2. Create an iteration.
 3. Pick the item you will commit and **write down its `start` and `due` now, before
    committing it.** Committing copies the sprint's dates over them, so after the commit there
