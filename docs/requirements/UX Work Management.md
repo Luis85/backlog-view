@@ -98,13 +98,26 @@ work-item types.
   Feature that needs design and says nothing is a Feature nobody classified, and inferring
   it from the words in the title is the kind of guess this register has refused everywhere
   else.
-- **Own readiness, or findings.** Whether a Feature is ready per discipline is
-  [[Backlog Health]]'s question and belongs beside [[A definition of ready]]; what a
-  usability study observed is [[Product Evidence]]'s, beside the kinds of evidence it
-  already names. Both gain from this property. Neither moves here.
+- **Own readiness, or usability findings.** Both belong elsewhere, and **neither is written
+  anywhere yet** — which is stated instead of naming an owner, because a redirect to an epic
+  that does not hold the work is a dropped requirement wearing a citation. Readiness per
+  discipline belongs beside [[A definition of ready]] under [[Backlog Health]], which today
+  answers readiness per *item* and has no discipline in it. The usability-finding lifecycle
+  — a finding accepted, converted into backlog work, deferred, rejected or resolved, and
+  traceable back to the study that produced it — belongs under [[Product Evidence]], which
+  today names kinds of evidence and counts them and models no finding at all; the findings
+  [[Every finding, listed]] holds are health-rule findings, a different thing sharing the
+  word. Each is one note somebody still has to write, and this bullet is where that debt is
+  recorded until they do.
 - **Build a second board.** A board scoped to one discipline is [[Product Kanban]]'s board
   with a scope, exactly as the Deliverables board and the iteration board already are, and
   it is that epic's precedent rather than a new implementation.
 - **Become a design tool.** The artifact is made in Figma, in Miro, or in a note; the vault
   stores it and this epic tracks the work that produces it and what it belongs to. That is
   the whole of the source document's closing principle and it is adopted unchanged.
+  **What makes "what it belongs to" true is also not written yet**: the link from an item to
+  the journey, flow or prototype note that serves it. It is unspecified here and everywhere
+  else, and it cannot be added in passing, because the name the source document gives it
+  collides with the existing `Deliverable` type — a ranked work item with a board of its own,
+  which is a different thing wearing the same word. Settling that name is the first half of
+  the note nobody has written.
