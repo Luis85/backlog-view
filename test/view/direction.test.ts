@@ -108,7 +108,13 @@ const hasFourSidedShorthand = (block: string): boolean =>
 	// four-value padding went unread — and that is the exact order `.pbl-card-kid` writes
 	// them in, so the one rule this category exists for was a `margin: 0` away from being
 	// invisible to it. Caught in review on PR #196.
-	[...block.matchAll(/(?:^|[;{\s])(?:margin|padding)\s*:\s*([^;]+);/g)].some(
+	//
+	// The value ends at a `;` or at the END OF THE BLOCK, since the last declaration in a
+	// rule may legally drop its semicolon — requiring one made the guard blind to exactly
+	// the declaration a hand-written rule is most likely to spell that way. `[^;]+` cannot
+	// cross a `;`, so dropping it from the pattern is the whole of that. Fourth instrument
+	// failure on this file, caught in review on PR #196 like the three above it.
+	[...block.matchAll(/(?:^|[;{\s])(?:margin|padding)\s*:\s*([^;]+)/g)].some(
 		(decl) => valueCount(decl[1]) === 4,
 	);
 
@@ -141,6 +147,15 @@ describe('the stylesheet names no physical side', () => {
 		expect(labelRules.length, '.pbl-bar-label-after is gone, renamed, or now has a second rule').toBe(1);
 		expect(labelRules[0][1]).toMatch(/padding-left:/);
 		expect(labelRules[0][1]).toMatch(/left:\s*var\(--pbl-label-left\)/);
+	});
+
+	it('reads a four-value shorthand that a rule spells last and unterminated', () => {
+		// The stylesheet has no such declaration today, so the sentence above cannot show
+		// this and would go on passing with the guard blind. Asserted against a planted
+		// block for that reason: the instrument is what is under test here, not `styles/`.
+		expect(hasFourSidedShorthand('margin: 0; padding: 1px 2px 3px 4px')).toBe(true);
+		expect(hasFourSidedShorthand('padding: calc(var(--gap) + 1px) 2px 3px 4px')).toBe(true);
+		expect(hasFourSidedShorthand('margin: 0 auto; padding: 1px 2px')).toBe(false);
 	});
 
 	it('aligns text to a logical end, never to a physical one', () => {
