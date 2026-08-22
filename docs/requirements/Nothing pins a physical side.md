@@ -198,6 +198,13 @@ whole.
   coherent — a comment stating a rule the code beside it did not check, which is the failure
   [[A comment that states a rule is not a check]] records. No placement can make
   `text-align: left` right, because alignment follows the text and not the box.
+  **A second round on the same file found the shorthand scan reading only the FIRST
+  `margin`/`padding` in a block**, so `margin: 0; padding: 1px 2px 3px 4px;` passed on the
+  symmetric margin while the four-value padding went unread — and that is the exact order
+  `.pbl-card-kid` writes them in, which means the one rule this whole category exists for
+  was a `margin: 0` away from being invisible to its own check. Both rounds are the same
+  instrument failure this note's extension 1a already warns about, one layer down: a scan
+  that reads one member of a set and reports on the set.
   Deliberately narrower than this PBI: `border-left`/`border-right` and
   every bare `left:`/`right:` are outside it, since a rule over those would open with the
   exemption list [[Styling rules are checks]] exists to avoid. Watched failing in both

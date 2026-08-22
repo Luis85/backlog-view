@@ -65,12 +65,17 @@ describe('the stylesheet names no physical side', () => {
 		// that way. A three-value shorthand is symmetric on the inline axis, so it names
 		// no side and is not matched.
 		expect(unlicensed(/(?:^|[;{\s])(?:margin|padding)-(?:left|right)\s*:/)).toEqual([]);
-		const fourValue = blocks.filter((block) => {
-			const decl = /(?:^|[;{\s])(?:margin|padding)\s*:\s*([^;]+);/.exec(block);
-			if (!decl) return false;
-			// `var(--x)` holds no spaces once collapsed, so counting words counts VALUES.
-			return decl[1].trim().replace(/\([^)]*\)/g, 'X').split(/\s+/).length === 4;
-		});
+		// EVERY shorthand in the block, not the first: `exec` stops at one, so
+		// `margin: 0; padding: 1px 2px 3px 4px;` passed on the symmetric margin while the
+		// four-value padding went unread — and that is the exact order `.pbl-card-kid`
+		// writes them in, so the one rule this category exists for was a `margin: 0` away
+		// from being invisible to it. Caught in review on PR #196.
+		const fourValue = blocks.filter((block) =>
+			[...block.matchAll(/(?:^|[;{\s])(?:margin|padding)\s*:\s*([^;]+);/g)].some(
+				// `var(--x)` holds no spaces once collapsed, so counting words counts VALUES.
+				(decl) => decl[1].trim().replace(/\([^)]*\)/g, 'X').split(/\s+/).length === 4,
+			),
+		);
 		expect(fourValue).toEqual([]);
 	});
 
@@ -80,10 +85,15 @@ describe('the stylesheet names no physical side', () => {
 		// using it, and it must still be pinned by the offset `barLabel.ts` computes. Were
 		// that offset to go logical without the padding following, the clearance would
 		// mirror away from the connector it clears and the test above would go on passing.
-		const label = /\.pbl-bar-label-after\s*\{([^}]*)\}/.exec(declarations);
-		expect(label, '.pbl-bar-label-after is gone or renamed').not.toBeNull();
-		expect(label?.[1]).toMatch(/padding-left:/);
-		expect(label?.[1]).toMatch(/left:\s*var\(--pbl-label-left\)/);
+		//
+		// The count is asserted before the body for the reason the shorthand scan above
+		// records: a lone match reads only the first rule, so a second one — under a media
+		// query, say — would be unchecked and this would go on passing. Whether both must
+		// carry both declarations is a question for whoever adds the second.
+		const labelRules = [...declarations.matchAll(/\.pbl-bar-label-after\s*\{([^}]*)\}/g)];
+		expect(labelRules.length, '.pbl-bar-label-after is gone, renamed, or now has a second rule').toBe(1);
+		expect(labelRules[0][1]).toMatch(/padding-left:/);
+		expect(labelRules[0][1]).toMatch(/left:\s*var\(--pbl-label-left\)/);
 	});
 
 	it('aligns text to a logical end, never to a physical one', () => {
