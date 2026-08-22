@@ -54,9 +54,20 @@ export function syncProjectionClasses(viewEl: HTMLElement, projection: Projectio
  * pane claims to be while it does. One decision, stated once — the view applies
  * the result (snapshots, role, label) and keeps the state; this module only
  * renders. The listbox role is a promise of options, so it is made only where
- * options exist: the board's columns always are (an empty column's stop is one),
- * the roadmap's only while cards render, and guidance is a plain labelled region
- * rather than an empty listbox a screen reader may announce as nothing at all.
+ * options exist: **every board's columns always are**, whatever they hold — each
+ * column header is `role="option"` with `.pbl-board-col-stop`
+ * (`renderColumnHeader` in `render/board.ts`), a permanent active-descendant target
+ * so the selection always has a valid one, and that never goes away even with
+ * every column empty. That holds for all three boards, the iteration board
+ * included: its shelf can narrow to nothing, or hold cards no keyboard walk can
+ * reach at all ([[The iteration shelf is out of the keyboard's walk]]), and
+ * neither changes what its columns are. Only the roadmap's options ARE its cards,
+ * so with none rendered it truly has none, and only there does the role depend on
+ * what a render pass drew; guidance is a plain labelled region rather than an
+ * empty listbox a screen reader may announce as nothing at all. This module once
+ * derived the iteration board's role from its rendered cards too (2026-08-21,
+ * briefly) — wrong, for the reason above, and worth restating so nobody "fixes"
+ * the unconditional `listbox` back into a bug.
  */
 export interface ProjectionContent {
 	board: BoardSnapshot | null;
@@ -301,6 +312,12 @@ function renderIterationBoardContent(ctx: RowContext, treeEl: HTMLElement, dnd: 
 		renderBoardNoWorkflowState(ctx.host, treeEl);
 		return { board: null, roadmap: null, role: 'region', label };
 	}
+	// Unconditional `listbox`, like the other two boards and UNLIKE the roadmap — briefly
+	// tried as a two-term question of what this pass drew (2026-08-21) and reverted the
+	// same day. Every column header is a permanent `role="option"` stop
+	// (`render/board.ts`'s `.pbl-board-col-stop`), whatever the column holds, so this
+	// board's pane always contains options and dropping to `region` would orphan them
+	// against a still-navigating arrow handler. See `ProjectionContent`'s own comment.
 	return { board: renderIterationBoard(ctx, treeEl, dnd, scope), roadmap: null, role: 'listbox', label };
 }
 

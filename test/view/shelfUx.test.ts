@@ -283,9 +283,9 @@ describe('the shelf\'s own header controls', () => {
 		// is worse than none. The toggle that WOULD open it is deliberately not here
 		// either: the disclosure is its keyboard path, and it is a real tab stop for that.
 		const titles = menu.items.map((i) => i.titleText);
-		expect(titles).not.toContain('Sort unplaced');
-		expect(titles).not.toContain('Filter unplaced by type');
-		expect(titles.filter((t) => t.includes('unplaced'))).toEqual([]);
+		expect(titles).not.toContain('Sort the shelf');
+		expect(titles).not.toContain('Filter the shelf by type');
+		expect(titles.filter((t) => t.includes('the shelf'))).toEqual([]);
 		expect(disclosureOf(containerEl)?.getAttribute('tabindex')).toBe('0');
 	});
 
@@ -301,12 +301,12 @@ describe('the shelf\'s own header controls', () => {
 
 		// One builder feeds both surfaces, so the menu's entries are the header's own —
 		// a second builder is what would let the two drift apart about what is offered.
-		const sortEntries = itemNamed(menu, 'Sort unplaced').submenu?.items ?? [];
+		const sortEntries = itemNamed(menu, 'Sort the shelf').submenu?.items ?? [];
 		expect(sortEntries.map((i) => i.titleText)).toEqual(headerMenuTitles(containerEl, '.pbl-shelf-sort'));
-		const typeEntries = itemNamed(menu, 'Filter unplaced by type').submenu?.items ?? [];
+		const typeEntries = itemNamed(menu, 'Filter the shelf by type').submenu?.items ?? [];
 		expect(typeEntries.map((i) => i.titleText)).toEqual(headerMenuTitles(containerEl, '.pbl-shelf-filter'));
 
-		itemNamed(itemNamed(menu, 'Filter unplaced by type').submenu!, 'Task (1)').click();
+		itemNamed(itemNamed(menu, 'Filter the shelf by type').submenu!, 'Task (1)').click();
 		expect(shelfGroupHeaders(containerEl)).toEqual(['Epic']);
 	});
 

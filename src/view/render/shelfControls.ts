@@ -5,6 +5,7 @@ import { showMenuAtElement, showMenuForClick } from '../interactions/menu';
 import { addShelfLayoutItems, addShelfSortItems, addShelfTypeItems, shelfLayoutIcon } from '../interactions/shelfMenu';
 import { organizeShelf } from '../../domain/shelf';
 import { ShelfCard } from '../../domain/bars';
+import { activeShelf } from '../shelfSurface';
 
 /**
  * The shelf's own header chrome: the disclosure that names it, counts it and opens it,
@@ -25,7 +26,7 @@ import { ShelfCard } from '../../domain/bars';
  * **The search box is a form control and cannot be anything else** — a menu cannot be
  * typed into — so it keeps the half of that rule that is about TAB rather than the half
  * that is about elements: `tabindex="-1"` like the pickers, lifted with them by
- * `syncShelfTabStops`, with the card menu's own Search unplaced entry (a prompt) as the
+ * `syncShelfTabStops`, with the card menu's own Search the shelf entry (a prompt) as the
  * keyboard path, and Escape clearing it. What is left unpaid is the ARIA deviation the
  * shelf's disclosure and the two resize grips already state: a focusable non-`option`
  * inside a `listbox`, here a text field rather than a button. Narrower than it reads —
@@ -43,7 +44,7 @@ export function renderShelfControls(
 	host: BacklogViewHost,
 	headerEl: HTMLElement,
 	shelf: ShelfCard[],
-	opts: { name: string; picks: boolean; fold: { collapsed: boolean; set: (collapsed: boolean) => void } },
+	opts: { name: string; fold: { collapsed: boolean; set: (collapsed: boolean) => void } },
 ): void {
 	// An empty shelf is a bare label: it renders only so a drag has somewhere to land,
 	// and a disclosure over nothing would offer to open what has no content.
@@ -82,7 +83,7 @@ export function renderShelfControls(
 	});
 	// Nothing to order or narrow while the cards are shut away, and a control that
 	// visibly does nothing is worse than none — the toolbar's own expand/collapse rule.
-	if (collapsed || !opts.picks) return;
+	if (collapsed) return;
 	renderLayoutPicker(host, headerEl);
 	renderSortPicker(host, headerEl);
 	renderTypeFilter(host, headerEl, shelf);
@@ -147,14 +148,15 @@ export function syncShelfTabStops(shelfEl: HTMLElement, paneIsComposite: boolean
  * them another route to it.
  */
 function refocus(host: BacklogViewHost, selector: string): void {
-	// Either frame's shelf, because both draw this header: the roadmap's own, and the
-	// iteration board's, where the pane is a composite whenever it draws columns — which
-	// it always does — so the second term below can only ever be the roadmap's question.
-	const snapshot = host.roadmap;
-	const shelfEl = snapshot?.shelfEl ?? host.board?.shelfEl;
-	if (!shelfEl) return;
-	const ownsFocus = selector === '.pbl-shelf-disclosure' || snapshot?.cards.length === 0;
-	const target = ownsFocus ? shelfEl.querySelector<HTMLElement>(selector) : shelfEl.closest<HTMLElement>('.pbl-tree');
+	// Either band, resolved through `activeShelf` rather than read off `host.roadmap`
+	// directly: the iteration board's pane can also hold no card — an iteration with
+	// nothing committed draws empty columns, and a narrow enough search or type filter
+	// empties its shelf too — so "the pane is a composite" is a real question on both
+	// surfaces, never only the roadmap's.
+	const surface = activeShelf(host);
+	if (!surface.el) return;
+	const ownsFocus = selector === '.pbl-shelf-disclosure' || !surface.paneHasCards;
+	const target = ownsFocus ? surface.el.querySelector<HTMLElement>(selector) : surface.el.closest<HTMLElement>('.pbl-tree');
 	target?.focus();
 }
 
@@ -230,11 +232,14 @@ function renderTypeFilter(host: BacklogViewHost, headerEl: HTMLElement, shelf: S
  *
  * Everything is re-read from the host rather than captured: the button pressed and the
  * element it sat in are both gone with the frame, and a shelf array from before the
- * rebuild would count cards the pane no longer holds.
+ * rebuild would count cards the pane no longer holds. The band itself is re-resolved
+ * too, through `activeShelf`, rather than read off `host.roadmap` directly — the same
+ * band this menu has to act on can be the iteration board's.
  */
 function showTypeMenu(host: BacklogViewHost): void {
-	const shelf = host.roadmap?.roadmap.shelf ?? [];
-	const btn = host.roadmap?.shelfEl?.querySelector<HTMLElement>('.pbl-shelf-filter');
+	const surface = activeShelf(host);
+	const shelf = surface.cards;
+	const btn = surface.el?.querySelector<HTMLElement>('.pbl-shelf-filter');
 	if (shelf.length === 0 || !btn) return;
 	const menu = new Menu();
 	addShelfTypeItems(host, menu, shelf, () => {
@@ -337,7 +342,7 @@ function renderSearchClear(host: BacklogViewHost, headerEl: HTMLElement): void {
  */
 function runSearch(host: BacklogViewHost, text: string, caret: number | null): void {
 	host.setShelfSearch(text);
-	const input = host.roadmap?.shelfEl?.querySelector<HTMLInputElement>('.pbl-shelf-search-input');
+	const input = activeShelf(host).el?.querySelector<HTMLInputElement>('.pbl-shelf-search-input');
 	if (!input) return;
 	input.focus();
 	if (caret !== null) input.setSelectionRange(caret, caret);

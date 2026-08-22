@@ -167,6 +167,24 @@ input.pbl-shelf-search-input {
 	touch-action: none;
 }
 
+/* **Sticky holds; it does not push.** The grip is the band's last flex item, so on a band
+   the reader has SIZED taller than its cards, flow leaves it under the last group and
+   `position: sticky` has nothing to do — measured in the browser harness with every type
+   group folded and a 400px pick, its bottom sat 139px above the band's foot, and −5px with
+   this margin, which is exactly where it sits when the band overflows. The two states agree
+   now instead of disagreeing by the band's spare room.
+
+   Scoped to the sized band in BOTH directions rather than written on the rule above. An
+   unpicked band is `height: auto`, so its grip is already at the foot and there is no free
+   space for an auto margin to eat; and an auto margin there would replace the negative pull
+   above, which is the gap-cancel [[Resizing the shelf]] extension 1e measures the
+   content-sized band by. Measured: the unpicked band is 219px with and without this. On an
+   overflowing band the auto margin resolves to 0 and sticky pins the strip exactly as
+   before. */
+.pbl-shelf-sized .pbl-shelf-grip {
+	margin-block-start: auto;
+}
+
 /* The MARK inside the hit area, the property grip's own arrangement: the strip is the
    target and this 2px line is what a reader sees. Its own element rather than a border on
    the strip, so the visible line can be thinner than the area that catches a finger. */

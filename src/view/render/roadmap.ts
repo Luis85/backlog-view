@@ -339,9 +339,9 @@ function wireLaneDrop(
 
 /**
  * What the roadmap's shelf is handed, on either axis — one place, so the two branches
- * cannot come to differ about the name, the picks or the fold. The fold pair is written
- * once here rather than at each call for the same reason read as code: two identical
- * closures are two functions where the shelf has one bit.
+ * cannot come to differ about the name or the fold. The fold pair is written once here
+ * rather than at each call for the same reason read as code: two identical closures are
+ * two functions where the shelf has one bit.
  */
 function shelfInput(
 	host: BacklogViewHost,
@@ -354,7 +354,6 @@ function shelfInput(
 		conflicts,
 		axis,
 		name: shelfLabel(),
-		picks: true,
 		fold: { collapsed: host.shelfCollapsed, set: (collapsed) => host.setShelfCollapsed(collapsed) },
 	};
 }
