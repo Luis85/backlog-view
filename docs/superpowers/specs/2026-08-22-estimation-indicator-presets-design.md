@@ -123,13 +123,19 @@ sentence, unchanged.
 
 ### 2. Computing it, and the three ways it has no figure
 
-`src/domain/weightedScore.ts` resolves each operand id to `{ label, value | null }` and
-returns either a figure or the **name of the one operand that blocked it**:
+`src/domain/weightedScore.ts` resolves each operand id and returns either a figure or the
+**one operand that blocked it, and which of the three ways it did** — because the three are
+repaired in different places, and one sentence covering all of them is wrong about two:
 
-- an operand with no answer on this item,
-- a divisor of zero or below — zero is not a large indicator, a negative one inverts the
-  ranking silently,
-- an operand id naming nothing at all: a typo in the config, or a dimension since removed.
+- an operand with no answer on this item — *is not answered*, repaired by scoring the note,
+- a divisor of zero or below — *has to be above zero to divide by*, repaired by correcting
+  the value the note already holds; zero is not a large indicator, and a negative one
+  inverts the ranking silently,
+- an operand id naming nothing at all — *nothing in this model is called that*, repaired in
+  the operands box; a typo, or a dimension since removed.
+
+The currency chip's own rule, over a different failure: a distinct word per failure, never
+a shared one that reads as the most common of them.
 
 The third is not in the register, and it takes the same path deliberately rather than
 becoming a `modelProblems` entry. A model problem replaces the whole table with a warning
@@ -283,7 +289,11 @@ and before currency.
   six and twelve. Spelled out there independently, as that module's own rule requires:
   stored state is read defensively, never trusted as a type.
 
-**The panel** (`src/view/estimation/panel.ts`): the hardcoded value-to-effort line becomes
+**The panel** (`src/view/estimation/panel.ts`): **two independent lines, each gated on its
+own inputs.** The confidence-adjusted value needs a total and a confidence; the indicator
+needs neither, since it may be `effort × complexity` or a dimension on its own. One shared
+guard would hide a perfectly computable indicator, and would also silence the blocked
+message on exactly the item that most needs it. The hardcoded value-to-effort line becomes
 the configured indicator — its name or formula, its figure, and where it has none, the
 operand that blocked it. It stays where it is, beside the confidence-adjusted value, which
 is the epic's rule that a merged number appears beside its inputs and never instead of

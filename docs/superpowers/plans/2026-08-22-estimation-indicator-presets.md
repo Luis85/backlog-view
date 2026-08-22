@@ -58,7 +58,8 @@
   - `interface Indicator { label: string; operands: string[]; divisor: string | null }` (`scoringModel.ts`)
   - `const INDICATOR_BUILTINS: readonly string[]` (`scoringModel.ts`)
   - `interface IndicatorInputs { answers: ReadonlyMap<string, number | null>; confidence: number | null; effort: number | null; complexity: number | null; result: TotalResult | null }` (`weightedScore.ts`)
-  - `interface IndicatorFigure { value: number | null; blockedBy: string | null }` (`weightedScore.ts`)
+  - `type IndicatorBlock = 'unanswered' | 'unknown' | 'nonpositive'` (`weightedScore.ts`)
+  - `interface IndicatorFigure { value: number | null; blockedBy: { operand: string; reason: IndicatorBlock } | null }` (`weightedScore.ts`)
   - `function computeIndicator(model: ScoringModel, indicator: Indicator, inputs: IndicatorInputs): IndicatorFigure | null`
   - `function indicatorFormula(model: ScoringModel, indicator: Indicator): string`
 
@@ -106,12 +107,12 @@ describe('the indicator', () => {
 
 	it('has no figure, naming the operand, when one is unanswered', () => {
 		const figure = computeIndicator(configured(), ind({ operands: ['reach', 'confidence'], divisor: null }), inputs({ confidence: null }));
-		expect(figure).toEqual({ value: null, blockedBy: 'Confidence' });
+		expect(figure).toEqual({ value: null, blockedBy: { operand: 'Confidence', reason: 'unanswered' } });
 	});
 
 	it('has no figure, naming the id itself, when an operand names nothing', () => {
 		const figure = computeIndicator(configured(), ind({ operands: ['reeech'], divisor: null }), inputs());
-		expect(figure).toEqual({ value: null, blockedBy: 'reeech' });
+		expect(figure).toEqual({ value: null, blockedBy: { operand: 'reeech', reason: 'unknown' } });
 	});
 
 	it('reads a scale operand CLAMPED, so an out-of-range confidence never inverts the ranking', () => {
@@ -124,8 +125,9 @@ describe('the indicator', () => {
 
 	it('refuses a divisor of zero or below as STORED, before the clamp can repair it', () => {
 		const model = configured();
-		expect(computeIndicator(model, ind(), inputs({ effort: 0 }))).toEqual({ value: null, blockedBy: 'Effort' });
-		expect(computeIndicator(model, ind(), inputs({ effort: -2 }))).toEqual({ value: null, blockedBy: 'Effort' });
+		const nonpositive = { value: null, blockedBy: { operand: 'Effort', reason: 'nonpositive' } };
+		expect(computeIndicator(model, ind(), inputs({ effort: 0 }))).toEqual(nonpositive);
+		expect(computeIndicator(model, ind(), inputs({ effort: -2 }))).toEqual(nonpositive);
 	});
 
 	it('refuses a divisor that RESOLUTION turns nonpositive', () => {
@@ -133,7 +135,7 @@ describe('the indicator', () => {
 		// to Infinity while passing any check on what the note holds.
 		const model = configured({ 'dimRange.reach': '0-10', 'dimLessIsBetter.reach': true });
 		const figure = computeIndicator(model, ind({ operands: ['value'], divisor: 'reach' }), inputs({}, { ...FULL, reach: 10 }));
-		expect(figure).toEqual({ value: null, blockedBy: 'Reach' });
+		expect(figure).toEqual({ value: null, blockedBy: { operand: 'Reach', reason: 'nonpositive' } });
 	});
 
 	it('reads `ease` as the effort scale reversed on its own range', () => {
@@ -266,11 +268,20 @@ export interface IndicatorInputs {
 	result: TotalResult | null;
 }
 
-/** A figure, or the name of the ONE operand that blocked it — never a code, because this
- *  string is what the cell's tooltip and the panel line say out loud. */
+/**
+ * Which of the three ways an operand can block a figure. Carried rather than collapsed,
+ * because the three are REPAIRED differently and a reader is looking at this to fix it:
+ * an unanswered operand wants a score on the note, a nonpositive divisor wants the value
+ * the note already holds corrected, and an unknown id wants the operands box edited. One
+ * message for all three would be wrong about two of them — the currency chip's own rule,
+ * which spends a distinct word on each failure rather than a shared one.
+ */
+export type IndicatorBlock = 'unanswered' | 'unknown' | 'nonpositive';
+
+/** A figure, or the ONE operand that blocked it and why. */
 export interface IndicatorFigure {
 	value: number | null;
-	blockedBy: string | null;
+	blockedBy: { operand: string; reason: IndicatorBlock } | null;
 }
 
 /** What the arithmetic uses, what the note holds, and what to call it when either is
@@ -280,6 +291,10 @@ interface ResolvedOperand {
 	label: string;
 	value: number | null;
 	stored: number | null;
+	/** False only for an id nothing answers to — a typo in the box, or a dimension since
+	 *  removed. Distinct from `value === null`, which is an operand this item has not
+	 *  answered, because the two are repaired in different places. */
+	known: boolean;
 }
 
 function operandLabel(model: ScoringModel, id: string): string {
@@ -309,8 +324,8 @@ function operandLabel(model: ScoringModel, id: string): string {
  *  reports. Raw would invert a ranking: a stored confidence of `-2` makes a product fall
  *  as its other operands rise. */
 function scaleOperand(scale: ScaleConfig, held: number | null, label: string): ResolvedOperand {
-	if (held === null) return { label, value: null, stored: null };
-	return { label, value: Math.min(scale.max, Math.max(scale.min, held)), stored: held };
+	if (held === null) return { label, value: null, stored: null, known: true };
+	return { label, value: Math.min(scale.max, Math.max(scale.min, held)), stored: held, known: true };
 }
 
 function resolveOperand(model: ScoringModel, inputs: IndicatorInputs, id: string): ResolvedOperand {
@@ -323,22 +338,23 @@ function resolveOperand(model: ScoringModel, inputs: IndicatorInputs, id: string
 		// `1 ÷ effort`, which is a different ranking wearing the name.
 		const effort = scaleOperand(model.effort, inputs.effort, label);
 		const value = effort.value === null ? null : model.effort.min + model.effort.max - effort.value;
-		return { label, value, stored: effort.stored };
+		return { label, value, stored: effort.stored, known: true };
 	}
-	if (id === 'value') return { label, value: inputs.result?.total ?? null, stored: null };
+	if (id === 'value') return { label, value: inputs.result?.total ?? null, stored: null, known: true };
 	if (id === 'adjustedValue') {
-		if (inputs.result === null || inputs.confidence === null) return { label, value: null, stored: null };
+		if (inputs.result === null || inputs.confidence === null) return { label, value: null, stored: null, known: true };
 		const confidence = scaleOperand(model.confidence, inputs.confidence, label).value as number;
 		// Rounded HERE, before it is multiplied or divided — `renderDerived`'s own order, and
 		// keeping it is what makes "no in-range item's number moves" true rather than nearly
 		// true: at a total of 1.01, confidence 3, effort 2, rounding first gives 0.31 and
 		// rounding only the final figure gives 0.30.
-		return { label, value: round2((inputs.result.total * confidence) / model.confidence.max), stored: null };
+		return { label, value: round2((inputs.result.total * confidence) / model.confidence.max), stored: null, known: true };
 	}
 	const dimension = model.dimensions.find((d) => d.id === id);
-	const raw = dimension ? inputs.answers.get(dimension.id) : undefined;
-	if (!dimension || raw === null || raw === undefined) return { label, value: null, stored: null };
-	return { label, value: countAnswer(dimension, raw).score, stored: raw };
+	if (!dimension) return { label, value: null, stored: null, known: false };
+	const raw = inputs.answers.get(dimension.id);
+	if (raw === null || raw === undefined) return { label, value: null, stored: null, known: true };
+	return { label, value: countAnswer(dimension, raw).score, stored: raw, known: true };
 }
 
 /**
@@ -352,7 +368,7 @@ export function computeIndicator(model: ScoringModel, indicator: Indicator, inpu
 	let product = 1;
 	for (const id of indicator.operands) {
 		const operand = resolveOperand(model, inputs, id);
-		if (operand.value === null) return { value: null, blockedBy: operand.label };
+		if (operand.value === null) return { value: null, blockedBy: blockOf(operand) };
 		product *= operand.value;
 	}
 	if (indicator.divisor === null) return { value: round2(product), blockedBy: null };
@@ -361,10 +377,16 @@ export function computeIndicator(model: ScoringModel, indicator: Indicator, inpu
 	// minimum is normally 1 and the clamp would repair exactly the case this refuses; and
 	// what the model MAKES of it, because a `lessIsBetter` dimension over `0-10` answered at
 	// its top resolves to 0 and would divide to Infinity while the stored value looks fine.
-	if (divisor.value === null || divisor.value <= 0 || (divisor.stored !== null && divisor.stored <= 0)) {
-		return { value: null, blockedBy: divisor.label };
+	if (divisor.value === null) return { value: null, blockedBy: blockOf(divisor) };
+	if (divisor.value <= 0 || (divisor.stored !== null && divisor.stored <= 0)) {
+		return { value: null, blockedBy: { operand: divisor.label, reason: 'nonpositive' } };
 	}
 	return { value: round2(product / divisor.value), blockedBy: null };
+}
+
+/** An operand with no value: unknown where nothing answers to the id, unanswered otherwise. */
+function blockOf(operand: ResolvedOperand): { operand: string; reason: IndicatorBlock } {
+	return { operand: operand.label, reason: operand.known ? 'unanswered' : 'unknown' };
 }
 
 /** `Reach × Business impact × Confidence ÷ Effort` — every NAME from the catalog; the two
@@ -699,7 +721,16 @@ describe('the indicator column', () => {
 		const { containerEl } = makeEstimationView(fixture(), values());
 		expect(cell(containerEl, 'Full.md').textContent).not.toBe('');
 		expect(cell(containerEl, 'NoEffort.md').textContent).toBe('');
-		expect(cell(containerEl, 'NoEffort.md').title).toContain('Effort');
+		expect(cell(containerEl, 'NoEffort.md').title).toBe('No figure: Effort is not answered');
+	});
+
+	it('says which failure blocked it, not "not answered" for all three', () => {
+		const vault = fixture();
+		vault.addFile('ZeroEffort.md', { frontmatter: { 'strategic-alignment': 5, confidence: 4, effort: 0 } });
+		const { containerEl } = makeEstimationView(vault, values({ indicatorOperands: 'nosuchthing' }));
+		expect(cell(containerEl, 'Full.md').title).toBe('No figure: nothing in this model is called nosuchthing');
+		const divided = makeEstimationView(vault, values());
+		expect(cell(divided.containerEl, 'ZeroEffort.md').title).toBe('No figure: Effort has to be above zero to divide by');
 	});
 
 	it('heads the column with the configured name, and its formula as the tooltip', () => {
@@ -814,7 +845,7 @@ In `renderRow`, between the effort cell and the currency chip — `renderRow` ga
 		numberCell(cell, item.indicator?.value ?? null, null);
 		// The blocked operand as a tooltip, and the cell left EMPTY so the stylesheet's own
 		// `:empty::before` dash draws the absence exactly as every other numeric column does.
-		if (item.indicator?.blockedBy) cell.title = t('estimation.indicator.blocked', { operand: item.indicator.blockedBy });
+		if (item.indicator?.blockedBy) cell.title = blockedText(item.indicator.blockedBy);
 	}
 ```
 
@@ -839,6 +870,21 @@ and use it where `renderTable` resolves the pick, before both `renderHead` and
 `sortedItems` read it — one call, so the header and the rows can never disagree about
 which sort this pass is drawing.
 
+and one helper beside it, because the panel says the same three things and neither should
+own the other's copy:
+
+```ts
+/** The tooltip for a blocked cell. Three sentences rather than one, because a reader
+ *  reading this is trying to repair it: an unanswered operand wants a score, a nonpositive
+ *  divisor wants the stored value corrected, and an unknown id wants the operands box
+ *  edited. "is not answered" is wrong about two of those. */
+function blockedText(blocked: { operand: string; reason: IndicatorBlock }): string {
+	if (blocked.reason === 'unknown') return t('estimation.indicator.unknown', { operand: blocked.operand });
+	if (blocked.reason === 'nonpositive') return t('estimation.indicator.nonpositive', { operand: blocked.operand });
+	return t('estimation.indicator.unanswered', { operand: blocked.operand });
+}
+```
+
 In `columnValue`, add the case:
 
 ```ts
@@ -851,7 +897,9 @@ In `columnValue`, add the case:
 In `src/i18n/en.ts`:
 
 ```ts
-	'estimation.indicator.blocked': 'No figure: {operand} is not answered',
+	'estimation.indicator.unanswered': 'No figure: {operand} is not answered',
+	'estimation.indicator.unknown': 'No figure: nothing in this model is called {operand}',
+	'estimation.indicator.nonpositive': 'No figure: {operand} has to be above zero to divide by',
 ```
 
 - [ ] **Step 6: Run the tests**
@@ -895,6 +943,19 @@ Append to `test/view/estimation/panel.test.ts` (reusing that file's existing hel
 		expect(lines.some((line) => line?.startsWith('RICE:'))).toBe(true);
 	});
 
+	it('draws the indicator even where the adjusted value has nothing to say', () => {
+		// No confidence at all, so no adjusted-value line — and an indicator over effort
+		// alone, which is perfectly computable and used to be hidden with it.
+		const { containerEl } = makeEstimationView(fixture(), configuredValues({
+			effortProperty: 'note.effort',
+			indicatorOperands: 'effort',
+			indicatorDivisor: '',
+		}));
+		selectItem(containerEl, 'Full.md');
+		const lines = [...containerEl.querySelectorAll('.pbl-est-derived span')].map((el) => el.textContent);
+		expect(lines.some((line) => line?.includes('Effort'))).toBe(true);
+	});
+
 	it('says which operand blocked it rather than dropping the line', () => {
 		const { containerEl } = makeEstimationView(fixture(), configuredValues({
 			confidenceProperty: 'note.confidence',
@@ -925,18 +986,29 @@ In `src/view/estimation/panel.ts`, `renderDerived` takes the indicator and the m
  * that vanishes reads as "this view has no opinion", and the reader is about to score.
  */
 function renderDerived(panelEl: HTMLElement, item: EstimationItem, model: ScoringModel, indicator: Indicator): void {
-	if (!item.result || item.confidence === null) return;
 	const scale = model.confidence;
-	const adjusted = round2((item.result.total * readAs(item.confidence, scale.min, scale.max)) / scale.max);
+	// TWO independent lines, and the gate on each is its OWN inputs. Sharing one early
+	// return hid the indicator whenever the adjusted value had nothing to say — which is
+	// exactly the item whose indicator is `effort × complexity` and perfectly computable,
+	// and also the item whose default indicator is blocked and most needs to say so.
+	const adjusted =
+		item.result && item.confidence !== null
+			? round2((item.result.total * readAs(item.confidence, scale.min, scale.max)) / scale.max)
+			: null;
+	if (adjusted === null && !item.indicator) return;
 	const derived = panelEl.createDiv({ cls: 'pbl-est-derived' });
-	derived.createSpan({ text: t('estimation.panel.adjustedValue', { value: adjusted }) });
+	if (adjusted !== null) derived.createSpan({ text: t('estimation.panel.adjustedValue', { value: adjusted }) });
 	if (!item.indicator) return;
 	const name = indicator.label || indicatorFormula(model, indicator);
+	const blocked = item.indicator.blockedBy;
 	derived.createSpan({
-		text:
-			item.indicator.value === null
-				? t('estimation.panel.indicatorBlocked', { name, operand: item.indicator.blockedBy ?? '' })
-				: t('estimation.panel.indicator', { name, value: item.indicator.value }),
+		text: blocked === null
+			? t('estimation.panel.indicator', { name, value: item.indicator.value as number })
+			: blocked.reason === 'unknown'
+				? t('estimation.panel.indicatorUnknown', { name, operand: blocked.operand })
+				: blocked.reason === 'nonpositive'
+					? t('estimation.panel.indicatorNonpositive', { name, operand: blocked.operand })
+					: t('estimation.panel.indicatorUnanswered', { name, operand: blocked.operand }),
 	});
 }
 ```
@@ -949,7 +1021,9 @@ In `src/i18n/en.ts`, remove `'estimation.panel.valueToEffort'` and add:
 
 ```ts
 	'estimation.panel.indicator': '{name}: {value}',
-	'estimation.panel.indicatorBlocked': '{name}: no figure — {operand} is not answered',
+	'estimation.panel.indicatorUnanswered': '{name}: no figure — {operand} is not answered',
+	'estimation.panel.indicatorUnknown': '{name}: no figure — nothing in this model is called {operand}',
+	'estimation.panel.indicatorNonpositive': '{name}: no figure — {operand} has to be above zero to divide by',
 ```
 
 - [ ] **Step 5: Run the tests**
