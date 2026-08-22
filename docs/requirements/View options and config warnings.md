@@ -2,9 +2,9 @@
 type: PBI
 parent: "[[Multilang]]"
 order: 50
-status: Open
-started: ""
-finished: ""
+status: Done
+started: 2026-08-21
+finished: 2026-08-21
 horizon: ""
 start: ""
 due: ""
@@ -135,12 +135,71 @@ omission, and both numbers had moved by the time anyone looked.
   lint that enforces it must apply to the English catalog only — German capitalizes
   nouns, and a rule that fights the language it is translating into is a bug in the rule.
 
+## What it decided (2026-08-21)
+
+Three questions this note left open were answered by building it, and each is here because
+the answer is not what the paragraphs above assumed.
+
+**The problems are FRAGMENTS, not structured problems.** `configProblems` still returns
+strings, and they still come out of `domain/` — but each is a fragment
+(`settings.sharedKey`, no capital and no full stop) that a reader puts inside a sentence of
+its own: `config.fixFirst` for the one problem five call sites and the write gate report,
+`config.fixAll` for the whole list. That is what the deferred half of this PBI was actually
+about. A whole sentence nested in another rendered `Fix the view configuration first: The
+… properties share the key "x"..`, and the readme command's own key for that outer sentence
+is gone — the toolbar's warning chip and the readme refusal share `config.fixAll` rather
+than keeping two sentences that have to agree.
+
+The structured-problem design in **The domain-layer question this PBI answers** was not
+built, and the reason is that its premise expired: `domain/` reaches the catalog directly
+(`i18n/` is the leaf below every layer), so a whole key IS the sentence and nothing is
+assembled in the pure layer. A descriptor type plus a formatter in `view/` would have added
+a type and two call sites to reach the same rendered string. What the design was right
+about is kept in a smaller shape — the labels no longer read as internal words, because
+they are catalog text.
+
+**A collision names each property by ROLE, not by the option's `displayName`.**
+`ownedProperties` returns a role id (`parent`, `startedDate`, `tags`, every `OptionalField`)
+and the word comes from `property.<role>`. Not the menu's full label, which this note
+suggested: the sentence already ends in "properties", so the fuller label reads as "the
+Parent property and Order property properties". The id is also what `WORKFLOW_STATE_LABELS`
+matches on — now `WORKFLOW_STATE_ROLES` — so no locale can move a property in or out of the
+pair allowed to share a key. `OptionalProperty.label` is gone with it: the word had one
+home, and it is the catalog. Because the role ids and their English words are the same
+string for `parent`, `order`, `type` and `tags`, English hides a revert here — the check
+uses the started date and the tags key, whose word and id differ.
+
+**Ten of the catalog's own keys quote an option label as English text**, and that is NOT
+fixed here: it is extension 1a of [[Every surface translated]], which owns it. Ten keys,
+ten distinct labels, counted 2026-08-21 by matching each `option.*` value against the rest
+of the catalog — an instrument that reads the labels from the catalog rather than from a
+list, so it cannot go stale by wording. What changed is that it is now possible: the labels
+are keys, so those sentences can take one as a parameter instead of spelling it twice.
+
+## What is not checked here
+
+`getViewOptions` returns a schema; Bases draws the menu. So what CI confirms is that every
+group name, `displayName` and prose placeholder arrives from the catalog and that every
+persisted `key` is unchanged — not that the menu still reads well in a real Obsidian, and
+not that a long German label survives the panel's width. Both are live-vault checks and
+join [[Smoke test the visual changes]]. `npm run test-build` is the handover.
+
 ## Where it lives
 
-**Nothing yet — this note is design.** `src/domain/viewOptions.ts` is the schema whose
-`displayName`s and `placeholder`s move and
-whose `key`s must not · `src/domain/settingsConsistency.ts` holds `configProblems` and
-`src/domain/typeVocabulary.ts` holds `typeFolderKey` · `src/view/render/toolbar.ts` renders the warning chip ·
-`src/view/backlogView.ts` and `src/view/interactions/create.ts` quote a problem into a
-notice.
-Tests: `test/domain/viewOptions.test.ts`, `test/domain/settings.test.ts`.
+`src/domain/viewOptions.ts` is the schema whose `displayName`s and prose `placeholder`s
+come from the catalog and whose `key`s, `default`s and read-back placeholders do not — the
+rule is stated in the module, where the mistake would be made ·
+`src/domain/optionalProperties.ts` names each owned property by role (`OwnedRole`) ·
+`src/domain/settingsConsistency.ts` holds `configProblems`, which renders one fragment per
+collision · `src/domain/typeVocabulary.ts` holds `typeFolderKey`, so no locale can change a
+persisted folder key · `src/i18n/en.ts` carries the `option.*`, `property.*` and `config.*`
+keys · `src/view/render/toolbar.ts` renders the warning chip through `config.fixAll` and
+`src/commands/readme.ts` refuses through the same key · `src/view/writeGate.ts`,
+`src/view/interactions/structure.ts` and `src/view/interactions/create.ts` quote the first
+problem through `config.fixFirst`.
+`eslint.config.mjs` carries the file into `SWEPT`, so the three text bans hold it — with
+`displayName` added to `UI_TEXT_PROPERTY`, the option-bag property no other module in
+`src/` spells.
+Tests: `test/domain/viewOptions.test.ts` (the frozen key set, and the marked-catalog
+remainder), `test/domain/settings.test.ts` (the fragment and its property words),
+`test/i18n/toolbar.test.ts` (the warning's one sentence), `test/commands/readme.test.ts`.

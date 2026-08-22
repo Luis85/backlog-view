@@ -11,6 +11,20 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ## [Unreleased]
 
+### Changed
+
+- **The view-options menu reads in your Obsidian's language.** Every group name, every
+  option's name and every placeholder that is a hint rather than a value now comes from the
+  plugin's string catalog. Nothing that is written down changes: the settings a base stores,
+  the frontmatter keys a property picker suggests, and the placeholders that mirror an
+  option's own default are the same in every language, so a vault set up in one language
+  opens correctly in another. English is still the only catalog that ships.
+
+- **The configuration warning reads as one sentence.** The toolbar's warning chip, the
+  refusal that gates a write and the readme command all state a bad configuration the same
+  way — `Fix the view options first: the parent and order properties share the key "rank".`
+  — instead of running whole sentences together when more than one property collides.
+
 ### Added
 
 - **A second Bases view, Estimation** (`product-estimation`, its own icon in the view

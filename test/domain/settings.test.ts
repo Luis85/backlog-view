@@ -12,6 +12,8 @@ import {
 	resolvedTestStateKey,
 } from '../../src/domain/optionalProperties';
 import { configProblems } from '../../src/domain/settingsConsistency';
+import { en } from '../../src/i18n/en';
+import { setLocale } from '../../src/i18n/t';
 import { resolveSettings } from '../../src/domain/settingsResolve';
 import { ALL_TYPES, byName, defaultTypeFolder, EXTRA_TYPES, LEVELS, MARKER_TYPES, TEST_LEVELS } from '../../src/domain/typeVocabulary';
 
@@ -211,6 +213,24 @@ describe('configProblems', () => {
 
 		const mixed = configProblems(settingsWith({ horizonKey: 'plan', startKey: 'plan' }));
 		expect(mixed[0]).toContain('horizon and start');
+	});
+
+	it('says it in fragments, from the catalog, down to the word for each property', () => {
+		// The whole catalog behind a marker: what the collision renders is a `settings.*`
+		// fragment with a `property.*` word per role, and both halves have to show it.
+		// English hides half of this — `property.parent` IS "parent" — so a role spelled
+		// straight into the sentence reads identically until a role whose word differs
+		// from its id joins, which is why the pair here is the started date and the tags key.
+		setLocale('xx', {
+			xx: Object.fromEntries(Object.entries(en).map(([key, entry]) => [key, `XX ${String(entry)}`])),
+		});
+		try {
+			expect(configProblems(resolveSettings(fakeConfig({ startedDateProperty: 'note.tags' })))).toEqual([
+				'XX the XX started date and XX tags properties share the key "tags"',
+			]);
+		} finally {
+			setLocale('en');
+		}
 	});
 
 	it('refuses an axis key aimed at the tags key — a fresh mistake, not a legacy view', () => {

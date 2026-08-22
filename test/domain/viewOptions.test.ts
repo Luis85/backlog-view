@@ -1,5 +1,7 @@
-import { describe, expect, it } from 'vitest';
-import { BasesViewConfig } from 'obsidian';
+import { afterEach, describe, expect, it } from 'vitest';
+import { BasesAllOptions, BasesViewConfig } from 'obsidian';
+import { en } from '../../src/i18n/en';
+import { Catalog, setLocale } from '../../src/i18n/t';
 import { getViewOptions } from '../../src/domain/viewOptions';
 import { resolveSettings } from '../../src/domain/settingsResolve';
 import { defaultTypeFolder } from '../../src/domain/typeVocabulary';
@@ -212,5 +214,198 @@ describe('getViewOptions', () => {
 			.flatMap((o) => ('items' in o ? o.items : [o]))
 			.map((o) => o.key);
 		expect(keys.filter((k) => k.startsWith('wipLimit.') || k.startsWith('columnPolicy.'))).toEqual([]);
+	});
+});
+
+
+/**
+ * Every key this schema declares, frozen. Not a sample and not `arrayContaining`: the
+ * checks above name the keys a feature cares about, and this one is the alarm for the
+ * key nobody was looking at — a `.base` file holds these verbatim, so a rename is a
+ * silent reset of that option for every vault that set it.
+ *
+ * Ordered, because the order is what the menu draws in. A key that moves group is a
+ * change worth stating out loud even though nothing persisted breaks.
+ */
+const KEYS = [
+	'parentProperty',
+	'orderProperty',
+	'typeProperty',
+	'hierarchyOnly',
+	'showOutsideParents',
+	'inferFolderHierarchy',
+	'stateProperty',
+	'stateValues',
+	'doneValues',
+	'startedStates',
+	'startedDateProperty',
+	'finishedDateProperty',
+	'assigneeProperty',
+	'showCompleted',
+	'deliverableStateProperty',
+	'deliverableStateValues',
+	'deliverableDoneValues',
+	'iterationProperty',
+	'iterationGoalProperty',
+	'iterationOpenStates',
+	'iterationResolvedStates',
+	'iterationLengthDays',
+	'iterationsOnTimeline',
+	'iterationBars',
+	'testStateProperty',
+	'testStateValues',
+	'testDoneValues',
+	'horizonProperty',
+	'horizonValues',
+	'startProperty',
+	'targetProperty',
+	'resourceNames',
+	'dependsOnProperty',
+	'riskProperty',
+	'riskValues',
+	'priorityProperty',
+	'priorityValues',
+	'homeFolder',
+	'typeFolder.epic',
+	'typeFolder.feature',
+	'typeFolder.pbi',
+	'typeFolder.task',
+	'typeFolder.issue',
+	'typeFolder.bug',
+	'typeFolder.idea',
+	'typeFolder.deliverable',
+	'typeFolder.milestone',
+	'typeFolder.iteration',
+	'typeFolder.test suite',
+	'typeFolder.test case',
+	'typeFolder.absence',
+	'openIn',
+	'tagsProperty',
+	'showCounts',
+];
+
+const flatten = (options: BasesAllOptions[]) => options.flatMap((o) => ('items' in o ? o.items : [o]));
+
+describe('the persisted key set', () => {
+	it('is exactly this, and every type folder is derived from the canonical name', () => {
+		expect(flatten(getViewOptions(fakeConfig())).map((o) => o.key)).toEqual(KEYS);
+	});
+
+	it('adds only the two generated per-state keys when a workflow is configured', () => {
+		const keys = flatten(getViewOptions(fakeConfig({ stateValues: 'New, Done', doneValues: 'Done' }))).map((o) => o.key);
+		expect(keys.filter((key) => !KEYS.includes(key))).toEqual(['wipLimit.new', 'columnPolicy.new', 'columnPolicy.done']);
+	});
+});
+
+/**
+ * The other half of the same file's subject: what a `.base` reads back is data and must
+ * not move, and everything a reader SEES is text and must come from the catalog. They sit
+ * on adjacent lines of one object literal, which is the arrangement in which a sweep makes
+ * a mistake, so both directions are asked of the same function.
+ *
+ * The whole catalog goes behind a marker and the assertion is on the REMAINDER — the
+ * `projections.test.ts` construction, for its reason: a list of the labels somebody
+ * remembered checks the labels that already work. What is left unmarked here has to be
+ * exactly the data, so a literal spelled at a new option fails without anyone naming it,
+ * and a key given to a value the resolver reads back fails too.
+ */
+const MARK = 'XX ';
+const xx: Catalog = Object.fromEntries(
+	Object.entries(en).map(([key, entry]) => [
+		key,
+		typeof entry === 'string' ? MARK + entry : Object.fromEntries(Object.entries(entry).map(([f, v]) => [f, MARK + v])),
+	]),
+);
+
+/**
+ * Every word the menu shows: a group's name, an option's name, its placeholder, and the
+ * LABELS a dropdown offers.
+ *
+ * That last one was missing and hid a whole control. `openIn`'s heading was keyed while its
+ * three choices stayed English, and this collector read only `displayName` and
+ * `placeholder`, so the remainder came back clean over a dropdown that was half translated.
+ * A collector that skips a field cannot be corrected by adding cases to the assertion — it
+ * has to read everything a person can see, or it speaks for less than it claims to.
+ *
+ * The dropdown's KEYS are deliberately not collected: they are what a `.base` stores and
+ * what `resolveItemHandling` matches, so they are data and belong unmarked.
+ */
+function shown(options: BasesAllOptions[]): string[] {
+	const words: string[] = [];
+	for (const option of options) {
+		if (option.displayName !== undefined) words.push(option.displayName);
+		if ('items' in option) {
+			for (const item of option.items) {
+				if (item.displayName !== undefined) words.push(item.displayName);
+				if (item.placeholder !== undefined) words.push(item.placeholder);
+				const choices = (item as { options?: Record<string, string> }).options;
+				if (choices) words.push(...Object.values(choices));
+			}
+		}
+	}
+	return [...new Set(words)].sort();
+}
+
+const unmarked = (options: BasesAllOptions[]): string[] => shown(options).filter((word) => !word.startsWith(MARK));
+
+describe('the options menu reads its words from the catalog', () => {
+	afterEach(() => setLocale('en'));
+
+	it('leaves unmarked only the keys a picker suggests and the defaults a box mirrors', () => {
+		setLocale('xx', { xx });
+		// A configured workflow, so the two generated boxes are drawn and their state — the
+		// user's own word — is checked to arrive as a parameter rather than as prose.
+		expect(unmarked(getViewOptions(fakeConfig({ stateValues: 'New, Done', doneValues: 'Done' })))).toEqual([
+			// The frontmatter keys a property picker suggests: what the backfill would adopt
+			// and write, so a locale that changed one would set up a different property.
+			'assignee',
+			'dependsOn',
+			// The home folder, which is the type folders' placeholder when one is configured:
+			// the user's own path, and the branch beside the catalog's fallback below.
+			'docs',
+			'due',
+			'finished',
+			'goal',
+			'horizon',
+			// `doneValues` and its two mirrors, whose placeholder IS the default they fall
+			// back to when the box is cleared.
+			'Done, Closed, Completed, Removed',
+			'iteration',
+			// `horizonValues`, `riskValues` and `priorityValues`, mirrors of their own
+			// defaults too — the words belong to the reader, so the box shows what parsing
+			// them gives back.
+			'1 - High, 2 - Normal, 3 - Low',
+			"1 - Must, 2 - Should, 3 - Could, 4 - Won't",
+			'Now, Next, Later',
+			'order',
+			'parent',
+			'priority',
+			'risk',
+			'start',
+			'started',
+			'status',
+			'tags',
+			'type',
+			// `iterationLengthDays`, the shipped default rendered as the number it is.
+			'14',
+		].sort());
+	});
+
+	it('draws the type-folder placeholder from the catalog when no home folder is set', () => {
+		setLocale('xx', { xx });
+		// The one placeholder that LOOKS like a mirrored default and is not: nothing reads it
+		// back — `resolveFolders` falls to `defaultTypeFolder` — so the fallback half is
+		// plain UI text. With a home folder set it is the user's own path (above); with none
+		// it is this word, and a fixture reaching one branch would leave the other free.
+		const folders = flatten(getViewOptions(fakeConfig({ homeFolder: '' }))).filter((o) => o.key.startsWith('typeFolder.'));
+		expect(folders.length).toBeGreaterThan(0);
+		expect([...new Set(folders.map((o) => o.placeholder))]).toEqual([MARK + 'Home folder']);
+	});
+
+	it('names a generated box after the state it is for, as a parameter', () => {
+		setLocale('xx', { xx });
+		const flat = flatten(getViewOptions(fakeConfig({ stateValues: 'In review', doneValues: 'Done' })));
+		expect(flat.find((o) => o.key === 'wipLimit.in review')?.displayName).toBe(MARK + 'WIP limit for In review');
+		expect(flat.find((o) => o.key === 'columnPolicy.in review')?.displayName).toBe(MARK + 'Policy for In review');
 	});
 });

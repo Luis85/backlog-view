@@ -132,6 +132,19 @@ translated. The AST walk recorded in `Every surface translated` sees 321 prose l
 wrong; they answer different questions, and a slice is planned by re-deriving with the
 instrument that fits it rather than by quoting either.
 
+**Where the sweep stands (2026-08-21).** `ui/`, `commands/`, `view/interactions/`, the
+whole of `view/render/`, `view/writeGate.ts`, `view/cardMoves.ts`, `main.ts` and
+`domain/viewOptions.ts` are swept, and the catalog holds **476** keys — counted two ways
+that day, `Object.keys` at runtime and a tab-aware grep. The line above is 2026-08-20's and
+is kept for the reason the previous one is.
+
+What is LEFT is two places and neither is an unfinished sweep. `view/manual/` is authored
+long-form prose, and whether it belongs in a message catalog is the open question
+`Every surface translated` states rather than work nobody has done. The rest of `domain/`
+is `backlogReadme.ts`, which is written INTO the vault — a data question before a text one
+— plus `roadmap.ts`'s shelf label, which is one string and is asserted still-English in
+`test/i18n/projections.test.ts` so that keying it fails a test.
+
 The branding spike `A bare string cannot reach the UI` asks for has also run, and its
 result is recorded there: the design holds unchanged, and no nominal wrapper is needed.
 

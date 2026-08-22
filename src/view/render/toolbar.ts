@@ -180,10 +180,15 @@ export function renderToolbar(host: BacklogViewHost, barEl: HTMLElement): void {
 	renderIgnoredNote(barEl, model);
 	const problems = configProblems(host.settings);
 	if (problems.length > 0) {
-		const warn = barEl.createDiv({ cls: 'pbl-config-warning', attr: { 'aria-label': problems.join(' ') } });
+		// One sentence naming every problem, never the fragments joined here: they are
+		// written to be listed by `Intl.ListFormat` inside a host sentence, and a call site
+		// that spelled its own separator would be assembling a sentence no locale can
+		// reorder. `commands/readme.ts` refuses through the same key.
+		const said = t('config.fixAll', { problems });
+		const warn = barEl.createDiv({ cls: 'pbl-config-warning', attr: { 'aria-label': said } });
 		setIcon(warn.createSpan({ cls: 'pbl-warning-icon' }), 'alert-triangle');
 		warn.createSpan({ text: t('toolbar.checkViewOptions') });
-		setTooltip(warn, problems.join(' '));
+		setTooltip(warn, said);
 		// The door into `Help for setting up the view` — deliberately NOT drawn inside
 		// `warn`. `styles/toolbarFit.css`'s last rung shrinks `.pbl-config-warning` and clips
 		// it with `overflow: hidden` rather than hiding it outright, because it is the one

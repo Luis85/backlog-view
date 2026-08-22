@@ -1,4 +1,5 @@
 import { BasesViewConfig } from 'obsidian';
+import { t } from '../i18n/t';
 
 /**
  * What using an item means: where the note it opens goes. One concern of its own rather
@@ -17,9 +18,28 @@ export interface ItemHandling {
 	openIn: OpenTarget;
 }
 
-/** Where an opened note goes. `active` is Obsidian's own default: the current tab. */
-export const OPEN_TARGETS = { active: 'Current tab', tab: 'New tab', split: 'Split to the right' };
-export type OpenTarget = keyof typeof OPEN_TARGETS;
+/**
+ * Where an opened note goes. `active` is Obsidian's own default: the current tab.
+ *
+ * A LIST of keys rather than a key→label object, because those two things had different
+ * fates: the keys are what a `.base` stores and what `resolveItemHandling` matches, so they
+ * are data and never translated, while the labels are read by a person and belong in the
+ * catalog. Holding both in one object made the labels look like part of the vocabulary and
+ * left them English while the heading above them was keyed.
+ */
+const OPEN_TARGET_KEYS = ['active', 'tab', 'split'] as const;
+export type OpenTarget = (typeof OPEN_TARGET_KEYS)[number];
+
+/**
+ * The dropdown's labels, as a FUNCTION and never a module-level constant: `initLocale()`
+ * runs in `onload`, and a `const` holding `t()` evaluates at import, which is earlier — it
+ * would freeze English before Obsidian's language has been read. Nothing else catches that,
+ * since every assertion in the suite runs under the English catalog where a frozen value
+ * and a live one are the same string.
+ */
+export function openTargetOptions(): Record<OpenTarget, string> {
+	return { active: t('option.openInActive'), tab: t('option.openInTab'), split: t('option.openInSplit') };
+}
 
 export function defaultItemHandling(): ItemHandling {
 	return { openIn: 'active' };
@@ -31,15 +51,17 @@ export function defaultItemHandling(): ItemHandling {
  * the presence of one. Anything else falls back rather than reaching a branch that has
  * no arm for it.
  *
- * Membership is asked with `hasOwnProperty`, never `in` and never `OPEN_TARGETS[raw]`:
- * the value is user data, and every object inherits `constructor` and `toString`, so
- * both of those spellings would accept `constructor` as an offered value and hand back a
- * string this type says cannot exist. That is `byName`'s rule in `settings.ts` and the
- * bug it was written for (`docs/bugs/A user-named type read off Object.prototype.md`),
- * met again by a table keyed on something a user can type.
+ * Membership is asked of a LIST, which is what makes the prototype hazard unreachable
+ * rather than guarded against. While the vocabulary was an object this read
+ * `hasOwnProperty` — never `in` and never `OPEN_TARGETS[raw]`, since every object inherits
+ * `constructor` and `toString` and both spellings would accept `constructor` as an offered
+ * value and hand back a string this type says cannot exist. That is `byName`'s rule in
+ * `settings.ts` and the bug it was written for
+ * (`docs/bugs/A user-named type read off Object.prototype.md`). An array cannot be indexed
+ * by `constructor` at all, so the same guarantee now costs no guard.
  */
 export function resolveItemHandling(config: BasesViewConfig): ItemHandling {
 	const raw = config.get('openIn');
-	const offered = typeof raw === 'string' && Object.prototype.hasOwnProperty.call(OPEN_TARGETS, raw);
+	const offered = typeof raw === 'string' && (OPEN_TARGET_KEYS as readonly string[]).includes(raw);
 	return { openIn: offered ? (raw as OpenTarget) : defaultItemHandling().openIn };
 }

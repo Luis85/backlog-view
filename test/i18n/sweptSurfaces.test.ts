@@ -81,7 +81,7 @@ const SWEPT = [
 	'readme.unchanged',
 	'readme.foreign',
 	'readme.replaced',
-	'readme.configProblems',
+	'config.fixAll',
 	'readme.failed',
 ] as const;
 

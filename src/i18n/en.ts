@@ -686,7 +686,152 @@ export const en = {
 	'lane.markersHeader': '{markers}s',
 	'lane.markersHeaderBoth': '{first}s · {second}s',
 
-	'settings.sharedKey': 'The {properties} properties share the key "{key}".',
+	/**
+	 * The Bases view-options menu: every group name, every option's `displayName`, and
+	 * the placeholders that are prose rather than a value.
+	 *
+	 * **Keyed by the option's own persisted key** (`option.stateValues` for `stateValues`),
+	 * because that key is the one name in `domain/viewOptions.ts` that cannot change — it
+	 * is written into the user's `.base` file. A key named for the English words would have
+	 * to be re-keyed on a copy edit; this one is pinned to the thing it labels. The four
+	 * that have no option of their own say what they label instead (`option.group.*`, and
+	 * the two per-state boxes whose keys are generated).
+	 *
+	 * **What stayed in `viewOptions.ts` is every placeholder anything READS BACK.** A
+	 * property picker's placeholder is the frontmatter key the backfill would adopt, and a
+	 * value list's placeholder mirrors its own `default`, so clearing the box falls back to
+	 * the string on screen — translate either and the box advertises a configuration the
+	 * plugin does not have. The ones here are the placeholders that are examples or hints:
+	 * nothing parses them, so leaving them English protects nothing.
+	 *
+	 * `{state}` and `{type}` are the user's own workflow and this plugin's type vocabulary
+	 * — data, parameters both, and never words this catalog spells.
+	 */
+	'option.group.hierarchy': 'Hierarchy',
+	'option.group.progress': 'Progress',
+	'option.group.deliverables': 'Deliverables',
+	'option.group.iterations': 'Iterations',
+	'option.group.testing': 'Test management',
+	'option.group.roadmap': 'Roadmap',
+	'option.group.risk': 'Risk management',
+	'option.group.priority': 'Prioritization',
+	'option.group.newItems': 'New items',
+	'option.group.handling': 'Handling items',
+	'option.group.display': 'Display',
+
+	'option.parentProperty': 'Parent property',
+	'option.orderProperty': 'Order property',
+	'option.typeProperty': 'Item type property',
+	'option.hierarchyOnly': 'Ignore notes outside the hierarchy',
+	'option.showOutsideParents': 'Show parents outside the filter',
+	'option.inferFolderHierarchy': 'Infer hierarchy from folder notes',
+
+	'option.stateProperty': 'State property',
+	'option.stateValues': 'Workflow states (in order)',
+	'option.stateValuesHint': 'New, Active, Done',
+	'option.doneValues': 'States that count as done',
+	'option.startedStates': 'States that count as started',
+	'option.startedStatesHint': 'Active, In review',
+	'option.startedDateProperty': 'Started date property',
+	'option.finishedDateProperty': 'Finished date property',
+	'option.assigneeProperty': 'Assignee property',
+	'option.showCompleted': 'Show completed items',
+	/** The two per-state boxes. Their keys are generated per state, so these are not. */
+	'option.wipLimit': 'WIP limit for {state}',
+	'option.wipLimitHint': 'No limit',
+	'option.columnPolicy': 'Policy for {state}',
+	'option.columnPolicyHint': 'What has to be true to leave this column',
+
+	'option.deliverableStateProperty': 'Deliverable state property',
+	'option.deliverableStateValues': 'Deliverable workflow states (in order)',
+	'option.deliverableStateValuesHint': 'Concept, Draft, Review, Published',
+	'option.deliverableDoneValues': 'Deliverable states that count as done',
+
+	'option.iterationProperty': 'Iteration property',
+	'option.iterationGoalProperty': 'Iteration goal property',
+	'option.iterationOpenStates': 'Product states an iteration has not started',
+	'option.iterationOpenStatesHint': 'New, Ready',
+	'option.iterationResolvedStates': 'Product states an iteration is finished with',
+	'option.iterationResolvedStatesHint': 'In review, Done',
+	'option.iterationLengthDays': 'Default iteration length in days',
+	'option.iterationsOnTimeline': 'Show iterations on the roadmap timeline',
+	'option.iterationBars': 'Draw iterations as bars',
+
+	'option.testStateProperty': 'Test state property',
+	'option.testStateValues': 'Test workflow states (in order)',
+	'option.testStateValuesHint': 'Draft, Ready, Approved',
+	'option.testDoneValues': 'Test states that count as done',
+
+	'option.horizonProperty': 'Horizon property',
+	'option.horizonValues': 'Horizons (in order)',
+	'option.startProperty': 'Start date property',
+	'option.targetProperty': 'Target date property',
+	'option.resourceNames': 'Resources (in order)',
+	'option.resourceNamesHint': 'Optional, comma separated',
+	'option.dependsOnProperty': 'Depends-on property',
+
+	'option.riskProperty': 'Risk property',
+	'option.riskValues': 'Risk levels (in order)',
+	'option.priorityProperty': 'Priority property',
+	'option.priorityValues': 'Priority levels (in order)',
+
+	'option.homeFolder': 'Home folder',
+	'option.homeFolderHint': 'Same folder as existing items',
+	'option.typeFolder': 'Folder for {type} items',
+
+	/**
+	 * The heading and its three CHOICES. The choices are labels only — what a `.base`
+	 * stores and what `resolveItemHandling` matches are the keys `active` / `tab` /
+	 * `split`, which stay in `domain/itemHandling.ts` and are never translated. They were
+	 * left English here when the heading was keyed, because they sat as the VALUES of the
+	 * same object that held the vocabulary.
+	 */
+	'option.openIn': 'Open the note in',
+	'option.openInActive': 'Current tab',
+	'option.openInTab': 'New tab',
+	'option.openInSplit': 'Split to the right',
+	'option.tagsProperty': 'Tags property',
+	'option.showCounts': 'Show descendant counts',
+
+	/**
+	 * A FRAGMENT, deliberately: every reader of `configProblems` puts it inside a sentence
+	 * of its own (`config.fixFirst`, `config.fixAll`), and a whole sentence nested in one
+	 * rendered `"…".; "…"..` — the punctuation this catalog already carries one note about
+	 * under `readme.*`. Written to be joined by `Intl.ListFormat` and closed by its host.
+	 *
+	 * `{properties}` is a LIST of `property.*` labels, joined as grammar in the locale of
+	 * whichever catalog supplied the sentence. `{key}` is the frontmatter key itself and
+	 * is data.
+	 */
+	'settings.sharedKey': 'the {properties} properties share the key "{key}"',
+
+	/**
+	 * What this view calls each property it owns, wherever a collision names them. Keyed by
+	 * the ROLE, which is `ownedProperties`' own id and what `WORKFLOW_STATE_LABELS` matches
+	 * on — so no locale can change which properties are allowed to share a key.
+	 *
+	 * The short role word rather than the option's full `displayName`: the sentence they
+	 * land in already ends in "properties", so "the Parent property and Order property
+	 * properties" is what the fuller label would read as.
+	 */
+	'property.parent': 'parent',
+	'property.order': 'order',
+	'property.type': 'type',
+	'property.tags': 'tags',
+	'property.state': 'state',
+	'property.startedDate': 'started date',
+	'property.finishedDate': 'finished date',
+	'property.horizon': 'horizon',
+	'property.start': 'start',
+	'property.target': 'target',
+	'property.dependsOn': 'depends on',
+	'property.risk': 'risk',
+	'property.priority': 'priority',
+	'property.assignee': 'assignee',
+	'property.deliverableState': 'deliverable state',
+	'property.testState': 'test state',
+	'property.iteration': 'iteration',
+	'property.iterationGoal': 'iteration goal',
 
 	/**
 	 * The menus — the row and card menu in `view/interactions/menu.ts`, the shelf's picks
@@ -861,11 +1006,8 @@ export const en = {
 
 	/**
 	 * The readme command, one whole sentence per outcome. `{path}` and `{previous}` are
-	 * file paths and view names — vault content, parameters both.
-	 *
-	 * `{problems}` is a LIST, joined by `Intl.ListFormat` in the catalog's own locale
-	 * rather than by a separator at the call site. The problems themselves are still
-	 * English until `View options and config warnings` runs.
+	 * file paths and view names — vault content, parameters both. Its refusal on a broken
+	 * configuration is `config.fixAll` below, shared with the toolbar's warning chip.
 	 */
 	'readme.created': 'Wrote "{path}".',
 	'readme.updated': 'Updated "{path}".',
@@ -873,21 +1015,24 @@ export const en = {
 	'readme.foreign': '"{path}" was not written by this plugin, so it was left alone. Move it aside to generate one.',
 	'readme.replaced':
 		'Updated "{path}", which documented "{previous}". A folder has one readme, so two views sharing it take turns.',
-	/**
-	 * No terminal period: each problem is a whole sentence with one of its own, so the
-	 * `'; '` this replaced rendered `"…".; "…"..`. That is the one thing about this notice
-	 * that is not a pure text move, and it is the punctuation rather than the wording.
-	 */
-	'readme.configProblems': 'Fix the view configuration first: {problems}',
 	'readme.failed': 'Could not write the readme. See the developer console for details.',
 	/**
-	 * One refusal, five call sites — the dependency picker, both absence flows, both
-	 * creation flows and the backfill all gate on `configProblems` and all report the
-	 * FIRST problem rather than the list. `readme.configProblems` above is the other
-	 * shape deliberately: it names every problem, because a generated document is worth
-	 * fixing the configuration for outright.
+	 * One refusal in two shapes, over a fragment (`settings.sharedKey`) that each closes
+	 * with its own period.
+	 *
+	 * `config.fixFirst` names the FIRST problem and is what five call sites report — the
+	 * dependency picker, both absence flows, both creation flows and the backfill — plus
+	 * the write gate, which has no key of its own for the reason stated below. `config.fixAll`
+	 * names every problem, and is the toolbar warning's tooltip and accessible name as well
+	 * as the readme command's refusal: a generated document is worth fixing the whole
+	 * configuration for, and a warning chip is the surface whose whole job is the list.
+	 *
+	 * The readme's own key for this was `readme.configProblems` until the fragments landed.
+	 * Two sentences that had to agree became one, which is the same "one key rather than
+	 * two that can disagree" `gate.configProblems` is an absence for.
 	 */
-	'config.fixFirst': 'Fix the view options first: {problem}',
+	'config.fixFirst': 'Fix the view options first: {problem}.',
+	'config.fixAll': 'Fix the view options first: {problems}.',
 
 	/**
 	 * The write gate's four refusals. The two `console.error` prefixes beside them stay
@@ -1103,11 +1248,19 @@ export const en = {
 	 * (`Intl.ListFormat`, in the locale of the message it actually rendered) — the readme
 	 * notices' own shape, and the shape `t.ts` asks callers for.
 	 *
-	 * NO TERMINAL PERIOD: each problem is already a whole sentence carrying one, which is
-	 * what made the `'; '` version of this render `"…".; "…"..`. That is the one thing
-	 * about this message that is not a pure wording change.
+	 * IT CARRIES THE TERMINAL PERIOD, and the sentence that said otherwise was wrong about
+	 * its own inputs. It read "no terminal period: each problem is already a whole sentence
+	 * carrying one" — true of exactly one of the five things `modelProblems` returns, and
+	 * that one only until `settings.sharedKey` became a fragment. Its four siblings —
+	 * `no dimensions are declared`, the two pair refusals and the output-range refusal —
+	 * have always been lowercase and unpunctuated, so this notice has been ending without a
+	 * full stop for most of what it can say since it was written.
+	 *
+	 * The history in that sentence belonged to the readme command, whose problems WERE whole
+	 * sentences and whose `'; '` join rendered `"…".; "…"..`. Carried here, it described a
+	 * different message's inputs.
 	 */
-	'estimation.problems.blocked': 'Fix the estimation model first: {problems}',
+	'estimation.problems.blocked': 'Fix the estimation model first: {problems}.',
 	/** Said rather than left silent, for `estimation.problems.blocked`'s own reason: the
 	 *  guided empty state is still on screen, so a button that returned quietly would
 	 *  simply look dead. */

@@ -67,7 +67,13 @@ afterEach(() => setLocale('en'));
 function drawn(el: HTMLElement): string[] {
 	const parts: string[] = [];
 	for (const node of Array.from(el.querySelectorAll<HTMLElement>('*'))) {
-		for (const attr of ['aria-label', 'aria-description', 'data-tooltip', 'title']) {
+		// `placeholder` is the fifth and was missing. The shelf's search box sets it beside
+		// an `aria-label` and a tooltip carrying the same string, so reverting the
+		// placeholder ALONE to English left this check green — the two neighbours covered
+		// for it. A collector that reads four of the five ways a view says something speaks
+		// for less than it claims to, which is the same defect the view-options collector
+		// had with a dropdown's option labels.
+		for (const attr of ['aria-label', 'aria-description', 'data-tooltip', 'title', 'placeholder']) {
 			const value = node.getAttribute(attr);
 			if (value) parts.push(value);
 		}

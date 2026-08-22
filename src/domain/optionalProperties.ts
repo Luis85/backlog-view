@@ -66,8 +66,12 @@ export type OptionalSettingsKey =
 
 /**
  * One such property: the option that names it, the key it adopts when nothing does,
- * and what it is called out loud. One table, four readers — the view options draw
- * their picker from it, `configProblems` reports collisions by its labels,
+ * and where its configured key lands. What it is CALLED is not here and has not been
+ * since the options menu moved into the catalog: a collision names it through
+ * `property.<field>`, so the word is the catalog's and the field is the id.
+ *
+ * One table, four readers — the view options draw
+ * their picker from it, `configProblems` reports collisions by its fields,
  * `adoptableProperties` binds its suggestions, and the backfill creates its keys —
  * because a key or an option id spelled twice is one that can differ, and both of
  * these are persisted user data.
@@ -78,8 +82,6 @@ export interface OptionalProperty {
 	option: string;
 	/** The frontmatter key this view suggests, and adopts when the option is untouched. */
 	suggested: string;
-	/** What the property is called wherever a collision or an adoption is reported. */
-	label: string;
 	/** The `BacklogSettings` field this property's configured key is resolved into. */
 	settingsKey: OptionalSettingsKey;
 }
@@ -92,20 +94,20 @@ export interface OptionalProperty {
  * plain string keys, whose insertion order `Object.keys` preserves by definition.
  */
 const PROPERTY_TABLE: Record<OptionalField, Omit<OptionalProperty, 'field'>> = {
-	state: { option: 'stateProperty', suggested: 'status', label: 'state', settingsKey: 'stateKey' },
-	startedDate: { option: 'startedDateProperty', suggested: 'started', label: 'started date', settingsKey: 'startedDateKey' },
-	finishedDate: { option: 'finishedDateProperty', suggested: 'finished', label: 'finished date', settingsKey: 'finishedDateKey' },
+	state: { option: 'stateProperty', suggested: 'status', settingsKey: 'stateKey' },
+	startedDate: { option: 'startedDateProperty', suggested: 'started', settingsKey: 'startedDateKey' },
+	finishedDate: { option: 'finishedDateProperty', suggested: 'finished', settingsKey: 'finishedDateKey' },
 	// The roadmap's three, whose suggestions follow the ecosystem's own vocabulary
 	// (the Tasks plugin's `start` and `due`) without assuming it.
-	horizon: { option: 'horizonProperty', suggested: 'horizon', label: 'horizon', settingsKey: 'horizonKey' },
-	start: { option: 'startProperty', suggested: 'start', label: 'start', settingsKey: 'startKey' },
-	target: { option: 'targetProperty', suggested: 'due', label: 'target', settingsKey: 'targetKey' },
-	risk: { option: 'riskProperty', suggested: 'risk', label: 'risk', settingsKey: 'riskKey' },
+	horizon: { option: 'horizonProperty', suggested: 'horizon', settingsKey: 'horizonKey' },
+	start: { option: 'startProperty', suggested: 'start', settingsKey: 'startKey' },
+	target: { option: 'targetProperty', suggested: 'due', settingsKey: 'targetKey' },
+	risk: { option: 'riskProperty', suggested: 'risk', settingsKey: 'riskKey' },
 	// The second label property with a declared ladder, risk's row exactly. Its suggestion
 	// is the plain word rather than `moscow`: what the option holds is an ordered
 	// vocabulary, and MoSCoW is only the one this view ships prefilled.
-	priority: { option: 'priorityProperty', suggested: 'priority', label: 'priority', settingsKey: 'priorityKey' },
-	assignee: { option: 'assigneeProperty', suggested: 'assignee', label: 'assignee', settingsKey: 'assigneeKey' },
+	priority: { option: 'priorityProperty', suggested: 'priority', settingsKey: 'priorityKey' },
+	assignee: { option: 'assigneeProperty', suggested: 'assignee', settingsKey: 'assigneeKey' },
 	deliverableState: {
 		option: 'deliverableStateProperty',
 		// Same suggestion as `state` itself: Deliverables sharing the requirements
@@ -121,7 +123,6 @@ const PROPERTY_TABLE: Record<OptionalField, Omit<OptionalProperty, 'field'>> = {
 		// fallback this codebase already trusts, never by writing the same explicit
 		// key to both options in one pass.
 		suggested: 'status',
-		label: 'deliverable state',
 		settingsKey: 'deliverableStateKey',
 	},
 	testState: {
@@ -133,21 +134,20 @@ const PROPERTY_TABLE: Record<OptionalField, Omit<OptionalProperty, 'field'>> = {
 		// `status` by sharing the plan's property, never by a second option written to point
 		// at it — which is what "test items rely on status by default" actually means here.
 		suggested: 'status',
-		label: 'test state',
 		settingsKey: 'testStateKey',
 	},
 	// Prerequisites, suggested by the name the Tasks plugin already uses for the same
 	// idea — offered as a placeholder, never matched by name.
-	dependsOn: { option: 'dependsOnProperty', suggested: 'dependsOn', label: 'depends on', settingsKey: 'dependsOnKey' },
+	dependsOn: { option: 'dependsOnProperty', suggested: 'dependsOn', settingsKey: 'dependsOnKey' },
 	// The link an item carries to say which time box it is in. Suggested by the name the
 	// concept has, and — like every other row here — offered as a placeholder rather than
 	// matched: nothing reads a property because of what it is called.
-	iteration: { option: 'iterationProperty', suggested: 'iteration', label: 'iteration', settingsKey: 'iterationKey' },
+	iteration: { option: 'iterationProperty', suggested: 'iteration', settingsKey: 'iterationKey' },
 	// What an iteration is FOR, in one line. A plain string on the Iteration note — never a
 	// link, so unlike `iteration` it is a row in the label list (`applyLabels`) rather than
 	// a write of its own, and unlike every other row here it is never backfilled: see the
 	// `iterationGoal` early return in `missingKeyStubs` (`writePlan.ts`).
-	iterationGoal: { option: 'iterationGoalProperty', suggested: 'goal', label: 'iteration goal', settingsKey: 'iterationGoalKey' },
+	iterationGoal: { option: 'iterationGoalProperty', suggested: 'goal', settingsKey: 'iterationGoalKey' },
 };
 
 /** The declaration for one field, for the callers that hold a field rather than a row. */
@@ -290,7 +290,16 @@ export function adoptableProperties(
 }
 
 /**
- * Every frontmatter key this view owns, labelled, in the order a collision names
+ * A property this view owns, named by ROLE: the three the hierarchy always needs, the
+ * tags key, and every optional property by its own field. It is an id and never a word —
+ * `property.<role>` is what a collision report renders it through, and
+ * `WORKFLOW_STATE_LABELS` is what matches on it, so no locale can move a property in or
+ * out of the pair that may legitimately share a key.
+ */
+export type OwnedRole = 'parent' | 'order' | 'type' | 'tags' | OptionalField;
+
+/**
+ * Every frontmatter key this view owns, by role, in the order a collision names
  * them. One statement, because two readers depend on it and they must agree: the
  * collision report in `settingsConsistency.ts`, and the adoption above, which may not
  * suggest a key that is already spoken for.
@@ -309,15 +318,15 @@ export function adoptableProperties(
  * options, which have no working views to protect, so pointing one of those at the
  * tags key is a fresh mistake and gets the collision report every other pair gets.
  */
-export function ownedProperties(settings: BacklogSettings): { label: string; key: string }[] {
+export function ownedProperties(settings: BacklogSettings): { role: OwnedRole; key: string }[] {
 	return [
-		{ label: 'parent', key: settings.parentKey },
-		{ label: 'order', key: settings.orderKey },
-		{ label: 'type', key: settings.typeKey },
+		{ role: 'parent', key: settings.parentKey },
+		{ role: 'order', key: settings.orderKey },
+		{ role: 'type', key: settings.typeKey },
 		...OPTIONAL_PROPERTIES.map((property) => ({
-			label: property.label,
+			role: property.field,
 			key: optionalKeyFor(settings, property.field),
 		})),
-		{ label: 'tags', key: settings.tagsKey },
+		{ role: 'tags', key: settings.tagsKey },
 	];
 }
