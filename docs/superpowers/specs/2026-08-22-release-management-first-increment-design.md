@@ -1,7 +1,7 @@
 # Release Management — the first increment
 
 *Design, 2026-08-22. The register already specifies this epic in full
-([[Release Management]], ten features, four PBIs written). This document decides which of
+([[Release Management]], ten features and nine PBIs written). This document decides which of
 it ships first and what shape that takes; it invents no requirement.*
 
 ## Goal
@@ -66,13 +66,29 @@ point is a new view. The release view draws its own rows and reuses the **styles
 `guidanceShell` from `emptyStates.ts` — the reuse the estimation view already settled on.
 Cost: one new render module, and a correction to that PBI's `Where it lives`.
 
-**Its own `releaseOptions.ts`, not the shared `viewOptions.ts`** — four keys: the membership
-property on an item, and the version, target date and status on a release note. Both release PBIs name
-`src/domain/viewOptions.ts`, which is the *backlog* view's option set — written before the
-estimation view established one options file per registered view. Putting release keys there
-would show them in the backlog view's settings where nothing reads them, and would blur the
-rule the register is otherwise strict about: sharing a default suggestion is not sharing a
-setting. Cost: a second correction to both PBIs' `Where it lives`.
+**Its own `releaseOptions.ts`, not the shared `viewOptions.ts`** — **seven** keys. Four are its
+own subject: the membership property on an item, and the version, target date and status on a
+release note. The other three are the core model mappings `readItems` needs — **type**, without
+which no note can be recognised as a release at all, **parent**, without which the scope has no
+tree and no context ancestors, and **order**, which is the mapped rank this document promises as
+the index's second sort key.
+
+Declaring those three is not reading the backlog view's configuration; it is this view naming
+its own, defaulting to the same suggestions — [[Settings scoped to their view]]'s rule exactly,
+that sharing a suggestion is not sharing a setting. Without them the "type property unmapped"
+empty state would name an option this view does not offer, which is an empty state that cannot
+be acted on.
+
+**The estimation view is a precedent for one options file per view, and for nothing beyond
+that.** It declares no core mapping because it needs none: `buildEstimationModel` reads Base
+results flat — no hierarchy, no types, no ranking, not even an `outsideFilter` to carry. A view
+that draws a tree is a different case, and copying the shorter option set because the file
+layout matched would have shipped a view that cannot find a release.
+
+Both release PBIs put these keys in `src/domain/viewOptions.ts`, which is the *backlog* view's
+option set — written before the estimation view established one options file per registered
+view. Putting them there would show release keys in the backlog view's settings where nothing
+reads them. Cost: a second correction to both PBIs' `Where it lives`.
 
 **Both corrections land in the same branch as the code.** A register that describes code
 nobody wrote is the failure mode `docs-check.mjs` cannot catch.
@@ -84,7 +100,7 @@ spare for a tree that already indents.
 ## Architecture
 
 ```
-domain/     releaseOptions.ts   membership, version, target date, status + getReleaseViewOptions
+domain/     releaseOptions.ts   type, parent, order, membership, version, target date, status
             releases.ts         releaseIndex(model, opts) / releaseScope(model, opts, path)
             typeVocabulary.ts   RELEASE_TYPE; itemTypes.ts: isReleaseType
             model.ts            releases: BacklogItem[], beside iterations
@@ -117,8 +133,8 @@ decided by view state:
 date and status from the keys this view names; count the members; sort by target date, then
 mapped rank, undated last.
 
-**A release picked** → `releaseScope(model, opts, path)`: members are the items whose own
-membership value resolves to that release's path; their non-member ancestors come along marked
+**A release picked** → `releaseScope(model, opts, path)`: members are the **plan-work** items
+whose own membership value resolves to that release's path; their non-member ancestors come along marked
 as context; a member whose ancestor is missing from the results draws at top level, the answer
 the backlog already gives an orphan.
 
@@ -127,10 +143,24 @@ place: not a member, not counted, and — in this increment — not writable by 
 nothing here writes. The member count is the notes whose own property names the release, and
 nothing else.
 
-**Membership is one value.** A link or name resolving to a release note is membership. A target
-that is not a release, or two values in the property, is **unresolved**: reported, never
-silently dropped, and a member of nothing. Those items appear on no release's screen, so the
-report belongs on the **index**, which is the only screen that can see all of them.
+**Membership is one value, on plan work.** A link or name resolving to a release note is
+membership **only when the note carrying it is plan work**. A target that is not a release, or
+two values in the property, is **unresolved**: reported, never silently dropped, and a member of
+nothing. Those items appear on no release's screen, so the report belongs on the **index**,
+which is the only screen that can see all of them.
+
+The plan-work test is not an extra safeguard invented here — [[Setting an item's release]]
+extension 1f requires it of the **reader**, not only of the writer this increment does not
+build: a `Milestone`, an `Iteration`, another `Release` or a test-catalog note with the
+membership property hand-written onto it is not in the scope and not in the count, "because a
+release holds work and those notes are not work". Refusing at only one end would let a hand-edit
+do what the menu will not — and in this increment there is no menu at all, so the reader is the
+only end there is. It applies the same eligibility `Set iteration` already applies.
+
+Such a row is reported with the unresolved ones rather than dropped in silence. That much is a
+reading of the register rather than a line in it: 1f says refuse, and says nothing about saying
+so. Refusing visibly is the answer every neighbouring extension gives, and a hand-edit that
+vanishes without a word is the failure mode this epic keeps naming.
 
 ## The states, kept apart
 
@@ -141,6 +171,7 @@ report belongs on the **index**, which is the only screen that can see all of th
 | A figure's key unconfigured | That column absent for every row, named **once** — never blank per row |
 | Key bound, value unreadable | Reported as unreadable, per row — somebody wrote something there |
 | Membership key unconfigured | The index still draws; no tree; the empty state names the option |
+| Membership hand-written on a non-plan row | Not a member, not counted, and reported with the unresolved — a marker is not work |
 | Release has no members | An empty tree naming the release — a legitimate state, not a misconfiguration |
 | Remembered release gone | The index, silently. A working position that no longer exists is not a failure |
 
@@ -153,7 +184,10 @@ state must not promise a write nothing defines.
   whose own property names the release; an excluded release absent everywhere, context row
   included; ordering, including the undated tail and the stable tie-break; remapping the
   vault's order property changing the tie-break with it (nothing reads a literal `order`);
-  each unresolved shape reported rather than dropped.
+  each unresolved shape reported rather than dropped; and a `Milestone`, an `Iteration`, a
+  second `Release` and a test-catalog note, each with the membership property hand-written onto
+  it, in no scope and in no count — the reader's half of [[Setting an item's release]] 1f, which
+  in this increment is the only half that exists.
 - **jsdom view tests**: index → pick → scope → back; every row of the state table; the pick
   surviving a reload; a missing pick returning the index.
 - **One invariant test at the forbidden thing**: a spy on `storage/frontmatter.ts`'s write
