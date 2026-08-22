@@ -107,8 +107,11 @@ work-item types.
   traceable back to the study that produced it — belongs under [[Product Evidence]], which
   today names kinds of evidence and counts them and models no finding at all; the findings
   [[Every finding, listed]] holds are health-rule findings, a different thing sharing the
-  word. Each is one note somebody still has to write, and this bullet is where that debt is
-  recorded until they do.
+  word. **A usability study's own reporting is a third note, not a half of that one** — what
+  a study recorded (how many participants, whether it completed, what it concluded) and the
+  per-Feature summary of it are a different question from what happens to a finding
+  afterwards, and reducing either to an activity value would lose it. Each is one note
+  somebody still has to write, and this bullet is where that debt is recorded until they do.
 - **Build a second board.** A board scoped to one discipline is [[Product Kanban]]'s board
   with a scope, exactly as the Deliverables board and the iteration board already are, and
   it is that epic's precedent rather than a new implementation.
