@@ -2,7 +2,7 @@ import { setTooltip } from 'obsidian';
 import { t } from '../../i18n/t';
 import { drawIcon } from './icons';
 import { createCard, renderCardBody, renderColumnFold, wireCardActivation } from './board';
-import { RowContext, renderPropCells } from './columns';
+import { metaColWidth, publishColumnWidths, RowContext, renderPropCells, rollupChars, shelfBadgeWidth } from './columns';
 import { renderShelfControls } from './shelfControls';
 import { spanText } from './lanes';
 import { dependencyNote } from './timelineArrows';
@@ -285,6 +285,31 @@ export function renderShelf(
 	// is set where the grip is set and the two cannot come apart. (Codex, PR #183 — a
 	// regression from the height model, and the call site I failed to re-read when the
 	// meaning of the value changed under it.)
+	//
+	// A compact row's columns are shared across rows, so the widths have to be somewhere both
+	// this band and every cell in it can see — and the tree's publisher does not run for a
+	// card projection. Published per render on the band, so nothing here can inherit a stale
+	// number from a tree pass that happened before a projection switch. Only in list mode: a
+	// card sizes its cells to content and would be overruled by a width it never asked for.
+	// Past the empty/collapsed return above for the same reason the height is: a band with
+	// nothing to show reserves nothing, exactly as it publishes no height.
+	if (list) {
+		publishColumnWidths(shelfEl, ctx.columns, host);
+		// The badge slot, from the fixed vocabulary — and the ROLLUP's own reservation, which is
+		// what `--pbl-meta-col` and `--pbl-rollup-label` actually mean. `styles/columns.css`
+		// already sizes `.pbl-meta-col` from the pair, so publishing them here makes the box
+		// `renderRollup` draws into a fixed width on this band, computed from THIS band's items
+		// rather than inherited from a tree pass. `rollupChars` returns 0 where nothing reports
+		// one, and the label variable is left off entirely in that case — absent is the only
+		// honest spelling of "none", the same rule `renderTree` keeps.
+		const chars = rollupChars(host, shown.map((entry) => entry.item));
+		shelfEl.setCssProps({
+			'--pbl-shelf-badge': `${shelfBadgeWidth()}px`,
+			'--pbl-meta-col': `${metaColWidth(chars)}px`,
+		});
+		if (chars > 0) shelfEl.setCssProps({ '--pbl-rollup-label': `${chars}ch` });
+		else shelfEl.style.removeProperty('--pbl-rollup-label');
+	}
 	publishShelfHeight(shelfEl, host.shelfHeight);
 	renderShelfResize(host, shelfEl);
 	return { cards, el: shelfEl };
@@ -361,14 +386,54 @@ function renderShelfCard(ctx: RowContext, cardsEl: HTMLElement, entry: ShelfCard
 	// The card grid creates no wrapper at all (`summary` IS the card), so nothing about it
 	// changes; `kidsEl` is passed either way and resolves to the same element there.
 	const summary = wiring.list ? card.createDiv({ cls: 'pbl-card-summary' }) : card;
-	renderCardBody(ctx, summary, entry.item, { kidsEl: card });
+	// **One always-drawn box for the three things that are otherwise absent on some rows.**
+	// The rollup, the shelving reason and the dependency note are each present or not per
+	// item, and each one that is missing takes its width off the row and moves every fixed
+	// column after it. Reserved once, filled by whichever apply, and empty on a row with none
+	// — which is the same trade `holdEmpty` makes for the cells one line down. Only in list
+	// mode: the card grid stacks its children and has no such trailing geometry to fix.
+	const notes = wiring.list ? summary.createDiv({ cls: 'pbl-shelf-notes' }) : null;
+	renderCardBody(ctx, summary, entry.item, { kidsEl: card, holdEmpty: wiring.list, rollupEl: notes ?? undefined });
 	ctx.placed.add(entry.item.file.path);
+	renderShelfNotes(summary, notes, entry, wiring);
+	// **The one thing a list row shows that a card does not.** A card draws no state chip
+	// because its own POSITION already says the state — a board column is a state and a
+	// bucket is a horizon — and the shelf is precisely where that argument does not hold:
+	// a shelved card is in no column and no bucket, so its state appears nowhere else on
+	// screen. It is drawn here rather than in `renderCardBody` because the row is where
+	// there is a line to spare for it; in the card grid the stacked body already carries
+	// enough, and adding a chip to it would be a change to the card the shelf was not
+	// asked for. Through the resolved columns and `renderPropCells` like every other cell,
+	// so a context row gets the static form and the write gate is the one the tree uses —
+	// this is not a second idea of what a state chip is.
+	if (wiring.list) renderShelfState(ctx, summary, entry.item, wiring.list);
+	wireCardActivation(ctx, card, entry.item);
+	// A gesture whose only possible batch is empty must not begin: `removal.canDrag`
+	// is `canSchedule` on the dated axis, the same gate the row's own Schedule entry
+	// uses (`interactions/plan.ts`) — a marker with no writable end offers no grip at
+	// all. A shelf card is always wired with `hold: null`, which is exactly what each
+	// axis's `removal.accepts` refuses on its own strip.
+	if (wiring.removal.canDrag(entry.item)) wiring.dnd.wireCard(card, entry.item);
+}
+
+/**
+ * The always-drawn notes lane's own content: the shelving reason, the dependency note and
+ * the parent breadcrumb — carved out of `renderShelfCard` at the complexity budget, and a
+ * natural seam rather than an arbitrary split: these three are exactly the things the lane
+ * exists to hold (see `renderShelfCard`'s own comment on `notes`), so one function draws
+ * all three and moves nothing else.
+ */
+function renderShelfNotes(summary: HTMLElement, notes: HTMLElement | null, entry: ShelfCard, wiring: ShelfWiring): void {
 	// Unreadable is unplaced, and the card says why rather than rendering
 	// somewhere a guess put it.
 	if (entry.reason !== null) {
-		const reason = summary.createDiv({ cls: 'pbl-shelf-reason' });
+		const reason = (notes ?? summary).createDiv({ cls: 'pbl-shelf-reason' });
 		drawIcon(reason.createSpan({ cls: 'pbl-shelf-reason-icon' }), 'alert-triangle');
 		reason.createSpan({ text: entry.reason });
+		// The sentence is hidden on a compact row and the icon is all that is left, so this is
+		// the only place a pointer reader can still get it. `entry.reason` is already a
+		// translated sentence from `deriveBars`; nothing is composed here.
+		setTooltip(reason, entry.reason);
 	}
 	// 1b: no bar exists here for any arrow to reach — the shelf card IS this
 	// dependent's row, so what it waits for (and which of that runs past this card's
@@ -385,28 +450,28 @@ function renderShelfCard(ctx: RowContext, cardsEl: HTMLElement, entry: ShelfCard
 	const conflicting = wiring.conflicts.get(entry.item.file.path) ?? NO_CONFLICTS;
 	const waits = wiring.axis !== null && drawsGrid(wiring.axis) ? dependencyNote(entry.item, conflicting) : '';
 	if (waits) {
-		const dep = summary.createDiv({ cls: 'pbl-shelf-dependency' + (conflicting.size > 0 ? ' pbl-shelf-conflict' : '') });
+		const dep = (notes ?? summary).createDiv({
+			cls: 'pbl-shelf-dependency' + (conflicting.size > 0 ? ' pbl-shelf-conflict' : ''),
+		});
 		drawIcon(dep.createSpan({ cls: 'pbl-shelf-dependency-icon' }), conflicting.size > 0 ? 'alert-triangle' : 'link');
 		dep.createSpan({ text: waits });
+		// Same reason as the shelving reason above: the sentence is visually hidden on a
+		// compact row and the tooltip is what carries it to a pointer reader.
+		setTooltip(dep, waits);
 	}
-	// **The one thing a list row shows that a card does not.** A card draws no state chip
-	// because its own POSITION already says the state — a board column is a state and a
-	// bucket is a horizon — and the shelf is precisely where that argument does not hold:
-	// a shelved card is in no column and no bucket, so its state appears nowhere else on
-	// screen. It is drawn here rather than in `renderCardBody` because the row is where
-	// there is a line to spare for it; in the card grid the stacked body already carries
-	// enough, and adding a chip to it would be a change to the card the shelf was not
-	// asked for. Through the resolved columns and `renderPropCells` like every other cell,
-	// so a context row gets the static form and the write gate is the one the tree uses —
-	// this is not a second idea of what a state chip is.
-	if (wiring.list) renderShelfState(ctx, summary, entry.item);
-	wireCardActivation(ctx, card, entry.item);
-	// A gesture whose only possible batch is empty must not begin: `removal.canDrag`
-	// is `canSchedule` on the dated axis, the same gate the row's own Schedule entry
-	// uses (`interactions/plan.ts`) — a marker with no writable end offers no grip at
-	// all. A shelf card is always wired with `hold: null`, which is exactly what each
-	// axis's `removal.accepts` refuses on its own strip.
-	if (wiring.removal.canDrag(entry.item)) wiring.dnd.wireCard(card, entry.item);
+	// To the END of the line, now that the body has filled it. The lane had to exist before the
+	// body ran, which put it between the fold slot and the badge; `appendChild` on an existing
+	// child MOVES it, so the document ends up in the order the row is read in. A CSS `order`
+	// would have left the two disagreeing — invisible to a pointer, and a screen reader in
+	// browse mode announcing a card's shelving reason before its title. (Codex, PR #187.)
+	if (notes) summary.appendChild(notes);
+	// The parent breadcrumb joins them, and for the alignment rule rather than for tidiness: it
+	// is drawn only for an item that HAS a parent and its width is its own text, so left on the
+	// line it is a top-level item that differs from row to row twice over. In the lane it is
+	// metadata beside the two notes, still just after the title, ellipsising inside a width that
+	// no longer depends on it. (Codex, PR #187.)
+	const parent = notes && summary.querySelector<HTMLElement>(':scope > .pbl-card-parent');
+	if (notes && parent) notes.appendChild(parent);
 }
 
 /**
@@ -419,12 +484,21 @@ function renderShelfCard(ctx: RowContext, cardsEl: HTMLElement, entry: ShelfCard
  * settings: a Base that draws no state property draws no chip here either, which is the
  * tree's own answer — the chip IS that property's cell. Both state columns are passed
  * where two are configured, and `renderStateChip` fills exactly the one whose key this
- * item's workflow writes, leaving the other empty; `dropEmpty` then detaches it, so a row
- * never carries a chip-shaped gap for a workflow it is not in.
+ * item's workflow writes, leaving the other empty.
+ *
+ * **`dropEmpty` is amended for this layout, and that is extension 4a's own case rather
+ * than a second rule.** 4a's "no chip, and no gap where one would have been" was written
+ * for a CARD, where cells are content-sized and a blank one is a gap with nothing to
+ * reserve. In a ROW the state is a shared column exactly like the ones in `.pbl-props`:
+ * dropping it on the rows whose workflow does not write that property would move every
+ * row's cells relative to every other's — the very shift `holdEmpty` exists to stop one
+ * line up. So `list` holds it open here too. The whole-band case 4a also covers is
+ * unchanged: a Base drawing no state column at all still draws no box, decided above
+ * before any of this runs.
  */
-function renderShelfState(ctx: RowContext, card: HTMLElement, item: BacklogItem): void {
+function renderShelfState(ctx: RowContext, card: HTMLElement, item: BacklogItem, list: boolean): void {
 	const stateColumns = ctx.columns.filter((column) => column.kind === 'state');
 	if (stateColumns.length === 0) return;
 	const stateEl = card.createDiv({ cls: 'pbl-shelf-state' });
-	renderPropCells(ctx, stateEl, item, stateColumns, { dropEmpty: true });
+	renderPropCells(ctx, stateEl, item, stateColumns, { dropEmpty: !list });
 }

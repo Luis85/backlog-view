@@ -10,6 +10,7 @@ import { hasHorizonAxis } from '../../domain/roadmap';
 import { BacklogSettings, hasPriorityLevels, hasRiskLevels } from '../../domain/settings';
 import { resolvedDeliverableStateKey, resolvedTestStateKey } from '../../domain/optionalProperties';
 import { hasRollup, projectionPopulation, treeShaped } from '../projection';
+import { ALL_TYPES } from '../../domain/typeVocabulary';
 
 /**
  * State shared by one render pass. Config lookups live here so per-row work stays
@@ -104,6 +105,54 @@ const ROLLUP_CHAR_PX = 8;
  */
 export function metaColWidth(chars: number): number {
 	return Math.max(META_COL_WIDTH, 48 + 4 + Math.ceil(chars * ROLLUP_CHAR_PX));
+}
+
+/**
+ * Publish one custom property per column, on the element whose descendants read them.
+ *
+ * Two callers and one statement of it. `renderTree` puts these on the tree scroller for the
+ * tree's own rows; `renderShelf` puts them on the BAND, because the tree's publisher does
+ * not run for a card projection at all (`renderPass.ts` gates it on `treeShaped`) and
+ * `.pbl-tree` is built once in the constructor, so a view opened straight into roadmap mode
+ * has none of these and one that visited the tree first inherits whatever that pass left. A
+ * compact row reading them off the scroller had geometry that depended on projection
+ * history. (Codex, PR #187.)
+ *
+ * The VALUE is `columnWidth`'s, which is the stored per-property width, so a column resized
+ * in tree mode is the same width on the shelf rather than a second reading of the same
+ * question.
+ */
+export function publishColumnWidths(el: HTMLElement, columns: Column[], host: BacklogViewHost): void {
+	const widths: Record<string, string> = {};
+	for (const [index, column] of columns.entries()) {
+		widths[columnWidthVar(index)] = `${columnWidth(host, column.prop)}px`;
+	}
+	el.setCssProps(widths);
+}
+
+/**
+ * The badge's own non-text width, at the widest it is worth budgeting for — the same shape
+ * `ROW_LEAD_WIDTH` above states, summed from `styles/badges.css` rather than guessed:
+ * `.pbl-badge-icon .svg-icon` (11px) + `.pbl-badge`'s `gap: var(--size-2-1)` after it (2px)
+ * + `padding: 0 var(--size-4-1)`, both sides (8px) + `border: 1px solid transparent`, both
+ * sides (2px) = 23px.
+ */
+const BADGE_LEAD_PX = 11 + 2 + 8 + 2;
+
+/**
+ * The width a compact row reserves for its type badge, so every title after it starts at
+ * one x.
+ *
+ * NOT `metaColWidth`, which reserves for the ROLLUP LABEL and is sized off the tree
+ * population's widest one — a number about something else. And not the band's own widest
+ * badge either: a slot sized from the cards in front of the reader would resize when the
+ * last Deliverable is placed and shift every remaining row sideways. `ALL_TYPES` is a fixed
+ * vocabulary, so this is one number for the life of the view. A type outside it truncates
+ * inside the slot (`styles/shelf.css`) rather than pushing its own title.
+ */
+export function shelfBadgeWidth(): number {
+	const longest = ALL_TYPES.reduce((widest, type) => Math.max(widest, type.length), 0);
+	return Math.max(META_COL_WIDTH, BADGE_LEAD_PX + Math.ceil(longest * ROLLUP_CHAR_PX));
 }
 
 /**

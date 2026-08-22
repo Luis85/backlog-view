@@ -1,0 +1,286 @@
+/* The shelf's compact-ROW layout — `.pbl-shelf-list`'s own selectors, everything
+   `renderShelfCard` (`src/view/render/shelf.ts`) turns the card grid into when the reader
+   picks List. Split out of `shelf.css` at the 400-line cap (Task 4 of
+   [[Cards or a list on the shelf]]'s follow-up): every selector here is `.pbl-shelf-list
+   ...`, so it declares nothing `shelf.css` still does, and there is no order to keep
+   between the two files on that account. What it still owes `shelf.css`'s own rule: it
+   must come after `board.css` and `roadmap.css`, whose band rule its selectors sit inside
+   and are allowed to beat and deliberately never do — `index.css` states this at the
+   import, not only here. */
+
+/* List mode: one compact row per item instead of the card grid. Nothing is drawn
+   differently — the same `renderCardBody` builds the same children, and this turns the
+   card's own column into a row, which is what makes a layout pick cost no render branch and
+   an item impossible to look different per mode. What list mode ADDS is the state cell
+   (`.pbl-shelf-state`, in `shelf.css`), and that one is drawn rather than styled, because it
+   is content the card genuinely does not carry.
+   `content-visibility` is the term that has to move with the geometry: `cards.css`'s shared
+   rule records 110px as a card's median drawn height, which is a row's four times over —
+   left standing, a shelf of rows nobody has scrolled to yet would report a scrollport four
+   times too long and a scrollbar that shrinks as the reader drags it. `auto` still records
+   the real height at first draw; this is only the guess before that. */
+.pbl-shelf-list .pbl-shelf-cards {
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-2-1);
+}
+
+.pbl-shelf-list .pbl-shelf-cards > .pbl-card {
+	contain-intrinsic-size: auto 28px;
+}
+
+.pbl-shelf-list .pbl-card {
+	padding: var(--size-2-1) var(--size-4-2);
+}
+
+/* The row itself, which is the card's SUMMARY rather than the card — `renderShelfCard`
+   draws that box for a compact row and for nothing else. The card stays a column, so a
+   shelved parent's children list is its second child and falls BENEATH the line instead of
+   sitting at the end of it. Letting the card wrap would have done the same job and cost the
+   one-line guarantee: measured in the harness, `flex-wrap: wrap` put the child list where it
+   belongs and took a row carrying a few property cells from 28px to 59px, because the cells
+   wrap on the same rule. A wrapper breaks the line exactly where it should be broken and
+   nowhere else. */
+.pbl-shelf-list .pbl-card-summary {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	gap: var(--size-4-2);
+	min-width: 0;
+}
+
+/* **The row's columns are the TREE's columns**, and reusing them rather than inventing a
+   second set is the whole of this layout. `--pbl-prop-w-N` and `--pbl-shelf-badge` are
+   published on the BAND by `renderShelf` itself (`publishColumnWidths`, and
+   `--pbl-shelf-badge` beside it), never inherited from `.pbl-tree`: the tree's publisher does
+   not run for a card projection, so a row reading them off the scroller got 132px on a view
+   opened into roadmap mode and a stale number on one that had visited the tree. Measured in
+   the browser harness at a 1400px pane over the demo backlog's twenty unplaced items: titles
+   began at 4 distinct x positions and now begin at 1, and the median row is 34px rather than
+   28px.
+
+   Subgrid would be the obvious spelling and cannot be used: `.pbl-card` carries
+   `content-visibility: auto`, which forces an independent formatting context, and in one
+   `grid-template-columns: subgrid` computes to `none`. Measured — the card reported a single
+   1272px track and every row stacked. Recorded so this is not re-attempted.
+
+   The badge slot is the band's OWN reservation and deliberately not `--pbl-meta-col`, whose
+   width is a reservation for the rollup label and is sized off the tree's population. A type
+   outside `ALL_TYPES` truncates in the slot rather than pushing its own title out of line. */
+/* **The badge slot is the one reservation that does NOT shrink**, and the reason is Task 5
+   rather than this row. The children's indent is a `padding-inline-start` computed from this
+   basis, and CSS cannot read back what a flex item resolved to — so a shrinking badge moves
+   the parent's title left while the child's badge keeps the full-basis indent, and the exact
+   alignment Task 5 promises fails precisely in the narrow panes the shrink policy exists for.
+   (Codex, PR #187.)
+
+   Rigid here costs the narrow pane nothing, which is what makes this the right one to pin:
+   the fold slot (30px), this (84px) and three gaps are 138px, and the title's floor is a
+   share of the row rather than a fixed number — at a 380px pane that is 290px against 380,
+   with the notes lane, the cells and the state cell all shrinkable below it. The budget that
+   failed was the one where the 116px notes lane was rigid too.
+
+   The badge still truncates inside the slot, which is what keeps an unusual type name from
+   pushing its own title. */
+.pbl-shelf-list .pbl-card-head {
+	flex: 0 0 var(--pbl-shelf-badge, 84px);
+	width: var(--pbl-shelf-badge, 84px);
+	min-width: 0;
+	overflow: hidden;
+}
+
+/* The cells take back the width `.pbl-card .pbl-prop` turns off. That override is right for
+   a CARD — it stacks its cells and sizes each to content — and this is the case where it is
+   not: a shared column is a width every row agrees on or it is not a column.
+
+   `0 1` rather than `0 0`, and `min-width: 0` beside it, because a fixed width per cell on a
+   narrow pane is how the band gets back the horizontal scrollbar [[The shelf, organized]]
+   removed. Shrinking, every row shrinks IDENTICALLY — the bases are the same on every row
+   now that no cell is dropped (`holdEmpty`, `render/shelf.ts`) — so the alignment survives
+   the whole width range instead of holding at one pane size. */
+.pbl-shelf-list .pbl-card-summary .pbl-prop {
+	flex: 0 1 var(--pbl-prop-w, 132px);
+	width: var(--pbl-prop-w, 132px);
+	min-width: 0;
+}
+
+/* **The wrapper has to shrink for its cells to shrink**, which is the half that makes the
+   narrow-pane policy work at all. `.pbl-props` is itself a flex container: pinned at
+   `flex: 0 0 auto` it is sized from its contents, so its cells never face a deficit inside
+   it, their own `flex-shrink` never engages, and the whole deficit lands on the title —
+   which hits its floor and then the row overflows. `0 1 auto` with `min-width: 0` passes the
+   squeeze through. (Codex, PR #187 — the first draft pinned it and claimed controlled
+   shrinkage in the same breath.)
+
+   No `margin-inline-start: auto` here: the title is `flex: 1 1 0`, so it absorbs every bit of
+   free space and the metadata block is already at the line's end. An auto margin beside that
+   is a declaration that can never fire.
+
+   `flex-wrap` stays off, and it is load-bearing beside the shrink rather than tidy: a wrapper
+   that can finally be squeezed is one whose cells wrap to a second line — a 28px row becoming
+   56px the moment it holds two chips. */
+.pbl-shelf-list .pbl-card-summary .pbl-props {
+	flex: 0 1 auto;
+	min-width: 0;
+	flex-wrap: nowrap;
+}
+
+/* The title is the one thing that yields, and it truncates rather than wraps: a row that
+   grew a second line for a long title would not be a row. `overflow-wrap` is reset because
+   the card's own rule sets `anywhere`, which fights the ellipsis.
+
+   **The basis is 0, and that is load-bearing rather than tidy.** With `auto` the basis is
+   the title's own text width, so under a deficit two rows distribute their shrink
+   differently and the cells resolve to different widths — the alignment would hold at a wide
+   pane and quietly come apart at a narrow one, which is the failure mode hardest to notice.
+   At 0 every row's flex configuration is identical and so is every resolved column.
+
+   The floor decides who yields FIRST. Every other item in the row can shrink, so without one
+   the cells and the title shrink in proportion and the row's own subject ends up sharing the
+   line evenly with its metadata. In `ch` so it is a number of CHARACTERS at whatever size the
+   theme draws them. And the floor yields itself once there is not room for it, which a bare
+   `16ch` could not: a reservation is a promise about a container with the space to keep it,
+   and below some width 16ch plus the badge, the gaps and the cells is more than the row has.
+   Measured across the range rather than argued — at 1200, 640, 480 and 380px the summary's
+   scroll width equals its client width exactly, and at 320px a fixed floor overran by 7px.
+   The percentage is of the SUMMARY's own content box, so it answers to the band a reader is
+   looking at rather than to the viewport, which is what a media query would get wrong in a
+   split pane. */
+.pbl-shelf-list .pbl-card-title {
+	flex: 1 1 0;
+	min-width: min(16ch, 40%);
+	overflow: hidden;
+	overflow-wrap: normal;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+/* **The trailing reservation**: the rollup, the shelving reason and the dependency note, in
+   one box that is always drawn. Its width is the rollup's own reservation — `.pbl-meta-col`
+   inside it is sized by `styles/columns.css` from `--pbl-meta-col` and `--pbl-rollup-label`,
+   both published on this band by `renderShelf` from this band's items — plus room for the two
+   note icons. Fixed either way: a row with none of the three spends the same width as a row
+   with all three, which is what keeps every property cell after it on one x.
+
+   The two notes show their ICON and not their sentence. There is no room for a sentence in a
+   reservation, and a sentence is what made them variable in the first place; the text stays in
+   the DOM rather than being removed, so it still reaches the card's accessible name the
+   content-derived way `renderShelfCard` relies on, and the tooltip carries it for a reader who
+   can see. */
+.pbl-shelf-list .pbl-shelf-notes {
+	display: flex;
+	align-items: center;
+	gap: var(--size-2-1);
+	/* `0 1`, not `0 0`. Fixed, this lane alone reserves 116px at the defaults, and with the
+	   badge's 84px, the fold slot's 30px, three gaps and the title's own floor the row's minima
+	   pass a 380px pane before a single property cell is counted — the pane hides horizontal
+	   overflow, so that is clipped content rather than a scrollbar. (Codex, PR #187.)
+	   Shrinking costs the alignment nothing, which is the same argument the cells rest on: every
+	   row carries this lane at the same basis with the same factor, so a deficit resolves it to
+	   the same width on all of them. The icons inside keep their own size and the rollup's
+	   progress bar is what gives way. */
+	/* The rollup's own reservation, the two note icons, and room for a parent breadcrumb — every
+	   sometimes-absent thing on the row lives here, so this one width is what makes them all
+	   stop varying. */
+	flex: 0 1 calc(var(--pbl-meta-col, 84px) + 2 * (12px + var(--size-2-1)) + 12ch);
+	min-width: 0;
+	/* And the lane's CONTENTS give way with it, which `min-width: 0` alone does not arrange: it
+	   lets the LANE shrink and says nothing about the boxes inside. `.pbl-meta-col` is
+	   `flex: 0 0 auto` with a fixed `width` (`styles/columns.css`), so the rollup would keep its
+	   full size and spill into the property cells — overlapping metadata rather than a progress
+	   bar giving way. The rule below unpins it; this clip is the backstop for the two icons,
+	   which have an intrinsic size and no give at all. (Codex, PR #187.) */
+	overflow: hidden;
+}
+
+/* The rollup gives way with its lane rather than keeping the width `columns.css` pins it at:
+   that rule is right for a tree row, where the meta column IS the reservation, and this is the
+   one place the box sits inside a reservation of its own. The progress bar is a flex fill and
+   shrinks cleanly; its label ellipsises. */
+.pbl-shelf-list .pbl-shelf-notes .pbl-meta-col {
+	flex: 0 1 auto;
+	width: auto;
+	min-width: 0;
+	overflow: hidden;
+}
+
+.pbl-shelf-list .pbl-shelf-reason > span:not(.pbl-shelf-reason-icon),
+.pbl-shelf-list .pbl-shelf-dependency > span:not(.pbl-shelf-dependency-icon) {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+	clip-path: inset(50%);
+	white-space: nowrap;
+}
+
+/* **No `order` here at all, and that is a correction.** An earlier draft reordered the three
+   trailing boxes because the notes lane has to be CREATED before `renderCardBody` (the body is
+   what fills it) and so lands between the fold slot and the badge. The justification offered was
+   that nothing focusable is separated from its place in the document — which reasoned about the
+   TAB order and the pane's arrow keys, and a screen reader in browse mode uses neither.
+   `tabindex="-1"` removes nothing from the accessibility tree and CSS `order` moves nothing in
+   it, so the row would have been SPOKEN as fold → notes → badge → title while being SHOWN as
+   fold → badge → title → notes: a card's shelving reason announced before the title it is
+   about. (Codex, PR #187.)
+
+   The DOM is put right instead of being overridden — `renderShelfCard` moves the lane to the end
+   of the summary once the body has filled it — and the visual sequence is simply what the
+   document says. Nothing about ALIGNMENT ever depended on the sequence, since every item after
+   the flexible title has the same width on every row, which is what makes removing the
+   reordering free. */
+.pbl-shelf-list .pbl-shelf-state {
+	flex: 0 1 auto;
+	min-width: 0;
+	margin-inline-start: 0;
+}
+
+/* The breadcrumb inside the notes lane: it yields before the icons do and ellipsises rather
+   than widening the lane, which is the whole reason it was moved off the line. */
+.pbl-shelf-list .pbl-shelf-notes .pbl-card-parent {
+	flex: 0 1 auto;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+/* A hairline per row and a hover, which is the whole of the rhythm: a long band gives the
+   eye nothing to track down without them. On the SUMMARY rather than the card, so an
+   expanded parent's children sit inside the line the rule closes rather than below it. */
+.pbl-shelf-list .pbl-card-summary {
+	min-height: 28px;
+	padding-inline: var(--size-4-2);
+	border-block-end: 1px solid var(--background-modifier-border);
+}
+
+.pbl-shelf-list .pbl-shelf-cards > .pbl-card:last-child .pbl-card-summary {
+	border-block-end: 0;
+}
+
+.pbl-shelf-list .pbl-card:hover {
+	background-color: var(--background-modifier-hover);
+}
+
+/* The type group headers read as structure rather than as another muted line. Sticky inside
+   the band's own scrollport — the band is a scroller (`roadmap.css`, `board.css`), so a
+   reader scrolled into the middle of a long type still knows which one they are in. */
+.pbl-shelf-list .pbl-shelf-group-header {
+	position: sticky;
+	top: 0;
+	z-index: 2;
+	padding: 2px var(--size-4-2);
+	border-radius: var(--radius-s);
+	background-color: var(--background-modifier-hover);
+	letter-spacing: 0.06em;
+	color: var(--text-normal);
+}
+
+.pbl-shelf-list .pbl-shelf-group-count {
+	margin-inline-start: auto;
+	padding-inline: 6px;
+	border-radius: var(--radius-s);
+	background-color: var(--background-modifier-border);
+	color: var(--text-muted);
+	font-variant-numeric: tabular-nums;
+}

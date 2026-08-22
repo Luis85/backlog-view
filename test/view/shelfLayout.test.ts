@@ -2,7 +2,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { Menu, MenuItem } from 'obsidian';
-import { horizonVault, makeRoadmap, shelfCountOf, shelfOf, shelfTitles } from '../helpers/roadmap';
+import { horizonVault, makeRoadmap, shelfCountOf, shelfHeavyVault, shelfOf, shelfTitles } from '../helpers/roadmap';
 import { FakeVault } from '../helpers/vault';
 import { cardByTitle } from '../helpers/board';
 import { Harness, makeView, useViewHarness } from '../helpers/view';
@@ -308,8 +308,12 @@ describe('the shelf’s card and list layouts', () => {
 		// line by 7px, and the container-relative one does not. The percentage is of the
 		// summary's own box rather than the viewport, since a shelf in a split pane is
 		// narrower than the window it sits in.
-		const css = readFileSync('styles/shelf.css', 'utf8');
-		expect(bodyOf(css, '.pbl-shelf-list .pbl-card-title', 'styles/shelf.css')).toContain('min-width: min(16ch, 40%);');
+		// The compact-row layout's own selectors live in `shelfList.css` (Task 4's split at
+		// the 400-line cap) — `shelf.css` no longer declares `.pbl-shelf-list ...` at all.
+		const css = readFileSync('styles/shelfList.css', 'utf8');
+		expect(bodyOf(css, '.pbl-shelf-list .pbl-card-title', 'styles/shelfList.css')).toContain(
+			'min-width: min(16ch, 40%);',
+		);
 	});
 
 	it('remembers the pick for this saved view, without touching the base', () => {
@@ -318,5 +322,175 @@ describe('the shelf’s card and list layouts', () => {
 		// Working position on the device, never a `.base` setting — ADR 0011's rule, which
 		// every shelf pick but the search already follows.
 		expect(config.setCalls).toEqual([]);
+	});
+
+	/**
+	 * A compact row's columns are the tree's own, published on the BAND — Task 4 of
+	 * [[Cards or a list on the shelf]]'s follow-up. jsdom lays nothing out, so what is
+	 * checkable here is structure (every row holds the same set of cells) and the
+	 * published custom properties, never x positions — those were measured in the
+	 * browser harness, recorded in the register.
+	 *
+	 * Two of these fixtures depart from the brief that produced them: `horizonVault()`
+	 * carries no resolved property column and no state property by default (`makeRoadmap`
+	 * never sets `config.order` unless asked), so a test that wants a real column — or a
+	 * real state chip — to hold open has to configure one, or it passes vacuously with
+	 * zero matched elements. Both tests below configure their own columns for exactly
+	 * that reason; see task-4-report.md for the failure this produced before the fix.
+	 */
+	describe('a compact row’s columns are the tree’s, aligned', () => {
+		/**
+		 * Three shelved items, none with a horizon — `horizonVault()` puts two of its
+		 * three epics into buckets, leaving one lone card on the shelf, which cannot show
+		 * a per-row DIFFERENCE at all. This fixture keeps all three on the shelf and gives
+		 * them different plain-property combinations instead, so `holdEmpty` has real
+		 * variance to erase.
+		 */
+		function unplacedVault(): FakeVault {
+			const vault = new FakeVault();
+			vault.addFile('Has both.md', { frontmatter: { type: 'Epic', order: 10 } });
+			vault.addFile('Has one.md', { frontmatter: { type: 'Epic', order: 20 } });
+			vault.addFile('Has none.md', { frontmatter: { type: 'Epic', order: 30 } });
+			vault.entryValues.set('Has both.md', { 'note.points': 3, 'note.owner': 'Alice' });
+			vault.entryValues.set('Has one.md', { 'note.points': 5 });
+			return vault;
+		}
+
+		it('holds a cell open for a column this row has no value for', () => {
+			// A card DROPS an empty cell, correctly — it stacks its cells and sizes each to
+			// content, so a blank one is a chip-shaped gap with nothing to reserve. A row is the
+			// case where that argument stops: the cells are fixed width and shared across rows, so
+			// a dropped one shifts every cell after it and the column stops being a column. That
+			// is the TREE's rule, arrived at from the same place.
+			const { containerEl } = makeRoadmap(unplacedVault(), {}, {
+				shelfCollapsed: false,
+				shelfList: true,
+				order: ['note.points', 'note.owner'],
+			});
+			const counts = shelfOf(containerEl)
+				?.querySelectorAll<HTMLElement>('.pbl-card-summary > .pbl-props')
+				.values()
+				.map((props) => props.querySelectorAll('.pbl-prop').length);
+			const seen = new Set([...(counts ?? [])]);
+			expect(seen.size).toBe(1);
+		});
+
+		it('drops the state cell instead, which is not one of the shared columns', () => {
+			// Extension 4a: no chip, and no gap where one would have been. `.pbl-shelf-state` is
+			// its own box outside `.pbl-props`, so holding the shared columns open says nothing
+			// about it — and a row whose workflow does not write the drawn state property must not
+			// keep a chip-shaped hole at the end of the line.
+			const { containerEl } = makeRoadmap(horizonVault(), { stateProperty: 'note.status' }, {
+				shelfCollapsed: false,
+				shelfList: true,
+				order: ['note.status'],
+			});
+			for (const state of Array.from(shelfOf(containerEl)?.querySelectorAll('.pbl-shelf-state') ?? [])) {
+				expect(state.childElementCount).toBeGreaterThan(0);
+			}
+		});
+
+		it('publishes the column widths on the band, never inheriting the tree’s', () => {
+			// `renderTree` is the ONLY publisher of `--pbl-prop-w-N` and `renderPass` runs it for
+			// the tree and the catalog alone, while `.pbl-tree` is built once in the constructor
+			// and only emptied per pass — so a row reading them off the scroller got 132px on a
+			// view opened into roadmap mode, and whatever a previous tree pass left on one that
+			// had been there. Geometry that depended on projection history. (Codex, PR #187.)
+			const { containerEl } = makeRoadmap(horizonVault(), {}, {
+				shelfCollapsed: false,
+				shelfList: true,
+				order: ['note.points'],
+			});
+			const band = shelfOf(containerEl);
+			expect(band?.style.getPropertyValue('--pbl-prop-w-0')).not.toBe('');
+			expect(band?.style.getPropertyValue('--pbl-shelf-badge')).not.toBe('');
+		});
+
+		it('publishes nothing on a band drawing no cells', () => {
+			// Beside the height and for its reason: a band with nothing to show reserves nothing.
+			const { containerEl } = makeRoadmap(horizonVault(), {}, { shelfCollapsed: true, shelfList: true });
+			expect(shelfOf(containerEl)?.style.getPropertyValue('--pbl-shelf-badge')).toBe('');
+		});
+
+		it('publishes the rollup label reservation for a shelved item that has one', () => {
+			// `--pbl-rollup-label` is the one geometry the DATA decides rather than the
+			// stylesheet — `renderTree`'s own rule, kept here for the band: absent when
+			// nothing on the shelf has a rollup, set to this band's widest label otherwise,
+			// never a stale value left over from a previous render (`renderShelf` removes
+			// it before setting it, same as `renderTree`).
+			const vault = new FakeVault();
+			vault.addFile('Untriaged parent.md', { frontmatter: { type: 'Epic', order: 10 } });
+			vault.addFile('Child A.md', {
+				frontmatter: { type: 'Feature', order: 10, parent: '[[Untriaged parent]]' },
+				parentLink: 'Untriaged parent',
+			});
+			vault.addFile('Child B.md', {
+				frontmatter: { type: 'Feature', order: 20, parent: '[[Untriaged parent]]' },
+				parentLink: 'Untriaged parent',
+			});
+			const { containerEl } = makeRoadmap(vault, { stateProperty: 'note.status' }, {
+				shelfCollapsed: false,
+				shelfList: true,
+			});
+			expect(shelfOf(containerEl)?.style.getPropertyValue('--pbl-rollup-label')).not.toBe('');
+		});
+
+		it('gives every row the same top-level items, which is what alignment rests on', () => {
+			// **The category check, and the one that would have caught six review rounds at once.**
+			// Alignment does not come from any single declaration; it comes from every top-level
+			// item of the summary having the same flex configuration on every row. An item that is
+			// present on some rows and absent on others breaks that as surely as one whose basis is
+			// its own content — which is how the rollup, the shelving reason, the dependency note
+			// and the parent breadcrumb each broke it in turn, one per review round, until they were
+			// all moved into the always-drawn notes lane.
+			//
+			// jsdom lays nothing out, so what is checkable here is PRESENCE: the set of direct
+			// children, by class, must be identical across every row in the band. A new
+			// sometimes-drawn element on the line fails this without anyone predicting it, which a
+			// list of the six known ones could not do.
+			const { containerEl } = makeRoadmap(shelfHeavyVault(), {}, { shelfCollapsed: false, shelfList: true });
+			const shapes = new Set(
+				Array.from(shelfOf(containerEl)?.querySelectorAll('.pbl-card-summary') ?? []).map((summary) =>
+					Array.from(summary.children)
+						.map((child) => child.className)
+						.join('|'),
+				),
+			);
+			expect([...shapes]).toHaveLength(1);
+		});
+
+		it('states the aligned-column geometry in the stylesheet', () => {
+			// jsdom resolves no cascade and lays nothing out, so the checkable part is the
+			// declaration and its selector. The geometry was measured in the browser harness at a
+			// 1400px pane over the demo backlog's twenty unplaced items: median row height 34px to
+			// 28px, title x positions 4 to 1.
+			//
+			// `.pbl-shelf-list`'s own rules live in `shelfList.css`, split out of `shelf.css` at
+			// the 400-line cap this task's addition tripped.
+			const css = readFileSync('styles/shelfList.css', 'utf8');
+			const file = 'styles/shelfList.css';
+			// The badge takes the band's own reserved slot, which is what puts every title on one x
+			// — never `--pbl-meta-col`, which reserves for the rollup label and is sized off the
+			// TREE's population.
+			expect(bodyOf(css, '.pbl-shelf-list .pbl-card-head', file)).toContain('flex: 0 0 var(--pbl-shelf-badge, 84px);');
+			// And the notes lane IS shrinkable, which is the other half of the narrow-pane policy:
+			// rigid, it plus the badge and the fold slot pass a 380px pane before a single cell.
+			expect(bodyOf(css, '.pbl-shelf-list .pbl-shelf-notes', file)).toContain('flex: 0 1 calc(');
+			// The state box too, and `min-width: 0` is the load-bearing half: a flex item's default
+			// `min-width: auto` is its content's minimum, so ordering it without unsetting that
+			// leaves the last column rigid however narrow the pane gets.
+			expect(bodyOf(css, '.pbl-shelf-list .pbl-shelf-state', file)).toContain('min-width: 0;');
+			// And the cells take the tree's stored widths back, which `.pbl-card .pbl-prop` turns
+			// off for a card. `0 1` rather than `0 0`: they must shrink together on a narrow pane
+			// rather than force a horizontal scrollbar the band has never had.
+			expect(bodyOf(css, '.pbl-shelf-list .pbl-card-summary .pbl-prop', file)).toContain(
+				'flex: 0 1 var(--pbl-prop-w, 132px);',
+			);
+			// The title's basis is ZERO, and that is what makes the shrink identical row to row:
+			// with `auto` the basis is the title's own text width, so two rows resolve their cells
+			// to different widths under the same deficit and the alignment holds only until the
+			// pane narrows.
+			expect(bodyOf(css, '.pbl-shelf-list .pbl-card-title', file)).toContain('flex: 1 1 0;');
+		});
 	});
 });

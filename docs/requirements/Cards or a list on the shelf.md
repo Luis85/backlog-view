@@ -130,6 +130,13 @@ one a reader wants changes by the day and by the task, not by the base.
   one fixed name.
 - The same cards are drawn in both layouts, and the shelf's count is unchanged by the
   pick.
+- A compact row's columns are the tree's stored widths, published on the band: the badge in
+  its own `--pbl-shelf-badge` slot, the cells at `--pbl-prop-w-N`, every row holding a cell open for every column so a missing value is
+  a gap rather than a shift. Measured at a 1400px pane over twenty unplaced items: titles at
+  one x position where there were four, median row 28px where it was 34px.
+- The cells shrink together rather than forcing a horizontal scrollbar the band has never
+  had, and they shrink identically row to row because the title's flex basis is 0 and no row
+  drops a cell.
 - A compact row is ONE line whatever it carries — property cells included — and its title
   keeps a stated floor rather than being squeezed away by them. The floor is a share of the
   row it sits in, so a pane too narrow to honour it gives it up instead of overrunning.
@@ -171,9 +178,20 @@ Extension 3b is why it could not be done in CSS alone.
 
 `renderCardBody` takes `kidsEl` for that wrapper — where the children disclosure goes when
 that is not the card itself — and the shelf's row is its only caller: the summary takes the
-body, the card takes the list. The two notes `renderShelfCard` appends after the body (the
-shelving reason and the dependency statement) and the state cell below go to the summary
-too, since they are part of the line.
+body, the card takes the list. The state cell below goes to the summary too, since it is
+part of the line.
+
+**The shelving reason, the dependency statement and the parent breadcrumb go into a fourth
+wrapper, `.pbl-shelf-notes` — Task 4 of this same follow-up, and a correction rather than a
+preference (Codex, PR #187).** All three are present on some rows and absent on others, and
+each one that is missing takes its width off the row and shifts every fixed column after it
+— exactly the failure `holdEmpty` exists to stop for the property cells one line down. The
+lane is drawn unconditionally, before `renderCardBody` runs, and handed to it as `rollupEl`
+so the rollup lands inside it too; `renderShelfNotes` (`render/shelf.ts`) then fills it with
+whichever of the three apply and moves it to the end of the line, since it had to exist
+before the body could fill it and so was created between the fold slot and the badge. The
+two notes show only their ICON in list mode (`styles/shelfList.css`), with the sentence kept
+in the DOM for the accessible name and a tooltip for a pointer reader who can see it.
 
 The first deliberate difference is `renderShelfState`, also in `render/shelf.ts`. A card
 draws no state chip because its own POSITION says the state — a board column IS a state, a
@@ -191,17 +209,41 @@ The picker is `renderLayoutPicker` in `src/view/render/shelfControls.ts`, and it
 from. `shelfLayoutIcon` beside it is what lets the button wear the layout in force from the
 same table, so the button and its menu cannot illustrate different picks.
 
-Two files were split along the way, both because their subject had grown two.
+Three files were split along the way, each because their subject had grown two.
 `src/view/render/contextStrip.ts` is `renderContextStrip` alone — the strip beside the
 shelf, which shares a header CLASS with the band and nothing else: it is never sorted,
 filtered, searched, folded, resized or dropped on. `styles/shelfControls.css` is the
-header's chrome and the resize grip from [[Resizing the shelf]], leaving `styles/shelf.css`
-the band, its groups and its two layouts. `styles/index.css` states why the new partial's
-position is load-bearing relative to `shelf.css` and to the two files whose band rule both
-are allowed to beat.
+header's chrome and the resize grip from [[Resizing the shelf]]. `styles/shelfList.css` is
+the third, split from `styles/shelf.css` at the 400-line cap by Task 4: every selector in it
+is `.pbl-shelf-list ...`, leaving `styles/shelf.css` the band, its groups, the card grid and
+the two notes' shared base classes. `styles/index.css` states why each new partial's
+position is load-bearing relative to `shelf.css` and to the two files whose band rule all
+three are allowed to beat.
+
+**The widths are published on the BAND by `renderShelf`, through `publishColumnWidths`
+(`src/view/render/columns.ts`), which `renderTree` now calls too — one statement of the same
+loop.** It is not inherited from `.pbl-tree`, and that is a correction rather than a
+preference: `renderPass.ts` runs the tree's publisher for the tree and the catalog alone,
+while the scroller is built once in the constructor and only emptied per pass, so a compact
+row reading those variables got the 132px fallback on a view opened into roadmap mode and a
+stale number on one that had visited the tree — geometry decided by projection history.
+The badge's own slot is `shelfBadgeWidth()`, from `ALL_TYPES` rather than from
+`metaColWidth` (which reserves for the rollup label) or from the band's current cards (which
+would resize the slot as work is placed). Found by review, Codex on PR #187.
+
+**Subgrid was the obvious spelling for the alignment and could not be used.** `.pbl-card`
+carries `content-visibility: auto`, which forces an independent formatting context, and in
+one `grid-template-columns: subgrid` computes to `none` — measured, the card reported a
+single 1272px track and every row stacked. And **holding every cell open is not enough on
+its own**, which was the second rejected shape: `.pbl-card-parent` used to stay on the line,
+drawn only for an item with a parent and sized to its own breadcrumb text, so a row with a
+long parent name absorbed more of a narrow pane's deficit and left less for the reservations
+after it — their resolved widths diverging from a root card's in the same band. Moving it
+into the always-drawn `.pbl-shelf-notes` lane, alongside the rollup and the two notes, is
+what made every top-level item of the summary the same on every row.
 
 Driven in `test/view/shelfLayout.test.ts`. jsdom lays nothing out, so what a row LOOKS
 like is not a question that file can answer — it asserts the class, the state chip, the two
-surfaces agreeing and the pick surviving, and the measurements above came from
-`npm run harness` in a headless Chromium against Obsidian's own app.css. A themed vault's
-colours and spacing are still the release sweep's (ADR 0020).
+surfaces agreeing, the published custom properties and the pick surviving, and the
+measurements above came from `npm run harness` in a headless Chromium against Obsidian's own
+app.css. A themed vault's colours and spacing are still the release sweep's (ADR 0020).

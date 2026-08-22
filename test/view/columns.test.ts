@@ -7,6 +7,17 @@ import { rowContext, syncColumnFit } from '../../src/view/render/columns';
 
 useViewHarness();
 
+/**
+ * How many `setCssProps` calls `renderTree` makes on the tree scroller per content
+ * render, since Task 4 of [[Cards or a list on the shelf]]'s follow-up split the
+ * per-column loop into `publishColumnWidths` (`render/columns.ts`): one call for
+ * `--pbl-meta-col`/`--pbl-indent`/`--pbl-rollup-label`, which stay `renderTree`'s own
+ * geometry, and one for the shared publisher, which `renderShelf` now calls too. The two
+ * pass-counting tests below spy on that method to count passes rather than re-derive one;
+ * a third caller of the split changes this number, not the tests' own logic.
+ */
+const CALLS_PER_PASS = 2;
+
 describe('property columns', () => {
 	it('renders visible properties as fixed cells with the toString fallback', () => {
 		const vault = fixture();
@@ -212,10 +223,17 @@ describe('property columns', () => {
 		// And it stays gone: the pass the changed verdict bought got there, and another
 		// update at the same width buys nothing beyond its own render.
 		let passes = 0;
-		// Counted at the widths `renderTree` publishes onto the scroller, once per tree
-		// content render. It used to count `treeEl.empty()`, which stopped being one call
-		// per pass when a pass began KEEPING the rows it drew last time (ADR 0029) — the
-		// quantity this test is about did not move, the instrument that could see it did.
+		// Counted at the widths `renderTree` publishes onto the scroller, per tree content
+		// render. It used to count `treeEl.empty()`, which stopped being one call per pass
+		// when a pass began KEEPING the rows it drew last time (ADR 0029) — the quantity
+		// this test is about did not move, the instrument that could see it did.
+		//
+		// TWO calls per pass since Task 4 of [[Cards or a list on the shelf]]'s follow-up:
+		// `renderTree` still writes `--pbl-meta-col`/`--pbl-indent`/`--pbl-rollup-label`
+		// itself, and then calls the extracted `publishColumnWidths` (`render/columns.ts`)
+		// for the per-column widths — the same publisher `renderShelf` now calls too, so a
+		// column resized in tree mode reads the same width on the shelf. `CALLS_PER_PASS`
+		// is what a third caller of that split would have to update, not this count.
 		const realProps = HTMLElement.prototype.setCssProps;
 		Object.defineProperty(tree, 'setCssProps', {
 			configurable: true,
@@ -225,7 +243,7 @@ describe('property columns', () => {
 			},
 		});
 		view.onDataUpdated();
-		expect(passes).toBe(1);
+		expect(passes).toBe(CALLS_PER_PASS);
 		expect(header()).toBeNull();
 
 		// It comes back with every label once the pane can hold them again.
@@ -364,10 +382,9 @@ describe('property columns', () => {
 		Object.defineProperty(tree, 'clientWidth', { value: 900, configurable: true });
 
 		let passes = 0;
-		// Counted at the widths `renderTree` publishes onto the scroller, once per tree
-		// content render. It used to count `treeEl.empty()`, which stopped being one call
-		// per pass when a pass began KEEPING the rows it drew last time (ADR 0029) — the
-		// quantity this test is about did not move, the instrument that could see it did.
+		// Counted at the widths `renderTree` publishes onto the scroller, per tree content
+		// render — `CALLS_PER_PASS` per pass since Task 4's `publishColumnWidths` split;
+		// see the identical comment on the test above for why.
 		const realProps = HTMLElement.prototype.setCssProps;
 		Object.defineProperty(tree, 'setCssProps', {
 			configurable: true,
@@ -382,7 +399,7 @@ describe('property columns', () => {
 		view.onDataUpdated();
 		// One pass for the refresh and no refit pass: the pane did not change, so the
 		// verdict did not either.
-		expect(passes - settled).toBe(1);
+		expect(passes - settled).toBe(CALLS_PER_PASS);
 	});
 
 	it('keeps the second pass alive after a render throws inside it', () => {

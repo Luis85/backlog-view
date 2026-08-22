@@ -1,6 +1,9 @@
-/* The unplaced shelf itself — the band, its type groups, its two card layouts and the
+/* The unplaced shelf itself — the band, its type groups, the CARD grid layout and the
    context strip beside it: `src/view/render/shelf.ts` and `src/view/render/contextStrip.ts`.
-   The HEADER's own chrome and the grip at the band's foot are `shelfControls.css`. */
+   The HEADER's own chrome and the grip at the band's foot are `shelfControls.css`; the
+   compact-ROW layout is `shelfList.css`, split out at the 400-line cap (Task 4 of
+   [[Cards or a list on the shelf]]'s follow-up) — see that file's own header for why its
+   position in `index.css` is load-bearing the same way this one's is. */
 
 .pbl-shelf,
 .pbl-roadmap-context {
@@ -160,120 +163,16 @@
 	height: 12px;
 }
 
-/* ----- the two layouts, and the grip that sizes the band */
+/* The compact-ROW layout — `.pbl-shelf-list`'s own selectors — lives in `shelfList.css`.
+   What stays here, shared by both card layouts: the reason and dependency notes above,
+   and the state box below, since `renderShelfState` only ever runs in list mode but the
+   box is not itself list-scoped.
 
-/* List mode: one compact row per item instead of the card grid above. Nothing is drawn
-   differently — the same `renderCardBody` builds the same children, and this turns the
-   card's own column into a row, which is what makes a layout pick cost no render branch and
-   an item impossible to look different per mode. What list mode ADDS is the state cell
-   (`.pbl-shelf-state`, below), and that one is drawn rather than styled, because it is
-   content the card genuinely does not carry.
-   `content-visibility` is the term that has to move with the geometry: the shared rule
-   above records 110px as a card's median drawn height, which is a row's four times over —
-   left standing, a shelf of rows nobody has scrolled to yet would report a scrollport four
-   times too long and a scrollbar that shrinks as the reader drags it. `auto` still records
-   the real height at first draw; this is only the guess before that. */
-.pbl-shelf-list .pbl-shelf-cards {
-	display: flex;
-	flex-direction: column;
-	gap: var(--size-2-1);
-}
-
-.pbl-shelf-list .pbl-shelf-cards > .pbl-card {
-	contain-intrinsic-size: auto 28px;
-}
-
-.pbl-shelf-list .pbl-card {
-	padding: var(--size-2-1) var(--size-4-2);
-}
-
-/* The row itself, which is the card's SUMMARY rather than the card — `renderShelfCard`
-   draws that box for a compact row and for nothing else. The card stays a column, so a
-   shelved parent's children list is its second child and falls BENEATH the line instead of
-   sitting at the end of it. Letting the card wrap would have done the same job and cost the
-   one-line guarantee: measured in the harness, `flex-wrap: wrap` put the child list where it
-   belongs and took a row carrying a few property cells from 28px to 59px, because the cells
-   wrap on the same rule. A wrapper breaks the line exactly where it should be broken and
-   nowhere else. */
-.pbl-shelf-list .pbl-card-summary {
-	display: flex;
-	flex-direction: row;
-	align-items: center;
-	gap: var(--size-4-2);
-	min-width: 0;
-}
-
-/* The title is the one thing in the row that yields, and it truncates rather than wraps:
-   a row that grew a second line for a long title would not be a row. `overflow-wrap` is
-   reset because the card's own rule sets `anywhere`, which fights the ellipsis.
-
-   `min-width` is the floor that decides WHO yields FIRST, and it is one declaration in this
-   rule rather than a second rule for the same selector — two of those is one edit from a
-   reader (or a check that addresses this selector) taking the wrong one. Every other item
-   in the row can shrink, so without a floor the title and the cells shrink in proportion
-   and the row's own subject ends up sharing the line evenly with its metadata. The cells
-   give way first and go on giving way until this is reached; only then does the title
-   truncate. In `ch` so it is a number of CHARACTERS at whatever size the theme draws them,
-   which is what the reservation is actually about.
-
-   **And the floor yields itself once there is not room for it**, which a bare `16ch` could
-   not and is why this is a `min()`. A reservation is a promise about a container that has
-   the space to keep it: on a phone or a narrow split there is a width below which 16ch plus
-   the badge, the gaps and the cells is more than the row has, and the floor then stops
-   protecting the title and starts overrunning the line instead. Measured across the range
-   rather than argued — at 1200, 640, 480 and 380px the summary's scroll width equals its
-   client width exactly and the floor is doing its job, and at 320px a fixed floor overran by
-   7px. The percentage is of the SUMMARY's own content box, so it answers to the band a
-   reader is looking at rather than to the viewport, which is what a media query would get
-   wrong in a split pane. (Codex, PR #183; the 1200px measurement the first version rested on
-   did not exercise this at all.) */
-.pbl-shelf-list .pbl-card-title {
-	flex: 1 1 auto;
-	min-width: min(16ch, 40%);
-	overflow: hidden;
-	overflow-wrap: normal;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-}
-
-/* Everything after the title keeps its content width and gives up a share of the line
-   rather than pushing the title out of it — the parent line, the shelving reason and the
-   dependency note all say more than they need to on one row. */
-.pbl-shelf-list .pbl-card-parent,
-.pbl-shelf-list .pbl-shelf-reason,
-.pbl-shelf-list .pbl-shelf-dependency {
-	flex: 0 1 auto;
-	min-width: 0;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-}
-
-/* **The property cells are in that rule too, and they were the one thing left out of it.**
-   `.pbl-props` is `flex: 0 0 auto` and `.pbl-card .pbl-props` gives it `width: auto` and
-   `overflow: visible`, which in a COLUMN is right — a card stacks its cells and sizes them
-   to content. Turned into a row it means an unshrinkable wrapper at its max-content width,
-   and the title is what pays: measured in the harness at a 1200px pane, a row carrying
-   seven cells drew its title at 103px where an untouched row drew 768px. Nothing spilled —
-   `.pbl-card .pbl-prop` is `flex: 0 1 auto` and `.pbl-prop-value` already ellipsises, so
-   the row stayed one 28px line and `scrollWidth` never exceeded `clientWidth` — which is
-   why this is about the TITLE being squeezed rather than about overflow. (Codex, PR #183,
-   which read it as a spill; the measurement is what says which half is real.)
-   `flex-wrap` is load-bearing BESIDE the shrink rather than tidy: `.pbl-card .pbl-props`
-   sets `wrap`, and a wrapper that can finally be squeezed is a wrapper whose cells wrap to
-   a second line — a compact row that grows to 56px the moment it holds two chips. The two
-   declarations only work together. */
-.pbl-shelf-list .pbl-card-summary .pbl-props {
-	flex: 0 1 auto;
-	min-width: 0;
-	overflow: hidden;
-	flex-wrap: nowrap;
-}
-
-/* The state cell a compact row carries (`renderShelfState`). Empty means the Base draws no
-   state column, or draws one this item's workflow does not write — `renderPropCells`
-   detaches its own box for that, and this wrapper has to go with it or the row keeps the
-   gap where the chip would have been. */
+   `:empty` is a guard rather than a case this row still produces: `renderShelfState`
+   (Task 4) now holds a configured state column open even where this item's own workflow
+   writes nothing, so the box it creates always carries at least one cell — the whole-band
+   case (no state property configured at all) never creates the box in the first place.
+   Kept for a caller that draws this class some other way, at no cost to one that does not. */
 .pbl-shelf-state {
 	display: flex;
 	align-items: center;
@@ -281,8 +180,4 @@
 
 .pbl-shelf-state:empty {
 	display: none;
-}
-
-.pbl-shelf-list .pbl-shelf-state {
-	margin-inline-start: auto;
 }

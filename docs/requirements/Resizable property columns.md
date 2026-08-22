@@ -210,11 +210,14 @@ flush — here. The keys going through that one
 function is what stops the right-to-left sign being applied in two places, one of which is
 the one somebody forgets.
 
-`renderTree` in `src/view/render/rows.ts` publishes one width per drawn column onto the
-tree element, and `sizeCell` (`render/columns.ts`) points each cell at its own column's
-property — which is what lets a drag move every row's cell by rewriting one declaration
-rather than walking the rows, the scan `src/view/CLAUDE.md` bans. `columnFit` in the same
-file sums those widths instead of dividing the pane by one of them.
+`renderTree` in `src/view/render/reconcile.ts` publishes one width per drawn column onto
+the tree element, through `publishColumnWidths` (`render/columns.ts`) — the one statement
+of that loop, since [[Cards or a list on the shelf]]'s Task 4 gave the shelf's compact row
+the same published widths and `renderShelf` calls the identical function. `sizeCell`
+(`render/columns.ts`) points each cell at its own column's property — which is what lets a
+drag move every row's cell by rewriting one declaration rather than walking the rows, the
+scan `src/view/CLAUDE.md` bans. `columnFit` in the same file sums those widths instead of
+dividing the pane by one of them.
 
 The picks are stored as a `colWidths` map in `src/storage/viewStateStore.ts` — a `prefs`
 value rather than a fold, because a key is a Bases property id and never a note path, so
