@@ -3,8 +3,8 @@ import type { EstimationView } from './estimationView';
 import { t } from '../../i18n/t';
 import { EstimationItem, EstimationModel } from '../../domain/estimationItems';
 import { ScaleName } from '../../domain/estimationSettings';
-import { ScaleConfig, ScoringModel } from '../../domain/scoringModel';
-import { round2 } from '../../domain/weightedScore';
+import { Indicator, ScoringModel } from '../../domain/scoringModel';
+import { IndicatorBlock, indicatorFormula, round2 } from '../../domain/weightedScore';
 import { renderCurrencyChip } from './currencyChip';
 
 /**
@@ -91,9 +91,17 @@ export function renderPanel(view: EstimationView, model: EstimationModel, previo
 	// which is what silently broke when they moved. The header now declares its own type
 	// (`styles/estimationPanel.css`) and nothing depends on where its children sit.
 	const header = panelEl.createDiv({ cls: 'pbl-est-header' });
-	header.createDiv({ cls: 'pbl-est-title', text: item.title });
+	const titleRow = header.createDiv({ cls: 'pbl-est-title-row' });
+	titleRow.createDiv({ cls: 'pbl-est-title', text: item.title });
+	// In the STICKY header rather than at the panel's foot: the reader needs the note
+	// exactly when they are eight dimensions down and cannot answer one from the rubric.
+	const open = titleRow.createEl('button', {
+		cls: 'pbl-icon-btn pbl-est-open',
+		attr: { type: 'button', 'aria-label': t('estimation.panel.openNote'), title: t('estimation.panel.openNote'), 'data-action': 'open' },
+	});
+	setIcon(open, 'file-text');
 	renderSummary(header, item);
-	renderDerived(header, item, scoringModel.confidence);
+	renderDerived(header, item, scoringModel, view.settings.indicator);
 
 	panelEl.createEl('h4', { text: t('estimation.panel.valueDimensions') });
 	for (const dimension of scoringModel.dimensions) renderScoreRow(panelEl, dimSpec(item, dimension));
@@ -275,32 +283,66 @@ function renderDecomposition(panelEl: HTMLElement, item: EstimationItem): void {
 }
 
 /**
- * Confidence-adjusted value and value-to-effort — each only while its OWN inputs exist,
- * per `docs/requirements/The weighted score.md`'s write-back rule: derived on read,
- * never written. Value-to-effort's own formula divides the ADJUSTED value, so it can
- * never exist without confidence either — nothing here is a second, independent guard
- * on `adjusted`, because there is no state in which one renders without the other.
- *
- * The adjustment is the confidence AS THE ROW ABOVE READS IT, over the scale's own
- * maximum — both from the `ScaleConfig`, never a literal 5: a stored 9 printed a value
- * above the model's own output range, directly under the row saying that 9 reads as 5.
+ * Which catalog key names a blocked indicator's reason, on EITHER surface — the column's
+ * one-parameter family (`{operand}`, `estimation.indicator.*`) and the panel's own
+ * two-parameter family (`{name}` and `{operand}`, `estimation.panel.indicator*`). ONE
+ * `Record<IndicatorBlock, …>` rather than two, exported for `renderTable.ts` to read
+ * (which already imports `renderPanel` from here — no new edge), because two independent
+ * copies is exactly the drift CONTROLLER AMENDMENT 1 named: nothing catches two maps
+ * agreeing on which reasons exist while disagreeing about what either sentence says. A
+ * single table states the correspondence once; each call site picks its own column.
  */
-function renderDerived(panelEl: HTMLElement, item: EstimationItem, scale: ScaleConfig): void {
-	if (!item.result || item.confidence === null) return;
-	const adjusted = round2((item.result.total * readAs(item.confidence, scale.min, scale.max)) / scale.max);
+export const INDICATOR_BLOCK_KEYS: Record<
+	IndicatorBlock,
+	{
+		column: 'estimation.indicator.unanswered' | 'estimation.indicator.unknown' | 'estimation.indicator.nonpositive' | 'estimation.indicator.unbound';
+		panel: 'estimation.panel.indicatorUnanswered' | 'estimation.panel.indicatorUnknown' | 'estimation.panel.indicatorNonpositive' | 'estimation.panel.indicatorUnbound';
+	}
+> = {
+	unanswered: { column: 'estimation.indicator.unanswered', panel: 'estimation.panel.indicatorUnanswered' },
+	unknown: { column: 'estimation.indicator.unknown', panel: 'estimation.panel.indicatorUnknown' },
+	nonpositive: { column: 'estimation.indicator.nonpositive', panel: 'estimation.panel.indicatorNonpositive' },
+	unbound: { column: 'estimation.indicator.unbound', panel: 'estimation.panel.indicatorUnbound' },
+};
+
+/**
+ * Confidence-adjusted value and the configured indicator — each derived on read and
+ * written nowhere (`docs/requirements/The weighted score.md`). The indicator sits BESIDE
+ * the value it is computed from, never instead of it, which is the epic's rule about a
+ * merged number.
+ *
+ * A blocked indicator says which operand blocked it rather than dropping the line: a line
+ * that vanishes reads as "this view has no opinion", and the reader is about to score.
+ */
+function renderDerived(panelEl: HTMLElement, item: EstimationItem, model: ScoringModel, indicator: Indicator): void {
+	const scale = model.confidence;
+	// TWO independent lines, and the gate on each is its OWN inputs. Sharing one early
+	// return hid the indicator whenever the adjusted value had nothing to say — which is
+	// exactly the item whose indicator is `effort × complexity` and perfectly computable,
+	// and also the item whose default indicator is blocked and most needs to say so.
+	const adjusted =
+		item.result && item.confidence !== null
+			? round2((item.result.total * readAs(item.confidence, scale.min, scale.max)) / scale.max)
+			: null;
+	if (adjusted === null && !item.indicator) return;
 	const derived = panelEl.createDiv({ cls: 'pbl-est-derived' });
 	// One catalog key per line, {value} substituted rather than glued on beside a
 	// separately-translated label — the i18n rule this file's rubric notes already
 	// follow (`estimation.clamped`, `estimation.betweenPoints`): the sentence is the
 	// unit, so nothing here builds one out of two pieces at the call site.
-	derived.createSpan({ text: t('estimation.panel.adjustedValue', { value: adjusted }) });
-	// A POSITIVE effort, asked explicitly: the ratio divides by it, so a stored 0 gives
-	// `Infinity` and a negative gives a negative ratio beside a table showing the number
-	// the user typed. Neither is a value to show, so the line is omitted — the row for
-	// effort itself says the value is out of its range, which is where that belongs.
-	if (item.effort !== null && item.effort > 0) {
-		derived.createSpan({ text: t('estimation.panel.valueToEffort', { value: round2(adjusted / item.effort) }) });
-	}
+	if (adjusted !== null) derived.createSpan({ text: t('estimation.panel.adjustedValue', { value: adjusted }) });
+	if (!item.indicator) return;
+	const name = indicator.label || indicatorFormula(model, indicator);
+	const blocked = item.indicator.blockedBy;
+	// A LOOKUP rather than a nested ternary: three reasons already strained that shape,
+	// and the fourth (`unbound`) made it unreadable. `INDICATOR_BLOCK_KEYS` above is the
+	// whole of the decision; this only applies its `panel` half.
+	derived.createSpan({
+		text:
+			blocked === null
+				? t('estimation.panel.indicator', { name, value: item.indicator.value as number })
+				: t(INDICATOR_BLOCK_KEYS[blocked.reason].panel, { name, operand: blocked.operand }),
+	});
 }
 
 function renderCleanupButton(panelEl: HTMLElement): void {
@@ -333,6 +375,15 @@ function wirePanelEvents(view: EstimationView, panelEl: HTMLElement, item: Estim
 		}
 		if (target.dataset.action === 'restamp') {
 			void view.performRestamp(item);
+			return;
+		}
+		if (target.dataset.action === 'open') {
+			// Resolved against the CURRENT model at click time, never the item this panel
+			// closed over: a Bases pass can remove the row between the draw and the click,
+			// and opening *something* would be worse than opening nothing — the reader is
+			// about to score whatever they read.
+			const live = view.model?.byPath.get(item.file.path);
+			if (live) view.openNote(live, evt);
 			return;
 		}
 		const dim = target.dataset.dim;

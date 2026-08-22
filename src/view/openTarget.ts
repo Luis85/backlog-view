@@ -1,6 +1,11 @@
-import { App, Keymap, WorkspaceLeaf } from 'obsidian';
-import { BacklogItem } from '../domain/model';
+import { App, Keymap, TFile, WorkspaceLeaf } from 'obsidian';
 import { OpenTarget } from '../domain/itemHandling';
+
+/** What either entry point needs of an item, which is only where it lives. Narrowed from
+ *  `BacklogItem` when the estimation view became the second caller: this module never read
+ *  anything else off one, and a controller that demands the backlog's own item type cannot
+ *  be reused by a view that has a different one. */
+type Openable = { file: TFile };
 
 /**
  * What opening a note needs of the view: the workspace, where the view is drawn, and
@@ -19,7 +24,7 @@ export interface OpenContext {
  *
  * The two entry points are not one with a default, and the difference is the whole
  * design: `open` is what the view is CONFIGURED to do, repeated on every click, so it
- * pins the backlog and reuses one side pane. `openIn` is a target the user NAMED once —
+ * pins the calling view and reuses one side pane. `openIn` is a target the user NAMED once —
  * the menu's two entries, a middle click — so it pins nothing and splits afresh, leaving
  * two deliberately placed notes side by side. Sharing the pane between them would make
  * the second Open to the right replace the first.
@@ -40,7 +45,7 @@ export class OpenController {
 	 * what an ordinary click does afterwards, since `getLeaf(false)` cannot replace a
 	 * pinned leaf.
 	 */
-	open(ctx: OpenContext, item: BacklogItem, evt: MouseEvent | KeyboardEvent): void {
+	open(ctx: OpenContext, item: Openable, evt: MouseEvent | KeyboardEvent): void {
 		const modifier = Keymap.isModEvent(evt);
 		if (modifier) {
 			void ctx.app.workspace.getLeaf(modifier).openFile(item.file);
@@ -55,12 +60,12 @@ export class OpenController {
 	}
 
 	/** Open in a target the caller NAMED: a fresh leaf every time, and no pin. */
-	openIn(ctx: OpenContext, item: BacklogItem, target: OpenTarget): void {
+	openIn(ctx: OpenContext, item: Openable, target: OpenTarget): void {
 		void ctx.app.workspace.getLeaf(target === 'active' ? false : target).openFile(item.file);
 	}
 
 	/**
-	 * Pin the leaf this view is drawn in, so the backlog stays put while notes open
+	 * Pin the leaf this view is drawn in, so the calling view stays put while notes open
 	 * beside it. Best effort, hence no report: a base embedded in a note is drawn in
 	 * that note's leaf, and pinning it is still "keep what is on screen on screen" —
 	 * while a view not yet in a workspace has nothing to pin.
@@ -78,9 +83,9 @@ export class OpenController {
 
 	/**
 	 * The pane the configured split target opens into, made once and reused while it is
-	 * still open. `getLeaf('split')` splits whatever is ACTIVE, and the backlog is active
-	 * on every click — so a split per click would fill the window with panes by the
-	 * fourth item. Liveness is asked of the workspace rather than remembered: a closed
+	 * still open. `getLeaf('split')` splits whatever is ACTIVE, and the calling view is
+	 * active on every click — so a split per click would fill the window with panes by
+	 * the fourth item. Liveness is asked of the workspace rather than remembered: a closed
 	 * leaf is still a perfectly good object, and opening a note into one would put it
 	 * nowhere.
 	 */

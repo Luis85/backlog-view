@@ -192,6 +192,11 @@ describe("the estimation view's options menu reads its words from the catalog", 
 				'complexity',
 				'confidence',
 				'effort',
+				// The fifth picker, and the one that is not a scoring key: the property this
+				// view reads a note's TYPE from, to refuse a `Resource`. Its suggestion is a
+				// frontmatter key like the four above it — a locale that translated it would
+				// read the type from a property no note carries and score people.
+				'type',
 				// The dimensions box mirrors its own default, so clearing it falls back to the
 				// list on screen.
 				DEFAULT_DIMENSIONS.map((d) => d.id).join(', '),
@@ -202,6 +207,14 @@ describe("the estimation view's options menu reads its words from the catalog", 
 				// The label is a value the user may override in that box, so it is a shipped
 				// default like `Now, Next, Later` rather than text.
 				...DEFAULT_DIMENSIONS.flatMap((d) => [d.id, String(d.weight), d.label]),
+				// The indicator's three boxes. `adjustedValue` and `effort` are OPERAND IDS
+				// — this model's own vocabulary, mirrored from the shipped default the same
+				// way the ranges are — and `RICE` is a preset NAME, which is what the Name
+				// box holds and what a preset writes into the `.base`. A locale that
+				// translated any of the three would configure an indicator that resolves to
+				// nothing, or name one differently per language.
+				'adjustedValue',
+				'RICE',
 			]
 				.filter((word, i, all) => all.indexOf(word) === i)
 				.sort(),

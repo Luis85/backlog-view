@@ -119,6 +119,20 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   unplaced`, `Sort unplaced`, `Filter unplaced by type` among them — now say `shelf`
   instead, since the board's band is a backlog too, not only the roadmap's.
 
+- **The estimation view ranks by a framework you pick.** A new toolbar action offers RICE,
+  ICE, WSJF and value over effort; picking one previews what it would change and configures
+  the indicator in one act, without touching the value model or any stored total. The
+  indicator is a product of named operands over an optional divisor — no expression, and
+  nothing parses one — so swapping an operand afterwards is an edit to a text box. It takes
+  a column in the table that sorts, with an item whose operands are unanswered sorting with
+  the unmeasured rather than at one end, and it draws beside the confidence-adjusted value
+  in the panel. Clear the operands box and there is no indicator and no column.
+
+- **Open the note you are scoring, from the panel.** The item's name in the panel header now
+  carries an Open note control, and the table's `Enter` goes the same way — both through the
+  same controller the backlog view uses, so the estimation view gains an `Open in` setting
+  and, on its default, opens the note beside itself rather than over itself.
+
 ### Changed
 
 - **Assign missing properties no longer creates a date property on a note that cannot use

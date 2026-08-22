@@ -128,3 +128,8 @@
    two-class descendant selector is (0,2,0) against the single class's (0,1,0) — so this
    partial wins whichever import runs last. */
 @import "./estimationPanel.css";
+/* Position NOT load-bearing: every selector here is this dialog's own vocabulary
+   (`.pbl-est-preset*`, `.pbl-est-preview*`), declared in no other partial, and the
+   `.pbl-est-presets-dialog` class sits on Obsidian's `.modal-content`, which this
+   stylesheet does not otherwise target. */
+@import "./estimationPresets.css";

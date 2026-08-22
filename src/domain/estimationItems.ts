@@ -1,8 +1,8 @@
 import { App, BasesEntry, TFile } from 'obsidian';
 import { isResourceType } from './itemTypes';
 import { ownValue, readNumber, readString } from './noteFields';
-import { boundKeys, ScoringModel } from './scoringModel';
-import { computeTotal, Currency, currencyOf, modelFingerprint, TotalResult } from './weightedScore';
+import { boundKeys, Indicator, ScoringModel } from './scoringModel';
+import { computeIndicator, computeTotal, Currency, currencyOf, IndicatorFigure, modelFingerprint, TotalResult } from './weightedScore';
 
 /**
  * One result note read into what the table and the panel need: its own answers, what is
@@ -24,6 +24,9 @@ export interface EstimationItem {
 	storedTotal: number | null;
 	storedStamp: string | null;
 	result: TotalResult | null;
+	/** This model's indicator for this item, or null when none is configured — derived on
+	 *  read and written nowhere, which is why it sits beside `result` rather than in it. */
+	indicator: IndicatorFigure | null;
 	currency: Currency;
 	/** Frontmatter keys the note actually carries, of this model's keys — what a Clear action may remove. */
 	ownKeys: Set<string>;
@@ -40,7 +43,13 @@ export interface EstimationModel {
  * build — so every field below reads off the SAME `fm` rather than opening the cache
  * a second time.
  */
-export function buildEstimationModel(app: App, entries: BasesEntry[], model: ScoringModel, typeKey: string): EstimationModel {
+export function buildEstimationModel(
+	app: App,
+	entries: BasesEntry[],
+	model: ScoringModel,
+	indicator: Indicator,
+	typeKey: string,
+): EstimationModel {
 	const bound = boundKeys(model);
 	// Loop-invariant: the same model scores every item, so its fingerprint (a JSON.stringify
 	// plus a hash over every dimension) is computed once here rather than once per item
@@ -72,17 +81,21 @@ export function buildEstimationModel(app: App, entries: BasesEntry[], model: Sco
 		const storedTotal = readNumber(ownValue(fm, model.valueKey));
 		const storedStamp = readString(ownValue(fm, model.stampKey));
 		const result = computeTotal(model, answers);
+		const confidence = readNumber(ownValue(fm, model.confidence.key));
+		const effort = readNumber(ownValue(fm, model.effort.key));
+		const complexity = readNumber(ownValue(fm, model.complexity.key));
 		const item: EstimationItem = {
 			file,
 			entry,
 			title: file.basename,
 			answers,
-			confidence: readNumber(ownValue(fm, model.confidence.key)),
-			effort: readNumber(ownValue(fm, model.effort.key)),
-			complexity: readNumber(ownValue(fm, model.complexity.key)),
+			confidence,
+			effort,
+			complexity,
 			storedTotal,
 			storedStamp,
 			result,
+			indicator: computeIndicator(model, indicator, { answers, confidence, effort, complexity, result }),
 			currency: currencyOf(model, { storedTotal, storedStamp, result }, fingerprint),
 			ownKeys: new Set(bound.filter((key) => ownValue(fm, key) !== undefined)),
 		};

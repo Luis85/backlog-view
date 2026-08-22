@@ -109,12 +109,16 @@ language, so nothing re-reads it. What must never enter the catalog is anything 
 writes, matches or persists — type names, state values, option keys, tags, file names. The
 test when it is not obvious: **ask what breaks if two people with different Obsidian
 languages open the same vault.** "One sees different words" is text; "one writes notes the
-other's view cannot read" is data. 556 keys are in it (counted two ways on 2026-08-22 and
-agreeing — an AST walk over the `as const` object's own properties, and a match-counting
-`grep -Po` for the key lines; `grep -c` would count LINES, which is one of the three wrong
-numbers this epic has produced from an instrument that looked right). Re-measured when
-[[Making a resource from the timeline]] merged, which is also how the previous figure was
-found to be one short of its own catalog: a count is dated the moment it is written.
+other's view cannot read" is data. 591 keys are in it (counted two ways on the MERGED tree
+on 2026-08-22 and agreeing — a runtime `Object.keys` over the bundled catalog, and a
+match-counting `grep -Po` for the key lines; `grep -c` would count LINES, which is one of the three wrong
+numbers this epic has produced from an instrument that looked right, and 33 of these keys
+carry their value on the FOLLOWING line, which is exactly what such an instrument gets
+wrong). **A count is dated the moment it is written, and this paragraph has now been a
+merge conflict four times in one day** — 550, 542, 553, 577, 556 and 588 were each true of
+the branch that wrote them and of nothing else, and 591 is what the two branches came to
+together rather than either of the numbers that conflicted. Re-measure on the merged tree
+rather than picking a side.
 `ui/`, `commands/`, `view/interactions/`, `view/estimation/`, the whole of `view/render/`,
 `view/writeGate.ts`, `view/cardMoves.ts`, `main.ts`, `domain/viewOptions.ts` and — since
 2026-08-22 — `domain/estimationOptions.ts`, `domain/board.ts`, `domain/bars.ts`,
@@ -129,9 +133,9 @@ somebody could NAME. `storage/` renders no DOM, so a sentence in it reads as plu
 what makes it text is that a `Notice` is a screen. **Re-derive the remainder with a
 walk over `src/` rather than reading this paragraph** — the scan that found it was an AST
 sweep for prose-shaped literals outside a `t()` call, which is the one instrument that
-sees the two shapes lint cannot. It is not a leftover: those three files are authored long-form
-PROSE, and whether several hundred multi-sentence paragraphs belong in a message catalog at
-all is an open question rather than work not yet done. What is still English in the REST of
+sees the two shapes lint cannot. `view/manual/` is not a leftover either: its three files are
+authored long-form PROSE, and whether several hundred multi-sentence paragraphs belong in a
+message catalog at all is an open question rather than work not yet done. What is still English in the REST of
 `domain/` was classified rather than swept, and every part of it stays for a stated reason
 — the type names and shipped value lists are data, `defaultModel.ts`'s rubrics are in the
 model FINGERPRINT so two locales would stamp two models, `timeline.ts`'s month names are a

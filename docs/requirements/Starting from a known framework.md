@@ -2,11 +2,11 @@
 type: PBI
 parent: "[[Presets for the known frameworks]]"
 order: 10
-status: Open
+status: Done
 created: 2026-08-17
 source: interview, 2026-08-17
 started: ""
-finished: ""
+finished: 2026-08-22
 horizon: ""
 start: ""
 due: ""
@@ -20,12 +20,10 @@ assignee: ""
 configured model, **so that** starting with this view costs a minute rather than an
 afternoon of transcribing weights.
 
-Two kinds of preset, and conflating them would break the epic's central rule. A **value**
-preset configures the weighted value model. An **indicator** preset — RICE, ICE, WSJF,
-value over effort — divides by effort or job size or multiplies by confidence, so it
-configures one of the labelled indicators that sit *beside* the business value and never
-the value itself. An indicator is a shape with named operands, never an expression somebody
-types: a product of named operands, divided by one named operand, the divisor optional.
+This PBI ships the **indicator** half of the presets feature: RICE, ICE, WSJF and value
+over effort, each a shape with named operands, divided by one named operand, the divisor
+optional — never an expression somebody types. The **value** half, which configures the
+weighted value model itself, is [[Starting from a value framework]].
 
 Picking one shows what it would change before it changes anything.
 
@@ -89,23 +87,27 @@ Picking one shows what it would change before it changes anything.
 
 ## Where it lives
 
-The preset data is a sibling of `src/domain/defaultModel.ts` — shipped configurations as
-data rather than catalog text, for the same reason the rubric sentences are: two locales
-must not configure two models.
+The preset data is `src/domain/estimationPresets.ts`, data beside `src/domain/defaultModel.ts`
+for the same reason the rubric sentences are data. The indicator's own shape is in
+`src/domain/scoringModel.ts` and its arithmetic in `src/domain/weightedScore.ts`; it is
+resolved from the view options by `src/domain/estimationSettings.ts` and offered by
+`src/domain/estimationOptions.ts`, computed per item in `src/domain/estimationItems.ts`,
+and drawn by `src/view/estimation/renderTable.ts` and `src/view/estimation/panel.ts`.
+The picker is `src/ui/estimationPresetDialog.ts`, over rows assembled by
+`src/view/estimation/presets.ts` — `ui/` knows about no layer, so the dialog takes plain
+rows and hands back the id that was picked.
 
-The indicator's own shape — named operands and an optional divisor, and the two ways it can
-have no figure — belongs in `src/domain/scoringModel.ts` beside the model it sits next to,
-and is computed on read like every other derivation in
-`src/domain/weightedScore.ts`; nothing about it reaches
-`src/domain/estimationWritePlan.ts`, which is the mechanical statement that an indicator
-persists nothing. The indicator draws beside the existing derived lines in
-`src/view/estimation/panel.ts` and takes a column in
-`src/view/estimation/renderTable.ts`, sorting with the unmeasured last exactly as an
-unanswered value already does.
+An operand can fail to produce a figure four ways, not two — unanswered, an unknown id,
+a nonpositive divisor, and **unbound** (a scale with no property bound to it at all, whose
+repair is binding one in the view options rather than scoring the note) — and the panel and
+the column share one reason-to-message mapping (`INDICATOR_BLOCK_KEYS` in
+`src/view/estimation/panel.ts`) so the two surfaces cannot drift apart on what a block says.
+Six operand ids are reserved (`INDICATOR_BUILTINS` in `scoringModel.ts`) and win over a
+same-named dimension, so a vault that declares one is never shadowed by a preset's own use
+of the name.
 
-The picker and its preview are a dialog under `src/ui/`, sharing the invalidation count
-with [[Editing a dimension's scale]] rather than computing one of its own.
-
-Tests: `test/domain/scoringModel.test.ts` for the operand shape and its two no-figure
-cases, `test/view/estimation/sort.test.ts` for where an uncomputable indicator sorts, and a
-view test for the preview and for cancel writing nothing.
+Tests: `test/domain/indicator.test.ts` for the operand shape and its four no-figure cases,
+`test/view/estimation/indicatorColumn.test.ts` for the column and where an uncomputable
+indicator sorts, `test/view/estimation/indicatorBlockAgreement.test.ts` for the panel and
+the column agreeing about a block, and `test/view/estimation/presets.test.ts` for the
+dialog's preview and for cancel writing nothing.
