@@ -62,9 +62,6 @@ card — and a count is the half of it that cannot be acted on.
   time they read the other. What the two share is the register of what was drawn
   (`cardChildrenShown`) and therefore the row menu's section, which is why that gate is
   the render's own record rather than the projection's name.
-- **1c — the quick filter is running.** It overrides collapse state, so every listed
-  card shows its children and the toggle is disabled — it would otherwise write state
-  that reads back as expanded and took effect once the filter cleared.
 - **1d — what the disclosure is announced AS.** Open, and shared with the timeline's
   row: this toggle is a `<button aria-expanded>` inside a `role="option"` card, and
   `option` has presentational children, so a user agent may flatten it and drop both.
@@ -75,8 +72,6 @@ card — and a count is the half of it that cannot be acted on.
   says so, not this.
 - **3b — a child already has a card of its own.** Still listed. The disclosure answers
   what is under this item, and that does not change with where else the item is drawn.
-- **3c — a child matched the quick filter.** The card's match list stops naming it, since
-  the disclosure does. One card cannot say the same thing twice.
 - **4a — the user has no pointer.** The card menu offers the TOGGLE, from the same gate.
   A disclosure nobody without a mouse can reach is not a list of children. It offered one
   `Open child "…"` entry per child as well, unconditionally, until 2026-08-14; those were
@@ -90,6 +85,13 @@ card — and a count is the half of it that cannot be acted on.
 - **5a — the item is a context row.** It gets the disclosure like any other card. Nothing
   here writes, so the rule that governs it is not in question.
 
+**The letters skip `1c` and `3c`**, which described the quick filter overriding collapse
+state and the card's match list. Both were withdrawn with the filter itself on 2026-08-17
+([[Remove the quick filter, now that Bases has its own search]]) and this note went on
+stating them, as two acceptance criteria did. The letters are not renumbered: a label is
+how an extension is referred to from elsewhere, and shifting one to close a gap moves every
+reference that named it.
+
 ## Acceptance criteria
 
 - A card with at least one visible direct child renders a disclosure naming them by
@@ -99,8 +101,8 @@ card — and a count is the half of it that cannot be acted on.
   appears. Each entry carries the child's type badge and name, and a done child is styled
   done.
 - Which children are listed is `isRowHidden`, the rule the tree and both card projections
-  already share, so hiding completed work and the quick filter mean the same thing here
-  as everywhere. The card's rollup keeps counting what the list omits.
+  already share, so hiding completed work means the same thing here as everywhere. The
+  card's rollup keeps counting what the list omits.
 - Activating an entry opens that child, and never the card's own note — by primary click
   and by middle click, which are separate events and separately guarded. The toggle
   opens nothing on either.
@@ -112,7 +114,6 @@ card — and a count is the half of it that cannot be acted on.
   data update. One scope regardless of which card projection draws the card (board,
   either roadmap axis, Deliverables), since "is this item's card open" is one question
   about the note and not one per screen that happens to draw it as a card.
-  While the quick filter runs the toggle is disabled.
 - The card menu offers the toggle, on a right-click and on the menu key, and offers it on
   no surface that drew no disclosure — and not on the horizon board, whose card menus
   carry no children section at all
@@ -130,9 +131,17 @@ the row menu may name).
 **`drawnChildren` is a DESCENT and not one level of `item.children`.** A row this
 projection does not draw is traversed THROUGH, so a `Release` hand-hung between a `Feature`
 and its `PBI`s — drawn by no axis of the roadmap — leaves those `PBI`s on the Feature's face
-rather than on no card at all. The one rule it keeps is where it STOPS: a row
-`projectionForest` has already promoted to a root of the rendered forest carries `focusRoot`
-and is drawn in its own right, so the walk does not also carry it up. The walk itself is
+rather than on no card at all. The one rule it keeps is where it STOPS: a row promoted to a
+root of the rendered forest carries `focusRoot` and is drawn in its own right, so the walk
+does not also carry it up.
+
+**That stamp is read only where it is this projection's own** — `drawsForest`
+(`src/view/projection.ts`). `focusRoot` is set once per model build, by `collectFocusRoots`
+and `projectionForest` together, so a projection drawing a population of its OWN meets it on
+rows it never promoted: the iteration board's population is `iterationResults` over
+`realRoots` and the Deliverables board's is `deliverableResults` off the whole unfocused
+tree. Reading the stamp there took an in-sprint `PBI` off its carrier's face while the same
+board went on drawing its own card for it. The walk itself is
 `drawnDescent` in `src/view/rowVisibility.ts`, because `rowHidden` needs the same descent
 for the same reason — a context row is an empty scaffold only when nothing is visible below
 it, and "below it" has to mean the same thing to the row and to the card. `drawnChildren` is

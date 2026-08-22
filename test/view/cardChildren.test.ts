@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import { boardVault, BOARD_WORKFLOW, cardByTitle, makeBoard } from '../helpers/board';
+import { boardVault, BOARD_WORKFLOW, cardByTitle, cardTitles, makeBoard } from '../helpers/board';
 import { makeView, refresh, rowByTitle, titlesOf, useViewHarness } from '../helpers/view';
 import { FakeVault } from '../helpers/vault';
 import { childrenLabel, listedChildren } from '../../src/view/childrenList';
@@ -20,6 +20,19 @@ function kidTitles(card: HTMLElement): string[] {
 		(el) => el.textContent ?? '',
 	);
 }
+
+/**
+ * The sprint board's own settings bag — a workflow, the iteration link and the two ends
+ * of it. Shared by the focus-root cases below, which differ only in where the stamped row
+ * hangs.
+ */
+const ITERATION_WORKFLOW = {
+	stateProperty: 'note.status',
+	stateValues: 'New, Doing, Done',
+	iterationProperty: 'note.iteration',
+	iterationOpenStates: 'New',
+	iterationResolvedStates: 'Done',
+};
 
 /** `boardVault` plus a grandchild, so "direct children only" has something to exclude. */
 function nestedVault(): FakeVault {
@@ -169,22 +182,26 @@ describe('children on the card', () => {
 	});
 
 	/**
-	 * The other half of that stop: it is only on the way UP, and this is the shape that
-	 * makes the `descended` term load-bearing rather than decorative.
+	 * The other half of that stop: it reads a stamp, and the stamp is not this board's.
 	 *
 	 * The iteration board reads `realRoots` — the unfocused tree — so a focus level set on
 	 * another projection reaches it unrevalidated (ADR 0011: the focus is working position
 	 * on the device). `collectFocusRoots` has already stamped `focusRoot` on `Kid`, the
 	 * topmost `PBI` of its branch, while `Carrier` is a `Feature` and keeps its child. So
-	 * this board meets a focus root as a card's OWN direct child, at depth 0 of the walk,
-	 * where `projectionForest` did no re-rooting and there is nothing to contradict.
+	 * this board meets a focus root nothing here promoted — its population is
+	 * `iterationResults`, which re-roots nothing at all.
 	 *
-	 * Applying the stop at depth 0 as well takes `Kid` off the carrier's face — and NOT off
-	 * the board: probed on this fixture, `iterationResults` gives `Kid` a card of its own
-	 * either way, so the cost is a card's list disagreeing with the board it is drawn on
-	 * rather than work going missing. "On no card at all" is true of the ROADMAP's release
-	 * under a focus (`releaseRows.test.ts` asserts the whole frame there) and was written
-	 * here as well until 2026-08-22, when it was measured.
+	 * Applying the stop takes `Kid` off the carrier's face — and NOT off the board:
+	 * `iterationResults` gives `Kid` a card of its own either way, so the cost is a card's
+	 * list disagreeing with the board it is drawn on rather than work going missing. "On no
+	 * card at all" is true of the ROADMAP's release under a focus (`releaseRows.test.ts`
+	 * asserts the whole frame there) and was written here as well until 2026-08-22, when it
+	 * was measured.
+	 *
+	 * The DEPTH used to be what separated this from the test above — the stop was asked only
+	 * on the way up, and here the stamped row is a direct child. That reading was wrong one
+	 * level down and the test below is what says so; what separates the two now is
+	 * `drawsForest`, which is a question about the projection rather than about the walk.
 	 */
 	it('lists a focus root that is a card’s own direct child, where nothing promoted it', () => {
 		const vault = new FakeVault();
@@ -196,23 +213,53 @@ describe('children on the card', () => {
 			frontmatter: { type: 'PBI', order: 10, status: 'New', iteration: '[[Sprint 12]]' },
 			parentLink: 'Carrier',
 		});
-		const { view, containerEl } = makeView(
-			vault,
-			{
-				stateProperty: 'note.status',
-				stateValues: 'New, Doing, Done',
-				iterationProperty: 'note.iteration',
-				iterationOpenStates: 'New',
-				iterationResolvedStates: 'Done',
-			},
-			{ base: 'Plan.base', focus: 'PBI' },
-		);
+		const { view, containerEl } = makeView(vault, ITERATION_WORKFLOW, { base: 'Plan.base', focus: 'PBI' });
 		view.setBoardScope('Sprint 12.md');
 
 		// The fixture guard: the stamp is what this case turns on, so it is asserted
 		// rather than assumed — with `focusRoot` false the test would pass for no reason.
 		expect(view.model?.byPath.get('Kid.md')?.focusRoot).toBe(true);
 
+		// The probe under the sentence above, asserted rather than left as a claim: the cost
+		// of the stop firing here is a face disagreeing with its board, never work off the
+		// board — which is only true while `Kid` has a card of its own.
+		expect(cardByTitle(containerEl, 'Kid')).not.toBeNull();
+		const card = cardByTitle(containerEl, 'Carrier');
+		disclosure(card)?.click();
+		expect(kidTitles(card)).toEqual(['Kid']);
+	});
+
+	/**
+	 * The same board, the same stamp, one level DEEPER — and the case the `descended` term
+	 * read as a promotion. `Rel` is out of the sprint, so this board does not draw it and
+	 * the walk goes THROUGH it; `Kid` beneath it carries `focusRoot` from
+	 * `collectFocusRoots` alone, exactly as it does at depth 0 above. Nothing on this board
+	 * promoted either of them — its population is `iterationResults` over `realRoots` — so
+	 * the answer may not move with the depth.
+	 *
+	 * With the stop asked of `descended && focusRoot`, `Kid` came off the carrier's face
+	 * while still drawing its own board card: the harm the test above names, one level down
+	 * (Codex, fix round 3). `cardTitles` is asserted for the whole frame so the card and the
+	 * face are read together — a list disagreeing with the board it is drawn on is the whole
+	 * of the defect.
+	 */
+	it('lists one two levels down, where the board still promoted nothing', () => {
+		const vault = new FakeVault();
+		vault.addFile('Sprint 12.md', { frontmatter: { type: 'Iteration', order: 10 } });
+		vault.addFile('Carrier.md', {
+			frontmatter: { type: 'Feature', order: 10, status: 'New', iteration: '[[Sprint 12]]' },
+		});
+		vault.addFile('Rel.md', { frontmatter: { type: 'Release', order: 10 }, parentLink: 'Carrier' });
+		vault.addFile('Kid.md', {
+			frontmatter: { type: 'PBI', order: 10, status: 'New', iteration: '[[Sprint 12]]' },
+			parentLink: 'Rel',
+		});
+		const { view, containerEl } = makeView(vault, ITERATION_WORKFLOW, { base: 'Plan.base', focus: 'PBI' });
+		view.setBoardScope('Sprint 12.md');
+
+		// The fixture guard, as above: the stamp is what the case turns on.
+		expect(view.model?.byPath.get('Kid.md')?.focusRoot).toBe(true);
+		expect(cardTitles(containerEl)).toEqual(['Carrier', 'Kid']);
 		const card = cardByTitle(containerEl, 'Carrier');
 		disclosure(card)?.click();
 		expect(kidTitles(card)).toEqual(['Kid']);

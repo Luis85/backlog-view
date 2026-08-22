@@ -66,6 +66,44 @@ describe('the Deliverables board', () => {
 		expect(hintAfter).toBe(hint);
 	});
 
+	/**
+	 * **This board promotes nothing, so a `focusRoot` stamp on a row it draws is not its
+	 * own.** Its population is `model.deliverableResults`, read off the whole unfocused tree
+	 * — a Deliverable gets a card and nothing else does. `projectionForest` still promoted
+	 * `Work` when it built the PLAN's forest, because the release between the two is
+	 * excluded and `inPlan` refuses one; reading that stamp here took `Work` off the only
+	 * face it appears on at all, and this board has no card of its own to have shown it
+	 * instead. `drawsForest` (`src/view/projection.ts`) is what makes the stamp readable
+	 * only where it was made.
+	 *
+	 * The second assertion is the fixture guard: without the stamp the case poses no
+	 * question, and the test would pass for no reason.
+	 */
+	it('lists work below an excluded release, which nothing here promoted', () => {
+		const vault = new FakeVault();
+		vault.addFile('D.md', { frontmatter: { type: 'Deliverable', order: 10, deliverableStatus: 'Draft' } });
+		vault.addFile('Rel.md', { frontmatter: { type: 'Release', order: 10 }, parentLink: 'D' });
+		vault.addFile('Work.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: 'Rel' });
+		const harness = makeView(
+			vault,
+			{ deliverableStateProperty: 'note.deliverableStatus' },
+			{ only: ['D.md', 'Work.md'] },
+		);
+		harness.view.setProjection('deliverables');
+		const { containerEl } = harness;
+
+		expect(harness.view.model?.byPath.get('Work.md')?.focusRoot).toBe(true);
+		const card = cardByTitle(containerEl, 'D');
+		const toggle = card.querySelector<HTMLButtonElement>('.pbl-card-kids-toggle');
+		// Read as a presence first: with the stamp taken as this board's, the face lists
+		// nothing and no disclosure is drawn at all.
+		expect(toggle).not.toBeNull();
+		expect(toggle?.textContent).toContain('1 pbi');
+		toggle?.click();
+		const kids = Array.from(card.querySelectorAll<HTMLElement>('.pbl-card-kid-title'));
+		expect(kids.map((el) => el.textContent)).toEqual(['Work']);
+	});
+
 	it('draws the Deliverables board, scoped to Deliverable-typed results, once configured', () => {
 		const vault = boardVault(); // Epics and Features, none typed Deliverable
 		vault.addFile('D1.md', { frontmatter: { type: 'Deliverable', order: 10, deliverableStatus: 'Draft' } });

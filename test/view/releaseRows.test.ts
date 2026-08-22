@@ -15,10 +15,17 @@ useViewHarness();
  * the roadmap places a release (`onThisRoadmap`, `domain/roadmap.ts`), and no projection
  * draws a release the Base excluded (`inPlan`, `domain/model.ts`).
  *
- * Five readers, five tests: the toolbar's count, the roadmap's row source under a focus,
- * a CARD's listed children, the tree's context row, and the empty state's creation type. A
- * sixth — the bucket header's `+`, whose type follows the same focus — is asserted where it
- * already lived, in `roadmapMoves.test.ts`.
+ * Every test names the READER rather than the filter, and the groups below are the readers
+ * this file reaches: the toolbar's count, the roadmap's row source under a focus, a CARD's
+ * listed children and the denominator its disclosure subtracts from, the tree's context row
+ * and its horizon chip, and the empty state's creation type. One more — the bucket header's
+ * `+`, whose type follows the same focus — is asserted where it already lived, in
+ * `roadmapMoves.test.ts`.
+ *
+ * No total is written here, and that is the correction rather than an omission: the figure
+ * that stood here counted five of them, was one short the day a sixth reader joined the
+ * second group, and was two short by the next commit. The last group is not a reader at all
+ * — it is the shared DESCENT, which grows a test per projection that walks it.
  */
 
 /** The count label's own text — the readout that has to agree with the advisory. */
@@ -276,22 +283,6 @@ describe('a release the roadmap traverses through', () => {
 	});
 
 	/**
-	 * **The completed toggle does not move.** `rowHidden` is true for three different
-	 * reasons and this walk asks `isRowUndrawn`, which is the FIRST of them alone — a walk
-	 * that descended through any hidden child would treat `Finished` as a row this
-	 * projection does not draw.
-	 *
-	 * The list is the shape of the claim and the TOOLTIP is what can move, which is why
-	 * both are asserted here. A hidden done subtree is done all the way down, so descending
-	 * into one reaches nothing to draw and the face looks identical — but the DENOMINATOR
-	 * comes off the same walk, so `Finished` stops being counted as a row the view is
-	 * choosing to hide and the card silently stops saying so. Watched failing against
-	 * exactly that mutation.
-	 *
-	 * `Open work` is in the same fixture on purpose: a fix that emptied the list entirely
-	 * would pass an assertion that only said `Task` was absent.
-	 */
-	/**
 	 * **The scaffold above such a release, which is `rowHidden`'s own last clause and not
 	 * this walk at all.** A context row is kept only while something below it is visible,
 	 * and that question was asked of `item.children` — so the release, a row this roadmap
@@ -321,6 +312,44 @@ describe('a release the roadmap traverses through', () => {
 		expect(kidTitles(card)).toEqual(['Work']);
 	});
 
+	/**
+	 * **The other side of that scaffold, and the check under the reason for sharing the
+	 * walk.** With the release itself excluded, `inPlan` refuses it in every projection, so
+	 * `projectionForest` promotes `Work` to a root of the drawn forest — and a promoted root
+	 * is nobody's listed child. The `Epic` above it is then placing nothing and goes with the
+	 * scaffold rule, leaving `Work` as the only card.
+	 *
+	 * It is here because the naive descent — this walk without its stop — is what the
+	 * commit's central claim is about, and nothing failed on it: the fixture one test up
+	 * passes either way. Here the two answers differ, and the wrong one is visible as an
+	 * empty context card beside the very row it claims to place.
+	 */
+	it('drops the scaffold where the work below it was promoted to a root', () => {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('1.0.md', { frontmatter: { type: 'Release', order: 10 }, parentLink: 'Epic' });
+		vault.addFile('Work.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: '1.0' });
+		const { containerEl } = makeRoadmap(vault, {}, { focus: 'Epic', only: ['Work.md'] });
+
+		expect(cardTitles(containerEl)).toEqual(['Work']);
+	});
+
+	/**
+	 * **The completed toggle does not move.** `rowHidden` is true for three different
+	 * reasons and this walk asks `isRowUndrawn`, which is the FIRST of them alone — a walk
+	 * that descended through any hidden child would treat `Finished` as a row this
+	 * projection does not draw.
+	 *
+	 * The list is the shape of the claim and the TOOLTIP is what can move, which is why
+	 * both are asserted here. A hidden done subtree is done all the way down, so descending
+	 * into one reaches nothing to draw and the face looks identical — but the DENOMINATOR
+	 * comes off the same walk, so `Finished` stops being counted as a row the view is
+	 * choosing to hide and the card silently stops saying so. Watched failing against
+	 * exactly that mutation.
+	 *
+	 * `Open work` is in the same fixture on purpose: a fix that emptied the list entirely
+	 * would pass an assertion that only said `Task` was absent.
+	 */
 	it('does not descend through a child the completed toggle hid', () => {
 		const vault = new FakeVault();
 		vault.addFile('Ship it.md', { frontmatter: { type: 'Feature', order: 10, horizon: 'Now', status: 'New' } });

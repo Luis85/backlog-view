@@ -196,6 +196,45 @@ describe('the three-bucket board', () => {
 	});
 });
 
+/**
+ * The context-row rule on this board, which is the second projection the scaffold clause
+ * reaches. An excluded ancestor is drawn only while it is placing work that is on this
+ * screen, and "on this screen" is the DRAWN DESCENT: a result carrying no link to this
+ * sprint is a row this board does not draw, so the walk goes through it to the carrier
+ * below.
+ *
+ * Asked here as well as on the roadmap because the change arrives differently: on the
+ * roadmap it brought a context card BACK that the clause had wrongly dropped, and here it
+ * adds one that never appeared, on a board where nothing was ever lost. Correct by the
+ * context-row rule — the ancestor is what places the card — and unnamed until this test.
+ */
+describe('a context row placing work through a row the sprint does not draw', () => {
+	it('draws the ancestor as a card of its own, beside the carrier below it', () => {
+		const vault = new FakeVault();
+		vault.addFile(SPRINT, { frontmatter: { type: 'Iteration', order: 10 } });
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10, status: 'New' } });
+		vault.addFile('Story.md', {
+			frontmatter: { type: 'PBI', order: 10, status: 'New' },
+			parentLink: 'Epic',
+		});
+		vault.addFile('Job.md', {
+			frontmatter: { type: 'Task', order: 10, status: 'New', iteration: '[[Sprint 12]]' },
+			parentLink: 'Story',
+		});
+		const { view, containerEl } = makeView(vault, OPTIONS, {
+			base: 'Plan.base',
+			only: [SPRINT, 'Story.md', 'Job.md'],
+		});
+		view.setBoardScope(SPRINT);
+
+		// The whole frame, in the order it is drawn: `Story` is a SHELF card — the work in no
+		// iteration — and is on no column either way, so the walk through it to `Job` is the
+		// whole of what puts `Epic` among the columns. It read `Story` as a child that is not
+		// visible before 2026-08-22 and drew no `Epic` at all.
+		expect(cardTitles(containerEl)).toEqual(['Story', 'Job', 'Epic']);
+	});
+});
+
 describe('one move, three inputs, all through the bucket', () => {
 	function movingVault(): FakeVault {
 		const vault = new FakeVault();

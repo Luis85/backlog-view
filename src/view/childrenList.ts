@@ -3,6 +3,7 @@ import { BacklogViewHost } from './host';
 import { BacklogItem } from '../domain/model';
 import { cardPaths } from '../domain/board';
 import { displayType } from '../domain/itemTypes';
+import { drawsForest } from './projection';
 import { drawnDescent } from './rowVisibility';
 
 /**
@@ -27,7 +28,7 @@ import { drawnDescent } from './rowVisibility';
  * `interactions/menu.ts` (its keyboard path) share one answer without one.
  */
 export function drawnChildren(host: BacklogViewHost, item: BacklogItem): BacklogItem[] {
-	return drawnDescent(item, (row) => host.isRowUndrawn(row));
+	return drawnDescent(item, (row) => host.isRowUndrawn(row), drawsForest(host.projection));
 }
 
 /**

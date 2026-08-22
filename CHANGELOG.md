@@ -17,8 +17,13 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   parent shown for context, with a release between it and the work below, counted as an
   empty scaffold and took that work off the screen with it — and the roadmap then said
   every item was done and hidden, offering to show completed items that would not have
-  brought any of it back. The context row stays for as long as anything below it is on
-  this screen, whatever rows lie in between.
+  brought any of it back. A row shown for context now stays while any of the work it places
+  is drawn BENEATH it, whatever rows lie in between. It still goes when nothing is left
+  under it — including when the work it was placing is drawn in its own right instead of as
+  its child, which is what happens when the row between the two is itself filtered out.
+  The same reading reaches the iteration board, where it ADDS a card rather than restoring
+  one: a parent shown for context appears there when a task committed to the sprint hangs
+  below it through a story that is not in the sprint.
 
 ### Changed
 

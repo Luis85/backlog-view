@@ -2,7 +2,7 @@ import { BacklogItem } from '../domain/model';
 import { RoadmapAxis } from '../domain/roadmap';
 import { BacklogSettings } from '../domain/settings';
 import { Projection } from './host';
-import { hidesCompleted, projectionMember } from './projection';
+import { drawsForest, hidesCompleted, projectionMember } from './projection';
 
 /**
  * Row visibility: whether this projection draws the item at all, and whether the
@@ -46,6 +46,14 @@ export interface VisibilityRule {
 	 * taken over the same walk.
 	 */
 	inProjection: (item: BacklogItem) => boolean;
+	/**
+	 * Whether a `focusRoot` stamp on a row this projection draws is this projection's OWN
+	 * re-rooting — `drawsForest`, which is where the two that answer false are named. Read
+	 * only by `drawnDescent` below, and carried on the rule for the reason every other term
+	 * here is: one assembly point, so no caller can ask membership against one projection
+	 * and the promotion against another.
+	 */
+	drawsForest: boolean;
 }
 
 /**
@@ -101,6 +109,7 @@ export function visibilityRule(
 		// the option refuses reaches neither a bar, nor a line, nor the shelf that counts
 		// what could not be placed.
 		inProjection: projectionMember(projection, member.scope, settings.iterationsOnTimeline ? member.axis : null),
+		drawsForest: drawsForest(projection),
 	};
 }
 
@@ -121,8 +130,20 @@ export function rowHidden(item: BacklogItem, rule: VisibilityRule): boolean {
 	// itself empty, and took an eligible `PBI` off a focused roadmap with it — while
 	// `eligibleResults` went on counting that `PBI` and the advisory said all the work
 	// was done and hidden.
+	//
+	// **What it COSTS is unmeasured, and cannot be measured with what is here.** This
+	// replaced an allocation-free `.some` over `item.children`, and it is neither: the
+	// descent materialises the whole drawn list before `.some` gets to short-circuit over
+	// it, allocating one array per undrawn level. `isRowHidden` is asked per row per render,
+	// per count and per drop target, which is the scaling limit `src/view/CLAUDE.md` names —
+	// but only an `outsideFilter` row reaches this line at all, and the harness fixture
+	// (`test/helpers/fixtures.ts`) carries none, so `npm run perf` would time a branch
+	// nothing enters. The number is owed to a fixture with context rows in it, not to a run
+	// of the tool as it stands. Nothing is optimised on the strength of the shape alone.
 	if (item.outsideFilter) {
-		return !drawnDescent(item, (row) => !rule.inProjection(row)).some((child) => !rowHidden(child, rule));
+		return !drawnDescent(item, (row) => !rule.inProjection(row), rule.drawsForest).some(
+			(child) => !rowHidden(child, rule),
+		);
 	}
 	return false;
 }
@@ -144,37 +165,37 @@ export function rowHidden(item: BacklogItem, rule: VisibilityRule): boolean {
  * boolean cannot tell them apart. Descending through a child the COMPLETED TOGGLE hid
  * would put a done subtree back on every card face, the board's included.
  *
- * **It stops where `projectionForest` has already re-rooted the subtree.** A promoted
- * root carries `focusRoot` — *a root of the rendered forest that is not a root of the
- * model* — so it is drawn in its own right at the top of the forest and is nobody's
- * listed child. That is what keeps the board and the Deliverables board still: their
- * membership IS the forest's (`inPlan`), so every row they refuse promotes what is under
- * it, and this walk finds nothing to carry up. The rows that strand are the ones only a
- * projection's own narrowing refuses — the roadmap's release, and the iteration board's
- * out-of-sprint link — which the forest drew and nothing promoted.
+ * **It stops where THIS projection has already re-rooted the subtree.** A promoted root
+ * carries `focusRoot` — *a root of the rendered forest that is not a root of the model* —
+ * so it is drawn in its own right at the top of the forest and is nobody's listed child.
+ * That is what keeps the requirements board still: its membership IS the forest's
+ * (`inPlan`), so every row it refuses promotes what is under it, and this walk finds
+ * nothing to carry up. The rows that strand are the ones only a projection's own narrowing
+ * refuses — the roadmap's release, and the iteration board's out-of-sprint link — which the
+ * forest drew and nothing promoted.
+ *
+ * `drawsForest` is what makes the stamp readable at all, and reading it alone was the
+ * defect: `focusRoot` is set once per model build by `collectFocusRoots` and
+ * `projectionForest` together, so a projection drawing a population of its own meets it on
+ * rows nothing here promoted. On the iteration board that took an in-sprint `PBI` off its
+ * carrier's face while it went on drawing its own board card — a card's list disagreeing
+ * with the board it is drawn on. Which projections answer which way, and why, is in
+ * `drawsForest` (`projection.ts`); nothing about it is decided here.
  *
  * Here rather than in `childrenList.ts`, where it was written, because `rowHidden` above
  * needs the same descent for the same reason and a scaffold judged by a second reading of
  * "what is below this" is exactly the disagreement this file exists to prevent. Two
- * callers, one predicate each: the host's `isRowUndrawn` for a card's face, this rule's
- * own `inProjection` for the row.
+ * callers, one membership predicate each: the host's `isRowUndrawn` for a card's face,
+ * this rule's own `inProjection` for the row.
  */
 export function drawnDescent(
 	item: BacklogItem,
 	undrawn: (row: BacklogItem) => boolean,
-	descended = false,
+	drawsForest: boolean,
 ): BacklogItem[] {
-	return item.children.flatMap((child) => {
-		if (undrawn(child)) return drawnDescent(child, undrawn, true);
-		// Only on the way UP, where `projectionForest` did the re-rooting this stop is
-		// deferring to. A projection whose walk is NOT the focused forest meets a focus
-		// root as a card's own direct child: the iteration board reads `realRoots` and a
-		// focus set on another projection arrives unrevalidated, so with the focus on
-		// `PBI` an in-sprint `PBI` under an in-sprint `Feature` carries the stamp at
-		// depth 0 — promoted by nothing, and drawn on that board in its own right. Applying
-		// the stop there too would take it off its carrier's face, leaving a card whose
-		// list disagrees with the board it is drawn on. Checked by
-		// `test/view/cardChildren.test.ts`, both halves.
-		return descended && child.focusRoot ? [] : [child];
-	});
+	return item.children.flatMap((child) =>
+		undrawn(child) ? drawnDescent(child, undrawn, drawsForest)
+		: drawsForest && child.focusRoot ? []
+		: [child],
+	);
 }

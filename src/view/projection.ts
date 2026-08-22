@@ -206,6 +206,32 @@ export function projectionMember(
 }
 
 /**
+ * Whether this projection's population IS the computed forest — the rows
+ * `projectionForest` promoted and `collectFocusRoots` re-rooted (`domain/model.ts`).
+ *
+ * `focusRoot` is a stamp on the shared item rather than a per-projection answer: both
+ * stampers run once per model build, so a projection drawing a population of its OWN meets
+ * rows carrying a re-rooting it never made. Two do. The iteration board's population is
+ * `iterationResults` over `realRoots`, and the Deliverables board's is
+ * `deliverableResults` off the whole unfocused tree — neither promotes anything, so on
+ * neither does the stamp say a row is drawn at the top of the forest.
+ *
+ * The four that answer true reach the forest by different routes and it is still one
+ * question: the tree and the catalog render `roots`, the roadmap renders `model.roots`
+ * under a focus and `model.results` without one, and the requirements board does the same
+ * through `requirementsFocusRoots`. All four are `projectionForest`'s own output, so a
+ * stamp on a row they draw is their own re-rooting.
+ *
+ * Read by `drawnDescent` (`rowVisibility.ts`) and by nothing else today. It is here rather
+ * than as a `projection === 'iteration'` beside that walk for the reason this whole module
+ * exists: a projection added tomorrow answers by being added to this list, not by a walk
+ * two layers down comparing a name.
+ */
+export function drawsForest(projection: Projection): boolean {
+	return projection !== 'iteration' && projection !== 'deliverables';
+}
+
+/**
  * The focus level this projection actually honours — the stored pick, or nothing where
  * this projection could not draw the rows a focus on that type would leave.
  *
