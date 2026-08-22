@@ -1,6 +1,6 @@
 import { App, Notice, TFile } from 'obsidian';
 import { StatedEnds } from '../domain/bars';
-import { placementEnds, PlacementEnd } from '../domain/itemTypes';
+import { isReleaseType, placementEnds, PlacementEnd } from '../domain/itemTypes';
 import {
 	absentReading,
 	CivilDate,
@@ -123,7 +123,8 @@ export async function applyWrites(
 			// The ends this note's LIVE type answers for. Everything below is narrowed by
 			// them, because a key the projection never drew is not part of what a move
 			// changed — a marker's stale start most of all.
-			const ends = placementEnds(readString(ownValue(fm, settings.typeKey)), settings.iterationBars);
+			const liveType = readString(ownValue(fm, settings.typeKey));
+			const ends = placementEnds(liveType, settings.iterationBars);
 			const before = axisReadings(fm, settings);
 			// Asked of the LIVE note before this file is touched, so a note that no longer
 			// fits the plan is never half-written. It stops the batch where it stands
@@ -133,7 +134,7 @@ export async function applyWrites(
 			// twice. Every date batch today is ONE write, so the two are the same thing —
 			// and the outcome below reports what actually landed rather than claiming
 			// nothing did, which is what makes the difference visible if that changes.
-			if (refusesAxis(fm, settings, write, ends)) {
+			if (refusesAxis(fm, settings, write, ends, liveType)) {
 				refused = true;
 				return;
 			}
@@ -481,9 +482,30 @@ function narrowReadings(readings: StatedEnds, ends: PlacementEnd[]): StatedEnds 
  *   the contract and release writes the dates it showed, so a rebased date is one the
  *   user was never shown.
  */
-function refusesAxis(fm: Record<string, unknown>, settings: BacklogSettings, write: ItemWrite, live: PlacementEnd[]): boolean {
+function refusesAxis(
+	fm: Record<string, unknown>,
+	settings: BacklogSettings,
+	write: ItemWrite,
+	live: PlacementEnd[],
+	liveType: string | null,
+): boolean {
 	const axis = write.axis;
-	if (!axis || axis.ends === undefined) return false;
+	if (!axis) return false;
+	// The HORIZON, before the dates — and before the `ends` test below, which returns for
+	// it: a horizon write carries no `ends`, so every line after that one is the dated
+	// axis's and this branch would never have read the note at all. A `Release` takes no
+	// horizon (`computeHorizonWrites`), and that refusal was model-time only: a batch
+	// planned against a `PBI` the reader retyped mid-flight still landed. Authorization at
+	// plan time is not authorization at write time, which is `applySafely`'s own argument
+	// and the reason the dated axis has had this check all along.
+	//
+	// Not shared with the `ends` comparison below because they are different questions: one
+	// asks whether the SHAPE the gesture was planned under still holds, the other whether
+	// this type may hold a horizon at all. `undoLast` reaches none of this — a replay goes
+	// through `applyRestores`, which restores captured keys and asks nothing here, so a
+	// legitimate horizon write made before a retype can still be taken back.
+	if (axis.horizon !== undefined && isReleaseType(liveType)) return true;
+	if (axis.ends === undefined) return false;
 	if (live.length !== axis.ends.length || live.some((end) => !axis.ends?.includes(end))) return true;
 	const readings = axisReadings(fm, settings);
 	if (axis.from && staleBase(axis.from, readings)) return true;

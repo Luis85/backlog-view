@@ -202,6 +202,31 @@ describe('backlogReadmeContent', () => {
 		}
 	});
 
+	it('says which types this plan does not place, rather than only omitting them', () => {
+		// Removing a falsehood is not the same as saying the true thing. Dropping `Release`
+		// out of the marker sentence stopped the README lying about it and left the generic
+		// prose above telling a reader that a horizon places "an item" and that every item
+		// stating the date is drawn — so somebody following that guide for a type this very
+		// document lists gets no card, no chip and no menu entry, with nothing explaining it.
+		//
+		// Derived from the same rule the marker sentence uses, and asked the same way: a type
+		// is named here exactly when `placementEnds` gives it no end at all. Nothing spells a
+		// list, so the next such type is documented by arriving.
+		const bothAxes = { startKey: 'start', targetKey: 'due', horizonKey: 'horizon', horizonValues: ['Now'] };
+		const text = readme(settingsWith(bothAxes), []);
+		const line = text.split('\n').find((l) => l.includes('is on neither')) ?? '';
+		for (const marker of MARKER_TYPES) {
+			const speaks = placementEnds(marker, false).length > 0;
+			expect(line.includes(`\`${marker}\``), marker).toBe(!speaks);
+		}
+		// Both axes named as refused, not one — the horizon half is what the marker sentence
+		// above says nothing about.
+		expect(line).toContain('not placed by these dates or by a horizon');
+		// And no promise of the deferred feature: nothing here may read as a date property
+		// on its way, which is a decision this increment has not taken.
+		expect(line).not.toMatch(/yet|coming|future|will be|not supported/i);
+	});
+
 	it('does not advertise a horizon property whose values have been cleared', () => {
 		// Same gate the menu and the planner use: a horizon key with no values is an axis
 		// nothing renders and nothing writes, so a row for it would name an inert key.

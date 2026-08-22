@@ -1,4 +1,4 @@
-import { inCatalog, isDeliverableType, isIterationType, isMarkerType, ladderFor } from '../domain/itemTypes';
+import { inCatalog, isDeliverableType, isIterationType, isMarkerType, isReleaseType, ladderFor } from '../domain/itemTypes';
 import { BacklogItem, BacklogModel, inIteration, inPlan, ProjectionPopulation } from '../domain/model';
 import { RoadmapAxis, drawsGrid } from '../domain/roadmap';
 import { BacklogViewHost, Projection } from './host';
@@ -291,6 +291,19 @@ function byProjectionType(projection: Projection, types: string[]): string[] {
 	if (projection === 'board') return types.filter((type) => !isDeliverableType(type));
 	if (projection === 'deliverables') return types.filter((type) => isDeliverableType(type));
 	if (projection === 'iteration') return types.filter((type) => !isMarkerType(type));
+	// The roadmap draws no `Release` on ANY of its three axes — `roadmapRows` drops one
+	// before `buildRoadmap` branches — so it offers none, the iteration board's rule above
+	// reaching a fourth projection. Three surfaces follow from this one line, and the third
+	// is the one a list of the first two would have missed: `New` would make a note that
+	// vanished on the next refresh, `Set type` would vanish the card it was used on, and
+	// the FOCUS picker would offer a `Release`-only scope that draws an empty roadmap with
+	// nothing saying why.
+	//
+	// It narrows THIS projection and no other. A `Release` stays offered in the tree and on
+	// both boards, which is the decision `Releases as their own type` task 1 step 7 took
+	// deliberately: a release has no dedicated door the way an iteration has the scope
+	// picker, so withholding it everywhere would leave the type creatable only by hand.
+	if (projection === 'roadmap') return types.filter((type) => !isIterationType(type) && !isReleaseType(type));
 	// **No creation surface offers `Iteration`.** One control makes them — the board's
 	// scope picker — and it derives the number, the dates and the folder that a `New`
 	// menu would leave to the reader. A second door onto the same note is a second set of

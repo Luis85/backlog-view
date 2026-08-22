@@ -464,6 +464,39 @@ describe('creating from a bucket', () => {
 		expect(bucketByName(milestoneFocus.containerEl, 'Now').querySelector('.pbl-bucket-add')).not.toBeNull();
 	});
 
+	it('offers no Release anywhere on the roadmap, since no axis of it draws one', () => {
+		// A projection does not offer a type it cannot draw — the iteration board's own rule,
+		// reaching a fourth projection. All THREE surfaces `offerableTypes` feeds, because
+		// each fails differently: `New` would make a note that vanished on the next refresh,
+		// `Set type` would vanish the card it was used on, and the focus picker would offer a
+		// `Release`-only scope drawing an empty roadmap with nothing saying why.
+		const vault = horizonVault();
+		const { containerEl, view } = makeRoadmap(vault);
+
+		containerEl.querySelector<HTMLElement>('.pbl-new-pick')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		const created = Menu.lastShown?.items.map((i) => i.titleText) ?? [];
+		expect(created).toContain('New Milestone');
+		expect(created).not.toContain('New Release');
+
+		view.showContextMenuFor(view.model?.byPath.get('Now item.md') as never);
+		const retype = Menu.lastShown?.item('Set type')?.submenu?.items.map((i) => i.titleText) ?? [];
+		expect(retype).toContain('Milestone');
+		expect(retype).not.toContain('Release');
+
+		containerEl.querySelector<HTMLElement>('.pbl-focus-btn')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		const focuses = Menu.lastShown?.items.map((i) => i.titleText) ?? [];
+		expect(focuses).toContain('Milestone');
+		expect(focuses).not.toContain('Release');
+
+		// It narrows THIS projection and no other: the tree still offers the type, which is
+		// the decision step 7 took and this must not undo.
+		const tree = makeView(vault, {});
+		tree.containerEl
+			.querySelector<HTMLElement>('.pbl-new-pick')
+			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		expect(Menu.lastShown?.items.map((i) => i.titleText)).toContain('New Release');
+	});
+
 	it('is blocked by the config gate, exactly as every other creation is', async () => {
 		const vault = horizonVault();
 		const { containerEl } = makeRoadmap(vault, { orderProperty: 'note.parent' });
