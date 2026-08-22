@@ -38,6 +38,12 @@ describe('getEstimationViewOptions', () => {
 	it('declares the Model group: dimensions, output range, value and stamp properties', () => {
 		const keys = flatten(getEstimationViewOptions(new FakeViewConfig({}))).map((o) => o.key);
 		expect(keys).toEqual(expect.arrayContaining(['dimensions', 'outputRange', 'valueProperty', 'stampProperty']));
+		// And the one option here that is not a scoring key: the property a note's TYPE is
+		// read from, which is what keeps a `Resource` off this table. It has to be OFFERED
+		// rather than only read — the option is per view in Bases, so the backlog view's own
+		// pick cannot answer for this one, and a vault keeping types under `kind` would
+		// otherwise sit on the shipped fallback and score its people.
+		expect(keys).toContain('typeProperty');
 	});
 
 	it('the dimensions box defaults to the shipped eight ids, comma-joined', () => {

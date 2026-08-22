@@ -13,6 +13,8 @@ files:
   - src/domain/estimationItems.ts
   - src/domain/estimationSettings.ts
   - src/view/estimation/init.ts
+  - src/domain/estimationOptions.ts
+  - src/storage/propertyWrite.ts
 started: 2026-08-21
 finished: 2026-08-22
 horizon: ""
@@ -115,6 +117,14 @@ replaces every one of those narrowings.
   model alone would have made `applySafely`'s outside-filter check refuse the WHOLE batch,
   and one person in the base would have made ✨ silently do nothing for anybody. The
   writes come from the model now, so the two cannot disagree. Found by automated review.
+  **Its type property is an OFFERED option, not only a read one.** Bases options are per
+  view, so the backlog view's own `typeProperty` pick cannot answer for this one — a vault
+  keeping item types under `kind` would sit on the shipped fallback and score its people.
+  And its writer takes the same live-type refusal `applyWrites` does: `applyPropertyWrites`
+  shares none of that path, and the row a score was planned from is the MODEL's, which is
+  exactly what is stale about a note retyped since the last Bases pass. Refused per FILE
+  there rather than stopping the batch, because a batch here is one note's own scores and
+  ✨'s many-file batch has no ordering between its files.
 - **A `Resource` is never WRITTEN to either, and the model gate cannot promise that on
   its own.** A gesture in flight holds the `BacklogItem` it was captured from, so retyping
   a note to `Resource` mid-move leaves a plan aimed at it — and its live shape gives
@@ -149,6 +159,10 @@ from — and deliberately outside `model`, since `modelFingerprint` hashes that 
 decide whether a stored total can still be trusted and a key unrelated to the score must not
 be able to invalidate one. `src/view/estimation/init.ts` builds ✨'s writes from the model
 rather than the raw results, so the refusal and the batch agree.
+
+`src/domain/estimationOptions.ts` offers that view's type property, and
+`src/storage/propertyWrite.ts` is the fourth gate — the estimation view's own writer, which
+asks the live type for the same reason `applyWrites` does and cannot inherit it.
 
 `src/domain/readItems.ts` is the first gate, one line in `addItem` beside the absence
 divert.

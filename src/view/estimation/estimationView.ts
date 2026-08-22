@@ -92,7 +92,10 @@ export class EstimationView extends BasesView {
 			},
 			{ syncBusy: () => this.syncBusy(), flushDataUpdate: () => this.refresh() },
 			this.lock,
-			(writes, onProgress, onInverse) => applyPropertyWrites(this.app, writes, onProgress, onInverse),
+			// The type key is read at WRITE time rather than captured with the gate: the
+			// `.base` can be re-pointed at another property while this view is open, and the
+			// refusal has to ask the key the user means now.
+			(writes, onProgress, onInverse) => applyPropertyWrites(this.app, writes, this.settings.typeKey, onProgress, onInverse),
 		);
 	}
 
