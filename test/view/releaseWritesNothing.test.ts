@@ -51,14 +51,16 @@ describe('the release view writes nothing', () => {
 		const { view, config, containerEl } = makeReleaseView(vault, RELEASE_CONFIG, { base: 'Plan.base' });
 
 		// Every input either screen offers, in the order a reader meets them. The index
-		// first: a row is a `role="button"` div, so its click, its Enter and its Space are
-		// three separate listeners, and a right-click anywhere is the gesture that opens a
-		// menu on every OTHER view this plugin ships.
+		// first: a row is a native `<button>`, so Enter and Space arrive as the click below —
+		// the browser synthesizes it, and there is no `keydown` listener in
+		// `src/view/release/` for a dispatch to reach. The two `key()` dispatches that stood
+		// here were deleted with the handler rather than left: jsdom synthesizes no click
+		// either, so they reached nothing and read as coverage of a keyboard path this file
+		// does not exercise. A right-click is kept because it IS a distinct gesture — it opens
+		// a menu on every OTHER view this plugin ships.
 		const indexRow = containerEl.querySelector<HTMLElement>('.pbl-rel-row');
 		expect(indexRow).not.toBeNull();
 		indexRow?.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
-		key(indexRow as HTMLElement, ' ');
-		key(indexRow as HTMLElement, 'Enter');
 		(indexRow as HTMLElement).click();
 		await flush();
 

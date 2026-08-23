@@ -19,6 +19,11 @@ describe('the release index', () => {
 	const publishedWidths = (grid: HTMLElement): string[] =>
 		[...grid.style].filter((name) => name.startsWith('--pbl-rel-w-'));
 
+	/** What each FIGURE cell of one row — or of the heading — points its width at. The name
+	 *  cell is skipped: it takes the slack rather than a published width. */
+	const widthRefs = (rowEl: HTMLElement): string[] =>
+		[...rowEl.children].slice(1).map((cell) => (cell as HTMLElement).style.getPropertyValue('--pbl-rel-w'));
+
 	it('draws one row per release, in the domain module’s order', () => {
 		const { containerEl } = makeReleaseView(releaseVault(), RELEASE_CONFIG);
 		const names = [...containerEl.querySelectorAll('.pbl-rel-name')].map((el) => el.textContent);
@@ -30,11 +35,19 @@ describe('the release index', () => {
 		// in this file green.
 		const grid = containerEl.querySelector('.pbl-rel-grid') as HTMLElement;
 		expect(publishedWidths(grid)).toEqual(['--pbl-rel-w-0', '--pbl-rel-w-1', '--pbl-rel-w-2', '--pbl-rel-w-3']);
-		// The cell holds a REFERENCE to its column's property, never a number — the tree's own
-		// rule in `render/columns.ts`, and what makes the container the single place a width
-		// is stated.
-		const cell = containerEl.querySelector('.pbl-rel-row .pbl-rel-num') as HTMLElement;
-		expect(cell.style.getPropertyValue('--pbl-rel-w')).toBe('var(--pbl-rel-w-3, 64px)');
+		// Every cell holds a REFERENCE to its column's property, never a number — the tree's
+		// own rule in `render/columns.ts`, and what makes the container the single place a
+		// width is stated.
+		//
+		// The HEADING is asserted beside the rows and against the SAME list, because the
+		// heading is half the claim `columnWidthVar`'s docstring makes and the half a row
+		// assertion cannot see: dropping `sizeCell` from the heading loop leaves every heading
+		// at the partial's 96px fallback while the rows sit at 104/132/128/64 — the columns
+		// stop lining up with their labels — and tsc, eslint and every other test in this
+		// repository still pass. Watched red on 2026-08-23.
+		const refs = ['var(--pbl-rel-w-0, 104px)', 'var(--pbl-rel-w-1, 132px)', 'var(--pbl-rel-w-2, 128px)', 'var(--pbl-rel-w-3, 64px)'];
+		expect(widthRefs(containerEl.querySelector('.pbl-rel-head') as HTMLElement)).toEqual(refs);
+		for (const row of containerEl.querySelectorAll('.pbl-rel-row')) expect(widthRefs(row as HTMLElement)).toEqual(refs);
 		// EVERY chip on this screen is the read-only one, stated as the category rather than
 		// as three places: the view offers no write, and
 		// `.pbl-state-chip:not(.pbl-state-static):hover` would give a chip that lost the class
