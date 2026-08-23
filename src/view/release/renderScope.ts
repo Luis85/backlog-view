@@ -75,8 +75,10 @@ function drawHeader(view: ReleaseView, scope: ReleaseScope, release: ReleaseRow)
 	backEl.addEventListener('click', () => view.pick(null));
 
 	headerEl.createEl('h2', { text: release.name });
-	drawFigure(headerEl, release.version, (value) => headerEl.createSpan({ cls: 'pbl-rel-version', text: value }));
-	drawFigure(headerEl, release.status, (value) => {
+	drawFigure(headerEl, release.version, t('release.index.column.version'), (value) =>
+		headerEl.createSpan({ cls: 'pbl-rel-version', text: value }),
+	);
+	drawFigure(headerEl, release.status, t('release.index.column.status'), (value) => {
 		// The tree's read-only chip, like every chip the index draws: this view offers no
 		// write, so a chip that lost `pbl-state-static` would gain a hover affordance and the
 		// screen would look editable.
@@ -89,7 +91,9 @@ function drawHeader(view: ReleaseView, scope: ReleaseScope, release: ReleaseRow)
 	// and the index's own reason is what decides it: that label exists because an undated
 	// release is sorted to the bottom of the list and the blank cell would leave the reader
 	// no way to explain the row's position. Nothing on this screen is sorted by it.
-	drawFigure(factsEl, release.target, (value) => factsEl.createSpan({ cls: 'pbl-rel-target', text: formatCivil(value) }));
+	drawFigure(factsEl, release.target, t('release.index.column.target'), (value) =>
+		factsEl.createSpan({ cls: 'pbl-rel-target', text: formatCivil(value) }),
+	);
 	if (!release.members.unconfigured) {
 		factsEl.createSpan({ cls: 'pbl-rel-members', text: t('release.scope.members', { count: scope.members }) });
 	}
@@ -99,11 +103,22 @@ function drawHeader(view: ReleaseView, scope: ReleaseScope, release: ReleaseRow)
  * One of the release's three figures, drawn under the index's own rules so the two screens
  * cannot describe the same release differently: an unbound key is absent, and a bound key
  * holding something no reader will guess at says so rather than reading as unset.
+ *
+ * **A refusal names the property it is about.** The index can afford a bare "Unreadable"
+ * because its column heading sits above the cell and its row's accessible name pairs every
+ * figure with that heading; this header draws its three values BARE, side by side, so two
+ * malformed properties would put two identical words on screen with nothing saying which
+ * key to go and fix. That is a defect for a sighted reader and worse for a screen reader,
+ * which has no column above it to fall back on.
+ *
+ * The label is the property's own name, taken from the same catalog entries the index
+ * heads its columns with — one name per property, so the two screens cannot come to call
+ * the same key different things.
  */
-function drawFigure<T>(parentEl: HTMLElement, figure: ReleaseFigure<T>, draw: (value: T) => void): void {
+function drawFigure<T>(parentEl: HTMLElement, figure: ReleaseFigure<T>, label: string, draw: (value: T) => void): void {
 	if (figure.unconfigured) return;
 	if (figure.invalid) {
-		parentEl.createSpan({ cls: 'pbl-rel-unreadable', text: t('release.index.unreadable') });
+		parentEl.createSpan({ cls: 'pbl-rel-unreadable', text: t('release.figureUnreadable', { label }) });
 		return;
 	}
 	if (figure.value !== null) draw(figure.value);

@@ -166,7 +166,10 @@ describe("a release's scope on screen", () => {
 		const { view, containerEl } = makeReleaseView(vault, { ...RELEASE_CONFIG, versionProperty: '' });
 		view.pick('R.md');
 		const header = containerEl.querySelector('.pbl-rel-header') as HTMLElement;
-		expect(header.querySelector('.pbl-rel-unreadable')?.textContent).toBe('Unreadable');
+		// The refusal NAMES its property here, where the index's bare word is enough: the
+		// index has a column heading above the cell and this header draws its figures bare.
+		// The rule the two screens share is the three-way answer, not the wording.
+		expect(header.querySelector('.pbl-rel-unreadable')?.textContent).toBe('Target unreadable');
 		// The unbound one draws nothing at all — not an empty span, and not the word above.
 		expect(header.querySelector('.pbl-rel-version')).toBeNull();
 	});
@@ -213,5 +216,26 @@ describe("a release's scope on screen", () => {
 		// And no member count beside it: with nothing to read, `0 items` would be an answer
 		// this screen cannot give.
 		expect(containerEl.querySelector('.pbl-rel-members')).toBeNull();
+	});
+});
+
+describe('a refusal on the release header names the property it is about', () => {
+	useViewHarness();
+
+	it('tells two malformed figures apart', () => {
+		// The index can afford a bare "Unreadable": its column heading sits above the cell.
+		// This header draws its figures bare and side by side, so two of them would put the
+		// same word on screen twice with nothing saying which key to go and fix.
+		const vault = new FakeVault();
+		vault.addFile('R.md', {
+			frontmatter: { type: 'Release', version: { a: 1 }, 'target-date': 'soon', status: 'Planned' },
+		});
+		const { view, containerEl } = makeReleaseView(vault, RELEASE_CONFIG);
+		view.pick('R.md');
+
+		const refusals = [...containerEl.querySelectorAll('.pbl-rel-unreadable')].map((el) => el.textContent);
+		expect(refusals).toEqual(['Version unreadable', 'Target unreadable']);
+		// The readable one is untouched and still draws its own value.
+		expect(containerEl.querySelector('.pbl-state-text')?.textContent).toBe('Planned');
 	});
 });

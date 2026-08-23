@@ -1552,6 +1552,12 @@ export const en = {
 	/** A key that IS bound and holds something no reader will guess at: somebody wrote
 	 *  something there, which is neither an absent value nor an unbound key. */
 	'release.index.unreadable': 'Unreadable',
+	/**
+	 * The same refusal where the value stands ALONE rather than under a column heading —
+	 * the release screen's header, which draws its three figures bare and side by side. A
+	 * bare "Unreadable" twice on one header says nothing about which property to fix.
+	 */
+	'release.figureUnreadable': '{label} unreadable',
 	/** The unconfigured columns, named once beneath the grid. `{columns}` is an array, so
 	 *  it is joined by the catalog's own grammar rather than by a joiner at the call. */
 	'release.index.absentColumns': 'These columns are not shown because no property is bound: {columns}.',
