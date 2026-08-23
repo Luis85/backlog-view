@@ -203,12 +203,13 @@ export interface ViewFolds {
  * other half of what `folds` means does not hold for either: a path whose note the vault
  * has lost is RETAINED, never pruned, so restoring the note restores the reader's choice.
  *
- * They are NOT symmetrical about the other obligation a note path carries. `scope` is
+ * Both carry the other obligation a note path brings, and carry it the same way: each is
  * walked on a rename (`renameScoped` in `view/viewState.ts`), matching the path or its
- * `oldPath/` prefix, so a folder anybody tidies does not strand every scope inside it.
- * `release` is not walked there yet — a renamed release note strands the reader's pick
- * exactly the way an unwalked scope would, until that walk is extended to it. See
- * {@link ViewPrefs.scope} and {@link ViewPrefs.release}.
+ * `oldPath/` prefix, so a folder anybody tidies strands neither the scope nor the pick
+ * inside it. What that walk currently reaches is narrower for `release` than for `scope`,
+ * and the sentence naming what it does not reach is on `releasePref` in
+ * `view/viewState.ts` rather than restated here. See {@link ViewPrefs.scope} and
+ * {@link ViewPrefs.release}.
  */
 export interface ViewPrefs {
 	mode?: string;
@@ -265,18 +266,26 @@ export interface ViewPrefs {
 	 * Two obligations follow from being a note path, and half of them is not an option.
 	 * The rename walk must reach it, matching the path **or its `oldPath/` prefix**, so a
 	 * folder anybody tidies does not strand every scope inside it — `renameScoped` in
-	 * `view/viewState.ts` is that walk today, and `release` is meant to join it there. And
-	 * the prune must NOT: a stale path is retained rather than rewritten, since the note
-	 * may come back — a deletion undone, a filter widened, a vault synced late — and
-	 * spending the reader's choice on a condition that is often temporary is worse than an
-	 * empty board they can leave. That half already holds for `release` as written: `prefs`
-	 * is never pruned by path at all, only `folds` is.
+	 * `view/viewState.ts` is that walk, and {@link ViewPrefs.release} goes through it
+	 * beside this one. And the prune must NOT: a stale path is retained rather than
+	 * rewritten, since the note may come back — a deletion undone, a filter widened, a
+	 * vault synced late — and spending the reader's choice on a condition that is often
+	 * temporary is worse than an empty board they can leave. That half holds for both by
+	 * construction: `prefs` is never pruned by path at all, only `folds` is.
 	 */
 	scope?: string;
 	/**
 	 * The release whose screen is open, as a note path — absent when the index is showing.
 	 * A working position, per device and per saved view, never a `.base` setting
 	 * ([[Settings scoped to their view]]).
+	 *
+	 * Both of {@link ViewPrefs.scope}'s obligations, for its reasons and one of its own.
+	 * `renameScoped` carries this too, matching the path or its `oldPath/` prefix; without
+	 * that, a renamed release note reads as a DELETED one, since either way the path names
+	 * no release and the view falls back to the index without a word. What that walk
+	 * currently reaches is narrower than the rule — see `releasePref` in
+	 * `view/viewState.ts`, which states the gap rather than leaving the wider sentence
+	 * standing here.
 	 */
 	release?: string;
 	/**

@@ -8,6 +8,7 @@ useViewHarness();
 describe('collapse state persistence', () => {
 	interface StoredEntry {
 		folds: { collapsed: string[]; expanded: string[]; lanes: string[] };
+		prefs?: { release?: string };
 	}
 
 	function stored(vault: FakeVault): Record<string, StoredEntry> {
@@ -209,6 +210,42 @@ describe('collapse state persistence', () => {
 		expect([...entry.folds.collapsed, ...entry.folds.expanded]).not.toContain('Epic B.md');
 		// Nothing else will ever enumerate the base that wrote this.
 		expect(stored(vault)['Deleted.base#Backlog']).toBeUndefined();
+	});
+
+	/**
+	 * `scope`'s rename walk, asked of the second path-valued pref.
+	 *
+	 * **This assertion has to distinguish a rename from a DELETION, and only the stored
+	 * VALUE does.** Both end the same way on screen — the path names no release, so the
+	 * view draws the index — so a test that reopened the view and asserted the index was
+	 * showing would be green against the broken behaviour it exists to catch. What is
+	 * checked is therefore the path itself: it followed the note, rather than staying
+	 * stale (unwalked) or going absent (pruned, which `prefs` must never be).
+	 */
+	it('carries the stored release pick through a rename of the note, and of a folder above it', () => {
+		const vault = fixture();
+		vault.addFile('releases/0.8.md', { frontmatter: { type: 'Release' } });
+		vault.localStorage.set('product-backlog:view-state', {
+			'Backlog.base#Backlog': {
+				base: 'Backlog.base',
+				folds: { collapsed: [], expanded: [], lanes: [] },
+				prefs: { release: 'releases/0.8.md' },
+			},
+		});
+
+		// Through the vault's own rename event, which is the only thing that reaches the
+		// migration in a vault — the view subscribes to it on the first data update.
+		const first = makeView(vault, {}, { base: 'Backlog.base' });
+		vault.renameFile('releases/0.8.md', 'releases/0.8.1.md');
+		first.view.onunload();
+		expect(stored(vault)['Backlog.base#Backlog'].prefs?.release).toBe('releases/0.8.1.md');
+
+		// A folder move reports the FOLDER, never the notes under it — so matching the
+		// stored path alone strands every pick inside a folder anybody tidies.
+		const second = makeView(vault, {}, { base: 'Backlog.base' });
+		vault.renameFolder('releases', 'archive/releases');
+		second.view.onunload();
+		expect(stored(vault)['Backlog.base#Backlog'].prefs?.release).toBe('archive/releases/0.8.1.md');
 	});
 
 	it('ignores stored state it cannot read rather than failing to render', () => {
