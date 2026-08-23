@@ -196,7 +196,14 @@ helper in `src/view/interactions/cardDrag.ts` — a **sentence**, not a drag pat
 that file drags a release, and the helper lives there because that is where this view keeps the
 words a move says. What a row is offered is `src/view/interactions/labels.ts` — `canSetRelease`
 and `addReleaseItems`, whose picker shares `namedTargets` with the iteration's — called from
-`src/view/interactions/menu.ts`. `src/view/interactions/keyboard.ts` is **unchanged**, and is
+`src/view/interactions/menu.ts`. `canSetRelease` asks KEY PRESENCE where `canSetIteration` asks
+the parsed entry, and the difference is the backfill rather than a drift: ✨ stubs `iteration: ''`
+on every eligible note, so presence there would put a `None`-only menu on every row, while
+`neverStubbed` refuses a release stub, so presence here means somebody wrote the key. That is
+what keeps a value the reader refuses (`release: ''`, a YAML number, an object) clearable in a
+vault holding no `Release` note at all — it is reported as unresolved, so the action that takes
+it off has to be reachable (Codex, PR #201). The iteration keeps that corner open, with its own
+reason stated at `canSetIteration`. `src/view/interactions/keyboard.ts` is **unchanged**, and is
 named here for what it does not do: its menu key calls `showContextMenuFor`, which opens the
 one `buildItemMenu` a pointer opens, so the two inputs share a builder rather than two lists
 somebody has to keep in step.

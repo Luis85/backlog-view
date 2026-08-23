@@ -136,20 +136,25 @@ describe('the Set release menu', () => {
 		expect(releaseMenuLabels(view, 'F.md')).toEqual(['Releases/2.4', 'Archive/2.4', 'No release']);
 	});
 
-	it('is absent on a stubbed key with nowhere to go, and clearable on a real one', () => {
-		// The gate asks the parsed ENTRY, `canSetIteration`'s own split: ✨ Assign missing
-		// properties stubs `release: ''` onto every eligible note, so with no release in
-		// the vault yet key PRESENCE is true on every row while there is neither an
-		// assignment to clear nor anywhere to go.
-		const stubbed = makeViewWithReleases({ releases: [], memberOf: { 'F.md': '' } });
-		expect(itemAt(stubbed.view, 'F.md').ownKeys.release).toBe(true);
-		expect(itemAt(stubbed.view, 'F.md').releaseEntry).toBeNull();
-		expect(releaseMenuLabels(stubbed.view, 'F.md')).toEqual([]);
+	it('keeps the clear reachable for any key, with no release in the base at all', () => {
+		// The gate asks KEY PRESENCE, which `canSetIteration` cannot: ✨ stubs `iteration: ''`
+		// on every eligible note and `neverStubbed` refuses a release stub, so presence here
+		// means somebody wrote the key. A value the reader refuses is reported as unresolved
+		// by the release view, so the one action that takes it off has to stay reachable
+		// before any release exists — the corner the entry-shaped gate left open.
+		const blank = makeViewWithReleases({ releases: [], memberOf: { 'F.md': '' } });
+		expect(itemAt(blank.view, 'F.md').releaseEntry).toBeNull();
+		expect(releaseMenuLabels(blank.view, 'F.md')).toEqual(['No release']);
 
-		// No targets is not the same as nothing to do: a note holding a link to a release
-		// the base no longer returns is exactly where the clear has to stay reachable.
+		// And a note holding a link to a release the base no longer returns, which is the
+		// same question reached through a value the reader CAN parse.
 		const held = makeViewWithReleases({ releases: [], memberOf: { 'F.md': '2.4.md' } });
 		expect(releaseMenuLabels(held.view, 'F.md')).toEqual(['No release']);
+
+		// The control: no key at all and nowhere to go is still nothing to do.
+		const none = makeViewWithReleases({ releases: [] });
+		expect(itemAt(none.view, 'F.md').ownKeys.release).toBe(false);
+		expect(releaseMenuLabels(none.view, 'F.md')).toEqual([]);
 	});
 
 	it('the keyboard writes the batch the menu writes, through the one method', async () => {

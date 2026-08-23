@@ -475,10 +475,18 @@ export function addIterationItems(host: BacklogViewHost, menu: Menu, item: Backl
  * a correct no-op pick returns, so hiding the entries whose plan is empty would hide the
  * release the item is already in.
  *
- * **A membership, asked of the parsed ENTRY** — `canSetIteration`'s own split, for its
- * reason: a note carrying nothing but a stubbed `release: ''` has neither an assignment to
- * clear nor anywhere to go, while what the `No release` pick WRITES stays key presence, so
- * a reader-refused value is still clearable whenever the menu is shown at all.
+ * **A membership, asked of KEY PRESENCE** — which is where this gate and `canSetIteration`
+ * deliberately differ, so read both before making them match. That one asks the parsed
+ * ENTRY because ✨ Assign missing properties stubs `iteration: ''` onto every eligible note,
+ * so presence there would put a `None`-only menu on every row in a vault with no sprint yet.
+ * `neverStubbed` (`domain/writePlan.ts`) refuses a release stub for its own reason — an
+ * empty membership is not an empty slot — so presence here is true only where somebody
+ * WROTE the key, and it is the same question `computeReleaseWrites` asks to plan the
+ * removal. Asking the entry instead left the corner `canSetIteration` accepts: a value the
+ * reader refuses (`release: ''`, `release: 2.4`, an object) in a base holding no `Release`
+ * note at all was reported as unresolved and offered nothing that could take it off
+ * (Codex, PR #201). The iteration keeps that corner because its stub makes the alternative
+ * worse; the release has no stub, so it costs nothing to close.
  *
  * The fifth refusal is the caller's `editable` gate, which withholds every entry that
  * edits the row's own frontmatter — a context row is never a write target.
@@ -486,7 +494,7 @@ export function addIterationItems(host: BacklogViewHost, menu: Menu, item: Backl
 export function canSetRelease(host: BacklogViewHost, item: BacklogItem): boolean {
 	if (!host.settings.releaseKey) return false;
 	if (!inPlan(item) || !mayHoldField(item.typeName, 'release', host.settings)) return false;
-	return item.releaseEntry !== null || releaseTargets(host).length > 0;
+	return item.ownKeys.release || releaseTargets(host).length > 0;
 }
 
 /**
