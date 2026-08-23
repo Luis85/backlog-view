@@ -3,7 +3,7 @@ import { BacklogViewHost } from './host';
 import { BacklogItem } from '../domain/model';
 import { cardPaths } from '../domain/board';
 import { displayType } from '../domain/itemTypes';
-import { drawsForest } from './projection';
+import { drawsForestFrom } from './projection';
 import { drawnDescent } from './rowVisibility';
 
 /**
@@ -11,6 +11,13 @@ import { drawnDescent } from './rowVisibility';
  * item, taken by `drawnDescent` (`rowVisibility.ts`), which is where the descent itself
  * and the two rules it keeps are stated. This is that walk asked with the HOST's
  * membership question.
+ *
+ * The stop's own term is `drawsForestFrom` asked of THIS item, not of the projection
+ * alone: a card can be drawn by a projection that renders the forest and still be a row
+ * the forest never contained — an `Iteration` on a grid axis is exactly that, and its
+ * children carry `focusRoot` BECAUSE it is not a member. Composed here rather than taken
+ * off `VisibilityRule`, which the host does not publish; both read `host.projection`, so
+ * this cannot ask membership against one projection and the promotion against another.
  *
  * The question is `isRowUndrawn` and NEVER `isRowHidden`, and the difference is the trap:
  * `rowHidden` is true for three different reasons and a caller holding the boolean cannot
@@ -28,7 +35,7 @@ import { drawnDescent } from './rowVisibility';
  * `interactions/menu.ts` (its keyboard path) share one answer without one.
  */
 export function drawnChildren(host: BacklogViewHost, item: BacklogItem): BacklogItem[] {
-	return drawnDescent(item, (row) => host.isRowUndrawn(row), drawsForest(host.projection));
+	return drawnDescent(item, (row) => host.isRowUndrawn(row), drawsForestFrom(host.projection, item));
 }
 
 /**

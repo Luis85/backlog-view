@@ -222,13 +222,46 @@ export function projectionMember(
  * through `requirementsFocusRoots`. All four are `projectionForest`'s own output, so a
  * stamp on a row they draw is their own re-rooting.
  *
- * Read by `drawnDescent` (`rowVisibility.ts`) and by nothing else today. It is here rather
- * than as a `projection === 'iteration'` beside that walk for the reason this whole module
- * exists: a projection added tomorrow answers by being added to this list, not by a walk
- * two layers down comparing a name.
+ * Half the question, and never asked alone: `drawsForestFrom` below is what the walk
+ * reads, because a projection can draw the forest and still be walking a row that is not
+ * in it. Private for that reason — an exported half is a half somebody asks.
  */
-export function drawsForest(projection: Projection): boolean {
+function drawsForest(projection: Projection): boolean {
 	return projection !== 'iteration' && projection !== 'deliverables';
+}
+
+/**
+ * Whether a `focusRoot` stamp BELOW this origin is this projection's own re-rooting — the
+ * question `drawnDescent` (`rowVisibility.ts`) actually needs, and the only reader of
+ * `drawsForest` above.
+ *
+ * The stop it feeds exists so a row this projection already draws at the top of its own
+ * forest is not ALSO listed as somebody's child. That is a claim about the forest, and a
+ * projection can draw the forest and still be walking a row the forest never contained:
+ * `roadmapRows` (`domain/roadmap.ts`) appends `model.iterations` on a grid axis, and
+ * `inPlan` refuses an `Iteration`, so the plan forest promoted that iteration's own
+ * children **because their parent is not a member of it**. Read as a promotion of the
+ * roadmap's making, the stop took every one of them off the undated iteration's shelf card
+ * — no disclosure, and no children entry in its menu at all — while `projectionForest` had
+ * promoted them for precisely the reason that says they belong there.
+ *
+ * So the membership term is the ORIGIN's, computed once by the caller and carried
+ * unchanged through the recursion. Two other shapes are wrong. Asking it of the recursion's
+ * own `item` reads the row the walk is traversing THROUGH — an excluded `Release` — which
+ * is a member of nothing, so the stop never fires and the scaffold above a promoted row
+ * stays on screen as an empty context card beside it; probed, and the scaffold tests in
+ * `test/view/releaseRows.test.ts` are what go red. Making the roadmap's answer AXIS-aware
+ * instead refuses the stop for every origin on a grid axis — the excluded-`Release`
+ * promotion the stop was added for included — rather than only for the rows the forest
+ * never held.
+ *
+ * The predicate is the one `projectionForest` was called with (`domain/model.ts`):
+ * `inCatalog` for the catalog's forest, `inPlan` for the plan's, which every other
+ * forest-drawing projection renders.
+ */
+export function drawsForestFrom(projection: Projection, origin: BacklogItem): boolean {
+	if (!drawsForest(projection)) return false;
+	return projection === 'catalog' ? inCatalog(origin) : inPlan(origin);
 }
 
 /**

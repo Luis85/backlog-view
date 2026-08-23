@@ -15,17 +15,17 @@ useViewHarness();
  * the roadmap places a release (`onThisRoadmap`, `domain/roadmap.ts`), and no projection
  * draws a release the Base excluded (`inPlan`, `domain/model.ts`).
  *
- * Every test names the READER rather than the filter, and the groups below are the readers
- * this file reaches: the toolbar's count, the roadmap's row source under a focus, a CARD's
- * listed children and the denominator its disclosure subtracts from, the tree's context row
- * and its horizon chip, and the empty state's creation type. One more — the bucket header's
- * `+`, whose type follows the same focus — is asserted where it already lived, in
- * `roadmapMoves.test.ts`.
+ * Every test names the READER rather than the filter. The readers this file reaches are the
+ * toolbar's count, the roadmap's row source under a focus, a CARD's listed children and the
+ * denominator its disclosure subtracts from, the tree's context row and its horizon chip,
+ * and the empty state's creation type. One more — the bucket header's `+`, whose type
+ * follows the same focus — is asserted where it already lived, in `roadmapMoves.test.ts`.
  *
- * No total is written here, and that is the correction rather than an omission: the figure
- * that stood here counted five of them, was one short the day a sixth reader joined the
- * second group, and was two short by the next commit. The last group is not a reader at all
- * — it is the shared DESCENT, which grows a test per projection that walks it.
+ * The `describe` groups below do NOT stand one to one against that list, which is why no
+ * total is written here: one group asks several readers, and the last two are not readers
+ * at all — they are the shared DESCENT, which grows a test per projection that walks it.
+ * The figure that stood here counted five, was one short the day a sixth reader joined a
+ * group, and was two short by the commit after that.
  */
 
 /** The count label's own text — the readout that has to agree with the advisory. */
@@ -364,5 +364,28 @@ describe('a release the roadmap traverses through', () => {
 		expect(disclosure(card)?.dataset.tooltip).toContain('1 more is hidden by the current view');
 		disclosure(card)?.click();
 		expect(kidTitles(card)).toEqual(['Open work']);
+	});
+});
+
+/**
+ * **The same descent, asked of the TREE** — the other projection whose rows ARE
+ * `projectionForest`'s output, and the one `drawsForestFrom` (`src/view/projection.ts`)
+ * had no check under until 2026-08-23.
+ *
+ * The fixture is the roadmap's promoted-scaffold case one describe up, rendered as a tree
+ * instead: the excluded `1.0` is refused by `inPlan` in every projection, so `Work` is
+ * promoted to a root of the forest the tree renders and the `Epic` above it is placing
+ * nothing. Answering false for the tree draws that empty scaffold beside the very row it
+ * claims to place.
+ */
+describe('the descent on the tree, which renders the same forest', () => {
+	it('drops the scaffold where the work below it was promoted to a root', () => {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('1.0.md', { frontmatter: { type: 'Release', order: 10 }, parentLink: 'Epic' });
+		vault.addFile('Work.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: '1.0' });
+		const { containerEl } = makeView(vault, {}, { focus: 'Epic', only: ['Work.md'] });
+
+		expect(titlesOf(containerEl)).toEqual(['Work']);
 	});
 });

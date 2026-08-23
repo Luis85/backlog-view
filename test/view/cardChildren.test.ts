@@ -6,7 +6,7 @@ import { FakeVault } from '../helpers/vault';
 import { childrenLabel, listedChildren } from '../../src/view/childrenList';
 import { TIMELINE_SCOPE } from '../../src/view/viewState';
 import { Menu } from '../helpers/obsidian-mock';
-import { makeRoadmap, roadmapView, rowFor } from '../helpers/roadmap';
+import { laneRoadmap, makeRoadmap, roadmapView, rowFor } from '../helpers/roadmap';
 
 useViewHarness();
 
@@ -616,6 +616,37 @@ describe('children on the card', () => {
 		disclosure(card)?.click();
 
 		expect(kidTitles(card)).toEqual(['Task X1', 'Sprint 12']);
+	});
+
+	/**
+	 * **The same admission with the `Iteration` as the PARENT, which is the case the stop
+	 * read backwards.** A grid axis draws an undated iteration as a shelf CARD, and that
+	 * card is a row `projectionForest` never walked: `inPlan` refuses an `Iteration`, so
+	 * the plan's forest promoted `Work` — stamped `focusRoot` — precisely BECAUSE its
+	 * parent is not a member of it. Read as a promotion the roadmap itself had made, the
+	 * stop dropped `Work` from the only face that lists it: no disclosure at all, and no
+	 * children entry in the card's menu either.
+	 *
+	 * `drawsForestFrom` (`src/view/projection.ts`) asks the ORIGIN, so the answer is false
+	 * here and true one row down the same walk. Nothing is collapsed first because nothing
+	 * collapses it: `collapseNewParents` settles the rows of the model, and an iteration is
+	 * in neither forest — so this card opens listed.
+	 */
+	it.each([
+		['dates', (v: FakeVault) => makeRoadmap(v, DATED_AXIS)],
+		['resources', (v: FakeVault) => laneRoadmap(v, {}, { shelf: true })],
+	] as const)('lists the work under an undated iteration — %s axis', (_axis, mount) => {
+		const vault = new FakeVault();
+		vault.addFile('Sprint 12.md', { frontmatter: { type: 'Iteration', order: 10 } });
+		vault.addFile('Work.md', {
+			frontmatter: { type: 'PBI', order: 10, start: '2026-08-01', due: '2026-09-01' },
+			parentLink: 'Sprint 12',
+		});
+		const { containerEl } = mount(vault);
+		const card = cardByTitle(containerEl, 'Sprint 12');
+
+		expect(disclosure(card)?.textContent).toBe('1 pbi');
+		expect(kidTitles(card)).toEqual(['Work']);
 	});
 
 	it('puts the disclosure on the line in list mode, and the list beneath it', () => {

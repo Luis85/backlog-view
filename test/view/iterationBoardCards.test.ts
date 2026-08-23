@@ -233,6 +233,35 @@ describe('a context row placing work through a row the sprint does not draw', ()
 		// visible before 2026-08-22 and drew no `Epic` at all.
 		expect(cardTitles(containerEl)).toEqual(['Story', 'Job', 'Epic']);
 	});
+
+	/**
+	 * **The scaffold clause's own focus-root term, on a board that promotes nothing.** The
+	 * walk `rowHidden` runs to decide whether this `Epic` is still placing anything takes
+	 * the same stop the card faces take, and it must answer FALSE here for the reason
+	 * `drawsForestFrom` (`src/view/projection.ts`) states: this board's population is
+	 * `iterationResults` over `realRoots`, so a `focusRoot` stamp on a row it draws was
+	 * made by the plan's forest and says nothing about this screen.
+	 *
+	 * `Rel` is an excluded `Release`, which `inPlan` refuses in every projection — so
+	 * `projectionForest` stamped `Job` when it built the plan's forest, and this board drew
+	 * neither the release nor a root. Passing `true` for the stop here reads that stamp as
+	 * its own: `Epic` calls itself an empty scaffold and goes, while `Job` — the one card
+	 * the ancestor is placing — stays on the board with nothing above it.
+	 */
+	it('keeps the ancestor where the plan promoted the card below it', () => {
+		const vault = new FakeVault();
+		vault.addFile(SPRINT, { frontmatter: { type: 'Iteration', order: 10 } });
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10, status: 'New' } });
+		vault.addFile('Rel.md', { frontmatter: { type: 'Release', order: 10 }, parentLink: 'Epic' });
+		vault.addFile('Job.md', {
+			frontmatter: { type: 'Task', order: 10, status: 'New', iteration: '[[Sprint 12]]' },
+			parentLink: 'Rel',
+		});
+		const { view, containerEl } = makeView(vault, OPTIONS, { base: 'Plan.base', only: [SPRINT, 'Job.md'] });
+		view.setBoardScope(SPRINT);
+
+		expect(cardTitles(containerEl)).toEqual(['Job', 'Epic']);
+	});
 });
 
 describe('one move, three inputs, all through the bucket', () => {

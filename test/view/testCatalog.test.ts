@@ -499,3 +499,26 @@ describe('a vault with no tests', () => {
 		expect(titlesOf(containerEl)).toEqual(['Epic', 'Feature']);
 	});
 });
+
+/**
+ * **The catalog's own answer to `drawsForestFrom`** (`src/view/projection.ts`), which is
+ * the second forest this repository computes: `projectionForest(roots, inCatalog, …)`
+ * promotes a `Test case` whose parent is a work item, so the stamp on such a row IS this
+ * projection's own re-rooting and the scaffold above it is placing nothing.
+ *
+ * `A PBI` is a row the catalog does not draw, so the walk goes THROUGH it — and finds only
+ * the promoted `Case`, which the catalog already draws at the top of its forest. Answering
+ * false for the catalog leaves `Suite` on screen as an empty scaffold beside it.
+ */
+describe('the descent in the catalog, which renders a forest of its own', () => {
+	it('drops a scaffold whose only test was promoted to a root', () => {
+		const vault = new FakeVault();
+		vault.addFile('Suite.md', { frontmatter: { type: 'Test suite', order: 10 } });
+		vault.addFile('A PBI.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: 'Suite' });
+		vault.addFile('Case.md', { frontmatter: { type: 'Test case', order: 10 }, parentLink: 'A PBI' });
+		const { containerEl } = makeView(vault, {}, { base: 'Work.base', only: ['Case.md'] });
+		catalog(containerEl);
+
+		expect(titlesOf(containerEl)).toEqual(['Case']);
+	});
+});

@@ -135,13 +135,24 @@ rather than on no card at all. The one rule it keeps is where it STOPS: a row pr
 root of the rendered forest carries `focusRoot` and is drawn in its own right, so the walk
 does not also carry it up.
 
-**That stamp is read only where it is this projection's own** — `drawsForest`
+**That stamp is read only where it is this projection's own** — `drawsForestFrom`
 (`src/view/projection.ts`). `focusRoot` is set once per model build, by `collectFocusRoots`
 and `projectionForest` together, so a projection drawing a population of its OWN meets it on
 rows it never promoted: the iteration board's population is `iterationResults` over
 `realRoots` and the Deliverables board's is `deliverableResults` off the whole unfocused
 tree. Reading the stamp there took an in-sprint `PBI` off its carrier's face while the same
-board went on drawing its own card for it. The walk itself is
+board went on drawing its own card for it.
+
+**A projection that draws the forest can still be walking a row the forest never held**,
+which is why the question is asked of the walk's ORIGIN rather than of the projection
+alone. A grid axis of the roadmap appends `model.iterations`, and `inPlan` refuses an
+`Iteration` — so the children of an undated iteration's shelf card carry `focusRoot`
+BECAUSE their parent is not a member of the plan's forest. Read as a promotion the roadmap
+had made, the stop emptied that card: no disclosure and no children entry in its menu. The
+membership predicate is the one the forest was built with — `inCatalog` for the catalog's,
+`inPlan` for the plan's — computed once by the caller and carried unchanged down the
+recursion, since the rows the walk passes THROUGH are members of nothing. The walk itself
+is
 `drawnDescent` in `src/view/rowVisibility.ts`, because `rowHidden` needs the same descent
 for the same reason — a context row is an empty scaffold only when nothing is visible below
 it, and "below it" has to mean the same thing to the row and to the card. `drawnChildren` is
