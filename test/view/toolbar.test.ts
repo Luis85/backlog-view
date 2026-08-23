@@ -90,10 +90,12 @@ describe('toolbar backfill', () => {
 			priority: '',
 			assignee: '',
 			iteration: '',
-			// `release` newly joined the vocabulary (2026-08-23): nobody has named it either,
-			// so this run's ✨ adopts it exactly like every other unclaimed property and
-			// stubs it on this Epic, which — unlike a `Release` note itself — may hold one.
-			release: '',
+			// No `release` key, and this is the whole assertion rather than an omission:
+			// `toEqual` names every key the note may carry. ✨ adopts the release property
+			// like every other unclaimed one, but it never STUBS it — a present-but-blank
+			// value reads as an unresolved membership (`membershipTarget`,
+			// `domain/releases.ts`), so a stub would report every work item in the vault as
+			// broken on the release index.
 		});
 		expect(view.settings.stateKey).toBe('status');
 		expect(

@@ -211,6 +211,11 @@ export interface BacklogSettings extends ItemHandling {
 	 * Frontmatter key holding the release an item ships in, or '' when no release
 	 * property is named. The value is a LINK to the `Release` note, the iteration key's
 	 * own shape: never a name, since two releases may share a basename.
+	 *
+	 * Never backfilled, for `iterationGoalKey`'s reason arrived at differently: an empty
+	 * value here is not an empty slot but an UNRESOLVED membership (`membershipTarget`,
+	 * `domain/releases.ts`), so a stub on every note would report the whole backlog as
+	 * broken on the release index.
 	 */
 	releaseKey: string;
 	/**

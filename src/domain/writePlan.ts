@@ -744,6 +744,35 @@ function missingEnd(field: OptionalField, item: BacklogItem): boolean {
 	return !schemaEnds(item.typeName).includes(field);
 }
 
+/**
+ * True for a field this backfill NEVER stubs, whatever note it is looking at — as against
+ * the three carve-outs below, each of which asks something about the item.
+ *
+ * Three returns rather than one condition, because the three reasons are unrelated and
+ * two rules that agree today are still two rules. Extracted out of `missingKeyStubs`'s
+ * loop for `missingEnd`'s reason exactly: that loop is at its cognitive budget, and a
+ * rule added inline breaches it rather than review.
+ */
+function neverStubbed(field: OptionalField): boolean {
+	// An empty state or an empty date is a slot on this note the user is invited to fill;
+	// an empty prerequisite list is a claim about a RELATIONSHIP that does not exist, made
+	// on every note at once. It is also exactly the state `Linking two items` requires a
+	// removal never to leave behind, so backfilling one would have ✨ create what a remove
+	// must clean up.
+	if (field === 'dependsOn') return true;
+	// A goal belongs to one type. `✨` stubs an empty key on every note that lacks one,
+	// which is honest for a state or a date and dishonest here: a `goal` on every PBI,
+	// Feature and Task in the vault is a property that means nothing on the note it lands
+	// on.
+	if (field === 'iterationGoal') return true;
+	// An empty release is not an empty slot. `membershipTarget` (`domain/releases.ts`)
+	// reads a present-but-blank value as an UNRESOLVED membership rather than as "names
+	// none", so stubbing one here would have ✨ report every work item in the vault as a
+	// broken membership on the release index — the screen this property exists to populate.
+	if (field === 'release') return true;
+	return false;
+}
+
 function missingKeyStubs(item: BacklogItem, settings: BacklogSettings): OptionalField[] {
 	const stubs: OptionalField[] = [];
 	// The vocabulary NARROWED to what this note's type may hold, before any question about
@@ -777,21 +806,7 @@ function missingKeyStubs(item: BacklogItem, settings: BacklogSettings): Optional
 		// which is the incoherence `hasHorizonAxis` exists to prevent. The other fields
 		// need no such test: a key of '' is exactly what unconfigured means for them.
 		if (field === 'horizon' && !hasHorizonAxis(settings)) continue;
-		// Prerequisites are never stubbed, and this is a second early return rather than
-		// a widening of the one above: the reason is its own. An empty state or an empty
-		// date is a slot on this note the user is invited to fill; an empty prerequisite
-		// list is a claim about a RELATIONSHIP that does not exist, made on every note at
-		// once. It is also exactly the state `Linking two items` requires a removal never
-		// to leave behind, so backfilling one would have ✨ create what a remove must
-		// clean up.
-		if (field === 'dependsOn') continue;
-		// A goal belongs to one type. `✨` stubs an empty key on every note that lacks one,
-		// which is honest for a state or a date — an empty slot the reader is invited to
-		// fill — and dishonest here: a `goal` on every PBI, Feature and Task in the vault is
-		// a property that means nothing on the note it lands on. Its own return rather than a
-		// widening of `dependsOn`'s: that one's reason is that an empty prerequisite list is a
-		// false claim about a relationship. Two rules that agree today are still two rules.
-		if (field === 'iterationGoal') continue;
+		if (neverStubbed(field)) continue;
 		// Joined to the two general refusals rather than given a guard of its own: this loop
 		// was one `if` below its cognitive budget, and a sixth breached it. Every clause here
 		// is a reason not to stub, and `missingEnd` carries its own.
