@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from 'vitest';
-import { makeReleaseView, RELEASE_CONFIG, releaseVault } from '../helpers/release';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { scrollReads } from '../helpers/estimation';
+import { makeReleaseView, RELEASE_CONFIG, releaseVault, scopeVault } from '../helpers/release';
 import { useViewHarness } from '../helpers/view';
 import { FakeVault } from '../helpers/vault';
 
@@ -165,5 +166,108 @@ describe('the release view', () => {
 		view.pick('Vanished.md');
 		expect(containerEl.querySelector('.pbl-rel-grid')).not.toBeNull();
 		expect(containerEl.querySelector('.pbl-empty-title')).toBeNull();
+	});
+});
+
+/**
+ * What jsdom can and cannot say about the restore, stated once for the four tests below
+ * rather than repeated in each.
+ *
+ * The restored NUMBER is not checkable here and an assertion on it is worse than none: a
+ * detached element has no layout box, so a browser's `scrollTop` getter answers 0 however
+ * far the reader had scrolled, while jsdom answers with whatever was last assigned to it —
+ * connected or not. So a capture taken AFTER the teardown, which cannot work in a vault,
+ * passes a number assertion here. `scrollHeight` is 0 for the same reason, which is why
+ * these mock it: without that the clamp reduces every restore to 0 and the test would be
+ * asserting the bug.
+ *
+ * Two things ARE checkable, and between them they are the behaviour: the ORDER (the read
+ * happens while the old scroller is still in the document) and the KEY (whether a restore
+ * is attempted at all across a given event). The number that comes back is owed a live
+ * vault. `test/view/estimation/table.test.ts` reaches the same limit and `scrollReads` is
+ * its instrument, reused here rather than copied.
+ */
+describe('the release view keeps the reader’s place', () => {
+	afterEach(() => vi.restoreAllMocks());
+
+	it('reads the old scroller while it is still in the document', () => {
+		const { view, containerEl } = makeReleaseView(releaseVault(), RELEASE_CONFIG);
+		const reads = scrollReads(containerEl.querySelector('.pbl-rel-list') as HTMLElement);
+
+		view.onDataUpdated();
+
+		// Exactly one read, and `true` is that the node was still in the document when it
+		// happened. `[false]` is the shape the estimation view's own version of this can
+		// take — it holds its scroller in a FIELD, so a capture moved below the teardown
+		// still reads a detached node and still answers a number in jsdom while answering 0
+		// in a browser. This view cannot reach that shape, because `scrollerEl` re-queries
+		// the pane and answers null once it is empty: moving the capture below `empty()`
+		// makes this `[]` and reddens the three number tests too, watched. So what stands
+		// between this view and that trap is the query, and this test is what would notice a
+		// refactor to a field putting the trap back.
+		expect(reads).toEqual([true]);
+	});
+
+	it('restores the index position across a data update', () => {
+		const { view, containerEl } = makeReleaseView(releaseVault(), RELEASE_CONFIG);
+		vi.spyOn(HTMLElement.prototype, 'scrollHeight', 'get').mockReturnValue(1000);
+		const listEl = containerEl.querySelector('.pbl-rel-list') as HTMLElement;
+		listEl.scrollTop = 180;
+
+		view.onDataUpdated();
+
+		const rebuilt = containerEl.querySelector('.pbl-rel-list') as HTMLElement;
+		expect(rebuilt).not.toBe(listEl);
+		expect(rebuilt.scrollTop).toBe(180);
+	});
+
+	it('clamps the restored position to the rebuilt screen', () => {
+		const vault = releaseVault();
+		const { view, containerEl } = makeReleaseView(vault, RELEASE_CONFIG);
+		const scrollHeight = vi.spyOn(HTMLElement.prototype, 'scrollHeight', 'get').mockReturnValue(1000);
+		(containerEl.querySelector('.pbl-rel-list') as HTMLElement).scrollTop = 900;
+
+		// Two of the three releases leave the base's results, so the list is shorter than
+		// the offset the reader left behind.
+		scrollHeight.mockReturnValue(60);
+		(view as unknown as { data: unknown }).data = { data: vault.entries().filter((e) => e.file.path === '0.8.md') };
+		view.onDataUpdated();
+
+		expect((containerEl.querySelector('.pbl-rel-list') as HTMLElement).scrollTop).toBe(60);
+	});
+
+	/**
+	 * The KEY, which is the half a number assertion cannot reach: the two screens scroll
+	 * different elements over different content, so a pick must start at the top in BOTH
+	 * directions. Dropping the `drawnKey === previousKey` test leaves the two assertions
+	 * above green and makes this one fail — watched, in both directions.
+	 */
+	it('starts at the top when the pick changes screens, in either direction', () => {
+		const { view, containerEl } = makeReleaseView(scopeVault(), RELEASE_CONFIG);
+		vi.spyOn(HTMLElement.prototype, 'scrollHeight', 'get').mockReturnValue(1000);
+		(containerEl.querySelector('.pbl-rel-list') as HTMLElement).scrollTop = 200;
+
+		view.pick('R.md');
+		const treeEl = containerEl.querySelector('.pbl-tree') as HTMLElement;
+		expect(treeEl.scrollTop).toBe(0);
+
+		// And back: the scope's own offset is not carried onto the index either.
+		treeEl.scrollTop = 150;
+		view.pick(null);
+		expect((containerEl.querySelector('.pbl-rel-list') as HTMLElement).scrollTop).toBe(0);
+	});
+
+	it('restores one release’s tree across a data update', () => {
+		const { view, containerEl } = makeReleaseView(scopeVault(), RELEASE_CONFIG);
+		view.pick('R.md');
+		vi.spyOn(HTMLElement.prototype, 'scrollHeight', 'get').mockReturnValue(1000);
+		const treeEl = containerEl.querySelector('.pbl-tree') as HTMLElement;
+		treeEl.scrollTop = 140;
+
+		view.onDataUpdated();
+
+		const rebuilt = containerEl.querySelector('.pbl-tree') as HTMLElement;
+		expect(rebuilt).not.toBe(treeEl);
+		expect(rebuilt.scrollTop).toBe(140);
 	});
 });

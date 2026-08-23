@@ -32,6 +32,8 @@ export class ReleaseView extends BasesView {
 	/** The open release's path, or null for the index. Restored on mount, saved on every pick. */
 	pickedPath: string | null = null;
 	model: BacklogModel | null = null;
+	/** Which screen the LAST render drew — see {@link draw}. */
+	private drawnKey: string | null = null;
 
 	constructor(controller: QueryController, containerEl: HTMLElement) {
 		super(controller);
@@ -103,14 +105,74 @@ export class ReleaseView extends BasesView {
 		this.pickedPath = loadViewState(this.app, id).prefs.release ?? null;
 	}
 
+	/**
+	 * Redraw, keeping the reader's place where the SAME screen is being drawn again.
+	 *
+	 * The capture is BEFORE the teardown, and that order is the whole of why it is read
+	 * here rather than beside the restore: `empty()` detaches the scroller, a detached
+	 * element has no layout box, and `scrollTop` on one answers 0 in a browser however far
+	 * the reader had scrolled. `estimationView.render` states the same rule for the same
+	 * reason, and jsdom cannot see the difference — it answers with whatever was last
+	 * assigned, connected or not — so the ORDER is what a test can check here and the
+	 * restored NUMBER is owed a live vault.
+	 *
+	 * **One saved offset, and it is keyed by the screen that produced it.** The two screens
+	 * scroll different elements over different content — `.pbl-rel-list` on the index,
+	 * `.pbl-tree` on one release — so a single value carried across a change of screen
+	 * would drop a reader into the middle of a tree because they had scrolled the list,
+	 * which is worse than the top. That makes the DATA UPDATE the event that restores (the
+	 * same screen, redrawn under a Bases refresh, an external status edit, a rename) and the
+	 * PICK the event that does not: `pick` changes the key, so it starts at the top, in both
+	 * directions. `restoreBox` (`view/render/projections.ts`) keys its bands the same way and
+	 * for the same reason.
+	 *
+	 * Going back to the index therefore starts at the top too, because the scope's own
+	 * render overwrote the one slot. That is today's behaviour rather than a regression, and
+	 * a map keyed per screen is what would change it — not built, because nothing asks for
+	 * it.
+	 */
 	render(): void {
+		const previousEl = this.scrollerEl();
+		const previousTop = previousEl?.scrollTop ?? 0;
+		const previousKey = this.drawnKey;
 		this.viewEl.empty();
+		this.drawnKey = this.draw();
+		const el = this.scrollerEl();
+		// Clamped to the FRESH `scrollHeight` so a redraw with fewer rows — a note that left
+		// the base's results, a release whose members shrank — cannot park the pane below its
+		// own last row. `renderTable.ts` clamps its own restore for the same case.
+		if (el !== null && this.drawnKey === previousKey) el.scrollTop = Math.min(previousTop, el.scrollHeight);
+	}
+
+	/**
+	 * The element that scrolls on whichever screen is drawn, or null for an empty state,
+	 * which has none.
+	 *
+	 * A query rather than a field the two render modules assign: it runs once per render
+	 * over the two candidates, both of them within a couple of nodes of `viewEl`, so it is
+	 * nothing like the per-row `treeEl` scan the cost rule bans — and the alternative is a
+	 * public field written from two other files for one caller's benefit.
+	 */
+	private scrollerEl(): HTMLElement | null {
+		return this.viewEl.querySelector<HTMLElement>('.pbl-rel-list, .pbl-tree');
+	}
+
+	/**
+	 * Draw whichever screen the state asks for, and answer WHICH one that was — the open
+	 * release's path, or null for the index and for every empty state.
+	 *
+	 * Not `pickedPath`: by the time `pick` re-renders, that field already holds the screen
+	 * being drawn rather than the one being left, so comparing it would restore across
+	 * exactly the change of screen this exists to refuse. A remembered release that has gone
+	 * is the second reason — it draws the index while `pickedPath` still names the note.
+	 */
+	private draw(): string | null {
 		// The three model mappings are this view's own (`releaseOptions.ts`). Without a type
 		// key nothing can be recognised as a release at all, so this is a configuration to
 		// fix — a different answer from a base that simply holds no release yet.
 		if (!this.settings.typeKey) {
 			guidanceShell(this.viewEl, 'settings-2', t('release.empty.noType.title'), t('release.empty.noType.hint'));
-			return;
+			return null;
 		}
 		// The model is built with THIS view's three mappings, not the backlog resolver's.
 		// `resolveSettings` reads them through `propKey`, which cannot tell a cleared option
@@ -138,17 +200,18 @@ export class ReleaseView extends BasesView {
 			// offers `New Milestone` — and that is a different view's existing writer.
 			guidanceShell(this.viewEl, 'package', t('release.empty.noReleases.title'), t('release.empty.noReleases.hint'));
 			drawUnresolved(this.viewEl, index);
-			return;
+			return null;
 		}
 		const scope = this.pickedPath === null ? null : releaseScope(this.app, this.model, this.settings, this.pickedPath);
 		// A remembered release that no longer exists returns the INDEX, silently. A working
 		// position that has gone is not a failure and must not raise one.
 		if (scope === null || scope.release === null) {
 			renderIndex(this, index);
-			return;
+			return null;
 		}
 		// The release is passed alongside the scope it came from: the check above is what
 		// rules on it, and `renderScope` repeating it would be an unreachable branch.
 		renderScope(this, scope, scope.release);
+		return scope.release.path;
 	}
 }
