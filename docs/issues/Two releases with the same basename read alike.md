@@ -1,7 +1,9 @@
 ---
 type: Issue
-parent: "[[Release Management]]"
+parent: "[[Every release in one list]]"
 order: 500
+priority: P3
+area: design
 status: Open
 created: 2026-08-23
 source: automated review on PR #191, 2026-08-23
