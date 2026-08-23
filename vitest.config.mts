@@ -139,11 +139,20 @@ export default defineConfig({
 			// and named rather than quietly lowered — the fragility predates this change and
 			// the old floor had no one-function headroom either. If functions ever flake the
 			// way branches just did, that floor is the next one to come down.
+			//
+			// Raised again on 2026-08-23, with `Set release`: this machine measured
+			// 9168/9268 statements, 5744/6018 branches, 2368/2370 functions and 7618/7637
+			// lines. The three that move are set under the ONE-FEWER figure, the same
+			// headroom rule the paragraph above arrived at — 9167 is 98.9102, 5743 is
+			// 95.4304, 7617 is 99.7381 — rather than at the measurement, which would redden
+			// on the next merge. **Functions is left where it is** for the reason already
+			// stated: one fewer is 99.8734, under the floor it would be raised from, so
+			// headroom there is still a decrease.
 			thresholds: {
-				statements: 98.85,
-				branches: 95.35,
+				statements: 98.89,
+				branches: 95.40,
 				functions: 99.90,
-				lines: 99.72,
+				lines: 99.73,
 			},
 		},
 	},

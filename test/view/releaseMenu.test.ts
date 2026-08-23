@@ -91,7 +91,9 @@ describe('the Set release menu', () => {
 		// The write resolves correctly either way, because it carries the TFile — this is
 		// about the reader being able to tell which one they are picking. Qualified the
 		// way `iterationTargets` qualifies a colliding sprint: the PATH minus the
-		// extension, which is data rather than a sentence built from two pieces.
+		// extension, through the shared `namedTargets`. One answer on one surface — and
+		// the path form is the correct one at the nested edge, where `X/Rel/2.4` and
+		// `Y/Rel/2.4` would both read `2.4 (Rel)` under a folder suffix.
 		const { view } = makeViewWithReleases({ releases: ['Releases/2.4.md', 'Archive/2.4.md'] });
 		expect(releaseMenuLabels(view, 'F.md')).toEqual(['Releases/2.4', 'Archive/2.4', 'No release']);
 	});
