@@ -7,7 +7,7 @@ import { drawIcon } from '../render/icons';
 
 /**
  * The index screen (`docs/requirements/Every release in one list.md`): one row per release
- * over the five-column grid `styles/release.css` draws, and the two notes beneath it.
+ * over the five columns `styles/release.css` draws, and the two notes beneath it.
  *
  * A free function over the view, `estimation/renderTable.ts`'s own shape, importing the
  * view for its TYPE alone so the pair stays acyclic at runtime.
@@ -25,14 +25,17 @@ export function renderIndex(view: ReleaseView, index: ReleaseIndex): void {
 	const gridEl = listEl.createDiv({ cls: 'pbl-rel-grid' });
 	const columns = drawableColumns(index.rows);
 
-	// The track list follows the columns actually drawn, so a dropped column takes its
-	// track with it. The partial's own default covers all five; a shorter grid says so
-	// here rather than leaving four cells to spread over five tracks.
-	gridEl.setCssProps({ '--pbl-rel-columns': ['1fr', ...columns.map(() => 'auto')].join(' ') });
+	// One custom property per column actually drawn, so a dropped column takes its width
+	// with it and the cells below read the columns this render has.
+	const widths: Record<string, string> = {};
+	for (const [i, column] of columns.entries()) widths[columnWidthVar(i)] = `${column.width}px`;
+	gridEl.setCssProps(widths);
 
 	const headEl = gridEl.createDiv({ cls: 'pbl-rel-head' });
-	headEl.createDiv({ text: t('release.index.column.name') });
-	for (const column of columns) headEl.createDiv({ cls: column.cls, text: column.label });
+	// The heading's own name cell carries no `.pbl-rel-name`: that class is how a row's name
+	// is addressed, and the stylesheet gives the heading the same slack by position.
+	headEl.createSpan({ text: t('release.index.column.name') });
+	for (const [i, column] of columns.entries()) sizeCell(headEl.createSpan({ cls: column.cls, text: column.label }), i, column);
 
 	for (const row of index.rows) drawRow(view, gridEl, row, columns);
 
@@ -68,8 +71,34 @@ export function renderIndex(view: ReleaseView, index: ReleaseIndex): void {
 interface ColumnSpec {
 	label: string;
 	cls?: string;
+	/**
+	 * How wide the column draws, in px. A number rather than a track that sizes itself,
+	 * because the rows no longer share one grid — see {@link columnWidthVar}. Wide enough
+	 * for the longest thing the column states about itself (`No target date`, `Unreadable`);
+	 * anything longer is vault content and ellipsises, which the tree's own fixed property
+	 * columns already do.
+	 */
+	width: number;
 	figure: (row: ReleaseRow) => ReleaseFigure<unknown>;
 	draw: (cell: HTMLElement, row: ReleaseRow) => void;
+}
+
+/**
+ * Where column `index`'s width is published: one custom property on the grid element,
+ * inherited by the heading cell and by that column's cell on every row — `render/columns.ts`
+ * and `interactions/columnResize.ts`'s shape, for the same reason read the other way round.
+ * There the indirection lets a drag move every row without a re-render; here it is what lets
+ * a row lay out its OWN cells and still line its figures up with the row above, now that
+ * `display: contents` and the one shared grid are gone.
+ */
+function columnWidthVar(index: number): string {
+	return `--pbl-rel-w-${index}`;
+}
+
+/** Point one cell at its column's published width — the reference, never the number. */
+function sizeCell(cell: HTMLElement, index: number, column: ColumnSpec): HTMLElement {
+	cell.setCssProps({ '--pbl-rel-w': `var(${columnWidthVar(index)}, ${column.width}px)` });
+	return cell;
 }
 
 function columnSpecs(): ColumnSpec[] {
@@ -77,11 +106,13 @@ function columnSpecs(): ColumnSpec[] {
 		{
 			label: t('release.index.column.version'),
 			cls: 'pbl-rel-version',
+			width: 104,
 			figure: (row) => row.version,
 			draw: (cell, row) => cell.createSpan({ text: row.version.value ?? '' }),
 		},
 		{
 			label: t('release.index.column.target'),
+			width: 132,
 			figure: (row) => row.target,
 			// An unset target date is a legitimate answer and says so, where an unreadable one
 			// is somebody's mistake — the two are drawn differently on purpose, and
@@ -93,19 +124,21 @@ function columnSpecs(): ColumnSpec[] {
 		},
 		{
 			label: t('release.index.column.status'),
+			width: 128,
 			figure: (row) => row.status,
 			draw: (cell, row) => {
 				if (row.status.value === null) return;
 				// The tree's read-only chip. This whole view is read-only, so every chip on it
 				// is the static one — and it draws grey: `--pbl-state-color` belongs to the
 				// legend and the card projections, not to a row chip.
-				const chip = cell.createDiv({ cls: 'pbl-state-chip pbl-state-static' });
+				const chip = cell.createSpan({ cls: 'pbl-state-chip pbl-state-static' });
 				chip.createSpan({ cls: 'pbl-state-text', text: row.status.value });
 			},
 		},
 		{
 			label: t('release.index.column.members'),
 			cls: 'pbl-rel-num',
+			width: 64,
 			figure: (row) => row.members,
 			// A bare count in its own column is data, not a sentence — `estimation/renderTable`
 			// draws its numeric cells the same way.
@@ -126,37 +159,36 @@ function drawableColumns(rows: ReleaseRow[]): ColumnSpec[] {
 }
 
 function drawRow(view: ReleaseView, gridEl: HTMLElement, row: ReleaseRow, columns: ColumnSpec[]): void {
-	// `role="button"` and a real tab stop, with Enter and Space beside the click — the
-	// spelling `ui/estimationPresetDialog.ts` already uses for a row-shaped control.
+	// A real `<button>`, which is what makes the tab stop, Enter, Space and Space NOT
+	// scrolling the list the browser's job rather than a handler somebody has to remember —
+	// `renderScope.ts`'s back control, one screen over, for the same reason.
 	//
-	// Not a real `<button>`, which the register prefers wherever it fits: `.pbl-rel-row` is
-	// `display: contents` so that one grid holds every row's cells and the figures line up
-	// down the screen, and `display: contents` on a form control is exactly the case CSS
-	// leaves to the browser. The div keeps the layout the design settled and states its
-	// semantics itself; that trade is unverifiable here and is owed a live-vault look.
-	const rowEl = gridEl.createDiv({
+	// It was a `role="button"` div until 2026-08-23, because `.pbl-rel-row` was
+	// `display: contents` and a form control was thought not to survive that. Measured in
+	// headless Chromium, NOTHING survives it: a `display: contents` element has no box, so
+	// Tab skips it, `.focus()` on it does nothing, and `:focus-visible` can never match — a
+	// real `<button style="display: contents">` measured exactly the same. The element was
+	// never what decided it, and the whole index was closed to the keyboard. See
+	// `.superpowers/sdd/…/display-contents-focus-measurement.md`.
+	//
+	// The cells are spans rather than divs so the row is legal button content.
+	const rowEl = gridEl.createEl('button', {
 		cls: 'pbl-rel-row',
-		attr: { role: 'button', tabindex: '0', 'data-path': row.path },
+		attr: { type: 'button', 'data-path': row.path },
 	});
-	const nameEl = rowEl.createDiv({ cls: 'pbl-rel-name' });
-	drawIcon(nameEl.createSpan(), 'package');
+	const nameEl = rowEl.createSpan({ cls: 'pbl-rel-name' });
+	drawIcon(nameEl.createSpan({ cls: 'pbl-rel-icon' }), 'package');
 	nameEl.createSpan({ text: row.name });
 
-	for (const column of columns) {
-		const cell = rowEl.createDiv({ cls: column.cls });
+	for (const [index, column] of columns.entries()) {
+		const cell = sizeCell(rowEl.createSpan({ cls: column.cls }), index, column);
 		// One refusal for every column: a key that is bound and holds something no reader
 		// will guess at says so, per row, rather than reading as an unset key.
 		if (column.figure(row).invalid) cell.createSpan({ cls: 'pbl-rel-unreadable', text: t('release.index.unreadable') });
 		else column.draw(cell, row);
 	}
 
-	const open = (): void => view.pick(row.path);
-	rowEl.addEventListener('click', open);
-	rowEl.addEventListener('keydown', (evt) => {
-		if (evt.key !== 'Enter' && evt.key !== ' ') return;
-		evt.preventDefault();
-		open();
-	});
+	rowEl.addEventListener('click', () => view.pick(row.path));
 }
 
 /**

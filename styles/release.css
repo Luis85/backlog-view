@@ -35,84 +35,124 @@
 }
 
 /* Name, version, target, status, members — the name column takes the slack and every
-   figure column sizes to its own content, so the numbers line up down the screen. The
-   rows are `display: contents` for that reason: one grid, not a grid per row. */
+   figure column is a FIXED width, so the numbers line up down the screen without the rows
+   sharing one grid.
+
+   They used to share one: the rows were `display: contents` so that five cells per row
+   became items of a single grid and `auto` tracks sized themselves to the widest content.
+   That was measured in headless Chromium on 2026-08-23 and it cost the whole screen its
+   keyboard: a `display: contents` element has NO BOX, so it is skipped by Tab, `.focus()`
+   on it does nothing, and a `:focus-visible` rule on it can never match. A real
+   `<button>` behaves identically — the element type was never what decided it. The
+   measurement is under `.superpowers/sdd/…/display-contents-focus-measurement.md`.
+
+   So each row lays out its own cells and the columns are held in step the way the tree's
+   property columns are (`src/view/render/columns.ts`): the container publishes one custom
+   property per column and each cell holds a REFERENCE to its column's, never a number. */
 .pbl-rel-grid {
-	display: grid;
-	/* The track list is the view's, because the COLUMN COUNT is: a figure whose key nobody
-	   bound is absent for every row, so a grid fixed at five tracks would leave the drawn
-	   cells spreading over tracks nothing fills. The fallback is the fully configured
-	   shape, so the partial still reads as the layout it draws. */
-	grid-template-columns: var(--pbl-rel-columns, 1fr auto auto auto auto);
+	display: flex;
+	flex-direction: column;
+}
+
+.pbl-rel-head,
+.pbl-rel-row {
+	display: flex;
 	align-items: center;
+	inline-size: 100%;
 }
 
 .pbl-rel-head {
-	display: contents;
-}
-
-.pbl-rel-head > div {
 	position: sticky;
 	top: 0;
 	z-index: 1;
-	padding-block: var(--size-4-1);
-	padding-inline: 0 var(--size-4-3);
-	font-size: var(--font-ui-smaller);
-	color: var(--text-faint);
 	background-color: var(--background-primary);
 	border-bottom: 1px solid var(--background-modifier-border);
+	font-size: var(--font-ui-smaller);
+	color: var(--text-faint);
 }
 
+/* A row is a real `<button>`: picking a release is this view's whole navigation, so Enter,
+   Space and the tab stop are the browser's job rather than a handler somebody has to
+   remember. Everything below undoes Obsidian's own `button` appearance — a row is a row,
+   not a raised control. */
 .pbl-rel-row {
-	display: contents;
+	min-block-size: 34px;
+	block-size: auto;
+	margin: 0;
+	padding: 0;
+	font-family: inherit;
+	font-size: var(--font-ui-small);
+	color: var(--text-normal);
+	text-align: start;
+	background-color: transparent;
+	border: none;
+	border-bottom: 1px solid var(--background-modifier-border);
+	border-radius: 0;
+	box-shadow: none;
 	cursor: pointer;
 }
 
-.pbl-rel-row > div {
+/* One cell. `--pbl-rel-w` is what it lays out at, and it resolves the indexed property the
+   grid element carries — the reference, not the number, so the widths are stated once in
+   `renderIndex.ts` and every row reads the same declaration. The name column is the
+   exception and takes the slack. */
+.pbl-rel-head > span,
+.pbl-rel-row > span {
 	display: flex;
 	align-items: center;
 	gap: var(--size-4-1);
-	min-height: 34px;
-	padding-block: var(--size-2-3);
+	flex: 0 0 var(--pbl-rel-w, 96px);
 	padding-inline: 0 var(--size-4-3);
-	border-bottom: 1px solid var(--background-modifier-border);
 }
 
-/* The hover is written for the whole ROW, which a `display: contents` row can only say
-   through its cells — the row box itself has no paint. */
-.pbl-rel-row:hover > div {
-	background-color: var(--background-modifier-hover);
+.pbl-rel-head > span {
+	padding-block: var(--size-4-1);
 }
 
-/* A row is a real tab stop — picking a release is this view's whole navigation — so it
-   needs a visible focus indicator, and for the hover's reason it cannot have one of its
-   own: an outline on a `display: contents` element paints nothing at all. Two inset edges
-   rather than an outline per cell, which would draw a box around every column; these join
-   into one band across the row. */
-.pbl-rel-row:focus-visible {
-	outline: none;
+.pbl-rel-row > span {
+	padding-block: var(--size-2-3);
 }
 
-.pbl-rel-row:focus-visible > div {
-	background-color: var(--background-modifier-hover);
-	box-shadow:
-		inset 0 1px 0 var(--interactive-accent),
-		inset 0 -1px 0 var(--interactive-accent);
-}
-
-.pbl-rel-name {
-	min-width: 0;
-	font-weight: var(--font-medium);
-}
-
-.pbl-rel-name span {
+/* A fixed column clips rather than pushes its neighbours out of line, so every text run in
+   a row shrinks and ellipsises. `min-inline-size: 0` is what lets a flex item do that at
+   all; the icon opts back out below. */
+.pbl-rel-head > span,
+.pbl-rel-row span {
+	min-inline-size: 0;
 	overflow: hidden;
 	white-space: nowrap;
 	text-overflow: ellipsis;
 }
 
-.pbl-rel-name .svg-icon {
+.pbl-rel-head > span:first-child,
+.pbl-rel-row > .pbl-rel-name {
+	flex: 1 1 auto;
+}
+
+.pbl-rel-row:hover {
+	background-color: var(--background-modifier-hover);
+	box-shadow: none;
+}
+
+/* The row has a box of its own now, so one outline draws the whole band — where the
+   `display: contents` row could only speak through its cells. */
+.pbl-rel-row:focus-visible {
+	background-color: var(--background-modifier-hover);
+	outline: 2px solid var(--interactive-accent);
+	outline-offset: -2px;
+	box-shadow: none;
+}
+
+.pbl-rel-name {
+	font-weight: var(--font-medium);
+}
+
+/* The type icon is not text and must not shrink with it. */
+.pbl-rel-icon {
 	flex: 0 0 auto;
+}
+
+.pbl-rel-name .svg-icon {
 	width: 14px;
 	height: 14px;
 	color: var(--text-muted);
@@ -193,4 +233,23 @@
    asked to see — dimmed for that, never hidden, or the member loses its place. */
 .pbl-rel-context {
 	opacity: 0.62;
+}
+
+/* One release's scope reuses the tree's `.pbl-row` for its LAYOUT — the flex row, the
+   `--pbl-depth` indent, `content-visibility` — and inherits three gestures with it that
+   this screen does not have: there is no click, no selection and no collapse, which is
+   why `renderScope.ts` omits `aria-selected` and `aria-expanded` too. The sharpest of the
+   three is `user-select`: a screen whose whole purpose is reading must let a reader copy a
+   title. The tree earns that rule by dragging its rows; nothing here is dragged.
+
+   Scoped by `.pbl-rel-view` so it cannot reach the backlog tree's own rows, and the hover
+   is refused at `:hover` rather than at the bare class so the import ORDER still decides
+   nothing (see this file's header). */
+.pbl-rel-view .pbl-row {
+	cursor: auto;
+	user-select: auto;
+}
+
+.pbl-rel-view .pbl-row:hover {
+	background-color: transparent;
 }

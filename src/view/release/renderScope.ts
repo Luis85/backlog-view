@@ -63,10 +63,9 @@ export function renderScope(view: ReleaseView, scope: ReleaseScope, release: Rel
 function drawHeader(view: ReleaseView, scope: ReleaseScope, release: ReleaseRow): void {
 	const headerEl = view.viewEl.createDiv({ cls: 'pbl-rel-header' });
 
-	// A real `<button>`, unlike the index's rows: this header is `display: flex`, so the
-	// case that made those a `role="button"` div — `display: contents` on a form control —
-	// does not arise. It is the only way off this screen, and a real button is what makes
-	// Enter and Space the browser's job rather than a handler somebody has to remember.
+	// A real `<button>`, like the index's rows: it is the only way off this screen, and a
+	// real button is what makes the tab stop, Enter and Space the browser's job rather than
+	// a handler somebody has to remember.
 	const backEl = headerEl.createEl('button', {
 		cls: 'clickable-icon pbl-rel-back',
 		attr: { type: 'button', 'aria-label': t('release.scope.back') },

@@ -123,11 +123,17 @@ disagreeing. One of those two notes is exported rather than private, because 1b 
 screen this module never draws: `releaseView.ts` derives the index BEFORE it decides whether
 there is a list to render, and calls the same function beneath the empty state.
 
-A row is a real tab stop carrying `role="button"`, activated by a click, by Enter and by Space.
-Picking a release is this view's whole navigation, so a pointer-only row would put the scope
-screen out of reach of a keyboard; it is not a native `<button>` because `.pbl-rel-row` is
-`display: contents`, which one grid holding every row's cells depends on and which a form
-control does not reliably survive.
+A row is a real `<button>`, activated by a click, by Enter and by Space. Picking a release is
+this view's whole navigation, so a pointer-only row would put the scope screen out of reach of
+a keyboard. It shipped as a `role="button"` div over a `display: contents` row — one grid
+holding every row's cells, so the figures lined up — and that closed the screen to the keyboard
+outright: measured in headless Chromium on 2026-08-23, a `display: contents` element has no box
+at all, so Tab skips it, `.focus()` on it does nothing and `:focus-visible` can never match, and
+a real `<button>` under the same rule measured identically. The shared grid is gone with it: each
+row lays out its own cells and the columns are held in step the way the tree's property columns
+are, one custom property per column published on the container with each cell holding a
+reference to its own. Whether Obsidian's Electron agrees is a live-vault check — Obsidian cannot
+run in this environment.
 
 **What has SHIPPED is the row, not every figure on it.** Name, version, target date, status and
 the member count are drawn; progress, commitment against capacity and slip are not derived

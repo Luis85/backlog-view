@@ -183,8 +183,7 @@ describe("a release's scope on screen", () => {
 		// on the scope screen, which is worse than a pointer-only row — that merely blocks
 		// entry. A real `<button>` is what makes Enter and Space the browser's job rather
 		// than a handler somebody has to remember, so the ELEMENT is the guarantee and is
-		// what this asserts. Unlike the index's rows it costs no layout: the header is
-		// `display: flex`, not `display: contents`.
+		// what this asserts — the index's rows are the same element for the same reason.
 		const { containerEl } = openScope();
 		const back = containerEl.querySelector('.pbl-rel-back') as HTMLButtonElement;
 		expect(back.tagName).toBe('BUTTON');

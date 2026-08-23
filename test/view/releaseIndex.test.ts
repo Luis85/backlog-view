@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { makeReleaseView, RELEASE_CONFIG, releaseVault } from '../helpers/release';
 import { click } from '../helpers/estimation';
-import { flush, key, useViewHarness } from '../helpers/view';
+import { flush, useViewHarness } from '../helpers/view';
 
 /**
  * The index screen: one row per release, the two notes beneath the grid, and the two
@@ -15,16 +15,26 @@ import { flush, key, useViewHarness } from '../helpers/view';
 describe('the release index', () => {
 	useViewHarness();
 
+	/** The column-width properties the grid element carries, in the order they were set. */
+	const publishedWidths = (grid: HTMLElement): string[] =>
+		[...grid.style].filter((name) => name.startsWith('--pbl-rel-w-'));
+
 	it('draws one row per release, in the domain module’s order', () => {
 		const { containerEl } = makeReleaseView(releaseVault(), RELEASE_CONFIG);
 		const names = [...containerEl.querySelectorAll('.pbl-rel-name')].map((el) => el.textContent);
 		expect(names).toEqual(['0.8', '0.9', 'Someday']);
-		// The grid's track list is the VIEW's, because the column count is — one track per
-		// column actually drawn. Asserted here at the fully configured shape and again below
-		// with a column dropped, since a call that never ran leaves the partial's fallback
-		// standing and every other assertion in this file green.
+		// The column widths are the VIEW's, published one custom property per column drawn —
+		// which is what lines the figures up now that each row lays out its own cells. Asserted
+		// here at the fully configured shape and again below with a column dropped, since a
+		// call that never ran leaves the partial's fallback standing and every other assertion
+		// in this file green.
 		const grid = containerEl.querySelector('.pbl-rel-grid') as HTMLElement;
-		expect(grid.style.getPropertyValue('--pbl-rel-columns')).toBe('1fr auto auto auto auto');
+		expect(publishedWidths(grid)).toEqual(['--pbl-rel-w-0', '--pbl-rel-w-1', '--pbl-rel-w-2', '--pbl-rel-w-3']);
+		// The cell holds a REFERENCE to its column's property, never a number — the tree's own
+		// rule in `render/columns.ts`, and what makes the container the single place a width
+		// is stated.
+		const cell = containerEl.querySelector('.pbl-rel-row .pbl-rel-num') as HTMLElement;
+		expect(cell.style.getPropertyValue('--pbl-rel-w')).toBe('var(--pbl-rel-w-3, 64px)');
 		// EVERY chip on this screen is the read-only one, stated as the category rather than
 		// as three places: the view offers no write, and
 		// `.pbl-state-chip:not(.pbl-state-static):hover` would give a chip that lost the class
@@ -39,24 +49,31 @@ describe('the release index', () => {
 		expect(view.pickedPath).toBe('0.8.md');
 	});
 
-	it('opens a release from the keyboard, and puts every row in the tab order', () => {
+	it('makes every row a real button, so a keyboard can reach and press it', () => {
 		// The index-to-scope transition is this view's ENTIRE navigation. A pointer-only
 		// row would make the release view unreachable for a keyboard or screen-reader
 		// user, which no amount of correct derivation behind it makes acceptable.
+		//
+		// **jsdom cannot answer whether a row is FOCUSABLE**, and this test does not claim
+		// to. jsdom applies no box model, so `display: contents` — which is what closed this
+		// screen to the keyboard until 2026-08-23 — is invisible to it, and the test that
+		// stood here read `tabIndex` and dispatched `keydown` at the element directly: both
+		// pass on an element no user can reach. What is asserted here is what jsdom can
+		// honestly see — the ELEMENT, which is what delegates the tab stop, Enter, Space and
+		// Space-does-not-scroll to the browser, its accessible name, and that activating it
+		// picks the release. Reachability itself was measured in headless Chromium; see
+		// `.superpowers/sdd/…/task-11-keyboard-report.md`.
 		const { view, containerEl } = makeReleaseView(releaseVault(), RELEASE_CONFIG);
-		const rows = [...containerEl.querySelectorAll('.pbl-rel-row')] as HTMLElement[];
+		const rows = [...containerEl.querySelectorAll('.pbl-rel-row')] as HTMLButtonElement[];
 		expect(rows).toHaveLength(3);
-		expect(rows.every((el) => el.tabIndex === 0)).toBe(true);
-		expect(rows.every((el) => el.getAttribute('role') === 'button')).toBe(true);
-		const entered = key(containerEl.querySelector('.pbl-rel-row[data-path="0.9.md"]') as HTMLElement, 'Enter');
+		expect(rows.map((el) => el.tagName)).toEqual(['BUTTON', 'BUTTON', 'BUTTON']);
+		// `type="button"`, or a row nested in a form would submit it.
+		expect(rows.map((el) => el.type)).toEqual(['button', 'button', 'button']);
+		// The row's own content is its accessible name, so a reader hears the release and its
+		// figures rather than an unnamed control.
+		expect(rows[0]?.textContent).toBe('0.80.8.02026-09-12In progress0');
+		click(containerEl.querySelector('.pbl-rel-row[data-path="0.9.md"]') as HTMLElement);
 		expect(view.pickedPath).toBe('0.9.md');
-		view.pick(null);
-		const spaced = key(containerEl.querySelector('.pbl-rel-row[data-path="0.9.md"]') as HTMLElement, ' ');
-		expect(view.pickedPath).toBe('0.9.md');
-		// Both keys are CONSUMED. Space that activates the row and also reaches the scroller
-		// pages the list out from under the reader, which is a keyboard defect the pick
-		// landing correctly says nothing about.
-		expect([entered.defaultPrevented, spaced.defaultPrevented]).toEqual([true, true]);
 	});
 
 	it('names an unconfigured column ONCE, and never blanks it per row', () => {
@@ -77,9 +94,10 @@ describe('the release index', () => {
 		const note = containerEl.querySelector('.pbl-rel-note')?.textContent ?? '';
 		expect(note).toContain('Version');
 		for (const drawn of ['Target', 'Status', 'Items']) expect(note).not.toContain(drawn);
-		// The dropped column takes its track with it, or four cells spread over five tracks.
+		// The dropped column takes its published width with it, or the cells read a column
+		// that is not drawn.
 		const grid = containerEl.querySelector('.pbl-rel-grid') as HTMLElement;
-		expect(grid.style.getPropertyValue('--pbl-rel-columns')).toBe('1fr auto auto auto');
+		expect(publishedWidths(grid)).toEqual(['--pbl-rel-w-0', '--pbl-rel-w-1', '--pbl-rel-w-2']);
 		expect(containerEl.querySelectorAll('.pbl-state-chip')).toHaveLength(3);
 	});
 
@@ -107,7 +125,7 @@ describe('the release index', () => {
 		// would leave the reader no way to explain the position.
 		const { containerEl } = makeReleaseView(releaseVault(), RELEASE_CONFIG);
 		const row = containerEl.querySelector('.pbl-rel-row[data-path="Someday.md"]') as HTMLElement;
-		const cells = [...row.querySelectorAll(':scope > div')].map((el) => el.textContent);
+		const cells = [...row.querySelectorAll(':scope > span')].map((el) => el.textContent);
 		expect(cells).toEqual(['Someday', '', 'No target date', 'Idea', '0']);
 	});
 
