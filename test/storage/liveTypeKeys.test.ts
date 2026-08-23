@@ -236,6 +236,70 @@ describe('the writer asks the LIVE type about a release membership', () => {
 		expect(outcome.changed).toBe(false);
 	});
 
+	it('refuses a membership whose CARRIER was reparented into the catalog', async () => {
+		// A `Task` is on both ladders, so its own name cannot answer this and the type half
+		// admits it: only the live parent chain says the note walked into the test catalog
+		// while the menu was open. `inPlan` fails on the rebuilt item, so `canSetRelease`
+		// draws nothing that could take the membership off again.
+		const vault = new FakeVault();
+		vault.addFile('2.4.md', { frontmatter: { type: 'Release' } });
+		vault.addFile('S.md', { frontmatter: { type: 'Test suite' } });
+		vault.addFile('1.0.md', { frontmatter: { type: 'PBI' } });
+		const task = vault.addFile('1.1.md', { frontmatter: { type: 'Task' }, parentLink: '1.0' });
+		const model = buildModel(vault.app, vault.entries(), releaseSettings);
+		const release = model.byPath.get('2.4.md');
+		const item = model.byPath.get('1.1.md');
+		if (!item || !release) throw new Error('fixture did not build');
+		const writes = computeReleaseWrites(item, release, releaseSettings);
+		expect(writes).toEqual([{ file: task, release: release.file }]);
+
+		// Re-added rather than edited in place: the parent is a link, and `resolveParent`
+		// reads the link CACHE before the raw value, so a fixture that changed only the
+		// text would leave the walk following the note it no longer names.
+		vault.addFile('1.1.md', { frontmatter: { type: 'Task' }, parentLink: 'S' });
+		const outcome = await applyWrites(vault.app, releaseSettings, writes);
+
+		expect(vault.fm('1.1.md')['release']).toBeUndefined();
+		expect(outcome.changed).toBe(false);
+	});
+
+	it('lets the same task through while its parent is still plan work', async () => {
+		// The control INSIDE the walk: without it the test above passes on a guard that
+		// refuses every task, which is the way a ladder check reads as working and is not.
+		const vault = new FakeVault();
+		vault.addFile('2.4.md', { frontmatter: { type: 'Release' } });
+		vault.addFile('1.0.md', { frontmatter: { type: 'PBI' } });
+		vault.addFile('1.1.md', { frontmatter: { type: 'Task' }, parentLink: '1.0' });
+		const model = buildModel(vault.app, vault.entries(), releaseSettings);
+		const item = model.byPath.get('1.1.md');
+		const release = model.byPath.get('2.4.md');
+		if (!item || !release) throw new Error('fixture did not build');
+
+		await applyWrites(vault.app, releaseSettings, computeReleaseWrites(item, release, releaseSettings));
+
+		expect(vault.fm('1.1.md')['release']).toBe('[[2.4]]');
+	});
+
+	it('refuses a membership whose TARGET is no longer a release', async () => {
+		// The plan carries the `TFile` the picker was built from. Retype that note while
+		// the submenu is open and the link would name something that is not a release,
+		// which the reader reports as an unresolved membership.
+		const vault = new FakeVault();
+		vault.addFile('2.4.md', { frontmatter: { type: 'Release' } });
+		vault.addFile('1.0.md', { frontmatter: { type: 'PBI' } });
+		const model = buildModel(vault.app, vault.entries(), releaseSettings);
+		const item = model.byPath.get('1.0.md');
+		const release = model.byPath.get('2.4.md');
+		if (!item || !release) throw new Error('fixture did not build');
+		const writes = computeReleaseWrites(item, release, releaseSettings);
+
+		vault.fm('2.4.md').type = 'Epic';
+		const outcome = await applyWrites(vault.app, releaseSettings, writes);
+
+		expect(vault.fm('1.0.md')).toEqual({ type: 'PBI' });
+		expect(outcome.changed).toBe(false);
+	});
+
 	it('lets a REMOVAL through, which is the only way this key comes off a marker', async () => {
 		// The guard's stated exemption, checked rather than claimed: `stated()` reads a
 		// `null` as not-stated, so the removal lands on the very type the write above is

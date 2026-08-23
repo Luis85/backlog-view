@@ -156,11 +156,14 @@ membership planned against a `PBI` and applied after a retype to `Test case` wou
 land on a catalog note the reader reports as unresolved and no control can clear (Codex, PR
 #201). What a name cannot answer is still the item question: `Task` is on both ladders, so a
 task under a test suite is admitted by the field rule and refused by `inPlan` at the two doors
-that hold an item. That vocabulary is also what ✨ Assign missing properties backfills from, so
-adopting the property now stubs an empty membership key on every note whose type may hold one —
-`Test suite` and `Test case` are not among them, while a `Task` under one still receives the
-stub and is still offered no release, since `canSetRelease` asks `inPlan` beside the field
-rule.
+that hold an item. **The backfill stubs nothing here**, and that is this field's exception rather than a
+consequence of the rule: ✨ Assign missing properties creates an empty key for every property a
+type may hold, and `neverStubbed` (`src/domain/writePlan.ts`) refuses `release` because an empty
+membership is not an empty slot — `membershipTarget` reads a present-but-blank value as an
+UNRESOLVED membership, so a backfill would open the release view reporting the whole backlog as
+broken. Adopting the property binds the option and writes no key to any note, which
+`test/view/toolbar.test.ts` states as a whole-frontmatter `toEqual`. (Codex, PR #201: this
+paragraph claimed the opposite while the code and that test both said otherwise.)
 
 The write is planned by `src/domain/writePlan.ts`'s `computeReleaseWrites` — the membership key
 alone, with no timeframe copied beside it the way joining an iteration copies one — and applied
@@ -171,7 +174,15 @@ parent and the iteration. `src/storage/writeKeys.ts` carries the membership key 
 write's inverse, so without it the write lands and undo restores nothing, silently. The
 membership joins the keys `refusesLiveType` asks the LIVE type about, in the same file, for
 extension 1f's second half: the key is unclearable once it is on a marker, so the refusal has
-to be at the write and not only at the plan.
+to be at the write and not only at the plan. `refusesLiveMembership` (`src/domain/releases.ts`), called beside it at the same
+boundary, asks the two questions a type NAME cannot reach, both found by review on this branch (Codex, PR #201) and both the same
+shape — the CARRIER's live ladder, walked up the parent chain, because a `Task` is on both
+ladders and a reparent under a `Test suite` leaves its name unchanged; and the TARGET's live
+type, because the plan carries the `TFile` the picker was built from and a retyped target would
+be spelled as a release it no longer is. What neither asks is whether the target left the BASE —
+that is the write gate's contract rather than a question about the vault, it is shared with
+`Set iteration`, and it is recorded in
+[[A stale release or iteration target can still be committed]].
 
 One host method carries the move: `performReleaseMove` on `src/view/host.ts`, implemented in
 `src/view/cardMoves.ts` and delegated from `src/view/backlogView.ts`. Its announcement is a

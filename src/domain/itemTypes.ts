@@ -416,9 +416,11 @@ export function mayHoldField(typeName: string | null, field: OptionalField, sett
 	// function ALONE: `refusesLiveType` (`storage/frontmatter.ts`) has a type name and no
 	// item, so a membership planned against a `PBI` and applied after a retype to
 	// `Test case` would land on a catalog note that the reader then reports as unresolved
-	// and no `Set release` action can clear. What a NAME cannot answer stays the item
-	// question `canSetRelease` and the reader still ask: `Task` is on both ladders, so a
-	// task under a test suite is refused by `inPlan` there and admitted here. Asked BEFORE
+	// and no `Set release` action can clear. What a NAME cannot answer is not this
+	// function's: `Task` is on both ladders, so a task under a test suite is admitted here
+	// and refused by `inPlan` at the two doors that hold an item — and, since a reparent
+	// races a write exactly as a retype does, by `refusesLiveMembership` (`domain/releases.ts`),
+	// which walks the LIVE parent chain whenever a membership is the thing being written. Asked BEFORE
 	// the release-type early return below, which exists to leave every other type's
 	// answers alone: this is a new field's rule and it changes no shipped answer.
 	if (field === 'release') return !isMarkerType(typeName) && ladderFor(typeName, null) !== TEST_LEVELS;

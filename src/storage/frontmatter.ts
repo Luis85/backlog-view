@@ -13,6 +13,7 @@ import {
 	readString,
 	readTags,
 } from '../domain/noteFields';
+import { refusesLiveMembership } from '../domain/releases';
 import { BacklogSettings, isDoneValue } from '../domain/settings';
 import {
 	optionalKeyFor,
@@ -155,7 +156,11 @@ export async function applyWrites(
 			// twice. Every date batch today is ONE write, so the two are the same thing —
 			// and the outcome below reports what actually landed rather than claiming
 			// nothing did, which is what makes the difference visible if that changes.
-			if (refusesLiveType(settings, write, liveType) || refusesAxis(fm, settings, write, ends)) {
+			if (
+				refusesLiveType(settings, write, liveType) ||
+				refusesLiveMembership(app, write.file, liveType, write.release, settings) ||
+				refusesAxis(fm, settings, write, ends)
+			) {
 				refused = true;
 				return;
 			}
@@ -527,10 +532,12 @@ function narrowReadings(readings: StatedEnds, ends: PlacementEnd[]): StatedEnds 
  * The release membership is on that list for the same reason and not by being near it:
  * `canSetRelease` refuses a marker and a catalog note, so a membership landed on one is
  * offered by no control either, while `membershipTarget` (`domain/releases.ts`) goes on
- * reporting the note as an unresolved membership for as long as it sits there. The catalog
- * half of that reader lives in `mayHoldField` rather than beside it here (Codex, PR #201):
- * this function holds a type NAME and no item, so `inPlan` is not a question it can ask,
- * and a retype to `Test case` would walk past a marker-only rule.
+ * reporting the note as an unresolved membership for as long as it sits there. This
+ * function holds a type NAME and no item, so `inPlan` is not a question it can ask: the
+ * catalog TYPES are refused inside `mayHoldField`, and the two questions a name cannot
+ * reach at all — the carrier's live LADDER and what the TARGET is now — are
+ * `refusesLiveMembership` (`domain/releases.ts`), called beside this one at the same
+ * boundary. All three were review findings on one branch (Codex, PR #201).
  *
  * The whole batch is refused, loudly, exactly as a stale date batch is — this is a
  * gesture the user made against a note that is no longer the note they made it against.
