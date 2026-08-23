@@ -148,12 +148,19 @@ in. The planner needs it for extension 1a: both `[2.4]` and `[2.4, 2.5]` collaps
 entry, and only the second is a note the menu has to repair.
 
 Which types may hold one is `src/domain/itemTypes.ts`'s `mayHoldField`, which refuses `release`
-for every marker: the reading end's own refusal (`membershipTarget`, `src/domain/releases.ts`)
-stated at the writing end, so a hand-edit and a menu pick cannot disagree about what a release
-holds. That vocabulary is also what ✨ Assign missing properties backfills from, so adopting
-the property now stubs an empty membership key on every note whose type may hold one. The
-menu's own gate is narrower than the field rule: `canSetRelease` asks `inPlan` beside it, so a
-test-catalog note receives the stubbed key and is still offered no release.
+for every marker AND for a test-catalog type: the reading end's own refusal (`membershipTarget`,
+`src/domain/releases.ts`) stated at the writing end, so a hand-edit and a menu pick cannot
+disagree about what a release holds. Both halves of that reader are here, because the writing
+end asks this function alone — `refusesLiveType` holds a type NAME and no item — and a
+membership planned against a `PBI` and applied after a retype to `Test case` would otherwise
+land on a catalog note the reader reports as unresolved and no control can clear (Codex, PR
+#201). What a name cannot answer is still the item question: `Task` is on both ladders, so a
+task under a test suite is admitted by the field rule and refused by `inPlan` at the two doors
+that hold an item. That vocabulary is also what ✨ Assign missing properties backfills from, so
+adopting the property now stubs an empty membership key on every note whose type may hold one —
+`Test suite` and `Test case` are not among them, while a `Task` under one still receives the
+stub and is still offered no release, since `canSetRelease` asks `inPlan` beside the field
+rule.
 
 The write is planned by `src/domain/writePlan.ts`'s `computeReleaseWrites` — the membership key
 alone, with no timeframe copied beside it the way joining an iteration copies one — and applied

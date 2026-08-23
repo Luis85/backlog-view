@@ -215,6 +215,27 @@ describe('the writer asks the LIVE type about a release membership', () => {
 		expect(outcome.changed).toBe(false);
 	});
 
+	it('refuses a membership on a note retyped into the test catalog', async () => {
+		// A marker is not the only carrier the reader refuses: `membershipTarget` asks
+		// `inPlan` too, so a catalog note wearing a membership is reported unresolved and
+		// `canSetRelease` draws no action to take it off again.
+		const vault = new FakeVault();
+		vault.addFile('2.4.md', { frontmatter: { type: 'Release' } });
+		vault.addFile('1.0.md', { frontmatter: { type: 'PBI' } });
+		const model = buildModel(vault.app, vault.entries(), releaseSettings);
+		const item = model.byPath.get('1.0.md');
+		const release = model.byPath.get('2.4.md');
+		if (!item || !release) throw new Error('fixture did not build');
+		const writes = computeReleaseWrites(item, release, releaseSettings);
+		expect(writes).toEqual([{ file: item.file, release: release.file }]);
+
+		vault.fm('1.0.md').type = 'Test case';
+		const outcome = await applyWrites(vault.app, releaseSettings, writes);
+
+		expect(vault.fm('1.0.md')).toEqual({ type: 'Test case' });
+		expect(outcome.changed).toBe(false);
+	});
+
 	it('lets a REMOVAL through, which is the only way this key comes off a marker', async () => {
 		// The guard's stated exemption, checked rather than claimed: `stated()` reads a
 		// `null` as not-stated, so the removal lands on the very type the write above is

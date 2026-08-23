@@ -458,11 +458,13 @@ export function addIterationItems(host: BacklogViewHost, menu: Menu, item: Backl
  * **The type half is the READER's own pair**, `inPlan` and `mayHoldField(…, 'release', …)`
  * — exactly what `membershipTarget` (`domain/releases.ts`) refuses a carrier for, so no
  * pick here can write a membership the release view will then report as unresolved. The
- * two are not redundant, and that is `membershipTarget`'s own note: `inPlan` excludes the
- * catalog and the iterations while ADMITTING a `Milestone` and a `Release`, and the field
- * rule is what refuses those. Written as one of them alone, a hand-edit and a menu pick
- * would disagree about what may hold a release, which is the one thing the reader's
- * refusals exist to prevent.
+ * two are not redundant, and what each buys is what the other cannot see: `inPlan` reads
+ * the LADDER, so it refuses a `Task` under a test suite that no type NAME could answer,
+ * while the field rule refuses the `Milestone` and the `Release` that `inPlan` admits.
+ * They overlap on the catalog TYPES, deliberately — the field rule carries that half
+ * because `refusesLiveType` (`storage/frontmatter.ts`) asks it with a name and no item.
+ * Written as one of them alone, a hand-edit and a menu pick would disagree about what may
+ * hold a release, which is the one thing the reader's refusals exist to prevent.
  *
  * **The KEY gate follows from none of the others**, exactly as it does for the iteration:
  * a vault can hold `Release` notes with the property unnamed, so the target list is

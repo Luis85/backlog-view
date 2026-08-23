@@ -21,6 +21,20 @@ describe('which types may hold a release', () => {
 		}
 	});
 
+	it('refuses a test-catalog type, which is not the PLAN\'s work', () => {
+		const settings = settingsWith({ releaseKey: 'release' });
+		// The reader refuses these through `inPlan` rather than through the marker
+		// predicate, and the writing end asks this function alone — `refusesLiveType`
+		// holds a type NAME and no item — so the catalog half has to be here or a
+		// membership survives a retype to a catalog type and lands unclearable.
+		for (const catalog of ['Test suite', 'Test case']) {
+			expect(mayHoldField(catalog, 'release', settings)).toBe(false);
+		}
+		// `Task` is on both ladders, so a name cannot answer it: it stays admitted here
+		// and is refused by `inPlan` at the two doors that hold an item.
+		expect(mayHoldField('Task', 'release', settings)).toBe(true);
+	});
+
 	it("leaves every other field's answer exactly as it was", () => {
 		const settings = settingsWith({ releaseKey: 'release' });
 		// The guard this task edits carries a warning against widening it. These are the

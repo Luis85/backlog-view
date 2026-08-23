@@ -525,9 +525,12 @@ function narrowReadings(readings: StatedEnds, ends: PlacementEnd[]): StatedEnds 
  * time — exactly what this function exists to stop trusting.
  *
  * The release membership is on that list for the same reason and not by being near it:
- * `canSetRelease` refuses a marker, so a membership landed on one is offered by no control
- * either, while `membershipTarget` (`domain/releases.ts`) goes on reporting the note as an
- * unresolved membership for as long as it sits there.
+ * `canSetRelease` refuses a marker and a catalog note, so a membership landed on one is
+ * offered by no control either, while `membershipTarget` (`domain/releases.ts`) goes on
+ * reporting the note as an unresolved membership for as long as it sits there. The catalog
+ * half of that reader lives in `mayHoldField` rather than beside it here (Codex, PR #201):
+ * this function holds a type NAME and no item, so `inPlan` is not a question it can ask,
+ * and a retype to `Test case` would walk past a marker-only rule.
  *
  * The whole batch is refused, loudly, exactly as a stale date batch is — this is a
  * gesture the user made against a note that is no longer the note they made it against.
