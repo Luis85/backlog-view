@@ -73,8 +73,9 @@ describe('the Deliverables board', () => {
 	 * `Work` when it built the PLAN's forest, because the release between the two is
 	 * excluded and `inPlan` refuses one; reading that stamp here took `Work` off the only
 	 * face it appears on at all, and this board has no card of its own to have shown it
-	 * instead. `drawsForest` (`src/view/projection.ts`) is what makes the stamp readable
-	 * only where it was made.
+	 * instead. `drawsForestFrom` (`src/view/projection.ts`) is what makes the stamp readable
+	 * only where it was made — false for this board on its first term, before any origin is
+	 * read.
 	 *
 	 * The second assertion is the fixture guard: without the stamp the case poses no
 	 * question, and the test would pass for no reason.

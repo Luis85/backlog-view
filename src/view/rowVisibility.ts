@@ -59,13 +59,18 @@ export interface VisibilityRule {
 	 * `drawsForestFrom` call. Both read `host.projection` today, so they cannot disagree;
 	 * the rule is what makes that true of one of them rather than of both.
 	 *
-	 * **Where the two halves can currently differ is the CARD face and not this clause**,
-	 * and that is a fact about today's populations rather than a rule: the only origin a
-	 * forest-drawing projection admits that the forest never held is a grid axis's
-	 * `Iteration`, and `model.iterations` (`domain/model.ts`) excludes an `outsideFilter`
-	 * one — so no such row ever reaches a clause that only an `outsideFilter` row reaches.
-	 * Stated the same way in both places all the same: the clause that has to remember a
-	 * second reading is the one that gets it wrong when that fact changes.
+	 * **Both halves are reachable with a non-member origin, this clause included.** The
+	 * only such origin a forest-drawing projection admits is a grid axis's `Iteration`, and
+	 * the roadmap's own ROW SOURCE never carries an `outsideFilter` one — `model.iterations`
+	 * (`domain/model.ts`) excludes it. That governs `roadmapRows` and nothing else:
+	 * `listedChildren` (`childrenList.ts`) hands the walk arbitrary `item.children`, where
+	 * `projectionMember` admits an excluded iteration on a grid axis just the same. So such
+	 * a row DOES reach the clause below, and the origin term is load-bearing here too —
+	 * pinned by "keeps an excluded iteration on the face while it places drawn work"
+	 * (`test/view/cardChildren.test.ts`), which the projection-only answer reds. An earlier
+	 * version of this paragraph said the two halves could differ on the card face alone,
+	 * argued from `model.iterations`; that is an insufficient condition for the wider claim,
+	 * and the wider claim was false.
 	 */
 	drawsForestFrom: (origin: BacklogItem) => boolean;
 }
@@ -196,10 +201,12 @@ export function rowHidden(item: BacklogItem, rule: VisibilityRule): boolean {
  * `projectionForest` together, so a walk that is not the forest's meets it on rows nothing
  * here promoted. On the iteration board that took an in-sprint `PBI` off its carrier's face
  * while the same board drew its own card for it — a card's list disagreeing with the board
- * it is drawn on. It is the ORIGIN's answer and is carried unchanged down the recursion:
- * the rows this walk passes THROUGH are by definition not members of anything, so asking
- * it of this function's own `item` would answer for the excluded `Release` at every level
- * below the first. Who answers which
+ * it is drawn on. It is the ORIGIN's answer and is carried unchanged down the recursion: a
+ * row the walk passes THROUGH is one this projection does not DRAW, and whether it is a
+ * forest MEMBER is not the question the stop asks — a `Release` the Base returned is in the
+ * plan's forest and is refused by `onThisRoadmap` alone. So asking the stop of this
+ * function's own `item` answers a question about the traversed `Release` rather than about
+ * the walk that met the stamp. Who answers which
  * way, and why, is `drawsForestFrom` (`projection.ts`); nothing about it is decided here.
  *
  * Here rather than in `childrenList.ts`, where it was written, because `rowHidden` above

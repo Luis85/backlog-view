@@ -201,7 +201,8 @@ describe('children on the card', () => {
 	 * The DEPTH used to be what separated this from the test above — the stop was asked only
 	 * on the way up, and here the stamped row is a direct child. That reading was wrong one
 	 * level down and the test below is what says so; what separates the two now is
-	 * `drawsForest`, which is a question about the projection rather than about the walk.
+	 * `drawsForestFrom` (`src/view/projection.ts`), which is a question about the projection
+	 * and the walk's origin rather than about the row the walk has reached.
 	 */
 	it('lists a focus root that is a card’s own direct child, where nothing promoted it', () => {
 		const vault = new FakeVault();
@@ -615,6 +616,41 @@ describe('children on the card', () => {
 		const card = cardByTitle(containerEl, 'Feature X');
 		disclosure(card)?.click();
 
+		expect(kidTitles(card)).toEqual(['Task X1', 'Sprint 12']);
+	});
+
+	/**
+	 * **The same origin question asked of `rowHidden`'s scaffold clause**, which is the
+	 * OTHER reader of `drawsForestFrom` (`src/view/projection.ts`) and the one a paragraph
+	 * stood in for until 2026-08-23.
+	 *
+	 * `Sprint 12` is left out of the Base, so it is a context row — and a grid axis admits
+	 * an `Iteration` all the same (`projectionMember`), so it stays a listed child of
+	 * `Feature X` only while something below it is visible. That question is asked with the
+	 * ORIGIN's answer: `inPlan` refuses an `Iteration`, so the plan's forest promoted
+	 * `Work` — stamped `focusRoot` — because its parent is not a member of it, and reading
+	 * the stamp as this roadmap's own promotion empties the scaffold and takes `Sprint 12`
+	 * off the face.
+	 *
+	 * Watched failing against exactly the projection-only answer this call site had before
+	 * (`drawsForestFrom: () => projection !== 'iteration' && projection !== 'deliverables'`):
+	 * `expected '1 task' to be '2 children'`. The LABEL and the list are both asserted
+	 * because either alone is weaker — a mixed pair has no common name and degrades to
+	 * `2 children`, so the label says the iteration is one of the two rather than only that
+	 * two rows are listed. The `focusRoot` guard is the fixture's own: with no stamp on
+	 * `Work` the stop could not fire either way and the test would pass for no reason.
+	 */
+	it('keeps an excluded iteration on the face while it places drawn work', () => {
+		const vault = datedVault();
+		vault.addFile('Sprint 12.md', { frontmatter: { type: 'Iteration', order: 20 }, parentLink: 'Feature X' });
+		vault.addFile('Work.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: 'Sprint 12' });
+		const only = ['Dated epic.md', 'Feature X.md', 'Task X1.md', 'Work.md'];
+		const { view, containerEl } = makeRoadmap(vault, DATED_AXIS, { only });
+
+		expect(view.model?.byPath.get('Work.md')?.focusRoot).toBe(true);
+		const card = cardByTitle(containerEl, 'Feature X');
+		expect(disclosure(card)?.textContent).toBe('2 children');
+		disclosure(card)?.click();
 		expect(kidTitles(card)).toEqual(['Task X1', 'Sprint 12']);
 	});
 

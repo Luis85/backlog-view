@@ -151,7 +151,9 @@ BECAUSE their parent is not a member of the plan's forest. Read as a promotion t
 had made, the stop emptied that card: no disclosure and no children entry in its menu. The
 membership predicate is the one the forest was built with — `inCatalog` for the catalog's,
 `inPlan` for the plan's — computed once by the caller and carried unchanged down the
-recursion, since the rows the walk passes THROUGH are members of nothing. The walk itself
+recursion, since a row the walk passes THROUGH is one this projection does not DRAW, and
+whether it is a forest MEMBER is not the question the stop asks: a `Release` the Base
+returned is in the plan's forest and is refused by the roadmap's axis alone. The walk itself
 is
 `drawnDescent` in `src/view/rowVisibility.ts`, because `rowHidden` needs the same descent
 for the same reason — a context row is an empty scaffold only when nothing is visible below

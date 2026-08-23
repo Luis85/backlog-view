@@ -21,9 +21,9 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   is drawn BENEATH it, whatever rows lie in between. It still goes when nothing is left
   under it — including when the work it was placing is drawn in its own right instead of as
   its child, which is what happens when the row between the two is a release the base
-  excludes. Filtering a row out is not on its own what promotes the work: an excluded
-  feature between the two is still shown for context, and everything under it stays its
-  child.
+  excludes, or a sprint, which the plan does not hold whether or not the base returns it.
+  Filtering a row out is not on its own what promotes the work: an excluded feature between
+  the two is still shown for context, and everything under it stays its child.
   The same reading reaches the iteration board, where it ADDS a card rather than restoring
   one: a parent shown for context appears there when a task committed to the sprint hangs
   below it through a story that is not in the sprint.
