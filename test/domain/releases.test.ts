@@ -138,7 +138,11 @@ describe('the release index', () => {
 	it('calls an empty or malformed label unreadable, never absent', () => {
 		const vault = new FakeVault();
 		// 3b names the empty version explicitly: somebody wrote something there.
-		vault.addFile('Empty.md', { frontmatter: { type: 'Release', version: '', status: { a: 1 } } });
+		vault.addFile('Empty.md', { frontmatter: { type: 'Release', version: '', status: { a: 1 }, 'target-date': '' } });
+		// Whitespace-only asserted beside it rather than assumed equivalent: `readTarget`'s
+		// own guard trims, so this is the SAME guard answering rather than two readers
+		// agreeing about what a blank is.
+		vault.addFile('Blank.md', { frontmatter: { type: 'Release', 'target-date': '   ' } });
 		// A LIST is unreadable too, and it is the one `readString` would quietly unwrap to
 		// its first element and call clean.
 		vault.addFile('Listed.md', {
@@ -160,6 +164,16 @@ describe('the release index', () => {
 		const empty = rows.find((r) => r.name === 'Empty');
 		expect(empty?.version).toEqual({ value: null, invalid: true, unconfigured: false });
 		expect(empty?.status).toEqual({ value: null, invalid: true, unconfigured: false });
+		// The DATE keeps the same rule, and `readDate` alone does not: it trims and calls a
+		// blank string ABSENT, so an empty `target-date` would read as a key nobody bound
+		// while an empty `version` beside it reads as somebody's mistake. Two readers in one
+		// file answering one spelling two ways is what 3b refuses.
+		expect(empty?.target).toEqual({ value: null, invalid: true, unconfigured: false });
+		expect(rows.find((r) => r.name === 'Blank')?.target).toEqual({
+			value: null,
+			invalid: true,
+			unconfigured: false,
+		});
 		// A key the note simply does not carry stays absent — the third answer.
 		const missing = rows.find((r) => r.name === 'Missing');
 		expect(missing?.version).toEqual({ value: null, invalid: false, unconfigured: false });
