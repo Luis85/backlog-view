@@ -1537,4 +1537,27 @@ export const en = {
 	'release.empty.noReleases.title': 'No releases in this base',
 	'release.empty.noReleases.hint':
 		'A release is a note typed Release, carrying a version and a target date. Add one to the vault and it appears here.',
+
+	/** The index grid's five column headings. Each names a COLUMN, so each is also what
+	 *  `release.index.absentColumns` lists when the column's key is unbound — one name per
+	 *  column, never a second spelling for the note beneath the grid. */
+	'release.index.column.name': 'Release',
+	'release.index.column.version': 'Version',
+	'release.index.column.target': 'Target',
+	'release.index.column.status': 'Status',
+	'release.index.column.members': 'Items',
+	/** A target date the release note does not state — a legitimate answer, and a
+	 *  different one from {@link release.index.unreadable} below. */
+	'release.index.noTarget': 'No target date',
+	/** A key that IS bound and holds something no reader will guess at: somebody wrote
+	 *  something there, which is neither an absent value nor an unbound key. */
+	'release.index.unreadable': 'Unreadable',
+	/** The unconfigured columns, named once beneath the grid. `{columns}` is an array, so
+	 *  it is joined by the catalog's own grammar rather than by a joiner at the call. */
+	'release.index.absentColumns': 'These columns are not shown because no property is bound: {columns}.',
+	/** The items whose membership value named no release this base holds. */
+	'release.index.unresolved': {
+		one: '{count} item names a release that could not be resolved.',
+		other: '{count} items name a release that could not be resolved.',
+	},
 } as const;

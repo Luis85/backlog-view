@@ -19,7 +19,8 @@ assignee: ""
 **As** someone planning several releases, **I want** every release as a row with its own
 numbers, **so that** I can see the whole plan on one screen and open any of it from there.
 
-Nothing yet. It is the view's entry point, so it is also where a release gets picked at all.
+The rows have shipped. It is the view's entry point, so it is also where a release gets picked
+at all.
 
 ## Use case
 
@@ -96,18 +97,32 @@ The rows derive from the same `src/domain/releases.ts` as the single-release fig
 model in `src/domain/model.ts`, so no figure is computed twice.
 
 The screen itself is a Bases view of its own — `src/view/release/releaseView.ts`, registered by
-`src/view/release/register.ts` — and not a projection of the backlog view. That is what decides
-where the list will live: a render module under `src/view/release/`, drawing its own read-only
+`src/view/release/register.ts` — and not a projection of the backlog view. That is what decided
+where the list lives: a render module under `src/view/release/`, drawing its own read-only
 rows rather than reusing `src/view/render/rows.ts`, which takes a `BacklogViewHost` and wires
 menus, create prompts and drag into every row. What it does reuse is the stylesheet
 (`styles/release.css`) and `guidanceShell` from `src/view/render/emptyStates.ts`, which is the
 reuse the estimation view already settled on.
 
-**What has SHIPPED is the frame, not the rows.** `releaseView.ts` resolves this view's own
-settings, holds the pick, answers both unconfigured states and decides which screen it is on;
-where a row would be drawn it calls a stub. The rows described above are the work that
-replaces that stub, and until then this section describes the module that will hold them
-rather than one that does.
+The module that holds them is `src/view/release/renderIndex.ts`. It draws the five-column
+grid, one row per release in the order `src/domain/releases.ts` decided, the two notes beneath
+the grid — the unconfigured columns named once, and the count of items whose membership
+resolved to nothing — and it wires the pick. It re-sorts nothing and it derives nothing: every
+figure on a row arrives from `releaseIndex`, which is what keeps a row and a release header from
+disagreeing.
+
+A row is a real tab stop carrying `role="button"`, activated by a click, by Enter and by Space.
+Picking a release is this view's whole navigation, so a pointer-only row would put the scope
+screen out of reach of a keyboard; it is not a native `<button>` because `.pbl-rel-row` is
+`display: contents`, which one grid holding every row's cells depends on and which a form
+control does not reliably survive.
+
+**What has SHIPPED is the row, not every figure on it.** Name, version, target date, status and
+the member count are drawn; progress, commitment against capacity and slip are not derived
+anywhere yet, so extensions 2b and 2c and the criteria naming slip describe work still to do
+rather than behaviour to check. The single-release screen beside it is still a stub
+(`renderScope.ts`, its own task), so the criterion that a row's figures equal that screen's is
+unreachable until it lands.
 
 This note said the module sat in `src/view/render/` beside `src/view/render/board.ts` and that
 the picked release was held in `src/view/viewState.ts` through `src/view/viewStateController.ts`.

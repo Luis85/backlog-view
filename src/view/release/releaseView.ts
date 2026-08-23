@@ -2,11 +2,12 @@ import { BasesView, QueryController } from 'obsidian';
 import { t } from '../../i18n/t';
 import { BacklogModel, buildModel } from '../../domain/model';
 import { ReleaseSettings, resolveReleaseSettings } from '../../domain/releaseOptions';
-import { releaseIndex, releaseScope, ReleaseIndex, ReleaseScope } from '../../domain/releases';
+import { releaseIndex, releaseScope, ReleaseScope } from '../../domain/releases';
 import { resolveSettings } from '../../domain/settingsResolve';
 import { loadViewState, saveViewState } from '../../storage/viewStateStore';
 import { resolveViewIdentity } from '../../storage/viewIdentity';
 import { guidanceShell } from '../render/emptyStates';
+import { renderIndex } from './renderIndex';
 
 export const RELEASE_VIEW_TYPE = 'product-release';
 
@@ -127,17 +128,12 @@ export class ReleaseView extends BasesView {
 }
 
 /**
- * The two screens' frames, and nothing else yet — the rows, the figures and the header's
- * facts are Tasks 8 and 9, which replace each of these with a render module of its own
- * (`renderIndex.ts` / `renderScope.ts`, per the design). They are here rather than in
- * those files so that this task's own claim — which screen the view chooses, and when —
- * is drivable on its own, and so that the two modules arrive with their tests rather than
- * as empty files nothing asserts about.
+ * The SCOPE screen's frame, and nothing else yet — the header's facts and the read-only
+ * tree are Task 9, which replaces this with `renderScope.ts` the way `renderIndex.ts`
+ * replaced the index's own stub. It is here rather than in that file so that this view's
+ * own claim — which screen it chooses, and when — stays drivable on its own, and so that
+ * the module arrives with its tests rather than as an empty file nothing asserts about.
  */
-function renderIndex(view: ReleaseView, _index: ReleaseIndex): void {
-	view.viewEl.createDiv({ cls: 'pbl-rel-list' }).createDiv({ cls: 'pbl-rel-grid' });
-}
-
 function renderScope(view: ReleaseView, _scope: ReleaseScope): void {
 	view.viewEl.createDiv({ cls: 'pbl-rel-header' });
 }

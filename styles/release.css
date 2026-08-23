@@ -39,7 +39,11 @@
    rows are `display: contents` for that reason: one grid, not a grid per row. */
 .pbl-rel-grid {
 	display: grid;
-	grid-template-columns: 1fr auto auto auto auto;
+	/* The track list is the view's, because the COLUMN COUNT is: a figure whose key nobody
+	   bound is absent for every row, so a grid fixed at five tracks would leave the drawn
+	   cells spreading over tracks nothing fills. The fallback is the fully configured
+	   shape, so the partial still reads as the layout it draws. */
+	grid-template-columns: var(--pbl-rel-columns, 1fr auto auto auto auto);
 	align-items: center;
 }
 
@@ -80,6 +84,22 @@
 	background-color: var(--background-modifier-hover);
 }
 
+/* A row is a real tab stop — picking a release is this view's whole navigation — so it
+   needs a visible focus indicator, and for the hover's reason it cannot have one of its
+   own: an outline on a `display: contents` element paints nothing at all. Two inset edges
+   rather than an outline per cell, which would draw a box around every column; these join
+   into one band across the row. */
+.pbl-rel-row:focus-visible {
+	outline: none;
+}
+
+.pbl-rel-row:focus-visible > div {
+	background-color: var(--background-modifier-hover);
+	box-shadow:
+		inset 0 1px 0 var(--interactive-accent),
+		inset 0 -1px 0 var(--interactive-accent);
+}
+
 .pbl-rel-name {
 	min-width: 0;
 	font-weight: var(--font-medium);
@@ -114,6 +134,14 @@
 
 .pbl-rel-undated {
 	color: var(--text-faint);
+	font-style: italic;
+}
+
+/* A key that IS bound and holds something no reader will guess at — somebody wrote
+   something there. Deliberately not `.pbl-rel-undated`'s faint: an absent value is
+   ordinary, a malformed one is a mistake to find. */
+.pbl-rel-unreadable {
+	color: var(--text-error);
 	font-style: italic;
 }
 
