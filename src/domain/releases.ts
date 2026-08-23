@@ -202,8 +202,9 @@ export function releaseIndex(app: App, model: BacklogModel, settings: ReleaseSet
  * Returned when a membership value exists but names no release this base holds.
  *
  * Module-private, with {@link membershipTarget}, until something outside this file reads
- * them: an export nothing imports is dead surface and `npm run analyze` says so. Task 5's
- * single-release scope is the consumer that earns both an `export`.
+ * them: an export nothing imports is dead surface and `npm run analyze` says so.
+ * {@link releaseScope} is the second consumer and it lives HERE, so it earns neither one
+ * an `export` — the first thing that reads either from another module will.
  */
 const UNRESOLVED = Symbol('unresolved membership');
 
@@ -267,4 +268,91 @@ function membershipTarget(
 	const file = app.metadataCache.getFirstLinkpathDest(linkpathFromRawValue(text), item.file.path);
 	if (file === null) return UNRESOLVED;
 	return releasePaths.has(file.path) ? file.path : UNRESOLVED;
+}
+
+export interface ScopeRow {
+	item: BacklogItem;
+	/** Depth within THIS tree, not the backlog's — the scope re-roots at its own members. */
+	depth: number;
+	/** True for an ancestor drawn only to keep a member in its place. */
+	context: boolean;
+}
+
+export interface ReleaseScope {
+	release: ReleaseRow | null;
+	rows: ScopeRow[];
+	members: number;
+}
+
+/**
+ * The scope of one release: its members, and the ancestors that hold them in place.
+ *
+ * **Membership never cascades, in either direction.** An ancestor is scaffolding — not a
+ * member, not counted, and marked as context so its number-free row is not read as a
+ * zero. Inheriting down would put in the release work nobody named; inferring up would
+ * put in it an Epic whose other children ship later.
+ *
+ * A context ancestor is drawn regardless of its own state: hiding it would break the
+ * member's place, and it is scaffolding rather than something the reader asked to see.
+ */
+export function releaseScope(app: App, model: BacklogModel, settings: ReleaseSettings, path: string): ReleaseScope {
+	const release = releaseIndex(app, model, settings).rows.find((row) => row.path === path) ?? null;
+	if (release === null) return { release: null, rows: [], members: 0 };
+
+	const releasePaths: ReadonlySet<string> = new Set(model.releases.map((r) => r.file.path));
+	const members = new Set<string>();
+	// Members plus every ancestor that holds one in place — **except the two kinds walked
+	// THROUGH rather than kept.**
+	//
+	// Two rules meet at the first of them and both say the same thing. `Releases as their
+	// own type` 4a: an excluded release "never arrives as a context row" and "appears as no
+	// row anywhere" — and because this plan keeps the hand-written parent edge, a member
+	// filed under a release would otherwise drag that release in as a context ancestor,
+	// excluded or not. And the model's own rule: `descendantCount` scores a marker 0 and
+	// traverses through it, so a marker is never the thing that holds a row in place; the
+	// real ancestor above it is.
+	const keep = new Set<string>();
+	for (const item of scannableRows(model)) {
+		if (membershipTarget(app, item, releasePaths, settings) !== path) continue;
+		members.add(item.file.path);
+		keep.add(item.file.path);
+		for (let up = item.parent; up !== null; up = up.parent) {
+			// Both skips CONTINUE the walk upward rather than stopping it — an included
+			// ancestor further up is still the member's rightful place.
+			//
+			// A MARKER, for the two reasons above, and because a release drawn inside another
+			// release's scope is nonsense.
+			//
+			// An `outsideFilter` ancestor, because it is not in the results.
+			// `showOutsideParents` DEFAULTS TO TRUE, so an excluded Epic between a member and
+			// the top is loaded as a context row and would otherwise be rendered here — and
+			// extension 2a says a member whose ancestor is missing from the results is drawn
+			// at the top level, not under it. It is also the register's context-row rule
+			// verbatim: such a row is never a source of anything derived from the results,
+			// and being somebody's scaffolding in THIS projection is exactly that.
+			if (isMarkerType(up.typeName) || up.outsideFilter) continue;
+			keep.add(up.file.path);
+		}
+	}
+
+	const rows: ScopeRow[] = [];
+	const walk = (item: BacklogItem, depth: number): void => {
+		// A row that is not kept is walked THROUGH, never stopped at. A member filed under a
+		// marker — the hand-written parent edge this plan deliberately keeps — has that
+		// marker as an ancestor, and a marker is never kept; returning here would drop the
+		// MEMBER along with it while the header went on counting it, so the scope and the
+		// index would disagree about one release. That is the one defect this module exists
+		// to prevent. Descending without drawing it leaves the depth alone too, so the
+		// member re-roots at the level the marker occupied.
+		const kept = keep.has(item.file.path);
+		if (kept) rows.push({ item, depth, context: !members.has(item.file.path) });
+		for (const child of item.children) walk(child, kept ? depth + 1 : depth);
+	};
+	// From the model's REAL roots, not its rendered ones: a focus level set on the backlog
+	// view must not decide what a release's scope contains. A member whose ancestor is
+	// absent from the results is an orphan, which `linkAll` makes a root of that same list,
+	// so the walk reaches it at depth 0 with no branch of its own.
+	for (const root of model.realRoots) walk(root, 0);
+
+	return { release, rows, members: members.size };
 }
