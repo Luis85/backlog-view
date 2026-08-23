@@ -1116,6 +1116,14 @@ export const en = {
 	'move.announced': 'Moved "{title}" from {from} to {to}',
 	'move.announcedLanding': 'Moved "{title}" from {from} to {to}, {landing}',
 
+	/**
+	 * The release move's own pair — there is no on-screen column or bucket to translate
+	 * a release through (a release is not a rendered axis in this view), so the sentence
+	 * names the release directly rather than through `move.announced`'s from/to shape.
+	 */
+	'move.releaseAnnounced': 'Added "{title}" to {name}',
+	'move.releaseCleared': 'Removed "{title}" from its release',
+
 	/** The bar's dependency connector. `{title}` is the note's own title. */
 	'link.drawDependency': 'Draw a dependency from {title}',
 

@@ -102,6 +102,18 @@ export function announceHorizonMove(
 }
 
 /**
+ * The release move's own sentence — not `announceMove`'s from/to shape, because a
+ * release is not a rendered column or bucket in this view: there is no axis to
+ * translate a value through, only the release note's own name. `name` is the target
+ * release's title, or null to clear the membership key, and it is a parameter rather
+ * than a lookup here so the caller — `performReleaseMove` — is the one place that
+ * decides when it was captured.
+ */
+export function announceReleaseMove(title: string, name: string | null): void {
+	announce(name ? t('move.releaseAnnounced', { title, name }) : t('move.releaseCleared', { title }));
+}
+
+/**
  * The resources axis's own pair, asked of two functions for the same reason the horizon
  * axis has two — what the note SAID and where the user SENT it are different questions,
  * and answering them once cost a cleanup being reported as no change.

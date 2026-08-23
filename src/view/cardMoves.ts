@@ -11,6 +11,7 @@ import {
 	computeHorizonWrites,
 	computeIterationJoinWrites,
 	computeIterationWrites,
+	computeReleaseWrites,
 	computeResourceMoveWrites,
 	computeScheduleWrites,
 	computeStateWrites,
@@ -27,6 +28,7 @@ import {
 	announceBoardMove,
 	announceHorizonMove,
 	announceMove,
+	announceReleaseMove,
 	announceResourceMove,
 	announceScheduleMove,
 } from './interactions/cardDrag';
@@ -146,6 +148,26 @@ export class CardMoveController {
 		const buckets = this.host.roadmap?.roadmap;
 		return this.applyCardMove(item, computeHorizonWrites(item, horizon), () =>
 			announceHorizonMove(buckets, item.title, from, horizon),
+		);
+	}
+
+	/**
+	 * A release membership move — the target's own file, or `null` to remove the key.
+	 * Unlike the board and horizon axes, a release is not a column or bucket this view
+	 * draws, so there is no rendered vocabulary to translate a value through: the
+	 * release's own title IS the word to announce.
+	 *
+	 * `name` is captured here, before `applyCardMove`'s await, for the same reason
+	 * `performHorizonMove` captures `buckets` first: the write's own refresh can rebuild
+	 * `host.model` before this await resolves, and a release note gone from the vault —
+	 * or simply out of the base's results — in that same tick would leave nothing to
+	 * look up afterwards. Reading `target.title` straight off the argument, once, before
+	 * the write, means the announcement never depends on the release still being there.
+	 */
+	async performReleaseMove(item: BacklogItem, target: BacklogItem | null): Promise<boolean> {
+		const name = target ? target.title : null;
+		return this.applyCardMove(item, computeReleaseWrites(item, target, this.host.settings), () =>
+			announceReleaseMove(item.title, name),
 		);
 	}
 
