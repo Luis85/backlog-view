@@ -62,8 +62,15 @@ release notes share a basename.
   an empty string is a value and an item in no release has none.
 - **1c — the user cannot drag.** The keyboard and the context menu offer the same releases and
   write the identical batch.
-- **1d — the target release note is outside the Base's filter.** It is not offered, and a batch
-  naming it is refused whole.
+- **1d — the target release note is outside the Base's filter.** It is not offered — by
+  construction, `model.releases` excludes every `outsideFilter` row, so a menu built from the
+  current model has no entry to pick. **A batch naming an excluded target is not refused**:
+  `applySafely` (`src/view/writeGate.ts`) checks `writes.some((w) =>
+  this.host.outsideFilter(w.file.path))`, which reads only the write's own `file` — the note
+  being edited, never `release`, the target the write names. So a submenu opened before the
+  model rebuilds, over a target that then leaves the filter while the menu is still open, can
+  still commit a link to it on pick. [[A stale release or iteration target can still be
+  committed]] records the gap; it is shared with `Set iteration`, unfixed here on purpose.
 - **1e — the item is outside the Base's filter.** No such action is offered on it, and a batch
   naming it is refused whole — the context rule, at the entry point and again at the gate.
 - **1f — the row is not plan work** — a `Milestone`, an `Iteration`, another `Release`, or a
@@ -103,8 +110,11 @@ release notes share a basename.
   — where the note names that release and no other. A note naming two is rewritten to the one
   picked, and ticks nothing until it does.
 - Picking "no release" removes the key; it never writes an empty value.
-- A target release the Base excluded is not offered, and a batch naming it — or naming an
-  excluded item — is refused whole rather than partly applied.
+- A target release the Base excluded is not offered. **Met for the item; not for the
+  target**: `applySafely` (`src/view/writeGate.ts`) refuses whole any batch naming an
+  excluded item, the same check every write path in this view shares, but a batch naming
+  an excluded target release is not refused — see [[A stale release or iteration target
+  can still be committed]].
 - No release action is offered on a `Milestone`, an `Iteration`, a `Release` or a test-catalog
   note, and such a note carrying a membership value by hand is in no release's member count.
 - Two releases whose notes share a basename are distinguishable in the picker and resolve to
