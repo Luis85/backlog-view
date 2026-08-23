@@ -869,6 +869,7 @@ export const en = {
 	'property.testState': 'test state',
 	'property.iteration': 'iteration',
 	'property.iterationGoal': 'iteration goal',
+	'property.release': 'release',
 
 	/**
 	 * The menus — the row and card menu in `view/interactions/menu.ts`, the shelf's picks

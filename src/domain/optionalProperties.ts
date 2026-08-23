@@ -41,7 +41,8 @@ export type OptionalField =
 	| 'deliverableState'
 	| 'testState'
 	| 'iteration'
-	| 'iterationGoal';
+	| 'iterationGoal'
+	| 'release';
 
 /**
  * The `BacklogSettings` field one optional property's key lands in. Spelled as a union
@@ -62,7 +63,8 @@ export type OptionalSettingsKey =
 	| 'deliverableStateKey'
 	| 'testStateKey'
 	| 'iterationKey'
-	| 'iterationGoalKey';
+	| 'iterationGoalKey'
+	| 'releaseKey';
 
 /**
  * One such property: the option that names it, the key it adopts when nothing does,
@@ -148,6 +150,9 @@ const PROPERTY_TABLE: Record<OptionalField, Omit<OptionalProperty, 'field'>> = {
 	// a write of its own, and unlike every other row here it is never backfilled: see the
 	// `iterationGoal` early return in `missingKeyStubs` (`writePlan.ts`).
 	iterationGoal: { option: 'iterationGoalProperty', suggested: 'goal', settingsKey: 'iterationGoalKey' },
+	// The link an item carries to say which release it ships in — the iteration row's
+	// shape exactly, for the same reason: a placeholder, never matched by name.
+	release: { option: 'releaseProperty', suggested: 'release', settingsKey: 'releaseKey' },
 };
 
 /** The declaration for one field, for the callers that hold a field rather than a row. */

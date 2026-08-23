@@ -409,6 +409,12 @@ export function placementEnds(typeName: string | null, iterationBars: boolean): 
  * document.
  */
 export function mayHoldField(typeName: string | null, field: OptionalField, settings: BacklogSettings): boolean {
+	// A release holds WORK. A marker is not work, so no marker may hold a membership —
+	// the same rule `membershipTarget` (`domain/releases.ts`) already applies at the
+	// reading end, stated here for the writing end. Asked BEFORE the release-type early
+	// return below, which exists to leave every other type's answers alone: this is a new
+	// field's rule and it changes no shipped answer.
+	if (field === 'release') return !isMarkerType(typeName);
 	if (!isReleaseType(typeName)) return true;
 	if (field === 'start' || field === 'target') return placementEnds(typeName, settings.iterationBars).includes(field);
 	// The goal joins the link for its own reason and not by being near it: `saveIteration`

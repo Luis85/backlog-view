@@ -90,6 +90,10 @@ describe('toolbar backfill', () => {
 			priority: '',
 			assignee: '',
 			iteration: '',
+			// `release` newly joined the vocabulary (2026-08-23): nobody has named it either,
+			// so this run's ✨ adopts it exactly like every other unclaimed property and
+			// stubs it on this Epic, which — unlike a `Release` note itself — may hold one.
+			release: '',
 		});
 		expect(view.settings.stateKey).toBe('status');
 		expect(
