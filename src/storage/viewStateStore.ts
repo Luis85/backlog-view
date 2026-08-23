@@ -258,16 +258,19 @@ export interface ViewPrefs {
 	 */
 	colWidths?: Record<string, number>;
 	/**
-	 * The `Iteration` note a board is scoped to, as a vault path — the one value in this
-	 * bucket the VAULT owns, and the reason the comment above this interface carries an
-	 * exception.
+	 * The `Iteration` note a board is scoped to, as a vault path — one of now two values
+	 * in this bucket the VAULT owns ({@link ViewPrefs.release} is the other), and the
+	 * reason the comment above this interface carries an exception.
 	 *
-	 * Two obligations follow, and half of them is not an option. The rename walk must
-	 * reach it, matching the path **or its `oldPath/` prefix**, so a folder anybody tidies
-	 * does not strand every scope inside it. And the prune must NOT: a stale path is
-	 * retained rather than rewritten, since the note may come back — a deletion undone, a
-	 * filter widened, a vault synced late — and spending the reader's choice on a
-	 * condition that is often temporary is worse than an empty board they can leave.
+	 * Two obligations follow from being a note path, and half of them is not an option.
+	 * The rename walk must reach it, matching the path **or its `oldPath/` prefix**, so a
+	 * folder anybody tidies does not strand every scope inside it — `renameScoped` in
+	 * `view/viewState.ts` is that walk today, and `release` is meant to join it there. And
+	 * the prune must NOT: a stale path is retained rather than rewritten, since the note
+	 * may come back — a deletion undone, a filter widened, a vault synced late — and
+	 * spending the reader's choice on a condition that is often temporary is worse than an
+	 * empty board they can leave. That half already holds for `release` as written: `prefs`
+	 * is never pruned by path at all, only `folds` is.
 	 */
 	scope?: string;
 	/**
