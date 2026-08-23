@@ -130,6 +130,26 @@ describe("one release's scope", () => {
 		expect(rows.map((r) => [r.item.file.basename, r.depth])).toEqual([['F', 0]]);
 	});
 
+	it('reads the whole tree, never the focus-projected one', () => {
+		// A focus level is the BACKLOG view's control, and it re-roots `model.roots` at the
+		// topmost rows of that level. Walking from there would drop the Epic that holds this
+		// member in place — so the origin is `realRoots`, and this is what says so.
+		const vault = new FakeVault();
+		vault.addFile('R.md', { frontmatter: { type: 'Release' } });
+		vault.addFile('E.md', { frontmatter: { type: 'Epic' } });
+		vault.addFile('F.md', { frontmatter: { type: 'Feature', parent: 'E', release: '[[R]]' } });
+		const model = buildModel(vault.app, vault.entries(), settingsWith({ focusLevel: 'Feature' }));
+		// The fixture only tests the origin if the focus really moved the root set: with the
+		// two lists equal, both spellings walk the same forest and the assertion below holds
+		// whichever one the code names.
+		expect(model.realRoots.map((r) => r.file.basename)).toEqual(['R', 'E']);
+		expect(model.roots.map((r) => r.file.basename)).toEqual(['F']);
+		expect(releaseScope(vault.app, model, KEYS, 'R.md').rows.map((r) => [r.item.file.basename, r.depth, r.context])).toEqual([
+			['E', 0, true],
+			['F', 1, false],
+		]);
+	});
+
 	it('marks a context ancestor that is itself in another release as context here', () => {
 		const vault = new FakeVault();
 		vault.addFile('R1.md', { frontmatter: { type: 'Release' } });

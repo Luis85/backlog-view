@@ -272,7 +272,12 @@ function membershipTarget(
 
 export interface ScopeRow {
 	item: BacklogItem;
-	/** Depth within THIS tree, not the backlog's — the scope re-roots at its own members. */
+	/**
+	 * Depth within THIS tree, not the backlog's: depth 0 is the topmost KEPT row, which is
+	 * normally a CONTEXT ancestor rather than a member. Every row an ancestor chain passes
+	 * through without keeping — a marker, an excluded row — costs a level, so the tree
+	 * closes up around what it does not draw.
+	 */
 	depth: number;
 	/** True for an ancestor drawn only to keep a member in its place. */
 	context: boolean;
