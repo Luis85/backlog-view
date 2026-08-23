@@ -308,14 +308,17 @@ export class ViewState {
 	 * view's question, asked on every render), and {@link renameScoped} carries it when
 	 * the note moves so a rename does not read as a deletion.
 	 *
-	 * **What that walk REACHES is narrower than the rule it keeps, and the gap is worth
-	 * knowing before trusting it.** This controller belongs to the backlog view, which is
-	 * what subscribes to `vault.on('rename')`; the release view stores its pick through
-	 * `storage/viewStateStore.ts` under its OWN view identity and holds no controller. So
-	 * the carry runs on an entry a `.base` view had while it was a backlog view — a view
-	 * whose type was switched keeps its identity and its entry — and not while the release
-	 * view is the one on screen. Closing that needs a rename walk the release view itself
-	 * subscribes to, which is a separate piece of work from stating the rule here.
+	 * **This controller's carry is one of TWO, and it is not the one that keeps the rule.**
+	 * It belongs to the backlog view, which is what subscribes to `vault.on('rename')`
+	 * here, so it runs on an entry a `.base` view had while it was a backlog view — a view
+	 * whose type was switched keeps its identity and its entry — and never while the
+	 * release view is the one on screen, which is the ordinary case. What keeps the rule
+	 * is `renamePathPrefs` (`storage/viewStateStore.ts`), wired to the same event at the
+	 * PLUGIN in `main.ts`, which walks every stored entry whatever view is loaded.
+	 *
+	 * This one is still needed beside it, and `flush` is why: this controller holds `prefs`
+	 * in memory and saves them WHOLESALE, so a loaded backlog view whose in-memory copy
+	 * still named the old path would write it straight back over the stored walk's answer.
 	 */
 	releasePref(): string | null {
 		return this.prefs.release ?? null;
@@ -614,6 +617,11 @@ export class ViewState {
 	 * that does not follow it silently stops matching. For the release that failure is
 	 * worse than merely silent — a stale path resolves to no release, so a renamed note
 	 * drops the reader to the index indistinguishably from a deleted one.
+	 *
+	 * The STORE has a walk of its own over the same two values (`renamePathPrefs`, wired
+	 * at the plugin), and this is not a duplicate of it: that one covers every stored
+	 * entry whatever view is loaded, this one covers the in-memory `prefs` that `flush`
+	 * writes back wholesale. Neither replaces the other — see `releasePref` above.
 	 */
 	private renameScoped(oldPath: string, newPath: string): boolean {
 		let changed = false;

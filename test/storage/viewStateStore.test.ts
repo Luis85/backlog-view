@@ -7,6 +7,7 @@ import {
 	MIN_TIMELINE_LEAD_PX,
 	PREF_READERS,
 	rekeyBase,
+	renamePathPrefs,
 	saveViewState,
 	ViewFolds,
 	ViewPrefs,
@@ -132,6 +133,63 @@ describe('folds and prefs are different kinds of thing', () => {
 			folds: FULL_FOLDS,
 			prefs: FULL_PREFS,
 		});
+	});
+});
+
+/**
+ * The plugin-level walk over what an entry HOLDS, beside `rekeyBase`'s walk over the key.
+ *
+ * **Every case here asserts the stored VALUE at the new path, and that is the whole
+ * point.** A rename and a deletion end identically on screen — either way the stored path
+ * names no note, `releaseScope` answers `release: null`, and the release view draws the
+ * index — so a test of the form "the index is showing afterwards" is green against the
+ * broken behaviour it exists to catch. `toBe` on the new path fails three ways, each a
+ * different defect: the value stayed put (unwalked), the value went `undefined` (pruned,
+ * which `prefs` must never be), or the value became something else (matched the wrong
+ * thing).
+ */
+describe('a note path a saved view remembers', () => {
+	const RELEASE_ID = { base: 'Plan.base', view: 'Releases' };
+
+	function savePicks(release: string, scope: string): void {
+		saveViewState(vault.app, RELEASE_ID, { folds: emptyFolds(), prefs: { release, scope } });
+	}
+
+	it('follows the note to its new path, in an entry no view is holding open', () => {
+		savePicks('releases/0.8.md', 'sprints/12.md');
+
+		renamePathPrefs(vault.app, 'releases/0.8.md', 'releases/0.8.1.md');
+
+		expect(loadViewState(vault.app, RELEASE_ID).prefs.release).toBe('releases/0.8.1.md');
+		// The board's own path-valued pick is unaffected by a rename that does not name it.
+		expect(loadViewState(vault.app, RELEASE_ID).prefs.scope).toBe('sprints/12.md');
+	});
+
+	it('follows a folder move above the note, which is the only event a folder reports', () => {
+		savePicks('releases/0.8.md', 'sprints/12.md');
+
+		renamePathPrefs(vault.app, 'releases', 'archive/releases');
+
+		expect(loadViewState(vault.app, RELEASE_ID).prefs.release).toBe('archive/releases/0.8.md');
+	});
+
+	it('carries the board scope by the same rule, so one walk answers for both', () => {
+		savePicks('releases/0.8.md', 'sprints/12.md');
+
+		renamePathPrefs(vault.app, 'sprints', 'archive/sprints');
+
+		expect(loadViewState(vault.app, RELEASE_ID).prefs.scope).toBe('archive/sprints/12.md');
+	});
+
+	it('retains a pick a rename does not name, rather than pruning it', () => {
+		savePicks('releases/0.8.md', 'sprints/12.md');
+
+		// A path that merely shares a name prefix, and a rename of something else entirely.
+		renamePathPrefs(vault.app, 'releases2', 'archive/releases2');
+		renamePathPrefs(vault.app, 'Epic.md', 'Story.md');
+
+		expect(loadViewState(vault.app, RELEASE_ID).prefs.release).toBe('releases/0.8.md');
+		expect(loadViewState(vault.app, RELEASE_ID).prefs.scope).toBe('sprints/12.md');
 	});
 });
 

@@ -262,7 +262,10 @@ whole thing from the file resolved correctly while silently dropping both.
   at any moment — so each one needs its own migration, not just whichever bit first.
   A **note** rename moves that row's entry in `collapsed`/`settled` (`renamePath`, wired
   to `vault.on('rename')` in the view), or the next refresh shuts it as a parent nobody
-  has ruled on. A **view** rename moves the stored entry, which is why `dispose` flushes
+  has ruled on — and it moves the two `prefs` values that HOLD a note path rather than
+  being keyed by one (`renamePathPrefs`, wired to the same event in `main.ts`, covering
+  every stored entry whatever view is loaded; `renameScoped` in `view/viewState.ts`
+  covers the loaded backlog view's in-memory copy, which its flush writes back wholesale). A **view** rename moves the stored entry, which is why `dispose` flushes
   on an identity change even with nothing pending — the state is unchanged and yet
   belongs elsewhere. A **base** rename moves every entry naming it (`rekeyBase`, wired in
   `main.ts`, covering bases with no view open) while `flushViewState` re-resolves its
@@ -276,7 +279,10 @@ whole thing from the file resolved correctly while silently dropping both.
   prunes it for naming a file that no longer exists.
 - **Not everything a view remembers is keyed by a path, and the entry says which is
   which.** The stored entry is `{ folds, prefs }`: `folds` is everything keyed by
-  something the vault can lose, and it is what the prune and the rename walk. The shelf's
+  something the vault can lose, and it is what the prune walks. The RENAME reaches one
+  step further, and that exception is stated rather than hidden: `prefs.scope` and
+  `prefs.release` HOLD a note path instead of being keyed by one, so `renamePathPrefs`
+  walks exactly those two. The shelf's
   hidden types, the tree's column widths, the resources axis's folded bands and the folded
   board columns and horizon buckets are per-view lists or maps keyed by NAMES — a type, a
   Bases property id, a resource, a state value — while the rules below are all about paths:
