@@ -121,7 +121,7 @@
 .pbl-board-col-count,
 .pbl-bucket-count,
 .pbl-shelf-count {
-	margin-left: auto;
+	margin-inline-start: auto;
 	flex: 0 0 auto;
 	font-size: var(--font-ui-smaller);
 	color: var(--text-muted);
@@ -235,13 +235,13 @@
 }
 
 /* Turned upright again: the count and the limit are digits, and a rotated number is
-   read letter by letter. `margin-left: auto` pushes to the right in a row and to the
-   bottom in a column, which is what the header has become — reset so the count sits
+   read letter by letter. `margin-inline-start: auto` pushes to the inline end in a row
+   and to the bottom in a column, which is what the header has become — reset so the count sits
    under the name instead of at the foot of a full-height strip. */
 .pbl-board-collapsed .pbl-board-col-count,
 .pbl-board-collapsed .pbl-board-col-limit {
 	writing-mode: horizontal-tb;
-	margin-left: 0;
+	margin-inline-start: 0;
 }
 
 /* Its cards are gone, so the box that held them must not keep its own floor open —

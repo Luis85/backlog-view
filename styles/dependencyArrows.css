@@ -74,19 +74,26 @@
    all: without a glyph, 1d's "the row carries the broken marker" would be true only for
    a screen reader.
 
-   Pinned to the lead's RIGHT edge (`margin-left: auto`) rather than left to flow after
-   the title, which is what stops it costing the title its width — a flagged row read
+   Pinned to the lead's inline END (`margin-inline-start: auto`) rather than left to flow
+   after the title, which is what stops it costing the title its width — a flagged row read
    `Offline-first s… ⚠` while an unflagged one at the same lead width did not truncate
-   at all, so the mark was quietly narrowing the column it sits in. Against the right
-   edge it also lands in one x across every flagged row, which is what makes a column
-   of them scannable. `margin-right` clears `.pbl-timeline-lead-grip`, which is absolute
-   at `right: -3px` and would otherwise sit under the pointer target. */
+   at all, so the mark was quietly narrowing the column it sits in. Against that end
+   it also lands in one x across every flagged row, which is what makes a column
+   of them scannable. `margin-inline-end` clears `.pbl-timeline-lead-grip`, which is absolute
+   at `right: -3px` and would otherwise sit under the pointer target.
+
+   Logical, unlike the lead's own border and the bar label's clearance, and the difference
+   is whether the two things stay ADJACENT: this flag sits in the lead's text flow and goes
+   to whichever end that flow ends at, while the grip is pinned to the column's physical
+   edge — so where the text runs the other way they are no longer near each other and there
+   is nothing left to clear. A clearance only has to stay physical when the thing it clears
+   moves with it. See [[Nothing pins a physical side]]. */
 .pbl-timeline-dependency-flag {
 	display: inline-flex;
 	align-items: center;
 	flex: 0 0 auto;
-	margin-left: auto;
-	margin-right: var(--size-4-1);
+	margin-inline-start: auto;
+	margin-inline-end: var(--size-4-1);
 	color: var(--text-warning);
 }
 
