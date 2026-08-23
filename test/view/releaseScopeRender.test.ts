@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { makeReleaseView, RELEASE_CONFIG, scopeVault } from '../helpers/release';
 import { click } from '../helpers/estimation';
 import { useViewHarness } from '../helpers/view';
+import { badgeStyleFor } from '../../src/view/render/badges';
 import { FakeVault } from '../helpers/vault';
 
 /**
@@ -76,6 +77,57 @@ describe("a release's scope on screen", () => {
 		// this says nothing. Flat indices would be 1/2/3 of 3.
 		expect(rows.map((el) => el.getAttribute('aria-posinset'))).toEqual(['1', '1', '2']);
 		expect(rows.map((el) => el.getAttribute('aria-setsize'))).toEqual(['1', '2', '2']);
+	});
+
+	it('closes a sibling group when the tree comes back up a level', () => {
+		// TWO context Epics with two members each, because `scopeVault()` has one parent and
+		// cannot see the rule at all: with a single group, "close the open group when a
+		// shallower row arrives" is unexercised, and deleting the line that does it leaves
+		// every other assertion in this file green. Under that mutation the four members
+		// share one group and announce `1..4 of 4`.
+		const vault = new FakeVault();
+		vault.addFile('R.md', { frontmatter: { type: 'Release' } });
+		vault.addFile('E1.md', { frontmatter: { type: 'Epic', order: 1 } });
+		vault.addFile('E2.md', { frontmatter: { type: 'Epic', order: 2 } });
+		vault.addFile('A1.md', { frontmatter: { type: 'Feature', parent: 'E1', order: 1, release: '[[R]]' } });
+		vault.addFile('A2.md', { frontmatter: { type: 'Feature', parent: 'E1', order: 2, release: '[[R]]' } });
+		vault.addFile('B1.md', { frontmatter: { type: 'Feature', parent: 'E2', order: 1, release: '[[R]]' } });
+		vault.addFile('B2.md', { frontmatter: { type: 'Feature', parent: 'E2', order: 2, release: '[[R]]' } });
+		const { view, containerEl } = makeReleaseView(vault, RELEASE_CONFIG);
+		view.pick('R.md');
+		const rows = [...containerEl.querySelectorAll('.pbl-row')] as HTMLElement[];
+		expect(rows.map((el) => el.dataset.path)).toEqual(['E1.md', 'A1.md', 'A2.md', 'E2.md', 'B1.md', 'B2.md']);
+		expect(rows.map((el) => el.getAttribute('aria-posinset'))).toEqual(['1', '1', '2', '2', '1', '2']);
+		expect(rows.map((el) => el.getAttribute('aria-setsize'))).toEqual(['2', '2', '2', '2', '2', '2']);
+	});
+
+	it('badges each row with its own type', () => {
+		// The badge is what says a Feature is a Feature on a screen with no columns at all.
+		// Nothing else in this file looks at it, so without this the whole block can be
+		// deleted with the suite green.
+		const { containerEl } = openScope();
+		const rows = [...containerEl.querySelectorAll('.pbl-row')] as HTMLElement[];
+		expect(rows.map((el) => el.querySelector('.pbl-badge-text')?.textContent)).toEqual([
+			'Epic',
+			'Feature',
+			'Feature',
+		]);
+		// The class and the icon come off `badgeStyleFor`, so a badge drawn with neither
+		// would still read correctly and colour as nothing.
+		const badge = rows[0].querySelector('.pbl-badge') as HTMLElement;
+		expect(badge.classList.contains(badgeStyleFor('Epic').badge)).toBe(true);
+		expect(badge.querySelector('.pbl-badge-icon')?.dataset.icon).toBe(badgeStyleFor('Epic').icon);
+	});
+
+	it('names the tree after the release and tooltips every title', () => {
+		// Both were stated in a comment and neither was checked. The tree's name is what a
+		// reader arriving at it hears; the tooltip is set unconditionally because measuring a
+		// row to decide would lay out a `content-visibility: auto` row by itself.
+		const { containerEl } = openScope();
+		expect(containerEl.querySelector('.pbl-tree')?.getAttribute('aria-label')).toBe('R');
+		const titles = [...containerEl.querySelectorAll('.pbl-title')] as HTMLElement[];
+		expect(titles.map((el) => el.dataset.tooltip)).toEqual(titles.map((el) => el.textContent));
+		expect(titles.map((el) => el.textContent)).toEqual(['E', 'F1', 'F2']);
 	});
 
 	it('claims no selection and no collapse, because it offers neither', () => {

@@ -114,8 +114,10 @@ function drawTree(view: ReleaseView, release: ReleaseRow, rows: ScopeRow[]): voi
 	// Named by the release, so a reader arriving at the tree hears which one it is. The
 	// name is vault content rather than text — it goes nowhere near the catalog.
 	const treeEl = view.viewEl.createDiv({ cls: 'pbl-tree', attr: { role: 'tree', 'aria-label': release.name } });
-	const places = siblingPlaces(rows);
-	rows.forEach((row, index) => drawRow(treeEl, row, places[index] ?? { pos: 1, count: 1 }));
+	// The walk hands back each row joined to its own place, rather than a parallel array this
+	// loop would index into — an index lookup would need a fallback for a case that cannot
+	// happen, which is the unreachable branch this module's own header argues against.
+	for (const { row, pos, count } of siblingPlaces(rows)) drawRow(treeEl, row, { pos, count });
 }
 
 function drawRow(treeEl: HTMLElement, row: ScopeRow, place: { pos: number; count: number }): void {
@@ -147,8 +149,10 @@ function drawRow(treeEl: HTMLElement, row: ScopeRow, place: { pos: number; count
 	}
 
 	const titleEl = rowEl.createSpan({ cls: 'pbl-title', text: row.item.title });
-	// Unconditionally, and nothing measures whether it was needed — the tree's own rule:
-	// deciding costs a layout read per row.
+	// Set unconditionally, and NOTHING measures whether it was needed. `.pbl-row` carries
+	// `content-visibility: auto`, so a `scrollWidth` read to decide would lay out a skipped
+	// row by itself — the tree's own measured reason (5320ms against 12ms), inherited here
+	// with the class. A tooltip repeating a title that already fits is the whole price.
 	setTooltip(titleEl, row.item.title);
 
 	if (!row.context) return;
@@ -175,14 +179,18 @@ function drawRow(treeEl: HTMLElement, row: ScopeRow, place: { pos: number; count
  * Each entry holds the group it joined, so `count` is read after the whole walk rather than
  * guessed while it is still growing.
  */
-function siblingPlaces(rows: ScopeRow[]): { pos: number; count: number }[] {
+function siblingPlaces(rows: ScopeRow[]): { row: ScopeRow; pos: number; count: number }[] {
 	const open = new Map<number, number[]>();
 	const joined = rows.map((row) => {
+		// The group-closing line, and the whole rule lives in it: a row shallower than an open
+		// group ends that group, so the next row at that depth starts a fresh one under a new
+		// parent. Without it every row at one depth joins one group for the length of the
+		// scope, and a second Epic's members are announced as `3 of 4` instead of `1 of 2`.
 		for (const depth of [...open.keys()]) if (depth > row.depth) open.delete(depth);
 		const group = open.get(row.depth) ?? [];
 		open.set(row.depth, group);
 		group.push(group.length + 1);
-		return { pos: group.length, group };
+		return { row, pos: group.length, group };
 	});
-	return joined.map(({ pos, group }) => ({ pos, count: group.length }));
+	return joined.map(({ row, pos, group }) => ({ row, pos, count: group.length }));
 }

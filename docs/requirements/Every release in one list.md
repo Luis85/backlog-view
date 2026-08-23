@@ -120,9 +120,10 @@ control does not reliably survive.
 **What has SHIPPED is the row, not every figure on it.** Name, version, target date, status and
 the member count are drawn; progress, commitment against capacity and slip are not derived
 anywhere yet, so extensions 2b and 2c and the criteria naming slip describe work still to do
-rather than behaviour to check. The single-release screen beside it is still a stub
-(`renderScope.ts`, its own task), so the criterion that a row's figures equal that screen's is
-unreachable until it lands.
+rather than behaviour to check. The single-release screen beside it has SHIPPED
+(`src/view/release/renderScope.ts`), so the criterion that a row's figures equal that screen's
+is now reachable: both read the same `releaseIndex` row, which is what stops the two
+disagreeing about one release.
 
 This note said the module sat in `src/view/render/` beside `src/view/render/board.ts` and that
 the picked release was held in `src/view/viewState.ts` through `src/view/viewStateController.ts`.
