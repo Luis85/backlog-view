@@ -198,11 +198,17 @@ export interface ViewFolds {
 }
 
 /**
- * Everything else: keyed by nothing the vault owns — **with one exception, `scope`**,
- * which is a note path and therefore has to be renamed like a fold. It is still a pref
- * rather than a fold, because the other half of what `folds` means does not hold for it:
- * a scope whose note the vault has lost is RETAINED, never pruned, so restoring the note
- * restores the reader's choice. See {@link ViewPrefs.scope}.
+ * Everything else: keyed by nothing the vault owns — **except two values that are note
+ * paths, `scope` and `release`**. Both are still a pref rather than a fold, because the
+ * other half of what `folds` means does not hold for either: a path whose note the vault
+ * has lost is RETAINED, never pruned, so restoring the note restores the reader's choice.
+ *
+ * They are NOT symmetrical about the other obligation a note path carries. `scope` is
+ * walked on a rename (`renameScoped` in `view/viewState.ts`), matching the path or its
+ * `oldPath/` prefix, so a folder anybody tidies does not strand every scope inside it.
+ * `release` is not walked there yet — a renamed release note strands the reader's pick
+ * exactly the way an unwalked scope would, until that walk is extended to it. See
+ * {@link ViewPrefs.scope} and {@link ViewPrefs.release}.
  */
 export interface ViewPrefs {
 	mode?: string;
@@ -264,6 +270,12 @@ export interface ViewPrefs {
 	 * condition that is often temporary is worse than an empty board they can leave.
 	 */
 	scope?: string;
+	/**
+	 * The release whose screen is open, as a note path — absent when the index is showing.
+	 * A working position, per device and per saved view, never a `.base` setting
+	 * ([[Settings scoped to their view]]).
+	 */
+	release?: string;
 	/**
 	 * Which board the `Boards` position opens when no iteration scope is set — today the
 	 * one legal value is {@link DELIVERABLES_MODE}, and absence means the product board.
@@ -401,6 +413,10 @@ export const PREF_READERS: { [K in keyof ViewPrefs]-?: Reader<NonNullable<ViewPr
 	// this layer cannot do and which the view redoes on every render anyway. What a reader
 	// refuses here is a value of the wrong shape, not one naming a note that has moved.
 	scope: anyName,
+	// `anyName`, for `scope`'s own stated reason: a path is checked by RESOLVING it against
+	// the vault, which this layer cannot do. A remembered release that has moved or been
+	// deleted returns the index, which the view decides on render — not a failure.
+	release: anyName,
 	board: oneOf([DELIVERABLES_MODE]),
 	estimationSort: oneOf(ESTIMATION_SORT_VALUES),
 };

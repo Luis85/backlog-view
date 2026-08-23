@@ -45,6 +45,8 @@ const FULL_PREFS: Required<ViewPrefs> = {
 	// The one pref the VAULT owns — a note path, retained through a note that has gone
 	// and migrated through a rename, unlike every other value in this bucket.
 	scope: 'sprints/Sprint 12.md',
+	// The release screen's own pick — a second note path in this bucket, beside `scope`.
+	release: 'Releases/0.8.md',
 	// A WORD beside the path above — which board the Board position opens with no scope
 	// set. In live state the two are never both set (the controller clears each on the
 	// other's way in); the fixture holds both because the round trip is per key.
@@ -426,5 +428,19 @@ describe('the persisted estimation sort', () => {
 			'Backlog.base#Backlog': { base: 'Backlog.base', folds: {}, prefs: { estimationSort: 'value:desc' } },
 		});
 		expect(loadViewState(vault.app, id).prefs.estimationSort).toBeUndefined();
+	});
+});
+
+describe('the picked release', () => {
+	const id = { base: 'Backlog.base', view: 'Backlog' };
+	const none = { folds: emptyFolds(), prefs: {} };
+
+	it('round-trips the picked release, and refuses a value of the wrong shape', () => {
+		vault.addFile('Backlog.base');
+		saveViewState(vault.app, id, { ...none, prefs: { release: 'Releases/0.8.md' } });
+		expect(loadViewState(vault.app, id).prefs.release).toBe('Releases/0.8.md');
+
+		saveViewState(vault.app, id, { ...none, prefs: { release: 42 as never } });
+		expect(loadViewState(vault.app, id).prefs.release).toBeUndefined();
 	});
 });
