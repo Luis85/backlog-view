@@ -67,9 +67,12 @@ Nothing yet. It is the view's entry point, so it is also where a release gets pi
   as a context row ([[Releases as their own type]]) — so there is nothing to draw a row from
   and no way to open it. The list's population is the results, stated once at the top of the
   list rather than implied.
-- **5a — the remembered release is gone at the next open** — renamed, deleted, or filtered out.
+- **5a — the remembered release is gone at the next open** — deleted, or filtered out.
   The list is shown instead, and no error is raised. A working position that no longer exists
-  is not a failure.
+  is not a failure. A RENAME is deliberately not in that list: the stored pick follows the
+  note, so a rename is not a release that has gone. Without that it would be
+  indistinguishable from one, since either way the path names no release and the list is
+  what is drawn.
 
 ## Acceptance criteria
 
@@ -94,11 +97,17 @@ model in `src/domain/model.ts`, so no figure is computed twice.
 
 The screen itself is a Bases view of its own — `src/view/release/releaseView.ts`, registered by
 `src/view/release/register.ts` — and not a projection of the backlog view. That is what decides
-where the list lives: it is a render module under `src/view/release/`, drawing its own read-only
+where the list will live: a render module under `src/view/release/`, drawing its own read-only
 rows rather than reusing `src/view/render/rows.ts`, which takes a `BacklogViewHost` and wires
 menus, create prompts and drag into every row. What it does reuse is the stylesheet
 (`styles/release.css`) and `guidanceShell` from `src/view/render/emptyStates.ts`, which is the
 reuse the estimation view already settled on.
+
+**What has SHIPPED is the frame, not the rows.** `releaseView.ts` resolves this view's own
+settings, holds the pick, answers both unconfigured states and decides which screen it is on;
+where a row would be drawn it calls a stub. The rows described above are the work that
+replaces that stub, and until then this section describes the module that will hold them
+rather than one that does.
 
 This note said the module sat in `src/view/render/` beside `src/view/render/board.ts` and that
 the picked release was held in `src/view/viewState.ts` through `src/view/viewStateController.ts`.
@@ -106,6 +115,9 @@ Both were written before the release view was a registered view of its own, and 
 for one reason: `viewStateController.ts` is the backlog view's controller, and this screen has
 no host to reach it through. `releaseView.ts` holds the pick and reads and writes it through
 `src/storage/viewStateStore.ts` directly, keyed by `src/storage/viewIdentity.ts` — per device and
-per saved view, never the `.base`. `src/view/viewState.ts` keeps one half of it: the pick is a
-note PATH, so its rename walk carries `release` beside the board's `scope`, or a renamed release
-note would read exactly like a deleted one.
+per saved view, never the `.base`. The pick is a note PATH, so it is carried on a rename or a
+renamed release note would read exactly like a deleted one (5a). `renamePathPrefs` in
+`src/storage/viewStateStore.ts` is that carry, wired to `vault.on('rename')` at the plugin in
+`src/main.ts` so it reaches every stored entry whatever view is loaded; `src/view/viewState.ts`
+carries the same value over the loaded backlog view's in-memory copy, which its flush writes
+back wholesale and would otherwise put a stale path straight back.

@@ -89,6 +89,11 @@ This note said the rows reuse `src/view/render/rows.ts` and the context marking 
 They do not, and cannot: that module takes a `BacklogViewHost` and wires menus, create prompts,
 tag removal and drag into every row — every one of them a write this screen does not offer — so
 reusing it would make a read-only view satisfy a host interface in order to withhold what the
-interface is for. The rows are drawn under `src/view/release/` instead, reusing the stylesheet
-(`styles/release.css`) and `guidanceShell` from `src/view/render/emptyStates.ts`, which is the
-same reuse the estimation view settled on.
+interface is for. The rows will be drawn under `src/view/release/` instead, reusing the
+stylesheet (`styles/release.css`) and `guidanceShell` from `src/view/render/emptyStates.ts`,
+which is the same reuse the estimation view settled on.
+
+**What has SHIPPED is the choice of screen, not the tree.** `releaseView.ts` decides between
+this scope and the index and computes the scope it would draw; where the tree would be drawn it
+calls a stub. This section describes the module that will replace it rather than one that
+already draws a row.
