@@ -11,21 +11,15 @@
 
    Position in `styles/index.css`'s import list is NOT load-bearing: every selector here
    is `.pbl-rel-*`, a vocabulary no other partial declares, and nothing here re-targets a
-   class another file also writes. `.pbl-view` sits on the same element as
-   `.pbl-rel-view`, and the two DO share `display` — but this file agrees with
-   `view.css` (`flex`) rather than overriding it, so no order decides anything.
+   class another file also writes. The SHELL is `view.css`'s `.pbl-view`, which sits on
+   the same element and already declares the flex column this view wants; a `.pbl-rel-view`
+   block here restated four of its properties and could only ever agree with it or start
+   deciding layout by import order.
 
    Every colour, size and radius is an Obsidian variable rather than a value of ours:
    this view is the tree's own appearance on a different arrangement, and the state chip
    in a row is deliberately the read-only `.pbl-state-static` the tree already draws.
    ========================================================================== */
-
-.pbl-rel-view {
-	display: flex;
-	flex-direction: column;
-	height: 100%;
-	overflow: hidden;
-}
 
 /* The scroller. The header above it (one release's screen) stays put; only the rows move. */
 .pbl-rel-list {
