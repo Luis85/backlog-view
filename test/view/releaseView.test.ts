@@ -2,12 +2,24 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { scrollReads } from '../helpers/estimation';
 import { makeReleaseView, RELEASE_CONFIG, releaseVault, scopeVault } from '../helpers/release';
+import { ReleaseView } from '../../src/view/release/releaseView';
 import { useViewHarness } from '../helpers/view';
 import { FakeVault } from '../helpers/vault';
 
 useViewHarness();
 
 describe('the release view', () => {
+	it('shows the loading text before the first data update', () => {
+		// Constructed directly rather than through `makeReleaseView`, which calls
+		// `onDataUpdated` immediately — this is the one moment before that call, when the
+		// view has nothing but the constructor's own placeholder to show. The estimation
+		// view's own state test says the same thing about the same moment.
+		const containerEl = document.body.createDiv();
+		const view = new ReleaseView({} as never, containerEl);
+		expect(containerEl.querySelector('.pbl-rel-view')?.textContent).toBe('Loading releases…');
+		view.onunload();
+	});
+
 	it('says which option to bind when no type property is mapped', () => {
 		const vault = new FakeVault();
 		vault.addFile('R.md', { frontmatter: { type: 'Release' } });

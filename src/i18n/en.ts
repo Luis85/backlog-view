@@ -1524,6 +1524,9 @@ export const en = {
 	 * name is ordinary UI text, and only the backlog view holds the one sanctioned
 	 * exemption for the plugin's own identity. */
 	'release.viewName': 'Product release',
+	/** Between construction and the first result set Bases delivers — the other two views
+	 *  say the same thing for the same reason, rather than showing an empty pane. */
+	'release.loading': 'Loading releases…',
 	/**
 	 * The two unconfigured states, which are deliberately different answers: one is a
 	 * mapping to bind, the other is a base that simply holds no release yet. `Release`
