@@ -77,9 +77,17 @@ leaf drawing it has one.
   `product-backlog:view-state`. Two thirds of what it holds was never a fold — `zoom`,
   `density` and `leadWidth` are layout preferences, `clickFolds` and `shelfSort` are
   behaviour, `shelfHiddenTypes` and `colWidths` are a filter and a layout — and the split
-  is what the prune and the rename walk: `folds` is everything keyed by something the
-  vault can lose, and they cannot reach `prefs` at all. The old key is not migrated, which
-  ADR 0016 permits before 1.0; it is cleared on the first write.
+  is what the PRUNE walks: `folds` is everything keyed by something the vault can lose,
+  and the prune cannot reach `prefs` at all. **The RENAME reaches one step further**, and
+  that has been true since a stored value started HOLDING a note path rather than being
+  keyed by one — `prefs.scope`, and `prefs.release` beside it since 2026-08-23. Both are
+  walked by `renamePathPrefs` (`storage/viewStateStore.ts`, wired at the plugin in
+  `main.ts`) and by `renameScoped` (`view/viewState.ts`) over the loaded view's in-memory
+  copy. This entry said "the prune and the rename" of both halves and that the pair could
+  not reach `prefs` at all, which is the sentence `src/storage/CLAUDE.md` was corrected
+  from; a derived copy fixed while its source stands is how a false claim regenerates.
+  The old key is not migrated, which ADR 0016 permits before 1.0; it is cleared on the
+  first write.
 
 ## Alternatives
 

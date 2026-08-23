@@ -43,10 +43,13 @@ const FULL_PREFS: Required<ViewPrefs> = {
 	shelfHeight: 320,
 	shelfHiddenTypes: ['Task'],
 	colWidths: { 'note.owner': 200 },
-	// The one pref the VAULT owns — a note path, retained through a note that has gone
-	// and migrated through a rename, unlike every other value in this bucket.
+	// The first of the TWO prefs the vault owns — a note path, retained through a note that
+	// has gone and migrated through a rename, unlike the values keyed by a name around it.
+	// It said "the one" until 2026-08-23, contradicted three lines below by the pref that
+	// joined it.
 	scope: 'sprints/Sprint 12.md',
-	// The release screen's own pick — a second note path in this bucket, beside `scope`.
+	// The second: the release screen's own pick, a note path like `scope` and walked by the
+	// same `renamePathPrefs`.
 	release: 'Releases/0.8.md',
 	// A WORD beside the path above — which board the Board position opens with no scope
 	// set. In live state the two are never both set (the controller clears each on the
