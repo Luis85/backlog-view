@@ -76,7 +76,10 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   value names no release in the base is counted and reported rather than dropped in
   silence. Which release is open is remembered per device and per saved view, and follows
   the note through a rename — a base embedded in a note remembers it for the session
-  instead, as every base does, and there a rename returns you to the list. **The view is read-only** — it plans no write to any note and
+  instead, as every base does, and there a rename returns you to the list. Both screens
+  keep your place: a refresh of the same screen — an edit somewhere else in the vault, a
+  query re-running — leaves you scrolled where you were, while opening a release or going
+  back starts at the top of the screen you asked for. **The view is read-only** — it plans no write to any note and
   none to the `.base`. Which properties hold the version, the target date, the status and
   the membership are the view's own options; a column whose property nobody bound is
   absent, and named once beneath the list rather than left blank on every row.
