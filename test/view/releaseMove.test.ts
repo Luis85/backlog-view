@@ -11,7 +11,8 @@ import { flush, itemAt, makeView, makeViewWithReleases, refresh, useViewHarness 
  * `computeReleaseWrites`, apply through `applySafely`, announce once. Unlike the
  * board and horizon axes a release is not a column or bucket this view draws, so
  * there is no on-screen vocabulary to translate through — the release's own name IS
- * the word announced, and that is what the capture test below is about.
+ * the word announced, read off the argument rather than looked up, which is what the
+ * fourth case below drives.
  */
 useViewHarness();
 
@@ -59,13 +60,13 @@ describe('putting one item in a release', () => {
 		expect(await announced()).toBe('Removed "F" from its release');
 	});
 
-	it('captures the release’s own name before the write’s own refresh can take it out of the model', async () => {
-		// The batch's own refresh runs inside `applySafely`, synchronously, before this
-		// await resolves — `applyCardMove`'s own stated capture rule, the same one
-		// `performBoardMove`/`performHorizonMove` keep for `host.board`/`host.roadmap`.
-		// Simulated the same way `boardMenu.test.ts` simulates a vacated column: the
-		// vault hook fires from inside the write, mid-batch, and rebuilds the model
-		// before `performReleaseMove`'s own await sees the result.
+	it('announces the release’s own name even where the write takes it out of the model', async () => {
+		// About the SOURCE of the name, not the timing of reading it: `performReleaseMove`
+		// takes it off its own ARGUMENT rather than looking it up through `host.model`, so
+		// the announcement cannot depend on the release still being there afterwards. This
+		// drives the case a lookup would have failed on — the vault hook fires from inside
+		// the write, mid-batch, and rebuilds the model before the await resolves, the same
+		// way `boardMenu.test.ts` empties a column.
 		const { view, vault } = makeViewWithReleases();
 		vi.useFakeTimers();
 		const target = itemAt(view, '2.4.md');
@@ -76,9 +77,9 @@ describe('putting one item in a release', () => {
 
 		await view.performReleaseMove(itemAt(view, 'F.md'), target);
 
-		// The release is gone from the model by now — proof the write's refresh really
-		// ran before this assertion — and the name is announced all the same, because
-		// it was read off the argument before any of that happened.
+		// The release is gone from the model by now — proof the refresh really ran before
+		// this assertion — and the name is announced all the same, because it never came
+		// from the model.
 		expect(view.model?.byPath.has('2.4.md')).toBe(false);
 		expect(await announced()).toContain('2.4');
 	});

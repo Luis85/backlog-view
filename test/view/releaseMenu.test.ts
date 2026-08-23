@@ -68,6 +68,10 @@ describe('the Set release menu', () => {
 		// them showed as current, which is the gate that follows from no other.
 		expect(view.model?.releases.map((release) => release.file.path)).toEqual(['2.4.md', '2.5.md']);
 		expect(releaseMenuLabels(view, 'F.md')).toEqual([]);
+		// The entry itself, asked directly: `releaseMenuLabels` answers `[]` for an absent
+		// entry AND for a present one holding an empty submenu, so absence is only true by
+		// construction until this line checks it.
+		expect(Menu.lastShown?.item('Set release')).toBeUndefined();
 	});
 
 	it('is offered on no marker and no test-catalog note', () => {

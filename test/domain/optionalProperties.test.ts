@@ -78,9 +78,9 @@ describe('optionalKeyFor', () => {
 			iterationGoalKey: 'goal',
 		});
 		// Every field of the table, so a switch that fell through would be caught here
-		// rather than by whichever feature happened to read the wrong key. `release` is
-		// left unconfigured here — this task adds the field, not the view option that
-		// would bind it — so it reads as the unconfigured '' below rather than a name.
+		// rather than by whichever feature happened to read the wrong key. `release` is left
+		// out of the settings above deliberately, so this case also drives the unconfigured
+		// answer: it reads as the '' below rather than as a name.
 		expect(OPTIONAL_FIELDS.map((field) => optionalKeyFor(settings, field))).toEqual([
 			'status',
 			'started',
