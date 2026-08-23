@@ -280,8 +280,8 @@ function addItem(
 		assigneeValue: readLabel(settings.assigneeKey, fm),
 		iterationGoalValue: readLabel(settings.iterationGoalKey, fm),
 		ownKeys: readOwnKeys(fm, settings),
-		iterationEntry: readIterationEntry(app, file, cache, settings.iterationKey),
-		releaseEntry: readReleaseEntry(app, file, cache, settings.releaseKey),
+		iterationEntry: readFirstLinkEntry(app, file, cache, settings.iterationKey),
+		releaseEntry: readFirstLinkEntry(app, file, cache, settings.releaseKey),
 		// NOT read for a context row, which is the same test `outsideFilter` is made of
 		// two lines up. An excluded note may be NAMED by a result and may never do the
 		// naming, and until now that rule was kept only downstream, by `declaredEdges`
@@ -336,17 +336,12 @@ function divertAbsence(
 }
 
 /**
- * The iteration a note declares, gated on the key being configured — out of line so
- * `addItem` stays under its complexity budget. An item is in ONE iteration: taking [0]
- * is deliberate, since a list-valued key is a note the user hand-edited, and its first
- * entry is the honest reading rather than an error.
+ * One `LinkEntry`-shaped field read off a note, gated on its key being configured — out
+ * of line so `addItem` stays under its complexity budget, and shared by every such field
+ * (today: iteration, release) rather than one copy per field. An unconfigured key reads
+ * as absence; otherwise, the first link the note declares, or nothing.
  */
-function readIterationEntry(app: App, file: TFile, cache: CachedMetadata | null, key: string): LinkEntry | null {
-	return key ? (readLinkList(app, file, cache, key)[0] ?? null) : null;
-}
-
-/** One release, read the way one iteration is: the first link, or nothing. */
-function readReleaseEntry(app: App, file: TFile, cache: CachedMetadata | null, key: string): LinkEntry | null {
+function readFirstLinkEntry(app: App, file: TFile, cache: CachedMetadata | null, key: string): LinkEntry | null {
 	return key ? (readLinkList(app, file, cache, key)[0] ?? null) : null;
 }
 
