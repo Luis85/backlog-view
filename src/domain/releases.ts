@@ -315,9 +315,22 @@ export interface ReleaseScope {
  *
  * A context ancestor is drawn regardless of its own state: hiding it would break the
  * member's place, and it is scaffolding rather than something the reader asked to see.
+ *
+ * **The index is a parameter rather than derived here.** Every caller with a release
+ * picked has already built one — the view needs it for the row this screen is drawn from
+ * and for the unresolved memberships it reports — and deriving a second scans every
+ * scannable row again to find ONE row by path. Passing it also makes the two screens agree
+ * by construction: the header's figures and the member count come from the same pass that
+ * drew the index behind it.
  */
-export function releaseScope(app: App, model: BacklogModel, settings: ReleaseSettings, path: string): ReleaseScope {
-	const release = releaseIndex(app, model, settings).rows.find((row) => row.path === path) ?? null;
+export function releaseScope(
+	app: App,
+	model: BacklogModel,
+	settings: ReleaseSettings,
+	index: ReleaseIndex,
+	path: string,
+): ReleaseScope {
+	const release = index.rows.find((row) => row.path === path) ?? null;
 	if (release === null) return { release: null, rows: [], members: 0 };
 
 	const releasePaths: ReadonlySet<string> = new Set(model.releases.map((r) => r.file.path));

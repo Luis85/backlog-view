@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { releaseScope } from '../../src/domain/releases';
-import { buildModel } from '../../src/domain/model';
+import { releaseIndex, releaseScope } from '../../src/domain/releases';
+import { BacklogModel, buildModel } from '../../src/domain/model';
 import { BacklogSettings } from '../../src/domain/settings';
 import { FakeVault } from '../helpers/vault';
 import { settingsWith } from '../helpers/settings';
@@ -16,7 +16,12 @@ const KEYS = {
 };
 
 function scopeOf(vault: FakeVault, path: string, model: BacklogSettings = settingsWith()) {
-	return releaseScope(vault.app, buildModel(vault.app, vault.entries(), model), KEYS, path);
+	return scopeIn(buildModel(vault.app, vault.entries(), model), vault, path);
+}
+
+/** The index the view derives once per render, handed to the scope the same way. */
+function scopeIn(model: BacklogModel, vault: FakeVault, path: string) {
+	return releaseScope(vault.app, model, KEYS, releaseIndex(vault.app, model, KEYS), path);
 }
 
 describe("one release's scope", () => {
@@ -66,7 +71,7 @@ describe("one release's scope", () => {
 		// row: with no `outsideFilter` ancestor loaded, the member is a root anyway and the
 		// walk's skip decides nothing.
 		expect(model.byPath.get('E.md')?.outsideFilter).toBe(true);
-		const scope = releaseScope(vault.app, model, KEYS, 'R.md');
+		const scope = scopeIn(model, vault, 'R.md');
 		expect(scope.rows.map((r) => [r.item.file.basename, r.depth])).toEqual([['F', 0]]);
 		expect(scope.members).toBe(1);
 	});
@@ -82,7 +87,7 @@ describe("one release's scope", () => {
 		const entries = vault.entries().filter((e) => e.file.path !== 'Mid.md');
 		const model = buildModel(vault.app, entries, settingsWith());
 		expect(model.byPath.get('Mid.md')?.outsideFilter).toBe(true);
-		const rows = releaseScope(vault.app, model, KEYS, 'R.md').rows;
+		const rows = scopeIn(model, vault, 'R.md').rows;
 		expect(rows.map((r) => r.item.file.basename)).toEqual(['Top', 'F']);
 		expect(rows.find((r) => r.item.file.basename === 'Top')?.context).toBe(true);
 	});
@@ -144,7 +149,7 @@ describe("one release's scope", () => {
 		// whichever one the code names.
 		expect(model.realRoots.map((r) => r.file.basename)).toEqual(['R', 'E']);
 		expect(model.roots.map((r) => r.file.basename)).toEqual(['F']);
-		expect(releaseScope(vault.app, model, KEYS, 'R.md').rows.map((r) => [r.item.file.basename, r.depth, r.context])).toEqual([
+		expect(scopeIn(model, vault, 'R.md').rows.map((r) => [r.item.file.basename, r.depth, r.context])).toEqual([
 			['E', 0, true],
 			['F', 1, false],
 		]);

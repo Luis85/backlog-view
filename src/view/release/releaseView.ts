@@ -38,6 +38,10 @@ export class ReleaseView extends BasesView {
 	constructor(controller: QueryController, containerEl: HTMLElement) {
 		super(controller);
 		this.viewEl = containerEl.createDiv({ cls: 'pbl-view pbl-rel-view' });
+		// Nothing to render until Bases delivers the first result set — say what is
+		// happening instead of showing an empty pane (the other two views' own rule).
+		// `render` empties this element before it draws, so the first data update clears it.
+		this.viewEl.setText(t('release.loading'));
 		// `config`/`data`/`app` are not assigned until after construction (Obsidian's
 		// contract), so the initial settings come from a config that answers "nothing is
 		// set" rather than from `this.config` — the estimation view's own shape.
@@ -202,7 +206,7 @@ export class ReleaseView extends BasesView {
 			drawUnresolved(this.viewEl, index);
 			return null;
 		}
-		const scope = this.pickedPath === null ? null : releaseScope(this.app, this.model, this.settings, this.pickedPath);
+		const scope = this.pickedPath === null ? null : releaseScope(this.app, this.model, this.settings, index, this.pickedPath);
 		// A remembered release that no longer exists returns the INDEX, silently. A working
 		// position that has gone is not a failure and must not raise one.
 		if (scope === null || scope.release === null) {
