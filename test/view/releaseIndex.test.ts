@@ -161,3 +161,47 @@ describe('the release index', () => {
 		expect(vault.writeLog).toEqual([]);
 	});
 });
+
+describe('what a release row says, as opposed to what it shows', () => {
+	useViewHarness();
+
+	it('names every figure it drew, so the columns survive being spoken', () => {
+		// The row is a `<button>`, so its accessible name is its own contents run together:
+		// "0.8 0.8.0 2026-09-12 In progress 0" — five values and nothing saying which is
+		// which, because the headings are a separate element the button does not reference.
+		// The grid gives the eye those pairs through position, which is the one channel a
+		// screen reader does not have.
+		const { containerEl } = makeReleaseView(releaseVault(), RELEASE_CONFIG);
+		const label = containerEl.querySelector('.pbl-rel-row[data-path="0.8.md"]')?.getAttribute('aria-label') ?? '';
+
+		expect(label).toContain('0.8');
+		// Each figure arrives with its own heading, not bare.
+		expect(label).toContain('Version 0.8.0');
+		expect(label).toContain('Status In progress');
+		expect(label).toContain('Items 0 members');
+		// The date is spoken as the cell draws it — the user's own locale, via `formatCivil`.
+		expect(label).toMatch(/Target \S/);
+	});
+
+	it('says nothing about a column whose cell it drew empty', () => {
+		// An announced "Version" with no version is worse than no mention, and the cell for
+		// it is blank — so silence is what agrees with the screen.
+		const { containerEl } = makeReleaseView(releaseVault(), RELEASE_CONFIG);
+		const label = containerEl.querySelector('.pbl-rel-row[data-path="Someday.md"]')?.getAttribute('aria-label') ?? '';
+
+		expect(label).toContain('Someday');
+		expect(label).not.toContain('Version');
+		// The undated target IS spoken, because it is the one absence the row draws: it is
+		// why the row sits at the bottom of a list sorted by that column.
+		expect(label).toContain('No target date');
+	});
+
+	it('drops a column from the spoken name exactly when it drops it from the grid', () => {
+		// One list decides both, so an unbound key cannot leave a heading behind in speech.
+		const { containerEl } = makeReleaseView(releaseVault(), { ...RELEASE_CONFIG, versionProperty: '' });
+		const label = containerEl.querySelector('.pbl-rel-row[data-path="0.8.md"]')?.getAttribute('aria-label') ?? '';
+
+		expect(label).not.toContain('Version');
+		expect(label).toContain('Status In progress');
+	});
+});

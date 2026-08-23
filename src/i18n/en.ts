@@ -1555,6 +1555,25 @@ export const en = {
 	/** The unconfigured columns, named once beneath the grid. `{columns}` is an array, so
 	 *  it is joined by the catalog's own grammar rather than by a joiner at the call. */
 	'release.index.absentColumns': 'These columns are not shown because no property is bound: {columns}.',
+	/**
+	 * A row's members, SPOKEN. The column draws the bare number, which is right in a
+	 * column and ambiguous in a sentence — "0.8, 0.8.0, 12 September 2026, In progress, 4"
+	 * ends on a number naming nothing. Its own key rather than `count.items`, because a
+	 * release holds members and the two may not read alike in every locale.
+	 */
+	'count.releaseMembers': { one: '{count} member', other: '{count} members' },
+	/**
+	 * One heading-and-figure pair inside a row's accessible name. A key rather than a
+	 * template at the call site: which side of the value the label sits on is grammar, and
+	 * a locale that puts it after would have no way to say so.
+	 */
+	'release.index.rowFigure': '{label} {value}',
+	/**
+	 * What a row announces to a screen reader: its name, then every figure it drew, each
+	 * with the heading the eye gets from the column above it. `{figures}` is an array, so
+	 * the catalog joins it — see `release.index.absentColumns` for the same rule.
+	 */
+	'release.index.rowLabel': '{name}: {figures}',
 	/** The items whose membership value named no release this base holds. */
 	'release.index.unresolved': {
 		one: '{count} item names a release that could not be resolved.',

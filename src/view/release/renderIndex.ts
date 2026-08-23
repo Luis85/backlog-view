@@ -81,6 +81,17 @@ interface ColumnSpec {
 	width: number;
 	figure: (row: ReleaseRow) => ReleaseFigure<unknown>;
 	draw: (cell: HTMLElement, row: ReleaseRow) => void;
+	/**
+	 * What this column's figure SAYS, for the row's accessible name — or null to say
+	 * nothing about it, which is how an empty cell is spoken.
+	 *
+	 * Beside `draw` rather than derived from it, because the two answer different
+	 * questions and only one has a DOM to read: an empty version cell is silence, an
+	 * unset target date is a sentence, and a status is a chip whose text is the whole of
+	 * what it means. Each is one line here, and a column that grows a third rendition
+	 * would be the point to stop and share one.
+	 */
+	speak: (row: ReleaseRow) => string | null;
 }
 
 /**
@@ -109,6 +120,7 @@ function columnSpecs(): ColumnSpec[] {
 			width: 104,
 			figure: (row) => row.version,
 			draw: (cell, row) => cell.createSpan({ text: row.version.value ?? '' }),
+			speak: (row) => row.version.value,
 		},
 		{
 			label: t('release.index.column.target'),
@@ -121,6 +133,9 @@ function columnSpecs(): ColumnSpec[] {
 				row.target.value === null
 					? cell.createSpan({ cls: 'pbl-rel-undated', text: t('release.index.noTarget') })
 					: cell.createSpan({ text: formatCivil(row.target.value) }),
+			// The one column whose ABSENCE is spoken, for the reason it is the one whose
+			// absence is drawn: it moved the row to the bottom of the list.
+			speak: (row) => (row.target.value === null ? t('release.index.noTarget') : formatCivil(row.target.value)),
 		},
 		{
 			label: t('release.index.column.status'),
@@ -134,6 +149,7 @@ function columnSpecs(): ColumnSpec[] {
 				const chip = cell.createSpan({ cls: 'pbl-state-chip pbl-state-static' });
 				chip.createSpan({ cls: 'pbl-state-text', text: row.status.value });
 			},
+			speak: (row) => row.status.value,
 		},
 		{
 			label: t('release.index.column.members'),
@@ -143,6 +159,9 @@ function columnSpecs(): ColumnSpec[] {
 			// A bare count in its own column is data, not a sentence — `estimation/renderTable`
 			// draws its numeric cells the same way.
 			draw: (cell, row) => cell.createSpan({ text: String(row.members.value ?? 0) }),
+			// A bare number is data in a column and ambiguous in a sentence, so the spoken
+			// form is the counted phrase the catalog already owns — with its plural rule.
+			speak: (row) => t('count.releaseMembers', { count: row.members.value ?? 0 }),
 		},
 	];
 }
@@ -156,6 +175,35 @@ function drawableColumns(rows: ReleaseRow[]): ColumnSpec[] {
 	const first = rows[0];
 	if (first === undefined) return [];
 	return columnSpecs().filter((column) => !column.figure(first).unconfigured);
+}
+
+/**
+ * What one row SAYS, as opposed to what it shows.
+ *
+ * A `<button>`'s accessible name is its own contents run together, and the headings are a
+ * separate element it does not reference — so the row announced as
+ * "0.8 0.8.0 2026-09-12 In progress 0": five values with nothing saying which is which,
+ * on a screen whose columns are the entire point. The grid gives the eye those pairs
+ * through position, which is exactly the channel a screen reader does not have.
+ *
+ * Composed from the SAME `columns` the row drew, so a column dropped for an unbound key
+ * leaves the spoken name with it and the two cannot come to disagree — the rule the
+ * heading row and the cells already keep by sharing one list.
+ *
+ * Every piece goes through the catalog and the list is joined by `Intl.ListFormat` inside
+ * it: a joiner written here would be grammar decided by whoever typed it, and it reads
+ * wrong at two items in half the locales this plugin ships to.
+ */
+function rowLabel(row: ReleaseRow, columns: ColumnSpec[]): string {
+	const figures: string[] = [];
+	for (const column of columns) {
+		// A column that says nothing about this row is silent here too, exactly as its cell
+		// is empty — an announced "Version" with no version is worse than no mention.
+		const value = column.figure(row).invalid ? t('release.index.unreadable') : column.speak(row);
+		if (value === null) continue;
+		figures.push(t('release.index.rowFigure', { label: column.label, value }));
+	}
+	return t('release.index.rowLabel', { name: row.name, figures });
 }
 
 function drawRow(view: ReleaseView, gridEl: HTMLElement, row: ReleaseRow, columns: ColumnSpec[]): void {
@@ -174,7 +222,11 @@ function drawRow(view: ReleaseView, gridEl: HTMLElement, row: ReleaseRow, column
 	// The cells are spans rather than divs so the row is legal button content.
 	const rowEl = gridEl.createEl('button', {
 		cls: 'pbl-rel-row',
-		attr: { type: 'button', 'data-path': row.path },
+		// `aria-label` REPLACES the contents as the accessible name, which is the point:
+		// what the cells run together say is the defect (see `rowLabel`). The visible text
+		// is unchanged, so the two never differ in content — only in whether the headings
+		// come with it.
+		attr: { type: 'button', 'data-path': row.path, 'aria-label': rowLabel(row, columns) },
 	});
 	const nameEl = rowEl.createSpan({ cls: 'pbl-rel-name' });
 	drawIcon(nameEl.createSpan({ cls: 'pbl-rel-icon' }), 'package');
