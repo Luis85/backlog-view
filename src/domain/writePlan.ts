@@ -129,6 +129,12 @@ export interface ItemWrite {
 	 * function of its own. `undefined` leaves the key alone.
 	 */
 	iterationGoal?: string | null;
+	/**
+	 * The release this item ships in — a FILE, never a serialized string, and
+	 * **null to remove the key**. The writer spells the link itself, path-aware like the
+	 * parent's and the iteration's (`wikilinkTo`). `undefined` leaves the key alone.
+	 */
+	release?: TFile | null;
 }
 
 export interface TagDelta {
@@ -445,6 +451,31 @@ export function computeIterationWrites(item: BacklogItem, target: BacklogItem | 
 	const axis = timeframeOf(item, target);
 	if (!linkChanges && axis === undefined) return [];
 	return [{ file: item.file, ...(linkChanges ? { iteration: target.file } : {}), ...(axis ? { axis } : {}) }];
+}
+
+/**
+ * One item's release membership, planned.
+ *
+ * An unconfigured key plans nothing — absence is a value.
+ *
+ * Emptiness means "this pick would change nothing", because the MENU's checkmark is asked
+ * of this output. A re-pick that agrees returns `[]` rather than a write the applier
+ * happens to no-op, which would spend the undo slot on nothing.
+ *
+ * **No `timeframeOf`, deliberately** — unlike joining an iteration, joining a release
+ * copies nothing else onto the item: not its parent, not its order, not its state, and no
+ * dates. The plan writes the membership key and nothing beside it.
+ */
+export function computeReleaseWrites(item: BacklogItem, target: BacklogItem | null, settings: BacklogSettings): ItemWrite[] {
+	if (!settings.releaseKey) return [];
+	// A None pick is asked of PRESENCE (`ownKeys`), never of the PARSED entry — the split
+	// `computeIterationWrites` states above. A hand-edited `release: ''` reads as no entry
+	// while the key still visibly holds something, so asking the entry would tick the None
+	// checkmark on a note the reader can see is not empty.
+	if (target === null) return item.ownKeys.release ? [{ file: item.file, release: null }] : [];
+	// By PATH, never by the raw text: two spellings of one note are one release, and a
+	// link that resolved to nothing has no path and is therefore never "already there".
+	return item.releaseEntry?.file?.path === target.file.path ? [] : [{ file: item.file, release: target.file }];
 }
 
 /**
