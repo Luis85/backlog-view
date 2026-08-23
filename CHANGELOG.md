@@ -67,6 +67,26 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ### Added
 
+- **A third Bases view, Release** (`product-release`, its own icon in the view picker) —
+  every release the base holds as one list, and one release's scope drawn as the tree it
+  already is. A row states the release's version, target date, status and how many items
+  name it; picking one opens that release and shows its members with the ancestors that
+  hold them in place, marked as context and carrying no numbers. Membership is a note's
+  own property and one value: it never cascades to a parent or a child, and an item whose
+  value names no release in the base is counted and reported rather than dropped in
+  silence. Which release is open is remembered per device and per saved view, and follows
+  the note through a rename — a base embedded in a note remembers it for the session
+  instead, as every base does, and there a rename returns you to the list. **The view is read-only** — it plans no write to any note and
+  none to the `.base`. Which properties hold the version, the target date, the status and
+  the membership are the view's own options; a column whose property nobody bound is
+  absent, and named once beneath the list rather than left blank on every row.
+
+- **`Release` joins the fixed type vocabulary as a marker**, beside `Milestone` and
+  `Iteration`: a root by nature, holding nothing, offered by the backlog's `New` menu and
+  by Set type. It is placed by no planning axis — no horizon, no dates — so the roadmap
+  draws no card for one, the placement actions are withheld from it, and **Assign missing
+  properties** adds it none of those keys.
+
 - **A second Bases view, Estimation** (`product-estimation`, its own icon in the view
   picker) — score each item against a configurable weighted model: eight value
   dimensions plus confidence, effort and complexity, each scored against a rubric

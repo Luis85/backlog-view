@@ -79,7 +79,11 @@ at all.
   is not a failure. A RENAME is deliberately not in that list: the stored pick follows the
   note, so a rename is not a release that has gone. Without that it would be
   indistinguishable from one, since either way the path names no release and the list is
-  what is drawn.
+  what is drawn. **A base EMBEDDED in a note is the exception**, and it is stated rather than
+  fixed: there is no stored pick there to carry, so a rename does drop the reader to the
+  list. That value is session-only by design — `src/storage/viewIdentity.ts` refuses an
+  embedded base a key of its own so several bases in one note cannot overwrite each other's
+  — and it is gone on reload whatever happens to the note.
 
 ## Acceptance criteria
 
@@ -144,4 +148,6 @@ renamed release note would read exactly like a deleted one (5a). `renamePathPref
 `src/storage/viewStateStore.ts` is that carry, wired to `vault.on('rename')` at the plugin in
 `src/main.ts` so it reaches every stored entry whatever view is loaded; `src/view/viewState.ts`
 carries the same value over the loaded backlog view's in-memory copy, which its flush writes
-back wholesale and would otherwise put a stale path straight back.
+back wholesale and would otherwise put a stale path straight back. Both walk what is
+STORED, so neither reaches an embedded base, which has no entry: see 5a, and the
+`restorePick` docstring, which is where that limit is stated. Nothing checks it.

@@ -81,6 +81,21 @@ export class ReleaseView extends BasesView {
 	 * reset it on every `onDataUpdated`, so any Bases refresh would throw a reader who had
 	 * opened a release straight back to the index. The estimation view's own session-only
 	 * sort pick keeps the field for exactly this reason.
+	 *
+	 * **A rename is carried in one of those two cases and not the other, and the difference
+	 * follows from that same identity.** Where the base is a `.base` file, the pick is a
+	 * stored `prefs.release`, and both walks reach it: `renamePathPrefs`
+	 * (`storage/viewStateStore.ts`, wired at the plugin in `main.ts`) migrates the persisted
+	 * entry, and `renameScoped` (`view/viewState.ts`) the loaded BACKLOG view's in-memory
+	 * copy, whose flush writes `prefs` back wholesale and would otherwise put the stale path
+	 * straight back. THIS view keeps no such copy: {@link restorePick} re-reads the store on
+	 * every data update, so the migrated value is what it finds.
+	 * Where the base is EMBEDDED there is no persisted entry for either walk to migrate, so
+	 * renaming the picked release — or any folder above it — leaves `pickedPath` naming a
+	 * path the vault no longer has, and the next data update draws the index instead. That
+	 * is the accepted cost of a value that is deliberately session-only: it is gone on
+	 * reload either way, and the index is one press from every release. Nothing checks this
+	 * behaviour; it is stated here because the code cannot show a walk that does not reach.
 	 */
 	private restorePick(): void {
 		const id = resolveViewIdentity(this.app, this.viewEl, this.config.name ?? '');
