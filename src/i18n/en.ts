@@ -1560,4 +1560,32 @@ export const en = {
 		one: '{count} item names a release that could not be resolved.',
 		other: '{count} items name a release that could not be resolved.',
 	},
+
+	/** The only way off one release's screen, so it is a real button and carries its own
+	 *  name — the icon alone says nothing to a reader who cannot see it. */
+	'release.scope.back': 'Back to all releases',
+	/**
+	 * The ancestor drawn only to keep a member in its place — and NOT the tree's own
+	 * `row.contextMarker`, whose sentence is false here every time. That one says a row is
+	 * outside the base's filter; `releaseScope` skips an `outsideFilter` ancestor outright,
+	 * so every context row this screen can draw is IN the base and is merely not a member of
+	 * the release on screen. One marker's styling, two different facts about a row.
+	 */
+	'release.scope.contextMarker': 'In this base, but not in this release — shown to keep the hierarchy',
+	/** The member count in the header: the notes whose OWN property names this release,
+	 *  which is the denominator every other figure in this view uses. Context ancestors are
+	 *  on screen and are not in it. */
+	'release.scope.members': {
+		one: '{count} item',
+		other: '{count} items',
+	},
+	/** No membership property is bound, so no scope can be read at all — the header's facts
+	 *  still stand and the way back is still there, but there is no tree and no count. */
+	'release.scope.noMembership.title': 'No membership property is mapped',
+	'release.scope.noMembership.hint':
+		'This view reads each note’s membership property to find what is in a release. Bind the membership property in the view options.',
+	/** A release with nothing in it, which is a legitimate state rather than a mistake — so
+	 *  it names the release rather than describing a problem. */
+	'release.scope.empty.title': 'Nothing is in {name} yet',
+	'release.scope.empty.hint': 'An item joins a release when its own membership property names that release.',
 } as const;

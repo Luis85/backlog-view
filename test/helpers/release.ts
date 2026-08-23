@@ -55,3 +55,24 @@ export function releaseVault(): FakeVault {
 	vault.addFile('Someday.md', { frontmatter: { type: 'Release', status: 'Idea' } });
 	return vault;
 }
+
+/**
+ * One release, one CONTEXT ancestor and two members beneath it — the shape every depth,
+ * level and sibling assertion on the scope screen needs.
+ *
+ * The Epic is in the base's results and is not a member: that is the only kind of context
+ * row a release scope can draw, because `releaseScope` skips an `outsideFilter` ancestor
+ * outright rather than keeping it. Two members rather than one so that a position among
+ * SIBLINGS is distinguishable from an index in the flat row list — with one member the
+ * two agree and the assertion says nothing.
+ */
+export function scopeVault(): FakeVault {
+	const vault = new FakeVault();
+	vault.addFile('R.md', {
+		frontmatter: { type: 'Release', version: '1.0.0', 'target-date': '2026-09-12', status: 'In progress' },
+	});
+	vault.addFile('E.md', { frontmatter: { type: 'Epic' } });
+	vault.addFile('F1.md', { frontmatter: { type: 'Feature', parent: 'E', order: 1, release: '[[R]]' } });
+	vault.addFile('F2.md', { frontmatter: { type: 'Feature', parent: 'E', order: 2, release: '[[R]]' } });
+	return vault;
+}

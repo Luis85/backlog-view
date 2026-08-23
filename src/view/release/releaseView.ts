@@ -2,12 +2,13 @@ import { BasesView, QueryController } from 'obsidian';
 import { t } from '../../i18n/t';
 import { BacklogModel, buildModel } from '../../domain/model';
 import { ReleaseSettings, resolveReleaseSettings } from '../../domain/releaseOptions';
-import { releaseIndex, releaseScope, ReleaseScope } from '../../domain/releases';
+import { releaseIndex, releaseScope } from '../../domain/releases';
 import { resolveSettings } from '../../domain/settingsResolve';
 import { loadViewState, saveViewState } from '../../storage/viewStateStore';
 import { resolveViewIdentity } from '../../storage/viewIdentity';
 import { guidanceShell } from '../render/emptyStates';
 import { renderIndex } from './renderIndex';
+import { renderScope } from './renderScope';
 
 export const RELEASE_VIEW_TYPE = 'product-release';
 
@@ -123,17 +124,8 @@ export class ReleaseView extends BasesView {
 			renderIndex(this, releaseIndex(this.app, this.model, this.settings));
 			return;
 		}
-		renderScope(this, scope);
+		// The release is passed alongside the scope it came from: the check above is what
+		// rules on it, and `renderScope` repeating it would be an unreachable branch.
+		renderScope(this, scope, scope.release);
 	}
-}
-
-/**
- * The SCOPE screen's frame, and nothing else yet — the header's facts and the read-only
- * tree are Task 9, which replaces this with `renderScope.ts` the way `renderIndex.ts`
- * replaced the index's own stub. It is here rather than in that file so that this view's
- * own claim — which screen it chooses, and when — stays drivable on its own, and so that
- * the module arrives with its tests rather than as an empty file nothing asserts about.
- */
-function renderScope(view: ReleaseView, _scope: ReleaseScope): void {
-	view.viewEl.createDiv({ cls: 'pbl-rel-header' });
 }

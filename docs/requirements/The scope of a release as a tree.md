@@ -89,11 +89,17 @@ This note said the rows reuse `src/view/render/rows.ts` and the context marking 
 They do not, and cannot: that module takes a `BacklogViewHost` and wires menus, create prompts,
 tag removal and drag into every row — every one of them a write this screen does not offer — so
 reusing it would make a read-only view satisfy a host interface in order to withhold what the
-interface is for. The rows will be drawn under `src/view/release/` instead, reusing the
-stylesheet (`styles/release.css`) and `guidanceShell` from `src/view/render/emptyStates.ts`,
-which is the same reuse the estimation view settled on.
+interface is for. The rows are drawn by `src/view/release/renderScope.ts` instead — the header,
+the read-only tree and both empty states — reusing the stylesheet (`styles/release.css`),
+`badgeStyleFor` from `src/view/render/badges.ts` and `guidanceShell` from
+`src/view/render/emptyStates.ts`, which is the same reuse the estimation view settled on.
 
-**What has SHIPPED is the choice of screen, not the tree.** `releaseView.ts` decides between
-this scope and the index and computes the scope it would draw; where the tree would be drawn it
-calls a stub. This section describes the module that will replace it rather than one that
-already draws a row.
+**What declining that module COSTS is the semantics, not only the wiring.** `rows.ts` already
+carries `role="tree"`, `role="treeitem"`, `aria-level`, `aria-posinset` and `aria-setsize`, so
+`renderScope.ts` carries them itself: `--pbl-depth` moves a row sideways and announces nothing,
+and a scope drawn with indent alone is a flat list of divs on the one screen whose whole promise
+is the shape of the work. Two attributes `rows.ts` sets are deliberately absent — `aria-selected`
+describes a selection this screen does not have and `aria-expanded` a collapse it does not offer.
+The context marker reuses `.pbl-outside-marker`'s STYLING and none of its sentence: that one says
+a row is outside the base's filter, which is false of every row here, since `releaseScope` skips
+an `outsideFilter` ancestor outright rather than keeping it as context.
