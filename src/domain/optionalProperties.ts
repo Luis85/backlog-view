@@ -148,7 +148,7 @@ const PROPERTY_TABLE: Record<OptionalField, Omit<OptionalProperty, 'field'>> = {
 	// What an iteration is FOR, in one line. A plain string on the Iteration note — never a
 	// link, so unlike `iteration` it is a row in the label list (`applyLabels`) rather than
 	// a write of its own, and unlike every other row here it is never backfilled: see the
-	// `iterationGoal` early return in `missingKeyStubs` (`writePlan.ts`).
+	// `iterationGoal` return in `neverStubbed` (`writePlan.ts`).
 	iterationGoal: { option: 'iterationGoalProperty', suggested: 'goal', settingsKey: 'iterationGoalKey' },
 	// The link an item carries to say which release it ships in — the iteration row's
 	// shape exactly, for the same reason: a placeholder, never matched by name.

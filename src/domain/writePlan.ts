@@ -750,8 +750,8 @@ function missingEnd(field: OptionalField, item: BacklogItem): boolean {
  *
  * Three returns rather than one condition, because the three reasons are unrelated and
  * two rules that agree today are still two rules. Extracted out of `missingKeyStubs`'s
- * loop for `missingEnd`'s reason exactly: that loop is at its cognitive budget, and a
- * rule added inline breaches it rather than review.
+ * loop, mirroring `missingEnd`: three refusals, each with its own distinct reason,
+ * gathered into one predicate rather than written inline three separate times.
  */
 function neverStubbed(field: OptionalField): boolean {
 	// An empty state or an empty date is a slot on this note the user is invited to fill;
@@ -807,9 +807,9 @@ function missingKeyStubs(item: BacklogItem, settings: BacklogSettings): Optional
 		// need no such test: a key of '' is exactly what unconfigured means for them.
 		if (field === 'horizon' && !hasHorizonAxis(settings)) continue;
 		if (neverStubbed(field)) continue;
-		// Joined to the two general refusals rather than given a guard of its own: this loop
-		// was one `if` below its cognitive budget, and a sixth breached it. Every clause here
-		// is a reason not to stub, and `missingEnd` carries its own.
+		// Joined to the two general refusals rather than given a guard of its own — a rule
+		// specific to one field belongs in `neverStubbed` instead. Every clause here is a
+		// reason not to stub, and `missingEnd` carries its own.
 		if (missingEnd(field, item) || optionalKeyFor(settings, field) === '' || item.ownKeys[field]) continue;
 		stubs.push(field);
 	}

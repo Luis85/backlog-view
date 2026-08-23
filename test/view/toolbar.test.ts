@@ -58,6 +58,7 @@ describe('toolbar backfill', () => {
 			targetProperty: 'note.due',
 			riskProperty: 'note.risk',
 			dependsOnProperty: 'note.dependsOn',
+			releaseProperty: 'note.release',
 		});
 		// deliverableStateProperty is NOT bound: it now suggests the same key `status`
 		// does, `state` is declared first and claims it, and adoptableProperties'

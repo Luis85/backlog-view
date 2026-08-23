@@ -91,8 +91,8 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   nothing has been assigned yet. If your scopes are empty after assigning work, check that the
   two options name the same property.
 
-  Also: **✨ does not create the release property on your notes**, unlike every other property
-  it sets up. An empty value there would read as an item pointing at a release that cannot be
+  Also: **✨ does not create the release property on your notes**, unlike most of them, and
+  like the prerequisite list. An empty value there would read as an item pointing at a release that cannot be
   found, so the whole backlog would be reported as unresolved on the release screen. The cost
   is that Obsidian's property picker cannot offer the property until at least one note carries
   it — so in the release view's own options, pick the property AFTER the first `Set release`,
