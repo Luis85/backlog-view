@@ -69,7 +69,7 @@ Task 2 lands, so the two are implemented and committed together.**
 through to bare text'` test iterates the whole (now-widened) `ALL_TYPES` and requires
 every member to have a badge icon, a colour class that is not `pbl-lvl-unknown`, and a
 matching stylesheet rule. Widening `EXTRA_TYPES` here without Task 2's
-`NON_RUNG_STYLE`/`badges.css` entries makes that pre-existing test fail — the exact
+`NAMED_TYPE_STYLE`/`badges.css` entries makes that pre-existing test fail — the exact
 "a worker follows the listed steps and commits a red `npm run check`" defect this
 plan's own Global Constraints forbid. Do Task 1's steps below, then Task 2's, then run
 and commit both together; Task 1's own Step 4/5 below say so again at the point that
@@ -334,7 +334,7 @@ Run: `npx vitest run test/view/creation.test.ts test/domain/backlogReadme.test.t
 Expected: PASS
 
 Run: `npx vitest run test/view/rendering.test.ts -t "styles every declared type"`
-Expected: FAIL at this point — `Deliverable` has no `NON_RUNG_STYLE` entry yet, so its
+Expected: FAIL at this point — `Deliverable` has no `NAMED_TYPE_STYLE` entry yet, so its
 badge falls through to `pbl-lvl-unknown`. This is expected and is exactly why Step 5
 does not commit yet: proceed to Task 2, then return here and re-run this same command,
 which must PASS before either task is committed.
@@ -354,7 +354,7 @@ alone leaves the pre-existing full-vocabulary rendering test red.
 - Test: `test/view/rendering.test.ts`
 
 **Interfaces:**
-- Consumes: `NON_RUNG_STYLE` (existing table in `rows.ts`).
+- Consumes: `NAMED_TYPE_STYLE` (existing table in `badges.ts`).
 - Produces: a `deliverable` badge/colour, matching the same "every declared type has an
   entry or the table's own coverage test fails" contract `Issue`/`Bug`/`Milestone` use.
 
@@ -385,14 +385,14 @@ in this file per the harness conventions in `test/CLAUDE.md`.
 
 Run: `npx vitest run test/view/rendering.test.ts -t "Deliverable with its own badge"`
 Expected: FAIL — `pbl-lvl-deliverable` class absent; the badge falls through to
-`pbl-lvl-unknown` (no `NON_RUNG_STYLE` entry for `deliverable`).
+`pbl-lvl-unknown` (no `NAMED_TYPE_STYLE` entry for `deliverable`).
 
 - [ ] **Step 3: Implement**
 
 In `src/view/render/rows.ts`, extend the table:
 
 ```ts
-const NON_RUNG_STYLE: Record<string, { icon: string; badge: string }> = {
+const NAMED_TYPE_STYLE: Record<string, { icon: string; badge: string }> = {
 	issue: { icon: 'circle-alert', badge: 'pbl-lvl-issue' },
 	bug: { icon: 'bug', badge: 'pbl-lvl-bug' },
 	milestone: { icon: 'diamond', badge: 'pbl-lvl-milestone' },
@@ -412,7 +412,7 @@ In `styles/badges.css`, after the `.pbl-lvl-milestone` rule:
 Run: `npx vitest run test/view/rendering.test.ts`
 Expected: PASS — the whole file, including both this task's new test AND Task 1's
 pre-existing `'styles every declared type — none falls through to bare text'` test,
-which only turns green once this task's `NON_RUNG_STYLE`/`badges.css` entries land.
+which only turns green once this task's `NAMED_TYPE_STYLE`/`badges.css` entries land.
 
 - [ ] **Step 5: Commit (Tasks 1 and 2 together)**
 
