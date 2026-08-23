@@ -57,6 +57,24 @@ describe('planning one release membership', () => {
 		expect(computeReleaseWrites(item, null, settings)).toEqual([{ file: item.file, release: null }]);
 	});
 
+	it('REMOVES the key for a "no release" pick even when the key holds an empty value', () => {
+		// Presence, never the parsed entry: `release: ''` is exactly the shape the
+		// docstring names — the key is there, ownKeys.release must read true, and
+		// readLinkList refuses an empty string outright, so releaseEntry must read null.
+		// Reachable only if BOTH halves disagree — the state the alternate implementation
+		// `item.releaseEntry ? … : []` cannot distinguish from "no key at all".
+		const vault = new FakeVault();
+		vault.addFile('PBI-1.md', { frontmatter: { type: 'PBI', order: 10, release: '' } });
+		const model = buildModel(vault.app, vault.entries(), settingsWith({ releaseKey: 'release' }));
+		const item = model.byPath.get('PBI-1.md')!;
+
+		expect(item.ownKeys.release).toBe(true);
+		expect(item.releaseEntry).toBeNull();
+		expect(computeReleaseWrites(item, null, settingsWith({ releaseKey: 'release' }))).toEqual([
+			{ file: item.file, release: null },
+		]);
+	});
+
 	it('plans nothing for "no release" when the note carries no key', () => {
 		// Asked of PRESENCE (`ownKeys`), never of the parsed entry: a hand-edited
 		// `release: ''` reads as no entry while the key visibly holds something, and
