@@ -19,7 +19,8 @@ assignee: ""
 **As** someone planning several releases, **I want** every release as a row with its own
 numbers, **so that** I can see the whole plan on one screen and open any of it from there.
 
-Nothing yet. It is the view's entry point, so it is also where a release gets picked at all.
+The rows have shipped. It is the view's entry point, so it is also where a release gets picked
+at all.
 
 ## Use case
 
@@ -50,7 +51,13 @@ Nothing yet. It is the view's entry point, so it is also where a release gets pi
   typed `Release` carrying a version and a target date — rather than drawing an empty grid. It
   offers **no create button**: no use case in this epic specifies creating a release, and an
   empty state must not promise a write nothing defines. Making one is still a gap, recorded
-  here rather than half-answered by a control with no flow behind it.
+  here rather than half-answered by a control with no flow behind it. **It still reports the
+  unresolvable memberships**, and that is not a detail of this extension but its sharpest
+  case: with no release for any value to resolve to, every membership in the base is
+  unresolved at once, so the state with the most to say had been saying only "no releases".
+  [[The scope of a release as a tree]] 1b is what rules on it: such an item "is reported
+  among the items whose membership could not be resolved, rather than silently dropped", and
+  this is the only screen it can be reported on.
 - **2a — a figure's key is unconfigured.** That column is absent for every row, named once,
   rather than blank in each — the same answer the single-release screen gives.
 - **2b — a release has no actual date.** Its slip is absent. Today is never measured against a
@@ -67,9 +74,16 @@ Nothing yet. It is the view's entry point, so it is also where a release gets pi
   as a context row ([[Releases as their own type]]) — so there is nothing to draw a row from
   and no way to open it. The list's population is the results, stated once at the top of the
   list rather than implied.
-- **5a — the remembered release is gone at the next open** — renamed, deleted, or filtered out.
+- **5a — the remembered release is gone at the next open** — deleted, or filtered out.
   The list is shown instead, and no error is raised. A working position that no longer exists
-  is not a failure.
+  is not a failure. A RENAME is deliberately not in that list: the stored pick follows the
+  note, so a rename is not a release that has gone. Without that it would be
+  indistinguishable from one, since either way the path names no release and the list is
+  what is drawn. **A base EMBEDDED in a note is the exception**, and it is stated rather than
+  fixed: there is no stored pick there to carry, so a rename does drop the reader to the
+  list. That value is session-only by design — `src/storage/viewIdentity.ts` refuses an
+  embedded base a key of its own so several bases in one note cannot overwrite each other's
+  — and it is gone on reload whatever happens to the note.
 
 ## Acceptance criteria
 
@@ -89,8 +103,57 @@ Nothing yet. It is the view's entry point, so it is also where a release gets pi
 
 ## Where it lives
 
-The rows derive from the same new `src/domain/` module as the single-release figures, from the
-model in `src/domain/model.ts`, so no figure is computed twice. The list is a render module in
-`src/view/render/` beside `src/view/render/board.ts`, its empty states in
-`src/view/render/emptyStates.ts`, and the picked release is held in `src/view/viewState.ts`
-through `src/view/viewStateController.ts` and persisted by `src/storage/viewStateStore.ts`.
+The rows derive from the same `src/domain/releases.ts` as the single-release figures, from the
+model in `src/domain/model.ts`, so no figure is computed twice.
+
+The screen itself is a Bases view of its own — `src/view/release/releaseView.ts`, registered by
+`src/view/release/register.ts` — and not a projection of the backlog view. That is what decided
+where the list lives: a render module under `src/view/release/`, drawing its own read-only
+rows rather than reusing `src/view/render/rows.ts`, which takes a `BacklogViewHost` and wires
+menus, create prompts and drag into every row. What it does reuse is the stylesheet
+(`styles/release.css`) and `guidanceShell` from `src/view/render/emptyStates.ts`, which is the
+reuse the estimation view already settled on.
+
+The module that holds them is `src/view/release/renderIndex.ts`. It draws the five-column
+grid, one row per release in the order `src/domain/releases.ts` decided, the two notes beneath
+the grid — the unconfigured columns named once, and the count of items whose membership
+resolved to nothing — and it wires the pick. It re-sorts nothing and it derives nothing: every
+figure on a row arrives from `releaseIndex`, which is what keeps a row and a release header from
+disagreeing. One of those two notes is exported rather than private, because 1b needs it on a
+screen this module never draws: `releaseView.ts` derives the index BEFORE it decides whether
+there is a list to render, and calls the same function beneath the empty state.
+
+A row is a real `<button>`, activated by a click, by Enter and by Space. Picking a release is
+this view's whole navigation, so a pointer-only row would put the scope screen out of reach of
+a keyboard. It shipped as a `role="button"` div over a `display: contents` row — one grid
+holding every row's cells, so the figures lined up — and that closed the screen to the keyboard
+outright: measured in headless Chromium on 2026-08-23, a `display: contents` element has no box
+at all, so Tab skips it, `.focus()` on it does nothing and `:focus-visible` can never match, and
+a real `<button>` under the same rule measured identically. The shared grid is gone with it: each
+row lays out its own cells and the columns are held in step the way the tree's property columns
+are, one custom property per column published on the container with each cell holding a
+reference to its own. Whether Obsidian's Electron agrees is a live-vault check — Obsidian cannot
+run in this environment.
+
+**What has SHIPPED is the row, not every figure on it.** Name, version, target date, status and
+the member count are drawn; progress, commitment against capacity and slip are not derived
+anywhere yet, so extensions 2b and 2c and the criteria naming slip describe work still to do
+rather than behaviour to check. The single-release screen beside it has SHIPPED
+(`src/view/release/renderScope.ts`), so the criterion that a row's figures equal that screen's
+is now reachable: both read the same `releaseIndex` row, which is what stops the two
+disagreeing about one release.
+
+This note said the module sat in `src/view/render/` beside `src/view/render/board.ts` and that
+the picked release was held in `src/view/viewState.ts` through `src/view/viewStateController.ts`.
+Both were written before the release view was a registered view of its own, and both are wrong
+for one reason: `viewStateController.ts` is the backlog view's controller, and this screen has
+no host to reach it through. `releaseView.ts` holds the pick and reads and writes it through
+`src/storage/viewStateStore.ts` directly, keyed by `src/storage/viewIdentity.ts` — per device and
+per saved view, never the `.base`. The pick is a note PATH, so it is carried on a rename or a
+renamed release note would read exactly like a deleted one (5a). `renamePathPrefs` in
+`src/storage/viewStateStore.ts` is that carry, wired to `vault.on('rename')` at the plugin in
+`src/main.ts` so it reaches every stored entry whatever view is loaded; `src/view/viewState.ts`
+carries the same value over the loaded backlog view's in-memory copy, which its flush writes
+back wholesale and would otherwise put a stale path straight back. Both walk what is
+STORED, so neither reaches an embedded base, which has no entry: see 5a, and the
+`restorePick` docstring, which is where that limit is stated. Nothing checks it.

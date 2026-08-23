@@ -5,6 +5,7 @@ import { Catalog, setLocale } from '../../src/i18n/t';
 import { BOARD_WORKFLOW, boardVault, expandColumns, makeBoard } from '../helpers/board';
 import { installObsidianDom } from '../helpers/dom';
 import { horizonVault, laneRoadmap, makeRoadmap, roadmapView } from '../helpers/roadmap';
+import { makeReleaseView, RELEASE_CONFIG, releaseVault, scopeVault } from '../helpers/release';
 import { countingVault, resourceVault } from '../helpers/resources';
 import { FakeVault } from '../helpers/vault';
 import { clickExpandAll, fixture, makeView, treeOf } from '../helpers/view';
@@ -440,5 +441,82 @@ describe('what only domain/ can say, said from the catalog', () => {
 		// its type.
 		expect(markedAt(containerEl, '.pbl-board-col-name')).toHaveLength(3);
 		expect(remainder(containerEl)).toEqual(['PBI', 'Ready', 'Sprint 12']);
+	});
+});
+
+/**
+ * The release view, swept 2026-08-23 — the fourth surface this instrument is pointed at,
+ * and the first whose keys were held by nothing but the lint bans and a reading. Both
+ * shapes the bans cannot see are live here: `renderScope` hands its empty-state sentences
+ * to `guidanceShell` as positional ARGUMENTS, and every heading in `renderIndex` is
+ * returned from a helper rather than spelled at a setter.
+ *
+ * Both screens AND all four empty states, because this view's screens are chosen rather
+ * than switched: an empty state is the whole render, so a fixture that draws one draws
+ * nothing else, and the index and the scope never appear together.
+ */
+describe('the release view reads every word it draws from the catalog', () => {
+	it('leaves nothing but names, versions, dates and status values unmarked on the index', () => {
+		const { containerEl } = makeReleaseView(releaseVault(), RELEASE_CONFIG);
+
+		// Every one of these is what a note HOLDS: two release titles and an undated third,
+		// the `version` strings, the formatted target dates, and the `status` values a
+		// catalog that translated them would make unwritable in another locale.
+		expect(remainder(containerEl)).toEqual([
+			'0.8',
+			'0.8.0',
+			'0.9',
+			'0.9.0',
+			'2026-09-12',
+			'2026-10-24',
+			'Idea',
+			'In progress',
+			'Planned',
+			'Someday',
+		]);
+	});
+
+	it("leaves nothing but the release's own facts and its rows' titles unmarked on the scope", () => {
+		const vault = scopeVault();
+		const { view, containerEl } = makeReleaseView(vault, RELEASE_CONFIG);
+		view.pick('R.md');
+
+		// The header's own count, the context ancestor's marker and every badge came from
+		// the catalog; the title, the version, the date, the status and the type names on
+		// the badges are the notes' own.
+		expect(containerEl.querySelector('.pbl-rel-context')).not.toBeNull();
+		expect(remainder(containerEl)).toEqual(['1.0.0', '2026-09-12', 'E', 'Epic', 'F1', 'F2', 'Feature', 'In progress', 'R']);
+	});
+
+	it('draws all four empty states from it, and the unresolved note beside one', () => {
+		// Each is the WHOLE render, so each needs its own mount. `Release` and `Feature` are
+		// TYPE names — what a note's `type` key holds — and are data wherever they appear.
+		const noType = makeReleaseView(releaseVault(), { typeProperty: '' });
+		expect(markedAt(noType.containerEl, '.pbl-empty-title')).toHaveLength(1);
+		expect(remainder(noType.containerEl)).toEqual([]);
+
+		// No release, and a work item naming one: the empty state AND the count of
+		// memberships that resolved to nothing, which is this base's whole information.
+		const empty = new FakeVault();
+		empty.addFile('F.md', { frontmatter: { type: 'Feature', order: 1, release: '[[Missing]]' } });
+		const noReleases = makeReleaseView(empty, RELEASE_CONFIG);
+		expect(markedAt(noReleases.containerEl, '.pbl-rel-unresolved')).toHaveLength(1);
+		expect(remainder(noReleases.containerEl)).toEqual([]);
+
+		// A release open with no membership property bound: the header still stands, so its
+		// facts are the remainder and the two sentences beneath it are marked.
+		const unbound = makeReleaseView(scopeVault(), { ...RELEASE_CONFIG, membershipProperty: '' });
+		unbound.view.pick('R.md');
+		expect(markedAt(unbound.containerEl, '.pbl-empty-title')).toHaveLength(1);
+		expect(remainder(unbound.containerEl)).toEqual(['1.0.0', '2026-09-12', 'In progress', 'R']);
+
+		// And a release nothing is in — whose title is a PARAMETER inside the sentence, so
+		// its own name arrives unmarked from inside a marked string.
+		const nobody = new FakeVault();
+		nobody.addFile('R.md', { frontmatter: { type: 'Release' } });
+		const bare = makeReleaseView(nobody, RELEASE_CONFIG);
+		bare.view.pick('R.md');
+		expect(markedAt(bare.containerEl, '.pbl-empty-title')).toHaveLength(1);
+		expect(remainder(bare.containerEl)).toEqual(['R']);
 	});
 });

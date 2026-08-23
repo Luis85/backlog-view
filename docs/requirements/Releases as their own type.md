@@ -19,9 +19,11 @@ assignee: ""
 **As** someone planning what ships, **I want** a release to be an ordinary note with a type of
 its own, **so that** I can plan a release, and name its date, before a single item is in it.
 
-Nothing yet — the epic names the type and no code reads one. The work extends the type
-vocabulary the model already builds, beside the way `Milestone` and `Iteration` were added:
-a root by nature, holding nothing.
+The type has shipped. It extends the type vocabulary the model already builds, beside the
+way `Milestone` and `Iteration` were added: a root by nature, holding nothing. What has NOT
+shipped is any way to create one from this plugin's own screens beyond the backlog toolbar's
+`New Release`, and no figure a release note carries beyond its version, target date and
+status.
 
 ## Use case
 
@@ -88,6 +90,14 @@ a root by nature, holding nothing.
   context row included.
 - Adding `Release` to the vocabulary leaves every other classification unchanged: a
   `Milestone`, an `Iteration` and a test-catalog note are still none of them plan work.
+- It files into its own folder (`typeFolder.release` — shipped default `releases` under the
+  home folder), the option every declared type gets by arriving in the vocabulary rather
+  than by being remembered, exactly as `typeFolder.iteration` did.
+- It draws no point and no bar on the **backlog** roadmap, on either axis, and speaks no
+  placement end: the dated axis reads the backlog's own start and target keys, which are the
+  wrong mapping for a release date and a far worse one to write. Placing a release on a
+  timeline is [[A release on the dated axis]] and needs the roadmap's own release-date key,
+  which does not exist yet.
 
 ## Where it lives
 
@@ -96,4 +106,4 @@ The type joins the **fixed** vocabulary in `src/domain/itemTypes.ts` and
 nature, no legal children, and a constant rather than an option (ADR 0013). Notes
 are read into the model in `src/domain/readItems.ts` against the shape in
 `src/domain/model.ts`, and the version, target-date and status keys — the property keys, never the type name —
-are declared in `src/domain/viewOptions.ts` beside every other key this view names.
+are declared in `src/domain/releaseOptions.ts` beside every other key this view names.

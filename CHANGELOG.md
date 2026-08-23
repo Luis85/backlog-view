@@ -11,7 +11,34 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ## [Unreleased]
 
+### Fixed
+
+- **A focused roadmap no longer loses work beneath a parent the base filtered out.** A
+  parent shown for context, with a release between it and the work below, counted as an
+  empty scaffold and took that work off the screen with it — and the roadmap then said
+  every item was done and hidden, offering to show completed items that would not have
+  brought any of it back. A row shown for context now stays while any of the work it places
+  is drawn BENEATH it, whatever rows lie in between. It still goes when nothing is left
+  under it — including when the work it was placing is drawn in its own right instead of as
+  its child, which is what happens when the row between the two is a release the base
+  excludes, or a sprint, which the plan does not hold whether or not the base returns it.
+  Filtering a row out is not on its own what promotes the work: an excluded feature between
+  the two is still shown for context, and everything under it stays its child.
+  The same reading reaches the iteration board, where it ADDS a card rather than restoring
+  one: a parent shown for context appears there when a task committed to the sprint hangs
+  below it through a story that is not in the sprint.
+
 ### Changed
+
+- **A card lists work below a row this screen is not showing.** On the iteration board a
+  card now lists a child that names the sprint even where the row between them does not —
+  a task committed to the sprint under a story that is not, for example. That task already
+  had a card of its own on the board; what it did not have was a place under the card it
+  belongs to, so the face and the board disagreed. On the roadmap the gap was wider: a
+  release hand-hung between a feature and its stories left those stories on no card at all
+  under a focus, while their dates went on moving the feature's bar. Nothing joins a board
+  or a roadmap it was not already on: each note is still asked for itself, and a row in
+  between is passed through rather than promoted.
 
 - **The three notices the writer shows when a note changes mid-move read in your Obsidian's
   language.** Retype a note while a drag is in flight, or edit one while an estimation score
@@ -39,6 +66,35 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   — instead of running whole sentences together when more than one property collides.
 
 ### Added
+
+- **A third Bases view, Release** (`product-release`, its own icon in the view picker) —
+  every release the base holds as one list, and one release's scope drawn as the tree it
+  already is. A row states the release's version, target date, status and how many items
+  name it; picking one opens that release and shows its members with the ancestors that
+  hold them in place, marked as context and carrying no numbers. Membership is a note's
+  own property and one value: it never cascades to a parent or a child, and an item whose
+  value names no release in the base is counted and reported rather than dropped in
+  silence. Which release is open is remembered per device and per saved view, and follows
+  the note through a rename — a base embedded in a note remembers it for the session
+  instead, as every base does, and there a rename returns you to the list. Both screens
+  keep your place: a refresh of the same screen — an edit somewhere else in the vault, a
+  query re-running — leaves you scrolled where you were, while opening a release or going
+  back starts at the top of the screen you asked for. **The view is read-only** — it plans no write to any note and
+  none to the `.base`. Which properties hold the version, the target date, the status and
+  the membership are the view's own options; a column whose property nobody bound is
+  absent, and named once beneath the list rather than left blank on every row.
+  **The list works without a mouse**: every release in it is a button, so Tab reaches each
+  one in turn and Enter or Space opens it, with the row outlined while it has focus. Its
+  figures line up down the screen in fixed columns, so a value too long for its column is
+  shortened with an ellipsis rather than pushing that row's figures out of line with the
+  rows above it. On a release's own screen the rows are text and behave like it — nothing
+  to click, nothing to fold, and the titles can be selected and copied.
+
+- **`Release` joins the fixed type vocabulary as a marker**, beside `Milestone` and
+  `Iteration`: a root by nature, holding nothing, offered by the backlog's `New` menu and
+  by Set type. It is placed by no planning axis — no horizon, no dates — so the roadmap
+  draws no card for one, the placement actions are withheld from it, and **Assign missing
+  properties** adds it none of those keys.
 
 - **A second Bases view, Estimation** (`product-estimation`, its own icon in the view
   picker) — score each item against a configurable weighted model: eight value

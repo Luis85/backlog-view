@@ -302,6 +302,33 @@ export class ViewState {
 	}
 
 	/**
+	 * The release whose screen is open, as the reader LEFT it — `boardScope`'s own rule
+	 * for the second path-valued pref, and here for the same two halves of it: this
+	 * module never resolves the path (whether it still names a release is the release
+	 * view's question, asked on every render), and {@link renameScoped} carries it when
+	 * the note moves so a rename does not read as a deletion.
+	 *
+	 * **This controller's carry is one of TWO, and it is not the one that keeps the rule.**
+	 * It belongs to the backlog view, which is what subscribes to `vault.on('rename')`
+	 * here, so it runs on an entry a `.base` view had while it was a backlog view — a view
+	 * whose type was switched keeps its identity and its entry — and never while the
+	 * release view is the one on screen, which is the ordinary case. What keeps the rule
+	 * is `renamePathPrefs` (`storage/viewStateStore.ts`), wired to the same event at the
+	 * PLUGIN in `main.ts`, which walks every stored entry whatever view is loaded.
+	 *
+	 * This one is still needed beside it, and `flush` is why: this controller holds `prefs`
+	 * in memory and saves them WHOLESALE, so a loaded backlog view whose in-memory copy
+	 * still named the old path would write it straight back over the stored walk's answer.
+	 */
+	releasePref(): string | null {
+		return this.prefs.release ?? null;
+	}
+
+	setReleasePref(path: string | null): void {
+		this.setPref('release', path);
+	}
+
+	/**
 	 * Which board the `Boards` position opens when no iteration scope is set — the stored
 	 * word, `deliverables` or null for the product. Retained and cleared by the
 	 * controller, which keeps it and `scope` from ever both being set.
@@ -579,23 +606,36 @@ export class ViewState {
 	}
 
 	/**
-	 * The two stored values that hold a note path without being a fold KEYED by one: the
-	 * iteration this board is scoped to, and the column folds keyed by that same path.
+	 * The stored values that hold a note path without being a fold KEYED by one: the
+	 * iteration this board is scoped to, the release whose screen is open, and the column
+	 * folds keyed by that same iteration path.
 	 *
 	 * Out of line from the loop above rather than merged into it, because they are a
 	 * different question asked of a different collection — that loop walks `settled`,
-	 * whose every entry IS a note path, while these two carry one inside a value. What
+	 * whose every entry IS a note path, while these carry one inside a value. What
 	 * they share is the reason: a rename is an edit to the same note, and a stored pick
-	 * that does not follow it silently stops matching.
+	 * that does not follow it silently stops matching. For the release that failure is
+	 * worse than merely silent — a stale path resolves to no release, so a renamed note
+	 * drops the reader to the index indistinguishably from a deleted one.
+	 *
+	 * The STORE has a walk of its own over the same two values (`renamePathPrefs`, wired
+	 * at the plugin), and this is not a duplicate of it: that one covers every stored
+	 * entry whatever view is loaded, this one covers the in-memory `prefs` that `flush`
+	 * writes back wholesale. Neither replaces the other — see `releasePref` above.
 	 */
 	private renameScoped(oldPath: string, newPath: string): boolean {
 		let changed = false;
-		const scope = this.boardScope();
-		const movedScope = scope === null ? null : movedPath(scope, oldPath, newPath);
-		if (movedScope !== null) {
-			this.setBoardScope(movedScope);
+		// `movedPath` matches the path itself OR its `oldPath/` prefix, so a folder anybody
+		// tidies does not strand every pick inside it — the event names the folder and
+		// never the notes under it.
+		const carry = (current: string | null, set: (path: string) => void): void => {
+			const moved = current === null ? null : movedPath(current, oldPath, newPath);
+			if (moved === null) return;
+			set(moved);
 			changed = true;
-		}
+		};
+		carry(this.boardScope(), (path) => this.setBoardScope(path));
+		carry(this.releasePref(), (path) => this.setReleasePref(path));
 		for (const set of [this.foldedColumns, this.openedColumns]) {
 			for (const key of [...set]) {
 				const moved = movedColumnKey(key, oldPath, newPath);

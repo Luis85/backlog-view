@@ -1,3 +1,4 @@
+import { OptionalField } from './optionalProperties';
 import { BacklogSettings } from './settings';
 import {
 	ABSENCE_TYPE,
@@ -8,6 +9,7 @@ import {
 	ITERATION_TYPE,
 	LEVELS,
 	MARKER_TYPES,
+	RELEASE_TYPE,
 	RESOURCE_TYPE,
 	TEST_LEVELS,
 } from './typeVocabulary';
@@ -210,6 +212,15 @@ export function isIterationType(typeName: string | null): boolean {
 }
 
 /**
+ * One marker BY NAME, the shape `isIterationType` already has. Asked where a rule is
+ * about RELEASES specifically — which notes the release view lists — rather than the
+ * structural question `isMarkerType` answers for all three alike.
+ */
+export function isReleaseType(typeName: string | null): boolean {
+	return typeName !== null && typeName.toLowerCase() === RELEASE_TYPE.toLowerCase();
+}
+
+/**
  * True when `typeName` is the declared RESOURCE name (case-insensitive) — a person, and a
  * note this backlog recognizes in order to REFUSE it. Its own predicate rather than a
  * widened `isMarkerType`, for that predicate's own reason and with the same polarity as
@@ -230,6 +241,12 @@ export function isResourceType(typeName: string | null): boolean {
  */
 export function drawsAsPoint(typeName: string | null, iterationBars: boolean): boolean {
 	if (!isMarkerType(typeName)) return false;
+	// A `Release` is a marker STRUCTURALLY — no rung, no children, no prerequisites — and
+	// draws no point on this roadmap. [[A release on the dated axis]] is where a release
+	// gets a position, from the ROADMAP's own release-date key; until then the backlog's
+	// target key is the wrong mapping to read and a far worse one to write, since
+	// `bars.ts`'s holdable body would let a timeline drag edit a release through it.
+	if (isReleaseType(typeName)) return false;
 	return isIterationType(typeName) ? !iterationBars : true;
 }
 
@@ -354,7 +371,51 @@ const BOTH_ENDS: PlacementEnd[] = ['start', 'target'];
  * this parameter exists to make impossible to ignore.
  */
 export function placementEnds(typeName: string | null, iterationBars: boolean): PlacementEnd[] {
+	// A `Release` speaks NO end here — not one, not two. `drawsAsPoint` refuses it (see
+	// there), and the ternary below reads that refusal as "therefore a span", which would
+	// hand the WRITER both backlog date keys and the menu a Schedule action. The gate has
+	// to be stated at every consumer that reads the predicate through a ternary, or it
+	// makes the very surface it was closing more permissive than before.
+	if (isReleaseType(typeName)) return [];
 	return drawsAsPoint(typeName, iterationBars) ? ['target'] : [...BOTH_ENDS];
+}
+
+/**
+ * Whether a note of this type may HOLD this optional property — one question, asked of
+ * the type a note states at the moment it is opened, and the only statement of it.
+ *
+ * Every planning key this plugin writes reaches a note through one of two doors: a
+ * gesture that names it, or the backfill that stubs it. Both used to answer this for
+ * themselves, and a rule answered twice is a rule with a hole in it — the horizon's
+ * live-type check sat inside `refusesAxis` (`storage/frontmatter.ts`), which returns at
+ * its first clause for a write carrying no `axis`, so the iteration assignment and the ✨
+ * backfill both reached a `Release` ungated. What each door DOES about a refusal still
+ * differs, and rightly: a gesture in flight refuses its batch loudly, a backfill stub is
+ * dropped and the rest of the batch goes on. What may not differ is the answer.
+ *
+ * **Name-shaped by ruling, not by oversight.** Only a `Release` is asked, so no shipped
+ * type's write behaviour changes here; the dated ends are already asked of the rule
+ * (`placementEnds`, which answers a release NO end), and the three link-shaped fields are
+ * what the name still decides. Widening it to every type — a `Milestone`'s `start` is the
+ * known case — is an edit to this body and to no call site, which is the whole reason the
+ * settings are a parameter rather than a lookup at each call site.
+ *
+ * **Do not widen it from this comment.** The rule generalizes; its EXCEPTIONS are what
+ * decide the body, they are not derivable from `placementEnds`, and two plausible bodies
+ * written here were both wrong — one refused an iteration's own `start`, the next let a
+ * release take a horizon again. `docs/issues/Creation seeds a placement the type may not
+ * hold.md` states the exceptions with their citations and names the suites that catch
+ * each; it deliberately carries no code to paste, because nothing executes a body in a
+ * document.
+ */
+export function mayHoldField(typeName: string | null, field: OptionalField, settings: BacklogSettings): boolean {
+	if (!isReleaseType(typeName)) return true;
+	if (field === 'start' || field === 'target') return placementEnds(typeName, settings.iterationBars).includes(field);
+	// The goal joins the link for its own reason and not by being near it: `saveIteration`
+	// re-reads the MODEL rather than the note, so a goal-only save after a mid-flight
+	// retype puts a `goal` on a `Release` that no dialog will ever offer to clear — the
+	// same unclearable shape as the sprint link, reached through the other field.
+	return field !== 'horizon' && field !== 'iteration' && field !== 'iterationGoal';
 }
 
 /**

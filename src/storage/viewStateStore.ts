@@ -10,8 +10,13 @@ import { movedPath, ViewIdentity, viewNameOf, viewStateKey } from './viewIdentit
  * per base view.
  *
  * The entry has two buckets and the split is behavioural, not cosmetic: `folds` is
- * everything keyed by something the VAULT can lose, so it is what the prune and the
- * rename walk; `prefs` is everything else and neither ever touches it.
+ * everything KEYED by something the VAULT can lose, so it is what the prune walks and
+ * `prefs` is everything else, which the prune never touches.
+ *
+ * The RENAME is the one asymmetry, and it is a real exception rather than a wording
+ * slip: two `prefs` values HOLD a note path instead of being keyed by one, so a walk has
+ * to reach them. {@link renamePathPrefs} is that walk, over exactly the two
+ * {@link PATH_PREFS} names — see {@link ViewPrefs}.
  */
 
 /** One vault-scoped entry holds every Product Backlog view's state. */
@@ -198,12 +203,29 @@ export interface ViewFolds {
 }
 
 /**
- * Everything else: keyed by nothing the vault owns — **with one exception, `scope`**,
- * which is a note path and therefore has to be renamed like a fold. It is still a pref
- * rather than a fold, because the other half of what `folds` means does not hold for it:
- * a scope whose note the vault has lost is RETAINED, never pruned, so restoring the note
- * restores the reader's choice. See {@link ViewPrefs.scope}.
+ * Everything else: keyed by nothing the vault owns — **except two values that are note
+ * paths, `scope` and `release`**. Both are still a pref rather than a fold, because the
+ * other half of what `folds` means does not hold for either: a path whose note the vault
+ * has lost is RETAINED, never pruned, so restoring the note restores the reader's choice.
+ *
+ * Both carry the other obligation a note path brings, and carry it the same way: each is
+ * walked on a rename, matching the path or its `oldPath/` prefix, so a folder anybody
+ * tidies strands neither the scope nor the pick inside it.
+ *
+ * Each is walked TWICE, over two different copies, and both are needed.
+ * {@link renamePathPrefs} walks the STORED entries — every one of them, whatever view is
+ * loaded — and is wired to `vault.on('rename')` at the plugin in `main.ts`.
+ * `renameScoped` (`view/viewState.ts`) walks the loaded backlog view's IN-MEMORY copy,
+ * which its flush writes back wholesale and which would otherwise put a stale path
+ * straight back. See {@link ViewPrefs.scope} and {@link ViewPrefs.release}.
  */
+/**
+ * The preferences whose VALUE is a note path — the two exceptions the comment above
+ * names, spelled once so {@link renamePathPrefs} and the interface cannot disagree about
+ * which they are. A third path-valued pref is one entry here and nothing else.
+ */
+const PATH_PREFS = ['scope', 'release'] as const;
+
 export interface ViewPrefs {
 	mode?: string;
 	axis?: string;
@@ -252,18 +274,36 @@ export interface ViewPrefs {
 	 */
 	colWidths?: Record<string, number>;
 	/**
-	 * The `Iteration` note a board is scoped to, as a vault path — the one value in this
-	 * bucket the VAULT owns, and the reason the comment above this interface carries an
-	 * exception.
+	 * The `Iteration` note a board is scoped to, as a vault path — one of now two values
+	 * in this bucket the VAULT owns ({@link ViewPrefs.release} is the other), and the
+	 * reason the comment above this interface carries an exception.
 	 *
-	 * Two obligations follow, and half of them is not an option. The rename walk must
-	 * reach it, matching the path **or its `oldPath/` prefix**, so a folder anybody tidies
-	 * does not strand every scope inside it. And the prune must NOT: a stale path is
-	 * retained rather than rewritten, since the note may come back — a deletion undone, a
-	 * filter widened, a vault synced late — and spending the reader's choice on a
-	 * condition that is often temporary is worse than an empty board they can leave.
+	 * Two obligations follow from being a note path, and half of them is not an option.
+	 * The rename walk must reach it, matching the path **or its `oldPath/` prefix**, so a
+	 * folder anybody tidies does not strand every scope inside it — {@link renamePathPrefs}
+	 * here and `renameScoped` in `view/viewState.ts` are those walks, over the stored
+	 * entries and over the loaded view's own copy, and {@link ViewPrefs.release} goes
+	 * through both beside this one. And the prune must NOT: a stale path is retained rather than
+	 * rewritten, since the note may come back — a deletion undone, a filter widened, a
+	 * vault synced late — and spending the reader's choice on a condition that is often
+	 * temporary is worse than an empty board they can leave. That half holds for both by
+	 * construction: `prefs` is never pruned by path at all, only `folds` is.
 	 */
 	scope?: string;
+	/**
+	 * The release whose screen is open, as a note path — absent when the index is showing.
+	 * A working position, per device and per saved view, never a `.base` setting
+	 * ([[Settings scoped to their view]]).
+	 *
+	 * Both of {@link ViewPrefs.scope}'s obligations, for its reasons and one of its own.
+	 * Both rename walks carry this too, matching the path or its `oldPath/` prefix; without
+	 * that, a renamed release note reads as a DELETED one, since either way the path names
+	 * no release and the view falls back to the index without a word. The one that answers
+	 * for THIS pref in the ordinary case is {@link renamePathPrefs}: the release view holds
+	 * no controller, so a walk that ran only on the loaded backlog view would leave a
+	 * reader with the release view alone on screen exactly where this sentence started.
+	 */
+	release?: string;
 	/**
 	 * Which board the `Boards` position opens when no iteration scope is set — today the
 	 * one legal value is {@link DELIVERABLES_MODE}, and absence means the product board.
@@ -401,6 +441,10 @@ export const PREF_READERS: { [K in keyof ViewPrefs]-?: Reader<NonNullable<ViewPr
 	// this layer cannot do and which the view redoes on every render anyway. What a reader
 	// refuses here is a value of the wrong shape, not one naming a note that has moved.
 	scope: anyName,
+	// `anyName`, for `scope`'s own stated reason: a path is checked by RESOLVING it against
+	// the vault, which this layer cannot do. A remembered release that has moved or been
+	// deleted returns the index, which the view decides on render — not a failure.
+	release: anyName,
 	board: oneOf([DELIVERABLES_MODE]),
 	estimationSort: oneOf(ESTIMATION_SORT_VALUES),
 };
@@ -518,6 +562,45 @@ export function rekeyBase(app: App, oldPath: string, newPath: string): void {
 		delete map[key];
 		map[viewStateKey({ base, view })] = { ...entry, base };
 		moved = true;
+	}
+	if (moved) writeMap(app, map);
+}
+
+/**
+ * Follow a NOTE that was renamed or moved, through every entry's path-valued preferences
+ * ({@link PATH_PREFS}) — the board's iteration `scope` and the release view's `release`
+ * pick. {@link rekeyBase} is the same event asked about the base half of the key; this is
+ * the same event asked about what an entry HOLDS.
+ *
+ * Wired to `vault.on('rename')` in `main.ts`, and at the plugin rather than on a view for
+ * the reason `rekeyBase` is: an entry belongs to a saved view, not to whichever view
+ * happens to be loaded, so a walk that runs only while one view is on screen leaves every
+ * other entry stranded. For `release` that failure is not merely a lost position — a
+ * stale path resolves to no release, so a renamed note drops the reader to the index
+ * indistinguishably from a deleted one.
+ *
+ * `ViewState.renameScoped` (`view/viewState.ts`) walks the same two values and is NOT
+ * made redundant by this: that controller holds `prefs` in MEMORY and saves them
+ * wholesale, so a loaded backlog view whose in-memory copy still named the old path would
+ * write it back over this one. Two walks, one rule, each over a different copy.
+ *
+ * RETAINS, never prunes: only a path the vault reports as MOVED is rewritten, and a path
+ * whose note is merely gone is left exactly as the reader left it, since the note may come
+ * back. Takes any rename, file or folder — `movedPath` matches the path itself or its
+ * `oldPath/` prefix — and does nothing when no entry names it, which also makes it
+ * idempotent.
+ */
+export function renamePathPrefs(app: App, oldPath: string, newPath: string): void {
+	const map = readMap(app);
+	let moved = false;
+	for (const entry of Object.values(map)) {
+		for (const key of PATH_PREFS) {
+			const current = entry.prefs[key];
+			const next = current === undefined ? null : movedPath(current, oldPath, newPath);
+			if (next === null) continue;
+			entry.prefs[key] = next;
+			moved = true;
+		}
 	}
 	if (moved) writeMap(app, map);
 }

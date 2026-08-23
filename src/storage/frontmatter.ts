@@ -1,7 +1,7 @@
 import { App, Notice, TFile } from 'obsidian';
 import { t } from '../i18n/t';
 import { StatedEnds } from '../domain/bars';
-import { isResourceType, placementEnds, PlacementEnd, schemaEnds } from '../domain/itemTypes';
+import { isResourceType, mayHoldField, placementEnds, PlacementEnd, schemaEnds } from '../domain/itemTypes';
 import {
 	absentReading,
 	CivilDate,
@@ -14,7 +14,12 @@ import {
 	readTags,
 } from '../domain/noteFields';
 import { BacklogSettings, isDoneValue } from '../domain/settings';
-import { optionalKeyFor, resolvedDeliverableStateKey, resolvedTestStateKey } from '../domain/optionalProperties';
+import {
+	optionalKeyFor,
+	OptionalField,
+	resolvedDeliverableStateKey,
+	resolvedTestStateKey,
+} from '../domain/optionalProperties';
 import { DateSpan, daysBetween, reversedSpan } from '../domain/timeline';
 import { ItemWrite, TagDelta } from '../domain/writePlan';
 import { wikilinkTo } from './createNote';
@@ -150,13 +155,25 @@ export async function applyWrites(
 			// twice. Every date batch today is ONE write, so the two are the same thing —
 			// and the outcome below reports what actually landed rather than claiming
 			// nothing did, which is what makes the difference visible if that changes.
-			if (refusesAxis(fm, settings, write, ends)) {
+			if (refusesLiveType(settings, write, liveType) || refusesAxis(fm, settings, write, ends)) {
 				refused = true;
 				return;
 			}
-			const keys = touchedKeys(settings, write);
+			// The same question, with the other answer. A stub is not a gesture in flight:
+			// the backfill names hundreds of notes in one batch, so refusing it at the one
+			// release in the base would abandon every note after it, and what a release may
+			// not hold is DROPPED from the plan instead. Narrowed once, into a plan both
+			// halves below read, so `touchedKeys` and `applyInto` cannot come to disagree
+			// about the list — a key written but not captured is a change no undo can reach.
+			const planned = withHoldableStubs(write, liveType, settings);
+			const keys = touchedKeys(settings, planned);
 			const prior = keys.map((key) => rawValueOf(fm, key));
-			const lists = applyInto(app, fm, settings, write, liveType);
+			// `planned`, not `write`, into main's `liveType` signature: both sides are
+			// needed. Dropping the narrowing would let `touchedKeys` and `applyInto`
+			// disagree about the key list — a key written but not captured is a change no
+			// undo can reach — and dropping `liveType` would take the live-type reading
+			// out of the one place that has the note open.
+			const lists = applyInto(app, fm, settings, planned, liveType);
 			inverse = captureInverse(write.file, keys, prior, fm, lists);
 			if (write.axis && (write.axis.start !== undefined || write.axis.target !== undefined)) {
 				// Narrowed to the ends the placement HAS, on both sides. A marker keeps a
@@ -173,7 +190,7 @@ export async function applyWrites(
 			}
 		});
 		if (refused) {
-			console.error('Product Backlog: refused a date batch the note no longer fits', write);
+			console.error('Product Backlog: refused a batch the note no longer fits', write);
 			new Notice(outcome.changed ? t('gate.staleDatesPartial') : t('gate.staleDatesNone'));
 			// The accumulated outcome, not a fresh `changed: false`: writes before this
 			// one landed and emitted their inverses, and reporting otherwise would tell
@@ -481,6 +498,66 @@ function narrowReadings(readings: StatedEnds, ends: PlacementEnd[]): StatedEnds 
 }
 
 /**
+ * Whether this write carries a planning key the note's LIVE type may not hold — the
+ * TOCTOU refusal, asked of the type the note states right now rather than of the type the
+ * plan was made against.
+ *
+ * One question over every such key, because it was two answers and the second had a hole
+ * in it: the horizon's live-type check lived inside {@link refusesAxis}, which returns at
+ * its first clause for a write carrying no `axis` at all, so the iteration assignment
+ * (`iteration`, and the sprint's dates when it maps any) walked straight past it onto a
+ * note somebody had retyped to `Release`. `canSetIteration` then refuses to offer the
+ * removal, so the key could not be taken off again through any control the view draws.
+ * The iteration NOTE's own goal is the same shape reached through the other field:
+ * `saveIteration` re-reads the model rather than the note, which is authorization at plan
+ * time — exactly what this function exists to stop trusting.
+ *
+ * The whole batch is refused, loudly, exactly as a stale date batch is — this is a
+ * gesture the user made against a note that is no longer the note they made it against.
+ * `mayHoldField` is the rule; what each door does about a refusal is the door's own.
+ *
+ * `undoLast` reaches none of this: a replay goes through `applyRestores`, which restores
+ * the RAW captured keys and asks nothing here, so a legitimate write made before a retype
+ * can still be taken back.
+ */
+function refusesLiveType(settings: BacklogSettings, write: ItemWrite, liveType: string | null): boolean {
+	// A REMOVAL is exempt, here spelled as "states a value": `null` is how every one of
+	// these keys is taken off a note, and a write that only takes a key off cannot put one
+	// on a type that may not hold it. The point of this guard is that the horizon and the
+	// sprint link, once on a marker, are unclearable — no control the view draws offers to
+	// remove them — so a guard that also refused the removal would stand against its own
+	// reason. It costs nothing to allow: `applyInto` deletes, and a key that is not there
+	// is deleted no differently.
+	const stated = (value: unknown): boolean => value !== undefined && value !== null;
+	const carried: [OptionalField, unknown][] = [
+		['horizon', write.axis?.horizon],
+		['start', write.axis?.start],
+		['target', write.axis?.target],
+		['iteration', write.iteration],
+		['iterationGoal', write.iterationGoal],
+	];
+	return carried.some(([field, value]) => stated(value) && !mayHoldField(liveType, field, settings));
+}
+
+/**
+ * The same plan with the stubs this note's LIVE type may not hold dropped — the ✨
+ * backfill's half of {@link refusesLiveType}'s question, and the reason it is not that
+ * function: a stub is an empty key the reader is invited to fill, not a placement, so
+ * refusing the batch over one would abandon every note after it for a key that carries no
+ * decision. `missingKeyStubs` (`domain/writePlan.ts`) already declines to plan them;
+ * authorization at plan time is not authorization at write time, and a retype between the
+ * plan and this callback is exactly the window that guard cannot see.
+ *
+ * Returns the write itself where nothing is dropped, so the ordinary batch allocates
+ * nothing and the two readers below are literally handed one object.
+ */
+function withHoldableStubs(write: ItemWrite, liveType: string | null, settings: BacklogSettings): ItemWrite {
+	if (!write.stubs) return write;
+	const stubs = write.stubs.filter((field) => mayHoldField(liveType, field, settings));
+	return stubs.length === write.stubs.length ? write : { ...write, stubs };
+}
+
+/**
  * Why a date batch may not land on this note, asked of the LIVE frontmatter.
  *
  * Two questions, both about the note having moved under the plan:
@@ -502,9 +579,15 @@ function narrowReadings(readings: StatedEnds, ends: PlacementEnd[]): StatedEnds 
  *   the contract and release writes the dates it showed, so a rebased date is one the
  *   user was never shown.
  */
-function refusesAxis(fm: Record<string, unknown>, settings: BacklogSettings, write: ItemWrite, live: PlacementEnd[]): boolean {
+function refusesAxis(
+	fm: Record<string, unknown>,
+	settings: BacklogSettings,
+	write: ItemWrite,
+	live: PlacementEnd[],
+): boolean {
 	const axis = write.axis;
-	if (!axis || axis.ends === undefined) return false;
+	if (!axis) return false;
+	if (axis.ends === undefined) return false;
 	if (live.length !== axis.ends.length || live.some((end) => !axis.ends?.includes(end))) return true;
 	const readings = axisReadings(fm, settings);
 	if (axis.from && staleBase(axis.from, readings)) return true;

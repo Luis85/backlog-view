@@ -2,6 +2,7 @@ import { ViewState } from './viewState';
 import { ColumnScope, Projection } from './host';
 import { RoadmapAxis } from '../domain/roadmap';
 import { ShelfLayout, ShelfSort } from '../domain/shelf';
+import { honouredFocusLevel } from './projection';
 import { ScaleId, scaleFor } from '../domain/timeline';
 
 /**
@@ -67,8 +68,17 @@ export class ViewStateController {
 			this.state.setBoardScope(null);
 		}
 		if (mode === this.projection) return;
+		const before = honouredFocusLevel(this.projection, this.state.focusLevel());
 		this.state.setProjection(mode);
-		this.hooks.render();
+		// A render is normally the whole change: no config was set, so no Bases refresh is
+		// coming. The exception is the focus, which re-roots the MODEL rather than only the
+		// render — and which projection is on screen is half of what decides whether it is
+		// honoured at all (`honouredFocusLevel`). Leaving a stale answer standing is the
+		// whole defect on the way IN and on the way back out: the roadmap kept re-rooting on
+		// a `Release` focus its own picker does not offer, and the tree would have lost the
+		// focus it does.
+		if (honouredFocusLevel(mode, this.state.focusLevel()) !== before) this.hooks.refreshFromData();
+		else this.hooks.render();
 	}
 
 	get boardScope(): string | null {
@@ -88,6 +98,13 @@ export class ViewStateController {
 	 * because the scope is exactly what replaces that population, and no gate anywhere
 	 * would catch the omission: an index is correct when built and wrong when the thing it
 	 * was built FOR changes underneath it.
+	 *
+	 * **It sets the projection too, and does NOT ask the question `setProjection` now
+	 * asks** — whether the honoured focus level changes with the projection
+	 * (`honouredFocusLevel`), which needs a model rebuild rather than a render. Correct
+	 * today by construction: every projection this method can select is a board, and no
+	 * board refuses a focus, so the answer cannot move here. It is the sibling entry point
+	 * the next instance of that rule lands in.
 	 */
 	setBoardScope(path: string | null): void {
 		// The no-op guard asks all three stored values, not two: from the Deliverables

@@ -93,7 +93,7 @@ the shelf drop and the bar slide and each keyboard equivalent
 only reason this is cheap: a rule stated per control is one control out of date the moment
 a fourth path appears.
 
-**The loud one is a gift.** `NON_RUNG_STYLE` in `src/view/render/rows.ts` deliberately
+**The loud one is a gift.** `NAMED_TYPE_STYLE` in `src/view/render/badges.ts` deliberately
 has no fallback for a declared type, and a test asserts the table covers the vocabulary —
 so the badge is the one seam that refuses to be forgotten. That is what the others would
 look like if the same discipline reached them, which is the argument for adding a

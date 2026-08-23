@@ -7,6 +7,7 @@ import { ALL_TYPES, EXTRA_TYPES, ITERATION_TYPE, MARKER_TYPES } from '../../src/
 import { Menu, Notice } from '../helpers/obsidian-mock';
 import { clickExpandAll, drag, fixture, flush, key, makeView, rowByTitle, rows, titlesOf, treeOf, useViewHarness } from '../helpers/view';
 import { inCatalog, ladderFor } from '../../src/domain/itemTypes';
+import { badgeStyleFor } from '../../src/view/render/badges';
 
 useViewHarness();
 
@@ -107,6 +108,21 @@ describe('rendering', () => {
 		// is that a rendered badge finds it — the third assertion above — because there is
 		// no row to render.
 		expect(styles).toContain('.pbl-lvl-iteration {');
+	});
+
+	it('gives every declared type its own icon, since a shared hue leaves only the glyph', () => {
+		// Eight theme tokens and thirteen badges, so hues are SHARED by design — cyan by
+		// three types, green by `Deliverable` and `Release`, yellow by `Idea` and `Task`.
+		// Whatever else separates a pair, the glyph always has to, and `badges.ts` says so
+		// in a comment beside `release`. This is that comment's check: it fails on any
+		// declared type reusing another's icon, which is exactly the collision the plan's
+		// own `icon: 'package'` for `Release` would have shipped — package is Deliverable's,
+		// and green is Deliverable's hue, so the two badges would have been identical twice
+		// over. Asked of `badgeStyleFor` and `ALL_TYPES` rather than of the table, so a
+		// rung's icon is in the comparison too and a new type joins by arriving.
+		const icons = ALL_TYPES.map((type) => badgeStyleFor(type).icon);
+		expect(icons.filter((icon) => icon === '')).toEqual([]);
+		expect(new Set(icons).size).toBe(icons.length);
 	});
 
 	it('gives each shipped extra type its own icon and badge colour', () => {

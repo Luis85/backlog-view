@@ -1,5 +1,5 @@
 import { t } from '../i18n/t';
-import { drawsAsPoint, PlacementEnd, placementEnds } from './itemTypes';
+import { drawsAsPoint, isReleaseType, PlacementEnd, placementEnds } from './itemTypes';
 import { BacklogItem } from './model';
 import { absentReading, CivilDate, FieldReading, readDate } from './noteFields';
 import { BacklogSettings } from './settings';
@@ -97,8 +97,20 @@ export type Placement = { kind: 'bar'; bar: TimelineBar } | { kind: 'shelf'; rea
  * behind this one call — the marker reduction, the unreadable and reversed refusals,
  * the rollup inference — because they do not compose into a single condition anyone
  * could restate correctly beside them.
+ *
+ * `null` is the third answer and it is NOT the shelf: a shelved card is one this roadmap
+ * is showing, counted in its band and a drop target that un-places. Null is *not on this
+ * axis at all*, which every caller skips. It exists for exactly one type today, and this
+ * is the one site both axes reach — `deriveBars` for the dated one, `placeBar` in
+ * `roadmap.ts` for the resources one — so the refusal cannot be stated at a caller
+ * without leaving the other placing releases exactly as before.
  */
-export function placeItem(item: BacklogItem, stated: StatedEnds, iterationBars: boolean): Placement {
+export function placeItem(item: BacklogItem, stated: StatedEnds, iterationBars: boolean): Placement | null {
+	// No bar, no point, and NOT the shelf either: see this function's own note above. Asked
+	// before the ends check below, which would otherwise answer a release first and shelve
+	// it — a shelved card is one this roadmap is showing, in a counted, drop-targetable
+	// band, and a release is not on this axis at all until [[A release on the dated axis]].
+	if (isReleaseType(item.typeName)) return null;
 	// A type with NO ends never reaches the axis at all, whatever the note happens to
 	// carry under the date keys: a `Resource` is a person, and a person is not a span, a
 	// point or a line. Asked here rather than at each axis, because this is the one call
@@ -138,6 +150,8 @@ export function deriveBars(rows: BacklogItem[], iterationBars: boolean): DatedAx
 			continue;
 		}
 		const placement = placeItem(item, statedEnds(item), iterationBars);
+		// Null is neither a bar nor a shelf card: the row is not on this axis at all.
+		if (placement === null) continue;
 		if (placement.kind === 'bar') axis.bars.push(placement.bar);
 		else axis.shelf.push({ item, reason: placement.reason });
 	}

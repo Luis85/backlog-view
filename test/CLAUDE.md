@@ -105,6 +105,15 @@ harness's — see the `chrome.ts` bullet below for the four rules that leaves ab
   a projection that does not exist yet gets hand-drawn markup into the real stylesheet
   before it is built. Leave such a file uncommitted; nothing imports it, so `npm run
   analyze` reports it dead, correctly.
+- **Each of the other two views has its own committed pair**, same shape: `mountEstimation.ts`
+  with `estimation.ts` (`?config=empty|problems`, `?select=`), and `mountRelease.ts` with
+  `release.ts` (`?config=empty|notype|nomembership`, `?pick=<path>`). Each entry is named in
+  `.fallowrc.json`, which is what stops `npm run analyze` calling it dead. The release pair
+  arrived last and late: that view had never been drawn in a browser by anything committed,
+  and a `display: contents` defect that made its whole index unreachable by keyboard
+  survived eight jsdom tests, two reviews and a fix round for exactly that reason. jsdom
+  computes no layout and no styles, so a view with no entry here has no way to be ASKED
+  about focus order, overflow or geometry.
 - `test/helpers/fixtures.ts` — the demo backlog and the view options that configure all
   four projections at once — including, since 2026-08-15, the ones a vault has that no
   fixture had: tags on two rows (the column was in the order and empty from the start), a

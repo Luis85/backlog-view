@@ -17,8 +17,8 @@ must not appear is a *second* superlinear step beside it.
 
 Two of those properties are checks (`test/domain/modelCost.test.ts`) and the rest of the
 paragraph above is prose. Checked: the vault is read **once per note loaded** — `addItem`
-holds the only `getFileCache` call site in this layer, so a later phase re-reading the
-cache per item shows up as n² — and **every item is sorted exactly once**, the sum of the
+holds the only `getFileCache` call site `buildModel` reaches, so a later phase re-reading
+the cache per item shows up as n² — and **every item is sorted exactly once**, the sum of the
 sibling groups `sortSiblingsDeep` sorts equalling the item count, so a phase that
 re-sorts or a sort that moves into a per-item path fails. Not checked, and deliberately
 not claimed: a traversal phase that turned quadratic without reading the vault again or
@@ -351,7 +351,10 @@ a node test that did would be measuring the runner.
   untriaged or unscheduled) and no value is ever `''` — creating a key without placing
   anything is a different write, `ItemWrite.stubs`, and it is the only thing the
   backfill can do here without inventing a plan. A re-pick of the horizon an item already
-  holds plans nothing, case-insensitively. **The dated axis no longer asks that here**:
+  holds plans nothing, case-insensitively. A stub is planned only for a field the item's
+  type may HOLD (`mayHoldField`), which is what keeps ✨ from writing the roadmap's own
+  placement keys onto a `Release`; the writer asks the same question of the LIVE type,
+  because a retype between the plan and the write is a window nothing here can see. **The dated axis no longer asks that here**:
   `computeScheduleWrites` states what was requested and claims nothing about what the note
   holds — not whether a date is already stated, not whether a key is there to remove —
   because both are questions about the note RIGHT NOW and the row that planned the write

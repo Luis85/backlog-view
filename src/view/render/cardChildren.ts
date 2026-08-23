@@ -6,8 +6,7 @@ import { renderBadge } from './rows';
 import { BacklogViewHost } from '../host';
 import { uniqueElementId } from '../selection';
 import { BacklogItem } from '../../domain/model';
-import { childrenLabel, listedChildren } from '../childrenList';
-import { projectionMember } from '../projection';
+import { childrenLabel, drawnChildren, listedChildren } from '../childrenList';
 import { ownWorkflowReading } from '../../domain/board';
 
 /**
@@ -80,12 +79,17 @@ export function renderCardChildren(
 	// caveat on every card reads as noise.
 	//
 	// The denominator is the children this projection DRAWS, never `item.children` raw:
-	// `projectionMember` answers membership alone, while `isRowHidden` — what
-	// `listedChildren` filters by — conflates it with the completed toggle. Subtracting the
+	// `drawnChildren` answers membership alone, while `isRowHidden` — what
+	// `listedChildren` subtracts — conflates it with the completed toggle. Subtracting the
 	// second from the first counted a catalog child as a plan row the view was choosing to
 	// hide, and this note says exactly that. Absent from this ladder is not hidden by this
 	// view, and a third question added to `isRowHidden` would put the two back out of step.
-	const drawn = item.children.filter(projectionMember(host.projection, host.effectiveScope));
+	//
+	// It is the SAME walk `listedChildren` starts from, so the two agree about the level of
+	// the tree they are counting: a row this projection does not draw is traversed through
+	// on both sides. A one-level `filter` beside a descending list is a subtraction between
+	// two different populations, which is the shape this comment already warns about.
+	const drawn = drawnChildren(host, item);
 	const omitted = drawn.length - children.length;
 	// Four whole sentences rather than a phrase plus a note joined with an em dash: the
 	// dash and the clause after it are English punctuation and English grammar, and a

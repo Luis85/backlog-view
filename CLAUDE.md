@@ -109,40 +109,43 @@ language, so nothing re-reads it. What must never enter the catalog is anything 
 writes, matches or persists — type names, state values, option keys, tags, file names. The
 test when it is not obvious: **ask what breaks if two people with different Obsidian
 languages open the same vault.** "One sees different words" is text; "one writes notes the
-other's view cannot read" is data. 591 keys are in it (counted two ways on the MERGED tree
+other's view cannot read" is data. 597 keys are in it, counted two ways on the MERGED tree
 on 2026-08-22 and agreeing — a runtime `Object.keys` over the bundled catalog, and a
-match-counting `grep -Po` for the key lines; `grep -c` would count LINES, which is one of the three wrong
-numbers this epic has produced from an instrument that looked right, and 33 of these keys
-carry their value on the FOLLOWING line, which is exactly what such an instrument gets
-wrong). **A count is dated the moment it is written, and this paragraph has now been a
-merge conflict four times in one day** — 550, 542, 553, 577, 556 and 588 were each true of
-the branch that wrote them and of nothing else, and 591 is what the two branches came to
-together rather than either of the numbers that conflicted. Re-measure on the merged tree
-rather than picking a side.
+match-counting `grep -Po` over the key lines; `grep -c` would count LINES, which is one of
+the three wrong numbers this epic has produced from an instrument that looked right, and
+some of these keys carry their value on the FOLLOWING line, which is exactly what such an
+instrument gets wrong. The two DISAGREEING would itself be a finding rather than a nuisance:
+`Object.keys` drops a duplicate key that the text still shows, so the pair answers "how
+many" and "are any of them the same key twice" in one pass. **A count is dated the moment
+it is written, and this paragraph has now been a merge conflict five times in one day** —
+550, 542, 553, 577, 556, 588, 591 and 559 were each true of the branch that wrote them and
+of nothing else, and 597 is what the merged tree measures rather than what either side's
+arithmetic predicted. Re-measure on the merged tree rather than picking a side.
 `ui/`, `commands/`, `view/interactions/`, `view/estimation/`, the whole of `view/render/`,
-`view/writeGate.ts`, `view/cardMoves.ts`, `main.ts`, `domain/viewOptions.ts` and — since
-2026-08-22 — `domain/estimationOptions.ts`, `domain/board.ts`, `domain/bars.ts`,
-`domain/roadmap.ts` and the whole of `storage/` are swept, **which leaves `view/manual/`
-and nothing else in `src/` that a sweep still owes.** That sentence said the same thing
-before `storage/` was in the list, and it was wrong: `frontmatter.ts` and
-`propertyWrite.ts` were each spelling a live `new Notice` sentence — three of them, one a
-ternary between two literals — in a directory carrying none of the three bans. Not a
-missed sweep so much as a directory nobody classified, which is the hazard the epic has
-now met twice: a slice reads as done when what was actually enumerated was the surfaces
-somebody could NAME. `storage/` renders no DOM, so a sentence in it reads as plumbing;
-what makes it text is that a `Notice` is a screen. **Re-derive the remainder with a
-walk over `src/` rather than reading this paragraph** — the scan that found it was an AST
-sweep for prose-shaped literals outside a `t()` call, which is the one instrument that
-sees the two shapes lint cannot. `view/manual/` is not a leftover either: its three files are
-authored long-form PROSE, and whether several hundred multi-sentence paragraphs belong in a
-message catalog at all is an open question rather than work not yet done. What is still English in the REST of
+`view/writeGate.ts`, `view/cardMoves.ts`, `main.ts`, `domain/viewOptions.ts`, the whole of
+`storage/` and — since 2026-08-22 — `domain/estimationOptions.ts`, `domain/board.ts`,
+`domain/bars.ts`, `domain/roadmap.ts` and `domain/releaseOptions.ts` (the third options bag,
+written keyed rather than swept) are swept, **which leaves `view/manual/` and nothing else
+in `src/` that a sweep still owes.** That sentence said the same thing before `storage/` was
+in the list, and it was wrong: `frontmatter.ts` and `propertyWrite.ts` were each spelling a
+live `new Notice` sentence — three of them, one a ternary between two literals — in a
+directory carrying none of the three bans. Not a missed sweep so much as a directory nobody
+classified, which is the hazard the epic has now met twice: a slice reads as done when what
+was actually enumerated was the surfaces somebody could NAME. `storage/` renders no DOM, so
+a sentence in it reads as plumbing; what makes it text is that a `Notice` is a screen.
+**Re-derive the remainder with a walk over `src/` rather than reading this paragraph** — the
+scan that found it was an AST sweep for prose-shaped literals outside a `t()` call, which is
+the one instrument that sees the two shapes lint cannot. `view/manual/` is not a leftover
+either: its three files are authored long-form PROSE, and whether several hundred
+multi-sentence paragraphs belong in a message catalog at all is an open question rather than
+work not yet done. What is still English in the REST of
 `domain/` was classified rather than swept, and every part of it stays for a stated reason
 — the type names and shipped value lists are data, `defaultModel.ts`'s rubrics are in the
 model FINGERPRINT so two locales would stamp two models, `timeline.ts`'s month names are a
 formatting question that follows the USER's locale through `Intl` and belongs to
-[[Locale-aware sorting and formatting]], and `backlogReadme.ts` and `readmeStamps.ts` write
-authored prose INTO the vault, which is `view/manual/`'s own open question wearing two more
-instances. `roadmap.ts`'s shelf label is NOT among them and this paragraph said it was
+[[Locale-aware sorting and formatting]], and `backlogReadme.ts`, `readmeStamps.ts` and
+`readmePlanning.ts` write authored prose INTO the vault, which is `view/manual/`'s own open
+question wearing three more instances. `roadmap.ts`'s shelf label is NOT among them and this paragraph said it was
 until 2026-08-22: it was keyed on 2026-08-19 and three places went on claiming otherwise,
 one of them a test whose assertion read a note title instead. The whole classification is
 in `docs/requirements/Every surface translated.md`, and an English literal beside a `t()`

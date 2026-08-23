@@ -2,7 +2,7 @@ import { BacklogItem } from '../domain/model';
 import { RoadmapAxis } from '../domain/roadmap';
 import { BacklogSettings } from '../domain/settings';
 import { Projection } from './host';
-import { hidesCompleted, projectionMember } from './projection';
+import { drawsForestFrom, hidesCompleted, projectionMember } from './projection';
 
 /**
  * Row visibility: whether this projection draws the item at all, and whether the
@@ -46,6 +46,33 @@ export interface VisibilityRule {
 	 * taken over the same walk.
 	 */
 	inProjection: (item: BacklogItem) => boolean;
+	/**
+	 * Whether a `focusRoot` stamp BELOW this origin is this projection's own re-rooting —
+	 * `drawsForestFrom` (`projection.ts`), where the whole rule and its two wrong shapes
+	 * are stated. A function rather than a boolean because the answer is the ORIGIN's: a
+	 * projection can draw the forest and still be walking a row the forest never held.
+	 *
+	 * Carried on the rule so `rowHidden` below asks the projection once, in the assembly
+	 * that already reads `projectionMember` for it. It buys that for the scaffold clause
+	 * ALONE — the card face reaches the same walk through `drawnChildren`
+	 * (`childrenList.ts`), which composes `host.isRowUndrawn` with its own
+	 * `drawsForestFrom` call. Both read `host.projection` today, so they cannot disagree;
+	 * the rule is what makes that true of one of them rather than of both.
+	 *
+	 * **Both halves are reachable with a non-member origin, this clause included.** The
+	 * only such origin a forest-drawing projection admits is a grid axis's `Iteration`, and
+	 * the roadmap's own ROW SOURCE never carries an `outsideFilter` one — `model.iterations`
+	 * (`domain/model.ts`) excludes it. That governs `roadmapRows` and nothing else:
+	 * `listedChildren` (`childrenList.ts`) hands the walk arbitrary `item.children`, where
+	 * `projectionMember` admits an excluded iteration on a grid axis just the same. So such
+	 * a row DOES reach the clause below, and the origin term is load-bearing here too —
+	 * pinned by "keeps an excluded iteration on the face while it places drawn work"
+	 * (`test/view/cardChildren.test.ts`), which the projection-only answer reds. An earlier
+	 * version of this paragraph said the two halves could differ on the card face alone,
+	 * argued from `model.iterations`; that is an insufficient condition for the wider claim,
+	 * and the wider claim was false.
+	 */
+	drawsForestFrom: (origin: BacklogItem) => boolean;
 }
 
 /**
@@ -101,6 +128,7 @@ export function visibilityRule(
 		// the option refuses reaches neither a bar, nor a line, nor the shelf that counts
 		// what could not be placed.
 		inProjection: projectionMember(projection, member.scope, settings.iterationsOnTimeline ? member.axis : null),
+		drawsForestFrom: (origin) => drawsForestFrom(projection, origin),
 	};
 }
 
@@ -112,6 +140,89 @@ export function rowHidden(item: BacklogItem, rule: VisibilityRule): boolean {
 	// A context row is here only to place a result. Once nothing below it is
 	// visible it is an empty scaffold, so it goes with them — whatever hid them.
 	// One visible child is enough: a context child is itself subject to this rule.
-	if (item.outsideFilter) return !item.children.some((child) => !rowHidden(child, rule));
+	//
+	// Asked of the DRAWN DESCENT and never of `item.children`, which is the same
+	// distinction `drawnChildren` was written for one function down: a row this
+	// projection does not draw hides nothing — the results BELOW it are what this
+	// scaffold is still placing. Reading the raw children instead, a context `Epic`
+	// over a `Release` the roadmap draws no axis for saw no visible child, called
+	// itself empty, and took an eligible `PBI` off a focused roadmap with it — while
+	// `eligibleResults` went on counting that `PBI` and the advisory said all the work
+	// was done and hidden.
+	//
+	// **What it COSTS is unmeasured.** This replaced an allocation-free `.some` over
+	// `item.children`, and it is neither: the descent materialises the whole drawn list
+	// before `.some` gets to short-circuit over it, allocating one array per undrawn level.
+	// `isRowHidden` is asked per row per render, per count and per drop target, which is the
+	// scaling limit `src/view/CLAUDE.md` names. Only an `outsideFilter` row reaches this
+	// line at all, and the harness fixture (`test/helpers/fixtures.ts`) does carry one —
+	// `Retired platform`, which `demoResults()` filters out — so `npm run perf` enters this
+	// branch on every render and its number already includes whatever this costs there. What
+	// that number cannot say is what it costs at SCALE: one context row over a two-node
+	// subtree is a weak benchmark, and the reading is owed to a fixture with many. An
+	// earlier version of this paragraph said the fixture carried no context row at all,
+	// which was false and was never checked. Nothing is optimised on the shape alone.
+	if (item.outsideFilter) {
+		return !drawnDescent(item, (row) => !rule.inProjection(row), rule.drawsForestFrom(item)).some(
+			(child) => !rowHidden(child, rule),
+		);
+	}
 	return false;
+}
+
+/**
+ * The rows a projection DRAWS beneath an item — one level of `item.children` only where
+ * this projection draws every link in it.
+ *
+ * **A row this projection does not draw is traversed THROUGH, never dropped**, and that
+ * is the whole of the descent: a `Release` hand-hung between a `Feature` and its `PBI`s
+ * is drawn by no axis of the roadmap (`onThisRoadmap`), so on a focused roadmap the PBIs
+ * below it were on no card at all — while their dates went on reaching the Feature's own
+ * bar, which walks the MODEL. A bar drawn from work the card said was not there. The
+ * descent terminates because `children` is acyclic — `buildModel` runs `breakCycles`
+ * before `assignAll`, and it is the only producer of a model.
+ *
+ * `undrawn` is MEMBERSHIP alone, never the whole of `rowHidden`, and the difference is
+ * the trap: `rowHidden` is true for three different reasons and a caller holding the
+ * boolean cannot tell them apart. Descending through a child the COMPLETED TOGGLE hid
+ * would put a done subtree back on every card face, the board's included.
+ *
+ * **It stops where THIS projection has already re-rooted the subtree.** A promoted root
+ * carries `focusRoot` — *a root of the rendered forest that is not a root of the model* —
+ * so it is drawn in its own right at the top of the forest and is nobody's listed child.
+ * That is what keeps the requirements board still: its membership IS the forest's
+ * (`inPlan`), so every row it refuses promotes what is under it, and this walk finds
+ * nothing to carry up. The rows that strand are the ones only a projection's own narrowing
+ * refuses — the roadmap's release, and the iteration board's out-of-sprint link — which the
+ * forest drew and nothing promoted.
+ *
+ * `promoted` is what makes the stamp readable at all, and reading the stamp alone was the
+ * defect: `focusRoot` is set once per model build by `collectFocusRoots` and
+ * `projectionForest` together, so a walk that is not the forest's meets it on rows nothing
+ * here promoted. On the iteration board that took an in-sprint `PBI` off its carrier's face
+ * while the same board drew its own card for it — a card's list disagreeing with the board
+ * it is drawn on. It is the ORIGIN's answer and is carried unchanged down the recursion: a
+ * row the walk passes THROUGH is one this projection does not DRAW, and whether it is a
+ * forest MEMBER is not the question the stop asks — a `Release` the Base returned is in the
+ * plan's forest and is refused by `onThisRoadmap` alone. So asking the stop of this
+ * function's own `item` answers a question about the traversed `Release` rather than about
+ * the walk that met the stamp. Who answers which
+ * way, and why, is `drawsForestFrom` (`projection.ts`); nothing about it is decided here.
+ *
+ * Here rather than in `childrenList.ts`, where it was written, because `rowHidden` above
+ * needs the same descent for the same reason and a scaffold judged by a second reading of
+ * "what is below this" is exactly the disagreement this file exists to prevent. Two
+ * callers, one membership predicate each: the host's `isRowUndrawn` for a card's face,
+ * this rule's own `inProjection` for the row.
+ */
+export function drawnDescent(
+	item: BacklogItem,
+	undrawn: (row: BacklogItem) => boolean,
+	promoted: boolean,
+): BacklogItem[] {
+	return item.children.flatMap((child) =>
+		undrawn(child) ? drawnDescent(child, undrawn, promoted)
+		: promoted && child.focusRoot ? []
+		: [child],
+	);
 }

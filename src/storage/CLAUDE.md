@@ -104,6 +104,24 @@ can be checked by reading one directory.
   `2026-08-01 Planning` parses as a date — treated as one, re-picking `2026-08-01 Review`
   compares equal and writes nothing, and the merge carries ` Planning` onto its
   replacement. `axisEntries` yields the FIELD with the key so that stays decidable.
+- **A key the note's LIVE type may not hold is refused here, whatever the plan says** —
+  one question (`mayHoldField`, `domain/itemTypes.ts`), asked of the type the note states
+  at the moment it is opened rather than the type the plan was made against. It is one
+  function because it was two answers and the second had a hole in it: the horizon's
+  live-type check sat inside `refusesAxis`, which returns at its first clause for a write
+  carrying no `axis`, so the iteration assignment and the ✨ backfill's stubs both reached
+  a `Release` ungated. What each door DOES about a refusal still differs, and that is the
+  part to keep rather than tidy: a GESTURE refuses its whole batch loudly
+  (`refusesLiveType`), because the user acted on a note that is no longer the note they
+  acted on; a STUB is dropped and the batch goes on (`withHoldableStubs`), because a
+  backfill names hundreds of notes and refusing at the one release would abandon every
+  note after it for a key that carries no decision. `missingKeyStubs` declines to plan
+  those stubs as well — not redundant with the drop here, for `applySafely`'s own reason:
+  authorization at plan time is not authorization at write time. `applyRestores` asks none
+  of it, so a legitimate write made before a retype can still be taken back.
+  The rule is name-shaped by ruling (only a `Release` is asked) and widening it is an edit
+  to that one function — see `docs/issues/Creation seeds a placement the type may not
+  hold.md`.
 - The LABEL properties (`ItemWrite.risk`, `ItemWrite.priority`, `ItemWrite.assignee`) are
   those same two rules a
   third time, in `applyLabels`, and they share the axis's writer with none of them: a label
@@ -244,7 +262,10 @@ whole thing from the file resolved correctly while silently dropping both.
   at any moment — so each one needs its own migration, not just whichever bit first.
   A **note** rename moves that row's entry in `collapsed`/`settled` (`renamePath`, wired
   to `vault.on('rename')` in the view), or the next refresh shuts it as a parent nobody
-  has ruled on. A **view** rename moves the stored entry, which is why `dispose` flushes
+  has ruled on — and it moves the two `prefs` values that HOLD a note path rather than
+  being keyed by one (`renamePathPrefs`, wired to the same event in `main.ts`, covering
+  every stored entry whatever view is loaded; `renameScoped` in `view/viewState.ts`
+  covers the loaded backlog view's in-memory copy, which its flush writes back wholesale). A **view** rename moves the stored entry, which is why `dispose` flushes
   on an identity change even with nothing pending — the state is unchanged and yet
   belongs elsewhere. A **base** rename moves every entry naming it (`rekeyBase`, wired in
   `main.ts`, covering bases with no view open) while `flushViewState` re-resolves its
@@ -258,7 +279,10 @@ whole thing from the file resolved correctly while silently dropping both.
   prunes it for naming a file that no longer exists.
 - **Not everything a view remembers is keyed by a path, and the entry says which is
   which.** The stored entry is `{ folds, prefs }`: `folds` is everything keyed by
-  something the vault can lose, and it is what the prune and the rename walk. The shelf's
+  something the vault can lose, and it is what the prune walks. The RENAME reaches one
+  step further, and that exception is stated rather than hidden: `prefs.scope` and
+  `prefs.release` HOLD a note path instead of being keyed by one, so `renamePathPrefs`
+  walks exactly those two. The shelf's
   hidden types, the tree's column widths, the resources axis's folded bands and the folded
   board columns and horizon buckets are per-view lists or maps keyed by NAMES — a type, a
   Bases property id, a resource, a state value — while the rules below are all about paths:

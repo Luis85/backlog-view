@@ -312,6 +312,22 @@ export interface BacklogViewHost {
 	isRowHidden(item: BacklogItem): boolean;
 
 	/**
+	 * The MEMBERSHIP half of {@link isRowHidden}, asked alone: this projection does not
+	 * draw this item at all, whatever the completed toggle says.
+	 *
+	 * One question rather than a second predicate spelled at a call site, because the
+	 * `VisibilityRule` that answers it lives in `rowVisibility.ts` and a caller with only
+	 * the boolean cannot tell the three reasons `rowHidden` returns true apart. A caller
+	 * that descends through a hidden row on the wrong one puts a done subtree back on
+	 * screen, which is the trap this exists instead of.
+	 *
+	 * Its one caller is `drawnChildren` (`childrenList.ts`), which traverses THROUGH such
+	 * a row to the work below it — a `Release` hand-hung between a `Feature` and its
+	 * `PBI`s is drawn by no axis of the roadmap while everything under it still is.
+	 */
+	isRowUndrawn(item: BacklogItem): boolean;
+
+	/**
 	 * Whether this item's ROW is folded — a tree row, or a dated-axis timeline bar. A
 	 * caller passes a path and never a scope: the dated axis folds grid rows and every
 	 * other surface opens a tree node, so the two keep separate bits and the view picks

@@ -3,12 +3,26 @@ import { BacklogViewHost } from './host';
 import { BacklogItem } from '../domain/model';
 import { cardPaths } from '../domain/board';
 import { displayType } from '../domain/itemTypes';
+import { drawsForestFrom } from './projection';
+import { drawnDescent } from './rowVisibility';
 
 /**
- * The direct children a card may list: the ones the view is showing anyway.
- * `isRowHidden` is the single visibility rule the tree and both card projections
- * share, so a done child hidden from the tree is absent here too — while the card's
- * rollup goes on counting it. The two numbers differ on purpose.
+ * The children a card DRAWS — the level of the tree this projection puts beneath this
+ * item, taken by `drawnDescent` (`rowVisibility.ts`), which is where the descent itself
+ * and the two rules it keeps are stated. This is that walk asked with the HOST's
+ * membership question.
+ *
+ * The stop's own term is `drawsForestFrom` asked of THIS item, not of the projection
+ * alone: a card can be drawn by a projection that renders the forest and still be a row
+ * the forest never contained — an `Iteration` on a grid axis is exactly that, and its
+ * children carry `focusRoot` BECAUSE it is not a member. Composed here rather than taken
+ * off `VisibilityRule`, which the host does not publish; both read `host.projection`, so
+ * this cannot ask membership against one projection and the promotion against another.
+ *
+ * The question is `isRowUndrawn` and NEVER `isRowHidden`, and the difference is the trap:
+ * `rowHidden` is true for three different reasons and a caller holding the boolean cannot
+ * tell them apart. Descending through a child the COMPLETED TOGGLE hid would put a done
+ * subtree back on every card face, the board's included.
  *
  * This lives in `view/`, not `domain/`, because these functions take a `BacklogViewHost` —
  * a view type `domain/` can never import, so the layering rule rules `domain/` out
@@ -20,8 +34,22 @@ import { displayType } from '../domain/itemTypes';
  * own into either, is what lets `render/cardChildren.ts` (the disclosure) and
  * `interactions/menu.ts` (its keyboard path) share one answer without one.
  */
+export function drawnChildren(host: BacklogViewHost, item: BacklogItem): BacklogItem[] {
+	return drawnDescent(item, (row) => host.isRowUndrawn(row), drawsForestFrom(host.projection, item));
+}
+
+/**
+ * The drawn children a card may LIST: the ones the view is showing anyway.
+ * `isRowHidden` is the single visibility rule the tree and both card projections
+ * share, so a done child hidden from the tree is absent here too — while the card's
+ * rollup goes on counting it. The two numbers differ on purpose.
+ *
+ * Membership is already settled by `drawnChildren`, so what this subtracts is the
+ * completed toggle and an emptied context scaffold — the two reasons `rowHidden` gives
+ * that are about hiding rather than about this screen's population.
+ */
 export function listedChildren(host: BacklogViewHost, item: BacklogItem): BacklogItem[] {
-	return item.children.filter((child) => !host.isRowHidden(child));
+	return drawnChildren(host, item).filter((child) => !host.isRowHidden(child));
 }
 
 /**

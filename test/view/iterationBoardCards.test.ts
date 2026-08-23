@@ -101,6 +101,37 @@ describe('the three-bucket board', () => {
 		expect(card.querySelector('.pbl-card-kids-count')?.textContent).toContain('1');
 	});
 
+	/**
+	 * The other side of the rule above, and the reach of the walk that traverses through a
+	 * row this projection does not draw. `Loose child` names no sprint, so the board draws
+	 * no card for it and does not list it — unchanged. `Deep work` below it names THIS
+	 * sprint on its own merit, so it is a row this board draws whose nearest DRAWN ancestor
+	 * is the carrier, and the carrier's face is where it belongs.
+	 *
+	 * Nothing is inherited either way: membership is still asked of each note, and the
+	 * loose row between them is passed through rather than promoted onto the face. The
+	 * list is asserted whole, so a walk that carried `Loose child` up as well fails here.
+	 */
+	it('lists a child of a loose child where that child is in the iteration', () => {
+		const vault = new FakeVault();
+		vault.addFile(SPRINT, { frontmatter: { type: 'Iteration', order: 10 } });
+		vault.addFile('Carrier.md', {
+			frontmatter: { type: 'Feature', order: 10, status: 'New', iteration: '[[Sprint 12]]' },
+		});
+		vault.addFile('Loose child.md', { frontmatter: { type: 'PBI', order: 10, status: 'New' }, parentLink: 'Carrier' });
+		vault.addFile('Deep work.md', {
+			frontmatter: { type: 'Task', order: 10, status: 'New', iteration: '[[Sprint 12]]' },
+			parentLink: 'Loose child',
+		});
+		const harness = makeView(vault, OPTIONS, { base: 'Plan.base' });
+		harness.view.setBoardScope(SPRINT);
+		const card = cardByTitle(harness.containerEl, 'Carrier');
+		card.querySelector<HTMLElement>('.pbl-card-kids-toggle')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+		const listed = Array.from(card.querySelectorAll<HTMLElement>('.pbl-card-kid-title')).map((el) => el.textContent);
+		expect(listed).toEqual(['Deep work']);
+	});
+
 	it('draws an empty Open as a column, not as the no-state drop strip', () => {
 		// The DEFAULT configuration reaches this: with `iterationOpenStates` unset, Open's
 		// representative is the key removal — a `state: null` that takes a drop — so with
@@ -162,6 +193,74 @@ describe('the three-bucket board', () => {
 		const harness = makeView(vault, noWorkflow, { base: 'Plan.base' });
 		harness.view.setBoardScope(SPRINT);
 		expect(harness.containerEl.querySelector('.pbl-board-col')).toBeNull();
+	});
+});
+
+/**
+ * The context-row rule on this board, which is the second projection the scaffold clause
+ * reaches. An excluded ancestor is drawn only while it is placing work that is on this
+ * screen, and "on this screen" is the DRAWN DESCENT: a result carrying no link to this
+ * sprint is a row this board does not draw, so the walk goes through it to the carrier
+ * below.
+ *
+ * Asked here as well as on the roadmap because the change arrives differently: on the
+ * roadmap it brought a context card BACK that the clause had wrongly dropped, and here it
+ * adds one that never appeared, on a board where nothing was ever lost. Correct by the
+ * context-row rule — the ancestor is what places the card — and unnamed until this test.
+ */
+describe('a context row placing work through a row the sprint does not draw', () => {
+	it('draws the ancestor as a card of its own, beside the carrier below it', () => {
+		const vault = new FakeVault();
+		vault.addFile(SPRINT, { frontmatter: { type: 'Iteration', order: 10 } });
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10, status: 'New' } });
+		vault.addFile('Story.md', {
+			frontmatter: { type: 'PBI', order: 10, status: 'New' },
+			parentLink: 'Epic',
+		});
+		vault.addFile('Job.md', {
+			frontmatter: { type: 'Task', order: 10, status: 'New', iteration: '[[Sprint 12]]' },
+			parentLink: 'Story',
+		});
+		const { view, containerEl } = makeView(vault, OPTIONS, {
+			base: 'Plan.base',
+			only: [SPRINT, 'Story.md', 'Job.md'],
+		});
+		view.setBoardScope(SPRINT);
+
+		// The whole frame, in the order it is drawn: `Story` is a SHELF card — the work in no
+		// iteration — and is on no column either way, so the walk through it to `Job` is the
+		// whole of what puts `Epic` among the columns. It read `Story` as a child that is not
+		// visible before 2026-08-22 and drew no `Epic` at all.
+		expect(cardTitles(containerEl)).toEqual(['Story', 'Job', 'Epic']);
+	});
+
+	/**
+	 * **The scaffold clause's own focus-root term, on a board that promotes nothing.** The
+	 * walk `rowHidden` runs to decide whether this `Epic` is still placing anything takes
+	 * the same stop the card faces take, and it must answer FALSE here for the reason
+	 * `drawsForestFrom` (`src/view/projection.ts`) states: this board's population is
+	 * `iterationResults` over `realRoots`, so a `focusRoot` stamp on a row it draws was
+	 * made by the plan's forest and says nothing about this screen.
+	 *
+	 * `Rel` is an excluded `Release`, which `inPlan` refuses in every projection — so
+	 * `projectionForest` stamped `Job` when it built the plan's forest, and this board drew
+	 * neither the release nor a root. Passing `true` for the stop here reads that stamp as
+	 * its own: `Epic` calls itself an empty scaffold and goes, while `Job` — the one card
+	 * the ancestor is placing — stays on the board with nothing above it.
+	 */
+	it('keeps the ancestor where the plan promoted the card below it', () => {
+		const vault = new FakeVault();
+		vault.addFile(SPRINT, { frontmatter: { type: 'Iteration', order: 10 } });
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10, status: 'New' } });
+		vault.addFile('Rel.md', { frontmatter: { type: 'Release', order: 10 }, parentLink: 'Epic' });
+		vault.addFile('Job.md', {
+			frontmatter: { type: 'Task', order: 10, status: 'New', iteration: '[[Sprint 12]]' },
+			parentLink: 'Rel',
+		});
+		const { view, containerEl } = makeView(vault, OPTIONS, { base: 'Plan.base', only: [SPRINT, 'Job.md'] });
+		view.setBoardScope(SPRINT);
+
+		expect(cardTitles(containerEl)).toEqual(['Job', 'Epic']);
 	});
 });
 

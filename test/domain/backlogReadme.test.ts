@@ -40,7 +40,7 @@ describe('backlogReadmeContent', () => {
 		// this vocabulary actually has today — four extra types, two markers — including
 		// the verb, which has to agree with a marker count that grew from one to two.
 		expect(content).toContain('Issue, Bug, Idea and Deliverable sit *beside* it');
-		expect(content).toContain('Milestone and Iteration are neither');
+		expect(content).toContain('Milestone, Iteration and Release are neither');
 		expect(content).not.toContain('and Bug and');
 	});
 
@@ -382,8 +382,8 @@ describe('backlogReadmeContent', () => {
 		const line = content.split('\n').find((l) => l.includes('**Assign missing properties**'));
 		expect(line).toContain('adds the keys *empty* to items that lack them and places nothing');
 		// A horizon-only view has no target property at all, so there is nothing the
-		// backfill withholds from a Milestone here and nothing to except.
-		expect(line).not.toContain('except');
+		// backfill withholds from a Milestone here — the START narrowing is what is absent.
+		expect(line).not.toContain('never gets a start added');
 	});
 
 	it('names Milestone, not the marker category, in the backfill exception, whichever date key is configured', () => {
@@ -401,11 +401,12 @@ describe('backlogReadmeContent', () => {
 
 	it('does not narrow the backfill when no start property is configured', () => {
 		// With no startKey, ✨ never stubs a start on anything, marker or not — there is
-		// nothing the type withholds here, so nothing to except. Covers both a target-only
-		// view and (above) a horizon-only one with neither date key.
+		// nothing the type withholds here, so the START narrowing is absent. Covers both a
+		// target-only view and (above) a horizon-only one with neither date key. The
+		// RELEASE refusal beside it is not gated on a date key — `readmePlanning.test.ts`.
 		const targetOnly = settingsWith({ startKey: '', targetKey: 'due' });
 		const line = readme(targetOnly).split('\n').find((l) => l.includes('**Assign missing properties**'));
-		expect(line).not.toContain('except');
+		expect(line).not.toContain('never gets a start added');
 	});
 
 	it('names Set iteration among the things that write a planning key, when it can copy dates', () => {

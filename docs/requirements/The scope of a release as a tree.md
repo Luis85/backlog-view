@@ -20,8 +20,9 @@ assignee: ""
 already is, **so that** I can see the shape of the work rather than a flat list of rows that
 lost it.
 
-Nothing yet. The work reuses the row rendering the backlog already does, over a population
-selected by one property instead of by the whole result set.
+The tree has shipped. It draws its own read-only rows over a population selected by one
+property instead of by the whole result set — **not** the backlog's row rendering, which this
+note assumed and `## Where it lives` explains it cannot be.
 
 ## Use case
 
@@ -79,8 +80,30 @@ selected by one property instead of by the whole result set.
 
 ## Where it lives
 
-The membership read is a new derivation in `src/domain/`, beside `src/domain/board.ts` and
+The membership read is `src/domain/releases.ts`, beside `src/domain/board.ts` and
 `src/domain/roadmap.ts` and shaped like them — it derives from the model in
-`src/domain/model.ts` and touches no DOM. The rows reuse `src/view/render/rows.ts` and the
-context marking already there; the empty state is in `src/view/render/emptyStates.ts` and the
-membership key is declared in `src/domain/viewOptions.ts`.
+`src/domain/model.ts` and touches no DOM. The membership key is declared in
+`src/domain/releaseOptions.ts`, this view's own option set. `src/view/release/releaseView.ts`
+CHOOSES between this scope and the index; the one that DRAWS the tree is
+`src/view/release/renderScope.ts`.
+
+This note said the rows reuse `src/view/render/rows.ts` and the context marking already there.
+They do not, and cannot: that module takes a `BacklogViewHost` and wires menus, create prompts,
+tag removal and drag into every row — every one of them a write this screen does not offer — so
+reusing it would make a read-only view satisfy a host interface in order to withhold what the
+interface is for. The rows are drawn by `src/view/release/renderScope.ts` instead — the header,
+the read-only tree and both empty states — reusing the stylesheet (`styles/release.css`),
+`badgeStyleFor` from `src/view/render/badges.ts` and `guidanceShell` from
+`src/view/render/emptyStates.ts`, which is the same reuse the estimation view settled on.
+
+**What declining that module COSTS is the semantics, not only the wiring.** `rows.ts` already
+carries `role="treeitem"`, `aria-level`, `aria-posinset` and `aria-setsize` — and the `role="tree"`
+above them is not its own either: the backlog's pane is created with it in
+`src/view/backlogView.ts` and swapped per projection through `src/view/render/projections.ts`. So
+`renderScope.ts` carries the whole set itself, the container role included: `--pbl-depth` moves a row sideways and announces nothing,
+and a scope drawn with indent alone is a flat list of divs on the one screen whose whole promise
+is the shape of the work. Two attributes `rows.ts` sets are deliberately absent — `aria-selected`
+describes a selection this screen does not have and `aria-expanded` a collapse it does not offer.
+The context marker reuses `.pbl-outside-marker`'s STYLING and none of its sentence: that one says
+a row is outside the base's filter, which is false of every row here, since `releaseScope` skips
+an `outsideFilter` ancestor outright rather than keeping it as context.

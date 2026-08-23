@@ -751,6 +751,12 @@ export const en = {
 
 	'option.parentProperty': 'Parent property',
 	'option.orderProperty': 'Order property',
+	'release.option.group.model': 'Model',
+	'release.option.group.release': 'Release',
+	'release.option.membership': 'Membership property',
+	'release.option.version': 'Version property',
+	'release.option.targetDate': 'Target date property',
+	'release.option.status': 'Status property',
 	'option.typeProperty': 'Item type property',
 	'option.hierarchyOnly': 'Ignore notes outside the hierarchy',
 	'option.showOutsideParents': 'Show parents outside the filter',
@@ -1513,4 +1519,101 @@ export const en = {
 	'timeline.waitsTooltip': '{title} — {waits}',
 	/** The tag cell's own tooltip; `{tags}` is vault content joined as grammar. */
 	'column.tagsTooltip': '{label}: {tags}',
+
+	/** The release view's own label, `estimation.viewName`'s case exactly: a view-type
+	 * name is ordinary UI text, and only the backlog view holds the one sanctioned
+	 * exemption for the plugin's own identity. */
+	'release.viewName': 'Product release',
+	/** Between construction and the first result set Bases delivers — the other two views
+	 *  say the same thing for the same reason, rather than showing an empty pane. */
+	'release.loading': 'Loading releases…',
+	/**
+	 * The two unconfigured states, which are deliberately different answers: one is a
+	 * mapping to bind, the other is a base that simply holds no release yet. `Release`
+	 * inside the second hint is the TYPE NAME a note carries — data, not text — and is
+	 * spelled here rather than passed in because a parameter would put the vocabulary
+	 * behind a caller's argument and let a test assert its own input.
+	 */
+	'release.empty.noType.title': 'No type property is mapped',
+	'release.empty.noType.hint':
+		'This view reads each note’s type to find the releases. Bind the type property in the view options.',
+	'release.empty.noReleases.title': 'No releases in this base',
+	'release.empty.noReleases.hint':
+		'A release is a note typed Release, carrying a version and a target date. Add one to the vault and it appears here.',
+
+	/** The index grid's five column headings. Each names a COLUMN, so each is also what
+	 *  `release.index.absentColumns` lists when the column's key is unbound — one name per
+	 *  column, never a second spelling for the note beneath the grid. */
+	'release.index.column.name': 'Release',
+	'release.index.column.version': 'Version',
+	'release.index.column.target': 'Target',
+	'release.index.column.status': 'Status',
+	'release.index.column.members': 'Items',
+	/** A target date the release note does not state — a legitimate answer, and a
+	 *  different one from {@link release.index.unreadable} below. */
+	'release.index.noTarget': 'No target date',
+	/** A key that IS bound and holds something no reader will guess at: somebody wrote
+	 *  something there, which is neither an absent value nor an unbound key. */
+	'release.index.unreadable': 'Unreadable',
+	/**
+	 * The same refusal where the value stands ALONE rather than under a column heading —
+	 * the release screen's header, which draws its three figures bare and side by side. A
+	 * bare "Unreadable" twice on one header says nothing about which property to fix.
+	 */
+	'release.figureUnreadable': '{label} unreadable',
+	/** The unconfigured columns, named once beneath the grid. `{columns}` is an array, so
+	 *  it is joined by the catalog's own grammar rather than by a joiner at the call. */
+	'release.index.absentColumns': 'These columns are not shown because no property is bound: {columns}.',
+	/**
+	 * A row's members, SPOKEN. The column draws the bare number, which is right in a
+	 * column and ambiguous in a sentence — "0.8, 0.8.0, 12 September 2026, In progress, 4"
+	 * ends on a number naming nothing. Its own key rather than `count.items`, because a
+	 * release holds members and the two may not read alike in every locale.
+	 */
+	'count.releaseMembers': { one: '{count} member', other: '{count} members' },
+	/**
+	 * One heading-and-figure pair inside a row's accessible name. A key rather than a
+	 * template at the call site: which side of the value the label sits on is grammar, and
+	 * a locale that puts it after would have no way to say so.
+	 */
+	'release.index.rowFigure': '{label} {value}',
+	/**
+	 * What a row announces to a screen reader: its name, then every figure it drew, each
+	 * with the heading the eye gets from the column above it. `{figures}` is an array, so
+	 * the catalog joins it — see `release.index.absentColumns` for the same rule.
+	 */
+	'release.index.rowLabel': '{name}: {figures}',
+	/** The items whose membership value named no release this base holds. */
+	'release.index.unresolved': {
+		one: '{count} item names a release that could not be resolved.',
+		other: '{count} items name a release that could not be resolved.',
+	},
+
+	/** The only way off one release's screen, so it is a real button and carries its own
+	 *  name — the icon alone says nothing to a reader who cannot see it. */
+	'release.scope.back': 'Back to all releases',
+	/**
+	 * The ancestor drawn only to keep a member in its place — and NOT the tree's own
+	 * `row.contextMarker`, whose sentence is false here every time. That one says a row is
+	 * outside the base's filter; `releaseScope` skips an `outsideFilter` ancestor outright,
+	 * so every context row this screen can draw is IN the base and is merely not a member of
+	 * the release on screen. One marker's styling, two different facts about a row.
+	 */
+	'release.scope.contextMarker': 'In this base, but not in this release — shown to keep the hierarchy',
+	/** The member count in the header: the notes whose OWN property names this release,
+	 *  which is the denominator every other figure in this view uses. Context ancestors are
+	 *  on screen and are not in it. */
+	'release.scope.members': {
+		one: '{count} item',
+		other: '{count} items',
+	},
+	/** No membership property is bound, so no scope can be read at all — the header's facts
+	 *  still stand and the way back is still there, but there is no tree and no count. */
+	'release.scope.noMembership.title': 'No membership property is mapped',
+	'release.scope.noMembership.hint':
+		'This view reads each note’s membership property to find what is in a release. Bind the membership property in the view options.',
+	/** A release with nothing in it, which is a legitimate state rather than a mistake — so
+	 *  it names the release rather than describing a problem. */
+	'release.scope.empty.title': 'Nothing is in {name} yet',
+	'release.scope.empty.hint': 'An item joins a release when its own membership property names that release.',
 } as const;

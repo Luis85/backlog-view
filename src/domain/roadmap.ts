@@ -2,7 +2,7 @@ import { t } from '../i18n/t';
 import { Absence } from './absences';
 import { firstPlacedIndex } from './board';
 import { deriveBars, placeItem, ShelfCard, statedEnds, TimelineBar } from './bars';
-import { isIterationType, isMarkerType } from './itemTypes';
+import { isIterationType, isMarkerType, isReleaseType } from './itemTypes';
 import { ITERATION_TYPE, MILESTONE_TYPE } from './typeVocabulary';
 import { BacklogItem, BacklogModel } from './model';
 import { FieldReading, sameValue } from './noteFields';
@@ -221,6 +221,20 @@ export interface RoadmapModel {
 	context: BacklogItem[];
 	/** Results placed on the axis; placed plus shelved equals the visible row set. */
 	placedCount: number;
+	/**
+	 * The Base's own results this roadmap could draw — every result minus the types no axis
+	 * of it places (`onThisRoadmap`). NOT narrowed by `visible`, unlike every other count
+	 * here, because the question it answers is about the BASE and not about the screen: is
+	 * there nothing here at all, or is everything here hidden?
+	 *
+	 * It exists because `roadmapRows` filters and `model.results` does not, and a reader
+	 * that took the second while the frame was drawn from the first told a user "All 1
+	 * items are done and hidden" about a release that is neither — and offered Show
+	 * completed items, which would not have brought it back. One statement of the
+	 * population, two readers; the alternative is two readers deriving eligibility
+	 * separately and drifting, which is exactly how that happened.
+	 */
+	eligibleResults: number;
 }
 
 /** What the shelf is called wherever a placement is named out loud. */
@@ -416,10 +430,62 @@ export function resourcePlacementLabel(roadmap: RoadmapModel, source: ResourceSo
  * exactly as well. The horizons axis asks for
  * none of it, placed or shelved, since `drawsGrid('horizons')` is false — the one place
  * this function's own axis argument decides the answer rather than only picking a source.
+ *
+ * A `RELEASE` is dropped here rather than at any one axis, because this is the single
+ * funnel all three take: `buildRoadmap` calls this once and then branches to buckets,
+ * lanes or bars, so the guard at `placeItem` — which the bucket axis never consults —
+ * left a release sitting in a horizon BUCKET, or on the counted, drop-targetable shelf
+ * when it held no horizon. This is also what keeps `placedCount` honest: a release is not
+ * an unplaced result, it is not a result of this projection at all. Nothing is orphaned by
+ * the drop — this list is flat, and a marker holds no children to strand. An
+ * `outsideFilter` release goes with it, which `Releases as their own type` 4a asks for by
+ * name — though nothing on the roadmap depends on that any more: `inPlan` refuses an
+ * excluded release in every projection now, so one never reaches this list at all.
+ * [[A release on the dated axis]] is where a release gets a position of its own.
+ *
+ * **The two branches are not the same shape, and the filter cannot be read as one rule
+ * over both.** `model.results` is a flat walk, so dropping a row drops a row;
+ * `model.roots` is a FOREST, so dropping one takes its whole subtree off the screen with
+ * it — a `PBI` somebody hand-nested under a release was drawn nowhere while
+ * `eligibleResults` went on counting it, and the roadmap said all the work was done and
+ * hidden. What closes that is upstream and not here: `honouredFocusLevel`
+ * (`view/projection.ts`) refuses a focus this roadmap could not draw BEFORE the model is
+ * built, so a release is never a focus root of a model the roadmap is looking at. The
+ * guarantee is the view's — a model built here with a `Release` focus still loses the
+ * subtree, and the check under this sentence is `test/view/releaseRows.test.ts`, which
+ * drives the real view rather than this function.
  */
 function roadmapRows(model: BacklogModel, visible: (item: BacklogItem) => boolean, axis: RoadmapAxis): BacklogItem[] {
-	const rows = (model.focused ? model.roots : model.results).filter(visible);
+	const source = (model.focused ? model.roots : model.results).filter(visible);
+	const rows = source.filter(onThisRoadmap);
 	return drawsGrid(axis) ? [...rows, ...model.iterations.filter(visible)] : rows;
+}
+
+/**
+ * Whether any axis of this roadmap places this row at all — **the one statement of the
+ * roadmap's population**, and everything that answers "is this on the roadmap" asks it
+ * rather than restating it.
+ *
+ * It was extracted after the second reader was reported and reached only two; four more
+ * findings arrived afterwards, every one of them a reader that had never been told the
+ * population changed — an inflated toolbar count beside an advisory saying the roadmap
+ * was empty, a focus root dropped with its whole subtree, and an empty state offering to
+ * create the very type the frame refuses. So the readers are named here, once, and there
+ * are five: `roadmapRows` and `RoadmapModel.eligibleResults` in this file,
+ * `projectionMember` (`view/projection.ts`) — through which the rows, the shelf, the
+ * keyboard and every drop target inherit it — `countedPopulation`
+ * (`view/render/toolbarStatus.ts`), and `honouredFocusLevel` beside `projectionMember`,
+ * which is what keeps a focus this roadmap cannot draw from re-rooting the model at all.
+ *
+ * A TYPE NAME is all it reads, which is what lets the focus ask it with no row in hand.
+ * The backfill is deliberately NOT a sixth reader: `missingKeyStubs` (`domain/writePlan.ts`)
+ * asks whether a TYPE may hold a planning key, which is `placementEnds`-shaped and has a
+ * note of its own — `docs/issues/Creation seeds a placement the type may not hold.md`.
+ * Two rules, and collapsing them would put a question about a note's keys behind a
+ * question about a screen.
+ */
+export function onThisRoadmap(item: { typeName: string | null }): boolean {
+	return !isReleaseType(item.typeName);
 }
 
 /** Project the model onto the given axis. */
@@ -430,7 +496,16 @@ export function buildRoadmap(
 	axis: RoadmapAxis,
 ): RoadmapModel {
 	const rows = roadmapRows(model, visible, axis);
-	const roadmap: RoadmapModel = { axis, buckets: [], bars: [], lanes: [], shelf: [], context: [], placedCount: 0 };
+	const roadmap: RoadmapModel = {
+		axis,
+		buckets: [],
+		bars: [],
+		lanes: [],
+		shelf: [],
+		context: [],
+		placedCount: 0,
+		eligibleResults: model.results.filter(onThisRoadmap).length,
+	};
 	if (axis === 'horizons') deriveBuckets(rows, settings, roadmap, visible);
 	else if (axis === 'resources') deriveLanes(rows, settings, roadmap, model.absences);
 	else {
@@ -594,6 +669,9 @@ function placeAssigned(
  */
 function placeBar(item: BacklogItem, lane: () => ResourceLane, roadmap: RoadmapModel, settings: BacklogSettings): void {
 	const placement = placeItem(item, statedEnds(item), settings.iterationBars);
+	// Not on this axis at all — no row minted, nothing shelved. `deriveBars`' own skip,
+	// reached by the path that never calls it.
+	if (placement === null) return;
 	if (placement.kind === 'shelf') {
 		roadmap.shelf.push({ item, reason: placement.reason });
 		return;

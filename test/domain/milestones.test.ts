@@ -81,6 +81,59 @@ describe('a marker aggregates into nothing', () => {
 		expect(epic.descendantCount).toBe(1);
 		expect(epic.descendantTarget).toEqual({ year: 2026, month: 9, day: 1 });
 	});
+
+	it('counts for nothing wherever it sits, and is traversed through — a Release too', () => {
+		// The three claims above, asked of a `Release`. NOT "a release is not a child of
+		// anything": `linkAll` special-cases no marker, so a hand-written parent nests one
+		// exactly as it nests a `Milestone`. What `Releases as their own type` 2a means by
+		// "the parent places it nowhere" is what the model DOES enforce — no rung, no count,
+		// no date evidence, and the walk goes THROUGH it to the work below.
+		const model = buildModelFrom([
+			note('An epic', { type: 'Epic' }),
+			note('1.0', { type: 'Release', parent: 'An epic', due: '2026-12-01' }),
+			note('Prep', { type: 'PBI', parent: '1.0', due: '2026-09-01' }),
+		]);
+		const epic = model.byPath.get('An epic.md') as BacklogItem;
+		// The release itself is not counted; the PBI filed under it still is.
+		expect(epic.descendantCount).toBe(1);
+		// And the release's own date is not evidence for the epic's inferred span.
+		expect(epic.descendantTarget).toEqual({ year: 2026, month: 9, day: 1 });
+	});
+});
+
+describe('a release is on no axis of the backlog roadmap', () => {
+	/** One release stating everything all three axes read, so no axis can plead absence. */
+	const RELEASE: [string, Record<string, unknown>][] = [
+		['1.0', { type: 'Release', start: '2026-09-01', due: '2026-09-30', horizon: 'Now', assignee: 'Sam' }],
+		['Prep', { type: 'PBI', due: '2026-09-15' }],
+	];
+	const AXIS_CONFIG = {
+		startKey: 'start',
+		targetKey: 'due',
+		horizonKey: 'horizon',
+		horizonValues: ['Now', 'Next'],
+		assigneeKey: 'assignee',
+	};
+
+	// All three, because the guard is at `roadmapRows` — the single funnel `buildRoadmap`
+	// takes before it branches — and the one that would be missed by asking only the axis
+	// the guard was written for is the BUCKET axis, which never calls `placeItem` at all.
+	for (const axis of ['dates', 'resources', 'horizons'] as RoadmapAxis[]) {
+		it(`draws nothing and shelves nothing on the ${axis} axis`, () => {
+			const roadmap = buildRoadmapFrom(RELEASE, AXIS_CONFIG, axis);
+			expect(roadmap.bars.map((b) => b.item.title)).not.toContain('1.0');
+			// The shelf is the half that is easy to call "gated": it is counted, grouped and
+			// a drop target that un-places, so a release sitting there is still a release
+			// this roadmap is showing.
+			expect(roadmap.shelf.map((s) => s.item.title)).not.toContain('1.0');
+			expect(roadmap.buckets.flatMap((b) => b.cards).map((c) => c.title)).not.toContain('1.0');
+			expect(roadmap.lanes.flatMap((l) => l.bars).map((b) => b.item.title)).not.toContain('1.0');
+			expect(roadmap.context.map((c) => c.title)).not.toContain('1.0');
+			// And it is not counted as a result either — placed plus shelved is the visible
+			// result rows, and a release is none of them.
+			expect(roadmap.placedCount + roadmap.shelf.length).toBe(1);
+		});
+	}
 });
 
 describe('a milestone draws as the point it is', () => {

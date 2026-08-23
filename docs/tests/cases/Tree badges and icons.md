@@ -23,7 +23,7 @@ A verification to run.
 
 ## Why this exists
 
-`NON_RUNG_STYLE` in `src/view/render/rows.ts` is asserted by class in jsdom, never by
+`NAMED_TYPE_STYLE` in `src/view/render/badges.ts` is asserted by class in jsdom, never by
 pixel. The milestone diamond is new this increment and has never been looked at.
 
 **Preconditions** — `npm run test-build` has installed the plugin into this repository, and

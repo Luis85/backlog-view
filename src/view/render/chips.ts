@@ -5,6 +5,7 @@ import { BacklogViewHost, Column } from '../host';
 import { showAssigneeMenu, showPriorityMenu, showRiskMenu } from '../interactions/menu';
 import { ownWorkflowReading, stateKeyFor } from '../../domain/board';
 import { PlacementEnd, placementEnds } from '../../domain/itemTypes';
+import { canPlaceHorizon } from '../interactions/plan';
 import { BacklogItem } from '../../domain/model';
 import { CivilDate, FieldReading } from '../../domain/noteFields';
 import { shelfLabel } from '../../domain/roadmap';
@@ -110,9 +111,13 @@ function fillStateChip(chip: HTMLElement, done: boolean, value: string | null): 
  * Rendered on exactly the condition the roadmap draws its bucket axis on
  * (`hasHorizonAxis`) — a property with no declared values is a board without stages,
  * and a chip whose menu could set nothing would be a third opinion about what
- * "configured" means.
+ * "configured" means. The COLUMN asks that of the settings (`columns.ts`); the row asks
+ * `canPlaceHorizon`, which adds the item's own half — the date chip's exact shape, and the
+ * reason is the same one: a type this axis does not place must not draw a control over a
+ * key nothing may write for it.
  */
 export function renderHorizonChip(host: BacklogViewHost, col: HTMLElement, item: BacklogItem, label: string): boolean {
+	if (!canPlaceHorizon(host.settings, item.typeName)) return false;
 	// A value the reader refuses is not a placement: the roadmap shelves such a card
 	// with the reason on its face, and the chip says the same thing — unplaced, and
 	// why — rather than showing a horizon the axis would not honor.

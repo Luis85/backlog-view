@@ -519,7 +519,12 @@ function renderFocusPicker(host: BacklogViewHost, barEl: HTMLElement, model: Bac
 		// Through `offerableTypes` like every other type list: focusing `Deliverable` on
 		// the requirements board narrows it to roots that board excludes, leaving it empty.
 		// An INHERITED one still reads in the button, with the clear beside it — this only
-		// stops the state being reached from the projection it breaks.
+		// stops the state being reached from the projection it breaks. That holds where the
+		// focus is merely UNOFFERED, the `Deliverable` case it was written about; it does not
+		// where the projection refuses to honour the focus at all (`honouredFocusLevel`), and
+		// today that is `Release` on the roadmap alone: the model is built unfocused there, so
+		// `active` is '' and the button reads `All types` with no clear beside it. The stored
+		// pick is untouched and the tree still shows it.
 		for (const type of offerableTypes(host)) choice(type, type);
 		showMenuForClick(menu, evt);
 	});

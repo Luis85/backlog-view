@@ -5,6 +5,7 @@ import { BacklogItem, BacklogModel, iterationResults } from '../../domain/model'
 import { displayType, isDeliverableType } from '../../domain/itemTypes';
 import { setTextIfChanged } from './toolbarControls';
 import { projectionPopulation } from '../projection';
+import { onThisRoadmap } from '../../domain/roadmap';
 
 /**
  * The hierarchy is the tree's grouping and the workflow is the board's; a group-by
@@ -39,8 +40,8 @@ export function detectIgnoredGrouping(data: BasesQueryResult | null | undefined)
  * The requirements board is scoped a FOURTH way, for the opposite reason the
  * Deliverables board is scoped at all: Deliverables are managed on their own board now
  * (`renderRequirementsBoard`), so counting one here would claim the board shows more
- * than it does. The tree and the roadmap keep every item — this scoping is the
- * `'board'` projection alone.
+ * than it does. The roadmap is scoped a fifth way, by its own population statement
+ * (`onThisRoadmap`); the TREE is the one projection that keeps every item.
  */
 export function syncCountLabel(host: BacklogViewHost, barEl: HTMLElement): void {
 	const label = barEl.querySelector<HTMLElement>('.pbl-count-label');
@@ -81,9 +82,10 @@ export function renderIgnoredNote(barEl: HTMLElement, model: BacklogModel): void
  * What this projection is counting — its own population, which is not the same question
  * for all six. The Deliverables board draws `model.deliverableResults`; the
  * requirements board draws every result EXCEPT a Deliverable, which it excludes by
- * construction; the test catalog draws its own forest's results; and the tree and the
- * roadmap draw what is left, which is the PLAN's population — `model.results` excludes
- * the catalog already, so the tests leave three of these numbers without a branch here.
+ * construction; the test catalog draws its own forest's results; the roadmap draws every
+ * result its axes can place; and the tree draws what is left, which is the PLAN's
+ * population — `model.results` excludes the catalog already, so the tests leave that last
+ * number without a branch here.
  *
  * One function because two toolbar readouts sit beside each other and have to agree:
  * the count label and the completed toggle's "(N hidden)". They did not — the label was
@@ -101,6 +103,16 @@ export function countedPopulation(host: BacklogViewHost, model: BacklogModel): B
 	if (host.effectiveScope !== null) {
 		return iterationResults(model, host.effectiveScope).filter((item) => !item.outsideFilter);
 	}
+	// The ROADMAP is scoped a fifth way, and by the projection's own statement of its
+	// population rather than by a rule spelled here: no axis of it places a `Release`
+	// (`onThisRoadmap`), so counting one claims the screen holds an item it does not draw.
+	// A base of nothing but releases said "1 item" beside an advisory saying the roadmap
+	// was empty — and a mixed base inflated both this number and the completed toggle's.
+	// The FOCUS is answered elsewhere and must not be answered again here: a focus this
+	// roadmap cannot draw is already gone from `settings` (`honouredFocusLevel`), so
+	// `model.results` is the right population and re-deriving one would be a second opinion
+	// about which rows are on this roadmap.
+	if (host.projection === 'roadmap') return model.results.filter(onThisRoadmap);
 	// The catalog's own RESULTS — the tests and the `Task`s beneath them, no context row.
 	// Not "tests and only tests", which is a re-listed population that disagrees with the
 	// membership rule about a `Task`; and not "what it draws" either, which would sweep in

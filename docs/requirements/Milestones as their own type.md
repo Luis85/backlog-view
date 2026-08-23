@@ -331,9 +331,9 @@ legal batch left for it to write. `src/view/interactions/menu.ts` gates `addSche
 `canSchedule` rather than `hasDateAxis` for exactly that reason: the two agree for ordinary
 work and diverge for a milestone whose only writable end is the target.
 
-`src/view/render/rows.ts` carries the badge table as `NON_RUNG_STYLE` (the brief predicted
-`EXTRA_TYPE_STYLE`; it ships as the more accurate name, since a marker is not an extra
-type) — `{ icon: 'diamond', badge: 'pbl-lvl-milestone' }` beside `issue` and `bug`,
+`src/view/render/badges.ts` carries the badge table as `NAMED_TYPE_STYLE` (the brief
+predicted `EXTRA_TYPE_STYLE`; it shipped as `NON_RUNG_STYLE` and was renamed again when the
+test types arrived, which ARE rungs — see [[A badge when the palette is full]]) — `{ icon: 'diamond', badge: 'pbl-lvl-milestone' }` beside `issue` and `bug`,
 deliberately with no fallback, so the badge is the one seam a missing name breaks loudly.
 The colour is `.pbl-lvl-milestone { --color-cyan-rgb }` in `styles.css`, beside the other
 badge classes — **cyan**, not purple: purple is already `.pbl-lvl-1` (Feature).

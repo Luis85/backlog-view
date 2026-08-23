@@ -131,7 +131,7 @@ describe('every user-facing surface is specified', () => {
 	it('includes the keys generated per type, which no scan of the source could see', () => {
 		// `key: typeFolderKey(type)` produces one persisted key per type name. Reading the
 		// VOCABULARY rather than a copy of it is what makes a seventh name covered by
-		// arriving rather than by being remembered — the discipline `NON_RUNG_STYLE`
+		// arriving rather than by being remembered — the discipline `NAMED_TYPE_STYLE`
 		// already has, and the reason a `Milestone` could otherwise ship uncovered.
 		const keys = optionKeys();
 		expect(ALL_TYPES.length).toBeGreaterThan(0);

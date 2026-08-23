@@ -226,7 +226,7 @@ function addItem(
 	// prevent, so the gate is unconditional and sits before a `RawItem` exists at all.
 	//
 	// Read HERE rather than by a second pass over the same entries: `addItem` is the only
-	// `getFileCache` call site in this layer and `test/domain/modelCost.test.ts` pins one
+	// `getFileCache` call site `buildModel` reaches, and `test/domain/modelCost.test.ts` pins one
 	// read per note loaded, so a second reader would either double that count or have to
 	// read through `BasesEntry.getValue()`. The cache is open on this line.
 	if (isAbsenceType(typeName)) return divertAbsence(store, file, entry, fm, settings);

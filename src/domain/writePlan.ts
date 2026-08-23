@@ -1,7 +1,7 @@
 import { TFile } from 'obsidian';
 import { DropTarget } from './dropTargets';
 import { BacklogItem, BacklogModel } from './model';
-import { childLevelIndex, PlacementEnd, schemaEnds } from './itemTypes';
+import { childLevelIndex, isReleaseType, mayHoldField, PlacementEnd, schemaEnds } from './itemTypes';
 import { statedEnds } from './bars';
 import { readDate, sameValue } from './noteFields';
 import { daysBetween, formatCivil } from './timeline';
@@ -324,6 +324,14 @@ function stampWrites(
  * bucket — so a no-op cannot cost the caller's one undo.
  */
 export function computeHorizonWrites(item: BacklogItem, value: string | null): ItemWrite[] {
+	// A `RELEASE` is placed on no axis of the backlog roadmap, so nothing may write it one
+	// — and this is the site every input lands on, the drag, the key and both menus alike,
+	// so the refusal is stated once here rather than at each of them. The horizon key is
+	// the BACKLOG view's own mapping; a release's placement belongs to
+	// [[A release on the dated axis]] and to the key it has not been given yet. The offer
+	// is withheld to match (`canPlaceHorizon`), because a menu whose every entry plans
+	// nothing would read as every bucket checked at once.
+	if (isReleaseType(item.typeName)) return [];
 	if (value === null) {
 		// Nothing to take away: an item with no horizon key is already untriaged, and
 		// a removal write there would consume an undo slot for a change nobody made.
@@ -707,7 +715,17 @@ function missingEnd(field: OptionalField, item: BacklogItem): boolean {
 
 function missingKeyStubs(item: BacklogItem, settings: BacklogSettings): OptionalField[] {
 	const stubs: OptionalField[] = [];
-	for (const field of OPTIONAL_FIELDS) {
+	// The vocabulary NARROWED to what this note's type may hold, before any question about
+	// gaps: a key the type refuses is not a gap in it. Stated here rather than as a fourth
+	// early return below because it is not a rule about a field — it asks `mayHoldField`
+	// (`domain/itemTypes.ts`), which is where the rule lives for every door a planning key
+	// reaches a note through. Without it, ✨ writes the backlog roadmap's own horizon and
+	// both date keys onto a `Release`, the type this branch spends its diff declaring
+	// unplaceable — empty, which is pollution rather than placement, and still not "not
+	// written". The writer drops them too (`withHoldableStubs`, `storage/frontmatter.ts`),
+	// because a retype between this plan and that callback is a window nothing here sees.
+	const holdable = OPTIONAL_FIELDS.filter((field) => mayHoldField(item.typeName, field, settings));
+	for (const field of holdable) {
 		// A workflow-state field is stubbed only when its own resolved key IS the key
 		// `stateKeyFor` says THIS item's workflow reads — asked by KEY EQUALITY, not by
 		// re-deriving the item's category, so a secondary key left unset (falling back to
