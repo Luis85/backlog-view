@@ -228,6 +228,18 @@ describe('the release index', () => {
 		expect(rows.find((r) => r.name === 'R')?.members.value).toBe(0);
 	});
 
+	it('refuses a YAML number, which no other reader of a link key accepts', () => {
+		// `readString` would coerce `2.4` to "2.4" and resolve it, while `readLinkList`
+		// (which fills `releaseEntry`, and so the menu's checkmark) drops every non-string.
+		// One end counting a membership the other cannot see is the disagreement 1f forbids.
+		const vault = new FakeVault();
+		vault.addFile('2.4.md', { frontmatter: { type: 'Release' } });
+		vault.addFile('F.md', { frontmatter: { type: 'Feature', release: 2.4 } });
+		const { rows, unresolved } = indexOf(vault);
+		expect(unresolved.map((i) => i.file.basename)).toEqual(['F']);
+		expect(rows[0].members.value).toBe(0);
+	});
+
 	it('refuses a membership value naming a note the vault does not hold', () => {
 		const vault = new FakeVault();
 		vault.addFile('R.md', { frontmatter: { type: 'Release' } });

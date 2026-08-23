@@ -10,6 +10,7 @@ import {
 	readString,
 	resolveParent,
 } from './noteFields';
+import { nearestFolderNote } from './folderNotes';
 import { isMarkerType, isReleaseType, ladderFor } from './itemTypes';
 import { LEVELS, TEST_LEVELS } from './typeVocabulary';
 
@@ -233,10 +234,12 @@ export function releaseIndex(app: App, model: BacklogModel, settings: ReleaseSet
  */
 const UNRESOLVED = Symbol('unresolved membership');
 
-/** Which keys the live walk below reads — the two `BacklogSettings` also spells. */
+/** What the live walk below reads — three fields `BacklogSettings` also spells. */
 interface CarrierKeys {
 	parentKey: string;
 	typeKey: string;
+	/** Folder mode: a note with no parent VALUE hangs from its nearest folder note. */
+	folderHierarchy: boolean;
 }
 
 /**
@@ -258,12 +261,24 @@ function liveTypeOf(app: App, file: TFile, keys: CarrierKeys): string | null {
  * the model cannot see. Bounded by the visited set, since a parent cycle is a shape the
  * vault can hold.
  */
+function liveParentOf(app: App, file: TFile, keys: CarrierKeys): TFile | null {
+	const ref = resolveParent(app, file, app.metadataCache.getFileCache(file), keys.parentKey);
+	if (ref.file !== null) return ref.file;
+	// `linkAll`'s own three conditions (`domain/model.ts`), asked of the vault rather than
+	// of the loaded items: folder mode places a note with no parent VALUE under its nearest
+	// folder note, and an explicit empty key pins it to the top instead. Without this the
+	// walk followed explicit links alone, so moving a `Task` into a `Test suite`'s folder
+	// changed the ladder the model builds and nothing the writer could see (Codex, PR #201).
+	if (!keys.folderHierarchy || ref.hasValue || ref.explicitRoot) return null;
+	return nearestFolderNote(app, file.path);
+}
+
 function liveLadder(app: App, file: TFile, typeName: string | null, keys: CarrierKeys): string[] {
 	const seen = new Set([file.path]);
 	let name = typeName;
 	let current: TFile = file;
 	while (ladderFor(name, TEST_LEVELS) !== ladderFor(name, LEVELS)) {
-		const parent = resolveParent(app, current, app.metadataCache.getFileCache(current), keys.parentKey).file;
+		const parent = liveParentOf(app, current, keys);
 		if (parent === null || seen.has(parent.path)) break;
 		seen.add(parent.path);
 		current = parent;
@@ -360,9 +375,20 @@ function membershipTarget(
 		if (raw.length === 0) return null;
 		if (raw.length > 1) return UNRESOLVED;
 	}
+	// A link is TEXT. `readString` coerces a number or a boolean to its string form, which
+	// is wider than any other reader of a link-shaped key: `resolveParent` refuses a
+	// non-string outright and so does `readLinkList`, which is what fills `releaseEntry`.
+	// Left coerced, `release: 2.4` counted as a membership here while the menu saw none —
+	// the two-ends disagreement extension 1f forbids, reached through the VALUE's type
+	// rather than through its cardinality (Codex, PR #201). Refused rather than made
+	// tolerant at the other end: a bare `2.4` is a spelling Obsidian resolves and a YAML
+	// number is not one, and reporting it repairs from the menu, where a silent membership
+	// could not be seen at all.
+	const scalar: unknown = Array.isArray(raw) ? raw[0] : raw;
+	if (typeof scalar !== 'string') return UNRESOLVED;
 	// `readString` trims and answers null for a blank string, so this one test covers the
 	// empty value 3b names as well as the shapes no reader will guess at.
-	const text = readString(raw);
+	const text = readString(scalar);
 	if (text === null) return UNRESOLVED;
 	if (!inPlan(item) || isMarkerType(item.typeName)) return UNRESOLVED;
 	const file = app.metadataCache.getFirstLinkpathDest(linkpathFromRawValue(text), item.file.path);

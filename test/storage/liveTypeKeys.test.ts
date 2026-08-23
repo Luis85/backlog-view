@@ -280,6 +280,29 @@ describe('the writer asks the LIVE type about a release membership', () => {
 		expect(vault.fm('1.1.md')['release']).toBe('[[2.4]]');
 	});
 
+	it('follows a FOLDER-inferred parent, which no parent link spells', async () => {
+		// Folder mode hangs a note with no parent value under its nearest folder note, so
+		// moving a task into a test suite's folder changes the ladder `buildModel` assigns
+		// while every link on the note stays as it was.
+		const folderSettings = { ...releaseSettings, folderHierarchy: true };
+		const vault = new FakeVault();
+		vault.addFile('2.4.md', { frontmatter: { type: 'Release' } });
+		vault.addFile('S/S.md', { frontmatter: { type: 'Test suite' } });
+		const task = vault.addFile('1.1.md', { frontmatter: { type: 'Task' } });
+		const model = buildModel(vault.app, vault.entries(), folderSettings);
+		const item = model.byPath.get('1.1.md');
+		const release = model.byPath.get('2.4.md');
+		if (!item || !release) throw new Error('fixture did not build');
+		const writes = computeReleaseWrites(item, release, folderSettings);
+		expect(writes).toEqual([{ file: task, release: release.file }]);
+
+		vault.renameFile('1.1.md', 'S/1.1.md');
+		const outcome = await applyWrites(vault.app, folderSettings, writes);
+
+		expect(vault.fm('S/1.1.md')['release']).toBeUndefined();
+		expect(outcome.changed).toBe(false);
+	});
+
 	it('refuses a membership whose TARGET is no longer a release', async () => {
 		// The plan carries the `TFile` the picker was built from. Retype that note while
 		// the submenu is open and the link would name something that is not a release,
