@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { settingsWith } from '../helpers/settings';
 import { buildModel } from '../../src/domain/model';
+import { releaseIndex } from '../../src/domain/releases';
 import { computeReleaseWrites } from '../../src/domain/writePlan';
 import { FakeVault } from '../helpers/vault';
 
@@ -16,7 +17,7 @@ import { FakeVault } from '../helpers/vault';
  */
 function fixture(opts: {
 	release: string | null;
-	spelling?: string | string[];
+	spelling?: unknown;
 	settings?: ReturnType<typeof settingsWith>;
 }) {
 	const vault = new FakeVault();
@@ -34,6 +35,17 @@ function fixture(opts: {
 		item: model.byPath.get('PBI-1.md')!,
 		target: model.byPath.get('Releases/2.4.md')!,
 		settings,
+		/** What the READER makes of the same note, off the same build the planner is asked about. */
+		readAsMembership: () =>
+			!releaseIndex(vault.app, model, {
+				parentKey: 'parent',
+				orderKey: 'order',
+				typeKey: 'type',
+				membershipKey: 'release',
+				versionKey: 'version',
+				targetDateKey: 'target-date',
+				statusKey: 'status',
+			}).unresolved.some((i) => i.file.path === 'PBI-1.md'),
 	};
 }
 
@@ -118,4 +130,41 @@ describe('planning one release membership', () => {
 		const { item, target } = fixture({ release: null });
 		expect(computeReleaseWrites(item, target, settingsWith({ releaseKey: '' }))).toEqual([]);
 	});
+});
+
+/**
+ * **The two ends answer ONE question**, and this is where that is checked rather than
+ * asserted in a comment: `membershipTarget` (`domain/releases.ts`) counts the property's
+ * SLOTS to decide whether the note names a membership at all, and `computeReleaseWrites`
+ * asks the same cardinality to decide whether a pick would write nothing. A pick plans
+ * nothing exactly when the reader already calls the note a member of that release —
+ * anything else is the disagreement [[Setting an item's release]] 1f forbids, and it has
+ * now moved once already, from `releaseEntry` down into `readLinkList`.
+ *
+ * `readLinkList` returns PARSED entries, so it drops a blank slot and a non-string one
+ * before anyone can count them; `membershipTarget` counts the raw array. Those are the
+ * first two shapes below, and each was a note the release view called unresolved while
+ * the menu ticked its first release as current — unrepairable from the menu, which is the
+ * whole defect. The third is the control: a ONE-element list is unwrapped by `readString`,
+ * so the reader calls it an ordinary membership and the planner must agree by planning
+ * nothing.
+ */
+describe('cardinality, read the same way at both ends', () => {
+	const shapes: { name: string; spelling: unknown; member: boolean }[] = [
+		{ name: 'a link and a blank slot', spelling: ['[[Releases/2.4]]', ''], member: false },
+		{ name: 'a link and a slot that is not a string', spelling: ['[[Releases/2.4]]', 42], member: false },
+		{ name: 'a single link in a list', spelling: ['[[Releases/2.4]]'], member: true },
+	];
+
+	for (const shape of shapes) {
+		it(`agrees about ${shape.name}`, () => {
+			const { item, target, settings, readAsMembership } = fixture({ release: '2.4.md', spelling: shape.spelling });
+			// The fixture reaches the state its name claims before anything is concluded
+			// from it: this is the READER's verdict, and it is what the plan must match.
+			expect(readAsMembership()).toBe(shape.member);
+			expect(computeReleaseWrites(item, target, settings)).toEqual(
+				shape.member ? [] : [{ file: item.file, release: target.file }],
+			);
+		});
+	}
 });

@@ -57,7 +57,10 @@ release notes share a basename.
   one value a membership is, and nothing is ticked as current until it holds one. Reading only
   the first entry made the release view call the note unresolved while the menu offered the
   first value as the current one and wrote nothing for it, which is the same two-ends
-  disagreement 1f forbids.
+  disagreement 1f forbids. **How many the note names is counted in SLOTS**, which is what the
+  reader counts: `release: [2.4, '']` names two as surely as `[2.4, 2.5]` does, and a count
+  taken after the blank entry is parsed away reopens the disagreement one layer down. A list
+  of ONE is an ordinary membership at both ends.
 - **1b — the user picks "no release".** The key is removed rather than written empty, because
   an empty string is a value and an item in no release has none.
 - **1c — the user cannot drag.** The keyboard and the context menu offer the same releases and

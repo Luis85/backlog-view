@@ -68,6 +68,29 @@ describe('the Set release menu', () => {
 		expect(checkedReleaseLabel(view, 'F.md')).toBeNull();
 	});
 
+	it('ticks nothing where a SLOT the link list drops makes the membership multi-valued', () => {
+		// The same two-ends disagreement one layer down. `readLinkList` returns PARSED
+		// entries — it drops a blank slot and a non-string one — while `membershipTarget`
+		// counts the RAW array, so both notes below are unresolved in the release view
+		// while this menu ticked `2.4` as current and planned nothing for it. The
+		// checkmark is asked of the plan, so nothing ticked is the whole repair being
+		// offered: every release rewrites the key to one value.
+		const blank = makeViewWithReleases({ memberOf: { 'F.md': ['2.4.md', ''] } });
+		expect(checkedReleaseLabel(blank.view, 'F.md')).toBeNull();
+		const notAString = makeViewWithReleases({ memberOf: { 'F.md': ['2.4.md', 42] } });
+		expect(checkedReleaseLabel(notAString.view, 'F.md')).toBeNull();
+	});
+
+	it('ticks the release a ONE-entry list names, which is an ordinary membership', () => {
+		// The control, and it is not a formality: `readString` unwraps a single-element
+		// array, so `membershipTarget` resolves `release: [[[2.4]]]` like a scalar. A
+		// cardinality rule that counted a list as multi-valued whatever its length would
+		// pass every case above and break this one — offering a repair for a note that
+		// needs none, and spending the undo slot on a rewrite of what is already there.
+		const { view } = makeViewWithReleases({ memberOf: { 'F.md': ['2.4.md'] } });
+		expect(checkedReleaseLabel(view, 'F.md')).toBe('2.4');
+	});
+
 	it('checks "No release" for an item in none', () => {
 		const { view } = makeViewWithReleases();
 		expect(checkedReleaseLabel(view, 'F.md')).toBe('No release');

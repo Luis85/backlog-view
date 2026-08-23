@@ -313,11 +313,14 @@ export function makeViewWithReleases({
 	 * Note path → the release note it already names, written as the link a vault holds.
 	 * An empty string is the BLANK stub ✨ Assign missing properties leaves behind: the
 	 * key is present and names nothing, which is a different note from one with no key.
-	 * A LIST is the hand-edited two-valued membership: legal YAML, refused as a membership
-	 * by `membershipTarget`, and the shape no menu could repair until the planner learned
-	 * to ask cardinality.
+	 * A LIST is the hand-edited multi-valued membership: legal YAML, refused as a
+	 * membership by `membershipTarget`, and the shape no menu could repair until the
+	 * planner learned to ask cardinality. Its entries are `unknown` because the SLOTS are
+	 * what that question counts — an empty string and a number are entries `readLinkList`
+	 * parses away, and a fixture that could not spell one could not reach the shape where
+	 * the two readers disagreed.
 	 */
-	memberOf?: Record<string, string | string[]>;
+	memberOf?: Record<string, string | unknown[]>;
 	releaseProperty?: string;
 	releases?: string[];
 } = {}): { view: ProductBacklogView; vault: FakeVault; containerEl: HTMLElement } {
@@ -342,6 +345,15 @@ export function makeViewWithReleases({
 
 const basename = (path: string): string => path.replace(/\.md$/, '');
 
-/** One `memberOf` entry as the frontmatter holds it: a blank, a link, or a list of them. */
-const releaseValue = (release: string | string[]): string | string[] =>
-	Array.isArray(release) ? release.map((one) => `[[${basename(one)}]]`) : release === '' ? '' : `[[${basename(release)}]]`;
+/**
+ * One `memberOf` entry as the frontmatter holds it: a blank, a link, or a list of slots.
+ *
+ * A list entry that is not a string is written through untouched — that is the malformed
+ * slot itself, and turning it into a link would be the fixture repairing the very shape
+ * the test is about.
+ */
+const releaseValue = (release: string | unknown[]): unknown =>
+	Array.isArray(release) ? release.map(oneValue) : oneValue(release);
+
+const oneValue = (one: unknown): unknown =>
+	typeof one === 'string' ? (one === '' ? '' : `[[${basename(one)}]]`) : one;

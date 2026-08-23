@@ -155,6 +155,13 @@ export interface RawItem {
 	 * outright ([[The scope of a release as a tree]] 1c: membership is one value), so the
 	 * planner has to be able to tell `[R]` from `[R, E]`: they collapse to one
 	 * `releaseEntry` and only the second is a note the reader needs the menu to repair.
+	 *
+	 * Counted off the RAW property, which is the same thing `membershipTarget` counts —
+	 * its SLOTS. `releaseEntry`'s own reader drops a blank entry and a non-string one
+	 * before returning, so counting parsed entries made `[R, '']` a settled membership
+	 * here and an unresolved one there: the same two-ends disagreement, one layer down
+	 * from where it was first closed. A ONE-element list is a plain membership at both
+	 * ends — `readString` unwraps it — so only a length above one is multiple.
 	 */
 	releaseMultiple: boolean;
 	/**
@@ -197,6 +204,18 @@ export function createItems(app: App, entries: BasesEntry[], settings: BacklogSe
 	// of the ancestors themselves is optional.
 	if (settings.showOutsideParents) loadOutsideParents(app, store, parents, settings);
 	return store;
+}
+
+/**
+ * How many SLOTS a property holds, asked of the RAW frontmatter value — the same count
+ * `membershipTarget` (`releases.ts`) takes of a membership, and the reason it is taken
+ * here rather than off the parsed entries beside it: `readLinkList` drops a blank slot and
+ * any slot that is not a string before returning, so `release: [R, '']` is ONE entry there
+ * and two values in the reader. A list of one is not multiple at either end — `readString`
+ * unwraps it — so only a length above one answers true.
+ */
+function namesMultiple(raw: unknown): boolean {
+	return Array.isArray(raw) && raw.length > 1;
 }
 
 /**
@@ -294,7 +313,7 @@ function addItem(
 		ownKeys: readOwnKeys(fm, settings),
 		iterationEntry: readFirstLinkEntry(app, file, cache, settings.iterationKey),
 		releaseEntry: release[0] ?? null,
-		releaseMultiple: release.length > 1,
+		releaseMultiple: namesMultiple(ownValue(fm, settings.releaseKey)),
 		// NOT read for a context row, which is the same test `outsideFilter` is made of
 		// two lines up. An excluded note may be NAMED by a result and may never do the
 		// naming, and until now that rule was kept only downstream, by `declaredEdges`
