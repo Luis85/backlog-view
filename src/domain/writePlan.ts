@@ -475,7 +475,17 @@ export function computeReleaseWrites(item: BacklogItem, target: BacklogItem | nu
 	if (target === null) return item.ownKeys.release ? [{ file: item.file, release: null }] : [];
 	// By PATH, never by the raw text: two spellings of one note are one release, and a
 	// link that resolved to nothing has no path and is therefore never "already there".
-	return item.releaseEntry?.file?.path === target.file.path ? [] : [{ file: item.file, release: target.file }];
+	//
+	// **And by CARDINALITY beside it**, which `releaseEntry` alone cannot answer: it is the
+	// FIRST entry, so a hand-written `release: [R, E]` reads as R while `membershipTarget`
+	// (`releases.ts`) refuses the pair outright — the release view calling the note
+	// unresolved while this plan called a pick of R a no-op, which ticked R as current and
+	// left the note unrepairable from the menu. That is the two-ends disagreement
+	// [[Setting an item's release]] 1f forbids. A pick writes nothing only where the note
+	// already names EXACTLY ONE release and it is the target; every other shape is rewritten
+	// to the one value a membership is.
+	const settled = !item.releaseMultiple && item.releaseEntry?.file?.path === target.file.path;
+	return settled ? [] : [{ file: item.file, release: target.file }];
 }
 
 /**

@@ -524,6 +524,11 @@ function narrowReadings(readings: StatedEnds, ends: PlacementEnd[]): StatedEnds 
  * `saveIteration` re-reads the model rather than the note, which is authorization at plan
  * time — exactly what this function exists to stop trusting.
  *
+ * The release membership is on that list for the same reason and not by being near it:
+ * `canSetRelease` refuses a marker, so a membership landed on one is offered by no control
+ * either, while `membershipTarget` (`domain/releases.ts`) goes on reporting the note as an
+ * unresolved membership for as long as it sits there.
+ *
  * The whole batch is refused, loudly, exactly as a stale date batch is — this is a
  * gesture the user made against a note that is no longer the note they made it against.
  * `mayHoldField` is the rule; what each door does about a refusal is the door's own.
@@ -547,6 +552,7 @@ function refusesLiveType(settings: BacklogSettings, write: ItemWrite, liveType: 
 		['target', write.axis?.target],
 		['iteration', write.iteration],
 		['iterationGoal', write.iterationGoal],
+		['release', write.release],
 	];
 	return carried.some(([field, value]) => stated(value) && !mayHoldField(liveType, field, settings));
 }

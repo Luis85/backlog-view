@@ -57,6 +57,17 @@ describe('the Set release menu', () => {
 		expect(checkedReleaseLabel(view, 'F.md')).toBe('2.4');
 	});
 
+	it('ticks nothing on a note naming TWO releases, and offers the repair', () => {
+		// The two ends disagreeing is what [[Setting an item's release]] 1f forbids: the
+		// release view calls a two-valued membership unresolved, while this menu ticked
+		// the first entry as current and picked it for a write of nothing — so the note
+		// could not be repaired from the menu at all. Every entry plans a write now: each
+		// release because the key has to be rewritten to exactly one, and `No release`
+		// because the key is there to remove.
+		const { view } = makeViewWithReleases({ memberOf: { 'F.md': ['2.4.md', '2.5.md'] } });
+		expect(checkedReleaseLabel(view, 'F.md')).toBeNull();
+	});
+
 	it('checks "No release" for an item in none', () => {
 		const { view } = makeViewWithReleases();
 		expect(checkedReleaseLabel(view, 'F.md')).toBe('No release');

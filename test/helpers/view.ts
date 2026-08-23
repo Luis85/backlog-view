@@ -313,8 +313,11 @@ export function makeViewWithReleases({
 	 * Note path → the release note it already names, written as the link a vault holds.
 	 * An empty string is the BLANK stub ✨ Assign missing properties leaves behind: the
 	 * key is present and names nothing, which is a different note from one with no key.
+	 * A LIST is the hand-edited two-valued membership: legal YAML, refused as a membership
+	 * by `membershipTarget`, and the shape no menu could repair until the planner learned
+	 * to ask cardinality.
 	 */
-	memberOf?: Record<string, string>;
+	memberOf?: Record<string, string | string[]>;
 	releaseProperty?: string;
 	releases?: string[];
 } = {}): { view: ProductBacklogView; vault: FakeVault; containerEl: HTMLElement } {
@@ -326,7 +329,7 @@ export function makeViewWithReleases({
 	vault.addFile('Suite.md', { frontmatter: { type: 'Test suite', order: 20 } });
 	vault.addFile('Case.md', { frontmatter: { type: 'Test case', order: 10 }, parentLink: 'Suite' });
 	for (const [path, release] of Object.entries(memberOf)) {
-		vault.setFrontmatter(path, { ...vault.fm(path), release: release === '' ? '' : `[[${basename(release)}]]` });
+		vault.setFrontmatter(path, { ...vault.fm(path), release: releaseValue(release) });
 	}
 	let only: string[] | undefined;
 	if (exclude) {
@@ -338,3 +341,7 @@ export function makeViewWithReleases({
 }
 
 const basename = (path: string): string => path.replace(/\.md$/, '');
+
+/** One `memberOf` entry as the frontmatter holds it: a blank, a link, or a list of them. */
+const releaseValue = (release: string | string[]): string | string[] =>
+	Array.isArray(release) ? release.map((one) => `[[${basename(one)}]]`) : release === '' ? '' : `[[${basename(release)}]]`;

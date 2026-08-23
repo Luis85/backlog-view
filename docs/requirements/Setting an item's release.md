@@ -50,7 +50,14 @@ release notes share a basename.
 
 - **1a — the item is already in the picked release.** No write is planned and the undo slot is
   not consumed. The menu entry is checked exactly when picking it would write nothing — asked
-  of the plan, never of a comparison beside it.
+  of the plan, never of a comparison beside it. **"Already in" is a question about
+  cardinality as well as identity**: the note names exactly one release and it is the picked
+  one. A hand-written `release: [2.4, 2.5]` is not that note — the reader refuses the pair
+  ([[The scope of a release as a tree]] 1c), so picking either release rewrites the key to the
+  one value a membership is, and nothing is ticked as current until it holds one. Reading only
+  the first entry made the release view call the note unresolved while the menu offered the
+  first value as the current one and wrote nothing for it, which is the same two-ends
+  disagreement 1f forbids.
 - **1b — the user picks "no release".** The key is removed rather than written empty, because
   an empty string is a value and an item in no release has none.
 - **1c — the user cannot drag.** The keyboard and the context menu offer the same releases and
@@ -64,7 +71,9 @@ release notes share a basename.
   same eligibility `Set iteration` already applies. **The membership reader refuses it too**:
   a release property hand-written onto a marker does not put the marker in the scope, because
   a release holds work and those notes are not work. Refusing at only one of the two ends
-  would let a hand-edit do what the menu will not.
+  would let a hand-edit do what the menu will not. **And the writer asks the LIVE type**, so a
+  note retyped to a marker between the pick and the write is refused there too: the menu that
+  made the pick would never offer to clear the key it landed.
 - **2a — the membership property is not configured.** The action is absent from every menu
   rather than present and inert, and the release view's empty state says which option to bind.
 - **2b — several items are selected.** One batch names them all, planned by the same method,
@@ -90,7 +99,9 @@ release notes share a basename.
   here rather than deleted so that it is met when it does.
 - The batch names the membership property alone: `parent`, `order` and the state key are
   unchanged by it.
-- Picking the release the item is already in plans nothing and leaves the undo slot untouched.
+- Picking the release the item is already in plans nothing and leaves the undo slot untouched
+  — where the note names that release and no other. A note naming two is rewritten to the one
+  picked, and ticks nothing until it does.
 - Picking "no release" removes the key; it never writes an empty value.
 - A target release the Base excluded is not offered, and a batch naming it — or naming an
   excluded item — is refused whole rather than partly applied.
@@ -117,8 +128,11 @@ of a mismatch is an empty scope, which is what an unassigned vault looks like to
 recorded here and given no warning on purpose.
 
 It is read the way the iteration link already is — resolved to a file, not a name — by
-`src/domain/readItems.ts`, whose `readFirstLinkEntry` serves **both** entries rather than one
-reader per field, landing on `RawItem.releaseEntry`.
+`src/domain/readItems.ts`, landing on `RawItem.releaseEntry`. It is read as a **list** there,
+where the iteration goes through `readFirstLinkEntry`, and the extra field that buys is
+`RawItem.releaseMultiple` — cardinality, never a second reading of which release the note is
+in. The planner needs it for extension 1a: both `[2.4]` and `[2.4, 2.5]` collapse to one
+entry, and only the second is a note the menu has to repair.
 
 Which types may hold one is `src/domain/itemTypes.ts`'s `mayHoldField`, which refuses `release`
 for every marker: the reading end's own refusal (`membershipTarget`, `src/domain/releases.ts`)
@@ -134,7 +148,10 @@ over the gate in `src/view/writeGate.ts` by `src/storage/frontmatter.ts`, which 
 **link**: `wikilinkTo` from the editing note's own path, exactly as it already does for the
 parent and the iteration. `src/storage/writeKeys.ts` carries the membership key in
 `touchedKeys`, and that line is load-bearing rather than bookkeeping — it is what captures the
-write's inverse, so without it the write lands and undo restores nothing, silently.
+write's inverse, so without it the write lands and undo restores nothing, silently. The
+membership joins the keys `refusesLiveType` asks the LIVE type about, in the same file, for
+extension 1f's second half: the key is unclearable once it is on a marker, so the refusal has
+to be at the write and not only at the plan.
 
 One host method carries the move: `performReleaseMove` on `src/view/host.ts`, implemented in
 `src/view/cardMoves.ts` and delegated from `src/view/backlogView.ts`. Its announcement is a

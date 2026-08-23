@@ -150,6 +150,14 @@ export interface RawItem {
 	 */
 	releaseEntry: LinkEntry | null;
 	/**
+	 * Whether the note names MORE than one release — cardinality, never a second reading of
+	 * which release it is in. `membershipTarget` (`releases.ts`) refuses a two-valued key
+	 * outright ([[The scope of a release as a tree]] 1c: membership is one value), so the
+	 * planner has to be able to tell `[R]` from `[R, E]`: they collapse to one
+	 * `releaseEntry` and only the second is a note the reader needs the menu to repair.
+	 */
+	releaseMultiple: boolean;
+	/**
 	 * Which configured optional keys the note CARRIES — presence, not value, and the
 	 * two are different questions here: an empty horizon reads as absent (untriaged)
 	 * while the key is still on the note. Removal actions offer themselves on presence,
@@ -250,6 +258,10 @@ function addItem(
 	// is what will collect them here, at this gate, so the roster comes from the base's
 	// own results without a second read path into the vault.
 	if (isResourceType(typeName)) return null;
+	// Read as a LIST rather than through `readFirstLinkEntry`, because the release is the
+	// one such field whose CARDINALITY is a fact about the note: `membershipTarget` refuses
+	// two values, so the planner needs `[R, E]` told from `[R]`.
+	const release = readLinkList(app, file, cache, settings.releaseKey);
 	// Every field this note can answer for itself, and no others: the ten that used to
 	// be initialised here as placeholders now belong to the phases that compute them.
 	const item: RawItem = {
@@ -281,7 +293,8 @@ function addItem(
 		iterationGoalValue: readLabel(settings.iterationGoalKey, fm),
 		ownKeys: readOwnKeys(fm, settings),
 		iterationEntry: readFirstLinkEntry(app, file, cache, settings.iterationKey),
-		releaseEntry: readFirstLinkEntry(app, file, cache, settings.releaseKey),
+		releaseEntry: release[0] ?? null,
+		releaseMultiple: release.length > 1,
 		// NOT read for a context row, which is the same test `outsideFilter` is made of
 		// two lines up. An excluded note may be NAMED by a result and may never do the
 		// naming, and until now that rule was kept only downstream, by `declaredEdges`

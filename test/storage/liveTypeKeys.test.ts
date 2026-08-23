@@ -7,7 +7,12 @@
 import { describe, expect, it } from 'vitest';
 import { applyRestores, applyWrites, RestoreWrite } from '../../src/storage/frontmatter';
 import { buildModel } from '../../src/domain/model';
-import { computeInitWrites, computeIterationNoteWrites, computeIterationWrites } from '../../src/domain/writePlan';
+import {
+	computeInitWrites,
+	computeIterationNoteWrites,
+	computeIterationWrites,
+	computeReleaseWrites,
+} from '../../src/domain/writePlan';
 import { settingsFrom } from '../helpers/settings';
 import { FakeVault } from '../helpers/vault';
 
@@ -176,5 +181,49 @@ describe('the ✨ backfill stubs no key a release may not hold', () => {
 		// batch of stubs would pass every assertion above it and be wrong.
 		expect(vault.fm('1.0.md')).toEqual({ type: 'Release', risk: '' });
 		expect(vault.fm('Work.md')).toEqual({ type: 'PBI', horizon: '', start: '', target: '', iteration: '', risk: '' });
+	});
+});
+
+/**
+ * The release membership is the same window through a third field, and it was open until
+ * 2026-08-23: `refusesLiveType` listed the horizon, the two dates, the sprint link and its
+ * goal, and not this one. What makes it the guard's own case rather than a nearby key is
+ * the shape it leaves behind — `canSetRelease` refuses a marker, so a membership landed on
+ * one is offered by no control the view draws, and `membershipTarget` reports it as
+ * unresolved for as long as it sits there.
+ */
+const releaseSettings = settingsFrom({ releaseProperty: 'note.release' });
+
+describe('the writer asks the LIVE type about a release membership', () => {
+	it('refuses a membership the note was retyped out from under', async () => {
+		const vault = new FakeVault();
+		vault.addFile('2.4.md', { frontmatter: { type: 'Release' } });
+		vault.addFile('1.0.md', { frontmatter: { type: 'PBI' } });
+		const model = buildModel(vault.app, vault.entries(), releaseSettings);
+		const item = model.byPath.get('1.0.md');
+		const release = model.byPath.get('2.4.md');
+		if (!item || !release) throw new Error('fixture did not build');
+		const writes = computeReleaseWrites(item, release, releaseSettings);
+		// The plan is legitimate — this is a refusal at the boundary, not a plan that was
+		// empty all along, which is the way a test like this passes on nothing.
+		expect(writes).toEqual([{ file: item.file, release: release.file }]);
+
+		vault.fm('1.0.md').type = 'Milestone';
+		const outcome = await applyWrites(vault.app, releaseSettings, writes);
+
+		expect(vault.fm('1.0.md')).toEqual({ type: 'Milestone' });
+		expect(outcome.changed).toBe(false);
+	});
+
+	it('lets a REMOVAL through, which is the only way this key comes off a marker', async () => {
+		// The guard's stated exemption, checked rather than claimed: `stated()` reads a
+		// `null` as not-stated, so the removal lands on the very type the write above is
+		// refused for. A guard that refused this one would stand against its own reason.
+		const vault = new FakeVault();
+		const file = vault.addFile('1.0.md', { frontmatter: { type: 'Milestone', release: '[[2.4]]' } });
+
+		await applyWrites(vault.app, releaseSettings, [{ file, release: null }]);
+
+		expect(vault.fm('1.0.md')).toEqual({ type: 'Milestone' });
 	});
 });
