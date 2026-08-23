@@ -1,6 +1,7 @@
 import { andList, code } from './readmeText';
 import { hasDateAxis, hasHorizonAxis } from './roadmap';
-import { placementEnds, schemaEnds } from './itemTypes';
+import { mayHoldField, placementEnds, schemaEnds } from './itemTypes';
+import { AXIS_FIELDS } from './optionalProperties';
 import { MARKER_TYPES } from './typeVocabulary';
 import { BacklogSettings } from './settings';
 
@@ -52,26 +53,47 @@ function planningWriters(settings: BacklogSettings): string {
 }
 
 /**
- * The backfill's one exception to "empty on every note that lacks it".
+ * The backfill's exceptions to "empty on every note that lacks it" — **TWO of them, and
+ * the second is why this is not one filter.**
  *
- * Asked of `schemaEnds`, never of `placementEnds` with the live flag: this is a question
- * about which keys a note of that type CARRIES, and a display option must not decide
- * whether a property exists. `Iteration` is a span and keeps both ends whatever
- * `iterationBars` says, so it is not excepted; `Milestone` is the one type the schema
- * narrows today, and deriving the list means the sentence follows the rule rather than a
- * name somebody typed.
+ * A type may be narrowed to ONE end, or refused every planning key it could be stubbed.
+ * `Release` is the second, and it was dropped from the first list before its own rule was
+ * ever asked: `schemaEnds` answers it NO end, so the `ends.length > 0` term excluded it,
+ * and the sentence went on promising the reader an empty `start` on the one type ✨ stubs
+ * no planning key on at all. Reported by the *other* half of this section already — "there
+ * is nothing to fill in" — so the document contradicted itself two paragraphs apart.
  *
- * Gated on `startKey`, the withheld key: with none configured ✨ never stubs a start on
- * anything, marker or not, so there is nothing here to except.
+ * Asked of `mayHoldField` over `AXIS_FIELDS`, which is the function `missingKeyStubs`
+ * filters its whole vocabulary through and the three axes this section names, so the
+ * sentence follows the rule rather than a name somebody typed.
+ *
+ * The narrowing is asked of `schemaEnds`, never of `placementEnds` with the live flag:
+ * that is a question about which keys a note of that type CARRIES, and a display option
+ * must not decide whether a property exists. `Iteration` is a span and keeps both ends
+ * whatever `iterationBars` says, so it is not narrowed.
+ *
+ * Only the narrowing is gated on `startKey`, the withheld key: with none configured ✨
+ * never stubs a start on anything, marker or not, so there is nothing there to except.
+ * The refusal needs no such gate — this whole sentence is written only where an axis is
+ * configured, and a type placed by none of them is stubbed nothing whichever one it is.
  */
 function assignException(settings: BacklogSettings): string {
-	if (!settings.startKey) return '';
-	const narrowed = MARKER_TYPES.filter((type) => {
-		const ends = schemaEnds(type);
-		return ends.length > 0 && !ends.includes('start');
-	});
-	if (narrowed.length === 0) return '';
-	return ` — except that a ${andList(narrowed.map(code))} never gets a start added: it is a point by type and reads only a target`;
+	const unplaceable = MARKER_TYPES.filter((type) => AXIS_FIELDS.every((field) => !mayHoldField(type, field, settings)));
+	const narrowed = settings.startKey
+		? MARKER_TYPES.filter((type) => {
+				const ends = schemaEnds(type);
+				return ends.length > 0 && !ends.includes('start');
+			})
+		: [];
+	const clauses = [
+		...(narrowed.length > 0
+			? [`a ${andList(narrowed.map(code))} never gets a start added: it is a point by type and reads only a target`]
+			: []),
+		...(unplaceable.length > 0
+			? [`a ${andList(unplaceable.map(code))} gets none of these keys at all: no axis here places one, so there is nothing to stub`]
+			: []),
+	];
+	return clauses.length === 0 ? '' : ` — except that ${clauses.join(', and that ')}`;
 }
 
 export function planningSection(settings: BacklogSettings): string[] {

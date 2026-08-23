@@ -95,3 +95,42 @@ describe('the Planning section names types by the placement rule', () => {
 		expect(lineOf(bucketed)).toContain('not placed by a horizon,');
 	});
 });
+
+/**
+ * The backfill sentence in the same section, which said the ✨ backfill "adds the keys
+ * *empty* to items that lack them" with a `Milestone`'s start as the only exception. That
+ * is FALSE for a `Release`: `missingKeyStubs` filters the whole vocabulary through
+ * `mayHoldField`, which refuses a release's `start`, `target`, `horizon`, `iteration` and
+ * `iterationGoal` alike, so a release gets no planning key stubbed at all — while the
+ * paragraph above it already told the reader "there is nothing to fill in".
+ *
+ * Why the old derivation could not see it, which is the part worth pinning: the filter
+ * asked `ends.length > 0 && !ends.includes('start')`, and `schemaEnds('Release')` is
+ * EMPTY, so the first term dropped the type before the rule about starts was ever reached.
+ */
+describe('the backfill sentence excepts the types it stubs nothing on', () => {
+	const lineOf = (over: Partial<BacklogSettings>): string =>
+		readme(settingsWith(over), []).split('\n').find((l) => l.includes('**Assign missing properties**')) ?? '';
+
+	it('says a Release gets no planning key at all, on every axis this section can name', () => {
+		// The refusal is gated on no date key, unlike the start narrowing beside it, so all
+		// three axis configurations are asked.
+		for (const axis of [
+			{ startKey: 'start', targetKey: 'due', horizonKey: '' },
+			{ startKey: '', targetKey: 'due', horizonKey: '' },
+			{ startKey: '', targetKey: '', horizonKey: 'horizon', horizonValues: ['Now'] },
+		]) {
+			const line = lineOf(axis);
+			expect(line, JSON.stringify(axis)).toContain('a `Release` gets none of these keys at all');
+			// Never the marker CATEGORY: an `Iteration` and a `Milestone` are both stubbed
+			// keys here, so naming it would publish a falsehood about two types at once.
+			expect(line, JSON.stringify(axis)).not.toContain('`Iteration`');
+		}
+	});
+
+	it('states both exceptions where both apply, rather than one replacing the other', () => {
+		const line = lineOf({ startKey: 'start', targetKey: 'due', horizonKey: '' });
+		expect(line).toContain('a `Milestone` never gets a start added');
+		expect(line).toContain('a `Release` gets none of these keys at all');
+	});
+});
