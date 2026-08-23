@@ -74,14 +74,22 @@ content asset, the shape [[Kinds of evidence]] uses, not a type of its own.
   to the drift the epic exists to end, so a feature that spells out what a note elsewhere
   already says is a defect under this epic rather than a convenience.
 - **One deliberate crossing, stated where it happens.** A `Campaign` has a timeframe, so it
-  draws on the roadmap's dated axis as its own row. Nothing else crosses: the backlog tree,
+  draws on the roadmap's dated axis as its own row — because that view's own declared axis
+  finds the date properties on the note, never because it learns anything about this one.
+  Nothing else crosses: the backlog tree,
   the board and the Deliverables board ignore the marketing types entirely, the way they
   already ignore the test types. A rung of a foreign ladder on a plan projection has no
   precedent here — [[Milestones as their own type]] and the iteration are markers, which is
   a different genus — so the cost of that one crossing belongs in the note that builds it.
-- **A content asset's workflow is its own**, on the [[Deliverables as a rootable extra type]]
-  precedent: its own state property, ordered states and done values, falling back field by
-  field to an existing board's where a vault never named a separate one.
+- **A content asset's workflow is this view's own, and reaches for nobody else's.** Its
+  state property, its ordered states and its done values are settings of the marketing view,
+  defaulting to this view's own suggestions the way every view's do. It does **not** fall
+  back to the requirements or Deliverables board's fields, and an earlier draft of this note
+  said it did: those two are projections inside one other view, so the field-by-field
+  fallback [[Deliverables as a rootable extra type]] uses is legal between them and is the
+  coupling [[A view per capability]] refuses across a view boundary — *"no view requires
+  another to be present or configured"*, with *"no exception to that contemplated"*. An
+  unconfigured key here is read as nothing, never as an error.
 - **The boundary against `Deliverable` is the audience, and every note under this epic can
   be judged against it.** A `Deliverable` is produced for the team's own construction — a
   concept, a design, a spec — and lives in the work tree. A `Content asset` is produced for
