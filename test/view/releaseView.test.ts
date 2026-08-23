@@ -73,9 +73,18 @@ describe('the release view', () => {
 	 * The vault is where the check sits, because that is the boundary every write path
 	 * ends at: `applyWrites`, `applyPropertyWrites`, `createNote` and `absenceNotes` all
 	 * reach a note through `processFrontMatter` (`writeLog`) or `vault.create` (`files`),
-	 * and the `.base` is written through `config.set`. So a write added to this view by
-	 * code nobody has written yet — Tasks 8 and 9 render into it — fails this without
-	 * anyone predicting its surface.
+	 * and the `.base` is written through `config.set`.
+	 *
+	 * **It reaches the paths it DRIVES and no others**, which is narrower than a check at
+	 * the forbidden thing: `pick`, `onDataUpdated` and `onunload` are the whole of them,
+	 * so a write Task 8 puts behind a row click is never driven here and never fails it.
+	 * The guarantee that DOES hold for code nobody has written yet is `WRITE_BOUNDARY` in
+	 * `eslint.config.mjs` — it bans `processFrontMatter`, `vault.create` and
+	 * `load/saveLocalStorage` across the whole of `src/view/`, whose block carries
+	 * `src/view/release/` in none of its `ignores`, so every one of them fails lint in
+	 * this directory from its first commit. What that rule cannot see is a write reached
+	 * through an alias or a helper it does not name by spelling; this test is what sees
+	 * one, on the three paths above.
 	 */
 	it('writes to no note and to no .base, whatever it is driven through', () => {
 		const vault = releaseVault();
@@ -91,6 +100,37 @@ describe('the release view', () => {
 		// `mountLeaf` adds the `.base` itself and nothing since.
 		expect(vault.files.size).toBe(before + 1);
 		expect(config.setCalls).toEqual([]);
+	});
+
+	/**
+	 * The three model mappings passed to `buildModel` are this view's own, and the comment
+	 * beside them says so — which is evidence of intent and of nothing else until a test
+	 * fails without them. `resolveSettings` reads the same option keys through `propKey`,
+	 * which returns its fallback for a CLEARED option, while `resolveReleaseSettings` uses
+	 * `clearablePropKey` and returns `''`. So the two resolvers agree on every configured
+	 * value and part company on exactly the cleared one, which is what this drives.
+	 *
+	 * **Two of the three overrides are what this reaches, and the third cannot be.** With
+	 * `parentProperty` cleared the spread alone nests `F.md` under the release, and with
+	 * `orderProperty` cleared it re-ranks the roots by a key the options screen says is
+	 * off — both observable on the public `model`. A cleared `typeProperty` never reaches
+	 * `buildModel` at all: `render`'s own guard answers the noType empty state above this
+	 * line, so the `typeKey` override is unobservable here and is left stating the rule
+	 * rather than checked by it.
+	 */
+	it("builds the model with this view's own mappings, so a cleared property stays cleared", () => {
+		const vault = new FakeVault();
+		vault.addFile('0.8.md', { frontmatter: { type: 'Release', order: 2 } });
+		vault.addFile('0.9.md', { frontmatter: { type: 'Release', order: 1 } });
+		vault.addFile('F.md', { frontmatter: { type: 'Feature', order: 1 }, parentLink: '0.8' });
+		const { view } = makeReleaseView(vault, { typeProperty: 'note.type', parentProperty: '', orderProperty: '' });
+
+		// `parentKey: ''` — nothing is nested. The backlog resolver's `parent` would make
+		// `F.md` a child of the release and the scope would go on nesting rows by it.
+		expect(view.model?.byPath.get('F.md')?.parent).toBeNull();
+		// `orderKey: ''` — the Base's own order stands. The backlog resolver's `order`
+		// would rank `0.9.md` first, by a property this view reports as unbound.
+		expect(view.model?.realRoots.map((item) => item.file.path)).toEqual(['0.8.md', '0.9.md', 'F.md']);
 	});
 
 	it('returns to the index when the remembered release is gone', () => {
