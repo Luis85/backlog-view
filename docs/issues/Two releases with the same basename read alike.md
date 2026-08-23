@@ -23,12 +23,18 @@ is carried in `data-path` and never shown.
 
 ## What is already decided, and is not this
 
-**Membership already refuses the ambiguity.** `resolveReleasePath` (`src/domain/releases.ts`)
-takes Obsidian's own resolution when a link resolves, and falls back to a basename match only
-when it resolved nothing — where it returns no answer at all if two releases share that
-basename, because picking the first would make membership depend on file order. So no item
-is silently assigned to the wrong release. What is unresolved here is only what the reader
+**Membership is decided by Obsidian's own link resolution, and by nothing this plugin adds.**
+`membershipTarget` (`src/domain/releases.ts`) hands the value to `getFirstLinkpathDest` and
+takes its answer: a value naming no note at all is reported as unresolved, and a resolved
+note that is not a release is reported the same way rather than reassigned. There is no
+basename search of ours to be ambiguous — `[[1.0]]` under two `1.0` notes names whichever
+one that link would OPEN from the same note, which is the vault's own rule and the one a
+writer can settle by qualifying the link. What is unresolved here is only what the reader
 SEES.
+
+(This paragraph named a `resolveReleasePath` with a basename fallback of its own until
+2026-08-23. That function is from the plan under `docs/superpowers/plans/`; it was never
+built, and the note rested a ruling on behaviour no module has.)
 
 ## Why it is recorded rather than fixed
 
