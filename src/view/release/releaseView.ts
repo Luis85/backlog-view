@@ -7,7 +7,7 @@ import { resolveSettings } from '../../domain/settingsResolve';
 import { loadViewState, saveViewState } from '../../storage/viewStateStore';
 import { resolveViewIdentity } from '../../storage/viewIdentity';
 import { guidanceShell } from '../render/emptyStates';
-import { renderIndex } from './renderIndex';
+import { drawUnresolved, renderIndex } from './renderIndex';
 import { renderScope } from './renderScope';
 
 export const RELEASE_VIEW_TYPE = 'product-release';
@@ -109,19 +109,27 @@ export class ReleaseView extends BasesView {
 			parentKey: this.settings.parentKey,
 			orderKey: this.settings.orderKey,
 		});
+		// Derived BEFORE the no-releases branch, and that order is the whole of the fix for a
+		// silent drop this view shipped with. A base with work items naming releases it does not
+		// hold is the case where EVERY membership value is unresolved — there is nothing for any
+		// of them to resolve to — so returning first reported the maximum-information state as
+		// "no releases" and hid all of it. [[Setting an item's release]] 1f is what rules on
+		// that: an unresolvable membership is reported, never dropped in silence.
+		const index = releaseIndex(this.app, this.model, this.settings);
 		if (this.model.releases.length === 0) {
 			// No create button ON THIS VIEW: no use case in this epic specifies creating a
 			// release, and an empty state must not promise a write nothing defines. The
 			// backlog toolbar's New menu does offer `New Release` — deliberately, the way it
 			// offers `New Milestone` — and that is a different view's existing writer.
 			guidanceShell(this.viewEl, 'package', t('release.empty.noReleases.title'), t('release.empty.noReleases.hint'));
+			drawUnresolved(this.viewEl, index);
 			return;
 		}
 		const scope = this.pickedPath === null ? null : releaseScope(this.app, this.model, this.settings, this.pickedPath);
 		// A remembered release that no longer exists returns the INDEX, silently. A working
 		// position that has gone is not a failure and must not raise one.
 		if (scope === null || scope.release === null) {
-			renderIndex(this, releaseIndex(this.app, this.model, this.settings));
+			renderIndex(this, index);
 			return;
 		}
 		// The release is passed alongside the scope it came from: the check above is what

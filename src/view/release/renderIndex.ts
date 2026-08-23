@@ -178,8 +178,16 @@ function drawAbsences(listEl: HTMLElement, rows: ReleaseRow[]): void {
  * The items whose membership value named no release — reported here because the index is
  * the only screen that can see them: they belong to no release, so they appear on no
  * release's screen.
+ *
+ * Exported for the ONE screen that draws no index and still has these to report: a base
+ * holding no release at all, where `releaseView.render` returns before this module is ever
+ * reached. That is the maximum-information case rather than a corner — with no release for
+ * any value to resolve to, EVERY membership value is unresolved — and it read as "no
+ * releases" and nothing else. [[Setting an item's release]] 1f's ruling is that an
+ * unresolvable membership is reported rather than dropped in silence, so the empty state
+ * carries this line beneath it.
  */
-function drawUnresolved(listEl: HTMLElement, index: ReleaseIndex): void {
+export function drawUnresolved(listEl: HTMLElement, index: ReleaseIndex): void {
 	const count = index.unresolved.length;
 	if (count === 0) return;
 	note(listEl, 'circle-alert', t('release.index.unresolved', { count })).addClass('pbl-rel-unresolved');

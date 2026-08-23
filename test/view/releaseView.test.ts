@@ -25,6 +25,27 @@ describe('the release view', () => {
 		expect(containerEl.querySelector('.pbl-empty button')).toBeNull();
 	});
 
+	/**
+	 * The state this reports in is the one a base with NO release is in for every membership
+	 * value it holds: nothing exists for any of them to resolve to. That is why the fixture
+	 * is exactly that state and not a nearby one — a vault with a release beside the broken
+	 * link renders the index, which has reported the unresolved since Task 4, so it would
+	 * pin nothing about the empty state at all.
+	 *
+	 * `render` returned before `releaseIndex` was ever called, so the count was never
+	 * computed: the screen said "no releases" and hid every broken assignment in the base.
+	 * [[Setting an item's release]] 1f's ruling is that an unresolvable membership is
+	 * reported rather than refused in silence, and this is the screen it can be seen on.
+	 */
+	it('still reports the unresolved memberships when the base holds no release at all', () => {
+		const vault = new FakeVault();
+		vault.addFile('F.md', { frontmatter: { type: 'Feature', order: 1, release: '[[Missing]]' } });
+		const { containerEl } = makeReleaseView(vault, RELEASE_CONFIG);
+
+		expect(containerEl.querySelector('.pbl-empty-title')?.textContent).toContain('No releases');
+		expect(containerEl.querySelector('.pbl-rel-unresolved')?.textContent).toContain('1 item');
+	});
+
 	it('opens the index with nothing picked, and a release once one is', () => {
 		const vault = releaseVault();
 		const { view, containerEl } = makeReleaseView(vault, RELEASE_CONFIG);
