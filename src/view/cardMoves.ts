@@ -157,12 +157,13 @@ export class CardMoveController {
 	 * draws, so there is no rendered vocabulary to translate a value through: the
 	 * release's own title IS the word to announce.
 	 *
-	 * `name` is captured here, before `applyCardMove`'s await, for the same reason
-	 * `performHorizonMove` captures `buckets` first: the write's own refresh can rebuild
-	 * `host.model` before this await resolves, and a release note gone from the vault —
-	 * or simply out of the base's results — in that same tick would leave nothing to
-	 * look up afterwards. Reading `target.title` straight off the argument, once, before
-	 * the write, means the announcement never depends on the release still being there.
+	 * `name` is read off the ARGUMENT rather than looked up through `host.model`, and that
+	 * SOURCE is the whole of what it buys — not timing: `target` is the caller's own object
+	 * and `title` a plain string on it, so it cannot go stale across the await the way
+	 * `host.roadmap` can. A lookup would depend on the release still being in the model
+	 * afterwards, and the write's own refresh can take it out — of the vault, or simply of
+	 * the base's results. Reading `target.title` straight off the argument means the
+	 * announcement never depends on the release still being there.
 	 */
 	async performReleaseMove(item: BacklogItem, target: BacklogItem | null): Promise<boolean> {
 		const name = target ? target.title : null;

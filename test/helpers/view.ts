@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, vi } from 'vitest';
 import { cleanup as liveRegionCleanup } from '@atlaskit/pragmatic-drag-and-drop-live-region';
 import { ProductBacklogView } from '../../src/view/backlogView';
+import { BacklogItem } from '../../src/domain/model';
 import { WriteLock } from '../../src/view/writeLock';
 import { OPTIONAL_PROPERTIES } from '../../src/domain/optionalProperties';
 import { installObsidianDom } from './dom';
@@ -281,3 +282,59 @@ export function submitPrompt(fields: { title: string; folder?: string }): void {
 	}
 	submitButton(modal)?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 }
+
+/** The model's item at that path — the lookup every release suite starts from. */
+export function itemAt(view: ProductBacklogView, path: string): BacklogItem {
+	const item = view.model?.byPath.get(path);
+	if (!item) throw new Error(`no item loaded: ${path}`);
+	return item;
+}
+
+/**
+ * A PBI (`F.md`), the releases it may be put in, and one note of every kind that may NOT
+ * hold a release: the two other markers and a catalog pair.
+ *
+ * Shared by `releaseMove.test.ts` (the host method) and `releaseMenu.test.ts` (its two
+ * inputs) rather than copied into each — the menu suite needs exactly the vault the move
+ * suite already built, and two copies of a fixture are one edit from being two fixtures.
+ *
+ * `exclude` loads that note as a CONTEXT row rather than a result: a child names it as a
+ * parent, so `loadOutsideParents` keeps it in the model while the base has cut it — the
+ * shape `contextCardWrites.test.ts`'s own fixtures use.
+ */
+export function makeViewWithReleases({
+	exclude,
+	memberOf = {},
+	releaseProperty = 'note.release',
+	releases = ['2.4.md', '2.5.md'],
+}: {
+	exclude?: string;
+	/**
+	 * Note path → the release note it already names, written as the link a vault holds.
+	 * An empty string is the BLANK stub ✨ Assign missing properties leaves behind: the
+	 * key is present and names nothing, which is a different note from one with no key.
+	 */
+	memberOf?: Record<string, string>;
+	releaseProperty?: string;
+	releases?: string[];
+} = {}): { view: ProductBacklogView; vault: FakeVault; containerEl: HTMLElement } {
+	const vault = new FakeVault();
+	vault.addFile('F.md', { frontmatter: { type: 'PBI', order: 10 } });
+	for (const path of releases) vault.addFile(path, { frontmatter: { type: 'Release' } });
+	vault.addFile('Sprint 1.md', { frontmatter: { type: 'Iteration' } });
+	vault.addFile('M1.md', { frontmatter: { type: 'Milestone' } });
+	vault.addFile('Suite.md', { frontmatter: { type: 'Test suite', order: 20 } });
+	vault.addFile('Case.md', { frontmatter: { type: 'Test case', order: 10 }, parentLink: 'Suite' });
+	for (const [path, release] of Object.entries(memberOf)) {
+		vault.setFrontmatter(path, { ...vault.fm(path), release: release === '' ? '' : `[[${basename(release)}]]` });
+	}
+	let only: string[] | undefined;
+	if (exclude) {
+		vault.addFile('Child.md', { frontmatter: { type: 'Task', order: 10 }, parentLink: basename(exclude) });
+		only = [...vault.files.keys()].filter((path) => path !== exclude);
+	}
+	const harness = makeView(vault, { releaseProperty }, { collapsed: true, only });
+	return { view: harness.view, vault, containerEl: harness.containerEl };
+}
+
+const basename = (path: string): string => path.replace(/\.md$/, '');

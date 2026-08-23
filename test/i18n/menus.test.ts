@@ -151,6 +151,7 @@ const CONFIGURED = {
 	priorityProperty: 'note.priority',
 	assigneeProperty: 'note.assignee',
 	iterationProperty: 'note.iteration',
+	releaseProperty: 'note.release',
 	horizonProperty: 'note.horizon',
 	horizonValues: 'Now, Next, Later',
 	startProperty: 'note.start',
@@ -165,6 +166,7 @@ const VISIBLE = { order: ['note.status', 'note.tags'] };
 function fullVault(): FakeVault {
 	const vault = new FakeVault();
 	vault.addFile('Sprint 12.md', { frontmatter: { type: 'Iteration' } });
+	vault.addFile('1.0.md', { frontmatter: { type: 'Release' } });
 	vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10 } });
 	vault.addFile('Epic B.md', { frontmatter: { type: 'Epic', order: 20, status: 'Active' } });
 	vault.addFile('Feature B1.md', {
@@ -190,7 +192,10 @@ function fullVault(): FakeVault {
  * What the row menu lists that is NOT text, and must never become text: the type ladder
  * `New <type>` and `Set type` offer, the workflow states, the declared risk and priority
  * ladders, the observed assignee, the iterations in the model, the horizon buckets and the
- * item's own tags. A locale that translated any one of these would offer a pick that writes
+ * item's own tags. The releases are in it for the same reason as the iterations, and it is
+ * the one entry list whose LABEL is computed rather than copied — a colliding basename is
+ * qualified with its path, which is still the vault's own words and still never text. A
+ * locale that translated any one of these would offer a pick that writes
  * a value another locale's vault cannot read — the test `CLAUDE.md` states as "one writes
  * notes the other cannot read", asked here of the whole menu at once rather than of the
  * constants somebody thought to check.
@@ -219,6 +224,7 @@ const DATA = [
 	"4 - Won't",
 	'Sam',
 	'Sprint 12',
+	'1.0',
 	'Now',
 	'Next',
 	'Later',

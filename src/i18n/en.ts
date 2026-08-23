@@ -922,6 +922,7 @@ export const en = {
 	'menu.setPriority': 'Set priority',
 	'menu.setAssignee': 'Set assignee',
 	'menu.setIteration': 'Set iteration',
+	'menu.setRelease': 'Set release',
 	'menu.setHorizon': 'Set horizon',
 	'menu.setType': 'Set type',
 	'menu.editTags': 'Edit tags',
@@ -981,6 +982,13 @@ export const en = {
 	'menu.clearAssignee': 'Clear assignee',
 	/** Set iteration's own clear, which reads as an absence rather than as an act. */
 	'menu.clearIteration': 'None',
+	/**
+	 * Set release's own, which reads as one too — and names the property, where the
+	 * iteration's bare `None` sits under a submenu that has just said which it is. The
+	 * release picker's own entries can be qualified with a folder, so a bare `None`
+	 * beneath two paths reads as a third path rather than as an absence.
+	 */
+	'menu.clearRelease': 'No release',
 	'menu.newAssignee': 'New assignee...',
 	'menu.assignTitle': 'Assign item',
 	'menu.assignField': 'Assignee',

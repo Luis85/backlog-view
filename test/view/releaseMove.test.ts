@@ -1,11 +1,9 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
-import { BacklogItem } from '../../src/domain/model';
-import { ProductBacklogView } from '../../src/view/backlogView';
 import * as cardDrag from '../../src/view/interactions/cardDrag';
 import { announced } from '../helpers/dnd';
 import { FakeVault } from '../helpers/vault';
-import { flush, makeView, refresh, useViewHarness } from '../helpers/view';
+import { flush, itemAt, makeView, makeViewWithReleases, refresh, useViewHarness } from '../helpers/view';
 
 /**
  * `performReleaseMove` — the one host method both the card menu and the keyboard
@@ -16,31 +14,6 @@ import { flush, makeView, refresh, useViewHarness } from '../helpers/view';
  * the word announced, and that is what the capture test below is about.
  */
 useViewHarness();
-
-function itemAt(view: ProductBacklogView, path: string): BacklogItem {
-	const item = view.model?.byPath.get(path);
-	if (!item) throw new Error(`no item loaded: ${path}`);
-	return item;
-}
-
-/**
- * A PBI (`F.md`) and a release note (`2.4.md`), the two paths the brief names.
- * `exclude` loads `F.md` as a context row rather than a result — a child under it
- * keeps it in the tree (`loadOutsideParents`), the same shape
- * `contextCardWrites.test.ts`'s own fixtures use.
- */
-function makeViewWithReleases(opts: { exclude?: string } = {}) {
-	const vault = new FakeVault();
-	vault.addFile('F.md', { frontmatter: { type: 'PBI', order: 10 } });
-	vault.addFile('2.4.md', { frontmatter: { type: 'Release' } });
-	let only: string[] | undefined;
-	if (opts.exclude === 'F.md') {
-		vault.addFile('F Child.md', { frontmatter: { type: 'Task', order: 10 }, parentLink: 'F' });
-		only = ['F Child.md', '2.4.md'];
-	}
-	const harness = makeView(vault, { releaseProperty: 'note.release' }, { collapsed: true, only });
-	return { view: harness.view, vault };
-}
 
 describe('putting one item in a release', () => {
 	it('writes the membership and announces it once', async () => {
