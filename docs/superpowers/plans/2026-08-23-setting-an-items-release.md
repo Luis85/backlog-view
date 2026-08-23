@@ -45,7 +45,8 @@ an `Iteration`'s shipped behaviour for `start`, `target`, `horizon`, `iteration`
 **Files:**
 - Modify: `src/domain/optionalProperties.ts` (`OptionalField`, `PROPERTY_TABLE`)
 - Modify: `src/domain/itemTypes.ts` (`mayHoldField`)
-- Test: `test/domain/optionalProperties.test.ts`, `test/domain/liveTypeKeys.test.ts`
+- Modify: `src/domain/writePlan.ts` (`missingKeyStubs` — one early return)
+- Test: `test/domain/optionalProperties.test.ts`, `test/domain/liveTypeKeys.test.ts`, `test/domain/writePlan.ts`
 
 **Interfaces:**
 - Produces: `'release'` as a member of `OptionalField`; `optionalProperty('release')` answering with the suggested key name; `mayHoldField(type, 'release', settings)` false for every marker type and true for plan work.
@@ -78,7 +79,7 @@ describe('which types may hold a release', () => {
 		}
 	});
 
-	it('leaves every other field''s answer exactly as it was', () => {
+	it('leaves every other field\'s answer exactly as it was', () => {
 		const settings = settingsWith({ releaseKey: 'release' });
 		// The guard this task edits carries a warning against widening it. These are the
 		// shipped answers; none of them may move.
@@ -121,19 +122,65 @@ reached unchanged for every other field:
 Run: `npx vitest run test/domain/optionalProperties.test.ts test/domain/liveTypeKeys.test.ts`
 Expected: PASS.
 
-- [ ] **Step 5: Check what else moved**
+- [ ] **Step 5: Stop ✨ stubbing an empty release**
+
+Adding the field to this vocabulary puts it in `missingKeyStubs`
+(`src/domain/writePlan.ts`), which stubs an empty key for every optional property a type may
+hold. That would have ✨ write `release: ''` onto every work item in the vault — and
+`membershipTarget` (`src/domain/releases.ts`) reads an empty value as UNRESOLVED, not as
+"names none", deliberately: "the note HAS the key, so somebody wrote something there".
+
+**The two halves are already green in two test files that never met.** On the recommended
+setup path — ✨ in the backlog view, both views on the suggested key — the release index would
+open reporting the entire backlog as unresolved memberships, and stay that way until every
+item is assigned. That is the one screen this increment exists to populate.
+
+Write the test first, in `test/domain/writePlan.ts`'s backfill describe (find it by searching
+for `iterationGoal` — the same file already states the goal's own refusal):
+
+```ts
+it('never stubs an empty release', () => {
+	// An empty membership is not an empty slot inviting a value: `membershipTarget`
+	// reads it as an unresolved membership, so a stub would report every work item in
+	// the vault as broken on the release index. `iterationGoal`'s refusal beside this
+	// one has its own reason — two rules that agree today are still two rules.
+	const model = buildTestModel(/* a PBI carrying no release key */);
+	const writes = computeInitWrites(model, settingsWith({ releaseKey: 'release' }));
+	for (const write of writes) expect(write.stubs ?? []).not.toContain('release');
+});
+```
+
+Run it and watch it FAIL (it will stub `release` once Steps 3–4 have landed). Then add the
+early return beside `iterationGoal`'s in `missingKeyStubs`:
+
+```ts
+		// An empty release is not an empty slot. `membershipTarget` (`domain/releases.ts`)
+		// reads a present-but-blank value as an UNRESOLVED membership rather than as
+		// "names none", so stubbing one here would have ✨ report every work item in the
+		// vault as a broken membership on the release index — the screen this property
+		// exists to populate. Its own return rather than a widening of `iterationGoal`'s:
+		// that one's reason is that a goal means nothing on the note it lands on.
+		if (field === 'release') continue;
+```
+
+Re-run and watch it pass. Measured on this branch: a seventh early return here does NOT
+breach the `complexity: 16` budget — `npx eslint src/domain/writePlan.ts` was run against
+exactly this edit and passed. Re-run it anyway.
+
+**The cost, and it is `iterationGoal`'s already-accepted one:** nothing creates the key, so
+Obsidian's property picker cannot offer `release` in the release view's options until one note
+carries it — which the first `Set release` supplies. Say so in Task 7's changelog entry.
+
+- [ ] **Step 6: Check what else moved**
 
 Run: `npx vitest run test/domain/ test/storage/`
-Expected: PASS. **If anything about the backfill (`missingKeyStubs`) changed, STOP and report
-it** — adding a field to this vocabulary means ✨ now stubs a `release` key on work items, and
-that is a deliberate consequence (a property no note carries cannot be picked in Obsidian's
-property UI, which is why the backfill exists) but it must be a green, understood change rather
-than a surprise.
+Expected: PASS. Anything else that moved is a surprise — report it rather than adjusting a
+test to fit.
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 7: Commit**
 
 ```bash
-git add src/domain/optionalProperties.ts src/domain/itemTypes.ts test/domain/optionalProperties.test.ts test/domain/liveTypeKeys.test.ts
+git add src/domain/optionalProperties.ts src/domain/itemTypes.ts src/domain/writePlan.ts test/domain/optionalProperties.test.ts test/domain/liveTypeKeys.test.ts test/domain/writePlan.ts
 git commit -m "Let a work item hold a release, and no marker hold one"
 ```
 
@@ -709,12 +756,18 @@ and is deliberately given no code — the spec forbids promising a warning that 
 
 **One decision this plan makes that the spec did not.** Task 1 adds `release` to `OptionalField`,
 which is what supplies `ownKeys.release` for the "no release" gate. That has a consequence the
-spec did not name: the ✨ backfill stubs an empty key for every optional property a type may
-hold, so it will now stub `release` on work items. That is arguably correct — a property no note
-carries cannot be picked in Obsidian's property UI, which is the reason the backfill exists — but
-it is a visible change to a shipped feature and Task 1 Step 5 stops if it is not understood.
-The alternative, a dedicated presence flag outside that vocabulary, was not taken because it
-would be a second mechanism for a question `ownKeys` already answers.
+spec did not name, and it is a defect rather than a trade-off: the ✨ backfill stubs an empty key
+for every optional property a type may hold, and `membershipTarget` reads an empty value as an
+UNRESOLVED membership rather than as "names none". On the recommended setup path the release
+index would open reporting the whole backlog as broken. Both halves are individually correct and
+individually tested, in two files that never met. **Task 1 Step 5 is the fix** — one early return
+in `missingKeyStubs`, beside `iterationGoal`'s, with the test written first.
+
+The alternatives were weighed and refused: reading `''` as "names none" edits a ruling
+`docs/requirements/Releases as their own type.md` extension 3b owns, and a dedicated presence
+flag outside the vocabulary is a second mechanism for a question `ownKeys` already answers.
+The accepted cost is `iterationGoal`'s: nothing creates the key, so the release view's property
+picker cannot offer `release` until one note carries it.
 
 **The one thing no test here can reach.** Whether a user can actually find and use this in
 Obsidian — the picker's length, the menu's length, the qualified labels — is a live-vault
