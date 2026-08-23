@@ -275,8 +275,10 @@ export function resolveSettings(config: BasesViewConfig): BacklogSettings {
 	// pairing a second time. The lines this replaces were correct, but they were a copy
 	// of `PROPERTY_TABLE` that nothing checked: a row whose `settingsKey` and hand-written
 	// destination disagreed would have bound the picker to one field and read another.
-	// `deliverableStateKey` and `testStateKey` are resolved here too and then OVERWRITTEN by
-	// the explicit fields below: they are the two optional keys with a fallback of their own.
+	// `deliverableStateKey`, `testStateKey` and `releaseKey` are resolved here too and then
+	// OVERWRITTEN by the explicit fields below: the first two carry a fallback ladder of
+	// their own (`resolveSecondaryWorkflow`), and `releaseKey` needs `clearablePropKey`
+	// rather than this loop's plain `propKey` — see the line itself.
 	const keyEntries = OPTIONAL_PROPERTIES.map((p) => [p.settingsKey, propKey(p.option, fallback[p.settingsKey])]);
 	const optionalKeys = Object.fromEntries(keyEntries) as Pick<BacklogSettings, OptionalSettingsKey>;
 	const tagsKey = (): string => {
@@ -305,6 +307,13 @@ export function resolveSettings(config: BasesViewConfig): BacklogSettings {
 		focusLevel: fallback.focusLevel,
 		...optionalKeys,
 		tagsKey: tagsKey(),
+		// `propKey` cannot tell a cleared option from an unset one — both report as no
+		// property id — so with a REAL default that distinction is lost. Here the default
+		// is '', so nothing observable changes today, but the field is a LINK per its own
+		// docstring in `settings.ts`, not a name, and `clearablePropKey` is the reading
+		// that keeps "cleared" and "never touched" answering differently if that default
+		// ever stops being empty.
+		releaseKey: clearablePropKey('releaseProperty', fallback.releaseKey),
 		doneValues: effectiveDoneValues,
 		wipLimits: nameTable(limitedStates, (s) => parseWipLimit(str(wipLimitKey(s)))),
 		columnPolicies: nameTable(states, (s) => str(columnPolicyKey(s)).trim() || null),

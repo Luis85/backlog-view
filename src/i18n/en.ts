@@ -741,6 +741,7 @@ export const en = {
 	'option.group.progress': 'Progress',
 	'option.group.deliverables': 'Deliverables',
 	'option.group.iterations': 'Iterations',
+	'option.group.release': 'Release',
 	'option.group.testing': 'Test management',
 	'option.group.roadmap': 'Roadmap',
 	'option.group.risk': 'Risk management',
@@ -792,6 +793,8 @@ export const en = {
 	'option.iterationLengthDays': 'Default iteration length in days',
 	'option.iterationsOnTimeline': 'Show iterations on the roadmap timeline',
 	'option.iterationBars': 'Draw iterations as bars',
+
+	'option.releaseProperty': 'Release property',
 
 	'option.testStateProperty': 'Test state property',
 	'option.testStateValues': 'Test workflow states (in order)',

@@ -89,6 +89,11 @@ method, three inputs, one gated batch.
 
 ## Where it lives
 
+The membership property is read the way the iteration link already is — resolved to a
+file, not a name — by `src/domain/readItems.ts`'s `releaseEntry`, bound by the
+`releaseProperty` view option in `src/domain/viewOptions.ts` and resolved into
+`BacklogSettings.releaseKey` by `src/domain/settingsResolve.ts`.
+
 One host method in `src/view/host.ts` over `src/view/cardMoves.ts`, reached from
 `src/view/interactions/menu.ts`, `src/view/interactions/keyboard.ts` and
 `src/view/interactions/cardDrag.ts`. The write is a **link**, not a label:

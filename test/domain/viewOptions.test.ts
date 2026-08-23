@@ -143,6 +143,18 @@ describe('getViewOptions', () => {
 		expect(keys).toEqual(['deliverableStateProperty', 'deliverableStateValues', 'deliverableDoneValues']);
 	});
 
+	it('exposes a Release group with a single membership property, the iteration property shape', () => {
+		const groups = getViewOptions(fakeConfig());
+		const group = groups.find((g) => 'displayName' in g && g.displayName === 'Release');
+		if (!group || !('items' in group)) throw new Error('Release group missing');
+		expect(group.items.map((item) => item.key)).toEqual(['releaseProperty']);
+		const property = group.items[0] as { placeholder?: string; type: string };
+		expect(property.type).toBe('property');
+		// The suggested key `resolveSettings` adopts on backfill, the way every other
+		// optional property's placeholder is its own suggestion.
+		expect(property.placeholder).toBe('release');
+	});
+
 	it('exposes an Iterations group with the two properties and the four board options', () => {
 		// No state PROPERTY here — the iteration board reads the product state key and
 		// narrows it, so there is no second one to configure. Three of the four that ARE
@@ -256,6 +268,7 @@ const KEYS = [
 	'iterationLengthDays',
 	'iterationsOnTimeline',
 	'iterationBars',
+	'releaseProperty',
 	'testStateProperty',
 	'testStateValues',
 	'testDoneValues',
@@ -386,6 +399,7 @@ describe('the options menu reads its words from the catalog', () => {
 			'order',
 			'parent',
 			'priority',
+			'release',
 			'risk',
 			'start',
 			'started',

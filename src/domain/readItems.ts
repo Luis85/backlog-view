@@ -143,6 +143,13 @@ export interface RawItem {
 	 */
 	iterationEntry: LinkEntry | null;
 	/**
+	 * The release this note names, read the way `iterationEntry` is — the first link, or
+	 * null where the key is unbound or the note carries nothing under it. Parsed here
+	 * rather than at plan time so the planner can compare by PATH: two spellings of one
+	 * release note are one release.
+	 */
+	releaseEntry: LinkEntry | null;
+	/**
 	 * Which configured optional keys the note CARRIES — presence, not value, and the
 	 * two are different questions here: an empty horizon reads as absent (untriaged)
 	 * while the key is still on the note. Removal actions offer themselves on presence,
@@ -274,6 +281,7 @@ function addItem(
 		iterationGoalValue: readLabel(settings.iterationGoalKey, fm),
 		ownKeys: readOwnKeys(fm, settings),
 		iterationEntry: readIterationEntry(app, file, cache, settings.iterationKey),
+		releaseEntry: readReleaseEntry(app, file, cache, settings.releaseKey),
 		// NOT read for a context row, which is the same test `outsideFilter` is made of
 		// two lines up. An excluded note may be NAMED by a result and may never do the
 		// naming, and until now that rule was kept only downstream, by `declaredEdges`
@@ -334,6 +342,11 @@ function divertAbsence(
  * entry is the honest reading rather than an error.
  */
 function readIterationEntry(app: App, file: TFile, cache: CachedMetadata | null, key: string): LinkEntry | null {
+	return key ? (readLinkList(app, file, cache, key)[0] ?? null) : null;
+}
+
+/** One release, read the way one iteration is: the first link, or nothing. */
+function readReleaseEntry(app: App, file: TFile, cache: CachedMetadata | null, key: string): LinkEntry | null {
 	return key ? (readLinkList(app, file, cache, key)[0] ?? null) : null;
 }
 
