@@ -5,6 +5,7 @@ import { rekeyBase } from './storage/viewStateStore';
 import { initLocale, t } from './i18n/t';
 import { registerBacklogView } from './view/registerBacklogView';
 import { registerEstimationView } from './view/estimation/register';
+import { registerReleaseView } from './view/release/register';
 import { WriteLock } from './view/writeLock';
 
 export default class ProductBacklogPlugin extends Plugin {
@@ -17,6 +18,8 @@ export default class ProductBacklogPlugin extends Plugin {
 		const lock = new WriteLock();
 		registerBacklogView(this, lock);
 		registerEstimationView(this, lock);
+		// No lock: this view writes nothing, so it has no gate to build from one.
+		registerReleaseView(this);
 		// View state is keyed on the base's path, so it has to follow the file.
 		// The open view re-resolves its own identity when it saves; this covers the
 		// bases that are not open, whose entries would otherwise be orphaned and then

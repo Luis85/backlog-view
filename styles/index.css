@@ -133,3 +133,8 @@
    `.pbl-est-presets-dialog` class sits on Obsidian's `.modal-content`, which this
    stylesheet does not otherwise target. */
 @import "./estimationPresets.css";
+/* Position NOT load-bearing: every selector here is `.pbl-rel-*`, a vocabulary no other
+   partial declares. `.pbl-view` shares the release view's own element, and both files
+   declare `display` on it — but this one AGREES with `view.css` (`flex`) rather than
+   overriding it, so nothing here is decided by order either. */
+@import "./release.css";

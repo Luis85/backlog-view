@@ -90,7 +90,22 @@ Nothing yet. It is the view's entry point, so it is also where a release gets pi
 ## Where it lives
 
 The rows derive from the same `src/domain/releases.ts` as the single-release figures, from the
-model in `src/domain/model.ts`, so no figure is computed twice. The list is a render module in
-`src/view/render/` beside `src/view/render/board.ts`, its empty states in
-`src/view/render/emptyStates.ts`, and the picked release is held in `src/view/viewState.ts`
-through `src/view/viewStateController.ts` and persisted by `src/storage/viewStateStore.ts`.
+model in `src/domain/model.ts`, so no figure is computed twice.
+
+The screen itself is a Bases view of its own — `src/view/release/releaseView.ts`, registered by
+`src/view/release/register.ts` — and not a projection of the backlog view. That is what decides
+where the list lives: it is a render module under `src/view/release/`, drawing its own read-only
+rows rather than reusing `src/view/render/rows.ts`, which takes a `BacklogViewHost` and wires
+menus, create prompts and drag into every row. What it does reuse is the stylesheet
+(`styles/release.css`) and `guidanceShell` from `src/view/render/emptyStates.ts`, which is the
+reuse the estimation view already settled on.
+
+This note said the module sat in `src/view/render/` beside `src/view/render/board.ts` and that
+the picked release was held in `src/view/viewState.ts` through `src/view/viewStateController.ts`.
+Both were written before the release view was a registered view of its own, and both are wrong
+for one reason: `viewStateController.ts` is the backlog view's controller, and this screen has
+no host to reach it through. `releaseView.ts` holds the pick and reads and writes it through
+`src/storage/viewStateStore.ts` directly, keyed by `src/storage/viewIdentity.ts` — per device and
+per saved view, never the `.base`. `src/view/viewState.ts` keeps one half of it: the pick is a
+note PATH, so its rename walk carries `release` beside the board's `scope`, or a renamed release
+note would read exactly like a deleted one.

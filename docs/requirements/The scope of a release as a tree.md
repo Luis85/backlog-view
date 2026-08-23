@@ -81,6 +81,14 @@ selected by one property instead of by the whole result set.
 
 The membership read is `src/domain/releases.ts`, beside `src/domain/board.ts` and
 `src/domain/roadmap.ts` and shaped like them — it derives from the model in
-`src/domain/model.ts` and touches no DOM. The rows reuse `src/view/render/rows.ts` and the
-context marking already there; the empty state is in `src/view/render/emptyStates.ts` and the
-membership key is declared in `src/domain/releaseOptions.ts`.
+`src/domain/model.ts` and touches no DOM. The membership key is declared in
+`src/domain/releaseOptions.ts`, this view's own option set, and the screen that draws the tree
+is `src/view/release/releaseView.ts`, which chooses between this scope and the index.
+
+This note said the rows reuse `src/view/render/rows.ts` and the context marking already there.
+They do not, and cannot: that module takes a `BacklogViewHost` and wires menus, create prompts,
+tag removal and drag into every row — every one of them a write this screen does not offer — so
+reusing it would make a read-only view satisfy a host interface in order to withhold what the
+interface is for. The rows are drawn under `src/view/release/` instead, reusing the stylesheet
+(`styles/release.css`) and `guidanceShell` from `src/view/render/emptyStates.ts`, which is the
+same reuse the estimation view settled on.

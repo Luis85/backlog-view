@@ -1519,4 +1519,22 @@ export const en = {
 	'timeline.waitsTooltip': '{title} — {waits}',
 	/** The tag cell's own tooltip; `{tags}` is vault content joined as grammar. */
 	'column.tagsTooltip': '{label}: {tags}',
+
+	/** The release view's own label, `estimation.viewName`'s case exactly: a view-type
+	 * name is ordinary UI text, and only the backlog view holds the one sanctioned
+	 * exemption for the plugin's own identity. */
+	'release.viewName': 'Product release',
+	/**
+	 * The two unconfigured states, which are deliberately different answers: one is a
+	 * mapping to bind, the other is a base that simply holds no release yet. `Release`
+	 * inside the second hint is the TYPE NAME a note carries — data, not text — and is
+	 * spelled here rather than passed in because a parameter would put the vocabulary
+	 * behind a caller's argument and let a test assert its own input.
+	 */
+	'release.empty.noType.title': 'No type property is mapped',
+	'release.empty.noType.hint':
+		'This view reads each note’s type to find the releases. Bind the type property in the view options.',
+	'release.empty.noReleases.title': 'No releases in this base',
+	'release.empty.noReleases.hint':
+		'A release is a note typed Release, carrying a version and a target date. Add one to the vault and it appears here.',
 } as const;
