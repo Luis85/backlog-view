@@ -50,6 +50,20 @@ export function renderIndex(view: ReleaseView, index: ReleaseIndex): void {
  * against the locale `initLocale` installs at load, so a module-level array would spell
  * every heading before that ran. Resolved once here rather than carried as a key, so the
  * heading in the grid and the name in the absent-column note are literally one string.
+ *
+ * **A bound key the note does not carry draws an empty cell — except the target date, which
+ * says so.** That is a THIRD answer beside the two [[Releases as their own type]] rules on:
+ * 3a is a key nobody bound and 3b is a key holding something no reader will guess at, and
+ * neither is a note that simply does not state its version. The register does not rule on
+ * this one, so the rule applied is stated here and held by a test.
+ *
+ * The asymmetry is the point rather than an oversight. An absent target date is the only one
+ * of the four that MOVED THE ROW: [[Every release in one list]] 3a puts an undated release
+ * after every dated one, so a blank cell in the column the list is sorted by would leave the
+ * reader no way to explain why the row is at the bottom. A missing version or status changes
+ * nothing about where the row sits, so labelling those would be three italic placeholders on
+ * one row saying nothing the empty cell does not. An unset member count is not this case at
+ * all — it is a counted zero, and it is drawn.
  */
 interface ColumnSpec {
 	label: string;

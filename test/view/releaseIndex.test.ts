@@ -19,6 +19,18 @@ describe('the release index', () => {
 		const { containerEl } = makeReleaseView(releaseVault(), RELEASE_CONFIG);
 		const names = [...containerEl.querySelectorAll('.pbl-rel-name')].map((el) => el.textContent);
 		expect(names).toEqual(['0.8', '0.9', 'Someday']);
+		// The grid's track list is the VIEW's, because the column count is — one track per
+		// column actually drawn. Asserted here at the fully configured shape and again below
+		// with a column dropped, since a call that never ran leaves the partial's fallback
+		// standing and every other assertion in this file green.
+		const grid = containerEl.querySelector('.pbl-rel-grid') as HTMLElement;
+		expect(grid.style.getPropertyValue('--pbl-rel-columns')).toBe('1fr auto auto auto auto');
+		// EVERY chip on this screen is the read-only one, stated as the category rather than
+		// as three places: the view offers no write, and
+		// `.pbl-state-chip:not(.pbl-state-static):hover` would give a chip that lost the class
+		// a hover affordance — the screen would look editable.
+		expect(containerEl.querySelectorAll('.pbl-state-chip')).toHaveLength(3);
+		expect(containerEl.querySelectorAll('.pbl-state-chip:not(.pbl-state-static)')).toHaveLength(0);
 	});
 
 	it('opens a release when its row is clicked', () => {
@@ -36,11 +48,15 @@ describe('the release index', () => {
 		expect(rows).toHaveLength(3);
 		expect(rows.every((el) => el.tabIndex === 0)).toBe(true);
 		expect(rows.every((el) => el.getAttribute('role') === 'button')).toBe(true);
-		key(containerEl.querySelector('.pbl-rel-row[data-path="0.9.md"]') as HTMLElement, 'Enter');
+		const entered = key(containerEl.querySelector('.pbl-rel-row[data-path="0.9.md"]') as HTMLElement, 'Enter');
 		expect(view.pickedPath).toBe('0.9.md');
 		view.pick(null);
-		key(containerEl.querySelector('.pbl-rel-row[data-path="0.9.md"]') as HTMLElement, ' ');
+		const spaced = key(containerEl.querySelector('.pbl-rel-row[data-path="0.9.md"]') as HTMLElement, ' ');
 		expect(view.pickedPath).toBe('0.9.md');
+		// Both keys are CONSUMED. Space that activates the row and also reaches the scroller
+		// pages the list out from under the reader, which is a keyboard defect the pick
+		// landing correctly says nothing about.
+		expect([entered.defaultPrevented, spaced.defaultPrevented]).toEqual([true, true]);
 	});
 
 	it('names an unconfigured column ONCE, and never blanks it per row', () => {
@@ -55,10 +71,15 @@ describe('the release index', () => {
 		]);
 		expect(containerEl.querySelectorAll('.pbl-rel-version')).toHaveLength(0);
 		expect(containerEl.querySelectorAll('.pbl-rel-note')).toHaveLength(1);
-		// The other three figures are still drawn, so the note names the version column and
-		// nothing else — an absence report that swept up a configured column would read the
-		// same at this length.
-		expect(containerEl.querySelector('.pbl-rel-note')?.textContent).toContain('Version');
+		// BOTH directions, because either alone passes on a report that names the wrong set.
+		// `toContain('Version')` alone is satisfied by a note listing every column there is —
+		// which is what dropping the `unconfigured` filter produces, and it stayed green.
+		const note = containerEl.querySelector('.pbl-rel-note')?.textContent ?? '';
+		expect(note).toContain('Version');
+		for (const drawn of ['Target', 'Status', 'Items']) expect(note).not.toContain(drawn);
+		// The dropped column takes its track with it, or four cells spread over five tracks.
+		const grid = containerEl.querySelector('.pbl-rel-grid') as HTMLElement;
+		expect(grid.style.getPropertyValue('--pbl-rel-columns')).toBe('1fr auto auto auto');
 		expect(containerEl.querySelectorAll('.pbl-state-chip')).toHaveLength(3);
 	});
 
@@ -74,11 +95,31 @@ describe('the release index', () => {
 		expect(someday.querySelector('.pbl-rel-undated')).not.toBeNull();
 	});
 
+	it('labels only the absence that moved the row, and leaves the others as an empty cell', () => {
+		// The THIRD answer, beside unconfigured and unreadable: a key that is bound and that
+		// this note simply does not carry. The register rules on the other two (Releases as
+		// their own type 3a/3b) and not on this one, so `renderIndex.ts` states the rule and
+		// this is what holds it — see the docstring on `columnSpecs`.
+		//
+		// `Someday.md` carries a status, no version, no target date and nothing naming it. Only the
+		// target date is labelled, because only the target date decided where the row is:
+		// extension 3a puts an undated release after every dated one, so a blank cell there
+		// would leave the reader no way to explain the position.
+		const { containerEl } = makeReleaseView(releaseVault(), RELEASE_CONFIG);
+		const row = containerEl.querySelector('.pbl-rel-row[data-path="Someday.md"]') as HTMLElement;
+		const cells = [...row.querySelectorAll(':scope > div')].map((el) => el.textContent);
+		expect(cells).toEqual(['Someday', '', 'No target date', 'Idea', '0']);
+	});
+
 	it('reports the unresolved once, beneath the rows', () => {
 		const vault = releaseVault();
 		vault.addFile('Orphan.md', { frontmatter: { type: 'Feature', release: '[[Nothing]]' } });
 		const { containerEl } = makeReleaseView(vault, RELEASE_CONFIG);
-		expect(containerEl.querySelector('.pbl-rel-unresolved')?.textContent).toContain('1');
+		// The whole sentence, not `toContain('1')` — that one is satisfied by ELEVEN, and a
+		// count arrived at some other way is exactly what this line exists to catch.
+		expect(containerEl.querySelector('.pbl-rel-unresolved')?.textContent).toBe(
+			'1 item names a release that could not be resolved.',
+		);
 	});
 
 	it('plans no write', async () => {
