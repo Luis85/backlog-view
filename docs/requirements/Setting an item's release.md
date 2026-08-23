@@ -182,7 +182,12 @@ type, because the plan carries the `TFile` the picker was built from and a retyp
 be spelled as a release it no longer is. What neither asks is whether the target left the BASE —
 that is the write gate's contract rather than a question about the vault, it is shared with
 `Set iteration`, and it is recorded in
-[[A stale release or iteration target can still be committed]].
+[[A stale release or iteration target can still be committed]]. Neither can they be asked
+about a pick that plans NOTHING: `computeReleaseWrites` decides "already there" against the
+captured item, so a membership changed while the submenu sat open makes a real pick read as a
+no-op and no write reaches these guards at all. Recorded in
+[[A pick compared against the model reads as a no-op]] — the horizon and the sprint decide it
+the same way, and the register has already ruled that moving them is its own increment.
 
 One host method carries the move: `performReleaseMove` on `src/view/host.ts`, implemented in
 `src/view/cardMoves.ts` and delegated from `src/view/backlogView.ts`. Its announcement is a
