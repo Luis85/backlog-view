@@ -13,6 +13,18 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ### Fixed
 
+- **The release list can be used from the keyboard.** Every release in the list is now a
+  real button: Tab reaches each one in turn, Enter or Space opens it, and the row it is on
+  is outlined while it has focus. Picking a release is the only way into a release's own
+  screen, so until now that screen was out of reach without a mouse — a screen reader could
+  not get to it either. Nothing about the list's appearance changes: the figures still line
+  up down the screen, and a value too long for its column is now shortened with an ellipsis
+  rather than pushing that row's figures out of line with the rows above it.
+- **A release's contents can be selected and copied again.** The rows on a release's own
+  screen were borrowing the backlog tree's behaviour — a pointing hand, a highlight under
+  the cursor and no way to select the text — for gestures this screen does not have: there
+  is nothing to click, select or fold there. They now behave like the text they are.
+
 - **A focused roadmap no longer loses work beneath a parent the base filtered out.** A
   parent shown for context, with a release between it and the work below, counted as an
   empty scaffold and took that work off the screen with it — and the roadmap then said
