@@ -19,9 +19,11 @@ assignee: ""
 **As** someone planning what ships, **I want** a release to be an ordinary note with a type of
 its own, **so that** I can plan a release, and name its date, before a single item is in it.
 
-Nothing yet — the epic names the type and no code reads one. The work extends the type
-vocabulary the model already builds, beside the way `Milestone` and `Iteration` were added:
-a root by nature, holding nothing.
+The type has shipped. It extends the type vocabulary the model already builds, beside the
+way `Milestone` and `Iteration` were added: a root by nature, holding nothing. What has NOT
+shipped is any way to create one from this plugin's own screens beyond the backlog toolbar's
+`New Release`, and no figure a release note carries beyond its version, target date and
+status.
 
 ## Use case
 

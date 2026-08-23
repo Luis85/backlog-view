@@ -183,8 +183,8 @@ function drawAbsences(listEl: HTMLElement, rows: ReleaseRow[]): void {
  * holding no release at all, where `releaseView.render` returns before this module is ever
  * reached. That is the maximum-information case rather than a corner — with no release for
  * any value to resolve to, EVERY membership value is unresolved — and it read as "no
- * releases" and nothing else. [[Setting an item's release]] 1f's ruling is that an
- * unresolvable membership is reported rather than dropped in silence, so the empty state
+ * releases" and nothing else. [[The scope of a release as a tree]] 1b's ruling is that such
+ * an item is reported among the unresolved "rather than silently dropped", so the empty state
  * carries this line beneath it.
  */
 export function drawUnresolved(listEl: HTMLElement, index: ReleaseIndex): void {

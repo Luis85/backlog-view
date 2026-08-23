@@ -113,8 +113,8 @@ export class ReleaseView extends BasesView {
 		// silent drop this view shipped with. A base with work items naming releases it does not
 		// hold is the case where EVERY membership value is unresolved — there is nothing for any
 		// of them to resolve to — so returning first reported the maximum-information state as
-		// "no releases" and hid all of it. [[Setting an item's release]] 1f is what rules on
-		// that: an unresolvable membership is reported, never dropped in silence.
+		// "no releases" and hid all of it. [[The scope of a release as a tree]] 1b is what rules
+		// on that: such an item is reported among the unresolved "rather than silently dropped".
 		const index = releaseIndex(this.app, this.model, this.settings);
 		if (this.model.releases.length === 0) {
 			// No create button ON THIS VIEW: no use case in this epic specifies creating a

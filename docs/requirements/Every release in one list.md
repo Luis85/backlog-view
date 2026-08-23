@@ -51,7 +51,13 @@ at all.
   typed `Release` carrying a version and a target date — rather than drawing an empty grid. It
   offers **no create button**: no use case in this epic specifies creating a release, and an
   empty state must not promise a write nothing defines. Making one is still a gap, recorded
-  here rather than half-answered by a control with no flow behind it.
+  here rather than half-answered by a control with no flow behind it. **It still reports the
+  unresolvable memberships**, and that is not a detail of this extension but its sharpest
+  case: with no release for any value to resolve to, every membership in the base is
+  unresolved at once, so the state with the most to say had been saying only "no releases".
+  [[The scope of a release as a tree]] 1b is what rules on it: such an item "is reported
+  among the items whose membership could not be resolved, rather than silently dropped", and
+  this is the only screen it can be reported on.
 - **2a — a figure's key is unconfigured.** That column is absent for every row, named once,
   rather than blank in each — the same answer the single-release screen gives.
 - **2b — a release has no actual date.** Its slip is absent. Today is never measured against a
@@ -109,7 +115,9 @@ grid, one row per release in the order `src/domain/releases.ts` decided, the two
 the grid — the unconfigured columns named once, and the count of items whose membership
 resolved to nothing — and it wires the pick. It re-sorts nothing and it derives nothing: every
 figure on a row arrives from `releaseIndex`, which is what keeps a row and a release header from
-disagreeing.
+disagreeing. One of those two notes is exported rather than private, because 1b needs it on a
+screen this module never draws: `releaseView.ts` derives the index BEFORE it decides whether
+there is a list to render, and calls the same function beneath the empty state.
 
 A row is a real tab stop carrying `role="button"`, activated by a click, by Enter and by Space.
 Picking a release is this view's whole navigation, so a pointer-only row would put the scope

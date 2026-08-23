@@ -20,8 +20,9 @@ assignee: ""
 already is, **so that** I can see the shape of the work rather than a flat list of rows that
 lost it.
 
-Nothing yet. The work reuses the row rendering the backlog already does, over a population
-selected by one property instead of by the whole result set.
+The tree has shipped. It draws its own read-only rows over a population selected by one
+property instead of by the whole result set — **not** the backlog's row rendering, which this
+note assumed and `## Where it lives` explains it cannot be.
 
 ## Use case
 

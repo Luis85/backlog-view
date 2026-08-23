@@ -34,8 +34,9 @@ describe('the release view', () => {
 	 *
 	 * `render` returned before `releaseIndex` was ever called, so the count was never
 	 * computed: the screen said "no releases" and hid every broken assignment in the base.
-	 * [[Setting an item's release]] 1f's ruling is that an unresolvable membership is
-	 * reported rather than refused in silence, and this is the screen it can be seen on.
+	 * [[The scope of a release as a tree]] 1b's ruling is that such an item is reported among
+	 * the unresolved "rather than silently dropped", and this is the only screen it can be
+	 * seen on.
 	 */
 	it('still reports the unresolved memberships when the base holds no release at all', () => {
 		const vault = new FakeVault();
