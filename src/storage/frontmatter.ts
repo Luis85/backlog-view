@@ -229,6 +229,7 @@ function applyInto(
 	const leaving = settings.stateKey ? readString(ownValue(fm, settings.stateKey)) : null;
 	applyHierarchy(app, fm, settings, write);
 	applyIteration(app, fm, settings, write);
+	applyRelease(app, fm, settings, write);
 	// The stateKey may be unset (progress tracking off) — never write to an empty key.
 	if (write.removeStateKey && settings.stateKey) delete fm[settings.stateKey];
 	else if (write.state !== undefined && settings.stateKey) setOwn(fm, settings.stateKey, write.state);
@@ -285,6 +286,17 @@ function applyIteration(app: App, fm: Record<string, unknown>, settings: Backlog
 	if (write.iteration === undefined || !settings.iterationKey) return;
 	if (write.iteration === null) delete fm[settings.iterationKey];
 	else setOwn(fm, settings.iterationKey, wikilinkTo(app, write.iteration, write.file.path));
+}
+
+/**
+ * The release link — the iteration link's own rule ({@link applyIteration}), one property
+ * later: path-aware `wikilinkTo` from the editing note's own path, never a key no property
+ * names, and `null` removes it rather than blanking it.
+ */
+function applyRelease(app: App, fm: Record<string, unknown>, settings: BacklogSettings, write: ItemWrite): void {
+	if (write.release === undefined || !settings.releaseKey) return;
+	if (write.release === null) delete fm[settings.releaseKey];
+	else setOwn(fm, settings.releaseKey, wikilinkTo(app, write.release, write.file.path));
 }
 
 /**

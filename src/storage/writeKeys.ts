@@ -75,6 +75,7 @@ export function touchedKeys(settings: BacklogSettings, write: ItemWrite): string
 		[write.priority !== undefined, settings.priorityKey],
 		[write.assignee !== undefined, settings.assigneeKey],
 		[write.iteration !== undefined, settings.iterationKey],
+		[write.release !== undefined, settings.releaseKey],
 		[write.iterationGoal !== undefined, settings.iterationGoalKey],
 		// Not "carries a value": this is the ONLY prerequisite change listed here, for the
 		// whole-key REMOVAL alone. The add and the entry removals restore as a DELTA,
