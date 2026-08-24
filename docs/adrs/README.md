@@ -97,3 +97,4 @@ record itself changes. Open a record for its current status, area and any
 - [0028 — Absence is a reserved name outside the vocabulary](0028-absence-is-a-reserved-name-outside-the-vocabulary.md)
 - [0029 — Reconcile rows by signature, rather than rebuilding them](0029-reconcile-rows-by-signature.md)
 - [0030 — `domain/` is the kernel](0030-domain-is-the-kernel.md)
+- [0031 — The manual is a document, not a catalog](0031-the-manual-is-a-document-not-a-catalog.md)

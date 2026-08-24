@@ -564,6 +564,16 @@ translated document are not obviously the same artifact. Whoever takes it should
 that first and count second. Nothing about the rest of the sweep depends on the answer,
 and the three text bans stop at its door.
 
+**Answered on 2026-08-24, and the answer is no** — [ADR 0031](../adrs/0031-the-manual-is-a-document-not-a-catalog.md).
+The manual is a DOCUMENT the dialog displays, not messages the plugin composes, so its 111
+authored entries stay in the module and `en.ts` stays a catalog. The one exception is the
+one paragraph the plugin does compose: `manual.typesIntro` takes the type vocabulary as
+five parameters and is where it belongs. `MANUAL_FIXED_PROSE` in `eslint.config.mjs` is
+that line at the forbidden call — a `t()` with no parameters under `src/view/manual/` is
+prose in the wrong artifact — and the three text bans stay off that directory permanently
+rather than pending. `view/manual/` is therefore out of this PBI's scope, not unfinished
+inside it.
+
 **`domain/`, on 2026-08-22 — and the answer is that most of it is not text.** 23 keys,
 taking the catalog to **542** (counted two ways after the last edit and agreeing: an AST
 walk over the `as const` object's own properties, and a `grep -Po` for the key lines — the
@@ -703,6 +713,30 @@ English, and that is the catalog's own rule rather than an oversight.**
 `absence.becameResource`'s comment has said since it was keyed that it copies
 `applyPropertyWrites`' wording — which was the sentence left unkeyed. They stay separate:
 they diverge in the first language that separates an edit from a change.
+
+**Re-derived on 2026-08-24, over the release work and everything else that landed after
+`storage/`.** No sweep — a measurement, and it found nothing owed. The catalog is **630
+keys**, counted two ways that agree and 630 DISTINCT, so the pair answers "how many" and
+"is any key spelled twice" in one pass: a match-counting `grep -Po` over the key lines, and
+an AST walk over the `as const` object's own properties. The AST walk over `src/` for prose
+outside a `t()` call — rebuilt again, and calibrated first on `src/ui/` (one hit, the
+plugin's own name) and `src/commands/` (two, the `console.error` prefixes) — returns **24
+strings with `en.ts`, `view/manual/` and the four classified files subtracted, and every
+one of them is already classified above**: fifteen `console.error` prefixes, the plugin's
+own name three times, `settingsConsistency.ts`'s three, `typeVocabulary.ts`'s two, and
+`estimationPresets.ts`'s `Value over effort`, whose own header states that a preset NAME is
+written into the `.base`. That last one is not in the storage slice's list of nine and is
+not a leak: the file arrived after it, already classified in place.
+
+The release view is clean on both halves. `src/view/release/` spells 30 `t()` calls and no
+prose literal, and `test/i18n/projections.test.ts` already drives it — swept 2026-08-23,
+with the view. A second instrument was pointed at the other half of that question, since a
+`t()` count cannot see a property the ban list has never named: an AST walk over every
+object property in `src/` whose value is a capitalised literal, template or ternary,
+printing the KEY names rather than assuming the list is complete. Outside `view/manual/`
+and `backlogReadme.ts` — both of which ADR 0031 and the table above put outside the
+catalog — every such property in `src/` is one `UI_TEXT_PROPERTY` already names. The
+release work added no new option-bag shape.
 
 ## Where it lives
 
