@@ -271,27 +271,39 @@ git commit -m "Create one release note, and nothing beside it"
 - Test: `test/ui/newReleaseDialog.test.ts`
 
 **Interfaces:**
-- Consumes: `ReleaseSettings` (Task 1).
-- Produces: a dialog resolving to `{ title, version, targetDate, status }` or null on cancel. State the exact export name and shape in your report — Task 7 calls it.
+- Consumes: nothing from earlier tasks. **`ui/` is a leaf that knows about no layer** — the shipped dialogs import `obsidian` and `../i18n/t` and nothing else. `ReleaseSettings` lives in `domain/`, so the dialog must NOT take it.
+- Produces: a dialog taking **plain data** and resolving to **plain data** — the fields to show, and the values entered, or null on cancel. State the exact export name and shape in your report; Task 7 calls it.
 
-`ui/` is a leaf: it may import nothing from `view/`, `storage/`, `domain/` or `commands/`. Pass it the settings it needs as a parameter.
+**The shape is already established, and `estimationPresetDialog.ts` states it in its own docstring:**
+
+> `ui/` is a leaf that knows about no layer, so this takes plain ROWS and hands back the id that was picked — the view assembles the rows from `domain/estimationPresets.ts` and the catalog, and the view is what writes.
+
+So: **Task 7 decides which fields to show** by reading the settings, hands this dialog a plain description of them, and gets plain values back. The dialog never sees a `ReleaseSettings`, never learns which property key a field lands in, and writes nothing. An earlier draft of this task said to pass the settings in — that would have broken the leaf rule, and `npm run lint` would have caught it.
 
 - [ ] **Step 1: Write the failing test**
 
 Read `test/ui/` for how the existing dialogs are driven — `stateColorsDialog` and `estimationPresetDialog` both have suites — and match that harness.
 
 ```ts
-it('offers a field for every bound property and none for a cleared one', () => {
-	// The cleared case, not the unset one: an unset option is bound before the
-	// dialog opens (Task 6) — which asks the live CONFIG, not these resolved keys —
-	// so a missing field can only mean deliberately cleared.
-	const dlg = openNewReleaseDialog(app, releaseSettingsWith({ versionKey: 'v', targetDateKey: '', statusKey: 's' }));
+it('offers exactly the fields it was asked for, in order', () => {
+	// PLAIN DATA in, plain data out. The dialog is not told which property key a
+	// field lands in, or that property keys exist — Task 7 reads the settings and
+	// decides. `estimationPresetDialog.ts` states this rule in its own docstring.
+	const dlg = openNewReleaseDialog(app, ['version', 'status']);
 	expect(fieldNames(dlg)).toEqual(['title', 'version', 'status']);
+});
+
+it('offers the title alone when asked for no optional fields', () => {
+	// A vault that tracks none of the three still creates releases. Note this is
+	// the CLEARED case as Task 7 will hand it over — an unset option is bound
+	// before the dialog opens, so an omitted field means deliberately cleared.
+	const dlg = openNewReleaseDialog(app, []);
+	expect(fieldNames(dlg)).toEqual(['title']);
 });
 
 it('refuses to confirm without a title', () => {
 	// The title is the note's name — there is nothing to create without it.
-	const dlg = openNewReleaseDialog(app, releaseSettingsWith({}));
+	const dlg = openNewReleaseDialog(app, []);
 	expect(canConfirm(dlg)).toBe(false);
 });
 ```
