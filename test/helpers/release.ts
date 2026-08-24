@@ -1,3 +1,4 @@
+import { ReleaseSettings } from '../../src/domain/releaseOptions';
 import { ReleaseView } from '../../src/view/release/releaseView';
 import { installObsidianDom } from './dom';
 import { FakeVault, FakeViewConfig, mountLeaf } from './vault';
@@ -30,6 +31,27 @@ export function makeReleaseView(
 	anyView.data = { data: vault.entries() };
 	view.onDataUpdated();
 	return { view, config, containerEl };
+}
+
+/**
+ * A `ReleaseSettings` object built directly, every optional key off by default — for
+ * tests over `createRelease` and anything else that takes the resolved settings shape
+ * rather than a `BasesViewConfig` to resolve it from (`resolveReleaseSettings` only
+ * builds one FROM a config, and a creator test wants the shape itself). An override per
+ * field, so a test binding one key asserts about that key alone.
+ */
+export function releaseSettingsWith(overrides: Partial<ReleaseSettings> = {}): ReleaseSettings {
+	return {
+		parentKey: '',
+		orderKey: '',
+		typeKey: 'type',
+		membershipKey: '',
+		versionKey: '',
+		targetDateKey: '',
+		statusKey: '',
+		folder: '',
+		...overrides,
+	};
 }
 
 /** Every key bound — what a fully configured vault looks like. */

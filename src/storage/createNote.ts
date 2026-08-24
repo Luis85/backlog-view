@@ -163,8 +163,23 @@ export interface NewReleaseSpec {
  *
  * One atomic write, `createBacklogItem`'s own reason restated: a create-then-update pair
  * could fail in between and leave a blank note without its fields behind.
+ *
+ * `typeKey` is the one field here `createBacklogItem` and `createResourceNote` write
+ * unconditionally that this function may NOT: their `typeKey` always resolves
+ * (`propKey`), while `resolveReleaseSettings` reads it through `clearablePropKey`, so a
+ * deliberately cleared type property resolves here as `''` rather than falling back to a
+ * suggestion. Writing `RELEASE_TYPE` under an empty key would not merely omit a property
+ * the way the three optional fields below do when their own key is unbound — it would
+ * write a note nothing downstream can read AS a release at all (`isReleaseType`,
+ * `membershipTarget` both key off `typeKey`), so this REFUSES instead: no note, no
+ * partial write, an error the caller is expected not to let happen. In production it is
+ * unreachable — `ReleaseView.draw` already refuses to render any control that could
+ * reach here while `typeKey` is empty — this is the same defensive shape as
+ * `assertResolvedSettings` in `domain/settingsConsistency.ts`, a check for a state the
+ * caller is supposed to have ruled out already rather than a user-facing refusal.
  */
 export async function createRelease(app: App, settings: ReleaseSettings, spec: NewReleaseSpec): Promise<TFile> {
+	if (!settings.typeKey) throw new Error('createRelease: no type key configured');
 	const folder = vaultFolder(settings.folder);
 	await ensureFolder(app, folder);
 	const path = uniqueNotePath(app, folder, spec.title);

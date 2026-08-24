@@ -1,30 +1,16 @@
+// @vitest-environment jsdom
 // `createRelease`'s own creation test, beside `createNote.test.ts` rather than inside it:
 // a release is not a backlog item and takes no `NewItemSpec` — see `createNote.ts`'s own
 // doc comment on why it stands apart from `createBacklogItem` and `createResourceNote`.
+//
+// jsdom, not the directory default (`node`): `releaseSettingsWith` now lives in
+// `test/helpers/release.ts`, which imports `ReleaseView` and calls `installObsidianDom()`
+// at module top — the same reason `baseFile.test.ts` and the `viewState*` tests in this
+// directory carry the same pragma.
 import { describe, expect, it } from 'vitest';
 import { createRelease } from '../../src/storage/createNote';
-import { ReleaseSettings } from '../../src/domain/releaseOptions';
 import { FakeVault } from '../helpers/vault';
-
-/**
- * `test/helpers/release.ts` has no such helper — it builds `ReleaseSettings` only through
- * `resolveReleaseSettings(config)`, and this test wants the shape directly. A local
- * minimal-bound settings object, every optional key off, so a test overriding one key
- * asserts about that key alone.
- */
-function releaseSettingsWith(overrides: Partial<ReleaseSettings> = {}): ReleaseSettings {
-	return {
-		parentKey: '',
-		orderKey: '',
-		typeKey: 'type',
-		membershipKey: '',
-		versionKey: '',
-		targetDateKey: '',
-		statusKey: '',
-		folder: '',
-		...overrides,
-	};
-}
+import { releaseSettingsWith } from '../helpers/release';
 
 describe('createRelease', () => {
 	it('creates one release note in the configured folder', async () => {
@@ -74,5 +60,19 @@ describe('createRelease', () => {
 		const vault = new FakeVault();
 		await createRelease(vault.app, releaseSettingsWith({ folder: 'Releases' }), { title: '2.4' });
 		expect(Object.keys(vault.fm('Releases/2.4.md'))).toEqual(['type']);
+	});
+
+	it('refuses to create when no type key is configured', async () => {
+		// `typeKey` is the one field of the four `createRelease` writes that this settings
+		// bag can genuinely clear (`clearablePropKey` in `resolveReleaseSettings`, unlike
+		// `createBacklogItem`'s and `createResourceNote`'s always-bound `typeKey`). A
+		// release with no type key is not a release anything downstream will recognise —
+		// `isReleaseType` and `membershipTarget` both key off it — so this refuses rather
+		// than writing a note under an empty-string key.
+		const vault = new FakeVault();
+		await expect(
+			createRelease(vault.app, releaseSettingsWith({ folder: 'Releases', typeKey: '' }), { title: '2.4' }),
+		).rejects.toThrow();
+		expect(vault.files.has('Releases/2.4.md')).toBe(false);
 	});
 });
