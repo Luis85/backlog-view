@@ -103,7 +103,7 @@ release notes share a basename.
   list of entries and one method behind every pick. `test/view/releaseMenu.test.ts` drives a
   real keystroke and compares the resulting batch to the one the method plans directly. The
   **drag waits on a surface that holds a release as a drop target**: the release view is
-  read-only by design, with `test/view/releaseWritesNothing.test.ts` enforcing it, so putting
+  read-only by design, with `test/view/releaseNeverEdits.test.ts` enforcing it, so putting
   drop targets there would retire that invariant rather than extend it.
   [[A release on the dated axis]] is where such a surface arrives, and the criterion is kept
   here rather than deleted so that it is met when it does.

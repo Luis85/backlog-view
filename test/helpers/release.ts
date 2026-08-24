@@ -18,9 +18,10 @@ export interface ReleaseHarness {
 }
 
 /**
- * `makeEstimationView`'s shape minus the `WriteLock`: this view writes nothing, so there
- * is nothing to serialize and no undo slot to share. A lock parameter here would suggest
- * otherwise.
+ * `makeEstimationView`'s shape minus the `WriteLock`: this view creates notes and its own
+ * config but plans no BATCH — see `registerReleaseView`'s own comment — so there is
+ * nothing for a lock to serialize and no undo slot to share. A lock parameter here would
+ * suggest otherwise.
  */
 export function makeReleaseView(
 	vault: FakeVault,

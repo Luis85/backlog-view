@@ -113,14 +113,18 @@ describe('the release view', () => {
 	 *
 	 * **It is a list of paths, and it says so** — narrower than the category claim, which
 	 * is why it is not the whole of the check. The one asked AT THE FORBIDDEN THING is
-	 * `test/view/releaseWritesNothing.test.ts`: it spies on the five functions in
-	 * `storage/` that may put bytes in a note, so a call to one of them from anywhere under
-	 * `src/view/release/` fails whatever gesture reached it, and it drives both screens
-	 * rather than the three methods here. The guarantee that holds for code nobody has
-	 * written yet is neither of the two: `WRITE_BOUNDARY` in `eslint.config.mjs` bans
-	 * `processFrontMatter`, `vault.create` and `load/saveLocalStorage` across the whole of
-	 * `src/view/`, whose block carries `src/view/release/` in none of its `ignores`, so
-	 * every one of them fails lint in this directory from its first commit.
+	 * `test/view/releaseNeverEdits.test.ts` — narrowed by Task 5 of "releases own their
+	 * creation" from the writes-nothing claim this file's own comment above still names, to
+	 * what actually survives once this view has its own door: it creates notes and its own
+	 * config, and never edits a note that already exists. It spies on the three EDIT
+	 * functions in `storage/` (`applyWrites`, `applyRestores`, `applyPropertyWrites`), so a
+	 * call to one of them from anywhere under `src/view/release/` fails whatever gesture
+	 * reached it, and it drives both screens rather than the three methods here. The
+	 * guarantee that holds for code nobody has written yet is neither of the two:
+	 * `WRITE_BOUNDARY` in `eslint.config.mjs` bans `processFrontMatter` and
+	 * `load/saveLocalStorage` across the whole of `src/view/`, `src/view/release/` included
+	 * — its `vault.create` arm is the one exception, carved out for this directory alone
+	 * once creation itself became the permitted claim.
 	 *
 	 * What this one is still FOR, beside the other two: the `.base` — `config.setCalls` is
 	 * a surface no lint rule names and no `storage/` spy sees.

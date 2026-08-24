@@ -44,22 +44,26 @@ const pluginRules = obsidianmd.configs.recommended.map((c) => ({ ...c, ignores: 
  * Every mutation of the vault goes through storage/, so the write-safety invariants
  * can be verified by reading one directory instead of trusting every call site. This
  * is the single most important rule in the codebase, which is why it is not prose.
+ *
+ * Named individually, not just spread into the array below: `src/view/release/` keeps
+ * two of the three (see RELEASE below) rather than opting out of the rule whole, and a
+ * name is what lets that carve-out say which two rather than an index into an array a
+ * later edit could reorder.
  */
-const WRITE_BOUNDARY = [
-	{
-		selector: "MemberExpression[property.name='processFrontMatter']",
-		message:
-			'All frontmatter writes go through src/storage/ — frontmatter.ts (applyWrites / applyRestores) edits a note, createNote.ts (createBacklogItem) makes one.',
-	},
-	{
-		selector: "CallExpression[callee.property.name='create'][callee.object.property.name='vault']",
-		message: 'Creating files in the vault belongs in src/storage/ (createNote.ts / createBacklogBase).',
-	},
-	{
-		selector: "MemberExpression[property.name=/^(save|load)LocalStorage$/]",
-		message: 'Persisted view state goes through src/storage/viewStateStore.ts.',
-	},
-];
+const WRITE_BOUNDARY_PROCESS_FRONTMATTER = {
+	selector: "MemberExpression[property.name='processFrontMatter']",
+	message:
+		'All frontmatter writes go through src/storage/ — frontmatter.ts (applyWrites / applyRestores) edits a note, createNote.ts (createBacklogItem) makes one.',
+};
+const WRITE_BOUNDARY_VAULT_CREATE = {
+	selector: "CallExpression[callee.property.name='create'][callee.object.property.name='vault']",
+	message: 'Creating files in the vault belongs in src/storage/ (createNote.ts / createBacklogBase).',
+};
+const WRITE_BOUNDARY_LOCAL_STORAGE = {
+	selector: "MemberExpression[property.name=/^(save|load)LocalStorage$/]",
+	message: 'Persisted view state goes through src/storage/viewStateStore.ts.',
+};
+const WRITE_BOUNDARY = [WRITE_BOUNDARY_PROCESS_FRONTMATTER, WRITE_BOUNDARY_VAULT_CREATE, WRITE_BOUNDARY_LOCAL_STORAGE];
 
 /**
  * Enter or Space on a focused button synthesizes a click at (0, 0), so anchoring a
@@ -376,6 +380,21 @@ const VIEW = 'src/view/**/*.ts';
 // a helper as a positional ARGUMENT. `test/i18n/estimation.test.ts` is the runtime half
 // that holds that.
 const ESTIMATION = 'src/view/estimation/**/*.ts';
+/**
+ * The release view: VIEW's own rules, minus WRITE_BOUNDARY_VAULT_CREATE alone (see
+ * RELEASE's own block below). This view creates its own notes and binds its own
+ * `.base` config — Task 5 of "releases own their creation" narrowed the category claim
+ * `test/view/releaseNeverEdits.test.ts` checks from "writes nothing" to "creates notes
+ * and its own config; never edits a note that already exists" — so `app.vault.create`
+ * is no longer a call this directory has to route around the way every other view/
+ * file still does. `processFrontMatter` and save/loadLocalStorage stay banned here
+ * unchanged: this view still may not rewrite a note that already exists, and its
+ * working position still goes through src/storage/viewStateStore.ts like any other
+ * view's. The EDIT paths that call processFrontMatter — frontmatter.ts's applyWrites
+ * and applyRestores, and propertyWrite.ts's applyPropertyWrites — stay unreachable from
+ * here on that same ban; nothing here imports them.
+ */
+const RELEASE = 'src/view/release/**/*.ts';
 // The manual's authored prose — the ONE part of view/ still holding English, and so the
 // one part the three text bans do not reach. 334 prose literals by an AST walk on
 // 2026-08-21, against the 9 a setter grep sees: this is long-form documentation built
@@ -869,7 +888,7 @@ export default defineConfig([
 		// `VIEW`. That is the sweep order intact rather than an omission: the manual's
 		// prose is unswept, and a ban ahead of a sweep is a ban somebody switches off.
 		files: [VIEW],
-		ignores: [MENU, ...MENU_SWEPT, RENDER, ESTIMATION, ...RANKING_VIEW, CARD_MOVES, TYPES_SECTION, ...MANUAL],
+		ignores: [MENU, ...MENU_SWEPT, RENDER, ESTIMATION, RELEASE, ...RANKING_VIEW, CARD_MOVES, TYPES_SECTION, ...MANUAL],
 		rules: syntaxRules([
 			...SVG_CLASS_TOKENS,
 			...WRITE_BOUNDARY,
@@ -892,6 +911,26 @@ export default defineConfig([
 		rules: syntaxRules([
 			...SVG_CLASS_TOKENS,
 			...WRITE_BOUNDARY,
+			MENU_ANCHOR,
+			OVERBY,
+			TREE_SCAN,
+			ALL_TYPES_IMPORT,
+			CHILD_TYPE_CHOICES_NULL,
+			DELIVERABLE_FIELD_READ,
+			...TEXT_TERNARY,
+			UI_TEXT_LITERAL,
+			UI_TEXT_PROPERTY,
+		]),
+	},
+	{
+		// The release view: VIEW's own rules, but WRITE_BOUNDARY drops its vault.create
+		// arm — see RELEASE's own comment above for what that permits and what still
+		// stays banned here (processFrontMatter, save/loadLocalStorage).
+		files: [RELEASE],
+		rules: syntaxRules([
+			...SVG_CLASS_TOKENS,
+			WRITE_BOUNDARY_PROCESS_FRONTMATTER,
+			WRITE_BOUNDARY_LOCAL_STORAGE,
 			MENU_ANCHOR,
 			OVERBY,
 			TREE_SCAN,
