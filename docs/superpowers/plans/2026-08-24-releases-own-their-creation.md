@@ -484,6 +484,24 @@ are outside that task's whitelist, which is why they are here — they are not o
   the i18n catalog — follow the file's existing voice rather than routing it through `t()`.
 - **`docs/requirements/Releases as their own type.md`** — names `typeFolder.release`, an option
   Task 2 removed. No gate covers that direction, so nothing will catch it but this step.
+- **`src/domain/backlogReadme.ts`** — `filingSection` maps `ALL_TYPES` through `folderForType`, so
+  it still writes a `Release` folder row **into the user's vault README**, sourced from the option
+  Task 2 removed. `settingsResolve.ts` still resolves `typeFolder.release` from the `.base` even
+  though nothing declares it. A vault that customised that key gets a generated README naming a
+  folder no release is ever written to, while the release view files by its own `releaseFolder`.
+  That is the "two settings for one kind of note" this spec's section 2 set out to prevent,
+  surviving in the one place that prints it into the vault. **Decide and record** whether the
+  stale `typeFolder.release` resolution goes too, or stays and is documented.
+- **`src/domain/roadmap.ts`** — `onThisRoadmap`'s doc comment is the register's single statement of
+  the roadmap population and enumerates its readers as "five", naming `honouredFocusLevel` among
+  them. Task 2 stopped `honouredFocusLevel` calling it; there are four. Nothing checks caller
+  lists, which is why it goes stale silently.
+- **`src/domain/viewOptions.ts`** — the comment left at the dropped row says a second value naming
+  the same thing is one "which nothing reads". `settingsResolve.ts` DOES still read
+  `typeFolder.release`; what is true is that nothing *files a release* by it. Narrow the sentence.
+- **`src/domain/model.ts`** — the sentence added beside `releases` says it is "read off `items`, so
+  it is the one place a release still exists to be listed". The `items` it means is `buildModel`'s
+  local, not `BacklogModel.items`, which no longer holds releases. True but trap-shaped; say which.
 
 - [ ] **Step 1: Write the PBI**
 
