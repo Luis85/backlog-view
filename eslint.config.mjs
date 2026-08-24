@@ -382,7 +382,13 @@ const ESTIMATION = 'src/view/estimation/**/*.ts';
 // from concatenated `text:` entries, not a handful of labels, and whether it belongs in a
 // message catalog at all is `Every surface translated`'s own open question rather than
 // work left undone. `typesSection.ts` is named separately below for ALL_TYPES_IMPORT.
-const MANUAL = ['src/view/manual/sections.ts', 'src/view/manual/setupSection.ts', 'src/view/manual/typesSection.ts'];
+// **The DIRECTORY, not the three files in it today.** ADR 0031 decides what the manual IS,
+// so the scope has to be the thing the decision is about: a fourth content module — the
+// per-locale `ManualSection[]` the ADR itself anticipates — matched `VIEW` under a
+// three-path list, which reversed both halves of the decision at once. It took the three
+// text bans it must never have, and lost `MANUAL_FIXED_PROSE`, the one rule it must.
+// Found in review (Codex, PR #202).
+const MANUAL = ['src/view/manual/**/*.ts'];
 // The card-move orchestration, exempt from DELIVERABLE_FIELD_READ for the same reason
 // RENDER_BOARD is: carved out of VIEW, not out of RENDER, because this file sits in the
 // "rest of view/" region.
@@ -966,8 +972,11 @@ export default defineConfig([
 		]),
 	},
 	{
-		// The manual's two authored-prose files, carved out of VIEW for the three text bans
-		// alone. That carve-out was temporary until 2026-08-24 — a ban ahead of its sweep —
+		// The manual DIRECTORY's authored prose, carved out of VIEW for the three text bans
+		// alone — the directory rather than its current files, so a content module added
+		// tomorrow inherits the decision instead of falling back into VIEW and getting the
+		// opposite of it on both sides.
+		// That carve-out was temporary until 2026-08-24 — a ban ahead of its sweep —
 		// and ADR 0031 makes it permanent: these paragraphs are a DOCUMENT the dialog
 		// displays, not messages the plugin composes, so they never move to the catalog and
 		// the three bans never apply. `MANUAL_FIXED_PROSE` below is the other direction of
