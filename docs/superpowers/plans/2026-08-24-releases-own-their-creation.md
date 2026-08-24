@@ -472,6 +472,19 @@ git commit -m "Offer New release from the toolbar and the empty state"
 - Modify: `docs/tests/suites/Smoke test the release view.md`
 - Modify: `CHANGELOG.md`, `vitest.config.mts`
 
+- [ ] **Step 0: Correct two places that Task 2 made FALSE**
+
+Task 2 took `Release` out of the tree and both boards, and left two documents saying otherwise. Both
+are outside that task's whitelist, which is why they are here — they are not optional polish.
+
+- **`src/view/manual/typesSection.ts`** — the in-app manual. Its `Release` entry says the backlog
+  "draws it as an ordinary row", which is now false. Its `Iteration` entry says that type is "the
+  only type" no menu offers, which is now false too. This is user-facing prose shipped in the
+  plugin; correct both. Note `view/manual/` is authored long-form prose and deliberately outside
+  the i18n catalog — follow the file's existing voice rather than routing it through `t()`.
+- **`docs/requirements/Releases as their own type.md`** — names `typeFolder.release`, an option
+  Task 2 removed. No gate covers that direction, so nothing will catch it but this step.
+
 - [ ] **Step 1: Write the PBI**
 
 Use the `adding-backlog-items` skill's shape, or copy `Setting an item's release.md`'s. Its `## Where it lives` names what actually shipped — verify each path against the code rather than transcribing this plan.
