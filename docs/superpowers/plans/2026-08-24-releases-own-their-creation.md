@@ -62,7 +62,7 @@ it('tells a cleared version property from an untouched one', () => {
 });
 ```
 
-The second test asserts the same value twice on purpose — it pins today's OUTPUT while the mechanism changes underneath. The distinction it enables is asserted where it is CONSUMED: Task 4, where a cleared option drops a dialog field, and Task 5, where an unset one gets bound and a cleared one does not. **Say so in a comment**, or the test reads as redundant and someone deletes it.
+The second test asserts the same value twice on purpose — it pins today's OUTPUT while the mechanism changes underneath. The distinction it enables is asserted where it is CONSUMED: Task 4, where a cleared option drops a dialog field, and Task 6, where an unset one gets bound and a cleared one does not. **Say so in a comment**, or the test reads as redundant and someone deletes it.
 
 - [ ] **Step 2: Run to verify they fail**
 
@@ -301,62 +301,11 @@ git commit -m "Ask for a release's own fields, and only the ones this vault keep
 
 ---
 
-### Task 5: bind and backfill
+### Task 5: the narrowed boundary
 
-**Files:**
-- Create: `src/view/release/init.ts`
-- Test: `test/view/release/init.test.ts`
-
-**Interfaces:**
-- Consumes: `ReleaseSettings` (Task 1).
-- Produces: `runReleaseInit(view: ReleaseView): Promise<void>` — one function, two callers (Tasks 6 and 7).
-
-- [ ] **Step 1: Write the failing test**
-
-Read `src/view/estimation/init.ts` in full first. It states an ORDER as a rule: decide the bindings, gate on the model they would produce, and only then write — because an action that changes the configuration and then has every write refused leaves the view worse than it found it.
-
-```ts
-it('binds every untouched option and leaves a cleared one alone', async () => {
-	const view = makeReleaseView({ versionProperty: '' });   // cleared
-	await runReleaseInit(view);
-	expect(view.config.setCalls.map((c) => c.key)).toContain('targetDateProperty');
-	expect(view.config.setCalls.map((c) => c.key)).not.toContain('versionProperty');
-});
-
-it("stubs a release note's own keys and NOT the membership key on work items", async () => {
-	// `membershipTarget` reads a blank membership as UNRESOLVED, so stubbing it
-	// would report the whole backlog as broken on this very index.
-	const { view, vault } = makeReleaseViewWithWork();
-	await runReleaseInit(view);
-	expect(vault.fm('2.4.md')).toHaveProperty('version');
-	expect('release' in vault.fm('PBI-1.md')).toBe(false);
-});
-```
-
-- [ ] **Step 2: Run to verify it fails**
-
-Run: `npx vitest run test/view/release/init.test.ts` — Expected: FAIL, the module does not exist.
-
-- [ ] **Step 3: Implement**
-
-Follow `runEstimationInit`'s order and its use of `adoptCandidates` over this view's own key list. Backfill the release notes' own keys onto existing release notes. **Do not touch the membership key on work items.**
-
-- [ ] **Step 4: Run to verify it passes**
-
-Run: `npx vitest run test/view/` — Expected: PASS. **`test/view/releaseWritesNothing.test.ts` will now fail** — that is expected and correct; Task 6 narrows it. Note it and continue.
-
-- [ ] **Step 5: Commit**
-
-```bash
-git add src/view/release/init.ts test/view/release/init.test.ts
-git commit -m "Bind the release view's own options, and stub what a release note holds"
-```
-
----
-
-### Task 6: the narrowed boundary
-
-Do this BEFORE wiring the controls, so the suite is green again at the end of it.
+Do this BEFORE the init module (Task 6) and before the control (Task 7), so no task ever ends on a red
+suite. The narrowed claim passes with no creation code written yet — it simply permits more — which is
+why it can come first.
 
 **Files:**
 - Rename + modify: `test/view/releaseWritesNothing.test.ts` → a name matching the narrowed claim
@@ -394,6 +343,60 @@ git commit -m "Narrow the release view's claim to what it still keeps"
 
 ---
 
+### Task 6: bind and backfill
+
+**Files:**
+- Create: `src/view/release/init.ts`
+- Test: `test/view/release/init.test.ts`
+
+**Interfaces:**
+- Consumes: `ReleaseSettings` (Task 1).
+- Produces: `runReleaseInit(view: ReleaseView): Promise<void>` — one function, two callers (this task and Task 7).
+
+- [ ] **Step 1: Write the failing test**
+
+Read `src/view/estimation/init.ts` in full first. It states an ORDER as a rule: decide the bindings, gate on the model they would produce, and only then write — because an action that changes the configuration and then has every write refused leaves the view worse than it found it.
+
+```ts
+it('binds every untouched option and leaves a cleared one alone', async () => {
+	const view = makeReleaseView({ versionProperty: '' });   // cleared
+	await runReleaseInit(view);
+	expect(view.config.setCalls.map((c) => c.key)).toContain('targetDateProperty');
+	expect(view.config.setCalls.map((c) => c.key)).not.toContain('versionProperty');
+});
+
+it("stubs a release note's own keys and NOT the membership key on work items", async () => {
+	// `membershipTarget` reads a blank membership as UNRESOLVED, so stubbing it
+	// would report the whole backlog as broken on this very index.
+	const { view, vault } = makeReleaseViewWithWork();
+	await runReleaseInit(view);
+	expect(vault.fm('2.4.md')).toHaveProperty('version');
+	expect('release' in vault.fm('PBI-1.md')).toBe(false);
+});
+```
+
+- [ ] **Step 2: Run to verify it fails**
+
+Run: `npx vitest run test/view/release/init.test.ts` — Expected: FAIL, the module does not exist.
+
+- [ ] **Step 3: Implement**
+
+Follow `runEstimationInit`'s order and its use of `adoptCandidates` over this view's own key list. Backfill the release notes' own keys onto existing release notes. **Do not touch the membership key on work items.**
+
+- [ ] **Step 4: Run to verify it passes**
+
+Run: `npx vitest run test/view/` — Expected: PASS, including the narrowed boundary suite Task 5 renamed.
+If it fails, the narrowing was wrong rather than this task — read it before changing anything here.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add src/view/release/init.ts test/view/release/init.test.ts
+git commit -m "Bind the release view's own options, and stub what a release note holds"
+```
+
+---
+
 ### Task 7: the control
 
 **Files:**
@@ -402,7 +405,7 @@ git commit -m "Narrow the release view's claim to what it still keeps"
 - Test: `test/view/release/newRelease.test.ts`
 
 **Interfaces:**
-- Consumes: the creator (Task 3), the dialog (Task 4), `runReleaseInit` (Task 5).
+- Consumes: the creator (Task 3), the dialog (Task 4), `runReleaseInit` (Task 6).
 
 - [ ] **Step 1: Write the failing test**
 
@@ -486,9 +489,9 @@ git commit -m "Record what a release's own door ships, and what it costs"
 
 ## Self-review notes
 
-**Spec coverage.** Section 1 (the gesture) → Tasks 3, 4, 7. Section 2 (the folder) → Tasks 1, 2. Section 3 (the ✨) → Tasks 5, 7. Section 4 (the tree) → Task 2. Section 5 (the boundary) → Task 6. Out-of-scope items get no task, deliberately.
+**Spec coverage.** Section 1 (the gesture) → Tasks 3, 4, 7. Section 2 (the folder) → Tasks 1, 2. Section 3 (the ✨) → Tasks 6, 7. Section 4 (the tree) → Task 2. Section 5 (the boundary) → Task 5. Out-of-scope items get no task, deliberately.
 
-**One decision this plan makes that the spec did not.** Task 6 comes before Task 7. Task 5 leaves `releaseWritesNothing` red, and the plan chooses to narrow the invariant while nothing else is in flight rather than while a new control is being wired. A task ending with a knowingly-red suite is a real cost; the alternative is a task that changes the boundary and the feature at once, and this repo's review process gates on being able to reject one without the other.
+**One decision this plan makes that the spec did not.** The boundary is narrowed (Task 5) BEFORE anything needs it — the init module in Task 6 and the control in Task 7. An earlier draft ordered these the other way and had Task 6 commit a knowingly-red suite, which contradicts this repo's unconditional rule that all five gate steps pass before every commit. Narrowing first costs nothing: the narrowed claim passes with no creation code written, it simply permits more. The two stay separate tasks so a reviewer can reject the boundary change while approving the module.
 
 **The riskiest task is 2.** `projectionMember`'s tree answer is `inPlan`, which `projectionForest` also builds from, under a stated rule that the two must agree. The plan names the trap and the mechanism to mirror but does not prescribe the line, because the correct line depends on how `onThisRoadmap` composes — and a plan that guessed it would be worse than one that says where to look.
 
