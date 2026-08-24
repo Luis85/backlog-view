@@ -194,6 +194,13 @@ export function projectionMember(
 	// caller with no axis in hand. Everything downstream inherits both through `rowHidden`,
 	// which is the point: the rows, the counts, the shelf, the keyboard's walk and every
 	// drop target read the same predicate.
+	//
+	// `onThisRoadmap` is IMPLIED by both terms beside it since `inPlan` began refusing a
+	// release outright (2026-08-24) — an iteration is not a release either — so nothing here
+	// would change today if it were dropped. It stays because it is the ROADMAP's own
+	// statement of its population rather than a restatement of the plan's, and the two are
+	// one increment from parting: [[A release on the dated axis]] gives a release a position
+	// of its own, which is an axis drawing a row `inPlan` refuses.
 	if (projection === 'roadmap') {
 		const grid = axis !== null && drawsGrid(axis);
 		return (item) => onThisRoadmap(item) && (inPlan(item) || (grid && isIterationType(item.typeName)));
@@ -269,16 +276,23 @@ export function drawsForestFrom(projection: Projection, origin: BacklogItem): bo
  * this projection could not draw the rows a focus on that type would leave.
  *
  * The focus is working position on the device (ADR 0011), so it outlives the projection
- * it was set on and arrives at the next one unrevalidated. `byProjectionType` already
- * withholds `Release` from the roadmap's own picker, and a pick the picker cannot make is
- * a state the user cannot leave by picking something else — the roadmap drew `Focus:
- * Release` over a menu with no such entry, an empty frame, and an empty state offering
- * `New Release`.
+ * it was set on and arrives at the next one unrevalidated. `byProjectionType` withholds
+ * `Release` from every picker, and a pick the picker cannot make is a state the user
+ * cannot leave by picking something else — the roadmap drew `Focus: Release` over a menu
+ * with no such entry, an empty frame, and an empty state offering `New Release`.
  *
- * It answers with `onThisRoadmap` rather than with `offerableTypes`, and the narrowness is
- * deliberate. A focus a projection does not OFFER is a wider rule and would reach the
- * requirements board's `Deliverable` focus, which is shipped behaviour and not this
- * change's to alter — the wider rule is worth having and is owed its own note.
+ * **The answer no longer varies by projection, and `projection` is read by nothing below.**
+ * It was the roadmap's guard alone while the tree still drew releases; `inPlan` refuses one
+ * everywhere now, so a stored `Release` focus strands the TREE the same way — re-rooted at
+ * rows the tree does not draw, captioned `Focus: Release`, with no entry in the menu to
+ * leave by. Such a pick is not hypothetical the way an `Iteration` one is: the tree's own
+ * picker offered `Release` until 2026-08-24, so stored ones exist. The parameter stays
+ * because the signature is what two call sites outside this change pass.
+ *
+ * It answers by TYPE rather than with `offerableTypes`, and the narrowness is deliberate.
+ * A focus a projection does not OFFER is a wider rule and would reach the requirements
+ * board's `Deliverable` focus, which is shipped behaviour and not this change's to alter —
+ * the wider rule is worth having and is owed its own note.
  *
  * Read once, in `refreshFromData`, onto the settings everything downstream already reads —
  * so the row source, the counts, the picker's own label and the empty state's creation
@@ -291,7 +305,7 @@ export function honouredFocusLevel(projection: Projection, level: string): strin
 	// Trimmed for the comparison and never for the value: `focusTarget` reads the stored
 	// pick `.trim().toLowerCase()`, so a padded one still re-roots the model and a
 	// comparison that did not trim would miss exactly the pick that does.
-	if (projection === 'roadmap' && !onThisRoadmap({ typeName: level.trim() })) return '';
+	if (isReleaseType(level.trim())) return '';
 	return level;
 }
 
@@ -326,9 +340,11 @@ export function rowVocabulary(model: BacklogModel, item: BacklogItem): Projectio
  * created it. Withheld, not disabled — the "absent rather than inert" rule the state
  * chip and the axis actions already follow. The ROADMAP narrows too, and by the same
  * rule rather than as an exception to it: no axis of it draws a `Release`, so no surface
- * on it offers one. Only the TREE narrows nothing — it is the projection that draws every
- * type there is. A new surface that offers a type calls this rather than reading
- * `ALL_TYPES` or `childTypeChoices` straight.
+ * on it offers one. Since 2026-08-24 NO projection narrows nothing — `Iteration` and
+ * `Release` are withheld everywhere, each having a control of its own that makes them (see
+ * `byProjectionType`), so there is no longer a screen that offers every type there is. A
+ * new surface that offers a type calls this rather than reading `ALL_TYPES` or
+ * `childTypeChoices` straight.
  */
 export function offerableTypes(host: BacklogViewHost, types: string[] = ALL_TYPES, row: BacklogItem | null = null): string[] {
 	// The two boards narrow by TYPE, and they do it on every path — a row's own `+`
@@ -387,25 +403,29 @@ function byProjectionType(projection: Projection, types: string[]): string[] {
 	if (projection === 'board') return types.filter((type) => !isDeliverableType(type));
 	if (projection === 'deliverables') return types.filter((type) => isDeliverableType(type));
 	if (projection === 'iteration') return types.filter((type) => !isMarkerType(type));
-	// The roadmap draws no `Release` on ANY of its three axes — `roadmapRows` drops one
-	// before `buildRoadmap` branches — so it offers none, the iteration board's rule above
-	// reaching a fourth projection. Three surfaces follow from this one line, and the third
-	// is the one a list of the first two would have missed: `New` would make a note that
-	// vanished on the next refresh, `Set type` would vanish the card it was used on, and
-	// the FOCUS picker would offer a `Release`-only scope that draws an empty roadmap with
-	// nothing saying why.
+	// **No creation surface offers `Iteration`, and none offers `Release` either.** One
+	// control makes each — the board's scope picker, and the release view's own `New
+	// release` — and each derives the fields a `New` menu would leave to the reader. A
+	// second door onto the same note is a second set of defaults to keep in step, and the
+	// one that offers less is the one that would be used by accident.
 	//
-	// It narrows THIS projection and no other. A `Release` stays offered in the tree and on
-	// both boards, which is the decision `Releases as their own type` task 1 step 7 took
-	// deliberately: a release has no dedicated door the way an iteration has the scope
-	// picker, so withholding it everywhere would leave the type creatable only by hand.
-	if (projection === 'roadmap') return types.filter((type) => !isIterationType(type) && !isReleaseType(type));
-	// **No creation surface offers `Iteration`.** One control makes them — the board's
-	// scope picker — and it derives the number, the dates and the folder that a `New`
-	// menu would leave to the reader. A second door onto the same note is a second set of
-	// defaults to keep in step, and the one that offers less is the one that would be
-	// used by accident.
-	return types.filter((type) => !isIterationType(type));
+	// **The `Release` half was the opposite rule until 2026-08-24, and the retired reason is
+	// the part worth keeping.** `Releases as their own type` task 1 step 7 offered the type
+	// in the tree and on both boards deliberately, because *a release had no dedicated door
+	// the way an iteration has the scope picker, so withholding it everywhere would have
+	// left the type creatable only by hand*. `Releases own their creation` built that door,
+	// which retired the reason: withholding it everywhere now leaves it creatable in the one
+	// place that also lists, dates and reads one.
+	//
+	// It is a filter over every projection rather than a clause per screen because the
+	// drawing rule underneath it is: `inPlan` (`domain/model.ts`) refuses a release the way
+	// it refuses an iteration, so no projection of this view draws one and the whole of
+	// **a projection offers only the types it can show** follows from one line up there. The
+	// three surfaces this feeds each fail differently, which is why the rule is asked here
+	// rather than at any of them: `New` would make a note that vanished on the pass that
+	// created it, `Set type` would vanish the row it was used on, and the FOCUS picker would
+	// offer a `Release`-only scope drawing an empty screen with nothing saying why.
+	return types.filter((type) => !isIterationType(type) && !isReleaseType(type));
 }
 
 /**

@@ -236,8 +236,8 @@ describe('toolbar controls', () => {
 
 		containerEl.querySelector<HTMLElement>('.pbl-new-pick')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 		const picker = Menu.lastShown;
-		// Every declared type: this menu is the one place a top-level item of any type
-		// can be made.
+		// Every declared type this view can DRAW: the menu is the one place a top-level item
+		// of any such type can be made, which is not the same list as `ALL_TYPES`.
 		expect(picker?.items.map((i) => i.titleText)).toEqual([
 			'New Epic',
 			'New Feature',
@@ -247,14 +247,18 @@ describe('toolbar controls', () => {
 			'New Bug',
 			'New Idea',
 			'New Deliverable',
+			// **`New Release` was here until 2026-08-24, and its absence is the whole of the
+			// marker rule.** `Iteration` has always been filtered out: the board's scope
+			// picker is a dedicated door that derives an iteration's number, dates and
+			// folder, and a second door would be a second set of defaults to keep in step.
+			// A `Release` was offered because it had NO such door, so withholding it would
+			// have left the type creatable only by hand-editing frontmatter. `Releases own
+			// their creation` built the door — the release view's own `New release` — which
+			// retired that reason, and `inPlan` now refuses the type here anyway.
+			//
+			// `Milestone` is what says this is about doors and not about markers: it has no
+			// view of its own, it is a date the plan answers to, and it is still offered.
 			'New Milestone',
-			// Offered, and that is deliberate. `Iteration` is absent because the creator
-			// filters it: the board's scope picker is a dedicated door that derives an
-			// iteration's number, dates and folder, and a second door would be a second set
-			// of defaults. A `Release` has no such door, so excluding it would leave the type
-			// creatable only by hand-editing frontmatter — and `Milestone` is the precedent,
-			// a marker carrying a date the creator does not set, offered anyway.
-			'New Release',
 		]);
 
 		picker?.item('New PBI')?.click();

@@ -473,6 +473,11 @@ describe('creating from a bucket', () => {
 		// each fails differently: `New` would make a note that vanished on the next refresh,
 		// `Set type` would vanish the card it was used on, and the focus picker would offer a
 		// `Release`-only scope drawing an empty roadmap with nothing saying why.
+		//
+		// The narrowing is no longer the roadmap's own: `inPlan` refuses a release in every
+		// projection since 2026-08-24, so `byProjectionType` withholds the type from all of
+		// them and this reads as the roadmap's instance of a rule rather than as its rule.
+		// The three surfaces are still worth driving here, because they are three.
 		const vault = horizonVault();
 		const { containerEl, view } = makeRoadmap(vault);
 
@@ -491,13 +496,18 @@ describe('creating from a bucket', () => {
 		expect(focuses).toContain('Milestone');
 		expect(focuses).not.toContain('Release');
 
-		// It narrows THIS projection and no other: the tree still offers the type, which is
-		// the decision step 7 took and this must not undo.
+		// **This block asserted the OPPOSITE until 2026-08-24**: the tree still offered the
+		// type, "which is the decision step 7 took and this must not undo". `Releases own
+		// their creation` undid it deliberately — the release view is the door now — so the
+		// tree is asserted here as the same answer rather than as the contrast. Kept rather
+		// than deleted because a narrowing that reached only the roadmap would now be a bug,
+		// and this is where a reader looks for that. `New Milestone` is not re-asserted
+		// here: the roadmap's own three checks above already hold the marker control.
 		const tree = makeView(vault, {});
 		tree.containerEl
 			.querySelector<HTMLElement>('.pbl-new-pick')
 			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-		expect(Menu.lastShown?.items.map((i) => i.titleText)).toContain('New Release');
+		expect(Menu.lastShown?.items.map((i) => i.titleText)).toEqual(expect.not.arrayContaining(['New Release']));
 	});
 
 	it('is blocked by the config gate, exactly as every other creation is', async () => {

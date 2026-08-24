@@ -21,8 +21,13 @@ function build(files: Record<string, Record<string, unknown>>, settings = AXES) 
 	const vault = new FakeVault();
 	for (const [path, frontmatter] of Object.entries(files)) vault.addFile(path, { frontmatter });
 	const model = buildModel(vault.app, vault.entries(), settings);
+	// `byPath` and NOT `model.items`, which is the PLAN forest's rows: `inPlan` refuses a
+	// release outright since 2026-08-24, so a release fixture is absent from `items` and
+	// the lookup threw where the planner it is testing would have answered fine. Nothing
+	// about the planner moved — it takes an item, not a population — so this is the fixture
+	// reaching the model's whole set rather than one projection's view of it.
 	const get = (title: string): BacklogItem => {
-		const item = model.items.find((i) => i.title === title);
+		const item = [...model.byPath.values()].find((i) => i.title === title);
 		if (!item) throw new Error(`missing fixture item ${title}`);
 		return item;
 	};
@@ -77,6 +82,12 @@ describe('computeHorizonWrites', () => {
 		// mapping that is not its own. Asked at the PLANNER, which is the one site the drag,
 		// the Alt+arrow, the row's Set horizon and the chip's menu all land on: a test that
 		// drove `performHorizonMove` alone would say nothing about the other three.
+		//
+		// **All four of those inputs are now unreachable for a release** — `inPlan` refuses
+		// one, so no projection of the backlog view draws the row any of them start from.
+		// The refusal is kept and kept checked HERE, at the pure planner, because that is
+		// where it can still be driven at all; `canPlaceHorizon`'s matching clause
+		// (`view/interactions/plan.ts`) has no reachable input left and no check under it.
 		const { get } = build({
 			'1.0.md': { type: 'Release', order: 10 },
 			'1.1.md': { type: 'Release', order: 20, horizon: 'Now' },

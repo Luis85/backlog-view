@@ -162,7 +162,10 @@ describe('children on the card', () => {
 	 * Carrying it up to `Epic C`'s face as well would contradict the forest, which puts
 	 * the two side by side as roots rather than one under the other. This is the case that
 	 * keeps the board and the Deliverables board still under a walk written for the
-	 * roadmap's release, and there is nothing else in `src/` that stops it.
+	 * roadmap's release, and there is nothing else in `src/` that stops it. (That walk's
+	 * original input is gone — `inPlan` refuses every release since 2026-08-24 — but the
+	 * stop it needs is not: this fixture is a catalog row, which is a plan non-member the
+	 * forest promotes through in exactly the same way.)
 	 *
 	 * The second assertion is a FIXTURE guard rather than a second side of the claim: that
 	 * `Dropped` has a card of its own is `projectionForest`'s doing, and no mutation of
@@ -194,9 +197,12 @@ describe('children on the card', () => {
 	 * Applying the stop takes `Kid` off the carrier's face — and NOT off the board:
 	 * `iterationResults` gives `Kid` a card of its own either way, so the cost is a card's
 	 * list disagreeing with the board it is drawn on rather than work going missing. "On no
-	 * card at all" is true of the ROADMAP's release under a focus (`releaseRows.test.ts`
-	 * asserts the whole frame there) and was written here as well until 2026-08-22, when it
-	 * was measured.
+	 * card at all" was true of the ROADMAP's release under a focus, and was written here as
+	 * well until 2026-08-22, when it was measured. That example has since gone the way the
+	 * release did: `inPlan` refuses one everywhere as of 2026-08-24, so the work below a
+	 * release is promoted and carded rather than stranded. The distinction the sentence
+	 * draws — a face disagreeing with its board, versus work on no card at all — is what
+	 * matters here, not the example that once showed it.
 	 *
 	 * The DEPTH used to be what separated this from the test above — the stop was asked only
 	 * on the way up, and here the stamped row is a direct child. That reading was wrong one

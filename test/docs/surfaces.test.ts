@@ -4,7 +4,7 @@ import { BasesViewConfig } from 'obsidian';
 import { describe, expect, it } from 'vitest';
 import ProductBacklogPlugin from '../../src/main';
 import { getViewOptions } from '../../src/domain/viewOptions';
-import { ALL_TYPES, typeFolderKey } from '../../src/domain/typeVocabulary';
+import { ALL_TYPES, RELEASE_TYPE, typeFolderKey } from '../../src/domain/typeVocabulary';
 import { FakeVault, FakeViewConfig } from '../helpers/vault';
 import { manualSections } from '../../src/view/manual/sections';
 
@@ -133,11 +133,19 @@ describe('every user-facing surface is specified', () => {
 		// VOCABULARY rather than a copy of it is what makes a seventh name covered by
 		// arriving rather than by being remembered — the discipline `NAMED_TYPE_STYLE`
 		// already has, and the reason a `Milestone` could otherwise ship uncovered.
+		//
+		// **`Release` is subtracted, and the subtraction is asserted rather than assumed.**
+		// It left this schema on 2026-08-24: the release view carries its own `releaseFolder`
+		// option, so a `typeFolder.release` box here would be a second value naming the same
+		// folder with nothing reading it. Written as a filter plus an explicit absence,
+		// because a filter alone would also pass if the generator stopped producing the key
+		// for every type — which is the failure this test exists to catch.
 		const keys = optionKeys();
 		expect(ALL_TYPES.length).toBeGreaterThan(0);
-		for (const type of ALL_TYPES) {
+		for (const type of ALL_TYPES.filter((type) => type !== RELEASE_TYPE)) {
 			expect(keys).toContain(typeFolderKey(type));
 		}
+		expect(keys).not.toContain(typeFolderKey(RELEASE_TYPE));
 	});
 
 	it('includes the keys generated per configured state, and names their families', () => {

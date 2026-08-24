@@ -11,7 +11,15 @@ import {
 } from './settings';
 import { notePropsOnly, OptionalField, optionalProperty } from './optionalProperties';
 import { resolveSettings } from './settingsResolve';
-import { ABSENCE_TYPE, ALL_TYPES, DEFAULT_HOME_FOLDER, defaultResourceFolder, defaultTypeFolder, typeFolderKey } from './typeVocabulary';
+import {
+	ABSENCE_TYPE,
+	ALL_TYPES,
+	DEFAULT_HOME_FOLDER,
+	defaultResourceFolder,
+	defaultTypeFolder,
+	RELEASE_TYPE,
+	typeFolderKey,
+} from './typeVocabulary';
 import { defaultItemHandling, openTargetOptions } from './itemHandling';
 import { t } from '../i18n/t';
 
@@ -509,7 +517,19 @@ function newItemsGroup(homeFolder: string): BasesAllOptions {
 			// and spelling a mapping correctly. `defaultTypeFolder` answers '' for the
 			// absence, so its box shows the home folder as a placeholder and an unset
 			// option files it there.
-			...[...ALL_TYPES, ABSENCE_TYPE].map(
+			//
+			// **`Release` is subtracted from that list, and it is the only member that is.**
+			// The release view carries its own `releaseFolder` option now, and that is the
+			// folder a release is actually written to — this box would have been a second
+			// value naming the same thing, which nothing reads and which reads as the setting
+			// that applies. `Resource`'s exclusion below is NOT the shape to copy: that name
+			// is simply never in `ALL_TYPES`, and `Release` has to stay in it — the type
+			// vocabulary, the badge table and the release view's own reading are all built
+			// from that list. Subtracting it HERE is the difference between "no folder box"
+			// and "no such type". `Iteration` keeps its box for that reason too: no surface
+			// offers the type either, but the board's scope picker still files the note it
+			// makes by this option.
+			...[...ALL_TYPES.filter((type) => type !== RELEASE_TYPE), ABSENCE_TYPE].map(
 				(type): BasesOptions => ({
 					type: 'folder',
 					key: typeFolderKey(type),

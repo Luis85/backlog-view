@@ -173,10 +173,12 @@ export interface BacklogModel {
 	 * not about whichever subtree a focus level set on another projection is narrowing.
 	 * Excludes `outsideFilter` items, same as `results` and `iterations` — a release the
 	 * Base excluded is not this base's to list. It used to be a guarantee about THIS field
-	 * only — a hand-written parent link still seats such a release in the TREE, since
+	 * only — a hand-written parent link still seats a release in the TREE, since
 	 * `linkAll`/`loadOutsideParents` are not type-gated and neither drops that edge, and it
-	 * was drawn there as a context row. `inPlan` refuses it now, so it is a row of no
-	 * projection: the edge stays (the rollup walk needs it) and the membership goes.
+	 * was drawn there. `inPlan` refuses EVERY release now, excluded or not, so a release is
+	 * a row of no projection of the backlog view: the edge stays (the rollup walk needs it)
+	 * and the membership goes. This field is unaffected by that, and deliberately — it is
+	 * read off `items`, so it is the one place a release still exists to be listed.
 	 */
 	releases: BacklogItem[];
 	/**
@@ -345,13 +347,17 @@ export function iterationResults(model: BacklogModel, path: string): BacklogItem
 
 /**
  * Whether this item is a row of the PLAN — everything the backlog holds, minus the test
- * catalog and minus the iterations.
+ * catalog, minus the iterations and, since 2026-08-24, minus the releases.
  *
- * An `Iteration` is the container a board is scoped to rather than work the backlog
- * holds: nothing hangs from it, nothing rolls up into it, and a reader scanning the tree
- * for what is left to do is not looking for a fortnight. A `Milestone` stays, and the
- * difference is not tidiness — a milestone is a date the plan answers to, and it reads as
- * a row among the work it dates.
+ * **The two refusals are one rule read twice: a marker with a dedicated view of its own is
+ * not a row of the plan.** An `Iteration` is the container a board is scoped to rather than
+ * work the backlog holds — nothing hangs from it, nothing rolls up into it, and a reader
+ * scanning the tree for what is left to do is not looking for a fortnight. A `Release` is
+ * the same shape one increment later: the release view is where one is made, listed and
+ * read, so a release row in the backlog is a second place saying what one screen already
+ * says. A `Milestone` stays, and the difference is not tidiness — a milestone has no view
+ * of its own, it is a date the plan answers to, and it reads as a row among the work it
+ * dates.
  *
  * **Stated once because the forest and the hiding must agree.** `projectionForest`
  * PROMOTES a member whose parent is not one, and `rowHidden` drops a non-member; asked
@@ -359,27 +365,34 @@ export function iterationResults(model: BacklogModel, path: string): BacklogItem
  * and appeared nowhere at all — `renderForest` drops a hidden sibling without descending
  * through it, which is the failure `projectionForest`'s own comment exists to name.
  *
- * **A release the Base EXCLUDED is a row of no projection** — `Releases as their own type`
- * 4a, which says a filtered release appears as no row anywhere, a context row included.
- * `loadOutsideParents` is not type-gated, so a work item that hand-links a release as its
- * parent pulls that release in as context, and it was drawn: the sentence stating the gap
- * is on `BacklogModel.releases`, which excluded one from that field and said so about
- * nowhere else.
+ * **A release is refused HERE — membership — and never by cutting the edge in `linkAll`**,
+ * and the difference is the whole reason this clause sits in this function rather than
+ * anywhere upstream. The edge is what `assignAll` walks: its rollup traverses THROUGH a row
+ * it does not count, so an item unlinked from its excluded parent is stranded from the
+ * counts, which is why rooting markers there was refused. Refusing membership leaves the
+ * edge alone and makes `projectionForest` promote the child instead: no release row, and
+ * the work under it keeps its place as a root of the drawn forest. `loadOutsideParents` is
+ * not type-gated either, so a work item that hand-links a release pulls it in as context —
+ * and that context row goes the same way, which is `Releases as their own type` 4a.
  *
- * It is refused HERE — membership — and never by cutting the edge in `linkAll`, and the
- * difference is the whole reason this clause sits in this function. The edge is what
- * `assignAll` walks: its rollup traverses THROUGH a row it does not count, so an item
- * unlinked from its excluded parent is stranded from the counts, which is why rooting
- * markers there was refused. Refusing membership leaves the edge alone and makes
- * `projectionForest` promote the child instead: no release row, and the work under it
- * keeps its place as a root of the drawn forest.
+ * **This is the place, and `projectionMember` (`view/projection.ts`) is not.** Hiding a
+ * release there instead was tried and measured: `renderForest` (`view/render/reconcile.ts`)
+ * computes `hasChildren` from a row's non-hidden children and recurses INSIDE the branch
+ * that drew the row, so a `Feature -> Release -> PBI` chain lost the `PBI` entirely — the
+ * forest promoted nothing, because the forest was still built from a predicate that held
+ * the release. The roadmap's own `onThisRoadmap` narrowing does not transfer for the same
+ * reason in reverse: the roadmap renders no nested forest, so dropping a row there drops a
+ * row. That is the agreement rule above, failing in exactly the direction it names.
  *
- * An included release stays a member and is still drawn — in the tree and on both boards,
- * which is where `byProjectionType` still offers the type. The roadmap refuses every
- * release, included or not, and says so once in `onThisRoadmap` (`domain/roadmap.ts`).
+ * **So a release is drawn by no projection of the backlog view — the boards included.**
+ * That is wider than the tree the change set out to clear, and it is the ruled end state
+ * rather than a side effect: `byProjectionType` now offers the type nowhere, the way it
+ * already offered `Iteration` nowhere. The release view is unaffected either way, because
+ * it reads `model.releases` and `byPath` rather than this forest's results
+ * (`domain/releases.ts`, `scannableRows`).
  */
 export function inPlan(item: { ladder: string[]; typeName: string | null; outsideFilter?: boolean }): boolean {
-	if (item.outsideFilter && isReleaseType(item.typeName)) return false;
+	if (isReleaseType(item.typeName)) return false;
 	return !inCatalog(item) && !isIterationType(item.typeName);
 }
 
