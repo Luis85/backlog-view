@@ -1,16 +1,15 @@
-// @vitest-environment jsdom
 // `createRelease`'s own creation test, beside `createNote.test.ts` rather than inside it:
 // a release is not a backlog item and takes no `NewItemSpec` — see `createNote.ts`'s own
 // doc comment on why it stands apart from `createBacklogItem` and `createResourceNote`.
 //
-// jsdom, not the directory default (`node`): `releaseSettingsWith` now lives in
-// `test/helpers/release.ts`, which imports `ReleaseView` and calls `installObsidianDom()`
-// at module top — the same reason `baseFile.test.ts` and the `viewState*` tests in this
-// directory carry the same pragma.
+// Plain `node`, this directory's default: `releaseSettingsWith` comes from the leaf module
+// `test/helpers/releaseSettings.ts` rather than `test/helpers/release.ts`, so nothing here
+// pulls in that file's `ReleaseView` import and `installObsidianDom()` call. This function
+// touches no DOM and has no business needing jsdom.
 import { describe, expect, it } from 'vitest';
 import { createRelease } from '../../src/storage/createNote';
 import { FakeVault } from '../helpers/vault';
-import { releaseSettingsWith } from '../helpers/release';
+import { releaseSettingsWith } from '../helpers/releaseSettings';
 
 describe('createRelease', () => {
 	it('creates one release note in the configured folder', async () => {
