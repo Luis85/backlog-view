@@ -1,9 +1,10 @@
 import { App, normalizePath, stringifyYaml, TFile } from 'obsidian';
 import { isReleaseType } from '../domain/itemTypes';
 import { BacklogSettings } from '../domain/settings';
+import { ReleaseSettings } from '../domain/releaseOptions';
 import { AxisWrite } from '../domain/writePlan';
 import { vaultFolder } from '../domain/settingsResolve';
-import { RESOURCE_TYPE } from '../domain/typeVocabulary';
+import { RELEASE_TYPE, RESOURCE_TYPE } from '../domain/typeVocabulary';
 import { setOwn } from './ownProperty';
 import { axisEntries } from './writeKeys';
 
@@ -132,6 +133,46 @@ export async function createResourceNote(app: App, settings: BacklogSettings, sp
 	const path = uniqueNotePath(app, folder, spec.title);
 	const fm: Record<string, unknown> = {};
 	setOwn(fm, settings.typeKey, RESOURCE_TYPE);
+	return app.vault.create(path, `---\n${stringifyYaml(fm)}---\n`);
+}
+
+/** What `New release` collects: its own fields, nothing a surface adds. */
+export interface NewReleaseSpec {
+	title: string;
+	version?: string;
+	targetDate?: string;
+	status?: string;
+}
+
+/**
+ * Create one release note: a marker with its own fields and nothing else.
+ *
+ * NOT `createBacklogItem` with fewer fields, for the same reason `createResourceNote`
+ * stands apart from it (see that function's own doc comment): a release has no parent, no
+ * rank and no type from the ladder — it is not on the tree to be nested onto anything or
+ * ranked among anything.
+ *
+ * This is a DIFFERENT claim from `createBacklogItem`'s standing rule that a `Release` is
+ * seeded NOTHING a surface adds — that rule is about a surface seeding a release with the
+ * SURFACE's own context (the sprint it was created on, that sprint's dates, a bucket
+ * header's horizon), and it stays true: nothing reaches `createBacklogItem` for a release
+ * any more, this function included. What this writes instead is the release's OWN
+ * fields — its version, its target date, its status — collected from whoever is creating
+ * it. A note being told what it itself is is not a surface seeding it with something
+ * else's context.
+ *
+ * One atomic write, `createBacklogItem`'s own reason restated: a create-then-update pair
+ * could fail in between and leave a blank note without its fields behind.
+ */
+export async function createRelease(app: App, settings: ReleaseSettings, spec: NewReleaseSpec): Promise<TFile> {
+	const folder = vaultFolder(settings.folder);
+	await ensureFolder(app, folder);
+	const path = uniqueNotePath(app, folder, spec.title);
+	const fm: Record<string, unknown> = {};
+	setOwn(fm, settings.typeKey, RELEASE_TYPE);
+	if (spec.version !== undefined && settings.versionKey) setOwn(fm, settings.versionKey, spec.version);
+	if (spec.targetDate !== undefined && settings.targetDateKey) setOwn(fm, settings.targetDateKey, spec.targetDate);
+	if (spec.status !== undefined && settings.statusKey) setOwn(fm, settings.statusKey, spec.status);
 	return app.vault.create(path, `---\n${stringifyYaml(fm)}---\n`);
 }
 
