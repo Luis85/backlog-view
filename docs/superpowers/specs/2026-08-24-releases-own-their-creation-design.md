@@ -37,9 +37,19 @@ the release view's toolbar, and the same action from the index's empty state.
 
 It opens a dialog (the `src/ui/` dialogs are the precedent) collecting **title, version, target
 date and status**. On confirm it creates one note carrying the type key plus whichever of the
-three the view has an option bound for. **An unconfigured key is never written to** — with an
-option unbound, that field does not appear in the dialog at all rather than appearing and being
-discarded.
+three the view has an option bound for. **An unconfigured key is never written to.**
+
+### Which fields the dialog shows, and when
+
+The dialog's field set is decided **after** the bind described in section 3, not before — the
+order matters and is the one thing about this gesture that reads two ways. On first run the
+options are *unset*, the bind gives them their suggested keys, and all four fields appear. A
+field is absent only when its option is **deliberately cleared**, which `clearablePropKey`
+distinguishes from unset: a reader who has cleared the version property is saying this vault
+does not track versions, and the dialog respects that rather than re-binding it.
+
+So: unset means "not configured yet" and gets configured; cleared means "not wanted" and is left
+alone. Any test of the unbound case must use a *cleared* option, or it asserts the wrong thing.
 
 ### The creator
 
@@ -62,7 +72,19 @@ gets a sentence at the creator, because the two read alike and the next reader w
 
 The release view gains an option of `type: 'folder'` — the mechanism `newItemsGroup`
 (`src/domain/viewOptions.ts`) already uses for the home folder, the per-type folders and the
-resource folder — defaulting to a literal matching the shipped layout.
+resource folder.
+
+**Its default is where releases land today**, so a vault on the shipped defaults sees no change:
+`DEFAULT_TYPE_SUBFOLDERS` maps `release: 'releases'` and `DEFAULT_HOME_FOLDER` is `docs`, so
+`defaultTypeFolder('Release')` is `docs/releases`. The new option adopts that value rather than
+a literal invented here, so the two cannot drift.
+
+**The migration is silent only on the default, and the spec does not pretend otherwise.** A
+vault that changed the backlog's home folder had its releases under `<home>/releases`, and the
+release view cannot read that home folder — the same wall as everywhere else. Such a vault's
+next release lands in `docs/releases` until the reader sets the new option. The changelog says
+so plainly; nothing tries to detect it, because detecting it means reading the other view's
+configuration.
 
 **The backlog view drops its `Release` row** from `newItemsGroup`. `ALL_TYPES` is
 `[...LEVELS, ...EXTRA_TYPES, ...MARKER_TYPES, ...]` and `MARKER_TYPES` includes `Release`, so
@@ -163,7 +185,9 @@ than new; a mis-made release is deleted by hand.
 
 - The gesture: the dialog's fields track which options are bound; confirming creates exactly one
   note with the expected keys and no others.
-- **The unbound case:** an unbound option's field is absent, and no write names its key.
+- **The cleared case, not the unset one:** a *cleared* option's field is absent and no write
+  names its key, while an *unset* option is bound by the dialog and its field appears. A test
+  that uses an unset option to check "unbound" asserts the opposite of the rule.
 - **The ✨ path:** one function, reached from both entry points, producing the same result — the
   check on the call, not on the two paths somebody thought of.
 - **The membership key is not stubbed** on work items, asserted as a category over what the
