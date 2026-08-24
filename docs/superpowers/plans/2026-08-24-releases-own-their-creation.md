@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Give the release view its own door — a `New release` gesture, a folder option and a bind-and-backfill ✨ — and take `Release` out of the backlog tree, which is offered there today only because that door did not exist.
+**Goal:** Give the release view its own door — a `New release` gesture, a folder option and an options-binding ✨ — and take `Release` out of the backlog tree, which is offered there today only because that door did not exist.
 
-**Architecture:** The release view gains a create path and keeps every edit path shut. One function binds-and-backfills, reached from two entry points. The backlog view stops drawing and stops offering `Release`, and drops the folder row it no longer needs. The read-only invariant narrows from "writes nothing" to "never edits an existing note".
+**Architecture:** The release view gains a create path and keeps every edit path shut. One function binds this view's options, reached from two entry points, and touches no note. The backlog view stops drawing and stops offering `Release`, and drops the folder row it no longer needs. The read-only invariant narrows from "writes nothing" to "never edits an existing note".
 
 **Tech Stack:** TypeScript, esbuild, vitest (node + jsdom), eslint with per-directory `no-restricted-imports`, fallow, `scripts/docs-check.mjs`.
 
@@ -373,10 +373,18 @@ git commit -m "Narrow the release view's claim to what it still keeps"
 
 ---
 
-### Task 6: bind and backfill
+### Task 6: bind the options
+
+**It binds, and it touches no note.** An earlier draft of this task also backfilled the release
+properties onto existing release notes. That contradicted Task 5's claim outright — backfilling
+is editing a note that already exists — and the human ruled the backfill out. The accepted cost
+is the one this project already took for the membership key last increment: the property picker
+cannot offer `version`/`targetDate`/`status` until a release note carries them, which the first
+**New release** supplies. See the spec's section 3.
 
 **Files:**
 - Create: `src/view/release/init.ts`
+- Modify: `docs/requirements/Creating a release from the release view.md` (add this module to `## Where it lives` — the register-as-you-go rule)
 - Test: `test/view/release/init.test.ts`
 
 **Interfaces:**
@@ -385,25 +393,31 @@ git commit -m "Narrow the release view's claim to what it still keeps"
 
 - [ ] **Step 1: Write the failing test**
 
-Read `src/view/estimation/init.ts` in full first. It states an ORDER as a rule: decide the bindings, gate on the model they would produce, and only then write — because an action that changes the configuration and then has every write refused leaves the view worse than it found it.
+Read `src/view/estimation/init.ts` in full first. It states an ORDER as a rule: decide the bindings, gate on the model they would produce, and only then write — because an action that changes the configuration and then has every write refused leaves the view worse than it found it. Your version has no note-writing half, so the gate question is simpler; the ORDER of deciding before writing config still applies.
 
 ```ts
 it('binds every untouched option and leaves a cleared one alone', async () => {
+	// Unset vs cleared is asked of the LIVE CONFIG, never of the resolved keys —
+	// both resolve to '' and cannot be told apart. `adoptCandidates` asks
+	// `config.get(option) !== undefined`, and this follows it.
 	const view = makeReleaseView({ versionProperty: '' });   // cleared
 	await runReleaseInit(view);
 	expect(view.config.setCalls.map((c) => c.key)).toContain('targetDateProperty');
 	expect(view.config.setCalls.map((c) => c.key)).not.toContain('versionProperty');
 });
 
-it("stubs a release note's own keys and NOT the membership key on work items", async () => {
-	// `membershipTarget` reads a blank membership as UNRESOLVED, so stubbing it
-	// would report the whole backlog as broken on this very index.
+it('writes to no note at all', async () => {
+	// The whole of Task 5's claim, driven at the one control that could break it.
+	// This is the test that makes "never edits an existing note" mean something —
+	// without it, that sentence passes only because nothing exercises the view.
 	const { view, vault } = makeReleaseViewWithWork();
 	await runReleaseInit(view);
-	expect(vault.fm('2.4.md')).toHaveProperty('version');
-	expect('release' in vault.fm('PBI-1.md')).toBe(false);
+	expect(vault.writeLog).toEqual([]);
+	expect(vault.files.size).toBe(sizeBefore);
 });
 ```
+
+The second test is load-bearing beyond this task: Task 5's narrowed claim passes trivially today because no test drives a control that could write. **This is that test.** Make its fixture genuinely contain a release note and a work item, so "wrote nothing" is a fact about a populated vault rather than an empty one.
 
 - [ ] **Step 2: Run to verify it fails**
 
@@ -411,18 +425,24 @@ Run: `npx vitest run test/view/release/init.test.ts` — Expected: FAIL, the mod
 
 - [ ] **Step 3: Implement**
 
-Follow `runEstimationInit`'s order and its use of `adoptCandidates` over this view's own key list. Backfill the release notes' own keys onto existing release notes. **Do not touch the membership key on work items.**
+Follow `runEstimationInit`'s order and its use of `adoptCandidates` over this view's own key list — but **only its binding half**. Write no note. Do not call `applyPropertyWrites`, `applyWrites`, or any creator.
 
 - [ ] **Step 4: Run to verify it passes**
 
-Run: `npx vitest run test/view/` — Expected: PASS, including the narrowed boundary suite Task 5 renamed.
-If it fails, the narrowing was wrong rather than this task — read it before changing anything here.
+Run: `npx vitest run test/view/` — Expected: PASS, including the boundary suite Task 5 renamed.
+If that suite fails, the narrowing was wrong rather than this task — read it before changing anything here.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 5: Register the new module**
+
+Add `src/view/release/init.ts` to `## Where it lives` in `docs/requirements/Creating a release from the release view.md`. `docs-check.mjs` rule 7 is a gate step; skipping this commits red.
+
+- [ ] **Step 6: Full gate and commit**
+
+Run `npm run check` in the FOREGROUND and wait. All five steps.
 
 ```bash
-git add src/view/release/init.ts test/view/release/init.test.ts
-git commit -m "Bind the release view's own options, and stub what a release note holds"
+git add src/view/release/init.ts test/view/release/init.test.ts "docs/requirements/Creating a release from the release view.md"
+git commit -m "Bind the release view's own options, and write to no note"
 ```
 
 ---

@@ -26,7 +26,7 @@ offers `Iteration`. One control makes them — the board's scope picker."* Relea
    fields.
 2. A **releases folder** option on the release view, and the backlog view's `Release`
    type-folder row removed.
-3. The release view's own **✨**, binding its options and backfilling their keys.
+3. The release view's own **✨**, binding its options — and touching no note.
 4. `Release` **leaves the backlog view** — not drawn as a row on the tree OR either board, not offered as a type.
 5. The read-only invariant **narrowed**, not deleted.
 
@@ -109,25 +109,45 @@ stops using it. The changelog says so.
 
 ## 3. Configuration, and the ✨
 
-**One function does bind-and-backfill**, modelled on `runEstimationInit`
-(`src/view/estimation/init.ts`) — each view owns its registration and its own init. It binds
-every unbound option to its suggested key, then backfills those keys onto existing release
-notes, because Obsidian's property picker cannot offer a property no note in the vault carries.
-The two halves are one action because neither works alone, which is `runInit`'s own rule.
+**The ✨ binds this view's options and touches no note.** It is modelled on `runEstimationInit`
+(`src/view/estimation/init.ts`) — each view owns its registration and its own init — and it binds
+every option the reader has never set to its suggested key, reading the live `BasesViewConfig` to
+tell "never set" from "deliberately cleared".
 
-**Two entry points, one function:** the ✨ control, and the dialog when it finds options
-unbound. Sharing the function is what stops the two drifting into a subset and a superset.
+**Two entry points, one function:** the ✨ control, and the dialog when it finds options unset.
+Sharing the function is what stops the two drifting into a subset and a superset.
 
 The dialog **states** that it is binding the view's options, rather than modifying the `.base`
 silently as a side effect of a gesture whose name only promises a note.
 
-### What it must not backfill
+### It does not backfill, and that is a ruling rather than an omission
+
+An earlier draft of this spec had the ✨ backfill the release properties onto existing release
+notes, so Obsidian's property picker could offer them. **That contradicted section 5 outright** —
+backfilling is editing a note that already exists, which is the one thing this view is to be
+guaranteed never to do. The suite would have stayed green through the contradiction only because
+no test drives the control, which makes it worse rather than better.
+
+**The backfill is dropped.** The claim in section 5 is therefore true as written, and the view
+keeps a guarantee worth stating.
+
+**The accepted cost is one this project already took, for this exact property.** Last increment
+ruled that the backlog view's ✨ does NOT stub the membership key — `neverStubbed`
+(`src/domain/writePlan.ts`) refuses it — accepting that the picker cannot offer the property until
+a note carries it, which the first `Set release` supplies. The same applies here: the picker cannot
+offer `version`, `targetDate` or `status` until a release note carries them, which the first
+**New release** supplies. Same shape, same reasoning, consistent across both views.
+
+A vault whose release notes all predate this increment therefore sees those three options
+bindable-by-suggestion but not pickable from Obsidian's own list until one release is made or one
+key is added by hand. The changelog says so.
+
+### What it must not touch
 
 **The membership key is never stubbed onto work items.** `membershipTarget`
-(`src/domain/releases.ts`) reads a present-but-blank value as an **unresolved** membership
-rather than as "names none", so a stub would report every work item in the vault as broken on
-the release index. `neverStubbed` (`src/domain/writePlan.ts`) refuses it and continues to.
-This view's ✨ backfills a **release note's own** fields — version, target date, status.
+(`src/domain/releases.ts`) reads a present-but-blank value as an **unresolved** membership rather
+than as "names none", so a stub would report every work item in the vault as broken on the release
+index. `neverStubbed` refuses it and continues to.
 
 ## 4. The tree — and, as it turns out, the boards
 
