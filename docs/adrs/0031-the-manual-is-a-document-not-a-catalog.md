@@ -65,6 +65,19 @@ stays keyed — `manual.dialogTitle` in `src/ui/manualDialog.ts`, already swept.
 parameters, and its `are`/`is` agreement cannot survive being joined at a call site. Fixed
 prose has nothing to compose and belongs to the document.
 
+**That exception is bounded by the same argument it sits inside, and the boundary is
+English shipping alone.** A key resolves in the INTERFACE's locale. So the first catalog
+that translates `manual.typesIntro` puts one translated paragraph in an otherwise English
+document — which is the alternating-languages outcome this record rejects everywhere else,
+reached from the other side. It is unreachable today ([[English ships alone]]) and it is a
+consequence of the exception rather than an argument against it: without the key the
+paragraph cannot inflect at all, in English or in anything else. **When the per-locale
+`ManualSection[]` module is built, `manual.typesIntro`'s template moves into it and leaves
+the catalog**, so composed manual text follows the DOCUMENT's locale like every fixed
+paragraph beside it. Nothing is built for that now, for the reason the last paragraph of
+this Decision gives. Found in review (Codex, PR #202), which read the Consequences against
+the exception and found this record arguing with itself.
+
 That is checked at the forbidden call. `MANUAL_FIXED_PROSE` in `eslint.config.mjs` refuses
 a `t()` call with no parameters anywhere under `src/view/manual/`. Watched in both
 directions on 2026-08-24: the tree lints clean, so the two-argument `manual.typesIntro`
@@ -129,7 +142,11 @@ product decision this record does not have.
 - **A second catalog ships.** The Decision defers the per-locale `ManualSection[]` module
   as a branch no locale can exercise. The first locale beside English is the point at which
   it stops being speculative, and it is also the first time a reader can say whether an
-  English manual under a translated interface is acceptable or merely tolerated.
+  English manual under a translated interface is acceptable or merely tolerated. **It is
+  also the moment `manual.typesIntro` has to leave the catalog**, per the Decision above —
+  translated there, it is the one paragraph that would defect to the interface's locale and
+  make the document mixed. That is not a second revisit trigger but the same one, and the
+  order matters: the module has to exist before the key can move.
 - **A translator asks for the manual rather than the interface.** The whole record rests on
   3,800 words being the expensive half of a locale. Someone who wants exactly that half is
   evidence against the cost estimate, not against the artifact split.
