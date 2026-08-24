@@ -1,18 +1,8 @@
 import { App, TFile } from 'obsidian';
 import { BacklogItem, BacklogModel, inPlan } from './model';
 import { ReleaseSettings } from './releaseOptions';
-import {
-	CivilDate,
-	FieldReading,
-	linkpathFromRawValue,
-	ownValue,
-	readDate,
-	readString,
-	resolveParent,
-} from './noteFields';
-import { nearestFolderNote } from './folderNotes';
-import { isMarkerType, isReleaseType, ladderFor } from './itemTypes';
-import { LEVELS, TEST_LEVELS } from './typeVocabulary';
+import { CivilDate, FieldReading, linkpathFromRawValue, ownValue, readDate, readString } from './noteFields';
+import { isMarkerType, isReleaseType } from './itemTypes';
 
 /**
  * A figure with THREE answers, not two. `FieldReading` in `noteFields.ts` separates a
@@ -234,93 +224,50 @@ export function releaseIndex(app: App, model: BacklogModel, settings: ReleaseSet
  */
 const UNRESOLVED = Symbol('unresolved membership');
 
-/** What the live walk below reads — three fields `BacklogSettings` also spells. */
-interface CarrierKeys {
-	parentKey: string;
+/** What the live read below needs — one field `BacklogSettings` also spells. */
+interface LiveKeys {
 	typeKey: string;
-	/** Folder mode: a note with no parent VALUE hangs from its nearest folder note. */
-	folderHierarchy: boolean;
 }
 
 /**
  * The type a note states RIGHT NOW, off the metadata cache rather than off the model —
  * for a note the caller has not opened.
  */
-function liveTypeOf(app: App, file: TFile, keys: CarrierKeys): string | null {
+function liveTypeOf(app: App, file: TFile, keys: LiveKeys): string | null {
 	return readString(ownValue(app.metadataCache.getFileCache(file)?.frontmatter, keys.typeKey));
 }
 
 /**
- * The LADDER a note is on right now, walked up its live parent chain.
+ * Whether a membership write names a TARGET the vault no longer calls a release. A plan
+ * carries the `TFile` its picker was built from, and nothing between there and the write
+ * asks what that note is now — retype it and the value spells a link to a note that is no
+ * longer a release, this reader's own extension 1b, reported as an unresolved membership.
+ * Found by review (Codex, PR #201): authorization at plan time is not authorization at
+ * write time. A REMOVAL asks nothing — there is no target to be wrong about, and taking
+ * the key off a note that may not hold it is the one gesture that must always be allowed.
  *
- * `ladderFor` decides from the name wherever the name decides, and the test for "this name
- * cannot decide" is that function's own disagreement about it rather than a second list of
- * the two shared rungs — a third would join it here without anyone remembering this walk.
- * It re-derives live what `computeLevel` assigned when the model was built, which is the
- * point rather than a duplication: a reparent between a plan and its write is the window
- * the model cannot see. Bounded by the visited set, since a parent cycle is a shape the
- * vault can hold.
+ * **The CARRIER is deliberately not asked here, and the guarantee is narrowed to say so.**
+ * A live walk up the carrier's parent chain shipped beside this and was removed on
+ * 2026-08-24: which ladder an item is on is a MODEL decision — `buildModel` chains
+ * `ladderFor` off the parent **as loaded** — and the vault cannot answer it, because the
+ * writer cannot see the Base's result set. With "Show parents outside the filter" off, a
+ * returned `Task` whose `Test suite` parent the Base excluded has no parent in the model,
+ * lands on the PLAN ladder, and is offered `Set release` correctly; the walk followed that
+ * excluded parent through the vault anyway and refused the write the screen had just
+ * offered, with nothing stale about it. What a type NAME can answer is still asked, by
+ * `mayHoldField` through `refusesLiveType` (`storage/frontmatter.ts`) — a carrier retyped
+ * to a marker or to a catalog rung. What is left uncovered is the reparent of a `Task` (or
+ * a typeless note) under a catalog note between the pick and the write, recorded in
+ * `docs/issues/A carrier reparented into the catalog keeps its release.md`.
+ *
+ * What is NOT asked here either is whether the target left the BASE: that is a question
+ * about the write gate's contract rather than about the vault, it is shared with
+ * `Set iteration`, and it is recorded in `docs/issues/A stale release or iteration target
+ * can still be committed.md`.
  */
-function liveParentOf(app: App, file: TFile, keys: CarrierKeys): TFile | null {
-	const ref = resolveParent(app, file, app.metadataCache.getFileCache(file), keys.parentKey);
-	if (ref.file !== null) return ref.file;
-	// `linkAll`'s own three conditions (`domain/model.ts`), asked of the vault rather than
-	// of the loaded items: folder mode places a note with no parent VALUE under its nearest
-	// folder note, and an explicit empty key pins it to the top instead. Without this the
-	// walk followed explicit links alone, so moving a `Task` into a `Test suite`'s folder
-	// changed the ladder the model builds and nothing the writer could see (Codex, PR #201).
-	if (!keys.folderHierarchy || ref.hasValue || ref.explicitRoot) return null;
-	return nearestFolderNote(app, file.path);
-}
-
-function liveLadder(app: App, file: TFile, typeName: string | null, keys: CarrierKeys): string[] {
-	const seen = new Set([file.path]);
-	let name = typeName;
-	let current: TFile = file;
-	while (ladderFor(name, TEST_LEVELS) !== ladderFor(name, LEVELS)) {
-		const parent = liveParentOf(app, current, keys);
-		if (parent === null || seen.has(parent.path)) break;
-		seen.add(parent.path);
-		current = parent;
-		name = liveTypeOf(app, parent, keys);
-	}
-	return ladderFor(name, null);
-}
-
-/**
- * Why a membership may not land, asked of what the VAULT says right now about the two
- * notes such a write names. {@link membershipTarget}'s refusals at the WRITING end, minus
- * the one a type name alone answers (`mayHoldField`, which the writer asks first).
- *
- * - the CARRIER's ladder. A `Task` is on both ladders, so its own name cannot say whether
- *   it is plan work: reparent one under a `Test suite` while the menu is open and the type
- *   the writer reads is still `Task`, while the rebuilt item fails `inPlan` and
- *   `canSetRelease` then draws no action that could take the membership off again.
- * - the TARGET. A plan carries the `TFile` its picker was built from, and nothing between
- *   there and the write asks what that note is now. Retype it and the value spells a link
- *   to a note that is no longer a release — this reader's own extension 1b, reported as an
- *   unresolved membership.
- *
- * Both found by review (Codex, PR #201) after the type half shipped, and both the same
- * shape it was: authorization at plan time is not authorization at write time. A REMOVAL
- * asks neither — there is no target to be wrong about, and taking the key off a note that
- * may not hold it is the one gesture that must always be allowed.
- *
- * What is NOT asked here is whether the target left the BASE: that is a question about the
- * write gate's contract rather than about the vault, it is shared with `Set iteration`, and
- * it is recorded in `docs/issues/A stale release or iteration target can still be
- * committed.md`.
- */
-export function refusesLiveMembership(
-	app: App,
-	carrier: TFile,
-	liveType: string | null,
-	target: TFile | null | undefined,
-	keys: CarrierKeys,
-): boolean {
+export function refusesLiveMembership(app: App, target: TFile | null | undefined, keys: LiveKeys): boolean {
 	if (!target) return false;
-	if (!isReleaseType(liveTypeOf(app, target, keys))) return true;
-	return liveLadder(app, carrier, liveType, keys) === TEST_LEVELS;
+	return !isReleaseType(liveTypeOf(app, target, keys));
 }
 
 /**

@@ -418,9 +418,10 @@ export function mayHoldField(typeName: string | null, field: OptionalField, sett
 	// `Test case` would land on a catalog note that the reader then reports as unresolved
 	// and no `Set release` action can clear. What a NAME cannot answer is not this
 	// function's: `Task` is on both ladders, so a task under a test suite is admitted here
-	// and refused by `inPlan` at the two doors that hold an item — and, since a reparent
-	// races a write exactly as a retype does, by `refusesLiveMembership` (`domain/releases.ts`),
-	// which walks the LIVE parent chain whenever a membership is the thing being written. Asked BEFORE
+	// and refused by `inPlan` at the two doors that hold an item — and nowhere else. A
+	// reparent between a pick and its write is NOT caught at the write boundary: a live walk
+	// tried it and was removed (`refusesLiveMembership`, `domain/releases.ts`), because the
+	// ladder is a model decision and the vault cannot answer it. Asked BEFORE
 	// the release-type early return below, which exists to leave every other type's
 	// answers alone: this is a new field's rule and it changes no shipped answer.
 	if (field === 'release') return !isMarkerType(typeName) && ladderFor(typeName, null) !== TEST_LEVELS;

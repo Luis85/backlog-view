@@ -463,8 +463,11 @@ export function addIterationItems(host: BacklogViewHost, menu: Menu, item: Backl
  * while the field rule refuses the `Milestone` and the `Release` that `inPlan` admits.
  * They overlap on the catalog TYPES, deliberately — the field rule carries that half
  * because `refusesLiveType` (`storage/frontmatter.ts`) asks it with a name and no item.
- * The LADDER half reaches that door too, as `refusesLiveMembership`'s live parent walk: a
- * reparent between this pick and the write is the same race a retype is.
+ * The LADDER half reaches no further than this pick: `refusesLiveMembership`
+ * (`domain/releases.ts`) asks the TARGET alone, because which ladder a row is on is a model
+ * decision the vault cannot re-derive — a reparent between this pick and the write is a
+ * race nothing at the write boundary catches, recorded in `docs/issues/A carrier
+ * reparented into the catalog keeps its release.md`.
  * Written as one of them alone, a hand-edit and a menu pick would disagree about what may
  * hold a release, which is the one thing the reader's refusals exist to prevent.
  *

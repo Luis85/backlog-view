@@ -6,7 +6,7 @@
 // is the dated axis and which is near its own line budget.
 import { describe, expect, it } from 'vitest';
 import { applyRestores, applyWrites, RestoreWrite } from '../../src/storage/frontmatter';
-import { buildModel } from '../../src/domain/model';
+import { buildModel, inPlan } from '../../src/domain/model';
 import {
 	computeInitWrites,
 	computeIterationNoteWrites,
@@ -236,36 +236,11 @@ describe('the writer asks the LIVE type about a release membership', () => {
 		expect(outcome.changed).toBe(false);
 	});
 
-	it('refuses a membership whose CARRIER was reparented into the catalog', async () => {
-		// A `Task` is on both ladders, so its own name cannot answer this and the type half
-		// admits it: only the live parent chain says the note walked into the test catalog
-		// while the menu was open. `inPlan` fails on the rebuilt item, so `canSetRelease`
-		// draws nothing that could take the membership off again.
-		const vault = new FakeVault();
-		vault.addFile('2.4.md', { frontmatter: { type: 'Release' } });
-		vault.addFile('S.md', { frontmatter: { type: 'Test suite' } });
-		vault.addFile('1.0.md', { frontmatter: { type: 'PBI' } });
-		const task = vault.addFile('1.1.md', { frontmatter: { type: 'Task' }, parentLink: '1.0' });
-		const model = buildModel(vault.app, vault.entries(), releaseSettings);
-		const release = model.byPath.get('2.4.md');
-		const item = model.byPath.get('1.1.md');
-		if (!item || !release) throw new Error('fixture did not build');
-		const writes = computeReleaseWrites(item, release, releaseSettings);
-		expect(writes).toEqual([{ file: task, release: release.file }]);
-
-		// Re-added rather than edited in place: the parent is a link, and `resolveParent`
-		// reads the link CACHE before the raw value, so a fixture that changed only the
-		// text would leave the walk following the note it no longer names.
-		vault.addFile('1.1.md', { frontmatter: { type: 'Task' }, parentLink: 'S' });
-		const outcome = await applyWrites(vault.app, releaseSettings, writes);
-
-		expect(vault.fm('1.1.md')['release']).toBeUndefined();
-		expect(outcome.changed).toBe(false);
-	});
-
-	it('lets the same task through while its parent is still plan work', async () => {
-		// The control INSIDE the walk: without it the test above passes on a guard that
-		// refuses every task, which is the way a ladder check reads as working and is not.
+	it('lets a task take a release, which is what the carrier half must not stop', async () => {
+		// The control on the whole carrier end: a `Task` is on both ladders, so a guard that
+		// read the name alone — or walked to find one — is the shape that refuses every task
+		// while reading as working. Nothing at this boundary asks a carrier's ladder now, so
+		// this is the plain case the two tests above narrow.
 		const vault = new FakeVault();
 		vault.addFile('2.4.md', { frontmatter: { type: 'Release' } });
 		vault.addFile('1.0.md', { frontmatter: { type: 'PBI' } });
@@ -280,27 +255,37 @@ describe('the writer asks the LIVE type about a release membership', () => {
 		expect(vault.fm('1.1.md')['release']).toBe('[[2.4]]');
 	});
 
-	it('follows a FOLDER-inferred parent, which no parent link spells', async () => {
-		// Folder mode hangs a note with no parent value under its nearest folder note, so
-		// moving a task into a test suite's folder changes the ladder `buildModel` assigns
-		// while every link on the note stays as it was.
-		const folderSettings = { ...releaseSettings, folderHierarchy: true };
+	it('lets a task through whose test-suite parent the BASE excluded', async () => {
+		// The walk's own asymmetry, and the reason its carrier half is gone. Which ladder an
+		// item is on is a MODEL decision: `buildModel` chains `ladderFor` off the parent **as
+		// loaded**, so with "Show parents outside the filter" off a returned `Task` whose
+		// `Test suite` parent the Base excluded has no parent in the model at all and lands on
+		// the PLAN ladder. `inPlan` passes, `canSetRelease` offers the action, and
+		// `membershipTarget` will count the membership — nothing here is stale. A live walk
+		// through the vault sees the excluded suite anyway and would refuse the write the
+		// screen just offered.
+		const excluded = settingsFrom({ releaseProperty: 'note.release', showOutsideParents: false });
 		const vault = new FakeVault();
 		vault.addFile('2.4.md', { frontmatter: { type: 'Release' } });
-		vault.addFile('S/S.md', { frontmatter: { type: 'Test suite' } });
-		const task = vault.addFile('1.1.md', { frontmatter: { type: 'Task' } });
-		const model = buildModel(vault.app, vault.entries(), folderSettings);
+		vault.addFile('S.md', { frontmatter: { type: 'Test suite' } });
+		const task = vault.addFile('1.1.md', { frontmatter: { type: 'Task' }, parentLink: 'S' });
+		// The Base's own results, minus the suite — the configuration this asymmetry needs.
+		const results = vault.entries().filter((entry) => entry.file.path !== 'S.md');
+		const model = buildModel(vault.app, results, excluded);
 		const item = model.byPath.get('1.1.md');
 		const release = model.byPath.get('2.4.md');
 		if (!item || !release) throw new Error('fixture did not build');
-		const writes = computeReleaseWrites(item, release, folderSettings);
+		// The fixture reaches the state its name claims: the suite is in the vault, out of the
+		// model, and the task is on the plan ladder because of it.
+		expect(model.byPath.has('S.md')).toBe(false);
+		expect(inPlan(item)).toBe(true);
+		const writes = computeReleaseWrites(item, release, excluded);
 		expect(writes).toEqual([{ file: task, release: release.file }]);
 
-		vault.renameFile('1.1.md', 'S/1.1.md');
-		const outcome = await applyWrites(vault.app, folderSettings, writes);
+		const outcome = await applyWrites(vault.app, excluded, writes);
 
-		expect(vault.fm('S/1.1.md')['release']).toBeUndefined();
-		expect(outcome.changed).toBe(false);
+		expect(vault.fm('1.1.md')['release']).toBe('[[2.4]]');
+		expect(outcome.changed).toBe(true);
 	});
 
 	it('refuses a membership whose TARGET is no longer a release', async () => {

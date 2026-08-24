@@ -158,7 +158,7 @@ export async function applyWrites(
 			// nothing did, which is what makes the difference visible if that changes.
 			if (
 				refusesLiveType(settings, write, liveType) ||
-				refusesLiveMembership(app, write.file, liveType, write.release, settings) ||
+				refusesLiveMembership(app, write.release, settings) ||
 				refusesAxis(fm, settings, write, ends)
 			) {
 				refused = true;
@@ -534,10 +534,11 @@ function narrowReadings(readings: StatedEnds, ends: PlacementEnd[]): StatedEnds 
  * offered by no control either, while `membershipTarget` (`domain/releases.ts`) goes on
  * reporting the note as an unresolved membership for as long as it sits there. This
  * function holds a type NAME and no item, so `inPlan` is not a question it can ask: the
- * catalog TYPES are refused inside `mayHoldField`, and the two questions a name cannot
- * reach at all — the carrier's live LADDER and what the TARGET is now — are
- * `refusesLiveMembership` (`domain/releases.ts`), called beside this one at the same
- * boundary. All three were review findings on one branch (Codex, PR #201).
+ * catalog TYPES are refused inside `mayHoldField`, and the one question a name cannot
+ * reach at all — what the TARGET is now — is `refusesLiveMembership`
+ * (`domain/releases.ts`), called beside this one at the same boundary. All were review
+ * findings on one branch (Codex, PR #201). The carrier's LADDER is deliberately not asked
+ * at this boundary: it is a model decision the vault cannot answer, see that function.
  *
  * The whole batch is refused, loudly, exactly as a stale date batch is — this is a
  * gesture the user made against a note that is no longer the note they made it against.

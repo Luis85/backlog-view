@@ -175,12 +175,15 @@ write's inverse, so without it the write lands and undo restores nothing, silent
 membership joins the keys `refusesLiveType` asks the LIVE type about, in the same file, for
 extension 1f's second half: the key is unclearable once it is on a marker, so the refusal has
 to be at the write and not only at the plan. `refusesLiveMembership` (`src/domain/releases.ts`), called beside it at the same
-boundary, asks the two questions a type NAME cannot reach, both found by review on this branch (Codex, PR #201) and both the same
-shape — the CARRIER's live ladder, walked up the parent chain (and, in folder mode, up the
-FOLDER notes, which is how a task changes ladder without any link on it changing), because a
-`Task` is on both ladders and a reparent under a `Test suite` leaves its name unchanged; and the TARGET's live
-type, because the plan carries the `TFile` the picker was built from and a retyped target would
-be spelled as a release it no longer is. What neither asks is whether the target left the BASE —
+boundary, asks the one question a type NAME cannot reach, found by review on this branch
+(Codex, PR #201) and the same shape — the TARGET's live type, because the plan carries the
+`TFile` the picker was built from and a retyped target would be spelled as a release it no
+longer is. It asked a second, the CARRIER's live ladder walked up the parent chain, and that
+half was removed on 2026-08-24: which ladder a row is on is a MODEL decision chained off the
+parent **as loaded**, so the walk refused writes that were never stale — a returned `Task`
+whose `Test suite` parent the Base excluded is on the plan ladder in the model and was
+classified on the catalog's by the vault. The reparent it was covering is
+[[A carrier reparented into the catalog keeps its release]]. What neither asks is whether the target left the BASE —
 that is the write gate's contract rather than a question about the vault, it is shared with
 `Set iteration`, and it is recorded in
 [[A stale release or iteration target can still be committed]]. Neither can they be asked
