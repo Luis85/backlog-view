@@ -1637,4 +1637,17 @@ export const en = {
 	 *  it names the release rather than describing a problem. */
 	'release.scope.empty.title': 'Nothing is in {name} yet',
 	'release.scope.empty.hint': 'An item joins a release when its own membership property names that release.',
+
+	/** `src/ui/newReleaseDialog.ts` — a plain-data leaf that knows nothing of property
+	 *  keys, so every one of its labels is its own key rather than a reuse of the index
+	 *  grid's column headings above, which name a COLUMN and would drift the moment either
+	 *  is edited for its own reason. */
+	'newRelease.title': 'New release',
+	'newRelease.field.title': 'Title',
+	'newRelease.titlePlaceholder': '2.4',
+	'newRelease.field.version': 'Version',
+	'newRelease.field.targetDate': 'Target date',
+	'newRelease.field.status': 'Status',
+	'newRelease.create': 'Create',
+	'newRelease.cancel': 'Cancel',
 } as const;
