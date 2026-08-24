@@ -758,6 +758,7 @@ export const en = {
 	'release.option.version': 'Version property',
 	'release.option.targetDate': 'Target date property',
 	'release.option.status': 'Status property',
+	'release.option.folder': 'Release folder',
 	'option.typeProperty': 'Item type property',
 	'option.hierarchyOnly': 'Ignore notes outside the hierarchy',
 	'option.showOutsideParents': 'Show parents outside the filter',

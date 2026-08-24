@@ -1,6 +1,7 @@
 import { BasesAllOptions, BasesViewConfig } from 'obsidian';
-import { configReaders } from './settingsResolve';
+import { configReaders, vaultFolder } from './settingsResolve';
 import { notePropsOnly } from './optionalProperties';
+import { defaultTypeFolder, RELEASE_TYPE } from './typeVocabulary';
 import { t } from '../i18n/t';
 
 /**
@@ -8,7 +9,7 @@ import { t } from '../i18n/t';
  * `viewOptions.ts` is for the backlog and `estimationOptions.ts` is for the estimation
  * table.
  *
- * SEVEN keys, and the three model mappings among them are the point. A separately
+ * EIGHT keys, and the three model mappings among them are the point. A separately
  * registered view inherits no binding from the backlog view, and this one reads a type to
  * find releases at all, a parent to build the scope tree, and an order to rank the index.
  * The estimation view declares none of the three because `buildEstimationModel` reads Base
@@ -29,6 +30,8 @@ export interface ReleaseSettings {
 	versionKey: string;
 	targetDateKey: string;
 	statusKey: string;
+	/** Where `New release` files a note. A PATH, not a property key. */
+	folder: string;
 }
 
 export function getReleaseViewOptions(_config: BasesViewConfig): BasesAllOptions[] {
@@ -101,6 +104,13 @@ function releaseGroup(): BasesAllOptions {
 				placeholder: 'status',
 				filter: notePropsOnly,
 			},
+			{
+				type: 'folder',
+				key: 'releaseFolder',
+				displayName: t('release.option.folder'),
+				default: defaultTypeFolder(RELEASE_TYPE),
+				placeholder: defaultTypeFolder(RELEASE_TYPE),
+			},
 		],
 	};
 }
@@ -114,7 +124,7 @@ export function resolveReleaseSettings(config: BasesViewConfig): ReleaseSettings
 	// `{ typeProperty: '' }` can never pass. `clearablePropKey` draws exactly that
 	// distinction (`config.get(key) === undefined ? def : propKey(key, '')`) and exists
 	// for this: unset takes the suggestion, cleared means off.
-	const { clearablePropKey, propKey } = configReaders(config);
+	const { clearablePropKey, propKey, str, clearable } = configReaders(config);
 	return {
 		parentKey: clearablePropKey('parentProperty', 'parent'),
 		orderKey: clearablePropKey('orderProperty', 'order'),
@@ -123,8 +133,17 @@ export function resolveReleaseSettings(config: BasesViewConfig): ReleaseSettings
 		// key nobody bound must read as unconfigured rather than as `release`, or the view
 		// would report a scope from a property the user never named.
 		membershipKey: propKey('membershipProperty', ''),
-		versionKey: propKey('versionProperty', ''),
-		targetDateKey: propKey('targetDateProperty', ''),
-		statusKey: propKey('releaseStatusProperty', ''),
+		// `clearablePropKey`, not `propKey`: with an empty default the two resolve
+		// identically today (see the test above, which asserts that on purpose), but only
+		// `clearablePropKey` can tell "never set" from "cleared" once a real suggestion
+		// lands here — which Task 6's ✨ needs, and which `propKey` can never express no
+		// matter what default it is given.
+		versionKey: clearablePropKey('versionProperty', ''),
+		targetDateKey: clearablePropKey('targetDateProperty', ''),
+		statusKey: clearablePropKey('releaseStatusProperty', ''),
+		// A PATH, not a property key: same reading `resolveFolders` gives every type
+		// folder — trimmed and normalized by `vaultFolder`, clearable because the default
+		// is a real value (`config.get` cannot tell "cleared" from "never set" otherwise).
+		folder: clearable('releaseFolder', defaultTypeFolder(RELEASE_TYPE), () => vaultFolder(str('releaseFolder'))),
 	};
 }

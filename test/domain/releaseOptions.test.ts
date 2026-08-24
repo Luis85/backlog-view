@@ -9,12 +9,13 @@ function keysOf(config: FakeViewConfig): string[] {
 }
 
 describe('the release view names its own keys', () => {
-	it('declares all seven, the three model mappings included', () => {
+	it('declares all eight, the three model mappings and the folder included', () => {
 		expect(keysOf(new FakeViewConfig({})).sort()).toEqual(
 			[
 				'membershipProperty',
 				'orderProperty',
 				'parentProperty',
+				'releaseFolder',
 				'releaseStatusProperty',
 				'targetDateProperty',
 				'typeProperty',
@@ -44,5 +45,30 @@ describe('the release view names its own keys', () => {
 		expect(cleared.typeKey).toBe('');
 		const untouched = resolveReleaseSettings(new FakeViewConfig({}) as never);
 		expect(untouched.typeKey).toBe('type');
+	});
+
+	it('files a new release under docs/releases when nothing says otherwise', () => {
+		// The value is DATA — where a note lands, not text anybody reads. It tracks
+		// `defaultTypeFolder('Release')` rather than a literal so the two cannot drift.
+		expect(resolveReleaseSettings(new FakeViewConfig({}) as never).folder).toBe('docs/releases');
+	});
+
+	it('reads a picked release folder the way every other folder option is read', () => {
+		// Trimmed, stripped of leading/trailing separators and normalized — `vaultFolder`,
+		// the same reading `resolveFolders` gives every type folder.
+		expect(resolveReleaseSettings(new FakeViewConfig({ releaseFolder: '/Releases/' }) as never).folder).toBe(
+			'Releases',
+		);
+	});
+
+	it('tells a cleared version property from an untouched one', () => {
+		// The whole of the dialog's field rule rests on this distinction: unset means
+		// "not configured yet" and gets bound, cleared means "not wanted" and is left
+		// alone. `propKey` answers '' to both and cannot express it. This test pins
+		// today's OUTPUT while the mechanism changes underneath — the distinction it
+		// enables is asserted where it is CONSUMED, in later tasks.
+		expect(resolveReleaseSettings(new FakeViewConfig({}) as never).versionKey).toBe('');
+		expect(resolveReleaseSettings(new FakeViewConfig({ versionProperty: '' }) as never).versionKey).toBe('');
+		expect(resolveReleaseSettings(new FakeViewConfig({ versionProperty: 'note.v' }) as never).versionKey).toBe('v');
 	});
 });
