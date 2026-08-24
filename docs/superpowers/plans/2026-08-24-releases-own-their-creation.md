@@ -512,6 +512,9 @@ are outside that task's whitelist, which is why they are here — they are not o
 - **`src/domain/viewOptions.ts`** — the comment left at the dropped row says a second value naming
   the same thing is one "which nothing reads". `settingsResolve.ts` DOES still read
   `typeFolder.release`; what is true is that nothing *files a release* by it. Narrow the sentence.
+- **`src/view/release/releaseView.ts`** — its class docstring still says the view **WRITES NOTHING**.
+  Task 5 narrowed that claim to "creates notes and its own config; never edits an existing note", and
+  Task 7 makes it create. The docstring is the first thing a reader of that file meets.
 - **`src/domain/model.ts`** — the sentence added beside `releases` says it is "read off `items`, so
   it is the one place a release still exists to be listed". The `items` it means is `buildModel`'s
   local, not `BacklogModel.items`, which no longer holds releases. True but trap-shaped; say which.
