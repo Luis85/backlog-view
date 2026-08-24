@@ -24,6 +24,7 @@
 - **fallow's COGNITIVE complexity budget is separate** from eslint's cyclomatic `complexity: 16` and is checked by `npm run analyze`. A passing `npx eslint` is not evidence the cognitive budget holds — that mistake has been made on this codebase already.
 - **An invariant asserted in a comment gets a test that fails without it, and the test is watched failing.** Revert, run, see red, restore. `cp` a copy aside first — never `git checkout -- <file>`, which also discards uncommitted work.
 - **Definition of done:** `npm run check` (build + lint + coverage-thresholded tests + fallow + docs register) passes. Coverage floors only ever go UP — currently 98.89 / 95.40 / 99.90 / 99.73 in `vitest.config.mts`. CI runs the same on Ubuntu **and** Windows.
+- **A task that creates a new `src/` module REGISTERS it in the same task.** `docs-check.mjs` rule 7 requires every module in `src/` to be named by a use case's `## Where it lives` or an ADR's `## Decision`, and it is one of the five gate steps — so deferring registration to Task 8 makes the creating task commit red, which the rule above forbids. The first task to create a new module creates `docs/requirements/Creating a release from the release view.md` (a PBI under [[Putting work in a release]]) with a `## Where it lives` naming it; every later task adds its own module to that same section. Task 8 then FILLS OUT that note rather than creating it. **Each such task's whitelist includes that one note.**
 - **Commit after every task**, staging by explicit path. Never `git add -A`, `git add .` or `git commit -a`. `CHANGELOG.md` gains its `[Unreleased]` entry in Task 8.
 
 ---
@@ -515,7 +516,9 @@ are outside that task's whitelist, which is why they are here — they are not o
   it is the one place a release still exists to be listed". The `items` it means is `buildModel`'s
   local, not `BacklogModel.items`, which no longer holds releases. True but trap-shaped; say which.
 
-- [ ] **Step 1: Write the PBI**
+- [ ] **Step 1: Finish the PBI**
+
+The note `docs/requirements/Creating a release from the release view.md` already exists — the first task to create a new `src/` module made it, so the gate would pass. **Fill it out**, do not recreate it.
 
 Use the `adding-backlog-items` skill's shape, or copy `Setting an item's release.md`'s. Its `## Where it lives` names what actually shipped — verify each path against the code rather than transcribing this plan.
 
