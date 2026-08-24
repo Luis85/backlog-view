@@ -18,7 +18,7 @@
 - **Every user-visible string goes through `t()`** from `i18n/t.ts`; `src/i18n/en.ts` is DATA (no imports, no logic). A property key, a type name, an option id, a folder path or a CSS class is DATA and never enters the catalog. **Two shapes the lint bans cannot see, both of which have shipped here:** a template whose FIRST QUASI IS EMPTY (`` `${n} items` ``), and a sentence passed as a positional ARGUMENT to a helper or returned from one. Lint passing is not evidence against either.
 - **Nothing builds a sentence by joining pieces.** Pass a parameter or an array and let the catalog join it.
 - **An unconfigured key is never written to.** Absence is a value.
-- **Unset is not cleared.** `clearablePropKey` distinguishes an option nobody has touched from one a reader deliberately emptied. Unset gets bound; cleared is left alone.
+- **Unset is not cleared, and the distinction lives in the CONFIG, not the resolved settings.** `adoptCandidates` and `runEstimationInit` both ask `config.get(option) !== undefined` directly, because — as `optionalProperties.ts` states — *cleared and never-set resolve to the same `''` key*. Any code that needs to tell them apart reads the live config. `clearablePropKey` draws the distinction only for an option whose default is a REAL value; for one defaulting to `''` it is identical to `propKey`.
 - **The membership key is never stubbed onto work items.** `membershipTarget` reads a present-but-blank value as UNRESOLVED, so a stub reports the whole backlog as broken. `neverStubbed` refuses it and continues to.
 - **`normalizePath` on user paths** (marketplace rule), and `setCssProps` over inline styles.
 - **fallow's COGNITIVE complexity budget is separate** from eslint's cyclomatic `complexity: 16` and is checked by `npm run analyze`. A passing `npx eslint` is not evidence the cognitive budget holds — that mistake has been made on this codebase already.
@@ -30,16 +30,16 @@
 
 ### Task 1: the settings the gesture needs
 
-Two changes to `ReleaseSettings`, both prerequisites for later tasks rather than features of their own.
+One change to `ReleaseSettings`: the folder the gesture files into. A prerequisite for Tasks 3 and 7 rather than a feature of its own.
 
-**`propKey` cannot express the spec's rule.** `resolveReleaseSettings` resolves `versionProperty`, `targetDateProperty` and `releaseStatusProperty` with `propKey`, which answers the same value for an option nobody has touched and one a reader deliberately cleared. The spec's dialog rule — unset gets bound, cleared is left alone — is unstatable until those three use `clearablePropKey`, exactly as `membershipProperty` does not and the backlog's `releaseKey` already does.
+**A correction to an earlier draft of this plan.** This task also asked for `versionProperty`, `targetDateProperty` and `releaseStatusProperty` to move from `propKey` to `clearablePropKey`, on the premise that the cleared-vs-unset distinction was unstatable without it. That premise was false and the change was reverted. `clearablePropKey(key, def)` is `config.get(key) === undefined ? def : propKey(key, '')`, so with a `''` default every branch collapses to `propKey`'s own outcomes — `settingsResolve.ts` declines the identical switch for `releaseKey` and says why. The distinction is read from the live config by Task 6's ✨, per the Global Constraint above. **Do not reintroduce it.**
 
 **Files:**
 - Modify: `src/domain/releaseOptions.ts` (`ReleaseSettings`, `resolveReleaseSettings`, `releaseGroup`)
 - Test: `test/domain/releaseOptions.test.ts`
 
 **Interfaces:**
-- Produces: `ReleaseSettings.folder: string`; `versionKey`/`targetDateKey`/`statusKey` resolved by `clearablePropKey`; a `releaseFolder` option of `type: 'folder'`.
+- Produces: `ReleaseSettings.folder: string`, and a `releaseFolder` option of `type: 'folder'` defaulting to `defaultTypeFolder(RELEASE_TYPE)`.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -52,17 +52,9 @@ it('files a new release under docs/releases when nothing says otherwise', () => 
 	expect(resolveReleaseSettings(configWith({})).folder).toBe('docs/releases');
 });
 
-it('tells a cleared version property from an untouched one', () => {
-	// The whole of the dialog's field rule rests on this distinction: unset means
-	// "not configured yet" and gets bound, cleared means "not wanted" and is left
-	// alone. `propKey` answers '' to both and cannot express it.
-	expect(resolveReleaseSettings(configWith({})).versionKey).toBe('');
-	expect(resolveReleaseSettings(configWith({ versionProperty: '' })).versionKey).toBe('');
-	expect(resolveReleaseSettings(configWith({ versionProperty: 'note.v' })).versionKey).toBe('v');
-});
 ```
 
-The second test asserts the same value twice on purpose — it pins today's OUTPUT while the mechanism changes underneath. The distinction it enables is asserted where it is CONSUMED: Task 4, where a cleared option drops a dialog field, and Task 6, where an unset one gets bound and a cleared one does not. **Say so in a comment**, or the test reads as redundant and someone deletes it.
+An earlier draft mandated a second test here, pinning `versionKey` for a cleared and an untouched option. It asserted nothing — it passed before its implementation existed, because the two states resolve identically — and it was removed with the switch it was written to guard. The distinction is tested where it is real: Task 6, against the live config.
 
 - [ ] **Step 2: Run to verify they fail**
 
@@ -78,7 +70,7 @@ In `src/domain/releaseOptions.ts`, add to `ReleaseSettings`:
 	folder: string;
 ```
 
-In `resolveReleaseSettings`, resolve it from the new option, and switch the three release fields from `propKey` to `clearablePropKey`. Read how `settingsResolve.ts` spells a folder value — including `normalizePath` — and match it rather than writing a second spelling.
+In `resolveReleaseSettings`, resolve it from the new option. Read how `settingsResolve.ts` spells a folder value — including `normalizePath` — and match it rather than writing a second spelling. **Leave the three release property fields on `propKey`**, for the reason at the top of this task.
 
 Add the option to `releaseGroup()`, following the shape of `newItemsGroup`'s folder rows in `src/domain/viewOptions.ts` (`type: 'folder'`, a `default`, a `placeholder`). Its default is `defaultTypeFolder(RELEASE_TYPE)` from `src/domain/typeVocabulary.ts` — **not** a literal `'docs/releases'`, so the option and the table cannot drift.
 
@@ -267,7 +259,8 @@ Read `test/ui/` for how the existing dialogs are driven — `stateColorsDialog` 
 ```ts
 it('offers a field for every bound property and none for a cleared one', () => {
 	// The cleared case, not the unset one: an unset option is bound before the
-	// dialog opens (Task 6), so a missing field can only mean deliberately cleared.
+	// dialog opens (Task 6) — which asks the live CONFIG, not these resolved keys —
+	// so a missing field can only mean deliberately cleared.
 	const dlg = openNewReleaseDialog(app, releaseSettingsWith({ versionKey: 'v', targetDateKey: '', statusKey: 's' }));
 	expect(fieldNames(dlg)).toEqual(['title', 'version', 'status']);
 });

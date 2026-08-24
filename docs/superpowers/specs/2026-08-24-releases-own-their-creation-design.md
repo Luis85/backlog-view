@@ -44,9 +44,16 @@ three the view has an option bound for. **An unconfigured key is never written t
 The dialog's field set is decided **after** the bind described in section 3, not before — the
 order matters and is the one thing about this gesture that reads two ways. On first run the
 options are *unset*, the bind gives them their suggested keys, and all four fields appear. A
-field is absent only when its option is **deliberately cleared**, which `clearablePropKey`
-distinguishes from unset: a reader who has cleared the version property is saying this vault
-does not track versions, and the dialog respects that rather than re-binding it.
+field is absent only when its option is **deliberately cleared**: a reader who has cleared the
+version property is saying this vault does not track versions, and the dialog respects that
+rather than re-binding it.
+
+**That distinction is read from the live `BasesViewConfig`, never from the resolved settings.**
+An option that was cleared and one that was never set both resolve to the same `''` key —
+`optionalProperties.ts` states this outright — so only `config.get(option) !== undefined` tells
+them apart, which is what `adoptCandidates` and `runEstimationInit` already ask. An earlier
+draft of this spec attributed the distinction to `clearablePropKey`; that holds only for an
+option whose default is a REAL value, and these three default to `''`.
 
 So: unset means "not configured yet" and gets configured; cleared means "not wanted" and is left
 alone. Any test of the unbound case must use a *cleared* option, or it asserts the wrong thing.
