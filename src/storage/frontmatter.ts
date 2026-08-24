@@ -13,6 +13,7 @@ import {
 	readString,
 	readTags,
 } from '../domain/noteFields';
+import { refusesLiveMembership } from '../domain/releases';
 import { BacklogSettings, isDoneValue } from '../domain/settings';
 import {
 	optionalKeyFor,
@@ -155,7 +156,11 @@ export async function applyWrites(
 			// twice. Every date batch today is ONE write, so the two are the same thing —
 			// and the outcome below reports what actually landed rather than claiming
 			// nothing did, which is what makes the difference visible if that changes.
-			if (refusesLiveType(settings, write, liveType) || refusesAxis(fm, settings, write, ends)) {
+			if (
+				refusesLiveType(settings, write, liveType) ||
+				refusesLiveMembership(app, write.release, settings) ||
+				refusesAxis(fm, settings, write, ends)
+			) {
 				refused = true;
 				return;
 			}
@@ -229,6 +234,7 @@ function applyInto(
 	const leaving = settings.stateKey ? readString(ownValue(fm, settings.stateKey)) : null;
 	applyHierarchy(app, fm, settings, write);
 	applyIteration(app, fm, settings, write);
+	applyRelease(app, fm, settings, write);
 	// The stateKey may be unset (progress tracking off) — never write to an empty key.
 	if (write.removeStateKey && settings.stateKey) delete fm[settings.stateKey];
 	else if (write.state !== undefined && settings.stateKey) setOwn(fm, settings.stateKey, write.state);
@@ -285,6 +291,17 @@ function applyIteration(app: App, fm: Record<string, unknown>, settings: Backlog
 	if (write.iteration === undefined || !settings.iterationKey) return;
 	if (write.iteration === null) delete fm[settings.iterationKey];
 	else setOwn(fm, settings.iterationKey, wikilinkTo(app, write.iteration, write.file.path));
+}
+
+/**
+ * The release link — the iteration link's own rule ({@link applyIteration}), one property
+ * later: path-aware `wikilinkTo` from the editing note's own path, never a key no property
+ * names, and `null` removes it rather than blanking it.
+ */
+function applyRelease(app: App, fm: Record<string, unknown>, settings: BacklogSettings, write: ItemWrite): void {
+	if (write.release === undefined || !settings.releaseKey) return;
+	if (write.release === null) delete fm[settings.releaseKey];
+	else setOwn(fm, settings.releaseKey, wikilinkTo(app, write.release, write.file.path));
 }
 
 /**
@@ -512,6 +529,17 @@ function narrowReadings(readings: StatedEnds, ends: PlacementEnd[]): StatedEnds 
  * `saveIteration` re-reads the model rather than the note, which is authorization at plan
  * time — exactly what this function exists to stop trusting.
  *
+ * The release membership is on that list for the same reason and not by being near it:
+ * `canSetRelease` refuses a marker and a catalog note, so a membership landed on one is
+ * offered by no control either, while `membershipTarget` (`domain/releases.ts`) goes on
+ * reporting the note as an unresolved membership for as long as it sits there. This
+ * function holds a type NAME and no item, so `inPlan` is not a question it can ask: the
+ * catalog TYPES are refused inside `mayHoldField`, and the one question a name cannot
+ * reach at all — what the TARGET is now — is `refusesLiveMembership`
+ * (`domain/releases.ts`), called beside this one at the same boundary. All were review
+ * findings on one branch (Codex, PR #201). The carrier's LADDER is deliberately not asked
+ * at this boundary: it is a model decision the vault cannot answer, see that function.
+ *
  * The whole batch is refused, loudly, exactly as a stale date batch is — this is a
  * gesture the user made against a note that is no longer the note they made it against.
  * `mayHoldField` is the rule; what each door does about a refusal is the door's own.
@@ -535,6 +563,7 @@ function refusesLiveType(settings: BacklogSettings, write: ItemWrite, liveType: 
 		['target', write.axis?.target],
 		['iteration', write.iteration],
 		['iterationGoal', write.iterationGoal],
+		['release', write.release],
 	];
 	return carried.some(([field, value]) => stated(value) && !mayHoldField(liveType, field, settings));
 }

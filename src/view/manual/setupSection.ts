@@ -104,6 +104,14 @@ export const SETUP: ManualSection = {
 			],
 		},
 		{
+			term: 'Release',
+			text:
+				'The property that records which release an item ships in. The view reads it as ' +
+				'a link, never a name, so two releases sharing a basename still resolve to the one ' +
+				'that was picked.',
+			keys: ['releaseProperty'],
+		},
+		{
 			term: 'Placing work on the roadmap',
 			text:
 				'The horizon property and its buckets; the start and target date properties the ' +

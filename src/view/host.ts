@@ -614,6 +614,19 @@ export interface BacklogViewHost {
 		ends?: PlacementEnd[],
 	): Promise<boolean>;
 
+	/**
+	 * Plan and apply the release write a release move means — the target's own file,
+	 * or key removal for "no release". The board's rule on this membership: one path
+	 * for every input a release offer will have (the card menu, the keyboard, a drag
+	 * where a view has somewhere to drag to), so no input can reach a release another
+	 * cannot, and every move that lands announces itself once. A re-pick of the
+	 * release the item already holds plans nothing and resolves false, leaving the
+	 * undo slot untouched. Unlike the horizon and board axes, a release is not a
+	 * rendered column in this view, so the announcement names the release directly
+	 * rather than through a drawn column or bucket's label.
+	 */
+	performReleaseMove(item: BacklogItem, target: BacklogItem | null): Promise<boolean>;
+
 	selectItem(item: BacklogItem, scroll?: boolean): void;
 	clearSelection(): void;
 	/** Open the item's note where the view is configured to, honoring the event's mod key. */

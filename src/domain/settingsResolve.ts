@@ -276,7 +276,11 @@ export function resolveSettings(config: BasesViewConfig): BacklogSettings {
 	// of `PROPERTY_TABLE` that nothing checked: a row whose `settingsKey` and hand-written
 	// destination disagreed would have bound the picker to one field and read another.
 	// `deliverableStateKey` and `testStateKey` are resolved here too and then OVERWRITTEN by
-	// the explicit fields below: they are the two optional keys with a fallback of their own.
+	// the explicit fields below: both carry a fallback ladder of their own
+	// (`resolveSecondaryWorkflow`). Two exceptions, and `releaseKey` is deliberately not a
+	// third — its default is '', so `clearablePropKey` and this loop's `propKey` return the
+	// same value for every input, and a line for it would buy nothing but a name in this
+	// paragraph.
 	const keyEntries = OPTIONAL_PROPERTIES.map((p) => [p.settingsKey, propKey(p.option, fallback[p.settingsKey])]);
 	const optionalKeys = Object.fromEntries(keyEntries) as Pick<BacklogSettings, OptionalSettingsKey>;
 	const tagsKey = (): string => {

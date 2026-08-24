@@ -1,8 +1,8 @@
-import { App } from 'obsidian';
+import { App, TFile } from 'obsidian';
 import { BacklogItem, BacklogModel, inPlan } from './model';
 import { ReleaseSettings } from './releaseOptions';
 import { CivilDate, FieldReading, linkpathFromRawValue, ownValue, readDate, readString } from './noteFields';
-import { isMarkerType } from './itemTypes';
+import { isMarkerType, isReleaseType } from './itemTypes';
 
 /**
  * A figure with THREE answers, not two. `FieldReading` in `noteFields.ts` separates a
@@ -224,6 +224,52 @@ export function releaseIndex(app: App, model: BacklogModel, settings: ReleaseSet
  */
 const UNRESOLVED = Symbol('unresolved membership');
 
+/** What the live read below needs — one field `BacklogSettings` also spells. */
+interface LiveKeys {
+	typeKey: string;
+}
+
+/**
+ * The type a note states RIGHT NOW, off the metadata cache rather than off the model —
+ * for a note the caller has not opened.
+ */
+function liveTypeOf(app: App, file: TFile, keys: LiveKeys): string | null {
+	return readString(ownValue(app.metadataCache.getFileCache(file)?.frontmatter, keys.typeKey));
+}
+
+/**
+ * Whether a membership write names a TARGET the vault no longer calls a release. A plan
+ * carries the `TFile` its picker was built from, and nothing between there and the write
+ * asks what that note is now — retype it and the value spells a link to a note that is no
+ * longer a release, this reader's own extension 1b, reported as an unresolved membership.
+ * Found by review (Codex, PR #201): authorization at plan time is not authorization at
+ * write time. A REMOVAL asks nothing — there is no target to be wrong about, and taking
+ * the key off a note that may not hold it is the one gesture that must always be allowed.
+ *
+ * **The CARRIER is deliberately not asked here, and the guarantee is narrowed to say so.**
+ * A live walk up the carrier's parent chain shipped beside this and was removed on
+ * 2026-08-24: which ladder an item is on is a MODEL decision — `buildModel` chains
+ * `ladderFor` off the parent **as loaded** — and the vault cannot answer it, because the
+ * writer cannot see the Base's result set. With "Show parents outside the filter" off, a
+ * returned `Task` whose `Test suite` parent the Base excluded has no parent in the model,
+ * lands on the PLAN ladder, and is offered `Set release` correctly; the walk followed that
+ * excluded parent through the vault anyway and refused the write the screen had just
+ * offered, with nothing stale about it. What a type NAME can answer is still asked, by
+ * `mayHoldField` through `refusesLiveType` (`storage/frontmatter.ts`) — a carrier retyped
+ * to a marker or to a catalog rung. What is left uncovered is the reparent of a `Task` (or
+ * a typeless note) under a catalog note between the pick and the write, recorded in
+ * `docs/issues/A carrier reparented into the catalog keeps its release.md`.
+ *
+ * What is NOT asked here either is whether the target left the BASE: that is a question
+ * about the write gate's contract rather than about the vault, it is shared with
+ * `Set iteration`, and it is recorded in `docs/issues/A stale release or iteration target
+ * can still be committed.md`.
+ */
+export function refusesLiveMembership(app: App, target: TFile | null | undefined, keys: LiveKeys): boolean {
+	if (!target) return false;
+	return !isReleaseType(liveTypeOf(app, target, keys));
+}
+
 /**
  * Which release this item names: a path, {@link UNRESOLVED}, or null for "names none".
  *
@@ -276,9 +322,20 @@ function membershipTarget(
 		if (raw.length === 0) return null;
 		if (raw.length > 1) return UNRESOLVED;
 	}
+	// A link is TEXT. `readString` coerces a number or a boolean to its string form, which
+	// is wider than any other reader of a link-shaped key: `resolveParent` refuses a
+	// non-string outright and so does `readLinkList`, which is what fills `releaseEntry`.
+	// Left coerced, `release: 2.4` counted as a membership here while the menu saw none —
+	// the two-ends disagreement extension 1f forbids, reached through the VALUE's type
+	// rather than through its cardinality (Codex, PR #201). Refused rather than made
+	// tolerant at the other end: a bare `2.4` is a spelling Obsidian resolves and a YAML
+	// number is not one, and reporting it repairs from the menu, where a silent membership
+	// could not be seen at all.
+	const scalar: unknown = Array.isArray(raw) ? raw[0] : raw;
+	if (typeof scalar !== 'string') return UNRESOLVED;
 	// `readString` trims and answers null for a blank string, so this one test covers the
 	// empty value 3b names as well as the shapes no reader will guess at.
-	const text = readString(raw);
+	const text = readString(scalar);
 	if (text === null) return UNRESOLVED;
 	if (!inPlan(item) || isMarkerType(item.typeName)) return UNRESOLVED;
 	const file = app.metadataCache.getFirstLinkpathDest(linkpathFromRawValue(text), item.file.path);

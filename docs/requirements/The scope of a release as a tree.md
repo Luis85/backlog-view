@@ -56,6 +56,14 @@ note assumed and `## Where it lives` explains it cannot be.
   remove the key to clear it, so a second release assigned would silently discard the first,
   and one removal would discard them all. A list-preserving membership is a different feature
   with a different write shape; it is not this one wearing a tolerant reader.
+- **1d — the property holds a value that is not text**, a YAML number (`release: 2.4`) or a
+  boolean. It is reported as unresolved, exactly as 1b: a link is text, and `resolveParent` and
+  `readLinkList` — the reader that fills the row's own entry, and so the `Set release`
+  checkmark — both refuse a non-string outright. Coerced to its string form here instead, one
+  end counted a membership the menu could not see, which is the disagreement
+  [[Setting an item's release]] 1f forbids. Reported rather than tolerated at both ends: a bare
+  `2.4` is a spelling Obsidian resolves and a YAML number is not one, and a reported value can
+  be repaired from the menu, where a silent membership cannot be seen at all. (Codex, PR #201.)
 - **2a — a member's ancestor is missing from the results entirely.** The member is drawn at the
   top level rather than hidden, the same answer the backlog gives an orphan.
 - **3a — an ancestor drawn as context is itself in another release.** It is still context here:
@@ -74,6 +82,8 @@ note assumed and `## Where it lives` explains it cannot be.
 - An item whose membership names a note that is not a release is reported, not dropped.
 - An item whose membership property holds two values is reported as unresolved and counts
   towards no release's member total.
+- An item whose membership property holds a YAML number is reported as unresolved, and the
+  menu offers it no checkmark — the two ends agree that it is not a membership.
 - With the membership property unconfigured, no tree is drawn and the empty state names the
   option.
 - Drawing the scope plans no write.

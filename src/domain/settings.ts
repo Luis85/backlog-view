@@ -208,6 +208,17 @@ export interface BacklogSettings extends ItemHandling {
 	 */
 	iterationGoalKey: string;
 	/**
+	 * Frontmatter key holding the release an item ships in, or '' when no release
+	 * property is named. The value is a LINK to the `Release` note, the iteration key's
+	 * own shape: never a name, since two releases may share a basename.
+	 *
+	 * Never backfilled, for `iterationGoalKey`'s reason arrived at differently: an empty
+	 * value here is not an empty slot but an UNRESOLVED membership (`membershipTarget`,
+	 * `domain/releases.ts`), so a stub on every note would report the whole backlog as
+	 * broken on the release index.
+	 */
+	releaseKey: string;
+	/**
 	 * Which PRODUCT states the iteration board reads as its Open column, and which as its
 	 * Resolved one; everything else is In Progress. Two lists rather than a second
 	 * workflow, which is this feature's central decision: an iteration board narrows the
@@ -359,6 +370,7 @@ export function defaultSettings(): BacklogSettings {
 		iterationsOnTimeline: true,
 		iterationBars: false,
 		iterationGoalKey: '',
+		releaseKey: '',
 		iterationOpenStates: [],
 		iterationResolvedStates: [],
 		iterationLengthDays: DEFAULT_ITERATION_DAYS,

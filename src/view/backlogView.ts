@@ -573,6 +573,10 @@ export class ProductBacklogView extends ViewStateSurface implements BacklogViewH
 		return this.cardMoves.performResourceMove(item, name, when);
 	}
 
+	performReleaseMove(item: BacklogItem, target: BacklogItem | null): Promise<boolean> {
+		return this.cardMoves.performReleaseMove(item, target);
+	}
+
 	performScheduleMove(
 		item: BacklogItem,
 		plan: SchedulePlan,

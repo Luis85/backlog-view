@@ -13,7 +13,15 @@ import {
 	computeTestStateWrites,
 	ItemWrite,
 } from '../../domain/writePlan';
-import { addAssigneeItems, addIterationItems, addPriorityItems, addRiskItems, canSetIteration } from './labels';
+import {
+	addAssigneeItems,
+	addIterationItems,
+	addPriorityItems,
+	addReleaseItems,
+	addRiskItems,
+	canSetIteration,
+	canSetRelease,
+} from './labels';
 import {
 	BoardModel,
 	bucketOf,
@@ -160,6 +168,10 @@ function addEditableSections(host: BacklogViewHost, model: BacklogModel, menu: M
 	// catalog member, and nothing to do. The fifth is the `editable` gate this whole
 	// section sits behind — a context row is never a write target.
 	if (canSetIteration(host, item)) addSetIterationMenu(host, menu, item);
+	// Its own four refusals again, stated at `canSetRelease` rather than here — and one of
+	// them borrowed from the READER, so the menu offers a membership exactly where
+	// `membershipTarget` would accept one.
+	if (canSetRelease(host, item)) addSetReleaseMenu(host, menu, item);
 	// Per axis, and absent rather than inert when one is not configured — the state
 	// chip's own rule. `canPlaceHorizon` rather than `hasHorizonAxis` for the reason
 	// `canSchedule` is asked below: the two agree for work and diverge for a release,
@@ -711,6 +723,18 @@ function addSetIterationMenu(host: BacklogViewHost, menu: Menu, item: BacklogIte
 	menu.addItem((mi) => {
 		mi.setTitle(t('menu.setIteration')).setIcon('calendar-clock');
 		addIterationItems(host, submenuOf(mi), item);
+	});
+}
+
+/**
+ * `Set release` — the memberships the base holds, with the foot that takes one off. The
+ * picks themselves go through `host.performReleaseMove`, the one method every input to
+ * that move lands on; this file decides what a row is offered.
+ */
+function addSetReleaseMenu(host: BacklogViewHost, menu: Menu, item: BacklogItem): void {
+	menu.addItem((mi) => {
+		mi.setTitle(t('menu.setRelease')).setIcon('package');
+		addReleaseItems(host, submenuOf(mi), item);
 	});
 }
 

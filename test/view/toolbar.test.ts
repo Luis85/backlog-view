@@ -58,6 +58,7 @@ describe('toolbar backfill', () => {
 			targetProperty: 'note.due',
 			riskProperty: 'note.risk',
 			dependsOnProperty: 'note.dependsOn',
+			releaseProperty: 'note.release',
 		});
 		// deliverableStateProperty is NOT bound: it now suggests the same key `status`
 		// does, `state` is declared first and claims it, and adoptableProperties'
@@ -90,6 +91,12 @@ describe('toolbar backfill', () => {
 			priority: '',
 			assignee: '',
 			iteration: '',
+			// No `release` key, and this is the whole assertion rather than an omission:
+			// `toEqual` names every key the note may carry. ✨ adopts the release property
+			// like every other unclaimed one, but it never STUBS it — a present-but-blank
+			// value reads as an unresolved membership (`membershipTarget`,
+			// `domain/releases.ts`), so a stub would report every work item in the vault as
+			// broken on the release index.
 		});
 		expect(view.settings.stateKey).toBe('status');
 		expect(

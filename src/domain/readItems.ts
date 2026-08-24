@@ -143,6 +143,28 @@ export interface RawItem {
 	 */
 	iterationEntry: LinkEntry | null;
 	/**
+	 * The release this note names, read the way `iterationEntry` is — the first link, or
+	 * null where the key is unbound or the note carries nothing under it. Parsed here
+	 * rather than at plan time so the planner can compare by PATH: two spellings of one
+	 * release note are one release.
+	 */
+	releaseEntry: LinkEntry | null;
+	/**
+	 * Whether the note names MORE than one release — cardinality, never a second reading of
+	 * which release it is in. `membershipTarget` (`releases.ts`) refuses a two-valued key
+	 * outright ([[The scope of a release as a tree]] 1c: membership is one value), so the
+	 * planner has to be able to tell `[R]` from `[R, E]`: they collapse to one
+	 * `releaseEntry` and only the second is a note the reader needs the menu to repair.
+	 *
+	 * Counted off the RAW property, which is the same thing `membershipTarget` counts —
+	 * its SLOTS. `releaseEntry`'s own reader drops a blank entry and a non-string one
+	 * before returning, so counting parsed entries made `[R, '']` a settled membership
+	 * here and an unresolved one there: the same two-ends disagreement, one layer down
+	 * from where it was first closed. A ONE-element list is a plain membership at both
+	 * ends — `readString` unwraps it — so only a length above one is multiple.
+	 */
+	releaseMultiple: boolean;
+	/**
 	 * Which configured optional keys the note CARRIES — presence, not value, and the
 	 * two are different questions here: an empty horizon reads as absent (untriaged)
 	 * while the key is still on the note. Removal actions offer themselves on presence,
@@ -182,6 +204,18 @@ export function createItems(app: App, entries: BasesEntry[], settings: BacklogSe
 	// of the ancestors themselves is optional.
 	if (settings.showOutsideParents) loadOutsideParents(app, store, parents, settings);
 	return store;
+}
+
+/**
+ * How many SLOTS a property holds, asked of the RAW frontmatter value — the same count
+ * `membershipTarget` (`releases.ts`) takes of a membership, and the reason it is taken
+ * here rather than off the parsed entries beside it: `readLinkList` drops a blank slot and
+ * any slot that is not a string before returning, so `release: [R, '']` is ONE entry there
+ * and two values in the reader. A list of one is not multiple at either end — `readString`
+ * unwraps it — so only a length above one answers true.
+ */
+function namesMultiple(raw: unknown): boolean {
+	return Array.isArray(raw) && raw.length > 1;
 }
 
 /**
@@ -243,6 +277,10 @@ function addItem(
 	// is what will collect them here, at this gate, so the roster comes from the base's
 	// own results without a second read path into the vault.
 	if (isResourceType(typeName)) return null;
+	// Read as a LIST rather than through `readFirstLinkEntry`, because the release is the
+	// one such field whose CARDINALITY is a fact about the note: `membershipTarget` refuses
+	// two values, so the planner needs `[R, E]` told from `[R]`.
+	const release = readLinkList(app, file, cache, settings.releaseKey);
 	// Every field this note can answer for itself, and no others: the ten that used to
 	// be initialised here as placeholders now belong to the phases that compute them.
 	const item: RawItem = {
@@ -273,7 +311,9 @@ function addItem(
 		assigneeValue: readLabel(settings.assigneeKey, fm),
 		iterationGoalValue: readLabel(settings.iterationGoalKey, fm),
 		ownKeys: readOwnKeys(fm, settings),
-		iterationEntry: readIterationEntry(app, file, cache, settings.iterationKey),
+		iterationEntry: readFirstLinkEntry(app, file, cache, settings.iterationKey),
+		releaseEntry: release[0] ?? null,
+		releaseMultiple: namesMultiple(ownValue(fm, settings.releaseKey)),
 		// NOT read for a context row, which is the same test `outsideFilter` is made of
 		// two lines up. An excluded note may be NAMED by a result and may never do the
 		// naming, and until now that rule was kept only downstream, by `declaredEdges`
@@ -328,12 +368,12 @@ function divertAbsence(
 }
 
 /**
- * The iteration a note declares, gated on the key being configured — out of line so
- * `addItem` stays under its complexity budget. An item is in ONE iteration: taking [0]
- * is deliberate, since a list-valued key is a note the user hand-edited, and its first
- * entry is the honest reading rather than an error.
+ * One `LinkEntry`-shaped field read off a note, gated on its key being configured — out
+ * of line so `addItem` stays under its complexity budget, and shared by every such field
+ * (today: iteration, release) rather than one copy per field. An unconfigured key reads
+ * as absence; otherwise, the first link the note declares, or nothing.
  */
-function readIterationEntry(app: App, file: TFile, cache: CachedMetadata | null, key: string): LinkEntry | null {
+function readFirstLinkEntry(app: App, file: TFile, cache: CachedMetadata | null, key: string): LinkEntry | null {
 	return key ? (readLinkList(app, file, cache, key)[0] ?? null) : null;
 }
 

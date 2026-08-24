@@ -67,6 +67,37 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ### Added
 
+- **Work can be put in a release, and taken out again, from the item's own menu.** Right-click
+  a story — or press the menu key on it — and `Set release` lists every release the base
+  holds, with **No release** at the foot to take the item back out. The pick writes one
+  property and nothing else: not the parent, not the rank, not the state, and no dates, so
+  joining a release commits the item to a version without scheduling it. It is one batch
+  through the same gate as every other write, so one undo takes it back, and the release view
+  then shows the item under that release's scope. The release the item is already in is
+  ticked, and picking it again writes nothing rather than spending your undo. Two releases
+  whose notes share a name are listed by their path, so you can tell which one you are
+  picking, and the value written is a link to that note rather than its name. `Set release` is
+  offered on work only — never on a milestone, an iteration or another release — and it is
+  absent entirely, rather than present and inert, until the property that holds a membership
+  is named. **There is no drag yet**: the release view is read-only, so there is nowhere to
+  drop an item.
+
+  One thing to know when you configure it: **the property that holds a release membership is a
+  view option, so the backlog view and the release view each name their own.** Both suggest
+  the same name, so a vault that accepts the suggestion in both is already consistent. Bind
+  them to different properties and the release view will not see what the backlog view wrote —
+  every scope empty, nothing reported as unresolved, and **no warning**, because neither view
+  may read the other's configuration and the result is indistinguishable from a vault where
+  nothing has been assigned yet. If your scopes are empty after assigning work, check that the
+  two options name the same property.
+
+  Also: **✨ does not create the release property on your notes**, unlike most of them, and
+  like the prerequisite list. An empty value there would read as an item pointing at a release that cannot be
+  found, so the whole backlog would be reported as unresolved on the release screen. The cost
+  is that Obsidian's property picker cannot offer the property until at least one note carries
+  it — so in the release view's own options, pick the property AFTER the first `Set release`,
+  which is what puts it in the vault.
+
 - **A third Bases view, Release** (`product-release`, its own icon in the view picker) —
   every release the base holds as one list, and one release's scope drawn as the tree it
   already is. A row states the release's version, target date, status and how many items

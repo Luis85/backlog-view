@@ -82,6 +82,7 @@ export function getViewOptions(config: BasesViewConfig): BasesAllOptions[] {
 		progressGroup(settings),
 		deliverablesGroup(),
 		iterationsGroup(settings),
+		releaseGroup(),
 		testManagementGroup(),
 		roadmapGroup(),
 		riskGroup(),
@@ -377,6 +378,21 @@ function testManagementGroup(): BasesAllOptions {
 				placeholder: DEFAULT_DONE_VALUES.join(', '),
 			},
 		],
+	};
+}
+
+/**
+ * The release an item ships in — a single membership property, the iteration property's
+ * own shape (`optionalPropertyOption`): a LINK to a `Release` note, never a vocabulary,
+ * so there is no values list beside it the way a state or a horizon has one. Its own
+ * group rather than a row inside Iterations: the two are unrelated commitments, and nothing
+ * else lives here yet — what moves an item between releases is a later task's.
+ */
+function releaseGroup(): BasesAllOptions {
+	return {
+		type: 'group',
+		displayName: t('option.group.release'),
+		items: [optionalPropertyOption('release', t('option.releaseProperty'))],
 	};
 }
 

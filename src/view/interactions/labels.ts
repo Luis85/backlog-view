@@ -1,8 +1,8 @@
 import { Menu } from 'obsidian';
 import { t } from '../../i18n/t';
 import { BacklogViewHost } from '../host';
-import { inCatalog, isIterationType, isMarkerType } from '../../domain/itemTypes';
-import { BacklogItem } from '../../domain/model';
+import { inCatalog, isIterationType, isMarkerType, mayHoldField } from '../../domain/itemTypes';
+import { BacklogItem, inPlan } from '../../domain/model';
 import { sameValue } from '../../domain/noteFields';
 import { assignableLanes } from '../../domain/roadmap';
 import { mergedValues } from '../../domain/settings';
@@ -11,6 +11,7 @@ import {
 	computeAssigneeWrites,
 	computeIterationWrites,
 	computePriorityWrites,
+	computeReleaseWrites,
 	computeRiskWrites,
 	ItemWrite,
 } from '../../domain/writePlan';
@@ -298,34 +299,29 @@ function promptNewAssignee(host: BacklogViewHost, item: BacklogItem): void {
 }
 
 /**
- * One iteration a row may be put into: the NOTE, and the name the entry wears. The two
- * are separate fields because they can differ — see {@link iterationTargets} — and the
- * value behind an entry is always the note, never its label.
+ * One NOTE a row may be put into: the note, and the name the entry wears. The two are
+ * separate fields because they can differ — see {@link namedTargets} — and the value
+ * behind an entry is always the note, never its label.
  */
-interface IterationTarget {
+interface NoteTarget {
 	item: BacklogItem;
 	label: string;
 }
 
 /**
- * Every `Iteration` this row may join, named apart only where two of them collide.
+ * Candidates, named apart only where two of them collide: the basename, and the whole
+ * path (minus the extension) for the notes that share one.
  *
- * Read off `model.byPath` and never off the results or the rendered forest: a focus set
- * on another projection re-roots what is DRAWN, and an iteration hangs from nothing, so
- * a top-level one would go unofferable exactly when a reader had narrowed the tree to
- * the rung they were assigning. Context rows are excluded for the ordinary reason — an
- * excluded note is not this base's vocabulary — while the row's OWN refusals live in
- * {@link canSetIteration}.
- *
- * The label is the basename, and the whole path (minus the extension) for the notes that
- * share one. Only where they collide: qualifying every entry to separate a rare pair
- * makes the ordinary case unreadable, and the write is unaffected either way — the plan
+ * Only where they collide, because qualifying every entry to separate a rare pair makes
+ * the ordinary case unreadable — and the write is unaffected either way, since the plan
  * carries the FILE and `wikilinkTo` spells the link from the editing note's own path.
+ *
+ * One function for both pickers rather than the same lines twice. `Set iteration` and
+ * `Set release` both name NOTES, so they face one question — which of these two is the
+ * reader picking — and two copies of the answer would be one edit from two spellings of
+ * it. What each picker still owns is its own POPULATION, above.
  */
-function iterationTargets(host: BacklogViewHost): IterationTarget[] {
-	const found = [...(host.model?.byPath.values() ?? [])].filter(
-		(candidate) => isIterationType(candidate.typeName) && !candidate.outsideFilter,
-	);
+function namedTargets(found: BacklogItem[]): NoteTarget[] {
 	const seen = new Map<string, number>();
 	for (const target of found) seen.set(target.title, (seen.get(target.title) ?? 0) + 1);
 	return found.map((target) => ({
@@ -335,6 +331,35 @@ function iterationTargets(host: BacklogViewHost): IterationTarget[] {
 				? target.file.path.slice(0, -(target.file.extension.length + 1))
 				: target.title,
 	}));
+}
+
+/**
+ * Every `Iteration` this row may join.
+ *
+ * Read off `model.byPath` and never off the results or the rendered forest: a focus set
+ * on another projection re-roots what is DRAWN, and an iteration hangs from nothing, so
+ * a top-level one would go unofferable exactly when a reader had narrowed the tree to
+ * the rung they were assigning. Context rows are excluded for the ordinary reason — an
+ * excluded note is not this base's vocabulary — while the row's OWN refusals live in
+ * {@link canSetIteration}.
+ */
+function iterationTargets(host: BacklogViewHost): NoteTarget[] {
+	return namedTargets(
+		[...(host.model?.byPath.values() ?? [])].filter(
+			(candidate) => isIterationType(candidate.typeName) && !candidate.outsideFilter,
+		),
+	);
+}
+
+/**
+ * Every `Release` this row may be put in — `model.releases`, which is that same read off
+ * `byPath` rather than off the rendered forest, with the context rows already dropped.
+ * So "never offered for a release the Base excluded" holds by construction here rather
+ * than by a filter this file would have to remember; the row's OWN refusals are in
+ * {@link canSetRelease}.
+ */
+function releaseTargets(host: BacklogViewHost): NoteTarget[] {
+	return namedTargets(host.model?.releases ?? []);
 }
 
 /**
@@ -422,6 +447,93 @@ export function addIterationItems(host: BacklogViewHost, menu: Menu, item: Backl
 		si.setTitle(t('menu.clearIteration'))
 			.setIcon('eraser')
 			.onClick(() => void host.applySafely(writes(null)));
+		if (writes(null).length === 0) si.setChecked(true);
+	});
+}
+
+/**
+ * Whether this row is offered `Set release` at all — {@link canSetIteration}'s four
+ * refusals asked again, with one of them borrowed rather than restated.
+ *
+ * **The type half is the READER's own pair**, `inPlan` and `mayHoldField(…, 'release', …)`
+ * — exactly what `membershipTarget` (`domain/releases.ts`) refuses a carrier for, so no
+ * pick here can write a membership the release view will then report as unresolved. The
+ * two are not redundant, and what each buys is what the other cannot see: `inPlan` reads
+ * the LADDER, so it refuses a `Task` under a test suite that no type NAME could answer,
+ * while the field rule refuses the `Milestone` and the `Release` that `inPlan` admits.
+ * They overlap on the catalog TYPES, deliberately — the field rule carries that half
+ * because `refusesLiveType` (`storage/frontmatter.ts`) asks it with a name and no item.
+ * The LADDER half reaches no further than this pick: `refusesLiveMembership`
+ * (`domain/releases.ts`) asks the TARGET alone, because which ladder a row is on is a model
+ * decision the vault cannot re-derive — a reparent between this pick and the write is a
+ * race nothing at the write boundary catches, recorded in `docs/issues/A carrier
+ * reparented into the catalog keeps its release.md`.
+ * Written as one of them alone, a hand-edit and a menu pick would disagree about what may
+ * hold a release, which is the one thing the reader's refusals exist to prevent.
+ *
+ * **The KEY gate follows from none of the others**, exactly as it does for the iteration:
+ * a vault can hold `Release` notes with the property unnamed, so the target list is
+ * non-empty and every other refusal passes, while `computeReleaseWrites` plans nothing for
+ * any pick. It cannot be had from the plan's emptiness either — an empty plan is also what
+ * a correct no-op pick returns, so hiding the entries whose plan is empty would hide the
+ * release the item is already in.
+ *
+ * **A membership, asked of KEY PRESENCE** — which is where this gate and `canSetIteration`
+ * deliberately differ, so read both before making them match. That one asks the parsed
+ * ENTRY because ✨ Assign missing properties stubs `iteration: ''` onto every eligible note,
+ * so presence there would put a `None`-only menu on every row in a vault with no sprint yet.
+ * `neverStubbed` (`domain/writePlan.ts`) refuses a release stub for its own reason — an
+ * empty membership is not an empty slot — so presence here is true only where somebody
+ * WROTE the key, and it is the same question `computeReleaseWrites` asks to plan the
+ * removal. Asking the entry instead left the corner `canSetIteration` accepts: a value the
+ * reader refuses (`release: ''`, `release: 2.4`, an object) in a base holding no `Release`
+ * note at all was reported as unresolved and offered nothing that could take it off
+ * (Codex, PR #201). The iteration keeps that corner because its stub makes the alternative
+ * worse; the release has no stub, so it costs nothing to close.
+ *
+ * The fifth refusal is the caller's `editable` gate, which withholds every entry that
+ * edits the row's own frontmatter — a context row is never a write target.
+ */
+export function canSetRelease(host: BacklogViewHost, item: BacklogItem): boolean {
+	if (!host.settings.releaseKey) return false;
+	if (!inPlan(item) || !mayHoldField(item.typeName, 'release', host.settings)) return false;
+	return item.ownKeys.release || releaseTargets(host).length > 0;
+}
+
+/**
+ * Set release's entries — every release in the model, then the way back out of one.
+ *
+ * `addIterationItems`' shape with its narrowing removed rather than copied: that menu asks
+ * the plan's LINK component alone because a re-pick there re-syncs the sprint's dates, and
+ * this plan has ONE component (`computeReleaseWrites` copies no timeframe), so the
+ * register's unnarrowed rule applies — an entry is checked exactly when picking it would
+ * write nothing. Asked of the PLAN either way, never by a comparison written beside the
+ * plan and expected to agree with it.
+ *
+ * `No release` is unconditional, always the last entry, and checked exactly like every
+ * other one — when `computeReleaseWrites(item, null, …)` is empty, which is precisely a
+ * note with no membership key at all.
+ *
+ * Every pick lands on `performReleaseMove` and none of them plans a write beside it: one
+ * move, and this menu plus the keyboard that opens it are two INPUTS to it rather than two
+ * ideas of what the move is. The checkmark still asks the planner directly, and must — an
+ * entry is checked exactly when picking it would write nothing, which is a question about
+ * the plan and not about who applies it.
+ */
+export function addReleaseItems(host: BacklogViewHost, menu: Menu, item: BacklogItem): void {
+	const writes = (target: BacklogItem | null): ItemWrite[] => computeReleaseWrites(item, target, host.settings);
+	const targets = releaseTargets(host);
+	for (const target of targets) {
+		menu.addItem((si) => {
+			si.setTitle(target.label).onClick(() => void host.performReleaseMove(item, target.item));
+			if (writes(target.item).length === 0) si.setChecked(true);
+		});
+	}
+	if (targets.length > 0) menu.addSeparator();
+	menu.addItem((si) => {
+		si.setTitle(t('menu.clearRelease'))
+			.setIcon('eraser')
+			.onClick(() => void host.performReleaseMove(item, null));
 		if (writes(null).length === 0) si.setChecked(true);
 	});
 }

@@ -242,6 +242,30 @@ describe('computeInitWrites — the iteration goal stub', () => {
 	});
 });
 
+describe('computeInitWrites — the release membership stub', () => {
+	it('never stubs the release key onto any note', () => {
+		// An empty release is not an empty slot: `membershipTarget` (`domain/releases.ts`)
+		// reads a present-but-blank value as an UNRESOLVED membership rather than as "names
+		// none", so a stub here would have ✨ report every work item in the vault as a broken
+		// membership on the release index — the screen the property exists to populate.
+		// Driven over one of each level plus a Release itself, like the goal's exclusion above.
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('Feature.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Epic' });
+		vault.addFile('Item.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: 'Feature' });
+		vault.addFile('Job.md', { frontmatter: { type: 'Task', order: 10 }, parentLink: 'Item' });
+		vault.addFile('1.0.md', { frontmatter: { type: 'Release', order: 10 } });
+		const settings = settingsWith({ releaseKey: 'release', stateKey: 'status' });
+		const model = buildModel(vault.app, vault.entries(), settings);
+
+		const writes = computeInitWrites(model, settings);
+		for (const write of writes) {
+			expect(write.stubs ?? []).not.toContain('release');
+			expect(stubKeys(settings, write.stubs)).not.toContain('release');
+		}
+	});
+});
+
 describe('computeRiskWrites', () => {
 	const risky = { ...settings, riskKey: 'risk' };
 

@@ -741,6 +741,7 @@ export const en = {
 	'option.group.progress': 'Progress',
 	'option.group.deliverables': 'Deliverables',
 	'option.group.iterations': 'Iterations',
+	'option.group.release': 'Release',
 	'option.group.testing': 'Test management',
 	'option.group.roadmap': 'Roadmap',
 	'option.group.risk': 'Risk management',
@@ -792,6 +793,8 @@ export const en = {
 	'option.iterationLengthDays': 'Default iteration length in days',
 	'option.iterationsOnTimeline': 'Show iterations on the roadmap timeline',
 	'option.iterationBars': 'Draw iterations as bars',
+
+	'option.releaseProperty': 'Release property',
 
 	'option.testStateProperty': 'Test state property',
 	'option.testStateValues': 'Test workflow states (in order)',
@@ -869,6 +872,7 @@ export const en = {
 	'property.testState': 'test state',
 	'property.iteration': 'iteration',
 	'property.iterationGoal': 'iteration goal',
+	'property.release': 'release',
 
 	/**
 	 * The menus — the row and card menu in `view/interactions/menu.ts`, the shelf's picks
@@ -918,6 +922,7 @@ export const en = {
 	'menu.setPriority': 'Set priority',
 	'menu.setAssignee': 'Set assignee',
 	'menu.setIteration': 'Set iteration',
+	'menu.setRelease': 'Set release',
 	'menu.setHorizon': 'Set horizon',
 	'menu.setType': 'Set type',
 	'menu.editTags': 'Edit tags',
@@ -977,6 +982,13 @@ export const en = {
 	'menu.clearAssignee': 'Clear assignee',
 	/** Set iteration's own clear, which reads as an absence rather than as an act. */
 	'menu.clearIteration': 'None',
+	/**
+	 * Set release's own, which reads as one too — and names the property, where the
+	 * iteration's bare `None` sits under a submenu that has just said which it is. The
+	 * release picker's own entries can be qualified with a folder, so a bare `None`
+	 * beneath two paths reads as a third path rather than as an absence.
+	 */
+	'menu.clearRelease': 'No release',
 	'menu.newAssignee': 'New assignee...',
 	'menu.assignTitle': 'Assign item',
 	'menu.assignField': 'Assignee',
@@ -1111,6 +1123,14 @@ export const en = {
 	 */
 	'move.announced': 'Moved "{title}" from {from} to {to}',
 	'move.announcedLanding': 'Moved "{title}" from {from} to {to}, {landing}',
+
+	/**
+	 * The release move's own pair — there is no on-screen column or bucket to translate
+	 * a release through (a release is not a rendered axis in this view), so the sentence
+	 * names the release directly rather than through `move.announced`'s from/to shape.
+	 */
+	'move.releaseAnnounced': 'Added "{title}" to {name}',
+	'move.releaseCleared': 'Removed "{title}" from its release',
 
 	/** The bar's dependency connector. `{title}` is the note's own title. */
 	'link.drawDependency': 'Draw a dependency from {title}',

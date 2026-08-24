@@ -129,6 +129,12 @@ export interface ItemWrite {
 	 * function of its own. `undefined` leaves the key alone.
 	 */
 	iterationGoal?: string | null;
+	/**
+	 * The release this item ships in — a FILE, never a serialized string, and
+	 * **null to remove the key**. The writer spells the link itself, path-aware like the
+	 * parent's and the iteration's (`wikilinkTo`). `undefined` leaves the key alone.
+	 */
+	release?: TFile | null;
 }
 
 export interface TagDelta {
@@ -448,6 +454,41 @@ export function computeIterationWrites(item: BacklogItem, target: BacklogItem | 
 }
 
 /**
+ * One item's release membership, planned.
+ *
+ * An unconfigured key plans nothing — absence is a value.
+ *
+ * Emptiness means "this pick would change nothing", because the MENU's checkmark is asked
+ * of this output. A re-pick that agrees returns `[]` rather than a write the applier
+ * happens to no-op, which would spend the undo slot on nothing.
+ *
+ * **No `timeframeOf`, deliberately** — unlike joining an iteration, joining a release
+ * copies nothing else onto the item: not its parent, not its order, not its state, and no
+ * dates. The plan writes the membership key and nothing beside it.
+ */
+export function computeReleaseWrites(item: BacklogItem, target: BacklogItem | null, settings: BacklogSettings): ItemWrite[] {
+	if (!settings.releaseKey) return [];
+	// A None pick is asked of PRESENCE (`ownKeys`), never of the PARSED entry — the split
+	// `computeIterationWrites` states above. A hand-edited `release: ''` reads as no entry
+	// while the key still visibly holds something, so asking the entry would tick the None
+	// checkmark on a note the reader can see is not empty.
+	if (target === null) return item.ownKeys.release ? [{ file: item.file, release: null }] : [];
+	// By PATH, never by the raw text: two spellings of one note are one release, and a
+	// link that resolved to nothing has no path and is therefore never "already there".
+	//
+	// **And by CARDINALITY beside it**, which `releaseEntry` alone cannot answer: it is the
+	// FIRST entry, so a hand-written `release: [R, E]` reads as R while `membershipTarget`
+	// (`releases.ts`) refuses the pair outright — the release view calling the note
+	// unresolved while this plan called a pick of R a no-op, which ticked R as current and
+	// left the note unrepairable from the menu. That is the two-ends disagreement
+	// [[Setting an item's release]] 1f forbids. A pick writes nothing only where the note
+	// already names EXACTLY ONE release and it is the target; every other shape is rewritten
+	// to the one value a membership is.
+	const settled = !item.releaseMultiple && item.releaseEntry?.file?.path === target.file.path;
+	return settled ? [] : [{ file: item.file, release: target.file }];
+}
+
+/**
  * The join a PULL plans: the same link-and-timeframe write above, for the note a board
  * scope names — and nothing at all where there is nothing to join.
  *
@@ -713,6 +754,35 @@ function missingEnd(field: OptionalField, item: BacklogItem): boolean {
 	return !schemaEnds(item.typeName).includes(field);
 }
 
+/**
+ * True for a field this backfill NEVER stubs, whatever note it is looking at — as against
+ * the three carve-outs below, each of which asks something about the item.
+ *
+ * Three returns rather than one condition, because the three reasons are unrelated and
+ * two rules that agree today are still two rules. Extracted out of `missingKeyStubs`'s
+ * loop, mirroring `missingEnd`: three refusals, each with its own distinct reason,
+ * gathered into one predicate rather than written inline three separate times.
+ */
+function neverStubbed(field: OptionalField): boolean {
+	// An empty state or an empty date is a slot on this note the user is invited to fill;
+	// an empty prerequisite list is a claim about a RELATIONSHIP that does not exist, made
+	// on every note at once. It is also exactly the state `Linking two items` requires a
+	// removal never to leave behind, so backfilling one would have ✨ create what a remove
+	// must clean up.
+	if (field === 'dependsOn') return true;
+	// A goal belongs to one type. `✨` stubs an empty key on every note that lacks one,
+	// which is honest for a state or a date and dishonest here: a `goal` on every PBI,
+	// Feature and Task in the vault is a property that means nothing on the note it lands
+	// on.
+	if (field === 'iterationGoal') return true;
+	// An empty release is not an empty slot. `membershipTarget` (`domain/releases.ts`)
+	// reads a present-but-blank value as an UNRESOLVED membership rather than as "names
+	// none", so stubbing one here would have ✨ report every work item in the vault as a
+	// broken membership on the release index — the screen this property exists to populate.
+	if (field === 'release') return true;
+	return false;
+}
+
 function missingKeyStubs(item: BacklogItem, settings: BacklogSettings): OptionalField[] {
 	const stubs: OptionalField[] = [];
 	// The vocabulary NARROWED to what this note's type may hold, before any question about
@@ -746,24 +816,10 @@ function missingKeyStubs(item: BacklogItem, settings: BacklogSettings): Optional
 		// which is the incoherence `hasHorizonAxis` exists to prevent. The other fields
 		// need no such test: a key of '' is exactly what unconfigured means for them.
 		if (field === 'horizon' && !hasHorizonAxis(settings)) continue;
-		// Prerequisites are never stubbed, and this is a second early return rather than
-		// a widening of the one above: the reason is its own. An empty state or an empty
-		// date is a slot on this note the user is invited to fill; an empty prerequisite
-		// list is a claim about a RELATIONSHIP that does not exist, made on every note at
-		// once. It is also exactly the state `Linking two items` requires a removal never
-		// to leave behind, so backfilling one would have ✨ create what a remove must
-		// clean up.
-		if (field === 'dependsOn') continue;
-		// A goal belongs to one type. `✨` stubs an empty key on every note that lacks one,
-		// which is honest for a state or a date — an empty slot the reader is invited to
-		// fill — and dishonest here: a `goal` on every PBI, Feature and Task in the vault is
-		// a property that means nothing on the note it lands on. Its own return rather than a
-		// widening of `dependsOn`'s: that one's reason is that an empty prerequisite list is a
-		// false claim about a relationship. Two rules that agree today are still two rules.
-		if (field === 'iterationGoal') continue;
-		// Joined to the two general refusals rather than given a guard of its own: this loop
-		// was one `if` below its cognitive budget, and a sixth breached it. Every clause here
-		// is a reason not to stub, and `missingEnd` carries its own.
+		if (neverStubbed(field)) continue;
+		// Joined to the two general refusals rather than given a guard of its own — a rule
+		// specific to one field belongs in `neverStubbed` instead. Every clause here is a
+		// reason not to stub, and `missingEnd` carries its own.
 		if (missingEnd(field, item) || optionalKeyFor(settings, field) === '' || item.ownKeys[field]) continue;
 		stubs.push(field);
 	}
