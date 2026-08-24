@@ -60,15 +60,4 @@ describe('the release view names its own keys', () => {
 			'Releases',
 		);
 	});
-
-	it('tells a cleared version property from an untouched one', () => {
-		// The whole of the dialog's field rule rests on this distinction: unset means
-		// "not configured yet" and gets bound, cleared means "not wanted" and is left
-		// alone. `propKey` answers '' to both and cannot express it. This test pins
-		// today's OUTPUT while the mechanism changes underneath — the distinction it
-		// enables is asserted where it is CONSUMED, in later tasks.
-		expect(resolveReleaseSettings(new FakeViewConfig({}) as never).versionKey).toBe('');
-		expect(resolveReleaseSettings(new FakeViewConfig({ versionProperty: '' }) as never).versionKey).toBe('');
-		expect(resolveReleaseSettings(new FakeViewConfig({ versionProperty: 'note.v' }) as never).versionKey).toBe('v');
-	});
 });

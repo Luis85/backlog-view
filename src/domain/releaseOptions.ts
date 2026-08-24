@@ -133,14 +133,13 @@ export function resolveReleaseSettings(config: BasesViewConfig): ReleaseSettings
 		// key nobody bound must read as unconfigured rather than as `release`, or the view
 		// would report a scope from a property the user never named.
 		membershipKey: propKey('membershipProperty', ''),
-		// `clearablePropKey`, not `propKey`: with an empty default the two resolve
-		// identically today (see the test above, which asserts that on purpose), but only
-		// `clearablePropKey` can tell "never set" from "cleared" once a real suggestion
-		// lands here — which Task 6's ✨ needs, and which `propKey` can never express no
-		// matter what default it is given.
-		versionKey: clearablePropKey('versionProperty', ''),
-		targetDateKey: clearablePropKey('targetDateProperty', ''),
-		statusKey: clearablePropKey('releaseStatusProperty', ''),
+		// `propKey`, not `clearablePropKey`: their default is `''`, so the two resolve the
+		// same value for every input — like `releaseKey` in `settingsResolve.ts`, a
+		// `clearablePropKey` switch here would buy nothing but a second name for the same
+		// function.
+		versionKey: propKey('versionProperty', ''),
+		targetDateKey: propKey('targetDateProperty', ''),
+		statusKey: propKey('releaseStatusProperty', ''),
 		// A PATH, not a property key: same reading `resolveFolders` gives every type
 		// folder — trimmed and normalized by `vaultFolder`, clearable because the default
 		// is a real value (`config.get` cannot tell "cleared" from "never set" otherwise).
