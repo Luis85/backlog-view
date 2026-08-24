@@ -27,7 +27,7 @@ offers `Iteration`. One control makes them — the board's scope picker."* Relea
 2. A **releases folder** option on the release view, and the backlog view's `Release`
    type-folder row removed.
 3. The release view's own **✨**, binding its options and backfilling their keys.
-4. `Release` **leaves the backlog tree** — not drawn as a row, not offered as a type.
+4. `Release` **leaves the backlog view** — not drawn as a row on the tree OR either board, not offered as a type.
 5. The read-only invariant **narrowed**, not deleted.
 
 ## 1. The gesture
@@ -129,22 +129,45 @@ rather than as "names none", so a stub would report every work item in the vault
 the release index. `neverStubbed` (`src/domain/writePlan.ts`) refuses it and continues to.
 This view's ✨ backfills a **release note's own** fields — version, target date, status.
 
-## 4. The tree
+## 4. The tree — and, as it turns out, the boards
 
-`Release` leaves the backlog tree two ways, because being offered and being drawn are different
+`Release` leaves the backlog view two ways, because being offered and being drawn are different
 questions:
 
-- **Not drawn.** The tree drops `Release` from its rows, the way `roadmapRows` already drops one
-  before `buildRoadmap` branches. A release in the base's results is no longer a tree row.
 - **Not offered.** `byProjectionType` drops `Release` for the tree as it already does for the
   roadmap, so `New <child>`, `Set type` and the focus picker stop offering it.
+- **Not drawn.** The refusal goes in **`inPlan` (`src/domain/model.ts`)**, one line above the
+  `isIterationType` exclusion that is already there.
 
-The release view becomes the only door onto a release.
+**Why `inPlan` and not `projectionMember`, which is where an earlier draft of this spec put it.**
+`renderForest` (`src/view/render/reconcile.ts`) computes `hasChildren` from a row's non-hidden
+children and recurses *inside the path that drew the row*. So a `Release` hidden by
+`projectionMember` alone takes its entire subtree with it — a work item under a release would
+appear nowhere at all, which is exactly the failure the forest-and-hiding-must-agree rule exists
+to prevent. Measured, not reasoned: `expected [ 'Ship it' ] to deeply equal [ 'Ship it', 'Work' ]`.
+The roadmap's `onThisRoadmap` mechanism does not transfer, because the roadmap renders no nested
+forest.
+
+**The consequence, accepted deliberately: a `Release` leaves both BOARDS as well**, since
+`inPlan` is what they read too. That is wider than "the tree", which is all this spec originally
+said. It is also the more coherent end state: a `Release` is a marker with a dedicated view, and
+`inPlan` already refuses `Iteration` — the other marker with a dedicated control — for that same
+reason. Releases stop being a special case and become what they are.
+
+**Eight existing tests pin the old drawn behaviour** and are retired, not deleted quietly: six in
+`releaseRows.test.ts` (including one named "the board does not move", from the increment that
+first added the type), one in `rendering.test.ts` that joins the `Iteration` exclusion already
+written beside it, and one fixture artefact in `writePlanAxis.test.ts`. Each retirement records
+what it used to assert and why that decision no longer holds.
 
 `byProjectionType`'s comment today explains that a `Release` *stays* offered because it has no
 dedicated door. That paragraph gets rewritten to say the door now exists — the retired
 justification is the part worth recording, and it belongs in the register rather than only in a
 diff.
+
+**Still owed and in scope:** `honouredFocusLevel` guards the roadmap against a stored focus on a
+type it no longer draws. A stored `Release` focus would strand the tree the same way, and gets
+the same guard.
 
 ## 5. The write boundary
 

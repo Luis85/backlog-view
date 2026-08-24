@@ -96,16 +96,40 @@ git commit -m "Give the release view a folder, and a cleared option it can tell 
 
 Two halves of one deliverable — a release is neither drawn nor offered in the backlog view — plus the folder row that has no consumer once both land.
 
-**READ FIRST, this task has a trap.** `projectionMember` (`src/view/projection.ts`) ends `return inPlan;` for the tree, and its own comment says why that matters:
+**The mechanism is settled — an earlier draft of this task got it wrong and a run proved it.**
 
-> `inPlan` … is the same function `projectionForest` builds the plan's forest from, because the forest and the hiding must agree: promoted by one and hidden by the other, a `PBI` parented to an iteration would appear nowhere at all.
+An earlier draft put the refusal in `projectionMember` (`src/view/projection.ts`). That cannot
+work. `renderForest` (`src/view/render/reconcile.ts`) computes `hasChildren` from a row's
+non-hidden children and recurses *inside the path that drew the row*, so a `Release` hidden there
+takes its whole subtree with it — measured, not reasoned:
+`expected [ 'Ship it' ] to deeply equal [ 'Ship it', 'Work' ]`. The roadmap's `onThisRoadmap`
+mechanism does not transfer, because the roadmap renders no nested forest.
 
-So narrowing the hiding alone can orphan rows. The roadmap solves the same problem with `onThisRoadmap`, asked in `projectionMember` — **mirror that mechanism, not that line**, and satisfy yourself that the forest and the hiding still agree. If they cannot be made to agree without a change the spec did not anticipate, STOP and report.
+**The refusal goes in `inPlan` (`src/domain/model.ts`)**, one line above the `isIterationType`
+exclusion already there. Measured on this branch: that line alone makes the tree behave, with
+`projection.ts` untouched.
+
+**Its consequence is accepted by ruling, not by accident: a `Release` leaves both BOARDS too**,
+since `inPlan` is what they read. That is wider than "the tree" and the human ruled for it — a
+`Release` is a marker with a dedicated view, and `inPlan` already refuses `Iteration`, the other
+marker with a dedicated control. See the spec's section 4.
+
+**Eight existing tests pin the old drawn behaviour and must be RETIRED WITH THEIR REASONS, not
+deleted quietly:** six in `test/view/releaseRows.test.ts` (one is named "the board does not move",
+from the increment that first added the type), one in `rendering.test.ts` that joins the
+`Iteration` exclusion written beside it, and one fixture artefact in `writePlanAxis.test.ts`. For
+each, say in the diff what it used to assert and why that decision no longer holds. A test whose
+subject genuinely still matters must be rewritten rather than dropped.
+
+**Also in scope:** `honouredFocusLevel` guards the roadmap against a stored focus on a type it no
+longer draws. A stored `Release` focus would strand the tree the same way — give it the same
+guard.
 
 **Files:**
-- Modify: `src/view/projection.ts` (`projectionMember`, `byProjectionType`)
+- Modify: `src/domain/model.ts` (`inPlan` — the one-line refusal)
+- Modify: `src/view/projection.ts` (`byProjectionType`, and `honouredFocusLevel`'s guard)
 - Modify: `src/domain/viewOptions.ts` (`newItemsGroup` — drop the `Release` row)
-- Test: `test/view/projection.test.ts`, `test/domain/viewOptions.test.ts`, and whichever suite drives tree rows (search `test/view/` for the roadmap's equivalent assertions)
+- Test: `test/domain/viewOptions.test.ts`, `test/view/releaseRows.test.ts`, `test/view/rendering.test.ts`, `test/domain/writePlanAxis.test.ts`, and the new `test/view/releaseTreeExit.test.ts`. NOTE: `test/view/projection.test.ts` does NOT exist and `byProjectionType` is not exported — drive it through a surface that reads it.
 
 **Interfaces:**
 - Consumes: nothing from Task 1.
@@ -147,7 +171,7 @@ Expected: FAIL — a release row is drawn and `Release` is offered.
 
 In `byProjectionType`, add the tree to the narrowing that already drops `Release` for the roadmap. **Rewrite the comment above it** — it currently says a `Release` stays offered *because it has no dedicated door*, and that reason has now been retired. State that the release view owns the gesture, the way the paragraph below it states the iteration scope picker does.
 
-In `projectionMember`, refuse a `Release` for the tree by the mechanism the roadmap uses, keeping the forest and the hiding in agreement.
+In `inPlan` (`src/domain/model.ts`), refuse a `Release`, beside the `isIterationType` exclusion already there. That one line is the whole of the not-drawn half.
 
 In `newItemsGroup` (`src/domain/viewOptions.ts`), drop the `Release` row. `ALL_TYPES` includes `MARKER_TYPES`, so it is generated rather than written out — the exclusion goes where `Resource`'s already does, and gets a sentence saying the release view owns that folder now.
 
