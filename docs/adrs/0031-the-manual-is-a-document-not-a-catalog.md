@@ -47,8 +47,15 @@ behaviour, and two of them false in the first `main` they merged with.
 
 **`src/view/manual/`'s authored prose does not enter the message catalog.** `src/i18n/en.ts`
 holds sentences the plugin COMPOSES; the manual is a document the dialog DISPLAYS, and its
-paragraphs stay in `src/view/manual/sections.ts`, `src/view/manual/setupSection.ts` and
-`src/view/manual/typesSection.ts`.
+paragraphs stay in their own module under that DIRECTORY — today
+`src/view/manual/sections.ts`, `src/view/manual/setupSection.ts` and
+`src/view/manual/typesSection.ts`, and equally any content module added beside them. The
+scope is the directory rather than the three files in it, because this decision is about
+what the manual IS: a per-locale `ManualSection[]` module, which the last paragraph of this
+Decision anticipates, would otherwise fall outside its own record. `eslint.config.mjs`
+spells it the same way for the same reason (`MANUAL`, a `src/view/manual/**/*.ts` glob) —
+it was the three paths until review caught it reversing both halves of this ADR on a fourth
+file (Codex, PR #202).
 
 The line is the frame, not the words inside it. The dialog's own chrome is a surface and
 stays keyed — `manual.dialogTitle` in `src/ui/manualDialog.ts`, already swept.
