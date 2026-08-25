@@ -471,11 +471,16 @@ function roadmapRows(model: BacklogModel, visible: (item: BacklogItem) => boolea
  * population changed — an inflated toolbar count beside an advisory saying the roadmap
  * was empty, a focus root dropped with its whole subtree, and an empty state offering to
  * create the very type the frame refuses. So the readers are named here, once, and there
- * are five: `roadmapRows` and `RoadmapModel.eligibleResults` in this file,
+ * are four: `roadmapRows` and `RoadmapModel.eligibleResults` in this file,
  * `projectionMember` (`view/projection.ts`) — through which the rows, the shelf, the
- * keyboard and every drop target inherit it — `countedPopulation`
- * (`view/render/toolbarStatus.ts`), and `honouredFocusLevel` beside `projectionMember`,
- * which is what keeps a focus this roadmap cannot draw from re-rooting the model at all.
+ * keyboard and every drop target inherit it — and `countedPopulation`
+ * (`view/render/toolbarStatus.ts`).
+ *
+ * It was five until 2026-08-24. `honouredFocusLevel` (beside `projectionMember`) asked this
+ * while the roadmap was the only projection that refused a release; `inPlan` refuses one
+ * everywhere now, so that guard asks the TYPE directly and holds for the tree as well.
+ * Nothing checks a caller list, so this one goes stale silently — count them before
+ * trusting the number.
  *
  * A TYPE NAME is all it reads, which is what lets the focus ask it with no row in hand.
  * The backfill is deliberately NOT a sixth reader: `missingKeyStubs` (`domain/writePlan.ts`)

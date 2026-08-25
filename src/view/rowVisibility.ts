@@ -193,8 +193,10 @@ export function rowHidden(item: BacklogItem, rule: VisibilityRule): boolean {
  * That is what keeps the requirements board still: its membership IS the forest's
  * (`inPlan`), so every row it refuses promotes what is under it, and this walk finds
  * nothing to carry up. The rows that strand are the ones only a projection's own narrowing
- * refuses — the roadmap's release, and the iteration board's out-of-sprint link — which the
- * forest drew and nothing promoted.
+ * refuses — the iteration board's out-of-sprint link — which the forest drew and nothing
+ * promoted. This named the roadmap's release beside it until 2026-08-25, and that example
+ * died on 2026-08-24: `inPlan` refuses a `Release` outright now, so the plan's own forest
+ * refuses it too and promotes what is under it, which is the case that does NOT strand.
  *
  * `promoted` is what makes the stamp readable at all, and reading the stamp alone was the
  * defect: `focusRoot` is set once per model build by `collectFocusRoots` and
@@ -203,10 +205,14 @@ export function rowHidden(item: BacklogItem, rule: VisibilityRule): boolean {
  * while the same board drew its own card for it — a card's list disagreeing with the board
  * it is drawn on. It is the ORIGIN's answer and is carried unchanged down the recursion: a
  * row the walk passes THROUGH is one this projection does not DRAW, and whether it is a
- * forest MEMBER is not the question the stop asks — a `Release` the Base returned is in the
- * plan's forest and is refused by `onThisRoadmap` alone. So asking the stop of this
- * function's own `item` answers a question about the traversed `Release` rather than about
- * the walk that met the stamp. Who answers which
+ * forest MEMBER is not the question the stop asks — a `Release` the walk traverses is a
+ * member of NO forest, so asking the stop of this function's own `item` answers false on
+ * every one of them and the stop never fires at all. What that costs is the scaffold above
+ * a promoted row left on screen as an empty context card beside it, which is what the
+ * scaffold tests in `test/view/releaseRows.test.ts` go red on. This paragraph said the
+ * release was IN the plan's forest and refused by `onThisRoadmap` alone until 2026-08-25;
+ * that was true until `inPlan` began refusing one (2026-08-24), and the conclusion it
+ * supports is unchanged — the origin's answer is the one to carry. Who answers which
  * way, and why, is `drawsForestFrom` (`projection.ts`); nothing about it is decided here.
  *
  * Here rather than in `childrenList.ts`, where it was written, because `rowHidden` above

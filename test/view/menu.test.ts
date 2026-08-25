@@ -102,7 +102,11 @@ describe('context menu', () => {
 		const submenu = Menu.lastShown?.item('Set type')?.submenu;
 		if (!submenu) throw new Error('submenu missing');
 
-		// Every type a user may assign by hand: the ladder, the extra types, then the markers.
+		// Every type a user may assign by hand HERE: the ladder, the extra types, then the one
+		// marker this view still draws. `Iteration` and — since 2026-08-24 — `Release` are
+		// withheld from every offering surface, each having a view or a control of its own
+		// that makes them; retyping a row to one would move it off the screen it was acted
+		// on, which is what `byProjectionType` exists to prevent.
 		expect(submenu.items.map((i) => i.titleText)).toEqual([
 			'Epic',
 			'Feature',
@@ -113,7 +117,6 @@ describe('context menu', () => {
 			'Idea',
 			'Deliverable',
 			'Milestone',
-			'Release',
 		]);
 		expect(submenu.item('Epic')?.checked).toBe(true);
 		submenu.item('Task')?.click();

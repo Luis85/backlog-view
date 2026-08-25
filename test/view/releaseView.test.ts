@@ -33,9 +33,12 @@ describe('the release view', () => {
 		vault.addFile('E.md', { frontmatter: { type: 'Epic' } });
 		const { containerEl } = makeReleaseView(vault, { typeProperty: 'note.type' });
 		expect(containerEl.querySelector('.pbl-empty-title')?.textContent).toContain('No releases');
-		// No create button on THIS view. The backlog toolbar's own New menu still offers
-		// `New Release`, which is a different view's existing creator and is asserted there.
-		expect(containerEl.querySelector('.pbl-empty button')).toBeNull();
+		// This state DOES carry the create button, and it is the second of the two entry
+		// points onto one creation function — `draw` returns here before `renderIndex` ever
+		// runs, so without it a base with no release would have no door at all. What the
+		// gesture then does is `test/view/release/newRelease.test.ts`'s subject; the claim
+		// here is only that the state offers it.
+		expect(containerEl.querySelector('.pbl-empty .pbl-rel-new')).not.toBeNull();
 	});
 
 	/**
@@ -113,14 +116,26 @@ describe('the release view', () => {
 	 *
 	 * **It is a list of paths, and it says so** — narrower than the category claim, which
 	 * is why it is not the whole of the check. The one asked AT THE FORBIDDEN THING is
-	 * `test/view/releaseWritesNothing.test.ts`: it spies on the five functions in
-	 * `storage/` that may put bytes in a note, so a call to one of them from anywhere under
-	 * `src/view/release/` fails whatever gesture reached it, and it drives both screens
-	 * rather than the three methods here. The guarantee that holds for code nobody has
-	 * written yet is neither of the two: `WRITE_BOUNDARY` in `eslint.config.mjs` bans
-	 * `processFrontMatter`, `vault.create` and `load/saveLocalStorage` across the whole of
-	 * `src/view/`, whose block carries `src/view/release/` in none of its `ignores`, so
-	 * every one of them fails lint in this directory from its first commit.
+	 * `test/view/releaseNeverEdits.test.ts` — narrowed by Task 5 of "releases own their
+	 * creation" from the writes-nothing claim this file's own comment above still names, to
+	 * what actually survives once this view has its own door: it creates notes and its own
+	 * config, and never edits a note that already exists. It spies on SIX functions in
+	 * `storage/` — the three EDIT paths (`applyWrites`, `applyRestores`,
+	 * `applyPropertyWrites`) and three of the four creators (`createBacklogItem`,
+	 * `createResourceNote`, `createAbsenceNote`), `createRelease` being the one this view
+	 * is permitted — so a call to any of them from anywhere under `src/view/release/` fails
+	 * whatever gesture reached it, and it drives both screens rather than the three methods
+	 * here. The guarantee that holds for code nobody has written yet is neither of the two:
+	 * `WRITE_BOUNDARY` in `eslint.config.mjs` bans `processFrontMatter`, `vault.create` and
+	 * `load/saveLocalStorage` across the whole of `src/view/`, `src/view/release/`
+	 * included, with **no carve-out for any of the three**. This paragraph claimed a
+	 * `vault.create` exception for this directory until 2026-08-25 and there has never been
+	 * one: `eslint.config.mjs`'s own comment records it as considered and refused, because
+	 * `createRelease` is a plain function call no arm of the rule matches, so nothing had to
+	 * be given up to permit it. Planting `view.app.vault.create(…)` in
+	 * `src/view/release/newRelease.ts` fails `npx eslint` — which is how the claim was
+	 * found false, and the direction it misled in is the one that costs a contributor a
+	 * failed lint on a rule they were told did not apply.
 	 *
 	 * What this one is still FOR, beside the other two: the `.base` — `config.setCalls` is
 	 * a surface no lint rule names and no `storage/` spy sees.

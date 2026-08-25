@@ -11,6 +11,28 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ## [Unreleased]
 
+### Added
+
+- **Releases are made from the release view.** A **New release** button now sits at the head
+  of the release list, and again on the screen you see when there are no releases yet. It
+  asks for a name and — where your vault tracks them — a version, a target date and a status,
+  and writes one note with those and nothing else. The first press also binds the release
+  view's own properties for you if you have never set them, and says so; a property you
+  deliberately cleared is left alone and is not asked for.
+  Two things worth knowing before you use it. **New releases land in `docs/releases` unless
+  you say otherwise** — that is the shipped default and it is a new option on the release
+  view. If you moved your backlog's home folder, your releases used to go to
+  `<your folder>/releases`, and the release view cannot see that setting, so the next one
+  goes to `docs/releases` until you point the new option somewhere else. Nothing warns about
+  this; check where the note lands the first time. And **creating a note cannot be undone** —
+  that is true of every New in this plugin, not just this one — so a release made by mistake
+  is deleted the ordinary way.
+  A box you leave blank is left off the note entirely rather than written empty. That has
+  one consequence worth knowing: Obsidian's own property picker only offers a property some
+  note already carries, so in the view options the version, target-date and status boxes may
+  show a suggested name rather than a pickable one until a release you have made actually
+  carries that field. Fill a box in once and that property is pickable like any other.
+
 ### Fixed
 
 - **A focused roadmap no longer loses work beneath a parent the base filtered out.** A
@@ -29,6 +51,14 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   below it through a story that is not in the sprint.
 
 ### Changed
+
+- **Releases no longer appear in the backlog.** They are not drawn as rows on the tree, they
+  do not appear on either board, and no New menu or Set type offers the type any more. The
+  release view is where a release is made, listed and read — it now has a control for making
+  one, which is what the backlog's own entry was standing in for. Nothing is lost: the notes
+  are untouched, work that names a release still names it, and the release view shows every
+  one of them. If you had set a folder for Release items in the backlog view's settings, that
+  box is gone and the release view's own releases folder is what applies.
 
 - **A card lists work below a row this screen is not showing.** On the iteration board a
   card now lists a child that names the sprint even where the row between them does not —

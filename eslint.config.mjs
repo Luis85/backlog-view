@@ -44,6 +44,14 @@ const pluginRules = obsidianmd.configs.recommended.map((c) => ({ ...c, ignores: 
  * Every mutation of the vault goes through storage/, so the write-safety invariants
  * can be verified by reading one directory instead of trusting every call site. This
  * is the single most important rule in the codebase, which is why it is not prose.
+ *
+ * **Three arms, and every region takes all three.** They were three named constants and one
+ * array over them for a while, against the day a directory needed to keep some arms and drop
+ * another — and the one case that ever asked for it was refused: `src/view/release/` creates
+ * notes, but through `createRelease`, a plain function call no arm of this rule matches, so
+ * no carve-out was needed. Each name had exactly one consumer, the array on its own next
+ * line. Collapsed back on 2026-08-25; split it again when a second consumer actually exists,
+ * and never spread the split over an index into this array, which a later edit can reorder.
  */
 const WRITE_BOUNDARY = [
 	{

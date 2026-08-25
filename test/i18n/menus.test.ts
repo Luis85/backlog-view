@@ -209,7 +209,13 @@ const DATA = [
 	'Issue',
 	'Idea',
 	'Milestone',
-	'Release',
+	// **`Release` LEFT this list on 2026-08-24, and it is the one removal the header's "must
+	// never shrink" does not cover.** That rule is about a value becoming TEXT — translated,
+	// and so written into a note another locale cannot read. This is not that: the word is
+	// gone because `Set type` no longer offers the type at all (`byProjectionType`, after
+	// `inPlan` stopped drawing a release in any projection of this view), so there is no
+	// entry left to be marked or unmarked. A release still reaches this menu as DATA and is
+	// still in this list — `1.0` below, the release NAME that `Set release` offers.
 	'Deliverable',
 	'New',
 	'Active',

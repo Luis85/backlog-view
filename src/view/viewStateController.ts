@@ -2,7 +2,6 @@ import { ViewState } from './viewState';
 import { ColumnScope, Projection } from './host';
 import { RoadmapAxis } from '../domain/roadmap';
 import { ShelfLayout, ShelfSort } from '../domain/shelf';
-import { honouredFocusLevel } from './projection';
 import { ScaleId, scaleFor } from '../domain/timeline';
 
 /**
@@ -68,17 +67,20 @@ export class ViewStateController {
 			this.state.setBoardScope(null);
 		}
 		if (mode === this.projection) return;
-		const before = honouredFocusLevel(this.projection, this.state.focusLevel());
 		this.state.setProjection(mode);
-		// A render is normally the whole change: no config was set, so no Bases refresh is
-		// coming. The exception is the focus, which re-roots the MODEL rather than only the
-		// render — and which projection is on screen is half of what decides whether it is
-		// honoured at all (`honouredFocusLevel`). Leaving a stale answer standing is the
-		// whole defect on the way IN and on the way back out: the roadmap kept re-rooting on
-		// a `Release` focus its own picker does not offer, and the tree would have lost the
-		// focus it does.
-		if (honouredFocusLevel(mode, this.state.focusLevel()) !== before) this.hooks.refreshFromData();
-		else this.hooks.render();
+		// A render is the whole change: no config was set, so no Bases refresh is coming.
+		//
+		// A rebuild arm stood here until 2026-08-25, for the focus — which re-roots the MODEL
+		// rather than only the render — on the ground that the projection is half of what
+		// decides whether a focus is honoured. That stopped being true the day `inPlan` began
+		// refusing a `Release` everywhere: `honouredFocusLevel` (`projection.ts`) reads its
+		// `projection` argument no longer, so both calls took the same input and the arm could
+		// not be reached. Probed by replacing it with a `throw`, which left all of
+		// `test/view` green. Deleted rather than kept: a guard over a predicate with no
+		// variation left is a branch nothing can cover, and whoever makes that answer vary
+		// again will be reading the function itself. The accumulation this belonged to is
+		// `docs/issues/A release is refused in several places.md`.
+		this.hooks.render();
 	}
 
 	get boardScope(): string | null {
@@ -99,12 +101,12 @@ export class ViewStateController {
 	 * would catch the omission: an index is correct when built and wrong when the thing it
 	 * was built FOR changes underneath it.
 	 *
-	 * **It sets the projection too, and does NOT ask the question `setProjection` now
-	 * asks** — whether the honoured focus level changes with the projection
-	 * (`honouredFocusLevel`), which needs a model rebuild rather than a render. Correct
-	 * today by construction: every projection this method can select is a board, and no
-	 * board refuses a focus, so the answer cannot move here. It is the sibling entry point
-	 * the next instance of that rule lands in.
+	 * **It sets the projection too, and asks nothing about the focus** — which is what
+	 * `setProjection` does as well since 2026-08-25, so the two no longer differ here.
+	 * Whether a stored focus is honoured (`honouredFocusLevel`, `projection.ts`) needs a
+	 * model rebuild rather than a render, and that answer no longer varies by projection at
+	 * all — `inPlan` refuses a `Release` on every one of them. It is the sibling entry
+	 * point the next instance of that rule lands in, if the answer ever varies again.
 	 */
 	setBoardScope(path: string | null): void {
 		// The no-op guard asks all three stored values, not two: from the Deliverables

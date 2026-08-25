@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 // @ts-expect-error — a build script, deliberately outside tsconfig's `src/**` include.
 import { assembleStyles } from '../../scripts/styles-assemble.mjs';
 import { FakeVault } from '../helpers/vault';
-import { ALL_TYPES, EXTRA_TYPES, ITERATION_TYPE, MARKER_TYPES } from '../../src/domain/typeVocabulary';
+import { ALL_TYPES, EXTRA_TYPES, ITERATION_TYPE, MARKER_TYPES, RELEASE_TYPE } from '../../src/domain/typeVocabulary';
 import { Menu, Notice } from '../helpers/obsidian-mock';
 import { clickExpandAll, drag, fixture, flush, key, makeView, rowByTitle, rows, titlesOf, treeOf, useViewHarness } from '../helpers/view';
 import { inCatalog, ladderFor } from '../../src/domain/itemTypes';
@@ -88,7 +88,13 @@ describe('rendering', () => {
 		// and is unbuilt. So its badge is checked below for the two properties this loop
 		// checks and not for the third, and the sentence is narrowed rather than the check
 		// quietly dropped: nothing here renders one.
-		for (const type of ALL_TYPES.filter((t) => t !== ITERATION_TYPE)) {
+		//
+		// **`Release` joined it on 2026-08-24** and for the same reason exactly — `inPlan`
+		// refuses one, so no projection of THIS view draws a release row for the loop to
+		// find. It is not undrawn everywhere: the release view draws every release there is,
+		// and this suite cannot reach that view. So its badge takes the same narrowed pair
+		// of assertions below rather than being dropped from the vocabulary.
+		for (const type of ALL_TYPES.filter((t) => t !== ITERATION_TYPE && t !== RELEASE_TYPE)) {
 			view.setProjection(inCatalog({ ladder: ladderFor(type, null) }) ? 'catalog' : 'tree');
 			clickExpandAll(containerEl);
 			const badge = rowByTitle(containerEl, type).querySelector<HTMLElement>('.pbl-badge');
@@ -103,11 +109,16 @@ describe('rendering', () => {
 			seen.add(colour ?? '');
 		}
 
-		// The one type nothing on screen draws yet, held to what can still be asked of it:
-		// the stylesheet paints its class, and the class is its own. What is NOT checked
-		// is that a rendered badge finds it — the third assertion above — because there is
-		// no row to render.
+		// The two types nothing on THIS view's screens draws, held to what can still be asked
+		// of them: the stylesheet paints each class, and each class is its own. What is NOT
+		// checked is that a rendered badge finds it — the third assertion above — because
+		// there is no row here to render.
 		expect(styles).toContain('.pbl-lvl-iteration {');
+		expect(styles).toContain('.pbl-lvl-release {');
+		// Its own, which the loop above proved of every other type by collision and can no
+		// longer prove of these two.
+		expect(seen.has('pbl-lvl-release')).toBe(false);
+		expect(seen.has('pbl-lvl-iteration')).toBe(false);
 	});
 
 	it('gives every declared type its own icon, since a shared hue leaves only the glyph', () => {
@@ -602,11 +613,13 @@ describe('rendering', () => {
 		// minus the test types, which this picker must never offer: focusing one narrows
 		// the PLAN to roots it excludes and leaves it empty, the same reason `Deliverable`
 		// is withheld on the requirements board.
-		// Minus the test types AND `Iteration`, both for one reason read twice: focusing a
-		// type this projection does not draw narrows the tree to nothing. An iteration is
-		// the container a board is scoped to, not a row of the plan.
+		// Minus the test types AND both of the markers that have a view of their own —
+		// `Iteration` and, since 2026-08-24, `Release` — all for one reason read three
+		// times: focusing a type this projection does not draw narrows the tree to nothing.
+		// An iteration is the container a board is scoped to; a release is what the release
+		// view lists. Neither is a row of the plan (`inPlan`, `domain/model.ts`).
 		const planTypes = ALL_TYPES.filter(
-			(t) => !inCatalog({ ladder: ladderFor(t, null) }) && t !== ITERATION_TYPE,
+			(t) => !inCatalog({ ladder: ladderFor(t, null) }) && t !== ITERATION_TYPE && t !== RELEASE_TYPE,
 		);
 		expect(Menu.lastShown?.items.map((i) => i.titleText)).toEqual(['All types', ...planTypes]);
 		expect(Menu.lastShown?.item('All types')?.checked).toBe(true);

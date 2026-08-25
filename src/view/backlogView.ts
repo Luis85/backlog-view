@@ -239,9 +239,11 @@ export class ProductBacklogView extends ViewStateSurface implements BacklogViewH
 		// Focus is working position rather than configuration, so it comes from the store
 		// and not from the `.base`; everything downstream reads it off the settings.
 		// Through `honouredFocusLevel`, because a stored pick outlives the projection it was
-		// made on: the roadmap draws no `Release` and its picker offers none, so a focus
-		// retained from the tree must not re-root the model here. Answered once, on the
-		// settings everything downstream already reads, rather than at each reader.
+		// made on: NO projection of this view draws a `Release` and no picker offers one, so
+		// a focus stored while the tree still did must not re-root the model here. That
+		// sentence named the roadmap alone until 2026-08-25, which is what it was true of
+		// while the tree still drew releases. Answered once, on the settings everything
+		// downstream already reads, rather than at each reader.
 		// `this.projection` is read on the RIGHT of this assignment, off the view-state
 		// store rather than off `this.settings` — which is the line being replaced, and
 		// therefore still the PREVIOUS pass's. It cannot matter today: the projection is

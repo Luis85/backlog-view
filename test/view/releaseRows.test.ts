@@ -1,31 +1,45 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { FakeVault } from '../helpers/vault';
-import { makeView, rowByTitle, titlesOf, useViewHarness } from '../helpers/view';
+import { makeView, titlesOf, useViewHarness } from '../helpers/view';
 import { makeRoadmap, shelfTitles } from '../helpers/roadmap';
 import { BOARD_WORKFLOW, cardByTitle, cardTitles, makeBoard } from '../helpers/board';
-import { Menu } from '../helpers/obsidian-mock';
 
 useViewHarness();
+
+/** The iteration board's own options — `iterationBoardCards.test.ts`'s `OPTIONS`. */
+const SPRINT_BOARD = {
+	stateProperty: 'note.status',
+	stateValues: 'New, Doing, Done',
+	iterationProperty: 'note.iteration',
+	iterationOpenStates: 'New',
+	iterationResolvedStates: 'Done',
+};
 
 /**
  * Where a `Release` is a row, and where it is not — asked of the READERS rather than of
  * the filter, because every defect this file covers was a reader that never heard the
- * population had changed. The rule itself is two clauses, each stated once: no axis of
- * the roadmap places a release (`onThisRoadmap`, `domain/roadmap.ts`), and no projection
- * draws a release the Base excluded (`inPlan`, `domain/model.ts`).
+ * population had changed.
+ *
+ * **The rule was two clauses and is now one.** It used to read: no axis of the roadmap
+ * places a release (`onThisRoadmap`, `domain/roadmap.ts`), and no projection draws a
+ * release the Base EXCLUDED (`inPlan`, `domain/model.ts`). On 2026-08-24 `inPlan` began
+ * refusing every release, excluded or not, so **a release is a row of no projection of this
+ * view at all** — not the tree, not either board, not the roadmap. The release view draws
+ * them, and reads `model.releases` rather than this forest, so nothing here reaches it.
  *
  * Every test names the READER rather than the filter. The readers this file reaches are the
  * toolbar's count, the roadmap's row source under a focus, a CARD's listed children and the
- * denominator its disclosure subtracts from, the tree's context row and its horizon chip,
- * and the empty state's creation type. One more — the bucket header's `+`, whose type
- * follows the same focus — is asserted where it already lived, in `roadmapMoves.test.ts`.
+ * denominator its disclosure subtracts from, the tree's context row, and the empty state's
+ * creation type. One more — the bucket header's `+`, whose type follows the same focus — is
+ * asserted where it already lived, in `roadmapMoves.test.ts`; the tree's own three offering
+ * surfaces are in `releaseTreeExit.test.ts`, which is where the type's exit from this view
+ * is stated.
  *
  * The `describe` groups below do NOT stand one to one against that list, which is why no
- * total is written here: one group asks several readers, and the last two are not readers
- * at all — they are the shared DESCENT, which grows a test per projection that walks it.
- * The figure that stood here counted five, was one short the day a sixth reader joined a
- * group, and was two short by the commit after that.
+ * total is written here: one group asks several readers, and the last is not a reader at
+ * all — it is the shared DESCENT. The figure that stood here counted five, was one short
+ * the day a sixth reader joined a group, and was two short by the commit after that.
  */
 
 /** The count label's own text — the readout that has to agree with the advisory. */
@@ -160,39 +174,41 @@ describe('a release the Base excluded', () => {
 	});
 });
 
-describe('a release row in the tree', () => {
-	/**
-	 * The horizon chip is a CONTROL over the horizon key, and `canPlaceHorizon` is the
-	 * one predicate that answers both halves of whether it may exist: the axis has to be
-	 * configured, and the type has to be one the axis places. A release fails the second
-	 * half, so the row draws the column and no chip in it — a control whose menu could
-	 * only write a key the roadmap refuses to read.
-	 *
-	 * Asserted as a DIFFERENCE, not an absence: the Epic beside it draws the chip from
-	 * the same column in the same pass, so an unconfigured axis cannot pass this.
-	 */
-	it('draws no horizon chip, where an epic beside it draws one', () => {
-		const vault = new FakeVault();
-		vault.addFile('R.md', { frontmatter: { type: 'Release', order: 10, horizon: 'Now' } });
-		vault.addFile('E.md', { frontmatter: { type: 'Epic', order: 20, horizon: 'Now' } });
-		const { containerEl } = makeView(vault, { horizonProperty: 'note.horizon' }, { order: ['note.horizon'] });
-
-		expect(rowByTitle(containerEl, 'E').querySelector('.pbl-horizon-chip')).not.toBeNull();
-		expect(rowByTitle(containerEl, 'R').querySelector('.pbl-horizon-chip')).toBeNull();
-		// The column itself is still there, so this is a chip the row refused and not a
-		// column the view dropped.
-		expect(rowByTitle(containerEl, 'R').querySelectorAll('.pbl-prop').length).toBe(1);
-	});
-});
+/**
+ * **RETIRED 2026-08-24 — `a release row in the tree`, one test: "draws no horizon chip,
+ * where an epic beside it draws one".**
+ *
+ * What it asserted: a release ROW in the tree drew the horizon column and no chip in it,
+ * because `canPlaceHorizon` (`view/interactions/plan.ts`) refuses the type — a control
+ * whose menu could only write a key the roadmap refuses to read.
+ *
+ * Why it no longer holds: there is no release row in the tree to draw a column on.
+ * `inPlan` refuses one, so the fixture's `R.md` is not rendered and `rowByTitle` throws
+ * before any assertion runs. Nothing about `canPlaceHorizon` changed and it was not
+ * wrong — it lost its input.
+ *
+ * **What that costs, stated rather than left implied:** `canPlaceHorizon`'s release clause
+ * and `computeHorizonWrites`' matching refusal now have no reachable caller in this view,
+ * since both remaining callers of the first hold a ROW. The planner's half stays checked at
+ * the pure level (`test/domain/writePlanAxis.test.ts`, "plans nothing for a release"); the
+ * chip's half has no check under it any more, and cannot have one from here. Whether the
+ * clause should go with the row is a decision, not an omission, and it is outside the
+ * change that retired this test.
+ */
 
 /**
- * A release BELOW a drawn row, which is a different case from a release the focus roots
- * at. Nothing promotes here: `inPlan` holds an included release, so `projectionForest`
- * draws it and only the roadmap's own `onThisRoadmap` refuses it — which used to strand
- * everything beneath it on a focused roadmap, off every card while its dates went on
- * reaching the parent's bar.
+ * **A release BELOW a drawn row.** Until 2026-08-24 `inPlan` held an included release, so
+ * `projectionForest` drew it and only the roadmap's own `onThisRoadmap` refused it — the
+ * one input the shared DESCENT (`drawnDescent`, `view/rowVisibility.ts`) had on this
+ * projection, and the reason four of this group's tests existed.
+ *
+ * `inPlan` refuses one now, so `projectionForest` PROMOTES the work below it instead and
+ * there is nothing left for the walk to traverse through here. Four tests were retired for
+ * that reason, each recorded below; one was rewritten onto the iteration board, which is
+ * where an undrawn-but-drawn-by-the-forest row still exists; and one was replaced by the
+ * assertion that the boards moved, which is the ruled change this increment made.
  */
-describe('a release the roadmap traverses through', () => {
+describe('a release below a drawn row, which nothing traverses through any more', () => {
 	/** The hand-written marker edge the plugin supports: `Feature -> Release -> PBI`. */
 	function nestedUnderRelease(): FakeVault {
 		const vault = new FakeVault();
@@ -212,105 +228,109 @@ describe('a release the roadmap traverses through', () => {
 	}
 
 	/**
-	 * The defect itself. Under a focus the cards are the focus level's alone, so the card's
-	 * own list is the only place the work below it appears at all.
+	 * **RETIRED 2026-08-24 — two tests: "lists the work below it on the card, and draws the
+	 * release nowhere" and "names the same work in the card menu, which is the keyboard
+	 * path".**
 	 *
-	 * The LABEL is the reading and not the count: a mixed set has no common name and
-	 * degrades to a bare `2 children`, so `1 pbi` says both that one row is listed and that
-	 * the release is not the row listed. And `cardTitles` is asked for the WHOLE frame, not
-	 * for the release's absence: it proves in one assertion that no release was drawn and
-	 * that the PBI has no card of its own to have been reached through.
-	 */
-	it('lists the work below it on the card, and draws the release nowhere', () => {
-		const { containerEl } = makeRoadmap(nestedUnderRelease(), {}, { focus: 'Feature' });
-
-		expect(cardTitles(containerEl)).toEqual(['Ship it']);
-		const card = cardByTitle(containerEl, 'Ship it');
-		expect(disclosure(card)?.textContent).toContain('1 pbi');
-		disclosure(card)?.click();
-		expect(kidTitles(card)).toEqual(['Work']);
-	});
-
-	/**
-	 * The same answer down the keyboard's own path. The face is a list of `tabindex="-1"`
-	 * buttons, so `Open child "…"` in the card menu is the only route to that PBI without a
-	 * pointer — and it reads `menuChildren`, which is a second caller of the same walk.
+	 * What they asserted: under a `Feature` focus the roadmap drew one card, and the `PBI`
+	 * hand-nested under a release appeared on that card's FACE (`listedChildren`) and in its
+	 * menu (`menuChildren`) — the shared descent carrying work up through a row this
+	 * projection does not draw, asked of both callers because the menu is the keyboard's
+	 * only route to a face that holds `tabindex="-1"` buttons.
 	 *
-	 * The DATED axis rather than the horizon one this suite otherwise takes: the horizon
-	 * board names no children in its menus at all (`menusListChildren`), so a horizon-axis
-	 * fixture would assert nothing about this walk. `Ship it` carries no dates, so it lands
-	 * on the shelf as an ordinary card.
+	 * Why they no longer hold: `inPlan` refuses the release, so `projectionForest` promotes
+	 * `Work` to a root of the plan's own forest and the roadmap gives it a CARD. The frame
+	 * is `['Work', 'Ship it']` rather than `['Ship it']`, and a promoted root is nobody's
+	 * listed child — which is `drawnDescent`'s own stop working, not failing. The mechanism
+	 * they covered is unchanged and still checked, on the projection that still has an
+	 * undrawn-but-forested row: `iterationBoardCards.test.ts` ("lists a child of a loose
+	 * child where that child is in the iteration") for the face, `cardChildren.test.ts`
+	 * ("offers Open child only where the child has no card of its own") for the menu.
+	 *
+	 * The recursion half of the third one is NOT retired — it is rewritten below, because
+	 * two undrawn levels in a row is a claim nothing else in the suite makes.
 	 */
-	it('names the same work in the card menu, which is the keyboard path', () => {
-		const axis = { startProperty: 'note.start', targetProperty: 'note.due', horizonProperty: '' };
-		const { containerEl } = makeRoadmap(nestedUnderRelease(), axis, { focus: 'Feature' });
-		cardByTitle(containerEl, 'Ship it').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
-
-		const titles = Menu.lastShown?.items.map((i) => i.titleText) ?? [];
-		expect(titles.filter((one) => one.startsWith('Open child'))).toEqual(['Open child "Work"']);
-	});
 
 	/**
-	 * The walk is recursive, so two releases in a row cost nothing. Pinned rather than
-	 * assumed: a single-level descent passes the test above and fails here, and a reader
-	 * cannot tell the two implementations apart from that test alone.
+	 * **REWRITTEN 2026-08-24 from "carries on through a second release".** The walk is
+	 * recursive, and a single-level descent passes every other test of it and fails here —
+	 * a reader cannot tell the two implementations apart without this one.
+	 *
+	 * Two releases in a row were the fixture; the iteration board's out-of-sprint link is
+	 * the same shape and is the one this view still has. Neither `Loose` names the sprint,
+	 * so `projectionMember` refuses both, while `inPlan` holds both — so the forest promotes
+	 * nothing and the walk has two levels to carry `Deep work` up through.
+	 *
+	 * The FRAME is the fixture guard, and it reads as it does because this board shelves
+	 * work that names no sprint: both `Loose` rows are drawn as shelf cards, which is what
+	 * says they are rows the walk went THROUGH rather than rows it listed. `1 task` is the
+	 * label rather than a count, so it says both that one row is listed and which one.
 	 */
-	it('carries on through a second release', () => {
-		const vault = nestedUnderRelease();
-		vault.addFile('1.1.md', { frontmatter: { type: 'Release', order: 20 }, parentLink: '1.0' });
-		vault.addFile('More work.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: '1.1' });
-		const { containerEl } = makeRoadmap(vault, {}, { focus: 'Feature' });
+	it('carries on through a second row the sprint does not draw', () => {
+		const vault = new FakeVault();
+		vault.addFile('Sprint 12.md', { frontmatter: { type: 'Iteration', order: 10 } });
+		vault.addFile('Carrier.md', {
+			frontmatter: { type: 'Feature', order: 10, status: 'New', iteration: '[[Sprint 12]]' },
+		});
+		vault.addFile('Loose.md', { frontmatter: { type: 'PBI', order: 10, status: 'New' }, parentLink: 'Carrier' });
+		vault.addFile('Loose too.md', { frontmatter: { type: 'PBI', order: 10, status: 'New' }, parentLink: 'Loose' });
+		vault.addFile('Deep work.md', {
+			frontmatter: { type: 'Task', order: 10, status: 'New', iteration: '[[Sprint 12]]' },
+			parentLink: 'Loose too',
+		});
+		const { view, containerEl } = makeView(vault, SPRINT_BOARD, { base: 'Plan.base' });
+		view.setBoardScope('Sprint 12.md');
 
-		const card = cardByTitle(containerEl, 'Ship it');
-		expect(disclosure(card)?.textContent).toContain('2 pbis');
+		const card = cardByTitle(containerEl, 'Carrier');
+		expect(cardTitles(containerEl)).toEqual(['Loose', 'Loose too', 'Carrier', 'Deep work']);
+		expect(disclosure(card)?.textContent).toContain('1 task');
 		disclosure(card)?.click();
-		expect(kidTitles(card)).toEqual(['Work', 'More work']);
+		expect(kidTitles(card)).toEqual(['Deep work']);
 	});
 
 	/**
-	 * **The board does not move.** It draws a release — `inPlan` holds one the Base
-	 * returned — so on that projection the release IS the listed child and the PBI is not,
-	 * exactly as before. The fixture has a grandchild that a widened walk would carry up,
-	 * which is what makes this an assertion rather than a list that could not change.
+	 * **REPLACES "leaves the board where it was: the release is the listed child there"
+	 * (2026-08-24).** That test asserted the opposite of this one, and deliberately: the
+	 * requirements board drew a release because `inPlan` held one, so the release WAS the
+	 * listed child there and the `PBI` below it was not. It came from `Releases as their own
+	 * type`, the increment that added the type, and it encoded that increment's decision
+	 * rather than an accident.
+	 *
+	 * `Releases own their creation` overturns that decision by ruling: a release is a marker
+	 * with a view of its own, `inPlan` already refuses `Iteration` — the other such marker —
+	 * and so a release is now drawn by no projection of this view. The board moved. This
+	 * asserts that it did, on the same fixture, so the reversal has a check rather than only
+	 * a deletion.
 	 */
-	it('leaves the board where it was: the release is the listed child there', () => {
+	it('is on no board card either, which is the decision this increment reversed', () => {
 		const { containerEl } = makeBoard(nestedUnderRelease());
 
-		const card = cardByTitle(containerEl, 'Ship it');
-		expect(disclosure(card)?.textContent).toContain('1 release');
-		disclosure(card)?.click();
-		expect(kidTitles(card)).toEqual(['1.0']);
+		// The whole frame: the release has no card, and `Work` has one of its own because
+		// the forest promoted it — which is also why the Feature's face lists nothing.
+		expect(cardTitles(containerEl)).toEqual(['Ship it', 'Work']);
+		expect(disclosure(cardByTitle(containerEl, 'Ship it'))).toBeNull();
 	});
 
 	/**
-	 * **The scaffold above such a release, which is `rowHidden`'s own last clause and not
-	 * this walk at all.** A context row is kept only while something below it is visible,
-	 * and that question was asked of `item.children` — so the release, a row this roadmap
-	 * draws no axis for, read as a child that is not visible. The context `Epic` called
-	 * itself an empty scaffold and went, and because `roadmapRows` filters a FOREST under a
-	 * focus, the eligible `PBI` beneath it went too.
+	 * **RETIRED 2026-08-24 — "keeps a context row placing work through it, and says nothing
+	 * is hidden".**
 	 *
-	 * `cardTitles` is the whole frame rather than the Epic's presence: with the defect it is
-	 * empty. The advisory is the second half and a different reader — `eligibleResults`
-	 * counts that `PBI` off `model.results`, so the roadmap drew nothing and announced
-	 * "All 1 item is done and hidden", offering Show completed items for work that is
-	 * neither done nor hidden. One fix closes both: the row comes back, so the advisory has
-	 * cards to be silent about.
+	 * What it asserted: `rowHidden`'s own last clause — a context row is kept only while
+	 * something below it is VISIBLE, and that question is the DRAWN DESCENT rather than
+	 * `item.children`. A context `Epic` over an included release read the release as a child
+	 * that is not visible, called itself an empty scaffold and went, taking the eligible
+	 * `PBI` beneath it off a focused roadmap while `eligibleResults` went on counting it.
+	 *
+	 * Why it no longer holds: with `inPlan` refusing the release, `projectionForest` promotes
+	 * `Work` to a root of the forest and the `Epic` is placing nothing — so the correct
+	 * answer flips to "the scaffold goes", which is what the test immediately below already
+	 * asserts on the same shape. Keeping both would be one claim twice.
+	 *
+	 * The clause itself is unchanged and still checked, on the projection that still has an
+	 * undrawn-but-forested row to place work through: `iterationBoardCards.test.ts`, "draws
+	 * the ancestor as a card of its own, beside the carrier below it", whose own header
+	 * calls that board the second projection the scaffold clause reaches.
 	 */
-	it('keeps a context row placing work through it, and says nothing is hidden', () => {
-		const vault = new FakeVault();
-		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
-		vault.addFile('1.0.md', { frontmatter: { type: 'Release', order: 10 }, parentLink: 'Epic' });
-		vault.addFile('Work.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: '1.0' });
-		const { containerEl } = makeRoadmap(vault, {}, { focus: 'Epic', only: ['1.0.md', 'Work.md'] });
-
-		expect(cardTitles(containerEl)).toEqual(['Epic']);
-		expect(containerEl.querySelector('.pbl-board-advisory')).toBeNull();
-		const card = cardByTitle(containerEl, 'Epic');
-		expect(disclosure(card)?.textContent).toContain('1 pbi');
-		disclosure(card)?.click();
-		expect(kidTitles(card)).toEqual(['Work']);
-	});
 
 	/**
 	 * **The other side of that scaffold, and the check under the reason for sharing the

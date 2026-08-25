@@ -293,7 +293,11 @@ const KEYS = [
 	'typeFolder.deliverable',
 	'typeFolder.milestone',
 	'typeFolder.iteration',
-	'typeFolder.release',
+	// No `typeFolder.release`, and the gap is the assertion: the release view carries its
+	// own `releaseFolder` option (2026-08-24), so a box here would be a second value naming
+	// the same folder with nothing reading it. `typeFolder.iteration` stays right above it
+	// for the contrast — no surface offers that type either, but the board's scope picker
+	// still files the note it makes by this option.
 	'typeFolder.test suite',
 	'typeFolder.test case',
 	'typeFolder.absence',

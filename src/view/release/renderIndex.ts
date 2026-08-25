@@ -4,6 +4,7 @@ import { t } from '../../i18n/t';
 import { ReleaseFigure, ReleaseIndex, ReleaseRow } from '../../domain/releases';
 import { formatCivil } from '../../domain/timeline';
 import { drawIcon } from '../render/icons';
+import { renderNewRelease } from './newRelease';
 
 /**
  * The index screen (`docs/requirements/Every release in one list.md`): one row per release
@@ -17,10 +18,17 @@ import { drawIcon } from '../render/icons';
  * predicate, one answer", which is what stops an index row and a release header
  * disagreeing about the same release.
  *
- * **Nothing here writes**, and there is nothing to withhold to keep it that way: the only
- * gesture on this screen is picking a release, which is view state.
+ * **Two gestures on this screen, and only one of them is view state.** Picking a release is;
+ * `New release` (see {@link renderNewRelease}) creates a note and may bind this view's own
+ * options. Neither EDITS a note that already exists, which is the whole of what this view
+ * refuses (`test/view/releaseNeverEdits.test.ts`).
  */
 export function renderIndex(view: ReleaseView, index: ReleaseIndex): void {
+	// Above the scroller rather than in it: the control is chrome for the screen, and one
+	// inside `.pbl-rel-list` would scroll away with the rows. There is no toolbar on this
+	// view to hang it on — `viewEl` holds screens — so the head of the index IS the head of
+	// the screen.
+	renderNewRelease(view, view.viewEl.createDiv({ cls: 'pbl-rel-actions' }));
 	const listEl = view.viewEl.createDiv({ cls: 'pbl-rel-list' });
 	const gridEl = listEl.createDiv({ cls: 'pbl-rel-grid' });
 	const columns = drawableColumns(index.rows);

@@ -2,6 +2,13 @@ import { ReleaseView } from '../../src/view/release/releaseView';
 import { installObsidianDom } from './dom';
 import { FakeVault, FakeViewConfig, mountLeaf } from './vault';
 
+// `releaseSettingsWith`, the `ReleaseSettings`-shaped fixture, lives in the leaf module
+// `test/helpers/releaseSettings.ts` and not here: it touches no DOM, and this file calls
+// `installObsidianDom()` below, so anything importing it needs jsdom. NOT re-exported
+// from here either — an export nobody imports is dead code fallow's `analyze` gate
+// refuses, and nothing in this file currently consumes it. Import it from the leaf
+// module directly.
+
 installObsidianDom();
 
 export interface ReleaseHarness {
@@ -11,9 +18,10 @@ export interface ReleaseHarness {
 }
 
 /**
- * `makeEstimationView`'s shape minus the `WriteLock`: this view writes nothing, so there
- * is nothing to serialize and no undo slot to share. A lock parameter here would suggest
- * otherwise.
+ * `makeEstimationView`'s shape minus the `WriteLock`: this view creates notes and its own
+ * config but plans no BATCH — see `registerReleaseView`'s own comment — so there is
+ * nothing for a lock to serialize and no undo slot to share. A lock parameter here would
+ * suggest otherwise.
  */
 export function makeReleaseView(
 	vault: FakeVault,

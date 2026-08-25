@@ -1,9 +1,10 @@
 import { App, normalizePath, stringifyYaml, TFile } from 'obsidian';
 import { isReleaseType } from '../domain/itemTypes';
 import { BacklogSettings } from '../domain/settings';
+import { ReleaseSettings } from '../domain/releaseOptions';
 import { AxisWrite } from '../domain/writePlan';
 import { vaultFolder } from '../domain/settingsResolve';
-import { RESOURCE_TYPE } from '../domain/typeVocabulary';
+import { RELEASE_TYPE, RESOURCE_TYPE } from '../domain/typeVocabulary';
 import { setOwn } from './ownProperty';
 import { axisEntries } from './writeKeys';
 
@@ -132,6 +133,98 @@ export async function createResourceNote(app: App, settings: BacklogSettings, sp
 	const path = uniqueNotePath(app, folder, spec.title);
 	const fm: Record<string, unknown> = {};
 	setOwn(fm, settings.typeKey, RESOURCE_TYPE);
+	return app.vault.create(path, `---\n${stringifyYaml(fm)}---\n`);
+}
+
+/** What `New release` collects: its own fields, nothing a surface adds. */
+export interface NewReleaseSpec {
+	title: string;
+	version?: string;
+	targetDate?: string;
+	status?: string;
+}
+
+/**
+ * Create one release note: a marker with its own fields and nothing else.
+ *
+ * NOT `createBacklogItem` with fewer fields, for the same reason `createResourceNote`
+ * stands apart from it (see that function's own doc comment): a release has no parent, no
+ * rank and no type from the ladder — it is not on the tree to be nested onto anything or
+ * ranked among anything.
+ *
+ * This is a DIFFERENT claim from `createBacklogItem`'s standing rule that a `Release` is
+ * seeded NOTHING a surface adds — that rule is about a surface seeding a release with the
+ * SURFACE's own context (the sprint it was created on, that sprint's dates, a bucket
+ * header's horizon), and it stays true: nothing reaches `createBacklogItem` for a release
+ * any more, this function included. What this writes instead is the release's OWN
+ * fields — its version, its target date, its status — collected from whoever is creating
+ * it. A note being told what it itself is is not a surface seeding it with something
+ * else's context.
+ *
+ * One atomic write, `createBacklogItem`'s own reason restated: a create-then-update pair
+ * could fail in between and leave a blank note without its fields behind.
+ *
+ * **A field the creator left blank is not written at all** ({@link stated}), which is the
+ * same ruling [[Releases as their own type]] 3b and `neverStubbed` (`domain/writePlan.ts`,
+ * *"An empty release is not an empty slot"*) each already made from their own end. It has
+ * to be kept HERE, at the creator every release goes through, rather than at the dialog
+ * that happens to produce the blanks today: `readLabel` and `readTarget`
+ * (`domain/releases.ts`) read a present-but-empty key as UNREADABLE rather than as absent,
+ * so writing one makes this view's own reader report the release it just made as somebody's
+ * mistake, in three columns of the index and again on that release's own screen.
+ *
+ * `typeKey` is the one field here `createBacklogItem` and `createResourceNote` write
+ * unconditionally that this function may NOT: their `typeKey` always resolves
+ * (`propKey`), while `resolveReleaseSettings` reads it through `clearablePropKey`, so a
+ * deliberately cleared type property resolves here as `''` rather than falling back to a
+ * suggestion. Writing `RELEASE_TYPE` under an empty key would not merely omit a property
+ * the way the three optional fields below do when their own key is unbound — it would
+ * write a note nothing downstream can read AS a release at all (`isReleaseType`,
+ * `membershipTarget` both key off `typeKey`), so this REFUSES instead: no note, no
+ * partial write, an error the caller is expected not to let happen. In production it is
+ * unreachable — `ReleaseView.draw` already refuses to render any control that could
+ * reach here while `typeKey` is empty — this is the same defensive shape as
+ * `assertResolvedSettings` in `domain/settingsConsistency.ts`, a check for a state the
+ * caller is supposed to have ruled out already rather than a user-facing refusal.
+ */
+/**
+ * Whether the creator STATED this optional field — anything but absent and anything but
+ * blank. Trimmed here rather than trusted from the caller: whitespace is what a reader
+ * types and then deletes, and it reads back as unreadable exactly as `''` does.
+ */
+function stated(value: string | undefined): boolean {
+	return value !== undefined && value.trim() !== '';
+}
+
+export async function createRelease(app: App, settings: ReleaseSettings, spec: NewReleaseSpec): Promise<TFile> {
+	if (!settings.typeKey) throw new Error('createRelease: no type key configured');
+	// The SECOND refusal, and unlike the one above it is reachable in production. Two of
+	// these options may legally name one property — nothing reports a release-view
+	// collision, since `ReleaseSettings` has no `configProblems` of its own — and the
+	// writes below go through `setOwn`, which overwrites. So a status written under the
+	// type's own key takes `Release` off the note, and the result is not a release at all
+	// (`isReleaseType` and `membershipTarget` both key off `typeKey`), reported to the
+	// reader as created. Refused whole rather than by dropping the offending field: a
+	// release missing the version somebody typed is a different lie, and the caller's
+	// `catch` already turns this into a notice plus the console line that names it.
+	//
+	// The bind cannot produce this state any more (`runReleaseInit` seeds its collision
+	// set from all seven keys), but a configuration typed by hand still can, which is why
+	// the guard belongs at the write where every caller passes rather than at the one
+	// path that used to create it. Reported by review on PR #203, twice — once for the
+	// bind, and again because fixing the bind left this reachable.
+	const written = [settings.typeKey, settings.versionKey, settings.targetDateKey, settings.statusKey].filter(
+		(key) => key !== '',
+	);
+	if (new Set(written).size !== written.length) throw new Error('createRelease: two release properties name one key');
+	const folder = vaultFolder(settings.folder);
+	await ensureFolder(app, folder);
+	const path = uniqueNotePath(app, folder, spec.title);
+	const fm: Record<string, unknown> = {};
+	setOwn(fm, settings.typeKey, RELEASE_TYPE);
+	if (stated(spec.version) && settings.versionKey) setOwn(fm, settings.versionKey, spec.version);
+	if (stated(spec.targetDate) && settings.targetDateKey) setOwn(fm, settings.targetDateKey, spec.targetDate);
+	if (stated(spec.status) && settings.statusKey) setOwn(fm, settings.statusKey, spec.status);
 	return app.vault.create(path, `---\n${stringifyYaml(fm)}---\n`);
 }
 

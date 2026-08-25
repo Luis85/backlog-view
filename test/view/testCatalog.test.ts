@@ -351,7 +351,11 @@ describe('what the catalog offers', () => {
 		// offered in the catalog" passed a `not.toContain('Epic')` while being short by five,
 		// and positively implied a `Bug` was assignable there. A type declared without a look
 		// at that entry now fails here.
-		const plan = ['Epic', 'Feature', 'PBI', 'Task', 'Issue', 'Bug', 'Idea', 'Deliverable', 'Milestone', 'Release'];
+		// `Milestone` is the only marker in this list, and that is the whole of the marker
+		// rule rather than an oversight: a type with a view of its own is offered by no
+		// creation surface at all (`byProjectionType`), which took `Iteration` out long ago
+		// and `Release` out on 2026-08-24.
+		const plan = ['Epic', 'Feature', 'PBI', 'Task', 'Issue', 'Bug', 'Idea', 'Deliverable', 'Milestone'];
 		expect(setTypeOn('Stray PBI')).toEqual(plan.filter((t) => t !== 'Task'));
 		expect(setTypeOn('A PBI')).toEqual(plan);
 		catalog(containerEl);

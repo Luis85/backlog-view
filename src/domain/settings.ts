@@ -1,5 +1,5 @@
 import { defaultItemHandling, ItemHandling } from './itemHandling';
-import { ALL_TYPES, DEFAULT_HOME_FOLDER, defaultResourceFolder, defaultTypeFolder } from './typeVocabulary';
+import { DEFAULT_HOME_FOLDER, defaultResourceFolder, defaultTypeFolder, FILED_TYPES } from './typeVocabulary';
 
 /**
  * What a resolved configuration IS: the shape, the shipped defaults, and the few
@@ -43,6 +43,10 @@ export interface BacklogSettings extends ItemHandling {
 	 * the view options rather than a line of a mapping, so it is picked rather than
 	 * typed. Takes precedence over `homeFolder`, but not over folder mode's "beside
 	 * the parent" rule.
+	 *
+	 * One entry per {@link FILED_TYPES} member, which is `ALL_TYPES` minus `Release`: a
+	 * release is filed by the release view's own `releaseFolder`, so this table holds no
+	 * answer for that type and `folderForType` reports none.
 	 */
 	typeFolders: Record<string, string>;
 	/**
@@ -335,7 +339,9 @@ export function defaultSettings(): BacklogSettings {
 		folderHierarchy: false,
 		showCounts: true,
 		homeFolder: DEFAULT_HOME_FOLDER,
-		typeFolders: nameTable(ALL_TYPES, (t) => defaultTypeFolder(t) || null),
+		// `FILED_TYPES`, so the shipped defaults hold a row for exactly the types this view
+		// files — no `Release` row, because the release view files those by its own option.
+		typeFolders: nameTable(FILED_TYPES, (t) => defaultTypeFolder(t) || null),
 		resourceFolder: defaultResourceFolder(),
 		focusLevel: '',
 		stateKey: '',

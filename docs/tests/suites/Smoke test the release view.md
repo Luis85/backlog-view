@@ -15,11 +15,13 @@ assignee: ""
 
 # Smoke test the release view
 
-`product-release`, the plugin's third registered Bases view and the first that writes
-nothing: the index of every release, one release's scope as a tree, and the four empty
-states between them — plus, from [[Setting an item's release]], the one thing that puts
-work into a scope at all, which is a menu on the BACKLOG view rather than anything on this
-one.
+`product-release`, the plugin's third registered Bases view — the one that creates notes and
+its own config and never edits a note that already exists: the index of every release, one
+release's scope as a tree, and the four empty states between them — plus, from
+[[Setting an item's release]], the one thing that puts work into a scope at all, which is a
+menu on the BACKLOG view rather than anything on this one, and, from
+[[Creating a release from the release view]], the one thing that makes a release at all,
+which is a control on this one.
 
 **This suite exists because the increment shipped with nothing having looked at it.** Every
 visual and assistive-technology claim on it rests on jsdom, which computes no layout and no
@@ -36,7 +38,8 @@ Registration and chrome, none of which any test here can reach:
 
 - The view appears in the Bases view picker, under its own name, with the `lucide-package`
   icon resolving rather than falling back.
-- Its seven options appear in the view-options menu, each with the suggested property name.
+- Its eight options appear in the view-options menu, each with the suggested property name —
+  seven properties plus the releases folder, which arrived with the creation gesture.
 - `resolveViewIdentity` finds the leaf for a `.base` file: pick a release, switch away,
   switch back, and the same release is open. The persistence rests on it and fails silently.
 
@@ -85,6 +88,52 @@ a scope on this view is ever non-empty:
   unresolved, no warning. Bind them apart on purpose once and see what the two screens say,
   because that is the whole of the signal a user gets.
 
+Making a release — the third increment, and the only way a vault gets its first one from
+inside the plugin:
+
+- **Whether `New release` reads right in its two positions.** It is the same control at the
+  head of the index, above the scroller, and inside the no-releases empty state, beneath the
+  guidance text. The two sit in different frames and neither has been looked at: at the head
+  of the index it is chrome over a list, and in the empty state it is the call to action a
+  guidance shell was never designed to carry. Whether a `mod-cta` button reads as either, and
+  whether the index's own head has the air for one, is a layout question no test here asks.
+- **Whether the bind notice is understood by somebody who did not write it.** Pressing the
+  control can change the saved view's own configuration before the dialog opens — it binds
+  the membership, version, target-date and status properties this vault has never named. The
+  notice is one sentence, fired once, over a dialog that is opening; whether a reader takes
+  it as "your base was just edited" or as noise beside a form is exactly what cannot be
+  judged from a string.
+- **Where a release actually lands on disk.** `releaseFolder` ships as `docs/releases`, and
+  the folder is created if it is not there. Make one on the shipped defaults and confirm the
+  path. **Then do it in a vault whose backlog home folder is not `docs`** — its releases were
+  under `<home>/releases` before this increment, and this view cannot read the other view's
+  home folder, so the next one lands in `docs/releases` until the option is set. Nothing
+  detects that and nothing warns about it: the whole of the signal is where the note appears.
+  Whether the default is the right one for such a vault is the question, and only a vault
+  answers it.
+- **Whether the dialog reads well.** A title, then whichever of version, target date and
+  status this vault has bound, in that order; confirm is disabled until a title is typed. The
+  date field is a native `date` input, the other two are plain text. Whether the field names
+  read as a release's own fields, and whether a dialog of one field (a vault that cleared all
+  three) looks deliberate rather than broken, are both live-vault questions.
+- **Whether the index looks right with no release rows in the backlog tree.** As of this
+  increment a `Release` is drawn on no backlog projection at all and is offered by no New
+  menu. So the release view is the only place a release is visible, and a vault that used to
+  see its releases as tree rows will not. Open both views in a vault holding releases and
+  check that nothing reads as data lost.
+- **Where focus is after a release is created**, which has a stated ceiling. The press puts
+  focus back on the `New release` control the current screen draws, after the dialog closes
+  and again after the create — but that only wins a refresh landing INSIDE the create's own
+  await. A vault refreshes on its own schedule, so one arriving after it takes focus to the
+  body again, and nothing in the suite can say which happens in a real vault. Make a release
+  with the keyboard alone and see where Tab resumes from. The first release is the worst
+  case: the empty state that held the control is replaced by the index.
+- **That the first release makes the three properties pickable.** Nothing is backfilled onto
+  existing notes — this view never edits one — so Obsidian's own property picker cannot offer
+  `version`, `target-date` or `status` until a note carries them. After the first **New
+  release**, open the view options and confirm each of the three is now offerable from
+  Obsidian's list rather than only bindable by suggestion.
+
 Under a theme that is not the default:
 
 - The row `<button>` reset holds against a theme that styles `button` harder than the
@@ -93,5 +142,6 @@ Under a theme that is not the default:
 
 ## Outcome
 
-Not yet run. The pull request's test-plan box for this is deliberately unticked, and stays
+Not yet run, and the creation gesture added on 2026-08-25 is unrun with the rest of it —
+nothing below has been seen in a vault. The pull request's test-plan box for this is deliberately unticked, and stays
 unticked until a maintainer has opened a vault and worked through the list above.

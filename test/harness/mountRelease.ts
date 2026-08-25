@@ -13,8 +13,8 @@
  * is owed either way.
  *
  * No `WriteLock` and no `vault.afterWrite` wiring, unlike both existing mounts: this view
- * writes nothing, so there is no batch to serialize and no refresh to drive. A lock
- * parameter here would suggest otherwise.
+ * creates notes and its own config but plans no batch, so there is nothing to serialize
+ * and no refresh to drive. A lock parameter here would suggest otherwise.
  */
 import { ReleaseView } from '../../src/view/release/releaseView';
 import { drawChrome } from './chrome';

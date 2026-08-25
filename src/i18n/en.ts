@@ -758,6 +758,7 @@ export const en = {
 	'release.option.version': 'Version property',
 	'release.option.targetDate': 'Target date property',
 	'release.option.status': 'Status property',
+	'release.option.folder': 'Release folder',
 	'option.typeProperty': 'Item type property',
 	'option.hierarchyOnly': 'Ignore notes outside the hierarchy',
 	'option.showOutsideParents': 'Show parents outside the filter',
@@ -1559,7 +1560,7 @@ export const en = {
 		'This view reads each note’s type to find the releases. Bind the type property in the view options.',
 	'release.empty.noReleases.title': 'No releases in this base',
 	'release.empty.noReleases.hint':
-		'A release is a note typed Release, carrying a version and a target date. Add one to the vault and it appears here.',
+		'A release is a note typed Release, carrying a version and a target date. Create the first one here.',
 
 	/** The index grid's five column headings. Each names a COLUMN, so each is also what
 	 *  `release.index.absentColumns` lists when the column's key is unbound — one name per
@@ -1636,4 +1637,40 @@ export const en = {
 	 *  it names the release rather than describing a problem. */
 	'release.scope.empty.title': 'Nothing is in {name} yet',
 	'release.scope.empty.hint': 'An item joins a release when its own membership property names that release.',
+
+	/** `src/ui/newReleaseDialog.ts` — a plain-data leaf that knows nothing of property
+	 *  keys, so every one of its labels is its own key rather than a reuse of the index
+	 *  grid's column headings above, which name a COLUMN and would drift the moment either
+	 *  is edited for its own reason. */
+	'newRelease.title': 'New release',
+	'newRelease.field.title': 'Title',
+	'newRelease.titlePlaceholder': '2.4',
+	'newRelease.field.version': 'Version',
+	'newRelease.field.targetDate': 'Target date',
+	'newRelease.field.status': 'Status',
+	'newRelease.create': 'Create',
+	'newRelease.cancel': 'Cancel',
+
+	/**
+	 * The control that opens that dialog, and what the press reports — all four in
+	 * `src/view/release/newRelease.ts`, which is the file the door was split out into on
+	 * 2026-08-24. This named `renderIndex.ts` until 2026-08-25, which is where the control
+	 * was drawn before that split and is now only one of the two places that draw it.
+	 *
+	 * The cta is its own key rather than a reuse of `newRelease.title` above, which names
+	 * the DIALOG: a locale that titles a form differently from the button opening it has no
+	 * way to say so if the two share one string.
+	 */
+	'release.new.cta': 'New release',
+	/**
+	 * The press bound this view's properties on its way to the dialog, which changed the
+	 * saved view's own configuration — said rather than left silent, the same rule the
+	 * backlog view's own ✨ keeps with `init.outcome`. It names where to change them,
+	 * because the press itself offers no way back.
+	 */
+	'release.new.bound': 'Bound this view’s release properties to their suggested names. Change them in the view options.',
+	/** `resource.created`'s shape exactly: the note's OWN name, which may carry a collision
+	 *  suffix the reader did not type. */
+	'release.new.created': 'Created the release “{name}”.',
+	'release.new.failed': 'Could not create the release. See the developer console for details.',
 } as const;
