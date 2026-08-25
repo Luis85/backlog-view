@@ -67,6 +67,18 @@ describe('runReleaseInit', () => {
 		expect(bound.get('releaseStatusProperty')).toBeUndefined();
 	});
 
+	it('does not hand out a key an explicitly-bound releasedDateProperty already holds', async () => {
+		// releasedDateProperty is bound to the key targetDateProperty would otherwise
+		// suggest for itself ('target-date'). Without releasedDateKey seeded into `taken`,
+		// targetDateProperty would adopt 'target-date' too — aliasing the target date and
+		// the released date onto one key, so `createRelease` writes the target date there
+		// and `releaseIndex` reads that same value back as the release having shipped.
+		const { view } = makeReleaseView(new FakeVault(), { releasedDateProperty: 'note.target-date' });
+		await runReleaseInit(view);
+		const bound = new Map(view.config.setCalls.map((c) => [c.key, c.value]));
+		expect(bound.get('targetDateProperty')).toBeUndefined();
+	});
+
 	it('does not hand out a key an explicitly-bound membershipProperty already holds', async () => {
 		// membershipProperty is explicitly bound to the key releaseStatusProperty would
 		// otherwise suggest for itself ('status'). Without membershipKey seeded into

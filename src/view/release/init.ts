@@ -62,10 +62,11 @@ const RELEASE_SUGGESTED_KEYS: AdoptionCandidate[] = [
  * free here and get offered to a second option as well — `runEstimationInit`'s own
  * documented trap for the identical reason.
  *
- * It seeds from **all seven** of this view's keys, the three model mappings included, and
- * that is the whole of what stops this action corrupting a note. It seeded from the four
- * candidates alone until 2026-08-25, on the argument that no model mapping could collide
- * "since none of their suggested keys is `release`, `version`, `target-date` or `status`"
+ * It seeds from **all eight** of this view's keys, the three model mappings and
+ * `releasedDateKey` included, and that is the whole of what stops this action corrupting a
+ * note. It seeded from the four candidates alone until 2026-08-25, on the argument that no
+ * model mapping could collide "since none of their suggested keys is `release`, `version`,
+ * `target-date` or `status`"
  * — which reasons about what those options SUGGEST when the collision is with what they
  * RESOLVE TO. A mapping is a free choice: `typeProperty: note.status` is legal, and with
  * `releaseStatusProperty` untouched this action then bound the status onto the very key
@@ -83,6 +84,17 @@ const RELEASE_SUGGESTED_KEYS: AdoptionCandidate[] = [
  * — and this view has none, since `ReleaseSettings` has no `configProblems` of its own. So
  * the seeding is not one guard of two here; it is the only one.
  *
+ * `releasedDateKey` joined `taken` on 2026-08-25, the same class of bug as the model
+ * mappings above: `releasedDateProperty` is a free choice, so `targetDateProperty: note.
+ * target-date` and `releasedDateProperty: note.target-date` are each legal alone and ruin
+ * each other bound together — `createRelease` writes the target date there, and
+ * `releaseIndex` reads that same value back as the RELEASED date, so a brand-new release
+ * reports as shipped with a zero-day slip. `releasedDateKey` is a READ binding
+ * (`releaseIndex` reads it; nothing here writes it), which is why the failure is a wrong
+ * reading rather than a corrupted note — but seeding it into `taken` is the same fix as the
+ * others: this action must never hand out a key another of this view's eight already
+ * names.
+ *
  * On the shipped defaults nothing changes: the mappings resolve to `parent`, `order` and
  * `type`, none of which any candidate suggests.
  */
@@ -97,6 +109,7 @@ export async function runReleaseInit(view: ReleaseView): Promise<void> {
 			fresh.versionKey,
 			fresh.targetDateKey,
 			fresh.statusKey,
+			fresh.releasedDateKey,
 		].filter((key) => key !== ''),
 	);
 	const pending = new Map<string, string>();
