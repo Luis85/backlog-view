@@ -13,10 +13,12 @@ describe('runReleaseInit', () => {
 		// resolve to '' and cannot be told apart. `adoptCandidates` asks
 		// `config.get(option) !== undefined`, and this follows it: `versionProperty` below
 		// is explicitly cleared (present in the config, holding ''), while
-		// `targetDateProperty` and `releaseStatusProperty` are simply absent, i.e. never set.
+		// `membershipProperty`, `targetDateProperty` and `releaseStatusProperty` are simply
+		// absent, i.e. never set.
 		const { view } = makeReleaseView(new FakeVault(), { versionProperty: '' });
 		await runReleaseInit(view);
 		const boundKeys = view.config.setCalls.map((c) => c.key);
+		expect(boundKeys).toContain('membershipProperty');
 		expect(boundKeys).toContain('targetDateProperty');
 		expect(boundKeys).toContain('releaseStatusProperty');
 		expect(boundKeys).not.toContain('versionProperty');
@@ -42,6 +44,7 @@ describe('runReleaseInit', () => {
 	it('resolves the bound properties onto view.settings, for the caller that opens the dialog next', async () => {
 		const { view } = makeReleaseView(new FakeVault(), {});
 		await runReleaseInit(view);
+		expect(view.settings.membershipKey).toBe('release');
 		expect(view.settings.versionKey).toBe('version');
 		expect(view.settings.targetDateKey).toBe('target-date');
 		expect(view.settings.statusKey).toBe('status');
@@ -59,6 +62,16 @@ describe('runReleaseInit', () => {
 		// without the collision guard it would adopt 'status' too, and the two options
 		// would silently read the same property.
 		const { view } = makeReleaseView(new FakeVault(), { versionProperty: 'note.status' });
+		await runReleaseInit(view);
+		const bound = new Map(view.config.setCalls.map((c) => [c.key, c.value]));
+		expect(bound.get('releaseStatusProperty')).toBeUndefined();
+	});
+
+	it('does not hand out a key an explicitly-bound membershipProperty already holds', async () => {
+		// membershipProperty is explicitly bound to the key releaseStatusProperty would
+		// otherwise suggest for itself ('status'). Without membershipKey seeded into
+		// `taken`, releaseStatusProperty would adopt 'status' too.
+		const { view } = makeReleaseView(new FakeVault(), { membershipProperty: 'note.status' });
 		await runReleaseInit(view);
 		const bound = new Map(view.config.setCalls.map((c) => [c.key, c.value]));
 		expect(bound.get('releaseStatusProperty')).toBeUndefined();

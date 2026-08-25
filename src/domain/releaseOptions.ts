@@ -132,6 +132,15 @@ export function resolveReleaseSettings(config: BasesViewConfig): ReleaseSettings
 		// No fallback: absence is a value, and a suggestion is not a binding. A membership
 		// key nobody bound must read as unconfigured rather than as `release`, or the view
 		// would report a scope from a property the user never named.
+		//
+		// That rule is about this RESOLVER's own silent read, on every data update, never
+		// about an explicit user action. `view/release/init.ts`'s `runReleaseInit` — the
+		// view's own ✨ — binds this same option's suggested key when the reader presses
+		// it, exactly as the backlog view's `runInit` binds its optional properties: a
+		// button asked for is not a fallback taken behind the reader's back. This function
+		// itself still never defaults `membershipProperty` to `release` — a config that
+		// changed that would fail `test/domain/releaseOptions.test.ts`'s "resolves each
+		// key, and leaves an unconfigured one empty".
 		membershipKey: propKey('membershipProperty', ''),
 		// `propKey`, not `clearablePropKey`: their default is `''`, so the two resolve the
 		// same value for every input — like `releaseKey` in `settingsResolve.ts`, a
