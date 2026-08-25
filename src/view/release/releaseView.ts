@@ -7,7 +7,7 @@ import { resolveSettings } from '../../domain/settingsResolve';
 import { loadViewState, saveViewState } from '../../storage/viewStateStore';
 import { resolveViewIdentity } from '../../storage/viewIdentity';
 import { guidanceShell } from '../render/emptyStates';
-import { drawUnresolved, renderIndex } from './renderIndex';
+import { drawUnresolved, renderIndex, renderNewRelease } from './renderIndex';
 import { renderScope } from './renderScope';
 
 export const RELEASE_VIEW_TYPE = 'product-release';
@@ -198,11 +198,19 @@ export class ReleaseView extends BasesView {
 		// on that: such an item is reported among the unresolved "rather than silently dropped".
 		const index = releaseIndex(this.app, this.model, this.settings);
 		if (this.model.releases.length === 0) {
-			// No create button ON THIS VIEW: no use case in this epic specifies creating a
-			// release, and an empty state must not promise a write nothing defines. The
-			// backlog toolbar's New menu does offer `New Release` — deliberately, the way it
-			// offers `New Milestone` — and that is a different view's existing writer.
-			guidanceShell(this.viewEl, 'package', t('release.empty.noReleases.title'), t('release.empty.noReleases.hint'));
+			// The SECOND entry point onto `renderNewRelease`'s one creation function — this
+			// branch returns before `renderIndex` ever runs, so the index's own control never
+			// reaches the screen a first release would be made from. It is offered here and
+			// not on the `noType` state above for the reason that state exists: `createRelease`
+			// refuses without a type key, and `runReleaseInit` deliberately binds no type
+			// property, so a press there could only ever fail.
+			const empty = guidanceShell(
+				this.viewEl,
+				'package',
+				t('release.empty.noReleases.title'),
+				t('release.empty.noReleases.hint'),
+			);
+			renderNewRelease(this, empty);
 			drawUnresolved(this.viewEl, index);
 			return null;
 		}

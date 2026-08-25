@@ -21,6 +21,25 @@
    in a row is deliberately the read-only `.pbl-state-static` the tree already draws.
    ========================================================================== */
 
+/* The index's own head: the `New release` control, above the scroller so it stays put while
+   the rows move. `flex: 0 0 auto` because `.pbl-view` is a flex COLUMN and `.pbl-rel-list`
+   below takes all the slack — an auto-sized item here would otherwise be squeezed by it.
+   The button itself is Obsidian's `mod-cta`; nothing here paints one. */
+.pbl-rel-actions {
+	flex: 0 0 auto;
+	display: flex;
+	justify-content: flex-end;
+	padding: var(--size-4-2) var(--size-4-2) var(--size-4-1);
+}
+
+/* The control's icon sits on its label the way every other icon-and-text button in the
+   plugin does (`.pbl-btn-icon` supplies the icon's own box). */
+.pbl-rel-new {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--size-4-1);
+}
+
 /* The scroller. The header above it (one release's screen) stays put; only the rows move. */
 .pbl-rel-list {
 	flex: 1 1 auto;

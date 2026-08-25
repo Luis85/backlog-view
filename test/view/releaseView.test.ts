@@ -33,9 +33,12 @@ describe('the release view', () => {
 		vault.addFile('E.md', { frontmatter: { type: 'Epic' } });
 		const { containerEl } = makeReleaseView(vault, { typeProperty: 'note.type' });
 		expect(containerEl.querySelector('.pbl-empty-title')?.textContent).toContain('No releases');
-		// No create button on THIS view. The backlog toolbar's own New menu still offers
-		// `New Release`, which is a different view's existing creator and is asserted there.
-		expect(containerEl.querySelector('.pbl-empty button')).toBeNull();
+		// This state DOES carry the create button, and it is the second of the two entry
+		// points onto one creation function — `draw` returns here before `renderIndex` ever
+		// runs, so without it a base with no release would have no door at all. What the
+		// gesture then does is `test/view/release/newRelease.test.ts`'s subject; the claim
+		// here is only that the state offers it.
+		expect(containerEl.querySelector('.pbl-empty .pbl-rel-new')).not.toBeNull();
 	});
 
 	/**

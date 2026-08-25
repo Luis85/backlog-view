@@ -1,0 +1,152 @@
+// @vitest-environment jsdom
+import { describe, expect, it } from 'vitest';
+import { makeReleaseView, RELEASE_CONFIG, releaseVault } from '../../helpers/release';
+import { FakeVault } from '../../helpers/vault';
+import { Modal, Notice } from '../../helpers/obsidian-mock';
+import { flush, useViewHarness } from '../../helpers/view';
+
+useViewHarness();
+
+/**
+ * A base with a type key and no release in it — the screen `releaseView.draw` returns at
+ * before `renderIndex` ever runs, and therefore the SECOND entry point onto the one
+ * creation function.
+ */
+function noReleaseVault(): FakeVault {
+	const vault = new FakeVault();
+	vault.addFile('E.md', { frontmatter: { type: 'Epic' } });
+	return vault;
+}
+
+/** Every note this run put in the vault, with what it carries. */
+function createdNotes(vault: FakeVault, before: Set<string>): { path: string; fm: Record<string, unknown> }[] {
+	return [...vault.files.keys()]
+		.filter((path) => !before.has(path))
+		.map((path) => ({ path, fm: vault.frontmatter.get(path) ?? {} }));
+}
+
+function newBtn(viewEl: HTMLElement): HTMLButtonElement {
+	const btn = viewEl.querySelector<HTMLButtonElement>('.pbl-rel-new');
+	if (!btn) throw new Error('no New release control on screen');
+	return btn;
+}
+
+/** The dialog the control opened, or a failure naming what happened instead. */
+function openedDialog(): Modal {
+	const modal = Modal.lastOpened;
+	if (!modal) throw new Error('no dialog opened');
+	return modal;
+}
+
+const fieldNames = (modal: Modal): string[] =>
+	Array.from(modal.contentEl.querySelectorAll('.setting-item-name')).map((n) => n.textContent ?? '');
+
+/** Press the control and let the bind settle, so the dialog is open and askable. */
+async function openNewRelease(vault: FakeVault, configValues: Record<string, unknown>) {
+	const { view } = makeReleaseView(vault, configValues);
+	newBtn(view.viewEl).click();
+	await flush();
+	return { view, modal: openedDialog() };
+}
+
+/** Fill the title in and confirm, then let the creation settle. */
+async function confirm(modal: Modal, title: string): Promise<void> {
+	const input = modal.contentEl.querySelector('input');
+	if (!input) throw new Error('no title field');
+	input.value = title;
+	input.dispatchEvent(new Event('input', { bubbles: true }));
+	modal.contentEl.querySelector<HTMLButtonElement>('.mod-cta')?.click();
+	await flush();
+}
+
+/** One whole gesture, from the control on screen to what landed in the vault. */
+async function createRelease(vault: FakeVault): Promise<{ path: string; fm: Record<string, unknown> }[]> {
+	const before = new Set(vault.files.keys());
+	const { modal } = await openNewRelease(vault, RELEASE_CONFIG);
+	await confirm(modal, '2.4');
+	return createdNotes(vault, before);
+}
+
+describe('New release', () => {
+	it('creates a release from the index and from the empty state alike', async () => {
+		// One move, N inputs: both entry points land on one function, which is the only
+		// place the note is created. A second creation path beside it is the thing this
+		// asserts against.
+		//
+		// NOT the plan's `vault.writeLog`, which records `processFrontMatter` alone and is
+		// empty for both sides — `vault.create` appends to nothing, so comparing it would
+		// compare [] with []. What the note IS, and where it landed, is the comparison that
+		// fails when a second path plans its own frontmatter.
+		const fromIndex = await createRelease(releaseVault());
+		const fromEmpty = await createRelease(noReleaseVault());
+		expect(fromIndex).toEqual([
+			{ path: 'docs/releases/2.4.md', fm: { type: 'Release', version: '', 'target-date': '', status: '' } },
+		]);
+		expect(fromEmpty).toEqual(fromIndex);
+	});
+
+	it("binds the view's options before asking for fields", async () => {
+		// The order is the rule: on a fresh vault every option is unset, the bind gives
+		// them their suggested keys, and all four fields then appear.
+		const { modal } = await openNewRelease(noReleaseVault(), {});
+		expect(fieldNames(modal)).toEqual(['Title', 'Version', 'Target date', 'Status']);
+	});
+
+	it('says so when the press bound the options, rather than changing the base silently', async () => {
+		await openNewRelease(noReleaseVault(), {});
+		expect(Notice.messages).toHaveLength(1);
+	});
+
+	it('binds nothing and says nothing when every option is already bound', async () => {
+		await openNewRelease(noReleaseVault(), RELEASE_CONFIG);
+		expect(Notice.messages).toEqual([]);
+	});
+
+	it('leaves a CLEARED option alone, and asks for no field it would land in', async () => {
+		// Cleared is a decision, unset is an omission — and only the live config tells them
+		// apart. `versionProperty` is present and empty here, so the bind skips it and the
+		// dialog respects it; a test using an UNSET option would assert the opposite rule.
+		const vault = noReleaseVault();
+		const before = new Set(vault.files.keys());
+		const { modal } = await openNewRelease(vault, { versionProperty: '' });
+		expect(fieldNames(modal)).toEqual(['Title', 'Target date', 'Status']);
+		await confirm(modal, '2.4');
+		expect(createdNotes(vault, before)).toEqual([
+			{ path: 'docs/releases/2.4.md', fm: { type: 'Release', 'target-date': '', status: '' } },
+		]);
+	});
+
+	it('asks for the title alone where all three optional properties are cleared', async () => {
+		// The PBI's extension 2b: a vault that tracks none of the three can still make a
+		// release, and the note carries nothing but its type. Cleared rather than unset for
+		// the reason above — unset would be bound on the way in and every field would appear.
+		const vault = noReleaseVault();
+		const before = new Set(vault.files.keys());
+		const cleared = { versionProperty: '', targetDateProperty: '', releaseStatusProperty: '' };
+		const { modal } = await openNewRelease(vault, cleared);
+		expect(fieldNames(modal)).toEqual(['Title']);
+		await confirm(modal, '2.4');
+		expect(createdNotes(vault, before)).toEqual([{ path: 'docs/releases/2.4.md', fm: { type: 'Release' } }]);
+	});
+
+	it('reports a refusal rather than throwing it', async () => {
+		// `createRelease` throws without a type key. The empty states withhold the control
+		// on that configuration, so this drives the guard itself: the vault is left alone
+		// and the reader is told.
+		const vault = noReleaseVault();
+		const { view, modal } = await openNewRelease(vault, RELEASE_CONFIG);
+		view.settings = { ...view.settings, typeKey: '' };
+		Notice.reset();
+		await confirm(modal, '2.4');
+		expect(vault.files.has('docs/releases/2.4.md')).toBe(false);
+		expect(Notice.messages).toHaveLength(1);
+	});
+
+	it('withholds the control where no type property is bound', () => {
+		// `createRelease` refuses without one, and `runReleaseInit` deliberately does not
+		// bind `typeProperty` — a cleared type key is a decision, so this state keeps its
+		// settings guidance and offers no press that could only fail.
+		const { view } = makeReleaseView(noReleaseVault(), { typeProperty: '' });
+		expect(view.viewEl.querySelector('.pbl-rel-new')).toBeNull();
+	});
+});

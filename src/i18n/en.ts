@@ -1560,7 +1560,7 @@ export const en = {
 		'This view reads each note’s type to find the releases. Bind the type property in the view options.',
 	'release.empty.noReleases.title': 'No releases in this base',
 	'release.empty.noReleases.hint':
-		'A release is a note typed Release, carrying a version and a target date. Add one to the vault and it appears here.',
+		'A release is a note typed Release, carrying a version and a target date. Create the first one here.',
 
 	/** The index grid's five column headings. Each names a COLUMN, so each is also what
 	 *  `release.index.absentColumns` lists when the column's key is unbound — one name per
@@ -1650,4 +1650,23 @@ export const en = {
 	'newRelease.field.status': 'Status',
 	'newRelease.create': 'Create',
 	'newRelease.cancel': 'Cancel',
+
+	/**
+	 * The control that opens that dialog, and what the press reports — `src/view/release/
+	 * renderIndex.ts`. Its own key rather than a reuse of `newRelease.title` above, which
+	 * names the DIALOG: a locale that titles a form differently from the button opening it
+	 * has no way to say so if the two share one string.
+	 */
+	'release.new.cta': 'New release',
+	/**
+	 * The press bound this view's properties on its way to the dialog, which changed the
+	 * saved view's own configuration — said rather than left silent, the same rule the
+	 * backlog view's own ✨ keeps with `init.outcome`. It names where to change them,
+	 * because the press itself offers no way back.
+	 */
+	'release.new.bound': 'Bound this view’s release properties to their suggested names. Change them in the view options.',
+	/** `resource.created`'s shape exactly: the note's OWN name, which may carry a collision
+	 *  suffix the reader did not type. */
+	'release.new.created': 'Created the release “{name}”.',
+	'release.new.failed': 'Could not create the release. See the developer console for details.',
 } as const;

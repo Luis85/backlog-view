@@ -75,3 +75,14 @@ note that already exists (`test/view/releaseNeverEdits.test.ts`). The accepted c
 that Obsidian's own property picker cannot offer `version`, `target date` or `status`
 until a release note carries them, which the first **New release** supplies — the same
 cost already taken for the membership key last increment.
+
+`src/view/release/renderIndex.ts` holds the door itself (`renderNewRelease`) and the one
+function behind it: bind, then ask, then create. Both presses — the control at the head of
+the index and the same control on the no-releases empty state drawn by
+`src/view/release/releaseView.ts` — call that one function, so neither entry point can grow
+its own idea of what creating a release means. It decides the dialog's fields from the
+settings the bind just resolved, passes what comes back to `createRelease`
+(`src/storage/createNote.ts`), and reports through a `Notice` in each of the three cases a
+press can end in: the options were bound, the note was created, the creation failed. The
+control is offered only past `ReleaseView.draw`'s own type-key guard — `createRelease`
+refuses without one, and the ✨ deliberately binds no type property.
