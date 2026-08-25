@@ -13,10 +13,22 @@ const KEYS = {
 	versionKey: 'version',
 	targetDateKey: 'target-date',
 	statusKey: 'status',
+	releasedDateKey: 'released',
 };
 
+function modelOf(vault: FakeVault, model: BacklogSettings = settingsWith()) {
+	return buildModel(vault.app, vault.entries(), model);
+}
+
 function indexOf(vault: FakeVault, settings = KEYS, model: BacklogSettings = settingsWith()) {
-	return releaseIndex(vault.app, buildModel(vault.app, vault.entries(), model), settings);
+	return releaseIndex(vault.app, modelOf(vault, model), settings);
+}
+
+/** The one row named `path`, by identity rather than by array position. */
+function row(rows: ReturnType<typeof indexOf>['rows'], path: string) {
+	const found = rows.find((r) => r.path === path);
+	if (found === undefined) throw new Error(`no row for ${path}`);
+	return found;
 }
 
 /**
@@ -285,5 +297,42 @@ describe('the release index', () => {
 		const { rows, unresolved } = indexOf(vault);
 		expect(rows.find((r) => r.name === 'R')?.members.value).toBe(0);
 		expect(unresolved.map((i) => i.file.basename).sort()).toEqual(['I', 'M', 'R2', 'TC']);
+	});
+
+	it('reads the released date with the same three answers as the target', () => {
+		const vault = new FakeVault();
+		vault.addFile('R.md', { frontmatter: { type: 'Release', released: '2026-09-14' } });
+		vault.addFile('U.md', { frontmatter: { type: 'Release', released: ['a', 'b'] } });
+		vault.addFile('N.md', { frontmatter: { type: 'Release' } });
+		const rows = indexOf(vault).rows;
+
+		expect(row(rows, 'R.md').released.value).toEqual({ year: 2026, month: 9, day: 14 });
+		expect(row(rows, 'U.md').released.invalid).toBe(true);
+		expect(row(rows, 'N.md').released.value).toBeNull();
+		expect(row(rows, 'N.md').released.invalid).toBe(false);
+	});
+
+	it('reports the released date as unconfigured when no key is bound', () => {
+		const vault = new FakeVault();
+		vault.addFile('R.md', { frontmatter: { type: 'Release', released: '2026-09-14' } });
+		const rows = releaseIndex(vault.app, modelOf(vault), { ...KEYS, releasedDateKey: '' }).rows;
+		expect(row(rows, 'R.md').released.unconfigured).toBe(true);
+	});
+
+	it('derives slip as released minus target in days, negative when early', () => {
+		const vault = new FakeVault();
+		vault.addFile('Late.md', { frontmatter: { type: 'Release', 'target-date': '2026-09-10', released: '2026-09-14' } });
+		vault.addFile('Early.md', { frontmatter: { type: 'Release', 'target-date': '2026-09-10', released: '2026-09-08' } });
+		vault.addFile('OnTime.md', { frontmatter: { type: 'Release', 'target-date': '2026-09-10', released: '2026-09-10' } });
+		vault.addFile('NoRelease.md', { frontmatter: { type: 'Release', 'target-date': '2026-09-10' } });
+		vault.addFile('NoTarget.md', { frontmatter: { type: 'Release', released: '2026-09-10' } });
+		const rows = indexOf(vault).rows;
+
+		expect(row(rows, 'Late.md').slip).toBe(4);
+		expect(row(rows, 'Early.md').slip).toBe(-2);
+		expect(row(rows, 'OnTime.md').slip).toBe(0);
+		// Null without EITHER date — never zero, which would read as "shipped on time".
+		expect(row(rows, 'NoRelease.md').slip).toBeNull();
+		expect(row(rows, 'NoTarget.md').slip).toBeNull();
 	});
 });

@@ -33,6 +33,22 @@ export interface ReleaseRow {
 	 * figure — the column is absent and named once, never zero in each row.
 	 */
 	members: ReleaseFigure<number>;
+	/**
+	 * On the RELEASE note: the date it actually shipped. Read exactly as {@link target} is,
+	 * with the same three answers — unset, unreadable, a date. It is what tells shipped from
+	 * in flight AND what makes {@link slip} derivable: one binding, two figures. Picked over
+	 * interpreting a status string or inferring shipped-ness from 100% progress, both of
+	 * which are wrong in both directions.
+	 */
+	released: ReleaseFigure<CivilDate>;
+	/**
+	 * Released minus target, in days. **Derived, never read** — no note carries it.
+	 *
+	 * Null without EITHER date, and that is not the same as `0`: a zero slip means shipped on
+	 * the day promised, where null means the question cannot be asked yet. Negative means
+	 * early, which is a real answer rather than an error.
+	 */
+	slip: number | null;
 }
 
 export interface ReleaseIndex {
@@ -153,6 +169,18 @@ function dateKey(target: ReleaseFigure<CivilDate>): number {
 	return d.year * 10000 + d.month * 100 + d.day;
 }
 
+/**
+ * Whole days between two civil dates, `b - a`. Both are civil — year, month and day as the
+ * notes spell them — so this converts through UTC midnight deliberately: `Date.UTC` has no
+ * zone and no DST, which is what keeps a span the same number of days whoever reads it.
+ * A local-time construction would give 23 or 25 hours across a DST boundary and round to
+ * the wrong day.
+ */
+function daysBetween(a: CivilDate, b: CivilDate): number {
+	const ms = Date.UTC(b.year, b.month - 1, b.day) - Date.UTC(a.year, a.month - 1, a.day);
+	return Math.round(ms / 86_400_000);
+}
+
 export function releaseIndex(app: App, model: BacklogModel, settings: ReleaseSettings): ReleaseIndex {
 	// Counted rather than seeded: a release nothing points at simply has no entry, and
 	// `?? 0` in the row below is what turns that into the zero it means. Seeding every
@@ -177,16 +205,22 @@ export function releaseIndex(app: App, model: BacklogModel, settings: ReleaseSet
 
 	const rows = model.releases.map((item): ReleaseRow => {
 		const fm = app.metadataCache.getFileCache(item.file)?.frontmatter;
+		const target = settings.targetDateKey ? figure(readTarget(ownValue(fm, settings.targetDateKey))) : UNCONFIGURED;
+		const released = settings.releasedDateKey
+			? figure(readTarget(ownValue(fm, settings.releasedDateKey)))
+			: UNCONFIGURED;
 		return {
 			item,
 			path: item.file.path,
 			name: item.file.basename,
 			version: settings.versionKey ? figure(readLabel(ownValue(fm, settings.versionKey))) : UNCONFIGURED,
-			target: settings.targetDateKey ? figure(readTarget(ownValue(fm, settings.targetDateKey))) : UNCONFIGURED,
+			target,
 			status: settings.statusKey ? figure(readLabel(ownValue(fm, settings.statusKey))) : UNCONFIGURED,
 			members: settings.membershipKey
 				? figure({ value: counts.get(item.file.path) ?? 0, invalid: false })
 				: UNCONFIGURED,
+			released,
+			slip: target.value !== null && released.value !== null ? daysBetween(target.value, released.value) : null,
 		};
 	});
 
