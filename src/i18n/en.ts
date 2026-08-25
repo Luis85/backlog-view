@@ -1590,6 +1590,11 @@ export const en = {
 	 */
 	'release.index.column.version': 'Version',
 	'release.index.column.target': 'Target',
+	/** The shipped date's own label — reused both as the absence report's name for a
+	 *  cleared `releasedDateProperty` and, paired via `release.figureUnreadable`, when a
+	 *  BOUND released value cannot be read: the band's date position can show either date
+	 *  depending on the row, so an unreadable marker there has to say which one it is. */
+	'release.index.column.released': 'Released',
 	'release.index.column.status': 'Status',
 	'release.index.column.members': 'Items',
 	/** A target date the release note does not state — a legitimate answer, and a

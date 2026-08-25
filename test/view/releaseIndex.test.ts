@@ -73,6 +73,18 @@ describe('the release index', () => {
 		for (const drawn of ['Target', 'Status', 'Items', 'Progress']) expect(note).not.toContain(drawn);
 	});
 
+	it('names the released date once beneath the list when releasedDateProperty is cleared', () => {
+		// Fix round 1, finding 1: without this entry every release reads as in flight
+		// (`shipped` is `released.value !== null`, and an unconfigured figure's value is
+		// always null) and nothing on screen says why the Shipped grouping never appears.
+		const { containerEl } = makeReleaseView(releaseVault(), { ...RELEASE_CONFIG, releasedDateProperty: '' });
+		const note = containerEl.querySelector('.pbl-rel-note')?.textContent ?? '';
+		expect(note).toContain('Released');
+		// Every OTHER figure in this fixture is fully configured, so this is the one name
+		// the note should carry — not a symptom of a broader break.
+		for (const drawn of ['Version', 'Target', 'Status', 'Items', 'Progress']) expect(note).not.toContain(drawn);
+	});
+
 	it('says unreadable rather than absent when somebody wrote something there', () => {
 		const vault = releaseVault();
 		vault.addFile('Bad.md', { frontmatter: { type: 'Release', 'target-date': 'soon' } });
@@ -214,6 +226,34 @@ describe('what turns a band red, and what a shipped one shows', () => {
 		expect(band.classList.contains('pbl-rel-overdue')).toBe(false);
 		// Shipped eight days after the target it was promised.
 		expect(band.querySelector('.pbl-rel-band-note')?.textContent).toContain('8 days late');
+	});
+
+	it('refuses the overdue treatment and says the released value is unreadable, rather than misreporting a possibly-shipped release as definitely not', () => {
+		// Fix round 1, finding 2: `released: 'soon'` is invalid (`readTarget` refuses it,
+		// same as `target-date: 'soon'` does), so `released.value` is null and the domain's
+		// `shipped` reads false — which is a correct statement about the VALUE and an
+		// unwarranted one about whether the release actually shipped. A target in the past
+		// is what makes `row.overdue` true from the domain alone, so this fixture is the
+		// full shape of the bug: before the fix, the band drew the target's bare date with
+		// NO unreadable marker, a `.pbl-rel-days` reading "2,428 days left" turned negative
+		// by nothing (the guard never saw it), the `.pbl-rel-overdue` class, and a
+		// `.pbl-rel-band-note` reading "2,428 days overdue" — a release that may already
+		// have shipped painted red as though it definitely had not, with its own malformed
+		// released value never mentioned anywhere on the band.
+		const vault = new FakeVault();
+		vault.addFile('Ambiguous.md', { frontmatter: { type: 'Release', 'target-date': '2020-01-01', released: 'soon' } });
+		const { containerEl } = makeReleaseView(vault, RELEASE_CONFIG);
+		const band = containerEl.querySelector('.pbl-rel-band') as HTMLElement;
+
+		expect(band.classList.contains('pbl-rel-overdue')).toBe(false);
+		expect(band.querySelector('.pbl-rel-days')).toBeNull();
+		expect(band.querySelector('.pbl-rel-band-note')).toBeNull();
+		expect(band.querySelector('.pbl-rel-unreadable')?.textContent).toBe(
+			en['release.figureUnreadable'].replace('{label}', en['release.index.column.released']),
+		);
+		// The label says WHICH date is unreadable — not the bare, ambiguous word the target
+		// branch uses, since this band could show either date.
+		expect(band.querySelector('.pbl-rel-unreadable')?.textContent).toContain('Released');
 	});
 
 	it('says a release shipped early, and on time, from the same slip', () => {

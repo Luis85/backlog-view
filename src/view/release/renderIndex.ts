@@ -89,9 +89,26 @@ function drawStatus(line1: HTMLElement, row: ReleaseRow): void {
  * `row.released.value !== null` is exactly `row.shipped` — `domain/releases.ts`'s own
  * definition — read directly here (rather than the boolean) so the branch narrows
  * `released.value` without an assertion.
+ *
+ * **`row.released.invalid` is checked FIRST, before either.** A malformed released value
+ * is the one figure on this band where staying silent about it would actively mislead:
+ * `shipped` is `released.value !== null`, so an unreadable released date reads as
+ * `shipped: false` from the domain alone, and this row would otherwise fall straight into
+ * the in-flight path below — showing a target's days-remaining and taking the full
+ * overdue treatment for a release that may well have already shipped. Fixed here (Task 6
+ * fix round 1) after review found target's own invalid case handled three lines below and
+ * released's not handled at all — the same tri-state rule (`unconfigured`/`invalid`/a
+ * value) applied to one figure and skipped on its neighbour.
  */
 function drawWhen(line1: HTMLElement, row: ReleaseRow): void {
 	const whenEl = line1.createSpan({ cls: 'pbl-rel-when' });
+	if (row.released.invalid) {
+		whenEl.createSpan({
+			cls: 'pbl-rel-unreadable',
+			text: t('release.figureUnreadable', { label: t('release.index.column.released') }),
+		});
+		return;
+	}
 	if (row.released.value !== null) {
 		whenEl.createSpan({ cls: 'pbl-rel-date', text: t('release.index.releasedOn', { date: formatCivil(row.released.value) }) });
 		return;
@@ -111,8 +128,9 @@ function drawWhen(line1: HTMLElement, row: ReleaseRow): void {
 	// Not drawn while overdue: "18 days left" reads as an error at a negative count, and
 	// the overdue NOTE (see `drawNote`) is what states the fact instead — the "red date"
 	// and the note are two of the four overdue signals, and this is what keeps the date
-	// from carrying a second, contradictory one.
-	if (!row.overdue && row.daysToTarget !== null) {
+	// from carrying a second, contradictory one. `overdueVisible`, not `row.overdue`
+	// alone — see that function for why.
+	if (!overdueVisible(row) && row.daysToTarget !== null) {
 		whenEl.createSpan({ cls: 'pbl-rel-days', text: t('release.index.daysLeft', { count: row.daysToTarget }) });
 	}
 }
@@ -122,6 +140,9 @@ function drawWhen(line1: HTMLElement, row: ReleaseRow): void {
  *  there: an empty target cell is silence, an unset one is a sentence, and only one of the
  *  two has a DOM to read at all. */
 function speakWhen(row: ReleaseRow): string[] {
+	if (row.released.invalid) {
+		return [t('release.figureUnreadable', { label: t('release.index.column.released') })];
+	}
 	if (row.released.value !== null) return [t('release.index.releasedOn', { date: formatCivil(row.released.value) })];
 	if (row.target.unconfigured) return [];
 	const label = t('release.index.column.target');
@@ -131,7 +152,7 @@ function speakWhen(row: ReleaseRow): string[] {
 			? t('release.index.noTarget')
 			: formatCivil(row.target.value);
 	const out = [t('release.index.rowFigure', { label, value })];
-	if (!row.overdue && !row.target.invalid && row.target.value !== null && row.daysToTarget !== null) {
+	if (!overdueVisible(row) && !row.target.invalid && row.target.value !== null && row.daysToTarget !== null) {
 		out.push(t('release.index.daysLeft', { count: row.daysToTarget }));
 	}
 	return out;
@@ -193,6 +214,30 @@ function drawProgressLine(line2: HTMLElement, row: ReleaseRow): void {
 }
 
 /**
+ * Whether the overdue treatment (the leading rule, the red date, the red bar and the
+ * note) may be drawn at all.
+ *
+ * `row.overdue` is a domain fact, computed purely from `target` and `shipped`
+ * (`!shipped && target passed` — `domain/releases.ts`, Task 5), and it has no notion of
+ * `released.invalid`: a released value this view cannot read reads as `shipped: false`
+ * to the domain, which is a correct statement about what `released.value` holds and an
+ * incomplete one about whether the release has shipped. Painting a release red as
+ * definitely-not-shipped when the one figure that would say otherwise is unreadable is
+ * worse than saying nothing — the reader would be told a wrong fact with the same
+ * confidence as a right one.
+ *
+ * **A VIEW-layer refusal, not a domain question.** `overdue` still means exactly what
+ * `domain/releases.ts` says it means; this function does not reinterpret it, and no
+ * change to that module is needed or made. What changes here is only whether THIS
+ * RENDER commits to the four-signal presentation — the same kind of decision `drawWhen`
+ * already makes for `target.invalid` and `row.status.invalid` elsewhere in this file,
+ * now extended to the one input `overdue` itself cannot see.
+ */
+function overdueVisible(row: ReleaseRow): boolean {
+	return row.overdue && !row.released.invalid;
+}
+
+/**
  * Line 2's right side: the overdue warning while in flight, the slip once shipped — never
  * both, since `overdue` is false whenever `shipped` is true (`domain/releases.ts`).
  *
@@ -202,9 +247,15 @@ function drawProgressLine(line2: HTMLElement, row: ReleaseRow): void {
  * what makes `daysToTarget` non-null — but the guard is written anyway, the same
  * belt-and-braces the domain module itself uses for an implication rather than trusting it
  * silently.
+ *
+ * `overdueVisible(row)`, not `row.overdue` alone — see that function. Refusing the
+ * overdue branch here falls through to the slip check below it, which reads `row.slip`
+ * — null whenever `released.value` is null, exactly the case an invalid released value
+ * produces — so an unreadable released date correctly draws NO note here rather than a
+ * wrong one.
  */
 function noteText(row: ReleaseRow): string | null {
-	if (row.overdue) return row.daysToTarget === null ? null : t('release.index.daysOverdue', { count: Math.abs(row.daysToTarget) });
+	if (overdueVisible(row)) return row.daysToTarget === null ? null : t('release.index.daysOverdue', { count: Math.abs(row.daysToTarget) });
 	if (row.slip === null) return null;
 	if (row.slip > 0) return t('release.index.daysLate', { count: row.slip });
 	if (row.slip < 0) return t('release.index.daysEarly', { count: Math.abs(row.slip) });
@@ -261,8 +312,10 @@ function drawBand(view: ReleaseView, bandsEl: HTMLElement, row: ReleaseRow): voi
 	});
 	// One condition, four signals: this class is the ONLY thing that decides the leading
 	// rule, the red date, the red bar and the note's colour — grouped under it in the
-	// stylesheet so the four cannot drift apart.
-	if (row.overdue) bandEl.addClass('pbl-rel-overdue');
+	// stylesheet so the four cannot drift apart. `overdueVisible`, not `row.overdue` alone
+	// — see that function for why an unreadable released value refuses the class even
+	// though the domain fact stays `true`.
+	if (overdueVisible(row)) bandEl.addClass('pbl-rel-overdue');
 
 	const line1 = bandEl.createDiv({ cls: 'pbl-rel-line1' });
 	const nameEl = line1.createSpan({ cls: 'pbl-rel-name' });
@@ -299,11 +352,24 @@ interface AbsentFigure {
  * has a denominator to count over), and reporting BOTH in that case would say the same
  * thing twice — `Items` already explains why there is no progress. This is the one case
  * where the two are independent: membership bound, state property not.
+ *
+ * **`Released` carries no such gate.** Unlike `done`, `released` is not derived FROM
+ * another figure on this row — it is its own binding on the release note
+ * (`releasedDateProperty`), read exactly as `target` is, and `target` being configured or
+ * not says nothing about whether `released` is. So there is no sibling figure whose own
+ * absence entry would already explain this one away, and a cleared `releasedDateProperty`
+ * is named plainly: without it every release reads as in flight (`shipped` is `released.
+ * value !== null`, and an unconfigured figure's value is always `null`), no slip is ever
+ * drawn and the Shipped grouping (Task 7) never has anything to hold — with nothing
+ * beneath the list saying why, until this entry. Added in Task 6 fix round 1: the
+ * original five-entry list covered every figure this increment touches except the one it
+ * ADDED.
  */
 function absentFigures(): AbsentFigure[] {
 	return [
 		{ label: t('release.index.column.version'), unconfigured: (row) => row.version.unconfigured },
 		{ label: t('release.index.column.target'), unconfigured: (row) => row.target.unconfigured },
+		{ label: t('release.index.column.released'), unconfigured: (row) => row.released.unconfigured },
 		{ label: t('release.index.column.status'), unconfigured: (row) => row.status.unconfigured },
 		{ label: t('release.index.column.members'), unconfigured: (row) => row.members.unconfigured },
 		{ label: t('column.rollupProgress'), unconfigured: (row) => !row.members.unconfigured && row.done.unconfigured },
