@@ -2,6 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { mountReleaseHarness, ReleaseConfigVariant } from './mountRelease';
 import { installObsidianDom } from '../helpers/dom';
+import { en } from '../../src/i18n/en';
 
 installObsidianDom();
 
@@ -25,7 +26,7 @@ describe('the release harness mounts', () => {
 	}
 
 	function names(containerEl: HTMLElement): (string | null)[] {
-		return Array.from(containerEl.querySelectorAll('.pbl-rel-row .pbl-rel-name')).map((el) => el.textContent);
+		return Array.from(containerEl.querySelectorAll('.pbl-rel-band .pbl-rel-name')).map((el) => el.textContent);
 	}
 
 	it('draws every release in the index, in the order the index sorts them', () => {
@@ -38,9 +39,19 @@ describe('the release harness mounts', () => {
 
 	it('counts the members and the unresolved memberships the fixture was built to show', () => {
 		const { containerEl } = mount();
-		const counts = Array.from(containerEl.querySelectorAll('.pbl-rel-row .pbl-rel-num')).map((el) => el.textContent);
-
-		expect(counts).toEqual(['3', '1', '1', '0']);
+		// The member count is folded into the progress phrase rather than kept as its own
+		// column — `column.rollupTooltip`, or `release.index.noMembers` for the release with
+		// none. `Send the magic link` is the fixture's only member typed Done, which is why
+		// 0.8 alone reads a numerator of 1.
+		const progress = Array.from(containerEl.querySelectorAll('.pbl-rel-band')).map(
+			(band) => band.querySelector('.pbl-rel-progress')?.textContent ?? band.querySelector('.pbl-rel-nomembers')?.textContent,
+		);
+		expect(progress).toEqual([
+			en['column.rollupTooltip'].other.replace('{done}', '1').replace('{count}', '3'),
+			en['column.rollupTooltip'].one.replace('{done}', '0').replace('{count}', '1'),
+			en['column.rollupTooltip'].one.replace('{done}', '0').replace('{count}', '1'),
+			en['release.index.noMembers'],
+		]);
 		// Both shapes: a value naming no note, and an Iteration carrying the property by hand.
 		expect(containerEl.querySelector('.pbl-rel-note')?.textContent).toContain('2 items');
 	});

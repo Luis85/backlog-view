@@ -6,37 +6,37 @@ import { readFileSync } from 'node:fs';
  * one.** No test here can compute a selector's specificity against Obsidian's own
  * stylesheet: `app.css` is not a dependency, jsdom computes no styles, and the browser
  * harness draws without asserting (ADR 0020). What is checked is that the assembled
- * stylesheet still spells the row's chrome reset at a COMPOUND selector — so a change that
- * lowers it back to a bare class fails here. It would not notice a DIFFERENT Obsidian rule
- * outranking a DIFFERENT declaration.
+ * stylesheet still spells the band's chrome reset at a COMPOUND selector — so a change
+ * that lowers it back to a bare class fails here. It would not notice a DIFFERENT Obsidian
+ * rule outranking a DIFFERENT declaration.
+ *
+ * Retargeted from `.pbl-rel-row` to `.pbl-rel-band` on 2026-08-25, when the band replaced
+ * the column grid: the guard is about the SHAPE (an element-qualified reset beating
+ * Obsidian's own `button:not(.clickable-icon)`), not about which class carries it, and a
+ * rename that left this pinned to a selector nothing renders would keep passing while
+ * guarding nothing.
  *
  * The measurement that found the defect is a headless-Chromium probe, recorded in
  * `docs/issues/The release index rows paint as Obsidian buttons.md`, and it is deliberately
  * not in `npm run check` for the reason ADR 0020 gives.
  */
-describe('the index row does not paint as an Obsidian button', () => {
+describe('the index band does not paint as an Obsidian button', () => {
 	const css = readFileSync('styles/release.css', 'utf8');
 
 	it('resets the background and the shadow at a compound selector', () => {
-		// `button.pbl-rel-row` is (0,1,1) and ties Obsidian's `button:not(.clickable-icon)`,
-		// then wins on source order. A bare `.pbl-rel-row` is (0,1,0) and loses outright.
-		const block = css.match(/button\.pbl-rel-row\s*\{[^}]*\}/);
-		expect(block, 'no element-qualified reset for the row').not.toBeNull();
+		// `button.pbl-rel-band` is (0,1,1) and ties Obsidian's `button:not(.clickable-icon)`,
+		// then wins on source order. A bare `.pbl-rel-band` is (0,1,0) and loses outright.
+		const block = css.match(/button\.pbl-rel-band\s*\{[^}]*\}/);
+		expect(block, 'no element-qualified reset for the band').not.toBeNull();
 		expect(block?.[0]).toContain('background-color: transparent');
 		expect(block?.[0]).toContain('box-shadow: none');
-	});
-
-	it('states its own main-axis alignment rather than inheriting Obsidian’s centring', () => {
-		// Obsidian's bare `button` declares `justify-content: center`. The row never did,
-		// so a dropped column would centre what is left.
-		expect(css).toMatch(/\.pbl-rel-row\s*\{[^}]*justify-content:\s*flex-start/);
 	});
 
 	it('keeps a focus indicator that does not depend on Obsidian’s ring', () => {
 		// The reset above declares `box-shadow: none` at (0,1,1), which ties Obsidian's own
 		// `button:focus-visible` and wins on order — so without an explicit outline, focus
 		// would go invisible rather than merely lose its fill.
-		expect(css).toMatch(/\.pbl-rel-row:focus-visible\s*\{[^}]*outline:/);
+		expect(css).toMatch(/\.pbl-rel-band:focus-visible\s*\{[^}]*outline:/);
 	});
 });
 

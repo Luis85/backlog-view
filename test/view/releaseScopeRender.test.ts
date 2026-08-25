@@ -178,7 +178,7 @@ describe("a release's scope on screen", () => {
 		const { view, containerEl } = openScope();
 		click(containerEl.querySelector('.pbl-rel-back') as HTMLElement);
 		expect(view.pickedPath).toBeNull();
-		expect(containerEl.querySelector('.pbl-rel-grid')).not.toBeNull();
+		expect(containerEl.querySelector('.pbl-rel-bands')).not.toBeNull();
 	});
 
 	it('makes the back control a real button, so a keyboard can reach and press it', () => {

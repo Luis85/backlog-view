@@ -115,7 +115,7 @@ describe('the release view never edits a note that already exists', () => {
 		// either, so they reached nothing and read as coverage of a keyboard path this file
 		// does not exercise. A right-click is kept because it IS a distinct gesture — it opens
 		// a menu on every OTHER view this plugin ships.
-		const indexRow = containerEl.querySelector<HTMLElement>('.pbl-rel-row');
+		const indexRow = containerEl.querySelector<HTMLElement>('.pbl-rel-band');
 		expect(indexRow).not.toBeNull();
 		indexRow?.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
 		(indexRow as HTMLElement).click();

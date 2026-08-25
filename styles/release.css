@@ -1,5 +1,5 @@
 /* ==========================================================================
-   The release view — the index grid, one release's screen, and the shell holding
+   The release view — the index's bands, one release's screen, and the shell holding
    either. One partial, one concern, the layout `styles/index.css` describes.
 
    These rules were drawn and looked at BEFORE any of the view existed: they are the
@@ -18,7 +18,7 @@
 
    Every colour, size and radius is an Obsidian variable rather than a value of ours:
    this view is the tree's own appearance on a different arrangement, and the state chip
-   in a row is deliberately the read-only `.pbl-state-static` the tree already draws.
+   in a band is deliberately the read-only `.pbl-state-static` the tree already draws.
    ========================================================================== */
 
 /* The index's own head: the `New release` control, above the scroller so it stays put while
@@ -58,137 +58,125 @@
 	padding: 0 var(--size-4-2) var(--size-4-4);
 }
 
-/* Name, version, target, status, members — the name column takes the slack and every
-   figure column is a FIXED width, so the numbers line up down the screen without the rows
-   sharing one grid.
-
-   They used to share one: the rows were `display: contents` so that five cells per row
-   became items of a single grid and `auto` tracks sized themselves to the widest content.
-   That was measured in headless Chromium on 2026-08-23 and it cost the whole screen its
-   keyboard: a `display: contents` element has NO BOX, so it is skipped by Tab, `.focus()`
-   on it does nothing, and a `:focus-visible` rule on it can never match. A real
-   `<button>` behaves identically — the element type was never what decided it. The
-   measurement is under `.superpowers/sdd/…/display-contents-focus-measurement.md`.
-
-   So each row lays out its own cells and the columns are held in step the way the tree's
-   property columns are (`src/view/render/columns.ts`): the container publishes one custom
-   property per column and each cell holds a REFERENCE to its column's, never a number. */
-.pbl-rel-grid {
+/* One band per release, two lines — the design's "plan overview and triage surface"
+   replacing the five-column grid. A band is a real `<button>`: picking a release is this
+   view's whole navigation, so Enter, Space and the tab stop are the browser's job rather
+   than a handler somebody has to remember — the `display: contents` measurement that
+   ruled this out for a shared-grid row (2026-08-23,
+   `.superpowers/sdd/…/display-contents-focus-measurement.md`) is exactly why each band
+   lays out its own two lines rather than sharing tracks with its siblings. */
+.pbl-rel-bands {
 	display: flex;
 	flex-direction: column;
 }
 
-.pbl-rel-head,
-.pbl-rel-row {
+/* Obsidian's bare `button` (0,0,1) sets `height: var(--input-height)` — 30px, one line's
+   worth — plus `align-items: center` and `justify-content: center`, all meant for a
+   single-line control. This class (0,1,0) beats it on every property it NAMES, but a
+   property it never names still resolves from the lower-specificity rule: a band that
+   left `height` unset rendered at 30px regardless of two lines of content, and its
+   second line spilled into the band below rather than growing the box — measured in
+   headless Chromium against the real assembled stylesheet on 2026-08-25, the same class
+   of miss `test/harness/theme.css`'s own header warns a stub-only reading cannot catch
+   (there IS no stub rule for a bare `button` here; the real one is what caught it). All
+   three are restated explicitly for that reason, not out of caution. */
+.pbl-rel-band {
 	display: flex;
-	align-items: center;
-	inline-size: 100%;
-}
-
-.pbl-rel-head {
-	position: sticky;
-	top: 0;
-	z-index: 1;
-	background-color: var(--background-primary);
-	border-bottom: 1px solid var(--background-modifier-border);
-	font-size: var(--font-ui-smaller);
-	color: var(--text-faint);
-}
-
-/* A row is a real `<button>`: picking a release is this view's whole navigation, so Enter,
-   Space and the tab stop are the browser's job rather than a handler somebody has to
-   remember. Everything below undoes Obsidian's own `button` appearance — a row is a row,
-   not a raised control. */
-.pbl-rel-row {
-	min-block-size: 34px;
+	flex-direction: column;
+	align-items: stretch;
+	justify-content: flex-start;
 	block-size: auto;
+	gap: var(--size-2-2);
+	inline-size: 100%;
 	margin: 0;
-	padding: 0;
+	padding-block: var(--size-4-2);
+	padding-inline: var(--size-4-1) var(--size-4-2);
 	font-family: inherit;
-	font-size: var(--font-ui-small);
 	color: var(--text-normal);
 	text-align: start;
 	background-color: transparent;
-	border: none;
-	border-bottom: 1px solid var(--background-modifier-border);
+	/* Reserved rather than absent, so the overdue rule below costs no reflow when it
+	   appears — every band already has the 3px, transparent until `.pbl-rel-overdue`
+	   colours it. */
+	border-inline-start: 3px solid transparent;
+	border-block-end: 1px solid var(--background-modifier-border);
 	border-radius: 0;
 	box-shadow: none;
 	cursor: pointer;
-	/* Obsidian's bare `button` declares `justify-content: center`, which this row never
-	   contradicted: harmless while the name column takes the slack, wrong the moment a
-	   figure column drops. */
-	justify-content: flex-start;
 }
 
 /* Obsidian's own `button:not(.clickable-icon)` is (0,1,1) and declares a filled background
-   and a raised shadow; the bare class above is (0,1,0) and loses to it whatever the source
-   order, so the reset in it never applied and every row painted as a raised control.
-   Measured in headless Chromium on 2026-08-25: `rgb(51, 51, 51)` over a body of
-   `rgb(28, 28, 28)`. Element-qualifying ties (0,1,1) and then wins on order — the
-   `button.pbl-card-kids-toggle` pattern in `styles/cardChildren.css`, and the fix
-   `docs/issues/Four other controls still lose to Obsidian's button rule.md` prescribes for
-   exactly this shape. See `docs/issues/The release index rows paint as Obsidian buttons.md`.
-
-   A row is a row, not a raised control — but it stays a real `<button>`: picking a release
-   is this view's whole navigation, and the 2026-08-23 `display: contents` measurement is
-   what established that a row without a box is a row without a tab stop. */
-button.pbl-rel-row {
+   and a raised shadow; a bare class is (0,1,0) and loses to it whatever the source order,
+   so the reset below is written at the element-qualified compound that ties it and wins on
+   order — the `button.pbl-card-kids-toggle` pattern in `styles/cardChildren.css`. Measured
+   in headless Chromium on 2026-08-25 against the row this replaces: `rgb(51, 51, 51)` over
+   a body of `rgb(28, 28, 28)` is what a bare `.pbl-rel-row` painted, and `button.pbl-rel-band`
+   is what carries the fix forward onto its replacement. See
+   `docs/issues/The release index rows paint as Obsidian buttons.md`. */
+button.pbl-rel-band {
 	background-color: transparent;
 	box-shadow: none;
 }
 
-/* One cell. `--pbl-rel-w` is what it lays out at, and it resolves the indexed property the
-   grid element carries — the reference, not the number, so the widths are stated once in
-   `renderIndex.ts` and every row reads the same declaration. The name column is the
-   exception and takes the slack. */
-.pbl-rel-head > span,
-.pbl-rel-row > span {
-	display: flex;
-	align-items: center;
-	gap: var(--size-4-1);
-	flex: 0 0 var(--pbl-rel-w, 96px);
-	padding-inline: 0 var(--size-4-3);
-}
-
-.pbl-rel-head > span {
-	padding-block: var(--size-4-1);
-}
-
-.pbl-rel-row > span {
-	padding-block: var(--size-2-3);
-}
-
-/* A fixed column clips rather than pushes its neighbours out of line, so every text run in
-   a row shrinks and ellipsises. `min-inline-size: 0` is what lets a flex item do that at
-   all; the icon opts back out below. */
-.pbl-rel-head > span,
-.pbl-rel-row span {
-	min-inline-size: 0;
-	overflow: hidden;
-	white-space: nowrap;
-	text-overflow: ellipsis;
-}
-
-.pbl-rel-head > span:first-child,
-.pbl-rel-row > .pbl-rel-name {
-	flex: 1 1 auto;
-}
-
-.pbl-rel-row:hover {
+.pbl-rel-band:hover {
 	background-color: var(--background-modifier-hover);
 	box-shadow: none;
 }
 
-/* The row has a box of its own now, so one outline draws the whole band — where the
-   `display: contents` row could only speak through its cells. */
-.pbl-rel-row:focus-visible {
+/* The band has a box of its own, so one outline draws the whole thing. */
+.pbl-rel-band:focus-visible {
 	background-color: var(--background-modifier-hover);
 	outline: 2px solid var(--interactive-accent);
 	outline-offset: -2px;
 	box-shadow: none;
 }
 
+/* One condition, four signals (the design's "What turns a band red"): this class is the
+   ONLY thing that colours the leading rule, the date, the bar and the note — grouped here
+   so the four cannot drift apart, rather than four rules elsewhere each keying its own
+   copy of "is this release overdue". */
+.pbl-rel-overdue {
+	border-inline-start-color: var(--text-error);
+}
+
+.pbl-rel-overdue .pbl-rel-date,
+.pbl-rel-overdue .pbl-rel-band-note {
+	color: var(--text-error);
+}
+
+.pbl-rel-overdue .pbl-rel-bar-fill {
+	background-color: var(--text-error);
+}
+
+.pbl-rel-line1,
+.pbl-rel-line2 {
+	display: flex;
+	align-items: center;
+	gap: var(--size-4-2);
+	inline-size: 100%;
+	font-size: var(--font-ui-small);
+}
+
+.pbl-rel-line2 {
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+}
+
+/* The flexible middle: name and version lead, the date and the status chip (line 1) or the
+   bar and the note (line 2) are pushed to the end. `.pbl-row-spacer`'s own shape, restated
+   here rather than shared with the tree — a band's two lines are not rows. */
+.pbl-rel-spacer {
+	flex: 1 1 auto;
+}
+
 .pbl-rel-name {
+	display: flex;
+	align-items: center;
+	gap: var(--size-4-1);
+	min-inline-size: 0;
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
 	font-weight: var(--font-medium);
 }
 
@@ -204,16 +192,23 @@ button.pbl-rel-row {
 }
 
 .pbl-rel-version {
+	flex: 0 0 auto;
 	font-family: var(--font-monospace);
 	font-size: var(--font-ui-smaller);
 	color: var(--text-muted);
+	white-space: nowrap;
 }
 
-/* Every figure column: end-aligned and tabular, so digits sit under digits. */
-.pbl-rel-num {
-	justify-content: flex-end;
-	font-size: var(--font-ui-small);
-	font-variant-numeric: tabular-nums;
+/* The date, and its days-remaining figure beside it. */
+.pbl-rel-when {
+	display: flex;
+	align-items: baseline;
+	gap: var(--size-4-1);
+	flex: 0 0 auto;
+	white-space: nowrap;
+}
+
+.pbl-rel-days {
 	color: var(--text-muted);
 }
 
@@ -230,8 +225,41 @@ button.pbl-rel-row {
 	font-style: italic;
 }
 
-/* The unresolved line and the absent-column line — a note ABOUT the list rather than a
-   row in it, so it sits outside the grid. */
+/* The progress bar: a fixed-width track and a filled portion. `--pbl-rel-fill` is
+   published per band (`renderIndex.ts`'s `drawProgressLine`) rather than every possible
+   percentage getting its own class. */
+.pbl-rel-bar {
+	position: relative;
+	flex: 0 0 auto;
+	inline-size: 96px;
+	block-size: 6px;
+	border-radius: 3px;
+	background-color: var(--background-modifier-border);
+	overflow: hidden;
+}
+
+.pbl-rel-bar-fill {
+	position: absolute;
+	inset-block: 0;
+	inset-inline-start: 0;
+	inline-size: var(--pbl-rel-fill, 0%);
+	background-color: var(--interactive-accent);
+}
+
+.pbl-rel-progress,
+.pbl-rel-band-note {
+	white-space: nowrap;
+}
+
+/* A zero-length bar reads as failure where the answer is emptiness — this is what stands
+   in the bar's own slot instead. */
+.pbl-rel-nomembers {
+	font-style: italic;
+	color: var(--text-faint);
+}
+
+/* The unresolved line and the absent-figure line — a note ABOUT the list rather than a
+   band in it, so it sits outside the bands. */
 .pbl-rel-note {
 	display: flex;
 	align-items: center;
