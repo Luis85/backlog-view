@@ -294,7 +294,7 @@ export function drawsForestFrom(projection: Projection, origin: BacklogItem): bo
  * parameter unread both calls took the same input, so the rebuild arm could not be reached.
  * The parameter itself is deliberately left rather than removed in that round — it is one
  * of the three unreachable statements of "a release is refused" collected in
- * `docs/issues/A release is refused in five places.md`, which owns the decision about all
+ * `docs/issues/A release is refused in several places.md`, which owns the decision about all
  * of them together.
  *
  * It answers by TYPE rather than with `offerableTypes`, and the narrowness is deliberate.

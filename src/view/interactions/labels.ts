@@ -471,7 +471,7 @@ export function addIterationItems(host: BacklogViewHost, menu: Menu, item: Backl
  * still live at the WRITING end, where `refusesLiveType` (`storage/frontmatter.ts`) asks
  * `mayHoldField` with a type name and no item to put an `inPlan` question to; it is dead
  * only at this call site, which is one of the unreachable statements collected in
- * `docs/issues/A release is refused in five places.md`.
+ * `docs/issues/A release is refused in several places.md`.
  * The LADDER half reaches no further than this pick: `refusesLiveMembership`
  * (`domain/releases.ts`) asks the TARGET alone, because which ladder a row is on is a model
  * decision the vault cannot re-derive — a reparent between this pick and the write is a

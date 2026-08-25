@@ -79,7 +79,7 @@ export class ViewStateController {
 		// `test/view` green. Deleted rather than kept: a guard over a predicate with no
 		// variation left is a branch nothing can cover, and whoever makes that answer vary
 		// again will be reading the function itself. The accumulation this belonged to is
-		// `docs/issues/A release is refused in five places.md`.
+		// `docs/issues/A release is refused in several places.md`.
 		this.hooks.render();
 	}
 

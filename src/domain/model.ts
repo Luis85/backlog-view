@@ -242,15 +242,37 @@ export function buildModel(app: App, entries: BasesEntry[], settings: BacklogSet
 	const rest = {
 		realRoots: roots,
 		byPath,
-		// The PLAN's vocabulary — the whole unfocused tree minus the catalog. Both halves
-		// matter: unfocused, so what a menu offers never narrows with what is on screen;
-		// minus the catalog, so a value only a test carries cannot reach a plan row's Set
-		// state, a plan row's Set horizon, or a board column no plan card could land in.
+		// The PLAN's vocabulary — the whole unfocused tree minus the catalog, and minus a
+		// release. All three halves matter: unfocused, so what a menu offers never narrows
+		// with what is on screen; minus the catalog, so a value only a test carries cannot
+		// reach a plan row's Set state, a plan row's Set horizon, or a board column no plan
+		// card could land in; and minus a release for that same reason arriving from a new
+		// direction — `inPlan` stopped drawing one anywhere in this view, so a status only
+		// a release carries is a value no plan row can show, and the register's own rule is
+		// that a row this base does not draw is not this base's vocabulary. Without it a
+		// release's `Planned` was offered when setting a PBI's state and printed into the
+		// generated README. Reported by review on PR #203.
+		//
+		// **`isReleaseType` rather than `inPlan`, and the difference is a ruling not an
+		// oversight.** `inPlan` also refuses an `Iteration`, which has been excluded from
+		// this forest since long before releases were and whose status has leaked here just
+		// as long. Sweeping both in one predicate would drop sprint-only status values from
+		// work-item menus — defensible by the same rule, a behaviour change this increment
+		// did not cause, and wrong for a vault that shares its status vocabulary between
+		// sprints and stories. Ruled releases-only on 2026-08-25; the iteration half is
+		// recorded in `docs/issues/A release is refused in several places.md`, which is where
+		// the vocabulary rule gets decided once rather than twice under a review comment.
 		//
 		// The POPULATION, never a list of type names: `firstSeen` reads every non-context
 		// item, so a rule spelled "skip test items" would leave a `Task` beneath a
-		// `Test case` free to mint that column anyway.
-		...vocabularyOf(items.filter((item) => !inCatalog(item)), settings, false),
+		// `Test case` free to mint that column anyway. The release term is the exception
+		// that proves it and not a breach — a release has no ladder position for a
+		// population rule to reach it by, which is the whole reason it needed its own.
+		...vocabularyOf(
+			items.filter((item) => !inCatalog(item) && !isReleaseType(item.typeName)),
+			settings,
+			false,
+		),
 		observedDeliverableStates,
 		// Read off `items` — the whole tree `assignAll` just built, before either branch
 		// below narrows anything to a focus subtree. See `BacklogModel.deliverableResults`.

@@ -48,4 +48,22 @@ describe('releases on the model', () => {
 		const model = buildModel(vault.app, vault.entries(), settingsWith({ focusLevel: 'Epic' }));
 		expect(model.releases.map((r) => r.file.path)).toEqual(['R.md']);
 	});
+
+	it("ignores a release's state, which no plan row can show", () => {
+		// `inPlan` draws a release on no projection of this view, so a status only a
+		// release carries is a value no plan row could ever display — offering it when
+		// setting a PBI's state, or printing it into the generated README, names a
+		// vocabulary this base does not have. The same rule that keeps an excluded
+		// parent's state out, reached from the other direction. Reported on PR #203.
+		//
+		// An `Iteration` is deliberately NOT asserted here: it is excluded from the plan
+		// too and its state DOES still reach this list, which is older than releases and
+		// ruled out of scope on 2026-08-25.
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', status: 'Active' } });
+		vault.addFile('2.4.md', { frontmatter: { type: 'Release', status: 'Planned' } });
+		const model = buildModel(vault.app, vault.entries(), settingsWith({ stateKey: 'status' }));
+
+		expect(model.observedStates).toEqual(['Active']);
+	});
 });
