@@ -17,15 +17,19 @@ useViewHarness();
  * rather than by listing the paths somebody thought of — narrowing it changed which
  * things are forbidden, not how they are checked. `releaseView.test.ts` drives a named
  * list of interactions and asserts a clean vault after them; that one is a regression
- * guard for the paths that exist. This one puts the check on the calls, which holds for a
- * path nobody has written yet.
+ * guard for the paths that exist. This one names the forbidden CALLS rather than reading
+ * the vault after the fact — which is a better statement of the rule and not a wider
+ * reach: it is still a fixed gesture script, and a call on a path the script does not
+ * drive is invisible to it. A check that held for a path nobody has written yet would
+ * have to be a lint rule, and these three functions have none.
  *
  * **The creation path Task 7 wired in is not one of them, and this file does not drive
  * it.** `New release` is on the index screen this script renders, and the script never
  * presses it; what that gesture puts in the vault is asserted where it is driven, in
  * `test/view/release/newRelease.test.ts`, against `writeLog` and `trashed` for this same
- * claim. So what follows narrows to the script below: the spies hold for any path,
- * the vault and config readings say only what these gestures did.
+ * claim. So every assertion below narrows to the script below — the spies as much as the
+ * vault and config readings. All of them say what these gestures did and nothing about a
+ * gesture this file does not make.
  *
  * **Three layers, and each sees what the one above it cannot.**
  *
@@ -34,10 +38,15 @@ useViewHarness();
  *   (the edit and its undo) and `applyPropertyWrites` (the estimation view's plain
  *   key/value batches — a shape this view's own bind deliberately never took, since
  *   backfilling is editing a note that already exists) — are the whole of the
- *   batch/gate write surface `CLAUDE.md`'s write-boundary rule names, so a call to one of
- *   them from anywhere under `src/view/release/` fails here whatever screen or gesture
- *   reached it. They stay banned because the narrowed claim still forbids editing a note
- *   that already exists.
+ *   batch/gate write surface `CLAUDE.md`'s write-boundary rule names. **What the spies
+ *   deliver is narrower than that surface**: three not-called assertions taken after a
+ *   fixed list of gestures, so a call fails here only where this script reaches it. It was
+ *   proven false as written — a well-formed `applyPropertyWrites` call planted in
+ *   `writeRelease` (`src/view/release/newRelease.ts`) left this whole file GREEN, because
+ *   the script never presses `New release`; `test/view/release/newRelease.test.ts` is what
+ *   reddened, at the vault. They stay banned here because the narrowed claim still forbids
+ *   editing a note that already exists, and the honest reading of that ban is "no gesture
+ *   below reaches one".
  *
  *   **Three of `storage/`'s four note creators** — `createBacklogItem`,
  *   `createResourceNote` and `createAbsenceNote` — are ALSO still spied and asserted
@@ -86,7 +95,7 @@ useViewHarness();
  * stays refused exactly as it was before Task 5.
  */
 describe('the release view never edits a note that already exists', () => {
-	it('reaches no edit entry point, from any interaction on either screen', async () => {
+	it('reaches no edit entry point, across the interactions this script drives', async () => {
 		const applyWrites = vi.spyOn(frontmatter, 'applyWrites');
 		const applyRestores = vi.spyOn(frontmatter, 'applyRestores');
 		const applyPropertyWrites = vi.spyOn(propertyWrite, 'applyPropertyWrites');

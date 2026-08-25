@@ -70,10 +70,12 @@ result object. It is a `ui/` leaf — it knows no property keys and writes nothi
 matching `estimationPresetDialog.ts`'s own pattern of taking plain rows in and handing plain
 data back.
 
-`src/view/release/init.ts` is the release view's own ✨ (`runReleaseInit`): it binds the
-suggested key for `release` (the membership property), `version`, `target date` and
-`status` — whichever this vault has never touched — reading the live `BasesViewConfig` so
-a deliberately cleared option is left alone. It writes no note: this view never edits a
+`src/view/release/init.ts` is the ✨ ACTION without a ✨ button (`runReleaseInit`): the
+backlog and estimation views hang theirs on a toolbar control, and this view has no
+toolbar, so the action is a step of the `New release` press rather than a control of its
+own. It binds the suggested key for `release` (the membership property), `version`,
+`target date` and `status` — whichever this vault has never touched — reading the live
+`BasesViewConfig` so a deliberately cleared option is left alone. It writes no note: this view never edits a
 note that already exists (`test/view/releaseNeverEdits.test.ts`). The accepted cost is
 that Obsidian's own property picker cannot offer `version`, `target date` or `status`
 until a release note carries them, which the first **New release** supplies — the same
@@ -85,7 +87,11 @@ head of the index by `src/view/release/renderIndex.ts` and the same control on t
 no-releases empty state drawn by `src/view/release/releaseView.ts` — call that one
 function, so neither entry point can grow its own idea of what creating a release means.
 It decides the dialog's fields from the settings the bind just resolved, passes what comes
-back to `createRelease` (`src/storage/createNote.ts`), and reports through a `Notice` in each of the three cases a
-press can end in: the options were bound, the note was created, the creation failed. The
+back to `createRelease` (`src/storage/createNote.ts`), and reports through a `Notice` in
+each of the three endings that CHANGED something: the options were bound, the note was
+created, the creation failed. Cancelling is the fourth ending and is deliberately silent —
+nothing to report. What every ending shares is where focus goes (`focusNewRelease`): the
+control the CURRENT screen draws, looked up fresh, because the dialog closes before it
+submits and the refresh behind the create replaces the button the close just focused. The
 control is offered only past `ReleaseView.draw`'s own type-key guard — `createRelease`
 refuses without one, and the ✨ deliberately binds no type property.

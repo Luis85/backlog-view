@@ -127,6 +127,28 @@ describe('New release', () => {
 		expect(document.activeElement).toBe(current);
 	});
 
+	it('puts focus back after the CREATE, not only after the close', async () => {
+		// `NewReleaseDialog.submit` closes before it submits, so `onClosed` fires first and
+		// the creation runs after it — and the refresh the new release causes then replaces
+		// the button `onClosed` just focused. The data update is driven here BETWEEN the
+		// confirm and the flush, which is where it can land inside the await; a vault's own
+		// refresh may instead land after it, and nothing in this file can say what happens
+		// then (see `focusNewRelease`).
+		const { view, modal } = await openNewRelease(noReleaseVault(), RELEASE_CONFIG);
+		const opener = newBtn(view.viewEl);
+		opener.focus();
+		const input = modal.contentEl.querySelector('input');
+		if (!input) throw new Error('no title field');
+		input.value = '2.4';
+		input.dispatchEvent(new Event('input', { bubbles: true }));
+		modal.contentEl.querySelector<HTMLButtonElement>('.mod-cta')?.click();
+		view.onDataUpdated();
+		await flush();
+		const current = newBtn(view.viewEl);
+		expect(current).not.toBe(opener);
+		expect(document.activeElement).toBe(current);
+	});
+
 	it('binds nothing and says nothing when every option is already bound', async () => {
 		await openNewRelease(noReleaseVault(), RELEASE_CONFIG);
 		expect(Notice.messages).toEqual([]);

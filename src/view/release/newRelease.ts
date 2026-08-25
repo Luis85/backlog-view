@@ -53,14 +53,37 @@ async function newRelease(view: ReleaseView): Promise<void> {
 	// which is checked in both directions — a fresh view that binds its four keys says so, and
 	// a view with nothing left to bind stays quiet.
 	if (boundKeys(view.settings) !== before) new Notice(t('release.new.bound'));
-	openNewReleaseDialog(view.app, releaseFields(view.settings), (result) => void writeRelease(view, result), () =>
-		// Where focus goes, looked up at close time rather than captured: the press itself may
-		// have called `config.set`, and the refresh behind that redraws the screen the opening
-		// button was in. Both screens that offer the gesture draw the control, so the current one
-		// is the destination; with none drawn, focus is left where it is rather than sent
-		// somewhere the reader did not come from.
-		view.viewEl.querySelector<HTMLButtonElement>('.pbl-rel-new')?.focus({ preventScroll: true }),
+	openNewReleaseDialog(
+		view.app,
+		releaseFields(view.settings),
+		(result) => void writeRelease(view, result),
+		() => focusNewRelease(view),
 	);
+}
+
+/**
+ * Where focus goes, looked up FRESH on every call rather than captured: the press may have
+ * called `config.set`, and the create certainly changes the data — and the refresh behind
+ * either one redraws the screen the opening button was in. Both screens that offer the
+ * gesture draw the control, so the current one is the destination; with none drawn, focus
+ * is left where it is rather than sent somewhere the reader did not come from.
+ *
+ * The root guide's "capture before the await" rule cuts the other way here. What that rule
+ * protects is a VALUE an awaited write will name — a column, a bucket — which the refresh
+ * may take away; this is the ELEMENT the refresh REPLACES, so capturing it is exactly how
+ * focus lands on a detached node.
+ *
+ * One statement of the destination, two callers, because `NewReleaseDialog.submit` closes
+ * before it submits: `onClosed` fires first and `writeRelease` runs after it, so the close
+ * alone puts focus on a button the create's own refresh then replaces. What the second call
+ * CANNOT promise is that focus stays. It only wins the refreshes that land INSIDE the
+ * await, which is the case `test/view/release/newRelease.test.ts` stages by driving
+ * `onDataUpdated()` there; a vault refreshes on its own schedule, so one landing after the
+ * await takes focus to the body again and nothing here — or in that test — can say
+ * otherwise.
+ */
+function focusNewRelease(view: ReleaseView): void {
+	view.viewEl.querySelector<HTMLButtonElement>('.pbl-rel-new')?.focus({ preventScroll: true });
 }
 
 /** The four keys this press can bind, as one value, so "did it bind anything" is one
@@ -104,4 +127,8 @@ async function writeRelease(view: ReleaseView, result: NewReleaseResult): Promis
 		console.error('Product Backlog: failed to create the release', e);
 		new Notice(t('release.new.failed'));
 	}
+	// After the await, and on both endings: a refusal leaves the button the close already
+	// focused, and a creation is what replaces it. See `focusNewRelease` for what this can
+	// and cannot promise.
+	focusNewRelease(view);
 }
