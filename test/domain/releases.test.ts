@@ -231,9 +231,12 @@ describe('the release index', () => {
 		expect(row(rows, 'R.md').done.value).toBe(2);
 	});
 
-	it('counts no ancestor that is not itself a member', () => {
-		// The context-row rule, asked of this figure: an ancestor drawn for context is never
-		// a counting source. Adding one changes no number.
+	it('counts no ancestor that never declares membership, done or not', () => {
+		// NOT the context-row rule: `Epic.md` here is an ordinary RESULT row, not an
+		// `outsideFilter` one — it is simply excluded because it carries no `release`
+		// property of its own, so `membershipTarget` answers null for it exactly as it
+		// would for any other non-member. See the `outsideFilter` test below for the actual
+		// context-row check — a note the Base excluded that DOES name the release.
 		const vault = new FakeVault();
 		vault.addFile('R.md', { frontmatter: { type: 'Release' } });
 		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', status: 'Done' } });
@@ -242,6 +245,26 @@ describe('the release index', () => {
 
 		expect(row(rows, 'R.md').members.value).toBe(1);
 		expect(row(rows, 'R.md').done.value).toBe(1);
+	});
+
+	it('never counts an outsideFilter context row as done, even though it names the release', () => {
+		// The actual context-row rule, asked of `done`. `Outside.md` is a TRUE context row:
+		// it is in the vault, its own `release` property names R, and its own state is
+		// done — but the Base excluded it, and it is loaded only as `Child.md`'s parent.
+		// Both `members` and `done` are asserted on the SAME fixture, because asserting
+		// only `done` would leave `members` (already covered above) untested against it —
+		// the pair is what the register's context-row rule is actually about.
+		const vault = new FakeVault();
+		vault.addFile('R.md', { frontmatter: { type: 'Release' } });
+		vault.addFile('Outside.md', { frontmatter: { type: 'Feature', release: '[[R]]', status: 'Done' } });
+		vault.addFile('Child.md', { frontmatter: { type: 'PBI' }, parentLink: 'Outside' });
+		const entries = vault.entries().filter((e) => e.file.path !== 'Outside.md');
+		const model = buildModel(vault.app, entries, settingsWith({ stateKey: 'status' }));
+		expect(model.byPath.get('Outside.md')?.outsideFilter).toBe(true);
+		const rows = releaseIndex(vault.app, model, KEYS, { stateKey: 'status' }).rows;
+
+		expect(row(rows, 'R.md').members.value).toBe(0);
+		expect(row(rows, 'R.md').done.value).toBe(0);
 	});
 
 	it('counts a Deliverable member done through its OWN workflow, never item.done', () => {
