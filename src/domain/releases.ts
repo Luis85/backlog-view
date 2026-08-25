@@ -3,6 +3,7 @@ import { BacklogItem, BacklogModel, inPlan } from './model';
 import { ReleaseSettings } from './releaseOptions';
 import { CivilDate, FieldReading, linkpathFromRawValue, ownValue, readDate, readString } from './noteFields';
 import { isMarkerType, isReleaseType } from './itemTypes';
+import { ownWorkflowReading } from './board';
 
 /**
  * A figure with THREE answers, not two. `FieldReading` in `noteFields.ts` separates a
@@ -33,6 +34,26 @@ export interface ReleaseRow {
 	 * figure — the column is absent and named once, never zero in each row.
 	 */
 	members: ReleaseFigure<number>;
+	/**
+	 * Members whose own state is a done value — the numerator {@link members} is the
+	 * denominator of. A FIGURE for the reason `members` is one: unconfigured WITHOUT a
+	 * membership property (a done count with no membership has nothing to count over) and
+	 * unconfigured WITHOUT the plan's own state key ({@link ReleaseIndexOptions.stateKey}),
+	 * because nothing says what done means and a `0` would read as "none finished" on a
+	 * base that simply never bound one.
+	 *
+	 * Read through `ownWorkflowReading`, never `item.done`: a member typed `Deliverable` or
+	 * a test-catalog member answers through its OWN workflow, which `item.done` — the
+	 * requirements reading alone — gets backwards. All three workflows fall back to the
+	 * plan's state key when their own property is unbound, which is why THAT key, not one
+	 * of this view's own three mappings, is what `done` is gated on.
+	 *
+	 * Counted in the same walk that counts `members`, so there is one traversal and one
+	 * population. Progress is this over `members` and is computed nowhere else — the
+	 * single-release screen reads the same row, which is what stops a band and a release
+	 * header disagreeing about one release.
+	 */
+	done: ReleaseFigure<number>;
 	/**
 	 * On the RELEASE note: the date it actually shipped. Read exactly as {@link target} is,
 	 * with the same three answers — unset, unreadable, a date. It is what tells shipped from
@@ -181,11 +202,37 @@ function daysBetween(a: CivilDate, b: CivilDate): number {
 	return Math.round(ms / 86_400_000);
 }
 
-export function releaseIndex(app: App, model: BacklogModel, settings: ReleaseSettings): ReleaseIndex {
+/**
+ * Per-render inputs `releaseIndex` needs that neither {@link ReleaseSettings} nor
+ * {@link BacklogModel} carries. An OBJECT rather than a positional parameter, deliberately:
+ * a fourth positional argument reads as "and one more thing", while a bag says the caller
+ * is handing over context the two typed inputs above don't carry. Task 5 adds `today` (an
+ * injected civil date — `domain/` never reads a clock) as a second field here rather than
+ * a fifth position.
+ */
+export interface ReleaseIndexOptions {
+	/**
+	 * `BacklogSettings.stateKey` — the PLAN's own state key. Not one of `ReleaseSettings`'
+	 * three model mappings, and not carried by `BacklogModel` either, so it has to arrive
+	 * as an explicit input. See {@link ReleaseRow.done} for why this is the key that gates
+	 * it rather than any of this view's own.
+	 */
+	stateKey: string;
+}
+
+export function releaseIndex(
+	app: App,
+	model: BacklogModel,
+	settings: ReleaseSettings,
+	options: ReleaseIndexOptions,
+): ReleaseIndex {
 	// Counted rather than seeded: a release nothing points at simply has no entry, and
 	// `?? 0` in the row below is what turns that into the zero it means. Seeding every
 	// release with 0 first would say the same thing twice.
 	const counts = new Map<string, number>();
+	// Same shape, one per release, for the numerator `done` reads.
+	const doneCounts = new Map<string, number>();
+	const stateConfigured = options.stateKey !== '';
 	const unresolved: BacklogItem[] = [];
 	// Built once per index and dead with it: `membershipTarget` runs per scannable row, so
 	// asking `model.releases` itself made the last refusal a scan and the rebuild
@@ -201,6 +248,8 @@ export function releaseIndex(app: App, model: BacklogModel, settings: ReleaseSet
 			continue;
 		}
 		counts.set(named, (counts.get(named) ?? 0) + 1);
+		// `ownWorkflowReading`, never `item.done`: see {@link ReleaseRow.done}.
+		if (ownWorkflowReading(item).done) doneCounts.set(named, (doneCounts.get(named) ?? 0) + 1);
 	}
 
 	const rows = model.releases.map((item): ReleaseRow => {
@@ -219,6 +268,10 @@ export function releaseIndex(app: App, model: BacklogModel, settings: ReleaseSet
 			members: settings.membershipKey
 				? figure({ value: counts.get(item.file.path) ?? 0, invalid: false })
 				: UNCONFIGURED,
+			done:
+				settings.membershipKey && stateConfigured
+					? figure({ value: doneCounts.get(item.file.path) ?? 0, invalid: false })
+					: UNCONFIGURED,
 			released,
 			slip: target.value !== null && released.value !== null ? daysBetween(target.value, released.value) : null,
 		};

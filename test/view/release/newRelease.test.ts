@@ -251,7 +251,11 @@ describe('New release', () => {
 		const { view } = makeReleaseView(vault, RELEASE_CONFIG);
 		const model = view.model;
 		if (!model) throw new Error('the second mount built no model');
-		const row = releaseIndex(vault.app, model, view.settings).rows.find((r) => r.path === 'docs/releases/2.4.md');
+		// `done` is not this test's subject, so `stateKey` is left unbound — the same answer
+		// `settingsWith()`'s own default gives.
+		const row = releaseIndex(vault.app, model, view.settings, { stateKey: '' }).rows.find(
+			(r) => r.path === 'docs/releases/2.4.md',
+		);
 		if (!row) throw new Error('the created release is not in the index');
 		expect({ version: row.version.invalid, target: row.target.invalid, status: row.status.invalid }).toEqual({
 			version: false,
@@ -280,7 +284,7 @@ describe('New release', () => {
 		const reread = makeReleaseView(vault, { typeProperty: 'note.status' }).view;
 		const model = reread.model;
 		if (!model) throw new Error('the second mount built no model');
-		expect(releaseIndex(vault.app, model, reread.settings).rows.map((r) => r.path)).toContain(
+		expect(releaseIndex(vault.app, model, reread.settings, { stateKey: '' }).rows.map((r) => r.path)).toContain(
 			'docs/releases/2.4.md',
 		);
 	});

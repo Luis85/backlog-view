@@ -37,15 +37,20 @@ function fixture(opts: {
 		settings,
 		/** What the READER makes of the same note, off the same build the planner is asked about. */
 		readAsMembership: () =>
-			!releaseIndex(vault.app, model, {
-				parentKey: 'parent',
-				orderKey: 'order',
-				typeKey: 'type',
-				membershipKey: 'release',
-				versionKey: 'version',
-				targetDateKey: 'target-date',
-				statusKey: 'status',
-			}).unresolved.some((i) => i.file.path === 'PBI-1.md'),
+			!releaseIndex(
+				vault.app,
+				model,
+				{
+					parentKey: 'parent',
+					orderKey: 'order',
+					typeKey: 'type',
+					membershipKey: 'release',
+					versionKey: 'version',
+					targetDateKey: 'target-date',
+					statusKey: 'status',
+				},
+				{ stateKey: settings.stateKey },
+			).unresolved.some((i) => i.file.path === 'PBI-1.md'),
 	};
 }
 

@@ -16,12 +16,18 @@ const KEYS = {
 	releasedDateKey: 'released',
 };
 
-function modelOf(vault: FakeVault, model: BacklogSettings = settingsWith()) {
+// `stateKey: 'status'` by default so `done` reads the same `status` property the fixtures
+// already write `Done`/`Doing` into — the fixture the `done` tests below build without
+// having to name a state key nobody would otherwise have reason to set. Individual tests
+// clear it (`settingsWith({ stateKey: '' })`) to build the unconfigured case, following
+// `test/domain/releasesModel.test.ts` and `test/helpers/settings.ts`'s own pattern rather
+// than inventing a second one.
+function modelOf(vault: FakeVault, model: BacklogSettings = settingsWith({ stateKey: 'status' })) {
 	return buildModel(vault.app, vault.entries(), model);
 }
 
-function indexOf(vault: FakeVault, settings = KEYS, model: BacklogSettings = settingsWith()) {
-	return releaseIndex(vault.app, modelOf(vault, model), settings);
+function indexOf(vault: FakeVault, settings = KEYS, model: BacklogSettings = settingsWith({ stateKey: 'status' })) {
+	return releaseIndex(vault.app, modelOf(vault, model), settings, { stateKey: model.stateKey });
 }
 
 /** The one row named `path`, by identity rather than by array position. */
@@ -213,6 +219,65 @@ describe('the release index', () => {
 		expect(rows.find((r) => r.name === 'Empty')?.members.value).toBe(0);
 	});
 
+	it('counts done members over the same population as members', () => {
+		const vault = new FakeVault();
+		vault.addFile('R.md', { frontmatter: { type: 'Release' } });
+		vault.addFile('A.md', { frontmatter: { type: 'PBI', release: '[[R]]', status: 'Done' } });
+		vault.addFile('B.md', { frontmatter: { type: 'PBI', release: '[[R]]', status: 'Done' } });
+		vault.addFile('C.md', { frontmatter: { type: 'PBI', release: '[[R]]', status: 'Doing' } });
+		const rows = indexOf(vault).rows;
+
+		expect(row(rows, 'R.md').members.value).toBe(3);
+		expect(row(rows, 'R.md').done.value).toBe(2);
+	});
+
+	it('counts no ancestor that is not itself a member', () => {
+		// The context-row rule, asked of this figure: an ancestor drawn for context is never
+		// a counting source. Adding one changes no number.
+		const vault = new FakeVault();
+		vault.addFile('R.md', { frontmatter: { type: 'Release' } });
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', status: 'Done' } });
+		vault.addFile('A.md', { frontmatter: { type: 'PBI', release: '[[R]]', status: 'Done' }, parentLink: 'Epic' });
+		const rows = indexOf(vault).rows;
+
+		expect(row(rows, 'R.md').members.value).toBe(1);
+		expect(row(rows, 'R.md').done.value).toBe(1);
+	});
+
+	it('counts a Deliverable member done through its OWN workflow, never item.done', () => {
+		// The case `item.done` gets wrong. `item.done` is the REQUIREMENTS reading, off the
+		// plan's state key (`status` here, saying `Doing`) — a Deliverable's own workflow is
+		// bound to a DIFFERENT property (`docStatus`, saying `Done`). Watched failing with
+		// `item.done` in place of `ownWorkflowReading(item).done`: with the swap made, this
+		// assertion read `done.value` as `0` rather than `1`.
+		const vault = new FakeVault();
+		vault.addFile('R.md', { frontmatter: { type: 'Release' } });
+		vault.addFile('D.md', {
+			frontmatter: { type: 'Deliverable', release: '[[R]]', docStatus: 'Done', status: 'Doing' },
+		});
+		const settings = settingsWith({ stateKey: 'status', deliverableStateKey: 'docStatus' });
+		const rows = releaseIndex(vault.app, modelOf(vault, settings), KEYS, { stateKey: settings.stateKey }).rows;
+
+		expect(row(rows, 'R.md').members.value).toBe(1);
+		expect(row(rows, 'R.md').done.value).toBe(1);
+	});
+
+	it('reports done as unconfigured without a state key OR without a membership key', () => {
+		const vault = new FakeVault();
+		vault.addFile('R.md', { frontmatter: { type: 'Release' } });
+		vault.addFile('A.md', { frontmatter: { type: 'PBI', release: '[[R]]', status: 'Done' } });
+		const model = modelOf(vault);
+
+		// No state key: nothing says what done MEANS, so the figure is absent rather than 0.
+		const noState = releaseIndex(vault.app, modelOf(vault, settingsWith({ stateKey: '' })), KEYS, {
+			stateKey: '',
+		});
+		expect(noState.rows[0].done.unconfigured).toBe(true);
+		// No membership key: a done count with no membership has nothing to count OVER.
+		const noMembership = releaseIndex(vault.app, model, { ...KEYS, membershipKey: '' }, { stateKey: 'status' });
+		expect(noMembership.rows[0].done.unconfigured).toBe(true);
+	});
+
 	it('cannot count members at all with the membership key unbound', () => {
 		const vault = new FakeVault();
 		vault.addFile('R.md', { frontmatter: { type: 'Release' } });
@@ -284,7 +349,7 @@ describe('the release index', () => {
 		expect(model.byPath.get('Outside.md')?.outsideFilter).toBe(true);
 		// It renders, it parents, and that is all — never a source of anything derived
 		// from the Base's results, a member count included.
-		expect(releaseIndex(vault.app, model, KEYS).rows[0].members.value).toBe(0);
+		expect(releaseIndex(vault.app, model, KEYS, { stateKey: '' }).rows[0].members.value).toBe(0);
 	});
 
 	it('refuses a membership property hand-written on a non-plan row', () => {
@@ -325,7 +390,7 @@ describe('the release index', () => {
 	it('reports the released date as unconfigured when no key is bound', () => {
 		const vault = new FakeVault();
 		vault.addFile('R.md', { frontmatter: { type: 'Release', released: '2026-09-14' } });
-		const rows = releaseIndex(vault.app, modelOf(vault), { ...KEYS, releasedDateKey: '' }).rows;
+		const rows = releaseIndex(vault.app, modelOf(vault), { ...KEYS, releasedDateKey: '' }, { stateKey: 'status' }).rows;
 		expect(row(rows, 'R.md').released.unconfigured).toBe(true);
 	});
 
