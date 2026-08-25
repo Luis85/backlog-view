@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
+import { en } from '../../../src/i18n/en';
 import { makeReleaseView, RELEASE_CONFIG, releaseVault } from '../../helpers/release';
 import { FakeVault } from '../../helpers/vault';
 import { Modal, Notice } from '../../helpers/obsidian-mock';
@@ -77,12 +78,24 @@ describe('New release', () => {
 		// empty for both sides — `vault.create` appends to nothing, so comparing it would
 		// compare [] with []. What the note IS, and where it landed, is the comparison that
 		// fails when a second path plans its own frontmatter.
-		const fromIndex = await createRelease(releaseVault());
-		const fromEmpty = await createRelease(noReleaseVault());
+		const indexVault = releaseVault();
+		const emptyVault = noReleaseVault();
+		const fromIndex = await createRelease(indexVault);
+		const fromEmpty = await createRelease(emptyVault);
 		expect(fromIndex).toEqual([
 			{ path: 'docs/releases/2.4.md', fm: { type: 'Release', version: '', 'target-date': '', status: '' } },
 		]);
 		expect(fromEmpty).toEqual(fromIndex);
+		// And the design's §5 on the one gesture that reaches a writer at all: this view
+		// never EDITS a note that already exists. `test/view/releaseNeverEdits.test.ts` puts
+		// that check on the calls, but its script never presses this control — so the whole
+		// gesture is asked here, at the vault, where an edit or a deletion lands whatever
+		// function reached it. Empty for the reason the comment above gives, which is exactly
+		// what makes it the assertion: a creation appends to neither log.
+		for (const vault of [indexVault, emptyVault]) {
+			expect(vault.writeLog).toEqual([]);
+			expect(vault.trashed).toEqual([]);
+		}
 	});
 
 	it("binds the view's options before asking for fields", async () => {
@@ -94,11 +107,42 @@ describe('New release', () => {
 
 	it('says so when the press bound the options, rather than changing the base silently', async () => {
 		await openNewRelease(noReleaseVault(), {});
-		expect(Notice.messages).toHaveLength(1);
+		expect(Notice.messages).toEqual([en['release.new.bound']]);
+	});
+
+	it('puts focus on the control the CURRENT screen draws when the dialog closes', async () => {
+		// Looked up at close time rather than captured: the press itself can call
+		// `config.set`, and the refresh behind that replaces the button that opened the
+		// dialog. A data update is that redraw, driven here directly — capturing the opener
+		// would leave focus on a detached element, which is nowhere.
+		const { view } = makeReleaseView(noReleaseVault(), RELEASE_CONFIG);
+		const opener = newBtn(view.viewEl);
+		opener.focus();
+		opener.click();
+		await flush();
+		view.onDataUpdated();
+		const current = newBtn(view.viewEl);
+		expect(current).not.toBe(opener);
+		openedDialog().close();
+		expect(document.activeElement).toBe(current);
 	});
 
 	it('binds nothing and says nothing when every option is already bound', async () => {
 		await openNewRelease(noReleaseVault(), RELEASE_CONFIG);
+		expect(Notice.messages).toEqual([]);
+	});
+
+	it('says nothing when the options were bound since the last data update', async () => {
+		// `view.settings` is a snapshot from the last data update — `init.ts`'s own
+		// documented trap, in the other direction. Bound here with no update behind it, the
+		// press binds nothing and must therefore report nothing: a notice here would tell
+		// the reader their view's configuration changed when it did not.
+		const { view, config } = makeReleaseView(noReleaseVault(), {});
+		for (const [option, value] of Object.entries(RELEASE_CONFIG)) config.set(option, value);
+		const bound = config.setCalls.length;
+		newBtn(view.viewEl).click();
+		await flush();
+		expect(config.setCalls).toHaveLength(bound);
 		expect(Notice.messages).toEqual([]);
 	});
 
@@ -139,7 +183,7 @@ describe('New release', () => {
 		Notice.reset();
 		await confirm(modal, '2.4');
 		expect(vault.files.has('docs/releases/2.4.md')).toBe(false);
-		expect(Notice.messages).toHaveLength(1);
+		expect(Notice.messages).toEqual([en['release.new.failed']]);
 	});
 
 	it('withholds the control where no type property is bound', () => {

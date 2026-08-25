@@ -18,7 +18,14 @@ useViewHarness();
  * things are forbidden, not how they are checked. `releaseView.test.ts` drives a named
  * list of interactions and asserts a clean vault after them; that one is a regression
  * guard for the paths that exist. This one puts the check on the calls, which holds for a
- * path nobody has written yet — including the creation path Task 7 has not wired in.
+ * path nobody has written yet.
+ *
+ * **The creation path Task 7 wired in is not one of them, and this file does not drive
+ * it.** `New release` is on the index screen this script renders, and the script never
+ * presses it; what that gesture puts in the vault is asserted where it is driven, in
+ * `test/view/release/newRelease.test.ts`, against `writeLog` and `trashed` for this same
+ * claim. So what follows narrows to the script below: the spies hold for any path,
+ * the vault and config readings say only what these gestures did.
  *
  * **Three layers, and each sees what the one above it cannot.**
  *
@@ -38,8 +45,9 @@ useViewHarness();
  *   naming, not that it may call any creator in `storage/`. `createRelease` alone is
  *   permitted and is deliberately NOT spied here — asserting it uncalled would be the
  *   same mistake in the other direction, re-encoding the old broad claim for the one
- *   function the narrowed claim exists to allow, and it would turn red the moment Task 7
- *   wires it into a gesture this file does not drive. Nothing under `src/view/release/`
+ *   function the narrowed claim exists to allow. Task 7 has since wired it into the
+ *   `New release` control, so such a spy would now be one press from red for a gesture the
+ *   claim permits. Nothing under `src/view/release/`
  *   imports any of the three still-banned creators today, and neither Task 6 nor Task 7
  *   introduces one — this spy is what makes the next one that does fail here rather than
  *   pass silently.
@@ -56,15 +64,16 @@ useViewHarness();
  *   `updateAbsenceNote` (`storage/absenceNotes.ts`) also edits an existing note through
  *   `processFrontMatter` and is not one of the three above; `writeLog` is what still
  *   catches a call to it, not a fourth spy. `vault.files.size` still asserts `before + 1`
- *   here too, for the same reason it always did: nothing this fixed interaction script
- *   drives (index click, scope row, back, pick, unload) is Task 7's control, so no
- *   creator — permitted or still-banned — is reachable from it.
+ *   here too, and the reason is now narrower than it was: this fixed interaction script
+ *   (index row click and right-click, scope row, back, `pick`, `unload`) does not press
+ *   `.pbl-rel-new`, the one control on either screen that reaches a creator at all.
  * - `config.setCalls` is the `.base` itself, the third thing a Bases view can write. The
  *   narrowed claim permits this view to bind its own config (the same shape `runInit`
  *   uses for the tree, and `runEstimationInit` for the estimation view), so this
  *   assertion is no longer "no code anywhere may call config.set" — it is "nothing this
- *   fixed interaction script does calls it," which stays true because nothing driven here
- *   reaches the bind-and-backfill action Task 6 adds.
+ *   fixed interaction script does calls it," which stays true because the one action that
+ *   binds (`runReleaseInit`) is reached from the `New release` press alone, and the script
+ *   never presses it.
  *
  * What none of the three sees is a write reached from a module this view does not import
  * yet. `WRITE_BOUNDARY` in `eslint.config.mjs` is that statement, unchanged by this
@@ -133,7 +142,7 @@ describe('the release view never edits a note that already exists', () => {
 		expect(vault.writeLog).toEqual([]);
 		expect(vault.trashed).toEqual([]);
 		// `mountLeaf` adds the `.base` itself and nothing since — none of the gestures above
-		// creates a release, because none of them is Task 7's control.
+		// presses `.pbl-rel-new`, the only control on either screen that creates anything.
 		expect(vault.files.size).toBe(before + 1);
 		expect(config.setCalls).toEqual([]);
 	});

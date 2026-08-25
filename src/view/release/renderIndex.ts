@@ -2,7 +2,7 @@ import { Notice, setIcon } from 'obsidian';
 import type { ReleaseView } from './releaseView';
 import { t } from '../../i18n/t';
 import { ReleaseFigure, ReleaseIndex, ReleaseRow } from '../../domain/releases';
-import { ReleaseSettings } from '../../domain/releaseOptions';
+import { ReleaseSettings, resolveReleaseSettings } from '../../domain/releaseOptions';
 import { formatCivil } from '../../domain/timeline';
 import { createRelease } from '../../storage/createNote';
 import { NewReleaseResult, openNewReleaseDialog, ReleaseFieldId } from '../../ui/newReleaseDialog';
@@ -327,7 +327,11 @@ export function renderNewRelease(view: ReleaseView, parentEl: HTMLElement): void
  * release could never carry a version, a date or a status.
  */
 async function newRelease(view: ReleaseView): Promise<void> {
-	const before = boundKeys(view.settings);
+	// A FRESH resolve of the live config, never `view.settings`: that field is a snapshot
+	// from the last data update, so an option bound since then reads as unset here and the
+	// press reports a configuration change it did not make — `init.ts`'s own documented trap,
+	// met on the reading side rather than the binding one.
+	const before = boundKeys(resolveReleaseSettings(view.config));
 	// Run unconditionally rather than asking first which options are unset. `runReleaseInit`
 	// already puts that question to the live config (`adoptCandidates`), binds only what
 	// nobody has touched, leaves a cleared option alone and does nothing at all when
@@ -335,11 +339,18 @@ async function newRelease(view: ReleaseView): Promise<void> {
 	// to disagree with it.
 	await runReleaseInit(view);
 	// Said rather than silent: the press changed the saved view's own configuration, which
-	// nothing else on this screen reports. Read off what the keys RESOLVED to either side of
-	// the call rather than off what the action set out to bind — a suggestion refused for a
-	// collision binds nothing, and must then say nothing.
+	// nothing else on this screen reports. It fires on the two RESOLVED readings differing,
+	// which is checked in both directions — a fresh view that binds its four keys says so, and
+	// a view with nothing left to bind stays quiet.
 	if (boundKeys(view.settings) !== before) new Notice(t('release.new.bound'));
-	openNewReleaseDialog(view.app, releaseFields(view.settings), (result) => void writeRelease(view, result));
+	openNewReleaseDialog(view.app, releaseFields(view.settings), (result) => void writeRelease(view, result), () =>
+		// Where focus goes, looked up at close time rather than captured: the press itself may
+		// have called `config.set`, and the refresh behind that redraws the screen the opening
+		// button was in. Both screens that offer the gesture draw the control, so the current one
+		// is the destination; with none drawn, focus is left where it is rather than sent
+		// somewhere the reader did not come from.
+		view.viewEl.querySelector<HTMLButtonElement>('.pbl-rel-new')?.focus({ preventScroll: true }),
+	);
 }
 
 /** The four keys this press can bind, as one value, so "did it bind anything" is one

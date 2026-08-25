@@ -39,10 +39,11 @@ const RELEASE_SUGGESTED_KEYS: AdoptionCandidate[] = [
 ];
 
 /**
- * Bind the suggested key for every one of the three above the reader has never touched,
- * and resolve `view.settings` fresh so the caller — the ✨ control and the dialog alike,
- * `runEstimationInit`'s own "two entry points, one function" shape — can immediately ask
- * which fields are now bound.
+ * Bind the suggested key for every one of the four above the reader has never touched,
+ * and resolve `view.settings` fresh so the caller — `newRelease` in `renderIndex.ts`, the
+ * one function behind both `New release` presses — can immediately ask which fields are
+ * now bound. That press is the whole of what reaches it: this view draws no ✨ button of
+ * its own, so the action above is a step of creating a release rather than a control.
  *
  * `runEstimationInit` states an ORDER as a rule: decide the bindings, gate on the model
  * they would produce, and only then write — because a batch that changed the

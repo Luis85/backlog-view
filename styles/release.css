@@ -33,7 +33,12 @@
 }
 
 /* The control's icon sits on its label the way every other icon-and-text button in the
-   plugin does (`.pbl-btn-icon` supplies the icon's own box). */
+   plugin does (`.pbl-btn-icon` supplies the icon's own box). **This is the INDEX position's
+   rule and only that**: the same control on the no-releases empty state is inside
+   `.pbl-empty`, where `emptyStates.css`'s `.pbl-empty button` (0,1,1) declares these three
+   identically — plus the top margin a button standing under prose needs — and beats this
+   one (0,1,0) whatever the import order. So the header's "position is not load-bearing"
+   holds for this rule as well, by specificity rather than by vocabulary. */
 .pbl-rel-new {
 	display: inline-flex;
 	align-items: center;

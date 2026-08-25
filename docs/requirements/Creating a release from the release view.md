@@ -20,18 +20,18 @@ assignee: ""
 **so that** I do not have to leave the view and hand-write frontmatter to make the note a
 release's own fields belong to.
 
-**Not yet reachable.** This note records the piece that exists so far — the dialog that
-collects a release's fields — while it is still being built. No control on screen opens it
-yet; that lands in a later task of the same increment. [[Putting work in a release]] is
-about naming a release on existing work; this is the separate act of bringing the release
-note itself into being.
+**The door is on the view.** A `New release` control sits at the head of the release index
+and again on the no-releases empty state, and one function is behind both presses: bind
+this view's release properties, ask for the fields that bind resolved, create the note.
+[[Putting work in a release]] is about naming a release on existing work; this is the
+separate act of bringing the release note itself into being.
 
 ## Use case
 
 | | |
 | --- | --- |
 | **Actor** | Backlog owner |
-| **Trigger** | Not yet wired to anything on screen — reserved for the control a later task adds to the release view's toolbar |
+| **Trigger** | The user presses **New release** — at the head of the release index, or on the no-releases empty state, which is the same control on the one screen the index never reaches |
 | **Preconditions** | The release view's folder option names where the note lands |
 | **Guarantee** | Confirming with a title creates exactly one release note in the configured folder, carrying only the fields this vault has bound properties for |
 
@@ -45,8 +45,11 @@ note itself into being.
 
 **Extensions**
 
-- **1a — nothing opens the dialog yet.** That is the gap this note exists to record, not an
-  oversight this note is fixing; a later task supplies the door.
+- **1a — the press binds this view's release properties on its way to the dialog.** An
+  option nobody has named takes its suggested key before the dialog decides what to ask for,
+  and the view says so, because the press changed the saved view's own configuration. An
+  option the user deliberately cleared is left alone, and no field is asked for a value that
+  could only land nowhere.
 - **2a — the title is left blank.** Confirming is refused — the title is the note's own
   name, and there is nothing to create without one.
 - **2b — the vault tracks none of the three optional fields.** The dialog asks for a title
@@ -57,7 +60,7 @@ note itself into being.
 Not written yet. This note is created early — alongside the dialog it describes — so that
 the module has somewhere to be specified and a sibling task has somewhere to add its own
 piece. The full use case, including what confirming actually verifies, belongs to the task
-that finishes this feature once the control onto it exists.
+that finishes this feature; the control onto it now exists, and that step is still owed.
 
 ## Where it lives
 
