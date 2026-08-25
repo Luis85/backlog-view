@@ -304,12 +304,22 @@ describe('the release index', () => {
 		vault.addFile('R.md', { frontmatter: { type: 'Release', released: '2026-09-14' } });
 		vault.addFile('U.md', { frontmatter: { type: 'Release', released: ['a', 'b'] } });
 		vault.addFile('N.md', { frontmatter: { type: 'Release' } });
+		// A list of VALID dates, not just unparsable ones: `readDate` would unwrap this to
+		// its first element and parse a clean `2026-09-01`, so this is the case that pins
+		// `readTarget` (which refuses ANY array outright) rather than `readDate` — `['a',
+		// 'b']` above cannot tell the two readers apart, since both refuse it.
+		vault.addFile('L.md', { frontmatter: { type: 'Release', released: ['2026-09-01', '2026-10-01'] } });
+		// Blank is a REFUSAL here, per `readTarget`'s own docstring — unlike `readDate`
+		// alone, which trims and calls a blank string absent.
+		vault.addFile('B.md', { frontmatter: { type: 'Release', released: '   ' } });
 		const rows = indexOf(vault).rows;
 
 		expect(row(rows, 'R.md').released.value).toEqual({ year: 2026, month: 9, day: 14 });
 		expect(row(rows, 'U.md').released.invalid).toBe(true);
 		expect(row(rows, 'N.md').released.value).toBeNull();
 		expect(row(rows, 'N.md').released.invalid).toBe(false);
+		expect(row(rows, 'L.md').released).toEqual({ value: null, invalid: true, unconfigured: false });
+		expect(row(rows, 'B.md').released).toEqual({ value: null, invalid: true, unconfigured: false });
 	});
 
 	it('reports the released date as unconfigured when no key is bound', () => {
