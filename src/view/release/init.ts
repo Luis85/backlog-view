@@ -60,17 +60,44 @@ const RELEASE_SUGGESTED_KEYS: AdoptionCandidate[] = [
  * `taken` seeds from a FRESH resolve of the live config, not from `view.settings`: that
  * field is a snapshot from the last data update, so a key bound since then would read as
  * free here and get offered to a second option as well — `runEstimationInit`'s own
- * documented trap for the identical reason. Seeding it with the four keys THIS action
- * could bind (rather than the wider `parentKey`/`orderKey`/`typeKey`, which no candidate
- * here can collide with, since none of their suggested keys is `release`, `version`,
- * `target-date` or `status`) is what stops an explicitly-configured `versionProperty` of
- * `note.status` from being handed a second name when `releaseStatusProperty` is still
- * unset — and the same for `membershipProperty` now that it is a candidate too.
+ * documented trap for the identical reason.
+ *
+ * It seeds from **all seven** of this view's keys, the three model mappings included, and
+ * that is the whole of what stops this action corrupting a note. It seeded from the four
+ * candidates alone until 2026-08-25, on the argument that no model mapping could collide
+ * "since none of their suggested keys is `release`, `version`, `target-date` or `status`"
+ * — which reasons about what those options SUGGEST when the collision is with what they
+ * RESOLVE TO. A mapping is a free choice: `typeProperty: note.status` is legal, and with
+ * `releaseStatusProperty` untouched this action then bound the status onto the very key
+ * the type lives in. `createRelease` writes the type first and the status after it, both
+ * through `setOwn`, so the release came out carrying a status and NO type — a note this
+ * view cannot recognise as a release at all, reported to the reader as created. Found by
+ * review on PR #203 and driven end to end in the test named for it below.
+ *
+ * Both siblings already seed this way and neither is a precedent that was missed so much
+ * as one this file talked itself out of: `adoptableProperties` seeds from
+ * `ownedProperties`, which carries parent, order and type, and `runEstimationInit` says in
+ * its own comment that "binding a suggested key onto the property this view reads a type
+ * from is exactly the collision it now refuses". The estimation view has a second line
+ * behind that — it validates the settings its pending bindings WOULD produce and refuses
+ * — and this view has none, since `ReleaseSettings` has no `configProblems` of its own. So
+ * the seeding is not one guard of two here; it is the only one.
+ *
+ * On the shipped defaults nothing changes: the mappings resolve to `parent`, `order` and
+ * `type`, none of which any candidate suggests.
  */
 export async function runReleaseInit(view: ReleaseView): Promise<void> {
 	const fresh = resolveReleaseSettings(view.config);
 	const taken = new Set(
-		[fresh.membershipKey, fresh.versionKey, fresh.targetDateKey, fresh.statusKey].filter((key) => key !== ''),
+		[
+			fresh.parentKey,
+			fresh.orderKey,
+			fresh.typeKey,
+			fresh.membershipKey,
+			fresh.versionKey,
+			fresh.targetDateKey,
+			fresh.statusKey,
+		].filter((key) => key !== ''),
 	);
 	const pending = new Map<string, string>();
 	for (const { option, suggested } of adoptCandidates(view.config, RELEASE_SUGGESTED_KEYS, taken)) {

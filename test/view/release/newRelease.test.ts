@@ -260,6 +260,31 @@ describe('New release', () => {
 		});
 	});
 
+	/**
+	 * The bind may never hand a suggestion to a key one of this view's MODEL mappings
+	 * already holds. `typeProperty: note.status` is a legal choice, and with
+	 * `releaseStatusProperty` untouched the bind used to adopt `status` on top of it —
+	 * `createRelease` then wrote the type and overwrote it with the status, so the release
+	 * came out with no type at all and this view could not see it. Reported on PR #203.
+	 *
+	 * Driven through the real gesture and read back through `releaseIndex`, because the
+	 * damage is only visible at the join: the bind looks reasonable, the write looks
+	 * reasonable, and the note is gone from the view.
+	 */
+	it('never binds a release key onto a mapping this view already reads', async () => {
+		const vault = noReleaseVault();
+		const { modal, view } = await openNewRelease(vault, { typeProperty: 'note.status' });
+		expect(view.settings.statusKey).not.toBe(view.settings.typeKey);
+		await confirm(modal, '2.4', ['Planned']);
+
+		const reread = makeReleaseView(vault, { typeProperty: 'note.status' }).view;
+		const model = reread.model;
+		if (!model) throw new Error('the second mount built no model');
+		expect(releaseIndex(vault.app, model, reread.settings).rows.map((r) => r.path)).toContain(
+			'docs/releases/2.4.md',
+		);
+	});
+
 	it('withholds the control where no type property is bound', () => {
 		// `createRelease` refuses without one, and `runReleaseInit` deliberately does not
 		// bind `typeProperty` — a cleared type key is a decision, so this state keeps its
