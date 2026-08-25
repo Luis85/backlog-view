@@ -198,6 +198,25 @@ function stated(value: string | undefined): boolean {
 
 export async function createRelease(app: App, settings: ReleaseSettings, spec: NewReleaseSpec): Promise<TFile> {
 	if (!settings.typeKey) throw new Error('createRelease: no type key configured');
+	// The SECOND refusal, and unlike the one above it is reachable in production. Two of
+	// these options may legally name one property — nothing reports a release-view
+	// collision, since `ReleaseSettings` has no `configProblems` of its own — and the
+	// writes below go through `setOwn`, which overwrites. So a status written under the
+	// type's own key takes `Release` off the note, and the result is not a release at all
+	// (`isReleaseType` and `membershipTarget` both key off `typeKey`), reported to the
+	// reader as created. Refused whole rather than by dropping the offending field: a
+	// release missing the version somebody typed is a different lie, and the caller's
+	// `catch` already turns this into a notice plus the console line that names it.
+	//
+	// The bind cannot produce this state any more (`runReleaseInit` seeds its collision
+	// set from all seven keys), but a configuration typed by hand still can, which is why
+	// the guard belongs at the write where every caller passes rather than at the one
+	// path that used to create it. Reported by review on PR #203, twice — once for the
+	// bind, and again because fixing the bind left this reachable.
+	const written = [settings.typeKey, settings.versionKey, settings.targetDateKey, settings.statusKey].filter(
+		(key) => key !== '',
+	);
+	if (new Set(written).size !== written.length) throw new Error('createRelease: two release properties name one key');
 	const folder = vaultFolder(settings.folder);
 	await ensureFolder(app, folder);
 	const path = uniqueNotePath(app, folder, spec.title);

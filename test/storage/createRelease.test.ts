@@ -75,6 +75,18 @@ describe('createRelease', () => {
 		expect(Object.keys(vault.fm('Releases/2.4.md'))).toEqual(['type']);
 	});
 
+	it('refuses to create when two of its properties name one key', async () => {
+		// `setOwn` overwrites, and the type is written first, so a status sharing the
+		// type's key takes `Release` off the note and the result is not a release at all.
+		// Unlike the empty-type refusal below, this state is reachable in production: two
+		// options may legally name one property and nothing reports a release-view
+		// collision. Refused WHOLE — no note, rather than a note missing one field.
+		const vault = new FakeVault();
+		const settings = releaseSettingsWith({ folder: 'Releases', typeKey: 'status', statusKey: 'status' });
+		await expect(createRelease(vault.app, settings, { title: '2.4', status: 'Planned' })).rejects.toThrow();
+		expect(vault.files.has('Releases/2.4.md')).toBe(false);
+	});
+
 	it('refuses to create when no type key is configured', async () => {
 		// `typeKey` is the one field of the four `createRelease` writes that this settings
 		// bag can genuinely clear (`clearablePropKey` in `resolveReleaseSettings`, unlike
