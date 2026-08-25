@@ -7,7 +7,7 @@ priority: P2
 area: styling
 created: 2026-08-25
 closed: 2026-08-25
-source: "The index's visual design", Out of scope in `docs/superpowers/specs/2026-08-24-releases-own-their-creation-design.md` — "Recorded separately", filed here
+source: Out of scope in docs/superpowers/specs/2026-08-24-releases-own-their-creation-design.md said the release rows reading as buttons was Recorded separately; nobody filed it until now
 files:
   - styles/release.css
 started: ""
