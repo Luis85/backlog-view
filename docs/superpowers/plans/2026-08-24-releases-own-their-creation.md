@@ -450,23 +450,50 @@ git commit -m "Bind the release view's own options, and write to no note"
 ### Task 7: the control
 
 **Files:**
-- Modify: `src/view/release/renderIndex.ts` (toolbar control and empty state)
-- Modify: `src/i18n/en.ts`
+- Modify: `src/view/release/renderIndex.ts` (the control at the head of the index)
+- Modify: `src/view/release/releaseView.ts` (the no-releases empty state, and its now-false comment)
+- Modify: `src/i18n/en.ts`, `styles/release.css`
 - Test: `test/view/release/newRelease.test.ts`
 
 **Interfaces:**
 - Consumes: the creator (Task 3), the dialog (Task 4), `runReleaseInit` (Task 6).
 
+**Six corrections to this task, made before dispatch and verified against the tree.** The first
+two change where the code goes; the rest are traps.
+
+1. **This view has NO TOOLBAR.** `grep -rn "toolbar" src/view/release/ styles/release.css` finds one
+   comment and nothing else — `viewEl` holds screens only. This task's earlier wording said "toolbar
+   control", which presumed one. Do NOT build an estimation-style shell (`.pbl-est-shell`, a flex
+   column with a toolbar above the content): that is a structural change to `releaseView.ts` and
+   `styles/release.css`, and the index's own design overhaul is a pass the human has deferred to its
+   own increment. Put the control at the HEAD of the index, inside `renderIndex`.
+2. **The empty state is not in `renderIndex.ts`.** `releaseView.ts`'s `draw()` returns at the
+   no-releases branch before `renderIndex` ever runs, so that is where the empty state's control
+   goes. That branch's comment — "No create button ON THIS VIEW: no use case in this epic specifies
+   creating a release, and an empty state must not promise a write nothing defines" — becomes false
+   in this task and is in scope for it.
+3. **The `noType` empty state gets NO control.** `createRelease` throws without a type key, and
+   `runReleaseInit` deliberately does not bind `typeProperty` (it ships a real `default:`), so a
+   cleared type key is a decision rather than an omission. That state keeps its settings guidance.
+4. **`createRelease` throws** (`createRelease: no type key configured`). Wrap the call in
+   `try`/`catch` and report through a `Notice`, following `src/view/interactions/resourceNotes.ts`.
+5. **There is no `configProblems` equivalent for `ReleaseSettings`.** Nothing to gate on; do not
+   invent one here.
+6. **The bind notice comes from the CALLER, not the dialog.** `openNewReleaseDialog` takes `fields`
+   and nothing else, and a notice slot would widen a `ui/` leaf that knows about no layer. The
+   caller already has to decide whether to run `runReleaseInit` at all, so it already knows whether
+   anything was bound — say it with a `Notice` there.
+
 - [ ] **Step 1: Write the failing test**
 
 ```ts
-it('creates a release from the toolbar and from the empty state alike', async () => {
+it('creates a release from the index and from the empty state alike', async () => {
 	// One move, N inputs: both entry points land on one function, which is the
 	// only place the note is created. A second creation path beside it is the
 	// thing this asserts against.
-	const fromToolbar = await createViaToolbar();
+	const fromIndex = await createViaIndexControl();
 	const fromEmpty = await createViaEmptyState();
-	expect(fromEmpty.writeLog).toEqual(fromToolbar.writeLog);
+	expect(fromEmpty.writeLog).toEqual(fromIndex.writeLog);
 });
 
 it("binds the view's options before asking for fields", async () => {
@@ -483,7 +510,7 @@ Run: `npx vitest run test/view/release/newRelease.test.ts` — Expected: FAIL, n
 
 - [ ] **Step 3: Implement**
 
-One function, called from the toolbar control and from the empty state. It runs `runReleaseInit` when options are unset, then opens the dialog, then creates. **The dialog states that it is binding the view's options** rather than changing the `.base` silently — that sentence goes through `t()`.
+One function, called from the index control and from the empty state alike. It runs `runReleaseInit` when options are unset, then opens the dialog, then creates. **The user is told that the view's options were bound** rather than the `.base` changing silently — a `Notice` from that function, its sentence through `t()`.
 
 - [ ] **Step 4: Run to verify it passes**
 
@@ -492,7 +519,7 @@ Run: `npm run check` in the FOREGROUND.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/view/release/renderIndex.ts src/i18n/en.ts test/view/release/newRelease.test.ts
+git add src/view/release/renderIndex.ts src/view/release/releaseView.ts src/i18n/en.ts styles/release.css test/view/release/newRelease.test.ts
 git commit -m "Offer New release from the toolbar and the empty state"
 ```
 
