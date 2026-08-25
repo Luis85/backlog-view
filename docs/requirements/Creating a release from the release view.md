@@ -68,8 +68,10 @@ matching `estimationPresetDialog.ts`'s own pattern of taking plain rows in and h
 data back.
 
 `src/view/release/init.ts` is the release view's own ✨ (`runReleaseInit`): it binds the
-suggested key for `version`, `target date` and `status` — whichever this vault has never
-touched — reading the live `BasesViewConfig` so a deliberately cleared option is left alone.
-It writes no note: this view never edits a note that already exists
-(`test/view/releaseNeverEdits.test.ts`), and binding a property no release note carries yet
-is the accepted cost — the same one already taken for the membership key.
+suggested key for `release` (the membership property), `version`, `target date` and
+`status` — whichever this vault has never touched — reading the live `BasesViewConfig` so
+a deliberately cleared option is left alone. It writes no note: this view never edits a
+note that already exists (`test/view/releaseNeverEdits.test.ts`). The accepted cost is
+that Obsidian's own property picker cannot offer `version`, `target date` or `status`
+until a release note carries them, which the first **New release** supplies — the same
+cost already taken for the membership key last increment.
