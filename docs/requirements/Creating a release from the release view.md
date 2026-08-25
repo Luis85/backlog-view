@@ -33,7 +33,7 @@ separate act of bringing the release note itself into being.
 | **Actor** | Backlog owner |
 | **Trigger** | The user presses **New release** — at the head of the release index, or on the no-releases empty state, which is the same control on the one screen the index never reaches |
 | **Preconditions** | The release view's folder option names where the note lands |
-| **Guarantee** | Confirming with a title creates exactly one release note in the configured folder, carrying only the fields this vault has bound properties for |
+| **Guarantee** | Confirming with a title creates exactly one release note in the configured folder, carrying only the fields this vault has bound properties for AND the user filled in |
 
 **Main flow**
 
@@ -54,6 +54,10 @@ separate act of bringing the release note itself into being.
   name, and there is nothing to create without one.
 - **2b — the vault tracks none of the three optional fields.** The dialog asks for a title
   alone; a release can still be created with nothing else known about it yet.
+- **2c — a field the vault tracks is left blank.** The key is not written at all, rather than
+  written empty. [[Releases as their own type]] 3b names the empty string as UNREADABLE
+  rather than absent, so a blank written here is this view's own reader reporting the release
+  it just made as somebody's mistake.
 
 ## Acceptance criteria
 
@@ -88,6 +92,13 @@ separate act of bringing the release note itself into being.
   screen that made it.
 - **Confirming is refused with a blank title**, and the confirm control is disabled until one
   is entered. The title is the note's own name; there is nothing to create without it.
+- **A blank optional field is written nowhere**, kept at `createRelease` rather than at the
+  dialog that produces the blanks, so it holds for a caller nobody has written yet. The check
+  that catches it is the one spanning the JOIN — `test/view/release/newRelease.test.ts`
+  creates through the real gesture with only a title and reads the vault back through
+  `releaseIndex`. Two tests either side of that join were each green while the defect
+  shipped: one asserted the created frontmatter held the blanks, the other that exactly that
+  frontmatter reads as invalid.
 - **The control is withheld where no type property is bound**, which is `ReleaseView.draw`'s
   own guard rather than a second check at the button: `createRelease` refuses without a type
   key, and the bind deliberately binds no type property, so a press there could only ever fail.
@@ -114,9 +125,12 @@ separate act of bringing the release note itself into being.
   configuration — the wall behind
   [[Two release options aimed at one property go unreported]]. The changelog says so plainly.
 - **Obsidian's own property picker cannot offer `version`, `target date` or `status` until a
-  release note carries one.** The bind writes no note, so the first **New release** is what
-  supplies them. The same cost was already taken for the membership key last increment
-  (`neverStubbed`, `src/domain/writePlan.ts`) — same shape, same reasoning, both views.
+  release note carries one.** The bind writes no note, and a blank box is written nowhere
+  (extension 2c), so what supplies a key is the first release that CARRIES that field. This
+  bullet said "the first **New release**" until 2026-08-25, which was true only of the
+  version of the creator that wrote blanks — the reading it cost is in 2c. The same cost was
+  already taken for the membership key last increment (`neverStubbed`,
+  `src/domain/writePlan.ts`) — same shape, same reasoning, both views.
 
 **The retired justification, which is the part worth keeping.** `byProjectionType`
 (`src/view/projection.ts`) offered `Release` in the tree and on both boards deliberately:
@@ -145,8 +159,9 @@ own. It binds the suggested key for `release` (the membership property), `versio
 `BasesViewConfig` so a deliberately cleared option is left alone. It writes no note: this view never edits a
 note that already exists (`test/view/releaseNeverEdits.test.ts`). The accepted cost is
 that Obsidian's own property picker cannot offer `version`, `target date` or `status`
-until a release note carries them, which the first **New release** supplies — the same
-cost already taken for the membership key last increment.
+until a release note carries them, which the first release CARRYING one supplies — a
+blank box is written nowhere, so a press alone is not enough. The same cost was already
+taken for the membership key last increment.
 
 `src/view/release/newRelease.ts` holds the door itself (`renderNewRelease`) and the one
 function behind it: bind, then ask, then create. Both presses — the control drawn at the

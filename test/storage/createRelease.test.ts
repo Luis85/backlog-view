@@ -37,6 +37,20 @@ describe('createRelease', () => {
 		expect(vault.fm('Releases/2.4.md')).toEqual({ type: 'Release' });
 	});
 
+	it('writes no key for a field the creator left blank', async () => {
+		// The rule kept HERE rather than at the dialog that produces the blanks today, so it
+		// holds for a caller nobody has written yet. Whitespace with it, for the same reason
+		// `''` is refused: `readLabel` and `readTarget` (`src/domain/releases.ts`) trim before
+		// they judge, so a space reads back as unreadable exactly as an empty string does.
+		const vault = new FakeVault();
+		await createRelease(
+			vault.app,
+			releaseSettingsWith({ folder: 'Releases', versionKey: 'v', targetDateKey: 'target-date', statusKey: 'status' }),
+			{ title: '2.4', version: '', targetDate: '  ', status: 'Planned' },
+		);
+		expect(vault.fm('Releases/2.4.md')).toEqual({ type: 'Release', status: 'Planned' });
+	});
+
 	it('writes target date and status alongside version when all three are bound', async () => {
 		const vault = new FakeVault();
 		await createRelease(

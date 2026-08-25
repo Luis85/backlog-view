@@ -164,6 +164,15 @@ export interface NewReleaseSpec {
  * One atomic write, `createBacklogItem`'s own reason restated: a create-then-update pair
  * could fail in between and leave a blank note without its fields behind.
  *
+ * **A field the creator left blank is not written at all** ({@link stated}), which is the
+ * same ruling [[Releases as their own type]] 3b and `neverStubbed` (`domain/writePlan.ts`,
+ * *"An empty release is not an empty slot"*) each already made from their own end. It has
+ * to be kept HERE, at the creator every release goes through, rather than at the dialog
+ * that happens to produce the blanks today: `readLabel` and `readTarget`
+ * (`domain/releases.ts`) read a present-but-empty key as UNREADABLE rather than as absent,
+ * so writing one makes this view's own reader report the release it just made as somebody's
+ * mistake, in three columns of the index and again on that release's own screen.
+ *
  * `typeKey` is the one field here `createBacklogItem` and `createResourceNote` write
  * unconditionally that this function may NOT: their `typeKey` always resolves
  * (`propKey`), while `resolveReleaseSettings` reads it through `clearablePropKey`, so a
@@ -178,6 +187,15 @@ export interface NewReleaseSpec {
  * `assertResolvedSettings` in `domain/settingsConsistency.ts`, a check for a state the
  * caller is supposed to have ruled out already rather than a user-facing refusal.
  */
+/**
+ * Whether the creator STATED this optional field — anything but absent and anything but
+ * blank. Trimmed here rather than trusted from the caller: whitespace is what a reader
+ * types and then deletes, and it reads back as unreadable exactly as `''` does.
+ */
+function stated(value: string | undefined): boolean {
+	return value !== undefined && value.trim() !== '';
+}
+
 export async function createRelease(app: App, settings: ReleaseSettings, spec: NewReleaseSpec): Promise<TFile> {
 	if (!settings.typeKey) throw new Error('createRelease: no type key configured');
 	const folder = vaultFolder(settings.folder);
@@ -185,9 +203,9 @@ export async function createRelease(app: App, settings: ReleaseSettings, spec: N
 	const path = uniqueNotePath(app, folder, spec.title);
 	const fm: Record<string, unknown> = {};
 	setOwn(fm, settings.typeKey, RELEASE_TYPE);
-	if (spec.version !== undefined && settings.versionKey) setOwn(fm, settings.versionKey, spec.version);
-	if (spec.targetDate !== undefined && settings.targetDateKey) setOwn(fm, settings.targetDateKey, spec.targetDate);
-	if (spec.status !== undefined && settings.statusKey) setOwn(fm, settings.statusKey, spec.status);
+	if (stated(spec.version) && settings.versionKey) setOwn(fm, settings.versionKey, spec.version);
+	if (stated(spec.targetDate) && settings.targetDateKey) setOwn(fm, settings.targetDateKey, spec.targetDate);
+	if (stated(spec.status) && settings.statusKey) setOwn(fm, settings.statusKey, spec.status);
 	return app.vault.create(path, `---\n${stringifyYaml(fm)}---\n`);
 }
 

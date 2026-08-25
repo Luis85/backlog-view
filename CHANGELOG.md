@@ -27,9 +27,11 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   this; check where the note lands the first time. And **creating a note cannot be undone** —
   that is true of every New in this plugin, not just this one — so a release made by mistake
   is deleted the ordinary way.
-  Obsidian's own property picker only offers a property some note already carries, so the
-  version, target-date and status boxes may show a suggested name rather than a pickable one
-  until your first release is made. After that they are pickable like any other property.
+  A box you leave blank is left off the note entirely rather than written empty. That has
+  one consequence worth knowing: Obsidian's own property picker only offers a property some
+  note already carries, so in the view options the version, target-date and status boxes may
+  show a suggested name rather than a pickable one until a release you have made actually
+  carries that field. Fill a box in once and that property is pickable like any other.
 
 ### Fixed
 

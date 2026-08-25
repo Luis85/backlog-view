@@ -11,8 +11,12 @@ import type { ReleaseView } from './releaseView';
  * narrowed write-boundary claim (`test/view/releaseNeverEdits.test.ts`) says this view
  * never does. The accepted cost is the one already taken for the membership key last
  * increment (`neverStubbed`, `domain/writePlan.ts`): the picker cannot offer `version`,
- * `targetDate`, `status` or `release` (membership) until a note carries them, which the
- * first **New release** — or the first `Set release` — supplies.
+ * `targetDate`, `status` or `release` (membership) until a note carries them. What
+ * supplies one is a value somebody STATED — the first `Set release`, or the first
+ * **New release** whose version, date or status box was filled in. A blank box is written
+ * nowhere (`createRelease`, `storage/createNote.ts`), for `neverStubbed`'s own reason read
+ * from the other end: a blank the picker could offer is a value this view's own reader
+ * reports as unreadable.
  *
  * Four keys, not the full eight `ReleaseSettings` reads. `typeProperty`, `parentProperty`
  * and `orderProperty` each ship a real `default:` in `getReleaseViewOptions`, so Bases'

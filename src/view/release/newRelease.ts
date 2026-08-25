@@ -107,10 +107,17 @@ function releaseFields(settings: ReleaseSettings): ReleaseFieldId[] {
 }
 
 /**
- * What confirming does. Blank fields are passed THROUGH rather than dropped, and that is
- * what they are for: `init.ts` records that Obsidian's own property picker cannot offer
- * `version`, `target date` or `status` until a note carries them, and the first
- * `New release` is what supplies them.
+ * What confirming does. A box the reader left blank is written NOWHERE — `createRelease`
+ * keeps that rule for every caller, so nothing here strips a value on the way past.
+ *
+ * It was the opposite until this round, on the ground that a key nothing carries cannot be
+ * offered by Obsidian's property picker (`init.ts` records the same cost). That traded one
+ * problem for a worse one: `readLabel` and `readTarget` (`domain/releases.ts`) read a
+ * present-but-blank key as UNREADABLE rather than absent — [[Releases as their own type]]
+ * 3b names the empty string explicitly — so the release this press had just made drew
+ * `Unreadable` in three columns of the index and again on its own screen. The picker cost
+ * is unchanged in kind and only in WHEN: it is now the first release that CARRIES a
+ * version, a date or a status that makes that one pickable.
  *
  * `createRelease` THROWS without a type key rather than refusing quietly — a state its
  * caller is supposed to have ruled out, and `draw` has. Reported rather than left to the

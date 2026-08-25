@@ -5,6 +5,7 @@ import { makeReleaseView, RELEASE_CONFIG, releaseVault } from '../../helpers/rel
 import { FakeVault } from '../../helpers/vault';
 import { Modal, Notice } from '../../helpers/obsidian-mock';
 import { flush, useViewHarness } from '../../helpers/view';
+import { releaseIndex } from '../../../src/domain/releases';
 
 useViewHarness();
 
@@ -50,21 +51,40 @@ async function openNewRelease(vault: FakeVault, configValues: Record<string, unk
 	return { view, modal: openedDialog() };
 }
 
-/** Fill the title in and confirm, then let the creation settle. */
-async function confirm(modal: Modal, title: string): Promise<void> {
-	const input = modal.contentEl.querySelector('input');
-	if (!input) throw new Error('no title field');
-	input.value = title;
-	input.dispatchEvent(new Event('input', { bubbles: true }));
+/**
+ * Fill the title in — and, positionally, whichever optional fields the dialog is drawing —
+ * then confirm and let the creation settle. Positional because the dialog draws exactly
+ * `releaseFields`' list in order, which is the thing `fieldNames` above asserts separately:
+ * a caller passing two values is saying "the first two boxes on screen", so a test that
+ * fills them and a test that names them cannot drift apart.
+ */
+async function confirm(modal: Modal, title: string, optional: string[] = []): Promise<void> {
+	const [titleEl, ...fieldEls] = Array.from(modal.contentEl.querySelectorAll('input'));
+	if (!titleEl) throw new Error('no title field');
+	const type = (el: HTMLInputElement, value: string): void => {
+		el.value = value;
+		el.dispatchEvent(new Event('input', { bubbles: true }));
+	};
+	type(titleEl, title);
+	optional.forEach((value, i) => {
+		const el = fieldEls[i];
+		if (!el) throw new Error(`the dialog draws no field ${i + 1}`);
+		type(el, value);
+	});
 	modal.contentEl.querySelector<HTMLButtonElement>('.mod-cta')?.click();
 	await flush();
 }
 
-/** One whole gesture, from the control on screen to what landed in the vault. */
+/**
+ * One whole gesture, from the control on screen to what landed in the vault. Every
+ * optional field FILLED, so what the two entry points are compared on is a note with
+ * something in each of its keys — a comparison over three absent keys would agree just as
+ * loudly and say nothing about the fields at all.
+ */
 async function createRelease(vault: FakeVault): Promise<{ path: string; fm: Record<string, unknown> }[]> {
 	const before = new Set(vault.files.keys());
 	const { modal } = await openNewRelease(vault, RELEASE_CONFIG);
-	await confirm(modal, '2.4');
+	await confirm(modal, '2.4', ['2.4.0', '2026-11-30', 'Planned']);
 	return createdNotes(vault, before);
 }
 
@@ -83,7 +103,7 @@ describe('New release', () => {
 		const fromIndex = await createRelease(indexVault);
 		const fromEmpty = await createRelease(emptyVault);
 		expect(fromIndex).toEqual([
-			{ path: 'docs/releases/2.4.md', fm: { type: 'Release', version: '', 'target-date': '', status: '' } },
+			{ path: 'docs/releases/2.4.md', fm: { type: 'Release', version: '2.4.0', 'target-date': '2026-11-30', status: 'Planned' } },
 		]);
 		expect(fromEmpty).toEqual(fromIndex);
 		// And the design's §5 on the one gesture that reaches a writer at all: this view
@@ -176,9 +196,12 @@ describe('New release', () => {
 		const before = new Set(vault.files.keys());
 		const { modal } = await openNewRelease(vault, { versionProperty: '' });
 		expect(fieldNames(modal)).toEqual(['Title', 'Target date', 'Status']);
-		await confirm(modal, '2.4');
+		// Both boxes filled, so the absent `version` is the CLEARED option and not merely a
+		// field nobody typed into — the two are the same note once a blank is skipped, and
+		// this test is about the first of them.
+		await confirm(modal, '2.4', ['2026-11-30', 'Planned']);
 		expect(createdNotes(vault, before)).toEqual([
-			{ path: 'docs/releases/2.4.md', fm: { type: 'Release', 'target-date': '', status: '' } },
+			{ path: 'docs/releases/2.4.md', fm: { type: 'Release', 'target-date': '2026-11-30', status: 'Planned' } },
 		]);
 	});
 
@@ -206,6 +229,35 @@ describe('New release', () => {
 		await confirm(modal, '2.4');
 		expect(vault.files.has('docs/releases/2.4.md')).toBe(false);
 		expect(Notice.messages).toEqual([en['release.new.failed']]);
+	});
+
+	/**
+	 * The two halves that were each green while the defect shipped, asked as ONE question.
+	 * `test/domain/releases.test.ts` says a present-but-blank `version` reads as invalid and
+	 * this file used to say the create wrote one, so both passed and the release this view
+	 * had just made drew `Unreadable` in three of its own columns.
+	 *
+	 * Driven through the real gesture and read back through the real reader: a second mount
+	 * over the same vault, because `makeReleaseView` snapshots `vault.entries()` when it
+	 * mounts and the note arrives after that. Asked of `releaseIndex` rather than of the
+	 * frontmatter, which is what makes it the JOIN — the frontmatter assertion above is the
+	 * half that could not see this.
+	 */
+	it('creates a release its own reader reads back, with only a title filled in', async () => {
+		const vault = noReleaseVault();
+		const { modal } = await openNewRelease(vault, RELEASE_CONFIG);
+		await confirm(modal, '2.4');
+
+		const { view } = makeReleaseView(vault, RELEASE_CONFIG);
+		const model = view.model;
+		if (!model) throw new Error('the second mount built no model');
+		const row = releaseIndex(vault.app, model, view.settings).rows.find((r) => r.path === 'docs/releases/2.4.md');
+		if (!row) throw new Error('the created release is not in the index');
+		expect({ version: row.version.invalid, target: row.target.invalid, status: row.status.invalid }).toEqual({
+			version: false,
+			target: false,
+			status: false,
+		});
 	});
 
 	it('withholds the control where no type property is bound', () => {
