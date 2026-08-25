@@ -57,10 +57,77 @@ separate act of bringing the release note itself into being.
 
 ## Acceptance criteria
 
-Not written yet. This note is created early — alongside the dialog it describes — so that
-the module has somewhere to be specified and a sibling task has somewhere to add its own
-piece. The full use case, including what confirming actually verifies, belongs to the task
-that finishes this feature; the control onto it now exists, and that step is still owed.
+- **Both presses are one function.** The control at the head of the index and the control on
+  the no-releases empty state call `newRelease` (`src/view/release/newRelease.ts`), which is
+  the only place a release note is planned. `test/view/release/newRelease.test.ts` drives a
+  create from each screen and asserts the same note comes out of both, so a second entry
+  point cannot grow a second idea of what creating a release means.
+- **The bind runs before the dialog decides what to ask for.** On a view whose options nobody
+  has named, the press binds them and the dialog then offers a version, a target date and a
+  status — never the other way round, which would ask for nothing on the one press that
+  matters most.
+- **A cleared option is left alone, and no field is asked for a value that could only land
+  nowhere.** The distinction is read from the live `BasesViewConfig` (`adoptCandidates`), not
+  from the resolved settings, because an option cleared and one never set resolve to the same
+  empty key. A test of the unbound case that used an unset option would assert the opposite
+  of this rule.
+- **The press says when it changed the configuration, and stays quiet when it did not.**
+  Checked in both directions: a fresh view that binds its four keys reports it, and a view
+  with nothing left to bind reports nothing. The comparison is over the RESOLVED keys before
+  and after, and the "before" is a fresh read of the live config rather than the settings
+  snapshot from the last data update — otherwise a view whose options were bound moments ago
+  reports a change it did not make.
+- **Confirming with a title creates exactly one note, in the folder this view names, carrying
+  the type key and nothing the view has no property bound for.** `test/storage/createRelease.test.ts`
+  asserts the whole frontmatter with `toEqual`, so a key nobody asked for fails rather than
+  passing unnoticed.
+- **A release is seeded no parent, no order and no placement.** It is a marker: it hangs from
+  nothing and is ranked among nothing, so the creator writes neither. That is a different
+  claim from `createBacklogItem`'s standing rule that a `Release` is seeded nothing a SURFACE
+  adds — a release's own version, date and status are what it is, not the context of the
+  screen that made it.
+- **Confirming is refused with a blank title**, and the confirm control is disabled until one
+  is entered. The title is the note's own name; there is nothing to create without it.
+- **The control is withheld where no type property is bound**, which is `ReleaseView.draw`'s
+  own guard rather than a second check at the button: `createRelease` refuses without a type
+  key, and the bind deliberately binds no type property, so a press there could only ever fail.
+- **Every ending that changed something is reported, and cancelling is silent.** The options
+  were bound, the note was created (under the name it actually took on disk, which may have
+  been suffixed), or the creation failed. Cancelling changed nothing and says nothing.
+- **Creation is not undoable**, and that is consistent rather than new: no `New` in this
+  plugin goes through `applyWrites`, so none captures an inverse. A mis-made release is
+  deleted by hand.
+- **This press never edits a note that already exists.** It creates one and it may write this
+  view's own `.base` config; `applyWrites`, `applyRestores` and `applyPropertyWrites` stay
+  unreachable from `src/view/release/`, asserted on the calls themselves in
+  `test/view/releaseNeverEdits.test.ts` rather than by driving the screens somebody thought of.
+- **Focus returns to the control the CURRENT screen draws** — looked up fresh after the close
+  and again after the create, because the dialog closes before it submits and the create's own
+  refresh replaces the button the close just focused. **Met only for a refresh that lands
+  inside the await.** A vault refreshes on its own schedule, and one arriving after it takes
+  focus to the body again; nothing here or in the suite can say otherwise, and
+  [[Smoke test the release view]] is where that is looked at.
+- **A vault that changed the backlog's home folder has its next release land somewhere else.**
+  `releaseFolder` defaults to `docs/releases` and this view cannot read the backlog view's
+  home folder, so such a vault's releases stop going to `<home>/releases` until the option is
+  set. Recorded rather than detected: detecting it means one view reading another's
+  configuration — the wall behind
+  [[Two release options aimed at one property go unreported]]. The changelog says so plainly.
+- **Obsidian's own property picker cannot offer `version`, `target date` or `status` until a
+  release note carries one.** The bind writes no note, so the first **New release** is what
+  supplies them. The same cost was already taken for the membership key last increment
+  (`neverStubbed`, `src/domain/writePlan.ts`) — same shape, same reasoning, both views.
+
+**The retired justification, which is the part worth keeping.** `byProjectionType`
+(`src/view/projection.ts`) offered `Release` in the tree and on both boards deliberately:
+[[Releases as their own type]] task 1 step 7 recorded that *a release had no dedicated door the
+way an iteration has the scope picker, so withholding it everywhere would leave the type
+creatable only by hand.* This PBI is that door, and building it retired the reason — so the
+type is now offered by no creation surface at all, `Iteration`'s own rule reached by the same
+argument. It also cost the backlog view its `typeFolder.release` row: the view that creates a
+release is the view that names its folder, and two folder settings for one kind of note, in
+two views that cannot read each other's configuration, is a collision better never created
+than reported.
 
 ## Where it lives
 

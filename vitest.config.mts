@@ -140,7 +140,16 @@ export default defineConfig({
 			// the old floor had no one-function headroom either. If functions ever flake the
 			// way branches just did, that floor is the next one to come down.
 			//
-			// Raised again on 2026-08-23, with `Set release`: this machine measured
+			// Raised again on 2026-08-25, with the release view's own `New release`: this
+			// machine measured 9281/9383 statements, 5782/6059 branches, 2399/2401 functions
+			// and 7714/7733 lines — the same four figures the branch measured at `2442854`
+			// before this task's own edits, which changed no covered count. Three move, each
+			// set under the ONE-FEWER figure by the headroom rule below: 9280 is 98.9023,
+			// 5781 is 95.4118, 7713 is 99.7414. **Functions is left where it is** for the
+			// reason stated twice already — one fewer is 99.8751, under the 99.90 it would
+			// be raised from, so headroom there is still a decrease.
+			//
+			// Raised on 2026-08-23, with `Set release`: this machine measured
 			// 9168/9268 statements, 5744/6018 branches, 2368/2370 functions and 7618/7637
 			// lines. The three that move are set under the ONE-FEWER figure, the same
 			// headroom rule the paragraph above arrived at — 9167 is 98.9102, 5743 is
@@ -149,10 +158,10 @@ export default defineConfig({
 			// stated: one fewer is 99.8734, under the floor it would be raised from, so
 			// headroom there is still a decrease.
 			thresholds: {
-				statements: 98.89,
-				branches: 95.40,
+				statements: 98.90,
+				branches: 95.41,
 				functions: 99.90,
-				lines: 99.73,
+				lines: 99.74,
 			},
 		},
 	},
