@@ -181,6 +181,23 @@ export function byName<T>(table: Record<string, T>, name: string | null): T | un
 }
 
 /**
+ * The types the backlog view FILES, and the one list the folder options, their defaults
+ * and their resolver are all built from — `ALL_TYPES` minus `Release`, which is the only
+ * subtraction and is a statement about which view owns the gesture rather than about the
+ * vocabulary. A release is created by the release view alone, which carries its own
+ * `releaseFolder` option; a `typeFolder.release` beside it would be a second value naming
+ * the same folder, in a view that cannot read the other's configuration. It stays in
+ * `ALL_TYPES` — the type vocabulary, the badge table and the release view's own reading
+ * are built from that — so the difference between the two lists is "no folder box" rather
+ * than "no such type". `Iteration` is deliberately NOT subtracted: no surface offers that
+ * type either, but the board's scope picker still files the note it makes by this option.
+ *
+ * `RESOURCE_TYPE` is absent from both lists and needs no subtraction here; its folder is
+ * its own option (see {@link defaultResourceFolder}).
+ */
+export const FILED_TYPES = ALL_TYPES.filter((type) => type !== RELEASE_TYPE);
+
+/**
  * The persisted option key for one type's folder. Shared by the schema that declares
  * these options and the resolver that reads them back, because a key spelled twice is
  * a key that can differ — and these are user data in the `.base` file.

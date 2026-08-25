@@ -40,7 +40,7 @@ const RELEASE_SUGGESTED_KEYS: AdoptionCandidate[] = [
 
 /**
  * Bind the suggested key for every one of the four above the reader has never touched,
- * and resolve `view.settings` fresh so the caller — `newRelease` in `renderIndex.ts`, the
+ * and resolve `view.settings` fresh so the caller — `newRelease` in `newRelease.ts`, the
  * one function behind both `New release` presses — can immediately ask which fields are
  * now bound. That press is the whole of what reaches it: this view draws no ✨ button of
  * its own, so the action above is a step of creating a release rather than a control.

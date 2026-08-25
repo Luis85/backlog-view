@@ -13,11 +13,10 @@ import { notePropsOnly, OptionalField, optionalProperty } from './optionalProper
 import { resolveSettings } from './settingsResolve';
 import {
 	ABSENCE_TYPE,
-	ALL_TYPES,
 	DEFAULT_HOME_FOLDER,
 	defaultResourceFolder,
 	defaultTypeFolder,
-	RELEASE_TYPE,
+	FILED_TYPES,
 	typeFolderKey,
 } from './typeVocabulary';
 import { defaultItemHandling, openTargetOptions } from './itemHandling';
@@ -518,18 +517,12 @@ function newItemsGroup(homeFolder: string): BasesAllOptions {
 			// absence, so its box shows the home folder as a placeholder and an unset
 			// option files it there.
 			//
-			// **`Release` is subtracted from that list, and it is the only member that is.**
-			// The release view carries its own `releaseFolder` option now, and that is the
-			// folder a release is actually written to — this box would have been a second
-			// value naming the same thing, which nothing reads and which reads as the setting
-			// that applies. `Resource`'s exclusion below is NOT the shape to copy: that name
-			// is simply never in `ALL_TYPES`, and `Release` has to stay in it — the type
-			// vocabulary, the badge table and the release view's own reading are all built
-			// from that list. Subtracting it HERE is the difference between "no folder box"
-			// and "no such type". `Iteration` keeps its box for that reason too: no surface
-			// offers the type either, but the board's scope picker still files the note it
-			// makes by this option.
-			...[...ALL_TYPES.filter((type) => type !== RELEASE_TYPE), ABSENCE_TYPE].map(
+			// The list is `FILED_TYPES` and not `ALL_TYPES`, which subtracts `Release` and
+			// nothing else — stated once there, with the schema, the defaults and the
+			// resolver all built from it, so this box cannot exist without a value behind
+			// it or a value be resolved without a box. `Resource`'s exclusion below is NOT
+			// that shape: that name is simply never in the vocabulary at all.
+			...[...FILED_TYPES, ABSENCE_TYPE].map(
 				(type): BasesOptions => ({
 					type: 'folder',
 					key: typeFolderKey(type),

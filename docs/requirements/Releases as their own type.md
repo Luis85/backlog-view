@@ -90,9 +90,15 @@ status.
   context row included.
 - Adding `Release` to the vocabulary leaves every other classification unchanged: a
   `Milestone`, an `Iteration` and a test-catalog note are still none of them plan work.
-- It files into its own folder (`typeFolder.release` — shipped default `releases` under the
-  home folder), the option every declared type gets by arriving in the vocabulary rather
-  than by being remembered, exactly as `typeFolder.iteration` did.
+- It files into its own folder, shipped default `releases` under the home folder. **This was
+  `typeFolder.release` — the option every declared type got by arriving in the vocabulary —
+  until [[Creating a release from the release view]] gave the release view its own door.**
+  That row is gone from the backlog view's options and from the resolver behind it: the
+  view that creates a release is the view that names its folder, and the release view's own
+  `releaseFolder` is that name. The default is unchanged, so a vault on the shipped folders
+  sees no move; a vault that had changed the backlog's home folder does, which the changelog
+  states. `typeFolder.iteration` is deliberately untouched — no surface offers that type
+  either, but the board's scope picker still files the note it makes by that option.
 - It draws no point and no bar on the **backlog** roadmap, on either axis, and speaks no
   placement end: the dated axis reads the backlog's own start and target keys, which are the
   wrong mapping for a release date and a far worse one to write. Placing a release on a

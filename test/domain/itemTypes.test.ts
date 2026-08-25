@@ -18,6 +18,7 @@ import {
 	ALL_TYPES,
 	defaultTypeFolder,
 	EXTRA_TYPES,
+	FILED_TYPES,
 	ITERATION_TYPE,
 	LEVELS,
 	MARKER_TYPES,
@@ -243,15 +244,23 @@ describe('childTypeChoices', () => {
 		expect(defaultTypeFolder('Deliverable')).toBe('docs/deliverables');
 	});
 
-	it('defaults the Release folder to <home>/releases, the value the register publishes', () => {
-		// `Releases as their own type` names `typeFolder.release` and its shipped default
-		// out loud, and a documented guarantee with no check is the thing this repository
-		// treats as a comment. The resolved VALUE, not only the key, for the reason the
-		// Iteration's own test gives: `typeFolderKey` derives its answer from the NAME, so
-		// a missing row in `DEFAULT_TYPE_SUBFOLDERS` passes a key-only assertion.
+	it('keeps the Release default a release view can read, and gives this view no folder for one', () => {
+		// `Releases as their own type` names the shipped default out loud, and a documented
+		// guarantee with no check is the thing this repository treats as a comment. The
+		// resolved VALUE, not only the key, for the reason the Iteration's own test gives:
+		// `typeFolderKey` derives its answer from the NAME, so a missing row in
+		// `DEFAULT_TYPE_SUBFOLDERS` passes a key-only assertion.
 		expect(defaultTypeFolder('Release')).toBe('docs/releases');
 		expect(defaultTypeFolder('Release', 'work')).toBe('work/releases');
-		expect(defaultSettings().typeFolders.release).toBe('docs/releases');
+		// **The value stays and the OPTION is gone**, which is the shape of this change and
+		// not a contradiction: `releaseOptions.ts` reads `defaultTypeFolder(RELEASE_TYPE)`
+		// for its own `releaseFolder` default, so the two views cannot drift on where a
+		// release lands — while this view's folder TABLE holds no release row at all, since
+		// `FILED_TYPES` subtracts it. `folderForType` therefore reports none, which is what
+		// keeps the generated README from printing a folder no release is written to.
+		expect(FILED_TYPES).not.toContain('Release');
+		expect(defaultSettings().typeFolders.release).toBeUndefined();
+		expect(folderForType('Release', defaultSettings())).toBeNull();
 	});
 });
 

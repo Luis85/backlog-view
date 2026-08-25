@@ -178,7 +178,13 @@ export interface BacklogModel {
 	 * was drawn there. `inPlan` refuses EVERY release now, excluded or not, so a release is
 	 * a row of no projection of the backlog view: the edge stays (the rollup walk needs it)
 	 * and the membership goes. This field is unaffected by that, and deliberately — it is
-	 * read off `items`, so it is the one place a release still exists to be listed.
+	 * the one place a release still exists to be listed.
+	 *
+	 * **The `items` named above is `buildModel`'s LOCAL — `assignAll`'s whole tree — and not
+	 * {@link BacklogModel.items} beside it, which is the rendered rows and holds no release
+	 * at all.** The two are spelled the same and answer differently, which is the reading a
+	 * consumer of this interface would get wrong: filtering the published `items` for
+	 * releases finds none, and this field is why nothing has to.
 	 */
 	releases: BacklogItem[];
 	/**

@@ -18,7 +18,8 @@ export default class ProductBacklogPlugin extends Plugin {
 		const lock = new WriteLock();
 		registerBacklogView(this, lock);
 		registerEstimationView(this, lock);
-		// No lock: this view writes nothing, so it has no gate to build from one.
+		// No lock: this view creates notes and its own config but edits none, so it plans
+		// no batch and has no gate to build from one (see `registerReleaseView`).
 		registerReleaseView(this);
 		// View state is keyed on the base's path, so it has to follow the file.
 		// The open view re-resolves its own identity when it saves; this covers the
