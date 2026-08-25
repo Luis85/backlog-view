@@ -460,9 +460,18 @@ export function addIterationItems(host: BacklogViewHost, menu: Menu, item: Backl
  * pick here can write a membership the release view will then report as unresolved. The
  * two are not redundant, and what each buys is what the other cannot see: `inPlan` reads
  * the LADDER, so it refuses a `Task` under a test suite that no type NAME could answer,
- * while the field rule refuses the `Milestone` and the `Release` that `inPlan` admits.
+ * while the field rule refuses the `Milestone` that `inPlan` admits.
  * They overlap on the catalog TYPES, deliberately — the field rule carries that half
  * because `refusesLiveType` (`storage/frontmatter.ts`) asks it with a name and no item.
+ *
+ * **The field rule's `Release` term is unreachable HERE**, and this sentence named it as
+ * live until 2026-08-25. `mayHoldField(…, 'release', …)` refuses a `Release` through
+ * `!isMarkerType` — `MARKER_TYPES` holds all three — and `inPlan` beside it has refused one
+ * outright since 2026-08-24, so no row reaches the field rule with that name. The term is
+ * still live at the WRITING end, where `refusesLiveType` (`storage/frontmatter.ts`) asks
+ * `mayHoldField` with a type name and no item to put an `inPlan` question to; it is dead
+ * only at this call site, which is one of the unreachable statements collected in
+ * `docs/issues/A release is refused in five places.md`.
  * The LADDER half reaches no further than this pick: `refusesLiveMembership`
  * (`domain/releases.ts`) asks the TARGET alone, because which ladder a row is on is a model
  * decision the vault cannot re-derive — a reparent between this pick and the write is a

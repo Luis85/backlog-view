@@ -286,8 +286,16 @@ export function drawsForestFrom(projection: Projection, origin: BacklogItem): bo
  * everywhere now, so a stored `Release` focus strands the TREE the same way — re-rooted at
  * rows the tree does not draw, captioned `Focus: Release`, with no entry in the menu to
  * leave by. Such a pick is not hypothetical the way an `Iteration` one is: the tree's own
- * picker offered `Release` until 2026-08-24, so stored ones exist. The parameter stays
- * because the signature is what two call sites outside this change pass.
+ * picker offered `Release` until 2026-08-24, so stored ones exist.
+ *
+ * One caller remains and it passes `this.projection` (`refreshFromData`, `backlogView.ts`).
+ * The second went on 2026-08-25 with the branch it fed: `setProjection` compared this
+ * answer before and after a switch to decide between a rebuild and a render, and with the
+ * parameter unread both calls took the same input, so the rebuild arm could not be reached.
+ * The parameter itself is deliberately left rather than removed in that round — it is one
+ * of the three unreachable statements of "a release is refused" collected in
+ * `docs/issues/A release is refused in five places.md`, which owns the decision about all
+ * of them together.
  *
  * It answers by TYPE rather than with `offerableTypes`, and the narrowness is deliberate.
  * A focus a projection does not OFFER is a wider rule and would reach the requirements

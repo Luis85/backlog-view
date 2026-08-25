@@ -292,9 +292,12 @@ export function refusesLiveMembership(app: App, target: TFile | null | undefined
  *     Refusing at one end only would let a hand-edit do what the menu will not — and this
  *     increment builds no menu, so the reader is the only end there is. `isMarkerType` is
  *     not redundant beside `inPlan`: `inPlan` excludes the catalog and the iterations
- *     while ADMITTING a `Milestone` and a `Release`, which is right for the backlog tree
- *     and wrong here, and the marker predicate covers a fourth marker added later without
- *     anyone having to remember this call site;
+ *     while ADMITTING a `Milestone`, which is right for the backlog tree and wrong here,
+ *     and the marker predicate covers a fourth marker added later without anyone having to
+ *     remember this call site. It named a `Release` beside the `Milestone` until
+ *     2026-08-25, and that half died when `inPlan` began refusing a release outright
+ *     (2026-08-24): the claim survives on the `Milestone` alone, which is the only admitted
+ *     marker left for `isMarkerType` to be earning its place on;
  *   - a value naming no note at all — `getFirstLinkpathDest` resolved nothing, so the note
  *     names a release that is not in the vault. Unresolved and not "names none": the key
  *     holds text somebody wrote, and answering null here would file a broken link beside a

@@ -45,27 +45,29 @@ const pluginRules = obsidianmd.configs.recommended.map((c) => ({ ...c, ignores: 
  * can be verified by reading one directory instead of trusting every call site. This
  * is the single most important rule in the codebase, which is why it is not prose.
  *
- * Named individually, not just spread into the array below: a directory that ever needs
- * to keep some arms of this rule while dropping another — the way `src/view/release/`
- * was considered for and then refused (Task 5 of "releases own their creation": its
- * creation goes through `createRelease`, a plain function call no arm of this rule
- * matches, so no carve-out was needed after all) — names which ones it keeps rather than
- * indexing into an array a later edit could reorder.
+ * **Three arms, and every region takes all three.** They were three named constants and one
+ * array over them for a while, against the day a directory needed to keep some arms and drop
+ * another — and the one case that ever asked for it was refused: `src/view/release/` creates
+ * notes, but through `createRelease`, a plain function call no arm of this rule matches, so
+ * no carve-out was needed. Each name had exactly one consumer, the array on its own next
+ * line. Collapsed back on 2026-08-25; split it again when a second consumer actually exists,
+ * and never spread the split over an index into this array, which a later edit can reorder.
  */
-const WRITE_BOUNDARY_PROCESS_FRONTMATTER = {
-	selector: "MemberExpression[property.name='processFrontMatter']",
-	message:
-		'All frontmatter writes go through src/storage/ — frontmatter.ts (applyWrites / applyRestores) edits a note, createNote.ts (createBacklogItem) makes one.',
-};
-const WRITE_BOUNDARY_VAULT_CREATE = {
-	selector: "CallExpression[callee.property.name='create'][callee.object.property.name='vault']",
-	message: 'Creating files in the vault belongs in src/storage/ (createNote.ts / createBacklogBase).',
-};
-const WRITE_BOUNDARY_LOCAL_STORAGE = {
-	selector: "MemberExpression[property.name=/^(save|load)LocalStorage$/]",
-	message: 'Persisted view state goes through src/storage/viewStateStore.ts.',
-};
-const WRITE_BOUNDARY = [WRITE_BOUNDARY_PROCESS_FRONTMATTER, WRITE_BOUNDARY_VAULT_CREATE, WRITE_BOUNDARY_LOCAL_STORAGE];
+const WRITE_BOUNDARY = [
+	{
+		selector: "MemberExpression[property.name='processFrontMatter']",
+		message:
+			'All frontmatter writes go through src/storage/ — frontmatter.ts (applyWrites / applyRestores) edits a note, createNote.ts (createBacklogItem) makes one.',
+	},
+	{
+		selector: "CallExpression[callee.property.name='create'][callee.object.property.name='vault']",
+		message: 'Creating files in the vault belongs in src/storage/ (createNote.ts / createBacklogBase).',
+	},
+	{
+		selector: "MemberExpression[property.name=/^(save|load)LocalStorage$/]",
+		message: 'Persisted view state goes through src/storage/viewStateStore.ts.',
+	},
+];
 
 /**
  * Enter or Space on a focused button synthesizes a click at (0, 0), so anchoring a

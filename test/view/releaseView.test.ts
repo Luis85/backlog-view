@@ -119,15 +119,23 @@ describe('the release view', () => {
 	 * `test/view/releaseNeverEdits.test.ts` — narrowed by Task 5 of "releases own their
 	 * creation" from the writes-nothing claim this file's own comment above still names, to
 	 * what actually survives once this view has its own door: it creates notes and its own
-	 * config, and never edits a note that already exists. It spies on the three EDIT
-	 * functions in `storage/` (`applyWrites`, `applyRestores`, `applyPropertyWrites`), so a
-	 * call to one of them from anywhere under `src/view/release/` fails whatever gesture
-	 * reached it, and it drives both screens rather than the three methods here. The
-	 * guarantee that holds for code nobody has written yet is neither of the two:
-	 * `WRITE_BOUNDARY` in `eslint.config.mjs` bans `processFrontMatter` and
-	 * `load/saveLocalStorage` across the whole of `src/view/`, `src/view/release/` included
-	 * — its `vault.create` arm is the one exception, carved out for this directory alone
-	 * once creation itself became the permitted claim.
+	 * config, and never edits a note that already exists. It spies on SIX functions in
+	 * `storage/` — the three EDIT paths (`applyWrites`, `applyRestores`,
+	 * `applyPropertyWrites`) and three of the four creators (`createBacklogItem`,
+	 * `createResourceNote`, `createAbsenceNote`), `createRelease` being the one this view
+	 * is permitted — so a call to any of them from anywhere under `src/view/release/` fails
+	 * whatever gesture reached it, and it drives both screens rather than the three methods
+	 * here. The guarantee that holds for code nobody has written yet is neither of the two:
+	 * `WRITE_BOUNDARY` in `eslint.config.mjs` bans `processFrontMatter`, `vault.create` and
+	 * `load/saveLocalStorage` across the whole of `src/view/`, `src/view/release/`
+	 * included, with **no carve-out for any of the three**. This paragraph claimed a
+	 * `vault.create` exception for this directory until 2026-08-25 and there has never been
+	 * one: `eslint.config.mjs`'s own comment records it as considered and refused, because
+	 * `createRelease` is a plain function call no arm of the rule matches, so nothing had to
+	 * be given up to permit it. Planting `view.app.vault.create(…)` in
+	 * `src/view/release/newRelease.ts` fails `npx eslint` — which is how the claim was
+	 * found false, and the direction it misled in is the one that costs a contributor a
+	 * failed lint on a rule they were told did not apply.
 	 *
 	 * What this one is still FOR, beside the other two: the `.base` — `config.setCalls` is
 	 * a surface no lint rule names and no `storage/` spy sees.

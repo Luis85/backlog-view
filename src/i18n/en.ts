@@ -1652,10 +1652,14 @@ export const en = {
 	'newRelease.cancel': 'Cancel',
 
 	/**
-	 * The control that opens that dialog, and what the press reports — `src/view/release/
-	 * renderIndex.ts`. Its own key rather than a reuse of `newRelease.title` above, which
-	 * names the DIALOG: a locale that titles a form differently from the button opening it
-	 * has no way to say so if the two share one string.
+	 * The control that opens that dialog, and what the press reports — all four in
+	 * `src/view/release/newRelease.ts`, which is the file the door was split out into on
+	 * 2026-08-24. This named `renderIndex.ts` until 2026-08-25, which is where the control
+	 * was drawn before that split and is now only one of the two places that draw it.
+	 *
+	 * The cta is its own key rather than a reuse of `newRelease.title` above, which names
+	 * the DIALOG: a locale that titles a form differently from the button opening it has no
+	 * way to say so if the two share one string.
 	 */
 	'release.new.cta': 'New release',
 	/**

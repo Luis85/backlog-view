@@ -158,10 +158,10 @@ export default defineConfig({
 			// stated: one fewer is 99.8734, under the floor it would be raised from, so
 			// headroom there is still a decrease.
 			thresholds: {
-				statements: 98.90,
-				branches: 95.41,
-				functions: 99.90,
-				lines: 99.74,
+				statements: 98.92,
+				branches: 95.44,
+				functions: 99.91,
+				lines: 99.75,
 			},
 		},
 	},
