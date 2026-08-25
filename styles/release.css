@@ -38,7 +38,13 @@
    `.pbl-empty`, where `emptyStates.css`'s `.pbl-empty button` (0,1,1) declares these three
    identically — plus the top margin a button standing under prose needs — and beats this
    one (0,1,0) whatever the import order. So the header's "position is not load-bearing"
-   holds for this rule as well, by specificity rather than by vocabulary. */
+   holds for this rule as well, by specificity rather than by vocabulary.
+
+   Audited against `docs/issues/The release index rows paint as Obsidian buttons.md`'s
+   Step 7: `.pbl-rel-new` is `newRelease.ts`'s real `<button class="pbl-rel-new mod-cta">`,
+   and it WANTS Obsidian's filled button chrome — that is what `mod-cta` is for. No
+   element-qualified reset belongs here; losing the specificity contest is not a defect
+   for a control asking to look like Obsidian's own primary action. */
 .pbl-rel-new {
 	display: inline-flex;
 	align-items: center;
@@ -108,6 +114,27 @@
 	border-radius: 0;
 	box-shadow: none;
 	cursor: pointer;
+	/* Obsidian's bare `button` declares `justify-content: center`, which this row never
+	   contradicted: harmless while the name column takes the slack, wrong the moment a
+	   figure column drops. */
+	justify-content: flex-start;
+}
+
+/* Obsidian's own `button:not(.clickable-icon)` is (0,1,1) and declares a filled background
+   and a raised shadow; the bare class above is (0,1,0) and loses to it whatever the source
+   order, so the reset in it never applied and every row painted as a raised control.
+   Measured in headless Chromium on 2026-08-25: `rgb(51, 51, 51)` over a body of
+   `rgb(28, 28, 28)`. Element-qualifying ties (0,1,1) and then wins on order — the
+   `button.pbl-card-kids-toggle` pattern in `styles/cardChildren.css`, and the fix
+   `docs/issues/Four other controls still lose to Obsidian's button rule.md` prescribes for
+   exactly this shape. See `docs/issues/The release index rows paint as Obsidian buttons.md`.
+
+   A row is a row, not a raised control — but it stays a real `<button>`: picking a release
+   is this view's whole navigation, and the 2026-08-23 `display: contents` measurement is
+   what established that a row without a box is a row without a tab stop. */
+button.pbl-rel-row {
+	background-color: transparent;
+	box-shadow: none;
 }
 
 /* One cell. `--pbl-rel-w` is what it lays out at, and it resolves the indexed property the
@@ -234,6 +261,12 @@
 	font-size: var(--font-ui-large);
 }
 
+/* Audited against `docs/issues/The release index rows paint as Obsidian buttons.md`'s
+   Step 7: `.pbl-rel-back` is `renderScope.ts`'s real `<button class="clickable-icon
+   pbl-rel-back">`. Obsidian's colliding rule is `button:not(.clickable-icon)`, and this
+   button carries `.clickable-icon`, so that selector never matches it in the first place —
+   there is no specificity contest here to lose, and no reset to add. It wants exactly the
+   icon-button chrome `.clickable-icon` supplies. */
 .pbl-rel-back {
 	flex: 0 0 auto;
 }
