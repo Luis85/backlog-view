@@ -7,7 +7,8 @@ import { resolveSettings } from '../../domain/settingsResolve';
 import { loadViewState, saveViewState } from '../../storage/viewStateStore';
 import { resolveViewIdentity } from '../../storage/viewIdentity';
 import { guidanceShell } from '../render/emptyStates';
-import { drawUnresolved, renderIndex, renderNewRelease } from './renderIndex';
+import { renderNewRelease } from './newRelease';
+import { drawUnresolved, renderIndex } from './renderIndex';
 import { renderScope } from './renderScope';
 
 export const RELEASE_VIEW_TYPE = 'product-release';

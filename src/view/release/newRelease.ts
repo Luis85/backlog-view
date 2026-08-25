@@ -1,0 +1,107 @@
+import { Notice, setIcon } from 'obsidian';
+import type { ReleaseView } from './releaseView';
+import { t } from '../../i18n/t';
+import { ReleaseSettings, resolveReleaseSettings } from '../../domain/releaseOptions';
+import { createRelease } from '../../storage/createNote';
+import { NewReleaseResult, openNewReleaseDialog, ReleaseFieldId } from '../../ui/newReleaseDialog';
+import { runReleaseInit } from './init';
+
+/**
+ * The `New release` control, and the one function behind it.
+ *
+ * Drawn at the head of the index and again on the no-releases empty state
+ * (`releaseView.draw`), which is where "one move, N inputs" lands here: both presses call
+ * {@link newRelease}, the only place a release note is planned, so a second entry point
+ * cannot grow a second idea of what creating one means.
+ *
+ * **A real `<button>` and an ordinary tab stop, decided from where it is DRAWN** rather
+ * than from what it does (`src/view/CLAUDE.md`, Controls). Both positions are outside any
+ * composite widget: this view runs no roving selection at all — every index row is itself
+ * a plain tab stop, and the empty state is prose — so the tree's `tabindex="-1"` answer
+ * would take the control off the keyboard and hand it no menu to be its keyboard path.
+ *
+ * It is offered only where a type key is bound, and that is not a check here: both callers
+ * are past `draw`'s own `typeKey` guard, which is what withholds the press on the one
+ * configuration {@link createRelease} refuses.
+ */
+export function renderNewRelease(view: ReleaseView, parentEl: HTMLElement): void {
+	const btn = parentEl.createEl('button', { cls: 'pbl-rel-new mod-cta' });
+	setIcon(btn.createSpan({ cls: 'pbl-btn-icon' }), 'plus');
+	btn.createSpan({ text: t('release.new.cta') });
+	btn.addEventListener('click', () => void newRelease(view));
+}
+
+/**
+ * Bind, then ask, then create — the order the design turns on. On a fresh view every
+ * option is unset, so the fields the dialog offers are decided AFTER the bind or a first
+ * release could never carry a version, a date or a status.
+ */
+async function newRelease(view: ReleaseView): Promise<void> {
+	// A FRESH resolve of the live config, never `view.settings`: that field is a snapshot
+	// from the last data update, so an option bound since then reads as unset here and the
+	// press reports a configuration change it did not make — `init.ts`'s own documented trap,
+	// met on the reading side rather than the binding one.
+	const before = boundKeys(resolveReleaseSettings(view.config));
+	// Run unconditionally rather than asking first which options are unset. `runReleaseInit`
+	// already puts that question to the live config (`adoptCandidates`), binds only what
+	// nobody has touched, leaves a cleared option alone and does nothing at all when
+	// everything is bound — a second reading of the same question here could only ever come
+	// to disagree with it.
+	await runReleaseInit(view);
+	// Said rather than silent: the press changed the saved view's own configuration, which
+	// nothing else on this screen reports. It fires on the two RESOLVED readings differing,
+	// which is checked in both directions — a fresh view that binds its four keys says so, and
+	// a view with nothing left to bind stays quiet.
+	if (boundKeys(view.settings) !== before) new Notice(t('release.new.bound'));
+	openNewReleaseDialog(view.app, releaseFields(view.settings), (result) => void writeRelease(view, result), () =>
+		// Where focus goes, looked up at close time rather than captured: the press itself may
+		// have called `config.set`, and the refresh behind that redraws the screen the opening
+		// button was in. Both screens that offer the gesture draw the control, so the current one
+		// is the destination; with none drawn, focus is left where it is rather than sent
+		// somewhere the reader did not come from.
+		view.viewEl.querySelector<HTMLButtonElement>('.pbl-rel-new')?.focus({ preventScroll: true }),
+	);
+}
+
+/** The four keys this press can bind, as one value, so "did it bind anything" is one
+ *  comparison rather than four. A joined KEY LIST, never a sentence. */
+function boundKeys(settings: ReleaseSettings): string {
+	return [settings.membershipKey, settings.versionKey, settings.targetDateKey, settings.statusKey].join('\n');
+}
+
+/**
+ * Which of a release's own fields this vault has a property bound for, in the order the
+ * dialog draws them. An unconfigured key is never written to, so a field whose value could
+ * only land nowhere is never asked for — which after the bind above means one the reader
+ * deliberately cleared.
+ */
+function releaseFields(settings: ReleaseSettings): ReleaseFieldId[] {
+	const fields: ReleaseFieldId[] = [];
+	if (settings.versionKey) fields.push('version');
+	if (settings.targetDateKey) fields.push('targetDate');
+	if (settings.statusKey) fields.push('status');
+	return fields;
+}
+
+/**
+ * What confirming does. Blank fields are passed THROUGH rather than dropped, and that is
+ * what they are for: `init.ts` records that Obsidian's own property picker cannot offer
+ * `version`, `target date` or `status` until a note carries them, and the first
+ * `New release` is what supplies them.
+ *
+ * `createRelease` THROWS without a type key rather than refusing quietly — a state its
+ * caller is supposed to have ruled out, and `draw` has. Reported rather than left to the
+ * console for the reason `writeResource` (`view/interactions/resourceNotes.ts`) reports
+ * its own: a press that produced no note and said nothing looks like a dead button.
+ */
+async function writeRelease(view: ReleaseView, result: NewReleaseResult): Promise<void> {
+	try {
+		const file = await createRelease(view.app, view.settings, result);
+		// The note's own name, never the requested one — `uniqueNotePath` may have suffixed
+		// it. `writeResource` reports the same way for the same reason.
+		new Notice(t('release.new.created', { name: file.basename }));
+	} catch (e) {
+		console.error('Product Backlog: failed to create the release', e);
+		new Notice(t('release.new.failed'));
+	}
+}
