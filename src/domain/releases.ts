@@ -230,8 +230,19 @@ function daysBetween(a: CivilDate, b: CivilDate): number {
 function withinGroupOrder(a: ReleaseRow, b: ReleaseRow): number {
 	if (a.shipped) {
 		// DESCENDING by released date, so the most recent shipped release heads its own
-		// tail rather than being buried under every older one. Values compared, never
-		// their difference — see the note on the in-flight key below, which this shares.
+		// tail rather than being buried under every older one.
+		//
+		// Values compared, never their difference — but unlike the in-flight key below,
+		// the NaN hazard that shape exists for CANNOT occur here, and that is worth
+		// saying plainly rather than claiming the two keys share a reason they don't.
+		// This branch runs only where `a.shipped` holds, and `shipped` means a readable
+		// released date, so `dateKey(a.released)` can never be `+Infinity` on this branch
+		// — `rb - ra` would be numerically safe today. It is written as a value
+		// comparison anyway, to match its sibling and to stay correct if that
+		// implication (`shipped` implies a readable `released`) ever stops holding, not
+		// because the hazard is reachable now. No test distinguishes the two spellings
+		// on this branch, and none honestly can: a shipped release with no released date
+		// is exactly what `shipped`'s own definition forbids constructing.
 		const ra = dateKey(a.released);
 		const rb = dateKey(b.released);
 		return ra === rb ? 0 : ra > rb ? -1 : 1;
@@ -335,7 +346,10 @@ export function releaseIndex(
 			// `daysBetween` call, which would read the SAME day (`0`) as not yet overdue by
 			// the same reasoning `daysToTarget` states below, at the cost of constructing a
 			// span only to throw its magnitude away.
-			overdue: !shipped && target.value !== null && dateKey(target) < todayKey,
+			// No explicit `target.value !== null` guard: `dateKey` already answers
+			// `+Infinity` for an unset date, which is never `< todayKey`, so an undated
+			// release already reads as not overdue without naming that case here.
+			overdue: !shipped && dateKey(target) < todayKey,
 			daysToTarget: target.value !== null ? daysBetween(options.today, target.value) : null,
 		};
 	});
