@@ -70,6 +70,24 @@ export interface ReleaseRow {
 	 * early, which is a real answer rather than an error.
 	 */
 	slip: number | null;
+	/** Has a released date. What the index GROUPS on, and never a state value. */
+	shipped: boolean;
+	/**
+	 * The target has passed and nothing has shipped. A FACT, not a heuristic: false for a
+	 * shipped release whatever its target (it is late, which {@link slip} says), false with
+	 * no target, and false ON the target date itself — that day is not yet past.
+	 */
+	overdue: boolean;
+	/**
+	 * Target minus today, in whole days. **Sign convention**: positive means days
+	 * REMAINING, negative means days OVERDUE, zero means the target is today. Null without
+	 * a readable target.
+	 *
+	 * The renderer's own figure, derived here rather than there because `domain/` is the
+	 * only layer allowed to know what day it is (`ReleaseIndexOptions.today`) and the
+	 * render layer must not read a clock either.
+	 */
+	daysToTarget: number | null;
 }
 
 export interface ReleaseIndex {
@@ -203,12 +221,38 @@ function daysBetween(a: CivilDate, b: CivilDate): number {
 }
 
 /**
+ * The primary ordering key WITHIN one shipped group — ascending target for in flight,
+ * descending released for shipped — zero when the group's own date ties, which is what
+ * sends a pair on to the rank and path tie-breaks in the sort proper. Pulled out of the
+ * comparator so that function reads as a short list of questions rather than one long
+ * one; every hazard the two dates carry stays commented where the comparison happens.
+ */
+function withinGroupOrder(a: ReleaseRow, b: ReleaseRow): number {
+	if (a.shipped) {
+		// DESCENDING by released date, so the most recent shipped release heads its own
+		// tail rather than being buried under every older one. Values compared, never
+		// their difference — see the note on the in-flight key below, which this shares.
+		const ra = dateKey(a.released);
+		const rb = dateKey(b.released);
+		return ra === rb ? 0 : ra > rb ? -1 : 1;
+	}
+	// Values compared, never their difference — two undated releases make
+	// `Infinity - Infinity`, which is `NaN`, and `sort` coerces a `NaN` result to `+0`:
+	// the pair reads as EQUAL and silently keeps whatever order it arrived in. Worse
+	// than the "sorts at random" this comment claimed until 2026-08-22, because random
+	// would be noticed. `Infinity` itself is not the hazard: `sort` reads only the SIGN
+	// of the result, so `Infinity - n` would order correctly. Both keys below use the
+	// same shape, the second one for the further reason stated at it.
+	const ta = dateKey(a.target);
+	const tb = dateKey(b.target);
+	return ta === tb ? 0 : ta < tb ? -1 : 1;
+}
+
+/**
  * Per-render inputs `releaseIndex` needs that neither {@link ReleaseSettings} nor
  * {@link BacklogModel} carries. An OBJECT rather than a positional parameter, deliberately:
  * a fourth positional argument reads as "and one more thing", while a bag says the caller
- * is handing over context the two typed inputs above don't carry. Task 5 adds `today` (an
- * injected civil date — `domain/` never reads a clock) as a second field here rather than
- * a fifth position.
+ * is handing over context the two typed inputs above don't carry.
  */
 export interface ReleaseIndexOptions {
 	/**
@@ -218,6 +262,12 @@ export interface ReleaseIndexOptions {
 	 * it rather than any of this view's own.
 	 */
 	stateKey: string;
+	/**
+	 * Today, injected — `domain/` never reads a clock (see `src/domain/CLAUDE.md`). The
+	 * view supplies it via `todayCivil()` (`noteFields.ts`). What {@link ReleaseRow.shipped},
+	 * {@link ReleaseRow.overdue} and {@link ReleaseRow.daysToTarget} are computed against.
+	 */
+	today: CivilDate;
 }
 
 export function releaseIndex(
@@ -252,12 +302,18 @@ export function releaseIndex(
 		if (ownWorkflowReading(item).done) doneCounts.set(named, (doneCounts.get(named) ?? 0) + 1);
 	}
 
+	// The comparison key for "has the target passed", `today` itself never leaving this
+	// function: a `ReleaseFigure` shape so `dateKey` — the one helper civil dates are
+	// compared through — takes it exactly as it takes `target` and `released`.
+	const todayKey = dateKey({ value: options.today, invalid: false, unconfigured: false });
+
 	const rows = model.releases.map((item): ReleaseRow => {
 		const fm = app.metadataCache.getFileCache(item.file)?.frontmatter;
 		const target = settings.targetDateKey ? figure(readTarget(ownValue(fm, settings.targetDateKey))) : UNCONFIGURED;
 		const released = settings.releasedDateKey
 			? figure(readTarget(ownValue(fm, settings.releasedDateKey)))
 			: UNCONFIGURED;
+		const shipped = released.value !== null;
 		return {
 			item,
 			path: item.file.path,
@@ -274,18 +330,23 @@ export function releaseIndex(
 					: UNCONFIGURED,
 			released,
 			slip: target.value !== null && released.value !== null ? daysBetween(target.value, released.value) : null,
+			shipped,
+			// Nothing shipped, and the target's key sorts before today's — never `< 0` on a
+			// `daysBetween` call, which would read the SAME day (`0`) as not yet overdue by
+			// the same reasoning `daysToTarget` states below, at the cost of constructing a
+			// span only to throw its magnitude away.
+			overdue: !shipped && target.value !== null && dateKey(target) < todayKey,
+			daysToTarget: target.value !== null ? daysBetween(options.today, target.value) : null,
 		};
 	});
 
 	rows.sort((a, b) => {
-		// Values compared, never their difference — two undated releases make
-		// `Infinity - Infinity`, which is `NaN`, and `sort` coerces a `NaN` result to `+0`:
-		// the pair reads as EQUAL and silently keeps whatever order it arrived in. Worse
-		// than the "sorts at random" this comment claimed until 2026-08-22, because random
-		// would be noticed. `Infinity` itself is not the hazard: `sort` reads only the SIGN
-		// of the result, so `Infinity - n` would order correctly. Both keys below use the
-		// same shape, the second one for the further reason stated at it.
-		if (dateKey(a.target) !== dateKey(b.target)) return dateKey(a.target) < dateKey(b.target) ? -1 : 1;
+		// Shipped-ness leads. Grouping is where the HEADING falls (`renderIndex.ts`); this
+		// is what the order IS, and the flat `rows` array stays the sorted one —
+		// `releaseScope` and every existing caller read it.
+		if (a.shipped !== b.shipped) return a.shipped ? 1 : -1;
+		const withinGroup = withinGroupOrder(a, b);
+		if (withinGroup !== 0) return withinGroup;
 		// NOT `rank(a) - rank(b)` guarded by `Number.isFinite`: an unranked release is
 		// `+Infinity`, and `Infinity - 10` is `Infinity`, which that guard rejects — so the
 		// ranked release and the unranked one would fall through to the PATH tie-break

@@ -3,6 +3,7 @@ import { t } from '../../i18n/t';
 import { BacklogModel, buildModel } from '../../domain/model';
 import { ReleaseSettings, resolveReleaseSettings } from '../../domain/releaseOptions';
 import { releaseIndex, releaseScope } from '../../domain/releases';
+import { todayCivil } from '../../domain/noteFields';
 import { resolveSettings } from '../../domain/settingsResolve';
 import { loadViewState, saveViewState } from '../../storage/viewStateStore';
 import { resolveViewIdentity } from '../../storage/viewIdentity';
@@ -207,7 +208,10 @@ export class ReleaseView extends BasesView {
 		// of them to resolve to — so returning first reported the maximum-information state as
 		// "no releases" and hid all of it. [[The scope of a release as a tree]] 1b is what rules
 		// on that: such an item is reported among the unresolved "rather than silently dropped".
-		const index = releaseIndex(this.app, this.model, this.settings, { stateKey: backlogSettings.stateKey });
+		const index = releaseIndex(this.app, this.model, this.settings, {
+			stateKey: backlogSettings.stateKey,
+			today: todayCivil(),
+		});
 		if (this.model.releases.length === 0) {
 			// The SECOND entry point onto `renderNewRelease`'s one creation function — this
 			// branch returns before `renderIndex` ever runs, so the index's own control never

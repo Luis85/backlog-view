@@ -2,8 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { releaseIndex, releaseScope } from '../../src/domain/releases';
 import { BacklogModel, buildModel } from '../../src/domain/model';
 import { BacklogSettings } from '../../src/domain/settings';
+import { CivilDate } from '../../src/domain/noteFields';
 import { FakeVault } from '../helpers/vault';
 import { settingsWith } from '../helpers/settings';
+
+/** This suite is not about `today` either, so a fixed value stands in for it. */
+const TODAY: CivilDate = { year: 2026, month: 1, day: 1 };
 
 const KEYS = {
 	parentKey: 'parent',
@@ -25,7 +29,7 @@ function scopeOf(vault: FakeVault, path: string, settings: BacklogSettings = set
  * default rather than a value chosen to make a figure interesting.
  */
 function scopeIn(model: BacklogModel, vault: FakeVault, path: string, stateKey = '') {
-	return releaseScope(vault.app, model, KEYS, releaseIndex(vault.app, model, KEYS, { stateKey }), path);
+	return releaseScope(vault.app, model, KEYS, releaseIndex(vault.app, model, KEYS, { stateKey, today: TODAY }), path);
 }
 
 describe("one release's scope", () => {

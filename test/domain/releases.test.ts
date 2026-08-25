@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { releaseIndex } from '../../src/domain/releases';
 import { buildModel } from '../../src/domain/model';
 import { BacklogSettings } from '../../src/domain/settings';
+import { CivilDate } from '../../src/domain/noteFields';
 import { FakeVault } from '../helpers/vault';
 import { settingsWith } from '../helpers/settings';
 
@@ -26,8 +27,19 @@ function modelOf(vault: FakeVault, model: BacklogSettings = settingsWith({ state
 	return buildModel(vault.app, vault.entries(), model);
 }
 
-function indexOf(vault: FakeVault, settings = KEYS, model: BacklogSettings = settingsWith({ stateKey: 'status' })) {
-	return releaseIndex(vault.app, modelOf(vault, model), settings, { stateKey: model.stateKey });
+/**
+ * A fixed "now" for every test that does not care what day it is — the overdue and
+ * ordering tests below override it by name where the day itself is the point.
+ */
+const TODAY: CivilDate = { year: 2026, month: 9, day: 20 };
+
+function indexOf(
+	vault: FakeVault,
+	settings = KEYS,
+	model: BacklogSettings = settingsWith({ stateKey: 'status' }),
+	today: CivilDate = TODAY,
+) {
+	return releaseIndex(vault.app, modelOf(vault, model), settings, { stateKey: model.stateKey, today });
 }
 
 /** The one row named `path`, by identity rather than by array position. */
@@ -261,7 +273,7 @@ describe('the release index', () => {
 		const entries = vault.entries().filter((e) => e.file.path !== 'Outside.md');
 		const model = buildModel(vault.app, entries, settingsWith({ stateKey: 'status' }));
 		expect(model.byPath.get('Outside.md')?.outsideFilter).toBe(true);
-		const rows = releaseIndex(vault.app, model, KEYS, { stateKey: 'status' }).rows;
+		const rows = releaseIndex(vault.app, model, KEYS, { stateKey: 'status', today: TODAY }).rows;
 
 		expect(row(rows, 'R.md').members.value).toBe(0);
 		expect(row(rows, 'R.md').done.value).toBe(0);
@@ -279,7 +291,7 @@ describe('the release index', () => {
 			frontmatter: { type: 'Deliverable', release: '[[R]]', docStatus: 'Done', status: 'Doing' },
 		});
 		const settings = settingsWith({ stateKey: 'status', deliverableStateKey: 'docStatus' });
-		const rows = releaseIndex(vault.app, modelOf(vault, settings), KEYS, { stateKey: settings.stateKey }).rows;
+		const rows = releaseIndex(vault.app, modelOf(vault, settings), KEYS, { stateKey: settings.stateKey, today: TODAY }).rows;
 
 		expect(row(rows, 'R.md').members.value).toBe(1);
 		expect(row(rows, 'R.md').done.value).toBe(1);
@@ -294,10 +306,11 @@ describe('the release index', () => {
 		// No state key: nothing says what done MEANS, so the figure is absent rather than 0.
 		const noState = releaseIndex(vault.app, modelOf(vault, settingsWith({ stateKey: '' })), KEYS, {
 			stateKey: '',
+			today: TODAY,
 		});
 		expect(noState.rows[0].done.unconfigured).toBe(true);
 		// No membership key: a done count with no membership has nothing to count OVER.
-		const noMembership = releaseIndex(vault.app, model, { ...KEYS, membershipKey: '' }, { stateKey: 'status' });
+		const noMembership = releaseIndex(vault.app, model, { ...KEYS, membershipKey: '' }, { stateKey: 'status', today: TODAY });
 		expect(noMembership.rows[0].done.unconfigured).toBe(true);
 	});
 
@@ -372,7 +385,7 @@ describe('the release index', () => {
 		expect(model.byPath.get('Outside.md')?.outsideFilter).toBe(true);
 		// It renders, it parents, and that is all — never a source of anything derived
 		// from the Base's results, a member count included.
-		expect(releaseIndex(vault.app, model, KEYS, { stateKey: '' }).rows[0].members.value).toBe(0);
+		expect(releaseIndex(vault.app, model, KEYS, { stateKey: '', today: TODAY }).rows[0].members.value).toBe(0);
 	});
 
 	it('refuses a membership property hand-written on a non-plan row', () => {
@@ -413,7 +426,7 @@ describe('the release index', () => {
 	it('reports the released date as unconfigured when no key is bound', () => {
 		const vault = new FakeVault();
 		vault.addFile('R.md', { frontmatter: { type: 'Release', released: '2026-09-14' } });
-		const rows = releaseIndex(vault.app, modelOf(vault), { ...KEYS, releasedDateKey: '' }, { stateKey: 'status' }).rows;
+		const rows = releaseIndex(vault.app, modelOf(vault), { ...KEYS, releasedDateKey: '' }, { stateKey: 'status', today: TODAY }).rows;
 		expect(row(rows, 'R.md').released.unconfigured).toBe(true);
 	});
 
@@ -432,5 +445,76 @@ describe('the release index', () => {
 		// Null without EITHER date — never zero, which would read as "shipped on time".
 		expect(row(rows, 'NoRelease.md').slip).toBeNull();
 		expect(row(rows, 'NoTarget.md').slip).toBeNull();
+	});
+
+	it('is overdue when the target has passed and nothing shipped', () => {
+		const vault = new FakeVault();
+		vault.addFile('Past.md', { frontmatter: { type: 'Release', 'target-date': '2026-09-10' } });
+		vault.addFile('Future.md', { frontmatter: { type: 'Release', 'target-date': '2026-09-30' } });
+		vault.addFile('Today.md', { frontmatter: { type: 'Release', 'target-date': '2026-09-20' } });
+		vault.addFile('Shipped.md', {
+			frontmatter: { type: 'Release', 'target-date': '2026-09-10', released: '2026-09-12' },
+		});
+		vault.addFile('Undated.md', { frontmatter: { type: 'Release' } });
+		const rows = indexOf(vault).rows;
+
+		expect(row(rows, 'Past.md').overdue).toBe(true);
+		expect(row(rows, 'Future.md').overdue).toBe(false);
+		// The target date itself is not yet past.
+		expect(row(rows, 'Today.md').overdue).toBe(false);
+		// Shipped is never overdue, whatever its target — it is late, which `slip` says.
+		expect(row(rows, 'Shipped.md').overdue).toBe(false);
+		// No target is not a missed target.
+		expect(row(rows, 'Undated.md').overdue).toBe(false);
+	});
+
+	it('signs daysToTarget positive before the target and negative after, zero on the day', () => {
+		// Watched failing with the subtraction reversed (`daysBetween(target, today)`): the
+		// two dated rows swapped sign and this assertion caught it, which is the whole reason
+		// the sign is pinned by a test rather than left to the docstring alone.
+		const vault = new FakeVault();
+		vault.addFile('Future.md', { frontmatter: { type: 'Release', 'target-date': '2026-09-30' } });
+		vault.addFile('Past.md', { frontmatter: { type: 'Release', 'target-date': '2026-09-10' } });
+		vault.addFile('Today.md', { frontmatter: { type: 'Release', 'target-date': '2026-09-20' } });
+		vault.addFile('Undated.md', { frontmatter: { type: 'Release' } });
+		const rows = indexOf(vault).rows;
+
+		expect(row(rows, 'Future.md').daysToTarget).toBe(10);
+		expect(row(rows, 'Past.md').daysToTarget).toBe(-10);
+		expect(row(rows, 'Today.md').daysToTarget).toBe(0);
+		expect(row(rows, 'Undated.md').daysToTarget).toBeNull();
+	});
+
+	it('orders in flight before shipped, and each group its own way', () => {
+		const vault = new FakeVault();
+		vault.addFile('FlightB.md', { frontmatter: { type: 'Release', 'target-date': '2026-10-01' } });
+		vault.addFile('FlightA.md', { frontmatter: { type: 'Release', 'target-date': '2026-09-25' } });
+		vault.addFile('FlightNone.md', { frontmatter: { type: 'Release' } });
+		vault.addFile('ShipOld.md', {
+			frontmatter: { type: 'Release', 'target-date': '2026-07-01', released: '2026-07-03' },
+		});
+		vault.addFile('ShipNew.md', {
+			frontmatter: { type: 'Release', 'target-date': '2026-08-01', released: '2026-08-04' },
+		});
+		const paths = indexOf(vault).rows.map((r) => r.path);
+
+		expect(paths).toEqual([
+			// In flight, ascending by target, undated LAST WITHIN ITS GROUP.
+			'FlightA.md',
+			'FlightB.md',
+			'FlightNone.md',
+			// Shipped, DESCENDING by released date, so the most recent heads its own tail.
+			'ShipNew.md',
+			'ShipOld.md',
+		]);
+	});
+
+	it('does not reorder across repeated renders', () => {
+		const vault = new FakeVault();
+		vault.addFile('A.md', { frontmatter: { type: 'Release', 'target-date': '2026-09-25' } });
+		vault.addFile('B.md', { frontmatter: { type: 'Release', 'target-date': '2026-09-25' } });
+		const first = indexOf(vault).rows.map((r) => r.path);
+		const second = indexOf(vault).rows.map((r) => r.path);
+		expect(second).toEqual(first);
 	});
 });
