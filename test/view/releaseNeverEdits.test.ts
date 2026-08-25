@@ -32,7 +32,8 @@ useViewHarness();
  * - The first spies on two disjoint sets, both asserted not-called, for two different
  *   reasons. **The three EDIT-BATCH entry points** — `applyWrites` and `applyRestores`
  *   (the edit and its undo) and `applyPropertyWrites` (the estimation view's plain
- *   key/value batches, the same shape Task 6's backfill will use) — are the whole of the
+ *   key/value batches — a shape this view's own bind deliberately never took, since
+ *   backfilling is editing a note that already exists) — are the whole of the
  *   batch/gate write surface `CLAUDE.md`'s write-boundary rule names, so a call to one of
  *   them from anywhere under `src/view/release/` fails here whatever screen or gesture
  *   reached it. They stay banned because the narrowed claim still forbids editing a note
