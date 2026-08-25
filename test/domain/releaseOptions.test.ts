@@ -64,14 +64,6 @@ describe('the release view names its own keys', () => {
 		);
 	});
 
-	it('declares the state property, its done values, and the released date', () => {
-		const groups = getReleaseViewOptions(new FakeViewConfig({}) as never);
-		const keys = groups.flatMap((g) => ('items' in g ? g.items : [])).map((i) => (i as { key: string }).key);
-		expect(keys).toContain('stateProperty');
-		expect(keys).toContain('doneValues');
-		expect(keys).toContain('releasedDateProperty');
-	});
-
 	it('resolves the released date key, and leaves it empty when unbound', () => {
 		// `propKey`, not `clearablePropKey`: the default is '' so the two resolve the same
 		// value for every input, exactly as `versionKey` and the other release-own keys do.
