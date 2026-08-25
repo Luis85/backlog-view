@@ -66,3 +66,10 @@ that finishes this feature once the control onto it exists.
 result object. It is a `ui/` leaf — it knows no property keys and writes nothing itself,
 matching `estimationPresetDialog.ts`'s own pattern of taking plain rows in and handing plain
 data back.
+
+`src/view/release/init.ts` is the release view's own ✨ (`runReleaseInit`): it binds the
+suggested key for `version`, `target date` and `status` — whichever this vault has never
+touched — reading the live `BasesViewConfig` so a deliberately cleared option is left alone.
+It writes no note: this view never edits a note that already exists
+(`test/view/releaseNeverEdits.test.ts`), and binding a property no release note carries yet
+is the accepted cost — the same one already taken for the membership key.
