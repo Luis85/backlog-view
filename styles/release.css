@@ -215,8 +215,27 @@ button.pbl-rel-band {
 	color: var(--text-muted);
 }
 
+/* The version is what line 1 YIELDS first. `src/view/CLAUDE.md`'s measured rule for a
+   sticky lead — "the only shrinkable item is the row's title, so anything ADDED to it is
+   taken from the row's name" — is exactly what a band's line 1 reproduced: `flex: 0 0 auto`
+   here left the name and the status chip as the only cells that could give, so at the 500px
+   pane minimum the `1.0` band's name box fell to 20.23px — 14px of that the icon, leaving
+   ~2px of the name itself — while its 151.72px version kept every pixel it asked for.
+   Measured in headless Chromium against the real assembled stylesheet on 2026-08-26; after,
+   the same band reads a 38.55px name (38.69 is its whole content) and a 94.06px ellipsised
+   version, with the chip whole at 140px too.
+
+   A shrink FACTOR rather than `flex-shrink: 0` on the name, because the name is the last
+   thing to yield and not a thing that never yields: a name longer than the pane must still
+   ellipsise rather than push the row into overflow. The deficit is shared in proportion to
+   factor x basis, so 100 against the name's 1 sends effectively all of it here first.
+   `min-inline-size: 0` is what lets a flex item shrink below its content at all, and the
+   ellipsis is what makes the yielding readable rather than a clip. */
 .pbl-rel-version {
-	flex: 0 0 auto;
+	flex: 0 100 auto;
+	min-inline-size: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
 	font-family: var(--font-monospace);
 	font-size: var(--font-ui-smaller);
 	color: var(--text-muted);
