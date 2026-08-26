@@ -29,22 +29,34 @@ import { FileView } from '../helpers/obsidian-mock';
  * (the empty state, plus the unresolved memberships it must still report), `notype`
  * with the type property unbound (the configuration state), `nomembership` with the
  * membership property unbound — the index's absent-column note, and, with `?pick=`, the
- * scope screen's own unconfigured state. Anything else binds all seven keys.
+ * scope screen's own unconfigured state — and `noreleased` with the RELEASED-DATE property
+ * unbound. Anything else binds every key.
+ *
+ * **`noreleased` is the state every saved release view is in on upgrade**, and it exists
+ * because the OVERDUE treatment is the one thing on this screen with two lookable forms and
+ * the fixture could reach neither. Nobody has bound `releasedDateProperty` before this
+ * increment, so with it unbound: no release is ever painted overdue however far its target
+ * has passed, the Shipped group has nothing to hold and its heading is not drawn, no slip
+ * appears, and the note beneath the list names the missing binding. The DEFAULT variant is
+ * the other half of the pair — `Releases/0.5` there is overdue and painted — so the two
+ * pages side by side are the whole of what [[Every release in one list]] 2e and 2f say.
+ * Three rounds of this increment wanted this and reverted a temporary edit instead.
  */
-export type ReleaseConfigVariant = 'full' | 'empty' | 'notype' | 'nomembership';
+export type ReleaseConfigVariant = 'full' | 'empty' | 'notype' | 'nomembership' | 'noreleased';
 
 function configValues(variant: ReleaseConfigVariant): Record<string, unknown> {
 	if (variant === 'notype') return { ...RELEASE_CONFIG, typeProperty: '' };
 	if (variant === 'nomembership') return { ...RELEASE_CONFIG, membershipProperty: '' };
+	if (variant === 'noreleased') return { ...RELEASE_CONFIG, releasedDateProperty: '' };
 	return RELEASE_CONFIG;
 }
 
 /**
- * A release programme rather than the suite's own three-note fixtures: six releases —
- * four in flight and two shipped, so the index has an order AND both group headings to
- * show — members under an Epic that is NOT a member so the scope screen draws a context
- * row, and both kinds of unresolved membership so the note under the list has something
- * to count.
+ * A release programme rather than the suite's own three-note fixtures: eight releases —
+ * six in flight (one OVERDUE, one carrying a date nobody can read) and two shipped, so the
+ * index has an order AND both group headings to show — members under an Epic that is NOT a member so the scope screen
+ * draws a context row, and both kinds of unresolved membership so the note under the list
+ * has something to count.
  *
  * The longest version and the longest status are deliberate. Fixed column widths were the
  * price of dropping the shared grid (`renderIndex.ts`'s `columnWidthVar`), so where a
@@ -57,6 +69,11 @@ function releaseHarnessVault(variant: ReleaseConfigVariant): FakeVault {
 		const release = (path: string, frontmatter: Record<string, unknown>): void => {
 			vault.addFile(path, { frontmatter: { type: 'Release', ...frontmatter } });
 		};
+		// OVERDUE: a target already past with no released date, which is the only shape that
+		// paints the band's four red signals. The date is FIXED and past rather than derived
+		// from the clock, so the treatment is on the page whatever day it is opened — the
+		// days-overdue count is the one figure here that moves, and it moves upward.
+		release('Releases/0.5.md', { version: '0.5.0', 'target-date': '2026-05-04', status: 'In progress', order: 0 });
 		release('Releases/0.8.md', { version: '0.8.0', 'target-date': '2026-09-12', status: 'In progress', order: 1 });
 		release('Releases/0.9.md', { version: '0.9.0', 'target-date': '2026-10-24', status: 'Planned', order: 2 });
 		release('Releases/1.0.md', {
@@ -64,6 +81,19 @@ function releaseHarnessVault(variant: ReleaseConfigVariant): FakeVault {
 			'target-date': '2026-12-05',
 			status: 'Waiting on the platform team',
 			order: 3,
+		});
+		// The one shape this increment fixed three times and nobody has ever LOOKED at: a
+		// date the view cannot read. It is the released one, beside a target that reads
+		// perfectly, because the fix those three rounds arrived at is that the two dates
+		// answer for THEMSELVES — the marker names which figure is unreadable and the target
+		// keeps its date and its days count beside it. The target's own marker is the same
+		// treatment in the same slot, so one release is enough to look at how it draws.
+		release('Releases/1.1.md', {
+			version: '1.1.0',
+			'target-date': '2027-01-15',
+			released: 'soon',
+			status: 'Planned',
+			order: 4,
 		});
 		// No version and no target date: the row [[Every release in one list]] 3a sorts after
 		// every dated one, and the only one whose target cell says so rather than sitting blank.
@@ -112,6 +142,16 @@ function releaseHarnessVault(variant: ReleaseConfigVariant): FakeVault {
 	});
 	vault.addFile('Tax rates.md', {
 		frontmatter: { type: 'Feature', parent: '[[Billing]]', order: 3, release: '[[0.6]]', status: 'Done' },
+	});
+	// Two members for the overdue release, one of them done: an overdue band draws its bar in
+	// the error colour, and a bar needs a fill somewhere between empty and full to be looked
+	// at. "No items yet" draws no bar at all, so a memberless overdue release would show
+	// three of the four signals and hide the one this pair exists for.
+	vault.addFile('Audit log.md', {
+		frontmatter: { type: 'Feature', parent: '[[Billing]]', order: 4, release: '[[0.5]]', status: 'Done' },
+	});
+	vault.addFile('Retention policy.md', {
+		frontmatter: { type: 'Feature', parent: '[[Billing]]', order: 5, release: '[[0.5]]', status: 'Ready' },
 	});
 	// The two shapes the note under the list counts: a value naming no note at all, and a
 	// row the plan does not hold carrying the property by hand.

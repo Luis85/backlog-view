@@ -35,7 +35,7 @@ describe('the release harness mounts', () => {
 		// In flight first — dated by date, undated last — then the shipped tail, newest
 		// released first. The fixture exists to show that order, so a fixture that stopped
 		// showing it would leave the screenshot proving nothing.
-		expect(names(containerEl)).toEqual(['0.8', '0.9', '1.0', 'Someday', '0.7', '0.6']);
+		expect(names(containerEl)).toEqual(['0.5', '0.8', '0.9', '1.0', '1.1', 'Someday', '0.7', '0.6']);
 	});
 
 	it('draws BOTH group headings, with the shipped tail under the second', () => {
@@ -45,7 +45,7 @@ describe('the release harness mounts', () => {
 		// releases at all: with every release in flight the browser draws ONE heading and
 		// the two-group layout cannot be looked at.
 		expect(Array.from(containerEl.querySelectorAll('.pbl-rel-group')).map((el) => el.textContent)).toEqual([
-			'In flight (4)',
+			'In flight (6)',
 			'Shipped (2)',
 		]);
 	});
@@ -74,9 +74,13 @@ describe('the release harness mounts', () => {
 			(band) => band.querySelector('.pbl-rel-progress')?.textContent ?? band.querySelector('.pbl-rel-nomembers')?.textContent,
 		);
 		expect(progress).toEqual([
+			// The overdue release: half done, so its bar has a fill to draw in the error colour.
+			en['column.rollupTooltip'].other.replace('{done}', '1').replace('{count}', '2'),
 			en['column.rollupTooltip'].other.replace('{done}', '1').replace('{count}', '3'),
 			en['column.rollupTooltip'].one.replace('{done}', '0').replace('{count}', '1'),
 			en['column.rollupTooltip'].one.replace('{done}', '0').replace('{count}', '1'),
+			// 1.1 and Someday, neither with members.
+			en['release.index.noMembers'],
 			en['release.index.noMembers'],
 			// The two shipped releases: one done member each, so the bar reads full — the
 			// fill no in-flight band in this fixture reaches.
@@ -103,7 +107,54 @@ describe('the release harness mounts', () => {
 		expect(containerEl.querySelectorAll('.pbl-rel-context').length).toBe(1);
 	});
 
-	it('mounts the three unconfigured states each variant exists for', () => {
+	it('draws the overdue band the default fixture exists to show', () => {
+		const { containerEl } = mount();
+		const overdue = Array.from(containerEl.querySelectorAll('.pbl-rel-overdue'));
+
+		// Exactly one, and it is the release whose target is fixed in the past with nothing
+		// released. A second would mean some other band had drifted into the treatment.
+		expect(overdue.map((band) => band.querySelector('.pbl-rel-name')?.textContent)).toEqual(['0.5']);
+		// The count itself moves with the clock and is not asserted; that it is the OVERDUE
+		// sentence rather than a days-remaining one is the whole of what a browser is opened
+		// to look at, and drawing "-N days left" here is the defect this pins.
+		expect(overdue[0]?.querySelector('.pbl-rel-band-note')?.textContent).toMatch(/overdue$/);
+		expect(overdue[0]?.querySelector('.pbl-rel-days')).toBeNull();
+	});
+
+	it('withholds the whole overdue treatment when no released-date property is bound', () => {
+		const { containerEl } = mount('noreleased');
+
+		// The upgrade state: the same past target, and NOT painted. Without the binding the
+		// view cannot tell a late release from one that already shipped, so it says nothing
+		// — [[Every release in one list]] 2f. This variant is the only way to look at it.
+		expect(containerEl.querySelectorAll('.pbl-rel-overdue').length).toBe(0);
+		expect(containerEl.querySelector('.pbl-rel-band-note')).toBeNull();
+		// Every release reads in flight, so the Shipped heading has nothing to head.
+		expect(Array.from(containerEl.querySelectorAll('.pbl-rel-group')).map((el) => el.textContent)).toEqual([
+			'In flight (8)',
+		]);
+		// And the missing binding is named once beneath the list rather than left to be
+		// guessed at from a screen that has quietly stopped saying anything.
+		expect(containerEl.querySelector('.pbl-rel-note')?.textContent).toContain(en['release.index.column.released']);
+	});
+
+	it('draws a date it cannot read, beside a target it can', () => {
+		const { containerEl } = mount();
+		const band = Array.from(containerEl.querySelectorAll('.pbl-rel-band')).find(
+			(el) => el.querySelector('.pbl-rel-name')?.textContent === '1.1',
+		);
+
+		// The one presentation this increment fixed three times and nobody has ever looked
+		// at. The marker names WHICH figure is unreadable, and the target keeps its own date
+		// and days count beside it — the two dates answer for themselves.
+		expect(band?.querySelector('.pbl-rel-unreadable')?.textContent).toBe(
+			en['release.figureUnreadable'].replace('{label}', en['release.index.column.released']),
+		);
+		expect(band?.querySelector('.pbl-rel-date')?.textContent).toContain('2027');
+		expect(band?.querySelector('.pbl-rel-days')).not.toBeNull();
+	});
+
+	it('mounts the four unconfigured states each variant exists for', () => {
 		expect(mount('notype').containerEl.querySelector('.pbl-empty-title')?.textContent).toContain('type property');
 
 		const empty = mount('empty').containerEl;
@@ -111,7 +162,7 @@ describe('the release harness mounts', () => {
 		// A base with no release is the state where EVERY membership value is unresolved —
 		// all nine the fixture holds, not just the two the index reports — so the note under
 		// the empty state is the whole of what it can report.
-		expect(empty.querySelector('.pbl-rel-note')?.textContent).toContain('9 items');
+		expect(empty.querySelector('.pbl-rel-note')?.textContent).toContain('11 items');
 
 		const nomembership = mount('nomembership');
 		nomembership.view.pick('Releases/0.8.md');

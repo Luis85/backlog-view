@@ -13,6 +13,24 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ### Added
 
+- **The release list shows how far along each release is, and how far each one landed from
+  its target.** Two new options on the release view turn them on. Bind **the property that
+  holds a work item's state** — and, if your vault does not spell them the usual way, the
+  values that mean done — and every release grows a progress bar and a `8 of 14 done` phrase
+  counted over its own items. Bind **the property that holds a release's released date** and
+  a release that carries one moves to a **Shipped** group, says how far it landed from its
+  target (`7 days late`, `7 days early`, `Shipped on time`), and stops being counted as work
+  in flight.
+  **Until you bind them the figures are absent rather than wrong**, which is worth knowing
+  because it is what you will see on the first open. With no state property bound the bar and
+  the phrase are not drawn at all — deliberately not drawn as 0%, which would look exactly
+  like a release where nothing is finished. With no released-date property bound **no release
+  is ever marked overdue**, however long its target has been past: without that one value the
+  view cannot tell a release that is late from one that shipped weeks ago, and it would
+  rather say nothing than say the wrong one of those. Since the option is new, that is the
+  state every saved release view is in until you set it. Both missing bindings are named in
+  one line beneath the list, so a screen that is staying quiet says why.
+
 - **Releases are made from the release view.** A **New release** button now sits at the head
   of the release list, and again on the screen you see when there are no releases yet. It
   asks for a name and — where your vault tracks them — a version, a target date and a status,
@@ -35,6 +53,15 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ### Fixed
 
+- **The release list no longer draws every row as a raised Obsidian button.** Each row really
+  is a button — that is what makes it reachable with Tab, and openable with Enter and Space —
+  and it was carrying Obsidian's own button background and shadow, so the list read as a stack
+  of controls rather than as a list of releases. The reset was there and simply lost to
+  Obsidian's own rule; it is fixed at the rule rather than by changing the element, so the
+  keyboard still reaches every release. A second defect of the same kind went with it:
+  Obsidian gives a bare button a fixed height, which squashed the new two-line band down to
+  one line and spilled its second line into the release below.
+
 - **A focused roadmap no longer loses work beneath a parent the base filtered out.** A
   parent shown for context, with a release between it and the work below, counted as an
   empty scaffold and took that work off the screen with it — and the roadmap then said
@@ -51,6 +78,25 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   below it through a story that is not in the sprint.
 
 ### Changed
+
+- **The release list is a list of releases now, not a grid of columns.** Each release is a
+  two-line band: its name, its version, a date and its status chip on the first line; a
+  progress bar, the count of its finished items and — where there is one — an overdue warning
+  or a slip on the second. A release whose target has passed with nothing shipped is drawn in
+  the error colour, with a rule down its leading edge and a note counting the days. The five
+  columns are gone and so are their fixed widths, which changes how the screen behaves in a
+  narrow pane: a band gives its width to whichever figure needs it, and **the release's own
+  name is the last thing to shorten** — a long version ellipsises before the name it belongs
+  to does, rather than keeping its full width beside a name cut down to nothing.
+  **The order changed with it, and that changes what is at the top of your screen.**
+  Releases are split into **In flight** and **Shipped**, each headed with its own count. In
+  flight is ordered by target date as before; shipped releases are ordered by released date,
+  newest first, in their own group at the bottom. Until now a release that had already
+  shipped sorted on its old target date and floated to the top, burying the one shipping
+  next.
+  The Items column is not lost: its number is the denominator of `8 of 14 done`. A release
+  with no items says `No items yet` and draws no bar, because an empty bar reads as failure
+  where the answer is emptiness.
 
 - **Releases no longer appear in the backlog.** They are not drawn as rows on the tree, they
   do not appear on either board, and no New menu or Set type offers the type any more. The
