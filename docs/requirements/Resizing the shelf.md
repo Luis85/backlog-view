@@ -210,6 +210,20 @@ about a width.
   moves the strip nowhere. The FOOT arrangement does hop, by its own 4px, and keeps it — there
   the resting strip hugs the last group wherever that falls, so there is no resting position for
   a pin to agree with.
+- **1k — the band's own controls scroll out of reach.** They no longer do: the header PINS, like
+  the strip and for the same two reasons. The band is a scrollport, so the sort, the type filter
+  and the search — the three controls that decide what the band is SHOWING — used to leave the
+  screen exactly when a reader had enough cards to need them. Opaque in the band's colour, or the
+  cards would be drawn through the row; docked to the BORDER rather than the content edge, or
+  they scroll visibly through the 4px head gutter above it. Where the header LEADS the band it
+  rests at the content edge and pins a gutter above it, so the row rises 4px on the first pixel
+  of scroll and stays — stated rather than hidden. Where the band sits below the axis it does
+  not: it pins straight under the strip, the strip's gap-cancel comes back so nothing is left
+  between them, and the air becomes the header's own `padding-block-start`, which travels with a
+  pinned row where a flex gap cannot. Measured at 1200x800 on the dated axis: the header's top is
+  578.7 at rest, at a 60px scroll and at the band's end, with the search box inside the band at
+  all three. The padding is the open band's alone, for the foot gutter's reason — unscoped it put
+  the shut band at 37px and its title 13px down, against 34px and 7.5px. Asked for 2026-08-26.
 - **2f — the band is taller than its cards, and the grip is not at its foot.** It is now.
   `position: sticky` holds an element inside its scrollport when scrolling would carry it
   away and does nothing otherwise, so a band with a picked height and less content than that
@@ -258,6 +272,9 @@ about a width.
   header, so the title row is never pushed down the band by the control beside it.
 - The strip is opaque in the band's own colour, on both arrangements, so no row is ever drawn
   inside the 8px a reader grabs.
+- The header stays on screen for the whole scroll of the band, on every arrangement, with its
+  sort, type filter and search reachable at the band's end — and nothing is drawn through it or
+  between it and the strip above it.
 - Past the point where the axis is at its own floor the edge no longer follows the pointer,
   on either arrangement of the grip — the height still moves, and 1h is what states the
   limit rather than a promise the layout cannot keep.
@@ -328,7 +345,10 @@ that band the FOOT gutter 1g asks for, scoped to the open state with a `:not()` 
 than a third class — the two states already say what they are, and a name for "has a grip"
 is a name that can come apart from the one thing that draws one. The head takes none: the
 strip's start margin negates the 4px already there and the sticky offset reads that same 4px,
-so the strip rests on the border and pins where it already is. Measured in the browser harness at 1200x800 on the
+so the strip rests on the border and pins where it already is. The header is sticky in the same
+file and by the same two terms, with `.pbl-shelf-below`'s own offset putting it under the strip
+rather than over it — one arithmetic with the strip's, which is why the two sit together rather
+than in the two rules that would have to be kept in step. Measured in the browser harness at 1200x800 on the
 dated axis: the strip sits at the band's own top edge, stays there with the band scrolled to
 its end, and the last row of cards clears the foot by 12px.
 

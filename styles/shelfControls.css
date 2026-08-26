@@ -16,12 +16,29 @@
    height here at a specificity that actually wins, and the header reserves that same row
    whether or not the field is in it. Reserve without shrinking and the shut band carries
    30px of nothing; shrink without reserving and the row is still two heights, just closer
-   together. */
+   together.
+
+   **It PINS, for the same reason the grip does and with the same two terms.** The band is a
+   scrollport, so without this the sort, the type filter and the search box — the three controls
+   that decide what the band is showing — scroll out of reach exactly when a reader has enough
+   cards to need them. Opaque in the band's own colour, because a sticky row holds its place
+   while the content goes past it and a transparent one would have the cards drawn through the
+   row. And docked to the BORDER rather than to the content edge (`-4px`, the band's head
+   gutter negated): pinned at `0` it would sit a gutter's width down the band with the cards
+   scrolling visibly through the 4px above it, which is the hole the grip's own offset closes
+   for itself. The cost is stated rather than hidden: where the header LEADS the band it rests
+   at the content edge and pins 4px above it, so the row rises by the gutter on the first pixel
+   of scroll and stays there. Where the band sits below the axis it does not — see the offset
+   beside `.pbl-shelf-below` below, which is one of a pair with the strip's own. */
 .pbl-shelf-header {
+	position: sticky;
+	top: calc(-1 * var(--size-4-1));
+	z-index: 1;
 	display: flex;
 	align-items: center;
 	gap: var(--size-4-1);
 	min-height: var(--size-4-6);
+	background-color: var(--background-secondary);
 	font-size: var(--font-ui-small);
 	font-weight: var(--font-medium);
 	color: var(--text-normal);
@@ -222,7 +239,29 @@ input.pbl-shelf-search-input {
 	top: calc(-1 * var(--size-4-1));
 	bottom: auto;
 	margin-block-start: calc(-1 * var(--size-4-1));
-	margin-block-end: 0;
+	margin-block-end: calc(-1 * var(--size-4-2));
+}
+
+/* The header pins UNDER that strip here, and the two offsets are one arithmetic: the strip
+   docks to the border and is 8px tall, so `+4px` — the gutter it negated, plus its own height,
+   less that same gutter again — is the first row the header can take without covering it.
+   Nothing is left between them for the cards to scroll through, which is why the strip's
+   gap-cancel comes BACK on this arrangement after being dropped for the air: the air is now the
+   header's own `padding-block-start`, and the difference is that padding travels with the row
+   when it pins where a flex gap could not. Measured: the title sits at the same 15.5px under
+   the band's top at rest and pinned, so the row does not hop the way a leading header's does.
+
+   The PADDING is the open band's alone, and the `:not()` pair is `shelf.css`'s own for the foot
+   gutter, here for its reason: a collapsed band draws no strip, so this is air under nothing —
+   measured, it put the shut band at 37px and its title 13px down, against the 34px and 7.5px a
+   band that shows one row exists to be. The offset above it needs no such guard: a band that
+   cannot scroll cannot pin. */
+.pbl-shelf-below .pbl-shelf-header {
+	top: var(--size-4-1);
+}
+
+.pbl-shelf-below:not(.pbl-shelf-collapsed):not(.pbl-shelf-empty) .pbl-shelf-header {
+	padding-block-start: var(--size-4-2);
 }
 
 /* The MARK inside the hit area, the property grip's own arrangement: the strip is the

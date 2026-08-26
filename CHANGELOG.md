@@ -92,6 +92,12 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   no longer see-through**: scrolling the shelf used to draw its own cards inside the strip you
   grab, on every projection that has one.
 
+- **The shelf's title bar stays on screen while you scroll the shelf.** Its sort, type filter
+  and search box are the controls that decide what the band is showing, and they used to leave
+  the screen exactly when a long shelf gave you a reason to reach for them. They are now pinned
+  to the top of the band on every projection that draws one, so a shelf scrolled to its end
+  still has them.
+
 - **The release list is a list of releases now, not a grid of columns.** Each release is a
   two-line band: its name, its version, a date and its status chip on the first line; a
   progress bar, the count of its finished items and — where there is one — an overdue warning

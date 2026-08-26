@@ -499,8 +499,39 @@ describe('the shelf’s resize grip', () => {
 			expect(body).toContain('top: calc(-1 * var(--size-4-1));');
 			expect(body).toContain('bottom: auto;');
 			expect(body).toContain('margin-block-start: calc(-1 * var(--size-4-1));');
-			// The foot's gap-cancel is dropped, so the band's own flex gap is the air below it.
-			expect(body).toContain('margin-block-end: 0;');
+			// And the gap-cancel, so the header sits straight under the strip with no slot between
+			// them for the cards to scroll through — the air is the header's own padding instead,
+			// which is the shape a pinned row can keep and a flex gap cannot.
+			expect(body).toContain('margin-block-end: calc(-1 * var(--size-4-2));');
+		});
+
+		it('pins the header too, so the sort, the filter and the search stay reachable', () => {
+			// The band is a scrollport, so without this the three controls that decide what it is
+			// SHOWING scroll out of reach exactly when a reader has enough cards to need them.
+			// Opaque for the strip's own reason, and docked to the border rather than the content
+			// edge — pinned at `0` the cards scroll visibly through the band's 4px head gutter.
+			// Measured in the browser harness at 1200x800 on the dated axis: the header's top stays
+			// at 578.7 at rest, at a 60px scroll and at the band's end, with the search box inside
+			// the band's box at all three.
+			const chrome = readFileSync('styles/shelfControls.css', 'utf8');
+			const head = bodyOf(chrome, '.pbl-shelf-header', 'styles/shelfControls.css');
+			expect(head).toContain('position: sticky;');
+			expect(head).toContain('top: calc(-1 * var(--size-4-1));');
+			expect(head).toContain('background-color: var(--background-secondary);');
+			// Below the axis it pins UNDER the strip instead, which is the one offset that puts it
+			// there without covering the handle or leaving a slot for the cards to pass through.
+			expect(bodyOf(chrome, '.pbl-shelf-below .pbl-shelf-header', 'styles/shelfControls.css')).toContain(
+				'top: var(--size-4-1);',
+			);
+			// And its air is PADDING, not the flex gap, because padding travels with a pinned row —
+			// scoped to the open band, since a collapsed one has no strip for it to clear.
+			expect(
+				bodyOf(
+					chrome,
+					'.pbl-shelf-below:not(.pbl-shelf-collapsed):not(.pbl-shelf-empty) .pbl-shelf-header',
+					'styles/shelfControls.css',
+				),
+			).toContain('padding-block-start: var(--size-4-2);');
 		});
 
 		it('is opaque, so the band’s own rows cannot scroll through the strip', () => {
