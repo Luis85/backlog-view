@@ -57,7 +57,8 @@ about a width.
    bounds. Which edge that is, is 1f.
 2. Dragging it **away from the axis** makes the band taller and toward it shorter, live —
    one custom property, so nothing re-renders mid-gesture — and releasing persists the
-   settled height once. Both directions move the edge.
+   settled height once. Both directions move the height; up to saturation (1h) both move
+   the EDGE with it.
 3. Focused, ArrowUp/ArrowDown step the height by a fixed increment and persist each step
    immediately; Home hands the band back to the stylesheet's own share of the pane.
 4. The pick comes back across a reopen, per saved view per device, exactly like the sort
@@ -159,6 +160,23 @@ about a width.
   cannot end up disagreeing about which way is bigger. Moved in the DOM rather than by
   `order`: the tab stop has to be where the strip is drawn, which is what `styles/shelf.css`
   already says outright about this band. Reported from a vault, 2026-08-26.
+- **1h — the axis is already at its floor, so the grabbed edge stops moving.** The height
+  still grows and still persists; what stops is the edge following the pointer. On the grid
+  axes the frame is `height: 100%` and the timeline has a 180px floor, so once the band has
+  taken everything the timeline can give, more height overflows the frame DOWNWARD and the
+  pane scrolls — 4a's stated fallback. Measured in the browser harness at 1200x500: the grip
+  sits at 267px for a pick of 300, 400 and 600 alike, with the timeline at 180px at each.
+  **This is not what 1f introduced**, which is why it is recorded here rather than fixed
+  there: the same saturation broke the same promise under the foot grip, invisibly instead of
+  visibly — at that pane and a 300px pick the band's foot is at 562px, off a 500px pane, so
+  the edge moved and the reader could not see it. What 1f changed is which symptom the reader
+  gets, and it kept the grip on screen.
+  **Anchoring the band to the frame's foot is not available.** A column flex container told
+  to `justify-content: flex-end` overflows at its START, which is the unreachable region
+  `styles/roadmap.css` forbids outright, and bounding the height by the pane is what 4a
+  refuses by name — it is the whole of what buys a pick made in a tall split coming back in
+  full. Open rather than closed: shutting it needs the frame to give the band room from the
+  other end, which is a change to the band rule and not to this grip. (Codex, PR #205.)
 - **1g — nothing is pinned to the band's foot any more.** It takes a real bottom gutter
   there, matching its inline one, on the axes where 1f moves the grip away — 12px rather
   than the 4px the grip's own negative offsets were measured against. Scoped to that band
@@ -207,6 +225,9 @@ about a width.
   where the shelf leads, so the tab stop is where the strip is — never reordered into a
   different reading order by the stylesheet.
 - The band that sits below the axis keeps its bottom gutter level with its inline one.
+- Past the point where the axis is at its own floor the edge no longer follows the pointer,
+  on either arrangement of the grip — the height still moves, and 1h is what states the
+  limit rather than a promise the layout cannot keep.
 - The iteration board's shelf takes the same stored height — one band, one value.
 - Never written to the `.base`: UI state per saved view per device.
 

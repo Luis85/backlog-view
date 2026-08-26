@@ -174,7 +174,11 @@ export function renderShelfResize(host: BacklogViewHost, shelfEl: HTMLElement, b
 		// Down is taller at the band's FOOT and shorter at its TOP: the grip is on the edge
 		// that moves when the shelf grows, and which edge that is decides the sign. Both
 		// directions move it now — under a maximum the downward one did nothing on a band
-		// shorter than its cap. The KEYS come through here too (`wireResizeGrip`), so
+		// shorter than its cap. Both move the HEIGHT unconditionally; the EDGE follows only
+		// until the axis reaches its own floor, past which the frame overflows downward and
+		// the pane scrolls — the same saturation on either arrangement of the grip, and
+		// extension 1h of [[Resizing the shelf]] rather than something this sign decides.
+		// The KEYS come through here too (`wireResizeGrip`), so
 		// ArrowUp/ArrowDown move the separator the way the pointer does without a second
 		// statement of it. No `widenSign` mirror beside it: a pane may be given its own
 		// direction, and no writing mode this plugin runs in turns the block axis upside down.
