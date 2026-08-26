@@ -108,7 +108,7 @@ the progress note — and the layout is designed with that room in it.
 
 ## What it costs
 
-### Two new view options — ten, not eight
+### Two new view options — eleven declarations, not eight
 
 Both are declared in `getReleaseViewOptions` (`src/domain/releaseOptions.ts`):
 
@@ -148,9 +148,20 @@ new one:
 - **`slip: number | null`** — derived, never read: released minus target, in days. Null without
   either date. Negative means early, which is a real answer.
 
-`members` is unchanged. Progress is `done` over `members` and is computed nowhere else — the
-single-release screen reads the same row, which is what stops a band and a release header
-disagreeing.
+`members` is unchanged. Progress is `done` over `members` and is computed nowhere else: the
+single-release screen is handed the very `ReleaseRow` `releaseIndex` computed, so there is one
+derivation and the two screens cannot disagree about a release.
+
+**Narrowed after review, 2026-08-26 — that is a claim about the SOURCE of the figure and not
+about what the header draws.** `drawHeader` (`src/view/release/renderScope.ts`) shows the
+version, the status, the target date and the member count, and no task in this increment
+changed it: progress, the released date, slip and overdue are on the row it holds and are not
+drawn there. The ruling was to narrow this sentence rather than to grow the header, and the
+same file already carries the worked precedent — it omits the absent-target-date label the
+index draws, with a comment saying why. The released date and overdue exist on the index to
+explain **a position in a sorted list**, and a screen showing one release has no list. Progress
+is the one figure with an independent case for appearing there, and that is a product decision
+nobody has specified.
 
 **`overdue`** is derived on the row too: a target in the past with no released date.
 
@@ -235,3 +246,7 @@ rather than clearing them. **Nothing in this design has been seen in Obsidian.**
 - [[Smoke test the release view]] — the new live-vault items, folded in.
 - `CLAUDE.md` — the i18n key count, which says 597 and measures **643** on merged `main`, both
   ways that paragraph describes, with no duplicates.
+- The secondary-workflow gap the counting walk inherits, and the membership-key hazard review
+  found underneath it, recorded against
+  [[The release view inherits backlog settings it offers no control for]] and as a new issue
+  note respectively — neither is this increment's to fix, and both were verified at source.
