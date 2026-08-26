@@ -25,8 +25,10 @@ assignee: ""
 
 ## The limitation
 
-The release view's seven options are seven independent property pickers, and **nothing
-stops two of them naming one key.** The worst pairing is the membership property and the
+Every property option this view declares is an independent picker — `getReleaseViewOptions`
+(`src/domain/releaseOptions.ts`) is the list, and no number is written here because three
+notes in this repository once stated three different ones — and **nothing stops two of them
+naming one key.** The worst pairing is the membership property and the
 type property, because both are read of every row rather than of one:
 `membershipTarget` (`src/domain/releases.ts`) reads the membership key off each scannable
 row, so with the two aimed at one property it reads every work item's own TYPE — `PBI`,
@@ -41,8 +43,14 @@ screen empty — while the two options that collide are named nowhere on screen.
 sees a plugin that has lost their data, not a configuration they can fix.
 
 The other pairings are milder and are the same defect: the version, target-date and status
-keys aimed at one property make three columns report one value, and the membership key
-aimed at the order or parent key reports every ranked or parented item as unresolved.
+keys aimed at one property make three figures report one value, and the membership key
+aimed at the order or parent key reports every ranked or parented item as unresolved. Two
+more joined the list on 2026-08-25 with the band and are not milder than the rest. The
+released-date key aimed at the target-date key makes every release report as shipped the
+day it is created, with a zero-day slip. And the STATE property — declared here since the
+band, and resolved onto `BacklogSettings.stateKey` rather than onto `ReleaseSettings` —
+aimed at the membership key is the worst pairing above by another route, since the state is
+read of every work item too.
 
 ## Why it is silent
 
@@ -56,7 +64,10 @@ forgot to call.
 
 `resolveReleaseSettings` (`src/domain/releaseOptions.ts`) resolves each key on its own and
 compares none of them, which is correct for what it does. Nothing downstream of it looks at
-the seven keys together.
+these keys together. `declaredPropertyKeys` beside it now COLLECTS them — that is what
+`runReleaseInit` seeds its "already taken" set from, so the ✨ path can no longer CREATE
+this collision — but it collects keys and not roles, so it can say a key is spoken for and
+not which two options speak for it. Reporting is still the missing half.
 
 ## What would lift it
 
@@ -68,7 +79,7 @@ and reports any key carrying more than one role — as message FRAGMENTS, never 
 sentence, so `t` puts them in one in the catalog's own grammar.
 
 What is missing for this view is not that algorithm but the two surfaces around it: a role
-vocabulary for the seven release options to be collected under, and somewhere to SAY the
+vocabulary for this view's own options to be collected under, and somewhere to SAY the
 result. The backlog view says it in a toolbar chip and in the refusal that gates a write;
 this view has neither, so the answer is most likely an empty state naming which two options
 collide, drawn instead of the index. Designing that is the work, and it is why this is

@@ -112,3 +112,34 @@ describe('a release’s own screen does not inherit the tree’s gestures', () =
 		expect(ruleAt('.pbl-rel-view .pbl-row', 'background-color')).toBe(-1);
 	});
 });
+
+/**
+ * Line 1's width, which a browser decides and jsdom cannot. What is checkable here is that
+ * the two declarations a MEASUREMENT found missing are still written — narrower than the
+ * claim, in this file's own way: nothing here proves a name ellipsises, only that the
+ * property saying it should is on the element the text is in.
+ *
+ * The measurement (headless Chromium, 500px, four name lengths, 2026-08-26): a 65-character
+ * name drew in a 189.42px box with a `scrollWidth` of 446 and NO ellipsis, because the
+ * `text-overflow` sat on the flex parent while the text sat in a child span; and
+ * `.pbl-rel-version`, a figure the reader had bound, was 0px wide on every name past ~20
+ * characters. An earlier round measured the one band whose name never overflows and read
+ * both as fixed.
+ */
+describe('line 1 yields its width readably, and no figure yields all of it', () => {
+	it('puts the ellipsis on the name TEXT, not on the flex box around it', () => {
+		// A `text-overflow` on `.pbl-rel-name` is inert: what overflows there is a child BOX.
+		for (const decl of ['min-inline-size: 0;', 'overflow: hidden;', 'text-overflow: ellipsis;']) {
+			expect(ruleAt('.pbl-rel-name > span:not(.pbl-rel-icon)', decl), decl).toBeGreaterThan(-1);
+		}
+	});
+
+	it('gives the version a floor, so a bound figure is never rendered invisible', () => {
+		// The forbidden thing is a floor of ZERO, not a missing `5ch` — a check pinned to the
+		// value would fail on a deliberate 4ch and pass on `min-inline-size: 0px`.
+		const block = declarations.match(/^\.pbl-rel-version\s*\{[^}]*\}/m)?.[0] ?? '';
+		const floor = block.match(/min-inline-size:\s*([^;]+);/)?.[1];
+		expect(floor, 'the version cell declares no floor at all').toBeDefined();
+		expect(floor, 'a floor of zero is what let it reach 0px').not.toMatch(/^0[a-z%]*$/);
+	});
+});

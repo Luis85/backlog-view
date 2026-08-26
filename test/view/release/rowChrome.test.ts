@@ -5,10 +5,11 @@ import { readFileSync } from 'node:fs';
  * **This test is narrower than the claim it guards, and the narrow sentence is the honest
  * one.** No test here can compute a selector's specificity against Obsidian's own
  * stylesheet: `app.css` is not a dependency, jsdom computes no styles, and the browser
- * harness draws without asserting (ADR 0020). What is checked is that the assembled
- * stylesheet still spells the band's chrome reset at a COMPOUND selector — so a change
- * that lowers it back to a bare class fails here. It would not notice a DIFFERENT Obsidian
- * rule outranking a DIFFERENT declaration.
+ * harness draws without asserting (ADR 0020). What is checked is that `styles/release.css`
+ * — the PARTIAL as written, read straight off disk rather than through `assembleStyles()`,
+ * which is what `releaseStyleRules.test.ts` beside it does — still spells the band's chrome
+ * reset at a COMPOUND selector, so a change that lowers it back to a bare class fails here.
+ * It would not notice a DIFFERENT Obsidian rule outranking a DIFFERENT declaration.
  *
  * Retargeted from `.pbl-rel-row` to `.pbl-rel-band` on 2026-08-25, when the band replaced
  * the column grid: the guard is about the SHAPE (an element-qualified reset beating

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import { mountReleaseHarness, ReleaseConfigVariant } from './mountRelease';
+import { LONG_NAME, mountReleaseHarness, ReleaseConfigVariant } from './mountRelease';
 import { installObsidianDom } from '../helpers/dom';
 import { en } from '../../src/i18n/en';
 
@@ -35,7 +35,18 @@ describe('the release harness mounts', () => {
 		// In flight first — dated by date, undated last — then the shipped tail, newest
 		// released first. The fixture exists to show that order, so a fixture that stopped
 		// showing it would leave the screenshot proving nothing.
-		expect(names(containerEl)).toEqual(['0.5', '0.8', '0.9', '1.0', '1.1', 'Someday', '0.7', '0.6']);
+		expect(names(containerEl)).toEqual([
+			'0.5',
+			'0.8',
+			'0.9',
+			// The long-named band, which is also the long version and the long status: the one
+			// row that shows which of line 1's cells yields its width first.
+			LONG_NAME,
+			'1.1',
+			'Someday',
+			'0.7',
+			'0.6',
+		]);
 	});
 
 	it('draws BOTH group headings, with the shipped tail under the second', () => {
@@ -150,7 +161,11 @@ describe('the release harness mounts', () => {
 		expect(band?.querySelector('.pbl-rel-unreadable')?.textContent).toBe(
 			en['release.figureUnreadable'].replace('{label}', en['release.index.column.released']),
 		);
-		expect(band?.querySelector('.pbl-rel-date')?.textContent).toContain('2027');
+		// A civil date rather than a literal year: the fixture derives this target from the
+		// clock (`inDays`), so a year written here would be a second statement of the same
+		// fact and would go stale the way `2027-01-15` did — it was 18 days from turning
+		// this assertion red on its own.
+		expect(band?.querySelector('.pbl-rel-date')?.textContent).toMatch(/^\d{4}-\d{2}-\d{2}$/);
 		expect(band?.querySelector('.pbl-rel-days')).not.toBeNull();
 	});
 

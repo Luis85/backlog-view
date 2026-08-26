@@ -1,4 +1,4 @@
-import { BasesAllOptions, BasesViewConfig } from 'obsidian';
+import { BasesAllOptions, BasesPropertyOption, BasesViewConfig } from 'obsidian';
 import { configReaders, vaultFolder } from './settingsResolve';
 import { notePropsOnly } from './optionalProperties';
 import { defaultTypeFolder, RELEASE_TYPE } from './typeVocabulary';
@@ -143,6 +143,33 @@ function releaseGroup(): BasesAllOptions {
 			},
 		],
 	};
+}
+
+/**
+ * Every frontmatter key the DECLARED property options above currently resolve to — read
+ * off the declaration, so an option added to either group joins this set without anybody
+ * remembering to add it.
+ *
+ * It exists for `runReleaseInit`'s "never hand out a key another of this view's options
+ * already names", and it is derived rather than listed because a LIST is what that rule
+ * has now failed three times (PR #203, then twice in this increment). The last of the
+ * three is why it is not simply `Object.entries(resolveReleaseSettings(config))`:
+ * `stateProperty` is declared here and deliberately resolves onto `BacklogSettings`
+ * instead, so it is on no field of `ReleaseSettings` and a sweep over that object cannot
+ * see it — while `stateProperty: note.status` with `releaseStatusProperty` untouched is
+ * exactly the collision the rule is about.
+ *
+ * `clearablePropKey` with the option's own `default:` reproduces what `resolveSettings`
+ * and `resolveReleaseSettings` each read for these keys: the three model mappings ship a
+ * real default and take it when nobody has touched them, and every other property option
+ * defaults to nothing, where `clearablePropKey` and `propKey` answer identically.
+ */
+export function declaredPropertyKeys(config: BasesViewConfig): string[] {
+	const { clearablePropKey } = configReaders(config);
+	return getReleaseViewOptions(config)
+		.flatMap((entry) => (entry.type === 'group' ? entry.items : [entry]))
+		.filter((option): option is BasesPropertyOption => option.type === 'property')
+		.map((option) => clearablePropKey(option.key, (option.default ?? '').replace(/^note\./, '')));
 }
 
 export function resolveReleaseSettings(config: BasesViewConfig): ReleaseSettings {

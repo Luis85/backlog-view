@@ -462,8 +462,6 @@ export const en = {
 	 *  the release band's own absence label (`release/renderIndex.ts`'s `absentFigures`)
 	 *  when a release's membership property is bound but its state property is not: the
 	 *  same word for the same concept, on a second screen that also draws a progress bar. */
-
-	/** The rollup column's header — the progress bar's, and the plain count's. */
 	'column.rollupProgress': 'Progress',
 	'column.rollupItems': 'Items',
 
@@ -1659,8 +1657,14 @@ export const en = {
 	 */
 	'release.figureUnreadable': '{label} unreadable',
 	/** The unconfigured figures, named once beneath the list. `{columns}` is an array, so
-	 *  it is joined by the catalog's own grammar rather than by a joiner at the call. */
-	'release.index.absentColumns': 'These columns are not shown because no property is bound: {columns}.',
+	 *  it is joined by the catalog's own grammar rather than by a joiner at the call.
+	 *
+	 *  The sentence says FIGURES, not columns: the band replaced the column grid on
+	 *  2026-08-25 and this screen has no columns at all, while one of the names it lists —
+	 *  `Progress` — was a rollup and never a column even before that. The KEY keeps its
+	 *  historical name, which is internal and matches nothing on screen; the words a reader
+	 *  sees are the half that had to change. */
+	'release.index.absentColumns': 'These figures are not shown because no property is bound: {columns}.',
 	/**
 	 * One heading-and-figure pair inside a row's accessible name. A key rather than a
 	 * template at the call site: which side of the value the label sits on is grammar, and

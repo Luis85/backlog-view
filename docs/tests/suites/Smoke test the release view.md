@@ -38,11 +38,13 @@ Registration and chrome, none of which any test here can reach:
 
 - The view appears in the Bases view picker, under its own name, with the `lucide-package`
   icon resolving rather than falling back.
-- Its eleven options appear in the view-options menu, each with the suggested property name —
-  nine properties, the done-value list beside the state property, and the releases folder. The
-  last three arrived on 2026-08-25 with the band, and **whether Obsidian's property picker can
-  offer a released-date property no note in the vault yet carries** is the question none of
-  them can be bound without.
+- Every option `getReleaseViewOptions` declares appears in the view-options menu, each with
+  the suggested property name — the property pickers, the done-value list beside the state
+  property, and the releases folder. Count the menu against that function rather than against
+  a number written here, which is how three notes in this repository came to state three
+  different totals. The last three arrived on 2026-08-25 with the band, and **whether
+  Obsidian's property picker can offer a released-date property no note in the vault yet
+  carries** is the question none of them can be bound without.
 - `resolveViewIdentity` finds the leaf for a `.base` file: pick a release, switch away,
   switch back, and the same release is open. The persistence rests on it and fails silently.
 
@@ -52,8 +54,12 @@ grid**, so every item here is about markup nobody has opened in Obsidian:
 - How the band reads at a real pane width, in both schemes. The five-column grid and its
   per-column custom properties are gone; each band now lays out its own two flex lines, and
   which figure yields width to which is decided by shrink factors rather than by fixed tracks.
-  At a narrow pane the release's NAME is the last thing to ellipsise and the version is the
-  first — measured in headless Chromium at a 469px line and nowhere else.
+  At a narrow pane the version yields first, down to a floor of `5ch` so a bound figure is
+  never shrunk to nothing, and the NAME yields after it — both with an ellipsis, never a
+  clip. Measured in headless Chromium at 500px over four name lengths on 2026-08-26, and
+  nowhere else; a review found the name CLIPPED and the version at 0px when this line said
+  otherwise, because the only band measured before that was the one whose name never
+  overflowed.
 - The two group headings, `In flight (n)` and `Shipped (n)`, read as headings for the bands
   beneath them rather than as rows in the list.
 - The band's `<button>` reset holds against a **theme** that styles `button` harder than the

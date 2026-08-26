@@ -36,7 +36,9 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   asks for a name and — where your vault tracks them — a version, a target date and a status,
   and writes one note with those and nothing else. The first press also binds the release
   view's own properties for you if you have never set them, and says so; a property you
-  deliberately cleared is left alone and is not asked for.
+  deliberately cleared is left alone and is not asked for, and a property one of the view's
+  other options already points at is never handed out a second time — two options aimed at
+  one property is a state this view cannot report, so it will not create one.
   Two things worth knowing before you use it. **New releases land in `docs/releases` unless
   you say otherwise** — that is the shipped default and it is a new option on the release
   view. If you moved your backlog's home folder, your releases used to go to
@@ -86,8 +88,10 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   the error colour, with a rule down its leading edge and a note counting the days. The five
   columns are gone and so are their fixed widths, which changes how the screen behaves in a
   narrow pane: a band gives its width to whichever figure needs it, and **the release's own
-  name is the last thing to shorten** — a long version ellipsises before the name it belongs
-  to does, rather than keeping its full width beside a name cut down to nothing.
+  name is the last thing to shorten** — a long version ellipsises down to its first few
+  characters before the name it belongs to gives up any, rather than keeping its full width
+  beside a name cut down to nothing. Past that point the name ellipsises too; neither figure
+  is ever cut off without the ellipsis that says so, and neither is shrunk away to nothing.
   **The order changed with it, and that changes what is at the top of your screen.**
   Releases are split into **In flight** and **Shipped**, each headed with its own count. In
   flight is ordered by target date as before; shipped releases are ordered by released date,

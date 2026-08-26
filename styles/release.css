@@ -77,8 +77,8 @@
    what a NOTE's h2 wants, and every one of them is restated here rather than inherited. */
 .pbl-rel-group {
 	margin-block: var(--size-4-4) var(--size-4-1);
-	/* The leading `3px` is the band's own reserved overdue rule (`border-inline-start`
-	   above), which a heading does not carry — without it every label sits 3px inside the
+	/* The leading `3px` is the band's own reserved overdue rule — `border-inline-start` on
+	   `.pbl-rel-band`, which a heading does not carry — without it every label sits 3px inside the
 	   names it heads. Logical, so it mirrors with the layout. */
 	margin-inline: calc(var(--size-4-1) + 3px) var(--size-4-2);
 	font-size: var(--font-ui-smaller);
@@ -200,8 +200,20 @@ button.pbl-rel-band {
 	min-inline-size: 0;
 	overflow: hidden;
 	white-space: nowrap;
-	text-overflow: ellipsis;
 	font-weight: var(--font-medium);
+}
+
+/* The NAME TEXT, an unclassed span `renderIndex.ts` draws beside the icon. The ellipsis
+   has to be on the element the text is IN: on the flex parent above it is inert, because
+   what overflows there is a child BOX rather than text — measured at 500px on 2026-08-26,
+   a 65-character name in a 189.42px box with a `scrollWidth` of 446 and no ellipsis at
+   all. A CHILD selector, not the descendant `.pbl-rel-row span` that carried these three
+   before the bands landed: every other span in a band is a cell with rules of its own,
+   and one rule over all of them would decide their overflow by import order. */
+.pbl-rel-name > span:not(.pbl-rel-icon) {
+	min-inline-size: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 
 /* The type icon is not text and must not shrink with it. */
@@ -229,11 +241,18 @@ button.pbl-rel-band {
    thing to yield and not a thing that never yields: a name longer than the pane must still
    ellipsise rather than push the row into overflow. The deficit is shared in proportion to
    factor x basis, so 100 against the name's 1 sends effectively all of it here first.
-   `min-inline-size: 0` is what lets a flex item shrink below its content at all, and the
-   ellipsis is what makes the yielding readable rather than a clip. */
+
+   **The floor is what stops "first" becoming "entirely".** With `min-inline-size: 0` the
+   factor took this cell to 0px on every name past ~20 characters — a version the reader
+   BOUND, rendered invisible, and worse than a shortened one because nothing on the band
+   says it was there. `5ch` is monospace here, so it is five characters: four of the
+   version plus the ellipsis saying it continues. The name yields the rest, readably now
+   (`.pbl-rel-name > span` above). Measured at a 500px pane on 2026-08-26 over four name
+   lengths — 3, 23, 44 and 65 characters — the version reads 94.06px and then 36.11px at
+   the floor for all three longer names, and no band overflows its line. */
 .pbl-rel-version {
 	flex: 0 100 auto;
-	min-inline-size: 0;
+	min-inline-size: 5ch;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	font-family: var(--font-monospace);

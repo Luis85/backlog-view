@@ -26,8 +26,15 @@ assignee: ""
 
 `ReleaseView.draw` builds its model as `{ ...resolveSettings(this.config), typeKey, parentKey,
 orderKey }` — the three mappings are this view's own, and **everything else `resolveSettings`
-returns comes from whatever keys the `.base` happens to carry.** This view declares seven
-options and none of them is one of those.
+returns comes from whatever keys the `.base` happens to carry.**
+
+Of the options this view declares, **exactly two are one of those**: the state property and
+its done values, which it declared on 2026-08-25 with the two-line band, because the index's
+progress figure reads them and reading a setting the screen cannot show was the sharpest
+instance below. That narrows this issue by two settings and closes nothing — every other
+field `resolveSettings` returns is still inherited unseen, and this note is about the rule
+for those rather than about the two. It opened saying the view declared none of them, which
+was true until that band landed.
 
 Two of the inherited settings change the model this view draws, and both were traced:
 
@@ -52,8 +59,10 @@ named in `src/domain/CLAUDE.md` as the recurring form of that mistake.
 two test equivalents, and this view declares none of the four. So in a vault whose BACKLOG
 view runs a distinct Deliverable or Test workflow, those members' progress on the release
 index is counted against the shared state property instead of their own — and `8 of 14 done`
-is decided by a rule the reader configured on another screen and cannot see or change on this
-one.
+is decided by a rule the reader configured on another screen. The shared state property and
+its done values are at least on THIS screen's options menu since the band; the four secondary
+workflow settings are not, so that half of the figure is still unseeable and unchangeable
+here.
 
 **Bounded rather than harmless.** `resolveSettings` (`src/domain/settingsResolve.ts`) falls
 back to the shared state property whenever a secondary key is unset, and that fallback is
