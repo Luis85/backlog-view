@@ -86,8 +86,10 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   so the edge between the two is the shelf's TOP — that is where the handle is, and dragging
   it **up** makes the shelf taller (the arrow keys follow the same direction). On the horizon
   axis and on both boards the shelf leads and the handle stays at its foot, where a downward
-  drag still grows it. The shelf also keeps a proper gap below its last row of cards on the
-  axes where it sits at the bottom, matching the space at its left and right.
+  drag still grows it. On those axes the shelf also keeps a proper gap above and below its
+  cards, matching the space at its left and right, so the handle no longer sits against the
+  row beneath it — and **the handle is no longer see-through**: scrolling the shelf used to
+  draw its own cards inside the strip you grab, on every projection that has one.
 
 - **The release list is a list of releases now, not a grid of columns.** Each release is a
   two-line band: its name, its version, a date and its status chip on the first line; a

@@ -77,13 +77,22 @@
 	padding-block: var(--size-4-1);
 }
 
-/* The band that sits BELOW the axis (`render/shelf.ts`'s `below` — the grid axes) gets a real
-   bottom gutter, matching the inline one. Everywhere else the grip is pinned to that edge and
-   its negative offsets are measured against the 4px above; here the grip has moved to the TOP
-   and nothing is left holding the foot, so the last row of cards would otherwise end 4px from
-   the border. Scoped rather than given to every shelf for exactly that reason. */
-.pbl-shelf-below {
-	padding-block-end: var(--size-4-3);
+/* The band that sits BELOW the axis (`render/shelf.ts`'s `below` — the grid axes) takes a real
+   block gutter on BOTH edges, matching the inline one. The foot needs it because the grip has
+   moved off that edge and nothing holds it any more — the last row of cards would end 4px from
+   the border while the cards beside it kept 12px. The head needs it because the grip is there
+   now: at 4px the strip sat flush against the header with the flex gap cancelled under it, so
+   the handle and the first row it must not be confused with were touching. Scoped rather than
+   given to every shelf, since everywhere else the strip still sits on the foot and the 4px is
+   what its own offsets cancel.
+
+   **Only while the band is OPEN.** A collapsed or empty band draws no grip (`renderShelf`
+   returns before it), so this would be 16px of room reserved for a control that is not there —
+   on the one band whose whole point when shut is to take a header's worth of space and no more.
+   The `:not()` pair rather than a second class: the two states already say what they are, and a
+   third name for "has a grip" is a name that can come apart from the one thing that draws one. */
+.pbl-shelf-below:not(.pbl-shelf-collapsed):not(.pbl-shelf-empty) {
+	padding-block: var(--size-4-3);
 }
 
 /* A band the reader has SIZED does not yield to the flex line it sits on. `publishShelfHeight`

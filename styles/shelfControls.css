@@ -155,7 +155,16 @@ input.pbl-shelf-search-input {
    that resizes it; the negative offsets take back the flex gap above it and the band's
    bottom padding below, so the strip sits ON the boundary rather than inside a margin.
    `touch-action: none` because this plugin is not desktop-only: without it the scroller
-   under the finger claims the pan and the drag never starts. */
+   under the finger claims the pan and the drag never starts.
+
+   **Opaque, in the band's own colour, and that is what makes it a pinned edge rather than a
+   window onto the cards.** A sticky strip holds its place while the content goes past it, so a
+   TRANSPARENT one has the band's own rows sliding visibly through the 8px a reader is meant to
+   grab — measured at a 40px scroll on the dated axis, the header sat 36px INSIDE the strip. No
+   padding can reserve that room: this element is the scrollport, and a scroll container's own
+   block padding scrolls away with its content. Occluding is what every pinned header does, and
+   it costs the 8px of card the strip covers, which the scrollport was clipping anyway. Stated
+   on the rule BOTH arrangements share, because both are sticky and both had it. */
 .pbl-shelf-grip {
 	position: sticky;
 	bottom: calc(-1 * var(--size-4-1));
@@ -163,6 +172,7 @@ input.pbl-shelf-search-input {
 	flex: 0 0 auto;
 	height: var(--size-4-2);
 	margin-block-start: calc(-1 * var(--size-4-2));
+	background-color: var(--background-secondary);
 	cursor: ns-resize;
 	touch-action: none;
 }
@@ -192,12 +202,21 @@ input.pbl-shelf-search-input {
    `auto` margin the sized band takes back, since a first flex item is already at the top and
    has no free space above it to consume. Equal specificity to `.pbl-shelf-sized
    .pbl-shelf-grip` above, so this file's order is what decides between them — the same beat
-   `propertyColumns.css` states for its own pair. */
+   `propertyColumns.css` states for its own pair.
+
+   Two of those terms are the band's 12px head gutter read twice, and they are one decision with
+   it. The sticky offset is measured from the scrollport's own content edge, so `-12px` is what
+   docks the strip flush to the band's border once the gutter has scrolled away — at `-4px` it
+   floated 8px inside the band, and at `0` it would float the whole 12px. And the gap-cancel is
+   DROPPED rather than mirrored: at the foot the strip hugging the last group is what puts it on
+   the boundary, while at the head the thing below it is the header, and a handle flush against
+   the row it must not be mistaken for is the complaint this rule exists to answer. The 8px flex
+   gap is the air, so nothing here spells a second margin for it. */
 .pbl-shelf-below .pbl-shelf-grip {
-	top: calc(-1 * var(--size-4-1));
+	top: calc(-1 * var(--size-4-3));
 	bottom: auto;
 	margin-block-start: 0;
-	margin-block-end: calc(-1 * var(--size-4-2));
+	margin-block-end: 0;
 }
 
 /* The MARK inside the hit area, the property grip's own arrangement: the strip is the

@@ -473,26 +473,47 @@ describe('the shelf’s resize grip', () => {
 			expect(el.getAttribute('aria-valuenow')).toBe(String(MIN_SHELF_HEIGHT_PX + 200));
 		});
 
-		it('takes the band’s bottom gutter with it', () => {
-			// Nothing is pinned to that edge any more, so the last row of cards would end 4px
-			// from the border while the cards beside it keep 12px. jsdom resolves no cascade —
-			// what is checkable here is the class and the rule it turns on, and the two are one
-			// decision made in `render/shelf.ts`.
+		it('takes the band’s block gutter with it, on the open band alone', () => {
+			// Both edges, and for two different reasons: the foot has nothing pinned to it any
+			// more, so the last row of cards would end 4px from the border while the cards beside
+			// it keep 12px; the head is where the strip now is, and at 4px it sat flush against
+			// the header with the flex gap cancelled under it. jsdom resolves no cascade — what is
+			// checkable here is the class and the rule it turns on, and the two are one decision
+			// made in `render/shelf.ts`.
 			expect(datedShelf().hasClass('pbl-shelf-below')).toBe(true);
 			const css = readFileSync('styles/shelf.css', 'utf8');
-			expect(bodyOf(css, '.pbl-shelf-below', 'styles/shelf.css')).toContain(
-				'padding-block-end: var(--size-4-3);',
+			// The `:not()` pair is the load-bearing half: a collapsed or empty band draws no grip,
+			// so an unscoped gutter is 16px reserved for a control that is not there.
+			const gutter = bodyOf(
+				css,
+				'.pbl-shelf-below:not(.pbl-shelf-collapsed):not(.pbl-shelf-empty)',
+				'styles/shelf.css',
 			);
-			// And the strip's own offsets are mirrored with it — sticky to the top, and the
-			// negative pull moved to the end so it cancels the flex gap BELOW it instead.
+			expect(gutter).toContain('padding-block: var(--size-4-3);');
+			// And the strip's own offsets are mirrored with it — sticky to the top, docked flush
+			// to the border by the gutter it has to scroll out from under, and the foot's
+			// gap-cancel dropped so the flex gap is the air between the handle and the header.
 			const chrome = readFileSync('styles/shelfControls.css', 'utf8');
 			const body = bodyOf(chrome, '.pbl-shelf-below .pbl-shelf-grip', 'styles/shelfControls.css');
-			expect(body).toContain('top: calc(-1 * var(--size-4-1));');
+			expect(body).toContain('top: calc(-1 * var(--size-4-3));');
 			expect(body).toContain('bottom: auto;');
 			// The sized band's `margin-block-start: auto` pushes the strip to the foot — which is
 			// exactly what must NOT happen here, and this file's order is what overrules it.
 			expect(body).toContain('margin-block-start: 0;');
-			expect(body).toContain('margin-block-end: calc(-1 * var(--size-4-2));');
+			expect(body).toContain('margin-block-end: 0;');
+		});
+
+		it('is opaque, so the band’s own rows cannot scroll through the strip', () => {
+			// The strip is STICKY, which holds its place while the content goes past it — so a
+			// transparent one shows the band's rows sliding through the 8px a reader grabs.
+			// Measured at a 40px scroll on the dated axis before this: the header sat 36px inside
+			// the strip. Padding cannot reserve that room, because the band IS the scrollport and
+			// a scroll container's block padding scrolls away with its content. Asserted on the
+			// rule BOTH arrangements share: the foot strip is sticky too and had the same hole.
+			const chrome = readFileSync('styles/shelfControls.css', 'utf8');
+			expect(bodyOf(chrome, '.pbl-shelf-grip', 'styles/shelfControls.css')).toContain(
+				'background-color: var(--background-secondary);',
+			);
 		});
 	});
 
