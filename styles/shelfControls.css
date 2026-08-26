@@ -185,6 +185,21 @@ input.pbl-shelf-search-input {
 	margin-block-start: auto;
 }
 
+/* The same strip at the band's TOP, which is where it belongs when the shelf sits below the
+   axis (`.pbl-shelf-below`, from `render/shelf.ts`): the grip goes on the edge the band and
+   the axis share. Every term of the foot rule is mirrored — sticky to `top` instead of
+   `bottom`, the negative pull moved to the end so it cancels the flex gap BELOW it, and the
+   `auto` margin the sized band takes back, since a first flex item is already at the top and
+   has no free space above it to consume. Equal specificity to `.pbl-shelf-sized
+   .pbl-shelf-grip` above, so this file's order is what decides between them — the same beat
+   `propertyColumns.css` states for its own pair. */
+.pbl-shelf-below .pbl-shelf-grip {
+	top: calc(-1 * var(--size-4-1));
+	bottom: auto;
+	margin-block-start: 0;
+	margin-block-end: calc(-1 * var(--size-4-2));
+}
+
 /* The MARK inside the hit area, the property grip's own arrangement: the strip is the
    target and this 2px line is what a reader sees. Its own element rather than a border on
    the strip, so the visible line can be thinner than the area that catches a finger. */

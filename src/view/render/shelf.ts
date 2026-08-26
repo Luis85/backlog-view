@@ -212,11 +212,20 @@ export function renderShelf(
 	const empty = shelfCards.length === 0;
 	const collapsed = !empty && shelf.fold.collapsed;
 	const list = host.shelfLayout === 'list';
+	// Which EDGE of this band is the one that moves. The grid axes draw the shelf after the
+	// grid, so it sits at the foot of the frame and the edge between it and the grid is its
+	// TOP; every other surface — the horizon axis since 2026-08-17, both boards — leads with
+	// the shelf, so that edge is its foot. `styles/shelfControls.css` moves the grip to
+	// whichever it is and `shelfResize.ts` flips what a downward drag means; the class is
+	// what tells them, and it also buys the band a real bottom gutter (`styles/shelf.css`),
+	// since with nothing pinned to that edge the cards would otherwise end 4px from it.
+	const below = shelf.axis !== null && drawsGrid(shelf.axis);
 	const shelfEl = frameEl.createDiv({
 		cls:
 			'pbl-shelf' +
 			(empty ? ' pbl-shelf-empty' : '') +
 			(collapsed ? ' pbl-shelf-collapsed' : '') +
+			(below ? ' pbl-shelf-below' : '') +
 			(list ? ' pbl-shelf-list' : ''),
 		attr: {
 			role: 'group',
@@ -331,7 +340,7 @@ export function renderShelf(
 		else shelfEl.style.removeProperty('--pbl-rollup-label');
 	}
 	publishShelfHeight(shelfEl, host.shelfHeight);
-	renderShelfResize(host, shelfEl);
+	renderShelfResize(host, shelfEl, below);
 	return { cards, el: shelfEl };
 }
 

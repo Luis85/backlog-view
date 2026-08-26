@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { horizonVault, makeRoadmap, shelfOf } from '../helpers/roadmap';
+import { horizonVault, makeRoadmap, roadmapView, shelfHeavyVault, shelfOf } from '../helpers/roadmap';
 import { FakeVault } from '../helpers/vault';
 import { makeView, useViewHarness } from '../helpers/view';
 import { bodyOf } from '../helpers/cssVars';
@@ -435,6 +435,64 @@ describe('the shelf’s resize grip', () => {
 			expect(bodyOf(css, '.pbl-shelf-grip', 'styles/shelfControls.css')).toContain(
 				'margin-block-start: calc(-1 * var(--size-4-2));',
 			);
+		});
+	});
+
+	describe('which edge it sits on', () => {
+		/** A grid axis, where the shelf renders AFTER the timeline and so sits at the frame's foot. */
+		const datedShelf = (): HTMLElement => {
+			const { containerEl } = roadmapView(shelfHeavyVault(), {
+				startProperty: 'note.start',
+				targetProperty: 'note.due',
+			});
+			const el = shelfOf(containerEl);
+			if (!el) throw new Error('no shelf');
+			return el;
+		};
+
+		it('leads the band that sits BELOW the axis, and trails the one that leads', () => {
+			// The grip belongs on the edge the band and the axis SHARE, which is the whole rule
+			// — not "the foot", which is only where that edge happens to be when the shelf leads
+			// the frame. Moved in the DOM rather than by `order`, so the tab stop is where the
+			// strip is drawn: `styles/shelf.css` says outright that reordering a focusable thing
+			// out of its reading order on this band must not happen.
+			expect(datedShelf().firstElementChild?.hasClass('pbl-shelf-grip')).toBe(true);
+
+			const { containerEl } = makeRoadmap(horizonVault());
+			expect(shelfOf(containerEl)?.lastElementChild?.hasClass('pbl-shelf-grip')).toBe(true);
+		});
+
+		it('makes UP taller where it sits at the top, the mirror of the foot’s own sign', () => {
+			// One flag decides both halves, so the pointer and the keys cannot disagree about
+			// which way is bigger: a grip at the top grows the band when it is dragged up, and
+			// the horizon axis's own test above grows it when dragged DOWN.
+			const el = datedShelf().querySelector<HTMLElement>('.pbl-shelf-grip');
+			if (!el) throw new Error('no shelf resize grip');
+			el.dispatchEvent(pointer('pointerdown', 0));
+			el.dispatchEvent(pointer('pointerup', -200));
+			expect(el.getAttribute('aria-valuenow')).toBe(String(MIN_SHELF_HEIGHT_PX + 200));
+		});
+
+		it('takes the band’s bottom gutter with it', () => {
+			// Nothing is pinned to that edge any more, so the last row of cards would end 4px
+			// from the border while the cards beside it keep 12px. jsdom resolves no cascade —
+			// what is checkable here is the class and the rule it turns on, and the two are one
+			// decision made in `render/shelf.ts`.
+			expect(datedShelf().hasClass('pbl-shelf-below')).toBe(true);
+			const css = readFileSync('styles/shelf.css', 'utf8');
+			expect(bodyOf(css, '.pbl-shelf-below', 'styles/shelf.css')).toContain(
+				'padding-block-end: var(--size-4-3);',
+			);
+			// And the strip's own offsets are mirrored with it — sticky to the top, and the
+			// negative pull moved to the end so it cancels the flex gap BELOW it instead.
+			const chrome = readFileSync('styles/shelfControls.css', 'utf8');
+			const body = bodyOf(chrome, '.pbl-shelf-below .pbl-shelf-grip', 'styles/shelfControls.css');
+			expect(body).toContain('top: calc(-1 * var(--size-4-1));');
+			expect(body).toContain('bottom: auto;');
+			// The sized band's `margin-block-start: auto` pushes the strip to the foot — which is
+			// exactly what must NOT happen here, and this file's order is what overrules it.
+			expect(body).toContain('margin-block-start: 0;');
+			expect(body).toContain('margin-block-end: calc(-1 * var(--size-4-2));');
 		});
 	});
 

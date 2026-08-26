@@ -130,7 +130,15 @@ function gestureOrigin(host: BacklogViewHost, shelfEl: HTMLElement): number {
 	return host.shelfHeight ?? clampShelfHeight(shelfEl.offsetHeight);
 }
 
-export function renderShelfResize(host: BacklogViewHost, shelfEl: HTMLElement): void {
+/**
+ * @param below Whether the band sits BELOW the axis it competes with — the grid axes, where
+ * the shelf renders after the timeline (`render/roadmap.ts`). The grip belongs on the edge
+ * the two share, so there it goes to the band's TOP and a drag UP is what makes the shelf
+ * taller. Everywhere else the shelf leads and the grip stays at its foot. One flag, read
+ * twice and nowhere else: where the strip is put in the band, and which sign a movement
+ * carries.
+ */
+export function renderShelfResize(host: BacklogViewHost, shelfEl: HTMLElement, below: boolean): void {
 	const grip = shelfEl.createDiv({
 		cls: 'pbl-shelf-grip',
 		attr: {
@@ -154,16 +162,23 @@ export function renderShelfResize(host: BacklogViewHost, shelfEl: HTMLElement): 
 	// when a gesture takes hold, so what is left is a reader who only listens, on a band
 	// nobody has sized yet, hearing the last render's number. Recorded rather than closed.
 	grip.setAttribute('aria-valuenow', String(gestureOrigin(host, shelfEl)));
+	// Moved in the DOM rather than by `order`, so the tab stop is where the strip is drawn:
+	// a grip a reader sees above the header but reaches after every card is the reordering
+	// `styles/shelf.css` states outright must not happen on this band. The class travels with
+	// it for the same reason `pbl-shelf-sized` travels with the height — one place decides.
+	if (below) shelfEl.prepend(grip);
 	setTooltip(grip, t('resize.gripTooltip'));
 	if (refocus) grip.focus();
 	wireResizeGrip(grip, {
 		vertical: true,
-		// Down is taller: the grip is at the band's FOOT, which is the edge that moves when
-		// the shelf grows, so a positive `clientY` delta means more. Both directions move it
-		// now — under a maximum the downward one did nothing on a band shorter than its cap.
-		// No `widenSign` mirror beside it: a pane may be given its own direction, and no
-		// writing mode this plugin runs in turns the block axis upside down.
-		sizeAt: (deltaY, from) => clampShelfHeight(from + deltaY),
+		// Down is taller at the band's FOOT and shorter at its TOP: the grip is on the edge
+		// that moves when the shelf grows, and which edge that is decides the sign. Both
+		// directions move it now — under a maximum the downward one did nothing on a band
+		// shorter than its cap. The KEYS come through here too (`wireResizeGrip`), so
+		// ArrowUp/ArrowDown move the separator the way the pointer does without a second
+		// statement of it. No `widenSign` mirror beside it: a pane may be given its own
+		// direction, and no writing mode this plugin runs in turns the block axis upside down.
+		sizeAt: (deltaY, from) => clampShelfHeight(below ? from - deltaY : from + deltaY),
 		// Read per gesture, and for one case only: an UNPICKED band is content-sized, so its
 		// edge moves under redraws that rebuild no grip (`renderCardChildren`'s own `draw`).
 		// Once a height is picked the stored number IS the edge and this is a lookup — which

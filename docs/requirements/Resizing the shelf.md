@@ -15,6 +15,7 @@ files:
   - src/view/interactions/shelfResize.ts
   - src/view/render/shelf.ts
   - styles/shelfControls.css
+  - styles/shelf.css
   - styles/roadmap.css
   - styles/board.css
 started: "2026-08-21"
@@ -28,9 +29,9 @@ assignee: ""
 
 # Resizing the shelf
 
-**As** someone whose shelf holds more than the band will show, **I want** to drag its
-foot and say how much of the pane it may take, **so that** I can give the untriaged work
-room while I triage it and hand that room back to the axis afterwards.
+**As** someone whose shelf holds more than the band will show, **I want** to drag the edge
+it shares with the axis and say how much of the pane it may take, **so that** I can give
+the untriaged work room while I triage it and hand that room back to the axis afterwards.
 
 The band rule holds the shelf to 30% of the pane so a full one cannot squeeze the buckets
 or the timeline down to their floor. That is the right default and the wrong fixed answer:
@@ -44,18 +45,19 @@ about a width.
 | | |
 | --- | --- |
 | **Actor** | Backlog owner |
-| **Trigger** | The reader drags the grip along the open shelf's foot, or focuses it and presses an arrow key or Home |
+| **Trigger** | The reader drags the grip along the edge the open shelf shares with the axis, or focuses it and presses an arrow key or Home |
 | **Preconditions** | A shelf is drawn, open and holding at least one card — the roadmap's on either axis, or the iteration board's |
 | **Guarantee** | The height is UI state — per saved view, per device, beside the shelf's other picks — never the `.base` and never a frontmatter write. A picked band is exactly that tall: it scrolls when the cards need more and shows space when they need less. Until one is picked nothing is stored and the stylesheet's own share of the pane is in force. |
 
 **Main flow**
 
-1. The open band carries a resize grip along its foot: `role="separator"`, a real tab
-   stop, `aria-orientation="horizontal"`, and `aria-valuenow`/`aria-valuemin`/
-   `aria-valuemax` stating the current height and its bounds.
-2. Dragging it downward makes the band taller and upward shorter, live — one custom
-   property, so nothing re-renders mid-gesture — and releasing persists the settled
-   height once. Both directions move the edge.
+1. The open band carries a resize grip along the edge it shares with the axis:
+   `role="separator"`, a real tab stop, `aria-orientation="horizontal"`, and
+   `aria-valuenow`/`aria-valuemin`/`aria-valuemax` stating the current height and its
+   bounds. Which edge that is, is 1f.
+2. Dragging it **away from the axis** makes the band taller and toward it shorter, live —
+   one custom property, so nothing re-renders mid-gesture — and releasing persists the
+   settled height once. Both directions move the edge.
 3. Focused, ArrowUp/ArrowDown step the height by a fixed increment and persist each step
    immediately; Home hands the band back to the stylesheet's own share of the pane.
 4. The pick comes back across a reopen, per saved view per device, exactly like the sort
@@ -147,6 +149,21 @@ about a width.
   and clearing the pick returns the band to the 30% share (219px). What it costs is the
   space itself — a band dragged to 400px holding two cards is 400px of band — which is what
   the reader asked for by dragging the edge there, and what every resizable panel does.
+- **1f — the shelf is drawn BELOW the axis.** The grip goes to its TOP, and a drag upward
+  is what makes it taller. The rule is the edge the band and the axis SHARE, not "the foot",
+  which is only where that edge happens to be when the shelf LEADS the frame — as it does on
+  the horizon axis (since 2026-08-17) and on both boards. The grid axes draw the shelf after
+  the timeline, so there the shared edge is the band's top and a grip at its foot sat against
+  the context strip below it, moving an edge nothing on screen was on. One flag decides the
+  strip's place in the band and the sign a movement carries, so the pointer and the keys
+  cannot end up disagreeing about which way is bigger. Moved in the DOM rather than by
+  `order`: the tab stop has to be where the strip is drawn, which is what `styles/shelf.css`
+  already says outright about this band. Reported from a vault, 2026-08-26.
+- **1g — nothing is pinned to the band's foot any more.** It takes a real bottom gutter
+  there, matching its inline one, on the axes where 1f moves the grip away — 12px rather
+  than the 4px the grip's own negative offsets were measured against. Scoped to that band
+  for exactly that reason: everywhere else the strip still sits on that edge and the 4px is
+  what its offsets cancel. Reported with 1f.
 - **2f — the band is taller than its cards, and the grip is not at its foot.** It is now.
   `position: sticky` holds an element inside its scrollport when scrolling would carry it
   away and does nothing otherwise, so a band with a picked height and less content than that
@@ -166,8 +183,10 @@ about a width.
 - An UNPICKED band is measured instead, with the grip's own strip already in it (8px of it),
   per gesture rather than once per render, and the announcement is corrected when a gesture
   takes hold.
-- ArrowDown makes the band taller on any band, which a maximum could not do on one drawn
-  shorter than its cap.
+- ArrowDown makes the band taller wherever the grip is at the band's FOOT, which a maximum
+  could not do on one drawn shorter than its cap; where the shelf sits below the axis the
+  grip leads the band and ArrowUp is what makes it taller instead. The pointer and the keys
+  read the same sign, from one flag.
 - Dragging updates only the custom property until release: `config.setCalls` and the
   vault's write log stay empty through the whole gesture, and exactly one height is
   persisted, at its end.
@@ -184,6 +203,10 @@ about a width.
 - No grip is drawn on a collapsed or an empty shelf, and no height is published to one:
   a band with nothing to show is never as tall as the height the reader picked for it open.
 - A picked height survives the flex line it sits on, on every axis.
+- The grip is the band's FIRST element where the shelf is drawn below the axis and its LAST
+  where the shelf leads, so the tab stop is where the strip is — never reordered into a
+  different reading order by the stylesheet.
+- The band that sits below the axis keeps its bottom gutter level with its inline one.
 - The iteration board's shelf takes the same stored height — one band, one value.
 - Never written to the `.base`: UI state per saved view per device.
 
@@ -235,8 +258,21 @@ same component drawn by the same call, and only ever one is on screen.
 the early return a collapsed or empty band takes, and publishes `--pbl-shelf-h` only once a
 height has been picked. `styles/roadmap.css` and `styles/board.css` read that property with
 30% as the `var()` fallback, so the stylesheet and the store cannot name different
-defaults; the grip's own strip is in `styles/shelfControls.css`, sticky at the band's foot
-so a shelf scrolled halfway still shows the edge that resizes it.
+defaults; the grip's own strip is in `styles/shelfControls.css`, sticky to the edge it sits on so a
+shelf scrolled halfway still shows the edge that resizes it.
+
+**Which edge that is, is one boolean.** `renderShelf` asks `drawsGrid` of the axis it was
+handed — the grid axes are the ones that render the shelf after the timeline — and puts
+`pbl-shelf-below` on the band. `renderShelfResize` takes the same answer and reads it twice
+and nowhere else: it prepends the strip instead of appending it, and it flips the sign in
+`sizeAt`, which is the one place either gesture — pointer or key — decides what a movement
+means. `styles/shelfControls.css` mirrors every term of the foot rule against the class
+(sticky `top` rather than `bottom`, the negative pull moved to the end so it cancels the
+flex gap below it, and the sized band's auto start margin taken back, since a first flex
+item is already at the top and has nothing above it to consume); `styles/shelf.css` gives
+that band the bottom gutter 1g asks for. Measured in the browser harness at 1200x800 on the
+dated axis: the strip sits at the band's own top edge, stays there with the band scrolled to
+its end, and the last row of cards clears the foot by 12px.
 
 **Its reveal is not the property grip's rule copied**, and that is the one place the two
 differ by design. That grip is revealed by hovering the column NAME, a label a few pixels
