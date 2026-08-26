@@ -38,21 +38,43 @@ Registration and chrome, none of which any test here can reach:
 
 - The view appears in the Bases view picker, under its own name, with the `lucide-package`
   icon resolving rather than falling back.
-- Its eight options appear in the view-options menu, each with the suggested property name —
-  seven properties plus the releases folder, which arrived with the creation gesture.
+- Every option `getReleaseViewOptions` declares appears in the view-options menu, each with
+  the suggested property name — the property pickers, the done-value list beside the state
+  property, and the releases folder. Count the menu against that function rather than against
+  a number written here, which is how three notes in this repository came to state three
+  different totals. The last three arrived on 2026-08-25 with the band, and **whether
+  Obsidian's property picker can offer a released-date property no note in the vault yet
+  carries** is the question none of them can be bound without.
 - `resolveViewIdentity` finds the leaf for a `.base` file: pick a release, switch away,
   switch back, and the same release is open. The persistence rests on it and fails silently.
 
-The index:
+The index — **redrawn on 2026-08-25 as a two-line band per release, replacing the five-column
+grid**, so every item here is about markup nobody has opened in Obsidian:
 
-- The five columns line up between the heading row and every row beneath it — the widths are
-  published as custom properties per column, and only a browser lays them out.
-- A long version or status ellipsises rather than overflowing. Fixed-width columns replaced
-  content-sized tracks on 2026-08-23, and that trade has never been seen.
-- Tab reaches every row, in order; Enter and Space open a release; Space does not scroll the
-  list. The focus ring is visible and lands on the row rather than a cell.
-- A row's spoken name pairs each figure with its column heading. **Nothing here has heard a
-  screen reader** — the name is composed correctly by assertion only.
+- How the band reads at a real pane width, in both schemes. The five-column grid and its
+  per-column custom properties are gone; each band now lays out its own two flex lines, and
+  which figure yields width to which is decided by shrink factors rather than by fixed tracks.
+  At a narrow pane the version yields first, down to a floor of `5ch` so a bound figure is
+  never shrunk to nothing, and the NAME yields after it — both with an ellipsis, never a
+  clip. Measured in headless Chromium at 500px over four name lengths on 2026-08-26, and
+  nowhere else; a review found the name CLIPPED and the version at 0px when this line said
+  otherwise, because the only band measured before that was the one whose name never
+  overflowed.
+- The two group headings, `In flight (n)` and `Shipped (n)`, read as headings for the bands
+  beneath them rather than as rows in the list.
+- The band's `<button>` reset holds against a **theme** that styles `button` harder than the
+  harness's stand-in baseline — precisely the surface the defect in
+  [[The release index rows paint as Obsidian buttons]] lives on, and it has already been paid
+  for twice: once at the background and shadow, once at Obsidian's bare `button { height:
+  30px }`, which squashed a two-line band into one line's height and was invisible to every
+  jsdom test.
+- **Whether `--text-error` reads as a warning under a theme rather than as an error.** An
+  overdue band spends four coordinated signals on that token — a rule down its leading edge,
+  the date, the bar and the note — and a theme is free to make it shout.
+- Tab reaches every band, in order; Enter and Space open a release; Space does not scroll the
+  list. The focus ring is visible and lands on the band rather than a figure inside it.
+- A band's spoken name pairs each figure with its heading. **Nothing here has heard a screen
+  reader** — the name is composed correctly by assertion only.
 
 One release's scope:
 
@@ -136,12 +158,15 @@ inside the plugin:
 
 Under a theme that is not the default:
 
-- The row `<button>` reset holds against a theme that styles `button` harder than the
-  stand-in baseline used in the harness.
-- The status chip draws grey rather than adopting a state colour.
+- The status chip draws grey rather than adopting a state colour. The band's own two theme
+  questions are in the index list above, beside the markup they are about.
 
 ## Outcome
 
-Not yet run, and the creation gesture added on 2026-08-25 is unrun with the rest of it —
-nothing below has been seen in a vault. The pull request's test-plan box for this is deliberately unticked, and stays
-unticked until a maintainer has opened a vault and worked through the list above.
+Not yet run. The creation gesture added on 2026-08-25 is unrun with the rest of it, and so is
+the band that replaced the index's column grid the same day — **nothing in either increment
+has been seen in Obsidian**, and neither the browser harness nor a headless-Chromium
+measurement is a substitute: both answer layout against Obsidian's DEFAULT colours and neither
+answers a theme, an accent, or anything Bases hands the view. The pull request's test-plan box
+for this is deliberately unticked, and stays unticked until a maintainer has opened a vault
+and worked through the list above.

@@ -3,6 +3,7 @@ import { BacklogItem, BacklogModel, inPlan } from './model';
 import { ReleaseSettings } from './releaseOptions';
 import { CivilDate, FieldReading, linkpathFromRawValue, ownValue, readDate, readString } from './noteFields';
 import { isMarkerType, isReleaseType } from './itemTypes';
+import { ownWorkflowReading } from './board';
 
 /**
  * A figure with THREE answers, not two. `FieldReading` in `noteFields.ts` separates a
@@ -33,6 +34,60 @@ export interface ReleaseRow {
 	 * figure — the column is absent and named once, never zero in each row.
 	 */
 	members: ReleaseFigure<number>;
+	/**
+	 * Members whose own state is a done value — the numerator {@link members} is the
+	 * denominator of. A FIGURE for the reason `members` is one: unconfigured WITHOUT a
+	 * membership property (a done count with no membership has nothing to count over) and
+	 * unconfigured WITHOUT the plan's own state key ({@link ReleaseIndexOptions.stateKey}),
+	 * because nothing says what done means and a `0` would read as "none finished" on a
+	 * base that simply never bound one.
+	 *
+	 * Read through `ownWorkflowReading`, never `item.done`: a member typed `Deliverable` or
+	 * a test-catalog member answers through its OWN workflow, which `item.done` — the
+	 * requirements reading alone — gets backwards. All three workflows fall back to the
+	 * plan's state key when their own property is unbound, which is why THAT key, not one
+	 * of this view's own three mappings, is what `done` is gated on.
+	 *
+	 * Counted in the same walk that counts `members`, so there is one traversal and one
+	 * population. Progress is this over `members` and is computed nowhere else — the
+	 * single-release screen reads the same row, which is what stops a band and a release
+	 * header disagreeing about one release.
+	 */
+	done: ReleaseFigure<number>;
+	/**
+	 * On the RELEASE note: the date it actually shipped. Read exactly as {@link target} is,
+	 * with the same three answers — unset, unreadable, a date. It is what tells shipped from
+	 * in flight AND what makes {@link slip} derivable: one binding, two figures. Picked over
+	 * interpreting a status string or inferring shipped-ness from 100% progress, both of
+	 * which are wrong in both directions.
+	 */
+	released: ReleaseFigure<CivilDate>;
+	/**
+	 * Released minus target, in days. **Derived, never read** — no note carries it.
+	 *
+	 * Null without EITHER date, and that is not the same as `0`: a zero slip means shipped on
+	 * the day promised, where null means the question cannot be asked yet. Negative means
+	 * early, which is a real answer rather than an error.
+	 */
+	slip: number | null;
+	/** Has a released date. What the index GROUPS on, and never a state value. */
+	shipped: boolean;
+	/**
+	 * The target has passed and nothing has shipped. A FACT, not a heuristic: false for a
+	 * shipped release whatever its target (it is late, which {@link slip} says), false with
+	 * no target, and false ON the target date itself — that day is not yet past.
+	 */
+	overdue: boolean;
+	/**
+	 * Target minus today, in whole days. **Sign convention**: positive means days
+	 * REMAINING, negative means days OVERDUE, zero means the target is today. Null without
+	 * a readable target.
+	 *
+	 * The renderer's own figure, derived here rather than there because `domain/` is the
+	 * only layer allowed to know what day it is (`ReleaseIndexOptions.today`) and the
+	 * render layer must not read a clock either.
+	 */
+	daysToTarget: number | null;
 }
 
 export interface ReleaseIndex {
@@ -153,11 +208,92 @@ function dateKey(target: ReleaseFigure<CivilDate>): number {
 	return d.year * 10000 + d.month * 100 + d.day;
 }
 
-export function releaseIndex(app: App, model: BacklogModel, settings: ReleaseSettings): ReleaseIndex {
+/**
+ * Whole days between two civil dates, `b - a`. Both are civil — year, month and day as the
+ * notes spell them — so this converts through UTC midnight deliberately: `Date.UTC` has no
+ * zone and no DST, which is what keeps a span the same number of days whoever reads it.
+ * A local-time construction would give 23 or 25 hours across a DST boundary and round to
+ * the wrong day.
+ */
+function daysBetween(a: CivilDate, b: CivilDate): number {
+	const ms = Date.UTC(b.year, b.month - 1, b.day) - Date.UTC(a.year, a.month - 1, a.day);
+	return Math.round(ms / 86_400_000);
+}
+
+/**
+ * The primary ordering key WITHIN one shipped group — ascending target for in flight,
+ * descending released for shipped — zero when the group's own date ties, which is what
+ * sends a pair on to the rank and path tie-breaks in the sort proper. Pulled out of the
+ * comparator so that function reads as a short list of questions rather than one long
+ * one; every hazard the two dates carry stays commented where the comparison happens.
+ */
+function withinGroupOrder(a: ReleaseRow, b: ReleaseRow): number {
+	if (a.shipped) {
+		// DESCENDING by released date, so the most recent shipped release heads its own
+		// tail rather than being buried under every older one.
+		//
+		// Values compared, never their difference — but unlike the in-flight key below,
+		// the NaN hazard that shape exists for CANNOT occur here, and that is worth
+		// saying plainly rather than claiming the two keys share a reason they don't.
+		// This branch runs only where `a.shipped` holds, and `shipped` means a readable
+		// released date, so `dateKey(a.released)` can never be `+Infinity` on this branch
+		// — `rb - ra` would be numerically safe today. It is written as a value
+		// comparison anyway, to match its sibling and to stay correct if that
+		// implication (`shipped` implies a readable `released`) ever stops holding, not
+		// because the hazard is reachable now. No test distinguishes the two spellings
+		// on this branch, and none honestly can: a shipped release with no released date
+		// is exactly what `shipped`'s own definition forbids constructing.
+		const ra = dateKey(a.released);
+		const rb = dateKey(b.released);
+		return ra === rb ? 0 : ra > rb ? -1 : 1;
+	}
+	// Values compared, never their difference — two undated releases make
+	// `Infinity - Infinity`, which is `NaN`, and `sort` coerces a `NaN` result to `+0`:
+	// the pair reads as EQUAL and silently keeps whatever order it arrived in. Worse
+	// than the "sorts at random" this comment claimed until 2026-08-22, because random
+	// would be noticed. `Infinity` itself is not the hazard: `sort` reads only the SIGN
+	// of the result, so `Infinity - n` would order correctly. Both keys below use the
+	// same shape, the second one for the further reason stated at it.
+	const ta = dateKey(a.target);
+	const tb = dateKey(b.target);
+	return ta === tb ? 0 : ta < tb ? -1 : 1;
+}
+
+/**
+ * Per-render inputs `releaseIndex` needs that neither {@link ReleaseSettings} nor
+ * {@link BacklogModel} carries. An OBJECT rather than a positional parameter, deliberately:
+ * a fourth positional argument reads as "and one more thing", while a bag says the caller
+ * is handing over context the two typed inputs above don't carry.
+ */
+export interface ReleaseIndexOptions {
+	/**
+	 * `BacklogSettings.stateKey` — the PLAN's own state key. Not one of `ReleaseSettings`'
+	 * three model mappings, and not carried by `BacklogModel` either, so it has to arrive
+	 * as an explicit input. See {@link ReleaseRow.done} for why this is the key that gates
+	 * it rather than any of this view's own.
+	 */
+	stateKey: string;
+	/**
+	 * Today, injected — `domain/` never reads a clock (see `src/domain/CLAUDE.md`). The
+	 * view supplies it via `todayCivil()` (`noteFields.ts`). What {@link ReleaseRow.shipped},
+	 * {@link ReleaseRow.overdue} and {@link ReleaseRow.daysToTarget} are computed against.
+	 */
+	today: CivilDate;
+}
+
+export function releaseIndex(
+	app: App,
+	model: BacklogModel,
+	settings: ReleaseSettings,
+	options: ReleaseIndexOptions,
+): ReleaseIndex {
 	// Counted rather than seeded: a release nothing points at simply has no entry, and
 	// `?? 0` in the row below is what turns that into the zero it means. Seeding every
 	// release with 0 first would say the same thing twice.
 	const counts = new Map<string, number>();
+	// Same shape, one per release, for the numerator `done` reads.
+	const doneCounts = new Map<string, number>();
+	const stateConfigured = options.stateKey !== '';
 	const unresolved: BacklogItem[] = [];
 	// Built once per index and dead with it: `membershipTarget` runs per scannable row, so
 	// asking `model.releases` itself made the last refusal a scan and the rebuild
@@ -173,32 +309,58 @@ export function releaseIndex(app: App, model: BacklogModel, settings: ReleaseSet
 			continue;
 		}
 		counts.set(named, (counts.get(named) ?? 0) + 1);
+		// `ownWorkflowReading`, never `item.done`: see {@link ReleaseRow.done}.
+		if (ownWorkflowReading(item).done) doneCounts.set(named, (doneCounts.get(named) ?? 0) + 1);
 	}
+
+	// The comparison key for "has the target passed", `today` itself never leaving this
+	// function: a `ReleaseFigure` shape so `dateKey` — the one helper civil dates are
+	// compared through — takes it exactly as it takes `target` and `released`.
+	const todayKey = dateKey({ value: options.today, invalid: false, unconfigured: false });
 
 	const rows = model.releases.map((item): ReleaseRow => {
 		const fm = app.metadataCache.getFileCache(item.file)?.frontmatter;
+		const target = settings.targetDateKey ? figure(readTarget(ownValue(fm, settings.targetDateKey))) : UNCONFIGURED;
+		const released = settings.releasedDateKey
+			? figure(readTarget(ownValue(fm, settings.releasedDateKey)))
+			: UNCONFIGURED;
+		const shipped = released.value !== null;
 		return {
 			item,
 			path: item.file.path,
 			name: item.file.basename,
 			version: settings.versionKey ? figure(readLabel(ownValue(fm, settings.versionKey))) : UNCONFIGURED,
-			target: settings.targetDateKey ? figure(readTarget(ownValue(fm, settings.targetDateKey))) : UNCONFIGURED,
+			target,
 			status: settings.statusKey ? figure(readLabel(ownValue(fm, settings.statusKey))) : UNCONFIGURED,
 			members: settings.membershipKey
 				? figure({ value: counts.get(item.file.path) ?? 0, invalid: false })
 				: UNCONFIGURED,
+			done:
+				settings.membershipKey && stateConfigured
+					? figure({ value: doneCounts.get(item.file.path) ?? 0, invalid: false })
+					: UNCONFIGURED,
+			released,
+			slip: target.value !== null && released.value !== null ? daysBetween(target.value, released.value) : null,
+			shipped,
+			// Nothing shipped, and the target's key sorts before today's — never `< 0` on a
+			// `daysBetween` call, which would read the SAME day (`0`) as not yet overdue by
+			// the same reasoning `daysToTarget` states below, at the cost of constructing a
+			// span only to throw its magnitude away.
+			// No explicit `target.value !== null` guard: `dateKey` already answers
+			// `+Infinity` for an unset date, which is never `< todayKey`, so an undated
+			// release already reads as not overdue without naming that case here.
+			overdue: !shipped && dateKey(target) < todayKey,
+			daysToTarget: target.value !== null ? daysBetween(options.today, target.value) : null,
 		};
 	});
 
 	rows.sort((a, b) => {
-		// Values compared, never their difference — two undated releases make
-		// `Infinity - Infinity`, which is `NaN`, and `sort` coerces a `NaN` result to `+0`:
-		// the pair reads as EQUAL and silently keeps whatever order it arrived in. Worse
-		// than the "sorts at random" this comment claimed until 2026-08-22, because random
-		// would be noticed. `Infinity` itself is not the hazard: `sort` reads only the SIGN
-		// of the result, so `Infinity - n` would order correctly. Both keys below use the
-		// same shape, the second one for the further reason stated at it.
-		if (dateKey(a.target) !== dateKey(b.target)) return dateKey(a.target) < dateKey(b.target) ? -1 : 1;
+		// Shipped-ness leads. Grouping is where the HEADING falls (`renderIndex.ts`); this
+		// is what the order IS, and the flat `rows` array stays the sorted one —
+		// `releaseScope` and every existing caller read it.
+		if (a.shipped !== b.shipped) return a.shipped ? 1 : -1;
+		const withinGroup = withinGroupOrder(a, b);
+		if (withinGroup !== 0) return withinGroup;
 		// NOT `rank(a) - rank(b)` guarded by `Number.isFinite`: an unranked release is
 		// `+Infinity`, and `Infinity - 10` is `Infinity`, which that guard rejects — so the
 		// ranked release and the unranked one would fall through to the PATH tie-break

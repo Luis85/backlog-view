@@ -107,7 +107,8 @@ harness's — see the `chrome.ts` bullet below for the four rules that leaves ab
   analyze` reports it dead, correctly.
 - **Each of the other two views has its own committed pair**, same shape: `mountEstimation.ts`
   with `estimation.ts` (`?config=empty|problems`, `?select=`), and `mountRelease.ts` with
-  `release.ts` (`?config=empty|notype|nomembership`, `?pick=<path>`). Each entry is named in
+  `release.ts` (`?config=empty|notype|nomembership|noreleased`, `?pick=<path>`). Each entry is
+  named in
   `.fallowrc.json`, which is what stops `npm run analyze` calling it dead. The release pair
   arrived last and late: that view had never been drawn in a browser by anything committed,
   and a `display: contents` defect that made its whole index unreachable by keyboard

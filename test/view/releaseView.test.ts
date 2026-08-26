@@ -25,7 +25,7 @@ describe('the release view', () => {
 		vault.addFile('R.md', { frontmatter: { type: 'Release' } });
 		const { containerEl } = makeReleaseView(vault, { typeProperty: '' });
 		expect(containerEl.querySelector('.pbl-empty-title')?.textContent).toContain('type property');
-		expect(containerEl.querySelector('.pbl-rel-grid')).toBeNull();
+		expect(containerEl.querySelector('.pbl-rel-bands')).toBeNull();
 	});
 
 	it('draws an empty list, not a warning, when the base holds no release', () => {
@@ -66,10 +66,10 @@ describe('the release view', () => {
 	it('opens the index with nothing picked, and a release once one is', () => {
 		const vault = releaseVault();
 		const { view, containerEl } = makeReleaseView(vault, RELEASE_CONFIG);
-		expect(containerEl.querySelector('.pbl-rel-grid')).not.toBeNull();
+		expect(containerEl.querySelector('.pbl-rel-bands')).not.toBeNull();
 		view.pick('0.8.md');
 		expect(containerEl.querySelector('.pbl-rel-header')).not.toBeNull();
-		expect(containerEl.querySelector('.pbl-rel-grid')).toBeNull();
+		expect(containerEl.querySelector('.pbl-rel-bands')).toBeNull();
 	});
 
 	it('leaves nothing behind when the view unloads', () => {
@@ -191,7 +191,7 @@ describe('the release view', () => {
 		const vault = releaseVault();
 		const { view, containerEl } = makeReleaseView(vault, RELEASE_CONFIG);
 		view.pick('Vanished.md');
-		expect(containerEl.querySelector('.pbl-rel-grid')).not.toBeNull();
+		expect(containerEl.querySelector('.pbl-rel-bands')).not.toBeNull();
 		expect(containerEl.querySelector('.pbl-empty-title')).toBeNull();
 	});
 });

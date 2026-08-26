@@ -87,6 +87,30 @@ describe('createRelease', () => {
 		expect(vault.files.has('Releases/2.4.md')).toBe(false);
 	});
 
+	it('refuses to create when releasedDateKey names the same key as targetDateKey', async () => {
+		// `releasedDateKey` is a READ binding — this function never writes it — but the
+		// guard's subject is "two release properties name one key", and a released-date
+		// reader aliased onto the target-date key would read every new release as shipped
+		// the moment its target date is written. Refused whole, like the type/status alias.
+		const vault = new FakeVault();
+		const settings = releaseSettingsWith({
+			folder: 'Releases',
+			targetDateKey: 'target-date',
+			releasedDateKey: 'target-date',
+		});
+		await expect(
+			createRelease(vault.app, settings, { title: '2.4', targetDate: '2026-09-12' }),
+		).rejects.toThrow();
+		expect(vault.files.has('Releases/2.4.md')).toBe(false);
+	});
+
+	it('refuses to create when releasedDateKey names the same key as statusKey', async () => {
+		const vault = new FakeVault();
+		const settings = releaseSettingsWith({ folder: 'Releases', statusKey: 'status', releasedDateKey: 'status' });
+		await expect(createRelease(vault.app, settings, { title: '2.4', status: 'Planned' })).rejects.toThrow();
+		expect(vault.files.has('Releases/2.4.md')).toBe(false);
+	});
+
 	it('refuses to create when no type key is configured', async () => {
 		// `typeKey` is the one field of the four `createRelease` writes that this settings
 		// bag can genuinely clear (`clearablePropKey` in `resolveReleaseSettings`, unlike

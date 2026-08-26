@@ -25,7 +25,7 @@ describe('registerReleaseView', () => {
 		expect(spec.name).toBe('Product release');
 		expect(spec.icon).toBe('lucide-package');
 		// The identity, not merely "something is set": the options screen is this view's
-		// own seven keys, and handing Bases the backlog view's set would draw a menu that
+		// own option set, and handing Bases the backlog view's set would draw a menu that
 		// binds properties nothing here reads.
 		expect(spec.options).toBe(getReleaseViewOptions);
 	});

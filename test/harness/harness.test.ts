@@ -318,13 +318,14 @@ function ruleBody(css: string, selector: string): string {
 }
 
 /**
- * Two layout defects Chromium showed and jsdom cannot: it lays out nothing, so neither a
- * grid item stretching to fill a row it has no sibling in nor a flex row's title column
- * shrinking to zero width is a state any DOM query here can see. What is checkable is
- * pinned instead — the declaration each fix added — narrower than the visual claim, and
- * said so rather than left implying more than a `toMatch` on a stylesheet can back up.
+ * Three layout defects Chromium showed and jsdom cannot: it lays out nothing, so a grid
+ * item stretching to fill a row it has no sibling in, a flex row's title column shrinking
+ * to zero width, and a release band's name ellipsising away while its version keeps full
+ * width are all states no DOM query here can see. What is checkable is pinned instead —
+ * the declaration each fix added — narrower than the visual claim, and said so rather than
+ * left implying more than a `toMatch` on a stylesheet can back up.
  */
-describe('two layout fixes found in the browser, pinned as declarations jsdom can read', () => {
+describe('three layout fixes found in the browser, pinned as declarations jsdom can read', () => {
 	const estimationCss = readFileSync('styles/estimation.css', 'utf8');
 	// The warning block's rules live with the other "nothing to show" states rather than in
 	// `estimation.css`, which is at its line cap — same concern, different partial.
@@ -336,6 +337,15 @@ describe('two layout fixes found in the browser, pinned as declarations jsdom ca
 
 	it('keeps a floor under the title column so it cannot shrink to nothing', () => {
 		expect(ruleBody(estimationCss, '.pbl-est-title')).toMatch(/min-width:\s*96px/);
+	});
+
+	// The band's own instance of `src/view/CLAUDE.md`'s sticky-lead rule, found the same way
+	// (2026-08-26): with the version at `flex: 0 0 auto` the NAME was line 1's only cell that
+	// could give, so at the 500px pane minimum the `1.0` band showed ~2px of its name beside
+	// its icon while a 151.72px version kept every pixel. The shrink factor is what makes the
+	// version yield first; the before/after widths are in the partial, beside the rule.
+	it('makes a release band’s version yield before its name does', () => {
+		expect(ruleBody(readFileSync('styles/release.css', 'utf8'), '.pbl-rel-version')).toMatch(/flex:\s*0 100 auto/);
 	});
 });
 

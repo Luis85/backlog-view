@@ -1,7 +1,8 @@
-import { BasesAllOptions, BasesViewConfig } from 'obsidian';
+import { BasesAllOptions, BasesPropertyOption, BasesViewConfig } from 'obsidian';
 import { configReaders, vaultFolder } from './settingsResolve';
 import { notePropsOnly } from './optionalProperties';
 import { defaultTypeFolder, RELEASE_TYPE } from './typeVocabulary';
+import { DEFAULT_DONE_VALUES } from './settings';
 import { t } from '../i18n/t';
 
 /**
@@ -9,7 +10,7 @@ import { t } from '../i18n/t';
  * `viewOptions.ts` is for the backlog and `estimationOptions.ts` is for the estimation
  * table.
  *
- * EIGHT keys, and the three model mappings among them are the point. A separately
+ * ELEVEN keys, and the three model mappings among them are the point. A separately
  * registered view inherits no binding from the backlog view, and this one reads a type to
  * find releases at all, a parent to build the scope tree, and an order to rank the index.
  * The estimation view declares none of the three because `buildEstimationModel` reads Base
@@ -30,6 +31,8 @@ export interface ReleaseSettings {
 	versionKey: string;
 	targetDateKey: string;
 	statusKey: string;
+	/** On the RELEASE note, beside `versionKey`: when it actually shipped. */
+	releasedDateKey: string;
 	/** Where `New release` files a note. A PATH, not a property key. */
 	folder: string;
 }
@@ -104,6 +107,33 @@ function releaseGroup(): BasesAllOptions {
 				placeholder: 'status',
 				filter: notePropsOnly,
 			},
+			// `stateProperty` and `doneValues` deliberately do NOT join `ReleaseSettings` below.
+			// `resolveSettings` already reads these two exact option keys onto `BacklogSettings`
+			// as `stateKey` and `doneValues`, and `releaseView.ts`'s `buildModel` call already
+			// spreads `resolveSettings(this.config)` — so declaring the options here is the
+			// whole of the plumbing. Adding a second field for either onto `ReleaseSettings`
+			// would be two readers of one config key that can disagree.
+			{
+				type: 'property',
+				key: 'stateProperty',
+				displayName: t('release.option.state'),
+				placeholder: 'status',
+				filter: notePropsOnly,
+			},
+			{
+				type: 'text',
+				key: 'doneValues',
+				displayName: t('release.option.doneValues'),
+				default: DEFAULT_DONE_VALUES.join(', '),
+				placeholder: DEFAULT_DONE_VALUES.join(', '),
+			},
+			{
+				type: 'property',
+				key: 'releasedDateProperty',
+				displayName: t('release.option.releasedDate'),
+				placeholder: 'released',
+				filter: notePropsOnly,
+			},
 			{
 				type: 'folder',
 				key: 'releaseFolder',
@@ -113,6 +143,33 @@ function releaseGroup(): BasesAllOptions {
 			},
 		],
 	};
+}
+
+/**
+ * Every frontmatter key the DECLARED property options above currently resolve to — read
+ * off the declaration, so an option added to either group joins this set without anybody
+ * remembering to add it.
+ *
+ * It exists for `runReleaseInit`'s "never hand out a key another of this view's options
+ * already names", and it is derived rather than listed because a LIST is what that rule
+ * has now failed three times (PR #203, then twice in this increment). The last of the
+ * three is why it is not simply `Object.entries(resolveReleaseSettings(config))`:
+ * `stateProperty` is declared here and deliberately resolves onto `BacklogSettings`
+ * instead, so it is on no field of `ReleaseSettings` and a sweep over that object cannot
+ * see it — while `stateProperty: note.status` with `releaseStatusProperty` untouched is
+ * exactly the collision the rule is about.
+ *
+ * `clearablePropKey` with the option's own `default:` reproduces what `resolveSettings`
+ * and `resolveReleaseSettings` each read for these keys: the three model mappings ship a
+ * real default and take it when nobody has touched them, and every other property option
+ * defaults to nothing, where `clearablePropKey` and `propKey` answer identically.
+ */
+export function declaredPropertyKeys(config: BasesViewConfig): string[] {
+	const { clearablePropKey } = configReaders(config);
+	return getReleaseViewOptions(config)
+		.flatMap((entry) => (entry.type === 'group' ? entry.items : [entry]))
+		.filter((option): option is BasesPropertyOption => option.type === 'property')
+		.map((option) => clearablePropKey(option.key, (option.default ?? '').replace(/^note\./, '')));
 }
 
 export function resolveReleaseSettings(config: BasesViewConfig): ReleaseSettings {
@@ -152,6 +209,9 @@ export function resolveReleaseSettings(config: BasesViewConfig): ReleaseSettings
 		versionKey: propKey('versionProperty', ''),
 		targetDateKey: propKey('targetDateProperty', ''),
 		statusKey: propKey('releaseStatusProperty', ''),
+		// `propKey`, not `clearablePropKey`: their default is `''`, so the two resolve the
+		// same value for every input — the reason already stated above for `versionKey`.
+		releasedDateKey: propKey('releasedDateProperty', ''),
 		// A PATH, not a property key: same reading `resolveFolders` gives every type
 		// folder — trimmed and normalized by `vaultFolder`, clearable because the default
 		// is a real value (`config.get` cannot tell "cleared" from "never set" otherwise).

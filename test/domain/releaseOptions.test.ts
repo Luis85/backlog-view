@@ -9,14 +9,17 @@ function keysOf(config: FakeViewConfig): string[] {
 }
 
 describe('the release view names its own keys', () => {
-	it('declares all eight, the three model mappings and the folder included', () => {
+	it('declares all eleven, the three model mappings and the folder included', () => {
 		expect(keysOf(new FakeViewConfig({})).sort()).toEqual(
 			[
+				'doneValues',
 				'membershipProperty',
 				'orderProperty',
 				'parentProperty',
+				'releasedDateProperty',
 				'releaseFolder',
 				'releaseStatusProperty',
+				'stateProperty',
 				'targetDateProperty',
 				'typeProperty',
 				'versionProperty',
@@ -59,5 +62,14 @@ describe('the release view names its own keys', () => {
 		expect(resolveReleaseSettings(new FakeViewConfig({ releaseFolder: '/Releases/' }) as never).folder).toBe(
 			'Releases',
 		);
+	});
+
+	it('resolves the released date key, and leaves it empty when unbound', () => {
+		// `propKey`, not `clearablePropKey`: the default is '' so the two resolve the same
+		// value for every input, exactly as `versionKey` and the other release-own keys do.
+		expect(
+			resolveReleaseSettings(new FakeViewConfig({ releasedDateProperty: 'note.released' }) as never).releasedDateKey,
+		).toBe('released');
+		expect(resolveReleaseSettings(new FakeViewConfig({}) as never).releasedDateKey).toBe('');
 	});
 });

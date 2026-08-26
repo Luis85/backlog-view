@@ -8,11 +8,13 @@ const params = new URLSearchParams(window.location.search);
 
 /**
  * `?config=empty` mounts a base holding no release; `?config=notype` leaves the type
- * property unbound; `?config=nomembership` leaves the membership property unbound.
- * Anything else — the default — binds all seven keys.
+ * property unbound; `?config=nomembership` leaves the membership property unbound;
+ * `?config=noreleased` leaves the RELEASED-DATE property unbound, which is the withheld
+ * half of the overdue treatment — see `mountRelease.ts`, where the pair is described.
+ * Anything else — the default — binds every key.
  */
 const wantedConfig = params.get('config');
-const VARIANTS: ReleaseConfigVariant[] = ['empty', 'notype', 'nomembership'];
+const VARIANTS: ReleaseConfigVariant[] = ['empty', 'notype', 'nomembership', 'noreleased'];
 const config = VARIANTS.includes(wantedConfig as ReleaseConfigVariant) ? (wantedConfig as ReleaseConfigVariant) : 'full';
 
 // Before the mount — `page.ts`'s own ordering, kept for the day this view grows a control

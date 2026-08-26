@@ -2,8 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { settingsWith } from '../helpers/settings';
 import { buildModel } from '../../src/domain/model';
 import { releaseIndex } from '../../src/domain/releases';
+import { CivilDate } from '../../src/domain/noteFields';
 import { computeReleaseWrites } from '../../src/domain/writePlan';
 import { FakeVault } from '../helpers/vault';
+
+/** This suite is not about `today` either, so a fixed value stands in for it. */
+const TODAY: CivilDate = { year: 2026, month: 1, day: 1 };
 
 /**
  * `computeReleaseWrites` — the release membership planner. Its own file for the same
@@ -37,15 +41,20 @@ function fixture(opts: {
 		settings,
 		/** What the READER makes of the same note, off the same build the planner is asked about. */
 		readAsMembership: () =>
-			!releaseIndex(vault.app, model, {
-				parentKey: 'parent',
-				orderKey: 'order',
-				typeKey: 'type',
-				membershipKey: 'release',
-				versionKey: 'version',
-				targetDateKey: 'target-date',
-				statusKey: 'status',
-			}).unresolved.some((i) => i.file.path === 'PBI-1.md'),
+			!releaseIndex(
+				vault.app,
+				model,
+				{
+					parentKey: 'parent',
+					orderKey: 'order',
+					typeKey: 'type',
+					membershipKey: 'release',
+					versionKey: 'version',
+					targetDateKey: 'target-date',
+					statusKey: 'status',
+				},
+				{ stateKey: settings.stateKey, today: TODAY },
+			).unresolved.some((i) => i.file.path === 'PBI-1.md'),
 	};
 }
 

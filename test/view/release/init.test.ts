@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
+import { getReleaseViewOptions } from '../../../src/domain/releaseOptions';
 import { runReleaseInit } from '../../../src/view/release/init';
 import { makeReleaseView, RELEASE_CONFIG, scopeVault } from '../../helpers/release';
 import { FakeVault } from '../../helpers/vault';
@@ -67,6 +68,18 @@ describe('runReleaseInit', () => {
 		expect(bound.get('releaseStatusProperty')).toBeUndefined();
 	});
 
+	it('does not hand out a key an explicitly-bound releasedDateProperty already holds', async () => {
+		// releasedDateProperty is bound to the key targetDateProperty would otherwise
+		// suggest for itself ('target-date'). Without releasedDateKey seeded into `taken`,
+		// targetDateProperty would adopt 'target-date' too — aliasing the target date and
+		// the released date onto one key, so `createRelease` writes the target date there
+		// and `releaseIndex` reads that same value back as the release having shipped.
+		const { view } = makeReleaseView(new FakeVault(), { releasedDateProperty: 'note.target-date' });
+		await runReleaseInit(view);
+		const bound = new Map(view.config.setCalls.map((c) => [c.key, c.value]));
+		expect(bound.get('targetDateProperty')).toBeUndefined();
+	});
+
 	it('does not hand out a key an explicitly-bound membershipProperty already holds', async () => {
 		// membershipProperty is explicitly bound to the key releaseStatusProperty would
 		// otherwise suggest for itself ('status'). Without membershipKey seeded into
@@ -75,5 +88,41 @@ describe('runReleaseInit', () => {
 		await runReleaseInit(view);
 		const bound = new Map(view.config.setCalls.map((c) => [c.key, c.value]));
 		expect(bound.get('releaseStatusProperty')).toBeUndefined();
+	});
+
+	/**
+	 * The CATEGORY form of the three tests below, which stay beside it: each of those names
+	 * a pairing that shipped, while this one holds for a pairing nobody has written yet.
+	 *
+	 * Both halves are DERIVED rather than listed. The option set comes from
+	 * `getReleaseViewOptions` — every declared `type: 'property'` option — and not from the
+	 * fields of `ReleaseSettings`, which is what the two previous fixes each swept and what
+	 * missed `stateProperty`: this view declares that option and it resolves onto
+	 * `BacklogSettings.stateKey`, so it is on no field of `ReleaseSettings` and an
+	 * `Object.entries` sweep over a fully-bound one cannot see it. The suggestions come from
+	 * what a run against an EMPTY config actually binds, so a fifth candidate joins this
+	 * check by existing. A tenth option does too — which is the whole point, since this is
+	 * the third finding of this one shape in this one file.
+	 */
+	it('hands out no key ANY declared property option already holds', async () => {
+		const { view: untouched } = makeReleaseView(new FakeVault(), {});
+		await runReleaseInit(untouched);
+		const suggested = untouched.config.setCalls.map((call) => String(call.value));
+		expect(suggested.length).toBeGreaterThan(0);
+
+		const declared = getReleaseViewOptions(untouched.config)
+			.flatMap((entry) => (entry.type === 'group' ? entry.items : [entry]))
+			.filter((option) => option.type === 'property')
+			.map((option) => option.key);
+		expect(declared.length).toBeGreaterThan(suggested.length);
+
+		for (const option of declared) {
+			for (const key of suggested) {
+				const { view } = makeReleaseView(new FakeVault(), { [option]: key });
+				await runReleaseInit(view);
+				const collisions = view.config.setCalls.filter((call) => call.value === key);
+				expect(collisions, `${option} already holds ${key}`).toEqual([]);
+			}
+		}
 	});
 });

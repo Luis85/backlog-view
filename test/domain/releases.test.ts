@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { releaseIndex } from '../../src/domain/releases';
 import { buildModel } from '../../src/domain/model';
 import { BacklogSettings } from '../../src/domain/settings';
+import { CivilDate } from '../../src/domain/noteFields';
 import { FakeVault } from '../helpers/vault';
 import { settingsWith } from '../helpers/settings';
 
@@ -13,10 +14,39 @@ const KEYS = {
 	versionKey: 'version',
 	targetDateKey: 'target-date',
 	statusKey: 'status',
+	releasedDateKey: 'released',
 };
 
-function indexOf(vault: FakeVault, settings = KEYS, model: BacklogSettings = settingsWith()) {
-	return releaseIndex(vault.app, buildModel(vault.app, vault.entries(), model), settings);
+// `stateKey: 'status'` by default so `done` reads the same `status` property the fixtures
+// already write `Done`/`Doing` into — the fixture the `done` tests below build without
+// having to name a state key nobody would otherwise have reason to set. Individual tests
+// clear it (`settingsWith({ stateKey: '' })`) to build the unconfigured case, following
+// `test/domain/releasesModel.test.ts` and `test/helpers/settings.ts`'s own pattern rather
+// than inventing a second one.
+function modelOf(vault: FakeVault, model: BacklogSettings = settingsWith({ stateKey: 'status' })) {
+	return buildModel(vault.app, vault.entries(), model);
+}
+
+/**
+ * A fixed "now" for every test that does not care what day it is — the overdue and
+ * ordering tests below override it by name where the day itself is the point.
+ */
+const TODAY: CivilDate = { year: 2026, month: 9, day: 20 };
+
+function indexOf(
+	vault: FakeVault,
+	settings = KEYS,
+	model: BacklogSettings = settingsWith({ stateKey: 'status' }),
+	today: CivilDate = TODAY,
+) {
+	return releaseIndex(vault.app, modelOf(vault, model), settings, { stateKey: model.stateKey, today });
+}
+
+/** The one row named `path`, by identity rather than by array position. */
+function row(rows: ReturnType<typeof indexOf>['rows'], path: string) {
+	const found = rows.find((r) => r.path === path);
+	if (found === undefined) throw new Error(`no row for ${path}`);
+	return found;
 }
 
 /**
@@ -201,6 +231,89 @@ describe('the release index', () => {
 		expect(rows.find((r) => r.name === 'Empty')?.members.value).toBe(0);
 	});
 
+	it('counts done members over the same population as members', () => {
+		const vault = new FakeVault();
+		vault.addFile('R.md', { frontmatter: { type: 'Release' } });
+		vault.addFile('A.md', { frontmatter: { type: 'PBI', release: '[[R]]', status: 'Done' } });
+		vault.addFile('B.md', { frontmatter: { type: 'PBI', release: '[[R]]', status: 'Done' } });
+		vault.addFile('C.md', { frontmatter: { type: 'PBI', release: '[[R]]', status: 'Doing' } });
+		const rows = indexOf(vault).rows;
+
+		expect(row(rows, 'R.md').members.value).toBe(3);
+		expect(row(rows, 'R.md').done.value).toBe(2);
+	});
+
+	it('counts no ancestor that never declares membership, done or not', () => {
+		// NOT the context-row rule: `Epic.md` here is an ordinary RESULT row, not an
+		// `outsideFilter` one — it is simply excluded because it carries no `release`
+		// property of its own, so `membershipTarget` answers null for it exactly as it
+		// would for any other non-member. See the `outsideFilter` test below for the actual
+		// context-row check — a note the Base excluded that DOES name the release.
+		const vault = new FakeVault();
+		vault.addFile('R.md', { frontmatter: { type: 'Release' } });
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', status: 'Done' } });
+		vault.addFile('A.md', { frontmatter: { type: 'PBI', release: '[[R]]', status: 'Done' }, parentLink: 'Epic' });
+		const rows = indexOf(vault).rows;
+
+		expect(row(rows, 'R.md').members.value).toBe(1);
+		expect(row(rows, 'R.md').done.value).toBe(1);
+	});
+
+	it('never counts an outsideFilter context row as done, even though it names the release', () => {
+		// The actual context-row rule, asked of `done`. `Outside.md` is a TRUE context row:
+		// it is in the vault, its own `release` property names R, and its own state is
+		// done — but the Base excluded it, and it is loaded only as `Child.md`'s parent.
+		// Both `members` and `done` are asserted on the SAME fixture, because asserting
+		// only `done` would leave `members` (already covered above) untested against it —
+		// the pair is what the register's context-row rule is actually about.
+		const vault = new FakeVault();
+		vault.addFile('R.md', { frontmatter: { type: 'Release' } });
+		vault.addFile('Outside.md', { frontmatter: { type: 'Feature', release: '[[R]]', status: 'Done' } });
+		vault.addFile('Child.md', { frontmatter: { type: 'PBI' }, parentLink: 'Outside' });
+		const entries = vault.entries().filter((e) => e.file.path !== 'Outside.md');
+		const model = buildModel(vault.app, entries, settingsWith({ stateKey: 'status' }));
+		expect(model.byPath.get('Outside.md')?.outsideFilter).toBe(true);
+		const rows = releaseIndex(vault.app, model, KEYS, { stateKey: 'status', today: TODAY }).rows;
+
+		expect(row(rows, 'R.md').members.value).toBe(0);
+		expect(row(rows, 'R.md').done.value).toBe(0);
+	});
+
+	it('counts a Deliverable member done through its OWN workflow, never item.done', () => {
+		// The case `item.done` gets wrong. `item.done` is the REQUIREMENTS reading, off the
+		// plan's state key (`status` here, saying `Doing`) — a Deliverable's own workflow is
+		// bound to a DIFFERENT property (`docStatus`, saying `Done`). Watched failing with
+		// `item.done` in place of `ownWorkflowReading(item).done`: with the swap made, this
+		// assertion read `done.value` as `0` rather than `1`.
+		const vault = new FakeVault();
+		vault.addFile('R.md', { frontmatter: { type: 'Release' } });
+		vault.addFile('D.md', {
+			frontmatter: { type: 'Deliverable', release: '[[R]]', docStatus: 'Done', status: 'Doing' },
+		});
+		const settings = settingsWith({ stateKey: 'status', deliverableStateKey: 'docStatus' });
+		const rows = releaseIndex(vault.app, modelOf(vault, settings), KEYS, { stateKey: settings.stateKey, today: TODAY }).rows;
+
+		expect(row(rows, 'R.md').members.value).toBe(1);
+		expect(row(rows, 'R.md').done.value).toBe(1);
+	});
+
+	it('reports done as unconfigured without a state key OR without a membership key', () => {
+		const vault = new FakeVault();
+		vault.addFile('R.md', { frontmatter: { type: 'Release' } });
+		vault.addFile('A.md', { frontmatter: { type: 'PBI', release: '[[R]]', status: 'Done' } });
+		const model = modelOf(vault);
+
+		// No state key: nothing says what done MEANS, so the figure is absent rather than 0.
+		const noState = releaseIndex(vault.app, modelOf(vault, settingsWith({ stateKey: '' })), KEYS, {
+			stateKey: '',
+			today: TODAY,
+		});
+		expect(noState.rows[0].done.unconfigured).toBe(true);
+		// No membership key: a done count with no membership has nothing to count OVER.
+		const noMembership = releaseIndex(vault.app, model, { ...KEYS, membershipKey: '' }, { stateKey: 'status', today: TODAY });
+		expect(noMembership.rows[0].done.unconfigured).toBe(true);
+	});
+
 	it('cannot count members at all with the membership key unbound', () => {
 		const vault = new FakeVault();
 		vault.addFile('R.md', { frontmatter: { type: 'Release' } });
@@ -272,7 +385,7 @@ describe('the release index', () => {
 		expect(model.byPath.get('Outside.md')?.outsideFilter).toBe(true);
 		// It renders, it parents, and that is all — never a source of anything derived
 		// from the Base's results, a member count included.
-		expect(releaseIndex(vault.app, model, KEYS).rows[0].members.value).toBe(0);
+		expect(releaseIndex(vault.app, model, KEYS, { stateKey: '', today: TODAY }).rows[0].members.value).toBe(0);
 	});
 
 	it('refuses a membership property hand-written on a non-plan row', () => {
@@ -285,5 +398,123 @@ describe('the release index', () => {
 		const { rows, unresolved } = indexOf(vault);
 		expect(rows.find((r) => r.name === 'R')?.members.value).toBe(0);
 		expect(unresolved.map((i) => i.file.basename).sort()).toEqual(['I', 'M', 'R2', 'TC']);
+	});
+
+	it('reads the released date with the same three answers as the target', () => {
+		const vault = new FakeVault();
+		vault.addFile('R.md', { frontmatter: { type: 'Release', released: '2026-09-14' } });
+		vault.addFile('U.md', { frontmatter: { type: 'Release', released: ['a', 'b'] } });
+		vault.addFile('N.md', { frontmatter: { type: 'Release' } });
+		// A list of VALID dates, not just unparsable ones: `readDate` would unwrap this to
+		// its first element and parse a clean `2026-09-01`, so this is the case that pins
+		// `readTarget` (which refuses ANY array outright) rather than `readDate` — `['a',
+		// 'b']` above cannot tell the two readers apart, since both refuse it.
+		vault.addFile('L.md', { frontmatter: { type: 'Release', released: ['2026-09-01', '2026-10-01'] } });
+		// Blank is a REFUSAL here, per `readTarget`'s own docstring — unlike `readDate`
+		// alone, which trims and calls a blank string absent.
+		vault.addFile('B.md', { frontmatter: { type: 'Release', released: '   ' } });
+		const rows = indexOf(vault).rows;
+
+		expect(row(rows, 'R.md').released.value).toEqual({ year: 2026, month: 9, day: 14 });
+		expect(row(rows, 'U.md').released.invalid).toBe(true);
+		expect(row(rows, 'N.md').released.value).toBeNull();
+		expect(row(rows, 'N.md').released.invalid).toBe(false);
+		expect(row(rows, 'L.md').released).toEqual({ value: null, invalid: true, unconfigured: false });
+		expect(row(rows, 'B.md').released).toEqual({ value: null, invalid: true, unconfigured: false });
+	});
+
+	it('reports the released date as unconfigured when no key is bound', () => {
+		const vault = new FakeVault();
+		vault.addFile('R.md', { frontmatter: { type: 'Release', released: '2026-09-14' } });
+		const rows = releaseIndex(vault.app, modelOf(vault), { ...KEYS, releasedDateKey: '' }, { stateKey: 'status', today: TODAY }).rows;
+		expect(row(rows, 'R.md').released.unconfigured).toBe(true);
+	});
+
+	it('derives slip as released minus target in days, negative when early', () => {
+		const vault = new FakeVault();
+		vault.addFile('Late.md', { frontmatter: { type: 'Release', 'target-date': '2026-09-10', released: '2026-09-14' } });
+		vault.addFile('Early.md', { frontmatter: { type: 'Release', 'target-date': '2026-09-10', released: '2026-09-08' } });
+		vault.addFile('OnTime.md', { frontmatter: { type: 'Release', 'target-date': '2026-09-10', released: '2026-09-10' } });
+		vault.addFile('NoRelease.md', { frontmatter: { type: 'Release', 'target-date': '2026-09-10' } });
+		vault.addFile('NoTarget.md', { frontmatter: { type: 'Release', released: '2026-09-10' } });
+		const rows = indexOf(vault).rows;
+
+		expect(row(rows, 'Late.md').slip).toBe(4);
+		expect(row(rows, 'Early.md').slip).toBe(-2);
+		expect(row(rows, 'OnTime.md').slip).toBe(0);
+		// Null without EITHER date — never zero, which would read as "shipped on time".
+		expect(row(rows, 'NoRelease.md').slip).toBeNull();
+		expect(row(rows, 'NoTarget.md').slip).toBeNull();
+	});
+
+	it('is overdue when the target has passed and nothing shipped', () => {
+		const vault = new FakeVault();
+		vault.addFile('Past.md', { frontmatter: { type: 'Release', 'target-date': '2026-09-10' } });
+		vault.addFile('Future.md', { frontmatter: { type: 'Release', 'target-date': '2026-09-30' } });
+		vault.addFile('Today.md', { frontmatter: { type: 'Release', 'target-date': '2026-09-20' } });
+		vault.addFile('Shipped.md', {
+			frontmatter: { type: 'Release', 'target-date': '2026-09-10', released: '2026-09-12' },
+		});
+		vault.addFile('Undated.md', { frontmatter: { type: 'Release' } });
+		const rows = indexOf(vault).rows;
+
+		expect(row(rows, 'Past.md').overdue).toBe(true);
+		expect(row(rows, 'Future.md').overdue).toBe(false);
+		// The target date itself is not yet past.
+		expect(row(rows, 'Today.md').overdue).toBe(false);
+		// Shipped is never overdue, whatever its target — it is late, which `slip` says.
+		expect(row(rows, 'Shipped.md').overdue).toBe(false);
+		// No target is not a missed target.
+		expect(row(rows, 'Undated.md').overdue).toBe(false);
+	});
+
+	it('signs daysToTarget positive before the target and negative after, zero on the day', () => {
+		// Watched failing with the subtraction reversed (`daysBetween(target, today)`): the
+		// two dated rows swapped sign and this assertion caught it, which is the whole reason
+		// the sign is pinned by a test rather than left to the docstring alone.
+		const vault = new FakeVault();
+		vault.addFile('Future.md', { frontmatter: { type: 'Release', 'target-date': '2026-09-30' } });
+		vault.addFile('Past.md', { frontmatter: { type: 'Release', 'target-date': '2026-09-10' } });
+		vault.addFile('Today.md', { frontmatter: { type: 'Release', 'target-date': '2026-09-20' } });
+		vault.addFile('Undated.md', { frontmatter: { type: 'Release' } });
+		const rows = indexOf(vault).rows;
+
+		expect(row(rows, 'Future.md').daysToTarget).toBe(10);
+		expect(row(rows, 'Past.md').daysToTarget).toBe(-10);
+		expect(row(rows, 'Today.md').daysToTarget).toBe(0);
+		expect(row(rows, 'Undated.md').daysToTarget).toBeNull();
+	});
+
+	it('orders in flight before shipped, and each group its own way', () => {
+		const vault = new FakeVault();
+		vault.addFile('FlightB.md', { frontmatter: { type: 'Release', 'target-date': '2026-10-01' } });
+		vault.addFile('FlightA.md', { frontmatter: { type: 'Release', 'target-date': '2026-09-25' } });
+		vault.addFile('FlightNone.md', { frontmatter: { type: 'Release' } });
+		vault.addFile('ShipOld.md', {
+			frontmatter: { type: 'Release', 'target-date': '2026-07-01', released: '2026-07-03' },
+		});
+		vault.addFile('ShipNew.md', {
+			frontmatter: { type: 'Release', 'target-date': '2026-08-01', released: '2026-08-04' },
+		});
+		const paths = indexOf(vault).rows.map((r) => r.path);
+
+		expect(paths).toEqual([
+			// In flight, ascending by target, undated LAST WITHIN ITS GROUP.
+			'FlightA.md',
+			'FlightB.md',
+			'FlightNone.md',
+			// Shipped, DESCENDING by released date, so the most recent heads its own tail.
+			'ShipNew.md',
+			'ShipOld.md',
+		]);
+	});
+
+	it('does not reorder across repeated renders', () => {
+		const vault = new FakeVault();
+		vault.addFile('A.md', { frontmatter: { type: 'Release', 'target-date': '2026-09-25' } });
+		vault.addFile('B.md', { frontmatter: { type: 'Release', 'target-date': '2026-09-25' } });
+		const first = indexOf(vault).rows.map((r) => r.path);
+		const second = indexOf(vault).rows.map((r) => r.path);
+		expect(second).toEqual(first);
 	});
 });

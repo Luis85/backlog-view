@@ -3,6 +3,7 @@ import { t } from '../../i18n/t';
 import { BacklogModel, buildModel } from '../../domain/model';
 import { ReleaseSettings, resolveReleaseSettings } from '../../domain/releaseOptions';
 import { releaseIndex, releaseScope } from '../../domain/releases';
+import { todayCivil } from '../../domain/noteFields';
 import { resolveSettings } from '../../domain/settingsResolve';
 import { loadViewState, saveViewState } from '../../storage/viewStateStore';
 import { resolveViewIdentity } from '../../storage/viewIdentity';
@@ -194,19 +195,23 @@ export class ReleaseView extends BasesView {
 		// back as `parent` here, and the scope would go on nesting rows by a mapping the
 		// options screen says is off. Two resolvers disagreeing at the model boundary is
 		// the same defect as one view reading another's configuration.
-		this.model = buildModel(this.app, this.data.data, {
+		const backlogSettings = {
 			...resolveSettings(this.config),
 			typeKey: this.settings.typeKey,
 			parentKey: this.settings.parentKey,
 			orderKey: this.settings.orderKey,
-		});
+		};
+		this.model = buildModel(this.app, this.data.data, backlogSettings);
 		// Derived BEFORE the no-releases branch, and that order is the whole of the fix for a
 		// silent drop this view shipped with. A base with work items naming releases it does not
 		// hold is the case where EVERY membership value is unresolved — there is nothing for any
 		// of them to resolve to — so returning first reported the maximum-information state as
 		// "no releases" and hid all of it. [[The scope of a release as a tree]] 1b is what rules
 		// on that: such an item is reported among the unresolved "rather than silently dropped".
-		const index = releaseIndex(this.app, this.model, this.settings);
+		const index = releaseIndex(this.app, this.model, this.settings, {
+			stateKey: backlogSettings.stateKey,
+			today: todayCivil(),
+		});
 		if (this.model.releases.length === 0) {
 			// The SECOND entry point onto `renderNewRelease`'s one creation function — this
 			// branch returns before `renderIndex` ever runs, so the index's own control never

@@ -109,19 +109,20 @@ language, so nothing re-reads it. What must never enter the catalog is anything 
 writes, matches or persists — type names, state values, option keys, tags, file names. The
 test when it is not obvious: **ask what breaks if two people with different Obsidian
 languages open the same vault.** "One sees different words" is text; "one writes notes the
-other's view cannot read" is data. 630 keys are in it, counted two ways on the MERGED tree
-on 2026-08-24 and agreeing — an AST walk over the `as const` object's own properties, and a
-match-counting `grep -Po` over the key lines; `grep -c` would count LINES, which is one of
+other's view cannot read" is data. 655 keys are in it, counted three ways on the
+release-index branch on 2026-08-26 and all three agreeing — an AST walk over the `as const`
+object's own properties, an `Object.keys` over the BUNDLED catalog, and a match-counting
+`grep -Po` over the key lines; `grep -c` would count LINES, which is one of
 the three wrong numbers this epic has produced from an instrument that looked right, and
 some of these keys carry their value on the FOLLOWING line, which is exactly what such an
 instrument gets wrong. The two DISAGREEING would itself be a finding rather than a nuisance:
 a walk that reports its DISTINCT properties beside its total drops a duplicate key the text
 still shows, so the pair answers "how many" and "are any of them the same key twice" in one
-pass — 630 both ways on 2026-08-24. **A count is dated the moment
+pass — 655 total and 655 distinct on 2026-08-26. **A count is dated the moment
 it is written, and this paragraph has now been a merge conflict five times in one day** —
-550, 542, 553, 577, 556, 588, 591, 559 and 597 were each true of the branch that wrote them
-and of nothing else, and 630 is what the merged tree measures rather than what either side's
-arithmetic predicted. Re-measure on the merged tree rather than picking a side.
+550, 542, 553, 577, 556, 588, 591, 559, 597, 630 and 643 were each true of the branch that
+wrote them and of nothing else, and 655 is what THIS branch measures rather than what any
+side's arithmetic predicted. Re-measure on the merged tree rather than picking a side.
 `ui/`, `commands/`, `view/interactions/`, `view/estimation/`, the whole of `view/render/`,
 `view/writeGate.ts`, `view/cardMoves.ts`, `main.ts`, `domain/viewOptions.ts`, the whole of
 `storage/` and — since 2026-08-22 — `domain/estimationOptions.ts`, `domain/board.ts`,

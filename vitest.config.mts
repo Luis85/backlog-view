@@ -161,9 +161,22 @@ export default defineConfig({
 			// on the next merge. **Functions is left where it is** for the reason already
 			// stated: one fewer is 99.8734, under the floor it would be raised from, so
 			// headroom there is still a decrease.
+			// Raised again on 2026-08-26, with the release index's band and its two groups:
+			// this machine measured 9390/9490 statements, 5899/6177 branches, 2410/2412
+			// functions and 7802/7821 lines. Two move, both set under the ONE-FEWER figure by
+			// the headroom rule above — 9389 is 98.9357, so statements takes 98.93, and 5898
+			// is 95.4832, so branches takes 95.48. One fewer of each is exactly the
+			// cross-environment variance this comment already records (Ubuntu CI reporting one
+			// statement and one branch fewer than this machine), so that is the margin being
+			// bought rather than a round number.
+			// **Lines and functions both stay, and for the same arithmetic rather than for two
+			// reasons.** One fewer line is 99.7443, which floors to the 99.74 already standing
+			// — a raise that changes nothing is not a raise. One fewer function is 99.8756,
+			// under the 99.90 standing, so headroom there would again be a decrease, which is
+			// the exception this file has now stated three times.
 			thresholds: {
-				statements: 98.91,
-				branches: 95.42,
+				statements: 98.93,
+				branches: 95.48,
 				functions: 99.90,
 				lines: 99.74,
 			},

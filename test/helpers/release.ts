@@ -40,7 +40,18 @@ export function makeReleaseView(
 	return { view, config, containerEl };
 }
 
-/** Every key bound — what a fully configured vault looks like. */
+/**
+ * Every key bound — what a fully configured vault looks like. `stateProperty` and
+ * `releasedDateProperty` joined this on 2026-08-25, the band's own two options: without
+ * them `done` and `released` read as unconfigured on every row, which made a shipped band
+ * and a real progress bar both unreachable through this fixture (Task 7's Shipped
+ * heading among them). `stateProperty` points at the SAME key `releaseStatusProperty`
+ * does — `note.status` — because it names a different note's frontmatter: the release's
+ * own status chip reads a release note, and this reads a MEMBER's own workflow state, and
+ * vault authors commonly spell both `status`. `doneValues` is left unbound: the default
+ * list (`DEFAULT_DONE_VALUES`) already includes `Done`, which is the only done value any
+ * fixture in this file writes.
+ */
 export const RELEASE_CONFIG = {
 	typeProperty: 'note.type',
 	parentProperty: 'note.parent',
@@ -49,6 +60,8 @@ export const RELEASE_CONFIG = {
 	versionProperty: 'note.version',
 	targetDateProperty: 'note.target-date',
 	releaseStatusProperty: 'note.status',
+	stateProperty: 'note.status',
+	releasedDateProperty: 'note.released',
 };
 
 /** Three releases: two dated, one not — the index's ordering fixture. */

@@ -208,14 +208,28 @@ export async function createRelease(app: App, settings: ReleaseSettings, spec: N
 	// release missing the version somebody typed is a different lie, and the caller's
 	// `catch` already turns this into a notice plus the console line that names it.
 	//
+	// `releasedDateKey` is in this list too, though this function never WRITES it — it is
+	// `releaseIndex`'s read of a field this creator does not touch. Left out, a
+	// `releasedDateProperty` aliasing `targetDateKey` or `statusKey` would let this
+	// function create a release that reads as shipped the moment it is made: the target
+	// date or the status this call DOES write lands under the same key the index reads
+	// back as "released". That is a wrong reading rather than the corrupted note the other
+	// three keys risk, but the guard's subject is "two release properties name one key",
+	// and a read binding aliasing a written one is exactly that, so it joins the list
+	// rather than standing apart from it.
+	//
 	// The bind cannot produce this state any more (`runReleaseInit` seeds its collision
-	// set from all seven keys), but a configuration typed by hand still can, which is why
+	// set from all eight keys), but a configuration typed by hand still can, which is why
 	// the guard belongs at the write where every caller passes rather than at the one
 	// path that used to create it. Reported by review on PR #203, twice — once for the
 	// bind, and again because fixing the bind left this reachable.
-	const written = [settings.typeKey, settings.versionKey, settings.targetDateKey, settings.statusKey].filter(
-		(key) => key !== '',
-	);
+	const written = [
+		settings.typeKey,
+		settings.versionKey,
+		settings.targetDateKey,
+		settings.statusKey,
+		settings.releasedDateKey,
+	].filter((key) => key !== '');
 	if (new Set(written).size !== written.length) throw new Error('createRelease: two release properties name one key');
 	const folder = vaultFolder(settings.folder);
 	await ensureFolder(app, folder);

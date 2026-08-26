@@ -29,26 +29,63 @@ import { FileView } from '../helpers/obsidian-mock';
  * (the empty state, plus the unresolved memberships it must still report), `notype`
  * with the type property unbound (the configuration state), `nomembership` with the
  * membership property unbound — the index's absent-column note, and, with `?pick=`, the
- * scope screen's own unconfigured state. Anything else binds all seven keys.
+ * scope screen's own unconfigured state — and `noreleased` with the RELEASED-DATE property
+ * unbound. Anything else binds every key.
+ *
+ * **`noreleased` is the state every saved release view is in on upgrade**, and it exists
+ * because the OVERDUE treatment is the one thing on this screen with two lookable forms and
+ * the fixture could reach neither. Nobody has bound `releasedDateProperty` before this
+ * increment, so with it unbound: no release is ever painted overdue however far its target
+ * has passed, the Shipped group has nothing to hold and its heading is not drawn, no slip
+ * appears, and the note beneath the list names the missing binding. The DEFAULT variant is
+ * the other half of the pair — `Releases/0.5` there is overdue and painted — so the two
+ * pages side by side are the whole of what [[Every release in one list]] 2e and 2f say.
+ * Three rounds of this increment wanted this and reverted a temporary edit instead.
  */
-export type ReleaseConfigVariant = 'full' | 'empty' | 'notype' | 'nomembership';
+export type ReleaseConfigVariant = 'full' | 'empty' | 'notype' | 'nomembership' | 'noreleased';
 
 function configValues(variant: ReleaseConfigVariant): Record<string, unknown> {
 	if (variant === 'notype') return { ...RELEASE_CONFIG, typeProperty: '' };
 	if (variant === 'nomembership') return { ...RELEASE_CONFIG, membershipProperty: '' };
+	if (variant === 'noreleased') return { ...RELEASE_CONFIG, releasedDateProperty: '' };
 	return RELEASE_CONFIG;
 }
 
+/** The one release named rather than numbered — see the fixture's own note below.
+ *  Exported because the assertions name the band by its name, and two copies of a
+ *  60-character string are one edit from disagreeing. */
+export const LONG_NAME = 'Autumn platform release for billing and passwordless sign-in';
+
 /**
- * A release programme rather than the suite's own three-note fixtures: four releases so
- * the index has an order to show, members under an Epic that is NOT a member so the scope
- * screen draws a context row, and both kinds of unresolved membership so the note under
- * the list has something to count.
+ * A civil date `days` from today, for the targets that must stay in the FUTURE.
  *
- * The longest version and the longest status are deliberate. Fixed column widths were the
- * price of dropping the shared grid (`renderIndex.ts`'s `columnWidthVar`), so where a
- * figure now ellipsises is a visible change nobody has looked at — and this is the only
- * place it can be looked at.
+ * Derived rather than written down, and that is this fixture's own dated-failure fix: three
+ * literal near-future targets (2026-09-12 among them) made these assertions go red on a
+ * date with nothing changed — `0.8` becomes overdue on 2026-09-13, so the overdue test's
+ * "exactly one band" fails on `main` with no commit behind it, and `1.1`'s days-left cell
+ * is withheld once its target passes. `test/view/releaseIndex.test.ts` answers the same
+ * hazard with fixed far dates (`PAST = '2000-01-01'`, `FUTURE = '2099-01-01'`) because what
+ * it asserts is a SIGN; this fixture is the thing a browser is opened to LOOK at, where
+ * "26,700 days left" is not a plausible backlog, so the sign is fixed by construction
+ * instead. A PAST date needs no helper — it can never become a future one.
+ */
+function inDays(days: number): string {
+	return new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 10);
+}
+
+/**
+ * A release programme rather than the suite's own three-note fixtures: eight releases —
+ * six in flight (one OVERDUE, one carrying a date nobody can read) and two shipped, so the
+ * index has an order AND both group headings to show — members under an Epic that is NOT a member so the scope screen
+ * draws a context row, and both kinds of unresolved membership so the note under the list
+ * has something to count.
+ *
+ * The longest version, the longest status and the longest NAME are deliberate, and they
+ * are on one band: a band's line 1 shares its width between them, so which cell yields
+ * and which ellipsises is only visible where all three are long at once. The name went in
+ * on 2026-08-26, when a review measured that band at a 500px pane and found the name
+ * CLIPPED with no ellipsis and the version shrunk to 0px — a case the fixture had never
+ * been able to show, because every release in it was named after its own version.
  */
 function releaseHarnessVault(variant: ReleaseConfigVariant): FakeVault {
 	const vault = new FakeVault();
@@ -56,17 +93,58 @@ function releaseHarnessVault(variant: ReleaseConfigVariant): FakeVault {
 		const release = (path: string, frontmatter: Record<string, unknown>): void => {
 			vault.addFile(path, { frontmatter: { type: 'Release', ...frontmatter } });
 		};
-		release('Releases/0.8.md', { version: '0.8.0', 'target-date': '2026-09-12', status: 'In progress', order: 1 });
-		release('Releases/0.9.md', { version: '0.9.0', 'target-date': '2026-10-24', status: 'Planned', order: 2 });
-		release('Releases/1.0.md', {
+		// OVERDUE: a target already past with no released date, which is the only shape that
+		// paints the band's four red signals. The date is FIXED and past rather than derived
+		// from the clock, so the treatment is on the page whatever day it is opened — the
+		// days-overdue count is the one figure here that moves, and it moves upward.
+		release('Releases/0.5.md', { version: '0.5.0', 'target-date': '2026-05-04', status: 'In progress', order: 0 });
+		release('Releases/0.8.md', { version: '0.8.0', 'target-date': inDays(18), status: 'In progress', order: 1 });
+		release('Releases/0.9.md', { version: '0.9.0', 'target-date': inDays(60), status: 'Planned', order: 2 });
+		// The long band: a 60-character name, the longest version and the longest status on
+		// one line 1. A release named rather than numbered is an ordinary vault, and it is
+		// the only shape that asks which of the three cells yields first.
+		release(`Releases/${LONG_NAME}.md`, {
 			version: '1.0.0-rc.4+2026.08.23',
-			'target-date': '2026-12-05',
+			'target-date': inDays(101),
 			status: 'Waiting on the platform team',
 			order: 3,
+		});
+		// The one shape this increment fixed three times and nobody has ever LOOKED at: a
+		// date the view cannot read. It is the released one, beside a target that reads
+		// perfectly, because the fix those three rounds arrived at is that the two dates
+		// answer for THEMSELVES — the marker names which figure is unreadable and the target
+		// keeps its date and its days count beside it. The target's own marker is the same
+		// treatment in the same slot, so one release is enough to look at how it draws.
+		release('Releases/1.1.md', {
+			version: '1.1.0',
+			'target-date': inDays(142),
+			released: 'soon',
+			status: 'Planned',
+			order: 4,
 		});
 		// No version and no target date: the row [[Every release in one list]] 3a sorts after
 		// every dated one, and the only one whose target cell says so rather than sitting blank.
 		release('Releases/Someday.md', { status: 'Idea' });
+		// The SHIPPED tail, without which the browser draws one heading and the two-group
+		// layout is unlookable — the whole point of this increment. Both released dates are
+		// fixed and already past, so the group is stable whatever day the page is opened,
+		// unlike `overdue` and the days-remaining figure, which move with the clock.
+		// The two answers a slip can give, one each: 0.7 shipped a week LATE, 0.6 a week
+		// EARLY. Early is a real answer the band renders differently and no fixture had.
+		release('Releases/0.6.md', {
+			version: '0.6.0',
+			'target-date': '2026-03-16',
+			released: '2026-03-09',
+			status: 'Released',
+			order: 5,
+		});
+		release('Releases/0.7.md', {
+			version: '0.7.0',
+			'target-date': '2026-06-11',
+			released: '2026-06-18',
+			status: 'Released',
+			order: 6,
+		});
 	}
 
 	vault.addFile('Sign-up flow.md', { frontmatter: { type: 'Epic', order: 1 } });
@@ -83,7 +161,27 @@ function releaseHarnessVault(variant: ReleaseConfigVariant): FakeVault {
 		frontmatter: { type: 'Feature', parent: '[[Sign-up flow]]', order: 2, release: '[[0.9]]' },
 	});
 	vault.addFile('Billing.md', { frontmatter: { type: 'Epic', order: 2 } });
-	vault.addFile('Invoices.md', { frontmatter: { type: 'Feature', parent: '[[Billing]]', order: 1, release: '[[1.0]]' } });
+	vault.addFile('Invoices.md', {
+		frontmatter: { type: 'Feature', parent: '[[Billing]]', order: 1, release: `[[${LONG_NAME}]]` },
+	});
+	// One done member each, so a shipped band draws a FULL bar rather than "No items yet" —
+	// the one fill percentage no other release in this fixture reaches.
+	vault.addFile('Card payments.md', {
+		frontmatter: { type: 'Feature', parent: '[[Billing]]', order: 2, release: '[[0.7]]', status: 'Done' },
+	});
+	vault.addFile('Tax rates.md', {
+		frontmatter: { type: 'Feature', parent: '[[Billing]]', order: 3, release: '[[0.6]]', status: 'Done' },
+	});
+	// Two members for the overdue release, one of them done: an overdue band draws its bar in
+	// the error colour, and a bar needs a fill somewhere between empty and full to be looked
+	// at. "No items yet" draws no bar at all, so a memberless overdue release would show
+	// three of the four signals and hide the one this pair exists for.
+	vault.addFile('Audit log.md', {
+		frontmatter: { type: 'Feature', parent: '[[Billing]]', order: 4, release: '[[0.5]]', status: 'Done' },
+	});
+	vault.addFile('Retention policy.md', {
+		frontmatter: { type: 'Feature', parent: '[[Billing]]', order: 5, release: '[[0.5]]', status: 'Ready' },
+	});
 	// The two shapes the note under the list counts: a value naming no note at all, and a
 	// row the plan does not hold carrying the property by hand.
 	vault.addFile('Rotate the signing key.md', { frontmatter: { type: 'PBI', order: 3, release: '[[Gone]]' } });

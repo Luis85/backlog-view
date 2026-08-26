@@ -446,8 +446,22 @@ export const en = {
 		one: '{done} of {count} item done',
 		other: '{done} of {count} items done',
 	},
+	// ^ A THIRD surface for this same sentence since 2026-08-25: the release index's own
+	// band draws its progress line with it too (`release/renderIndex.ts`'s
+	// `progressPhrase`). It was tempting to mint a release-specific key with `{done}` and
+	// `{total}` placeholders instead — the brief for that increment proposed exactly that —
+	// and it would have been broken by construction: `t.ts`'s `Params<K>` derives a
+	// message's parameter names from its own placeholders, and `selectForm` picks the
+	// plural form off a parameter literally named `count`, so a key spelling `{total}`
+	// instead cannot even accept the count that would select "item" over "items" — it
+	// would render "1 of 1 items done" forever. This key already carries `{done}` and
+	// `{count}`, already plurals on the total exactly as the release band wants, and
+	// reusing it is the whole fix.
 
-	/** The rollup column's header — the progress bar's, and the plain count's. */
+	/** The rollup column's header — the progress bar's, and the plain count's. Reused as
+	 *  the release band's own absence label (`release/renderIndex.ts`'s `absentFigures`)
+	 *  when a release's membership property is bound but its state property is not: the
+	 *  same word for the same concept, on a second screen that also draws a progress bar. */
 	'column.rollupProgress': 'Progress',
 	'column.rollupItems': 'Items',
 
@@ -758,6 +772,9 @@ export const en = {
 	'release.option.version': 'Version property',
 	'release.option.targetDate': 'Target date property',
 	'release.option.status': 'Status property',
+	'release.option.state': 'Workflow state property',
+	'release.option.doneValues': 'States that count as done',
+	'release.option.releasedDate': 'Released date property',
 	'release.option.folder': 'Release folder',
 	'option.typeProperty': 'Item type property',
 	'option.hierarchyOnly': 'Ignore notes outside the hierarchy',
@@ -1562,17 +1579,74 @@ export const en = {
 	'release.empty.noReleases.hint':
 		'A release is a note typed Release, carrying a version and a target date. Create the first one here.',
 
-	/** The index grid's five column headings. Each names a COLUMN, so each is also what
-	 *  `release.index.absentColumns` lists when the column's key is unbound — one name per
-	 *  column, never a second spelling for the note beneath the grid. */
-	'release.index.column.name': 'Release',
+	/**
+	 * The two groups the index is drawn in, headed where a row's own `shipped` flag changes
+	 * (`release/renderIndex.ts`). In flight is everything without a released date; shipped
+	 * is everything with one — never a state VALUE, which is a vault's own vocabulary and
+	 * would not survive two people reading the same base in two languages.
+	 */
+	'release.index.group.inFlight': 'In flight',
+	'release.index.group.shipped': 'Shipped',
+	/**
+	 * A group heading: its label and how many releases are under it. **Deliberately not a
+	 * plural entry** — `{count}` here is a parenthesised figure beside a label, not a noun
+	 * inside a sentence, so no language has a form to select between; the group's own noun
+	 * is the label, which is already its own key. The pairing is a key rather than a
+	 * template at the call site for `release.index.rowFigure`'s reason: which side the
+	 * figure sits on, and what brackets it, is grammar.
+	 */
+	'release.index.group.count': '{label} ({count})',
+
+	/**
+	 * The index's own figure labels. Since the band replaced the column grid
+	 * (2026-08-25) these no longer head a visible column — they pair a figure with its
+	 * value in the accessible name (`release.index.rowFigure`) and, when a figure's key is
+	 * unbound, name it once beneath the list (`release.index.absentColumns`). One name per
+	 * figure, never a second spelling for either use.
+	 */
 	'release.index.column.version': 'Version',
 	'release.index.column.target': 'Target',
+	/** The shipped date's own label — reused both as the absence report's name for a
+	 *  cleared `releasedDateProperty` and, paired via `release.figureUnreadable`, when a
+	 *  BOUND released value cannot be read: the band's date position can show either date
+	 *  depending on the row, so an unreadable marker there has to say which one it is. */
+	'release.index.column.released': 'Released',
 	'release.index.column.status': 'Status',
 	'release.index.column.members': 'Items',
 	/** A target date the release note does not state — a legitimate answer, and a
 	 *  different one from {@link release.index.unreadable} below. */
 	'release.index.noTarget': 'No target date',
+	/**
+	 * The date position once a release has shipped — `release/renderIndex.ts`'s `drawWhen`,
+	 * in the same end-of-line-one slot the target date occupies while in flight. A LABELLED
+	 * sentence rather than a bare date: the two figures share one visual position across
+	 * different bands, so a reader scanning the column needs the word to tell a shipped
+	 * date from a target one — the target position carries no such prefix because it is
+	 * this screen's default reading of that slot.
+	 */
+	'release.index.releasedOn': 'Released {date}',
+	/** Line 1's days-remaining figure, drawn beside the target date while a release is in
+	 *  flight and NOT overdue — see `release.index.daysOverdue` for the sign that follows
+	 *  the target passing. Self-describing, so it is spoken bare rather than paired with a
+	 *  label. */
+	'release.index.daysLeft': { one: '{count} day left', other: '{count} days left' },
+	/** Line 2's note while a release is overdue — the fact itself, not a heuristic: see
+	 *  `domain/releases.ts`'s `overdue`. One of the four signals the design's "one
+	 *  condition" groups under `.pbl-rel-overdue`. */
+	'release.index.daysOverdue': { one: '{count} day overdue', other: '{count} days overdue' },
+	/** Line 2's note once a release has shipped, from `slip` (`domain/releases.ts`):
+	 *  positive. */
+	'release.index.daysLate': { one: '{count} day late', other: '{count} days late' },
+	/** `slip` negative — early is a real answer, not an error. */
+	'release.index.daysEarly': { one: '{count} day early', other: '{count} days early' },
+	/** `slip` exactly zero: shipped the day it was promised. */
+	'release.index.shippedOnTime': 'Shipped on time',
+	/**
+	 * A release with no members at all — `release/renderIndex.ts`'s `noMembersText`.
+	 * Drawn in place of the bar rather than beside a zero-length one, which would read as
+	 * failure where the answer is emptiness.
+	 */
+	'release.index.noMembers': 'No items yet',
 	/** A key that IS bound and holds something no reader will guess at: somebody wrote
 	 *  something there, which is neither an absent value nor an unbound key. */
 	'release.index.unreadable': 'Unreadable',
@@ -1582,16 +1656,15 @@ export const en = {
 	 * bare "Unreadable" twice on one header says nothing about which property to fix.
 	 */
 	'release.figureUnreadable': '{label} unreadable',
-	/** The unconfigured columns, named once beneath the grid. `{columns}` is an array, so
-	 *  it is joined by the catalog's own grammar rather than by a joiner at the call. */
-	'release.index.absentColumns': 'These columns are not shown because no property is bound: {columns}.',
-	/**
-	 * A row's members, SPOKEN. The column draws the bare number, which is right in a
-	 * column and ambiguous in a sentence — "0.8, 0.8.0, 12 September 2026, In progress, 4"
-	 * ends on a number naming nothing. Its own key rather than `count.items`, because a
-	 * release holds members and the two may not read alike in every locale.
-	 */
-	'count.releaseMembers': { one: '{count} member', other: '{count} members' },
+	/** The unconfigured figures, named once beneath the list. `{columns}` is an array, so
+	 *  it is joined by the catalog's own grammar rather than by a joiner at the call.
+	 *
+	 *  The sentence says FIGURES, not columns: the band replaced the column grid on
+	 *  2026-08-25 and this screen has no columns at all, while one of the names it lists —
+	 *  `Progress` — was a rollup and never a column even before that. The KEY keeps its
+	 *  historical name, which is internal and matches nothing on screen; the words a reader
+	 *  sees are the half that had to change. */
+	'release.index.absentColumns': 'These figures are not shown because no property is bound: {columns}.',
 	/**
 	 * One heading-and-figure pair inside a row's accessible name. A key rather than a
 	 * template at the call site: which side of the value the label sits on is grammar, and
@@ -1599,9 +1672,11 @@ export const en = {
 	 */
 	'release.index.rowFigure': '{label} {value}',
 	/**
-	 * What a row announces to a screen reader: its name, then every figure it drew, each
-	 * with the heading the eye gets from the column above it. `{figures}` is an array, so
-	 * the catalog joins it — see `release.index.absentColumns` for the same rule.
+	 * What a band announces to a screen reader: its name, then every figure it drew — a
+	 * label paired with an ambiguous value (version, target, status), or a self-describing
+	 * sentence spoken bare (the days figure, the progress phrase, the overdue/slip note).
+	 * `{figures}` is an array, so the catalog joins it — see `release.index.absentColumns`
+	 * for the same rule.
 	 */
 	'release.index.rowLabel': '{name}: {figures}',
 	/** The items whose membership value named no release this base holds. */

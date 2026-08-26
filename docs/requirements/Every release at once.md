@@ -32,9 +32,9 @@ view, like the mode, the focus level and the roadmap's axis, and for the stated 
 settings are saved on the view, working position on the device
 ([[Settings scoped to their view]]).
 
-**Every column is a figure another feature already defines, computed the same way.** Progress
-and commitment are [[The release summary]]'s and [[Capacity against commitment]]'s, over the
-membership [[What is in a release]] defines — one denominator, one predicate, one answer. A
+**Every figure on the list is one another feature already defines, computed the same way.**
+Progress and commitment are [[The release summary]]'s and [[Capacity against commitment]]'s,
+over the membership [[What is in a release]] defines — one denominator, one predicate, one answer. A
 row that computed its own would report a release differently depending on whether it was
 being listed or being read, which is the defect [[Trying a scope change]] already names about
 recomputing a figure a second way.
