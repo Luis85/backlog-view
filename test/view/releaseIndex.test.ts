@@ -56,6 +56,24 @@ describe('the release index', () => {
 		expect(view.pickedPath).toBe('0.9.md');
 	});
 
+	it('puts no flow content inside a band, whose content model is phrasing', () => {
+		// Asked at the FORBIDDEN THING rather than of the elements somebody remembered: a
+		// `<button>` may hold phrasing content only, so the check is that a band holds no
+		// `div` AT ALL — which covers an element added to the band next year without anyone
+		// editing this test. The grid this band replaced used spans for exactly this reason
+		// and said so; the sentence was lost with the grid and the band shipped four divs.
+		//
+		// Layout is not what this pins (jsdom computes none) — a span that is a flex item or
+		// is absolutely positioned is blockified, so the swap moved nothing, measured in
+		// headless Chromium at 500px. What it pins is the MARKUP being legal.
+		const { containerEl } = makeReleaseView(releaseVault(), RELEASE_CONFIG);
+		const bands = [...containerEl.querySelectorAll('.pbl-rel-band')];
+		expect(bands).toHaveLength(3);
+		for (const band of bands) expect(band.querySelectorAll('div')).toHaveLength(0);
+		// Both directions: a band that drew nothing holds no div either.
+		expect(containerEl.querySelectorAll('.pbl-rel-band .pbl-rel-line1')).toHaveLength(3);
+	});
+
 	it('names an unconfigured figure ONCE, and never blanks it per row', () => {
 		const { containerEl } = makeReleaseView(releaseVault(), { ...RELEASE_CONFIG, versionProperty: '' });
 		// Asserted BEFORE the absences, because every assertion below this one passes on a
@@ -254,6 +272,59 @@ describe('what turns a band red, and what a shipped one shows', () => {
 		// The label says WHICH date is unreadable — not the bare, ambiguous word the target
 		// branch uses, since this band could show either date.
 		expect(band.querySelector('.pbl-rel-unreadable')?.textContent).toContain('Released');
+	});
+
+	it('claims no release overdue while the released date is unbound, whatever the target says', () => {
+		// The same uncertainty the unreadable case above is refused for, with the figure
+		// ABSENT rather than malformed: with `releasedDateProperty` cleared the view has no
+		// way to know whether this release shipped, so the four overdue signals would be a
+		// wrong fact told with the confidence of a right one. Every saved release view in
+		// existence is in exactly this state on upgrade, since the binding is new.
+		const vault = new FakeVault();
+		vault.addFile('Late.md', { frontmatter: { type: 'Release', 'target-date': '2020-01-01' } });
+		const { containerEl } = makeReleaseView(vault, { ...RELEASE_CONFIG, releasedDateProperty: '' });
+		const band = containerEl.querySelector('.pbl-rel-band') as HTMLElement;
+
+		expect(band.classList.contains('pbl-rel-overdue')).toBe(false);
+		expect(band.querySelector('.pbl-rel-band-note')).toBeNull();
+		// Spoken as well as drawn: the accessible name is its own reading of the same rule
+		// (`speakWhen`/`noteText`), so a band silent on screen can still announce the fact.
+		expect(band.getAttribute('aria-label')).not.toContain('overdue');
+		// And no "days left" in its place — the target HAS passed, so a remaining-days
+		// count is negative and reads as an error whether or not the band is painted red.
+		expect(band.querySelector('.pbl-rel-days')).toBeNull();
+		expect(band.getAttribute('aria-label')).not.toContain('day left');
+		expect(band.getAttribute('aria-label')).not.toContain('days left');
+		// The date itself still draws — the target is readable and is the only thing this
+		// configuration can honestly say about when the release was due.
+		expect(band.querySelector('.pbl-rel-date')?.textContent).toContain('2020-01-01');
+	});
+
+	it('says a shipped release’s target is unreadable, rather than dropping the figure with the slip', () => {
+		// The same tri-state rule as the test above, in the direction the shipped branch
+		// LEFT: `drawWhen` returns at the released date, so a malformed `target-date` was
+		// never reached, the slip was null (it needs a target to subtract from) and NOTHING
+		// on the band said why — while `renderScope.ts` reports that same target as
+		// unreadable, so the two screens disagreed about one release.
+		const vault = new FakeVault();
+		vault.addFile('Shipped.md', { frontmatter: { type: 'Release', 'target-date': 'soon', released: '2026-06-18' } });
+		const { containerEl } = makeReleaseView(vault, RELEASE_CONFIG);
+		const band = containerEl.querySelector('.pbl-rel-band') as HTMLElement;
+
+		// The released date still leads — the figure that IS readable is not withheld
+		// because its neighbour is not.
+		expect(band.querySelector('.pbl-rel-date')?.textContent).toContain('2026-06-18');
+		expect(band.querySelector('.pbl-rel-unreadable')?.textContent).toBe(
+			en['release.figureUnreadable'].replace('{label}', en['release.index.column.target']),
+		);
+		// The LABELLED form, not the bare word: this band draws two dates, so which one is
+		// unreadable is the whole content of the message.
+		expect(band.querySelector('.pbl-rel-unreadable')?.textContent).toContain('Target');
+		// Spoken as well as drawn — two readings of one rule, so both have to carry it.
+		expect(band.getAttribute('aria-label')).toContain('Target unreadable');
+		// The slip is still absent, and that is correct: there is no target to measure one
+		// against. What changed is that the band now says why.
+		expect(band.querySelector('.pbl-rel-band-note')).toBeNull();
 	});
 
 	it('says a release shipped early, and on time, from the same slip', () => {

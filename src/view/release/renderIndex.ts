@@ -127,7 +127,22 @@ function drawStatus(line1: HTMLElement, row: ReleaseRow): void {
  * fix round 1) after review found target's own invalid case handled three lines below and
  * released's not handled at all — the same tri-state rule (`unconfigured`/`invalid`/a
  * value) applied to one figure and skipped on its neighbour.
+ *
+ * **The rule is that the tri-state answer holds for BOTH figures, in both directions** —
+ * not that a branch was added. The same defect arrived twice in this one function, once
+ * per direction: the in-flight path reported `target.invalid` and said nothing about
+ * `released` (fixed in Task 6 round 1), and the shipped path then reported `released` and
+ * returned past `target.invalid` (fixed 2026-08-26). Anything added here that reads one
+ * date has to answer for the other, or the third instance is whichever direction is left.
  */
+/** The labelled form, not `release.index.unreadable`'s bare word: a shipped band draws two
+ *  dates, so WHICH of them nobody can read is the whole content of the message — the
+ *  released date's own marker three lines above makes the same choice for the same reason.
+ *  One function so the drawn and the spoken readings cannot word it differently. */
+function unreadableTarget(): string {
+	return t('release.figureUnreadable', { label: t('release.index.column.target') });
+}
+
 function drawWhen(line1: HTMLElement, row: ReleaseRow): void {
 	const whenEl = line1.createSpan({ cls: 'pbl-rel-when' });
 	if (row.released.invalid) {
@@ -139,6 +154,16 @@ function drawWhen(line1: HTMLElement, row: ReleaseRow): void {
 	}
 	if (row.released.value !== null) {
 		whenEl.createSpan({ cls: 'pbl-rel-date', text: t('release.index.releasedOn', { date: formatCivil(row.released.value) }) });
+		// The TARGET's own tri-state answer, which this branch used to return past: a shipped
+		// release whose `target-date` is malformed drew the released date, no slip (there is
+		// no target to subtract from) and nothing saying why — while `renderScope.ts` reports
+		// that same target as unreadable, so two screens disagreed about one release. Fixed
+		// HERE rather than in `drawNote` because an unreadable DATE is reported where the
+		// dates are, which is the position both of this band's other invalid cases already
+		// take; explaining it in the slip's slot instead would make where a figure's
+		// readability is reported depend on whether the release has shipped. The slip stays
+		// absent and that is correct — this line is what accounts for it.
+		if (row.target.invalid) whenEl.createSpan({ cls: 'pbl-rel-unreadable', text: unreadableTarget() });
 		return;
 	}
 	// Unconfigured is silent here too, same rule as every other figure: named once beneath
@@ -153,12 +178,17 @@ function drawWhen(line1: HTMLElement, row: ReleaseRow): void {
 		return;
 	}
 	whenEl.createSpan({ cls: 'pbl-rel-date', text: formatCivil(row.target.value) });
-	// Not drawn while overdue: "18 days left" reads as an error at a negative count, and
-	// the overdue NOTE (see `drawNote`) is what states the fact instead — the "red date"
-	// and the note are two of the four overdue signals, and this is what keeps the date
-	// from carrying a second, contradictory one. `overdueVisible`, not `row.overdue`
-	// alone — see that function for why.
-	if (!overdueVisible(row) && row.daysToTarget !== null) {
+	// Not drawn once the target has passed: "18 days left" reads as an error at a negative
+	// count, and the overdue NOTE (see `drawNote`) is what states the fact instead where
+	// the band is painted at all.
+	//
+	// **`row.overdue`, deliberately NOT `overdueVisible`** — the one place on this band the
+	// two questions come apart, and they are different questions. `overdueVisible` asks
+	// whether to COMMIT to the red treatment; this asks whether a count of days REMAINING
+	// is arithmetic anyone can read, and a passed target makes it negative whatever the
+	// released binding says. Reading the paint question here drew "-2,428 days left" on
+	// exactly the rows the overdue refusal below was added to protect.
+	if (!row.overdue && row.daysToTarget !== null) {
 		whenEl.createSpan({ cls: 'pbl-rel-days', text: t('release.index.daysLeft', { count: row.daysToTarget }) });
 	}
 }
@@ -171,7 +201,11 @@ function speakWhen(row: ReleaseRow): string[] {
 	if (row.released.invalid) {
 		return [t('release.figureUnreadable', { label: t('release.index.column.released') })];
 	}
-	if (row.released.value !== null) return [t('release.index.releasedOn', { date: formatCivil(row.released.value) })];
+	if (row.released.value !== null) {
+		const shipped = [t('release.index.releasedOn', { date: formatCivil(row.released.value) })];
+		if (row.target.invalid) shipped.push(unreadableTarget());
+		return shipped;
+	}
 	if (row.target.unconfigured) return [];
 	const label = t('release.index.column.target');
 	const value = row.target.invalid
@@ -180,7 +214,9 @@ function speakWhen(row: ReleaseRow): string[] {
 			? t('release.index.noTarget')
 			: formatCivil(row.target.value);
 	const out = [t('release.index.rowFigure', { label, value })];
-	if (!overdueVisible(row) && !row.target.invalid && row.target.value !== null && row.daysToTarget !== null) {
+	// `row.overdue` rather than `overdueVisible`, the same split `drawWhen` states: this is
+	// the arithmetic question, not the paint one.
+	if (!row.overdue && !row.target.invalid && row.target.value !== null && row.daysToTarget !== null) {
 		out.push(t('release.index.daysLeft', { count: row.daysToTarget }));
 	}
 	return out;
@@ -232,12 +268,12 @@ function drawProgressLine(line2: HTMLElement, row: ReleaseRow): void {
 	if (phrase === null) return;
 	const total = row.members.value ?? 0;
 	const done = row.done.value ?? 0;
-	const barEl = line2.createDiv({ cls: 'pbl-rel-bar' });
+	const barEl = line2.createSpan({ cls: 'pbl-rel-bar' });
 	// Clamped rather than trusted: a done count ahead of its own denominator (a state
 	// property re-mapped after the fact, most likely) must not push the fill past the
 	// track it is drawn in.
 	const fill = Math.min(100, Math.round((done / total) * 100));
-	barEl.createDiv({ cls: 'pbl-rel-bar-fill' }).setCssProps({ '--pbl-rel-fill': `${fill}%` });
+	barEl.createSpan({ cls: 'pbl-rel-bar-fill' }).setCssProps({ '--pbl-rel-fill': `${fill}%` });
 	line2.createSpan({ cls: 'pbl-rel-progress', text: phrase });
 }
 
@@ -247,22 +283,31 @@ function drawProgressLine(line2: HTMLElement, row: ReleaseRow): void {
  *
  * `row.overdue` is a domain fact, computed purely from `target` and `shipped`
  * (`!shipped && target passed` — `domain/releases.ts`, Task 5), and it has no notion of
- * `released.invalid`: a released value this view cannot read reads as `shipped: false`
- * to the domain, which is a correct statement about what `released.value` holds and an
- * incomplete one about whether the release has shipped. Painting a release red as
- * definitely-not-shipped when the one figure that would say otherwise is unreadable is
- * worse than saying nothing — the reader would be told a wrong fact with the same
- * confidence as a right one.
+ * how `released` came to be null: a released value this view cannot read, and a released
+ * property nobody bound, BOTH read as `shipped: false` to the domain, which is a correct
+ * statement about what `released.value` holds and an incomplete one about whether the
+ * release has shipped. Painting a release red as definitely-not-shipped when the one
+ * figure that would say otherwise is unreadable is worse than saying nothing — the reader
+ * would be told a wrong fact with the same confidence as a right one.
+ *
+ * **`unconfigured` is that same case with the figure ABSENT rather than unreadable**, and
+ * it is the common one: `releasedDateProperty` is new, so every saved release view in
+ * existence is unconfigured until somebody binds it. The consequence is intended — with no
+ * released-date binding, NO release ever claims to be overdue — and it is the honest
+ * answer rather than a silence: {@link absentFigures} names the missing binding once
+ * beneath the list, so the reader is told why instead of being shown a colour the data
+ * cannot support.
  *
  * **A VIEW-layer refusal, not a domain question.** `overdue` still means exactly what
  * `domain/releases.ts` says it means; this function does not reinterpret it, and no
  * change to that module is needed or made. What changes here is only whether THIS
  * RENDER commits to the four-signal presentation — the same kind of decision `drawWhen`
  * already makes for `target.invalid` and `row.status.invalid` elsewhere in this file,
- * now extended to the one input `overdue` itself cannot see.
+ * now extended to the two inputs `overdue` itself cannot see. It does NOT govern the
+ * days-remaining figure, which is arithmetic rather than paint — see `drawWhen`.
  */
 function overdueVisible(row: ReleaseRow): boolean {
-	return row.overdue && !row.released.invalid;
+	return row.overdue && !row.released.invalid && !row.released.unconfigured;
 }
 
 /**
@@ -338,6 +383,17 @@ function drawBand(view: ReleaseView, bandsEl: HTMLElement, row: ReleaseRow): voi
 		// `aria-label` REPLACES the contents as the accessible name — see `bandLabel`.
 		attr: { type: 'button', 'data-path': row.path, 'aria-label': bandLabel(row) },
 	});
+	// **Every element inside the band is a `<span>`, and that is a constraint rather than a
+	// preference**: a `<button>`'s content model is PHRASING content, and a `<div>` is flow
+	// content, so a `div` here is illegal markup in the element the whole band is. The grid
+	// this band replaced said the same thing about its cells and the sentence was dropped
+	// with the grid; it is restated here because the next element added to a band is where
+	// it will be needed. Nothing is lost by it — a `span` that is a flex ITEM (both lines,
+	// both spacers, the bar) or is absolutely positioned (the bar's fill) is blockified by
+	// the layout it is in, so `display` is decided by the flex rules in `styles/release.css`
+	// and never by the element's own default. Measured identically in headless Chromium at
+	// 500px either way.
+	//
 	// One condition, four signals: this class is the ONLY thing that decides the leading
 	// rule, the red date, the red bar and the note's colour — grouped under it in the
 	// stylesheet so the four cannot drift apart. `overdueVisible`, not `row.overdue` alone
@@ -345,18 +401,18 @@ function drawBand(view: ReleaseView, bandsEl: HTMLElement, row: ReleaseRow): voi
 	// though the domain fact stays `true`.
 	if (overdueVisible(row)) bandEl.addClass('pbl-rel-overdue');
 
-	const line1 = bandEl.createDiv({ cls: 'pbl-rel-line1' });
+	const line1 = bandEl.createSpan({ cls: 'pbl-rel-line1' });
 	const nameEl = line1.createSpan({ cls: 'pbl-rel-name' });
 	drawIcon(nameEl.createSpan({ cls: 'pbl-rel-icon' }), 'package');
 	nameEl.createSpan({ text: row.name });
 	drawVersion(line1, row);
-	line1.createDiv({ cls: 'pbl-rel-spacer' });
+	line1.createSpan({ cls: 'pbl-rel-spacer' });
 	drawWhen(line1, row);
 	drawStatus(line1, row);
 
-	const line2 = bandEl.createDiv({ cls: 'pbl-rel-line2' });
+	const line2 = bandEl.createSpan({ cls: 'pbl-rel-line2' });
 	drawProgressLine(line2, row);
-	line2.createDiv({ cls: 'pbl-rel-spacer' });
+	line2.createSpan({ cls: 'pbl-rel-spacer' });
 	drawNote(line2, row);
 
 	bandEl.addEventListener('click', () => view.pick(row.path));
