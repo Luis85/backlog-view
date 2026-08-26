@@ -70,6 +70,30 @@
 	flex-direction: column;
 }
 
+/* One heading per group, drawn where `renderIndex.ts` sees the shipped flag change — a
+   label ABOVE a run of bands rather than a row in it, so it takes the plugin's own
+   section-label treatment (`.pbl-est-panel h4`) and none of a band's chrome. It is an
+   `h2` for the semantics only: Obsidian's own heading size, weight and block margins are
+   what a NOTE's h2 wants, and every one of them is restated here rather than inherited. */
+.pbl-rel-group {
+	margin-block: var(--size-4-4) var(--size-4-1);
+	/* The leading `3px` is the band's own reserved overdue rule (`border-inline-start`
+	   above), which a heading does not carry — without it every label sits 3px inside the
+	   names it heads. Logical, so it mirrors with the layout. */
+	margin-inline: calc(var(--size-4-1) + 3px) var(--size-4-2);
+	font-size: var(--font-ui-smaller);
+	font-weight: var(--font-medium);
+	color: var(--text-faint);
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+}
+
+/* The first heading opens the list, where the space above it is already the scroller's own
+   padding — the margin above the SECOND is what separates two groups. */
+.pbl-rel-group:first-child {
+	margin-block-start: var(--size-4-2);
+}
+
 /* Obsidian's bare `button` (0,0,1) sets `height: var(--input-height)` — 30px, one line's
    worth — plus `align-items: center` and `justify-content: center`, all meant for a
    single-line control. This class (0,1,0) beats it on every property it NAMES, but a

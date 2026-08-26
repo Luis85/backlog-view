@@ -17,9 +17,9 @@ import { renderNewRelease } from './newRelease';
  * **Nothing here re-sorts.** `releaseIndex` decided the order, the figures and the member
  * count, and this module draws what it was handed — the design's "one denominator, one
  * predicate, one answer", which is what stops a band and a release header disagreeing
- * about the same release. Grouping the bands into "In flight" / "Shipped" headings is a
- * later increment ([[Every release in one list]]); this module draws the flat, already
- * sorted list.
+ * about the same release. That covers the two GROUP headings as well: shipped-ness is the
+ * first key of that module's sort, so this one draws a heading where the flag changes and
+ * partitions, re-orders and re-reads nothing ({@link drawGroupHeading}).
  *
  * **Two gestures on this screen, and only one of them is view state.** Picking a release is;
  * `New release` (see {@link renderNewRelease}) creates a note and may bind this view's own
@@ -35,10 +35,38 @@ export function renderIndex(view: ReleaseView, index: ReleaseIndex): void {
 	const listEl = view.viewEl.createDiv({ cls: 'pbl-rel-list' });
 	const bandsEl = listEl.createDiv({ cls: 'pbl-rel-bands' });
 
-	for (const row of index.rows) drawBand(view, bandsEl, row);
+	// Counted ONCE, before the loop: each heading carries its own group's size, and a count
+	// taken at the heading would have to walk the rest of the list from there.
+	const shipped = index.rows.filter((row) => row.shipped).length;
+	// `null` rather than `false`, so the FIRST row draws its heading whichever group it is
+	// in — a list that opens shipped (nothing in flight) must not be headed "In flight".
+	let group: boolean | null = null;
+	for (const row of index.rows) {
+		if (row.shipped !== group) {
+			drawGroupHeading(bandsEl, row.shipped, row.shipped ? shipped : index.rows.length - shipped);
+			group = row.shipped;
+		}
+		drawBand(view, bandsEl, row);
+	}
 
 	drawAbsences(listEl, index.rows);
 	drawUnresolved(listEl, index);
+}
+
+/**
+ * One group heading, drawn at the row where the flag changed rather than over a partition
+ * of the list — see this module's own header. A heading holds no note: a plain `h2`, not a
+ * `<button>`, no `data-path`, and nothing that would put it in a tab order or under a
+ * selector that walks the bands.
+ *
+ * Emitting it at a row is also the whole of "a group with no releases draws no heading":
+ * there is no row to draw one at. It survives a list whose flag changed more than once
+ * without lying — it would head each run — but `releaseIndex` sorts on shipped-ness first,
+ * so on the order this screen is handed there are at most two.
+ */
+function drawGroupHeading(bandsEl: HTMLElement, shipped: boolean, count: number): void {
+	const label = shipped ? t('release.index.group.shipped') : t('release.index.group.inFlight');
+	bandsEl.createEl('h2', { cls: 'pbl-rel-group', text: t('release.index.group.count', { label, count }) });
 }
 
 /**

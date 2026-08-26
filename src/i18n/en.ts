@@ -1582,6 +1582,24 @@ export const en = {
 		'A release is a note typed Release, carrying a version and a target date. Create the first one here.',
 
 	/**
+	 * The two groups the index is drawn in, headed where a row's own `shipped` flag changes
+	 * (`release/renderIndex.ts`). In flight is everything without a released date; shipped
+	 * is everything with one — never a state VALUE, which is a vault's own vocabulary and
+	 * would not survive two people reading the same base in two languages.
+	 */
+	'release.index.group.inFlight': 'In flight',
+	'release.index.group.shipped': 'Shipped',
+	/**
+	 * A group heading: its label and how many releases are under it. **Deliberately not a
+	 * plural entry** — `{count}` here is a parenthesised figure beside a label, not a noun
+	 * inside a sentence, so no language has a form to select between; the group's own noun
+	 * is the label, which is already its own key. The pairing is a key rather than a
+	 * template at the call site for `release.index.rowFigure`'s reason: which side the
+	 * figure sits on, and what brackets it, is grammar.
+	 */
+	'release.index.group.count': '{label} ({count})',
+
+	/**
 	 * The index's own figure labels. Since the band replaced the column grid
 	 * (2026-08-25) these no longer head a visible column — they pair a figure with its
 	 * value in the accessible name (`release.index.rowFigure`) and, when a figure's key is

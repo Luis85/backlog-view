@@ -311,3 +311,72 @@ describe('what a band says, as opposed to what it shows', () => {
 		expect(label).toContain('Status In progress');
 	});
 });
+
+describe('the two groups and their headings', () => {
+	useViewHarness();
+
+	/** Two in flight, two shipped — `releaseIndex` sorts the shipped pair into their own
+	 *  tail (Task 5), so the flag changes exactly once down the list. */
+	function groupedVault(): FakeVault {
+		const vault = new FakeVault();
+		vault.addFile('Live.md', { frontmatter: { type: 'Release', 'target-date': '2026-12-01' } });
+		vault.addFile('Ship1.md', { frontmatter: { type: 'Release', 'target-date': '2026-07-01', released: '2026-07-02' } });
+		vault.addFile('Ship2.md', { frontmatter: { type: 'Release', 'target-date': '2026-06-01', released: '2026-06-02' } });
+		return vault;
+	}
+
+	function headings(containerEl: HTMLElement): string[] {
+		return [...containerEl.querySelectorAll('.pbl-rel-group')].map((el) => el.textContent ?? '');
+	}
+
+	it('heads each group where shipped-ness changes, with its own count', () => {
+		const { containerEl } = makeReleaseView(groupedVault(), RELEASE_CONFIG);
+
+		const texts = headings(containerEl);
+		expect(texts).toHaveLength(2);
+		expect(texts[0]).toContain(en['release.index.group.inFlight']);
+		expect(texts[1]).toContain(en['release.index.group.shipped']);
+		// Each count is its OWN group's size, never the list's three.
+		expect(texts[0]).toContain('1');
+		expect(texts[1]).toContain('2');
+	});
+
+	it('draws no heading for a group with no releases in it', () => {
+		// An empty "Shipped" label is a claim about a group that does not exist here. The
+		// heading falls at a ROW, so a group with no rows has nowhere to draw one.
+		const vault = new FakeVault();
+		vault.addFile('Live.md', { frontmatter: { type: 'Release', 'target-date': '2026-12-01' } });
+		const { containerEl } = makeReleaseView(vault, RELEASE_CONFIG);
+
+		const texts = headings(containerEl);
+		expect(texts).toHaveLength(1);
+		expect(texts[0]).toContain(en['release.index.group.inFlight']);
+	});
+
+	it('heads the shipped group alone when nothing is in flight', () => {
+		// The other end of the same rule: the FIRST row decides the first heading, so a
+		// list that opens shipped must not be headed "In flight".
+		const vault = new FakeVault();
+		vault.addFile('Ship1.md', { frontmatter: { type: 'Release', 'target-date': '2026-07-01', released: '2026-07-02' } });
+		const { containerEl } = makeReleaseView(vault, RELEASE_CONFIG);
+
+		expect(headings(containerEl)).toEqual([
+			en['release.index.group.count'].replace('{label}', en['release.index.group.shipped']).replace('{count}', '1'),
+		]);
+	});
+
+	it('keeps the heading out of the bands, and out of anything that walks them', () => {
+		// The heading holds no note: it is not a `<button>`, it carries no `data-path`, and
+		// nothing selecting `.pbl-rel-band` picks it up — so it is not a tab stop and never
+		// a target of the click that opens a release.
+		const { containerEl } = makeReleaseView(groupedVault(), RELEASE_CONFIG);
+
+		expect(containerEl.querySelectorAll('.pbl-rel-band')).toHaveLength(3);
+		for (const el of containerEl.querySelectorAll('.pbl-rel-group')) {
+			expect(el.tagName).not.toBe('BUTTON');
+			expect(el.hasAttribute('data-path')).toBe(false);
+			expect(el.hasAttribute('tabindex')).toBe(false);
+			expect(el.matches('.pbl-rel-band')).toBe(false);
+		}
+	});
+});
