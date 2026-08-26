@@ -103,123 +103,105 @@ function drawStatus(line1: HTMLElement, row: ReleaseRow): void {
 	chip.createSpan({ cls: 'pbl-state-text', text });
 }
 
-/**
- * The date position at the end of line 1 — target-with-days-remaining while in flight,
- * the RELEASED date once shipped.
- *
- * A shipped band shows `released` rather than `target`, and this is deliberate rather
- * than a fallback: [[Every release in one list]] 3a is what puts a release WITHOUT a
- * target after every dated one, and `released` is what the shipped group is sorted by
- * (descending) — a blank end-of-line there would leave the reader no way to explain the
- * order the same way an undated target would not. "Days remaining" has no meaning once a
- * release has shipped, so it drops with the target rather than being computed against it.
- *
- * `row.released.value !== null` is exactly `row.shipped` — `domain/releases.ts`'s own
- * definition — read directly here (rather than the boolean) so the branch narrows
- * `released.value` without an assertion.
- *
- * **`row.released.invalid` is checked FIRST, before either.** A malformed released value
- * is the one figure on this band where staying silent about it would actively mislead:
- * `shipped` is `released.value !== null`, so an unreadable released date reads as
- * `shipped: false` from the domain alone, and this row would otherwise fall straight into
- * the in-flight path below — showing a target's days-remaining and taking the full
- * overdue treatment for a release that may well have already shipped. Fixed here (Task 6
- * fix round 1) after review found target's own invalid case handled three lines below and
- * released's not handled at all — the same tri-state rule (`unconfigured`/`invalid`/a
- * value) applied to one figure and skipped on its neighbour.
- *
- * **The rule is that the tri-state answer holds for BOTH figures, in both directions** —
- * not that a branch was added. The same defect arrived twice in this one function, once
- * per direction: the in-flight path reported `target.invalid` and said nothing about
- * `released` (fixed in Task 6 round 1), and the shipped path then reported `released` and
- * returned past `target.invalid` (fixed 2026-08-26). Anything added here that reads one
- * date has to answer for the other, or the third instance is whichever direction is left.
- */
-/** The labelled form, not `release.index.unreadable`'s bare word: a shipped band draws two
- *  dates, so WHICH of them nobody can read is the whole content of the message — the
- *  released date's own marker three lines above makes the same choice for the same reason.
- *  One function so the drawn and the spoken readings cannot word it differently. */
+/** The labelled form, not `release.index.unreadable`'s bare word: this band's date position
+ *  can carry BOTH figures at once, so WHICH of them nobody can read is the whole content of
+ *  the message — `release.index.column.released`'s own catalog entry states that for this
+ *  slot. One function per figure so the drawn and the spoken readings cannot word it
+ *  differently. */
 function unreadableTarget(): string {
 	return t('release.figureUnreadable', { label: t('release.index.column.target') });
 }
 
+function unreadableReleased(): string {
+	return t('release.figureUnreadable', { label: t('release.index.column.released') });
+}
+
+/**
+ * The date position at the end of line 1: TWO figures — `released` and `target` — read from
+ * two independent properties, each answering for ITSELF.
+ *
+ * `released`: unreadable, say so; a date, show it; unconfigured or simply unset, silent.
+ * `target`: unconfigured, silent (the whole figure is named once beneath the list —
+ * {@link drawAbsences}); unreadable, say so; unset, "no target date"; a date, show it, with
+ * the days-remaining figure beside it.
+ *
+ * **One coupling, and it is the design's rather than an accident: a ship date supersedes the
+ * target's DATE.** [[Every release in one list]] 3a refuses two dates in one position, and
+ * the slip plus the released date reconstruct the target exactly. It supersedes the date
+ * READING and nothing else — the date itself, the "no target date" that stands in for one,
+ * and the days count that is arithmetic on it ("days remaining" has no meaning once a
+ * release has shipped). **The target's ERROR is not superseded**: whether a property can be
+ * READ does not depend on whether the release shipped, and `renderScope.ts` reports that
+ * same figure as unreadable either way, so suppressing it here made two screens disagree
+ * about one release.
+ *
+ * **Three review findings landed on this function, and every one of them was the STRUCTURE
+ * rather than a missing case.** The two figures used to be reported through a CHAIN of early
+ * returns, so each fix added a return that suppressed something else: an unreadable released
+ * value returned before the target was drawn at all — hiding a perfectly readable target,
+ * which is what places the row in the in-flight sort, since `released.invalid` leaves
+ * `shipped` false — and a readable one returned before the target's error. Two independent
+ * figures get two independent answers, with the one supersession above stated in the place
+ * it applies: anything added here that reads one date and RETURNS is the fourth instance.
+ * `test/view/releaseIndex.test.ts` asks the PRODUCT of the two figures' states rather than
+ * the cases somebody thought of, and asks it of the drawn and the spoken reading alike.
+ */
 function drawWhen(line1: HTMLElement, row: ReleaseRow): void {
 	const whenEl = line1.createSpan({ cls: 'pbl-rel-when' });
-	if (row.released.invalid) {
-		whenEl.createSpan({
-			cls: 'pbl-rel-unreadable',
-			text: t('release.figureUnreadable', { label: t('release.index.column.released') }),
-		});
-		return;
+	if (row.released.invalid) whenEl.createSpan({ cls: 'pbl-rel-unreadable', text: unreadableReleased() });
+	else if (row.released.value !== null) {
+		const text = t('release.index.releasedOn', { date: formatCivil(row.released.value) });
+		whenEl.createSpan({ cls: 'pbl-rel-date', text });
 	}
-	if (row.released.value !== null) {
-		whenEl.createSpan({ cls: 'pbl-rel-date', text: t('release.index.releasedOn', { date: formatCivil(row.released.value) }) });
-		// The TARGET's own tri-state answer, which this branch used to return past: a shipped
-		// release whose `target-date` is malformed drew the released date, no slip (there is
-		// no target to subtract from) and nothing saying why — while `renderScope.ts` reports
-		// that same target as unreadable, so two screens disagreed about one release. Fixed
-		// HERE rather than in `drawNote` because an unreadable DATE is reported where the
-		// dates are, which is the position both of this band's other invalid cases already
-		// take; explaining it in the slip's slot instead would make where a figure's
-		// readability is reported depend on whether the release has shipped. The slip stays
-		// absent and that is correct — this line is what accounts for it.
-		if (row.target.invalid) whenEl.createSpan({ cls: 'pbl-rel-unreadable', text: unreadableTarget() });
-		return;
-	}
-	// Unconfigured is silent here too, same rule as every other figure: named once beneath
-	// the list rather than blank on every row.
 	if (row.target.unconfigured) return;
 	if (row.target.invalid) {
-		whenEl.createSpan({ cls: 'pbl-rel-unreadable', text: t('release.index.unreadable') });
+		whenEl.createSpan({ cls: 'pbl-rel-unreadable', text: unreadableTarget() });
 		return;
 	}
+	// The supersession, and it sits AFTER the error above rather than ahead of it.
+	if (row.released.value !== null) return;
 	if (row.target.value === null) {
 		whenEl.createSpan({ cls: 'pbl-rel-undated', text: t('release.index.noTarget') });
 		return;
 	}
 	whenEl.createSpan({ cls: 'pbl-rel-date', text: formatCivil(row.target.value) });
 	// Not drawn once the target has passed: "18 days left" reads as an error at a negative
-	// count, and the overdue NOTE (see `drawNote`) is what states the fact instead where
-	// the band is painted at all.
+	// count, and the overdue NOTE (see `drawNote`) is what states the fact instead where the
+	// band is painted at all.
 	//
 	// **`row.overdue`, deliberately NOT `overdueVisible`** — the one place on this band the
 	// two questions come apart, and they are different questions. `overdueVisible` asks
-	// whether to COMMIT to the red treatment; this asks whether a count of days REMAINING
-	// is arithmetic anyone can read, and a passed target makes it negative whatever the
-	// released binding says. Reading the paint question here drew "-2,428 days left" on
-	// exactly the rows the overdue refusal below was added to protect.
+	// whether to COMMIT to the red treatment; this asks whether a count of days REMAINING is
+	// arithmetic anyone can read, and a passed target makes it negative whatever the released
+	// binding says. Reading the paint question here drew "-2,428 days left" on exactly the
+	// rows the overdue refusal was added to protect.
 	if (!row.overdue && row.daysToTarget !== null) {
 		whenEl.createSpan({ cls: 'pbl-rel-days', text: t('release.index.daysLeft', { count: row.daysToTarget }) });
 	}
 }
 
-/** {@link drawWhen}'s own text, spoken — kept as a second reading of the same rule rather
- *  than derived from the DOM, `columnSpecs`' own draw/speak split for the reason stated
- *  there: an empty target cell is silence, an unset one is a sentence, and only one of the
- *  two has a DOM to read at all. */
+/** {@link drawWhen}'s own text, spoken — the same two independent figures and the same one
+ *  supersession, kept as a second reading of that rule rather than derived from the DOM,
+ *  `columnSpecs`' own draw/speak split for the reason stated there: an empty target cell is
+ *  silence, an unset one is a sentence, and only one of the two has a DOM to read at all.
+ *  The wording is shared through {@link unreadableTarget} and {@link unreadableReleased};
+ *  the SHAPE is not, so a branch added to either function is owed to the other. */
 function speakWhen(row: ReleaseRow): string[] {
-	if (row.released.invalid) {
-		return [t('release.figureUnreadable', { label: t('release.index.column.released') })];
+	const spoken: string[] = [];
+	if (row.released.invalid) spoken.push(unreadableReleased());
+	else if (row.released.value !== null) {
+		spoken.push(t('release.index.releasedOn', { date: formatCivil(row.released.value) }));
 	}
-	if (row.released.value !== null) {
-		const shipped = [t('release.index.releasedOn', { date: formatCivil(row.released.value) })];
-		if (row.target.invalid) shipped.push(unreadableTarget());
-		return shipped;
-	}
-	if (row.target.unconfigured) return [];
+	if (row.target.unconfigured) return spoken;
+	if (row.target.invalid) return [...spoken, unreadableTarget()];
+	if (row.released.value !== null) return spoken;
 	const label = t('release.index.column.target');
-	const value = row.target.invalid
-		? t('release.index.unreadable')
-		: row.target.value === null
-			? t('release.index.noTarget')
-			: formatCivil(row.target.value);
-	const out = [t('release.index.rowFigure', { label, value })];
+	const value = row.target.value === null ? t('release.index.noTarget') : formatCivil(row.target.value);
+	spoken.push(t('release.index.rowFigure', { label, value }));
 	// `row.overdue` rather than `overdueVisible`, the same split `drawWhen` states: this is
 	// the arithmetic question, not the paint one.
-	if (!row.overdue && !row.target.invalid && row.target.value !== null && row.daysToTarget !== null) {
-		out.push(t('release.index.daysLeft', { count: row.daysToTarget }));
-	}
-	return out;
+	if (!row.overdue && row.daysToTarget !== null) spoken.push(t('release.index.daysLeft', { count: row.daysToTarget }));
+	return spoken;
 }
 
 /**

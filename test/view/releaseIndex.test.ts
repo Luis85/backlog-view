@@ -269,8 +269,8 @@ describe('what turns a band red, and what a shipped one shows', () => {
 		expect(band.querySelector('.pbl-rel-unreadable')?.textContent).toBe(
 			en['release.figureUnreadable'].replace('{label}', en['release.index.column.released']),
 		);
-		// The label says WHICH date is unreadable — not the bare, ambiguous word the target
-		// branch uses, since this band could show either date.
+		// The label says WHICH date is unreadable, since this band's date position can carry
+		// both figures at once — the target's own marker is labelled for the same reason.
 		expect(band.querySelector('.pbl-rel-unreadable')?.textContent).toContain('Released');
 	});
 
@@ -450,4 +450,162 @@ describe('the two groups and their headings', () => {
 			expect(el.matches('.pbl-rel-band')).toBe(false);
 		}
 	});
+});
+
+/**
+ * The date position at the end of line 1, asked as the PRODUCT of the two figures it
+ * reports rather than as the cases somebody thought of.
+ *
+ * `released` and `target` are independent readings of independent properties, and three
+ * separate review findings have landed on the one function that draws them — each fixed by
+ * adding a branch, each new branch suppressing something else. Three single-case tests
+ * existed and the fourth combination still shipped broken, which is this repository's own
+ * rule about a category invariant: check it at the forbidden thing, never by listing the
+ * places. So every cell below is a combination, and every cell asserts BOTH readings — what
+ * the band draws and what it says — because the two are deliberately written as two
+ * statements of one rule and so can drift apart.
+ */
+describe('the date position, over the product of both figures', () => {
+	useViewHarness();
+
+	const SHIP = '2026-06-18';
+	/** Far enough either side of any real "today" this suite runs under that the sign of
+	 *  `daysToTarget` is fixed: the view reads a real clock (`todayCivil()`), so a near date
+	 *  would make a cell's answer depend on the day it is run. */
+	const PAST = '2000-01-01';
+	const FUTURE = '2099-01-01';
+	/** The count is arithmetic against that clock, so the drawn figure is reduced to its
+	 *  SENTENCE — the number itself is `release.index.daysLeft`'s own business. */
+	const DAYS = 'days left';
+
+	/**
+	 * Every sentence this position can carry, spoken. A cell names what it says; everything
+	 * else here must be ABSENT from its accessible name, which is what makes a cell an
+	 * assertion in both directions rather than a `toContain` a louder band would also pass.
+	 */
+	const VOCABULARY = [
+		'Released unreadable',
+		`Released ${SHIP}`,
+		'Target unreadable',
+		'No target date',
+		`Target ${PAST}`,
+		`Target ${FUTURE}`,
+		DAYS,
+	];
+
+	interface Cell {
+		released: 'unbound' | 'unreadable' | 'shipped' | 'unset';
+		target: 'unbound' | 'unreadable' | 'unset' | 'past' | 'future';
+		/** What the position DRAWS, in order — the whole of it, so nothing extra may appear. */
+		drawn: string[];
+		/** What it SAYS. Every other entry in `VOCABULARY` must not be in the name. */
+		spoken: string[];
+		/** Present exactly where a figure with something to report is deliberately silent. */
+		why?: string;
+	}
+
+	const SUPERSEDED = 'Shipped: the ship date has taken the date position, and the days count is arithmetic on the date it replaced.';
+
+	const CELLS: Cell[] = [
+		{ released: 'unbound', target: 'unbound', drawn: [], spoken: [] },
+		{ released: 'unbound', target: 'unreadable', drawn: ['Target unreadable'], spoken: ['Target unreadable'] },
+		{ released: 'unbound', target: 'unset', drawn: ['No target date'], spoken: ['No target date'] },
+		{ released: 'unbound', target: 'past', drawn: [PAST], spoken: [`Target ${PAST}`] },
+		{ released: 'unbound', target: 'future', drawn: [FUTURE, DAYS], spoken: [`Target ${FUTURE}`, DAYS] },
+
+		{ released: 'unreadable', target: 'unbound', drawn: ['Released unreadable'], spoken: ['Released unreadable'] },
+		{
+			released: 'unreadable',
+			target: 'unreadable',
+			drawn: ['Released unreadable', 'Target unreadable'],
+			spoken: ['Released unreadable', 'Target unreadable'],
+		},
+		{
+			released: 'unreadable',
+			target: 'unset',
+			drawn: ['Released unreadable', 'No target date'],
+			spoken: ['Released unreadable', 'No target date'],
+		},
+		{
+			released: 'unreadable',
+			target: 'past',
+			drawn: ['Released unreadable', PAST],
+			spoken: ['Released unreadable', `Target ${PAST}`],
+		},
+		{
+			released: 'unreadable',
+			target: 'future',
+			drawn: ['Released unreadable', FUTURE, DAYS],
+			spoken: ['Released unreadable', `Target ${FUTURE}`, DAYS],
+		},
+
+		{ released: 'shipped', target: 'unbound', drawn: [`Released ${SHIP}`], spoken: [`Released ${SHIP}`] },
+		{
+			released: 'shipped',
+			target: 'unreadable',
+			drawn: [`Released ${SHIP}`, 'Target unreadable'],
+			spoken: [`Released ${SHIP}`, 'Target unreadable'],
+		},
+		{ released: 'shipped', target: 'unset', drawn: [`Released ${SHIP}`], spoken: [`Released ${SHIP}`], why: SUPERSEDED },
+		{ released: 'shipped', target: 'past', drawn: [`Released ${SHIP}`], spoken: [`Released ${SHIP}`], why: SUPERSEDED },
+		{ released: 'shipped', target: 'future', drawn: [`Released ${SHIP}`], spoken: [`Released ${SHIP}`], why: SUPERSEDED },
+
+		{ released: 'unset', target: 'unbound', drawn: [], spoken: [] },
+		{ released: 'unset', target: 'unreadable', drawn: ['Target unreadable'], spoken: ['Target unreadable'] },
+		{ released: 'unset', target: 'unset', drawn: ['No target date'], spoken: ['No target date'] },
+		{ released: 'unset', target: 'past', drawn: [PAST], spoken: [`Target ${PAST}`] },
+		{ released: 'unset', target: 'future', drawn: [FUTURE, DAYS], spoken: [`Target ${FUTURE}`, DAYS] },
+	];
+
+	/** One release carrying exactly this cell's two values, under exactly its two bindings —
+	 *  "unbound" is a CONFIGURATION state and "unset" a note one, which is the pair of
+	 *  absences `ReleaseFigure` exists to keep apart. */
+	function bandFor(cell: Cell): HTMLElement {
+		const vault = new FakeVault();
+		const frontmatter: Record<string, unknown> = { type: 'Release' };
+		if (cell.released === 'unreadable') frontmatter.released = 'soon';
+		if (cell.released === 'shipped') frontmatter.released = SHIP;
+		if (cell.target === 'unreadable') frontmatter['target-date'] = 'soon';
+		if (cell.target === 'past') frontmatter['target-date'] = PAST;
+		if (cell.target === 'future') frontmatter['target-date'] = FUTURE;
+		vault.addFile('R.md', { frontmatter });
+		const config = { ...RELEASE_CONFIG };
+		if (cell.released === 'unbound') config.releasedDateProperty = '';
+		if (cell.target === 'unbound') config.targetDateProperty = '';
+		const { containerEl } = makeReleaseView(vault, config);
+		return containerEl.querySelector('.pbl-rel-band') as HTMLElement;
+	}
+
+	function drawnParts(band: HTMLElement): string[] {
+		const whenEl = band.querySelector('.pbl-rel-when') as HTMLElement;
+		return [...whenEl.children].map((el) => (el.textContent ?? '').replace(/^[\d,]+ days? /, 'days '));
+	}
+
+	it('asks the whole product, not a list of remembered cases', () => {
+		// The dimensions themselves: four answers for `released`, five for `target`, every
+		// pairing present exactly once. A cell dropped from the table below would otherwise
+		// leave the suite looking complete.
+		expect(CELLS).toHaveLength(4 * 5);
+		expect(new Set(CELLS.map((cell) => `${cell.released}|${cell.target}`)).size).toBe(20);
+	});
+
+	it('supersedes a figure only where the design says so, and says why in the table', () => {
+		// The one coupling: a ship date takes the date position. Asked of the whole table
+		// rather than of the three cells — a `why` appearing anywhere else is a suppression
+		// nobody decided, which is exactly how the three findings arrived.
+		for (const cell of CELLS) {
+			const supersedes = cell.released === 'shipped' && ['unset', 'past', 'future'].includes(cell.target);
+			expect(Boolean(cell.why), `${cell.released} × ${cell.target}`).toBe(supersedes);
+		}
+	});
+
+	for (const cell of CELLS) {
+		it(`released ${cell.released} × target ${cell.target}`, () => {
+			const band = bandFor(cell);
+			expect(drawnParts(band)).toEqual(cell.drawn);
+			const label = band.getAttribute('aria-label') ?? '';
+			for (const phrase of cell.spoken) expect(label).toContain(phrase);
+			for (const phrase of VOCABULARY) if (!cell.spoken.includes(phrase)) expect(label).not.toContain(phrase);
+		});
+	}
 });
