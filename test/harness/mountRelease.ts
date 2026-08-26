@@ -40,10 +40,11 @@ function configValues(variant: ReleaseConfigVariant): Record<string, unknown> {
 }
 
 /**
- * A release programme rather than the suite's own three-note fixtures: four releases so
- * the index has an order to show, members under an Epic that is NOT a member so the scope
- * screen draws a context row, and both kinds of unresolved membership so the note under
- * the list has something to count.
+ * A release programme rather than the suite's own three-note fixtures: six releases —
+ * four in flight and two shipped, so the index has an order AND both group headings to
+ * show — members under an Epic that is NOT a member so the scope screen draws a context
+ * row, and both kinds of unresolved membership so the note under the list has something
+ * to count.
  *
  * The longest version and the longest status are deliberate. Fixed column widths were the
  * price of dropping the shared grid (`renderIndex.ts`'s `columnWidthVar`), so where a
@@ -67,6 +68,26 @@ function releaseHarnessVault(variant: ReleaseConfigVariant): FakeVault {
 		// No version and no target date: the row [[Every release in one list]] 3a sorts after
 		// every dated one, and the only one whose target cell says so rather than sitting blank.
 		release('Releases/Someday.md', { status: 'Idea' });
+		// The SHIPPED tail, without which the browser draws one heading and the two-group
+		// layout is unlookable — the whole point of this increment. Both released dates are
+		// fixed and already past, so the group is stable whatever day the page is opened,
+		// unlike `overdue` and the days-remaining figure, which move with the clock.
+		// The two answers a slip can give, one each: 0.7 shipped a week LATE, 0.6 a week
+		// EARLY. Early is a real answer the band renders differently and no fixture had.
+		release('Releases/0.6.md', {
+			version: '0.6.0',
+			'target-date': '2026-03-16',
+			released: '2026-03-09',
+			status: 'Released',
+			order: 5,
+		});
+		release('Releases/0.7.md', {
+			version: '0.7.0',
+			'target-date': '2026-06-11',
+			released: '2026-06-18',
+			status: 'Released',
+			order: 6,
+		});
 	}
 
 	vault.addFile('Sign-up flow.md', { frontmatter: { type: 'Epic', order: 1 } });
@@ -84,6 +105,14 @@ function releaseHarnessVault(variant: ReleaseConfigVariant): FakeVault {
 	});
 	vault.addFile('Billing.md', { frontmatter: { type: 'Epic', order: 2 } });
 	vault.addFile('Invoices.md', { frontmatter: { type: 'Feature', parent: '[[Billing]]', order: 1, release: '[[1.0]]' } });
+	// One done member each, so a shipped band draws a FULL bar rather than "No items yet" —
+	// the one fill percentage no other release in this fixture reaches.
+	vault.addFile('Card payments.md', {
+		frontmatter: { type: 'Feature', parent: '[[Billing]]', order: 2, release: '[[0.7]]', status: 'Done' },
+	});
+	vault.addFile('Tax rates.md', {
+		frontmatter: { type: 'Feature', parent: '[[Billing]]', order: 3, release: '[[0.6]]', status: 'Done' },
+	});
 	// The two shapes the note under the list counts: a value naming no note at all, and a
 	// row the plan does not hold carrying the property by hand.
 	vault.addFile('Rotate the signing key.md', { frontmatter: { type: 'PBI', order: 3, release: '[[Gone]]' } });
