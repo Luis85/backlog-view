@@ -224,6 +224,21 @@ about a width.
   578.7 at rest, at a 60px scroll and at the band's end, with the search box inside the band at
   all three. The padding is the open band's alone, for the foot gutter's reason — unscoped it put
   the shut band at 37px and its title 13px down, against 34px and 7.5px. Asked for 2026-08-26.
+- **1l — the band already had another sticky thing, and it pinned OVER the controls.** The
+  compact-row layout's type headers are sticky at the band's content edge, which is exactly where
+  the pinned row is, with a `z-index` above it — so the type name took the paint AND the clicks
+  off the sort, the filter and the search, on both axes (`elementFromPoint` in the middle of the
+  controls returned the group header; it returns the search box now). Answered at the STACK
+  rather than at the one rule that broke: the band publishes where its head docks and how tall it
+  is, and anything that must sit beneath reads the pair. A number written beside it would be
+  right until the row's height moved, which it does — the arrangement below the axis carries 1k's
+  padding and is 8px taller. (Codex, PR #205.)
+- **1m — the control row gives its own room up.** It does not any more. The band is
+  height-constrained, so the header was a shrinkable flex item collapsing to its `min-height`
+  while 1k's padding went on pushing the controls down: measured, a 24px search box in a 24px row,
+  starting 4px past its foot and drawn OUTSIDE the opaque background that is meant to hide the
+  cards behind it. Found while fixing 1l rather than reported — the two are one question about
+  what a pinned row is, and neither is visible until the band is both scrolled and full.
 - **2f — the band is taller than its cards, and the grip is not at its foot.** It is now.
   `position: sticky` holds an element inside its scrollport when scrolling would carry it
   away and does nothing otherwise, so a band with a picked height and less content than that
@@ -275,6 +290,9 @@ about a width.
 - The header stays on screen for the whole scroll of the band, on every arrangement, with its
   sort, type filter and search reachable at the band's end — and nothing is drawn through it or
   between it and the strip above it.
+- Nothing else in the band is ever pinned over that row: what stacks beneath it takes its offset
+  from the head the band publishes, so a click in the middle of the controls reaches a control.
+- The row keeps its own height whatever the band's is, so no control it holds is drawn outside it.
 - Past the point where the axis is at its own floor the edge no longer follows the pointer,
   on either arrangement of the grip — the height still moves, and 1h is what states the
   limit rather than a promise the layout cannot keep.

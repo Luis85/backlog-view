@@ -9,6 +9,33 @@
    those files state. Nothing here reaches for that, and a rule that did — an `overflow`
    on `.pbl-shelf`, say — would put back the unreachable region `roadmap.css` forbids. */
 
+/* **The pinned head, stated once: where the controls row docks, and how much of the band it
+   takes once it is there.** Everything that has to stack BENEATH it reads this pair rather than
+   restating the arithmetic — `shelfList.css`'s own sticky type headers are the case that found
+   this rule, having pinned at `top: 0` straight over the sort, the filter and the search, with a
+   `z-index` above them so the clicks landed on the type name (Codex, PR #205; `elementFromPoint`
+   in the middle of the controls returned `.pbl-shelf-group-header` on both axes). A second
+   sticky thing inside this band is not a mistake to be forbidden — it is a thing that needs to
+   know where the head ends, and now it can ask.
+
+   The HEIGHT is a token rather than a measurement because the row is one: `min-height` reserves
+   exactly this whether the band is open or shut, which is the rule stated below. The head gutter
+   the strip negates is in the OFFSET, so the two together are the row's bottom edge on either
+   arrangement, and nothing beneath has to know which one is drawing. */
+.pbl-shelf {
+	--pbl-shelf-head-top: calc(-1 * var(--size-4-1));
+	--pbl-shelf-head: var(--size-4-6);
+}
+
+/* Below the axis the row docks under the strip instead of over the border, and carries the air
+   between them as its own padding — so the head is that much taller and everything beneath it
+   moves by the same amount. Scoped exactly as the padding is (`shelf.css`'s `:not()` pair): a
+   collapsed band draws no strip, so it has neither the offset nor the height. */
+.pbl-shelf-below:not(.pbl-shelf-collapsed):not(.pbl-shelf-empty) {
+	--pbl-shelf-head-top: var(--size-4-1);
+	--pbl-shelf-head: calc(var(--size-4-6) + var(--size-4-2));
+}
+
 /* ONE row height, whether the shelf is open or shut. The header holds the disclosure
    (19px) in both states and, open, the search box beside it — and Obsidian's own
    `input[type='search']` rule outranks a bare class, so the box is 30px whatever this
@@ -32,11 +59,18 @@
    beside `.pbl-shelf-below` below, which is one of a pair with the strip's own. */
 .pbl-shelf-header {
 	position: sticky;
-	top: calc(-1 * var(--size-4-1));
-	z-index: 1;
+	top: var(--pbl-shelf-head-top);
+	/* Above `shelfList.css`'s type headers, which are sticky at 2 and would otherwise take both
+	   the paint and the clicks. */
+	z-index: 3;
 	display: flex;
 	align-items: center;
 	gap: var(--size-4-1);
+	/* A control row does not give its room up. The band is height-constrained, so a shrinkable
+	   header collapses to the `min-height` below while its own padding goes on pushing the
+	   controls down — measured, a 24px search box in a 24px row starting 4px past its foot, drawn
+	   outside the opaque background that is supposed to be hiding the cards behind it. */
+	flex-shrink: 0;
 	min-height: var(--size-4-6);
 	background-color: var(--background-secondary);
 	font-size: var(--font-ui-small);
@@ -254,12 +288,9 @@ input.pbl-shelf-search-input {
    The PADDING is the open band's alone, and the `:not()` pair is `shelf.css`'s own for the foot
    gutter, here for its reason: a collapsed band draws no strip, so this is air under nothing —
    measured, it put the shut band at 37px and its title 13px down, against the 34px and 7.5px a
-   band that shows one row exists to be. The offset above it needs no such guard: a band that
-   cannot scroll cannot pin. */
-.pbl-shelf-below .pbl-shelf-header {
-	top: var(--size-4-1);
-}
-
+   band that shows one row exists to be. It is the same scope the two head variables above take,
+   and deliberately so: the padding IS the extra height they publish, and a band that had one
+   without the other would stack its type headers at the wrong edge. */
 .pbl-shelf-below:not(.pbl-shelf-collapsed):not(.pbl-shelf-empty) .pbl-shelf-header {
 	padding-block-start: var(--size-4-2);
 }
