@@ -81,6 +81,23 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ### Changed
 
+- **The shelf's resize handle now sits on the edge the shelf actually shares with the
+  roadmap.** On the timeline and resources axes the unplaced shelf is drawn below the grid,
+  so the edge between the two is the shelf's TOP — that is where the handle is, and dragging
+  it **up** makes the shelf taller (the arrow keys follow the same direction). On the horizon
+  axis and on both boards the shelf leads and the handle stays at its foot, where a downward
+  drag still grows it. On those axes the shelf also keeps a proper gap below its last row of
+  cards, matching the space at its left and right, and the handle sits on the band's own top
+  border with room between it and the title row rather than against it. **The handle is also
+  no longer see-through**: scrolling the shelf used to draw its own cards inside the strip you
+  grab, on every projection that has one.
+
+- **The shelf's title bar stays on screen while you scroll the shelf.** Its sort, type filter
+  and search box are the controls that decide what the band is showing, and they used to leave
+  the screen exactly when a long shelf gave you a reason to reach for them. They are now pinned
+  to the top of the band on every projection that draws one, so a shelf scrolled to its end
+  still has them.
+
 - **The release list is a list of releases now, not a grid of columns.** Each release is a
   two-line band: its name, its version, a date and its status chip on the first line; a
   progress bar, the count of its finished items and — where there is one — an overdue warning

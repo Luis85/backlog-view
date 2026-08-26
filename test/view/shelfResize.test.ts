@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { horizonVault, makeRoadmap, shelfOf } from '../helpers/roadmap';
+import { horizonVault, makeRoadmap, roadmapView, shelfHeavyVault, shelfOf } from '../helpers/roadmap';
 import { FakeVault } from '../helpers/vault';
 import { makeView, useViewHarness } from '../helpers/view';
 import { bodyOf } from '../helpers/cssVars';
@@ -434,6 +434,153 @@ describe('the shelf’s resize grip', () => {
 			// And the base rule keeps the negative pull, which is what the unpicked band is sized by.
 			expect(bodyOf(css, '.pbl-shelf-grip', 'styles/shelfControls.css')).toContain(
 				'margin-block-start: calc(-1 * var(--size-4-2));',
+			);
+		});
+	});
+
+	describe('which edge it sits on', () => {
+		/** A grid axis, where the shelf renders AFTER the timeline and so sits at the frame's foot. */
+		const datedShelf = (): HTMLElement => {
+			const { containerEl } = roadmapView(shelfHeavyVault(), {
+				startProperty: 'note.start',
+				targetProperty: 'note.due',
+			});
+			const el = shelfOf(containerEl);
+			if (!el) throw new Error('no shelf');
+			return el;
+		};
+
+		it('leads the band that sits BELOW the axis, and trails the one that leads', () => {
+			// The grip belongs on the edge the band and the axis SHARE, which is the whole rule
+			// — not "the foot", which is only where that edge happens to be when the shelf leads
+			// the frame. Moved in the DOM rather than by `order`, so the tab stop is where the
+			// strip is drawn: `styles/shelf.css` says outright that reordering a focusable thing
+			// out of its reading order on this band must not happen.
+			expect(datedShelf().firstElementChild?.hasClass('pbl-shelf-grip')).toBe(true);
+
+			const { containerEl } = makeRoadmap(horizonVault());
+			expect(shelfOf(containerEl)?.lastElementChild?.hasClass('pbl-shelf-grip')).toBe(true);
+		});
+
+		it('makes UP taller where it sits at the top, the mirror of the foot’s own sign', () => {
+			// One flag decides both halves, so the pointer and the keys cannot disagree about
+			// which way is bigger: a grip at the top grows the band when it is dragged up, and
+			// the horizon axis's own test above grows it when dragged DOWN.
+			const el = datedShelf().querySelector<HTMLElement>('.pbl-shelf-grip');
+			if (!el) throw new Error('no shelf resize grip');
+			el.dispatchEvent(pointer('pointerdown', 0));
+			el.dispatchEvent(pointer('pointerup', -200));
+			expect(el.getAttribute('aria-valuenow')).toBe(String(MIN_SHELF_HEIGHT_PX + 200));
+		});
+
+		it('takes a foot gutter, on the open band alone, and leaves the head’s 4px alone', () => {
+			// The FOOT needs one: nothing is pinned to that edge any more, so the last row of cards
+			// would end 4px from the border while the cards beside it keep 12px. The HEAD must NOT
+			// have one — the strip lives inside the 4px already there, so a head gutter is room the
+			// header is pushed down by, and at 12px the title row sat 31.5px below the band's top
+			// against 7.5px shut. jsdom resolves no cascade; what is checkable is the class and the
+			// rules it turns on, and the class is one decision made in `render/shelf.ts`.
+			expect(datedShelf().hasClass('pbl-shelf-below')).toBe(true);
+			const css = readFileSync('styles/shelf.css', 'utf8');
+			// The `:not()` pair is the load-bearing half: a collapsed band has no last row to clear.
+			const gutter = bodyOf(
+				css,
+				'.pbl-shelf-below:not(.pbl-shelf-collapsed):not(.pbl-shelf-empty)',
+				'styles/shelf.css',
+			);
+			expect(gutter).toContain('padding-block-end: var(--size-4-3);');
+			// The block shorthand would take the head with it, which is the shape this rule refused.
+			expect(gutter).not.toContain('padding-block:');
+			// And the strip's own offsets: sticky to the top, and the start margin negating the 4px
+			// head gutter so the strip sits ON the border out of the header's way. The two are the
+			// same 4px, which is what makes the pinned position the resting one — no hop on scroll.
+			const chrome = readFileSync('styles/shelfControls.css', 'utf8');
+			const body = bodyOf(chrome, '.pbl-shelf-below .pbl-shelf-grip', 'styles/shelfControls.css');
+			expect(body).toContain('top: calc(-1 * var(--size-4-1));');
+			expect(body).toContain('bottom: auto;');
+			expect(body).toContain('margin-block-start: calc(-1 * var(--size-4-1));');
+			// And the gap-cancel, so the header sits straight under the strip with no slot between
+			// them for the cards to scroll through — the air is the header's own padding instead,
+			// which is the shape a pinned row can keep and a flex gap cannot.
+			expect(body).toContain('margin-block-end: calc(-1 * var(--size-4-2));');
+		});
+
+		it('pins the header too, so the sort, the filter and the search stay reachable', () => {
+			// The band is a scrollport, so without this the three controls that decide what it is
+			// SHOWING scroll out of reach exactly when a reader has enough cards to need them.
+			// Opaque for the strip's own reason, and docked to the border rather than the content
+			// edge — pinned at `0` the cards scroll visibly through the band's 4px head gutter.
+			// Measured in the browser harness at 1200x800 on the dated axis: the header's top stays
+			// at 578.7 at rest, at a 60px scroll and at the band's end, with the search box inside
+			// the band's box at all three.
+			const chrome = readFileSync('styles/shelfControls.css', 'utf8');
+			const head = bodyOf(chrome, '.pbl-shelf-header', 'styles/shelfControls.css');
+			expect(head).toContain('position: sticky;');
+			expect(head).toContain('background-color: var(--background-secondary);');
+			// The offset is the band's own published one, so the row and everything that stacks
+			// beneath it read the same edge — see the stacking test below for the other half.
+			expect(head).toContain('top: var(--pbl-shelf-head-top);');
+			// Docked to the BORDER where the row leads the band, and UNDER the strip where the band
+			// sits below the axis: one variable, two values, stated where the band is classified.
+			expect(bodyOf(chrome, '.pbl-shelf', 'styles/shelfControls.css')).toContain(
+				'--pbl-shelf-head-top: calc(-1 * var(--size-4-1));',
+			);
+			expect(
+				bodyOf(
+					chrome,
+					'.pbl-shelf-below:not(.pbl-shelf-collapsed):not(.pbl-shelf-empty)',
+					'styles/shelfControls.css',
+				),
+			).toContain('--pbl-shelf-head-top: var(--size-4-1);');
+			// And its air is PADDING, not the flex gap, because padding travels with a pinned row —
+			// scoped to the open band, since a collapsed one has no strip for it to clear.
+			expect(
+				bodyOf(
+					chrome,
+					'.pbl-shelf-below:not(.pbl-shelf-collapsed):not(.pbl-shelf-empty) .pbl-shelf-header',
+					'styles/shelfControls.css',
+				),
+			).toContain('padding-block-start: var(--size-4-2);');
+			// A control row does not give its own room up. The band is height-constrained, so a
+			// shrinkable header collapses to its `min-height` while the padding goes on pushing the
+			// controls down — measured, a 24px search box in a 24px row starting 4px past its foot,
+			// drawn outside the very background that is meant to be hiding the cards behind it.
+			expect(head).toContain('flex-shrink: 0;');
+		});
+
+		it('leaves nothing else in the band pinned OVER those controls', () => {
+			// The category question, asked at the stack rather than at the one thing that broke it:
+			// the band holds more than one sticky element, so what keeps them apart has to be a
+			// stated edge rather than each rule's own guess. `shelfList.css`'s type headers pinned
+			// at `top: 0` — the band's content edge, which is where the controls row IS — with a
+			// `z-index` above it, so the type name took the paint AND the clicks (Codex, PR #205;
+			// `elementFromPoint` in the middle of the controls returned `.pbl-shelf-group-header`
+			// on both axes, and returns `.pbl-shelf-search-input` now).
+			//
+			// What is checkable here is that the offset is DERIVED from the head rather than
+			// written beside it: a number would be right until the row's height moved.
+			const chrome = readFileSync('styles/shelfControls.css', 'utf8');
+			const head = bodyOf(chrome, '.pbl-shelf', 'styles/shelfControls.css');
+			expect(head).toContain('--pbl-shelf-head-top:');
+			expect(head).toContain('--pbl-shelf-head:');
+			const list = readFileSync('styles/shelfList.css', 'utf8');
+			const group = bodyOf(list, '.pbl-shelf-list .pbl-shelf-group-header', 'styles/shelfList.css');
+			expect(group).toContain('top: calc(var(--pbl-shelf-head-top) + var(--pbl-shelf-head));');
+			// And it stacks UNDER the row: the controls are 3, the type headers 2, the cards none.
+			expect(bodyOf(chrome, '.pbl-shelf-header', 'styles/shelfControls.css')).toContain('z-index: 3;');
+			expect(group).toContain('z-index: 2;');
+		});
+
+		it('is opaque, so the band’s own rows cannot scroll through the strip', () => {
+			// The strip is STICKY, which holds its place while the content goes past it — so a
+			// transparent one shows the band's rows sliding through the 8px a reader grabs.
+			// Measured at a 40px scroll on the dated axis before this: the header sat 36px inside
+			// the strip. Padding cannot reserve that room, because the band IS the scrollport and
+			// a scroll container's block padding scrolls away with its content. Asserted on the
+			// rule BOTH arrangements share: the foot strip is sticky too and had the same hole.
+			const chrome = readFileSync('styles/shelfControls.css', 'utf8');
+			expect(bodyOf(chrome, '.pbl-shelf-grip', 'styles/shelfControls.css')).toContain(
+				'background-color: var(--background-secondary);',
 			);
 		});
 	});

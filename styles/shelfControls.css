@@ -9,6 +9,33 @@
    those files state. Nothing here reaches for that, and a rule that did — an `overflow`
    on `.pbl-shelf`, say — would put back the unreachable region `roadmap.css` forbids. */
 
+/* **The pinned head, stated once: where the controls row docks, and how much of the band it
+   takes once it is there.** Everything that has to stack BENEATH it reads this pair rather than
+   restating the arithmetic — `shelfList.css`'s own sticky type headers are the case that found
+   this rule, having pinned at `top: 0` straight over the sort, the filter and the search, with a
+   `z-index` above them so the clicks landed on the type name (Codex, PR #205; `elementFromPoint`
+   in the middle of the controls returned `.pbl-shelf-group-header` on both axes). A second
+   sticky thing inside this band is not a mistake to be forbidden — it is a thing that needs to
+   know where the head ends, and now it can ask.
+
+   The HEIGHT is a token rather than a measurement because the row is one: `min-height` reserves
+   exactly this whether the band is open or shut, which is the rule stated below. The head gutter
+   the strip negates is in the OFFSET, so the two together are the row's bottom edge on either
+   arrangement, and nothing beneath has to know which one is drawing. */
+.pbl-shelf {
+	--pbl-shelf-head-top: calc(-1 * var(--size-4-1));
+	--pbl-shelf-head: var(--size-4-6);
+}
+
+/* Below the axis the row docks under the strip instead of over the border, and carries the air
+   between them as its own padding — so the head is that much taller and everything beneath it
+   moves by the same amount. Scoped exactly as the padding is (`shelf.css`'s `:not()` pair): a
+   collapsed band draws no strip, so it has neither the offset nor the height. */
+.pbl-shelf-below:not(.pbl-shelf-collapsed):not(.pbl-shelf-empty) {
+	--pbl-shelf-head-top: var(--size-4-1);
+	--pbl-shelf-head: calc(var(--size-4-6) + var(--size-4-2));
+}
+
 /* ONE row height, whether the shelf is open or shut. The header holds the disclosure
    (19px) in both states and, open, the search box beside it — and Obsidian's own
    `input[type='search']` rule outranks a bare class, so the box is 30px whatever this
@@ -16,12 +43,36 @@
    height here at a specificity that actually wins, and the header reserves that same row
    whether or not the field is in it. Reserve without shrinking and the shut band carries
    30px of nothing; shrink without reserving and the row is still two heights, just closer
-   together. */
+   together.
+
+   **It PINS, for the same reason the grip does and with the same two terms.** The band is a
+   scrollport, so without this the sort, the type filter and the search box — the three controls
+   that decide what the band is showing — scroll out of reach exactly when a reader has enough
+   cards to need them. Opaque in the band's own colour, because a sticky row holds its place
+   while the content goes past it and a transparent one would have the cards drawn through the
+   row. And docked to the BORDER rather than to the content edge (`-4px`, the band's head
+   gutter negated): pinned at `0` it would sit a gutter's width down the band with the cards
+   scrolling visibly through the 4px above it, which is the hole the grip's own offset closes
+   for itself. The cost is stated rather than hidden: where the header LEADS the band it rests
+   at the content edge and pins 4px above it, so the row rises by the gutter on the first pixel
+   of scroll and stays there. Where the band sits below the axis it does not — see the offset
+   beside `.pbl-shelf-below` below, which is one of a pair with the strip's own. */
 .pbl-shelf-header {
+	position: sticky;
+	top: var(--pbl-shelf-head-top);
+	/* Above `shelfList.css`'s type headers, which are sticky at 2 and would otherwise take both
+	   the paint and the clicks. */
+	z-index: 3;
 	display: flex;
 	align-items: center;
 	gap: var(--size-4-1);
+	/* A control row does not give its room up. The band is height-constrained, so a shrinkable
+	   header collapses to the `min-height` below while its own padding goes on pushing the
+	   controls down — measured, a 24px search box in a 24px row starting 4px past its foot, drawn
+	   outside the opaque background that is supposed to be hiding the cards behind it. */
+	flex-shrink: 0;
 	min-height: var(--size-4-6);
+	background-color: var(--background-secondary);
 	font-size: var(--font-ui-small);
 	font-weight: var(--font-medium);
 	color: var(--text-normal);
@@ -155,7 +206,16 @@ input.pbl-shelf-search-input {
    that resizes it; the negative offsets take back the flex gap above it and the band's
    bottom padding below, so the strip sits ON the boundary rather than inside a margin.
    `touch-action: none` because this plugin is not desktop-only: without it the scroller
-   under the finger claims the pan and the drag never starts. */
+   under the finger claims the pan and the drag never starts.
+
+   **Opaque, in the band's own colour, and that is what makes it a pinned edge rather than a
+   window onto the cards.** A sticky strip holds its place while the content goes past it, so a
+   TRANSPARENT one has the band's own rows sliding visibly through the 8px a reader is meant to
+   grab — measured at a 40px scroll on the dated axis, the header sat 36px INSIDE the strip. No
+   padding can reserve that room: this element is the scrollport, and a scroll container's own
+   block padding scrolls away with its content. Occluding is what every pinned header does, and
+   it costs the 8px of card the strip covers, which the scrollport was clipping anyway. Stated
+   on the rule BOTH arrangements share, because both are sticky and both had it. */
 .pbl-shelf-grip {
 	position: sticky;
 	bottom: calc(-1 * var(--size-4-1));
@@ -163,6 +223,7 @@ input.pbl-shelf-search-input {
 	flex: 0 0 auto;
 	height: var(--size-4-2);
 	margin-block-start: calc(-1 * var(--size-4-2));
+	background-color: var(--background-secondary);
 	cursor: ns-resize;
 	touch-action: none;
 }
@@ -183,6 +244,55 @@ input.pbl-shelf-search-input {
    before. */
 .pbl-shelf-sized .pbl-shelf-grip {
 	margin-block-start: auto;
+}
+
+/* The same strip at the band's TOP, which is where it belongs when the shelf sits below the
+   axis (`.pbl-shelf-below`, from `render/shelf.ts`): the grip goes on the edge the band and
+   the axis share. Every term of the foot rule is mirrored — sticky to `top` instead of
+   `bottom`, the negative pull moved to the end so it cancels the flex gap BELOW it, and the
+   `auto` margin the sized band takes back, since a first flex item is already at the top and
+   has no free space above it to consume. Equal specificity to `.pbl-shelf-sized
+   .pbl-shelf-grip` above, so this file's order is what decides between them — the same beat
+   `propertyColumns.css` states for its own pair.
+
+   **The two margins are what keep the header where a shut band has it.** The start margin is the
+   band's 4px head gutter, negated: it lifts the strip out of the flow and onto the border, so
+   the strip's whole margin box is the 4px it displaced and the header moves by nothing the
+   gutter did not already spend. Written instead as room the header is pushed down by — a 12px
+   gutter with the strip below it — the title row went to 31.5px under the band's top against
+   7.5px shut, measured, which is the jump `shelf.css`'s own padding rule spends five pixels to
+   avoid. The sticky offset is that same 4px read again, which is what makes the pinned position
+   the resting one: the strip is already ON the border, so scrolling the band moves it nowhere at
+   all — the foot arrangement's own 4px hop is a thing this one does not have.
+
+   And the gap-cancel is DROPPED rather than mirrored: at the foot the strip hugging the last
+   group is what puts it on the boundary, while at the head the thing below it is the header, and
+   a handle flush against the row it must not be mistaken for is the complaint this rule answers.
+   The band's own 8px flex gap is that air, so nothing here spells a second margin for it. */
+.pbl-shelf-below .pbl-shelf-grip {
+	top: calc(-1 * var(--size-4-1));
+	bottom: auto;
+	margin-block-start: calc(-1 * var(--size-4-1));
+	margin-block-end: calc(-1 * var(--size-4-2));
+}
+
+/* The header pins UNDER that strip here, and the two offsets are one arithmetic: the strip
+   docks to the border and is 8px tall, so `+4px` — the gutter it negated, plus its own height,
+   less that same gutter again — is the first row the header can take without covering it.
+   Nothing is left between them for the cards to scroll through, which is why the strip's
+   gap-cancel comes BACK on this arrangement after being dropped for the air: the air is now the
+   header's own `padding-block-start`, and the difference is that padding travels with the row
+   when it pins where a flex gap could not. Measured: the title sits at the same 15.5px under
+   the band's top at rest and pinned, so the row does not hop the way a leading header's does.
+
+   The PADDING is the open band's alone, and the `:not()` pair is `shelf.css`'s own for the foot
+   gutter, here for its reason: a collapsed band draws no strip, so this is air under nothing —
+   measured, it put the shut band at 37px and its title 13px down, against the 34px and 7.5px a
+   band that shows one row exists to be. It is the same scope the two head variables above take,
+   and deliberately so: the padding IS the extra height they publish, and a band that had one
+   without the other would stack its type headers at the wrong edge. */
+.pbl-shelf-below:not(.pbl-shelf-collapsed):not(.pbl-shelf-empty) .pbl-shelf-header {
+	padding-block-start: var(--size-4-2);
 }
 
 /* The MARK inside the hit area, the property grip's own arrangement: the strip is the

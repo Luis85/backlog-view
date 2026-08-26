@@ -15,6 +15,7 @@ files:
   - src/view/interactions/shelfResize.ts
   - src/view/render/shelf.ts
   - styles/shelfControls.css
+  - styles/shelf.css
   - styles/roadmap.css
   - styles/board.css
 started: "2026-08-21"
@@ -28,9 +29,9 @@ assignee: ""
 
 # Resizing the shelf
 
-**As** someone whose shelf holds more than the band will show, **I want** to drag its
-foot and say how much of the pane it may take, **so that** I can give the untriaged work
-room while I triage it and hand that room back to the axis afterwards.
+**As** someone whose shelf holds more than the band will show, **I want** to drag the edge
+it shares with the axis and say how much of the pane it may take, **so that** I can give
+the untriaged work room while I triage it and hand that room back to the axis afterwards.
 
 The band rule holds the shelf to 30% of the pane so a full one cannot squeeze the buckets
 or the timeline down to their floor. That is the right default and the wrong fixed answer:
@@ -44,18 +45,20 @@ about a width.
 | | |
 | --- | --- |
 | **Actor** | Backlog owner |
-| **Trigger** | The reader drags the grip along the open shelf's foot, or focuses it and presses an arrow key or Home |
+| **Trigger** | The reader drags the grip along the edge the open shelf shares with the axis, or focuses it and presses an arrow key or Home |
 | **Preconditions** | A shelf is drawn, open and holding at least one card — the roadmap's on either axis, or the iteration board's |
 | **Guarantee** | The height is UI state — per saved view, per device, beside the shelf's other picks — never the `.base` and never a frontmatter write. A picked band is exactly that tall: it scrolls when the cards need more and shows space when they need less. Until one is picked nothing is stored and the stylesheet's own share of the pane is in force. |
 
 **Main flow**
 
-1. The open band carries a resize grip along its foot: `role="separator"`, a real tab
-   stop, `aria-orientation="horizontal"`, and `aria-valuenow`/`aria-valuemin`/
-   `aria-valuemax` stating the current height and its bounds.
-2. Dragging it downward makes the band taller and upward shorter, live — one custom
-   property, so nothing re-renders mid-gesture — and releasing persists the settled
-   height once. Both directions move the edge.
+1. The open band carries a resize grip along the edge it shares with the axis:
+   `role="separator"`, a real tab stop, `aria-orientation="horizontal"`, and
+   `aria-valuenow`/`aria-valuemin`/`aria-valuemax` stating the current height and its
+   bounds. Which edge that is, is 1f.
+2. Dragging it **away from the axis** makes the band taller and toward it shorter, live —
+   one custom property, so nothing re-renders mid-gesture — and releasing persists the
+   settled height once. Both directions move the height; up to saturation (1h) both move
+   the EDGE with it.
 3. Focused, ArrowUp/ArrowDown step the height by a fixed increment and persist each step
    immediately; Home hands the band back to the stylesheet's own share of the pane.
 4. The pick comes back across a reopen, per saved view per device, exactly like the sort
@@ -147,6 +150,95 @@ about a width.
   and clearing the pick returns the band to the 30% share (219px). What it costs is the
   space itself — a band dragged to 400px holding two cards is 400px of band — which is what
   the reader asked for by dragging the edge there, and what every resizable panel does.
+- **1f — the shelf is drawn BELOW the axis.** The grip goes to its TOP, and a drag upward
+  is what makes it taller. The rule is the edge the band and the axis SHARE, not "the foot",
+  which is only where that edge happens to be when the shelf LEADS the frame — as it does on
+  the horizon axis (since 2026-08-17) and on both boards. The grid axes draw the shelf after
+  the timeline, so there the shared edge is the band's top and a grip at its foot sat against
+  the context strip below it, moving an edge nothing on screen was on. One flag decides the
+  strip's place in the band and the sign a movement carries, so the pointer and the keys
+  cannot end up disagreeing about which way is bigger. Moved in the DOM rather than by
+  `order`: the tab stop has to be where the strip is drawn, which is what `styles/shelf.css`
+  already says outright about this band. Reported from a vault, 2026-08-26.
+- **1h — the axis is already at its floor, so the grabbed edge stops moving.** The height
+  still grows and still persists; what stops is the edge following the pointer. On the grid
+  axes the frame is `height: 100%` and the timeline has a 180px floor, so once the band has
+  taken everything the timeline can give, more height overflows the frame DOWNWARD and the
+  pane scrolls — 4a's stated fallback. Measured in the browser harness at 1200x500: the grip
+  sits at 267px for a pick of 300, 400 and 600 alike, with the timeline at 180px at each.
+  **This is not what 1f introduced**, which is why it is recorded here rather than fixed
+  there: the same saturation broke the same promise under the foot grip, invisibly instead of
+  visibly — at that pane and a 300px pick the band's foot is at 562px, off a 500px pane, so
+  the edge moved and the reader could not see it. What 1f changed is which symptom the reader
+  gets, and it kept the grip on screen.
+  **Anchoring the band to the frame's foot is not available.** A column flex container told
+  to `justify-content: flex-end` overflows at its START, which is the unreachable region
+  `styles/roadmap.css` forbids outright, and bounding the height by the pane is what 4a
+  refuses by name — it is the whole of what buys a pick made in a tall split coming back in
+  full. Open rather than closed: shutting it needs the frame to give the band room from the
+  other end, which is a change to the band rule and not to this grip. (Codex, PR #205.)
+- **1g — the band that sits below the axis takes a real FOOT gutter, and the head keeps its
+  4px.** 12px at the foot, matching its inline gutter: 1f moved the grip off that edge and
+  nothing holds it any more, so the last row of cards ended 4px from the border while the cards
+  beside it kept 12px. **Only while the band is OPEN** — a collapsed or empty band draws no grip
+  and has no last row to clear, so an unscoped gutter is a gutter under a header and nothing
+  else, on the one band whose whole point when shut is a header's worth of space and no more.
+  Measured: the collapsed band is 34px with the rule and without it.
+  At the HEAD the room the handle needs is taken from the gutter already there rather than added
+  to it — the strip's own start margin negates that 4px and lifts it onto the border, so its
+  whole margin box is the space it displaced and the header moves by nothing new. What it must
+  NOT be is a head gutter with the strip below it: measured at 12px, the title row sat 31.5px
+  under the band's top against 7.5px shut, which is 24px of empty band above the one row a shut
+  shelf exists to show and the jump the padding rule spends five pixels to avoid. What is left is
+  the strip's 4px and the band's own 8px flex gap, which is the air between the handle and a row
+  it must not be mistaken for: 17px of head chrome, the title 19.5px under the band's top. The
+  gap-cancel the foot rule states is dropped rather than mirrored — at the foot, hugging the last
+  group is what puts the strip on the boundary. Reported 2026-08-26, twice: the touching handle,
+  then the space the first answer to it cost.
+- **1i — the band's own rows scroll through the strip.** They no longer can: it is opaque, in
+  the band's own colour. A sticky element holds its place while the content goes past it, so a
+  transparent strip has the band's rows sliding visibly through the 8px a reader is meant to
+  grab — measured at a 40px scroll on the dated axis, the header sat 36px INSIDE the strip.
+  **No padding can reserve that room**, which is the fact worth keeping: the band IS the
+  scrollport, and a scroll container's own block padding scrolls away with its content, so the
+  gutter 1g adds is at-rest air and nothing else. Occluding is what every pinned header does,
+  and it costs the 8px of card the strip covers, which the scrollport was clipping anyway.
+  Stated on the rule BOTH arrangements share — the foot strip is sticky too and had the same
+  hole, unreported because a strip at the foot of a band is where a reader looks last.
+- **1j — the strip hops when the band is first scrolled.** Not at the head: the sticky offset is
+  the same 4px the start margin negates, so the pinned position IS the resting one and scrolling
+  moves the strip nowhere. The FOOT arrangement does hop, by its own 4px, and keeps it — there
+  the resting strip hugs the last group wherever that falls, so there is no resting position for
+  a pin to agree with.
+- **1k — the band's own controls scroll out of reach.** They no longer do: the header PINS, like
+  the strip and for the same two reasons. The band is a scrollport, so the sort, the type filter
+  and the search — the three controls that decide what the band is SHOWING — used to leave the
+  screen exactly when a reader had enough cards to need them. Opaque in the band's colour, or the
+  cards would be drawn through the row; docked to the BORDER rather than the content edge, or
+  they scroll visibly through the 4px head gutter above it. Where the header LEADS the band it
+  rests at the content edge and pins a gutter above it, so the row rises 4px on the first pixel
+  of scroll and stays — stated rather than hidden. Where the band sits below the axis it does
+  not: it pins straight under the strip, the strip's gap-cancel comes back so nothing is left
+  between them, and the air becomes the header's own `padding-block-start`, which travels with a
+  pinned row where a flex gap cannot. Measured at 1200x800 on the dated axis: the header's top is
+  578.7 at rest, at a 60px scroll and at the band's end, with the search box inside the band at
+  all three. The padding is the open band's alone, for the foot gutter's reason — unscoped it put
+  the shut band at 37px and its title 13px down, against 34px and 7.5px. Asked for 2026-08-26.
+- **1l — the band already had another sticky thing, and it pinned OVER the controls.** The
+  compact-row layout's type headers are sticky at the band's content edge, which is exactly where
+  the pinned row is, with a `z-index` above it — so the type name took the paint AND the clicks
+  off the sort, the filter and the search, on both axes (`elementFromPoint` in the middle of the
+  controls returned the group header; it returns the search box now). Answered at the STACK
+  rather than at the one rule that broke: the band publishes where its head docks and how tall it
+  is, and anything that must sit beneath reads the pair. A number written beside it would be
+  right until the row's height moved, which it does — the arrangement below the axis carries 1k's
+  padding and is 8px taller. (Codex, PR #205.)
+- **1m — the control row gives its own room up.** It does not any more. The band is
+  height-constrained, so the header was a shrinkable flex item collapsing to its `min-height`
+  while 1k's padding went on pushing the controls down: measured, a 24px search box in a 24px row,
+  starting 4px past its foot and drawn OUTSIDE the opaque background that is meant to hide the
+  cards behind it. Found while fixing 1l rather than reported — the two are one question about
+  what a pinned row is, and neither is visible until the band is both scrolled and full.
 - **2f — the band is taller than its cards, and the grip is not at its foot.** It is now.
   `position: sticky` holds an element inside its scrollport when scrolling would carry it
   away and does nothing otherwise, so a band with a picked height and less content than that
@@ -166,8 +258,10 @@ about a width.
 - An UNPICKED band is measured instead, with the grip's own strip already in it (8px of it),
   per gesture rather than once per render, and the announcement is corrected when a gesture
   takes hold.
-- ArrowDown makes the band taller on any band, which a maximum could not do on one drawn
-  shorter than its cap.
+- ArrowDown makes the band taller wherever the grip is at the band's FOOT, which a maximum
+  could not do on one drawn shorter than its cap; where the shelf sits below the axis the
+  grip leads the band and ArrowUp is what makes it taller instead. The pointer and the keys
+  read the same sign, from one flag.
 - Dragging updates only the custom property until release: `config.setCalls` and the
   vault's write log stay empty through the whole gesture, and exactly one height is
   persisted, at its end.
@@ -184,6 +278,24 @@ about a width.
 - No grip is drawn on a collapsed or an empty shelf, and no height is published to one:
   a band with nothing to show is never as tall as the height the reader picked for it open.
 - A picked height survives the flex line it sits on, on every axis.
+- The grip is the band's FIRST element where the shelf is drawn below the axis and its LAST
+  where the shelf leads, so the tab stop is where the strip is — never reordered into a
+  different reading order by the stylesheet.
+- The band that sits below the axis keeps its FOOT gutter level with its inline one while it is
+  open, and a collapsed one is the same height with the rule as without it. Its head keeps the
+  4px every band has: the handle is taken out of the flow into that gutter, never added above the
+  header, so the title row is never pushed down the band by the control beside it.
+- The strip is opaque in the band's own colour, on both arrangements, so no row is ever drawn
+  inside the 8px a reader grabs.
+- The header stays on screen for the whole scroll of the band, on every arrangement, with its
+  sort, type filter and search reachable at the band's end — and nothing is drawn through it or
+  between it and the strip above it.
+- Nothing else in the band is ever pinned over that row: what stacks beneath it takes its offset
+  from the head the band publishes, so a click in the middle of the controls reaches a control.
+- The row keeps its own height whatever the band's is, so no control it holds is drawn outside it.
+- Past the point where the axis is at its own floor the edge no longer follows the pointer,
+  on either arrangement of the grip — the height still moves, and 1h is what states the
+  limit rather than a promise the layout cannot keep.
 - The iteration board's shelf takes the same stored height — one band, one value.
 - Never written to the `.base`: UI state per saved view per device.
 
@@ -235,8 +347,28 @@ same component drawn by the same call, and only ever one is on screen.
 the early return a collapsed or empty band takes, and publishes `--pbl-shelf-h` only once a
 height has been picked. `styles/roadmap.css` and `styles/board.css` read that property with
 30% as the `var()` fallback, so the stylesheet and the store cannot name different
-defaults; the grip's own strip is in `styles/shelfControls.css`, sticky at the band's foot
-so a shelf scrolled halfway still shows the edge that resizes it.
+defaults; the grip's own strip is in `styles/shelfControls.css`, sticky to the edge it sits on so a
+shelf scrolled halfway still shows the edge that resizes it.
+
+**Which edge that is, is one boolean.** `renderShelf` asks `drawsGrid` of the axis it was
+handed — the grid axes are the ones that render the shelf after the timeline — and puts
+`pbl-shelf-below` on the band. `renderShelfResize` takes the same answer and reads it twice
+and nowhere else: it prepends the strip instead of appending it, and it flips the sign in
+`sizeAt`, which is the one place either gesture — pointer or key — decides what a movement
+means. `styles/shelfControls.css` mirrors every term of the foot rule against the class
+(sticky `top` rather than `bottom`, the negative pull moved to the end so it cancels the
+flex gap below it, and the sized band's auto start margin taken back, since a first flex
+item is already at the top and has nothing above it to consume); `styles/shelf.css` gives
+that band the FOOT gutter 1g asks for, scoped to the open state with a `:not()` pair rather
+than a third class — the two states already say what they are, and a name for "has a grip"
+is a name that can come apart from the one thing that draws one. The head takes none: the
+strip's start margin negates the 4px already there and the sticky offset reads that same 4px,
+so the strip rests on the border and pins where it already is. The header is sticky in the same
+file and by the same two terms, with `.pbl-shelf-below`'s own offset putting it under the strip
+rather than over it — one arithmetic with the strip's, which is why the two sit together rather
+than in the two rules that would have to be kept in step. Measured in the browser harness at 1200x800 on the
+dated axis: the strip sits at the band's own top edge, stays there with the band scrolled to
+its end, and the last row of cards clears the foot by 12px.
 
 **Its reveal is not the property grip's rule copied**, and that is the one place the two
 differ by design. That grip is revealed by hovering the column NAME, a label a few pixels
