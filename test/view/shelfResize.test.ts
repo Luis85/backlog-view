@@ -473,33 +473,33 @@ describe('the shelf’s resize grip', () => {
 			expect(el.getAttribute('aria-valuenow')).toBe(String(MIN_SHELF_HEIGHT_PX + 200));
 		});
 
-		it('takes the band’s block gutter with it, on the open band alone', () => {
-			// Both edges, and for two different reasons: the foot has nothing pinned to it any
-			// more, so the last row of cards would end 4px from the border while the cards beside
-			// it keep 12px; the head is where the strip now is, and at 4px it sat flush against
-			// the header with the flex gap cancelled under it. jsdom resolves no cascade — what is
-			// checkable here is the class and the rule it turns on, and the two are one decision
-			// made in `render/shelf.ts`.
+		it('takes a foot gutter, on the open band alone, and leaves the head’s 4px alone', () => {
+			// The FOOT needs one: nothing is pinned to that edge any more, so the last row of cards
+			// would end 4px from the border while the cards beside it keep 12px. The HEAD must NOT
+			// have one — the strip lives inside the 4px already there, so a head gutter is room the
+			// header is pushed down by, and at 12px the title row sat 31.5px below the band's top
+			// against 7.5px shut. jsdom resolves no cascade; what is checkable is the class and the
+			// rules it turns on, and the class is one decision made in `render/shelf.ts`.
 			expect(datedShelf().hasClass('pbl-shelf-below')).toBe(true);
 			const css = readFileSync('styles/shelf.css', 'utf8');
-			// The `:not()` pair is the load-bearing half: a collapsed or empty band draws no grip,
-			// so an unscoped gutter is 16px reserved for a control that is not there.
+			// The `:not()` pair is the load-bearing half: a collapsed band has no last row to clear.
 			const gutter = bodyOf(
 				css,
 				'.pbl-shelf-below:not(.pbl-shelf-collapsed):not(.pbl-shelf-empty)',
 				'styles/shelf.css',
 			);
-			expect(gutter).toContain('padding-block: var(--size-4-3);');
-			// And the strip's own offsets are mirrored with it — sticky to the top, docked flush
-			// to the border by the gutter it has to scroll out from under, and the foot's
-			// gap-cancel dropped so the flex gap is the air between the handle and the header.
+			expect(gutter).toContain('padding-block-end: var(--size-4-3);');
+			// The block shorthand would take the head with it, which is the shape this rule refused.
+			expect(gutter).not.toContain('padding-block:');
+			// And the strip's own offsets: sticky to the top, and the start margin negating the 4px
+			// head gutter so the strip sits ON the border out of the header's way. The two are the
+			// same 4px, which is what makes the pinned position the resting one — no hop on scroll.
 			const chrome = readFileSync('styles/shelfControls.css', 'utf8');
 			const body = bodyOf(chrome, '.pbl-shelf-below .pbl-shelf-grip', 'styles/shelfControls.css');
-			expect(body).toContain('top: calc(-1 * var(--size-4-3));');
+			expect(body).toContain('top: calc(-1 * var(--size-4-1));');
 			expect(body).toContain('bottom: auto;');
-			// The sized band's `margin-block-start: auto` pushes the strip to the foot — which is
-			// exactly what must NOT happen here, and this file's order is what overrules it.
-			expect(body).toContain('margin-block-start: 0;');
+			expect(body).toContain('margin-block-start: calc(-1 * var(--size-4-1));');
+			// The foot's gap-cancel is dropped, so the band's own flex gap is the air below it.
 			expect(body).toContain('margin-block-end: 0;');
 		});
 

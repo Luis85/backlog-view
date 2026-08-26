@@ -177,17 +177,24 @@ about a width.
   refuses by name — it is the whole of what buys a pick made in a tall split coming back in
   full. Open rather than closed: shutting it needs the frame to give the band room from the
   other end, which is a change to the band rule and not to this grip. (Codex, PR #205.)
-- **1g — the band that sits below the axis takes a real block gutter, on both edges.** 12px,
-  matching its inline one, against the 4px the grip's own negative offsets are measured by
-  everywhere else. The FOOT needs it because 1f moved the grip off that edge and nothing holds
-  it any more — the last row of cards ended 4px from the border while the cards beside it kept
-  12px. The HEAD needs it because the grip is there now: at 4px, with the foot rule's gap-cancel
-  mirrored under it, the strip sat flush against the header, so the handle and the row it must
-  not be mistaken for were touching. The cancel is dropped rather than mirrored and the 8px flex
-  gap is the air. **Only while the band is OPEN** — a collapsed or empty band draws no grip, so
-  an unscoped gutter is 16px reserved for a control that is not there, on the one band whose
-  whole point when shut is a header's worth of space and no more. Measured: the collapsed band
-  is 34px with the gutter and without it. Reported with 1f and again on 2026-08-26.
+- **1g — the band that sits below the axis takes a real FOOT gutter, and the head keeps its
+  4px.** 12px at the foot, matching its inline gutter: 1f moved the grip off that edge and
+  nothing holds it any more, so the last row of cards ended 4px from the border while the cards
+  beside it kept 12px. **Only while the band is OPEN** — a collapsed or empty band draws no grip
+  and has no last row to clear, so an unscoped gutter is a gutter under a header and nothing
+  else, on the one band whose whole point when shut is a header's worth of space and no more.
+  Measured: the collapsed band is 34px with the rule and without it.
+  At the HEAD the room the handle needs is taken from the gutter already there rather than added
+  to it — the strip's own start margin negates that 4px and lifts it onto the border, so its
+  whole margin box is the space it displaced and the header moves by nothing new. What it must
+  NOT be is a head gutter with the strip below it: measured at 12px, the title row sat 31.5px
+  under the band's top against 7.5px shut, which is 24px of empty band above the one row a shut
+  shelf exists to show and the jump the padding rule spends five pixels to avoid. What is left is
+  the strip's 4px and the band's own 8px flex gap, which is the air between the handle and a row
+  it must not be mistaken for: 17px of head chrome, the title 19.5px under the band's top. The
+  gap-cancel the foot rule states is dropped rather than mirrored — at the foot, hugging the last
+  group is what puts the strip on the boundary. Reported 2026-08-26, twice: the touching handle,
+  then the space the first answer to it cost.
 - **1i — the band's own rows scroll through the strip.** They no longer can: it is opaque, in
   the band's own colour. A sticky element holds its place while the content goes past it, so a
   transparent strip has the band's rows sliding visibly through the 8px a reader is meant to
@@ -198,6 +205,11 @@ about a width.
   and it costs the 8px of card the strip covers, which the scrollport was clipping anyway.
   Stated on the rule BOTH arrangements share — the foot strip is sticky too and had the same
   hole, unreported because a strip at the foot of a band is where a reader looks last.
+- **1j — the strip hops when the band is first scrolled.** Not at the head: the sticky offset is
+  the same 4px the start margin negates, so the pinned position IS the resting one and scrolling
+  moves the strip nowhere. The FOOT arrangement does hop, by its own 4px, and keeps it — there
+  the resting strip hugs the last group wherever that falls, so there is no resting position for
+  a pin to agree with.
 - **2f — the band is taller than its cards, and the grip is not at its foot.** It is now.
   `position: sticky` holds an element inside its scrollport when scrolling would carry it
   away and does nothing otherwise, so a band with a picked height and less content than that
@@ -240,8 +252,10 @@ about a width.
 - The grip is the band's FIRST element where the shelf is drawn below the axis and its LAST
   where the shelf leads, so the tab stop is where the strip is — never reordered into a
   different reading order by the stylesheet.
-- The band that sits below the axis keeps its block gutter level with its inline one while it
-  is open, and a collapsed one is the same height with the rule as without it.
+- The band that sits below the axis keeps its FOOT gutter level with its inline one while it is
+  open, and a collapsed one is the same height with the rule as without it. Its head keeps the
+  4px every band has: the handle is taken out of the flow into that gutter, never added above the
+  header, so the title row is never pushed down the band by the control beside it.
 - The strip is opaque in the band's own colour, on both arrangements, so no row is ever drawn
   inside the 8px a reader grabs.
 - Past the point where the axis is at its own floor the edge no longer follows the pointer,
@@ -310,11 +324,11 @@ means. `styles/shelfControls.css` mirrors every term of the foot rule against th
 (sticky `top` rather than `bottom`, the negative pull moved to the end so it cancels the
 flex gap below it, and the sized band's auto start margin taken back, since a first flex
 item is already at the top and has nothing above it to consume); `styles/shelf.css` gives
-that band the block gutter 1g asks for, scoped to the open state with a `:not()` pair rather
+that band the FOOT gutter 1g asks for, scoped to the open state with a `:not()` pair rather
 than a third class — the two states already say what they are, and a name for "has a grip"
-is a name that can come apart from the one thing that draws one. The sticky offset is that
-gutter read a second time (`-12px`), which is what docks the strip flush to the border once
-the gutter has scrolled away: at `-4px` it floated 8px inside the band, at `0` the whole 12px. Measured in the browser harness at 1200x800 on the
+is a name that can come apart from the one thing that draws one. The head takes none: the
+strip's start margin negates the 4px already there and the sticky offset reads that same 4px,
+so the strip rests on the border and pins where it already is. Measured in the browser harness at 1200x800 on the
 dated axis: the strip sits at the band's own top edge, stays there with the band scrolled to
 its end, and the last row of cards clears the foot by 12px.
 

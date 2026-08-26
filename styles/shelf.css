@@ -86,13 +86,22 @@
    given to every shelf, since everywhere else the strip still sits on the foot and the 4px is
    what its own offsets cancel.
 
+   **The head is NOT one of them, and that is the correction rather than the omission.** The
+   strip sits IN the 4px gutter this band already has, pulled onto the border by its own start
+   margin (`shelfControls.css`), so the head keeps that 4px and the room the handle needs costs
+   the header nothing but the band's own flex gap. Given a 12px head gutter instead, the title
+   row sat 31.5px below the band's top against 7.5px shut — measured — which is 24px of empty
+   band above the one row a shut shelf exists to show, and the very jump the rule above spends
+   five pixels to avoid.
+
    **Only while the band is OPEN.** A collapsed or empty band draws no grip (`renderShelf`
-   returns before it), so this would be 16px of room reserved for a control that is not there —
-   on the one band whose whole point when shut is to take a header's worth of space and no more.
-   The `:not()` pair rather than a second class: the two states already say what they are, and a
+   returns before it) and has no last row to clear, so this would be a gutter under a header and
+   nothing else — on the one band whose whole point when shut is to take a header's worth of
+   space and no more. Measured: the collapsed band is 34px with the rule and without it. The
+   `:not()` pair rather than a second class: the two states already say what they are, and a
    third name for "has a grip" is a name that can come apart from the one thing that draws one. */
 .pbl-shelf-below:not(.pbl-shelf-collapsed):not(.pbl-shelf-empty) {
-	padding-block: var(--size-4-3);
+	padding-block-end: var(--size-4-3);
 }
 
 /* A band the reader has SIZED does not yield to the flex line it sits on. `publishShelfHeight`

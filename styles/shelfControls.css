@@ -204,18 +204,24 @@ input.pbl-shelf-search-input {
    .pbl-shelf-grip` above, so this file's order is what decides between them — the same beat
    `propertyColumns.css` states for its own pair.
 
-   Two of those terms are the band's 12px head gutter read twice, and they are one decision with
-   it. The sticky offset is measured from the scrollport's own content edge, so `-12px` is what
-   docks the strip flush to the band's border once the gutter has scrolled away — at `-4px` it
-   floated 8px inside the band, and at `0` it would float the whole 12px. And the gap-cancel is
-   DROPPED rather than mirrored: at the foot the strip hugging the last group is what puts it on
-   the boundary, while at the head the thing below it is the header, and a handle flush against
-   the row it must not be mistaken for is the complaint this rule exists to answer. The 8px flex
-   gap is the air, so nothing here spells a second margin for it. */
+   **The two margins are what keep the header where a shut band has it.** The start margin is the
+   band's 4px head gutter, negated: it lifts the strip out of the flow and onto the border, so
+   the strip's whole margin box is the 4px it displaced and the header moves by nothing the
+   gutter did not already spend. Written instead as room the header is pushed down by — a 12px
+   gutter with the strip below it — the title row went to 31.5px under the band's top against
+   7.5px shut, measured, which is the jump `shelf.css`'s own padding rule spends five pixels to
+   avoid. The sticky offset is that same 4px read again, which is what makes the pinned position
+   the resting one: the strip is already ON the border, so scrolling the band moves it nowhere at
+   all — the foot arrangement's own 4px hop is a thing this one does not have.
+
+   And the gap-cancel is DROPPED rather than mirrored: at the foot the strip hugging the last
+   group is what puts it on the boundary, while at the head the thing below it is the header, and
+   a handle flush against the row it must not be mistaken for is the complaint this rule answers.
+   The band's own 8px flex gap is that air, so nothing here spells a second margin for it. */
 .pbl-shelf-below .pbl-shelf-grip {
-	top: calc(-1 * var(--size-4-3));
+	top: calc(-1 * var(--size-4-1));
 	bottom: auto;
-	margin-block-start: 0;
+	margin-block-start: calc(-1 * var(--size-4-1));
 	margin-block-end: 0;
 }
 
