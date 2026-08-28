@@ -31,6 +31,16 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   state every saved release view is in until you set it. Both missing bindings are named in
   one line beneath the list, so a screen that is staying quiet says why.
 
+- **A release's own screen opens with the same figure, over its own members.** Pick a
+  release from the list and its scope now starts with a progress bar, a percentage and an
+  `N of M items done` phrase, counted over what that one release holds rather than the
+  whole list. Hover it and it says WHICH property and which values decided the count — the
+  state property and the done values you bound, or, when a release's members span more
+  than one workflow, which workflows they are. With no state property bound the strip is
+  withheld entirely rather than drawn as `0%`, the same rule the release list already
+  keeps; a release with nothing in it withholds the strip too, since a `0 of 0` figure
+  beside a screen already saying the release is empty would say it twice.
+
 - **Releases are made from the release view.** A **New release** button now sits at the head
   of the release list, and again on the screen you see when there are no releases yet. It
   asks for a name and — where your vault tracks them — a version, a target date and a status,
@@ -52,6 +62,14 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   note already carries, so in the view options the version, target-date and status boxes may
   show a suggested name rather than a pickable one until a release you have made actually
   carries that field. Fill a box in once and that property is pickable like any other.
+
+- **The release view has its own ✨ for binding those properties, without making a
+  release.** It sits at the head of the release list always, next to New release, and it
+  is offered again on the empty state that tells you no membership property is mapped —
+  withheld there only when you cleared that property on purpose, since a press could then
+  only bind something else and leave you looking at the same screen. A press says what it
+  bound, or that there was nothing left to add. Like every ✨ in this plugin, it touches
+  only the view's own configuration — it writes no note.
 
 - **A release's scope can be folded, and a row opens the note it names.** Every row that
   holds children now carries a disclosure, so a large release can be collapsed down to its
