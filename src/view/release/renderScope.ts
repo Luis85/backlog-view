@@ -6,6 +6,7 @@ import { formatCivil } from '../../domain/timeline';
 import { BacklogSettings } from '../../domain/settings';
 import { WorkflowKind, workflowStateInfo } from '../../domain/board';
 import { guidanceShell } from '../render/emptyStates';
+import { uniqueElementId } from '../selection';
 import { renderReleaseInit } from './initControl';
 import { drawScopeTree, effectiveHideDone, rowsAfterHideDone } from './scopeTree';
 import { drawScopeToolbar } from './scopeToolbar';
@@ -198,6 +199,17 @@ function drawHeader(view: ReleaseView, scope: ReleaseScope, release: ReleaseRow,
  * deliberately: the header is already two lines, laid out against a real stylesheet, and a
  * third would cost more than provenance buys — see this module's own header comment.
  * {@link progressProvenance} is where the WORDING is decided; this function only calls it.
+ *
+ * **The tooltip alone reaches a pointer only**, which the requirement's "every figure names
+ * what it read" does not narrow to sighted mouse users. `sumEl` carries no `aria-label` for
+ * it — that attribute REPLACES an element's content for assistive tech, so labelling the
+ * strip with the provenance sentence would silence the bar, the percentage and the `n of m`
+ * text it already draws, trading one gap for a worse one. What is added instead is a
+ * `.pbl-sr-only` span carrying the IDENTICAL sentence (`board.ts`'s own pattern for the
+ * board's shortcut hint), associated through `aria-describedby` rather than duplicated in
+ * new words: one question — what decided this figure — gets one answer, read alongside the
+ * visible content rather than instead of it. The tooltip stays, for the pointer users who
+ * already had it.
  */
 function drawSummary(headerEl: HTMLElement, release: ReleaseRow, members: number, planSettings: BacklogSettings): void {
 	if (release.members.unconfigured || members === 0) return;
@@ -213,7 +225,17 @@ function drawSummary(headerEl: HTMLElement, release: ReleaseRow, members: number
 	barEl.createDiv({ cls: 'pbl-rel-bar-fill' }).setCssProps({ '--pbl-rel-fill': `${pct}%` });
 	sumEl.createSpan({ cls: 'pbl-rel-pct', text: t('release.scope.percent', { pct }) });
 	sumEl.createSpan({ cls: 'pbl-rel-figure', text: t('column.rollupTooltip', { done, count: members }) });
-	setTooltip(sumEl, progressProvenance(release.workflows, planSettings));
+	const provenance = progressProvenance(release.workflows, planSettings);
+	setTooltip(sumEl, provenance);
+	// `aria-hidden`, like `board.ts`'s own `renderBoardInstructions`: without it a linear
+	// (virtual-cursor) read would meet this span as ordinary content — one more figure in
+	// the strip — and then meet the identical sentence again as `sumEl`'s description. Hiding
+	// it from normal traversal is what keeps the strip's own reading exactly the visible bar,
+	// percentage and count, while `aria-describedby` still pulls a hidden element's text as a
+	// description — that split is the whole of why this pattern works.
+	const provenanceEl = sumEl.createSpan({ cls: 'pbl-sr-only', attr: { 'aria-hidden': 'true' }, text: provenance });
+	provenanceEl.id = uniqueElementId('pbl-rel-provenance');
+	sumEl.setAttribute('aria-describedby', provenanceEl.id);
 }
 
 /**

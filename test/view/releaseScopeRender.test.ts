@@ -378,6 +378,34 @@ describe('the summary strip', () => {
 		expect(strip.dataset.tooltip).toBe('Progress reads status. Done values: Done, Closed, Completed, and Removed.');
 	});
 
+	/**
+	 * Finding 2 of Task 7: the provenance sentence was attached with `setTooltip` alone, on
+	 * a non-focusable `<div>` — pointer-only, so a keyboard or screen-reader user got the
+	 * bar, the percentage and the "n of m" sentence with nothing naming their source.
+	 *
+	 * jsdom computes no layout and no accessibility tree, so what this can check is the DOM
+	 * relationship the fix is built from — `aria-describedby` resolving to an element whose
+	 * text is the identical sentence the tooltip carries — rather than what a screen reader
+	 * actually announces, which is a live-vault question like every other ARIA claim this
+	 * view makes (`src/view/CLAUDE.md`'s own resize-grip section says the same about a
+	 * `role="separator"`).
+	 */
+	it('makes the provenance sentence reachable without a pointer, through aria-describedby', () => {
+		const { view, containerEl } = makeReleaseView(progressVault(), RELEASE_CONFIG);
+		view.pick('P.md');
+		const strip = containerEl.querySelector('.pbl-rel-summary') as HTMLElement;
+		const describedId = strip.getAttribute('aria-describedby');
+		expect(describedId).not.toBeNull();
+		const described = containerEl.querySelector(`#${describedId}`) as HTMLElement | null;
+		expect(described).not.toBeNull();
+		// One sentence, not two wordings for one question — the same text the tooltip
+		// carries, read from the element the description resolves to.
+		expect(described!.textContent).toBe(strip.dataset.tooltip);
+		// Hidden from a linear read, so a screen reader meets the sentence once (as the
+		// description) rather than twice (again as ordinary content of the strip).
+		expect(described!.getAttribute('aria-hidden')).toBe('true');
+	});
+
 	it('reports the same numbers the index band reported', () => {
 		// One `ReleaseRow`, two screens — the rule `domain/releases.ts` states: progress
 		// "is computed nowhere else". A second derivation would pass this only by luck.
