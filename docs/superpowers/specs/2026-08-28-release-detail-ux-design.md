@@ -83,9 +83,25 @@ on this screen — it counts items and items whose state is a done value, and re
 plus the percentage. The state key and its done values are the ones the view already
 resolves for the model; nothing new is configured.
 
-- Members with no state key bound: the strip draws the item count alone. Absent, not zero.
-- No members: the strip is withheld entirely — the empty state already says the release is
-  empty, and `0 of 0 items done` beside it says it twice and worse.
+**Every figure names what it read**, which is that note's main flow 5 and its extension 2c,
+and the two halves are different sentences:
+
+- **Progress with no state key or no done values bound** is absent **and named as
+  unconfigured** — not silently missing, which is what this spec said until the finding on
+  PR #206. A reader must be able to tell a progress figure nobody configured from one the
+  screen forgot to draw. It names the option to bind, the way this view's other empty states
+  already do; the item count still answers beside it.
+- **Progress that DID compute** names its denominator in its own sentence — `5 of 12 items
+  done`, where "items" is the denominator main flow 2 requires be named. The estimate
+  denominator does not exist in this increment, so there is one to name rather than two.
+  The state property and its done values are named in the strip's tooltip rather than as a
+  third line of header chrome: that satisfies "names the property and the vocabulary it
+  read" without spending the vertical space the mock was drawn to fit. **This is a reading
+  of main flow 5, not a quotation of it** — if the intent is that the property is named on
+  screen, the strip grows a line and the mock is re-drawn before this is built.
+- **No members**: the strip is withheld entirely — the empty state already says the release
+  is empty, and `0 of 0 items done` beside it says it twice and worse. That is extension 1a's
+  "nothing to count, and none of them reads as zero".
 - The count agrees with the header's member count by construction: one walk, one population.
 
 `docs/requirements/Summing up a release.md`'s `## Where it lives` predates this view and
@@ -178,8 +194,9 @@ Every claim gets one that fails without it — watched failing, then restored.
 - Rollups: a folded parent reports the same numbers as an unfolded one; **a context row
   reports none** — the rule [[The scope of a release as a tree]] states and the mock got
   wrong on its first draw.
-- Summary: count and progress over members only, agreeing with the header's count; the
-  unbound state key draws the count alone; no members draws no strip.
+- Summary: count and progress over members only, agreeing with the header's count; an
+  unbound state key draws the count and a NAMED unconfigured progress, never a silent gap;
+  no members draws no strip; adding a context ancestor to the fixture changes no number.
 - Hide done: a rollup is unchanged by the toggle; a done parent over unfinished member
   work STAYS (the finding this spec was corrected for); a parent whose children all hid
   draws as a leaf; a context row whose children all hid hides; everything hidden draws the
