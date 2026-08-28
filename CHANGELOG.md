@@ -133,6 +133,22 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   ancestor drawn as context in each — the tree could open already highlighted on it instead of
   its own first row. Picking a release now always starts fresh; reopening the SAME release
   (a background refresh, an edit elsewhere) still returns you to where you were.
+- **The shelf's compact rows no longer reserve room for columns that are empty on every
+  card in the band.** In the list layout each row carries the same property columns your tree
+  does, so that the values line up down the band — but a column the whole shelf has nothing
+  in was still taking its width from every row, and the row's title was being squeezed to
+  make space for it. On the shipped demo backlog that was three columns of nothing on every
+  row, and titles cut short at about a third of the width they now get. A column any card in
+  the band has a value in is unchanged: it is still held open on the rows that have none, so
+  nothing shifts from row to row.
+
+- **The shelf's type headers no longer let the cards under them show through, and they look
+  the same in both layouts.** The header naming each type — `FEATURE`, `PBI` — stays pinned
+  at the top of the shelf as you scroll it, and it was painted in a see-through colour, so a
+  row passing beneath it was drawn straight through the type name. It is opaque now. The same
+  header also used to be drawn two different ways: a plain line in the card grid, a banded
+  strip with its count in a pill in the compact list. It is one header in both, and it pins in
+  both.
 
 - **The release list no longer draws every row as a raised Obsidian button.** Each row really
   is a button — that is what makes it reachable with Tab, and openable with Enter and Space —

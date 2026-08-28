@@ -80,10 +80,16 @@ export function installObsidianDom(): void {
 	}
 	// Obsidian also declares the create* helpers as GLOBALS returning DETACHED elements —
 	// unlike the prototype forms below, which append to their receiver. The icon template
-	// in `src/view/render/icons.ts` is the first consumer here.
-	if (typeof (globalThis as Record<string, unknown>).createDiv === 'undefined') {
-		(globalThis as Record<string, unknown>).createDiv = (options?: CreateOptions | string): HTMLElement => {
-			const el = document.createElement('div');
+	// in `src/view/render/icons.ts` is the first consumer here, and `columnsWithContent`
+	// (`src/view/render/columns.ts`) is the first of `createSpan`'s: it renders a value into
+	// a throwaway element to ask whether it would show anything. The stub carried only
+	// `createDiv` until then, so the second global was missing rather than deliberately left
+	// out — a gap that shows up as a `ReferenceError` in a test and never in a vault.
+	const globals: Record<string, string> = { createDiv: 'div', createSpan: 'span' };
+	for (const [name, tag] of Object.entries(globals)) {
+		if (typeof (globalThis as Record<string, unknown>)[name] !== 'undefined') continue;
+		(globalThis as Record<string, unknown>)[name] = (options?: CreateOptions | string): HTMLElement => {
+			const el = document.createElement(tag);
 			applyOptions(el, options);
 			return el;
 		};

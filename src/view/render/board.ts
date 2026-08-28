@@ -10,7 +10,7 @@ import {
 	renderNoDeliverablesState,
 } from './emptyStates';
 import { fromRowControl, renderBadge, renderChevron } from './rows';
-import { BacklogViewHost, BoardSnapshot, ColumnScope } from '../host';
+import { BacklogViewHost, BoardSnapshot, Column, ColumnScope } from '../host';
 import { uniqueElementId } from '../selection';
 import { CardDragController } from '../interactions/cardDrag';
 import { showColumnMenu } from '../interactions/columnMenu';
@@ -593,12 +593,20 @@ export function renderCardBody(
 	// `toggleEl` is `renderCardChildren`'s own option, passed straight through: a compact
 	// row's summary is a line, so the toggle belongs ON it while the list stays beneath in
 	// `kidsEl`. Absent, the card stacks and the toggle builds inside its own wrapper.
+	//
+	// `columns` narrows what the card's own kinds are filtered OUT OF, and it is the shelf's
+	// compact row alone: a band of rows shares its columns, so a column no card in the band
+	// draws is width on every row and content on none (`columnsWithContent`). Defaulting to
+	// the resolved list keeps every other caller on the whole set, and a caller passing a
+	// list that is not a subset of it would only be inventing columns nothing published a
+	// width for.
 	{
 		kidsEl,
 		holdEmpty = false,
 		rollupEl,
 		toggleEl,
-	}: { kidsEl?: HTMLElement; holdEmpty?: boolean; rollupEl?: HTMLElement; toggleEl?: HTMLElement } = {},
+		columns,
+	}: { kidsEl?: HTMLElement; holdEmpty?: boolean; rollupEl?: HTMLElement; toggleEl?: HTMLElement; columns?: Column[] } = {},
 ): void {
 	const host = ctx.host;
 	const head = card.createDiv({ cls: 'pbl-card-head' });
@@ -645,7 +653,7 @@ export function renderCardBody(
 	// review, PR #152): they had always drawn on cards, as values, and nothing about this
 	// feature was a reason to take them away. `renderCell` is what keeps them read-only
 	// there — see its own note on the projection.
-	const cardColumns = ctx.columns.filter(
+	const cardColumns = (columns ?? ctx.columns).filter(
 		(column) =>
 			column.kind === 'value' ||
 			column.kind === 'tags' ||
