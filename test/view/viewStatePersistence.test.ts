@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
-import { RELEASE_FOLD } from '../../src/view/viewState';
+import { CARD_SCOPE, RELEASE_FOLD, seedTimelineScope, TIMELINE_SCOPE } from '../../src/view/viewState';
 import { FakeVault } from '../helpers/vault';
 import { fixture, makeView, refresh, rowByTitle, titlesOf, useViewHarness } from '../helpers/view';
 
@@ -245,6 +245,116 @@ describe('collapse state persistence', () => {
 		view.onunload();
 
 		expect(stored(vault)['Backlog.base#Backlog'].folds.collapsed).toContain(releaseFoldKey);
+	});
+
+	/**
+	 * The two LEGACY migrations (`seedTimelineScope`, `seedCardScope`) predate
+	 * `RELEASE_FOLD` and exist only to carry a bit written before the dated axis and the
+	 * card each got a scope of their own — a release fold is never that bit, since this
+	 * prefix is new on this branch and no stored entry could have been written under it
+	 * before either migration existed. Left unguarded, `seedCardScope`'s `notePath` map
+	 * reduces a release-scoped key to the bare MEMBER path and seeds that note's CARD as
+	 * collapsed on the backlog view — a fold the reader made only on the release's own
+	 * screen, read back as one they made here.
+	 */
+	it('does not let a release-scoped fold seed a card-scope fold for its member', () => {
+		const vault = fixture();
+		// A LEAF member (no children), so `collapseNewParents`' own default — which
+		// folds an untouched PARENT's card on sight — cannot also explain a collapsed
+		// entry here; only `seedCardScope` reading the release key as a bare path can.
+		const releaseFoldKey = `${RELEASE_FOLD}Releases/0.8.md\u0000Feature B1.md`;
+		vault.localStorage.set('product-backlog:view-state', {
+			'Backlog.base#Backlog': {
+				base: 'Backlog.base',
+				folds: { collapsed: [releaseFoldKey], expanded: [], lanes: [] },
+				prefs: {},
+			},
+		});
+
+		const { view } = makeView(vault, {}, { base: 'Backlog.base', collapsed: true });
+		// Puts a pending save on the clock — the same reason the release-fold survival
+		// test above calls it — so the assertion is of what the flush actually wrote.
+		view.setZoom('quarter');
+		view.onunload();
+
+		const collapsed = stored(vault)['Backlog.base#Backlog'].folds.collapsed;
+		expect(collapsed).not.toContain(`${CARD_SCOPE}Feature B1.md`);
+	});
+
+	/**
+	 * `seedTimelineScope`'s own copy of the same rule, checked directly against the
+	 * function rather than through a saved view: unguarded, it would add
+	 * `TIMELINE_SCOPE + <release-fold key>` to both Sets — a compound naming no note,
+	 * that can never match anything again, while still spending a slot against
+	 * `MAX_FOLDS`. That pollution never reaches disk regardless of this guard, because
+	 * `flush()`'s own vault-existence prune (unrelated to this fix, and already
+	 * covered by the tests around it) discards any settled key whose note does not
+	 * exist — and this compound never names one. So a saved view cannot tell the two
+	 * apart, and the check has to read the Sets directly, before that unrelated prune
+	 * ever runs.
+	 */
+	it('does not seed a nonsense timeline-scope compound from a release-scoped key', () => {
+		const releaseFoldKey = `${RELEASE_FOLD}Releases/0.8.md\u0000Feature B1.md`;
+		const collapsed = new Set([releaseFoldKey]);
+		const settled = new Set([releaseFoldKey]);
+
+		seedTimelineScope(collapsed, settled);
+
+		const compound = `${TIMELINE_SCOPE}${releaseFoldKey}`;
+		expect(settled).not.toContain(compound);
+		expect(collapsed).not.toContain(compound);
+	});
+
+	/**
+	 * The exclusion has to leave the migration's own job alone: a release key sits
+	 * beside an ORDINARY bare path here, and only the release key's own carry is
+	 * skipped. Pinning this against `seedTimelineScope` directly is what tells the
+	 * `continue` apart from a bug that skipped every key sharing its iteration —
+	 * the release-only case above cannot, since an empty result there is also what a
+	 * `return` on the very first key would produce.
+	 */
+	it('still seeds an ordinary bare path sitting beside a release-scoped key', () => {
+		const releaseFoldKey = `${RELEASE_FOLD}Releases/0.8.md\u0000Feature B1.md`;
+		const collapsed = new Set(['Epic B.md', releaseFoldKey]);
+		const settled = new Set(['Epic B.md', releaseFoldKey]);
+
+		seedTimelineScope(collapsed, settled);
+
+		expect(settled).toContain(`${TIMELINE_SCOPE}Epic B.md`);
+		expect(collapsed).toContain(`${TIMELINE_SCOPE}Epic B.md`);
+		const compound = `${TIMELINE_SCOPE}${releaseFoldKey}`;
+		expect(settled).not.toContain(compound);
+		expect(collapsed).not.toContain(compound);
+	});
+
+	/**
+	 * `seedCardScope`'s own copy of the same question, checked the way its effect is
+	 * actually observable — through a saved view, since a card fold (unlike the
+	 * timeline compound above) survives to disk for a path that names a real note.
+	 * A release key beside an ordinary leaf path must seed the leaf's card exactly as
+	 * it would with no release key present, so the exclusion is confirmed to be
+	 * scoped to the release key alone rather than to the whole migration.
+	 */
+	it('still seeds an ordinary leaf’s card fold sitting beside a release-scoped key', () => {
+		const vault = fixture();
+		const releaseFoldKey = `${RELEASE_FOLD}Releases/0.8.md\u0000Feature B1.md`;
+		vault.localStorage.set('product-backlog:view-state', {
+			'Backlog.base#Backlog': {
+				base: 'Backlog.base',
+				// 'Feature B2.md' is collapsed here so its card seeds collapsed too —
+				// the same expectation the release-only test rules out for its own path.
+				folds: { collapsed: [releaseFoldKey, 'Feature B2.md'], expanded: [], lanes: [] },
+				prefs: {},
+			},
+		});
+
+		const { view } = makeView(vault, {}, { base: 'Backlog.base', collapsed: true });
+		view.setZoom('quarter');
+		view.onunload();
+
+		const collapsed = stored(vault)['Backlog.base#Backlog'].folds.collapsed;
+		expect(collapsed).toContain(`${CARD_SCOPE}Feature B2.md`);
+		expect(collapsed).not.toContain(`${CARD_SCOPE}Feature B1.md`);
 	});
 
 	/**

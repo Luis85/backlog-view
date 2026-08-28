@@ -177,10 +177,20 @@ function scopeOf(key: string): string {
  * touching a state this version wrote — and makes it idempotent, since the copy it
  * makes is exactly what stops it running again.
  */
-function seedTimelineScope(collapsed: Set<string>, settled: Set<string>): void {
+// Exported for tests only: `flush()`'s own vault-existence prune (below) always
+// discards a `RELEASE_FOLD` compound before it can reach storage, whether or not this
+// guard runs — the two never disagree at the persisted result, only in the Sets
+// between `restore()` and the next flush, which nothing outside this module can read.
+export function seedTimelineScope(collapsed: Set<string>, settled: Set<string>): void {
 	const keys = [...settled];
 	if (keys.some((key) => key.startsWith(TIMELINE_SCOPE))) return;
 	for (const key of keys) {
+		// `RELEASE_FOLD` is new on this branch, so no entry it wrote predates the
+		// dated axis's own scope — there is nothing here for this one-time carry to
+		// recover. Left in, it mints a `TIMELINE_SCOPE + RELEASE_FOLD…` compound that
+		// names no note and can never match anything again, while still spending a
+		// slot against `MAX_FOLDS`.
+		if (key.startsWith(RELEASE_FOLD)) continue;
 		settled.add(TIMELINE_SCOPE + key);
 		if (collapsed.has(key)) collapsed.add(TIMELINE_SCOPE + key);
 	}
@@ -210,7 +220,12 @@ function seedCardScope(collapsed: Set<string>, settled: Set<string>): void {
 	const keys = [...settled];
 	if (keys.some((key) => key.startsWith(CARD_SCOPE))) return;
 	const expanded = (key: string): boolean => settled.has(key) && !collapsed.has(key);
-	for (const path of new Set(keys.map(notePath))) {
+	// Same exclusion as `seedTimelineScope`, for the same reason: a release fold
+	// predates neither scope, so there is no prior card bit to recover from it.
+	// `notePath` reduces it to the bare MEMBER path, so left in, folding a note on a
+	// release's own screen would seed that same note's card as collapsed on the
+	// backlog view too — a fold the reader never made there.
+	for (const path of new Set(keys.filter((key) => !key.startsWith(RELEASE_FOLD)).map(notePath))) {
 		settled.add(CARD_SCOPE + path);
 		if (!expanded(path) && !expanded(TIMELINE_SCOPE + path)) collapsed.add(CARD_SCOPE + path);
 	}
