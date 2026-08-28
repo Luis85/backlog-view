@@ -1,5 +1,6 @@
 import { App } from 'obsidian';
 import { movedPath, ViewIdentity, viewNameOf, viewStateKey } from './viewIdentity';
+import { movedFoldKey } from './foldKeys';
 
 /**
  * Everything one saved view remembers between sessions, in vault-scoped localStorage:
@@ -623,6 +624,44 @@ export function renamePathPrefs(app: App, oldPath: string, newPath: string): voi
 			moved = true;
 		}
 	}
+	if (moved) writeMap(app, map);
+}
+
+/**
+ * Carry every stored FOLD key through a rename — the folds half of what
+ * {@link renamePathPrefs} does for the two path-valued preferences, wired to the same
+ * `vault.on('rename')` at the plugin.
+ *
+ * It exists because one view has no in-memory copy for `ViewState.renamePath` to migrate:
+ * the release view reads and writes `folds.collapsed` through this module directly, so
+ * without this walk a renamed member (or a renamed release) reopened its row —
+ * `docs/requirements/Collapse persistence.md`'s "renaming a note migrates the state rather
+ * than orphaning it" was false for exactly that view. For the backlog view this is not a
+ * duplicate of `ViewState.renamePath` for the same reason {@link renamePathPrefs} is not a
+ * duplicate of `renameScoped`: that one covers the loaded view, whose flush would put a
+ * stale key straight back, and this one covers every OTHER stored entry.
+ *
+ * `collapsed` and `expanded` only. `collapsedColumns`/`expandedColumns` carry an iteration
+ * note path too (`movedColumnKey`, `view/viewState.ts`) and stored entries have the same
+ * staleness there — older than this walk, and the iteration board's own to fix, since that
+ * key shape lives with the board rather than here.
+ */
+export function renamePathFolds(app: App, oldPath: string, newPath: string): void {
+	const map = readMap(app);
+	let moved = false;
+	for (const entry of Object.values(map)) {
+		for (const list of ['collapsed', 'expanded'] as const) {
+			entry.folds[list] = entry.folds[list].map((key) => {
+				const next = movedFoldKey(key, oldPath, newPath);
+				if (next === null) return key;
+				moved = true;
+				return next;
+			});
+		}
+	}
+	// Only when something actually moved: a rename names no fold far more often than it
+	// names one, and rewriting the map regardless would spend a localStorage write on
+	// every rename in the vault.
 	if (moved) writeMap(app, map);
 }
 

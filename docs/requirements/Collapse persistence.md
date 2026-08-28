@@ -46,7 +46,10 @@ the one I am working in.
 - **2a — the base cannot be identified.** The state is **session-only**. A shared fallback
   key would mean two different bases silently sharing one person's collapse state.
 - **3a — a note, a view or a base is renamed.** The stored state is **migrated** rather
-  than orphaned, so a rename does not silently reset the tree.
+  than orphaned, so a rename does not silently reset the tree. That covers a release's
+  folds as well, whose key holds TWO note paths — the release and the member — either of
+  which can be the thing renamed. The release view keeps no in-memory copy to migrate, so
+  its folds are carried by the walk over the STORED entries.
 - **3b — stored paths no longer exist.** They are pruned, so the entry cannot grow forever.
 - **3c — the vault cannot answer whether a path exists.** Nothing is pruned at all. The
   prune deletes other views' entries, and "I cannot see it" is only evidence when the
@@ -57,7 +60,9 @@ the one I am working in.
 - It is never written to the `.base` file: it is one person's working position, not shared
   configuration, and a path per row is growth that file should not take.
 - A row nobody has ruled on opens collapsed, so a large backlog starts readable.
-- Renaming a note, a view or a base migrates the state rather than orphaning it.
+- Renaming a note, a view or a base migrates the state rather than orphaning it — every
+  fold key shape included, so renaming a release, or a member inside one, keeps the row
+  folded rather than reopening it.
 - When the base cannot be identified the state is session-only — never a shared key.
 - A malformed stored value is read defensively and discarded, not thrown on.
 - A save made while the vault cannot resolve its own base prunes nothing.
@@ -69,6 +74,10 @@ the one I am working in.
 
 `src/storage/viewIdentity.ts` (which saved view this is: the leaf walk that finds the
 `.base`, the storage key, and the rename arithmetic both halves need) ·
+`src/storage/foldKeys.ts` (the SHAPE of a stored fold key — which scope a key carries, the
+note path or paths inside it, and the rename arithmetic both the loaded view's own walk and
+the store's walk over every stored entry run; in `storage/` because that is the layer whose
+format it describes, so the store needs no import from `view/`) ·
 `src/storage/viewStateStore.ts` (what is stored: the defensive read, the one reader table
 both directions run through, and pruning — the only module allowed to touch local
 storage) · `src/view/viewState.ts` (which rows are shut, the once-only default, the

@@ -34,7 +34,8 @@ import { uniqueElementId } from '../selection';
  * exist for exactly this failure, over the backlog's own two projections; this scope
  * multiplies it by "however many releases the base holds" instead of by two.
  *
- * `RELEASE_FOLD` itself now lives in `view/viewState.ts`, not here: the backlog view's
+ * `RELEASE_FOLD` itself now lives in `storage/foldKeys.ts`, not here (and is re-exported
+ * by `view/viewState.ts`, which is where this module still names it): the backlog view's
  * own `ViewState` has to recognise the prefix too, since a saved view's TYPE can change
  * while its stored identity does not, and a `.base` view switched from this one to the
  * backlog view carries whatever this module wrote under that identity — see that
@@ -81,17 +82,15 @@ function writeRawFolds(view: ReleaseView, id: ViewIdentity | null, all: string[]
  * pick is stored in. Nothing new is persisted: `folds.collapsed` already exists and this
  * view's identity gives it its own copy.
  *
- * Neither the rename walk over `folds.collapsed` (`notePath` in `view/viewState.ts`) nor
- * `renameScoped`'s in-memory one reaches these keys. `notePath` now takes everything after
- * the LAST NUL rather than the first, so that stopped being the reason — the real reason
- * is simpler and does not depend on which NUL `notePath` splits on: both walks are methods
- * of `ViewStateController`, and this view holds no such controller at all, reading and
- * writing `folds.collapsed` directly through `loadViewState`/`saveViewState` instead.
- * Renaming a member, or the open release itself, therefore reopens the row rather than
- * migrating its fold — the accepted cost stated at the call site rather than built around:
- * duplicating `notePath`'s splitting and this scope's own path-plus-member key into
- * `storage/` would buy a migration for a fold set that already forgets nothing worse than
- * "reopened".
+ * Neither of `ViewStateController`'s two rename walks reaches these keys, and that is not
+ * a cost any more: both are methods of a controller this view holds none of — it reads and
+ * writes `folds.collapsed` directly through `loadViewState`/`saveViewState` — so the walk
+ * that carries a fold here is `renamePathFolds` (`storage/viewStateStore.ts`), over the
+ * STORED entries and wired to `vault.on('rename')` at the plugin. Renaming a member, or the
+ * open release itself, therefore migrates the fold rather than reopening the row. What made
+ * that affordable was moving the key shape DOWN rather than copying it: `notePath`,
+ * `scopeOf` and `movedFoldKey` live in `storage/foldKeys.ts`, the layer that stores the key,
+ * so `storage/` needs no import from `view/` and there is still exactly one `notePath`.
  */
 export function foldedPaths(view: ReleaseView, releasePath: string): Set<string> {
 	const id = resolveViewIdentity(view.app, view.viewEl, view.config.name ?? '');

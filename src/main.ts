@@ -1,7 +1,7 @@
 import { Plugin } from 'obsidian';
 import { CREATE_BACKLOG_COMMAND_ID, promptCreateBacklogBase } from './commands/scaffold';
 import { WRITE_README_COMMAND_ID, writeBacklogReadmeCommand } from './commands/readme';
-import { rekeyBase, renamePathPrefs } from './storage/viewStateStore';
+import { rekeyBase, renamePathFolds, renamePathPrefs } from './storage/viewStateStore';
 import { initLocale, t } from './i18n/t';
 import { registerBacklogView } from './view/registerBacklogView';
 import { registerEstimationView } from './view/estimation/register';
@@ -40,6 +40,11 @@ export default class ProductBacklogPlugin extends Plugin {
 			this.app.vault.on('rename', (file, oldPath) => {
 				rekeyBase(this.app, oldPath, file.path);
 				renamePathPrefs(this.app, oldPath, file.path);
+				// And the third question the same event asks: a FOLD key holds a note path
+				// too. The release view keeps no `ViewState` to migrate its own, so this
+				// walk is the only thing that carries a release's folds — see
+				// `renamePathFolds`.
+				renamePathFolds(this.app, oldPath, file.path);
 			}),
 		);
 		this.addCommand({

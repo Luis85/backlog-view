@@ -13,7 +13,13 @@ import {
 	ViewPrefs,
 } from '../storage/viewStateStore';
 import { movedPath, resolveViewIdentity, ViewIdentity } from '../storage/viewIdentity';
+import { CARD_SCOPE, movedFoldKey, notePath, RELEASE_FOLD, TIMELINE_SCOPE } from '../storage/foldKeys';
 import { BacklogViewHost, ColumnScope, Projection } from './host';
+
+// Re-exported rather than moved at every call site: eight modules and three suites name
+// these prefixes from here, and the constants did not change — only which layer defines
+// them. See `storage/foldKeys.ts` for why that layer is the right one.
+export { CARD_SCOPE, RELEASE_FOLD, TIMELINE_SCOPE } from '../storage/foldKeys';
 
 /**
  * The stored `mode` value for each projection, null for the tree — a `Record` rather
@@ -46,59 +52,6 @@ function projectionFor(mode: string | null): Projection {
 	// this version does not recognise — `PREF_READERS` drops those on the way in, and
 	// agreeing with it here costs one `??`.
 	return found ?? 'tree';
-}
-
-/**
- * Prefix marking a key as the DATED AXIS's own fold state, kept apart from the tree's.
- * The grid's chevron folds rows off the plan and the tree's opens a node in the backlog:
- * two questions about one item, so one bit could only answer both by making the reader
- * lose their place in the other projection every time they used it.
- *
- * A NUL, because a vault path may legitimately contain any printable prefix — `notePath`
- * has to strip this back off to prune and to rename, so a key that could be a real path
- * would prune the wrong entry.
- */
-export const TIMELINE_SCOPE = '\u0000timeline:';
-
-/**
- * Prefix marking a key as a CARD's own disclosure state, kept apart from both the tree's
- * bare-path bit and `TIMELINE_SCOPE`: a card's face and the tree row for the same note are
- * two questions again, the same reason `TIMELINE_SCOPE` exists — "is this node open in the
- * backlog" and "is this card's children list open" used to be one bit, so expanding either
- * moved the reader's place in the other, including through the toolbar's bulk controls,
- * which the tree row's bit alone can never avoid since a bulk action legitimately means
- * the tree by it. One scope regardless of WHICH card projection draws the card (board,
- * either roadmap axis, Deliverables): the question "is this item's card open" is one
- * question about the note, not one per screen that happens to draw it as a card — unlike
- * the dated axis's own rows, whose fold is a genuine fact about that PLAN and nothing else.
- */
-export const CARD_SCOPE = '\u0000card:';
-
-/**
- * Prefix marking a key as ONE RELEASE's own fold state (`view/release/scopeTree.ts`,
- * which owns the key SHAPE — `foldPrefix` — and every reason a release multiplies this
- * one bit per release rather than sharing {@link TIMELINE_SCOPE}'s single split). This
- * module only needs to recognise the prefix, for the reason every entry here shares:
- * `restore()` loads whatever `folds.collapsed` a saved view's IDENTITY holds, whichever
- * view last wrote it, and a saved view's TYPE can change while its identity does not —
- * a `.base` view switched from the release view to the backlog view carries the release
- * folds it never had a `ViewStateController` to read. Before this joined
- * {@link notePath}, the backlog view's own flush read a whole
- * `\u0000release:<release path>\u0000<member path>` key as if it were one bare path,
- * found no such file, and silently deleted the release's own fold — on the very first
- * data update after the switch, with nothing on screen saying so.
- */
-export const RELEASE_FOLD = '\u0000release:';
-
-/** The note path a key belongs to, whichever scope settled it. A release-fold key
- *  carries TWO paths — the release, then the member after a second NUL — and it is the
- *  member this key's PRUNE has to ask the vault about, so this takes everything after
- *  the LAST NUL rather than slicing off a fixed prefix length. */
-function notePath(key: string): string {
-	if (key.startsWith(TIMELINE_SCOPE)) return key.slice(TIMELINE_SCOPE.length);
-	if (key.startsWith(CARD_SCOPE)) return key.slice(CARD_SCOPE.length);
-	if (key.startsWith(RELEASE_FOLD)) return key.slice(key.lastIndexOf('\u0000') + 1);
-	return key;
 }
 
 /**
@@ -152,18 +105,6 @@ function movedColumnKey(key: string, oldPath: string, newPath: string): string |
 	if (cut < 0) return null;
 	const moved = movedPath(rest.slice(0, cut), oldPath, newPath);
 	return moved === null ? null : ITERATION_COLUMN_PREFIX + moved + rest.slice(cut);
-}
-
-/** The scope prefix a settled key carries, or '' for the tree's own bare path. A
- *  release-fold key's own "scope" is everything up to and including its SECOND NUL —
- *  `RELEASE_FOLD` plus the release path — because that whole span, not just the fixed
- *  prefix, has to be put back in front of a renamed member for {@link renamePath} to
- *  reconstruct the same key over the same release. */
-function scopeOf(key: string): string {
-	if (key.startsWith(TIMELINE_SCOPE)) return TIMELINE_SCOPE;
-	if (key.startsWith(CARD_SCOPE)) return CARD_SCOPE;
-	if (key.startsWith(RELEASE_FOLD)) return key.slice(0, key.lastIndexOf('\u0000') + 1);
-	return '';
 }
 
 /**
@@ -635,14 +576,14 @@ export class ViewState {
 	renamePath(oldPath: string, newPath: string): void {
 		let changed = false;
 		for (const key of [...this.settled]) {
-			const moved = movedPath(notePath(key), oldPath, newPath);
-			// A folder rename carries every row beneath it, so this cannot match on the
-			// renamed path alone — the event for a moved folder names the folder, and
-			// every row in it would otherwise be left behind under the old prefix.
-			if (moved === null) continue;
-			// Back into the scope it came from: a rename moves the item, never the
-			// question the scope is asking about it.
-			const next = scopeOf(key) + moved;
+			// One helper with `renamePathFolds` (`storage/viewStateStore.ts`), not a second
+			// spelling of the same arithmetic: this walk covers the LOADED view's in-memory
+			// copy, which `flush` writes back wholesale, and the store's walk covers every
+			// stored entry — the same pair `renameScoped` and `renamePathPrefs` already form
+			// for the prefs. It also carries a folder rename to every row beneath it, since
+			// the event for a moved folder names the folder and nothing under it.
+			const next = movedFoldKey(key, oldPath, newPath);
+			if (next === null) continue;
 			this.settled.delete(key);
 			this.settled.add(next);
 			if (this.collapsed.delete(key)) this.collapsed.add(next);

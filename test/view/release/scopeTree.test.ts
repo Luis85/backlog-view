@@ -4,7 +4,7 @@ import { active, mountFoldScope, row, twisty } from '../../helpers/release';
 import { useViewHarness } from '../../helpers/view';
 import { foldedPaths, hideDoneOn, setAllFolds, setHideDone, toggleFold } from '../../../src/view/release/scopeTree';
 import { ScopeRow } from '../../../src/domain/releases';
-import { loadViewState, saveViewState } from '../../../src/storage/viewStateStore';
+import { loadViewState, renamePathFolds, saveViewState } from '../../../src/storage/viewStateStore';
 import { resolveViewIdentity } from '../../../src/storage/viewIdentity';
 
 /**
@@ -27,18 +27,43 @@ describe('the scope tree', () => {
 		expect(leaf.hasAttribute('aria-expanded')).toBe(false);
 	});
 
-	it('reopens a folded row whose note was RENAMED, and that is the accepted cost', () => {
-		// Neither rename walk reaches these folds: `renamePathPrefs` walks PATH_PREFS
-		// (`scope`, `release`) and no fold, and `ViewState.renamePath` migrates the
-		// BACKLOG view's in-memory `collapsed`, which this view holds none of. Asserted so
-		// the behaviour is stated rather than discovered — see `scopeTree.ts`'s own comment
-		// for why a store-level fold walk is not worth duplicating `notePath`/`scopeOf`
-		// into `storage/`.
+	it('carries a folded row through a rename of its own note', () => {
+		// `renamePathFolds` is what reaches these keys: `renamePathPrefs` walks PATH_PREFS
+		// (`scope`, `release`) and no fold, and `ViewState.renamePath` migrates the BACKLOG
+		// view's in-memory `collapsed`, which this view holds none of — it reads and writes
+		// `folds.collapsed` through the store directly. Driven here the way `main.ts` drives
+		// it, since the vault event reaches the plugin and not this view.
 		const { view, vault } = mountFoldScope({ pick: 'Releases/0.8.md' });
 		twisty(view, 'Passwordless sign-in.md').click();
+
 		vault.renameFile('Passwordless sign-in.md', 'Magic links.md');
+		renamePathFolds(view.app, 'Passwordless sign-in.md', 'Magic links.md');
 		view.onDataUpdated();
-		expect(row(view, 'Magic links.md')!.getAttribute('aria-expanded')).toBe('true');
+
+		expect(row(view, 'Magic links.md')!.getAttribute('aria-expanded')).toBe('false');
+	});
+
+	it('carries a folded row through a rename of the RELEASE its fold is scoped to', () => {
+		// The key's FIRST half, which the backlog view's own walk never asked about: this
+		// scope's key is `RELEASE_FOLD + <release> + NUL + <member>`, so renaming the
+		// release note strands every fold in it unless that half moves too. Read under the
+		// release's NEW path, which is where the reader will ask.
+		const { view } = mountFoldScope({ pick: 'Releases/0.8.md' });
+		twisty(view, 'Passwordless sign-in.md').click();
+
+		renamePathFolds(view.app, 'Releases/0.8.md', 'Releases/0.8.1.md');
+
+		expect([...foldedPaths(view, 'Releases/0.8.1.md')]).toEqual(['Passwordless sign-in.md']);
+		expect(foldedPaths(view, 'Releases/0.8.md').size).toBe(0);
+	});
+
+	it('carries a folder move above the release, which is the only event a folder reports', () => {
+		const { view } = mountFoldScope({ pick: 'Releases/0.8.md' });
+		twisty(view, 'Passwordless sign-in.md').click();
+
+		renamePathFolds(view.app, 'Releases', 'Archive/Releases');
+
+		expect([...foldedPaths(view, 'Archive/Releases/0.8.md')]).toEqual(['Passwordless sign-in.md']);
 	});
 
 	it('folds the same ancestor independently in two releases', () => {
