@@ -77,11 +77,19 @@ this is its own small module rather than a host interface satisfied to withhold 
 
 ## Slice B — the summary strip
 
-One derivation in `src/domain/releases.ts`, beside the scope walk that already produces the
-member rows: over the MEMBERS only — never a context row, which carries no numbers anywhere
-on this screen — it counts items and items whose state is a done value, and reports the pair
-plus the percentage. The state key and its done values are the ones the view already
-resolves for the model; nothing new is configured.
+**No new derivation — the figures already exist and must not be computed twice.**
+`ReleaseRow` carries `members` and `done` as figures, counted in one walk over the members
+only, and `src/domain/releases.ts` states the rule in its own words: *"Progress is this over
+`members` and is computed nowhere else — the single-release screen reads the same row, which
+is what stops a band and a release header disagreeing about one release."* This spec
+proposed a second derivation until the finding on PR #206; the strip draws the row the index
+already drew.
+
+**That also settles which workflow says "done", and it is not one.** `done` is read through
+`ownWorkflowReading`, never `item.done`, because a member typed `Deliverable` or a
+test-catalog member answers through its OWN state property and vocabulary. A derivation
+described in terms of "the state key and its done values" — as this spec had it — would
+either regress that count or misdescribe it.
 
 **Every figure names what it read**, which is that note's main flow 5 and its extension 2c,
 and the two halves are different sentences:
@@ -94,11 +102,14 @@ and the two halves are different sentences:
 - **Progress that DID compute** names its denominator in its own sentence — `5 of 12 items
   done`, where "items" is the denominator main flow 2 requires be named. The estimate
   denominator does not exist in this increment, so there is one to name rather than two.
-  The state property and its done values are named in the strip's tooltip rather than as a
-  third line of header chrome: that satisfies "names the property and the vocabulary it
-  read" without spending the vertical space the mock was drawn to fit. **This is a reading
-  of main flow 5, not a quotation of it** — if the intent is that the property is named on
-  screen, the strip grows a line and the mock is re-drawn before this is built.
+- **Main flow 5's "names the property and the vocabulary it read" has no single answer
+  here, and this is an open question rather than a decision.** A release mixing ordinary
+  work with Deliverables has each member answering through its own workflow, so there is no
+  one property to name; that requirement was written before `ownWorkflowReading` existed.
+  Naming every workflow represented is possible and costs a line of header. This spec does
+  NOT decide it: the strip ships naming its denominator and its unconfigured case, and the
+  question goes back to [[Summing up a release]] to answer for every figure at once rather
+  than being settled here for one.
 - **No members**: the strip is withheld entirely — the empty state already says the release
   is empty, and `0 of 0 items done` beside it says it twice and worse. That is extension 1a's
   "nothing to count, and none of them reads as zero".
@@ -118,8 +129,14 @@ Between the header and the scroller, so it never scrolls away. Four controls:
   `docs/requirements/Rollups and hiding finished work.md` main flow 4 read exactly as it is
   written. **Not "every member whose own state is done"**: a done parent over unfinished
   member work would take that work off screen with it, or re-root it and lose its place.
-  Completion is the subtree's, `subtreeDone`'s own predicate, over members — a context row
-  is walked through and counted no more here than anywhere else on this screen.
+  Completion is the subtree's — but **over the scope's own member rows, never
+  `item.subtreeDone`**. That model field is `item.done && done === count` over every
+  non-marker descendant the BASE returned, consulting no membership at all, so a done member
+  with an unfinished child in another release (or in none) would stay on screen though its
+  release-local subtree is finished. The predicate is computed in the scope walk, which
+  already visits exactly the right population — a context row is walked through and counted
+  no more here than anywhere else on this screen. Each member's own doneness comes from
+  `ownWorkflowReading`, for Slice B's reason.
   That note's three follow-on rules come with it, and each is a check below:
   **4a** a parent whose children all hid renders as a LEAF — no disclosure, no
   `aria-expanded` — rather than an expander over nothing; **4b** a context row whose
@@ -158,7 +175,8 @@ a key another option already names.
 
 ## Where it lives
 
-`src/domain/releases.ts` gains the summary derivation. `src/view/release/renderScope.ts` is
+`src/domain/releases.ts` gains the scope-local completion predicate for hiding — and NOT a
+summary derivation, which it already has and must not grow a second of. `src/view/release/renderScope.ts` is
 210 lines today and would carry the header, the summary, a toolbar, folds and a keyboard
 controller — over the 400-line lint cap and over one concern. It splits:
 
@@ -194,11 +212,14 @@ Every claim gets one that fails without it — watched failing, then restored.
 - Rollups: a folded parent reports the same numbers as an unfolded one; **a context row
   reports none** — the rule [[The scope of a release as a tree]] states and the mock got
   wrong on its first draw.
-- Summary: count and progress over members only, agreeing with the header's count; an
-  unbound state key draws the count and a NAMED unconfigured progress, never a silent gap;
-  no members draws no strip; adding a context ancestor to the fixture changes no number.
+- Summary: the strip and the index band report the SAME numbers for one release, because
+  both read one `ReleaseRow` — driven from the index and the scope in one test; an unbound
+  state key draws the count and a NAMED unconfigured progress, never a silent gap; no
+  members draws no strip; adding a context ancestor to the fixture changes no number; a
+  `Deliverable` member is counted done by its own workflow, not by the plan's state key.
 - Hide done: a rollup is unchanged by the toggle; a done parent over unfinished member
-  work STAYS (the finding this spec was corrected for); a parent whose children all hid
+  work STAYS; a done parent whose only unfinished descendant belongs to ANOTHER release
+  hides, which is what separates the scope-local predicate from `item.subtreeDone`; a parent whose children all hid
   draws as a leaf; a context row whose children all hid hides; everything hidden draws the
   all-done state with its count rather than a blank scroller.
 - Prefs: both toggles round-trip through the store, and a stored value of the wrong shape
