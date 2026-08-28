@@ -219,6 +219,18 @@ describe('what an item says its assignee is', () => {
 		expect(epic.assigneeEntry?.file?.path).toBe('Alex.md');
 	});
 
+	it('resolves a BARE name to the note of that name, the way `parent` already does', () => {
+		// `linkpathFromRawValue` strips brackets where there are any and passes a bare name
+		// through, so this resolves. Decided 2026-08-28: a bare name that resolves to a
+		// resource IS that resource, which is what keeps an upgrading vault's assignments.
+		const vault = new FakeVault();
+		vault.addFile('Alex.md', { frontmatter: { type: 'Resource' } });
+		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10, assignee: 'Alex' } });
+		const epic = buildModel(vault.app, vault.entries(), settings).all[0];
+
+		expect(epic.assigneeEntry?.file?.path).toBe('Alex.md');
+	});
+
 	it('shows a value that resolves to nothing as its own text, and resolves to no note', () => {
 		// Every plain string left over from before this shipped lands here. It is not an
 		// error and is not repaired.
@@ -734,7 +746,21 @@ describe('the rows the resources axis draws', () => {
 		expect(roadmap.lanes[1].bars).toHaveLength(1);
 	});
 
-	it('mints no row from a name — an item whose link resolves to no resource shelves', () => {
+	it('places a bare name that resolves to a resource note in that resource row', () => {
+		// The upgrade case, and the reason it is a row rather than a shelf entry: the
+		// value the note already carries resolves, so nothing was migrated and nothing
+		// was lost.
+		const vault = team();
+		vault.addFile('Work.md', {
+			frontmatter: { type: 'Epic', order: 10, assignee: 'Sam', start: '2026-08-01', due: '2026-08-10' },
+		});
+		const roadmap = lanesOf(vault);
+
+		expect(roadmap.lanes[1].bars).toHaveLength(1);
+		expect(roadmap.shelf).toEqual([]);
+	});
+
+	it('mints no row from a name nothing resolves — that item shelves', () => {
 		const vault = team();
 		vault.addFile('Stray.md', {
 			frontmatter: { type: 'Epic', order: 10, assignee: 'Sarah', start: '2026-08-01', due: '2026-08-10' },
@@ -1047,6 +1073,8 @@ In `Rows from the Resource notes.md`, replace "in a stated order" with the order
 
 - [ ] **Step 3: Correct what the register now gets wrong**
 
+- **The bare-name reading.** `Linking an item to a resource.md` extension 4a and its "a name that is not a link is not a resource" paragraph, and `Rows from the Resource notes.md` extension 4b, all assume the reader refuses a bare name. It does not — `linkpathFromRawValue` passes one through — and the decision taken 2026-08-28 is to keep that: a bare name resolving to a `Resource` note in the results IS that resource. Restate all three in terms of RESOLUTION rather than syntax, and say what found it (automated review on PR #207, against an assumption the register never checked).
+- **`docs/issues/No migration off the string assignees.md` now overstates the loss.** Narrow it: what is lost is every assignment naming somebody with no `Resource` note in this base, not every assignment. The "why it is deliberate" half is untouched — a migration is still a write, and nothing here writes.
 - `Rows from the Resource notes.md` extension 2b says a context-row `Resource` "renders and it parents". It does not: `divertResource` keeps only a note the base returned, so nothing downstream is handed one. Rewrite 2b to say that, and say why — the rule is kept once at the keeping rather than at each consumer.
 - `Setting the assignee on an item.md` main-flow steps 3 and 5 describe a menu of observed names and `New assignee...`. Add a paragraph under its title saying which note superseded them and when, in that note's own voice; do not delete the history.
 - `CLAUDE.md`'s **The write path** section names `applyLabels` as "one loop over a list pairing each planned value with its configured key" for three label properties. Add `applyLinks` beside it as the same shape for the link properties, and say the assignee moved between them — the register's own rule is that a guide naming symbols goes stale, so name them only where the sentence is about them.

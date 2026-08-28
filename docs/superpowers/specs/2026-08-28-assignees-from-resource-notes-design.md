@@ -51,10 +51,25 @@ Every consumer resolves it:
 - **Membership, the checkmark and the write compare by PATH**, the iteration's own rule.
   Two spellings of one note are one resource.
 - **The name shown is the resolved note's title**, never the raw `[[...]]` text.
+- **The rule is about RESOLUTION, not about syntax.** `readLinkList`'s raw-value fallback
+  (`linkpathFromRawValue`, `src/domain/noteFields.ts`) strips brackets where there are any
+  and passes a bare name through, so `assignee: Sarah` resolves to `Sarah.md` when that
+  note exists — the same shape `parent` already has in this plugin. **A bare name that
+  resolves to a `Resource` note in the results IS that resource**, and the item sits in
+  their row. Decided 2026-08-28 after automated review found the reader does this; the
+  register had assumed the opposite without checking, which is [[A comment that states a
+  rule is not a check]] wearing a use case.
 - **An entry that resolves to nothing is nobody.** It renders as its own text, unstyled,
   and carries no row, no chip styling, no menu entry and no membership. That covers the
-  deleted note and every plain string left over from before this ships. It is not an error
-  and is not repaired.
+  deleted note, the misspelled one, and every leftover string naming somebody who has no
+  `Resource` note here. It is not an error and is not repaired.
+- **This is a READ, so it changes nothing about the migration decision.**
+  [[No migration off the string assignees]] refuses a migration because a migration is a
+  WRITE over notes nobody asked to have written; resolving a name the note already carries
+  writes nothing. What it does is narrow what that note LOSES: a vault whose people are
+  already notes keeps its assignments, and only a name with no resource note behind it
+  goes to the shelf. The note is narrowed in Task 8 rather than left claiming a wider
+  loss than the code now causes.
 - **Case folding over a resource name is gone.** A link resolves or it does not.
   `sameValue` has no meaning here and every site still calling it on an assignee is a site
   still thinking in strings.
