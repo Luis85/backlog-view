@@ -568,6 +568,22 @@ describe('the shelf’s card and list layouts', () => {
 			expect([...shapes]).toHaveLength(1);
 		});
 
+		it('leaves the type header out of the layout entirely, so both draw one', () => {
+			// A type read as two things depending on how much room its cards took: a muted
+			// uppercase line in the grid, a banded and counted strip in the list (reported from a
+			// vault). The header says which TYPE a reader is in, which is the same fact in either
+			// layout — so the rule moved to `shelfControls.css` with the band's other chrome and
+			// the pinning came with it, since the band is a scrollport in both.
+			//
+			// Asked at the forbidden thing rather than by comparing two rules: any
+			// `.pbl-shelf-list`-scoped selector naming the header or its count is a second look
+			// for one type, whatever it declares.
+			const list = readFileSync('styles/shelfList.css', 'utf8');
+			expect(list).not.toMatch(/\.pbl-shelf-group-(header|count)/);
+			const chrome = readFileSync('styles/shelfControls.css', 'utf8');
+			expect(bodyOf(chrome, '.pbl-shelf-group-header', 'styles/shelfControls.css')).toContain('position: sticky;');
+		});
+
 		it('states the aligned-column geometry in the stylesheet', () => {
 			// jsdom resolves no cascade and lays nothing out, so the checkable part is the
 			// declaration and its selector. The geometry was measured in the browser harness at a

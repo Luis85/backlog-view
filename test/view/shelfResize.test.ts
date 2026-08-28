@@ -551,8 +551,8 @@ describe('the shelf’s resize grip', () => {
 		it('leaves nothing else in the band pinned OVER those controls', () => {
 			// The category question, asked at the stack rather than at the one thing that broke it:
 			// the band holds more than one sticky element, so what keeps them apart has to be a
-			// stated edge rather than each rule's own guess. `shelfList.css`'s type headers pinned
-			// at `top: 0` — the band's content edge, which is where the controls row IS — with a
+			// stated edge rather than each rule's own guess. The type group headers pinned at
+			// `top: 0` — the band's content edge, which is where the controls row IS — with a
 			// `z-index` above it, so the type name took the paint AND the clicks (Codex, PR #205;
 			// `elementFromPoint` in the middle of the controls returned `.pbl-shelf-group-header`
 			// on both axes, and returns `.pbl-shelf-search-input` now).
@@ -563,12 +563,24 @@ describe('the shelf’s resize grip', () => {
 			const head = bodyOf(chrome, '.pbl-shelf', 'styles/shelfControls.css');
 			expect(head).toContain('--pbl-shelf-head-top:');
 			expect(head).toContain('--pbl-shelf-head:');
-			const list = readFileSync('styles/shelfList.css', 'utf8');
-			const group = bodyOf(list, '.pbl-shelf-list .pbl-shelf-group-header', 'styles/shelfList.css');
+			const group = bodyOf(chrome, '.pbl-shelf-group-header', 'styles/shelfControls.css');
 			expect(group).toContain('top: calc(var(--pbl-shelf-head-top) + var(--pbl-shelf-head));');
 			// And it stacks UNDER the row: the controls are 3, the type headers 2, the cards none.
 			expect(bodyOf(chrome, '.pbl-shelf-header', 'styles/shelfControls.css')).toContain('z-index: 3;');
 			expect(group).toContain('z-index: 2;');
+		});
+
+		it('paints the type headers opaque too, since they pin over the same cards', () => {
+			// Reported from a vault: a type header with the row underneath showing THROUGH it, both
+			// legible and neither readable — reproduced in the browser harness at a 46px scroll.
+			// The rule was right and the TOKEN was not: `--background-modifier-hover` is a
+			// `color-mix` with `transparent`, so the strip held its place and hid nothing. Every
+			// pinned thing in this band now states an opaque colour, which is the category rather
+			// than the one strip that broke.
+			const chrome = readFileSync('styles/shelfControls.css', 'utf8');
+			const group = bodyOf(chrome, '.pbl-shelf-group-header', 'styles/shelfControls.css');
+			expect(group).toContain('position: sticky;');
+			expect(group).toContain('background-color: var(--background-secondary-alt);');
 		});
 
 		it('is opaque, so the band’s own rows cannot scroll through the strip', () => {
