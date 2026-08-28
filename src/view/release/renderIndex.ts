@@ -6,6 +6,7 @@ import { formatCivil } from '../../domain/timeline';
 import { drawIcon } from '../render/icons';
 import { renderNewRelease } from './newRelease';
 import { renderReleaseInit } from './initControl';
+import { unconfiguredProgressText } from './renderScope';
 
 /**
  * The index screen (`docs/requirements/Every release in one list.md`): one BAND per
@@ -233,9 +234,17 @@ function progressPhrase(row: ReleaseRow): string | null {
 }
 
 /** Either half of line 2's left side, spoken — never both, so a caller asking for one
- *  question gets one answer. */
+ *  question gets one answer.
+ *
+ *  A third case joins the two below `speaks the gap` in `drawProgressLine`'s own comment:
+ *  members counted, but nothing readable for them. `null` means "no member figure at
+ *  all", never "silent about why". */
 function speakProgress(row: ReleaseRow): string | null {
-	return noMembersText(row) ?? progressPhrase(row);
+	const spoken = noMembersText(row) ?? progressPhrase(row);
+	if (spoken !== null) return spoken;
+	// The band SHOWS the gap, so the band's own name says it too: a reader who cannot see
+	// the strip must not be the only one told nothing about why there is no figure.
+	return row.members.unconfigured ? null : unconfiguredProgressText(row.unconfiguredWorkflows);
 }
 
 /**
@@ -252,7 +261,19 @@ function drawProgressLine(line2: HTMLElement, row: ReleaseRow): void {
 		return;
 	}
 	const phrase = progressPhrase(row);
-	if (phrase === null) return;
+	if (phrase === null) {
+		// The one case left: members counted, state not readable for them. Named HERE
+		// rather than beneath the list, because it is a fact about THIS release —
+		// `done.unconfigured` is `ownWorkflowReading`'s answer over this release's own
+		// members, so a neighbouring band can be perfectly computable and a list-wide
+		// sentence would be false for one of the two. `members.unconfigured` is the
+		// other way round: a setting, true of every band at once, and already named
+		// once beneath the list by `drawAbsences`.
+		if (!row.members.unconfigured) {
+			line2.createSpan({ cls: 'pbl-rel-nomembers', text: unconfiguredProgressText(row.unconfiguredWorkflows) });
+		}
+		return;
+	}
 	const total = row.members.value ?? 0;
 	const done = row.done.value ?? 0;
 	const barEl = line2.createSpan({ cls: 'pbl-rel-bar' });
@@ -413,20 +434,20 @@ function drawBand(view: ReleaseView, bandsEl: HTMLElement, row: ReleaseRow): voi
  *  beneath the list instead. */
 interface AbsentFigure {
 	label: string;
-	unconfigured: (rows: ReleaseRow[]) => boolean;
+	unconfigured: (row: ReleaseRow) => boolean;
 }
 
 /**
  * The band's own figure list, in place of the grid's `columnSpecs` — read by
  * {@link drawAbsences} alone, since nothing else here loops over "the figures" as a set.
  *
- * `Progress` is gated on `!row.members.unconfigured && row.done.unconfigured` rather than
- * on `done.unconfigured` alone: `done` is unconfigured whenever `members` is too (neither
- * has a denominator to count over), and reporting BOTH in that case would say the same
- * thing twice — `Items` already explains why there is no progress. This is the one case
- * where the two are independent: membership bound, state property not.
+ * `Progress` is not in this list. It used to be — see the history kept below — but it is
+ * a PER-RELEASE figure (`ReleaseRow.done.unconfigured`), never a settings bit every row
+ * agrees on, so a list-wide statement cannot make it: `drawProgressLine` and
+ * `speakProgress` now name the gap on the one band that has it, and naming it again here
+ * would be the same sentence twice.
  *
- * **`Released` carries no such gate.** Unlike `done`, `released` is not derived FROM
+ * **`Released` carries no gate of its own.** Unlike `done`, `released` is not derived FROM
  * another figure on this row — it is its own binding on the release note
  * (`releasedDateProperty`), read exactly as `target` is, and `target` being configured or
  * not says nothing about whether `released` is. So there is no sibling figure whose own
@@ -440,18 +461,11 @@ interface AbsentFigure {
  */
 function absentFigures(): AbsentFigure[] {
 	return [
-		// The five settings-only figures: read off `rows[0]` alone, since every row agrees.
-		{ label: t('release.index.column.version'), unconfigured: (rows) => rows[0].version.unconfigured },
-		{ label: t('release.index.column.target'), unconfigured: (rows) => rows[0].target.unconfigured },
-		{ label: t('release.index.column.released'), unconfigured: (rows) => rows[0].released.unconfigured },
-		{ label: t('release.index.column.status'), unconfigured: (rows) => rows[0].status.unconfigured },
-		{ label: t('release.index.column.members'), unconfigured: (rows) => rows[0].members.unconfigured },
-		// Progress is the one PER-RELEASE figure — see this module's own header — so it is
-		// named here only when EVERY row agrees there is nothing to show.
-		{
-			label: t('column.rollupProgress'),
-			unconfigured: (rows) => rows.every((row) => !row.members.unconfigured && row.done.unconfigured),
-		},
+		{ label: t('release.index.column.version'), unconfigured: (row) => row.version.unconfigured },
+		{ label: t('release.index.column.target'), unconfigured: (row) => row.target.unconfigured },
+		{ label: t('release.index.column.released'), unconfigured: (row) => row.released.unconfigured },
+		{ label: t('release.index.column.status'), unconfigured: (row) => row.status.unconfigured },
+		{ label: t('release.index.column.members'), unconfigured: (row) => row.members.unconfigured },
 	];
 }
 
@@ -460,28 +474,30 @@ function absentFigures(): AbsentFigure[] {
  * unconfigured figure, and the reason those figures are absent from every band above
  * rather than blank in each.
  *
- * **Five of the six are settings-only and are asked of the FIRST row alone**: version,
- * target, released, status and members each read a property bound (or not) on the VIEW,
- * so `releaseIndex` sets their `unconfigured` bit from the settings rather than from any
- * one note, and every row agrees — asking one of them is asking the configuration.
+ * **Every survivor here is settings-only and is asked of the FIRST row alone**: version,
+ * target, released, status and members each read a property bound (or not) on the VIEW, so
+ * `releaseIndex` sets their `unconfigured` bit from the settings rather than from any one
+ * note, and every row agrees — asking one of them is asking the configuration.
  *
- * **`Progress` is not, and is asked of EVERY row (`rows.every`, never `rows[0]` alone).**
- * `done.unconfigured` is `ownWorkflowReading`'s own answer for that release's members, not
- * a settings bit: with `stateProperty` cleared and only `deliverableStateProperty` bound, a
- * release whose members are all Deliverables reads `done` as CONFIGURED while an ordinary
- * release beside it reads UNCONFIGURED — so the first row can no longer stand for the
- * list. Reading `rows[0]` here shipped a bug two orderings could not agree on: with the
+ * **`Progress` used to be the sixth entry, asked of EVERY row (`rows.every`, never
+ * `rows[0]` alone), and that history is why it is not here now.** `done.unconfigured` is
+ * `ownWorkflowReading`'s own answer for that release's members, not a settings bit: with
+ * `stateProperty` cleared and only `deliverableStateProperty` bound, a release whose
+ * members are all Deliverables reads `done` as CONFIGURED while an ordinary release
+ * beside it reads UNCONFIGURED — so the first row could never stand for the list.
+ * Reading `rows[0]` shipped a bug two orderings could not agree on: with the
  * Deliverables release first, the note went silent while a plain release's own band drew
  * no progress; with the ordinary release first, the note claimed Progress was absent while
  * the Deliverables band drew it anyway — the band-versus-header disagreement
  * `domain/releases.ts`'s single-row rule (`ReleaseRow.done`) exists to prevent, one level
- * up. Naming it here at all is therefore conditional on the WHOLE list agreeing there is
- * nothing to show — a release which reads it is proof the property is not the thing
- * missing.
+ * up. `rows.every` fixed the disagreement but still could only ever say ONE thing about
+ * every band at once, which is false the moment the bands disagree — so the figure moved
+ * onto the band that owns it (`drawProgressLine`, `speakProgress`) instead, and this list
+ * narrowed back to the five figures a single row can answer for the whole list.
  */
 function drawAbsences(listEl: HTMLElement, rows: ReleaseRow[]): void {
 	if (rows.length === 0) return;
-	const absent = absentFigures().filter((figure) => figure.unconfigured(rows));
+	const absent = absentFigures().filter((figure) => figure.unconfigured(rows[0]));
 	if (absent.length === 0) return;
 	// The names are joined by the CATALOG's grammar — an array parameter, never a joiner
 	// written here.

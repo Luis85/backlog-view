@@ -460,10 +460,7 @@ export const en = {
 	// `{done}` and `{count}`, already plurals on the total exactly as both callers want, and
 	// reusing it is the whole fix both times.
 
-	/** The rollup column's header — the progress bar's, and the plain count's. Reused as
-	 *  the release band's own absence label (`release/renderIndex.ts`'s `absentFigures`)
-	 *  when a release's membership property is bound but its state property is not: the
-	 *  same word for the same concept, on a second screen that also draws a progress bar. */
+	/** The rollup column's header — the progress bar's, and the plain count's. */
 	'column.rollupProgress': 'Progress',
 	'column.rollupItems': 'Items',
 

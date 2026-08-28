@@ -230,8 +230,14 @@ function drawSummary(headerEl: HTMLElement, release: ReleaseRow, members: number
  * `release.figureUnconfigured` rather than a sentence naming nothing. `workflowName` is
  * the identical translator `progressProvenance` calls, reused rather than a second mapping
  * that could drift from it on which two names `WorkflowKind` gets.
+ *
+ * **Exported for `renderIndex.ts`'s own bands.** A band whose progress cannot be
+ * computed used to draw nothing at all, the reader learning why only by opening this
+ * screen — so the index calls this same function rather than writing its own wording:
+ * `ReleaseRow.done`'s single-answer rule, one layer up, is what a second sentence here
+ * would break.
  */
-function unconfiguredProgressText(unconfiguredWorkflows: WorkflowKind[]): string {
+export function unconfiguredProgressText(unconfiguredWorkflows: WorkflowKind[]): string {
 	const label = t('release.scope.progress');
 	if (unconfiguredWorkflows.length === 0) return t('release.figureUnconfigured', { label });
 	return t('release.scope.progressUnconfigured', { label, workflows: unconfiguredWorkflows.map(workflowName) });
