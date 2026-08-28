@@ -8,6 +8,8 @@ import { resolveSettings } from '../../domain/settingsResolve';
 import { loadViewState, saveViewState } from '../../storage/viewStateStore';
 import { resolveViewIdentity } from '../../storage/viewIdentity';
 import { guidanceShell } from '../render/emptyStates';
+import { RELEASE_SUGGESTED_KEYS } from './init';
+import { renderReleaseInit } from './initControl';
 import { renderNewRelease } from './newRelease';
 import { drawUnresolved, renderIndex } from './renderIndex';
 import { renderScope } from './renderScope';
@@ -225,6 +227,15 @@ export class ReleaseView extends BasesView {
 				t('release.empty.noReleases.title'),
 				t('release.empty.noReleases.hint'),
 			);
+			// The bar's own ✨ never reaches this screen either, for the identical reason: it is
+			// `renderIndex` that draws it, and this branch returns before that runs. A base with
+			// zero releases is the FIRST-USE case that most needs all four bindings, so `fixes`
+			// is every option `RELEASE_SUGGESTED_KEYS` names rather than the one name the
+			// `noMembership` screen passes (`renderScope.ts`) — that screen is about ONE property
+			// and narrows on purpose; this one has nothing bound yet and nothing to narrow to.
+			// Derived rather than copied, so a fifth candidate is covered by being declared there
+			// and not by a second list here going stale beside it.
+			renderReleaseInit(this, empty, 'empty', RELEASE_SUGGESTED_KEYS.map((candidate) => candidate.option));
 			renderNewRelease(this, empty);
 			drawUnresolved(this.viewEl, index);
 			return null;

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { en } from '../../../src/i18n/en';
-import { makeReleaseView, RELEASE_CONFIG, releaseVault } from '../../helpers/release';
+import { makeReleaseView, noReleaseVault, RELEASE_CONFIG, releaseVault } from '../../helpers/release';
 import { FakeVault } from '../../helpers/vault';
 import { Modal, Notice } from '../../helpers/obsidian-mock';
 import { flush, useViewHarness } from '../../helpers/view';
@@ -12,17 +12,6 @@ useViewHarness();
 
 /** This suite is not about `today` either, so a fixed value stands in for it. */
 const TODAY: CivilDate = { year: 2026, month: 1, day: 1 };
-
-/**
- * A base with a type key and no release in it — the screen `releaseView.draw` returns at
- * before `renderIndex` ever runs, and therefore the SECOND entry point onto the one
- * creation function.
- */
-function noReleaseVault(): FakeVault {
-	const vault = new FakeVault();
-	vault.addFile('E.md', { frontmatter: { type: 'Epic' } });
-	return vault;
-}
 
 /** Every note this run put in the vault, with what it carries. */
 function createdNotes(vault: FakeVault, before: Set<string>): { path: string; fm: Record<string, unknown> }[] {

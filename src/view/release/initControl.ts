@@ -25,6 +25,12 @@ import { RELEASE_SUGGESTED_KEYS } from './init';
  * membership. `fixes` is what keeps the button's promise honest: drawn only when pressing
  * it would touch the option the guidance beside it names.
  *
+ * The `noReleases` empty state (`releaseView.draw`) is the same rule at the OTHER end of
+ * it: that screen names nothing to narrow to, so its `fixes` is all four of
+ * `RELEASE_SUGGESTED_KEYS` rather than one — a fresh vault wants every binding this ✨ can
+ * offer, and the withholding above still applies whole: nothing drawn at all once every
+ * candidate is already bound or deliberately cleared.
+ *
  * It writes no note in either position — `bindAndReport` reaches `runReleaseInit`, which
  * touches the `.base` and nothing else (`test/view/releaseNeverEdits.test.ts`).
  */
@@ -45,7 +51,32 @@ export function renderReleaseInit(
 	btn.addEventListener('click', () => {
 		void bindAndReport(view).then((bound) => {
 			new Notice(bound ? t('release.new.bound') : t('release.init.nothing'));
+			// A no-op changed no configuration, so there is nothing for a redraw to SHOW — and
+			// skipping it is also what keeps focus on THIS button rather than on a detached copy
+			// of it, since `view.render()` empties `viewEl` whether or not anything changed.
+			if (!bound) return;
 			view.render();
+			// Looked up FRESH after the redraw, `focusNewRelease`'s own rule for the identical
+			// hazard: the pressed button is gone with the frame it stood on, so capturing it
+			// would focus a detached node no keyboard user can come back from without tabbing
+			// into the view again from nothing.
+			//
+			// The BAR always redraws with a `.pbl-rel-init` of its own, so that selector alone
+			// covers it. An EMPTY-state press can bind the very option its screen was about,
+			// which replaces the whole screen with the next one — binding `membershipProperty` on
+			// `noMembership` draws the scope instead, and nothing there is this control. A reader
+			// who pressed a button must not be dumped on `document.body`, and nor should focus
+			// land on an element picked for no reason, so the fallback is the redrawn screen's OWN
+			// first button, in the order it draws them: the scope's back control when the screen
+			// changed underneath it, or `New release` beside a `noReleases` guidance this press
+			// left standing. `estimationView`'s `focusPanelTabStop` states the identical
+			// "land somewhere plain, over swallowing the key" rule for its own fallback — and, its
+			// own comment's reason, two SEPARATE lookups rather than one selector list: `'a, b'`
+			// returns whichever matches first in document order across both branches, which here
+			// would collapse to plain `'button'` and never try `.pbl-rel-init` on its own terms.
+			const landing =
+				view.viewEl.querySelector<HTMLElement>('.pbl-rel-init') ?? view.viewEl.querySelector<HTMLElement>('button');
+			landing?.focus({ preventScroll: true });
 		});
 	});
 }

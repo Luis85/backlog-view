@@ -95,6 +95,20 @@ export function mountRelease(opts: MountReleaseOptions = {}): ReleaseHarness & {
 	return { ...harness, vault };
 }
 
+/**
+ * A base with a type key and no release in it — the screen `releaseView.draw` returns at
+ * before `renderIndex` ever runs, and therefore the second entry point onto both
+ * `renderNewRelease`'s one creation function and, since 2026-08-28, the standalone ✨.
+ * Shared between `newRelease.test.ts` and `initControl.test.ts` rather than a hand-written
+ * copy in each — a fixture rewritten twice is the thing `RELEASE_CONFIG`'s own comment
+ * warns a rename goes stale against.
+ */
+export function noReleaseVault(): FakeVault {
+	const vault = new FakeVault();
+	vault.addFile('E.md', { frontmatter: { type: 'Epic' } });
+	return vault;
+}
+
 /** Three releases: two dated, one not — the index's ordering fixture. */
 export function releaseVault(): FakeVault {
 	const vault = new FakeVault();

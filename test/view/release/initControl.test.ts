@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
 import { en } from '../../../src/i18n/en';
-import { mountRelease } from '../../helpers/release';
+import { makeReleaseView, mountRelease, noReleaseVault } from '../../helpers/release';
 import { Notice } from '../../helpers/obsidian-mock';
 import { flush, useViewHarness } from '../../helpers/view';
 
@@ -62,5 +62,87 @@ describe('the release view’s ✨', () => {
 		await flush();
 		expect(vault.files.size).toBe(before);
 		expect(vault.writeLog).toEqual([]);
+	});
+
+	describe('on the `noReleases` guidance', () => {
+		// `releaseView.draw` returns before `renderIndex` ever runs, so the bar control it
+		// draws never reaches a base with zero releases — the first-use case that most needs
+		// all four bindings. These pin that the guidance shell draws this control at all,
+		// not only that a press on it behaves correctly (the shared suite above).
+		it('is drawn there when anything is adoptable', () => {
+			const { view } = makeReleaseView(noReleaseVault(), { typeProperty: 'note.type' });
+			expect(view.viewEl.querySelector('.pbl-empty .pbl-rel-init')).not.toBeNull();
+		});
+
+		it('is withheld there once every candidate is bound or cleared, unlike `New release`', () => {
+			// `New release` stays: it is offered whenever a type key is bound, and none of the
+			// four options this ✨ handles govern it.
+			const cleared = {
+				typeProperty: 'note.type',
+				membershipProperty: '',
+				versionProperty: '',
+				targetDateProperty: '',
+				releaseStatusProperty: '',
+			};
+			const { view } = makeReleaseView(noReleaseVault(), cleared);
+			expect(view.viewEl.querySelector('.pbl-empty .pbl-rel-init')).toBeNull();
+			expect(view.viewEl.querySelector('.pbl-empty .pbl-rel-new')).not.toBeNull();
+		});
+
+		it('binds all four candidates from this screen, not only `membershipProperty`', async () => {
+			// The `noMembership` screen names one option on purpose; this one has nothing bound
+			// yet and nothing to narrow to, so a press here must reach every candidate —
+			// otherwise a fresh vault would still need the bar (unreachable until a release
+			// exists) to pick up version, target date and status.
+			const { view } = makeReleaseView(noReleaseVault(), { typeProperty: 'note.type' });
+			view.viewEl.querySelector<HTMLButtonElement>('.pbl-empty .pbl-rel-init')!.click();
+			await vi.waitFor(() => expect(Notice.messages).toHaveLength(1));
+			expect(view.config.get('membershipProperty')).toBeTruthy();
+			expect(view.config.get('versionProperty')).toBeTruthy();
+			expect(view.config.get('targetDateProperty')).toBeTruthy();
+			expect(view.config.get('releaseStatusProperty')).toBeTruthy();
+		});
+	});
+
+	describe('focus after a press', () => {
+		it('does not redraw on a no-op, so the pressed button keeps its DOM identity and focus', async () => {
+			const { view } = mountRelease({ bindAll: true });
+			const btn = view.viewEl.querySelector<HTMLButtonElement>('.pbl-rel-init')!;
+			const renderSpy = vi.spyOn(view, 'render');
+			btn.focus();
+			btn.click();
+			await vi.waitFor(() => expect(Notice.messages).toHaveLength(1));
+			expect(renderSpy).not.toHaveBeenCalled();
+			expect(view.viewEl.querySelector('.pbl-rel-init')).toBe(btn);
+			expect(document.activeElement).toBe(btn);
+		});
+
+		it('restores focus to the redrawn ✨ on the bar', async () => {
+			const { view } = mountRelease({ bindAll: false });
+			const btn = view.viewEl.querySelector<HTMLButtonElement>('.pbl-rel-init')!;
+			btn.focus();
+			btn.click();
+			await vi.waitFor(() => expect(Notice.messages).toHaveLength(1));
+			const redrawn = view.viewEl.querySelector('.pbl-rel-init');
+			expect(redrawn).not.toBeNull();
+			expect(redrawn).not.toBe(btn);
+			expect(document.activeElement).toBe(redrawn);
+		});
+
+		it('falls back to the redrawn screen’s own first control when it draws no ✨', async () => {
+			// Binding `membershipProperty` on the `noMembership` empty state replaces that whole
+			// screen with the scope, which draws no `.pbl-rel-init` of its own — only the back
+			// control, drawn first in the header. Landing there is the deliberate choice over
+			// `document.body`.
+			const { view } = mountRelease({ bindAll: false, pick: 'R.md' });
+			const btn = view.viewEl.querySelector<HTMLButtonElement>('.pbl-rel-init')!;
+			btn.focus();
+			btn.click();
+			await vi.waitFor(() => expect(Notice.messages).toHaveLength(1));
+			expect(view.viewEl.querySelector('.pbl-rel-init')).toBeNull();
+			const back = view.viewEl.querySelector('.pbl-rel-back');
+			expect(back).not.toBeNull();
+			expect(document.activeElement).toBe(back);
+		});
 	});
 });
