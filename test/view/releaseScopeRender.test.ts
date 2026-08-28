@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import { makeReleaseView, RELEASE_CONFIG, scopeVault } from '../helpers/release';
+import { makeReleaseView, RELEASE_CONFIG, row, scopeVault } from '../helpers/release';
 import { click } from '../helpers/estimation';
 import { useViewHarness } from '../helpers/view';
 import { badgeStyleFor } from '../../src/view/render/badges';
 import { FakeVault } from '../helpers/vault';
+import { setHideDone } from '../../src/view/release/scopeTree';
 
 /**
  * One release's screen: the header's facts, and the members drawn as the tree they
@@ -449,5 +450,75 @@ describe('the summary strip', () => {
 		view.pick('Q.md');
 		const strip = containerEl.querySelector('.pbl-rel-summary') as HTMLElement;
 		expect(strip.dataset.tooltip).toBe('Progress spans more than one workflow: Work and Deliverables.');
+	});
+});
+
+/**
+ * The trap the toolbar's own gate leaves for the tree: `scopeToolbar.ts` withholds the
+ * hide-done control on `release.done.unconfigured`, but a reader who turned it on for a
+ * DIFFERENT release, where progress works, still carries the stored preference into this
+ * one. `effectiveHideDone` (`scopeTree.ts`) is what stops the tree acting on it there —
+ * gated on the same figure the toolbar withholds its button on, never a second copy of
+ * the question.
+ *
+ * `R1` is Deliverable-only, so `deliverableStateProperty` alone answers its `done` figure
+ * and its toggle draws. `R2` mixes a plain `PBI` (whose workflow needs `stateProperty`,
+ * left unbound) with a Deliverable subtree that IS readable through its own key — the
+ * finding's own scenario, "a mixed-workflow release where only the Deliverable workflow
+ * has its state property bound" — so `R2.done.unconfigured` is true even though
+ * `Parent.md`'s own subtree is genuinely finished.
+ */
+describe('the hide-done preference outliving the control that undoes it', () => {
+	useViewHarness();
+
+	function mixedProgressVault(): FakeVault {
+		const vault = new FakeVault();
+		vault.addFile('R1.md', { frontmatter: { type: 'Release' } });
+		vault.addFile('D1.md', { frontmatter: { type: 'Deliverable', release: '[[R1]]', dstatus: 'Done' } });
+
+		vault.addFile('R2.md', { frontmatter: { type: 'Release' } });
+		vault.addFile('A.md', { frontmatter: { type: 'PBI', release: '[[R2]]', status: 'Doing' } });
+		vault.addFile('Parent.md', { frontmatter: { type: 'Deliverable', release: '[[R2]]', dstatus: 'Done' } });
+		vault.addFile('Child.md', {
+			frontmatter: { type: 'Deliverable', release: '[[R2]]', dstatus: 'Done' },
+			parentLink: 'Parent',
+		});
+		return vault;
+	}
+
+	const mixedProgressConfig = { ...RELEASE_CONFIG, stateProperty: '', deliverableStateProperty: 'note.dstatus' };
+
+	it('leaves a finished subtree drawn, and no all-done state, on a release progress cannot read', () => {
+		const { view, containerEl } = makeReleaseView(mixedProgressVault(), mixedProgressConfig);
+		view.pick('R1.md');
+		// The toggle is on screen here — R1 is Deliverable-only and its own key IS bound —
+		// so this is the real control a reader would press, not `setHideDone` called by hand.
+		click(containerEl.querySelector('.pbl-rel-hidedone') as HTMLElement);
+
+		view.pick('R2.md');
+		// R2's mixed workflow makes `done` unconfigured, so the toggle is gone…
+		expect(containerEl.querySelector('.pbl-rel-hidedone')).toBeNull();
+		// …but the finished Deliverable subtree the stored preference would otherwise hide
+		// is still drawn, and the screen never claims R2 is all done — extension 2c's own
+		// rule against presenting an absence as a measured anything, read for hiding rather
+		// than for the summary strip.
+		expect(row(view, 'Parent.md', { optional: true })).not.toBeNull();
+		expect(row(view, 'Child.md', { optional: true })).not.toBeNull();
+		expect(containerEl.querySelector('.pbl-rel-alldone')).toBeNull();
+	});
+
+	it('does not clear the preference — a release with progress configured still hides', () => {
+		const { view, containerEl } = makeReleaseView(mixedProgressVault(), mixedProgressConfig);
+		view.pick('R2.md');
+		// Set directly rather than through a click: R2's own screen draws no toggle for the
+		// preference to be set through, which is the whole point of the trap this asks about.
+		setHideDone(view, true);
+
+		view.pick('R1.md');
+		// R1's own single member is done, so with the preference still on, hiding it leaves
+		// nothing standing — the all-done state, never a blank scroller — which is only
+		// reachable if the preference SURVIVED the unconfigured release in between.
+		expect(containerEl.querySelector('.pbl-rel-alldone')).not.toBeNull();
+		expect(row(view, 'D1.md', { optional: true })).toBeNull();
 	});
 });

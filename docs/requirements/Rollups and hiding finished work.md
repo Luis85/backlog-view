@@ -100,3 +100,15 @@ unfinished child belongs to another release (or to none) would never hide by it.
 `ScopeRow.subtreeDone` asks the same question of THIS release's own population — the same
 one every other figure on this screen is measured over — computed in the same walk that
 already fills `memberTotal`/`memberDone`, never a second traversal.
+
+- **4d — the stored preference is on and `release.done.unconfigured` on the OPEN
+  release.** The toolbar withholds the toggle (its own gate, above), but the reader's
+  preference is a single flag for the whole view and outlives any one release — turned on
+  while looking at a release where progress works, it is still on when a different release,
+  where it does not, is opened next. Applying it there would hide rows with no control left
+  on screen to bring them back, so `effectiveHideDone(view, release)` in
+  `src/view/release/scopeTree.ts` gates the stored flag on the same figure the toolbar's own
+  button is gated on — one function, read by both `drawScopeTree`'s hiding and
+  `renderScope.ts`'s all-done check, so the two cannot disagree about the same release. The
+  preference itself is never cleared: only its effect is suppressed, and it resumes on the
+  next release whose progress is configured.

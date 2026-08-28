@@ -7,7 +7,7 @@ import { BacklogSettings } from '../../domain/settings';
 import { WorkflowKind, workflowStateInfo } from '../../domain/board';
 import { guidanceShell } from '../render/emptyStates';
 import { renderReleaseInit } from './initControl';
-import { drawScopeTree, hideDoneOn, rowsAfterHideDone } from './scopeTree';
+import { drawScopeTree, effectiveHideDone, rowsAfterHideDone } from './scopeTree';
 import { drawScopeToolbar } from './scopeToolbar';
 import { wireScopeKeys } from './scopeKeys';
 
@@ -75,7 +75,11 @@ export function renderScope(view: ReleaseView, scope: ReleaseScope, release: Rel
 	// an all-done screen are never a dead end — `scopeToolbar.ts`'s own header on why the
 	// hide-done control asks `release.done.unconfigured` rather than a second copy of it.
 	drawScopeToolbar(view, view.viewEl, release, scope.rows);
-	if (hideDoneOn(view) && rowsAfterHideDone(scope.rows, true).length === 0) {
+	// `effectiveHideDone`, the same one value `drawScopeTree` hides by: an unconfigured
+	// release must not reach the all-done state either, since the toggle that would bring
+	// its rows back is not on screen there (`scopeToolbar.ts`'s own early return).
+	const hideDone = effectiveHideDone(view, release);
+	if (hideDone && rowsAfterHideDone(scope.rows, hideDone).length === 0) {
 		drawAllDoneState(view.viewEl, scope.members);
 		return;
 	}

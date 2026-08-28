@@ -156,6 +156,23 @@ export function hideDoneOn(view: ReleaseView): boolean {
 	return loadViewState(view.app, id).prefs.releaseHideDone === true;
 }
 
+/**
+ * Whether the tree should actually act on the hide-done preference for THIS release —
+ * the stored flag gated on `release.done.unconfigured`, the same question
+ * `scopeToolbar.ts` asks to decide whether to draw the control at all.
+ *
+ * Not a second opinion beside `hideDoneOn`: the preference is the reader's own standing
+ * choice and must outlive any one release (a reader who turns it on must find it still on
+ * the next release where progress works), but its EFFECT has to stop exactly where the
+ * toggle does — `release.done.unconfigured` withholds the button, and applying the stored
+ * flag anyway on that release hides rows with no control left on screen to bring them
+ * back. One function so the tree's own hiding and the all-done check below can never
+ * answer this differently about the same release.
+ */
+export function effectiveHideDone(view: ReleaseView, release: ReleaseRow): boolean {
+	return hideDoneOn(view) && !release.done.unconfigured;
+}
+
 /** Flip the toggle and redraw — `toggleFold`'s own pairing, for the identical reason:
  *  every caller wants the write and the render together rather than remembering both. */
 export function setHideDone(view: ReleaseView, next: boolean): void {
@@ -303,7 +320,12 @@ export function drawScopeTree(view: ReleaseView, release: ReleaseRow, rows: Scop
 	// passes rather than one: `withKids` has to answer "does this row still have a child"
 	// AFTER a finished subtree has gone, or a parent whose children all hid would keep the
 	// disclosure its own fold state says it should, over a subtree that is not there.
-	const afterHide = rowsAfterHideDone(rows, hideDoneOn(view));
+	//
+	// `effectiveHideDone`, never the raw `hideDoneOn` preference: the toolbar withholds the
+	// control on `release.done.unconfigured` and the tree must withhold its EFFECT on the
+	// same gate, or a reader who turned hiding on for a release where progress works opens
+	// one where it does not and finds rows gone with nothing on screen to bring them back.
+	const afterHide = rowsAfterHideDone(rows, effectiveHideDone(view, release));
 	const withKids = childRows(afterHide);
 	const visible = visibleRows(afterHide, folded);
 	// Built WHILE drawing rather than queried from `treeEl` afterwards — the cost rule
