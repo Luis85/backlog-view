@@ -67,6 +67,14 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   where this view can tell which saved view it is — survives closing and reopening it;
   embedded in a note, it lasts only the session.
 
+- **A release's scope is reachable from the keyboard.** The tree now takes one Tab stop
+  rather than none: the arrow keys move a highlighted row up and down between the ones on
+  screen, `Home`/`End` jump to the first and last, `Enter` (or `Space`) opens the highlighted
+  row's note, and Left/Right fold a row, unfold it, step into its children or step back out
+  to its parent — a leaf has nothing to step into, so Right does nothing on one. A middle
+  click on a row, anywhere but the disclosure, now opens the note in a new tab too, the same
+  gesture every other tree and card in this plugin already offers.
+
 ### Fixed
 
 - **The release list no longer draws every row as a raised Obsidian button.** Each row really
