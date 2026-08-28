@@ -870,10 +870,18 @@ function deriveLanes(
 	const markers = markerLane([]);
 	// One row per resource note, in the model's own order — every one, whether or not
 	// anything names them, which is what the removed `resourceNames` option existed for.
-	const lanes = resources.map(
-		(resource): ResourceLane => ({
+	// Named through `namedTargets` like every other surface that shows a resource to the
+	// reader — basename normally, the full path minus extension only for the ones that
+	// collide. Two people called Alex in two folders are two rows, and two rows under one
+	// header are a reader who cannot tell whose workload is whose. The path-keyed fold is
+	// a different question and does not answer this one. `namedTargets` lives in
+	// `view/interactions/labels.ts` today; move it to `domain/` (it is pure, and this is
+	// its second layer of caller) and import it here.
+	const named = namedTargets(resources);
+	const lanes = named.map(
+		({ item: resource, label }): ResourceLane => ({
 			file: resource.file,
-			name: resource.title,
+			name: label,
 			markers: false,
 			bars: [],
 			absences: [],
@@ -884,7 +892,7 @@ function deriveLanes(
 	// middle answer for a case-insensitive comparison to keep. Built from `resources`
 	// rather than from `lanes`, so the key comes from a `TFile` the type already
 	// guarantees instead of a non-null assertion on the lane's nullable one.
-	const byPath = new Map<string, ResourceLane>(resources.map((resource, i) => [resource.file.path, lanes[i]]));
+	const byPath = new Map<string, ResourceLane>(named.map(({ item }, i) => [item.file.path, lanes[i]]));
 	for (const item of rows) {
 		if (item.outsideFilter) continue;
 		if (isMarkerType(item.typeName)) placeBar(item, () => markers, roadmap, settings);
@@ -1065,7 +1073,7 @@ export interface AbsencePromptOptions extends Refusable<AbsenceResult> {
 
 Render it as a `<select>` over `resources` rather than a text field with `KnownValueSuggest`, drop `known`, and have the validator refuse a submission whose `resource` is not one of the offered ids. With no resources offered the form does not open at all — the caller checks first and says why, since an absence with nobody to be away is not a thing to collect.
 
-`src/view/interactions/absences.ts` — `promptAddAbsence` takes the `AssignableLane`, builds `resources` from `host.model?.resources` (`id: r.file.path`, `label: r.title`) with `lane.file.path` pre-selected, and maps the returned id back to its `TFile` before calling the writer. The edit path pre-selects `absence.resource.file?.path` and, where that is null, falls back to no selection: an absence whose link resolves to nothing has no row to have been opened from, so this is a defensive branch rather than a user-facing refusal.
+`src/view/interactions/absences.ts` — `promptAddAbsence` takes the `AssignableLane`, builds `resources` from `host.model?.resources` **through `namedTargets`** (`id: item.file.path`, `label`), so two resources of one basename are two options the reader can tell apart rather than two identical `<option>` lines — the same rule the menu and the row headers keep with `lane.file.path` pre-selected, and maps the returned id back to its `TFile` before calling the writer. The edit path pre-selects `absence.resource.file?.path` and, where that is null, falls back to no selection: an absence whose link resolves to nothing has no row to have been opened from, so this is a defensive branch rather than a user-facing refusal.
 
 - [ ] **Step 4: Run and commit**
 
@@ -1163,9 +1171,11 @@ Add to `CHANGELOG.md`'s `[Unreleased]` section — a dated `## [x.y.z]` heading 
 ### Changed
 
 - **Breaking:** an item names its assignee by link to a `Resource` note rather than by
-  name. A note carrying `assignee: Sarah` names nobody after this: the text renders and
-  nothing else. There is no migration — see `docs/issues/No migration off the string
-  assignees.md`.
+  name. A name still resolves where the vault already has the note — `assignee: Sarah`
+  keeps its assignment when `Sarah.md` is a `Resource` the base returns — so what is lost
+  is every assignee naming somebody with no resource note behind it: the text renders,
+  marked, and the item shelves. There is no migration, and none is needed for the names
+  that resolve — see `docs/issues/No migration off the string assignees.md`.
 - The roadmap's resources axis draws one row per `Resource` note the base returns,
   alphabetically, including a resource nobody is assigned to yet.
 - `Set assignee` lists those notes and offers `New resource...`, which creates the note

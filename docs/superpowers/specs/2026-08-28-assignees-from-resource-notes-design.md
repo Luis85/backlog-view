@@ -79,13 +79,39 @@ Every consumer resolves it:
   alone would draw them as valid assignments while every other surface treated them as
   nobody. One value, three surfaces, one answer. Found by automated review on PR #207.
 - **Two resources can share a basename**, in different folders, and the path-keyed model
-  tells them apart while their names cannot. The menu names them apart through
-  `namedTargets` — the helper `Set iteration` and `Set release` already share for this
-  exact collision, widened from `BacklogItem[]` to anything carrying a title and a file —
-  and the roadmap's fold key becomes the note path, since a key that cannot tell two rows
-  apart folds both. The legacy name-keyed folds are not migrated: bands collapsed before
-  this ships open once, which is cheaper than two key shapes in stored state forever.
-  Found by automated review on PR #207.
+  tells them apart while their names cannot. Stated once as a rule rather than patched per
+  surface, because it was found three times in two review rounds — the menu, the absence
+  picker, the roadmap's row headers — and a fourth surface would have been found later:
+
+  > **Every surface that names a resource TO THE READER names it through `namedTargets`.**
+  > That is the helper `Set iteration` and `Set release` already share for this exact
+  > collision — basename normally, the full path minus extension only for the ones that
+  > collide, so separating a rare pair does not make the ordinary case unreadable. Widen
+  > its parameter from `BacklogItem[]` to anything carrying a title and a file; a
+  > `ResourceNote` already answers both. The assignee menu, the absence form's options and
+  > `ResourceLane.name` all go through it.
+
+  The roadmap's **fold key** becomes the note path for the same collision, since a key that
+  cannot tell two rows apart folds both — and that is a different question from the label,
+  which is why both are needed and neither substitutes for the other. Legacy name-keyed
+  folds are not migrated: bands collapsed before this ships open once, which is cheaper
+  than two key shapes in stored state forever. Found by automated review on PR #207.
+- **Creating a resource can still land it outside the base**, and the link is written
+  anyway. `createResourceNote` files into `resourceFolder`, which a narrow base may not
+  return — [[Making a resource from the timeline]] extension 4b already states that as a
+  limitation rather than a defect the plugin detects. `New resource...` in the assignee
+  menu inherits it: the note is made, the link is written, and the item then shows a
+  marked chip and sits on the shelf.
+
+  **Deferring the link until the note is confirmed in the roster is refused**, and not on
+  cost: nothing correlates a Bases pass with a write, and
+  [[The outcome report was built from one sentence]] holds what happened when that was
+  built anyway — eleven review findings across seven rounds without reaching a correct
+  rule, then removed. What this change does do is make the outcome VISIBLE where it was
+  silent: the marked chip says the value names no resource in this base, which is the true
+  state and one drop from being fixed. The default keeps it rare rather than the mechanism
+  keeping it impossible, exactly as 4b says. Raised by automated review on PR #207; the
+  suggested fix is the one the register already refused.
 - **This is a READ, so it changes nothing about the migration decision.**
   [[No migration off the string assignees]] refuses a migration because a migration is a
   WRITE over notes nobody asked to have written; resolving a name the note already carries
