@@ -507,6 +507,13 @@ function drawDisclosure(view: ReleaseView, release: ReleaseRow, rowEl: HTMLEleme
 	twistyEl.addEventListener('click', (evt) => {
 		// The row's own listener would otherwise open the note behind the fold.
 		evt.stopPropagation();
+		// Per-row identity for the redraw's focus restore, set BEFORE the render this
+		// call triggers. `render()` cannot work it out afterwards: it identifies a
+		// surviving control by a stable class, and every row's disclosure wears
+		// `.pbl-twisty`, so a class-keyed restore would land on the FIRST disclosure in
+		// the tree rather than this one — worse than the body it currently falls to.
+		// `wireScopeKeys`'s own restore reads exactly this field.
+		view.activeScopePath = row.item.file.path;
 		toggleFold(view, release.path, row.item.file.path);
 	});
 }

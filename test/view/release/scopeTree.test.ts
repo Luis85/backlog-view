@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import { mountFoldScope, row, twisty } from '../../helpers/release';
+import { active, mountFoldScope, row, twisty } from '../../helpers/release';
 import { useViewHarness } from '../../helpers/view';
 import { foldedPaths, hideDoneOn, setAllFolds, setHideDone, toggleFold } from '../../../src/view/release/scopeTree';
 import { ScopeRow } from '../../../src/domain/releases';
@@ -155,6 +155,26 @@ describe('the scope tree', () => {
 		twisty(view, 'Passwordless sign-in.md').click();
 		view.onDataUpdated();
 		expect(row(view, 'Send the magic link.md', { optional: true })).toBeNull();
+	});
+
+	it('keeps focus in the tree when a disclosure is clicked with the mouse', () => {
+		// `Sign-up flow.md` deliberately — the SECOND root row, not the first
+		// (`Passwordless sign-in.md`): the fallback the restore takes when no path is
+		// named lands on index 0, so clicking any other disclosure is what a
+		// first-disclosure regression would fail on and clicking the first would not.
+		//
+		// A real mouse press focuses the button before the click handler runs; jsdom does
+		// not, so the test says so explicitly rather than pretending the click alone did it.
+		const { view } = mountFoldScope({ pick: 'Releases/0.8.md' });
+		const twistyEl = twisty(view, 'Sign-up flow.md');
+		twistyEl.focus();
+		twistyEl.click();
+
+		const treeEl = view.viewEl.querySelector<HTMLElement>('.pbl-tree')!;
+		expect(document.activeElement).toBe(treeEl);
+		// And on the row that was clicked, not on the first row in the tree — the
+		// first-disclosure bug this restore replaces would also leave focus on the tree.
+		expect(active(view)).toBe('Sign-up flow.md');
 	});
 
 	it('persists the hide-done toggle through the identity-backed store, not merely the session', () => {

@@ -197,7 +197,14 @@ export class ReleaseView extends BasesView {
 		// Captured before `empty()` for `previousTop`'s own reason: a detached element
 		// answers nothing. `previousEl` already narrows to `.pbl-tree` or `.pbl-rel-list`,
 		// so this only has to ask whether it was THIS render's tree specifically.
-		this.scopeHadFocus = previousEl !== null && previousEl.classList.contains('pbl-tree') && document.activeElement === previousEl;
+		//
+		// `contains`, not `===`: a MOUSE press on a per-row control inside the tree (the
+		// disclosure) focuses that button, and the redraw this render is performing is
+		// about to detach it. Focus was inside the composite widget, so it belongs back on
+		// the composite widget — `wireScopeKeys` puts it on the row `activeScopePath`
+		// names. An element contains itself, so the keyboard case (focus ON the tree) is
+		// unchanged.
+		this.scopeHadFocus = previousEl !== null && previousEl.classList.contains('pbl-tree') && previousEl.contains(document.activeElement);
 		// Read for the identical reason, one line up: which control (if any) held focus,
 		// named by the one class in `FOCUS_HANDLE_CLASSES` it carries.
 		const focusHandle = this.focusedControlClass();
@@ -225,13 +232,12 @@ export class ReleaseView extends BasesView {
 
 	/** The one class in {@link FOCUS_HANDLE_CLASSES} the currently focused element carries,
 	 *  or null when focus is outside this view or on something the redraw does not track —
-	 *  a per-row control, say. `scopeHadFocus` (above) only covers the KEYBOARD path there:
-	 *  it asks whether the TREE itself (`tabindex="0"`, a `role="tree"` composite) held
-	 *  focus, which is true for a keyboard user (arrows move the roving selection without
-	 *  ever moving focus off the tree) but false the moment a MOUSE presses a per-row
-	 *  control such as `.pbl-twisty` — that click focuses the twisty itself, this method
-	 *  returns null for it (twisty is not in `FOCUS_HANDLE_CLASSES`), and focus lands on
-	 *  `document.body` after the redraw. Real, unfixed, and outside this increment's scope. */
+	 *  a per-row control, say. `scopeHadFocus` (above) is what covers that case now: a
+	 *  MOUSE press on a per-row control inside the tree, `.pbl-twisty`, focuses the twisty
+	 *  itself, this method returns null for it (twisty is not in `FOCUS_HANDLE_CLASSES`),
+	 *  and `scopeHadFocus`'s `contains` check catches it instead — the tree is the focus
+	 *  TARGET a composite widget hands focus back to, never the button, which is exactly
+	 *  why the twisty is deliberately not added to `FOCUS_HANDLE_CLASSES` here. */
 	private focusedControlClass(): string | null {
 		const active = document.activeElement;
 		if (!(active instanceof HTMLElement) || !this.viewEl.contains(active)) return null;
