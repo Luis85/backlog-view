@@ -296,13 +296,36 @@ Slice B. No new derivation — `ReleaseRow` already carries `members` and `done`
 **Files:**
 - Modify: `src/view/release/renderScope.ts` (`drawHeader` becomes two lines)
 - Modify: `src/i18n/en.ts` (two keys)
-- Modify: `styles/release.css`
+- Create: `styles/releaseScope.css` (Step 0 — the split; `release.css` is one line under its cap)
+- Modify: `styles/release.css`, `styles/index.css`
 - Modify: `docs/requirements/Summing up a release.md` (status, `## Where it lives`, and the module-location correction)
 - Test: `test/view/releaseScopeRender.test.ts` (extend)
 
 **Interfaces:**
 - Consumes: `ReleaseRow.members` and `ReleaseRow.done`, both `ReleaseFigure<number>` from `domain/releases.ts`; `ReleaseScope.members` for the count already drawn.
 - Produces: nothing other tasks consume; Task 5 draws its all-done state under the same header.
+
+- [ ] **Step 0: Split the stylesheet FIRST — it is one line under its cap**
+
+`styles/release.css` is at **399 lines against a 400-line build cap**, so this task, Task 3 and Task 5 cannot each add rules to it. `styles-assemble.mjs` fails the build on an over-length partial, and the repository's rule is one partial per concern.
+
+Split it in two along the seam it already has — the file's own headers name them — and do this as its **own commit**, before a single new rule is written:
+
+- `styles/release.css` keeps the INDEX: `.pbl-rel-actions`, `.pbl-rel-new`, `.pbl-rel-init`, `.pbl-rel-list`, `.pbl-rel-bands`, `.pbl-rel-group*`, `.pbl-rel-band*`, `.pbl-rel-overdue`, `.pbl-rel-line*`, `.pbl-rel-name`, `.pbl-rel-icon`, `.pbl-rel-version`, `.pbl-rel-when`, `.pbl-rel-days`, `.pbl-rel-undated`, `.pbl-rel-unreadable`, `.pbl-rel-bar*`, `.pbl-rel-progress`, `.pbl-rel-band-note`, `.pbl-rel-nomembers`, `.pbl-rel-note`, `.pbl-rel-spacer`.
+- `styles/releaseScope.css` takes ONE RELEASE'S SCREEN: `.pbl-rel-header*`, `.pbl-rel-back`, `.pbl-rel-facts`, `.pbl-rel-context`, and the two `.pbl-rel-view .pbl-row` rules.
+
+`.pbl-rel-bar` and `.pbl-rel-spacer` stay in the index partial and are USED by both screens — that is fine and worth a line in the new partial's header saying where they live, so the next reader does not go looking.
+
+Register the new partial in `styles/index.css` beside the existing import, with the position note that file requires. Position is **not** load-bearing, for the same reason the existing note gives: every selector is `.pbl-rel-*`, a vocabulary no other partial declares, and nothing here re-targets a class another file also writes. Say that explicitly rather than leaving it unstated — every import in that file carries such a note, and one without it reads as unexamined.
+
+Give `releaseScope.css` a real header in the house style: what it is for, and that these rules were drawn in `test/harness/mock.ts` against the real assembled stylesheet before the view existed, which is what `release.css`'s own header records for the index's bands.
+
+Verify with `npm run build` (the assembler is what enforces the cap), then commit the split alone:
+
+```bash
+git add styles/
+git commit -m "Split the release stylesheet before its two screens outgrow one partial"
+```
 
 - [ ] **Step 1: Write the failing test**
 
@@ -417,7 +440,7 @@ Call it at the end of `drawHeader`, and move the existing member-count span out 
 
 - [ ] **Step 5: Style it**
 
-In `styles/release.css`:
+In `styles/releaseScope.css` (the partial Step 0 created):
 
 ```css
 /* The header now stacks two lines: the release's identity, then one strip of figures. */
@@ -498,7 +521,7 @@ Slice A, first half. `renderScope.ts` splits here.
 - Modify: `src/view/release/releaseView.ts` (gains the `OpenController`)
 - Modify: `src/domain/releaseOptions.ts` (this view's own `openIn` option)
 - Modify: `src/i18n/en.ts` (two keys)
-- Modify: `styles/release.css`
+- Modify: `styles/releaseScope.css` (created by Task 2 Step 0 — NOT `release.css`, which is at its cap)
 - Modify: `docs/requirements/The scope of a release as a tree.md`
 - Test: `test/view/release/scopeTree.test.ts`
 
@@ -649,7 +672,7 @@ computed on the way back up the recursion, and **Task 5's `subtreeDone` is then 
 	}
 ```
 
-with `'release.scope.rollup': '{done}/{total}'` in the catalog and, in `styles/release.css`:
+with `'release.scope.rollup': '{done}/{total}'` in the catalog and, in `styles/releaseScope.css`:
 
 ```css
 /* One column for the chip, so a row with no state leaves a gap rather than sliding its
@@ -768,7 +791,7 @@ Add the option to `declaredPropertyKeys`' sweep only if it is a PROPERTY option 
 
 - [ ] **Step 6: Style the disclosure**
 
-In `styles/release.css`:
+In `styles/releaseScope.css`:
 
 ```css
 /* The disclosure. It holds its gutter on a leaf so a level's titles share one x, and it
@@ -1082,7 +1105,7 @@ Slice C. The one `domain/` addition and the one `storage/` addition.
 - Modify: `src/domain/releases.ts` (the scope-local completion predicate)
 - Modify: `src/storage/viewStateStore.ts` (`ViewPrefs.releaseHideDone` and its reader)
 - Modify: `src/view/release/renderScope.ts`, `src/view/release/scopeTree.ts`
-- Modify: `src/i18n/en.ts`, `styles/release.css`
+- Modify: `src/i18n/en.ts`, `styles/releaseScope.css` (NOT `release.css`, which is at its cap)
 - Modify: `docs/requirements/Rollups and hiding finished work.md`, `docs/requirements/The scope of a release as a tree.md`
 - Test: `test/domain/releaseScope.test.ts`, `test/storage/viewStateStore.test.ts`, `test/view/release/scopeToolbar.test.ts`
 
@@ -1353,7 +1376,7 @@ In `scopeTree.ts`, `visibleRows` gains the hide pass: a row is dropped when `hid
 	'release.scope.allDone': 'All {count} items are done.',
 ```
 
-and in `styles/release.css` the `.pbl-rel-toolbar`, `.pbl-rel-toggle`, `.pbl-rel-toggle-on` and `.pbl-rel-alldone` rules from the harness mock's `SHEET` — the same publication path `styles/release.css`'s own header records for the index's bands.
+and in `styles/releaseScope.css` the `.pbl-rel-toolbar`, `.pbl-rel-toggle`, `.pbl-rel-toggle-on` and `.pbl-rel-alldone` rules from the harness mock's `SHEET` — the same publication path `styles/release.css`'s own header records for the index's bands.
 
 - [ ] **Step 9: Run every test**
 
