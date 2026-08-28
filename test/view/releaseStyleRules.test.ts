@@ -92,18 +92,22 @@ describe('the progress bar draws no fill without a published one', () => {
 	});
 });
 
-describe('a release’s own screen does not inherit the tree’s gestures', () => {
-	it('gives a scope row back its text selection, its cursor and its quiet hover', () => {
-		// `.pbl-row` is reused for its LAYOUT and arrives carrying three gestures this screen
-		// does not have: it offers no click, no selection and no fold. `user-select` is the
-		// sharp one — copying a title is most of what a read-only screen is for.
-		expect(ruleAt('.pbl-rel-view .pbl-row', 'user-select: auto;')).toBeGreaterThan(-1);
-		expect(ruleAt('.pbl-rel-view .pbl-row', 'cursor: auto;')).toBeGreaterThan(-1);
-		expect(ruleAt('.pbl-rel-view .pbl-row:hover', 'background-color: transparent;')).toBeGreaterThan(-1);
+describe('a release’s own screen is a target again, since Task 3', () => {
+	it('opens its note on click — a real pointer, a real hover — and still lets a title be selected', () => {
+		// `.pbl-row` is reused for its LAYOUT and arrived carrying three refusals this screen
+		// no longer keeps: there is a click now (`scopeTree.ts`), so `cursor` and the hover
+		// say so. `user-select` is not declared here at all any more — its earlier explicit
+		// `auto` only ever restated the browser's own default, and there is still no drag on
+		// this screen to justify overriding it either way.
+		expect(ruleAt('.pbl-rel-view .pbl-row', 'user-select')).toBe(-1);
+		expect(ruleAt('.pbl-rel-view .pbl-row', 'cursor: pointer;')).toBeGreaterThan(-1);
+		expect(ruleAt('.pbl-rel-view .pbl-row:hover', 'background-color: var(--background-modifier-hover);')).toBeGreaterThan(
+			-1,
+		);
 	});
 
-	it('refuses the hover at `:hover`, so the import order still decides nothing', () => {
-		// `tree.css` declares `.pbl-row:hover` at (0,2,0). Refusing it at `.pbl-rel-view
+	it('sets the hover at `:hover`, so the import order still decides nothing', () => {
+		// `tree.css` declares `.pbl-row:hover` at (0,2,0). Setting it again at `.pbl-rel-view
 		// .pbl-row` — also (0,2,0) — would be decided by which partial `index.css` imports
 		// last, and this partial's own header states that its position is NOT load-bearing.
 		// (0,3,0) makes that sentence true whatever the order.

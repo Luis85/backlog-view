@@ -87,33 +87,48 @@ note assumed and `## Where it lives` explains it cannot be.
 - With the membership property unconfigured, no tree is drawn and the empty state names the
   option.
 - Drawing the scope plans no write.
+- A folded parent keeps its own rollup: folding is a render decision over what is drawn, and it
+  must never change a figure computed over the subtree.
+- A click on the disclosure folds or unfolds its row and does not open the note; a click
+  anywhere else on the row opens it.
 
 ## Where it lives
 
 The membership read is `src/domain/releases.ts`, beside `src/domain/board.ts` and
 `src/domain/roadmap.ts` and shaped like them — it derives from the model in
-`src/domain/model.ts` and touches no DOM. The membership key is declared in
+`src/domain/model.ts` and touches no DOM. The same module computes each row's own
+`memberTotal`/`memberDone` in the walk that already visits exactly this release's members,
+which is what keeps the rollup from ever counting a note this screen is not showing. The
+membership key, and this view's own open-note target (`openIn`), are declared in
 `src/domain/releaseOptions.ts`, this view's own option set. `src/view/release/releaseView.ts`
-CHOOSES between this scope and the index; the one that DRAWS the tree is
-`src/view/release/renderScope.ts`.
+CHOOSES between this scope and the index; `src/view/release/renderScope.ts` draws the header
+and the two empty states above the tree; `src/view/release/scopeTree.ts` draws the tree
+itself — the rows, the disclosure, the fold set (scoped to the open release, never a bare
+path — see that module's own comment) and a row's click, which opens the note through
+`src/view/openTarget.ts`'s `OpenController`, the estimation view's own mechanism.
 
 This note said the rows reuse `src/view/render/rows.ts` and the context marking already there.
 They do not, and cannot: that module takes a `BacklogViewHost` and wires menus, create prompts,
 tag removal and drag into every row — every one of them a write this screen does not offer — so
 reusing it would make a read-only view satisfy a host interface in order to withhold what the
-interface is for. The rows are drawn by `src/view/release/renderScope.ts` instead — the header,
-the read-only tree and both empty states — reusing the stylesheet (`styles/release.css`),
-`badgeStyleFor` from `src/view/render/badges.ts` and `guidanceShell` from
-`src/view/render/emptyStates.ts`, which is the same reuse the estimation view settled on.
+interface is for. The rows are drawn by `src/view/release/scopeTree.ts` instead, reusing the
+stylesheet (`styles/release.css`, `styles/releaseScope.css`), `badgeStyleFor` from
+`src/view/render/badges.ts` and — for the rollup — the backlog tree's own `.pbl-meta-col` /
+`.pbl-progress` vocabulary from `styles/columns.css`, which is the same reuse the estimation
+view settled on for its own read-only rows.
 
-**What declining that module COSTS is the semantics, not only the wiring.** `rows.ts` already
-carries `role="treeitem"`, `aria-level`, `aria-posinset` and `aria-setsize` — and the `role="tree"`
+**What declining `rows.ts` COSTS is the semantics, not only the wiring.** It already carries
+`role="treeitem"`, `aria-level`, `aria-posinset` and `aria-setsize` — and the `role="tree"`
 above them is not its own either: the backlog's pane is created with it in
 `src/view/backlogView.ts` and swapped per projection through `src/view/render/projections.ts`. So
-`renderScope.ts` carries the whole set itself, the container role included: `--pbl-depth` moves a row sideways and announces nothing,
-and a scope drawn with indent alone is a flat list of divs on the one screen whose whole promise
-is the shape of the work. Two attributes `rows.ts` sets are deliberately absent — `aria-selected`
-describes a selection this screen does not have and `aria-expanded` a collapse it does not offer.
-The context marker reuses `.pbl-outside-marker`'s STYLING and none of its sentence: that one says
-a row is outside the base's filter, which is false of every row here, since `releaseScope` skips
-an `outsideFilter` ancestor outright rather than keeping it as context.
+`scopeTree.ts` carries the whole set itself, the container role included: `--pbl-depth` moves a
+row sideways and announces nothing, and a scope drawn with indent alone is a flat list of divs
+on the one screen whose whole promise is the shape of the work. **`aria-expanded` is now carried
+on every row that has children, and deliberately absent on a leaf** — this note claimed the
+opposite, that it "describes a collapse this screen does not offer", until this rewrite, once
+the tree could fold at all. `aria-selected` stays absent: this screen still has no selection,
+which the keyboard is what will add and update this paragraph again when it does. The context
+marker reuses
+`.pbl-outside-marker`'s STYLING and none of its sentence: that one says a row is outside the
+base's filter, which is false of every row here, since `releaseScope` skips an `outsideFilter`
+ancestor outright rather than keeping it as context.

@@ -8,6 +8,7 @@ import { resolveSettings } from '../../domain/settingsResolve';
 import { loadViewState, saveViewState } from '../../storage/viewStateStore';
 import { resolveViewIdentity } from '../../storage/viewIdentity';
 import { guidanceShell } from '../render/emptyStates';
+import { OpenController } from '../openTarget';
 import { RELEASE_SUGGESTED_KEYS } from './init';
 import { renderReleaseInit } from './initControl';
 import { renderNewRelease } from './newRelease';
@@ -47,6 +48,10 @@ export class ReleaseView extends BasesView {
 	model: BacklogModel | null = null;
 	/** Which screen the LAST render drew — see {@link draw}. */
 	private drawnKey: string | null = null;
+	/** Where a row's click opens its note — the estimation view's own `opener`
+	 *  (`estimationView.ts`), reused for the identical reason: a click on a scope row is
+	 *  ordinary navigation, never a write. */
+	readonly opener = new OpenController();
 
 	constructor(controller: QueryController, containerEl: HTMLElement) {
 		super(controller);

@@ -2,6 +2,24 @@ import { ReleaseView } from '../../src/view/release/releaseView';
 import { installObsidianDom } from './dom';
 import { FakeVault, FakeViewConfig, mountLeaf } from './vault';
 
+/** `t.pbl-row[data-path="…"]` — the scope tree's own row, or null when `optional` says a
+ *  missing one is the assertion rather than a broken fixture. Reads `view.viewEl` rather
+ *  than a `containerEl` the caller would otherwise have to keep threading through: every
+ *  scope-tree test already holds the view. */
+export function row(view: ReleaseView, path: string, opts: { optional?: boolean } = {}): HTMLElement | null {
+	const el = view.viewEl.querySelector<HTMLElement>(`.pbl-row[data-path="${path}"]`);
+	if (el === null && !opts.optional) throw new Error(`row not found: ${path}`);
+	return el;
+}
+
+/** The disclosure button on one row — never optional, because every caller of this one
+ *  already knows the row has children. */
+export function twisty(view: ReleaseView, path: string): HTMLElement {
+	const el = row(view, path)?.querySelector<HTMLElement>('.pbl-twisty');
+	if (!el) throw new Error(`twisty not found: ${path}`);
+	return el;
+}
+
 // `releaseSettingsWith`, the `ReleaseSettings`-shaped fixture, lives in the leaf module
 // `test/helpers/releaseSettings.ts` and not here: it touches no DOM, and this file calls
 // `installObsidianDom()` below, so anything importing it needs jsdom. NOT re-exported
@@ -141,4 +159,59 @@ export function scopeVault(): FakeVault {
 	vault.addFile('F1.md', { frontmatter: { type: 'Feature', parent: 'E', order: 1, release: '[[R]]' } });
 	vault.addFile('F2.md', { frontmatter: { type: 'Feature', parent: 'E', order: 2, release: '[[R]]' } });
 	return vault;
+}
+
+/**
+ * Two releases and two context Epics — `scopeTree.test.ts`'s own fixture, the fold set's
+ * own shape rather than `scopeVault()`'s single-release one: one Epic (Passwordless
+ * sign-in) holds two LEAVES in one release, for the disclosure and the leaf-placeholder
+ * tests; the other (Sign-up flow) holds a different child PER release, so it is drawn as
+ * context in BOTH — the one shape that can tell a fold scoped to its release apart from a
+ * bare-path one.
+ */
+function foldVault(): FakeVault {
+	const vault = new FakeVault();
+	vault.addFile('Releases/0.8.md', {
+		frontmatter: { type: 'Release', version: '0.8.0', 'target-date': '2026-09-12', status: 'In progress' },
+	});
+	vault.addFile('Releases/0.9.md', { frontmatter: { type: 'Release', version: '0.9.0' } });
+	// A MEMBER with member children — unlike `Sign-up flow` below, which stays context — so
+	// its own row draws a rollup (`context: false`) over what is BELOW it rather than never
+	// drawing one at all.
+	vault.addFile('Passwordless sign-in.md', { frontmatter: { type: 'Epic', release: '[[Releases/0.8]]' } });
+	// `parentLink`, not a bare `parent` string: these children need a REAL frontmatter
+	// link so `vault.renameFile`'s own rewrite (test 2) carries them with their parent
+	// rather than orphaning them — the fake's own documented distinction
+	// (`test/CLAUDE.md`), and the one this fixture exists to exercise.
+	vault.addFile('Send the magic link.md', {
+		frontmatter: { type: 'Task', order: 1, release: '[[Releases/0.8]]' },
+		parentLink: 'Passwordless sign-in',
+	});
+	vault.addFile('Expire the link.md', {
+		frontmatter: { type: 'Task', order: 2, release: '[[Releases/0.8]]' },
+		parentLink: 'Passwordless sign-in',
+	});
+	vault.addFile('Sign-up flow.md', { frontmatter: { type: 'Epic' } });
+	vault.addFile('Verify the email.md', {
+		frontmatter: { type: 'Task', order: 1, release: '[[Releases/0.8]]' },
+		parentLink: 'Sign-up flow',
+	});
+	vault.addFile('Choose a password.md', {
+		frontmatter: { type: 'Task', order: 1, release: '[[Releases/0.9]]' },
+		parentLink: 'Sign-up flow',
+	});
+	return vault;
+}
+
+/**
+ * `foldVault()` mounted with an IDENTITY — a `.base` leaf, so `resolveViewIdentity`
+ * resolves and a fold routes through `loadViewState`/`saveViewState` rather than the
+ * session-only fallback — unless `embedded` says otherwise, `restorePick`'s own asymmetry
+ * for the pick applied to the fold set instead.
+ */
+export function mountFoldScope(opts: { pick: string; embedded?: boolean }): ReleaseHarness & { vault: FakeVault } {
+	const vault = foldVault();
+	const harness = makeReleaseView(vault, RELEASE_CONFIG, opts.embedded ? {} : { base: 'Releases.base' });
+	harness.view.pick(opts.pick);
+	return { ...harness, vault };
 }

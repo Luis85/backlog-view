@@ -1742,6 +1742,18 @@ export const en = {
 	 *  it names the release rather than describing a problem. */
 	'release.scope.empty.title': 'Nothing is in {name} yet',
 	'release.scope.empty.hint': 'An item joins a release when its own membership property names that release.',
+	/** The disclosure's own accessible name, since a `pbl-twisty` carries no visible text —
+	 *  Task 3's own addition, once the tree could fold at all. */
+	'release.scope.collapse': 'Collapse',
+	'release.scope.expand': 'Expand',
+	/**
+	 * A row's own compact rollup — `{done}/{total}`, never a sentence: `.pbl-progress-label`
+	 * is drawn once per row with a rollup, and this tree can hold many, so `column.rollupTooltip`'s
+	 * full "N of M items done" beside it here would read as a wall of prose rather than a
+	 * figure. The summary strip above the tree is the one place a sentence is right, and it
+	 * already reuses that key for its own stated reason.
+	 */
+	'release.scope.rollup': '{done}/{total}',
 
 	/** `src/ui/newReleaseDialog.ts` — a plain-data leaf that knows nothing of property
 	 *  keys, so every one of its labels is its own key rather than a reuse of the index

@@ -72,22 +72,67 @@
 }
 
 /* One release's scope reuses the tree's `.pbl-row` for its LAYOUT — the flex row, the
-   `--pbl-depth` indent, `content-visibility` — and inherits three gestures with it that
-   this screen does not have: there is no click, no selection and no collapse, which is
-   why `renderScope.ts` omits `aria-selected` and `aria-expanded` too. The sharpest of the
-   three is `user-select`: a screen whose whole purpose is reading must let a reader copy a
-   title. The tree earns that rule by dragging its rows; nothing here is dragged.
+   `--pbl-depth` indent, `content-visibility` — and inherits gestures with it that this
+   screen does not fully have: there is still no selection, which is why `renderScope.ts`
+   omits `aria-selected` (Task 4 adds it). A row is a target again since Task 3 — it opens
+   its note — so the two refusals this file made when nothing on the screen was clickable
+   go with them. `user-select` STAYS auto, unstated here rather than reset back to it: a
+   screen for reading must let a reader copy a title, and the tree earns its own `none` by
+   dragging its rows, which nothing here does.
 
    Scoped by `.pbl-rel-view` so it cannot reach the backlog tree's own rows, and the hover
-   is refused at `:hover` rather than at the bare class so the import ORDER still decides
+   is set at `:hover` rather than at the bare class so the import ORDER still decides
    nothing (see this file's header). */
 .pbl-rel-view .pbl-row {
-	cursor: auto;
-	user-select: auto;
+	cursor: pointer;
 }
 
 .pbl-rel-view .pbl-row:hover {
+	background-color: var(--background-modifier-hover);
+}
+
+/* The disclosure. It holds its gutter on a leaf so a level's titles share one x, and it
+   is `visibility` rather than `display` for exactly that: a leaf with no box would let
+   its title slide left of its siblings'. */
+button.pbl-twisty {
+	flex: 0 0 auto;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	inline-size: 18px;
+	block-size: 18px;
+	padding: 0;
+	margin: 0;
+	color: var(--text-faint);
 	background-color: transparent;
+	box-shadow: none;
+	border: none;
+	border-radius: var(--radius-s);
+	cursor: pointer;
+}
+
+button.pbl-twisty:hover {
+	color: var(--text-normal);
+	background-color: var(--background-modifier-hover);
+}
+
+button.pbl-twisty .svg-icon {
+	inline-size: 14px;
+	block-size: 14px;
+}
+
+button.pbl-twisty-leaf {
+	visibility: hidden;
+	cursor: default;
+}
+
+/* One column for the chip, so a row with no state leaves a gap rather than sliding its
+   neighbours left. Anchored at its end, like `.pbl-meta-col` beside it. */
+.pbl-rel-statecol {
+	flex: 0 0 auto;
+	display: flex;
+	justify-content: flex-end;
+	inline-size: 92px;
 }
 
 /* One strip, one denominator. `flex-wrap` because a narrow pane must drop the sentence

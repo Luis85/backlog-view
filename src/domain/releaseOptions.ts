@@ -3,6 +3,7 @@ import { configReaders, vaultFolder } from './settingsResolve';
 import { notePropsOnly } from './optionalProperties';
 import { defaultTypeFolder, RELEASE_TYPE } from './typeVocabulary';
 import { DEFAULT_DONE_VALUES } from './settings';
+import { defaultItemHandling, openTargetOptions, OpenTarget, resolveItemHandling } from './itemHandling';
 import { t } from '../i18n/t';
 
 /**
@@ -35,6 +36,10 @@ export interface ReleaseSettings {
 	releasedDateKey: string;
 	/** Where `New release` files a note. A PATH, not a property key. */
 	folder: string;
+	/** Where a scope row's click opens its note — this view's OWN option, never the
+	 *  backlog resolver's: see {@link resolveReleaseSettings}'s own comment for why a
+	 *  second resolver reading this boundary is the defect rather than the fix. */
+	openIn: OpenTarget;
 }
 
 export function getReleaseViewOptions(_config: BasesViewConfig): BasesAllOptions[] {
@@ -141,6 +146,13 @@ function releaseGroup(): BasesAllOptions {
 				default: defaultTypeFolder(RELEASE_TYPE),
 				placeholder: defaultTypeFolder(RELEASE_TYPE),
 			},
+			{
+				key: 'openIn',
+				displayName: t('option.openIn'),
+				type: 'dropdown',
+				default: defaultItemHandling('split').openIn,
+				options: openTargetOptions(),
+			},
 		],
 	};
 }
@@ -215,5 +227,11 @@ export function resolveReleaseSettings(config: BasesViewConfig): ReleaseSettings
 		// folder — trimmed and normalized by `vaultFolder`, clearable because the default
 		// is a real value (`config.get` cannot tell "cleared" from "never set" otherwise).
 		folder: clearable('releaseFolder', defaultTypeFolder(RELEASE_TYPE), () => vaultFolder(str('releaseFolder'))),
+		// This view's OWN reading of `openIn` — never `resolveSettings(this.config).openIn`
+		// in `releaseView.ts`, for the reason stated where the click is handled: that
+		// resolver reads through `propKey`, which cannot tell a cleared option from an
+		// unset one, so two resolvers disagreeing at this boundary is the same defect as
+		// one view reading another's configuration.
+		openIn: resolveItemHandling(config, 'split').openIn,
 	};
 }

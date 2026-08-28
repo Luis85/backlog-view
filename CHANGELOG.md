@@ -53,6 +53,20 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   show a suggested name rather than a pickable one until a release you have made actually
   carries that field. Fill a box in once and that property is pickable like any other.
 
+- **A release's scope can be folded, and a row opens the note it names.** Every row that
+  holds children now carries a disclosure, so a large release can be collapsed down to its
+  Epics and Features rather than always drawing every Task; a leaf holds the same width in
+  reserve so titles at one level still line up. Folding never changes a figure — a folded
+  parent keeps its own progress, since the count is over the subtree rather than over what
+  happens to be drawn. Each row that holds a state also shows it, and a row with members
+  below it shows a compact progress figure of its own, the same bar the release-wide summary
+  above the tree already draws. Clicking anywhere on a row but the disclosure opens its note,
+  in the pane the view's own new **Open the note in** option names — the same choice the
+  estimation table already offers, defaulting to a split pane here too. A fold is remembered
+  per release: folding an Epic while looking at one release leaves it open in another, and —
+  where this view can tell which saved view it is — survives closing and reopening it;
+  embedded in a note, it lasts only the session.
+
 ### Fixed
 
 - **The release list no longer draws every row as a raised Obsidian button.** Each row really

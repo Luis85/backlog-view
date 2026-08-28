@@ -1,34 +1,26 @@
 import { setIcon, setTooltip } from 'obsidian';
 import type { ReleaseView } from './releaseView';
 import { t } from '../../i18n/t';
-import { ReleaseFigure, ReleaseRow, ReleaseScope, ScopeRow } from '../../domain/releases';
-import { displayType } from '../../domain/itemTypes';
+import { ReleaseFigure, ReleaseRow, ReleaseScope } from '../../domain/releases';
 import { formatCivil } from '../../domain/timeline';
-import { badgeStyleFor } from '../render/badges';
 import { guidanceShell } from '../render/emptyStates';
-import { drawIcon } from '../render/icons';
 import { renderReleaseInit } from './initControl';
+import { drawScopeTree } from './scopeTree';
 
 /**
  * One release's screen (`docs/requirements/The scope of a release as a tree.md`): the
- * header's facts, and the members drawn as the tree they already are.
+ * header's facts, and the two empty states above the tree. The tree itself —
+ * `role="tree"`, the rows, the disclosure and the fold set — is `scopeTree.ts`'s own
+ * (`drawScopeTree`), split out here in Task 3 once this module's own header grew a fourth
+ * reason to change on top of the header and the two states it keeps.
  *
  * A free function over the view, `renderIndex.ts`'s own shape, importing the view for its
  * TYPE alone so the pair stays acyclic at runtime.
  *
- * **Its own read-only rows, not `src/view/render/rows.ts`.** That module takes a
- * `BacklogViewHost` and wires menus, create prompts, tag removal and drag into every row —
- * every one of them a write this screen does not offer. What it declines is the SEMANTICS
- * as well as the wiring, which is the part that decision quietly takes on: `role="tree"`,
- * `role="treeitem"` and the three `aria-*` below are carried here rather than inherited,
- * because `--pbl-depth` moves a row sideways and tells assistive technology nothing. A
- * scope drawn with indent alone is announced as a flat list of divs, on the one screen
- * whose whole promise is the shape of the work.
- *
  * **Nothing here writes a note.** There is no gate to route through and nothing to
- * withhold: the back control sets view state, and the `noMembership` empty state's own ✨
- * ({@link renderReleaseInit}) only binds this view's own config — see that function for
- * why it writes no note either.
+ * withhold: the back control sets view state, a row's click opens a note (`scopeTree.ts`),
+ * and the `noMembership` empty state's own ✨ ({@link renderReleaseInit}) only binds this
+ * view's own config — see that function for why it writes no note either.
  *
  * `release` is a parameter rather than `scope.release` read here, because the caller has
  * already ruled on it — a screen is chosen by whether the pick still names a release, and
@@ -61,7 +53,7 @@ export function renderScope(view: ReleaseView, scope: ReleaseScope, release: Rel
 		);
 		return;
 	}
-	drawTree(view, release, scope.rows);
+	drawScopeTree(view, release, scope.rows);
 }
 
 /**
@@ -181,89 +173,4 @@ function drawFigure<T>(parentEl: HTMLElement, figure: ReleaseFigure<T>, label: s
 		return;
 	}
 	if (figure.value !== null) draw(figure.value);
-}
-
-function drawTree(view: ReleaseView, release: ReleaseRow, rows: ScopeRow[]): void {
-	// Named by the release, so a reader arriving at the tree hears which one it is. The
-	// name is vault content rather than text — it goes nowhere near the catalog.
-	const treeEl = view.viewEl.createDiv({ cls: 'pbl-tree', attr: { role: 'tree', 'aria-label': release.name } });
-	// The walk hands back each row joined to its own place, rather than a parallel array this
-	// loop would index into — an index lookup would need a fallback for a case that cannot
-	// happen, which is the unreachable branch this module's own header argues against.
-	for (const { row, pos, count } of siblingPlaces(rows)) drawRow(treeEl, row, { pos, count });
-}
-
-function drawRow(treeEl: HTMLElement, row: ScopeRow, place: { pos: number; count: number }): void {
-	const rowEl = treeEl.createDiv({
-		cls: 'pbl-row' + (row.context ? ' pbl-rel-context' : ''),
-		attr: {
-			role: 'treeitem',
-			// From 1, over the SCOPE's own depth, which re-roots at the release: a member drawn
-			// at top level is level 1 here even where the backlog would call it level 3. That is
-			// correct — the tree being announced is this screen's.
-			'aria-level': String(row.depth + 1),
-			'aria-posinset': String(place.pos),
-			'aria-setsize': String(place.count),
-			'data-path': row.item.file.path,
-		},
-	});
-	// `aria-selected` and `aria-expanded` are deliberately absent, and for the reason that
-	// made this view read-only: this screen has no selection and offers no collapse — every
-	// member is drawn, always — so either would announce an interaction that does not exist.
-	rowEl.setCssProps({ '--pbl-depth': String(row.depth) });
-
-	const badgeText = displayType(row.item);
-	if (badgeText) {
-		const style = badgeStyleFor(badgeText);
-		const badgeEl = rowEl.createSpan({ cls: 'pbl-badge' });
-		if (style.icon) drawIcon(badgeEl.createSpan({ cls: 'pbl-badge-icon' }), style.icon);
-		badgeEl.addClass(style.badge);
-		badgeEl.createSpan({ cls: 'pbl-badge-text', text: badgeText });
-	}
-
-	const titleEl = rowEl.createSpan({ cls: 'pbl-title', text: row.item.title });
-	// Set unconditionally, and NOTHING measures whether it was needed. `.pbl-row` carries
-	// `content-visibility: auto`, so a `scrollWidth` read to decide would lay out a skipped
-	// row by itself — the tree's own measured reason (5320ms against 12ms), inherited here
-	// with the class. A tooltip repeating a title that already fits is the whole price.
-	setTooltip(titleEl, row.item.title);
-
-	if (!row.context) return;
-	// The tree's marker STYLING with a different sentence, because a different fact is being
-	// stated. `row.contextMarker` says a row is outside the base's filter, which is false of
-	// every row here: `releaseScope` skips an `outsideFilter` ancestor outright, so a context
-	// row on this screen is in the base and is merely not a member of this release.
-	const markerEl = rowEl.createSpan({
-		cls: 'pbl-outside-marker',
-		attr: { 'aria-label': t('release.scope.contextMarker') },
-	});
-	drawIcon(markerEl, 'corner-left-down');
-	setTooltip(markerEl, t('release.scope.contextMarker'));
-}
-
-/**
- * Each row's position among its SIBLINGS at its own level, never its index in the flat row
- * list — which would announce a three-row scope as one list of three and defeat the point
- * of drawing a tree.
- *
- * `scope.rows` is a pre-order walk carrying its own depth, so a group of siblings is the
- * run of rows at one depth that no shallower row has interrupted: a row shallower than an
- * open group closes it, and the next row at that depth starts a new one under a new parent.
- * Each entry holds the group it joined, so `count` is read after the whole walk rather than
- * guessed while it is still growing.
- */
-function siblingPlaces(rows: ScopeRow[]): { row: ScopeRow; pos: number; count: number }[] {
-	const open = new Map<number, number[]>();
-	const joined = rows.map((row) => {
-		// The group-closing line, and the whole rule lives in it: a row shallower than an open
-		// group ends that group, so the next row at that depth starts a fresh one under a new
-		// parent. Without it every row at one depth joins one group for the length of the
-		// scope, and a second Epic's members are announced as `3 of 4` instead of `1 of 2`.
-		for (const depth of [...open.keys()]) if (depth > row.depth) open.delete(depth);
-		const group = open.get(row.depth) ?? [];
-		open.set(row.depth, group);
-		group.push(group.length + 1);
-		return { row, pos: group.length, group };
-	});
-	return joined.map(({ row, pos, group }) => ({ row, pos, count: group.length }));
 }

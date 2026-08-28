@@ -130,14 +130,17 @@ describe("a release's scope on screen", () => {
 		expect(titles.map((el) => el.textContent)).toEqual(['E', 'F1', 'F2']);
 	});
 
-	it('claims no selection and no collapse, because it offers neither', () => {
+	it('claims no selection — this screen still has none — and a disclosure only on a parent', () => {
+		// `aria-expanded` moved from "never" to "on every row with children" in Task 3: the
+		// Epic (E) has two member children and carries it, the two leaves (F1, F2) do not.
+		// `aria-selected` stays absent — no selection until the keyboard task adds one.
 		const { containerEl } = openScope();
-		const rows = [...containerEl.querySelectorAll('.pbl-row')];
+		const rows = [...containerEl.querySelectorAll('.pbl-row')] as HTMLElement[];
 		// Guarded: `some` over an empty list is false, so without this the whole claim passes
 		// on a screen that drew no rows at all.
 		expect(rows).toHaveLength(3);
 		expect(rows.some((el) => el.hasAttribute('aria-selected'))).toBe(false);
-		expect(rows.some((el) => el.hasAttribute('aria-expanded'))).toBe(false);
+		expect(rows.map((el) => el.hasAttribute('aria-expanded'))).toEqual([true, false, false]);
 	});
 
 	it('states the member count, which excludes every context row, in the summary strip', () => {

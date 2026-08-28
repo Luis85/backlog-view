@@ -173,4 +173,47 @@ describe("one release's scope", () => {
 		expect(scope.rows.find((r) => r.item.file.basename === 'E')?.context).toBe(true);
 		expect(scope.members).toBe(1);
 	});
+
+	describe('a row’s memberTotal/memberDone', () => {
+		it('rolls up members BELOW a row, never the row itself', () => {
+			// A member LEAF has nothing below it, so its own row reports zero — the same
+			// rule that makes a context row's number exactly the members it holds in
+			// place, stated once for every row rather than as a context-only exception.
+			const vault = new FakeVault();
+			vault.addFile('R.md', { frontmatter: { type: 'Release' } });
+			vault.addFile('E.md', { frontmatter: { type: 'Epic' } });
+			vault.addFile('F1.md', { frontmatter: { type: 'Feature', parent: 'E', release: '[[R]]', status: 'Done' } });
+			vault.addFile('F2.md', { frontmatter: { type: 'Feature', parent: 'E', release: '[[R]]', status: 'Planned' } });
+			const rows = scopeOf(vault, 'R.md', settingsWith({ stateKey: 'status' })).rows;
+			const e = rows.find((r) => r.item.file.basename === 'E')!;
+			expect([e.memberTotal, e.memberDone]).toEqual([2, 1]);
+			const f1 = rows.find((r) => r.item.file.basename === 'F1')!;
+			expect([f1.memberTotal, f1.memberDone]).toEqual([0, 0]);
+		});
+
+		it('counts only THIS release’s members on an ancestor shared with another', () => {
+			// The design's own illustration: a Feature (here, an Epic) with members here
+			// and members elsewhere must report only here's — `item.descendantCount` /
+			// `doneDescendants` would count both, consulting no membership at all.
+			const vault = new FakeVault();
+			vault.addFile('R1.md', { frontmatter: { type: 'Release' } });
+			vault.addFile('R2.md', { frontmatter: { type: 'Release' } });
+			vault.addFile('E.md', { frontmatter: { type: 'Epic' } });
+			vault.addFile('F1.md', { frontmatter: { type: 'Feature', parent: 'E', release: '[[R1]]' } });
+			vault.addFile('F2.md', { frontmatter: { type: 'Feature', parent: 'E', release: '[[R2]]' } });
+			const scope = scopeOf(vault, 'R1.md');
+			expect(scope.rows.find((r) => r.item.file.basename === 'E')?.memberTotal).toBe(1);
+		});
+
+		it('reads a Deliverable member’s doneness through its OWN workflow', () => {
+			const vault = new FakeVault();
+			vault.addFile('R.md', { frontmatter: { type: 'Release' } });
+			vault.addFile('E.md', { frontmatter: { type: 'Epic' } });
+			vault.addFile('D.md', {
+				frontmatter: { type: 'Deliverable', parent: 'E', release: '[[R]]', status: 'Planned', dstatus: 'Done' },
+			});
+			const rows = scopeOf(vault, 'R.md', settingsWith({ stateKey: 'status', deliverableStateKey: 'dstatus' })).rows;
+			expect(rows.find((r) => r.item.file.basename === 'E')?.memberDone).toBe(1);
+		});
+	});
 });

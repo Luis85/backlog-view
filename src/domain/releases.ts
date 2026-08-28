@@ -519,6 +519,24 @@ export interface ScopeRow {
 	depth: number;
 	/** True for an ancestor drawn only to keep a member in its place. */
 	context: boolean;
+	/**
+	 * Members at or below this row, and how many of them are done — the rollup the row
+	 * draws, over THIS release's members rather than over the model's descendants.
+	 *
+	 * `item.descendantCount` and `item.doneDescendants` are the wrong pair for the same
+	 * reason `item.subtreeDone` is: they count every non-marker descendant the BASE
+	 * returned, consulting no membership, so a Feature with two members here and five
+	 * items elsewhere would report `1/7` on a screen whose every other figure is over
+	 * seven fewer notes.
+	 *
+	 * Zero on a row with no members below it, which is what makes a CONTEXT row's
+	 * `memberTotal` the count of the members it is holding in place — and what keeps the
+	 * row itself out of both numbers, since a context row is never counted anywhere on
+	 * this screen. Each member's doneness is `ownWorkflowReading`'s, so a Deliverable
+	 * answers by its own workflow.
+	 */
+	memberTotal: number;
+	memberDone: number;
 }
 
 export interface ReleaseScope {
@@ -592,7 +610,12 @@ export function releaseScope(
 	}
 
 	const rows: ScopeRow[] = [];
-	const walk = (item: BacklogItem, depth: number): void => {
+	// One pass, pre-order for `rows` (the tree's own drawing order) and post-order for the
+	// rollup: a row's `memberTotal`/`memberDone` need every descendant visited before they
+	// can be summed, so the row is pushed on the way DOWN — to keep `rows` in the order the
+	// tree draws — and filled in on the way BACK UP, once its children's totals are known.
+	// `rows` holds the same object the recursion mutates, never a second copy.
+	const walk = (item: BacklogItem, depth: number): { total: number; done: number } => {
 		// A row that is not kept is walked THROUGH, never stopped at. A member filed under a
 		// marker — the hand-written parent edge this plan deliberately keeps — has that
 		// marker as an ancestor, and a marker is never kept; returning here would drop the
@@ -601,8 +624,33 @@ export function releaseScope(
 		// to prevent. Descending without drawing it leaves the depth alone too, so the
 		// member re-roots at the level the marker occupied.
 		const kept = keep.has(item.file.path);
-		if (kept) rows.push({ item, depth, context: !members.has(item.file.path) });
-		for (const child of item.children) walk(child, kept ? depth + 1 : depth);
+		const isMember = members.has(item.file.path);
+		let row: ScopeRow | null = null;
+		if (kept) {
+			row = { item, depth, context: !isMember, memberTotal: 0, memberDone: 0 };
+			rows.push(row);
+		}
+		let belowTotal = 0;
+		let belowDone = 0;
+		for (const child of item.children) {
+			const sub = walk(child, kept ? depth + 1 : depth);
+			belowTotal += sub.total;
+			belowDone += sub.done;
+		}
+		// The row reports what is BELOW it, never itself — the same rule that makes a
+		// context row's number exactly the members it is holding in place, stated once for
+		// every row rather than as a context-only exception: a leaf member's own row has
+		// nothing below it and draws no rollup, which is what keeps this screen from
+		// putting a trivial `1/1` on every leaf.
+		if (row) {
+			row.memberTotal = belowTotal;
+			row.memberDone = belowDone;
+		}
+		// Bubbled to the parent's sum: this item's own membership, THEN everything below it.
+		return {
+			total: belowTotal + (isMember ? 1 : 0),
+			done: belowDone + (isMember && ownWorkflowReading(item).done ? 1 : 0),
+		};
 	};
 	// From the model's REAL roots, not its rendered ones: a focus level set on the backlog
 	// view must not decide what a release's scope contains. A member whose ancestor is

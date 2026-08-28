@@ -174,9 +174,17 @@ export default defineConfig({
 			// — a raise that changes nothing is not a raise. One fewer function is 99.8756,
 			// under the 99.90 standing, so headroom there would again be a decrease, which is
 			// the exception this file has now stated three times.
+			// Raised again on 2026-08-28, with the release scope tree's fold, its disclosure
+			// and a click that opens the note: this machine measured 9517/9616 statements,
+			// 5979/6260 branches, 2440/2442 functions and 7913/7932 lines. Two move, both set
+			// under the ONE-FEWER figure by the headroom rule above — 9516 is 98.9600, so
+			// statements takes 98.96, and 5978 is 95.4952, so branches takes 95.49. **Lines
+			// and functions both stay, for the same arithmetic once more.** One fewer line is
+			// 99.7478, which floors to the 99.74 already standing. One fewer function is
+			// 99.8730, under the 99.90 standing, so headroom there would again be a decrease.
 			thresholds: {
-				statements: 98.93,
-				branches: 95.48,
+				statements: 98.96,
+				branches: 95.49,
 				functions: 99.90,
 				lines: 99.74,
 			},
