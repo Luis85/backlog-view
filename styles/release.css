@@ -21,14 +21,17 @@
    in a band is deliberately the read-only `.pbl-state-static` the tree already draws.
    ========================================================================== */
 
-/* The index's own head: the `New release` control, above the scroller so it stays put while
-   the rows move. `flex: 0 0 auto` because `.pbl-view` is a flex COLUMN and `.pbl-rel-list`
-   below takes all the slack — an auto-sized item here would otherwise be squeezed by it.
-   The button itself is Obsidian's `mod-cta`; nothing here paints one. */
+/* The index's own head: `New release` and the ✨ beside it, above the scroller so it stays
+   put while the rows move. `flex: 0 0 auto` because `.pbl-view` is a flex COLUMN and
+   `.pbl-rel-list` below takes all the slack — an auto-sized item here would otherwise be
+   squeezed by it. `gap` spaces the two buttons on the CONTAINER, not a margin on either,
+   so neither repeats it if a third joins. Both are Obsidian's own chrome — `clickable-icon`,
+   `mod-cta` — nothing here paints either. */
 .pbl-rel-actions {
 	flex: 0 0 auto;
 	display: flex;
 	justify-content: flex-end;
+	gap: var(--size-4-1);
 	padding: var(--size-4-2) var(--size-4-2) var(--size-4-1);
 }
 

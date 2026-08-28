@@ -108,6 +108,13 @@ separate act of bringing the release note itself into being.
 - **Creation is not undoable**, and that is consistent rather than new: no `New` in this
   plugin goes through `applyWrites`, so none captures an inverse. A mis-made release is
   deleted by hand.
+- **The standalone ✨ reports every press.** A press that bound nothing says so rather than
+  looking dead — the bar draws the control whether or not anything is currently adoptable,
+  unlike `New release`'s own bind, which stays quiet on a no-op because its dialog opens
+  either way. A press that DID bind something reports it through the same `release.new.bound`
+  notice `New release` uses, so the two presses cannot describe one bind two ways. Neither
+  writes a note: `test/view/release/initControl.test.ts` drives the click and reads
+  `vault.writeLog`/`vault.files` back empty.
 - **This press never edits a note that already exists.** It creates one and it may write this
   view's own `.base` config; `applyWrites`, `applyRestores` and `applyPropertyWrites` stay
   unreachable from `src/view/release/`, asserted on the calls themselves in
@@ -151,17 +158,38 @@ result object. It is a `ui/` leaf — it knows no property keys and writes nothi
 matching `estimationPresetDialog.ts`'s own pattern of taking plain rows in and handing plain
 data back.
 
-`src/view/release/init.ts` is the ✨ ACTION without a ✨ button (`runReleaseInit`): the
-backlog and estimation views hang theirs on a toolbar control, and this view has no
-toolbar, so the action is a step of the `New release` press rather than a control of its
-own. It binds the suggested key for `release` (the membership property), `version`,
-`target date` and `status` — whichever this vault has never touched — reading the live
-`BasesViewConfig` so a deliberately cleared option is left alone. It writes no note: this view never edits a
-note that already exists (`test/view/releaseNeverEdits.test.ts`). The accepted cost is
-that Obsidian's own property picker cannot offer `version`, `target date` or `status`
-until a release note carries them, which the first release CARRYING one supplies — a
-blank box is written nowhere, so a press alone is not enough. The same cost was already
-taken for the membership key last increment.
+`src/view/release/init.ts` is the ✨ ACTION (`runReleaseInit`): it binds the suggested key
+for `release` (the membership property), `version`, `target date` and `status` — whichever
+this vault has never touched — reading the live `BasesViewConfig` so a deliberately
+cleared option is left alone. It writes no note: this view never edits a note that already
+exists (`test/view/releaseNeverEdits.test.ts`). The accepted cost is that Obsidian's own
+property picker cannot offer `version`, `target date` or `status` until a release note
+carries them, which the first release CARRYING one supplies — a blank box is written
+nowhere, so a press alone is not enough. The same cost was already taken for the
+membership key last increment.
+
+`src/view/release/initControl.ts` is the ✨'s own control (`renderReleaseInit`), in the
+two positions the backlog and estimation views each hang theirs on a toolbar for: the head
+of the release index, drawn by `renderIndex.ts` beside `New release`, and — since this
+view has no toolbar to fall back on — the `noMembership` scope empty state, drawn by
+`renderScope.ts`. The BAR draws it unconditionally, the fixture-not-a-state-of-the-config
+rule `render/toolbar.ts` and `estimation/toolbar.ts` both keep, so a press with nothing
+left to bind reports that rather than looking dead. The EMPTY STATE withholds it — the same
+rule `renderSetupCta` states in `render/emptyStates.ts` — but narrowed past that rule's
+own shape: it asks not "is anything at all adoptable" but "is the ONE option this state
+names still adoptable", because a `versionProperty` merely untouched is a fact about a
+different screen, and drawing the button for it would report success while redrawing this
+exact empty state. Both positions run the SAME bind, `bindAndReport` (below), so the two
+presses cannot come to disagree about what one press did.
+
+`src/view/release/newRelease.ts` also holds `bindAndReport`, the pair `runReleaseInit` and
+the boolean it reports on: bind, then answer whether anything changed. Both entry points
+onto ✨ — `newRelease`'s own press and the standalone control above — call it rather than
+each reading `runReleaseInit` and comparing settings itself, so they cannot come to
+disagree about what a bind IS. They differ only in what they SAY about a press that bound
+nothing: `newRelease` stays quiet (a dialog opens either way), while the standalone
+control reports it, since nothing else follows a standalone press to say the change
+happened.
 
 `src/view/release/newRelease.ts` holds the door itself (`renderNewRelease`) and the one
 function behind it: bind, then ask, then create. Both presses — the control drawn at the

@@ -7,6 +7,7 @@ import { formatCivil } from '../../domain/timeline';
 import { badgeStyleFor } from '../render/badges';
 import { guidanceShell } from '../render/emptyStates';
 import { drawIcon } from '../render/icons';
+import { renderReleaseInit } from './initControl';
 
 /**
  * One release's screen (`docs/requirements/The scope of a release as a tree.md`): the
@@ -24,8 +25,10 @@ import { drawIcon } from '../render/icons';
  * scope drawn with indent alone is announced as a flat list of divs, on the one screen
  * whose whole promise is the shape of the work.
  *
- * **Nothing here writes.** There is no gate to route through and nothing to withhold: the
- * only gesture is the back control, which sets view state.
+ * **Nothing here writes a note.** There is no gate to route through and nothing to
+ * withhold: the back control sets view state, and the `noMembership` empty state's own ✨
+ * ({@link renderReleaseInit}) only binds this view's own config — see that function for
+ * why it writes no note either.
  *
  * `release` is a parameter rather than `scope.release` read here, because the caller has
  * already ruled on it — a screen is chosen by whether the pick still names a release, and
@@ -36,7 +39,17 @@ export function renderScope(view: ReleaseView, scope: ReleaseScope, release: Rel
 	// Both empty states sit BELOW the header, so the back control survives either. A
 	// release nobody can read the scope of must not also be a dead end.
 	if (view.settings.membershipKey === '') {
-		guidanceShell(view.viewEl, 'settings-2', t('release.scope.noMembership.title'), t('release.scope.noMembership.hint'));
+		const empty = guidanceShell(
+			view.viewEl,
+			'settings-2',
+			t('release.scope.noMembership.title'),
+			t('release.scope.noMembership.hint'),
+		);
+		// The one screen that names an option and, until now, offered no way to set it.
+		// `fixes` names that ONE option: `renderReleaseInit` would otherwise draw this
+		// button for an untouched `versionProperty` too, which fixes nothing this state is
+		// about — see its own comment.
+		renderReleaseInit(view, empty, 'empty', ['membershipProperty']);
 		return;
 	}
 	if (scope.rows.length === 0) {

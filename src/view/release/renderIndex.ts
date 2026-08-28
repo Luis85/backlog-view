@@ -5,6 +5,7 @@ import { ReleaseFigure, ReleaseIndex, ReleaseRow } from '../../domain/releases';
 import { formatCivil } from '../../domain/timeline';
 import { drawIcon } from '../render/icons';
 import { renderNewRelease } from './newRelease';
+import { renderReleaseInit } from './initControl';
 
 /**
  * The index screen (`docs/requirements/Every release in one list.md`): one BAND per
@@ -21,17 +22,21 @@ import { renderNewRelease } from './newRelease';
  * first key of that module's sort, so this one draws a heading where the flag changes and
  * partitions, re-orders and re-reads nothing ({@link drawGroupHeading}).
  *
- * **Two gestures on this screen, and only one of them is view state.** Picking a release is;
- * `New release` (see {@link renderNewRelease}) creates a note and may bind this view's own
- * options. Neither EDITS a note that already exists, which is the whole of what this view
- * refuses (`test/view/releaseNeverEdits.test.ts`).
+ * **Three gestures on this screen, and only one of them is view state.** Picking a release
+ * is; `New release` (see {@link renderNewRelease}) creates a note and may bind this view's
+ * own options, and the standalone ✨ ({@link renderReleaseInit}) does the binding alone,
+ * with no note behind it. None EDITS a note that already exists, which is the whole of
+ * what this view refuses (`test/view/releaseNeverEdits.test.ts`).
  */
 export function renderIndex(view: ReleaseView, index: ReleaseIndex): void {
-	// Above the scroller rather than in it: the control is chrome for the screen, and one
+	// Above the scroller rather than in it: the controls are chrome for the screen, and one
 	// inside `.pbl-rel-list` would scroll away with the rows. There is no toolbar on this
-	// view to hang it on — `viewEl` holds screens — so the head of the index IS the head of
-	// the screen.
-	renderNewRelease(view, view.viewEl.createDiv({ cls: 'pbl-rel-actions' }));
+	// view to hang them on — `viewEl` holds screens — so the head of the index IS the head
+	// of the screen. The ✨ goes first so the primary action (`New release`) stays last —
+	// the position a reader's eye and tab order both land on.
+	const actionsEl = view.viewEl.createDiv({ cls: 'pbl-rel-actions' });
+	renderReleaseInit(view, actionsEl, 'bar');
+	renderNewRelease(view, actionsEl);
 	const listEl = view.viewEl.createDiv({ cls: 'pbl-rel-list' });
 	const bandsEl = listEl.createDiv({ cls: 'pbl-rel-bands' });
 

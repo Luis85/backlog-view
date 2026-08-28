@@ -64,6 +64,37 @@ export const RELEASE_CONFIG = {
 	releasedDateProperty: 'note.released',
 };
 
+/**
+ * The ✨ control's own fixture (`test/view/release/initControl.test.ts`): what mount it
+ * needs varies by whether the test wants the INDEX or the `noMembership` scope screen, so
+ * this picks the vault rather than taking one — `releaseVault` for the former,
+ * `scopeVault` (which carries a release to `pick`) for the latter.
+ */
+export interface MountReleaseOptions {
+	/** Every candidate the ✨ could bind is already bound when true (`RELEASE_CONFIG`); an
+	 *  untouched config (nothing bound but the three model mappings, which resolve to their
+	 *  own defaults) when false. */
+	bindAll?: boolean;
+	/** Overrides `membershipProperty` on top of `bindAll` — `''` CLEARS it, which
+	 *  `adoptCandidates` reads as a decision rather than as untouched (see
+	 *  `domain/optionalProperties.ts`), distinct from simply never binding it. */
+	membership?: string;
+	/** A path to `view.pick()` right after mount, landing the scope screen instead of the
+	 *  index — the `noMembership` empty state this control's second position draws on only
+	 *  exists with a release open. */
+	pick?: string;
+}
+
+export function mountRelease(opts: MountReleaseOptions = {}): ReleaseHarness & { vault: FakeVault } {
+	const { bindAll = true, membership, pick } = opts;
+	const vault = pick === undefined ? releaseVault() : scopeVault();
+	const configValues: Record<string, unknown> = bindAll ? { ...RELEASE_CONFIG } : {};
+	if (membership !== undefined) configValues.membershipProperty = membership;
+	const harness = makeReleaseView(vault, configValues);
+	if (pick !== undefined) harness.view.pick(pick);
+	return { ...harness, vault };
+}
+
 /** Three releases: two dated, one not — the index's ordering fixture. */
 export function releaseVault(): FakeVault {
 	const vault = new FakeVault();

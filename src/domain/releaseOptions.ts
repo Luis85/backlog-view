@@ -192,11 +192,10 @@ export function resolveReleaseSettings(config: BasesViewConfig): ReleaseSettings
 		//
 		// That rule is about this RESOLVER's own silent read, on every data update, never
 		// about an explicit user action. `view/release/init.ts`'s `runReleaseInit` binds this
-		// same option's suggested key as a STEP of the `New release` press — this view has no
-		// toolbar and draws no ✨ button of its own, which `init.ts` and
-		// [[Creating a release from the release view]] both say plainly and this comment
-		// contradicted until 2026-08-25. What it shares with the backlog view's `runInit` is
-		// the distinction that matters here and not the control: a binding the reader's own
+		// same option's suggested key as a STEP of the `New release` press, and — since Task
+		// 1 of [[Creating a release from the release view]] — of the standalone ✨ too
+		// (`view/release/initControl.ts`). What both share is the distinction that matters
+		// here and not the control that reaches it: a binding the reader's own
 		// press asked for is not a fallback taken behind their back. This function
 		// itself still never defaults `membershipProperty` to `release` — a config that
 		// changed that would fail `test/domain/releaseOptions.test.ts`'s "resolves each

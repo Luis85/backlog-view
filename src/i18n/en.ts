@@ -1727,6 +1727,19 @@ export const en = {
 	'newRelease.cancel': 'Cancel',
 
 	/**
+	 * The ✨ standalone control (`src/view/release/initControl.ts`), drawn on the index bar
+	 * and on the `noMembership` scope empty state. One label serves both the accessible
+	 * name and the tooltip — the button carries an icon alone on the bar, so nothing on
+	 * screen already says what it does.
+	 */
+	'release.init.label': 'Add missing properties',
+	/** A press that bound nothing, said rather than left silent — a standalone control with
+	 *  no dialog after it would otherwise look dead. `release.new.bound` is what a press
+	 *  that DID bind something reports instead; this is its opposite reading of the same
+	 *  question. */
+	'release.init.nothing': 'Every release property is already bound. Nothing to add.',
+
+	/**
 	 * The control that opens that dialog, and what the press reports — all four in
 	 * `src/view/release/newRelease.ts`, which is the file the door was split out into on
 	 * 2026-08-24. This named `renderIndex.ts` until 2026-08-25, which is where the control
