@@ -62,10 +62,12 @@ function declaredChoices(values: string[], current: string | null): string[] {
 }
 
 /**
- * Whether the frame on screen is the one whose ROWS this property draws. Asked twice —
- * for what the menu offers, and for where a pick goes — and stated once, because a menu
- * offering the drawn rows while its picks bypassed the move would be exactly the
- * disagreement routing the two together exists to prevent.
+ * Whether the frame on screen is the one whose ROWS this property draws. Asked once now,
+ * in `chooseAssignee`, to route a pick to `performResourceMove`'s announcing path rather
+ * than straight through the gate — Set assignee's own vocabulary left this axis entirely
+ * on 2026-08-28 (Task 4): it offers the `Resource` notes the base returned, not the
+ * drawn rows, so there is no second "what the menu offers" question left for this
+ * function to answer.
  */
 function onResourceAxis(host: BacklogViewHost): boolean {
 	return host.projection === 'roadmap' && host.roadmap?.roadmap.axis === 'resources';

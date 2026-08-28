@@ -7,8 +7,9 @@ import { BacklogSettings } from './settings';
  * What vocabulary the RESULTS carry — the states, the tags and the horizons a menu may
  * offer, collected off the loaded items. `collectObservedAssignees` rides along below
  * for the same reason but is no longer one of them: Set assignee reads `Resource` notes
- * now (Task 4, 2026-08-28), and this collector is scheduled for deletion with it
- * (Task 7) — kept today only for the resources axis's own row-minting.
+ * now (Task 4, 2026-08-28). It has no reader left at all — the resources axis mints a
+ * row from `assigneeName(item)` directly, per item, not from this list — and is kept
+ * only because Task 7 owns deleting it.
  *
  * All of them obey one rule, which is why they live together rather than beside the
  * code that consumes each: **a note the Base excluded contributes nothing.** Its
@@ -87,8 +88,9 @@ export function collectObservedStates(all: VocabularySource[], settings: Backlog
 /**
  * Every assignee the results name, alphabetical and deduped case-insensitively in the
  * casing seen first — the tags collector's shape. No longer what any menu offers (Task
- * 4 moved Set assignee onto `Resource` notes); this is now the resources axis's own
- * row-minting vocabulary alone, and Task 7 deletes it once the axis reads notes too.
+ * 4 moved Set assignee onto `Resource` notes), and nothing else reads its output either
+ * — `deriveLanes` names a row from each item's own `assigneeName`, not from this
+ * collected list. Task 7 deletes it, which is the only reason it is still here.
  */
 export function collectObservedAssignees(all: VocabularySource[]): string[] {
 	return firstSeen(all, (item) => {

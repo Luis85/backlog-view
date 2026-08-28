@@ -122,6 +122,25 @@ describe('the one method a resource move lands on', () => {
 		);
 	});
 
+	it('names the resource by its disambiguated label, not a bare basename two notes share', async () => {
+		// The notice is a per-input build (`shelvedWords`), not a call into `namedTargets`
+		// (that per-row scan was deleted two rounds ago) — but it still has to agree with
+		// every other surface that names a resource, so a screen-reader user hears which
+		// of two same-named notes actually got the work.
+		const vault = new FakeVault();
+		vault.addFile('Team/Alex.md', { frontmatter: { type: 'Resource' } });
+		vault.addFile('Support/Alex.md', { frontmatter: { type: 'Resource' } });
+		vault.addFile('Untimed.md', { frontmatter: { type: 'Epic', order: 10 } });
+		const { view } = laneRoadmap(vault);
+
+		const moved = await view.performResourceMove(view.model?.byPath.get('Untimed.md') as never, resourceFile(vault, 'Support/Alex'));
+
+		expect(moved).toBe(true);
+		expect(Notice.messages).toContain(
+			'"Untimed" is assigned to Support/Alex. Add a start or target date to place it in the row.',
+		);
+	});
+
 	it('1e — a shelved card dropped on the resource it already names says so anyway', async () => {
 		const vault = resourceVault();
 		const { view } = laneRoadmap(vault);

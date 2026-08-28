@@ -421,8 +421,9 @@ function horizonStops(roadmap: RoadmapModel): (string | null)[] | null {
  * Null on the other two axes, so this handler swallows no key it does not act on.
  *
  * The milestones' row is not a stop: `assignableLanes` is what says so — the ladder's
- * own filter over `roadmap.lanes`, since a row minted for the plan is nobody's to land
- * an Alt+arrow on. **Filtered again to the lanes that HAVE a file**, load-bearing until
+ * own filter over `roadmap.lanes`, since the row stands for nobody and there is no
+ * assignee to land an Alt+arrow on it as. **Filtered again to the lanes that HAVE a
+ * file**, load-bearing until
  * Task 5: a lane minted by `laneNamed` for an observed name with no `Resource` note has
  * `file: null`, and `performResourceMove(card, null)` means UNASSIGN — so an Alt+arrow
  * onto such a row would silently take the assignee off instead of moving it there.
@@ -534,8 +535,9 @@ function handleResourceMoveKey(
 	const stops = resourceStops(roadmap);
 	if (!stops) return;
 	evt.preventDefault();
-	// Asked of the ENTRY's path, never of the observed name: a lane is a note now, so the
-	// ladder matches what the note's link resolves to. A card with no assignee at all
+	// Asked of the ENTRY's path, never of the observed name: every stop left in `stops`
+	// carries a note (the filter above), so the ladder matches what the CARD's link
+	// resolves to rather than what its raw text says. A card with no assignee at all
 	// matches the leading `null` stop exactly as an unreadable one never does, and a link
 	// that resolved to nothing matches no stop and lands off-ladder — the case `offLadder`
 	// already handles.

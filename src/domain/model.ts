@@ -204,9 +204,10 @@ export interface BacklogModel {
 	observedTags: string[];
 	/**
 	 * Distinct assignees in the result set, alphabetical. No longer what Set assignee
-	 * offers (Task 4, 2026-08-28: that menu reads `resources` instead) — kept for the
-	 * resources axis's own row-minting (`deriveLanes`) and for anything else that still
-	 * wants the raw observed vocabulary.
+	 * offers (Task 4, 2026-08-28: that menu reads `resources` instead), and no other
+	 * reader has taken its place — `deriveLanes` mints a resource's row from
+	 * `assigneeName(item)` directly, per item, never from this list. Retained only
+	 * because Task 7 owns deleting it, alongside `collectObservedAssignees`.
 	 */
 	observedAssignees: string[];
 	/** Distinct Deliverable-workflow state values, scoped to Deliverable items. */
