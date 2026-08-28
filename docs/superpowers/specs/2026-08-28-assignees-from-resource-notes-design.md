@@ -59,10 +59,19 @@ Every consumer resolves it:
   their row. Decided 2026-08-28 after automated review found the reader does this; the
   register had assumed the opposite without checking, which is [[A comment that states a
   rule is not a check]] wearing a use case.
-- **An entry that resolves to nothing is nobody.** It renders as its own text, unstyled,
-  and carries no row, no chip styling, no menu entry and no membership. That covers the
-  deleted note, the misspelled one, and every leftover string naming somebody who has no
-  `Resource` note here. It is not an error and is not repaired.
+- **An entry that resolves to nothing is nobody.** It carries no row, no menu entry and
+  no membership. That covers the deleted note, the misspelled one, and every leftover
+  string naming somebody who has no `Resource` note here. It is not an error and is not
+  repaired.
+- **It is MARKED, not unstyled.** This spec said "unstyled" until 2026-08-28, and that was
+  wrong against this repository's own precedent: [[Broken links still render]] draws a note
+  whose parent link resolves to nothing at top level **with a marker**, on the stated rule
+  *the view marks; it does not tidy*. An unresolved assignee drawn with the ordinary chip
+  class presents a broken assignment as a valid one; drawn as bare text it reads as an
+  empty cell. Both hide the one fact the reader needs. So the chip takes a **third state**
+  beside set and unset: the raw text the note carries, under its own class and its own
+  tooltip saying the value names no resource in this base. Found by automated review on
+  PR #207, which was right that a mechanical `valueOf` swap cannot express this.
 - **This is a READ, so it changes nothing about the migration decision.**
   [[No migration off the string assignees]] refuses a migration because a migration is a
   WRITE over notes nobody asked to have written; resolving a name the note already carries
@@ -108,9 +117,21 @@ writer writes on, so a link and its removal stay undoable.
   through the same reader, and an absence that resolves to no row draws nowhere: there is
   no row for it to mint, which is [[An absence names its resource by link]] extension 1a
   read from this end.
+- **The absence form stops ACCEPTING a typed name.** `AbsencePromptModal`'s resource field
+  is free text behind a suggester today — pre-filled from the row and, in its own comment,
+  deliberately editable — so merely feeding it resource titles would still let a submission
+  come back naming nobody, with no note for the link writer to point at. It becomes a
+  **choice among the resource notes**: the dialog is handed `{ id, label }` pairs and
+  returns the id, which keeps `ui/` importing nothing while making an unresolvable
+  submission unreachable rather than only discouraged. Found by automated review on
+  PR #207.
 - **The empty state.** With no `Resource` in the results at all, the axis says the base
   returned no resources and names the filter as the thing to change — the only thing that
-  can be wrong, now that the population is the results.
+  can be wrong, now that the population is the results. **It is asked BEFORE the "did
+  anything draw at all" question, never after it**: a dated milestone draws in the markers'
+  row and makes `renderedCards` non-zero, so an advisory gated on that count goes quiet on
+  exactly the screen that needs it — a roster of nobody under a milestone line that looks
+  like the axis working. Found by automated review on PR #207.
 - The milestones' row is unchanged: `markers: true`, drawn above the roster, never a
   resource ([[Milestones out of the resource rows]]).
 
@@ -137,8 +158,16 @@ Removed, not deprecated — a setting read by nothing tells the user something u
    picking it would write nothing** — asked of the plan, never of a comparison beside it,
    which is the rule two properties have already drifted on and a link is a third value
    shape to drift on;
-2. `Clear assignee`, offered on the key's PRESENCE (`ownKeys.assignee`), never its value;
-3. `New resource...`.
+2. `New resource...`;
+3. a separator, then `Clear assignee`, offered on the key's PRESENCE (`ownKeys.assignee`),
+   never its value.
+
+That is `addLabelItems`' existing order — the choices, then its `extra` entry, then a
+separator and the clear — and this spec listed the middle two the other way round until
+2026-08-28. Corrected to the code's convention rather than the other way round: the clear
+is separated from the choices because it is the way OUT of them, and lifting it above a
+`New...` entry would break that grouping in this one menu alone. Found by automated review
+on PR #207.
 
 **`New assignee...` is removed.** A typed name writes a value that resolves to nobody,
 which is the one value this flow must not produce.

@@ -290,7 +290,25 @@ export function assigneeName(item: { assigneeEntry: LinkEntry | null }): string 
 
 Run `npx tsc -noEmit -skipLibCheck` and work the list. Each is a mechanical swap of `item.assigneeValue` for `assigneeName(item)`:
 
-- `src/view/render/chips.ts` — `LABEL_CHIPS.assignee.valueOf: (item) => assigneeName(item)`
+- `src/view/render/chips.ts` — `LABEL_CHIPS.assignee.valueOf: (item) => assigneeName(item)`, **plus the chip's third state**. A mechanical swap alone is a defect: `renderLabelChip` styles on `value === null` only, so an unresolved `assignee: Sarah` would draw with the ordinary `pbl-assignee-chip` class and the assigned-user icon — a broken assignment presented as a valid one. Add one optional field to the `LabelChip` interface and one branch to the renderer:
+
+```ts
+// On LabelChip, beside `valueOf`:
+/**
+ * Whether this item's value names something the view could not resolve — a third state
+ * beside set and unset, and optional because the assignee is the only label property
+ * whose value is a NOTE. [[Broken links still render]]'s rule, one property over: the
+ * view marks, it does not tidy. Drawn as what the note says, under `brokenCls`, so the
+ * reader can see the value and see that it resolves to nobody.
+ */
+broken?: (item: BacklogItem) => boolean;
+/** The class that marks the third state. Present exactly when `broken` is. */
+brokenCls?: string;
+/** What the third state's tooltip says. Present exactly when `broken` is. */
+brokenTip?: () => string;
+```
+
+The assignee's entries are `broken: (item) => item.assigneeEntry !== null && item.assigneeEntry.file === null`, `brokenCls: 'pbl-assignee-broken'`, `brokenTip: () => t('chip.assigneeUnresolved')`. In `renderLabelChip`, add the class when `spec.broken?.(item)` answers true, and prefer `brokenTip` over `changeTip`/`staticTip` there. Add `'chip.assigneeUnresolved': 'This names no resource in this base.'` to `src/i18n/en.ts`, and a `.pbl-assignee-broken` rule to the partial that already styles `.pbl-assignee-chip` — find it with `grep -rn "pbl-assignee-chip" styles/`. Follow whatever Obsidian's own unresolved-link colour is in that partial's neighbours rather than inventing one; if there is no precedent, use `var(--text-muted)` with the dashed border the unset chip already carries, and say in the rule's comment that the colour is a live-vault check.
 - `src/domain/roadmap.ts` — `resourceSource`, `placeAssigned`, `placeContextLane`
 - `src/domain/writePlan.ts` — `computeAssigneeWrites`
 - `src/view/interactions/labels.ts` — `assigneeChoices`
@@ -619,6 +637,10 @@ export function addAssigneeItems(host: BacklogViewHost, menu: Menu, item: Backlo
 			.setIcon('plus')
 			.onClick(() => promptNewResource(host, (file) => void chooseAssignee(host, item, file))),
 	);
+	// The clear goes LAST, after `New resource...`, which is `addLabelItems`' existing
+	// order: the choices, then the way to make a new one, then a separator and the way
+	// out. The spec listed the middle two the other way round until 2026-08-28 and was
+	// corrected to this; do not reorder them back.
 	if (!item.ownKeys.assignee) return;
 	menu.addSeparator();
 	menu.addItem((si) =>
@@ -895,7 +917,7 @@ The band's fold key stays the lane NAME (`host.isLaneCollapsed(lane.name)` in `v
 
 - [ ] **Step 5: The empty state**
 
-`src/view/render/roadmap.ts` — in `renderRoadmapAdvisory`, before the existing `eligibleResults === 0` branch:
+`src/view/render/roadmap.ts` — in `renderRoadmapAdvisory`, **above the `if (!model || renderedCards > 0) return null` early return**, not merely before the `eligibleResults === 0` branch beneath it. A dated milestone draws in the markers' row and makes `renderedCards` non-zero, so an advisory placed after that guard goes quiet on exactly the screen that needs it: a roster of nobody under a milestone line that looks like the axis working. Keep the `!model` half of the guard ahead of your branch — there is nothing to say before the first data update:
 
 ```ts
 	// 2a: the population is the results, so an empty axis has exactly one cause and says
@@ -989,7 +1011,32 @@ The derived absence name (`absences.ts` line ~165, `${facts.resource} away …`)
 
 `src/storage/absenceNotes.ts` — `NewAbsenceSpec.resource` becomes a `TFile`, and both write sites become `setOwn(fm, settings.assigneeKey, wikilinkTo(app, spec.resource, path))`.
 
-`src/view/interactions/absences.ts` — `promptAddAbsence` takes the `AssignableLane` and passes `lane.file`; `known` becomes the resource titles from `host.model?.resources`. The edit path passes `absence.resource.file`, and refuses when it is null: an absence whose link resolves to nothing has no row to have been opened from, so this is a defensive branch, not a user-facing refusal.
+`src/ui/prompts.ts` — **the resource field stops being free text.** Feeding resource titles to the existing suggester is not enough: the field is pre-filled from the row and, in its own comment, deliberately editable, so a submission could still come back naming nobody and the link writer would have no note to point at. Change the shape so an unresolvable submission is unreachable rather than discouraged:
+
+```ts
+export interface AbsenceResult {
+	/** The chosen resource's id — its note path. Never a name somebody typed. */
+	resource: string;
+	start: string;
+	target: string;
+}
+
+export interface AbsencePromptOptions extends Refusable<AbsenceResult> {
+	heading: string;
+	/**
+	 * The resources this absence may name, as id/label pairs. Pairs rather than notes
+	 * because this module imports nothing — the caller maps the id back to its file.
+	 */
+	resources: { id: string; label: string }[];
+	/** Pre-selected from the row it was opened on, and changeable — the row is a default, not a lock. */
+	resource: string;
+	…
+}
+```
+
+Render it as a `<select>` over `resources` rather than a text field with `KnownValueSuggest`, drop `known`, and have the validator refuse a submission whose `resource` is not one of the offered ids. With no resources offered the form does not open at all — the caller checks first and says why, since an absence with nobody to be away is not a thing to collect.
+
+`src/view/interactions/absences.ts` — `promptAddAbsence` takes the `AssignableLane`, builds `resources` from `host.model?.resources` (`id: r.file.path`, `label: r.title`) with `lane.file.path` pre-selected, and maps the returned id back to its `TFile` before calling the writer. The edit path pre-selects `absence.resource.file?.path` and, where that is null, falls back to no selection: an absence whose link resolves to nothing has no row to have been opened from, so this is a defensive branch rather than a user-facing refusal.
 
 - [ ] **Step 4: Run and commit**
 
