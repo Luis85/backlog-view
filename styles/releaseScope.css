@@ -1,0 +1,80 @@
+/* ==========================================================================
+   One release's OWN screen: the header (the back control, the name, and the facts) and the
+   read-only tree of its members. `styles/release.css` is the sibling partial for the
+   index's own bands; that file's own header records why the two split and what stayed
+   there.
+
+   `.pbl-rel-bar` and `.pbl-rel-spacer`, which this screen's header and (from Task 2) its
+   summary strip reuse, are declared in `release.css` rather than here or a second time —
+   see that file's own header.
+
+   These rules were drawn and looked at BEFORE any of the view existed, the same way
+   `release.css`'s own header records for the index's bands: the `SHEET` constant from the
+   uncommitted `test/harness/mock.ts`, published to the real assembled stylesheet once the
+   layout survived being looked at. What that answered is layout, spacing and hierarchy on
+   Obsidian's own DEFAULT colours; a themed vault's colours and accent are still owed a
+   live-vault check.
+
+   Position in `styles/index.css`'s import list is NOT load-bearing, for the same reason
+   `release.css`'s own header gives: every selector here is `.pbl-rel-*`, a vocabulary no
+   other partial declares, and nothing here re-targets a class another file also writes.
+   ========================================================================== */
+
+/* One release's screen: the back control, the name, and the facts pushed to the end. */
+.pbl-rel-header {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--size-4-2);
+	padding: var(--size-4-2) var(--size-4-3);
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.pbl-rel-header h2 {
+	margin: 0;
+	font-size: var(--font-ui-large);
+}
+
+/* Audited against `docs/issues/The release index rows paint as Obsidian buttons.md`'s
+   Step 7: `.pbl-rel-back` is `renderScope.ts`'s real `<button class="clickable-icon
+   pbl-rel-back">`. Obsidian's colliding rule is `button:not(.clickable-icon)`, and this
+   button carries `.clickable-icon`, so that selector never matches it in the first place —
+   there is no specificity contest here to lose, and no reset to add. It wants exactly the
+   icon-button chrome `.clickable-icon` supplies. */
+.pbl-rel-back {
+	flex: 0 0 auto;
+}
+
+.pbl-rel-facts {
+	display: flex;
+	align-items: center;
+	gap: var(--size-4-3);
+	margin-inline-start: auto;
+	font-size: var(--font-ui-small);
+	color: var(--text-muted);
+}
+
+/* A context ancestor is scaffolding holding a member in place, not something the reader
+   asked to see — dimmed for that, never hidden, or the member loses its place. */
+.pbl-rel-context {
+	opacity: 0.62;
+}
+
+/* One release's scope reuses the tree's `.pbl-row` for its LAYOUT — the flex row, the
+   `--pbl-depth` indent, `content-visibility` — and inherits three gestures with it that
+   this screen does not have: there is no click, no selection and no collapse, which is
+   why `renderScope.ts` omits `aria-selected` and `aria-expanded` too. The sharpest of the
+   three is `user-select`: a screen whose whole purpose is reading must let a reader copy a
+   title. The tree earns that rule by dragging its rows; nothing here is dragged.
+
+   Scoped by `.pbl-rel-view` so it cannot reach the backlog tree's own rows, and the hover
+   is refused at `:hover` rather than at the bare class so the import ORDER still decides
+   nothing (see this file's header). */
+.pbl-rel-view .pbl-row {
+	cursor: auto;
+	user-select: auto;
+}
+
+.pbl-rel-view .pbl-row:hover {
+	background-color: transparent;
+}

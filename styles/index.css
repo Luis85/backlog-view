@@ -138,3 +138,9 @@
    declare `display` on it — but this one AGREES with `view.css` (`flex`) rather than
    overriding it, so nothing here is decided by order either. */
 @import "./release.css";
+/* Position NOT load-bearing, for the identical reason: every selector here is
+   `.pbl-rel-*` too, a vocabulary no other partial declares (`release.css`'s own is a
+   disjoint set of the same prefix), and nothing here re-targets a class another file
+   also writes — including `release.css` itself, whose `.pbl-rel-bar` and
+   `.pbl-rel-spacer` this file only ever USES, never redeclares. */
+@import "./releaseScope.css";
