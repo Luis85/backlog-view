@@ -50,9 +50,21 @@ Create `test/domain/resourceRoster.test.ts`:
 
 ```ts
 import { describe, expect, it } from 'vitest';
-import { FakeVault } from '../helpers/vault';
 import { buildModel } from '../../src/domain/model';
-import { modelOf } from '../helpers/model';
+import { settingsWith } from '../helpers/settings';
+import { FakeVault } from '../helpers/vault';
+
+/**
+ * `hierarchyOnly` OFF on purpose — that is the vault where every note a folder-scoped
+ * base returns becomes an item, so the divert is what refuses a resource rather than the
+ * scope prune. With it on, a check written without this case passes with the gate deleted.
+ */
+const settings = settingsWith({ assigneeKey: 'assignee', hierarchyOnly: false });
+
+/** What the Base returned, when it did not return everything. */
+function only(vault: FakeVault, ...paths: string[]) {
+	return vault.entries().filter((e) => paths.includes(e.file.path));
+}
 
 describe('the roster the model keeps', () => {
 	it('keeps every Resource note the base returned, alphabetically, and makes no item of one', () => {
@@ -60,7 +72,8 @@ describe('the roster the model keeps', () => {
 		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10 } });
 		vault.addFile('Sam.md', { frontmatter: { type: 'Resource' } });
 		vault.addFile('Alex.md', { frontmatter: { type: 'Resource' } });
-		const model = modelOf(vault, { hierarchyOnly: false });
+		const model = buildModel(vault.app, vault.entries(), settings);
+
 		expect(model.resources.map((r) => r.title)).toEqual(['Alex', 'Sam']);
 		expect(model.all.map((i) => i.title)).toEqual(['Epic A']);
 	});
@@ -68,18 +81,16 @@ describe('the roster the model keeps', () => {
 	it('keeps no resource the base did not return', () => {
 		// A result naming a resource as its parent pulls that note in through
 		// `loadOutsideParents` with no entry. It is not this base's vocabulary, so it is
-		// not a row, not a menu entry and not a drop target — the context-row rule, stated
-		// once at the keeping rather than at each consumer.
+		// not a row, not a menu entry and not a drop target.
 		const vault = new FakeVault();
 		vault.addFile('Alex.md', { frontmatter: { type: 'Resource' } });
 		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10 }, parentLink: 'Alex' });
-		const model = modelOf(vault, { hierarchyOnly: false }, ['Epic A.md']);
+		const model = buildModel(vault.app, only(vault, 'Epic A.md'), settings);
+
 		expect(model.resources).toEqual([]);
 	});
 });
 ```
-
-Check `test/helpers/model.ts` for the real `modelOf` signature and match it — the third argument above stands for "only these paths are results". If the helper spells that differently, use its spelling; do not add a helper.
 
 - [ ] **Step 2: Run it and watch it fail**
 
@@ -194,7 +205,7 @@ If `npm run docs` fails on rule 7, no module is newly unspecified — Task 8 doe
 
 - [ ] **Step 1: Write the failing test**
 
-Append to `test/domain/resourceRoster.test.ts`:
+Append to `test/domain/resourceRoster.test.ts`, importing `assigneeName` from `../../src/domain/readItems`:
 
 ```ts
 describe('what an item says its assignee is', () => {
@@ -202,10 +213,10 @@ describe('what an item says its assignee is', () => {
 		const vault = new FakeVault();
 		vault.addFile('Alex.md', { frontmatter: { type: 'Resource' } });
 		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10, assignee: '[[Alex]]' } });
-		const model = modelOf(vault, { hierarchyOnly: false, assigneeProperty: 'note.assignee' });
-		const epic = model.all.find((i) => i.title === 'Epic A');
-		expect(assigneeName(epic!)).toBe('Alex');
-		expect(epic!.assigneeEntry?.file?.path).toBe('Alex.md');
+		const epic = buildModel(vault.app, vault.entries(), settings).all[0];
+
+		expect(assigneeName(epic)).toBe('Alex');
+		expect(epic.assigneeEntry?.file?.path).toBe('Alex.md');
 	});
 
 	it('shows a value that resolves to nothing as its own text, and resolves to no note', () => {
@@ -213,15 +224,13 @@ describe('what an item says its assignee is', () => {
 		// error and is not repaired.
 		const vault = new FakeVault();
 		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10, assignee: 'Sarah' } });
-		const model = modelOf(vault, { hierarchyOnly: false, assigneeProperty: 'note.assignee' });
-		const epic = model.all.find((i) => i.title === 'Epic A');
-		expect(assigneeName(epic!)).toBe('Sarah');
-		expect(epic!.assigneeEntry?.file).toBe(null);
+		const epic = buildModel(vault.app, vault.entries(), settings).all[0];
+
+		expect(assigneeName(epic)).toBe('Sarah');
+		expect(epic.assigneeEntry?.file).toBe(null);
 	});
 });
 ```
-
-Import `assigneeName` from `../../src/domain/readItems`.
 
 - [ ] **Step 2: Run it and watch it fail**
 
@@ -307,25 +316,34 @@ A pure refactor. No planner, no caller and no test outside this file changes.
 
 - [ ] **Step 1: Write the failing test**
 
-Append to `test/storage/labelWrites.test.ts` a case that pins the shared rule at both existing keys, so a fourth row cannot be added later without it:
+Append to `test/storage/labelWrites.test.ts` a case that pins the shared rule at both existing keys, so a third row cannot be added later without it:
 
 ```ts
-it('writes each link property as a wikilink, skips an unconfigured key and deletes on null', async () => {
-	// One rule read twice, which is what makes the loop worth having: `applyIteration`
-	// and `applyRelease` were two spellings of it.
-	// Drive `applyWrites` with an iteration write and a release write in one batch
-	// against a vault whose release key is unconfigured, then assert the iteration
-	// landed as `[[Sprint 4]]`, the release key is absent, and a null iteration
-	// deletes the key rather than blanking it.
+describe('writing the link properties', () => {
+	// One rule read twice, which is what makes the loop worth having: `applyIteration` and
+	// `applyRelease` were two spellings of it.
+	const linked = { ...settings, iterationKey: 'iteration', releaseKey: '' };
+
+	it('spells a wikilink, skips an unconfigured key, and a null removes rather than blanks', async () => {
+		const vault = new FakeVault();
+		const file = vault.addFile('Item.md', { frontmatter: { type: 'PBI' } });
+		const sprint = vault.addFile('Sprint 4.md', { frontmatter: { type: 'Iteration' } });
+		const release = vault.addFile('1.0.md', { frontmatter: { type: 'Release' } });
+
+		// The release key is unconfigured, so its half of this batch invents no key.
+		await applyWrites(vault.app, linked, [{ file, iteration: sprint, release }]);
+		expect(vault.fm('Item.md')).toEqual({ type: 'PBI', iteration: '[[Sprint 4]]' });
+
+		await applyWrites(vault.app, linked, [{ file, iteration: null }]);
+		expect(vault.fm('Item.md')).toEqual({ type: 'PBI' });
+	});
 });
 ```
 
-Write the body against the file's existing helpers — copy the arrangement of the nearest `applyWrites` test in that file rather than inventing a harness.
+- [ ] **Step 2: Run it and watch it PASS**
 
-- [ ] **Step 2: Run it and watch it fail**
-
-Run: `npx vitest run test/storage/labelWrites.test.ts -t "writes each link property"`
-Expected: FAIL until the body is written; once written against today's code it should PASS, which is the point — it pins behaviour the refactor must not change. If it passes on the first run, that is correct here: this test is the refactor's safety net, not a red-first feature test.
+Run: `npx vitest run test/storage/labelWrites.test.ts -t "writing the link properties"`
+Expected: PASS against today's two writers. Green first is correct here and is the point: this task is a refactor, so the test is its safety net rather than a red-first feature test. If it fails, the assertion is wrong about today's behaviour — fix the test before touching `frontmatter.ts`, or the refactor lands on a false baseline.
 
 - [ ] **Step 3: Collapse the two writers**
 
@@ -413,17 +431,53 @@ Append to `test/domain/writePlanProperties.test.ts`:
 
 ```ts
 describe('what an assignee pick writes', () => {
-	it('plans nothing when the item already names that note, compared by path', () => {
-		// Two spellings of one note are one resource — the iteration's own rule. This is
-		// also the menu's checkmark: an entry is checked exactly when picking it would
-		// write nothing, asked of this plan and never of a comparison beside it.
+	/** An item, the resource it names, and a second resource to move it to. */
+	function assigned(value: string | null) {
+		const vault = new FakeVault();
+		const alex = vault.addFile('Alex.md', { frontmatter: { type: 'Resource' } });
+		const sam = vault.addFile('Sam.md', { frontmatter: { type: 'Resource' } });
+		vault.addFile('Item.md', {
+			frontmatter: { type: 'PBI', order: 10, ...(value !== null ? { assignee: value } : {}) },
+		});
+		const settings = settingsWith({ assigneeKey: 'assignee', hierarchyOnly: false });
+		const item = buildModel(vault.app, vault.entries(), settings).results[0];
+		return { item, alex, sam };
+	}
+
+	it('plans the file, never a name', () => {
+		const { item, alex } = assigned(null);
+		expect(computeAssigneeWrites(item, alex)).toEqual([{ file: item.file, assignee: alex }]);
 	});
-	it('plans a removal only where the key is present', () => {});
-	it('plans the file, never a name', () => {});
+
+	it('plans nothing when the item already names that note, compared by path', () => {
+		// Two spellings of one note are one resource. This is also the menu's checkmark: an
+		// entry is checked exactly when picking it would write nothing.
+		const { item, alex } = assigned('[[Alex]]');
+		expect(computeAssigneeWrites(item, alex)).toEqual([]);
+	});
+
+	it('plans a move to another resource', () => {
+		const { item, sam } = assigned('[[Alex]]');
+		expect(computeAssigneeWrites(item, sam)).toEqual([{ file: item.file, assignee: sam }]);
+	});
+
+	it('never treats an unresolved value as already there', () => {
+		// A link that resolved to nothing has no path, so it matches no target — the leftover
+		// string case, which must stay pickable rather than reading as current.
+		const { item, alex } = assigned('Sarah');
+		expect(computeAssigneeWrites(item, alex)).toEqual([{ file: item.file, assignee: alex }]);
+	});
+
+	it('plans a removal only where the key is present', () => {
+		expect(computeAssigneeWrites(assigned('[[Alex]]').item, null)).toEqual([
+			{ file: assigned('[[Alex]]').item.file, assignee: null },
+		]);
+		expect(computeAssigneeWrites(assigned(null).item, null)).toEqual([]);
+	});
 });
 ```
 
-Write the bodies against the file's existing fixtures. The third asserts `writes[0].assignee` is the `TFile`, not a string.
+The removal case above builds its fixture twice to name the file; if that reads badly, hoist `const { item } = assigned('[[Alex]]')` and use `item.file`. Do not weaken the assertion to `toHaveLength`.
 
 - [ ] **Step 2: Run and watch them fail**
 
@@ -635,18 +689,83 @@ git add -A && git commit -m "Name a resource by link when an item is assigned"
 
 - [ ] **Step 1: Write the failing tests**
 
-Append to `test/domain/resourceRoster.test.ts`:
+Append to `test/domain/resourceRoster.test.ts`, importing `buildRoadmap` from `../../src/domain/roadmap`:
 
 ```ts
 describe('the rows the resources axis draws', () => {
-	it('draws one row per resource note, alphabetically, including one nobody names', () => {});
-	it('mints no row from a name — an item whose link resolves to no resource shelves', () => {});
-	it('shelves an item whose link resolves to a note that is not a Resource', () => {});
-	it('puts an absence in its resource row, and draws it nowhere when the link resolves to no row', () => {});
+	const dated = settingsWith({
+		assigneeKey: 'assignee',
+		startKey: 'start',
+		targetKey: 'due',
+		hierarchyOnly: false,
+	});
+
+	/** A team of two, one of them with nothing assigned, plus whatever the caller adds. */
+	function team(): FakeVault {
+		const vault = new FakeVault();
+		vault.addFile('Alex.md', { frontmatter: { type: 'Resource' } });
+		vault.addFile('Sam.md', { frontmatter: { type: 'Resource' } });
+		return vault;
+	}
+
+	function lanesOf(vault: FakeVault) {
+		const model = buildModel(vault.app, vault.entries(), dated);
+		return buildRoadmap(model, dated, 'resources');
+	}
+
+	it('draws one row per resource note, alphabetically, including one nobody names', () => {
+		const vault = team();
+		vault.addFile('Work.md', {
+			frontmatter: { type: 'Epic', order: 10, assignee: '[[Sam]]', start: '2026-08-01', due: '2026-08-10' },
+		});
+		const roadmap = lanesOf(vault);
+
+		// Alex has nothing assigned and still gets a row. That is what the removed
+		// `resourceNames` option existed for, and it must not be lost with it.
+		expect(roadmap.lanes.map((l) => l.name)).toEqual(['Alex', 'Sam']);
+		expect(roadmap.lanes[1].bars).toHaveLength(1);
+	});
+
+	it('mints no row from a name — an item whose link resolves to no resource shelves', () => {
+		const vault = team();
+		vault.addFile('Stray.md', {
+			frontmatter: { type: 'Epic', order: 10, assignee: 'Sarah', start: '2026-08-01', due: '2026-08-10' },
+		});
+		const roadmap = lanesOf(vault);
+
+		expect(roadmap.lanes.map((l) => l.name)).toEqual(['Alex', 'Sam']);
+		expect(roadmap.shelf.map((s) => s.item.title)).toEqual(['Stray']);
+	});
+
+	it('shelves an item whose link resolves to a note that is not a Resource', () => {
+		// A link is not a declaration, and the type is.
+		const vault = team();
+		vault.addFile('Epic B.md', { frontmatter: { type: 'Epic', order: 5 } });
+		vault.addFile('Work.md', {
+			frontmatter: { type: 'Epic', order: 10, assignee: '[[Epic B]]', start: '2026-08-01', due: '2026-08-10' },
+		});
+		const roadmap = lanesOf(vault);
+
+		expect(roadmap.lanes.every((l) => l.bars.length === 0)).toBe(true);
+		expect(roadmap.shelf.map((s) => s.item.title)).toContain('Work');
+	});
+
+	it('puts an absence in its resource row, and draws it nowhere when it resolves to no row', () => {
+		const vault = team();
+		vault.addFile('Alex away.md', {
+			frontmatter: { type: 'Absence', assignee: '[[Alex]]', start: '2026-08-03', due: '2026-08-05' },
+		});
+		vault.addFile('Nobody away.md', {
+			frontmatter: { type: 'Absence', assignee: 'Sarah', start: '2026-08-03', due: '2026-08-05' },
+		});
+		const roadmap = lanesOf(vault);
+
+		expect(roadmap.lanes.map((l) => l.absences.length)).toEqual([1, 0]);
+	});
 });
 ```
 
-Write the bodies against the roadmap fixtures already in `test/domain/`. The second is the important one: a vault where an item carries `assignee: Sarah` as a plain string must produce zero rows for Sarah and one shelf entry.
+Check `buildRoadmap`'s real signature before writing this — it may take the axis differently. Match it; do not add a wrapper.
 
 - [ ] **Step 2: Run and watch them fail**
 
@@ -784,15 +903,40 @@ git add -A && git commit -m "Draw one row per resource note"
 
 - [ ] **Step 1: Write the failing test**
 
-Append to `test/view/resourceAbsences.test.ts`:
+Append to `test/view/resourceAbsences.test.ts`, following that file's existing arrangement for opening the absence form from a row header:
 
 ```ts
 it('writes the resource as a link, so one fact has one spelling', async () => {
-	// Add an absence from a resource row's header and assert the created note's
-	// assignee key holds `[[Alex]]`, not `Alex`.
+	// The absence writer shares none of `applyWrites`' path, which is exactly why it is
+	// easy to leave spelling a resource the old way while everything else spells it the
+	// new one — a sweep of the batch writer finds nothing here.
+	const vault = new FakeVault();
+	vault.addFile('Alex.md', { frontmatter: { type: 'Resource' } });
+	vault.addFile('Work.md', {
+		frontmatter: { type: 'Epic', order: 10, assignee: '[[Alex]]', start: '2026-08-01', due: '2026-08-10' },
+	});
+	const harness = await makeRoadmap(vault, RESOURCE_AXIS_WITH_ABSENCES);
+
+	await addAbsenceFromRow(harness, 'Alex', { start: '2026-08-03', due: '2026-08-05' });
+
+	const created = [...vault.files.keys()].find((path) => path.includes('away'));
+	expect(vault.fm(created!)['assignee']).toBe('[[Alex]]');
 });
-it('draws the absence in that resource row and in no other', async () => {});
+
+it('draws that absence in its resource row and in no other', async () => {
+	const vault = new FakeVault();
+	vault.addFile('Alex.md', { frontmatter: { type: 'Resource' } });
+	vault.addFile('Sam.md', { frontmatter: { type: 'Resource' } });
+	vault.addFile('Alex away.md', {
+		frontmatter: { type: 'Absence', assignee: '[[Alex]]', start: '2026-08-03', due: '2026-08-05' },
+	});
+	const harness = await makeRoadmap(vault, RESOURCE_AXIS_WITH_ABSENCES);
+
+	expect(absenceCountsByLane(harness)).toEqual({ Alex: 1, Sam: 0 });
+});
 ```
+
+`addAbsenceFromRow`, `absenceCountsByLane` and the absence-configured options bag stand for whatever this suite already calls them — read the file and use its own spellings rather than adding helpers. The created note's name is derived, which is why the first test finds it by path rather than predicting it.
 
 - [ ] **Step 2: Run and watch them fail**
 
