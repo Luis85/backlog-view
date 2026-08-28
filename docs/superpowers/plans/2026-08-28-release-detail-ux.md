@@ -84,6 +84,13 @@ describe('the release view’s ✨', () => {
 		expect(view.viewEl.querySelector('.pbl-empty .pbl-rel-init')).toBeNull();
 	});
 
+	it('is withheld when only an UNRELATED candidate is adoptable', () => {
+		// membershipProperty cleared on purpose, versionProperty merely untouched: a button
+		// here would bind the version, report success, and redraw the same dead end.
+		const { view } = mountRelease({ membership: '', version: 'untouched', pick: 'Releases/0.8.md' });
+		expect(view.viewEl.querySelector('.pbl-empty .pbl-rel-init')).toBeNull();
+	});
+
 	it('is offered on that empty state when the membership key can still be bound', () => {
 		const { view } = mountRelease({ membership: '', bindAll: false, pick: 'Releases/0.8.md' });
 		expect(view.viewEl.querySelector('.pbl-empty .pbl-rel-init')).not.toBeNull();
@@ -175,7 +182,13 @@ import { RELEASE_SUGGESTED_KEYS } from './init';
  * touches the `.base` and nothing else (`test/view/releaseNeverEdits.test.ts`).
  */
 export function renderReleaseInit(view: ReleaseView, parentEl: HTMLElement, position: 'bar' | 'empty'): void {
-	if (position === 'empty' && !anythingToBind(view)) return;
+	// The MEMBERSHIP candidate specifically, never "anything at all". With
+	// `membershipProperty` deliberately cleared and `versionProperty` merely untouched, the
+	// wider question says yes: the button draws, binds the version, reports success — and
+	// redraws the very same unusable empty state, because `adoptCandidates` correctly
+	// refuses to overrule a cleared option. `renderSetupCta` asks whether something THIS
+	// FRAME needs is adoptable, and this is that rule with this frame's own list.
+	if (position === 'empty' && !anythingToBind(view, ['membershipProperty'])) return;
 	const btn = parentEl.createEl('button', {
 		cls: position === 'bar' ? 'clickable-icon pbl-rel-init' : 'pbl-rel-init mod-cta',
 		attr: { type: 'button', 'aria-label': t('release.init.label') },
@@ -197,9 +210,9 @@ export function renderReleaseInit(view: ReleaseView, parentEl: HTMLElement, posi
  * from the last data update. Two readings of one question that could disagree is the trap
  * `init.ts` already documents.
  */
-function anythingToBind(view: ReleaseView): boolean {
+function anythingToBind(view: ReleaseView, wanted: readonly string[]): boolean {
 	const taken = new Set(declaredPropertyKeys(view.config).filter((key) => key !== ''));
-	return adoptCandidates(view.config, RELEASE_SUGGESTED_KEYS, taken).length > 0;
+	return adoptCandidates(view.config, RELEASE_SUGGESTED_KEYS, taken).some((c) => wanted.includes(c.option));
 }
 ```
 
@@ -510,6 +523,19 @@ describe('the scope tree', () => {
 		expect(leaf.hasAttribute('aria-expanded')).toBe(false);
 	});
 
+	it('reopens a folded row whose note was RENAMED, and that is the accepted cost', () => {
+		// Neither rename walk reaches these folds: `renamePathPrefs` walks PATH_PREFS
+		// (`scope`, `release`) and no fold, and `ViewState.renamePath` migrates the BACKLOG
+		// view's in-memory `collapsed`, which this view holds none of. Asserted so the
+		// behaviour is stated rather than discovered — see the spec for why a store-level
+		// fold walk is not worth duplicating `notePath`/`scopeOf` into `storage/`.
+		const { view, vault } = mountRelease({ pick: 'Releases/0.8.md' });
+		twisty(view, 'Passwordless sign-in.md').click();
+		vault.rename('Passwordless sign-in.md', 'Magic links.md');
+		view.onDataUpdated();
+		expect(row(view, 'Magic links.md').getAttribute('aria-expanded')).toBe('true');
+	});
+
 	it('folding hides the descendants and persists across a data update', () => {
 		const { view } = mountRelease({ pick: 'Releases/0.8.md' });
 		twisty(view, 'Passwordless sign-in.md').click();
@@ -753,7 +779,7 @@ Slice A, second half.
 - Test: `test/view/release/scopeKeys.test.ts`
 
 **Interfaces:**
-- Produces: `wireScopeKeys(view: ReleaseView, treeEl: HTMLElement, rows: ScopeRow[]): void`.
+- Produces: `wireScopeKeys(view: ReleaseView, treeEl: HTMLElement, rows: ScopeRow[], kids: ReadonlySet<string>): void`. `kids` is the set of paths `drawScopeTree` actually drew a disclosure on — the rendered tree's own answer, not the fold set's.
 - Consumes: `foldedPaths`, `toggleFold` from `scopeTree.ts`; `OpenController` via the view.
 
 - [ ] **Step 1: Write the failing test**
@@ -845,7 +871,7 @@ export function wireScopeKeys(view: ReleaseView, treeEl: HTMLElement, rows: Scop
 ```
 
 ```ts
-export function wireScopeKeys(view: ReleaseView, treeEl: HTMLElement, rows: ScopeRow[]): void {
+export function wireScopeKeys(view: ReleaseView, treeEl: HTMLElement, rows: ScopeRow[], kids: ReadonlySet<string>): void {
 	const visible = rows;
 	let active = 0;
 	const show = (): void => {
@@ -870,7 +896,13 @@ export function wireScopeKeys(view: ReleaseView, treeEl: HTMLElement, rows: Scop
 		if (row === undefined) return;
 		const folded = foldedPaths(view);
 		const open = !folded.has(row.item.file.path);
-		const hasKids = visible[active + 1]?.depth === row.depth + 1 || folded.has(row.item.file.path);
+		// Asked of the RENDERED tree, never of the fold set. A path can sit in
+		// `folds.collapsed` long after the row it names has lost every scoped child — a
+		// refresh that moved them, or hide-done taking them off screen — and reading fold
+		// membership as evidence of children then makes a leaf answer as a parent, so
+		// ArrowRight toggles a phantom fold instead of doing nothing. `drawScopeTree`
+		// already knows which rows it drew a disclosure on; it passes that set in.
+		const hasKids = kids.has(row.item.file.path);
 		switch (evt.key) {
 			case 'ArrowDown':
 				moveTo(active + 1);

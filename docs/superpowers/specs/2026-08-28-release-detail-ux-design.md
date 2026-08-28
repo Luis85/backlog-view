@@ -23,7 +23,7 @@ the view, are still owed a live-vault check.
 | --- | --- |
 | The view stays read-only | `test/view/releaseNeverEdits.test.ts` asserts on the CALLS, not on driven screens. Every feature below is navigation, derivation or view state — none of it plans a batch, so this view still needs no `WriteGate` and no `WriteLock`. |
 | A row click OPENS the note | The disclosure folds; the click reads. `src/view/openTarget.ts` takes any `{ file }` — but it needs an `OpenController` and a context carrying `openIn`, and `ReleaseSettings` has neither today. This view therefore **declares its own `openIn` option**, exactly as `domain/estimationOptions.ts` does with the same `default:`, rather than reading it off `resolveSettings` — `releaseView.ts` already states why borrowing another resolver's options at this boundary is the same defect as one view reading another's configuration. |
-| Folds live in the view-state store | `folds` already exists there, keyed by path, pruned by path and rename-migrated. This view has its own view identity, so its folds cannot collide with the backlog tree's. No new storage, no new module. |
+| Folds live in the view-state store | `folds` already exists there, keyed by path and pruned by path. This view has its own view identity, so its folds cannot collide with the backlog tree's. No new storage, no new module. **They do NOT survive a rename** — see below; the spec claimed they did until review on PR #206. |
 | The summary is progress and items only | Blocked, unestimated and critical-risk figures each need a property option AND a value vocabulary on this view. They are [[Summing up a release]] and [[Release readiness]]'s own next increment, not this one. |
 | No search box on the scope | [[Quick filter]] is `status: Dropped`, closed 2026-08-17 at the user's request — "Bases carries its own search now, so this was a second search box over the same rows". Confirmed dropped again here rather than re-litigated. |
 | The ✨ becomes a control | `runReleaseInit` exists and is reachable only from a `New release` press. A reader whose vault has none of the four keys bound cannot get to it without creating a note they may not want. |
@@ -54,8 +54,24 @@ share one x. `aria-expanded` becomes legitimate on a row with children and is se
 comment stating a rule the code has stopped keeping is the defect
 `docs/issues/A comment that states a rule is not a check.md` names.
 
-**Folds persist.** Read on render, written on toggle, through `loadViewState` /
-`saveViewState` under this view's identity — the same pair `pick` already uses. An embedded
+**Folds persist, but a rename reopens one, and that is an accepted cost rather than an
+oversight.** Read on render, written on toggle, through `loadViewState` / `saveViewState`
+under this view's identity — the same pair `pick` already uses.
+
+Neither rename walk reaches these folds. `renamePathPrefs` (`storage/viewStateStore.ts`,
+wired to `vault.on('rename')` in `main.ts`) walks `PATH_PREFS` — `scope` and `release` —
+and touches no fold at all; `ViewState.renamePath` (`view/viewState.ts`) migrates
+`this.collapsed`, but that is the BACKLOG view's in-memory controller, and this view holds
+no `ViewState`. So a folded member that is renamed comes back open.
+
+**Not fixed here, and the reason is the layer boundary.** A store-level fold walk would
+have to migrate both key SHAPES that list holds — the backlog's scope-prefixed keys and
+this view's plain paths — which means `notePath` and `scopeOf` from `view/viewState.ts`,
+in a module that may not import `view/`. Duplicating that parsing into `storage/` to make a
+fold survive a rare edit is a worse trade than a fold that reopens: the reader presses one
+disclosure. It is written down here rather than left to be rediscovered, and a store-level
+`renamePathFolds` beside `renamePathPrefs` is what would change it, if the papercut ever
+earns the duplication. An embedded
 base has no identity, so folds there are session-only, exactly as the pick already is; that
 asymmetry is stated once in `releaseView.ts` and not built around.
 
@@ -271,12 +287,15 @@ Every claim gets one that fails without it — watched failing, then restored.
   shape is discarded rather than trusted.
 - Keyboard: one tab stop; Left on an open row folds it and on a closed one steps out; Enter
   opens through `openTarget`.
-- ✨: always drawn on the index bar and withheld on the `noMembership` empty state when
-  nothing is adoptable — both directions, since the two positions answer differently; a
-  bound option is never re-bound; no note is written (asserted on the call, not by driving
-  screens); **a standalone press that bound something reports it, and one that bound
-  nothing stays quiet** — both directions, driven through the button rather than through
-  `newRelease`.
+- ✨: always drawn on the index bar; withheld on the `noMembership` empty state when the
+  MEMBERSHIP candidate specifically is not adoptable — not merely when nothing at all is,
+  which would draw a button that binds an unrelated property, reports success and redraws
+  the same unusable state (`renderSetupCta`'s own rule: it asks whether something THIS
+  FRAME needs is adoptable). A bound option is never re-bound; no note is written (asserted
+  on the call, not by driving screens); **a standalone press reports either way** — the
+  keys it bound, or that there was nothing to bind, since a bar control with nothing behind
+  it looks dead. Only the `New release` press stays quiet on a no-op, because its dialog
+  opens regardless.
 - `npm run check` — build, lint, coverage thresholds, fallow, docs register — plus a
   re-shot harness page. The live-vault check is owed and will be named in the PR.
 
