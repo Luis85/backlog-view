@@ -102,14 +102,16 @@ and the two halves are different sentences:
 - **Progress that DID compute** names its denominator in its own sentence — `5 of 12 items
   done`, where "items" is the denominator main flow 2 requires be named. The estimate
   denominator does not exist in this increment, so there is one to name rather than two.
-- **Main flow 5's "names the property and the vocabulary it read" has no single answer
-  here, and this is an open question rather than a decision.** A release mixing ordinary
-  work with Deliverables has each member answering through its own workflow, so there is no
-  one property to name; that requirement was written before `ownWorkflowReading` existed.
-  Naming every workflow represented is possible and costs a line of header. This spec does
-  NOT decide it: the strip ships naming its denominator and its unconfigured case, and the
-  question goes back to [[Summing up a release]] to answer for every figure at once rather
-  than being settled here for one.
+- **Main flow 5 is AMENDED in this slice, because as written it promises what no figure
+  here can deliver.** It says every figure names the property and the vocabulary it read; a
+  release mixing ordinary work with Deliverables has each member answering through its own
+  workflow, so there is no one property to name. That sentence was written before
+  `ownWorkflowReading` existed. The amendment: **a figure names its property where there is
+  one, and a figure computed over a multi-workflow population names the WORKFLOWS rather
+  than a property.** The strip therefore names its denominator (`items`) and its
+  unconfigured case, and Task 2 rewrites main flow 5 and its acceptance criterion to match —
+  rather than leaving two documents contradicting each other, which is the state three
+  review passes kept finding. Decided by the author on 2026-08-28.
 - **No members**: the strip is withheld entirely — the empty state already says the release
   is empty, and `0 of 0 items done` beside it says it twice and worse. That is extension 1a's
   "nothing to count, and none of them reads as zero".
