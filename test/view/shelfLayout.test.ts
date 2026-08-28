@@ -456,6 +456,37 @@ describe('the shelf’s card and list layouts', () => {
 			expect(shelfOf(some.containerEl)?.querySelectorAll('.pbl-props .pbl-prop')).toHaveLength(2);
 		});
 
+		it('reserves no column a shelved row cannot answer for, and does not crash reaching it', () => {
+			// Bases can throw for a property an entry cannot answer — `rowSignature.test.ts`'s
+			// "steps over an entry that refuses the property" is the same fact, one probe over.
+			// Here it is `valueShows`'s own `catch`, and the band-level narrowing this file is
+			// about is what has to survive it: an item whose row throws votes for nothing rather
+			// than taking the render down with it.
+			const vault = new FakeVault();
+			vault.addFile('Refuses.md', { frontmatter: { type: 'Epic', order: 10 } });
+			vault.entryValues.set('Refuses.md', { 'note.points': 5 });
+			const { containerEl, view } = makeRoadmap(vault, {}, { shelfCollapsed: false, shelfList: true, order: ['note.points'] });
+
+			// Reserved before the entry starts refusing the property, so the assertion below is a
+			// real narrowing rather than a column that was never drawn to begin with.
+			expect(shelfOf(containerEl)?.querySelectorAll('.pbl-props .pbl-prop')).toHaveLength(1);
+
+			const entries = vault.entries().map((entry) =>
+				entry.file.path === 'Refuses.md'
+					? {
+							file: entry.file,
+							getValue: () => {
+								throw new Error('no such property');
+							},
+						}
+					: entry,
+			);
+			(view as unknown as Record<string, unknown>).data = { data: entries };
+			view.onDataUpdated();
+
+			expect(shelfOf(containerEl)?.querySelectorAll('.pbl-props .pbl-prop')).toHaveLength(0);
+		});
+
 		it('drops the state cell instead, which is not one of the shared columns', () => {
 			// Extension 4b: held open rather than dropped. `.pbl-shelf-state` is its own box
 			// outside `.pbl-props`, so holding the shared columns open (test above) says nothing
