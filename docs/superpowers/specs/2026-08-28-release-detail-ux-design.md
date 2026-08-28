@@ -98,10 +98,22 @@ its render modules are `src/view/release/`.
 Between the header and the scroller, so it never scrolls away. Four controls:
 
 - **Collapse all / expand all** (Slice A).
-- **Hide done** — hides members whose state is a done value, and any subtree that leaves
-  empty. It does NOT change a rollup: `3/5` stays `3/5` with the three hidden, which is the
-  rule `docs/requirements/Rollups and hiding finished work.md` already fixed once for the
-  backlog tree.
+- **Hide done** — hides every subtree that is **entirely** finished, which is
+  `docs/requirements/Rollups and hiding finished work.md` main flow 4 read exactly as it is
+  written. **Not "every member whose own state is done"**: a done parent over unfinished
+  member work would take that work off screen with it, or re-root it and lose its place.
+  Completion is the subtree's, `subtreeDone`'s own predicate, over members — a context row
+  is walked through and counted no more here than anywhere else on this screen.
+  That note's three follow-on rules come with it, and each is a check below:
+  **4a** a parent whose children all hid renders as a LEAF — no disclosure, no
+  `aria-expanded` — rather than an expander over nothing; **4b** a context row whose
+  children have all hidden hides too, since it exists only to place a visible member;
+  **4c** everything hidden draws the **all-done state**, naming how many items it is talking
+  about, never a blank scroller — `src/view/render/emptyStates.ts` already owns that state
+  for the backlog tree, and the toggle that turns hiding back off stays on the toolbar
+  beside it.
+  It does NOT change a rollup: `3/5` stays `3/5` with the three hidden, which is that same
+  note's own guarantee — hiding is a render decision.
   With no state key bound there are no done values, so the toggle is not drawn at all —
   the same answer the summary gives, and for the same reason.
 - **Context rows** — on by default. Off drops the context ancestors and draws each member
@@ -143,7 +155,17 @@ controller — over the 400-line lint cap and over one concern. It splits:
 
 `src/view/release/renderIndex.ts` gains the ✨ control. `styles/release.css` gains the
 classes the mock proved, published from its `SHEET` constant the way the index's bands were.
-No `storage/` change: `viewStateStore.ts` already holds folds and prefs.
+
+**`src/storage/viewStateStore.ts` DOES change, for the two toggles.** `folds` needs nothing
+— it is already a path-keyed map this view's identity gets its own copy of — but `prefs` is
+not a free-form bag: `PREF_READERS` is declared `{ [K in keyof ViewPrefs]-?: … }` and
+`readPrefs` writes only the keys that map holds, so a field with no reader is a compile
+error and an unrecognised stored key is discarded on the way back in. That is the design,
+not an obstacle to route around: each toggle gets a typed `ViewPrefs` field and a reader.
+Both are `onlyTrue`, storing the NON-default state so a default writes nothing —
+`bucketList`'s own documented rule. `releaseHideDone` is the on state of a toggle that
+starts off; `releaseHideContext` is the off state of one that starts on. Round-tripping
+both belongs in `test/storage/`, beside the existing prefs coverage.
 
 ## Checks
 
@@ -158,7 +180,12 @@ Every claim gets one that fails without it — watched failing, then restored.
   wrong on its first draw.
 - Summary: count and progress over members only, agreeing with the header's count; the
   unbound state key draws the count alone; no members draws no strip.
-- Hide done: a rollup is unchanged by the toggle; a subtree that empties is dropped whole.
+- Hide done: a rollup is unchanged by the toggle; a done parent over unfinished member
+  work STAYS (the finding this spec was corrected for); a parent whose children all hid
+  draws as a leaf; a context row whose children all hid hides; everything hidden draws the
+  all-done state with its count rather than a blank scroller.
+- Prefs: both toggles round-trip through the store, and a stored value of the wrong shape
+  is discarded rather than trusted.
 - Keyboard: one tab stop; Left on an open row folds it and on a closed one steps out; Enter
   opens through `openTarget`.
 - ✨: not drawn with nothing to bind; drawn on the `noMembership` empty state; a bound
