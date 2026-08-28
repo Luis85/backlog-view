@@ -162,6 +162,39 @@ describe('New release', () => {
 		expect(document.activeElement).toBe(current);
 	});
 
+	/**
+	 * Finding 1 of Task 7: `pbl-rel-new` was absent from `FOCUS_HANDLE_CLASSES`, so a
+	 * refresh landing AFTER `focusNewRelease` had already restored focus — a further Bases
+	 * pass, an external edit, anything not itself part of this press's own two redraws —
+	 * ran `render()` with `document.activeElement` sitting on the New release button,
+	 * `focusedControlClass()` finding no class for it, and neither the exact match nor the
+	 * fallback below it running at all: focus dropped on `document.body`, silently undoing
+	 * what the creation had just put back.
+	 *
+	 * This is deliberately a SECOND `onDataUpdated()`, after the two the tests above already
+	 * drive: those two pass whether or not `pbl-rel-new` is in the vocabulary, because
+	 * `focusNewRelease`'s own direct call — not `render()`'s restore — is what focuses the
+	 * button both times. Only a further redraw with no such call behind it asks the question
+	 * this test is about.
+	 */
+	it('keeps focus on New release across a refresh that follows the one the creation caused', async () => {
+		const { view, modal } = await openNewRelease(noReleaseVault(), RELEASE_CONFIG);
+		const input = modal.contentEl.querySelector('input');
+		if (!input) throw new Error('no title field');
+		input.value = '2.4';
+		input.dispatchEvent(new Event('input', { bubbles: true }));
+		modal.contentEl.querySelector<HTMLButtonElement>('.mod-cta')?.click();
+		view.onDataUpdated();
+		await flush();
+		// The creation's own two redraws are done and `focusNewRelease` has already run.
+		expect(document.activeElement).toBe(newBtn(view.viewEl));
+
+		// A further, unrelated refresh — nothing in `newRelease.ts` runs for this one.
+		view.onDataUpdated();
+
+		expect(document.activeElement).toBe(newBtn(view.viewEl));
+	});
+
 	it('binds nothing and says nothing when every option is already bound', async () => {
 		await openNewRelease(noReleaseVault(), RELEASE_CONFIG);
 		expect(Notice.messages).toEqual([]);

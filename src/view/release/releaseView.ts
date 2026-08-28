@@ -23,10 +23,31 @@ export const RELEASE_VIEW_TYPE = 'product-release';
  * fixes for the same class of bug shipped on this branch before this list did: the ✨
  * (`initControl.ts`), the scope tree's own row (`activeScopePath`/`scopeHadFocus`, left
  * alone below — a different question, which ROW, not answered here), and the toolbar
- * (`scopeToolbar.ts`). None of the six controls that carry one of these classes carries a
+ * (`scopeToolbar.ts`). None of the eight controls that carry one of these classes carries a
  * second, so checking them in this order is deterministic without needing to be.
+ *
+ * **`pbl-rel-new` and `pbl-rel-band` joined this list for the same reason and pay off
+ * differently, which is worth knowing before reading either as broken.** `pbl-rel-new` gets
+ * an EXACT match on most redraws — `New release` survives a bind, a metadata refresh, and
+ * (per `focusNewRelease`'s own doc) most redraws after a creation — so `render()`'s exact
+ * branch below is what puts focus back on it, the same as any other control here. `pbl-rel-band`
+ * never does: activating a band changes SCREEN (index → scope), so no band exists once this
+ * render finishes and the exact-match query always misses. What adding it buys is narrower —
+ * `focusedControlClass()` stops answering null for a focused band, which is what lets this
+ * method's own FALLBACK fire (the redrawn screen's first focusable control — the scope's Back
+ * button) instead of leaving a reader on `document.body`. Landing beside the right control,
+ * not on it, is still the whole of the fix: the alternative was never restoring anything.
  */
-const FOCUS_HANDLE_CLASSES = ['pbl-rel-init', 'pbl-rel-collapse', 'pbl-rel-expand', 'pbl-rel-hidedone', 'pbl-rel-back', 'pbl-tree'];
+const FOCUS_HANDLE_CLASSES = [
+	'pbl-rel-init',
+	'pbl-rel-collapse',
+	'pbl-rel-expand',
+	'pbl-rel-hidedone',
+	'pbl-rel-back',
+	'pbl-tree',
+	'pbl-rel-new',
+	'pbl-rel-band',
+];
 
 /**
  * The release view: the plugin's third Bases view, and the one that **creates notes and

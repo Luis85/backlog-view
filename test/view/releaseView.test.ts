@@ -194,6 +194,35 @@ describe('the release view', () => {
 		expect(containerEl.querySelector('.pbl-rel-bands')).not.toBeNull();
 		expect(containerEl.querySelector('.pbl-empty-title')).toBeNull();
 	});
+
+	/**
+	 * Finding 1 of Task 7: `pbl-rel-band` was absent from `FOCUS_HANDLE_CLASSES`, so a band
+	 * held focus and `pick()`'s own `render()` — called synchronously off the band's click
+	 * handler — detached it with `focusedControlClass()` answering null, dropping focus on
+	 * `document.body`.
+	 *
+	 * The band never gets an EXACT match back — activating one changes SCREEN (index →
+	 * scope), so no band exists once this render finishes. What the fix buys is narrower:
+	 * `focusedControlClass()` stops returning null for a focused band, which lets `render()`'s
+	 * own fallback fire — the redrawn screen's first focusable control, the scope's own Back
+	 * button — instead of leaving focus nowhere at all.
+	 */
+	it('lands focus on the redrawn screen, not on the body, when a band is activated', () => {
+		const vault = releaseVault();
+		const { view, containerEl } = makeReleaseView(vault, RELEASE_CONFIG);
+		const band = containerEl.querySelector<HTMLButtonElement>('.pbl-rel-band[data-path="0.8.md"]');
+		if (!band) throw new Error('no band to activate');
+		// A real press focuses the control before it activates; jsdom's `.click()` does not,
+		// so this states that explicitly rather than pretending the click alone did it — the
+		// same convention `scopeTree.test.ts`'s disclosure test uses for the identical reason.
+		band.focus();
+		expect(document.activeElement).toBe(band);
+
+		view.pick('0.8.md');
+
+		expect(document.activeElement).not.toBe(document.body);
+		expect(document.activeElement).toBe(containerEl.querySelector('.pbl-rel-back'));
+	});
 });
 
 /**
