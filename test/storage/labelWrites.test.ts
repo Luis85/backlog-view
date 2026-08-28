@@ -185,3 +185,23 @@ describe('writing the iteration goal', () => {
 		expect(vault.fm('Sprint.md')).toEqual({ type: 'Iteration', goal: 'Ship the board' });
 	});
 });
+
+describe('writing the link properties', () => {
+	// One rule read twice, which is what makes the loop worth having: `applyIteration` and
+	// `applyRelease` were two spellings of it.
+	const linked = { ...settings, iterationKey: 'iteration', releaseKey: '' };
+
+	it('spells a wikilink, skips an unconfigured key, and a null removes rather than blanks', async () => {
+		const vault = new FakeVault();
+		const file = vault.addFile('Item.md', { frontmatter: { type: 'PBI' } });
+		const sprint = vault.addFile('Sprint 4.md', { frontmatter: { type: 'Iteration' } });
+		const release = vault.addFile('1.0.md', { frontmatter: { type: 'Release' } });
+
+		// The release key is unconfigured, so its half of this batch invents no key.
+		await applyWrites(vault.app, linked, [{ file, iteration: sprint, release }]);
+		expect(vault.fm('Item.md')).toEqual({ type: 'PBI', iteration: '[[Sprint 4]]' });
+
+		await applyWrites(vault.app, linked, [{ file, iteration: null }]);
+		expect(vault.fm('Item.md')).toEqual({ type: 'PBI' });
+	});
+});

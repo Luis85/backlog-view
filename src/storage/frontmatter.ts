@@ -233,8 +233,7 @@ function applyInto(
 	// question, and the boundary rule believes the wrong one.
 	const leaving = settings.stateKey ? readString(ownValue(fm, settings.stateKey)) : null;
 	applyHierarchy(app, fm, settings, write);
-	applyIteration(app, fm, settings, write);
-	applyRelease(app, fm, settings, write);
+	applyLinks(app, fm, settings, write);
 	// The stateKey may be unset (progress tracking off) — never write to an empty key.
 	if (write.removeStateKey && settings.stateKey) delete fm[settings.stateKey];
 	else if (write.state !== undefined && settings.stateKey) setOwn(fm, settings.stateKey, write.state);
@@ -282,26 +281,27 @@ function applyHierarchy(app: App, fm: Record<string, unknown>, settings: Backlog
 }
 
 /**
- * The iteration link — path-aware like the parent's, and for the parent's reason: a link
- * serialized from a basename would resolve to whichever of two same-named notes Obsidian
- * picks, so this spells it from the editing note's own path with `wikilinkTo`, exactly as
- * `applyHierarchy` does for the parent. Never a key no property names; `null` removes it.
+ * The LINK properties: the iteration, the release. Each is one note written as a wikilink
+ * spelt from the editing note's own path, an unconfigured key dropped, and null deleting
+ * the key rather than blanking it.
+ *
+ * `applyLabels`' shape one field-kind over, and extracted for `applyLabels`' own reason:
+ * these were two copies of one rule, so a third property wanting it is a row in this list
+ * rather than a third restatement. The plain LABEL properties stay in `applyLabels`
+ * because a label is a string the reader picked and a link is a note — `wikilinkTo` is
+ * exactly the difference, and a helper general enough to cover both would carry the
+ * link spelling past the properties that must not have it.
  */
-function applyIteration(app: App, fm: Record<string, unknown>, settings: BacklogSettings, write: ItemWrite): void {
-	if (write.iteration === undefined || !settings.iterationKey) return;
-	if (write.iteration === null) delete fm[settings.iterationKey];
-	else setOwn(fm, settings.iterationKey, wikilinkTo(app, write.iteration, write.file.path));
-}
-
-/**
- * The release link — the iteration link's own rule ({@link applyIteration}), one property
- * later: path-aware `wikilinkTo` from the editing note's own path, never a key no property
- * names, and `null` removes it rather than blanking it.
- */
-function applyRelease(app: App, fm: Record<string, unknown>, settings: BacklogSettings, write: ItemWrite): void {
-	if (write.release === undefined || !settings.releaseKey) return;
-	if (write.release === null) delete fm[settings.releaseKey];
-	else setOwn(fm, settings.releaseKey, wikilinkTo(app, write.release, write.file.path));
+function applyLinks(app: App, fm: Record<string, unknown>, settings: BacklogSettings, write: ItemWrite): void {
+	const links: [TFile | null | undefined, string][] = [
+		[write.iteration, settings.iterationKey],
+		[write.release, settings.releaseKey],
+	];
+	for (const [target, key] of links) {
+		if (target === undefined || !key) continue;
+		if (target === null) delete fm[key];
+		else setOwn(fm, key, wikilinkTo(app, target, write.file.path));
+	}
 }
 
 /**
