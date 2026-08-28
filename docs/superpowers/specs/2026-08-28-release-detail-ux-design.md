@@ -147,8 +147,22 @@ Between the header and the scroller, so it never scrolls away. Three controls:
   beside it.
   It does NOT change a rollup: `3/5` stays `3/5` with the three hidden, which is that same
   note's own guarantee — hiding is a render decision.
-  With no state key bound there are no done values, so the toggle is not drawn at all —
-  the same answer the summary gives, and for the same reason.
+  **The toggle is gated on exactly the predicate the `done` figure is gated on** — the
+  plan's own state key, `ReleaseIndexOptions.stateKey` — and that is the point rather than
+  an oversight: a control that could hide rows the summary refuses to count would put two
+  answers to "what is done here" on one screen, which is the one thing this view is built
+  not to do. So with the plan state key unbound the toggle is not drawn and the summary
+  names its progress unconfigured, together.
+
+  **An edge this leaves open, found by review on PR #206 and deliberately not fixed here.**
+  A Deliverable or test-catalog member whose OWN workflow declares its own state property
+  can be read as done through `ownWorkflowReading` with no plan state key bound at all — so
+  that gate is coarser than the data strictly requires, and the toggle inherits the
+  coarseness. Loosening it is a change to `ReleaseRow.done`, which the INDEX draws too:
+  every band's progress would start answering where it now says unconfigured. That is a
+  question for [[Summing up a release]] about an existing figure, not a thing to settle
+  inside a toolbar toggle — and settling it here for the toggle alone is precisely how the
+  two ends come to disagree.
 - ~~**Context rows**~~ — **cut, by the register rather than by taste.**
   [[The scope of a release as a tree]] main flow 3 and its acceptance criterion require a
   non-member ancestor to be DRAWN and marked as context, and its extension 3b settles the
