@@ -72,6 +72,20 @@ Every consumer resolves it:
   beside set and unset: the raw text the note carries, under its own class and its own
   tooltip saying the value names no resource in this base. Found by automated review on
   PR #207, which was right that a mechanical `valueOf` swap cannot express this.
+- **That third state is asked of the ROSTER, not of the link.** A link that RESOLVES is a
+  different question from a link that resolves to somebody: `[[Epic B]]` finds a real work
+  note, and a link to a `Resource` the filter excluded finds a real resource note. The
+  roadmap shelves both and the menu offers neither, so a chip answering from resolution
+  alone would draw them as valid assignments while every other surface treated them as
+  nobody. One value, three surfaces, one answer. Found by automated review on PR #207.
+- **Two resources can share a basename**, in different folders, and the path-keyed model
+  tells them apart while their names cannot. The menu names them apart through
+  `namedTargets` — the helper `Set iteration` and `Set release` already share for this
+  exact collision, widened from `BacklogItem[]` to anything carrying a title and a file —
+  and the roadmap's fold key becomes the note path, since a key that cannot tell two rows
+  apart folds both. The legacy name-keyed folds are not migrated: bands collapsed before
+  this ships open once, which is cheaper than two key shapes in stored state forever.
+  Found by automated review on PR #207.
 - **This is a READ, so it changes nothing about the migration decision.**
   [[No migration off the string assignees]] refuses a migration because a migration is a
   WRITE over notes nobody asked to have written; resolving a name the note already carries

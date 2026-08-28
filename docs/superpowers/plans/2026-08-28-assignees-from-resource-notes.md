@@ -308,7 +308,24 @@ brokenCls?: string;
 brokenTip?: () => string;
 ```
 
-The assignee's entries are `broken: (item) => item.assigneeEntry !== null && item.assigneeEntry.file === null`, `brokenCls: 'pbl-assignee-broken'`, `brokenTip: () => t('chip.assigneeUnresolved')`. In `renderLabelChip`, add the class when `spec.broken?.(item)` answers true, and prefer `brokenTip` over `changeTip`/`staticTip` there. Add `'chip.assigneeUnresolved': 'This names no resource in this base.'` to `src/i18n/en.ts`, and a `.pbl-assignee-broken` rule to the partial that already styles `.pbl-assignee-chip` — find it with `grep -rn "pbl-assignee-chip" styles/`. Follow whatever Obsidian's own unresolved-link colour is in that partial's neighbours rather than inventing one; if there is no precedent, use `var(--text-muted)` with the dashed border the unset chip already carries, and say in the rule's comment that the colour is a live-vault check.
+The predicate is **roster membership, not link resolution** — `broken` takes the host so it can ask:
+
+```ts
+/**
+ * Whether this item's assignee names something this base has no resource for. Asked of
+ * the ROSTER rather than of the link, because a link that resolves is not the same
+ * question as a link that resolves to somebody: `[[Epic B]]` resolves to a real note and
+ * `[[Alex]]` resolves to a resource the filter excluded, and both are shelved by the
+ * roadmap and offered by no menu entry. Answering from resolution alone drew those two as
+ * valid assignments on the row while every other surface treated them as nobody — three
+ * surfaces disagreeing about one value. Found by automated review on PR #207.
+ */
+broken: (host: BacklogViewHost, item: BacklogItem) =>
+	item.assigneeEntry !== null &&
+	!(host.model?.resources ?? []).some((r) => r.file.path === item.assigneeEntry?.file?.path),
+```
+
+with `brokenCls: 'pbl-assignee-broken'` and `brokenTip: () => t('chip.assigneeUnresolved')`. In `renderLabelChip`, add the class when `spec.broken?.(host, item)` answers true, and prefer `brokenTip` over `changeTip`/`staticTip` there. Add `'chip.assigneeUnresolved': 'This names no resource in this base.'` to `src/i18n/en.ts`, and a `.pbl-assignee-broken` rule to the partial that already styles `.pbl-assignee-chip` — find it with `grep -rn "pbl-assignee-chip" styles/`. Follow whatever Obsidian's own unresolved-link colour is in that partial's neighbours rather than inventing one; if there is no precedent, use `var(--text-muted)` with the dashed border the unset chip already carries, and say in the rule's comment that the colour is a live-vault check.
 - `src/domain/roadmap.ts` — `resourceSource`, `placeAssigned`, `placeContextLane`
 - `src/domain/writePlan.ts` — `computeAssigneeWrites`
 - `src/view/interactions/labels.ts` — `assigneeChoices`
@@ -621,16 +638,26 @@ function assigneeTargets(host: BacklogViewHost): ResourceNote[] {
 
 ```ts
 export function addAssigneeItems(host: BacklogViewHost, menu: Menu, item: BacklogItem): void {
-	const targets = assigneeTargets(host);
+	// Named apart only where two collide, through `namedTargets` — the helper Set
+	// iteration and Set release already share for exactly this: two resource notes with
+	// one basename in different folders are two distinct targets the path-keyed model
+	// tells apart, and two menu entries reading the same word the reader cannot. Widen
+	// that helper's parameter from `BacklogItem[]` to `{ title: string; file: TFile }[]`
+	// rather than writing a second copy of the collision rule — a `ResourceNote` already
+	// answers both fields. Found by automated review on PR #207.
+	const targets = namedTargets(assigneeTargets(host));
 	for (const target of targets) {
 		menu.addItem((si) => {
-			si.setTitle(target.title).onClick(() => void chooseAssignee(host, item, target.file));
-			if (computeAssigneeWrites(item, target.file).length === 0) si.setChecked(true);
+			si.setTitle(target.label).onClick(() => void chooseAssignee(host, item, target.item.file));
+			if (computeAssigneeWrites(item, target.item.file).length === 0) si.setChecked(true);
 		});
 	}
 	// 2a: a menu with nothing to pick says why rather than opening empty, and the reason
 	// is always the same one — the base returned no resources.
 	if (targets.length === 0) menu.addItem((si) => si.setTitle(t('menu.noResources')).setDisabled(true));
+	// `NoteTarget.item` is a `BacklogItem` today because both its callers pick one. Widen
+	// it to the same `{ title; file }` shape as the parameter, so a `ResourceNote` fits
+	// without becoming an item it is not.
 	menu.addItem((si) =>
 		si
 			.setTitle(t('menu.newResource'))
@@ -909,7 +936,9 @@ export function assignableLanes(roadmap: RoadmapModel | undefined): AssignableLa
 
 Pass `model.resources` through the `deriveLanes` call site (`roadmap.ts` line ~515). Delete Task 4's bridge lines.
 
-The band's fold key stays the lane NAME (`host.isLaneCollapsed(lane.name)` in `view/render/roadmap.ts`). Deliberately: the key is stored per device in the view-state store, so changing it to a path would silently unfold every band a reader had collapsed. A rename unfolds one band once, which is the cheaper of the two.
+**The band's fold key becomes the note PATH.** `host.isLaneCollapsed(...)` / `setLaneCollapsed(...)` (`view/viewState.ts`, `laneKey`) are keyed by lowercased name today, and this plan said to keep it that way — wrongly, and automated review on PR #207 caught it. Once every row is a note, two resources with one basename in different folders share a key, so folding either folds both; two whose names differ only in case collide for the same reason, because `laneKey` lowercases. A fold key must identify the row, and after this change the thing that identifies a row is its path.
+
+Change `laneKey` to take the path and pass `lane.file.path` at both call sites. **No compatibility fallback for the legacy name-keyed entries** — bands a reader had collapsed before this ships open once, and that is the whole cost. A fallback would mean carrying two key shapes in stored state forever to save one gesture, and this repository carries no compatibility with older plugin versions by policy (`minAppVersion` is its only boundary). Say so in `laneKey`'s own comment. The markers' row has no file: keep its existing constant as its key, since there is only ever one of it.
 
 - [ ] **Step 4: Drop the undeclared decoration**
 
