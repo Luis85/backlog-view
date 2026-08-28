@@ -386,6 +386,76 @@ describe('the shelf’s card and list layouts', () => {
 			expect(seen.size).toBe(1);
 		});
 
+		it('reserves no column the whole band has nothing to show in', () => {
+			// The per-BAND narrowing beside the per-ROW hold above, and the two answer different
+			// questions: a row may not drop its own empty cell (it would move every cell after
+			// it), while a column NO card in the band draws is width on every row and content on
+			// none. A compact row has no column header, so that is a stretch of nothing rather
+			// than an empty column a reader can see — measured at a 1280px pane over the demo
+			// backlog's twenty unplaced items, three of five reserved columns drew on zero rows,
+			// 384px of the row, with every title at its own 16ch floor.
+			//
+			// Both directions in one fixture: `note.points` is carried by two of the three cards
+			// and `note.owner` by one, so both stay on EVERY row; `note.nothing` is carried by
+			// none and is on no row at all.
+			const { containerEl } = makeRoadmap(unplacedVault(), {}, {
+				shelfCollapsed: false,
+				shelfList: true,
+				order: ['note.points', 'note.owner', 'note.nothing'],
+			});
+			const rows = Array.from(shelfOf(containerEl)?.querySelectorAll('.pbl-card-summary') ?? []);
+			expect(rows).toHaveLength(3);
+			for (const row of rows) expect(row.querySelectorAll('.pbl-props > .pbl-prop')).toHaveLength(2);
+		});
+
+		it('reserves no tags column on a band nobody has tagged', () => {
+			// The kind that hides inside "a chip always draws": the tags cell's add button is
+			// `opacity: 0` until the row is hovered, so a tagless cell shows nothing and
+			// `renderTagCell` answers `false` — which is why a CARD drops it. A band with no tags
+			// anywhere was still reserving the column on every row. (Codex, PR #208.)
+			//
+			// Both directions again, in two bands: one tag anywhere keeps the column on every row,
+			// including the rows with none.
+			const bare = new FakeVault();
+			bare.addFile('No tags here.md', { frontmatter: { type: 'Epic', order: 10 } });
+			bare.addFile('Nor here.md', { frontmatter: { type: 'Epic', order: 20 } });
+			const shelfWith = (vault: FakeVault): HTMLElement | null =>
+				shelfOf(
+					makeRoadmap(vault, { tagsProperty: 'note.tags' }, {
+						shelfCollapsed: false,
+						shelfList: true,
+						order: ['note.tags'],
+					}).containerEl,
+				);
+			expect(shelfWith(bare)?.querySelectorAll('.pbl-prop-tags')).toHaveLength(0);
+
+			const tagged = new FakeVault();
+			tagged.addFile('No tags here.md', { frontmatter: { type: 'Epic', order: 10 } });
+			tagged.addFile('One tag.md', { frontmatter: { type: 'Epic', order: 20, tags: ['alpha'] } });
+			expect(shelfWith(tagged)?.querySelectorAll('.pbl-prop-tags')).toHaveLength(2);
+		});
+
+		it('reserves no column whose every value renders blank', () => {
+			// A value that is neither null nor `isEmpty` and still shows nothing: `drawsSomething`
+			// says yes, and `renderValue` then detaches the span and answers no on its own
+			// `rendered === '' && text === ''`. The probe asked only the first of those, so a
+			// column of such values was reserved on every row and drawn on none. (Codex, PR #208.)
+			//
+			// The control is the row beside it: `Has one` carries a real value in the same
+			// column, so the column stays and the blank row holds its cell open.
+			const vault = new FakeVault();
+			vault.addFile('All blank.md', { frontmatter: { type: 'Epic', order: 10 } });
+			vault.addFile('Also blank.md', { frontmatter: { type: 'Epic', order: 20 } });
+			vault.entryValues.set('All blank.md', { 'note.points': { toString: () => '' } });
+			vault.entryValues.set('Also blank.md', { 'note.points': { toString: () => '   ' } });
+			const blank = makeRoadmap(vault, {}, { shelfCollapsed: false, shelfList: true, order: ['note.points'] });
+			expect(shelfOf(blank.containerEl)?.querySelectorAll('.pbl-props .pbl-prop')).toHaveLength(0);
+
+			vault.entryValues.set('Also blank.md', { 'note.points': { toString: () => '5' } });
+			const some = makeRoadmap(vault, {}, { shelfCollapsed: false, shelfList: true, order: ['note.points'] });
+			expect(shelfOf(some.containerEl)?.querySelectorAll('.pbl-props .pbl-prop')).toHaveLength(2);
+		});
+
 		it('drops the state cell instead, which is not one of the shared columns', () => {
 			// Extension 4b: held open rather than dropped. `.pbl-shelf-state` is its own box
 			// outside `.pbl-props`, so holding the shared columns open (test above) says nothing
@@ -566,6 +636,22 @@ describe('the shelf’s card and list layouts', () => {
 				summaries.map((summary) => Array.from(summary.children).map((child) => child.className).join('|')),
 			);
 			expect([...shapes]).toHaveLength(1);
+		});
+
+		it('leaves the type header out of the layout entirely, so both draw one', () => {
+			// A type read as two things depending on how much room its cards took: a muted
+			// uppercase line in the grid, a banded and counted strip in the list (reported from a
+			// vault). The header says which TYPE a reader is in, which is the same fact in either
+			// layout — so the rule moved to `shelfControls.css` with the band's other chrome and
+			// the pinning came with it, since the band is a scrollport in both.
+			//
+			// Asked at the forbidden thing rather than by comparing two rules: any
+			// `.pbl-shelf-list`-scoped selector naming the header or its count is a second look
+			// for one type, whatever it declares.
+			const list = readFileSync('styles/shelfList.css', 'utf8');
+			expect(list).not.toMatch(/\.pbl-shelf-group-(header|count)/);
+			const chrome = readFileSync('styles/shelfControls.css', 'utf8');
+			expect(bodyOf(chrome, '.pbl-shelf-group-header', 'styles/shelfControls.css')).toContain('position: sticky;');
 		});
 
 		it('states the aligned-column geometry in the stylesheet', () => {

@@ -11,8 +11,8 @@
 
 /* **The pinned head, stated once: where the controls row docks, and how much of the band it
    takes once it is there.** Everything that has to stack BENEATH it reads this pair rather than
-   restating the arithmetic — `shelfList.css`'s own sticky type headers are the case that found
-   this rule, having pinned at `top: 0` straight over the sort, the filter and the search, with a
+   restating the arithmetic — the type group headers below are the case that found this rule,
+   having pinned at `top: 0` straight over the sort, the filter and the search, with a
    `z-index` above them so the clicks landed on the type name (Codex, PR #205; `elementFromPoint`
    in the middle of the controls returned `.pbl-shelf-group-header` on both axes). A second
    sticky thing inside this band is not a mistake to be forbidden — it is a thing that needs to
@@ -60,7 +60,7 @@
 .pbl-shelf-header {
 	position: sticky;
 	top: var(--pbl-shelf-head-top);
-	/* Above `shelfList.css`'s type headers, which are sticky at 2 and would otherwise take both
+	/* Above the type group headers below, which are sticky at 2 and would otherwise take both
 	   the paint and the clicks. */
 	z-index: 3;
 	display: flex;
@@ -136,18 +136,51 @@ input.pbl-shelf-search-input {
 	gap: var(--size-4-1);
 }
 
+/* The type group's own header, and it is ONE rule for both layouts. It was two — a muted
+   uppercase line in the card grid and a banded, sticky, counted strip in the compact list —
+   which is a type reading as two different things depending on how much room its cards take
+   (reported from a vault). The band is a scrollport in both layouts, so the reason the list's
+   header pins is the reason the grid's has to: a reader scrolled into the middle of a type
+   still has to know which one they are in.
+
+   **Opaque, and that is the half a token got wrong rather than the half a rule forgot.**
+   `--background-modifier-hover` is a `color-mix` with `transparent`, so a sticky strip painted
+   in it has the band's own cards drawn straight through it — the type name and the title it is
+   pinned over both legible and neither readable, measured at a 46px scroll in the browser
+   harness. `--background-secondary-alt` is the band's own family and carries no alpha, which is
+   the same statement `.pbl-shelf-grip` and `.pbl-shelf-header` above already make about their
+   own pinned strips.
+
+   The offset is the head's two variables added (`shelfControls.css`'s own pair at the top of
+   this file): where the controls row docks plus how tall it is, which is the first row anything
+   under it may take on either arrangement. `z-index` 2 — under the controls row's 3, over the
+   cards. */
 .pbl-shelf-group-header {
+	position: sticky;
+	top: calc(var(--pbl-shelf-head-top) + var(--pbl-shelf-head));
+	z-index: 2;
 	display: flex;
 	align-items: center;
 	gap: var(--size-4-1);
+	padding: 2px var(--size-4-2);
+	border-radius: var(--radius-s);
+	background-color: var(--background-secondary-alt);
 	font-size: var(--font-ui-smaller);
 	font-weight: var(--font-medium);
-	color: var(--text-muted);
+	letter-spacing: 0.06em;
+	color: var(--text-normal);
 	text-transform: uppercase;
 }
 
+/* The count sits at the strip's end rather than beside the name: the names differ in length
+   and the counts line up, which is what makes a column of them readable down the band. */
 .pbl-shelf-group-count {
-	color: var(--text-faint);
+	margin-inline-start: auto;
+	padding-inline: 6px;
+	border-radius: var(--radius-s);
+	background-color: var(--background-modifier-border);
+	color: var(--text-muted);
+	font-variant-numeric: tabular-nums;
 }
 
 /* The shelf's own controls, in its own header. The disclosure carries the icon, the

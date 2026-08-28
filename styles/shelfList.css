@@ -289,40 +289,6 @@
 	background-color: var(--background-modifier-hover);
 }
 
-/* The type group headers read as structure rather than as another muted line. Sticky inside
-   the band's own scrollport — the band is a scroller (`roadmap.css`, `board.css`), so a
-   reader scrolled into the middle of a long type still knows which one they are in.
-
-   **Beneath the controls row, never over it.** `top: 0` is the band's content edge, which is
-   where the pinned header is — so at `0` with a `z-index` above it, the type name took the paint
-   AND the clicks off the sort, the filter and the search (Codex, PR #205). The offset is the
-   head's own two variables added (`shelfControls.css`, which states them once): where the row
-   docks plus how tall it is, is the first row a thing under it may take, on either arrangement
-   and without this file knowing which is drawing. `z-index` stays 2, under the row's 3 and over
-   the cards. */
-.pbl-shelf-list .pbl-shelf-group-header {
-	position: sticky;
-	top: calc(var(--pbl-shelf-head-top) + var(--pbl-shelf-head));
-	z-index: 2;
-	padding: 2px var(--size-4-2);
-	border-radius: var(--radius-s);
-	background-color: var(--background-modifier-hover);
-	letter-spacing: 0.06em;
-	color: var(--text-normal);
-}
-
-.pbl-shelf-list .pbl-shelf-group-count {
-	margin-inline-start: auto;
-	padding-inline: 6px;
-	border-radius: var(--radius-s);
-	background-color: var(--background-modifier-border);
-	color: var(--text-muted);
-	font-variant-numeric: tabular-nums;
-}
-
-/* The fold slot: the tree's chevron column, on a shelf row. Reserved on every row whether
-   or not it holds a disclosure, which is what keeps the badges on one x — a slot that
-   collapsed for a leaf would put the tree back where the flex line was. */
 .pbl-shelf-list .pbl-shelf-fold {
 	display: flex;
 	align-items: center;
