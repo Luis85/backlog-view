@@ -80,16 +80,22 @@ describe('the scope tree', () => {
 
 	it('setAllFolds folds or unfolds every row THIS scope drew, scoped to its release', () => {
 		// Task 5's own control, exercised directly here since nothing on screen calls it
-		// yet — `drawScopeTree`'s own rows, not a hand-built fixture, so the paths are
-		// exactly what a real "collapse all" would fold.
+		// yet — the real fixture's own shape (`Passwordless sign-in.md` a parent, its two
+		// children leaves), not an arbitrary one, so `depth` says exactly what a real
+		// "collapse all" would fold.
 		const { view } = mountFoldScope({ pick: 'Releases/0.8.md' });
-		const scopeRows: ScopeRow[] = ['Passwordless sign-in.md', 'Send the magic link.md', 'Expire the link.md'].map(
-			(path) => ({ item: { file: { path } } }) as unknown as ScopeRow,
-		);
+		const scopeRows: ScopeRow[] = [
+			{ item: { file: { path: 'Passwordless sign-in.md' } }, depth: 0 },
+			{ item: { file: { path: 'Send the magic link.md' } }, depth: 1 },
+			{ item: { file: { path: 'Expire the link.md' } }, depth: 1 },
+		].map((row) => row as unknown as ScopeRow);
 		setAllFolds(view, 'Releases/0.8.md', scopeRows, true);
-		expect(foldedPaths(view, 'Releases/0.8.md')).toEqual(
-			new Set(['Passwordless sign-in.md', 'Send the magic link.md', 'Expire the link.md']),
-		);
+		// Only the PARENT gets a key. A leaf has no disclosure to close, so a fold key for
+		// one is a fold nothing can ever act on — and `folds.collapsed` spends from one
+		// shared, CAPPED budget (`MAX_FOLDS`, `storage/viewStateStore.ts`) across every
+		// scope this saved view holds, so a key that buys nothing still costs a slot a
+		// real fold elsewhere could have used.
+		expect(foldedPaths(view, 'Releases/0.8.md')).toEqual(new Set(['Passwordless sign-in.md']));
 		setAllFolds(view, 'Releases/0.8.md', scopeRows, false);
 		expect(foldedPaths(view, 'Releases/0.8.md').size).toBe(0);
 	});

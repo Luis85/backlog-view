@@ -36,10 +36,12 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   `N of M items done` phrase, counted over what that one release holds rather than the
   whole list. Hover it and it says WHICH property and which values decided the count — the
   state property and the done values you bound, or, when a release's members span more
-  than one workflow, which workflows they are. With no state property bound the strip is
-  withheld entirely rather than drawn as `0%`, the same rule the release list already
-  keeps; a release with nothing in it withholds the strip too, since a `0 of 0` figure
-  beside a screen already saying the release is empty would say it twice.
+  than one workflow, which workflows they are. With no state property bound the strip
+  still draws an item count, but names the property that is not configured instead of a
+  bar — never `0%`, which would look exactly like a release where nothing is finished. (The
+  release LIST'S bar, on the other hand, is withheld entirely with no state property bound
+  — that rule is unchanged.) A release with nothing in it withholds the strip too, since a
+  `0 of 0` figure beside a screen already saying the release is empty would say it twice.
 
 - **Releases are made from the release view.** A **New release** button now sits at the head
   of the release list, and again on the screen you see when there are no releases yet. It

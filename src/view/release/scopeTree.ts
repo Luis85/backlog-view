@@ -82,15 +82,16 @@ function writeRawFolds(view: ReleaseView, id: ViewIdentity | null, all: string[]
  * view's identity gives it its own copy.
  *
  * Neither the rename walk over `folds.collapsed` (`notePath` in `view/viewState.ts`) nor
- * `renameScoped`'s in-memory one reaches these keys — the former strips back to a bare
- * path at the FIRST NUL it finds, never a second one, so a key shaped
- * `foldPrefix(release) + member` reads as belonging to a note named by everything after
- * that first NUL, which is neither path; this view holds no `ViewStateController` for the
- * latter to migrate at all. Renaming a member, or the open release itself, therefore
- * reopens the row rather than migrating its fold — the accepted cost stated at the call
- * site rather than built around: duplicating `notePath`'s NUL-splitting and this scope's
- * own path-plus-member key into `storage/` would buy a migration for a fold set that
- * already forgets nothing worse than "reopened".
+ * `renameScoped`'s in-memory one reaches these keys. `notePath` now takes everything after
+ * the LAST NUL rather than the first, so that stopped being the reason — the real reason
+ * is simpler and does not depend on which NUL `notePath` splits on: both walks are methods
+ * of `ViewStateController`, and this view holds no such controller at all, reading and
+ * writing `folds.collapsed` directly through `loadViewState`/`saveViewState` instead.
+ * Renaming a member, or the open release itself, therefore reopens the row rather than
+ * migrating its fold — the accepted cost stated at the call site rather than built around:
+ * duplicating `notePath`'s splitting and this scope's own path-plus-member key into
+ * `storage/` would buy a migration for a fold set that already forgets nothing worse than
+ * "reopened".
  */
 export function foldedPaths(view: ReleaseView, releasePath: string): Set<string> {
 	const id = resolveViewIdentity(view.app, view.viewEl, view.config.name ?? '');
@@ -129,10 +130,30 @@ export function toggleFold(view: ReleaseView, releasePath: string, path: string)
 	view.render();
 }
 
-/** Fold or unfold every row THIS scope drew, without touching another release's set —
- *  `rows` is what makes "exactly this scope" precise rather than "everything". */
+/**
+ * Fold or unfold every row THIS scope drew, without touching another release's set —
+ * `rows` is what makes "exactly this scope" precise rather than "everything".
+ *
+ * **Collapsing writes a key only for rows `childRows` says have a child** — never for a
+ * leaf. A leaf has no disclosure to close, so a leaf's fold key is not a fold anything can
+ * ever act on: it sits in `folds.collapsed` forever, indistinguishable from a stale entry
+ * `childRows` already has to defend against elsewhere in this module. That would cost
+ * nothing on its own if the list were free, but it is not — `folds.collapsed` spends from
+ * one `MAX_FOLDS` budget shared across every scope this saved view holds
+ * (`storage/viewStateStore.ts`'s `readFolds`), which keeps the FIRST entries read and
+ * drops the rest once it runs out. A key per leaf is pure waste against that budget: it
+ * cannot be un-collapsed, it cannot be seen, and every one written is a slot a REAL fold —
+ * on this release or another — can no longer buy, so folding a row eventually stops
+ * working with no error, the redraw simply leaving it open. Expanding needs no such
+ * filter: it already writes the empty set.
+ */
 export function setAllFolds(view: ReleaseView, releasePath: string, rows: ScopeRow[], folded: boolean): void {
-	writeFolds(view, releasePath, folded ? new Set(rows.map((row) => row.item.file.path)) : new Set());
+	if (!folded) {
+		writeFolds(view, releasePath, new Set());
+		return;
+	}
+	const withKids = childRows(rows);
+	writeFolds(view, releasePath, new Set(rows.filter((row) => withKids.has(row.item.file.path)).map((row) => row.item.file.path)));
 }
 
 /**
@@ -304,6 +325,19 @@ export interface ScopeDraw {
 	/** Path → element, built while drawing rather than queried back out of the DOM —
 	 *  `src/view/CLAUDE.md`'s `TREE_SCAN` bans exactly that scan. */
 	readonly rowEls: ReadonlyMap<string, HTMLElement>;
+	/**
+	 * The fold set this draw was computed against — `drawScopeTree`'s own call to
+	 * {@link foldedPaths}, handed out rather than left for a caller to ask again. It
+	 * cannot change during the controller's life: `toggleFold` and `setHideDone` both
+	 * call `view.render()`, which rebuilds this whole listener from a fresh draw, so a
+	 * value that answers for the WHOLE render pass can be read once here instead of
+	 * asked fresh on every keydown. `scopeKeys.ts` used to call {@link foldedPaths}
+	 * itself at the top of every keydown — including the ones that do nothing — which is
+	 * `resolveViewIdentity` plus `loadViewState`'s full JSON parse and validation of
+	 * every stored view entry, paid on every ArrowDown of a key-repeat rather than once
+	 * per render.
+	 */
+	readonly folded: ReadonlySet<string>;
 }
 
 export function drawScopeTree(view: ReleaseView, release: ReleaseRow, rows: ScopeRow[]): ScopeDraw {
@@ -350,7 +384,7 @@ export function drawScopeTree(view: ReleaseView, release: ReleaseRow, rows: Scop
 	// `visible`, never `rows`: arrowing onto a row a fold hid would move the active
 	// descendant to an element that is not in the DOM. `withKids` is the rendered tree's
 	// own answer too — see `scopeKeys.ts`'s own comment on why the fold set cannot stand in.
-	return { treeEl, rows: visible, kids: withKids, rowEls };
+	return { treeEl, rows: visible, kids: withKids, rowEls, folded };
 }
 
 /** A row's place in its sibling group plus its own fold state — one bag rather than four

@@ -231,6 +231,59 @@ describe('the band’s progress line', () => {
 			en['column.rollupTooltip'].one.replace('{done}', '1').replace('{count}', '1'),
 		);
 	});
+
+	/**
+	 * The bug this pins: `drawAbsences` used to read `rows[0]` alone to decide whether
+	 * Progress is absent, and `done.unconfigured` is a PER-RELEASE answer since the gate
+	 * moved to the workflows a release's members actually span (Carried finding 1, the test
+	 * above) — so a base mixing a Deliverables-only release (progress CONFIGURED, through
+	 * `deliverableStateProperty`) with an ordinary one (progress UNCONFIGURED, `stateProperty`
+	 * cleared) got two different answers depending on which release happened to sort first.
+	 * `Alpha`/`Beta` control the ordering directly through `releaseIndex`'s own path
+	 * tie-break (`withinGroupOrder`/`rank` both tie here — no target date, no order — so the
+	 * final tie-break, the path string, decides), rather than trusting file-add order or a
+	 * property the domain module does not sort on.
+	 *
+	 * Both bands must show their own truth regardless of ordering (one bar, one none — the
+	 * "one denominator, one predicate, one answer" rule one level up), and the note beneath
+	 * the list must give the SAME answer about Progress in both orderings: since at least one
+	 * release always has it configured, Progress is never named absent — `rows.every`, never
+	 * `rows[0]`. The old code passed the first ordering below by accident (`rows[0]` happened
+	 * to be the configured release, so it silently said nothing — arguably still short of the
+	 * mark, but not the loud defect) and FAILED the second (`rows[0]` was the unconfigured
+	 * release, so the note falsely claimed Progress absent while the Deliverables band right
+	 * beside it plainly showed one) — this test drives both, so an ordering-dependent
+	 * regression cannot hide behind whichever one a future edit happens to exercise.
+	 */
+	it('agrees about Progress across a mixed-config base regardless of which release sorts first', () => {
+		function mixedVault(deliverablesFirst: boolean): FakeVault {
+			const vault = new FakeVault();
+			const [deliv, plan] = deliverablesFirst ? ['Alpha', 'Beta'] : ['Beta', 'Alpha'];
+			vault.addFile(`${deliv}.md`, { frontmatter: { type: 'Release', version: '0.1.0' } });
+			vault.addFile('DeliverableItem.md', {
+				frontmatter: { type: 'Deliverable', release: `[[${deliv}]]`, docStatus: 'Done' },
+			});
+			vault.addFile(`${plan}.md`, { frontmatter: { type: 'Release', version: '0.2.0' } });
+			vault.addFile('PlanItem.md', { frontmatter: { type: 'PBI', release: `[[${plan}]]`, status: 'Done' } });
+			return vault;
+		}
+		const config = { ...RELEASE_CONFIG, stateProperty: '', deliverableStateProperty: 'note.docStatus' };
+
+		for (const deliverablesFirst of [true, false]) {
+			const { containerEl } = makeReleaseView(mixedVault(deliverablesFirst), config);
+			const bands = [...containerEl.querySelectorAll('.pbl-rel-band')];
+			expect(bands).toHaveLength(2);
+			const [first, second] = deliverablesFirst ? bands : [bands[1], bands[0]];
+			expect(first.querySelector('.pbl-rel-bar'), 'Deliverables release should show a bar').not.toBeNull();
+			expect(second.querySelector('.pbl-rel-bar'), 'ordinary release should show no bar').toBeNull();
+
+			// Not globally absent either way: one release DOES have it configured.
+			const note = containerEl.querySelector('.pbl-rel-note')?.textContent ?? '';
+			expect(note, `Progress must not be claimed absent (deliverablesFirst=${deliverablesFirst})`).not.toContain(
+				'Progress',
+			);
+		}
+	});
 });
 
 describe('what turns a band red, and what a shipped one shows', () => {

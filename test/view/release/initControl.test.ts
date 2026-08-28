@@ -55,7 +55,9 @@ describe('the release view’s ✨', () => {
 		expect(view.viewEl.querySelector('.pbl-empty .pbl-rel-init')).not.toBeNull();
 	});
 
-	it('writes no note from either position', async () => {
+	it('writes no note from the bar position', async () => {
+		// Only the bar is driven here; the category claim ("this view never edits a note")
+		// is held separately and for both positions by `releaseNeverEdits.test.ts`.
 		const { view, vault } = mountRelease({ bindAll: false });
 		const before = vault.files.size;
 		view.viewEl.querySelector<HTMLButtonElement>('.pbl-rel-init')!.click();

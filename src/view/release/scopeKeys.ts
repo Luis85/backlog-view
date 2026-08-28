@@ -1,5 +1,5 @@
 import type { ReleaseView } from './releaseView';
-import { foldedPaths, ScopeDraw, toggleFold } from './scopeTree';
+import { ScopeDraw, toggleFold } from './scopeTree';
 
 /**
  * The scope tree's keyboard: one tab stop on the container and a roving
@@ -31,7 +31,7 @@ import { foldedPaths, ScopeDraw, toggleFold } from './scopeTree';
  * in sequence) rather than the cycle `npm run analyze` refuses.
  */
 export function wireScopeKeys(view: ReleaseView, treeEl: HTMLElement, releasePath: string, draw: ScopeDraw): void {
-	const { rows, kids, rowEls } = draw;
+	const { rows, kids, rowEls, folded } = draw;
 	const visible = rows;
 	let active = 0;
 	// The one element currently marked, cleared by reference rather than by a fresh scan
@@ -69,7 +69,12 @@ export function wireScopeKeys(view: ReleaseView, treeEl: HTMLElement, releasePat
 	};
 	treeEl.addEventListener('keydown', (evt) => {
 		const row = visible[active];
-		const folded = foldedPaths(view, releasePath);
+		// `draw.folded` — the fold set `drawScopeTree` already computed for THIS render —
+		// never a fresh `foldedPaths` call here: this listener is rebuilt on every render
+		// (`toggleFold`/`setHideDone` both call `view.render()`), so the value cannot go
+		// stale between renders, and asking again on every keydown was a full
+		// `loadViewState` JSON parse and validation paid on every ArrowDown of a
+		// key-repeat rather than once per render. See `ScopeDraw.folded`'s own comment.
 		const open = !folded.has(row.item.file.path);
 		// Asked of the RENDERED tree, never of the fold set. A path can sit in
 		// `folds.collapsed` long after the row it names has lost every scoped child — a

@@ -225,7 +225,13 @@ export class ReleaseView extends BasesView {
 
 	/** The one class in {@link FOCUS_HANDLE_CLASSES} the currently focused element carries,
 	 *  or null when focus is outside this view or on something the redraw does not track —
-	 *  a per-row control, say, which a fold's own restore already answers for. */
+	 *  a per-row control, say. `scopeHadFocus` (above) only covers the KEYBOARD path there:
+	 *  it asks whether the TREE itself (`tabindex="0"`, a `role="tree"` composite) held
+	 *  focus, which is true for a keyboard user (arrows move the roving selection without
+	 *  ever moving focus off the tree) but false the moment a MOUSE presses a per-row
+	 *  control such as `.pbl-twisty` — that click focuses the twisty itself, this method
+	 *  returns null for it (twisty is not in `FOCUS_HANDLE_CLASSES`), and focus lands on
+	 *  `document.body` after the redraw. Real, unfixed, and outside this increment's scope. */
 	private focusedControlClass(): string | null {
 		const active = document.activeElement;
 		if (!(active instanceof HTMLElement) || !this.viewEl.contains(active)) return null;

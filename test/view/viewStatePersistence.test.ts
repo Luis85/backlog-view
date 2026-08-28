@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
-import { CARD_SCOPE, RELEASE_FOLD, seedTimelineScope, TIMELINE_SCOPE } from '../../src/view/viewState';
+import { CARD_SCOPE, RELEASE_FOLD } from '../../src/view/viewState';
 import { FakeVault } from '../helpers/vault';
 import { fixture, makeView, refresh, rowByTitle, titlesOf, useViewHarness } from '../helpers/view';
 
@@ -282,58 +282,13 @@ describe('collapse state persistence', () => {
 	});
 
 	/**
-	 * `seedTimelineScope`'s own copy of the same rule, checked directly against the
-	 * function rather than through a saved view: unguarded, it would add
-	 * `TIMELINE_SCOPE + <release-fold key>` to both Sets — a compound naming no note,
-	 * that can never match anything again, while still spending a slot against
-	 * `MAX_FOLDS`. That pollution never reaches disk regardless of this guard, because
-	 * `flush()`'s own vault-existence prune (unrelated to this fix, and already
-	 * covered by the tests around it) discards any settled key whose note does not
-	 * exist — and this compound never names one. So a saved view cannot tell the two
-	 * apart, and the check has to read the Sets directly, before that unrelated prune
-	 * ever runs.
-	 */
-	it('does not seed a nonsense timeline-scope compound from a release-scoped key', () => {
-		const releaseFoldKey = `${RELEASE_FOLD}Releases/0.8.md\u0000Feature B1.md`;
-		const collapsed = new Set([releaseFoldKey]);
-		const settled = new Set([releaseFoldKey]);
-
-		seedTimelineScope(collapsed, settled);
-
-		const compound = `${TIMELINE_SCOPE}${releaseFoldKey}`;
-		expect(settled).not.toContain(compound);
-		expect(collapsed).not.toContain(compound);
-	});
-
-	/**
-	 * The exclusion has to leave the migration's own job alone: a release key sits
-	 * beside an ORDINARY bare path here, and only the release key's own carry is
-	 * skipped. Pinning this against `seedTimelineScope` directly is what tells the
-	 * `continue` apart from a bug that skipped every key sharing its iteration —
-	 * the release-only case above cannot, since an empty result there is also what a
-	 * `return` on the very first key would produce.
-	 */
-	it('still seeds an ordinary bare path sitting beside a release-scoped key', () => {
-		const releaseFoldKey = `${RELEASE_FOLD}Releases/0.8.md\u0000Feature B1.md`;
-		const collapsed = new Set(['Epic B.md', releaseFoldKey]);
-		const settled = new Set(['Epic B.md', releaseFoldKey]);
-
-		seedTimelineScope(collapsed, settled);
-
-		expect(settled).toContain(`${TIMELINE_SCOPE}Epic B.md`);
-		expect(collapsed).toContain(`${TIMELINE_SCOPE}Epic B.md`);
-		const compound = `${TIMELINE_SCOPE}${releaseFoldKey}`;
-		expect(settled).not.toContain(compound);
-		expect(collapsed).not.toContain(compound);
-	});
-
-	/**
-	 * `seedCardScope`'s own copy of the same question, checked the way its effect is
-	 * actually observable — through a saved view, since a card fold (unlike the
-	 * timeline compound above) survives to disk for a path that names a real note.
-	 * A release key beside an ordinary leaf path must seed the leaf's card exactly as
-	 * it would with no release key present, so the exclusion is confirmed to be
-	 * scoped to the release key alone rather than to the whole migration.
+	 * `seedCardScope`'s own copy of the same question, checked through a saved view
+	 * because its effect — unlike `seedTimelineScope`'s identical exclusion, which is
+	 * defensive and unobservable outside `view/viewState.ts` (see that function's own
+	 * comment) — DOES survive to disk: a card fold on a path that names a real note. A
+	 * release key beside an ordinary leaf path must seed the leaf's card exactly as it
+	 * would with no release key present, so the exclusion is confirmed to be scoped to
+	 * the release key alone rather than to the whole migration.
 	 */
 	it('still seeds an ordinary leaf’s card fold sitting beside a release-scoped key', () => {
 		const vault = fixture();

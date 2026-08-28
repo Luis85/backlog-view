@@ -177,11 +177,18 @@ function scopeOf(key: string): string {
  * touching a state this version wrote — and makes it idempotent, since the copy it
  * makes is exactly what stops it running again.
  */
-// Exported for tests only: `flush()`'s own vault-existence prune (below) always
-// discards a `RELEASE_FOLD` compound before it can reach storage, whether or not this
-// guard runs — the two never disagree at the persisted result, only in the Sets
-// between `restore()` and the next flush, which nothing outside this module can read.
-export function seedTimelineScope(collapsed: Set<string>, settled: Set<string>): void {
+// NOT exported. `flush()`'s own vault-existence prune (below) always discards a
+// `RELEASE_FOLD` compound before it can reach storage, whether or not this guard runs —
+// the two never disagree at the persisted result, only in the Sets between `restore()`
+// and the next flush, which nothing outside this module can read. The guard stays
+// anyway: it costs one line and keeps this migration and `seedCardScope` beside it
+// symmetric for the next reader, but its effect is unobservable from outside the
+// module, and exporting production code to let a test watch an unobservable effect buys
+// a green line at the cost of a wider surface — the module's own boundary is worth more
+// than that one assertion. `seedCardScope`'s identical-looking guard is not the same
+// case and keeps its own direct test: its `notePath` reduction seeds a REAL note's card
+// as collapsed, which DOES reach disk, so that one is checked through a saved view.
+function seedTimelineScope(collapsed: Set<string>, settled: Set<string>): void {
 	const keys = [...settled];
 	if (keys.some((key) => key.startsWith(TIMELINE_SCOPE))) return;
 	for (const key of keys) {

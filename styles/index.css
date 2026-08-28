@@ -138,9 +138,12 @@
    declare `display` on it — but this one AGREES with `view.css` (`flex`) rather than
    overriding it, so nothing here is decided by order either. */
 @import "./release.css";
-/* Position NOT load-bearing, for the identical reason: every selector here is
-   `.pbl-rel-*` too, a vocabulary no other partial declares (`release.css`'s own is a
-   disjoint set of the same prefix), and nothing here re-targets a class another file
-   also writes — including `release.css` itself, whose `.pbl-rel-bar` and
-   `.pbl-rel-spacer` this file only ever USES, never redeclares. */
+/* Position NOT load-bearing, but not because nothing here overlaps `release.css`.
+   `.pbl-row`/`.pbl-row:hover` (owned by `tree.css`) and `.pbl-empty-filter-icon` (owned
+   by `toolbar.css`) ARE re-targeted here, and what decides those sites is SPECIFICITY,
+   stated at each rule in this file: (0,3,0) against `tree.css`'s (0,2,0), and (0,2,0)
+   against `toolbar.css`'s (0,1,0). Both win on specificity alone, so this partial's own
+   import position is not what makes either rule apply. `.pbl-rel-bar` and
+   `.pbl-rel-spacer`, `release.css`'s own vocabulary, are the ones this file only ever
+   USES rather than redeclares. */
 @import "./releaseScope.css";

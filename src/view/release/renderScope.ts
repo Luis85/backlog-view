@@ -22,11 +22,12 @@ import { wireScopeKeys } from './scopeKeys';
  * TYPE alone so the pair stays acyclic at runtime.
  *
  * **This module is also what keeps `scopeTree.ts` and `scopeKeys.ts` themselves acyclic.**
- * The tree's keyboard needs the fold set `scopeTree.ts` owns (`foldedPaths`, `toggleFold`),
- * and `scopeTree.ts` has no reason to import the keyboard back — so `drawScopeTree` returns
- * what it drew (`ScopeDraw`) instead of wiring the keyboard itself, and this module, which
- * already imports both leaves, calls `wireScopeKeys` as the second step. Two one-directional
- * edges from here rather than one cycle between them.
+ * The tree's keyboard needs the fold set `scopeTree.ts` owns (`ScopeDraw.folded`,
+ * `toggleFold`), and `scopeTree.ts` has no reason to import the keyboard back — so
+ * `drawScopeTree` returns what it drew (`ScopeDraw`, `folded` included, so the keyboard
+ * never has to ask `foldedPaths` again itself) instead of wiring the keyboard itself, and
+ * this module, which already imports both leaves, calls `wireScopeKeys` as the second
+ * step. Two one-directional edges from here rather than one cycle between them.
  *
  * **Nothing here writes a note.** There is no gate to route through and nothing to
  * withhold: the back control sets view state, a row's click opens a note (`scopeTree.ts`),
