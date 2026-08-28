@@ -141,10 +141,13 @@ Between the header and the scroller, so it never scrolls away. Three controls:
   **4a** a parent whose children all hid renders as a LEAF — no disclosure, no
   `aria-expanded` — rather than an expander over nothing; **4b** a context row whose
   children have all hidden hides too, since it exists only to place a visible member;
-  **4c** everything hidden draws the **all-done state**, naming how many items it is talking
-  about, never a blank scroller — `src/view/render/emptyStates.ts` already owns that state
-  for the backlog tree, and the toggle that turns hiding back off stays on the toolbar
-  beside it.
+  **4c** everything hidden draws an **all-done state**, naming how many items it is talking
+  about, never a blank scroller. `renderAllDoneState` in `src/view/render/emptyStates.ts`
+  cannot be reused as it stands — it takes a `BacklogViewHost` this view does not have and
+  offers `config.set('showCompleted', true)`, a `.base` setting this toggle deliberately is
+  not — so this screen draws its own, the same call `renderScope.ts` already made about
+  `render/rows.ts`. The way back is the toolbar's own toggle, which stays on screen beside
+  it.
   It does NOT change a rollup: `3/5` stays `3/5` with the three hidden, which is that same
   note's own guarantee — hiding is a render decision.
   **The toggle is gated on exactly the predicate the `done` figure is gated on** — the
@@ -195,8 +198,17 @@ a key another option already names.
   bind-and-report pair is extracted from `newRelease.ts` and both entry points call it —
   the root guide's "one move, three inputs" shape: the reporting lives where the binding
   does, never beside each caller.
-- Nothing left to bind → the button is not drawn. A control that can only no-op is worse
-  than absent; `src/view/estimation/toolbar.ts` states the same rule for its own ✨.
+- **Where it is drawn decides whether it can be withheld, and this spec cited the wrong
+  precedent until the plan was written.** `estimation/toolbar.ts` and `render/toolbar.ts`
+  both draw their ✨ UNCONDITIONALLY — a toolbar control that came and went as the config
+  changed would be worse than one that no-ops. The withholding rule is the EMPTY-STATE
+  one, `renderSetupCta` in `src/view/render/emptyStates.ts`: it is offered only when
+  something it would fix is still adoptable, because "an option someone CLEARED is a
+  decision this must not overrule". So:
+  **on the index's actions bar the ✨ is always drawn**, and a press that binds nothing
+  says so rather than looking dead; **on the `noMembership` empty state it is withheld**
+  when nothing is adoptable, exactly as `renderSetupCta` is, and the guidance beside it
+  still names the option to set.
 - It also appears on the `noMembership` scope empty state, which is the screen a reader
   reaches with nothing to bind it from — today that state names the option and offers no way
   to set it.
@@ -257,8 +269,9 @@ Every claim gets one that fails without it — watched failing, then restored.
   shape is discarded rather than trusted.
 - Keyboard: one tab stop; Left on an open row folds it and on a closed one steps out; Enter
   opens through `openTarget`.
-- ✨: not drawn with nothing to bind; drawn on the `noMembership` empty state; a bound
-  option is never re-bound; no note is written (asserted on the call, not by driving
+- ✨: always drawn on the index bar and withheld on the `noMembership` empty state when
+  nothing is adoptable — both directions, since the two positions answer differently; a
+  bound option is never re-bound; no note is written (asserted on the call, not by driving
   screens); **a standalone press that bound something reports it, and one that bound
   nothing stays quiet** — both directions, driven through the button rather than through
   `newRelease`.
