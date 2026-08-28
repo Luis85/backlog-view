@@ -1,0 +1,178 @@
+# Assignees come from the resource notes
+
+Date: 2026-08-28 · Branch: `claude/resource-management-assignees-lmho3m`
+
+Three open PBIs of [[Resource Management]] land together, because the value shape decided
+here makes them one change:
+
+- [[Rows from the Resource notes]] — the roster and the roadmap's rows are the `Resource`
+  notes the base returned, and `resourceNames` is removed.
+- [[Linking an item to a resource]] — an item names a resource by wikilink, every reader
+  resolves it, and the assignee menu offers `New resource...`.
+- [[An absence names its resource by link]] — the absence writer stops spelling a name.
+
+Out of scope: [[What a resource carries]] (capacity, role, retired). The creation prompt
+stays Name-only.
+
+## Decisions taken
+
+| Question | Answer |
+| --- | --- |
+| The value written to the assignee key | A wikilink to the resource's note. No fallback, no coexistence, no migration — [[No migration off the string assignees]] holds the cost. |
+| Order of the rows and the menu entries | Alphabetical by note title, for both. Stable when the base's sort or filter changes, and it is what the assignee menu already does. |
+| Width of the increment | The three PBIs above and nothing else. |
+
+## 1 — The model keeps the resources it already refuses
+
+`readItems`' resource gate stops returning a bare `null` and diverts, the shape
+`divertAbsence` has one line above it: it pushes `{ file, title }` onto `store.resources`
+and returns null, so no `BacklogItem` exists and nothing that walks the tree, ranks
+siblings, counts a rollup or draws a projection can meet one.
+
+**Only a note the base RETURNED is kept** — the `entry === null` guard `divertAbsence`
+already carries. That is the context-row rule stated once at the keeping rather than at
+each consumer: a `Resource` the filter excluded is not a row, not a menu entry and not a
+drop target. This is the whole of [[Rows from the Resource notes]] extension 2b, and it
+replaces that note's earlier reading that a context resource "renders and parents": nothing
+downstream of this can draw one, because nothing downstream is handed one.
+
+`BacklogModel.resources` carries the list, sorted by title. No second read path into the
+vault opens, and `test/domain/modelCost.test.ts`'s one-`getFileCache`-per-note pin holds
+because the cache is already open on that line.
+
+## 2 — The assignee value becomes a link
+
+`RawItem.assigneeValue: string | null` becomes `assigneeEntry: LinkEntry | null`, read by
+`readFirstLinkEntry` — the reader the iteration and the release already share, so this adds
+no parsing and no new shape.
+
+Every consumer resolves it:
+
+- **Membership, the checkmark and the write compare by PATH**, the iteration's own rule.
+  Two spellings of one note are one resource.
+- **The name shown is the resolved note's title**, never the raw `[[...]]` text.
+- **An entry that resolves to nothing is nobody.** It renders as its own text, unstyled,
+  and carries no row, no chip styling, no menu entry and no membership. That covers the
+  deleted note and every plain string left over from before this ships. It is not an error
+  and is not repaired.
+- **Case folding over a resource name is gone.** A link resolves or it does not.
+  `sameValue` has no meaning here and every site still calling it on an assignee is a site
+  still thinking in strings.
+
+## 3 — One more link writer, not a fourth shape
+
+`ItemWrite.assignee` becomes `TFile | null` and leaves `applyLabels`.
+
+`applyIteration` and `applyRelease` are already two statements of one rule — `wikilinkTo`
+against the target note's path, an unconfigured key dropped, `null` deletes. The assignee
+is the third, so they collapse into **`applyLinks`**: one loop over a list pairing a planned
+file with its configured key, `applyLabels`' own shape and its own reason. `applyLabels`
+keeps risk, priority and the iteration goal.
+
+This is the case the root guide said to re-examine at, answered the way the third label
+property answered it: the third instance is extracted, not copied.
+
+`storage/writeKeys.ts` keeps the assignee key in `touchedKeys` on the same condition the
+writer writes on, so a link and its removal stay undoable.
+
+## 4 — The lanes are the resource notes
+
+`deriveLanes` builds its rows from `model.resources`, in that list's order, keyed by
+**path**.
+
+- `laneNamed` and its minting are removed. No row is ever minted by a name again, from any
+  of the three sources that could mint one.
+- `ResourceLane` gains the resource's `file`; `declared` is dropped, because every row is
+  now declared by a note existing and "not one of the declared resources" is a hint about
+  an option that no longer exists.
+- `placeAssigned` resolves `item.assigneeEntry?.file?.path` to a row. No row — unassigned,
+  unresolved, or resolved to a note that is not a `Resource` in the results — shelves, and
+  the shelf's count says how many.
+- `placeContextLane` resolves the same way.
+- **An absence names its resource by link.** `Absence.resource` becomes an entry read
+  through the same reader, and an absence that resolves to no row draws nowhere: there is
+  no row for it to mint, which is [[An absence names its resource by link]] extension 1a
+  read from this end.
+- **The empty state.** With no `Resource` in the results at all, the axis says the base
+  returned no resources and names the filter as the thing to change — the only thing that
+  can be wrong, now that the population is the results.
+- The milestones' row is unchanged: `markers: true`, drawn above the roster, never a
+  resource ([[Milestones out of the resource rows]]).
+
+## 5 — `resourceNames` is removed, and `declareResource` with it
+
+Removed, not deprecated — a setting read by nothing tells the user something untrue:
+
+- the `resourceNames` view option and its hint,
+- `BacklogSettings.resourceNames`, its default and its `resolveSettings` line,
+- its entry in `settingsConsistency`'s vocabulary list, and the axis warning restated in
+  terms of notes,
+- `mergedValues`' three-source union at both callers (`assigneeChoices`,
+  `promptNewResource`'s `known`),
+- **`declareResource` entirely** — the whole function and the `.base` write that appended a
+  newly assigned name to the roster, with its comma-separator refusal and its
+  read-at-commit-time rule. A roster that is the notes needs no declaring, so this side
+  effect and the ordering rule `test/view/resourceRoster.test.ts` states from it both go.
+
+## 6 — The menu, and `New resource...`
+
+`Set assignee` offers, in order:
+
+1. every `Resource` note in the results, alphabetically by title, **checked exactly when
+   picking it would write nothing** — asked of the plan, never of a comparison beside it,
+   which is the rule two properties have already drifted on and a link is a third value
+   shape to drift on;
+2. `Clear assignee`, offered on the key's PRESENCE (`ownKeys.assignee`), never its value;
+3. `New resource...`.
+
+**`New assignee...` is removed.** A typed name writes a value that resolves to nobody,
+which is the one value this flow must not produce.
+
+With no `Resource` in the results the menu holds `New resource...` alone and says so rather
+than opening empty — the same failure the roadmap reports from the other end, and a
+base-filter problem both times. A context row still gets no menu at all and a static chip.
+
+`promptNewResource` gains an optional "then do this with the created file" callback. The
+assignee menu passes one that writes the link, so **the note exists before the link names
+it** and a failed creation writes no link — two writes, deliberately, because a link to a
+note that does not exist is exactly what this use case must not produce. Its `known` list,
+and so its duplicate warning, becomes the resource notes: the warning can now claim what it
+could not on 2026-08-22.
+
+The toolbar's `New resource` button keeps its own callback-free call.
+
+## Error handling and refusals
+
+Unchanged, and each already has a gate:
+
+- The `configProblems` gate runs before the form and again at submit, both for the toolbar
+  path and the menu path.
+- A write aimed at an `outsideFilter` item refuses the whole batch.
+- A write aimed at a `Resource` note is refused by `applyWrites`' live-type gate.
+- A cancel writes nothing; a blank name refuses and writes nothing.
+- An unconfigured assignee key reads nothing, writes nothing and shows no menu.
+
+## Testing
+
+Node tests for the domain half — the divert and its `entry === null` guard, the link read,
+the path-keyed lane build, the shelf reasons, the alphabetical order, the plan and its
+checkmark. jsdom for the menus, the chip, the drop, the Alt+arrow ladder and the two
+creation paths. `test/view/contextRowWrites.test.ts` and
+`test/view/contextCardWrites.test.ts` gain the new write path so the category invariant
+holds for code not yet written.
+
+`test/view/resourceRoster.test.ts` is deleted with the roster it tests.
+
+## What no test here can reach
+
+Both need `npm run test-build` and a live vault:
+
+- how a stray leftover string reads in the chip beside a resolved resource's name, and
+  whether "unstyled" is legible or looks broken;
+- the resources axis's empty state, and the assignee menu holding `New resource...` alone.
+
+## Register work
+
+Three PBI notes move to Done with their `files` lists, `Rows from the Resource notes`'
+"stated order" is stated, the `Resources as notes` feature's landmine ordering is marked
+spent, and `CHANGELOG.md` gains an `[Unreleased]` entry naming the breaking change.
