@@ -75,7 +75,7 @@ describe('the roster the model keeps', () => {
 		const model = buildModel(vault.app, vault.entries(), settings);
 
 		expect(model.resources.map((r) => r.title)).toEqual(['Alex', 'Sam']);
-		expect(model.all.map((i) => i.title)).toEqual(['Epic A']);
+		expect(model.items.map((i) => i.title)).toEqual(['Epic A']);
 	});
 
 	it('keeps no resource the base did not return', () => {
@@ -213,7 +213,7 @@ describe('what an item says its assignee is', () => {
 		const vault = new FakeVault();
 		vault.addFile('Alex.md', { frontmatter: { type: 'Resource' } });
 		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10, assignee: '[[Alex]]' } });
-		const epic = buildModel(vault.app, vault.entries(), settings).all[0];
+		const epic = buildModel(vault.app, vault.entries(), settings).items[0];
 
 		expect(assigneeName(epic)).toBe('Alex');
 		expect(epic.assigneeEntry?.file?.path).toBe('Alex.md');
@@ -226,7 +226,7 @@ describe('what an item says its assignee is', () => {
 		const vault = new FakeVault();
 		vault.addFile('Alex.md', { frontmatter: { type: 'Resource' } });
 		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10, assignee: 'Alex' } });
-		const epic = buildModel(vault.app, vault.entries(), settings).all[0];
+		const epic = buildModel(vault.app, vault.entries(), settings).items[0];
 
 		expect(epic.assigneeEntry?.file?.path).toBe('Alex.md');
 	});
@@ -236,7 +236,7 @@ describe('what an item says its assignee is', () => {
 		// error and is not repaired.
 		const vault = new FakeVault();
 		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10, assignee: 'Sarah' } });
-		const epic = buildModel(vault.app, vault.entries(), settings).all[0];
+		const epic = buildModel(vault.app, vault.entries(), settings).items[0];
 
 		expect(assigneeName(epic)).toBe('Sarah');
 		expect(epic.assigneeEntry?.file).toBe(null);
