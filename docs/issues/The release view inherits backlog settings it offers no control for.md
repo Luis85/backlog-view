@@ -57,29 +57,47 @@ right call and was a correction to the plan that built it: a `Deliverable` and a
 each answer "done" against their OWN workflow, and reaching for the requirements reading is
 named in `src/domain/CLAUDE.md` as the recurring form of that mistake.
 
-**But those two workflows were four more inherited settings — now two remain.**
-`item.deliverableDone` and `item.testDone` are computed from `deliverableStateProperty` /
-`deliverableDoneValues` and the two test equivalents. The Deliverable pair joined this view's
-own options menu beside the shared state band (2026-08-28), the identical narrowing the
-shared pair already got: a release holding only Deliverables can now have its progress
-configured from this screen rather than only through a hand-edited `.base` or one that
-started life as a backlog view. `testStateProperty` / `testDoneValues` did not, so in a vault
-whose BACKLOG view runs a distinct Test workflow, a release's Test-catalog members' progress
-is still counted against the shared state property instead of their own — `8 of 14 done`
-decided by a rule the reader configured on another screen. That is the one workflow this
-narrowing left unclosed.
+**But those two workflows were four more inherited settings — and now this instance is
+closed, for two different reasons.** `item.deliverableDone` and `item.testDone` are computed
+from `deliverableStateProperty` / `deliverableDoneValues` and the two test equivalents. The
+Deliverable pair joined this view's own options menu beside the shared state band
+(2026-08-28), the identical narrowing the shared pair already got: a release holding only
+Deliverables can now have its progress configured from this screen rather than only through a
+hand-edited `.base` or one that started life as a backlog view.
 
-**Bounded rather than harmless.** `resolveSettings` (`src/domain/settingsResolve.ts`) falls
-back to the shared state property whenever a secondary key is unset, and that fallback is
-deliberate, so a vault that never configured a separate workflow gets the right answer by
-construction. Only the vault that did configure one is wrong, and it is wrong silently.
+`testStateProperty` / `testDoneValues` did NOT join the menu, and this note originally read
+that as the one workflow this narrowing left unclosed — wrong, verified against the code
+rather than assumed: **a release can never hold a Test-catalog member at all.**
+`membershipTarget` (`src/domain/releases.ts`) resolves a note's own membership property
+through `if (!inPlan(item) || isMarkerType(item.typeName)) return UNRESOLVED;`, and `inPlan`
+(`src/domain/model.ts`) is `!inCatalog(item) && !isIterationType(...)` with `inCatalog`
+(`src/domain/itemTypes.ts`) true exactly when `item.ladder === TEST_LEVELS` — the test
+catalog. A `Test suite`, a `Test case`, or a `Task` chained onto the test ladder therefore
+never resolves to a release at all; the writing end states the identical refusal
+(`mayHoldField`'s `field === 'release'` branch, `itemTypes.ts`: "a test-catalog note is not
+the plan's, so [it] may not hold a membership"). `workflowConfigured` / `missingWorkflows`
+(`src/domain/releases.ts`) say so directly in their own comment: `'test' never appears in
+kinds`, "so only two branches of `workflowConfigured` are reachable; a third would be
+untestable dead code." The population a `testStateProperty` option would read from a release
+is empty by construction, not merely unconfigured — declaring it would add a control nothing
+on this screen would ever consult. For THIS instance, both workflows a release's members can
+actually belong to are now on the release view's own options menu.
 
-**Declaring the remaining options is not the fix**, which is why this is recorded here rather
-than patched. Each increment that added a figure declared exactly the options that figure
-reads and said in its own design that it narrows this issue and does not close it — first the
-shared pair, then the Deliverable pair. Two more (the test workflow's) would move the line
-again without settling the rule, and the rule is what this note is for — see **What would
-close it** below.
+**Bounded rather than harmless, while the Deliverable gap lasted.** Before 2026-08-28,
+`resolveSettings` (`src/domain/settingsResolve.ts`) fell back to the shared state property
+whenever `deliverableStateProperty` was unset — deliberate — so a vault that never configured
+a separate Deliverable workflow got the right answer by construction; only a vault that did
+was silently wrong. `testStateProperty` never had an equivalent gap to be bounded, for the
+reason above.
+
+**This instance is closed; the wider issue is not.** Each increment that added a figure
+declared exactly the options that figure reads and said in its own design that it narrows
+this issue without closing it — first the shared pair, then the Deliverable pair. That held:
+closing the workflow-progress gap for both real workflows still leaves
+`inferFolderHierarchy`, `hierarchyOnly`, and every other field `resolveSettings` returns
+beyond the four named above, unseen and unchangeable from this view — see **What would close
+it** below for the shape of what remains. A fifth pair of options for the test workflow is not
+part of it.
 
 ## How a release view comes to carry them
 
