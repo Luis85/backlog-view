@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildModel } from '../../src/domain/model';
-import { assigneeName, rosterOf } from '../../src/domain/readItems';
+import { assigneeName, resourceLabelsOf } from '../../src/domain/readItems';
 import { settingsWith } from '../helpers/settings';
 import { FakeVault } from '../helpers/vault';
 
@@ -39,6 +39,41 @@ describe('the roster the model keeps', () => {
 
 		expect(model.resources).toEqual([]);
 	});
+
+	it('breaks a title tie by path, so two resources of one name sort the same way regardless of Base order', () => {
+		// `localeCompare` returns 0 for two resources sharing a basename, so without a
+		// tie-breaker `Array.sort`'s stability would hand them back in the incoming Bases
+		// order — the one case where the alphabetical sort (chosen over Base order BECAUSE
+		// it is stable across a Base's own sort changing) stops being stable itself.
+		const forward = new FakeVault();
+		forward.addFile('Support/Alex.md', { frontmatter: { type: 'Resource' } });
+		forward.addFile('Team/Alex.md', { frontmatter: { type: 'Resource' } });
+		const forwardModel = buildModel(forward.app, forward.entries(), settings);
+
+		const reversed = new FakeVault();
+		reversed.addFile('Team/Alex.md', { frontmatter: { type: 'Resource' } });
+		reversed.addFile('Support/Alex.md', { frontmatter: { type: 'Resource' } });
+		const reversedModel = buildModel(reversed.app, reversed.entries(), settings);
+
+		expect(forwardModel.resources.map((r) => r.file.path)).toEqual(reversedModel.resources.map((r) => r.file.path));
+	});
+
+	it('builds the label index once, disambiguating a colliding pair and leaving a lone name plain', () => {
+		// `assigneeBroken` and the assignee chip's label used to scan `resources` per row
+		// (`.some`/`.find`) — an O(items × resources) cost with an allocation per row,
+		// which this codebase's row-cost rule refuses a second superlinear pass over. The
+		// map is built ONCE, here, so both call sites are an O(1) lookup instead (review,
+		// PR #207 fix round 1).
+		const vault = new FakeVault();
+		vault.addFile('Team/Alex.md', { frontmatter: { type: 'Resource' } });
+		vault.addFile('Support/Alex.md', { frontmatter: { type: 'Resource' } });
+		vault.addFile('Sam.md', { frontmatter: { type: 'Resource' } });
+		const model = buildModel(vault.app, vault.entries(), settings);
+
+		expect(model.resourceLabels.get('Team/Alex.md')).toBe('Team/Alex');
+		expect(model.resourceLabels.get('Support/Alex.md')).toBe('Support/Alex');
+		expect(model.resourceLabels.get('Sam.md')).toBe('Sam');
+	});
 });
 
 describe('what an item says its assignee is', () => {
@@ -76,10 +111,10 @@ describe('what an item says its assignee is', () => {
 	});
 });
 
-describe('rosterOf', () => {
-	it('reads no resources before the first model exists, and the roster once one does', () => {
-		expect(rosterOf(null)).toEqual([]);
-		const roster = [{ file: {} as never, title: 'Alex' }];
-		expect(rosterOf({ resources: roster })).toBe(roster);
+describe('resourceLabelsOf', () => {
+	it('reads no labels before the first model exists, and the index once one does', () => {
+		expect(resourceLabelsOf(null)).toEqual(new Map());
+		const labels = new Map([['Alex.md', 'Alex']]);
+		expect(resourceLabelsOf({ resourceLabels: labels })).toBe(labels);
 	});
 });

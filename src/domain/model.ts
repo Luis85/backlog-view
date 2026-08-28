@@ -2,7 +2,7 @@ import { App, BasesEntry } from 'obsidian';
 import { Absence } from './absences';
 import { inferFolderParent } from './folderNotes';
 import { DependencyNode, resolveDependencies } from './dependencies';
-import { createItems, RawItem, RawStore, ResourceNote } from './readItems';
+import { createItems, namedTargets, RawItem, RawStore, ResourceNote } from './readItems';
 import {
 	childLevelIndex,
 	EXTRA_TYPE_RANK,
@@ -221,6 +221,20 @@ export interface BacklogModel {
 	 * `divertResource`.
 	 */
 	resources: ResourceNote[];
+	/**
+	 * Every resource's OWN path, mapped to the label {@link namedTargets} gives it —
+	 * built once here, alongside `resources`, rather than asked of `namedTargets` again
+	 * at every row. `assigneeBroken` and the assignee chip's label both used to scan
+	 * `resources` per row (`.some`/`.find`), an O(items × resources) allocation-per-row
+	 * cost this codebase's row-cost rule refuses a second superlinear pass over — see
+	 * `docs/domain/CLAUDE.md`'s cost section and
+	 * `docs/requirements/A row costs its content, not its wiring.md`. A `Map.has`/`.get`
+	 * against this index is O(1) instead, and `namedTargets` already has to run once here
+	 * regardless, to sort `resources` disambiguated the same way. Read through
+	 * `resourceLabelsOf` (`readItems.ts`) rather than directly, so "no model yet" is
+	 * answered once.
+	 */
+	resourceLabels: ReadonlyMap<string, string>;
 }
 
 export function buildModel(app: App, entries: BasesEntry[], settings: BacklogSettings): BacklogModel {
@@ -245,6 +259,20 @@ export function buildModel(app: App, entries: BasesEntry[], settings: BacklogSet
 	// A focus naming an EXTRA type re-roots at that type by name: it has no rung to
 	// match, and "show me the bugs" is the same question as "show me the PBIs".
 	const focusExtra = focusIdx < 0 && focus ? focus.toLowerCase() : '';
+	// Sorted through `localeCompare` — the collation `collectObservedAssignees` already
+	// uses, which follows the USER's locale because a name is data. The path tie-break
+	// matters: `localeCompare` returns 0 for two resources sharing a basename, and
+	// `Array.sort` is stable, so without it two such resources would come back in
+	// whatever order the Base's own query happened to return them — alphabetical order
+	// was chosen over Base order BECAUSE it stays put when a Base's sort changes, and an
+	// untied collision is the one case that promise did not hold.
+	const resources = [...store.resources].sort(
+		(a, b) => a.title.localeCompare(b.title) || a.file.path.localeCompare(b.file.path),
+	);
+	// One pass, here, rather than one `.some`/`.find` per row: see `BacklogModel.resourceLabels`.
+	const resourceLabels: ReadonlyMap<string, string> = new Map(
+		namedTargets(resources).map((target) => [target.item.file.path, target.label]),
+	);
 	const rest = {
 		realRoots: roots,
 		byPath,
@@ -299,9 +327,8 @@ export function buildModel(app: App, entries: BasesEntry[], settings: BacklogSet
 		// Straight off the store: the divert happened before phase 1 produced an item, so
 		// no later phase has ever seen one and none of them can have changed it.
 		absences: store.absences,
-		// Sorted through `localeCompare` — the collation `collectObservedAssignees`
-		// already uses, which follows the USER's locale because a name is data.
-		resources: [...store.resources].sort((a, b) => a.title.localeCompare(b.title)),
+		resources,
+		resourceLabels,
 	};
 	// The plan is a projection too, and its forest is computed by the same rule the
 	// catalog's is — a work item somebody dropped under a test is drawn in the plan, as a

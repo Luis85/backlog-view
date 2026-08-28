@@ -97,7 +97,7 @@ describe('the assignee chip´s broken state', () => {
 
 	// `assigneeName(item)` alone draws the resolved note's basename, so two roster
 	// resources named `Alex` in different folders drew one indistinguishable chip —
-	// the fourth instance of a collision `namedTargets` (`interactions/labels.ts`) exists
+	// the fourth instance of a collision `namedTargets` (`domain/readItems.ts`) exists
 	// to close, missed here until external review (fix round 1, PR #207).
 	it("disambiguates the chip's label when two roster resources share a basename", () => {
 		const vault = new FakeVault();

@@ -2,14 +2,13 @@ import { setTooltip } from 'obsidian';
 import { t } from '../../i18n/t';
 import { drawIcon } from './icons';
 import { BacklogViewHost, Column } from '../host';
-import { namedTargets } from '../interactions/labels';
 import { showAssigneeMenu, showPriorityMenu, showRiskMenu } from '../interactions/menu';
 import { ownWorkflowReading, stateKeyFor } from '../../domain/board';
 import { PlacementEnd, placementEnds } from '../../domain/itemTypes';
 import { canPlaceHorizon } from '../interactions/plan';
 import { BacklogItem } from '../../domain/model';
 import { CivilDate, FieldReading } from '../../domain/noteFields';
-import { assigneeBroken, assigneeName, rosterOf } from '../../domain/readItems';
+import { assigneeBroken, assigneeName, resourceLabelsOf } from '../../domain/readItems';
 import { shelfLabel } from '../../domain/roadmap';
 import { formatCivil } from '../../domain/timeline';
 
@@ -201,7 +200,7 @@ export const LABEL_CHIPS: Record<'risk' | 'priority' | 'assignee', LabelChip> = 
 		// alone drew those two as valid assignments on the row while every other surface
 		// treated them as nobody — three surfaces disagreeing about one value. Found by
 		// automated review on PR #207.
-		broken: (host, item) => assigneeBroken(item, rosterOf(host.model)),
+		broken: (host, item) => assigneeBroken(item, resourceLabelsOf(host.model)),
 		brokenCls: 'pbl-assignee-broken',
 		brokenTip: () => t('chip.assigneeUnresolved'),
 	},
@@ -210,10 +209,15 @@ export const LABEL_CHIPS: Record<'risk' | 'priority' | 'assignee', LabelChip> = 
 /**
  * The name to DRAW for an item's assignee — `assigneeName(item)`'s own value, disambiguated
  * against the roster where the link resolves to a member of it. Every surface that names a
- * resource to the reader does it through `namedTargets` (`interactions/labels.ts`) — the
+ * resource to the reader disambiguates through `namedTargets` (`domain/readItems.ts`) — the
  * menu, the absence dialog and the roadmap's own lane headers — and the chip drawing two
  * same-named resources as one indistinguishable label was that same collision missed a
  * fourth time (review, PR #207).
+ *
+ * A `Map.get` against `BacklogModel.resourceLabels`, not a `namedTargets` call of its own:
+ * that map is built ONCE per model (`model.ts`), so this stays O(1) per row rather than
+ * running the disambiguation pass again for every visible chip — the per-row scan a second
+ * review round found here and in `broken` (PR #207 fix round 1).
  *
  * Disambiguation is the ONLY thing this adds. A link that does not resolve to a roster
  * member — nothing to resolve, or a real note the roster does not carry — falls back to
@@ -223,8 +227,7 @@ export const LABEL_CHIPS: Record<'risk' | 'priority' | 'assignee', LabelChip> = 
 export function assigneeLabel(host: BacklogViewHost, item: BacklogItem): string | null {
 	const path = item.assigneeEntry?.file?.path;
 	if (path === undefined) return assigneeName(item);
-	const match = namedTargets(rosterOf(host.model)).find((target) => target.item.file.path === path);
-	return match ? match.label : assigneeName(item);
+	return resourceLabelsOf(host.model).get(path) ?? assigneeName(item);
 }
 
 interface LabelChip {

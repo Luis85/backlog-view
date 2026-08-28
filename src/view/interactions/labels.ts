@@ -1,10 +1,10 @@
-import { Menu, TFile } from 'obsidian';
+import { Menu } from 'obsidian';
 import { t } from '../../i18n/t';
 import { BacklogViewHost } from '../host';
 import { inCatalog, isIterationType, isMarkerType, mayHoldField } from '../../domain/itemTypes';
 import { BacklogItem, inPlan } from '../../domain/model';
 import { sameValue } from '../../domain/noteFields';
-import { assigneeName } from '../../domain/readItems';
+import { assigneeName, NamedTarget, namedTargets } from '../../domain/readItems';
 import { assignableLanes } from '../../domain/roadmap';
 import { mergedValues } from '../../domain/settings';
 import { resolveSettings } from '../../domain/settingsResolve';
@@ -301,46 +301,11 @@ function promptNewAssignee(host: BacklogViewHost, item: BacklogItem): void {
 
 /**
  * One NOTE a row may be put into: the note, and the name the entry wears. The two are
- * separate fields because they can differ — see {@link namedTargets} — and the value
- * behind an entry is always the note, never its label.
+ * separate fields because they can differ — see `namedTargets` (`domain/readItems.ts`,
+ * moved there when `BacklogModel.resourceLabels` became its second caller) — and the
+ * value behind an entry is always the note, never its label.
  */
-interface NoteTarget {
-	item: BacklogItem;
-	label: string;
-}
-
-/**
- * Candidates, named apart only where two of them collide: the basename, and the whole
- * path (minus the extension) for the notes that share one.
- *
- * Only where they collide, because qualifying every entry to separate a rare pair makes
- * the ordinary case unreadable — and the write is unaffected either way, since the plan
- * carries the FILE and `wikilinkTo` spells the link from the editing note's own path.
- *
- * One function for both pickers rather than the same lines twice. `Set iteration` and
- * `Set release` both name NOTES, so they face one question — which of these two is the
- * reader picking — and two copies of the answer would be one edit from two spellings of
- * it. What each picker still owns is its own POPULATION, above.
- *
- * Generic and exported since the assignee chip joined the callers (`render/chips.ts`):
- * **every surface that names a resource to the reader names it through this function** —
- * the menu, the absence dialog and the roadmap's own lane headers already did, and the
- * chip drawing two identically-lettered resources as one indistinguishable label was the
- * same collision a fourth time. The constraint is the two fields disambiguation actually
- * reads, not `BacklogItem`, so a plain `ResourceNote` — title and file, nothing else —
- * qualifies without a cast.
- */
-export function namedTargets<T extends { title: string; file: TFile }>(found: T[]): Array<{ item: T; label: string }> {
-	const seen = new Map<string, number>();
-	for (const target of found) seen.set(target.title, (seen.get(target.title) ?? 0) + 1);
-	return found.map((target) => ({
-		item: target,
-		label:
-			(seen.get(target.title) ?? 0) > 1
-				? target.file.path.slice(0, -(target.file.extension.length + 1))
-				: target.title,
-	}));
-}
+type NoteTarget = NamedTarget<BacklogItem>;
 
 /**
  * Every `Iteration` this row may join.

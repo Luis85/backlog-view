@@ -1,7 +1,7 @@
 import { BacklogItem } from '../domain/model';
 import { ownWorkflowReading } from '../domain/board';
 import { childTypeChoices, displayType } from '../domain/itemTypes';
-import { assigneeBroken, rosterOf } from '../domain/readItems';
+import { assigneeBroken, resourceLabelsOf } from '../domain/readItems';
 import { offerableTypes, projectionPopulation } from './projection';
 import { assigneeLabel } from './render/chips';
 import { drawsSomething } from './render/columns';
@@ -41,7 +41,7 @@ import { BacklogViewHost, Column } from './host';
  * | --- | --- |
  * | `typeName` `tags` `horizon` `riskValue` `priorityValue` `plannedStart` `plannedTarget` `stateValue` and both secondary state values | the frontmatter term — one term, so nobody has to predict which keys a column is pointed at tomorrow |
  * | `assigneeEntry` (the assignee chip's TEXT) | `assigneeLabel(host, item)` — the label the chip actually draws, disambiguated against the roster, because what it draws depends on the RESOLVED note's basename or its roster-disambiguated label, neither of which this note's own frontmatter can show moving |
- * | `assigneeEntry` (the chip's broken MARK) | `assigneeBroken(item, host.model.resources)` — a term of its own, because a roster change can flip this WITHOUT moving the text above: one resource of a name leaving the roster changes nothing `assigneeLabel` returns, only whether it is broken |
+ * | `assigneeEntry` (the chip's broken MARK) | `assigneeBroken(item, resourceLabelsOf(host.model))` — a term of its own, because a roster change can flip this WITHOUT moving the text above: one resource of a name leaving the roster changes nothing `assigneeLabel` returns, only whether it is broken |
  * | `entry` (every `note.*` cell) | the frontmatter term, given {@link reusableColumns} refused every other source, plus {@link renderInputs}' per-column type probe |
  * | `levelIndex` (the badge's text) | `displayType(item)` — the answer the badge draws, rather than the fields behind it |
  * | `ladder` | **no term here at all — projection MEMBERSHIP.** See below; this is the one read with nothing in this file behind it. |
@@ -319,7 +319,7 @@ export function rowSignature(
 		// term the text cannot stand in for. Confirmed reachable (external review, fix
 		// round 1): the pass fingerprint and this file both missed it, so a Resource
 		// narrowed out of the results kept a stale, valid-looking chip on a reused row.
-		assigneeBroken(item, rosterOf(host.model)),
+		assigneeBroken(item, resourceLabelsOf(host.model)),
 		item.descendantCount,
 		item.doneDescendants,
 		ownWorkflowReading(item).done,

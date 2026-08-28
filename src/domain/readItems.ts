@@ -500,30 +500,78 @@ export function assigneeName(item: { assigneeEntry: LinkEntry | null }): string 
 }
 
 /**
- * Whether this item's assignee names something the given roster does not carry — roster
+ * One NOTE a caller may point a reader at: the note, and the name to draw for it. The two
+ * are separate fields because they can differ — see {@link namedTargets} — and the value
+ * behind an entry is always the note, never its label.
+ */
+export interface NamedTarget<T> {
+	item: T;
+	label: string;
+}
+
+/**
+ * Candidates, named apart only where two of them collide: the basename, and the whole
+ * path (minus the extension) for the notes that share one.
+ *
+ * Only where they collide, because qualifying every entry to separate a rare pair makes
+ * the ordinary case unreadable — and a write is unaffected either way, since a plan
+ * carries the FILE and a wikilink is spelled from the editing note's own path, never
+ * from this label.
+ *
+ * One function for every surface that names a resource to the reader — `Set iteration`,
+ * `Set release`, the absence dialog, the roadmap's lane headers and the assignee chip —
+ * rather than the same disambiguation copied at each one. Domain rather than `view/`
+ * because `BacklogModel.resourceLabels` (`model.ts`) is now a caller too: the map that
+ * answers the assignee chip's question in O(1) is built by running this ONCE per model,
+ * which a view-layer function could not be asked to do for a domain field. Generic over
+ * the two fields disambiguation actually reads, not `BacklogItem`, so a plain
+ * `ResourceNote` qualifies without a cast.
+ */
+export function namedTargets<T extends { title: string; file: TFile }>(found: T[]): NamedTarget<T>[] {
+	const seen = new Map<string, number>();
+	for (const target of found) seen.set(target.title, (seen.get(target.title) ?? 0) + 1);
+	return found.map((target) => ({
+		item: target,
+		label:
+			(seen.get(target.title) ?? 0) > 1
+				? target.file.path.slice(0, -(target.file.extension.length + 1))
+				: target.title,
+	}));
+}
+
+/** No model yet, so no resource has a label — the one instance `resourceLabelsOf` ever needs. */
+const EMPTY_RESOURCE_LABELS: ReadonlyMap<string, string> = new Map();
+
+/**
+ * The resource-label index a caller has to ask, with no model yet read as empty — one
+ * function rather than the same `model?.resourceLabels ?? new Map()` written at every
+ * call site. A chip or a row is drawn from an ITEM, and an item exists only once a model
+ * has been built, so the null side is dead on arrival in practice — the question this
+ * codebase's coverage rule asks first, before writing a test for an unreachable branch.
+ * The shared empty instance is deliberate too: a fresh `Map()` per call would be one more
+ * allocation on the exact per-row path {@link assigneeBroken} exists to keep out of.
+ */
+export function resourceLabelsOf(model: { resourceLabels: ReadonlyMap<string, string> } | null): ReadonlyMap<string, string> {
+	return model?.resourceLabels ?? EMPTY_RESOURCE_LABELS;
+}
+
+/**
+ * Whether this item's assignee names something the given index does not carry — roster
  * MEMBERSHIP, never link resolution. A link that resolves to an ordinary note, or to a
  * `Resource` note the base's own filter excluded, both name nobody the roadmap or a menu
  * will ever offer, so both must read as broken here exactly alike: answering from
  * resolution alone would draw either as a valid assignment while every other surface
- * treats it as nobody. `resources` is `BacklogModel.resources`, taken as a plain array —
- * a roster, not the model or the view that holds one — so this reads as the one question
- * it is and can be asked from either layer without a caller reaching past it for more.
+ * treats it as nobody.
+ *
+ * Takes the LABEL INDEX (`BacklogModel.resourceLabels`, via {@link resourceLabelsOf}), not
+ * the roster array `namedTargets` built it from: a `Map.has` is the O(1) membership test
+ * `rowSignature` and the chip need on every row, where a `.some` over the whole roster
+ * would be a second superlinear pass this codebase's row-cost rule refuses (review, PR
+ * #207 fix round 1 — `docs/domain/CLAUDE.md`'s cost section, and
+ * `docs/requirements/A row costs its content, not its wiring.md`).
  */
-export function assigneeBroken(item: { assigneeEntry: LinkEntry | null }, resources: ResourceNote[]): boolean {
-	return item.assigneeEntry !== null && !resources.some((r) => r.file.path === item.assigneeEntry?.file?.path);
-}
-
-/**
- * The roster a caller has to ask, with no model yet read as no resources — one function
- * rather than the same `model?.resources ?? []` written at every call site. `broken` and
- * the chip's own label both need this exact fallback, and a shared accessor is one branch
- * to answer for instead of three copies nothing before the first data update can ever
- * take: a chip or a row is drawn from an ITEM, and an item exists only once a model has
- * been built, so the null side of each of those three copies was dead on arrival — the
- * question `docs`'s own coverage rule asks first, before writing a test for it. Structural
- * rather than `BacklogModel | null`, so this stays askable from `view/` without a domain
- * type importing anything shaped like a view.
- */
-export function rosterOf(model: { resources: ResourceNote[] } | null): ResourceNote[] {
-	return model?.resources ?? [];
+export function assigneeBroken(item: { assigneeEntry: LinkEntry | null }, labels: ReadonlyMap<string, string>): boolean {
+	if (item.assigneeEntry === null) return false;
+	const path = item.assigneeEntry.file?.path;
+	return path === undefined || !labels.has(path);
 }
