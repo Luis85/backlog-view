@@ -1,4 +1,4 @@
-// The release membership at the write boundary, beside `applyIteration`'s own file for the
+// The release membership at the write boundary, beside `applyLinks`'s own file for the
 // identical reason it exists: a link is spelled from the editing note's own path
 // (`wikilinkTo`), never from a basename, or two same-named release notes would be
 // indistinguishable on disk.
