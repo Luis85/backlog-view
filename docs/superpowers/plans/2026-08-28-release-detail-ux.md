@@ -482,7 +482,8 @@ Slice A, first half. `renderScope.ts` splits here.
 **Files:**
 - Create: `src/view/release/scopeTree.ts` (the rows, the disclosure, the fold set)
 - Modify: `src/view/release/renderScope.ts` (keeps the header and the empty states; calls the tree)
-- Modify: `src/view/release/releaseView.ts` (keeps the resolved `BacklogSettings` for `openIn`)
+- Modify: `src/view/release/releaseView.ts` (gains the `OpenController`)
+- Modify: `src/domain/releaseOptions.ts` (this view's own `openIn` option)
 - Modify: `src/i18n/en.ts` (two keys)
 - Modify: `styles/release.css`
 - Modify: `docs/requirements/The scope of a release as a tree.md`
@@ -636,7 +637,27 @@ and on the row itself:
 	rowEl.addEventListener('click', (evt) => view.opener.open(view.openContext(), row.item, evt));
 ```
 
-`ReleaseView` gains `opener = new OpenController()` and an `openContext()` returning `{ app, viewEl, settings: { openIn: this.backlogSettings.openIn } }` — `draw()` already resolves those settings; keep them on a field instead of a local.
+`ReleaseView` gains `opener = new OpenController()`, and the open target is **this view's own option** rather than the backlog resolver's. In `src/domain/releaseOptions.ts`, beside the other declarations:
+
+```ts
+			{
+				key: 'openIn',
+				displayName: t('option.openIn'),
+				type: 'dropdown',
+				default: defaultItemHandling('split').openIn,
+				options: openInOptions(),
+			},
+```
+
+resolved onto `ReleaseSettings.openIn`, and the context built inline where the click is handled — `estimationView.ts:130`'s exact shape:
+
+```ts
+	view.opener.open({ app: view.app, viewEl: view.viewEl, settings: { openIn: view.settings.openIn } }, row.item, evt);
+```
+
+**Not `resolveSettings(view.config).openIn`.** `releaseView.ts` already states the rule for this boundary: that resolver reads through `propKey` and cannot tell a cleared option from an unset one, so two resolvers disagreeing at one boundary "is the same defect as one view reading another's configuration". The estimation view declares its own for the same reason (`domain/estimationOptions.ts:86`).
+
+Add the option to `declaredPropertyKeys`' sweep only if it is a PROPERTY option — it is not; `openIn` is a dropdown of behaviours, so Task 1's `taken` seed is unaffected. Add an assertion to `test/domain/releaseOptions.test.ts` that the new option carries a `default:`, since an unset dropdown with no default would open nothing.
 
 - [ ] **Step 5: Add the catalog keys**
 
