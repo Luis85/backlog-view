@@ -1,12 +1,13 @@
 /* ==========================================================================
-   One release's OWN screen: the header (the back control, the name, and the facts) and the
-   read-only tree of its members. `styles/release.css` is the sibling partial for the
-   index's own bands; that file's own header records why the two split and what stayed
-   there.
+   One release's OWN screen: the header (the back control, the name, the facts, and — since
+   2026-08-28 — the summary strip drawn from the same `ReleaseRow` the index band already
+   computed) and the read-only tree of its members. `styles/release.css` is the sibling
+   partial for the index's own bands; that file's own header records why the two split and
+   what stayed there.
 
-   `.pbl-rel-bar` and `.pbl-rel-spacer`, which this screen's header and (from Task 2) its
-   summary strip reuse, are declared in `release.css` rather than here or a second time —
-   see that file's own header.
+   `.pbl-rel-bar` and `.pbl-rel-spacer`, which the summary strip below and the header's own
+   layout reuse, are declared in `release.css` rather than here or a second time — see that
+   file's own header.
 
    These rules were drawn and looked at BEFORE any of the view existed, the same way
    `release.css`'s own header records for the index's bands: the `SHEET` constant from the
@@ -20,14 +21,24 @@
    other partial declares, and nothing here re-targets a class another file also writes.
    ========================================================================== */
 
-/* One release's screen: the back control, the name, and the facts pushed to the end. */
+/* The header now stacks two lines: the release's identity (with its facts), then one
+   strip of figures — `.pbl-rel-hline` is the first line, `.pbl-rel-summary` below is the
+   second, and this is what gives them separate flex rows to arrange rather than one row
+   both must agree on. */
 .pbl-rel-header {
+	display: flex;
+	flex-direction: column;
+	align-items: stretch;
+	gap: var(--size-4-2);
+	padding: var(--size-4-2) var(--size-4-3);
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.pbl-rel-hline {
 	display: flex;
 	flex-wrap: wrap;
 	align-items: center;
 	gap: var(--size-4-2);
-	padding: var(--size-4-2) var(--size-4-3);
-	border-bottom: 1px solid var(--background-modifier-border);
 }
 
 .pbl-rel-header h2 {
@@ -77,4 +88,37 @@
 
 .pbl-rel-view .pbl-row:hover {
 	background-color: transparent;
+}
+
+/* One strip, one denominator. `flex-wrap` because a narrow pane must drop the sentence
+   under the bar rather than shrink a bar whose fill is a PERCENTAGE of its own box —
+   `columns.css`'s own measured reason for refusing to let a progress bar shrink. */
+.pbl-rel-summary {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--size-4-2) var(--size-4-3);
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+}
+
+/* Wider than the index band's own `.pbl-rel-bar` (96px): this is the only figure on the
+   screen, where the band's shares a line with a name, a date and a chip. */
+.pbl-rel-bar-wide {
+	inline-size: 160px;
+	block-size: 8px;
+}
+
+.pbl-rel-pct {
+	font-variant-numeric: tabular-nums;
+	font-weight: var(--font-medium);
+	color: var(--text-normal);
+}
+
+/* A figure and its neighbour kept together, so `flex-wrap` on the strip above never
+   breaks a value away from what names it. */
+.pbl-rel-figure {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--size-4-1);
 }

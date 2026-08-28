@@ -65,21 +65,19 @@ export function renderScope(view: ReleaseView, scope: ReleaseScope, release: Rel
 }
 
 /**
- * The back control, the release's own three figures, and the member count.
- *
- * The count is `scope.members` — the rows this screen kept — rather than the index's own
- * `release.members.value`, which is the same number by the same predicate: reading the one
- * the walk produced is what stops the header claiming a member the tree did not draw. It is
- * withheld entirely when the membership key is unbound, because `0 items` there is an
- * answer this screen cannot read rather than one it read as zero.
+ * Two lines: the back control and the release's own three figures, then the summary
+ * strip beneath them — `.pbl-rel-hline` for the first, `.pbl-rel-summary` for the second,
+ * which is what lets `styles/releaseScope.css` stack them without either line's own flex
+ * rules fighting the other's.
  */
 function drawHeader(view: ReleaseView, scope: ReleaseScope, release: ReleaseRow): void {
 	const headerEl = view.viewEl.createDiv({ cls: 'pbl-rel-header' });
+	const hlineEl = headerEl.createDiv({ cls: 'pbl-rel-hline' });
 
 	// A real `<button>`, like the index's rows: it is the only way off this screen, and a
 	// real button is what makes the tab stop, Enter and Space the browser's job rather than
 	// a handler somebody has to remember.
-	const backEl = headerEl.createEl('button', {
+	const backEl = hlineEl.createEl('button', {
 		cls: 'clickable-icon pbl-rel-back',
 		attr: { type: 'button', 'aria-label': t('release.scope.back') },
 	});
@@ -87,19 +85,19 @@ function drawHeader(view: ReleaseView, scope: ReleaseScope, release: ReleaseRow)
 	setTooltip(backEl, t('release.scope.back'));
 	backEl.addEventListener('click', () => view.pick(null));
 
-	headerEl.createEl('h2', { text: release.name });
-	drawFigure(headerEl, release.version, t('release.index.column.version'), (value) =>
-		headerEl.createSpan({ cls: 'pbl-rel-version', text: value }),
+	hlineEl.createEl('h2', { text: release.name });
+	drawFigure(hlineEl, release.version, t('release.index.column.version'), (value) =>
+		hlineEl.createSpan({ cls: 'pbl-rel-version', text: value }),
 	);
-	drawFigure(headerEl, release.status, t('release.index.column.status'), (value) => {
+	drawFigure(hlineEl, release.status, t('release.index.column.status'), (value) => {
 		// The tree's read-only chip, like every chip the index draws: this view offers no
 		// write, so a chip that lost `pbl-state-static` would gain a hover affordance and the
 		// screen would look editable.
-		const chipEl = headerEl.createDiv({ cls: 'pbl-state-chip pbl-state-static' });
+		const chipEl = hlineEl.createDiv({ cls: 'pbl-state-chip pbl-state-static' });
 		chipEl.createSpan({ cls: 'pbl-state-text', text: value });
 	});
 
-	const factsEl = headerEl.createDiv({ cls: 'pbl-rel-facts' });
+	const factsEl = hlineEl.createDiv({ cls: 'pbl-rel-facts' });
 	// An absent target date draws NOTHING here, where the index labels it — deliberately,
 	// and the index's own reason is what decides it: that label exists because an undated
 	// release is sorted to the bottom of the list and the blank cell would leave the reader
@@ -107,9 +105,57 @@ function drawHeader(view: ReleaseView, scope: ReleaseScope, release: ReleaseRow)
 	drawFigure(factsEl, release.target, t('release.index.column.target'), (value) =>
 		factsEl.createSpan({ cls: 'pbl-rel-target', text: formatCivil(value) }),
 	);
-	if (!release.members.unconfigured) {
-		factsEl.createSpan({ cls: 'pbl-rel-members', text: t('release.scope.members', { count: scope.members }) });
+
+	drawSummary(headerEl, release, scope.members);
+}
+
+/**
+ * The summary strip: one bar, one percentage, one sentence — drawn from the SAME
+ * `ReleaseRow` the index band was drawn from.
+ *
+ * **Nothing is derived here.** `domain/releases.ts` states the rule in its own words —
+ * progress "is computed nowhere else — the single-release screen reads the same row,
+ * which is what stops a band and a release header disagreeing about one release". A
+ * second count over the same members would be a second opinion about a number that has
+ * one right answer.
+ *
+ * The sentence itself reuses `column.rollupTooltip` rather than a release-specific key —
+ * that key's own catalog comment already explains why the index's OWN band reused it
+ * instead of minting one with `{total}`: `selectForm` picks the plural form off a
+ * parameter literally named `count`, so a key spelling `{total}` could never select
+ * "item" over "items" and would read "1 of 1 items done" forever. This is a fourth
+ * caller of the identical sentence, not a second key with the identical defect.
+ *
+ * `done` is a FIGURE, so its three answers are the three drawn here: unconfigured says so
+ * — through {@link t}('release.figureUnconfigured') — and is never a zero (extension 2c:
+ * a progress nobody configured must not read as a progress the screen forgot), invalid is
+ * impossible for a count and falls through with it, and a value draws the bar. The item
+ * count answers beside it either way.
+ *
+ * Withheld whole when there are no members: `0 of 0 items done` beside an empty state
+ * that already says the release is empty would say it twice and worse (extension 1a).
+ *
+ * `members` is `scope.members`, never `release.members.value` — `drawHeader`'s own reason
+ * for reading the SCOPE's walk applies here too: the strip must not claim a member the
+ * tree did not draw.
+ */
+function drawSummary(headerEl: HTMLElement, release: ReleaseRow, members: number): void {
+	if (release.members.unconfigured || members === 0) return;
+	const sumEl = headerEl.createDiv({ cls: 'pbl-rel-summary' });
+	if (release.done.unconfigured || release.done.value === null) {
+		sumEl.createSpan({ cls: 'pbl-rel-figure', text: t('release.scope.members', { count: members }) });
+		sumEl.createSpan({
+			cls: 'pbl-rel-unreadable',
+			text: t('release.figureUnconfigured', { label: t('release.scope.progress') }),
+		});
+		return;
 	}
+	const done = release.done.value;
+	const pct = Math.round((100 * done) / members);
+	const barEl = sumEl.createDiv({ cls: 'pbl-rel-bar pbl-rel-bar-wide' });
+	barEl.createDiv({ cls: 'pbl-rel-bar-fill' }).setCssProps({ '--pbl-rel-fill': `${pct}%` });
+	sumEl.createSpan({ cls: 'pbl-rel-pct', text: t('release.scope.percent', { pct }) });
+	sumEl.createSpan({ cls: 'pbl-rel-figure', text: t('column.rollupTooltip', { done, count: members }) });
 }
 
 /**

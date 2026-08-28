@@ -446,17 +446,19 @@ export const en = {
 		one: '{done} of {count} item done',
 		other: '{done} of {count} items done',
 	},
-	// ^ A THIRD surface for this same sentence since 2026-08-25: the release index's own
-	// band draws its progress line with it too (`release/renderIndex.ts`'s
-	// `progressPhrase`). It was tempting to mint a release-specific key with `{done}` and
-	// `{total}` placeholders instead — the brief for that increment proposed exactly that —
-	// and it would have been broken by construction: `t.ts`'s `Params<K>` derives a
-	// message's parameter names from its own placeholders, and `selectForm` picks the
-	// plural form off a parameter literally named `count`, so a key spelling `{total}`
-	// instead cannot even accept the count that would select "item" over "items" — it
-	// would render "1 of 1 items done" forever. This key already carries `{done}` and
-	// `{count}`, already plurals on the total exactly as the release band wants, and
-	// reusing it is the whole fix.
+	// ^ A THIRD surface for this same sentence since 2026-08-25, and a FOURTH since
+	// 2026-08-28: the release index's own band draws its progress line with it
+	// (`release/renderIndex.ts`'s `progressPhrase`), and the single-release screen's summary
+	// strip does too (`release/renderScope.ts`'s `drawSummary`). Both times it was tempting
+	// to mint a release-specific key with `{done}` and `{total}` placeholders instead — the
+	// brief for the strip proposed exactly that, the same shape the band's own brief had
+	// already proposed and lost — and it would have been broken by construction: `t.ts`'s
+	// `Params<K>` derives a message's parameter names from its own placeholders, and
+	// `selectForm` picks the plural form off a parameter literally named `count`, so a key
+	// spelling `{total}` instead cannot even accept the count that would select "item" over
+	// "items" — it would render "1 of 1 items done" forever. This key already carries
+	// `{done}` and `{count}`, already plurals on the total exactly as both callers want, and
+	// reusing it is the whole fix both times.
 
 	/** The rollup column's header — the progress bar's, and the plain count's. Reused as
 	 *  the release band's own absence label (`release/renderIndex.ts`'s `absentFigures`)
@@ -1656,6 +1658,15 @@ export const en = {
 	 * bare "Unreadable" twice on one header says nothing about which property to fix.
 	 */
 	'release.figureUnreadable': '{label} unreadable',
+	/**
+	 * The same header's OTHER refusal — a key nobody bound, rather than a key holding
+	 * something malformed. `drawSummary` (`renderScope.ts`) is the one caller so far: with
+	 * no state key configured, `ReleaseRow.done` has no numerator to draw a bar or a
+	 * percentage from, and extension 2c says that must be named rather than read as a
+	 * progress the screen forgot to draw — never a bare `0%`, which would claim a fact
+	 * nobody measured.
+	 */
+	'release.figureUnconfigured': '{label} is not configured',
 	/** The unconfigured figures, named once beneath the list. `{columns}` is an array, so
 	 *  it is joined by the catalog's own grammar rather than by a joiner at the call.
 	 *
@@ -1696,13 +1707,32 @@ export const en = {
 	 * the release on screen. One marker's styling, two different facts about a row.
 	 */
 	'release.scope.contextMarker': 'In this base, but not in this release — shown to keep the hierarchy',
-	/** The member count in the header: the notes whose OWN property names this release,
-	 *  which is the denominator every other figure in this view uses. Context ancestors are
-	 *  on screen and are not in it. */
+	/**
+	 * The notes whose OWN property names this release — the denominator every other figure
+	 * in this view uses. Context ancestors are on screen and are not in it.
+	 *
+	 * Two call sites since the summary strip landed (2026-08-28), never both on the same
+	 * render: `drawFigure` draws it bare in `.pbl-rel-facts` when the release itself is
+	 * unreadable in some other respect, and `drawSummary` draws it alone in the strip when
+	 * `done` is unconfigured — a bar and a percentage need a numerator this key does not
+	 * carry, so the strip falls back to the count alone rather than drawing half a sentence.
+	 */
 	'release.scope.members': {
 		one: '{count} item',
 		other: '{count} items',
 	},
+	/**
+	 * The summary strip's own label for the progress figure, read into
+	 * `release.figureUnconfigured` when `ReleaseRow.done` is unconfigured — the plan has no
+	 * state key bound, so nothing says what "done" means for this release's members.
+	 */
+	'release.scope.progress': 'Progress',
+	/**
+	 * The strip's percentage, a KEY rather than a template at the call site: the per-cent
+	 * sign's position beside its number is grammar, and a locale that puts it before the
+	 * digits would have no way to say so through a joined string.
+	 */
+	'release.scope.percent': '{pct}%',
 	/** No membership property is bound, so no scope can be read at all — the header's facts
 	 *  still stand and the way back is still there, but there is no tree and no count. */
 	'release.scope.noMembership.title': 'No membership property is mapped',
@@ -1733,11 +1763,22 @@ export const en = {
 	 * screen already says what it does.
 	 */
 	'release.init.label': 'Add missing properties',
-	/** A press that bound nothing, said rather than left silent — a standalone control with
-	 *  no dialog after it would otherwise look dead. `release.new.bound` is what a press
-	 *  that DID bind something reports instead; this is its opposite reading of the same
-	 *  question. */
-	'release.init.nothing': 'Every release property is already bound. Nothing to add.',
+	/**
+	 * A press that bound nothing, said rather than left silent — a standalone control with
+	 * no dialog after it would otherwise look dead. `release.new.bound` is what a press
+	 * that DID bind something reports instead; this is its opposite reading of the same
+	 * question.
+	 *
+	 * **True in all three ways `bindAndReport` can return false, not only the first.**
+	 * "Every property is already bound" was the message until a review found it overclaims:
+	 * `adoptCandidates` also declines a candidate somebody CLEARED on purpose (correctly —
+	 * that must not be overruled) and one whose suggested key another declared property
+	 * already owns, and in both of those the property is NOT bound, so the old sentence told
+	 * a reader with a cleared membership property the opposite of what is true. This names
+	 * all three without claiming which one happened, because the control has no way to tell
+	 * the caller that either.
+	 */
+	'release.init.nothing': 'Nothing to add. Every release property is bound, was cleared on purpose, or its suggested key is already in use.',
 
 	/**
 	 * The control that opens that dialog, and what the press reports — all four in

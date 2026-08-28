@@ -140,13 +140,14 @@ describe("a release's scope on screen", () => {
 		expect(rows.some((el) => el.hasAttribute('aria-expanded'))).toBe(false);
 	});
 
-	it('states the member count, which excludes every context row', () => {
+	it('states the member count, which excludes every context row, in the summary strip', () => {
 		// The exact number. `toContain('2')` passes on 12 and on 20, which is how a count
 		// assertion goes vacuous — the whole point of the figure is that the Epic is not in
-		// it, and three rows are on screen.
+		// it, and three rows are on screen. `scopeVault()`'s two members carry no `status`,
+		// so the denominator is what this asks: 2, never the 3 rows drawn.
 		const { containerEl } = openScope();
 		expect(containerEl.querySelectorAll('.pbl-row')).toHaveLength(3);
-		expect(containerEl.querySelector('.pbl-rel-facts .pbl-rel-members')?.textContent).toBe('2 items');
+		expect(containerEl.querySelector('.pbl-rel-summary')?.textContent).toContain('0 of 2 items done');
 	});
 
 	it('names the release, its version and its status in the header', () => {
@@ -213,9 +214,9 @@ describe("a release's scope on screen", () => {
 		view.pick('R.md');
 		expect(containerEl.querySelectorAll('.pbl-row')).toHaveLength(0);
 		expect(containerEl.querySelector('.pbl-empty-hint')?.textContent).toContain('membership');
-		// And no member count beside it: with nothing to read, `0 items` would be an answer
+		// And no summary strip beside it: with nothing to read, `0 items` would be an answer
 		// this screen cannot give.
-		expect(containerEl.querySelector('.pbl-rel-members')).toBeNull();
+		expect(containerEl.querySelector('.pbl-rel-summary')).toBeNull();
 	});
 });
 
@@ -237,5 +238,90 @@ describe('a refusal on the release header names the property it is about', () =>
 		expect(refusals).toEqual(['Version unreadable', 'Target unreadable']);
 		// The readable one is untouched and still draws its own value.
 		expect(containerEl.querySelector('.pbl-state-text')?.textContent).toBe('Planned');
+	});
+});
+
+/**
+ * The summary strip (`drawSummary` in `renderScope.ts`): one bar, one percentage, one
+ * sentence, drawn from the SAME `ReleaseRow` the index band was drawn from — nothing here
+ * is a second derivation, which is what `test/view/releaseIndex.test.ts` and this file
+ * agreeing on one release proves rather than assumes.
+ */
+describe('the summary strip', () => {
+	useViewHarness();
+
+	/**
+	 * Three members under one release, one of them Done — the fixture every test in this
+	 * block reads unless it needs a different shape (no members, or a Deliverable). Built
+	 * fresh per call, this file's own style for a vault only one describe block needs.
+	 */
+	function progressVault(): FakeVault {
+		const vault = new FakeVault();
+		vault.addFile('P.md', {
+			frontmatter: { type: 'Release', version: '1.0.0', 'target-date': '2026-09-12', status: 'In progress' },
+		});
+		vault.addFile('M1.md', { frontmatter: { type: 'Feature', order: 1, release: '[[P]]', status: 'Done' } });
+		vault.addFile('M2.md', { frontmatter: { type: 'Feature', order: 2, release: '[[P]]', status: 'In progress' } });
+		vault.addFile('M3.md', { frontmatter: { type: 'Feature', order: 3, release: '[[P]]', status: 'Planned' } });
+		return vault;
+	}
+
+	it('draws the bar, the percentage and the sentence from ONE row', () => {
+		const { view, containerEl } = makeReleaseView(progressVault(), RELEASE_CONFIG);
+		view.pick('P.md');
+		const strip = containerEl.querySelector('.pbl-rel-summary')!;
+		expect(strip.querySelector('.pbl-rel-pct')!.textContent).toBe('33%');
+		expect(strip.textContent).toContain('1 of 3 items done');
+	});
+
+	it('reports the same numbers the index band reported', () => {
+		// One `ReleaseRow`, two screens — the rule `domain/releases.ts` states: progress
+		// "is computed nowhere else". A second derivation would pass this only by luck.
+		const vault = progressVault();
+		const { containerEl: indexEl } = makeReleaseView(vault, RELEASE_CONFIG);
+		const band = indexEl.querySelector('[data-path="P.md"]')!.textContent!;
+		const { view, containerEl: scopeEl } = makeReleaseView(vault, RELEASE_CONFIG);
+		view.pick('P.md');
+		const strip = scopeEl.querySelector('.pbl-rel-summary')!.textContent!;
+		expect(band).toContain('1 of 3');
+		expect(strip).toContain('1 of 3');
+	});
+
+	it('names an unconfigured progress rather than leaving a gap', () => {
+		// Extension 2c: absent AND named, never a silent omission and never a zero.
+		const { view, containerEl } = makeReleaseView(progressVault(), { ...RELEASE_CONFIG, stateProperty: '' });
+		view.pick('P.md');
+		const strip = containerEl.querySelector('.pbl-rel-summary')!;
+		expect(strip.querySelector('.pbl-rel-bar')).toBeNull();
+		expect(strip.textContent).toContain('3 items');
+		expect(strip.textContent!.toLowerCase()).toContain('not configured');
+	});
+
+	it('draws no strip for a release with no members', () => {
+		// Extension 1a: nothing to count, and nothing reads as zero.
+		const vault = new FakeVault();
+		vault.addFile('Aurora.md', { frontmatter: { type: 'Release' } });
+		const { view, containerEl } = makeReleaseView(vault, RELEASE_CONFIG);
+		view.pick('Aurora.md');
+		expect(containerEl.querySelector('.pbl-rel-summary')).toBeNull();
+	});
+
+	it('counts a Deliverable member by its OWN workflow', () => {
+		// `ReleaseRow.done` reads through `ownWorkflowReading`, so a Deliverable answers by
+		// its own state property — bound here to a DIFFERENT key from the plan's `status`,
+		// so a fallback to the plan's own state key could not pass this by accident. Drawing
+		// the row keeps that for free; deriving a second figure from the plan's state key
+		// would get it backwards.
+		const vault = new FakeVault();
+		vault.addFile('Q.md', { frontmatter: { type: 'Release' } });
+		vault.addFile('D.md', {
+			frontmatter: { type: 'Deliverable', release: '[[Q]]', status: 'Planned', dstatus: 'Done' },
+		});
+		const { view, containerEl } = makeReleaseView(vault, {
+			...RELEASE_CONFIG,
+			deliverableStateProperty: 'note.dstatus',
+		});
+		view.pick('Q.md');
+		expect(containerEl.querySelector('.pbl-rel-summary')!.textContent).toContain('1 of');
 	});
 });
