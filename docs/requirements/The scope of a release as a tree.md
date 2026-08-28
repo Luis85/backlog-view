@@ -90,7 +90,10 @@ note assumed and `## Where it lives` explains it cannot be.
 - A folded parent keeps its own rollup: folding is a render decision over what is drawn, and it
   must never change a figure computed over the subtree.
 - A click on the disclosure folds or unfolds its row and does not open the note; a click
-  anywhere else on the row opens it.
+  anywhere else on the row opens it, and a middle click anywhere but the disclosure opens it in
+  a new tab.
+- The tree is one tab stop, and Right on a leaf does nothing: a leaf has nothing to step into,
+  and moving would make one key mean two things depending on where it landed.
 
 ## Where it lives
 
@@ -104,8 +107,19 @@ membership key, and this view's own open-note target (`openIn`), are declared in
 CHOOSES between this scope and the index; `src/view/release/renderScope.ts` draws the header
 and the two empty states above the tree; `src/view/release/scopeTree.ts` draws the tree
 itself — the rows, the disclosure, the fold set (scoped to the open release, never a bare
-path — see that module's own comment) and a row's click, which opens the note through
-`src/view/openTarget.ts`'s `OpenController`, the estimation view's own mechanism.
+path — see that module's own comment) and a row's click (and middle click), which open the
+note through `src/view/openTarget.ts`'s `OpenController`, the estimation view's own
+mechanism. `src/view/release/scopeKeys.ts` is the tree's keyboard: one tab stop on the
+container and a roving `aria-activedescendant`, moved by the four arrows plus Enter and
+Space, over the same fold set and the same `OpenController` — never `src/view/selection.ts`,
+which is built around a `BacklogViewHost` and the two card projections' own selection, so
+reusing it would mean satisfying a host interface in order to withhold most of it, the same
+call this note's own next paragraph already made about `render/rows.ts`. `renderScope.ts` is
+what WIRES the keyboard, not `scopeTree.ts`: `drawScopeTree` returns what it drew rather than
+calling `scopeKeys.ts` itself, because that module reads the fold set `scopeTree.ts` owns, and
+a call the other way as well would be the import cycle `npm run analyze` refuses — `renderScope.ts`
+already imports both leaves, so it is the one place that can call each in turn without either
+importing the other.
 
 This note said the rows reuse `src/view/render/rows.ts` and the context marking already there.
 They do not, and cannot: that module takes a `BacklogViewHost` and wires menus, create prompts,
@@ -126,9 +140,10 @@ row sideways and announces nothing, and a scope drawn with indent alone is a fla
 on the one screen whose whole promise is the shape of the work. **`aria-expanded` is now carried
 on every row that has children, and deliberately absent on a leaf** — this note claimed the
 opposite, that it "describes a collapse this screen does not offer", until this rewrite, once
-the tree could fold at all. `aria-selected` stays absent: this screen still has no selection,
-which the keyboard is what will add and update this paragraph again when it does. The context
-marker reuses
+the tree could fold at all. `aria-selected` is carried too, now that the keyboard has landed
+(`scopeKeys.ts`): never at draw time, since a row's own draw does not know which row is
+active, but set and moved by the roving selection itself, on whichever row `aria-activedescendant`
+names. The context marker reuses
 `.pbl-outside-marker`'s STYLING and none of its sentence: that one says a row is outside the
 base's filter, which is false of every row here, since `releaseScope` skips an `outsideFilter`
 ancestor outright rather than keeping it as context.

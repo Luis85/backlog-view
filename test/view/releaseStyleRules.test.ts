@@ -96,10 +96,12 @@ describe('a release’s own screen is a target again, since Task 3', () => {
 	it('opens its note on click — a real pointer, a real hover — and still lets a title be selected', () => {
 		// `.pbl-row` is reused for its LAYOUT and arrived carrying three refusals this screen
 		// no longer keeps: there is a click now (`scopeTree.ts`), so `cursor` and the hover
-		// say so. `user-select` is not declared here at all any more — its earlier explicit
-		// `auto` only ever restated the browser's own default, and there is still no drag on
-		// this screen to justify overriding it either way.
-		expect(ruleAt('.pbl-rel-view .pbl-row', 'user-select')).toBe(-1);
+		// say so. `user-select: auto` has to be RESTATED here, not merely left off the rule —
+		// `styles/tree.css` sets `.pbl-row { user-select: none }` for the tree's own drag, and
+		// an unstated property does not "stay" at the browser default, it resolves from
+		// whichever rule wins the cascade. Missing this once left a reader unable to select a
+		// title on a screen with nothing to justify the tree's `none`.
+		expect(ruleAt('.pbl-rel-view .pbl-row', 'user-select: auto;')).toBeGreaterThan(-1);
 		expect(ruleAt('.pbl-rel-view .pbl-row', 'cursor: pointer;')).toBeGreaterThan(-1);
 		expect(ruleAt('.pbl-rel-view .pbl-row:hover', 'background-color: var(--background-modifier-hover);')).toBeGreaterThan(
 			-1,

@@ -74,10 +74,30 @@ export const TIMELINE_SCOPE = '\u0000timeline:';
  */
 export const CARD_SCOPE = '\u0000card:';
 
-/** The note path a key belongs to, whichever scope settled it. */
+/**
+ * Prefix marking a key as ONE RELEASE's own fold state (`view/release/scopeTree.ts`,
+ * which owns the key SHAPE — `foldPrefix` — and every reason a release multiplies this
+ * one bit per release rather than sharing {@link TIMELINE_SCOPE}'s single split). This
+ * module only needs to recognise the prefix, for the reason every entry here shares:
+ * `restore()` loads whatever `folds.collapsed` a saved view's IDENTITY holds, whichever
+ * view last wrote it, and a saved view's TYPE can change while its identity does not —
+ * a `.base` view switched from the release view to the backlog view carries the release
+ * folds it never had a `ViewStateController` to read. Before this joined
+ * {@link notePath}, the backlog view's own flush read a whole
+ * `\u0000release:<release path>\u0000<member path>` key as if it were one bare path,
+ * found no such file, and silently deleted the release's own fold — on the very first
+ * data update after the switch, with nothing on screen saying so.
+ */
+export const RELEASE_FOLD = '\u0000release:';
+
+/** The note path a key belongs to, whichever scope settled it. A release-fold key
+ *  carries TWO paths — the release, then the member after a second NUL — and it is the
+ *  member this key's PRUNE has to ask the vault about, so this takes everything after
+ *  the LAST NUL rather than slicing off a fixed prefix length. */
 function notePath(key: string): string {
 	if (key.startsWith(TIMELINE_SCOPE)) return key.slice(TIMELINE_SCOPE.length);
 	if (key.startsWith(CARD_SCOPE)) return key.slice(CARD_SCOPE.length);
+	if (key.startsWith(RELEASE_FOLD)) return key.slice(key.lastIndexOf('\u0000') + 1);
 	return key;
 }
 
@@ -134,10 +154,15 @@ function movedColumnKey(key: string, oldPath: string, newPath: string): string |
 	return moved === null ? null : ITERATION_COLUMN_PREFIX + moved + rest.slice(cut);
 }
 
-/** The scope prefix a settled key carries, or '' for the tree's own bare path. */
+/** The scope prefix a settled key carries, or '' for the tree's own bare path. A
+ *  release-fold key's own "scope" is everything up to and including its SECOND NUL —
+ *  `RELEASE_FOLD` plus the release path — because that whole span, not just the fixed
+ *  prefix, has to be put back in front of a renamed member for {@link renamePath} to
+ *  reconstruct the same key over the same release. */
 function scopeOf(key: string): string {
 	if (key.startsWith(TIMELINE_SCOPE)) return TIMELINE_SCOPE;
 	if (key.startsWith(CARD_SCOPE)) return CARD_SCOPE;
+	if (key.startsWith(RELEASE_FOLD)) return key.slice(0, key.lastIndexOf('\u0000') + 1);
 	return '';
 }
 

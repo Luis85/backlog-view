@@ -111,6 +111,29 @@ describe('the scope tree', () => {
 		expect(vault.opened.map((o) => o.path)).toEqual(['Expire the link.md']);
 	});
 
+	/**
+	 * `src/view/CLAUDE.md`'s own stated rule: a middle click never fires `click` at all —
+	 * the browser sends `auxclick` instead — so a surface wiring only the primary gesture
+	 * silently loses "open in a new tab", exactly the way a milestone's diamond did before
+	 * `wireOpenGestures` paired the two (`render/board.ts`). The disclosure is excluded by
+	 * hand, since unlike its `click` handler it wires no `auxclick` of its own to stop one
+	 * at with `stopPropagation`.
+	 */
+	it('a middle click opens the note in a new tab; the disclosure is exempt', () => {
+		const { view, vault } = mountFoldScope({ pick: 'Releases/0.8.md' });
+		row(view, 'Expire the link.md')!.dispatchEvent(new MouseEvent('auxclick', { button: 1, bubbles: true }));
+		expect(vault.opened).toEqual([{ path: 'Expire the link.md', mode: 'tab' }]);
+
+		twisty(view, 'Passwordless sign-in.md').dispatchEvent(new MouseEvent('auxclick', { button: 1, bubbles: true }));
+		expect(vault.opened).toEqual([{ path: 'Expire the link.md', mode: 'tab' }]);
+	});
+
+	it('a right click through auxclick opens nothing — only the middle button does', () => {
+		const { view, vault } = mountFoldScope({ pick: 'Releases/0.8.md' });
+		row(view, 'Expire the link.md')!.dispatchEvent(new MouseEvent('auxclick', { button: 2, bubbles: true }));
+		expect(vault.opened).toEqual([]);
+	});
+
 	it('a context row carries no rollup or state chip, folded or not', () => {
 		// The context-row rule: it renders, it parents, and that is all.
 		const { view } = mountFoldScope({ pick: 'Releases/0.8.md' });

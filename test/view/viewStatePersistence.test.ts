@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
+import { RELEASE_FOLD } from '../../src/view/viewState';
 import { FakeVault } from '../helpers/vault';
 import { fixture, makeView, refresh, rowByTitle, titlesOf, useViewHarness } from '../helpers/view';
 
@@ -210,6 +211,68 @@ describe('collapse state persistence', () => {
 		expect([...entry.folds.collapsed, ...entry.folds.expanded]).not.toContain('Epic B.md');
 		// Nothing else will ever enumerate the base that wrote this.
 		expect(stored(vault)['Deleted.base#Backlog']).toBeUndefined();
+	});
+
+	/**
+	 * A saved view's TYPE can change while its stored identity does not (`view/viewState.ts`'s
+	 * own comment on `RELEASE_FOLD`): a `.base` view once configured as the release view
+	 * accumulates keys shaped `\u0000release:<release path>\u0000<member path>`, and
+	 * switching that same saved view to render the BACKLOG loads this exact `ViewState`
+	 * over the identity that already holds them. Before `RELEASE_FOLD` joined `notePath`,
+	 * the flush below read that whole key as one bare path, found no such file, and
+	 * silently deleted the release's own fold on the first data update — this is that
+	 * failure driven from the BACKLOG view's own restore/flush, not from `scopeTree.ts`.
+	 */
+	it('keeps a release’s own fold when the backlog view flushes over the same identity', () => {
+		const vault = fixture();
+		const releaseFoldKey = `${RELEASE_FOLD}Releases/0.8.md\u0000Epic B.md`;
+		vault.localStorage.set('product-backlog:view-state', {
+			'Backlog.base#Backlog': {
+				base: 'Backlog.base',
+				folds: { collapsed: [releaseFoldKey], expanded: [], lanes: [] },
+				prefs: {},
+			},
+		});
+
+		const { view } = makeView(vault, {}, { base: 'Backlog.base', collapsed: true });
+		// A write has to be SCHEDULED for `onunload` to flush at all — nothing here has
+		// touched a row, so without this the assertion below would pass whether or not the
+		// prune below ever ran, exactly the false confidence the repository's own rule
+		// against an unchecked comment warns about. `setZoom`'s own value is unrelated; it
+		// exists only to put a pending save on the clock, the same way the folded-band test
+		// above does.
+		view.setZoom('quarter');
+		view.onunload();
+
+		expect(stored(vault)['Backlog.base#Backlog'].folds.collapsed).toContain(releaseFoldKey);
+	});
+
+	/**
+	 * `renamePath`'s walk reaches a release-fold key too, once `notePath` and `scopeOf`
+	 * both recognise `RELEASE_FOLD`: the MEMBER path after the last NUL is what
+	 * `movedPath` is asked about, and everything up to and including that NUL —
+	 * `scopeOf`'s own answer — is what has to survive in front of the renamed member, or
+	 * the key would migrate to a bare path and lose which release it was scoped to.
+	 */
+	it('carries a release’s own fold to a renamed member, keeping it scoped to that release', () => {
+		const vault = fixture();
+		const releaseFoldKey = `${RELEASE_FOLD}Releases/0.8.md\u0000Epic B.md`;
+		vault.localStorage.set('product-backlog:view-state', {
+			'Backlog.base#Backlog': {
+				base: 'Backlog.base',
+				folds: { collapsed: [releaseFoldKey], expanded: [], lanes: [] },
+				prefs: {},
+			},
+		});
+
+		const { view } = makeView(vault, {}, { base: 'Backlog.base', collapsed: true });
+		vault.renameFile('Epic B.md', 'Epic B renamed.md');
+		view.onunload();
+
+		const renamedKey = `${RELEASE_FOLD}Releases/0.8.md\u0000Epic B renamed.md`;
+		const collapsed = stored(vault)['Backlog.base#Backlog'].folds.collapsed;
+		expect(collapsed).toContain(renamedKey);
+		expect(collapsed).not.toContain(releaseFoldKey);
 	});
 
 	/**

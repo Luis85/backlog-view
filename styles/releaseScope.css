@@ -73,18 +73,23 @@
 
 /* One release's scope reuses the tree's `.pbl-row` for its LAYOUT — the flex row, the
    `--pbl-depth` indent, `content-visibility` — and inherits gestures with it that this
-   screen does not fully have: there is still no selection, which is why `renderScope.ts`
-   omits `aria-selected` (Task 4 adds it). A row is a target again since Task 3 — it opens
-   its note — so the two refusals this file made when nothing on the screen was clickable
-   go with them. `user-select` STAYS auto, unstated here rather than reset back to it: a
-   screen for reading must let a reader copy a title, and the tree earns its own `none` by
-   dragging its rows, which nothing here does.
+   screen does not fully have: there is still no drag, which is why `user-select` is set
+   back to `auto` rather than left at the tree's own `none` (`styles/tree.css`). A screen
+   for reading must let a reader copy a title, and the tree earns its `none` by dragging
+   its rows — an UNSTATED property here does not "stay" at the browser default, it
+   resolves from whichever rule wins the cascade, and `.pbl-row`'s `none` is the one that
+   was winning: leaving the property off this rule silently carried the tree's own `none`
+   onto a screen with nothing to justify it, and a reader here could not select a title at
+   all. A row is a target again since Task 3 — it opens its note, and Task 4 adds
+   `aria-selected` — so the two refusals this file made when nothing on the screen was
+   clickable go with them.
 
    Scoped by `.pbl-rel-view` so it cannot reach the backlog tree's own rows, and the hover
    is set at `:hover` rather than at the bare class so the import ORDER still decides
    nothing (see this file's header). */
 .pbl-rel-view .pbl-row {
 	cursor: pointer;
+	user-select: auto;
 }
 
 .pbl-rel-view .pbl-row:hover {

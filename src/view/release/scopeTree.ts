@@ -8,6 +8,8 @@ import { badgeStyleFor } from '../render/badges';
 import { drawIcon } from '../render/icons';
 import { loadViewState, saveViewState } from '../../storage/viewStateStore';
 import { resolveViewIdentity, ViewIdentity } from '../../storage/viewIdentity';
+import { RELEASE_FOLD } from '../viewState';
+import { uniqueElementId } from '../selection';
 
 /**
  * The scope tree's own rows: the disclosure, the fold set and the two row figures the
@@ -22,21 +24,22 @@ import { resolveViewIdentity, ViewIdentity } from '../../storage/viewIdentity';
  */
 
 /**
- * Prefix marking a key as ONE RELEASE's own fold state. A NUL for `TIMELINE_SCOPE`'s
- * stated reason (`view/viewState.ts`) — a vault path may legitimately contain any
- * printable prefix, so a sentinel that could occur in a real path would collide with one.
+ * The release path is IN the key, unlike `view/viewState.ts`'s own `TIMELINE_SCOPE` and
+ * `CARD_SCOPE`, because this scope is not one projection but one per release: the
+ * question is "is this row open in THIS release's scope", and there are as many of those
+ * as the base holds releases. One ancestor can be context in two releases at once, and
+ * its disclosure hides two different member populations there — a bare-path key would
+ * give those two questions one bit, so folding it in release A would collapse it in
+ * release B and expanding either would clear both. `TIMELINE_SCOPE` and `CARD_SCOPE`
+ * exist for exactly this failure, over the backlog's own two projections; this scope
+ * multiplies it by "however many releases the base holds" instead of by two.
  *
- * The release path is IN the key, unlike the two scopes in `view/viewState.ts`, because
- * this scope is not one projection but one per release: the question is "is this row open
- * in THIS release's scope", and there are as many of those as the base holds releases. One
- * ancestor can be context in two releases at once, and its disclosure hides two different
- * member populations there — a bare-path key would give those two questions one bit, so
- * folding it in release A would collapse it in release B and expanding either would clear
- * both. `TIMELINE_SCOPE` and `CARD_SCOPE` exist for exactly this failure, over the
- * backlog's own two projections; this scope multiplies it by "however many releases the
- * base holds" instead of by two.
+ * `RELEASE_FOLD` itself now lives in `view/viewState.ts`, not here: the backlog view's
+ * own `ViewState` has to recognise the prefix too, since a saved view's TYPE can change
+ * while its stored identity does not, and a `.base` view switched from this one to the
+ * backlog view carries whatever this module wrote under that identity — see that
+ * constant's own comment for what silently broke before it moved.
  */
-const RELEASE_FOLD = '\u0000release:';
 
 /** `<NUL>release:<release path><NUL>` — everything after it is the member path, and the
  *  NUL is safe as a separator for the same reason it is safe as a prefix: neither path
@@ -112,11 +115,18 @@ function writeFolds(view: ReleaseView, releasePath: string, folded: ReadonlySet<
 	writeRawFolds(view, id, [...others, ...mine]);
 }
 
+/**
+ * Flips one row's fold and redraws — one call rather than two repeated at every caller.
+ * The disclosure's own click used to pair `toggleFold` with `view.render()` itself, and
+ * `scopeKeys.ts`'s keyboard Left/Right need the identical pair; moving the render in here
+ * is what lets both call one function instead of each remembering the redraw.
+ */
 export function toggleFold(view: ReleaseView, releasePath: string, path: string): void {
 	const folded = foldedPaths(view, releasePath);
 	if (folded.has(path)) folded.delete(path);
 	else folded.add(path);
 	writeFolds(view, releasePath, folded);
+	view.render();
 }
 
 /** Fold or unfold every row THIS scope drew, without touching another release's set —
@@ -190,23 +200,61 @@ function childRows(rows: ScopeRow[]): Set<string> {
 	return withKids;
 }
 
-export function drawScopeTree(view: ReleaseView, release: ReleaseRow, rows: ScopeRow[]): void {
+/**
+ * What `scopeKeys.ts`'s `wireScopeKeys` needs of a finished draw, produced here rather
+ * than in that module: `scopeTree.ts` has no reason to import `scopeKeys.ts` back —
+ * `drawScopeTree` returns this and `renderScope.ts` (which already imports both) wires
+ * the keyboard as a second step, which is what keeps the two release-tree modules a DAG
+ * rather than a cycle `npm run analyze` refuses.
+ */
+export interface ScopeDraw {
+	readonly treeEl: HTMLElement;
+	/** The rows the tree actually DREW, in order — `visibleRows`' own output, never the
+	 *  full walk (a folded-away row is not in the DOM to arrow onto). */
+	readonly rows: ScopeRow[];
+	/** The paths `drawScopeTree` drew a disclosure on — the rendered tree's own answer,
+	 *  never the fold set's (a stale fold entry must not make a leaf answer as a parent). */
+	readonly kids: ReadonlySet<string>;
+	/** Path → element, built while drawing rather than queried back out of the DOM —
+	 *  `src/view/CLAUDE.md`'s `TREE_SCAN` bans exactly that scan. */
+	readonly rowEls: ReadonlyMap<string, HTMLElement>;
+}
+
+export function drawScopeTree(view: ReleaseView, release: ReleaseRow, rows: ScopeRow[]): ScopeDraw {
 	// Named by the release, so a reader arriving at the tree hears which one it is. The
 	// name is vault content rather than text — it goes nowhere near the catalog.
-	const treeEl = view.viewEl.createDiv({ cls: 'pbl-tree', attr: { role: 'tree', 'aria-label': release.name } });
+	// `tabindex="0"` makes the CONTAINER the tab stop — a composite widget's own rule
+	// (`src/view/CLAUDE.md`) — with `scopeKeys.ts` moving a roving selection inside it.
+	const treeEl = view.viewEl.createDiv({
+		cls: 'pbl-tree',
+		attr: { role: 'tree', 'aria-label': release.name, tabindex: '0' },
+	});
 	const folded = foldedPaths(view, release.path);
 	const withKids = childRows(rows);
+	const visible = visibleRows(rows, folded);
+	// Built WHILE drawing rather than queried from `treeEl` afterwards — the cost rule
+	// every tree in this plugin keeps (`src/view/CLAUDE.md`'s `TREE_SCAN`): a row is
+	// reached by lookup, never by scanning the DOM for it, and `scopeKeys.ts`'s own
+	// selection moves on every arrow key rather than once per render.
+	const rowEls = new Map<string, HTMLElement>();
 	// The walk hands back each row joined to its own place, rather than a parallel array this
 	// loop would index into — an index lookup would need a fallback for a case that cannot
 	// happen, which is the unreachable branch this module's own header argues against.
-	for (const { row, pos, count } of siblingPlaces(visibleRows(rows, folded))) {
-		drawRow(view, release, treeEl, row, {
-			pos,
-			count,
-			hasKids: withKids.has(row.item.file.path),
-			open: !folded.has(row.item.file.path),
-		});
+	for (const { row, pos, count } of siblingPlaces(visible)) {
+		rowEls.set(
+			row.item.file.path,
+			drawRow(view, release, treeEl, row, {
+				pos,
+				count,
+				hasKids: withKids.has(row.item.file.path),
+				open: !folded.has(row.item.file.path),
+			}),
+		);
 	}
+	// `visible`, never `rows`: arrowing onto a row a fold hid would move the active
+	// descendant to an element that is not in the DOM. `withKids` is the rendered tree's
+	// own answer too — see `scopeKeys.ts`'s own comment on why the fold set cannot stand in.
+	return { treeEl, rows: visible, kids: withKids, rowEls };
 }
 
 /** A row's place in its sibling group plus its own fold state — one bag rather than four
@@ -219,7 +267,9 @@ interface RowPlace {
 	open: boolean;
 }
 
-function drawRow(view: ReleaseView, release: ReleaseRow, treeEl: HTMLElement, row: ScopeRow, place: RowPlace): void {
+/** Returns the row's own element — `drawScopeTree`'s way of building its path → element
+ *  index without a second walk of the DOM (`TREE_SCAN`'s own reason, `scopeKeys.ts`). */
+function drawRow(view: ReleaseView, release: ReleaseRow, treeEl: HTMLElement, row: ScopeRow, place: RowPlace): HTMLElement {
 	const rowEl = treeEl.createDiv({
 		cls: 'pbl-row' + (row.context ? ' pbl-rel-context' : ''),
 		attr: {
@@ -231,10 +281,15 @@ function drawRow(view: ReleaseView, release: ReleaseRow, treeEl: HTMLElement, ro
 			'aria-posinset': String(place.pos),
 			'aria-setsize': String(place.count),
 			'data-path': row.item.file.path,
+			// Minted per view instance (`scopeKeys.ts`'s own comment): `aria-activedescendant`
+			// resolves a DOCUMENT id, and two saved views can sit in split panes over one note.
+			id: uniqueElementId('pbl-rel-row'),
 		},
 	});
-	// `aria-selected` is deliberately still absent — this screen has no selection, Task 4's
-	// own addition. `aria-expanded` is not: see the disclosure below.
+	// `aria-selected` is NOT set here — it is the roving selection `scopeKeys.ts` manages,
+	// on whichever row is active, and a draw-time value here could only ever be wrong the
+	// moment a second row became active without a redraw. `aria-expanded` is not: see the
+	// disclosure below, which is a fact about the ROW rather than about the keyboard.
 	rowEl.setCssProps({ '--pbl-depth': String(row.depth) });
 
 	drawDisclosure(view, release, rowEl, row, place);
@@ -242,9 +297,17 @@ function drawRow(view: ReleaseView, release: ReleaseRow, treeEl: HTMLElement, ro
 	// A row is a target again — it opens its note. Unconditional, including on a context
 	// row: opening is not a write, and a context ancestor is a real note the reader may
 	// still want to read even though this screen refuses every action that would edit it.
-	rowEl.addEventListener('click', (evt) =>
-		view.opener.open({ app: view.app, viewEl: view.viewEl, settings: { openIn: view.settings.openIn } }, row.item, evt),
-	);
+	rowEl.addEventListener('click', (evt) => view.opener.open(view.openContext(), row.item, evt));
+	rowEl.addEventListener('auxclick', (evt) => {
+		// A middle click never fires `click` — the browser sends `auxclick` instead, so the
+		// listener above never sees it (`src/view/CLAUDE.md`'s own stated rule, and the pair
+		// every other row wires it as: `render/rows.ts`, `cardChildren.ts`, `board.ts`). The
+		// disclosure is excluded by hand rather than through `stopPropagation`, because
+		// unlike its `click` handler it wires no `auxclick` of its own to stop one at.
+		if (evt.button !== 1) return;
+		if (evt.target instanceof Element && evt.target.closest('.pbl-twisty') !== null) return;
+		view.opener.openIn(view.openContext(), row.item, 'tab');
+	});
 
 	drawBadge(rowEl, row);
 
@@ -258,6 +321,7 @@ function drawRow(view: ReleaseView, release: ReleaseRow, treeEl: HTMLElement, ro
 	drawStateChip(rowEl, row);
 	drawRollup(rowEl, row);
 	drawContextMarker(rowEl, row);
+	return rowEl;
 }
 
 /**
@@ -279,7 +343,6 @@ function drawDisclosure(view: ReleaseView, release: ReleaseRow, rowEl: HTMLEleme
 		// The row's own listener would otherwise open the note behind the fold.
 		evt.stopPropagation();
 		toggleFold(view, release.path, row.item.file.path);
-		view.render();
 	});
 }
 

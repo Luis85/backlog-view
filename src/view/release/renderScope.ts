@@ -8,6 +8,7 @@ import { WorkflowKind, workflowStateInfo } from '../../domain/board';
 import { guidanceShell } from '../render/emptyStates';
 import { renderReleaseInit } from './initControl';
 import { drawScopeTree } from './scopeTree';
+import { wireScopeKeys } from './scopeKeys';
 
 /**
  * One release's screen (`docs/requirements/The scope of a release as a tree.md`): the
@@ -18,6 +19,13 @@ import { drawScopeTree } from './scopeTree';
  *
  * A free function over the view, `renderIndex.ts`'s own shape, importing the view for its
  * TYPE alone so the pair stays acyclic at runtime.
+ *
+ * **This module is also what keeps `scopeTree.ts` and `scopeKeys.ts` themselves acyclic.**
+ * The tree's keyboard needs the fold set `scopeTree.ts` owns (`foldedPaths`, `toggleFold`),
+ * and `scopeTree.ts` has no reason to import the keyboard back — so `drawScopeTree` returns
+ * what it drew (`ScopeDraw`) instead of wiring the keyboard itself, and this module, which
+ * already imports both leaves, calls `wireScopeKeys` as the second step. Two one-directional
+ * edges from here rather than one cycle between them.
  *
  * **Nothing here writes a note.** There is no gate to route through and nothing to
  * withhold: the back control sets view state, a row's click opens a note (`scopeTree.ts`),
@@ -62,7 +70,8 @@ export function renderScope(view: ReleaseView, scope: ReleaseScope, release: Rel
 		);
 		return;
 	}
-	drawScopeTree(view, release, scope.rows);
+	const draw = drawScopeTree(view, release, scope.rows);
+	wireScopeKeys(view, draw.treeEl, release.path, draw);
 }
 
 /**

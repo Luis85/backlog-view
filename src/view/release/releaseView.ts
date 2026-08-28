@@ -8,7 +8,7 @@ import { resolveSettings } from '../../domain/settingsResolve';
 import { loadViewState, saveViewState } from '../../storage/viewStateStore';
 import { resolveViewIdentity } from '../../storage/viewIdentity';
 import { guidanceShell } from '../render/emptyStates';
-import { OpenController } from '../openTarget';
+import { OpenContext, OpenController } from '../openTarget';
 import { RELEASE_SUGGESTED_KEYS } from './init';
 import { renderReleaseInit } from './initControl';
 import { renderNewRelease } from './newRelease';
@@ -52,6 +52,14 @@ export class ReleaseView extends BasesView {
 	 *  (`estimationView.ts`), reused for the identical reason: a click on a scope row is
 	 *  ordinary navigation, never a write. */
 	readonly opener = new OpenController();
+	/** The scope tree's own roving selection, carried across a render — see
+	 *  `scopeKeys.ts`'s own comment on why the redraw a fold triggers must not drop it. */
+	activeScopePath: string | null = null;
+	/** Whether the SCOPE TREE — never the index list, never a button — held focus just
+	 *  before the current render's `empty()` detached it. Captured in `render()`, below,
+	 *  beside `previousTop` and for the identical reason: a detached element answers
+	 *  nothing, so this has to be read before the teardown rather than after it. */
+	scopeHadFocus = false;
 
 	constructor(controller: QueryController, containerEl: HTMLElement) {
 		super(controller);
@@ -83,6 +91,13 @@ export class ReleaseView extends BasesView {
 		this.settings = resolveReleaseSettings(this.config);
 		this.restorePick();
 		this.render();
+	}
+
+	/** What `opener` needs of this view — one object built here rather than at every call
+	 *  site, so a scope row's click, its middle click and the keyboard's Enter cannot each
+	 *  spell the same three fields slightly differently. */
+	openContext(): OpenContext {
+		return { app: this.app, viewEl: this.viewEl, settings: { openIn: this.settings.openIn } };
 	}
 
 	/** Picking a row, or the back control's null. Persists, then redraws. */
@@ -157,6 +172,10 @@ export class ReleaseView extends BasesView {
 		const previousEl = this.scrollerEl();
 		const previousTop = previousEl?.scrollTop ?? 0;
 		const previousKey = this.drawnKey;
+		// Captured before `empty()` for `previousTop`'s own reason: a detached element
+		// answers nothing. `previousEl` already narrows to `.pbl-tree` or `.pbl-rel-list`,
+		// so this only has to ask whether it was THIS render's tree specifically.
+		this.scopeHadFocus = previousEl !== null && previousEl.classList.contains('pbl-tree') && document.activeElement === previousEl;
 		this.viewEl.empty();
 		this.drawnKey = this.draw();
 		const el = this.scrollerEl();

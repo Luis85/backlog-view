@@ -182,11 +182,20 @@ export default defineConfig({
 			// and functions both stay, for the same arithmetic once more.** One fewer line is
 			// 99.7478, which floors to the 99.74 already standing. One fewer function is
 			// 99.8730, under the 99.90 standing, so headroom there would again be a decrease.
+			//
+			// Raised again on 2026-08-28, with the scope tree's keyboard (`scopeKeys.ts`) and
+			// the release-fold prune fix (`RELEASE_FOLD` joining `notePath`/`scopeOf` in
+			// `view/viewState.ts`): this machine measured 9627/9725 statements, 6046/6325
+			// branches, 2459/2461 functions and 8003/8022 lines. Three move, each set under
+			// the ONE-FEWER figure by the headroom rule above — 9626 is 98.9820, so statements
+			// takes 98.98; 6045 is 95.5731, so branches takes 95.57; 8002 is 99.7507, so lines
+			// takes 99.75. **Functions stays**, for the same arithmetic once more: one fewer is
+			// 99.8781, under the 99.90 standing, so headroom there would again be a decrease.
 			thresholds: {
-				statements: 98.96,
-				branches: 95.49,
+				statements: 98.98,
+				branches: 95.57,
 				functions: 99.90,
-				lines: 99.74,
+				lines: 99.75,
 			},
 		},
 	},

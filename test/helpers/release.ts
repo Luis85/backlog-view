@@ -20,6 +20,35 @@ export function twisty(view: ReleaseView, path: string): HTMLElement {
 	return el;
 }
 
+/**
+ * Dispatches a keydown at the tree, `scopeKeys.test.ts`'s own way in. Re-queried every
+ * call rather than captured once: `toggleFold` and the ArrowLeft/Right cases redraw the
+ * tree, which detaches the element a stale reference would still be pointing at.
+ */
+export function press(view: ReleaseView, key: string): void {
+	const treeEl = view.viewEl.querySelector<HTMLElement>('.pbl-tree');
+	if (!treeEl) throw new Error('no scope tree mounted');
+	treeEl.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
+}
+
+/** The row the roving selection currently marks, by path — or null before anything has
+ *  set one, which `scopeKeys.ts`'s own `show()` is the only writer of. */
+export function active(view: ReleaseView): string | null {
+	return view.viewEl.querySelector<HTMLElement>('.pbl-row[aria-selected="true"]')?.getAttribute('data-path') ?? null;
+}
+
+/**
+ * Jumps the roving selection to a path directly, without walking the arrow keys there —
+ * `scopeKeys.test.ts`'s own setup step for a test whose SUBJECT is a later key, not the
+ * walk. Goes through `activeScopePath` and a render rather than reaching into the
+ * controller's closure, which is exactly the restore path a real re-render already takes
+ * (a fold, `onDataUpdated`), so this drives the same code a keyboard user's session would.
+ */
+export function select(view: ReleaseView, path: string): void {
+	view.activeScopePath = path;
+	view.render();
+}
+
 // `releaseSettingsWith`, the `ReleaseSettings`-shaped fixture, lives in the leaf module
 // `test/helpers/releaseSettings.ts` and not here: it touches no DOM, and this file calls
 // `installObsidianDom()` below, so anything importing it needs jsdom. NOT re-exported
@@ -101,6 +130,13 @@ export interface MountReleaseOptions {
 	 *  index — the `noMembership` empty state this control's second position draws on only
 	 *  exists with a release open. */
 	pick?: string;
+}
+
+/** Hand the view a fresh result set, the way Bases does after a vault change —
+ *  `test/helpers/view.ts`'s own `refresh`, for the release view's own `data` shape. */
+export function refreshRelease(view: ReleaseView, vault: FakeVault): void {
+	(view as unknown as Record<string, unknown>).data = { data: vault.entries() };
+	view.onDataUpdated();
 }
 
 export function mountRelease(opts: MountReleaseOptions = {}): ReleaseHarness & { vault: FakeVault } {
