@@ -277,6 +277,16 @@ describe('the summary strip', () => {
 		expect(strip.textContent).toContain('1 of 3 items done');
 	});
 
+	it('names the property and the done values in a tooltip on the strip, for a single workflow', () => {
+		// The requirement the bar, the percentage and the sentence cannot meet alone: a
+		// reader must be able to see WHICH property decided the numerator. On the strip,
+		// per the brief — never a fourth header line.
+		const { view, containerEl } = makeReleaseView(progressVault(), RELEASE_CONFIG);
+		view.pick('P.md');
+		const strip = containerEl.querySelector('.pbl-rel-summary') as HTMLElement;
+		expect(strip.dataset.tooltip).toBe('Progress reads status. Done values: Done, Closed, Completed, and Removed.');
+	});
+
 	it('reports the same numbers the index band reported', () => {
 		// One `ReleaseRow`, two screens — the rule `domain/releases.ts` states: progress
 		// "is computed nowhere else". A second derivation would pass this only by luck.
@@ -325,6 +335,29 @@ describe('the summary strip', () => {
 			deliverableStateProperty: 'note.dstatus',
 		});
 		view.pick('Q.md');
-		expect(containerEl.querySelector('.pbl-rel-summary')!.textContent).toContain('1 of');
+		const strip = containerEl.querySelector('.pbl-rel-summary') as HTMLElement;
+		expect(strip.textContent).toContain('1 of');
+		// The tooltip names the Deliverable's OWN key — not the plan's `status`, which this
+		// release's one member never even reads for done-ness.
+		expect(strip.dataset.tooltip).toBe('Progress reads dstatus. Done values: Done, Closed, Completed, and Removed.');
+	});
+
+	it('names the workflows instead, in a tooltip, when members span more than one', () => {
+		// The mixed-population branch [[Summing up a release]]'s 2026-08-28 amendment
+		// exists for: a plan member and a Deliverable member on DIFFERENT properties, so no
+		// single property decided `done` and the tooltip has to say so rather than pick one.
+		const vault = new FakeVault();
+		vault.addFile('Q.md', { frontmatter: { type: 'Release' } });
+		vault.addFile('A.md', { frontmatter: { type: 'PBI', release: '[[Q]]', status: 'Doing' } });
+		vault.addFile('D.md', {
+			frontmatter: { type: 'Deliverable', release: '[[Q]]', status: 'Planned', dstatus: 'Done' },
+		});
+		const { view, containerEl } = makeReleaseView(vault, {
+			...RELEASE_CONFIG,
+			deliverableStateProperty: 'note.dstatus',
+		});
+		view.pick('Q.md');
+		const strip = containerEl.querySelector('.pbl-rel-summary') as HTMLElement;
+		expect(strip.dataset.tooltip).toBe('Progress spans more than one workflow: Work and Deliverables.');
 	});
 });

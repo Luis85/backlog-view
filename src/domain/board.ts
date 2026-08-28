@@ -308,12 +308,32 @@ export interface WorkflowReading {
 }
 
 /**
+ * Which of the three workflows an item's state belongs to — `stateKeyFor` and
+ * `ownWorkflowReading` each restate this identical selection on their own axis (the key,
+ * the value); this names the KIND alone, for a caller that has to ask "which workflow" as
+ * a question of its own rather than compare keys — comparing keys collapses the moment two
+ * workflows happen to be bound to the same property, which is legal (the shipped default
+ * does exactly that). Added for the release summary's provenance tooltip
+ * (`domain/releases.ts`'s `ReleaseRow.workflows`), the first caller that needs to know
+ * whether a POPULATION of members shares one workflow or several.
+ */
+export type WorkflowKind = 'requirements' | 'deliverable' | 'test';
+
+export function ownWorkflowKind(item: BacklogItem): WorkflowKind {
+	if (isDeliverableType(item.typeName)) return 'deliverable';
+	if (inCatalog(item)) return 'test';
+	return 'requirements';
+}
+
+/**
  * The same "an item's workflow follows its type, or its ladder" rule `stateKeyFor` states
- * for the KEY, stated once more for the VALUE. Before these two existed, the chip and the
- * menu each hand-wrote the same ternary — two copies of one rule is how they came to
- * disagree in the first place, and it is why a third workflow costs two edits HERE. It
- * costs more elsewhere: the vocabulary, the write planner, the option and the badge are
- * their own changes, and this sentence is about the selection alone.
+ * for the KEY, stated once more for the VALUE — now routed through {@link ownWorkflowKind}
+ * rather than repeating its two branches, so the two can never answer differently about
+ * the same item. Before these existed, the chip and the menu each hand-wrote the same
+ * ternary — two copies of one rule is how they came to disagree in the first place, and it
+ * is why a third workflow costs two edits HERE. It costs more elsewhere: the vocabulary,
+ * the write planner, the option and the badge are their own changes, and this sentence is
+ * about the selection alone.
  *
  * The pair is returned together so both halves come from ONE decision: a caller that needs
  * only the value still gets the value of the workflow whose done flag it would have got.
@@ -321,9 +341,37 @@ export interface WorkflowReading {
  * legitimately reads `.value` alone — and doing so is not a sign the pairing was pointless.
  */
 export function ownWorkflowReading(item: BacklogItem): WorkflowReading {
-	if (isDeliverableType(item.typeName)) return { value: item.deliverableStateValue, done: item.deliverableDone };
-	if (inCatalog(item)) return { value: item.testStateValue, done: item.testDone };
-	return { value: item.stateValue, done: item.done };
+	switch (ownWorkflowKind(item)) {
+		case 'deliverable':
+			return { value: item.deliverableStateValue, done: item.deliverableDone };
+		case 'test':
+			return { value: item.testStateValue, done: item.testDone };
+		default:
+			return { value: item.stateValue, done: item.done };
+	}
+}
+
+/**
+ * The property key and done-value vocabulary a workflow KIND reads through — settings
+ * alone, no item in hand: {@link ownWorkflowKind} decides which kind a member belongs to,
+ * and this answers what that kind IS once picked. The release summary's tooltip is the one
+ * caller, naming a single shared property when a release's members all read the same
+ * workflow — see `ReleaseRow.workflows`.
+ */
+export interface WorkflowStateInfo {
+	key: string;
+	doneValues: string[];
+}
+
+export function workflowStateInfo(kind: WorkflowKind, settings: BacklogSettings): WorkflowStateInfo {
+	switch (kind) {
+		case 'deliverable':
+			return { key: resolvedDeliverableStateKey(settings), doneValues: settings.deliverableDoneValues };
+		case 'test':
+			return { key: resolvedTestStateKey(settings), doneValues: settings.testDoneValues };
+		default:
+			return { key: settings.stateKey, doneValues: settings.doneValues };
+	}
 }
 
 /**

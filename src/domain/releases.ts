@@ -3,7 +3,7 @@ import { BacklogItem, BacklogModel, inPlan } from './model';
 import { ReleaseSettings } from './releaseOptions';
 import { CivilDate, FieldReading, linkpathFromRawValue, ownValue, readDate, readString } from './noteFields';
 import { isMarkerType, isReleaseType } from './itemTypes';
-import { ownWorkflowReading } from './board';
+import { ownWorkflowKind, ownWorkflowReading, WorkflowKind } from './board';
 
 /**
  * A figure with THREE answers, not two. `FieldReading` in `noteFields.ts` separates a
@@ -54,6 +54,21 @@ export interface ReleaseRow {
 	 * header disagreeing about one release.
 	 */
 	done: ReleaseFigure<number>;
+	/**
+	 * Every workflow at least one member reads its state through — {@link ownWorkflowKind}
+	 * per member, deduplicated, in the fixed order `WORKFLOW_ORDER` declares rather than
+	 * encounter order, so the tooltip built from it reads the same regardless of which
+	 * member the walk reached first. What the summary strip's tooltip names when this holds
+	 * more than one entry: {@link done}'s numerator crosses `ownWorkflowReading`'s branches
+	 * the moment a release holds a Deliverable or a test-catalog member beside ordinary
+	 * work, and past that point no single property decided it — see
+	 * `docs/requirements/Summing up a release.md`'s 2026-08-28 amendment, and
+	 * `src/view/release/renderScope.ts` for where this is read. Counted over the same
+	 * population `members` is, in the same walk — never a second traversal that could
+	 * disagree about who is a member. Empty exactly when `members` is: no membership key,
+	 * or no member.
+	 */
+	workflows: WorkflowKind[];
 	/**
 	 * On the RELEASE note: the date it actually shipped. Read exactly as {@link target} is,
 	 * with the same three answers — unset, unreadable, a date. It is what tells shipped from
@@ -201,6 +216,19 @@ function rank(item: BacklogItem): number {
 	return item.order ?? Number.POSITIVE_INFINITY;
 }
 
+/**
+ * The fixed order `ReleaseRow.workflows` lists its entries in — declared once so the
+ * summary's tooltip reads the same words in the same order regardless of which member the
+ * counting walk reached first, which a `Set`'s own iteration order (insertion order) would
+ * not guarantee.
+ */
+const WORKFLOW_ORDER: WorkflowKind[] = ['requirements', 'deliverable', 'test'];
+
+function sortedWorkflows(kinds: Set<WorkflowKind> | undefined): WorkflowKind[] {
+	if (kinds === undefined) return [];
+	return WORKFLOW_ORDER.filter((kind) => kinds.has(kind));
+}
+
 /** A civil date as a sortable integer; undated sorts last, never as the epoch. */
 function dateKey(target: ReleaseFigure<CivilDate>): number {
 	const d = target.value;
@@ -293,6 +321,9 @@ export function releaseIndex(
 	const counts = new Map<string, number>();
 	// Same shape, one per release, for the numerator `done` reads.
 	const doneCounts = new Map<string, number>();
+	// Same shape again, for `ReleaseRow.workflows` — a Set per release rather than a count,
+	// since what this answers is WHICH kinds are represented, not how many of each.
+	const workflowsByRelease = new Map<string, Set<WorkflowKind>>();
 	const stateConfigured = options.stateKey !== '';
 	const unresolved: BacklogItem[] = [];
 	// Built once per index and dead with it: `membershipTarget` runs per scannable row, so
@@ -311,6 +342,9 @@ export function releaseIndex(
 		counts.set(named, (counts.get(named) ?? 0) + 1);
 		// `ownWorkflowReading`, never `item.done`: see {@link ReleaseRow.done}.
 		if (ownWorkflowReading(item).done) doneCounts.set(named, (doneCounts.get(named) ?? 0) + 1);
+		const kinds = workflowsByRelease.get(named) ?? new Set<WorkflowKind>();
+		kinds.add(ownWorkflowKind(item));
+		workflowsByRelease.set(named, kinds);
 	}
 
 	// The comparison key for "has the target passed", `today` itself never leaving this
@@ -339,6 +373,7 @@ export function releaseIndex(
 				settings.membershipKey && stateConfigured
 					? figure({ value: doneCounts.get(item.file.path) ?? 0, invalid: false })
 					: UNCONFIGURED,
+			workflows: sortedWorkflows(workflowsByRelease.get(item.file.path)),
 			released,
 			slip: target.value !== null && released.value !== null ? daysBetween(target.value, released.value) : null,
 			shipped,

@@ -1733,6 +1733,40 @@ export const en = {
 	 * digits would have no way to say so through a joined string.
 	 */
 	'release.scope.percent': '{pct}%',
+	/**
+	 * The strip's tooltip, naming what its progress figure read — a requirement
+	 * (`docs/requirements/Summing up a release.md`'s 2026-08-28 amendment) the bar, the
+	 * percentage and the sentence alone cannot meet: none of the three says WHICH property
+	 * decided a member was done. `{property}` and `{values}` are the plan's own property key
+	 * and the state values it counts as done — DATA the plugin reads off `BacklogSettings`,
+	 * never catalog text, per the register's own rule for anything the plugin writes,
+	 * matches or persists. Read only while a release's members share exactly one workflow
+	 * (`ReleaseRow.workflows`); `release.scope.progressWorkflows` below is what a mixed
+	 * population reads instead.
+	 */
+	'release.scope.progressProperty': 'Progress reads {property}. Done values: {values}.',
+	/**
+	 * The tooltip's other branch, for a release whose members span more than one workflow —
+	 * `ReleaseRow.done` reads each through `ownWorkflowReading`, so past that point no
+	 * single property decided the figure and naming one would be a false precision. `{workflows}`
+	 * is a LIST of already-translated workflow names (`release.scope.workflow*` below),
+	 * joined as grammar by `Intl.ListFormat` — see `t.ts`'s own comment on why a list
+	 * parameter is never joined at the call site.
+	 */
+	'release.scope.progressWorkflows': 'Progress spans more than one workflow: {workflows}.',
+	/**
+	 * The two workflow names the provenance tooltip can list — mirrors
+	 * `legend.workflowRequirements` / `legend.workflowDeliverables`'s own words rather than
+	 * importing those keys, because that pair is scoped to the roadmap's legend by its own
+	 * comment ("drawn only when there are two to tell apart"). Two, not `WorkflowKind`'s
+	 * three: a test-catalog note can never become a release member at all
+	 * (`membershipTarget` in `domain/releases.ts` refuses every carrier `inPlan` excludes,
+	 * and `inPlan` excludes catalog membership outright), so `ReleaseRow.workflows` can
+	 * only ever hold these two — see `renderScope.ts`'s own `workflowName` for where that
+	 * is stated beside the code it governs.
+	 */
+	'release.scope.workflowRequirements': 'Work',
+	'release.scope.workflowDeliverables': 'Deliverables',
 	/** No membership property is bound, so no scope can be read at all — the header's facts
 	 *  still stand and the way back is still there, but there is no tree and no count. */
 	'release.scope.noMembership.title': 'No membership property is mapped',
@@ -1789,8 +1823,16 @@ export const en = {
 	 * a reader with a cleared membership property the opposite of what is true. This names
 	 * all three without claiming which one happened, because the control has no way to tell
 	 * the caller that either.
+	 *
+	 * **Narrowed again 2026-08-28**: "every release property" overclaimed a fourth way.
+	 * `RELEASE_SUGGESTED_KEYS` (`view/release/init.ts`) binds exactly four of this view's
+	 * five own properties — `releasedDateProperty` is a READ binding this action
+	 * deliberately never touches, so with the other four handled it was still true that a
+	 * release property remained unbound. Narrowed to what the action can actually add,
+	 * per the register's own rule: write the guarantee to the check, never ahead of it.
 	 */
-	'release.init.nothing': 'Nothing to add. Every release property is bound, was cleared on purpose, or its suggested key is already in use.',
+	'release.init.nothing':
+		'Nothing to add. Every property this action can add is bound, was cleared on purpose, or its suggested key is already in use.',
 
 	/**
 	 * The control that opens that dialog, and what the press reports — all four in

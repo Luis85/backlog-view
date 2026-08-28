@@ -4,7 +4,7 @@ import { childTypeChoices, displayType, inCatalog, keepsProjection, ladderFor } 
 import { computeInitWrites } from '../../src/domain/writePlan';
 import { defaultSettings } from '../../src/domain/settings';
 import { EXTRA_TYPES, LEVELS, TEST_LEVELS } from '../../src/domain/typeVocabulary';
-import { ownWorkflowReading, stateKeyFor } from '../../src/domain/board';
+import { ownWorkflowKind, ownWorkflowReading, stateKeyFor, workflowStateInfo } from '../../src/domain/board';
 import { settingsWith } from '../helpers/settings';
 import { FakeVault } from '../helpers/vault';
 
@@ -248,5 +248,33 @@ describe('an item’s workflow follows its type, or its ladder', () => {
 		expect(stateKeyFor(configured, get('Runbook'))).toBe('status');
 		expect(stateKeyFor(configured, get('Case'))).toBe('testStatus');
 		expect(stateKeyFor(configured, get('Suite'))).toBe('testStatus');
+	});
+
+	it('names the KIND alone, agreeing with ownWorkflowReading’s own branch every time', () => {
+		// `ownWorkflowKind` is what `ownWorkflowReading` is now routed through — this pins
+		// that the two can never disagree about the same item, the whole reason for the
+		// refactor: watched failing by reverting `ownWorkflowReading` to its own two
+		// hand-written branches, which passed this suite while this assertion alone went
+		// red on `get('Case')` and `get('Test task')` reporting `'requirements'`.
+		const get = workflowFixture();
+		expect(ownWorkflowKind(get('Runbook'))).toBe('deliverable');
+		expect(ownWorkflowKind(get('Case'))).toBe('test');
+		expect(ownWorkflowKind(get('Implied'))).toBe('test');
+		expect(ownWorkflowKind(get('Test task'))).toBe('test');
+		// `Suite` is the catalog's own top rung, so it reads through the test workflow too —
+		// there is no plan member in this fixture to name `'requirements'` with, which is
+		// `stateKeyFor`'s own fixture above: it asks the requirements answer of nothing here.
+		expect(ownWorkflowKind(get('Suite'))).toBe('test');
+	});
+
+	it('answers a workflow kind’s own property and done values, settings alone', () => {
+		// The release summary's provenance tooltip reads this once a release's members
+		// share exactly one kind — see `view/release/renderScope.ts`. Asked of settings
+		// directly, with no item and no membership walk in reach, which is what lets it be
+		// pinned here beside the selection it is paired with rather than only through a
+		// release fixture.
+		expect(workflowStateInfo('requirements', configured)).toEqual({ key: 'status', doneValues: ['Done', 'Closed', 'Completed', 'Removed'] });
+		expect(workflowStateInfo('deliverable', configured)).toEqual({ key: 'status', doneValues: ['Done', 'Closed', 'Completed', 'Removed'] });
+		expect(workflowStateInfo('test', configured)).toEqual({ key: 'testStatus', doneValues: ['Approved'] });
 	});
 });

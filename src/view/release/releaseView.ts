@@ -254,7 +254,9 @@ export class ReleaseView extends BasesView {
 		}
 		// The release is passed alongside the scope it came from: the check above is what
 		// rules on it, and `renderScope` repeating it would be an unreachable branch.
-		renderScope(this, scope, scope.release);
+		// `backlogSettings` rides along too, for the summary strip's provenance tooltip
+		// (`renderScope.ts`'s own comment on why it takes this rather than re-resolving).
+		renderScope(this, scope, scope.release, backlogSettings);
 		return scope.release.path;
 	}
 }
