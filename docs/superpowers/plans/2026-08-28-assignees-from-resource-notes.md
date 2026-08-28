@@ -1095,7 +1095,11 @@ git add -A && git commit -m "Let an absence name its resource by link"
 - Modify: `src/view/interactions/labels.ts` — `declareResource` deleted
 - Modify: `src/view/cardMoves.ts` — its call in `performResourceMove`
 - Modify: `src/domain/vocabulary.ts` — `collectObservedAssignees` and `observedAssignees` deleted if nothing reads them; `mergedValues` deleted if nothing else calls it
-- Modify: `src/view/manual/setupSection.ts` — if it names the option
+- Modify: `src/view/manual/setupSection.ts` — **two separate sentences, both shipped user-facing help, and both wrong.** This is the plugin's own in-app manual, so a reader following it is being told to use things that no longer exist:
+  1. The **assignee** sentence (~line 46): *"The assignee takes no list beside it: it offers the names already in the base, plus whatever you type."* Wrong since Task 4 — the menu offers the `Resource` notes the base returned, `New assignee...` is gone, and nothing typed becomes an assignee. Replace it with what the menu now does, including `New resource...` as the way to add somebody who has no note yet.
+  2. The **roadmap** sentence and its key list (~line 115): *"the resources whose rows the timeline can be grouped into, which is optional because an assignee nobody declared still gets a row of its own"*, with `resourceNames` in its `keys` array. Both halves die with the option: rows are the `Resource` notes the base returns, and there is nothing to declare. Remove `resourceNames` from `keys` and say where a row now comes from.
+
+  Found by automated review on PR #207, against a surface this plan did not enumerate — it listed code modules and missed the prose the plugin ships.
 - Modify: `src/i18n/en.ts` — `option.resourceNames`, `option.resourceNamesHint`
 - Delete: `test/view/resourceRoster.test.ts` (the old `.base`-write suite)
 - Test: `test/domain/viewOptions.test.ts`, `test/domain/settings.test.ts` (adjust)
