@@ -175,15 +175,24 @@ Between the header and the scroller, so it never scrolls away. Three controls:
   not to do. So with the plan state key unbound the toggle is not drawn and the summary
   names its progress unconfigured, together.
 
-  **An edge this leaves open, found by review on PR #206 and deliberately not fixed here.**
-  A Deliverable or test-catalog member whose OWN workflow declares its own state property
-  can be read as done through `ownWorkflowReading` with no plan state key bound at all — so
-  that gate is coarser than the data strictly requires, and the toggle inherits the
-  coarseness. Loosening it is a change to `ReleaseRow.done`, which the INDEX draws too:
-  every band's progress would start answering where it now says unconfigured. That is a
-  question for [[Summing up a release]] about an existing figure, not a thing to settle
-  inside a toolbar toggle — and settling it here for the toggle alone is precisely how the
-  two ends come to disagree.
+  **That gate MOVES, by the author's decision on 2026-08-28.** It was the plan's own state
+  key, and this spec twice recorded leaving it there. Review was right that the key is
+  coarser than the data requires: a Deliverable member whose own workflow declares its own
+  state property can be read as done through `ownWorkflowReading` with no plan state key
+  bound at all, so a release holding only Deliverables reported "not configured" about
+  progress it could perfectly well compute.
+
+  The gate is now the REPRESENTED WORKFLOWS — configured when every workflow the members
+  actually span can answer. `ReleaseRow.workflows` is what makes that askable, and it did
+  not exist when the question was first declined.
+
+  **It changes `ReleaseRow.done`, so it changes the INDEX too, and that is the point rather
+  than a side effect.** A band and a header describe one release, and `domain/releases.ts`'s
+  single-row rule exists precisely so the two cannot answer differently — fixing the detail
+  screen alone would have manufactured the disagreement that rule prevents. Both screens
+  gain progress on a Deliverables-only release together, and the toolbar's `Hide done`
+  follows the same predicate, so a control can never hide rows the summary refuses to
+  count.
 - ~~**Context rows**~~ — **cut, by the register rather than by taste.**
   [[The scope of a release as a tree]] main flow 3 and its acceptance criterion require a
   non-member ancestor to be DRAWN and marked as context, and its extension 3b settles the
