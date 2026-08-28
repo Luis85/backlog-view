@@ -2,7 +2,7 @@ import { App, BasesEntry } from 'obsidian';
 import { Absence } from './absences';
 import { inferFolderParent } from './folderNotes';
 import { DependencyNode, resolveDependencies } from './dependencies';
-import { createItems, RawItem, RawStore } from './readItems';
+import { createItems, RawItem, RawStore, ResourceNote } from './readItems';
 import {
 	childLevelIndex,
 	EXTRA_TYPE_RANK,
@@ -215,6 +215,12 @@ export interface BacklogModel {
 	 * and the only reader is the resources axis's own row derivation.
 	 */
 	absences: Absence[];
+	/**
+	 * The `Resource` notes the base returned, sorted by name — the roster the assignee
+	 * menu offers and the roadmap draws a row per. Never items: see `readItems`'
+	 * `divertResource`.
+	 */
+	resources: ResourceNote[];
 }
 
 export function buildModel(app: App, entries: BasesEntry[], settings: BacklogSettings): BacklogModel {
@@ -293,6 +299,9 @@ export function buildModel(app: App, entries: BasesEntry[], settings: BacklogSet
 		// Straight off the store: the divert happened before phase 1 produced an item, so
 		// no later phase has ever seen one and none of them can have changed it.
 		absences: store.absences,
+		// Sorted through `localeCompare` — the collation `collectObservedAssignees`
+		// already uses, which follows the USER's locale because a name is data.
+		resources: [...store.resources].sort((a, b) => a.title.localeCompare(b.title)),
 	};
 	// The plan is a projection too, and its forest is computed by the same rule the
 	// catalog's is — a work item somebody dropped under a test is drawn in the plan, as a

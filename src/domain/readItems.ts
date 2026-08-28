@@ -39,6 +39,13 @@ import { Absence, readAbsence } from './absences';
  * `BacklogItem` back, which is a cycle fallow is right to refuse.
  */
 
+/** A `Resource` note the base returned — never an item, and the whole of the roster. */
+export interface ResourceNote {
+	file: TFile;
+	/** The note's own basename, which is the person's name. */
+	title: string;
+}
+
 /**
  * Phase 1 — what one note says about itself: its file, its Bases row, and the values
  * read off its frontmatter. Nothing here depends on any other note, which is why
@@ -187,9 +194,15 @@ export interface RawStore {
 	 * tree, ranks siblings or counts a rollup ever meets one.
 	 */
 	absences: Absence[];
+	/**
+	 * The `Resource` notes diverted before they could become items — `absences`' own
+	 * shape and its own reason. Beside the items rather than among them: nothing that
+	 * walks the tree, ranks siblings, counts a rollup or draws a projection may meet one.
+	 */
+	resources: ResourceNote[];
 }
 export function createItems(app: App, entries: BasesEntry[], settings: BacklogSettings): RawStore {
-	const store: RawStore = { all: [], byPath: new Map(), absences: [] };
+	const store: RawStore = { all: [], byPath: new Map(), absences: [], resources: [] };
 	/** The notes these items hang from — seeds for loading the ancestors the filter cut. */
 	const parents: TFile[] = [];
 
@@ -271,12 +284,11 @@ function addItem(
 	// nothing for any of them to remember. A filter per view is the shape where the next
 	// projection forgets — which is exactly what the context-row rule was written about.
 	//
-	// Null like the absence's, and for the same reason: a resource has no parent, so it
-	// seeds no ancestor and `loadOutsideParents` is never handed one. Nothing is KEPT yet,
-	// which is the only difference — `docs/requirements/Rows from the Resource notes.md`
-	// is what will collect them here, at this gate, so the roster comes from the base's
-	// own results without a second read path into the vault.
-	if (isResourceType(typeName)) return null;
+	// Diverted rather than discarded, out of line in `divertResource`: the note is KEPT on
+	// `RawStore.resources` — `docs/requirements/Rows from the Resource notes.md` is what
+	// will read that roster once a consumer exists — so it comes from the base's own
+	// results without a second read path into the vault.
+	if (isResourceType(typeName)) return divertResource(store, file, entry);
 	// Read as a LIST rather than through `readFirstLinkEntry`, because the release is the
 	// one such field whose CARDINALITY is a fact about the note: `membershipTarget` refuses
 	// two values, so the planner needs `[R, E]` told from `[R]`.
@@ -364,6 +376,24 @@ function divertAbsence(
 	if (entry === null) return null;
 	const absence = readAbsence(file, fm, settings);
 	if (absence) store.absences.push(absence);
+	return null;
+}
+
+/**
+ * Keep who a resource IS and produce no item — `divertAbsence`'s shape, out of line so
+ * `addItem` stays under its complexity budget.
+ *
+ * Always null, which is `addItem`'s own "no ancestor to seed": a resource has no parent,
+ * so it can never pull one in and `loadOutsideParents` must never be handed one.
+ *
+ * A note the base never RETURNED keeps nothing, and that is the context-row rule rather
+ * than a rule of this roster: an `outsideFilter` note is never a source of anything
+ * derived from the results. One can still arrive here — a result naming a resource as its
+ * parent pulls it in through `loadOutsideParents` — and a row, a menu entry or a drop
+ * target minted from it would be a target the user cannot act on.
+ */
+function divertResource(store: RawStore, file: TFile, entry: BasesEntry | null): null {
+	if (entry !== null) store.resources.push({ file, title: file.basename });
 	return null;
 }
 
