@@ -408,6 +408,33 @@ describe('the shelf’s card and list layouts', () => {
 			for (const row of rows) expect(row.querySelectorAll('.pbl-props > .pbl-prop')).toHaveLength(2);
 		});
 
+		it('reserves no tags column on a band nobody has tagged', () => {
+			// The kind that hides inside "a chip always draws": the tags cell's add button is
+			// `opacity: 0` until the row is hovered, so a tagless cell shows nothing and
+			// `renderTagCell` answers `false` — which is why a CARD drops it. A band with no tags
+			// anywhere was still reserving the column on every row. (Codex, PR #208.)
+			//
+			// Both directions again, in two bands: one tag anywhere keeps the column on every row,
+			// including the rows with none.
+			const bare = new FakeVault();
+			bare.addFile('No tags here.md', { frontmatter: { type: 'Epic', order: 10 } });
+			bare.addFile('Nor here.md', { frontmatter: { type: 'Epic', order: 20 } });
+			const shelfWith = (vault: FakeVault): HTMLElement | null =>
+				shelfOf(
+					makeRoadmap(vault, { tagsProperty: 'note.tags' }, {
+						shelfCollapsed: false,
+						shelfList: true,
+						order: ['note.tags'],
+					}).containerEl,
+				);
+			expect(shelfWith(bare)?.querySelectorAll('.pbl-prop-tags')).toHaveLength(0);
+
+			const tagged = new FakeVault();
+			tagged.addFile('No tags here.md', { frontmatter: { type: 'Epic', order: 10 } });
+			tagged.addFile('One tag.md', { frontmatter: { type: 'Epic', order: 20, tags: ['alpha'] } });
+			expect(shelfWith(tagged)?.querySelectorAll('.pbl-prop-tags')).toHaveLength(2);
+		});
+
 		it('drops the state cell instead, which is not one of the shared columns', () => {
 			// Extension 4b: held open rather than dropped. `.pbl-shelf-state` is its own box
 			// outside `.pbl-props`, so holding the shared columns open (test above) says nothing

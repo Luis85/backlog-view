@@ -130,9 +130,13 @@ one a reader wants changes by the day and by the task, not by the base.
   everywhere is a stretch of nothing between the title and the metadata rather than an empty
   column a reader can see. Measured at a 1280px pane over the demo backlog's twenty unplaced
   items: three of five columns drew on zero rows, 384px of the row, and the title sat at its
-  floor; narrowed, the title takes 377px. Chip columns are never asked — they draw their own
-  invitation for an unset note — and the value columns are asked through `drawsSomething`,
-  the same test the cell itself uses. See [[Reserve only the columns the shelf has values in]].
+  floor; narrowed, the title takes 377px. Each kind is asked the question its own cell asks —
+  `drawsSomething` for a value or a date end, and A PILL for the tags, whose add button is
+  hover-revealed and so shows a tagless reader nothing (Codex, PR #208, on a first draft that
+  read the tags cell as a chip). The chip kinds are never asked, because an unset note still
+  gets a dashed `Assignee` or a `State` and the one case that draws nothing — a context card
+  with no value — is one this band cannot hold. See
+  [[Reserve only the columns the shelf has values in]].
 
 - **3a — a title too long for one line.** It truncates with an ellipsis rather than
   wrapping: a row that grew a second line would not be a row. The title yields and the

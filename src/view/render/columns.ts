@@ -580,14 +580,28 @@ function renderCell(host: BacklogViewHost, cell: HTMLElement, item: BacklogItem,
  * items: three of five reserved columns drew on zero rows, 384px of the row, while every
  * title sat at its 16ch floor.
  *
- * Only the three kinds that CAN be blank are asked. Every chip kind draws its own
- * invitation for an unset note — a dashed `Assignee`, a `State` — so a chip column is
- * never empty and asking would only ever return true. And the question is `drawsSomething`,
- * the same one `renderValue` asks, so a column kept here and a cell drawn there cannot
- * disagree about what an empty value is.
+ * Only the kinds that CAN be blank are asked, and each is asked the question its own cell
+ * asks — `drawsSomething` for a value or a date end, a pill for the tags — so a column kept
+ * here and a cell drawn there cannot disagree about what empty means.
+ *
+ * **TAGS are one of them and that is not obvious**, which is why it is stated rather than
+ * left to the kind list: the cell's add button is `opacity: 0` until the row is hovered
+ * (`styles/tags.css`), so a tagless cell draws nothing a reader can see and `renderTagCell`
+ * answers `false` for exactly that reason — a band nobody has tagged reserves the column on
+ * every row and shows it on none. (Codex, PR #208, which read the first draft's kind list as
+ * the promise this paragraph now keeps.)
+ *
+ * The CHIP kinds are the ones that always draw: an unset note gets a dashed `Assignee` or a
+ * `State` — a button-shaped invitation — and the one case that draws nothing is a CONTEXT
+ * card with no value (`renderLabelChip`). No caller here can be all of those: the shelf is
+ * this function's only caller and its cards are results, since `deriveBars` and
+ * `buildRoadmap` route an `outsideFilter` row to the context strip and never to the shelf.
+ * A second caller over a population that can hold context cards has to re-read that
+ * sentence before trusting this one.
  */
 export function columnsWithContent(columns: Column[], items: BacklogItem[]): Column[] {
 	return columns.filter((column) => {
+		if (column.kind === 'tags') return items.some((item) => item.tags.length > 0);
 		if (column.kind !== 'value' && column.kind !== 'start' && column.kind !== 'target') return true;
 		// An ancestor from outside the filter has no Bases row, exactly as `renderValue`
 		// finds: it draws nothing, so it votes for nothing.

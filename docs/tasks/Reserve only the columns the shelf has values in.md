@@ -56,11 +56,21 @@ resolved set.
 
 Three things make it safe rather than a narrowing that hides work:
 
-- **Only the three kinds that can be blank are asked.** Every chip kind draws its own
-  invitation for an unset note — a dashed `Assignee`, a `State` — so a chip column is never
-  empty and asking would always answer yes.
-- **The question is `drawsSomething`**, the same one `renderValue` asks, so a column kept
-  here and a cell drawn there cannot disagree about what an empty value is.
+- **Only the kinds that can be blank are asked, and each is asked its own cell's
+  question** — `drawsSomething` for a value or a date end, a pill for the tags — so a column
+  kept here and a cell drawn there cannot disagree about what empty means.
+- **TAGS are one of those kinds, and the first draft missed it** (Codex, PR #208). The kind
+  list read as "chips always draw", and the tags cell is not a chip: its add button is
+  `opacity: 0` until the row is hovered, so a tagless cell shows nothing and `renderTagCell`
+  answers `false` for exactly that reason — which is why a CARD drops it. A band nobody has
+  tagged was reserving the column on every row and showing it on none, the very case this
+  task exists to remove.
+- **The chip kinds really do always draw here**, and the reason is the POPULATION rather
+  than the renderer: an unset note gets a dashed `Assignee` or a `State`, and the one case
+  that draws nothing is a CONTEXT card with no value — which the shelf never holds, since
+  `deriveBars` and `buildRoadmap` route an `outsideFilter` row to the context strip beside
+  the band. A second caller over a population that can hold context cards has to re-ask
+  this.
 - **It is per BAND, never per row.** `holdEmpty` is unchanged: a row still holds a cell
   open for a column its own note has no value for, because a row that dropped one would
   move every cell after it and the column would stop being a column.
