@@ -128,9 +128,13 @@ Removed, not deprecated — a setting read by nothing tells the user something u
 **`New assignee...` is removed.** A typed name writes a value that resolves to nobody,
 which is the one value this flow must not produce.
 
-With no `Resource` in the results the menu holds `New resource...` alone and says so rather
-than opening empty — the same failure the roadmap reports from the other end, and a
-base-filter problem both times. A context row still gets no menu at all and a static chip.
+With no `Resource` in the results the menu says so — a disabled line naming the base
+filter — above `New resource...`, rather than opening empty. **`Clear assignee` is not
+withheld with the choices**: it is offered on the key's PRESENCE, and an empty roster is
+exactly when an item is most likely to be carrying a value the reader wants gone — a
+leftover string, a broken link, a resource the filter excluded. Withholding it there would
+leave the note itself as the only way to clear the key, and would contradict the
+presence rule one line above. A context row still gets no menu at all and a static chip.
 
 `promptNewResource` gains an optional "then do this with the created file" callback. The
 assignee menu passes one that writes the link, so **the note exists before the link names

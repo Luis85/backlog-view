@@ -659,7 +659,7 @@ Remove `menu.newAssignee`, `menu.assignTitle`, `menu.assignField`, `menu.assignP
 - the submenu lists the resource notes alphabetically and nothing else;
 - an item's current resource renders checked, and a second spelling of the same note is not a second entry;
 - an item carrying a leftover plain string has no entry checked and offers no entry for its own value;
-- with no resource note in the base, the submenu holds the disabled reason and `New resource...` alone;
+- with no resource note in the base, the submenu holds the disabled reason and `New resource...` — **and still holds `Clear assignee` when the item carries the key**, since the clear is offered on presence and an empty roster is exactly when a leftover value most needs clearing;
 - `New resource...` creates the note and then writes the link — assert the frontmatter is `[[<name>]]`;
 - a failed creation writes no link.
 
