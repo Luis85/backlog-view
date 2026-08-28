@@ -269,7 +269,9 @@ Every claim gets one that fails without it — watched failing, then restored.
 - `test/view/releaseNeverEdits.test.ts` stays green unchanged. It is the whole read-only
   claim and nothing here may need it relaxed.
 - Folds: a toggle persists across a data update; an embedded base keeps its folds in the
-  session and loses them on remount; a renamed member keeps its fold.
+  session and loses them on remount; a renamed member REOPENS, which is the accepted cost
+  stated in Slice A rather than a defect, and is asserted so it cannot regress silently in
+  either direction.
 - Rollups: a folded parent reports the same numbers as an unfolded one; **a context row
   reports none** — the rule [[The scope of a release as a tree]] states and the mock got
   wrong on its first draw.

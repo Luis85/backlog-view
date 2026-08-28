@@ -588,7 +588,81 @@ Expected: FAIL — no `.pbl-twisty`.
 
 - [ ] **Step 3: Move the tree into its own module**
 
-Create `src/view/release/scopeTree.ts` with `drawRow`, `siblingPlaces` and `drawTree` moved verbatim from `renderScope.ts` — comments included — then add the fold set, the disclosure and the click. The fold store:
+Create `src/view/release/scopeTree.ts` with `drawRow`, `siblingPlaces` and `drawTree` moved from `renderScope.ts` — comments included — then add the fold set, the disclosure, the click **and the two row figures the design shows, which today's `drawRow` does not draw at all**: it ends after the badge, the title and the context marker.
+
+**The counts come from the scope walk, not from the view.** Add them beside the row in `src/domain/releases.ts`, in the same walk that already visits exactly this population:
+
+```ts
+	/**
+	 * Members at or below this row, and how many of them are done — the rollup the row
+	 * draws, over THIS release's members rather than over the model's descendants.
+	 *
+	 * `item.descendantCount` and `item.doneDescendants` are the wrong pair for the same
+	 * reason `item.subtreeDone` is: they count every non-marker descendant the BASE
+	 * returned, consulting no membership, so a Feature with two members here and five
+	 * items elsewhere would report `1/7` on a screen whose every other figure is over
+	 * seven fewer notes.
+	 *
+	 * Zero on a row with no members below it, which is what makes a CONTEXT row's
+	 * `memberTotal` the count of the members it is holding in place — and what keeps the
+	 * row itself out of both numbers, since a context row is never counted anywhere on
+	 * this screen. Each member's doneness is `ownWorkflowReading`'s, so a Deliverable
+	 * answers by its own workflow.
+	 */
+	memberTotal: number;
+	memberDone: number;
+```
+
+computed on the way back up the recursion, and **Task 5's `subtreeDone` is then derived from these rather than walked a second time** — `memberTotal > 0 && memberDone === memberTotal`.
+
+`drawRow` draws them after the title:
+
+```ts
+	// The chip gets a column of its own so a row with no state leaves a gap rather than
+	// sliding its neighbours left. Static, like every chip in this view: nothing here writes,
+	// so a chip with a hover affordance would make the screen look editable.
+	const stateEl = rowEl.createDiv({ cls: 'pbl-rel-statecol' });
+	const reading = ownWorkflowReading(row.item);
+	if (!row.context && reading.value !== null) {
+		const chipEl = stateEl.createDiv({ cls: 'pbl-state-chip pbl-state-static' });
+		chipEl.createSpan({ cls: 'pbl-state-text', text: reading.value });
+	}
+
+	// `.pbl-meta-col` and `.pbl-progress` are `styles/columns.css`'s own vocabulary — the
+	// backlog tree's rollup, reused whole rather than restyled, so one lane width and one
+	// pinned bar serve both trees. The lane is drawn even when empty, so the column stays
+	// straight down rows that have no rollup.
+	const metaEl = rowEl.createDiv({ cls: 'pbl-meta-col' });
+	// A CONTEXT row carries no numbers — it renders, it parents, and that is all.
+	if (!row.context && row.memberTotal > 0) {
+		const progEl = metaEl.createDiv({
+			cls: 'pbl-progress' + (row.memberDone === row.memberTotal ? ' pbl-complete' : ''),
+		});
+		const barEl = progEl.createDiv({ cls: 'pbl-progress-bar' });
+		barEl.createDiv({ cls: 'pbl-progress-fill' }).setCssProps({
+			'--pbl-progress': `${Math.round((100 * row.memberDone) / row.memberTotal)}%`,
+		});
+		progEl.createSpan({
+			cls: 'pbl-progress-label',
+			text: t('release.scope.rollup', { done: row.memberDone, total: row.memberTotal }),
+		});
+	}
+```
+
+with `'release.scope.rollup': '{done}/{total}'` in the catalog and, in `styles/release.css`:
+
+```css
+/* One column for the chip, so a row with no state leaves a gap rather than sliding its
+   neighbours left. Anchored at its end, like `.pbl-meta-col` beside it. */
+.pbl-rel-statecol {
+	flex: 0 0 auto;
+	display: flex;
+	justify-content: flex-end;
+	inline-size: 92px;
+}
+```
+
+Add a test for each rule the comments state: **a context row draws neither chip nor rollup**, and **a Feature with members in two releases reports only this release's**. The fold store:
 
 ```ts
 /**
@@ -775,6 +849,7 @@ Slice A, second half.
 **Files:**
 - Create: `src/view/release/scopeKeys.ts`
 - Modify: `src/view/release/scopeTree.ts` (one tab stop on the container, ids on the rows)
+- Modify: `src/view/release/releaseView.ts` (`activeScopePath` and `scopeHadFocus`, carried across a render)
 - Modify: `docs/requirements/The scope of a release as a tree.md`
 - Test: `test/view/release/scopeKeys.test.ts`
 
@@ -944,8 +1019,24 @@ export function wireScopeKeys(view: ReleaseView, treeEl: HTMLElement, rows: Scop
 		evt.preventDefault();
 	});
 	treeEl.addEventListener('focus', show);
+	// The active row SURVIVES the re-render, and the tree takes focus back when it was the
+	// thing focused before. `toggleFold` calls `view.render()`, which `empty()`s `viewEl` —
+	// detaching the focused tree and building this controller again from scratch. Without
+	// these two lines, pressing Right to unfold a row moves focus to the body and drops the
+	// active row to the first: the next arrow key reaches no listener at all, and a
+	// keyboard reader is stranded one press into the tree. The view's own scroll restore
+	// exists for the same re-render and is not enough, because focus is not scroll.
+	const wanted = view.activeScopePath;
+	const restored = wanted === null ? -1 : visible.findIndex((r) => r.item.file.path === wanted);
+	if (restored !== -1) {
+		active = restored;
+		show();
+		if (view.scopeHadFocus) treeEl.focus();
+	}
 }
 ```
+
+`ReleaseView` carries the two values across the render: `activeScopePath: string | null`, written by `show()`, and `scopeHadFocus`, captured in `render()` before `empty()` — `document.activeElement` inside the old tree — exactly where the scroll offset is already captured and for the same reason (a detached element answers nothing). Add a test: **Right on a closed parent leaves the tree focused and the same row active**, and drive the next ArrowDown through the tree the re-render produced.
 
 `visible` is the row list the tree actually DREW (Task 3's `visibleRows` output), not `scope.rows` — arrowing onto a folded-away row would move the active descendant to an element that is not in the DOM. `renderScope.ts` passes the drawn list.
 
@@ -1051,7 +1142,7 @@ Expected: FAIL — `subtreeDone` is not on `ScopeRow`.
 
 - [ ] **Step 3: Add the predicate to the scope walk**
 
-In `src/domain/releases.ts`, `ScopeRow` gains the field, and `releaseScope`'s `walk` computes it on the way back up:
+In `src/domain/releases.ts`, `ScopeRow` gains the field — **derived from the two counts Task 3 already put on the row, never a second walk**: `subtreeDone` is `memberTotal > 0 && memberDone === memberTotal`, so one traversal answers both the rollup and the hiding predicate and the two cannot come to disagree about the same subtree.
 
 ```ts
 	/**
