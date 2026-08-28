@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
+import { getReleaseViewOptions } from '../../src/domain/releaseOptions';
 import { makeReleaseView, RELEASE_CONFIG } from '../helpers/release';
 import { useViewHarness } from '../helpers/view';
 import { en } from '../../src/i18n/en';
-import { FakeVault } from '../helpers/vault';
+import { FakeVault, FakeViewConfig } from '../helpers/vault';
 
 /**
  * The band's own progress line — split out of `releaseIndex.test.ts` (the 450-line test
@@ -80,6 +81,35 @@ describe('the band’s progress line', () => {
 		// Said once — on the band, never also beneath the list.
 		const note = containerEl.querySelector('.pbl-rel-note')?.textContent ?? '';
 		expect(note).not.toContain('Progress');
+	});
+
+	/**
+	 * The guard for a rule the previous test cannot see: it hardcodes
+	 * `deliverableStateProperty` on both sides — the config it builds and the string
+	 * `releaseOptions.ts` happens to declare today — so a rename on EITHER side (the
+	 * declared option's key, or `DELIVERABLE_NAMES.property` in `settingsResolve.ts`,
+	 * which reads it) would leave both a passing declaration test (asserts the declared
+	 * name) and a passing behaviour test (sets that same literal directly) while the
+	 * feature silently stopped working — the option would still render in Bases' options
+	 * panel and bind nothing. This test reads the key OFF the declaration
+	 * (`getReleaseViewOptions`) instead of spelling it a second time, so it is the one place
+	 * a declared option and the settings reader that consumes it are asked to agree.
+	 */
+	it('binds through whatever key the release view actually declares for the Deliverable state', () => {
+		const declared = getReleaseViewOptions(new FakeViewConfig({}) as never)
+			.flatMap((entry) => (entry.type === 'group' ? entry.items : [entry]))
+			.find((option) => option.type === 'property' && option.displayName === en['option.deliverableStateProperty']);
+		expect(declared).toBeDefined();
+		const vault = new FakeVault();
+		vault.addFile('0.8.md', { frontmatter: { type: 'Release', version: '0.8.0' } });
+		vault.addFile('D.md', { frontmatter: { type: 'Deliverable', release: '[[0.8]]', docStatus: 'Done' } });
+		const { containerEl } = makeReleaseView(vault, {
+			...RELEASE_CONFIG,
+			stateProperty: '',
+			[declared!.key]: 'note.docStatus',
+		});
+		const band = containerEl.querySelector('.pbl-rel-band') as HTMLElement;
+		expect(band.querySelector('.pbl-rel-bar')).not.toBeNull();
 	});
 
 	it('draws the bar for a Deliverables-only release with no plan state property at all', () => {
