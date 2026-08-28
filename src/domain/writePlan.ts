@@ -126,9 +126,10 @@ export interface ItemWrite {
 	iteration?: TFile | null;
 	/**
 	 * What an iteration is FOR, in one line, or **null to remove the key**. A plain
-	 * string on the Iteration note — `risk`'s and `assignee`'s rule exactly, so it is
-	 * written through the same label list in `storage/frontmatter.ts` rather than a
-	 * function of its own. `undefined` leaves the key alone.
+	 * string on the Iteration note — `risk`'s rule exactly, so it is written through the
+	 * same label list in `storage/frontmatter.ts` rather than a function of its own. The
+	 * assignee shared that list too until 2026-08-28, when it became a link and joined
+	 * `iteration`/`release` in `applyLinks` instead. `undefined` leaves the key alone.
 	 */
 	iterationGoal?: string | null;
 	/**

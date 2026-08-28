@@ -202,7 +202,12 @@ export interface BacklogModel {
 	observedHorizons: string[];
 	/** Distinct tags in the result set, alphabetical — the vocabulary the tag menus offer. */
 	observedTags: string[];
-	/** Distinct assignees in the result set, alphabetical — the whole list Set assignee offers. */
+	/**
+	 * Distinct assignees in the result set, alphabetical. No longer what Set assignee
+	 * offers (Task 4, 2026-08-28: that menu reads `resources` instead) — kept for the
+	 * resources axis's own row-minting (`deriveLanes`) and for anything else that still
+	 * wants the raw observed vocabulary.
+	 */
 	observedAssignees: string[];
 	/** Distinct Deliverable-workflow state values, scoped to Deliverable items. */
 	observedDeliverableStates: string[];

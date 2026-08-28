@@ -243,7 +243,8 @@ free of runtime code so imports stay cycle-free.
   where each list comes from — risk and priority need `hasRiskLevels` / `hasPriorityLevels`
   (a property AND a declared list, so a submenu never opens onto nothing), while the
   assignee needs the KEY alone, because
-  its list is observed and `New assignee...` is in it whatever the results carry. There is
+  its menu offers the `Resource` notes the base returned (never an observed string, since
+  2026-08-28) and `New resource...` is in it whatever the base holds. There is
   deliberately no `hasAssignees` predicate beside those two: it could only ever
   answer what the key already does. The two DECLARED ladders share `declaredChoices` and
   differ in nothing but which list and which value they hand it — which is what a third

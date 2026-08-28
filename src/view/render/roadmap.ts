@@ -329,10 +329,15 @@ function wireLaneDrop(
 			}
 			// A lane minted from an observed name with no `Resource` note has no file to
 			// name — bridged until Task 5, where every lane comes from a note and this
-			// guard becomes unreachable by construction. Without it `band.lane.file` would
-			// be `null`, and `performResourceMove(item, null)` means UNASSIGN — so a drop
-			// here would silently clear the assignee instead of naming this row.
-			if (!band.lane.file) return;
+			// guard becomes unreachable by construction. `performResourceMove(item, null)`
+			// means UNASSIGN, so a bare refusal here would silently clear the assignee
+			// instead of naming this row — but the release still names a DAY, and that half
+			// is real regardless of whose row it landed in, so it goes to the dated gesture
+			// exactly as a marker's release does, rather than being dropped on the floor.
+			if (!band.lane.file) {
+				submitGesture(host, source, gesture);
+				return;
+			}
 			void host.performResourceMove(
 				source.item,
 				band.lane.file,

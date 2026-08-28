@@ -21,10 +21,14 @@ import { FakeVault } from './vault';
  * `Alice.md`, `Bob.md` and `Zoe.md` are `Resource` notes — a resource move writes a FILE
  * now, so every row a write in this fixture aims at needs one behind it (`ResourceLane.file`,
  * bridged in `deriveLanes` until Task 5). `Cased.md`'s `alice` stays a lowercase, unbracketed
- * spelling that does NOT resolve to `Alice.md` (link resolution is case-sensitive here, as
- * in a real vault): it still GROUPS into Alice's row, because that grouping is a string
- * comparison (`assigneeName`) untouched by this task, but it is not the SAME note as far as
- * a write's path comparison is concerned — see the tests that read it either way.
+ * spelling that GROUPS into Alice's row regardless — that grouping is a string comparison
+ * (`assigneeName`) untouched by this task — but does NOT resolve to `Alice.md` **in this
+ * stub**: `FakeVault`'s link resolution (`test/helpers/vault.ts`) is case-sensitive, where
+ * Obsidian's own `getFirstLinkpathDest` is not. That is a known fidelity gap in the harness,
+ * not a fact about a real vault — do not write a test that asserts `Cased.md`'s link stays
+ * unresolved, because in Obsidian itself it resolves to `Alice.md` and the opposite would
+ * be true there. `Cased.md` is fine for what it already tests (string-based grouping); it
+ * is the wrong fixture for anything about link RESOLUTION.
  */
 export function resourceVault(): FakeVault {
 	const vault = new FakeVault();

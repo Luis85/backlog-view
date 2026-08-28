@@ -76,14 +76,17 @@ describe('what a landed move declares', () => {
 		expect(rosterWrites(harness)).toEqual(['Alice, Bob, Zoe', 'Alice, Bob, Zoe, Quinn']);
 	});
 
-	it('declares nothing for a removal, or a name the roster already carries', async () => {
+	it('declares nothing for a removal, or a name the roster already carries in another casing', async () => {
 		const vault = resourceVault();
+		// A second note, differently cased, so the pick and the declared roster entry
+		// ("Alice") spell the same person two different ways — `declareResource`'s own
+		// comparison (`sameValue`) has to be what says they are one name, not `===`.
+		vault.addFile('alice.md', { frontmatter: { type: 'Resource' } });
 		const harness = laneRoadmap(vault);
 		const { view } = harness;
 
-		// Alice is already on the declared roster, so naming her again amends nothing.
-		await view.performResourceMove(view.model?.byPath.get('Nobody.md') as never, resourceFile(vault, 'Alice'));
-		expect(vault.fm('Nobody.md')['assignee']).toBe('[[Alice]]');
+		await view.performResourceMove(view.model?.byPath.get('Nobody.md') as never, resourceFile(vault, 'alice'));
+		expect(vault.fm('Nobody.md')['assignee']).toBe('[[alice]]');
 		refresh(view, vault);
 		await view.performResourceMove(view.model?.byPath.get('Nobody.md') as never, null);
 		expect('assignee' in vault.fm('Nobody.md')).toBe(false);

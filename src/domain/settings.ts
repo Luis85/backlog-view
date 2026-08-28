@@ -173,12 +173,12 @@ export interface BacklogSettings extends ItemHandling {
 	priorityValues: string[];
 	/**
 	 * Frontmatter key holding who the item is assigned to, or '' when no assignee
-	 * property is named. Its companion list is OPTIONAL where risk's and the horizon's
-	 * are required — `resourceNames`, which the resources axis declares rows from and
-	 * `assigneeChoices` offers wherever the row menu opens, joined to the names the
-	 * RESULTS carry (`observedAssignees`) and to whatever the user types. So a named key
-	 * alone is still enough to draw the chip and fill its menu, and a roster is a
-	 * recommendation on top rather than the vocabulary.
+	 * property is named — a LINK to a `Resource` note (Task 4, 2026-08-28), not a typed
+	 * string. `resourceNames` is still what the resources axis declares rows from, but
+	 * Set assignee no longer reads it or `observedAssignees`: it offers the `Resource`
+	 * notes the base returned, so a named key alone is enough to draw the chip and fill
+	 * its menu, and the roster is a row-ordering hint for the axis rather than a
+	 * vocabulary for the menu.
 	 */
 	assigneeKey: string;
 	/**

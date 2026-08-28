@@ -334,21 +334,21 @@ export function horizonSource(item: BacklogItem): HorizonSource {
  * The drawn rows whose name is a RESOURCE — every one but the milestones', which is a fact
  * about the plan and not somebody a note can be assigned to.
  *
- * One list, read by every input that turns a drawn row into an assignee value: the Alt+arrow
- * ladder (`resourceStops`) and Set assignee's own choices (`assigneeChoices`). Both mapped
- * `roadmap.lanes` straight through until 2026-08-15, so Alt+Up off the first resource, and
- * a pick in the menu, wrote `Milestones` onto ordinary work — which then minted a SECOND row
- * of that name beside the synthetic one, since `deriveLanes` builds its lookup from the
- * resources alone. The drop already refused it (`band.lane.markers`, in `render/roadmap.ts`),
- * which is what makes this the "one move, three inputs" rule failing by omission: no input
- * disagreed about the write, two just offered a target the third would not.
+ * The Alt+arrow ladder's (`resourceStops`) own list — Set assignee no longer reads it at
+ * all (Task 4: it offers `Resource` notes, not drawn rows) — mapped from `roadmap.lanes`
+ * straight through until 2026-08-15, when Alt+Up off the first resource wrote
+ * `Milestones` onto ordinary work, which then minted a SECOND row of that name beside the
+ * synthetic one, since `deriveLanes` builds its lookup from the resources alone. The drop
+ * already refused it (`band.lane.markers`, in `render/roadmap.ts`), which is what made
+ * that the "one move, three inputs" rule failing by omission: no input disagreed about
+ * the write, the ladder just offered a target the drop would not.
  *
  * Asked of `markers` rather than of the NAME, and that is the whole reason it is a field:
  * a resource genuinely called Milestones is a resource, and comparing against the constant
  * would take a legitimate roster entry off the ladder.
  *
- * Takes the model as optional because one caller has a roadmap that may not be drawn at all
- * — a row menu opens in every projection — and an empty list is the right answer there.
+ * Takes the model as optional so a caller with no roadmap drawn at all gets an empty list
+ * rather than a null check of its own.
  */
 export function assignableLanes(roadmap: RoadmapModel | undefined): ResourceLane[] {
 	return (roadmap?.lanes ?? []).filter((lane) => !lane.markers);
@@ -703,8 +703,9 @@ function placeBar(item: BacklogItem, lane: () => ResourceLane, roadmap: RoadmapM
  * case-insensitive, exactly as the buckets match horizons, and the rule is stated once
  * because two sources may now mint: a result's own assignee, and an absence's.
  *
- * Not to be confused with `laneFor` above, which answers what a DRAWN row is called for
- * the sentence a move is announced in and mints nothing.
+ * Not to be confused with `resourceLabel` above, which answers what a DRAWN row is
+ * called for the sentence a move is announced in, is asked of a resolved LINK rather
+ * than a name, and mints nothing.
  */
 function laneNamed(
 	name: string,

@@ -420,15 +420,14 @@ function horizonStops(roadmap: RoadmapModel): (string | null)[] | null {
  *
  * Null on the other two axes, so this handler swallows no key it does not act on.
  *
- * The milestones' row is not a stop: `assignableLanes` is what says so, shared with Set
- * assignee's own list rather than filtered here, since a ladder and a menu offering
- * different targets is the drift that rule exists to stop. **Filtered again to the lanes
- * that HAVE a file**, load-bearing until Task 5: a lane minted by `laneNamed` for an
- * observed name with no `Resource` note has `file: null`, and `performResourceMove(card,
- * null)` means UNASSIGN — so an Alt+arrow onto such a row would silently take the
- * assignee off instead of moving it there. Task 5 makes this redundant by construction
- * (every lane is a note) and `AssignableLane` then carries the narrowing in the type;
- * delete the filter there.
+ * The milestones' row is not a stop: `assignableLanes` is what says so — the ladder's
+ * own filter over `roadmap.lanes`, since a row minted for the plan is nobody's to land
+ * an Alt+arrow on. **Filtered again to the lanes that HAVE a file**, load-bearing until
+ * Task 5: a lane minted by `laneNamed` for an observed name with no `Resource` note has
+ * `file: null`, and `performResourceMove(card, null)` means UNASSIGN — so an Alt+arrow
+ * onto such a row would silently take the assignee off instead of moving it there.
+ * Task 5 makes this redundant by construction (every lane is a note) and
+ * `AssignableLane` then carries the narrowing in the type; delete the filter there.
  */
 function resourceStops(roadmap: RoadmapModel): (ResourceLane | null)[] | null {
 	if (roadmap.axis !== 'resources') return null;

@@ -76,6 +76,32 @@ describe('scheduling inside a resource’s row', () => {
 		expect(vault.fm('Alice dated.md')['assignee']).toBe('Alice');
 	});
 
+	it('a body slide within a lane with no Resource note still writes the dates', async () => {
+		// The bridge (`ResourceLane.file`, until Task 5) leaves this row with no file to
+		// name a resource move at, and the guard for that must not swallow the OTHER
+		// half of a body hold: a slide within one's own row names no resource at all, so
+		// refusing the whole release here silently killed positional scheduling for every
+		// pre-migration vault where an assignee is still plain text with no matching
+		// `Resource` note. Regression for a bare `return` shipped in that guard.
+		const vault = new FakeVault();
+		vault.addFile('Nolan work.md', {
+			frontmatter: { type: 'Epic', order: 10, assignee: 'Nolan', start: '2026-08-01', due: '2026-08-10' },
+		});
+		const { containerEl } = laneRoadmap(vault);
+		const at = grid(containerEl);
+		const ownRow = barFor(containerEl, 'Nolan work').closest<HTMLElement>('.pbl-timeline-row');
+
+		gridDrag(barFor(containerEl, 'Nolan work'), ownRow as HTMLElement, { from: at(0), clientX: at(7 * DAY_PX) });
+		await flush();
+
+		expect(vault.fm('Nolan work.md')['start']).toBe('2026-08-08');
+		expect(vault.fm('Nolan work.md')['due']).toBe('2026-08-17');
+		// Untouched — the release named no resource, so nothing about who it is
+		// assigned to should have been written, not even a no-op re-pick.
+		expect(vault.fm('Nolan work.md')['assignee']).toBe('Nolan');
+		expect(vault.writeLog).toHaveLength(1);
+	});
+
 	it('a purely vertical drag writes the row alone, displacing no date', async () => {
 		const vault = resourceVault();
 		const { containerEl } = laneRoadmap(vault);

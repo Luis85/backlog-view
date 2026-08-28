@@ -217,17 +217,22 @@ describe('what a resource move announces', () => {
 		expect(await announced()).toBe('Moved "Alice dated" from 2026-08-01 to 2026-08-10 to 2026-08-08 to 2026-08-17');
 	});
 
-	it('names the raw text when the link does not resolve, never the row it visually groups into', async () => {
+	it('names a row in the casing on screen, never the casing on the note', async () => {
 		vi.useFakeTimers();
-		const vault = resourceVault();
-		const { view } = laneRoadmap(vault);
+		const vault = new FakeVault();
+		vault.addFile('Alice.md', { frontmatter: { type: 'Resource' } });
+		vault.addFile('Bob.md', { frontmatter: { type: 'Resource' } });
+		vault.addFile('Work.md', {
+			frontmatter: { type: 'Epic', order: 10, assignee: '[[Alice]]', start: '2026-08-01', due: '2026-08-10' },
+		});
+		// Declared lowercase on purpose, though the note's own basename is `Alice` — the
+		// row wears the roster's own casing (`resourceLabel` prefers the drawn LANE's
+		// name over the resolved file's basename), and the link resolves to the note
+		// either way, so this is real behaviour rather than a stub artifact.
+		const { view } = laneRoadmap(vault, { resourceNames: 'alice, Bob' });
 
-		// `Cased` says `alice`, lowercase and unbracketed — it draws in Alice's row by the
-		// same case-insensitive NAME match that groups a bar (`assigneeName`), but the link
-		// itself does not resolve to her note, so the announcement reports what the note
-		// actually says rather than the row it happens to visually sit in.
-		await view.performResourceMove(view.model?.byPath.get('Cased.md') as never, resourceFile(vault, 'Bob'));
-		expect(await announced()).toBe('Moved "Cased" from alice to Bob');
+		await view.performResourceMove(view.model?.byPath.get('Work.md') as never, resourceFile(vault, 'Bob'));
+		expect(await announced()).toBe('Moved "Work" from alice to Bob');
 	});
 
 	it('names a resource no row draws, rather than calling the note silent', async () => {
