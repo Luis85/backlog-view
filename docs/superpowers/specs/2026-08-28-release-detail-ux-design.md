@@ -122,7 +122,7 @@ its render modules are `src/view/release/`.
 
 ## Slice C — the scope toolbar
 
-Between the header and the scroller, so it never scrolls away. Four controls:
+Between the header and the scroller, so it never scrolls away. Three controls:
 
 - **Collapse all / expand all** (Slice A).
 - **Hide done** — hides every subtree that is **entirely** finished, which is
@@ -149,9 +149,17 @@ Between the header and the scroller, so it never scrolls away. Four controls:
   note's own guarantee — hiding is a render decision.
   With no state key bound there are no done values, so the toggle is not drawn at all —
   the same answer the summary gives, and for the same reason.
-- **Context rows** — on by default. Off drops the context ancestors and draws each member
-  at its own remaining depth. A member whose only ancestor was context sits at top level;
-  it does not disappear.
+- ~~**Context rows**~~ — **cut, by the register rather than by taste.**
+  [[The scope of a release as a tree]] main flow 3 and its acceptance criterion require a
+  non-member ancestor to be DRAWN and marked as context, and its extension 3b settles the
+  hiding question outright: a context ancestor "is drawn regardless: it is scaffolding for a
+  member, and hiding it would break the member's place." A toggle that removes them
+  contradicts a shipped acceptance criterion, so it would need that requirement amended
+  rather than merely implemented — the same shape as the search box, and the same answer.
+  Dropping it costs the toolbar one control and the store one field.
+  **Overrulable**: if the toggle is wanted, the requirement is amended in the same slice,
+  with its acceptance criterion rewritten and its coverage extended — not left to disagree
+  with the code.
 
 Both toggles are view state in the same `prefs` bag as the pick, per saved view and per
 device — never a `.base` setting, which is ADR 0011's rule.
@@ -164,6 +172,15 @@ suggested key for whichever of membership / version / target date / status this 
 never touched, seeded against every property key this view declares so it can never hand out
 a key another option already names.
 
+- **The press REPORTS what it bound, and this is not free.** `runReleaseInit` only calls
+  `config.set`; the notice lives in `newRelease.ts`, which reads `boundKeys` off a FRESH
+  resolve of the live config before the call and compares it after. A ✨ wired straight to
+  `runReleaseInit` would change the saved `.base` in silence, against
+  [[Creating a release from the release view]]'s "the press says when it changed the
+  configuration, and stays quiet when it did not", checked in both directions. So the
+  bind-and-report pair is extracted from `newRelease.ts` and both entry points call it —
+  the root guide's "one move, three inputs" shape: the reporting lives where the binding
+  does, never beside each caller.
 - Nothing left to bind → the button is not drawn. A control that can only no-op is worse
   than absent; `src/view/estimation/toolbar.ts` states the same rule for its own ✨.
 - It also appears on the `noMembership` scope empty state, which is the screen a reader
@@ -190,16 +207,16 @@ controller — over the 400-line lint cap and over one concern. It splits:
 `src/view/release/renderIndex.ts` gains the ✨ control. `styles/release.css` gains the
 classes the mock proved, published from its `SHEET` constant the way the index's bands were.
 
-**`src/storage/viewStateStore.ts` DOES change, for the two toggles.** `folds` needs nothing
+**`src/storage/viewStateStore.ts` DOES change, for the one persisted toggle.** `folds` needs nothing
 — it is already a path-keyed map this view's identity gets its own copy of — but `prefs` is
 not a free-form bag: `PREF_READERS` is declared `{ [K in keyof ViewPrefs]-?: … }` and
 `readPrefs` writes only the keys that map holds, so a field with no reader is a compile
 error and an unrecognised stored key is discarded on the way back in. That is the design,
-not an obstacle to route around: each toggle gets a typed `ViewPrefs` field and a reader.
-Both are `onlyTrue`, storing the NON-default state so a default writes nothing —
-`bucketList`'s own documented rule. `releaseHideDone` is the on state of a toggle that
-starts off; `releaseHideContext` is the off state of one that starts on. Round-tripping
-both belongs in `test/storage/`, beside the existing prefs coverage.
+not an obstacle to route around: the toggle gets a typed `ViewPrefs` field and a reader.
+`releaseHideDone` is `onlyTrue`, storing the ON state of a toggle that starts off, so a
+default writes nothing — `bucketList`'s own documented rule. One field, not two: the context
+toggle was cut above. Round-tripping it belongs in `test/storage/`, beside the existing
+prefs coverage.
 
 ## Checks
 
@@ -228,7 +245,9 @@ Every claim gets one that fails without it — watched failing, then restored.
   opens through `openTarget`.
 - ✨: not drawn with nothing to bind; drawn on the `noMembership` empty state; a bound
   option is never re-bound; no note is written (asserted on the call, not by driving
-  screens).
+  screens); **a standalone press that bound something reports it, and one that bound
+  nothing stays quiet** — both directions, driven through the button rather than through
+  `newRelease`.
 - `npm run check` — build, lint, coverage thresholds, fallow, docs register — plus a
   re-shot harness page. The live-vault check is owed and will be named in the PR.
 
