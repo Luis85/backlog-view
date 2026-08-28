@@ -523,24 +523,49 @@ export class ViewState {
 		const key = columnKey(scope, value, this.boardScope());
 		// Exclusive: the two sets are one tri-state (folded, opened, never ruled on), so a
 		// key in both would make "did the reader open this against its default" unanswerable.
+		// Deleted before the add on the branch taken, matching `set`'s own reason: a bare
+		// `.add` on an already-present key leaves it at its ORIGINAL position, which
+		// `readFolds`'s tail-retention budget reads as old. No caller today passes a
+		// `collapsed` equal to the column's current state (every one negates what it just
+		// read), so this is not reachable yet — fixed anyway, since the shape is identical
+		// to `set`'s and a future caller (a "collapse all columns" action, say) would only
+		// have to call this once redundantly to reopen the same bug.
 		if (collapsed) {
+			this.foldedColumns.delete(key);
 			this.foldedColumns.add(key);
 			this.openedColumns.delete(key);
 		} else {
 			this.foldedColumns.delete(key);
+			this.openedColumns.delete(key);
 			this.openedColumns.add(key);
 		}
 		this.scheduleSave();
 	}
 
-	/** Returns true when the state actually changed. */
+	/**
+	 * Returns true when the state actually changed.
+	 *
+	 * Both sets are re-added through a DELETE first, never a bare `.add`. A JS `Set`
+	 * does not move an already-present key to the end on a re-add — it keeps its
+	 * original insertion position — and `flush()` writes both sets out in iteration
+	 * order, which `readFolds`'s tail-retention budget (`storage/viewStateStore.ts`,
+	 * `MAX_FOLDS`) trusts to mean "oldest first, newest last". `settled` in particular
+	 * holds nearly every key this row has ever touched, so almost every call here is a
+	 * re-add of an EXISTING key: without the delete, a row settled long ago would stay
+	 * pinned near the front no matter how recently it was actually toggled, and a
+	 * saturated budget would evict it first regardless.
+	 */
 	set(key: string, collapsed: boolean): boolean {
 		const changed = collapsed ? !this.collapsed.has(key) : this.collapsed.delete(key);
-		if (collapsed) this.collapsed.add(key);
+		if (collapsed) {
+			this.collapsed.delete(key);
+			this.collapsed.add(key);
+		}
 		// An explicit expand or collapse settles this row, so the initial state is not
 		// applied to it later. That matters most for a row with no children yet: a drop
 		// or a create expands it before the write, and the refresh that follows would
 		// otherwise collapse it as a newly seen parent and hide what just landed there.
+		this.settled.delete(key);
 		this.settled.add(key);
 		this.scheduleSave();
 		return changed;

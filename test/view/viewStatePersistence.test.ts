@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
-import { CARD_SCOPE, RELEASE_FOLD } from '../../src/view/viewState';
+import { CARD_SCOPE, RELEASE_FOLD, TIMELINE_SCOPE } from '../../src/view/viewState';
+import { saveViewState } from '../../src/storage/viewStateStore';
 import { FakeVault } from '../helpers/vault';
 import { fixture, makeView, refresh, rowByTitle, titlesOf, useViewHarness } from '../helpers/view';
 
@@ -545,5 +546,75 @@ describe('collapse state persistence', () => {
 		const third = makeView(vault, {}, { base: 'Backlog.base', collapsed: true });
 		// The whole tree, restored to the rows the first session left open.
 		expect(titlesOf(third.containerEl)).toEqual(expandedTitles);
+	});
+
+	/**
+	 * Fix round 1 on Task 3: a saturated `MAX_FOLDS` budget must drop the OLDEST key,
+	 * never a row the user just changed — but `readFolds`'s tail-retention
+	 * (`storage/viewStateStore.ts`) only knows "oldest" by iteration order, and a JS
+	 * `Set` does not move an already-present key to the end on a re-add. `ViewState.set`
+	 * used to call `settled.add`/`collapsed.add` bare, so a row settled long ago (near
+	 * the front) stayed there even after being touched again — and the budget evicted it
+	 * first, exactly backwards from what a reader would expect.
+	 *
+	 * `Epic B.md` is primed as the very FIRST entry `settled` will ever hold — older than
+	 * every filler key that follows it — and the budget is left with exactly one key of
+	 * headroom. Mounting settles `Epic B.md`'s own `TIMELINE_SCOPE`/`CARD_SCOPE` siblings
+	 * too (`collapseNewParents` runs all three scopes for every parent), which is what
+	 * spends that last key and saturates the budget before the user has touched
+	 * anything. The user then expands the row — the one action this test is about — and
+	 * a flush has to decide, with the budget already full, whether that expand or some
+	 * untouched filler key is the one that goes.
+	 */
+	it('keeps an old row’s state after it is touched, even with the shared fold budget already full', () => {
+		const vault = fixture();
+		// One guard key per scope so `restore()`'s own one-time migration
+		// (`seedTimelineScope`/`seedCardScope` in `view/viewState.ts`) sees a
+		// TIMELINE_SCOPE/CARD_SCOPE key already present and does not run — it otherwise
+		// treats a store with none as pre-dating both scopes and copies EVERY primed
+		// key across both, which would silently triple this fixture's carefully sized
+		// budget rather than testing it.
+		const guard = [TIMELINE_SCOPE + 'guard.md', CARD_SCOPE + 'guard.md'];
+		// One below the cap, so priming alone triggers no truncation and the only
+		// change left to spend is the two `collapseNewParents` makes on mount — Epic
+		// B's own TIMELINE_SCOPE and CARD_SCOPE siblings, settled for the first time.
+		const filler = Array.from({ length: 11996 }, (_, i) => `filler-${i}.md`);
+		// Every primed key needs a real FILE: `flush()` prunes any settled path the
+		// vault has no note for, on the way to every write — see `src/storage/CLAUDE.md`
+		// on "everything that puts bytes in the vault is in one directory", the same
+		// existence check `renamePath`'s own migration relies on. Kept out of the
+		// BASE's own results with `only` below, so none of them draws a row.
+		vault.addFile('guard.md');
+		for (const path of filler) vault.addFile(path);
+		saveViewState(
+			vault.app,
+			{ base: 'Backlog.base', view: 'Backlog' },
+			{
+				folds: {
+					collapsed: ['Epic B.md'],
+					expanded: [...guard, ...filler],
+					lanes: [],
+					collapsedColumns: [],
+					expandedColumns: [],
+				},
+				prefs: {},
+			},
+		);
+
+		const only = ['Epic A.md', 'Epic B.md', 'Feature B1.md', 'Feature B2.md'];
+		const { view, containerEl } = makeView(vault, {}, { base: 'Backlog.base', collapsed: true, only });
+		expect(titlesOf(containerEl)).toEqual(['Epic A', 'Epic B']);
+
+		rowByTitle(containerEl, 'Epic B')
+			.querySelector<HTMLElement>('.pbl-chevron')
+			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		expect(titlesOf(containerEl)).toEqual(['Epic A', 'Epic B', 'Feature B1', 'Feature B2']);
+		view.onunload();
+
+		// Reopening must find the row exactly as it was left — expanded — not reset to
+		// its unsettled default because the budget discarded the fold just made in
+		// favour of a filler key nobody ever touched.
+		const second = makeView(vault, {}, { base: 'Backlog.base', collapsed: true, only });
+		expect(titlesOf(second.containerEl)).toEqual(['Epic A', 'Epic B', 'Feature B1', 'Feature B2']);
 	});
 });
