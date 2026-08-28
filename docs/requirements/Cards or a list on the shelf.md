@@ -123,6 +123,17 @@ one a reader wants changes by the day and by the task, not by the base.
   of the SUMMARY's own box rather than of the viewport, since a shelf in a split pane is
   narrower than the window around it. (Codex, PR #183 — the 1200px measurement the floor
   first rested on did not exercise this at all.)
+- **3d — a column no card in the band draws.** Not reserved. The per-ROW rule (4b and the
+  criterion below) holds a cell open for a column this note has no value for, because a
+  dropped cell moves every cell after it; the per-BAND question is a different one, and only
+  the band can answer it. A compact row has no column header, so a column that is empty
+  everywhere is a stretch of nothing between the title and the metadata rather than an empty
+  column a reader can see. Measured at a 1280px pane over the demo backlog's twenty unplaced
+  items: three of five columns drew on zero rows, 384px of the row, and the title sat at its
+  floor; narrowed, the title takes 377px. Chip columns are never asked — they draw their own
+  invitation for an unset note — and the value columns are asked through `drawsSomething`,
+  the same test the cell itself uses. See [[Reserve only the columns the shelf has values in]].
+
 - **3a — a title too long for one line.** It truncates with an ellipsis rather than
   wrapping: a row that grew a second line would not be a row. The title yields and the
   property cells keep their content width, which is the TREE's own order — its columns are
@@ -158,8 +169,12 @@ one a reader wants changes by the day and by the task, not by the base.
 - The same cards are drawn in both layouts, and the shelf's count is unchanged by the
   pick.
 - A compact row's columns are the tree's stored widths, published on the band: the badge in
-  its own `--pbl-shelf-badge` slot, the cells at `--pbl-prop-w-N`, every row holding a cell open for every column so a missing value is
-  a gap rather than a shift. Measured at a 1400px pane over twenty unplaced items, against
+  its own `--pbl-shelf-badge` slot, the cells at `--pbl-prop-w-N`, every row holding a cell
+  open for every column THE BAND SHOWS SOMETHING IN, so a missing value is a gap rather than
+  a shift — and a column no card in the band draws is not reserved at all, which is
+  [[Reserve only the columns the shelf has values in]] rather than this criterion's original
+  wording (it said "every column", and that reserved 384px of nothing on every row of the
+  demo backlog's shelf). Measured at a 1400px pane over twenty unplaced items, against
   the commit before this one landed: titles at one x position where there were four, median
   row 28px where it was 22.4px (not the 34px an earlier draft of this note stated, which
   does not reproduce).

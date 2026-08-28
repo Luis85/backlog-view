@@ -2,11 +2,19 @@ import { setTooltip } from 'obsidian';
 import { t } from '../../i18n/t';
 import { drawIcon } from './icons';
 import { createCard, renderCardBody, renderColumnFold, wireCardActivation } from './board';
-import { metaColWidth, publishColumnWidths, RowContext, renderPropCells, rollupChars, shelfBadgeWidth } from './columns';
+import {
+	columnsWithContent,
+	metaColWidth,
+	publishColumnWidths,
+	RowContext,
+	renderPropCells,
+	rollupChars,
+	shelfBadgeWidth,
+} from './columns';
 import { renderShelfControls } from './shelfControls';
 import { spanText } from './lanes';
 import { dependencyNote } from './timelineArrows';
-import { BacklogViewHost } from '../host';
+import { BacklogViewHost, Column } from '../host';
 import { CardDragController, CardSource } from '../interactions/cardDrag';
 import { publishShelfHeight, renderShelfResize } from '../interactions/shelfResize';
 import { canSchedule, unschedulePlan } from '../interactions/plan';
@@ -261,11 +269,6 @@ export function renderShelf(
 	dnd.wireScroller(shelfEl);
 	if (empty || collapsed) return { cards: [], el: shelfEl };
 
-	// `dnd` and `removal` travel together to every card below, and now so does which
-	// of them is in conflict (2b) and which axis is drawing — grouped once here rather
-	// than threading a fourth and fifth argument through both `renderShelfGroup` and
-	// `renderShelfCard`.
-	const wiring: ShelfWiring = { dnd, removal, conflicts: shelf.conflicts, axis: shelf.axis, list };
 	const cards: BacklogItem[] = [];
 	// **A narrowing belongs to the control that shows it.** The search and the type filter
 	// both HIDE cards and both say on their own face that they are doing so — the button
@@ -289,6 +292,33 @@ export function renderShelf(
 	// Materialized rather than iterated in place: the rollup reservation below is sized from
 	// what the type filter LEFT, and `organizeShelf` is the only thing that applies it.
 	const groups = organizeShelf(searchShelf(shelfCards, host.shelfSearch), host.shelfSort, host.shelfHiddenTypes);
+	// What the band holds, once, for the two reservations below it: the columns a row keeps
+	// and the rollup label's own width. From the GROUPS on both counts — the rule and its
+	// reason are stated at the rollup, which found it.
+	const shown = groups.flatMap((group) => group.cards).map((entry) => entry.item);
+	// `dnd` and `removal` travel together to every card below, and so do which of them is in
+	// conflict (2b), which axis is drawing and which columns this band keeps — grouped once
+	// here rather than threading five arguments through both `renderShelfGroup` and
+	// `renderShelfCard`.
+	//
+	// **A compact row reserves a column the band has something to show in, and no other.**
+	// The per-ROW rule beside it is `holdEmpty` and is unchanged: a row that dropped its own
+	// empty cell would move every cell after it and the column would stop being one. This is
+	// the per-BAND question, and it is only askable here — a row has no column header to say
+	// what an empty column is, so a column no card in the band draws is a stretch of nothing
+	// between the title and the metadata rather than an empty column a reader can see.
+	// Measured at a 1280px pane over the demo backlog's twenty unplaced items: three of the
+	// five reserved columns drew on zero rows, 384px of the row, while every title sat at its
+	// own 16ch floor. The CARD grid asks nothing of this — it already drops an empty cell per
+	// card (`dropEmpty`), so a column nothing draws is absent from every card in it anyway.
+	const wiring: ShelfWiring = {
+		dnd,
+		removal,
+		conflicts: shelf.conflicts,
+		axis: shelf.axis,
+		list,
+		columns: list ? columnsWithContent(ctx.columns, shown) : undefined,
+	};
 	for (const group of groups) {
 		cards.push(...renderShelfGroup(ctx, shelfEl, group, wiring));
 	}
@@ -331,7 +361,7 @@ export function renderShelf(
 		// A FOLDED group still counts, and that is the point of reading the groups rather than
 		// the rendered cards: folding a group is not a narrowing, and a width that moved on it
 		// would jump the columns every time a reader opened one. (Codex, PR #187.)
-		const chars = rollupChars(host, groups.flatMap((group) => group.cards).map((entry) => entry.item));
+		const chars = rollupChars(host, shown);
 		shelfEl.setCssProps({
 			'--pbl-shelf-badge': `${shelfBadgeWidth()}px`,
 			'--pbl-meta-col': `${metaColWidth(chars)}px`,
@@ -354,6 +384,12 @@ interface ShelfWiring {
 	axis: RoadmapAxis | null;
 	/** Whether this shelf is drawing compact rows rather than cards — see `renderShelfCard`. */
 	list: boolean;
+	/**
+	 * The columns this BAND has anything to show in, or undefined in the card grid, which
+	 * drops an empty cell per card and needs no such list — see `renderShelf`, where it is
+	 * computed from the groups.
+	 */
+	columns?: Column[];
 }
 
 /** Shared by every card with no conflicting prerequisite, so nothing is allocated for the common case. */
@@ -436,6 +472,7 @@ function renderShelfCard(ctx: RowContext, cardsEl: HTMLElement, entry: ShelfCard
 		holdEmpty: wiring.list,
 		rollupEl: notes ?? undefined,
 		toggleEl: fold ?? undefined,
+		columns: wiring.columns,
 	});
 	ctx.placed.add(entry.item.file.path);
 	renderShelfNotes(summary, notes, entry, wiring);

@@ -55,6 +55,15 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ### Fixed
 
+- **The shelf's compact rows no longer reserve room for columns that are empty on every
+  card in the band.** In the list layout each row carries the same property columns your tree
+  does, so that the values line up down the band — but a column the whole shelf has nothing
+  in was still taking its width from every row, and the row's title was being squeezed to
+  make space for it. On the shipped demo backlog that was three columns of nothing on every
+  row, and titles cut short at about a third of the width they now get. A column any card in
+  the band has a value in is unchanged: it is still held open on the rows that have none, so
+  nothing shifts from row to row.
+
 - **The shelf's type headers no longer let the cards under them show through, and they look
   the same in both layouts.** The header naming each type — `FEATURE`, `PBI` — stays pinned
   at the top of the shelf as you scroll it, and it was painted in a see-through colour, so a

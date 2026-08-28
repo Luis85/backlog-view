@@ -568,6 +568,40 @@ function renderCell(host: BacklogViewHost, cell: HTMLElement, item: BacklogItem,
 
 
 /**
+ * The columns a BAND has anything to show in, for a caller drawing rows that share them.
+ *
+ * This is the one narrowing a compact row may take without breaking the alignment it rests
+ * on, and the difference from `dropEmpty` is which population is asked. `dropEmpty` is
+ * per ROW and is a card's rule — a row that dropped its own empty cell would move every
+ * cell after it and the column would stop being a column. This is per BAND: a column no
+ * card in it draws is reserved width on every row and content on none, which on a surface
+ * with no column HEADER is a stretch of nothing rather than a column a reader can see is
+ * empty. Measured on the shelf at a 1280px pane over the demo backlog's twenty unplaced
+ * items: three of five reserved columns drew on zero rows, 384px of the row, while every
+ * title sat at its 16ch floor.
+ *
+ * Only the three kinds that CAN be blank are asked. Every chip kind draws its own
+ * invitation for an unset note — a dashed `Assignee`, a `State` — so a chip column is
+ * never empty and asking would only ever return true. And the question is `drawsSomething`,
+ * the same one `renderValue` asks, so a column kept here and a cell drawn there cannot
+ * disagree about what an empty value is.
+ */
+export function columnsWithContent(columns: Column[], items: BacklogItem[]): Column[] {
+	return columns.filter((column) => {
+		if (column.kind !== 'value' && column.kind !== 'start' && column.kind !== 'target') return true;
+		// An ancestor from outside the filter has no Bases row, exactly as `renderValue`
+		// finds: it draws nothing, so it votes for nothing.
+		return items.some((item) => {
+			try {
+				return drawsSomething(item.entry?.getValue(column.prop) ?? null);
+			} catch {
+				return false;
+			}
+		});
+	});
+}
+
+/**
  * Whether a Bases value draws anything at all.
  *
  * One statement of it, because two readings drift: a missing property comes back as a

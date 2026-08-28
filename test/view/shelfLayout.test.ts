@@ -386,6 +386,28 @@ describe('the shelf’s card and list layouts', () => {
 			expect(seen.size).toBe(1);
 		});
 
+		it('reserves no column the whole band has nothing to show in', () => {
+			// The per-BAND narrowing beside the per-ROW hold above, and the two answer different
+			// questions: a row may not drop its own empty cell (it would move every cell after
+			// it), while a column NO card in the band draws is width on every row and content on
+			// none. A compact row has no column header, so that is a stretch of nothing rather
+			// than an empty column a reader can see — measured at a 1280px pane over the demo
+			// backlog's twenty unplaced items, three of five reserved columns drew on zero rows,
+			// 384px of the row, with every title at its own 16ch floor.
+			//
+			// Both directions in one fixture: `note.points` is carried by two of the three cards
+			// and `note.owner` by one, so both stay on EVERY row; `note.nothing` is carried by
+			// none and is on no row at all.
+			const { containerEl } = makeRoadmap(unplacedVault(), {}, {
+				shelfCollapsed: false,
+				shelfList: true,
+				order: ['note.points', 'note.owner', 'note.nothing'],
+			});
+			const rows = Array.from(shelfOf(containerEl)?.querySelectorAll('.pbl-card-summary') ?? []);
+			expect(rows).toHaveLength(3);
+			for (const row of rows) expect(row.querySelectorAll('.pbl-props > .pbl-prop')).toHaveLength(2);
+		});
+
 		it('drops the state cell instead, which is not one of the shared columns', () => {
 			// Extension 4b: held open rather than dropped. `.pbl-shelf-state` is its own box
 			// outside `.pbl-props`, so holding the shared columns open (test above) says nothing
