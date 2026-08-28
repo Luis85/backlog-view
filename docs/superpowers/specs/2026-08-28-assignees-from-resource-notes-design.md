@@ -36,7 +36,7 @@ drop target. This is the whole of [[Rows from the Resource notes]] extension 2b,
 replaces that note's earlier reading that a context resource "renders and parents": nothing
 downstream of this can draw one, because nothing downstream is handed one.
 
-`BacklogModel.resources` carries the list, sorted by title. No second read path into the
+`BacklogModel.resources` carries the list, sorted by title through `localeCompare` — the collation `collectObservedAssignees` already uses, which follows the USER's locale because a name is data ([[Locale-aware sorting and formatting]]). No second read path into the
 vault opens, and `test/domain/modelCost.test.ts`'s one-`getFileCache`-per-note pin holds
 because the cache is already open on that line.
 
