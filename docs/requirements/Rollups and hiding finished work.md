@@ -88,3 +88,15 @@ left rather than everything that ever was.
 `src/view/render/emptyStates.ts` (the all-done state).
 Tests: `test/view/visibility.test.ts`, `test/domain/modelContextRows.test.ts`,
 `test/view/contextRowWrites.test.ts` (the rollup invariant).
+
+**The release scope hides by its own rule, not by reusing any of the above** (Task 5).
+`src/view/release/scopeToolbar.ts` draws the toggle, gated on `release.done.unconfigured` so
+it can never hide rows the summary strip refuses to count; `src/view/release/scopeTree.ts`
+(`rowsAfterHideDone`, `hideDoneOn`/`setHideDone`) drops each finished subtree. The
+predicate it drops by is `ScopeRow.subtreeDone` (`src/domain/releases.ts`), deliberately
+NOT `item.subtreeDone` from `src/domain/model.ts`: that field counts every non-marker
+descendant the BASE returned, consulting no membership at all, so a done member whose only
+unfinished child belongs to another release (or to none) would never hide by it.
+`ScopeRow.subtreeDone` asks the same question of THIS release's own population — the same
+one every other figure on this screen is measured over — computed in the same walk that
+already fills `memberTotal`/`memberDone`, never a second traversal.

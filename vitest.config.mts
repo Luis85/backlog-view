@@ -191,9 +191,20 @@ export default defineConfig({
 			// takes 98.98; 6045 is 95.5731, so branches takes 95.57; 8002 is 99.7507, so lines
 			// takes 99.75. **Functions stays**, for the same arithmetic once more: one fewer is
 			// 99.8781, under the 99.90 standing, so headroom there would again be a decrease.
+			// Raised again on 2026-08-28, with the scope toolbar (collapse/expand/hide-done),
+			// the all-done state, the gate move (carried finding 1), the row-rollup suppression
+			// (carried finding 2), the row-end spacer (carried finding 3), the
+			// `activeScopePath` leak fix (carried finding 4) and the drag-select guard on a
+			// row's click (carried finding 5): this machine measured 9694/9792 statements,
+			// 6092/6372 branches, 2470/2472 functions and 8063/8082 lines. Only branches moves —
+			// 6091 is 95.5901, floored to 95.59, over the 95.57 standing. The other three all
+			// floor their own one-fewer figure to the value already standing (98.98, 99.90,
+			// 99.75 respectively — 9693 is 98.9890, 2469 is 99.8786, 8062 is 99.7525), which is
+			// the same "a raise that changes nothing is not a raise" arithmetic this comment has
+			// now stated five times.
 			thresholds: {
 				statements: 98.98,
-				branches: 95.57,
+				branches: 95.59,
 				functions: 99.90,
 				lines: 99.75,
 			},

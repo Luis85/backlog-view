@@ -7,7 +7,8 @@ import { BacklogSettings } from '../../domain/settings';
 import { WorkflowKind, workflowStateInfo } from '../../domain/board';
 import { guidanceShell } from '../render/emptyStates';
 import { renderReleaseInit } from './initControl';
-import { drawScopeTree } from './scopeTree';
+import { drawScopeTree, hideDoneOn, rowsAfterHideDone } from './scopeTree';
+import { drawScopeToolbar } from './scopeToolbar';
 import { wireScopeKeys } from './scopeKeys';
 
 /**
@@ -70,8 +71,41 @@ export function renderScope(view: ReleaseView, scope: ReleaseScope, release: Rel
 		);
 		return;
 	}
+	// Above the tree AND the all-done state below, so collapse/expand and the way back off
+	// an all-done screen are never a dead end — `scopeToolbar.ts`'s own header on why the
+	// hide-done control asks `release.done.unconfigured` rather than a second copy of it.
+	drawScopeToolbar(view, view.viewEl, release, scope.rows);
+	if (hideDoneOn(view) && rowsAfterHideDone(scope.rows, true).length === 0) {
+		drawAllDoneState(view.viewEl, scope.members);
+		return;
+	}
 	const draw = drawScopeTree(view, release, scope.rows);
 	wireScopeKeys(view, draw.treeEl, release.path, draw);
+}
+
+/**
+ * Everything in the release is finished and hidden — extension 4c, drawn rather than left
+ * as a blank scroller.
+ *
+ * `renderAllDoneState` in `render/emptyStates.ts` is NOT reused: it takes a
+ * `BacklogViewHost` this view has none of, and its way back is
+ * `config.set('showCompleted', true)` — a `.base` setting, where this toggle is
+ * deliberately per-device view state (ADR 0011). The way back here is the toolbar's own
+ * toggle, drawn just above this by the caller and never touched by this function.
+ *
+ * `count` is `scope.members` — the same denominator the summary strip's own sentence
+ * names ("N of N items done"), so the number this state reports is the one the header
+ * above it was already using, not a second opinion computed for the occasion.
+ */
+function drawAllDoneState(viewEl: HTMLElement, count: number): void {
+	// `.pbl-empty-filter` (`styles/toolbar.css`) is the tree's own lighter notice shell —
+	// reused rather than restated, the same reuse `scopeTree.ts` already makes of
+	// `.pbl-state-chip`/`.pbl-progress`: nothing is wrong here, so this is not the heavier
+	// `.pbl-empty` guidance shell the two configuration empty states above draw. `.pbl-rel-alldone`
+	// is this screen's own hook, for the test and for the one colour that IS its own.
+	const doneEl = viewEl.createDiv({ cls: 'pbl-empty-filter pbl-rel-alldone' });
+	setIcon(doneEl.createSpan({ cls: 'pbl-empty-filter-icon pbl-rel-alldone-icon' }), 'circle-check');
+	doneEl.createSpan({ text: t('release.scope.allDone', { count }) });
 }
 
 /**

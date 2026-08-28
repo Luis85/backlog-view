@@ -365,6 +365,44 @@ describe('the release index', () => {
 		expect(noMembership.rows[0].done.unconfigured).toBe(true);
 	});
 
+	/**
+	 * Carried finding 1, task 5: the gate MOVED from the plan's `stateKey` alone to "every
+	 * workflow the members actually span". Watched failing with `progressConfigured`'s
+	 * `deliverable` branch reverted to `!stateConfigured` (the old gate): this test failed —
+	 * `done.unconfigured` read `true` — while the "still ... cannot answer" test beside it
+	 * kept passing either way, which is what makes the first test the one carrying the claim.
+	 */
+	it('reads done as configured for a Deliverables-only release with no plan state key bound at all', () => {
+		const vault = new FakeVault();
+		vault.addFile('R.md', { frontmatter: { type: 'Release' } });
+		vault.addFile('D.md', { frontmatter: { type: 'Deliverable', release: '[[R]]', docStatus: 'Done' } });
+		const settings = settingsWith({ stateKey: '', deliverableStateKey: 'docStatus' });
+		const rows = releaseIndex(vault.app, modelOf(vault, settings), KEYS, {
+			stateKey: settings.stateKey,
+			deliverableStateKey: settings.deliverableStateKey,
+			today: TODAY,
+		}).rows;
+		expect(row(rows, 'R.md').done.unconfigured).toBe(false);
+		expect(row(rows, 'R.md').done.value).toBe(1);
+	});
+
+	it('still reports done as unconfigured when a workflow the members ALSO span cannot answer', () => {
+		// A plan member beside the Deliverable, with the plan's own key unbound: the
+		// requirements workflow is represented too, and it cannot answer — so the release
+		// stays unconfigured even though the Deliverable's own key is right there.
+		const vault = new FakeVault();
+		vault.addFile('R.md', { frontmatter: { type: 'Release' } });
+		vault.addFile('A.md', { frontmatter: { type: 'PBI', release: '[[R]]', status: 'Done' } });
+		vault.addFile('D.md', { frontmatter: { type: 'Deliverable', release: '[[R]]', docStatus: 'Done' } });
+		const settings = settingsWith({ stateKey: '', deliverableStateKey: 'docStatus' });
+		const rows = releaseIndex(vault.app, modelOf(vault, settings), KEYS, {
+			stateKey: settings.stateKey,
+			deliverableStateKey: settings.deliverableStateKey,
+			today: TODAY,
+		}).rows;
+		expect(row(rows, 'R.md').done.unconfigured).toBe(true);
+	});
+
 	it('cannot count members at all with the membership key unbound', () => {
 		const vault = new FakeVault();
 		vault.addFile('R.md', { frontmatter: { type: 'Release' } });

@@ -217,3 +217,65 @@ describe("one release's scope", () => {
 		});
 	});
 });
+
+/** The one row named by its path — `releases.test.ts`'s own `row`, over a scope's rows. */
+function rowFor(scope: ReturnType<typeof scopeOf>, path: string) {
+	const found = scope.rows.find((r) => r.item.file.path === path);
+	if (found === undefined) throw new Error(`no row for ${path}`);
+	return found;
+}
+
+describe('a scope row’s own completion', () => {
+	it('is over the release’s MEMBERS, not the model’s descendants', () => {
+		// `item.subtreeDone` counts every non-marker descendant the BASE returned and
+		// consults no membership at all — so a done member whose only unfinished child is
+		// in ANOTHER release would never hide by it. This predicate is why.
+		const vault = new FakeVault();
+		vault.addFile('0.8.md', { frontmatter: { type: 'Release' } });
+		vault.addFile('0.9.md', { frontmatter: { type: 'Release' } });
+		vault.addFile('Feature.md', { frontmatter: { type: 'Feature', release: '[[0.8]]', status: 'Done' } });
+		vault.addFile('Child in 0.9.md', {
+			frontmatter: { type: 'Task', release: '[[0.9]]', status: 'Open' },
+			parentLink: 'Feature',
+		});
+		const scope = scopeOf(vault, '0.8.md', settingsWith({ stateKey: 'status' }));
+		expect(rowFor(scope, 'Feature.md').subtreeDone).toBe(true);
+	});
+
+	it('is false while any MEMBER below is unfinished', () => {
+		const vault = new FakeVault();
+		vault.addFile('0.8.md', { frontmatter: { type: 'Release' } });
+		vault.addFile('Feature.md', { frontmatter: { type: 'Feature', release: '[[0.8]]', status: 'Done' } });
+		vault.addFile('Child.md', {
+			frontmatter: { type: 'Task', release: '[[0.8]]', status: 'Open' },
+			parentLink: 'Feature',
+		});
+		const scope = scopeOf(vault, '0.8.md', settingsWith({ stateKey: 'status' }));
+		expect(rowFor(scope, 'Feature.md').subtreeDone).toBe(false);
+	});
+
+	it('reads each member through its OWN workflow', () => {
+		const vault = new FakeVault();
+		vault.addFile('0.8.md', { frontmatter: { type: 'Release' } });
+		vault.addFile('Deliverable.md', {
+			frontmatter: { type: 'Deliverable', release: '[[0.8]]', deliverableState: 'Done' },
+		});
+		const scope = scopeOf(vault, '0.8.md', settingsWith({ deliverableStateKey: 'deliverableState' }));
+		expect(rowFor(scope, 'Deliverable.md').subtreeDone).toBe(true);
+	});
+
+	it('is false on a context row whatever sits below it', () => {
+		// A context row is never a source of anything derived from the results, and its own
+		// state must not keep a finished subtree on screen or take one off it.
+		const vault = new FakeVault();
+		vault.addFile('0.8.md', { frontmatter: { type: 'Release' } });
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', status: 'Done' } });
+		vault.addFile('Member.md', {
+			frontmatter: { type: 'Feature', release: '[[0.8]]', status: 'Done' },
+			parentLink: 'Epic',
+		});
+		const scope = scopeOf(vault, '0.8.md', settingsWith({ stateKey: 'status' }));
+		expect(rowFor(scope, 'Epic.md').context).toBe(true);
+		expect(rowFor(scope, 'Epic.md').subtreeDone).toBe(true);
+	});
+});

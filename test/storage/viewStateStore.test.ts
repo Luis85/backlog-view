@@ -51,6 +51,9 @@ const FULL_PREFS: Required<ViewPrefs> = {
 	// The second: the release screen's own pick, a note path like `scope` and walked by the
 	// same `renamePathPrefs`.
 	release: 'Releases/0.8.md',
+	// The release scope's own hide-done toggle — the ON state, `bucketList`'s own rule for
+	// storing only the non-default.
+	releaseHideDone: true,
 	// A WORD beside the path above — which board the Board position opens with no scope
 	// set. In live state the two are never both set (the controller clears each on the
 	// other's way in); the fixture holds both because the round trip is per key.
@@ -503,5 +506,29 @@ describe('the picked release', () => {
 
 		saveViewState(vault.app, id, { ...none, prefs: { release: 42 as never } });
 		expect(loadViewState(vault.app, id).prefs.release).toBeUndefined();
+	});
+});
+
+describe('the release scope’s hide-done toggle', () => {
+	const id = { base: 'Backlog.base', view: 'Backlog' };
+	const none = { folds: emptyFolds(), prefs: {} };
+
+	it('round-trips the hide-done toggle, and discards a value of the wrong shape', () => {
+		// `PREF_READERS` is exhaustive over `ViewPrefs` by TYPE and `readPrefs` writes only the
+		// keys it holds, so stored state is read defensively rather than trusted.
+		vault.addFile('Backlog.base');
+		saveViewState(vault.app, id, { ...none, prefs: { releaseHideDone: true } });
+		expect(loadViewState(vault.app, id).prefs.releaseHideDone).toBe(true);
+
+		saveViewState(vault.app, id, { ...none, prefs: { releaseHideDone: 'yes' as never } });
+		expect(loadViewState(vault.app, id).prefs.releaseHideDone).toBeUndefined();
+	});
+
+	it('writes nothing for the default', () => {
+		// `onlyTrue`, storing the NON-default state — `bucketList`'s own documented rule, so
+		// a view nobody has toggled costs no entry at all.
+		vault.addFile('Backlog.base');
+		saveViewState(vault.app, id, { ...none, prefs: { releaseHideDone: false } });
+		expect(Object.keys(stored(vault))).toHaveLength(0);
 	});
 });

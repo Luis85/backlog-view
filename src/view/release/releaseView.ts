@@ -100,9 +100,20 @@ export class ReleaseView extends BasesView {
 		return { app: this.app, viewEl: this.viewEl, settings: { openIn: this.settings.openIn } };
 	}
 
-	/** Picking a row, or the back control's null. Persists, then redraws. */
+	/**
+	 * Picking a row, or the back control's null. Persists, then redraws.
+	 *
+	 * **Clears `activeScopePath`.** A pick is a change of SCREEN — the scroll restore
+	 * already treats it as a reset (see `render`'s own comment) — and without this a
+	 * context ancestor selected in release A stayed the keyboard's starting row in release
+	 * B, whenever the same path happened to sit in B's scope too: `scopeKeys.ts`'s restore
+	 * matches on path alone, with no idea which release picked it last. `onDataUpdated`
+	 * (a redraw of the SAME scope — a Bases refresh, an external edit, a rename) never
+	 * calls this, so the active row survives exactly the redraws it should.
+	 */
 	pick(path: string | null): void {
 		this.pickedPath = path;
+		this.activeScopePath = null;
 		const id = resolveViewIdentity(this.app, this.viewEl, this.config.name ?? '');
 		if (id) {
 			const state = loadViewState(this.app, id);
@@ -236,6 +247,7 @@ export class ReleaseView extends BasesView {
 		// on that: such an item is reported among the unresolved "rather than silently dropped".
 		const index = releaseIndex(this.app, this.model, this.settings, {
 			stateKey: backlogSettings.stateKey,
+			deliverableStateKey: backlogSettings.deliverableStateKey,
 			today: todayCivil(),
 		});
 		if (this.model.releases.length === 0) {

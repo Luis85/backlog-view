@@ -210,6 +210,27 @@ describe('the band’s progress line', () => {
 		const note = containerEl.querySelector('.pbl-rel-note')?.textContent ?? '';
 		expect(note).toContain('Progress');
 	});
+
+	it('draws the bar for a Deliverables-only release with no plan state property at all', () => {
+		// Carried finding 1: the gate moved from the plan's own `stateKey` to the workflows
+		// the members actually span, and `ReleaseRow.done` is the single figure both the band
+		// and the scope header read — so the index has to gain progress on this release
+		// exactly when the single-release screen does (`test/view/releaseScopeRender.test.ts`'s
+		// matching case), never as a second opinion about it.
+		const vault = new FakeVault();
+		vault.addFile('0.8.md', { frontmatter: { type: 'Release', version: '0.8.0' } });
+		vault.addFile('D.md', { frontmatter: { type: 'Deliverable', release: '[[0.8]]', docStatus: 'Done' } });
+		const { containerEl } = makeReleaseView(vault, {
+			...RELEASE_CONFIG,
+			stateProperty: '',
+			deliverableStateProperty: 'note.docStatus',
+		});
+		const band = containerEl.querySelector('.pbl-rel-band') as HTMLElement;
+		expect(band.querySelector('.pbl-rel-bar')).not.toBeNull();
+		expect(band.querySelector('.pbl-rel-progress')?.textContent).toBe(
+			en['column.rollupTooltip'].one.replace('{done}', '1').replace('{count}', '1'),
+		);
+	});
 });
 
 describe('what turns a band red, and what a shipped one shows', () => {

@@ -215,6 +215,65 @@ describe('the scope tree’s keyboard', () => {
 		expect(active(view)).toBe('Sign-up flow.md');
 	});
 
+	/**
+	 * Carried finding 4, task 5: `activeScopePath` used to be a bare note path `pick()`
+	 * never cleared — the identical bug already fixed for fold keys
+	 * (`foldedPaths`/`toggleFold` scope every key to `release.path`), in the sibling field
+	 * that fix did not sweep. Its own vault: `Ctx.md` is a context ancestor in BOTH
+	 * releases, and — the fixture's whole point — it is the FIRST row of 0.8's scope but
+	 * NOT of 0.9's, where `Standalone.md` (ordered ahead of it) is. A leaked path that
+	 * happened to land on either release's own first row would pass by accident; this is
+	 * the shape that cannot.
+	 */
+	function activeLeakVault(): FakeVault {
+		const vault = new FakeVault();
+		vault.addFile('Releases/0.8.md', { frontmatter: { type: 'Release' } });
+		vault.addFile('Releases/0.9.md', { frontmatter: { type: 'Release' } });
+		vault.addFile('Standalone.md', { frontmatter: { type: 'Feature', order: 1, release: '[[Releases/0.9]]' } });
+		vault.addFile('Ctx.md', { frontmatter: { type: 'Epic', order: 2 } });
+		vault.addFile('A1.md', {
+			frontmatter: { type: 'Task', order: 1, release: '[[Releases/0.8]]' },
+			parentLink: 'Ctx',
+		});
+		vault.addFile('A2.md', {
+			frontmatter: { type: 'Task', order: 2, release: '[[Releases/0.9]]' },
+			parentLink: 'Ctx',
+		});
+		return vault;
+	}
+
+	it('clears the active row on a PICK, so a different release does not inherit it', () => {
+		const vault = activeLeakVault();
+		const harness = makeReleaseView(vault, RELEASE_CONFIG);
+		const { view } = harness;
+		view.pick('Releases/0.8.md');
+		select(view, 'Ctx.md');
+		expect(active(view)).toBe('Ctx.md');
+
+		view.pick('Releases/0.9.md');
+		// Not restored to `Ctx.md`, which 0.9's scope also draws — a leaked path would find
+		// it there and select it, which is exactly the defect this clears. Nothing else has
+		// asked the keyboard to pick a row yet, so the field itself, and the DOM it drives,
+		// both read as unset rather than defaulting to the first row on their own.
+		expect(view.activeScopePath).toBeNull();
+		expect(active(view)).toBeNull();
+	});
+
+	it('keeps the active row across a redraw of the SAME scope', () => {
+		const vault = activeLeakVault();
+		const harness = makeReleaseView(vault, RELEASE_CONFIG);
+		const { view } = harness;
+		view.pick('Releases/0.8.md');
+		select(view, 'Ctx.md');
+
+		// A data update, not a pick — `onDataUpdated` never clears `activeScopePath`, which
+		// is what lets the restore in `scopeKeys.ts` put the selection right back.
+		refreshRelease(view, vault);
+
+		expect(view.activeScopePath).toBe('Ctx.md');
+		expect(active(view)).toBe('Ctx.md');
+	});
+
 	it('a refresh that drops the active row focuses a surviving row, not the body', () => {
 		const { view, vault } = mountKeys();
 		select(view, 'Session handling.md');

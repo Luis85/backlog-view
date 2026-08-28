@@ -75,7 +75,44 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   click on a row, anywhere but the disclosure, now opens the note in a new tab too, the same
   gesture every other tree and card in this plugin already offers.
 
+- **A release's scope has its own toolbar: collapse all, expand all, and hide done.** The
+  third control folds away every finished subtree at once, leaving the rest exactly as
+  ranked; press it again to bring them back. When hiding takes the whole tree with it — every
+  member finished — the screen says so by name (`All 14 items are done.`) instead of going
+  blank, with the toggle still there beside it as the way back. Hide done is withheld
+  wherever the progress figure above it already reads "not configured": a control that could
+  hide rows the summary refuses to count would answer the same question twice, and
+  disagree.
+
 ### Fixed
+
+- **A release holding only Deliverables now shows progress**, where it used to say progress
+  was not configured. The figure now asks whether every kind of work a release's own members
+  span can be read as done, rather than asking only about the plan's own state property — so
+  a release scoped entirely to Deliverables reads its own workflow correctly, on the list and
+  on the release's own screen alike.
+
+- **A row's progress no longer reads `0/2` on a release where progress is not configured.**
+  With no state property bound, a parent with members below it used to draw a rollup anyway,
+  which looked exactly like a genuine "nothing here is finished yet" — the same absence the
+  summary strip above the tree already knew to leave blank rather than count as zero. The row
+  now leaves the same blank lane, agreeing with the header above it.
+
+- **A release's rows line up.** The state chip and the progress figure at the end of each row
+  used to pack against whichever title happened to be short, reading ragged down a scope with
+  titles of different lengths; they now anchor to the row's end, the same rule every column in
+  the backlog tree already follows.
+
+- **Selecting a title with the mouse no longer opens the note.** Titles in a release's scope
+  can be selected and copied, and finishing that drag by releasing the pointer over the row
+  used to dispatch a click that opened the note out from under the selection just made. A
+  plain click still opens it; a drag that ends one does not.
+
+- **Picking a different release no longer starts the keyboard on a row left over from the
+  last one.** If the same note happened to sit in both releases' scopes — most often a shared
+  ancestor drawn as context in each — the tree could open already highlighted on it instead of
+  its own first row. Picking a release now always starts fresh; reopening the SAME release
+  (a background refresh, an edit elsewhere) still returns you to where you were.
 
 - **The release list no longer draws every row as a raised Obsidian button.** Each row really
   is a button — that is what makes it reachable with Tab, and openable with Enter and Space —

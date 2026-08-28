@@ -136,12 +136,81 @@ export function setAllFolds(view: ReleaseView, releasePath: string, rows: ScopeR
 }
 
 /**
+ * The session-only fallback for {@link hideDoneOn}/{@link setHideDone}, `sessionFolds`'s
+ * own reason: an embedded base has no identity, so the toggle is session-only there —
+ * gone on reload, exactly as the pick and the folds are.
+ */
+const sessionHideDone = new WeakMap<ReleaseView, boolean>();
+
+/**
+ * Whether the scope screen is hiding finished subtrees — ONE flag for the whole view,
+ * never scoped per release the way {@link foldedPaths} is: a fold set has to answer "is
+ * THIS row open" for as many releases as the base holds, but hiding is a single working
+ * preference the reader carries from one release's screen to the next, `bucketList`'s own
+ * shape (`storage/viewStateStore.ts`). Read through the same per-identity entry the pick
+ * and the folds use, so it survives exactly as they do and no further.
+ */
+export function hideDoneOn(view: ReleaseView): boolean {
+	const id = resolveViewIdentity(view.app, view.viewEl, view.config.name ?? '');
+	if (id === null) return sessionHideDone.get(view) ?? false;
+	return loadViewState(view.app, id).prefs.releaseHideDone === true;
+}
+
+/** Flip the toggle and redraw — `toggleFold`'s own pairing, for the identical reason:
+ *  every caller wants the write and the render together rather than remembering both. */
+export function setHideDone(view: ReleaseView, next: boolean): void {
+	const id = resolveViewIdentity(view.app, view.viewEl, view.config.name ?? '');
+	if (id === null) {
+		sessionHideDone.set(view, next);
+	} else {
+		const state = loadViewState(view.app, id);
+		// `undefined` for the default rather than `false`: absence IS the off state, and a
+		// stored `false` would be a value meaning "none" — `readPrefs`'s own rule
+		// (`storage/viewStateStore.ts`).
+		saveViewState(view.app, id, { ...state, prefs: { ...state.prefs, releaseHideDone: next ? true : undefined } });
+	}
+	view.render();
+}
+
+/**
+ * The rows the hide-done toggle leaves standing, in the same pre-order the walk produced.
+ *
+ * A finished subtree (`row.subtreeDone`) drops the ROW ITSELF and everything below it —
+ * never just its children, which is what {@link visibleRows}' fold-hiding does instead and
+ * why this is a separate pass rather than one more condition folded into that one: a
+ * folded row stays on screen with its disclosure closed, while a done row is gone, and a
+ * release whose every root is done must therefore leave NO rows at all — the fact
+ * `renderScope.ts` reads to choose the all-done state over an empty tree.
+ *
+ * Off (`hideDone` false) returns `rows` unchanged, so a caller need not branch around it.
+ */
+export function rowsAfterHideDone(rows: ScopeRow[], hideDone: boolean): ScopeRow[] {
+	if (!hideDone) return rows;
+	let hiddenBelow: number | null = null;
+	return rows.filter((row) => {
+		if (hiddenBelow !== null && row.depth > hiddenBelow) return false;
+		hiddenBelow = null;
+		if (row.subtreeDone) {
+			hiddenBelow = row.depth;
+			return false;
+		}
+		return true;
+	});
+}
+
+/**
  * The rows a fold set leaves on screen, in the same pre-order the walk produced.
  *
  * A row is hidden by an ANCESTOR being folded, never by its own state, so the test is
  * "is any open fold shallower than me still in force" — the same shape `siblingPlaces`
  * uses to close a sibling group, and for the same reason: `rows` carries its own depth
  * and nothing else says who a row's parent was.
+ *
+ * Composed with {@link rowsAfterHideDone} rather than folded into one combined predicate:
+ * `drawScopeTree` needs the hide-done-only view to decide which rows still have a CHILD
+ * (a parent whose children all hid draws as a leaf, whatever its own fold state), and the
+ * hide-done+fold view for what actually draws — two questions, asked over the same rows in
+ * sequence, never one comparison trying to answer both at once.
  */
 function visibleRows(rows: ScopeRow[], folded: ReadonlySet<string>): ScopeRow[] {
 	let hiddenBelow: number | null = null;
@@ -230,8 +299,13 @@ export function drawScopeTree(view: ReleaseView, release: ReleaseRow, rows: Scop
 		attr: { role: 'tree', 'aria-label': release.name, tabindex: '0' },
 	});
 	const folded = foldedPaths(view, release.path);
-	const withKids = childRows(rows);
-	const visible = visibleRows(rows, folded);
+	// Hide-done first, fold second — `rowsAfterHideDone`'s own comment on why this is two
+	// passes rather than one: `withKids` has to answer "does this row still have a child"
+	// AFTER a finished subtree has gone, or a parent whose children all hid would keep the
+	// disclosure its own fold state says it should, over a subtree that is not there.
+	const afterHide = rowsAfterHideDone(rows, hideDoneOn(view));
+	const withKids = childRows(afterHide);
+	const visible = visibleRows(afterHide, folded);
 	// Built WHILE drawing rather than queried from `treeEl` afterwards — the cost rule
 	// every tree in this plugin keeps (`src/view/CLAUDE.md`'s `TREE_SCAN`): a row is
 	// reached by lookup, never by scanning the DOM for it, and `scopeKeys.ts`'s own
@@ -294,10 +368,34 @@ function drawRow(view: ReleaseView, release: ReleaseRow, treeEl: HTMLElement, ro
 
 	drawDisclosure(view, release, rowEl, row, place);
 
-	// A row is a target again — it opens its note. Unconditional, including on a context
-	// row: opening is not a write, and a context ancestor is a real note the reader may
-	// still want to read even though this screen refuses every action that would edit it.
-	rowEl.addEventListener('click', (evt) => view.opener.open(view.openContext(), row.item, evt));
+	// A row is a target again — it opens its note. Unconditional but for one thing, on a
+	// context row too: opening is not a write, and a context ancestor is a real note the
+	// reader may still want to read even though this screen refuses every action that
+	// would edit it.
+	//
+	// **Carried finding 5.** `.pbl-rel-view .pbl-row` restores `user-select: auto`
+	// (`styles/releaseScope.css`) so a reader can copy a title on a read-only screen — and
+	// that is what makes a plain `click` wrong here: dragging across the title and
+	// releasing the pointer still dispatches `click` on the row, so without this guard the
+	// reader who wanted the text got navigated away instead. The backlog tree never needed
+	// one, because `.pbl-row` there is `user-select: none` and a drag selects nothing.
+	//
+	// `window.getSelection()?.isCollapsed === false` is the question to ask, and asking it
+	// HERE — in the click handler, not at `mousedown`/`mouseup` coordinates and not a drag
+	// flag set between them — is what makes it correct rather than merely plausible: an
+	// ORDINARY click collapses the selection on its own `mousedown` (the pointer lands and
+	// the caret moves there), so by the time `click` fires a non-collapsed selection can
+	// only mean this pointer-up just finished a drag-select. A coordinate or a flag would
+	// have to reconstruct that same fact by hand.
+	//
+	// The KEYBOARD path is untouched on purpose: Enter and Space open the active row through
+	// `scopeKeys.ts`, and a reader driving the tree from the keyboard may well have text
+	// selected somewhere else on the page — that selection says nothing about THIS
+	// activation, so only the pointer path asks the question.
+	rowEl.addEventListener('click', (evt) => {
+		if (window.getSelection()?.isCollapsed === false) return;
+		view.opener.open(view.openContext(), row.item, evt);
+	});
 	rowEl.addEventListener('auxclick', (evt) => {
 		// A middle click never fires `click` — the browser sends `auxclick` instead, so the
 		// listener above never sees it (`src/view/CLAUDE.md`'s own stated rule, and the pair
@@ -318,9 +416,20 @@ function drawRow(view: ReleaseView, release: ReleaseRow, treeEl: HTMLElement, ro
 	// with the class. A tooltip repeating a title that already fits is the whole price.
 	setTooltip(titleEl, row.item.title);
 
-	drawStateChip(rowEl, row);
-	drawRollup(rowEl, row);
 	drawContextMarker(rowEl, row);
+
+	// Carried finding 3: without this, the state chip and rollup packed against whichever
+	// title happened to be short instead of anchoring at the row's end, reading ragged
+	// down the tree — found by building the harness and looking (`.pbl-title` is
+	// `flex: 0 1 auto` and never grows on its own). `.pbl-row-spacer` is
+	// `styles/propertyColumns.css`'s own flexible middle, the same class the backlog
+	// tree's own rows push their end columns with (`render/rows.ts`'s `renderRowColumns`),
+	// drawn in the identical position: after the title and its markers, before the
+	// trailing columns.
+	rowEl.createDiv({ cls: 'pbl-row-spacer' });
+
+	drawStateChip(rowEl, row);
+	drawRollup(rowEl, row, release);
 	return rowEl;
 }
 
@@ -376,10 +485,20 @@ function drawStateChip(rowEl: HTMLElement, row: ScopeRow): void {
  * pinned bar serve both trees. The lane is drawn even when empty, so the column stays
  * straight down rows that have no rollup. A CONTEXT row carries no numbers — it renders,
  * it parents, and that is all.
+ *
+ * **Carried finding 2: withheld whole when progress is not computable, on `release.done`'s
+ * OWN gate — never a second copy of that question.** With the gate unconfigured, a row
+ * still drew `0/n` here while the header above said progress could not be computed — an
+ * absence presented as a measured zero, the same defect the summary strip already avoids
+ * (`renderScope.ts`'s own `release.figureUnconfigured` branch). `release.done.unconfigured`
+ * is that ONE answer, computed once in `domain/releases.ts` and read here rather than
+ * re-derived: `memberDone`/`memberTotal` themselves stay correct even when unconfigured
+ * (every unbound workflow reads `ownWorkflowReading` as not-done, never a thrown error),
+ * which is exactly why drawing them regardless would look like a real, if bleak, number.
  */
-function drawRollup(rowEl: HTMLElement, row: ScopeRow): void {
+function drawRollup(rowEl: HTMLElement, row: ScopeRow, release: ReleaseRow): void {
 	const metaEl = rowEl.createDiv({ cls: 'pbl-meta-col' });
-	if (row.context || row.memberTotal === 0) return;
+	if (row.context || row.memberTotal === 0 || release.done.unconfigured) return;
 	const progEl = metaEl.createDiv({
 		cls: 'pbl-progress' + (row.memberDone === row.memberTotal ? ' pbl-complete' : ''),
 	});

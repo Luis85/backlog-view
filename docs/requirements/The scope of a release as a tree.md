@@ -89,6 +89,9 @@ note assumed and `## Where it lives` explains it cannot be.
 - Drawing the scope plans no write.
 - A folded parent keeps its own rollup: folding is a render decision over what is drawn, and it
   must never change a figure computed over the subtree.
+- Hiding never removes a context ancestor that still holds a visible member: a context row
+  carries no state of its own (3b), so it is never itself the reason a subtree hides, and the
+  member below it is what keeps it drawn.
 - A click on the disclosure folds or unfolds its row and does not open the note; a click
   anywhere else on the row opens it, and a middle click anywhere but the disclosure opens it in
   a new tab.

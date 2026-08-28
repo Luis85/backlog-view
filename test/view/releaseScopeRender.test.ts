@@ -63,6 +63,20 @@ describe("a release's scope on screen", () => {
 		expect(containerEl.querySelectorAll('.pbl-rel-header .pbl-state-chip')).toHaveLength(1);
 	});
 
+	it('anchors the state chip and rollup at the row’s end with a spacer, matching the tree’s own rows', () => {
+		// Carried finding 3, found by building the harness and looking: without
+		// `.pbl-row-spacer`, `.pbl-title`'s own `flex: 0 1 auto` never grows, so the state
+		// chip and rollup packed against whichever title happened to be short instead of
+		// anchoring at the row's end and lining up down the tree.
+		const { containerEl } = openScope();
+		const row = containerEl.querySelector('.pbl-row[data-path="F1.md"]') as HTMLElement;
+		const children = [...row.children].map((el) => el.className);
+		const spacerIndex = children.indexOf('pbl-row-spacer');
+		expect(spacerIndex).toBeGreaterThan(-1);
+		expect(children.indexOf('pbl-rel-statecol')).toBeGreaterThan(spacerIndex);
+		expect(children.indexOf('pbl-meta-col')).toBeGreaterThan(spacerIndex);
+	});
+
 	it('announces the hierarchy, not just an indent', () => {
 		// `--pbl-depth` is styling and says nothing to a screen reader. Without these the
 		// scope is announced as a flat list of divs, on the one screen whose whole promise
@@ -241,6 +255,82 @@ describe('a refusal on the release header names the property it is about', () =>
 		expect(refusals).toEqual(['Version unreadable', 'Target unreadable']);
 		// The readable one is untouched and still draws its own value.
 		expect(containerEl.querySelector('.pbl-state-text')?.textContent).toBe('Planned');
+	});
+});
+
+/**
+ * Carried finding 5: `.pbl-rel-view .pbl-row` restores `user-select: auto` so a reader can
+ * copy a title on this read-only screen — and a drag that ends on the row still dispatches
+ * `click`, which used to open the note out from under the selection the reader just made.
+ * Watched failing with the `isCollapsed` guard removed from the row's `click` listener: the
+ * second test below failed, `vault.opened` held `F1.md` despite the drag-select.
+ */
+describe('a click that ends a text selection does not open the row', () => {
+	useViewHarness();
+
+	it('opens the note on an ordinary click', () => {
+		const vault = scopeVault();
+		const { view, containerEl } = makeReleaseView(vault, RELEASE_CONFIG);
+		view.pick('R.md');
+		click(containerEl.querySelector('.pbl-row[data-path="F1.md"]') as HTMLElement);
+		expect(vault.opened.map((o) => o.path)).toEqual(['F1.md']);
+	});
+
+	it('opens nothing when the pointer-up left a non-collapsed selection behind', () => {
+		const vault = scopeVault();
+		const { view, containerEl } = makeReleaseView(vault, RELEASE_CONFIG);
+		view.pick('R.md');
+		const titleEl = containerEl.querySelector('.pbl-row[data-path="F1.md"] .pbl-title') as HTMLElement;
+		const range = document.createRange();
+		range.selectNodeContents(titleEl);
+		const selection = window.getSelection()!;
+		selection.removeAllRanges();
+		selection.addRange(range);
+		// The fixture only tests the guard if the selection really is what a drag-select
+		// leaves behind: a collapsed one would pass this file whether or not the guard exists.
+		expect(selection.isCollapsed).toBe(false);
+
+		click(containerEl.querySelector('.pbl-row[data-path="F1.md"]') as HTMLElement);
+		expect(vault.opened).toEqual([]);
+		selection.removeAllRanges();
+	});
+});
+
+/**
+ * Carried finding 2, task 5: a row rollup must not present an absence as a measured zero
+ * — the same defect the summary strip above already avoids. Watched failing with the
+ * `|| release.done.unconfigured` clause removed from `drawRollup`'s guard: the second
+ * assertion below failed, `.pbl-progress` was present and read `0/2`, while the header's
+ * own `.pbl-rel-summary` correctly still said progress was not configured — two answers
+ * to "what is done here" on one screen.
+ */
+describe('a row rollup agrees with whether progress is configured', () => {
+	useViewHarness();
+
+	function rollupVault(): FakeVault {
+		const vault = new FakeVault();
+		vault.addFile('R.md', { frontmatter: { type: 'Release' } });
+		vault.addFile('F.md', { frontmatter: { type: 'Feature', release: '[[R]]', status: 'Doing' } });
+		vault.addFile('C1.md', { frontmatter: { type: 'Task', release: '[[R]]', status: 'Done' }, parentLink: 'F' });
+		vault.addFile('C2.md', { frontmatter: { type: 'Task', release: '[[R]]', status: 'Open' }, parentLink: 'F' });
+		return vault;
+	}
+
+	it('draws the rollup when progress IS configured, over the same vault the unconfigured case uses', () => {
+		const { view, containerEl } = makeReleaseView(rollupVault(), RELEASE_CONFIG);
+		view.pick('R.md');
+		const row = containerEl.querySelector('.pbl-row[data-path="F.md"]') as HTMLElement;
+		expect(row.querySelector('.pbl-progress')?.textContent).toContain('1');
+	});
+
+	it('draws no rollup, only the empty lane, when progress is not configured', () => {
+		const { view, containerEl } = makeReleaseView(rollupVault(), { ...RELEASE_CONFIG, stateProperty: '' });
+		view.pick('R.md');
+		const row = containerEl.querySelector('.pbl-row[data-path="F.md"]') as HTMLElement;
+		// The lane stays, so the column beside it is still straight down the tree — the same
+		// rule a row with no members keeps — but nothing inside it: not a bar, not `0/2`.
+		expect(row.querySelector('.pbl-meta-col')).not.toBeNull();
+		expect(row.querySelector('.pbl-progress')).toBeNull();
 	});
 });
 

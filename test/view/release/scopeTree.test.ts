@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { mountFoldScope, row, twisty } from '../../helpers/release';
 import { useViewHarness } from '../../helpers/view';
-import { foldedPaths, setAllFolds, toggleFold } from '../../../src/view/release/scopeTree';
+import { foldedPaths, hideDoneOn, setAllFolds, setHideDone, toggleFold } from '../../../src/view/release/scopeTree';
 import { ScopeRow } from '../../../src/domain/releases';
 
 /**
@@ -149,5 +149,18 @@ describe('the scope tree', () => {
 		twisty(view, 'Passwordless sign-in.md').click();
 		view.onDataUpdated();
 		expect(row(view, 'Send the magic link.md', { optional: true })).toBeNull();
+	});
+
+	it('persists the hide-done toggle through the identity-backed store, not merely the session', () => {
+		// `mountFoldScope`'s default mount carries a `.base` identity (unlike
+		// `test/view/release/scopeToolbar.test.ts`'s own `mountRelease`, which never does),
+		// so this is what exercises `hideDoneOn`/`setHideDone`'s IDENTITY branch rather than
+		// the session-only fallback every other test of the toggle already covers.
+		const { view } = mountFoldScope({ pick: 'Releases/0.8.md' });
+		expect(hideDoneOn(view)).toBe(false);
+		setHideDone(view, true);
+		expect(hideDoneOn(view)).toBe(true);
+		setHideDone(view, false);
+		expect(hideDoneOn(view)).toBe(false);
 	});
 });

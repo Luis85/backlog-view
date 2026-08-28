@@ -1780,6 +1780,23 @@ export const en = {
 	 *  Task 3's own addition, once the tree could fold at all. */
 	'release.scope.collapse': 'Collapse',
 	'release.scope.expand': 'Expand',
+	/** The scope toolbar's two disclosure-bulk controls — `scopeToolbar.ts`'s own
+	 *  `.pbl-rel-collapse`/`.pbl-rel-expand`, `chevrons-down-up`/`chevrons-up-down` icons. */
+	'release.scope.collapseAll': 'Collapse all',
+	'release.scope.expandAll': 'Expand all',
+	/** The toolbar's third control — withheld whole when `release.done` is unconfigured, so
+	 *  it can never hide rows the summary strip refuses to count. */
+	'release.scope.hideDone': 'Hide done',
+	/**
+	 * Extension 4c: every root in the scope hid, and this replaces the tree rather than
+	 * leaving a blank scroller. `count` is `scope.members` — the same denominator the
+	 * summary strip's own sentence names, so this figure and that one never disagree about
+	 * how many items the release holds.
+	 */
+	'release.scope.allDone': {
+		one: 'All {count} item is done.',
+		other: 'All {count} items are done.',
+	},
 	/**
 	 * A row's own compact rollup — `{done}/{total}`, never a sentence: `.pbl-progress-label`
 	 * is drawn once per row with a rollup, and this tree can hold many, so `column.rollupTooltip`'s

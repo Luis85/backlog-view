@@ -305,6 +305,11 @@ export interface ViewPrefs {
 	 */
 	release?: string;
 	/**
+	 * Whether the release view's scope screen is hiding finished subtrees. The ON state of
+	 * a toggle that starts OFF, so a default writes nothing — `bucketList`'s own rule.
+	 */
+	releaseHideDone?: boolean;
+	/**
 	 * Which board the `Boards` position opens when no iteration scope is set — today the
 	 * one legal value is {@link DELIVERABLES_MODE}, and absence means the product board.
 	 * A WORD, never a path, so unlike `scope` beside it neither the prune nor the rename
@@ -445,6 +450,7 @@ export const PREF_READERS: { [K in keyof ViewPrefs]-?: Reader<NonNullable<ViewPr
 	// the vault, which this layer cannot do. A remembered release that has moved or been
 	// deleted returns the index, which the view decides on render — not a failure.
 	release: anyName,
+	releaseHideDone: onlyTrue,
 	board: oneOf([DELIVERABLES_MODE]),
 	estimationSort: oneOf(ESTIMATION_SORT_VALUES),
 };

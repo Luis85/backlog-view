@@ -130,6 +130,9 @@ export interface MountReleaseOptions {
 	 *  index — the `noMembership` empty state this control's second position draws on only
 	 *  exists with a release open. */
 	pick?: string;
+	/** Overrides `stateProperty` on top of `bindAll` — `''` clears the plan's own state key,
+	 *  the scope toolbar's own gate for its hide-done control (`scopeToolbar.test.ts`). */
+	stateKey?: string;
 }
 
 /** Hand the view a fresh result set, the way Bases does after a vault change —
@@ -140,10 +143,11 @@ export function refreshRelease(view: ReleaseView, vault: FakeVault): void {
 }
 
 export function mountRelease(opts: MountReleaseOptions = {}): ReleaseHarness & { vault: FakeVault } {
-	const { bindAll = true, membership, pick } = opts;
+	const { bindAll = true, membership, pick, stateKey } = opts;
 	const vault = pick === undefined ? releaseVault() : scopeVault();
 	const configValues: Record<string, unknown> = bindAll ? { ...RELEASE_CONFIG } : {};
 	if (membership !== undefined) configValues.membershipProperty = membership;
+	if (stateKey !== undefined) configValues.stateProperty = stateKey;
 	const harness = makeReleaseView(vault, configValues);
 	if (pick !== undefined) harness.view.pick(pick);
 	return { ...harness, vault };
@@ -194,7 +198,59 @@ export function scopeVault(): FakeVault {
 	vault.addFile('E.md', { frontmatter: { type: 'Epic' } });
 	vault.addFile('F1.md', { frontmatter: { type: 'Feature', parent: 'E', order: 1, release: '[[R]]' } });
 	vault.addFile('F2.md', { frontmatter: { type: 'Feature', parent: 'E', order: 2, release: '[[R]]' } });
+	addToolbarReleases(vault);
 	return vault;
+}
+
+/**
+ * `scopeToolbar.test.ts`'s own three releases, sharing this vault rather than one apiece —
+ * `mountRelease` builds ONE vault per call, so a test that picks a second release needs it
+ * already here beside `R.md` above, which every other `scopeVault()` caller still reads
+ * unchanged.
+ *
+ * `Releases/0.8.md` — an ordinary foldable scope: one root with one child, so collapse-all
+ * has something to fold and expand-all something to reopen.
+ *
+ * `Releases/0.7.md` — entirely finished: `Card payments.md` (a member with its own member
+ * child, so its row draws a rollup BEFORE hiding — `scopeToolbar.test.ts`'s own "before"
+ * assertion needs one) plus eight more standalone done members, ten in total — the exact
+ * count `scopeToolbar.test.ts` asserts the all-done state names.
+ *
+ * `Releases/0.5.md` — `Retention policy.md`, a member that is NOT itself done, holding two
+ * children that both are: hide-done must drop the children and leave the parent standing
+ * as a leaf, never drop the parent (its own `subtreeDone` is false) and never leave it an
+ * expander over nothing.
+ */
+function addToolbarReleases(vault: FakeVault): void {
+	vault.addFile('Releases/0.8.md', { frontmatter: { type: 'Release' } });
+	vault.addFile('Feature A.md', { frontmatter: { type: 'Feature', release: '[[Releases/0.8]]', status: 'Doing' } });
+	vault.addFile('Task A1.md', {
+		frontmatter: { type: 'Task', release: '[[Releases/0.8]]', status: 'Open' },
+		parentLink: 'Feature A',
+	});
+
+	vault.addFile('Releases/0.7.md', { frontmatter: { type: 'Release' } });
+	vault.addFile('Card payments.md', { frontmatter: { type: 'Feature', release: '[[Releases/0.7]]', status: 'Done' } });
+	vault.addFile('Refund processing.md', {
+		frontmatter: { type: 'Task', release: '[[Releases/0.7]]', status: 'Done' },
+		parentLink: 'Card payments',
+	});
+	for (let i = 1; i <= 8; i++) {
+		vault.addFile(`Extra ${i}.md`, { frontmatter: { type: 'Task', release: '[[Releases/0.7]]', status: 'Done' } });
+	}
+
+	vault.addFile('Releases/0.5.md', { frontmatter: { type: 'Release' } });
+	vault.addFile('Retention policy.md', {
+		frontmatter: { type: 'Feature', release: '[[Releases/0.5]]', status: 'Doing' },
+	});
+	vault.addFile('Policy review.md', {
+		frontmatter: { type: 'Task', release: '[[Releases/0.5]]', status: 'Done' },
+		parentLink: 'Retention policy',
+	});
+	vault.addFile('Policy audit.md', {
+		frontmatter: { type: 'Task', release: '[[Releases/0.5]]', status: 'Done' },
+		parentLink: 'Retention policy',
+	});
 }
 
 /**

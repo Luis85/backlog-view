@@ -172,3 +172,49 @@ button.pbl-twisty-leaf {
 	align-items: center;
 	gap: var(--size-4-1);
 }
+
+/* The scope screen's own toolbar (`scopeToolbar.ts`), between the header and the scroller
+   so it never scrolls away — drawn and looked at in the harness before this rule existed,
+   the same way this file's own header records for the rest of it. `.pbl-rel-spacer` is
+   `release.css`'s own vocabulary, reused rather than duplicated. */
+.pbl-rel-toolbar {
+	flex: 0 0 auto;
+	display: flex;
+	align-items: center;
+	gap: var(--size-4-1);
+	padding: var(--size-4-1) var(--size-4-3);
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+button.pbl-rel-toggle {
+	block-size: auto;
+	padding: var(--size-2-1) var(--size-4-2);
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+	background-color: transparent;
+	box-shadow: none;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-s);
+	cursor: pointer;
+}
+
+button.pbl-rel-toggle:hover {
+	background-color: var(--background-modifier-hover);
+}
+
+button.pbl-rel-toggle-on {
+	color: var(--text-on-accent);
+	background-color: var(--interactive-accent);
+	border-color: var(--interactive-accent);
+}
+
+/* Extension 4c: every root in the scope hid. The SHELL is `.pbl-empty-filter`
+   (`styles/toolbar.css`), reused whole rather than restated — `renderScope.ts`'s own
+   comment on why. Only the icon's colour is this screen's own: green, the same
+   `.pbl-complete` marks a finished rollup with (`columns.css`), never a second colour
+   opinion about what "done" looks like. The compound selector is what outranks
+   `.pbl-empty-filter-icon`'s own `--text-faint` at equal specificity otherwise lost to
+   source order. */
+.pbl-rel-alldone-icon.pbl-empty-filter-icon {
+	color: rgb(var(--color-green-rgb));
+}
