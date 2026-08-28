@@ -498,3 +498,32 @@ function loadOutsideParents(app: App, store: RawStore, parents: TFile[], setting
 export function assigneeName(item: { assigneeEntry: LinkEntry | null }): string | null {
 	return item.assigneeEntry === null ? null : (item.assigneeEntry.file?.basename ?? item.assigneeEntry.raw);
 }
+
+/**
+ * Whether this item's assignee names something the given roster does not carry — roster
+ * MEMBERSHIP, never link resolution. A link that resolves to an ordinary note, or to a
+ * `Resource` note the base's own filter excluded, both name nobody the roadmap or a menu
+ * will ever offer, so both must read as broken here exactly alike: answering from
+ * resolution alone would draw either as a valid assignment while every other surface
+ * treats it as nobody. `resources` is `BacklogModel.resources`, taken as a plain array —
+ * a roster, not the model or the view that holds one — so this reads as the one question
+ * it is and can be asked from either layer without a caller reaching past it for more.
+ */
+export function assigneeBroken(item: { assigneeEntry: LinkEntry | null }, resources: ResourceNote[]): boolean {
+	return item.assigneeEntry !== null && !resources.some((r) => r.file.path === item.assigneeEntry?.file?.path);
+}
+
+/**
+ * The roster a caller has to ask, with no model yet read as no resources — one function
+ * rather than the same `model?.resources ?? []` written at every call site. `broken` and
+ * the chip's own label both need this exact fallback, and a shared accessor is one branch
+ * to answer for instead of three copies nothing before the first data update can ever
+ * take: a chip or a row is drawn from an ITEM, and an item exists only once a model has
+ * been built, so the null side of each of those three copies was dead on arrival — the
+ * question `docs`'s own coverage rule asks first, before writing a test for it. Structural
+ * rather than `BacklogModel | null`, so this stays askable from `view/` without a domain
+ * type importing anything shaped like a view.
+ */
+export function rosterOf(model: { resources: ResourceNote[] } | null): ResourceNote[] {
+	return model?.resources ?? [];
+}

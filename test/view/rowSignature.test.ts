@@ -203,6 +203,29 @@ describe('rowSignature', () => {
 		};
 		expect(orphaned(false)).not.toBe(orphaned(true));
 	});
+
+	it('differs when the resource roster no longer carries the assignee, though the note and its resolved name hold still', () => {
+		// The chip's broken state is roster MEMBERSHIP (`host.model.resources`), never
+		// link resolution or this note's own frontmatter — so neither the frontmatter term
+		// nor `assigneeLabel(host, item)` moves when the ONLY thing that changed is which
+		// `Resource` notes the base returned. `only` narrows what a fresh view's base
+		// returns exactly the way a Base's own filter narrowing a Resource out would, with
+		// Alex's basename and Alpha's frontmatter identical either way. Confirmed reachable
+		// by external review (fix round 1): without a term of its own, a Resource narrowed
+		// out of the results left a stale, valid-looking chip on a row `rowSignature` would
+		// have said was safe to keep.
+		const vault = new FakeVault();
+		vault.addFile('Alex.md', { frontmatter: { type: 'Resource' } });
+		vault.addFile('Alpha.md', { frontmatter: { type: 'PBI', order: 10, assignee: '[[Alex]]' } });
+		const configured = { assigneeProperty: 'note.assignee' };
+
+		const withResource = makeView(vault, configured, { only: ['Alpha.md', 'Alex.md'] });
+		const withoutResource = makeView(vault, configured, { only: ['Alpha.md'] });
+
+		const sigWith = rowSignature(withResource.view, itemIn(withResource), PLACE);
+		const sigWithout = rowSignature(withoutResource.view, itemIn(withoutResource), PLACE);
+		expect(sigWith).not.toBe(sigWithout);
+	});
 });
 
 describe('the ladder gap, and the membership rule that covers it', () => {

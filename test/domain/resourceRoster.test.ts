@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildModel } from '../../src/domain/model';
-import { assigneeName } from '../../src/domain/readItems';
+import { assigneeName, rosterOf } from '../../src/domain/readItems';
 import { settingsWith } from '../helpers/settings';
 import { FakeVault } from '../helpers/vault';
 
@@ -73,5 +73,13 @@ describe('what an item says its assignee is', () => {
 
 		expect(assigneeName(epic)).toBe('Sarah');
 		expect(epic.assigneeEntry?.file).toBe(null);
+	});
+});
+
+describe('rosterOf', () => {
+	it('reads no resources before the first model exists, and the roster once one does', () => {
+		expect(rosterOf(null)).toEqual([]);
+		const roster = [{ file: {} as never, title: 'Alex' }];
+		expect(rosterOf({ resources: roster })).toBe(roster);
 	});
 });

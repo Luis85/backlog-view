@@ -94,4 +94,26 @@ describe('the assignee chip´s broken state', () => {
 		expect(chip?.classList.contains('pbl-assignee-broken')).toBe(false);
 		expect(chip?.classList.contains('pbl-assignee-unset')).toBe(true);
 	});
+
+	// `assigneeName(item)` alone draws the resolved note's basename, so two roster
+	// resources named `Alex` in different folders drew one indistinguishable chip —
+	// the fourth instance of a collision `namedTargets` (`interactions/labels.ts`) exists
+	// to close, missed here until external review (fix round 1, PR #207).
+	it("disambiguates the chip's label when two roster resources share a basename", () => {
+		const vault = new FakeVault();
+		vault.addFile('Team/Alex.md', { frontmatter: { type: 'Resource' } });
+		vault.addFile('Support/Alex.md', { frontmatter: { type: 'Resource' } });
+		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10, assignee: '[[Team/Alex]]' } });
+		vault.addFile('Epic B.md', { frontmatter: { type: 'Epic', order: 20, assignee: '[[Support/Alex]]' } });
+		const { containerEl } = makeView(vault, ASSIGNEE, VISIBLE);
+
+		const chipA = chipOf(containerEl, 'Epic A');
+		const chipB = chipOf(containerEl, 'Epic B');
+		expect(chipA?.textContent).not.toBe(chipB?.textContent);
+		expect(chipA?.textContent).toContain('Team/Alex');
+		expect(chipB?.textContent).toContain('Support/Alex');
+		// Neither reads as broken — both resolve to roster members, only sharing a name.
+		expect(chipA?.classList.contains('pbl-assignee-broken')).toBe(false);
+		expect(chipB?.classList.contains('pbl-assignee-broken')).toBe(false);
+	});
 });

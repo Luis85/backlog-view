@@ -2,13 +2,14 @@ import { setTooltip } from 'obsidian';
 import { t } from '../../i18n/t';
 import { drawIcon } from './icons';
 import { BacklogViewHost, Column } from '../host';
+import { namedTargets } from '../interactions/labels';
 import { showAssigneeMenu, showPriorityMenu, showRiskMenu } from '../interactions/menu';
 import { ownWorkflowReading, stateKeyFor } from '../../domain/board';
 import { PlacementEnd, placementEnds } from '../../domain/itemTypes';
 import { canPlaceHorizon } from '../interactions/plan';
 import { BacklogItem } from '../../domain/model';
 import { CivilDate, FieldReading } from '../../domain/noteFields';
-import { assigneeName } from '../../domain/readItems';
+import { assigneeBroken, assigneeName, rosterOf } from '../../domain/readItems';
 import { shelfLabel } from '../../domain/roadmap';
 import { formatCivil } from '../../domain/timeline';
 
@@ -162,7 +163,7 @@ export function renderHorizonChip(host: BacklogViewHost, col: HTMLElement, item:
  */
 export const LABEL_CHIPS: Record<'risk' | 'priority' | 'assignee', LabelChip> = {
 	risk: {
-		valueOf: (item) => item.riskValue,
+		valueOf: (_host, item) => item.riskValue,
 		cls: 'pbl-risk-chip',
 		unsetCls: 'pbl-risk-unset',
 		icon: 'shield-alert',
@@ -173,7 +174,7 @@ export const LABEL_CHIPS: Record<'risk' | 'priority' | 'assignee', LabelChip> = 
 		showMenu: showRiskMenu,
 	},
 	priority: {
-		valueOf: (item) => item.priorityValue,
+		valueOf: (_host, item) => item.priorityValue,
 		cls: 'pbl-priority-chip',
 		unsetCls: 'pbl-priority-unset',
 		icon: 'flag',
@@ -184,7 +185,7 @@ export const LABEL_CHIPS: Record<'risk' | 'priority' | 'assignee', LabelChip> = 
 		showMenu: showPriorityMenu,
 	},
 	assignee: {
-		valueOf: (item) => assigneeName(item),
+		valueOf: assigneeLabel,
 		cls: 'pbl-assignee-chip',
 		unsetCls: 'pbl-assignee-unset',
 		icon: 'user',
@@ -200,16 +201,34 @@ export const LABEL_CHIPS: Record<'risk' | 'priority' | 'assignee', LabelChip> = 
 		// alone drew those two as valid assignments on the row while every other surface
 		// treated them as nobody — three surfaces disagreeing about one value. Found by
 		// automated review on PR #207.
-		broken: (host, item) =>
-			item.assigneeEntry !== null &&
-			!(host.model?.resources ?? []).some((r) => r.file.path === item.assigneeEntry?.file?.path),
+		broken: (host, item) => assigneeBroken(item, rosterOf(host.model)),
 		brokenCls: 'pbl-assignee-broken',
 		brokenTip: () => t('chip.assigneeUnresolved'),
 	},
 };
 
+/**
+ * The name to DRAW for an item's assignee — `assigneeName(item)`'s own value, disambiguated
+ * against the roster where the link resolves to a member of it. Every surface that names a
+ * resource to the reader does it through `namedTargets` (`interactions/labels.ts`) — the
+ * menu, the absence dialog and the roadmap's own lane headers — and the chip drawing two
+ * same-named resources as one indistinguishable label was that same collision missed a
+ * fourth time (review, PR #207).
+ *
+ * Disambiguation is the ONLY thing this adds. A link that does not resolve to a roster
+ * member — nothing to resolve, or a real note the roster does not carry — falls back to
+ * `assigneeName(item)` exactly as before: that is `broken`'s question, asked and answered
+ * once there, and this function does not re-ask it under another name.
+ */
+export function assigneeLabel(host: BacklogViewHost, item: BacklogItem): string | null {
+	const path = item.assigneeEntry?.file?.path;
+	if (path === undefined) return assigneeName(item);
+	const match = namedTargets(rosterOf(host.model)).find((target) => target.item.file.path === path);
+	return match ? match.label : assigneeName(item);
+}
+
 interface LabelChip {
-	valueOf: (item: BacklogItem) => string | null;
+	valueOf: (host: BacklogViewHost, item: BacklogItem) => string | null;
 	cls: string;
 	unsetCls: string;
 	icon: string;
@@ -242,7 +261,7 @@ interface LabelChip {
  * `showMenu` rather than a second list.
  */
 export function renderLabelChip(host: BacklogViewHost, col: HTMLElement, item: BacklogItem, label: string, spec: LabelChip): boolean {
-	const value = spec.valueOf(item);
+	const value = spec.valueOf(host, item);
 	// The third state, beside set and unset: a value the view could not resolve against
 	// its roster. Marked with its own class so the reader can see both the value AND that
 	// it names nobody, rather than either hiding the note's own text or drawing it as an
