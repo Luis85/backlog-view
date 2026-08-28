@@ -553,7 +553,15 @@ export function resourceTargetLabel(roadmap: RoadmapModel, target: TFile | null)
 
 `src/view/host.ts` and `src/view/cardMoves.ts` — `performResourceMove(item, target: TFile | null, when?)`. Inside it, `declareResource(this.host, name)` stays for now (Task 7 deletes it); pass `target?.basename ?? null`.
 
-`src/view/interactions/keyboard.ts` — `resourceStops` returns the assignable lanes rather than their names; the ladder's current index is `stops.findIndex((lane) => lane.file.path === card.assigneeEntry?.file?.path)`, and the call becomes `host.performResourceMove(card, stops[target].file)`.
+`src/view/interactions/keyboard.ts` — `resourceStops` returns the assignable lanes rather than their names, **filtered to the ones that have a file**:
+
+```ts
+const stops = assignableLanes(roadmap).filter((lane) => lane.file !== null);
+```
+
+That filter is load-bearing until Task 5: a lane minted by `laneNamed` has no file, and `performResourceMove(card, null)` means UNASSIGN — so an Alt+arrow onto such a row would silently take the assignee off instead of moving it. Task 5 makes it redundant by construction (every lane is a note) and `AssignableLane` then carries the narrowing in the type; delete the filter there.
+
+The ladder's current index is `stops.findIndex((lane) => lane.file?.path === card.assigneeEntry?.file?.path)` — asked of the ENTRY's path, so an unresolved value matches no stop and lands off-ladder, which is the case `offLadder` already handles. The call becomes `host.performResourceMove(card, stops[target].file)`.
 
 `src/view/render/roadmap.ts` — the band drop passes `band.lane.file`. Because `assignableLanes` narrows (Task 5), for now guard: the existing `if (band.lane.markers || …) { submitGesture(…); return; }` already runs first, so add `if (!band.lane.file) return;` beneath it rather than asserting.
 
@@ -798,8 +806,10 @@ function deriveLanes(
 		}),
 	);
 	// By PATH, never by a folded name: a link resolves or it does not, and there is no
-	// middle answer for a case-insensitive comparison to keep.
-	const byPath = new Map<string, ResourceLane>(lanes.map((lane) => [lane.file!.path, lane]));
+	// middle answer for a case-insensitive comparison to keep. Built from `resources`
+	// rather than from `lanes`, so the key comes from a `TFile` the type already
+	// guarantees instead of a non-null assertion on the lane's nullable one.
+	const byPath = new Map<string, ResourceLane>(resources.map((resource, i) => [resource.file.path, lanes[i]]));
 	for (const item of rows) {
 		if (item.outsideFilter) continue;
 		if (isMarkerType(item.typeName)) placeBar(item, () => markers, roadmap, settings);
@@ -850,6 +860,8 @@ export function assignableLanes(roadmap: RoadmapModel | undefined): AssignableLa
 ```
 
 Pass `model.resources` through the `deriveLanes` call site (`roadmap.ts` line ~515). Delete Task 4's bridge lines.
+
+The band's fold key stays the lane NAME (`host.isLaneCollapsed(lane.name)` in `view/render/roadmap.ts`). Deliberately: the key is stored per device in the view-state store, so changing it to a path would silently unfold every band a reader had collapsed. A rename unfolds one band once, which is the cheaper of the two.
 
 - [ ] **Step 4: Drop the undeclared decoration**
 
