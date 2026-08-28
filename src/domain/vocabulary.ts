@@ -1,5 +1,6 @@
 import { inCatalog, isDeliverableType } from './itemTypes';
-import { FieldReading, tagKey } from './noteFields';
+import { FieldReading, LinkEntry, tagKey } from './noteFields';
+import { assigneeName } from './readItems';
 import { BacklogSettings } from './settings';
 
 /**
@@ -23,7 +24,7 @@ interface VocabularySource {
 	horizon: FieldReading<string>;
 	typeName: string | null;
 	deliverableStateValue: string | null;
-	assigneeValue: string | null;
+	assigneeEntry: LinkEntry | null;
 }
 
 /**
@@ -88,9 +89,10 @@ export function collectObservedStates(all: VocabularySource[], settings: Backlog
  * which is why nothing here has to guess at one.
  */
 export function collectObservedAssignees(all: VocabularySource[]): string[] {
-	return firstSeen(all, (item) => (item.assigneeValue === null ? [] : [item.assigneeValue])).sort((a, b) =>
-		a.localeCompare(b),
-	);
+	return firstSeen(all, (item) => {
+		const name = assigneeName(item);
+		return name === null ? [] : [name];
+	}).sort((a, b) => a.localeCompare(b));
 }
 
 /** Every tag the results carry, alphabetical and deduped case-insensitively. */

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildModel } from '../../src/domain/model';
+import { assigneeName } from '../../src/domain/readItems';
 import { settingsWith } from '../helpers/settings';
 import { FakeVault } from '../helpers/vault';
 
@@ -37,5 +38,40 @@ describe('the roster the model keeps', () => {
 		const model = buildModel(vault.app, only(vault, 'Epic A.md'), settings);
 
 		expect(model.resources).toEqual([]);
+	});
+});
+
+describe('what an item says its assignee is', () => {
+	it('shows the resolved resource note title, not the raw link text', () => {
+		const vault = new FakeVault();
+		vault.addFile('Alex.md', { frontmatter: { type: 'Resource' } });
+		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10, assignee: '[[Alex]]' } });
+		const epic = buildModel(vault.app, vault.entries(), settings).items[0];
+
+		expect(assigneeName(epic)).toBe('Alex');
+		expect(epic.assigneeEntry?.file?.path).toBe('Alex.md');
+	});
+
+	it('resolves a BARE name to the note of that name, the way `parent` already does', () => {
+		// `linkpathFromRawValue` strips brackets where there are any and passes a bare name
+		// through, so this resolves. Decided 2026-08-28: a bare name that resolves to a
+		// resource IS that resource, which is what keeps an upgrading vault's assignments.
+		const vault = new FakeVault();
+		vault.addFile('Alex.md', { frontmatter: { type: 'Resource' } });
+		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10, assignee: 'Alex' } });
+		const epic = buildModel(vault.app, vault.entries(), settings).items[0];
+
+		expect(epic.assigneeEntry?.file?.path).toBe('Alex.md');
+	});
+
+	it('shows a value that resolves to nothing as its own text, and resolves to no note', () => {
+		// Every plain string left over from before this shipped lands here. It is not an
+		// error and is not repaired.
+		const vault = new FakeVault();
+		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10, assignee: 'Sarah' } });
+		const epic = buildModel(vault.app, vault.entries(), settings).items[0];
+
+		expect(assigneeName(epic)).toBe('Sarah');
+		expect(epic.assigneeEntry?.file).toBe(null);
 	});
 });

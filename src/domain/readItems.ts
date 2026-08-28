@@ -127,11 +127,13 @@ export interface RawItem {
 	 */
 	priorityValue: string | null;
 	/**
-	 * Who the note says it is assigned to, if an assignee property is configured. A plain
-	 * value for `riskValue`'s reason — a name the user typed or picked, with no reading
-	 * to refuse — and absence means nobody is on it, which is a fact, not a missing one.
+	 * Who the note says it is assigned to — the `raw`/`file` pair `readLinkList` returns,
+	 * `iterationEntry`'s shape and its reason: unresolved is not unset. A link naming a
+	 * deleted note, or a plain name left over from before resources were notes, has a
+	 * `raw` and no `file`; reading that as "nobody" would leave the reader with a value
+	 * on the note and nothing in the view to clear.
 	 */
-	assigneeValue: string | null;
+	assigneeEntry: LinkEntry | null;
 	/**
 	 * What the note's own iteration is FOR, in one line, if an iteration goal property is
 	 * configured. `riskValue`'s reason exactly: a plain string with no reading to refuse,
@@ -320,7 +322,7 @@ function addItem(
 		plannedTarget: readGated(settings.targetKey, fm, readDate),
 		riskValue: readLabel(settings.riskKey, fm),
 		priorityValue: readLabel(settings.priorityKey, fm),
-		assigneeValue: readLabel(settings.assigneeKey, fm),
+		assigneeEntry: readFirstLinkEntry(app, file, cache, settings.assigneeKey),
 		iterationGoalValue: readLabel(settings.iterationGoalKey, fm),
 		ownKeys: readOwnKeys(fm, settings),
 		iterationEntry: readFirstLinkEntry(app, file, cache, settings.iterationKey),
@@ -483,4 +485,16 @@ function loadOutsideParents(app: App, store: RawStore, parents: TFile[], setting
 		const next = addItem(app, store, file, null, settings);
 		if (next) queue.push(next);
 	}
+}
+
+/**
+ * The name to SHOW for an item's assignee: the resolved note's own title, so a rename
+ * reaches every item that names them, else the raw text for a value that resolves to
+ * nothing, else nobody.
+ *
+ * A function rather than a field because it is presentation derived from the entry, and a
+ * second stored copy is one refresh away from disagreeing with the link it came from.
+ */
+export function assigneeName(item: { assigneeEntry: LinkEntry | null }): string | null {
+	return item.assigneeEntry === null ? null : (item.assigneeEntry.file?.basename ?? item.assigneeEntry.raw);
 }

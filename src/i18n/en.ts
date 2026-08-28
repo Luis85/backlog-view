@@ -244,6 +244,7 @@ export const en = {
 	'chip.priorityChange': 'Change priority',
 	'chip.assigneeStatic': "Not in this base's filter — assignee can't be changed here",
 	'chip.assigneeChange': 'Change assignee',
+	'chip.assigneeUnresolved': 'This names no resource in this base.',
 	'chip.startStatic': "Not in this base's filter — start date can't be changed here",
 	'chip.startChange': 'Change start date',
 	'chip.startUnreadable': 'Unreadable start date',

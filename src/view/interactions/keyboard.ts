@@ -2,6 +2,7 @@ import { BacklogViewHost, BoardSnapshot, RoadmapSnapshot } from '../host';
 import { isDeliverableType, isMarkerType } from '../../domain/itemTypes';
 import { BacklogItem, BacklogModel } from '../../domain/model';
 import { sameValue } from '../../domain/noteFields';
+import { assigneeName } from '../../domain/readItems';
 import { assignableLanes, RoadmapModel } from '../../domain/roadmap';
 import { indent, moveWithinSiblings, outdent } from './structure';
 import { projectionPopulation } from '../projection';
@@ -524,7 +525,7 @@ function handleResourceMoveKey(
 	const stops = resourceStops(roadmap);
 	if (!stops) return;
 	evt.preventDefault();
-	const current = stops.findIndex((stop) => sameValue(stop, card.assigneeValue));
+	const current = stops.findIndex((stop) => sameValue(stop, assigneeName(card)));
 	// A name no drawn row carries — `handleHorizonMoveKey`'s `offLadder`, reached by this
 	// axis's own minting rule rather than by an empty key: a row exists only where a BAR
 	// lands, so a card naming somebody with no date to sit beside is drawn on the shelf

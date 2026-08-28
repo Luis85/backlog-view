@@ -4,6 +4,7 @@ import { BacklogViewHost } from '../host';
 import { inCatalog, isIterationType, isMarkerType, mayHoldField } from '../../domain/itemTypes';
 import { BacklogItem, inPlan } from '../../domain/model';
 import { sameValue } from '../../domain/noteFields';
+import { assigneeName } from '../../domain/readItems';
 import { assignableLanes } from '../../domain/roadmap';
 import { mergedValues } from '../../domain/settings';
 import { resolveSettings } from '../../domain/settingsResolve';
@@ -106,7 +107,7 @@ function assigneeChoices(host: BacklogViewHost, item: BacklogItem): string[] {
 	// Alt+arrow ladder, which offered it too.
 	const drawn = onResourceAxis(host) ? assignableLanes(host.roadmap?.roadmap).map((lane) => lane.name) : [];
 	const values = mergedValues(drawn, host.settings.resourceNames, observed);
-	const current = item.assigneeValue;
+	const current = assigneeName(item);
 	if (current === null || values.some((v) => sameValue(v, current))) return values;
 	return [...values, current];
 }

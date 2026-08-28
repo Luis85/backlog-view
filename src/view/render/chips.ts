@@ -8,6 +8,7 @@ import { PlacementEnd, placementEnds } from '../../domain/itemTypes';
 import { canPlaceHorizon } from '../interactions/plan';
 import { BacklogItem } from '../../domain/model';
 import { CivilDate, FieldReading } from '../../domain/noteFields';
+import { assigneeName } from '../../domain/readItems';
 import { shelfLabel } from '../../domain/roadmap';
 import { formatCivil } from '../../domain/timeline';
 
@@ -183,7 +184,7 @@ export const LABEL_CHIPS: Record<'risk' | 'priority' | 'assignee', LabelChip> = 
 		showMenu: showPriorityMenu,
 	},
 	assignee: {
-		valueOf: (item) => item.assigneeValue,
+		valueOf: (item) => assigneeName(item),
 		cls: 'pbl-assignee-chip',
 		unsetCls: 'pbl-assignee-unset',
 		icon: 'user',
@@ -192,6 +193,18 @@ export const LABEL_CHIPS: Record<'risk' | 'priority' | 'assignee', LabelChip> = 
 		staticTip: () => t('chip.assigneeStatic'),
 		changeTip: () => t('chip.assigneeChange'),
 		showMenu: showAssigneeMenu,
+		// Asked of the ROSTER rather than of the link, because a link that resolves is not
+		// the same question as a link that resolves to somebody: `[[Epic B]]` resolves to a
+		// real note and `[[Alex]]` resolves to a resource the filter excluded, and both are
+		// shelved by the roadmap and offered by no menu entry. Answering from resolution
+		// alone drew those two as valid assignments on the row while every other surface
+		// treated them as nobody — three surfaces disagreeing about one value. Found by
+		// automated review on PR #207.
+		broken: (host, item) =>
+			item.assigneeEntry !== null &&
+			!(host.model?.resources ?? []).some((r) => r.file.path === item.assigneeEntry?.file?.path),
+		brokenCls: 'pbl-assignee-broken',
+		brokenTip: () => t('chip.assigneeUnresolved'),
 	},
 };
 
@@ -207,6 +220,18 @@ interface LabelChip {
 	staticTip: () => string;
 	changeTip: () => string;
 	showMenu: (host: BacklogViewHost, evt: MouseEvent, item: BacklogItem) => void;
+	/**
+	 * Whether this item's value names something the view could not resolve — a third state
+	 * beside set and unset, and optional because the assignee is the only label property
+	 * whose value is a NOTE. [[Broken links still render]]'s rule, one property over: the
+	 * view marks, it does not tidy. Drawn as what the note says, under `brokenCls`, so the
+	 * reader can see the value and see that it resolves to nobody.
+	 */
+	broken?: (host: BacklogViewHost, item: BacklogItem) => boolean;
+	/** The class that marks the third state. Present exactly when `broken` is. */
+	brokenCls?: string;
+	/** What the third state's tooltip says. Present exactly when `broken` is. */
+	brokenTip?: () => string;
 }
 
 /**
@@ -218,7 +243,12 @@ interface LabelChip {
  */
 export function renderLabelChip(host: BacklogViewHost, col: HTMLElement, item: BacklogItem, label: string, spec: LabelChip): boolean {
 	const value = spec.valueOf(item);
-	const cls = spec.cls + (value === null ? ` ${spec.unsetCls}` : '');
+	// The third state, beside set and unset: a value the view could not resolve against
+	// its roster. Marked with its own class so the reader can see both the value AND that
+	// it names nobody, rather than either hiding the note's own text or drawing it as an
+	// ordinary, valid assignment.
+	const broken = spec.broken?.(host, item) ?? false;
+	const cls = spec.cls + (value === null ? ` ${spec.unsetCls}` : '') + (broken ? ` ${spec.brokenCls}` : '');
 
 	// A note the Base excluded is context: show what it claims, never offer to change
 	// it. With nothing to show it renders nothing at all, rather than a button-shaped
@@ -227,7 +257,7 @@ export function renderLabelChip(host: BacklogViewHost, col: HTMLElement, item: B
 		if (value === null) return false;
 		const chip = col.createDiv({ cls: `${cls} pbl-state-static` });
 		fillLabelChip(chip, value, spec);
-		setTooltip(chip, spec.staticTip());
+		setTooltip(chip, broken ? (spec.brokenTip as () => string)() : spec.staticTip());
 		return true;
 	}
 
@@ -242,7 +272,7 @@ export function renderLabelChip(host: BacklogViewHost, col: HTMLElement, item: B
 		},
 	});
 	fillLabelChip(chip, value, spec);
-	setTooltip(chip, spec.changeTip());
+	setTooltip(chip, broken ? (spec.brokenTip as () => string)() : spec.changeTip());
 	return true;
 }
 

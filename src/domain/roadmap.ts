@@ -6,6 +6,7 @@ import { isIterationType, isMarkerType, isReleaseType } from './itemTypes';
 import { ITERATION_TYPE, MILESTONE_TYPE } from './typeVocabulary';
 import { BacklogItem, BacklogModel } from './model';
 import { FieldReading, sameValue } from './noteFields';
+import { assigneeName } from './readItems';
 import { BacklogSettings } from './settings';
 
 /**
@@ -402,7 +403,7 @@ export interface ResourceSource {
  * otherwise be announced as a move that did not happen.
  */
 export function resourceSource(item: BacklogItem): ResourceSource {
-	return { value: item.assigneeValue, keyPresent: item.ownKeys.assignee };
+	return { value: assigneeName(item), keyPresent: item.ownKeys.assignee };
 }
 
 /**
@@ -658,7 +659,7 @@ function placeAssigned(
 	roadmap: RoadmapModel,
 	settings: BacklogSettings,
 ): void {
-	const name = item.assigneeValue;
+	const name = assigneeName(item);
 	if (name === null) {
 		roadmap.shelf.push({ item, reason: null });
 		return;
@@ -712,7 +713,7 @@ function placeContextLane(item: BacklogItem, byName: Map<string, ResourceLane>, 
 		roadmap.context.push(item);
 		return;
 	}
-	const name = item.assigneeValue;
+	const name = assigneeName(item);
 	const lane = name === null ? undefined : byName.get(name.toLowerCase());
 	if (lane) lane.context.push(item);
 	else roadmap.context.push(item);

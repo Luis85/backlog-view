@@ -4,6 +4,7 @@ import { BacklogItem, BacklogModel } from './model';
 import { childLevelIndex, isReleaseType, mayHoldField, PlacementEnd, schemaEnds } from './itemTypes';
 import { statedEnds } from './bars';
 import { readDate, sameValue } from './noteFields';
+import { assigneeName } from './readItems';
 import { daysBetween, formatCivil } from './timeline';
 import { hasHorizonAxis } from './roadmap';
 import { stateKeyFor } from './board';
@@ -383,7 +384,7 @@ export function computePriorityWrites(item: BacklogItem, value: string | null): 
  */
 export function computeAssigneeWrites(item: BacklogItem, value: string | null): ItemWrite[] {
 	if (value === null) return item.ownKeys.assignee ? [{ file: item.file, assignee: null }] : [];
-	if (sameValue(item.assigneeValue, value)) return [];
+	if (sameValue(assigneeName(item), value)) return [];
 	return [{ file: item.file, assignee: value }];
 }
 

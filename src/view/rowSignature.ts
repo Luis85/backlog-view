@@ -1,6 +1,7 @@
 import { BacklogItem } from '../domain/model';
 import { ownWorkflowReading } from '../domain/board';
 import { childTypeChoices, displayType } from '../domain/itemTypes';
+import { assigneeName } from '../domain/readItems';
 import { offerableTypes, projectionPopulation } from './projection';
 import { drawsSomething } from './render/columns';
 import { BacklogViewHost, Column } from './host';
@@ -37,7 +38,8 @@ import { BacklogViewHost, Column } from './host';
  *
  * | read | covered by |
  * | --- | --- |
- * | `typeName` `tags` `horizon` `riskValue` `priorityValue` `assigneeValue` `plannedStart` `plannedTarget` `stateValue` and both secondary state values | the frontmatter term — one term, so nobody has to predict which keys a column is pointed at tomorrow |
+ * | `typeName` `tags` `horizon` `riskValue` `priorityValue` `plannedStart` `plannedTarget` `stateValue` and both secondary state values | the frontmatter term — one term, so nobody has to predict which keys a column is pointed at tomorrow |
+ * | `assigneeEntry` (the assignee chip's text and its broken state) | `assigneeName(item)` — a term of its own, because what it draws depends on the RESOLVED note's basename, which this note's own frontmatter cannot show moving |
  * | `entry` (every `note.*` cell) | the frontmatter term, given {@link reusableColumns} refused every other source, plus {@link renderInputs}' per-column type probe |
  * | `levelIndex` (the badge's text) | `displayType(item)` — the answer the badge draws, rather than the fields behind it |
  * | `ladder` | **no term here at all — projection MEMBERSHIP.** See below; this is the one read with nothing in this file behind it. |
@@ -304,6 +306,10 @@ export function rowSignature(
 		// being returned by the Base: same frontmatter, same depth, same position.
 		item.orphan,
 		item.outsideFilter,
+		// The chip's own text, not `item.assigneeEntry` itself: what it draws is the
+		// RESOLVED note's basename where the link resolves, and a rename of that note
+		// moves this without touching this item's own frontmatter at all.
+		assigneeName(item),
 		item.descendantCount,
 		item.doneDescendants,
 		ownWorkflowReading(item).done,
