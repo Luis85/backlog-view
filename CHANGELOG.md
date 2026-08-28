@@ -174,6 +174,30 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   one: a parent shown for context appears there when a task committed to the sprint hangs
   below it through a story that is not in the sprint.
 
+- **Clicking a release scope's disclosure with the mouse no longer drops keyboard focus out
+  of the tree.** Folding or unfolding a row redraws it, and focus used to land on the page
+  body afterward — so the very next Tab press started over from outside the tree instead of
+  continuing from the row you were just on. Focus now returns to the row you clicked.
+
+- **A release band that cannot compute its own progress now says so, instead of quietly
+  showing nothing.** A release whose members are all readable but whose workflow state is
+  not — one workflow bound, another left unconfigured, on a release mixing the two — used to
+  leave that release's line blank with no bar and no explanation, while a neighbouring
+  release drew its progress normally. The band now names what is not configured, the same
+  sentence its own detail screen already gives.
+
+- **Folding a row no longer silently does nothing once you have folded roughly 12,000 rows
+  across your releases.** The stored fold list has a size budget, and it used to keep the
+  OLDEST folds and discard whichever one you had just made when the budget was already full
+  — so folding a row could appear to have no effect, with nothing on screen saying why. A
+  full budget now drops the oldest fold to make room for the new one instead.
+
+- **Renaming a release, or a work item inside one, no longer reopens every row you had
+  folded in it.** A release scope's folded/unfolded state is stored by note path, and a
+  rename was not carried over — folding survived everywhere else in this plugin except
+  here. Renaming now keeps the tree exactly as you left it, whether it is the item that
+  moved or the release note itself.
+
 ### Changed
 
 - **The shelf's resize handle now sits on the edge the shelf actually shares with the

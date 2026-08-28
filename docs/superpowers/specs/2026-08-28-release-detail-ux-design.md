@@ -23,7 +23,7 @@ the view, are still owed a live-vault check.
 | --- | --- |
 | The view stays read-only | `test/view/releaseNeverEdits.test.ts` asserts on the CALLS, not on driven screens. Every feature below is navigation, derivation or view state — none of it plans a batch, so this view still needs no `WriteGate` and no `WriteLock`. |
 | A row click OPENS the note | The disclosure folds; the click reads. `src/view/openTarget.ts` takes any `{ file }` — but it needs an `OpenController` and a context carrying `openIn`, and `ReleaseSettings` has neither today. This view therefore **declares its own `openIn` option**, exactly as `domain/estimationOptions.ts` does with the same `default:`, rather than reading it off `resolveSettings` — `releaseView.ts` already states why borrowing another resolver's options at this boundary is the same defect as one view reading another's configuration. |
-| Folds live in the view-state store | `folds` already exists there, keyed by path and pruned by path. This view has its own view identity, so its folds cannot collide with the backlog tree's. No new storage, no new module. **They do NOT survive a rename** — see below; the spec claimed they did until review on PR #206. |
+| Folds live in the view-state store | `folds` already exists there, keyed by path and pruned by path. This view has its own view identity, so its folds cannot collide with the backlog tree's. No new storage, no new module. **They survive a rename**, of a member or of the release itself — see below for the layer question that raised and how a follow-up pass resolved it. |
 | The summary is progress and items only | Blocked, unestimated and critical-risk figures each need a property option AND a value vocabulary on this view. They are [[Summing up a release]] and [[Release readiness]]'s own next increment, not this one. |
 | No search box on the scope | [[Quick filter]] is `status: Dropped`, closed 2026-08-17 at the user's request — "Bases carries its own search now, so this was a second search box over the same rows". Confirmed dropped again here rather than re-litigated. |
 | The ✨ becomes a control | `runReleaseInit` exists and is reachable only from a `New release` press. A reader whose vault has none of the four keys bound cannot get to it without creating a note they may not want. |
@@ -54,26 +54,38 @@ share one x. `aria-expanded` becomes legitimate on a row with children and is se
 comment stating a rule the code has stopped keeping is the defect
 `docs/issues/A comment that states a rule is not a check.md` names.
 
-**Folds persist, but a rename reopens one, and that is an accepted cost rather than an
-oversight.** Read on render, written on toggle, through `loadViewState` / `saveViewState`
+**Folds persist, and now survive a rename too — of a member, or of the release note
+itself.** Read on render, written on toggle, through `loadViewState` / `saveViewState`
 under this view's identity — the same pair `pick` already uses.
 
-Neither rename walk reaches these folds. `renamePathPrefs` (`storage/viewStateStore.ts`,
-wired to `vault.on('rename')` in `main.ts`) walks `PATH_PREFS` — `scope` and `release` —
-and touches no fold at all; `ViewState.renamePath` (`view/viewState.ts`) migrates
-`this.collapsed`, but that is the BACKLOG view's in-memory controller, and this view holds
-no `ViewState`. So a folded member that is renamed comes back open.
+Neither rename walk used to reach these folds. `renamePathPrefs`
+(`storage/viewStateStore.ts`, wired to `vault.on('rename')` in `main.ts`) walked
+`PATH_PREFS` — `scope` and `release` — and touched no fold at all; `ViewState.renamePath`
+(`view/viewState.ts`) migrates `this.collapsed`, but that is the BACKLOG view's in-memory
+controller, and this view holds no `ViewState`. So a folded member that was renamed came
+back open, and renaming the RELEASE note itself — the key's own first half — stranded
+every fold in its scope under a path nothing would ask for again.
 
-**Not fixed here, and the reason is the layer boundary.** A store-level fold walk would
-have to migrate both key SHAPES that list holds — the backlog's scope-prefixed keys and
-this view's plain paths — which means `notePath` and `scopeOf` from `view/viewState.ts`,
-in a module that may not import `view/`. Duplicating that parsing into `storage/` to make a
-fold survive a rare edit is a worse trade than a fold that reopens: the reader presses one
-disclosure. It is written down here rather than left to be rediscovered, and a store-level
-`renamePathFolds` beside `renamePathPrefs` is what would change it, if the papercut ever
-earns the duplication. An embedded
-base has no identity, so folds there are session-only, exactly as the pick already is; that
-asymmetry is stated once in `releaseView.ts` and not built around.
+**The layer question this raised, and how a follow-up pass resolved it.** A store-level
+fold walk has to parse both key SHAPES the `folds` map holds — the backlog's
+scope-prefixed keys and this view's own `<release>␀<member>` pairs — which means the same
+`notePath` and `scopeOf` that lived in `view/viewState.ts`, reached from a module that may
+not import `view/`. This spec first declined the fix on exactly that ground: duplicating
+the parsing into `storage/` to save a fold on a rare edit looked like a worse trade than a
+fold that reopens — the reader presses one disclosure.
+
+**The resolution is that the layer rule is about the DIRECTION of an import, not about
+where the code physically sits.** `notePath` and `scopeOf` are pure string arithmetic over
+a stored key's shape — no DOM, no view state, nothing `storage/` could not already do on
+its own — so they were MOVED down into a new `src/storage/foldKeys.ts` rather than copied.
+`view/viewState.ts` now re-exports the three scope prefixes and imports the two functions
+upward, the same shape it already uses for `movedPath` from `viewIdentity.ts`. Beside them,
+`movedFoldKey` moves EITHER path a release-scoped key carries, so `renamePathFolds`
+(`storage/viewStateStore.ts`, wired beside `renamePathPrefs` in `main.ts`) carries a
+renamed release's own folds too — the half the original decline never covered at all, since
+it was framed around the member path alone. An embedded base still has no identity, so
+folds there are still session-only, exactly as the pick still is; that asymmetry is stated
+once in `releaseView.ts` and not built around.
 
 **A folded row hides its descendants and keeps its own numbers.** The rollup is over the
 subtree, not over what is drawn, so folding never changes a figure.
@@ -278,8 +290,8 @@ Every claim gets one that fails without it — watched failing, then restored.
 - `test/view/releaseNeverEdits.test.ts` stays green unchanged. It is the whole read-only
   claim and nothing here may need it relaxed.
 - Folds: a toggle persists across a data update; an embedded base keeps its folds in the
-  session and loses them on remount; a renamed member REOPENS, which is the accepted cost
-  stated in Slice A rather than a defect, and is asserted so it cannot regress silently in
+  session and loses them on remount; a renamed member — or a renamed RELEASE — keeps its
+  fold, carried by `renamePathFolds` (Slice A), asserted so it cannot regress silently in
   either direction.
 - Rollups: a folded parent reports the same numbers as an unfolded one; **a context row
   reports none** — the rule [[The scope of a release as a tree]] states and the mock got

@@ -546,17 +546,28 @@ describe('the scope tree', () => {
 		expect(leaf.hasAttribute('aria-expanded')).toBe(false);
 	});
 
-	it('reopens a folded row whose note was RENAMED, and that is the accepted cost', () => {
-		// Neither rename walk reaches these folds: `renamePathPrefs` walks PATH_PREFS
-		// (`scope`, `release`) and no fold, and `ViewState.renamePath` migrates the BACKLOG
-		// view's in-memory `collapsed`, which this view holds none of. Asserted so the
-		// behaviour is stated rather than discovered — see the spec for why a store-level
-		// fold walk is not worth duplicating `notePath`/`scopeOf` into `storage/`.
+	it('carries a folded row through a rename of its own note', () => {
+		// True only as of THIS task: at this point neither rename walk reaches these folds,
+		// so a folded row that is renamed comes back open — `renamePathPrefs` walks
+		// PATH_PREFS (`scope`, `release`) and no fold, and `ViewState.renamePath` migrates
+		// the BACKLOG view's in-memory `collapsed`, which this view holds none of. That is
+		// accepted rather than fixed here, on the ground that fixing it means reaching
+		// `notePath`/`scopeOf` (`view/viewState.ts`) from `storage/`, which the layer rule
+		// forbids.
+		//
+		// A follow-up pass resolved it instead: the rule is about the DIRECTION of an
+		// import, not where the code sits, and this parsing is pure string arithmetic over
+		// a stored key's shape — so `notePath`/`scopeOf` MOVED down into
+		// `storage/foldKeys.ts` rather than being copied, and `renamePathFolds` carries the
+		// fold through. This test's own assertion flips with that fix; see
+		// `test/view/release/scopeTree.test.ts` for the current form, which also covers a
+		// rename of the RELEASE note itself — the key's other half, which this version never
+		// asked about.
 		const { view, vault } = mountRelease({ pick: 'Releases/0.8.md' });
 		twisty(view, 'Passwordless sign-in.md').click();
 		vault.rename('Passwordless sign-in.md', 'Magic links.md');
 		view.onDataUpdated();
-		expect(row(view, 'Magic links.md').getAttribute('aria-expanded')).toBe('true');
+		expect(row(view, 'Magic links.md').getAttribute('aria-expanded')).toBe('true'); // now 'false'
 	});
 
 	it('folds the same ancestor independently in two releases', () => {
