@@ -526,7 +526,7 @@ Slice A, first half. `renderScope.ts` splits here.
 - Test: `test/view/release/scopeTree.test.ts`
 
 **Interfaces:**
-- Produces: `drawScopeTree(view: ReleaseView, release: ReleaseRow, rows: ScopeRow[]): void`, `foldedPaths(view: ReleaseView): Set<string>`, `toggleFold(view: ReleaseView, path: string): void`, `setAllFolds(view: ReleaseView, rows: ScopeRow[], folded: boolean): void` — all from `scopeTree.ts`. Task 4 consumes `foldedPaths` and `toggleFold`; Task 5 consumes `setAllFolds`.
+- Produces: `drawScopeTree(view: ReleaseView, release: ReleaseRow, rows: ScopeRow[]): void`, `foldedPaths(view: ReleaseView, releasePath: string): Set<string>`, `toggleFold(view: ReleaseView, releasePath: string, path: string): void`, `setAllFolds(view: ReleaseView, releasePath: string, rows: ScopeRow[], folded: boolean): void` — every one takes the open release, because a fold is a fact about a row IN a release — all from `scopeTree.ts`. Task 4 consumes `foldedPaths` and `toggleFold`; Task 5 consumes `setAllFolds`.
 - Consumes: `ScopeRow` from `domain/releases.ts`; `loadViewState` / `saveViewState` from `storage/viewStateStore.ts`; `resolveViewIdentity` from `storage/viewIdentity.ts`; `OpenController` from `view/openTarget.ts`.
 
 - [ ] **Step 1: Write the failing test**
@@ -557,6 +557,17 @@ describe('the scope tree', () => {
 		vault.rename('Passwordless sign-in.md', 'Magic links.md');
 		view.onDataUpdated();
 		expect(row(view, 'Magic links.md').getAttribute('aria-expanded')).toBe('true');
+	});
+
+	it('folds the same ancestor independently in two releases', () => {
+		// Two questions about one item — `TIMELINE_SCOPE`'s own reason. A bare-path key
+		// gives them one bit, so folding an Epic in 0.8 would collapse it in 0.9 too.
+		const { view } = mountRelease({ pick: 'Releases/0.8.md' });
+		twisty(view, 'Sign-up flow.md').click();
+		view.pick('Releases/0.9.md');
+		expect(row(view, 'Sign-up flow.md').getAttribute('aria-expanded')).toBe('true');
+		view.pick('Releases/0.8.md');
+		expect(row(view, 'Sign-up flow.md').getAttribute('aria-expanded')).toBe('false');
 	});
 
 	it('folding hides the descendants and persists across a data update', () => {
@@ -687,11 +698,46 @@ with `'release.scope.rollup': '{done}/{total}'` in the catalog and, in `styles/r
 
 Add a test for each rule the comments state: **a context row draws neither chip nor rollup**, and **a Feature with members in two releases reports only this release's**. The fold store:
 
+**The key is scoped to the open release, never a bare path.** One ancestor can appear in
+two releases' scopes — an Epic that is context in both — and its disclosure there hides two
+different member populations. A bare path gives those two questions one bit, so folding it
+in release A collapses it in release B and expanding it in either clears both. That is
+exactly the failure `TIMELINE_SCOPE` and `CARD_SCOPE` were introduced for in
+`view/viewState.ts`, whose own comment states the principle: *"two questions about one item,
+so one bit could only answer both by making the reader lose their place in the other
+projection every time they used it."*
+
+Follow that precedent's shape, including the NUL:
+
 ```ts
 /**
- * The paths folded shut on THIS view, from the same per-identity entry the pick is
- * stored in. Nothing new is persisted: `folds.collapsed` already exists, is keyed by
- * path, is pruned by path and is migrated by both rename walks.
+ * Prefix marking a key as ONE RELEASE's own fold state. A NUL for `TIMELINE_SCOPE`'s
+ * stated reason — a vault path may legitimately contain any printable prefix, so a
+ * sentinel that could occur in a real path would collide with one.
+ *
+ * The release path is IN the key, unlike the two scopes in `view/viewState.ts`, because
+ * this scope is not one projection but one per release: the question is "is this row open
+ * in THIS release's scope", and there are as many of those as the base holds releases.
+ */
+const RELEASE_FOLD = '\u0000release:';
+
+/** `<NUL>release:<release path><NUL><member path>` — split on the LAST NUL to recover the
+ *  member path, which is unambiguous because neither path can contain one. */
+function foldKey(releasePath: string, memberPath: string): string {
+	return `${RELEASE_FOLD}${releasePath}\u0000${memberPath}`;
+}
+```
+
+`MAX_FOLDS` is a budget across the stored lists, so a reader who folds rows in many
+releases spends it faster than one who folds in a single tree. That is the accepted cost of
+answering the question correctly; the budget already drops the oldest entries rather than
+failing.
+
+```ts
+/**
+ * The paths folded shut in the OPEN release's scope, from the same per-identity entry the
+ * pick is stored in. Nothing new is persisted: `folds.collapsed` already exists and this
+ * view's identity gives it its own copy.
  *
  * The in-memory fallback is `restorePick`'s own asymmetry, read from the other end: an
  * embedded base has no identity, so its folds are session-only rather than absent —
@@ -699,10 +745,14 @@ Add a test for each rule the comments state: **a context row draws neither chip 
  */
 const sessionFolds = new WeakMap<ReleaseView, Set<string>>();
 
-export function foldedPaths(view: ReleaseView): Set<string> {
+export function foldedPaths(view: ReleaseView, releasePath: string): Set<string> {
 	const id = resolveViewIdentity(view.app, view.viewEl, view.config.name ?? '');
-	if (id === null) return sessionFolds.get(view) ?? new Set();
-	return new Set(loadViewState(view.app, id).folds.collapsed);
+	const all = id === null ? (sessionFolds.get(view) ?? new Set<string>()) : new Set(loadViewState(view.app, id).folds.collapsed);
+	// Only THIS release's keys, stripped back to member paths — the caller asks about the
+	// rows it is drawing, and a key from another release's scope answers a different
+	// question about the same note.
+	const prefix = `${RELEASE_FOLD}${releasePath}\u0000`;
+	return new Set([...all].filter((k) => k.startsWith(prefix)).map((k) => k.slice(prefix.length)));
 }
 ```
 
@@ -749,7 +799,7 @@ In `drawRow`, before the badge:
 		twistyEl.addEventListener('click', (evt) => {
 			// The row's own listener would otherwise open the note behind the fold.
 			evt.stopPropagation();
-			toggleFold(view, row.item.file.path);
+			toggleFold(view, release.file.path, row.item.file.path);
 		});
 	}
 ```
@@ -1051,15 +1101,20 @@ export function wireScopeKeys(view: ReleaseView, treeEl: HTMLElement, rows: Scop
 	// exists for the same re-render and is not enough, because focus is not scroll.
 	const wanted = view.activeScopePath;
 	const restored = wanted === null ? -1 : visible.findIndex((r) => r.item.file.path === wanted);
-	if (restored !== -1) {
-		active = restored;
+	// A row that has GONE must not take the keyboard with it. A refresh can drop the active
+	// member out of the scope — its membership edited elsewhere, the base's filter narrowed
+	// — and returning here without focusing would leave the reader Tabbing back in, which is
+	// the same stranding the restore exists to prevent. Falling back to the first row is the
+	// honest answer: the row they were on is not there to return to.
+	if (restored !== -1 || (view.scopeHadFocus && visible.length > 0)) {
+		active = restored === -1 ? 0 : restored;
 		show();
 		if (view.scopeHadFocus) treeEl.focus();
 	}
 }
 ```
 
-`ReleaseView` carries the two values across the render: `activeScopePath: string | null`, written by `show()`, and `scopeHadFocus`, captured in `render()` before `empty()` — `document.activeElement` inside the old tree — exactly where the scroll offset is already captured and for the same reason (a detached element answers nothing). Add a test: **Right on a closed parent leaves the tree focused and the same row active**, and drive the next ArrowDown through the tree the re-render produced.
+`ReleaseView` carries the two values across the render: `activeScopePath: string | null`, written by `show()`, and `scopeHadFocus`, captured in `render()` before `empty()` — `document.activeElement` inside the old tree — exactly where the scroll offset is already captured and for the same reason (a detached element answers nothing). Add two tests: **Right on a closed parent leaves the tree focused and the same row active**, driving the next ArrowDown through the tree the re-render produced; and **a refresh that removes the active row leaves the tree focused on a surviving row** rather than dropping focus to the body.
 
 `visible` is the row list the tree actually DREW (Task 3's `visibleRows` output), not `scope.rows` — arrowing onto a folded-away row would move the active descendant to an element that is not in the DOM. `renderScope.ts` passes the drawn list.
 
