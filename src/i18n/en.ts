@@ -1008,11 +1008,9 @@ export const en = {
 	 * beneath two paths reads as a third path rather than as an absence.
 	 */
 	'menu.clearRelease': 'No release',
-	'menu.newAssignee': 'New assignee...',
-	'menu.assignTitle': 'Assign item',
-	'menu.assignField': 'Assignee',
-	'menu.assignPlaceholder': 'Alex',
-	'menu.assignCta': 'Assign',
+	'menu.newResource': 'New resource...',
+	/** The disabled reason Set assignee shows in place of a resource list the base has none of. */
+	'menu.noResources': 'No resources in this base',
 
 	/**
 	 * The dialogs in `ui/`. Every one of them takes its heading and its description from
@@ -1244,13 +1242,12 @@ export const en = {
 
 	/**
 	 * The New resource prompt (`view/interactions/resourceNotes.ts`) — the roadmap's
-	 * resources axis is its only way in (Task 4 wires the button; this catalog section
-	 * ships ahead of it). `resource.duplicateWarning` is `ValuePromptOptions.duplicateWarning`:
-	 * shown, never refused, the same *guides rather than arbitrates* rule
-	 * `absence.nameResource`'s modal already keeps. Its wording claims only what `known`
-	 * can answer — the roadmap's roster (drawn rows, the declared list, observed
-	 * assignees) — and NOT that a `Resource` note exists: [[Rows from the Resource
-	 * notes]] hasn't shipped, so this dialog cannot see the notes themselves.
+	 * resources axis and Set assignee's own **New resource...** are its two ways in.
+	 * `resource.duplicateWarning` is `ValuePromptOptions.duplicateWarning`: shown, never
+	 * refused, the same *guides rather than arbitrates* rule `absence.nameResource`'s
+	 * modal already keeps. Its wording can now claim that a `Resource` note exists,
+	 * which it could not on 2026-08-22 — `known` is `host.model.resources`, the notes
+	 * themselves, rather than a roster gathered off the roadmap's rows and settings.
 	 */
 	'resource.createHeading': 'New resource',
 	'resource.nameField': 'Name',

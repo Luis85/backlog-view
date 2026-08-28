@@ -2,8 +2,7 @@ import { BacklogViewHost, BoardSnapshot, RoadmapSnapshot } from '../host';
 import { isDeliverableType, isMarkerType } from '../../domain/itemTypes';
 import { BacklogItem, BacklogModel } from '../../domain/model';
 import { sameValue } from '../../domain/noteFields';
-import { assigneeName } from '../../domain/readItems';
-import { assignableLanes, RoadmapModel } from '../../domain/roadmap';
+import { assignableLanes, ResourceLane, RoadmapModel } from '../../domain/roadmap';
 import { indent, moveWithinSiblings, outdent } from './structure';
 import { projectionPopulation } from '../projection';
 
@@ -416,17 +415,24 @@ function horizonStops(roadmap: RoadmapModel): (string | null)[] | null {
 /**
  * The rows an Alt+arrow steps through on the resources axis: the shelf first, then the
  * rows as they render — `horizonStops`' ladder over a different property, and the shelf
- * leads for that ladder's own stated reason.
+ * leads for that ladder's own stated reason. `null` is the shelf's own stop, exactly as
+ * `horizonStops`' leading `null` is.
  *
  * Null on the other two axes, so this handler swallows no key it does not act on.
  *
  * The milestones' row is not a stop: `assignableLanes` is what says so, shared with Set
  * assignee's own list rather than filtered here, since a ladder and a menu offering
- * different targets is the drift that rule exists to stop.
+ * different targets is the drift that rule exists to stop. **Filtered again to the lanes
+ * that HAVE a file**, load-bearing until Task 5: a lane minted by `laneNamed` for an
+ * observed name with no `Resource` note has `file: null`, and `performResourceMove(card,
+ * null)` means UNASSIGN — so an Alt+arrow onto such a row would silently take the
+ * assignee off instead of moving it there. Task 5 makes this redundant by construction
+ * (every lane is a note) and `AssignableLane` then carries the narrowing in the type;
+ * delete the filter there.
  */
-function resourceStops(roadmap: RoadmapModel): (string | null)[] | null {
+function resourceStops(roadmap: RoadmapModel): (ResourceLane | null)[] | null {
 	if (roadmap.axis !== 'resources') return null;
-	return [null, ...assignableLanes(roadmap).map((lane) => lane.name)];
+	return [null, ...assignableLanes(roadmap).filter((lane) => lane.file !== null)];
 }
 
 /**
@@ -439,8 +445,12 @@ function resourceStops(roadmap: RoadmapModel): (string | null)[] | null {
  * holds something. A backward step from there is the real, undoable cleanup the drag and
  * the menu both plan for that same card, and indexing it at stop 0 made that stop an edge
  * for exactly the card that had somewhere to go.
+ *
+ * Generic over what a stop IS — a string on the horizon axis, a `ResourceLane` on this
+ * one — because the rule is about a POSITION in the ladder and reads nothing off the stop
+ * itself.
  */
-function ladderStep(stops: (string | null)[], current: number, step: number, offLadder: boolean): number | null {
+function ladderStep<T>(stops: T[], current: number, step: number, offLadder: boolean): number | null {
 	const target = offLadder && step < 0 ? 0 : current + step;
 	return target < 0 || target >= stops.length ? null : target;
 }
@@ -525,16 +535,16 @@ function handleResourceMoveKey(
 	const stops = resourceStops(roadmap);
 	if (!stops) return;
 	evt.preventDefault();
-	const current = stops.findIndex((stop) => sameValue(stop, assigneeName(card)));
-	// A name no drawn row carries — `handleHorizonMoveKey`'s `offLadder`, reached by this
-	// axis's own minting rule rather than by an empty key: a row exists only where a BAR
-	// lands, so a card naming somebody with no date to sit beside is drawn on the shelf
-	// while its note still names them. Taking that name off is what the shelf drop and
-	// Clear assignee both plan for it, so the keyboard has to be able to say it too.
+	// Asked of the ENTRY's path, never of the observed name: a lane is a note now, so the
+	// ladder matches what the note's link resolves to. A card with no assignee at all
+	// matches the leading `null` stop exactly as an unreadable one never does, and a link
+	// that resolved to nothing matches no stop and lands off-ladder — the case `offLadder`
+	// already handles.
+	const current = stops.findIndex((stop) => (stop === null ? card.assigneeEntry === null : stop.file?.path === card.assigneeEntry?.file?.path));
 	const offLadder = current < 0;
 	const target = ladderStep(stops, offLadder ? 0 : current, evt.key === 'ArrowDown' ? 1 : -1, offLadder);
 	if (target === null) return;
-	void host.performResourceMove(card, stops[target]);
+	void host.performResourceMove(card, stops[target]?.file ?? null);
 }
 
 /** The card a navigation key moves to, or null for a key that is not navigation. */

@@ -1,3 +1,4 @@
+import { TFile } from 'obsidian';
 import { t } from '../i18n/t';
 import { Absence } from './absences';
 import { firstPlacedIndex } from './board';
@@ -5,8 +6,8 @@ import { deriveBars, placeItem, ShelfCard, statedEnds, TimelineBar } from './bar
 import { isIterationType, isMarkerType, isReleaseType } from './itemTypes';
 import { ITERATION_TYPE, MILESTONE_TYPE } from './typeVocabulary';
 import { BacklogItem, BacklogModel } from './model';
-import { FieldReading, sameValue } from './noteFields';
-import { assigneeName } from './readItems';
+import { FieldReading, LinkEntry, sameValue } from './noteFields';
+import { assigneeName, ResourceNote } from './readItems';
 import { BacklogSettings } from './settings';
 
 /**
@@ -144,7 +145,7 @@ const MILESTONE_LANE = 'Milestones';
  * is drawn at all, and neither axis draws it empty.
  */
 export function markerLane(bars: TimelineBar[]): ResourceLane {
-	return { name: MILESTONE_LANE, declared: true, markers: true, bars, absences: [], context: [] };
+	return { name: MILESTONE_LANE, declared: true, markers: true, bars, absences: [], context: [], file: null };
 }
 
 /**
@@ -197,6 +198,17 @@ export interface ResourceLane {
 	 * they place — never as a positioned bar, never counted, never shelved.
 	 */
 	context: BacklogItem[];
+	/**
+	 * The `Resource` note this row IS, or null for the one row that is not a resource at
+	 * all (the milestones' own) and for a row minted by a name no `Resource` note carries.
+	 *
+	 * Bridged until the rows come from the notes (Task 5): a declared or minted lane is
+	 * still named by a STRING (`resourceNames`, or an item's own observed assignee), and
+	 * this is that name looked up against `BacklogModel.resources` rather than the row's
+	 * own identity. Once every lane comes from a note (Task 5) this field stops being a
+	 * lookup and starts being the thing a lane fundamentally is.
+	 */
+	file: TFile | null;
 }
 
 export interface RoadmapModel {
@@ -364,34 +376,27 @@ export function axisPopulation(roadmap: RoadmapModel): number {
 	return roadmap.bars.length + roadmap.lanes.reduce((n, lane) => n + lane.context.length, 0);
 }
 
-/** The drawn row a name belongs to, matched as the bars were placed. */
-function laneFor(roadmap: RoadmapModel, value: string): string | null {
-	return roadmap.lanes.find((lane) => sameValue(lane.name, value))?.name ?? null;
-}
-
 /**
- * A name in the casing the row on screen carries, or the name itself where no row draws
- * it. Both ends of a resource move's sentence share this half, unlike the horizon axis's
- * pair above — and the reason is this axis's own minting rule rather than a shortcut.
- * `placementLabel` falls back to the SHELF for a value no bucket carries, which is right
- * on an axis where every result's value mints a bucket; here a row exists only where a
- * BAR lands, so a note naming a resource it has no date to sit beside names a resource
- * with no row — and reading that as the shelf would report "from Unplaced" about a note
- * that plainly says Alice. What the two ends do NOT share is the null case, which is the
- * whole of what `targetLabel` and `placementLabel` were split over.
+ * A resource named in the casing the row on screen carries, or the note's own title where
+ * no row draws it, or the raw text for a value that resolves to nothing. Three fallbacks
+ * and not two, because a link is a third value shape: unresolved is a fact the reader can
+ * see on the note, and reporting it as the shelf would say "from Unplaced" about a note
+ * that plainly says Sarah.
  */
-function resourceLabel(roadmap: RoadmapModel, value: string): string {
-	return laneFor(roadmap, value) ?? value;
+function resourceLabel(roadmap: RoadmapModel, entry: LinkEntry): string {
+	const lane = entry.file ? roadmap.lanes.find((l) => l.file?.path === entry.file?.path) : undefined;
+	return lane?.name ?? entry.file?.basename ?? entry.raw;
 }
 
 /** Where a pick sends a card. Nobody named is the shelf, under the name the frame gives it. */
-export function resourceTargetLabel(roadmap: RoadmapModel, name: string | null): string {
-	return name === null ? shelfLabel() : resourceLabel(roadmap, name);
+export function resourceTargetLabel(roadmap: RoadmapModel, target: TFile | null): string {
+	if (target === null) return shelfLabel();
+	return roadmap.lanes.find((l) => l.file?.path === target.path)?.name ?? target.basename;
 }
 
 /** What a note's assignee key said, and whether it was there at all. */
 export interface ResourceSource {
-	value: string | null;
+	entry: LinkEntry | null;
 	keyPresent: boolean;
 }
 
@@ -403,17 +408,15 @@ export interface ResourceSource {
  * otherwise be announced as a move that did not happen.
  */
 export function resourceSource(item: BacklogItem): ResourceSource {
-	return { value: assigneeName(item), keyPresent: item.ownKeys.assignee };
+	return { entry: item.assigneeEntry, keyPresent: item.ownKeys.assignee };
 }
 
 /**
  * What a card's assignee WAS. Two ways to say nobody, and only one of them is nothing to
- * take away. There is no third: `readString` refuses nothing here, so an assignee is a
- * string or it is absent, and this axis has no unreadable case for the horizon's third
- * label to answer.
+ * take away.
  */
 export function resourcePlacementLabel(roadmap: RoadmapModel, source: ResourceSource): string {
-	if (source.value !== null) return resourceLabel(roadmap, source.value);
+	if (source.entry !== null) return resourceLabel(roadmap, source.entry);
 	return source.keyPresent ? t('placement.emptyAssignee') : shelfLabel();
 }
 
@@ -513,7 +516,7 @@ export function buildRoadmap(
 		eligibleResults: model.results.filter(onThisRoadmap).length,
 	};
 	if (axis === 'horizons') deriveBuckets(rows, settings, roadmap, visible);
-	else if (axis === 'resources') deriveLanes(rows, settings, roadmap, model.absences);
+	else if (axis === 'resources') deriveLanes(rows, settings, roadmap, model.absences, model.resources);
 	else {
 		const dated = deriveBars(rows, settings.iterationBars);
 		roadmap.bars = dated.bars;
@@ -622,22 +625,33 @@ function deriveLanes(
 	settings: BacklogSettings,
 	roadmap: RoadmapModel,
 	absences: Absence[],
+	resources: ResourceNote[],
 ): void {
 	const markers = markerLane([]);
 	const lanes = settings.resourceNames.map(
-		(name): ResourceLane => ({ name, declared: true, markers: false, bars: [], absences: [], context: [] }),
+		(name): ResourceLane => ({
+			name,
+			declared: true,
+			markers: false,
+			bars: [],
+			absences: [],
+			context: [],
+			// Bridged until the rows come from the notes (Task 5).
+			file: resources.find((r) => sameValue(r.title, name))?.file ?? null,
+		}),
 	);
 	const byName = new Map<string, ResourceLane>(lanes.map((lane) => [lane.name.toLowerCase(), lane]));
+	const mintLane = (name: string): ResourceLane => laneNamed(name, lanes, byName, resources);
 	for (const item of rows) {
 		if (item.outsideFilter) continue;
 		if (isMarkerType(item.typeName)) placeBar(item, () => markers, roadmap, settings);
-		else placeAssigned(item, lanes, byName, roadmap, settings);
+		else placeAssigned(item, mintLane, roadmap, settings);
 	}
 	// Second, so a resource a result already named keeps the casing that result gave its
 	// row — and third-source minting: unlike a context row, an absence MAY create one,
 	// because it is a statement this base's own notes make about a resource rather than a
 	// value borrowed from a note the filter excluded.
-	for (const absence of absences) laneNamed(absence.resource, lanes, byName).absences.push(absence);
+	for (const absence of absences) mintLane(absence.resource).absences.push(absence);
 	for (const item of rows) {
 		if (item.outsideFilter) placeContextLane(item, byName, roadmap);
 	}
@@ -654,8 +668,7 @@ function deriveLanes(
  */
 function placeAssigned(
 	item: BacklogItem,
-	lanes: ResourceLane[],
-	byName: Map<string, ResourceLane>,
+	mint: (name: string) => ResourceLane,
 	roadmap: RoadmapModel,
 	settings: BacklogSettings,
 ): void {
@@ -664,7 +677,7 @@ function placeAssigned(
 		roadmap.shelf.push({ item, reason: null });
 		return;
 	}
-	placeBar(item, () => laneNamed(name, lanes, byName), roadmap, settings);
+	placeBar(item, () => mint(name), roadmap, settings);
 }
 
 /**
@@ -693,10 +706,24 @@ function placeBar(item: BacklogItem, lane: () => ResourceLane, roadmap: RoadmapM
  * Not to be confused with `laneFor` above, which answers what a DRAWN row is called for
  * the sentence a move is announced in and mints nothing.
  */
-function laneNamed(name: string, lanes: ResourceLane[], byName: Map<string, ResourceLane>): ResourceLane {
+function laneNamed(
+	name: string,
+	lanes: ResourceLane[],
+	byName: Map<string, ResourceLane>,
+	resources: ResourceNote[],
+): ResourceLane {
 	const existing = byName.get(name.toLowerCase());
 	if (existing) return existing;
-	const lane: ResourceLane = { name, declared: false, markers: false, bars: [], absences: [], context: [] };
+	const lane: ResourceLane = {
+		name,
+		declared: false,
+		markers: false,
+		bars: [],
+		absences: [],
+		context: [],
+		// Bridged until the rows come from the notes (Task 5).
+		file: resources.find((r) => sameValue(r.title, name))?.file ?? null,
+	};
 	byName.set(name.toLowerCase(), lane);
 	lanes.push(lane);
 	return lane;

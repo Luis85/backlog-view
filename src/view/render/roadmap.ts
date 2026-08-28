@@ -327,9 +327,15 @@ function wireLaneDrop(
 				submitGesture(host, source, gesture);
 				return;
 			}
+			// A lane minted from an observed name with no `Resource` note has no file to
+			// name — bridged until Task 5, where every lane comes from a note and this
+			// guard becomes unreachable by construction. Without it `band.lane.file` would
+			// be `null`, and `performResourceMove(item, null)` means UNASSIGN — so a drop
+			// here would silently clear the assignee instead of naming this row.
+			if (!band.lane.file) return;
 			void host.performResourceMove(
 				source.item,
-				band.lane.name,
+				band.lane.file,
 				gesture ? { plan: gesture.plan, ends: source.ends, from: gesture.from } : undefined,
 			);
 		},

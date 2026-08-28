@@ -1,4 +1,4 @@
-import { App, BasesPropertyId, BasesViewConfig } from 'obsidian';
+import { App, BasesPropertyId, BasesViewConfig, TFile } from 'obsidian';
 import { BoardModel, IterationBucket, StatePalette } from '../domain/board';
 import { BacklogItem, BacklogModel } from '../domain/model';
 import { ShelfCard } from '../domain/bars';
@@ -576,7 +576,7 @@ export interface BacklogViewHost {
 
 	/**
 	 * Plan and apply the assignee write a resource move means — the target row's own
-	 * name, or key removal for the shelf. The horizon axis's rule on this axis's
+	 * `Resource` note, or key removal for the shelf. The horizon axis's rule on this axis's
 	 * property: one path for all three inputs (a drop, an Alt+Up/Down, the row menu's
 	 * Set assignee), so no input can reach a row another cannot, and every move that
 	 * lands announces itself once. A move onto the row the card is already in plans
@@ -591,7 +591,7 @@ export interface BacklogViewHost {
 	 * Alt+Up/Down, the shelf's removal — and absent from a vertical drag too, which plans
 	 * no dates because it displaced none.
 	 */
-	performResourceMove(item: BacklogItem, name: string | null, when?: ScheduleGesture): Promise<boolean>;
+	performResourceMove(item: BacklogItem, target: TFile | null, when?: ScheduleGesture): Promise<boolean>;
 
 	/**
 	 * Plan and apply the date batch a schedule move means — the ends the item's own

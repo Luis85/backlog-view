@@ -17,9 +17,20 @@ import { FakeVault } from './vault';
  * items for one declared resource (the second spelling her name in another casing), one
  * for a resource nobody declared, one nobody is on at all, and one assigned but never
  * dated.
+ *
+ * `Alice.md`, `Bob.md` and `Zoe.md` are `Resource` notes — a resource move writes a FILE
+ * now, so every row a write in this fixture aims at needs one behind it (`ResourceLane.file`,
+ * bridged in `deriveLanes` until Task 5). `Cased.md`'s `alice` stays a lowercase, unbracketed
+ * spelling that does NOT resolve to `Alice.md` (link resolution is case-sensitive here, as
+ * in a real vault): it still GROUPS into Alice's row, because that grouping is a string
+ * comparison (`assigneeName`) untouched by this task, but it is not the SAME note as far as
+ * a write's path comparison is concerned — see the tests that read it either way.
  */
 export function resourceVault(): FakeVault {
 	const vault = new FakeVault();
+	vault.addFile('Alice.md', { frontmatter: { type: 'Resource' } });
+	vault.addFile('Bob.md', { frontmatter: { type: 'Resource' } });
+	vault.addFile('Zoe.md', { frontmatter: { type: 'Resource' } });
 	vault.addFile('Alice dated.md', {
 		frontmatter: { type: 'Epic', order: 10, assignee: 'Alice', start: '2026-08-01', due: '2026-08-10' },
 	});

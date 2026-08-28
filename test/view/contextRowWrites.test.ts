@@ -4,6 +4,7 @@ import { ProductBacklogView } from '../../src/view/backlogView';
 import { FakeVault, FakeViewConfig } from '../helpers/vault';
 import { FuzzySuggestModal, Menu, Modal } from '../helpers/obsidian-mock';
 import { drag, clickExpandAll, flush, key, rowByTitle, rows, submitPrompt, treeOf, useViewHarness } from '../helpers/view';
+import { computeAssigneeWrites } from '../../src/domain/writePlan';
 
 /**
  * Clear every configured folder, so folder INFERENCE is what runs. Both layers have to
@@ -230,6 +231,10 @@ describe('write safety with context rows, across every entry point', () => {
 		vault.addFile('Sprint 12.md', {
 			frontmatter: { type: 'Iteration', order: 30, start: '2026-09-07', due: '2026-09-18' },
 		});
+		// A resource note for Set assignee's own pick path — the new one this task adds —
+		// so the stress sweep's generic menu drive has a real entry to click, beside the
+		// targeted refusal below.
+		vault.addFile('Robin.md', { frontmatter: { type: 'Resource' } });
 
 		const containerEl = document.body.createDiv();
 		const view = new ProductBacklogView({} as never, containerEl);
@@ -482,6 +487,23 @@ describe('write safety with context rows, across every entry point', () => {
 		// Not vacuous: the result rows really were written to along the way
 		expect(touched.length).toBeGreaterThan(0);
 	}, 20_000);
+
+	it('refuses an assignee pick that would name a context row', async () => {
+		// The editable gate withholds Set assignee from a context row's own menu
+		// entirely, so no UI reaches this — which is the point: the last line of defence
+		// is structural, exactly as `test/view/contextCardWrites.test.ts` drives for the
+		// resources axis's own `performResourceMove`. This is the tree's equivalent,
+		// off-axis, where a pick goes straight through `applySafely`.
+		const { view, vault } = stressView();
+		const mid = view.model?.byPath.get('Mid.md');
+		const robin = vault.files.get('Robin.md');
+		if (!mid || !robin) throw new Error('fixture missing');
+
+		const applied = await view.applySafely(computeAssigneeWrites(mid, robin));
+
+		expect(applied).toBeNull();
+		expect(vault.writeLog).toEqual([]);
+	});
 });
 
 describe('undo across the filter boundary', () => {

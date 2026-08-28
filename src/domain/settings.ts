@@ -461,13 +461,13 @@ export function horizonMenuValues(settings: BacklogSettings, observedHorizons: s
  * spelling of a name winning and matches made case-insensitively — `sameValue`'s rule
  * applied to a list rather than to a pair.
  *
- * Two menus ask it and they ask it of different sources, which is why it takes lists
- * rather than a settings object: the horizon's is declared then observed, the assignee's
- * is drawn then declared then observed. What they share is that a declared value is a
- * recommendation and an observed one is a fact, and neither may hide the other or turn up
- * twice in two casings.
+ * `horizonMenuValues` is its one caller now: the assignee's own union — drawn rows, the
+ * declared roster, observed assignees — was deleted on 2026-08-28 (Task 4), once a
+ * resource became a note rather than a name gathered off three sources. A declared value
+ * is a recommendation and an observed one is a fact, and neither may hide the other or
+ * turn up twice in two casings.
  */
-export function mergedValues(...lists: readonly string[][]): string[] {
+function mergedValues(...lists: readonly string[][]): string[] {
 	const seen = new Set<string>();
 	const merged: string[] = [];
 	for (const list of lists) {

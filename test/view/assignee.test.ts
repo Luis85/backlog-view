@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { FakeVault, FakeViewConfig } from '../helpers/vault';
 import { Menu, Modal } from '../helpers/obsidian-mock';
 import { ProductBacklogView } from '../../src/view/backlogView';
@@ -16,70 +16,68 @@ function assigneeMenu(containerEl: HTMLElement, title: string): Menu | null {
 	return Menu.lastShown?.item('Set assignee')?.submenu ?? null;
 }
 
-/** A backlog whose notes name people, which is where this menu's vocabulary comes from. */
+/**
+ * A backlog with a roster of `Resource` notes, which is where this menu's vocabulary comes
+ * from now — a note, never an observed string. Two items name Alex by two different
+ * spellings of the same link, which is the menu's own checkmark question.
+ */
 function assignedVault(): FakeVault {
 	const vault = new FakeVault();
+	vault.addFile('Alex.md', { frontmatter: { type: 'Resource' } });
+	vault.addFile('Sam.md', { frontmatter: { type: 'Resource' } });
 	vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10 } });
-	vault.addFile('Epic B.md', { frontmatter: { type: 'Epic', order: 20, assignee: 'Sam' } });
-	vault.addFile('Feature B1.md', { frontmatter: { type: 'Feature', order: 10, assignee: 'Alex' }, parentLink: 'Epic B' });
+	vault.addFile('Epic B.md', { frontmatter: { type: 'Epic', order: 20, assignee: '[[Sam]]' } });
+	vault.addFile('Feature B1.md', { frontmatter: { type: 'Feature', order: 10, assignee: '[[Alex]]' }, parentLink: 'Epic B' });
 	return vault;
 }
 
 describe('Set assignee', () => {
-	it('offers the names the results carry, alphabetically, and writes the one picked', async () => {
+	it('offers the resource notes the base returned, alphabetically, and writes the one picked', async () => {
 		const vault = assignedVault();
 		const { containerEl } = makeView(vault, configured);
 
 		const menu = assigneeMenu(containerEl, 'Epic A');
 		if (!menu) throw new Error('Set assignee missing');
-		// The observed vocabulary, then the way to add to it. Nothing is checked while
-		// the note names nobody: absence is a value, and checking a name would report an
-		// assignment nobody made.
-		expect(menu.items.map((i) => i.titleText)).toEqual(['Alex', 'Sam', 'New assignee...']);
+		// The roster is the notes, sorted, then the way to make a new one. Nothing is
+		// checked while the note names nobody: absence is a value, and checking a name
+		// would report an assignment nobody made.
+		expect(menu.items.map((i) => i.titleText)).toEqual(['Alex', 'Sam', 'New resource...']);
 		expect(menu.items.some((i) => i.checked)).toBe(false);
 
 		menu.item('Sam')?.click();
 		await flush();
 
-		expect(vault.fm('Epic A.md')['assignee']).toBe('Sam');
+		expect(vault.fm('Epic A.md')['assignee']).toBe('[[Sam]]');
 	});
 
-	it('checks the name the item holds, and re-picking it writes nothing', async () => {
-		const vault = new FakeVault();
-		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10, assignee: 'sam' } });
-		vault.addFile('Epic B.md', { frontmatter: { type: 'Epic', order: 20, assignee: 'Alex' } });
+	it('checks the note the item names, and a second spelling of it is not a second entry', async () => {
+		const vault = assignedVault();
+		vault.addFile('Epic C.md', { frontmatter: { type: 'Epic', order: 30, assignee: 'Alex' } });
 		const { containerEl } = makeView(vault, configured);
 
-		const menu = assigneeMenu(containerEl, 'Epic A');
-		// Case-insensitively: the note's own spelling is not a different person.
-		expect(menu?.item('sam')?.checked).toBe(true);
-		expect(menu?.item('Alex')?.checked).toBe(false);
+		// `[[Alex]]` and the bare `Alex` both resolve to the one note, compared by PATH —
+		// so the note's own spelling is not a different resource and there is one entry to
+		// check, not two.
+		const menu = assigneeMenu(containerEl, 'Epic C');
+		expect(menu?.items.map((i) => i.titleText)).toEqual(['Alex', 'Sam', 'New resource...', 'Clear assignee']);
+		expect(menu?.item('Alex')?.checked).toBe(true);
 
-		menu?.item('sam')?.click();
+		menu?.item('Alex')?.click();
 		await flush();
 
-		// Untouched, spelling included — a re-pick must not spend the one undo slot, and
-		// must not tidy a value the user wrote.
-		expect(vault.fm('Epic A.md')['assignee']).toBe('sam');
-	});
-
-	it('offers a name only this note carries, so the current one always renders checked', () => {
-		const vault = assignedVault();
-		vault.addFile('Epic C.md', { frontmatter: { type: 'Epic', order: 30, assignee: 'Robin' } });
-		const { containerEl } = makeView(vault, configured);
-
-		// Robin is observed BECAUSE Epic C is a result — the vocabulary is the base's,
-		// not the row's — so the interesting half is that the row's own value is in the
-		// list whether or not anything else names it.
-		expect(assigneeMenu(containerEl, 'Epic C')?.item('Robin')?.checked).toBe(true);
+		// Untouched — a re-pick must not spend the one undo slot.
+		expect(vault.fm('Epic C.md')['assignee']).toBe('Alex');
 	});
 
 	it('never offers a name only a context row carries', () => {
 		// The rule the whole vocabulary module states once: an excluded note's value is
 		// not this base's vocabulary. Offering it would make a name assignable to every
-		// result because an ancestor nobody can act on happened to use it.
+		// result because an ancestor nobody can act on happened to use it. A resource NOTE
+		// the base never returned is refused for the same reason — it is never in
+		// `model.resources` at all, so there is nothing here left to test beyond the
+		// ordinary case above: the roster IS the results.
 		const vault = assignedVault();
-		vault.addFile('Retired.md', { frontmatter: { type: 'Epic', order: 40, assignee: 'Ghost' } });
+		vault.addFile('Retired.md', { frontmatter: { type: 'Epic', order: 40, assignee: '[[Sam]]' } });
 		// A result hanging from it, or the excluded note is never loaded at all and this
 		// would assert nothing — the row has to be ON SCREEN for its value to be the
 		// thing being refused.
@@ -94,77 +92,89 @@ describe('Set assignee', () => {
 		clickExpandAll(containerEl);
 
 		expect(view.model?.byPath.get('Retired.md')?.outsideFilter).toBe(true);
-		expect(view.model?.observedAssignees).toEqual(['Alex', 'Sam']);
-		expect(assigneeMenu(containerEl, 'Epic A')?.items.map((i) => i.titleText)).not.toContain('Ghost');
+		// The roster is unaffected by the filter either way — it is the `Resource` notes
+		// the base returned, not a vocabulary gathered off any one row.
+		expect(assigneeMenu(containerEl, 'Epic A')?.items.map((i) => i.titleText)).toEqual(['Alex', 'Sam', 'New resource...']);
 	});
 
-	it('takes a name nobody carries yet, typed into the prompt', async () => {
+	it('has no entry checked, and offers no entry, for an item carrying a leftover plain string', () => {
+		// A name left over from before resources were notes, or a value that never
+		// resolves — a fact to render (the chip marks it broken) rather than an option to
+		// offer, since picking any entry here would not agree with what the note says.
 		const vault = assignedVault();
+		vault.addFile('Epic C.md', { frontmatter: { type: 'Epic', order: 30, assignee: 'Robin' } });
 		const { containerEl } = makeView(vault, configured);
 
-		assigneeMenu(containerEl, 'Epic A')?.item('New assignee...')?.click();
-		const modal = Modal.lastOpened;
-		if (!modal) throw new Error('assignee prompt not opened');
-		const input = modal.contentEl.querySelector('input');
-		if (!input) throw new Error('assignee prompt has no field');
+		const menu = assigneeMenu(containerEl, 'Epic C');
+		expect(menu?.items.map((i) => i.titleText)).toEqual(['Alex', 'Sam', 'New resource...', 'Clear assignee']);
+		expect(menu?.items.some((i) => i.checked)).toBe(false);
+	});
 
-		// Blank submits nothing: the prompt is the way to add a name, not a way to
-		// write one nobody typed.
-		submitButton(modal)?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+	it('holds the disabled reason and New resource..., and still Clear assignee, with no resource note in the base', async () => {
+		const vault = new FakeVault();
+		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('Epic B.md', { frontmatter: { type: 'Epic', order: 20, assignee: 'Robin' } });
+		const { containerEl } = makeView(vault, configured);
+
+		expect(assigneeMenu(containerEl, 'Epic A')?.items.map((i) => i.titleText)).toEqual([
+			'No resources in this base',
+			'New resource...',
+		]);
+		expect(assigneeMenu(containerEl, 'Epic A')?.item('No resources in this base')?.disabled).toBe(true);
+
+		// An empty roster is exactly when a leftover value most needs clearing — gated on
+		// presence independently of whether any resource is offered, or the note itself
+		// would be the only way out.
+		const withValue = assigneeMenu(containerEl, 'Epic B');
+		expect(withValue?.items.map((i) => i.titleText)).toEqual([
+			'No resources in this base',
+			'New resource...',
+			'Clear assignee',
+		]);
+		withValue?.item('Clear assignee')?.click();
 		await flush();
-		expect(vault.fm('Epic A.md')['assignee']).toBeUndefined();
+		expect('assignee' in vault.fm('Epic B.md')).toBe(false);
+	});
 
-		input.value = '  Robin  ';
+	it('New resource... creates the note and then writes the link', async () => {
+		const vault = new FakeVault();
+		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10 } });
+		const { containerEl } = makeView(vault, { ...configured, resourceFolder: '', homeFolder: '' });
+
+		assigneeMenu(containerEl, 'Epic A')?.item('New resource...')?.click();
+		const modal = Modal.lastOpened;
+		if (!modal) throw new Error('resource prompt not opened');
+		const input = modal.contentEl.querySelector('input');
+		if (!input) throw new Error('resource prompt has no field');
+
+		input.value = 'Robin';
 		input.dispatchEvent(new Event('input', { bubbles: true }));
 		submitButton(modal)?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 		await flush();
 
-		// Trimmed on the way in: the padding is not part of the name, and an untrimmed
-		// one would never match the same person picked from the list afterwards.
-		expect(vault.fm('Epic A.md')['assignee']).toBe('Robin');
+		expect(vault.files.has('Robin.md')).toBe(true);
+		expect(vault.fm('Epic A.md')['assignee']).toBe('[[Robin]]');
 	});
 
-	it('is offered with a key and nothing observed, which is why the chip needs no vocabulary', () => {
+	it('writes no link on a failed creation', async () => {
 		const vault = new FakeVault();
 		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10 } });
 		const { containerEl } = makeView(vault, configured);
+		vi.spyOn(vault.app.vault, 'create').mockRejectedValue(new Error('disk full'));
+		vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
-		// The whole reason this property is gated on the key alone: New assignee... is
-		// always there, so the menu can never open onto nothing the way a risk menu with
-		// its levels cleared would.
-		expect(assigneeMenu(containerEl, 'Epic A')?.items.map((i) => i.titleText)).toEqual(['New assignee...']);
-	});
+		assigneeMenu(containerEl, 'Epic A')?.item('New resource...')?.click();
+		const modal = Modal.lastOpened;
+		if (!modal) throw new Error('resource prompt not opened');
+		const input = modal.contentEl.querySelector('input');
+		if (!input) throw new Error('resource prompt has no field');
 
-	it('offers the declared roster wherever the menu opens, not only where its axis draws', () => {
-		// Reported from a vault: names typed into `Resources (in order)` showed up on the
-		// roadmap's resources axis and nowhere else, because they reached this menu only
-		// through the rows that axis DRAWS. A tree row's Set assignee offered the observed
-		// names alone, which reads as the setting not working.
-		const vault = assignedVault();
-		const { containerEl } = makeView(vault, { ...configured, resourceNames: 'Robin, Sam' });
+		input.value = 'Robin';
+		input.dispatchEvent(new Event('input', { bubbles: true }));
+		submitButton(modal)?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await flush();
 
-		// Declared first, then the observed names the roster does not already name — one
-		// spelling of each, and `Sam` is on both lists without appearing twice.
-		expect(assigneeMenu(containerEl, 'Epic A')?.items.map((i) => i.titleText)).toEqual([
-			'Robin',
-			'Sam',
-			'Alex',
-			'New assignee...',
-		]);
-	});
-
-	it('keeps the roster’s own spelling when a note spells the same name differently', () => {
-		const vault = new FakeVault();
-		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10, assignee: 'sam' } });
-		const { containerEl } = makeView(vault, { ...configured, resourceNames: 'Sam' });
-		const menu = assigneeMenu(containerEl, 'Epic A');
-
-		// One entry, in the casing the view options gave it — the roster is the statement
-		// this base makes about the name, and a second entry differing only in case would
-		// offer a write that changes nothing but the spelling. Checked, because
-		// `computeAssigneeWrites` compares case-insensitively and so plans nothing.
-		expect(menu?.items.map((i) => i.titleText)).toEqual(['Sam', 'New assignee...', 'Clear assignee']);
-		expect(menu?.items[0].checked).toBe(true);
+		expect('assignee' in vault.fm('Epic A.md')).toBe(false);
 	});
 
 	it('is absent when no assignee property is named', () => {
@@ -220,11 +230,11 @@ describe('the assignee chip', () => {
 		const { containerEl } = chipView(vault);
 
 		chip(containerEl, 'Epic A')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-		expect(Menu.lastShown?.items.map((i) => i.titleText)).toEqual(['Alex', 'Sam', 'New assignee...']);
+		expect(Menu.lastShown?.items.map((i) => i.titleText)).toEqual(['Alex', 'Sam', 'New resource...']);
 
 		Menu.lastShown?.item('Alex')?.click();
 		await flush();
-		expect(vault.fm('Epic A.md')['assignee']).toBe('Alex');
+		expect(vault.fm('Epic A.md')['assignee']).toBe('[[Alex]]');
 	});
 
 	it('renders a context row\'s name as a static chip, and offers nothing', () => {

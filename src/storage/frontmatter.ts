@@ -281,21 +281,24 @@ function applyHierarchy(app: App, fm: Record<string, unknown>, settings: Backlog
 }
 
 /**
- * The LINK properties: the iteration, the release. Each is one note written as a wikilink
- * spelt from the editing note's own path, an unconfigured key dropped, and null deleting
- * the key rather than blanking it.
+ * The LINK properties: the iteration, the release, the assignee. Each is one note written
+ * as a wikilink spelt from the editing note's own path, an unconfigured key dropped, and
+ * null deleting the key rather than blanking it.
  *
  * `applyLabels`' shape one field-kind over, and extracted for `applyLabels`' own reason:
  * these were two copies of one rule, so a third property wanting it is a row in this list
- * rather than a third restatement. The plain LABEL properties stay in `applyLabels`
- * because a label is a string the reader picked and a link is a note — `wikilinkTo` is
- * exactly the difference, and a helper general enough to cover both would carry the
- * link spelling past the properties that must not have it.
+ * rather than a third restatement — the assignee is exactly that third row, joining on
+ * 2026-08-28 once who an item is assigned to became a link to a `Resource` note rather
+ * than a typed string. The plain LABEL properties stay in `applyLabels` because a label is
+ * a string the reader picked and a link is a note — `wikilinkTo` is exactly the
+ * difference, and a helper general enough to cover both would carry the link spelling past
+ * the properties that must not have it.
  */
 function applyLinks(app: App, fm: Record<string, unknown>, settings: BacklogSettings, write: ItemWrite): void {
 	const links: [TFile | null | undefined, string][] = [
 		[write.iteration, settings.iterationKey],
 		[write.release, settings.releaseKey],
+		[write.assignee, settings.assigneeKey],
 	];
 	for (const [target, key] of links) {
 		if (target === undefined || !key) continue;
@@ -356,25 +359,25 @@ function applyAxis(fm: Record<string, unknown>, settings: BacklogSettings, write
 }
 
 /**
- * The plain LABEL properties — the risk level, who the item is assigned to, and what an
- * iteration is FOR — under this module's two standing rules: never a key no property
- * names, and a null REMOVES rather than blanks, because a note nobody has judged, a note
- * nobody is on and an iteration nobody has stated a goal for carry no such key at all.
+ * The plain LABEL properties — the risk level, the priority, and what an iteration is FOR
+ * — under this module's two standing rules: never a key no property names, and a null
+ * REMOVES rather than blanks, because a note nobody has judged and an iteration nobody
+ * has stated a goal for carry no such key at all.
  *
  * One loop rather than a statement per property, which is the trade-off the root
  * `CLAUDE.md` said to re-examine at the fourth optional property and this is it: a label
  * needs none of the axis's civil-date equality or datetime merge, so the second one that
  * wants exactly these two lines is where a shared statement starts costing less than
  * another copy of them. The state key still guards inline and the axis keys still go
- * through `axisEntries` — this covers what is genuinely the same, and a fifth label
- * property (the iteration's goal, here) is a row in the list rather than a fifth
- * restatement.
+ * through `axisEntries` — this covers what is genuinely the same. The assignee LEFT this
+ * list on 2026-08-28: it became a link to a `Resource` note rather than a typed string, so
+ * it moved to `applyLinks`, which spells a note as a wikilink the way the iteration and the
+ * release already do — a label is a string the reader picked, and a link is a note.
  */
 function applyLabels(fm: Record<string, unknown>, settings: BacklogSettings, write: ItemWrite): void {
 	const labels: [string | null | undefined, string][] = [
 		[write.risk, settings.riskKey],
 		[write.priority, settings.priorityKey],
-		[write.assignee, settings.assigneeKey],
 		[write.iterationGoal, settings.iterationGoalKey],
 	];
 	for (const [value, key] of labels) {

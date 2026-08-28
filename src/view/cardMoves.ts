@@ -1,4 +1,4 @@
-import { Notice } from 'obsidian';
+import { Notice, TFile } from 'obsidian';
 import { BacklogItem } from '../domain/model';
 import { placementEnds, PlacementEnd } from '../domain/itemTypes';
 import { Placement, placeItem, plannedEnds } from '../domain/bars';
@@ -179,7 +179,7 @@ export class CardMoveController {
 	 * says when. Both halves ride one `ItemWrite` (`computeResourceMoveWrites`), so a
 	 * two-dimensional drag is one batch, one undo and one sentence.
 	 */
-	async performResourceMove(item: BacklogItem, name: string | null, when?: ScheduleGesture): Promise<boolean> {
+	async performResourceMove(item: BacklogItem, target: TFile | null, when?: ScheduleGesture): Promise<boolean> {
 		// Both captures before the batch, for `applyCardMove`'s stated reason: the refresh
 		// that ends this write rebuilds `host.roadmap` before the await resolves, and the
 		// row just vacated may be gone with its last bar.
@@ -195,10 +195,14 @@ export class CardMoveController {
 		// rather than a closure over the item, so what is captured is a string that cannot
 		// go stale behind the write.
 		const stays =
-			name === null
+			target === null
 				? null
-				: shelvedWords(item, name, placeItem(item, plannedEnds(item, when?.plan ?? {}), this.host.settings.iterationBars));
-		const writes = computeResourceMoveWrites(item, name, when ?? null);
+				: shelvedWords(
+						item,
+						target.basename,
+						placeItem(item, plannedEnds(item, when?.plan ?? {}), this.host.settings.iterationBars),
+					);
+		const writes = computeResourceMoveWrites(item, target, when ?? null);
 		if (writes.length === 0) {
 			// 1a says nothing: a bar that stayed exactly where the cursor found it already
 			// answers the question. 1e does, because a shelved card that stays shelved does
@@ -222,14 +226,17 @@ export class CardMoveController {
 		// roster is written on the same authority as the move, and a refused batch — a
 		// context card, a config problem — must not leave a `.base` amendment behind the
 		// refusal (`test/view/resourceRoster.test.ts` is the test that fails the other way).
-		declareResource(this.host, name);
+		// `target?.basename` for now — Task 7 deletes this call along with the roster it
+		// still amends, since a resource is a note declaring itself rather than a name a
+		// move happens to have used.
+		declareResource(this.host, target?.basename ?? null);
 		const spoken = placementEnds(item.typeName, this.host.settings.iterationBars);
 		const landed = outcome.dates
 			? { change: outcome.dates, placement: placeItem(item, outcome.dates.after, this.host.settings.iterationBars), ends: spoken }
 			: undefined;
 		// Both halves in one sentence where both moved; the dated axis's own sentence where
 		// only the dates did, since there is no row change to frame it with.
-		if (movedRow) announceResourceMove(lanes, item.title, from, name, landed);
+		if (movedRow) announceResourceMove(lanes, item.title, from, target, landed);
 		else if (landed) announceScheduleMove(item.title, landed.change, landed.placement, spoken);
 		if (stays) new Notice(stays);
 		return true;

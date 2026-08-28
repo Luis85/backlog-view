@@ -360,73 +360,90 @@ describe('computePriorityWrites', () => {
 	});
 });
 
-describe('computeAssigneeWrites', () => {
-	const assigned = { ...settings, assigneeKey: 'assignee' };
-
-	/** One note with whatever assignee frontmatter the case needs. */
-	function item(frontmatter: Record<string, unknown>): BacklogItem {
+/**
+ * The write plans for the assignee — a LINK to a `Resource` note, and the one field this
+ * feature owns two planners for: a plain pick (`computeAssigneeWrites`) and a resources-axis
+ * move that may carry a date gesture beside it (`computeResourceMoveWrites`).
+ */
+describe('what an assignee pick writes', () => {
+	/** An item, the resource it names, and a second resource to move it to. */
+	function assigned(value: string | null) {
 		const vault = new FakeVault();
-		vault.addFile('Item.md', { frontmatter: { type: 'PBI', order: 10, ...frontmatter } });
-		const model = buildModel(vault.app, vault.entries(), assigned);
-		const found = model.items[0];
-		if (!found) throw new Error('fixture item missing');
-		return found;
+		const alex = vault.addFile('Alex.md', { frontmatter: { type: 'Resource' } });
+		const sam = vault.addFile('Sam.md', { frontmatter: { type: 'Resource' } });
+		vault.addFile('Item.md', {
+			frontmatter: { type: 'PBI', order: 10, ...(value !== null ? { assignee: value } : {}) },
+		});
+		const settings = settingsWith({ assigneeKey: 'assignee', hierarchyOnly: false });
+		const item = buildModel(vault.app, vault.entries(), settings).results[0];
+		return { item, alex, sam };
 	}
 
-	it('writes the name picked, byte for byte', () => {
-		expect(computeAssigneeWrites(item({}), 'Dana')).toEqual([
-			{ file: expect.objectContaining({ path: 'Item.md' }), assignee: 'Dana' },
+	it('plans the file, never a name', () => {
+		const { item, alex } = assigned(null);
+		expect(computeAssigneeWrites(item, alex)).toEqual([{ file: item.file, assignee: alex }]);
+	});
+
+	it('plans nothing when the item already names that note, compared by path', () => {
+		// Two spellings of one note are one resource. This is also the menu's checkmark: an
+		// entry is checked exactly when picking it would write nothing.
+		const { item, alex } = assigned('[[Alex]]');
+		expect(computeAssigneeWrites(item, alex)).toEqual([]);
+	});
+
+	it('plans a move to another resource', () => {
+		const { item, sam } = assigned('[[Alex]]');
+		expect(computeAssigneeWrites(item, sam)).toEqual([{ file: item.file, assignee: sam }]);
+	});
+
+	it('never treats an unresolved value as already there', () => {
+		// A link that resolved to nothing has no path, so it matches no target — the leftover
+		// string case, which must stay pickable rather than reading as current.
+		const { item, alex } = assigned('Sarah');
+		expect(computeAssigneeWrites(item, alex)).toEqual([{ file: item.file, assignee: alex }]);
+	});
+
+	it('plans a removal only where the key is present', () => {
+		expect(computeAssigneeWrites(assigned('[[Alex]]').item, null)).toEqual([
+			{ file: assigned('[[Alex]]').item.file, assignee: null },
 		]);
+		expect(computeAssigneeWrites(assigned(null).item, null)).toEqual([]);
 	});
+});
 
-	it('plans nothing for a re-pick of the name the item holds, whatever its case', () => {
-		// The risk plan's rule over the observed vocabulary: a note spelling a name its
-		// own way is not a different person, and the menu's checkmark asks this same
-		// function rather than a comparison written beside it.
-		expect(computeAssigneeWrites(item({ assignee: 'dana' }), 'Dana')).toEqual([]);
-	});
-
-	it('removes the key only where there is one to remove', () => {
-		// Presence, not value: the empty key the backfill leaves is a real thing to clear.
-		expect(computeAssigneeWrites(item({ assignee: '' }), null)).toEqual([
-			{ file: expect.objectContaining({ path: 'Item.md' }), assignee: null },
-		]);
-		expect(computeAssigneeWrites(item({}), null)).toEqual([]);
-	});
-
-	it('plans nothing at all when no assignee property is configured', () => {
+describe('computeResourceMoveWrites with a date gesture beside it', () => {
+	/** An item already assigned to Ali, plus a second resource (Dana) to move it to. */
+	function assigned() {
 		const vault = new FakeVault();
-		vault.addFile('Item.md', { frontmatter: { type: 'PBI', order: 10, assignee: 'Dana' } });
-		const model = buildModel(vault.app, vault.entries(), settings);
-		const unconfigured = model.items[0];
-		if (!unconfigured) throw new Error('fixture item missing');
+		const ali = vault.addFile('Ali.md', { frontmatter: { type: 'Resource' } });
+		const dana = vault.addFile('Dana.md', { frontmatter: { type: 'Resource' } });
+		vault.addFile('Item.md', { frontmatter: { type: 'PBI', order: 10, assignee: '[[Ali]]' } });
+		const settings = settingsWith({ assigneeKey: 'assignee', hierarchyOnly: false });
+		const item = buildModel(vault.app, vault.entries(), settings).results[0];
+		return { item, ali, dana };
+	}
 
-		expect(computeAssigneeWrites(unconfigured, null)).toEqual([]);
-		expect(computeAssigneeWrites(unconfigured, 'Dana')).toHaveLength(1);
+	const schedule = { plan: { start: '2026-08-08', target: '2026-08-17' }, ends: ['start', 'target'] as const };
+
+	it('puts both halves on ONE write, so the pair is one thing to take back', () => {
+		const { item, dana } = assigned();
+		const writes = computeResourceMoveWrites(item, dana, { ...schedule, ends: [...schedule.ends] });
+
+		// Two records naming this file would capture two inverses, and an undo could then
+		// return the row and keep the dates — a state the one gesture cannot describe.
+		expect(writes).toHaveLength(1);
+		expect(writes[0].assignee).toBe(dana);
+		expect(writes[0].axis).toMatchObject({ start: '2026-08-08', target: '2026-08-17' });
 	});
 
-	describe('with a date gesture beside it', () => {
-		const schedule = { plan: { start: '2026-08-08', target: '2026-08-17' }, ends: ['start', 'target'] as const };
+	it('carries whichever half actually changed, and nothing when neither did', () => {
+		const { item, ali, dana } = assigned();
 
-		it('puts both halves on ONE write, so the pair is one thing to take back', () => {
-			const writes = computeResourceMoveWrites(item({ assignee: 'Ali' }), 'Dana', { ...schedule, ends: [...schedule.ends] });
-
-			// Two records naming this file would capture two inverses, and an undo could then
-			// return the row and keep the dates — a state the one gesture cannot describe.
-			expect(writes).toHaveLength(1);
-			expect(writes[0].assignee).toBe('Dana');
-			expect(writes[0].axis).toMatchObject({ start: '2026-08-08', target: '2026-08-17' });
-		});
-
-		it('carries whichever half actually changed, and nothing when neither did', () => {
-			const one = item({ assignee: 'Ali' });
-
-			// A slide inside one row: the name is a re-pick, so no assignee is named at all.
-			expect(computeResourceMoveWrites(one, 'ali', { ...schedule, ends: [...schedule.ends] })[0]?.assignee).toBeUndefined();
-			// A vertical drag: no gesture, so no axis write.
-			expect(computeResourceMoveWrites(one, 'Dana', null)[0]?.axis).toBeUndefined();
-			// Neither: an empty batch, which is what keeps the undo slot for the move before.
-			expect(computeResourceMoveWrites(one, 'ali', null)).toEqual([]);
-		});
+		// A slide inside one row: the target is a re-pick, so no assignee is named at all.
+		expect(computeResourceMoveWrites(item, ali, { ...schedule, ends: [...schedule.ends] })[0]?.assignee).toBeUndefined();
+		// A vertical drag: no gesture, so no axis write.
+		expect(computeResourceMoveWrites(item, dana, null)[0]?.axis).toBeUndefined();
+		// Neither: an empty batch, which is what keeps the undo slot for the move before.
+		expect(computeResourceMoveWrites(item, ali, null)).toEqual([]);
 	});
 });

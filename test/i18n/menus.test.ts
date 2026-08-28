@@ -49,12 +49,25 @@ useViewHarness();
 const OWN = Object.keys(en).filter((key): key is MessageKey => key.startsWith('menu.'));
 
 /**
- * The four keys this slice READS without owning. Each is a second surface over an act
+ * The keys this slice READS without owning. Each is a second surface over an act
  * whose first surface already had a key, and taking the existing one rather than minting a
  * twin is the codebase's own rule about two surfaces over one action — they must not be
- * able to disagree. Named explicitly because a prefix filter cannot find them.
+ * able to disagree. Named explicitly because a prefix filter cannot find them. The four
+ * `resource.*` entries are `interactions/resourceNotes.ts`'s own — Set assignee's own
+ * **New resource...** is a second door onto the one prompt the toolbar's button already
+ * opened, so its option bag is driven here too rather than left the one prompt surface
+ * this file's header promises and does not reach.
  */
-const REUSED = ['fold.expandColumn', 'fold.collapseColumn', 'shelf.search', 'shelf.clearSearch'] as const;
+const REUSED = [
+	'fold.expandColumn',
+	'fold.collapseColumn',
+	'shelf.search',
+	'shelf.clearSearch',
+	'resource.createHeading',
+	'resource.nameField',
+	'resource.namePlaceholder',
+	'resource.createCta',
+] as const;
 
 const SWEPT: MessageKey[] = [...OWN, ...REUSED];
 
@@ -165,6 +178,7 @@ const VISIBLE = { order: ['note.status', 'note.tags'] };
 /** A backlog carrying one of everything the menus list, so the data half is non-empty. */
 function fullVault(): FakeVault {
 	const vault = new FakeVault();
+	vault.addFile('Sam.md', { frontmatter: { type: 'Resource' } });
 	vault.addFile('Sprint 12.md', { frontmatter: { type: 'Iteration' } });
 	vault.addFile('1.0.md', { frontmatter: { type: 'Release' } });
 	vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10 } });
@@ -304,23 +318,23 @@ describe('the submenus and the dialogs they open', () => {
 		expect(titles).toContain(marked('menu.clearPriority'));
 		expect(titles).toContain(marked('menu.clearAssignee'));
 		expect(titles).toContain(marked('menu.clearIteration'));
-		expect(titles).toContain(marked('menu.newAssignee'));
+		expect(titles).toContain(marked('menu.newResource'));
 		expect(titles).toContain(marked('menu.newTag'));
 	});
 
-	it('draws the assignee prompt from it — title, field, placeholder and button', () => {
+	it('draws the resource prompt from it — title, field, placeholder and button', () => {
 		const { containerEl } = makeView(fullVault(), CONFIGURED, VISIBLE);
 		const menu = openRowMenu(containerEl, 'Feature B1');
-		entry(entry(menu, marked('menu.setAssignee')).submenu!, marked('menu.newAssignee')).click();
+		entry(entry(menu, marked('menu.setAssignee')).submenu!, marked('menu.newResource')).click();
 
 		const modal = Modal.lastOpened;
-		if (!modal) throw new Error('the assignee prompt did not open');
+		if (!modal) throw new Error('the resource prompt did not open');
 		const strings = modalStrings(modal);
 		// The option bag neither lint rule in this directory can see.
-		expect(strings).toContain(marked('menu.assignTitle'));
-		expect(strings).toContain(marked('menu.assignField'));
-		expect(strings).toContain(marked('menu.assignPlaceholder'));
-		expect(strings).toContain(marked('menu.assignCta'));
+		expect(strings).toContain(marked('resource.createHeading'));
+		expect(strings).toContain(marked('resource.nameField'));
+		expect(strings).toContain(marked('resource.namePlaceholder'));
+		expect(strings).toContain(marked('resource.createCta'));
 	});
 
 	it('draws the new-tag prompt from it, and says so when the tag is refused', async () => {

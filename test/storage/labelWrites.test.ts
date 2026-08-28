@@ -1,8 +1,10 @@
 // The label properties at the write boundary, in a file of their own: `risk`, `priority`
-// and `assignee` share one writer (`applyLabels`), so the tests that hold it to the two
-// standing rules — never a key no property names, a null removes rather than blanks —
-// belong beside each other rather than at the end of the file the rest of the boundary
-// lives in, which had reached its own line budget saying so.
+// and the iteration goal share one writer (`applyLabels`), so the tests that hold it to
+// the two standing rules — never a key no property names, a null removes rather than
+// blanks — belong beside each other rather than at the end of the file the rest of the
+// boundary lives in, which had reached its own line budget saying so. The assignee LEFT
+// this writer on 2026-08-28 — it is a link to a `Resource` note now, not a typed string —
+// and joined `applyLinks`, tested below beside the iteration and the release.
 import { describe, expect, it } from 'vitest';
 import { FakeVault } from '../helpers/vault';
 import { applyRestores, applyWrites, RestoreWrite } from '../../src/storage/frontmatter';
@@ -46,67 +48,6 @@ describe('writing the risk level', () => {
 
 		await applyRestores(vault.app, inverses);
 		expect(vault.fm('Item.md')).toEqual({ type: 'PBI', risk: '3 - Low' });
-	});
-});
-
-describe('writing the assignee', () => {
-	const assigned = { ...settings, assigneeKey: 'assignee' };
-
-	it('sets a name, and a null removes the key rather than blanking it', async () => {
-		const vault = new FakeVault();
-		const file = vault.addFile('Item.md', { frontmatter: { type: 'PBI' } });
-
-		await applyWrites(vault.app, assigned, [{ file, assignee: 'Dana' }]);
-		expect(vault.fm('Item.md')).toEqual({ type: 'PBI', assignee: 'Dana' });
-
-		await applyWrites(vault.app, assigned, [{ file, assignee: null }]);
-		// Absence is the value that means nobody is on this, so the key goes.
-		expect(vault.fm('Item.md')).toEqual({ type: 'PBI' });
-	});
-
-	it('writes nothing when no assignee property is configured', async () => {
-		const vault = new FakeVault();
-		const file = vault.addFile('Item.md', { frontmatter: { type: 'PBI' } });
-
-		// The rule at the boundary, asked of the second label property: the shared
-		// writer must not invent a key for a field no property names, whatever reached
-		// this module carrying one.
-		await applyWrites(vault.app, settings, [{ file, assignee: 'Dana' }]);
-
-		expect(vault.fm('Item.md')).toEqual({ type: 'PBI' });
-	});
-
-	it('writes only the label it was given, whichever of the three that is', async () => {
-		// The label properties share one writer, so each row of its list pairs a planned
-		// value with a configured key — and this is the only test that fails if any two are
-		// paired wrongly while all three are configured at once. Watched failing against a
-		// swapped pairing, which it catches in every direction.
-		const all = { ...settings, riskKey: 'risk', priorityKey: 'priority', assigneeKey: 'assignee' };
-		const vault = new FakeVault();
-		const file = vault.addFile('Item.md', {
-			frontmatter: { type: 'PBI', risk: '3 - Low', priority: '1 - Must', assignee: 'Dana' },
-		});
-
-		await applyWrites(vault.app, all, [{ file, assignee: 'Sam' }]);
-		expect(vault.fm('Item.md')).toEqual({ type: 'PBI', risk: '3 - Low', priority: '1 - Must', assignee: 'Sam' });
-
-		await applyWrites(vault.app, all, [{ file, priority: '3 - Could' }]);
-		expect(vault.fm('Item.md')).toEqual({ type: 'PBI', risk: '3 - Low', priority: '3 - Could', assignee: 'Sam' });
-
-		await applyWrites(vault.app, all, [{ file, risk: null }]);
-		expect(vault.fm('Item.md')).toEqual({ type: 'PBI', priority: '3 - Could', assignee: 'Sam' });
-	});
-
-	it('captures an inverse, so a name is undoable and a removal restorable', async () => {
-		const vault = new FakeVault();
-		const file = vault.addFile('Item.md', { frontmatter: { type: 'PBI', assignee: 'Dana' } });
-		const inverses: RestoreWrite[] = [];
-
-		await applyWrites(vault.app, assigned, [{ file, assignee: null }], undefined, (inv) => inverses.push(inv));
-		expect(vault.fm('Item.md')).toEqual({ type: 'PBI' });
-
-		await applyRestores(vault.app, inverses);
-		expect(vault.fm('Item.md')).toEqual({ type: 'PBI', assignee: 'Dana' });
 	});
 });
 
@@ -186,6 +127,27 @@ describe('writing the iteration goal', () => {
 	});
 });
 
+it('writes only the label it was given, whichever of the three that is', async () => {
+	// The label properties share one writer, so each row of its list pairs a planned
+	// value with a configured key — and this is the only test that fails if any two are
+	// paired wrongly while all three are configured at once. Watched failing against a
+	// swapped pairing, which it catches in every direction.
+	const all = { ...settings, riskKey: 'risk', priorityKey: 'priority', iterationGoalKey: 'goal' };
+	const vault = new FakeVault();
+	const file = vault.addFile('Item.md', {
+		frontmatter: { type: 'PBI', risk: '3 - Low', priority: '1 - Must', goal: 'Ship the board' },
+	});
+
+	await applyWrites(vault.app, all, [{ file, iterationGoal: 'Ship v2' }]);
+	expect(vault.fm('Item.md')).toEqual({ type: 'PBI', risk: '3 - Low', priority: '1 - Must', goal: 'Ship v2' });
+
+	await applyWrites(vault.app, all, [{ file, priority: '3 - Could' }]);
+	expect(vault.fm('Item.md')).toEqual({ type: 'PBI', risk: '3 - Low', priority: '3 - Could', goal: 'Ship v2' });
+
+	await applyWrites(vault.app, all, [{ file, risk: null }]);
+	expect(vault.fm('Item.md')).toEqual({ type: 'PBI', priority: '3 - Could', goal: 'Ship v2' });
+});
+
 describe('writing the link properties', () => {
 	// One rule read twice, which is what makes the loop worth having: `applyIteration` and
 	// `applyRelease` were two spellings of it.
@@ -203,5 +165,50 @@ describe('writing the link properties', () => {
 
 		await applyWrites(vault.app, linked, [{ file, iteration: null }]);
 		expect(vault.fm('Item.md')).toEqual({ type: 'PBI' });
+	});
+});
+
+describe('writing the assignee', () => {
+	// The link key's own shape, joined 2026-08-28: who an item is assigned to is a
+	// `Resource` note now, spelled as a wikilink exactly as the iteration and the release
+	// are, and it shares the same two standing rules.
+	const assigned = { ...settings, assigneeKey: 'assignee' };
+
+	it('spells a wikilink, and a null removes the key rather than blanking it', async () => {
+		const vault = new FakeVault();
+		const file = vault.addFile('Item.md', { frontmatter: { type: 'PBI' } });
+		const dana = vault.addFile('Dana.md', { frontmatter: { type: 'Resource' } });
+
+		await applyWrites(vault.app, assigned, [{ file, assignee: dana }]);
+		expect(vault.fm('Item.md')).toEqual({ type: 'PBI', assignee: '[[Dana]]' });
+
+		await applyWrites(vault.app, assigned, [{ file, assignee: null }]);
+		// Absence is the value that means nobody is on this, so the key goes.
+		expect(vault.fm('Item.md')).toEqual({ type: 'PBI' });
+	});
+
+	it('writes nothing when no assignee property is configured', async () => {
+		const vault = new FakeVault();
+		const file = vault.addFile('Item.md', { frontmatter: { type: 'PBI' } });
+		const dana = vault.addFile('Dana.md', { frontmatter: { type: 'Resource' } });
+
+		// The rule at the boundary, not at the caller: a plan naming a field no property
+		// names must not invent a key, whatever reached this module carrying one.
+		await applyWrites(vault.app, settings, [{ file, assignee: dana }]);
+
+		expect(vault.fm('Item.md')).toEqual({ type: 'PBI' });
+	});
+
+	it('captures an inverse, so a link is undoable and a removal restorable', async () => {
+		const vault = new FakeVault();
+		vault.addFile('Dana.md', { frontmatter: { type: 'Resource' } });
+		const file = vault.addFile('Item.md', { frontmatter: { type: 'PBI', assignee: '[[Dana]]' } });
+		const inverses: RestoreWrite[] = [];
+
+		await applyWrites(vault.app, assigned, [{ file, assignee: null }], undefined, (inv) => inverses.push(inv));
+		expect(vault.fm('Item.md')).toEqual({ type: 'PBI' });
+
+		await applyRestores(vault.app, inverses);
+		expect(vault.fm('Item.md')).toEqual({ type: 'PBI', assignee: '[[Dana]]' });
 	});
 });

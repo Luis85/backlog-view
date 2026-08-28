@@ -122,6 +122,7 @@ describe('an absence on the resources axis', () => {
 		// band, so dragover and drop bubble to the header. That is the whole mechanism, and
 		// its absence is `docs/bugs/An absence stretch is a dead spot in its own band.md`.
 		const vault = absenceVault();
+		vault.addFile('Bob.md', { frontmatter: { type: 'Resource' } });
 		vault.addFile('Bob away.md', {
 			frontmatter: { type: 'Absence', assignee: 'Bob', start: '2026-08-04', due: '2026-08-06' },
 		});
@@ -132,7 +133,7 @@ describe('an absence on the resources axis', () => {
 		cardDrag(barFor(containerEl, 'Work'), mark);
 		await flush();
 
-		expect(vault.fm('Work.md')['assignee']).toBe('Bob');
+		expect(vault.fm('Work.md')['assignee']).toBe('[[Bob]]');
 	});
 
 	it('grows the window to hold itself, in a row nothing else draws in', () => {

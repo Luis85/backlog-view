@@ -45,7 +45,7 @@ describe('scheduling inside a resource’s row', () => {
 		gridDrag(barFor(containerEl, 'Alice dated'), laneHead(containerEl, 'Bob'), { from: at(0), clientX: at(7 * DAY_PX) });
 		await flush();
 
-		expect(vault.fm('Alice dated.md')['assignee']).toBe('Bob');
+		expect(vault.fm('Alice dated.md')['assignee']).toBe('[[Bob]]');
 		expect(vault.fm('Alice dated.md')['start']).toBe('2026-08-08');
 		expect(vault.fm('Alice dated.md')['due']).toBe('2026-08-17');
 		// ONE write, because it is one thing to take back: two records naming this file
@@ -86,7 +86,7 @@ describe('scheduling inside a resource’s row', () => {
 		gridDrag(barFor(containerEl, 'Alice dated'), laneHead(containerEl, 'Bob'), { from: at(40), clientX: at(40) });
 		await flush();
 
-		expect(vault.fm('Alice dated.md')['assignee']).toBe('Bob');
+		expect(vault.fm('Alice dated.md')['assignee']).toBe('[[Bob]]');
 		expect(vault.fm('Alice dated.md')['start']).toBe('2026-08-01');
 		expect(vault.fm('Alice dated.md')['due']).toBe('2026-08-10');
 	});
@@ -149,7 +149,7 @@ describe('scheduling inside a resource’s row', () => {
 		gridDrag(cardByTitle(containerEl, 'Nobody'), laneHead(containerEl, 'Bob'), { clientX: at(7 * DAY_PX) });
 		await flush();
 
-		expect(vault.fm('Nobody.md')['assignee']).toBe('Bob');
+		expect(vault.fm('Nobody.md')['assignee']).toBe('[[Bob]]');
 		expect(vault.fm('Nobody.md')['start']).toBe('2026-07-08');
 		expect(vault.writeLog).toHaveLength(1);
 	});
@@ -166,7 +166,7 @@ describe('scheduling inside a resource’s row', () => {
 		gridDrag(barFor(containerEl, 'Alice dated'), laneHead(containerEl, 'Bob'), { from: at(0), clientX: at(-100) });
 		await flush();
 
-		expect(vault.fm('Alice dated.md')['assignee']).toBe('Bob');
+		expect(vault.fm('Alice dated.md')['assignee']).toBe('[[Bob]]');
 		expect(vault.fm('Alice dated.md')['start']).toBe('2026-08-01');
 		expect(vault.fm('Alice dated.md')['due']).toBe('2026-08-10');
 	});
