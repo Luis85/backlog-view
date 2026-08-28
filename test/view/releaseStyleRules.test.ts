@@ -3,9 +3,12 @@ import { describe, expect, it } from 'vitest';
 import { assembleStyles } from '../../scripts/styles-assemble.mjs';
 
 /**
- * `styles/release.css` as SHIPPED. The shape is `estimation/styleRules.test.ts`'s, for its
- * reason: one surface's partial, asked the questions a browser is not here to answer, kept
- * out of `rendering.test.ts` so that suite does not grow past its budget.
+ * `assembleStyles()` — the whole SHIPPED sheet, not `styles/release.css` alone — as
+ * `styles.css` ships it. The shape is `estimation/styleRules.test.ts`'s, for its reason:
+ * one surface's rules, asked the questions a browser is not here to answer, kept out of
+ * `rendering.test.ts` so that suite does not grow past its budget. Reading the whole
+ * assembled sheet rather than one partial is what makes a rule MOVING to
+ * `styles/releaseScope.css` (or anywhere else `index.css` imports) still assertable here.
  *
  * It exists because the partial was rewritten wholesale on 2026-08-23 — the shared grid
  * dropped, every row given its own box — and NOTHING in this repository could see any of

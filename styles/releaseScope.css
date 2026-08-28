@@ -16,9 +16,15 @@
    Obsidian's own DEFAULT colours; a themed vault's colours and accent are still owed a
    live-vault check.
 
-   Position in `styles/index.css`'s import list is NOT load-bearing, for the same reason
-   `release.css`'s own header gives: every selector here is `.pbl-rel-*`, a vocabulary no
-   other partial declares, and nothing here re-targets a class another file also writes.
+   Position in `styles/index.css`'s import list is NOT load-bearing — but not for the
+   vocabulary reason `release.css`'s own header gives. This partial DOES re-target a class
+   another file writes: `.pbl-row`/`.pbl-row:hover` (`tree.css`'s own) and
+   `.pbl-empty-filter-icon` (`toolbar.css`'s own), and `button.pbl-twisty` is not
+   `.pbl-rel-*` either. What actually settles it is SPECIFICITY — every rule here that
+   re-targets one of those classes is a compound selector that outranks the single-class
+   rule it re-targets, whatever order the two partials import in. `index.css`'s own
+   import-list comment gives the arithmetic for each site; read it there rather than a
+   second time here.
    ========================================================================== */
 
 /* The header now stacks two lines: the release's identity (with its facts), then one

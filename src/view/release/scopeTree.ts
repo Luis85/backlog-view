@@ -145,6 +145,13 @@ export function toggleFold(view: ReleaseView, releasePath: string, path: string)
  * on this release or another — can no longer buy, so folding a row eventually stops
  * working with no error, the redraw simply leaving it open. Expanding needs no such
  * filter: it already writes the empty set.
+ *
+ * **`rows` here is the caller's FULL `scope.rows`, not the hide-done-filtered rows
+ * `drawScopeTree` computes its own `withKids` over** — `scopeToolbar.ts`'s own caller
+ * draws before the tree does — so with hide-done ON this can write a key for a row that
+ * `drawScopeTree` currently draws as a leaf; accepted rather than threaded through, since
+ * the key reads correctly again the moment hide-done goes off and nothing draws a
+ * chevron over an empty subtree meanwhile.
  */
 export function setAllFolds(view: ReleaseView, releasePath: string, rows: ScopeRow[], folded: boolean): void {
 	if (!folded) {

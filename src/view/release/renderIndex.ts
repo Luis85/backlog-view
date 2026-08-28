@@ -236,9 +236,10 @@ function progressPhrase(row: ReleaseRow): string | null {
 /** Either half of line 2's left side, spoken — never both, so a caller asking for one
  *  question gets one answer.
  *
- *  A third case joins the two below `speaks the gap` in `drawProgressLine`'s own comment:
- *  members counted, but nothing readable for them. `null` means "no member figure at
- *  all", never "silent about why". */
+ *  A third case joins the two `drawProgressLine` already draws for (no members, and a
+ *  computable progress phrase): members counted, but nothing readable for them — the
+ *  same case that function's own comment calls "the one case left". `null` means "no
+ *  member figure at all", never "silent about why". */
 function speakProgress(row: ReleaseRow): string | null {
 	const spoken = noMembersText(row) ?? progressPhrase(row);
 	if (spoken !== null) return spoken;

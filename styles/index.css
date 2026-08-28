@@ -140,10 +140,13 @@
 @import "./release.css";
 /* Position NOT load-bearing, but not because nothing here overlaps `release.css`.
    `.pbl-row`/`.pbl-row:hover` (owned by `tree.css`) and `.pbl-empty-filter-icon` (owned
-   by `toolbar.css`) ARE re-targeted here, and what decides those sites is SPECIFICITY,
-   stated at each rule in this file: (0,3,0) against `tree.css`'s (0,2,0), and (0,2,0)
-   against `toolbar.css`'s (0,1,0). Both win on specificity alone, so this partial's own
-   import position is not what makes either rule apply. `.pbl-rel-bar` and
+   by `toolbar.css`) ARE re-targeted here, and what decides those three sites is
+   SPECIFICITY, stated at each rule in this file: `.pbl-rel-view .pbl-row` is (0,2,0)
+   against `tree.css`'s bare `.pbl-row` at (0,1,0); `.pbl-rel-view .pbl-row:hover` is
+   (0,3,0) against `tree.css`'s `.pbl-row:hover` at (0,2,0); and
+   `.pbl-rel-alldone-icon.pbl-empty-filter-icon` is (0,2,0) against `toolbar.css`'s
+   `.pbl-empty-filter-icon` at (0,1,0). All three win on specificity alone, so this
+   partial's own import position is not what makes any of them apply. `.pbl-rel-bar` and
    `.pbl-rel-spacer`, `release.css`'s own vocabulary, are the ones this file only ever
    USES rather than redeclares. */
 @import "./releaseScope.css";

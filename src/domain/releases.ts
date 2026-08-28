@@ -288,9 +288,14 @@ function missingWorkflows(
 /**
  * `done`'s own readiness — pulled out of the row builder purely to keep that arrow
  * function's complexity under lint's cap, not because the question is asked anywhere
- * else. Mirrors `missingWorkflows`'s own fallback exactly: no workflow counted yet asks
- * nothing of `gap` and falls back to `stateConfigured` alone; everywhere else, configured
- * means no gap.
+ * else. Mirrors `missingWorkflows`'s own fallback: no workflow counted yet falls back to
+ * `stateConfigured` alone; everywhere else, configured means no gap.
+ *
+ * **`kinds.size === 0` never actually fires.** The only way `kinds` is non-`undefined`
+ * here is a prior `.add()` in the builder's own walk (see `workflowsByRelease`), so a
+ * `Set` that exists already holds at least one kind — `kinds === undefined` alone carries
+ * the whole "nothing counted yet" case, and the size check beside it is defensive rather
+ * than a second live branch.
  */
 function progressReady(kinds: Set<WorkflowKind> | undefined, gap: WorkflowKind[], stateConfigured: boolean): boolean {
 	return kinds === undefined || kinds.size === 0 ? stateConfigured : gap.length === 0;

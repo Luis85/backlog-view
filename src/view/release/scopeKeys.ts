@@ -19,13 +19,14 @@ import { ScopeDraw, toggleFold } from './scopeTree';
  * bans exactly that scan, on the tree's own stated cost reason — a row is reached by
  * lookup, and `show()` below runs on every arrow key, not once per render.
  *
- * `releasePath` is `release.path` from the ONE caller, `drawScopeTree` — a plain
+ * `releasePath` is `release.path` from the ONE caller, `renderScope.ts` — a plain
  * argument rather than read back off `view.pickedPath` in here, which would need a
- * runtime null guard for a case the caller already rules out: `drawScopeTree` only runs
- * once a release is open. `rows` and `rowEls` carry the identical guarantee — this
- * module has one call site, and `show()` below trusts what it draws from rather than
- * re-checking it, the same "look for the dead branch before writing the test" the
- * coverage config states for exactly this shape of guard. `ScopeDraw` itself is defined
+ * runtime null guard for a case the caller already rules out: `renderScope` reaches this
+ * call only once a release is open, the same guarantee `drawScopeTree` already ran on
+ * moments earlier in that same sequence. `rows` and `rowEls` carry the identical
+ * guarantee — this module has one call site, and `show()` below trusts what it draws
+ * from rather than re-checking it, the same "look for the dead branch before writing the
+ * test" the coverage config states for exactly this shape of guard. `ScopeDraw` itself is defined
  * in `scopeTree.ts`, not here — that module has no reason to import this one back, which
  * is what keeps the pair a DAG (`renderScope.ts` calls `drawScopeTree` and this function
  * in sequence) rather than the cycle `npm run analyze` refuses.
