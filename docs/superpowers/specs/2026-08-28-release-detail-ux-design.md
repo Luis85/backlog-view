@@ -175,7 +175,7 @@ Between the header and the scroller, so it never scrolls away. Three controls:
   with its acceptance criterion rewritten and its coverage extended — not left to disagree
   with the code.
 
-Both toggles are view state in the same `prefs` bag as the pick, per saved view and per
+`Hide done` is view state in the same `prefs` bag as the pick, per saved view and per
 device — never a `.base` setting, which is ADR 0011's rule.
 
 ## Slice D — the ✨ on the release view
@@ -253,8 +253,8 @@ Every claim gets one that fails without it — watched failing, then restored.
   hides, which is what separates the scope-local predicate from `item.subtreeDone`; a parent whose children all hid
   draws as a leaf; a context row whose children all hid hides; everything hidden draws the
   all-done state with its count rather than a blank scroller.
-- Prefs: both toggles round-trip through the store, and a stored value of the wrong shape
-  is discarded rather than trusted.
+- Prefs: `releaseHideDone` round-trips through the store, and a stored value of the wrong
+  shape is discarded rather than trusted.
 - Keyboard: one tab stop; Left on an open row folds it and on a closed one steps out; Enter
   opens through `openTarget`.
 - ✨: not drawn with nothing to bind; drawn on the `noMembership` empty state; a bound
