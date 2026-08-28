@@ -18,6 +18,17 @@ import { renderScope } from './renderScope';
 export const RELEASE_VIEW_TYPE = 'product-release';
 
 /**
+ * The classes a redraw's own controls carry — the fixed vocabulary {@link ReleaseView.render}
+ * restores a lost focus through, in place of a bespoke restore per control. Three separate
+ * fixes for the same class of bug shipped on this branch before this list did: the ✨
+ * (`initControl.ts`), the scope tree's own row (`activeScopePath`/`scopeHadFocus`, left
+ * alone below — a different question, which ROW, not answered here), and the toolbar
+ * (`scopeToolbar.ts`). None of the six controls that carry one of these classes carries a
+ * second, so checking them in this order is deterministic without needing to be.
+ */
+const FOCUS_HANDLE_CLASSES = ['pbl-rel-init', 'pbl-rel-collapse', 'pbl-rel-expand', 'pbl-rel-hidedone', 'pbl-rel-back', 'pbl-tree'];
+
+/**
  * The release view: the plugin's third Bases view, and the one that **creates notes and
  * its own config, and never edits a note that already exists.**
  *
@@ -187,6 +198,9 @@ export class ReleaseView extends BasesView {
 		// answers nothing. `previousEl` already narrows to `.pbl-tree` or `.pbl-rel-list`,
 		// so this only has to ask whether it was THIS render's tree specifically.
 		this.scopeHadFocus = previousEl !== null && previousEl.classList.contains('pbl-tree') && document.activeElement === previousEl;
+		// Read for the identical reason, one line up: which control (if any) held focus,
+		// named by the one class in `FOCUS_HANDLE_CLASSES` it carries.
+		const focusHandle = this.focusedControlClass();
 		this.viewEl.empty();
 		this.drawnKey = this.draw();
 		const el = this.scrollerEl();
@@ -194,6 +208,22 @@ export class ReleaseView extends BasesView {
 		// the base's results, a release whose members shrank — cannot park the pane below its
 		// own last row. `renderTable.ts` clamps its own restore for the same case.
 		if (el !== null && this.drawnKey === previousKey) el.scrollTop = Math.min(previousTop, el.scrollHeight);
+		// Re-queried rather than kept as an element reference: `empty()` already detached the
+		// original, and a screen that replaced the control (binding `membershipProperty` on
+		// the `noMembership` state draws the scope instead, with no `.pbl-rel-init` of its
+		// own) has no honest replacement to focus. Doing nothing there is the accepted cost —
+		// a keyboard reader lands on `document.body` and re-enters by Tab, same as before this
+		// existed, rather than being sent to a landing spot invented for the occasion.
+		if (focusHandle !== null) this.viewEl.querySelector<HTMLElement>(`.${focusHandle}`)?.focus({ preventScroll: true });
+	}
+
+	/** The one class in {@link FOCUS_HANDLE_CLASSES} the currently focused element carries,
+	 *  or null when focus is outside this view or on something the redraw does not track —
+	 *  a per-row control, say, which a fold's own restore already answers for. */
+	private focusedControlClass(): string | null {
+		const active = document.activeElement;
+		if (!(active instanceof HTMLElement) || !this.viewEl.contains(active)) return null;
+		return FOCUS_HANDLE_CLASSES.find((cls) => active.classList.contains(cls)) ?? null;
 	}
 
 	/**

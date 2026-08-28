@@ -129,20 +129,20 @@ describe('the release view’s ✨', () => {
 			expect(document.activeElement).toBe(redrawn);
 		});
 
-		it('falls back to the redrawn screen’s own first control when it draws no ✨', async () => {
+		it('invents no landing spot when the redrawn screen draws no ✨ of its own', async () => {
 			// Binding `membershipProperty` on the `noMembership` empty state replaces that whole
-			// screen with the scope, which draws no `.pbl-rel-init` of its own — only the back
-			// control, drawn first in the header. Landing there is the deliberate choice over
-			// `document.body`.
+			// screen with the scope, which draws no `.pbl-rel-init` of its own —
+			// `ReleaseView.render`'s general focus restore (`releaseView.ts`) has no fresh copy
+			// of this control to find, and its own comment is why it does not guess a
+			// replacement: `document.body` is the honest answer, same as before this restore
+			// existed, over sending a keyboard reader to a control they never pressed.
 			const { view } = mountRelease({ bindAll: false, pick: 'R.md' });
 			const btn = view.viewEl.querySelector<HTMLButtonElement>('.pbl-rel-init')!;
 			btn.focus();
 			btn.click();
 			await vi.waitFor(() => expect(Notice.messages).toHaveLength(1));
 			expect(view.viewEl.querySelector('.pbl-rel-init')).toBeNull();
-			const back = view.viewEl.querySelector('.pbl-rel-back');
-			expect(back).not.toBeNull();
-			expect(document.activeElement).toBe(back);
+			expect(document.activeElement).toBe(document.body);
 		});
 	});
 });

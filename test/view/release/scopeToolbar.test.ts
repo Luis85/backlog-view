@@ -107,4 +107,45 @@ describe('the scope toolbar', () => {
 		expect(after.getAttribute('aria-pressed')).toBe('true');
 		expect(after.classList.contains('pbl-rel-toggle-on')).toBe(true);
 	});
+
+	/**
+	 * Every control here calls `view.render()`, which `empty()`s `viewEl` and detaches
+	 * whichever of them was focused — the finding this task fixes generally, in
+	 * `ReleaseView.render` itself, rather than once per control. A keyboard user who
+	 * presses one must land on its redrawn equivalent, not on `document.body`.
+	 */
+	describe('focus after a redraw', () => {
+		it('restores focus to the redrawn collapse control', () => {
+			const { view } = mountRelease({ pick: 'Releases/0.8.md' });
+			const btn = view.viewEl.querySelector<HTMLButtonElement>('.pbl-rel-collapse')!;
+			btn.focus();
+			btn.click();
+			const redrawn = view.viewEl.querySelector('.pbl-rel-collapse');
+			expect(redrawn).not.toBeNull();
+			expect(redrawn).not.toBe(btn);
+			expect(document.activeElement).toBe(redrawn);
+		});
+
+		it('restores focus to the redrawn expand control', () => {
+			const { view } = mountRelease({ pick: 'Releases/0.8.md' });
+			const btn = view.viewEl.querySelector<HTMLButtonElement>('.pbl-rel-expand')!;
+			btn.focus();
+			btn.click();
+			const redrawn = view.viewEl.querySelector('.pbl-rel-expand');
+			expect(redrawn).not.toBeNull();
+			expect(redrawn).not.toBe(btn);
+			expect(document.activeElement).toBe(redrawn);
+		});
+
+		it('restores focus to the redrawn hide-done toggle', () => {
+			const { view } = mountRelease({ pick: 'Releases/0.7.md' });
+			const btn = hideDone(view)!;
+			btn.focus();
+			btn.click();
+			const redrawn = hideDone(view);
+			expect(redrawn).not.toBeNull();
+			expect(redrawn).not.toBe(btn);
+			expect(document.activeElement).toBe(redrawn);
+		});
+	});
 });

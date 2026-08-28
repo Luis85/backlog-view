@@ -124,13 +124,15 @@ separate act of bringing the release note itself into being.
 - **A no-op press redraws nothing.** Nothing changed, so there is nothing for a redraw to
   show — and skipping it is also what keeps the pressed button attached and focused, since
   `view.render()` empties `viewEl` whether or not a bind happened. A press that DID bind
-  something redraws and then restores focus: to the replacement `.pbl-rel-init` where the
-  redrawn screen still draws one (the bar, always), and otherwise to that screen's own first
-  control — the scope's back button when binding membership on `noMembership` replaces the
-  whole screen with the scope, `New release` beside a `noReleases` guidance the press left
-  standing. `test/view/release/initControl.test.ts` drives all three shapes and is watched
-  failing against the pre-fix handler, which called `view.render()` unconditionally and left
-  focus on whatever the browser does with a detached node.
+  something redraws, and `ReleaseView.render` itself restores focus — the one mechanism the
+  scope toolbar's own controls and this button now share, rather than a bespoke restore
+  apiece. Where the redrawn screen still draws a `.pbl-rel-init` (the bar, always) focus
+  returns to it; where binding membership on `noMembership` replaces the whole screen with
+  the scope, there is no `.pbl-rel-init` left to find, and doing nothing there is the
+  accepted cost — the reader lands on `document.body`, same as before any restore existed,
+  rather than being sent to a landing spot invented for the occasion.
+  `test/view/release/initControl.test.ts` drives both shapes and is watched failing against
+  the pre-fix `render()`, which left focus on whatever the browser does with a detached node.
 - **This press never edits a note that already exists.** It creates one and it may write this
   view's own `.base` config; `applyWrites`, `applyRestores` and `applyPropertyWrites` stay
   unreachable from `src/view/release/`, asserted on the calls themselves in
@@ -202,8 +204,9 @@ that is the one thing that screen is about; `noReleases` names all four
 (`RELEASE_SUGGESTED_KEYS`, derived rather than copied) because nothing there is bound yet
 and there is nothing to narrow to. All three call sites run the SAME bind, `bindAndReport`
 (below), so no two presses can come to disagree about what one press did — and the SAME
-click handler, which skips its redraw on a no-op and otherwise restores focus to the
-redrawn screen's own `.pbl-rel-init` or, failing that, its first control.
+click handler, which skips its redraw on a no-op and otherwise redraws and leaves the focus
+restore to `ReleaseView.render` itself, the one place that answers for every control on this
+screen (below, and `src/view/release/scopeToolbar.ts`'s own header).
 
 `src/view/release/newRelease.ts` also holds `bindAndReport`, the pair `runReleaseInit` and
 the boolean it reports on: bind, then answer whether anything changed. Both entry points

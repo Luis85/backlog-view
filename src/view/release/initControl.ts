@@ -55,28 +55,12 @@ export function renderReleaseInit(
 			// skipping it is also what keeps focus on THIS button rather than on a detached copy
 			// of it, since `view.render()` empties `viewEl` whether or not anything changed.
 			if (!bound) return;
+			// `render()` restores focus to the redrawn `.pbl-rel-init` itself — this button is
+			// still focused at this point (the click has not moved it) — or leaves it alone when
+			// the redraw replaced the whole screen (`noMembership` binding `membershipProperty`
+			// draws the scope instead, with no `.pbl-rel-init` of its own): see its own comment
+			// for why inventing a landing spot there is worse than doing nothing.
 			view.render();
-			// Looked up FRESH after the redraw, `focusNewRelease`'s own rule for the identical
-			// hazard: the pressed button is gone with the frame it stood on, so capturing it
-			// would focus a detached node no keyboard user can come back from without tabbing
-			// into the view again from nothing.
-			//
-			// The BAR always redraws with a `.pbl-rel-init` of its own, so that selector alone
-			// covers it. An EMPTY-state press can bind the very option its screen was about,
-			// which replaces the whole screen with the next one — binding `membershipProperty` on
-			// `noMembership` draws the scope instead, and nothing there is this control. A reader
-			// who pressed a button must not be dumped on `document.body`, and nor should focus
-			// land on an element picked for no reason, so the fallback is the redrawn screen's OWN
-			// first button, in the order it draws them: the scope's back control when the screen
-			// changed underneath it, or `New release` beside a `noReleases` guidance this press
-			// left standing. `estimationView`'s `focusPanelTabStop` states the identical
-			// "land somewhere plain, over swallowing the key" rule for its own fallback — and, its
-			// own comment's reason, two SEPARATE lookups rather than one selector list: `'a, b'`
-			// returns whichever matches first in document order across both branches, which here
-			// would collapse to plain `'button'` and never try `.pbl-rel-init` on its own terms.
-			const landing =
-				view.viewEl.querySelector<HTMLElement>('.pbl-rel-init') ?? view.viewEl.querySelector<HTMLElement>('button');
-			landing?.focus({ preventScroll: true });
 		});
 	});
 }
