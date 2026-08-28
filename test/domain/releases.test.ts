@@ -367,8 +367,8 @@ describe('the release index', () => {
 
 	/**
 	 * Carried finding 1, task 5: the gate MOVED from the plan's `stateKey` alone to "every
-	 * workflow the members actually span". Watched failing with `progressConfigured`'s
-	 * `deliverable` branch reverted to `!stateConfigured` (the old gate): this test failed —
+	 * workflow the members actually span". Watched failing with `workflowConfigured`'s
+	 * `deliverable` branch reverted to `stateConfigured` (the old gate): this test failed —
 	 * `done.unconfigured` read `true` — while the "still ... cannot answer" test beside it
 	 * kept passing either way, which is what makes the first test the one carrying the claim.
 	 */
@@ -401,6 +401,11 @@ describe('the release index', () => {
 			today: TODAY,
 		}).rows;
 		expect(row(rows, 'R.md').done.unconfigured).toBe(true);
+		// Named, not merely absent: the Deliverable's own key answers, so only 'requirements'
+		// is the workflow that cannot — never both, and never the whole `workflows` list back.
+		expect(row(rows, 'R.md').unconfiguredWorkflows).toEqual(['requirements']);
+		// And once every represented workflow answers, nothing is named.
+		expect(indexOf(vault).rows.find((r) => r.name === 'R')?.unconfiguredWorkflows).toEqual([]);
 	});
 
 	it('cannot count members at all with the membership key unbound', () => {

@@ -209,12 +209,18 @@ export class ReleaseView extends BasesView {
 		// own last row. `renderTable.ts` clamps its own restore for the same case.
 		if (el !== null && this.drawnKey === previousKey) el.scrollTop = Math.min(previousTop, el.scrollHeight);
 		// Re-queried rather than kept as an element reference: `empty()` already detached the
-		// original, and a screen that replaced the control (binding `membershipProperty` on
-		// the `noMembership` state draws the scope instead, with no `.pbl-rel-init` of its
-		// own) has no honest replacement to focus. Doing nothing there is the accepted cost —
-		// a keyboard reader lands on `document.body` and re-enters by Tab, same as before this
-		// existed, rather than being sent to a landing spot invented for the occasion.
-		if (focusHandle !== null) this.viewEl.querySelector<HTMLElement>(`.${focusHandle}`)?.focus({ preventScroll: true });
+		// original. The exact handle comes back first — a reader who pressed a control should
+		// land on that same control again, not near it — but a screen that replaced it (binding
+		// `membershipProperty` on the `noMembership` state draws the scope instead, with no
+		// `.pbl-rel-init` of its own) has no honest exact match, and the press that did that was
+		// a SUCCESS: it removed its own control on purpose. Stopping there would strand a
+		// keyboard user on `document.body` to pay for a press that worked, so the fallback is the
+		// redrawn screen's own first focusable control — `New release`, Back, the tree — over
+		// inventing one that means nothing.
+		if (focusHandle !== null) {
+			const exact = this.viewEl.querySelector<HTMLElement>(`.${focusHandle}`);
+			(exact ?? this.viewEl.querySelector<HTMLElement>('button'))?.focus({ preventScroll: true });
+		}
 	}
 
 	/** The one class in {@link FOCUS_HANDLE_CLASSES} the currently focused element carries,

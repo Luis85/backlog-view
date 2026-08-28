@@ -175,7 +175,10 @@ function drawHeader(view: ReleaseView, scope: ReleaseScope, release: ReleaseRow,
  * caller of the identical sentence, not a second key with the identical defect.
  *
  * `done` is a FIGURE, so its three answers are the three drawn here: unconfigured says so
- * — through {@link t}('release.figureUnconfigured') — and is never a zero (extension 2c:
+ * and NAMES the workflow it could not read (`release.unconfiguredWorkflows`, through
+ * {@link t}('release.scope.progressUnconfigured') when that list holds anything, else the
+ * generic {@link t}('release.figureUnconfigured') for the one case with nothing to name —
+ * see `ReleaseRow.unconfiguredWorkflows`'s own comment), and is never a zero (extension 2c:
  * a progress nobody configured must not read as a progress the screen forgot), invalid is
  * impossible for a count and falls through with it, and a value draws the bar. The item
  * count answers beside it either way.
@@ -200,10 +203,7 @@ function drawSummary(headerEl: HTMLElement, release: ReleaseRow, members: number
 	const sumEl = headerEl.createDiv({ cls: 'pbl-rel-summary' });
 	if (release.done.unconfigured || release.done.value === null) {
 		sumEl.createSpan({ cls: 'pbl-rel-figure', text: t('release.scope.members', { count: members }) });
-		sumEl.createSpan({
-			cls: 'pbl-rel-unreadable',
-			text: t('release.figureUnconfigured', { label: t('release.scope.progress') }),
-		});
+		sumEl.createSpan({ cls: 'pbl-rel-unreadable', text: unconfiguredProgressText(release.unconfiguredWorkflows) });
 		return;
 	}
 	const done = release.done.value;
@@ -213,6 +213,27 @@ function drawSummary(headerEl: HTMLElement, release: ReleaseRow, members: number
 	sumEl.createSpan({ cls: 'pbl-rel-pct', text: t('release.scope.percent', { pct }) });
 	sumEl.createSpan({ cls: 'pbl-rel-figure', text: t('column.rollupTooltip', { done, count: members }) });
 	setTooltip(sumEl, progressProvenance(release.workflows, planSettings));
+}
+
+/**
+ * The unconfigured branch's own sentence — named, not merely absent
+ * (`docs/requirements/Summing up a release.md`'s "unconfigured predicate" rule, read for
+ * the progress figure specifically). `unconfiguredWorkflows` is
+ * `ReleaseRow.unconfiguredWorkflows`, already the failing subset in `WORKFLOW_ORDER`
+ * (`domain/releases.ts`), so this asks nothing about the release a second time — it only
+ * turns a list already computed into words, exactly as {@link progressProvenance} does for
+ * the configured branch beside it.
+ *
+ * Empty is the one case with no workflow to name (no member counted yet — see the field's
+ * own comment for why that is not the same claim as "configured"), so it reads the plain
+ * `release.figureUnconfigured` rather than a sentence naming nothing. `workflowName` is
+ * the identical translator `progressProvenance` calls, reused rather than a second mapping
+ * that could drift from it on which two names `WorkflowKind` gets.
+ */
+function unconfiguredProgressText(unconfiguredWorkflows: WorkflowKind[]): string {
+	const label = t('release.scope.progress');
+	if (unconfiguredWorkflows.length === 0) return t('release.figureUnconfigured', { label });
+	return t('release.scope.progressUnconfigured', { label, workflows: unconfiguredWorkflows.map(workflowName) });
 }
 
 /**

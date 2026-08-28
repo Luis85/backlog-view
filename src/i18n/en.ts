@@ -1665,6 +1665,10 @@ export const en = {
 	 * percentage from, and extension 2c says that must be named rather than read as a
 	 * progress the screen forgot to draw — never a bare `0%`, which would claim a fact
 	 * nobody measured.
+	 *
+	 * `drawSummary` reads this one only when `ReleaseRow.unconfiguredWorkflows` is empty —
+	 * no workflow counted yet, so there is no property to name beyond `label` itself.
+	 * `release.scope.progressUnconfigured` is the branch that names one.
 	 */
 	'release.figureUnconfigured': '{label} is not configured',
 	/** The unconfigured figures, named once beneath the list. `{columns}` is an array, so
@@ -1723,10 +1727,22 @@ export const en = {
 	},
 	/**
 	 * The summary strip's own label for the progress figure, read into
-	 * `release.figureUnconfigured` when `ReleaseRow.done` is unconfigured — the plan has no
-	 * state key bound, so nothing says what "done" means for this release's members.
+	 * `release.figureUnconfigured` (no workflow to name — see
+	 * `release.scope.progressUnconfigured`'s own comment) or into that key itself when
+	 * `ReleaseRow.done` is unconfigured.
 	 */
 	'release.scope.progress': 'Progress',
+	/**
+	 * `done`'s unconfigured branch when `ReleaseRow.unconfiguredWorkflows` is NOT empty —
+	 * `release.figureUnconfigured` is the other branch, read instead when there is no
+	 * workflow to name (no members counted yet). `{workflows}` is the same already-translated
+	 * list `release.scope.progressWorkflows` reads (`release.scope.workflow*`, below),
+	 * joined as grammar the identical way — the requirement this answers is the sibling of
+	 * that key's own: "Progress is not configured" alone tells a release spanning ordinary
+	 * work and Deliverables nothing about which property to go bind, where every other one
+	 * already answers.
+	 */
+	'release.scope.progressUnconfigured': '{label} is not configured for {workflows}.',
 	/**
 	 * The strip's percentage, a KEY rather than a template at the call site: the per-cent
 	 * sign's position beside its number is grammar, and a locale that puts it before the

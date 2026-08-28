@@ -67,6 +67,20 @@ export interface ReleaseRow {
 	 */
 	workflows: WorkflowKind[];
 	/**
+	 * The subset of {@link workflows} `workflowConfigured` refused — what {@link done}'s
+	 * unconfigured branch NAMES rather than leaving as one generic sentence. A release
+	 * spanning ordinary work and Deliverables with only the latter's key bound reports
+	 * `['requirements']` here, so the summary strip can say which property is still
+	 * missing instead of "Progress is not configured" about a release that is half
+	 * configured. Computed by `missingWorkflows`, the SAME pass that decides {@link done}'s
+	 * own gate, in `WORKFLOW_ORDER` — never re-derived from the render layer, which could
+	 * disagree with the boolean beside it. Empty whenever {@link done} is configured, and
+	 * empty too when no workflow has been counted yet (no members, or a release nobody has
+	 * counted): that case has no failing WORKFLOW to name, only a plan-wide key nobody
+	 * bound, and `done`'s own gate falls back to the plan's state key alone to decide it.
+	 */
+	unconfiguredWorkflows: WorkflowKind[];
+	/**
 	 * On the RELEASE note: the date it actually shipped. Read exactly as {@link target} is,
 	 * with the same three answers — unset, unreadable, a date. It is what tells shipped from
 	 * in flight AND what makes {@link slip} derivable: one binding, two figures. Picked over
@@ -227,40 +241,59 @@ function sortedWorkflows(kinds: Set<WorkflowKind> | undefined): WorkflowKind[] {
 }
 
 /**
- * The gate `ReleaseRow.done` reads, moved here by the author's decision on 2026-08-28
- * (reversing what this spec twice recorded, `docs/superpowers/specs/2026-08-28-release-detail-ux-design.md`).
- * It used to be `options.stateKey !== ''` alone — the plan's own state key, whatever the
- * members actually were — which made a release holding only Deliverables report "not
+ * One workflow's own half of the gate `ReleaseRow.done` reads, moved here by the
+ * author's decision on 2026-08-28 (reversing what this spec twice recorded,
+ * `docs/superpowers/specs/2026-08-28-release-detail-ux-design.md`). It used to be
+ * `options.stateKey !== ''` alone — the plan's own state key, whatever the members
+ * actually were — which made a release holding only Deliverables report "not
  * configured" about progress `ownWorkflowReading` could read perfectly well through its
  * own property.
  *
  * The gate is now the REPRESENTED WORKFLOWS: configured when every workflow this
- * release's members actually span (`kinds`, from the same walk that counts them) can
- * answer. 'test' never appears in `kinds` (see `ReleaseRow.workflows`'s own comment on
- * why), so only two branches are reachable; a third would be untestable dead code.
- *
- * No workflow at all (no members, or a release nobody has counted) asks nothing, and
- * falls back to `stateConfigured` — `options.stateKey !== ''` — which is the WHOLE of what
- * this gate asked before 2026-08-28. Keeping that fallback rather than reading an empty
- * set as vacuously configured is deliberate: this change is about a release whose members
- * span a workflow the plan's key cannot read, not about widening what "no members yet"
- * means.
+ * release's members actually span can answer for ITSELF. Deliverable falls back to the
+ * plan's own key exactly as `resolvedDeliverableStateKey` does for the VALUE it reads —
+ * the same fallback, asked here of whether a key exists to fall back TO, rather than of
+ * what it reads.
  */
-function progressConfigured(
+function workflowConfigured(kind: WorkflowKind, options: ReleaseIndexOptions, stateConfigured: boolean): boolean {
+	return kind === 'deliverable' ? !(options.stateKey === '' && !options.deliverableStateKey) : stateConfigured;
+}
+
+/**
+ * {@link ReleaseRow.unconfiguredWorkflows}'s own computation, and the one place
+ * `workflowConfigured` is asked per kind: the row builder below reads this once and
+ * derives BOTH `done`'s gate and the names beside it from the same list, rather than
+ * asking the per-kind question again to get a plain boolean.
+ *
+ * 'test' never appears in `kinds` (see `ReleaseRow.workflows`'s own comment on why), so
+ * only two branches of `workflowConfigured` are reachable; a third would be untestable
+ * dead code.
+ *
+ * Empty for `kinds === undefined` — no members counted yet, or a release nobody has
+ * counted — which is NOT the same claim as "configured": that case has no represented
+ * workflow to fail, so there is nothing here to name, and the row builder falls back to
+ * `stateConfigured` on its own to decide whether `done` itself reads as configured. Read
+ * that fallback there rather than here: keeping it out of this function is what stops an
+ * empty return being misread as "therefore configured".
+ */
+function missingWorkflows(
 	kinds: Set<WorkflowKind> | undefined,
 	options: ReleaseIndexOptions,
 	stateConfigured: boolean,
-): boolean {
-	if (kinds === undefined || kinds.size === 0) return stateConfigured;
-	for (const kind of kinds) {
-		// Deliverable falls back to the plan's own key exactly as `resolvedDeliverableStateKey`
-		// does for the VALUE it reads — the same fallback, asked here of whether a key exists
-		// to fall back TO, rather than of what it reads.
-		if (kind === 'deliverable' ? options.stateKey === '' && !options.deliverableStateKey : !stateConfigured) {
-			return false;
-		}
-	}
-	return true;
+): WorkflowKind[] {
+	if (kinds === undefined) return [];
+	return WORKFLOW_ORDER.filter((kind) => kinds.has(kind) && !workflowConfigured(kind, options, stateConfigured));
+}
+
+/**
+ * `done`'s own readiness — pulled out of the row builder purely to keep that arrow
+ * function's complexity under lint's cap, not because the question is asked anywhere
+ * else. Mirrors `missingWorkflows`'s own fallback exactly: no workflow counted yet asks
+ * nothing of `gap` and falls back to `stateConfigured` alone; everywhere else, configured
+ * means no gap.
+ */
+function progressReady(kinds: Set<WorkflowKind> | undefined, gap: WorkflowKind[], stateConfigured: boolean): boolean {
+	return kinds === undefined || kinds.size === 0 ? stateConfigured : gap.length === 0;
 }
 
 /** A civil date as a sortable integer; undated sorts last, never as the epoch. */
@@ -409,6 +442,11 @@ export function releaseIndex(
 			? figure(readTarget(ownValue(fm, settings.releasedDateKey)))
 			: UNCONFIGURED;
 		const shipped = released.value !== null;
+		// Read once and shared below (`done`'s gate, `unconfiguredWorkflows` itself), so the
+		// boolean and the names explaining it cannot disagree about which workflows failed.
+		const kinds = workflowsByRelease.get(item.file.path);
+		const gap = missingWorkflows(kinds, options, stateConfigured);
+		const ready = progressReady(kinds, gap, stateConfigured);
 		return {
 			item,
 			path: item.file.path,
@@ -420,10 +458,11 @@ export function releaseIndex(
 				? figure({ value: counts.get(item.file.path) ?? 0, invalid: false })
 				: UNCONFIGURED,
 			done:
-				settings.membershipKey && progressConfigured(workflowsByRelease.get(item.file.path), options, stateConfigured)
+				settings.membershipKey && ready
 					? figure({ value: doneCounts.get(item.file.path) ?? 0, invalid: false })
 					: UNCONFIGURED,
-			workflows: sortedWorkflows(workflowsByRelease.get(item.file.path)),
+			workflows: sortedWorkflows(kinds),
+			unconfiguredWorkflows: gap,
 			released,
 			slip: target.value !== null && released.value !== null ? daysBetween(target.value, released.value) : null,
 			shipped,

@@ -401,6 +401,31 @@ describe('the summary strip', () => {
 		expect(strip.textContent!.toLowerCase()).toContain('not configured');
 	});
 
+	it('names WHICH workflow is unconfigured, on a release spanning more than one', () => {
+		// Finding 2: a release mixing ordinary work with a cleared `stateProperty` and a
+		// Deliverable bound through `deliverableStateProperty` — "Progress is not
+		// configured" alone says nothing about which of the two to go bind. Only the
+		// workflow that cannot answer is named; the Deliverable's own key already can.
+		const vault = new FakeVault();
+		vault.addFile('Q.md', { frontmatter: { type: 'Release' } });
+		vault.addFile('A.md', { frontmatter: { type: 'PBI', release: '[[Q]]', status: 'Doing' } });
+		vault.addFile('D.md', {
+			frontmatter: { type: 'Deliverable', release: '[[Q]]', status: 'Planned', dstatus: 'Done' },
+		});
+		const { view, containerEl } = makeReleaseView(vault, {
+			...RELEASE_CONFIG,
+			stateProperty: '',
+			deliverableStateProperty: 'note.dstatus',
+		});
+		view.pick('Q.md');
+		const strip = containerEl.querySelector('.pbl-rel-summary')!;
+		expect(strip.querySelector('.pbl-rel-bar')).toBeNull();
+		const text = strip.textContent!;
+		expect(text.toLowerCase()).toContain('not configured');
+		expect(text).toContain('Work');
+		expect(text).not.toContain('Deliverables');
+	});
+
 	it('draws no strip for a release with no members', () => {
 		// Extension 1a: nothing to count, and nothing reads as zero.
 		const vault = new FakeVault();
