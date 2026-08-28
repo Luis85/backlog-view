@@ -41,9 +41,20 @@ export function wireScopeKeys(view: ReleaseView, treeEl: HTMLElement, releasePat
 		// `visible` is never empty — the top-level row can never be hidden by a fold — and
 		// `rowEls` is built from that same array, so both reads below always hit.
 		const row = visible[active];
-		selectedEl?.removeAttribute('aria-selected');
+		if (selectedEl) {
+			selectedEl.removeAttribute('aria-selected');
+			selectedEl.classList.remove('pbl-selected');
+		}
 		const el = rowEls.get(row.item.file.path)!;
 		el.setAttribute('aria-selected', 'true');
+		// The ARIA half alone is correct for a screen reader and invisible to everyone
+		// else: `styles/tree.css` paints `.pbl-row.pbl-selected` and
+		// `.pbl-tree:focus-visible.pbl-has-selection`, and neither rule fires without
+		// these two classes — `view/selection.ts`'s own pattern for the same widget
+		// shape (`selectItem`/`syncActiveDescendant`), borrowed here rather than the
+		// module itself, which this controller has its own header explaining why not.
+		el.classList.add('pbl-selected');
+		treeEl.toggleClass('pbl-has-selection', true);
 		selectedEl = el;
 		treeEl.setAttribute('aria-activedescendant', el.id);
 		view.activeScopePath = row.item.file.path;

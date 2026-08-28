@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { active, makeReleaseView, press, RELEASE_CONFIG, refreshRelease, row, select, twisty } from '../../helpers/release';
+import { foldedPaths } from '../../../src/view/release/scopeTree';
 import { useViewHarness } from '../../helpers/view';
 import { FakeVault } from '../../helpers/vault';
 
@@ -69,6 +70,24 @@ describe('the scope tree’s keyboard', () => {
 		expect(view.viewEl.querySelectorAll('.pbl-row[tabindex="0"]')).toHaveLength(0);
 	});
 
+	it('marks the active row visibly, not only for assistive tech — the ARIA half alone leaves a sighted keyboard user with no feedback', () => {
+		// `styles/tree.css` paints `.pbl-row.pbl-selected` and
+		// `.pbl-tree:focus-visible.pbl-has-selection`; neither rule fires off
+		// `aria-selected`/`aria-activedescendant` alone.
+		const { view } = mountKeys();
+		press(view, 'ArrowDown');
+		press(view, 'ArrowDown');
+		const first = row(view, 'Passwordless sign-in.md');
+		expect(first.classList.contains('pbl-selected')).toBe(true);
+		expect(view.viewEl.querySelector('.pbl-tree')!.classList.contains('pbl-has-selection')).toBe(true);
+
+		press(view, 'ArrowDown');
+		// The class moves WITH the selection — the previously active row is not left
+		// marked once another row becomes active.
+		expect(first.classList.contains('pbl-selected')).toBe(false);
+		expect(row(view, 'Send the magic link.md').classList.contains('pbl-selected')).toBe(true);
+	});
+
 	it('ArrowDown and ArrowUp move between VISIBLE rows only', () => {
 		const { view } = mountKeys();
 		press(view, 'ArrowDown');
@@ -120,6 +139,31 @@ describe('the scope tree’s keyboard', () => {
 		select(view, 'Send the magic link.md');
 		press(view, 'ArrowRight');
 		expect(active(view)).toBe('Send the magic link.md');
+	});
+
+	it('ArrowRight does nothing on a row whose fold entry outlived its last child — a stale fold is not evidence of one', () => {
+		// Folded while it still had children, then those children are removed: the
+		// stored fold key survives (nothing prunes a release fold when its subtree
+		// empties out), so `foldedPaths` still calls this row folded even though the
+		// CURRENT render draws no disclosure on it at all. `hasKids` has to be asked
+		// of `kids` (the rendered tree's own answer) rather than of the fold set, or
+		// this row reads as a closed PARENT and ArrowRight toggles a phantom fold
+		// instead of doing nothing — `scopeKeys.ts`'s own stated rule, held here.
+		const { view, vault } = mountKeys();
+		twisty(view, 'Passwordless sign-in.md').click();
+		for (const child of ['Send the magic link.md', 'Verify the code.md', 'Expire the link.md']) {
+			vault.files.delete(child);
+		}
+		refreshRelease(view, vault);
+		expect(foldedPaths(view, 'Releases/0.8.md').has('Passwordless sign-in.md')).toBe(true);
+
+		select(view, 'Passwordless sign-in.md');
+		press(view, 'ArrowRight');
+
+		expect(active(view)).toBe('Passwordless sign-in.md');
+		// Untouched, not merely re-set: a toggle would have REMOVED it from the fold
+		// set, which is exactly what the phantom-fold bug would do.
+		expect(foldedPaths(view, 'Releases/0.8.md').has('Passwordless sign-in.md')).toBe(true);
 	});
 
 	it('keeps the tree focused across the redraw an unfold triggers, and the next arrow continues from there', () => {
