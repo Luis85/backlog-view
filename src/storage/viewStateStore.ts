@@ -50,7 +50,10 @@ const SCHEMA = 1;
  * A real backlog is a few hundred rows, so this is far above normal use and exists only
  * so a pathological vault cannot grow the entry without bound. Collapsed keys are kept
  * first: an expanded entry only suppresses the default, while a collapsed one is visible
- * state, and a lane is one per resource rather than one per note.
+ * state, and a lane is one per resource rather than one per note. That is the order the
+ * LISTS are spent in and it is unchanged. WITHIN one list the newest entries are what
+ * survive, not the first: every writer here appends, so taking the head would evict
+ * exactly the fold just made whenever a list is already at the cap.
  *
  * A fold key is a note path under one scope, and a parent settles under every scope it
  * has (the tree's, the dated axis's and a card's own — see `view/viewState.ts`), so
@@ -478,16 +481,28 @@ function readPrefs(source: unknown): ViewPrefs {
 
 /**
  * The same, for the folds — one {@link MAX_FOLDS} budget spent across the lists, in the
- * order they are read here. That order is the rule: what is left when the budget runs out
- * is dropped, so the collapsed rows are taken first.
+ * order they are read here (that constant's own comment states which end of each list
+ * survives, and why).
  */
 function readFolds(source: unknown): ViewFolds {
 	const record = objectOf(source);
 	let budget = MAX_FOLDS;
 	const take = (value: unknown): string[] => {
-		const list = texts(value).slice(0, budget);
-		budget -= list.length;
-		return list;
+		const list = texts(value);
+		// The NEWEST keys, not the first ones. Every writer here APPENDS — the release
+		// view's `writeFolds` puts the other releases' keys before this one's, and
+		// `ViewState.flush` writes a Set in insertion order — so taking the head made a
+		// saturated budget discard exactly the fold just made, and folding a row appeared
+		// to do nothing with nothing reporting it. Dropping the oldest is the eviction a
+		// backstop is for.
+		//
+		// `budget <= 0` is spelled out rather than left to `slice`: `slice(-0)` is
+		// `slice(0)`, which returns the WHOLE list, so an exhausted budget would hand back
+		// everything it exists to refuse.
+		if (budget <= 0) return [];
+		const kept = list.slice(-budget);
+		budget -= kept.length;
+		return kept;
 	};
 	return {
 		collapsed: take(record.collapsed),

@@ -127,6 +127,29 @@ describe('the stored entry', () => {
 	});
 });
 
+describe('the fold budget', () => {
+	it('drops the oldest folds when the budget is full, never the newest', () => {
+		const collapsed = Array.from({ length: 12002 }, (_, i) => `note-${i}.md`);
+		saveViewState(vault.app, ID, { folds: { ...emptyFolds(), collapsed }, prefs: {} });
+
+		const back = loadViewState(vault.app, ID).folds.collapsed;
+		expect(back).toHaveLength(12000);
+		// The two APPENDED last survive; the two written first are what goes.
+		expect(back).toContain('note-12001.md');
+		expect(back).toContain('note-12000.md');
+		expect(back).not.toContain('note-0.md');
+	});
+
+	it('gives an exhausted budget nothing, rather than the whole list', () => {
+		// `collapsed` alone fills the budget, so `expanded` must come back empty — the
+		// `slice(-0) === slice(0)` trap, which would return every expanded key instead.
+		const collapsed = Array.from({ length: 12000 }, (_, i) => `c-${i}.md`);
+		saveViewState(vault.app, ID, { folds: { ...emptyFolds(), collapsed, expanded: ['e.md'] }, prefs: {} });
+
+		expect(loadViewState(vault.app, ID).folds.expanded).toEqual([]);
+	});
+});
+
 describe('folds and prefs are different kinds of thing', () => {
 	it('carries both buckets through a base rename', () => {
 		saveViewState(vault.app, ID, { folds: FULL_FOLDS, prefs: FULL_PREFS });
