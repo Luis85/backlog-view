@@ -57,8 +57,19 @@ resolved set.
 Three things make it safe rather than a narrowing that hides work:
 
 - **Only the kinds that can be blank are asked, and each is asked its own cell's
-  question** — `drawsSomething` for a value or a date end, a pill for the tags — so a column
-  kept here and a cell drawn there cannot disagree about what empty means.
+  question** — `valueShows` for a value or a date end, a pill for the tags — so a column kept
+  here and a cell drawn there cannot disagree about what empty means.
+- **`drawsSomething` alone was not that question, which is the second miss** (Codex,
+  PR #208). `renderValue` applies three tests, not one: the value is neither null nor
+  `isEmpty`, and then — after rendering — `rendered === '' && text === ''` detaches the span
+  and answers no. A value that stringifies blank and renders blank passes the first and
+  fails the last, so a column of them was reserved on every row and drawn on none. `valueShows`
+  is now those three tests in that order: the string settles every ordinary value with no
+  render at all, and only a value that EXISTS and stringifies blank costs one — asked of
+  `renderTo` on a throwaway element rather than guessed, because a guess in this direction
+  drops a column a row would have drawn, which is worse than the reserved width this task
+  removes. The render-and-read step is `drawValue`, extracted so the cell and the probe share
+  it: written apart, the two diverged inside one commit.
 - **TAGS are one of those kinds, and the first draft missed it** (Codex, PR #208). The kind
   list read as "chips always draw", and the tags cell is not a chip: its add button is
   `opacity: 0` until the row is hovered, so a tagless cell shows nothing and `renderTagCell`
@@ -77,6 +88,15 @@ Three things make it safe rather than a narrowing that hides work:
 
 Read from the GROUPS, like the rollup reservation beside it: the type filter is applied in
 `organizeShelf`, and a folded group still counts, so opening one cannot move the columns.
+
+## What both misses have in common
+
+Each was the probe answering a NARROWER question than the cell — tags read as a chip, and a
+value read as `drawsSomething` — and neither was reachable from the fixtures this suite
+already had. The rule the repository states for this is at the top of `columnsWithContent`
+now rather than in this note: a second derivation of "is there anything here" drifts, so
+every kind names the cell whose answer it is agreeing with, and the one step that cannot be
+predicted is shared code rather than a second reading.
 
 ## What it bought
 

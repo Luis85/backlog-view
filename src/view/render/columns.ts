@@ -581,8 +581,11 @@ function renderCell(host: BacklogViewHost, cell: HTMLElement, item: BacklogItem,
  * title sat at its 16ch floor.
  *
  * Only the kinds that CAN be blank are asked, and each is asked the question its own cell
- * asks — `drawsSomething` for a value or a date end, a pill for the tags — so a column kept
- * here and a cell drawn there cannot disagree about what empty means.
+ * asks — `valueShows` below for a value or a date end, which is `renderValue`'s own three
+ * tests over the same `drawValue`, and a pill for the tags — so a column kept here and a
+ * cell drawn there cannot disagree about what empty means. Both divergences this helper has
+ * had were the probe answering a NARROWER question than the cell; both were found by review
+ * rather than by a test, which is why each kind now names the cell it is agreeing with.
  *
  * **TAGS are one of them and that is not obvious**, which is why it is stated rather than
  * left to the kind list: the cell's add button is `opacity: 0` until the row is hovered
@@ -599,20 +602,44 @@ function renderCell(host: BacklogViewHost, cell: HTMLElement, item: BacklogItem,
  * A second caller over a population that can hold context cards has to re-read that
  * sentence before trusting this one.
  */
-export function columnsWithContent(columns: Column[], items: BacklogItem[]): Column[] {
+export function columnsWithContent(host: BacklogViewHost, columns: Column[], items: BacklogItem[]): Column[] {
 	return columns.filter((column) => {
 		if (column.kind === 'tags') return items.some((item) => item.tags.length > 0);
 		if (column.kind !== 'value' && column.kind !== 'start' && column.kind !== 'target') return true;
-		// An ancestor from outside the filter has no Bases row, exactly as `renderValue`
-		// finds: it draws nothing, so it votes for nothing.
-		return items.some((item) => {
-			try {
-				return drawsSomething(item.entry?.getValue(column.prop) ?? null);
-			} catch {
-				return false;
-			}
-		});
+		return items.some((item) => valueShows(host, item, column));
 	});
+}
+
+/**
+ * Whether this item's value would DRAW in its cell — `renderValue`'s own three tests, in
+ * its own order, because a probe that stops one test early keeps a column the cell then
+ * refuses to fill.
+ *
+ * `drawsSomething` is the first and cheapest. The second is the string, and it settles
+ * every ordinary value without rendering anything. Only the third costs a render, and only
+ * for a value that EXISTS and stringifies blank: whether such a thing shows is a question
+ * about what `renderTo` builds, so the probe asks the renderer on a throwaway element
+ * rather than guessing — a guess in this direction drops a column a row would have drawn,
+ * which is worse than the reserved width the whole narrowing exists to remove. (Codex,
+ * PR #208, on a first draft that asked `drawsSomething` alone and so kept a column of
+ * blank-rendering values on every row.)
+ */
+function valueShows(host: BacklogViewHost, item: BacklogItem, column: Column): boolean {
+	// An ancestor from outside the filter has no Bases row, exactly as `renderValue` finds:
+	// it draws nothing, so it votes for nothing.
+	let value: Value | null = null;
+	try {
+		value = item.entry?.getValue(column.prop) ?? null;
+	} catch {
+		return false;
+	}
+	if (!drawsSomething(value)) return false;
+	const text = value.toString().trim();
+	if (text !== '') return true;
+	// `createSpan()` rather than `document.createElement`: Obsidian's own global, which the
+	// marketplace ruleset asks for and which returns a DETACHED span here — nothing appends it,
+	// so the probe's render never reaches the document.
+	return drawValue(host, value, createSpan(), text) !== '';
 }
 
 /**
@@ -633,6 +660,25 @@ export function drawsSomething(value: Value | null): value is Value {
 	return !(typeof maybeEmpty.isEmpty === 'function' && maybeEmpty.isEmpty());
 }
 
+/**
+ * Draw a value into an element and say what text landed there — the two-step every reading
+ * of "does this value show anything" has to go through, in ONE place because two callers
+ * ask it now: the cell itself, and the band-level probe below, which asks it of a throwaway
+ * element. Written apart the second time, they diverged within one commit (Codex, PR #208).
+ *
+ * `renderTo` is Bases' own renderer and may throw; the plain string is the fallback, which
+ * is what the cell has always done. Reading `textContent` serializes whatever it built, so
+ * it is read once.
+ */
+function drawValue(host: BacklogViewHost, value: Value, el: HTMLElement, text: string): string {
+	try {
+		value.renderTo(el, host.app.renderContext);
+	} catch {
+		el.setText(text);
+	}
+	return el.textContent?.trim() ?? '';
+}
+
 function renderValue(host: BacklogViewHost, cell: HTMLElement, item: BacklogItem, column: Column): boolean {
 	// An ancestor from outside the filter has no Bases row, so no property values.
 	let value: Value | null = null;
@@ -645,13 +691,7 @@ function renderValue(host: BacklogViewHost, cell: HTMLElement, item: BacklogItem
 
 	const text = value.toString().trim();
 	const valueEl = cell.createSpan({ cls: 'pbl-prop-value' });
-	try {
-		value.renderTo(valueEl, host.app.renderContext);
-	} catch {
-		valueEl.setText(text);
-	}
-	// Reading textContent serializes whatever renderTo built, so do it once.
-	const rendered = valueEl.textContent?.trim() ?? '';
+	const rendered = drawValue(host, value, valueEl, text);
 	// Emptiness is a question about the value, not about the DOM it produced: a
 	// checkbox or an icon renders no text of its own and is still a value to show.
 	if (rendered === '' && text === '') {

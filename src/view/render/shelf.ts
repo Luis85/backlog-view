@@ -317,7 +317,7 @@ export function renderShelf(
 		conflicts: shelf.conflicts,
 		axis: shelf.axis,
 		list,
-		columns: list ? columnsWithContent(ctx.columns, shown) : undefined,
+		columns: list ? columnsWithContent(host, ctx.columns, shown) : undefined,
 	};
 	for (const group of groups) {
 		cards.push(...renderShelfGroup(ctx, shelfEl, group, wiring));

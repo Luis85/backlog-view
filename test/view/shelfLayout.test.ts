@@ -435,6 +435,27 @@ describe('the shelf’s card and list layouts', () => {
 			expect(shelfWith(tagged)?.querySelectorAll('.pbl-prop-tags')).toHaveLength(2);
 		});
 
+		it('reserves no column whose every value renders blank', () => {
+			// A value that is neither null nor `isEmpty` and still shows nothing: `drawsSomething`
+			// says yes, and `renderValue` then detaches the span and answers no on its own
+			// `rendered === '' && text === ''`. The probe asked only the first of those, so a
+			// column of such values was reserved on every row and drawn on none. (Codex, PR #208.)
+			//
+			// The control is the row beside it: `Has one` carries a real value in the same
+			// column, so the column stays and the blank row holds its cell open.
+			const vault = new FakeVault();
+			vault.addFile('All blank.md', { frontmatter: { type: 'Epic', order: 10 } });
+			vault.addFile('Also blank.md', { frontmatter: { type: 'Epic', order: 20 } });
+			vault.entryValues.set('All blank.md', { 'note.points': { toString: () => '' } });
+			vault.entryValues.set('Also blank.md', { 'note.points': { toString: () => '   ' } });
+			const blank = makeRoadmap(vault, {}, { shelfCollapsed: false, shelfList: true, order: ['note.points'] });
+			expect(shelfOf(blank.containerEl)?.querySelectorAll('.pbl-props .pbl-prop')).toHaveLength(0);
+
+			vault.entryValues.set('Also blank.md', { 'note.points': { toString: () => '5' } });
+			const some = makeRoadmap(vault, {}, { shelfCollapsed: false, shelfList: true, order: ['note.points'] });
+			expect(shelfOf(some.containerEl)?.querySelectorAll('.pbl-props .pbl-prop')).toHaveLength(2);
+		});
+
 		it('drops the state cell instead, which is not one of the shared columns', () => {
 			// Extension 4b: held open rather than dropped. `.pbl-shelf-state` is its own box
 			// outside `.pbl-props`, so holding the shared columns open (test above) says nothing

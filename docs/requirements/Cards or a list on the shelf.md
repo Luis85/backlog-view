@@ -131,7 +131,8 @@ one a reader wants changes by the day and by the task, not by the base.
   column a reader can see. Measured at a 1280px pane over the demo backlog's twenty unplaced
   items: three of five columns drew on zero rows, 384px of the row, and the title sat at its
   floor; narrowed, the title takes 377px. Each kind is asked the question its own cell asks —
-  `drawsSomething` for a value or a date end, and A PILL for the tags, whose add button is
+  `renderValue`'s own three tests for a value or a date end, the last of which needs a render
+  and gets one, and A PILL for the tags, whose add button is
   hover-revealed and so shows a tagless reader nothing (Codex, PR #208, on a first draft that
   read the tags cell as a chip). The chip kinds are never asked, because an unset note still
   gets a dashed `Assignee` or a `State` and the one case that draws nothing — a context card
