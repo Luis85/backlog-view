@@ -9,9 +9,15 @@ function keysOf(config: FakeViewConfig): string[] {
 }
 
 describe('the release view names its own keys', () => {
-	it('declares all twelve, the three model mappings, the folder and its own open target', () => {
+	it('declares all fourteen, the three model mappings, the folder, its own open target and the Deliverable pair', () => {
+		// `deliverableStateProperty` and `deliverableDoneValues` joined this list so the
+		// Deliverable workflow's progress gate (`ownWorkflowReading`, read through
+		// `resolveSettings` in `releaseView.ts`'s `buildModel` call) is reachable from
+		// Bases' own options menu — see the comment beside their declaration below.
 		expect(keysOf(new FakeViewConfig({})).sort()).toEqual(
 			[
+				'deliverableDoneValues',
+				'deliverableStateProperty',
 				'doneValues',
 				'membershipProperty',
 				'openIn',

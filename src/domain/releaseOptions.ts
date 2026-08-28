@@ -132,6 +132,35 @@ function releaseGroup(): BasesAllOptions {
 				default: DEFAULT_DONE_VALUES.join(', '),
 				placeholder: DEFAULT_DONE_VALUES.join(', '),
 			},
+			// The identical pattern, for the Deliverable workflow's OWN state: the progress
+			// gate reads whichever workflows a release's members actually span
+			// (`ownWorkflowReading`, `domain/board.ts`), so a release holding only
+			// Deliverables needs `deliverableStateKey` bound rather than `stateKey`.
+			// `resolveSettings` already reads exactly these two option keys — through
+			// `resolveSecondaryWorkflow`/`DELIVERABLE_NAMES` in `settingsResolve.ts` — onto
+			// `BacklogSettings.deliverableStateKey` / `deliverableDoneValues`, and `buildModel`
+			// reads that same `BacklogSettings`, so declaring the options here is again the
+			// whole of the plumbing: before this pair joined the menu, a Deliverables-only
+			// release could show progress only via a hand-edited `.base` or one that started
+			// life as a backlog view, never through this view's own options panel.
+			// `deliverableStateValues` (the ordered vocabulary) is deliberately left
+			// undeclared, matching this view's own choice not to offer `stateValues` for the
+			// primary workflow either: the release view exposes a property and its done-values
+			// cut, never the declared list, for either workflow.
+			{
+				type: 'property',
+				key: 'deliverableStateProperty',
+				displayName: t('option.deliverableStateProperty'),
+				placeholder: 'status',
+				filter: notePropsOnly,
+			},
+			{
+				type: 'text',
+				key: 'deliverableDoneValues',
+				displayName: t('option.deliverableDoneValues'),
+				default: DEFAULT_DONE_VALUES.join(', '),
+				placeholder: DEFAULT_DONE_VALUES.join(', '),
+			},
 			{
 				type: 'property',
 				key: 'releasedDateProperty',

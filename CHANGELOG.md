@@ -31,6 +31,12 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   state every saved release view is in until you set it. Both missing bindings are named in
   one line beneath the list, so a screen that is staying quiet says why.
 
+- **The Deliverable workflow's own state property and done values are now options on the
+  release view too**, beside the ones above. A release holding only Deliverables reads its
+  progress off these when they are bound, so you no longer need to bind them on a backlog
+  view first, or hand-edit the `.base` file, to get a Deliverables-only release counting
+  correctly — the release view's own options menu can do it directly.
+
 - **A release's own screen opens with the same figure, over its own members.** Pick a
   release from the list and its scope now starts with a progress bar, a percentage and an
   `N of M items done` phrase, counted over what that one release holds rather than the
