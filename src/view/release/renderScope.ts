@@ -6,7 +6,6 @@ import { formatCivil } from '../../domain/timeline';
 import { BacklogSettings } from '../../domain/settings';
 import { WorkflowKind, workflowStateInfo } from '../../domain/board';
 import { guidanceShell } from '../render/emptyStates';
-import { uniqueElementId } from '../selection';
 import { renderReleaseInit } from './initControl';
 import { drawScopeTree, effectiveHideDone, rowsAfterHideDone } from './scopeTree';
 import { drawScopeToolbar } from './scopeToolbar';
@@ -205,11 +204,20 @@ function drawHeader(view: ReleaseView, scope: ReleaseScope, release: ReleaseRow,
  * it — that attribute REPLACES an element's content for assistive tech, so labelling the
  * strip with the provenance sentence would silence the bar, the percentage and the `n of m`
  * text it already draws, trading one gap for a worse one. What is added instead is a
- * `.pbl-sr-only` span carrying the IDENTICAL sentence (`board.ts`'s own pattern for the
- * board's shortcut hint), associated through `aria-describedby` rather than duplicated in
- * new words: one question — what decided this figure — gets one answer, read alongside the
- * visible content rather than instead of it. The tooltip stays, for the pointer users who
- * already had it.
+ * `.pbl-sr-only` span carrying the IDENTICAL sentence, left as ordinary (unhidden) content
+ * of the strip rather than associated to it through `aria-describedby` — `board.ts`'s
+ * `renderBoardInstructions` is NOT the pattern to follow here, whatever an earlier version
+ * of this comment claimed: that association lands on `boardEl`, a real tab stop the board
+ * pane owns, and `aria-describedby` is reliably exposed on a focusable element with a role.
+ * `sumEl` is a bare `<div>` with no role and no tabindex — the shape most screen readers do
+ * not expose a description for at all — so the identical mechanism here would very likely
+ * reach nobody while reading as though it worked. Plain hidden text needs neither: it is
+ * read once, in the strip's own linear order, by anything that reads the strip at all. The
+ * tooltip stays, for the pointer users who already had it. What this can check is narrower
+ * than "announced": the span is present, inside the strip, not `aria-hidden`, and carries
+ * the same sentence the tooltip does — whether a screen reader actually speaks it is a
+ * live-vault question, the same one `src/view/CLAUDE.md`'s resize-grip section leaves open
+ * for a `role="separator"`.
  */
 function drawSummary(headerEl: HTMLElement, release: ReleaseRow, members: number, planSettings: BacklogSettings): void {
 	if (release.members.unconfigured || members === 0) return;
@@ -227,15 +235,13 @@ function drawSummary(headerEl: HTMLElement, release: ReleaseRow, members: number
 	sumEl.createSpan({ cls: 'pbl-rel-figure', text: t('column.rollupTooltip', { done, count: members }) });
 	const provenance = progressProvenance(release.workflows, planSettings);
 	setTooltip(sumEl, provenance);
-	// `aria-hidden`, like `board.ts`'s own `renderBoardInstructions`: without it a linear
-	// (virtual-cursor) read would meet this span as ordinary content — one more figure in
-	// the strip — and then meet the identical sentence again as `sumEl`'s description. Hiding
-	// it from normal traversal is what keeps the strip's own reading exactly the visible bar,
-	// percentage and count, while `aria-describedby` still pulls a hidden element's text as a
-	// description — that split is the whole of why this pattern works.
-	const provenanceEl = sumEl.createSpan({ cls: 'pbl-sr-only', attr: { 'aria-hidden': 'true' }, text: provenance });
-	provenanceEl.id = uniqueElementId('pbl-rel-provenance');
-	sumEl.setAttribute('aria-describedby', provenanceEl.id);
+	// Plain visually-hidden content, not `aria-describedby` — `sumEl` is a role-less,
+	// unfocusable `<div>`, and a description only reliably reaches assistive tech on a
+	// focusable host with a role (which is what `board.ts`'s `renderBoardInstructions` has,
+	// putting its own association on the focusable `boardEl` rather than on a plain div).
+	// No `aria-hidden` either: with no description to double against, this text is meant to
+	// be read exactly once, as ordinary content of the strip.
+	sumEl.createSpan({ cls: 'pbl-sr-only', text: provenance });
 }
 
 /**

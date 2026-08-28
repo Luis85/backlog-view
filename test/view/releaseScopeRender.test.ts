@@ -381,29 +381,32 @@ describe('the summary strip', () => {
 	/**
 	 * Finding 2 of Task 7: the provenance sentence was attached with `setTooltip` alone, on
 	 * a non-focusable `<div>` — pointer-only, so a keyboard or screen-reader user got the
-	 * bar, the percentage and the "n of m" sentence with nothing naming their source.
+	 * bar, the percentage and the "n of m" sentence with nothing naming their source. The
+	 * first fix routed it through `aria-describedby` on `sumEl`, which does not reliably
+	 * work either: a description is only dependably exposed on a focusable element with a
+	 * role, and `sumEl` is neither — so the fix is plain visually-hidden content instead,
+	 * read once in the strip's own linear order rather than associated to it.
 	 *
 	 * jsdom computes no layout and no accessibility tree, so what this can check is the DOM
-	 * relationship the fix is built from — `aria-describedby` resolving to an element whose
-	 * text is the identical sentence the tooltip carries — rather than what a screen reader
-	 * actually announces, which is a live-vault question like every other ARIA claim this
-	 * view makes (`src/view/CLAUDE.md`'s own resize-grip section says the same about a
-	 * `role="separator"`).
+	 * shape the fix is built from — a `.pbl-sr-only` span, inside the strip, carrying the
+	 * identical sentence the tooltip carries, and NOT `aria-hidden` (so a linear read meets
+	 * it) — rather than what a screen reader actually announces, which is a live-vault
+	 * question like every other ARIA claim this view makes (`src/view/CLAUDE.md`'s own
+	 * resize-grip section says the same about a `role="separator"`).
 	 */
-	it('makes the provenance sentence reachable without a pointer, through aria-describedby', () => {
+	it('makes the provenance sentence reachable without a pointer, as plain hidden content', () => {
 		const { view, containerEl } = makeReleaseView(progressVault(), RELEASE_CONFIG);
 		view.pick('P.md');
 		const strip = containerEl.querySelector('.pbl-rel-summary') as HTMLElement;
-		const describedId = strip.getAttribute('aria-describedby');
-		expect(describedId).not.toBeNull();
-		const described = containerEl.querySelector(`#${describedId}`) as HTMLElement | null;
-		expect(described).not.toBeNull();
+		const provenanceEl = strip.querySelector('.pbl-sr-only') as HTMLElement | null;
+		expect(provenanceEl).not.toBeNull();
 		// One sentence, not two wordings for one question — the same text the tooltip
-		// carries, read from the element the description resolves to.
-		expect(described!.textContent).toBe(strip.dataset.tooltip);
-		// Hidden from a linear read, so a screen reader meets the sentence once (as the
-		// description) rather than twice (again as ordinary content of the strip).
-		expect(described!.getAttribute('aria-hidden')).toBe('true');
+		// carries.
+		expect(provenanceEl!.textContent).toBe(strip.dataset.tooltip);
+		// Never hidden from a linear read — there is no description for it to double
+		// against, so it must be read as ordinary content of the strip, exactly once.
+		expect(provenanceEl!.hasAttribute('aria-hidden')).toBe(false);
+		expect(strip.hasAttribute('aria-describedby')).toBe(false);
 	});
 
 	it('reports the same numbers the index band reported', () => {
