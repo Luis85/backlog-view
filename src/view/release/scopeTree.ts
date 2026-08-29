@@ -113,7 +113,13 @@ export function foldedPaths(view: ReleaseView, releasePath: string): Set<string>
 }
 
 /** Write this release's fold set back, keeping every other release's keys — and any
- *  other fold this store already holds — untouched. */
+ *  other fold this store already holds — untouched.
+ *
+ *  The set is the WHOLE truth about this scope: a path in it is folded and a path absent is
+ *  open, with no third state for "nobody has ruled on this row". So a release nobody has
+ *  folded anything in opens whole — decided rather than emergent, and stated with the reason
+ *  in `docs/requirements/The scope of a release as a tree.md` extension 2b, along with why
+ *  seeding this set on first open would be worse than the default it replaces. */
 function writeFolds(view: ReleaseView, releasePath: string, folded: ReadonlySet<string>): void {
 	const id = resolveViewIdentity(view.app, view.viewEl, view.config.name ?? '');
 	const prefix = foldPrefix(releasePath);

@@ -72,6 +72,23 @@ note assumed and `## Where it lives` explains it cannot be.
   scaffolding for a member, and hiding it would break the member's place.
 - **4a — the release has no members.** The tree is empty and says so, naming the release. An
   empty release is a legitimate state, not a misconfiguration.
+- **2b — a release nobody has folded anything in opens WHOLE.** Every parent is drawn
+  unfolded, which is the opposite of the backlog tree's own default
+  ([[Collapse persistence]] 1a, where a row nobody has ruled on opens collapsed once). Two
+  different populations, so two different defaults: 1a's stated reason is "so a large backlog
+  starts readable", and a release scope is ALREADY the filtered population that reason asks
+  for — one release's members, which is what the reader opened the screen to see. Collapse all
+  is one press away in the toolbar for the release that is big anyway.
+  Recorded here because it was emergent rather than decided: with an empty fold set every row
+  reads as open, and nothing said whether that was the intent. (Codex, PR #206.)
+  **The cheap fix is a trap and that is why it is not taken.** Seeding the fold set on first
+  open cannot work, because "nothing stored" is indistinguishable from "the reader expanded
+  everything", so it would re-collapse a scope somebody deliberately opened — which is exactly
+  the failure the backlog's THIRD state (`settled`) exists to prevent. Matching 1a properly
+  therefore means a settled set per release: a second key per parent per release against the
+  one `MAX_FOLDS` budget, in the view that holds no `ViewStateController` — the shared cause
+  every fold defect on this branch traced back to. Worth doing only if a real release scope
+  proves unreadable on opening, which is a live-vault question.
 
 ## Acceptance criteria
 
