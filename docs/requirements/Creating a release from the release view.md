@@ -81,6 +81,13 @@ separate act of bringing the release note itself into being.
   and this one is a box, so a dialog that put it in the middle would push the short fields
   below the fold of a box the reader has not typed in yet. It is a property rather than the
   note body — the reversal that other note records, for that type alone.
+- **2e — a property is re-pointed or cleared while the dialog is open.** The note is written
+  with the bindings the dialog was OPENED against — the capture rule
+  [[Editing a release from its own screen]] 5d keeps for an edit, asked of a creation
+  (found by review, PR #211). Reading the settings again at the submit dropped the reader's
+  description on the floor, since 2c writes no unconfigured key, while the notice still said
+  the release was created. Nothing existing is at risk either way: this note does not exist
+  yet, which is why the captured keys are used here and refused there.
 - **2c — a field the vault tracks is left blank.** The key is not written at all, rather than
   written empty. [[Releases as their own type]] 3b names the empty string as UNREADABLE
   rather than absent, so a blank written here is this view's own reader reporting the release

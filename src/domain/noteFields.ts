@@ -294,6 +294,31 @@ export function readDate(value: unknown): FieldReading<CivilDate> {
 	return { value: { year, month, day }, invalid: false };
 }
 
+/**
+ * A civil date a note must state EXACTLY ONCE — `readDate` with its two tolerances taken
+ * back, for the keys where each of them would answer a question the note did not.
+ *
+ * A LIST is a refusal rather than a value to pick from: `readDate` unwraps one by recursing
+ * into its first entry, so `target-date: [2026-09-01, 2026-10-01]` would report a clean
+ * `2026-09-01` — a date the note never stated on its own. And a BLANK string is a refusal
+ * rather than absence: [[Releases as their own type]] 3b names the empty value explicitly as
+ * somebody's mistake, where `readDate` calls it unplaced because that is what an empty
+ * horizon means on a dated axis. The guard trims for itself, so whitespace-only is the same
+ * answer rather than a second reader agreeing about what a blank is.
+ *
+ * Refused HERE rather than inside `readDate`, which every dated axis in the plugin shares:
+ * this is the stricter reading, asked for by name where a note may state one date and no
+ * more. **Both readings of a release's dates take it** — the index's figures
+ * (`domain/releases.ts`) and the roadmap's marker overlay (`domain/readItems.ts`) — which is
+ * what stops the two views contradicting each other about one note: the roadmap drew a
+ * marker on the first of a list the index was calling unreadable (found by review, PR #211).
+ */
+export function readSoleDate(raw: unknown): FieldReading<CivilDate> {
+	if (Array.isArray(raw)) return { value: null, invalid: true };
+	if (typeof raw === 'string' && raw.trim() === '') return { value: null, invalid: true };
+	return readDate(raw);
+}
+
 /** Month lengths, leap years included — what makes `2026-02-30` invalid, not a guess. */
 export function daysInMonth(year: number, month: number): number {
 	// Day 0 of the next month is this month's last day; pure calendar arithmetic.

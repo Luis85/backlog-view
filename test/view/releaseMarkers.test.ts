@@ -104,6 +104,22 @@ describe('a release on the dated axis', () => {
 		expect(containerEl.querySelector('.pbl-timeline')).not.toBeNull();
 	});
 
+	it('draws no line for a release stating TWO dates, which the index calls unreadable', () => {
+		// One note, two views, one answer: `readSoleDate` refuses a list outright, where the
+		// tolerant `readDate` the placement axes share would take its first entry and mark
+		// 2026-09-01 — a date this release never stated on its own, on a grid whose index
+		// column reads the same key as `Unreadable` (found by review, PR #211).
+		const vault = new FakeVault();
+		vault.addFile('Two dates.md', {
+			frontmatter: { type: 'Release', 'target-date': ['2026-09-01', '2026-10-01'] },
+		});
+		vault.addFile('A story.md', { frontmatter: { type: 'PBI', order: 10, due: '2026-10-01' } });
+		const { containerEl } = roadmapView(vault, { ...DATES });
+
+		expect(lines(containerEl)).toHaveLength(0);
+		expect(containerEl.querySelector('.pbl-timeline')).not.toBeNull();
+	});
+
 	it('draws one line naming both when two releases share a date', () => {
 		// Two lines a pixel apart read as one and quietly misreport the count — the milestone
 		// overlay's own rule, kept for the same reason and in the same stable model order.

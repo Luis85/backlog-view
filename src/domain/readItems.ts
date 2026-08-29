@@ -12,6 +12,7 @@ import {
 	readLinkList,
 	readNumber,
 	readPlacement,
+	readSoleDate,
 	readString,
 	readTags,
 	resolveParent,
@@ -418,6 +419,11 @@ function divertResource(store: RawStore, file: TFile, entry: BasesEntry | null):
  * (`viewOptions.ts`), so without this gate every note in the vault would carry a reading
  * nothing may use.
  *
+ * Read with `readSoleDate` rather than the tolerant `readDate` the placement axes share: a
+ * release states ONE date, and the index refuses a list of them (`domain/releases.ts`), so
+ * reading the same key tolerantly here drew a marker on the first entry of a list the other
+ * view was calling unreadable — one note and two answers (found by review, PR #211).
+ *
  * Its own function rather than a ternary in `addItem`, which is at its complexity budget:
  * a read whose gate is a type belongs beside `readGated` either way.
  */
@@ -426,7 +432,7 @@ function readReleaseDate(
 	settings: BacklogSettings,
 	fm: Record<string, unknown> | undefined,
 ): FieldReading<CivilDate> {
-	return isReleaseType(typeName) ? readGated(settings.releaseDateKey, fm, readDate) : absentReading();
+	return isReleaseType(typeName) ? readGated(settings.releaseDateKey, fm, readSoleDate) : absentReading();
 }
 
 /**

@@ -253,12 +253,20 @@ describe('New release', () => {
 	});
 
 	it('reports a refusal rather than throwing it', async () => {
-		// `createRelease` throws without a type key. The empty states withhold the control
-		// on that configuration, so this drives the guard itself: the vault is left alone
-		// and the reader is told.
+		// A create that fails for ANY reason — `createRelease`'s own type-key guard, or the
+		// vault refusing the write, which is what this stages — is reported rather than left
+		// to the console: the vault is unchanged and the reader is told. A press that made no
+		// note and said nothing looks like a dead button.
+		//
+		// Staged at the vault rather than by clearing `typeKey` mid-dialog, which no longer
+		// reaches the guard and should not: the dialog captures its bindings when it opens
+		// (see `newRelease`), and the one configuration that guard refuses is the one both
+		// empty states withhold this control on.
 		const vault = noReleaseVault();
-		const { view, modal } = await openNewRelease(vault, RELEASE_CONFIG);
-		view.settings = { ...view.settings, typeKey: '' };
+		const { modal } = await openNewRelease(vault, RELEASE_CONFIG);
+		vault.beforeWrite = () => {
+			throw new Error('the vault refused the write');
+		};
 		Notice.reset();
 		await confirm(modal, '2.4');
 		expect(vault.files.has('docs/releases/2.4.md')).toBe(false);
@@ -295,6 +303,34 @@ describe('New release', () => {
 			el.value = value;
 			el.dispatchEvent(new Event('input', { bubbles: true }));
 		}
+		modal.contentEl.querySelector<HTMLButtonElement>('.mod-cta')?.click();
+		await flush();
+
+		expect(createdNotes(vault, before)).toEqual([
+			{ path: 'docs/releases/2.4.md', fm: { type: 'Release', description: 'The billing rewrite.' } },
+		]);
+	});
+
+	it('writes the description under the key the dialog was OPENED against', async () => {
+		// The `.base` re-pointed while the box is open — the capture rule the three editors
+		// keep, asked of the create (found by review, PR #211). Reading the settings again at
+		// the submit dropped the reader's text on the floor while the notice still said the
+		// release was made, since `createRelease` writes no unconfigured key.
+		const vault = noReleaseVault();
+		const before = new Set(vault.files.keys());
+		const { view, modal } = await openNewRelease(vault, RELEASE_CONFIG);
+		const titleEl = modal.contentEl.querySelector('input');
+		const areaEl = modal.contentEl.querySelector('textarea');
+		if (!titleEl || !areaEl) throw new Error('the dialog draws no title field or no description box');
+		for (const [el, value] of [
+			[titleEl, '2.4'],
+			[areaEl, 'The billing rewrite.'],
+		] as [HTMLElement & { value: string }, string][]) {
+			el.value = value;
+			el.dispatchEvent(new Event('input', { bubbles: true }));
+		}
+		// After the box was drawn and filled, before it is submitted.
+		view.settings = { ...view.settings, descriptionKey: '' };
 		modal.contentEl.querySelector<HTMLButtonElement>('.mod-cta')?.click();
 		await flush();
 

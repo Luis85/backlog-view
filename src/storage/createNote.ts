@@ -170,7 +170,7 @@ export interface NewReleaseSpec {
  * same ruling [[Releases as their own type]] 3b and `neverStubbed` (`domain/writePlan.ts`,
  * *"An empty release is not an empty slot"*) each already made from their own end. It has
  * to be kept HERE, at the creator every release goes through, rather than at the dialog
- * that happens to produce the blanks today: `readLabel` and `readTarget`
+ * that happens to produce the blanks today: `readLabel` and `readSoleDate`
  * (`domain/releases.ts`) read a present-but-empty key as UNREADABLE rather than as absent,
  * so writing one makes this view's own reader report the release it just made as somebody's
  * mistake, in three columns of the index and again on that release's own screen.

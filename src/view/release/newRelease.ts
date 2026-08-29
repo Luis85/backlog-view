@@ -69,10 +69,21 @@ async function newRelease(view: ReleaseView): Promise<void> {
 	// nothing else on this screen reports. Quiet when it bound nothing is this caller's own
 	// half of the rule — the dialog opens either way, so a silent press is not a dead one.
 	if (await bindAndReport(view)) new Notice(t('release.new.bound'));
+	// **The bindings are CAPTURED with the field list**, the root guide's capture-before-the-
+	// await asked of a creation: the dialog offers the fields these keys make writable, and a
+	// `.base` re-pointed while it is open would otherwise have the submit read the settings
+	// again — so a cleared `descriptionProperty` drops the text the reader typed while the
+	// notice still says the release was created, and a re-pointed one files it under a
+	// property the dialog was never opened against (found by review, PR #211). One snapshot
+	// answers both, because `resolveReleaseSettings` builds a new object per data update.
+	// Nothing existing is overwritten either way: this is a note that does not exist yet, so
+	// the captured keys are refused nowhere — unlike an EDIT, where `reconfiguredKey` refuses
+	// a captured key that is no longer its own field's.
+	const settings = view.settings;
 	openNewReleaseDialog(
 		view.app,
-		releaseFields(view.settings),
-		(result) => void writeRelease(view, result),
+		releaseFields(settings),
+		(result) => void writeRelease(view, settings, result),
 		() => focusNewRelease(view),
 	);
 }
@@ -144,21 +155,24 @@ function releaseFields(settings: ReleaseSettings): ReleaseFieldId[] {
  *
  * It was the opposite until this round, on the ground that a key nothing carries cannot be
  * offered by Obsidian's property picker (`init.ts` records the same cost). That traded one
- * problem for a worse one: `readLabel` and `readTarget` (`domain/releases.ts`) read a
+ * problem for a worse one: `readLabel` (`domain/releases.ts`) and `readSoleDate` (`domain/noteFields.ts`) read a
  * present-but-blank key as UNREADABLE rather than absent — [[Releases as their own type]]
  * 3b names the empty string explicitly — so the release this press had just made drew
  * `Unreadable` in three columns of the index and again on its own screen. The picker cost
  * is unchanged in kind and only in WHEN: it is now the first release that CARRIES a
  * version, a date or a status that makes that one pickable.
  *
+ * `settings` is the snapshot the dialog was OPENED against, never `view.settings` — see
+ * {@link newRelease} for what a re-pointed option does to a submit that reads them again.
+ *
  * `createRelease` THROWS without a type key rather than refusing quietly — a state its
  * caller is supposed to have ruled out, and `draw` has. Reported rather than left to the
  * console for the reason `writeResource` (`view/interactions/resourceNotes.ts`) reports
  * its own: a press that produced no note and said nothing looks like a dead button.
  */
-async function writeRelease(view: ReleaseView, result: NewReleaseResult): Promise<void> {
+async function writeRelease(view: ReleaseView, settings: ReleaseSettings, result: NewReleaseResult): Promise<void> {
 	try {
-		const file = await createRelease(view.app, view.settings, result);
+		const file = await createRelease(view.app, settings, result);
 		// The note's own name, never the requested one — `uniqueNotePath` may have suffixed
 		// it. `writeResource` reports the same way for the same reason.
 		new Notice(t('release.new.created', { name: file.basename }));

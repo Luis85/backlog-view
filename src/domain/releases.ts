@@ -1,7 +1,7 @@
 import { App, TFile } from 'obsidian';
 import { BacklogItem, BacklogModel, inPlan } from './model';
 import { ReleaseSettings } from './releaseOptions';
-import { CivilDate, FieldReading, linkpathFromRawValue, ownValue, readDate, readString, sameValue } from './noteFields';
+import { CivilDate, FieldReading, linkpathFromRawValue, ownValue, readSoleDate, readString, sameValue } from './noteFields';
 import { isMarkerType, isReleaseType } from './itemTypes';
 import { ownWorkflowKind, ownWorkflowReading, WorkflowKind } from './board';
 
@@ -171,34 +171,6 @@ function readLabel(raw: unknown): FieldReading<string> {
 	if (Array.isArray(raw)) return { value: null, invalid: true };
 	const text = readString(raw);
 	return text === null ? { value: null, invalid: true } : { value: text, invalid: false };
-}
-
-/**
- * The same refusal for the DATE figure, and it needs its own statement TWICE, because
- * `readDate` is tolerant in two ways this key cannot be.
- *
- * It has `readString`'s habit of unwrapping an array by recursing into its first element,
- * so `target-date: [2026-09-01, 2026-10-01]` would report a clean `2026-09-01` and SORT
- * the index by it. A release states one target date; a list of them is 3b's
- * configured-but-unreadable, not a value to pick from.
- *
- * And it calls a BLANK string absent (`if (text.length === 0) return absentReading()`),
- * which is right where it is shared — the roadmap's dated axis and `readPlacement` both
- * take empty to mean unplaced — and wrong here. 3b names the empty value explicitly and
- * {@link readLabel} beside it already refuses one, so delegating would make two readers in
- * ONE file answer `''` two different ways: an empty `version` reported as somebody's
- * mistake and an empty `target-date` as a key nobody ever bound.
- *
- * Refused HERE rather than in `readDate`, for this function's whole reason for existing:
- * it is where refusals too strict for the shared reader are added, and a change there
- * would reach every dated axis in the plugin. The guard trims for itself, so
- * whitespace-only is the same answer rather than a second reader agreeing about what a
- * blank is.
- */
-function readTarget(raw: unknown): FieldReading<CivilDate> {
-	if (Array.isArray(raw)) return { value: null, invalid: true };
-	if (typeof raw === 'string' && raw.trim() === '') return { value: null, invalid: true };
-	return readDate(raw);
 }
 
 /**
@@ -487,9 +459,9 @@ export function releaseIndex(
 
 	const rows = model.releases.map((item): ReleaseRow => {
 		const fm = app.metadataCache.getFileCache(item.file)?.frontmatter;
-		const target = settings.targetDateKey ? figure(readTarget(ownValue(fm, settings.targetDateKey))) : UNCONFIGURED;
+		const target = settings.targetDateKey ? figure(readSoleDate(ownValue(fm, settings.targetDateKey))) : UNCONFIGURED;
 		const released = settings.releasedDateKey
-			? figure(readTarget(ownValue(fm, settings.releasedDateKey)))
+			? figure(readSoleDate(ownValue(fm, settings.releasedDateKey)))
 			: UNCONFIGURED;
 		const shipped = released.value !== null;
 		// Read once and shared below (`done`'s gate, `unconfiguredWorkflows` itself), so the

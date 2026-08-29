@@ -75,6 +75,12 @@ axis-specific rule of its own.
   [[Every release at once]] is where it is still visible.
 - **2b — the target date cannot be read as a date.** Treated exactly as 2a, and reported in the
   same place, so a typo is not silently a position.
+- **2e — the release states TWO dates.** Treated exactly as 2b: `target-date:
+  [2026-09-01, 2026-10-01]` is a release stating no date of its own, so no marker is drawn.
+  The overlay reads with `readSoleDate`, the same reading [[Every release in one list]]'s
+  figures take, rather than the tolerant one the placement axes share — that one unwraps a
+  list into its first entry, so the grid marked 2026-09-01 while the index called the very
+  same key unreadable (found by review, PR #211). One note may not have two answers.
 - **2c — the roadmap's release-date key is CLEARED.** No marker is drawn at all. It never falls
   back to the release view's key: a view reading another view's configuration is the hidden
   channel [[A view per capability]] refuses, and the two may legitimately be pointed at
