@@ -83,7 +83,7 @@ async function newRelease(view: ReleaseView): Promise<void> {
 	openNewReleaseDialog(
 		view.app,
 		releaseFields(settings),
-		(result) => void writeRelease(view, settings, result),
+		(result) => void writeRelease(view, dialogBindings(settings), result),
 		() => focusNewRelease(view),
 	);
 }
@@ -131,22 +131,52 @@ function boundKeys(config: BasesViewConfig): string {
 }
 
 /**
+ * The four bindings the dialog DRAWS a field for, paired with the field each one draws, in
+ * the order they are drawn. One table because two readers need the same list and a second
+ * copy is one edit from disagreeing: which fields to ask for, and which keys to capture.
+ *
+ * `description` is LAST, and it is the only one of the four whose position is an argument
+ * rather than an order somebody picked: the other three are one line each and this one is a
+ * box, so a dialog that put it in the middle would push the short fields below the fold of
+ * a box the reader has not typed in yet.
+ */
+const DIALOG_BINDINGS: [keyof ReleaseSettings, ReleaseFieldId][] = [
+	['versionKey', 'version'],
+	['targetDateKey', 'targetDate'],
+	['statusKey', 'status'],
+	['descriptionKey', 'description'],
+];
+
+/**
  * Which of a release's own fields this vault has a property bound for, in the order the
  * dialog draws them. An unconfigured key is never written to, so a field whose value could
  * only land nowhere is never asked for — which after the bind above means one the reader
  * deliberately cleared.
  */
 function releaseFields(settings: ReleaseSettings): ReleaseFieldId[] {
-	const fields: ReleaseFieldId[] = [];
-	if (settings.versionKey) fields.push('version');
-	if (settings.targetDateKey) fields.push('targetDate');
-	if (settings.statusKey) fields.push('status');
-	// LAST, and it is the only one of the four whose position is an argument rather than
-	// an order somebody picked: the other three are one line each and this one is a box,
-	// so a dialog that put it in the middle would push the short fields below the fold of
-	// a box the reader has not typed in yet.
-	if (settings.descriptionKey) fields.push('description');
-	return fields;
+	return DIALOG_BINDINGS.filter(([key]) => settings[key] !== '').map(([, field]) => field);
+}
+
+/**
+ * The keys behind those fields, captured when the dialog opens — and NOTHING else.
+ *
+ * That is the whole rule, and it took three review rounds to say in one sentence: **what
+ * the dialog DREW is captured, and everything else is read at the submit.** A field's key
+ * is a promise to the reader — the box they typed in was labelled by this property and
+ * their text belongs on it — while `typeKey` and `releaseFolder` are never shown, never
+ * collected, and are simply how the plugin files the note. Captured, those two do harm and
+ * no good: a re-pointed type key files `Release` under a property the view has stopped
+ * reading, so the note is created, reported as created, and in no reader at all, and a
+ * changed folder puts it somewhere the reader has just said releases do not go (both found
+ * by review, PR #211).
+ *
+ * Read live, both land the note where the vault is configured NOW, which is the only place
+ * it is usable. That is why this replaced a REFUSAL on the type key one commit later: the
+ * refusal was correct about the hazard and threw away the reader's typed values to avoid
+ * it, when reading the key loses nothing at all.
+ */
+function dialogBindings(settings: ReleaseSettings): Partial<ReleaseSettings> {
+	return Object.fromEntries(DIALOG_BINDINGS.map(([key]) => [key, settings[key]]));
 }
 
 /**
@@ -170,19 +200,10 @@ function releaseFields(settings: ReleaseSettings): ReleaseFieldId[] {
  * console for the reason `writeResource` (`view/interactions/resourceNotes.ts`) reports
  * its own: a press that produced no note and said nothing looks like a dead button.
  */
-async function writeRelease(view: ReleaseView, settings: ReleaseSettings, result: NewReleaseResult): Promise<void> {
-	// **One key of the snapshot is refused rather than honoured, and it is the one that says
-	// what the note IS.** Capturing the bindings is what keeps the reader's typed values on
-	// the properties the dialog showed them — but `typeKey` is not a field the dialog draws,
-	// it is the schema: written under a key the view has since stopped reading, the release
-	// is created, reported as created, and in no reader at all (found by review, PR #211).
-	// So the optional bindings stay captured and this one is re-asked, which is the same
-	// split `reconfiguredKey` makes on the edit path for the same reason.
-	if (settings.typeKey !== view.settings.typeKey) {
-		new Notice(t('release.new.rebound'));
-		focusNewRelease(view);
-		return;
-	}
+async function writeRelease(view: ReleaseView, bindings: Partial<ReleaseSettings>, result: NewReleaseResult): Promise<void> {
+	// The captured field keys over today's everything-else — see `dialogBindings` for why
+	// that split is the whole rule rather than a list of exceptions.
+	const settings: ReleaseSettings = { ...view.settings, ...bindings };
 	try {
 		const file = await createRelease(view.app, settings, result);
 		// The note's own name, never the requested one — `uniqueNotePath` may have suffixed

@@ -252,21 +252,28 @@ describe('New release', () => {
 		expect(createdNotes(vault, before)).toEqual([{ path: 'docs/releases/2.4.md', fm: { type: 'Release' } }]);
 	});
 
-	it('refuses to create when the TYPE binding moved while the dialog was open', async () => {
-		// Found by review (Codex, PR #211), against the capture that fixed the field bindings.
-		// The optional keys are captured on purpose — the reader's text belongs on the
-		// properties the dialog showed — but `typeKey` is not a field, it is the schema: under
-		// a key the view has since stopped reading, the note is created, reported as created,
-		// and in no reader at all. So this one key is re-asked at the submit.
+	it('files the note where the vault is configured NOW, not where it was when the dialog opened', async () => {
+		// Found by review (Codex, PR #211), twice over: the type key and the folder are both
+		// things the dialog never draws, so capturing them filed the release under a property
+		// the view had stopped reading, or in a folder the reader had just moved releases out
+		// of — created, reported as created, and in the wrong place either way.
+		//
+		// The captured FIELD bindings still win, which is the other half of the same rule and
+		// is what the second assertion is for: the box the reader typed in was labelled by
+		// `version`, so their text lands there even though the option now says `edition`.
 		const vault = noReleaseVault();
 		const before = new Set(vault.files.keys());
 		const { view, modal } = await openNewRelease(vault, RELEASE_CONFIG);
-		(view.config as unknown as { values: Record<string, unknown> }).values.typeProperty = 'note.kind';
+		const values = (view.config as unknown as { values: Record<string, unknown> }).values;
+		values.typeProperty = 'note.kind';
+		values.releaseFolder = 'shipped';
+		values.releaseVersionProperty = 'note.edition';
 		view.onDataUpdated();
-		await confirm(modal, '2.4');
+		await confirm(modal, '2.4', ['9.9.9']);
 
-		expect(createdNotes(vault, before)).toEqual([]);
-		expect(Notice.messages.some((m) => m.includes('type property changed'))).toBe(true);
+		expect(createdNotes(vault, before)).toEqual([
+			{ path: 'shipped/2.4.md', fm: { kind: 'Release', version: '9.9.9' } },
+		]);
 	});
 
 	it('reports a refusal rather than throwing it', async () => {
