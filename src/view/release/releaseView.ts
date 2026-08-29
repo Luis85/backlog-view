@@ -236,8 +236,9 @@ export class ReleaseView extends BasesView {
 		// unchanged.
 		this.scopeHadFocus = previousEl !== null && previousEl.classList.contains('pbl-tree') && previousEl.contains(document.activeElement);
 		// Read for the identical reason, one line up: which control (if any) held focus,
-		// named by the one class in `FOCUS_HANDLE_CLASSES` it carries.
-		const focusHandle = this.focusedControlClass();
+		// named by the one class in `FOCUS_HANDLE_CLASSES` it carries — and, where the
+		// control says which note it is about, that path beside it.
+		const focusHandle = this.focusedHandle();
 		this.viewEl.empty();
 		this.drawnKey = this.draw();
 		const el = this.scrollerEl();
@@ -255,23 +256,35 @@ export class ReleaseView extends BasesView {
 		// redrawn screen's own first focusable control — `New release`, Back, the tree — over
 		// inventing one that means nothing.
 		if (focusHandle !== null) {
-			const exact = this.viewEl.querySelector<HTMLElement>(`.${focusHandle}`);
-			(exact ?? this.viewEl.querySelector<HTMLElement>('button'))?.focus({ preventScroll: true });
+			// Every OTHER handle class names one element on its screen; `pbl-rel-band` names
+			// one per release, so a bare `querySelector` handed focus to the FIRST band
+			// whichever one the reader was on — a routine metadata refresh silently moved
+			// them to the top of the list. Matched on `data-path` where the control carries
+			// one, which is the same "identify the thing, not its position" the roving row
+			// restore makes one file over. Falls back to the first match for a screen that
+			// redrew without the note (a release whose row left the results), since landing
+			// on a band is closer than landing on the body.
+			const all = Array.from(this.viewEl.querySelectorAll<HTMLElement>(`.${focusHandle.cls}`));
+			const named = focusHandle.path === null ? undefined : all.find((el) => el.dataset.path === focusHandle.path);
+			(named ?? all[0] ?? this.viewEl.querySelector<HTMLElement>('button'))?.focus({ preventScroll: true });
 		}
 	}
 
-	/** The one class in {@link FOCUS_HANDLE_CLASSES} the currently focused element carries,
-	 *  or null when focus is outside this view or on something the redraw does not track —
+	/** The one class in {@link FOCUS_HANDLE_CLASSES} the currently focused element carries —
+	 *  with its `data-path` where it has one, since a class alone does not identify a
+	 *  control there is one of per release — or null when focus is outside this view or on
+	 *  something the redraw does not track —
 	 *  a per-row control, say. `scopeHadFocus` (above) is what covers that case now: a
 	 *  MOUSE press on a per-row control inside the tree, `.pbl-twisty`, focuses the twisty
 	 *  itself, this method returns null for it (twisty is not in `FOCUS_HANDLE_CLASSES`),
 	 *  and `scopeHadFocus`'s `contains` check catches it instead — the tree is the focus
 	 *  TARGET a composite widget hands focus back to, never the button, which is exactly
 	 *  why the twisty is deliberately not added to `FOCUS_HANDLE_CLASSES` here. */
-	private focusedControlClass(): string | null {
+	private focusedHandle(): { cls: string; path: string | null } | null {
 		const active = document.activeElement;
 		if (!(active instanceof HTMLElement) || !this.viewEl.contains(active)) return null;
-		return FOCUS_HANDLE_CLASSES.find((cls) => active.classList.contains(cls)) ?? null;
+		const cls = FOCUS_HANDLE_CLASSES.find((name) => active.classList.contains(name));
+		return cls === undefined ? null : { cls, path: active.dataset.path ?? null };
 	}
 
 	/**
