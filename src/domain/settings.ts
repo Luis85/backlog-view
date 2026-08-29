@@ -121,17 +121,6 @@ export interface BacklogSettings extends ItemHandling {
 	 */
 	horizonValues: string[];
 	/**
-	 * Declared resource names, in roadmap row order. Ships EMPTY, unlike
-	 * `horizonValues`: nobody declares who exists, so the resources axis is configured
-	 * by its assignee property and a date property alone, and this list only ever adds
-	 * rows nothing has landed in yet. It never NARROWS what Set assignee offers — an
-	 * observed name is a fact and no roster overrules it — but it does lead that menu's
-	 * list wherever it opens, which it did not until 2026-08-14: naming a team here and
-	 * being offered them on one projection only reads as the setting not working. Not
-	 * `clearable`, because absence is the shipped state rather than a cleared default.
-	 */
-	resourceNames: string[];
-	/**
 	 * Frontmatter key holding the prerequisites this note waits for, or '' when the
 	 * feature is unconfigured. A LIST key, unlike every other optional property here,
 	 * which is why the read and the write both have their own shape.
@@ -174,11 +163,10 @@ export interface BacklogSettings extends ItemHandling {
 	/**
 	 * Frontmatter key holding who the item is assigned to, or '' when no assignee
 	 * property is named — a LINK to a `Resource` note (Task 4, 2026-08-28), not a typed
-	 * string. `resourceNames` is no longer read by anything the assignee reaches: Set
-	 * assignee offers the `Resource` notes the base returned (Task 4) and the resources
-	 * axis draws one row per such note, in the model's own order (Task 5, 2026-08-28), so
-	 * a named key alone is enough to draw the chip, fill its menu and populate the axis —
-	 * `resourceNames` stays only as a setting Task 7 has yet to remove.
+	 * string. A named key alone is enough to draw the chip, fill its menu with the
+	 * `Resource` notes the base returned (Task 4), and populate the resources axis with
+	 * one row per such note, in the model's own order (Task 5, 2026-08-28) — there is no
+	 * declared roster beside it (Task 7, 2026-08-29, removed it).
 	 */
 	assigneeKey: string;
 	/**
@@ -357,7 +345,6 @@ export function defaultSettings(): BacklogSettings {
 		showCompleted: true,
 		horizonKey: '',
 		horizonValues: [...DEFAULT_HORIZON_VALUES],
-		resourceNames: [],
 		dependsOnKey: '',
 		startKey: '',
 		targetKey: '',

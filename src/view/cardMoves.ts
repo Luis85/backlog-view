@@ -23,7 +23,6 @@ import {
 import { todayStamp } from '../domain/noteFields';
 import { WriteOutcome } from '../storage/frontmatter';
 import { BacklogViewHost } from './host';
-import { declareResource } from './interactions/labels';
 import { bucketLabel, bucketOf, bucketRepresentative, IterationBucket } from '../domain/board';
 import {
 	announceBoardMove,
@@ -219,20 +218,6 @@ export class CardMoveController {
 		const movedRow = writes[0].assignee !== undefined;
 		const outcome = await this.applyMove(item, writes);
 		if (outcome === null || !outcome.changed) return false;
-		// This still amends `resourceNames`, but not for the reason it once did: since
-		// [[Rows from the Resource notes]] (Task 5, 2026-08-28) no row on the roadmap reads
-		// that setting any more, so this write's only remaining reader is the absence
-		// prompt's suggestion list (`known` in `interactions/absences.ts`). The one place
-		// every input to this move already lands, so a drag, an Alt+arrow and the menu
-		// cannot disagree about it — see `declareResource`, which no-ops for a removal and
-		// for a name the roster already carries. AFTER the gate, never before: the roster is
-		// written on the same authority as the move, and a refused batch — a context card, a
-		// config problem — must not leave a `.base` amendment behind the refusal
-		// (`test/view/resourceRoster.test.ts` is the test that fails the other way).
-		// `target?.basename` for now — Task 7 deletes this call along with the setting it
-		// still amends, since a resource is a note declaring itself rather than a name a
-		// move happens to have used.
-		declareResource(this.host, target?.basename ?? null);
 		const spoken = placementEnds(item.typeName, this.host.settings.iterationBars);
 		const landed = outcome.dates
 			? { change: outcome.dates, placement: placeItem(item, outcome.dates.after, this.host.settings.iterationBars), ends: spoken }

@@ -43,8 +43,9 @@ export const SETUP: ManualSection = {
 				'The properties the state chip, the tag column, the assignee chip, and a state ' +
 				'change\'s own started/finished dates write to. None is written until its property ' +
 				'is named — a stamp is never written to a property this plugin chose on its own. ' +
-				'The assignee takes no list beside it: it offers the names already in the base, ' +
-				'plus whatever you type.',
+				'The assignee is a link to a Resource note, not a typed name: Set assignee offers ' +
+				'every Resource note the base returns, plus New resource... to make one for ' +
+				'somebody who does not have a note yet.',
 			keys: [
 				'stateProperty',
 				'tagsProperty',
@@ -115,17 +116,11 @@ export const SETUP: ManualSection = {
 			term: 'Placing work on the roadmap',
 			text:
 				'The horizon property and its buckets; the start and target date properties the ' +
-				'timeline schedules; the resources whose rows the timeline can be grouped into, ' +
-				'which is optional because an assignee nobody declared still gets a row of its ' +
-				'own; and the depends-on property a dependency connector writes.',
-			keys: [
-				'horizonProperty',
-				'horizonValues',
-				'startProperty',
-				'targetProperty',
-				'resourceNames',
-				'dependsOnProperty',
-			],
+				'timeline schedules; and the depends-on property a dependency connector writes. ' +
+				'The resources axis needs no property of its own — its rows are the Resource ' +
+				'notes the base returns, one row each, whether or not anything is assigned to ' +
+				'them yet.',
+			keys: ['horizonProperty', 'horizonValues', 'startProperty', 'targetProperty', 'dependsOnProperty'],
 		},
 		{
 			term: 'The Deliverables workflow\'s own state property — an override',

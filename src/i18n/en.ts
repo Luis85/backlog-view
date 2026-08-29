@@ -832,8 +832,6 @@ export const en = {
 	'option.horizonValues': 'Horizons (in order)',
 	'option.startProperty': 'Start date property',
 	'option.targetProperty': 'Target date property',
-	'option.resourceNames': 'Resources (in order)',
-	'option.resourceNamesHint': 'Optional, comma separated',
 	'option.dependsOnProperty': 'Depends-on property',
 
 	'option.riskProperty': 'Risk property',

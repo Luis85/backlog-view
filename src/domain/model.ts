@@ -23,7 +23,6 @@ import { ALL_TYPES, LEVELS } from './typeVocabulary';
 import { assertResolvedSettings } from './settingsConsistency';
 import { earliest, latest, reversedSpan } from './timeline';
 import {
-	collectObservedAssignees,
 	collectObservedDeliverableStates,
 	collectObservedHorizons,
 	collectObservedStates,
@@ -122,8 +121,6 @@ export interface ProjectionPopulation {
 	observedHorizons: string[];
 	/** Distinct tags this population carries, alphabetical. */
 	observedTags: string[];
-	/** Distinct assignees this population carries, alphabetical. */
-	observedAssignees: string[];
 }
 
 export interface BacklogModel {
@@ -202,14 +199,6 @@ export interface BacklogModel {
 	observedHorizons: string[];
 	/** Distinct tags in the result set, alphabetical — the vocabulary the tag menus offer. */
 	observedTags: string[];
-	/**
-	 * Distinct assignees in the result set, alphabetical. No longer what Set assignee
-	 * offers (Task 4, 2026-08-28: that menu reads `resources` instead), and no other
-	 * reader has taken its place — `deriveLanes` mints a resource's row from
-	 * `assigneeName(item)` directly, per item, never from this list. Retained only
-	 * because Task 7 owns deleting it, alongside `collectObservedAssignees`.
-	 */
-	observedAssignees: string[];
 	/** Distinct Deliverable-workflow state values, scoped to Deliverable items. */
 	observedDeliverableStates: string[];
 	/** Notes the base returned that are not backlog items (see `pruneOutsideHierarchy`). */
@@ -265,8 +254,8 @@ export function buildModel(app: App, entries: BasesEntry[], settings: BacklogSet
 	// A focus naming an EXTRA type re-roots at that type by name: it has no rung to
 	// match, and "show me the bugs" is the same question as "show me the PBIs".
 	const focusExtra = focusIdx < 0 && focus ? focus.toLowerCase() : '';
-	// Sorted through `localeCompare` — the collation `collectObservedAssignees` already
-	// uses, which follows the USER's locale because a name is data. The path tie-break
+	// Sorted through `localeCompare`, which follows the USER's locale because a name is
+	// data. The path tie-break
 	// matters: `localeCompare` returns 0 for two resources sharing a basename, and
 	// `Array.sort` is stable, so without it two such resources would come back in
 	// whatever order the Base's own query happened to return them — alphabetical order
@@ -851,11 +840,11 @@ function projectionForest(
 }
 
 /**
- * The four vocabularies a population carries, collected together because they are always
+ * The three vocabularies a population carries, collected together because they are always
  * asked together: *a vocabulary is scoped to the population of the projection that offers
- * it*, stated once rather than four times at four call sites.
+ * it*, stated once rather than three times at three call sites.
  *
- * The horizons are the one list that is ORDERED rather than sorted, so all four are
+ * The horizons are the one list that is ORDERED rather than sorted, so all three are
  * taken from the FINISHED tree rather than the load order: the roadmap mints a bucket per
  * new value as it walks its rows, which are these items filtered, so reading them in the
  * same sequence is what keeps the menu from naming the buckets in an order the axis then
@@ -865,7 +854,7 @@ function vocabularyOf(
 	items: BacklogItem[],
 	settings: BacklogSettings,
 	catalog: boolean,
-): Pick<ProjectionPopulation, 'observedStates' | 'observedHorizons' | 'observedTags' | 'observedAssignees'> {
+): Pick<ProjectionPopulation, 'observedStates' | 'observedHorizons' | 'observedTags'> {
 	return {
 		// WHICH workflow, asked of the population rather than of each item: a population is
 		// homogeneous by membership, and the done list a state menu sorts by is the
@@ -876,7 +865,6 @@ function vocabularyOf(
 		observedStates: catalog ? collectObservedTestStates(items, settings) : collectObservedStates(items, settings),
 		observedHorizons: collectObservedHorizons(items),
 		observedTags: collectObservedTags(items),
-		observedAssignees: collectObservedAssignees(items),
 	};
 }
 

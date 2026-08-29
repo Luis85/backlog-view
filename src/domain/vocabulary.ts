@@ -1,15 +1,14 @@
 import { inCatalog, isDeliverableType } from './itemTypes';
-import { FieldReading, LinkEntry, tagKey } from './noteFields';
-import { assigneeName } from './readItems';
+import { FieldReading, tagKey } from './noteFields';
 import { BacklogSettings } from './settings';
 
 /**
  * What vocabulary the RESULTS carry — the states, the tags and the horizons a menu may
- * offer, collected off the loaded items. `collectObservedAssignees` rides along below
- * for the same reason but is no longer one of them: Set assignee reads `Resource` notes
- * now (Task 4, 2026-08-28). It has no reader left at all — the resources axis mints a
- * row from `assigneeName(item)` directly, per item, not from this list — and is kept
- * only because Task 7 owns deleting it.
+ * offer, collected off the loaded items. There is no assignee collector here any more:
+ * Set assignee reads `Resource` notes (Task 4, 2026-08-28) and the resources axis mints
+ * a row from `assigneeName(item)` directly, per item, so nothing needs a collected list
+ * of observed assignees (Task 7, 2026-08-29, removed it along with the setting that was
+ * its only consumer).
  *
  * All of them obey one rule, which is why they live together rather than beside the
  * code that consumes each: **a note the Base excluded contributes nothing.** Its
@@ -28,7 +27,6 @@ interface VocabularySource {
 	horizon: FieldReading<string>;
 	typeName: string | null;
 	deliverableStateValue: string | null;
-	assigneeEntry: LinkEntry | null;
 }
 
 /**
@@ -83,20 +81,6 @@ function sortOpenThenDone(values: string[], doneValues: string[]): string[] {
 export function collectObservedStates(all: VocabularySource[], settings: BacklogSettings): string[] {
 	const values = firstSeen(all, (item) => (item.stateValue === null ? [] : [item.stateValue]));
 	return sortOpenThenDone(values, settings.doneValues);
-}
-
-/**
- * Every assignee the results name, alphabetical and deduped case-insensitively in the
- * casing seen first — the tags collector's shape. No longer what any menu offers (Task
- * 4 moved Set assignee onto `Resource` notes), and nothing else reads its output either
- * — `deriveLanes` names a row from each item's own `assigneeName`, not from this
- * collected list. Task 7 deletes it, which is the only reason it is still here.
- */
-export function collectObservedAssignees(all: VocabularySource[]): string[] {
-	return firstSeen(all, (item) => {
-		const name = assigneeName(item);
-		return name === null ? [] : [name];
-	}).sort((a, b) => a.localeCompare(b));
 }
 
 /** Every tag the results carry, alphabetical and deduped case-insensitively. */

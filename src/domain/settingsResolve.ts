@@ -330,9 +330,6 @@ export function resolveSettings(config: BasesViewConfig): BacklogSettings {
 		// A real default that must stay clearable: an emptied list means "no bucket
 		// axis", and only an option never touched falls back to Now, Next, Later.
 		horizonValues: clearable('horizonValues', fallback.horizonValues, () => dedupe(list('horizonValues'))),
-		// No `clearable`: that exists to tell "never set" from "cleared" for a REAL
-		// default, and this one has none — see `BacklogSettings.resourceNames`.
-		resourceNames: dedupe(list('resourceNames')),
 		deliverableStateKey: deliverable.key,
 		deliverableStates: deliverable.states,
 		deliverableDoneValues: deliverable.doneValues,

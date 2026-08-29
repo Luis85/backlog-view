@@ -5,7 +5,6 @@ import { inCatalog, isIterationType, isMarkerType, mayHoldField } from '../../do
 import { BacklogItem, inPlan } from '../../domain/model';
 import { sameValue } from '../../domain/noteFields';
 import { NamedTarget, namedTargets, ResourceNote } from '../../domain/readItems';
-import { resolveSettings } from '../../domain/settingsResolve';
 import {
 	computeAssigneeWrites,
 	computeIterationWrites,
@@ -84,56 +83,7 @@ function onResourceAxis(host: BacklogViewHost): boolean {
 async function chooseAssignee(host: BacklogViewHost, item: BacklogItem, target: TFile | null): Promise<unknown> {
 	// On-axis the move declares it, so this branch does not — once per path, never twice.
 	if (onResourceAxis(host)) return host.performResourceMove(item, target);
-	const outcome = await host.applySafely(computeAssigneeWrites(item, target));
-	// After the write landed, `performResourceMove`'s own order: a pick the gate refused
-	// must not amend the `.base` behind the refusal, and a no-op re-pick declares nobody.
-	if (outcome?.changed) declareResource(host, target?.basename ?? null);
-	return outcome;
-}
-
-/**
- * Put a name the reader has just ASSIGNED onto the declared roster, where it is not there
- * already. Naming somebody through this view is naming them, so the row they get is a
- * declared row rather than a stray one carrying "not one of the declared resources" — a
- * hint that is right about a name the view options have never seen and merely noise about
- * one the reader typed in a moment ago.
- *
- * **A write to the `.base`, and the second in this plugin that is a side effect of an
- * ordinary action** — `runInit` binds properties, and `createBacklogItem`'s prompt
- * persists the home folder. The same argument holds for all three: the option exists to be
- * filled in, and asking the reader to go and fill it in with a value they have already
- * given is a second statement of one decision. It goes at the END, so the roster keeps
- * declared ORDER as an order the reader built rather than one this function sorted.
- *
- * Guarded four ways, and each guard is a case that reaches here: `null` is a REMOVAL and
- * declares nobody; a name the roster already carries writes nothing, case-insensitively
- * through `sameValue` like every other comparison of these values; an unconfigured
- * assignee key means the property this roster is about is not in use, where writing a
- * roster would configure half a feature nobody asked for; and a name holding the list
- * SEPARATOR is refused, because the roster round-trips through one comma-separated
- * option — `resolveSettings` splits it back on commas, so declaring "Doe, Jane" would
- * hand the next resolve two entries nobody is called. The note still takes such a name
- * exactly as typed; only the roster declines it.
- *
- * Both callers run this AFTER their write lands, never before it — the ordering
- * `test/view/resourceRoster.test.ts` states from the rule.
- *
- * The list it appends to is read from the CONFIG at commit time, never from
- * `host.settings` — a snapshot taken at the last data update, while this write lands
- * after an awaited one, so two declarations between two refreshes had the second replace
- * the first's name instead of joining it. Through `resolveSettings` rather than a second
- * reading of the raw option: the split, the trim and the dedupe are that function's, and
- * parsing the string here would be a second opinion about what the roster is.
- * **It closes the window it can see, and only that one.** Whether one pane's `set` is
- * visible to another pane's `get` before its own refresh is an Obsidian internal nothing
- * here can answer, so two panes declaring two new names in the same instant may still
- * leave one of them undeclared — a live-vault question, recorded on PR #134.
- */
-export function declareResource(host: BacklogViewHost, name: string | null): void {
-	if (name === null || name.includes(',') || host.settings.assigneeKey === '') return;
-	const roster = resolveSettings(host.config).resourceNames;
-	if (roster.some((declared) => sameValue(declared, name))) return;
-	host.config.set('resourceNames', [...roster, name].join(', '));
+	return host.applySafely(computeAssigneeWrites(item, target));
 }
 
 /**

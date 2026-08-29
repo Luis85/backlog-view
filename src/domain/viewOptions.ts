@@ -430,16 +430,6 @@ function roadmapGroup(): BasesAllOptions {
 			},
 			optionalPropertyOption('start', t('option.startProperty')),
 			optionalPropertyOption('target', t('option.targetProperty')),
-			// The resources axis's ROW list, not a vocabulary: it adds rows nothing has
-			// landed in yet and never narrows what Set assignee offers. No default,
-			// unlike the horizons above — nobody declares who exists, so an empty box is
-			// the configured state rather than a cleared one.
-			{
-				type: 'text',
-				key: 'resourceNames',
-				displayName: t('option.resourceNames'),
-				placeholder: t('option.resourceNamesHint'),
-			},
 			optionalPropertyOption('dependsOn', t('option.dependsOnProperty')),
 		],
 	};
