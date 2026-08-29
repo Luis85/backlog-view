@@ -263,8 +263,10 @@ export function configProblems(settings: BacklogSettings): string[] {
  * The RELEASE view's own collision report — `configProblems` above asked of the other
  * settings shape, and the same question: is this combination one a writer may act on.
  *
- * **Over the keys read and written on the RELEASE NOTE, and no others.** Those six are the
- * ones whose collision corrupts the note this view writes: a status aimed at the type key
+ * **Over the keys read and written on the RELEASE NOTE, and no others.** Those are the
+ * ones whose collision corrupts the note this view writes, and READ counts: the released
+ * date, the parent and the order are never written by this view and are all read of a
+ * release, so a status landing on one of them is still this view breaking its own screen. a status aimed at the type key
  * takes `Release` off the note the moment somebody picks one, and it is then a release no
  * reader can find (`isReleaseType` and `membershipTarget` both key off the type). The
  * ITEM-side keys — the membership property, the state property — are deliberately absent,
@@ -288,6 +290,8 @@ export function configProblems(settings: BacklogSettings): string[] {
  */
 type ReleaseNoteRole =
 	| 'type'
+	| 'parent'
+	| 'order'
 	| 'releaseVersion'
 	| 'releaseTarget'
 	| 'releaseStatus'
@@ -300,6 +304,15 @@ export function releaseNoteProblems(settings: ReleaseSettings): string[] {
 	// `property.*` entry is a build error rather than a message rendered as its own key.
 	const owned: { role: ReleaseNoteRole; key: string }[] = [
 		{ role: 'type', key: settings.typeKey },
+		// The two MODEL mappings, added 2026-08-29 after review pointed out that the set left
+		// them out while `releaseIndex` reads both on a release note (PR #211). They are read
+		// rather than written here, which is exactly the released date's own reason for being
+		// in the list: `rank` sorts the index by `item.order`, so a status written onto the
+		// order key replaces a release's rank with a word and moves it to the tail — and the
+		// parent key is what seats a release in the tree at all (`loadOutsideParents` is not
+		// type-gated), so a status written there hangs the release off whatever it names.
+		{ role: 'parent', key: settings.parentKey },
+		{ role: 'order', key: settings.orderKey },
 		{ role: 'releaseVersion', key: settings.versionKey },
 		{ role: 'releaseTarget', key: settings.targetDateKey },
 		{ role: 'releaseStatus', key: settings.statusKey },

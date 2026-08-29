@@ -185,8 +185,12 @@ whose whole job is to say what a release is. Asked for as a property by the auth
   (`src/domain/settingsConsistency.ts`), which `createRelease` throws on and this gate
   refuses on: one statement, two enforcement points, because an edit never passes the
   creator and ✨ cannot produce the state a property picker can. Found by review on this PR.
-  It is over the RELEASE-NOTE keys alone, so the item-state / release-status sharing this
-  view is built around stays legal. **✨ must not be able to CREATE that state either**, and
+  It is over the RELEASE-NOTE keys alone — READ counts, not only written: the released date,
+  the parent and the order are never written by this view and are all read of a release, so a
+  status landing on one of them is still this view breaking its own screen (a status on the
+  order key replaces the rank `releaseIndex` sorts by, and sends the release to the tail).
+  The item-side keys stay out, which is what keeps the item-state / release-status sharing
+  this view is built around legal. **✨ must not be able to CREATE that state either**, and
   the exemption it uses is stated as "no NON-shared option holds this key" rather than "a
   shared option holds it": with the version and the item state both on `status`, the second
   reading freed the key, ✨ bound the release status onto the version's, and this very report

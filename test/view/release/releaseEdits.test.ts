@@ -454,6 +454,23 @@ describe('what an edit is, and is not', () => {
 		expect(Notice.messages.some((m) => m.includes('no longer a Release'))).toBe(true);
 	});
 
+	it('refuses an edit when the status shares the ORDER key, which the index ranks by', async () => {
+		// Found by review (Codex, PR #211), on the collision set the earlier finding produced:
+		// it named the keys this view WRITES and left out the two model mappings it READS on
+		// a release note. `rank` sorts the index by `item.order`, so a status written onto
+		// the order key replaces a release's rank with a word and sends it to the tail.
+		const vault = editVault();
+		const { view, containerEl } = makeReleaseView(vault, { ...RELEASE_CONFIG, releaseStatusProperty: 'note.order' });
+		view.pick('R.md');
+		statusChip(containerEl).click();
+		await flush();
+		Menu.lastShown?.items[0]?.click();
+		await flush();
+
+		expect(vault.writeLog).toEqual([]);
+		expect(Notice.messages.some((m) => m.includes('order'))).toBe(true);
+	});
+
 	it('refuses a write to a release the base excluded but the TREE still holds', async () => {
 		// Found by review (Codex, PR #211). `byPath` is not the results: a work item with a
 		// hand-written `parent: [[R]]` pulls the release it names into the model as a context
