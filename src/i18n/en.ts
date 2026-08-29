@@ -2100,12 +2100,20 @@ export const en = {
 	 * accepted: regenerating in another language rewrites the body, which a vault kept in
 	 * git sees as a diff.
 	 *
-	 * `population` promises only what this document can keep. It never says how many notes
-	 * the base excluded, because nothing can count those: membership lives on the ITEM, so
-	 * an excluded item is invisible to the view that would have to count it.
+	 * `population` promises only what this document can keep, and it was NARROWED on
+	 * 2026-08-29 after review: it said "what this base returned", which is wider than what
+	 * the file lists. A note the base returns can still be pruned from the model — a
+	 * parentless row whose type the vocabulary does not know is dropped by
+	 * `pruneOutsideHierarchy` — and it is then on no screen and in no file. What the file
+	 * actually lists is the release's own scope rows, which is exactly what the reader was
+	 * just looking at, so that is what it now says.
+	 *
+	 * It still never says how many notes the base EXCLUDED, because nothing can count
+	 * those: membership lives on the ITEM, so an excluded item is invisible to the view
+	 * that would have to count it.
 	 */
 	'release.notes.generated': 'This file is generated. Edits to it do not survive the next regeneration.',
-	'release.notes.population': 'It lists what this base returned.',
+	'release.notes.population': 'It lists this release’s members, as its scope tree draws them.',
 	'release.notes.empty': 'This release contained nothing.',
 	/** The heading for a type the vocabulary does not know — a note that quietly omitted
 	 *  work would be worse than an untidy heading. */

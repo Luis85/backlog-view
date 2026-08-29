@@ -13,10 +13,16 @@ import { sameValue } from './noteFields';
  * release byte-identical, and it is the easy thing to get wrong here because the action
  * beside this one exists to write today's date.
  *
- * It states its own POPULATION once — what this base returned — and never how many notes
- * it could not see, because nothing can count those: membership lives on the item, so an
- * excluded item is invisible to the view. A promise this can keep, in place of one it
- * cannot.
+ * It states its own POPULATION once, and states it NARROWLY: the release's own scope rows,
+ * which is what the reader was just looking at. Not "what this base returned", which was
+ * the wording until review pointed out it promises more than this file lists — a note the
+ * base returns can still be pruned from the model (a parentless row whose type the
+ * vocabulary does not know), and it is then on no screen and in no file. Writing a second
+ * population from before that pruning would make the document disagree with the screen,
+ * which is worse than a narrower sentence.
+ *
+ * It never says how many notes it could not see either, because nothing can count those:
+ * membership lives on the item, so an excluded item is invisible to the view.
  */
 export function releaseNotesContent(release: ReleaseRow, rows: ScopeRow[], source: string): string {
 	// The context-row rule, at the one place this document could break it: an ancestor is
