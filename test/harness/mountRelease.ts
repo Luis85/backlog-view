@@ -17,6 +17,7 @@
  * and no refresh to drive. A lock parameter here would suggest otherwise.
  */
 import { ReleaseView } from '../../src/view/release/releaseView';
+import { WriteLock } from '../../src/view/writeLock';
 import { drawChrome } from './chrome';
 import { drawIcons } from './icons';
 import { installObsidianDom } from '../helpers/dom';
@@ -98,7 +99,19 @@ function releaseHarnessVault(variant: ReleaseConfigVariant): FakeVault {
 		// from the clock, so the treatment is on the page whatever day it is opened — the
 		// days-overdue count is the one figure here that moves, and it moves upward.
 		release('Releases/0.5.md', { version: '0.5.0', 'target-date': '2026-05-04', status: 'In progress', order: 0 });
-		release('Releases/0.8.md', { version: '0.8.0', 'target-date': inDays(18), status: 'In progress', order: 1 });
+		// The one release with a DESCRIPTION, and the only one with a long enough scope to open
+		// on (`?pick=Releases/0.8.md`): the header's description line and its status chip are
+		// this screen's two write surfaces ([[Editing a release from its own screen]]), and
+		// neither is drawable in jsdom — one wraps a sentence under a two-line header and the
+		// other is a chip that has to refuse Obsidian's own button chrome. Every other release
+		// here carries none, which is the INVITATION state the same line draws.
+		release('Releases/0.8.md', {
+			version: '0.8.0',
+			'target-date': inDays(18),
+			status: 'In progress',
+			description: 'Everything the private beta asked for: passwordless sign-in, and the billing rewrite behind it.',
+			order: 1,
+		});
 		release('Releases/0.9.md', { version: '0.9.0', 'target-date': inDays(60), status: 'Planned', order: 2 });
 		// The long band: a 60-character name, the longest version and the longest status on
 		// one line 1. A release named rather than numbered is an ordinary vault, and it is
@@ -115,16 +128,29 @@ function releaseHarnessVault(variant: ReleaseConfigVariant): FakeVault {
 		// answer for THEMSELVES — the marker names which figure is unreadable and the target
 		// keeps its date and its days count beside it. The target's own marker is the same
 		// treatment in the same slot, so one release is enough to look at how it draws.
+		// `1.1` carries ALL THREE, and the scope screen is why: `drawStatus`, `drawReleased`
+		// and `drawDescription` each have an unreadable branch, each drawing the same
+		// `.pbl-rel-unreadable` refusal in place of the control, and until 2026-08-29 only the
+		// released date could reach one here. A list is what a person writes when they mean
+		// two of something, and it is the shape all three readers refuse. So this is the
+		// release whose whole header is a refusal — nothing on it is editable, and the note
+		// itself is one press away, which is the answer that screen gives.
 		release('Releases/1.1.md', {
 			version: '1.1.0',
 			'target-date': inDays(142),
 			released: 'soon',
-			status: 'Planned',
+			status: ['Planned', 'Delayed'],
+			description: ['Passwordless everywhere', 'and the billing rewrite'],
 			order: 4,
 		});
-		// No version and no target date: the row [[Every release in one list]] 3a sorts after
-		// every dated one, and the only one whose target cell says so rather than sitting blank.
-		release('Releases/Someday.md', { status: 'Idea' });
+		// No version, no target date and — since 2026-08-29 — no STATUS: the row
+		// [[Every release in one list]] 3a sorts after every dated one, and the only one whose
+		// target cell says so rather than sitting blank. The status went because an unset one
+		// is an INVITATION on the scope screen rather than an absence (`drawStatus`: a dashed
+		// `.pbl-state-unset` chip opening the same menu), and every release here carried one,
+		// so the state a reader meets on a release nobody has ruled on was undrawable. This is
+		// the release with nothing set at all, which is what makes it the honest place for it.
+		release('Releases/Someday.md', {});
 		// The SHIPPED tail, without which the browser draws one heading and the two-group
 		// layout is unlookable — the whole point of this increment. Both released dates are
 		// fixed and already past, so the group is stable whatever day the page is opened,
@@ -211,7 +237,7 @@ export function mountReleaseHarness(root: HTMLElement, variant: ReleaseConfigVar
 	const containerEl = leafEl.createDiv();
 	vault.addLeaf(new FileView(vault.addFile('Releases demo.base'), leafEl));
 
-	const view = new ReleaseView({} as never, containerEl);
+	const view = new ReleaseView({} as never, containerEl, new WriteLock());
 	const anyView = view as unknown as Record<string, unknown>;
 	anyView.app = vault.app;
 	const config = new FakeViewConfig(configValues(variant));

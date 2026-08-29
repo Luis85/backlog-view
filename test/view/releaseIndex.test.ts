@@ -198,7 +198,7 @@ describe('what turns a band red, and what a shipped one shows', () => {
 	});
 
 	it('refuses the overdue treatment and says the released value is unreadable, rather than misreporting a possibly-shipped release as definitely not', () => {
-		// Fix round 1, finding 2: `released: 'soon'` is invalid (`readTarget` refuses it,
+		// Fix round 1, finding 2: `released: 'soon'` is invalid (`readSoleDate` refuses it,
 		// same as `target-date: 'soon'` does), so `released.value` is null and the domain's
 		// `shipped` reads false — which is a correct statement about the VALUE and an
 		// unwarranted one about whether the release actually shipped. A target in the past

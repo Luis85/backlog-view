@@ -1,7 +1,8 @@
 import { Notice, setIcon } from 'obsidian';
 import type { ReleaseView } from './releaseView';
 import { t } from '../../i18n/t';
-import { ReleaseSettings, resolveReleaseSettings } from '../../domain/releaseOptions';
+import { BasesViewConfig } from 'obsidian';
+import { declaredPropertyKeys, ReleaseSettings } from '../../domain/releaseOptions';
 import { createRelease } from '../../storage/createNote';
 import { NewReleaseResult, openNewReleaseDialog, ReleaseFieldId } from '../../ui/newReleaseDialog';
 import { runReleaseInit } from './init';
@@ -43,18 +44,19 @@ export function renderNewRelease(view: ReleaseView, parentEl: HTMLElement): void
  * with nothing after it would otherwise look dead.
  */
 export async function bindAndReport(view: ReleaseView): Promise<boolean> {
-	// A FRESH resolve of the live config, never `view.settings`: that field is a snapshot
-	// from the last data update, so an option bound since then reads as unset here and the
-	// press reports a configuration change it did not make — `init.ts`'s own documented trap,
-	// met on the reading side rather than the binding one.
-	const before = boundKeys(resolveReleaseSettings(view.config));
+	// Read from the LIVE config, never from `view.settings`: that field is a snapshot from
+	// the last data update, so an option bound since then reads as unset here and the press
+	// reports a configuration change it did not make — `init.ts`'s own documented trap, met
+	// on the reading side rather than the binding one. Both ends of the comparison ask the
+	// same config, so the difference can only be what {@link runReleaseInit} set.
+	const before = boundKeys(view.config);
 	// Run unconditionally rather than asking first which options are unset. `runReleaseInit`
 	// already puts that question to the live config (`adoptCandidates`), binds only what
 	// nobody has touched, leaves a cleared option alone and does nothing at all when
 	// everything is bound — a second reading of the same question here could only ever come
 	// to disagree with it.
 	await runReleaseInit(view);
-	return boundKeys(view.settings) !== before;
+	return boundKeys(view.config) !== before;
 }
 
 /**
@@ -67,10 +69,21 @@ async function newRelease(view: ReleaseView): Promise<void> {
 	// nothing else on this screen reports. Quiet when it bound nothing is this caller's own
 	// half of the rule — the dialog opens either way, so a silent press is not a dead one.
 	if (await bindAndReport(view)) new Notice(t('release.new.bound'));
+	// **The bindings are CAPTURED with the field list**, the root guide's capture-before-the-
+	// await asked of a creation: the dialog offers the fields these keys make writable, and a
+	// `.base` re-pointed while it is open would otherwise have the submit read the settings
+	// again — so a cleared `descriptionProperty` drops the text the reader typed while the
+	// notice still says the release was created, and a re-pointed one files it under a
+	// property the dialog was never opened against (found by review, PR #211). One snapshot
+	// answers both, because `resolveReleaseSettings` builds a new object per data update.
+	// Nothing existing is overwritten either way: this is a note that does not exist yet, so
+	// the captured keys are refused nowhere — unlike an EDIT, where `reconfiguredKey` refuses
+	// a captured key that is no longer its own field's.
+	const settings = view.settings;
 	openNewReleaseDialog(
 		view.app,
-		releaseFields(view.settings),
-		(result) => void writeRelease(view, result),
+		releaseFields(settings),
+		(result) => void writeRelease(view, dialogBindings(settings), result),
 		() => focusNewRelease(view),
 	);
 }
@@ -100,11 +113,39 @@ function focusNewRelease(view: ReleaseView): void {
 	view.viewEl.querySelector<HTMLButtonElement>('.pbl-rel-new')?.focus({ preventScroll: true });
 }
 
-/** The four keys this press can bind, as one value, so "did it bind anything" is one
- *  comparison rather than four. A joined KEY LIST, never a sentence. */
-function boundKeys(settings: ReleaseSettings): string {
-	return [settings.membershipKey, settings.versionKey, settings.targetDateKey, settings.statusKey].join('\n');
+/**
+ * Every key this press can bind, as one value, so "did it bind anything" is one comparison
+ * rather than one per candidate. A joined KEY LIST, never a sentence.
+ *
+ * Read off the DECLARATION (`declaredPropertyKeys`) rather than off `ReleaseSettings`'
+ * own fields, and that is the same correction `declaredPropertyKeys`
+ * itself records: `stateProperty` is declared by this view and resolves onto
+ * `BacklogSettings.stateKey`, so it is on no field of `ReleaseSettings` and a sweep over
+ * that object cannot see it. With the hand-written four, a press whose only work was
+ * binding the state key — the whole progress half of this view — compared equal and
+ * reported that it had bound nothing, then skipped the redraw that would have shown the
+ * bars it had just switched on.
+ */
+function boundKeys(config: BasesViewConfig): string {
+	return declaredPropertyKeys(config).join('\n');
 }
+
+/**
+ * The four bindings the dialog DRAWS a field for, paired with the field each one draws, in
+ * the order they are drawn. One table because two readers need the same list and a second
+ * copy is one edit from disagreeing: which fields to ask for, and which keys to capture.
+ *
+ * `description` is LAST, and it is the only one of the four whose position is an argument
+ * rather than an order somebody picked: the other three are one line each and this one is a
+ * box, so a dialog that put it in the middle would push the short fields below the fold of
+ * a box the reader has not typed in yet.
+ */
+const DIALOG_BINDINGS: [keyof ReleaseSettings, ReleaseFieldId][] = [
+	['versionKey', 'version'],
+	['targetDateKey', 'targetDate'],
+	['statusKey', 'status'],
+	['descriptionKey', 'description'],
+];
 
 /**
  * Which of a release's own fields this vault has a property bound for, in the order the
@@ -113,11 +154,29 @@ function boundKeys(settings: ReleaseSettings): string {
  * deliberately cleared.
  */
 function releaseFields(settings: ReleaseSettings): ReleaseFieldId[] {
-	const fields: ReleaseFieldId[] = [];
-	if (settings.versionKey) fields.push('version');
-	if (settings.targetDateKey) fields.push('targetDate');
-	if (settings.statusKey) fields.push('status');
-	return fields;
+	return DIALOG_BINDINGS.filter(([key]) => settings[key] !== '').map(([, field]) => field);
+}
+
+/**
+ * The keys behind those fields, captured when the dialog opens — and NOTHING else.
+ *
+ * That is the whole rule, and it took three review rounds to say in one sentence: **what
+ * the dialog DREW is captured, and everything else is read at the submit.** A field's key
+ * is a promise to the reader — the box they typed in was labelled by this property and
+ * their text belongs on it — while `typeKey` and `releaseFolder` are never shown, never
+ * collected, and are simply how the plugin files the note. Captured, those two do harm and
+ * no good: a re-pointed type key files `Release` under a property the view has stopped
+ * reading, so the note is created, reported as created, and in no reader at all, and a
+ * changed folder puts it somewhere the reader has just said releases do not go (both found
+ * by review, PR #211).
+ *
+ * Read live, both land the note where the vault is configured NOW, which is the only place
+ * it is usable. That is why this replaced a REFUSAL on the type key one commit later: the
+ * refusal was correct about the hazard and threw away the reader's typed values to avoid
+ * it, when reading the key loses nothing at all.
+ */
+function dialogBindings(settings: ReleaseSettings): Partial<ReleaseSettings> {
+	return Object.fromEntries(DIALOG_BINDINGS.map(([key]) => [key, settings[key]]));
 }
 
 /**
@@ -126,21 +185,27 @@ function releaseFields(settings: ReleaseSettings): ReleaseFieldId[] {
  *
  * It was the opposite until this round, on the ground that a key nothing carries cannot be
  * offered by Obsidian's property picker (`init.ts` records the same cost). That traded one
- * problem for a worse one: `readLabel` and `readTarget` (`domain/releases.ts`) read a
+ * problem for a worse one: `readLabel` (`domain/releases.ts`) and `readSoleDate` (`domain/noteFields.ts`) read a
  * present-but-blank key as UNREADABLE rather than absent — [[Releases as their own type]]
  * 3b names the empty string explicitly — so the release this press had just made drew
  * `Unreadable` in three columns of the index and again on its own screen. The picker cost
  * is unchanged in kind and only in WHEN: it is now the first release that CARRIES a
  * version, a date or a status that makes that one pickable.
  *
+ * `settings` is the snapshot the dialog was OPENED against, never `view.settings` — see
+ * {@link newRelease} for what a re-pointed option does to a submit that reads them again.
+ *
  * `createRelease` THROWS without a type key rather than refusing quietly — a state its
  * caller is supposed to have ruled out, and `draw` has. Reported rather than left to the
  * console for the reason `writeResource` (`view/interactions/resourceNotes.ts`) reports
  * its own: a press that produced no note and said nothing looks like a dead button.
  */
-async function writeRelease(view: ReleaseView, result: NewReleaseResult): Promise<void> {
+async function writeRelease(view: ReleaseView, bindings: Partial<ReleaseSettings>, result: NewReleaseResult): Promise<void> {
+	// The captured field keys over today's everything-else — see `dialogBindings` for why
+	// that split is the whole rule rather than a list of exceptions.
+	const settings: ReleaseSettings = { ...view.settings, ...bindings };
 	try {
-		const file = await createRelease(view.app, view.settings, result);
+		const file = await createRelease(view.app, settings, result);
 		// The note's own name, never the requested one — `uniqueNotePath` may have suffixed
 		// it. `writeResource` reports the same way for the same reason.
 		new Notice(t('release.new.created', { name: file.basename }));

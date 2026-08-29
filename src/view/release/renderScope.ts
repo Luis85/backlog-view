@@ -1,7 +1,8 @@
 import { setIcon, setTooltip } from 'obsidian';
 import type { ReleaseView } from './releaseView';
 import { t } from '../../i18n/t';
-import { ReleaseFigure, ReleaseRow, ReleaseScope } from '../../domain/releases';
+import { ReleaseFigure, ReleaseIndex, ReleaseRow, ReleaseScope } from '../../domain/releases';
+import { editReleaseDescription, editReleaseReleased, showReleaseStatusMenu } from './releaseEdits';
 import { formatCivil } from '../../domain/timeline';
 import { BacklogSettings } from '../../domain/settings';
 import { WorkflowKind, workflowStateInfo } from '../../domain/board';
@@ -49,8 +50,14 @@ import { wireScopeCreate } from './scopeCreate';
  * this screen's summary strip needs it only to name a workflow's property and done values
  * in its tooltip, never to derive anything the model has not already counted.
  */
-export function renderScope(view: ReleaseView, scope: ReleaseScope, release: ReleaseRow, planSettings: BacklogSettings): void {
-	drawHeader(view, scope, release, planSettings);
+export function renderScope(
+	view: ReleaseView,
+	scope: ReleaseScope,
+	release: ReleaseRow,
+	planSettings: BacklogSettings,
+	index: ReleaseIndex,
+): void {
+	drawHeader(view, scope, release, planSettings, index);
 	// Both empty states sit BELOW the header, so the back control survives either. A
 	// release nobody can read the scope of must not also be a dead end.
 	if (view.settings.membershipKey === '') {
@@ -128,7 +135,13 @@ function drawAllDoneState(viewEl: HTMLElement, count: number): void {
  * which is what lets `styles/releaseScope.css` stack them without either line's own flex
  * rules fighting the other's.
  */
-function drawHeader(view: ReleaseView, scope: ReleaseScope, release: ReleaseRow, planSettings: BacklogSettings): void {
+function drawHeader(
+	view: ReleaseView,
+	scope: ReleaseScope,
+	release: ReleaseRow,
+	planSettings: BacklogSettings,
+	index: ReleaseIndex,
+): void {
 	const headerEl = view.viewEl.createDiv({ cls: 'pbl-rel-header' });
 	const hlineEl = headerEl.createDiv({ cls: 'pbl-rel-hline' });
 
@@ -144,16 +157,11 @@ function drawHeader(view: ReleaseView, scope: ReleaseScope, release: ReleaseRow,
 	backEl.addEventListener('click', () => view.pick(null));
 
 	hlineEl.createEl('h2', { text: release.name });
+	drawOpenNote(view, hlineEl, release);
 	drawFigure(hlineEl, release.version, t('release.index.column.version'), (value) =>
 		hlineEl.createSpan({ cls: 'pbl-rel-version', text: value }),
 	);
-	drawFigure(hlineEl, release.status, t('release.index.column.status'), (value) => {
-		// The tree's read-only chip, like every chip the index draws: this view offers no
-		// write, so a chip that lost `pbl-state-static` would gain a hover affordance and the
-		// screen would look editable.
-		const chipEl = hlineEl.createDiv({ cls: 'pbl-state-chip pbl-state-static' });
-		chipEl.createSpan({ cls: 'pbl-state-text', text: value });
-	});
+	drawStatus(view, hlineEl, release, index);
 
 	const factsEl = hlineEl.createDiv({ cls: 'pbl-rel-facts' });
 	// An absent target date draws NOTHING here, where the index labels it — deliberately,
@@ -163,8 +171,185 @@ function drawHeader(view: ReleaseView, scope: ReleaseScope, release: ReleaseRow,
 	drawFigure(factsEl, release.target, t('release.index.column.target'), (value) =>
 		factsEl.createSpan({ cls: 'pbl-rel-target', text: formatCivil(value) }),
 	);
+	drawReleased(view, factsEl, release);
 
+	drawDescription(view, headerEl, release);
 	drawSummary(headerEl, release, scope.members, planSettings);
+}
+
+/**
+ * The way to the release NOTE itself, which is the only place a version, a date or a
+ * status is edited: this view reads those three and writes none of them
+ * (`test/view/releaseNeverEdits.test.ts`), so without this control the reader's only
+ * route to the note was the index behind them, and from the index there was none at all.
+ *
+ * `view.opener.open` — the CONFIGURED target, and the same call a scope row's own click
+ * makes (`scopeTree.ts`), so the release note lands where this view's `openIn` says every
+ * other note lands and a modifier still outranks it. Never `openIn(…, 'tab')`: that is the
+ * target a reader NAMES (a middle click, a menu pick), and naming one on their behalf is
+ * what {@link OpenController}'s own two entry points exist to keep apart.
+ *
+ * Beside the title rather than in the toolbar below it: the toolbar's three controls are
+ * about the TREE (fold it, fold it back, hide what is finished), and this one is about the
+ * release the title names. It is drawn on every scope screen — including the two empty
+ * states, since both sit below this header — because a release with no readable membership
+ * and a release with no members are exactly the two cases where opening the note is what
+ * the reader came to do.
+ */
+function drawOpenNote(view: ReleaseView, hlineEl: HTMLElement, release: ReleaseRow): void {
+	const openEl = hlineEl.createEl('button', {
+		cls: 'clickable-icon pbl-rel-open',
+		attr: { type: 'button', 'aria-label': t('release.scope.openNote') },
+	});
+	setIcon(openEl, 'file-text');
+	setTooltip(openEl, t('release.scope.openNote'));
+	openEl.addEventListener('click', (evt) => view.opener.open(view.openContext(), release.item, evt));
+}
+
+/**
+ * The release's own status: a CHIP that opens the status menu where this vault has a
+ * status key bound, and the read-only chip everywhere else.
+ *
+ * A real `<button>` and an ordinary tab stop, decided from where it is DRAWN
+ * (`src/view/CLAUDE.md`, Controls): this header is no composite widget — the back control
+ * and the open control beside it are plain tab stops too — so the tree's `tabindex="-1"`
+ * answer would take the only status affordance off the keyboard and hand it no menu to be
+ * its keyboard path.
+ *
+ * **An unset status still draws.** `drawFigure` withholds a figure with no value, which is
+ * right for the version and the target date and wrong for the one field this screen can
+ * now change: absence is an invitation here, the same call the dashed risk and priority
+ * chips make in the tree, so a release nobody has given a status draws `pbl-state-unset`
+ * and opens the same menu. That is why this is not another `drawFigure` caller — an
+ * UNREADABLE status still is one, since "somebody wrote something there" is not an
+ * invitation to write over it blind.
+ */
+/**
+ * What a header control that WRITES is called: the action and the value it currently holds,
+ * the tree's own two chip names (`chip.set` / `chip.change`) rather than a sentence of this
+ * screen's own. Both halves are DATA — the field's own word and what the note carries.
+ *
+ * One function because all three controls need it for one reason: a name given by
+ * `setTooltip` replaces whatever the element's content would have said, and each of these
+ * draws a value a reader cannot otherwise get at.
+ */
+function chipName(label: string, value: string | null): string {
+	return value === null ? t('chip.set', { label }) : t('chip.change', { label, value });
+}
+
+function drawStatus(view: ReleaseView, hlineEl: HTMLElement, release: ReleaseRow, index: ReleaseIndex): void {
+	if (release.status.unconfigured) return;
+	if (release.status.invalid) {
+		hlineEl.createSpan({
+			cls: 'pbl-rel-unreadable',
+			text: t('release.figureUnreadable', { label: t('release.index.column.status') }),
+		});
+		return;
+	}
+	const value = release.status.value;
+	const label = t('release.index.column.status');
+	const chipEl = hlineEl.createEl('button', {
+		cls: 'pbl-state-chip pbl-rel-status' + (value === null ? ' pbl-state-unset' : ''),
+		attr: {
+			type: 'button',
+			// The tree's own chip names (`chip.set`/`chip.change`), reused rather than a
+			// sentence of this screen's own: an `aria-label` REPLACES the element's content,
+			// so a name reading only "Set the release status" would take the value the chip
+			// draws away from the one reader who cannot see it. Both halves are DATA — the
+			// column's own word and what the note carries.
+			'aria-label': chipName(label, value),
+		},
+	});
+	chipEl.createSpan({ cls: 'pbl-state-text', text: value ?? label });
+	setTooltip(chipEl, t('release.scope.setStatus'));
+	// **After the tooltip, deliberately.** Obsidian's `setTooltip` is reported to implement
+	// its tooltip THROUGH `aria-label` (found by review, PR #211), which would take the name
+	// built above back off — and the jsdom mock writes `data-tooltip` only, so no test here
+	// can see it either way. Set last, the name wins under both behaviours; the attribute
+	// above is kept so the element is never nameless between the two calls.
+	chipEl.setAttribute('aria-label', chipName(label, value));
+	chipEl.addEventListener('click', (evt) => showReleaseStatusMenu(view, evt, release, index));
+}
+
+/**
+ * The day this release shipped, beside the target it is measured against — and, unlike
+ * every other figure in this row, a control: pressing it opens the date dialog
+ * ({@link editReleaseReleased}).
+ *
+ * `drawStatus`' three branches exactly, and for its reasons. Unconfigured draws nothing.
+ * An UNREADABLE date says so and offers no edit: "somebody wrote something there" is not
+ * an invitation to write over it blind, and — the sharper reason here — an unreadable date
+ * and an absent one both reach the planner as `null`, so a dialog opened on one could not
+ * tell the reader's "leave it empty" from "it already is", and clearing the broken value
+ * would look available and write nothing. An UNSET date draws the invitation, because this
+ * is the one figure on the screen the reader can fill.
+ *
+ * It is drawn as a LABELLED value (`Released 2026-09-12`) where the target beside it is a
+ * bare date: two dates side by side in one row are only told apart on the index by the
+ * column headings this screen does not have.
+ */
+function drawReleased(view: ReleaseView, factsEl: HTMLElement, release: ReleaseRow): void {
+	if (release.released.unconfigured) return;
+	if (release.released.invalid) {
+		factsEl.createSpan({
+			cls: 'pbl-rel-unreadable',
+			text: t('release.figureUnreadable', { label: t('release.index.column.released') }),
+		});
+		return;
+	}
+	const date = release.released.value;
+	const btn = factsEl.createEl('button', {
+		cls: 'pbl-rel-released' + (date === null ? ' pbl-rel-released-unset' : ''),
+		// No `aria-label`: the button's own text says both what it holds and what it is,
+		// which is what a name over it would replace — `drawDescription`'s own rule.
+		attr: { type: 'button' },
+		text: date === null ? t('release.scope.markReleased') : t('release.scope.releasedOn', { date: formatCivil(date) }),
+	});
+	setTooltip(btn, t('release.scope.releasedTitle', { name: release.name }));
+	// The date the button DRAWS, kept in its accessible name — see `drawStatus`' own note on
+	// why this follows the tooltip rather than preceding it.
+	btn.setAttribute('aria-label', chipName(t('release.index.column.released'), date === null ? null : formatCivil(date)));
+	btn.addEventListener('click', () => editReleaseReleased(view, release));
+}
+
+/**
+ * What the release is FOR, on its own line under the header's facts — drawn only where a
+ * description property is bound, and drawn as an INVITATION when the key is bound and
+ * empty (`release.scope.descriptionEmpty`), for `drawStatus`' own reason one function up.
+ *
+ * A button rather than text with an edit control beside it: the whole line is the
+ * affordance, which is what makes a long description and an empty one the same gesture.
+ * `.pbl-rel-desc-empty` is what the stylesheet dims — never a placeholder written into the
+ * text, which a screen reader would read as the description itself.
+ *
+ * An UNREADABLE description says so and is not editable, the same refusal `drawStatus`
+ * makes: this dialog writes a string, and opening it on a key holding a list would offer
+ * to replace data nobody can see with prose.
+ */
+function drawDescription(view: ReleaseView, headerEl: HTMLElement, release: ReleaseRow): void {
+	if (release.description.unconfigured) return;
+	if (release.description.invalid) {
+		headerEl.createDiv({
+			cls: 'pbl-rel-unreadable',
+			text: t('release.figureUnreadable', { label: t('release.scope.descriptionLabel') }),
+		});
+		return;
+	}
+	const text = release.description.value;
+	const descEl = headerEl.createEl('button', {
+		cls: 'pbl-rel-desc' + (text === null ? ' pbl-rel-desc-empty' : ''),
+		// No `aria-label`: the button's own CONTENT is the description, which is what a
+		// reader needs to hear — a name over it would replace the sentence with the word
+		// "description". The tooltip says what pressing it does, for the pointer.
+		attr: { type: 'button' },
+		text: text ?? t('release.scope.descriptionEmpty'),
+	});
+	setTooltip(descEl, t('release.scope.descriptionTitle', { name: release.name }));
+	// The description itself, kept in the name — `drawStatus`' note applies here too, and
+	// this is the control it costs the most: the sentence IS the content, so a tooltip
+	// standing in for it says the action and loses what the release is for.
+	descEl.setAttribute('aria-label', chipName(t('release.scope.descriptionLabel'), text));
+	descEl.addEventListener('click', () => editReleaseDescription(view, release));
 }
 
 /**

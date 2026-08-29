@@ -169,7 +169,7 @@ describe('the release index', () => {
 		const vault = new FakeVault();
 		// 3b names the empty version explicitly: somebody wrote something there.
 		vault.addFile('Empty.md', { frontmatter: { type: 'Release', version: '', status: { a: 1 }, 'target-date': '' } });
-		// Whitespace-only asserted beside it rather than assumed equivalent: `readTarget`'s
+		// Whitespace-only asserted beside it rather than assumed equivalent: `readSoleDate`'s
 		// own guard trims, so this is the SAME guard answering rather than two readers
 		// agreeing about what a blank is.
 		vault.addFile('Blank.md', { frontmatter: { type: 'Release', 'target-date': '   ' } });
@@ -501,10 +501,10 @@ describe('the release index', () => {
 		vault.addFile('N.md', { frontmatter: { type: 'Release' } });
 		// A list of VALID dates, not just unparsable ones: `readDate` would unwrap this to
 		// its first element and parse a clean `2026-09-01`, so this is the case that pins
-		// `readTarget` (which refuses ANY array outright) rather than `readDate` — `['a',
+		// `readSoleDate` (which refuses ANY array outright) rather than `readDate` — `['a',
 		// 'b']` above cannot tell the two readers apart, since both refuse it.
 		vault.addFile('L.md', { frontmatter: { type: 'Release', released: ['2026-09-01', '2026-10-01'] } });
-		// Blank is a REFUSAL here, per `readTarget`'s own docstring — unlike `readDate`
+		// Blank is a REFUSAL here, per `readSoleDate`'s own docstring — unlike `readDate`
 		// alone, which trims and calls a blank string absent.
 		vault.addFile('B.md', { frontmatter: { type: 'Release', released: '   ' } });
 		const rows = indexOf(vault).rows;

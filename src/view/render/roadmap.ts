@@ -46,6 +46,12 @@ import { CivilDate } from '../../domain/noteFields';
  * bar back onto the shelf un-places it (`shelfRemoval`, in `./shelf`, is what tells
  * `renderShelf` which write that is, per axis).
  */
+/** Every mark unreported — the state a pass starts in, and the whole of what an
+ *  unrendered roadmap has to say about colour. One statement, two callers. */
+function nothingDrawn(): DrawnColors {
+	return { done: false, milestone: false, iteration: false, release: false, accent: false, absence: false, daysLost: false };
+}
+
 export function renderRoadmap(
 	ctx: RowContext,
 	treeEl: HTMLElement,
@@ -57,7 +63,11 @@ export function renderRoadmap(
 	const model = host.model;
 	if (!model) {
 		return {
-			roadmap: { axis, buckets: [], bars: [], lanes: [], shelf: [], context: [], placedCount: 0, eligibleResults: 0 },
+			// One statement and a field per line, as it was: a helper for this literal would be
+			// a FUNCTION nothing drives — the view returns on a null model before this is ever
+			// reached — and the coverage floor counts an uncovered function where it forgives
+			// one defensive statement.
+			roadmap: { axis, buckets: [], bars: [], lanes: [], shelf: [], context: [], releaseMarks: [], placedCount: 0, eligibleResults: 0 },
 			cards: [],
 			placed: ctx.placed,
 			shelfEl: null,
@@ -67,7 +77,7 @@ export function renderRoadmap(
 			window: null,
 			scale: null,
 			leadWidth: null,
-			drawn: { done: false, milestone: false, iteration: false, accent: false, absence: false, daysLost: false },
+			drawn: nothingDrawn(),
 			palettes: [],
 		};
 	}
@@ -80,7 +90,7 @@ export function renderRoadmap(
 	let window: TimelineWindow | null = null;
 	let scale: TimelineScale | null = null;
 	let leadWidth: number | null = null;
-	let drawn: DrawnColors = { done: false, milestone: false, iteration: false, accent: false, absence: false, daysLost: false };
+	let drawn: DrawnColors = nothingDrawn();
 	// The dated axis's own dependency conflicts (see `TimelineRender.dependencyConflicts`)
 	// — empty on the horizon axis, where a shelved dependent's stated START has no
 	// meaning at all.
@@ -237,6 +247,10 @@ function renderGridAxis(
 		shelf: roadmap.shelf,
 		palettes,
 		lanes: axis === 'resources' ? roadmap.lanes : [],
+		// The same list on both grid axes, unlike `lanes` above: a release is drawn ACROSS
+		// the rows and owns none, so nothing about it differs between the plain dated axis
+		// and the resources one — see `TimelineDrawing.releases`.
+		releases: roadmap.releaseMarks,
 		laneElement: axis === 'resources' ? (el, lane) => band.push({ el, lane }) : null,
 		// The PANE's width, not the frame's or the not-yet-built scroller's: this is
 		// the element `backlogView.ts`'s `ResizeObserver` watches, so a render here and

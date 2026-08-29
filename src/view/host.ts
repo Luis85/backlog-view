@@ -131,6 +131,17 @@ export interface DrawnColors {
 	milestone: boolean;
 	/** An `Iteration` drawing the cyan point diamond — same hue, its own name in the key. */
 	iteration: boolean;
+	/**
+	 * A RELEASE mark drew across this grid (`.pbl-release-line`) — the marker overlay's
+	 * second line, in its own colour and with its own name in the key.
+	 *
+	 * Reported from the render like every field here, and for the sharper of the two
+	 * reasons: a release is not a row of this projection at all, so no predicate over
+	 * `model.releases` can say whether one was DRAWN — a release with no readable date, or
+	 * one dated outside a clamped window, contributes nothing to the grid while still
+	 * sitting in that list.
+	 */
+	release: boolean;
 	/** A bar with none of the above: no slot, no done override, no milestone or iteration cyan. */
 	accent: boolean;
 	/**
@@ -177,9 +188,11 @@ export interface DrawnColors {
  * row literal that had to state `absence: false` would be claiming something about a mark
  * drawn nowhere near it. `daysLost` is excluded for the same reason, joining it on
  * 2026-08-14: a bar row draws neither the hatch nor the clash mark, because both are the
- * band's business rather than the bar's own colour.
+ * band's business rather than the bar's own colour. `release` joined them on 2026-08-29 for
+ * the strongest form of that reason: a release is not a row of this projection at all, so
+ * no bar can ever draw its mark.
  */
-export type BarColors = Omit<DrawnColors, 'absence' | 'daysLost'>;
+export type BarColors = Omit<DrawnColors, 'absence' | 'daysLost' | 'release'>;
 
 /**
  * The roadmap as last rendered: the derived model, and the rendered cards in the

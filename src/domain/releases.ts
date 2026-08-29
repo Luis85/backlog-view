@@ -1,7 +1,7 @@
 import { App, TFile } from 'obsidian';
 import { BacklogItem, BacklogModel, inPlan } from './model';
 import { ReleaseSettings } from './releaseOptions';
-import { CivilDate, FieldReading, linkpathFromRawValue, ownValue, readDate, readString } from './noteFields';
+import { CivilDate, FieldReading, linkpathFromRawValue, ownValue, readSoleDate, readString, sameValue } from './noteFields';
 import { isMarkerType, isReleaseType } from './itemTypes';
 import { ownWorkflowKind, ownWorkflowReading, WorkflowKind } from './board';
 
@@ -26,6 +26,18 @@ export interface ReleaseRow {
 	version: ReleaseFigure<string>;
 	target: ReleaseFigure<CivilDate>;
 	status: ReleaseFigure<string>;
+	/**
+	 * What this release is FOR, in the reader's own words — read from the release view's
+	 * own `descriptionKey`, with `readLabel`'s three answers exactly as the version and the
+	 * status have them: unconfigured (no key bound), invalid (a key holding something no
+	 * reader will make a sentence of), or a value.
+	 *
+	 * A PROPERTY and not the note body — the reversal `ReleaseSettings.descriptionKey`
+	 * records. What follows for this row is that a description is a FIGURE like the others
+	 * and is drawn by the same rules: absent draws nothing, unreadable says so, and neither
+	 * is a paragraph this view had to open the note to find.
+	 */
+	description: ReleaseFigure<string>;
 	/**
 	 * Notes whose OWN membership property names this release — never an ancestor, never a
 	 * descendant. A FIGURE like the other three, not a bare number: with the membership key
@@ -159,34 +171,6 @@ function readLabel(raw: unknown): FieldReading<string> {
 	if (Array.isArray(raw)) return { value: null, invalid: true };
 	const text = readString(raw);
 	return text === null ? { value: null, invalid: true } : { value: text, invalid: false };
-}
-
-/**
- * The same refusal for the DATE figure, and it needs its own statement TWICE, because
- * `readDate` is tolerant in two ways this key cannot be.
- *
- * It has `readString`'s habit of unwrapping an array by recursing into its first element,
- * so `target-date: [2026-09-01, 2026-10-01]` would report a clean `2026-09-01` and SORT
- * the index by it. A release states one target date; a list of them is 3b's
- * configured-but-unreadable, not a value to pick from.
- *
- * And it calls a BLANK string absent (`if (text.length === 0) return absentReading()`),
- * which is right where it is shared — the roadmap's dated axis and `readPlacement` both
- * take empty to mean unplaced — and wrong here. 3b names the empty value explicitly and
- * {@link readLabel} beside it already refuses one, so delegating would make two readers in
- * ONE file answer `''` two different ways: an empty `version` reported as somebody's
- * mistake and an empty `target-date` as a key nobody ever bound.
- *
- * Refused HERE rather than in `readDate`, for this function's whole reason for existing:
- * it is where refusals too strict for the shared reader are added, and a change there
- * would reach every dated axis in the plugin. The guard trims for itself, so
- * whitespace-only is the same answer rather than a second reader agreeing about what a
- * blank is.
- */
-function readTarget(raw: unknown): FieldReading<CivilDate> {
-	if (Array.isArray(raw)) return { value: null, invalid: true };
-	if (typeof raw === 'string' && raw.trim() === '') return { value: null, invalid: true };
-	return readDate(raw);
 }
 
 /**
@@ -365,6 +349,39 @@ function withinGroupOrder(a: ReleaseRow, b: ReleaseRow): number {
  * a fourth positional argument reads as "and one more thing", while a bag says the caller
  * is handing over context the two typed inputs above don't carry.
  */
+/**
+ * The statuses `Set status` offers for one release: what this vault DECLARED, then what
+ * its releases actually CARRY, then this release's own value if it is in neither.
+ *
+ * A UNION, where the plan's own `stateMenuValues` is an either/or — declared wins and
+ * observed is ignored there. The difference follows from what each list is for. A workflow
+ * declares its columns, so a state outside the declared list is a card the board cannot
+ * draw; a release status is a label on one note, drawn as a chip wherever it appears, so a
+ * value somebody has already written is a value this vault uses whether or not anybody
+ * wrote it into the options. `horizonMenuValues` makes the same call for the same reason.
+ *
+ * Order is DECLARED first and in declared order, because that is the reader's own statement
+ * of their process; observed values follow in first-seen row order, which is the index's
+ * order and so stable between renders. `current` is appended rather than sorted in — a
+ * value on this note that neither list holds is exactly what a hand-edit or a renamed
+ * vocabulary leaves behind, and the menu has to be able to draw it checked.
+ *
+ * Deduplicated with `sameValue` (case-insensitive, `noteFields.ts`), which is the same
+ * comparison the pick's own no-op rule uses — so a menu can never offer two entries that
+ * would write the same value, and never one that is already checked twice.
+ */
+export function releaseStatusChoices(settings: ReleaseSettings, index: ReleaseIndex, current: string | null): string[] {
+	const choices: string[] = [];
+	const add = (value: string | null): void => {
+		if (value === null || value.trim() === '') return;
+		if (!choices.some((held) => sameValue(held, value))) choices.push(value);
+	};
+	for (const declared of settings.statusValues) add(declared);
+	for (const row of index.rows) add(row.status.value);
+	add(current);
+	return choices;
+}
+
 export interface ReleaseIndexOptions {
 	/**
 	 * `BacklogSettings.stateKey` — the PLAN's own state key. Not one of `ReleaseSettings`'
@@ -442,9 +459,9 @@ export function releaseIndex(
 
 	const rows = model.releases.map((item): ReleaseRow => {
 		const fm = app.metadataCache.getFileCache(item.file)?.frontmatter;
-		const target = settings.targetDateKey ? figure(readTarget(ownValue(fm, settings.targetDateKey))) : UNCONFIGURED;
+		const target = settings.targetDateKey ? figure(readSoleDate(ownValue(fm, settings.targetDateKey))) : UNCONFIGURED;
 		const released = settings.releasedDateKey
-			? figure(readTarget(ownValue(fm, settings.releasedDateKey)))
+			? figure(readSoleDate(ownValue(fm, settings.releasedDateKey)))
 			: UNCONFIGURED;
 		const shipped = released.value !== null;
 		// Read once and shared below (`done`'s gate, `unconfiguredWorkflows` itself), so the
@@ -459,6 +476,7 @@ export function releaseIndex(
 			version: settings.versionKey ? figure(readLabel(ownValue(fm, settings.versionKey))) : UNCONFIGURED,
 			target,
 			status: settings.statusKey ? figure(readLabel(ownValue(fm, settings.statusKey))) : UNCONFIGURED,
+			description: settings.descriptionKey ? figure(readLabel(ownValue(fm, settings.descriptionKey))) : UNCONFIGURED,
 			members: settings.membershipKey
 				? figure({ value: counts.get(item.file.path) ?? 0, invalid: false })
 				: UNCONFIGURED,

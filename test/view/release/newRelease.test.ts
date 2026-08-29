@@ -113,9 +113,12 @@ describe('New release', () => {
 
 	it("binds the view's options before asking for fields", async () => {
 		// The order is the rule: on a fresh vault every option is unset, the bind gives
-		// them their suggested keys, and all four fields then appear.
+		// them their suggested keys, and every field then appears. The description joined
+		// them on 2026-08-29 and is LAST for a stated reason (`releaseFields`): it is the one
+		// box rather than a line, so a dialog that put it in the middle would push the short
+		// fields below the fold of a box nobody has typed in yet.
 		const { modal } = await openNewRelease(noReleaseVault(), {});
-		expect(fieldNames(modal)).toEqual(['Title', 'Version', 'Target date', 'Status']);
+		expect(fieldNames(modal)).toEqual(['Title', 'Version', 'Target date', 'Status', 'Description']);
 	});
 
 	it('says so when the press bound the options, rather than changing the base silently', async () => {
@@ -221,7 +224,7 @@ describe('New release', () => {
 		const vault = noReleaseVault();
 		const before = new Set(vault.files.keys());
 		const { modal } = await openNewRelease(vault, { versionProperty: '' });
-		expect(fieldNames(modal)).toEqual(['Title', 'Target date', 'Status']);
+		expect(fieldNames(modal)).toEqual(['Title', 'Target date', 'Status', 'Description']);
 		// Both boxes filled, so the absent `version` is the CLEARED option and not merely a
 		// field nobody typed into — the two are the same note once a blank is skipped, and
 		// this test is about the first of them.
@@ -231,26 +234,63 @@ describe('New release', () => {
 		]);
 	});
 
-	it('asks for the title alone where all three optional properties are cleared', async () => {
-		// The PBI's extension 2b: a vault that tracks none of the three can still make a
-		// release, and the note carries nothing but its type. Cleared rather than unset for
-		// the reason above — unset would be bound on the way in and every field would appear.
+	it('asks for the title alone where every optional property is cleared', async () => {
+		// The PBI's extension 2b: a vault that tracks none of them can still make a release,
+		// and the note carries nothing but its type. Cleared rather than unset for the reason
+		// above — unset would be bound on the way in and every field would appear.
 		const vault = noReleaseVault();
 		const before = new Set(vault.files.keys());
-		const cleared = { versionProperty: '', targetDateProperty: '', releaseStatusProperty: '' };
+		const cleared = {
+			versionProperty: '',
+			targetDateProperty: '',
+			releaseStatusProperty: '',
+			descriptionProperty: '',
+		};
 		const { modal } = await openNewRelease(vault, cleared);
 		expect(fieldNames(modal)).toEqual(['Title']);
 		await confirm(modal, '2.4');
 		expect(createdNotes(vault, before)).toEqual([{ path: 'docs/releases/2.4.md', fm: { type: 'Release' } }]);
 	});
 
-	it('reports a refusal rather than throwing it', async () => {
-		// `createRelease` throws without a type key. The empty states withhold the control
-		// on that configuration, so this drives the guard itself: the vault is left alone
-		// and the reader is told.
+	it('files the note where the vault is configured NOW, not where it was when the dialog opened', async () => {
+		// Found by review (Codex, PR #211), twice over: the type key and the folder are both
+		// things the dialog never draws, so capturing them filed the release under a property
+		// the view had stopped reading, or in a folder the reader had just moved releases out
+		// of — created, reported as created, and in the wrong place either way.
+		//
+		// The captured FIELD bindings still win, which is the other half of the same rule and
+		// is what the second assertion is for: the box the reader typed in was labelled by
+		// `version`, so their text lands there even though the option now says `edition`.
 		const vault = noReleaseVault();
+		const before = new Set(vault.files.keys());
 		const { view, modal } = await openNewRelease(vault, RELEASE_CONFIG);
-		view.settings = { ...view.settings, typeKey: '' };
+		const values = (view.config as unknown as { values: Record<string, unknown> }).values;
+		values.typeProperty = 'note.kind';
+		values.releaseFolder = 'shipped';
+		values.releaseVersionProperty = 'note.edition';
+		view.onDataUpdated();
+		await confirm(modal, '2.4', ['9.9.9']);
+
+		expect(createdNotes(vault, before)).toEqual([
+			{ path: 'shipped/2.4.md', fm: { kind: 'Release', version: '9.9.9' } },
+		]);
+	});
+
+	it('reports a refusal rather than throwing it', async () => {
+		// A create that fails for ANY reason — `createRelease`'s own type-key guard, or the
+		// vault refusing the write, which is what this stages — is reported rather than left
+		// to the console: the vault is unchanged and the reader is told. A press that made no
+		// note and said nothing looks like a dead button.
+		//
+		// Staged at the vault rather than by clearing `typeKey` mid-dialog, which no longer
+		// reaches the guard and should not: the dialog captures its bindings when it opens
+		// (see `newRelease`), and the one configuration that guard refuses is the one both
+		// empty states withhold this control on.
+		const vault = noReleaseVault();
+		const { modal } = await openNewRelease(vault, RELEASE_CONFIG);
+		vault.beforeWrite = () => {
+			throw new Error('the vault refused the write');
+		};
 		Notice.reset();
 		await confirm(modal, '2.4');
 		expect(vault.files.has('docs/releases/2.4.md')).toBe(false);
@@ -269,6 +309,60 @@ describe('New release', () => {
 	 * frontmatter, which is what makes it the JOIN — the frontmatter assertion above is the
 	 * half that could not see this.
 	 */
+	it('writes a description typed into the dialog’s own box', async () => {
+		// The fourth field, and the only one that is a `textarea` rather than an `input` —
+		// which `confirm` above cannot fill, since it reads the dialog's inputs positionally.
+		// Driven directly here for that reason, and it is the whole of the create half of
+		// [[Editing a release from its own screen]]: the box, the property, the note.
+		const vault = noReleaseVault();
+		const before = new Set(vault.files.keys());
+		const { modal } = await openNewRelease(vault, RELEASE_CONFIG);
+		const titleEl = modal.contentEl.querySelector('input');
+		const areaEl = modal.contentEl.querySelector('textarea');
+		if (!titleEl || !areaEl) throw new Error('the dialog draws no title field or no description box');
+		for (const [el, value] of [
+			[titleEl, '2.4'],
+			[areaEl, 'The billing rewrite.'],
+		] as [HTMLElement & { value: string }, string][]) {
+			el.value = value;
+			el.dispatchEvent(new Event('input', { bubbles: true }));
+		}
+		modal.contentEl.querySelector<HTMLButtonElement>('.mod-cta')?.click();
+		await flush();
+
+		expect(createdNotes(vault, before)).toEqual([
+			{ path: 'docs/releases/2.4.md', fm: { type: 'Release', description: 'The billing rewrite.' } },
+		]);
+	});
+
+	it('writes the description under the key the dialog was OPENED against', async () => {
+		// The `.base` re-pointed while the box is open — the capture rule the three editors
+		// keep, asked of the create (found by review, PR #211). Reading the settings again at
+		// the submit dropped the reader's text on the floor while the notice still said the
+		// release was made, since `createRelease` writes no unconfigured key.
+		const vault = noReleaseVault();
+		const before = new Set(vault.files.keys());
+		const { view, modal } = await openNewRelease(vault, RELEASE_CONFIG);
+		const titleEl = modal.contentEl.querySelector('input');
+		const areaEl = modal.contentEl.querySelector('textarea');
+		if (!titleEl || !areaEl) throw new Error('the dialog draws no title field or no description box');
+		for (const [el, value] of [
+			[titleEl, '2.4'],
+			[areaEl, 'The billing rewrite.'],
+		] as [HTMLElement & { value: string }, string][]) {
+			el.value = value;
+			el.dispatchEvent(new Event('input', { bubbles: true }));
+		}
+		// After the box was drawn and filled, before it is submitted.
+		view.settings = { ...view.settings, descriptionKey: '' };
+		modal.contentEl.querySelector<HTMLButtonElement>('.mod-cta')?.click();
+		await flush();
+
+		expect(createdNotes(vault, before)).toEqual([
+			{ path: 'docs/releases/2.4.md', fm: { type: 'Release', description: 'The billing rewrite.' } },
+		]);
+	});
+
 	it('creates a release its own reader reads back, with only a title filled in', async () => {
 		const vault = noReleaseVault();
 		const { modal } = await openNewRelease(vault, RELEASE_CONFIG);

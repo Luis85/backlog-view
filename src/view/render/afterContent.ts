@@ -31,6 +31,7 @@ export function syncAfterContent(host: BacklogViewHost, els: { toolbarEl: HTMLEl
 		done: false,
 		milestone: false,
 		iteration: false,
+		release: false,
 		accent: false,
 		absence: false,
 		daysLost: false,

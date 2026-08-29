@@ -9,15 +9,24 @@ function keysOf(config: FakeViewConfig): string[] {
 }
 
 describe('the release view names its own keys', () => {
-	it('declares all fourteen, the three model mappings, the folder, its own open target and the Deliverable pair', () => {
+	it('declares its whole option set — the model mappings, the folder, the open target, the Deliverable pair and the two editing keys', () => {
 		// `deliverableStateProperty` and `deliverableDoneValues` joined this list so the
 		// Deliverable workflow's progress gate (`ownWorkflowReading`, read through
 		// `resolveSettings` in `releaseView.ts`'s `buildModel` call) is reachable from
 		// Bases' own options menu — see the comment beside their declaration below.
+		// `descriptionProperty` and `releaseStatusValues` joined it on 2026-08-29 with
+		// [[Editing a release from its own screen]]: the field this view writes, and the
+		// vocabulary its status menu offers.
+		//
+		// The COUNT left this test's own name the same day. It read "all fourteen" while the
+		// list held fourteen and the view declared fourteen — true, and true of nothing else:
+		// a name that carries a number goes stale the moment an option is added, and the
+		// list below is the check either way.
 		expect(keysOf(new FakeViewConfig({})).sort()).toEqual(
 			[
 				'deliverableDoneValues',
 				'deliverableStateProperty',
+				'descriptionProperty',
 				'doneValues',
 				'membershipProperty',
 				'openIn',
@@ -26,6 +35,7 @@ describe('the release view names its own keys', () => {
 				'releasedDateProperty',
 				'releaseFolder',
 				'releaseStatusProperty',
+				'releaseStatusValues',
 				'stateProperty',
 				'targetDateProperty',
 				'typeProperty',

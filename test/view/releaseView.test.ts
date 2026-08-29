@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { scrollReads } from '../helpers/estimation';
 import { makeReleaseView, RELEASE_CONFIG, releaseVault, scopeVault } from '../helpers/release';
 import { ReleaseView } from '../../src/view/release/releaseView';
+import { WriteLock } from '../../src/view/writeLock';
 import { useViewHarness } from '../helpers/view';
 import { FakeVault } from '../helpers/vault';
 
@@ -15,7 +16,7 @@ describe('the release view', () => {
 		// view has nothing but the constructor's own placeholder to show. The estimation
 		// view's own state test says the same thing about the same moment.
 		const containerEl = document.body.createDiv();
-		const view = new ReleaseView({} as never, containerEl);
+		const view = new ReleaseView({} as never, containerEl, new WriteLock());
 		expect(containerEl.querySelector('.pbl-rel-view')?.textContent).toBe('Loading releases…');
 		view.onunload();
 	});

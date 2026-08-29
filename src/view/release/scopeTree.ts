@@ -552,12 +552,27 @@ function drawBadge(rowEl: HTMLElement, row: ScopeRow): void {
  * its neighbours left. Static, like every chip in this view: nothing here writes, so a
  * chip with a hover affordance would make the screen look editable. A CONTEXT row carries
  * no state — it renders, it parents, and that is all.
+ *
+ * **A finished member's chip is green and carries the check**, `.pbl-state-done` and
+ * `circle-check` — the identical pair `renderStateChip` draws in the tree
+ * (`render/chips.ts`), read from the identical `ownWorkflowReading`, so one word means one
+ * thing on both screens. It was the plain chip until 2026-08-29, which left this screen
+ * saying `Done` in the same ink as `Doing` while the summary strip above counted the very
+ * same member as finished.
+ *
+ * The ICON is drawn beside the colour rather than instead of it, and that is the
+ * accessibility rule the tree's chip already keeps: colour alone is one channel, and this
+ * chip is static — there is no hover, no menu and no accessible name of its own to carry
+ * the fact a second way.
  */
 function drawStateChip(rowEl: HTMLElement, row: ScopeRow): void {
 	const stateEl = rowEl.createDiv({ cls: 'pbl-rel-statecol' });
 	const reading = ownWorkflowReading(row.item);
 	if (row.context || reading.value === null) return;
-	const chipEl = stateEl.createDiv({ cls: 'pbl-state-chip pbl-state-static' });
+	const chipEl = stateEl.createDiv({
+		cls: 'pbl-state-chip pbl-state-static' + (reading.done ? ' pbl-state-done' : ''),
+	});
+	drawIcon(chipEl.createSpan({ cls: 'pbl-state-icon' }), reading.done ? 'circle-check' : 'circle');
 	chipEl.createSpan({ cls: 'pbl-state-text', text: reading.value });
 }
 

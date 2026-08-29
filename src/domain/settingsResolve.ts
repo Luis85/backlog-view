@@ -313,6 +313,11 @@ export function resolveSettings(config: BasesViewConfig): BacklogSettings {
 		focusLevel: fallback.focusLevel,
 		...optionalKeys,
 		tagsKey: tagsKey(),
+		// `clearablePropKey`, like the three model mappings and unlike every optional key:
+		// this option ships a real default, so "never set" must take `target-date` while
+		// "cleared" must mean no release markers at all. `propKey` reports the two
+		// identically and would make the cleared state unreachable.
+		releaseDateKey: clearablePropKey('releaseDateProperty', fallback.releaseDateKey),
 		doneValues: effectiveDoneValues,
 		wipLimits: nameTable(limitedStates, (s) => parseWipLimit(str(wipLimitKey(s)))),
 		columnPolicies: nameTable(states, (s) => str(columnPolicyKey(s)).trim() || null),

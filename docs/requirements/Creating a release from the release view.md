@@ -40,8 +40,8 @@ separate act of bringing the release note itself into being.
 **Main flow**
 
 1. The user opens the new-release dialog.
-2. The user enters a title, and optionally a version, a target date and a status — whichever
-   of those three this vault tracks.
+2. The user enters a title, and optionally a version, a target date, a status and a
+   description — whichever of those this vault tracks.
 3. Confirming creates the release note, writing the title as the note's name and each
    entered field into its own bound property.
 
@@ -52,10 +52,42 @@ separate act of bringing the release note itself into being.
   and the view says so, because the press changed the saved view's own configuration. An
   option the user deliberately cleared is left alone, and no field is asked for a value that
   could only land nowhere.
+- **1b — the bind covers every feature of this view, not only the three the dialog asks
+  about** (2026-08-29). The item STATE key and the released-date key join the membership, the
+  version, the target date and the status, because a press that leaves either unbound reports
+  success and leaves half the view unconfigured: with no state key, `ReleaseRow.done` is
+  unconfigured for every release — no band shows progress, no scope row shows a rollup, the
+  hide-done toggle is withheld and the summary strip says so instead of measuring — and with
+  no released-date key, [[Marking a release as released]]'s own figure is unconfigured the
+  same way. Neither is a field the dialog offers: the state is read on the ITEMS and the
+  released date is written when a release actually ships, so both are bindings and neither is
+  a box.
+- **1c — the item state and the release status may name ONE property, and ✨ binds both to
+  it.** They are read of different notes by different readers, and the vault this plugin
+  creates spells both `status`: the release note carries one and every PBI under it carries
+  the other. The guard that stops this action handing out a key another of its options already
+  names is otherwise blind to that — whichever of the two was offered first took `status` and
+  the other was left unbound — so those two options (with the Deliverable state beside them)
+  are the one exemption from it, `configProblems`' own "workflow-state roles that may
+  legitimately share a key" read for this view. Every other pairing is still refused,
+  `typeProperty` included: an option outside that list holding `status` blocks both.
 - **2a — the title is left blank.** Confirming is refused — the title is the note's own
   name, and there is nothing to create without one.
-- **2b — the vault tracks none of the three optional fields.** The dialog asks for a title
+- **2b — the vault tracks none of the optional fields.** The dialog asks for a title
   alone; a release can still be created with nothing else known about it yet.
+- **2d — a DESCRIPTION is asked for last** (2026-08-29, [[Editing a release from its own
+  screen]]), where a description property is bound. Last rather than in declaration order,
+  and it is the one field whose position is an argument: the other three are one line each
+  and this one is a box, so a dialog that put it in the middle would push the short fields
+  below the fold of a box the reader has not typed in yet. It is a property rather than the
+  note body — the reversal that other note records, for that type alone.
+- **2e — a property is re-pointed or cleared while the dialog is open.** The note is written
+  with the bindings the dialog was OPENED against — the capture rule
+  [[Editing a release from its own screen]] 5d keeps for an edit, asked of a creation
+  (found by review, PR #211). Reading the settings again at the submit dropped the reader's
+  description on the floor, since 2c writes no unconfigured key, while the notice still said
+  the release was created. Nothing existing is at risk either way: this note does not exist
+  yet, which is why the captured keys are used here and refused there.
 - **2c — a field the vault tracks is left blank.** The key is not written at all, rather than
   written empty. [[Releases as their own type]] 3b names the empty string as UNREADABLE
   rather than absent, so a blank written here is this view's own reader reporting the release
@@ -78,11 +110,14 @@ separate act of bringing the release note itself into being.
   empty key. A test of the unbound case that used an unset option would assert the opposite
   of this rule.
 - **The press says when it changed the configuration, and stays quiet when it did not.**
-  Checked in both directions: a fresh view that binds its four keys reports it, and a view
-  with nothing left to bind reports nothing. The comparison is over the RESOLVED keys before
-  and after, and the "before" is a fresh read of the live config rather than the settings
-  snapshot from the last data update — otherwise a view whose options were bound moments ago
-  reports a change it did not make.
+  Checked in both directions: a fresh view that binds its keys reports it, and a view with
+  nothing left to bind reports nothing. The comparison is over the keys the DECLARATION
+  resolves to, both ends read from the live config rather than from the settings snapshot of
+  the last data update — otherwise a view whose options were bound moments ago reports a change
+  it did not make. Read off the declaration and not off `ReleaseSettings`' fields, which is
+  the correction 1b forced: `stateProperty` resolves onto `BacklogSettings` and is on no field
+  of that object, so a press whose only work was binding it compared equal, reported nothing,
+  and skipped the redraw that would have shown the progress bars it had just switched on.
 - **Confirming with a title creates exactly one note, in the folder this view names, carrying
   the type key and nothing the view has no property bound for.** `test/storage/createRelease.test.ts`
   asserts the whole frontmatter with `toEqual`, so a key nobody asked for fails rather than
@@ -117,8 +152,8 @@ separate act of bringing the release note itself into being.
   notice `New release` uses, so the two presses cannot describe one bind two ways. Neither
   writes a note: `test/view/release/initControl.test.ts` drives the click and reads
   `vault.writeLog`/`vault.files` back empty.
-- **The standalone ✨ also draws on the no-releases empty state**, with `fixes` naming all
-  four candidates rather than the one the `noMembership` state narrows to — a fresh vault has
+- **The standalone ✨ also draws on the no-releases empty state**, with `fixes` naming every
+  candidate rather than the one the `noMembership` state narrows to — a fresh vault has
   nothing bound yet and nothing to narrow to, and it is the base `renderIndex`'s own bar can
   never reach: `ReleaseView.draw` returns before that module ever runs.
   `test/view/release/initControl.test.ts` pins both that the control appears there when
@@ -179,9 +214,12 @@ matching `estimationPresetDialog.ts`'s own pattern of taking plain rows in and h
 data back.
 
 `src/view/release/init.ts` is the ✨ ACTION (`runReleaseInit`): it binds the suggested key
-for `release` (the membership property), `version`, `target date` and `status` — whichever
-this vault has never touched — reading the live `BasesViewConfig` so a deliberately
-cleared option is left alone. It writes no note: this view never edits a note that already
+for `release` (the membership property), `version`, `target date`, `status`, the ITEM state
+and the released date — whichever this vault has never touched — reading the live
+`BasesViewConfig` so a deliberately cleared option is left alone. WHICH of them are free is
+`adoptableReleaseKeys` in the same module, asked by the action and by the control's own offer
+alike so the two cannot come apart, and `SHARED_STATUS_OPTIONS` (`src/domain/releaseOptions.ts`)
+is the one exemption from its collision guard — 1c above. It writes no note: this view never edits a note that already
 exists (`test/view/releaseNeverEdits.test.ts`). The accepted cost is that Obsidian's own
 property picker cannot offer `version`, `target date` or `status` until a release note
 carries them, which the first release CARRYING one supplies — a blank box is written

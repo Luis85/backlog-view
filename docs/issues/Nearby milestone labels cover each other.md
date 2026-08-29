@@ -95,6 +95,20 @@ gone, and what is left is the case this note was always about. Candidate 2 (extr
 is still the one that reads best and still crowds the sticky band; candidate 1 (clamp to the
 gap) and candidate 3 (paint in date order) are still cheaper and still unmeasured.
 
+## A MERGED label is clipped, measured 2026-08-29
+
+A release and a milestone on one date are drawn as one label naming both (PR #211, joined
+with the same ` · ` two milestones already share). Measured in headless Chromium against
+the demo fixture, which now dates a release on `Ship 1.0`'s own day: the joined text
+`Ship 1.0 · Release: 1.1.0` is 154px inside the 140px box, so it ellipsises and the second
+name is on screen only in the tooltip.
+
+That is this note's own limitation reached from the other side rather than a new one — the
+box is 140px so that it covers as little of the coarse tier as possible, and widening it
+for a merged label spends exactly what the width is protecting. What the merge bought is
+still real and is what the clipping preserves: before it, the label that ran second painted
+over the first outright and the earlier name was reachable from nowhere.
+
 ## What it is not
 
 Not an accessibility failure. The header band is `aria-hidden="true"`, so no assistive

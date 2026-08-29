@@ -211,6 +211,15 @@ export interface BacklogSettings extends ItemHandling {
 	 */
 	releaseKey: string;
 	/**
+	 * Frontmatter key the ROADMAP reads a `Release` note's own target date from, or '' when
+	 * the option is cleared. Read-only: nothing plans a write to it and nothing backfills
+	 * it, which is why it is not a row of `PROPERTY_TABLE` — see the option's own comment in
+	 * `viewOptions.ts`. It defaults to `target-date`, the same key the release view suggests
+	 * for the same date, so a marker is drawn without a second setup step; sharing a
+	 * suggestion is not sharing a setting, and this view never reads that view's config.
+	 */
+	releaseDateKey: string;
+	/**
 	 * Which PRODUCT states the iteration board reads as its Open column, and which as its
 	 * Resolved one; everything else is In Progress. Two lists rather than a second
 	 * workflow, which is this feature's central decision: an iteration board narrows the
@@ -364,6 +373,8 @@ export function defaultSettings(): BacklogSettings {
 		iterationBars: false,
 		iterationGoalKey: '',
 		releaseKey: '',
+		// A real default, unlike every other optional key: see the field's own comment.
+		releaseDateKey: 'target-date',
 		iterationOpenStates: [],
 		iterationResolvedStates: [],
 		iterationLengthDays: DEFAULT_ITERATION_DAYS,

@@ -62,6 +62,99 @@
 	flex: 0 0 auto;
 }
 
+/* The way to the release note, beside the title it names. `.pbl-rel-back`'s own rule and
+   its own audit apply unchanged — a real `<button class="clickable-icon">`, which
+   Obsidian's `button:not(.clickable-icon)` never matches — so this only has to refuse the
+   shrink `.pbl-rel-hline`'s flex row would otherwise take out of a bare icon. */
+.pbl-rel-open {
+	flex: 0 0 auto;
+}
+
+/* The release's own status, and the one chip on this screen that is a write surface. It is
+   a real `<button>`, so Obsidian's `button:not(.clickable-icon)` DOES match it — and what
+   refuses that chrome is `button.pbl-state-chip` (`styles/columns.css`), which the chip
+   carries and which ties Obsidian at (0,1,1) and wins on source order. This rule states
+   NOTHING of the height, the shadow, the background or the font size for that reason: it
+   said all four until 2026-08-29 and every one of them was inert at (0,1,0), a reset that
+   read as the thing keeping the chip flat while the chip rule was doing it. A
+   `background-color` added back here would now WIN and take the chip's own box off.
+
+   What is left is the one property this screen contests: the chip rule's `flex: 0 1 auto`
+   lets the chip shrink in the header's flex row, and a status is not what should yield
+   there — so the refusal is element-qualified to tie it.
+
+   `docs/issues/The release index rows paint as Obsidian buttons.md` is the same defect on
+   this view's other screen, and its Step 7 is the audit this comment answers. */
+button.pbl-rel-status {
+	flex: 0 0 auto;
+}
+
+/* What the release is FOR, on its own line under the header's facts. The whole line is
+   the affordance, so it is a button too and takes the same chrome reset — element-qualified
+   for the reason the band's is (`docs/issues/The release index rows paint as Obsidian
+   buttons.md`): at (0,1,0) the background, the shadow and the COLOUR all lost, and the line
+   drew as a filled, raised box of `--text-normal` prose. The left alignment never needed it
+   — Obsidian centres a button's text from a bare `button` rule at (0,0,1), which a class
+   already beats — and that asymmetry is the argument for qualifying the WHOLE rule rather
+   than the three declarations noticed: it is then immune to whichever property Obsidian
+   contests next (`styles/columns.css` states the same for the chips). */
+button.pbl-rel-desc {
+	/* A button is a FLEX container and Obsidian's bare `button` rule centres its main axis,
+	   so the line's own `text-align: start` below lands on an anonymous flex item already
+	   pushed to the middle of a full-width box — the sentence read centred with the reset
+	   already winning (measured 2026-08-29). Both are needed and neither replaces the other:
+	   this places the text block, `text-align` aligns the lines inside it once it wraps. */
+	justify-content: flex-start;
+	height: auto;
+	box-shadow: none;
+	background-color: transparent;
+	padding: var(--size-4-1) 0;
+	font-size: var(--font-ui-small);
+	color: var(--text-muted);
+	text-align: start;
+	/* The sentence wraps rather than truncating: a description is the one thing on this
+	   header that is prose, and a paragraph cut at one line says less than no paragraph.
+
+	   `pre-wrap` rather than `normal`, which collapsed authored newlines into spaces: the box
+	   that writes this is a TEXTAREA whose Enter is deliberately not the submit
+	   (`TextPromptModal`), so a line break is content the reader typed on purpose and two
+	   paragraphs came back as one (found by review, PR #211). Long lines still wrap, which is
+	   the half `normal` was chosen for. */
+	white-space: pre-wrap;
+}
+
+/* The released date, the one figure in the facts row that is a control. A real `<button>`,
+   so Obsidian's `button:not(.clickable-icon)` matches it and the reset is element-qualified
+   exactly as the description's above — measured drawing as a raised, filled box beside two
+   plain dates, which is the loudest a control can be in a row whose whole point is that it
+   reads as muted text. */
+button.pbl-rel-released {
+	height: auto;
+	box-shadow: none;
+	background-color: transparent;
+	padding: 0;
+	font-size: inherit;
+	color: inherit;
+}
+
+/* Bound and empty: the invitation, dimmed like the description's own. ORDER IS BEHAVIOUR —
+   same specificity as the rule above, so it wins by standing later, and that is why it is
+   qualified too: unqualified it would lose its COLOUR to Obsidian's rule while keeping its
+   `font-style`, which draws the invitation in italic `--text-normal` — louder than the date
+   it is offering to set, and indistinguishable from a deliberate emphasis. */
+button.pbl-rel-released-unset {
+	color: var(--text-faint);
+	font-style: italic;
+}
+
+/* Bound and empty, which is an invitation rather than an absence — dimmed and dashed, the
+   same pair the tree's own unset chips wear (`.pbl-state-unset`, `styles/columns.css`), and
+   element-qualified for the reason its sibling above is. */
+button.pbl-rel-desc-empty {
+	color: var(--text-faint);
+	font-style: italic;
+}
+
 .pbl-rel-facts {
 	display: flex;
 	align-items: center;

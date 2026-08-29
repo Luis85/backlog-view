@@ -87,6 +87,39 @@ describe('the gate accepts valid documents', () => {
 		await expectAccepted(files);
 	});
 
+	it('accepts a Resource, the one note in this register that is not a work item', async () => {
+		// A `Resource` is a person — a note `readItems.ts` recognises in order to REFUSE it as
+		// an item at all — so every rule below the exemption would ask it a question it has no
+		// answer for: no rung to rank among, no status in the register's vocabulary, no
+		// requirement to hang from. The `Absence` exemption is the precedent and the reason:
+		// the gate must not assert a schema the plugin does not write.
+		//
+		// Written with the frontmatter the plugin actually produces rather than through
+		// `note()`, which would supply the very `order`, `parent` and `status` this case is
+		// about not needing.
+		const files = baseRegister();
+		files['docs/resources/Elli.md'] = '---\ntype: Resource\n---\n\n# Elli\n\nA person.\n';
+
+		await expectAccepted(files);
+	});
+
+	it('accepts a Release, which is a marker and so an ordinary root of this register', async () => {
+		// The other direction from the case above, and the one this branch got wrong first: a
+		// `Release` is a DECLARED type and a marker like `Milestone` and `Iteration`, both of
+		// which this register already holds as ordinary notes — so it is ranked, it carries a
+		// register status, and it is a root by nature rather than a note the gate skips. See
+		// `docs/issues/The gate was one marker behind.md`.
+		//
+		// Its own `version`, `target-date` and release status are the PLUGIN's vocabulary and
+		// live beside the register's, which is what makes the two rulings compatible: the gate
+		// reads `type`, `order`, `parent` and `status`, and never looks at the rest.
+		const files = baseRegister();
+		files['docs/releases/Feisty Reindeer.md'] =
+			'---\ntype: Release\norder: 20\nversion: 1.1.0\ntarget-date: 2026-11-01\nstatus: Open\n---\n\n# Feisty Reindeer\n\nA release.\n';
+
+		await expectAccepted(files);
+	});
+
 	it('accepts an angle-bracket link destination, which is how a space is written', async () => {
 		// The defect this whole file exists for. `<…>` is CommonMark's destination form;
 		// the register happens to percent-encode everywhere, so it never met the bug.

@@ -3,7 +3,8 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { FolderSuggest, KnownValueSuggest, TitlePromptModal, ValuePromptModal } from '../../src/ui/prompts';
 import { installObsidianDom } from '../helpers/dom';
 import { FakeVault } from '../helpers/vault';
-import { TFolder } from '../helpers/obsidian-mock';
+import { openTextPrompt } from '../../src/ui/textPrompt';
+import { Modal, TFolder } from '../helpers/obsidian-mock';
 
 installObsidianDom();
 
@@ -139,6 +140,23 @@ describe('ValuePromptModal', () => {
 		expect(added).toEqual(['release/1-0']);
 	});
 
+	it('submits the TRIMMED value, which is the one it validated', () => {
+		// Found by review (Codex, PR #211) against the release view's free-text status, and it
+		// is this modal's rule rather than that caller's: `submit` refuses a blank on
+		// `value.trim()` and then handed `onSubmit` the RAW string, so the value it judged and
+		// the value it delivered were two different things. Every caller mints vault DATA from
+		// this — a tag, a resource's name, a release's first status — and a padded one reads
+		// back trimmed while the frontmatter still holds the spaces, so a Base filter
+		// comparing against what the screen shows drops the note.
+		//
+		// Fixed here rather than at the three call sites: the rule is about the modal's own
+		// two answers disagreeing, and a fourth caller written next year inherits it.
+		const { added, input } = openTagPrompt();
+		type(input, '  release/1-0  ');
+		input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+		expect(added).toEqual(['release/1-0']);
+	});
+
 	it('lets an IME finish its composition before submitting', () => {
 		const { added, input } = openTagPrompt();
 		type(input, 'にほん');
@@ -228,5 +246,36 @@ describe('ValuePromptModal', () => {
 	it('renders no warning element at all when the option is absent', () => {
 		const { modal } = openTagPrompt();
 		expect(modal.contentEl.querySelector('.pbl-modal-warning')).toBeNull();
+	});
+});
+
+/**
+ * `textPrompt.ts` is its own file only because `prompts.ts` is at its line budget, and the
+ * caret is the thing that split cost: the autofocus rides along inside `submitOnEnter`
+ * there, so declining the Enter rule — which a paragraph field has to — silently declined
+ * the focus with it (found by review, PR #211).
+ */
+describe('openTextPrompt', () => {
+	it('puts the caret in the field, like every prompt beside it', async () => {
+		const vault = new FakeVault();
+		openTextPrompt(vault.app as never, {
+			title: 'Describe',
+			fieldName: 'Description',
+			placeholder: '',
+			ctaLabel: 'Save',
+			initial: 'What shipped.',
+			onSubmit: () => {},
+		});
+		const modal = Modal.lastOpened;
+		if (!modal) throw new Error('no prompt opened');
+		// The mock leaves the frame detached, and a detached element cannot hold focus.
+		document.body.appendChild(modal.contentEl);
+		const area = modal.contentEl.querySelector('textarea');
+		if (!area) throw new Error('no textarea drawn');
+
+		// Deferred a tick, as in `prompts.ts`: the field claims focus once the modal is up.
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(document.activeElement).toBe(area);
+		expect(area.value).toBe('What shipped.');
 	});
 });

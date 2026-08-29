@@ -4,6 +4,7 @@ import { BacklogSettings } from '../domain/settings';
 import { ReleaseSettings } from '../domain/releaseOptions';
 import { AxisWrite } from '../domain/writePlan';
 import { vaultFolder } from '../domain/settingsResolve';
+import { releaseNoteProblems } from '../domain/settingsConsistency';
 import { RELEASE_TYPE, RESOURCE_TYPE } from '../domain/typeVocabulary';
 import { setOwn } from './ownProperty';
 import { axisEntries } from './writeKeys';
@@ -162,6 +163,7 @@ export interface NewReleaseSpec {
 	version?: string;
 	targetDate?: string;
 	status?: string;
+	description?: string;
 }
 
 /**
@@ -188,7 +190,7 @@ export interface NewReleaseSpec {
  * same ruling [[Releases as their own type]] 3b and `neverStubbed` (`domain/writePlan.ts`,
  * *"An empty release is not an empty slot"*) each already made from their own end. It has
  * to be kept HERE, at the creator every release goes through, rather than at the dialog
- * that happens to produce the blanks today: `readLabel` and `readTarget`
+ * that happens to produce the blanks today: `readLabel` and `readSoleDate`
  * (`domain/releases.ts`) read a present-but-empty key as UNREADABLE rather than as absent,
  * so writing one makes this view's own reader report the release it just made as somebody's
  * mistake, in three columns of the index and again on that release's own screen.
@@ -243,14 +245,16 @@ export async function createRelease(app: App, settings: ReleaseSettings, spec: N
 	// the guard belongs at the write where every caller passes rather than at the one
 	// path that used to create it. Reported by review on PR #203, twice — once for the
 	// bind, and again because fixing the bind left this reachable.
-	const written = [
-		settings.typeKey,
-		settings.versionKey,
-		settings.targetDateKey,
-		settings.statusKey,
-		settings.releasedDateKey,
-	].filter((key) => key !== '');
-	if (new Set(written).size !== written.length) throw new Error('createRelease: two release properties name one key');
+	// The rule itself is `releaseNoteProblems` (`domain/settingsConsistency.ts`), shared with
+	// the release view's own `WriteGate` since review found that an EDIT bypassed this guard
+	// entirely (PR #211). One statement, two enforcement points, and they differ only in what
+	// they do about it: the gate refuses the batch with a notice naming the two properties,
+	// and this THROWS, because it is the last line before `vault.create` and a caller that
+	// ignored the report would put a corrupt note in the vault. The caller's `catch` turns
+	// this into a notice plus the console line that names it.
+	if (releaseNoteProblems(settings).length > 0) {
+		throw new Error('createRelease: two release properties name one key');
+	}
 	const folder = vaultFolder(settings.folder);
 	await ensureFolder(app, folder);
 	const path = uniqueNotePath(app, folder, spec.title);
@@ -259,6 +263,7 @@ export async function createRelease(app: App, settings: ReleaseSettings, spec: N
 	if (stated(spec.version) && settings.versionKey) setOwn(fm, settings.versionKey, spec.version);
 	if (stated(spec.targetDate) && settings.targetDateKey) setOwn(fm, settings.targetDateKey, spec.targetDate);
 	if (stated(spec.status) && settings.statusKey) setOwn(fm, settings.statusKey, spec.status);
+	if (stated(spec.description) && settings.descriptionKey) setOwn(fm, settings.descriptionKey, spec.description);
 	return app.vault.create(path, `---\n${stringifyYaml(fm)}---\n`);
 }
 

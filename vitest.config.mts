@@ -229,10 +229,10 @@ export default defineConfig({
 			// every `renamePathPrefs` test saved both path picks, so the walk had never been
 			// asked about an entry holding neither.
 			thresholds: {
-				statements: 99.01,
-				branches: 95.63,
-				functions: 99.91,
-				lines: 99.76,
+				statements: 99.04,
+				branches: 95.72,
+				functions: 99.92,
+				lines: 99.78,
 			},
 		},
 	},

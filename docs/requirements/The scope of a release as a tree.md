@@ -43,6 +43,8 @@ note assumed and `## Where it lives` explains it cannot be.
    context and carrying no numbers.
 4. The count of members is stated, and it is the denominator every other figure in this view
    uses.
+5. The header names the release, states its own figures, and offers the way to the release
+   note itself.
 
 **Extensions**
 
@@ -73,7 +75,20 @@ note assumed and `## Where it lives` explains it cannot be.
 - **3b — a context ancestor's own state would hide it.** It is drawn regardless: it is
   scaffolding for a member, and hiding it would break the member's place.
 - **4a — the release has no members.** The tree is empty and says so, naming the release. An
-  empty release is a legitimate state, not a misconfiguration.
+  empty release is a legitimate state, not a misconfiguration. The header above it still draws
+  the way to the release NOTE (5a below), which on this screen of all screens is what the
+  reader came for.
+- **5a — the reader wants the release note itself.** The header carries one control that opens
+  it, through this view's own configured target. It is on every scope screen, the two empty
+  states included, because this view reads a release's version, date and status and writes none
+  of them: the note is where all three are edited, and without this control the only route to
+  it was the index behind the reader — and from the index, none at all.
+- **2c — a member is finished.** Its state chip is drawn in the done colour and carries the
+  check, the same pair the backlog tree's own chip draws for the same reading
+  (`ownWorkflowReading`), so one state means one thing on both screens. Colour is not the only
+  channel: this chip is static — no hover, no menu, no accessible name of its own — so the icon
+  is beside it rather than instead of it. Until 2026-08-29 `Done` and `Doing` were one word in
+  one ink, while the summary strip above counted one of the two as finished.
 - **2b — a release nobody has folded anything in opens WHOLE.** Every parent is drawn
   unfolded, which is the opposite of the backlog tree's own default
   ([[Collapse persistence]] 1a, where a row nobody has ruled on opens collapsed once). Two
@@ -116,6 +131,16 @@ note assumed and `## Where it lives` explains it cannot be.
   a new tab.
 - The tree is one tab stop, and Right on a leaf does nothing: a leaf has nothing to step into,
   and moving would make one key mean two things depending on where it landed.
+- **The header's controls survive a redraw with focus intact** — the open control included,
+  which it was not when it landed (Codex, PR #211): it is a real tab stop the redraw
+  detaches, so it belongs in `FOCUS_HANDLE_CLASSES` with the back control and the toolbar's.
+- **The header's open control opens the release note through `OpenController.open`** — the
+  CONFIGURED target, the same call a row's own click makes, never `openIn(…, 'tab')`, which is
+  the target a reader NAMES for themselves. It is drawn on the empty scope too, which is where
+  it matters most.
+- **A done member's chip carries `.pbl-state-done` and `circle-check`, an unfinished one
+  `circle` and no colour class**, and both stay `.pbl-state-static`: this view writes nothing,
+  so neither may grow an affordance that says otherwise.
 
 ## Where it lives
 
@@ -127,7 +152,9 @@ which is what keeps the rollup from ever counting a note this screen is not show
 membership key, and this view's own open-note target (`openIn`), are declared in
 `src/domain/releaseOptions.ts`, this view's own option set. `src/view/release/releaseView.ts`
 CHOOSES between this scope and the index; `src/view/release/renderScope.ts` draws the header
-and the two empty states above the tree; `src/view/release/scopeTree.ts` draws the tree
+and the two empty states above the tree — including the header's own open-note control
+(`drawOpenNote`), which is beside the title rather than in the toolbar below it because the
+toolbar's three controls are about the TREE and this one is about the release the title names; `src/view/release/scopeTree.ts` draws the tree
 itself — the rows, the disclosure, the fold set (scoped to the open release, never a bare
 path — see that module's own comment) and a row's click (and middle click), which open the
 note through `src/view/openTarget.ts`'s `OpenController`, the estimation view's own

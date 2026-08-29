@@ -2,7 +2,7 @@ import { App, Notice } from 'obsidian';
 import { t } from '../i18n/t';
 import { PropertyWrite } from '../domain/estimationWritePlan';
 import { isResourceType } from '../domain/itemTypes';
-import { ownValue, readString } from '../domain/noteFields';
+import { ownValue, readString, sameValue } from '../domain/noteFields';
 import { captureInverse, RestoreWrite, WriteOutcome, rawValueOf } from './frontmatter';
 import { setOwn } from './ownProperty';
 
@@ -45,7 +45,12 @@ export async function applyPropertyWrites(
 		// a planner not yet written.
 		const sets = write.sets.filter((s) => s.key !== '');
 		let inverse: RestoreWrite | null = null;
-		let refused = false;
+		// The refusal's own SENTENCE rather than a reason code, and composed where the
+		// refusal is decided: two refusals say different things to the reader, and the
+		// alternative — a code read back out here — needs a fallback for a parameter that
+		// cannot be missing (`requiresType` is what the second refusal is about), which is a
+		// branch nothing can take.
+		let refusal: string | null = null;
 		// Nothing left to say is not a save: `processFrontMatter` rewrites the note whether
 		// or not the callback changed anything.
 		if (sets.length > 0) {
@@ -62,8 +67,24 @@ export async function applyPropertyWrites(
 				// batch here is one note's own scores, and ✨'s many-file batch has no
 				// ordering between its files, so a later note is not made incoherent by an
 				// earlier one being skipped.
-				if (isResourceType(readString(ownValue(fm, typeKey)))) {
-					refused = true;
+				const live = readString(ownValue(fm, typeKey));
+				if (isResourceType(live)) {
+					refusal = t('gate.becameResource');
+					return;
+				}
+				// **The plan's own type claim, asked of the LIVE note.** A write that names a
+				// type is one whose planner knew what it was writing to — the release view's
+				// status and description are only ever a RELEASE's — and the window between
+				// the menu opening and the pick is one nothing upstream can see. Retyped in
+				// it, the note is somebody else's now: on the common configuration where a
+				// release's status and an item's workflow state share `status`, the write
+				// would land on a work item's own state (found by review, PR #211).
+				//
+				// `sameValue` rather than `===`, the comparison every type test in this
+				// plugin makes: a type is matched case-insensitively, and a note carrying no
+				// type at all answers null and is refused.
+				if (write.requiresType !== undefined && !sameValue(live, write.requiresType)) {
+					refusal = t('gate.retyped', { type: write.requiresType });
 					return;
 				}
 				const keys = sets.map((s) => s.key);
@@ -80,9 +101,9 @@ export async function applyPropertyWrites(
 				inverse = captureInverse(write.file, keys, prior, fm, {});
 			});
 		}
-		if (refused) {
-			console.error('Product Backlog: refused an estimation write to a resource note', write);
-			new Notice(t('gate.becameResource'));
+		if (refusal !== null) {
+			console.error('Product Backlog: refused a property write', write);
+			new Notice(refusal);
 		}
 		if (inverse) {
 			outcome.changed = true;

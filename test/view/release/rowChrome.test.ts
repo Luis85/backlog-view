@@ -118,3 +118,85 @@ describe('the scope toolbar’s icon buttons and the ✨ keep Obsidian’s chrom
 		expect(css).not.toMatch(/button\.pbl-rel-init\s*\{/);
 	});
 });
+
+/**
+ * **The three controls this branch added to the scope HEADER, and the audit above did not
+ * reach.** The status chip, the description line and the released date are all real
+ * `<button>`s carrying neither `clickable-icon` nor `mod-cta`, so Obsidian's
+ * `button:not(.clickable-icon)` — `color`, `background-color`, `box-shadow`, at (0,1,1) —
+ * reaches every one of them exactly as it reached `.pbl-rel-band`.
+ *
+ * Each was written as a bare class with a reset in it and a comment saying the reset
+ * refuses the app's chrome, and MEASURED in headless Chromium on 2026-08-29 it did not: the
+ * description and the released date computed `rgb(51, 51, 51)` with Obsidian's raised
+ * `--input-shadow` under them, and both took `--text-normal` where the partial asked for
+ * `--text-muted` and `--text-faint`. A boxed, filled sentence is the 2026-08-08 defect the
+ * root guide records, arriving for the third time on the newest controls.
+ *
+ * The status chip is the opposite finding and is why this block names it: every one of its
+ * four declarations was INERT — `button.pbl-state-chip` (`styles/columns.css`) already ties
+ * Obsidian at (0,1,1) and supplies the height, the shadow, the background and the font
+ * size, so the chip was correct and its rule was saying so for the wrong reason. Only its
+ * `flex` needed the qualification, to beat the chip rule's own `flex: 0 1 auto`.
+ *
+ * Narrow in the same way the block at the top of this file is narrow: what is checked is
+ * the SHAPE in the partial as written, never a specificity computed against a sheet no test
+ * here can load.
+ */
+describe('the scope header’s three write surfaces do not paint as Obsidian buttons', () => {
+	const css = readFileSync('styles/releaseScope.css', 'utf8');
+
+	it('resets the description line at `button.pbl-rel-desc`', () => {
+		const block = css.match(/button\.pbl-rel-desc\s*\{[^}]*\}/);
+		expect(block, 'no element-qualified reset for the description').not.toBeNull();
+		expect(block?.[0]).toContain('background-color: transparent');
+		expect(block?.[0]).toContain('box-shadow: none');
+		// The colour is the third declaration Obsidian's rule carries, and the one a
+		// background-and-shadow-only reset leaves behind: a description is muted prose.
+		expect(block?.[0]).toContain('color: var(--text-muted)');
+		// The QUIETER loss, and the one an element-qualified reset does not fix by itself:
+		// Obsidian's bare `button` rule supplies `justify-content: center` to a rule that
+		// declares none, and a button is a flex container — so `text-align: start` lands on
+		// an anonymous flex item already centred in a full-width box. Measured centred in
+		// Chromium on 2026-08-29, after the reset above was already winning. Same finding as
+		// the band's, in `docs/issues/The release index rows paint as Obsidian buttons.md`.
+		expect(block?.[0]).toContain('justify-content: flex-start');
+	});
+
+	it('resets the released date at `button.pbl-rel-released`', () => {
+		const block = css.match(/button\.pbl-rel-released\s*\{[^}]*\}/);
+		expect(block, 'no element-qualified reset for the released date').not.toBeNull();
+		expect(block?.[0]).toContain('background-color: transparent');
+		expect(block?.[0]).toContain('box-shadow: none');
+		expect(block?.[0]).toContain('color: inherit');
+	});
+
+	it('preserves the newlines the description box lets the reader type', () => {
+		// `TextPromptModal` deliberately does not submit on Enter, so a line break is content
+		// somebody meant — and `white-space: normal` collapsed every one of them into a space,
+		// so two paragraphs came back as one (found by review, PR #211). `pre-wrap` keeps them
+		// and still wraps a long line, which is what `normal` was chosen for.
+		const block = css.match(/button\.pbl-rel-desc\s*\{[^}]*\}/);
+		expect(block?.[0]).toContain('white-space: pre-wrap');
+	});
+
+	it('qualifies both invitation states, which say a COLOUR and nothing else', () => {
+		// `color` is the only property either adds that Obsidian's rule also declares, so a
+		// bare class here is a rule whose whole point loses while its `font-style` lands —
+		// an italic sentence in the wrong ink, which reads as deliberate.
+		expect(css).toMatch(/button\.pbl-rel-desc-empty\s*\{[^}]*color: var\(--text-faint\)/);
+		expect(css).toMatch(/button\.pbl-rel-released-unset\s*\{[^}]*color: var\(--text-faint\)/);
+	});
+
+	it('qualifies the status chip’s `flex`, and states nothing the chip rule already states', () => {
+		// The chip rule wins at (0,1,1) on every property it names, `flex: 0 1 auto` among
+		// them — so the refusal to shrink has to tie it, and the other four declarations were
+		// a reset that could never fire. Pinned as the decision: a `background-color` added
+		// back here would now WIN and take the chip's own box off.
+		const block = css.match(/button\.pbl-rel-status\s*\{[^}]*\}/);
+		expect(block, 'no element-qualified rule for the status chip').not.toBeNull();
+		expect(block?.[0]).toContain('flex: 0 0 auto');
+		expect(block?.[0]).not.toContain('background-color');
+		expect(block?.[0]).not.toContain('box-shadow');
+	});
+});

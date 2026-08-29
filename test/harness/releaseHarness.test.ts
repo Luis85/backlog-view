@@ -169,6 +169,61 @@ describe('the release harness mounts', () => {
 		expect(band?.querySelector('.pbl-rel-days')).not.toBeNull();
 	});
 
+	it('draws the scope header’s three write surfaces, in the two states each has', () => {
+		const { view, containerEl } = mount();
+		const header = () => containerEl.querySelector('.pbl-rel-header');
+
+		// SET: `0.8` is the only release carrying a description, and the only screen where
+		// the sentence has to wrap under a two-line header — the thing a browser is opened
+		// for. Its status is a plain chip, and its released date is the INVITATION, since
+		// nothing has shipped it.
+		view.pick('Releases/0.8.md');
+		expect(header()?.querySelector('.pbl-rel-desc')?.classList.contains('pbl-rel-desc-empty')).toBe(false);
+		expect(header()?.querySelector('.pbl-rel-status.pbl-state-unset')).toBeNull();
+		expect(header()?.querySelector('.pbl-rel-released-unset')?.textContent).toBe(en['release.scope.markReleased']);
+
+		// UNSET, all three at once: `Someday` is the release nobody has ruled on — no
+		// version, no target, no status, no description — so its header is the whole of what
+		// an invitation looks like. Each is still a real control opening its own editor;
+		// absence is what the reader is being asked to fill, never a figure withheld.
+		view.pick('Releases/Someday.md');
+		expect(header()?.querySelector('.pbl-rel-status.pbl-state-unset')).not.toBeNull();
+		expect(header()?.querySelector('.pbl-rel-desc.pbl-rel-desc-empty')).not.toBeNull();
+		expect(header()?.querySelector('.pbl-rel-released-unset')).not.toBeNull();
+
+		// SHIPPED: the released date as a VALUE rather than an invitation — the state the
+		// index's Shipped group is built on, and the one form of this control no screen drew
+		// before the date became settable at all.
+		view.pick('Releases/0.7.md');
+		expect(header()?.querySelector('.pbl-rel-released-unset')).toBeNull();
+		expect(header()?.querySelector('.pbl-rel-released')?.textContent).toBe(
+			en['release.scope.releasedOn'].replace('{date}', '2026-06-18'),
+		);
+	});
+
+	it('refuses all three controls on the release whose every figure is unreadable', () => {
+		const { view, containerEl } = mount();
+		view.pick('Releases/1.1.md');
+		const header = containerEl.querySelector('.pbl-rel-header');
+
+		// `drawStatus`, `drawReleased` and `drawDescription` each refuse a value they cannot
+		// read, and each says WHICH figure it is refusing rather than going quiet. Three
+		// refusals on one screen is the state this fixture exists to draw: "somebody wrote
+		// something there" is not an invitation to write over it blind, so not one of the
+		// three is a control.
+		expect(Array.from(header?.querySelectorAll('.pbl-rel-unreadable') ?? []).map((el) => el.textContent)).toEqual([
+			en['release.figureUnreadable'].replace('{label}', en['release.index.column.status']),
+			en['release.figureUnreadable'].replace('{label}', en['release.index.column.released']),
+			en['release.figureUnreadable'].replace('{label}', en['release.scope.descriptionLabel']),
+		]);
+		expect(header?.querySelector('.pbl-rel-status')).toBeNull();
+		expect(header?.querySelector('.pbl-rel-released')).toBeNull();
+		expect(header?.querySelector('.pbl-rel-desc')).toBeNull();
+		// And the way OUT of that state is still one press away: the note itself is where an
+		// unreadable value is repaired, which is what makes refusing the three honest.
+		expect(header?.querySelector('.pbl-rel-open')).not.toBeNull();
+	});
+
 	it('mounts the four unconfigured states each variant exists for', () => {
 		expect(mount('notype').containerEl.querySelector('.pbl-empty-title')?.textContent).toContain('type property');
 

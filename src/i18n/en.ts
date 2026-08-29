@@ -434,6 +434,23 @@ export const en = {
 	'timeline.waitsFor': 'Waits for {items}',
 	'timeline.prerequisiteConflict': '{name} (conflict)',
 	'timeline.prerequisiteBroken': '{name} (broken)',
+	/**
+	 * The release marker's own label in the header band, and its tooltip — the one place a
+	 * mark across this grid says WHICH kind of thing it is, since a colour is no answer for
+	 * a reader who cannot see it. `{type}` is the type NAME (`RELEASE_TYPE`), which is data:
+	 * it is matched in frontmatter and renamed by nobody's locale, so it is a parameter here
+	 * exactly as the legend's own marker caption keeps it out of the catalog. `{names}` is a
+	 * LIST — two releases on one date share one line — joined as grammar by `Intl.ListFormat`
+	 * rather than by a joiner at the call site, `timeline.waitsFor`'s own rule above.
+	 */
+	'timeline.releaseLine': '{type}: {names}',
+	/**
+	 * The same marker as a sentence for a reader who cannot see the grid — the line, its
+	 * label and the legend swatch are all decoration, and a release has no ROW carrying its
+	 * name and date the way a milestone does. `{date}` is the calendar date the position
+	 * stands for, which is the fact the visible mark leaves to the eye.
+	 */
+	'timeline.releaseMark': '{type}: {names} — {date}',
 
 	/** The tag cell's own controls. `{tag}` is vault data throughout. */
 	'column.addTag': 'Add tag',
@@ -794,6 +811,13 @@ export const en = {
 	'release.option.status': 'Status property',
 	'release.option.state': 'Workflow state property',
 	'release.option.doneValues': 'States that count as done',
+	/** The statuses a vault declares for its own releases, and the box's own example.
+	 *  The VALUES are data — matched in frontmatter, written to notes — so the hint is a
+	 *  placeholder showing the SHAPE of a list, exactly as `option.stateValuesHint` is. */
+	'release.option.statusValues': 'Release statuses (in order)',
+	'release.option.statusValuesHint': 'Planned, In progress, Released',
+	/** What a release is for, in the reader's own words, on the release note. */
+	'release.option.description': 'Release description property',
 	'release.option.releasedDate': 'Released date property',
 	'release.option.folder': 'Release folder',
 	'option.typeProperty': 'Item type property',
@@ -833,6 +857,9 @@ export const en = {
 	'option.iterationBars': 'Draw iterations as bars',
 
 	'option.releaseProperty': 'Release property',
+	/** The date the ROADMAP draws a release marker at, read off the `Release` note itself —
+	 *  never the target date a work item states, which is `option.targetProperty` below. */
+	'option.releaseDateProperty': 'Release date property',
 
 	'option.testStateProperty': 'Test state property',
 	'option.testStateValues': 'Test workflow states (in order)',
@@ -909,6 +936,18 @@ export const en = {
 	'property.iteration': 'iteration',
 	'property.iterationGoal': 'iteration goal',
 	'property.release': 'release',
+	/**
+	 * The RELEASE view's own five, for `releaseNoteProblems` (`domain/settingsConsistency.ts`).
+	 * Short words for the reason the roles above are short — the sentence they land in already
+	 * ends in "properties" — and named for the ROLE rather than the option, so a locale cannot
+	 * change which keys are allowed to share one property. `type` is not repeated here: that
+	 * collision is the same property under the same role, and it reuses `property.type`.
+	 */
+	'property.releaseVersion': 'release version',
+	'property.releaseTarget': 'release target date',
+	'property.releaseStatus': 'release status',
+	'property.releasedDate': 'released date',
+	'property.releaseDescription': 'release description',
 
 	/**
 	 * The menus — the row and card menu in `view/interactions/menu.ts`, the shelf's picks
@@ -1150,6 +1189,21 @@ export const en = {
 	'gate.staleDatesPartial': 'That note changed while the move was in flight, so the rest of the move was not written.',
 	'gate.staleDatesNone': 'That note changed while the move was in flight, so nothing was written.',
 	'gate.becameResource': 'That note became a resource while the change was in flight, so nothing was written to it.',
+	/**
+	 * `PropertyWrite.requiresType`'s own refusal, beside `gate.becameResource` and worded to
+	 * match it: a note retyped between the plan and the write is somebody else's now.
+	 * `{type}` is the type NAME — data, matched in frontmatter — so it is a parameter here
+	 * exactly as it is in the legend's marker caption.
+	 */
+	'gate.retyped': 'That note is no longer a {type}, so nothing was written to it.',
+	/**
+	 * The release screen's own refusal, and the third thing that can be wrong with a batch by
+	 * the time it lands. Not a collision (`configProblems` reports those) and not a retype
+	 * (`gate.retyped` above): the CONFIGURATION moved under an open dialog, so the key the
+	 * control captured is no longer one this view is given to edit. `{property}` is the key
+	 * itself — vault data, not a word from this catalog.
+	 */
+	'gate.releaseReconfigured': 'Nothing written: this release view no longer writes “{property}”. Reopen the editor and try again.',
 
 	/**
 	 * Every card move's live-region announcement, in the two shapes a gesture can have:
@@ -1766,6 +1820,69 @@ export const en = {
 	/** The only way off one release's screen, so it is a real button and carries its own
 	 *  name — the icon alone says nothing to a reader who cannot see it. */
 	'release.scope.back': 'Back to all releases',
+	/** The way to the release NOTE — the whole note, where anything this screen does not
+	 *  edit is edited. Named rather than left to the icon, `release.scope.back`'s own
+	 *  reason one line up. */
+	'release.scope.openNote': 'Open release note',
+	/**
+	 * The status chip's own affordance and the way back off a status. The VALUES the menu
+	 * offers are data — this vault's own words for its process, written to notes and
+	 * matched there — so only the two frames around them are text, exactly as
+	 * `menu.setState` and `menu.clearTestState` are.
+	 */
+	'release.scope.setStatus': 'Set the release status',
+	'release.scope.clearStatus': 'Clear status',
+	/**
+	 * The BOOTSTRAP entry, and the only route to a status in a vault that has none: the menu
+	 * offers what the options panel declares and what the other releases carry, so with
+	 * neither it had nothing in it at all while the unset chip went on inviting a press
+	 * (found by review, PR #211). Offered only in that state — with a vocabulary on screen
+	 * the declared list is where a new value belongs, and a free-text entry beside it invites
+	 * two spellings of one status.
+	 *
+	 * `{name}` is the release note's own name — vault data. The placeholder is an EXAMPLE of
+	 * the shape of a status and not one this plugin writes: these are the reader's own words
+	 * for their own process, which is why `releaseStatusValues` ships empty.
+	 */
+	'release.scope.newStatus': 'New status...',
+	'release.scope.newStatusTitle': 'Set the status of {name}',
+	'release.scope.newStatusPlaceholder': 'In progress',
+	'release.scope.newStatusCta': 'Set status',
+	/**
+	 * The description: its dialog, the field's own invitation, and the way in from the
+	 * header. `{name}` is the release note's own name — vault data — and the placeholder is
+	 * an example of the SHAPE of a sentence rather than one this plugin would write.
+	 *
+	 * `descriptionEmpty` is drawn where the key is bound and the note carries nothing, and
+	 * it is deliberately an invitation rather than a blank: absence here is something the
+	 * reader can fix in one press, the same call the dashed risk and priority chips make in
+	 * the tree.
+	 */
+	'release.scope.descriptionTitle': 'Describe {name}',
+	'release.scope.descriptionPlaceholder': 'What this release is for',
+	'release.scope.descriptionSave': 'Save',
+	'release.scope.descriptionEmpty': 'Add a description',
+	/** The field's own NAME, for the refusal `release.figureUnreadable` builds when the key
+	 *  holds something no reader can take as prose. Short and column-shaped like
+	 *  `release.index.column.status` beside it, and not the OPTION's name, which is what this
+	 *  refusal used until it was read on a page: "Release description property unreadable" is
+	 *  a settings label in a sentence about a note. */
+	'release.scope.descriptionLabel': 'Description',
+	/**
+	 * The released date — the day a release actually shipped, and the one field on this
+	 * screen whose value is a DATE rather than a label. `{name}` is the release note's own
+	 * name and `{date}` is the date as the register spells one (`formatCivil`), both data.
+	 *
+	 * `markReleased` is the invitation a release with no date draws, and it is the plainest
+	 * name for the gesture rather than "Set released date": what the reader is doing is
+	 * saying it shipped. It opens the same dialog either way, so nothing is claimed by the
+	 * wording that the action does not do — in particular it writes no status, which is
+	 * [[Marking a release as released]]'s own half of that transition and is still Open.
+	 */
+	'release.scope.releasedOn': 'Released {date}',
+	'release.scope.markReleased': 'Mark as released',
+	'release.scope.releasedTitle': 'Released date for {name}',
+	'release.scope.releasedHint': 'The day this release actually shipped. Clearing it takes the date off the note.',
 	/**
 	 * The ancestor drawn only to keep a member in its place — and NOT the tree's own
 	 * `row.contextMarker`, whose sentence is false here every time. That one says a row is
@@ -1905,6 +2022,8 @@ export const en = {
 	'newRelease.field.version': 'Version',
 	'newRelease.field.targetDate': 'Target date',
 	'newRelease.field.status': 'Status',
+	/** Prose, and the one field of the four that gets a box rather than a line. */
+	'newRelease.field.description': 'Description',
 	'newRelease.create': 'Create',
 	'newRelease.cancel': 'Cancel',
 
@@ -1930,12 +2049,15 @@ export const en = {
 	 * all three without claiming which one happened, because the control has no way to tell
 	 * the caller that either.
 	 *
-	 * **Narrowed again 2026-08-28**: "every release property" overclaimed a fourth way.
-	 * `RELEASE_SUGGESTED_KEYS` (`view/release/init.ts`) binds exactly four of this view's
-	 * five own properties — `releasedDateProperty` is a READ binding this action
-	 * deliberately never touches, so with the other four handled it was still true that a
-	 * release property remained unbound. Narrowed to what the action can actually add,
-	 * per the register's own rule: write the guarantee to the check, never ahead of it.
+	 * **Narrowed again 2026-08-28**: "every release property" overclaimed a fourth way —
+	 * `RELEASE_SUGGESTED_KEYS` (`view/release/init.ts`) left one of this view's own
+	 * properties unbound, so the sentence was false with every candidate handled. The
+	 * overclaim is gone on this branch (the released date and the description joined the
+	 * candidates) and the narrower sentence STAYS, deliberately: it is true of a candidate
+	 * list of any length, and "every release property" is a promise that comes apart again
+	 * the next time an option ships that this action cannot suggest a key for —
+	 * `releaseStatusValues` is one today. Per the register's own rule: write the guarantee
+	 * to the check, never ahead of it.
 	 */
 	'release.init.nothing':
 		'Nothing to add. Every property this action can add is bound, was cleared on purpose, or its suggested key is already in use.',

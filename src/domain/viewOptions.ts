@@ -399,7 +399,40 @@ function releaseGroup(): BasesAllOptions {
 	return {
 		type: 'group',
 		displayName: t('option.group.release'),
-		items: [optionalPropertyOption('release', t('option.releaseProperty'))],
+		items: [
+			optionalPropertyOption('release', t('option.releaseProperty')),
+			// The date the ROADMAP positions a release marker at, and the one option in this
+			// file that is NOT a row of `PROPERTY_TABLE`. Deliberately: that table is the
+			// vocabulary of this view's WRITE targets — every row of it is planned, written
+			// and backfilled — and this key is read and never written. A release's own dates
+			// belong to the release view, which is the view that creates the note; putting
+			// this key in the table would hand the backfill a `Release` to stub and the
+			// planner a date to write, both of which `mayHoldField` already refuses by type.
+			//
+			// It ships a REAL default, the three model mappings' shape rather than the
+			// optional properties', because a marker nobody configured is a feature nobody
+			// finds: the release view suggests `target-date` for the same date, so the
+			// out-of-the-box vault draws its releases without a second setup step. Sharing a
+			// suggestion is not sharing a setting — this view still cannot read the release
+			// view's configuration, and the two may legitimately be pointed apart.
+			// `clearablePropKey` is what keeps that honest: cleared means no markers, and it
+			// is a decision this option must not overrule (see `resolveSettings`).
+			//
+			// The COST of staying out of that table is that `configProblems` cannot see this
+			// key: it walks `ownedProperties`, which is the table, so pointing this and the
+			// target-date option at one property is unreported. Accepted rather than fixed
+			// here, and it is the mildest member of that class — nothing writes through this
+			// key, so the worst case is a marker drawn at a date that means something else,
+			// which the reader can see and fix in one picker.
+			{
+				type: 'property',
+				key: 'releaseDateProperty',
+				displayName: t('option.releaseDateProperty'),
+				default: 'note.target-date',
+				placeholder: 'target-date',
+				filter: notePropsOnly,
+			},
+		],
 	};
 }
 

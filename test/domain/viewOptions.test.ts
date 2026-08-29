@@ -134,16 +134,31 @@ describe('getViewOptions', () => {
 		expect(keys).toEqual(['deliverableStateProperty', 'deliverableStateValues', 'deliverableDoneValues']);
 	});
 
-	it('exposes a Release group with a single membership property, the iteration property shape', () => {
+	it('exposes a Release group with the membership property and the roadmap’s own date key', () => {
 		const groups = getViewOptions(fakeConfig());
 		const group = groups.find((g) => 'displayName' in g && g.displayName === 'Release');
 		if (!group || !('items' in group)) throw new Error('Release group missing');
-		expect(group.items.map((item) => item.key)).toEqual(['releaseProperty']);
+		expect(group.items.map((item) => item.key)).toEqual(['releaseProperty', 'releaseDateProperty']);
 		const property = group.items[0] as { placeholder?: string; type: string };
 		expect(property.type).toBe('property');
 		// The suggested key `resolveSettings` adopts on backfill, the way every other
 		// optional property's placeholder is its own suggestion.
 		expect(property.placeholder).toBe('release');
+	});
+
+	it('ships a real default for the release date property, unlike every optional one', () => {
+		// The three model mappings' shape, not `PROPERTY_TABLE`'s: this key is READ and never
+		// written, so it is not an optional write target at all — and a marker overlay nobody
+		// configured is a feature nobody finds ([[A release on the dated axis]]). `target-date`
+		// is the same key the release view suggests for the same date, which is sharing a
+		// suggestion rather than sharing a setting: neither view reads the other's config.
+		const groups = getViewOptions(fakeConfig());
+		const group = groups.find((g) => 'displayName' in g && g.displayName === 'Release');
+		if (!group || !('items' in group)) throw new Error('Release group missing');
+		const dateOption = group.items[1] as { default?: string; placeholder?: string; type: string };
+		expect(dateOption.type).toBe('property');
+		expect(dateOption.default).toBe('note.target-date');
+		expect(dateOption.placeholder).toBe('target-date');
 	});
 
 	it('exposes an Iterations group with the two properties and the four board options', () => {
@@ -260,6 +275,7 @@ const KEYS = [
 	'iterationsOnTimeline',
 	'iterationBars',
 	'releaseProperty',
+	'releaseDateProperty',
 	'testStateProperty',
 	'testStateValues',
 	'testDoneValues',
@@ -400,6 +416,9 @@ describe('the options menu reads its words from the catalog', () => {
 			'started',
 			'status',
 			'tags',
+			// The roadmap's own release-date key — its placeholder AND its default, since it is
+			// the one property option here that ships a real one (see the Release group above).
+			'target-date',
 			'type',
 			// `iterationLengthDays`, the shipped default rendered as the number it is.
 			'14',

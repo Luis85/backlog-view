@@ -493,6 +493,28 @@ describe('the harness draws the cases the dependency connector has to survive', 
 		expect(inferred.classList.contains('pbl-bar-inferred')).toBe(true);
 		expect(gripNames(containerEl, 'Welcome tour')).toEqual([]);
 		expect(inferred.querySelector('.pbl-bar-connector')).not.toBeNull();
+
+		// The grid's two full-height marks, on one screen because "a release is visually
+		// distinct from a milestone" is a question only a browser can answer and both have to
+		// be drawn for anyone to look — `Ship 1.0` and `1.2.0` are a fortnight apart in this
+		// fixture for exactly that. jsdom lays nothing out, so the colour and the dash stay a
+		// live-vault question; what is asserted is that both marks and both keys are drawn.
+		// The KEYS for both are asserted in `test/view/releaseMarkers.test.ts`, which has the
+		// room; what belongs here is that the fixture puts both marks on one screen.
+		expect(containerEl.querySelectorAll('.pbl-milestone-line').length).toBeGreaterThan(0);
+		// Both labels in one read, and `[data-pbl-day]` rather than either class because the
+		// MERGE is what is being asserted: a merged day mints no second box, so the two marks
+		// on `Ship 1.0`'s date are one label and the release a fortnight later is the other.
+		const labels = Array.from(containerEl.querySelectorAll('[data-pbl-day]')).map((el) => el.textContent);
+
+		// **The SHARED day is the other half of the same question.** `1.1.0` is dated on
+		// `Ship 1.0`'s own day, so this fixture holds both arrangements at once: two marks
+		// apart, and two marks on one date. A review found the second broken (PR #211) — two
+		// opaque 140px labels at one x, the earlier pass painted over — and what is drawn now
+		// is ONE label naming both. Clipped at 140px in a browser, which is recorded in
+		// `docs/issues/Nearby milestone labels cover each other.md` and is not this test's to
+		// see: jsdom lays nothing out, so what is asserted is the TEXT the merge produces.
+		expect(labels).toEqual(['Ship 1.0 · Release: 1.1.0', 'Release: 1.2.0']);
 	});
 
 	it('draws a clipped bar in the edge-case fixture, where it distorts nothing', () => {

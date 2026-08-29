@@ -44,6 +44,9 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ### Fixed
 
+- A finished item in a release's scope now reads as finished: its state chip carries the done
+  colour and the check the backlog tree's own chip has, instead of `Done` and `Doing` in one
+  ink while the summary above counted one of them as complete.
 - An assignee chip whose value names no resource now says so to a screen reader, not only
   in the tooltip and the styling: its accessible name reads `Change assignee (currently
   Sarah, which names no resource in this base)`.
@@ -61,6 +64,50 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 - The `Resources (in order)` view option. The roster is the notes the base returns.
 
 ### Added
+
+- **A release's status, its description and the day it shipped are now set from its own
+  screen.** The status chip in the release header opens a menu of the statuses your
+  vault declares (a new **Release statuses (in order)** option), plus the ones your other
+  releases already carry, plus this one's own — with the current one ticked and a **Clear
+  status** entry where there is something to clear. Re-picking the status a release already
+  has writes nothing. The description is a new property (**Release description property**,
+  bound by ✨ along with everything else): the **New release** dialog asks for one as its
+  last field, and the release's own screen draws it under the header as a line you press to
+  edit. Emptying the box takes the key off the note rather than leaving it blank.
+  The **released date** sits beside the target in the header: a release with none draws
+  **Mark as released**, and pressing it opens the same date picker the roadmap's Schedule
+  uses, prefilled with whatever the note already says. This is what makes the released
+  property usable at all — ✨ binds the key, and until now nothing in the plugin ever wrote
+  it, so the **Shipped** group and the `7 days late` figure could only be reached by editing
+  the note by hand. It writes the date and no status: marking a release released as one
+  transition, with its confirmation and its list of outstanding work, is still to come.
+  **This is the first thing the release view edits.** It creates release notes and,
+  until now, nothing else — so two things follow. It writes to the release note and never to
+  a member: work is edited on the backlog view. And the edit joins the plugin's one undo
+  slot, which this view draws no button for: a status you set here is taken back with the
+  backlog view's undo, the same slot every view shares.
+- **Releases now draw on the roadmap.** A `Release` note with a target date draws a line
+  down the dated grid at that date, its name in the header band and a swatch in the legend —
+  purple and dashed, so it is never read as a milestone's cyan line. It draws on the
+  resources axis as well as the plain timeline, since the line crosses the rows either way,
+  and the window widens to hold a release dated past everything else on the grid. The date is
+  read through the roadmap's own new **Release date property** option, which ships pointing at
+  `target-date` — the key the release view suggests for the same date — so a vault gets the
+  markers without setting anything; clear it and no markers are drawn. Nothing is written by
+  any of it, and a release is still not a row: it is not ranked, not counted, not a drop
+  target, and the shelf and the placed count are unchanged.
+- **The release view's ✨ now binds everything that vault's release view can use**, not the
+  four properties it bound before. The item **state** property joins it, which is what
+  switches on every progress figure this view has — the index bands, the scope rollups and the
+  hide-done toggle were all left unconfigured by a press that reported success — and so does
+  the **released date**. The state and the release's own status may now both point at
+  `status`, which is what the folder layout this plugin creates actually looks like: they are
+  read on different notes, and the two are the one pair the setup action is allowed to give
+  one property to.
+
+- **A release's own screen opens the release note.** One control in the header, beside the
+  title, on every scope screen including the empty ones — the note is where a version, a
+  target date and a status are edited, and this view reads all three and writes none of them.
 
 - **The release list shows how far along each release is, and how far each one landed from
   its target.** Two new options on the release view turn them on. Bind **the property that
@@ -160,6 +207,29 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   disagree.
 
 ### Fixed
+
+- **A release whose vault has no statuses yet can now be given one.** The status menu
+  offers what your options declare and what your other releases carry — so with neither, it
+  opened empty while the chip went on inviting a press. It now offers **New status...** in
+  exactly that case, which is how a vault writes its first one.
+
+- **A release can no longer lose its type to an editor left open.** If two release
+  properties named one key, every edit was refused — but fixing that while an editor was
+  still open let the pending edit through, still aimed at the key it was configured with,
+  which could be the type property. The edit is now refused with a notice naming the key,
+  and the same refusal covers an option re-pointed under an open editor.
+
+- **The release screen's description and released date no longer paint as filled, raised
+  Obsidian buttons.** Both are controls you press, so both are real buttons — and Obsidian's
+  own button styling outranked the flat look they asked for, so the description drew as a
+  boxed banner of normal-weight text across the header and the invitation to set a released
+  date drew as a raised box beside two plain dates. The description also read centred, and
+  now reads from the start of the line like the sentence it is. Nothing about what either
+  control does has changed.
+
+- **The release screen says "Description unreadable"** where it used to say "Release
+  description property unreadable" — the name of the setting, in a sentence about a note.
+  The dialog that edits it labels its box the same way.
 
 - **Deleting a note now takes its folded rows with it.** A row you had folded shut left an
   entry behind in this device's saved working position, which then counted against the cap

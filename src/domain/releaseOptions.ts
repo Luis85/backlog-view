@@ -34,6 +34,23 @@ export interface ReleaseSettings {
 	statusKey: string;
 	/** On the RELEASE note, beside `versionKey`: when it actually shipped. */
 	releasedDateKey: string;
+	/**
+	 * On the RELEASE note: what it is for, in the reader's own words. A PROPERTY and not
+	 * the note body, which is the register's standing answer for every other kind here
+	 * ([[Milestones as their own type]]: "The description is the note body… No new
+	 * field"). Asked for as a property by the author on 2026-08-29 and recorded as a
+	 * reversal for releases alone: a release is the one kind this plugin both CREATES and
+	 * REPORTS on without opening — the index and the scope header draw its fields, and a
+	 * body they would have to read the file to show is a body neither can draw.
+	 */
+	descriptionKey: string;
+	/**
+	 * The statuses this vault declares for a release, in the order they were written —
+	 * `BacklogSettings.states`' own shape for the plan's workflow, and empty when nobody
+	 * has declared any, which is not the same as "no statuses exist": `Set status` unions
+	 * this with what the releases in the base actually carry.
+	 */
+	statusValues: string[];
 	/** Where `New release` files a note. A PATH, not a property key. */
 	folder: string;
 	/** Where a scope row's click opens its note — this view's OWN option, never the
@@ -168,6 +185,29 @@ function releaseGroup(): BasesAllOptions {
 				placeholder: 'released',
 				filter: notePropsOnly,
 			},
+			// The vocabulary `Set status` offers, declared rather than detected — the shape
+			// `stateValues` has for the plan's own workflow, and with the same absence of a
+			// default: these are the reader's words for their own process, and shipping three
+			// would put this plugin's guess in every vault's `.base` the first time somebody
+			// opened the options panel. Empty is not "no statuses": the menu unions this with
+			// the values the releases in the base already carry (`releaseStatusChoices`), so a
+			// vault that declares nothing still picks from what it has written.
+			{
+				type: 'text',
+				key: 'releaseStatusValues',
+				displayName: t('release.option.statusValues'),
+				placeholder: t('release.option.statusValuesHint'),
+			},
+			// What a release is FOR, in the reader's own words, on the release note itself.
+			// A property rather than the note body — see `ReleaseSettings.descriptionKey` for
+			// the standing decision this reverses and why it is reversed for this type alone.
+			{
+				type: 'property',
+				key: 'descriptionProperty',
+				displayName: t('release.option.description'),
+				placeholder: 'description',
+				filter: notePropsOnly,
+			},
 			{
 				type: 'folder',
 				key: 'releaseFolder',
@@ -187,9 +227,37 @@ function releaseGroup(): BasesAllOptions {
 }
 
 /**
- * Every frontmatter key the DECLARED property options above currently resolve to — read
- * off the declaration, so an option added to either group joins this set without anybody
- * remembering to add it.
+ * The options that may legitimately name ONE property, so a key held by any of them does
+ * not stop {@link declaredPropertyKeys}' own reader handing it to another of them.
+ *
+ * `configProblems` (`domain/settingsConsistency.ts`) already carries exactly this
+ * exemption for the backlog view's own collision report — "skips the workflow-state roles
+ * that may legitimately share a key" — and this is that same ruling for this view's
+ * options, one of which is not a workflow state at all. The RELEASE's own status and an
+ * ITEM's workflow state are read of different notes by different readers (`releaseIndex`
+ * opens a release note, `buildModel` reads every row's state), and the vault this plugin
+ * creates spells both `status`: `docs/releases/*` carry one and every PBI under them
+ * carries the other.
+ *
+ * That is not a matter of taste for ✨. Seeding one flat "already taken" set from every
+ * declared option made the ordinary vault unreachable — whichever of the two was offered
+ * first took `status` and the other was left unbound — and for `stateProperty` unbound
+ * means `ReleaseRow.done` is unconfigured for every release: no band shows progress, no
+ * scope row shows a rollup, the hide-done toggle is withheld and the summary strip says so
+ * instead of measuring. Half this view, missing after a press that reported success.
+ *
+ * Every OTHER pairing stays refused, `typeProperty` included: an option outside this list
+ * holding `status` still blocks both of the two, which is the corruption PR #203 found (a
+ * release created with a status and no type) kept rather than traded away.
+ */
+export const SHARED_STATUS_OPTIONS = ['stateProperty', 'deliverableStateProperty', 'releaseStatusProperty'];
+
+/**
+ * Every frontmatter key the DECLARED property options currently resolve to — read off the
+ * declaration, so an option added to either group joins this set without anybody
+ * remembering to add it. `include` narrows it to the options it answers for — which is how
+ * {@link SHARED_STATUS_OPTIONS}' own exemption asks for the keys held by every OTHER
+ * option, the only set that may block one of the shared three.
  *
  * It exists for `runReleaseInit`'s "never hand out a key another of this view's options
  * already names", and it is derived rather than listed because a LIST is what that rule
@@ -205,11 +273,12 @@ function releaseGroup(): BasesAllOptions {
  * real default and take it when nobody has touched them, and every other property option
  * defaults to nothing, where `clearablePropKey` and `propKey` answer identically.
  */
-export function declaredPropertyKeys(config: BasesViewConfig): string[] {
+export function declaredPropertyKeys(config: BasesViewConfig, include?: (optionKey: string) => boolean): string[] {
 	const { clearablePropKey } = configReaders(config);
 	return getReleaseViewOptions(config)
 		.flatMap((entry) => (entry.type === 'group' ? entry.items : [entry]))
 		.filter((option): option is BasesPropertyOption => option.type === 'property')
+		.filter((option) => include === undefined || include(option.key))
 		.map((option) => clearablePropKey(option.key, (option.default ?? '').replace(/^note\./, '')));
 }
 
@@ -222,7 +291,7 @@ export function resolveReleaseSettings(config: BasesViewConfig): ReleaseSettings
 	// `{ typeProperty: '' }` can never pass. `clearablePropKey` draws exactly that
 	// distinction (`config.get(key) === undefined ? def : propKey(key, '')`) and exists
 	// for this: unset takes the suggestion, cleared means off.
-	const { clearablePropKey, propKey, str, clearable } = configReaders(config);
+	const { clearablePropKey, propKey, str, clearable, list, dedupe } = configReaders(config);
 	return {
 		parentKey: clearablePropKey('parentProperty', 'parent'),
 		orderKey: clearablePropKey('orderProperty', 'order'),
@@ -252,6 +321,12 @@ export function resolveReleaseSettings(config: BasesViewConfig): ReleaseSettings
 		// `propKey`, not `clearablePropKey`: their default is `''`, so the two resolve the
 		// same value for every input — the reason already stated above for `versionKey`.
 		releasedDateKey: propKey('releasedDateProperty', ''),
+		// `propKey` and `list`, the same readings their siblings take: the description's
+		// default is '' like every other unbound property here, and an empty status list is
+		// exactly what an untouched box means — there is no real default for either to be
+		// cleared BACK to, which is what `clearable` exists for.
+		descriptionKey: propKey('descriptionProperty', ''),
+		statusValues: dedupe(list('releaseStatusValues')),
 		// A PATH, not a property key: same reading `resolveFolders` gives every type
 		// folder — trimmed and normalized by `vaultFolder`, clearable because the default
 		// is a real value (`config.get` cannot tell "cleared" from "never set" otherwise).
