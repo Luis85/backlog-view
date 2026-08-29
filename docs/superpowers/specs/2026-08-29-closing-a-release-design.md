@@ -94,9 +94,20 @@ batch and a second undo slot, and would falsify the first acceptance criterion. 
 outstanding, and the dialog says so instead of drawing an empty list (2b). Cancelling
 writes nothing and spends no undo slot (2c).
 
-The outstanding list is `releaseScope`'s rows with `context` false, which is 4a — an
-excluded note naming this release is neither listed nor counted — falling out of the data
-rather than being a rule to remember.
+The outstanding list is **two** questions of `releaseScope`'s rows, not one. `context`
+false is the population — which is 4a, an excluded note naming this release is neither
+listed nor counted, falling out of the data rather than being a rule to remember — and
+each remaining row is then asked whether it is done. That second question is
+`ownWorkflowReading`'s, **never `item.done`**: the requirements reading alone gets a
+`Deliverable` or a test-catalog member backwards, which is the rule `ReleaseRow.done`
+already states about its own numerator. Population and predicate are two questions, and a
+list that asked only the first would report every member as outstanding.
+
+Where the members span a workflow nobody configured, `ReleaseRow.done` is unconfigured and
+there is no answer to give. The confirmation then says the release's completion cannot be
+read here rather than listing every member as unfinished, and still refuses nothing — the
+same three-answer rule `ReleaseFigure` exists for, and an extension the PBI does not
+cover, so it gains one.
 
 **One narrowing.** Flow 2 also asks the confirmation to state any unsatisfied readiness
 criterion. Readiness is [[Answering the readiness checklist]] and is not built, so the
@@ -168,9 +179,17 @@ does not choose a folder on the user's behalf; unconfigured means absent and nam
 
 The action is also absent while `releaseNoteProblems` is non-empty, not merely while its
 own two keys are bound (4d): generation is a write path and is gated like every other one.
-A failure to create the folder or the file reports the path it tried and leaves nothing
-partial (4e). The note is opened after writing, and a failure to open is not a failure of
-the action (5a).
+**A correction to 4e.** It lists "the folder does not exist" as a failure to report. The
+folder is *created* instead, through `ensureFolder`, because that is what every write path
+in this plugin already does — `createNote.ts` for each of the three note kinds it makes,
+and `writeBacklogReadme` for the document this one is modelled on. Refusing here would
+make the release notes the only write in the plugin that will not make its own folder, and
+would fail the first generation in every vault whose folder option names one not yet
+created. What survives of 4e is its second half, which is the part that matters: a write
+that fails reports the path it tried and leaves nothing partial behind.
+
+The note is opened after writing, and a failure to open is not a failure of the action
+(5a).
 
 ## Where it lives
 
@@ -203,7 +222,8 @@ file's own sentences and the outcome notices.
 `docs/requirements/Marking a release as released.md` and
 `docs/requirements/Generating the release notes.md` — their `## Where it lives` sections
 name the new modules, which `docs-check.mjs` rule 7 requires of every module in `src/`;
-the first also records the readiness narrowing and the `configProblems` correction.
+the first also records the readiness narrowing and the `configProblems` correction, and
+the second the 4e correction above.
 
 `CHANGELOG.md` — an `[Unreleased]` entry for each action.
 
@@ -218,8 +238,13 @@ design adds to them:
 - Marking a release out writes the status and the date in **one** batch: undoing once
   takes both back, and a release whose status already equals the transition value writes
   nothing and spends no undo slot.
-- The outstanding list and its count come from non-context scope rows, so adding a context
-  ancestor to a fixture changes neither.
+- The outstanding list and its count come from non-context scope rows that are not done,
+  so adding a context ancestor to a fixture changes neither, and a finished member appears
+  in neither. A `Deliverable` member finished by its own workflow counts as finished — the
+  criterion is asked of `ownWorkflowReading`, so a fixture whose release spans two
+  workflows is what checks it.
+- With a member's workflow unconfigured, the confirmation says completion cannot be read
+  and still offers the action.
 - `writeBacklogReadme`'s behaviour is unchanged by the extraction — its existing tests are
   the check, and they are watched passing before and after.
 - A release-notes file whose marker names another release is refused and named; one whose
