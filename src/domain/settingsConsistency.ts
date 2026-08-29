@@ -350,3 +350,28 @@ export function releaseNoteProblems(settings: ReleaseSettings): string[] {
 	}
 	return problems;
 }
+
+/**
+ * Whether this view's membership key is aimed at a property the MODEL already owns — the
+ * gap neither collision report above can see. `configProblems` has no membership role,
+ * and `releaseNoteProblems` deliberately excludes the item side.
+ *
+ * It matters because `membershipTarget` resolves whatever that key holds as a release
+ * link: pointed at the type key it reads `type: PBI` as a membership, every scope reads
+ * empty, and a generated notes file would say the release contained nothing — over a
+ * previously valid one saying what shipped. Empty and unreadable are different answers,
+ * and this is what keeps them apart.
+ *
+ * DERIVED from `ownedProperties` rather than naming roles, so a property added later is
+ * covered without anybody remembering this function. One exemption: `release` is itself
+ * an optional property — the BACKLOG view's own membership key — and the two legitimately
+ * agree. That is the shipped default, not an edge case.
+ */
+export function membershipCollision(release: ReleaseSettings, plan: BacklogSettings): string | null {
+	if (release.membershipKey === '') return null;
+	for (const { role, key } of ownedProperties(plan)) {
+		if (role === 'release' || key === '') continue;
+		if (key === release.membershipKey) return t('settings.membershipCollides', { key, role: t(`property.${role}`) });
+	}
+	return null;
+}

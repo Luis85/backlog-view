@@ -913,6 +913,7 @@ export const en = {
 	'settings.sharedKey': 'the {properties} properties share the key "{key}"',
 	'settings.releasedIsTarget': 'the released date and the target date both use {key}',
 	'settings.transitionNotReleased': '{value} is not one of the statuses that mean released',
+	'settings.membershipCollides': 'the release membership property and {role} both use {key}',
 
 	/**
 	 * What this view calls each property it owns, wherever a collision names them. Keyed by

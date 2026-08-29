@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { getReleaseViewOptions, resolveReleaseSettings } from '../../src/domain/releaseOptions';
-import { releaseNoteProblems } from '../../src/domain/settingsConsistency';
+import { membershipCollision, releaseNoteProblems } from '../../src/domain/settingsConsistency';
+import { resolveSettings } from '../../src/domain/settingsResolve';
+import { optionalKeyFor } from '../../src/domain/optionalProperties';
 import { FakeViewConfig } from '../helpers/vault';
 import { releaseSettingsWith } from '../helpers/releaseSettings';
 
@@ -172,5 +174,26 @@ describe('the release view names its own keys', () => {
 		expect(
 			releaseNoteProblems(releaseSettingsWith({ releasedValues: ['Released'], releasedTransition: 'Released' })),
 		).toEqual([]);
+	});
+
+	it('reports a membership key aimed at any item-side property, except the backlog’s own release key', () => {
+		// `releaseProperty` bound, or the exemption below would compare against '' — the
+		// same value the unbound case already checks, and the test would pass whether or
+		// not the exemption existed.
+		const plan = resolveSettings(new FakeViewConfig({ releaseProperty: 'note.release' }) as never);
+
+		// Derived from `ownedProperties`, not a list of roles somebody thought of: `tags` is
+		// the case a four-role check passes and this one catches.
+		expect(membershipCollision(releaseSettingsWith({ membershipKey: plan.typeKey }), plan)).not.toBeNull();
+		expect(membershipCollision(releaseSettingsWith({ membershipKey: plan.tagsKey }), plan)).not.toBeNull();
+
+		// The ONE exemption, and it is the shipped default rather than an edge case: the
+		// backlog view's own release property and this view's membership key legitimately
+		// name one property. Sharing a suggestion is not sharing a setting.
+		const releaseKey = optionalKeyFor(plan, 'release');
+		expect(membershipCollision(releaseSettingsWith({ membershipKey: releaseKey }), plan)).toBeNull();
+
+		// And an unbound key is not a collision — it is the offer predicate's business.
+		expect(membershipCollision(releaseSettingsWith({ membershipKey: '' }), plan)).toBeNull();
 	});
 });
