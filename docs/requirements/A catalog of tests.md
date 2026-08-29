@@ -53,8 +53,8 @@ editing.
 
 ## Why this is a ladder and not two extra types
 
-`Issue`, `Bug`, `Idea` and `Deliverable` are *extra types*: pinned at `EXTRA_TYPE_RANK`,
-takeable under any rung above the deepest, children always `Task`
+`Issue`, `Bug`, `Idea`, `Deliverable` and `Improvement` are *extra types*: pinned at
+`EXTRA_TYPE_RANK`, takeable under any rung above the deepest, children always `Task`
 ([[Types beside the ladder]]). That category cannot express what is wanted here, for the
 same reason it could not express a fifth level: an extra type's children are `Task`s, full
 stop, so a suite could not hold cases. A suite → case pair is a rung and the rung below
