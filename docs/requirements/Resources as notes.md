@@ -12,6 +12,9 @@ start: ""
 due: ""
 risk: ""
 assignee: ""
+priority: ""
+iteration: ""
+release: "[[Eratic Skunk]]"
 ---
 
 # Resources as notes

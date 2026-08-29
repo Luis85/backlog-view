@@ -10,6 +10,8 @@ start: ""
 due: ""
 risk: ""
 assignee: ""
+priority: ""
+iteration: ""
 ---
 
 # One file per concern

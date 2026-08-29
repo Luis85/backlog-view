@@ -7,7 +7,7 @@ priority: P2
 area: design
 created: 2026-08-02
 closed: 2026-08-02
-source: PR #47 — six of seven review rounds landed inside one unspecified mechanism
+source: PR
 files:
   - docs/requirements/New cards in place.md
   - docs/requirements/Moving between horizons.md
@@ -18,6 +18,7 @@ start: ""
 due: ""
 risk: ""
 assignee: ""
+iteration: ""
 ---
 
 # The outcome report was built from one sentence

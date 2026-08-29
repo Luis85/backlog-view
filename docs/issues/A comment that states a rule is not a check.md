@@ -6,7 +6,7 @@ status: Open
 priority: P2
 area: verification
 created: 2026-08-02
-source: PR #47 — seventeen review findings across nine rounds, counted afterwards
+source: PR
 files:
   - src/view/interactions/menu.ts
   - src/view/backlogView.ts
@@ -19,6 +19,7 @@ start: ""
 due: ""
 risk: ""
 assignee: ""
+iteration: ""
 ---
 
 # A comment that states a rule is not a check

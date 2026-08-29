@@ -10,6 +10,8 @@ start: ""
 due: ""
 risk: ""
 assignee: Ben
+priority: ""
+iteration: ""
 ---
 
 # Enforced invariants

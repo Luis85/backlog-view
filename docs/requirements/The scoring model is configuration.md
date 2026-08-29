@@ -11,7 +11,10 @@ horizon: ""
 start: ""
 due: ""
 risk: ""
-assignee: ""
+assignee: "[[Allan]]"
+priority: ""
+iteration: ""
+release: "[[Eratic Skunk]]"
 ---
 
 # The scoring model is configuration

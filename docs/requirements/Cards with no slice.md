@@ -12,6 +12,8 @@ start: ""
 due: ""
 risk: ""
 assignee: ""
+priority: ""
+iteration: ""
 ---
 
 # Cards with no slice

@@ -10,6 +10,8 @@ start: ""
 due: ""
 risk: ""
 assignee: ""
+priority: ""
+iteration: ""
 ---
 
 # A documented restyling surface

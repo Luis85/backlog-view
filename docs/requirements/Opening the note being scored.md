@@ -12,6 +12,8 @@ start: ""
 due: ""
 risk: ""
 assignee: ""
+priority: ""
+iteration: ""
 ---
 
 # Opening the note being scored

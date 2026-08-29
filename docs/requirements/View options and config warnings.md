@@ -10,6 +10,8 @@ start: ""
 due: ""
 risk: ""
 assignee: ""
+priority: ""
+iteration: ""
 ---
 
 # View options and config warnings

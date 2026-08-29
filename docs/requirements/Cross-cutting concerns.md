@@ -7,9 +7,12 @@ created: 2026-08-01
 started: ""
 finished: ""
 risk: ""
-assignee: Igmar
 start: ""
 due: ""
+horizon: ""
+priority: ""
+iteration: ""
+assignee: "[[Jenny]]"
 ---
 
 # Cross-cutting concerns

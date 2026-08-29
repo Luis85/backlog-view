@@ -7,11 +7,18 @@ area: styling
 priority: P2
 created: 2026-08-28
 closed: 2026-08-28
-source: Reported from a vault — the type headers were named as differing between the two
-  shelf layouts, and as letting the item underneath show through while the band scrolls
+source: Reported from a vault — the type headers were named as differing between the two shelf layouts, and as letting the item underneath show through while the band scrolls
 files:
   - styles/shelfControls.css
   - styles/shelfList.css
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
+iteration: ""
 ---
 
 # A pinned type header the cards read through

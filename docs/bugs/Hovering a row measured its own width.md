@@ -19,6 +19,7 @@ start: ""
 due: ""
 risk: ""
 assignee: ""
+iteration: ""
 ---
 
 # Hovering a row measured its own width

@@ -1,7 +1,7 @@
 ---
 type: Feature
 parent: "[[Product Backlog]]"
-order: 60
+order: 80
 status: Open
 created: 2026-08-16
 source: product requirements document, 2026-08-16
@@ -12,6 +12,8 @@ start: ""
 due: ""
 risk: ""
 assignee: ""
+priority: ""
+iteration: ""
 ---
 
 # Bulk edits on a selection

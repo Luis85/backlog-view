@@ -10,6 +10,9 @@ risk: ""
 assignee: Evi
 start: ""
 due: ""
+priority: ""
+iteration: ""
+release: "[[Eratic Skunk]]"
 ---
 
 # Finding work

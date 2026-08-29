@@ -15,6 +15,7 @@ start: ""
 due: ""
 risk: ""
 assignee: ""
+iteration: ""
 ---
 
 # The plugin under a non-English Obsidian

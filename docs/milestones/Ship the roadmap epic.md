@@ -7,10 +7,11 @@ source: user request
 due: 2026-09-14
 started: ""
 finished: ""
-horizon: ""
 start: ""
 risk: ""
-assignee: Igmar
+priority: ""
+iteration: ""
+assignee: "[[Ben]]"
 ---
 
 # Ship the roadmap epic

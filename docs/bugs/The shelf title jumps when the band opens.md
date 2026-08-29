@@ -7,11 +7,18 @@ area: view
 priority: P3
 created: 2026-08-21
 closed: 2026-08-21
-source: Reported from a vault while asking for the shelf's two new controls — the title
-  was seen moving, and the search box was correctly named as the cause
+source: Reported from a vault while asking for the shelf's two new controls — the title was seen moving, and the search box was correctly named as the cause
 files:
   - styles/shelf.css
   - styles/shelfControls.css
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
+iteration: ""
 ---
 
 # The shelf title jumps when the band opens

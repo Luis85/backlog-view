@@ -14,6 +14,7 @@ start: ""
 due: ""
 risk: ""
 assignee: ""
+iteration: ""
 ---
 
 # New cards in place

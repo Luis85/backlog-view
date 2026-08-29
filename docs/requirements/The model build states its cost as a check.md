@@ -13,6 +13,8 @@ start: ""
 due: 2026-08-03
 risk: ""
 assignee: Ben
+priority: ""
+iteration: ""
 ---
 
 # The model build states its cost as a check

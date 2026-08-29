@@ -7,7 +7,7 @@ area: performance
 priority: P2
 created: 2026-08-03
 closed: 2026-08-03
-source: Codex review on PR #61, verified against the source
+source: Codex review on PR
 files:
   - src/view/interactions/dragDrop.ts
   - src/view/CLAUDE.md
@@ -18,6 +18,7 @@ start: ""
 due: ""
 risk: ""
 assignee: ""
+iteration: ""
 ---
 
 # The drag cleanup scans the whole tree

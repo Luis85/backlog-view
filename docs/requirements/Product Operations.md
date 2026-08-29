@@ -11,7 +11,9 @@ horizon: ""
 start: ""
 due: ""
 risk: ""
-assignee: ""
+assignee: "[[Alex]]"
+priority: ""
+iteration: ""
 ---
 
 # Product Operations

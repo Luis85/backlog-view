@@ -6,7 +6,7 @@ status: Open
 priority: P3
 area: design
 created: 2026-08-23
-source: automated review of PR #201, verified at source 2026-08-23
+source: automated review of PR
 files:
   - src/domain/writePlan.ts
   - src/view/interactions/labels.ts
@@ -17,6 +17,7 @@ start: ""
 due: ""
 risk: ""
 assignee: ""
+iteration: ""
 ---
 
 # A pick compared against the model reads as a no-op

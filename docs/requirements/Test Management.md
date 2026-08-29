@@ -1,7 +1,7 @@
 ---
 type: Epic
-order: 201.25
-status: Open
+order: 3.086
+status: Active
 area: product
 created: 2026-08-08
 source: user request
@@ -11,6 +11,10 @@ risk: ""
 assignee: Alex
 start: ""
 due: ""
+horizon: ""
+priority: ""
+iteration: ""
+release: "[[Eratic Skunk]]"
 ---
 
 # Test Management

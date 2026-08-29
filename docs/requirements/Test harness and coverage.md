@@ -11,6 +11,8 @@ start: ""
 due: 2026-08-03
 risk: ""
 assignee: Igmar
+priority: ""
+iteration: ""
 ---
 
 # Test harness and coverage

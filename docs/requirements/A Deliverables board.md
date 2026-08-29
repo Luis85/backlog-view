@@ -1,7 +1,7 @@
 ---
 type: Feature
 parent: "[[Product Kanban]]"
-order: 70
+order: 66.25
 status: Done
 created: 2026-08-06
 started: ""
@@ -11,6 +11,9 @@ start: ""
 due: ""
 risk: ""
 assignee: ""
+priority: ""
+iteration: ""
+release: "[[Eratic Skunk]]"
 ---
 
 # A Deliverables board

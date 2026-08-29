@@ -19,6 +19,7 @@ start: 2026-08-15
 due: ""
 risk: ""
 assignee: ""
+iteration: ""
 ---
 
 # The planned dates from the row

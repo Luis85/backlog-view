@@ -5,7 +5,7 @@ parent: "[[Linking an item to a resource]]"
 status: Open
 area: view
 created: 2026-08-29
-source: user request, PR #207 follow-up
+source: user request, PR
 files:
   - src/view/render/chips.ts
   - src/view/render/lanes.ts
@@ -17,6 +17,8 @@ start: ""
 due: ""
 risk: ""
 assignee: ""
+priority: ""
+iteration: ""
 ---
 
 # Live-vault checks for the resource chip and axis

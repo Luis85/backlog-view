@@ -9,13 +9,14 @@ files:
   - src/view/render/roadmap.ts
   - src/view/render/board.ts
   - styles/roadmap.css
-started: "2026-08-14"
-finished: "2026-08-14"
+started: 2026-08-14
+finished: 2026-08-14
 horizon: ""
 start: 2026-08-14
 due: 2026-08-14
 risk: ""
 assignee: ""
+iteration: ""
 ---
 
 # Folding a horizon bucket

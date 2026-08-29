@@ -6,7 +6,7 @@ status: Done
 created: 2026-08-02
 closed: 2026-08-02
 area: domain
-source: audit during PR #44, after the same hazard was found twice in storage
+source: audit during PR
 files:
   - src/domain/model.ts
   - src/domain/noteFields.ts
@@ -17,6 +17,8 @@ start: ""
 due: ""
 risk: ""
 assignee: ""
+priority: ""
+iteration: ""
 ---
 
 # An axis property named off Object.prototype reads as unreadable

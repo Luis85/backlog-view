@@ -13,6 +13,7 @@ start: ""
 due: ""
 risk: ""
 assignee: ""
+iteration: ""
 ---
 
 # Pulling work into an iteration

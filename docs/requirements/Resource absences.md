@@ -32,6 +32,8 @@ start: 2026-08-13
 due: 2026-08-14
 risk: ""
 assignee: ""
+priority: ""
+iteration: ""
 ---
 
 # Resource absences

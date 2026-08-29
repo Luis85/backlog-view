@@ -21,6 +21,7 @@ start: ""
 due: ""
 risk: ""
 assignee: ""
+iteration: ""
 ---
 
 # Smoke test opening the note being scored

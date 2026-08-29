@@ -1,17 +1,20 @@
 ---
 type: Epic
 order: 2.5
-status: Open
+status: Active
 area: product
 created: 2026-08-16
 source: product requirements document, 2026-08-16
 started: ""
 finished: ""
 horizon: ""
-start: ""
-due: ""
+start: 2026-08-23
+due: 2026-09-22
 risk: ""
-assignee: ""
+assignee: "[[Evan]]"
+priority: ""
+iteration: ""
+release: "[[Eratic Skunk]]"
 ---
 
 # Release Management

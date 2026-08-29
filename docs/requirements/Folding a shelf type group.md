@@ -8,13 +8,14 @@ created: 2026-08-15
 files:
   - src/view/host.ts
   - src/view/render/shelf.ts
-started: "2026-08-15"
-finished: "2026-08-15"
+started: 2026-08-15
+finished: 2026-08-15
 horizon: ""
 start: 2026-08-15
 due: 2026-08-15
 risk: ""
 assignee: ""
+iteration: ""
 ---
 
 # Folding a shelf type group

@@ -13,6 +13,9 @@ start: ""
 due: 2026-08-02
 risk: ""
 assignee: ""
+priority: ""
+iteration: ""
+release: "[[Eratic Skunk]]"
 ---
 
 # Milestones

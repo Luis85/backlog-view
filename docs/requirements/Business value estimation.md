@@ -1,7 +1,7 @@
 ---
 type: Epic
 order: 0
-status: Open
+status: Active
 area: product
 created: 2026-08-16
 source: user request — product requirements document, 2026-08-16
@@ -11,7 +11,10 @@ horizon: ""
 start: ""
 due: ""
 risk: ""
-assignee: ""
+assignee: "[[Hannah]]"
+priority: ""
+iteration: ""
+release: "[[Eratic Skunk]]"
 ---
 
 # Business value estimation

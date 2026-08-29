@@ -7,7 +7,7 @@ priority: P2
 area: design
 closed: 2026-08-01
 created: 2026-07-31
-source: PR #14 maintainability review
+source: PR
 files:
   - src/domain/model.ts
 started: ""
@@ -17,6 +17,7 @@ start: ""
 due: ""
 risk: ""
 assignee: ""
+iteration: ""
 ---
 
 # Make `BacklogItem`'s build phases visible in its type

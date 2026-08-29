@@ -28,6 +28,7 @@ start: ""
 due: ""
 risk: ""
 assignee: ""
+iteration: ""
 ---
 
 # The projection predicate has no lint rule behind it

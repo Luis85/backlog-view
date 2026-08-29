@@ -1,7 +1,7 @@
 ---
 type: Feature
 parent: "[[Product Backlog]]"
-order: 0.625
+order: 72.5
 status: Open
 started: ""
 horizon: ""
@@ -10,6 +10,8 @@ assignee: Evi
 start: ""
 due: ""
 finished: ""
+priority: ""
+iteration: ""
 ---
 
 # Safe writes

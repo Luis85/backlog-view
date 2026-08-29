@@ -11,7 +11,10 @@ horizon: ""
 start: ""
 due: ""
 risk: ""
-assignee: ""
+assignee: "[[Elli]]"
+priority: ""
+iteration: ""
+release: "[[Eratic Skunk]]"
 ---
 
 # The prioritized list

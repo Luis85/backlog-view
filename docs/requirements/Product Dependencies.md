@@ -11,7 +11,9 @@ horizon: ""
 start: ""
 due: ""
 risk: ""
-assignee: ""
+assignee: "[[Sabrina]]"
+priority: ""
+iteration: ""
 ---
 
 # Product Dependencies

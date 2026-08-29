@@ -17,6 +17,7 @@ start: ""
 due: ""
 risk: ""
 assignee: ""
+iteration: ""
 ---
 
 # The rollup is hidden by class and headed by verdict

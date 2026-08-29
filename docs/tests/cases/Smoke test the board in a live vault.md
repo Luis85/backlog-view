@@ -15,6 +15,7 @@ start: ""
 due: ""
 risk: ""
 assignee: ""
+iteration: ""
 ---
 
 # Smoke test the board in a live vault

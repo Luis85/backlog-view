@@ -1,16 +1,20 @@
 ---
 type: Epic
-order: 20
-status: Open
+order: 2.9688
+status: Active
 created: 2026-08-01
 source: user request
 area: product
 started: ""
 finished: ""
 risk: ""
-assignee: Sarah
 start: ""
 due: ""
+horizon: ""
+priority: ""
+iteration: ""
+assignee: "[[Hannah]]"
+release: "[[Eratic Skunk]]"
 ---
 
 # Product Roadmap

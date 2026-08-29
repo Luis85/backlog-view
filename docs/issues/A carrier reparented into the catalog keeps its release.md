@@ -6,7 +6,7 @@ status: Open
 priority: P3
 area: design
 created: 2026-08-24
-source: automated review of PR #201, verified at source 2026-08-24
+source: automated review of PR
 files:
   - src/domain/releases.ts
   - src/domain/model.ts
@@ -17,6 +17,7 @@ start: ""
 due: ""
 risk: ""
 assignee: ""
+iteration: ""
 ---
 
 # A carrier reparented into the catalog keeps its release

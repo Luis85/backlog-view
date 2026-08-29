@@ -7,7 +7,7 @@ priority: P2
 area: verification
 closed: 2026-08-01
 created: 2026-08-01
-source: 2026-08-01 review of PR #24, the last finding of the sequence
+source: 2026-08-01 review of PR
 files:
   - scripts/docs-check.mjs
   - test/docs/checkerAccepts.test.ts
@@ -19,6 +19,7 @@ start: ""
 due: ""
 risk: ""
 assignee: ""
+iteration: ""
 ---
 
 # The gate is tested only against invalid documents

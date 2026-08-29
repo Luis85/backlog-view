@@ -13,6 +13,7 @@ start: ""
 due: ""
 risk: ""
 assignee: ""
+iteration: ""
 ---
 
 # A board scoped to one iteration

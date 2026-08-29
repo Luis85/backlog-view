@@ -10,6 +10,9 @@ start: ""
 due: 2026-08-09
 risk: ""
 assignee: ""
+priority: ""
+iteration: ""
+release: "[[Eratic Skunk]]"
 ---
 
 # Scaffolding a backlog

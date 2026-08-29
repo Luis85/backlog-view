@@ -18,6 +18,8 @@ start: 2026-08-01
 due: 2026-08-10
 risk: ""
 assignee: ""
+iteration: ""
+release: "[[Eratic Skunk]]"
 ---
 
 # A help button for the item types

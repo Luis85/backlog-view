@@ -11,7 +11,10 @@ horizon: ""
 start: ""
 due: ""
 risk: ""
-assignee: ""
+assignee: "[[Bodger]]"
+priority: ""
+iteration: ""
+release: "[[Eratic Skunk]]"
 ---
 
 # The weighted score

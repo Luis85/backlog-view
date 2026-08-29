@@ -7,7 +7,7 @@ priority: P3
 area: domain
 created: 2026-08-01
 closed: 2026-08-11
-source: 2026-08-01 review of PR #24, found four times in four files
+source: 2026-08-01 review of PR
 files:
   - src/domain/writePlan.ts
 started: ""
@@ -17,6 +17,7 @@ start: ""
 due: ""
 risk: ""
 assignee: ""
+iteration: ""
 ---
 
 # The dragged item is retyped, its descendants are not

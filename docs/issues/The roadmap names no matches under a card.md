@@ -7,7 +7,7 @@ priority: P3
 area: usability
 created: 2026-08-15
 closed: 2026-08-15
-source: Found while narrowing [[Drop the per-child entries from the card menu]] after review (Codex, PR #137)
+source: Found while narrowing [[Drop the per-child entries from the card menu]] after review (Codex, PR
 files:
   - src/view/render/board.ts
   - src/view/childrenList.ts
@@ -19,6 +19,7 @@ start: ""
 due: ""
 risk: ""
 assignee: ""
+iteration: ""
 ---
 
 # The roadmap names no matches under a card

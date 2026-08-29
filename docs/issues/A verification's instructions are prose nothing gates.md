@@ -6,7 +6,7 @@ status: Open
 priority: P2
 area: verification
 created: 2026-08-08
-source: three instances across two branches — PRs #97 and #101, all found by review rather than by the gate
+source: three instances across two branches — PRs
 started: ""
 finished: ""
 horizon: ""
@@ -14,6 +14,7 @@ start: ""
 due: ""
 risk: ""
 assignee: ""
+iteration: ""
 ---
 
 # A verification's instructions are prose nothing gates

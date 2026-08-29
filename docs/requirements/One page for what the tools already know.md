@@ -1,7 +1,7 @@
 ---
 type: Feature
 parent: "[[Codebase health]]"
-order: 280
+order: 85
 status: Open
 area: verification
 created: 2026-08-18
@@ -12,6 +12,8 @@ start: ""
 due: ""
 risk: ""
 assignee: ""
+priority: ""
+iteration: ""
 ---
 
 # One page for what the tools already know

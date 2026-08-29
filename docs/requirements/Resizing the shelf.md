@@ -18,13 +18,14 @@ files:
   - styles/shelf.css
   - styles/roadmap.css
   - styles/board.css
-started: "2026-08-21"
-finished: "2026-08-21"
+started: 2026-08-21
+finished: 2026-08-21
 horizon: ""
 start: 2026-08-21
 due: 2026-08-21
 risk: ""
 assignee: ""
+iteration: ""
 ---
 
 # Resizing the shelf

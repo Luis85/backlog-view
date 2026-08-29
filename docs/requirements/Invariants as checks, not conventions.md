@@ -10,6 +10,8 @@ start: ""
 due: 2026-08-09
 risk: ""
 assignee: ""
+priority: ""
+iteration: ""
 ---
 
 # Invariants as checks, not conventions

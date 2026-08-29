@@ -12,6 +12,8 @@ risk: ""
 assignee: ""
 start: ""
 due: ""
+priority: ""
+iteration: ""
 ---
 
 # A page that explains the plugin

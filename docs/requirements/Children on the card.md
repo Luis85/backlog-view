@@ -17,6 +17,7 @@ start: 2026-08-07
 due: ""
 risk: ""
 assignee: ""
+iteration: ""
 ---
 
 # Children on the card

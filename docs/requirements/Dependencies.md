@@ -12,6 +12,9 @@ start: ""
 due: 2026-08-15
 risk: ""
 assignee: ""
+priority: ""
+iteration: ""
+release: "[[Eratic Skunk]]"
 ---
 
 # Dependencies

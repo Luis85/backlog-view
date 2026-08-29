@@ -13,6 +13,7 @@ start: ""
 due: 2026-08-11
 risk: ""
 assignee: ""
+iteration: ""
 ---
 
 # A badge when the palette is full

@@ -15,6 +15,7 @@ start: ""
 due: ""
 risk: ""
 assignee: ""
+iteration: ""
 ---
 
 # Parent links Obsidian parsed, and ones it did not

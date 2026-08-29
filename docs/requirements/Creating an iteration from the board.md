@@ -13,6 +13,7 @@ start: ""
 due: ""
 risk: ""
 assignee: ""
+iteration: ""
 ---
 
 # Creating an iteration from the board

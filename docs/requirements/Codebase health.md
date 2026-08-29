@@ -7,9 +7,13 @@ created: 2026-07-31
 started: ""
 finished: ""
 risk: ""
-assignee: Igmar
 start: ""
 due: ""
+horizon: ""
+priority: ""
+iteration: ""
+assignee: "[[Josh]]"
+release: "[[Feisty Reindeer]]"
 ---
 
 # Codebase health

@@ -18,6 +18,7 @@ start: ""
 due: ""
 risk: ""
 assignee: ""
+iteration: ""
 ---
 
 # Every card renders, on screen or not

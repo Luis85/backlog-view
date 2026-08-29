@@ -6,7 +6,7 @@ status: Open
 priority: P3
 area: limitation
 created: 2026-08-14
-source: Codex review of PR #136, 2026-08-14 — raised against the band header's new pending-absence count, verified to reach three older consumers of the same value
+source: Codex review of PR
 files:
   - src/view/render/projections.ts
 started: ""
@@ -16,6 +16,7 @@ start: ""
 due: ""
 risk: ""
 assignee: ""
+iteration: ""
 ---
 
 # The roadmap keeps yesterday's date across midnight

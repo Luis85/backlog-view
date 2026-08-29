@@ -6,7 +6,7 @@ status: Open
 priority: P3
 area: tooling
 created: 2026-08-08
-source: PR #79 whole-branch review
+source: PR
 files:
   - eslint.config.mjs
   - src/view/render/toolbar.ts
@@ -18,6 +18,7 @@ start: ""
 due: ""
 risk: ""
 assignee: ""
+iteration: ""
 ---
 
 # Follow-ups from enforcing the Deliverables invariants

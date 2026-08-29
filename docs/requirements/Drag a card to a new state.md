@@ -20,6 +20,7 @@ start: 2026-08-01
 due: 2026-08-02
 risk: ""
 assignee: ""
+iteration: ""
 ---
 
 # Drag a card to a new state

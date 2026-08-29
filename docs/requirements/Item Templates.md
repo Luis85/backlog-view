@@ -1,7 +1,7 @@
 ---
 type: Feature
 parent: "[[Product Backlog]]"
-order: 2.5
+order: 71.25
 status: Open
 started: ""
 finished: ""
@@ -10,6 +10,9 @@ start: ""
 due: ""
 risk: ""
 assignee: Evi
+priority: ""
+iteration: ""
+release: "[[Feisty Reindeer]]"
 ---
 
 # Item Templates

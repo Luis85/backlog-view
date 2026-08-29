@@ -1,14 +1,18 @@
 ---
 type: Epic
-order: 10
-status: Open
+order: -10
+status: Active
 area: product
 started: ""
 finished: ""
 risk: ""
-assignee: Evi
 start: ""
 due: ""
+horizon: ""
+priority: ""
+iteration: ""
+assignee: "[[Sabrina]]"
+release: "[[Eratic Skunk]]"
 ---
 
 # Product Backlog

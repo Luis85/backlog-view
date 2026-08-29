@@ -16,6 +16,7 @@ start: ""
 due: ""
 risk: ""
 assignee: ""
+iteration: ""
 ---
 
 # Every type badge is below the contrast floor

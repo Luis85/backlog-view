@@ -13,6 +13,7 @@ start: ""
 due: ""
 risk: ""
 assignee: ""
+iteration: ""
 ---
 
 # An iteration's timeframe schedules its items

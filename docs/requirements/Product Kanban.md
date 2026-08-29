@@ -1,16 +1,20 @@
 ---
 type: Epic
-order: 30
-status: Open
+order: 3.0469
+status: Active
 created: 2026-08-01
 source: user request
 area: product
 started: ""
 finished: ""
 risk: ""
-assignee: Chris
 start: ""
 due: ""
+horizon: ""
+priority: ""
+iteration: ""
+assignee: "[[Hannah]]"
+release: "[[Eratic Skunk]]"
 ---
 
 # Product Kanban

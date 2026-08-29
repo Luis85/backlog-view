@@ -6,7 +6,7 @@ status: Open
 priority: P2
 area: verification
 created: 2026-08-02
-source: PR #47 — five pushes recorded as they were made, three of which produced no run
+source: PR
 files:
   - .github/workflows/ci.yml
 started: ""
@@ -16,6 +16,7 @@ start: ""
 due: ""
 risk: ""
 assignee: ""
+iteration: ""
 ---
 
 # A gate that did not run looks like one that passed

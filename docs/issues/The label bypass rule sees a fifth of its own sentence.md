@@ -6,7 +6,7 @@ status: Done
 priority: P3
 area: view
 created: 2026-08-29
-source: user request, PR #207 follow-up
+source: user request, PR
 files:
   - eslint.config.mjs
 started: 2026-08-29
@@ -16,6 +16,7 @@ start: ""
 due: ""
 risk: ""
 assignee: ""
+iteration: ""
 ---
 
 # The label bypass rule sees a fifth of its own sentence

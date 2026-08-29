@@ -31,6 +31,8 @@ start: 2026-08-13
 due: 2026-08-14
 risk: ""
 assignee: ""
+priority: ""
+iteration: ""
 ---
 
 # Showing a resources axis on the roadmap

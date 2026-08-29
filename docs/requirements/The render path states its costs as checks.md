@@ -13,6 +13,8 @@ start: ""
 due: 2026-08-03
 risk: ""
 assignee: Chris
+priority: ""
+iteration: ""
 ---
 
 # The render path states its costs as checks

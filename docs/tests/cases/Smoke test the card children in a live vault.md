@@ -20,6 +20,7 @@ start: ""
 due: ""
 risk: ""
 assignee: ""
+iteration: ""
 ---
 
 # Smoke test the card children in a live vault

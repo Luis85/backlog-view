@@ -11,7 +11,9 @@ horizon: ""
 start: ""
 due: ""
 risk: ""
-assignee: ""
+assignee: "[[Hannah]]"
+priority: ""
+iteration: ""
 ---
 
 # Product Strategy

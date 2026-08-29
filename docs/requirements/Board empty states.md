@@ -14,6 +14,7 @@ start: 2026-08-01
 due: ""
 risk: ""
 assignee: ""
+iteration: ""
 ---
 
 # Board empty states

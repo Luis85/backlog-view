@@ -7,7 +7,7 @@ priority: P2
 area: verification
 closed: 2026-08-01
 created: 2026-08-01
-source: 2026-08-01 Codex review of PR #24
+source: 2026-08-01 Codex review of PR
 files:
   - scripts/docs-check.mjs
   - package.json
@@ -19,6 +19,7 @@ start: ""
 due: ""
 risk: ""
 assignee: ""
+iteration: ""
 ---
 
 # Make the register check itself

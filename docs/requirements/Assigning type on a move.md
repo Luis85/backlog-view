@@ -12,6 +12,8 @@ start: ""
 due: 2026-08-11
 risk: ""
 assignee: ""
+priority: ""
+iteration: ""
 ---
 
 # Assigning type on a move

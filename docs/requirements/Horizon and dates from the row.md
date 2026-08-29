@@ -23,6 +23,7 @@ start: 2026-08-02
 due: 2026-08-15
 risk: ""
 assignee: ""
+iteration: ""
 ---
 
 # Horizon and dates from the row

@@ -7,7 +7,7 @@ priority: P2
 area: tooling
 closed: 2026-07-31
 created: 2026-07-31
-source: PR #14 maintainability review
+source: PR
 files:
   - CLAUDE.md
   - eslint.config.mjs
@@ -18,6 +18,7 @@ start: ""
 due: ""
 risk: ""
 assignee: ""
+iteration: ""
 ---
 
 # Enforce the invariants that can be enforced, co-locate the rest

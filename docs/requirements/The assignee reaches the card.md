@@ -16,6 +16,7 @@ start: 2026-08-12
 due: 2026-08-12
 risk: ""
 assignee: ""
+iteration: ""
 ---
 
 # The assignee reaches the card

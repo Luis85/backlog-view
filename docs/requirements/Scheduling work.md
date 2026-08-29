@@ -11,6 +11,9 @@ risk: ""
 assignee: Chris
 start: ""
 due: ""
+priority: ""
+iteration: ""
+release: "[[Eratic Skunk]]"
 ---
 
 # Scheduling work

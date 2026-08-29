@@ -22,6 +22,8 @@ start: 2026-08-01
 due: ""
 risk: ""
 assignee: ""
+iteration: ""
+release: "[[Feisty Reindeer]]"
 ---
 
 # Undo and redo the last few backlog changes

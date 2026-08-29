@@ -13,6 +13,8 @@ start: ""
 due: 2026-08-03
 risk: ""
 assignee: ""
+priority: ""
+iteration: ""
 ---
 
 # A guide is prose, not an inventory

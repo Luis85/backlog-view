@@ -8,9 +8,12 @@ area: marketing
 started: ""
 finished: ""
 risk: ""
-assignee: Sam
 start: ""
 due: ""
+horizon: ""
+priority: ""
+iteration: ""
+assignee: "[[Hannah]]"
 ---
 
 # The Product Page

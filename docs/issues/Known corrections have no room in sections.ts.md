@@ -16,6 +16,7 @@ start: ""
 due: ""
 risk: ""
 assignee: ""
+iteration: ""
 ---
 
 # Known corrections have no room in sections.ts

@@ -13,6 +13,8 @@ start: ""
 due: 2026-08-05
 risk: ""
 assignee: Chris
+priority: ""
+iteration: ""
 ---
 
 # A browser harness without Obsidian

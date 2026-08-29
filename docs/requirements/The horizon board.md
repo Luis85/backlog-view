@@ -11,6 +11,9 @@ risk: ""
 assignee: Sarah
 start: ""
 due: ""
+priority: ""
+iteration: ""
+release: "[[Eratic Skunk]]"
 ---
 
 # The horizon board

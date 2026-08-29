@@ -20,6 +20,7 @@ start: ""
 due: ""
 risk: ""
 assignee: ""
+iteration: ""
 ---
 
 # Share the card drag between the board and the roadmap

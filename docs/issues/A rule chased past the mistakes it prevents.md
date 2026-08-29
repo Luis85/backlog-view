@@ -6,7 +6,7 @@ status: Done
 priority: P2
 area: tooling
 created: 2026-08-08
-source: measured on PR #97 — fifteen review rounds on one six-row table
+source: measured on PR
 files:
   - scripts/docs-check.mjs
   - scripts/docs-markdown.mjs
@@ -17,6 +17,7 @@ start: ""
 due: ""
 risk: ""
 assignee: ""
+iteration: ""
 ---
 
 # A rule chased past the mistakes it prevents

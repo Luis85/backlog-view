@@ -6,7 +6,7 @@ status: Done
 priority: P3
 area: testing
 created: 2026-07-31
-source: PR #14 maintainability review
+source: PR
 files:
   - src/view/interactions/dragDrop.ts
   - test/view/dragDrop.test.ts
@@ -17,6 +17,7 @@ start: ""
 due: ""
 risk: ""
 assignee: ""
+iteration: ""
 ---
 
 # Close the drag-and-drop coverage gap

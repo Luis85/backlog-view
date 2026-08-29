@@ -6,7 +6,7 @@ status: Done
 priority: P3
 area: design
 created: 2026-08-08
-source: review of PR #98
+source: review of PR
 files:
   - styles/badges.css
   - src/view/render/rows.ts
@@ -18,6 +18,7 @@ start: ""
 due: ""
 risk: ""
 assignee: ""
+iteration: ""
 ---
 
 # The type palette has no unclaimed hue left

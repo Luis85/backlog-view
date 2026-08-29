@@ -6,7 +6,7 @@ status: Open
 priority: P3
 area: design
 created: 2026-08-23
-source: automated review of PR #201, verified at source 2026-08-23
+source: automated review of PR
 files:
   - src/view/writeGate.ts
   - src/domain/writePlan.ts
@@ -17,6 +17,7 @@ start: ""
 due: ""
 risk: ""
 assignee: ""
+iteration: ""
 ---
 
 # A stale release or iteration target can still be committed

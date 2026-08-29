@@ -13,6 +13,7 @@ start: ""
 due: ""
 risk: ""
 assignee: ""
+iteration: ""
 ---
 
 # An iteration is a note of its own

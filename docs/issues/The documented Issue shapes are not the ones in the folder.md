@@ -6,7 +6,7 @@ status: Open
 area: docs
 priority: P3
 created: 2026-08-03
-source: Measured while scoping the Issue-shape gate, PR #61
+source: Measured while scoping the Issue-shape gate, PR
 started: ""
 finished: ""
 horizon: ""
@@ -14,6 +14,7 @@ start: ""
 due: ""
 risk: ""
 assignee: ""
+iteration: ""
 ---
 
 # The documented Issue shapes are not the ones in the folder

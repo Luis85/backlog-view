@@ -12,6 +12,9 @@ risk: ""
 assignee: Alex
 start: ""
 due: ""
+priority: ""
+iteration: ""
+release: "[[Eratic Skunk]]"
 ---
 
 # Risk management

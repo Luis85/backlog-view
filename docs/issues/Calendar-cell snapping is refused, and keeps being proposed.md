@@ -7,7 +7,7 @@ priority: P2
 area: design
 created: 2026-08-04
 closed: 2026-08-04
-source: PR #64 — the same alternative proposed three times by review, refused three times, with the reasoning nowhere in the register
+source: PR
 files:
   - docs/requirements/Move and resize a bar.md
   - docs/requirements/Drag from the shelf to schedule.md
@@ -20,6 +20,7 @@ start: ""
 due: ""
 risk: ""
 assignee: ""
+iteration: ""
 ---
 
 # Calendar-cell snapping is refused, and keeps being proposed

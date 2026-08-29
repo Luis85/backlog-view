@@ -21,6 +21,7 @@ start: ""
 due: ""
 risk: ""
 assignee: ""
+iteration: ""
 ---
 
 # The release view inherits backlog settings it offers no control for

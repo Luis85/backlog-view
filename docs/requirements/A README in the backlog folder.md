@@ -1,7 +1,7 @@
 ---
 type: PBI
 parent: "[[Creating items]]"
-order: 80
+order: 42.5
 status: Done
 priority: P2
 created: 2026-08-02
@@ -21,6 +21,8 @@ start: 2026-08-02
 due: 2026-08-09
 risk: ""
 assignee: ""
+iteration: ""
+release: "[[Eratic Skunk]]"
 ---
 
 # A README in the backlog folder

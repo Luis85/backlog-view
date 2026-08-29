@@ -12,6 +12,8 @@ risk: ""
 assignee: ""
 start: ""
 due: ""
+priority: ""
+iteration: ""
 ---
 
 # A site built from its own directory

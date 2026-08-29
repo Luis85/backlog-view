@@ -24,6 +24,8 @@ start: 2026-08-14
 due: ""
 risk: ""
 assignee: ""
+priority: ""
+iteration: ""
 ---
 
 # Scheduling inside a resource's row

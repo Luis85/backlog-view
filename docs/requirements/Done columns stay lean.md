@@ -13,13 +13,14 @@ files:
   - src/view/render/board.ts
   - src/view/interactions/columnMenu.ts
   - styles/board.css
-started: "2026-08-14"
-finished: "2026-08-14"
+started: 2026-08-14
+finished: 2026-08-14
 horizon: ""
 start: 2026-08-14
 due: 2026-08-14
 risk: ""
 assignee: ""
+iteration: ""
 ---
 
 # Done columns stay lean

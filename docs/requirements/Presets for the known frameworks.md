@@ -1,7 +1,7 @@
 ---
 type: Feature
 parent: "[[Business value estimation]]"
-order: 40
+order: 15
 status: Open
 created: 2026-08-16
 source: product requirements document, 2026-08-16
@@ -11,7 +11,10 @@ horizon: ""
 start: ""
 due: ""
 risk: ""
-assignee: ""
+assignee: "[[Evan]]"
+priority: ""
+iteration: ""
+release: "[[Eratic Skunk]]"
 ---
 
 # Presets for the known frameworks

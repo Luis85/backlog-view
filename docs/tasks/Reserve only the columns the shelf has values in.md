@@ -7,8 +7,7 @@ priority: P2
 area: ux
 created: 2026-08-28
 closed: 2026-08-28
-source: Found while looking at the shelf in the browser harness after the type-header fix —
-  measured before it was described
+source: Found while looking at the shelf in the browser harness after the type-header fix — measured before it was described
 files:
   - src/view/render/columns.ts
   - src/view/render/board.ts
@@ -20,6 +19,7 @@ start: ""
 due: ""
 risk: ""
 assignee: ""
+iteration: ""
 ---
 
 # Reserve only the columns the shelf has values in

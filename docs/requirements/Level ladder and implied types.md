@@ -10,6 +10,8 @@ start: ""
 due: 2026-08-09
 risk: ""
 assignee: ""
+priority: ""
+iteration: ""
 ---
 
 # Level ladder and implied types

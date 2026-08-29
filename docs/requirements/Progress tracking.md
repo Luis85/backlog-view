@@ -10,6 +10,9 @@ risk: ""
 assignee: Alex
 start: ""
 due: ""
+priority: ""
+iteration: ""
+release: "[[Eratic Skunk]]"
 ---
 
 # Progress tracking

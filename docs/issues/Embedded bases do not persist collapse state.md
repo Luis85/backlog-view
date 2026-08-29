@@ -6,7 +6,7 @@ status: Open
 priority: P3
 area: limitation
 created: 2026-07-31
-source: PR #14, third Codex review
+source: PR
 files:
   - src/storage/viewStateStore.ts
 started: ""
@@ -16,6 +16,7 @@ start: ""
 due: ""
 risk: ""
 assignee: ""
+iteration: ""
 ---
 
 # A base embedded in a note keeps collapse state for the session only

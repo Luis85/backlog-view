@@ -12,6 +12,8 @@ risk: ""
 assignee: ""
 start: ""
 due: ""
+priority: ""
+iteration: ""
 ---
 
 # Publishing to GitHub Pages

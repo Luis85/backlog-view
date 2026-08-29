@@ -21,6 +21,7 @@ start: ""
 due: ""
 risk: ""
 assignee: ""
+iteration: ""
 ---
 
 # Smoke test the indicator column in a live vault

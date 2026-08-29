@@ -6,7 +6,7 @@ status: Done
 priority: P3
 area: storage
 created: 2026-08-29
-source: Codex review, PR #207
+source: Codex review, PR
 files:
   - src/storage/absenceNotes.ts
   - src/storage/frontmatter.ts
@@ -17,6 +17,7 @@ start: ""
 due: ""
 risk: ""
 assignee: ""
+iteration: ""
 ---
 
 # An absence names a resource nobody revalidates

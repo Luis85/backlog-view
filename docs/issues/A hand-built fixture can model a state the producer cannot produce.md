@@ -6,7 +6,7 @@ status: Done
 priority: P2
 area: verification
 created: 2026-08-08
-source: PR #91 — four expectations in one file were modelling an unreachable configuration
+source: PR
 files:
   - src/domain/settings.ts
   - src/domain/model.ts
@@ -23,6 +23,7 @@ start: ""
 due: ""
 risk: ""
 assignee: ""
+iteration: ""
 ---
 
 # A hand-built fixture can model a state the producer cannot produce

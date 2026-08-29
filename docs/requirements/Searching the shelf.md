@@ -16,13 +16,14 @@ files:
   - src/view/interactions/shelfMenu.ts
   - src/view/interactions/menu.ts
   - styles/shelf.css
-started: "2026-08-16"
-finished: "2026-08-16"
+started: 2026-08-16
+finished: 2026-08-16
 horizon: ""
 start: 2026-08-16
 due: 2026-08-16
 risk: ""
 assignee: ""
+iteration: ""
 ---
 
 # Searching the shelf

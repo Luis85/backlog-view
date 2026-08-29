@@ -4,7 +4,7 @@ parent: "[[Types beside the ladder]]"
 order: 20
 status: Done
 closed: 2026-08-01
-source: automated review of PR #22
+source: automated review of PR
 started: ""
 finished: ""
 horizon: ""
@@ -12,6 +12,8 @@ start: ""
 due: ""
 risk: ""
 assignee: ""
+priority: ""
+iteration: ""
 ---
 
 # Nested extra type lost its pinned rank

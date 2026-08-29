@@ -20,13 +20,14 @@ files:
   - styles/shelf.css
   - styles/shelfControls.css
   - styles/index.css
-started: "2026-08-21"
-finished: "2026-08-21"
+started: 2026-08-21
+finished: 2026-08-21
 horizon: ""
 start: 2026-08-21
 due: 2026-08-21
 risk: ""
 assignee: ""
+iteration: ""
 ---
 
 # Cards or a list on the shelf

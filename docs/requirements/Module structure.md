@@ -10,6 +10,8 @@ start: ""
 due: ""
 risk: ""
 assignee: Alex
+priority: ""
+iteration: ""
 ---
 
 # Module structure

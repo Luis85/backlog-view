@@ -13,6 +13,8 @@ start: ""
 due: 2026-08-03
 risk: ""
 assignee: ""
+priority: ""
+iteration: ""
 ---
 
 # The sweep query rests on a checked convention

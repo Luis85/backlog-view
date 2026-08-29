@@ -7,7 +7,7 @@ priority: P3
 area: refactor
 closed: 2026-08-01
 created: 2026-07-31
-source: PR #14 maintainability review
+source: PR
 files:
   - src/domain/settings.ts
 started: ""
@@ -17,6 +17,7 @@ start: ""
 due: ""
 risk: ""
 assignee: ""
+iteration: ""
 ---
 
 # Separate the view-options schema from settings resolution

@@ -1,7 +1,7 @@
 ---
 type: PBI
 parent: "[[Creating items]]"
-order: 25
+order: 45
 status: Open
 priority: P2
 created: 2026-08-01
@@ -19,6 +19,7 @@ start: ""
 due: ""
 risk: ""
 assignee: ""
+iteration: ""
 ---
 
 # Backlog as folder notes

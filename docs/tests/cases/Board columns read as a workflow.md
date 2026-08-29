@@ -15,6 +15,7 @@ start: ""
 due: ""
 risk: ""
 assignee: ""
+iteration: ""
 ---
 
 # Board columns read as a workflow

@@ -7,7 +7,7 @@ area: tooling
 priority: P1
 created: 2026-08-03
 closed: 2026-08-03
-source: Windows CI on PR #61, checkout step
+source: Windows CI on PR
 files:
   - scripts/docs-check.mjs
   - test/docs/checkerRejects.test.ts
@@ -18,6 +18,7 @@ start: ""
 due: ""
 risk: ""
 assignee: ""
+iteration: ""
 ---
 
 # A note title Windows cannot check out

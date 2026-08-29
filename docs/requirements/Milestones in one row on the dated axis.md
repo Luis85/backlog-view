@@ -18,6 +18,8 @@ start: ""
 due: ""
 risk: ""
 assignee: ""
+priority: ""
+iteration: ""
 ---
 
 # Milestones in one row on the dated axis

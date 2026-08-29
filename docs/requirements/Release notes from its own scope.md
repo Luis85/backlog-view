@@ -1,7 +1,7 @@
 ---
 type: Feature
 parent: "[[Release Management]]"
-order: 80
+order: 38.75
 status: Open
 created: 2026-08-21
 source: user request — release management concept refinement, 2026-08-21
@@ -12,6 +12,9 @@ start: ""
 due: ""
 risk: ""
 assignee: ""
+priority: ""
+iteration: ""
+release: "[[Eratic Skunk]]"
 ---
 
 # Release notes from its own scope

@@ -12,6 +12,9 @@ risk: ""
 assignee: ""
 start: ""
 due: ""
+priority: ""
+iteration: ""
+release: "[[Eratic Skunk]]"
 ---
 
 # Prioritization

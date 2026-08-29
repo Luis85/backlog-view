@@ -12,6 +12,9 @@ start: ""
 due: ""
 risk: ""
 assignee: Sarah
+priority: ""
+iteration: ""
+release: "[[Eratic Skunk]]"
 ---
 
 # The resource timeline

@@ -10,6 +10,9 @@ assignee: Evi
 finished: ""
 start: ""
 due: ""
+priority: ""
+iteration: ""
+release: "[[Eratic Skunk]]"
 ---
 
 # Creating items

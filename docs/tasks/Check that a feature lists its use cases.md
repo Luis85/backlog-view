@@ -7,7 +7,7 @@ priority: P2
 area: verification
 closed: 2026-08-01
 created: 2026-08-01
-source: drift found while syncing PR #27 against main
+source: drift found while syncing PR
 files:
   - scripts/docs-check.mjs
   - docs/README.md
@@ -18,6 +18,7 @@ start: ""
 due: ""
 risk: ""
 assignee: ""
+iteration: ""
 ---
 
 # Check that a feature lists its use cases

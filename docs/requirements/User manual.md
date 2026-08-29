@@ -12,6 +12,9 @@ start: ""
 due: ""
 risk: ""
 assignee: Alex
+priority: ""
+iteration: ""
+release: "[[Eratic Skunk]]"
 ---
 
 # User manual

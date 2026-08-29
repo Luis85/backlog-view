@@ -10,6 +10,14 @@ source: Named while building [[Pulling work into an iteration]], rather than fou
 files:
   - src/view/render/iterationBoard.ts
   - src/view/interactions/keyboard.ts
+started: ""
+finished: ""
+horizon: ""
+start: ""
+due: ""
+risk: ""
+assignee: ""
+iteration: ""
 ---
 
 # The iteration shelf is out of the keyboard's walk

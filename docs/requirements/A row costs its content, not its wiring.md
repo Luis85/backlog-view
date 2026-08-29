@@ -13,6 +13,8 @@ start: ""
 due: 2026-08-12
 risk: ""
 assignee: ""
+priority: ""
+iteration: ""
 ---
 
 # A row costs its content, not its wiring

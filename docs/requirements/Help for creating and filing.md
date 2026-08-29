@@ -1,7 +1,7 @@
 ---
 type: PBI
 parent: "[[User manual]]"
-order: 30
+order: 62.5
 status: Open
 priority: P2
 created: 2026-08-01
@@ -17,6 +17,7 @@ start: 2026-08-01
 due: ""
 risk: ""
 assignee: ""
+iteration: ""
 ---
 
 # Help for creating and filing

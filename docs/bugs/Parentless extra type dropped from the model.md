@@ -6,7 +6,7 @@ status: Done
 created: 2026-08-01
 closed: 2026-08-01
 area: domain
-source: automated review of PR #22
+source: automated review of PR
 files:
   - src/domain/model.ts
 started: ""
@@ -16,6 +16,8 @@ start: ""
 due: ""
 risk: ""
 assignee: ""
+priority: ""
+iteration: ""
 ---
 
 # Parentless extra type dropped from the model

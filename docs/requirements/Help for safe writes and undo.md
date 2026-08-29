@@ -16,6 +16,8 @@ start: 2026-08-01
 due: 2026-08-10
 risk: ""
 assignee: ""
+iteration: ""
+release: "[[Eratic Skunk]]"
 ---
 
 # Help for safe writes and undo

@@ -13,6 +13,8 @@ start: ""
 due: 2026-08-03
 risk: ""
 assignee: ""
+priority: ""
+iteration: ""
 ---
 
 # One vault read per note, one sort per item

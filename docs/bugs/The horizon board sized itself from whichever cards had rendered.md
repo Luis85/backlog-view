@@ -16,6 +16,9 @@ finished: ""
 horizon: ""
 start: ""
 due: ""
+risk: ""
+assignee: ""
+iteration: ""
 ---
 
 # The horizon board sized itself from whichever cards had rendered

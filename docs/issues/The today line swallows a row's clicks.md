@@ -6,7 +6,7 @@ status: Open
 priority: P3
 area: defect
 created: 2026-08-02
-source: 2026-08-02 Codex review of PR #56, found while fixing the milestone line's twin
+source: 2026-08-02 Codex review of PR
 files:
   - src/view/render/timeline.ts
   - styles/timeline.css
@@ -17,6 +17,7 @@ start: ""
 due: ""
 risk: ""
 assignee: ""
+iteration: ""
 ---
 
 # The today line swallows a row's clicks

@@ -6,7 +6,7 @@ status: Open
 priority: P2
 area: verification
 created: 2026-08-01
-source: 2026-08-01 review of PR #24
+source: 2026-08-01 review of PR
 files:
   - scripts/docs-check.mjs
   - src/domain/noteFields.ts
@@ -17,6 +17,7 @@ start: ""
 due: ""
 risk: ""
 assignee: ""
+iteration: ""
 ---
 
 # The checker reads frontmatter its own way

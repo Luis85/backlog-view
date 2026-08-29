@@ -25,6 +25,8 @@ start: 2026-08-13
 due: ""
 risk: ""
 assignee: ""
+priority: ""
+iteration: ""
 ---
 
 # Assigning items to a resource

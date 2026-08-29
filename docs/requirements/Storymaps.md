@@ -11,7 +11,9 @@ horizon: ""
 start: ""
 due: ""
 risk: ""
-assignee: ""
+assignee: "[[Jenny]]"
+priority: ""
+iteration: ""
 ---
 
 # Storymaps

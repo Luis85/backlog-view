@@ -6,7 +6,7 @@ status: Done
 created: 2026-08-01
 closed: 2026-08-01
 area: domain
-source: automated review of PR #22
+source: automated review of PR
 files:
   - src/domain/itemTypes.ts
   - src/domain/settings.ts
@@ -18,6 +18,8 @@ start: ""
 due: ""
 risk: ""
 assignee: ""
+priority: ""
+iteration: ""
 ---
 
 # A user-named type read off Object.prototype

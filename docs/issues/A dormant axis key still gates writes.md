@@ -6,7 +6,7 @@ status: Open
 priority: P3
 area: design
 created: 2026-08-02
-source: review of PR #46
+source: review of PR
 files:
   - src/domain/settings.ts
   - src/domain/roadmap.ts
@@ -17,6 +17,7 @@ start: ""
 due: ""
 risk: ""
 assignee: ""
+iteration: ""
 ---
 
 # A dormant axis key still gates writes

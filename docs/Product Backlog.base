@@ -9,6 +9,7 @@ views:
     order:
       - assignee
       - status
+      - release
       - priority
       - area
       - tags
@@ -33,6 +34,9 @@ views:
     assigneeProperty: note.assignee
     dependsOnProperty: note.dependsOn
     typeFolder.absence: docs/absences
+    iterationProperty: note.iteration
+    iterationGoalProperty: note.goal
+    releaseProperty: note.release
   - type: product-estimation
     name: Estimation Board
     filters:
@@ -52,6 +56,14 @@ views:
     complexityProperty: note.complexity
     valueProperty: note.business-value
     stampProperty: note.business-value-model
+  - type: product-release
+    name: Release Management
+    membershipProperty: note.release
+    versionProperty: note.version
+    targetDateProperty: note.target-date
+    releaseStatusProperty: note.status
+    stateProperty: note.status
+    deliverableStateProperty: note.status
   - type: table
     name: ADRs
     filters:

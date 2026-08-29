@@ -13,6 +13,8 @@ start: ""
 due: 2026-08-03
 risk: ""
 assignee: ""
+priority: ""
+iteration: ""
 ---
 
 # A cadence for the checks CI cannot run

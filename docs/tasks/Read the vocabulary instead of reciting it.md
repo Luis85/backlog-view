@@ -6,7 +6,7 @@ status: Open
 priority: P2
 area: testing
 created: 2026-08-02
-source: PR #51 — six notes recited a count a seventh type breaks, and the gate that exists to catch unspecified surfaces recites the same list
+source: PR
 files:
   - test/docs/surfaces.test.ts
   - test/view/rendering.test.ts
@@ -18,6 +18,7 @@ start: ""
 due: ""
 risk: ""
 assignee: ""
+iteration: ""
 ---
 
 # Read the vocabulary instead of reciting it

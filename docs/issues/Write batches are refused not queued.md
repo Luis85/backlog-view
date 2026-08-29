@@ -6,7 +6,7 @@ status: Open
 priority: P3
 area: design
 created: 2026-07-31
-source: PR #14
+source: PR
 files:
   - src/view/backlogView.ts
   - src/domain/writePlan.ts
@@ -17,6 +17,7 @@ start: ""
 due: ""
 risk: ""
 assignee: ""
+iteration: ""
 ---
 
 # Concurrent write batches are refused rather than queued

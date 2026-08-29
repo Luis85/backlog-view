@@ -13,13 +13,14 @@ files:
   - src/view/render/toolbarControls.ts
   - styles/roadmap.css
   - styles/toolbarFit.css
-started: "2026-08-15"
-finished: "2026-08-15"
+started: 2026-08-15
+finished: 2026-08-15
 horizon: ""
 start: 2026-08-15
 due: 2026-08-15
 risk: ""
 assignee: ""
+iteration: ""
 ---
 
 # Turning the bucket grid off

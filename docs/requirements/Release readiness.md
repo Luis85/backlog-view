@@ -1,7 +1,7 @@
 ---
 type: Feature
 parent: "[[Release Management]]"
-order: 60
+order: 35
 status: Open
 created: 2026-08-16
 source: product requirements document, 2026-08-16
@@ -12,6 +12,9 @@ start: ""
 due: ""
 risk: ""
 assignee: ""
+priority: ""
+iteration: ""
+release: "[[Eratic Skunk]]"
 ---
 
 # Release readiness

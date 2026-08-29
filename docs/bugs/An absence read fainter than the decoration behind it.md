@@ -32,6 +32,7 @@ start: ""
 due: ""
 risk: ""
 assignee: ""
+iteration: ""
 ---
 
 # An absence read fainter than the decoration behind it

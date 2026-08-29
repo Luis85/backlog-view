@@ -34,6 +34,7 @@ start: ""
 due: ""
 risk: ""
 assignee: ""
+iteration: ""
 ---
 
 # Remove the quick filter, now that Bases has its own search

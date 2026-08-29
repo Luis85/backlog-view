@@ -12,6 +12,8 @@ start: ""
 due: ""
 risk: ""
 assignee: Alex
+priority: ""
+iteration: ""
 ---
 
 # Verifications a device has to answer

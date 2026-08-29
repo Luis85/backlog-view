@@ -6,7 +6,7 @@ status: Open
 priority: P3
 area: limitation
 created: 2026-08-02
-source: found while building [[Milestones as their own type]]; named in PR #56 as out of scope
+source: found while building [[Milestones as their own type]]; named in PR
 files:
   - src/domain/writePlan.ts
   - src/view/interactions/plan.ts
@@ -18,6 +18,7 @@ start: ""
 due: ""
 risk: ""
 assignee: ""
+iteration: ""
 ---
 
 # The backfill stubs a key a milestone may not touch

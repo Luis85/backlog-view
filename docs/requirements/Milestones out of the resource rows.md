@@ -21,6 +21,8 @@ start: 2026-08-15
 due: ""
 risk: ""
 assignee: ""
+priority: ""
+iteration: ""
 ---
 
 # Milestones out of the resource rows

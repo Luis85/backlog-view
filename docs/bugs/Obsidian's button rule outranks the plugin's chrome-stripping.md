@@ -21,6 +21,7 @@ start: ""
 due: ""
 risk: ""
 assignee: ""
+iteration: ""
 ---
 
 # Obsidian's button rule outranks the plugin's chrome-stripping

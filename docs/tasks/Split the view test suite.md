@@ -6,7 +6,7 @@ status: Done
 priority: P1
 area: testing
 created: 2026-07-31
-source: PR #14 maintainability review
+source: PR
 files:
   - test/helpers/view.ts
   - eslint.config.mjs
@@ -17,6 +17,7 @@ start: ""
 due: ""
 risk: ""
 assignee: ""
+iteration: ""
 ---
 
 # Split the view test suite, and give test files a size budget

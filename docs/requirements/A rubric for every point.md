@@ -1,7 +1,7 @@
 ---
 type: Feature
 parent: "[[Business value estimation]]"
-order: 20
+order: 55
 status: Open
 created: 2026-08-16
 source: product requirements document, 2026-08-16
@@ -11,7 +11,9 @@ horizon: ""
 start: ""
 due: ""
 risk: ""
-assignee: ""
+assignee: "[[Brit]]"
+priority: ""
+iteration: ""
 ---
 
 # A rubric for every point

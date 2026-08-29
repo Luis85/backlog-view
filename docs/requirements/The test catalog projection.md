@@ -1,7 +1,7 @@
 ---
 type: Feature
 parent: "[[Test Management]]"
-order: 30
+order: 15
 status: Done
 created: 2026-08-08
 source: user request
@@ -12,6 +12,9 @@ start: ""
 due: ""
 risk: ""
 assignee: ""
+priority: ""
+iteration: ""
+release: "[[Eratic Skunk]]"
 ---
 
 # The test catalog projection

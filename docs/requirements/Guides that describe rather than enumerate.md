@@ -13,6 +13,8 @@ start: ""
 due: 2026-08-03
 risk: ""
 assignee: Ben
+priority: ""
+iteration: ""
 ---
 
 # Guides that describe rather than enumerate

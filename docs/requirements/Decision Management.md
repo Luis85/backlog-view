@@ -11,7 +11,9 @@ horizon: ""
 start: ""
 due: ""
 risk: ""
-assignee: ""
+assignee: "[[Felix]]"
+priority: ""
+iteration: ""
 ---
 
 # Decision Management

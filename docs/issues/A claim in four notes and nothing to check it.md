@@ -6,7 +6,7 @@ status: Open
 priority: P3
 area: verification
 created: 2026-08-01
-source: 2026-08-01 review of PR #24
+source: 2026-08-01 review of PR
 files:
   - scripts/docs-check.mjs
 started: ""
@@ -16,6 +16,7 @@ start: ""
 due: ""
 risk: ""
 assignee: ""
+iteration: ""
 ---
 
 # A claim in four notes and nothing to check it

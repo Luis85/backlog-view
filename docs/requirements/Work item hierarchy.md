@@ -10,6 +10,9 @@ risk: ""
 assignee: Chris
 start: ""
 due: ""
+priority: ""
+iteration: ""
+release: "[[Eratic Skunk]]"
 ---
 
 # Work item hierarchy

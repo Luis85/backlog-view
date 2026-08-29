@@ -6,7 +6,7 @@ status: Open
 priority: P3
 area: limitation
 created: 2026-08-01
-source: 2026-08-01 Codex review of PR #24
+source: 2026-08-01 Codex review of PR
 files:
   - src/storage/frontmatter.ts
   - src/storage/baseFile.ts
@@ -17,6 +17,7 @@ start: ""
 due: ""
 risk: ""
 assignee: ""
+iteration: ""
 ---
 
 # A failed creation leaves the folder it made

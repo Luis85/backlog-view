@@ -1,7 +1,7 @@
 ---
 type: PBI
 parent: "[[Finding work]]"
-order: 10
+order: 50
 status: Dropped
 closed: 2026-08-17
 started: ""
@@ -11,6 +11,8 @@ start: ""
 due: 2026-08-09
 risk: ""
 assignee: ""
+priority: ""
+iteration: ""
 ---
 
 # Quick filter

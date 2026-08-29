@@ -8,7 +8,7 @@ area: verification
 cadence: conditional
 closed: 2026-08-01
 created: 2026-07-31
-source: PR #14, collapse-state persistence
+source: PR
 files:
   - src/storage/viewStateStore.ts
 started: ""
@@ -18,6 +18,7 @@ start: ""
 due: ""
 risk: ""
 assignee: ""
+iteration: ""
 ---
 
 # Verify base identity resolves in a live vault

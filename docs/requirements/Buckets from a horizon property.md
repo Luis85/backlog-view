@@ -17,6 +17,7 @@ start: 2026-08-01
 due: ""
 risk: ""
 assignee: ""
+iteration: ""
 ---
 
 # Buckets from a horizon property

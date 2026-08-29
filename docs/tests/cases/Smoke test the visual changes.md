@@ -7,7 +7,7 @@ priority: P2
 area: verification
 cadence: release
 created: 2026-07-31
-source: PR #14; reopened 2026-08-02 for the roadmap
+source: PR
 files:
   - styles/toolbar.css
   - styles/tree.css
@@ -24,6 +24,7 @@ start: ""
 due: ""
 risk: ""
 assignee: ""
+iteration: ""
 ---
 
 # Smoke-test the visual changes in a real vault
