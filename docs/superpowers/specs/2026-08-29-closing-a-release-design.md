@@ -60,6 +60,13 @@ Absent unless the status key, the released values, the transition value and the
 released-date key are all bound (3a, 3b), and absent when the release already carries a
 value in the released list (1a).
 
+**And the STATUS must read at all.** `readLabel` reports an empty string, a list or an
+object as `status.invalid` with a null value, and `drawStatus` returns early on exactly
+that — an unreadable status draws a marker and no chip, because this screen refuses to edit
+a value it cannot read. The action must refuse it for the same reason and is withheld,
+naming it, rather than writing over what the control beside it will not touch. The
+released date already had this clause; the status is its mirror, and it was missing.
+
 **And the released date must READ AS ABSENT.** One condition on `ReleaseRow.released`,
 replacing two clauses that between them still let the wrong case through:
 
@@ -453,6 +460,9 @@ design adds to them:
 - With the released-date key holding an unreadable value, the action is absent and says
   so — asserted for an empty string and for a list, because "present" and "readable" are
   the two answers a raw-presence check collapses.
+- With the STATUS key holding an unreadable value, likewise. Asked of both fields in one
+  parameterised check rather than two written separately: every field this action reads has
+  three answers, and a clause added for one of them has now been missed for the other twice.
 - A release already carrying an actual date never has it replaced by this action, on any
   path — whether it held the date before the dialog opened (the action is not offered) or
   gained it from inside the callback (the whole batch refuses, so the status does not land
