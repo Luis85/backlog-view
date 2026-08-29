@@ -64,6 +64,24 @@ already uses for the hide-done toggle it withholds on an unconfigured workflow.
 One new predicate in `domain/releases.ts` answers all of it, so the toolbar asks a
 question rather than restating four.
 
+**Absent is only half of what 3a asks for, and a predicate cannot supply the other
+half.** Extension 3a says the screen *names the option to bind*, and today the release
+screen has guidance for exactly one gap — an unconfigured membership key. A hidden button
+and no sentence is a screen that says nothing, which is what the extension exists to
+prevent. So the predicate answers with the *missing options*, not a boolean, and the
+actions area draws a line naming them.
+
+Where a missing prerequisite is a PROPERTY, the existing `renderReleaseInit(view, el,
+'empty', fixes)` is offered beside that line, narrowed to the options the line names —
+the mechanism the `noMembership` state already uses, and `releasedDateProperty` is
+already among `RELEASE_SUGGESTED_KEYS`, so ✨ binds it with no new candidate.
+
+Where it is **not** a property, no button is offered and the line names the option alone.
+The released values, the transition value and the notes folder are the reader's own
+vocabulary and their own path; nothing can suggest them, and a ✨ that appeared beside a
+sentence it cannot act on would be the dishonest offer `initControl.ts`'s own `fixes`
+rule exists to refuse.
+
 ### The batch
 
 **Not a concatenation of the two existing planners, and this is the one place the
@@ -234,9 +252,23 @@ caller of it.
 
 `src/ui/confirmDialog.ts` — new: title, sentence, links, CTA.
 
-`src/view/release/scopeToolbar.ts` and a new `src/view/release/releaseClose.ts` — the two
-buttons, and the two actions behind them. `scopeToolbar.ts` draws; the actions do not live
-in it.
+`src/view/release/scopeToolbar.ts`, `src/view/release/renderScope.ts` and a new
+`src/view/release/releaseClose.ts` — the two buttons, and the two actions behind them.
+`scopeToolbar.ts` draws; the actions do not live in it.
+
+**The actions cannot go behind `renderScope`'s early returns, and the toolbar is behind
+both of them.** `renderScope` returns at the unconfigured-membership state and again at
+the empty-scope state, before `drawScopeToolbar`. That would make `Generate release notes`
+unreachable for a release with no members — the exact case extension 1a says still writes
+a file, because an empty release notes file is a fact and a missing one is ambiguous — and
+would withhold `Mark as released` on an unbound membership key, which is not one of its
+prerequisites: marking a release out reads the release note alone.
+
+So the actions area is drawn **before** both returns, and each action keeps its own gate:
+generation needs the notes folder and a clean configuration, marking needs its four
+release-note options, and neither asks about membership. The two empty states keep their
+own guidance beside it — `guidanceShell` and the actions are two rows on one screen, not
+alternatives.
 
 `src/i18n/en.ts` — the option names, the two refusals, the confirmation, the generated
 file's own sentences and the outcome notices.
@@ -272,6 +304,13 @@ design adds to them:
   workflows is what checks it.
 - With a member's workflow unconfigured, the confirmation says completion cannot be read
   and still offers the action.
+- Every unbound prerequisite is NAMED on the screen, not merely absent: a fixture with each
+  one unbound in turn draws a line naming that option, and the ✨ appears beside it only
+  for the ones that are properties.
+- Both actions are reachable on a release with no members and on a base with no membership
+  key bound — the two screens `renderScope` returns early from. The empty release's
+  generated file is written from that screen, which is the only place extension 1a can be
+  exercised at all.
 - `writeBacklogReadme`'s behaviour is unchanged by the extraction — its existing tests are
   the check, and they are watched passing before and after.
 - A release-notes file whose marker names another release is refused and named; one whose
