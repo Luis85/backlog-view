@@ -412,7 +412,7 @@ describe('recording the day a release shipped', () => {
 		const vault = editVault();
 		const { view, containerEl } = makeReleaseView(vault, RELEASE_CONFIG);
 		view.pick('R.md');
-		expect(containerEl.querySelector('.pbl-rel-released')?.textContent).toBe('Mark as released');
+		expect(containerEl.querySelector('.pbl-rel-released')?.textContent).toBe('Set released date');
 
 		pick(openDate(containerEl), '2026-09-20');
 		await flush();

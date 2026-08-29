@@ -2,7 +2,9 @@ import { TFile } from 'obsidian';
 import { WriteLock } from '../../src/view/writeLock';
 import { ReleaseView } from '../../src/view/release/releaseView';
 import { installObsidianDom } from './dom';
+import { Modal } from './obsidian-mock';
 import { FakeVault, FakeViewConfig, mountLeaf } from './vault';
+import { flush } from './view';
 
 /** `t.pbl-row[data-path="…"]` — the scope tree's own row, or null when `optional` says a
  *  missing one is the assertion rather than a broken fixture. Reads `view.viewEl` rather
@@ -122,6 +124,13 @@ export const RELEASE_CONFIG = {
 	// above are — a suite that wants the unbound case clears the key it is about.
 	descriptionProperty: 'note.description',
 	releaseStatusValues: 'Planned, In progress, Released',
+	// The closing actions' own three (2026-08-29), here for the reason every key above is:
+	// this fixture is what "fully configured" means, and a suite that wants one of them
+	// unbound clears the one it is about. `releasedStatusValues` is what "is this release
+	// already out" is asked against; `releasedTransitionValue` is the single value marking
+	// one WRITES, which a list cannot answer.
+	releasedStatusValues: 'Released',
+	releasedTransitionValue: 'Released',
 };
 
 /**
@@ -319,4 +328,59 @@ export function mountFoldScope(opts: { pick: string; embedded?: boolean }): Rele
 	const harness = makeReleaseView(vault, RELEASE_CONFIG, opts.embedded ? {} : { base: 'Releases.base' });
 	harness.view.pick(opts.pick);
 	return { ...harness, vault };
+}
+
+/**
+ * A mounted release SCOPE screen, with the release's own frontmatter and any config
+ * overrides the test is about. The one entry point both closing suites use — and the
+ * reason it takes the vault rather than building one is that what a closing action does
+ * depends on who the MEMBERS are, which is the vault's question and not this release's.
+ */
+export function releaseScreen(
+	release: Record<string, unknown>,
+	vault: FakeVault = scopeVault(),
+	over: Record<string, unknown> = {},
+): ReleaseHarness & { vault: FakeVault; lock: WriteLock } {
+	vault.addFile('0.9.md', { frontmatter: { type: 'Release', version: '0.9.0', ...release } });
+	const lock = new WriteLock();
+	const harness = makeReleaseView(vault, { ...RELEASE_CONFIG, ...over }, { lock });
+	harness.view.pick('0.9.md');
+	return { ...harness, vault, lock };
+}
+
+/** One control by selector — never optional, because every caller already asserted it is
+ *  there or is asserting that it is not. */
+export function button(view: ReleaseView, selector: string): HTMLButtonElement {
+	const el = view.viewEl.querySelector<HTMLButtonElement>(selector);
+	if (!el) throw new Error(`control not found: ${selector}`);
+	return el;
+}
+
+
+/**
+ * A release whose members span TWO workflows — one ordinary PBI unfinished, one
+ * `Deliverable` finished by its OWN workflow. The fixture that tells `ownWorkflowReading`
+ * apart from `item.done`: a single-workflow vault passes against either.
+ */
+export function twoWorkflowVault(): FakeVault {
+	const vault = new FakeVault();
+	vault.addFile('Unfinished PBI.md', { frontmatter: { type: 'PBI', release: '[[0.9]]', status: 'Doing' } });
+	vault.addFile('Done design.md', { frontmatter: { type: 'Deliverable', release: '[[0.9]]', docStatus: 'Published' } });
+	return vault;
+}
+
+/** A base with no members naming the release at all — the screen `renderScope` returns
+ *  early from, and the ONLY place extension 1a can be exercised. */
+export function emptyReleaseVault(): FakeVault {
+	const vault = new FakeVault();
+	vault.addFile('Elsewhere.md', { frontmatter: { type: 'PBI' } });
+	return vault;
+}
+
+/** Press the confirm dialog's CTA and let the write settle. The dialog is mounted by the
+ *  Modal mock rather than into the view, so it is reached through `Modal.lastOpened`
+ *  rather than queried off `view.viewEl`. */
+export async function confirmDialog(): Promise<void> {
+	Modal.lastOpened?.contentEl.querySelector<HTMLElement>('.mod-cta')?.click();
+	await flush();
 }

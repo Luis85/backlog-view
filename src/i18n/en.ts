@@ -1887,14 +1887,17 @@ export const en = {
 	 * screen whose value is a DATE rather than a label. `{name}` is the release note's own
 	 * name and `{date}` is the date as the register spells one (`formatCivil`), both data.
 	 *
-	 * `markReleased` is the invitation a release with no date draws, and it is the plainest
-	 * name for the gesture rather than "Set released date": what the reader is doing is
-	 * saying it shipped. It opens the same dialog either way, so nothing is claimed by the
-	 * wording that the action does not do — in particular it writes no status, which is
-	 * [[Marking a release as released]]'s own half of that transition and is still Open.
+	 * `markReleased` said `Mark as released` until 2026-08-29, on the stated ground that
+	 * saying it shipped was the whole of the gesture. **That premise expired the day
+	 * [[Marking a release as released]] was built**: the closing action writes the status
+	 * AND the date, and this control writes only the date and is the only one that CLEARS
+	 * it. Two controls on one screen under one label is worse than a field named as a
+	 * field, so this one is now named for the field it edits and the transition keeps the
+	 * shorter name. The comment above is kept rather than deleted because the reason the
+	 * old wording was chosen is the reason it stopped being right.
 	 */
 	'release.scope.releasedOn': 'Released {date}',
-	'release.scope.markReleased': 'Mark as released',
+	'release.scope.markReleased': 'Set released date',
 	'release.scope.releasedTitle': 'Released date for {name}',
 	'release.scope.releasedHint': 'The day this release actually shipped. Clearing it takes the date off the note.',
 	/**
@@ -2055,6 +2058,35 @@ export const en = {
 	 * screen already says what it does.
 	 */
 	'release.init.label': 'Add missing properties',
+
+	/**
+	 * `Mark as released` — the closing action (`src/view/release/releaseClose.ts`), and the
+	 * transition [[Marking a release as released]] is about. Distinct from
+	 * `release.scope.markReleased` above, which edits the DATE field alone.
+	 *
+	 * `{name}` is the release note's own name and `{count}`/`{total}` are counts, all data.
+	 * `outstanding` states a fact and refuses nothing: extension 2a is explicit that the
+	 * checklist informs the judgement and does not make it.
+	 */
+	'release.close.action': 'Mark as released',
+	'release.close.title': 'Mark {name} as released?',
+	'release.close.outstanding': '{count} of {total} members are not finished.',
+	'release.close.allDone': 'Everything in this release is finished.',
+	/** Progress cannot be read at all — no state key, or a workflow this release's members
+	 *  span that nothing answers for. Not the same sentence as "everything is finished",
+	 *  which is what collapsing the two would say about a release nobody can count. */
+	'release.close.progressUnreadable': 'Whether this release is finished cannot be read here.',
+	/** The submit's own refusal: the note or the configuration moved while the dialog was
+	 *  open. One sentence for both, because what the reader has to do is the same — look at
+	 *  what it says now and decide again. */
+	'release.close.changed': 'Nothing was written: the release or its configuration changed while the dialog was open.',
+	/** Extension 3a: the screen NAMES the options rather than only withholding the button.
+	 *  `{options}` is a LIST, joined as grammar by `Intl.ListFormat`. */
+	'release.close.bind': 'To mark a release as released, bind {options}.',
+	/** A NOTE problem rather than a configuration one — which is why these two say "repair
+	 *  it in the note" and never name an option. */
+	'release.close.unreadableStatus': 'This release’s status cannot be read. Repair it in the note.',
+	'release.close.unreadableDate': 'This release’s released date cannot be read. Repair it in the note.',
 	/**
 	 * A press that bound nothing, said rather than left silent — a standalone control with
 	 * no dialog after it would otherwise look dead. `release.new.bound` is what a press

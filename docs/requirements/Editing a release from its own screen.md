@@ -120,12 +120,18 @@ whose whole job is to say what a release is. Asked for as a property by the auth
   the LIVE type.
 - **5b — a member's own fields.** Never editable here. Nothing on this screen writes to a
   member, and the two actions name `release.item.file` and nothing else.
-- **6a — the release has no released date yet.** The control draws **Mark as released**,
-  which is the plainest name for what the reader is doing. It opens the same dialog as a
-  release that has one — nothing is written by pressing it — so the wording claims nothing
-  the action does not do. In particular it writes **no status**: that is
-  [[Marking a release as released]]'s own half of the transition, along with its
-  confirmation and its outstanding-work list, and that note stays Open.
+- **6a — the release has no released date yet.** The control draws **Set released date**.
+  It opens the same dialog as a release that has one — nothing is written by pressing it —
+  so the wording claims nothing the action does not do. In particular it writes **no
+  status**: that is [[Marking a release as released]]'s own half of the transition, along
+  with its confirmation and its outstanding-work list.
+
+  It drew **Mark as released** until 2026-08-29, on the ground that saying it shipped was
+  the plainest name for the gesture. **That reason expired when
+  [[Marking a release as released]] was built**: its action writes the status and the date
+  together and is on the same screen, so one label would have named two different controls.
+  This one is named for the field it edits — it is also the only one that CLEARS a date —
+  and the transition keeps the shorter name.
 - **6b — the released date is unreadable.** It says so and offers no control, which is 1c
   for the other two fields and one reason sharper here: an unreadable date and an absent one
   both reach the planner as `null`, so a dialog opened on the first could not tell the

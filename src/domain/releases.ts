@@ -382,10 +382,23 @@ export function releaseStatusChoices(settings: ReleaseSettings, index: ReleaseIn
 	return choices;
 }
 
+/**
+ * An option `Mark as released` cannot run without. A UNION rather than a string, so a
+ * clause added to `closeOffer` cannot report an option the screen has no name for: the
+ * label map in `view/release/releaseClose.ts` is keyed by this type, and a fifth member
+ * added here without a label there is a compile error rather than an `undefined` drawn
+ * into a sentence.
+ */
+export type CloseOption =
+	| 'releaseStatusProperty'
+	| 'releasedStatusValues'
+	| 'releasedTransitionValue'
+	| 'releasedDateProperty';
+
 export interface CloseOffer {
 	/** Option keys the reader must bind, in the order the panel lists them. Empty when
 	 *  everything this action needs is configured. */
-	missing: string[];
+	missing: CloseOption[];
 	/** A field this release holds a value for that no reader can parse, or null. The
 	 *  screen names it so the reader repairs the NOTE rather than the configuration. */
 	unreadable: 'status' | 'released' | null;
@@ -408,7 +421,7 @@ export interface CloseOffer {
  * readable, because a date already there is a record this action must never replace.
  */
 export function closeOffer(release: ReleaseRow, settings: ReleaseSettings): CloseOffer {
-	const missing: string[] = [];
+	const missing: CloseOption[] = [];
 	if (settings.statusKey === '') missing.push('releaseStatusProperty');
 	if (settings.releasedValues.length === 0) missing.push('releasedStatusValues');
 	if (settings.releasedTransition === '') missing.push('releasedTransitionValue');
