@@ -140,6 +140,23 @@ describe('ValuePromptModal', () => {
 		expect(added).toEqual(['release/1-0']);
 	});
 
+	it('submits the TRIMMED value, which is the one it validated', () => {
+		// Found by review (Codex, PR #211) against the release view's free-text status, and it
+		// is this modal's rule rather than that caller's: `submit` refuses a blank on
+		// `value.trim()` and then handed `onSubmit` the RAW string, so the value it judged and
+		// the value it delivered were two different things. Every caller mints vault DATA from
+		// this — a tag, a resource's name, a release's first status — and a padded one reads
+		// back trimmed while the frontmatter still holds the spaces, so a Base filter
+		// comparing against what the screen shows drops the note.
+		//
+		// Fixed here rather than at the three call sites: the rule is about the modal's own
+		// two answers disagreeing, and a fourth caller written next year inherits it.
+		const { added, input } = openTagPrompt();
+		type(input, '  release/1-0  ');
+		input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+		expect(added).toEqual(['release/1-0']);
+	});
+
 	it('lets an IME finish its composition before submitting', () => {
 		const { added, input } = openTagPrompt();
 		type(input, 'にほん');

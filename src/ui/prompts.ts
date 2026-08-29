@@ -251,9 +251,18 @@ export class ValuePromptModal extends PromptModal<ValuePromptOptions> {
 		this.titleEl.setText(this.options.title);
 		let value = '';
 		const submit = () => {
-			if (value.trim().length === 0) return;
+			// **The value it VALIDATES is the value it delivers.** The blank test below is on
+			// the trimmed string, and handing `onSubmit` the raw one made those two different
+			// answers: every caller of this modal mints vault DATA from it — a tag, a
+			// resource's name, a release's first status — and a padded value reads back
+			// trimmed while the frontmatter still holds the spaces, so a Base filter comparing
+			// against what the screen shows drops the note (found by review, PR #211).
+			// `newReleaseDialog` trims every field for the same reason; this is that rule at
+			// the modal, so a caller cannot forget it.
+			const entry = value.trim();
+			if (entry.length === 0) return;
 			this.close();
-			this.options.onSubmit(value);
+			this.options.onSubmit(entry);
 		};
 
 		const warningText = this.options.duplicateWarning;
