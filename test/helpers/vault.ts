@@ -198,6 +198,12 @@ export class FakeVault {
 					return folder;
 				}),
 			create: async (path: string, content: string) => {
+				// A creation is a write, so it takes the same BEFORE hook the frontmatter
+				// writer does — the mirror of the `afterWrite` argument below, and the
+				// window a caller's own pre-create check sits in front of. Guarded rather
+				// than `await this.beforeWrite?.(...)` for that call's stated reason: an
+				// awaited `undefined` still costs a microtask the unhooked path never had.
+				if (this.beforeWrite) await this.beforeWrite(path);
 				if (this.files.has(path)) throw new Error(`File already exists: ${path}`);
 				const file = new TFile(path);
 				this.files.set(path, file);
@@ -213,6 +219,11 @@ export class FakeVault {
 				return file;
 			},
 			createFolder: async (path: string) => {
+				// Hooked like `create` and `processFrontMatter` beside it, because this is
+				// the await a note-creating caller sits behind: `ensureFolder` runs before
+				// `vault.create`, so a guard the caller asks BEFORE it has a window after
+				// it, and this is the only way a test can put anything inside that window.
+				if (this.beforeWrite) await this.beforeWrite(path);
 				if (this.folders.has(path)) throw new Error('Folder already exists.');
 				this.folders.add(path);
 			},

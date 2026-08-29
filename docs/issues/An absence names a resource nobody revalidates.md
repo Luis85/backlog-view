@@ -46,13 +46,38 @@ written. Both target refusals report `absence.resourceMissing`, the sentence the
 already used: the reader's fact is the same either way, and the two differ only in which
 index noticed.
 
+**The guard is asked at the LAST moment before the write, not at the top of the function**,
+and the first cut got that wrong — found by automated review on PR #209. Both writers await
+before they write (`processFrontMatter` resolves its own I/O before running the callback;
+`createAbsenceNote` awaits `ensureFolder`), so a synchronous check ahead of those awaits is a
+check with a gap after it, and a retype landing in the gap writes the very link the guard
+exists to refuse. The edit path asks inside the callback beside the carrier's own question;
+the create path asks on the line before `vault.create`, which is as late as a caller can get.
+That is `applyWrites`' own argument reached from the other side: it asks inside the callback
+because that is where the value is READABLE, and this asks there because that is where the
+answer is still TRUE.
+
+**One ceiling remains and is stated rather than papered over.** `vault.create` takes no
+callback, so a retype landing INSIDE that call is unreachable for any caller-side check. A
+refusal on the create path can also leave behind the absence folder `ensureFolder` just made
+— the folder the next absence would create anyway, and the accepted price of one check
+instead of two.
+
 **Below the register's own line about what jsdom reaches.** `test/view/absenceEditing.test.ts`
 drives both paths with no `refresh` between the retype and the submit, so the MODEL still
 lists the resource and only the vault knows — which is the state the guard exists for and the
 one the earlier roster tests could not reach. A third test asks the un-indexed window through
 `FakeVault.unindex` and expects the write to LAND, so the "no cache is no answer" rule has a
-check rather than a comment. All three were watched failing: the two refusals with the guard
-call removed, the third with `refusesLiveAssignee` reading a missing cache as `true`.
+check rather than a comment. Two more retype DURING the write rather than before the submit,
+through `FakeVault.beforeWrite` — fired by `processFrontMatter` on the edit path and by
+`createFolder` on the create path, which is the await `createAbsenceNote` sits behind, and
+which the fake had to learn to hook. All five were watched failing: the two refusals with the
+guard call removed, the un-indexed one with `refusesLiveAssignee` reading a missing cache as
+`true`, and the two interleaving ones with both guards back at the top of their functions.
+
+The five live in `test/view/absenceRaces.test.ts` — a suite of their own since the split the
+450-line budget forced, holding every refusal both flows make when the world moves under an
+open form, with the three form gestures in `test/helpers/absences.ts` rather than copied.
 
 **Not a regression, and it was not fixed at the time.** The absence writers never asked, before or after
 [[An absence names its resource by link]]; the link only changed what gets written, not

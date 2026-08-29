@@ -29,10 +29,20 @@ import { setOwn } from './ownProperty';
  * cache is no answer rather than a "no", and a DELETED target must not ride in on that
  * same null — and this module has no better view of either than that function does.
  *
- * The question is asked BEFORE the vault is touched on both paths, which is the one thing
- * that differs from `applyWrites`: there the live type is only readable inside the
- * `processFrontMatter` callback, and here the target is a DIFFERENT file from the one
- * being written, so nothing has to be opened to ask.
+ * **It is asked at the LAST moment before the write, not at the top of the function**, and
+ * the difference is a real window rather than a tidiness preference. Both writers await
+ * before they write — `processFrontMatter` resolves its own I/O before it runs the
+ * callback, and the create path awaits `ensureFolder` — so a check made before those awaits
+ * is a check with a gap after it, and another vault operation retyping the resource inside
+ * that gap lands the very link this guard exists to refuse. That is the identical argument
+ * `applyWrites` makes about the carrier's type, reaching the same answer from the other
+ * side: it asks inside the callback because that is the one place the value is READABLE,
+ * and this asks there because that is the last place the answer is still TRUE.
+ *
+ * `vault.create` takes no callback, so the create path's last readable moment is the line
+ * before it. A refusal there can leave behind a folder `ensureFolder` just made — the
+ * absence folder, which the next absence would create anyway — and that is the accepted
+ * price of one check instead of two (Codex review, PR #209).
  */
 
 /**
@@ -74,15 +84,18 @@ export interface AbsenceSpec {
  * from `applyInto` and worth saying out loud.
  *
  * **Returns `null` where the resource it was asked to name is no longer one** — the module
- * docblock's shared guard, asked before anything is created, so a refusal leaves no note
- * behind to take back. ONE refusal here against {@link updateAbsenceNote}'s two: there is
- * no note yet for the other race to have retyped underneath this call.
+ * docblock's shared guard, asked after `ensureFolder`'s await and before `vault.create`, so
+ * a refusal leaves no note behind to take back. ONE refusal here against {@link
+ * updateAbsenceNote}'s two: there is no note yet for the other race to have retyped
+ * underneath this call.
  */
 export async function createAbsenceNote(app: App, settings: BacklogSettings, spec: AbsenceSpec): Promise<TFile | null> {
-	if (refusesLiveAssignee(app, spec.resource, settings)) return null;
 	const folder = vaultFolder(spec.folder);
 	await ensureFolder(app, folder);
 	const path = uniqueNotePath(app, folder, spec.title);
+	// After every await, never before them — see the module docblock. Nothing has been
+	// written at this line, so a refusal here leaves no note behind to take back.
+	if (refusesLiveAssignee(app, spec.resource, settings)) return null;
 	// One atomic write, `createBacklogItem`'s own rule: a create-then-update pair could
 	// fail in between and leave a note that is an absence in name and a blank note in fact.
 	const fm: Record<string, unknown> = {};
@@ -114,9 +127,10 @@ export async function createAbsenceNote(app: App, settings: BacklogSettings, spe
  * **Returns WHICH of three things happened**, because two different notes can move under
  * one open modal and the reader is owed which one did. `staleResource` is the resource this
  * absence names, retyped out of `Resource` since the form captured its roster — the module
- * docblock's shared guard, asked before the note is opened because the target is not the
- * file being written. `becameResource` is the note being EDITED, retyped INTO one, which is
- * the refusal below and reads on:
+ * docblock's shared guard, asked INSIDE the callback beside the carrier's own question, so
+ * the two races are refused at one moment rather than at two with a gap between them.
+ * `becameResource` is the note being EDITED, retyped INTO one, which is the refusal below
+ * and reads on:
  *
  * The edit modal that produced `spec` was opened against
  * this file while it was an absence, and both Obsidian's options pane and the vault
@@ -140,21 +154,25 @@ export async function updateAbsenceNote(
 	file: TFile,
 	spec: Pick<AbsenceSpec, 'resource' | 'start' | 'target'>,
 ): Promise<AbsenceEdit> {
-	if (refusesLiveAssignee(app, spec.resource, settings)) return 'staleResource';
-	let refused = false;
+	// The outcome itself rather than a flag, so both refusals are stated where they are
+	// decided and neither can be re-derived wrongly on the way out.
+	let outcome: AbsenceEdit = 'written';
 	await app.fileManager.processFrontMatter(file, (fm: Record<string, unknown>) => {
 		if (isResourceType(readString(ownValue(fm, settings.typeKey)))) {
-			refused = true;
+			outcome = 'becameResource';
+			return;
+		}
+		// Inside the callback beside the carrier's question, not before the await that
+		// opened the file — see the module docblock.
+		if (refusesLiveAssignee(app, spec.resource, settings)) {
+			outcome = 'staleResource';
 			return;
 		}
 		setOwn(fm, settings.assigneeKey, wikilinkTo(app, spec.resource, file.path));
 		setOwn(fm, settings.startKey, spec.start);
 		setOwn(fm, settings.targetKey, spec.target);
 	});
-	// Two returns rather than a ternary between the two literals: `TEXT_TERNARY` cannot
-	// tell an outcome value from a sentence, and this is data — see the root guide.
-	if (refused) return 'becameResource';
-	return 'written';
+	return outcome;
 }
 
 /**
