@@ -61,15 +61,14 @@ released-date key are all bound (3a, 3b), and absent when the release already ca
 value in the released list (1a).
 
 **Also absent when the released date is bound but UNREADABLE** — an empty string, a list,
-a malformed date. `ifMissing` asks whether the key is PRESENT, not whether it is readable,
-so a note holding rubbish there would have its date set skipped while the status landed:
-a release marked shipped with no usable record of when, which is the split state this whole
-batch exists to prevent, produced by the guard that was meant to protect the record. The
-predicate asks `ReleaseRow.released.invalid` — the third answer `ReleaseFigure` carries for
-exactly this — and the screen names it so the reader repairs the note. That is the rule the
-header's own date control already keeps: `releaseReleasedWrites` says an unreadable date
-reaches it as null and the control is withheld rather than offered a clear that writes
-nothing. Absent, not disabled: the shape `scopeToolbar.ts`
+a malformed date. The predicate asks `ReleaseRow.released.invalid`, the third answer
+`ReleaseFigure` carries for exactly this, and the screen names it so the reader repairs the
+note rather than having a batch write around rubbish. That is the rule the header's own date
+control already keeps: `releaseReleasedWrites` says an unreadable date reaches it as null,
+which is why the control is withheld rather than offered a clear that writes nothing.
+
+Absent-and-valid is a different answer and is NOT withheld: a bare `released:` reads as no
+date, which is exactly the state this action exists to fill in. Absent, not disabled: the shape `scopeToolbar.ts`
 already uses for the hide-done toggle it withholds on an unconfigured workflow.
 
 One new predicate in `domain/releases.ts` answers all of it, so the toolbar asks a
@@ -156,17 +155,24 @@ plumbing:
   replaced are the bytes being judged. That is `applyRestores`' compare-and-swap asked of a
   forward write, and it is one more field on `PropertyWrite` rather than a new mechanism.
 
-  **That check is on the STATUS, and it does not protect the date** — a note can carry an
-  actual date while its status is still the expected one, by a hand edit or by gaining one
-  across the await, and a status-only comparison would let today's date replace the day it
-  actually shipped. So the date's own set carries **`ifMissing`**, which
-  `domain/estimationWritePlan.ts` already defines as "writes only when the live note lacks
-  the key already — never overwriting an answer that is there", and which
-  `applyPropertyWrites` already honours per set. No new field: the release's date is the
-  same kind of value the estimation stamp is, and it wants the same rule. It makes the
-  criterion below true by construction rather than by a guard somebody has to remember,
-  and it is why the two sets in this one write are not interchangeable — the status is
-  compared, the date is only ever filled in;
+  **Both sets carry the value they expect, and neither uses `ifMissing`.** Two earlier
+  drafts of this paragraph reached for `ifMissing` on the date, and both were wrong in the
+  same way: it asks whether the KEY IS PRESENT, and this view's question is whether the
+  note holds a READABLE DATE. Those differ on the commonest shape in the vault — a bare
+  `released:` parses to `null`, `rawValueOf` reports it present, so `ifMissing` skips the
+  write, while `readSoleDate(null)` reads absent-and-valid so nothing withholds the action
+  either. The status would land and the date would not: marked shipped with no record of
+  when, by the guard added to protect the record.
+
+  So the date is compared like the status: the write carries the raw value it expects to
+  find, and a mismatch refuses **the whole batch** rather than dropping one set. One rule
+  for both fields instead of two mechanisms that disagree about what "no date" means, no
+  `ifMissing`, and no presence-versus-readability question left to get wrong — a note that
+  gained a date across the await refuses, and so does one whose status moved.
+
+  Refusing whole rather than preserving-and-continuing is also the better answer on its own
+  terms: a release carrying an actual date while its status is not a released one is an
+  inconsistent note, and half-fixing it silently is worse than saying so;
 - the empty-batch return, so a release already at the transition value writes nothing and
   redraws nothing.
 
@@ -438,10 +444,11 @@ design adds to them:
   so — asserted for an empty string and for a list, because "present" and "readable" are
   the two answers a raw-presence check collapses.
 - A release already carrying an actual date never has it replaced by this action, on any
-  path — including one that gains the date from inside the callback, and including the
-  case where its status still matches what the batch expected. The status is written in
-  that case and the date is left alone: the record survives, which is the point of the
-  field. Both are driven from inside the await, because a test that changes the
+  path — including one that gains the date from inside the callback. The whole batch
+  refuses there, so the status does not land either.
+- A note whose released key holds an explicit null (`released:` with nothing after it) is
+  written a date, not skipped. That is the case a raw-presence guard gets wrong while every
+  reading in the plugin calls it absent, and it is the commonest shape a vault has. Both are driven from inside the await, because a test that changes the
   configuration before the dialog opens passes against a submit that never re-reads.
 - Generation is withheld, naming the problem, for a collision seen by ANY of its three
   reports: `stateProperty` on the order key (`configProblems`), two release-note roles on
