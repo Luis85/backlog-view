@@ -430,6 +430,58 @@ describe('what an edit is, and is not', () => {
 		expect(Notice.messages.some((m) => m.includes('release status'))).toBe(true);
 	});
 
+	it('refuses the write when the note stopped being a release while the menu was open', async () => {
+		// Found by review (Codex, PR #211). The plan comes from a model that can be a refresh
+		// behind, and the window between a menu opening and its pick is one nothing upstream
+		// sees. Retyped in it, the note is somebody else's — and on the shipped configuration
+		// where a release's status and an item's workflow state share `status`, this write
+		// would land on a work item's own state. `applyPropertyWrites` refused only a live
+		// `Resource` before `PropertyWrite.requiresType` existed.
+		const vault = editVault();
+		const { view, containerEl } = makeReleaseView(vault, RELEASE_CONFIG);
+		view.pick('R.md');
+		statusChip(containerEl).click();
+		await flush();
+		const pick = Menu.lastShown?.item('Released');
+
+		// Retyped in the vault, exactly as an external edit would: the model still says
+		// release, and the note no longer does.
+		vault.fm('R.md').type = 'PBI';
+		pick?.click();
+		await flush();
+
+		expect(vault.fm('R.md').status).toBe('Planned');
+		expect(Notice.messages.some((m) => m.includes('no longer a Release'))).toBe(true);
+	});
+
+	it('refuses a write to a release the base excluded but the TREE still holds', async () => {
+		// Found by review (Codex, PR #211). `byPath` is not the results: a work item with a
+		// hand-written `parent: [[R]]` pulls the release it names into the model as a context
+		// row through `loadOutsideParents`, which is not type-gated — so a `has(path)` test
+		// authorized an edit to a release the Base excluded, which is the one thing the
+		// context-row rule says this plugin never does.
+		const vault = editVault();
+		vault.addFile('Child.md', { frontmatter: { type: 'Feature', release: '[[R]]' }, parentLink: 'R' });
+		const { view, containerEl } = makeReleaseView(vault, RELEASE_CONFIG);
+		view.pick('R.md');
+		statusChip(containerEl).click();
+		await flush();
+		const pick = Menu.lastShown?.item('Released');
+
+		(view as unknown as { data: unknown }).data = {
+			data: vault.entries().filter((e) => e.file.path !== 'R.md'),
+		};
+		view.onDataUpdated();
+		// The release is still IN the model — as the context parent `Child.md` names — which
+		// is what makes this different from the case below.
+		expect(view.model?.byPath.get('R.md')?.outsideFilter).toBe(true);
+		pick?.click();
+		await flush();
+
+		expect(vault.writeLog).toEqual([]);
+		expect(vault.fm('R.md').status).toBe('Planned');
+	});
+
 	it('refuses a write to a release this base did not return', async () => {
 		// The gate's outside-filter refusal, which this view now has a batch to be refused:
 		// a release the Base excluded is not this view's to write, and the batch is refused

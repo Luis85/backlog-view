@@ -85,6 +85,12 @@ export function showReleaseStatusMenu(view: ReleaseView, evt: MouseEvent, releas
  */
 export function editReleaseDescription(view: ReleaseView, release: ReleaseRow): void {
 	const current = release.description.value;
+	// The KEY is captured with the value it belongs to, never read again at submit — the
+	// root guide's "capture before the await", and the status menu's own shape. A `.base`
+	// re-pointed while this dialog is open would otherwise leave the box holding the OLD
+	// property's text and write it to the NEW one, overwriting data the reader never saw
+	// (found by review, PR #211).
+	const key = view.settings.descriptionKey;
 	openTextPrompt(view.app, {
 		title: t('release.scope.descriptionTitle', { name: release.name }),
 		fieldName: t('release.option.description'),
@@ -92,7 +98,7 @@ export function editReleaseDescription(view: ReleaseView, release: ReleaseRow): 
 		ctaLabel: t('release.scope.descriptionSave'),
 		initial: current ?? '',
 		onSubmit: (text) =>
-			void save(view, releaseDescriptionWrites(release.item.file, view.settings.descriptionKey, current, text), '.pbl-rel-desc'),
+			void save(view, releaseDescriptionWrites(release.item.file, key, current, text), '.pbl-rel-desc'),
 	});
 }
 

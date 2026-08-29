@@ -3,6 +3,12 @@ import { TFile } from 'obsidian';
 import { releaseDescriptionWrites, releaseReleasedWrites, releaseStatusWrites } from '../../src/domain/releaseWritePlan';
 
 /**
+ * Every batch below carries `requiresType: 'Release'`, and it is asserted rather than
+ * ignored: it is the plan's own claim about what it is writing to, which
+ * `applyPropertyWrites` checks against the LIVE note — a release retyped between the menu
+ * opening and the pick is somebody else's note now (PR #211). A planner that stopped
+ * stating it would leave that guard reading `undefined` and refusing nothing.
+ *
  * What editing a release's own fields would write ([[Editing a release from its own
  * screen]]) — a node test, because the whole subject is a decision rather than a screen:
  * these two functions read no vault, touch no DOM and answer with a batch or with nothing.
@@ -19,7 +25,7 @@ const file = { path: 'R.md', basename: 'R' } as TFile;
 describe('planning a release status', () => {
 	it('sets the key it is given', () => {
 		expect(releaseStatusWrites(file, 'status', null, 'Released')).toEqual([
-			{ file, sets: [{ key: 'status', value: 'Released' }] },
+			{ file, sets: [{ key: 'status', value: 'Released' }], requiresType: 'Release' },
 		]);
 	});
 
@@ -31,7 +37,7 @@ describe('planning a release status', () => {
 
 	it('removes the key rather than blanking it, and writes nothing when there is nothing to remove', () => {
 		expect(releaseStatusWrites(file, 'status', 'Planned', null)).toEqual([
-			{ file, sets: [{ key: 'status', value: null }] },
+			{ file, sets: [{ key: 'status', value: null }], requiresType: 'Release' },
 		]);
 		expect(releaseStatusWrites(file, 'status', null, null)).toEqual([]);
 	});
@@ -48,10 +54,10 @@ describe('planning a released date', () => {
 
 	it('sets the date the reader picked, and clears the key for an emptied field', () => {
 		expect(releaseReleasedWrites(file, 'released', null, '2026-09-20')).toEqual([
-			{ file, sets: [{ key: 'released', value: '2026-09-20' }] },
+			{ file, sets: [{ key: 'released', value: '2026-09-20' }], requiresType: 'Release' },
 		]);
 		expect(releaseReleasedWrites(file, 'released', on(2026, 9, 20), '')).toEqual([
-			{ file, sets: [{ key: 'released', value: null }] },
+			{ file, sets: [{ key: 'released', value: null }], requiresType: 'Release' },
 		]);
 	});
 
@@ -71,7 +77,7 @@ describe('planning a released date', () => {
 describe('planning a release description', () => {
 	it('trims the entry and sets it', () => {
 		expect(releaseDescriptionWrites(file, 'description', null, '  The billing rewrite. ')).toEqual([
-			{ file, sets: [{ key: 'description', value: 'The billing rewrite.' }] },
+			{ file, sets: [{ key: 'description', value: 'The billing rewrite.' }], requiresType: 'Release' },
 		]);
 	});
 
@@ -84,7 +90,7 @@ describe('planning a release description', () => {
 
 	it('clears the key for a box emptied or holding only spaces, and writes nothing when it was already empty', () => {
 		expect(releaseDescriptionWrites(file, 'description', 'Something.', '   ')).toEqual([
-			{ file, sets: [{ key: 'description', value: null }] },
+			{ file, sets: [{ key: 'description', value: null }], requiresType: 'Release' },
 		]);
 		expect(releaseDescriptionWrites(file, 'description', null, '')).toEqual([]);
 	});

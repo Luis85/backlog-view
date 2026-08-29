@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { getReleaseViewOptions, SHARED_STATUS_OPTIONS } from '../../../src/domain/releaseOptions';
+import { releaseNoteProblems } from '../../../src/domain/settingsConsistency';
 import { runReleaseInit } from '../../../src/view/release/init';
 import { makeReleaseView, RELEASE_CONFIG, scopeVault } from '../../helpers/release';
 import { FakeVault } from '../../helpers/vault';
@@ -165,6 +166,24 @@ describe('runReleaseInit', () => {
 			const bound = new Map(view.config.setCalls.map((c) => [c.key, c.value]));
 			expect(bound.get(adopting), `${held} held status; ${adopting} should still adopt it`).toBe('note.status');
 		}
+	});
+
+	it('refuses the exempt pair when a NON-shared option holds the key, even beside a shared one', async () => {
+		// Found by review (Codex, PR #211). The exemption was written as "subtract the keys
+		// the shared options hold", which reads the same as the rule on the shipped defaults
+		// and is wrong the moment BOTH kinds hold one key: with the version and the item
+		// state both on `status`, subtracting freed it, ✨ bound the release status onto the
+		// version's key, and `releaseNoteProblems` — landed the same day — then blocked every
+		// write in the view. The rule is "does a NON-shared option hold it".
+		const { view } = makeReleaseView(new FakeVault(), {
+			versionProperty: 'note.status',
+			stateProperty: 'note.status',
+		});
+		await runReleaseInit(view);
+		const bound = new Map(view.config.setCalls.map((c) => [c.key, c.value]));
+		expect(bound.get('releaseStatusProperty')).toBeUndefined();
+		// And the press left the view writable rather than bricking it.
+		expect(releaseNoteProblems(view.settings)).toEqual([]);
 	});
 
 	it('still refuses both status candidates when an option OUTSIDE the exemption holds the key', async () => {

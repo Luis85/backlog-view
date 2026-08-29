@@ -2,6 +2,7 @@ import { TFile } from 'obsidian';
 import { PropertyWrite } from './estimationWritePlan';
 import { CivilDate, sameValue } from './noteFields';
 import { formatCivil } from './timeline';
+import { RELEASE_TYPE } from './typeVocabulary';
 
 /**
  * What editing a release's own fields WOULD write — the release view's planner, and the
@@ -41,7 +42,12 @@ import { formatCivil } from './timeline';
  * as somebody's mistake rather than as an unset field.
  */
 function fieldWrite(file: TFile, key: string, value: string | null): PropertyWrite[] {
-	return key === '' ? [] : [{ file, sets: [{ key, value }] }];
+	// `requiresType` on every write this module plans: these three fields belong to a
+	// RELEASE, and the note may have been retyped between the menu opening and the pick —
+	// a window nothing upstream can see. See `PropertyWrite.requiresType` for what the
+	// writer does with it, and why the common `status`-sharing configuration is what makes
+	// this more than defensive.
+	return key === '' ? [] : [{ file, sets: [{ key, value }], requiresType: RELEASE_TYPE }];
 }
 
 /**

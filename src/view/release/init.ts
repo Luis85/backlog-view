@@ -111,15 +111,24 @@ export function adoptableReleaseKeys(config: BasesViewConfig, candidates: Adopti
 	const taken = new Set(declaredPropertyKeys(config).filter((key) => key !== ''));
 	const shares = (candidate: AdoptionCandidate): boolean => SHARED_STATUS_OPTIONS.includes(candidate.option);
 	// Sequenced rather than written as one array literal: `adoptCandidates` MUTATES `taken`,
-	// so the exempt seed below has to be built from it afterwards — a literal would have made
-	// that depend on the evaluation order of its own elements.
+	// so the seed below has to be built from what it claimed — a literal would have made that
+	// depend on the evaluation order of its own elements.
 	const adopted = adoptCandidates(config, candidates.filter((candidate) => !shares(candidate)), taken);
-	const held = new Set(declaredPropertyKeys(config, SHARED_STATUS_OPTIONS).filter((key) => key !== ''));
-	const free = [...taken].filter((key) => !held.has(key));
+	// What blocks one of the exempt three: a key any OTHER option owns, plus whatever this
+	// press has just claimed. Asked as "does a non-shared option hold it" and never as "is it
+	// held by a shared one" — the second reads the same on the shipped defaults and is wrong
+	// the moment BOTH kinds hold one key (found by review, PR #211: with
+	// `versionProperty: note.status` and `stateProperty: note.status`, subtracting the shared
+	// options' keys freed `status`, ✨ bound the release status onto it, and the collision
+	// report that landed the same day then blocked every write in the view).
+	const blocked = new Set([
+		...declaredPropertyKeys(config, (option) => !SHARED_STATUS_OPTIONS.includes(option)).filter((key) => key !== ''),
+		...adopted.map((candidate) => candidate.suggested),
+	]);
 	// One call per exempt candidate, each against its OWN copy: `adoptCandidates` adds a
 	// suggestion to `taken` as it takes it, which is exactly how a shared sweep would refuse
 	// the second of two options that are allowed to name one property.
-	const status = candidates.filter(shares).flatMap((c) => adoptCandidates(config, [c], new Set(free)));
+	const status = candidates.filter(shares).flatMap((c) => adoptCandidates(config, [c], new Set(blocked)));
 	return [...adopted, ...status];
 }
 

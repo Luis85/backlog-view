@@ -1182,6 +1182,13 @@ export const en = {
 	'gate.staleDatesPartial': 'That note changed while the move was in flight, so the rest of the move was not written.',
 	'gate.staleDatesNone': 'That note changed while the move was in flight, so nothing was written.',
 	'gate.becameResource': 'That note became a resource while the change was in flight, so nothing was written to it.',
+	/**
+	 * `PropertyWrite.requiresType`'s own refusal, beside `gate.becameResource` and worded to
+	 * match it: a note retyped between the plan and the write is somebody else's now.
+	 * `{type}` is the type NAME — data, matched in frontmatter — so it is a parameter here
+	 * exactly as it is in the legend's marker caption.
+	 */
+	'gate.retyped': 'That note is no longer a {type}, so nothing was written to it.',
 
 	/**
 	 * Every card move's live-region announcement, in the two shapes a gesture can have:

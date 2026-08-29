@@ -145,9 +145,15 @@ export class ReleaseView extends BasesView {
 	 * The other refusal a write here can meet is the planner's: an unconfigured key is
 	 * dropped before a batch exists.
 	 *
-	 * `outsideFilter` asks the MODEL, like the estimation view's: a release this base did
-	 * not return is not this view's to write. It answers true before the first model, which
-	 * refuses a write nothing can have asked for yet.
+	 * `outsideFilter` asks the MODEL for the ITEM and reads its own flag — never
+	 * `byPath.has(path)`, which was this predicate until review found the hole (PR #211).
+	 * `byPath` holds context rows too: a work item with a hand-written `parent: [[R]]` pulls
+	 * the release it names into the model through `loadOutsideParents`, which is not
+	 * type-gated (`BacklogModel.releases`' own comment records that a release can be seated
+	 * in the tree that way). So a release the Base EXCLUDED could be in the map, and `has`
+	 * authorized an edit to it — the one thing the root guide's context-row rule says this
+	 * plugin never does. It answers true before the first model too, which refuses a write
+	 * nothing can have asked for yet.
 	 */
 	readonly gate: WriteGate<PropertyWrite>;
 
@@ -166,7 +172,7 @@ export class ReleaseView extends BasesView {
 			{
 				app: () => this.app,
 				writeProblems: () => releaseNoteProblems(this.settings),
-				outsideFilter: (path) => !this.model || !this.model.byPath.has(path),
+				outsideFilter: (path) => this.model?.byPath.get(path)?.outsideFilter !== false,
 			},
 			{ syncBusy: () => this.syncBusy(), flushDataUpdate: () => this.onDataUpdated() },
 			lock,

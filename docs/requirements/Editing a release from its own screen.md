@@ -9,6 +9,8 @@ source: user request — release management improvements, 2026-08-29
 files:
   - src/domain/releaseOptions.ts
   - src/domain/settingsConsistency.ts
+  - src/domain/estimationWritePlan.ts
+  - src/storage/propertyWrite.ts
   - src/domain/releases.ts
   - src/domain/releaseWritePlan.ts
   - src/storage/createNote.ts
@@ -102,7 +104,20 @@ whose whole job is to say what a release is. Asked for as a property by the auth
   two descriptions.
 - **5a — the release note is outside the Base's filter.** The batch is refused whole and
   says so — the gate's own outside-filter refusal, which this view has a batch to be refused
-  for the first time.
+  for the first time. Asked of the ITEM's own `outsideFilter` flag and never of
+  `byPath.has(path)`: the model holds context rows too, and a work item with a hand-written
+  `parent: [[R]]` pulls the release it names into the tree through `loadOutsideParents`,
+  which is not type-gated — so a `has` test authorized an edit to a release the Base
+  excluded, the one thing the context-row rule says this plugin never does (found by review,
+  PR #211).
+- **5c — the note stopped being a release while the control was open.** The write is refused
+  at the WRITER, against the live frontmatter (`PropertyWrite.requiresType`), and says the
+  note is no longer a `Release`. The plan comes from a model that can be a refresh behind and
+  the window between a menu opening and its pick is one nothing upstream sees; on the shipped
+  configuration where a release's status and an item's workflow state share `status`, this
+  write would otherwise land on a work item's own state. `applyPropertyWrites` refused only a
+  live `Resource` before this. The same rule `mayHoldField` states at the other writer: ask
+  the LIVE type.
 - **5b — a member's own fields.** Never editable here. Nothing on this screen writes to a
   member, and the two actions name `release.item.file` and nothing else.
 - **6a — the release has no released date yet.** The control draws **Mark as released**,
@@ -158,6 +173,11 @@ whose whole job is to say what a release is. Asked for as a property by the auth
   whichever view wrote it" means rather than a gap.
 - `applyWrites` and `applyRestores` — the item-batch path — are still never called from
   `src/view/release/`: this view plans no hierarchy, no state and no placement.
+- **The dialogs capture the KEY they were opened for**, never re-reading it at submit: a
+  `.base` re-pointed while a dialog is open would otherwise leave the box holding the old
+  property's value and write it to the new one, overwriting data the reader never saw. The
+  root guide's "capture before the await", which the status menu already kept and the
+  description dialog did not.
 - **A configuration that would corrupt the release note refuses every edit.** Two of this
   view's release-note properties on one key — a status aimed at the TYPE key is the worst,
   since picking one takes `Release` off the note and the release vanishes from its own view —
@@ -166,7 +186,11 @@ whose whole job is to say what a release is. Asked for as a property by the auth
   refuses on: one statement, two enforcement points, because an edit never passes the
   creator and ✨ cannot produce the state a property picker can. Found by review on this PR.
   It is over the RELEASE-NOTE keys alone, so the item-state / release-status sharing this
-  view is built around stays legal.
+  view is built around stays legal. **✨ must not be able to CREATE that state either**, and
+  the exemption it uses is stated as "no NON-shared option holds this key" rather than "a
+  shared option holds it": with the version and the item state both on `status`, the second
+  reading freed the key, ✨ bound the release status onto the version's, and this very report
+  then blocked every write in the view (found by review, PR #211).
 - **Focus survives the redraw an edit causes.** Both controls are in
   `FOCUS_HANDLE_CLASSES` (`releaseView.ts`), so the reader who pressed one lands on its
   replacement rather than on `document.body` — which bites hardest here of anywhere in this
@@ -201,7 +225,9 @@ nothing at all — the "same value writes nothing" rule stated once rather than 
 control — the status compared case-insensitively, the description exactly, and the date
 against its own canonical spelling. It plans
 the same `PropertyWrite` the estimation view does and is applied by
-`src/storage/propertyWrite.ts`, which captures the inverse the shared undo slot replays.
+`src/storage/propertyWrite.ts`, which captures the inverse the shared undo slot replays —
+and which refuses a file whose LIVE type is not the one the plan named
+(`PropertyWrite.requiresType`, `src/domain/estimationWritePlan.ts`), the guard 5c is about.
 `releaseStatusChoices` in `src/domain/releases.ts` is the menu's vocabulary, beside the
 `ReleaseRow` figures it unions.
 

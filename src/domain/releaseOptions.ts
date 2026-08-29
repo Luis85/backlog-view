@@ -255,8 +255,9 @@ export const SHARED_STATUS_OPTIONS = ['stateProperty', 'deliverableStateProperty
 /**
  * Every frontmatter key the DECLARED property options currently resolve to — read off the
  * declaration, so an option added to either group joins this set without anybody
- * remembering to add it. `options` narrows it to the option ids named, which is how
- * {@link SHARED_STATUS_OPTIONS}' own exemption is subtracted from the whole.
+ * remembering to add it. `include` narrows it to the options it answers for — which is how
+ * {@link SHARED_STATUS_OPTIONS}' own exemption asks for the keys held by every OTHER
+ * option, the only set that may block one of the shared three.
  *
  * It exists for `runReleaseInit`'s "never hand out a key another of this view's options
  * already names", and it is derived rather than listed because a LIST is what that rule
@@ -272,12 +273,12 @@ export const SHARED_STATUS_OPTIONS = ['stateProperty', 'deliverableStateProperty
  * real default and take it when nobody has touched them, and every other property option
  * defaults to nothing, where `clearablePropKey` and `propKey` answer identically.
  */
-export function declaredPropertyKeys(config: BasesViewConfig, options?: string[]): string[] {
+export function declaredPropertyKeys(config: BasesViewConfig, include?: (optionKey: string) => boolean): string[] {
 	const { clearablePropKey } = configReaders(config);
 	return getReleaseViewOptions(config)
 		.flatMap((entry) => (entry.type === 'group' ? entry.items : [entry]))
 		.filter((option): option is BasesPropertyOption => option.type === 'property')
-		.filter((option) => options === undefined || options.includes(option.key))
+		.filter((option) => include === undefined || include(option.key))
 		.map((option) => clearablePropKey(option.key, (option.default ?? '').replace(/^note\./, '')));
 }
 

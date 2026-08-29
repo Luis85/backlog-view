@@ -31,6 +31,23 @@ export interface PropertySet {
 export interface PropertyWrite {
 	file: TFile;
 	sets: PropertySet[];
+	/**
+	 * The type the note must STILL be for this write to land — checked against the live
+	 * frontmatter by `applyPropertyWrites`, which refuses the file (loudly) when it is not.
+	 *
+	 * It exists because a plan is made from a model that can be a refresh behind, and the
+	 * window between a menu opening and its pick is one nothing upstream can see: a release
+	 * retyped to a `PBI` in that window took the release view's status write onto a work
+	 * item's own workflow state, which is the common configuration rather than an exotic one
+	 * — both spell `status` (found by review, PR #211). The same rule `mayHoldField` states
+	 * at the other writer: ask the LIVE type, because a retype between the plan and the write
+	 * is a window nothing here can see.
+	 *
+	 * Optional, and the estimation view's own planners leave it unset: every row it writes is
+	 * a Base result of whatever type the reader is estimating, and its one type-shaped
+	 * refusal (a note that became a `Resource`) is unconditional at the writer.
+	 */
+	requiresType?: string;
 }
 
 export function planScoreWrite(
