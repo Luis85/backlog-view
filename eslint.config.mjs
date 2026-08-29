@@ -122,35 +122,67 @@ const MENU_ANCHOR = {
  * in a `ChainExpression`, so it is no longer a direct child of the `??`). Widening the
  * scope to `domain/` would flag the two functions that exist to be the exception.
  *
- * **A SPELLING check, not a type check** — a selector carries no type information, so
- * this matches the two shapes every one of the seven sites actually used: a bare
- * `resource`/`target` local read for `.basename`, and the one-level-deeper
- * `resource.file.basename`. What it cannot see: an aliased read (`const f = resource.file;
- * f.basename`), a local named anything else, or a call reaching the same field through a
- * helper this file does not know is doing it. A category test driving two same-named
- * resources through every naming surface and asserting they read apart would see those;
- * this rule cannot, which is why `test/i18n/` (root `CLAUDE.md`) and
- * `test/domain/absences.test.ts` (Task 6 follow-up) still carry that check as well.
+ * **What this promises, measured rather than asserted (2026-08-29).** It refuses TWO
+ * SPELLINGS of one mistake — a local named `resource` or `target` read for `.basename`,
+ * and the one-level-deeper `resource.file.basename` — and it promises nothing about any
+ * other way the same name can be reached. That is the whole guarantee. It is a fifth of
+ * the naming rule, not the rule.
+ *
+ * The reach was measured with a probe file planted under `view/` carrying eight spellings
+ * of one resource's name, then thrown away. It flags three of the eight — the two banned
+ * shapes, plus one of them inside a template literal — and goes past `.title` (the field
+ * `Linking an item to a resource` created, and the natural spelling now), `TFile.name`, an
+ * aliased read (`const f = resource.file; f.basename`), a local named anything else, and a
+ * read through a callback parameter (`list.map((r) => r.title)`). Read the selector and it
+ * looks like a rule about naming a resource; run it and it is a rule about two identifiers
+ * and one property.
+ *
+ * **Widening it to `.title` on the same two identifiers was tried on that measurement and
+ * refused.** It gains no true positive, costs two false ones — `cardMoves.ts`'s release
+ * announcement and `dependencies.ts`'s prerequisite list, both `target.title` on a
+ * `BacklogItem` — and still misses the one real `.title` resource read in `view/`
+ * (`resourceNotes.ts`'s `r.title`), whose local is named neither. `.basename` is safe to
+ * ban on those two names because only a `TFile` has one and a `TFile` named `target` in
+ * `view/` is a resource; `.title` is a `BacklogItem`'s commonest field, so the same ban on
+ * it fires on items far more often than on resources. A rule exempted more often than it
+ * holds is one a reader learns to switch off, which is the failure this whole block exists
+ * to avoid.
+ *
+ * **What actually holds the rule is not here.** An AST sweep of `src/` for every read of
+ * `.basename` or `.title` — 102 of them — found 11 that read a RESOURCE's own name, and
+ * every one is a place raw is CORRECT: the roster's own definition and sort
+ * (`readItems.ts`, `model.ts`), `namedTargets` itself, the two `domain/` functions that ARE
+ * the lookup (`assigneeName`, `roadmap.ts`'s `resourceLabel`/`resourceTargetLabel`), the
+ * two `??` fallbacks below, `New resource...`'s duplicate-warning list (which must compare
+ * typed text against bare titles, or it warns about nothing), and the notice for a note
+ * created a moment ago, which no roster carries yet. So this rule flags nothing today and
+ * would flag nothing if it were three times wider. What would catch the next miss is a
+ * category test driving two same-named resources through every naming surface and asserting
+ * they read apart — `test/i18n/` (root `CLAUDE.md`) and `test/domain/absences.test.ts`
+ * (Task 6 follow-up) carry that shape. This selector is the cheap half, kept because a
+ * banned spelling costs one line to refuse. Of the seven historical sites it was measured
+ * against, it would have caught two; the other five reached the name by a spelling above.
  *
  * The one legitimate shape in `view/` — falling back to a bare `.basename` for a target
  * the label map does not carry, beside a real `resourceLabelsOf(...).get(...)` lookup
  * (`cardMoves.ts`'s `resourceLabel`, `interactions/absences.ts`'s `absenceResourceLabel`)
  * — is written `resourceLabelsOf(...).get(...) ?? …basename` and is exempted by asking
- * whether the `.basename` read is a direct child of a `??`; every other spelling of it is
- * still flagged.
+ * whether the `.basename` read is a direct child of a `??`. Every other spelling of THOSE
+ * TWO SHAPES is still flagged — which is not the same as every other way of reaching the
+ * name, per the measurement above.
  */
 const RESOURCE_LABEL_BYPASS = [
 	{
 		selector:
 			"MemberExpression[property.name='basename'][object.type='Identifier'][object.name=/^(resource|target)$/]:not(LogicalExpression[operator='??'] > *)",
 		message:
-			"A resource is named to the reader through namedTargets/resourceLabelsOf (src/domain/readItems.ts), never its own .basename — two Resource notes sharing a basename in different folders must read apart. Catches a bare resource.basename / target.basename; an aliased read or a differently named local goes past this (a spelling check, not a type check — see this rule's own comment in eslint.config.mjs).",
+			"A resource is named to the reader through namedTargets/resourceLabelsOf (src/domain/readItems.ts), never its own .basename — two Resource notes sharing a basename in different folders must read apart. This catches ONE spelling of that: a bare resource.basename / target.basename. It does not see .title, TFile.name, an aliased read, a differently named local, or a read through a callback — measured, not assumed. Passing it is not evidence the name reads apart; see this rule's own comment in eslint.config.mjs.",
 	},
 	{
 		selector:
 			"MemberExpression[property.name='basename'][object.type='MemberExpression'][object.object.name=/^(resource|target)$/]:not(LogicalExpression[operator='??'] > *)",
 		message:
-			"Same rule one level deeper: resource.file.basename is still the resource's own name, not the collision-aware label resourceLabelsOf gives it. See the sibling selector's message for what this can and cannot see.",
+			"Same rule one level deeper: resource.file.basename is still the resource's own name, not the collision-aware label resourceLabelsOf gives it. The second of the two spellings this block promises to see — see the sibling selector's message for the five it does not.",
 	},
 ];
 
