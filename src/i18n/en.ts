@@ -804,6 +804,13 @@ export const en = {
 	'release.option.status': 'Status property',
 	'release.option.state': 'Workflow state property',
 	'release.option.doneValues': 'States that count as done',
+	/** The statuses a vault declares for its own releases, and the box's own example.
+	 *  The VALUES are data — matched in frontmatter, written to notes — so the hint is a
+	 *  placeholder showing the SHAPE of a list, exactly as `option.stateValuesHint` is. */
+	'release.option.statusValues': 'Release statuses (in order)',
+	'release.option.statusValuesHint': 'Planned, In progress, Released',
+	/** What a release is for, in the reader's own words, on the release note. */
+	'release.option.description': 'Release description property',
 	'release.option.releasedDate': 'Released date property',
 	'release.option.folder': 'Release folder',
 	'option.typeProperty': 'Item type property',
@@ -1743,10 +1750,32 @@ export const en = {
 	/** The only way off one release's screen, so it is a real button and carries its own
 	 *  name — the icon alone says nothing to a reader who cannot see it. */
 	'release.scope.back': 'Back to all releases',
-	/** The way to the release NOTE — where its version, date and status are actually
-	 *  edited, since this view reads all three and writes none of them. Named rather than
-	 *  left to the icon, `release.scope.back`'s own reason one line up. */
+	/** The way to the release NOTE — the whole note, where anything this screen does not
+	 *  edit is edited. Named rather than left to the icon, `release.scope.back`'s own
+	 *  reason one line up. */
 	'release.scope.openNote': 'Open release note',
+	/**
+	 * The status chip's own affordance and the way back off a status. The VALUES the menu
+	 * offers are data — this vault's own words for its process, written to notes and
+	 * matched there — so only the two frames around them are text, exactly as
+	 * `menu.setState` and `menu.clearTestState` are.
+	 */
+	'release.scope.setStatus': 'Set the release status',
+	'release.scope.clearStatus': 'Clear status',
+	/**
+	 * The description: its dialog, the field's own invitation, and the way in from the
+	 * header. `{name}` is the release note's own name — vault data — and the placeholder is
+	 * an example of the SHAPE of a sentence rather than one this plugin would write.
+	 *
+	 * `descriptionEmpty` is drawn where the key is bound and the note carries nothing, and
+	 * it is deliberately an invitation rather than a blank: absence here is something the
+	 * reader can fix in one press, the same call the dashed risk and priority chips make in
+	 * the tree.
+	 */
+	'release.scope.descriptionTitle': 'Describe {name}',
+	'release.scope.descriptionPlaceholder': 'What this release is for',
+	'release.scope.descriptionSave': 'Save',
+	'release.scope.descriptionEmpty': 'Add a description',
 	/**
 	 * The ancestor drawn only to keep a member in its place — and NOT the tree's own
 	 * `row.contextMarker`, whose sentence is false here every time. That one says a row is
@@ -1876,6 +1905,8 @@ export const en = {
 	'newRelease.field.version': 'Version',
 	'newRelease.field.targetDate': 'Target date',
 	'newRelease.field.status': 'Status',
+	/** Prose, and the one field of the four that gets a box rather than a line. */
+	'newRelease.field.description': 'Description',
 	'newRelease.create': 'Create',
 	'newRelease.cancel': 'Cancel',
 

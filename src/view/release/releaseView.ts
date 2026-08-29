@@ -1,4 +1,8 @@
 import { BasesView, QueryController, TFile } from 'obsidian';
+import { PropertyWrite } from '../../domain/estimationWritePlan';
+import { applyPropertyWrites } from '../../storage/propertyWrite';
+import { WriteGate } from '../writeGate';
+import { WriteLock } from '../writeLock';
 import { t } from '../../i18n/t';
 import { BacklogModel, buildModel } from '../../domain/model';
 import { ReleaseSettings, resolveReleaseSettings } from '../../domain/releaseOptions';
@@ -50,22 +54,30 @@ const FOCUS_HANDLE_CLASSES = [
 ];
 
 /**
- * The release view: the plugin's third Bases view, and the one that **creates notes and
- * its own config, and never edits a note that already exists.**
+ * The release view: the plugin's third Bases view, and the one that **creates release
+ * notes and its own config, and edits the RELEASE NOTE it is showing and nothing else.**
  *
- * Read that claim as narrowly as it is written — it was `WRITES NOTHING` until 2026-08-24,
- * and `New release` is what retired the wider sentence. What stays refused is the EDIT
- * path: `applyWrites`, `applyRestores` and `applyPropertyWrites` are never called from
- * `src/view/release/`, which `test/view/releaseNeverEdits.test.ts` asserts on the calls
- * themselves rather than by driving the screens somebody thought of.
+ * Read that claim as narrowly as it is written; it has now been narrowed twice. It was
+ * `WRITES NOTHING` until 2026-08-24, when `New release` retired the wider sentence, and
+ * `never edits a note that already exists` until 2026-08-29, when
+ * [[Editing a release from its own screen]] asked for the status and the description to be
+ * settable from the release's own screen. What is refused now is everything else: no MEMBER
+ * is ever written to — a member is work, and the backlog view is where work is edited —
+ * and `applyWrites` and `applyRestores`, the ITEM-batch entry points, are still never
+ * called from `src/view/release/`. `test/view/releaseNeverEdits.test.ts` states what the
+ * screens' ordinary gestures still do not do; `test/view/release/releaseEdits.test.ts`
+ * drives the two that now write and asserts the batch names the release note alone.
  *
- * There is still no `WriteGate` and no `WriteLock` here, and their absence is the design
- * rather than an omission. The lock exists to serialize writers (ADR 0030) and a create is
- * not a batch: it plans nothing, captures no inverse, and so has neither an undo slot to
- * share nor anything to serialize against. Every write rule the register states — the
- * `configProblems` gate, the context-row refusal, capture before the await — is about a
- * batch this view never plans. The accepted cost is the one every `New` in this plugin
- * carries: a created note is not undoable.
+ * **So there is a `WriteGate` here now, and it is the plugin's own one lock behind it.**
+ * The gate's absence used to be the design — a create is not a batch, so there was nothing
+ * to serialize and no inverse to take back. An edit is a batch: it captures an inverse
+ * (`applyPropertyWrites`, through `captureInverse`), so it belongs in the same undo slot
+ * and the same serialization as every other view's write (ADR 0030). What follows is worth
+ * knowing before reading the undo story as broken: this view draws no undo control of its
+ * own, so a status set here is taken back from the BACKLOG view's undo button — which is
+ * what "the undo slot is the vault's last batch, whichever view wrote it" means, rather
+ * than a gap. The create path is unchanged and still installs nothing: a created note is
+ * not undoable.
  *
  * Its entry point is the INDEX, not one release: with nothing picked it lists every
  * release the results hold, and picking a row opens that release's screen. Which release
@@ -102,7 +114,26 @@ export class ReleaseView extends BasesView {
 	 *  nothing, so this has to be read before the teardown rather than after it. */
 	scopeHadFocus = false;
 
-	constructor(controller: QueryController, containerEl: HTMLElement) {
+	/**
+	 * The gate every edit passes, over the plugin-wide lock this view is handed. There is
+	 * no default for the lock, `registerEstimationView`'s own rule: a silent per-view
+	 * fallback is exactly the bug a shared lock exists to prevent — one view serializing
+	 * and undoing against nobody.
+	 *
+	 * `writeProblems` answers NOTHING, and that is a statement rather than a stub:
+	 * `ReleaseSettings` has no `configProblems` of its own ([[Two release options aimed at
+	 * one property go unreported]]), so there is no per-view validation for the gate to
+	 * run. The two things that WOULD block a write here are asked where they can be
+	 * answered — an unconfigured key is dropped by the planner, and `createRelease`'s own
+	 * collision guard is at the creator.
+	 *
+	 * `outsideFilter` asks the MODEL, like the estimation view's: a release this base did
+	 * not return is not this view's to write. It answers true before the first model, which
+	 * refuses a write nothing can have asked for yet.
+	 */
+	readonly gate: WriteGate<PropertyWrite>;
+
+	constructor(controller: QueryController, containerEl: HTMLElement, lock: WriteLock) {
 		super(controller);
 		this.viewEl = containerEl.createDiv({ cls: 'pbl-view pbl-rel-view' });
 		// Nothing to render until Bases delivers the first result set — say what is
@@ -113,6 +144,20 @@ export class ReleaseView extends BasesView {
 		// contract), so the initial settings come from a config that answers "nothing is
 		// set" rather than from `this.config` — the estimation view's own shape.
 		this.settings = resolveReleaseSettings({ get: () => undefined, getAsPropertyId: () => null } as never);
+		this.gate = new WriteGate<PropertyWrite>(
+			{
+				app: () => this.app,
+				writeProblems: () => [],
+				outsideFilter: (path) => !this.model || !this.model.byPath.has(path),
+			},
+			{ syncBusy: () => this.syncBusy(), flushDataUpdate: () => this.onDataUpdated() },
+			lock,
+			// The type key is read at WRITE time rather than captured with the gate, the
+			// estimation view's own reason: the `.base` can be re-pointed at another property
+			// while this view is open, and the writer's refusal has to ask the key the user
+			// means now.
+			(writes, onProgress, onInverse) => applyPropertyWrites(this.app, writes, this.settings.typeKey, onProgress, onInverse),
+		);
 	}
 
 	/**
@@ -125,13 +170,48 @@ export class ReleaseView extends BasesView {
 	 * holds neither.
 	 */
 	onunload(): void {
+		this.gate.dispose();
 		this.viewEl.detach();
 	}
 
 	onDataUpdated(): void {
+		// A batch write touches one file at a time and each comes back as its own update;
+		// deferring the rebuild until the batch settles is the contract every view's gate
+		// keeps. This view's batches are one note today, so the deferral saves one redraw
+		// rather than hundreds — it is here because the gate's flush is what redraws AFTER a
+		// write, and a view that did not defer would draw the half-applied state first.
+		if (this.gate.deferUpdate()) return;
 		this.settings = resolveReleaseSettings(this.config);
 		this.restorePick();
 		this.render();
+	}
+
+	/**
+	 * What this view publishes while a batch is in flight: `aria-busy` on the pane, and
+	 * nothing else. The estimation view's own `syncBusy` minus the toolbar, because this
+	 * view has no write control to disable — the two that write open a menu and a dialog,
+	 * both of which are gone from the screen before the batch they started runs.
+	 *
+	 * It asks the LOCK (`gate.writing`) rather than this view's own progress, the rule ADR
+	 * 0030 states: a batch is a fact about the vault, so a sibling view says so too.
+	 */
+	private syncBusy(): void {
+		this.viewEl.toggleAttribute('aria-busy', this.gate.writing);
+	}
+
+	/**
+	 * The one place an edit to the release note is applied — every input that changes a
+	 * release's own field lands here, which is the root guide's "one move, N inputs" read
+	 * for this view: the status menu, its Clear entry and the description dialog all hand
+	 * this a planned batch rather than each calling the gate beside its own plan.
+	 *
+	 * The redraw is skipped when the batch's own deferred update already drew this state
+	 * (`WriteGate.flushedLastBatch`) — the estimation view's `applyPlan`, and its reason:
+	 * two full rebuilds of one screen for one write.
+	 */
+	async applyRelease(writes: PropertyWrite[]): Promise<void> {
+		await this.gate.applySafely(writes);
+		if (!this.gate.flushedLastBatch) this.onDataUpdated();
 	}
 
 	/** What `opener` needs of this view — one object built here rather than at every call
@@ -378,7 +458,7 @@ export class ReleaseView extends BasesView {
 		// rules on it, and `renderScope` repeating it would be an unreachable branch.
 		// `backlogSettings` rides along too, for the summary strip's provenance tooltip
 		// (`renderScope.ts`'s own comment on why it takes this rather than re-resolving).
-		renderScope(this, scope, scope.release, backlogSettings);
+		renderScope(this, scope, scope.release, backlogSettings, index);
 		return scope.release.path;
 	}
 }

@@ -130,6 +130,11 @@ function releaseFields(settings: ReleaseSettings): ReleaseFieldId[] {
 	if (settings.versionKey) fields.push('version');
 	if (settings.targetDateKey) fields.push('targetDate');
 	if (settings.statusKey) fields.push('status');
+	// LAST, and it is the only one of the four whose position is an argument rather than
+	// an order somebody picked: the other three are one line each and this one is a box,
+	// so a dialog that put it in the middle would push the short fields below the fold of
+	// a box the reader has not typed in yet.
+	if (settings.descriptionKey) fields.push('description');
 	return fields;
 }
 

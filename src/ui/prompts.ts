@@ -39,7 +39,7 @@ let warningIdSeq = 0;
  * is the last thing appended to `contentEl`, and a caller that built its own would be
  * free to get that order wrong.
  */
-abstract class PromptModal<O> extends Modal {
+export abstract class PromptModal<O> extends Modal {
 	protected readonly options: O;
 
 	constructor(app: App, options: O) {

@@ -1,7 +1,7 @@
 import { App, TFile } from 'obsidian';
 import { BacklogItem, BacklogModel, inPlan } from './model';
 import { ReleaseSettings } from './releaseOptions';
-import { CivilDate, FieldReading, linkpathFromRawValue, ownValue, readDate, readString } from './noteFields';
+import { CivilDate, FieldReading, linkpathFromRawValue, ownValue, readDate, readString, sameValue } from './noteFields';
 import { isMarkerType, isReleaseType } from './itemTypes';
 import { ownWorkflowKind, ownWorkflowReading, WorkflowKind } from './board';
 
@@ -26,6 +26,18 @@ export interface ReleaseRow {
 	version: ReleaseFigure<string>;
 	target: ReleaseFigure<CivilDate>;
 	status: ReleaseFigure<string>;
+	/**
+	 * What this release is FOR, in the reader's own words — read from the release view's
+	 * own `descriptionKey`, with `readLabel`'s three answers exactly as the version and the
+	 * status have them: unconfigured (no key bound), invalid (a key holding something no
+	 * reader will make a sentence of), or a value.
+	 *
+	 * A PROPERTY and not the note body — the reversal `ReleaseSettings.descriptionKey`
+	 * records. What follows for this row is that a description is a FIGURE like the others
+	 * and is drawn by the same rules: absent draws nothing, unreadable says so, and neither
+	 * is a paragraph this view had to open the note to find.
+	 */
+	description: ReleaseFigure<string>;
 	/**
 	 * Notes whose OWN membership property names this release — never an ancestor, never a
 	 * descendant. A FIGURE like the other three, not a bare number: with the membership key
@@ -365,6 +377,39 @@ function withinGroupOrder(a: ReleaseRow, b: ReleaseRow): number {
  * a fourth positional argument reads as "and one more thing", while a bag says the caller
  * is handing over context the two typed inputs above don't carry.
  */
+/**
+ * The statuses `Set status` offers for one release: what this vault DECLARED, then what
+ * its releases actually CARRY, then this release's own value if it is in neither.
+ *
+ * A UNION, where the plan's own `stateMenuValues` is an either/or — declared wins and
+ * observed is ignored there. The difference follows from what each list is for. A workflow
+ * declares its columns, so a state outside the declared list is a card the board cannot
+ * draw; a release status is a label on one note, drawn as a chip wherever it appears, so a
+ * value somebody has already written is a value this vault uses whether or not anybody
+ * wrote it into the options. `horizonMenuValues` makes the same call for the same reason.
+ *
+ * Order is DECLARED first and in declared order, because that is the reader's own statement
+ * of their process; observed values follow in first-seen row order, which is the index's
+ * order and so stable between renders. `current` is appended rather than sorted in — a
+ * value on this note that neither list holds is exactly what a hand-edit or a renamed
+ * vocabulary leaves behind, and the menu has to be able to draw it checked.
+ *
+ * Deduplicated with `sameValue` (case-insensitive, `noteFields.ts`), which is the same
+ * comparison the pick's own no-op rule uses — so a menu can never offer two entries that
+ * would write the same value, and never one that is already checked twice.
+ */
+export function releaseStatusChoices(settings: ReleaseSettings, index: ReleaseIndex, current: string | null): string[] {
+	const choices: string[] = [];
+	const add = (value: string | null): void => {
+		if (value === null || value.trim() === '') return;
+		if (!choices.some((held) => sameValue(held, value))) choices.push(value);
+	};
+	for (const declared of settings.statusValues) add(declared);
+	for (const row of index.rows) add(row.status.value);
+	add(current);
+	return choices;
+}
+
 export interface ReleaseIndexOptions {
 	/**
 	 * `BacklogSettings.stateKey` — the PLAN's own state key. Not one of `ReleaseSettings`'
@@ -459,6 +504,7 @@ export function releaseIndex(
 			version: settings.versionKey ? figure(readLabel(ownValue(fm, settings.versionKey))) : UNCONFIGURED,
 			target,
 			status: settings.statusKey ? figure(readLabel(ownValue(fm, settings.statusKey))) : UNCONFIGURED,
+			description: settings.descriptionKey ? figure(readLabel(ownValue(fm, settings.descriptionKey))) : UNCONFIGURED,
 			members: settings.membershipKey
 				? figure({ value: counts.get(item.file.path) ?? 0, invalid: false })
 				: UNCONFIGURED,

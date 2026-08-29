@@ -34,6 +34,23 @@ export interface ReleaseSettings {
 	statusKey: string;
 	/** On the RELEASE note, beside `versionKey`: when it actually shipped. */
 	releasedDateKey: string;
+	/**
+	 * On the RELEASE note: what it is for, in the reader's own words. A PROPERTY and not
+	 * the note body, which is the register's standing answer for every other kind here
+	 * ([[Milestones as their own type]]: "The description is the note body… No new
+	 * field"). Asked for as a property by the author on 2026-08-29 and recorded as a
+	 * reversal for releases alone: a release is the one kind this plugin both CREATES and
+	 * REPORTS on without opening — the index and the scope header draw its fields, and a
+	 * body they would have to read the file to show is a body neither can draw.
+	 */
+	descriptionKey: string;
+	/**
+	 * The statuses this vault declares for a release, in the order they were written —
+	 * `BacklogSettings.states`' own shape for the plan's workflow, and empty when nobody
+	 * has declared any, which is not the same as "no statuses exist": `Set status` unions
+	 * this with what the releases in the base actually carry.
+	 */
+	statusValues: string[];
 	/** Where `New release` files a note. A PATH, not a property key. */
 	folder: string;
 	/** Where a scope row's click opens its note — this view's OWN option, never the
@@ -168,6 +185,29 @@ function releaseGroup(): BasesAllOptions {
 				placeholder: 'released',
 				filter: notePropsOnly,
 			},
+			// The vocabulary `Set status` offers, declared rather than detected — the shape
+			// `stateValues` has for the plan's own workflow, and with the same absence of a
+			// default: these are the reader's words for their own process, and shipping three
+			// would put this plugin's guess in every vault's `.base` the first time somebody
+			// opened the options panel. Empty is not "no statuses": the menu unions this with
+			// the values the releases in the base already carry (`releaseStatusChoices`), so a
+			// vault that declares nothing still picks from what it has written.
+			{
+				type: 'text',
+				key: 'releaseStatusValues',
+				displayName: t('release.option.statusValues'),
+				placeholder: t('release.option.statusValuesHint'),
+			},
+			// What a release is FOR, in the reader's own words, on the release note itself.
+			// A property rather than the note body — see `ReleaseSettings.descriptionKey` for
+			// the standing decision this reverses and why it is reversed for this type alone.
+			{
+				type: 'property',
+				key: 'descriptionProperty',
+				displayName: t('release.option.description'),
+				placeholder: 'description',
+				filter: notePropsOnly,
+			},
 			{
 				type: 'folder',
 				key: 'releaseFolder',
@@ -250,7 +290,7 @@ export function resolveReleaseSettings(config: BasesViewConfig): ReleaseSettings
 	// `{ typeProperty: '' }` can never pass. `clearablePropKey` draws exactly that
 	// distinction (`config.get(key) === undefined ? def : propKey(key, '')`) and exists
 	// for this: unset takes the suggestion, cleared means off.
-	const { clearablePropKey, propKey, str, clearable } = configReaders(config);
+	const { clearablePropKey, propKey, str, clearable, list, dedupe } = configReaders(config);
 	return {
 		parentKey: clearablePropKey('parentProperty', 'parent'),
 		orderKey: clearablePropKey('orderProperty', 'order'),
@@ -280,6 +320,12 @@ export function resolveReleaseSettings(config: BasesViewConfig): ReleaseSettings
 		// `propKey`, not `clearablePropKey`: their default is `''`, so the two resolve the
 		// same value for every input — the reason already stated above for `versionKey`.
 		releasedDateKey: propKey('releasedDateProperty', ''),
+		// `propKey` and `list`, the same readings their siblings take: the description's
+		// default is '' like every other unbound property here, and an empty status list is
+		// exactly what an untouched box means — there is no real default for either to be
+		// cleared BACK to, which is what `clearable` exists for.
+		descriptionKey: propKey('descriptionProperty', ''),
+		statusValues: dedupe(list('releaseStatusValues')),
 		// A PATH, not a property key: same reading `resolveFolders` gives every type
 		// folder — trimmed and normalized by `vaultFolder`, clearable because the default
 		// is a real value (`config.get` cannot tell "cleared" from "never set" otherwise).

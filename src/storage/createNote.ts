@@ -142,6 +142,7 @@ export interface NewReleaseSpec {
 	version?: string;
 	targetDate?: string;
 	status?: string;
+	description?: string;
 }
 
 /**
@@ -229,6 +230,11 @@ export async function createRelease(app: App, settings: ReleaseSettings, spec: N
 		settings.targetDateKey,
 		settings.statusKey,
 		settings.releasedDateKey,
+		// The description joins the list by the same rule the released date does, and it is
+		// the one of the six this function BOTH writes and would be read back from: aliased
+		// onto the status key it would put a paragraph where the index draws a chip, and
+		// onto the type key it would take `Release` off the note outright.
+		settings.descriptionKey,
 	].filter((key) => key !== '');
 	if (new Set(written).size !== written.length) throw new Error('createRelease: two release properties name one key');
 	const folder = vaultFolder(settings.folder);
@@ -239,6 +245,7 @@ export async function createRelease(app: App, settings: ReleaseSettings, spec: N
 	if (stated(spec.version) && settings.versionKey) setOwn(fm, settings.versionKey, spec.version);
 	if (stated(spec.targetDate) && settings.targetDateKey) setOwn(fm, settings.targetDateKey, spec.targetDate);
 	if (stated(spec.status) && settings.statusKey) setOwn(fm, settings.statusKey, spec.status);
+	if (stated(spec.description) && settings.descriptionKey) setOwn(fm, settings.descriptionKey, spec.description);
 	return app.vault.create(path, `---\n${stringifyYaml(fm)}---\n`);
 }
 

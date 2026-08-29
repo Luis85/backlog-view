@@ -39,7 +39,15 @@ import type { ReleaseView } from './releaseView';
  * the hide-done toggle is withheld and the summary strip says so instead of measuring — the
  * whole progress half of this view, missing after a ✨ that said it had bound everything.
  * Without a released-date key, [[Marking a release as released]]'s own figure is
- * unconfigured the same way.
+ * unconfigured the same way. `descriptionProperty` joined them the same day for the same
+ * reason read once more ([[Editing a release from its own screen]]): with no key bound the
+ * scope header draws no description line at all, so the field the reader was told they
+ * could fill is on no screen.
+ *
+ * `releaseStatusValues` is NOT a candidate and could not be: it is a text option holding a
+ * vocabulary rather than a property, and there is no key to hand out — what a vault calls
+ * its own release statuses is its own to write, and `releaseStatusChoices` reads what the
+ * releases already carry so the menu works with the box empty.
  *
  * `membershipProperty` DOES belong here, though `resolveReleaseSettings`'s own comment
  * ("a suggestion is not a binding") reads at first as forbidding exactly this. That
@@ -60,6 +68,7 @@ export const RELEASE_SUGGESTED_KEYS: AdoptionCandidate[] = [
 	{ option: 'releaseStatusProperty', suggested: 'status' },
 	{ option: 'stateProperty', suggested: 'status' },
 	{ option: 'releasedDateProperty', suggested: 'released' },
+	{ option: 'descriptionProperty', suggested: 'description' },
 ];
 
 /**

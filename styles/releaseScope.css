@@ -70,6 +70,47 @@
 	flex: 0 0 auto;
 }
 
+/* The release's own status, and the one chip on this screen that is a write surface. It
+   is a real `<button>`, so Obsidian's `button:not(.clickable-icon)` DOES match it — the
+   audit `.pbl-rel-back` above passes by carrying `.clickable-icon`, and this one cannot,
+   since it is a chip rather than an icon. So the chip's own look is restated over that
+   rule: `.pbl-state-chip` (`styles/columns.css`) already draws the box, and what is
+   needed here is only to refuse the app's own button chrome — its background, its shadow
+   and its height — which would otherwise draw a pill inside a pill.
+
+   `docs/issues/The release index rows paint as Obsidian buttons.md` is the same defect on
+   this view's other screen, and its Step 7 is the audit this comment answers. */
+.pbl-rel-status {
+	flex: 0 0 auto;
+	height: auto;
+	box-shadow: none;
+	background-color: transparent;
+	font-size: var(--font-ui-smaller);
+}
+
+/* What the release is FOR, on its own line under the header's facts. The whole line is
+   the affordance, so it is a button too and takes the same chrome reset — plus a left
+   alignment, since Obsidian centres a button's text and this is a sentence. */
+.pbl-rel-desc {
+	height: auto;
+	box-shadow: none;
+	background-color: transparent;
+	padding: var(--size-4-1) 0;
+	font-size: var(--font-ui-small);
+	color: var(--text-muted);
+	text-align: start;
+	/* The sentence wraps rather than truncating: a description is the one thing on this
+	   header that is prose, and a paragraph cut at one line says less than no paragraph. */
+	white-space: normal;
+}
+
+/* Bound and empty, which is an invitation rather than an absence — dimmed and dashed, the
+   same pair the tree's own unset chips wear (`.pbl-state-unset`, `styles/columns.css`). */
+.pbl-rel-desc-empty {
+	color: var(--text-faint);
+	font-style: italic;
+}
+
 .pbl-rel-facts {
 	display: flex;
 	align-items: center;

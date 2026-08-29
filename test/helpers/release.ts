@@ -1,4 +1,5 @@
 import { TFile } from 'obsidian';
+import { WriteLock } from '../../src/view/writeLock';
 import { ReleaseView } from '../../src/view/release/releaseView';
 import { installObsidianDom } from './dom';
 import { FakeVault, FakeViewConfig, mountLeaf } from './vault';
@@ -70,18 +71,19 @@ export interface ReleaseHarness {
 }
 
 /**
- * `makeEstimationView`'s shape minus the `WriteLock`: this view creates notes and its own
- * config but plans no BATCH — see `registerReleaseView`'s own comment — so there is
- * nothing for a lock to serialize and no undo slot to share. A lock parameter here would
- * suggest otherwise.
+ * `makeEstimationView`'s shape, lock included since 2026-08-29: this view edits the
+ * release note it is showing ([[Editing a release from its own screen]]), so it has a gate
+ * and a batch like every other writer. A FRESH lock per view, the estimation helper's own
+ * choice and its reason — a test that does not care about sharing gets its own, and the
+ * two suites that DO care about the shared slot build one and hand it to both views.
  */
 export function makeReleaseView(
 	vault: FakeVault,
 	configValues: Record<string, unknown> = {},
-	{ base, viewName }: { base?: string; viewName?: string } = {},
+	{ base, viewName, lock }: { base?: string; viewName?: string; lock?: WriteLock } = {},
 ): ReleaseHarness {
 	const containerEl = mountLeaf(vault, base);
-	const view = new ReleaseView({} as never, containerEl);
+	const view = new ReleaseView({} as never, containerEl, lock ?? new WriteLock());
 	const config = new FakeViewConfig(configValues);
 	if (viewName) config.name = viewName;
 	const anyView = view as unknown as Record<string, unknown>;
@@ -114,6 +116,12 @@ export const RELEASE_CONFIG = {
 	releaseStatusProperty: 'note.status',
 	stateProperty: 'note.status',
 	releasedDateProperty: 'note.released',
+	// The two the editing screen needs bound (2026-08-29): a description property to draw
+	// and write, and the declared status vocabulary `Set status` unions with what the
+	// releases carry. Both are in the FULLY configured fixture for the same reason the two
+	// above are — a suite that wants the unbound case clears the key it is about.
+	descriptionProperty: 'note.description',
+	releaseStatusValues: 'Planned, In progress, Released',
 };
 
 /**

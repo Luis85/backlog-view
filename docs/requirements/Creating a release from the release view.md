@@ -40,8 +40,8 @@ separate act of bringing the release note itself into being.
 **Main flow**
 
 1. The user opens the new-release dialog.
-2. The user enters a title, and optionally a version, a target date and a status — whichever
-   of those three this vault tracks.
+2. The user enters a title, and optionally a version, a target date, a status and a
+   description — whichever of those this vault tracks.
 3. Confirming creates the release note, writing the title as the note's name and each
    entered field into its own bound property.
 
@@ -73,8 +73,14 @@ separate act of bringing the release note itself into being.
   `typeProperty` included: an option outside that list holding `status` blocks both.
 - **2a — the title is left blank.** Confirming is refused — the title is the note's own
   name, and there is nothing to create without one.
-- **2b — the vault tracks none of the three optional fields.** The dialog asks for a title
+- **2b — the vault tracks none of the optional fields.** The dialog asks for a title
   alone; a release can still be created with nothing else known about it yet.
+- **2d — a DESCRIPTION is asked for last** (2026-08-29, [[Editing a release from its own
+  screen]]), where a description property is bound. Last rather than in declaration order,
+  and it is the one field whose position is an argument: the other three are one line each
+  and this one is a box, so a dialog that put it in the middle would push the short fields
+  below the fold of a box the reader has not typed in yet. It is a property rather than the
+  note body — the reversal that other note records, for that type alone.
 - **2c — a field the vault tracks is left blank.** The key is not written at all, rather than
   written empty. [[Releases as their own type]] 3b names the empty string as UNREADABLE
   rather than absent, so a blank written here is this view's own reader reporting the release

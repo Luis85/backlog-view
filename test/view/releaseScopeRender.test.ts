@@ -173,7 +173,11 @@ describe("a release's scope on screen", () => {
 		const header = containerEl.querySelector('.pbl-rel-header') as HTMLElement;
 		expect(header.querySelector('h2')?.textContent).toBe('R');
 		expect(header.querySelector('.pbl-rel-version')?.textContent).toBe('1.0.0');
-		expect(header.querySelector('.pbl-state-chip.pbl-state-static')?.textContent).toBe('In progress');
+		// `.pbl-rel-status` and no longer `.pbl-state-static`: the status became this screen's
+		// one write surface on 2026-08-29, so the chip is a real button that opens the status
+		// menu ([[Editing a release from its own screen]]). The static class would now be a
+		// lie about what a click does.
+		expect(header.querySelector('.pbl-state-chip.pbl-rel-status')?.textContent).toBe('In progress');
 	});
 
 	it('repeats the index’s answers about a figure, rather than a second opinion', () => {

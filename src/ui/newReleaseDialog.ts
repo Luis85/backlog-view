@@ -8,7 +8,7 @@ import { t } from '../i18n/t';
  * `ReleaseSettings` and decides which ids to pass, in which order; the dialog renders
  * exactly the fields it is given, in the order given, and nothing more.
  */
-export type ReleaseFieldId = 'version' | 'targetDate' | 'status';
+export type ReleaseFieldId = 'version' | 'targetDate' | 'status' | 'description';
 
 /** What comes back on confirm. `title` is always present; an optional field is present
  *  exactly when it was asked for — never a key for a field the dialog was not given. */
@@ -17,20 +17,25 @@ export interface NewReleaseResult {
 	version?: string;
 	targetDate?: string;
 	status?: string;
+	description?: string;
 }
 
 const FIELD_LABEL: Record<ReleaseFieldId, () => string> = {
 	version: () => t('newRelease.field.version'),
 	targetDate: () => t('newRelease.field.targetDate'),
 	status: () => t('newRelease.field.status'),
+	description: () => t('newRelease.field.description'),
 };
 
-/** `targetDate` alone is a calendar date; the other two are free text, same reasoning
- *  as `SchedulePromptModal`'s own date fields in `ui/prompts.ts`. */
-const FIELD_TYPE: Record<ReleaseFieldId, 'text' | 'date'> = {
+/** `targetDate` alone is a calendar date and the description alone is prose; the other
+ *  two are one-line free text, same reasoning as `SchedulePromptModal`'s own date fields
+ *  in `ui/prompts.ts`. A description gets the box its content asks for — a sentence about
+ *  what a release is FOR does not fit a field sized for `1.2.0`. */
+const FIELD_TYPE: Record<ReleaseFieldId, 'text' | 'date' | 'area'> = {
 	version: 'text',
 	targetDate: 'date',
 	status: 'text',
+	description: 'area',
 };
 
 /**
@@ -90,7 +95,12 @@ class NewReleaseDialog extends Modal {
 	}
 
 	private renderField(contentEl: HTMLElement, field: ReleaseFieldId): void {
-		new Setting(contentEl).setName(FIELD_LABEL[field]()).addText((text) => {
+		const setting = new Setting(contentEl).setName(FIELD_LABEL[field]());
+		if (FIELD_TYPE[field] === 'area') {
+			setting.addTextArea((area) => area.onChange((v) => (this.values[field] = v)));
+			return;
+		}
+		setting.addText((text) => {
 			text.onChange((v) => (this.values[field] = v));
 			if (FIELD_TYPE[field] === 'date') text.inputEl.type = 'date';
 		});

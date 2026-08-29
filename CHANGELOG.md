@@ -42,6 +42,20 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ### Added
 
+- **A release's status is now set from its own screen, and a release can carry a
+  description.** The status chip in the release header opens a menu of the statuses your
+  vault declares (a new **Release statuses (in order)** option), plus the ones your other
+  releases already carry, plus this one's own — with the current one ticked and a **Clear
+  status** entry where there is something to clear. Re-picking the status a release already
+  has writes nothing. The description is a new property (**Release description property**,
+  bound by ✨ along with everything else): the **New release** dialog asks for one as its
+  last field, and the release's own screen draws it under the header as a line you press to
+  edit. Emptying the box takes the key off the note rather than leaving it blank.
+  **This is the first thing the release view edits.** It creates release notes and,
+  until now, nothing else — so two things follow. It writes to the release note and never to
+  a member: work is edited on the backlog view. And the edit joins the plugin's one undo
+  slot, which this view draws no button for: a status you set here is taken back with the
+  backlog view's undo, the same slot every view shares.
 - **Releases now draw on the roadmap.** A `Release` note with a target date draws a line
   down the dated grid at that date, its name in the header band and a swatch in the legend —
   purple and dashed, so it is never read as a milestone's cyan line. It draws on the

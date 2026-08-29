@@ -17,6 +17,7 @@
  * and no refresh to drive. A lock parameter here would suggest otherwise.
  */
 import { ReleaseView } from '../../src/view/release/releaseView';
+import { WriteLock } from '../../src/view/writeLock';
 import { drawChrome } from './chrome';
 import { drawIcons } from './icons';
 import { installObsidianDom } from '../helpers/dom';
@@ -98,7 +99,19 @@ function releaseHarnessVault(variant: ReleaseConfigVariant): FakeVault {
 		// from the clock, so the treatment is on the page whatever day it is opened — the
 		// days-overdue count is the one figure here that moves, and it moves upward.
 		release('Releases/0.5.md', { version: '0.5.0', 'target-date': '2026-05-04', status: 'In progress', order: 0 });
-		release('Releases/0.8.md', { version: '0.8.0', 'target-date': inDays(18), status: 'In progress', order: 1 });
+		// The one release with a DESCRIPTION, and the only one with a long enough scope to open
+		// on (`?pick=Releases/0.8.md`): the header's description line and its status chip are
+		// this screen's two write surfaces ([[Editing a release from its own screen]]), and
+		// neither is drawable in jsdom — one wraps a sentence under a two-line header and the
+		// other is a chip that has to refuse Obsidian's own button chrome. Every other release
+		// here carries none, which is the INVITATION state the same line draws.
+		release('Releases/0.8.md', {
+			version: '0.8.0',
+			'target-date': inDays(18),
+			status: 'In progress',
+			description: 'Everything the private beta asked for: passwordless sign-in, and the billing rewrite behind it.',
+			order: 1,
+		});
 		release('Releases/0.9.md', { version: '0.9.0', 'target-date': inDays(60), status: 'Planned', order: 2 });
 		// The long band: a 60-character name, the longest version and the longest status on
 		// one line 1. A release named rather than numbered is an ordinary vault, and it is
@@ -211,7 +224,7 @@ export function mountReleaseHarness(root: HTMLElement, variant: ReleaseConfigVar
 	const containerEl = leafEl.createDiv();
 	vault.addLeaf(new FileView(vault.addFile('Releases demo.base'), leafEl));
 
-	const view = new ReleaseView({} as never, containerEl);
+	const view = new ReleaseView({} as never, containerEl, new WriteLock());
 	const anyView = view as unknown as Record<string, unknown>;
 	anyView.app = vault.app;
 	const config = new FakeViewConfig(configValues(variant));

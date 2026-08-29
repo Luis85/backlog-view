@@ -291,6 +291,34 @@ export class TextComponent {
 	}
 }
 
+/**
+ * `TextComponent` over a `<textarea>` — Obsidian's own `TextAreaComponent`, which shares
+ * that class's whole surface and differs in the element alone. Added 2026-08-29 with the
+ * first two callers (`newReleaseDialog.ts`'s description field, `ui/textPrompt.ts`): a
+ * missing `addTextArea` on the mock's `Setting` threw inside `onOpen`, so the dialog drew
+ * NO content and four tests failed at the missing CTA rather than at the missing method.
+ * A test reading a field by `querySelectorAll('input')` does not see one of these, which
+ * is faithful — a textarea is not an input in a real DOM either.
+ */
+export class TextAreaComponent {
+	inputEl: HTMLTextAreaElement;
+	constructor(containerEl: HTMLElement) {
+		this.inputEl = containerEl.createEl('textarea') as HTMLTextAreaElement;
+	}
+	setPlaceholder(placeholder: string): this {
+		this.inputEl.placeholder = placeholder;
+		return this;
+	}
+	setValue(value: string): this {
+		this.inputEl.value = value;
+		return this;
+	}
+	onChange(cb: (value: string) => unknown): this {
+		this.inputEl.addEventListener('input', () => cb(this.inputEl.value));
+		return this;
+	}
+}
+
 export class ButtonComponent {
 	buttonEl: HTMLButtonElement;
 	constructor(containerEl: HTMLElement) {
@@ -429,6 +457,10 @@ export class Setting {
 	}
 	addText(cb: (text: TextComponent) => unknown): this {
 		cb(new TextComponent(this.controlEl));
+		return this;
+	}
+	addTextArea(cb: (text: TextAreaComponent) => unknown): this {
+		cb(new TextAreaComponent(this.controlEl));
 		return this;
 	}
 	addButton(cb: (btn: ButtonComponent) => unknown): this {
