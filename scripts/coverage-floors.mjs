@@ -40,15 +40,26 @@ import { fileURLToPath } from "node:url";
  */
 
 /**
- * The metrics knowingly pinned with no headroom, and why each one is.
+ * The metrics knowingly pinned with no headroom, each keyed to the FLOOR the exemption was
+ * argued for — never to the metric alone.
  *
- * A name here is a decision to keep a fragile floor rather than an exemption to forget:
- * the alternative for `functions` is a DECREASE — one fewer is 99.8846 against the 99.92
- * standing — and a floor may not fall. So it is named and watched instead of quietly
- * lowered, which is the same ruling the config comment made when it first arrived at this
- * case. If functions ever flakes the way branches has, this is the entry to revisit.
+ * `functions` is here because the alternative is a DECREASE: one fewer is 99.8846 against
+ * the 99.92 standing, and a floor may not fall. So it is named and watched instead of
+ * quietly lowered, which is the ruling the config comment made when it first met this case.
+ *
+ * **The floor value is half the entry, and that is the whole safety of it.** Keyed to the
+ * metric alone, this set would go on excusing `functions` after a later increment raised
+ * the floor to what its own run measured — which is precisely the pinned-to-a-sample defect
+ * this script exists to reject, waved through by the one line meant to be the exception. A
+ * raise therefore lapses the exemption and the gate fails until somebody argues the new
+ * number the way 99.92 was argued. (Found by review, Codex on PR #217.)
  */
-const KNOWINGLY_TIGHT = new Set(["functions"]);
+const KNOWINGLY_TIGHT = { functions: 99.92 };
+
+/** Whether this metric's exemption covers the floor actually standing. */
+function exempt(metric, floor) {
+	return KNOWINGLY_TIGHT[metric] === floor;
+}
 
 /**
  * Covered and total for each metric, from a v8 `coverage-final.json`. Three are stored
@@ -108,7 +119,7 @@ export function floorReport(measured, floors) {
 			percent: (covered / total) * 100,
 			floor,
 			headroom,
-			tight: headroom < 1 && !KNOWINGLY_TIGHT.has(metric),
+			tight: headroom < 1 && !exempt(metric, floor),
 		};
 	});
 }
@@ -129,7 +140,7 @@ async function main() {
 	const rows = floorReport(measured, readFloors(await readFile("vitest.config.mts", "utf8")));
 
 	for (const row of rows) {
-		const note = KNOWINGLY_TIGHT.has(row.metric) && row.headroom < 1 ? " (knowingly tight)" : "";
+		const note = row.headroom < 1 && exempt(row.metric, row.floor) ? " (knowingly tight)" : "";
 		const units = `${row.headroom} unit${row.headroom === 1 ? "" : "s"} of headroom`;
 		console.log(`  ${row.metric.padEnd(11)} ${row.covered}/${row.total} = ${row.percent.toFixed(4)}% over a ${row.floor} floor — ${units}${note}`);
 	}
@@ -144,7 +155,12 @@ async function main() {
 	for (const row of tight) {
 		const oneFewer = ((row.covered - 1) / row.total) * 100;
 		console.error(`  ${row.metric}: losing one covered unit gives ${oneFewer.toFixed(4)}%, under the ${row.floor} floor.`);
-		console.error(`    Cover one more, or — if the floor was raised against a tree this one is not — say so here.`);
+		if (row.metric in KNOWINGLY_TIGHT) {
+			console.error(`    Its exemption was argued for a floor of ${KNOWINGLY_TIGHT[row.metric]} and no longer covers this one.`);
+			console.error(`    Argue the new number in scripts/coverage-floors.mjs, or put the floor back.`);
+		} else {
+			console.error(`    Cover one more, or — if the floor was raised against a tree this one is not — say so here.`);
+		}
 	}
 	console.error("\nThis suite moves by one covered unit between runs on an unchanged tree, so a floor");
 	console.error("with no unit of headroom fails on a green tree. See the comment in vitest.config.mts.");

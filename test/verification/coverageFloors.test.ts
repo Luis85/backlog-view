@@ -83,10 +83,33 @@ describe('floorReport', () => {
 	it('does not call a knowingly tight floor a failure, while still reporting it as tight', () => {
 		// `functions` is pinned with no headroom on purpose — the alternative is a DECREASE,
 		// and a floor may not fall. The gate has to say so rather than either failing every
-		// run or hiding the fragility.
-		const [row] = floorReport({ ...measured(0, 0), functions: [99, 100] }, { functions: 98.5 });
+		// run or hiding the fragility. 99.92 is the floor that exemption was argued for.
+		const [row] = floorReport({ ...measured(0, 0), functions: [2598, 2600] }, { functions: 99.92 });
 		expect(row.headroom).toBe(0);
 		expect(row.tight).toBe(false);
+	});
+
+	it('lapses that exemption the moment the floor it was argued for moves', () => {
+		// The failure this closes: a later increment raises `functions` to what its own run
+		// measured, and an exemption keyed to the METRIC waves through exactly the
+		// pinned-to-a-sample defect this gate exists to reject — the one line meant to be
+		// the exception excusing the thing it is an exception to. Keyed to the floor, a
+		// raise is a floor nobody has argued yet, and the gate says so.
+		const [raised] = floorReport({ ...measured(0, 0), functions: [2598, 2600] }, { functions: 99.93 });
+		expect(raised.headroom).toBe(0);
+		expect(raised.tight).toBe(true);
+		// And it lapses in the other direction too: a floor BELOW the argued one is not the
+		// exemption's either — though it would have headroom and never reach this question.
+		expect(floorReport({ ...measured(0, 0), functions: [2598, 2600] }, { functions: 99.5 })[0].tight).toBe(false);
+	});
+
+	it('exempts nothing else, however tight', () => {
+		// One name is in that list and it is there for a stated reason. A second metric
+		// arriving at zero headroom is a finding, not a precedent.
+		for (const metric of ['statements', 'branches', 'lines']) {
+			const [row] = floorReport({ ...measured(0, 0), [metric]: [99, 100] }, { [metric]: 99 });
+			expect([metric, row.tight]).toEqual([metric, true]);
+		}
 	});
 
 	it('is not fooled by a floor a fully covered tree still clears', () => {
