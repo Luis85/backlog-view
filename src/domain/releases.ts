@@ -382,6 +382,52 @@ export function releaseStatusChoices(settings: ReleaseSettings, index: ReleaseIn
 	return choices;
 }
 
+export interface CloseOffer {
+	/** Option keys the reader must bind, in the order the panel lists them. Empty when
+	 *  everything this action needs is configured. */
+	missing: string[];
+	/** A field this release holds a value for that no reader can parse, or null. The
+	 *  screen names it so the reader repairs the NOTE rather than the configuration. */
+	unreadable: 'status' | 'released' | null;
+	/** True only when the action may be pressed: nothing missing, nothing unreadable,
+	 *  the release not already out, and no date to overwrite. */
+	offered: boolean;
+}
+
+/**
+ * Whether `Mark as released` may be pressed on this release, and what to say when not.
+ *
+ * Answers the MISSING OPTIONS rather than a boolean, because withholding a button is only
+ * half of what extension 3a asks for: the screen has to name the option to bind, and a
+ * predicate that answered yes/no could not.
+ *
+ * Every field it reads carries three answers, and both are asked the same way:
+ * unconfigured is a configuration problem the reader fixes in the options panel, invalid
+ * is a NOTE problem the reader fixes in the note, and only a readable value is an input.
+ * The released date is the sharper of the two — it must read as ABSENT, not merely as
+ * readable, because a date already there is a record this action must never replace.
+ */
+export function closeOffer(release: ReleaseRow, settings: ReleaseSettings): CloseOffer {
+	const missing: string[] = [];
+	if (settings.statusKey === '') missing.push('releaseStatusProperty');
+	if (settings.releasedValues.length === 0) missing.push('releasedStatusValues');
+	if (settings.releasedTransition === '') missing.push('releasedTransitionValue');
+	if (settings.releasedDateKey === '') missing.push('releasedDateProperty');
+
+	// A value no reader can parse is the note's problem, and this screen already refuses
+	// to edit one: `drawStatus` draws a marker and no chip for exactly this. Writing over
+	// what the control beside it will not touch would be the inconsistency, not the fix.
+	const unreadable = release.status.invalid ? 'status' : release.released.invalid ? 'released' : null;
+
+	const alreadyOut =
+		release.status.value !== null && settings.releasedValues.some((v) => sameValue(v, release.status.value ?? ''));
+	// ABSENT, not merely readable. A date already recorded is the half of this that cannot
+	// be reconstructed, and recording one twice is what 1a withholds the action for.
+	const dateFree = release.released.value === null && !release.released.invalid;
+
+	return { missing, unreadable, offered: missing.length === 0 && unreadable === null && !alreadyOut && dateFree };
+}
+
 export interface ReleaseIndexOptions {
 	/**
 	 * `BacklogSettings.stateKey` — the PLAN's own state key. Not one of `ReleaseSettings`'
