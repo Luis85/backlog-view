@@ -2074,4 +2074,14 @@ export const en = {
 	 *  suffix the reader did not type. */
 	'release.new.created': 'Created the release “{name}”.',
 	'release.new.failed': 'Could not create the release. See the developer console for details.',
+	/**
+	 * The one refusal a CREATION makes about its own captured bindings, and the only key of
+	 * the snapshot that earns one: `typeKey` is what makes the note a release at all, so a
+	 * `.base` re-pointed while the dialog was open would file `Release` under a property the
+	 * view no longer reads — a note created, reported as created, and in no reader. The
+	 * OPTIONAL field bindings are deliberately kept rather than refused (the reader's text
+	 * goes where the dialog showed it), which is why this sentence is about one property
+	 * rather than the configuration.
+	 */
+	'release.new.rebound': 'Nothing created: the type property changed while the dialog was open. Open New release again.',
 } as const;

@@ -171,6 +171,18 @@ function releaseFields(settings: ReleaseSettings): ReleaseFieldId[] {
  * its own: a press that produced no note and said nothing looks like a dead button.
  */
 async function writeRelease(view: ReleaseView, settings: ReleaseSettings, result: NewReleaseResult): Promise<void> {
+	// **One key of the snapshot is refused rather than honoured, and it is the one that says
+	// what the note IS.** Capturing the bindings is what keeps the reader's typed values on
+	// the properties the dialog showed them — but `typeKey` is not a field the dialog draws,
+	// it is the schema: written under a key the view has since stopped reading, the release
+	// is created, reported as created, and in no reader at all (found by review, PR #211).
+	// So the optional bindings stay captured and this one is re-asked, which is the same
+	// split `reconfiguredKey` makes on the edit path for the same reason.
+	if (settings.typeKey !== view.settings.typeKey) {
+		new Notice(t('release.new.rebound'));
+		focusNewRelease(view);
+		return;
+	}
 	try {
 		const file = await createRelease(view.app, settings, result);
 		// The note's own name, never the requested one — `uniqueNotePath` may have suffixed

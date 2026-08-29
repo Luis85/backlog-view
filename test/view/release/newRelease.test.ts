@@ -252,6 +252,23 @@ describe('New release', () => {
 		expect(createdNotes(vault, before)).toEqual([{ path: 'docs/releases/2.4.md', fm: { type: 'Release' } }]);
 	});
 
+	it('refuses to create when the TYPE binding moved while the dialog was open', async () => {
+		// Found by review (Codex, PR #211), against the capture that fixed the field bindings.
+		// The optional keys are captured on purpose — the reader's text belongs on the
+		// properties the dialog showed — but `typeKey` is not a field, it is the schema: under
+		// a key the view has since stopped reading, the note is created, reported as created,
+		// and in no reader at all. So this one key is re-asked at the submit.
+		const vault = noReleaseVault();
+		const before = new Set(vault.files.keys());
+		const { view, modal } = await openNewRelease(vault, RELEASE_CONFIG);
+		(view.config as unknown as { values: Record<string, unknown> }).values.typeProperty = 'note.kind';
+		view.onDataUpdated();
+		await confirm(modal, '2.4');
+
+		expect(createdNotes(vault, before)).toEqual([]);
+		expect(Notice.messages.some((m) => m.includes('type property changed'))).toBe(true);
+	});
+
 	it('reports a refusal rather than throwing it', async () => {
 		// A create that fails for ANY reason — `createRelease`'s own type-key guard, or the
 		// vault refusing the write, which is what this stages — is reported rather than left
