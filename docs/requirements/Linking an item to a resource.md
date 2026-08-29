@@ -171,3 +171,17 @@ tooltip actually SAYS, so the third state's whole argument above (a broken assig
 read as broken, not merely look it) rests on a sentence no check reads. Both are recorded
 here rather than fixed, per this codebase's own rule that a check narrower than its claim
 must be said so rather than papered over.
+
+**Declined, and why it is not a hole today: an assignee write planned against a key that
+is no longer configured.** `applyLinks` skips a link whose key is empty, and nothing
+upstream re-asks — so a plan made while `assigneeKey` was set, applied after it was
+cleared, writes nothing while `performResourceMove` announces the move it did not make.
+Unreachable through the plugin: `Set assignee` and the chip menu are both gated on
+`settings.assigneeKey`, so the key must be cleared BETWEEN the menu opening and the write
+landing, which needs either an out-of-band edit of the `.base` or a settings change behind
+an open modal. The root-cause fix is not the caller-side guard it looks like — refusing in
+`writeResource` would leave the same false announcement on the drag and the keyboard,
+which reach `performResourceMove` without passing through it. It is the PLANNER: a write
+for a key nothing can spell is not a plan, and `computeAssigneeWrites` and
+`computeResourceMoveWrites` would take the settings to say so. Three signatures for a
+state nothing reaches, so it is recorded rather than built (Codex review, PR #207).
