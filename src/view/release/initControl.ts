@@ -24,10 +24,12 @@ import { adoptableReleaseKeys, RELEASE_SUGGESTED_KEYS } from './init';
  * it would touch the option the guidance beside it names.
  *
  * The `noReleases` empty state (`releaseView.draw`) is the same rule at the OTHER end of
- * it: that screen names nothing to narrow to, so its `fixes` is all four of
- * `RELEASE_SUGGESTED_KEYS` rather than one — a fresh vault wants every binding this ✨ can
- * offer, and the withholding above still applies whole: nothing drawn at all once every
- * candidate is already bound or deliberately cleared.
+ * it: that screen names nothing to narrow to, so its `fixes` is every option
+ * `RELEASE_SUGGESTED_KEYS` names rather than one — a fresh vault wants every binding this
+ * ✨ can offer, and the withholding above still applies whole: nothing drawn at all once
+ * every candidate is already bound or deliberately cleared. Derived there and counted
+ * nowhere: this sentence read "all four" until 2026-08-29, three candidates after that
+ * stopped being true.
  *
  * It writes no note in either position — `bindAndReport` reaches `runReleaseInit`, which
  * touches the `.base` and nothing else (`test/view/releaseNeverEdits.test.ts`).

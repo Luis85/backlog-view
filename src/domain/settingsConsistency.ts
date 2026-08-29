@@ -266,9 +266,10 @@ export function configProblems(settings: BacklogSettings): string[] {
  * **Over the keys read and written on the RELEASE NOTE, and no others.** Those are the
  * ones whose collision corrupts the note this view writes, and READ counts: the released
  * date, the parent and the order are never written by this view and are all read of a
- * release, so a status landing on one of them is still this view breaking its own screen. a status aimed at the type key
- * takes `Release` off the note the moment somebody picks one, and it is then a release no
- * reader can find (`isReleaseType` and `membershipTarget` both key off the type). The
+ * release, so a status landing on one of them is still this view breaking its own
+ * screen. The type property is the sharpest of them: a status aimed at the type key
+ * takes `Release` off the note the moment somebody picks one, and it is then a release
+ * no reader can find (`isReleaseType` and `membershipTarget` both key off the type). The
  * ITEM-side keys — the membership property, the state property — are deliberately absent,
  * which is what keeps the one sharing this view is built around legal: the release's own
  * status and an item's workflow state may name one property, because they are read of

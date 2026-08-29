@@ -2039,12 +2039,15 @@ export const en = {
 	 * all three without claiming which one happened, because the control has no way to tell
 	 * the caller that either.
 	 *
-	 * **Narrowed again 2026-08-28**: "every release property" overclaimed a fourth way.
-	 * `RELEASE_SUGGESTED_KEYS` (`view/release/init.ts`) binds exactly four of this view's
-	 * five own properties — `releasedDateProperty` is a READ binding this action
-	 * deliberately never touches, so with the other four handled it was still true that a
-	 * release property remained unbound. Narrowed to what the action can actually add,
-	 * per the register's own rule: write the guarantee to the check, never ahead of it.
+	 * **Narrowed again 2026-08-28**: "every release property" overclaimed a fourth way —
+	 * `RELEASE_SUGGESTED_KEYS` (`view/release/init.ts`) left one of this view's own
+	 * properties unbound, so the sentence was false with every candidate handled. The
+	 * overclaim is gone on this branch (the released date and the description joined the
+	 * candidates) and the narrower sentence STAYS, deliberately: it is true of a candidate
+	 * list of any length, and "every release property" is a promise that comes apart again
+	 * the next time an option ships that this action cannot suggest a key for —
+	 * `releaseStatusValues` is one today. Per the register's own rule: write the guarantee
+	 * to the check, never ahead of it.
 	 */
 	'release.init.nothing':
 		'Nothing to add. Every property this action can add is bound, was cleared on purpose, or its suggested key is already in use.',

@@ -246,10 +246,15 @@ export interface AdoptionCandidate {
  * different candidate lists and two different starting "already taken" sets — the two were
  * a hand-rolled copy of this loop each until 2026-08-17.
  *
- * Two suggestions cannot collide within either of today's lists, so the `taken.add` below
- * never actually fires within one call — and that is what keeps it a property of the two
- * TABLES' current contents rather than of this function, the moment either grows a row
- * whose suggested key repeats an earlier one.
+ * That mutation is load-bearing rather than defensive, and this docblock claimed the
+ * opposite until 2026-08-29 ("two suggestions cannot collide within either of today's
+ * lists, so the `taken.add` never actually fires"). `RELEASE_SUGGESTED_KEYS` now carries
+ * two candidates suggesting `status` — the release's own status and the item state, which
+ * ARE allowed to name one property — so a single sweep over that list would hand `status`
+ * to the first and refuse the second, which is the half-configured press this loop's own
+ * caller had to be split apiece to avoid (`adoptableReleaseKeys`, `view/release/init.ts`).
+ * Read the rule from here rather than the count: a list whose suggestions repeat is one
+ * sweep per legal sharer, never one sweep over the whole of it.
  */
 export function adoptCandidates<T extends AdoptionCandidate>(
 	config: BasesViewConfig,

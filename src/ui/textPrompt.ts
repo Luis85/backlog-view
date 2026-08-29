@@ -38,6 +38,12 @@ export interface TextPromptOptions extends Closable {
  * Enter is NOT the submit here, unlike every line-field prompt in this file: a newline is
  * a legitimate character in a paragraph, so the CTA is the way out and `submitOnEnter`
  * stays off. That is the one thing a reader coming from the other prompts has to notice.
+ *
+ * Which is also why the autofocus is spelled out below rather than inherited: `prompts.ts`
+ * bundles it into that same `submitOnEnter` call, so declining the Enter rule silently
+ * declined the caret too, and this prompt opened with focus on the modal frame while every
+ * sibling put it in the field (found by review, PR #211). Deferred a tick for the reason
+ * that helper defers it — the field can only claim focus once the modal is on screen.
  */
 class TextPromptModal extends PromptModal<TextPromptOptions> {
 	onOpen(): void {
@@ -51,6 +57,7 @@ class TextPromptModal extends PromptModal<TextPromptOptions> {
 			area.setPlaceholder(this.options.placeholder);
 			area.setValue(this.options.initial);
 			area.onChange((v) => (value = v));
+			window.setTimeout(() => area.inputEl.focus(), 0);
 		});
 		this.cta(this.options.ctaLabel, submit);
 	}

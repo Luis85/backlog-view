@@ -488,8 +488,9 @@ export class ReleaseView extends BasesView {
 			// is every option `RELEASE_SUGGESTED_KEYS` names rather than the one name the
 			// `noMembership` screen passes (`renderScope.ts`) — that screen is about ONE property
 			// and narrows on purpose; this one has nothing bound yet and nothing to narrow to.
-			// Derived rather than copied, so a fifth candidate is covered by being declared there
-			// and not by a second list here going stale beside it.
+			// Derived rather than copied, so a further candidate is covered by being declared
+			// there and not by a second list here going stale beside it — which is why this says
+			// "further" and not the ordinal it said until 2026-08-29.
 			renderReleaseInit(this, empty, 'empty', RELEASE_SUGGESTED_KEYS.map((candidate) => candidate.option));
 			renderNewRelease(this, empty);
 			drawUnresolved(this.viewEl, index);
