@@ -3,7 +3,9 @@ import type { ReleaseView } from './releaseView';
 import { t } from '../../i18n/t';
 import { ReleaseIndex, releaseStatusChoices, ReleaseRow } from '../../domain/releases';
 import { PropertyWrite } from '../../domain/estimationWritePlan';
-import { releaseDescriptionWrites, releaseStatusWrites } from '../../domain/releaseWritePlan';
+import { releaseDescriptionWrites, releaseReleasedWrites, releaseStatusWrites } from '../../domain/releaseWritePlan';
+import { formatCivil } from '../../domain/timeline';
+import { SchedulePromptModal } from '../../ui/prompts';
 import { showMenuForClick } from '../interactions/menu';
 import { openTextPrompt } from '../../ui/textPrompt';
 
@@ -89,14 +91,54 @@ export function editReleaseDescription(view: ReleaseView, release: ReleaseRow): 
 		placeholder: t('release.scope.descriptionPlaceholder'),
 		ctaLabel: t('release.scope.descriptionSave'),
 		initial: current ?? '',
-		onSubmit: (text) => void save(view, releaseDescriptionWrites(release.item.file, view.settings.descriptionKey, current, text)),
+		onSubmit: (text) =>
+			void save(view, releaseDescriptionWrites(release.item.file, view.settings.descriptionKey, current, text), '.pbl-rel-desc'),
 	});
 }
 
 /**
- * Apply the description's batch and put focus back on the line that opened the dialog.
+ * The released date: the day this release actually shipped, picked in the same dialog the
+ * roadmap's own Schedule uses (`SchedulePromptModal`) with one field in it.
  *
- * The dialog is why this exists rather than `FOCUS_HANDLE_CLASSES` covering it like the
+ * **This is not [[Marking a release as released]]**, and the difference is worth stating
+ * because that note is still Open. That one is a transition: it writes a configured status
+ * value AND the date in one batch, states what is outstanding first and asks for
+ * confirmation. This writes the date and nothing else, from a reader who already knows
+ * they shipped — which is what makes the key exist at all, and so what makes the index's
+ * Shipped group and its slip figure reachable without hand-editing a note.
+ *
+ * The field is prefilled with what the note STATES and never with today: a dialog that
+ * opened holding a date the note does not have would write one on a confirm nobody meant
+ * as an entry. `DateFieldSpec.value`'s own contract, kept rather than improved on.
+ *
+ * `validate` refuses nothing, deliberately. A native date input hands back `YYYY-MM-DD` or
+ * `''` and nothing else, so there is no malformed entry to catch — and a date in the
+ * future is odd rather than wrong (a release recorded ahead of its own announcement), which
+ * is not this dialog's to arbitrate: `ValuePromptModal`'s own "guides rather than
+ * arbitrates" applies to every prompt in that file.
+ */
+export function editReleaseReleased(view: ReleaseView, release: ReleaseRow): void {
+	const key = view.settings.releasedDateKey;
+	const current = release.released.value;
+	new SchedulePromptModal(view.app, {
+		heading: t('release.scope.releasedTitle', { name: release.name }),
+		description: t('release.scope.releasedHint'),
+		// One field, named by the KEY it writes — `scheduleFields`' own choice
+		// (`interactions/plan.ts`), and what `prompt.clearDate` names in its tooltip.
+		fields: [{ field: 'released', name: key, value: current === null ? '' : formatCivil(current) }],
+		validate: () => null,
+		onSubmit: (values) =>
+			// `values.released` and not `?? ''`: the modal submits the fields it was GIVEN, and
+			// this one gave it exactly one — a fallback here is a branch nothing can take.
+			void save(view, releaseReleasedWrites(release.item.file, key, current, values.released), '.pbl-rel-released'),
+	}).open();
+}
+
+/**
+ * Apply a dialog's batch and put focus back on the control that opened it — the
+ * description's line, or the released date's own button.
+ *
+ * A dialog is why this exists rather than `FOCUS_HANDLE_CLASSES` covering it like the
  * status chip: `TextPromptModal` CLOSES before it submits, so by the time the write's own
  * redraw runs, focus is already off this view entirely and `focusedHandle` correctly
  * answers null. `focusNewRelease` (`newRelease.ts`) has the identical shape for the
@@ -108,7 +150,7 @@ export function editReleaseDescription(view: ReleaseView, release: ReleaseRow): 
  * again. A batch that wrote NOTHING redraws nothing, so the line the reader pressed is
  * still on screen and still focused — this call finds that same element and no-ops.
  */
-async function save(view: ReleaseView, writes: PropertyWrite[]): Promise<void> {
+async function save(view: ReleaseView, writes: PropertyWrite[], control: string): Promise<void> {
 	await view.applyRelease(writes);
-	view.viewEl.querySelector<HTMLElement>('.pbl-rel-desc')?.focus({ preventScroll: true });
+	view.viewEl.querySelector<HTMLElement>(control)?.focus({ preventScroll: true });
 }

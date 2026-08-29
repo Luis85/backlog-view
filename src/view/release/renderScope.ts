@@ -2,7 +2,7 @@ import { setIcon, setTooltip } from 'obsidian';
 import type { ReleaseView } from './releaseView';
 import { t } from '../../i18n/t';
 import { ReleaseFigure, ReleaseIndex, ReleaseRow, ReleaseScope } from '../../domain/releases';
-import { editReleaseDescription, showReleaseStatusMenu } from './releaseEdits';
+import { editReleaseDescription, editReleaseReleased, showReleaseStatusMenu } from './releaseEdits';
 import { formatCivil } from '../../domain/timeline';
 import { BacklogSettings } from '../../domain/settings';
 import { WorkflowKind, workflowStateInfo } from '../../domain/board';
@@ -162,6 +162,7 @@ function drawHeader(
 	drawFigure(factsEl, release.target, t('release.index.column.target'), (value) =>
 		factsEl.createSpan({ cls: 'pbl-rel-target', text: formatCivil(value) }),
 	);
+	drawReleased(view, factsEl, release);
 
 	drawDescription(view, headerEl, release);
 	drawSummary(headerEl, release, scope.members, planSettings);
@@ -240,6 +241,44 @@ function drawStatus(view: ReleaseView, hlineEl: HTMLElement, release: ReleaseRow
 	chipEl.createSpan({ cls: 'pbl-state-text', text: value ?? label });
 	setTooltip(chipEl, t('release.scope.setStatus'));
 	chipEl.addEventListener('click', (evt) => showReleaseStatusMenu(view, evt, release, index));
+}
+
+/**
+ * The day this release shipped, beside the target it is measured against — and, unlike
+ * every other figure in this row, a control: pressing it opens the date dialog
+ * ({@link editReleaseReleased}).
+ *
+ * `drawStatus`' three branches exactly, and for its reasons. Unconfigured draws nothing.
+ * An UNREADABLE date says so and offers no edit: "somebody wrote something there" is not
+ * an invitation to write over it blind, and — the sharper reason here — an unreadable date
+ * and an absent one both reach the planner as `null`, so a dialog opened on one could not
+ * tell the reader's "leave it empty" from "it already is", and clearing the broken value
+ * would look available and write nothing. An UNSET date draws the invitation, because this
+ * is the one figure on the screen the reader can fill.
+ *
+ * It is drawn as a LABELLED value (`Released 2026-09-12`) where the target beside it is a
+ * bare date: two dates side by side in one row are only told apart on the index by the
+ * column headings this screen does not have.
+ */
+function drawReleased(view: ReleaseView, factsEl: HTMLElement, release: ReleaseRow): void {
+	if (release.released.unconfigured) return;
+	if (release.released.invalid) {
+		factsEl.createSpan({
+			cls: 'pbl-rel-unreadable',
+			text: t('release.figureUnreadable', { label: t('release.index.column.released') }),
+		});
+		return;
+	}
+	const date = release.released.value;
+	const btn = factsEl.createEl('button', {
+		cls: 'pbl-rel-released' + (date === null ? ' pbl-rel-released-unset' : ''),
+		// No `aria-label`: the button's own text says both what it holds and what it is,
+		// which is what a name over it would replace — `drawDescription`'s own rule.
+		attr: { type: 'button' },
+		text: date === null ? t('release.scope.markReleased') : t('release.scope.releasedOn', { date: formatCivil(date) }),
+	});
+	setTooltip(btn, t('release.scope.releasedTitle', { name: release.name }));
+	btn.addEventListener('click', () => editReleaseReleased(view, release));
 }
 
 /**

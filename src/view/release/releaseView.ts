@@ -62,6 +62,7 @@ const FOCUS_HANDLE_CLASSES = [
 	'pbl-rel-open',
 	'pbl-rel-status',
 	'pbl-rel-desc',
+	'pbl-rel-released',
 ];
 
 /**

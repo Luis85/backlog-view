@@ -32,9 +32,9 @@ iteration: ""
 
 # Editing a release from its own screen
 
-**As** someone running a release, **I want** to set its status and say what it is for
-without leaving the release view, **so that** the screen that reports a release is the
-screen that keeps it current.
+**As** someone running a release, **I want** to set its status, say what it is for and
+record the day it shipped without leaving the release view, **so that** the screen that
+reports a release is the screen that keeps it current.
 
 **This is where the release view starts editing notes.** Until now it created release notes
 and bound its own `.base` config and nothing else — a claim
@@ -57,7 +57,7 @@ whose whole job is to say what a release is. Asked for as a property by the auth
 | | |
 | --- | --- |
 | **Actor** | Someone running a release |
-| **Trigger** | Pressing the status chip, or the description line, on a release's own screen |
+| **Trigger** | Pressing the status chip, the released date, or the description line, on a release's own screen |
 | **Preconditions** | A release is open; the property the action writes is bound |
 | **Guarantee** | One batch writes one key on the RELEASE NOTE and on nothing else. A pick that changes nothing writes nothing. Undo takes the batch back through the plugin's shared slot. |
 
@@ -69,6 +69,8 @@ whose whole job is to say what a release is. Asked for as a property by the auth
 3. Picking one writes it to the release note's status property.
 4. The reader presses the description line and edits the text in a dialog.
 5. Confirming writes it to the release note's description property.
+6. The reader presses the released date and picks the day it shipped.
+7. Confirming writes it to the release note's released-date property.
 
 **Extensions**
 
@@ -103,6 +105,22 @@ whose whole job is to say what a release is. Asked for as a property by the auth
   for the first time.
 - **5b — a member's own fields.** Never editable here. Nothing on this screen writes to a
   member, and the two actions name `release.item.file` and nothing else.
+- **6a — the release has no released date yet.** The control draws **Mark as released**,
+  which is the plainest name for what the reader is doing. It opens the same dialog as a
+  release that has one — nothing is written by pressing it — so the wording claims nothing
+  the action does not do. In particular it writes **no status**: that is
+  [[Marking a release as released]]'s own half of the transition, along with its
+  confirmation and its outstanding-work list, and that note stays Open.
+- **6b — the released date is unreadable.** It says so and offers no control, which is 1c
+  for the other two fields and one reason sharper here: an unreadable date and an absent one
+  both reach the planner as `null`, so a dialog opened on the first could not tell the
+  reader's "leave it empty" from "it already is" — the clear would look available and write
+  nothing. The note is repaired through **Open release note**.
+- **7a — the date is confirmed unchanged.** Nothing is written, compared against the note's
+  own canonical spelling: a note holding `2026-9-1` is not rewritten as `2026-09-01` by a
+  reader who opened the dialog and pressed Save. The rule `computeScheduleWrites` keeps for
+  the roadmap's own two ends.
+- **7b — the field is emptied.** The key is removed, by 3b's rule.
 - **4c — a description at CREATION.** `New release` asks for one too, as its fourth and last
   field, where the property is bound — see [[Creating a release from the release view]]. A
   blank box is written nowhere, that note's own 2c.
@@ -124,6 +142,15 @@ whose whole job is to say what a release is. Asked for as a property by the auth
 - A re-pick writes nothing; a clear removes the key; a clear is not offered where there is
   nothing to remove.
 - An emptied description removes the key; an unchanged one writes nothing.
+- **The released date is settable, which is what makes the key exist at all.** Nothing in
+  this plugin wrote it before (`createRelease` explicitly does not), so a bound released
+  property could never come to hold anything and the index's Shipped group and its slip
+  figure were unreachable without hand-editing a note. ✨ binds the key; this is what fills
+  it.
+- The date dialog is `SchedulePromptModal` with ONE field — the same modal, the same native
+  date input and the same per-field clear button the roadmap's Schedule uses — prefilled
+  with what the note states and never with today: a dialog holding a date the note does not
+  have would write one on a confirm nobody meant as an entry.
 - **The write goes through the shared gate and the shared lock.** It is serialized with
   every other view's batch and it installs an inverse in the plugin-wide undo slot. This view
   draws no undo control of its own, so a status set here is taken back from the BACKLOG
@@ -159,18 +186,20 @@ whose whole job is to say what a release is. Asked for as a property by the auth
 
 ## Where it lives
 
-`src/view/release/releaseEdits.ts` is the pair of actions — the status menu and the
-description dialog — and it exists as its own module because they belong together: they are
-the whole of what this view may write to a note that already exists, and a third field would
-join them there rather than beside whichever control drew it. `src/view/release/renderScope.ts`
+`src/view/release/releaseEdits.ts` is the three actions — the status menu, the description
+dialog and the released date's own — and it exists as its own module because they belong
+together: they are the whole of what this view may write to a note that already exists. The
+third joined them there on the day it was asked for, which is what that sentence predicted
+when there were two. `src/view/release/renderScope.ts`
 draws the two controls in the header (`drawStatus`, `drawDescription`), and
 `styles/releaseScope.css` carries their chrome — both are real `<button>`s, so Obsidian's
 `button:not(.clickable-icon)` matches them and the partial refuses its background, its shadow
 and its height rather than drawing a pill inside a pill.
 
-What either action WOULD write is `src/domain/releaseWritePlan.ts`: one key on one file, or
+What any of the three WOULD write is `src/domain/releaseWritePlan.ts`: one key on one file, or
 nothing at all — the "same value writes nothing" rule stated once rather than at each
-control, with the status compared case-insensitively and the description exactly. It plans
+control — the status compared case-insensitively, the description exactly, and the date
+against its own canonical spelling. It plans
 the same `PropertyWrite` the estimation view does and is applied by
 `src/storage/propertyWrite.ts`, which captures the inverse the shared undo slot replays.
 `releaseStatusChoices` in `src/domain/releases.ts` is the menu's vocabulary, beside the
@@ -185,6 +214,7 @@ key the description is written to, suggested `description`, bound by ✨) and
 `releaseStatusValues` (the declared vocabulary, no default — these are the reader's own words
 for their own process). `src/ui/textPrompt.ts` is the description dialog itself, a `ui/` leaf
 that knows no property key: a prefilled `textarea` that accepts an empty entry, which is what
-distinguishes it from `ValuePromptModal` beside it. `src/ui/newReleaseDialog.ts` asks for the
+distinguishes it from `ValuePromptModal` beside it. The released date needs no new dialog at
+all — `SchedulePromptModal` (`src/ui/prompts.ts`) with one field is exactly it. `src/ui/newReleaseDialog.ts` asks for the
 same field at creation and `src/storage/createNote.ts` writes it, in the collision guard with
 every other key that creator writes.

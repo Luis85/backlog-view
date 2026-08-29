@@ -37,8 +37,8 @@ const INTENT: Record<string, string> = {
 		'line saying what it is for. Work names its release in a property rather than hanging ' +
 		'from one, so like a Milestone it holds nothing. Like an Iteration it is drawn on no ' +
 		'backlog row and offered by no New menu: the release view is where one is read, its own ' +
-		'New release control is what makes one, and its status and description are set from the ' +
-		'release\'s own screen there.',
+		'New release control is what makes one, and its status, its description and the day it ' +
+		'shipped are set from the release\'s own screen there.',
 	'Test suite':
 		'A walkable group of end-to-end tests, and a root by nature — it hangs from nothing and ' +
 		'lives in the test catalog rather than in the plan. Holds Test cases.',

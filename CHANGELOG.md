@@ -42,8 +42,8 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ### Added
 
-- **A release's status is now set from its own screen, and a release can carry a
-  description.** The status chip in the release header opens a menu of the statuses your
+- **A release's status, its description and the day it shipped are now set from its own
+  screen.** The status chip in the release header opens a menu of the statuses your
   vault declares (a new **Release statuses (in order)** option), plus the ones your other
   releases already carry, plus this one's own — with the current one ticked and a **Clear
   status** entry where there is something to clear. Re-picking the status a release already
@@ -51,6 +51,13 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   bound by ✨ along with everything else): the **New release** dialog asks for one as its
   last field, and the release's own screen draws it under the header as a line you press to
   edit. Emptying the box takes the key off the note rather than leaving it blank.
+  The **released date** sits beside the target in the header: a release with none draws
+  **Mark as released**, and pressing it opens the same date picker the roadmap's Schedule
+  uses, prefilled with whatever the note already says. This is what makes the released
+  property usable at all — ✨ binds the key, and until now nothing in the plugin ever wrote
+  it, so the **Shipped** group and the `7 days late` figure could only be reached by editing
+  the note by hand. It writes the date and no status: marking a release released as one
+  transition, with its confirmation and its list of outstanding work, is still to come.
   **This is the first thing the release view edits.** It creates release notes and,
   until now, nothing else — so two things follow. It writes to the release note and never to
   a member: work is edited on the backlog view. And the edit joins the plugin's one undo

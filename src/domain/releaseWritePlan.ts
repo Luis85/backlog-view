@@ -1,6 +1,7 @@
 import { TFile } from 'obsidian';
 import { PropertyWrite } from './estimationWritePlan';
-import { sameValue } from './noteFields';
+import { CivilDate, sameValue } from './noteFields';
+import { formatCivil } from './timeline';
 
 /**
  * What editing a release's own fields WOULD write — the release view's planner, and the
@@ -64,6 +65,33 @@ export function releaseStatusWrites(
 	if (pick === null && current === null) return [];
 	if (pick !== null && current !== null && sameValue(current, pick)) return [];
 	return fieldWrite(file, key, pick);
+}
+
+/**
+ * Recording the day a release actually shipped: the date the reader picked, or null when
+ * they emptied the field.
+ *
+ * `current` is the date the note STATES, and the comparison is against its own canonical
+ * spelling (`formatCivil`) rather than against the raw value — which is what keeps a note
+ * holding `2026-9-1` from being rewritten as `2026-09-01` by a reader who opened the
+ * dialog and confirmed. Re-confirming a date must not be a write, the rule
+ * `computeScheduleWrites` states for the roadmap's own two ends.
+ *
+ * An UNREADABLE released date reaches this as `null`, exactly as an absent one does — and
+ * that is why the control that opens the dialog is withheld for it (`renderScope.ts`): the
+ * two are the same input here and must not be the same offer, or clearing a broken value
+ * would look available and write nothing.
+ */
+export function releaseReleasedWrites(
+	file: TFile,
+	key: string,
+	current: CivilDate | null,
+	entry: string,
+): PropertyWrite[] {
+	const next = entry.trim() === '' ? null : entry.trim();
+	const held = current === null ? null : formatCivil(current);
+	if (next === held) return [];
+	return fieldWrite(file, key, next);
 }
 
 /**

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { TFile } from 'obsidian';
-import { releaseDescriptionWrites, releaseStatusWrites } from '../../src/domain/releaseWritePlan';
+import { releaseDescriptionWrites, releaseReleasedWrites, releaseStatusWrites } from '../../src/domain/releaseWritePlan';
 
 /**
  * What editing a release's own fields would write ([[Editing a release from its own
@@ -40,6 +40,31 @@ describe('planning a release status', () => {
 		// The rule `applyPropertyWrites` also keeps at the writer, asked here so a plan never
 		// CLAIMS a write the writer would drop.
 		expect(releaseStatusWrites(file, '', null, 'Released')).toEqual([]);
+	});
+});
+
+describe('planning a released date', () => {
+	const on = (year: number, month: number, day: number) => ({ year, month, day });
+
+	it('sets the date the reader picked, and clears the key for an emptied field', () => {
+		expect(releaseReleasedWrites(file, 'released', null, '2026-09-20')).toEqual([
+			{ file, sets: [{ key: 'released', value: '2026-09-20' }] },
+		]);
+		expect(releaseReleasedWrites(file, 'released', on(2026, 9, 20), '')).toEqual([
+			{ file, sets: [{ key: 'released', value: null }] },
+		]);
+	});
+
+	it('writes nothing for the date the note already states, however the note spells it', () => {
+		// `2026-9-1` is a date `readDate` accepts, and confirming the dialog it prefills must
+		// not rewrite the note to the canonical spelling — the rule `computeScheduleWrites`
+		// keeps for the roadmap's own two ends.
+		expect(releaseReleasedWrites(file, 'released', on(2026, 9, 1), '2026-09-01')).toEqual([]);
+		expect(releaseReleasedWrites(file, 'released', null, '')).toEqual([]);
+	});
+
+	it('writes nothing at all where the key is unconfigured', () => {
+		expect(releaseReleasedWrites(file, '', null, '2026-09-20')).toEqual([]);
 	});
 });
 

@@ -230,7 +230,7 @@ export default defineConfig({
 			// asked about an entry holding neither.
 			thresholds: {
 				statements: 99.04,
-				branches: 95.71,
+				branches: 95.72,
 				functions: 99.92,
 				lines: 99.78,
 			},

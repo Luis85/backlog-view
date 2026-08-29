@@ -1789,6 +1789,21 @@ export const en = {
 	'release.scope.descriptionSave': 'Save',
 	'release.scope.descriptionEmpty': 'Add a description',
 	/**
+	 * The released date — the day a release actually shipped, and the one field on this
+	 * screen whose value is a DATE rather than a label. `{name}` is the release note's own
+	 * name and `{date}` is the date as the register spells one (`formatCivil`), both data.
+	 *
+	 * `markReleased` is the invitation a release with no date draws, and it is the plainest
+	 * name for the gesture rather than "Set released date": what the reader is doing is
+	 * saying it shipped. It opens the same dialog either way, so nothing is claimed by the
+	 * wording that the action does not do — in particular it writes no status, which is
+	 * [[Marking a release as released]]'s own half of that transition and is still Open.
+	 */
+	'release.scope.releasedOn': 'Released {date}',
+	'release.scope.markReleased': 'Mark as released',
+	'release.scope.releasedTitle': 'Released date for {name}',
+	'release.scope.releasedHint': 'The day this release actually shipped. Clearing it takes the date off the note.',
+	/**
 	 * The ancestor drawn only to keep a member in its place — and NOT the tree's own
 	 * `row.contextMarker`, whose sentence is false here every time. That one says a row is
 	 * outside the base's filter; `releaseScope` skips an `outsideFilter` ancestor outright,

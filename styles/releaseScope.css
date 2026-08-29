@@ -104,6 +104,26 @@
 	white-space: normal;
 }
 
+/* The released date, the one figure in the facts row that is a control. A real `<button>`
+   like the status chip, so it takes the same chrome reset — Obsidian's
+   `button:not(.clickable-icon)` matches it — and then reads as the muted row it sits in
+   rather than as a control shouting over two plain dates. */
+.pbl-rel-released {
+	height: auto;
+	box-shadow: none;
+	background-color: transparent;
+	padding: 0;
+	font-size: inherit;
+	color: inherit;
+}
+
+/* Bound and empty: the invitation, dimmed like the description's own. ORDER IS BEHAVIOUR —
+   same specificity as the rule above, so it wins by standing later. */
+.pbl-rel-released-unset {
+	color: var(--text-faint);
+	font-style: italic;
+}
+
 /* Bound and empty, which is an invitation rather than an absence — dimmed and dashed, the
    same pair the tree's own unset chips wear (`.pbl-state-unset`, `styles/columns.css`). */
 .pbl-rel-desc-empty {

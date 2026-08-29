@@ -250,6 +250,88 @@ describe('focus across the redraw an edit causes', () => {
 	});
 });
 
+describe('recording the day a release shipped', () => {
+	const openDate = (containerEl: HTMLElement): Modal => {
+		containerEl.querySelector<HTMLElement>('.pbl-rel-released')!.click();
+		const modal = Modal.lastOpened;
+		if (!modal) throw new Error('no dialog opened');
+		return modal;
+	};
+	/** The CTA, which is the LAST button: the date field draws its own clear button first
+	 *  (`SchedulePromptModal`), and clicking that empties the very entry being submitted. */
+	const confirm = (modal: Modal): void => {
+		const buttons = Array.from(modal.contentEl.querySelectorAll<HTMLButtonElement>('button'));
+		buttons[buttons.length - 1].click();
+	};
+	const pick = (modal: Modal, value: string): void => {
+		const input = modal.contentEl.querySelector('input')!;
+		input.value = value;
+		input.dispatchEvent(new Event('input', { bubbles: true }));
+		confirm(modal);
+	};
+
+	it('invites one where the key is bound and empty, and writes the date the reader picks', async () => {
+		// The whole reason this control exists: NOTHING in the plugin wrote this key before,
+		// so a bound released property could never come to hold anything and the index's
+		// Shipped group and slip figure were unreachable without hand-editing a note.
+		const vault = editVault();
+		const { view, containerEl } = makeReleaseView(vault, RELEASE_CONFIG);
+		view.pick('R.md');
+		expect(containerEl.querySelector('.pbl-rel-released')?.textContent).toBe('Mark as released');
+
+		pick(openDate(containerEl), '2026-09-20');
+		await flush();
+		expect(vault.fm('R.md').released).toBe('2026-09-20');
+		expect(vault.writeLog.map((w) => w.path)).toEqual(['R.md']);
+		expect(containerEl.querySelector('.pbl-rel-released')?.textContent).toBe('Released 2026-09-20');
+	});
+
+	it('opens holding the date the note states, and writes nothing when it is confirmed unchanged', async () => {
+		const vault = editVault();
+		vault.addFile('R.md', { frontmatter: { type: 'Release', version: '1.0.0', released: '2026-9-1' } });
+		const { view, containerEl } = makeReleaseView(vault, RELEASE_CONFIG);
+		view.pick('R.md');
+
+		const modal = openDate(containerEl);
+		// The note's own date in the register's spelling, which is what a date input accepts.
+		expect(modal.contentEl.querySelector('input')?.value).toBe('2026-09-01');
+		confirm(modal);
+		await flush();
+		// And confirming rewrites nothing — `2026-9-1` is not respelled by a reader who
+		// opened the dialog and pressed Save.
+		expect(vault.writeLog).toEqual([]);
+		expect(vault.fm('R.md').released).toBe('2026-9-1');
+	});
+
+	it('clears the key when the field is emptied', async () => {
+		const vault = editVault();
+		vault.addFile('R.md', { frontmatter: { type: 'Release', version: '1.0.0', released: '2026-09-20' } });
+		const { view, containerEl } = makeReleaseView(vault, RELEASE_CONFIG);
+		view.pick('R.md');
+		pick(openDate(containerEl), '');
+		await flush();
+
+		expect('released' in vault.fm('R.md')).toBe(false);
+	});
+
+	it('says so and offers no control where the date is unreadable, or where the key is unbound', () => {
+		// An unreadable date and an absent one both reach the planner as null, so a dialog
+		// opened on the first could not tell "leave it empty" from "it already is" — the
+		// clear would look available and write nothing.
+		const vault = editVault();
+		vault.addFile('R.md', { frontmatter: { type: 'Release', version: '1.0.0', released: 'soon' } });
+		const { view, containerEl } = makeReleaseView(vault, RELEASE_CONFIG);
+		view.pick('R.md');
+		expect(containerEl.querySelector('.pbl-rel-released')).toBeNull();
+		expect(Array.from(containerEl.querySelectorAll('.pbl-rel-unreadable')).map((el) => el.textContent)).toContain(
+			'Released unreadable',
+		);
+
+		const { containerEl: unbound } = openScope({ ...RELEASE_CONFIG, releasedDateProperty: '' });
+		expect(unbound.querySelector('.pbl-rel-released')).toBeNull();
+	});
+});
+
 describe('what an edit is, and is not', () => {
 	it('goes through the gate’s own writer, never the item-batch path', async () => {
 		// `applyWrites` and `applyRestores` are the BACKLOG's batches — a hierarchy, a state,
