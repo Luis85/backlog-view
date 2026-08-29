@@ -121,6 +121,19 @@ plumbing:
   note, not a line in this increment;
 - `reconfiguredKey`'s check, which covers the keys being remapped while the dialog is
   open, and the write gate's own refusal of a batch naming a note outside the base (1b);
+
+  **but `reconfiguredKey` compares KEYS, and this action's two new options are VALUES.**
+  That is PR #211's lesson one level over: it fixed a captured key outliving its
+  configuration, and the transition value and the released-value list can outlive theirs
+  the same way — the confirmation dialog is an await, and both are editable while it is
+  open. A submit that wrote the captured value would write a status this vault no longer
+  declares, and one that skipped the second check would mark a release out that has since
+  become released by a widened list — the very case 1a withholds the action for.
+
+  So the submit re-asks the offer predicate against the settings as they are NOW, and
+  refuses when the transition value it captured is no longer the configured one. Refuses
+  rather than substituting: the reader confirmed against what the screen showed them, and
+  writing a different status than the one they agreed to is worse than asking again;
 - the empty-batch return, so a release already at the transition value writes nothing and
   redraws nothing.
 
@@ -259,7 +272,11 @@ The note is opened after writing, and a failure to open is not a failure of the 
 `releaseNotesFolder`, with the transition dropdown reading the config. `ReleaseSettings`
 and `src/domain/settingsResolve.ts` gain the three resolved fields.
 
-`src/domain/settingsConsistency.ts` — the two refusals in `releaseNoteProblems`.
+`src/domain/settingsConsistency.ts` — the two refusals in `releaseNoteProblems`, and the
+membership-collision check beside it. That one is NOT added to `releaseNoteProblems`: that
+function is over the keys read and written on the release NOTE, and its exemption of the
+item-side keys is load-bearing — folding this in would refuse the legal status/state
+sharing the release view is built around.
 
 `src/domain/releases.ts` — the predicate that answers whether a release may be marked out.
 
@@ -293,6 +310,21 @@ So the actions area is drawn **before** both returns, and each action keeps its 
 Marking needs its four release-note options and nothing else: it reads the release note
 alone, so it is offered on both of those screens. Generation needs the notes folder, a
 clean configuration **and the membership key**.
+
+**And membership being bound is not the same as membership being readable.**
+`releaseNoteProblems` cannot answer this one: its own header says the item-side keys are
+DELIBERATELY absent from it, because the release's status and an item's workflow state may
+legitimately name one property — they are read of different notes. So a hand-edited `.base`
+pointing `membershipProperty` at the type, parent or order key passes that gate with a
+non-empty key, and `membershipTarget` then reads `type: PBI` as a release link. Every scope
+reads empty again, by a different route, and generation overwrites a valid file with the
+same false report.
+
+So generation also asks a membership-collision check — the membership key against the type,
+parent, order and item-state keys — added beside the other release-side validations. It is
+generation's gate rather than the view's because widening it to the whole screen is a change
+to what the index and the scope tree refuse, which this increment has no mandate for; that
+the same collision quietly misleads those read screens is worth its own note.
 
 That last one is not symmetry, it is the difference between empty and unreadable.
 `membershipTarget` returns null for every item when `membershipKey` is unbound, so every
@@ -336,6 +368,13 @@ design adds to them:
   narrowing above is a checked statement rather than a caveat.
 - A release whose status already equals the transition value writes nothing and spends no
   undo slot.
+- Changing the transition value, or widening the released-value list to cover this
+  release's current status, WHILE the confirmation is open makes the submit refuse rather
+  than write. Both are driven from inside the await, because a test that changes the
+  configuration before the dialog opens passes against a submit that never re-reads.
+- With `membershipProperty` pointed at the type, parent, order or item-state key,
+  generation is withheld and names the collision — and the criterion is again about the
+  file: a release with valid generated notes, opened under that `.base`, still has them.
 - `reconfiguredKey` still refuses a write whose key is not its own role's, with the status
   and description options swapped mid-dialog — the PR #211 case, asked of a two-set write.
 - The outstanding list and its count come from non-context scope rows that are not done,
