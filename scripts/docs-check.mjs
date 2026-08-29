@@ -473,14 +473,25 @@ for (const file of files) {
 	// link in a received document that DOES name a note here is unverified, so an editorial
 	// preamble on one names its notes in prose rather than pretending to a checked link.
 	if (isReceivedDoc(file)) continue;
+	const living = isLiving(file);
 	// A link the 100-column wrap breaks across two lines used to be captured with the
 	// newline inside it, fail the stem lookup, and report as unresolved — a documented
 	// limitation with no detection, so the contributor saw only a false "unresolved
 	// wikilink". `wikilinks` flattens the wrap, so that link resolves now.
+	//
+	// A record's dead link is reported, not failed — the same split `LIVING` already makes
+	// for source paths, and for the same reason: deleting a note is ordinary backlog work,
+	// and the only ways a dated spec can pass afterwards are to rewrite it, which falsifies
+	// the record, or to keep every note the register ever held. What this trades away is
+	// stated where it was argued: a typo in a generated plan now shows in the summary
+	// instead of failing the build. It is not unchecked — 140-odd historical paths already
+	// print there — and the direction that matters is unchanged, since a LIVING note
+	// describes the register as it is now and still resolves every link it makes.
 	for (const target of wikilinks(text)) {
-		if (!stems.has(target)) fail(file, `unresolved wikilink [[${target}]]`);
+		if (stems.has(target)) continue;
+		if (living) fail(file, `unresolved wikilink [[${target}]]`);
+		else historical.push(`${file} -> [[${target}]]`);
 	}
-	const living = isLiving(file);
 	// `proseWithSpans`, not raw text: the path lives in a code span so spans must survive,
 	// but an HTML COMMENT must not — a path parked inside one renders nowhere and is not a
 	// reference, the same rule the citation scan follows one section down.
@@ -1097,7 +1108,7 @@ console.log(
 	`docs: ${notes.size} backlog notes · ${useCases} use cases · ${adrFiles.length} ADRs · ${sources.length} modules`,
 );
 if (historical.length > 0) {
-	console.log(`\n  ${historical.length} historical path reference(s) in record notes (allowed, not an error):`);
+	console.log(`\n  ${historical.length} historical reference(s) in record notes (allowed, not an error):`);
 	for (const line of historical) console.log(`    ${line}`);
 }
 if (problems.length > 0) {

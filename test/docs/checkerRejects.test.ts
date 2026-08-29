@@ -166,16 +166,6 @@ describe('the backlog tree', () => {
 			'backlog note has no `type` in its frontmatter',
 		],
 		[
-			'a superpowers doc with an unresolved wikilink',
-			(files) => {
-				// The verbatim exemption is for RECEIVED documents — `prds/` and `sdds/`. A
-				// spec written in this repository points at this register, so its links are
-				// checked like anyone else's, or a generated plan accumulates broken ones.
-				files['docs/superpowers/plans/2026-08-02-example.md'] = '# A plan\n\nSee [[No such note]].\n';
-			},
-			'unresolved wikilink',
-		],
-		[
 			'a superpowers doc sharing a basename with a backlog note',
 			(files) => {
 				// Exempt from carrying a `type`, never from claiming a name: it is still

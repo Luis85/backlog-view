@@ -30,8 +30,12 @@ truncation, the collision with today — shipped on jsdom class assertions alone
 problems. That is not the per-point record this note asks for, so it stays open — and the
 point that matters most is the two-milestones-a-few-weeks-apart case, whose outcome is what
 decides between the three candidate fixes in [[Nearby milestone labels cover each other]].
-No such decision has been recorded, so that question is still entirely open. [[Ship the roadmap epic]] is the first real
-milestone in the register, so it is the first chance to look at any of it.
+No such decision has been recorded, so that question is still entirely open.
+
+The register held one real milestone, `Ship the roadmap epic`, and it was deleted on
+2026-08-29 when releases took over the dates it carried — so this run now starts by
+**adding** a milestone note rather than by opening one. Every point below wanted a second
+temporary milestone anyway; what changed is that the first one is temporary too.
 
 **Preconditions** — `npm run test-build` has installed the plugin into this repository, and
 the repository is open as a vault with `docs/Product Backlog.base` showing the tree.
@@ -48,15 +52,15 @@ Switch to the roadmap's dated axis.
   line. With two milestones a few weeks apart at a coarse zoom, confirm they read as two
   dates rather than one — the open half of that note's packing question, since only marks on
   the SAME drawn day are stacked.
-- **The cyan diamond** — `Ship the roadmap epic` draws a diamond mark rather than a
-  rectangle, in cyan. Its badge is the tree's to check ([[Tree badges and icons]]): the row
+- **The cyan diamond** — a `Milestone` note with a `due` date draws a diamond mark rather
+  than a rectangle, in cyan. Its badge is the tree's to check ([[Tree badges and icons]]): the row
   that used to carry it here is gone.
 - **The full-height line and its label** — a line runs the whole grid at the milestone's
   date, behind the bars, with a label in the header band naming it. Confirm the line
   does not visually compete with the bars it crosses, and the label sits legibly above
   the grid rather than colliding with the month header.
-- **Two milestones, one date, one line** — temporarily date a second milestone note (or
-  add one, then discard the change) to the same day as `Ship the roadmap epic`. Confirm
+- **Two milestones, one date, one line** — add a second milestone dated to the same day as
+  the first, then discard both changes when the run is over. Confirm
   exactly one line is drawn, and its label names both, joined — not two overlapping
   lines misreporting the count.
 - **A milestone dated today** — temporarily set (or add) a milestone dated today.

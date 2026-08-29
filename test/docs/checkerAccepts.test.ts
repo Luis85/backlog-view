@@ -502,18 +502,24 @@ describe('the gate accepts valid documents', () => {
 		await expectAccepted(files);
 	});
 
-	it('lists a stale path in a record note instead of failing it', async () => {
-		// `tasks/`, `issues/` and `bugs/` are records of a moment and may name a file
-		// since split away — rewriting them would falsify the record. Being listed is the
-		// point: visible, not silently exempt.
+	it('lists a stale path or link in a record note instead of failing it', async () => {
+		// `tasks/`, `issues/`, `bugs/` and `superpowers/` are records of a moment and may
+		// name a file since split away, or a note since deleted — rewriting them would
+		// falsify the record, and deleting a note is ordinary backlog work. Being listed is
+		// the point: visible, not silently exempt. A LIVING note gets neither leniency —
+		// `checkerRejects.test.ts` plants both directions there.
 		const files = baseRegister();
-		files['docs/tasks/Old work.md'] = note('Task', 10, 'Doing the thing', '# Old work\n\nTouched `src/gone.ts`.\n');
+		files['docs/tasks/Old work.md'] =
+			note('Task', 10, 'Doing the thing', '# Old work\n\nTouched `src/gone.ts`, for [[A deleted note]].\n');
+		files['docs/superpowers/plans/2026-08-02-example.md'] = '# A plan\n\nSee [[No such note]].\n';
 
 		const result = await checkRegister(files);
 
 		expect(result.problems).toEqual([]);
-		expect(result.output).toContain('historical path reference');
+		expect(result.output).toContain('historical reference');
 		expect(result.output).toContain('src/gone.ts');
+		expect(result.output).toContain('[[A deleted note]]');
+		expect(result.output).toContain('[[No such note]]');
 	});
 
 	it('accepts a superpowers spec or plan with no backlog frontmatter', async () => {

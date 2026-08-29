@@ -550,6 +550,27 @@ instead of the TypeScript one and reported 3 modules where there are 59. A valid
 a bug is precisely what it exists to prevent, so the count is printed on every run rather
 than only the failures — a number that is obviously wrong is a check that says so.
 
+## A deleted note is not a broken link (2026-08-29)
+
+The wikilink rule failed everywhere, records included, and the reject case for it said why:
+a spec written here points at this register, so a generated plan must not accumulate broken
+links. Deleting `docs/milestones/Ship the roadmap epic.md` — ordinary backlog work, its
+dates taken over by releases — then turned CI red in two dated specs and one test case, and
+the only ways to green were to rewrite a dated record or to keep every note the register
+ever held.
+
+So the wikilink rule now makes the same `LIVING` split the source-path rule has always
+made, for the same stated reason. `requirements/`, `adrs/` and `tests/` describe the
+register as it is now and still resolve every link they make; `tasks/`, `issues/`, `bugs/`
+and `superpowers/` report a dead link in the summary beside the 140 historical paths already
+printed there. What that trades away, said plainly: **a typo in a generated plan is now
+listed rather than failed.** It is not unchecked, and the direction that blocks a
+contributor is untouched.
+
+The test case that broke was the third one, and it was living for a reason — it named the
+milestone as the fixture to look at. It was rewritten rather than exempted: no `Milestone`
+note is left in the register, so the run adds its own.
+
 ## Outcome
 
 `npm run check` is five steps now, and `docs/` is gated like `src/`. The register's
