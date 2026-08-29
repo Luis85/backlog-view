@@ -43,7 +43,9 @@ export const SETUP: ManualSection = {
 				'The properties the state chip, the tag column, the assignee chip, and a state ' +
 				'change\'s own started/finished dates write to. None is written until its property ' +
 				'is named — a stamp is never written to a property this plugin chose on its own. ' +
-				'The assignee is a link to a Resource note, not a typed name: Set assignee offers ' +
+				'The assignee is a link to a Resource note, not a typed name — a name written before ' +
+				'this still resolves and keeps its assignment where a matching Resource note ' +
+				'already exists, and only a name naming nobody\'s note is lost. Set assignee offers ' +
 				'every Resource note the base returns, plus New resource... to make one for ' +
 				'somebody who does not have a note yet.',
 			keys: [

@@ -554,7 +554,7 @@ export function resourceLabelsOf(model: { resourceLabels: ReadonlyMap<string, st
  * the roster array `namedTargets` built it from: a `Map.has` is the O(1) membership test
  * `rowSignature` and the chip need on every row, where a `.some` over the whole roster
  * would be a second superlinear pass this codebase's row-cost rule refuses (review, PR
- * #207 fix round 1 — `docs/domain/CLAUDE.md`'s cost section, and
+ * #207 fix round 1 — `src/domain/CLAUDE.md`'s cost section, and
  * `docs/requirements/A row costs its content, not its wiring.md`).
  */
 export function assigneeBroken(item: { assigneeEntry: LinkEntry | null }, labels: ReadonlyMap<string, string>): boolean {

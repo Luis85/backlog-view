@@ -166,8 +166,12 @@ export class FakeVault {
 			 * basename match beat a later exact-path one; nothing relies on that and a
 			 * vault does not do it.
 			 */
-			getFirstLinkpathDest: (linkpath: string, _sourcePath: string) =>
-				this.files.get(linkpath) ?? this.files.get(`${linkpath}.md`) ?? this.byBasename().get(linkpath) ?? null,
+			getFirstLinkpathDest: (linkpath: string, _sourcePath: string) => {
+				// Case-FOLDED, matching Obsidian's own resolution: `assignee: alice` must
+				// resolve against an `Alice.md` exactly as a real vault would.
+				const lower = linkpath.toLowerCase();
+				return this.byPathLower().get(lower) ?? this.byPathLower().get(`${lower}.md`) ?? this.byBasenameLower().get(lower) ?? null;
+			},
 			/**
 			 * Obsidian's "shortest path when possible": the basename while it names this
 			 * file and no other, and the path without its extension once two files share
@@ -292,17 +296,30 @@ export class FakeVault {
 	 * which is what the scan this replaced did. Rebuilt whenever the map has been mutated
 	 * since it was built; a rename needs no invalidation of its own, because the two calls
 	 * it makes on `files` are themselves what moves the version.
+	 *
+	 * Builds the CASE-FOLDED indexes below in the same pass, off the same version gate —
+	 * `getFirstLinkpathDest` resolves case-insensitively in a real vault, which this
+	 * method's own exact keys cannot answer. Kept a SEPARATE pair of maps rather than
+	 * lower-cased in place: `ambiguousBasenames` is `fileToLinktext`'s exact-case question
+	 * ("does this basename collide"), unrelated to how a link resolves, and folding the one
+	 * index would have answered both questions with the wrong casing for the other.
 	 */
 	private byBasename(): Map<string, TFile> {
 		if (this.basenameIndex !== null && this.indexedVersion === this.files.version) return this.basenameIndex;
 		const index = new Map<string, TFile>();
 		const ambiguous = new Set<string>();
+		const indexLower = new Map<string, TFile>();
+		const pathLower = new Map<string, TFile>();
 		for (const file of this.files.values()) {
 			if (index.has(file.basename)) ambiguous.add(file.basename);
 			else index.set(file.basename, file);
+			if (!indexLower.has(file.basename.toLowerCase())) indexLower.set(file.basename.toLowerCase(), file);
+			if (!pathLower.has(file.path.toLowerCase())) pathLower.set(file.path.toLowerCase(), file);
 		}
 		this.basenameIndex = index;
 		this.ambiguous = ambiguous;
+		this.basenameIndexLower = indexLower;
+		this.pathIndexLower = pathLower;
 		this.indexedVersion = this.files.version;
 		return index;
 	}
@@ -313,11 +330,29 @@ export class FakeVault {
 		return this.ambiguous;
 	}
 
+	/** Case-folded basename index — see `byBasename`'s own doc for why it is separate. */
+	private byBasenameLower(): Map<string, TFile> {
+		this.byBasename();
+		return this.basenameIndexLower ?? new Map();
+	}
+
+	/** Case-folded exact-path index, built beside `byBasenameLower` for the same reason. */
+	private byPathLower(): Map<string, TFile> {
+		this.byBasename();
+		return this.pathIndexLower ?? new Map();
+	}
+
 	/** Filled by `byBasename`, which is the only thing that may write it. */
 	private ambiguous = new Set<string>();
 
 	/** The `files.version` `basenameIndex` was built at — see `basenameIndex`. */
 	private indexedVersion = -1;
+
+	/** Filled by `byBasename` — see its own doc. */
+	private basenameIndexLower: Map<string, TFile> | null = null;
+
+	/** Filled by `byBasename` — see its own doc. */
+	private pathIndexLower: Map<string, TFile> | null = null;
 
 	/** Rename a file and fire vault.on('rename'), as Obsidian does. */
 	renameFile(oldPath: string, newPath: string): TFile {

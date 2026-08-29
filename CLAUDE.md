@@ -384,7 +384,7 @@ datetime merge. It was extracted rather than copied, and the priority (2026-08-1
 collected on that: a third label property cost one row in the list and no new shape at
 all. The assignee itself left the list on 2026-08-28 (below), so what `applyLabels`
 carries today is the risk level, the priority and the iteration goal — three properties,
-none of them the one that named this extraction. What has NOT been extracted is the rule across all three shapes, and that is still
+none of them the one that named this extraction. What has NOT been extracted is the rule across all four shapes, and that is still
 deliberate: a helper general enough to cover the axis too would have to carry the date
 handling past the properties that must not have it. This paragraph said the opposite until
 2026-08-08, naming a `writeOptional` and a `removeHorizonKey` that have never existed: a

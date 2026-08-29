@@ -159,6 +159,7 @@ export async function applyWrites(
 			if (
 				refusesLiveType(settings, write, liveType) ||
 				refusesLiveMembership(app, write.release, settings) ||
+				refusesLiveAssignee(app, write.assignee, settings) ||
 				refusesAxis(fm, settings, write, ends)
 			) {
 				refused = true;
@@ -569,6 +570,27 @@ function refusesLiveType(settings: BacklogSettings, write: ItemWrite, liveType: 
 		['release', write.release],
 	];
 	return carried.some(([field, value]) => stated(value) && !mayHoldField(liveType, field, settings));
+}
+
+/**
+ * Whether an assignee write names a TARGET the vault no longer calls a `Resource` — the
+ * inverse question from {@link refusesLiveType} rather than a restatement of it: that one
+ * refuses a write TO a note that is a `Resource`; this refuses a write NAMING a note that
+ * is no longer one. Neither substitutes for the other, and a plan can fail either
+ * independently — the carrier retyped INTO a resource, or the target retyped OUT of one.
+ *
+ * Same shape and the same placement as {@link refusesLiveMembership} (`domain/releases.ts`),
+ * called beside it at this boundary for the same reason: a plan carries the `TFile` its
+ * picker was built from, and nothing between the pick and this write asks what that note
+ * is now. Retype a `Resource` between the menu rendering and the write landing and the
+ * link lands naming an ordinary note — which then reads as broken (`resourceLabelsOf`
+ * cannot find it in the roster) and the card shelves. A REMOVAL asks nothing: `null` is
+ * how the key comes off, and there is no target to be wrong about.
+ */
+function refusesLiveAssignee(app: App, target: TFile | null | undefined, settings: BacklogSettings): boolean {
+	if (!target) return false;
+	const liveType = readString(ownValue(app.metadataCache.getFileCache(target)?.frontmatter, settings.typeKey));
+	return !isResourceType(liveType);
 }
 
 /**

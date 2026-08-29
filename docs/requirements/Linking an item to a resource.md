@@ -154,3 +154,20 @@ rename moves what the chip shows without touching this note's own frontmatter.
 `performResourceMove`'s file-typed target through the one host method every input funnels
 through. `src/ui/prompts.ts` is the `New resource...` creation prompt, and `src/i18n/en.ts`
 carries the unresolved-chip tooltip.
+
+**Owed, not built: what a screen reader hears from the broken chip, and a check that
+asks it.** `renderLabelChip` sets an explicit `aria-label` — `chipLabel(label, value)`,
+"Change Assignee (currently Sarah)" — on every chip alike, and puts the unresolved
+marker only in
+`setTooltip` (`broken ? brokenTip() : changeTip()`). An accessible name is what assistive
+tech reads first, so a reader hearing only the label gets a chip indistinguishable from a
+valid assignment, while a sighted reader gets the broken styling AND the tooltip. Which of
+the two a screen reader actually announces — the label alone, or the label followed by the
+tooltip's title text — is a live-vault question this jsdom suite cannot answer; jsdom
+computes no accessibility tree, so nothing here can ask a reader what it heard.
+`test/view/assigneeChip.test.ts` cannot stand in for it either: it asserts
+`pbl-assignee-broken`'s presence seven times and never what the chip's `aria-label` or
+tooltip actually SAYS, so the third state's whole argument above (a broken assignment must
+read as broken, not merely look it) rests on a sentence no check reads. Both are recorded
+here rather than fixed, per this codebase's own rule that a check narrower than its claim
+must be said so rather than papered over.

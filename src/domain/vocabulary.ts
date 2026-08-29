@@ -5,10 +5,12 @@ import { BacklogSettings } from './settings';
 /**
  * What vocabulary the RESULTS carry — the states, the tags and the horizons a menu may
  * offer, collected off the loaded items. There is no assignee collector here any more:
- * Set assignee reads `Resource` notes (Task 4, 2026-08-28) and the resources axis mints
- * a row from `assigneeName(item)` directly, per item, so nothing needs a collected list
- * of observed assignees (Task 7, 2026-08-29, removed it along with the setting that was
- * its only consumer).
+ * Set assignee reads `Resource` notes (Task 4, 2026-08-28), and the resources axis mints
+ * no rows from the results at all — `deriveLanes` (`domain/roadmap.ts`) builds one lane
+ * per note in `model.resources` and places each item by resolving its
+ * `assigneeEntry.file.path` through that lane map — so nothing needs a collected list of
+ * observed assignees (Task 7, 2026-08-29, removed it along with the setting that was its
+ * only consumer).
  *
  * All of them obey one rule, which is why they live together rather than beside the
  * code that consumes each: **a note the Base excluded contributes nothing.** Its

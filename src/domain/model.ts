@@ -222,10 +222,11 @@ export interface BacklogModel {
 	 * at every row. `assigneeBroken` and the assignee chip's label both used to scan
 	 * `resources` per row (`.some`/`.find`), an O(items × resources) allocation-per-row
 	 * cost this codebase's row-cost rule refuses a second superlinear pass over — see
-	 * `docs/domain/CLAUDE.md`'s cost section and
+	 * `src/domain/CLAUDE.md`'s cost section and
 	 * `docs/requirements/A row costs its content, not its wiring.md`. A `Map.has`/`.get`
-	 * against this index is O(1) instead, and `namedTargets` already has to run once here
-	 * regardless, to sort `resources` disambiguated the same way. Read through
+	 * against this index is O(1) instead. `resources` is sorted by `title`/`path` alone,
+	 * with no label in it — `namedTargets` runs here solely to BUILD this index, one pass
+	 * rather than a per-row `.some`/`.find`. Read through
 	 * `resourceLabelsOf` (`readItems.ts`) rather than directly, so "no model yet" is
 	 * answered once.
 	 */

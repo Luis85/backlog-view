@@ -497,13 +497,21 @@ export function renderLaneContextRow(ctx: RowContext, content: HTMLElement, item
  * `absenceTitle` — the sanitizer is what a title becomes ON DISK, and only the two layers
  * that can see a disk may ask.
  *
- * `laneName` is the lane's own `ResourceLane.name` — the same collision-aware label
- * `absenceTitle` was given when this stretch was written or renamed, since both come from
- * the identical `BacklogModel.resourceLabels` lookup for the identical resource. A stretch
- * only ever draws inside the lane that owns it, so there is no second label to disagree
- * with the one the caller already has in hand. Named apart from `bar.label` (the HTML
- * element `drawBandCollision` and `renderAbsenceWash` pass around below) so the two kinds
- * of "label" in this file are never one parameter mistaken for the other.
+ * `laneName` is the lane's own `ResourceLane.name`, read fresh on every render off the
+ * CURRENT `BacklogModel.resourceLabels`; `absence.title` is the note's basename, fixed at
+ * whatever roster existed when `absenceTitle` derived it. The two cannot disagree across
+ * SPACE — a stretch only ever draws inside the lane that owns it, so there is no second
+ * label in the same render to disagree with — but they can disagree across TIME, because
+ * one is read live and the other was written once. With `Team/Alex.md` alone, an absence
+ * derives `Alex away …` and the title matches; add `Support/Alex.md` and `laneName`
+ * becomes the disambiguated `Team/Alex`, the `startsWith` check below fails, and the
+ * tooltip appends the range a second time — the doubled sentence this function's own
+ * docblock says was fixed on 2026-08-14, reached again from a roster change rather than
+ * from 4l's original bug. `docs/requirements/Resource absences.md` 4n states the same cost
+ * from the write side: the append survives for a title the derivation would not (or no
+ * longer) produce. Named apart from `bar.label` (the HTML element `drawBandCollision` and
+ * `renderAbsenceWash` pass around below) so the two kinds of "label" in this file are
+ * never one parameter mistaken for the other.
  */
 function absenceSaid(absence: Absence, laneName: string): string {
 	const start = formatCivil(absence.start);

@@ -332,10 +332,13 @@ export class CardMoveController {
 /**
  * The name a resource-move notice puts on a target — the collision-aware label the model
  * already built (`resourceLabels`), falling back to the bare basename for a target the
- * roster does not carry (a corner today's bridge can reach; unreachable once Task 5 makes
- * every lane a note). A lookup, not a scan: `namedTargets` runs ONCE per model to build
- * this map, and a per-call rebuild here is exactly the row-cost mistake that map exists to
- * avoid.
+ * roster does not carry. Reachable, not a corner Task 5 closed: `New resource…`
+ * (`promptNewResource`, `interactions/resourceNotes.ts`) creates the note and hands its
+ * `TFile` straight to `chooseAssignee` → `performResourceMove` before any data update has
+ * rebuilt `host.model` to include it, so `resourceLabelsOf(...).get(target.path)` misses
+ * on every such pick and this fallback fires. A lookup, not a scan: `namedTargets` runs
+ * ONCE per model to build this map, and a per-call rebuild here is exactly the row-cost
+ * mistake that map exists to avoid.
  */
 function resourceLabel(host: BacklogViewHost, target: TFile): string {
 	return resourceLabelsOf(host.model).get(target.path) ?? target.basename;

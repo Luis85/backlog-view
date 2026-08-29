@@ -19,13 +19,11 @@ import { FakeVault } from './vault';
  *
  * `Alice.md`, `Bob.md` and `Zoe.md` are `Resource` notes — every row is one now (Task 5),
  * so every row a write in this fixture aims at needs a note behind it. `Cased.md`'s
- * `[[Alice]]` is a bracketed link in the note's own exact casing rather than a bare,
- * differently-cased string: matching moved from a case-insensitive NAME comparison to the
- * resolved FILE (Task 5), so there is no longer a middle answer for a spelling that
- * resolves to nothing to demonstrate here — `resourceRoster.test.ts` covers that shape at
- * the domain level instead, where `FakeVault`'s own case-sensitive link resolution (a
- * known fidelity gap against Obsidian's, `test/helpers/vault.ts`) cannot quietly stand in
- * for a resolution question this file is not asking.
+ * `assignee: alice` is the commonest pre-migration shape — a bare name, differently
+ * cased from the note it names — and it resolves to `Alice.md` because `FakeVault`'s
+ * `getFirstLinkpathDest` case-folds exactly as Obsidian's does; `resourceRoster.test.ts`
+ * covers the same shape at the domain level, where a bare name that resolves keeps its
+ * assignment (`docs/issues/No migration off the string assignees.md`).
  */
 export function resourceVault(): FakeVault {
 	const vault = new FakeVault();
@@ -36,7 +34,7 @@ export function resourceVault(): FakeVault {
 		frontmatter: { type: 'Epic', order: 10, assignee: 'Alice', start: '2026-08-01', due: '2026-08-10' },
 	});
 	vault.addFile('Cased.md', {
-		frontmatter: { type: 'Epic', order: 20, assignee: '[[Alice]]', start: '2026-08-05', due: '2026-08-06' },
+		frontmatter: { type: 'Epic', order: 20, assignee: 'alice', start: '2026-08-05', due: '2026-08-06' },
 	});
 	vault.addFile('Stray.md', {
 		frontmatter: { type: 'Epic', order: 30, assignee: 'Zoe', start: '2026-08-02', due: '2026-08-03' },
