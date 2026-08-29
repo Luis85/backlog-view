@@ -57,7 +57,7 @@ export function wireScopeKeys(view: ReleaseView, treeEl: HTMLElement, releasePat
 		treeEl.toggleClass('pbl-has-selection', true);
 		selectedEl = el;
 		treeEl.setAttribute('aria-activedescendant', el.id);
-		view.activeScopePath = row.item.file.path;
+		view.activeScopeFile = row.item.file;
 		// `content-visibility: auto` on a row means a skipped row has no layout box, so a
 		// row reached by the keyboard has to be scrolled to rather than assumed visible.
 		el.scrollIntoView({ block: 'nearest' });
@@ -131,8 +131,12 @@ export function wireScopeKeys(view: ReleaseView, treeEl: HTMLElement, releasePat
 	// active row to the first: the next arrow key reaches no listener at all, and a
 	// keyboard reader is stranded one press into the tree. The view's own scroll restore
 	// exists for the same re-render and is not enough, because focus is not scroll.
-	const wanted = view.activeScopePath;
-	const restored = wanted === null ? -1 : rows.findIndex((r) => r.item.file.path === wanted);
+	// Matched on the FILE, never on a captured path: Obsidian mutates the one `TFile` in
+	// place on a rename, so renaming the active member (or a folder above it) leaves this
+	// still naming the row the reader is on, where a path comparison found nothing and
+	// dropped them to the first row. See `ReleaseView.activeScopeFile`.
+	const wanted = view.activeScopeFile;
+	const restored = wanted === null ? -1 : rows.findIndex((r) => r.item.file === wanted);
 	// A row that has GONE must not take the keyboard with it. A refresh can drop the active
 	// member out of the scope — its membership edited elsewhere, the base's filter narrowed
 	// — and returning here without focusing would leave the reader Tabbing back in, which is

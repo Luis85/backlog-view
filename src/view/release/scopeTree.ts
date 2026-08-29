@@ -526,7 +526,7 @@ function drawDisclosure(view: ReleaseView, release: ReleaseRow, rowEl: HTMLEleme
 		// `.pbl-twisty`, so a class-keyed restore would land on the FIRST disclosure in
 		// the tree rather than this one — worse than the body it currently falls to.
 		// `wireScopeKeys`'s own restore reads exactly this field.
-		view.activeScopePath = row.item.file.path;
+		view.activeScopeFile = row.item.file;
 		toggleFold(view, release.path, row.item.file.path);
 	});
 }

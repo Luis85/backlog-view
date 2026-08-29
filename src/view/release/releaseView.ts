@@ -1,4 +1,4 @@
-import { BasesView, QueryController } from 'obsidian';
+import { BasesView, QueryController, TFile } from 'obsidian';
 import { t } from '../../i18n/t';
 import { BacklogModel, buildModel } from '../../domain/model';
 import { ReleaseSettings, resolveReleaseSettings } from '../../domain/releaseOptions';
@@ -21,7 +21,7 @@ export const RELEASE_VIEW_TYPE = 'product-release';
  * The classes a redraw's own controls carry — the fixed vocabulary {@link ReleaseView.render}
  * restores a lost focus through, in place of a bespoke restore per control. Three separate
  * fixes for the same class of bug shipped on this branch before this list did: the ✨
- * (`initControl.ts`), the scope tree's own row (`activeScopePath`/`scopeHadFocus`, left
+ * (`initControl.ts`), the scope tree's own row (`activeScopeFile`/`scopeHadFocus`, left
  * alone below — a different question, which ROW, not answered here), and the toolbar
  * (`scopeToolbar.ts`). None of the eight controls that carry one of these classes carries a
  * second, so checking them in this order is deterministic without needing to be.
@@ -85,8 +85,17 @@ export class ReleaseView extends BasesView {
 	 *  ordinary navigation, never a write. */
 	readonly opener = new OpenController();
 	/** The scope tree's own roving selection, carried across a render — see
-	 *  `scopeKeys.ts`'s own comment on why the redraw a fold triggers must not drop it. */
-	activeScopePath: string | null = null;
+	 *  `scopeKeys.ts`'s own comment on why the redraw a fold triggers must not drop it.
+	 *
+	 *  The FILE, never its path. Obsidian mutates the one `TFile` in place on a rename, so
+	 *  the identity survives what a captured path cannot: renaming the active member, or a
+	 *  folder above it, left this naming a path the refreshed rows no longer hold and
+	 *  dropped the keyboard back to the first row. Same rule `storage/CLAUDE.md` states for
+	 *  a captured dependency — a captured thing holds a FILE, never a name — and it needs
+	 *  no rename subscription of its own to keep. A note deleted and recreated at the same
+	 *  path is deliberately NOT a match: that is a different file, and the row the reader
+	 *  was on is genuinely not there. */
+	activeScopeFile: TFile | null = null;
 	/** Whether the SCOPE TREE — never the index list, never a button — held focus just
 	 *  before the current render's `empty()` detached it. Captured in `render()`, below,
 	 *  beside `previousTop` and for the identical reason: a detached element answers
@@ -135,7 +144,7 @@ export class ReleaseView extends BasesView {
 	/**
 	 * Picking a row, or the back control's null. Persists, then redraws.
 	 *
-	 * **Clears `activeScopePath`.** A pick is a change of SCREEN — the scroll restore
+	 * **Clears `activeScopeFile`.** A pick is a change of SCREEN — the scroll restore
 	 * already treats it as a reset (see `render`'s own comment) — and without this a
 	 * context ancestor selected in release A stayed the keyboard's starting row in release
 	 * B, whenever the same path happened to sit in B's scope too: `scopeKeys.ts`'s restore
@@ -145,7 +154,7 @@ export class ReleaseView extends BasesView {
 	 */
 	pick(path: string | null): void {
 		this.pickedPath = path;
-		this.activeScopePath = null;
+		this.activeScopeFile = null;
 		const id = resolveViewIdentity(this.app, this.viewEl, this.config.name ?? '');
 		if (id) {
 			const state = loadViewState(this.app, id);
@@ -222,7 +231,7 @@ export class ReleaseView extends BasesView {
 		// `contains`, not `===`: a MOUSE press on a per-row control inside the tree (the
 		// disclosure) focuses that button, and the redraw this render is performing is
 		// about to detach it. Focus was inside the composite widget, so it belongs back on
-		// the composite widget — `wireScopeKeys` puts it on the row `activeScopePath`
+		// the composite widget — `wireScopeKeys` puts it on the row `activeScopeFile`
 		// names. An element contains itself, so the keyboard case (focus ON the tree) is
 		// unchanged.
 		this.scopeHadFocus = previousEl !== null && previousEl.classList.contains('pbl-tree') && previousEl.contains(document.activeElement);

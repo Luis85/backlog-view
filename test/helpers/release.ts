@@ -1,3 +1,4 @@
+import { TFile } from 'obsidian';
 import { ReleaseView } from '../../src/view/release/releaseView';
 import { installObsidianDom } from './dom';
 import { FakeVault, FakeViewConfig, mountLeaf } from './vault';
@@ -40,12 +41,16 @@ export function active(view: ReleaseView): string | null {
 /**
  * Jumps the roving selection to a path directly, without walking the arrow keys there —
  * `scopeKeys.test.ts`'s own setup step for a test whose SUBJECT is a later key, not the
- * walk. Goes through `activeScopePath` and a render rather than reaching into the
+ * walk. Goes through `activeScopeFile` and a render rather than reaching into the
  * controller's closure, which is exactly the restore path a real re-render already takes
  * (a fold, `onDataUpdated`), so this drives the same code a keyboard user's session would.
+ *
+ * Takes a PATH and resolves it against the vault, so the field holds the same `TFile`
+ * object the rows do — the identity the restore matches on. A file made here instead
+ * would match nothing and every caller would silently start on row 0.
  */
 export function select(view: ReleaseView, path: string): void {
-	view.activeScopePath = path;
+	view.activeScopeFile = view.app.vault.getAbstractFileByPath(path) as TFile;
 	view.render();
 }
 

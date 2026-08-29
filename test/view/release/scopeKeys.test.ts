@@ -216,7 +216,7 @@ describe('the scope tree’s keyboard', () => {
 	});
 
 	/**
-	 * Carried finding 4, task 5: `activeScopePath` used to be a bare note path `pick()`
+	 * Carried finding 4, task 5: `activeScopeFile` used to be a bare note path `pick()`
 	 * never cleared — the identical bug already fixed for fold keys
 	 * (`foldedPaths`/`toggleFold` scope every key to `release.path`), in the sibling field
 	 * that fix did not sweep. Its own vault: `Ctx.md` is a context ancestor in BOTH
@@ -255,7 +255,7 @@ describe('the scope tree’s keyboard', () => {
 		// it there and select it, which is exactly the defect this clears. Nothing else has
 		// asked the keyboard to pick a row yet, so the field itself, and the DOM it drives,
 		// both read as unset rather than defaulting to the first row on their own.
-		expect(view.activeScopePath).toBeNull();
+		expect(view.activeScopeFile).toBeNull();
 		expect(active(view)).toBeNull();
 	});
 
@@ -266,12 +266,35 @@ describe('the scope tree’s keyboard', () => {
 		view.pick('Releases/0.8.md');
 		select(view, 'Ctx.md');
 
-		// A data update, not a pick — `onDataUpdated` never clears `activeScopePath`, which
+		// A data update, not a pick — `onDataUpdated` never clears `activeScopeFile`, which
 		// is what lets the restore in `scopeKeys.ts` put the selection right back.
 		refreshRelease(view, vault);
 
-		expect(view.activeScopePath).toBe('Ctx.md');
+		expect(view.activeScopeFile?.path).toBe('Ctx.md');
 		expect(active(view)).toBe('Ctx.md');
+	});
+
+	/**
+	 * Codex, PR #206: the active row was held as a PATH, so renaming the note under the
+	 * keyboard — or a folder above it — left it naming a path the refreshed rows no longer
+	 * held. Watched failing on the old code, the loss is worse than a wrong row: with the
+	 * tree not itself focused, the restore below runs neither branch, so the tree comes
+	 * back with NO active row at all (`active` reads null) rather than with the first one.
+	 * `Send the magic link.md` is deliberately neither the first row nor a top-level one,
+	 * so a restore that silently fell back to row 0 could not pass this either.
+	 */
+	it('keeps the active row when the note under it is renamed', () => {
+		const { view, vault } = mountKeys();
+		select(view, 'Send the magic link.md');
+		expect(active(view)).toBe('Send the magic link.md');
+
+		// The file object is mutated in place, exactly as Obsidian's is — which is what the
+		// restore now matches on, and the whole reason it survives this.
+		vault.renameFile('Send the magic link.md', 'Mail the magic link.md');
+		refreshRelease(view, vault);
+
+		expect(active(view)).toBe('Mail the magic link.md');
+		expect(view.activeScopeFile?.path).toBe('Mail the magic link.md');
 	});
 
 	it('a refresh that drops the active row focuses a surviving row, not the body', () => {
