@@ -133,7 +133,17 @@ plumbing:
   So the submit re-asks the offer predicate against the settings as they are NOW, and
   refuses when the transition value it captured is no longer the configured one. Refuses
   rather than substituting: the reader confirmed against what the screen showed them, and
-  writing a different status than the one they agreed to is worse than asking again;
+  writing a different status than the one they agreed to is worse than asking again.
+
+  **And the NOTE moves across that await as well as the configuration.** Another window,
+  or sync, can mark the release released while the dialog is open, and re-reading the
+  settings does not see that. `applyPropertyWrites` checks the live TYPE and nothing else,
+  so the submit would write today's date over the date it actually shipped — a second
+  record of a release that already has one, which is what 1a withholds the action to
+  prevent. So the planned write carries the status it expects to find, and the check is
+  made **inside** the frontmatter callback beside the type check, where the bytes being
+  replaced are the bytes being judged. That is `applyRestores`' compare-and-swap asked of a
+  forward write, and it is one more field on `PropertyWrite` rather than a new mechanism;
 - the empty-batch return, so a release already at the transition value writes nothing and
   redraws nothing.
 
@@ -320,11 +330,26 @@ non-empty key, and `membershipTarget` then reads `type: PBI` as a release link. 
 reads empty again, by a different route, and generation overwrites a valid file with the
 same false report.
 
-So generation also asks a membership-collision check — the membership key against the type,
-parent, order and item-state keys — added beside the other release-side validations. It is
-generation's gate rather than the view's because widening it to the whole screen is a change
-to what the index and the scope tree refuse, which this increment has no mandate for; that
-the same collision quietly misleads those read screens is worth its own note.
+So generation's gate is **three** reports, not one, and picking only the second of them was
+a mistake this spec made twice before getting here:
+
+1. `configProblems` over the `BacklogSettings` the release view already resolves for its
+   model (`releaseView.ts` calls `resolveSettings` and hands the result to `buildModel`).
+   That is what catches every ITEM-side collision the generated file's own sequence depends
+   on — `stateProperty` on the order key makes the model read workflow strings as ranks, and
+   the file would then list members in an order nothing can defend. Extension 4d says any
+   view-configuration problem withholds the action, and this is the report that sees most of
+   them.
+2. `releaseNoteProblems`, for the release-note roles.
+3. The membership-collision check — the membership key against the type, parent, order and
+   item-state keys — which is the one gap neither of the other two can see, since
+   `configProblems` has no membership role and `releaseNoteProblems` deliberately excludes
+   the item side.
+
+None of the three subsumes another, which is why all three are named rather than one being
+chosen. It stays generation's gate rather than the whole screen's: widening it changes what
+the index and the scope tree refuse, which this increment has no mandate for — though the
+same collisions quietly mislead those read screens too, and that is worth its own note.
 
 That last one is not symmetry, it is the difference between empty and unreadable.
 `membershipTarget` returns null for every item when `membershipKey` is unbound, so every
@@ -370,10 +395,16 @@ design adds to them:
   undo slot.
 - Changing the transition value, or widening the released-value list to cover this
   release's current status, WHILE the confirmation is open makes the submit refuse rather
-  than write. Both are driven from inside the await, because a test that changes the
+  than write. So does the NOTE reaching a released status across that await, asserted by
+  changing it from inside the callback — the only place that can tell a writer which checks
+  the live value from one which checked it a moment earlier.
+- A release already carrying an actual date never has it replaced by this action, on any
+  path. Both are driven from inside the await, because a test that changes the
   configuration before the dialog opens passes against a submit that never re-reads.
-- With `membershipProperty` pointed at the type, parent, order or item-state key,
-  generation is withheld and names the collision — and the criterion is again about the
+- Generation is withheld, naming the problem, for a collision seen by ANY of its three
+  reports: `stateProperty` on the order key (`configProblems`), two release-note roles on
+  one key (`releaseNoteProblems`), and `membershipProperty` on the type, parent, order or
+  item-state key (the new check) — and the criterion is again about the
   file: a release with valid generated notes, opened under that `.base`, still has them.
 - `reconfiguredKey` still refuses a write whose key is not its own role's, with the status
   and description options swapped mid-dialog — the PR #211 case, asked of a two-set write.
