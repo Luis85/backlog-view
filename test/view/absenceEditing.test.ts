@@ -317,6 +317,41 @@ describe('adding an absence', () => {
 		expect(Notice.messages.some((m) => m.startsWith('That resource is no longer in this base'))).toBe(true);
 	});
 
+	it('refuses a resource the VAULT no longer calls one, while the model still lists it', async () => {
+		// One step past the test above, and the whole of the issue this closes: no `refresh`,
+		// so the model's roster is exactly what it was at open and `resourceById` finds Bob.
+		// Only the vault knows he was retyped — which is where `createAbsenceNote` asks,
+		// through the same `refusesLiveAssignee` `applyWrites` uses. Without that ask the
+		// note is written and links to an ordinary note, drawing in no lane at all.
+		const vault = absenceVault();
+		const harness = laneRoadmap(vault);
+
+		addButton(harness.containerEl, 'Bob')?.click();
+		vault.fm('Bob.md')['type'] = 'Epic';
+		expect(submitAbsence({ start: '2026-09-01', target: '2026-09-04' })).toBe(true);
+		await flush();
+
+		expect(vault.files.has('docs/Bob away 2026-09-01 → 2026-09-04.md')).toBe(false);
+		expect(Notice.messages.some((m) => m.startsWith('That resource is no longer in this base'))).toBe(true);
+	});
+
+	it('writes for a resource Obsidian has not indexed yet, since no cache is no answer', async () => {
+		// The rule the guard inherits and the reason it is that guard rather than a null
+		// check: Obsidian fills the metadata cache AFTER `vault.create` resolves, so a
+		// resource made by `New resource...` a moment ago has no cache of its own. Reading
+		// that absence as "not a Resource" would refuse every freshly created one.
+		// `FakeVault.create` indexes synchronously, so the window has to be asked for.
+		const vault = absenceVault();
+		const harness = laneRoadmap(vault);
+
+		addButton(harness.containerEl, 'Bob')?.click();
+		vault.unindex('Bob.md');
+		expect(submitAbsence({ start: '2026-09-01', target: '2026-09-04' })).toBe(true);
+		await flush();
+
+		expect(vault.files.has('docs/Bob away 2026-09-01 → 2026-09-04.md')).toBe(true);
+	});
+
 	it('re-asks the gate at submit, so a config narrowed under the open form writes nothing', async () => {
 		// The render gate withholds the button, but the form outlives the config it opened
 		// under: Obsidian's options pane stays reachable while a modal is up. Without the
@@ -528,6 +563,24 @@ describe('editing a placed absence', () => {
 
 		expect(vault.files.has('Bob away 2026-08-05 → 2026-08-09.md')).toBe(false);
 		expect(vault.fm(ALICE_AWAY_PATH)['start']).toBe('2026-08-04');
+		expect(Notice.messages.some((m) => m.startsWith('That resource is no longer in this base'))).toBe(true);
+	});
+
+	it('refuses an edit naming a resource the vault no longer calls one, and does not rename it', async () => {
+		// The add flow's own vault-vs-model race, asked of the other writer: no `refresh`,
+		// so `resourceById` still finds Bob and only `updateAbsenceNote`'s guard sees the
+		// retype. The rename must be skipped too — it spells the resource's name into the
+		// title, so renaming after this refusal names the note for a fact never written.
+		const vault = absenceVault();
+		const { containerEl } = laneRoadmap(vault);
+
+		openEdit(containerEl);
+		vault.fm('Bob.md')['type'] = 'Epic';
+		expect(submitAbsence({ resource: 'Bob.md', start: '2026-08-05', target: '2026-08-09' })).toBe(true);
+		await flush();
+
+		expect(vault.fm(ALICE_AWAY_PATH)).toEqual({ type: 'Absence', assignee: 'Alice', start: '2026-08-04', due: '2026-08-06' });
+		expect(vault.files.has(ALICE_AWAY_PATH)).toBe(true);
 		expect(Notice.messages.some((m) => m.startsWith('That resource is no longer in this base'))).toBe(true);
 	});
 

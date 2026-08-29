@@ -5,6 +5,7 @@ import { BacklogSettings } from '../domain/settings';
 import { vaultFolder } from '../domain/settingsResolve';
 import { ABSENCE_TYPE } from '../domain/typeVocabulary';
 import { ensureFolder, uniqueNotePath, wikilinkTo } from './createNote';
+import { refusesLiveAssignee } from './frontmatter';
 import { setOwn } from './ownProperty';
 
 /**
@@ -18,6 +19,20 @@ import { setOwn } from './ownProperty';
  * rule that makes `storage/` a boundary at all: everything that puts bytes in the vault
  * is in this directory, which is why the delete is here too even though no lint rule
  * names `trashFile` the way `no-restricted-syntax` names `vault.create`.
+ *
+ * **Both writers ask ONE question about the resource they name, through the ONE guard
+ * `applyWrites` asks it with** — `refusesLiveAssignee` (`frontmatter.ts`), imported rather
+ * than restated. One rather than two because it is one question: an absence's resource and
+ * an item's assignee are the same link, to the same `settings.assigneeKey`, about a note
+ * that may have been retyped out of `Resource` since the form's roster was captured. Two
+ * guards would be two places to keep the guard's own two cache rules in step — a MISSING
+ * cache is no answer rather than a "no", and a DELETED target must not ride in on that
+ * same null — and this module has no better view of either than that function does.
+ *
+ * The question is asked BEFORE the vault is touched on both paths, which is the one thing
+ * that differs from `applyWrites`: there the live type is only readable inside the
+ * `processFrontMatter` callback, and here the target is a DIFFERENT file from the one
+ * being written, so nothing has to be opened to ask.
  */
 
 /**
@@ -29,6 +44,14 @@ import { setOwn } from './ownProperty';
  * `AbsenceSpec` exists the resource has already been chosen from the roster: there is no
  * unresolved case left to represent, only a real `TFile` to spell as a link.
  */
+/**
+ * What {@link updateAbsenceNote} did, one value per outcome rather than a boolean: the two
+ * refusals are two different notes moving under one open modal, and the caller reports
+ * which. Read as a type rather than a set of booleans because they are exclusive — the
+ * target is asked about first and the note is never opened when it answers.
+ */
+export type AbsenceEdit = 'written' | 'becameResource' | 'staleResource';
+
 export interface AbsenceSpec {
 	resource: TFile;
 	start: string;
@@ -49,8 +72,14 @@ export interface AbsenceSpec {
  * `typeKey` always resolves — so the "never write to an unconfigured key" rule is kept by
  * the gate in front rather than by a guard per key, which is the one place this differs
  * from `applyInto` and worth saying out loud.
+ *
+ * **Returns `null` where the resource it was asked to name is no longer one** — the module
+ * docblock's shared guard, asked before anything is created, so a refusal leaves no note
+ * behind to take back. ONE refusal here against {@link updateAbsenceNote}'s two: there is
+ * no note yet for the other race to have retyped underneath this call.
  */
-export async function createAbsenceNote(app: App, settings: BacklogSettings, spec: AbsenceSpec): Promise<TFile> {
+export async function createAbsenceNote(app: App, settings: BacklogSettings, spec: AbsenceSpec): Promise<TFile | null> {
+	if (refusesLiveAssignee(app, spec.resource, settings)) return null;
 	const folder = vaultFolder(spec.folder);
 	await ensureFolder(app, folder);
 	const path = uniqueNotePath(app, folder, spec.title);
@@ -82,7 +111,14 @@ export async function createAbsenceNote(app: App, settings: BacklogSettings, spe
  * write target of this backlog, so there is no batch, no captured inverse and no undo
  * slot. What takes an edit back is Obsidian's own file history.
  *
- * **Returns whether it wrote.** The edit modal that produced `spec` was opened against
+ * **Returns WHICH of three things happened**, because two different notes can move under
+ * one open modal and the reader is owed which one did. `staleResource` is the resource this
+ * absence names, retyped out of `Resource` since the form captured its roster — the module
+ * docblock's shared guard, asked before the note is opened because the target is not the
+ * file being written. `becameResource` is the note being EDITED, retyped INTO one, which is
+ * the refusal below and reads on:
+ *
+ * The edit modal that produced `spec` was opened against
  * this file while it was an absence, and both Obsidian's options pane and the vault
  * itself stay reachable while it is up — so the note can be retyped to `Resource` between
  * open and submit. `applyWrites` and `applyPropertyWrites` ask the identical question
@@ -91,8 +127,9 @@ export async function createAbsenceNote(app: App, settings: BacklogSettings, spe
  * their path — no batch, no `configProblems` gate, no undo slot — so the question is asked
  * again here rather than inherited, using the same `readString(ownValue(fm, …))` +
  * `isResourceType` shape rather than a second reader. The caller (`editAbsence`) must not
- * rename a note this returns `false` for — the rename is the other half of what the
- * refusal is protecting a resource from.
+ * rename a note this refuses — under EITHER reason: the rename is the other half of what
+ * the carrier's refusal protects a resource from, and under the target's it would spell a
+ * stale resource's name into the note's own title.
  *
  * `spec` is `AbsenceSpec` minus its location and its name — the same three writable facts
  * `createAbsenceNote` takes, `resource` already resolved to the `TFile` it names.
@@ -102,7 +139,8 @@ export async function updateAbsenceNote(
 	settings: BacklogSettings,
 	file: TFile,
 	spec: Pick<AbsenceSpec, 'resource' | 'start' | 'target'>,
-): Promise<boolean> {
+): Promise<AbsenceEdit> {
+	if (refusesLiveAssignee(app, spec.resource, settings)) return 'staleResource';
 	let refused = false;
 	await app.fileManager.processFrontMatter(file, (fm: Record<string, unknown>) => {
 		if (isResourceType(readString(ownValue(fm, settings.typeKey)))) {
@@ -113,7 +151,10 @@ export async function updateAbsenceNote(
 		setOwn(fm, settings.startKey, spec.start);
 		setOwn(fm, settings.targetKey, spec.target);
 	});
-	return !refused;
+	// Two returns rather than a ternary between the two literals: `TEXT_TERNARY` cannot
+	// tell an outcome value from a sentence, and this is data — see the root guide.
+	if (refused) return 'becameResource';
+	return 'written';
 }
 
 /**

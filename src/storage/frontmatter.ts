@@ -605,8 +605,15 @@ function refusesLiveType(settings: BacklogSettings, write: ItemWrite, liveType: 
  * deleted and taken again by a different note answers "still there" to a bare null check
  * while being a different file. A link to a note that is gone resolves to nothing, which
  * is the one value this whole flow must not write (Codex review, PR #207, second round).
+ *
+ * **Exported for `absenceNotes.ts`, which asks the identical question of the identical
+ * thing.** An absence's resource is written to `settings.assigneeKey` as a link, exactly
+ * as an item's assignee is, so it is the same target retyped out of the same type — one
+ * guard rather than a second reader that would have to be kept in step with the two cache
+ * rules above. What the absence writers do NOT share is this file's batch, gate or undo
+ * slot; importing a predicate is not going through `applyWrites`.
  */
-function refusesLiveAssignee(app: App, target: TFile | null | undefined, settings: BacklogSettings): boolean {
+export function refusesLiveAssignee(app: App, target: TFile | null | undefined, settings: BacklogSettings): boolean {
 	if (!target) return false;
 	const cache = app.metadataCache.getFileCache(target);
 	if (cache === null) return app.vault.getAbstractFileByPath(target.path) !== target;
