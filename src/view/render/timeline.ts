@@ -302,6 +302,10 @@ export function renderTimeline(
 	const releaseDrawn = renderReleaseLines({ grid: content, headerTrack: header.coarse }, window, drawing.releases, today, {
 		scale,
 		leadWidth,
+		// The days the milestone pass just took: a release sharing one steps aside from it,
+		// exactly as both step aside from today. Reported by that pass rather than recomputed
+		// here — a second walk of the bars would be a second answer to which days it drew on.
+		taken: milestoneLines.days,
 	});
 	const tracks = new Map<string, HTMLElement>();
 	const anchors = new Map<string, HTMLElement>();

@@ -8,6 +8,7 @@ created: 2026-08-29
 source: user request — release management improvements, 2026-08-29
 files:
   - src/domain/releaseOptions.ts
+  - src/domain/settingsConsistency.ts
   - src/domain/releases.ts
   - src/domain/releaseWritePlan.ts
   - src/storage/createNote.ts
@@ -130,6 +131,15 @@ whose whole job is to say what a release is. Asked for as a property by the auth
   whichever view wrote it" means rather than a gap.
 - `applyWrites` and `applyRestores` — the item-batch path — are still never called from
   `src/view/release/`: this view plans no hierarchy, no state and no placement.
+- **A configuration that would corrupt the release note refuses every edit.** Two of this
+  view's release-note properties on one key — a status aimed at the TYPE key is the worst,
+  since picking one takes `Release` off the note and the release vanishes from its own view —
+  block the gate with a notice naming both properties. The rule is `releaseNoteProblems`
+  (`src/domain/settingsConsistency.ts`), which `createRelease` throws on and this gate
+  refuses on: one statement, two enforcement points, because an edit never passes the
+  creator and ✨ cannot produce the state a property picker can. Found by review on this PR.
+  It is over the RELEASE-NOTE keys alone, so the item-state / release-status sharing this
+  view is built around stays legal.
 - **Focus survives the redraw an edit causes.** Both controls are in
   `FOCUS_HANDLE_CLASSES` (`releaseView.ts`), so the reader who pressed one lands on its
   replacement rather than on `document.body` — which bites hardest here of anywhere in this

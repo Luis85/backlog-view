@@ -1,4 +1,5 @@
 import { BacklogSettings } from './settings';
+import { ReleaseSettings } from './releaseOptions';
 import { t } from '../i18n/t';
 import { ownedProperties, OwnedRole } from './optionalProperties';
 import { colorableStates, stateColor } from './stateColors';
@@ -254,6 +255,67 @@ export function configProblems(settings: BacklogSettings): string[] {
 			// to English while the active catalog is another language.
 			problems.push(t('settings.sharedKey', { properties: users.map((role) => t(`property.${role}`)), key }));
 		}
+	}
+	return problems;
+}
+
+/**
+ * The RELEASE view's own collision report — `configProblems` above asked of the other
+ * settings shape, and the same question: is this combination one a writer may act on.
+ *
+ * **Over the keys read and written on the RELEASE NOTE, and no others.** Those six are the
+ * ones whose collision corrupts the note this view writes: a status aimed at the type key
+ * takes `Release` off the note the moment somebody picks one, and it is then a release no
+ * reader can find (`isReleaseType` and `membershipTarget` both key off the type). The
+ * ITEM-side keys — the membership property, the state property — are deliberately absent,
+ * which is what keeps the one sharing this view is built around legal: the release's own
+ * status and an item's workflow state may name one property, because they are read of
+ * different notes (`SHARED_STATUS_OPTIONS`, `domain/releaseOptions.ts`). That is the same
+ * exemption `WORKFLOW_STATE_ROLES` makes above, arrived at by narrowing the population
+ * rather than by skipping a group.
+ *
+ * **Two callers, one statement.** `createRelease` (`storage/createNote.ts`) throws on a
+ * non-empty list — it is the last line before `vault.create`, and a caller that ignored
+ * this would write a corrupt note — and the release view's `WriteGate` refuses every edit
+ * while it is non-empty, which is what a `.base` typed by hand needs: ✨ cannot produce
+ * this state (`adoptableReleaseKeys` refuses), and a property picker can. The edit path
+ * bypassed the creator's guard entirely until this function existed (found by review,
+ * PR #211): picking `Planned` with the status and the type on one key rewrote
+ * `type: Release` to `type: Planned` and the release vanished from its own view.
+ *
+ * Fragments, never sentences, for `configProblems`' own reason: `config.fixFirst` is what
+ * closes one.
+ */
+type ReleaseNoteRole =
+	| 'type'
+	| 'releaseVersion'
+	| 'releaseTarget'
+	| 'releaseStatus'
+	| 'releasedDate'
+	| 'releaseDescription';
+
+export function releaseNoteProblems(settings: ReleaseSettings): string[] {
+	// A UNION rather than `string`, `OwnedRole`'s own reason one function up: `t` derives
+	// its keys from the catalog by template literal type, so a role that names no
+	// `property.*` entry is a build error rather than a message rendered as its own key.
+	const owned: { role: ReleaseNoteRole; key: string }[] = [
+		{ role: 'type', key: settings.typeKey },
+		{ role: 'releaseVersion', key: settings.versionKey },
+		{ role: 'releaseTarget', key: settings.targetDateKey },
+		{ role: 'releaseStatus', key: settings.statusKey },
+		{ role: 'releasedDate', key: settings.releasedDateKey },
+		{ role: 'releaseDescription', key: settings.descriptionKey },
+	];
+	const keys = new Map<string, ReleaseNoteRole[]>();
+	for (const { role, key } of owned) {
+		if (!key) continue;
+		keys.set(key, [...(keys.get(key) ?? []), role]);
+	}
+	const problems: string[] = [];
+	for (const [key, users] of keys) {
+		if (users.length < 2) continue;
+		// The array, not a joined string — `configProblems`' own note on why.
+		problems.push(t('settings.sharedKey', { properties: users.map((role) => t(`property.${role}`)), key }));
 	}
 	return problems;
 }

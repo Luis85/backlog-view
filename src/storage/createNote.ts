@@ -4,6 +4,7 @@ import { BacklogSettings } from '../domain/settings';
 import { ReleaseSettings } from '../domain/releaseOptions';
 import { AxisWrite } from '../domain/writePlan';
 import { vaultFolder } from '../domain/settingsResolve';
+import { releaseNoteProblems } from '../domain/settingsConsistency';
 import { RELEASE_TYPE, RESOURCE_TYPE } from '../domain/typeVocabulary';
 import { setOwn } from './ownProperty';
 import { axisEntries } from './writeKeys';
@@ -224,19 +225,16 @@ export async function createRelease(app: App, settings: ReleaseSettings, spec: N
 	// the guard belongs at the write where every caller passes rather than at the one
 	// path that used to create it. Reported by review on PR #203, twice — once for the
 	// bind, and again because fixing the bind left this reachable.
-	const written = [
-		settings.typeKey,
-		settings.versionKey,
-		settings.targetDateKey,
-		settings.statusKey,
-		settings.releasedDateKey,
-		// The description joins the list by the same rule the released date does, and it is
-		// the one of the six this function BOTH writes and would be read back from: aliased
-		// onto the status key it would put a paragraph where the index draws a chip, and
-		// onto the type key it would take `Release` off the note outright.
-		settings.descriptionKey,
-	].filter((key) => key !== '');
-	if (new Set(written).size !== written.length) throw new Error('createRelease: two release properties name one key');
+	// The rule itself is `releaseNoteProblems` (`domain/settingsConsistency.ts`), shared with
+	// the release view's own `WriteGate` since review found that an EDIT bypassed this guard
+	// entirely (PR #211). One statement, two enforcement points, and they differ only in what
+	// they do about it: the gate refuses the batch with a notice naming the two properties,
+	// and this THROWS, because it is the last line before `vault.create` and a caller that
+	// ignored the report would put a corrupt note in the vault. The caller's `catch` turns
+	// this into a notice plus the console line that names it.
+	if (releaseNoteProblems(settings).length > 0) {
+		throw new Error('createRelease: two release properties name one key');
+	}
 	const folder = vaultFolder(settings.folder);
 	await ensureFolder(app, folder);
 	const path = uniqueNotePath(app, folder, spec.title);

@@ -9,6 +9,7 @@ import { ReleaseSettings, resolveReleaseSettings } from '../../domain/releaseOpt
 import { releaseIndex, releaseScope } from '../../domain/releases';
 import { todayCivil } from '../../domain/noteFields';
 import { resolveSettings } from '../../domain/settingsResolve';
+import { releaseNoteProblems } from '../../domain/settingsConsistency';
 import { loadViewState, saveViewState } from '../../storage/viewStateStore';
 import { resolveViewIdentity } from '../../storage/viewIdentity';
 import { guidanceShell } from '../render/emptyStates';
@@ -130,12 +131,18 @@ export class ReleaseView extends BasesView {
 	 * fallback is exactly the bug a shared lock exists to prevent — one view serializing
 	 * and undoing against nobody.
 	 *
-	 * `writeProblems` answers NOTHING, and that is a statement rather than a stub:
-	 * `ReleaseSettings` has no `configProblems` of its own ([[Two release options aimed at
-	 * one property go unreported]]), so there is no per-view validation for the gate to
-	 * run. The two things that WOULD block a write here are asked where they can be
-	 * answered — an unconfigured key is dropped by the planner, and `createRelease`'s own
-	 * collision guard is at the creator.
+	 * `writeProblems` is `releaseNoteProblems` (`domain/settingsConsistency.ts`) — the
+	 * collision `createRelease` already refuses, asked of the EDIT path too. It answered
+	 * nothing until review found the hole (PR #211): with the status and the type on one
+	 * key, picking a status rewrote `type: Release` to `type: Planned` and the release
+	 * vanished from its own view, because the creator's guard is at the creator and an edit
+	 * never passes it. ✨ cannot produce that state and a property picker can, which is why
+	 * the guard belongs at the write rather than at the action.
+	 *
+	 * It is over the RELEASE-NOTE keys alone, so the sharing this view is built around —
+	 * the release's own status and an item's workflow state on one property — stays legal.
+	 * The other refusal a write here can meet is the planner's: an unconfigured key is
+	 * dropped before a batch exists.
 	 *
 	 * `outsideFilter` asks the MODEL, like the estimation view's: a release this base did
 	 * not return is not this view's to write. It answers true before the first model, which
@@ -157,7 +164,7 @@ export class ReleaseView extends BasesView {
 		this.gate = new WriteGate<PropertyWrite>(
 			{
 				app: () => this.app,
-				writeProblems: () => [],
+				writeProblems: () => releaseNoteProblems(this.settings),
 				outsideFilter: (path) => !this.model || !this.model.byPath.has(path),
 			},
 			{ syncBusy: () => this.syncBusy(), flushDataUpdate: () => this.onDataUpdated() },

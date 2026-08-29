@@ -60,6 +60,28 @@ describe('a release on the dated axis', () => {
 		expect(labels(containerEl)).toEqual(['Release: 1.1.0']);
 	});
 
+	it('shares one label with a milestone on the same date, and steps its line aside', () => {
+		// Found by review (Codex, PR #211). Both labels are opaque 140px boxes at one x, so
+		// the pass that ran second covered the first outright — the milestone's name was
+		// unreachable from the header, tooltip included. One date now reads as one label
+		// naming everything on it, the same ` · ` two milestones already share, and the
+		// release's LINE steps aside by the scale's line width so both marks are visible.
+		const vault = new FakeVault();
+		vault.addFile('Ship 1.0.md', { frontmatter: { type: 'Milestone', order: 10, due: '2026-09-15' } });
+		vault.addFile('1.1.0.md', { frontmatter: { type: 'Release', 'target-date': '2026-09-15' } });
+		vault.addFile('A story.md', { frontmatter: { type: 'PBI', order: 20, due: '2026-10-01' } });
+		const { containerEl } = roadmapView(vault, { ...DATES });
+
+		const labels = Array.from(containerEl.querySelectorAll<HTMLElement>('.pbl-milestone-label, .pbl-release-label'));
+		expect(labels).toHaveLength(1);
+		expect(labels[0].textContent).toBe('Ship 1.0 · Release: 1.1.0');
+		expect(labels[0].dataset.tooltip).toBe('Ship 1.0 · Release: 1.1.0');
+
+		const at = (sel: string) =>
+			Number(containerEl.querySelector<HTMLElement>(sel)?.style.getPropertyValue('--pbl-milestone-left')?.replace('px', ''));
+		expect(at('.pbl-release-line')).toBeGreaterThan(at('.pbl-milestone-line'));
+	});
+
 	it('draws nothing on the horizon axis, where a bucket is not a date', () => {
 		const vault = releaseVault();
 		vault.addFile('Now item.md', { frontmatter: { type: 'Epic', order: 20, horizon: 'Now' } });

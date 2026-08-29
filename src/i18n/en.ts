@@ -929,6 +929,18 @@ export const en = {
 	'property.iteration': 'iteration',
 	'property.iterationGoal': 'iteration goal',
 	'property.release': 'release',
+	/**
+	 * The RELEASE view's own five, for `releaseNoteProblems` (`domain/settingsConsistency.ts`).
+	 * Short words for the reason the roles above are short — the sentence they land in already
+	 * ends in "properties" — and named for the ROLE rather than the option, so a locale cannot
+	 * change which keys are allowed to share one property. `type` is not repeated here: that
+	 * collision is the same property under the same role, and it reuses `property.type`.
+	 */
+	'property.releaseVersion': 'release version',
+	'property.releaseTarget': 'release target date',
+	'property.releaseStatus': 'release status',
+	'property.releasedDate': 'released date',
+	'property.releaseDescription': 'release description',
 
 	/**
 	 * The menus — the row and card menu in `view/interactions/menu.ts`, the shelf's picks

@@ -58,7 +58,7 @@ export function renderMilestoneLines(
 	// `scale` and `leadWidth` are both "how a day converts to a pixel here"; `iterationBars`
 	// joins them here rather than as a sixth parameter, for the same five-parameter budget.
 	ruler: { scale: TimelineScale; leadWidth: number; iterationBars: boolean },
-): { milestone: boolean; iteration: boolean } {
+): { milestone: boolean; iteration: boolean; days: Set<number> } {
 	const { grid, headerTrack } = mounts;
 	const { scale, leadWidth, iterationBars } = ruler;
 	// Insertion order is bar order, which is row order — so a shared line names its
@@ -74,14 +74,16 @@ export function renderMilestoneLines(
 		if (isIterationType(bar.item.typeName)) iteration = true;
 		else milestone = true;
 	}
-	drawDayLines({ grid, headerTrack }, byDay, daysBetween(window.start, today), {
+	drawDayLines({ grid, headerTrack }, byDay, new Set([daysBetween(window.start, today)]), {
 		scale,
 		leadWidth,
 		line: 'pbl-milestone-line',
 		label: 'pbl-milestone-label',
 		name: (names) => names.join(' · '),
 	});
-	return { milestone, iteration };
+	// The DAYS this pass took, so the release pass can step aside from them exactly as both
+	// step aside from today — see `renderReleaseLines`' own `taken`.
+	return { milestone, iteration, days: new Set(byDay.keys()) };
 }
 
 /**
@@ -111,7 +113,7 @@ export function renderReleaseLines(
 	window: TimelineWindow,
 	marks: ReleaseMark[],
 	today: CivilDate,
-	ruler: { scale: TimelineScale; leadWidth: number },
+	ruler: { scale: TimelineScale; leadWidth: number; taken: Set<number> },
 ): boolean {
 	const byDay = new Map<number, string[]>();
 	for (const mark of marks) {
@@ -119,7 +121,7 @@ export function renderReleaseLines(
 		if (geometry.outside) continue;
 		byDay.set(geometry.startDay, [...(byDay.get(geometry.startDay) ?? []), mark.item.title]);
 	}
-	drawDayLines(mounts, byDay, daysBetween(window.start, today), {
+	drawDayLines(mounts, byDay, new Set([daysBetween(window.start, today), ...ruler.taken]), {
 		...ruler,
 		line: 'pbl-release-line',
 		label: 'pbl-release-label',
@@ -142,7 +144,7 @@ export function renderReleaseLines(
 function drawDayLines(
 	mounts: { grid: HTMLElement; headerTrack: HTMLElement },
 	byDay: Map<number, string[]>,
-	todayDay: number,
+	occupied: Set<number>,
 	mark: { scale: TimelineScale; leadWidth: number; line: string; label: string; name: (names: string[]) => string },
 ): void {
 	const { grid, headerTrack } = mounts;
@@ -156,7 +158,14 @@ function drawDayLines(
 		// fixed pixels at two pixels per day is a whole day's displacement, putting the
 		// line and its label in the day after the one they belong to. `dayPx >= 2 *
 		// lineWidth` is what guarantees the step still fits inside the day it steps in.
-		const nudge = day === todayDay ? scale.lineWidth : 0;
+		//
+		// `occupied` is every day a mark ALREADY stands on — today's for both passes, plus
+		// the milestones' own days for the release pass (found by review, PR #211: a release
+		// and a milestone on one date drew two lines at one x, the later one painting over
+		// the earlier). ONE step and never two: three marks on one day put the release beside
+		// today's step and over the milestone's, which is the accepted limit rather than a
+		// second displacement that would leave the day it belongs to.
+		const nudge = occupied.has(day) ? scale.lineWidth : 0;
 		const line = grid.createDiv({ cls: mark.line, attr: { 'aria-hidden': 'true' } });
 		line.setCssProps({ '--pbl-milestone-left': `${leadWidth + day * scale.dayPx + nudge}px` });
 		// The label sits in the header band, and the full name stays in the tooltip:
@@ -178,7 +187,25 @@ function drawDayLines(
 		// Same variable, different origin: the line is positioned in the grid, which
 		// includes the sticky lead column, and the label inside the track, which does not.
 		const label = mark.name(names);
-		const labelEl = headerTrack.createDiv({ cls: mark.label, text: label });
+		// A label ALREADY at this day is joined rather than covered. Nudging the box would
+		// not have helped: it is an opaque 140px, so two of them 2px apart still hide one
+		// name — and the one that loses is whichever pass ran first, which is the milestone's
+		// (found by review, PR #211). Joined with the same ` · ` a shared day already uses
+		// between two milestones, so one date reads as one label naming everything on it. It
+		// keeps the FIRST pass's colour, which is the honest half of the compromise: the
+		// strip says a milestone is there and the words say a release is too.
+		const held = headerTrack.querySelector<HTMLElement>(`[data-pbl-day="${day}"]`);
+		if (held !== null) {
+			// `join`, not a template with `?? ''`: `textContent` is typed nullable and cannot be
+			// null on a div this function itself created with text, so a fallback would be a
+			// branch nothing can ever take — and an unreachable branch is a claim no check can
+			// reach either. `Array.join` coerces the same way the fallback would.
+			const joined = [held.textContent, label].join(' · ');
+			held.setText(joined);
+			setTooltip(held, joined);
+			continue;
+		}
+		const labelEl = headerTrack.createDiv({ cls: mark.label, text: label, attr: { 'data-pbl-day': String(day) } });
 		labelEl.setCssProps({ '--pbl-milestone-left': `${day * scale.dayPx + nudge}px` });
 		setTooltip(labelEl, label);
 	}

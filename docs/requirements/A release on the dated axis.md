@@ -92,6 +92,17 @@ axis-specific rule of its own.
   written to the check is the sentence above: cleared means no markers.
 - **3a — two releases fall on the same date.** Both draw, in a stable order that does not
   change between renders, the same tie rule the milestone overlay already keeps.
+- **3c — a release and a MILESTONE fall on the same date.** One label names both, joined by
+  the same ` · ` two milestones already share, and the release's line steps aside by the
+  scale's line width so both marks are visible — the step today's line already makes room
+  for. Found by review (PR #211): the two labels are opaque 140px boxes at one x, so the
+  pass that drew second covered the first outright and took its tooltip with it, leaving a
+  milestone whose name was unreachable from the header. Nudging the box would not have
+  helped — two 140px boxes two pixels apart still hide one name. The joined label keeps the
+  MILESTONE's colour, since its pass runs first; that is the honest half of the compromise,
+  and the words are what say a release is there too. Three marks on one day (today, a
+  milestone and a release) put the release beside today's step and over the milestone's,
+  which is the accepted limit rather than a second displacement that would leave the day.
 - **3b — a release is dated beyond every bar on the grid.** The window is widened to hold it,
   exactly as it is for an absence stretch a row never reaches. A mark the window was never
   widened for is clamped to the edge and painted on a day it does not cover, which is the
@@ -125,6 +136,8 @@ axis-specific rule of its own.
   cannot stub it.
 - Two releases on one date render in the same order across repeated renders — one line naming
   both, in `model.releases` order, the same day-grouping the milestone overlay already keeps.
+- **A release sharing a date with a milestone leaves both names readable** (3c): one label
+  naming both, and the release's line stepped aside from the milestone's.
 - With the horizon axis selected, no release marker is drawn: `buildRoadmap` fills
   `releaseMarks` only for an axis `drawsGrid` answers for.
 - **The resources axis draws exactly what the dated axis draws.** Both pass the same list to

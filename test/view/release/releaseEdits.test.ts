@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
-import { Menu, Modal } from '../../helpers/obsidian-mock';
+import { Menu, Modal, Notice } from '../../helpers/obsidian-mock';
 import * as frontmatter from '../../../src/storage/frontmatter';
 import { makeReleaseView, RELEASE_CONFIG } from '../../helpers/release';
 import { WriteLock } from '../../../src/view/writeLock';
@@ -326,6 +326,26 @@ describe('what an edit is, and is not', () => {
 		expect(containerEl.querySelector('.pbl-rel-desc')).toBeNull();
 		const said = Array.from(containerEl.querySelectorAll('.pbl-rel-unreadable')).map((el) => el.textContent);
 		expect(said).toEqual(['Status unreadable', 'Release description property unreadable']);
+	});
+
+	it('refuses every edit while two release properties name one key', async () => {
+		// Found by review (Codex, PR #211). `createRelease` has refused this since #203 — a
+		// status aimed at the TYPE key takes `Release` off the note, and the release vanishes
+		// from its own view — but an edit never passes the creator, so the gate had to ask the
+		// same question. ✨ cannot produce this state; a property picker can.
+		const vault = editVault();
+		vault.addFile('R.md', { frontmatter: { type: 'Release', version: '1.0.0' } });
+		const { view, containerEl } = makeReleaseView(vault, { ...RELEASE_CONFIG, releaseStatusProperty: 'note.type' });
+		view.pick('R.md');
+		statusChip(containerEl).click();
+		await flush();
+		Menu.lastShown?.items[0]?.click();
+		await flush();
+
+		expect(vault.writeLog).toEqual([]);
+		// Still a release, which is the whole of what the refusal protects.
+		expect(vault.fm('R.md').type).toBe('Release');
+		expect(Notice.messages.some((m) => m.includes('release status'))).toBe(true);
 	});
 
 	it('refuses a write to a release this base did not return', async () => {
