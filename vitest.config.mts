@@ -244,16 +244,32 @@ export default defineConfig({
 			// 6350/6634. A figure three environments agree on is a fact about the tree, so the
 			// answer was a branch, not a number: creating a child from a scope row at the VAULT
 			// ROOT was untested, and without the guard it covers the prompt offers to file the
-			// note `in folder "/"`. Covering it takes the tree to 6352/6634 — 95.7492.
+			// note `in folder "/"`.
 			//
-			// **The rise that arithmetic would allow is declined.** One fewer branch is 95.7341,
-			// so the headroom rule would put branches at 95.73 — one covered unit above the
-			// 95.72 standing, which is exactly the width the documented flake moves. The floor
-			// stays at 95.72, which this tree clears by two. That is a declined rise, not a
-			// lowered floor. The other three do not move either, by the arithmetic this comment
-			// has now stated seven times: one fewer statement is 99.0422 (99.04 standing), one
-			// fewer line 99.7750 (under the 99.78 standing) and one fewer function 99.8846
-			// (under 99.92).
+			// **`lines` was the same landmine one step behind, and a new gate is what found
+			// it.** At 8427/8445 this tree cleared the 99.78 raised alongside branches by
+			// exactly nothing: one fewer line is 99.7750, under it. So the next legitimate
+			// change removing a covered line would have turned `main` red a second time, for
+			// the same reason, with the first fix already merged. It was covered rather than
+			// lowered too — `refreshSubtree`'s fallback when the row it was handed is not on
+			// screen. The tree now measures 10137/10232 statements, 6353/6634 branches,
+			// 2598/2600 functions and 8429/8445 lines.
+			//
+			// **Every rise that arithmetic now allows is declined, and the four numbers below
+			// are the last ones this comment computes by hand.** One fewer would put statements
+			// at 99.06, branches at 95.74 and lines at 99.79, each a real raise by the headroom
+			// rule — and each measured against THIS tree, which is the move that produced the
+			// red above. A floor raised on a branch is asserted against a merge, so a raise is
+			// worth taking when the tree it was measured on is the tree that lands, and this is
+			// not that moment. The floors stay where they are, cleared by three, two and two.
+			//
+			// **What replaces the arithmetic is `scripts/coverage-floors.mjs`**, which
+			// `npm run test:coverage` runs on the coverage file the run just wrote. It asks the
+			// one question this comment has answered by hand seven times — how many covered
+			// units can this tree lose before the floor fails? — and fails the run at zero.
+			// `functions` is named in its own list as knowingly tight, for the reason stated
+			// above rather than as an exemption to forget. The history of which decimal moved
+			// in which increment is in git, which this comment already said once.
 			//
 			// **The mechanism that would have prevented all of it is not in this file.** No check
 			// that runs on a tree can see a merge that has not happened yet — a branch's floor is

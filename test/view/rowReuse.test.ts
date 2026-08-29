@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { FakeVault } from '../helpers/vault';
-import { makeView, refresh, rowByTitle, rows, titlesOf, useViewHarness } from '../helpers/view';
+import { itemAt, makeView, refresh, rowByTitle, rows, titlesOf, useViewHarness } from '../helpers/view';
 
 useViewHarness();
 
@@ -185,6 +185,30 @@ describe('row reuse across a data update', () => {
 		expect(rowByTitle(containerEl, 'Alpha')).not.toBe(before);
 		// And only that row: a link in one cell must not cost the whole pass its reuse.
 		expect(rowByTitle(containerEl, 'Beta')).toBe(other);
+	});
+
+	it('falls back to a whole render when the row it was asked to refresh is not on screen', () => {
+		// `refreshSubtree` reads `rowEls`, which holds what the last pass DREW — so an item
+		// inside a shut subtree has no row there. Its three callers (the disclosure, the
+		// keyboard's fold and a drop) all reach it with an item they believe is drawn, and
+		// a redraw arriving between the belief and the call is exactly the window this
+		// guard covers. Rendering the whole tree is the fallback because the alternative is
+		// doing nothing: a fold that silently no-ops leaves the twisty saying one thing and
+		// the rows another, which is worse than a pass nobody needed.
+		const { view, containerEl } = makeView(backlog(), STATE, { collapsed: true });
+		// Shut, so its features were never drawn and are not in the index.
+		expect(titlesOf(containerEl)).toEqual(['Epic']);
+		const child = itemAt(view, 'Alpha.md');
+
+		view.refreshSubtree(child);
+
+		// The pass ran and drew the tree the model describes, rather than throwing or
+		// leaving the screen untouched.
+		expect(titlesOf(containerEl)).toEqual(['Epic']);
+		// And the row that IS on screen went through a real render rather than being left
+		// as the element the previous pass had — which is what tells a full render from a
+		// no-op with the same visible result.
+		expect(rowByTitle(containerEl, 'Epic')).not.toBeNull();
 	});
 
 	it('never keeps a row whose file the metadata cache has not indexed', () => {

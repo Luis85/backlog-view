@@ -95,3 +95,27 @@ the instrument the gate itself trusts.
 
 Until then the two figures stay at the floor this branch started from — 98.52 and 94.83 —
 which both samples clear. That is not a lowered floor; it is a declined rise.
+
+## What runs now, and what it does not fix
+
+`scripts/coverage-floors.mjs`, since 2026-08-29, as the second half of
+`npm run test:coverage`. It reads the coverage file the run just wrote and asks one
+question per metric: **how many covered units can this tree lose before the floor
+fails?** Under one and it fails the run, naming the metric.
+
+That is this note's own standing advice turned into a gate rather than a paragraph. The
+rule was already written down — `vitest.config.mts` states it and had restated it seven
+times, by hand, on every raise — and stating a rule is not checking it, which the
+register has open under exactly that name. The arithmetic was also wrong once in a way
+that mattered: on the day it was added the gate found `lines` pinned at 99.78 with zero
+headroom on the merged tree, a red waiting for the next legitimate change.
+
+**It does not diagnose the flake and it is not meant to.** The one-covered-unit swing
+this note is about is still undiagnosed, and the recipe below — two runs with the `json`
+reporter, diffed per file — is still the way to find it. What the gate does is make the
+flake survivable: a floor with a unit of headroom absorbs the swing, and the gate is what
+notices when a floor stops having one.
+
+It also cannot see a floor raised against a tree that a merge has not produced yet. That
+is the other failure mode, it took `main` down on the same day, and
+[[Two spec branches predate the use-case gate]] is where it lives.

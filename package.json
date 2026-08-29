@@ -11,7 +11,7 @@
     "perf": "node scripts/perf.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage",
+    "test:coverage": "vitest run --coverage && node scripts/coverage-floors.mjs",
     "lint": "eslint .",
     "analyze": "fallow",
     "docs": "node scripts/docs-check.mjs",
