@@ -576,6 +576,17 @@ instead, so the strict side is what a new folder gets until somebody argues it i
 Both directions are planted in `test/docs/checkerRejects.test.ts` — a dead link and a dead
 path, each in `docs/README.md` — and both were watched failing against the earlier spelling.
 
+A second round found the same rule holding for one spelling out of three. A note is named
+here three ways — a `[[wikilink]]`, a `` `src/path.ts` `` in a code span, and a relative
+`[text](../specs/….md)` — and only the first two had learned the split, so deleting a note
+still reached CI through the third. It is not a corner: **every** plan under
+`superpowers/plans/` links its own spec that way, so the fix that let a dated spec keep its
+dead wikilink still broke the plan beside it. That is this register's own rule about
+category invariants met from the inside: a rule that covers one of three ways to say the
+same thing is not the rule it reads as. All three take the `RECORDS` split now, with no
+exception carved for a non-note asset — a record naming a deleted diagram cannot be
+rewritten either.
+
 The test case that broke was the third one, and it was living for a reason — it named the
 milestone as the fixture to look at. It was rewritten rather than exempted: no `Milestone`
 note is left in the register, so the run adds its own.

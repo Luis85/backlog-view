@@ -527,8 +527,21 @@ for (const file of files) {
 	// destination with a space ahead of the whitespace-delimited form, and getting that
 	// order wrong resolved `[x](<The quick filter on the board.md>)` as a file called
 	// `The` — a legal link **failed**, which is the more expensive direction here.
+	//
+	// Under the same `RECORDS` split as the two rules above, and that is the correction of
+	// 2026-08-29: it was left failing everywhere while the other two learned the split, so
+	// deleting a note reached CI through whichever spelling the record happened to use.
+	// Every plan under `superpowers/plans/` links its own spec this way
+	// (`[...](../specs/....md)`), so the fix that let a dated spec keep its dead
+	// `[[wikilink]]` still broke the plan beside it. **A category invariant is checked at
+	// the forbidden thing, not per spelling** — a rule that holds for one of three ways to
+	// name a note is not the rule it reads as. No exception for a non-note asset: a record
+	// naming a deleted diagram cannot be rewritten either, for exactly the reason a record
+	// naming a deleted note cannot.
 	for (const { href, target } of localLinks(text)) {
-		if (!(await exists(path.join(path.dirname(file), target)))) fail(file, `links ${href}, which does not exist`);
+		if (await exists(path.join(path.dirname(file), target))) continue;
+		if (record) historical.push(`${file} -> ${href}`);
+		else fail(file, `links ${href}, which does not exist`);
 	}
 }
 

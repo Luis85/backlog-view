@@ -511,7 +511,12 @@ describe('the gate accepts valid documents', () => {
 		const files = baseRegister();
 		files['docs/tasks/Old work.md'] =
 			note('Task', 10, 'Doing the thing', '# Old work\n\nTouched `src/gone.ts`, for [[A deleted note]].\n');
-		files['docs/superpowers/plans/2026-08-02-example.md'] = '# A plan\n\nSee [[No such note]].\n';
+		// All three spellings a record names a note by, because a rule that holds for one of
+		// them is not the rule it reads as — every plan under `superpowers/plans/` links its
+		// own spec with the relative form, so the wikilink half alone still broke on a
+		// deletion.
+		files['docs/superpowers/plans/2026-08-02-example.md'] =
+			'# A plan\n\nSee [[No such note]], and [the spec](../specs/2026-08-02-example-design.md).\n';
 
 		const result = await checkRegister(files);
 
@@ -520,6 +525,7 @@ describe('the gate accepts valid documents', () => {
 		expect(result.output).toContain('src/gone.ts');
 		expect(result.output).toContain('[[A deleted note]]');
 		expect(result.output).toContain('[[No such note]]');
+		expect(result.output).toContain('../specs/2026-08-02-example-design.md');
 	});
 
 	it('accepts a superpowers spec or plan with no backlog frontmatter', async () => {
