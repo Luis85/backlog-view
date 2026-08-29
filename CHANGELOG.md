@@ -11,6 +11,15 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ## [Unreleased]
 
+### Added
+
+- `Improvement`, a fifth type beside the ladder. It hangs under an `Epic`, a `Feature` or
+  a `PBI` and holds `Task`s, wherever it hangs — so a further round of work on something
+  already delivered gets its own note and its own release, instead of the shipped item's
+  release being moved forward and the release that shipped it losing a member. It is
+  offered by the `+`, the toolbar's creator and `Set type`, and files into `improvements/`
+  under the home folder by default.
+
 ### Changed
 
 - **Breaking:** an item names its assignee by link to a `Resource` note rather than by

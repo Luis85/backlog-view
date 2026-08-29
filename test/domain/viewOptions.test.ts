@@ -281,6 +281,7 @@ const KEYS = [
 	'typeFolder.bug',
 	'typeFolder.idea',
 	'typeFolder.deliverable',
+	'typeFolder.improvement',
 	'typeFolder.milestone',
 	'typeFolder.iteration',
 	// No `typeFolder.release`, and the gap is the assertion: the release view carries its

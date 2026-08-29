@@ -32,7 +32,7 @@ const ADRS = path.join(DOCS, "adrs");
  * `Idea` arrived on main while `Deliverable` was being built on this branch, neither
  * knowing about the other. Adding a type to `EXTRA_TYPES` means adding it here too.
  */
-const EXTRA = ["Issue", "Bug", "Idea", "Deliverable"];
+const EXTRA = ["Issue", "Bug", "Idea", "Deliverable", "Improvement"];
 /**
  * NULL-PROTOTYPE, because every key read against it is user data — a `type:` a note
  * declares, or a type name written into the README's hierarchy table. A plain object
@@ -52,6 +52,7 @@ const LEGAL_CHILDREN = Object.assign(Object.create(null), {
 	Bug: new Set(["Task"]),
 	Idea: new Set(["Task"]),
 	Deliverable: new Set(["Task"]),
+	Improvement: new Set(["Task"]),
 	// A marker holds nothing and hangs from nothing: no children, and a root of its own.
 	Milestone: new Set(),
 	Iteration: new Set(),

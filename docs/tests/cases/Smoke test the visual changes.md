@@ -443,3 +443,16 @@ and the badge half is the kind this repository can never see. The list:
    and `Milestone` (also cyan) for the case. Failure is either badge being indistinguishable
    from its hue-sharing sibling, or the two test badges being indistinguishable from each
    other, in either scheme.
+
+9. **`Improvement` (green) reads apart from `Deliverable` (green), side by side under one
+   parent.** The fourteenth badge over eight theme tokens, and the WORST-placed sharing on
+   the sheet rather than the best: both are extra types at `EXTRA_TYPE_RANK`, so they can
+   be siblings under a single `Epic`, `Feature` or `PBI` — which is exactly the pairing
+   `Idea` was moved off green to avoid, taken deliberately this time because no unshared
+   hue is left and the alternatives put it beside `Issue` or `Feature` instead. Create one
+   note with `type: Improvement` and one with `type: Deliverable` under the SAME parent, so
+   the two badges sit in one sibling group with nothing but the glyph and the name between
+   them, and look in both schemes. Failure is `trending-up` and `package` not telling the
+   two badges apart at 11px, or either icon drawing blank. Green's third wearer, `Release`,
+   is not part of this check — it is drawn in the release view and on no backlog row, so
+   the manual's Item types list is the only screen the three ever share.

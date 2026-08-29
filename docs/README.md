@@ -329,7 +329,8 @@ are specified: the page's own content and structure, a site built from its own d
 independent of the plugin's own toolchain, and its publish to GitHub Pages from a
 dedicated workflow — all still design, nothing built yet.
 
-`Issue`, `Bug` and `Idea` hang from whichever requirement they concern, which is exactly
+`Issue`, `Bug`, `Idea` and `Improvement` hang from whichever requirement they concern,
+which is exactly
 what those types are for: they hold Tasks, they are never re-typed by a move, and they
 attach to an Epic, a Feature or a PBI alike. The plugin also lets one hang from nothing;
 this register does not, on purpose — a note recording a problem or a thought states which
@@ -350,11 +351,11 @@ Every pair holds:
 
 | Type | Parent may be | Children may be |
 | --- | --- | --- |
-| `Epic` | *(nothing — it is a root)* | `Feature`, `Issue`, `Bug`, `Idea`, `Deliverable` |
-| `Feature` | `Epic` | `PBI`, `Issue`, `Bug`, `Idea`, `Deliverable` |
-| `PBI` | `Feature` | `Task`, `Issue`, `Bug`, `Idea`, `Deliverable` |
-| `Task` | `PBI`, `Issue`, `Bug`, `Idea`, `Deliverable`, `Test case` | *(nothing)* |
-| `Issue` / `Bug` / `Idea` / `Deliverable` | `Epic`, `Feature` or `PBI` | `Task` |
+| `Epic` | *(nothing — it is a root)* | `Feature`, `Issue`, `Bug`, `Idea`, `Deliverable`, `Improvement` |
+| `Feature` | `Epic` | `PBI`, `Issue`, `Bug`, `Idea`, `Deliverable`, `Improvement` |
+| `PBI` | `Feature` | `Task`, `Issue`, `Bug`, `Idea`, `Deliverable`, `Improvement` |
+| `Task` | `PBI`, `Issue`, `Bug`, `Idea`, `Deliverable`, `Improvement`, `Test case` | *(nothing)* |
+| `Issue` / `Bug` / `Idea` / `Deliverable` / `Improvement` | `Epic`, `Feature` or `PBI` | `Task` |
 | `Milestone` | *(nothing — a root by nature)* | *(nothing)* |
 | `Iteration` | *(nothing — a root by nature)* | *(nothing)* |
 | `Test suite` | *(nothing — a root by nature)* | `Test case` |
