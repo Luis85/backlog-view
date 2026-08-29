@@ -93,7 +93,10 @@ export function editReleaseDescription(view: ReleaseView, release: ReleaseRow): 
 	const key = view.settings.descriptionKey;
 	openTextPrompt(view.app, {
 		title: t('release.scope.descriptionTitle', { name: release.name }),
-		fieldName: t('release.option.description'),
+		// The FIELD's own name, not the option's: a dialog editing one release's description
+		// labelling its box "Release description property" is a settings label in a note's
+		// editor. `release.option.description` stays what the options panel draws.
+		fieldName: t('release.scope.descriptionLabel'),
 		placeholder: t('release.scope.descriptionPlaceholder'),
 		ctaLabel: t('release.scope.descriptionSave'),
 		initial: current ?? '',

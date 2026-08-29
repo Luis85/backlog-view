@@ -1831,6 +1831,12 @@ export const en = {
 	'release.scope.descriptionPlaceholder': 'What this release is for',
 	'release.scope.descriptionSave': 'Save',
 	'release.scope.descriptionEmpty': 'Add a description',
+	/** The field's own NAME, for the refusal `release.figureUnreadable` builds when the key
+	 *  holds something no reader can take as prose. Short and column-shaped like
+	 *  `release.index.column.status` beside it, and not the OPTION's name, which is what this
+	 *  refusal used until it was read on a page: "Release description property unreadable" is
+	 *  a settings label in a sentence about a note. */
+	'release.scope.descriptionLabel': 'Description',
 	/**
 	 * The released date — the day a release actually shipped, and the one field on this
 	 * screen whose value is a DATE rather than a label. `{name}` is the release note's own

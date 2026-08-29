@@ -300,7 +300,7 @@ function drawDescription(view: ReleaseView, headerEl: HTMLElement, release: Rele
 	if (release.description.invalid) {
 		headerEl.createDiv({
 			cls: 'pbl-rel-unreadable',
-			text: t('release.figureUnreadable', { label: t('release.option.description') }),
+			text: t('release.figureUnreadable', { label: t('release.scope.descriptionLabel') }),
 		});
 		return;
 	}

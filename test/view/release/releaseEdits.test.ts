@@ -407,7 +407,7 @@ describe('what an edit is, and is not', () => {
 		expect(containerEl.querySelector('.pbl-rel-status')).toBeNull();
 		expect(containerEl.querySelector('.pbl-rel-desc')).toBeNull();
 		const said = Array.from(containerEl.querySelectorAll('.pbl-rel-unreadable')).map((el) => el.textContent);
-		expect(said).toEqual(['Status unreadable', 'Release description property unreadable']);
+		expect(said).toEqual(['Status unreadable', 'Description unreadable']);
 	});
 
 	it('refuses every edit while two release properties name one key', async () => {

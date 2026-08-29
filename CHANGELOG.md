@@ -199,6 +199,18 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ### Fixed
 
+- **The release screen's description and released date no longer paint as filled, raised
+  Obsidian buttons.** Both are controls you press, so both are real buttons — and Obsidian's
+  own button styling outranked the flat look they asked for, so the description drew as a
+  boxed banner of normal-weight text across the header and the invitation to set a released
+  date drew as a raised box beside two plain dates. The description also read centred, and
+  now reads from the start of the line like the sentence it is. Nothing about what either
+  control does has changed.
+
+- **The release screen says "Description unreadable"** where it used to say "Release
+  description property unreadable" — the name of the setting, in a sentence about a note.
+  The dialog that edits it labels its box the same way.
+
 - **Deleting a note now takes its folded rows with it.** A row you had folded shut left an
   entry behind in this device's saved working position, which then counted against the cap
   on how much a view may remember — and, if a note ever came back at that path, brought the
