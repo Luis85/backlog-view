@@ -182,6 +182,7 @@ const HIERARCHY_TABLE = [
 	'| `Issue` / `Bug` / `Idea` / `Deliverable` / `Improvement` | `Epic`, `Feature` or `PBI` | `Task` |',
 	'| `Milestone` | *(nothing — a root by nature)* | *(nothing)* |',
 	'| `Iteration` | *(nothing — a root by nature)* | *(nothing)* |',
+	'| `Release` | *(nothing — a root by nature)* | *(nothing)* |',
 	'| `Test suite` | *(nothing — a root by nature)* | `Test case` |',
 	'| `Test case` | `Test suite` | `Task` |',
 ].join('\n') + '\n';
