@@ -10,6 +10,7 @@ import { renderReleaseInit } from './initControl';
 import { drawScopeTree, effectiveHideDone, rowsAfterHideDone } from './scopeTree';
 import { drawScopeToolbar } from './scopeToolbar';
 import { wireScopeKeys } from './scopeKeys';
+import { wireScopeCreate } from './scopeCreate';
 
 /**
  * One release's screen (`docs/requirements/The scope of a release as a tree.md`): the
@@ -29,10 +30,13 @@ import { wireScopeKeys } from './scopeKeys';
  * this module, which already imports both leaves, calls `wireScopeKeys` as the second
  * step. Two one-directional edges from here rather than one cycle between them.
  *
- * **Nothing here writes a note.** There is no gate to route through and nothing to
- * withhold: the back control sets view state, a row's click opens a note (`scopeTree.ts`),
- * and the `noMembership` empty state's own ✨ ({@link renderReleaseInit}) only binds this
- * view's own config — see that function for why it writes no note either.
+ * **Nothing here writes a note, and one thing this WIRES does.** Nothing in this module
+ * touches the vault: the back control sets view state, a row's click opens a note
+ * (`scopeTree.ts`), and the `noMembership` empty state's own ✨ ({@link renderReleaseInit})
+ * only binds this view's own config — see that function for why it writes no note either.
+ * The third wiring step below, `wireScopeCreate` (`scopeCreate.ts`), is the exception and
+ * the only one: it CREATES a note from a row's menu, which is the one write this screen
+ * offers and still not an edit of a note that already exists.
  *
  * `release` is a parameter rather than `scope.release` read here, because the caller has
  * already ruled on it — a screen is chosen by whether the pick still names a release, and
@@ -86,6 +90,11 @@ export function renderScope(view: ReleaseView, scope: ReleaseScope, release: Rel
 	}
 	const draw = drawScopeTree(view, release, scope.rows);
 	wireScopeKeys(view, draw.treeEl, release.path, draw);
+	// The third step, for `wireScopeKeys`' own reason: this module already holds the draw
+	// and the settings, so the row menu is wired from here rather than by `scopeTree.ts`
+	// importing a writer back. It is the one write this screen offers, and it creates a
+	// note rather than editing one — see `scopeCreate.ts`.
+	wireScopeCreate(view, release, planSettings, draw);
 }
 
 /**

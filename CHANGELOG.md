@@ -13,6 +13,15 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ### Added
 
+- A row of a release's scope tree carries a context menu, offering `New <type>` for every
+  type that row may hold. The note it creates hangs from the row, ranks after that row's
+  existing children, and joins the open release in the same write — so it appears under
+  the row it was made from rather than being filed and lost. Available on a context
+  ancestor too, which is still not a write to that row. Reachable from the keyboard with
+  the Menu key or Shift+F10 on the row the tree marks. A release deleted or retyped while
+  the title is being entered refuses the creation rather than making a note whose
+  membership cannot be resolved. A test-catalog row is offered no menu at all: every child
+  it could hold is a catalog note, which a release does not hold.
 - `Improvement`, a fifth type beside the ladder. It hangs under an `Epic`, a `Feature` or
   a `PBI` and holds `Task`s, wherever it hangs — so a further round of work on something
   already delivered gets its own note and its own release, instead of the shipped item's

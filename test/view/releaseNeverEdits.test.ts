@@ -48,19 +48,19 @@ useViewHarness();
  *   editing a note that already exists, and the honest reading of that ban is "no gesture
  *   below reaches one".
  *
- *   **Three of `storage/`'s four note creators** — `createBacklogItem`,
- *   `createResourceNote` and `createAbsenceNote` — are ALSO still spied and asserted
- *   not-called, and staying so is not an oversight the narrowing missed: "creates notes"
- *   in the new claim means this view creates RELEASES, the one type it has any business
- *   naming, not that it may call any creator in `storage/`. `createRelease` alone is
- *   permitted and is deliberately NOT spied here — asserting it uncalled would be the
- *   same mistake in the other direction, re-encoding the old broad claim for the one
- *   function the narrowed claim exists to allow. Task 7 has since wired it into the
- *   `New release` control, so such a spy would now be one press from red for a gesture the
- *   claim permits. Nothing under `src/view/release/`
- *   imports any of the three still-banned creators today, and neither Task 6 nor Task 7
- *   introduces one — this spy is what makes the next one that does fail here rather than
- *   pass silently.
+ *   **Two of `storage/`'s four note creators** — `createResourceNote` and
+ *   `createAbsenceNote` — are ALSO still spied and asserted not-called, and staying so is
+ *   not an oversight either narrowing missed: a resource and an absence are notes this
+ *   view has no business naming at all. `createRelease` and, since the scope tree's row
+ *   menu landed, `createBacklogItem` are permitted and are deliberately NOT spied here —
+ *   asserting either uncalled would be the same mistake in the other direction,
+ *   re-encoding the old broad claim for the two functions the narrowed claim exists to
+ *   allow. Both are one press from red for a gesture the claim permits: `New release` on
+ *   the index, and `New <child>` on a scope row (`src/view/release/scopeCreate.ts`), whose
+ *   own vault assertions live in `test/view/release/scopeCreate.test.ts` for the reason
+ *   this one cannot carry them — the script below opens that menu and picks nothing.
+ *   Nothing under `src/view/release/` imports either still-banned creator today — this spy
+ *   is what makes the next one that does fail here rather than pass silently.
  * - `vault.writeLog`, `vault.trashed` and `vault.files` are the boundary those spies END
  *   at, so they catch a write that reached a note WITHOUT going through any of them — a
  *   raw `processFrontMatter` or `vault.create`, which is exactly the shape a spy on
@@ -99,7 +99,6 @@ describe('the release view never edits a note that already exists', () => {
 		const applyWrites = vi.spyOn(frontmatter, 'applyWrites');
 		const applyRestores = vi.spyOn(frontmatter, 'applyRestores');
 		const applyPropertyWrites = vi.spyOn(propertyWrite, 'applyPropertyWrites');
-		const createBacklogItem = vi.spyOn(createNote, 'createBacklogItem');
 		const createResourceNote = vi.spyOn(createNote, 'createResourceNote');
 		const createAbsenceNote = vi.spyOn(absenceNotes, 'createAbsenceNote');
 
@@ -119,15 +118,17 @@ describe('the release view never edits a note that already exists', () => {
 		// stood here were deleted with the handler rather than left: jsdom synthesizes no
 		// click either, so they reached nothing and read as coverage of a keyboard path
 		// this file does not exercise. A right-click is kept because it IS a distinct
-		// gesture — it opens a menu on every OTHER view this plugin ships.
+		// gesture — it opens a menu on every OTHER view this plugin ships, and on the SCOPE
+		// screen it now opens one here too.
 		const indexRow = containerEl.querySelector<HTMLElement>('.pbl-rel-band');
 		expect(indexRow).not.toBeNull();
 		indexRow?.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
 		(indexRow as HTMLElement).click();
 		await flush();
 
-		// The scope screen the click above opened: a row, its keys, its right-click, and the
-		// one control that leaves — plus a data update on the way, which is the path Bases
+		// The scope screen the click above opened: a row, its keys, its right-click — which
+		// since `scopeCreate.ts` landed opens a menu of creates and, unpicked, still writes
+		// nothing — and the one control that leaves — plus a data update on the way, which is the path Bases
 		// itself drives and the one a stale batch would land on.
 		const scopeRow = containerEl.querySelector<HTMLElement>('.pbl-row');
 		expect(scopeRow).not.toBeNull();
@@ -148,7 +149,6 @@ describe('the release view never edits a note that already exists', () => {
 		expect(applyWrites).not.toHaveBeenCalled();
 		expect(applyRestores).not.toHaveBeenCalled();
 		expect(applyPropertyWrites).not.toHaveBeenCalled();
-		expect(createBacklogItem).not.toHaveBeenCalled();
 		expect(createResourceNote).not.toHaveBeenCalled();
 		expect(createAbsenceNote).not.toHaveBeenCalled();
 		// The spies are the check; these are the belt, and they fail for a write that
@@ -156,8 +156,10 @@ describe('the release view never edits a note that already exists', () => {
 		// `updateAbsenceNote`, which no spy above names (see the docblock's second bullet).
 		expect(vault.writeLog).toEqual([]);
 		expect(vault.trashed).toEqual([]);
-		// `mountLeaf` adds the `.base` itself and nothing since — none of the gestures above
-		// presses `.pbl-rel-new`, the only control on either screen that creates anything.
+		// `mountLeaf` adds the `.base` itself and nothing since. Two controls on these screens
+		// create something and neither is pressed: `.pbl-rel-new` on the index, and the scope
+		// row menu's `New <child>` — the right-click below OPENS that menu, which is the whole
+		// of what a right-click does, and this script never picks an entry from it.
 		expect(vault.files.size).toBe(before + 1);
 		expect(config.setCalls).toEqual([]);
 	});

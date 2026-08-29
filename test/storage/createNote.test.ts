@@ -78,9 +78,20 @@ describe('createBacklogItem', () => {
 		// `+` (that sprint's `axis` dates). Reachable in focus mode, where `newItemType`
 		// follows `focusTarget` and that accepts any declared type name.
 		const vault = new FakeVault();
-		const planned = { ...settings, horizonKey: 'horizon', startKey: 'start', targetKey: 'due', iterationKey: 'iteration' };
+		const planned = {
+			...settings,
+			horizonKey: 'horizon',
+			startKey: 'start',
+			targetKey: 'due',
+			iterationKey: 'iteration',
+			releaseKey: 'release',
+		};
 
 		const sprint = vault.addFile('Sprint 12.md', { frontmatter: { type: 'Iteration', order: 5 } });
+		// The release scope tree's own `New <child>` is the third surface that seeds
+		// something, and it is under the identical rule: a `Release` created from one is
+		// not put inside another.
+		const shipping = vault.addFile('1.1.md', { frontmatter: { type: 'Release' } });
 		const release = await createBacklogItem(vault.app, planned, {
 			folder: 'Backlog',
 			title: '1.0',
@@ -90,6 +101,7 @@ describe('createBacklogItem', () => {
 			horizon: 'Later',
 			axis: { start: '2026-09-01', target: '2026-09-30' },
 			iteration: sprint,
+			release: shipping,
 		});
 		// The sprint key with them, and it is the worst of the three rather than the
 		// mildest: `canSetIteration` refuses a marker, so a release joined to a sprint
@@ -107,6 +119,7 @@ describe('createBacklogItem', () => {
 			horizon: 'Later',
 			axis: { start: '2026-09-01', target: '2026-09-30' },
 			iteration: sprint,
+			release: shipping,
 		});
 		expect(vault.fm(work.path)).toEqual({
 			type: 'PBI',
@@ -115,7 +128,29 @@ describe('createBacklogItem', () => {
 			start: '2026-09-01',
 			due: '2026-09-30',
 			iteration: '[[Sprint 12]]',
+			release: '[[1.1]]',
 		});
+	});
+
+	it('writes no membership where the offering view has no key bound for it', async () => {
+		// `settings.releaseKey` is the OFFERING view's own membership key, and an unconfigured
+		// key is never written to — the same rule `axisEntries` and the state key keep, asked
+		// of the one property a release scope's `New <child>` adds. Without it a base whose
+		// membership option nobody has named would gain a key from a surface that cannot
+		// read one back.
+		const vault = new FakeVault();
+		const shipping = vault.addFile('1.1.md', { frontmatter: { type: 'Release' } });
+
+		const file = await createBacklogItem(vault.app, { ...settings, releaseKey: '' }, {
+			folder: 'Backlog',
+			title: 'Unfiled',
+			typeName: 'PBI',
+			parent: null,
+			order: 10,
+			release: shipping,
+		});
+
+		expect(vault.fm(file.path)).toEqual({ type: 'PBI', order: 10 });
 	});
 
 	it('pins parentless creations in folder mode', async () => {

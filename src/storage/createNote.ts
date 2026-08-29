@@ -44,6 +44,18 @@ export interface NewItemSpec {
 	 */
 	axis?: AxisWrite;
 	/**
+	 * The release the new item joins, when it was created from that release's own scope
+	 * tree — a FILE, never a name, for `ItemWrite`'s reason and `iteration`'s directly
+	 * above: two releases may share a basename, and a link built from one resolves to
+	 * whichever Obsidian picks.
+	 *
+	 * Without it a child created from the scope tree would be parented correctly and be a
+	 * member of nothing, so the row the gesture was made from would draw no new child at
+	 * all — membership is one property on the item's own note and never cascades from a
+	 * parent ([[The scope of a release as a tree]]).
+	 */
+	release?: TFile;
+	/**
 	 * What the new iteration is FOR, when the dialog collected one — the third field this
 	 * interface gained for iterations, and the one a CARD never has.
 	 *
@@ -95,6 +107,14 @@ export async function createBacklogItem(app: App, settings: BacklogSettings, spe
 	if (spec.iterationGoal && settings.iterationGoalKey) setOwn(fm, settings.iterationGoalKey, spec.iterationGoal);
 	if (seeded && spec.iteration && settings.iterationKey) {
 		setOwn(fm, settings.iterationKey, wikilinkTo(app, spec.iteration, path));
+	}
+	// The membership property, under the identical three conditions the sprint key above
+	// is written under: the surface offered a release, this vault has a property for it,
+	// and the type may hold what a surface adds. `settings.releaseKey` is the OFFERING
+	// view's own membership key — the release view passes its own, which is not the
+	// backlog resolver's ([[Putting work in a release]]).
+	if (seeded && spec.release && settings.releaseKey) {
+		setOwn(fm, settings.releaseKey, wikilinkTo(app, spec.release, path));
 	}
 	// One list for both placements, so "which keys may be written" is stated once: a key
 	// no property names is dropped here exactly as it is on the edit path.

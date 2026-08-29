@@ -1855,6 +1855,16 @@ export const en = {
 	 *  it names the release rather than describing a problem. */
 	'release.scope.empty.title': 'Nothing is in {name} yet',
 	'release.scope.empty.hint': 'An item joins a release when its own membership property names that release.',
+	/**
+	 * The scope row menu's own live-type race, worded off `gate.staleDatesPartial`'s pair
+	 * and a separate key from all three: those say "written", and nothing was written here
+	 * — a note was not made. The race is the release itself being deleted or retyped while
+	 * the title prompt is open, which is a longer window than a batch's, since it is as long
+	 * as the reader takes to type. `refusesLiveMembership` (`domain/releases.ts`) is what
+	 * asks, the same guard `applyWrites` puts in front of every membership EDIT: authorization
+	 * at plan time is not authorization at write time.
+	 */
+	'release.scope.staleRelease': 'That release changed while the new item was being named, so nothing was created.',
 	/** The disclosure's own accessible name, since a `pbl-twisty` carries no visible text —
 	 *  Task 3's own addition, once the tree could fold at all. */
 	'release.scope.collapse': 'Collapse',
