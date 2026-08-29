@@ -3,6 +3,7 @@ import { ReleaseSettings } from './releaseOptions';
 import { t } from '../i18n/t';
 import { ownedProperties, OwnedRole } from './optionalProperties';
 import { colorableStates, stateColor } from './stateColors';
+import { sameValue } from './noteFields';
 
 /**
  * Whether a `BacklogSettings` is one `resolveSettings` could have produced.
@@ -330,6 +331,22 @@ export function releaseNoteProblems(settings: ReleaseSettings): string[] {
 		if (users.length < 2) continue;
 		// The array, not a joined string — `configProblems`' own note on why.
 		problems.push(t('settings.sharedKey', { properties: users.map((role) => t(`property.${role}`)), key }));
+	}
+	// The plan and the record must be two keys. This is NOT expressible through the
+	// `owned` collision map above, because that reports a key claimed by two ROLES and
+	// these two roles are both legitimately date keys — what is wrong is specifically
+	// that a record overwriting the plan destroys the evidence a release slipped.
+	if (settings.releasedDateKey !== '' && settings.releasedDateKey === settings.targetDateKey) {
+		problems.push(t('settings.releasedIsTarget', { key: settings.releasedDateKey }));
+	}
+	// The dropdown offers only declared values; a hand-edited `.base` is why this is asked
+	// again at read time. Empty is unconfigured and is the offer predicate's business
+	// (Task 6), never a collision. Case-insensitive, `sameValue`'s own reason: it is the
+	// same match every other vocabulary membership check in this view makes (`plan.ts`,
+	// `menu.ts`, `labels.ts`), and `releasedValues` itself carries no case folding to lean
+	// on instead.
+	if (settings.releasedTransition !== '' && !settings.releasedValues.some((v) => sameValue(v, settings.releasedTransition))) {
+		problems.push(t('settings.transitionNotReleased', { value: settings.releasedTransition }));
 	}
 	return problems;
 }

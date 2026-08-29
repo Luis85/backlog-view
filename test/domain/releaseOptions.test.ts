@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { getReleaseViewOptions, resolveReleaseSettings } from '../../src/domain/releaseOptions';
+import { releaseNoteProblems } from '../../src/domain/settingsConsistency';
 import { FakeViewConfig } from '../helpers/vault';
+import { releaseSettingsWith } from '../helpers/releaseSettings';
 
 function keysOf(config: FakeViewConfig): string[] {
 	return getReleaseViewOptions(config as never)
@@ -134,5 +136,41 @@ describe('the release view names its own keys', () => {
 			resolveReleaseSettings(new FakeViewConfig({ releasedDateProperty: 'note.released' }) as never).releasedDateKey,
 		).toBe('released');
 		expect(resolveReleaseSettings(new FakeViewConfig({}) as never).releasedDateKey).toBe('');
+	});
+
+	it('refuses a released date aimed at the target date, and a transition outside the list', () => {
+		// Same key for the plan and the record: a released date written onto the target date
+		// destroys the only evidence a release slipped, which is the one thing nobody can
+		// reconstruct afterwards.
+		//
+		// The `owned` collision map above ALSO reports this pair generically ("the release
+		// target date and released date properties share the key…"), since both are
+		// ordinary roles in it with no exemption — so a bare `.toContain('due')` would pass
+		// on that message alone and never watch-fail if the new check below were deleted.
+		// Asserted against the SPECIFIC sentence instead, so the check is of the new code.
+		const collided = releaseNoteProblems(releaseSettingsWith({ targetDateKey: 'due', releasedDateKey: 'due' }));
+		expect(collided).toContain('the released date and the target date both use due');
+
+		// A hand-edited `.base` can spell a transition the dropdown never offered. Nothing
+		// in the `owned` map can catch this one — `releasedTransition` names no frontmatter
+		// property key at all, so this is the whole check.
+		const stray = releaseNoteProblems(
+			releaseSettingsWith({ releasedValues: ['Released'], releasedTransition: 'Shipped' }),
+		);
+		expect(stray).toContain('Shipped is not one of the statuses that mean released');
+
+		// Case-insensitive, the same match every vocabulary membership check in this view
+		// makes (`sameValue`) — a dropdown pick and a hand-typed value that differ only in
+		// case are the same status.
+		expect(
+			releaseNoteProblems(
+				releaseSettingsWith({ releasedValues: ['Released'], releasedTransition: 'released' }),
+			),
+		).toEqual([]);
+
+		// And the exact pair reports nothing.
+		expect(
+			releaseNoteProblems(releaseSettingsWith({ releasedValues: ['Released'], releasedTransition: 'Released' })),
+		).toEqual([]);
 	});
 });
