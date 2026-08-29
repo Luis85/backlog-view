@@ -2139,7 +2139,15 @@ export const en = {
 	'release.notes.bindMembership': 'To generate release notes, bind the release membership property.',
 	'release.notes.failed': 'The release notes could not be written to {path}.',
 	'release.notes.written': 'Release notes written to {path}.',
-	'release.notes.refused': '{path} was not written by this view and has been left alone.',
+	/**
+	 * The refusal, and it has to say what to DO. Refusing is recoverable and overwriting is
+	 * not, which is why this mode exists — but a message that only reports the refusal
+	 * leaves the reader at a dead end, since the same refusal repeats on every press. The
+	 * escape is theirs to take: remove or rename that file and the next generation claims
+	 * the name.
+	 */
+	'release.notes.refused':
+		'{path} was not written from this release, so it has been left alone. Remove or rename it to generate there.',
 	'release.notes.unchanged': 'The release notes at {path} were already up to date.',
 	/**
 	 * A press that bound nothing, said rather than left silent — a standalone control with
