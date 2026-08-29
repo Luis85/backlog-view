@@ -155,22 +155,31 @@ rename moves what the chip shows without touching this note's own frontmatter.
 through. `src/ui/prompts.ts` is the `New resource...` creation prompt, and `src/i18n/en.ts`
 carries the unresolved-chip tooltip.
 
-**Owed, not built: what a screen reader hears from the broken chip, and a check that
-asks it.** `renderLabelChip` sets an explicit `aria-label` — `chipLabel(label, value)`,
-"Change Assignee (currently Sarah)" — on every chip alike, and puts the unresolved
-marker only in
-`setTooltip` (`broken ? brokenTip() : changeTip()`). An accessible name is what assistive
-tech reads first, so a reader hearing only the label gets a chip indistinguishable from a
-valid assignment, while a sighted reader gets the broken styling AND the tooltip. Which of
-the two a screen reader actually announces — the label alone, or the label followed by the
-tooltip's title text — is a live-vault question this jsdom suite cannot answer; jsdom
-computes no accessibility tree, so nothing here can ask a reader what it heard.
-`test/view/assigneeChip.test.ts` cannot stand in for it either: it asserts
-`pbl-assignee-broken`'s presence seven times and never what the chip's `aria-label` or
-tooltip actually SAYS, so the third state's whole argument above (a broken assignment must
-read as broken, not merely look it) rests on a sentence no check reads. Both are recorded
-here rather than fixed, per this codebase's own rule that a check narrower than its claim
-must be said so rather than papered over.
+**Built 2026-08-29: the broken chip says so in its ACCESSIBLE NAME.** This paragraph
+recorded the hole as owed and framed it as a live-vault question — which of the label and
+the tooltip a screen reader announces. That framing was wrong, and the answer needed no
+vault: the question does not have to be settled, because BOTH readings give the same
+verdict. An explicit `aria-label` is the accessible name outright, so on the reading where
+the tip is `title` the name still wins (accname consults `title` only as a last fallback,
+never once a label is set) and on the reading where Obsidian's `setTooltip` is a hover
+element it reaches the tree through nothing at all. Either way the NAME was identical for a
+broken assignment and a valid one, and the marker was visual only.
+
+So `chipLabel` takes the broken flag and a third key states it as one sentence —
+`chip.changeUnresolved`, "Change Assignee (currently Sarah, which names no resource in this
+base)" — rather than `chip.change` with a clause appended, since no locale can be assumed
+to put the qualification after the value. `test/view/assigneeChip.test.ts` now asserts that
+NAME in both directions: the qualification present on a broken chip and absent on a
+resolved one, because a name that carries it everywhere says nothing about any chip.
+
+**Still narrower than the claim, and said so rather than papered over.** jsdom computes no
+accessibility tree, so what the suite checks is the name's TEXT; that a reader announces
+the name rather than the tip is the rule above, not a measurement here. And the STATIC chip
+— an `outsideFilter` row's `.pbl-state-static` div — is untouched: it is not a control, its
+accessible name is its own text content, and its broken marker is still visual and tooltip
+only. Giving a generic div an `aria-label` is ignored by many readers, so the fix there is
+visually-hidden text or a different element, which is a design question this increment did
+not take.
 
 **Declined, and why it is not a hole today: an assignee write planned against a key that
 is no longer configured.** `applyLinks` skips a link whose key is empty, and nothing

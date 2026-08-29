@@ -226,6 +226,18 @@ export const en = {
 	 */
 	'chip.set': 'Set {label}',
 	'chip.change': 'Change {label} (currently {value})',
+	/**
+	 * The third state IN THE ACCESSIBLE NAME, which is the only place a screen reader is
+	 * certain to hear it. A broken chip's marker lived in `setTooltip` alone, and a tooltip
+	 * is not an accessible name under any reading of the accname algorithm: an explicit
+	 * `aria-label` wins outright, so the name a reader hears was identical to a valid
+	 * assignment's while the sighted reader got the styling AND the tip.
+	 *
+	 * One sentence rather than `chip.change` with a clause appended: no locale can be
+	 * assumed to put the qualification after the value, and nothing here builds a message
+	 * by joining pieces.
+	 */
+	'chip.changeUnresolved': 'Change {label} (currently {value}, which names no resource in this base)',
 
 	/**
 	 * A chip's tooltip, per property and in two shapes: what a result's chip offers, and

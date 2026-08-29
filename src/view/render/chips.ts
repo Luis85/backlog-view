@@ -41,9 +41,23 @@ import { formatCivil } from '../../domain/timeline';
  * What a chip announces. The verb is ours and stays sentence case; the noun is the
  * property's own display name, so the control says which key it writes rather than which
  * KIND of thing it is.
+ *
+ * **A BROKEN value says so HERE and not only in the tooltip.** An explicit `aria-label` is
+ * the accessible name outright — `title` is the accname algorithm's last fallback and is
+ * never consulted once a label is set, and Obsidian's own `setTooltip` is a hover element
+ * rather than either attribute — so a marker put only in the tip reaches a screen reader
+ * through nothing at all. That left a reader hearing a broken assignment as a valid one
+ * while the sighted reader got the styling AND the tip, which is the whole of what the
+ * third state exists to prevent. This is a rule about the accessibility tree rather than a
+ * jsdom finding: jsdom computes no tree, so what a test can check is this NAME's text, and
+ * that a reader announces the name rather than the tip is what the rule supplies.
  */
-function chipLabel(label: string, value: string | null): string {
-	return value === null ? t('chip.set', { label }) : t('chip.change', { label, value });
+function chipLabel(label: string, value: string | null, broken = false): string {
+	if (value === null) return t('chip.set', { label });
+	// Not `chip.change` with a clause appended: no locale can be assumed to put the
+	// qualification after the value, and nothing here builds a message by joining pieces.
+	if (broken) return t('chip.changeUnresolved', { label, value });
+	return t('chip.change', { label, value });
 }
 
 
@@ -290,7 +304,7 @@ export function renderLabelChip(host: BacklogViewHost, col: HTMLElement, item: B
 		attr: {
 			type: 'button',
 			tabindex: '-1',
-			'aria-label': chipLabel(label, value),
+			'aria-label': chipLabel(label, value, broken),
 		},
 	});
 	fillLabelChip(chip, value, spec);
