@@ -18,6 +18,7 @@ due: ""
 risk: ""
 assignee: ""
 iteration: ""
+release: "[[Feisty Reindeer]]"
 ---
 
 # Help for creating and filing

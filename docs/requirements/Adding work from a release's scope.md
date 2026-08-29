@@ -2,11 +2,11 @@
 type: PBI
 parent: "[[Putting work in a release]]"
 order: 30
-status: Active
+status: Done
 created: 2026-08-29
 source: user request — add tasks to items in the release view with the right-click menu, 2026-08-29
 started: ""
-finished: ""
+finished: 2026-08-29
 horizon: ""
 start: ""
 due: ""

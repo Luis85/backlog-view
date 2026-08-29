@@ -17,7 +17,7 @@ files:
   - src/domain/viewOptions.ts
 started: ""
 finished: ""
-horizon: Next
+horizon: Later
 start: 2026-08-01
 due: ""
 risk: ""

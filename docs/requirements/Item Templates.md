@@ -5,7 +5,6 @@ order: 71.25
 status: Open
 started: ""
 finished: ""
-horizon: Later
 start: ""
 due: ""
 risk: ""

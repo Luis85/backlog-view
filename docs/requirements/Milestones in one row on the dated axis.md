@@ -2,7 +2,7 @@
 type: PBI
 parent: "[[Milestones]]"
 order: 30
-status: Active
+status: Done
 created: 2026-08-16
 source: user request
 files:
@@ -12,7 +12,7 @@ files:
   - src/view/render/roadmap.ts
   - src/view/render/timeline.ts
 started: ""
-finished: ""
+finished: 2026-08-29
 horizon: ""
 start: ""
 due: ""

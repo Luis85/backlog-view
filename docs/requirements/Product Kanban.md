@@ -10,7 +10,7 @@ finished: ""
 risk: ""
 start: ""
 due: ""
-horizon: Later
+horizon: Next
 priority: ""
 iteration: ""
 assignee: "[[Hannah]]"

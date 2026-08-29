@@ -12,6 +12,7 @@ assignee: ""
 priority: ""
 iteration: ""
 release: "[[Eratic Skunk]]"
+finished: ""
 ---
 
 # Backfill missing properties

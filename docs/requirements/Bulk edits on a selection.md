@@ -7,7 +7,7 @@ created: 2026-08-16
 source: product requirements document, 2026-08-16
 started: ""
 finished: ""
-horizon: Next
+horizon: Later
 start: ""
 due: ""
 risk: ""

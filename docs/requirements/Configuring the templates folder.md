@@ -5,7 +5,6 @@ order: 10
 status: Open
 started: ""
 finished: ""
-horizon: Next
 start: ""
 due: ""
 risk: ""

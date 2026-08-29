@@ -7,7 +7,6 @@ created: 2026-08-08
 source: user request
 started: ""
 finished: ""
-horizon: Later
 start: ""
 due: ""
 risk: ""

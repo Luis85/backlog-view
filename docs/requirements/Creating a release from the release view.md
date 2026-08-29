@@ -2,11 +2,11 @@
 type: PBI
 parent: "[[Putting work in a release]]"
 order: 20
-status: Active
+status: Done
 created: 2026-08-24
 source: plan "releases own their creation", 2026-08-24
 started: ""
-finished: ""
+finished: 2026-08-29
 horizon: ""
 start: ""
 due: ""
