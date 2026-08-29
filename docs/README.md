@@ -16,6 +16,8 @@ demonstrating itself:
 | `deliverables/` | Things this project has to produce that are not code | `Deliverable` |
 | `milestones/` | Dates the plan is answerable to, owned by no item | `Milestone` |
 | `iterations/` | Time boxes items are scheduled into, owned by no item | `Iteration` |
+| `releases/` | Sets of things going out together, named by an item's own property rather than holding it | `Release` |
+| `resources/` | The people work is assigned to — pointed at by the plan, never part of it | `Resource` |
 | `tests/suites/` | Walkable groups of end-to-end tests, their own list rather than a branch of the plan | `Test suite` |
 | `tests/cases/` | One executable test each — a Preconditions line plus whatever shape it already had | `Test case` |
 | [`adrs/`](adrs/README.md) | **How** it is built — architecture decision records | *(none — not backlog items)* |
@@ -344,6 +346,17 @@ number reporting progress must only ever count work — and it files into `miles
 Items **link** to an iteration rather than hanging from one, so it never enters a rollup
 either, and it files into `iterations/`.
 
+`Release` is the third, and the register holds one exactly as it holds the other two. Work
+names its release in a **property** rather than hanging from one, so a release is not above
+what it ships in any sense the tree can express — a root by nature, holding nothing, and it
+files into `releases/`.
+
+A `Resource` is the one declared name this register does **not** hold as a note of its own.
+A person is pointed at by the plan and contains none of it, so it is not a work item at any
+rung, beside any rung, or as a marker (ADR 0028) — `docs-check.mjs` skips one by type, the
+way it already skips an `Absence`, and the notes in `resources/` are the plugin's own data
+rather than register content.
+
 ## The hierarchy is the point
 
 This register is the plugin's own schema, so a wrong parent here is a bug in the example.
@@ -358,12 +371,15 @@ Every pair holds:
 | `Issue` / `Bug` / `Idea` / `Deliverable` / `Improvement` | `Epic`, `Feature` or `PBI` | `Task` |
 | `Milestone` | *(nothing — a root by nature)* | *(nothing)* |
 | `Iteration` | *(nothing — a root by nature)* | *(nothing)* |
+| `Release` | *(nothing — a root by nature)* | *(nothing)* |
 | `Test suite` | *(nothing — a root by nature)* | `Test case` |
 | `Test case` | `Test suite` | `Task` |
 
-The three EXTRA types travel together — `Issue`, `Bug` and `Deliverable` are one set
-repeated at each rung, which is what `childTypeChoices` answers as
-`[ladderChild, ...EXTRA_TYPES]` and what `docs-check.mjs` spells as its own `EXTRA`.
+The EXTRA types travel together — they are one set repeated at each rung, which is what
+`childTypeChoices` answers as `[ladderChild, ...EXTRA_TYPES]` and what `docs-check.mjs`
+spells as its own `EXTRA`. How many there are is deliberately not stated here: this
+paragraph said "the three" and named three while the set held five, which is the drift
+[[A guide is prose, not an inventory]] exists to stop. The table above is the list.
 
 **This table is checked against that map, both ways.** `docs-check.mjs` reads the table out
 of this file and compares it to `LEGAL_CHILDREN`: a type in one and not the other fails, a
