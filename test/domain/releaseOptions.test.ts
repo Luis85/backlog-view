@@ -174,6 +174,16 @@ describe('the release view names its own keys', () => {
 		expect(
 			releaseNoteProblems(releaseSettingsWith({ releasedValues: ['Released'], releasedTransition: 'Released' })),
 		).toEqual([]);
+
+		// **An UNCONFIGURED list is not a mismatch**, and this one matters far beyond the
+		// message: `releaseNoteProblems` is the release view's `writeProblems`, so a
+		// problem reported here blocks every write the view has — the status chip, the
+		// description, the released date — plus generation. A half-configured closing
+		// action must not disable the editing screen around it. Withholding the CLOSE
+		// action is `closeOffer`'s job, and it names `releasedStatusValues` for the reader.
+		expect(
+			releaseNoteProblems(releaseSettingsWith({ releasedValues: [], releasedTransition: 'Released' })),
+		).toEqual([]);
 	});
 
 	it('reports a membership key aimed at any item-side property, except the backlog’s own release key', () => {

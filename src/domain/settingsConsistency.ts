@@ -340,12 +340,25 @@ export function releaseNoteProblems(settings: ReleaseSettings): string[] {
 		problems.push(t('settings.releasedIsTarget', { key: settings.releasedDateKey }));
 	}
 	// The dropdown offers only declared values; a hand-edited `.base` is why this is asked
-	// again at read time. Empty is unconfigured and is the offer predicate's business
-	// (Task 6), never a collision. Case-insensitive, `sameValue`'s own reason: it is the
-	// same match every other vocabulary membership check in this view makes (`plan.ts`,
-	// `menu.ts`, `labels.ts`), and `releasedValues` itself carries no case folding to lean
-	// on instead.
-	if (settings.releasedTransition !== '' && !settings.releasedValues.some((v) => sameValue(v, settings.releasedTransition))) {
+	// again at read time. Case-insensitive, `sameValue`'s own reason: it is the same match
+	// every other vocabulary membership check in this view makes (`plan.ts`, `menu.ts`,
+	// `labels.ts`), and `releasedValues` itself carries no case folding to lean on instead.
+	//
+	// **An EMPTY list is unconfigured, not a mismatch**, and the guard for it is
+	// load-bearing rather than tidy: this function is the release view's `writeProblems`,
+	// so anything reported here blocks every write the view has — the status chip, the
+	// description, the released date — and generation with them. A closing action somebody
+	// half-configured must not disable the editing screen around it. Withholding the CLOSE
+	// action is `closeOffer`'s job, which names the option instead of refusing everything.
+	//
+	// The line above said exactly this before the check did (found by review): the comment
+	// stated the rule and the condition did not implement it, which is the shape
+	// `docs/issues/A comment that states a rule is not a check.md` exists for.
+	if (
+		settings.releasedTransition !== '' &&
+		settings.releasedValues.length > 0 &&
+		!settings.releasedValues.some((v) => sameValue(v, settings.releasedTransition))
+	) {
 		problems.push(t('settings.transitionNotReleased', { value: settings.releasedTransition }));
 	}
 	return problems;
