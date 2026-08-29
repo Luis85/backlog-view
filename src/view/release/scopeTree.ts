@@ -56,6 +56,13 @@ function foldPrefix(releasePath: string): string {
  * — gone on reload, exactly as the pick is, and the tree is one press from reopening.
  * Keyed on the VIEW, so a remounted view starts fresh, as every other session-only value
  * here does.
+ *
+ * Neither store-level walk reaches this map — not the rename's, and not
+ * `pruneDeletedFolds`'. For a DELETE that costs nothing: the row goes with the note, so
+ * the key it leaves is unreachable and dies at the end of the session anyway. For a rename
+ * it costs one reopened row until reload, which is the accepted limitation recorded above
+ * — subscribing this view to vault events to close it would buy back less than this
+ * backend already discards on every remount.
  */
 const sessionFolds = new WeakMap<ReleaseView, string[]>();
 
