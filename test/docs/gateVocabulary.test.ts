@@ -31,8 +31,8 @@ import { ALL_TYPES, RESOURCE_TYPE } from '../../src/domain/typeVocabulary';
  */
 describe('the register schema and the plugin vocabulary', () => {
 	/** Every type named in the type column of `docs/README.md`'s hierarchy table. */
-	function documentedTypes(): Set<string> {
-		const readme = readFileSync('docs/README.md', 'utf8');
+	function documentedTypes(text?: string): Set<string> {
+		const readme = text ?? readFileSync('docs/README.md', 'utf8');
 		const tables = tablesWith(readme, ['Type', 'Parent may be', 'Children may be']) as { code: string[]; text: string }[][][];
 		// Exactly one, for `tablesWith`'s own stated reason: with two tables under the same
 		// headings, "the rows of the table" has no single answer, and taking the first
@@ -52,6 +52,20 @@ describe('the register schema and the plugin vocabulary', () => {
 	// measurement has when nobody checks the measurer.
 	it('reads a type column that actually has types in it', () => {
 		expect(documentedTypes().size).toBeGreaterThanOrEqual(ALL_TYPES.length);
+	});
+
+	// `docs-check.mjs` normalises CRLF at its own read, once, because Git for Windows checks
+	// out CRLF whatever the object store holds and a CRLF checkout once made this repo's
+	// Markdown parsing report 136 broken links. This file does NOT, and that is a measured
+	// decision rather than an oversight: the normalising line was written here first, then
+	// deleted after removing it changed nothing — mdast handles CRLF for this parse, so the
+	// line would have been code with no failure behind it. What replaces it is this
+	// assertion, which is the guarantee actually wanted — the outcome a Windows contributor
+	// gets, on the one platform this session cannot run. If mdast ever stops absorbing it,
+	// this fails here rather than on the Windows leg of somebody else's pull request.
+	it('reads the same types from a CRLF checkout', () => {
+		const crlf = readFileSync('docs/README.md', 'utf8').replaceAll('\n', '\r\n');
+		expect([...documentedTypes(crlf)]).toEqual([...documentedTypes()]);
 	});
 
 	it('documents every type the plugin declares', () => {
