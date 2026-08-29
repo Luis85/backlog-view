@@ -2041,6 +2041,13 @@ export const en = {
 	'newRelease.create': 'Create',
 	'newRelease.cancel': 'Cancel',
 
+	/** The generic confirm dialog's own cancel — its own key rather than a reuse of
+	 *  `newRelease.cancel`, which names THAT dialog's way out and would drift the moment
+	 *  either is reworded. Every other word this dialog shows is supplied by the caller,
+	 *  because the question, the rows and the CTA are about what is being confirmed and
+	 *  belong to the screen that asks. */
+	'confirm.cancel': 'Cancel',
+
 	/**
 	 * The ✨ standalone control (`src/view/release/initControl.ts`), drawn on the index bar
 	 * and on the `noMembership` scope empty state. One label serves both the accessible

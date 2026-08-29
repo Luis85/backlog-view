@@ -96,5 +96,9 @@ every write.
 One host method in `src/view/host.ts`, planned in `src/domain/writePlan.ts` and applied by
 `src/storage/frontmatter.ts` over `src/view/writeGate.ts`. The status key, its released values, the
 transition value and the actual-date key are declared in `src/domain/viewOptions.ts`, with the
-same-key refusal and the transition-value check in `src/domain/settingsConsistency.ts`. The confirmation reuses `src/ui/prompts.ts`, and the
-outstanding list is drawn by the release view's render module in `src/view/render/`.
+same-key refusal and the transition-value check in `src/domain/settingsConsistency.ts`. The confirmation is `src/ui/confirmDialog.ts` — the one dialog shape `src/ui/prompts.ts`
+does not cover, because every modal there collects a VALUE and this one collects a
+decision, with the outstanding members as rows it can open. Whether the action may be
+offered at all, and which option is still unbound, is answered by `closeOffer` in
+`src/domain/releases.ts` rather than by the screen. The outstanding list is drawn by the
+release view's render module in `src/view/render/`.
