@@ -32,6 +32,11 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 - Marking or editing an absence now refuses when the resource it names stopped being a
   `Resource` note — retyped or deleted — between the form opening and the submit, instead
   of writing a link that draws in no lane. The same check the assignee write already made.
+- Two surfaces that were still English in every language: the way a move on the dated axis
+  names a one-ended span (`2026-08-01 onwards`, `up to 2026-08-31`) and the two-date form
+  between them, and every sentence the estimation view draws instead of its table when the
+  model is misconfigured — the ranges, the rubric counts, the unbound properties, the
+  weights that do not total 100. All of them now come from the catalog.
 
 ### Removed
 

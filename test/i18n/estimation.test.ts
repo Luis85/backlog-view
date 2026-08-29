@@ -226,4 +226,38 @@ describe('the estimation view reads its own text from the catalog', () => {
 		const { containerEl } = makeEstimationView(new FakeVault(), configuredValues());
 		expect(drawnText(containerEl)).toContain(marked('estimation.empty.noResults'));
 	});
+
+	/**
+	 * The problem block draws the SENTENCES `domain/scoringModel.ts` returns, and that file
+	 * is outside every glob the two lint bans carry — so this pair is the whole check on
+	 * them. It is also the shape lint could not have read anyway: each problem is a
+	 * positional argument to `problems.push`, and the weight total was a two-literal
+	 * ternary.
+	 *
+	 * Split in two because `modelProblems` short-circuits: the weight total is asked only
+	 * once every per-dimension problem is clean, so no single configuration draws both.
+	 */
+	it('draws each problem from it, and leaves only the dimension label unmarked', () => {
+		const { containerEl } = makeEstimationView(
+			fixture(),
+			configuredValues({ stampProperty: '', 'dimProperty.reach': '', 'dimRange.compliance': '5-1' }),
+		);
+		const drawn = drawnText(partOf(containerEl, '.pbl-est-problems'));
+
+		expect(drawn).toContain(marked('estimation.problems.lead'));
+		expect(drawn).toContain(marked('estimation.problem.stampUnnamed'));
+		expect(drawn).toContain(MARK + en['estimation.problem.unbound'].replace('{label}', 'Reach'));
+		expect(drawn).toContain(MARK + en['estimation.problem.range'].replace('{label}', 'Compliance'));
+		expect(unmarked(drawn)).toEqual([]);
+	});
+
+	it('names the weight total from it, direction and all', () => {
+		const { containerEl } = makeEstimationView(fixture(), configuredValues({ 'dimWeight.reach': '3' }));
+		const drawn = drawnText(partOf(containerEl, '.pbl-est-problems'));
+
+		// The two figures are DATA and arrive as parameters, so they survive the override
+		// inside a marked sentence — `estimation.toolbar.scored`'s own shape.
+		expect(drawn).toContain(MARK + en['estimation.problem.weightsShort'].replace('{total}', '93').replace('{off}', '7'));
+		expect(unmarked(drawn)).toEqual([]);
+	});
 });

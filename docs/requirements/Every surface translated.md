@@ -676,7 +676,19 @@ for a prose-shaped string or template outside a `t()` call — prose being "cont
 whitespace, has a lowercase run, and starts with a capital or ends in terminal
 punctuation". It sees the two shapes stated at the head of this note that no lint rule
 can: a template whose first quasi is empty, and a sentence handed to a helper as a
-positional argument. Over the whole of `src/` it returns 753 hits; with `en.ts` and the
+positional argument.
+
+**That predicate is narrower than the two shapes it claims**, and the gap cost two
+findings on 2026-08-29 — see the last entry in this section. A template whose first quasi
+is empty is seen only when some LATER quasi is capitalised or terminally punctuated:
+`` `${formatCivil(only)} onwards` `` has neither, so the walk that was written for exactly
+that shape read straight past it, and so did all three lint bans. The same is true of a
+positional argument that is a lowercase FRAGMENT — a sentence assembled inside a frame the
+caller supplies, which is what `modelProblems` returns and what `announceMove` wraps.
+Widening the predicate to "whitespace and a lowercase run" is what finds them, and it is
+NOT the instrument's default because it also returns every CSS class template in `src/` —
+the exemption list this scan exists to avoid. Run it as a second pass and read the
+remainder by hand; the categories it lands in are small and stated below. Over the whole of `src/` it returns 753 hits; with `en.ts` and the
 four classified files (`view/manual/`'s three, `defaultModel.ts`, `backlogReadme.ts`,
 `readmeStamps.ts`) subtracted, **27 before this slice and 24 after**. Of the 24, fifteen
 are `console.error` prefixes (`Product Backlog: …`, which stay English by the line this
@@ -740,6 +752,52 @@ and `backlogReadme.ts` — both of which ADR 0031 and the table above put outsid
 catalog — every such property in `src/` is one `UI_TEXT_PROPERTY` already names. The
 release work added no new option-bag shape.
 
+**Re-derived on 2026-08-29, on the merged tree, with the WIDENED predicate — and it was
+not a measurement.** The paragraph above says the entry before it found nothing owed; run
+the same walk with "capitalised or terminally punctuated" dropped and it finds two
+surfaces that had never been swept, both live and both English:
+
+- **`spanWords` in `src/view/interactions/cardDrag.ts`** — the three phrases a dated-axis
+  move is named by (`{start} to {target}`, `{start} onwards`, `up to {target}`), now
+  `lane.spanRange` / `lane.spanFrom` / `lane.spanUntil`. Every one is a template whose
+  first quasi is empty or lowercase, and two of them sit in a ternary, so
+  `UI_TEXT_LITERAL` read no capital, `TEXT_TERNARY` read two identifiers, and the
+  capitalised walk read nothing at all — four instruments past one line. The sentence
+  the call site's comment addresses to a translator (neither open-ended phrase may begin
+  with `from` or `to`, or `announceMove`'s frame says "from from …") is now at the keys,
+  which is where a translator reads.
+- **`modelProblems` in `src/domain/scoringModel.ts`** — the ten sentences the estimation
+  view draws INSTEAD of its table, and that its setup action refuses itself with. Each is
+  a positional argument to `problems.push` and each is a lowercase fragment, the two
+  blind spots at once. `domain/` was classified rather than swept and this file was in
+  neither list: not "classified as staying" and not "swept", simply never asked about —
+  the hazard this note has now met three times, and the same one the root guide records
+  for `storage/`. The weight total was also a two-literal ternary picking `short` or
+  `over` into a frame, which is the catalog's own joining rule broken; it is two keys now
+  (`estimation.problem.weightsShort` / `weightsOver`).
+
+**Neither is coverable by lint**, and the sentence is narrowed to what the checks reach:
+`scoringModel.ts` spells no setter, no `new Notice` and no banned property, so adding it
+to a ban glob would buy nothing, and the two remaining shapes are the ones the head of
+this note says no rule can see. What holds them is the runtime half, and both halves are
+new: `test/i18n/estimation.test.ts` drives the problem block and the weight total under a
+marked catalog (watched failing on a revert of `scoringModel.ts`), and
+`test/i18n/announcements.test.ts` is a new file for a surface no other test in
+`test/i18n/` can reach — the announcement goes to the drag library's live region, not to
+`containerEl`, so every projection test walks past it. It asserts EQUALITY against the
+composed sentence rather than "the remainder is data": one string is all there is, and an
+unkeyed phrase adds English between two marked pieces rather than removing anything, so
+any check that splits on the marker reads the addition as the tail of the piece before it.
+
+**The residue, with the widened predicate, is 32 strings** (`en.ts`, `view/manual/` and
+the four classified files subtracted, CSS class templates read out by hand), and every one
+is already classified above: **16** `console.error('Product Backlog: …')` prefixes, **11**
+in `settingsConsistency.ts` (fixture-author messages plus `assertResolvedSettings`' throw),
+and five more — `absences.ts`'s derived note NAME, `estimationPresets.ts`'s
+`Value over effort`, `readmeMarker.ts`'s generated marker, and `baseFile.ts`'s two
+fragments of generated `.base` content. The catalog is **686 keys**, counted both ways on
+the merged tree and 686 DISTINCT.
+
 ## Where it lives
 
 **`src/i18n/en.ts`** carries the keys; the swept call sites are `src/ui/prompts.ts`,
@@ -765,8 +823,10 @@ Then `domain/`'s own four, swept 2026-08-22: **`src/domain/estimationOptions.ts`
 declares the estimation view's options menu; **`src/domain/board.ts`**, which names the
 iteration board's three buckets and the legend's two workflow sections; and
 **`src/domain/bars.ts`** and **`src/domain/roadmap.ts`**, which choose the sentence a
-shelved card says about itself. The rest of `domain/` is classified in the entry above and
-none of it is a sweep still owed.
+shelved card says about itself. Then a fifth on 2026-08-29, found by the widened predicate
+rather than by that pass: **`src/domain/scoringModel.ts`**, whose `modelProblems` is what
+the estimation view draws instead of its table. The rest of `domain/` is classified in the
+entry above and none of it is a sweep still owed.
 
 `src/view/render/toolbar.ts` · `src/view/render/toolbarControls.ts` ·
 `src/view/render/toolbarBusy.ts` · `src/view/render/toolbarFit.ts` ·
@@ -793,8 +853,8 @@ Tests: `test/view/contextRowWrites.test.ts` and `test/view/creation.test.ts` mus
 untouched — they guard the two behaviours this sweep is most likely to disturb.
 `test/i18n/sweptSurfaces.test.ts`, `test/i18n/emptyStates.test.ts`,
 `test/i18n/menus.test.ts`, `test/i18n/interactions.test.ts`, `test/i18n/toolbar.test.ts`,
-`test/i18n/estimation.test.ts` and `test/i18n/projections.test.ts` are the swept half's
-own checks, and each is a PAIR with lint rather than a substitute for it: they drive each
+`test/i18n/estimation.test.ts`, `test/i18n/projections.test.ts` and
+`test/i18n/announcements.test.ts` are the swept half's own checks, and each is a PAIR with lint rather than a substitute for it: they drive each
 surface under a fixture catalog, so a literal left at a call site renders English beside
 overridden neighbours, while `UI_TEXT_LITERAL` and `UI_TEXT_PROPERTY` in
 `eslint.config.mjs` refuse a NEW one. A test cannot see a call site

@@ -119,11 +119,11 @@ export function boundKeys(model: ScoringModel): string[] {
 function dimensionProblems(d: ScoringDimension): string[] {
 	const problems: string[] = [];
 	if (!Number.isInteger(d.min) || !Number.isInteger(d.max) || d.min >= d.max)
-		problems.push(`${d.label}: the range must be two whole numbers, low to high`);
+		problems.push(t('estimation.problem.range', { label: d.label }));
 	else if (d.rubric.length !== pointCount(d.min, d.max))
-		problems.push(`${d.label}: ${pointCount(d.min, d.max)} points need ${pointCount(d.min, d.max)} rubric sentences, found ${d.rubric.length}`);
-	if (d.key === '') problems.push(`${d.label}: no property is bound — bind one or remove the dimension`);
-	if (!(d.weight > 0)) problems.push(`${d.label}: the weight must be a positive number`);
+		problems.push(t('estimation.problem.rubric', { label: d.label, points: pointCount(d.min, d.max), found: d.rubric.length }));
+	if (d.key === '') problems.push(t('estimation.problem.unbound', { label: d.label }));
+	if (!(d.weight > 0)) problems.push(t('estimation.problem.weight', { label: d.label }));
 	return problems;
 }
 
@@ -139,8 +139,8 @@ function dimensionProblems(d: ScoringDimension): string[] {
  */
 function pairProblems(model: ScoringModel): string[] {
 	const problems: string[] = [];
-	if (model.valueKey === '') problems.push('the business value property is not named (the total and its stamp are one pair)');
-	if (model.stampKey === '') problems.push('the model stamp property is not named (the total and its stamp are one pair)');
+	if (model.valueKey === '') problems.push(t('estimation.problem.valueUnnamed'));
+	if (model.stampKey === '') problems.push(t('estimation.problem.stampUnnamed'));
 	return problems;
 }
 
@@ -174,7 +174,7 @@ function collisionProblems(model: ScoringModel, typeKey: string): string[] {
  */
 export function modelProblems(model: ScoringModel, typeKey: string): string[] {
 	const problems: string[] = [];
-	if (model.dimensions.length === 0) problems.push('no dimensions are declared');
+	if (model.dimensions.length === 0) problems.push(t('estimation.problem.noDimensions'));
 	problems.push(...pairProblems(model), ...collisionProblems(model, typeKey));
 	let weightSum = 0;
 	for (const d of model.dimensions) {
@@ -197,10 +197,15 @@ export function modelProblems(model: ScoringModel, typeKey: string): string[] {
 		// prints in exponent notation (e.g. "1e-7"), which is uglier but still never a false
 		// zero. `test/domain/scoringModel.test.ts`'s "never prints a false zero for a real
 		// sub-1 delta" pins the 99.999 case this comment used to get wrong.
+		//
+		// Two KEYS rather than one sentence with the direction picked into it: joining a word
+		// into a frame is what the catalog's own rule forbids, and it is also what made this
+		// line a `TEXT_TERNARY` shape lint could not see from `domain/`.
 		const off = Number(Math.abs(100 - weightSum).toPrecision(3));
-		problems.push(`the weights total ${weightSum}, not 100 (${off} ${weightSum < 100 ? 'short' : 'over'})`);
+		const args = { total: weightSum, off };
+		problems.push(weightSum < 100 ? t('estimation.problem.weightsShort', args) : t('estimation.problem.weightsOver', args));
 	}
 	if (!Number.isInteger(model.outputMin) || !Number.isInteger(model.outputMax) || model.outputMin >= model.outputMax)
-		problems.push('the output range must be two whole numbers, low to high');
+		problems.push(t('estimation.problem.outputRange'));
 	return problems;
 }
