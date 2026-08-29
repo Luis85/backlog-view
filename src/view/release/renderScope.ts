@@ -215,6 +215,19 @@ function drawOpenNote(view: ReleaseView, hlineEl: HTMLElement, release: ReleaseR
  * UNREADABLE status still is one, since "somebody wrote something there" is not an
  * invitation to write over it blind.
  */
+/**
+ * What a header control that WRITES is called: the action and the value it currently holds,
+ * the tree's own two chip names (`chip.set` / `chip.change`) rather than a sentence of this
+ * screen's own. Both halves are DATA — the field's own word and what the note carries.
+ *
+ * One function because all three controls need it for one reason: a name given by
+ * `setTooltip` replaces whatever the element's content would have said, and each of these
+ * draws a value a reader cannot otherwise get at.
+ */
+function chipName(label: string, value: string | null): string {
+	return value === null ? t('chip.set', { label }) : t('chip.change', { label, value });
+}
+
 function drawStatus(view: ReleaseView, hlineEl: HTMLElement, release: ReleaseRow, index: ReleaseIndex): void {
 	if (release.status.unconfigured) return;
 	if (release.status.invalid) {
@@ -235,11 +248,17 @@ function drawStatus(view: ReleaseView, hlineEl: HTMLElement, release: ReleaseRow
 			// so a name reading only "Set the release status" would take the value the chip
 			// draws away from the one reader who cannot see it. Both halves are DATA — the
 			// column's own word and what the note carries.
-			'aria-label': value === null ? t('chip.set', { label }) : t('chip.change', { label, value }),
+			'aria-label': chipName(label, value),
 		},
 	});
 	chipEl.createSpan({ cls: 'pbl-state-text', text: value ?? label });
 	setTooltip(chipEl, t('release.scope.setStatus'));
+	// **After the tooltip, deliberately.** Obsidian's `setTooltip` is reported to implement
+	// its tooltip THROUGH `aria-label` (found by review, PR #211), which would take the name
+	// built above back off — and the jsdom mock writes `data-tooltip` only, so no test here
+	// can see it either way. Set last, the name wins under both behaviours; the attribute
+	// above is kept so the element is never nameless between the two calls.
+	chipEl.setAttribute('aria-label', chipName(label, value));
 	chipEl.addEventListener('click', (evt) => showReleaseStatusMenu(view, evt, release, index));
 }
 
@@ -278,6 +297,9 @@ function drawReleased(view: ReleaseView, factsEl: HTMLElement, release: ReleaseR
 		text: date === null ? t('release.scope.markReleased') : t('release.scope.releasedOn', { date: formatCivil(date) }),
 	});
 	setTooltip(btn, t('release.scope.releasedTitle', { name: release.name }));
+	// The date the button DRAWS, kept in its accessible name — see `drawStatus`' own note on
+	// why this follows the tooltip rather than preceding it.
+	btn.setAttribute('aria-label', chipName(t('release.index.column.released'), date === null ? null : formatCivil(date)));
 	btn.addEventListener('click', () => editReleaseReleased(view, release));
 }
 
@@ -314,6 +336,10 @@ function drawDescription(view: ReleaseView, headerEl: HTMLElement, release: Rele
 		text: text ?? t('release.scope.descriptionEmpty'),
 	});
 	setTooltip(descEl, t('release.scope.descriptionTitle', { name: release.name }));
+	// The description itself, kept in the name — `drawStatus`' note applies here too, and
+	// this is the control it costs the most: the sentence IS the content, so a tooltip
+	// standing in for it says the action and loses what the release is for.
+	descEl.setAttribute('aria-label', chipName(t('release.scope.descriptionLabel'), text));
 	descEl.addEventListener('click', () => editReleaseDescription(view, release));
 }
 

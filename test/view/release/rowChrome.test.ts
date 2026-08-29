@@ -171,6 +171,15 @@ describe('the scope header’s three write surfaces do not paint as Obsidian but
 		expect(block?.[0]).toContain('color: inherit');
 	});
 
+	it('preserves the newlines the description box lets the reader type', () => {
+		// `TextPromptModal` deliberately does not submit on Enter, so a line break is content
+		// somebody meant — and `white-space: normal` collapsed every one of them into a space,
+		// so two paragraphs came back as one (found by review, PR #211). `pre-wrap` keeps them
+		// and still wraps a long line, which is what `normal` was chosen for.
+		const block = css.match(/button\.pbl-rel-desc\s*\{[^}]*\}/);
+		expect(block?.[0]).toContain('white-space: pre-wrap');
+	});
+
 	it('qualifies both invitation states, which say a COLOUR and nothing else', () => {
 		// `color` is the only property either adds that Obsidian's rule also declares, so a
 		// bare class here is a rule whose whole point loses while its `font-style` lands —

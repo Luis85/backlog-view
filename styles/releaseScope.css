@@ -113,8 +113,14 @@ button.pbl-rel-desc {
 	color: var(--text-muted);
 	text-align: start;
 	/* The sentence wraps rather than truncating: a description is the one thing on this
-	   header that is prose, and a paragraph cut at one line says less than no paragraph. */
-	white-space: normal;
+	   header that is prose, and a paragraph cut at one line says less than no paragraph.
+
+	   `pre-wrap` rather than `normal`, which collapsed authored newlines into spaces: the box
+	   that writes this is a TEXTAREA whose Enter is deliberately not the submit
+	   (`TextPromptModal`), so a line break is content the reader typed on purpose and two
+	   paragraphs came back as one (found by review, PR #211). Long lines still wrap, which is
+	   the half `normal` was chosen for. */
+	white-space: pre-wrap;
 }
 
 /* The released date, the one figure in the facts row that is a control. A real `<button>`,

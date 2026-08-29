@@ -181,6 +181,27 @@ describe('setting a release status', () => {
 		expect(statusChip(view.viewEl).getAttribute('aria-label')).toBe('Set Status');
 	});
 
+	it('names all three write controls with their value, since a tooltip takes the content’s place', async () => {
+		// Found by review (Codex, PR #211): Obsidian's `setTooltip` is reported to implement
+		// its tooltip THROUGH `aria-label`, which replaces an element's content-derived
+		// accessible name — so the description's own sentence and the released date were
+		// reachable only by sight, and the status chip's carefully built name was at risk of
+		// being taken back off by the call two lines under it.
+		//
+		// **What this test can and cannot say**: the jsdom mock writes `data-tooltip` and no
+		// `aria-label`, so nothing here can see Obsidian's real behaviour — only a vault can.
+		// What is asserted is the OUTCOME that holds either way: each control names its value
+		// and its action, set after the tooltip so ours is last.
+		const vault = editVault();
+		vault.addFile('R.md', { frontmatter: { type: 'Release', status: 'Planned', description: 'Sign-in.', released: '2026-06-18' } });
+		const { view, containerEl } = makeReleaseView(vault, RELEASE_CONFIG);
+		view.pick('R.md');
+		const cls = ['.pbl-rel-status', '.pbl-rel-desc', '.pbl-rel-released'];
+
+		const names = cls.map((sel) => containerEl.querySelector(sel)?.getAttribute('aria-label'));
+		expect(names).toEqual(['Change Status (currently Planned)', 'Change Description (currently Sign-in.)', 'Change Released (currently 2026-06-18)']);
+	});
+
 	it('draws an unset status as an invitation rather than withholding it', () => {
 		const vault = editVault();
 		vault.addFile('R.md', { frontmatter: { type: 'Release', version: '1.0.0' } });
