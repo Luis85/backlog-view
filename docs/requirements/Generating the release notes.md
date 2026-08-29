@@ -101,6 +101,15 @@ one file the plugin owns, written whole.
 The text is composed in `src/domain/`, beside `src/domain/readmeText.ts` and shaped like it,
 from the model in `src/domain/model.ts` and the vocabulary in
 `src/domain/typeVocabulary.ts`. The marker that tells a generated file from a hand-written one
-is `src/domain/readmeMarker.ts`. The file is written by a new module in `src/storage/`, beside
-`src/storage/readmeFile.ts` — the only directory that may put bytes in the vault — and the
-output folder is declared in `src/domain/viewOptions.ts`.
+is `src/domain/readmeMarker.ts`, whose `joinSource` names THREE parts here — base, view and
+the release itself — so a regeneration can be told from a collision between two releases that
+share a basename.
+
+The file is written by `src/storage/releaseNotesFile.ts`, which decides where it goes and
+whether it may be written at all. What it shares with the README is `writeGeneratedFile` in
+`src/storage/readmeFile.ts` — the read-then-`process` race close, the BOM and carriage-return
+trim, and the five outcomes — over one `mismatch` flag, because the two callers answer
+differently about a generated file naming another source: the README REPLACES one (a renamed
+base or view leaves it behind, and regenerating is the repair), and these notes REFUSE it (a
+whole-file write over another release's notes is in no undo slot and cannot be taken back).
+The output folder is declared in `src/domain/releaseOptions.ts`.

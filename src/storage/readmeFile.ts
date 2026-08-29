@@ -15,12 +15,21 @@ import { README_FILE_NAME, readmeSource } from '../domain/readmeMarker';
  * ones are the two that wrote nothing: `unchanged` is the repository-friendly no-op
  * (regenerating an identical file must not produce a commit), and `foreign` is the
  * refusal — a file of this name without the marker was written by somebody else and
- * is never replaced.
+ * is never replaced. Under `mismatch: 'refuse'` it is also the answer for a file that
+ * IS generated but by another source, since the caller's next move is the same either
+ * way: this file is not ours to replace.
  */
-export type ReadmeOutcome = 'created' | 'updated' | 'unchanged' | 'foreign' | 'replaced';
+export type GeneratedOutcome = 'created' | 'updated' | 'unchanged' | 'foreign' | 'replaced';
 
-export interface ReadmeWriteResult {
-	outcome: ReadmeOutcome;
+/**
+ * What to do with a file that IS this plugin's generated output but names another source.
+ * Not a detail of the writer: it is the caller's judgement about whether its document can
+ * be reconstructed, and the two callers answer differently for stated reasons.
+ */
+export type GeneratedMismatch = 'replace' | 'refuse';
+
+export interface GeneratedWriteResult {
+	outcome: GeneratedOutcome;
 	path: string;
 	/** On `replaced`: the view the old file named, for the notice that says so. */
 	previous?: string;
@@ -68,11 +77,14 @@ export function readmePath(folder: string): string {
  * a create that loses a race falls into the very rules the lookup skipped, so the same
  * document appearing a moment sooner cannot turn a no-op or a refusal into an error.
  */
-export async function writeBacklogReadme(app: App, folder: string, content: string): Promise<ReadmeWriteResult> {
-	const path = readmePath(folder);
+export async function writeGeneratedFile(
+	app: App,
+	path: string,
+	content: string,
+	mismatch: GeneratedMismatch,
+): Promise<GeneratedWriteResult> {
 	const existing = app.vault.getFileByPath(path);
-	if (existing !== null) return replaceExisting(app, existing, path, content);
-	await ensureFolder(app, vaultFolder(folder));
+	if (existing !== null) return replaceExisting(app, existing, path, content, mismatch);
 	try {
 		await app.vault.create(path, content);
 	} catch (err) {
@@ -85,13 +97,29 @@ export async function writeBacklogReadme(app: App, folder: string, content: stri
 		// reason (permissions, a full disk), and reporting a document written is worse.
 		const raced = app.vault.getFileByPath(path);
 		if (raced === null) throw err;
-		return replaceExisting(app, raced, path, content);
+		return replaceExisting(app, raced, path, content, mismatch);
 	}
 	return { outcome: 'created', path };
 }
 
+/**
+ * Write the generated README into `folder`, creating the folder if it does not exist.
+ * A thin caller since the release notes became the second generated file: everything
+ * above is what the two share, and `'replace'` is this one's own answer.
+ */
+export async function writeBacklogReadme(app: App, folder: string, content: string): Promise<GeneratedWriteResult> {
+	await ensureFolder(app, vaultFolder(folder));
+	return writeGeneratedFile(app, readmePath(folder), content, 'replace');
+}
+
 /** The rules a file that is already there gets, from either route into them. */
-async function replaceExisting(app: App, existing: TFile, path: string, content: string): Promise<ReadmeWriteResult> {
+async function replaceExisting(
+	app: App,
+	existing: TFile,
+	path: string,
+	content: string,
+	mismatch: GeneratedMismatch,
+): Promise<GeneratedWriteResult> {
 	const current = await app.vault.read(existing);
 	if (current === content) return { outcome: 'unchanged', path };
 	// One question, asked once: a file is ours when its first line PARSES as a marker,
@@ -117,8 +145,16 @@ async function replaceExisting(app: App, existing: TFile, path: string, content:
 	// narrowing after a closure assignment does not survive the type checker.
 	const replaced: (string | null)[] = [];
 	await app.vault.process(existing, (live) => {
-		replaced.push(readmeSource(firstLine(live)));
-		return replaced[0] === null ? live : content;
+		const owner = readmeSource(firstLine(live));
+		replaced.push(owner);
+		if (owner === null) return live;
+		// The REFUSE mode asks its second question HERE, not beside the read above, and the
+		// placement is the whole of it: sync can put another release's generated file at
+		// this path between that read and this callback, and a check for "is this a marker"
+		// would hand it to the writer. The permission is about the bytes being replaced,
+		// and only this callback sees those.
+		if (mismatch === 'refuse' && owner !== mine) return live;
+		return content;
 	});
 	// Reported from the bytes actually replaced, not from the ones read a moment
 	// earlier: if the file that lost the race was a THIRD view's, `previous` names a
@@ -126,5 +162,11 @@ async function replaceExisting(app: App, existing: TFile, path: string, content:
 	// one it did.
 	const owner = replaced[0] ?? null;
 	if (owner === null) return { outcome: 'foreign', path };
-	return owner !== mine ? { outcome: 'replaced', path, previous: owner } : { outcome: 'updated', path };
+	if (owner === mine) return { outcome: 'updated', path };
+	// Not ours, and what that means is the caller's own choice. The README REPLACES: two
+	// views may share a home folder, and refusing would brick a renamed base or view. The
+	// release notes REFUSE: a whole-file write over another release's notes is not in the
+	// undo slot and cannot be taken back at all.
+	if (mismatch === 'refuse') return { outcome: 'foreign', path, previous: owner };
+	return { outcome: 'replaced', path, previous: owner };
 }
