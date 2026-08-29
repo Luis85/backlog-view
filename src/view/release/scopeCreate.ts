@@ -75,10 +75,17 @@ export function wireScopeCreate(view: ReleaseView, release: ReleaseRow, settings
 		const file = view.activeScopeFile;
 		const row = file === null ? undefined : rows.find((r) => r.item.file === file);
 		if (!row) return;
+		const menu = menuFor(row);
+		// Consumed only once there IS a menu — the pointer path's rule, and the keyboard has
+		// the same reason to keep it: a catalog row opens none, and swallowing the chord
+		// there would leave that reader with neither this menu nor the pane's own. It was
+		// written the other way round for one commit, which is the shape of mistake a fix
+		// applied to one of two inputs makes (Codex, PR #214).
+		if (!menu) return;
 		evt.preventDefault();
 		// `!` for `scopeKeys.ts`'s own reason: `row` came out of `rows`, and `rowEls` was
 		// built from that same array while drawing it, so the lookup always hits.
-		showMenuAtElement(menuFor(row), rowEls.get(row.item.file.path)!);
+		showMenuAtElement(menu, rowEls.get(row.item.file.path)!);
 	});
 }
 

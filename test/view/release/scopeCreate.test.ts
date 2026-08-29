@@ -233,6 +233,16 @@ describe('creating a child from a release scope row', () => {
 		// The member below it still offers its own, so this withholds one row rather than
 		// the feature.
 		expect(titles(openMenu(view, 'Epic under suite.md'))).toContain('New Feature');
+
+		// And the KEYBOARD leaves the chord alone there for the same reason the pointer
+		// leaves the right-click alone: a reader on a row with no menu of ours must still
+		// reach the pane's own, so the event is consumed only once there is one to show.
+		select(view, 'Suite.md');
+		Menu.lastShown = null;
+		const chord = new KeyboardEvent('keydown', { key: 'ContextMenu', bubbles: true, cancelable: true });
+		view.viewEl.querySelector<HTMLElement>('.pbl-tree')!.dispatchEvent(chord);
+		expect(Menu.lastShown).toBeNull();
+		expect(chord.defaultPrevented).toBe(false);
 	});
 
 	it('opens nothing from the keyboard before the tree has an active row', () => {

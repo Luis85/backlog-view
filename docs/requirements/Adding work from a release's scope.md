@@ -118,8 +118,9 @@ appear on the screen the gesture was made from — a press that reads as having 
   ([[The scope of a release as a tree]]'s own guarantee, and
   `test/view/releaseNeverEdits.test.ts`).
 - **A right-click that lands on no row, or on a row this screen may create nothing under,
-  does not consume the pane's own menu.** The default is prevented only once there is a menu
-  to show.
+  does not consume the pane's own menu, and the keyboard chord does not either.** The default
+  is prevented only once there is a menu to show — asserted on both inputs, because a rule
+  applied to one of two is how they come apart.
 - **A test-catalog row is withheld the whole menu, and the question is asked of the ROW.** A
   type name cannot answer it — `Task` is on both ladders, so a task under a `Test case`
   passes `mayHoldField(type, 'release')` and is refused by `inPlan` at the reading end. The
