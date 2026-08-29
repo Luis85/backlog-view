@@ -96,6 +96,42 @@ describe('marking a release as released', () => {
 		expect(view.viewEl.textContent).toContain(en['release.close.unreadableStatus']);
 	});
 
+	it('refuses a row the live note has already moved past, before opening anything', () => {
+		// Obsidian's metadata cache advances BEFORE Bases hands this view fresh results, so
+		// the screen can still show `In progress` while the note already says otherwise.
+		// The raw value captured at the press would then be the EDIT, handed to the write
+		// as the value it expects to find — blessing the change rather than catching it,
+		// which the compare-and-swap can never see because it happened before the dialog.
+		const { view, vault } = releaseScreen({ status: 'In progress' });
+		const cache = vault.caches.get('0.9.md');
+		if (cache === undefined) throw new Error('no cache for 0.9.md');
+		cache.frontmatter = { ...cache.frontmatter, status: 'Released' };
+
+		button(view, '.pbl-rel-close').click();
+
+		expect(Modal.lastOpened).toBeNull();
+		expect(vault.fm('0.9.md')['released']).toBeUndefined();
+	});
+
+	it('hands focus back to the control that opened the confirmation', () => {
+		// Obsidian removes the modal and focus falls to the body. The focus-handle list
+		// cannot help: the redraw a confirmation triggers runs AFTER the modal is gone, so
+		// it would capture the body. Refocusing on the way out is what puts the button back
+		// under `document.activeElement` in time for that redraw to find it.
+		const { view } = releaseScreen({ status: 'In progress' });
+		const btn = button(view, '.pbl-rel-close');
+		btn.focus();
+		btn.click();
+		// BLUR, not `document.body.focus()`: the body is not focusable without a tabindex,
+		// so focusing it leaves `activeElement` on the button and this test passes without
+		// the fix. Watched doing exactly that before it was written this way.
+		btn.blur();
+
+		Modal.lastOpened?.close();
+
+		expect(document.activeElement).toBe(btn);
+	});
+
 	it('refuses when the transition value changed to ANOTHER valid one mid-dialog', async () => {
 		// The case a re-asked `closeOffer` cannot catch: the configuration is still
 		// perfectly valid, just not the one the reader agreed to.

@@ -74,6 +74,21 @@ describe('the confirm dialog', () => {
 		expect(confirmed).toBe(false);
 	});
 
+	it('says it closed BEFORE the decision runs, so a caller can refocus first', () => {
+		// The order is the whole of why `onClosed` exists: a caller that refocuses its own
+		// control has to do it before the write, or the redraw that write triggers reads
+		// `document.activeElement` and finds the body.
+		const opener = document.body.createEl('button');
+		let focusedWhenDecided: Element | null = null;
+		const modal = open({
+			onClosed: () => opener.focus(),
+			onConfirm: () => (focusedWhenDecided = document.activeElement),
+		});
+		btn(modal, '.mod-cta').click();
+
+		expect(focusedWhenDecided).toBe(opener);
+	});
+
 	it('draws no list at all when there is nothing to open', () => {
 		const modal = open({ onConfirm: () => undefined });
 		expect(modal.contentEl.querySelectorAll('.pbl-confirm-link')).toHaveLength(0);

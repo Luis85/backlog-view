@@ -16,6 +16,18 @@ export interface ConfirmOptions {
 	cta: string;
 	onConfirm: () => void;
 	onCancel?: () => void;
+	/**
+	 * Say when the dialog went away, BEFORE the decision runs — `ui/prompts.ts`'s own
+	 * `Closable` contract, and the same order the hand-written dialogs in this directory
+	 * use, so a caller needs one rule and not two.
+	 *
+	 * It exists for focus. Obsidian removes the modal and focus falls to `document.body`;
+	 * the release view's focus-handle list cannot help, because the redraw a confirmation
+	 * triggers runs AFTER the modal is gone and would capture the body (found by review,
+	 * Codex, PR #219). Refocusing here, before the write, puts the opener back under
+	 * `document.activeElement` in time for that redraw to find it.
+	 */
+	onClosed?: () => void;
 }
 
 /**
@@ -52,6 +64,12 @@ export function openConfirm(app: App, options: ConfirmOptions): void {
 	cancel.addEventListener('click', () => modal.close());
 	// `onClose` rather than a handler beside each button, so the escape key and the close
 	// box are the same answer as pressing Cancel — three ways out, one meaning.
-	modal.onClose = (): void => (confirmed ? options.onConfirm() : options.onCancel?.());
+	modal.onClose = (): void => {
+		// BEFORE the decision, which is the whole of the ordering: the confirm path writes
+		// and redraws, and focus has to be back on the opener before that redraw reads it.
+		options.onClosed?.();
+		if (confirmed) options.onConfirm();
+		else options.onCancel?.();
+	};
 	modal.open();
 }

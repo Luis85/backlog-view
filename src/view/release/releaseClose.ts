@@ -1,7 +1,15 @@
 import { Notice } from 'obsidian';
 import type { ReleaseView } from './releaseView';
 import { t } from '../../i18n/t';
-import { CloseOffer, CloseOption, closeOffer, ReleaseRow, ReleaseScope, ScopeRow } from '../../domain/releases';
+import {
+	CloseOffer,
+	CloseOption,
+	closeOffer,
+	closingFieldsMoved,
+	ReleaseRow,
+	ReleaseScope,
+	ScopeRow,
+} from '../../domain/releases';
 import { ReleaseSettings } from '../../domain/releaseOptions';
 import { releaseClosureWrites } from '../../domain/releaseWritePlan';
 import { ownWorkflowReading } from '../../domain/board';
@@ -57,7 +65,7 @@ function drawClose(view: ReleaseView, areaEl: HTMLElement, release: ReleaseRow, 
 		attr: { type: 'button' },
 	});
 	btn.disabled = view.gate.writing;
-	btn.addEventListener('click', () => askThenClose(view, release, scope));
+	btn.addEventListener('click', () => askThenClose(view, btn, release, scope));
 }
 
 /**
@@ -81,7 +89,17 @@ function nameWhatIsMissing(areaEl: HTMLElement, offer: CloseOffer): void {
 	});
 }
 
-function askThenClose(view: ReleaseView, release: ReleaseRow, scope: ReleaseScope): void {
+function askThenClose(view: ReleaseView, btn: HTMLElement, release: ReleaseRow, scope: ReleaseScope): void {
+	// The ROW may already be behind the note. Obsidian's metadata cache advances before
+	// Bases hands this view fresh results, so an external edit between the last render and
+	// this press leaves the screen saying one thing and the note holding another — and the
+	// raw value captured below would then be the EDIT, handed to the write as the value it
+	// expects to find. Refused here rather than blessed there: what the reader is about to
+	// confirm is what the screen showed them.
+	if (closingFieldsMoved(view.app, release, view.settings)) {
+		new Notice(t('release.close.changed'));
+		return;
+	}
 	// Captured BEFORE the await, the rule the root guide states: the batch's own refresh
 	// rebuilds `scope` before it resolves.
 	const outstanding = unfinishedMembers(release, scope);
@@ -107,6 +125,10 @@ function askThenClose(view: ReleaseView, release: ReleaseRow, scope: ReleaseScop
 			open: () => view.opener.openIn(view.openContext(), row.item, 'tab'),
 		})),
 		cta: t('release.close.action'),
+		// Focus back on the control that opened this, on EVERY way out — and before the
+		// write, so the redraw it triggers finds the button under `document.activeElement`
+		// and `FOCUS_HANDLE_CLASSES` can put the reader back on it.
+		onClosed: () => btn.focus(),
 		onConfirm: () => void submitClose(view, release, confirmed, raw),
 	});
 }

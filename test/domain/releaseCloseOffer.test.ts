@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { closeOffer, releaseIndex, ReleaseRow } from '../../src/domain/releases';
+import { closeOffer, closingFieldsMoved, releaseIndex, ReleaseRow } from '../../src/domain/releases';
 import { ReleaseSettings } from '../../src/domain/releaseOptions';
 import { buildModel } from '../../src/domain/model';
 import { CivilDate } from '../../src/domain/noteFields';
@@ -23,7 +23,10 @@ const TODAY: CivilDate = { year: 2026, month: 9, day: 20 };
  * which one a value gets: a fixture that asserted `invalid: true` itself would pass on a
  * spelling `readLabel` calls absent.
  */
-function rowOf(frontmatter: Record<string, unknown>, overrides: Partial<ReleaseSettings> = BOUND): ReleaseRow {
+function screenOf(
+	frontmatter: Record<string, unknown>,
+	overrides: Partial<ReleaseSettings> = BOUND,
+): { row: ReleaseRow; vault: FakeVault } {
 	const vault = new FakeVault();
 	vault.addFile('0.9.md', { frontmatter: { type: 'Release', ...frontmatter } });
 	const settings = releaseSettingsWith(overrides);
@@ -31,7 +34,20 @@ function rowOf(frontmatter: Record<string, unknown>, overrides: Partial<ReleaseS
 	const rows = releaseIndex(vault.app, model, settings, { stateKey: 'status', today: TODAY }).rows;
 	const found = rows.find((r) => r.path === '0.9.md');
 	if (found === undefined) throw new Error('no row for 0.9.md');
-	return found;
+	return { row: found, vault };
+}
+
+function rowOf(frontmatter: Record<string, unknown>, overrides: Partial<ReleaseSettings> = BOUND): ReleaseRow {
+	return screenOf(frontmatter, overrides).row;
+}
+
+/** Edit the LIVE note without redrawing — Obsidian's metadata cache advancing ahead of the
+ *  results Bases last handed the view, which is the whole of what `closingFieldsMoved`
+ *  answers about. */
+function editLiveNote(vault: FakeVault, changes: Record<string, unknown>): void {
+	const cache = vault.caches.get('0.9.md');
+	if (cache === undefined) throw new Error('no cache for 0.9.md');
+	cache.frontmatter = { ...cache.frontmatter, ...changes };
 }
 
 function offerFor(frontmatter: Record<string, unknown>, overrides: Partial<ReleaseSettings> = BOUND) {
@@ -75,5 +91,46 @@ describe('whether a release may be marked out', () => {
 		// The compare-and-swap protects a date that ARRIVES later; this is the one that
 		// was already there when the dialog opened, and it must not be replaced.
 		expect(offerFor({ status: 'In progress', released: '2026-08-01' }).offered).toBe(false);
+	});
+});
+
+describe('whether the note has moved past the row on screen', () => {
+	const settings = releaseSettingsWith(BOUND);
+
+	it('is not a move when nothing changed', () => {
+		const { row, vault } = screenOf({ status: 'In progress', released: '2026-08-01' });
+		expect(closingFieldsMoved(vault.app as never, row, settings)).toBe(false);
+	});
+
+	it('is not a move when the note was merely RESPELLED', () => {
+		// Read through the same two readers the row was built with, never `===` on the raw
+		// value: a date rewritten `2026-9-1` and a status retrimmed are the same answer, and
+		// refusing an action over them would be a refusal the reader cannot act on.
+		const { row, vault } = screenOf({ status: 'In progress', released: '2026-08-01' });
+		editLiveNote(vault, { status: '  In progress  ', released: '2026-8-1' });
+		expect(closingFieldsMoved(vault.app as never, row, settings)).toBe(false);
+	});
+
+	it('is a move when the status changed', () => {
+		const { row, vault } = screenOf({ status: 'In progress' });
+		editLiveNote(vault, { status: 'Released' });
+		expect(closingFieldsMoved(vault.app as never, row, settings)).toBe(true);
+	});
+
+	it('is a move when a date ARRIVED that the row does not have', () => {
+		// The sharp one: the row says dateless, so `closeOffer` offers the action, and the
+		// raw value captured at the press would hand the write the date somebody else just
+		// recorded — as the value it EXPECTS to find.
+		const { row, vault } = screenOf({ status: 'In progress' });
+		editLiveNote(vault, { released: '2026-08-01' });
+		expect(closingFieldsMoved(vault.app as never, row, settings)).toBe(true);
+	});
+
+	it('is a move when a field became UNREADABLE', () => {
+		// A different kind of answer, not a different value — and the row still shows the
+		// old one, so nothing about the value alone would notice.
+		const { row, vault } = screenOf({ status: 'In progress' });
+		editLiveNote(vault, { status: { a: 1 } });
+		expect(closingFieldsMoved(vault.app as never, row, settings)).toBe(true);
 	});
 });

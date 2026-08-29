@@ -441,6 +441,43 @@ export function closeOffer(release: ReleaseRow, settings: ReleaseSettings): Clos
 	return { missing, unreadable, offered: missing.length === 0 && unreadable === null && !alreadyOut && dateFree };
 }
 
+/**
+ * Whether the two closing fields on the LIVE note still read as the row on screen says
+ * they do — asked before the confirmation opens, and the answer to a hazard the write's
+ * own compare-and-swap cannot see.
+ *
+ * `ReleaseRow` is built when Bases last handed this view its results. Obsidian's metadata
+ * cache advances FIRST, so between that render and the press the note can already hold an
+ * external edit: the screen still says `In progress`, and the raw value captured at the
+ * press is the new one. Handing that raw value to the write as its expectation BLESSES the
+ * change instead of catching it — the compare-and-swap only ever sees what happened after
+ * the dialog opened (found by review, Codex, PR #219).
+ *
+ * Read through the same two readers the row itself was built with, never `===` on the raw
+ * value: a note respelled `2026-9-1` to `2026-09-01`, or `status` retrimmed, is the same
+ * answer to the reader and must not refuse an action.
+ */
+export function closingFieldsMoved(app: App, release: ReleaseRow, settings: ReleaseSettings): boolean {
+	const fm = app.metadataCache.getFileCache(release.item.file)?.frontmatter;
+	const status = settings.statusKey ? figure(readLabel(ownValue(fm, settings.statusKey))) : UNCONFIGURED;
+	const released = settings.releasedDateKey
+		? figure(readSoleDate(ownValue(fm, settings.releasedDateKey)))
+		: UNCONFIGURED;
+	return !sameFigure(status, release.status, sameValue) || !sameFigure(released, release.released, sameCivil);
+}
+
+/** Two readings of one field agree when they are the same KIND of answer and, where that
+ *  is a value, the same value. `invalid` is part of it: a status that became unreadable
+ *  while the row still shows the old one is exactly a move. */
+function sameFigure<T>(live: ReleaseFigure<T>, drawn: ReleaseFigure<T>, same: (a: T, b: T) => boolean): boolean {
+	if (live.unconfigured !== drawn.unconfigured || live.invalid !== drawn.invalid) return false;
+	if (live.value === null || drawn.value === null) return live.value === drawn.value;
+	return same(live.value, drawn.value);
+}
+
+const sameCivil = (a: CivilDate, b: CivilDate): boolean =>
+	a.year === b.year && a.month === b.month && a.day === b.day;
+
 export interface ReleaseIndexOptions {
 	/**
 	 * `BacklogSettings.stateKey` — the PLAN's own state key. Not one of `ReleaseSettings`'
