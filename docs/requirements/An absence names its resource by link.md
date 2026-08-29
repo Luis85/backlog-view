@@ -2,16 +2,20 @@
 type: PBI
 parent: "[[Resources as notes]]"
 order: 30
-status: Open
+status: Done
 created: 2026-08-20
 source: user request
 files:
   - src/domain/absences.ts
+  - src/domain/noteFields.ts
+  - src/domain/roadmap.ts
   - src/storage/absenceNotes.ts
+  - src/storage/createNote.ts
+  - src/ui/prompts.ts
   - src/view/interactions/absences.ts
   - src/view/render/lanes.ts
-started: ""
-finished: ""
+started: 2026-08-29
+finished: 2026-08-29
 horizon: ""
 start: ""
 due: ""
@@ -75,9 +79,32 @@ else spells it the new way.
 
 ## Where it lives
 
-**Nothing yet — this note is design.** The writer exists and spells a resource as a name.
+`src/domain/absences.ts`: `Absence.resource` and `AbsenceFacts.resource` are `LinkEntry`
+rather than `string`, and `readAbsence` reads the resource through the same
+`readFirstLinkEntry` helper the assignee uses. `absenceTitle` takes the collision-aware LABEL
+as its own argument rather than reading `facts.resource.file.basename` — added 2026-08-29
+once two `Resource` notes sharing a basename in different folders turned out to derive the
+identical absence name (see [[Resource absences]] 4l and 4o for the cost this still leaves).
 
-`src/storage/absenceNotes.ts` is the only place an absence reaches the vault, and holds both
-the create and the edit path this use case keeps identical · `src/domain/absences.ts` carries
-the facts an absence is made of · `src/view/interactions/absences.ts` is the form and the
-place a typed name is offered today · `src/view/render/lanes.ts` puts the absence in a row.
+`src/domain/noteFields.ts` gained `readFirstLinkEntry` exported (moved from `readItems.ts`,
+private there) so `absences.ts` can read a link without an import cycle back through
+`readItems.ts`.
+
+`src/domain/roadmap.ts`'s `deriveLanes` attaches an absence to its row by
+`byPath.get(absence.resource.file.path)` — the same map `placeAssigned` looks up into for an
+item's assignee — never a name or label scan.
+
+`src/storage/absenceNotes.ts` is the only place an absence reaches the vault, and both
+`createAbsenceNote` and `updateAbsenceNote` write the resource as a wikilink on the assignee
+key, from the same setter, which is what keeps 2a unreachable — every row is now a `Resource`
+note the base returned. `src/storage/createNote.ts`'s `sanitizeTitle` is where 4o's residual
+ambiguity comes from: the character-class fold that makes a filename safe is what two
+distinct disambiguated labels can still collide on.
+
+`src/ui/prompts.ts`'s absence prompt takes a chosen resource id (a note path) rather than a
+typed name — there is no longer anything a typed name could mint, since [[Rows from the
+Resource notes]] made every row a `Resource` note.
+
+`src/view/interactions/absences.ts` is the form, driven by the row's own `Resource` note
+rather than by its caption text, for both the create and the edit path. `src/view/render/lanes.ts` puts the absence in that resource's row and reads
+`absenceTitle`/`absenceSaid` back through the same label.

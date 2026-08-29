@@ -370,23 +370,39 @@ await, because the batch's own refresh rebuilds `board`/`roadmap` before it reso
 and the column or bucket just vacated may be gone with its last card.
 
 **Absence is a value, and an unconfigured key is never written to** — a rule
-`storage/frontmatter.ts` keeps in three different shapes, which is the fact to know
+`storage/frontmatter.ts` keeps in four different shapes, which is the fact to know
 before adding another optional property. The state key guards inline
 (`write.removeStateKey && settings.stateKey` in `applyInto`); the axis keys go through
 `axisEntries`, where `key !== ''` drops an unconfigured one and a `null` value means
-delete; the plain LABEL properties — the risk level, the priority and the assignee — go
-through `applyLabels`, one loop over a list pairing each planned value with its configured
-key.
+delete; the plain LABEL properties — the risk level, the priority and the iteration goal —
+go through `applyLabels`, one loop over a list pairing each planned value with its
+configured key.
 That third shape was `applyRisk`, a four-line restatement of the rule, until the assignee
 arrived (2026-08-10) — which is exactly the case this paragraph said to re-examine at: a
-fourth property wanting those two lines and none of the axis's civil-date equality or
+second property wanting those two lines and none of the axis's civil-date equality or
 datetime merge. It was extracted rather than copied, and the priority (2026-08-16) is what
-collected on that: a third label property cost one row in the list and no new shape at all. What has NOT been extracted is the rule across all three shapes, and that is still
+collected on that: a third label property cost one row in the list and no new shape at
+all. The assignee itself left the list on 2026-08-28 (below), so what `applyLabels`
+carries today is the risk level, the priority and the iteration goal — three properties,
+none of them the one that named this extraction. What has NOT been extracted is the rule across all three shapes, and that is still
 deliberate: a helper general enough to cover the axis too would have to carry the date
 handling past the properties that must not have it. This paragraph said the opposite until
 2026-08-08, naming a `writeOptional` and a `removeHorizonKey` that have never existed: a
 guide enumerating symbols goes stale exactly the way the table rule below says, and here it
 sent a specification off to promise an implementer a call they would not find.
+
+**The assignee moved OUT of that list on 2026-08-28**, and `applyLinks` is the fourth
+shape rather than a fourth row on the third: it wrote as a plain string until
+[[Linking an item to a resource]] made it a link to a `Resource` note, and a link is what
+the axis's own writer, not the label loop, must spell — a wikilink rather than `setOwn`'s
+plain value. `applyLinks` is `applyLabels`'s identical shape asked of the LINK properties
+instead — one loop over a list pairing each planned `TFile | null` with its configured
+key, spelled as a wikilink from the editing note's path — collapsed the same day from two
+separate writers, `applyIteration` and `applyRelease`, into one function before the
+assignee joined it as the third row minutes later in the same plan. Naming both here, and
+only where the sentence is about them, is this guide's own rule: a fourth property
+choosing between them asks whether it writes a plain value or a note, and picks the loop
+that already matches.
 
 A Set menu's **checkmark is asked of the PLAN** — an entry is checked exactly when
 picking it would write nothing — never by a comparison written beside the plan and

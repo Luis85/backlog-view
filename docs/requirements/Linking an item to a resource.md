@@ -2,20 +2,30 @@
 type: PBI
 parent: "[[Resources as notes]]"
 order: 20
-status: Open
+status: Done
 created: 2026-08-20
 source: user request
 files:
+  - src/domain/readItems.ts
   - src/domain/settings.ts
   - src/domain/vocabulary.ts
   - src/domain/writePlan.ts
   - src/domain/roadmap.ts
   - src/storage/frontmatter.ts
   - src/view/interactions/labels.ts
+  - src/view/interactions/resourceNotes.ts
+  - src/view/interactions/keyboard.ts
+  - src/view/interactions/cardDrag.ts
+  - src/view/render/chips.ts
   - src/view/render/columns.ts
+  - src/view/rowSignature.ts
+  - src/view/host.ts
+  - src/view/backlogView.ts
+  - src/view/cardMoves.ts
   - src/ui/prompts.ts
-started: ""
-finished: ""
+  - src/i18n/en.ts
+started: 2026-08-29
+finished: 2026-08-29
 horizon: ""
 start: ""
 due: ""
@@ -35,8 +45,15 @@ the **value** changes shape, from a name to `"[[Sarah]]"`, the same wikilink for
 already uses. A rename in Obsidian then updates every item that names them, which is the
 whole reason for the shape.
 
-**A name that is not a link is not a resource.** No fallback, no coexistence, no migration:
-the epic states that cost and why it is being paid.
+**What decides whether an assignee IS a resource is resolution, not spelling.** A wikilink
+that resolves to a `Resource` note in the results is that resource; a bare name that resolves
+to one is too, since `linkpathFromRawValue` passes a bare name through to the same resolver a
+link uses — the decision taken 2026-08-28, restating this paragraph, which read "a name that
+is not a link is not a resource" until automated review on PR #207 found the register
+asserting a syntax rule the code never enforced. What has no fallback, no coexistence and no
+migration is a name that resolves to NOTHING here — no `Resource` note by that basename in
+this base's results — and the epic states that cost and why it is being paid
+([[No migration off the string assignees]]).
 
 ## Use case
 
@@ -75,10 +92,16 @@ the epic states that cost and why it is being paid.
   the menu's checkmark comes from that plan rather than from a comparison beside it. This is
   the rule two properties already drifted on once, and a link is a third value shape for it
   to drift on.
-- **4a — the link does not resolve.** It renders as its text, unstyled, and carries no
-  properties and no row. That covers both the note somebody deleted and the plain string left
-  over from before this shipped — the same treatment [[Broken links still render]] gives every
-  other link this view draws, so it needs no rule of its own.
+- **4a — the value does not resolve to a `Resource` note in the results.** It renders as its
+  text, unstyled, and carries no properties and no row. What decides this extension is
+  RESOLUTION, not spelling — a note somebody deleted, a wikilink to a note that is not a
+  `Resource`, and a plain string naming nobody in this base's results all land here for the
+  identical reason, the same treatment [[Broken links still render]] gives every other link
+  this view draws, so it needs no rule of its own. **A bare name that DOES resolve to a
+  `Resource` in the results is not this extension — it is the main flow's own step 4.**
+  Restated 2026-08-29 after automated review on PR #207 found this note (and its own "a name
+  that is not a link is not a resource" paragraph above) assuming the reader refuses a bare
+  name outright, which `linkpathFromRawValue` never did.
 - **5a — the assignee property is not configured.** Nothing is read and nothing is written,
   and no menu appears. Absence is a value, and an unconfigured key is never written to.
 
@@ -92,8 +115,9 @@ the epic states that cost and why it is being paid.
 - **Case folding over a resource name is gone.** A link resolves or it does not. The
   case-insensitive comparison the typed roster needed has no meaning here, and every site
   still doing it is a site still thinking in strings.
-- A value that is not a link resolves to nobody: no row, no chip styling, no menu entry, no
-  membership. It is not an error and is not repaired.
+- A value that does not resolve to a `Resource` in the results resolves to nobody: no row, no
+  chip styling, no menu entry, no membership. It is not an error and is not repaired. A bare
+  name that resolves to a `Resource` in the results is not this case — see 4a.
 - `New resource...` creates the note before it writes the link, and a failed creation writes
   no link.
 - A context row is never a write target and its assignee is never a source of vocabulary —
@@ -102,14 +126,31 @@ the epic states that cost and why it is being paid.
 
 ## Where it lives
 
-**Nothing yet — this note is design.** The write it needs already exists and plans the wrong
-value shape.
+`src/domain/readItems.ts`'s `RawItem.assigneeEntry` reads the property as a `LinkEntry`
+through the same private link reader `iterationEntry` already used, and `assigneeName`
+resolves it (the note's basename), falls back to the raw text, or answers null — the one
+function every reader below calls, so "does this resolve" is asked once.
 
-`src/domain/writePlan.ts` holds `computeAssigneeWrites`, which plans the value this use case
-changes · `src/storage/frontmatter.ts` writes it through `applyLabels`, the one loop over the
-plain label properties — a link is still a plain value, so this must not grow a fourth shape
-· `src/domain/vocabulary.ts` observes what the results carry, and is where "every name on a
-note" becomes "every resource note" · `src/view/interactions/labels.ts` builds the menu and
-the roster union this use case collapses · `src/view/render/columns.ts` draws the chip ·
-`src/domain/roadmap.ts` decides which row an item sits in · `src/ui/prompts.ts` suggests the
-names · `src/domain/settings.ts` carries the key.
+`src/domain/writePlan.ts`'s `computeAssigneeWrites` plans `ItemWrite.assignee: TFile | null`,
+compared by path — never by name — which is what makes 3a's checkmark agree with the plan.
+`src/storage/frontmatter.ts` writes it through `applyLinks`, spelled as a wikilink beside the
+iteration and the release — it left `applyLabels` the day it stopped being a plain string,
+which is exactly the shape a label writer must not hold (see the root `CLAUDE.md`'s **The
+write path**).
+
+`src/domain/vocabulary.ts` lost the observed-names half of the roster this use case replaces;
+`src/domain/roadmap.ts` resolves an item's row through `assigneeEntry.file` rather than a name
+comparison, which is what makes 4a's "does not resolve" the only question asked. `src/domain/settings.ts` still carries the key.
+
+`src/view/interactions/labels.ts` builds the menu over `model.resources` — the notes, then
+`New resource...`, then `Clear` — and `src/view/interactions/resourceNotes.ts`'s
+`promptNewResource` is 2c's two-write path: the note created first, the link written after.
+`src/view/interactions/keyboard.ts` and `src/view/interactions/cardDrag.ts` carry the same
+`TFile | null` target through the keyboard ladder and the drag announcement.
+`src/view/render/chips.ts` and `src/view/render/columns.ts` draw the chip, including 4a's
+unstyled state; `src/view/rowSignature.ts` adds the resolved name as its own term, since a
+rename moves what the chip shows without touching this note's own frontmatter.
+`src/view/host.ts`, `src/view/backlogView.ts` and `src/view/cardMoves.ts` carry
+`performResourceMove`'s file-typed target through the one host method every input funnels
+through. `src/ui/prompts.ts` is the `New resource...` creation prompt, and `src/i18n/en.ts`
+carries the unresolved-chip tooltip.

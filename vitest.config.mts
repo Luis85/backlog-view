@@ -175,10 +175,10 @@ export default defineConfig({
 			// under the 99.90 standing, so headroom there would again be a decrease, which is
 			// the exception this file has now stated three times.
 			thresholds: {
-				statements: 98.93,
+				statements: 98.95,
 				branches: 95.48,
-				functions: 99.90,
-				lines: 99.74,
+				functions: 99.91,
+				lines: 99.75,
 			},
 		},
 	},
