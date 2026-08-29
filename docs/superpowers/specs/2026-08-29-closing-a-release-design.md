@@ -58,7 +58,18 @@ corrected rather than followed.
 
 Absent unless the status key, the released values, the transition value and the
 released-date key are all bound (3a, 3b), and absent when the release already carries a
-value in the released list (1a). Absent, not disabled: the shape `scopeToolbar.ts`
+value in the released list (1a).
+
+**Also absent when the released date is bound but UNREADABLE** — an empty string, a list,
+a malformed date. `ifMissing` asks whether the key is PRESENT, not whether it is readable,
+so a note holding rubbish there would have its date set skipped while the status landed:
+a release marked shipped with no usable record of when, which is the split state this whole
+batch exists to prevent, produced by the guard that was meant to protect the record. The
+predicate asks `ReleaseRow.released.invalid` — the third answer `ReleaseFigure` carries for
+exactly this — and the screen names it so the reader repairs the note. That is the rule the
+header's own date control already keeps: `releaseReleasedWrites` says an unreadable date
+reaches it as null and the control is withheld rather than offered a clear that writes
+nothing. Absent, not disabled: the shape `scopeToolbar.ts`
 already uses for the hide-done toggle it withholds on an unconfigured workflow.
 
 One new predicate in `domain/releases.ts` answers all of it, so the toolbar asks a
@@ -353,10 +364,23 @@ a mistake this spec made twice before getting here:
    view-configuration problem withholds the action, and this is the report that sees most of
    them.
 2. `releaseNoteProblems`, for the release-note roles.
-3. The membership-collision check — the membership key against the type, parent, order and
-   item-state keys — which is the one gap neither of the other two can see, since
+3. The membership-collision check — the one gap neither of the others can see, since
    `configProblems` has no membership role and `releaseNoteProblems` deliberately excludes
    the item side.
+
+   **It is DERIVED from `ownedProperties`, not a list of roles somebody thought of.** A
+   first draft named four — type, parent, order, item-state — and that is the enumeration
+   the root guide warns about: `ownedProperties` also yields `tags` and every optional
+   property, so `membershipProperty` pointed at the tags key passed all three reports while
+   `membershipTarget` read tag values as release links. Asked of the whole set, a role
+   added later is covered without anybody remembering this paragraph.
+
+   **With exactly one exemption, and it is the shipped configuration rather than an edge
+   case:** `release` is itself an optional property — the BACKLOG view's own membership
+   key — and the two legitimately name one property. They share a suggestion, which
+   [[Settings scoped to their view]] says is not sharing a setting, and a check that
+   refused their agreeing would refuse every vault that took the defaults. One named
+   exemption with its reason, the shape `WORKFLOW_STATE_ROLES` already has.
 
 None of the three subsumes another, which is why all three are named rather than one being
 chosen. It stays generation's gate rather than the whole screen's: widening it changes what
@@ -410,6 +434,9 @@ design adds to them:
   than write. So does the NOTE reaching a released status across that await, asserted by
   changing it from inside the callback — the only place that can tell a writer which checks
   the live value from one which checked it a moment earlier.
+- With the released-date key holding an unreadable value, the action is absent and says
+  so — asserted for an empty string and for a list, because "present" and "readable" are
+  the two answers a raw-presence check collapses.
 - A release already carrying an actual date never has it replaced by this action, on any
   path — including one that gains the date from inside the callback, and including the
   case where its status still matches what the batch expected. The status is written in
@@ -418,8 +445,10 @@ design adds to them:
   configuration before the dialog opens passes against a submit that never re-reads.
 - Generation is withheld, naming the problem, for a collision seen by ANY of its three
   reports: `stateProperty` on the order key (`configProblems`), two release-note roles on
-  one key (`releaseNoteProblems`), and `membershipProperty` on the type, parent, order or
-  item-state key (the new check) — and the criterion is again about the
+  one key (`releaseNoteProblems`), and `membershipProperty` on an item-side key (the new
+  check) — driven with `tags` as well as `type`, since a four-role list passes the first
+  and fails the second. A vault where the membership key equals the BACKLOG view's own
+  release key is NOT withheld: that is the shipped default, and a fixture takes it — and the criterion is again about the
   file: a release with valid generated notes, opened under that `.base`, still has them.
 - `reconfiguredKey` still refuses a write whose key is not its own role's, with the status
   and description options swapped mid-dialog — the PR #211 case, asked of a two-set write.
