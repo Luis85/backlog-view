@@ -559,13 +559,22 @@ dates taken over by releases — then turned CI red in two dated specs and one t
 the only ways to green were to rewrite a dated record or to keep every note the register
 ever held.
 
-So the wikilink rule now makes the same `LIVING` split the source-path rule has always
-made, for the same stated reason. `requirements/`, `adrs/` and `tests/` describe the
-register as it is now and still resolve every link they make; `tasks/`, `issues/`, `bugs/`
-and `superpowers/` report a dead link in the summary beside the 140 historical paths already
-printed there. What that trades away, said plainly: **a typo in a generated plan is now
-listed rather than failed.** It is not unchecked, and the direction that blocks a
-contributor is untouched.
+So the wikilink rule now makes the same split the source-path rule has always made, for the
+same stated reason. `tasks/`, `issues/`, `bugs/` and `superpowers/` report a dead link in
+the summary beside the 140 historical paths already printed there; every other folder
+describes the register as it is now and still resolves every link it makes. What that trades
+away, said plainly: **a typo in a generated plan is now listed rather than failed.** It is
+not unchecked, and the direction that blocks a contributor is untouched.
+
+The first version of that change was spelled the other way round, as a `LIVING` list of
+`requirements/`, `adrs/` and `tests/` with everything outside it historical — and a review
+of it found the reason that is the wrong sentence: **it made the leniency the default.**
+`docs/README.md`, `releases/` and `resources/` are current documentation and were on
+neither list, so a dead link in the register's own index would have reported as allowed
+history, and a folder added tomorrow had the same hole waiting. The rule names the records
+instead, so the strict side is what a new folder gets until somebody argues it is a record.
+Both directions are planted in `test/docs/checkerRejects.test.ts` — a dead link and a dead
+path, each in `docs/README.md` — and both were watched failing against the earlier spelling.
 
 The test case that broke was the third one, and it was living for a reason — it named the
 milestone as the fixture to look at. It was rewritten rather than exempted: no `Milestone`

@@ -187,6 +187,25 @@ describe('cross-references', () => {
 			'unresolved wikilink [[Ghost]]',
 		],
 		[
+			// The leniency is for RECORDS — `tasks/`, `issues/`, `bugs/`, `superpowers/` —
+			// named as themselves rather than as everything outside a living list. Spelled
+			// the other way round it was the DEFAULT, and the register's own index, its
+			// releases and its resources were all exempt by omission. These two cases are
+			// the strict side of that: a folder nobody classified is checked.
+			'a dead link in the register index',
+			(files) => {
+				files['docs/README.md'] += '\nSee [[Ghost]].\n';
+			},
+			'unresolved wikilink [[Ghost]]',
+		],
+		[
+			'a dead source path in the register index',
+			(files) => {
+				files['docs/README.md'] += '\nThe view is `src/gone.ts`.\n';
+			},
+			'names src/gone.ts, which does not exist',
+		],
+		[
 			'a relative link that resolves to nothing',
 			(files) => {
 				files['docs/requirements/Thing.md'] = note('Epic', 10, null, '# Thing\n\n[gone](<No such note.md>)\n');
