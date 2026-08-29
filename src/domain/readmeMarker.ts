@@ -126,9 +126,14 @@ const SEPARATOR_ESCAPE = '%E2%80%BA';
  * the same reason: escaping the escape character is what makes the mapping injective.
  * Nothing but `displaySource` undoes it — the comparison needs the escaped form, and a
  * notice needs the name as the user spelled it.
+ *
+ * Variadic since the release notes joined a THIRD part — the release the file was
+ * generated from, which is what lets a regeneration tell itself from a collision between
+ * two releases that share a basename. Every two-argument caller is unaffected, and the
+ * escaping is what keeps that safe: three parts cannot spell what two parts spell.
  */
-export function joinSource(base: string, view: string): string {
-	return `${sourceComponent(base)}${SOURCE_SEPARATOR}${sourceComponent(view)}`;
+export function joinSource(...parts: string[]): string {
+	return parts.map(sourceComponent).join(SOURCE_SEPARATOR);
 }
 
 /**
