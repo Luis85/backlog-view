@@ -244,6 +244,15 @@ export class ReleaseView extends BasesView {
 		// wrong is the batch, and asked per ROLE rather than of the three keys together,
 		// because two options SWAPPED leave every captured key still editable while each
 		// names the other field: `reconfiguredKey` states it and its reasons.
+		// **An empty batch is not a change, so it is not a redraw either.** `applySafely`
+		// returns on `writes.length === 0` before it touches the lock — no undo slot, no
+		// write — and `flushedLastBatch` therefore stays false, so the line below rebuilt the
+		// model and the whole scope tree for a pick that wrote nothing (found by review, PR
+		// #211). Two comments already promised otherwise and neither had a check under it:
+		// `domain/releaseWritePlan.ts`'s header ("no refresh is triggered") and `save`'s in
+		// `releaseEdits.ts`, whose refocus is a no-op precisely BECAUSE the element it looks
+		// for was never detached.
+		if (writes.length === 0) return;
 		const foreign = reconfiguredKey(this.settings, writes);
 		if (foreign !== null) {
 			new Notice(t('gate.releaseReconfigured', { property: foreign }));

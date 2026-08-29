@@ -119,6 +119,33 @@ describe('setting a release status', () => {
 		expect(vault.fm('R.md').status).toBe('planned');
 	});
 
+	it('redraws nothing when the batch is empty, which two comments already promised', async () => {
+		// Found by review (Codex, PR #211). `applySafely` returns on `writes.length === 0`
+		// before it touches the lock, so `flushedLastBatch` stays false and `applyRelease`
+		// called `onDataUpdated()` anyway — a full model rebuild and a whole scope tree
+		// redrawn for a pick that wrote nothing.
+		//
+		// It is the "an invariant asserted in a comment is not a check" rule caught in the
+		// act: `releaseWritePlan.ts`'s own header says an empty batch spends no undo slot and
+		// triggers NO REFRESH, and `save`'s comment in `releaseEdits.ts` leans on it —
+		// "a batch that wrote NOTHING redraws nothing, so the line the reader pressed is still
+		// on screen and still focused". Both were false for as long as this line stood.
+		const { containerEl } = openScope();
+		const chip = statusChip(containerEl);
+		const rows = containerEl.querySelectorAll('.pbl-row').length;
+		chip.click();
+		await flush();
+		// The CHECKED entry — the one whose plan is empty by construction, so this asks the
+		// no-op contract rather than a value that happens to match.
+		Menu.lastShown?.items.find((i) => i.checked)?.click();
+		await flush();
+
+		// The same element, not merely an equal one: a redraw empties `viewEl`, so identity is
+		// what says nothing was rebuilt. The row count is the tree half of the same claim.
+		expect(statusChip(containerEl)).toBe(chip);
+		expect(containerEl.querySelectorAll('.pbl-row').length).toBe(rows);
+	});
+
 	it('clears the key rather than blanking it, and offers no clear where there is nothing to take off', async () => {
 		const vault = editVault();
 		const { view, containerEl } = makeReleaseView(vault, RELEASE_CONFIG);
