@@ -42,6 +42,14 @@ export function promptAddAbsence(host: BacklogViewHost, lane: ResourceLane): voi
 		// Two whole sentences picked between, never a clause spliced into a shared frame: a
 		// locale that leads with the location has no way into a middle assembled here.
 		description: folder ? t('absence.addInFolder', { folder }) : t('absence.addInRoot'),
+		// `lane.name` — the collision-aware label `namedTargets` gives this row, the SAME
+		// value `deriveLanes` now matches an absence's resource against (`resourceLabels`
+		// first, `r.title` only where a resource has no entry there). Prefilling the bare
+		// basename instead round-trips only where nothing collides: with `Team/Alex.md` and
+		// `Support/Alex.md` both on the roster, "Alex" matches whichever of the two sorts
+		// first, which the row this control was opened on has no say in. The label is the
+		// one value guaranteed to name THIS row and no other. Task 6 replaces this whole
+		// field with a note choice and removes the question.
 		resource: lane.name,
 		// The declared roster plus the row this was opened on, so a name typed here keeps
 		// the spelling the view options gave it. Deliberately NOT the drawn rows, which

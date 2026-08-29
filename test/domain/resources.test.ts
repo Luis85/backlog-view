@@ -49,6 +49,31 @@ describe('the resources axis', () => {
 		expect(titles(roadmap.lanes[0].bars)).toEqual(['Alice dated', 'Cased']);
 	});
 
+	it('places each same-basename resource’s work in its OWN row, by path — never by name', () => {
+		// The read side of the regression the write-side drop test in
+		// `resourceMoves.test.ts` closes: `placeAssigned` resolves through
+		// `item.assigneeEntry.file.path` against `byPath`, which is keyed by the resource's
+		// own `TFile`. A regression back to a name scan (`resources.find(r =>
+		// sameValue(r.title, name))`) would put both bars in whichever of the two the scan
+		// reaches first, and this fixture — same title, two paths — is exactly what a
+		// title-only match cannot tell apart.
+		const settings = resourceSettings();
+		const vault = new FakeVault();
+		vault.addFile('Team/Alex.md', { frontmatter: { type: 'Resource' } });
+		vault.addFile('Support/Alex.md', { frontmatter: { type: 'Resource' } });
+		vault.addFile('Team work.md', {
+			frontmatter: { type: 'Epic', order: 10, assignee: '[[Team/Alex]]', start: '2026-08-01', due: '2026-08-02' },
+		});
+		vault.addFile('Support work.md', {
+			frontmatter: { type: 'Epic', order: 20, assignee: '[[Support/Alex]]', start: '2026-08-03', due: '2026-08-04' },
+		});
+		const roadmap = laneOf(vault, settings);
+
+		expect(roadmap.lanes.map((lane) => lane.file?.path)).toEqual(['Support/Alex.md', 'Team/Alex.md']);
+		expect(titles(roadmap.lanes[0].bars)).toEqual(['Support work']);
+		expect(titles(roadmap.lanes[1].bars)).toEqual(['Team work']);
+	});
+
 	it('never draws a Resource note in the marker lane, dated or not', () => {
 		// The type is a marker, so it takes the marker BRANCH of `deriveLanes` — which is
 		// right, since a person is in no resource's row either. What must not follow is a
@@ -160,21 +185,20 @@ describe('the resources axis', () => {
 		expect(titles(roadmap.bars)).toEqual(['Alice dated', 'Cased', 'Stray']);
 	});
 
-	it('falls back to the note’s own title if the label index and the roster ever fall out of step', () => {
-		// `resourceLabels` is built from the SAME `resources` list `deriveLanes` reads, so
-		// every resource's path is a key in it by construction and this fallback never
-		// actually fires through `buildModel`. It stays a real fallback rather than a bare
-		// index read for the same reason `resourceLabel`'s own three-deep chain does
-		// (`domain/roadmap.ts`): a caller that hands `buildRoadmap` a model built some
-		// other way must not throw finding a lane's own name.
+	it('gives every lane a file except the milestones’ own, the fact assignableLanes and wireLaneDrop’s cast both rest on', () => {
+		// `assignableLanes`' `file !== null` narrowing and `wireLaneDrop`'s
+		// `band.lane as AssignableLane` cast both stand on one invariant stated in doc
+		// comments across two modules rather than checked anywhere: only `markerLane`
+		// ever produces a lane with no file. Putting it on a fact rather than beside it.
 		const settings = resourceSettings();
 		const vault = resourceVault();
-		const model = buildModel(vault.app, vault.entries(), settings);
-		(model.resourceLabels as Map<string, string>).delete('Bob.md');
+		vault.addFile('Ship.md', { frontmatter: { type: 'Milestone', order: 60, due: '2026-08-07' } });
+		const roadmap = laneOf(vault, settings);
+		const markers = roadmap.lanes.find((lane) => lane.markers);
 
-		const roadmap = buildRoadmap(model, settings, () => true, 'resources');
-
-		expect(roadmap.lanes.find((lane) => lane.file?.path === 'Bob.md')?.name).toBe('Bob');
+		expect(markers).toBeDefined();
+		expect(markers?.file).toBeNull();
+		expect(roadmap.lanes.filter((lane) => !lane.markers).every((lane) => lane.file !== null)).toBe(true);
 	});
 });
 

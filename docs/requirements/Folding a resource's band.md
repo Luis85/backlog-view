@@ -79,10 +79,16 @@ computed per band.
   dated axis's bit rather than from a decision taken here — `collapseNewParents` settles a
   new parent closed in that scope. The toolbar's expand-all is the way out, and the band
   fold is the coarser control beside it.
-- **3b — the resource is renamed, or leaves the roster.** Nothing migrates the entry and
-  nothing needs to. A resource is a name somebody typed, not a file, so there is no rename
-  event to follow; a name no row draws simply has no band to shut, and the entry costs one
-  string until the reader folds something else.
+- **3b — the resource is renamed, or leaves the roster.** Nothing migrates the entry, and
+  since [[Rows from the Resource notes]] (Task 5, 2026-08-28) that is a real cost rather
+  than a non-event: a resource is a `Resource` note now, its fold is keyed by that note's
+  own path, and a rename changes the path an entry was written under — so the band
+  re-opens once, on the render after the rename, and the stranded entry costs one string
+  until the reader folds something else. Deliberate rather than missed: this is UI
+  position, per device (ADR 0011), and the machinery that would carry a fold across a
+  rename is exactly the key space "Where it lives" below states this one stays out of —
+  paying for that machinery here to save one re-fold was judged not worth it. A name no
+  `Resource` note carries at all still simply has no band to shut.
 
 - **3c — every band that holds work is folded.** The roadmap says nothing about being
   empty, because it is not: the headers, their counts and their load rails are on screen
@@ -122,14 +128,18 @@ same — the two places that decided "the dated axis and only the dated axis", b
 meaning "a grid with bar rows on it".
 
 **The band fold is a third collapse question, and it needed a third home.** It is asked of
-a NAME: a resource is not a note, so it has no path to key a bit under, and every piece of
-machinery the collapse key space carries is about paths — the flush prunes any entry the
-vault has no file for, the rename migration moves entries when a note moves, and
-`collapseNewParents` settles new parents. A band key would have been dropped on the first
-save. So it is stored beside the shelf's own hidden-type set (`collapsedLanes` in
-`src/storage/viewStateStore.ts`), which is the same shape for the same reason — a per-view
-set of names — and reached through `isLaneCollapsed`/`setLaneCollapsed` on
-`BacklogViewHost`.
+the row's own IDENTITY (`laneIdentity` in `src/domain/roadmap.ts`) — a `Resource` note's
+own path since [[Rows from the Resource notes]] (Task 5, 2026-08-28), or the shared
+constant for the one row that has none. Staying out of the collapse key space is now a
+SCOPE decision, not a fact forced by the value's shape: that space's own machinery is
+about paths too, but reaching it would mean the flush pruning an entry the vault has no
+file for, the rename migration moving an entry when a note moves, and
+`collapseNewParents` settling it as a new parent — all real machinery this fold could use
+now that its key genuinely is one, judged not worth wiring in for what it would save (one
+re-fold on a rename, stated in 3b above). So it is stored beside the shelf's own
+hidden-type set (`collapsedLanes` in `src/storage/viewStateStore.ts`), the same shape for
+the same reason — a per-view set, keyed by string — and reached through
+`isLaneCollapsed`/`setLaneCollapsed` on `BacklogViewHost`.
 
 The header's disclosure is `renderLaneChevron` calling `renderChevron` from
 `src/view/render/rows.ts` — the same control every other fold in this plugin draws,

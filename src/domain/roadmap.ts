@@ -7,6 +7,7 @@ import { isIterationType, isMarkerType, isReleaseType } from './itemTypes';
 import { ITERATION_TYPE, MILESTONE_TYPE } from './typeVocabulary';
 import { BacklogItem, BacklogModel } from './model';
 import { FieldReading, linkpathFromRawValue, LinkEntry, sameValue } from './noteFields';
+import { ResourceNote } from './readItems';
 import { BacklogSettings } from './settings';
 
 /**
@@ -658,6 +659,22 @@ function placeContext(item: BacklogItem, byValue: Map<string, HorizonBucket>, ro
  * The row is minted by its first placed marker, since the roster proper is never empty on
  * its account: a base with no milestone in it draws no `Milestones` header at all.
  */
+
+/**
+ * A resource's own label, read off the model's index rather than recomputed — the "every
+ * surface names a resource through `namedTargets`" rule applied to this row's own header
+ * and to an absence's match alike. Asserted rather than guarded with a fallback:
+ * `resourceLabels` is built from this SAME `resources` array one call up, in `buildModel`
+ * (`model.ts`), so every entry's path is a key in it by construction for any model this
+ * function is actually handed. A `?? resource.title` stood here until the coverage floor
+ * caught it — no vault can produce the model needed to take that branch, only a test that
+ * cast the map back to mutable and deleted a key from it, which is a fact about the TEST
+ * rather than about a real gap in the function.
+ */
+function labelOf(resource: ResourceNote, labels: ReadonlyMap<string, string>): string {
+	return labels.get(resource.file.path) as string;
+}
+
 function deriveLanes(rows: BacklogItem[], settings: BacklogSettings, roadmap: RoadmapModel, model: BacklogModel): void {
 	const { absences, resources, resourceLabels } = model;
 	const markers = markerLane([]);
@@ -671,7 +688,7 @@ function deriveLanes(rows: BacklogItem[], settings: BacklogSettings, roadmap: Ro
 	const lanes = resources.map(
 		(resource): ResourceLane => ({
 			file: resource.file,
-			name: resourceLabels.get(resource.file.path) ?? resource.title,
+			name: labelOf(resource, resourceLabels),
 			markers: false,
 			bars: [],
 			absences: [],
@@ -692,13 +709,18 @@ function deriveLanes(rows: BacklogItem[], settings: BacklogSettings, roadmap: Ro
 	// axis reads for everything else is Task 6's, still open), which the prompt fills from
 	// a plain suggestion list but a hand edit may still spell as a wikilink — so the raw
 	// text is run through `linkpathFromRawValue` (strips brackets, an alias and a heading
-	// ref) before it is matched case-insensitively against the roster's own titles,
-	// `sameValue`'s ordinary rule. It can no longer MINT a row: a row is a note, and an
-	// absence is a statement about a resource rather than a declaration of one, so one
-	// naming nobody on the roster draws nowhere.
+	// ref) before it is matched case-insensitively, `sameValue`'s ordinary rule. Matched
+	// against the LABEL (`labelOf`) — the same collision-aware string the prompt prefills
+	// from (`lane.name`) — and never the bare `r.title` alone: two resources sharing a
+	// basename have one `title` each but two distinct labels ("Support/Alex", "Team/Alex"),
+	// so matching on the label is what lets the round trip land on the resource the form
+	// was actually opened for, rather than whichever of the two `resources.find` happens
+	// to reach first. It can no longer MINT a row: a row is a note, and an absence is a
+	// statement about a resource rather than a declaration of one, so one naming nobody on
+	// the roster draws nowhere.
 	for (const absence of absences) {
 		const name = linkpathFromRawValue(absence.resource);
-		const resource = resources.find((r) => sameValue(r.title, name));
+		const resource = resources.find((r) => sameValue(labelOf(r, resourceLabels), name));
 		const lane = resource ? byPath.get(resource.file.path) : undefined;
 		lane?.absences.push(absence);
 	}

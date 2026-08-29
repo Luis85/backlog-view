@@ -96,6 +96,40 @@ describe('adding an absence', () => {
 		expect(vault.fm('docs/Quinn away 2026-09-01 → 2026-09-04.md')['assignee']).toBe('Quinn');
 	});
 
+	it('prefills the disambiguated label on a same-basename collision, and it round-trips to the row opened', async () => {
+		// The read-side twin of the regression this task closes: `Team/Alex.md` and
+		// `Support/Alex.md` share a basename, so a prefill of the bare basename ("Alex")
+		// would write a value `resources.find` resolves to whichever of the two sorts
+		// first — not necessarily the row this control was opened on. `lane.name` is the
+		// disambiguated label, and `deriveLanes` now matches an absence against that same
+		// label, so accepting the prefill as-is has to land the stretch back in the exact
+		// row it was opened from — asked of BOTH rows, since either being right by
+		// alphabetical accident would hide the other being wrong.
+		const vault = new FakeVault();
+		vault.addFile('Team/Alex.md', { frontmatter: { type: 'Resource' } });
+		vault.addFile('Support/Alex.md', { frontmatter: { type: 'Resource' } });
+		const harness = laneRoadmap(vault);
+		const laneAbsences = (name: string): number =>
+			lanesOf(harness.containerEl).find((el) => el.querySelector('.pbl-lane-name')?.textContent === name)
+				?.querySelectorAll('.pbl-absence').length ?? -1;
+
+		addButton(harness.containerEl, 'Team/Alex')?.click();
+		expect(submitAbsence({ start: '2026-09-01', target: '2026-09-04' })).toBe(true);
+		await flush();
+		refresh(harness.view, vault);
+
+		expect(laneAbsences('Team/Alex')).toBe(1);
+		expect(laneAbsences('Support/Alex')).toBe(0);
+
+		addButton(harness.containerEl, 'Support/Alex')?.click();
+		expect(submitAbsence({ start: '2026-10-01', target: '2026-10-04' })).toBe(true);
+		await flush();
+		refresh(harness.view, vault);
+
+		expect(laneAbsences('Team/Alex')).toBe(1);
+		expect(laneAbsences('Support/Alex')).toBe(1);
+	});
+
 	it('files it where the config says at SUBMIT, not where it said when the form opened', async () => {
 		// The same window `refusedByConfig` is re-asked in: Obsidian's options pane stays
 		// reachable while a modal is up, and a folder changed there is the reader's newest
