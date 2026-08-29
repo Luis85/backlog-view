@@ -101,7 +101,7 @@ export function laneRoadmap(
 	extra: Record<string, unknown> = {},
 	{ only, focus, shelf }: { only?: string[]; focus?: string; shelf?: boolean } = {},
 ): Harness {
-	const harness = makeView(vault, { ...RESOURCE_AXIS, resourceNames: 'Alice, Bob', ...extra }, {
+	const harness = makeView(vault, { ...RESOURCE_AXIS, ...extra }, {
 		collapsed: true,
 		only,
 		focus,

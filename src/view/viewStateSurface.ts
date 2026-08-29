@@ -126,12 +126,12 @@ export abstract class ViewStateSurface extends BasesView {
 		this.ui.setShelfSearch(text);
 	}
 
-	isLaneCollapsed(name: string): boolean {
-		return this.ui.isLaneCollapsed(name);
+	isLaneCollapsed(identity: string): boolean {
+		return this.ui.isLaneCollapsed(identity);
 	}
 
-	setLaneCollapsed(name: string, collapsed: boolean): void {
-		this.ui.setLaneCollapsed(name, collapsed);
+	setLaneCollapsed(identity: string, collapsed: boolean): void {
+		this.ui.setLaneCollapsed(identity, collapsed);
 	}
 
 	columnCollapsed(scope: ColumnScope, value: string | null, autoCollapse: boolean): boolean {

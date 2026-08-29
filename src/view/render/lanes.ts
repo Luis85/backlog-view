@@ -14,7 +14,7 @@ import { BarHold, barHolds, timelineRows, TimelineBar, TimelineRow } from '../..
 import { displayType, isIterationType, isMarkerType } from '../../domain/itemTypes';
 import { BacklogItem } from '../../domain/model';
 import { CivilDate } from '../../domain/noteFields';
-import { markerLane, markerLaneCaption, ResourceLane } from '../../domain/roadmap';
+import { AssignableLane, laneIdentity, markerLane, markerLaneCaption, ResourceLane } from '../../domain/roadmap';
 import { ownWorkflowReading, stateKeyFor, WorkflowReading } from '../../domain/board';
 import { sanitizeTitle } from '../../storage/createNote';
 import {
@@ -216,10 +216,11 @@ export function laneEntries(lanes: ResourceLane[], folded: LaneFolds): TimelineE
 		// The markers row is never folded, and asking that HERE is what makes it true of
 		// everything downstream — the head's class, its rails, and the entries below. Its
 		// caption is a name a roster may legitimately hold (extension 1a of
-		// [[Milestones out of the resource rows]] accepts the two rows), and a band's fold is
-		// keyed by name, so `folded.lane` answers for a resource called `Milestones` and the
-		// diamonds' row alike. It has no disclosure to undo that with.
-		const collapsed = !lane.markers && folded.lane(lane.name);
+		// [[Milestones out of the resource rows]] accepts the two rows), and `laneIdentity`
+		// falls back to that same caption for the row with no note behind it, so `folded.lane`
+		// answers for a resource genuinely called `Milestones` and the diamonds' row alike. It
+		// has no disclosure to undo that with.
+		const collapsed = !lane.markers && folded.lane(laneIdentity(lane));
 		entries.push({ kind: 'lane', lane, collapsed });
 		// **The milestones' row is the header and nothing else.** Every marker draws as a
 		// diamond in that one header's own track (`drawMarkerDiamonds` in `./timeline.ts`),
@@ -242,8 +243,8 @@ export function laneEntries(lanes: ResourceLane[], folded: LaneFolds): TimelineE
  * owns both bits and this module stays pure.
  */
 export interface LaneFolds {
-	/** Is this resource's whole band shut? Asked of the NAME — a lane is not a note. */
-	lane: (name: string) => boolean;
+	/** Is this resource's whole band shut? Asked of `laneIdentity` — the note's own path, or the milestones' own constant. */
+	lane: (identity: string) => boolean;
 	/** Is this bar's subtree shut? Asked of the path, the dated axis's own bit. */
 	row: (path: string) => boolean;
 }
@@ -287,7 +288,6 @@ export function renderLaneHead(
 		cls:
 			'pbl-lane-head' +
 			(lane.markers ? ' pbl-lane-markers' : '') +
-			(lane.declared ? '' : ' pbl-lane-undeclared') +
 			(collapsed ? ' pbl-lane-collapsed' : '') +
 			(quiet ? ' pbl-lane-quiet' : ''),
 	});
@@ -298,21 +298,14 @@ export function renderLaneHead(
 	// exists to prevent.
 	if (!lane.markers) renderLaneChevron(ctx.host, lead, lane, collapsed);
 	// The milestones' row captions itself by what it holds (`markerLaneCaption`) — never
-	// `lane.name`, which stays the constant identity every other reader (the fold key, the
-	// roster refusal) has to keep matching. Every other row is still named by itself.
+	// `lane.name`, which stays the constant `laneIdentity`'s fallback reads. Every other
+	// row is still named by itself — the note's own collision-aware label, since every row
+	// is a note now and has no "outside the roster" mark left to draw.
 	lead.createSpan({ cls: 'pbl-lane-name', text: lane.markers ? markerLaneCaption(lane.bars) : lane.name });
 	if (lane.bars.length > 0) {
 		lead.createSpan({ cls: 'pbl-lane-count', text: t('count.items', { count: lane.bars.length }) });
 	}
 	renderAwayPill(lead, lane, ruler.today);
-	if (!lane.declared) {
-		const mark = lead.createSpan({ cls: 'pbl-lane-stray' });
-		drawIcon(mark, 'circle-help');
-		setTooltip(
-			head,
-			t('lane.undeclaredResource', { name: lane.name }),
-		);
-	}
 	renderLaneAbsenceAdd(ctx, lead, lane);
 	const track = renderLaneAbsences(ctx, head, lane, ruler);
 	if (collapsed) renderLaneRail(track, lane, ruler);
@@ -362,7 +355,7 @@ function renderAwayPill(lead: HTMLElement, lane: ResourceLane, today: CivilDate)
  * `label` is passed, which makes it a BUTTON — the header claims no role of its own, so
  * there is nothing else for `aria-expanded` to sit on.
  *
- * `hasChildren` is true on every band including an empty one. A declared resource with
+ * `hasChildren` is true on every band including an empty one. A resource note with
  * nothing assigned is exactly the row a roster exists to put on screen, and a disclosure
  * that appeared only once work arrived would be a control moving under the reader — the
  * leaf placeholder a childless tree row draws is the same decision made the other way, and
@@ -378,7 +371,10 @@ function renderLaneChevron(host: BacklogViewHost, lead: HTMLElement, lane: Resou
 		// … : …` until the i18n sweep asked what the other half said, and the answer was
 		// nothing — the branch had no reachable caller.
 		label: t(collapsed ? 'fold.showResource' : 'fold.hideResource', { name: lane.name }),
-		toggle: () => host.setLaneCollapsed(lane.name, !collapsed),
+		// `laneIdentity`, never `lane.name`: the label above is free to change with a rename
+		// or with a second resource joining a collision, and a fold keyed on it would reopen
+		// silently the moment either did.
+		toggle: () => host.setLaneCollapsed(laneIdentity(lane), !collapsed),
 	};
 	// The whole projection redraws — the window, the gridlines and every full-height mark
 	// come off the row set this changed — so focus goes to the PANE rather than to the
@@ -413,7 +409,13 @@ function renderLaneAbsenceAdd(ctx: RowContext, lead: HTMLElement, lane: Resource
 	});
 	drawIcon(btn, 'user-x');
 	setTooltip(btn, t('lane.addAbsenceTooltip', { name: lane.name }));
-	btn.addEventListener('click', () => promptAddAbsence(host, lane));
+	// Every lane but the markers' one is a `Resource` note by construction now
+	// (`deriveLanes`, Task 5) — the guard a lane minted from an observed name with no note
+	// behind it once needed is gone with the minting, so past the `markers` check above
+	// `file` is never null. Asserted rather than re-checked, `render/roadmap.ts`'s own
+	// identical narrowing.
+	const assignable = lane as AssignableLane;
+	btn.addEventListener('click', () => promptAddAbsence(host, assignable));
 }
 
 /**
@@ -494,12 +496,27 @@ export function renderLaneContextRow(ctx: RowContext, content: HTMLElement, item
  * `domain/` genuinely may not, which is why the question is asked here rather than beside
  * `absenceTitle` — the sanitizer is what a title becomes ON DISK, and only the two layers
  * that can see a disk may ask.
+ *
+ * `laneName` is the lane's own `ResourceLane.name`, read fresh on every render off the
+ * CURRENT `BacklogModel.resourceLabels`; `absence.title` is the note's basename, fixed at
+ * whatever roster existed when `absenceTitle` derived it. The two cannot disagree across
+ * SPACE — a stretch only ever draws inside the lane that owns it, so there is no second
+ * label in the same render to disagree with — but they can disagree across TIME, because
+ * one is read live and the other was written once. With `Team/Alex.md` alone, an absence
+ * derives `Alex away …` and the title matches; add `Support/Alex.md` and `laneName`
+ * becomes the disambiguated `Team/Alex`, the `startsWith` check below fails, and the
+ * tooltip appends the range a second time — the doubled sentence this function's own
+ * docblock says was fixed on 2026-08-14, reached again from a roster change rather than
+ * from 4l's original bug. `docs/requirements/Resource absences.md` 4n states the same cost
+ * from the write side: the append survives for a title the derivation would not (or no
+ * longer) produce. Named apart from `bar.label` (the HTML element `drawBandCollision` and
+ * `renderAbsenceWash` pass around below) so the two kinds of "label" in this file are
+ * never one parameter mistaken for the other.
  */
-function absenceSaid(absence: Absence): string {
+function absenceSaid(absence: Absence, laneName: string): string {
 	const start = formatCivil(absence.start);
 	const target = formatCivil(absence.target);
-	if (absence.title.startsWith(sanitizeTitle(absenceTitle({ resource: absence.resource, start, target }))))
-		return absence.title;
+	if (absence.title.startsWith(sanitizeTitle(absenceTitle({ start, target }, laneName)))) return absence.title;
 	return t('lane.absenceSaid', { title: absence.title, start, target });
 }
 
@@ -598,12 +615,15 @@ function renderLaneAbsences(
 		})
 		.sort((a, b) => a.box.left - b.box.left);
 	const sublanes = packLanes(marks.map((mark) => mark.box));
-	head.setAttribute('aria-description', t('lane.unavailable', { items: marks.map((mark) => absenceSaid(mark.absence)) }));
+	head.setAttribute(
+		'aria-description',
+		t('lane.unavailable', { items: marks.map((mark) => absenceSaid(mark.absence, lane.name)) }),
+	);
 	for (const [index, { absence, geometry }] of marks.entries()) {
 		const mark = track.createDiv({ cls: ['pbl-absence', ...edgeClasses(geometry)].join(' ') });
 		placeSpan(mark, geometry, ruler.scale);
 		mark.setCssProps({ '--pbl-sublane': String(sublanes[index]) });
-		setTooltip(mark, absenceSaid(absence));
+		setTooltip(mark, absenceSaid(absence, lane.name));
 		mark.addEventListener('contextmenu', (evt) => showAbsenceMenu(host, absence, evt));
 	}
 	head.setCssProps({ '--pbl-lane-sublanes': String(Math.max(...sublanes) + 1) });
@@ -735,10 +755,19 @@ function renderAbsenceWash(
  * abbreviates on the row — folded into `said` so the tooltip and the sr-only span always
  * carry the whole count even where the row itself only ever shows the short token, or
  * shows nothing at all because the title's own label was dropped.
+ *
+ * `laneName` is `drawBandCollision`'s own `lane.name`, passed through to `absenceSaid` for
+ * every crossed stretch: every absence in `crossed` is drawn inside that one lane, so one
+ * name serves them all.
  */
-function noteAbsenceClash(bar: { row: HTMLElement; lead: HTMLElement }, crossed: Absence[], costSentence: string): void {
+function noteAbsenceClash(
+	bar: { row: HTMLElement; lead: HTMLElement },
+	crossed: Absence[],
+	costSentence: string,
+	laneName: string,
+): void {
 	if (crossed.length === 0) return;
-	const spans = crossed.map(absenceSaid).join('; ');
+	const spans = crossed.map((absence) => absenceSaid(absence, laneName)).join('; ');
 	const said = t('lane.absenceClash', { count: crossed.length, cost: costSentence, spans });
 	bar.row.createSpan({ cls: 'pbl-sr-only', text: said });
 	// A hatched swatch in the away key rather than the `calendar-x` glyph it replaced, so the
@@ -979,7 +1008,7 @@ export function drawBandCollision(bar: { row: HTMLElement; lead: HTMLElement; tr
 	const crossed = crossedAbsences(row.bar.span, lane.absences);
 	if (crossed.length === 0) return;
 	const cost = absenceCost(row, crossed);
-	noteAbsenceClash(bar, crossed, cost.full);
+	noteAbsenceClash(bar, crossed, cost.full, lane.name);
 	if (bar.label === null) return;
 	bar.label.createSpan({ cls: 'pbl-days-lost', text: cost.short, attr: { 'aria-hidden': 'true' } });
 	drawn.daysLost = true;

@@ -3,7 +3,7 @@ import { t } from '../../i18n/t';
 import { drawIcon } from './icons';
 import { createCard, renderCardBody, renderColumnFold, wireCardActivation } from './board';
 import { RowContext } from './columns';
-import { renderAllDoneState, renderEmptyState } from './emptyStates';
+import { guidanceShell, renderAllDoneState, renderEmptyState } from './emptyStates';
 import { renderContextStrip } from './contextStrip';
 import { renderShelf, ShelfInput, shelfRemoval } from './shelf';
 import { syncShelfTabStops } from './shelfControls';
@@ -17,6 +17,7 @@ import { StatePalette, statePalettes } from '../../domain/board';
 import { isMarkerType } from '../../domain/itemTypes';
 import { BacklogItem } from '../../domain/model';
 import {
+	AssignableLane,
 	axisPopulation,
 	buildRoadmap,
 	HorizonBucket,
@@ -147,8 +148,8 @@ export function renderRoadmap(
 	const advisoryEl = renderRoadmapAdvisory(
 		ctx,
 		frameEl,
+		roadmap,
 		population + roadmap.shelf.length + roadmap.context.length,
-		roadmap.eligibleResults,
 		treeEl,
 	);
 
@@ -224,7 +225,7 @@ function renderGridAxis(
 	const entries =
 		axis === 'resources'
 			? laneEntries(roadmap.lanes, {
-					lane: (name) => ctx.host.isLaneCollapsed(name),
+					lane: (identity) => ctx.host.isLaneCollapsed(identity),
 					row: (path) => ctx.host.isCollapsed(path),
 				})
 			: datedEntries(roadmap.bars, (path) => ctx.host.isCollapsed(path));
@@ -264,13 +265,14 @@ function renderGridAxis(
 }
 
 /**
- * What dropping on a resource's band means: that row's own name into the DRAGGED note's
+ * What dropping on a resource's band means: that row's own FILE into the DRAGGED note's
  * assignee property, AND the day the pointer named into its dates — one release, both
- * answers, one batch through the one method every input on this axis lands on. A minted
- * row is a target like any other — its name is observed vocabulary, and observed
- * vocabulary is writable, the board's own rule. A context row inside the band is a target
- * too and is safe as one: the write names the note being carried, never the row it landed
- * on.
+ * answers, one batch through the one method every input on this axis lands on. Every row
+ * is a `Resource` note the base returned, so every band is a legitimate write target —
+ * there is no longer an observed-vocabulary row to reason about separately, the board's
+ * own rule for a stray column having no counterpart here since nothing mints one. A
+ * context row inside the band is a target too and is safe as one: the write names the
+ * note being carried, never the row it landed on.
  *
  * **A GRIP ignores the row.** `gestureAt` reports what the pointer meant and this decides
  * what to do with it: resizing an end is not reassigning the work, so a grip dragged into
@@ -327,9 +329,16 @@ function wireLaneDrop(
 				submitGesture(host, source, gesture);
 				return;
 			}
+			// Every lane but the markers' one is a `Resource` note by construction now
+			// (`deriveLanes`, Task 5) — the guard this used to need for a lane minted from an
+			// observed name with no note behind it is gone with the minting, so past the
+			// `markers` check above `file` is never null. Asserted rather than re-checked: a
+			// second `if` here could never see its own false branch exercised, which is
+			// exactly the shape of dead code this codebase's coverage rule refuses.
+			const lane = band.lane as AssignableLane;
 			void host.performResourceMove(
 				source.item,
-				band.lane.name,
+				lane.file,
 				gesture ? { plan: gesture.plan, ends: source.ends, from: gesture.from } : undefined,
 			);
 		},
@@ -484,13 +493,27 @@ function renderBucketNew(ctx: RowContext, header: HTMLElement, bucket: HorizonBu
 function renderRoadmapAdvisory(
 	ctx: RowContext,
 	frameEl: HTMLElement,
+	roadmap: RoadmapModel,
 	renderedCards: number,
-	eligibleResults: number,
 	root: HTMLElement,
 ): HTMLElement | null {
 	const host = ctx.host;
-	const model = host.model;
-	if (!model || renderedCards > 0) return null;
+	// No `!host.model` guard here: `renderRoadmap`'s own early return (this function's
+	// only caller) already answers "nothing to say before the first data update" before
+	// this is ever reached, so a second copy of that check would be a branch nothing
+	// can take — the coverage floor is what caught the last one of these.
+	// 2a: the population is the results, so an empty axis has exactly one cause and says
+	// it. AHEAD of the `renderedCards` guard below, deliberately: a dated milestone draws
+	// in the markers' row and makes `renderedCards` non-zero, so an advisory placed after
+	// that guard goes quiet on exactly the screen that needs it — a roster of nobody under
+	// a milestone line that reads as the axis working. `every` is true on an EMPTY lane
+	// list too, which is the ordinary case a base with no `Resource` note at all draws.
+	if (roadmap.axis === 'resources' && roadmap.lanes.every((lane) => lane.markers)) {
+		const aside = frameEl.createDiv({ cls: 'pbl-board-advisory' });
+		guidanceShell(aside, 'users', t('roadmap.noResources.title'), t('roadmap.noResources.hint'));
+		return aside;
+	}
+	if (renderedCards > 0) return null;
 	const aside = frameEl.createDiv({ cls: 'pbl-board-advisory' });
 	// `roadmap.eligibleResults` and never `model.results.length`: the frame is drawn from
 	// the roadmap's own population, so a count taken from the model counts rows this axis
@@ -498,7 +521,7 @@ function renderRoadmapAdvisory(
 	// was hidden and Show completed items would not have brought it back — and what
 	// inflated the number wherever rows genuinely were. The eligibility is decided once,
 	// where the filter lives; this reads it rather than re-deriving it.
-	if (eligibleResults === 0) renderEmptyState(host, aside, root);
-	else renderAllDoneState(host, aside, eligibleResults, root);
+	if (roadmap.eligibleResults === 0) renderEmptyState(host, aside, root);
+	else renderAllDoneState(host, aside, roadmap.eligibleResults, root);
 	return aside;
 }

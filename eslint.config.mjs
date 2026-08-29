@@ -105,6 +105,56 @@ const MENU_ANCHOR = {
 };
 
 /**
+ * Every surface that names a resource to the reader disambiguates through
+ * `namedTargets`/`resourceLabelsOf` (`domain/readItems.ts`, `BacklogModel.resourceLabels`)
+ * — two `Resource` notes sharing a basename in different folders must read apart wherever
+ * a person's name is shown, and a bare `.basename` read is exactly the earlier, ambiguous
+ * name. Missed seven times before this rule existed — the menu, the absence picker, the
+ * roadmap's lane headers, the assignee chip, a resource move's notice, an absence note's
+ * own derived name, and its creation notice — five of the seven found only AFTER the rule
+ * above was already written down in prose, which is this codebase's own argument for
+ * putting a check on the call rather than trusting the sentence.
+ *
+ * Scoped to `view/` only, not `domain/`: `domain/roadmap.ts`'s `labelOf` and
+ * `domain/readItems.ts`'s `assigneeName` ARE the label lookup this rule sends every other
+ * caller to, and both fall back to `entry.file?.basename` through OPTIONAL chaining —
+ * which this selector's `??` exemption below does not see through (`?.` wraps the access
+ * in a `ChainExpression`, so it is no longer a direct child of the `??`). Widening the
+ * scope to `domain/` would flag the two functions that exist to be the exception.
+ *
+ * **A SPELLING check, not a type check** — a selector carries no type information, so
+ * this matches the two shapes every one of the seven sites actually used: a bare
+ * `resource`/`target` local read for `.basename`, and the one-level-deeper
+ * `resource.file.basename`. What it cannot see: an aliased read (`const f = resource.file;
+ * f.basename`), a local named anything else, or a call reaching the same field through a
+ * helper this file does not know is doing it. A category test driving two same-named
+ * resources through every naming surface and asserting they read apart would see those;
+ * this rule cannot, which is why `test/i18n/` (root `CLAUDE.md`) and
+ * `test/domain/absences.test.ts` (Task 6 follow-up) still carry that check as well.
+ *
+ * The one legitimate shape in `view/` — falling back to a bare `.basename` for a target
+ * the label map does not carry, beside a real `resourceLabelsOf(...).get(...)` lookup
+ * (`cardMoves.ts`'s `resourceLabel`, `interactions/absences.ts`'s `absenceResourceLabel`)
+ * — is written `resourceLabelsOf(...).get(...) ?? …basename` and is exempted by asking
+ * whether the `.basename` read is a direct child of a `??`; every other spelling of it is
+ * still flagged.
+ */
+const RESOURCE_LABEL_BYPASS = [
+	{
+		selector:
+			"MemberExpression[property.name='basename'][object.type='Identifier'][object.name=/^(resource|target)$/]:not(LogicalExpression[operator='??'] > *)",
+		message:
+			"A resource is named to the reader through namedTargets/resourceLabelsOf (src/domain/readItems.ts), never its own .basename — two Resource notes sharing a basename in different folders must read apart. Catches a bare resource.basename / target.basename; an aliased read or a differently named local goes past this (a spelling check, not a type check — see this rule's own comment in eslint.config.mjs).",
+	},
+	{
+		selector:
+			"MemberExpression[property.name='basename'][object.type='MemberExpression'][object.object.name=/^(resource|target)$/]:not(LogicalExpression[operator='??'] > *)",
+		message:
+			"Same rule one level deeper: resource.file.basename is still the resource's own name, not the collision-aware label resourceLabelsOf gives it. See the sibling selector's message for what this can and cannot see.",
+	},
+];
+
+/**
  * `model.roots` is the RENDERED forest — synthetic under focus mode, where the top row
  * groups items that are not really siblings. Ranking against it writes an order among
  * rows that only look adjacent.
@@ -740,6 +790,7 @@ export default defineConfig([
 			DELIVERABLE_FIELD_READ,
 			ALL_TYPES_IMPORT,
 			CHILD_TYPE_CHOICES_NULL,
+			...RESOURCE_LABEL_BYPASS,
 			...TEXT_TERNARY,
 			UI_TEXT_LITERAL,
 			UI_TEXT_PROPERTY,
@@ -764,6 +815,7 @@ export default defineConfig([
 			...SVG_CLASS_TOKENS,
 			...WRITE_BOUNDARY,
 			MENU_ANCHOR,
+			...RESOURCE_LABEL_BYPASS,
 			RENDERED_ROOTS,
 			VISUAL_DEPTH,
 			OVERBY,
@@ -803,6 +855,7 @@ export default defineConfig([
 			...SVG_CLASS_TOKENS,
 			...WRITE_BOUNDARY,
 			MENU_ANCHOR,
+			...RESOURCE_LABEL_BYPASS,
 			TREE_SCAN,
 			ALL_TYPES_IMPORT,
 			CHILD_TYPE_CHOICES_NULL,
@@ -822,6 +875,7 @@ export default defineConfig([
 			...SVG_CLASS_TOKENS,
 			...WRITE_BOUNDARY,
 			MENU_ANCHOR,
+			...RESOURCE_LABEL_BYPASS,
 			TREE_SCAN,
 			ALL_TYPES_IMPORT,
 			CHILD_TYPE_CHOICES_NULL,
@@ -843,6 +897,7 @@ export default defineConfig([
 			...SVG_CLASS_TOKENS,
 			...WRITE_BOUNDARY,
 			MENU_ANCHOR,
+			...RESOURCE_LABEL_BYPASS,
 			TREE_SCAN,
 			ALL_TYPES_IMPORT,
 			CHILD_TYPE_CHOICES_NULL,
@@ -873,6 +928,7 @@ export default defineConfig([
 			...SVG_CLASS_TOKENS,
 			...WRITE_BOUNDARY,
 			MENU_ANCHOR,
+			...RESOURCE_LABEL_BYPASS,
 			TREE_SCAN,
 			CHILD_TYPE_CHOICES_NULL,
 			DELIVERABLE_FIELD_READ,
@@ -904,6 +960,7 @@ export default defineConfig([
 			...SVG_CLASS_TOKENS,
 			...WRITE_BOUNDARY,
 			MENU_ANCHOR,
+			...RESOURCE_LABEL_BYPASS,
 			OVERBY,
 			TREE_SCAN,
 			ALL_TYPES_IMPORT,
@@ -923,6 +980,7 @@ export default defineConfig([
 			...SVG_CLASS_TOKENS,
 			...WRITE_BOUNDARY,
 			MENU_ANCHOR,
+			...RESOURCE_LABEL_BYPASS,
 			OVERBY,
 			TREE_SCAN,
 			ALL_TYPES_IMPORT,
@@ -948,6 +1006,7 @@ export default defineConfig([
 			...SVG_CLASS_TOKENS,
 			...WRITE_BOUNDARY,
 			MENU_ANCHOR,
+			...RESOURCE_LABEL_BYPASS,
 			OVERBY,
 			TREE_SCAN,
 			ALL_TYPES_IMPORT,
@@ -969,6 +1028,7 @@ export default defineConfig([
 			...SVG_CLASS_TOKENS,
 			...WRITE_BOUNDARY,
 			MENU_ANCHOR,
+			...RESOURCE_LABEL_BYPASS,
 			OVERBY,
 			TREE_SCAN,
 			// Repeated rather than inherited from VIEW above: one file, one block. It draws
@@ -1002,6 +1062,7 @@ export default defineConfig([
 			...SVG_CLASS_TOKENS,
 			...WRITE_BOUNDARY,
 			MENU_ANCHOR,
+			...RESOURCE_LABEL_BYPASS,
 			OVERBY,
 			TREE_SCAN,
 			ALL_TYPES_IMPORT,
@@ -1021,6 +1082,7 @@ export default defineConfig([
 			...SVG_CLASS_TOKENS,
 			...WRITE_BOUNDARY,
 			MENU_ANCHOR,
+			...RESOURCE_LABEL_BYPASS,
 			OVERBY,
 			TREE_SCAN,
 			CHILD_TYPE_CHOICES_NULL,
@@ -1042,6 +1104,7 @@ export default defineConfig([
 			...SVG_CLASS_TOKENS,
 			...WRITE_BOUNDARY,
 			MENU_ANCHOR,
+			...RESOURCE_LABEL_BYPASS,
 			OVERBY,
 			TREE_SCAN,
 			ALL_TYPES_IMPORT,

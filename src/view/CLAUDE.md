@@ -234,16 +234,20 @@ free of runtime code so imports stay cycle-free.
   default, where nothing is stubbed because the key falls back.
 - **The three LABEL menus are the state menu's shape without a projection**: Set risk, Set
   priority and Set assignee, all rendered inside `buildItemMenu`'s `editable` guard, all
-  offering a list plus the item's own unlisted value, all checked from the PLAN
-  (`computeRiskWrites`, `computePriorityWrites`, `computeAssigneeWrites`) rather than from
-  a comparison beside it,
-  and all with a Clear foot gated on `item.ownKeys`. Their offers live together in
+  checked from the PLAN (`computeRiskWrites`, `computePriorityWrites`,
+  `computeAssigneeWrites`) rather than from a comparison beside it, and all with a Clear
+  foot gated on `item.ownKeys`. Risk and priority also append the item's own unlisted
+  value to their list, so the current one always renders checked (`declaredChoices`);
+  the assignee does not — an unresolved or leftover value earns no entry at all (Task 4,
+  2026-08-28), which is what leaves it with no checked entry either, a fact the chip
+  marks broken rather than the menu papering over. Their offers live together in
   `interactions/labels.ts` and not in `interactions/plan.ts`: a label is an attribute of
   the item, not a position on an axis. Where they differ is the GATE, and it follows from
   where each list comes from — risk and priority need `hasRiskLevels` / `hasPriorityLevels`
   (a property AND a declared list, so a submenu never opens onto nothing), while the
   assignee needs the KEY alone, because
-  its list is observed and `New assignee...` is in it whatever the results carry. There is
+  its menu offers the `Resource` notes the base returned (never an observed string, since
+  2026-08-28) and `New resource...` is in it whatever the base holds. There is
   deliberately no `hasAssignees` predicate beside those two: it could only ever
   answer what the key already does. The two DECLARED ladders share `declaredChoices` and
   differ in nothing but which list and which value they hand it — which is what a third

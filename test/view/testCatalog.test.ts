@@ -47,7 +47,13 @@ function assigneeOffers(containerEl: HTMLElement, title: string): string[] {
 	const sub = Menu.lastShown?.item('Set assignee')?.submenu;
 	return (sub?.items ?? [])
 		.map((mi) => mi.titleText)
-		.filter((t): t is string => typeof t === 'string' && !t.startsWith('New assignee') && t !== 'Clear assignee');
+		.filter(
+			(t): t is string =>
+				typeof t === 'string' &&
+				!t.startsWith('New resource') &&
+				t !== 'Clear assignee' &&
+				t !== 'No resources in this base',
+		);
 }
 
 /** The values `Set state` offers on one row. */
@@ -148,12 +154,16 @@ describe('the catalog and the plan share a model and divide it', () => {
 		expect(count()).toBe('4 items');
 	});
 
-	it('scopes the ASSIGNEE vocabulary per projection like the other three', () => {
-		// The fourth observed list, added when the assignee property landed, and the one
-		// `rowVocabulary` was not asked for. Both directions, because one shared list
-		// satisfies either on its own: a name only a test carries must not be offered on a
-		// plan row, and a name only another test carries must still be offered here.
+	it('offers the same resource roster in the catalog and the plan alike — a resource is not scoped', () => {
+		// Unlike the other three observed vocabularies, Set assignee no longer reads a
+		// population's own results (Task 4: the three-source union — drawn rows, the
+		// declared roster, observed assignees — is deleted). It reads `Resource` notes,
+		// which are diverted before either projection's population is built
+		// (`divertResource`), so they belong to neither one's own vocabulary and the
+		// roster is the SAME wherever the menu opens.
 		const vault = bothFamilies();
+		vault.addFile('Robin.md', { frontmatter: { type: 'Resource' } });
+		vault.addFile('Sam.md', { frontmatter: { type: 'Resource' } });
 		vault.addFile('Owned case.md', {
 			frontmatter: { type: 'Test case', order: 40, assignee: 'Robin' },
 			parentLink: 'Suite',
@@ -164,9 +174,9 @@ describe('the catalog and the plan share a model and divide it', () => {
 		});
 		const { containerEl } = makeView(vault, { assigneeProperty: 'note.assignee' });
 		clickExpandAll(containerEl);
-		expect(assigneeOffers(containerEl, 'A PBI')).toEqual(['Sam']);
+		expect(assigneeOffers(containerEl, 'A PBI')).toEqual(['Robin', 'Sam']);
 		catalog(containerEl);
-		expect(assigneeOffers(containerEl, 'Case')).toEqual(['Robin']);
+		expect(assigneeOffers(containerEl, 'Case')).toEqual(['Robin', 'Sam']);
 	});
 
 	it('offers the TEST workflow’s observed states in the catalog and the plan’s in the plan', () => {

@@ -90,6 +90,19 @@ export function readLinkList(app: App, file: TFile, cache: CachedMetadata | null
 }
 
 /**
+ * One `LinkEntry`-shaped field read off a note, gated on its key being configured — the
+ * shape behind every "at most one link" property this plugin reads: an item's own
+ * assignee and iteration (`readItems.ts`), and an absence's own resource
+ * (`domain/absences.ts`). Sharing it is what makes those three answer "unconfigured" and
+ * "nothing declared" alike, rather than each reader guessing its own null case: an
+ * unconfigured key reads as absence; otherwise, the first link the note declares, or
+ * nothing.
+ */
+export function readFirstLinkEntry(app: App, file: TFile, cache: CachedMetadata | null, key: string): LinkEntry | null {
+	return key ? (readLinkList(app, file, cache, key)[0] ?? null) : null;
+}
+
+/**
  * Strip wikilink brackets, aliases and heading refs from a raw link value.
  *
  * Exported because the WRITER has to ask the same question the reader does: a removal

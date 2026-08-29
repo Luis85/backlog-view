@@ -244,6 +244,7 @@ export const en = {
 	'chip.priorityChange': 'Change priority',
 	'chip.assigneeStatic': "Not in this base's filter — assignee can't be changed here",
 	'chip.assigneeChange': 'Change assignee',
+	'chip.assigneeUnresolved': 'This names no resource in this base.',
 	'chip.startStatic': "Not in this base's filter — start date can't be changed here",
 	'chip.startChange': 'Change start date',
 	'chip.startUnreadable': 'Unreadable start date',
@@ -475,6 +476,17 @@ export const en = {
 		'The roadmap draws whichever axis the view options declare — confidence horizons, or dates. A horizon property is set, but "Horizons (in order)" is empty — fill it to get Now-Next-Later buckets, or set "Start date property" or "Target date property" for a timeline.',
 
 	/**
+	 * The resources axis with a configured assignee and date property, but no `Resource`
+	 * note in the base's own results — the "no resources" advisory
+	 * `renderRoadmapAdvisory` draws ahead of the ordinary empty-frame check, since a
+	 * dated milestone alone would otherwise make the frame look populated. `noAxisBody`'s
+	 * shape: one whole sentence naming the cause, never a clause spliced into a shared one.
+	 */
+	'roadmap.noResources.title': 'No resources in this base',
+	'roadmap.noResources.hint':
+		'This axis draws one row per resource note the base returns. Widen the base filter to include them, or press New resource to make one.',
+
+	/**
 	 * The busy indicator. The counted form drops the ellipsis because the count follows it
 	 * in its own element and reads as the continuation — which is the one thing a
 	 * translator must keep, and the reason these are two keys and not one with a suffix.
@@ -690,12 +702,9 @@ export const en = {
 
 	/**
 	 * The resources axis's own furniture. `{name}` is a resource, `{title}` a note's own
-	 * title and `{start}`/`{target}`/`{date}` are rendered dates — all data.
-	 * `lane.undeclaredResource` carries the view-option debt `board.undeclaredColumn`
-	 * states, and `lane.unavailable` takes a LIST, joined as grammar.
+	 * title and `{start}`/`{target}`/`{date}` are rendered dates — all data. `lane.unavailable`
+	 * takes a LIST, joined as grammar.
 	 */
-	'lane.undeclaredResource':
-		'"{name}" is not one of the declared resources. Add it to "Resources (in order)" in the view options, or re-assign its items.',
 	'lane.addAbsence': 'Add absence for {name}',
 	'lane.addAbsenceTooltip': 'Add absence for "{name}"',
 	'lane.unavailable': 'Unavailable: {items}',
@@ -822,8 +831,6 @@ export const en = {
 	'option.horizonValues': 'Horizons (in order)',
 	'option.startProperty': 'Start date property',
 	'option.targetProperty': 'Target date property',
-	'option.resourceNames': 'Resources (in order)',
-	'option.resourceNamesHint': 'Optional, comma separated',
 	'option.dependsOnProperty': 'Depends-on property',
 
 	'option.riskProperty': 'Risk property',
@@ -1006,11 +1013,9 @@ export const en = {
 	 * beneath two paths reads as a third path rather than as an absence.
 	 */
 	'menu.clearRelease': 'No release',
-	'menu.newAssignee': 'New assignee...',
-	'menu.assignTitle': 'Assign item',
-	'menu.assignField': 'Assignee',
-	'menu.assignPlaceholder': 'Alex',
-	'menu.assignCta': 'Assign',
+	'menu.newResource': 'New resource...',
+	/** The disabled reason Set assignee shows in place of a resource list the base has none of. */
+	'menu.noResources': 'No resources in this base',
 
 	/**
 	 * The dialogs in `ui/`. Every one of them takes its heading and its description from
@@ -1034,6 +1039,8 @@ export const en = {
 	/** Empties one date field. `{name}` is the field's own label, handed in by the caller. */
 	'prompt.clearDate': 'Clear {name}',
 	'prompt.absenceResource': 'Resource',
+	/** The defensive placeholder option — see `AbsencePromptModal`'s own comment for when it draws. */
+	'prompt.absenceResourcePlaceholder': 'Choose a resource…',
 	'prompt.absenceStart': 'Start',
 	'prompt.absenceEnd': 'End',
 	'prompt.iterationName': 'Name',
@@ -1223,6 +1230,11 @@ export const en = {
 	'absence.edit': 'Edit absence',
 	'absence.delete': 'Delete absence',
 	'absence.needsProperties': 'Name the assignee and both date properties before recording absences.',
+	/**
+	 * Checked before the form opens at all — `resourcesOrRefuse` — since an absence with
+	 * nobody to be away is not a thing to collect.
+	 */
+	'absence.noResources': 'Add a Resource note before recording who is away.',
 	/** What the absence entry refuses, one whole sentence per reason. */
 	'absence.nameResource': 'Name the resource this absence is for.',
 	'absence.needsBothDates': 'An absence needs both a start and an end date.',
@@ -1237,18 +1249,24 @@ export const en = {
 	 * identical race rather than `saveFailed`'s, since nothing here actually failed.
 	 */
 	'absence.becameResource': 'That note became a resource while the edit was in flight, so nothing was changed.',
+	/**
+	 * The chosen resource left the roster between the form opening and this submit — the
+	 * one race `validate` cannot see, since it checks against the list captured at open.
+	 */
+	'absence.resourceMissing': 'That resource is no longer in this base, so nothing was written.',
 	'absence.created': 'Marked {resource} away — "{name}".',
 	'absence.createFailed': 'Could not create the absence. See the developer console for details.',
 
 	/**
 	 * The New resource prompt (`view/interactions/resourceNotes.ts`) — the roadmap's
-	 * resources axis is its only way in (Task 4 wires the button; this catalog section
-	 * ships ahead of it). `resource.duplicateWarning` is `ValuePromptOptions.duplicateWarning`:
-	 * shown, never refused, the same *guides rather than arbitrates* rule
-	 * `absence.nameResource`'s modal already keeps. Its wording claims only what `known`
-	 * can answer — the roadmap's roster (drawn rows, the declared list, observed
-	 * assignees) — and NOT that a `Resource` note exists: [[Rows from the Resource
-	 * notes]] hasn't shipped, so this dialog cannot see the notes themselves.
+	 * resources axis and Set assignee's own **New resource...** are its two ways in.
+	 * `resource.duplicateWarning` is `ValuePromptOptions.duplicateWarning`: shown, never
+	 * refused — a rule the absence form's own resource field kept only until Task 6, which
+	 * turned that field from a suggested name into a choice off a closed list and so from
+	 * something that guided into something that arbitrates. Its wording can now claim that
+	 * a `Resource` note exists, which it could not on 2026-08-22 — `known` is
+	 * `host.model.resources`, the notes
+	 * themselves, rather than a roster gathered off the roadmap's rows and settings.
 	 */
 	'resource.createHeading': 'New resource',
 	'resource.nameField': 'Name',

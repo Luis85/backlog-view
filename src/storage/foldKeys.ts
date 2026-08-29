@@ -83,16 +83,18 @@ export function foldKeyPaths(key: string): string[] {
 	return [key.slice(RELEASE_FOLD.length, key.lastIndexOf('\u0000')), notePath(key)];
 }
 
-/** The scope prefix a settled key carries, or '' for the tree's own bare path. A
- *  release-fold key's own "scope" is everything up to and including its SECOND NUL —
- *  `RELEASE_FOLD` plus the release path — because that whole span, not just the fixed
- *  prefix, has to be put back in front of a renamed member to reconstruct the same key
- *  over the same release. Not exported: {@link movedFoldKey} is the only caller, and an
- *  export nothing imports is what the dead-code gate is for. */
+/** The scope prefix a settled key carries, or '' for the tree's own bare path. Not
+ *  exported: {@link movedFoldKey} is the only caller, and an export nothing imports is
+ *  what the dead-code gate is for.
+ *
+ *  It answers nothing about a RELEASE fold, and deliberately has no arm for one — that
+ *  key's own "scope" is `RELEASE_FOLD` plus the release path, a span this cannot state as
+ *  a constant, and its one caller has already returned by the time it would matter. An arm
+ *  for it was written and was dead on arrival: coverage found it, which is the only reason
+ *  this sentence is here rather than the code. */
 function scopeOf(key: string): string {
 	if (key.startsWith(TIMELINE_SCOPE)) return TIMELINE_SCOPE;
 	if (key.startsWith(CARD_SCOPE)) return CARD_SCOPE;
-	if (key.startsWith(RELEASE_FOLD)) return key.slice(0, key.lastIndexOf('\u0000') + 1);
 	return '';
 }
 

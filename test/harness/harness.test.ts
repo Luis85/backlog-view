@@ -98,7 +98,7 @@ describe('the browser harness mounts', () => {
 		expect(containerEl.querySelectorAll('.pbl-shelf .pbl-card .pbl-card-kids').length).toBeGreaterThan(0);
 	});
 
-	it('draws the resources axis, with an empty declared row and a row an absence minted', () => {
+	it('draws the resources axis, one row per Resource note, one of them empty', () => {
 		// The axis and its absences reached the fixture late (2026-08-14): until then the one
 		// tool for "what does this look like" could not show the feature at all, which is
 		// how a row whose lead and track stacked as blocks — the stripe drawing on the line
@@ -109,7 +109,8 @@ describe('the browser harness mounts', () => {
 		view.setAxisPick('resources');
 
 		const rows = Array.from(containerEl.querySelectorAll('.pbl-lane-head .pbl-lane-name')).map((n) => n.textContent);
-		// Declared and empty, and a row nothing but an absence puts on screen.
+		// `Priya` is on nothing at all and still draws; `Sam`'s only mark is an absence
+		// (Task 5, 2026-08-28: a row is her own note, never something the absence mints).
 		expect(rows).toEqual(expect.arrayContaining(['Dana', 'Kim', 'Priya', 'Sam']));
 		// Four stretches: one running, one ahead for the row it mints, one that has ENDED —
 		// the case the band header's readout must count as nothing — and a fourth overlapping

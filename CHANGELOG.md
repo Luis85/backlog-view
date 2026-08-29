@@ -11,6 +11,23 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ## [Unreleased]
 
+### Changed
+
+- **Breaking:** an item names its assignee by link to a `Resource` note rather than by
+  name. A name still resolves where the vault already has the note — `assignee: Sarah`
+  keeps its assignment when `Sarah.md` is a `Resource` the base returns — so what is lost
+  is only assignees naming somebody with no resource note behind it: the text renders,
+  marked, and the item shelves. There is no migration, and none is needed for the names
+  that resolve — see `docs/issues/No migration off the string assignees.md`.
+- The roadmap's resources axis draws one row per `Resource` note the base returns,
+  alphabetically, including a resource nobody is assigned to yet.
+- `Set assignee` lists those notes and offers `New resource...`, which creates the note
+  and assigns it in one action. `New assignee...` is gone.
+
+### Removed
+
+- The `Resources (in order)` view option. The roster is the notes the base returns.
+
 ### Added
 
 - **The release list shows how far along each release is, and how far each one landed from

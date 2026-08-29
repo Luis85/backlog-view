@@ -170,7 +170,6 @@ function listProblem(settings: BacklogSettings): string | null {
 		'testStates',
 		'startedStates',
 		'horizonValues',
-		'resourceNames',
 		'riskValues',
 		'priorityValues',
 	] as const;

@@ -206,6 +206,7 @@ describe('a context row on the resources axis', () => {
 	// promising it reads as a check that is not there.
 	it('counts the results beneath it and never an excluded note on the way', () => {
 		const vault = new FakeVault();
+		vault.addFile('Dana.md', { frontmatter: { type: 'Resource' } });
 		// Named to match `demoResults`' own excluded note, so the helper's filter is a
 		// real filter here rather than a no-op.
 		vault.addFile('Retired platform.md', {
@@ -229,15 +230,18 @@ describe('a context row on the resources axis', () => {
 			parentLink: 'Excluded branch',
 		});
 		// `demoResults` knows the one excluded name, so the branch is dropped here.
-		const only = demoResults(vault)
-			.map((entry) => entry.file.path)
-			.filter((path) => path !== 'Excluded branch.md');
-		// `Dana` has to be a DECLARED resource: with focus at Epic level neither result is
-		// itself a root, so no result ever mints her lane the way a card would —
-		// only a declared name pre-exists for the context row to join.
+		const only = [
+			'Dana.md',
+			...demoResults(vault)
+				.map((entry) => entry.file.path)
+				.filter((path) => path !== 'Excluded branch.md'),
+		];
+		// `Dana` has to be a `Resource` note the base returns: with focus at Epic level
+		// neither result is itself a root, so no result ever puts her row on screen the
+		// way a card would — only her own note pre-exists for the context row to join.
 		const harness = laneRoadmap(
 			vault,
-			{ stateProperty: 'note.status', doneValues: 'Done', resourceNames: 'Dana' },
+			{ stateProperty: 'note.status', doneValues: 'Done' },
 			{ only, focus: 'Epic' },
 		);
 

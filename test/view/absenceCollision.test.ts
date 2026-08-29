@@ -32,6 +32,7 @@ useViewHarness();
  */
 function clampedVault(): FakeVault {
 	const vault = new FakeVault();
+	vault.addFile('Alice.md', { frontmatter: { type: 'Resource' } });
 	vault.addFile('Long.md', {
 		frontmatter: { type: 'Epic', order: 5, assignee: 'Alice', start: '2020-01-01', due: '2032-01-01' },
 	});
@@ -103,7 +104,7 @@ describe('the days a band is unavailable, shaded across its work', () => {
 		// The Base returns everything but `Outside`, which therefore loads as the context row
 		// placing `Inside`, and the focus level is what puts such a row in the roadmap's row
 		// set at all — `resourceLanes.test.ts`'s own context construction.
-		const harness = laneRoadmap(vault, {}, { only: ['Work.md', 'Inside.md', ALICE_AWAY_PATH], focus: 'Epic' });
+		const harness = laneRoadmap(vault, {}, { only: ['Alice.md', 'Work.md', 'Inside.md', ALICE_AWAY_PATH], focus: 'Epic' });
 		expect(harness.containerEl.querySelector('.pbl-lane-context')).not.toBeNull();
 
 		// The header's own track carries the stretches themselves now, so a wash there would
@@ -146,6 +147,7 @@ describe('the mark a bar carries for crossing one', () => {
 		// the dates a second time, which is the defect the condition exists to prevent,
 		// surviving in the case the plugin produces itself. Raised by two reviewers.
 		const vault = new FakeVault();
+		vault.addFile('Alice.md', { frontmatter: { type: 'Resource' } });
 		vault.addFile('Work.md', {
 			frontmatter: { type: 'Epic', order: 10, assignee: 'Alice', start: '2026-08-01', due: '2026-08-10' },
 		});
@@ -164,16 +166,20 @@ describe('the mark a bar carries for crossing one', () => {
 	it('states the range once for a stretch the SANITIZER had to rename', () => {
 		// The other escape from the derived name, and the plugin makes this one itself too: a
 		// resource holding a character `sanitizeTitle` replaces is filed under a basename the
-		// derivation never spells — `A/B away …` is written to disk as `A-B away …` — so a
+		// derivation never spells — `A:B away …` is written to disk as `A-B away …` — so a
 		// prefix test against the RAW derived name fails and the dates are appended to a name
 		// that already carries them. Sanitizing both sides is what makes the comparison ask
-		// about the name the note actually has.
+		// about the name the note actually has. `A:B`, not `A/B`: a `Resource` is a note now
+		// (Task 5), and a literal `/` in its title would be a folder rather than a character
+		// to sanitize — `:` is one of `sanitizeTitle`'s own banned characters with no such
+		// second meaning.
 		const vault = new FakeVault();
+		vault.addFile('A:B.md', { frontmatter: { type: 'Resource' } });
 		vault.addFile('Work.md', {
-			frontmatter: { type: 'Epic', order: 10, assignee: 'A/B', start: '2026-08-01', due: '2026-08-10' },
+			frontmatter: { type: 'Epic', order: 10, assignee: 'A:B', start: '2026-08-01', due: '2026-08-10' },
 		});
 		vault.addFile('A-B away 2026-08-04 → 2026-08-06.md', {
-			frontmatter: { type: 'Absence', assignee: 'A/B', start: '2026-08-04', due: '2026-08-06' },
+			frontmatter: { type: 'Absence', assignee: 'A:B', start: '2026-08-04', due: '2026-08-06' },
 		});
 		const { containerEl } = laneRoadmap(vault);
 		const said = Array.from(rowFor(containerEl, 'Work')?.querySelectorAll<HTMLElement>('.pbl-sr-only') ?? [])
@@ -270,6 +276,7 @@ describe('what a bar SAYS it costs to cross an absence', () => {
 		// Both branches of `absenceCost` are asked, because each writes its own sentence:
 		// a one-day overlap on a longer bar, and a stretch covering a one-day bar whole.
 		const vault = new FakeVault();
+		vault.addFile('Alice.md', { frontmatter: { type: 'Resource' } });
 		vault.addFile('Work.md', {
 			frontmatter: { type: 'Epic', order: 10, assignee: 'Alice', start: '2026-08-01', due: '2026-08-10' },
 		});
@@ -291,6 +298,7 @@ describe('what a bar SAYS it costs to cross an absence', () => {
 
 	it('says so differently when the stretch covers the bar whole', () => {
 		const vault = new FakeVault();
+		vault.addFile('Alice.md', { frontmatter: { type: 'Resource' } });
 		vault.addFile('Short.md', {
 			frontmatter: { type: 'Epic', order: 10, assignee: 'Alice', start: '2026-08-04', due: '2026-08-06' },
 		});

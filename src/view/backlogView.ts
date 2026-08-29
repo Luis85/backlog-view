@@ -1,4 +1,4 @@
-import { QueryController } from 'obsidian';
+import { QueryController, TFile } from 'obsidian';
 import { CARD_SCOPE, TIMELINE_SCOPE, ViewState } from './viewState';
 import {
 	BacklogViewHost,
@@ -571,8 +571,8 @@ export class ProductBacklogView extends ViewStateSurface implements BacklogViewH
 		return this.cardMoves.performHorizonMove(item, horizon);
 	}
 
-	performResourceMove(item: BacklogItem, name: string | null, when?: ScheduleGesture): Promise<boolean> {
-		return this.cardMoves.performResourceMove(item, name, when);
+	performResourceMove(item: BacklogItem, target: TFile | null, when?: ScheduleGesture): Promise<boolean> {
+		return this.cardMoves.performResourceMove(item, target, when);
 	}
 
 	performReleaseMove(item: BacklogItem, target: BacklogItem | null): Promise<boolean> {

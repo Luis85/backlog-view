@@ -5,6 +5,10 @@ import { Menu, Modal, Notice } from '../helpers/obsidian-mock';
 import { flush, refresh, submitButton, useViewHarness } from '../helpers/view';
 import { laneRoadmap, lanesOf } from '../helpers/roadmap';
 import { ALICE_AWAY_PATH, absenceVault } from '../helpers/resources';
+import { settingsFrom } from '../helpers/settings';
+import { promptAddAbsence } from '../../src/view/interactions/absences';
+import { AssignableLane } from '../../src/domain/roadmap';
+import { BacklogViewHost } from '../../src/view/host';
 
 useViewHarness();
 
@@ -23,10 +27,16 @@ function addButton(containerEl: HTMLElement, name: string): HTMLButtonElement | 
 }
 
 /**
- * Fill the open absence prompt and submit it — `submitPrompt`'s shape over this form's own
- * three fields, in DOM order. Returns whether the prompt CLOSED: a refusal keeps it open
- * with the values in place, which is the whole of what 2a and 2b promise, so a test
- * asserting the refusal has to be able to see it rather than only the absence of a write.
+ * Fill the open absence prompt and submit it. Returns whether the prompt CLOSED: a
+ * refusal keeps it open with the values in place, which is the whole of what 2a and 2b
+ * promise, so a test asserting the refusal has to be able to see it rather than only the
+ * absence of a write.
+ *
+ * `resource` is the offered ID — a note's own path, e.g. `'Bob.md'` — set on the
+ * `<select>` with a `change` event, since Task 6 turned this field from typed text into a
+ * choice off a closed list; the two date fields stay plain `<input>`s. Omitting `resource`
+ * leaves whichever choice the form opened with in place, exactly as leaving a date field
+ * untouched does.
  *
  * There is no title among them: the note's name is derived from these three facts
  * (`absenceTitle`), so a caller that could pass one would be describing a form that does
@@ -35,8 +45,15 @@ function addButton(containerEl: HTMLElement, name: string): HTMLButtonElement | 
 function submitAbsence(fields: { resource?: string; start: string; target: string }): boolean {
 	const modal = Modal.lastOpened;
 	if (!modal) throw new Error('prompt not opened');
+	if (fields.resource !== undefined) {
+		const select = modal.contentEl.querySelector('select') as HTMLSelectElement | null;
+		if (select) {
+			select.value = fields.resource;
+			select.dispatchEvent(new Event('change', { bubbles: true }));
+		}
+	}
 	const inputs = Array.from(modal.contentEl.querySelectorAll('input'));
-	const values = [fields.resource, fields.start, fields.target];
+	const values = [fields.start, fields.target];
 	inputs.forEach((input, i) => {
 		if (values[i] === undefined) return;
 		input.value = values[i] as string;
@@ -54,6 +71,46 @@ describe('adding an absence', () => {
 		expect(add).not.toBeNull();
 		expect(add?.getAttribute('tabindex')).toBe('-1');
 		expect(add?.getAttribute('aria-label')).toBe('Add absence for Alice');
+	});
+
+	/** A `BacklogViewHost` nothing renders, absences-configured — `cardDrag.test.ts`'s own shape. */
+	function fakeHost(resources: { file: { path: string }; title: string }[]): BacklogViewHost {
+		const settings = settingsFrom({
+			startProperty: 'note.start',
+			targetProperty: 'note.due',
+			assigneeProperty: 'note.assignee',
+		});
+		return { settings, model: { resources } } as unknown as BacklogViewHost;
+	}
+
+	it('refuses to open with nothing on the roster to name, at the function’s own boundary', () => {
+		// Unreachable through the button: `renderLaneAbsenceAdd` draws one only per LANE, and
+		// a lane is a `Resource` note by construction (Task 5), so the control that calls
+		// `promptAddAbsence` cannot exist while the roster is empty. Driven directly at the
+		// function instead, `resourcesOrRefuse`'s own boundary.
+		const host = fakeHost([]);
+		const lane = { file: { path: 'Alex.md' } } as unknown as AssignableLane;
+
+		promptAddAbsence(host, lane);
+
+		expect(Modal.lastOpened).toBeNull();
+		expect(Notice.messages.some((m) => m.startsWith('Add a Resource note'))).toBe(true);
+	});
+
+	it('refuses a submission left on a pre-fill the roster does not offer, at the same boundary', () => {
+		// Unreachable through a real lane either — the row this control is drawn on is
+		// always one of `host.model.resources` (`AssignableLane`'s own guarantee) — so this
+		// drives the mismatch directly: a lane naming a note the roster does not carry. The
+		// dropdown then has nothing pre-selected to show, and the value the form opened with
+		// (never reset just because the SELECT can show nothing) is what a submit that never
+		// touched the field carries forward — refused by `absenceProblem`, the same "not one
+		// of the offered ids" question a stale pre-fill and a hand-crafted host ask alike.
+		const host = fakeHost([{ file: { path: 'Bob.md' }, title: 'Bob' }]);
+		const lane = { file: { path: 'Ghost.md' } } as unknown as AssignableLane;
+
+		promptAddAbsence(host, lane);
+
+		expect(submitAbsence({ start: '2026-09-01', target: '2026-09-04' })).toBe(false);
 	});
 
 	it('is withheld with only one date property configured', () => {
@@ -77,7 +134,7 @@ describe('adding an absence', () => {
 		// as well as on the folder — and on every character of it surviving `sanitizeTitle`.
 		const fm = vault.fm('docs/absences/Bob away 2026-09-01 → 2026-09-04.md');
 		expect(fm['type']).toBe('Absence');
-		expect(fm['assignee']).toBe('Bob');
+		expect(fm['assignee']).toBe('[[Bob]]');
 		expect(fm['start']).toBe('2026-09-01');
 		expect(fm['due']).toBe('2026-09-04');
 		// No parent, no order: it is not in the hierarchy and has no rank among anything.
@@ -85,15 +142,80 @@ describe('adding an absence', () => {
 		expect('order' in fm).toBe(false);
 	});
 
-	it('takes the resource typed into the prompt, which the row only prefills', async () => {
+	it('takes the resource chosen in the prompt, which the row only prefills', async () => {
+		// The row is a default, not a lock — the form still opens pre-selected on Bob's own
+		// row, and picking a different offered resource writes THAT one, never a name typed
+		// over the prefill (which Task 6 removed the means to do at all).
 		const vault = absenceVault();
 		const { containerEl } = laneRoadmap(vault, { homeFolder: 'docs' });
 
 		addButton(containerEl, 'Bob')?.click();
-		submitAbsence({ resource: 'Quinn', start: '2026-09-01', target: '2026-09-04' });
+		submitAbsence({ resource: 'Alice.md', start: '2026-09-01', target: '2026-09-04' });
 		await flush();
 
-		expect(vault.fm('docs/Quinn away 2026-09-01 → 2026-09-04.md')['assignee']).toBe('Quinn');
+		expect(vault.fm('docs/Alice away 2026-09-01 → 2026-09-04.md')['assignee']).toBe('[[Alice]]');
+	});
+
+	it('prefills the row’s own note on a same-basename collision, and it round-trips to the row opened', async () => {
+		// `Team/Alex.md` and `Support/Alex.md` share a basename — the exact case a NAME-based
+		// prefill could not tell apart, and the reason the field is now a choice of note
+		// (its path is the id) rather than a typed or suggested string. Accepting the
+		// prefill as-is has to land the stretch back in the exact row it was opened from —
+		// asked of BOTH rows, since either being right by alphabetical accident would hide
+		// the other being wrong.
+		const vault = new FakeVault();
+		vault.addFile('Team/Alex.md', { frontmatter: { type: 'Resource' } });
+		vault.addFile('Support/Alex.md', { frontmatter: { type: 'Resource' } });
+		const harness = laneRoadmap(vault);
+		const laneAbsences = (name: string): number =>
+			lanesOf(harness.containerEl).find((el) => el.querySelector('.pbl-lane-name')?.textContent === name)
+				?.querySelectorAll('.pbl-absence').length ?? -1;
+
+		addButton(harness.containerEl, 'Team/Alex')?.click();
+		expect(submitAbsence({ start: '2026-09-01', target: '2026-09-04' })).toBe(true);
+		await flush();
+		refresh(harness.view, vault);
+
+		expect(laneAbsences('Team/Alex')).toBe(1);
+		expect(laneAbsences('Support/Alex')).toBe(0);
+
+		addButton(harness.containerEl, 'Support/Alex')?.click();
+		expect(submitAbsence({ start: '2026-10-01', target: '2026-10-04' })).toBe(true);
+		await flush();
+		refresh(harness.view, vault);
+
+		expect(laneAbsences('Team/Alex')).toBe(1);
+		expect(laneAbsences('Support/Alex')).toBe(1);
+	});
+
+	it('names the note after the collision-aware label, not the bare basename both rows share', async () => {
+		// The regression this closes: `Team/Alex.md` and `Support/Alex.md` share a basename,
+		// and `absenceTitle` used to derive its name from `facts.resource.file.basename` —
+		// `Alex` either way — so both absences landed on the identical note name (or a `… 1`
+		// suffix picked between them by write order) and neither an Explorer entry nor a
+		// search hit could say whose stretch it was. It now takes the label
+		// `BacklogModel.resourceLabels` gives the note — `Team/Alex` / `Support/Alex`, the
+		// same disambiguation the row headers above already draw — so the two notes read
+		// apart, and `sanitizeTitle` (`storage/createNote.ts`) is what turns the `/` a label
+		// can carry into `Team-Alex away …` on disk rather than a nested folder.
+		const vault = new FakeVault();
+		vault.addFile('Team/Alex.md', { frontmatter: { type: 'Resource' } });
+		vault.addFile('Support/Alex.md', { frontmatter: { type: 'Resource' } });
+		const harness = laneRoadmap(vault);
+
+		addButton(harness.containerEl, 'Team/Alex')?.click();
+		expect(submitAbsence({ start: '2026-09-01', target: '2026-09-04' })).toBe(true);
+		await flush();
+		refresh(harness.view, vault);
+
+		addButton(harness.containerEl, 'Support/Alex')?.click();
+		expect(submitAbsence({ start: '2026-09-01', target: '2026-09-04' })).toBe(true);
+		await flush();
+
+		const teamFm = vault.fm('docs/Team-Alex away 2026-09-01 → 2026-09-04.md');
+		const supportFm = vault.fm('docs/Support-Alex away 2026-09-01 → 2026-09-04.md');
+		expect(teamFm['assignee']).toBe('[[Team/Alex]]');
+		expect(supportFm['assignee']).toBe('[[Support/Alex]]');
 	});
 
 	it('files it where the config says at SUBMIT, not where it said when the form opened', async () => {
@@ -134,27 +256,20 @@ describe('adding an absence', () => {
 		expect(Notice.messages.some((m) => m.startsWith('Fix the view options first'))).toBe(true);
 	});
 
-	it('writes nothing for a blank field or a reversed range', async () => {
-		// **The ORDER of these three submissions is load-bearing.** A refusal leaves the form
-		// open with what was typed still in it, so each attempt starts from the last one's
-		// values — which is why the blank RESOURCE goes last: move it up and the attempts
-		// after it inherit an empty resource, so 2a and 2b are refused for the missing name
-		// rather than for the reason they claim, and the file check below still passes. Found
-		// by coverage rather than by reading, and the class of loss is
-		// `docs/issues/A comment that states a rule is not a check.md`.
+	it('writes nothing for a reversed range or a missing end', async () => {
+		// A blank RESOURCE is no longer a case this form can produce — every offered value
+		// is a real note's own path, and the pre-selection opened on one, so there is no
+		// gesture left that submits with nobody chosen (Task 6). What is still reachable is
+		// the range: 2b, caught at the prompt, which stays open — there is no shelf for a
+		// written absence to land on, so there would be no surface to show the mistake on
+		// afterwards — and 2a, a range needing both ends stated.
 		const vault = absenceVault();
 		const { containerEl } = laneRoadmap(vault);
 		const before = vault.files.size;
 
 		addButton(containerEl, 'Alice')?.click();
-		// 2b: caught at the prompt, which stays open — there is no shelf for a written
-		// absence to land on, so there would be no surface to show the mistake afterwards.
 		expect(submitAbsence({ start: '2026-09-04', target: '2026-09-01' })).toBe(false);
-		// 2a: a range needs both ends stated.
 		expect(submitAbsence({ start: '2026-09-04', target: '' })).toBe(false);
-		// And a resource: a stretch nobody is away for has no row to draw in, and it is now
-		// also half of what names the note.
-		expect(submitAbsence({ resource: '', start: '2026-09-04', target: '2026-09-05' })).toBe(false);
 		await flush();
 
 		expect(vault.files.size).toBe(before);
@@ -182,6 +297,24 @@ describe('adding an absence', () => {
 		await flush();
 
 		expect(Notice.messages.some((m) => m.startsWith('Could not create the absence'))).toBe(true);
+	});
+
+	it('reports a resource that left the roster between the form opening and this submit', async () => {
+		// The one race `validate` cannot see, since it checks the chosen id against the
+		// roster captured at open: the model moves under an open modal exactly as the
+		// config does (the test above), and here it is Bob's own note that stops being a
+		// `Resource` before the click lands.
+		const vault = absenceVault();
+		const harness = laneRoadmap(vault);
+
+		addButton(harness.containerEl, 'Bob')?.click();
+		vault.fm('Bob.md')['type'] = 'Epic';
+		refresh(harness.view, vault);
+		expect(submitAbsence({ start: '2026-09-01', target: '2026-09-04' })).toBe(true);
+		await flush();
+
+		expect(vault.files.has('Bob away 2026-09-01 → 2026-09-04.md')).toBe(false);
+		expect(Notice.messages.some((m) => m.startsWith('That resource is no longer in this base'))).toBe(true);
 	});
 
 	it('re-asks the gate at submit, so a config narrowed under the open form writes nothing', async () => {
@@ -215,14 +348,17 @@ describe('editing a placed absence', () => {
 
 	it('opens the SAME form the add flow does, filled with what the stretch says', () => {
 		// One form for both acts, so they cannot come to disagree about what an absence is —
-		// same fields, same validator, same refusals. Three fields now: the note's name is
-		// derived from them rather than typed beside them.
+		// same fields, same validator, same refusals. The resource is a `<select>` now,
+		// pre-selected on the note the stretch's link resolves to; the two dates stay
+		// `<input>`s, and there is no title among them since the note's name is derived.
 		const { containerEl } = laneRoadmap(absenceVault());
 
 		openEdit(containerEl);
 
+		const select = Modal.lastOpened?.contentEl.querySelector('select');
 		const inputs = Array.from(Modal.lastOpened?.contentEl.querySelectorAll('input') ?? []);
-		expect(inputs.map((i) => i.value)).toEqual(['Alice', '2026-08-04', '2026-08-06']);
+		expect(select?.value).toBe('Alice.md');
+		expect(inputs.map((i) => i.value)).toEqual(['2026-08-04', '2026-08-06']);
 	});
 
 	it('rewrites the days it covers and who it is for, and takes the derived name with it', async () => {
@@ -230,12 +366,12 @@ describe('editing a placed absence', () => {
 		const { containerEl } = laneRoadmap(vault);
 
 		openEdit(containerEl);
-		expect(submitAbsence({ resource: 'Bob', start: '2026-08-05', target: '2026-08-09' })).toBe(true);
+		expect(submitAbsence({ resource: 'Bob.md', start: '2026-08-05', target: '2026-08-09' })).toBe(true);
 		await flush();
 
 		// The same note, edited and renamed — never a second one written beside the first.
 		const fm = vault.fm('Bob away 2026-08-05 → 2026-08-09.md');
-		expect(fm['assignee']).toBe('Bob');
+		expect(fm['assignee']).toBe('[[Bob]]');
 		expect(fm['start']).toBe('2026-08-05');
 		expect(fm['due']).toBe('2026-08-09');
 		expect(vault.files.has(ALICE_AWAY_PATH)).toBe(false);
@@ -246,13 +382,13 @@ describe('editing a placed absence', () => {
 		const { containerEl } = laneRoadmap(vault);
 
 		openEdit(containerEl);
-		submitAbsence({ resource: 'Alice', start: '2026-08-05', target: '2026-08-09' });
+		submitAbsence({ resource: 'Alice.md', start: '2026-08-05', target: '2026-08-09' });
 		await flush();
 
 		expect(vault.files.has('Alice away 2026-08-05 → 2026-08-09.md')).toBe(true);
 		expect(vault.files.has(ALICE_AWAY_PATH)).toBe(false);
 		// Through Obsidian's own rename, so the frontmatter travels with the note.
-		expect(vault.fm('Alice away 2026-08-05 → 2026-08-09.md')['assignee']).toBe('Alice');
+		expect(vault.fm('Alice away 2026-08-05 → 2026-08-09.md')['assignee']).toBe('[[Alice]]');
 	});
 
 	it('names the note the rename actually produced, not the name that was asked for', async () => {
@@ -265,7 +401,7 @@ describe('editing a placed absence', () => {
 		const { containerEl } = laneRoadmap(vault);
 
 		openEdit(containerEl);
-		submitAbsence({ resource: 'Alice', start: '2026-08-05', target: '2026-08-09' });
+		submitAbsence({ resource: 'Alice.md', start: '2026-08-05', target: '2026-08-09' });
 		await flush();
 
 		expect(vault.files.has('Alice away 2026-08-05 → 2026-08-09 1.md')).toBe(true);
@@ -279,6 +415,7 @@ describe('editing a placed absence', () => {
 		// naming the note and reports a name the reader did not ask for. The note starts where
 		// the first collision already left it, which is the state the ratchet acts on.
 		const vault = new FakeVault();
+		vault.addFile('Alice.md', { frontmatter: { type: 'Resource' } });
 		vault.addFile('Alice away 2026-08-04 → 2026-08-06.md', { frontmatter: { type: 'Epic', order: 20 } });
 		vault.addFile('Alice away 2026-08-04 → 2026-08-06 1.md', {
 			frontmatter: { type: 'Absence', assignee: 'Alice', start: '2026-08-04', due: '2026-08-06' },
@@ -287,7 +424,7 @@ describe('editing a placed absence', () => {
 
 		// Nothing changed — the same three facts, re-confirmed.
 		openEdit(containerEl);
-		submitAbsence({ resource: 'Alice', start: '2026-08-04', target: '2026-08-06' });
+		submitAbsence({ resource: 'Alice.md', start: '2026-08-04', target: '2026-08-06' });
 		await flush();
 
 		expect(vault.files.has('Alice away 2026-08-04 → 2026-08-06 1.md')).toBe(true);
@@ -296,17 +433,20 @@ describe('editing a placed absence', () => {
 	});
 
 	it('leaves a name that only differs by a character the disk cannot take', async () => {
-		// The derived name can still hold one, through the resource: `A/B` sanitizes to `A-B`.
-		// Compared raw it reads as a new name, and `uniqueNotePath` then finds the note's own
-		// path occupied — renaming it for a character the disk was always going to drop.
+		// The derived name can still hold one, through the resource: `A:B` sanitizes to `A-B`
+		// (`:`, not `/` — a `Resource` is a note now, Task 5, and a literal `/` in its title
+		// would be a folder rather than a character to sanitize). Compared raw it reads as a
+		// new name, and `uniqueNotePath` then finds the note's own path occupied — renaming
+		// it for a character the disk was always going to drop.
 		const vault = new FakeVault();
+		vault.addFile('A:B.md', { frontmatter: { type: 'Resource' } });
 		vault.addFile('A-B away 2026-08-04 → 2026-08-06.md', {
-			frontmatter: { type: 'Absence', assignee: 'A/B', start: '2026-08-04', due: '2026-08-06' },
+			frontmatter: { type: 'Absence', assignee: 'A:B', start: '2026-08-04', due: '2026-08-06' },
 		});
 		const { containerEl } = laneRoadmap(vault);
 
 		openEdit(containerEl);
-		submitAbsence({ resource: 'A/B', start: '2026-08-04', target: '2026-08-06' });
+		submitAbsence({ resource: 'A:B.md', start: '2026-08-04', target: '2026-08-06' });
 		await flush();
 
 		expect(vault.files.has('A-B away 2026-08-04 → 2026-08-06.md')).toBe(true);
@@ -322,7 +462,7 @@ describe('editing a placed absence', () => {
 		const before = vault.files.size;
 
 		openEdit(containerEl);
-		submitAbsence({ resource: 'Alice', start: '2026-08-04', target: '2026-08-06' });
+		submitAbsence({ resource: 'Alice.md', start: '2026-08-04', target: '2026-08-06' });
 		await flush();
 
 		expect(vault.files.size).toBe(before);
@@ -348,7 +488,7 @@ describe('editing a placed absence', () => {
 		vault.failWrites.add(ALICE_AWAY_PATH);
 
 		openEdit(containerEl);
-		submitAbsence({ resource: 'Alice', start: '2026-08-05', target: '2026-08-09' });
+		submitAbsence({ resource: 'Alice.md', start: '2026-08-05', target: '2026-08-09' });
 		await flush();
 
 		expect(Notice.messages.some((m) => m.startsWith('Could not save the absence'))).toBe(true);
@@ -365,12 +505,30 @@ describe('editing a placed absence', () => {
 		// link naming it, and then fail, leaving a note whose name describes a stretch it does
 		// not hold. This way the worst outcome is the one the reader can see and fix.
 		openEdit(containerEl);
-		submitAbsence({ resource: 'Bob', start: '2026-08-05', target: '2026-08-09' });
+		submitAbsence({ resource: 'Bob.md', start: '2026-08-05', target: '2026-08-09' });
 		await flush();
 
 		expect(vault.files.has('Bob away 2026-08-05 → 2026-08-09.md')).toBe(false);
 		expect(vault.files.has(ALICE_AWAY_PATH)).toBe(true);
 		expect(vault.fm(ALICE_AWAY_PATH)['start']).toBe('2026-08-04');
+	});
+
+	it('reports a resource that left the roster between the form opening and this submit', async () => {
+		// `writeAbsence`'s own race, read again for the edit path: the model moves under an
+		// open modal exactly as the config does, and here Bob's own note stops being a
+		// `Resource` before the click lands.
+		const vault = absenceVault();
+		const harness = laneRoadmap(vault);
+
+		openEdit(harness.containerEl);
+		vault.fm('Bob.md')['type'] = 'Epic';
+		refresh(harness.view, vault);
+		expect(submitAbsence({ resource: 'Bob.md', start: '2026-08-05', target: '2026-08-09' })).toBe(true);
+		await flush();
+
+		expect(vault.files.has('Bob away 2026-08-05 → 2026-08-09.md')).toBe(false);
+		expect(vault.fm(ALICE_AWAY_PATH)['start']).toBe('2026-08-04');
+		expect(Notice.messages.some((m) => m.startsWith('That resource is no longer in this base'))).toBe(true);
 	});
 
 	it('refuses an edit whose note was retyped to Resource while the modal was open, and does not rename it', async () => {
@@ -385,7 +543,7 @@ describe('editing a placed absence', () => {
 
 		openEdit(containerEl);
 		vault.fm(ALICE_AWAY_PATH)['type'] = 'Resource';
-		expect(submitAbsence({ resource: 'Bob', start: '2026-08-05', target: '2026-08-09' })).toBe(true);
+		expect(submitAbsence({ resource: 'Bob.md', start: '2026-08-05', target: '2026-08-09' })).toBe(true);
 		await flush();
 
 		// Neither half landed: the frontmatter is exactly what it was retyped to (assignee
@@ -410,7 +568,7 @@ describe('editing a placed absence', () => {
 		openEdit(harness.containerEl);
 		harness.config.values['targetProperty'] = undefined;
 		refresh(harness.view, vault);
-		submitAbsence({ resource: 'Alice', start: '2026-08-05', target: '2026-08-09' });
+		submitAbsence({ resource: 'Alice.md', start: '2026-08-05', target: '2026-08-09' });
 		await flush();
 
 		expect(vault.fm(ALICE_AWAY_PATH)['start']).toBe('2026-08-04');

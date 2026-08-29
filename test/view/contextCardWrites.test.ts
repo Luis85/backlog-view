@@ -385,13 +385,14 @@ describe('write safety with context rows, across the resources axis’s entry po
 	 */
 	function laneStressView() {
 		const vault = new FakeVault();
+		vault.addFile('Sam.md', { frontmatter: { type: 'Resource' } });
 		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
 		vault.addFile('Feature B.md', {
-			frontmatter: { type: 'Feature', order: 20, assignee: 'Sam', start: '2026-08-01', due: '2026-08-09' },
+			frontmatter: { type: 'Feature', order: 20, assignee: '[[Sam]]', start: '2026-08-01', due: '2026-08-09' },
 			parentLink: 'Epic',
 		});
 		vault.addFile('PBI.md', {
-			frontmatter: { type: 'PBI', order: 5, assignee: 'Sam', start: '2026-08-02', due: '2026-08-04' },
+			frontmatter: { type: 'PBI', order: 5, assignee: '[[Sam]]', start: '2026-08-02', due: '2026-08-04' },
 			parentLink: 'Feature B',
 		});
 		// Context, between results. Its assignee is on no declared list and on no result,
@@ -409,7 +410,6 @@ describe('write safety with context rows, across the resources axis’s entry po
 			assigneeProperty: 'note.assignee',
 			startProperty: 'note.start',
 			targetProperty: 'note.due',
-			resourceNames: 'Sam',
 		});
 		anyView.data = { data: vault.entries().filter((e) => !['Epic.md', 'Mid.md'].includes(e.file.path)) };
 		view.onDataUpdated();
@@ -475,12 +475,13 @@ describe('write safety with context rows, across the resources axis’s entry po
 		// falls to the general context strip — so this needs its own fixture: an
 		// excluded EPIC whose own assignee names a lane a real result also uses.
 		const vault = new FakeVault();
+		vault.addFile('Alice.md', { frontmatter: { type: 'Resource' } });
 		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10, assignee: 'Alice' } });
 		vault.addFile('Feature B.md', {
 			frontmatter: { type: 'Feature', order: 20, start: '2026-08-01', due: '2026-08-09' },
 			parentLink: 'Epic',
 		});
-		const { containerEl } = laneRoadmap(vault, {}, { only: ['Feature B.md'], focus: 'Epic' });
+		const { containerEl } = laneRoadmap(vault, {}, { only: ['Alice.md', 'Feature B.md'], focus: 'Epic' });
 		const row = containerEl.querySelector<HTMLElement>('.pbl-lane-context');
 		expect(row).not.toBeNull();
 
@@ -500,10 +501,11 @@ describe('write safety with context rows, across the resources axis’s entry po
 	it('refuses the whole batch if a resource write ever names a context item', async () => {
 		const { view, vault } = laneStressView();
 		const mid = view.model?.byPath.get('Mid.md');
+		const sam = vault.files.get('Sam.md');
 
 		// No UI produces this — that is the point: the last line of defence is structural,
 		// so a future entry point cannot reopen the hole by omission.
-		const applied = await view.performResourceMove(mid as never, 'Sam');
+		const applied = await view.performResourceMove(mid as never, sam ?? null);
 
 		expect(applied).toBe(false);
 		expect(vault.writeLog).toEqual([]);
@@ -513,11 +515,12 @@ describe('write safety with context rows, across the resources axis’s entry po
 	it('refuses it WHOLE when the move also carries dates', async () => {
 		const { view, vault } = laneStressView();
 		const mid = view.model?.byPath.get('Mid.md');
+		const sam = vault.files.get('Sam.md');
 
 		// The axis's second dimension does not get its own answer here: both halves ride
 		// one `ItemWrite`, and the gate refuses a batch whole, so there is no arrangement
 		// in which the dates land on an excluded note and the assignee does not.
-		const applied = await view.performResourceMove(mid as never, 'Sam', {
+		const applied = await view.performResourceMove(mid as never, sam ?? null, {
 			plan: { start: '2026-08-08', target: '2026-08-17' },
 			ends: ['start', 'target'],
 		});
@@ -548,7 +551,7 @@ describe('write safety with context rows, across the resources axis’s entry po
 		view.showContextMenuFor(view.model?.byPath.get('PBI.md') as never);
 		const offered = Menu.lastShown?.item('Set assignee')?.submenu?.items.map((i) => i.titleText);
 
-		expect(offered).toEqual(['Sam', 'New assignee...', 'Clear assignee']);
+		expect(offered).toEqual(['Sam', 'New resource...', 'Clear assignee']);
 	});
 
 	it('is never shelved, whatever it carries', () => {

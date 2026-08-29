@@ -329,7 +329,7 @@ export function resolveColumns(host: BacklogViewHost): Column[] {
  *   list still has a menu with something in it. Pairing it would withhold the chip from
  *   every vault that never declared its workflow.
  * - `assignee` is the key alone for a sharper version of the same reason: its menu
- *   carries **New assignee...** whatever the results hold, so there is no vocabulary it
+ *   carries **New resource...** whatever the base holds, so there is no vocabulary it
  *   could be missing and no second half to pair with.
  *
  * Only the first bullet is under a test of this function (`test/view/columnKinds.test.ts`

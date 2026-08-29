@@ -1,4 +1,4 @@
-import { App, BasesEntry, CachedMetadata, TFile } from 'obsidian';
+import { App, BasesEntry, TFile } from 'obsidian';
 import { nearestFolderNote } from './folderNotes';
 import {
 	absentReading,
@@ -8,6 +8,7 @@ import {
 	ownValue,
 	ParentRef,
 	readDate,
+	readFirstLinkEntry,
 	readLinkList,
 	readNumber,
 	readPlacement,
@@ -38,6 +39,13 @@ import { Absence, readAbsence } from './absences';
  * break: either of those would have had `model.ts` import a module that imports
  * `BacklogItem` back, which is a cycle fallow is right to refuse.
  */
+
+/** A `Resource` note the base returned — never an item, and the whole of the roster. */
+export interface ResourceNote {
+	file: TFile;
+	/** The note's own basename, which is the person's name. */
+	title: string;
+}
 
 /**
  * Phase 1 — what one note says about itself: its file, its Bases row, and the values
@@ -120,11 +128,13 @@ export interface RawItem {
 	 */
 	priorityValue: string | null;
 	/**
-	 * Who the note says it is assigned to, if an assignee property is configured. A plain
-	 * value for `riskValue`'s reason — a name the user typed or picked, with no reading
-	 * to refuse — and absence means nobody is on it, which is a fact, not a missing one.
+	 * Who the note says it is assigned to — the `raw`/`file` pair `readLinkList` returns,
+	 * `iterationEntry`'s shape and its reason: unresolved is not unset. A link naming a
+	 * deleted note, or a plain name left over from before resources were notes, has a
+	 * `raw` and no `file`; reading that as "nobody" would leave the reader with a value
+	 * on the note and nothing in the view to clear.
 	 */
-	assigneeValue: string | null;
+	assigneeEntry: LinkEntry | null;
 	/**
 	 * What the note's own iteration is FOR, in one line, if an iteration goal property is
 	 * configured. `riskValue`'s reason exactly: a plain string with no reading to refuse,
@@ -187,9 +197,15 @@ export interface RawStore {
 	 * tree, ranks siblings or counts a rollup ever meets one.
 	 */
 	absences: Absence[];
+	/**
+	 * The `Resource` notes diverted before they could become items — `absences`' own
+	 * shape and its own reason. Beside the items rather than among them: nothing that
+	 * walks the tree, ranks siblings, counts a rollup or draws a projection may meet one.
+	 */
+	resources: ResourceNote[];
 }
 export function createItems(app: App, entries: BasesEntry[], settings: BacklogSettings): RawStore {
-	const store: RawStore = { all: [], byPath: new Map(), absences: [] };
+	const store: RawStore = { all: [], byPath: new Map(), absences: [], resources: [] };
 	/** The notes these items hang from — seeds for loading the ancestors the filter cut. */
 	const parents: TFile[] = [];
 
@@ -263,7 +279,7 @@ function addItem(
 	// `getFileCache` call site `buildModel` reaches, and `test/domain/modelCost.test.ts` pins one
 	// read per note loaded, so a second reader would either double that count or have to
 	// read through `BasesEntry.getValue()`. The cache is open on this line.
-	if (isAbsenceType(typeName)) return divertAbsence(store, file, entry, fm, settings);
+	if (isAbsenceType(typeName)) return divertAbsence(store, entry, readAbsence(app, file, cache, settings));
 	// **A RESOURCE is refused here too, and this one line is the whole of "a person is not
 	// in the backlog".** Beside the absence gate rather than filtered per projection: the
 	// tree, both boards, both roadmap axes, the shelf, the toolbar's count and every menu
@@ -271,12 +287,11 @@ function addItem(
 	// nothing for any of them to remember. A filter per view is the shape where the next
 	// projection forgets — which is exactly what the context-row rule was written about.
 	//
-	// Null like the absence's, and for the same reason: a resource has no parent, so it
-	// seeds no ancestor and `loadOutsideParents` is never handed one. Nothing is KEPT yet,
-	// which is the only difference — `docs/requirements/Rows from the Resource notes.md`
-	// is what will collect them here, at this gate, so the roster comes from the base's
-	// own results without a second read path into the vault.
-	if (isResourceType(typeName)) return null;
+	// Diverted rather than discarded, out of line in `divertResource`: the note is KEPT on
+	// `RawStore.resources` — `docs/requirements/Rows from the Resource notes.md` is what
+	// will read that roster once a consumer exists — so it comes from the base's own
+	// results without a second read path into the vault.
+	if (isResourceType(typeName)) return divertResource(store, file, entry);
 	// Read as a LIST rather than through `readFirstLinkEntry`, because the release is the
 	// one such field whose CARDINALITY is a fact about the note: `membershipTarget` refuses
 	// two values, so the planner needs `[R, E]` told from `[R]`.
@@ -308,7 +323,7 @@ function addItem(
 		plannedTarget: readGated(settings.targetKey, fm, readDate),
 		riskValue: readLabel(settings.riskKey, fm),
 		priorityValue: readLabel(settings.priorityKey, fm),
-		assigneeValue: readLabel(settings.assigneeKey, fm),
+		assigneeEntry: readFirstLinkEntry(app, file, cache, settings.assigneeKey),
 		iterationGoalValue: readLabel(settings.iterationGoalKey, fm),
 		ownKeys: readOwnKeys(fm, settings),
 		iterationEntry: readFirstLinkEntry(app, file, cache, settings.iterationKey),
@@ -352,29 +367,33 @@ function addItem(
  * absence as its parent, or sitting under one as a folder note, pulls it in through
  * `loadOutsideParents` — and until 2026-08-14 it minted a band, drew a stretch and was
  * counted on the header. The check is on the KEEPING rather than on that path, so a future
- * caller handing this function an entry-less note is refused too.
+ * caller handing this function an entry-less note is refused too — which is also why
+ * `absence` is read at the call site and handed in already resolved rather than reread
+ * here: the read is unconditional (`readAbsence`'s own concern), only the KEEP is gated,
+ * and folding both into one function would have pushed this past the five-parameter
+ * budget the moment `readAbsence` needed the app and the cache too.
  */
-function divertAbsence(
-	store: RawStore,
-	file: TFile,
-	entry: BasesEntry | null,
-	fm: Record<string, unknown> | undefined,
-	settings: BacklogSettings,
-): null {
-	if (entry === null) return null;
-	const absence = readAbsence(file, fm, settings);
-	if (absence) store.absences.push(absence);
+function divertAbsence(store: RawStore, entry: BasesEntry | null, absence: Absence | null): null {
+	if (entry !== null && absence) store.absences.push(absence);
 	return null;
 }
 
 /**
- * One `LinkEntry`-shaped field read off a note, gated on its key being configured — out
- * of line so `addItem` stays under its complexity budget, and shared by every such field
- * (today: iteration, release) rather than one copy per field. An unconfigured key reads
- * as absence; otherwise, the first link the note declares, or nothing.
+ * Keep who a resource IS and produce no item — `divertAbsence`'s shape, out of line so
+ * `addItem` stays under its complexity budget.
+ *
+ * Always null, which is `addItem`'s own "no ancestor to seed": a resource has no parent,
+ * so it can never pull one in and `loadOutsideParents` must never be handed one.
+ *
+ * A note the base never RETURNED keeps nothing, and that is the context-row rule rather
+ * than a rule of this roster: an `outsideFilter` note is never a source of anything
+ * derived from the results. One can still arrive here — a result naming a resource as its
+ * parent pulls it in through `loadOutsideParents` — and a row, a menu entry or a drop
+ * target minted from it would be a target the user cannot act on.
  */
-function readFirstLinkEntry(app: App, file: TFile, cache: CachedMetadata | null, key: string): LinkEntry | null {
-	return key ? (readLinkList(app, file, cache, key)[0] ?? null) : null;
+function divertResource(store: RawStore, file: TFile, entry: BasesEntry | null): null {
+	if (entry !== null) store.resources.push({ file, title: file.basename });
+	return null;
 }
 
 /**
@@ -453,4 +472,93 @@ function loadOutsideParents(app: App, store: RawStore, parents: TFile[], setting
 		const next = addItem(app, store, file, null, settings);
 		if (next) queue.push(next);
 	}
+}
+
+/**
+ * The name to SHOW for an item's assignee: the resolved note's own title, so a rename
+ * reaches every item that names them, else the raw text for a value that resolves to
+ * nothing, else nobody.
+ *
+ * A function rather than a field because it is presentation derived from the entry, and a
+ * second stored copy is one refresh away from disagreeing with the link it came from.
+ */
+export function assigneeName(item: { assigneeEntry: LinkEntry | null }): string | null {
+	return item.assigneeEntry === null ? null : (item.assigneeEntry.file?.basename ?? item.assigneeEntry.raw);
+}
+
+/**
+ * One NOTE a caller may point a reader at: the note, and the name to draw for it. The two
+ * are separate fields because they can differ — see {@link namedTargets} — and the value
+ * behind an entry is always the note, never its label.
+ */
+export interface NamedTarget<T> {
+	item: T;
+	label: string;
+}
+
+/**
+ * Candidates, named apart only where two of them collide: the basename, and the whole
+ * path (minus the extension) for the notes that share one.
+ *
+ * Only where they collide, because qualifying every entry to separate a rare pair makes
+ * the ordinary case unreadable — and a write is unaffected either way, since a plan
+ * carries the FILE and a wikilink is spelled from the editing note's own path, never
+ * from this label.
+ *
+ * One function for every surface that names a resource to the reader — `Set iteration`,
+ * `Set release`, the absence dialog, the roadmap's lane headers and the assignee chip —
+ * rather than the same disambiguation copied at each one. Domain rather than `view/`
+ * because `BacklogModel.resourceLabels` (`model.ts`) is now a caller too: the map that
+ * answers the assignee chip's question in O(1) is built by running this ONCE per model,
+ * which a view-layer function could not be asked to do for a domain field. Generic over
+ * the two fields disambiguation actually reads, not `BacklogItem`, so a plain
+ * `ResourceNote` qualifies without a cast.
+ */
+export function namedTargets<T extends { title: string; file: TFile }>(found: T[]): NamedTarget<T>[] {
+	const seen = new Map<string, number>();
+	for (const target of found) seen.set(target.title, (seen.get(target.title) ?? 0) + 1);
+	return found.map((target) => ({
+		item: target,
+		label:
+			(seen.get(target.title) ?? 0) > 1
+				? target.file.path.slice(0, -(target.file.extension.length + 1))
+				: target.title,
+	}));
+}
+
+/** No model yet, so no resource has a label — the one instance `resourceLabelsOf` ever needs. */
+const EMPTY_RESOURCE_LABELS: ReadonlyMap<string, string> = new Map();
+
+/**
+ * The resource-label index a caller has to ask, with no model yet read as empty — one
+ * function rather than the same `model?.resourceLabels ?? new Map()` written at every
+ * call site. A chip or a row is drawn from an ITEM, and an item exists only once a model
+ * has been built, so the null side is dead on arrival in practice — the question this
+ * codebase's coverage rule asks first, before writing a test for an unreachable branch.
+ * The shared empty instance is deliberate too: a fresh `Map()` per call would be one more
+ * allocation on the exact per-row path {@link assigneeBroken} exists to keep out of.
+ */
+export function resourceLabelsOf(model: { resourceLabels: ReadonlyMap<string, string> } | null): ReadonlyMap<string, string> {
+	return model?.resourceLabels ?? EMPTY_RESOURCE_LABELS;
+}
+
+/**
+ * Whether this item's assignee names something the given index does not carry — roster
+ * MEMBERSHIP, never link resolution. A link that resolves to an ordinary note, or to a
+ * `Resource` note the base's own filter excluded, both name nobody the roadmap or a menu
+ * will ever offer, so both must read as broken here exactly alike: answering from
+ * resolution alone would draw either as a valid assignment while every other surface
+ * treats it as nobody.
+ *
+ * Takes the LABEL INDEX (`BacklogModel.resourceLabels`, via {@link resourceLabelsOf}), not
+ * the roster array `namedTargets` built it from: a `Map.has` is the O(1) membership test
+ * `rowSignature` and the chip need on every row, where a `.some` over the whole roster
+ * would be a second superlinear pass this codebase's row-cost rule refuses (review, PR
+ * #207 fix round 1 — `src/domain/CLAUDE.md`'s cost section, and
+ * `docs/requirements/A row costs its content, not its wiring.md`).
+ */
+export function assigneeBroken(item: { assigneeEntry: LinkEntry | null }, labels: ReadonlyMap<string, string>): boolean {
+	if (item.assigneeEntry === null) return false;
+	const path = item.assigneeEntry.file?.path;
+	return path === undefined || !labels.has(path);
 }

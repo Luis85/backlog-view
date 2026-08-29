@@ -8,6 +8,7 @@ import { PlacementEnd, placementEnds } from '../../domain/itemTypes';
 import { canPlaceHorizon } from '../interactions/plan';
 import { BacklogItem } from '../../domain/model';
 import { CivilDate, FieldReading } from '../../domain/noteFields';
+import { assigneeBroken, assigneeName, resourceLabelsOf } from '../../domain/readItems';
 import { shelfLabel } from '../../domain/roadmap';
 import { formatCivil } from '../../domain/timeline';
 
@@ -161,7 +162,7 @@ export function renderHorizonChip(host: BacklogViewHost, col: HTMLElement, item:
  */
 export const LABEL_CHIPS: Record<'risk' | 'priority' | 'assignee', LabelChip> = {
 	risk: {
-		valueOf: (item) => item.riskValue,
+		valueOf: (_host, item) => item.riskValue,
 		cls: 'pbl-risk-chip',
 		unsetCls: 'pbl-risk-unset',
 		icon: 'shield-alert',
@@ -172,7 +173,7 @@ export const LABEL_CHIPS: Record<'risk' | 'priority' | 'assignee', LabelChip> = 
 		showMenu: showRiskMenu,
 	},
 	priority: {
-		valueOf: (item) => item.priorityValue,
+		valueOf: (_host, item) => item.priorityValue,
 		cls: 'pbl-priority-chip',
 		unsetCls: 'pbl-priority-unset',
 		icon: 'flag',
@@ -183,7 +184,7 @@ export const LABEL_CHIPS: Record<'risk' | 'priority' | 'assignee', LabelChip> = 
 		showMenu: showPriorityMenu,
 	},
 	assignee: {
-		valueOf: (item) => item.assigneeValue,
+		valueOf: assigneeLabel,
 		cls: 'pbl-assignee-chip',
 		unsetCls: 'pbl-assignee-unset',
 		icon: 'user',
@@ -192,11 +193,45 @@ export const LABEL_CHIPS: Record<'risk' | 'priority' | 'assignee', LabelChip> = 
 		staticTip: () => t('chip.assigneeStatic'),
 		changeTip: () => t('chip.assigneeChange'),
 		showMenu: showAssigneeMenu,
+		// Asked of the ROSTER rather than of the link, because a link that resolves is not
+		// the same question as a link that resolves to somebody: `[[Epic B]]` resolves to a
+		// real note and `[[Alex]]` resolves to a resource the filter excluded, and both are
+		// shelved by the roadmap and offered by no menu entry. Answering from resolution
+		// alone drew those two as valid assignments on the row while every other surface
+		// treated them as nobody — three surfaces disagreeing about one value. Found by
+		// automated review on PR #207.
+		broken: (host, item) => assigneeBroken(item, resourceLabelsOf(host.model)),
+		brokenCls: 'pbl-assignee-broken',
+		brokenTip: () => t('chip.assigneeUnresolved'),
 	},
 };
 
+/**
+ * The name to DRAW for an item's assignee — `assigneeName(item)`'s own value, disambiguated
+ * against the roster where the link resolves to a member of it. Every surface that names a
+ * resource to the reader disambiguates through `namedTargets` (`domain/readItems.ts`) — the
+ * menu, the absence dialog and the roadmap's own lane headers — and the chip drawing two
+ * same-named resources as one indistinguishable label was that same collision missed a
+ * fourth time (review, PR #207).
+ *
+ * A `Map.get` against `BacklogModel.resourceLabels`, not a `namedTargets` call of its own:
+ * that map is built ONCE per model (`model.ts`), so this stays O(1) per row rather than
+ * running the disambiguation pass again for every visible chip — the per-row scan a second
+ * review round found here and in `broken` (PR #207 fix round 1).
+ *
+ * Disambiguation is the ONLY thing this adds. A link that does not resolve to a roster
+ * member — nothing to resolve, or a real note the roster does not carry — falls back to
+ * `assigneeName(item)` exactly as before: that is `broken`'s question, asked and answered
+ * once there, and this function does not re-ask it under another name.
+ */
+export function assigneeLabel(host: BacklogViewHost, item: BacklogItem): string | null {
+	const path = item.assigneeEntry?.file?.path;
+	if (path === undefined) return assigneeName(item);
+	return resourceLabelsOf(host.model).get(path) ?? assigneeName(item);
+}
+
 interface LabelChip {
-	valueOf: (item: BacklogItem) => string | null;
+	valueOf: (host: BacklogViewHost, item: BacklogItem) => string | null;
 	cls: string;
 	unsetCls: string;
 	icon: string;
@@ -207,6 +242,18 @@ interface LabelChip {
 	staticTip: () => string;
 	changeTip: () => string;
 	showMenu: (host: BacklogViewHost, evt: MouseEvent, item: BacklogItem) => void;
+	/**
+	 * Whether this item's value names something the view could not resolve — a third state
+	 * beside set and unset, and optional because the assignee is the only label property
+	 * whose value is a NOTE. [[Broken links still render]]'s rule, one property over: the
+	 * view marks, it does not tidy. Drawn as what the note says, under `brokenCls`, so the
+	 * reader can see the value and see that it resolves to nobody.
+	 */
+	broken?: (host: BacklogViewHost, item: BacklogItem) => boolean;
+	/** The class that marks the third state. Present exactly when `broken` is. */
+	brokenCls?: string;
+	/** What the third state's tooltip says. Present exactly when `broken` is. */
+	brokenTip?: () => string;
 }
 
 /**
@@ -217,8 +264,13 @@ interface LabelChip {
  * `showMenu` rather than a second list.
  */
 export function renderLabelChip(host: BacklogViewHost, col: HTMLElement, item: BacklogItem, label: string, spec: LabelChip): boolean {
-	const value = spec.valueOf(item);
-	const cls = spec.cls + (value === null ? ` ${spec.unsetCls}` : '');
+	const value = spec.valueOf(host, item);
+	// The third state, beside set and unset: a value the view could not resolve against
+	// its roster. Marked with its own class so the reader can see both the value AND that
+	// it names nobody, rather than either hiding the note's own text or drawing it as an
+	// ordinary, valid assignment.
+	const broken = spec.broken?.(host, item) ?? false;
+	const cls = spec.cls + (value === null ? ` ${spec.unsetCls}` : '') + (broken ? ` ${spec.brokenCls}` : '');
 
 	// A note the Base excluded is context: show what it claims, never offer to change
 	// it. With nothing to show it renders nothing at all, rather than a button-shaped
@@ -227,7 +279,7 @@ export function renderLabelChip(host: BacklogViewHost, col: HTMLElement, item: B
 		if (value === null) return false;
 		const chip = col.createDiv({ cls: `${cls} pbl-state-static` });
 		fillLabelChip(chip, value, spec);
-		setTooltip(chip, spec.staticTip());
+		setTooltip(chip, broken ? (spec.brokenTip as () => string)() : spec.staticTip());
 		return true;
 	}
 
@@ -242,7 +294,7 @@ export function renderLabelChip(host: BacklogViewHost, col: HTMLElement, item: B
 		},
 	});
 	fillLabelChip(chip, value, spec);
-	setTooltip(chip, spec.changeTip());
+	setTooltip(chip, broken ? (spec.brokenTip as () => string)() : spec.changeTip());
 	return true;
 }
 

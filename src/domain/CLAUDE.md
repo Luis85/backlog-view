@@ -11,16 +11,36 @@ in the root `CLAUDE.md` because it spans every layer.
 write batch, so this is paid on each move and not only when the vault changes underneath.
 Its phases are a fixed list of passes over the item set: `createItems`, `linkAll`,
 `breakCycles`, the scope prune, two vocabulary collections, `sortSiblingsDeep`,
-`assignAll`. `sortSiblingsDeep` is the one deliberately superlinear step — comparison
-sorting is the right tool for ranking siblings — so the bound is **O(n log n)**, and what
-must not appear is a *second* superlinear step beside it.
+`assignAll`. `sortSiblingsDeep` is the deliberately superlinear step over the item set —
+comparison sorting is the right tool for ranking siblings — so that pass alone is
+**O(n log n)**.
 
-Two of those properties are checks (`test/domain/modelCost.test.ts`) and the rest of the
+There is a second deliberate comparison sort, added with the resource roster (Task 1,
+2026-08): `model.ts` sorts `store.resources` by `title.localeCompare` (with a path
+tie-break) right beside `sortSiblingsDeep`. It is bounded the same way and stays cheap for
+the same reason a second pass usually is not allowed to: `Resource` notes are a *subset*
+of the notes the base returns — `readItems.ts`'s `divertResource` diverts one before it is
+ever an item, so it never joins a sibling group — which makes the roster's own size `r`
+never exceed the item count `n`. Comparison sorting is the right tool here for the same
+reason it is for siblings: the roster is small, sorted once per build rather than per row,
+and the order it produces (alphabetical, `localeCompare`, following the USER's locale
+because a name is data) is itself the thing being asked for, not a byproduct of a faster
+structure. The build's bound is still **O(n log n)** with `r ≤ n` folded in — what the
+older wording of this paragraph got wrong was forbidding a *second* superlinear step
+outright rather than bounding it: the rule that matters is that nothing here sorts a set
+that can outgrow the items, not that there is exactly one sort.
+
+Three of those properties are checks (`test/domain/modelCost.test.ts`) and the rest of the
 paragraph above is prose. Checked: the vault is read **once per note loaded** — `addItem`
 holds the only `getFileCache` call site `buildModel` reaches, so a later phase re-reading
-the cache per item shows up as n² — and **every item is sorted exactly once**, the sum of the
+the cache per item shows up as n² — **every item is sorted exactly once**, the sum of the
 sibling groups `sortSiblingsDeep` sorts equalling the item count, so a phase that
-re-sorts or a sort that moves into a per-item path fails. Not checked, and deliberately
+re-sorts or a sort that moves into a per-item path fails — and **the roster is sorted
+exactly once**, the same shape of check at the seam the item count is blind to: a
+`Resource` never becomes an item, so a fixture with no resources in it never exercises this
+sort at all, and the item-count check alone cannot see a duplicated or per-item roster
+sort. The two sorts are told apart by `typeName`, a field every `RawItem`/`LinkedItem`
+carries and no `ResourceNote` does. Not checked, and deliberately
 not claimed: a traversal phase that turned quadratic without reading the vault again or
 sorting again. Nothing observes a walk from outside `buildModel`, and inventing a seam to
 count one would be a seam built for the test. Nothing here measures elapsed time either;

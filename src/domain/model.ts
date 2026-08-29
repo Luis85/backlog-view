@@ -2,7 +2,7 @@ import { App, BasesEntry } from 'obsidian';
 import { Absence } from './absences';
 import { inferFolderParent } from './folderNotes';
 import { DependencyNode, resolveDependencies } from './dependencies';
-import { createItems, RawItem, RawStore } from './readItems';
+import { createItems, namedTargets, RawItem, RawStore, ResourceNote } from './readItems';
 import {
 	childLevelIndex,
 	EXTRA_TYPE_RANK,
@@ -23,7 +23,6 @@ import { ALL_TYPES, LEVELS } from './typeVocabulary';
 import { assertResolvedSettings } from './settingsConsistency';
 import { earliest, latest, reversedSpan } from './timeline';
 import {
-	collectObservedAssignees,
 	collectObservedDeliverableStates,
 	collectObservedHorizons,
 	collectObservedStates,
@@ -122,8 +121,6 @@ export interface ProjectionPopulation {
 	observedHorizons: string[];
 	/** Distinct tags this population carries, alphabetical. */
 	observedTags: string[];
-	/** Distinct assignees this population carries, alphabetical. */
-	observedAssignees: string[];
 }
 
 export interface BacklogModel {
@@ -202,8 +199,6 @@ export interface BacklogModel {
 	observedHorizons: string[];
 	/** Distinct tags in the result set, alphabetical — the vocabulary the tag menus offer. */
 	observedTags: string[];
-	/** Distinct assignees in the result set, alphabetical — the whole list Set assignee offers. */
-	observedAssignees: string[];
 	/** Distinct Deliverable-workflow state values, scoped to Deliverable items. */
 	observedDeliverableStates: string[];
 	/** Notes the base returned that are not backlog items (see `pruneOutsideHierarchy`). */
@@ -215,6 +210,27 @@ export interface BacklogModel {
 	 * and the only reader is the resources axis's own row derivation.
 	 */
 	absences: Absence[];
+	/**
+	 * The `Resource` notes the base returned, sorted by name — the roster the assignee
+	 * menu offers and the roadmap draws a row per. Never items: see `readItems`'
+	 * `divertResource`.
+	 */
+	resources: ResourceNote[];
+	/**
+	 * Every resource's OWN path, mapped to the label {@link namedTargets} gives it —
+	 * built once here, alongside `resources`, rather than asked of `namedTargets` again
+	 * at every row. `assigneeBroken` and the assignee chip's label both used to scan
+	 * `resources` per row (`.some`/`.find`), an O(items × resources) allocation-per-row
+	 * cost this codebase's row-cost rule refuses a second superlinear pass over — see
+	 * `src/domain/CLAUDE.md`'s cost section and
+	 * `docs/requirements/A row costs its content, not its wiring.md`. A `Map.has`/`.get`
+	 * against this index is O(1) instead. `resources` is sorted by `title`/`path` alone,
+	 * with no label in it — `namedTargets` runs here solely to BUILD this index, one pass
+	 * rather than a per-row `.some`/`.find`. Read through
+	 * `resourceLabelsOf` (`readItems.ts`) rather than directly, so "no model yet" is
+	 * answered once.
+	 */
+	resourceLabels: ReadonlyMap<string, string>;
 }
 
 export function buildModel(app: App, entries: BasesEntry[], settings: BacklogSettings): BacklogModel {
@@ -239,6 +255,20 @@ export function buildModel(app: App, entries: BasesEntry[], settings: BacklogSet
 	// A focus naming an EXTRA type re-roots at that type by name: it has no rung to
 	// match, and "show me the bugs" is the same question as "show me the PBIs".
 	const focusExtra = focusIdx < 0 && focus ? focus.toLowerCase() : '';
+	// Sorted through `localeCompare`, which follows the USER's locale because a name is
+	// data. The path tie-break
+	// matters: `localeCompare` returns 0 for two resources sharing a basename, and
+	// `Array.sort` is stable, so without it two such resources would come back in
+	// whatever order the Base's own query happened to return them — alphabetical order
+	// was chosen over Base order BECAUSE it stays put when a Base's sort changes, and an
+	// untied collision is the one case that promise did not hold.
+	const resources = [...store.resources].sort(
+		(a, b) => a.title.localeCompare(b.title) || a.file.path.localeCompare(b.file.path),
+	);
+	// One pass, here, rather than one `.some`/`.find` per row: see `BacklogModel.resourceLabels`.
+	const resourceLabels: ReadonlyMap<string, string> = new Map(
+		namedTargets(resources).map((target) => [target.item.file.path, target.label]),
+	);
 	const rest = {
 		realRoots: roots,
 		byPath,
@@ -293,6 +323,8 @@ export function buildModel(app: App, entries: BasesEntry[], settings: BacklogSet
 		// Straight off the store: the divert happened before phase 1 produced an item, so
 		// no later phase has ever seen one and none of them can have changed it.
 		absences: store.absences,
+		resources,
+		resourceLabels,
 	};
 	// The plan is a projection too, and its forest is computed by the same rule the
 	// catalog's is — a work item somebody dropped under a test is drawn in the plan, as a
@@ -809,11 +841,11 @@ function projectionForest(
 }
 
 /**
- * The four vocabularies a population carries, collected together because they are always
+ * The three vocabularies a population carries, collected together because they are always
  * asked together: *a vocabulary is scoped to the population of the projection that offers
- * it*, stated once rather than four times at four call sites.
+ * it*, stated once rather than three times at three call sites.
  *
- * The horizons are the one list that is ORDERED rather than sorted, so all four are
+ * The horizons are the one list that is ORDERED rather than sorted, so all three are
  * taken from the FINISHED tree rather than the load order: the roadmap mints a bucket per
  * new value as it walks its rows, which are these items filtered, so reading them in the
  * same sequence is what keeps the menu from naming the buckets in an order the axis then
@@ -823,7 +855,7 @@ function vocabularyOf(
 	items: BacklogItem[],
 	settings: BacklogSettings,
 	catalog: boolean,
-): Pick<ProjectionPopulation, 'observedStates' | 'observedHorizons' | 'observedTags' | 'observedAssignees'> {
+): Pick<ProjectionPopulation, 'observedStates' | 'observedHorizons' | 'observedTags'> {
 	return {
 		// WHICH workflow, asked of the population rather than of each item: a population is
 		// homogeneous by membership, and the done list a state menu sorts by is the
@@ -834,7 +866,6 @@ function vocabularyOf(
 		observedStates: catalog ? collectObservedTestStates(items, settings) : collectObservedStates(items, settings),
 		observedHorizons: collectObservedHorizons(items),
 		observedTags: collectObservedTags(items),
-		observedAssignees: collectObservedAssignees(items),
 	};
 }
 

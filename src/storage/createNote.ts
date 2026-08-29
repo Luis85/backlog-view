@@ -246,7 +246,7 @@ export async function createRelease(app: App, settings: ReleaseSettings, spec: N
  * Always write parents as quoted wikilinks so the metadata cache picks them up
  * as frontmatter links regardless of the user's link format setting.
  *
- * Used by the editing side too (`applyHierarchy` and `applyIteration` in
+ * Used by the editing side too (`applyHierarchy` and `applyLinks` in
  * `frontmatter.ts`): a link is spelled the same way whether the note is being made or
  * changed, and one function is what keeps that true.
  */

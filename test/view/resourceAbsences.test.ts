@@ -1,13 +1,41 @@
 ﻿// @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { FakeVault } from '../helpers/vault';
-import { Menu } from '../helpers/obsidian-mock';
-import { flush, useViewHarness } from '../helpers/view';
+import { Menu, Modal } from '../helpers/obsidian-mock';
+import { flush, refresh, submitButton, useViewHarness } from '../helpers/view';
 import { barFor, laneCountOf, laneNames, laneRoadmap, lanesOf } from '../helpers/roadmap';
 import { ALICE_AWAY, absenceVault } from '../helpers/resources';
 import { cardDrag } from '../helpers/dnd';
 
 useViewHarness();
+
+/**
+ * Open the row's own Add-absence form and submit it with a range, leaving the resource
+ * exactly at its prefill — the row's own note (Task 6) — since these tests are about the
+ * WRITE that follows, not about picking a different one. `absenceEditing.test.ts` is the
+ * suite for the form's own fields; this is the read-side twin.
+ */
+function addAbsenceFromRow(containerEl: HTMLElement, name: string, range: { start: string; target: string }): void {
+	const head = lanesOf(containerEl).find((el) => el.querySelector('.pbl-lane-name')?.textContent === name);
+	head?.querySelector<HTMLButtonElement>('.pbl-lane-absence-add')?.click();
+	const modal = Modal.lastOpened;
+	if (!modal) throw new Error('prompt not opened');
+	const [start, target] = Array.from(modal.contentEl.querySelectorAll('input'));
+	start.value = range.start;
+	start.dispatchEvent(new Event('input', { bubbles: true }));
+	target.value = range.target;
+	target.dispatchEvent(new Event('input', { bubbles: true }));
+	submitButton(modal)?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+}
+
+/** How many marks each row header carries, by the row's own name. */
+function absenceCountsByLane(containerEl: HTMLElement): Record<string, number> {
+	const counts: Record<string, number> = {};
+	for (const head of lanesOf(containerEl)) {
+		counts[head.querySelector('.pbl-lane-name')?.textContent ?? ''] = head.querySelectorAll('.pbl-absence').length;
+	}
+	return counts;
+}
 
 /**
  * An absence on screen: a blocked stretch in one resource's row and nowhere else.
@@ -66,14 +94,18 @@ describe('an absence on the resources axis', () => {
 		expect(away?.style.getPropertyValue('--pbl-bar-width')).toBe(`${3 * 4}px`);
 	});
 
-	it('gives a resource nothing else names a row of its own', () => {
+	it('gives no row to a resource no Resource note names, even from an absence', () => {
+		// The 4b "third source" a row could mint FROM before Task 5: an absence can still
+		// draw INTO a row, but it can no longer produce one where the roster has no note —
+		// a row is a note now, and an absence is a statement about a resource rather than a
+		// declaration of one.
 		const vault = absenceVault();
 		vault.addFile('Quinn away.md', {
 			frontmatter: { type: 'Absence', assignee: 'Quinn', start: '2026-08-02', due: '2026-08-03' },
 		});
 		const { containerEl } = laneRoadmap(vault);
 
-		expect(laneNames(containerEl)).toEqual(['Alice', 'Bob', 'Quinn']);
+		expect(laneNames(containerEl)).toEqual(['Alice', 'Bob']);
 	});
 
 	it('packs two that share a day onto two sub-lanes, and says how many', () => {
@@ -122,6 +154,7 @@ describe('an absence on the resources axis', () => {
 		// band, so dragover and drop bubble to the header. That is the whole mechanism, and
 		// its absence is `docs/bugs/An absence stretch is a dead spot in its own band.md`.
 		const vault = absenceVault();
+		vault.addFile('Bob.md', { frontmatter: { type: 'Resource' } });
 		vault.addFile('Bob away.md', {
 			frontmatter: { type: 'Absence', assignee: 'Bob', start: '2026-08-04', due: '2026-08-06' },
 		});
@@ -132,7 +165,7 @@ describe('an absence on the resources axis', () => {
 		cardDrag(barFor(containerEl, 'Work'), mark);
 		await flush();
 
-		expect(vault.fm('Work.md')['assignee']).toBe('Bob');
+		expect(vault.fm('Work.md')['assignee']).toBe('[[Bob]]');
 	});
 
 	it('grows the window to hold itself, in a row nothing else draws in', () => {
@@ -141,6 +174,7 @@ describe('an absence on the resources axis', () => {
 		// exactly here — a row minted BY an absence holds no bar, so nothing it exists to
 		// draw had any say in the window it is drawn against.
 		const vault = new FakeVault();
+		vault.addFile('Quinn.md', { frontmatter: { type: 'Resource' } });
 		vault.addFile('Work.md', {
 			frontmatter: { type: 'Epic', order: 10, assignee: 'Alice', start: '2026-08-01', due: '2026-08-10' },
 		});
@@ -164,6 +198,9 @@ describe('an absence on the resources axis', () => {
 		// its own geometry rather than resting on the window fix: a filled stripe on a
 		// calendar claims THESE are the days, exactly as a bar does.
 		const vault = new FakeVault();
+		vault.addFile('Alice.md', { frontmatter: { type: 'Resource' } });
+		vault.addFile('Quinn.md', { frontmatter: { type: 'Resource' } });
+		vault.addFile('Early.md', { frontmatter: { type: 'Resource' } });
 		vault.addFile('Work.md', {
 			frontmatter: { type: 'Epic', order: 10, assignee: 'Alice', start: '2020-01-01', due: '2032-01-01' },
 		});
@@ -177,10 +214,11 @@ describe('an absence on the resources axis', () => {
 		const marks = Array.from(containerEl.querySelectorAll<HTMLElement>('.pbl-absence'));
 
 		// Past the far edge and past the near one — the same open-end vocabulary a bar wears,
-		// so the direction it lies in is still readable.
+		// so the direction it lies in is still readable. In DRAWN row order, which is
+		// alphabetical over the roster's own notes (Task 5) — Early's row before Quinn's.
 		expect(marks.map((el) => el.className)).toEqual([
-			'pbl-absence pbl-bar-outside pbl-bar-open-end',
 			'pbl-absence pbl-bar-outside pbl-bar-open-start',
+			'pbl-absence pbl-bar-outside pbl-bar-open-end',
 		]);
 	});
 
@@ -192,6 +230,8 @@ describe('an absence on the resources axis', () => {
 		// apart in the note and the same rectangle on screen, which is why a pack over the
 		// DATES could never see it — and why the pack reads the drawn boxes instead.
 		const vault = new FakeVault();
+		vault.addFile('Alice.md', { frontmatter: { type: 'Resource' } });
+		vault.addFile('Quinn.md', { frontmatter: { type: 'Resource' } });
 		vault.addFile('Work.md', {
 			frontmatter: { type: 'Epic', order: 10, assignee: 'Alice', start: '2020-01-01', due: '2032-01-01' },
 		});
@@ -225,6 +265,8 @@ describe('an absence on the resources axis', () => {
 		// one line — and the later then paints over half the earlier, leaving a ~2px
 		// sliver as the only route to its tooltip and its Edit and Delete menu.
 		const vault = new FakeVault();
+		vault.addFile('Alice.md', { frontmatter: { type: 'Resource' } });
+		vault.addFile('Quinn.md', { frontmatter: { type: 'Resource' } });
 		vault.addFile('Work.md', {
 			frontmatter: { type: 'Epic', order: 10, assignee: 'Alice', start: '2026-08-01', due: '2026-08-10' },
 		});
@@ -251,6 +293,9 @@ describe('an absence on the resources axis', () => {
 
 	it('marks a stretch the window cuts through as running past whichever edge it crosses', () => {
 		const vault = new FakeVault();
+		vault.addFile('Alice.md', { frontmatter: { type: 'Resource' } });
+		vault.addFile('Quinn.md', { frontmatter: { type: 'Resource' } });
+		vault.addFile('Early.md', { frontmatter: { type: 'Resource' } });
 		vault.addFile('Work.md', {
 			frontmatter: { type: 'Epic', order: 10, assignee: 'Alice', start: '2020-01-01', due: '2032-01-01' },
 		});
@@ -265,9 +310,11 @@ describe('an absence on the resources axis', () => {
 		const { containerEl } = laneRoadmap(vault);
 		const marks = Array.from(containerEl.querySelectorAll<HTMLElement>('.pbl-absence'));
 
+		// In DRAWN row order — alphabetical over the roster's own notes (Task 5) — Early's
+		// row before Quinn's.
 		expect(marks.map((el) => el.className)).toEqual([
-			'pbl-absence pbl-bar-open-end pbl-bar-clipped-end',
 			'pbl-absence pbl-bar-open-start',
+			'pbl-absence pbl-bar-open-end pbl-bar-clipped-end',
 		]);
 	});
 
@@ -296,6 +343,7 @@ describe('an absence on the resources axis', () => {
 		// says nothing about when. Asked of the PRODUCER — a title equal to what `absenceTitle`
 		// derives from the same three facts — never of the string's shape.
 		const vault = new FakeVault();
+		vault.addFile('Alice.md', { frontmatter: { type: 'Resource' } });
 		vault.addFile('Offsite.md', {
 			frontmatter: { type: 'Absence', assignee: 'Alice', start: '2026-08-04', due: '2026-08-06' },
 		});
@@ -340,5 +388,58 @@ describe('an absence on the resources axis', () => {
 		expect(harness.containerEl.querySelectorAll('.pbl-absence')).toHaveLength(0);
 		harness.view.setAxisPick('horizons');
 		expect(harness.containerEl.querySelectorAll('.pbl-absence')).toHaveLength(0);
+	});
+});
+
+describe('an absence names its resource by link', () => {
+	it('writes the resource as a link, so one fact has one spelling', async () => {
+		// The absence writer shares none of `applyWrites`' path, which is exactly why it is
+		// easy to leave spelling a resource the old way while everything else spells it the
+		// new one — a sweep of the batch writer finds nothing here.
+		const vault = new FakeVault();
+		vault.addFile('Alex.md', { frontmatter: { type: 'Resource' } });
+		vault.addFile('Work.md', {
+			frontmatter: { type: 'Epic', order: 10, assignee: '[[Alex]]', start: '2026-08-01', due: '2026-08-10' },
+		});
+		const { containerEl } = laneRoadmap(vault);
+
+		addAbsenceFromRow(containerEl, 'Alex', { start: '2026-08-03', target: '2026-08-05' });
+		await flush();
+
+		const created = [...vault.files.keys()].find((path) => path.includes('away'));
+		expect(vault.fm(created!)['assignee']).toBe('[[Alex]]');
+	});
+
+	it('draws that absence in its resource row and in no other', () => {
+		const vault = new FakeVault();
+		vault.addFile('Alex.md', { frontmatter: { type: 'Resource' } });
+		vault.addFile('Sam.md', { frontmatter: { type: 'Resource' } });
+		vault.addFile('Alex away.md', {
+			frontmatter: { type: 'Absence', assignee: '[[Alex]]', start: '2026-08-03', due: '2026-08-05' },
+		});
+		const { containerEl } = laneRoadmap(vault);
+
+		expect(absenceCountsByLane(containerEl)).toEqual({ Alex: 1, Sam: 0 });
+	});
+
+	it('lands on the row it was opened from by PATH, not by a name two resources share', async () => {
+		// `Team/Alex.md` and `Support/Alex.md` share a basename — the exact case a name or
+		// label match cannot tell apart, and the whole reason matching moved to the link's
+		// own resolved file (Task 6). Opened from the SECOND row, so a regression back to
+		// matching by name or by the disambiguated label would land this on whichever of
+		// the two sorts first rather than on the one actually opened.
+		const vault = new FakeVault();
+		vault.addFile('Team/Alex.md', { frontmatter: { type: 'Resource' } });
+		vault.addFile('Support/Alex.md', { frontmatter: { type: 'Resource' } });
+		const harness = laneRoadmap(vault);
+
+		addAbsenceFromRow(harness.containerEl, 'Support/Alex', { start: '2026-08-03', target: '2026-08-05' });
+		await flush();
+
+		const created = [...vault.files.keys()].find((path) => path.includes('away'));
+		expect(vault.fm(created!)['assignee']).toBe('[[Support/Alex]]');
+
+		refresh(harness.view, vault);
+		expect(absenceCountsByLane(harness.containerEl)).toEqual({ 'Team/Alex': 0, 'Support/Alex': 1 });
 	});
 });

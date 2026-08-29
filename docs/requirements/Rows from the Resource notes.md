@@ -2,19 +2,23 @@
 type: PBI
 parent: "[[The roster comes from the notes]]"
 order: 20
-status: Open
+status: Done
 created: 2026-08-20
 source: user request
 files:
+  - src/domain/readItems.ts
+  - src/domain/model.ts
   - src/domain/roadmap.ts
   - src/domain/settings.ts
   - src/domain/settingsConsistency.ts
   - src/domain/viewOptions.ts
+  - src/domain/vocabulary.ts
   - src/view/interactions/labels.ts
   - src/view/render/lanes.ts
   - src/view/render/roadmap.ts
-started: ""
-finished: ""
+  - src/view/manual/setupSection.ts
+started: 2026-08-29
+finished: 2026-08-29
 horizon: ""
 start: ""
 due: ""
@@ -65,21 +69,34 @@ is not a row, and therefore never a drop target.
   population from the results, and an empty axis that does not explain itself reads as a
   broken feature.
 - **2b — a `Resource` note is in the results but excluded by the filter as a context row.**
-  It renders and it parents, and it is not a write target: the context-row rule, unchanged.
-- **4a — an item's assignee link resolves to a note that is not a `Resource`.** No row. The
-  item shelves, exactly as an unassigned one does. A link is not a declaration, and the type
-  is.
-- **4b — an item's assignee link does not resolve, or the value is not a link at all.** The
-  same answer, for the same reason: it shelves. This is where every plain string left over
-  from before [[Linking an item to a resource]] ends up, and the shelf is the right place for
-  it — visible, counted, and one drop away from being placed.
+  It renders and it parents *nothing*: `divertResource` (`src/domain/readItems.ts`) keeps a
+  resource on `RawStore.resources` only when the base actually returned it (`entry !== null`),
+  so a context-row `Resource` never reaches `model.resources` at all, mints no lane, and is
+  never a drop target. Restated 2026-08-29, correcting this note's own earlier claim that it
+  "renders and it parents" — the context-row rule is kept once, at the keeping, rather than
+  at every consumer that would otherwise have to remember it.
+- **4a — an item's assignee link resolves to a note that is not a `Resource` in the results.**
+  No row. The item shelves, exactly as an unassigned one does. What decides this is
+  RESOLUTION, not spelling: the value may be a wikilink or a bare name, and either is asked
+  the identical question — does it resolve to a `Resource` this base returned. Restated
+  2026-08-29 after automated review on PR #207 found this note assuming the reader refuses a
+  bare name, which it never did.
+- **4b — an item's assignee link does not resolve, or resolves to something that is not a
+  `Resource`.** The same answer, for the same reason: it shelves. This is where an assignee
+  naming somebody with no `Resource` note behind them ends up — whether written before
+  [[Linking an item to a resource]] shipped or typed since — and the shelf is the right place
+  for it: visible, counted, and one drop away from being placed. Restated 2026-08-29 for the
+  same reason as 4a: a bare name that DOES resolve to a `Resource` in the results is not this
+  extension, it is the main flow.
 - **5a — a milestone is on the axis.** Unchanged: it draws in its own row above the roster,
   never inside anybody's band ([[Milestones out of the resource rows]]).
 
 ## Acceptance criteria
 
-- The rows are exactly the `Resource` notes in the base's results — no more, no fewer, in a
-  stated order.
+- The rows are exactly the `Resource` notes in the base's results — no more, no fewer,
+  alphabetical by note title through `localeCompare` (a path tie-break when two share a
+  title), the same collation `collectObservedAssignees` used for the option this note
+  replaces — following the USER's locale, because a name is data.
 - A resource with nothing assigned still gets a row. That is what the removed option existed
   for, and it must not be lost with it.
 - `resourceNames` is **removed**, not deprecated: the option, its parsing, the comma
@@ -95,11 +112,30 @@ is not a row, and therefore never a drop target.
 
 ## Where it lives
 
-**Nothing yet — this note is design.** The axis exists and takes its roster from three places
-this use case collapses into one.
+`src/domain/readItems.ts` is where a `Resource` note first stops being a candidate item:
+`divertResource` keeps it on `RawStore.resources` only when the base's own filter returned it
+(`entry !== null`), which is what makes 2b hold without a second check anywhere downstream.
 
-`src/domain/roadmap.ts` builds the rows and is where the three sources become one ·
+`src/domain/model.ts` sorts that roster once, alphabetically through `localeCompare` with a
+path tie-break, into `BacklogModel.resources` — the one list every other module reads rather
+than re-deriving — and builds `resourceLabels`, the collision-aware name each row and every
+menu entry shows.
+
+`src/domain/roadmap.ts`'s `deriveLanes` is where the three former sources become one: it
+builds exactly one `ResourceLane` per `model.resources` entry, keyed by path in a `Map`, and
+`placeAssigned`/`placeContextLane` resolve an item's row through that map rather than through
+a name comparison — which is what makes 4a and 4b answer identically, since resolution is the
+only question either asks.
+
 `src/domain/settings.ts`, `src/domain/viewOptions.ts` and `src/domain/settingsConsistency.ts`
-are where `resourceNames` and its warning are removed · `src/view/interactions/labels.ts`
-holds the append-to-roster write that goes with it · `src/view/render/lanes.ts` and
-`src/view/render/roadmap.ts` draw the rows and the empty state.
+are where the declared `resourceNames` option, its parsing and its own consistency warning
+were removed — the axis is CONFIGURED the moment the two date properties are, whatever the
+base's results turn out to hold. `src/domain/vocabulary.ts` lost
+`collectObservedAssignees`, the second of the three former sources, once nothing outside its
+own producer read what it collected.
+
+`src/view/interactions/labels.ts` builds the assignee menu's roster union over
+`model.resources` directly rather than over a declared list or the base's observed names.
+`src/view/render/lanes.ts` draws one row per lane and `src/view/render/roadmap.ts` draws the
+empty state named in 2a. `src/view/manual/setupSection.ts` describes both surfaces to the
+user in the shape they now have.

@@ -210,6 +210,20 @@ describe('a note path a saved view remembers', () => {
 		expect(loadViewState(vault.app, RELEASE_ID).prefs.scope).toBe('archive/sprints/12.md');
 	});
 
+	it('leaves an entry holding NEITHER path alone, rather than inventing one', () => {
+		// Every other test here saves both picks, so the walk had only ever met a pref that
+		// was set. An entry with folds and no picks at all is the common case — a backlog
+		// view that has never opened a release or scoped a board — and the reader must
+		// stay absent rather than becoming the renamed path.
+		saveViewState(vault.app, RELEASE_ID, { folds: { ...emptyFolds(), collapsed: ['Epic.md'] }, prefs: {} });
+
+		renamePathPrefs(vault.app, 'releases/0.8.md', 'releases/0.8.1.md');
+
+		const state = loadViewState(vault.app, RELEASE_ID);
+		expect(state.prefs).toEqual({});
+		expect(state.folds.collapsed).toEqual(['Epic.md']);
+	});
+
 	it('retains a pick a rename does not name, rather than pruning it', () => {
 		savePicks('releases/0.8.md', 'sprints/12.md');
 

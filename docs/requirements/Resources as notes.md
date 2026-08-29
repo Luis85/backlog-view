@@ -2,11 +2,11 @@
 type: Feature
 parent: "[[Resource Management]]"
 order: 10
-status: Active
+status: Done
 created: 2026-08-20
 source: user request
 started: 2026-08-21
-finished: ""
+finished: 2026-08-29
 horizon: ""
 start: ""
 due: ""
@@ -30,6 +30,13 @@ what it cost and why. Nothing under this feature should reach for the marker cat
 a person rather than a search result for their name.
 
 ## Landmines, before implementation
+
+**Spent, 2026-08-29.** All three use cases below have shipped in the order this section
+names — [[A resource is not a backlog item]], [[Linking an item to a resource]] and
+[[An absence names its resource by link]] are all `Done` — so what follows is now a record
+of the risk that was planned for rather than a warning still ahead of anybody. Left in
+place rather than deleted, because the order was the whole risk and a future resource
+property invented the same way should read why this one was sequenced.
 
 **The order is the whole risk here, and getting it wrong fails silently.** These three use
 cases touch one property from three directions, and two of them are already shipped code.
