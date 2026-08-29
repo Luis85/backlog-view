@@ -366,7 +366,17 @@ git commit -m "See a membership key pointed at a property the model owns"
 - Produces:
   - `interface ReleaseSet extends PropertySet { role: ReleaseField }` — the role is now per SET.
   - `ReleaseWrite` keeps `{ file, sets: ReleaseSet[], requiresType }` and **loses** its own `role`.
-  - `releaseClosureWrites(file: TFile, settings: ReleaseSettings, current: { status: string | null; released: CivilDate | null }, today: CivilDate): ReleaseWrite[]` — one write, two sets, or `[]` when there is nothing to write.
+  - `releaseClosureWrites(file: TFile, settings: ReleaseSettings, current: { status: string | null; released: CivilDate | null }, raw: { status: unknown; released: unknown }, today: CivilDate): ReleaseWrite[]` — one write, two sets, or `[]` when there is nothing to write.
+
+**`current` and `raw` are two different readings of the same two fields, and the planner
+needs both.** `current` is `ReleaseRow`'s NORMALISED value — `readString` trims, and
+coerces a number or a boolean to its string form — and that is the right reading for the
+"already at the transition value" no-op test, which is case-insensitive like every other
+pick in this plugin. `raw` is what the frontmatter literally holds, and that is the only
+thing `expects` may carry: the writer compares it against the live raw value, so a note
+spelling `status: " In progress "` would never match its own normalised reading and the
+action would be offered and then always refused, with no concurrent edit anywhere. Two
+readings, two jobs; the view supplies both because only it has the metadata cache.
 
 **Why `role` moves:** `reconfiguredKey` compares each set's key against `ROLE_KEYS[write.role]`. A two-set write under one role would compare the date key against the status key and refuse every release. Per-set roles keep that check exactly as PR #211 built it — still per role, still catching the swapped-options case a union test let through — while letting one write carry two fields.
 
@@ -380,7 +390,7 @@ it('plans the status and the date as ONE write with two sets', () => {
         releasedDateKey: 'released',
         releasedTransition: 'Released',
     });
-    const writes = releaseClosureWrites(file, settings, { status: 'In progress', released: null }, TODAY);
+    const writes = releaseClosureWrites(file, settings, { status: 'In progress', released: null }, { status: ' In progress ', released: undefined }, TODAY);
 
     // ONE write, because `applyPropertyWrites` opens one `processFrontMatter` per write:
     // two writes would be two saves, and a retype between them would land the status and
@@ -393,12 +403,15 @@ it('plans the status and the date as ONE write with two sets', () => {
     // The role is on each SET now, so `reconfiguredKey` can still ask per role.
     expect(writes[0].sets.map((s) => s.role)).toEqual(['status', 'released']);
     expect(writes[0].requiresType).toBe('Release');
+    // The RAW spelling, not the trimmed reading: this is the value the writer compares
+    // against the live frontmatter, and a normalised one would never match it.
+    expect(writes[0].sets[0].expects).toBe(' In progress ');
 });
 
 it('plans nothing when the release is already at the transition value', () => {
     const settings = settingsWithReleaseKeys({ statusKey: 'status', releasedDateKey: 'released', releasedTransition: 'Released' });
     // `sameValue`, case-insensitively, the rule every other pick in this plugin keeps.
-    expect(releaseClosureWrites(new TFile('0.9.md'), settings, { status: 'released', released: null }, TODAY)).toEqual([]);
+    expect(releaseClosureWrites(new TFile('0.9.md'), settings, { status: 'released', released: null }, { status: 'released', released: undefined }, TODAY)).toEqual([]);
 });
 ```
 
@@ -466,16 +479,23 @@ export function releaseClosureWrites(
 	file: TFile,
 	settings: ReleaseSettings,
 	current: { status: string | null; released: CivilDate | null },
+	raw: { status: unknown; released: unknown },
 	today: CivilDate,
 ): ReleaseWrite[] {
 	if (settings.statusKey === '' || settings.releasedDateKey === '' || settings.releasedTransition === '') return [];
+	// The NORMALISED reading, case-insensitively — the rule every other pick keeps.
 	if (current.status !== null && sameValue(current.status, settings.releasedTransition)) return [];
 	return [
 		{
 			file,
 			requiresType: RELEASE_TYPE,
 			sets: [
-				{ key: settings.statusKey, value: settings.releasedTransition, role: 'status', expects: current.status },
+				// The RAW value, never `current.status`: the writer compares this against
+				// what the frontmatter literally holds, and `readString` trims and coerces.
+				// A note spelling `status: " In progress "` reads as valid and would never
+				// equal its own normalised form, so the action would be offered and then
+				// always refused with nothing concurrent happening at all.
+				{ key: settings.statusKey, value: settings.releasedTransition, role: 'status', expects: raw.status },
 				{ key: settings.releasedDateKey, value: formatCivil(today), role: 'released', expects: null },
 			],
 		},
@@ -1047,11 +1067,28 @@ it('names the option to bind rather than only withholding the button', () => {
     expect(view.viewEl.textContent).toContain(en['release.option.releasedValues']);
 });
 
-it('keeps focus on the button across a metadata refresh', () => {
-    const { view } = releaseScreen({ status: 'In progress' });
-    button(view, '.pbl-rel-close').focus();
+it('refuses when the transition value changed to ANOTHER valid one mid-dialog', async () => {
+    // The case a re-asked `closeOffer` cannot catch: the configuration is still perfectly
+    // valid, just not the one the reader agreed to.
+    const { view, vault } = releaseScreen({ status: 'In progress' }, scopeVault(), {
+        releasedStatusValues: 'Released, Archived',
+        releasedTransitionValue: 'Released',
+    });
+    button(view, '.pbl-rel-close').click();
+    view.config.set('releasedTransitionValue', 'Archived');
+    view.settings = resolveReleaseSettings(view.config);
+    await confirmDialog();
+    expect(vault.frontmatter('0.9.md').status).toBe('In progress');
+});
+
+// BOTH controls, in one parameterised case: registering one and forgetting the other is
+// what the focus-handle list exists to prevent, and a test per button is how the second
+// one gets forgotten.
+it.each(['.pbl-rel-close', '.pbl-rel-notes'])('keeps focus on %s across a metadata refresh', (selector) => {
+    const { view } = releaseScreen({ status: 'In progress' }, scopeVault(), { releaseNotesFolder: 'notes' });
+    button(view, selector).focus();
     view.onDataUpdated();
-    expect(document.activeElement).toBe(view.viewEl.querySelector('.pbl-rel-close'));
+    expect(document.activeElement).toBe(view.viewEl.querySelector(selector));
 });
 
 it('is disabled while a SIBLING view holds the write lock', () => {
@@ -1114,12 +1151,19 @@ function askThenClose(view: ReleaseView, release: ReleaseRow, scope: ReleaseScop
 	// Captured BEFORE the await, the rule the root guide states: the batch's own refresh
 	// rebuilds `scope` before it resolves.
 	const outstanding = unfinishedMembers(release, scope);
+	// The transition value the reader is about to agree to. Captured because the option is
+	// editable while the dialog is open, and re-asking `closeOffer` at the submit does NOT
+	// catch this: a change from one valid released value to another leaves the offer
+	// perfectly valid, and the planner would then write the value nobody confirmed.
+	const confirmed = view.settings.releasedTransition;
+	// And the RAW frontmatter, which is what the write's own expectations compare against.
+	const raw = rawFields(view, release);
 	openConfirm(view.app, {
 		title: t('release.close.title', { name: release.name }),
 		message: outstandingMessage(release, outstanding),
 		links: outstanding.map((row) => ({ label: row.item.title, open: () => openTarget(view.openContext(), row.item.file) })),
 		cta: t('release.close.action'),
-		onConfirm: () => void submitClose(view, release),
+		onConfirm: () => void submitClose(view, release, confirmed, raw),
 	});
 }
 
@@ -1139,17 +1183,45 @@ function unfinishedMembers(release: ReleaseRow, scope: ReleaseScope): ScopeRow[]
 and the submit, which re-asks everything that can move across the await:
 
 ```ts
-async function submitClose(view: ReleaseView, release: ReleaseRow): Promise<void> {
+async function submitClose(
+	view: ReleaseView,
+	release: ReleaseRow,
+	confirmed: string,
+	raw: { status: unknown; released: unknown },
+): Promise<void> {
 	// The CONFIGURATION moves across an await as well as the note. `reconfiguredKey`
 	// compares keys, and this action's two options are VALUES, so it cannot see a
 	// transition value edited while the dialog was open. Re-asked, and REFUSED rather
 	// than substituted: the reader agreed to what the screen showed them.
 	const offer = closeOffer(release, view.settings);
-	if (!offer.offered) {
+	// TWO questions, and the second is not implied by the first: `closeOffer` says the
+	// configuration is still usable, and this says it is still the SAME. A transition
+	// changed from one valid released value to another passes the first and fails here,
+	// which is the case that would otherwise write a status nobody agreed to.
+	if (!offer.offered || view.settings.releasedTransition !== confirmed) {
 		new Notice(t('release.close.changed'));
 		return;
 	}
-	await view.applyRelease(releaseClosureWrites(release.item.file, view.settings, { status: release.status.value, released: release.released.value }, todayCivil()));
+	await view.applyRelease(
+		releaseClosureWrites(
+			release.item.file,
+			view.settings,
+			{ status: release.status.value, released: release.released.value },
+			raw,
+			todayCivil(),
+		),
+	);
+}
+
+/** What the note's two closing fields LITERALLY hold right now, for the write's own
+ *  expectations. Read from the metadata cache rather than from `ReleaseRow`, whose values
+ *  are normalised — the distinction `releaseClosureWrites`' own header states. */
+function rawFields(view: ReleaseView, release: ReleaseRow): { status: unknown; released: unknown } {
+	const fm = view.app.metadataCache.getFileCache(release.item.file)?.frontmatter;
+	return {
+		status: ownValue(fm, view.settings.statusKey),
+		released: ownValue(fm, view.settings.releasedDateKey),
+	};
 }
 ```
 
@@ -1164,7 +1236,16 @@ In `renderScope`, immediately after `drawHeader(...)` and BEFORE the `membership
 
 - [ ] **Step 5: Register the focus handle and the busy state**
 
-In `releaseView.ts`, add `'pbl-rel-close'` to `FOCUS_HANDLE_CLASSES`, with a comment saying why a write control needs one more than a read control does: pressing it CAUSES the redraw that detaches it.
+In `releaseView.ts`, add **both** action classes to `FOCUS_HANDLE_CLASSES` — `'pbl-rel-close'` here and `'pbl-rel-notes'` with it, even though Task 12 is what draws the second. Registering one and leaving the other is the exact defect this list exists to stop, and splitting the edit across two tasks is how it would happen: the list is one vocabulary, not a per-button registration.
+
+```ts
+	// The two closing actions, added with `releaseClose.ts`. Both are the sharp case this
+	// list's header describes rather than the mild one: pressing either CAUSES the redraw
+	// that detaches it, so without a handle a keyboard reader pays a lost place for every
+	// release they close or write up.
+	'pbl-rel-close',
+	'pbl-rel-notes',
+```
 
 Then correct `syncBusy` — its comment currently states that this view has no write control to disable, which this task makes false:
 
@@ -1609,6 +1690,15 @@ it('refuses while a sibling view holds the write lock', async () => {
     expect(button(view, '.pbl-rel-notes').hasAttribute('disabled')).toBe(true);
 });
 
+it('names the path it tried when the write fails', async () => {
+    // The gate catches whatever its callback throws and reports a generic failure, so a
+    // catch OUTSIDE it never runs — this asserts the notice the reader actually gets.
+    const { view, vault } = releaseScreen({ status: 'Released' }, scopeVault(), { releaseNotesFolder: 'notes' });
+    vault.failNextWrite('notes/0.9 release notes.md');
+    await click(view, '.pbl-rel-notes');
+    expect(lastNotice()).toContain('notes/0.9 release notes.md');
+});
+
 it('HOLDS the lock for the whole write, not just before it', async () => {
     // The disabled attribute and a `gate.writing` check both read the lock at an instant.
     // What this asserts is the window AFTER that: a sibling starting mid-write would land
@@ -1701,15 +1791,26 @@ async function generate(view: ReleaseView, release: ReleaseRow, scope: ReleaseSc
 		? joinSource(identity.base, identity.view, release.name)
 		: joinSource(view.config.name ?? '', release.name);
 	const content = releaseNotesContent(release, scope.rows, source);
-	try {
-		// Through the gate, so `applying` is held for the whole write rather than sampled
-		// before it. A sibling batch cannot start underneath this one, and this one is
-		// refused (loudly, by the gate) if a sibling got there first.
-		const result = await view.gate.runFileWrite(() =>
-			writeReleaseNotes(view.app, view.settings.notesFolder, release.name, content),
-		);
-		if (result === null) return; // The gate refused and has already said so.
-		new Notice(noticeFor(result));
+	// Through the gate, so `applying` is held for the whole write rather than sampled
+	// before it. A sibling batch cannot start underneath this one, and this one is
+	// refused (loudly, by the gate) if a sibling got there first.
+	//
+	// The write's OWN failure is caught INSIDE the callback, not around this call:
+	// `runExclusively` catches whatever the callback throws, logs it and shows the
+	// generic `writeGate.applyFailed`, then returns null — so a `catch` out here never
+	// runs, and extension 4e's "reports the path it tried" would be lost to a message
+	// about backlog items. The gate's null then means only one thing: it refused.
+	const result = await view.gate.runFileWrite(async () => {
+		try {
+			return await writeReleaseNotes(view.app, view.settings.notesFolder, release.name, content);
+		} catch (err) {
+			console.error('Product Backlog: release notes write failed', err);
+			new Notice(t('release.notes.failed', { path: releaseNotesPath(view.settings.notesFolder, release.name) }));
+			return null;
+		}
+	});
+	if (result === null) return; // Refused by the gate, or failed and already reported.
+	new Notice(noticeFor(result));
 		// `noticeFor` is a switch over the five outcomes, spelled once here rather than at
 		// each branch of the try: the reader is told which of them happened, and
 		// `'foreign'` and `'replaced'` are the two that mean nothing was written for them.
@@ -1725,12 +1826,8 @@ async function generate(view: ReleaseView, release: ReleaseRow, scope: ReleaseSc
 		//         return t('release.notes.written', { path: result.path });
 		//     }
 		//   }
-		// Opening is a convenience, not part of the guarantee (5a).
-		if (result.outcome !== 'foreign') openTarget(view.openContext(), view.app.vault.getFileByPath(result.path));
-	} catch (err) {
-		console.error('Product Backlog: release notes write failed', err);
-		new Notice(t('release.notes.failed', { path: releaseNotesPath(view.settings.notesFolder, release.name) }));
-	}
+	// Opening is a convenience, not part of the guarantee (5a).
+	if (result.outcome !== 'foreign') openTarget(view.openContext(), view.app.vault.getFileByPath(result.path));
 }
 ```
 
