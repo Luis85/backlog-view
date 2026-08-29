@@ -24,6 +24,15 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 - `Set assignee` lists those notes and offers `New resource...`, which creates the note
   and assigns it in one action. `New assignee...` is gone.
 
+### Fixed
+
+- An assignee chip whose value names no resource now says so to a screen reader, not only
+  in the tooltip and the styling: its accessible name reads `Change assignee (currently
+  Sarah, which names no resource in this base)`.
+- Marking or editing an absence now refuses when the resource it names stopped being a
+  `Resource` note — retyped or deleted — between the form opening and the submit, instead
+  of writing a link that draws in no lane. The same check the assignee write already made.
+
 ### Removed
 
 - The `Resources (in order)` view option. The roster is the notes the base returns.

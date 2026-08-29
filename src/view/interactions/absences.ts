@@ -281,6 +281,13 @@ async function removeAbsence(host: BacklogViewHost, absence: Absence): Promise<v
  * this model carries — the roster moved under an open modal, the one race `validate`
  * cannot see, since it runs against the list captured at open. Reported rather than
  * silently dropped, for the same reason every other refusal here is.
+ *
+ * That fourth outcome is asked TWICE and the second ask is the load-bearing one. This
+ * model's roster is what Bases last handed the view, so a note retyped out of `Resource`
+ * a moment ago is still in it; `updateAbsenceNote` asks the VAULT the same question and
+ * answers `staleResource`. Both land on `absence.resourceMissing`, because the reader's
+ * fact is the same one either way — the resource they picked is not a resource — and the
+ * two differ only in which index noticed.
  */
 async function editAbsence(host: BacklogViewHost, absence: Absence, result: AbsenceResult): Promise<void> {
 	if (refusedByConfig(host)) return;
@@ -290,13 +297,16 @@ async function editAbsence(host: BacklogViewHost, absence: Absence, result: Abse
 		return;
 	}
 	try {
-		const wrote = await updateAbsenceNote(host.app, host.settings, absence.file, {
+		const edit = await updateAbsenceNote(host.app, host.settings, absence.file, {
 			resource,
 			start: result.start,
 			target: result.target,
 		});
-		if (!wrote) {
-			new Notice(t('absence.becameResource'));
+		// Both refusals skip the rename, for one reason with two halves: the note is
+		// unchanged, and a rename spells the resource's name into the title — so renaming
+		// after either would describe the note by a fact that was never written.
+		if (edit !== 'written') {
+			new Notice(edit === 'becameResource' ? t('absence.becameResource') : t('absence.resourceMissing'));
 			return;
 		}
 		await renameAbsenceNote(
@@ -334,6 +344,10 @@ async function writeAbsence(host: BacklogViewHost, result: AbsenceResult): Promi
 		const title = absenceTitle({ start: result.start, target: result.target }, label);
 		const spec: AbsenceSpec = { resource, start: result.start, target: result.target, folder: absenceFolder(host), title };
 		const file = await createAbsenceNote(host.app, host.settings, spec);
+		if (file === null) {
+			new Notice(t('absence.resourceMissing'));
+			return;
+		}
 		new Notice(t('absence.created', { resource: label, name: file.basename }));
 	} catch (e) {
 		console.error('Product Backlog: failed to create the absence', e);

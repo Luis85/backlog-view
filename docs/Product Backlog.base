@@ -32,7 +32,6 @@ views:
     priorityValues: P1, P2, P3
     assigneeProperty: note.assignee
     dependsOnProperty: note.dependsOn
-    resourceNames: Evi, Sarah, Jolanda, Chris, Igmar, Ben, Alex
     typeFolder.absence: docs/absences
   - type: product-estimation
     name: Estimation Board

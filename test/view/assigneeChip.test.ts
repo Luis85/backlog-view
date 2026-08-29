@@ -50,6 +50,34 @@ describe('the assignee chip´s broken state', () => {
 		expect(chip?.dataset.tooltip).toBe('This names no resource in this base.');
 	});
 
+	it('says the value names nobody in the ACCESSIBLE NAME, not only in the tooltip', () => {
+		// The register recorded this as owed and unchecked: the class was asserted seven
+		// times here and the chip's own name never. An explicit `aria-label` IS the
+		// accessible name — `title` is the accname algorithm's last fallback and Obsidian's
+		// tooltip is neither attribute — so a marker living only in the tip is a marker a
+		// screen reader never reaches, and a broken assignment announced exactly as a valid
+		// one. jsdom computes no accessibility tree, so what this asserts is the name's
+		// TEXT; that a reader announces the name rather than the tip is the rule behind it.
+		const vault = new FakeVault();
+		vault.addFile('Epic B.md', { frontmatter: { type: 'Epic', order: 20 } });
+		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10, assignee: '[[Epic B]]' } });
+		const { containerEl } = makeView(vault, ASSIGNEE, VISIBLE);
+
+		const chip = chipOf(containerEl, 'Epic A');
+		expect(chip?.getAttribute('aria-label')).toBe('Change assignee (currently Epic B, which names no resource in this base)');
+	});
+
+	it('leaves a RESOLVED assignee’s accessible name alone, so the mark means something', () => {
+		// The other half of the claim above: a name that carries the qualification for every
+		// chip says nothing about any of them.
+		const vault = new FakeVault();
+		vault.addFile('Alex.md', { frontmatter: { type: 'Resource' } });
+		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10, assignee: '[[Alex]]' } });
+		const { containerEl } = makeView(vault, ASSIGNEE, VISIBLE);
+
+		expect(chipOf(containerEl, 'Epic A')?.getAttribute('aria-label')).toBe('Change assignee (currently Alex)');
+	});
+
 	it('marks a plain name left over from before resources were notes as broken too', () => {
 		const vault = new FakeVault();
 		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10, assignee: 'Sarah' } });
