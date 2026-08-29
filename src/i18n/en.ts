@@ -2128,6 +2128,13 @@ export const en = {
 	 * the reader has to do is look at it.
 	 */
 	'release.notes.action': 'Generate release notes',
+	/**
+	 * Why generation is withheld inside an embedded base. `resolveViewIdentity` refuses to
+	 * give two bases embedded in one note a shared identity, and the release notes marker
+	 * needs a unique one: without it, two such views writing to one folder would each read
+	 * the other's file as their own to replace.
+	 */
+	'release.notes.embedded': 'Release notes can only be generated from a base file, not from a base embedded in a note.',
 	'release.notes.bindFolder': 'To generate release notes, bind the release notes folder.',
 	'release.notes.bindMembership': 'To generate release notes, bind the release membership property.',
 	'release.notes.failed': 'The release notes could not be written to {path}.',

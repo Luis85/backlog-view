@@ -21,7 +21,7 @@ import { releaseNotesContent } from '../../domain/releaseNotesText';
 import { joinSource } from '../../domain/readmeMarker';
 import { GeneratedWriteResult } from '../../storage/readmeFile';
 import { releaseNotesPath, writeReleaseNotes } from '../../storage/releaseNotesFile';
-import { resolveViewIdentity } from '../../storage/viewIdentity';
+import { resolveViewIdentity, ViewIdentity } from '../../storage/viewIdentity';
 
 /**
  * The release screen's closing actions. Drawn ABOVE `renderScope`'s two early returns,
@@ -50,6 +50,17 @@ function drawGenerate(
 	scope: ReleaseScope,
 	planSettings: BacklogSettings,
 ): void {
+	// Resolved HERE and passed down, rather than asked again at the press. Null means an
+	// EMBEDDED base, and the control is withheld for it — see the note on
+	// `generationBlocked`. Asking once is also what keeps `generate` free of a null branch
+	// no caller can reach: a guard the UI makes unreachable is a line no test can cover
+	// honestly, and covering it would mean calling the action by a route the screen does
+	// not have.
+	const identity = resolveViewIdentity(view.app, view.viewEl, view.config.name ?? '');
+	if (identity === null) {
+		areaEl.createDiv({ cls: 'pbl-rel-actions-note', text: t('release.notes.embedded') });
+		return;
+	}
 	const blocked = generationBlocked(view, planSettings);
 	if (blocked !== null) {
 		areaEl.createDiv({ cls: 'pbl-rel-actions-note', text: blocked });
@@ -61,7 +72,7 @@ function drawGenerate(
 		attr: { type: 'button' },
 	});
 	btn.disabled = view.gate.writing;
-	btn.addEventListener('click', () => void generate(view, release, scope));
+	btn.addEventListener('click', () => void generate(view, release, scope, identity));
 }
 
 /**
@@ -83,6 +94,26 @@ function drawGenerate(
  * two keys.
  */
 function generationBlocked(view: ReleaseView, planSettings: BacklogSettings): string | null {
+	// **An embedded base cannot name its own output, so it does not get one** — asked by
+	// `drawGenerate` before this, because the identity it resolves is also what the write
+	// needs, and resolving it twice is two answers to one question.
+	//
+	// **An embedded base cannot name its own output, so it does not get one.**
+	// `resolveViewIdentity` returns null for one DELIBERATELY, and its own comment says
+	// why: a base embedded in a note is drawn inside that note's leaf, so every base
+	// embedded there and every view of each would answer to one key. It refuses to invent
+	// an identity they would share.
+	//
+	// The marker fallback then had exactly that shape — view name plus release path — so
+	// two embedded bases with one view name, one notes folder and one release produce the
+	// same marker for the same path. The refusing writer reads the second generation as
+	// the first's REGENERATION and replaces it, with a different population and no notice:
+	// the identity collision defeats the protection rather than tripping it.
+	//
+	// Withheld rather than made unique. Nothing available here distinguishes two embedded
+	// bases — the host note's path is what `resolveViewIdentity` already declined, since
+	// it is shared by every base in that note — and a file this action cannot name safely
+	// is one it must not write.
 	if (view.settings.notesFolder === '') return t('release.notes.bindFolder');
 	// Bound is not the same as READABLE, and this one is not a collision: with the key
 	// unbound every scope reads empty, and a file saying the release contained nothing
@@ -94,20 +125,22 @@ function generationBlocked(view: ReleaseView, planSettings: BacklogSettings): st
 	return problems.length === 0 ? null : t('config.fixFirst', { problem: problems[0] });
 }
 
-async function generate(view: ReleaseView, release: ReleaseRow, scope: ReleaseScope): Promise<void> {
+async function generate(
+	view: ReleaseView,
+	release: ReleaseRow,
+	scope: ReleaseScope,
+	identity: ViewIdentity,
+): Promise<void> {
 	// The same identity `commands/readme.ts` builds for the backlog README, plus the
-	// release — `resolveViewIdentity` returns null for an embedded base, where the view
-	// name stands alone, which is the fallback that file already states.
-	const identity = resolveViewIdentity(view.app, view.viewEl, view.config.name ?? '');
+	// release — resolved by `drawGenerate` and handed down, so a null one cannot reach
+	// `joinSource` and there is no second question here to answer differently.
 	// `release.path`, never `release.name`. The name is `file.basename`, and the whole
 	// reason this marker gained a third part is that two releases in different folders may
 	// share a basename — and therefore share this file's OUTPUT path, since that is built
 	// from the basename too. A marker naming the basename is identical for both, so the
 	// refusing writer would read `b/0.9.md`'s generation as `a/0.9.md`'s regeneration and
 	// overwrite the notes it exists to protect. The path is what tells them apart.
-	const source = identity
-		? joinSource(identity.base, identity.view, release.path)
-		: joinSource(view.config.name ?? '', release.path);
+	const source = joinSource(identity.base, identity.view, release.path);
 	const content = releaseNotesContent(release, scope.rows, source);
 	// Through the gate, so `applying` is held for the whole write rather than sampled
 	// before it. A sibling batch cannot start underneath this one, and this one is

@@ -37,6 +37,19 @@ function twoReleasesOneBasename(): FakeVault {
 }
 
 describe('generating the release notes', () => {
+	it('is withheld inside an embedded base, which cannot name its own output', async () => {
+		// `resolveViewIdentity` returns null for an embedded base DELIBERATELY: every base
+		// embedded in one note is drawn in that note's leaf, so any identity built from it
+		// is one they all share. The marker needs a unique one, and two such views with the
+		// same view name, notes folder and release would each read the other's file as
+		// their own to replace — the identity collision defeating the refusal rather than
+		// tripping it. So the control is absent and says why.
+		const { view, vault } = releaseScreen({ status: 'Released' }, scopeVault(), NOTES_ON, { embedded: true });
+		expect(view.viewEl.querySelector('.pbl-rel-notes')).toBeNull();
+		expect(view.viewEl.textContent).toContain(en['release.notes.embedded']);
+		expect(vault.contents.get(NOTES)).toBeUndefined();
+	});
+
 	it('writes the notes, and opens them', async () => {
 		const vault = scopeVault();
 		vault.addFile('First PBI.md', { frontmatter: { type: 'PBI', release: '[[0.9]]', order: 1 } });

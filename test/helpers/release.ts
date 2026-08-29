@@ -340,10 +340,18 @@ export function releaseScreen(
 	release: Record<string, unknown>,
 	vault: FakeVault = scopeVault(),
 	over: Record<string, unknown> = {},
+	{ embedded = false }: { embedded?: boolean } = {},
 ): ReleaseHarness & { vault: FakeVault; lock: WriteLock } {
 	vault.addFile('0.9.md', { frontmatter: { type: 'Release', version: '0.9.0', ...release } });
 	const lock = new WriteLock();
-	const harness = makeReleaseView(vault, { ...RELEASE_CONFIG, ...over }, { lock });
+	// A REAL `.base` leaf unless the test is about an embedded one. This defaulted to
+	// embedded until 2026-08-29 and nothing noticed, because nothing asked
+	// `resolveViewIdentity` anything — so every generation test was quietly running on the
+	// one mount where the release notes now refuse to write at all.
+	const harness = makeReleaseView(vault, { ...RELEASE_CONFIG, ...over }, {
+		lock,
+		...(embedded ? {} : { base: 'Releases.base' }),
+	});
 	harness.view.pick('0.9.md');
 	return { ...harness, vault, lock };
 }
