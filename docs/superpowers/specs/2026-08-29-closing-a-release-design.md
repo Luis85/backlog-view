@@ -354,6 +354,34 @@ caller of it.
 `src/view/release/releaseClose.ts` — the two buttons, and the two actions behind them.
 `scopeToolbar.ts` draws; the actions do not live in it.
 
+`src/view/release/releaseView.ts` — **and this file was missing from the list, which hid
+two things this increment breaks rather than adds to.**
+
+**Each button needs a class in `FOCUS_HANDLE_CLASSES`.** That list exists because a redraw
+detaches a control and a keyboard reader lands on `document.body`; its own comment says the
+write controls make it sharper than the read ones, because pressing one CAUSES the redraw
+that detaches it. Both new buttons are exactly that shape — press, write, redraw — so
+without a registered handle a reader pays a lost place for every release they close. One
+stable unique class each, since the exact-match branch needs no `data-path` to disambiguate
+a control this screen draws one of.
+
+**And `syncBusy` has to grow the half it deliberately does not have.** Its comment states
+the premise plainly: it is "the estimation view's own `syncBusy` minus the toolbar, because
+this view has no write control to disable — the two that write open a menu and a dialog,
+both of which are gone from the screen before the batch they started runs." **This
+increment is what makes that false.** These two are persistent controls that stay on screen
+across a batch, including one a sibling view started — `onDataUpdated` defers rebuilding
+the model while the lock is held, so a press during someone else's batch would act on a
+stale model. So both buttons are disabled while `gate.writing`, and the comment's premise
+is corrected rather than left standing beside code that no longer matches it.
+
+Generation is the one that needs this most, because it is **not** routed through
+`applyRelease`: it writes a file rather than frontmatter, so it never touches the batch
+path, and nothing else would stop it running from a pre-batch membership and overwriting
+the notes with a population that is about to change. It refuses while the lock is held, on
+the same rule ADR 0030 states for the lock itself — a batch is a fact about the vault, so a
+write in another view is a reason for this one to wait.
+
 **The actions cannot go behind `renderScope`'s early returns, and the toolbar is behind
 both of them.** `renderScope` returns at the unconfigured-membership state and again at
 the empty-scope state, before `drawScopeToolbar`. That would make `Generate release notes`
@@ -472,6 +500,11 @@ design adds to them:
   written a date, not skipped. That is the case a raw-presence guard gets wrong while every
   reading in the plugin calls it absent, and it is the commonest shape a vault has. Both are driven from inside the await, because a test that changes the
   configuration before the dialog opens passes against a submit that never re-reads.
+- Both buttons carry a focus handle: with either focused, a Bases metadata refresh leaves
+  focus on that button rather than on `document.body`.
+- Both are disabled while the shared lock is held, and generation refuses outright if it is
+  reached with the lock held — asserted by holding the lock from a SIBLING view, since this
+  view's own batch is the case that already worked.
 - Generation is withheld, naming the problem, for a collision seen by ANY of its three
   reports: `stateProperty` on the order key (`configProblems`), two release-note roles on
   one key (`releaseNoteProblems`), and `membershipProperty` on an item-side key (the new
