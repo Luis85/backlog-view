@@ -378,9 +378,32 @@ is corrected rather than left standing beside code that no longer matches it.
 Generation is the one that needs this most, because it is **not** routed through
 `applyRelease`: it writes a file rather than frontmatter, so it never touches the batch
 path, and nothing else would stop it running from a pre-batch membership and overwriting
-the notes with a population that is about to change. It refuses while the lock is held, on
-the same rule ADR 0030 states for the lock itself — a batch is a fact about the vault, so a
-write in another view is a reason for this one to wait.
+the notes with a population that is about to change.
+
+**And it must HOLD the lock, not merely observe it.** Disabling the button and re-checking
+`gate.writing` at the press both read the lock at an instant; generation then awaits a
+folder create and a file write, and a sibling batch starting inside that window runs
+concurrently with it — the write lands from a membership that has since changed, which is
+the whole failure the check was for. Reading a lock is not taking one.
+
+So generation runs through the gate's own exclusive section. `runExclusively` already does
+everything this needs and nothing it does not: it refuses when the lock is held, sets
+`applying` for the duration, publishes busy to every sibling view, and releases in a
+`finally` — and it installs **no undo slot** unless something reports an inverse, which a
+file write never does. It is private today, so the gate gains one thin public entry that
+delegates to it, beside `applySafely` and `undoLast`:
+
+```ts
+/** A vault write that is not a frontmatter batch — the release notes file today. Takes
+ *  the same exclusive section every batch takes, so a sibling cannot start one underneath
+ *  it, and installs no undo slot: nothing reports an inverse, and a whole-file write has
+ *  no per-key restore to offer. */
+runFileWrite<T>(run: () => Promise<T>): Promise<T | null>;
+```
+
+That also brings `writeProblems()` with it, which for this view is `releaseNoteProblems` —
+one of generation's three gates asked a second time, at the write rather than at the draw,
+which is where it actually holds.
 
 **The actions cannot go behind `renderScope`'s early returns, and the toolbar is behind
 both of them.** `renderScope` returns at the unconfigured-membership state and again at

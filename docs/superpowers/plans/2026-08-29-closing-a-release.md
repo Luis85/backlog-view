@@ -1604,9 +1604,21 @@ it('refuses while a sibling view holds the write lock', async () => {
     // frontmatter — so nothing else would stop it generating from a membership that is
     // about to change while `onDataUpdated` defers the model rebuild.
     const { view, lock } = releaseScreen({ status: 'Released' }, scopeVault(), { releaseNotesFolder: 'notes' });
-    lock.begin();
+    lock.applying = true;
     view.render();
     expect(button(view, '.pbl-rel-notes').hasAttribute('disabled')).toBe(true);
+});
+
+it('HOLDS the lock for the whole write, not just before it', async () => {
+    // The disabled attribute and a `gate.writing` check both read the lock at an instant.
+    // What this asserts is the window AFTER that: a sibling starting mid-write would land
+    // this file from a membership that has since changed, and reading a lock is not
+    // taking one.
+    const { view, vault } = releaseScreen({ status: 'Released' }, scopeVault(), { releaseNotesFolder: 'notes' });
+    let heldDuringWrite = false;
+    vault.onNextProcess('notes/0.9 release notes.md', () => (heldDuringWrite = view.gate.writing));
+    await click(view, '.pbl-rel-notes');
+    expect(heldDuringWrite).toBe(true);
 });
 ```
 
@@ -1657,15 +1669,30 @@ function generationBlocked(view: ReleaseView, planSettings: BacklogSettings): st
 
 - [ ] **Step 4: Write the action**
 
+First add the gate's thin public entry, in `src/view/writeGate.ts` beside `applySafely`:
+
+```ts
+	/**
+	 * A vault write that is not a frontmatter batch — the release notes file today.
+	 *
+	 * Reading `writing` is not the same as HOLDING the lock: generation awaits a folder
+	 * create and a file write, and a sibling batch starting inside that window would run
+	 * concurrently, landing this file from a membership that has since changed. This takes
+	 * the same exclusive section every batch takes.
+	 *
+	 * It installs no undo slot, because nothing here reports an inverse — a whole-file
+	 * write has no per-key restore to offer, which is exactly why the notes writer refuses
+	 * another release's file rather than replacing it.
+	 */
+	runFileWrite<T>(run: () => Promise<T>): Promise<T | null> {
+		return this.runExclusively(1, () => run());
+	}
+```
+
+Then the action, which no longer checks the lock itself — taking it IS the check:
+
 ```ts
 async function generate(view: ReleaseView, release: ReleaseRow, scope: ReleaseScope): Promise<void> {
-	// A batch is a fact about the vault (ADR 0030), so a sibling view's write is a reason
-	// for this one to wait. Asked again here rather than trusting the disabled attribute:
-	// the lock can be taken between the draw and the press.
-	if (view.gate.writing) {
-		new Notice(t('release.notes.busy'));
-		return;
-	}
 	// The same identity `commands/readme.ts` builds for the backlog README, plus the
 	// release — `resolveViewIdentity` returns null for an embedded base, where the view
 	// name stands alone, which is the fallback that file already states.
@@ -1675,7 +1702,13 @@ async function generate(view: ReleaseView, release: ReleaseRow, scope: ReleaseSc
 		: joinSource(view.config.name ?? '', release.name);
 	const content = releaseNotesContent(release, scope.rows, source);
 	try {
-		const result = await writeReleaseNotes(view.app, view.settings.notesFolder, release.name, content);
+		// Through the gate, so `applying` is held for the whole write rather than sampled
+		// before it. A sibling batch cannot start underneath this one, and this one is
+		// refused (loudly, by the gate) if a sibling got there first.
+		const result = await view.gate.runFileWrite(() =>
+			writeReleaseNotes(view.app, view.settings.notesFolder, release.name, content),
+		);
+		if (result === null) return; // The gate refused and has already said so.
 		new Notice(noticeFor(result));
 		// `noticeFor` is a switch over the five outcomes, spelled once here rather than at
 		// each branch of the try: the reader is told which of them happened, and
