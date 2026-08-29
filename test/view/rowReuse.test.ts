@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { FakeVault } from '../helpers/vault';
 import { itemAt, makeView, refresh, rowByTitle, rows, titlesOf, useViewHarness } from '../helpers/view';
 
@@ -199,16 +199,22 @@ describe('row reuse across a data update', () => {
 		// Shut, so its features were never drawn and are not in the index.
 		expect(titlesOf(containerEl)).toEqual(['Epic']);
 		const child = itemAt(view, 'Alpha.md');
+		const rendered = vi.spyOn(view, 'render');
 
 		view.refreshSubtree(child);
 
-		// The pass ran and drew the tree the model describes, rather than throwing or
-		// leaving the screen untouched.
+		// The pass ran and drew the tree the model describes, rather than throwing.
 		expect(titlesOf(containerEl)).toEqual(['Epic']);
-		// And the row that IS on screen went through a real render rather than being left
-		// as the element the previous pass had — which is what tells a full render from a
-		// no-op with the same visible result.
-		expect(rowByTitle(containerEl, 'Epic')).not.toBeNull();
+		// And it was a WHOLE render, which is the half the screen cannot show: a shut tree
+		// renders to the same one row either way, so every visible assertion above passes
+		// just as well if the guard becomes `if (!row) return;`. The spy is on the call
+		// because the call is the claim — the register's own "check the forbidden thing,
+		// not the places" rule, read for a thing that must HAPPEN. Row identity cannot
+		// stand in for it: this file's first test is that a render reuses the element for
+		// every unchanged path, so a full render and a no-op leave the same element in
+		// place by design. (Found by review, Codex on PR #217, against a version of this
+		// test whose own comment claimed the distinction it did not draw.)
+		expect(rendered).toHaveBeenCalledTimes(1);
 	});
 
 	it('never keeps a row whose file the metadata cache has not indexed', () => {
