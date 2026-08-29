@@ -376,4 +376,43 @@ describe('the writer asks the LIVE type about an assignee target', () => {
 
 		expect(vault.fm('1.0.md')['assignee']).toBe('[[Alex]]');
 	});
+
+	it('lets a target through whose cache is not built yet, which is every fresh note', async () => {
+		// `New resource...` assigns the note it just created, and Obsidian fills the
+		// metadata cache after `vault.create` resolves — so the target has NO cache for a
+		// window of its own. Reading that as "not a Resource" would make the create-and-
+		// assign flow create the note and then refuse to link it (Codex review, PR #207).
+		const vault = new FakeVault();
+		vault.addFile('Alex.md', { frontmatter: { type: 'Resource' } });
+		vault.addFile('1.0.md', { frontmatter: { type: 'PBI' } });
+		const model = buildModel(vault.app, vault.entries(), assigneeSettings);
+		const item = model.byPath.get('1.0.md');
+		const resource = model.resources.find((r) => r.file.path === 'Alex.md');
+		if (!item || !resource) throw new Error('fixture did not build');
+		const writes = computeAssigneeWrites(item, resource.file);
+
+		vault.unindex('Alex.md');
+		await applyWrites(vault.app, assigneeSettings, writes);
+
+		expect(vault.fm('1.0.md')['assignee']).toBe('[[Alex]]');
+	});
+
+	it('still refuses a target whose cache EXISTS and carries no type at all', async () => {
+		// The other side of the same line: a type REMOVED leaves the cache entry behind, so
+		// this is a note the vault can answer about and the answer is "not a Resource".
+		const vault = new FakeVault();
+		vault.addFile('Alex.md', { frontmatter: { type: 'Resource' } });
+		vault.addFile('1.0.md', { frontmatter: { type: 'PBI' } });
+		const model = buildModel(vault.app, vault.entries(), assigneeSettings);
+		const item = model.byPath.get('1.0.md');
+		const resource = model.resources.find((r) => r.file.path === 'Alex.md');
+		if (!item || !resource) throw new Error('fixture did not build');
+		const writes = computeAssigneeWrites(item, resource.file);
+
+		vault.setFrontmatter('Alex.md', {});
+		const outcome = await applyWrites(vault.app, assigneeSettings, writes);
+
+		expect(vault.fm('1.0.md')).toEqual({ type: 'PBI' });
+		expect(outcome.changed).toBe(false);
+	});
 });

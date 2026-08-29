@@ -586,11 +586,24 @@ function refusesLiveType(settings: BacklogSettings, write: ItemWrite, liveType: 
  * link lands naming an ordinary note — which then reads as broken (`resourceLabelsOf`
  * cannot find it in the roster) and the card shelves. A REMOVAL asks nothing: `null` is
  * how the key comes off, and there is no target to be wrong about.
+ *
+ * **No cache is NO ANSWER, and must not be read as the wrong one.** Obsidian fills the
+ * metadata cache after `vault.create` resolves, so a note this plugin has only just
+ * written has no cache entry for a window of its own — and `New resource...` runs exactly
+ * there: `writeResource` (`view/interactions/resourceNotes.ts`) hands the fresh `TFile`
+ * straight to `chooseAssignee`. Fold that window into `!isResourceType(null)` and the one
+ * flow this check was never about — create a resource and assign it — creates the note and
+ * then refuses to link it. So the question is only ever asked of a cache that EXISTS: a
+ * note retyped away still has one (a type REMOVED leaves the entry, with no `type` key in
+ * it), which is the case this guard is for. `FakeVault.create` indexes synchronously, so
+ * nothing in the suite meets this window by accident — `unindex` is how a test asks for
+ * it (Codex review, PR #207).
  */
 function refusesLiveAssignee(app: App, target: TFile | null | undefined, settings: BacklogSettings): boolean {
 	if (!target) return false;
-	const liveType = readString(ownValue(app.metadataCache.getFileCache(target)?.frontmatter, settings.typeKey));
-	return !isResourceType(liveType);
+	const cache = app.metadataCache.getFileCache(target);
+	if (cache === null) return false;
+	return !isResourceType(readString(ownValue(cache.frontmatter, settings.typeKey)));
 }
 
 /**

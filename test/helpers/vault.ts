@@ -454,6 +454,17 @@ export class FakeVault {
 		this.caches.set(path, cache);
 	}
 
+	/**
+	 * Drop a file's metadata cache entry while leaving the file itself — the window a real
+	 * vault has between `vault.create` resolving and Obsidian indexing the new note, which
+	 * this stub otherwise never shows because `create` indexes synchronously. A test that
+	 * asks what a reader does with NO cache (rather than with a cache that answers "not
+	 * this type") has to say so, and this is how.
+	 */
+	unindex(path: string): void {
+		this.caches.delete(path);
+	}
+
 	/** Per-file property values served through the BasesEntry stand-ins (keyed by property id). */
 	entryValues = new Map<string, Record<string, unknown>>();
 
