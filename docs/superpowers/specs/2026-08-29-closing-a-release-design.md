@@ -60,15 +60,25 @@ Absent unless the status key, the released values, the transition value and the
 released-date key are all bound (3a, 3b), and absent when the release already carries a
 value in the released list (1a).
 
-**Also absent when the released date is bound but UNREADABLE** — an empty string, a list,
-a malformed date. The predicate asks `ReleaseRow.released.invalid`, the third answer
-`ReleaseFigure` carries for exactly this, and the screen names it so the reader repairs the
-note rather than having a batch write around rubbish. That is the rule the header's own date
-control already keeps: `releaseReleasedWrites` says an unreadable date reaches it as null,
-which is why the control is withheld rather than offered a clear that writes nothing.
+**And the released date must READ AS ABSENT.** One condition on `ReleaseRow.released`,
+replacing two clauses that between them still let the wrong case through:
 
-Absent-and-valid is a different answer and is NOT withheld: a bare `released:` reads as no
-date, which is exactly the state this action exists to fill in. Absent, not disabled: the shape `scopeToolbar.ts`
+- **A readable date already there → withheld.** The compare-and-swap protects a date that
+  arrives after planning, and does nothing about one that was there when the dialog opened:
+  the planner would capture it as the expected value, the live note would match, and today
+  would replace the day it actually shipped. Recording a shipping date twice is what 1a
+  withholds this action for; that the status is not yet a released one makes the note
+  inconsistent, not the date disposable.
+- **Unreadable → withheld**, and named, so the reader repairs the note rather than having a
+  batch write around rubbish. The rule the header's own date control already keeps:
+  `releaseReleasedWrites` says an unreadable date reaches it as null, which is why that
+  control is withheld rather than offered a clear that writes nothing.
+- **Absent → offered.** A missing key and a bare `released:` are the same answer here, and
+  it is the state this action exists to fill in.
+
+So the predicate is `released.value === null && !released.invalid`, and the date's
+compare-and-swap goes back to being what it should always have been: protection against the
+note moving under an open dialog, not the thing deciding whether there is a date to write. Absent, not disabled: the shape `scopeToolbar.ts`
 already uses for the hide-done toggle it withholds on an unconfigured workflow.
 
 One new predicate in `domain/releases.ts` answers all of it, so the toolbar asks a
@@ -444,8 +454,10 @@ design adds to them:
   so — asserted for an empty string and for a list, because "present" and "readable" are
   the two answers a raw-presence check collapses.
 - A release already carrying an actual date never has it replaced by this action, on any
-  path — including one that gains the date from inside the callback. The whole batch
-  refuses there, so the status does not land either.
+  path — whether it held the date before the dialog opened (the action is not offered) or
+  gained it from inside the callback (the whole batch refuses, so the status does not land
+  either). Both directions are asserted, because they are stopped by different halves of
+  the design and a fix to one has twice now left the other open.
 - A note whose released key holds an explicit null (`released:` with nothing after it) is
   written a date, not skipped. That is the case a raw-presence guard gets wrong while every
   reading in the plugin calls it absent, and it is the commonest shape a vault has. Both are driven from inside the await, because a test that changes the
