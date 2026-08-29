@@ -189,7 +189,7 @@ function drawClose(view: ReleaseView, areaEl: HTMLElement, release: ReleaseRow, 
 		attr: { type: 'button' },
 	});
 	btn.disabled = view.gate.writing;
-	btn.addEventListener('click', () => askThenClose(view, btn, release, scope));
+	btn.addEventListener('click', () => askThenClose(view, release, scope));
 }
 
 /**
@@ -213,7 +213,7 @@ function nameWhatIsMissing(areaEl: HTMLElement, offer: CloseOffer): void {
 	});
 }
 
-function askThenClose(view: ReleaseView, btn: HTMLElement, release: ReleaseRow, scope: ReleaseScope): void {
+function askThenClose(view: ReleaseView, release: ReleaseRow, scope: ReleaseScope): void {
 	// The ROW may already be behind the note. Obsidian's metadata cache advances before
 	// Bases hands this view fresh results, so an external edit between the last render and
 	// this press leaves the screen saying one thing and the note holding another — and the
@@ -252,7 +252,13 @@ function askThenClose(view: ReleaseView, btn: HTMLElement, release: ReleaseRow, 
 		// Focus back on the control that opened this, on EVERY way out — and before the
 		// write, so the redraw it triggers finds the button under `document.activeElement`
 		// and `FOCUS_HANDLE_CLASSES` can put the reader back on it.
-		onClosed: () => btn.focus(),
+		//
+		// Queried at close time, never the element captured at the press. A Bases metadata
+		// refresh can redraw this whole screen while the dialog is up, and focusing the
+		// detached button it left behind is a silent no-op that leaves the reader on the
+		// body — the very place this exists to keep them off (found by review, Codex, PR
+		// #219). The selector is stable across that redraw; the element is not.
+		onClosed: () => view.viewEl.querySelector<HTMLElement>('.pbl-rel-close')?.focus(),
 		onConfirm: () => void submitClose(view, release, confirmed, raw),
 	});
 }

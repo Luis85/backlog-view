@@ -132,6 +132,29 @@ describe('marking a release as released', () => {
 		expect(document.activeElement).toBe(btn);
 	});
 
+	it('hands focus to the LIVE control when a refresh redrew the screen mid-dialog', () => {
+		// A Bases metadata refresh redraws the scope while the confirmation is open, which
+		// DETACHES the button that opened it. Focusing the element captured at the press is
+		// then a no-op and the reader is left on the body — the same place the fix above
+		// exists to keep them off (found by review, Codex, PR #219).
+		const { view } = releaseScreen({ status: 'In progress' });
+		const opener = button(view, '.pbl-rel-close');
+		opener.focus();
+		opener.click();
+		// Focus moves INTO the modal, which is what makes the redraw below lose it: the
+		// focus-handle list captures `document.activeElement`, and with the opener still
+		// focused it would restore the new button by itself and this test would pass
+		// without the fix. Watched doing exactly that.
+		opener.blur();
+		view.onDataUpdated();
+		const live = button(view, '.pbl-rel-close');
+		expect(live).not.toBe(opener);
+
+		Modal.lastOpened?.close();
+
+		expect(document.activeElement).toBe(live);
+	});
+
 	it('refuses when the transition value changed to ANOTHER valid one mid-dialog', async () => {
 		// The case a re-asked `closeOffer` cannot catch: the configuration is still
 		// perfectly valid, just not the one the reader agreed to.
