@@ -122,3 +122,41 @@ export function releaseDescriptionWrites(
 	if (next === current) return [];
 	return fieldWrite(file, key, next);
 }
+
+/**
+ * Whether a batch names a key the CURRENT settings no longer give this view to edit — the
+ * question `ReleaseView.applyRelease` asks before it hands anything to the gate.
+ *
+ * Every planner above is handed a key CAPTURED when its control was drawn, which is the
+ * rule the root guide states for a move's own vocabulary: read it before the await, or a
+ * dialog left open while the `.base` is re-pointed writes the reader's text to a property
+ * they never saw. What that capture cannot answer is whether the captured key is still one
+ * of THIS view's, and the gap between the two is a real corruption (found by review, PR
+ * #211): with `descriptionProperty` aliasing `typeProperty`, `releaseNoteProblems` blocks
+ * every write — so the reader opens the dialog, fixes the collision while it is open, and
+ * submits into a configuration the gate now calls clean, carrying a key that is the TYPE
+ * key. The release loses its type and disappears from its own view, which is PR #203's
+ * corruption arriving through the one door that fix did not cover.
+ *
+ * Stated as a WHITELIST rather than as "does it collide", and that is what makes it hold
+ * for a fourth field nobody has written yet: this view edits three roles, a batch may name
+ * nothing else, and a key that has stopped being one of the three is by definition a key
+ * this view was not given. It refuses the harmless case with the dangerous one — the
+ * description property merely re-pointed at some unrelated key, where the old write would
+ * land somewhere nothing reads — and refusing there is the better answer anyway: the
+ * reader retypes into a box that now names the property they configured.
+ *
+ * An unconfigured key never enters the set, so a batch naming one is refused here before
+ * `applyPropertyWrites` drops it. Both are right; this one is loud.
+ *
+ * Answers the offending KEY rather than a flag, because the refusal names it: a reader told
+ * only that something was wrong has to guess which of three editors to reopen.
+ */
+export function reconfiguredKey(
+	settings: { statusKey: string; descriptionKey: string; releasedDateKey: string },
+	writes: PropertyWrite[],
+): string | null {
+	const editable = new Set([settings.statusKey, settings.descriptionKey, settings.releasedDateKey].filter((k) => k !== ''));
+	for (const write of writes) for (const set of write.sets) if (!editable.has(set.key)) return set.key;
+	return null;
+}

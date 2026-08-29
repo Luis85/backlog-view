@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { TFile } from 'obsidian';
-import { releaseDescriptionWrites, releaseReleasedWrites, releaseStatusWrites } from '../../src/domain/releaseWritePlan';
+import {
+	reconfiguredKey,
+	releaseDescriptionWrites,
+	releaseReleasedWrites,
+	releaseStatusWrites,
+} from '../../src/domain/releaseWritePlan';
+import { PropertyWrite } from '../../src/domain/estimationWritePlan';
 
 /**
  * Every batch below carries `requiresType: 'Release'`, and it is asserted rather than
@@ -97,5 +103,29 @@ describe('planning a release description', () => {
 
 	it('writes nothing at all where the key is unconfigured', () => {
 		expect(releaseDescriptionWrites(file, '', null, 'Anything')).toEqual([]);
+	});
+});
+
+describe('the keys this view may write', () => {
+	const settings = { statusKey: 'status', descriptionKey: 'summary', releasedDateKey: 'released' };
+	const write = (key: string): PropertyWrite[] => [{ file: file, sets: [{ key, value: 'x' }], requiresType: 'Release' }];
+
+	it('accepts each of the three roles the release screen edits', () => {
+		for (const key of ['status', 'summary', 'released']) expect(reconfiguredKey(settings, write(key))).toBeNull();
+		expect(reconfiguredKey(settings, [])).toBeNull();
+	});
+
+	it('refuses a key the settings no longer name — the captured key of a re-pointed option', () => {
+		// The corruption this exists for: the description key CAPTURED while it aliased the
+		// type property, submitted after the reader fixed that collision. The gate re-reads
+		// the settings and sees no problem; the batch still says `type`.
+		expect(reconfiguredKey(settings, write('type'))).toBe('type');
+		// And the merely re-pointed case, refused with it: the old key is not this view's
+		// any more, whether or not anything else owns it.
+		expect(reconfiguredKey(settings, write('description'))).toBe('description');
+	});
+
+	it('refuses an UNCONFIGURED key rather than letting the writer drop it quietly', () => {
+		expect(reconfiguredKey({ ...settings, descriptionKey: '' }, write(''))).toBe('');
 	});
 });

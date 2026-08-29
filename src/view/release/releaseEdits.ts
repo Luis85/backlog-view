@@ -5,7 +5,7 @@ import { ReleaseIndex, releaseStatusChoices, ReleaseRow } from '../../domain/rel
 import { PropertyWrite } from '../../domain/estimationWritePlan';
 import { releaseDescriptionWrites, releaseReleasedWrites, releaseStatusWrites } from '../../domain/releaseWritePlan';
 import { formatCivil } from '../../domain/timeline';
-import { SchedulePromptModal } from '../../ui/prompts';
+import { SchedulePromptModal, ValuePromptModal } from '../../ui/prompts';
 import { showMenuForClick } from '../interactions/menu';
 import { openTextPrompt } from '../../ui/textPrompt';
 
@@ -50,13 +50,40 @@ export function showReleaseStatusMenu(view: ReleaseView, evt: MouseEvent, releas
 	const key = view.settings.statusKey;
 	const current = release.status.value;
 	const menu = new Menu();
-	for (const choice of releaseStatusChoices(view.settings, index, current)) {
+	const choices = releaseStatusChoices(view.settings, index, current);
+	for (const choice of choices) {
 		const writes = releaseStatusWrites(release.item.file, key, current, choice);
 		menu.addItem((mi) =>
 			mi
 				.setTitle(choice)
 				.setChecked(writes.length === 0)
 				.onClick(() => void view.applyRelease(writes)),
+		);
+	}
+	// **A menu that can set nothing is a control that lies.** With no declared values, no
+	// other release carrying one and nothing on this note, the loop above adds no entry and
+	// the Clear foot below is withheld too — so the unset chip opened an empty box and the
+	// vault had no way to write its FIRST status from this view at all (found by review, PR
+	// #211). The prompt is that route, and it is offered only here: once a status exists it
+	// is in the vocabulary, and a free-text entry standing beside a list invites two
+	// spellings of one status. `known: []` deliberately — there is nothing to suggest, which
+	// is the whole condition.
+	if (choices.length === 0) {
+		menu.addItem((mi) =>
+			mi
+				.setTitle(t('release.scope.newStatus'))
+				.setIcon('plus')
+				.onClick(() =>
+					new ValuePromptModal(view.app, {
+						title: t('release.scope.newStatusTitle', { name: release.name }),
+						fieldName: t('release.index.column.status'),
+						placeholder: t('release.scope.newStatusPlaceholder'),
+						ctaLabel: t('release.scope.newStatusCta'),
+						known: [],
+						onSubmit: (value) =>
+							void save(view, releaseStatusWrites(release.item.file, key, current, value), '.pbl-rel-status'),
+					}).open(),
+				),
 		);
 	}
 	if (current !== null) {

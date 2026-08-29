@@ -5,7 +5,7 @@ import * as frontmatter from '../../../src/storage/frontmatter';
 import { makeReleaseView, RELEASE_CONFIG } from '../../helpers/release';
 import { WriteLock } from '../../../src/view/writeLock';
 import { FakeVault } from '../../helpers/vault';
-import { flush, useViewHarness } from '../../helpers/view';
+import { flush, submitPrompt, useViewHarness } from '../../helpers/view';
 
 /**
  * The two edits a release's own screen offers ([[Editing a release from its own screen]]):
@@ -55,6 +55,34 @@ describe('setting a release status', () => {
 			'Cut',
 			'Clear status',
 		]);
+	});
+
+	it('offers a way to write the vault’s FIRST status, where the menu would else be empty', async () => {
+		// Found by review (Codex, PR #211). Declared ∪ observed ∪ this note's own is the whole
+		// vocabulary, so a vault that has declared none and written none had a chip inviting a
+		// press and an empty menu behind it — the one configuration where the control could
+		// not do the thing it offered.
+		const vault = new FakeVault();
+		vault.addFile('R.md', { frontmatter: { type: 'Release', version: '1.0.0' } });
+		const { view, containerEl } = makeReleaseView(vault, { ...RELEASE_CONFIG, releaseStatusValues: [] });
+		view.pick('R.md');
+		statusChip(containerEl).click();
+		await flush();
+
+		// The bootstrap entry, alone: no choices to pick and no Clear, since there is nothing
+		// on the note to take off.
+		expect(Menu.lastShown?.items.map((i) => i.titleText)).toEqual(['New status...']);
+		Menu.lastShown?.items[0]?.click();
+		await flush();
+		submitPrompt({ title: 'Shipping soon' });
+		await flush();
+
+		expect(vault.fm('R.md').status).toBe('Shipping soon');
+		// And it is gone the moment the vault HAS a status: the value it just wrote is the
+		// vocabulary now, which is what makes this a bootstrap rather than a permanent entry.
+		statusChip(containerEl).click();
+		await flush();
+		expect(Menu.lastShown?.items.map((i) => i.titleText)).toEqual(['Shipping soon', 'Clear status']);
 	});
 
 	it('checks the entry that would write nothing, and writes the one that would', async () => {
@@ -428,6 +456,33 @@ describe('what an edit is, and is not', () => {
 		// Still a release, which is the whole of what the refusal protects.
 		expect(vault.fm('R.md').type).toBe('Release');
 		expect(Notice.messages.some((m) => m.includes('release status'))).toBe(true);
+	});
+
+	it('refuses a captured key the settings stopped naming, even where the gate now sees no problem', async () => {
+		// Found by review (Codex, PR #211), and it is the two earlier fixes meeting: the
+		// control captures its KEY when it is drawn (so a re-pointed option cannot redirect
+		// the reader's text), while the gate re-reads `releaseNoteProblems` off the settings
+		// as they are at SUBMIT. So a collision present at the open and fixed while the menu
+		// is up lets the batch through carrying the key that collision was about — here the
+		// TYPE key, which is PR #203's corruption arriving through the door that fix missed.
+		const vault = editVault();
+		vault.addFile('R.md', { frontmatter: { type: 'Release', version: '1.0.0' } });
+		const { view, containerEl, config } = makeReleaseView(vault, { ...RELEASE_CONFIG, releaseStatusProperty: 'note.type' });
+		view.pick('R.md');
+		statusChip(containerEl).click();
+		await flush();
+
+		// The reader repairs the collision with the menu open — every entry in it was planned
+		// against `type`, and the gate is about to find nothing wrong with the configuration.
+		config.values.releaseStatusProperty = 'note.status';
+		view.onDataUpdated();
+		Menu.lastShown?.items[0]?.click();
+		await flush();
+
+		expect(vault.writeLog).toEqual([]);
+		expect(vault.fm('R.md').type).toBe('Release');
+		// The refusal names the key, so the reader knows which editor to reopen.
+		expect(Notice.messages.some((m) => m.includes('type'))).toBe(true);
 	});
 
 	it('refuses the write when the note stopped being a release while the menu was open', async () => {

@@ -136,6 +136,24 @@ whose whole job is to say what a release is. Asked for as a property by the auth
   reader who opened the dialog and pressed Save. The rule `computeScheduleWrites` keeps for
   the roadmap's own two ends.
 - **7b — the field is emptied.** The key is removed, by 3b's rule.
+- **2c — the vault has no status vocabulary at all.** Nothing declared, no other release
+  carrying one, nothing on this note: the menu would hold no entry and no Clear, so the chip
+  invited a press and opened an empty box — the one configuration where the control could not
+  do what it offered (found by review, PR #211). It offers **New status...** there, a prompt
+  with nothing to suggest, and that is the vault's route to its first status. Offered ONLY in
+  that state: once a status exists it is in the vocabulary by 2a, and a free-text entry
+  standing beside a list invites two spellings of one status.
+- **5d — the configuration moved while the control was open.** Each control captures its KEY
+  when it is drawn (3a's rule, and the root guide's capture-before-the-await), while the gate
+  re-reads `releaseNoteProblems` at the submit — so a collision present at the open and
+  repaired while the menu is up let a batch through carrying the key that collision was
+  about, which can be the TYPE key: PR #203's corruption through the one door that fix did
+  not cover (found by review, PR #211). `applyRelease` refuses a batch naming any key the
+  settings do not NOW give this view — a whitelist of the three roles rather than a second
+  collision test, so it holds for a fourth field nobody has written — and the notice names
+  the key, so the reader knows which editor to reopen. It refuses the merely re-pointed case
+  with it, which is the better answer there too: the old write would land on a property this
+  view no longer reads.
 - **4c — a description at CREATION.** `New release` asks for one too, as its fourth and last
   field, where the property is bound — see [[Creating a release from the release view]]. A
   blank box is written nowhere, that note's own 2c.

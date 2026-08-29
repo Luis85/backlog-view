@@ -1189,6 +1189,14 @@ export const en = {
 	 * exactly as it is in the legend's marker caption.
 	 */
 	'gate.retyped': 'That note is no longer a {type}, so nothing was written to it.',
+	/**
+	 * The release screen's own refusal, and the third thing that can be wrong with a batch by
+	 * the time it lands. Not a collision (`configProblems` reports those) and not a retype
+	 * (`gate.retyped` above): the CONFIGURATION moved under an open dialog, so the key the
+	 * control captured is no longer one this view is given to edit. `{property}` is the key
+	 * itself — vault data, not a word from this catalog.
+	 */
+	'gate.releaseReconfigured': 'Nothing written: this release view no longer writes “{property}”. Reopen the editor and try again.',
 
 	/**
 	 * Every card move's live-region announcement, in the two shapes a gesture can have:
@@ -1817,6 +1825,22 @@ export const en = {
 	 */
 	'release.scope.setStatus': 'Set the release status',
 	'release.scope.clearStatus': 'Clear status',
+	/**
+	 * The BOOTSTRAP entry, and the only route to a status in a vault that has none: the menu
+	 * offers what the options panel declares and what the other releases carry, so with
+	 * neither it had nothing in it at all while the unset chip went on inviting a press
+	 * (found by review, PR #211). Offered only in that state — with a vocabulary on screen
+	 * the declared list is where a new value belongs, and a free-text entry beside it invites
+	 * two spellings of one status.
+	 *
+	 * `{name}` is the release note's own name — vault data. The placeholder is an EXAMPLE of
+	 * the shape of a status and not one this plugin writes: these are the reader's own words
+	 * for their own process, which is why `releaseStatusValues` ships empty.
+	 */
+	'release.scope.newStatus': 'New status...',
+	'release.scope.newStatusTitle': 'Set the status of {name}',
+	'release.scope.newStatusPlaceholder': 'In progress',
+	'release.scope.newStatusCta': 'Set status',
 	/**
 	 * The description: its dialog, the field's own invitation, and the way in from the
 	 * header. `{name}` is the release note's own name — vault data — and the placeholder is

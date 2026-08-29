@@ -199,6 +199,17 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ### Fixed
 
+- **A release whose vault has no statuses yet can now be given one.** The status menu
+  offers what your options declare and what your other releases carry — so with neither, it
+  opened empty while the chip went on inviting a press. It now offers **New status...** in
+  exactly that case, which is how a vault writes its first one.
+
+- **A release can no longer lose its type to an editor left open.** If two release
+  properties named one key, every edit was refused — but fixing that while an editor was
+  still open let the pending edit through, still aimed at the key it was configured with,
+  which could be the type property. The edit is now refused with a notice naming the key,
+  and the same refusal covers an option re-pointed under an open editor.
+
 - **The release screen's description and released date no longer paint as filled, raised
   Obsidian buttons.** Both are controls you press, so both are real buttons — and Obsidian's
   own button styling outranked the flat look they asked for, so the description drew as a
