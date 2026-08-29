@@ -143,7 +143,19 @@ plumbing:
   prevent. So the planned write carries the status it expects to find, and the check is
   made **inside** the frontmatter callback beside the type check, where the bytes being
   replaced are the bytes being judged. That is `applyRestores`' compare-and-swap asked of a
-  forward write, and it is one more field on `PropertyWrite` rather than a new mechanism;
+  forward write, and it is one more field on `PropertyWrite` rather than a new mechanism.
+
+  **That check is on the STATUS, and it does not protect the date** — a note can carry an
+  actual date while its status is still the expected one, by a hand edit or by gaining one
+  across the await, and a status-only comparison would let today's date replace the day it
+  actually shipped. So the date's own set carries **`ifMissing`**, which
+  `domain/estimationWritePlan.ts` already defines as "writes only when the live note lacks
+  the key already — never overwriting an answer that is there", and which
+  `applyPropertyWrites` already honours per set. No new field: the release's date is the
+  same kind of value the estimation stamp is, and it wants the same rule. It makes the
+  criterion below true by construction rather than by a guard somebody has to remember,
+  and it is why the two sets in this one write are not interchangeable — the status is
+  compared, the date is only ever filled in;
 - the empty-batch return, so a release already at the transition value writes nothing and
   redraws nothing.
 
@@ -399,7 +411,10 @@ design adds to them:
   changing it from inside the callback — the only place that can tell a writer which checks
   the live value from one which checked it a moment earlier.
 - A release already carrying an actual date never has it replaced by this action, on any
-  path. Both are driven from inside the await, because a test that changes the
+  path — including one that gains the date from inside the callback, and including the
+  case where its status still matches what the batch expected. The status is written in
+  that case and the date is left alone: the record survives, which is the point of the
+  field. Both are driven from inside the await, because a test that changes the
   configuration before the dialog opens passes against a submit that never re-reads.
 - Generation is withheld, naming the problem, for a collision seen by ANY of its three
   reports: `stateProperty` on the order key (`configProblems`), two release-note roles on
