@@ -186,6 +186,25 @@ describe('creating a child from a release scope row', () => {
 		expect(Notice.messages).toEqual([en['create.failed']]);
 	});
 
+	it('refuses when the release stopped being one while the title was being typed', async () => {
+		const { view, vault } = mountFoldScope({ pick: 'Releases/0.8.md' });
+		const before = new Set(vault.files.keys());
+
+		const menu = openMenu(view, 'Passwordless sign-in.md');
+		menu.items.find((item) => item.titleText === 'New Feature')!.click();
+		// The prompt is open — the longest window this plugin has, since it lasts as long as
+		// the reader takes to type — and another pane retypes the release. Authorization at
+		// plan time is not authorization at write time, which is the finding PR #201 made
+		// against the EDIT path and PR #214 made against this one.
+		vault.addFile('Releases/0.8.md', { frontmatter: { type: 'Epic' } });
+		Notice.messages.length = 0;
+		submitPrompt({ title: 'Too late' });
+		await flush();
+
+		expect(created(vault, before)).toEqual([]);
+		expect(Notice.messages).toEqual([en['release.scope.staleRelease']]);
+	});
+
 	it('opens nothing from the keyboard before the tree has an active row', () => {
 		const { view } = mountFoldScope({ pick: 'Releases/0.8.md' });
 		Menu.lastShown = null;

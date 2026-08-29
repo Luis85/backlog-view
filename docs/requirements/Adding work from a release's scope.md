@@ -65,9 +65,15 @@ appear on the screen the gesture was made from — a press that reads as having 
   spent the user's typing on a configuration they could have been told about at the press.
 - **3b — the title is left blank.** Confirming is refused, exactly as every other creation in
   this plugin refuses it: the title is the note's own name.
-- **4a — the parent row is folded.** It is unfolded once the note lands, so the new child is
+- **4a — the release stopped being a release while the title was being typed.** Nothing is
+  created, and it is reported. The prompt stays open for as long as the reader takes to
+  type, so the note can be deleted or retyped in another pane meanwhile; a note born naming
+  it would be born with an unresolved membership. Authorization at the moment the menu was
+  offered is not authorization at the moment of writing, which is the rule
+  [[Setting an item's release]] already keeps for every membership EDIT.
+- **4b — the parent row is folded.** It is unfolded once the note lands, so the new child is
   not written somewhere the reader cannot see it.
-- **4b — the creation fails.** It is reported, and nothing is left half-written: the note is
+- **4c — the creation fails.** It is reported, and nothing is left half-written: the note is
   one `vault.create` carrying its whole frontmatter, so there is no state in which it exists
   without its parent, its rank or its release.
 - **5a — the base's own filter excludes the new note.** It is created and does not appear.
@@ -92,6 +98,11 @@ appear on the screen the gesture was made from — a press that reads as having 
 - **An unconfigured membership key is written nowhere.** Kept at `createBacklogItem` rather
   than at the surface that offers the release, so it holds for a caller nobody has written yet
   — `test/storage/createNote.test.ts`.
+- **The release is re-read at the moment of writing, not trusted from the row.** The same
+  guard the edit path uses (`refusesLiveMembership`, `src/domain/releases.ts`), asked before
+  `createBacklogItem` rather than when the menu was built.
+  `test/view/release/scopeCreate.test.ts` retypes the release while the prompt is open and
+  asserts nothing was created.
 - **A `Release` is seeded no membership**, under the identical rule that already refuses it a
   horizon, an iteration and that iteration's dates: a release is not put inside another
   release by the screen that happened to make it.
@@ -123,6 +134,11 @@ why no folder is ever asked for here. The refusal is `configProblems`
 (`src/domain/settingsConsistency.ts`), the gate every write path in this plugin goes through.
 The prompt is `TitlePromptModal` (`src/ui/prompts.ts`), the leaf dialog the backlog's own
 creation uses.
+
+What refuses a stale target is `refusesLiveMembership` (`src/domain/releases.ts`), the
+guard `src/storage/frontmatter.ts` already puts in front of every membership edit, called
+here for the same reason it exists there — it reads the note's type off the metadata cache
+rather than off the model, so a release deleted or retyped since the menu opened is caught.
 
 The write itself is `createBacklogItem` (`src/storage/createNote.ts`), which gained one
 optional field for this — the release, as a `TFile` rather than a name, since two releases may

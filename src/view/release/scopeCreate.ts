@@ -2,7 +2,7 @@ import { Menu, Notice } from 'obsidian';
 import type { ReleaseView } from './releaseView';
 import { t } from '../../i18n/t';
 import { BacklogSettings } from '../../domain/settings';
-import { ReleaseRow, ScopeRow } from '../../domain/releases';
+import { ReleaseRow, refusesLiveMembership, ScopeRow } from '../../domain/releases';
 import { childTypeChoices, folderForType } from '../../domain/itemTypes';
 import { configProblems } from '../../domain/settingsConsistency';
 import { ORDER_SPACING } from '../../domain/writePlan';
@@ -172,8 +172,22 @@ interface NewMember {
  * child under a closed row would otherwise land somewhere the reader cannot see it.
  * `toggleFold` re-renders, which is also how the tree picks the note up once the base's
  * next pass returns it.
+ *
+ * **The release is re-read here, not trusted from the row** — `refusesLiveMembership`, the
+ * identical guard `applyWrites` puts in front of every membership EDIT, asked at the moment
+ * of writing rather than at the moment of offering. The window this closes is longer than a
+ * batch's: the prompt stays open for as long as the reader takes to type, and the release
+ * can be deleted or retyped in another pane meanwhile. Without it the new note would be
+ * born naming a note the vault no longer calls a release — reported by
+ * [[The scope of a release as a tree]] 1b as an unresolved membership, which is a fair
+ * report of a note that should never have been made that way. Found by review
+ * (Codex, PR #214), the same finding PR #201 made against the edit path.
  */
 async function createMember(view: ReleaseView, release: ReleaseRow, settings: BacklogSettings, row: ScopeRow, spec: NewMember): Promise<void> {
+	if (refusesLiveMembership(view.app, release.item.file, settings)) {
+		new Notice(t('release.scope.staleRelease'));
+		return;
+	}
 	try {
 		const file = await createBacklogItem(view.app, settings, {
 			folder: spec.folder,
