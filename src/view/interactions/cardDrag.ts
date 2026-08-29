@@ -705,13 +705,14 @@ function spanWords(span: DateSpan, ends: PlacementEnd[]): string {
 	if (span.start !== null && span.target !== null) {
 		return daysBetween(span.start, span.target) === 0
 			? formatCivil(span.start)
-			: `${formatCivil(span.start)} to ${formatCivil(span.target)}`;
+			: t('lane.spanRange', { start: formatCivil(span.start), target: formatCivil(span.target) });
 	}
 	const only = span.start ?? span.target;
 	if (only === null) return unscheduledLabel();
 	if (ends.length < 2) return formatCivil(only);
 	// Neither phrase may begin with `from` or `to`: `announceMove` already wraps both
 	// sides in "from … to …", and an open end that spelled itself that way would say
-	// "from from 2026-08-01 to Unscheduled".
-	return span.start !== null ? `${formatCivil(only)} onwards` : `up to ${formatCivil(only)}`;
+	// "from from 2026-08-01 to Unscheduled". Said to the translator as well, at the two
+	// keys, since this comment is not what a catalog is read through.
+	return span.start !== null ? t('lane.spanFrom', { start: formatCivil(only) }) : t('lane.spanUntil', { target: formatCivil(only) });
 }

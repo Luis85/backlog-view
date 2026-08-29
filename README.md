@@ -28,7 +28,7 @@ Azure DevOps Boards.
     parent are top-level.
   - **`order`** — a number that ranks an item among its siblings.
   - **`type`** — the ladder `Epic → Feature → PBI → Task`, the **extra types** `Issue`,
-    `Bug`, `Idea` and `Deliverable` that sit beside it rather than on it, or a **marker**
+    `Bug`, `Idea`, `Deliverable` and `Improvement` that sit beside it rather than on it, or a **marker**
     on neither — `Milestone` and `Iteration` — which states a date rather than work.
 - **You never have to maintain these properties by hand.** The view assigns them:
   - Creating an item via the view writes `type`, `parent` and `order`.
@@ -331,8 +331,12 @@ screen of it are the same kind of thing, and neither is a Feature. A **Deliverab
 is the other way round — a thing the project must produce rather than work to do —
 and it fits no rung for the same reason.
 
-So `Issue`, `Bug`, `Idea` and `Deliverable` are **extra types** rather than a fifth
-level, and two things follow:
+An **Improvement** is a fifth: a further round of work on something already delivered,
+which hangs under what shipped rather than reopening it — so the delivered item keeps the
+release it went out in and the improvement takes the next one.
+
+So `Issue`, `Bug`, `Idea`, `Deliverable` and `Improvement` are **extra types** rather than
+a fifth level, and two things follow:
 
 - **They hang from any level above the lowest.** Add one under an Epic, a Feature or
   a PBI. Their own children are always Tasks, so nothing is offered under one but a
@@ -342,19 +346,21 @@ level, and two things follow:
   dropping a *PBI* there would make it a Feature. Their Tasks stay Tasks too, because the
   subtree follows the extra type rather than the rung it landed on.
 
-All three are also creatable with **no parent at all**, from the toolbar's own "pick
-another type" menu — like every declared type.
+Every one of them is also creatable with **no parent at all**, from the toolbar's own
+"pick another type" menu — like every declared type.
 
 Where a row can hold more than one kind of thing, **the + button asks**: the new-item
 modal offers a type, defaulting to the ladder's own child. The context menu lists the
-choices directly (`New PBI`, `New Issue`, `New Bug`, `New Idea`, `New Deliverable`),
+choices directly (`New PBI`, `New Issue`, `New Bug`, `New Idea`, `New Deliverable`, `New Improvement`),
 and `Set type` offers every declared type. A row with only one option — a Task, or an
 extra type, which holds only Tasks — asks nothing and creates it straight away.
 
-`Issue`, `Bug`, `Idea` and `Deliverable` each get their own badge icon and colour — an
-alert in pink, a bug in red, a lightbulb in yellow and a package in green. Nine badges
-share the theme's eight colours, so one pair does overlap: an Idea and a Task read the
-same yellow, told apart by the name on the badge. They rank with `PBI`, so focusing that level shows them
+`Issue`, `Bug`, `Idea`, `Deliverable` and `Improvement` each get their own badge icon
+and colour — an alert in pink, a bug in red, a lightbulb in yellow, a package in green and
+a rising line in green. Every declared type has its own icon, but there are more of them
+than the theme has colours, so hues are shared: an Idea and a Task both read yellow, and a
+Deliverable and an Improvement both read green. The icon and the name on the badge are
+what tell a sharing pair apart. They rank with `PBI`, so focusing that level shows them
 beside it rather than hiding them. `Deliverable` also has its own board with its own
 workflow — see [The Deliverables board](#the-deliverables-board) below.
 

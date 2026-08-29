@@ -101,10 +101,10 @@ here is a question for whichever increment gives tests a lifecycle, and it is no
   parent's progress, applied to one more number: a release date reported as an untested gap
   turns schedule metadata into a coverage problem and would make the signal least
   trustworthy on the row a reader scans hardest.
-  Everything else keeps it, `Issue`, `Bug`, `Idea` and `Deliverable` included. A `Bug` in
-  particular *should* read as untested until something checks it — a regression is exactly
-  what a test prevents — and nobody has yet argued the others are noise. Revisit if a report
-  says so, which is the standing form of that decision here.
+  Everything else keeps it, `Issue`, `Bug`, `Idea`, `Deliverable` and `Improvement`
+  included. A `Bug` in particular *should* read as untested until something checks it —
+  a regression is exactly what a test prevents — and nobody has yet argued the others are
+  noise. Revisit if a report says so, which is the standing form of that decision here.
 - **1d — a test row, or anything else the catalog owns.** No count, no signal, ever, and
   this follows from where 1c starts rather than being a rule of its own. The number answers
   *which work has nothing checking it*, and neither a test nor a task belonging to one is

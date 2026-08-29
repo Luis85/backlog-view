@@ -103,6 +103,29 @@
 .pbl-lvl-release { --pbl-badge-rgb: var(--color-green-rgb); }
 
 /*
+ * FOURTEEN badges, still eight theme tokens, and green gains its THIRD wearer — cyan is no
+ * longer the only hue with three. Every other token is a rung, an extra type or a marker,
+ * so the choice was which green wearer an Improvement is least badly confused with, and
+ * the honest answer is that this is the WORST sharing on the file rather than the best:
+ * `Improvement` and `Deliverable` are both extra types at `EXTRA_TYPE_RANK`, so they can
+ * sit side by side under one parent — exactly the pairing Idea/Deliverable was moved off
+ * green to avoid. It is taken deliberately anyway, because the alternatives are no better:
+ * pink puts it beside `Issue` and blue beside `Feature`, both of which it can also sit
+ * beside, and neither buys anything the icon does not. What separates the two greens is the
+ * ICON — `trending-up` against `package` — and the type name the badge carries. `Release`,
+ * green's other wearer, is a marker read in the release view and drawn on no backlog row,
+ * so it meets neither of them outside the manual's Item types list, where every badge sits
+ * beside its own name.
+ *
+ * The rule this obeys is the one stated below: hue is identity, each sharer relies on
+ * whatever else keeps it apart, and which hue shares is a decision recorded here rather
+ * than whichever looked least crowded. Whether `trending-up` and `package` actually read
+ * apart at 11px under a real theme is a live-vault question this file cannot answer; it is
+ * on the smoke-test checklist.
+ */
+.pbl-lvl-improvement { --pbl-badge-rgb: var(--color-green-rgb); }
+
+/*
  * THIRTEEN badges, still eight theme tokens, and this is where the pair-by-pair answer had
  * to become a rule: Idea/Task was one sharing decision taken alone, and two more taken the same
  * way is how Idea and Deliverable both reached for green on branches that could not see each

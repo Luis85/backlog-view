@@ -109,45 +109,61 @@ language, so nothing re-reads it. What must never enter the catalog is anything 
 writes, matches or persists — type names, state values, option keys, tags, file names. The
 test when it is not obvious: **ask what breaks if two people with different Obsidian
 languages open the same vault.** "One sees different words" is text; "one writes notes the
-other's view cannot read" is data. 655 keys are in it, counted three ways on the
-release-index branch on 2026-08-26 and all three agreeing — an AST walk over the `as const`
-object's own properties, an `Object.keys` over the BUNDLED catalog, and a match-counting
-`grep -Po` over the key lines; `grep -c` would count LINES, which is one of
+other's view cannot read" is data. 686 keys are in it, counted two ways on the MERGED tree
+on 2026-08-29 and agreeing — an AST walk over the `as const`
+object's own properties, and a match-counting
+`grep -Po` over the key lines. Two rather than the three the 2026-08-26 count used: the
+`Object.keys` over the BUNDLED catalog was not re-run, and this sentence says two because
+two is what was done. `grep -c` would count LINES, which is one of
 the three wrong numbers this epic has produced from an instrument that looked right, and
 some of these keys carry their value on the FOLLOWING line, which is exactly what such an
 instrument gets wrong. The two DISAGREEING would itself be a finding rather than a nuisance:
 a walk that reports its DISTINCT properties beside its total drops a duplicate key the text
 still shows, so the pair answers "how many" and "are any of them the same key twice" in one
-pass — 655 total and 655 distinct on 2026-08-26. **A count is dated the moment
+pass — 686 total and 686 distinct on 2026-08-29. **A count is dated the moment
 it is written, and this paragraph has now been a merge conflict five times in one day** —
-550, 542, 553, 577, 556, 588, 591, 559, 597, 630 and 643 were each true of the branch that
-wrote them and of nothing else, and 655 is what THIS branch measures rather than what any
+550, 542, 553, 577, 556, 588, 591, 559, 597, 630, 643 and 655 were each true of the branch that
+wrote them and of nothing else, and 686 is what the merged tree measures rather than what any
 side's arithmetic predicted. Re-measure on the merged tree rather than picking a side.
 `ui/`, `commands/`, `view/interactions/`, `view/estimation/`, the whole of `view/render/`,
 `view/writeGate.ts`, `view/cardMoves.ts`, `main.ts`, `domain/viewOptions.ts`, the whole of
 `storage/` and — since 2026-08-22 — `domain/estimationOptions.ts`, `domain/board.ts`,
 `domain/bars.ts`, `domain/roadmap.ts` and `domain/releaseOptions.ts` (the third options bag,
-written keyed rather than swept) are swept, **which leaves nothing in `src/` that a sweep
-still owes** — `view/manual/` was the last name on that list and ADR 0031 took it OUT of
-the sweep rather than through it. That sentence said the same thing before `storage/` was
+written keyed rather than swept) — and, since 2026-08-29, `domain/scoringModel.ts` — are
+swept. **What that leaves is not "nothing", and this paragraph claimed it twice.**
+`view/manual/` was the last name on that list and ADR 0031 took it OUT of
+the sweep rather than through it; `scoringModel.ts` was on no list at all, neither swept
+nor classified, and it was drawing ten English sentences on the estimation view the whole
+time. Both times the paragraph read as settled because what had been enumerated was the
+directories somebody could name. That sentence said the same thing before `storage/` was
 in the list, and it was wrong: `frontmatter.ts` and `propertyWrite.ts` were each spelling a
 live `new Notice` sentence — three of them, one a ternary between two literals — in a
 directory carrying none of the three bans. Not a missed sweep so much as a directory nobody
-classified, which is the hazard the epic has now met twice: a slice reads as done when what
+classified, which is the hazard the epic has now met three times — `storage/`,
+`view/manual/` and `domain/scoringModel.ts`: a slice reads as done when what
 was actually enumerated was the surfaces somebody could NAME. `storage/` renders no DOM, so
 a sentence in it reads as plumbing; what makes it text is that a `Notice` is a screen.
 **Re-derive the remainder with a walk over `src/` rather than reading this paragraph** — the
 scan that found it was an AST sweep for prose-shaped literals outside a `t()` call, which is
-the one instrument that sees the two shapes lint cannot; run on the merged tree on
-2026-08-24 it returns 24 strings outside `en.ts`, `view/manual/` and the four classified
-files, and every one of them is classified. `view/manual/` is not a leftover
+the one instrument that sees the two shapes lint cannot — **but only with its prose test
+WIDENED**, and that is the correction of 2026-08-29: written as "starts with a capital or
+ends in terminal punctuation" it reads past a lowercase fragment, which is what both shapes
+actually look like at a call site, and it read past `cardDrag.ts`'s three span phrases and
+`scoringModel.ts`'s ten problem sentences while reporting the remainder clean. Drop the
+capital from the test and it returns 32 strings outside `en.ts`, `view/manual/` and the four
+classified files, all classified — 16 `console.error` prefixes, 11 fixture-author messages
+in `settingsConsistency.ts`, and five pieces of generated vault content — at the cost of
+returning every CSS class template too, which is why the wide run is read by hand rather
+than made the default. `view/manual/` is not a leftover
 either: its three files are authored long-form PROSE, and **ADR 0031 decided they are a
 DOCUMENT the dialog displays rather than messages the plugin composes**, so they stay in
 the module and the three text bans stay off that directory permanently. The one paragraph
 the plugin does compose (`manual.typesIntro`, five parameters) is keyed, and
 `MANUAL_FIXED_PROSE` in `eslint.config.mjs` refuses a `t()` with no parameters there — a
 parameterless key in the manual is prose in the wrong artifact. What is still English in the REST of
-`domain/` was classified rather than swept, and every part of it stays for a stated reason
+`domain/` was classified rather than swept — every name below was CHECKED against the wide
+walk on 2026-08-29, which is how `scoringModel.ts` came off this list — and every part of it
+stays for a stated reason
 — the type names and shipped value lists are data, `defaultModel.ts`'s rubrics are in the
 model FINGERPRINT so two locales would stamp two models, `timeline.ts`'s month names are a
 formatting question that follows the USER's locale through `Intl` and belongs to

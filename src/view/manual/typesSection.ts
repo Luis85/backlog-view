@@ -21,6 +21,10 @@ const INTENT: Record<string, string> = {
 	Deliverable:
 		'Something the team must produce rather than build — a design, a concept. Holds Tasks, ' +
 		'wherever it hangs.',
+	Improvement:
+		'A further round of work on something already delivered — it hangs under what shipped ' +
+		'instead of reopening it, so the delivered note keeps its release and this one takes the ' +
+		'next. Holds Tasks, wherever it hangs.',
 	Milestone:
 		'A date the plan answers to. The + never offers to create one as a child, and draws no + of ' +
 		'its own — but that is what is OFFERED: nothing stops a drag from nesting one under an ' +

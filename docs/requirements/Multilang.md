@@ -12,6 +12,7 @@ risk: ""
 assignee: ""
 priority: ""
 iteration: ""
+release: "[[Eratic Skunk]]"
 ---
 
 # Multilang

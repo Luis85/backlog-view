@@ -11,6 +11,15 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ## [Unreleased]
 
+### Added
+
+- `Improvement`, a fifth type beside the ladder. It hangs under an `Epic`, a `Feature` or
+  a `PBI` and holds `Task`s, wherever it hangs — so a further round of work on something
+  already delivered gets its own note and its own release, instead of the shipped item's
+  release being moved forward and the release that shipped it losing a member. It is
+  offered by the `+`, the toolbar's creator and `Set type`, and files into `improvements/`
+  under the home folder by default.
+
 ### Changed
 
 - **Breaking:** an item names its assignee by link to a `Resource` note rather than by
@@ -35,6 +44,11 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 - Marking or editing an absence now refuses when the resource it names stopped being a
   `Resource` note — retyped or deleted — between the form opening and the submit, instead
   of writing a link that draws in no lane. The same check the assignee write already made.
+- Two surfaces that were still English in every language: the way a move on the dated axis
+  names a one-ended span (`2026-08-01 onwards`, `up to 2026-08-31`) and the two-date form
+  between them, and every sentence the estimation view draws instead of its table when the
+  model is misconfigured — the ranges, the rubric counts, the unbound properties, the
+  weights that do not total 100. All of them now come from the catalog.
 
 ### Removed
 

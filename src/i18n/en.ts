@@ -1447,6 +1447,29 @@ export const en = {
 	 * different message's inputs.
 	 */
 	'estimation.problems.blocked': 'Fix the estimation model first: {problems}.',
+	/**
+	 * The problems themselves — what `modelProblems` returns, and what both surfaces above
+	 * render: the problem block instead of the table, and the setup action's refusal notice.
+	 *
+	 * Lowercase and unpunctuated, because every one of them is a FRAGMENT: the block lists
+	 * them under `estimation.problems.lead` and the notice joins them inside a sentence that
+	 * carries the period. Naming the dimension first (`{label}: …`) is the config-warning
+	 * shape the options panel that produced the mistake already uses.
+	 *
+	 * `weightsShort` and `weightsOver` are two keys holding one sentence and not a shared
+	 * sentence with a picked word: the catalog's own rule is that the sentence is the unit,
+	 * and the two diverge in the first language that inflects around the direction.
+	 */
+	'estimation.problem.noDimensions': 'no dimensions are declared',
+	'estimation.problem.valueUnnamed': 'the business value property is not named (the total and its stamp are one pair)',
+	'estimation.problem.stampUnnamed': 'the model stamp property is not named (the total and its stamp are one pair)',
+	'estimation.problem.outputRange': 'the output range must be two whole numbers, low to high',
+	'estimation.problem.weightsShort': 'the weights total {total}, not 100 ({off} short)',
+	'estimation.problem.weightsOver': 'the weights total {total}, not 100 ({off} over)',
+	'estimation.problem.range': '{label}: the range must be two whole numbers, low to high',
+	'estimation.problem.rubric': '{label}: {points} points need {points} rubric sentences, found {found}',
+	'estimation.problem.unbound': '{label}: no property is bound — bind one or remove the dimension',
+	'estimation.problem.weight': '{label}: the weight must be a positive number',
 	/** Said rather than left silent, for `estimation.problems.blocked`'s own reason: the
 	 *  guided empty state is still on screen, so a button that returned quietly would
 	 *  simply look dead. */
@@ -1611,6 +1634,19 @@ export const en = {
 	 */
 	'lane.unreadableStart': 'an unreadable start date',
 	'lane.unreadableTarget': 'an unreadable target date',
+	/**
+	 * The three shapes `spanWords` names a placement with — the same blind spot as the four
+	 * above, one slice later: all three are templates whose first quasi is empty or
+	 * lowercase, so `UI_TEXT_LITERAL` reads no capital and `TEXT_TERNARY` reads two
+	 * identifiers. Fragments, because `announceMove` wraps both ends in its own frame.
+	 *
+	 * Neither open-ended phrase may begin with `from` or `to` in ANY locale, for that
+	 * frame's reason — `from from 2026-08-01 to Unscheduled` is what the call site's own
+	 * comment has always warned a translator about, and this is where a translator reads it.
+	 */
+	'lane.spanRange': '{start} to {target}',
+	'lane.spanFrom': '{start} onwards',
+	'lane.spanUntil': 'up to {target}',
 	'lane.daysLostShort': { one: '{count}d lost', other: '{count}d lost' },
 	'lane.daysLostWholeShort': { one: 'all {count}d', other: 'all {count}d' },
 	'lane.awayWeeks': { one: '{count} wk away', other: '{count} wk away' },

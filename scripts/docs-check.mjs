@@ -32,7 +32,7 @@ const ADRS = path.join(DOCS, "adrs");
  * `Idea` arrived on main while `Deliverable` was being built on this branch, neither
  * knowing about the other. Adding a type to `EXTRA_TYPES` means adding it here too.
  */
-const EXTRA = ["Issue", "Bug", "Idea", "Deliverable"];
+const EXTRA = ["Issue", "Bug", "Idea", "Deliverable", "Improvement"];
 /**
  * NULL-PROTOTYPE, because every key read against it is user data — a `type:` a note
  * declares, or a type name written into the README's hierarchy table. A plain object
@@ -52,9 +52,16 @@ const LEGAL_CHILDREN = Object.assign(Object.create(null), {
 	Bug: new Set(["Task"]),
 	Idea: new Set(["Task"]),
 	Deliverable: new Set(["Task"]),
+	Improvement: new Set(["Task"]),
 	// A marker holds nothing and hangs from nothing: no children, and a root of its own.
 	Milestone: new Set(),
 	Iteration: new Set(),
+	// The THIRD marker, added when the gate turned out to be one type behind the plugin —
+	// exactly the way it was behind `Deliverable` for a whole increment, which is the
+	// failure the comment on `EXTRA` above records. A release holds no work: membership is
+	// a property on the item, not a parent link, so its children set is empty like the
+	// other two markers'.
+	Release: new Set(),
 	// The test catalog's own ladder — a second one, and it touches the first nowhere
 	// except at `Task`, the rung they share. Neither test type is ever a legal child of a
 	// plan type or the reverse: the relationship between a test and the work it checks is
@@ -68,13 +75,17 @@ const LEGAL_CHILDREN = Object.assign(Object.create(null), {
  * the table and not to this list is a type the register cannot hold as a root.
  *
  * An `Epic` is a root by POSITION — the top of the ladder — while a `Milestone`, a
- * `Test suite` and an `Iteration` are roots by NATURE: a release date and a time box are
- * both owned by the plan rather than by an epic, and a suite hangs from nothing because
- * the tests are their own list rather than a branch of the plan. The suite is the first
- * root by nature that has CHILDREN, which is what makes these two questions rather than
- * one.
+ * `Test suite`, an `Iteration` and a `Release` are roots by NATURE: a release date and a
+ * time box are both owned by the plan rather than by an epic, and a suite hangs from
+ * nothing because the tests are their own list rather than a branch of the plan. The suite
+ * is the first root by nature that has CHILDREN, which is what makes these two questions
+ * rather than one.
+ *
+ * A `Release` is a root for the reason a `Milestone` is, one step further out: work names
+ * its release in a PROPERTY rather than hanging from one, so a release is not above the
+ * items it ships in any sense the tree can express.
  */
-const ROOT_TYPES = new Set(["Epic", "Milestone", "Test suite", "Iteration"]);
+const ROOT_TYPES = new Set(["Epic", "Milestone", "Test suite", "Iteration", "Release"]);
 
 /** `a, b or c` — so the rejection message stays a sentence as this set grows. */
 const andList = (names) =>
@@ -389,21 +400,22 @@ for (const file of files) {
 	// is filed is a user setting (`Folder for Absence items`), so a path rule here would be
 	// this checker deciding a configuration it cannot see. It still claims its name above,
 	// because a wikilink can still resolve to one.
+	// A RESOURCE is the same polarity and the same ADR: a person is pointed at by the plan
+	// and contains none of it, so it is recognized in order to be REFUSED — never a work
+	// item at any rung, which is why `RESOURCE_TYPE` is kept out of `ALL_TYPES` in the
+	// plugin too. Every rule below asks a question about a backlog note and none of them
+	// has an answer for a person: no rung to rank among, no status in the register's
+	// vocabulary, no requirement to hang from. Exempted by TYPE for the reason stated
+	// above, and with the same consequence: the plugin writes these notes into
+	// `docs/resources/` the moment somebody uses `Set assignee` against `docs/` as a
+	// vault, and where they land is the `resourceFolder` setting rather than anything this
+	// checker can see.
 	//
-	// A RELEASE and a RESOURCE are the same ruling for the same reason, and they arrived in
-	// this register the day it started holding both (2026-08-29). Neither is a work item:
-	// `createRelease` (`src/storage/createNote.ts`) deliberately seeds a release no parent,
-	// no order and no placement — it is a marker, it hangs from nothing and is ranked among
-	// nothing — and its `status` is its OWN vocabulary (a release ships, it is not Open or
-	// Done), while a `Resource` is a person, which `readItems.ts` recognises in order to
-	// refuse it as an item at all. Every rule below would fail one, and every one of them
-	// would be this checker asserting a schema the plugin does not write.
-	//
-	// Exempted by TYPE like the absence above, and for its reason exactly: where either is
-	// filed is a user setting (`Folder for Release items` is the release view's own
-	// `releaseFolder`), so a path rule would be this checker deciding a configuration it
-	// cannot see. Both still claim their names, so a wikilink to one resolves.
-	if (type === "Absence" || type === "Release" || type === "Resource") continue;
+	// `Release` is deliberately NOT here: it is a declared type in `ALL_TYPES` and a
+	// marker like `Milestone` and `Iteration`, both of which this register already holds
+	// as ordinary notes, so it joins them in `LEGAL_CHILDREN` and `ROOT_TYPES` below
+	// rather than being skipped. See `docs/issues/The gate was one marker behind.md`.
+	if (type === "Absence" || type === "Resource") continue;
 	const parent = /^parent:\s*"?\[\[([^\]]+)\]\]"?/m.exec(fm.raw)?.[1] ?? null;
 	// `Number(field ?? 0)` manufactured a rank for a note that has none: a missing `order`
 	// became 0, which is a legal-looking value that no sibling had claimed, so the note

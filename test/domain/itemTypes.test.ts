@@ -57,6 +57,9 @@ function fixture() {
 	// between them the pinned rank is asked at both ends of the ladder.
 	vault.addFile('Idea.md', { frontmatter: { type: 'Idea', order: 10 }, parentLink: 'PBI' });
 	vault.addFile('Deliverable.md', { frontmatter: { type: 'Deliverable', order: 50 }, parentLink: 'Epic' });
+	// The fifth extra type, under the Feature — the rung between the Bug's Epic and the
+	// Idea's PBI, so the pinned rank is asked at all three legal parents rather than two.
+	vault.addFile('Improvement.md', { frontmatter: { type: 'Improvement', order: 60 }, parentLink: 'Feature' });
 	// A marker hangs from nothing — a root by nature, not by ladder position.
 	vault.addFile('Milestone.md', { frontmatter: { type: 'Milestone', order: 40 } });
 	const model = buildModel(vault.app, vault.entries(), settings);
@@ -122,9 +125,9 @@ describe('extra types on the ladder', () => {
 describe('childTypeChoices', () => {
 	it('offers the extra types under every rung above the deepest', () => {
 		const { get } = fixture();
-		expect(childTypeChoices(get('Epic'))).toEqual(['Feature', 'Issue', 'Bug', 'Idea', 'Deliverable']);
-		expect(childTypeChoices(get('Feature'))).toEqual(['PBI', 'Issue', 'Bug', 'Idea', 'Deliverable']);
-		expect(childTypeChoices(get('PBI'))).toEqual(['Task', 'Issue', 'Bug', 'Idea', 'Deliverable']);
+		expect(childTypeChoices(get('Epic'))).toEqual(['Feature', 'Issue', 'Bug', 'Idea', 'Deliverable', 'Improvement']);
+		expect(childTypeChoices(get('Feature'))).toEqual(['PBI', 'Issue', 'Bug', 'Idea', 'Deliverable', 'Improvement']);
+		expect(childTypeChoices(get('PBI'))).toEqual(['Task', 'Issue', 'Bug', 'Idea', 'Deliverable', 'Improvement']);
 	});
 
 	it('offers no extras under a Task or under an extra type', () => {
@@ -183,6 +186,7 @@ describe('childTypeChoices', () => {
 			'Bug',
 			'Idea',
 			'Deliverable',
+			'Improvement',
 			'Milestone',
 			'Iteration',
 			'Release',

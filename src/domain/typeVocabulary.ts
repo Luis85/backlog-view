@@ -45,7 +45,7 @@ export const TEST_LEVELS = ['Test suite', 'Test case', LEVELS[LEVELS.length - 1]
  * `isDeliverableType` call site read the identical string rather than two spellings
  * that can drift. */
 export const DELIVERABLE_TYPE = 'Deliverable';
-export const EXTRA_TYPES = ['Issue', 'Bug', 'Idea', DELIVERABLE_TYPE];
+export const EXTRA_TYPES = ['Issue', 'Bug', 'Idea', DELIVERABLE_TYPE, 'Improvement'];
 /**
  * The second declared marker. Named once, like `DELIVERABLE_TYPE`, so `MARKER_TYPES`
  * reads the same string rather than a second spelling that could drift from it. A
@@ -152,6 +152,7 @@ const DEFAULT_TYPE_SUBFOLDERS: Record<string, string> = Object.assign(Object.cre
 	bug: 'bugs',
 	idea: 'ideas',
 	deliverable: 'deliverables',
+	improvement: 'improvements',
 	milestone: 'milestones',
 	iteration: 'iterations',
 	release: 'releases',

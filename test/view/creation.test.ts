@@ -33,7 +33,7 @@ describe('item creation', () => {
 		// the heading cannot name the type it is in the middle of asking about.
 		expect(modal.titleEl.textContent).toBe('New item');
 		const typePicker = modal.contentEl.querySelector('select');
-		expect([...(typePicker?.options ?? [])].map((o) => o.value)).toEqual(['Feature', 'Issue', 'Bug', 'Idea', 'Deliverable']);
+		expect([...(typePicker?.options ?? [])].map((o) => o.value)).toEqual(['Feature', 'Issue', 'Bug', 'Idea', 'Deliverable', 'Improvement']);
 		expect(typePicker?.value).toBe('Feature');
 		// The prompt says where the item will land before anything is written
 		expect(modal.contentEl.querySelector('.pbl-modal-detail')?.textContent).toBe(

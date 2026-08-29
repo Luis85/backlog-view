@@ -122,8 +122,12 @@ describe('rendering', () => {
 	});
 
 	it('gives every declared type its own icon, since a shared hue leaves only the glyph', () => {
-		// Eight theme tokens and thirteen badges, so hues are SHARED by design — cyan by
-		// three types, green by `Deliverable` and `Release`, yellow by `Idea` and `Task`.
+		// Eight theme tokens and fourteen badges, so hues are SHARED by design — cyan by
+		// three types, green by `Deliverable`, `Release` and now `Improvement`, yellow by
+		// `Idea` and `Task`. Green's third wearer is the pair this check earns its keep on:
+		// an `Improvement` and a `Deliverable` are both extra types at the same rung, so
+		// they can be SIBLINGS under one parent, and the glyph is the whole of what tells
+		// their badges apart there.
 		// Whatever else separates a pair, the glyph always has to, and `badges.ts` says so
 		// in a comment beside `release`. This is that comment's check: it fails on any
 		// declared type reusing another's icon, which is exactly the collision the plan's
