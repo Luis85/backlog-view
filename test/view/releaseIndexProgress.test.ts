@@ -5,6 +5,7 @@ import { makeReleaseView, RELEASE_CONFIG } from '../helpers/release';
 import { useViewHarness } from '../helpers/view';
 import { en } from '../../src/i18n/en';
 import { FakeVault, FakeViewConfig } from '../helpers/vault';
+import { unconfiguredProgressText } from '../../src/view/release/renderScope';
 
 /**
  * The band's own progress line — split out of `releaseIndex.test.ts` (the 450-line test
@@ -230,6 +231,21 @@ describe('the band’s progress line', () => {
 		for (const band of containerEl.querySelectorAll<HTMLElement>('.pbl-rel-band')) {
 			expect(band.textContent).toContain('is not configured');
 		}
+	});
+
+	it('names no workflow when there is no workflow to name', () => {
+		// `unconfiguredProgressText`'s EMPTY arm, which no test reached and no fixture can:
+		// the function is only ever called where progress is unreadable, and a release with
+		// members always names the workflow they read state through, while one WITHOUT
+		// members draws "No items yet" and never gets here. So the empty case is asked of
+		// the exported function directly rather than through a band that cannot produce it
+		// — its own comment states what empty must say ("no member counted yet", which is
+		// not the same claim as "configured"), and a rule stated in a comment gets a check.
+		const label = en['release.scope.progress'];
+		expect(unconfiguredProgressText([])).toBe(en['release.figureUnconfigured'].replace('{label}', label));
+		// The other arm, beside it, because the two sentences open with the same words and
+		// only the named workflow tells them apart.
+		expect(unconfiguredProgressText(['requirements'])).toContain('is not configured for');
 	});
 
 	it('speaks the gap in the band accessible name', () => {
