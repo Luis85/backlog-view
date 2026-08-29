@@ -66,14 +66,33 @@ question rather than restating four.
 
 ### The batch
 
-`releaseStatusWrites(file, statusKey, current, transition)` concatenated with
-`releaseReleasedWrites(file, releasedDateKey, current, today)` — both already in
-`domain/releaseWritePlan.ts`, both already reachable from this screen by hand — handed to
-`ReleaseView.applyRelease`. That gives, with no new plumbing:
+**Not a concatenation of the two existing planners, and this is the one place the
+increment costs a change to a module it would rather only call.** `fieldWrite` returns one
+`ReleaseWrite` per field, and `applyPropertyWrites` opens one `processFrontMatter` per
+write — so status and date would be two saves, and a retype landing between them would
+refuse the second and leave a release marked shipped with no record of when. That is
+exactly the half extension 3b says cannot be reconstructed later, produced by the action
+meant to prevent it. `storage/propertyWrite.ts`'s own header already states the rule this
+breaks: one file's sets land, or fail to land, together.
+
+So a third planner in `domain/releaseWritePlan.ts` returns **one** `ReleaseWrite` carrying
+**both sets**, which is the shape the writer was built for — `sets` is a list, and the loop
+inside the callback is what makes a score, its total and its stamp one save.
+
+That costs one move: **`role` goes from the write onto the set.** `reconfiguredKey` asks
+each set's key against `ROLE_KEYS[write.role]`, so a two-set write under one role would
+compare the date key against the status key and refuse every release. Per-set roles keep
+that check exactly as PR #211 left it — still per role, still refusing the swapped-options
+case the union test let through — while letting one write carry two. Nothing else reads
+`ReleaseWrite.role`.
+
+The planner is then handed to `ReleaseView.applyRelease`, which gives, with no other new
+plumbing:
 
 - one gate, one undo slot, and `applyRestores`' compare-and-swap per key, so undo
   restores each field to what it held, which is the absence of a date only where there
-  was none;
+  was none — and one `captureInverse` over both keys rather than two, so there is no
+  arrangement of the undo slot in which one field comes back without the other;
 - `reconfiguredKey`'s check, which covers the keys being remapped while the dialog is
   open, and the write gate's own refusal of a batch naming a note outside the base (1b);
 - the empty-batch return, so a release already at the transition value writes nothing and
@@ -201,6 +220,9 @@ and `src/domain/settingsResolve.ts` gain the three resolved fields.
 
 `src/domain/releases.ts` — the predicate that answers whether a release may be marked out.
 
+`src/domain/releaseWritePlan.ts` — the combined planner, and `role` moved from
+`ReleaseWrite` onto its sets.
+
 `src/domain/releaseNotesText.ts` — new: what the generated file says.
 
 `src/domain/readmeMarker.ts` — `joinSource` widened to N parts.
@@ -235,9 +257,14 @@ design adds to them:
 - The transition dropdown offers exactly the configured released values, and a `.base`
   spelling one outside that list is reported by `releaseNoteProblems` — the offer and the
   check are asked separately, because only the second survives a hand edit.
-- Marking a release out writes the status and the date in **one** batch: undoing once
-  takes both back, and a release whose status already equals the transition value writes
-  nothing and spends no undo slot.
+- Marking a release out writes the status and the date in **one** `processFrontMatter`
+  call: a note retyped inside that callback writes neither field, and there is no input
+  that leaves a released status without its date. The check is a test that retypes the
+  note from within the write, not two assertions about two writes.
+- Undoing once takes both back, and a release whose status already equals the transition
+  value writes nothing and spends no undo slot.
+- `reconfiguredKey` still refuses a write whose key is not its own role's, with the status
+  and description options swapped mid-dialog — the PR #211 case, asked of a two-set write.
 - The outstanding list and its count come from non-context scope rows that are not done,
   so adding a context ancestor to a fixture changes neither, and a finished member appears
   in neither. A `Deliverable` member finished by its own workflow counts as finished — the
