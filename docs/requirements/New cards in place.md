@@ -1,7 +1,7 @@
 ---
 type: PBI
 parent: "[[Hierarchy on the board]]"
-order: 30
+order: 0
 status: Open
 priority: P2
 created: 2026-08-01
@@ -15,6 +15,7 @@ due: ""
 risk: ""
 assignee: ""
 iteration: ""
+release: "[[Eratic Skunk]]"
 ---
 
 # New cards in place

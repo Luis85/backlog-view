@@ -20,6 +20,7 @@ due: 2026-08-09
 risk: ""
 assignee: ""
 iteration: ""
+release: "[[Eratic Skunk]]"
 ---
 
 # Zoom and the today marker

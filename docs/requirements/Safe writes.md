@@ -1,15 +1,15 @@
 ---
 type: Feature
 parent: "[[Product Backlog]]"
-order: 72.5
-status: Open
+order: 70.625
+status: Done
 started: ""
 horizon: ""
 risk: ""
 assignee: Evi
 start: ""
 due: ""
-finished: ""
+finished: 2026-08-29
 priority: ""
 iteration: ""
 ---

@@ -26,6 +26,7 @@ due: 2026-08-21
 risk: ""
 assignee: ""
 iteration: ""
+release: "[[Eratic Skunk]]"
 ---
 
 # Resizing the shelf

@@ -2,7 +2,7 @@
 type: PBI
 parent: "[[The horizon board]]"
 order: 20
-status: Active
+status: Done
 priority: P1
 created: 2026-08-01
 files:
@@ -14,13 +14,14 @@ files:
   - src/view/interactions/cardDrag.ts
   - src/view/render/roadmap.ts
 started: ""
-finished: ""
+finished: 2026-08-29
 horizon: ""
 start: 2026-08-01
 due: ""
 risk: ""
 assignee: ""
 iteration: ""
+release: "[[Eratic Skunk]]"
 ---
 
 # Moving between horizons

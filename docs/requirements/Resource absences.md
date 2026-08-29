@@ -34,6 +34,7 @@ risk: ""
 assignee: ""
 priority: ""
 iteration: ""
+release: "[[Eratic Skunk]]"
 ---
 
 # Resource absences

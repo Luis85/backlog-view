@@ -1,7 +1,7 @@
 ---
 type: Feature
 parent: "[[Product Kanban]]"
-order: 40
+order: 15
 status: Active
 created: 2026-08-01
 started: ""

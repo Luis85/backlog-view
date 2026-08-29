@@ -14,6 +14,7 @@ risk: ""
 assignee: ""
 priority: ""
 iteration: ""
+release: "[[Eratic Skunk]]"
 ---
 
 # Every release in one list

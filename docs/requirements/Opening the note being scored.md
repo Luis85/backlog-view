@@ -1,7 +1,7 @@
 ---
 type: PBI
 parent: "[[The prioritized list]]"
-order: 40
+order: 15
 status: Done
 created: 2026-08-22
 source: interview, 2026-08-22
@@ -14,6 +14,7 @@ risk: ""
 assignee: ""
 priority: ""
 iteration: ""
+release: "[[Eratic Skunk]]"
 ---
 
 # Opening the note being scored

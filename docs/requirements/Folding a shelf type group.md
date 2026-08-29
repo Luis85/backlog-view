@@ -16,6 +16,7 @@ due: 2026-08-15
 risk: ""
 assignee: ""
 iteration: ""
+release: "[[Eratic Skunk]]"
 ---
 
 # Folding a shelf type group

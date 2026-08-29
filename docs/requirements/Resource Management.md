@@ -1,13 +1,13 @@
 ---
 type: Epic
-order: 3.125
+order: -12.5
 status: Active
 area: product
 created: 2026-08-20
 source: user request
 started: 2026-08-21
 finished: ""
-horizon: ""
+horizon: Next
 start: ""
 due: ""
 risk: ""

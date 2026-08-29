@@ -2,11 +2,11 @@
 type: PBI
 parent: "[[A release is a note of its own]]"
 order: 10
-status: Open
+status: Done
 created: 2026-08-21
 source: user request — release management concept refinement, 2026-08-21
 started: ""
-finished: ""
+finished: 2026-08-29
 horizon: ""
 start: ""
 due: ""
@@ -14,6 +14,7 @@ risk: ""
 assignee: ""
 priority: ""
 iteration: ""
+release: "[[Eratic Skunk]]"
 ---
 
 # Releases as their own type

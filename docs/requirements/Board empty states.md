@@ -1,7 +1,7 @@
 ---
 type: PBI
 parent: "[[Backlog and board]]"
-order: 30
+order: 0
 status: Active
 priority: P2
 created: 2026-08-01
@@ -9,12 +9,13 @@ files:
   - src/view/render/emptyStates.ts
 started: ""
 finished: ""
-horizon: ""
+horizon: Next
 start: 2026-08-01
 due: ""
 risk: ""
 assignee: ""
 iteration: ""
+release: "[[Eratic Skunk]]"
 ---
 
 # Board empty states

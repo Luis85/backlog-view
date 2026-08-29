@@ -14,6 +14,7 @@ due: ""
 risk: ""
 assignee: ""
 iteration: ""
+release: "[[Eratic Skunk]]"
 ---
 
 # An iteration draws as a bar or a line

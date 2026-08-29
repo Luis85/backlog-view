@@ -1,7 +1,7 @@
 ---
 type: PBI
 parent: "[[Safe writes]]"
-order: 20
+order: 0
 status: Done
 started: ""
 finished: ""
@@ -12,6 +12,7 @@ risk: ""
 assignee: ""
 priority: ""
 iteration: ""
+release: "[[Eratic Skunk]]"
 ---
 
 # The write gate

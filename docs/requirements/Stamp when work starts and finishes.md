@@ -22,6 +22,7 @@ due: 2026-08-02
 risk: ""
 assignee: ""
 iteration: ""
+release: "[[Eratic Skunk]]"
 ---
 
 # Stamp when work starts and finishes

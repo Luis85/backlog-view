@@ -7,12 +7,12 @@ created: 2026-08-08
 source: user request
 started: ""
 finished: ""
-horizon: ""
+horizon: Later
 start: ""
 due: ""
 risk: ""
 assignee: ""
-priority: ""
+priority: P3
 iteration: ""
 ---
 

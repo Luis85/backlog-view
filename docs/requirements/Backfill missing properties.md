@@ -1,10 +1,9 @@
 ---
 type: PBI
 parent: "[[Creating items]]"
-order: 30
-status: Done
+order: 0
+status: Open
 started: ""
-finished: ""
 horizon: ""
 start: ""
 due: 2026-08-09

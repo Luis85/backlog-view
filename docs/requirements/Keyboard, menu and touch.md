@@ -1,7 +1,7 @@
 ---
 type: PBI
 parent: "[[Moving cards]]"
-order: 20
+order: 45
 status: Active
 priority: P2
 created: 2026-08-01

@@ -2,10 +2,10 @@
 type: Feature
 parent: "[[Product Roadmap]]"
 order: -10
-status: Active
+status: Done
 created: 2026-08-01
 started: ""
-finished: ""
+finished: 2026-08-29
 horizon: ""
 risk: ""
 assignee: Chris

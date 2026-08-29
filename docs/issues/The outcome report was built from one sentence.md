@@ -1,6 +1,6 @@
 ---
 type: Issue
-order: 30
+order: 65
 parent: "[[The horizon board]]"
 status: Done
 priority: P2

@@ -14,6 +14,7 @@ due: ""
 risk: ""
 assignee: ""
 iteration: ""
+release: "[[Eratic Skunk]]"
 ---
 
 # Pulling work into an iteration

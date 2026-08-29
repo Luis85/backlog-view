@@ -15,6 +15,7 @@ due: 2026-08-09
 risk: ""
 assignee: ""
 iteration: ""
+release: "[[Eratic Skunk]]"
 ---
 
 # Buckets that use the room they have

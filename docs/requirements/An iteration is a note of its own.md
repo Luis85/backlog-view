@@ -14,6 +14,7 @@ due: ""
 risk: ""
 assignee: ""
 iteration: ""
+release: "[[Eratic Skunk]]"
 ---
 
 # An iteration is a note of its own

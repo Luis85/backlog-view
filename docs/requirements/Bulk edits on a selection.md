@@ -7,13 +7,14 @@ created: 2026-08-16
 source: product requirements document, 2026-08-16
 started: ""
 finished: ""
-horizon: ""
+horizon: Next
 start: ""
 due: ""
 risk: ""
 assignee: ""
 priority: ""
 iteration: ""
+release: "[[Feisty Reindeer]]"
 ---
 
 # Bulk edits on a selection

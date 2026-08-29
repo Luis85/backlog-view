@@ -28,6 +28,7 @@ due: 2026-08-21
 risk: ""
 assignee: ""
 iteration: ""
+release: "[[Eratic Skunk]]"
 ---
 
 # Cards or a list on the shelf

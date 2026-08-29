@@ -2,7 +2,7 @@
 type: PBI
 parent: "[[The horizon board]]"
 order: 10
-status: Active
+status: Done
 priority: P1
 created: 2026-08-01
 files:
@@ -11,13 +11,14 @@ files:
   - src/view/render/roadmap.ts
   - src/view/interactions/create.ts
 started: ""
-finished: ""
+finished: 2026-08-29
 horizon: ""
 start: 2026-08-01
 due: ""
 risk: ""
 assignee: ""
 iteration: ""
+release: "[[Eratic Skunk]]"
 ---
 
 # Buckets from a horizon property

@@ -2,7 +2,7 @@
 type: PBI
 parent: "[[The resource timeline]]"
 order: 60
-status: Active
+status: Done
 created: 2026-08-15
 source: user request
 files:
@@ -15,7 +15,7 @@ files:
   - styles/timeline.css
   - styles/timelineFurniture.css
 started: ""
-finished: ""
+finished: 2026-08-29
 horizon: ""
 start: 2026-08-15
 due: ""
@@ -23,6 +23,7 @@ risk: ""
 assignee: ""
 priority: ""
 iteration: ""
+release: "[[Eratic Skunk]]"
 ---
 
 # Milestones out of the resource rows

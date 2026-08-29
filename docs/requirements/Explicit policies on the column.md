@@ -16,6 +16,7 @@ due: 2026-08-02
 risk: ""
 assignee: ""
 iteration: ""
+release: "[[Eratic Skunk]]"
 ---
 
 # Explicit policies on the column

@@ -2,11 +2,11 @@
 type: Feature
 parent: "[[Test Management]]"
 order: 10
-status: Open
+status: Done
 created: 2026-08-08
 source: user request
 started: ""
-finished: ""
+finished: 2026-08-29
 horizon: ""
 start: ""
 due: ""

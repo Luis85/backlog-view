@@ -1,6 +1,6 @@
 ---
 type: Epic
-order: 3.0469
+order: -3.5156
 status: Active
 created: 2026-08-01
 source: user request
@@ -10,7 +10,7 @@ finished: ""
 risk: ""
 start: ""
 due: ""
-horizon: ""
+horizon: Later
 priority: ""
 iteration: ""
 assignee: "[[Hannah]]"

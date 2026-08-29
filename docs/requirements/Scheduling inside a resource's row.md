@@ -2,7 +2,7 @@
 type: PBI
 parent: "[[The resource timeline]]"
 order: 40
-status: Active
+status: Done
 created: 2026-08-14
 source: user request
 files:
@@ -18,7 +18,7 @@ files:
   - src/view/render/shelf.ts
   - src/view/render/timeline.ts
 started: ""
-finished: ""
+finished: 2026-08-29
 horizon: ""
 start: 2026-08-14
 due: ""
@@ -26,6 +26,7 @@ risk: ""
 assignee: ""
 priority: ""
 iteration: ""
+release: "[[Eratic Skunk]]"
 ---
 
 # Scheduling inside a resource's row

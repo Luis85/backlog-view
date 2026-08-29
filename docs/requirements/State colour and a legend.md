@@ -21,6 +21,7 @@ due: 2026-08-09
 risk: ""
 assignee: ""
 iteration: ""
+release: "[[Eratic Skunk]]"
 ---
 
 # State colour and a legend

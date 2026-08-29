@@ -1,13 +1,13 @@
 ---
 type: Epic
-order: 2.5
+order: -20
 status: Active
 area: product
 created: 2026-08-16
 source: product requirements document, 2026-08-16
 started: ""
 finished: ""
-horizon: ""
+horizon: Now
 start: 2026-08-23
 due: 2026-09-22
 risk: ""

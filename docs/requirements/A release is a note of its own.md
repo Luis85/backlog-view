@@ -2,11 +2,11 @@
 type: Feature
 parent: "[[Release Management]]"
 order: 10
-status: Open
+status: Done
 created: 2026-08-16
 source: product requirements document, 2026-08-16
 started: ""
-finished: ""
+finished: 2026-08-29
 horizon: ""
 start: ""
 due: ""

@@ -14,6 +14,7 @@ due: 2026-08-11
 risk: ""
 assignee: ""
 iteration: ""
+release: "[[Eratic Skunk]]"
 ---
 
 # Tests stay out of the plan

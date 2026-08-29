@@ -1,7 +1,7 @@
 ---
 type: PBI
 parent: "[[Scheduling work]]"
-order: 5
+order: 25
 status: Active
 priority: P2
 created: 2026-08-01

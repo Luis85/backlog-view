@@ -1,6 +1,6 @@
 ---
 type: Epic
-order: 5
+order: 3.501
 status: Open
 created: 2026-08-16
 source: user request
@@ -14,6 +14,7 @@ horizon: ""
 priority: ""
 iteration: ""
 assignee: "[[Hannah]]"
+release: "[[Feisty Reindeer]]"
 ---
 
 # The Product Page

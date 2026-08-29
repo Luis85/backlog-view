@@ -1,7 +1,7 @@
 ---
 type: PBI
 parent: "[[Moving cards]]"
-order: 30
+order: 47.5
 status: Dropped
 priority: P3
 created: 2026-08-01

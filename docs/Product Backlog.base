@@ -7,6 +7,7 @@ views:
   - type: product-backlog
     name: Backlog
     order:
+      - horizon
       - assignee
       - status
       - release
@@ -64,6 +65,8 @@ views:
     releaseStatusProperty: note.status
     stateProperty: note.status
     deliverableStateProperty: note.status
+    releasedDateProperty: note.released
+    descriptionProperty: note.description
   - type: table
     name: ADRs
     filters:

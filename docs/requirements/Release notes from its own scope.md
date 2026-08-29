@@ -1,7 +1,7 @@
 ---
 type: Feature
 parent: "[[Release Management]]"
-order: 38.75
+order: 33.75
 status: Open
 created: 2026-08-21
 source: user request — release management concept refinement, 2026-08-21

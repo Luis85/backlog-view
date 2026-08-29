@@ -1,7 +1,7 @@
 ---
 type: PBI
 parent: "[[A catalog of tests]]"
-order: 30
+order: 50
 status: Open
 priority: P3
 created: 2026-08-08

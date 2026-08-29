@@ -21,6 +21,7 @@ due: 2026-08-14
 risk: ""
 assignee: ""
 iteration: ""
+release: "[[Eratic Skunk]]"
 ---
 
 # Done columns stay lean

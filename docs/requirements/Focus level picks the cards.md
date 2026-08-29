@@ -16,6 +16,7 @@ due: 2026-08-09
 risk: ""
 assignee: ""
 iteration: ""
+release: "[[Eratic Skunk]]"
 ---
 
 # Focus level picks the cards

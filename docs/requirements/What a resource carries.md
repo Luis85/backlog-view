@@ -1,7 +1,7 @@
 ---
 type: Feature
 parent: "[[Resource Management]]"
-order: 20
+order: 0
 status: Open
 created: 2026-08-20
 source: user request

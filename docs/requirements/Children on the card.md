@@ -2,7 +2,7 @@
 type: PBI
 parent: "[[Backlog and board]]"
 order: 40
-status: Open
+status: Done
 priority: P2
 created: 2026-08-07
 files:
@@ -11,13 +11,14 @@ files:
   - src/view/backlogView.ts
   - src/view/interactions/menu.ts
 started: ""
-finished: ""
+finished: 2026-08-29
 horizon: ""
 start: 2026-08-07
 due: ""
 risk: ""
 assignee: ""
 iteration: ""
+release: "[[Eratic Skunk]]"
 ---
 
 # Children on the card

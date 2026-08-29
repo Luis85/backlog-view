@@ -1,12 +1,12 @@
 ---
 type: Epic
 order: 2.9688
-status: Active
+status: Done
 created: 2026-08-01
 source: user request
 area: product
 started: ""
-finished: ""
+finished: 2026-08-29
 risk: ""
 start: ""
 due: ""

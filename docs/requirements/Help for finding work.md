@@ -11,7 +11,7 @@ files:
   - src/view/render/emptyStates.ts
 started: ""
 finished: ""
-horizon: ""
+horizon: Later
 start: 2026-08-01
 due: ""
 risk: ""

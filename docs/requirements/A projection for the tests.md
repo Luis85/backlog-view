@@ -14,6 +14,7 @@ due: 2026-08-11
 risk: ""
 assignee: ""
 iteration: ""
+release: "[[Eratic Skunk]]"
 ---
 
 # A projection for the tests

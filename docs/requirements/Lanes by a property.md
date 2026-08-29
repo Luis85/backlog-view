@@ -7,12 +7,12 @@ created: 2026-08-16
 source: product requirements document, 2026-08-16
 started: ""
 finished: ""
-horizon: ""
+horizon: Later
 start: ""
 due: ""
 risk: ""
 assignee: ""
-priority: ""
+priority: P3
 iteration: ""
 ---
 

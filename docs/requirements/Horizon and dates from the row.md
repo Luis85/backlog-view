@@ -24,6 +24,7 @@ due: 2026-08-15
 risk: ""
 assignee: ""
 iteration: ""
+release: "[[Eratic Skunk]]"
 ---
 
 # Horizon and dates from the row

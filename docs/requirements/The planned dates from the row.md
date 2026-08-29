@@ -1,8 +1,8 @@
 ---
 type: PBI
 parent: "[[Scheduling work]]"
-order: 30
-status: Active
+order: 22.5
+status: Done
 priority: P2
 created: 2026-08-15
 source: user request
@@ -13,13 +13,14 @@ files:
   - src/view/render/columns.ts
   - src/view/interactions/plan.ts
 started: ""
-finished: ""
+finished: 2026-08-29
 horizon: ""
 start: 2026-08-15
 due: ""
 risk: ""
 assignee: ""
 iteration: ""
+release: "[[Eratic Skunk]]"
 ---
 
 # The planned dates from the row
@@ -29,8 +30,7 @@ item's planned dates on its row and settable there, **so that** a date is change
 the work is listed instead of only on the timeline or through a dialog that asks about
 both ends at once.
 
-This is the **fourth instance of one shape**, not a fourth kind of thing. [[Workflow
-state]] settled it for the state property, [[Horizon and dates from the row]] took it over
+This is the **fourth instance of one shape**, not a fourth kind of thing. [[Workflow state]] settled it for the state property, [[Horizon and dates from the row]] took it over
 the placement, [[Risk from the row]] over the judgement, and this takes it over the two
 ends of the plan — which were the only properties this view writes that a row still drew
 as a dead value cell.
