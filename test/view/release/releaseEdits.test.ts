@@ -309,6 +309,42 @@ describe('focus across the redraw an edit causes', () => {
 		expect(document.activeElement).toBe(containerEl.querySelector('.pbl-rel-status'));
 	});
 
+	it('puts focus back on the control a CANCELLED dialog would leave nowhere', async () => {
+		// Found by review (Codex, PR #211). Every one of these dialogs has a second exit —
+		// Escape, the close control — that never reaches `onSubmit`, so the refocus `save` does
+		// after its await covers only the half that writes. The status prompt is the worst of
+		// the three and the reason the rule is stated at the prompt rather than at one caller:
+		// it is opened from a body-mounted `Menu` item that no longer exists by the time it
+		// closes, so cancelling left a keyboard reader on `document.body` with nothing to go
+		// back to. `PromptModal.onClose` is where it is answered, so a prompt written next year
+		// gets it by asking for it.
+		const vault = new FakeVault();
+		vault.addFile('R.md', { frontmatter: { type: 'Release', version: '1.0.0' } });
+		const { view, containerEl } = makeReleaseView(vault, { ...RELEASE_CONFIG, releaseStatusValues: [] });
+		view.pick('R.md');
+		statusChip(containerEl).click();
+		await flush();
+		Menu.lastShown?.item('New status...')?.click();
+		await flush();
+
+		Modal.lastOpened!.close();
+		expect(document.activeElement).toBe(containerEl.querySelector('.pbl-rel-status'));
+		// And it wrote nothing on the way out: a cancel is a cancel.
+		expect(vault.writeLog).toEqual([]);
+	});
+
+	it('does the same for the two dialogs a header control opens, which cancel too', async () => {
+		// The same hole, one control over each time — the reason the fix is on the shared base
+		// rather than on the prompt review named. Neither dialog's opening control is destroyed
+		// by the cancel, so what a reader loses here is their PLACE rather than the way back.
+		const { containerEl } = openScope();
+		for (const cls of ['.pbl-rel-desc', '.pbl-rel-released']) {
+			containerEl.querySelector<HTMLElement>(cls)!.click();
+			Modal.lastOpened!.close();
+			expect(document.activeElement, cls).toBe(containerEl.querySelector(cls));
+		}
+	});
+
 	it('puts focus back on the description line after the dialog that closed before it wrote', async () => {
 		// `TextPromptModal` closes before it submits, so focus is off this view by the time
 		// the write's redraw runs and the handle mechanism above correctly answers null —

@@ -1,5 +1,5 @@
 import { App, Setting } from 'obsidian';
-import { PromptModal } from './prompts';
+import { Closable, PromptModal } from './prompts';
 
 /**
  * The one prompt in this directory that collects PROSE, in its own file because
@@ -9,7 +9,7 @@ import { PromptModal } from './prompts';
  * are the ones every other prompt uses; only the field and the submit rule are its own.
  */
 
-export interface TextPromptOptions {
+export interface TextPromptOptions extends Closable {
 	/** The modal's own heading, and the field label under it. */
 	title: string;
 	fieldName: string;

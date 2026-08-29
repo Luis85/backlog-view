@@ -53,6 +53,10 @@ import { openTextPrompt } from '../../ui/textPrompt';
 /** The chip's own selector, spelled once: three entries in the menu below write, and all
  *  three put focus back on it. */
 const STATUS_CHIP = '.pbl-rel-status';
+/** The other two controls that open a dialog, spelled once for the same two reasons the
+ *  chip's is above: the write's own refocus after the await, and the CANCEL's before it. */
+const DESCRIPTION_LINE = '.pbl-rel-desc';
+const RELEASED_BUTTON = '.pbl-rel-released';
 
 export function showReleaseStatusMenu(view: ReleaseView, evt: MouseEvent, release: ReleaseRow, index: ReleaseIndex): void {
 	const key = view.settings.statusKey;
@@ -95,6 +99,7 @@ export function showReleaseStatusMenu(view: ReleaseView, evt: MouseEvent, releas
 						placeholder: t('release.scope.newStatusPlaceholder'),
 						ctaLabel: t('release.scope.newStatusCta'),
 						known: [],
+						onClosed: () => focusControl(view, STATUS_CHIP),
 						onSubmit: (value) => void save(view, releaseStatusWrites(release.item.file, key, current, value), STATUS_CHIP),
 					}).open(),
 				),
@@ -143,8 +148,9 @@ export function editReleaseDescription(view: ReleaseView, release: ReleaseRow): 
 		placeholder: t('release.scope.descriptionPlaceholder'),
 		ctaLabel: t('release.scope.descriptionSave'),
 		initial: current ?? '',
+		onClosed: () => focusControl(view, DESCRIPTION_LINE),
 		onSubmit: (text) =>
-			void save(view, releaseDescriptionWrites(release.item.file, key, current, text), '.pbl-rel-desc'),
+			void save(view, releaseDescriptionWrites(release.item.file, key, current, text), DESCRIPTION_LINE),
 	});
 }
 
@@ -179,10 +185,11 @@ export function editReleaseReleased(view: ReleaseView, release: ReleaseRow): voi
 		// (`interactions/plan.ts`), and what `prompt.clearDate` names in its tooltip.
 		fields: [{ field: 'released', name: key, value: current === null ? '' : formatCivil(current) }],
 		validate: () => null,
+		onClosed: () => focusControl(view, RELEASED_BUTTON),
 		onSubmit: (values) =>
 			// `values.released` and not `?? ''`: the modal submits the fields it was GIVEN, and
 			// this one gave it exactly one — a fallback here is a branch nothing can take.
-			void save(view, releaseReleasedWrites(release.item.file, key, current, values.released), '.pbl-rel-released'),
+			void save(view, releaseReleasedWrites(release.item.file, key, current, values.released), RELEASED_BUTTON),
 	}).open();
 }
 
@@ -204,5 +211,23 @@ export function editReleaseReleased(view: ReleaseView, release: ReleaseRow): voi
  */
 async function save(view: ReleaseView, writes: ReleaseWrite[], control: string): Promise<void> {
 	await view.applyRelease(writes);
+	focusControl(view, control);
+}
+
+/**
+ * The destination, looked up FRESH on every call — `focusNewRelease`'s own rule and for the
+ * same reason: what a write's refresh replaces is the ELEMENT, so a captured one is a
+ * detached node by the time focus reaches it.
+ *
+ * Two callers, and the second is what review found (Codex, PR #211): `save` covers the exits
+ * that WRITE, and each of these three dialogs has a second exit that does not. Escape and
+ * the close control never reach `onSubmit`, so a cancelled prompt left focus on
+ * `document.body` — worst on the status prompt, whose opening control is a menu item that no
+ * longer exists by then, but true of all three. `onClosed` is that exit. It fires on the
+ * submitting one too, BEFORE `onSubmit`, so on that path this call is the one that loses:
+ * the redraw inside the await replaces the element it found, and `save`'s own refocus after
+ * the await is what holds.
+ */
+function focusControl(view: ReleaseView, control: string): void {
 	view.viewEl.querySelector<HTMLElement>(control)?.focus({ preventScroll: true });
 }

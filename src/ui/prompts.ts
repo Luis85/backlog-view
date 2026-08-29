@@ -39,7 +39,27 @@ let warningIdSeq = 0;
  * is the last thing appended to `contentEl`, and a caller that built its own would be
  * free to get that order wrong.
  */
-export abstract class PromptModal<O> extends Modal {
+/**
+ * The one thing a prompt does that is not about collecting a value: say when it went away.
+ *
+ * Every prompt here closes on the way OUT of both exits — the CTA closes and then submits,
+ * and Escape or the close control closes and submits nothing — so a caller that wants
+ * focus back where the reader pressed cannot get it from `onSubmit` alone. That is the
+ * hole review found on the release view's status prompt (Codex, PR #211): the prompt is
+ * opened from a body-mounted `Menu` that is gone by the time it closes, so cancelling left
+ * a keyboard reader on `document.body` with no way back to the chip they came from.
+ *
+ * Stated on the BASE rather than on the three option bags that pass one, because the
+ * reason is the base's: `close()` is what every prompt in this directory does, and the
+ * hole is in that shared step rather than in any one dialog. The same `onClosed` name and
+ * the same "fires BEFORE `onSubmit`" order the four hand-written dialogs in this directory
+ * already use (`newReleaseDialog.ts` and the rest), so a caller needs one rule and not two.
+ */
+export interface Closable {
+	onClosed?: () => void;
+}
+
+export abstract class PromptModal<O extends Closable> extends Modal {
 	protected readonly options: O;
 
 	constructor(app: App, options: O) {
@@ -58,6 +78,7 @@ export abstract class PromptModal<O> extends Modal {
 
 	onClose(): void {
 		this.contentEl.empty();
+		this.options.onClosed?.();
 	}
 }
 
@@ -113,7 +134,7 @@ export interface NewItemPromptResult {
 	typeName: string;
 }
 
-export interface NewItemPromptOptions {
+export interface NewItemPromptOptions extends Closable {
 	heading: string;
 	/**
 	 * Context line under the heading: where the new item will land. A function of the
@@ -197,7 +218,7 @@ export class KnownValueSuggest extends ValueSuggest<string> {
 	}
 }
 
-export interface ValuePromptOptions {
+export interface ValuePromptOptions extends Closable {
 	/** The modal's own heading, and the field label under it. */
 	title: string;
 	fieldName: string;
@@ -279,7 +300,7 @@ export class ValuePromptModal extends PromptModal<ValuePromptOptions> {
 	}
 }
 
-export interface FolderPromptOptions {
+export interface FolderPromptOptions extends Closable {
 	heading: string;
 	description: string;
 	ctaLabel: string;
@@ -325,7 +346,7 @@ export interface DateFieldSpec {
 	value: string;
 }
 
-export interface SchedulePromptOptions extends Refusable<Record<string, string>> {
+export interface SchedulePromptOptions extends Refusable<Record<string, string>>, Closable {
 	heading: string;
 	/** Only the ends the configured axis has: a field with no property is never asked for. */
 	fields: DateFieldSpec[];
@@ -396,7 +417,7 @@ export interface AbsenceResult {
 	target: string;
 }
 
-export interface AbsencePromptOptions extends Refusable<AbsenceResult> {
+export interface AbsencePromptOptions extends Refusable<AbsenceResult>, Closable {
 	heading: string;
 	/**
 	 * The resources this absence may name, as id/label pairs. Pairs rather than notes
@@ -511,7 +532,7 @@ export interface IterationResult {
 	goal: string;
 }
 
-export interface IterationPromptOptions extends Refusable<IterationResult> {
+export interface IterationPromptOptions extends Refusable<IterationResult>, Closable {
 	heading: string;
 	/**
 	 * The name to prefill, or **null on the edit path**, where there is no name field at

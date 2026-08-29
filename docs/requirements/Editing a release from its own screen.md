@@ -224,6 +224,16 @@ whose whole job is to say what a release is. Asked for as a property by the auth
   BEFORE it submits, so focus is off this view by the time the write's redraw runs and the
   handle mechanism correctly finds nothing to restore. Found by review on this PR, against
   the open-note control [[The scope of a release as a tree]] added in the same branch.
+- **A CANCELLED dialog puts focus back too**, and that is a rule about the prompt rather
+  than about any one control here: every dialog these three fields open has a second exit —
+  Escape, the close control — that never reaches `onSubmit`, so the refocus after the write
+  covers only the half that writes. It is answered at `PromptModal.onClose` (`ui/prompts.ts`),
+  which every prompt in that file closes through, under the same `onClosed` name and the same
+  fires-before-`onSubmit` order the hand-written dialogs beside it already use. The status
+  prompt is the case review named and the worst of the three: it is opened from an entry in a
+  body-mounted `Menu` that no longer exists by the time it closes, so cancelling left a
+  keyboard reader on `document.body` with nothing to return to. Found by review (Codex,
+  PR #211).
 - **The chip's accessible name carries the VALUE**, not only what pressing it does: an
   `aria-label` replaces an element's content, so a name reading "Set the release status"
   would take the status away from the one reader who cannot see the chip. It reuses the
