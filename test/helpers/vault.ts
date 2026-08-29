@@ -95,6 +95,8 @@ export class FakeVault {
 	afterWrite: ((path: string) => void) | null = null;
 	/** Awaited before each write lands — how a test stalls a batch to interleave a second one. */
 	beforeWrite: ((path: string) => Promise<void> | void) | null = null;
+	/** One-shot `processFrontMatter` hooks, keyed by path — see `onNextProcess`. */
+	private nextProcessHooks = new Map<string, (fm: Record<string, unknown>) => void>();
 	/** Handlers registered through vault.on('rename'), fired by `renameFile`. */
 	private renameHandlers: ((file: TFile, oldPath: string) => void)[] = [];
 	/**
@@ -254,6 +256,15 @@ export class FakeVault {
 				// Injected failure, for the partial-batch paths a real vault produces.
 				if (this.failWrites.has(file.path)) throw new Error(`write failed: ${file.path}`);
 				const fm = this.frontmatter.get(file.path) ?? {};
+				// One-shot: another window's write, landing on the live object immediately
+				// before the caller's own callback sees it — how a test drives "the note
+				// moved between the plan and the write" without a second processFrontMatter
+				// call of its own.
+				const hook = this.nextProcessHooks.get(file.path);
+				if (hook) {
+					this.nextProcessHooks.delete(file.path);
+					hook(fm);
+				}
 				fn(fm);
 				this.frontmatter.set(file.path, fm);
 				this.writeLog.push({ path: file.path, fm: { ...fm } });
@@ -287,6 +298,16 @@ export class FakeVault {
 	/** What Obsidian fires when the theme, the appearance settings or a snippet change. */
 	changeCss(): void {
 		for (const cb of this.cssChangeHandlers) cb();
+	}
+
+	/**
+	 * Run `cb` against the live frontmatter object the NEXT time `processFrontMatter` opens
+	 * this path, immediately before the caller's own callback — how a test simulates another
+	 * window editing the note while this batch's dialog was open. One-shot: consumed on that
+	 * call and not reinstalled.
+	 */
+	onNextProcess(path: string, cb: (fm: Record<string, unknown>) => void): void {
+		this.nextProcessHooks.set(path, cb);
 	}
 
 	/** Add a leaf the workspace walks, recording whether anything pinned it. */

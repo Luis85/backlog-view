@@ -109,6 +109,59 @@ describe('applyPropertyWrites', () => {
 		expect(inverses).toEqual([]);
 	});
 
+	it('refuses the whole write when a set’s expected value has moved', async () => {
+		const vault = new FakeVault();
+		const file = vault.addFile('0.9.md', { frontmatter: { type: 'Release', status: 'In progress' } });
+
+		// Another window marks it released while our dialog is open. The plan expected
+		// 'In progress'; the note now says otherwise, so NEITHER set may land — writing
+		// today's date over the day it actually shipped is the failure this prevents.
+		vault.onNextProcess('0.9.md', (fm) => {
+			fm['status'] = 'Released';
+			fm['released'] = '2026-08-01';
+		});
+
+		const outcome = await applyPropertyWrites(vault.app, [
+			{
+				file,
+				requiresType: 'Release',
+				sets: [
+					{ key: 'status', value: 'Released', expects: 'In progress' },
+					{ key: 'released', value: '2026-08-29', expects: null },
+				],
+			},
+		], 'type');
+
+		expect(outcome.changed).toBe(false);
+		expect(vault.fm('0.9.md')['released']).toBe('2026-08-01');
+	});
+
+	it('treats a bare `released:` as absent, and fills it', async () => {
+		const vault = new FakeVault();
+		// The commonest shape in a vault, and the one a raw-presence guard gets wrong:
+		// `hasOwnProperty` is true, every reading in the plugin calls it absent.
+		const file = vault.addFile('0.9.md', { frontmatter: { type: 'Release', status: 'In progress', released: null } });
+
+		await applyPropertyWrites(vault.app, [
+			{ file, requiresType: 'Release', sets: [{ key: 'released', value: '2026-08-29', expects: null }] },
+		], 'type');
+
+		expect(vault.fm('0.9.md')['released']).toBe('2026-08-29');
+	});
+
+	it('treats an absent key as the absence a set expected', async () => {
+		const vault = new FakeVault();
+		// No `status` key at all. `readLabel(undefined)` is valid-and-absent, so `closeOffer`
+		// offers this release — and the raw value the plan captures is `undefined`.
+		const file = vault.addFile('0.9.md', { frontmatter: { type: 'Release' } });
+
+		await applyPropertyWrites(vault.app, [
+			{ file, requiresType: 'Release', sets: [{ key: 'status', value: 'Released', expects: undefined }] },
+		], 'type');
+
+		expect(vault.fm('0.9.md')['status']).toBe('Released');
+	});
+
 	it('never writes an UNCONFIGURED key: an empty key is dropped, and its own file is left unopened', async () => {
 		const vault = new FakeVault();
 		const item = vault.addFile('Item.md', { frontmatter: { score: 4 } });

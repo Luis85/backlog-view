@@ -26,6 +26,17 @@ export interface PropertySet {
 	key: string;
 	value: unknown;
 	ifMissing?: boolean;
+	/**
+	 * The raw value this set expects to find on the live note. When present and the live
+	 * value differs, `applyPropertyWrites` refuses the WHOLE write — every set of it —
+	 * rather than dropping this one: a batch whose fields have to land together is not
+	 * improved by landing half of it.
+	 *
+	 * `applyRestores`' compare-and-swap, asked of a forward write. It exists because the
+	 * live TYPE check beside it is not enough: a note can keep its type while the very
+	 * field being written moves under an open dialog.
+	 */
+	expects?: unknown;
 }
 
 export interface PropertyWrite {

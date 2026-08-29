@@ -805,10 +805,10 @@ export function rawValueOf(fm: Record<string, unknown>, key: string): RawValue {
 }
 
 /** Equality on raw frontmatter values — plain YAML data, so structural compare is sound.
- *  No longer exported: `propertyWrite.ts` used to import it for its own before/after
- *  comparison, replaced by a `captureInverse` call that already does this internally —
- *  the last external consumer, so the boundary closed with it. */
-function sameRaw(a: RawValue, b: RawValue): boolean {
+ *  Exported for `propertyWrite.ts`'s `stillExpected`, which asks this same question of a
+ *  set's `expects` against the live note — the compare-and-swap `applyRestores` already
+ *  makes, asked of a forward write instead of a replay. */
+export function sameRaw(a: RawValue, b: RawValue): boolean {
 	if (!a.present || !b.present) return a.present === b.present;
 	return a.value === b.value || JSON.stringify(a.value) === JSON.stringify(b.value);
 }

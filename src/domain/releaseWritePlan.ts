@@ -60,18 +60,11 @@ function fieldWrite(file: TFile, role: ReleaseField, key: string, value: string 
  */
 export type ReleaseField = 'status' | 'description' | 'released';
 
-/** One key to set, carrying the FIELD it was planned for. */
+/** One key to set, carrying the FIELD it was planned for. `expects` is `PropertySet`'s
+ *  own field — `applyPropertyWrites` is what reads it, so it lives with the type that
+ *  writer consumes rather than a second declaration here. */
 export interface ReleaseSet extends PropertySet {
 	role: ReleaseField;
-	/**
-	 * The raw value this set expects to find on the live note. Declared here rather than
-	 * on the shared `PropertySet` because the writer does not read it yet — the follow-up
-	 * increment lifts it onto that type and teaches `applyPropertyWrites` to refuse the
-	 * whole write when it has moved (the "closing a release" write's own reason to exist:
-	 * a retype between the plan and the write must not land the status with no date, or
-	 * the date over a status the note no longer holds).
-	 */
-	expects?: unknown;
 }
 
 export interface ReleaseWrite extends PropertyWrite {

@@ -3,7 +3,7 @@ import { t } from '../i18n/t';
 import { PropertyWrite } from '../domain/estimationWritePlan';
 import { isResourceType } from '../domain/itemTypes';
 import { ownValue, readString, sameValue } from '../domain/noteFields';
-import { captureInverse, RestoreWrite, WriteOutcome, rawValueOf } from './frontmatter';
+import { captureInverse, RawValue, RestoreWrite, WriteOutcome, rawValueOf, sameRaw } from './frontmatter';
 import { setOwn } from './ownProperty';
 
 /**
@@ -87,6 +87,17 @@ export async function applyPropertyWrites(
 					refusal = t('gate.retyped', { type: write.requiresType });
 					return;
 				}
+				// Asked HERE, not before the call: the permission is about the bytes being
+				// replaced, and only this callback sees those. A set whose expected value
+				// has moved refuses the whole write — the fields of one write are meant to
+				// land together, so landing the rest is the split state, not a partial
+				// success. `sameRaw` rather than `===`, the comparison `applyRestores`
+				// already makes about the same question.
+				const moved = sets.find((s) => 'expects' in s && !stillExpected(rawValueOf(fm, s.key), s.expects));
+				if (moved !== undefined) {
+					refusal = t('gate.valueMoved', { property: moved.key });
+					return;
+				}
 				const keys = sets.map((s) => s.key);
 				const prior = keys.map((key) => rawValueOf(fm, key));
 				for (const s of sets) {
@@ -112,4 +123,17 @@ export async function applyPropertyWrites(
 		onProgress?.(++done, writes.length);
 	}
 	return outcome;
+}
+
+/** Whether the live value is the one a set expected. `null` and `undefined` both expect
+ *  ABSENT — a missing key and an explicit `released:` are the same answer to "is there a
+ *  value here", and a presence-only test gets the second one wrong.
+ *
+ *  `undefined` is not a nicety: `readLabel` calls a missing key valid-and-absent, so the
+ *  action is OFFERED on a release whose status property is not there, and `ownValue`
+ *  hands that plan `undefined` as the value to expect. Treating it as a moved value
+ *  refuses every such release forever — the note that most needs marking. */
+function stillExpected(live: RawValue, expected: unknown): boolean {
+	if (expected === null || expected === undefined) return !live.present || live.value === null;
+	return live.present && sameRaw(live, { present: true, value: expected });
 }

@@ -1204,6 +1204,13 @@ export const en = {
 	 */
 	'gate.retyped': 'That note is no longer a {type}, so nothing was written to it.',
 	/**
+	 * `PropertySet.expects`' own refusal — a set stated the raw value it expected to find,
+	 * and the live note holds something else. Worded beside `gate.retyped`: both are the
+	 * note having moved under an open dialog, this one at the FIELD rather than the type.
+	 * `{property}` is the key itself — vault data, not a word from this catalog.
+	 */
+	'gate.valueMoved': 'Nothing was written: {property} changed while the dialog was open.',
+	/**
 	 * The release screen's own refusal, and the third thing that can be wrong with a batch by
 	 * the time it lands. Not a collision (`configProblems` reports those) and not a retype
 	 * (`gate.retyped` above): the CONFIGURATION moved under an open dialog, so the key the
