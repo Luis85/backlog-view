@@ -182,6 +182,13 @@ interface NewMember {
  * [[The scope of a release as a tree]] 1b as an unresolved membership, which is a fair
  * report of a note that should never have been made that way. Found by review
  * (Codex, PR #214), the same finding PR #201 made against the edit path.
+ *
+ * **The PARENT is deliberately not re-read beside it, and neither are the settings** —
+ * `docs/issues/A creation outlives what it was planned against.md` states both, and why
+ * the release is the one of the three that earned a guard: the edit path already had this
+ * exact function, so the creation path was inconsistent with a rule already written down.
+ * A parent refusal belongs in `createBacklogItem`, where one covers this caller and
+ * `view/interactions/create.ts` together rather than making two creation paths disagree.
  */
 async function createMember(view: ReleaseView, release: ReleaseRow, settings: BacklogSettings, row: ScopeRow, spec: NewMember): Promise<void> {
 	if (refusesLiveMembership(view.app, release.item.file, settings)) {
