@@ -2,7 +2,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { Menu, Notice } from '../../helpers/obsidian-mock';
 import { en } from '../../../src/i18n/en';
-import { mountFoldScope, refreshRelease, row, select } from '../../helpers/release';
+import { makeReleaseView, mountFoldScope, refreshRelease, RELEASE_CONFIG, row, select } from '../../helpers/release';
 import { flush, submitPrompt, useViewHarness } from '../../helpers/view';
 import { FakeVault } from '../../helpers/vault';
 
@@ -203,6 +203,36 @@ describe('creating a child from a release scope row', () => {
 
 		expect(created(vault, before)).toEqual([]);
 		expect(Notice.messages).toEqual([en['release.scope.staleRelease']]);
+	});
+
+	it('offers no create on a test-catalog context row, whose children could not be members', () => {
+		// Reachable, and this is the fixture that shows it: `ladderFor` chains off the parent
+		// for a `Task` and a typeless note ALONE, so an `Epic` parented under a `Test suite`
+		// stays on the plan's ladder and can be a release member — which draws its catalog
+		// ancestor above it as a context row. `childTypeChoices` then offers that row its own
+		// catalog child, and `mayHoldField(type, 'release')` refuses every one of them, so the
+		// note would be created carrying a release link its own reader reports as unresolved
+		// and vanish from the screen it was made on. Found by review (Codex, PR #214).
+		const vault = new FakeVault();
+		vault.addFile('Releases/0.8.md', { frontmatter: { type: 'Release', version: '0.8.0' } });
+		vault.addFile('Suite.md', { frontmatter: { type: 'Test suite' } });
+		vault.addFile('Epic under suite.md', {
+			frontmatter: { type: 'Epic', release: '[[Releases/0.8]]' },
+			parentLink: 'Suite',
+		});
+		const { view } = makeReleaseView(vault, RELEASE_CONFIG, { base: 'Releases.base' });
+		view.pick('Releases/0.8.md');
+
+		// The context row IS drawn — the guard has to be about what it offers, not about
+		// whether the row is there.
+		const suiteEl = row(view, 'Suite.md')!;
+		Menu.lastShown = null;
+		suiteEl.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }));
+		expect(Menu.lastShown).toBeNull();
+
+		// The member below it still offers its own, so this withholds one row rather than
+		// the feature.
+		expect(titles(openMenu(view, 'Epic under suite.md'))).toContain('New Feature');
 	});
 
 	it('opens nothing from the keyboard before the tree has an active row', () => {

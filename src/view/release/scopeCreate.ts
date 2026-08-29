@@ -3,7 +3,7 @@ import type { ReleaseView } from './releaseView';
 import { t } from '../../i18n/t';
 import { BacklogSettings } from '../../domain/settings';
 import { ReleaseRow, refusesLiveMembership, ScopeRow } from '../../domain/releases';
-import { childTypeChoices, folderForType } from '../../domain/itemTypes';
+import { childTypeChoices, folderForType, inCatalog } from '../../domain/itemTypes';
 import { configProblems } from '../../domain/settingsConsistency';
 import { ORDER_SPACING } from '../../domain/writePlan';
 import { createBacklogItem } from '../../storage/createNote';
@@ -44,7 +44,7 @@ import { ScopeDraw, foldedPaths, toggleFold } from './scopeTree';
  */
 export function wireScopeCreate(view: ReleaseView, release: ReleaseRow, settings: BacklogSettings, draw: ScopeDraw): void {
 	const { treeEl, rows, rowEls } = draw;
-	const menuFor = (row: ScopeRow): Menu => scopeMenu(view, release, settings, row);
+	const menuFor = (row: ScopeRow): Menu | null => scopeMenu(view, release, settings, row);
 
 	treeEl.addEventListener('contextmenu', (evt) => {
 		// `evt.target` is asserted rather than tested: this listener is on `treeEl`, so a
@@ -52,14 +52,16 @@ export function wireScopeCreate(view: ReleaseView, release: ReleaseRow, settings
 		// would be the unreachable branch this module's neighbours already argue against.
 		const rowEl = (evt.target as Element).closest('.pbl-row');
 		const row = rows.find((r) => rowEls.get(r.item.file.path) === rowEl);
-		if (!row) return;
-		// The browser's own menu would otherwise cover this one. Only once a row is found:
-		// a right-click on the tree's own padding still gets the pane's menu.
+		const menu = row ? menuFor(row) : null;
+		// The browser's own menu would otherwise cover this one. Only once there IS a menu:
+		// the tree's own padding, and a row this screen may create nothing under, both still
+		// get the pane's menu rather than nothing at all.
+		if (!menu) return;
 		evt.preventDefault();
 		// `showMenuForClick`, never `showAtMouseEvent` — the rule that module states and
 		// lint enforces: a synthesized click reports (0, 0) and would drop the menu in the
 		// viewport corner.
-		showMenuForClick(menuFor(row), evt);
+		showMenuForClick(menu, evt);
 	});
 
 	treeEl.addEventListener('keydown', (evt) => {
@@ -85,16 +87,31 @@ export function wireScopeCreate(view: ReleaseView, release: ReleaseRow, settings
  * be on this menu" is `test/view/releaseNeverEdits.test.ts`: every other entry the backlog's
  * own row menu carries edits the row's own frontmatter, which this view does not do.
  *
- * **There is no empty-menu guard**, and that is a fact about this tree rather than an
- * omission: `childTypeChoices` answers the empty list for a MARKER alone, and a marker can
- * be neither a member (`membershipTarget` refuses every carrier `inPlan` excludes) nor a
- * context ancestor (it holds no children to be above). Every other row — the bottom rung of
- * either ladder included — still offers the extra types that hang from it. A guard here
- * would be the unreachable branch this module's neighbours argue against; if a marker ever
- * does reach this tree, the symptom is an empty menu and the fix belongs at whatever let it
- * in.
+ * **`null` on a TEST-CATALOG row**, which is the one row this tree draws whose children
+ * could not join the release the menu would seed. It is reachable and was found by review
+ * (Codex, PR #214): `ladderFor` chains off the parent for a `Task` and a typeless note
+ * alone, so an `Epic` parented under a `Test suite` stays on the plan's ladder and can be a
+ * member — which draws that suite above it as a context row. `childTypeChoices` answers
+ * such a row with its own catalog child (`if (inCatalog(parent)) return [ladderChild]`),
+ * and `mayHoldField(type, 'release', settings)` refuses every one of those: a release holds
+ * plan work, and the catalog is not the plan's. Offered anyway, the note would be created
+ * carrying a link its own reader reports as an unresolved membership and would vanish from
+ * the screen it was made on — the exact failure the membership seed exists to prevent,
+ * one row over.
+ *
+ * The question is asked of the ROW and not of each type, because a type NAME cannot answer
+ * it: `Task` is on both ladders, so a task under a `Test case` passes `mayHoldField` and is
+ * refused by `inPlan` at the reading end. `inCatalog(row.item)` is the same question one
+ * step earlier, where the parent that decides the child's ladder is in hand — and it is
+ * exactly the branch `childTypeChoices` itself takes to pick what to offer.
+ *
+ * No other row answers empty: a marker can be neither a member nor a context ancestor (it
+ * holds no children to be above), and every plan row offers its own rung plus the extra
+ * types, none of which is a marker.
  */
-function scopeMenu(view: ReleaseView, release: ReleaseRow, settings: BacklogSettings, row: ScopeRow): Menu {
+function scopeMenu(view: ReleaseView, release: ReleaseRow, settings: BacklogSettings, row: ScopeRow): Menu | null {
+	// A catalog row's children are catalog notes, and a release holds plan work.
+	if (inCatalog(row.item)) return null;
 	const types = childTypeChoices(row.item);
 	const menu = new Menu();
 	for (const type of types) {

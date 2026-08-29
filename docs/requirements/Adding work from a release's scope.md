@@ -56,9 +56,14 @@ appear on the screen the gesture was made from — a press that reads as having 
   Creating a child writes a DIFFERENT note, which is the one mutation still fair game on a row
   every editing action is withheld from — and the note it writes joins this release like any
   other.
-- **2a — the row can hold nothing** (a marker, or the bottom of its own ladder with no extra
-  type beneath it). No menu is opened at all, rather than an empty one: an empty menu reads as
-  a feature that failed rather than one that does not apply here.
+- **2a — the row is a test-catalog note.** No menu is opened at all, and the pane's own menu
+  is left alone. A `Test suite` or `Test case` can be a context row here — `ladderFor` chains
+  off the parent for a `Task` and a typeless note alone, so an `Epic` parented under a suite
+  stays on the plan's ladder and can be a member — but every child such a row may hold is a
+  catalog note, and [[The scope of a release as a tree]] 1b refuses those a membership: a
+  release holds work and those notes are not work. Offering the create anyway would make a
+  note carrying a release link its own reader reports as unresolved, which vanishes from the
+  screen it was made on — the very failure the membership seed exists to prevent.
 - **3a — the view options collide.** The press is refused with the problem named, before the
   title is asked for. Creation writes frontmatter like every other write path in this plugin
   and goes through the same gate; a dialog that collected a title and then refused would have
@@ -112,8 +117,16 @@ appear on the screen the gesture was made from — a press that reads as having 
   may do to a note that already exists is still nothing
   ([[The scope of a release as a tree]]'s own guarantee, and
   `test/view/releaseNeverEdits.test.ts`).
-- **A right-click that lands on no row does not consume the pane's own menu.** The default is
-  prevented only once a row is resolved.
+- **A right-click that lands on no row, or on a row this screen may create nothing under,
+  does not consume the pane's own menu.** The default is prevented only once there is a menu
+  to show.
+- **A test-catalog row is withheld the whole menu, and the question is asked of the ROW.** A
+  type name cannot answer it — `Task` is on both ladders, so a task under a `Test case`
+  passes `mayHoldField(type, 'release')` and is refused by `inPlan` at the reading end. The
+  parent that decides the child's ladder is what is in hand here, which is the same branch
+  `childTypeChoices` itself takes. `test/view/release/scopeCreate.test.ts` builds an `Epic`
+  under a `Test suite`, asserts the suite IS drawn as a context row, and asserts it opens no
+  menu while the member below it still offers its own.
 
 ## Where it lives
 
