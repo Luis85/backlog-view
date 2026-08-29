@@ -598,11 +598,18 @@ function refusesLiveType(settings: BacklogSettings, write: ItemWrite, liveType: 
  * it), which is the case this guard is for. `FakeVault.create` indexes synchronously, so
  * nothing in the suite meets this window by accident — `unindex` is how a test asks for
  * it (Codex review, PR #207).
+ *
+ * **A DELETED target has no cache either, and must not ride in on that.** The two are one
+ * state to `getFileCache` and two states to the vault, so the vault is what separates
+ * them — identity rather than existence, the same test `applyRestores` makes below: a path
+ * deleted and taken again by a different note answers "still there" to a bare null check
+ * while being a different file. A link to a note that is gone resolves to nothing, which
+ * is the one value this whole flow must not write (Codex review, PR #207, second round).
  */
 function refusesLiveAssignee(app: App, target: TFile | null | undefined, settings: BacklogSettings): boolean {
 	if (!target) return false;
 	const cache = app.metadataCache.getFileCache(target);
-	if (cache === null) return false;
+	if (cache === null) return app.vault.getAbstractFileByPath(target.path) !== target;
 	return !isResourceType(readString(ownValue(cache.frontmatter, settings.typeKey)));
 }
 

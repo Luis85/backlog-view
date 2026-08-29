@@ -415,4 +415,23 @@ describe('the writer asks the LIVE type about an assignee target', () => {
 		expect(vault.fm('1.0.md')).toEqual({ type: 'PBI' });
 		expect(outcome.changed).toBe(false);
 	});
+
+	it('refuses a target that was DELETED, which has no cache either', async () => {
+		// The other half of "no cache": a deleted note and a not-yet-indexed one are one
+		// state to `getFileCache` and two to the vault. Writing the link anyway would spell
+		// a wikilink that resolves to nothing (Codex review, PR #207, second round).
+		const vault = new FakeVault();
+		const resourceFile = vault.addFile('Alex.md', { frontmatter: { type: 'Resource' } });
+		vault.addFile('1.0.md', { frontmatter: { type: 'PBI' } });
+		const model = buildModel(vault.app, vault.entries(), assigneeSettings);
+		const item = model.byPath.get('1.0.md');
+		if (!item) throw new Error('fixture did not build');
+		const writes = computeAssigneeWrites(item, resourceFile);
+
+		await vault.app.fileManager.trashFile(resourceFile);
+		const outcome = await applyWrites(vault.app, assigneeSettings, writes);
+
+		expect(vault.fm('1.0.md')).toEqual({ type: 'PBI' });
+		expect(outcome.changed).toBe(false);
+	});
 });
