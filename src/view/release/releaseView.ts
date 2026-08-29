@@ -1,4 +1,4 @@
-import { BasesView, QueryController } from 'obsidian';
+import { BasesView, QueryController, TFile } from 'obsidian';
 import { t } from '../../i18n/t';
 import { BacklogModel, buildModel } from '../../domain/model';
 import { ReleaseSettings, resolveReleaseSettings } from '../../domain/releaseOptions';
@@ -8,11 +8,46 @@ import { resolveSettings } from '../../domain/settingsResolve';
 import { loadViewState, saveViewState } from '../../storage/viewStateStore';
 import { resolveViewIdentity } from '../../storage/viewIdentity';
 import { guidanceShell } from '../render/emptyStates';
+import { OpenContext, OpenController } from '../openTarget';
+import { RELEASE_SUGGESTED_KEYS } from './init';
+import { renderReleaseInit } from './initControl';
 import { renderNewRelease } from './newRelease';
 import { drawUnresolved, renderIndex } from './renderIndex';
 import { renderScope } from './renderScope';
 
 export const RELEASE_VIEW_TYPE = 'product-release';
+
+/**
+ * The classes a redraw's own controls carry — the fixed vocabulary {@link ReleaseView.render}
+ * restores a lost focus through, in place of a bespoke restore per control. Three separate
+ * fixes for the same class of bug shipped on this branch before this list did: the ✨
+ * (`initControl.ts`), the scope tree's own row (`activeScopeFile`/`scopeHadFocus`, left
+ * alone below — a different question, which ROW, not answered here), and the toolbar
+ * (`scopeToolbar.ts`). None of the eight controls that carry one of these classes carries a
+ * second, so checking them in this order is deterministic without needing to be.
+ *
+ * **`pbl-rel-new` and `pbl-rel-band` joined this list for the same reason and pay off
+ * differently, which is worth knowing before reading either as broken.** `pbl-rel-new` gets
+ * an EXACT match on most redraws — `New release` survives a bind, a metadata refresh, and
+ * (per `focusNewRelease`'s own doc) most redraws after a creation — so `render()`'s exact
+ * branch below is what puts focus back on it, the same as any other control here. `pbl-rel-band`
+ * never does: activating a band changes SCREEN (index → scope), so no band exists once this
+ * render finishes and the exact-match query always misses. What adding it buys is narrower —
+ * `focusedControlClass()` stops answering null for a focused band, which is what lets this
+ * method's own FALLBACK fire (the redrawn screen's first focusable control — the scope's Back
+ * button) instead of leaving a reader on `document.body`. Landing beside the right control,
+ * not on it, is still the whole of the fix: the alternative was never restoring anything.
+ */
+const FOCUS_HANDLE_CLASSES = [
+	'pbl-rel-init',
+	'pbl-rel-collapse',
+	'pbl-rel-expand',
+	'pbl-rel-hidedone',
+	'pbl-rel-back',
+	'pbl-tree',
+	'pbl-rel-new',
+	'pbl-rel-band',
+];
 
 /**
  * The release view: the plugin's third Bases view, and the one that **creates notes and
@@ -45,6 +80,27 @@ export class ReleaseView extends BasesView {
 	model: BacklogModel | null = null;
 	/** Which screen the LAST render drew — see {@link draw}. */
 	private drawnKey: string | null = null;
+	/** Where a row's click opens its note — the estimation view's own `opener`
+	 *  (`estimationView.ts`), reused for the identical reason: a click on a scope row is
+	 *  ordinary navigation, never a write. */
+	readonly opener = new OpenController();
+	/** The scope tree's own roving selection, carried across a render — see
+	 *  `scopeKeys.ts`'s own comment on why the redraw a fold triggers must not drop it.
+	 *
+	 *  The FILE, never its path. Obsidian mutates the one `TFile` in place on a rename, so
+	 *  the identity survives what a captured path cannot: renaming the active member, or a
+	 *  folder above it, left this naming a path the refreshed rows no longer hold and
+	 *  dropped the keyboard back to the first row. Same rule `storage/CLAUDE.md` states for
+	 *  a captured dependency — a captured thing holds a FILE, never a name — and it needs
+	 *  no rename subscription of its own to keep. A note deleted and recreated at the same
+	 *  path is deliberately NOT a match: that is a different file, and the row the reader
+	 *  was on is genuinely not there. */
+	activeScopeFile: TFile | null = null;
+	/** Whether the SCOPE TREE — never the index list, never a button — held focus just
+	 *  before the current render's `empty()` detached it. Captured in `render()`, below,
+	 *  beside `previousTop` and for the identical reason: a detached element answers
+	 *  nothing, so this has to be read before the teardown rather than after it. */
+	scopeHadFocus = false;
 
 	constructor(controller: QueryController, containerEl: HTMLElement) {
 		super(controller);
@@ -78,9 +134,27 @@ export class ReleaseView extends BasesView {
 		this.render();
 	}
 
-	/** Picking a row, or the back control's null. Persists, then redraws. */
+	/** What `opener` needs of this view — one object built here rather than at every call
+	 *  site, so a scope row's click, its middle click and the keyboard's Enter cannot each
+	 *  spell the same three fields slightly differently. */
+	openContext(): OpenContext {
+		return { app: this.app, viewEl: this.viewEl, settings: { openIn: this.settings.openIn } };
+	}
+
+	/**
+	 * Picking a row, or the back control's null. Persists, then redraws.
+	 *
+	 * **Clears `activeScopeFile`.** A pick is a change of SCREEN — the scroll restore
+	 * already treats it as a reset (see `render`'s own comment) — and without this a
+	 * context ancestor selected in release A stayed the keyboard's starting row in release
+	 * B, whenever the same path happened to sit in B's scope too: `scopeKeys.ts`'s restore
+	 * matches on path alone, with no idea which release picked it last. `onDataUpdated`
+	 * (a redraw of the SAME scope — a Bases refresh, an external edit, a rename) never
+	 * calls this, so the active row survives exactly the redraws it should.
+	 */
 	pick(path: string | null): void {
 		this.pickedPath = path;
+		this.activeScopeFile = null;
 		const id = resolveViewIdentity(this.app, this.viewEl, this.config.name ?? '');
 		if (id) {
 			const state = loadViewState(this.app, id);
@@ -150,6 +224,21 @@ export class ReleaseView extends BasesView {
 		const previousEl = this.scrollerEl();
 		const previousTop = previousEl?.scrollTop ?? 0;
 		const previousKey = this.drawnKey;
+		// Captured before `empty()` for `previousTop`'s own reason: a detached element
+		// answers nothing. `previousEl` already narrows to `.pbl-tree` or `.pbl-rel-list`,
+		// so this only has to ask whether it was THIS render's tree specifically.
+		//
+		// `contains`, not `===`: a MOUSE press on a per-row control inside the tree (the
+		// disclosure) focuses that button, and the redraw this render is performing is
+		// about to detach it. Focus was inside the composite widget, so it belongs back on
+		// the composite widget — `wireScopeKeys` puts it on the row `activeScopeFile`
+		// names. An element contains itself, so the keyboard case (focus ON the tree) is
+		// unchanged.
+		this.scopeHadFocus = previousEl !== null && previousEl.classList.contains('pbl-tree') && previousEl.contains(document.activeElement);
+		// Read for the identical reason, one line up: which control (if any) held focus,
+		// named by the one class in `FOCUS_HANDLE_CLASSES` it carries — and, where the
+		// control says which note it is about, that path beside it.
+		const focusHandle = this.focusedHandle();
 		this.viewEl.empty();
 		this.drawnKey = this.draw();
 		const el = this.scrollerEl();
@@ -157,6 +246,45 @@ export class ReleaseView extends BasesView {
 		// the base's results, a release whose members shrank — cannot park the pane below its
 		// own last row. `renderTable.ts` clamps its own restore for the same case.
 		if (el !== null && this.drawnKey === previousKey) el.scrollTop = Math.min(previousTop, el.scrollHeight);
+		// Re-queried rather than kept as an element reference: `empty()` already detached the
+		// original. The exact handle comes back first — a reader who pressed a control should
+		// land on that same control again, not near it — but a screen that replaced it (binding
+		// `membershipProperty` on the `noMembership` state draws the scope instead, with no
+		// `.pbl-rel-init` of its own) has no honest exact match, and the press that did that was
+		// a SUCCESS: it removed its own control on purpose. Stopping there would strand a
+		// keyboard user on `document.body` to pay for a press that worked, so the fallback is the
+		// redrawn screen's own first focusable control — `New release`, Back, the tree — over
+		// inventing one that means nothing.
+		if (focusHandle !== null) {
+			// Every OTHER handle class names one element on its screen; `pbl-rel-band` names
+			// one per release, so a bare `querySelector` handed focus to the FIRST band
+			// whichever one the reader was on — a routine metadata refresh silently moved
+			// them to the top of the list. Matched on `data-path` where the control carries
+			// one, which is the same "identify the thing, not its position" the roving row
+			// restore makes one file over. Falls back to the first match for a screen that
+			// redrew without the note (a release whose row left the results), since landing
+			// on a band is closer than landing on the body.
+			const all = Array.from(this.viewEl.querySelectorAll<HTMLElement>(`.${focusHandle.cls}`));
+			const named = focusHandle.path === null ? undefined : all.find((el) => el.dataset.path === focusHandle.path);
+			(named ?? all[0] ?? this.viewEl.querySelector<HTMLElement>('button'))?.focus({ preventScroll: true });
+		}
+	}
+
+	/** The one class in {@link FOCUS_HANDLE_CLASSES} the currently focused element carries —
+	 *  with its `data-path` where it has one, since a class alone does not identify a
+	 *  control there is one of per release — or null when focus is outside this view or on
+	 *  something the redraw does not track —
+	 *  a per-row control, say. `scopeHadFocus` (above) is what covers that case now: a
+	 *  MOUSE press on a per-row control inside the tree, `.pbl-twisty`, focuses the twisty
+	 *  itself, this method returns null for it (twisty is not in `FOCUS_HANDLE_CLASSES`),
+	 *  and `scopeHadFocus`'s `contains` check catches it instead — the tree is the focus
+	 *  TARGET a composite widget hands focus back to, never the button, which is exactly
+	 *  why the twisty is deliberately not added to `FOCUS_HANDLE_CLASSES` here. */
+	private focusedHandle(): { cls: string; path: string | null } | null {
+		const active = document.activeElement;
+		if (!(active instanceof HTMLElement) || !this.viewEl.contains(active)) return null;
+		const cls = FOCUS_HANDLE_CLASSES.find((name) => active.classList.contains(name));
+		return cls === undefined ? null : { cls, path: active.dataset.path ?? null };
 	}
 
 	/**
@@ -210,6 +338,7 @@ export class ReleaseView extends BasesView {
 		// on that: such an item is reported among the unresolved "rather than silently dropped".
 		const index = releaseIndex(this.app, this.model, this.settings, {
 			stateKey: backlogSettings.stateKey,
+			deliverableStateKey: backlogSettings.deliverableStateKey,
 			today: todayCivil(),
 		});
 		if (this.model.releases.length === 0) {
@@ -225,6 +354,15 @@ export class ReleaseView extends BasesView {
 				t('release.empty.noReleases.title'),
 				t('release.empty.noReleases.hint'),
 			);
+			// The bar's own ✨ never reaches this screen either, for the identical reason: it is
+			// `renderIndex` that draws it, and this branch returns before that runs. A base with
+			// zero releases is the FIRST-USE case that most needs all four bindings, so `fixes`
+			// is every option `RELEASE_SUGGESTED_KEYS` names rather than the one name the
+			// `noMembership` screen passes (`renderScope.ts`) — that screen is about ONE property
+			// and narrows on purpose; this one has nothing bound yet and nothing to narrow to.
+			// Derived rather than copied, so a fifth candidate is covered by being declared there
+			// and not by a second list here going stale beside it.
+			renderReleaseInit(this, empty, 'empty', RELEASE_SUGGESTED_KEYS.map((candidate) => candidate.option));
 			renderNewRelease(this, empty);
 			drawUnresolved(this.viewEl, index);
 			return null;
@@ -238,7 +376,9 @@ export class ReleaseView extends BasesView {
 		}
 		// The release is passed alongside the scope it came from: the check above is what
 		// rules on it, and `renderScope` repeating it would be an unreachable branch.
-		renderScope(this, scope, scope.release);
+		// `backlogSettings` rides along too, for the summary strip's provenance tooltip
+		// (`renderScope.ts`'s own comment on why it takes this rather than re-resolving).
+		renderScope(this, scope, scope.release, backlogSettings);
 		return scope.release.path;
 	}
 }

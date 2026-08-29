@@ -297,6 +297,57 @@ describe('the release index', () => {
 		expect(row(rows, 'R.md').done.value).toBe(1);
 	});
 
+	it('names a single workflow when every member reads the same one', () => {
+		// The requirements workflow alone — every member here is an ordinary plan type, so
+		// there is exactly one entry to name and it is the plan's own.
+		const vault = new FakeVault();
+		vault.addFile('R.md', { frontmatter: { type: 'Release' } });
+		vault.addFile('A.md', { frontmatter: { type: 'PBI', release: '[[R]]', status: 'Doing' } });
+		vault.addFile('B.md', { frontmatter: { type: 'Feature', release: '[[R]]', status: 'Done' } });
+		const rows = indexOf(vault).rows;
+		expect(row(rows, 'R.md').workflows).toEqual(['requirements']);
+	});
+
+	it('names every workflow a mixed population reads through, in the declared order', () => {
+		// A plan member and a Deliverable member, deliberately on DIFFERENT properties —
+		// same fixture shape as the "OWN workflow" test above — so this cannot pass by both
+		// happening to read `status`. Order asserted as `['requirements', 'deliverable']`
+		// rather than with a `Set`, which would pass whichever member the walk reached
+		// first: `WORKFLOW_ORDER` is what keeps the tooltip's word order independent of
+		// that.
+		const vault = new FakeVault();
+		vault.addFile('R.md', { frontmatter: { type: 'Release' } });
+		vault.addFile('A.md', { frontmatter: { type: 'PBI', release: '[[R]]', status: 'Doing' } });
+		vault.addFile('D.md', {
+			frontmatter: { type: 'Deliverable', release: '[[R]]', docStatus: 'Done', status: 'Doing' },
+		});
+		const settings = settingsWith({ stateKey: 'status', deliverableStateKey: 'docStatus' });
+		const rows = releaseIndex(vault.app, modelOf(vault, settings), KEYS, { stateKey: settings.stateKey, today: TODAY }).rows;
+		expect(row(rows, 'R.md').workflows).toEqual(['requirements', 'deliverable']);
+	});
+
+	it('never counts a workflow for a context ancestor, only for members', () => {
+		// The context-row rule asked of `workflows`: `Outside.md` names the release and is
+		// excluded from the Base, so it must contribute no kind at all — a release with only
+		// this ancestor loaded reads as having NO workflow represented, not one.
+		const vault = new FakeVault();
+		vault.addFile('R.md', { frontmatter: { type: 'Release' } });
+		vault.addFile('Outside.md', { frontmatter: { type: 'Feature', release: '[[R]]', status: 'Done' } });
+		vault.addFile('Child.md', { frontmatter: { type: 'PBI' }, parentLink: 'Outside' });
+		const entries = vault.entries().filter((e) => e.file.path !== 'Outside.md');
+		const model = buildModel(vault.app, entries, settingsWith({ stateKey: 'status' }));
+		const rows = releaseIndex(vault.app, model, KEYS, { stateKey: 'status', today: TODAY }).rows;
+		expect(row(rows, 'R.md').workflows).toEqual([]);
+	});
+
+	it('reports no workflow at all without a membership key', () => {
+		const vault = new FakeVault();
+		vault.addFile('R.md', { frontmatter: { type: 'Release' } });
+		vault.addFile('A.md', { frontmatter: { type: 'PBI', release: '[[R]]', status: 'Done' } });
+		const rows = releaseIndex(vault.app, modelOf(vault), { ...KEYS, membershipKey: '' }, { stateKey: 'status', today: TODAY }).rows;
+		expect(row(rows, 'R.md').workflows).toEqual([]);
+	});
+
 	it('reports done as unconfigured without a state key OR without a membership key', () => {
 		const vault = new FakeVault();
 		vault.addFile('R.md', { frontmatter: { type: 'Release' } });
@@ -312,6 +363,49 @@ describe('the release index', () => {
 		// No membership key: a done count with no membership has nothing to count OVER.
 		const noMembership = releaseIndex(vault.app, model, { ...KEYS, membershipKey: '' }, { stateKey: 'status', today: TODAY });
 		expect(noMembership.rows[0].done.unconfigured).toBe(true);
+	});
+
+	/**
+	 * Carried finding 1, task 5: the gate MOVED from the plan's `stateKey` alone to "every
+	 * workflow the members actually span". Watched failing with `workflowConfigured`'s
+	 * `deliverable` branch reverted to `stateConfigured` (the old gate): this test failed —
+	 * `done.unconfigured` read `true` — while the "still ... cannot answer" test beside it
+	 * kept passing either way, which is what makes the first test the one carrying the claim.
+	 */
+	it('reads done as configured for a Deliverables-only release with no plan state key bound at all', () => {
+		const vault = new FakeVault();
+		vault.addFile('R.md', { frontmatter: { type: 'Release' } });
+		vault.addFile('D.md', { frontmatter: { type: 'Deliverable', release: '[[R]]', docStatus: 'Done' } });
+		const settings = settingsWith({ stateKey: '', deliverableStateKey: 'docStatus' });
+		const rows = releaseIndex(vault.app, modelOf(vault, settings), KEYS, {
+			stateKey: settings.stateKey,
+			deliverableStateKey: settings.deliverableStateKey,
+			today: TODAY,
+		}).rows;
+		expect(row(rows, 'R.md').done.unconfigured).toBe(false);
+		expect(row(rows, 'R.md').done.value).toBe(1);
+	});
+
+	it('still reports done as unconfigured when a workflow the members ALSO span cannot answer', () => {
+		// A plan member beside the Deliverable, with the plan's own key unbound: the
+		// requirements workflow is represented too, and it cannot answer — so the release
+		// stays unconfigured even though the Deliverable's own key is right there.
+		const vault = new FakeVault();
+		vault.addFile('R.md', { frontmatter: { type: 'Release' } });
+		vault.addFile('A.md', { frontmatter: { type: 'PBI', release: '[[R]]', status: 'Done' } });
+		vault.addFile('D.md', { frontmatter: { type: 'Deliverable', release: '[[R]]', docStatus: 'Done' } });
+		const settings = settingsWith({ stateKey: '', deliverableStateKey: 'docStatus' });
+		const rows = releaseIndex(vault.app, modelOf(vault, settings), KEYS, {
+			stateKey: settings.stateKey,
+			deliverableStateKey: settings.deliverableStateKey,
+			today: TODAY,
+		}).rows;
+		expect(row(rows, 'R.md').done.unconfigured).toBe(true);
+		// Named, not merely absent: the Deliverable's own key answers, so only 'requirements'
+		// is the workflow that cannot — never both, and never the whole `workflows` list back.
+		expect(row(rows, 'R.md').unconfiguredWorkflows).toEqual(['requirements']);
+		// And once every represented workflow answers, nothing is named.
+		expect(indexOf(vault).rows.find((r) => r.name === 'R')?.unconfiguredWorkflows).toEqual([]);
 	});
 
 	it('cannot count members at all with the membership key unbound', () => {

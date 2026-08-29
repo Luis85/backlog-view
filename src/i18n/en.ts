@@ -459,22 +459,21 @@ export const en = {
 		one: '{done} of {count} item done',
 		other: '{done} of {count} items done',
 	},
-	// ^ A THIRD surface for this same sentence since 2026-08-25: the release index's own
-	// band draws its progress line with it too (`release/renderIndex.ts`'s
-	// `progressPhrase`). It was tempting to mint a release-specific key with `{done}` and
-	// `{total}` placeholders instead — the brief for that increment proposed exactly that —
-	// and it would have been broken by construction: `t.ts`'s `Params<K>` derives a
-	// message's parameter names from its own placeholders, and `selectForm` picks the
-	// plural form off a parameter literally named `count`, so a key spelling `{total}`
-	// instead cannot even accept the count that would select "item" over "items" — it
-	// would render "1 of 1 items done" forever. This key already carries `{done}` and
-	// `{count}`, already plurals on the total exactly as the release band wants, and
-	// reusing it is the whole fix.
+	// ^ A THIRD surface for this same sentence since 2026-08-25, and a FOURTH since
+	// 2026-08-28: the release index's own band draws its progress line with it
+	// (`release/renderIndex.ts`'s `progressPhrase`), and the single-release screen's summary
+	// strip does too (`release/renderScope.ts`'s `drawSummary`). Both times it was tempting
+	// to mint a release-specific key with `{done}` and `{total}` placeholders instead — the
+	// brief for the strip proposed exactly that, the same shape the band's own brief had
+	// already proposed and lost — and it would have been broken by construction: `t.ts`'s
+	// `Params<K>` derives a message's parameter names from its own placeholders, and
+	// `selectForm` picks the plural form off a parameter literally named `count`, so a key
+	// spelling `{total}` instead cannot even accept the count that would select "item" over
+	// "items" — it would render "1 of 1 items done" forever. This key already carries
+	// `{done}` and `{count}`, already plurals on the total exactly as both callers want, and
+	// reusing it is the whole fix both times.
 
-	/** The rollup column's header — the progress bar's, and the plain count's. Reused as
-	 *  the release band's own absence label (`release/renderIndex.ts`'s `absentFigures`)
-	 *  when a release's membership property is bound but its state property is not: the
-	 *  same word for the same concept, on a second screen that also draws a progress bar. */
+	/** The rollup column's header — the progress bar's, and the plain count's. */
 	'column.rollupProgress': 'Progress',
 	'column.rollupItems': 'Items',
 
@@ -1686,6 +1685,19 @@ export const en = {
 	 * bare "Unreadable" twice on one header says nothing about which property to fix.
 	 */
 	'release.figureUnreadable': '{label} unreadable',
+	/**
+	 * The same header's OTHER refusal — a key nobody bound, rather than a key holding
+	 * something malformed. `drawSummary` (`renderScope.ts`) is the one caller so far: with
+	 * no state key configured, `ReleaseRow.done` has no numerator to draw a bar or a
+	 * percentage from, and extension 2c says that must be named rather than read as a
+	 * progress the screen forgot to draw — never a bare `0%`, which would claim a fact
+	 * nobody measured.
+	 *
+	 * `drawSummary` reads this one only when `ReleaseRow.unconfiguredWorkflows` is empty —
+	 * no workflow counted yet, so there is no property to name beyond `label` itself.
+	 * `release.scope.progressUnconfigured` is the branch that names one.
+	 */
+	'release.figureUnconfigured': '{label} is not configured',
 	/** The unconfigured figures, named once beneath the list. `{columns}` is an array, so
 	 *  it is joined by the catalog's own grammar rather than by a joiner at the call.
 	 *
@@ -1726,13 +1738,78 @@ export const en = {
 	 * the release on screen. One marker's styling, two different facts about a row.
 	 */
 	'release.scope.contextMarker': 'In this base, but not in this release — shown to keep the hierarchy',
-	/** The member count in the header: the notes whose OWN property names this release,
-	 *  which is the denominator every other figure in this view uses. Context ancestors are
-	 *  on screen and are not in it. */
+	/**
+	 * The notes whose OWN property names this release — the denominator every other figure
+	 * in this view uses. Context ancestors are on screen and are not in it.
+	 *
+	 * Two call sites since the summary strip landed (2026-08-28), never both on the same
+	 * render: `drawFigure` draws it bare in `.pbl-rel-facts` when the release itself is
+	 * unreadable in some other respect, and `drawSummary` draws it alone in the strip when
+	 * `done` is unconfigured — a bar and a percentage need a numerator this key does not
+	 * carry, so the strip falls back to the count alone rather than drawing half a sentence.
+	 */
 	'release.scope.members': {
 		one: '{count} item',
 		other: '{count} items',
 	},
+	/**
+	 * The summary strip's own label for the progress figure, read into
+	 * `release.figureUnconfigured` (no workflow to name — see
+	 * `release.scope.progressUnconfigured`'s own comment) or into that key itself when
+	 * `ReleaseRow.done` is unconfigured.
+	 */
+	'release.scope.progress': 'Progress',
+	/**
+	 * `done`'s unconfigured branch when `ReleaseRow.unconfiguredWorkflows` is NOT empty —
+	 * `release.figureUnconfigured` is the other branch, read instead when there is no
+	 * workflow to name (no members counted yet). `{workflows}` is the same already-translated
+	 * list `release.scope.progressWorkflows` reads (`release.scope.workflow*`, below),
+	 * joined as grammar the identical way — the requirement this answers is the sibling of
+	 * that key's own: "Progress is not configured" alone tells a release spanning ordinary
+	 * work and Deliverables nothing about which property to go bind, where every other one
+	 * already answers.
+	 */
+	'release.scope.progressUnconfigured': '{label} is not configured for {workflows}.',
+	/**
+	 * The strip's percentage, a KEY rather than a template at the call site: the per-cent
+	 * sign's position beside its number is grammar, and a locale that puts it before the
+	 * digits would have no way to say so through a joined string.
+	 */
+	'release.scope.percent': '{pct}%',
+	/**
+	 * The strip's tooltip, naming what its progress figure read — a requirement
+	 * (`docs/requirements/Summing up a release.md`'s 2026-08-28 amendment) the bar, the
+	 * percentage and the sentence alone cannot meet: none of the three says WHICH property
+	 * decided a member was done. `{property}` and `{values}` are the plan's own property key
+	 * and the state values it counts as done — DATA the plugin reads off `BacklogSettings`,
+	 * never catalog text, per the register's own rule for anything the plugin writes,
+	 * matches or persists. Read only while a release's members share exactly one workflow
+	 * (`ReleaseRow.workflows`); `release.scope.progressWorkflows` below is what a mixed
+	 * population reads instead.
+	 */
+	'release.scope.progressProperty': 'Progress reads {property}. Done values: {values}.',
+	/**
+	 * The tooltip's other branch, for a release whose members span more than one workflow —
+	 * `ReleaseRow.done` reads each through `ownWorkflowReading`, so past that point no
+	 * single property decided the figure and naming one would be a false precision. `{workflows}`
+	 * is a LIST of already-translated workflow names (`release.scope.workflow*` below),
+	 * joined as grammar by `Intl.ListFormat` — see `t.ts`'s own comment on why a list
+	 * parameter is never joined at the call site.
+	 */
+	'release.scope.progressWorkflows': 'Progress spans more than one workflow: {workflows}.',
+	/**
+	 * The two workflow names the provenance tooltip can list — mirrors
+	 * `legend.workflowRequirements` / `legend.workflowDeliverables`'s own words rather than
+	 * importing those keys, because that pair is scoped to the roadmap's legend by its own
+	 * comment ("drawn only when there are two to tell apart"). Two, not `WorkflowKind`'s
+	 * three: a test-catalog note can never become a release member at all
+	 * (`membershipTarget` in `domain/releases.ts` refuses every carrier `inPlan` excludes,
+	 * and `inPlan` excludes catalog membership outright), so `ReleaseRow.workflows` can
+	 * only ever hold these two — see `renderScope.ts`'s own `workflowName` for where that
+	 * is stated beside the code it governs.
+	 */
+	'release.scope.workflowRequirements': 'Work',
+	'release.scope.workflowDeliverables': 'Deliverables',
 	/** No membership property is bound, so no scope can be read at all — the header's facts
 	 *  still stand and the way back is still there, but there is no tree and no count. */
 	'release.scope.noMembership.title': 'No membership property is mapped',
@@ -1742,6 +1819,35 @@ export const en = {
 	 *  it names the release rather than describing a problem. */
 	'release.scope.empty.title': 'Nothing is in {name} yet',
 	'release.scope.empty.hint': 'An item joins a release when its own membership property names that release.',
+	/** The disclosure's own accessible name, since a `pbl-twisty` carries no visible text —
+	 *  Task 3's own addition, once the tree could fold at all. */
+	'release.scope.collapse': 'Collapse',
+	'release.scope.expand': 'Expand',
+	/** The scope toolbar's two disclosure-bulk controls — `scopeToolbar.ts`'s own
+	 *  `.pbl-rel-collapse`/`.pbl-rel-expand`, `chevrons-down-up`/`chevrons-up-down` icons. */
+	'release.scope.collapseAll': 'Collapse all',
+	'release.scope.expandAll': 'Expand all',
+	/** The toolbar's third control — withheld whole when `release.done` is unconfigured, so
+	 *  it can never hide rows the summary strip refuses to count. */
+	'release.scope.hideDone': 'Hide done',
+	/**
+	 * Extension 4c: every root in the scope hid, and this replaces the tree rather than
+	 * leaving a blank scroller. `count` is `scope.members` — the same denominator the
+	 * summary strip's own sentence names, so this figure and that one never disagree about
+	 * how many items the release holds.
+	 */
+	'release.scope.allDone': {
+		one: 'All {count} item is done.',
+		other: 'All {count} items are done.',
+	},
+	/**
+	 * A row's own compact rollup — `{done}/{total}`, never a sentence: `.pbl-progress-label`
+	 * is drawn once per row with a rollup, and this tree can hold many, so `column.rollupTooltip`'s
+	 * full "N of M items done" beside it here would read as a wall of prose rather than a
+	 * figure. The summary strip above the tree is the one place a sentence is right, and it
+	 * already reuses that key for its own stated reason.
+	 */
+	'release.scope.rollup': '{done}/{total}',
 
 	/** `src/ui/newReleaseDialog.ts` — a plain-data leaf that knows nothing of property
 	 *  keys, so every one of its labels is its own key rather than a reuse of the index
@@ -1755,6 +1861,38 @@ export const en = {
 	'newRelease.field.status': 'Status',
 	'newRelease.create': 'Create',
 	'newRelease.cancel': 'Cancel',
+
+	/**
+	 * The ✨ standalone control (`src/view/release/initControl.ts`), drawn on the index bar
+	 * and on the `noMembership` scope empty state. One label serves both the accessible
+	 * name and the tooltip — the button carries an icon alone on the bar, so nothing on
+	 * screen already says what it does.
+	 */
+	'release.init.label': 'Add missing properties',
+	/**
+	 * A press that bound nothing, said rather than left silent — a standalone control with
+	 * no dialog after it would otherwise look dead. `release.new.bound` is what a press
+	 * that DID bind something reports instead; this is its opposite reading of the same
+	 * question.
+	 *
+	 * **True in all three ways `bindAndReport` can return false, not only the first.**
+	 * "Every property is already bound" was the message until a review found it overclaims:
+	 * `adoptCandidates` also declines a candidate somebody CLEARED on purpose (correctly —
+	 * that must not be overruled) and one whose suggested key another declared property
+	 * already owns, and in both of those the property is NOT bound, so the old sentence told
+	 * a reader with a cleared membership property the opposite of what is true. This names
+	 * all three without claiming which one happened, because the control has no way to tell
+	 * the caller that either.
+	 *
+	 * **Narrowed again 2026-08-28**: "every release property" overclaimed a fourth way.
+	 * `RELEASE_SUGGESTED_KEYS` (`view/release/init.ts`) binds exactly four of this view's
+	 * five own properties — `releasedDateProperty` is a READ binding this action
+	 * deliberately never touches, so with the other four handled it was still true that a
+	 * release property remained unbound. Narrowed to what the action can actually add,
+	 * per the register's own rule: write the guarantee to the check, never ahead of it.
+	 */
+	'release.init.nothing':
+		'Nothing to add. Every property this action can add is bound, was cleared on purpose, or its suggested key is already in use.',
 
 	/**
 	 * The control that opens that dialog, and what the press reports — all four in

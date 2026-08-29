@@ -13,7 +13,13 @@ import {
 	ViewPrefs,
 } from '../storage/viewStateStore';
 import { movedPath, resolveViewIdentity, ViewIdentity } from '../storage/viewIdentity';
+import { CARD_SCOPE, foldKeyPaths, movedFoldKey, notePath, RELEASE_FOLD, TIMELINE_SCOPE } from '../storage/foldKeys';
 import { BacklogViewHost, ColumnScope, Projection } from './host';
+
+// Re-exported rather than moved at every call site: eight modules and three suites name
+// these prefixes from here, and the constants did not change — only which layer defines
+// them. See `storage/foldKeys.ts` for why that layer is the right one.
+export { CARD_SCOPE, RELEASE_FOLD, TIMELINE_SCOPE } from '../storage/foldKeys';
 
 /**
  * The stored `mode` value for each projection, null for the tree — a `Record` rather
@@ -46,39 +52,6 @@ function projectionFor(mode: string | null): Projection {
 	// this version does not recognise — `PREF_READERS` drops those on the way in, and
 	// agreeing with it here costs one `??`.
 	return found ?? 'tree';
-}
-
-/**
- * Prefix marking a key as the DATED AXIS's own fold state, kept apart from the tree's.
- * The grid's chevron folds rows off the plan and the tree's opens a node in the backlog:
- * two questions about one item, so one bit could only answer both by making the reader
- * lose their place in the other projection every time they used it.
- *
- * A NUL, because a vault path may legitimately contain any printable prefix — `notePath`
- * has to strip this back off to prune and to rename, so a key that could be a real path
- * would prune the wrong entry.
- */
-export const TIMELINE_SCOPE = '\u0000timeline:';
-
-/**
- * Prefix marking a key as a CARD's own disclosure state, kept apart from both the tree's
- * bare-path bit and `TIMELINE_SCOPE`: a card's face and the tree row for the same note are
- * two questions again, the same reason `TIMELINE_SCOPE` exists — "is this node open in the
- * backlog" and "is this card's children list open" used to be one bit, so expanding either
- * moved the reader's place in the other, including through the toolbar's bulk controls,
- * which the tree row's bit alone can never avoid since a bulk action legitimately means
- * the tree by it. One scope regardless of WHICH card projection draws the card (board,
- * either roadmap axis, Deliverables): the question "is this item's card open" is one
- * question about the note, not one per screen that happens to draw it as a card — unlike
- * the dated axis's own rows, whose fold is a genuine fact about that PLAN and nothing else.
- */
-export const CARD_SCOPE = '\u0000card:';
-
-/** The note path a key belongs to, whichever scope settled it. */
-function notePath(key: string): string {
-	if (key.startsWith(TIMELINE_SCOPE)) return key.slice(TIMELINE_SCOPE.length);
-	if (key.startsWith(CARD_SCOPE)) return key.slice(CARD_SCOPE.length);
-	return key;
 }
 
 /**
@@ -147,13 +120,6 @@ function movedColumnKey(key: string, oldPath: string, newPath: string): string |
 	return moved === null ? null : ITERATION_COLUMN_PREFIX + moved + rest.slice(cut);
 }
 
-/** The scope prefix a settled key carries, or '' for the tree's own bare path. */
-function scopeOf(key: string): string {
-	if (key.startsWith(TIMELINE_SCOPE)) return TIMELINE_SCOPE;
-	if (key.startsWith(CARD_SCOPE)) return CARD_SCOPE;
-	return '';
-}
-
 /**
  * An entry stored before the dated axis had a scope of its own holds ONE bit per note —
  * and it is the bit both projections were reading, so the split copies it across rather
@@ -165,10 +131,27 @@ function scopeOf(key: string): string {
  * touching a state this version wrote — and makes it idempotent, since the copy it
  * makes is exactly what stops it running again.
  */
+// NOT exported. `flush()`'s own vault-existence prune (below) always discards a
+// `RELEASE_FOLD` compound before it can reach storage, whether or not this guard runs —
+// the two never disagree at the persisted result, only in the Sets between `restore()`
+// and the next flush, which nothing outside this module can read. The guard stays
+// anyway: it costs one line and keeps this migration and `seedCardScope` beside it
+// symmetric for the next reader, but its effect is unobservable from outside the
+// module, and exporting production code to let a test watch an unobservable effect buys
+// a green line at the cost of a wider surface — the module's own boundary is worth more
+// than that one assertion. `seedCardScope`'s identical-looking guard is not the same
+// case and keeps its own direct test: its `notePath` reduction seeds a REAL note's card
+// as collapsed, which DOES reach disk, so that one is checked through a saved view.
 function seedTimelineScope(collapsed: Set<string>, settled: Set<string>): void {
 	const keys = [...settled];
 	if (keys.some((key) => key.startsWith(TIMELINE_SCOPE))) return;
 	for (const key of keys) {
+		// `RELEASE_FOLD` is new on this branch, so no entry it wrote predates the
+		// dated axis's own scope — there is nothing here for this one-time carry to
+		// recover. Left in, it mints a `TIMELINE_SCOPE + RELEASE_FOLD…` compound that
+		// names no note and can never match anything again, while still spending a
+		// slot against `MAX_FOLDS`.
+		if (key.startsWith(RELEASE_FOLD)) continue;
 		settled.add(TIMELINE_SCOPE + key);
 		if (collapsed.has(key)) collapsed.add(TIMELINE_SCOPE + key);
 	}
@@ -198,7 +181,12 @@ function seedCardScope(collapsed: Set<string>, settled: Set<string>): void {
 	const keys = [...settled];
 	if (keys.some((key) => key.startsWith(CARD_SCOPE))) return;
 	const expanded = (key: string): boolean => settled.has(key) && !collapsed.has(key);
-	for (const path of new Set(keys.map(notePath))) {
+	// Same exclusion as `seedTimelineScope`, for the same reason: a release fold
+	// predates neither scope, so there is no prior card bit to recover from it.
+	// `notePath` reduces it to the bare MEMBER path, so left in, folding a note on a
+	// release's own screen would seed that same note's card as collapsed on the
+	// backlog view too — a fold the reader never made there.
+	for (const path of new Set(keys.filter((key) => !key.startsWith(RELEASE_FOLD)).map(notePath))) {
 		settled.add(CARD_SCOPE + path);
 		if (!expanded(path) && !expanded(TIMELINE_SCOPE + path)) collapsed.add(CARD_SCOPE + path);
 	}
@@ -554,24 +542,49 @@ export class ViewState {
 		const key = columnKey(scope, value, this.boardScope());
 		// Exclusive: the two sets are one tri-state (folded, opened, never ruled on), so a
 		// key in both would make "did the reader open this against its default" unanswerable.
+		// Deleted before the add on the branch taken, matching `set`'s own reason: a bare
+		// `.add` on an already-present key leaves it at its ORIGINAL position, which
+		// `readFolds`'s tail-retention budget reads as old. No caller today passes a
+		// `collapsed` equal to the column's current state (every one negates what it just
+		// read), so this is not reachable yet — fixed anyway, since the shape is identical
+		// to `set`'s and a future caller (a "collapse all columns" action, say) would only
+		// have to call this once redundantly to reopen the same bug.
 		if (collapsed) {
+			this.foldedColumns.delete(key);
 			this.foldedColumns.add(key);
 			this.openedColumns.delete(key);
 		} else {
 			this.foldedColumns.delete(key);
+			this.openedColumns.delete(key);
 			this.openedColumns.add(key);
 		}
 		this.scheduleSave();
 	}
 
-	/** Returns true when the state actually changed. */
+	/**
+	 * Returns true when the state actually changed.
+	 *
+	 * Both sets are re-added through a DELETE first, never a bare `.add`. A JS `Set`
+	 * does not move an already-present key to the end on a re-add — it keeps its
+	 * original insertion position — and `flush()` writes both sets out in iteration
+	 * order, which `readFolds`'s tail-retention budget (`storage/viewStateStore.ts`,
+	 * `MAX_FOLDS`) trusts to mean "oldest first, newest last". `settled` in particular
+	 * holds nearly every key this row has ever touched, so almost every call here is a
+	 * re-add of an EXISTING key: without the delete, a row settled long ago would stay
+	 * pinned near the front no matter how recently it was actually toggled, and a
+	 * saturated budget would evict it first regardless.
+	 */
 	set(key: string, collapsed: boolean): boolean {
 		const changed = collapsed ? !this.collapsed.has(key) : this.collapsed.delete(key);
-		if (collapsed) this.collapsed.add(key);
+		if (collapsed) {
+			this.collapsed.delete(key);
+			this.collapsed.add(key);
+		}
 		// An explicit expand or collapse settles this row, so the initial state is not
 		// applied to it later. That matters most for a row with no children yet: a drop
 		// or a create expands it before the write, and the refresh that follows would
 		// otherwise collapse it as a newly seen parent and hide what just landed there.
+		this.settled.delete(key);
 		this.settled.add(key);
 		this.scheduleSave();
 		return changed;
@@ -607,17 +620,28 @@ export class ViewState {
 	renamePath(oldPath: string, newPath: string): void {
 		let changed = false;
 		for (const key of [...this.settled]) {
-			const moved = movedPath(notePath(key), oldPath, newPath);
-			// A folder rename carries every row beneath it, so this cannot match on the
-			// renamed path alone — the event for a moved folder names the folder, and
-			// every row in it would otherwise be left behind under the old prefix.
-			if (moved === null) continue;
-			// Back into the scope it came from: a rename moves the item, never the
-			// question the scope is asking about it.
-			const next = scopeOf(key) + moved;
+			// One helper with `renamePathFolds` (`storage/viewStateStore.ts`), not a second
+			// spelling of the same arithmetic: this walk covers the LOADED view's in-memory
+			// copy, which `flush` writes back wholesale, and the store's walk covers every
+			// stored entry — the same pair `renameScoped` and `renamePathPrefs` already form
+			// for the prefs. It also carries a folder rename to every row beneath it, since
+			// the event for a moved folder names the folder and nothing under it.
+			const next = movedFoldKey(key, oldPath, newPath);
+			if (next === null) continue;
 			this.settled.delete(key);
+			// The target is deleted before it is added, `set` and `setColumnCollapsed`'s
+			// third site of the same shape: a bare `.add` of a key the set ALREADY holds
+			// leaves it at its original position, which `readFolds`'s tail-retention budget
+			// reads as old and evicts first. Not reachable today — Obsidian refuses a rename
+			// onto an existing note, so the new path can only already be settled if its key
+			// is stale — but a batch rename, or any caller that renamed A→B and then B→B,
+			// would reproduce it, and the cost of keeping it right is one line.
+			this.settled.delete(next);
 			this.settled.add(next);
-			if (this.collapsed.delete(key)) this.collapsed.add(next);
+			if (this.collapsed.delete(key)) {
+				this.collapsed.delete(next);
+				this.collapsed.add(next);
+			}
 			changed = true;
 		}
 		if (this.renameScoped(oldPath, newPath)) changed = true;
@@ -755,8 +779,12 @@ export class ViewState {
 		// rather than on the model: a query that has not warmed up yet, or a filter
 		// the user narrowed, must not be read as "these notes no longer exist" and
 		// throw away a session the user still wants.
+		//
+		// Asked of EVERY path the key names, not just the one it is filed under: a
+		// release-fold key holds its release as well as its member, and a fold whose
+		// release note is gone names a screen that can never be drawn again.
 		for (const key of this.settled) {
-			if (this.host.app.vault.getAbstractFileByPath(notePath(key)) !== null) continue;
+			if (foldKeyPaths(key).every((path) => this.host.app.vault.getAbstractFileByPath(path) !== null)) continue;
 			this.settled.delete(key);
 			this.collapsed.delete(key);
 		}

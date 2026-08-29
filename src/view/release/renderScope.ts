@@ -1,42 +1,66 @@
 import { setIcon, setTooltip } from 'obsidian';
 import type { ReleaseView } from './releaseView';
 import { t } from '../../i18n/t';
-import { ReleaseFigure, ReleaseRow, ReleaseScope, ScopeRow } from '../../domain/releases';
-import { displayType } from '../../domain/itemTypes';
+import { ReleaseFigure, ReleaseRow, ReleaseScope } from '../../domain/releases';
 import { formatCivil } from '../../domain/timeline';
-import { badgeStyleFor } from '../render/badges';
+import { BacklogSettings } from '../../domain/settings';
+import { WorkflowKind, workflowStateInfo } from '../../domain/board';
 import { guidanceShell } from '../render/emptyStates';
-import { drawIcon } from '../render/icons';
+import { renderReleaseInit } from './initControl';
+import { drawScopeTree, effectiveHideDone, rowsAfterHideDone } from './scopeTree';
+import { drawScopeToolbar } from './scopeToolbar';
+import { wireScopeKeys } from './scopeKeys';
 
 /**
  * One release's screen (`docs/requirements/The scope of a release as a tree.md`): the
- * header's facts, and the members drawn as the tree they already are.
+ * header's facts, and the two empty states above the tree. The tree itself —
+ * `role="tree"`, the rows, the disclosure and the fold set — is `scopeTree.ts`'s own
+ * (`drawScopeTree`), split out here in Task 3 once this module's own header grew a fourth
+ * reason to change on top of the header and the two states it keeps.
  *
  * A free function over the view, `renderIndex.ts`'s own shape, importing the view for its
  * TYPE alone so the pair stays acyclic at runtime.
  *
- * **Its own read-only rows, not `src/view/render/rows.ts`.** That module takes a
- * `BacklogViewHost` and wires menus, create prompts, tag removal and drag into every row —
- * every one of them a write this screen does not offer. What it declines is the SEMANTICS
- * as well as the wiring, which is the part that decision quietly takes on: `role="tree"`,
- * `role="treeitem"` and the three `aria-*` below are carried here rather than inherited,
- * because `--pbl-depth` moves a row sideways and tells assistive technology nothing. A
- * scope drawn with indent alone is announced as a flat list of divs, on the one screen
- * whose whole promise is the shape of the work.
+ * **This module is also what keeps `scopeTree.ts` and `scopeKeys.ts` themselves acyclic.**
+ * The tree's keyboard needs the fold set `scopeTree.ts` owns (`ScopeDraw.folded`,
+ * `toggleFold`), and `scopeTree.ts` has no reason to import the keyboard back — so
+ * `drawScopeTree` returns what it drew (`ScopeDraw`, `folded` included, so the keyboard
+ * never has to ask `foldedPaths` again itself) instead of wiring the keyboard itself, and
+ * this module, which already imports both leaves, calls `wireScopeKeys` as the second
+ * step. Two one-directional edges from here rather than one cycle between them.
  *
- * **Nothing here writes.** There is no gate to route through and nothing to withhold: the
- * only gesture is the back control, which sets view state.
+ * **Nothing here writes a note.** There is no gate to route through and nothing to
+ * withhold: the back control sets view state, a row's click opens a note (`scopeTree.ts`),
+ * and the `noMembership` empty state's own ✨ ({@link renderReleaseInit}) only binds this
+ * view's own config — see that function for why it writes no note either.
  *
  * `release` is a parameter rather than `scope.release` read here, because the caller has
  * already ruled on it — a screen is chosen by whether the pick still names a release, and
  * a second null check in here would be an unreachable branch restating that decision.
+ *
+ * `planSettings` is a parameter for the identical reason: `ReleaseView.draw()` already
+ * built the full `BacklogSettings` the model itself was built from (three of this view's
+ * own mappings layered onto the plan's), and a second resolve here would be the same
+ * two-resolvers-disagreeing hazard `draw()`'s own comment states for the model boundary —
+ * this screen's summary strip needs it only to name a workflow's property and done values
+ * in its tooltip, never to derive anything the model has not already counted.
  */
-export function renderScope(view: ReleaseView, scope: ReleaseScope, release: ReleaseRow): void {
-	drawHeader(view, scope, release);
+export function renderScope(view: ReleaseView, scope: ReleaseScope, release: ReleaseRow, planSettings: BacklogSettings): void {
+	drawHeader(view, scope, release, planSettings);
 	// Both empty states sit BELOW the header, so the back control survives either. A
 	// release nobody can read the scope of must not also be a dead end.
 	if (view.settings.membershipKey === '') {
-		guidanceShell(view.viewEl, 'settings-2', t('release.scope.noMembership.title'), t('release.scope.noMembership.hint'));
+		const empty = guidanceShell(
+			view.viewEl,
+			'settings-2',
+			t('release.scope.noMembership.title'),
+			t('release.scope.noMembership.hint'),
+		);
+		// The one screen that names an option and, until now, offered no way to set it.
+		// `fixes` names that ONE option: `renderReleaseInit` would otherwise draw this
+		// button for an untouched `versionProperty` too, which fixes nothing this state is
+		// about — see its own comment.
+		renderReleaseInit(view, empty, 'empty', ['membershipProperty']);
 		return;
 	}
 	if (scope.rows.length === 0) {
@@ -48,25 +72,61 @@ export function renderScope(view: ReleaseView, scope: ReleaseScope, release: Rel
 		);
 		return;
 	}
-	drawTree(view, release, scope.rows);
+	// Above the tree AND the all-done state below, so collapse/expand and the way back off
+	// an all-done screen are never a dead end — `scopeToolbar.ts`'s own header on why the
+	// hide-done control asks `release.done.unconfigured` rather than a second copy of it.
+	drawScopeToolbar(view, view.viewEl, release, scope.rows);
+	// `effectiveHideDone`, the same one value `drawScopeTree` hides by: an unconfigured
+	// release must not reach the all-done state either, since the toggle that would bring
+	// its rows back is not on screen there (`scopeToolbar.ts`'s own early return).
+	const hideDone = effectiveHideDone(view, release);
+	if (hideDone && rowsAfterHideDone(scope.rows, hideDone).length === 0) {
+		drawAllDoneState(view.viewEl, scope.members);
+		return;
+	}
+	const draw = drawScopeTree(view, release, scope.rows);
+	wireScopeKeys(view, draw.treeEl, release.path, draw);
 }
 
 /**
- * The back control, the release's own three figures, and the member count.
+ * Everything in the release is finished and hidden — extension 4c, drawn rather than left
+ * as a blank scroller.
  *
- * The count is `scope.members` — the rows this screen kept — rather than the index's own
- * `release.members.value`, which is the same number by the same predicate: reading the one
- * the walk produced is what stops the header claiming a member the tree did not draw. It is
- * withheld entirely when the membership key is unbound, because `0 items` there is an
- * answer this screen cannot read rather than one it read as zero.
+ * `renderAllDoneState` in `render/emptyStates.ts` is NOT reused: it takes a
+ * `BacklogViewHost` this view has none of, and its way back is
+ * `config.set('showCompleted', true)` — a `.base` setting, where this toggle is
+ * deliberately per-device view state (ADR 0011). The way back here is the toolbar's own
+ * toggle, drawn just above this by the caller and never touched by this function.
+ *
+ * `count` is `scope.members` — the same denominator the summary strip's own sentence
+ * names ("N of N items done"), so the number this state reports is the one the header
+ * above it was already using, not a second opinion computed for the occasion.
  */
-function drawHeader(view: ReleaseView, scope: ReleaseScope, release: ReleaseRow): void {
+function drawAllDoneState(viewEl: HTMLElement, count: number): void {
+	// `.pbl-empty-filter` (`styles/toolbar.css`) is the tree's own lighter notice shell —
+	// reused rather than restated, the same reuse `scopeTree.ts` already makes of
+	// `.pbl-state-chip`/`.pbl-progress`: nothing is wrong here, so this is not the heavier
+	// `.pbl-empty` guidance shell the two configuration empty states above draw. `.pbl-rel-alldone`
+	// is this screen's own hook, for the test and for the one colour that IS its own.
+	const doneEl = viewEl.createDiv({ cls: 'pbl-empty-filter pbl-rel-alldone' });
+	setIcon(doneEl.createSpan({ cls: 'pbl-empty-filter-icon pbl-rel-alldone-icon' }), 'circle-check');
+	doneEl.createSpan({ text: t('release.scope.allDone', { count }) });
+}
+
+/**
+ * Two lines: the back control and the release's own three figures, then the summary
+ * strip beneath them — `.pbl-rel-hline` for the first, `.pbl-rel-summary` for the second,
+ * which is what lets `styles/releaseScope.css` stack them without either line's own flex
+ * rules fighting the other's.
+ */
+function drawHeader(view: ReleaseView, scope: ReleaseScope, release: ReleaseRow, planSettings: BacklogSettings): void {
 	const headerEl = view.viewEl.createDiv({ cls: 'pbl-rel-header' });
+	const hlineEl = headerEl.createDiv({ cls: 'pbl-rel-hline' });
 
 	// A real `<button>`, like the index's rows: it is the only way off this screen, and a
 	// real button is what makes the tab stop, Enter and Space the browser's job rather than
 	// a handler somebody has to remember.
-	const backEl = headerEl.createEl('button', {
+	const backEl = hlineEl.createEl('button', {
 		cls: 'clickable-icon pbl-rel-back',
 		attr: { type: 'button', 'aria-label': t('release.scope.back') },
 	});
@@ -74,19 +134,19 @@ function drawHeader(view: ReleaseView, scope: ReleaseScope, release: ReleaseRow)
 	setTooltip(backEl, t('release.scope.back'));
 	backEl.addEventListener('click', () => view.pick(null));
 
-	headerEl.createEl('h2', { text: release.name });
-	drawFigure(headerEl, release.version, t('release.index.column.version'), (value) =>
-		headerEl.createSpan({ cls: 'pbl-rel-version', text: value }),
+	hlineEl.createEl('h2', { text: release.name });
+	drawFigure(hlineEl, release.version, t('release.index.column.version'), (value) =>
+		hlineEl.createSpan({ cls: 'pbl-rel-version', text: value }),
 	);
-	drawFigure(headerEl, release.status, t('release.index.column.status'), (value) => {
+	drawFigure(hlineEl, release.status, t('release.index.column.status'), (value) => {
 		// The tree's read-only chip, like every chip the index draws: this view offers no
 		// write, so a chip that lost `pbl-state-static` would gain a hover affordance and the
 		// screen would look editable.
-		const chipEl = headerEl.createDiv({ cls: 'pbl-state-chip pbl-state-static' });
+		const chipEl = hlineEl.createDiv({ cls: 'pbl-state-chip pbl-state-static' });
 		chipEl.createSpan({ cls: 'pbl-state-text', text: value });
 	});
 
-	const factsEl = headerEl.createDiv({ cls: 'pbl-rel-facts' });
+	const factsEl = hlineEl.createDiv({ cls: 'pbl-rel-facts' });
 	// An absent target date draws NOTHING here, where the index labels it — deliberately,
 	// and the index's own reason is what decides it: that label exists because an undated
 	// release is sorted to the bottom of the list and the blank cell would leave the reader
@@ -94,9 +154,167 @@ function drawHeader(view: ReleaseView, scope: ReleaseScope, release: ReleaseRow)
 	drawFigure(factsEl, release.target, t('release.index.column.target'), (value) =>
 		factsEl.createSpan({ cls: 'pbl-rel-target', text: formatCivil(value) }),
 	);
-	if (!release.members.unconfigured) {
-		factsEl.createSpan({ cls: 'pbl-rel-members', text: t('release.scope.members', { count: scope.members }) });
+
+	drawSummary(headerEl, release, scope.members, planSettings);
+}
+
+/**
+ * The summary strip: one bar, one percentage, one sentence — drawn from the SAME
+ * `ReleaseRow` the index band was drawn from.
+ *
+ * **Nothing is derived here.** `domain/releases.ts` states the rule in its own words —
+ * progress "is computed nowhere else — the single-release screen reads the same row,
+ * which is what stops a band and a release header disagreeing about one release". A
+ * second count over the same members would be a second opinion about a number that has
+ * one right answer.
+ *
+ * The sentence itself reuses `column.rollupTooltip` rather than a release-specific key —
+ * that key's own catalog comment already explains why the index's OWN band reused it
+ * instead of minting one with `{total}`: `selectForm` picks the plural form off a
+ * parameter literally named `count`, so a key spelling `{total}` could never select
+ * "item" over "items" and would read "1 of 1 items done" forever. This is a fourth
+ * caller of the identical sentence, not a second key with the identical defect.
+ *
+ * `done` is a FIGURE, so its three answers are the three drawn here: unconfigured says so
+ * and NAMES the workflow it could not read (`release.unconfiguredWorkflows`, through
+ * {@link t}('release.scope.progressUnconfigured') when that list holds anything, else the
+ * generic {@link t}('release.figureUnconfigured') for the one case with nothing to name —
+ * see `ReleaseRow.unconfiguredWorkflows`'s own comment), and is never a zero (extension 2c:
+ * a progress nobody configured must not read as a progress the screen forgot), invalid is
+ * impossible for a count and falls through with it, and a value draws the bar. The item
+ * count answers beside it either way.
+ *
+ * Withheld whole when there are no members: `0 of 0 items done` beside an empty state
+ * that already says the release is empty would say it twice and worse (extension 1a).
+ *
+ * `members` is `scope.members`, never `release.members.value` — `drawHeader`'s own reason
+ * for reading the SCOPE's walk applies here too: the strip must not claim a member the
+ * tree did not draw.
+ *
+ * **A tooltip on the strip names what the progress figure read** — the requirement
+ * (`docs/requirements/Summing up a release.md`'s 2026-08-28 amendment) the bar, the
+ * percentage and the sentence cannot meet on their own: none of the three says WHICH
+ * property decided a member was done. It is a tooltip and not a third header line
+ * deliberately: the header is already two lines, laid out against a real stylesheet, and a
+ * third would cost more than provenance buys — see this module's own header comment.
+ * {@link progressProvenance} is where the WORDING is decided; this function only calls it.
+ *
+ * **The tooltip alone reaches a pointer only**, which the requirement's "every figure names
+ * what it read" does not narrow to sighted mouse users. `sumEl` carries no `aria-label` for
+ * it — that attribute REPLACES an element's content for assistive tech, so labelling the
+ * strip with the provenance sentence would silence the bar, the percentage and the `n of m`
+ * text it already draws, trading one gap for a worse one. What is added instead is a
+ * `.pbl-sr-only` span carrying the IDENTICAL sentence, left as ordinary (unhidden) content
+ * of the strip rather than associated to it through `aria-describedby` — `board.ts`'s
+ * `renderBoardInstructions` is NOT the pattern to follow here, whatever an earlier version
+ * of this comment claimed: that association lands on `boardEl`, a real tab stop the board
+ * pane owns, and `aria-describedby` is reliably exposed on a focusable element with a role.
+ * `sumEl` is a bare `<div>` with no role and no tabindex — the shape most screen readers do
+ * not expose a description for at all — so the identical mechanism here would very likely
+ * reach nobody while reading as though it worked. Plain hidden text needs neither: it is
+ * read once, in the strip's own linear order, by anything that reads the strip at all. The
+ * tooltip stays, for the pointer users who already had it. What this can check is narrower
+ * than "announced": the span is present, inside the strip, not `aria-hidden`, and carries
+ * the same sentence the tooltip does — whether a screen reader actually speaks it is a
+ * live-vault question, the same one `src/view/CLAUDE.md`'s resize-grip section leaves open
+ * for a `role="separator"`.
+ */
+function drawSummary(headerEl: HTMLElement, release: ReleaseRow, members: number, planSettings: BacklogSettings): void {
+	if (release.members.unconfigured || members === 0) return;
+	const sumEl = headerEl.createDiv({ cls: 'pbl-rel-summary' });
+	if (release.done.unconfigured || release.done.value === null) {
+		sumEl.createSpan({ cls: 'pbl-rel-figure', text: t('release.scope.members', { count: members }) });
+		sumEl.createSpan({ cls: 'pbl-rel-unreadable', text: unconfiguredProgressText(release.unconfiguredWorkflows) });
+		return;
 	}
+	const done = release.done.value;
+	const pct = Math.round((100 * done) / members);
+	const barEl = sumEl.createDiv({ cls: 'pbl-rel-bar pbl-rel-bar-wide' });
+	barEl.createDiv({ cls: 'pbl-rel-bar-fill' }).setCssProps({ '--pbl-rel-fill': `${pct}%` });
+	sumEl.createSpan({ cls: 'pbl-rel-pct', text: t('release.scope.percent', { pct }) });
+	sumEl.createSpan({ cls: 'pbl-rel-figure', text: t('column.rollupTooltip', { done, count: members }) });
+	const provenance = progressProvenance(release.workflows, planSettings);
+	setTooltip(sumEl, provenance);
+	// Plain visually-hidden content, not `aria-describedby` — `sumEl` is a role-less,
+	// unfocusable `<div>`, and a description only reliably reaches assistive tech on a
+	// focusable host with a role (which is what `board.ts`'s `renderBoardInstructions` has,
+	// putting its own association on the focusable `boardEl` rather than on a plain div).
+	// No `aria-hidden` either: with no description to double against, this text is meant to
+	// be read exactly once, as ordinary content of the strip.
+	sumEl.createSpan({ cls: 'pbl-sr-only', text: provenance });
+}
+
+/**
+ * The unconfigured branch's own sentence — named, not merely absent
+ * (`docs/requirements/Summing up a release.md`'s "unconfigured predicate" rule, read for
+ * the progress figure specifically). `unconfiguredWorkflows` is
+ * `ReleaseRow.unconfiguredWorkflows`, already the failing subset in `WORKFLOW_ORDER`
+ * (`domain/releases.ts`), so this asks nothing about the release a second time — it only
+ * turns a list already computed into words, exactly as {@link progressProvenance} does for
+ * the configured branch beside it.
+ *
+ * Empty is the one case with no workflow to name (no member counted yet — see the field's
+ * own comment for why that is not the same claim as "configured"), so it reads the plain
+ * `release.figureUnconfigured` rather than a sentence naming nothing. `workflowName` is
+ * the identical translator `progressProvenance` calls, reused rather than a second mapping
+ * that could drift from it on which two names `WorkflowKind` gets.
+ *
+ * **Exported for `renderIndex.ts`'s own bands.** A band whose progress cannot be
+ * computed used to draw nothing at all, the reader learning why only by opening this
+ * screen — so the index calls this same function rather than writing its own wording:
+ * `ReleaseRow.done`'s single-answer rule, one layer up, is what a second sentence here
+ * would break.
+ */
+export function unconfiguredProgressText(unconfiguredWorkflows: WorkflowKind[]): string {
+	const label = t('release.scope.progress');
+	if (unconfiguredWorkflows.length === 0) return t('release.figureUnconfigured', { label });
+	return t('release.scope.progressUnconfigured', { label, workflows: unconfiguredWorkflows.map(workflowName) });
+}
+
+/**
+ * What decided the progress figure, in words — the ONLY place that decision is turned
+ * into a sentence. `ReleaseRow.workflows` already answers WHICH workflows are represented
+ * (a model question, decided in `domain/releases.ts` beside the counts it is measured
+ * over); this asks what to SAY about that, which is a settings lookup and a translation
+ * choice rather than a further fact about the members.
+ *
+ * One workflow names its property and its done values — both DATA (a property key, the
+ * state values the vault holds), so they are parameters to `release.scope.progressProperty`
+ * and never catalog text themselves. More than one names the workflows instead, because
+ * past that point `done`'s numerator crossed `ownWorkflowReading`'s own branches and no
+ * single property is what decided it.
+ *
+ * `workflows[0]` is read with no `?? fallback`, deliberately: `drawSummary` calls this
+ * only once `members > 0` and `done` is configured, and every counted member contributes
+ * its own kind to `workflows` in the same walk — so an empty list here would mean the two
+ * disagreed about who is a member, which is exactly the defect `ReleaseRow.workflows`'s
+ * own comment states it cannot do. A fallback would silently paper over that defect
+ * rather than surface it, and it would be an untestable branch beside it — this project
+ * does not carry `noUncheckedIndexedAccess`, so nothing forces one.
+ */
+function progressProvenance(workflows: WorkflowKind[], planSettings: BacklogSettings): string {
+	if (workflows.length > 1) {
+		return t('release.scope.progressWorkflows', { workflows: workflows.map(workflowName) });
+	}
+	const { key, doneValues } = workflowStateInfo(workflows[0], planSettings);
+	return t('release.scope.progressProperty', { property: key, values: doneValues });
+}
+
+/**
+ * A workflow kind's own translated name — the provenance tooltip's one caller.
+ *
+ * Two branches, not `WorkflowKind`'s three: `'test'` never reaches this function. A
+ * test-catalog note cannot become a release member at all — `membershipTarget`
+ * (`domain/releases.ts`) refuses every carrier `inPlan` excludes, and `inPlan` excludes
+ * catalog membership outright (`!inCatalog(item)`), the register's own "a release holds
+ * work and those notes are not work". So `ReleaseRow.workflows` can only ever hold
+ * `'requirements'` and/or `'deliverable'`, and a third branch here would be untestable
+ * dead code rather than defensive coverage — see
+ * `test/domain/releases.test.ts`'s "refuses a membership property hand-written on a
+ * non-plan row" for where that refusal is pinned.
+ */
+function workflowName(kind: WorkflowKind): string {
+	return kind === 'deliverable' ? t('release.scope.workflowDeliverables') : t('release.scope.workflowRequirements');
 }
 
 /**
@@ -122,89 +340,4 @@ function drawFigure<T>(parentEl: HTMLElement, figure: ReleaseFigure<T>, label: s
 		return;
 	}
 	if (figure.value !== null) draw(figure.value);
-}
-
-function drawTree(view: ReleaseView, release: ReleaseRow, rows: ScopeRow[]): void {
-	// Named by the release, so a reader arriving at the tree hears which one it is. The
-	// name is vault content rather than text — it goes nowhere near the catalog.
-	const treeEl = view.viewEl.createDiv({ cls: 'pbl-tree', attr: { role: 'tree', 'aria-label': release.name } });
-	// The walk hands back each row joined to its own place, rather than a parallel array this
-	// loop would index into — an index lookup would need a fallback for a case that cannot
-	// happen, which is the unreachable branch this module's own header argues against.
-	for (const { row, pos, count } of siblingPlaces(rows)) drawRow(treeEl, row, { pos, count });
-}
-
-function drawRow(treeEl: HTMLElement, row: ScopeRow, place: { pos: number; count: number }): void {
-	const rowEl = treeEl.createDiv({
-		cls: 'pbl-row' + (row.context ? ' pbl-rel-context' : ''),
-		attr: {
-			role: 'treeitem',
-			// From 1, over the SCOPE's own depth, which re-roots at the release: a member drawn
-			// at top level is level 1 here even where the backlog would call it level 3. That is
-			// correct — the tree being announced is this screen's.
-			'aria-level': String(row.depth + 1),
-			'aria-posinset': String(place.pos),
-			'aria-setsize': String(place.count),
-			'data-path': row.item.file.path,
-		},
-	});
-	// `aria-selected` and `aria-expanded` are deliberately absent, and for the reason that
-	// made this view read-only: this screen has no selection and offers no collapse — every
-	// member is drawn, always — so either would announce an interaction that does not exist.
-	rowEl.setCssProps({ '--pbl-depth': String(row.depth) });
-
-	const badgeText = displayType(row.item);
-	if (badgeText) {
-		const style = badgeStyleFor(badgeText);
-		const badgeEl = rowEl.createSpan({ cls: 'pbl-badge' });
-		if (style.icon) drawIcon(badgeEl.createSpan({ cls: 'pbl-badge-icon' }), style.icon);
-		badgeEl.addClass(style.badge);
-		badgeEl.createSpan({ cls: 'pbl-badge-text', text: badgeText });
-	}
-
-	const titleEl = rowEl.createSpan({ cls: 'pbl-title', text: row.item.title });
-	// Set unconditionally, and NOTHING measures whether it was needed. `.pbl-row` carries
-	// `content-visibility: auto`, so a `scrollWidth` read to decide would lay out a skipped
-	// row by itself — the tree's own measured reason (5320ms against 12ms), inherited here
-	// with the class. A tooltip repeating a title that already fits is the whole price.
-	setTooltip(titleEl, row.item.title);
-
-	if (!row.context) return;
-	// The tree's marker STYLING with a different sentence, because a different fact is being
-	// stated. `row.contextMarker` says a row is outside the base's filter, which is false of
-	// every row here: `releaseScope` skips an `outsideFilter` ancestor outright, so a context
-	// row on this screen is in the base and is merely not a member of this release.
-	const markerEl = rowEl.createSpan({
-		cls: 'pbl-outside-marker',
-		attr: { 'aria-label': t('release.scope.contextMarker') },
-	});
-	drawIcon(markerEl, 'corner-left-down');
-	setTooltip(markerEl, t('release.scope.contextMarker'));
-}
-
-/**
- * Each row's position among its SIBLINGS at its own level, never its index in the flat row
- * list — which would announce a three-row scope as one list of three and defeat the point
- * of drawing a tree.
- *
- * `scope.rows` is a pre-order walk carrying its own depth, so a group of siblings is the
- * run of rows at one depth that no shallower row has interrupted: a row shallower than an
- * open group closes it, and the next row at that depth starts a new one under a new parent.
- * Each entry holds the group it joined, so `count` is read after the whole walk rather than
- * guessed while it is still growing.
- */
-function siblingPlaces(rows: ScopeRow[]): { row: ScopeRow; pos: number; count: number }[] {
-	const open = new Map<number, number[]>();
-	const joined = rows.map((row) => {
-		// The group-closing line, and the whole rule lives in it: a row shallower than an open
-		// group ends that group, so the next row at that depth starts a fresh one under a new
-		// parent. Without it every row at one depth joins one group for the length of the
-		// scope, and a second Epic's members are announced as `3 of 4` instead of `1 of 2`.
-		for (const depth of [...open.keys()]) if (depth > row.depth) open.delete(depth);
-		const group = open.get(row.depth) ?? [];
-		open.set(row.depth, group);
-		group.push(group.length + 1);
-		return { row, pos: group.length, group };
-	});
-	return joined.map(({ row, pos, group }) => ({ row, pos, count: group.length }));
 }

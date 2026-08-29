@@ -72,6 +72,23 @@ note assumed and `## Where it lives` explains it cannot be.
   scaffolding for a member, and hiding it would break the member's place.
 - **4a — the release has no members.** The tree is empty and says so, naming the release. An
   empty release is a legitimate state, not a misconfiguration.
+- **2b — a release nobody has folded anything in opens WHOLE.** Every parent is drawn
+  unfolded, which is the opposite of the backlog tree's own default
+  ([[Collapse persistence]] 1a, where a row nobody has ruled on opens collapsed once). Two
+  different populations, so two different defaults: 1a's stated reason is "so a large backlog
+  starts readable", and a release scope is ALREADY the filtered population that reason asks
+  for — one release's members, which is what the reader opened the screen to see. Collapse all
+  is one press away in the toolbar for the release that is big anyway.
+  Recorded here because it was emergent rather than decided: with an empty fold set every row
+  reads as open, and nothing said whether that was the intent. (Codex, PR #206.)
+  **The cheap fix is a trap and that is why it is not taken.** Seeding the fold set on first
+  open cannot work, because "nothing stored" is indistinguishable from "the reader expanded
+  everything", so it would re-collapse a scope somebody deliberately opened — which is exactly
+  the failure the backlog's THIRD state (`settled`) exists to prevent. Matching 1a properly
+  therefore means a settled set per release: a second key per parent per release against the
+  one `MAX_FOLDS` budget, in the view that holds no `ViewStateController` — the shared cause
+  every fold defect on this branch traced back to. Worth doing only if a real release scope
+  proves unreadable on opening, which is a live-vault question.
 
 ## Acceptance criteria
 
@@ -87,33 +104,66 @@ note assumed and `## Where it lives` explains it cannot be.
 - With the membership property unconfigured, no tree is drawn and the empty state names the
   option.
 - Drawing the scope plans no write.
+- A folded parent keeps its own rollup: folding is a render decision over what is drawn, and it
+  must never change a figure computed over the subtree.
+- Hiding never removes a context ancestor that still holds a visible member: a context row
+  carries no state of its own (3b), so it is never itself the reason a subtree hides, and the
+  member below it is what keeps it drawn.
+- A click on the disclosure folds or unfolds its row and does not open the note; a click
+  anywhere else on the row opens it, and a middle click anywhere but the disclosure opens it in
+  a new tab.
+- The tree is one tab stop, and Right on a leaf does nothing: a leaf has nothing to step into,
+  and moving would make one key mean two things depending on where it landed.
 
 ## Where it lives
 
 The membership read is `src/domain/releases.ts`, beside `src/domain/board.ts` and
 `src/domain/roadmap.ts` and shaped like them — it derives from the model in
-`src/domain/model.ts` and touches no DOM. The membership key is declared in
+`src/domain/model.ts` and touches no DOM. The same module computes each row's own
+`memberTotal`/`memberDone` in the walk that already visits exactly this release's members,
+which is what keeps the rollup from ever counting a note this screen is not showing. The
+membership key, and this view's own open-note target (`openIn`), are declared in
 `src/domain/releaseOptions.ts`, this view's own option set. `src/view/release/releaseView.ts`
-CHOOSES between this scope and the index; the one that DRAWS the tree is
-`src/view/release/renderScope.ts`.
+CHOOSES between this scope and the index; `src/view/release/renderScope.ts` draws the header
+and the two empty states above the tree; `src/view/release/scopeTree.ts` draws the tree
+itself — the rows, the disclosure, the fold set (scoped to the open release, never a bare
+path — see that module's own comment) and a row's click (and middle click), which open the
+note through `src/view/openTarget.ts`'s `OpenController`, the estimation view's own
+mechanism. `src/view/release/scopeKeys.ts` is the tree's keyboard: one tab stop on the
+container and a roving `aria-activedescendant`, moved by the four arrows plus Enter and
+Space, over the same fold set and the same `OpenController` — never `src/view/selection.ts`,
+which is built around a `BacklogViewHost` and the two card projections' own selection, so
+reusing it would mean satisfying a host interface in order to withhold most of it, the same
+call this note's own next paragraph already made about `render/rows.ts`. `renderScope.ts` is
+what WIRES the keyboard, not `scopeTree.ts`: `drawScopeTree` returns what it drew rather than
+calling `scopeKeys.ts` itself, because that module reads the fold set `scopeTree.ts` owns, and
+a call the other way as well would be the import cycle `npm run analyze` refuses — `renderScope.ts`
+already imports both leaves, so it is the one place that can call each in turn without either
+importing the other.
 
 This note said the rows reuse `src/view/render/rows.ts` and the context marking already there.
 They do not, and cannot: that module takes a `BacklogViewHost` and wires menus, create prompts,
 tag removal and drag into every row — every one of them a write this screen does not offer — so
 reusing it would make a read-only view satisfy a host interface in order to withhold what the
-interface is for. The rows are drawn by `src/view/release/renderScope.ts` instead — the header,
-the read-only tree and both empty states — reusing the stylesheet (`styles/release.css`),
-`badgeStyleFor` from `src/view/render/badges.ts` and `guidanceShell` from
-`src/view/render/emptyStates.ts`, which is the same reuse the estimation view settled on.
+interface is for. The rows are drawn by `src/view/release/scopeTree.ts` instead, reusing the
+stylesheet (`styles/release.css`, `styles/releaseScope.css`), `badgeStyleFor` from
+`src/view/render/badges.ts` and — for the rollup — the backlog tree's own `.pbl-meta-col` /
+`.pbl-progress` vocabulary from `styles/columns.css`, which is the same reuse the estimation
+view settled on for its own read-only rows.
 
-**What declining that module COSTS is the semantics, not only the wiring.** `rows.ts` already
-carries `role="treeitem"`, `aria-level`, `aria-posinset` and `aria-setsize` — and the `role="tree"`
+**What declining `rows.ts` COSTS is the semantics, not only the wiring.** It already carries
+`role="treeitem"`, `aria-level`, `aria-posinset` and `aria-setsize` — and the `role="tree"`
 above them is not its own either: the backlog's pane is created with it in
 `src/view/backlogView.ts` and swapped per projection through `src/view/render/projections.ts`. So
-`renderScope.ts` carries the whole set itself, the container role included: `--pbl-depth` moves a row sideways and announces nothing,
-and a scope drawn with indent alone is a flat list of divs on the one screen whose whole promise
-is the shape of the work. Two attributes `rows.ts` sets are deliberately absent — `aria-selected`
-describes a selection this screen does not have and `aria-expanded` a collapse it does not offer.
-The context marker reuses `.pbl-outside-marker`'s STYLING and none of its sentence: that one says
-a row is outside the base's filter, which is false of every row here, since `releaseScope` skips
-an `outsideFilter` ancestor outright rather than keeping it as context.
+`scopeTree.ts` carries the whole set itself, the container role included: `--pbl-depth` moves a
+row sideways and announces nothing, and a scope drawn with indent alone is a flat list of divs
+on the one screen whose whole promise is the shape of the work. **`aria-expanded` is now carried
+on every row that has children, and deliberately absent on a leaf** — this note claimed the
+opposite, that it "describes a collapse this screen does not offer", until this rewrite, once
+the tree could fold at all. `aria-selected` is carried too, now that the keyboard has landed
+(`scopeKeys.ts`): never at draw time, since a row's own draw does not know which row is
+active, but set and moved by the roving selection itself, on whichever row `aria-activedescendant`
+names. The context marker reuses
+`.pbl-outside-marker`'s STYLING and none of its sentence: that one says a row is outside the
+base's filter, which is false of every row here, since `releaseScope` skips an `outsideFilter`
+ancestor outright rather than keeping it as context.

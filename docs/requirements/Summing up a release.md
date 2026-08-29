@@ -20,8 +20,13 @@ assignee: ""
 population and the unit stated, **so that** I can read the state of a release in seconds and
 know what every figure counted.
 
-Nothing yet. The figures derive from the same membership [[The scope of a release as a tree]]
-resolves; nothing here is stored.
+The item count and the items-denominator progress have shipped (2026-08-28), as a summary
+strip on the single-release screen — one bar, one percentage, one sentence, drawn from the
+same `ReleaseRow` the index's own band already computed rather than a second derivation. The
+rest has not: the estimated and completed effort, the estimate-denominator progress, the
+blocked and risk counts, and the unestimated figure are all still nothing yet. The figures
+derive from the same membership [[The scope of a release as a tree]] resolves; nothing here
+is stored.
 
 ## Use case
 
@@ -40,7 +45,15 @@ resolves; nothing here is stored.
 3. It counts the blocked members and the members carrying an unaddressed critical risk, each
    member counted once however many edges or values it holds.
 4. It states how much of the scope carries no estimate at all, as its own figure.
-5. Every figure names the property and the vocabulary it read.
+5. Every figure names its property and vocabulary where there is one; a figure computed over
+   a population spanning several workflows names the workflows instead. **Amended
+   2026-08-28, the author's call**: this line read "Every figure names the property and the
+   vocabulary it read" until then, and it promised what no figure on this screen can
+   deliver — the progress figure's `done` reads through `ownWorkflowReading`
+   (`src/domain/board.ts`), so a release mixing ordinary work with Deliverables has no single
+   property to name for it. This sentence predates that reading; it is a requirement
+   catching up with a case it never anticipated, not a rule being relaxed to fit an
+   implementation.
 
 **Extensions**
 
@@ -75,13 +88,27 @@ resolves; nothing here is stored.
 - A member with three unmet prerequisites adds one to the blocked count, not three; a member
   with three risk values adds at most one to the risk count.
 - An unconfigured predicate makes its figure absent and named, never zero.
+- A figure names its property and vocabulary where there is one; a figure computed over a
+  population spanning several workflows — the progress figure, whose `done` reads through
+  `ownWorkflowReading` — names the workflows instead. **Amended 2026-08-28** alongside main
+  flow 5, for the identical reason: this bullet read "names the property and the vocabulary
+  it read" until then, which no figure on this screen with a mixed population could satisfy.
 - Unestimated scope is its own figure and is never folded into the effort total.
 - Rendering the summary plans no write, and no figure is written to any note.
 
 ## Where it lives
 
-The figures are derived in the same new `src/domain/` module as the scope, beside
-`src/domain/board.ts`, from the model in `src/domain/model.ts`; the dependency predicate reads
-`src/domain/dependencies.ts` rather than a second idea of blocked. The keys, the value lists
-and the progress denominator are declared in `src/domain/viewOptions.ts`, and the panel is a
-new render module in `src/view/render/`, beside `src/view/render/board.ts`.
+**Corrected 2026-08-28** against what actually shipped for the item count and the
+items-denominator progress; the paragraph below described a module and a location that were
+never built, for figures that were: the item count and the progress figure are
+`src/domain/releases.ts`'s `ReleaseRow.members` and `.done` — the SAME row
+[[Every release in one list]]'s index band draws, counted once in `releaseIndex`'s own walk —
+and the summary strip that draws them is `src/view/release/renderScope.ts`, not a module in
+`src/view/render/`. This view's own options (the membership, version and target-date keys) are
+`src/domain/releaseOptions.ts`, never `src/domain/viewOptions.ts`, which is the backlog view's
+own options module and reaches no property this screen reads.
+
+The REST of this note's figures — the effort totals, the estimate-denominator progress, the
+blocked and risk counts, the unestimated figure — are still nothing yet, and whichever module
+eventually derives them should follow the same rule: read the population `releaseScope`
+(`src/domain/releases.ts`) already resolves, rather than a second walk of the model.

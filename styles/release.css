@@ -1,6 +1,11 @@
 /* ==========================================================================
-   The release view — the index's bands, one release's screen, and the shell holding
-   either. One partial, one concern, the layout `styles/index.css` describes.
+   The release view's INDEX — one band per release, the two group headings, and the shell
+   holding the whole view. `styles/releaseScope.css` is the sibling partial for one
+   release's own screen, split out of this file on 2026-08-28: it had reached 399 lines
+   against the 400-line cap `scripts/styles-assemble.mjs` enforces, and Tasks 2, 3 and 5 of
+   [[Release detail page]] each add rules to one screen or the other — none of them could
+   have shared the last line with the others. The seam is the one the two screens already
+   drew along; nothing in either half changed, only which file it lives in.
 
    These rules were drawn and looked at BEFORE any of the view existed: they are the
    `SHEET` constant from the uncommitted `test/harness/mock.ts`, published to the real
@@ -19,16 +24,25 @@
    Every colour, size and radius is an Obsidian variable rather than a value of ours:
    this view is the tree's own appearance on a different arrangement, and the state chip
    in a band is deliberately the read-only `.pbl-state-static` the tree already draws.
+
+   `.pbl-rel-bar` and `.pbl-rel-spacer`, declared below, are reused by `releaseScope.css`'s
+   own header and summary strip — they stay HERE rather than moving or being duplicated,
+   because they were this file's vocabulary first and a selector split across two files by
+   which screen happens to call it would leave one of the two importing rules from the
+   other. See that file's own header for where it uses them.
    ========================================================================== */
 
-/* The index's own head: the `New release` control, above the scroller so it stays put while
-   the rows move. `flex: 0 0 auto` because `.pbl-view` is a flex COLUMN and `.pbl-rel-list`
-   below takes all the slack — an auto-sized item here would otherwise be squeezed by it.
-   The button itself is Obsidian's `mod-cta`; nothing here paints one. */
+/* The index's own head: `New release` and the ✨ beside it, above the scroller so it stays
+   put while the rows move. `flex: 0 0 auto` because `.pbl-view` is a flex COLUMN and
+   `.pbl-rel-list` below takes all the slack — an auto-sized item here would otherwise be
+   squeezed by it. `gap` spaces the two buttons on the CONTAINER, not a margin on either,
+   so neither repeats it if a third joins. Both are Obsidian's own chrome — `clickable-icon`,
+   `mod-cta` — nothing here paints either. */
 .pbl-rel-actions {
 	flex: 0 0 auto;
 	display: flex;
 	justify-content: flex-end;
+	gap: var(--size-4-1);
 	padding: var(--size-4-2) var(--size-4-2) var(--size-4-1);
 }
 
@@ -336,61 +350,3 @@ button.pbl-rel-band {
 	height: 13px;
 }
 
-/* One release's screen: the back control, the name, and the facts pushed to the end. */
-.pbl-rel-header {
-	display: flex;
-	flex-wrap: wrap;
-	align-items: center;
-	gap: var(--size-4-2);
-	padding: var(--size-4-2) var(--size-4-3);
-	border-bottom: 1px solid var(--background-modifier-border);
-}
-
-.pbl-rel-header h2 {
-	margin: 0;
-	font-size: var(--font-ui-large);
-}
-
-/* Audited against `docs/issues/The release index rows paint as Obsidian buttons.md`'s
-   Step 7: `.pbl-rel-back` is `renderScope.ts`'s real `<button class="clickable-icon
-   pbl-rel-back">`. Obsidian's colliding rule is `button:not(.clickable-icon)`, and this
-   button carries `.clickable-icon`, so that selector never matches it in the first place —
-   there is no specificity contest here to lose, and no reset to add. It wants exactly the
-   icon-button chrome `.clickable-icon` supplies. */
-.pbl-rel-back {
-	flex: 0 0 auto;
-}
-
-.pbl-rel-facts {
-	display: flex;
-	align-items: center;
-	gap: var(--size-4-3);
-	margin-inline-start: auto;
-	font-size: var(--font-ui-small);
-	color: var(--text-muted);
-}
-
-/* A context ancestor is scaffolding holding a member in place, not something the reader
-   asked to see — dimmed for that, never hidden, or the member loses its place. */
-.pbl-rel-context {
-	opacity: 0.62;
-}
-
-/* One release's scope reuses the tree's `.pbl-row` for its LAYOUT — the flex row, the
-   `--pbl-depth` indent, `content-visibility` — and inherits three gestures with it that
-   this screen does not have: there is no click, no selection and no collapse, which is
-   why `renderScope.ts` omits `aria-selected` and `aria-expanded` too. The sharpest of the
-   three is `user-select`: a screen whose whole purpose is reading must let a reader copy a
-   title. The tree earns that rule by dragging its rows; nothing here is dragged.
-
-   Scoped by `.pbl-rel-view` so it cannot reach the backlog tree's own rows, and the hover
-   is refused at `:hover` rather than at the bare class so the import ORDER still decides
-   nothing (see this file's header). */
-.pbl-rel-view .pbl-row {
-	cursor: auto;
-	user-select: auto;
-}
-
-.pbl-rel-view .pbl-row:hover {
-	background-color: transparent;
-}

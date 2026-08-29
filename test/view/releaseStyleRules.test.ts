@@ -3,9 +3,12 @@ import { describe, expect, it } from 'vitest';
 import { assembleStyles } from '../../scripts/styles-assemble.mjs';
 
 /**
- * `styles/release.css` as SHIPPED. The shape is `estimation/styleRules.test.ts`'s, for its
- * reason: one surface's partial, asked the questions a browser is not here to answer, kept
- * out of `rendering.test.ts` so that suite does not grow past its budget.
+ * `assembleStyles()` — the whole SHIPPED sheet, not `styles/release.css` alone — as
+ * `styles.css` ships it. The shape is `estimation/styleRules.test.ts`'s, for its reason:
+ * one surface's rules, asked the questions a browser is not here to answer, kept out of
+ * `rendering.test.ts` so that suite does not grow past its budget. Reading the whole
+ * assembled sheet rather than one partial is what makes a rule MOVING to
+ * `styles/releaseScope.css` (or anywhere else `index.css` imports) still assertable here.
  *
  * It exists because the partial was rewritten wholesale on 2026-08-23 — the shared grid
  * dropped, every row given its own box — and NOTHING in this repository could see any of
@@ -92,18 +95,24 @@ describe('the progress bar draws no fill without a published one', () => {
 	});
 });
 
-describe('a release’s own screen does not inherit the tree’s gestures', () => {
-	it('gives a scope row back its text selection, its cursor and its quiet hover', () => {
-		// `.pbl-row` is reused for its LAYOUT and arrives carrying three gestures this screen
-		// does not have: it offers no click, no selection and no fold. `user-select` is the
-		// sharp one — copying a title is most of what a read-only screen is for.
+describe('a release’s own screen is a target again, since Task 3', () => {
+	it('opens its note on click — a real pointer, a real hover — and still lets a title be selected', () => {
+		// `.pbl-row` is reused for its LAYOUT and arrived carrying three refusals this screen
+		// no longer keeps: there is a click now (`scopeTree.ts`), so `cursor` and the hover
+		// say so. `user-select: auto` has to be RESTATED here, not merely left off the rule —
+		// `styles/tree.css` sets `.pbl-row { user-select: none }` for the tree's own drag, and
+		// an unstated property does not "stay" at the browser default, it resolves from
+		// whichever rule wins the cascade. Missing this once left a reader unable to select a
+		// title on a screen with nothing to justify the tree's `none`.
 		expect(ruleAt('.pbl-rel-view .pbl-row', 'user-select: auto;')).toBeGreaterThan(-1);
-		expect(ruleAt('.pbl-rel-view .pbl-row', 'cursor: auto;')).toBeGreaterThan(-1);
-		expect(ruleAt('.pbl-rel-view .pbl-row:hover', 'background-color: transparent;')).toBeGreaterThan(-1);
+		expect(ruleAt('.pbl-rel-view .pbl-row', 'cursor: pointer;')).toBeGreaterThan(-1);
+		expect(ruleAt('.pbl-rel-view .pbl-row:hover', 'background-color: var(--background-modifier-hover);')).toBeGreaterThan(
+			-1,
+		);
 	});
 
-	it('refuses the hover at `:hover`, so the import order still decides nothing', () => {
-		// `tree.css` declares `.pbl-row:hover` at (0,2,0). Refusing it at `.pbl-rel-view
+	it('sets the hover at `:hover`, so the import order still decides nothing', () => {
+		// `tree.css` declares `.pbl-row:hover` at (0,2,0). Setting it again at `.pbl-rel-view
 		// .pbl-row` — also (0,2,0) — would be decided by which partial `index.css` imports
 		// last, and this partial's own header states that its position is NOT load-bearing.
 		// (0,3,0) makes that sentence true whatever the order.

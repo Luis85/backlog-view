@@ -3,6 +3,7 @@ import { configReaders, vaultFolder } from './settingsResolve';
 import { notePropsOnly } from './optionalProperties';
 import { defaultTypeFolder, RELEASE_TYPE } from './typeVocabulary';
 import { DEFAULT_DONE_VALUES } from './settings';
+import { defaultItemHandling, openTargetOptions, OpenTarget, resolveItemHandling } from './itemHandling';
 import { t } from '../i18n/t';
 
 /**
@@ -35,6 +36,10 @@ export interface ReleaseSettings {
 	releasedDateKey: string;
 	/** Where `New release` files a note. A PATH, not a property key. */
 	folder: string;
+	/** Where a scope row's click opens its note — this view's OWN option, never the
+	 *  backlog resolver's: see {@link resolveReleaseSettings}'s own comment for why a
+	 *  second resolver reading this boundary is the defect rather than the fix. */
+	openIn: OpenTarget;
 }
 
 export function getReleaseViewOptions(_config: BasesViewConfig): BasesAllOptions[] {
@@ -127,6 +132,35 @@ function releaseGroup(): BasesAllOptions {
 				default: DEFAULT_DONE_VALUES.join(', '),
 				placeholder: DEFAULT_DONE_VALUES.join(', '),
 			},
+			// The identical pattern, for the Deliverable workflow's OWN state: the progress
+			// gate reads whichever workflows a release's members actually span
+			// (`ownWorkflowReading`, `domain/board.ts`), so a release holding only
+			// Deliverables needs `deliverableStateKey` bound rather than `stateKey`.
+			// `resolveSettings` already reads exactly these two option keys — through
+			// `resolveSecondaryWorkflow`/`DELIVERABLE_NAMES` in `settingsResolve.ts` — onto
+			// `BacklogSettings.deliverableStateKey` / `deliverableDoneValues`, and `buildModel`
+			// reads that same `BacklogSettings`, so declaring the options here is again the
+			// whole of the plumbing: before this pair joined the menu, a Deliverables-only
+			// release could show progress only via a hand-edited `.base` or one that started
+			// life as a backlog view, never through this view's own options panel.
+			// `deliverableStateValues` (the ordered vocabulary) is deliberately left
+			// undeclared, matching this view's own choice not to offer `stateValues` for the
+			// primary workflow either: the release view exposes a property and its done-values
+			// cut, never the declared list, for either workflow.
+			{
+				type: 'property',
+				key: 'deliverableStateProperty',
+				displayName: t('option.deliverableStateProperty'),
+				placeholder: 'status',
+				filter: notePropsOnly,
+			},
+			{
+				type: 'text',
+				key: 'deliverableDoneValues',
+				displayName: t('option.deliverableDoneValues'),
+				default: DEFAULT_DONE_VALUES.join(', '),
+				placeholder: DEFAULT_DONE_VALUES.join(', '),
+			},
 			{
 				type: 'property',
 				key: 'releasedDateProperty',
@@ -140,6 +174,13 @@ function releaseGroup(): BasesAllOptions {
 				displayName: t('release.option.folder'),
 				default: defaultTypeFolder(RELEASE_TYPE),
 				placeholder: defaultTypeFolder(RELEASE_TYPE),
+			},
+			{
+				key: 'openIn',
+				displayName: t('option.openIn'),
+				type: 'dropdown',
+				default: defaultItemHandling('split').openIn,
+				options: openTargetOptions(),
 			},
 		],
 	};
@@ -192,11 +233,10 @@ export function resolveReleaseSettings(config: BasesViewConfig): ReleaseSettings
 		//
 		// That rule is about this RESOLVER's own silent read, on every data update, never
 		// about an explicit user action. `view/release/init.ts`'s `runReleaseInit` binds this
-		// same option's suggested key as a STEP of the `New release` press — this view has no
-		// toolbar and draws no ✨ button of its own, which `init.ts` and
-		// [[Creating a release from the release view]] both say plainly and this comment
-		// contradicted until 2026-08-25. What it shares with the backlog view's `runInit` is
-		// the distinction that matters here and not the control: a binding the reader's own
+		// same option's suggested key as a STEP of the `New release` press, and — since Task
+		// 1 of [[Creating a release from the release view]] — of the standalone ✨ too
+		// (`view/release/initControl.ts`). What both share is the distinction that matters
+		// here and not the control that reaches it: a binding the reader's own
 		// press asked for is not a fallback taken behind their back. This function
 		// itself still never defaults `membershipProperty` to `release` — a config that
 		// changed that would fail `test/domain/releaseOptions.test.ts`'s "resolves each
@@ -216,5 +256,11 @@ export function resolveReleaseSettings(config: BasesViewConfig): ReleaseSettings
 		// folder — trimmed and normalized by `vaultFolder`, clearable because the default
 		// is a real value (`config.get` cannot tell "cleared" from "never set" otherwise).
 		folder: clearable('releaseFolder', defaultTypeFolder(RELEASE_TYPE), () => vaultFolder(str('releaseFolder'))),
+		// This view's OWN reading of `openIn` — never `resolveSettings(this.config).openIn`
+		// in `releaseView.ts`, for the reason stated where the click is handled: that
+		// resolver reads through `propKey`, which cannot tell a cleared option from an
+		// unset one, so two resolvers disagreeing at this boundary is the same defect as
+		// one view reading another's configuration.
+		openIn: resolveItemHandling(config, 'split').openIn,
 	};
 }

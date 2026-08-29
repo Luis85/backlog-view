@@ -1,5 +1,6 @@
 import { App } from 'obsidian';
-import { movedPath, ViewIdentity, viewNameOf, viewStateKey } from './viewIdentity';
+import { isUnder, movedPath, ViewIdentity, viewNameOf, viewStateKey } from './viewIdentity';
+import { foldKeyPaths, movedFoldKey } from './foldKeys';
 
 /**
  * Everything one saved view remembers between sessions, in vault-scoped localStorage:
@@ -50,7 +51,10 @@ const SCHEMA = 1;
  * A real backlog is a few hundred rows, so this is far above normal use and exists only
  * so a pathological vault cannot grow the entry without bound. Collapsed keys are kept
  * first: an expanded entry only suppresses the default, while a collapsed one is visible
- * state, and a lane is one per resource rather than one per note.
+ * state, and a lane is one per resource rather than one per note. That is the order the
+ * LISTS are spent in and it is unchanged. WITHIN one list the newest entries are what
+ * survive, not the first: every writer here appends, so taking the head would evict
+ * exactly the fold just made whenever a list is already at the cap.
  *
  * A fold key is a note path under one scope, and a parent settles under every scope it
  * has (the tree's, the dated axis's and a card's own — see `view/viewState.ts`), so
@@ -305,6 +309,11 @@ export interface ViewPrefs {
 	 */
 	release?: string;
 	/**
+	 * Whether the release view's scope screen is hiding finished subtrees. The ON state of
+	 * a toggle that starts OFF, so a default writes nothing — `bucketList`'s own rule.
+	 */
+	releaseHideDone?: boolean;
+	/**
 	 * Which board the `Boards` position opens when no iteration scope is set — today the
 	 * one legal value is {@link DELIVERABLES_MODE}, and absence means the product board.
 	 * A WORD, never a path, so unlike `scope` beside it neither the prune nor the rename
@@ -445,6 +454,7 @@ export const PREF_READERS: { [K in keyof ViewPrefs]-?: Reader<NonNullable<ViewPr
 	// the vault, which this layer cannot do. A remembered release that has moved or been
 	// deleted returns the index, which the view decides on render — not a failure.
 	release: anyName,
+	releaseHideDone: onlyTrue,
 	board: oneOf([DELIVERABLES_MODE]),
 	estimationSort: oneOf(ESTIMATION_SORT_VALUES),
 };
@@ -472,16 +482,28 @@ function readPrefs(source: unknown): ViewPrefs {
 
 /**
  * The same, for the folds — one {@link MAX_FOLDS} budget spent across the lists, in the
- * order they are read here. That order is the rule: what is left when the budget runs out
- * is dropped, so the collapsed rows are taken first.
+ * order they are read here (that constant's own comment states which end of each list
+ * survives, and why).
  */
 function readFolds(source: unknown): ViewFolds {
 	const record = objectOf(source);
 	let budget = MAX_FOLDS;
 	const take = (value: unknown): string[] => {
-		const list = texts(value).slice(0, budget);
-		budget -= list.length;
-		return list;
+		const list = texts(value);
+		// The NEWEST keys, not the first ones. Every writer here APPENDS — the release
+		// view's `writeFolds` puts the other releases' keys before this one's, and
+		// `ViewState.flush` writes a Set in insertion order — so taking the head made a
+		// saturated budget discard exactly the fold just made, and folding a row appeared
+		// to do nothing with nothing reporting it. Dropping the oldest is the eviction a
+		// backstop is for.
+		//
+		// `budget <= 0` is spelled out rather than left to `slice`: `slice(-0)` is
+		// `slice(0)`, which returns the WHOLE list, so an exhausted budget would hand back
+		// everything it exists to refuse.
+		if (budget <= 0) return [];
+		const kept = list.slice(-budget);
+		budget -= kept.length;
+		return kept;
 	};
 	return {
 		collapsed: take(record.collapsed),
@@ -603,6 +625,100 @@ export function renamePathPrefs(app: App, oldPath: string, newPath: string): voi
 		}
 	}
 	if (moved) writeMap(app, map);
+}
+
+/**
+ * Carry every stored FOLD key through a rename — the folds half of what
+ * {@link renamePathPrefs} does for the two path-valued preferences, wired to the same
+ * `vault.on('rename')` at the plugin.
+ *
+ * It exists because one view has no in-memory copy for `ViewState.renamePath` to migrate:
+ * the release view reads and writes `folds.collapsed` through this module directly, so
+ * without this walk a renamed member (or a renamed release) reopened its row —
+ * `docs/requirements/Collapse persistence.md`'s "renaming a note migrates the state rather
+ * than orphaning it" was false for exactly that view. For the backlog view this is not a
+ * duplicate of `ViewState.renamePath` for the same reason {@link renamePathPrefs} is not a
+ * duplicate of `renameScoped`: that one covers the loaded view, whose flush would put a
+ * stale key straight back, and this one covers every OTHER stored entry.
+ *
+ * `collapsed` and `expanded` only. `collapsedColumns`/`expandedColumns` carry an iteration
+ * note path too (`movedColumnKey`, `view/viewState.ts`) and stored entries have the same
+ * staleness there — older than this walk, and the iteration board's own to fix, since that
+ * key shape lives with the board rather than here.
+ */
+export function renamePathFolds(app: App, oldPath: string, newPath: string): void {
+	const map = readMap(app);
+	// Only when something actually moved: a rename names no fold far more often than it
+	// names one, and rewriting the map regardless would spend a localStorage write on
+	// every rename in the vault.
+	if (editFolds(map, (key) => movedFoldKey(key, oldPath, newPath) ?? key)) writeMap(app, map);
+}
+
+/**
+ * Drop every stored FOLD key naming a note that has just been DELETED — the third walk
+ * over the same entries, and the one that keeps `docs/requirements/Collapse
+ * persistence.md`'s extension 3b true for the release view.
+ *
+ * **Driven by the event, never by asking the vault.** `ViewState.flush()` prunes by
+ * asking the index whether each folded path still resolves, and that view is the only one
+ * with a `ViewState` — a release view's keys were pruned by nothing at all, so a fold
+ * outlived its note, held a {@link MAX_FOLDS} slot forever and refolded the row if the
+ * path ever came back. The obvious repair was to move that existence walk into
+ * {@link saveViewState} beside {@link pruneMissingBases}. It is not what this does, for
+ * two reasons:
+ *
+ * - **The index-trust hazard disappears.** `pruneMissingBases` needs its guard because it
+ *   INFERS absence from a question the index may be unable to answer, which is extension
+ *   3c: "I cannot see it" is only evidence when the reader can see anything. A delete
+ *   event is not an inference — Obsidian is reporting the removal it just performed — so
+ *   there is no unanswerable case to guard, and 3c does not engage here.
+ * - **The cost lands where the change is.** A prune inside the save would walk every fold
+ *   of every entry on every debounced save, which is once per row folded; this walks them
+ *   once per deletion.
+ *
+ * Takes any delete, file or folder: `isUnder` matches the path itself or its `path/`
+ * prefix, because the event for a deleted folder names the folder and never the notes
+ * under it — the same fact `movedPath` exists for. That also makes it idempotent, so it
+ * costs nothing if Obsidian ever reports a folder AND each note inside it.
+ *
+ * `collapsed` and `expanded` only, for {@link renamePathFolds}'s reason: the other three
+ * lists are keyed by NAMES the vault cannot delete, except `collapsedColumns` /
+ * `expandedColumns`, whose iteration path is the iteration board's own key shape to prune.
+ */
+export function pruneDeletedFolds(app: App, path: string): void {
+	const map = readMap(app);
+	// A key dies with EITHER note it names — its member or its release — which is why the
+	// predicate asks `foldKeyPaths` rather than the single `notePath` a key is filed under.
+	if (editFolds(map, (key) => (foldKeyPaths(key).some((p) => isUnder(p, path)) ? null : key))) {
+		writeMap(app, map);
+	}
+}
+
+/**
+ * Both fold lists of every stored entry, each key through `edit` — which returns the key
+ * it should become, or null to drop it. Reports whether anything was rewritten or
+ * dropped, so a caller writes localStorage only when the walk actually found something.
+ *
+ * One walk for the rename and the prune rather than two spellings of the same three
+ * loops. It also DEDUPES on the way out, which the rename needed on its own account: a
+ * key renamed onto a spelling the list already holds used to be appended beside it, and
+ * while every reader turns these lists into a `Set`, the duplicate still spends one of
+ * the {@link MAX_FOLDS} slots the budget hands out.
+ */
+function editFolds(map: StoredMap, edit: (key: string) => string | null): boolean {
+	let changed = false;
+	for (const entry of Object.values(map)) {
+		for (const list of ['collapsed', 'expanded'] as const) {
+			const next: string[] = [];
+			for (const key of entry.folds[list]) {
+				const kept = edit(key);
+				if (kept !== key) changed = true;
+				if (kept !== null) next.push(kept);
+			}
+			entry.folds[list] = [...new Set(next)];
+		}
+	}
+	return changed;
 }
 
 function writeMap(app: App, map: StoredMap): void {

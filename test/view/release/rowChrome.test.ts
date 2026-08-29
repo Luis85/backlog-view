@@ -44,11 +44,14 @@ describe('the index band does not paint as an Obsidian button', () => {
 /**
  * Step 7's audit of the stylesheet's other `.pbl-rel-*` bare classes against the real
  * elements in `src/view/release/`: `.pbl-rel-new` (`newRelease.ts`) and `.pbl-rel-back`
- * (`renderScope.ts`) are the only two that name a real `<button>` besides the row above,
- * and both WANT Obsidian's button chrome rather than losing to it by accident — so neither
- * gets an element-qualified override. These two tests pin that "no override" is the
- * decision, not an oversight: either control gaining a `button.pbl-rel-new { … }` or
- * `button.pbl-rel-back { … }` reset later is a deliberate re-audit, not a silent add.
+ * (`renderScope.ts`) are the only two IN `release.css` that name a real `<button>` besides
+ * the row above, and both WANT Obsidian's button chrome rather than losing to it by
+ * accident — so neither gets an element-qualified override. `releaseScope.css`'s own bare
+ * buttons are a separate audit, below: this file grew a second partial the day the release
+ * had a screen of its own, and `release.css` alone stopped being the whole of "every real
+ * `<button>` this view draws". These two tests pin that "no override" is the decision, not
+ * an oversight: either control gaining a `button.pbl-rel-new { … }` or `button.pbl-rel-back
+ * { … }` reset later is a deliberate re-audit, not a silent add.
  */
 describe('the two other release buttons keep Obsidian’s chrome on purpose', () => {
 	const css = readFileSync('styles/release.css', 'utf8');
@@ -59,5 +62,59 @@ describe('the two other release buttons keep Obsidian’s chrome on purpose', ()
 
 	it('leaves `.pbl-rel-back` unqualified — it carries `clickable-icon`, which Obsidian’s colliding rule already excludes', () => {
 		expect(css).not.toMatch(/button\.pbl-rel-back\s*\{/);
+	});
+});
+
+/**
+ * The scope screen's own bare buttons (`releaseScope.css`), added on this branch and never
+ * before covered here — the gap this test closes. `.pbl-twisty` (the disclosure,
+ * `scopeTree.ts`) and `.pbl-rel-toggle` (the hide-done toggle, `scopeToolbar.ts`) are real
+ * `<button>`s carrying no `clickable-icon` and no `mod-cta`, so an Obsidian `button` rule
+ * reaches them exactly as it reached `.pbl-rel-band` before that one was fixed
+ * (`docs/issues/The release index rows paint as Obsidian buttons.md`) — this is that same
+ * live-vault risk, on the newest controls, and it is the highest-risk item left unguarded
+ * on this branch. The code is already right; this test is what stops it drifting back.
+ */
+describe('the scope screen’s bare buttons do not paint as Obsidian buttons', () => {
+	const css = readFileSync('styles/releaseScope.css', 'utf8');
+
+	it('resets the disclosure’s chrome at `button.pbl-twisty`', () => {
+		const block = css.match(/button\.pbl-twisty\s*\{[^}]*\}/);
+		expect(block, 'no element-qualified reset for the disclosure').not.toBeNull();
+		expect(block?.[0]).toContain('background-color: transparent');
+		expect(block?.[0]).toContain('box-shadow: none');
+		expect(block?.[0]).toContain('border: none');
+		expect(block?.[0]).toContain('padding: 0');
+	});
+
+	it('resets the hide-done toggle’s chrome at `button.pbl-rel-toggle`', () => {
+		const block = css.match(/button\.pbl-rel-toggle\s*\{[^}]*\}/);
+		expect(block, 'no element-qualified reset for the toggle').not.toBeNull();
+		expect(block?.[0]).toContain('background-color: transparent');
+		expect(block?.[0]).toContain('box-shadow: none');
+		expect(block?.[0]).toContain('border: 1px solid');
+		expect(block?.[0]).toContain('padding:');
+	});
+});
+
+/**
+ * The scope toolbar's other two buttons, and the empty-state ✨ — `.pbl-rel-collapse` and
+ * `.pbl-rel-expand` (`scopeToolbar.ts`'s `iconBtn`) carry `clickable-icon`, and
+ * `.pbl-rel-init` carries `clickable-icon` on the bar and `mod-cta` on an empty state
+ * (`initControl.ts`) — so all three are correctly EXCLUDED from an element-qualified reset
+ * the same way `.pbl-rel-new` and `.pbl-rel-back` are above. Pinned for the same reason:
+ * a class gaining its own `clickable-icon`/`mod-cta` or losing it is a decision worth
+ * re-auditing, not a silent drift either way.
+ */
+describe('the scope toolbar’s icon buttons and the ✨ keep Obsidian’s chrome on purpose', () => {
+	const css = readFileSync('styles/releaseScope.css', 'utf8');
+
+	it('leaves `.pbl-rel-collapse` and `.pbl-rel-expand` unqualified — both carry `clickable-icon`', () => {
+		expect(css).not.toMatch(/button\.pbl-rel-collapse\s*\{/);
+		expect(css).not.toMatch(/button\.pbl-rel-expand\s*\{/);
+	});
+
+	it('leaves `.pbl-rel-init` unqualified here too — `initControl.ts` is what carries `clickable-icon`/`mod-cta` on it', () => {
+		expect(css).not.toMatch(/button\.pbl-rel-init\s*\{/);
 	});
 });

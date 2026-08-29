@@ -82,8 +82,8 @@ useViewHarness();
  *   uses for the tree, and `runEstimationInit` for the estimation view), so this
  *   assertion is no longer "no code anywhere may call config.set" — it is "nothing this
  *   fixed interaction script does calls it," which stays true because the one action that
- *   binds (`runReleaseInit`) is reached from the `New release` press alone, and the script
- *   never presses it.
+ *   binds (`runReleaseInit`) is reached from either the `New release` press or the ✨'s
+ *   own, and the script presses neither.
  *
  * What none of the three sees is a write reached from a module this view does not import
  * yet. `WRITE_BOUNDARY` in `eslint.config.mjs` is that statement, unchanged by this
@@ -107,14 +107,19 @@ describe('the release view never edits a note that already exists', () => {
 		const before = vault.files.size;
 		const { view, config, containerEl } = makeReleaseView(vault, RELEASE_CONFIG, { base: 'Plan.base' });
 
-		// Every input either screen offers, in the order a reader meets them. The index
-		// first: a row is a native `<button>`, so Enter and Space arrive as the click below —
-		// the browser synthesizes it, and there is no `keydown` listener in
-		// `src/view/release/` for a dispatch to reach. The two `key()` dispatches that stood
-		// here were deleted with the handler rather than left: jsdom synthesizes no click
-		// either, so they reached nothing and read as coverage of a keyboard path this file
-		// does not exercise. A right-click is kept because it IS a distinct gesture — it opens
-		// a menu on every OTHER view this plugin ships.
+		// A fixed subset of what either screen offers, in the order a reader meets them —
+		// not every input either screen offers: the scope screen has since grown a
+		// disclosure, three toolbar controls (collapse all, expand all, hide done) and the
+		// bar's own ✨, none driven here. That is narrower than this script's own name once
+		// claimed, and the honest reading is still the one this file's docblock states
+		// throughout — a call on a path this fixed script does not drive is invisible to
+		// it. The index first: a row is a native `<button>`, so Enter and Space arrive as
+		// the click below — the browser synthesizes it, and there is no `keydown` listener
+		// in `src/view/release/` for a dispatch to reach. The two `key()` dispatches that
+		// stood here were deleted with the handler rather than left: jsdom synthesizes no
+		// click either, so they reached nothing and read as coverage of a keyboard path
+		// this file does not exercise. A right-click is kept because it IS a distinct
+		// gesture — it opens a menu on every OTHER view this plugin ships.
 		const indexRow = containerEl.querySelector<HTMLElement>('.pbl-rel-band');
 		expect(indexRow).not.toBeNull();
 		indexRow?.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));

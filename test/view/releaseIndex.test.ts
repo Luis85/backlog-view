@@ -35,6 +35,27 @@ describe('the release index', () => {
 		expect(view.pickedPath).toBe('0.8.md');
 	});
 
+	/**
+	 * Codex, PR #206: `pbl-rel-band` joined `FOCUS_HANDLE_CLASSES` so a redraw would put
+	 * focus back on the band a reader was on, but the restore took the FIRST element
+	 * carrying the class — and unlike every other handle there is one band per release. A
+	 * routine metadata refresh therefore moved a keyboard reader silently to the top of the
+	 * list. `0.9.md` is deliberately the middle band: matching the first one, or the last,
+	 * would both pass on an end.
+	 */
+	it('puts focus back on the SAME band across a refresh, not the first one', () => {
+		const vault = releaseVault();
+		const { view, containerEl } = makeReleaseView(vault, RELEASE_CONFIG);
+		const band = containerEl.querySelector<HTMLElement>('.pbl-rel-band[data-path="0.9.md"]');
+		band?.focus();
+
+		// Nothing about this refresh is a press: `render()`'s own restore is the only thing
+		// that can put focus anywhere afterwards.
+		view.onDataUpdated();
+
+		expect((document.activeElement as HTMLElement | null)?.dataset.path).toBe('0.9.md');
+	});
+
 	it('makes every band a real button, so a keyboard can reach and press it', () => {
 		// The index-to-scope transition is this view's ENTIRE navigation. A pointer-only
 		// band would make the release view unreachable for a keyboard or screen-reader
@@ -139,76 +160,6 @@ describe('the release index', () => {
 		click(containerEl.querySelector('.pbl-rel-band') as HTMLElement);
 		await flush();
 		expect(vault.writeLog).toEqual([]);
-	});
-});
-
-/**
- * The design's own layout: a bar, a counted phrase folding the member count in, and the
- * two ways progress can legitimately draw nothing (no members at all; a state property
- * that is unbound). Each test builds its own small vault rather than `releaseVault()`,
- * which has no members and is shared with `test/i18n/projections.test.ts` and
- * `test/domain/bars.test.ts` — files outside this task's whitelist.
- */
-describe('the band’s progress line', () => {
-	useViewHarness();
-
-	it('draws a bar and the counted phrase when membership and state are both bound', () => {
-		const vault = new FakeVault();
-		vault.addFile('0.8.md', {
-			frontmatter: { type: 'Release', version: '0.8.0', 'target-date': '2026-09-12', status: 'In progress' },
-		});
-		vault.addFile('A.md', { frontmatter: { type: 'PBI', release: '[[0.8]]', status: 'Done' } });
-		vault.addFile('B.md', { frontmatter: { type: 'PBI', release: '[[0.8]]', status: 'Doing' } });
-		const { containerEl } = makeReleaseView(vault, RELEASE_CONFIG);
-
-		const band = containerEl.querySelector('.pbl-rel-band') as HTMLElement;
-		expect(band.querySelector('.pbl-rel-bar')).not.toBeNull();
-		expect(band.querySelector('.pbl-rel-progress')?.textContent).toBe(
-			en['column.rollupTooltip'].other.replace('{done}', '1').replace('{count}', '2'),
-		);
-		expect(band.querySelector('.pbl-state-chip')?.textContent).toContain('In progress');
-	});
-
-	it('says a member is done, singular, at exactly one of one', () => {
-		// The whole reason `column.rollupTooltip` is reused rather than a release-specific
-		// key with `{total}`: a key that cannot accept a parameter named `count` cannot
-		// select this form at all (see the catalog's own comment at the key).
-		const vault = new FakeVault();
-		vault.addFile('0.8.md', { frontmatter: { type: 'Release' } });
-		vault.addFile('A.md', { frontmatter: { type: 'PBI', release: '[[0.8]]', status: 'Done' } });
-		const { containerEl } = makeReleaseView(vault, RELEASE_CONFIG);
-
-		const band = containerEl.querySelector('.pbl-rel-band') as HTMLElement;
-		expect(band.querySelector('.pbl-rel-progress')?.textContent).toBe(
-			en['column.rollupTooltip'].one.replace('{done}', '1').replace('{count}', '1'),
-		);
-	});
-
-	it('says there is nothing to count rather than drawing an empty bar', () => {
-		const vault = new FakeVault();
-		vault.addFile('0.9.md', { frontmatter: { type: 'Release', 'target-date': '2026-09-12' } });
-		const { containerEl } = makeReleaseView(vault, RELEASE_CONFIG);
-		const band = containerEl.querySelector('.pbl-rel-band') as HTMLElement;
-
-		expect(band.textContent).toContain(en['release.index.noMembers']);
-		expect(band.querySelector('.pbl-rel-bar')).toBeNull();
-	});
-
-	it('leaves the bar and the phrase absent when membership is bound but the state property is not, and names it once beneath the list', () => {
-		// Extension 2a's own case: a done count with no state property to read is a
-		// configuration to fix, not a truthful zero.
-		const vault = new FakeVault();
-		vault.addFile('0.8.md', { frontmatter: { type: 'Release', version: '0.8.0' } });
-		vault.addFile('A.md', { frontmatter: { type: 'PBI', release: '[[0.8]]', status: 'Done' } });
-		const { containerEl } = makeReleaseView(vault, { ...RELEASE_CONFIG, stateProperty: '' });
-		const band = containerEl.querySelector('.pbl-rel-band') as HTMLElement;
-
-		expect(band.querySelector('.pbl-rel-bar')).toBeNull();
-		expect(band.querySelector('.pbl-rel-progress')).toBeNull();
-		// Not the "no members" reading either — this release DOES have one.
-		expect(band.querySelector('.pbl-rel-nomembers')).toBeNull();
-		const note = containerEl.querySelector('.pbl-rel-note')?.textContent ?? '';
-		expect(note).toContain('Progress');
 	});
 });
 

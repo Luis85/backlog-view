@@ -57,6 +57,24 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   state every saved release view is in until you set it. Both missing bindings are named in
   one line beneath the list, so a screen that is staying quiet says why.
 
+- **The Deliverable workflow's own state property and done values are now options on the
+  release view too**, beside the ones above. A release holding only Deliverables reads its
+  progress off these when they are bound, so you no longer need to bind them on a backlog
+  view first, or hand-edit the `.base` file, to get a Deliverables-only release counting
+  correctly — the release view's own options menu can do it directly.
+
+- **A release's own screen opens with the same figure, over its own members.** Pick a
+  release from the list and its scope now starts with a progress bar, a percentage and an
+  `N of M items done` phrase, counted over what that one release holds rather than the
+  whole list. Hover it and it says WHICH property and which values decided the count — the
+  state property and the done values you bound, or, when a release's members span more
+  than one workflow, which workflows they are. With no state property bound the strip
+  still draws an item count, but names the property that is not configured instead of a
+  bar — never `0%`, which would look exactly like a release where nothing is finished. (The
+  release LIST'S bar, on the other hand, is withheld entirely with no state property bound
+  — that rule is unchanged.) A release with nothing in it withholds the strip too, since a
+  `0 of 0` figure beside a screen already saying the release is empty would say it twice.
+
 - **Releases are made from the release view.** A **New release** button now sits at the head
   of the release list, and again on the screen you see when there are no releases yet. It
   asks for a name and — where your vault tracks them — a version, a target date and a status,
@@ -79,8 +97,80 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   show a suggested name rather than a pickable one until a release you have made actually
   carries that field. Fill a box in once and that property is pickable like any other.
 
+- **The release view has its own ✨ for binding those properties, without making a
+  release.** It sits at the head of the release list always, next to New release, and it
+  is offered again on the empty state that tells you no membership property is mapped —
+  withheld there only when you cleared that property on purpose, since a press could then
+  only bind something else and leave you looking at the same screen. A press says what it
+  bound, or that there was nothing left to add. Like every ✨ in this plugin, it touches
+  only the view's own configuration — it writes no note.
+
+- **A release's scope can be folded, and a row opens the note it names.** Every row that
+  holds children now carries a disclosure, so a large release can be collapsed down to its
+  Epics and Features rather than always drawing every Task; a leaf holds the same width in
+  reserve so titles at one level still line up. Folding never changes a figure — a folded
+  parent keeps its own progress, since the count is over the subtree rather than over what
+  happens to be drawn. Each row that holds a state also shows it, and a row with members
+  below it shows a compact progress figure of its own, the same bar the release-wide summary
+  above the tree already draws. Clicking anywhere on a row but the disclosure opens its note,
+  in the pane the view's own new **Open the note in** option names — the same choice the
+  estimation table already offers, defaulting to a split pane here too. A fold is remembered
+  per release: folding an Epic while looking at one release leaves it open in another, and —
+  where this view can tell which saved view it is — survives closing and reopening it;
+  embedded in a note, it lasts only the session.
+
+- **A release's scope is reachable from the keyboard.** The tree now takes one Tab stop
+  rather than none: the arrow keys move a highlighted row up and down between the ones on
+  screen, `Home`/`End` jump to the first and last, `Enter` (or `Space`) opens the highlighted
+  row's note, and Left/Right fold a row, unfold it, step into its children or step back out
+  to its parent — a leaf has nothing to step into, so Right does nothing on one. A middle
+  click on a row, anywhere but the disclosure, now opens the note in a new tab too, the same
+  gesture every other tree and card in this plugin already offers.
+
+- **A release's scope has its own toolbar: collapse all, expand all, and hide done.** The
+  third control folds away every finished subtree at once, leaving the rest exactly as
+  ranked; press it again to bring them back. When hiding takes the whole tree with it — every
+  member finished — the screen says so by name (`All 14 items are done.`) instead of going
+  blank, with the toggle still there beside it as the way back. Hide done is withheld
+  wherever the progress figure above it already reads "not configured": a control that could
+  hide rows the summary refuses to count would answer the same question twice, and
+  disagree.
+
 ### Fixed
 
+- **Deleting a note now takes its folded rows with it.** A row you had folded shut left an
+  entry behind in this device's saved working position, which then counted against the cap
+  on how much a view may remember — and, if a note ever came back at that path, brought the
+  row back folded without you folding it. Deleting a folder takes everything under it, and
+  deleting a release takes the folds of every row on that release's own screen.
+
+- **A release holding only Deliverables now shows progress**, where it used to say progress
+  was not configured. The figure now asks whether every kind of work a release's own members
+  span can be read as done, rather than asking only about the plan's own state property — so
+  a release scoped entirely to Deliverables reads its own workflow correctly, on the list and
+  on the release's own screen alike.
+
+- **A row's progress no longer reads `0/2` on a release where progress is not configured.**
+  With no state property bound, a parent with members below it used to draw a rollup anyway,
+  which looked exactly like a genuine "nothing here is finished yet" — the same absence the
+  summary strip above the tree already knew to leave blank rather than count as zero. The row
+  now leaves the same blank lane, agreeing with the header above it.
+
+- **A release's rows line up.** The state chip and the progress figure at the end of each row
+  used to pack against whichever title happened to be short, reading ragged down a scope with
+  titles of different lengths; they now anchor to the row's end, the same rule every column in
+  the backlog tree already follows.
+
+- **Selecting a title with the mouse no longer opens the note.** Titles in a release's scope
+  can be selected and copied, and finishing that drag by releasing the pointer over the row
+  used to dispatch a click that opened the note out from under the selection just made. A
+  plain click still opens it; a drag that ends one does not.
+
+- **Picking a different release no longer starts the keyboard on a row left over from the
+  last one.** If the same note happened to sit in both releases' scopes — most often a shared
+  ancestor drawn as context in each — the tree could open already highlighted on it instead of
+  its own first row. Picking a release now always starts fresh; reopening the SAME release
+  (a background refresh, an edit elsewhere) still returns you to where you were.
 - **The shelf's compact rows no longer reserve room for columns that are empty on every
   card in the band.** In the list layout each row carries the same property columns your tree
   does, so that the values line up down the band — but a column the whole shelf has nothing
@@ -121,6 +211,30 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   The same reading reaches the iteration board, where it ADDS a card rather than restoring
   one: a parent shown for context appears there when a task committed to the sprint hangs
   below it through a story that is not in the sprint.
+
+- **Clicking a release scope's disclosure with the mouse no longer drops keyboard focus out
+  of the tree.** Folding or unfolding a row redraws it, and focus used to land on the page
+  body afterward — so the very next Tab press started over from outside the tree instead of
+  continuing from the row you were just on. Focus now returns to the row you clicked.
+
+- **A release band that cannot compute its own progress now says so, instead of quietly
+  showing nothing.** A release whose members are all readable but whose workflow state is
+  not — one workflow bound, another left unconfigured, on a release mixing the two — used to
+  leave that release's line blank with no bar and no explanation, while a neighbouring
+  release drew its progress normally. The band now names what is not configured, the same
+  sentence its own detail screen already gives.
+
+- **Folding a row no longer silently does nothing once you have folded roughly 12,000 rows
+  across your releases.** The stored fold list has a size budget, and it used to keep the
+  OLDEST folds and discard whichever one you had just made when the budget was already full
+  — so folding a row could appear to have no effect, with nothing on screen saying why. A
+  full budget now drops the oldest fold to make room for the new one instead.
+
+- **Renaming a release, or a work item inside one, no longer reopens every row you had
+  folded in it.** A release scope's folded/unfolded state is stored by note path, and a
+  rename was not carried over — folding survived everywhere else in this plugin except
+  here. Renaming now keeps the tree exactly as you left it, whether it is the item that
+  moved or the release note itself.
 
 ### Changed
 

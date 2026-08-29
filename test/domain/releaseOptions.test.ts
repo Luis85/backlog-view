@@ -9,11 +9,18 @@ function keysOf(config: FakeViewConfig): string[] {
 }
 
 describe('the release view names its own keys', () => {
-	it('declares all eleven, the three model mappings and the folder included', () => {
+	it('declares all fourteen, the three model mappings, the folder, its own open target and the Deliverable pair', () => {
+		// `deliverableStateProperty` and `deliverableDoneValues` joined this list so the
+		// Deliverable workflow's progress gate (`ownWorkflowReading`, read through
+		// `resolveSettings` in `releaseView.ts`'s `buildModel` call) is reachable from
+		// Bases' own options menu — see the comment beside their declaration below.
 		expect(keysOf(new FakeViewConfig({})).sort()).toEqual(
 			[
+				'deliverableDoneValues',
+				'deliverableStateProperty',
 				'doneValues',
 				'membershipProperty',
+				'openIn',
 				'orderProperty',
 				'parentProperty',
 				'releasedDateProperty',
@@ -25,6 +32,13 @@ describe('the release view names its own keys', () => {
 				'versionProperty',
 			].sort(),
 		);
+	});
+
+	it('carries a default on its open-target dropdown, or an unset pick would open nothing', () => {
+		const openIn = getReleaseViewOptions(new FakeViewConfig({}) as never)
+			.flatMap((group) => ('items' in group ? group.items : []))
+			.find((item) => (item as { key: string }).key === 'openIn') as { default?: unknown } | undefined;
+		expect(openIn?.default).toBe('split');
 	});
 
 	it('resolves each key, and leaves an unconfigured one empty', () => {
@@ -62,6 +76,11 @@ describe('the release view names its own keys', () => {
 		expect(resolveReleaseSettings(new FakeViewConfig({ releaseFolder: '/Releases/' }) as never).folder).toBe(
 			'Releases',
 		);
+	});
+
+	it('resolves its own open target, defaulting to split like the estimation view', () => {
+		expect(resolveReleaseSettings(new FakeViewConfig({}) as never).openIn).toBe('split');
+		expect(resolveReleaseSettings(new FakeViewConfig({ openIn: 'tab' }) as never).openIn).toBe('tab');
 	});
 
 	it('resolves the released date key, and leaves it empty when unbound', () => {

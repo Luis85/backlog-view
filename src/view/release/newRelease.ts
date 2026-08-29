@@ -32,11 +32,17 @@ export function renderNewRelease(view: ReleaseView, parentEl: HTMLElement): void
 }
 
 /**
- * Bind, then ask, then create — the order the design turns on. On a fresh view every
- * option is unset, so the fields the dialog offers are decided AFTER the bind or a first
- * release could never carry a version, a date or a status.
+ * Bind whatever this vault has never touched, and answer WHETHER anything was bound.
+ *
+ * Extracted so the ✨ control and the `New release` press cannot come to disagree about
+ * what a bind is — the root guide's "one move, N inputs": the binding and the reading
+ * that reports it live together, never beside each caller. The two callers differ only
+ * in what they SAY about a press that bound nothing, which is why this answers a boolean
+ * rather than showing a message of its own: `New release` stays quiet and opens its
+ * dialog (the requirement's "stays quiet when it did not"), while a standalone control
+ * with nothing after it would otherwise look dead.
  */
-async function newRelease(view: ReleaseView): Promise<void> {
+export async function bindAndReport(view: ReleaseView): Promise<boolean> {
 	// A FRESH resolve of the live config, never `view.settings`: that field is a snapshot
 	// from the last data update, so an option bound since then reads as unset here and the
 	// press reports a configuration change it did not make — `init.ts`'s own documented trap,
@@ -48,11 +54,19 @@ async function newRelease(view: ReleaseView): Promise<void> {
 	// everything is bound — a second reading of the same question here could only ever come
 	// to disagree with it.
 	await runReleaseInit(view);
+	return boundKeys(view.settings) !== before;
+}
+
+/**
+ * Bind, then ask, then create — the order the design turns on. On a fresh view every
+ * option is unset, so the fields the dialog offers are decided AFTER the bind or a first
+ * release could never carry a version, a date or a status.
+ */
+async function newRelease(view: ReleaseView): Promise<void> {
 	// Said rather than silent: the press changed the saved view's own configuration, which
-	// nothing else on this screen reports. It fires on the two RESOLVED readings differing,
-	// which is checked in both directions — a fresh view that binds its four keys says so, and
-	// a view with nothing left to bind stays quiet.
-	if (boundKeys(view.settings) !== before) new Notice(t('release.new.bound'));
+	// nothing else on this screen reports. Quiet when it bound nothing is this caller's own
+	// half of the rule — the dialog opens either way, so a silent press is not a dead one.
+	if (await bindAndReport(view)) new Notice(t('release.new.bound'));
 	openNewReleaseDialog(
 		view.app,
 		releaseFields(view.settings),

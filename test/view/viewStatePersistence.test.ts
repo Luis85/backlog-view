@@ -1,5 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
+import { CARD_SCOPE, RELEASE_FOLD, TIMELINE_SCOPE } from '../../src/view/viewState';
+import { saveViewState } from '../../src/storage/viewStateStore';
 import { FakeVault } from '../helpers/vault';
 import { fixture, makeView, refresh, rowByTitle, titlesOf, useViewHarness } from '../helpers/view';
 
@@ -210,6 +212,170 @@ describe('collapse state persistence', () => {
 		expect([...entry.folds.collapsed, ...entry.folds.expanded]).not.toContain('Epic B.md');
 		// Nothing else will ever enumerate the base that wrote this.
 		expect(stored(vault)['Deleted.base#Backlog']).toBeUndefined();
+	});
+
+	/**
+	 * A saved view's TYPE can change while its stored identity does not (`view/viewState.ts`'s
+	 * own comment on `RELEASE_FOLD`): a `.base` view once configured as the release view
+	 * accumulates keys shaped `\u0000release:<release path>\u0000<member path>`, and
+	 * switching that same saved view to render the BACKLOG loads this exact `ViewState`
+	 * over the identity that already holds them. Before `RELEASE_FOLD` joined `notePath`,
+	 * the flush below read that whole key as one bare path, found no such file, and
+	 * silently deleted the release's own fold on the first data update — this is that
+	 * failure driven from the BACKLOG view's own restore/flush, not from `scopeTree.ts`.
+	 */
+	it('keeps a release’s own fold when the backlog view flushes over the same identity', () => {
+		const vault = fixture();
+		// The release note has to BE there. The prune asks about every path the key names
+		// (`foldKeyPaths`), so a fixture without this file would prune the key for a
+		// perfectly good second reason and the assertion below could no longer tell a
+		// correctly-parsed key from a misparsed one.
+		vault.addFile('Releases/0.8.md', { frontmatter: { type: 'Release' } });
+		const releaseFoldKey = `${RELEASE_FOLD}Releases/0.8.md\u0000Epic B.md`;
+		vault.localStorage.set('product-backlog:view-state', {
+			'Backlog.base#Backlog': {
+				base: 'Backlog.base',
+				folds: { collapsed: [releaseFoldKey], expanded: [], lanes: [] },
+				prefs: {},
+			},
+		});
+
+		const { view } = makeView(vault, {}, { base: 'Backlog.base', collapsed: true });
+		// A write has to be SCHEDULED for `onunload` to flush at all — nothing here has
+		// touched a row, so without this the assertion below would pass whether or not the
+		// prune below ever ran, exactly the false confidence the repository's own rule
+		// against an unchecked comment warns about. `setZoom`'s own value is unrelated; it
+		// exists only to put a pending save on the clock, the same way the folded-band test
+		// above does.
+		view.setZoom('quarter');
+		view.onunload();
+
+		expect(stored(vault)['Backlog.base#Backlog'].folds.collapsed).toContain(releaseFoldKey);
+	});
+
+	/**
+	 * The other half of the key, and the reason `foldKeyPaths` exists beside `notePath`: a
+	 * fold is alive only while BOTH notes it names are. A release deleted takes its whole
+	 * scope with it — every key under that prefix asks about a screen that can never be
+	 * drawn again — while `notePath` answers only which path the key is FILED under, so a
+	 * prune asking it alone kept those keys forever and refolded the row if the member's
+	 * path ever came back.
+	 */
+	it('drops a release’s fold when the RELEASE note is gone, though the member remains', () => {
+		const vault = fixture();
+		const releaseFoldKey = `${RELEASE_FOLD}Releases/0.8.md\u0000Epic B.md`;
+		vault.localStorage.set('product-backlog:view-state', {
+			'Backlog.base#Backlog': {
+				base: 'Backlog.base',
+				folds: { collapsed: [releaseFoldKey], expanded: [], lanes: [] },
+				prefs: {},
+			},
+		});
+
+		// `Epic B.md` is in the fixture and stays there: only the release is missing, so a
+		// prune that asked about the member alone would keep this key.
+		const { view } = makeView(vault, {}, { base: 'Backlog.base', collapsed: true });
+		view.setZoom('quarter');
+		view.onunload();
+
+		expect(stored(vault)['Backlog.base#Backlog']?.folds.collapsed ?? []).not.toContain(releaseFoldKey);
+	});
+
+	/**
+	 * The two LEGACY migrations (`seedTimelineScope`, `seedCardScope`) predate
+	 * `RELEASE_FOLD` and exist only to carry a bit written before the dated axis and the
+	 * card each got a scope of their own — a release fold is never that bit, since this
+	 * prefix is new on this branch and no stored entry could have been written under it
+	 * before either migration existed. Left unguarded, `seedCardScope`'s `notePath` map
+	 * reduces a release-scoped key to the bare MEMBER path and seeds that note's CARD as
+	 * collapsed on the backlog view — a fold the reader made only on the release's own
+	 * screen, read back as one they made here.
+	 */
+	it('does not let a release-scoped fold seed a card-scope fold for its member', () => {
+		const vault = fixture();
+		// A LEAF member (no children), so `collapseNewParents`' own default — which
+		// folds an untouched PARENT's card on sight — cannot also explain a collapsed
+		// entry here; only `seedCardScope` reading the release key as a bare path can.
+		const releaseFoldKey = `${RELEASE_FOLD}Releases/0.8.md\u0000Feature B1.md`;
+		vault.localStorage.set('product-backlog:view-state', {
+			'Backlog.base#Backlog': {
+				base: 'Backlog.base',
+				folds: { collapsed: [releaseFoldKey], expanded: [], lanes: [] },
+				prefs: {},
+			},
+		});
+
+		const { view } = makeView(vault, {}, { base: 'Backlog.base', collapsed: true });
+		// Puts a pending save on the clock — the same reason the release-fold survival
+		// test above calls it — so the assertion is of what the flush actually wrote.
+		view.setZoom('quarter');
+		view.onunload();
+
+		const collapsed = stored(vault)['Backlog.base#Backlog'].folds.collapsed;
+		expect(collapsed).not.toContain(`${CARD_SCOPE}Feature B1.md`);
+	});
+
+	/**
+	 * `seedCardScope`'s own copy of the same question, checked through a saved view
+	 * because its effect — unlike `seedTimelineScope`'s identical exclusion, which is
+	 * defensive and unobservable outside `view/viewState.ts` (see that function's own
+	 * comment) — DOES survive to disk: a card fold on a path that names a real note. A
+	 * release key beside an ordinary leaf path must seed the leaf's card exactly as it
+	 * would with no release key present, so the exclusion is confirmed to be scoped to
+	 * the release key alone rather than to the whole migration.
+	 */
+	it('still seeds an ordinary leaf’s card fold sitting beside a release-scoped key', () => {
+		const vault = fixture();
+		const releaseFoldKey = `${RELEASE_FOLD}Releases/0.8.md\u0000Feature B1.md`;
+		vault.localStorage.set('product-backlog:view-state', {
+			'Backlog.base#Backlog': {
+				base: 'Backlog.base',
+				// 'Feature B2.md' is collapsed here so its card seeds collapsed too —
+				// the same expectation the release-only test rules out for its own path.
+				folds: { collapsed: [releaseFoldKey, 'Feature B2.md'], expanded: [], lanes: [] },
+				prefs: {},
+			},
+		});
+
+		const { view } = makeView(vault, {}, { base: 'Backlog.base', collapsed: true });
+		view.setZoom('quarter');
+		view.onunload();
+
+		const collapsed = stored(vault)['Backlog.base#Backlog'].folds.collapsed;
+		expect(collapsed).toContain(`${CARD_SCOPE}Feature B2.md`);
+		expect(collapsed).not.toContain(`${CARD_SCOPE}Feature B1.md`);
+	});
+
+	/**
+	 * `renamePath`'s walk reaches a release-fold key too, once `notePath` and `scopeOf`
+	 * both recognise `RELEASE_FOLD`: the MEMBER path after the last NUL is what
+	 * `movedPath` is asked about, and everything up to and including that NUL —
+	 * `scopeOf`'s own answer — is what has to survive in front of the renamed member, or
+	 * the key would migrate to a bare path and lose which release it was scoped to.
+	 */
+	it('carries a release’s own fold to a renamed member, keeping it scoped to that release', () => {
+		const vault = fixture();
+		// Present for the same reason as in the flush test above: with no release note the
+		// flush would prune this key on its own account, and the migration under test would
+		// be unobservable.
+		vault.addFile('Releases/0.8.md', { frontmatter: { type: 'Release' } });
+		const releaseFoldKey = `${RELEASE_FOLD}Releases/0.8.md\u0000Epic B.md`;
+		vault.localStorage.set('product-backlog:view-state', {
+			'Backlog.base#Backlog': {
+				base: 'Backlog.base',
+				folds: { collapsed: [releaseFoldKey], expanded: [], lanes: [] },
+				prefs: {},
+			},
+		});
+
+		const { view } = makeView(vault, {}, { base: 'Backlog.base', collapsed: true });
+		vault.renameFile('Epic B.md', 'Epic B renamed.md');
+		view.onunload();
+
+		const renamedKey = `${RELEASE_FOLD}Releases/0.8.md\u0000Epic B renamed.md`;
+		const collapsed = stored(vault)['Backlog.base#Backlog'].folds.collapsed;
+		expect(collapsed).toContain(renamedKey);
+		expect(collapsed).not.toContain(releaseFoldKey);
 	});
 
 	/**
@@ -425,5 +591,75 @@ describe('collapse state persistence', () => {
 		const third = makeView(vault, {}, { base: 'Backlog.base', collapsed: true });
 		// The whole tree, restored to the rows the first session left open.
 		expect(titlesOf(third.containerEl)).toEqual(expandedTitles);
+	});
+
+	/**
+	 * Fix round 1 on Task 3: a saturated `MAX_FOLDS` budget must drop the OLDEST key,
+	 * never a row the user just changed — but `readFolds`'s tail-retention
+	 * (`storage/viewStateStore.ts`) only knows "oldest" by iteration order, and a JS
+	 * `Set` does not move an already-present key to the end on a re-add. `ViewState.set`
+	 * used to call `settled.add`/`collapsed.add` bare, so a row settled long ago (near
+	 * the front) stayed there even after being touched again — and the budget evicted it
+	 * first, exactly backwards from what a reader would expect.
+	 *
+	 * `Epic B.md` is primed as the very FIRST entry `settled` will ever hold — older than
+	 * every filler key that follows it — and the budget is left with exactly one key of
+	 * headroom. Mounting settles `Epic B.md`'s own `TIMELINE_SCOPE`/`CARD_SCOPE` siblings
+	 * too (`collapseNewParents` runs all three scopes for every parent), which is what
+	 * spends that last key and saturates the budget before the user has touched
+	 * anything. The user then expands the row — the one action this test is about — and
+	 * a flush has to decide, with the budget already full, whether that expand or some
+	 * untouched filler key is the one that goes.
+	 */
+	it('keeps an old row’s state after it is touched, even with the shared fold budget already full', () => {
+		const vault = fixture();
+		// One guard key per scope so `restore()`'s own one-time migration
+		// (`seedTimelineScope`/`seedCardScope` in `view/viewState.ts`) sees a
+		// TIMELINE_SCOPE/CARD_SCOPE key already present and does not run — it otherwise
+		// treats a store with none as pre-dating both scopes and copies EVERY primed
+		// key across both, which would silently triple this fixture's carefully sized
+		// budget rather than testing it.
+		const guard = [TIMELINE_SCOPE + 'guard.md', CARD_SCOPE + 'guard.md'];
+		// One below the cap, so priming alone triggers no truncation and the only
+		// change left to spend is the two `collapseNewParents` makes on mount — Epic
+		// B's own TIMELINE_SCOPE and CARD_SCOPE siblings, settled for the first time.
+		const filler = Array.from({ length: 11996 }, (_, i) => `filler-${i}.md`);
+		// Every primed key needs a real FILE: `flush()` prunes any settled path the
+		// vault has no note for, on the way to every write — see `src/storage/CLAUDE.md`
+		// on "everything that puts bytes in the vault is in one directory", the same
+		// existence check `renamePath`'s own migration relies on. Kept out of the
+		// BASE's own results with `only` below, so none of them draws a row.
+		vault.addFile('guard.md');
+		for (const path of filler) vault.addFile(path);
+		saveViewState(
+			vault.app,
+			{ base: 'Backlog.base', view: 'Backlog' },
+			{
+				folds: {
+					collapsed: ['Epic B.md'],
+					expanded: [...guard, ...filler],
+					lanes: [],
+					collapsedColumns: [],
+					expandedColumns: [],
+				},
+				prefs: {},
+			},
+		);
+
+		const only = ['Epic A.md', 'Epic B.md', 'Feature B1.md', 'Feature B2.md'];
+		const { view, containerEl } = makeView(vault, {}, { base: 'Backlog.base', collapsed: true, only });
+		expect(titlesOf(containerEl)).toEqual(['Epic A', 'Epic B']);
+
+		rowByTitle(containerEl, 'Epic B')
+			.querySelector<HTMLElement>('.pbl-chevron')
+			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		expect(titlesOf(containerEl)).toEqual(['Epic A', 'Epic B', 'Feature B1', 'Feature B2']);
+		view.onunload();
+
+		// Reopening must find the row exactly as it was left — expanded — not reset to
+		// its unsettled default because the budget discarded the fold just made in
+		// favour of a filler key nobody ever touched.
+		const second = makeView(vault, {}, { base: 'Backlog.base', collapsed: true, only });
+		expect(titlesOf(second.containerEl)).toEqual(['Epic A', 'Epic B', 'Feature B1', 'Feature B2']);
 	});
 });

@@ -52,13 +52,28 @@ export function resolveViewIdentity(app: App, el: HTMLElement, viewName: string)
 }
 
 /**
+ * Whether `path` IS `ancestor` or sits beneath it.
+ *
+ * One rule, two events: a RENAME rewrites everything under the renamed thing
+ * ({@link movedPath} below is this predicate plus the rewrite), and a DELETE takes
+ * everything under the deleted thing with it (`pruneDeletedFolds`,
+ * `storage/viewStateStore.ts`). Both are answered from the event alone because Obsidian
+ * reports the FOLDER and never the notes inside it, so matching the reported path by
+ * itself strands the whole subtree.
+ */
+export function isUnder(path: string, ancestor: string): boolean {
+	return path === ancestor || path.startsWith(`${ancestor}/`);
+}
+
+/**
  * Where `path` ends up when `oldPath` becomes `newPath`, or null when it is unaffected.
  * A rename moves the thing itself and everything beneath it, so a folder carries its
  * whole subtree — which is the only way a `.base` inside a moved folder is noticed.
  */
 export function movedPath(path: string, oldPath: string, newPath: string): string | null {
-	if (path === oldPath) return newPath;
-	return path.startsWith(`${oldPath}/`) ? newPath + path.slice(oldPath.length) : null;
+	// An exact match slices nothing off, so the one expression covers both halves of
+	// {@link isUnder} rather than branching on which of them answered.
+	return isUnder(path, oldPath) ? newPath + path.slice(oldPath.length) : null;
 }
 
 /**

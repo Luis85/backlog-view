@@ -3,7 +3,7 @@ import { BacklogItem, BacklogModel, inPlan } from './model';
 import { ReleaseSettings } from './releaseOptions';
 import { CivilDate, FieldReading, linkpathFromRawValue, ownValue, readDate, readString } from './noteFields';
 import { isMarkerType, isReleaseType } from './itemTypes';
-import { ownWorkflowReading } from './board';
+import { ownWorkflowKind, ownWorkflowReading, WorkflowKind } from './board';
 
 /**
  * A figure with THREE answers, not two. `FieldReading` in `noteFields.ts` separates a
@@ -37,16 +37,13 @@ export interface ReleaseRow {
 	/**
 	 * Members whose own state is a done value — the numerator {@link members} is the
 	 * denominator of. A FIGURE for the reason `members` is one: unconfigured WITHOUT a
-	 * membership property (a done count with no membership has nothing to count over) and
-	 * unconfigured WITHOUT the plan's own state key ({@link ReleaseIndexOptions.stateKey}),
-	 * because nothing says what done means and a `0` would read as "none finished" on a
-	 * base that simply never bound one.
+	 * membership property (a done count with no membership has nothing to count over), and
+	 * unconfigured whenever a workflow this release's members actually span cannot answer —
+	 * see the gate's own comment at the assignment for what that means and why it moved.
 	 *
 	 * Read through `ownWorkflowReading`, never `item.done`: a member typed `Deliverable` or
 	 * a test-catalog member answers through its OWN workflow, which `item.done` — the
-	 * requirements reading alone — gets backwards. All three workflows fall back to the
-	 * plan's state key when their own property is unbound, which is why THAT key, not one
-	 * of this view's own three mappings, is what `done` is gated on.
+	 * requirements reading alone — gets backwards.
 	 *
 	 * Counted in the same walk that counts `members`, so there is one traversal and one
 	 * population. Progress is this over `members` and is computed nowhere else — the
@@ -54,6 +51,35 @@ export interface ReleaseRow {
 	 * header disagreeing about one release.
 	 */
 	done: ReleaseFigure<number>;
+	/**
+	 * Every workflow at least one member reads its state through — {@link ownWorkflowKind}
+	 * per member, deduplicated, in the fixed order `WORKFLOW_ORDER` declares rather than
+	 * encounter order, so the tooltip built from it reads the same regardless of which
+	 * member the walk reached first. What the summary strip's tooltip names when this holds
+	 * more than one entry: {@link done}'s numerator crosses `ownWorkflowReading`'s branches
+	 * the moment a release holds a Deliverable or a test-catalog member beside ordinary
+	 * work, and past that point no single property decided it — see
+	 * `docs/requirements/Summing up a release.md`'s 2026-08-28 amendment, and
+	 * `src/view/release/renderScope.ts` for where this is read. Counted over the same
+	 * population `members` is, in the same walk — never a second traversal that could
+	 * disagree about who is a member. Empty exactly when `members` is: no membership key,
+	 * or no member.
+	 */
+	workflows: WorkflowKind[];
+	/**
+	 * The subset of {@link workflows} `workflowConfigured` refused — what {@link done}'s
+	 * unconfigured branch NAMES rather than leaving as one generic sentence. A release
+	 * spanning ordinary work and Deliverables with only the latter's key bound reports
+	 * `['requirements']` here, so the summary strip can say which property is still
+	 * missing instead of "Progress is not configured" about a release that is half
+	 * configured. Computed by `missingWorkflows`, the SAME pass that decides {@link done}'s
+	 * own gate, in `WORKFLOW_ORDER` — never re-derived from the render layer, which could
+	 * disagree with the boolean beside it. Empty whenever {@link done} is configured, and
+	 * empty too when no workflow has been counted yet (no members, or a release nobody has
+	 * counted): that case has no failing WORKFLOW to name, only a plan-wide key nobody
+	 * bound, and `done`'s own gate falls back to the plan's state key alone to decide it.
+	 */
+	unconfiguredWorkflows: WorkflowKind[];
 	/**
 	 * On the RELEASE note: the date it actually shipped. Read exactly as {@link target} is,
 	 * with the same three answers — unset, unreadable, a date. It is what tells shipped from
@@ -201,6 +227,80 @@ function rank(item: BacklogItem): number {
 	return item.order ?? Number.POSITIVE_INFINITY;
 }
 
+/**
+ * The fixed order `ReleaseRow.workflows` lists its entries in — declared once so the
+ * summary's tooltip reads the same words in the same order regardless of which member the
+ * counting walk reached first, which a `Set`'s own iteration order (insertion order) would
+ * not guarantee.
+ */
+const WORKFLOW_ORDER: WorkflowKind[] = ['requirements', 'deliverable', 'test'];
+
+function sortedWorkflows(kinds: Set<WorkflowKind> | undefined): WorkflowKind[] {
+	if (kinds === undefined) return [];
+	return WORKFLOW_ORDER.filter((kind) => kinds.has(kind));
+}
+
+/**
+ * One workflow's own half of the gate `ReleaseRow.done` reads, moved here by the
+ * author's decision on 2026-08-28 (reversing what this spec twice recorded,
+ * `docs/superpowers/specs/2026-08-28-release-detail-ux-design.md`). It used to be
+ * `options.stateKey !== ''` alone — the plan's own state key, whatever the members
+ * actually were — which made a release holding only Deliverables report "not
+ * configured" about progress `ownWorkflowReading` could read perfectly well through its
+ * own property.
+ *
+ * The gate is now the REPRESENTED WORKFLOWS: configured when every workflow this
+ * release's members actually span can answer for ITSELF. Deliverable falls back to the
+ * plan's own key exactly as `resolvedDeliverableStateKey` does for the VALUE it reads —
+ * the same fallback, asked here of whether a key exists to fall back TO, rather than of
+ * what it reads.
+ */
+function workflowConfigured(kind: WorkflowKind, options: ReleaseIndexOptions, stateConfigured: boolean): boolean {
+	return kind === 'deliverable' ? !(options.stateKey === '' && !options.deliverableStateKey) : stateConfigured;
+}
+
+/**
+ * {@link ReleaseRow.unconfiguredWorkflows}'s own computation, and the one place
+ * `workflowConfigured` is asked per kind: the row builder below reads this once and
+ * derives BOTH `done`'s gate and the names beside it from the same list, rather than
+ * asking the per-kind question again to get a plain boolean.
+ *
+ * 'test' never appears in `kinds` (see `ReleaseRow.workflows`'s own comment on why), so
+ * only two branches of `workflowConfigured` are reachable; a third would be untestable
+ * dead code.
+ *
+ * Empty for `kinds === undefined` — no members counted yet, or a release nobody has
+ * counted — which is NOT the same claim as "configured": that case has no represented
+ * workflow to fail, so there is nothing here to name, and the row builder falls back to
+ * `stateConfigured` on its own to decide whether `done` itself reads as configured. Read
+ * that fallback there rather than here: keeping it out of this function is what stops an
+ * empty return being misread as "therefore configured".
+ */
+function missingWorkflows(
+	kinds: Set<WorkflowKind> | undefined,
+	options: ReleaseIndexOptions,
+	stateConfigured: boolean,
+): WorkflowKind[] {
+	if (kinds === undefined) return [];
+	return WORKFLOW_ORDER.filter((kind) => kinds.has(kind) && !workflowConfigured(kind, options, stateConfigured));
+}
+
+/**
+ * `done`'s own readiness — pulled out of the row builder purely to keep that arrow
+ * function's complexity under lint's cap, not because the question is asked anywhere
+ * else. Mirrors `missingWorkflows`'s own fallback: no workflow counted yet falls back to
+ * `stateConfigured` alone; everywhere else, configured means no gap.
+ *
+ * **`kinds.size === 0` never actually fires.** The only way `kinds` is non-`undefined`
+ * here is a prior `.add()` in the builder's own walk (see `workflowsByRelease`), so a
+ * `Set` that exists already holds at least one kind — `kinds === undefined` alone carries
+ * the whole "nothing counted yet" case, and the size check beside it is defensive rather
+ * than a second live branch.
+ */
+function progressReady(kinds: Set<WorkflowKind> | undefined, gap: WorkflowKind[], stateConfigured: boolean): boolean {
+	return kinds === undefined || kinds.size === 0 ? stateConfigured : gap.length === 0;
+}
+
 /** A civil date as a sortable integer; undated sorts last, never as the epoch. */
 function dateKey(target: ReleaseFigure<CivilDate>): number {
 	const d = target.value;
@@ -274,6 +374,20 @@ export interface ReleaseIndexOptions {
 	 */
 	stateKey: string;
 	/**
+	 * `BacklogSettings.deliverableStateKey`, raw — never the resolved
+	 * `resolvedDeliverableStateKey` fallback, because the gate below has to ask "can THIS
+	 * workflow answer on its own or through the key it shares" rather than read a value
+	 * already decided. Author's decision, 2026-08-28: `done` used to gate on {@link stateKey}
+	 * alone, which made a release holding only Deliverables report "not configured" about
+	 * progress its own workflow could read perfectly well. See {@link ReleaseRow.done}.
+	 *
+	 * Optional, defaulting to `''` (no Deliverable workflow of its own): every existing
+	 * caller of `releaseIndex` that has no reason to touch a Deliverable's own key is
+	 * untouched by this field's arrival, and the gate reads its absence exactly as it
+	 * reads an explicit `''`.
+	 */
+	deliverableStateKey?: string;
+	/**
 	 * Today, injected — `domain/` never reads a clock (see `src/domain/CLAUDE.md`). The
 	 * view supplies it via `todayCivil()` (`noteFields.ts`). What {@link ReleaseRow.shipped},
 	 * {@link ReleaseRow.overdue} and {@link ReleaseRow.daysToTarget} are computed against.
@@ -293,6 +407,11 @@ export function releaseIndex(
 	const counts = new Map<string, number>();
 	// Same shape, one per release, for the numerator `done` reads.
 	const doneCounts = new Map<string, number>();
+	// Same shape again, for `ReleaseRow.workflows` — a Set per release rather than a count,
+	// since what this answers is WHICH kinds are represented, not how many of each.
+	const workflowsByRelease = new Map<string, Set<WorkflowKind>>();
+	// The empty-set fallback below — no workflow means nothing to ask, so the answer falls
+	// back to the plan's own key exactly as the whole gate did before 2026-08-28.
 	const stateConfigured = options.stateKey !== '';
 	const unresolved: BacklogItem[] = [];
 	// Built once per index and dead with it: `membershipTarget` runs per scannable row, so
@@ -311,6 +430,9 @@ export function releaseIndex(
 		counts.set(named, (counts.get(named) ?? 0) + 1);
 		// `ownWorkflowReading`, never `item.done`: see {@link ReleaseRow.done}.
 		if (ownWorkflowReading(item).done) doneCounts.set(named, (doneCounts.get(named) ?? 0) + 1);
+		const kinds = workflowsByRelease.get(named) ?? new Set<WorkflowKind>();
+		kinds.add(ownWorkflowKind(item));
+		workflowsByRelease.set(named, kinds);
 	}
 
 	// The comparison key for "has the target passed", `today` itself never leaving this
@@ -325,6 +447,11 @@ export function releaseIndex(
 			? figure(readTarget(ownValue(fm, settings.releasedDateKey)))
 			: UNCONFIGURED;
 		const shipped = released.value !== null;
+		// Read once and shared below (`done`'s gate, `unconfiguredWorkflows` itself), so the
+		// boolean and the names explaining it cannot disagree about which workflows failed.
+		const kinds = workflowsByRelease.get(item.file.path);
+		const gap = missingWorkflows(kinds, options, stateConfigured);
+		const ready = progressReady(kinds, gap, stateConfigured);
 		return {
 			item,
 			path: item.file.path,
@@ -336,9 +463,11 @@ export function releaseIndex(
 				? figure({ value: counts.get(item.file.path) ?? 0, invalid: false })
 				: UNCONFIGURED,
 			done:
-				settings.membershipKey && stateConfigured
+				settings.membershipKey && ready
 					? figure({ value: doneCounts.get(item.file.path) ?? 0, invalid: false })
 					: UNCONFIGURED,
+			workflows: sortedWorkflows(kinds),
+			unconfiguredWorkflows: gap,
 			released,
 			slip: target.value !== null && released.value !== null ? daysBetween(target.value, released.value) : null,
 			shipped,
@@ -519,6 +648,39 @@ export interface ScopeRow {
 	depth: number;
 	/** True for an ancestor drawn only to keep a member in its place. */
 	context: boolean;
+	/**
+	 * Members at or below this row, and how many of them are done — the rollup the row
+	 * draws, over THIS release's members rather than over the model's descendants.
+	 *
+	 * `item.descendantCount` and `item.doneDescendants` are the wrong pair for the same
+	 * reason `item.subtreeDone` is: they count every non-marker descendant the BASE
+	 * returned, consulting no membership, so a Feature with two members here and five
+	 * items elsewhere would report `1/7` on a screen whose every other figure is over
+	 * seven fewer notes.
+	 *
+	 * Zero on a row with no members below it, which is what makes a CONTEXT row's
+	 * `memberTotal` the count of the members it is holding in place — and what keeps the
+	 * row itself out of both numbers, since a context row is never counted anywhere on
+	 * this screen. Each member's doneness is `ownWorkflowReading`'s, so a Deliverable
+	 * answers by its own workflow.
+	 */
+	memberTotal: number;
+	memberDone: number;
+	/**
+	 * Whether every MEMBER at or below this row is done — the predicate hiding uses, and
+	 * deliberately not `item.subtreeDone`.
+	 *
+	 * That model field is `item.done && done === count` over every non-marker descendant
+	 * the BASE returned, consulting no membership at all, so a done member whose only
+	 * unfinished child belongs to another release (or to none) would never hide by it.
+	 * This one asks the same question of this release's own population, which is the
+	 * population every other figure on this screen is measured over.
+	 *
+	 * A CONTEXT row answers for its members alone: its own state is not this base's
+	 * plan, so it can neither keep a finished subtree on screen nor take an unfinished
+	 * one off it — the context-row rule, in the shape `assignAll` already keeps it.
+	 */
+	subtreeDone: boolean;
 }
 
 export interface ReleaseScope {
@@ -592,7 +754,12 @@ export function releaseScope(
 	}
 
 	const rows: ScopeRow[] = [];
-	const walk = (item: BacklogItem, depth: number): void => {
+	// One pass, pre-order for `rows` (the tree's own drawing order) and post-order for the
+	// rollup: a row's `memberTotal`/`memberDone` need every descendant visited before they
+	// can be summed, so the row is pushed on the way DOWN — to keep `rows` in the order the
+	// tree draws — and filled in on the way BACK UP, once its children's totals are known.
+	// `rows` holds the same object the recursion mutates, never a second copy.
+	const walk = (item: BacklogItem, depth: number): { total: number; done: number } => {
 		// A row that is not kept is walked THROUGH, never stopped at. A member filed under a
 		// marker — the hand-written parent edge this plan deliberately keeps — has that
 		// marker as an ancestor, and a marker is never kept; returning here would drop the
@@ -601,8 +768,40 @@ export function releaseScope(
 		// to prevent. Descending without drawing it leaves the depth alone too, so the
 		// member re-roots at the level the marker occupied.
 		const kept = keep.has(item.file.path);
-		if (kept) rows.push({ item, depth, context: !members.has(item.file.path) });
-		for (const child of item.children) walk(child, kept ? depth + 1 : depth);
+		const isMember = members.has(item.file.path);
+		let row: ScopeRow | null = null;
+		if (kept) {
+			row = { item, depth, context: !isMember, memberTotal: 0, memberDone: 0, subtreeDone: false };
+			rows.push(row);
+		}
+		let belowTotal = 0;
+		let belowDone = 0;
+		for (const child of item.children) {
+			const sub = walk(child, kept ? depth + 1 : depth);
+			belowTotal += sub.total;
+			belowDone += sub.done;
+		}
+		// The row reports what is BELOW it, never itself — the same rule that makes a
+		// context row's number exactly the members it is holding in place, stated once for
+		// every row rather than as a context-only exception: a leaf member's own row has
+		// nothing below it and draws no rollup, which is what keeps this screen from
+		// putting a trivial `1/1` on every leaf.
+		if (row) {
+			row.memberTotal = belowTotal;
+			row.memberDone = belowDone;
+		}
+		// This item's own membership, THEN everything below it — bubbled to the parent's
+		// sum AND, right here, what `subtreeDone` reads. Deliberately not `row.memberTotal`
+		// /`row.memberDone`, which exclude the row itself so a leaf draws no trivial `1/1`
+		// rollup: hiding asks a different question than the rollup does — "is EVERY member
+		// at or below this row done", the row's own membership included — and `total`/`done`
+		// is that question's answer whether or not `row` exists, so a context row (never a
+		// member itself) reads it exactly as it reads `memberTotal`/`memberDone`: only its
+		// members below. One pass, one pair of numbers, two questions asked of it.
+		const total = belowTotal + (isMember ? 1 : 0);
+		const done = belowDone + (isMember && ownWorkflowReading(item).done ? 1 : 0);
+		if (row) row.subtreeDone = total > 0 && done === total;
+		return { total, done };
 	};
 	// From the model's REAL roots, not its rendered ones: a focus level set on the backlog
 	// view must not decide what a release's scope contains. A member whose ancestor is

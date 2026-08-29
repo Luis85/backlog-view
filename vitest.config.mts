@@ -174,11 +174,65 @@ export default defineConfig({
 			// — a raise that changes nothing is not a raise. One fewer function is 99.8756,
 			// under the 99.90 standing, so headroom there would again be a decrease, which is
 			// the exception this file has now stated three times.
+			// Raised again on 2026-08-28, with the release scope tree's fold, its disclosure
+			// and a click that opens the note: this machine measured 9517/9616 statements,
+			// 5979/6260 branches, 2440/2442 functions and 7913/7932 lines. Two move, both set
+			// under the ONE-FEWER figure by the headroom rule above — 9516 is 98.9600, so
+			// statements takes 98.96, and 5978 is 95.4952, so branches takes 95.49. **Lines
+			// and functions both stay, for the same arithmetic once more.** One fewer line is
+			// 99.7478, which floors to the 99.74 already standing. One fewer function is
+			// 99.8730, under the 99.90 standing, so headroom there would again be a decrease.
+			//
+			// Raised again on 2026-08-28, with the scope tree's keyboard (`scopeKeys.ts`) and
+			// the release-fold prune fix (`RELEASE_FOLD` joining `notePath`/`scopeOf` in
+			// `view/viewState.ts`): this machine measured 9627/9725 statements, 6046/6325
+			// branches, 2459/2461 functions and 8003/8022 lines. Three move, each set under
+			// the ONE-FEWER figure by the headroom rule above — 9626 is 98.9820, so statements
+			// takes 98.98; 6045 is 95.5731, so branches takes 95.57; 8002 is 99.7507, so lines
+			// takes 99.75. **Functions stays**, for the same arithmetic once more: one fewer is
+			// 99.8781, under the 99.90 standing, so headroom there would again be a decrease.
+			// Raised again on 2026-08-28, with the scope toolbar (collapse/expand/hide-done),
+			// the all-done state, the gate move (carried finding 1), the row-rollup suppression
+			// (carried finding 2), the row-end spacer (carried finding 3), the
+			// `activeScopePath` leak fix (carried finding 4) and the drag-select guard on a
+			// row's click (carried finding 5): this machine measured 9694/9792 statements,
+			// 6092/6372 branches, 2470/2472 functions and 8063/8082 lines. Only branches moves —
+			// 6091 is 95.5901, floored to 95.59, over the 95.57 standing. The other three all
+			// floor their own one-fewer figure to the value already standing (98.98, 99.90,
+			// 99.75 respectively — 9693 is 98.9890, 2469 is 99.8786, 8062 is 99.7525), which is
+			// the same "a raise that changes nothing is not a raise" arithmetic this comment has
+			// now stated five times.
+			//
+			// Re-derived on 2026-08-29, after merging main (the resource-assignee work) into
+			// the release-detail branch, because the four numbers below had drifted AHEAD of
+			// this comment: the paragraph above ends at branches 95.59 and the block said
+			// 95.63, which is the same comment-versus-code defect this file has twice
+			// recorded fixing. Review caught it and proposed lowering the gate to 95.59;
+			// that is the one move ruled out, since a floor may not fall. So the arithmetic
+			// is redone here against the merged tree instead, and it turns out to justify
+			// what stands: this machine measures 9835/9932 statements, 6197/6479 branches,
+			// 2511/2513 functions and 8178/8196 lines. One fewer branch is 95.6320, which
+			// floors to exactly the 95.63 standing — so that number was already the headroom
+			// figure and needed no change. Only statements moves: 9834 is 99.0133, so it
+			// takes 99.01, over the 98.98 this branch started from. **Lines and functions
+			// stay, for the arithmetic this comment has now stated six times.** One fewer
+			// line is 99.7682, which floors to the 99.76 already standing. One fewer function
+			// is 99.8806, under the 99.91 standing, so headroom there would again be a
+			// decrease.
+			//
+			// The merge itself measured branches at 95.61 against the 95.63 floor, and the
+			// two branches that closed the gap are worth naming because neither was a test
+			// written to a number. One was DEAD — `scopeOf`'s `RELEASE_FOLD` arm in
+			// `storage/foldKeys.ts`, unreachable because its only caller returns inside its
+			// own `RELEASE_FOLD` branch first — which is the "look for the dead branch before
+			// writing the test" case above, met for the third time. The other was a real gap:
+			// every `renamePathPrefs` test saved both path picks, so the walk had never been
+			// asked about an entry holding neither.
 			thresholds: {
-				statements: 98.95,
-				branches: 95.48,
+				statements: 99.01,
+				branches: 95.63,
 				functions: 99.91,
-				lines: 99.75,
+				lines: 99.76,
 			},
 		},
 	},
