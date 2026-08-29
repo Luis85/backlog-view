@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { FakeVault } from '../helpers/vault';
-import { makeView, refresh, rowByTitle, rows, titlesOf, useViewHarness } from '../helpers/view';
+import { itemAt, makeView, refresh, rowByTitle, rows, titlesOf, useViewHarness } from '../helpers/view';
 
 useViewHarness();
 
@@ -185,6 +185,36 @@ describe('row reuse across a data update', () => {
 		expect(rowByTitle(containerEl, 'Alpha')).not.toBe(before);
 		// And only that row: a link in one cell must not cost the whole pass its reuse.
 		expect(rowByTitle(containerEl, 'Beta')).toBe(other);
+	});
+
+	it('falls back to a whole render when the row it was asked to refresh is not on screen', () => {
+		// `refreshSubtree` reads `rowEls`, which holds what the last pass DREW — so an item
+		// inside a shut subtree has no row there. Its three callers (the disclosure, the
+		// keyboard's fold and a drop) all reach it with an item they believe is drawn, and
+		// a redraw arriving between the belief and the call is exactly the window this
+		// guard covers. Rendering the whole tree is the fallback because the alternative is
+		// doing nothing: a fold that silently no-ops leaves the twisty saying one thing and
+		// the rows another, which is worse than a pass nobody needed.
+		const { view, containerEl } = makeView(backlog(), STATE, { collapsed: true });
+		// Shut, so its features were never drawn and are not in the index.
+		expect(titlesOf(containerEl)).toEqual(['Epic']);
+		const child = itemAt(view, 'Alpha.md');
+		const rendered = vi.spyOn(view, 'render');
+
+		view.refreshSubtree(child);
+
+		// The pass ran and drew the tree the model describes, rather than throwing.
+		expect(titlesOf(containerEl)).toEqual(['Epic']);
+		// And it was a WHOLE render, which is the half the screen cannot show: a shut tree
+		// renders to the same one row either way, so every visible assertion above passes
+		// just as well if the guard becomes `if (!row) return;`. The spy is on the call
+		// because the call is the claim — the register's own "check the forbidden thing,
+		// not the places" rule, read for a thing that must HAPPEN. Row identity cannot
+		// stand in for it: this file's first test is that a render reuses the element for
+		// every unchanged path, so a full render and a no-op leave the same element in
+		// place by design. (Found by review, Codex on PR #217, against a version of this
+		// test whose own comment claimed the distinction it did not draw.)
+		expect(rendered).toHaveBeenCalledTimes(1);
 	});
 
 	it('never keeps a row whose file the metadata cache has not indexed', () => {

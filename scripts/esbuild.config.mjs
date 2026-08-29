@@ -1,7 +1,7 @@
 import esbuild from "esbuild";
 import process from "process";
 import { builtinModules as builtins } from "node:module";
-import { watch, writeFileSync } from "node:fs";
+import { statSync, watch, writeFileSync } from "node:fs";
 import { assembleStyles } from "./styles-assemble.mjs";
 
 const banner = `/*
@@ -13,6 +13,43 @@ Copyright Atlassian Pty Ltd, licensed under the Apache License, Version 2.0
 (https://www.apache.org/licenses/LICENSE-2.0) — see ADR 0018 in the repository.
 */
 `;
+
+/**
+ * A ceiling on what the release actually ships, checked on the production build alone —
+ * the two files a vault downloads, at the sizes it downloads them: `main.js` minified and
+ * `dist/styles.css` minified, not the unminified `styles.css` the dev vault reads.
+ *
+ * The numbers are ceilings, not measurements. Each is set with room above what the build
+ * currently produces, so an ordinary increment does not have to touch this file and a
+ * step change cannot land unnoticed — which is the whole of what this gate is for. It is
+ * the opposite ratchet from the coverage floors: those may only rise, and these may only
+ * be raised DELIBERATELY, with the new figure written down as a decision rather than as a
+ * measurement taken in passing.
+ *
+ * A failure here is a question before it is a number: what did this increment add that
+ * weighs 20 KB? The answer has twice been a dependency reaching the bundle by accident
+ * elsewhere, which is the case a budget catches and `npm audit`, lint and the type checker
+ * all cannot see.
+ */
+const BUDGET = {
+	"main.js": 480 * 1024,
+	"dist/styles.css": 96 * 1024,
+};
+
+function enforceBudget() {
+	const over = [];
+	for (const [file, ceiling] of Object.entries(BUDGET)) {
+		const size = statSync(file).size;
+		const pct = ((size / ceiling) * 100).toFixed(1);
+		console.log(`  ${file} ${(size / 1024).toFixed(1)}kb of ${(ceiling / 1024).toFixed(0)}kb budget (${pct}%)`);
+		if (size > ceiling) over.push(`${file} is ${(size / 1024).toFixed(1)}kb, over its ${(ceiling / 1024).toFixed(0)}kb budget`);
+	}
+	if (over.length === 0) return;
+	console.error(`\nBundle budget exceeded:\n  ${over.join("\n  ")}`);
+	console.error("\nRaise the ceiling in scripts/esbuild.config.mjs only as a decision — say in the");
+	console.error("changelog what the increment added, or find what reached the bundle by accident.");
+	process.exit(1);
+}
 
 // "production" builds the release, "once" builds development output and exits (the
 // test-build vault wants a bundle, not a watcher), anything else watches.
@@ -72,6 +109,7 @@ if (prod) {
 		minify: true,
 		logLevel: "info",
 	});
+	enforceBudget();
 	process.exit(0);
 } else if (mode === "once") {
 	// Unminified, with the inline sourcemap that makes a stack trace in Obsidian's

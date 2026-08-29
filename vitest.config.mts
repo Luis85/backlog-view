@@ -228,6 +228,61 @@ export default defineConfig({
 			// writing the test" case above, met for the third time. The other was a real gap:
 			// every `renamePathPrefs` test saved both path picks, so the walk had never been
 			// asked about an entry holding neither.
+			//
+			// **2026-08-29, and this time the drift reached `main`.** The four numbers below were
+			// raised to 99.04/95.72/99.92/99.78 on the release-improvements branch, measured
+			// there and green there — while the paragraph above still ends at 95.63, which is the
+			// comment-versus-code defect this file has now recorded THREE times. What made this
+			// one expensive is not the drift itself: a second pull request merged first, and the
+			// tree that resulted from both measured 6350/6634 branches — 95.7190, floored to
+			// 95.71 — against the 95.72 raised from a tree that never contained it. `main` went
+			// red with every test passing on both platforms.
+			//
+			// **That is not the flake this comment is otherwise about, and the difference is what
+			// matters.** The flake is one covered unit moving between runs; this reproduced
+			// IDENTICALLY on Ubuntu, on Windows and on a third machine, all three reporting
+			// 6350/6634. A figure three environments agree on is a fact about the tree, so the
+			// answer was a branch, not a number: creating a child from a scope row at the VAULT
+			// ROOT was untested, and without the guard it covers the prompt offers to file the
+			// note `in folder "/"`.
+			//
+			// **`lines` was the same landmine one step behind, and a new gate is what found
+			// it.** At 8427/8445 this tree cleared the 99.78 raised alongside branches by
+			// exactly nothing: one fewer line is 99.7750, under it. So the next legitimate
+			// change removing a covered line would have turned `main` red a second time, for
+			// the same reason, with the first fix already merged. It was covered rather than
+			// lowered too — `refreshSubtree`'s fallback when the row it was handed is not on
+			// screen.
+			//
+			// **What replaces the arithmetic is `scripts/coverage-floors.mjs`**, which
+			// `npm run test:coverage` runs on the coverage file the run just wrote. It asks the
+			// one question this comment has answered by hand seven times — how many covered
+			// units can this tree lose before the floor fails? — and fails the run at zero.
+			// `functions` is named in its own list as knowingly tight, for the reason stated
+			// above rather than as an exemption to forget.
+			//
+			// **So this comment stops recording measurements, and the reason is the merge
+			// again.** `main` moved once more while the branch carrying this paragraph was
+			// open — a small fix covering the progress gap — and the figures written here two
+			// hours earlier were stale on arrival for the third time in one day. A measurement
+			// is a fact about ONE tree and this file is read on every other; the gate above
+			// re-derives it per run, which is the only spelling that cannot drift. What stays
+			// here is the rule and the episodes that shaped it. The history of which decimal
+			// moved in which increment is in git, which this comment already said once.
+			//
+			// **Every rise the arithmetic allows is declined for the same reason.** A floor
+			// raised on a branch is asserted against a merge, and that is exactly the move that
+			// produced the red above. A raise is worth taking when the tree it was measured on
+			// is the tree that lands, and a branch open beside four others is never that tree.
+			// The four numbers below stay; the gate is what guarantees they have room.
+			//
+			// **The mechanism that would have prevented all of it is not in this file.** No check
+			// that runs on a tree can see a merge that has not happened yet — a branch's floor is
+			// measured against a `main` it may not contain by the time it lands. GitHub's
+			// "Require branches to be up to date before merging" is the setting for exactly this
+			// class, it is the maintainer's to enable, and
+			// `docs/issues/Two spec branches predate the use-case gate.md` has been asking for it
+			// since the same class last broke `main`.
 			thresholds: {
 				statements: 99.04,
 				branches: 95.72,
