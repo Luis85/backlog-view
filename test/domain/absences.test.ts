@@ -328,7 +328,7 @@ describe('what an absence note is called', () => {
 		// explorer, in search and in a link, where no row is there to supply the dates. Not
 		// "never collides" — the same days derive the same name, which is why `uniqueNotePath`
 		// still has a suffix and a rename still has to know its own path.
-		expect(absenceTitle({ resource: { file: null, raw: 'Alice' }, start: '2026-08-04', target: '2026-08-06' })).toBe(
+		expect(absenceTitle({ start: '2026-08-04', target: '2026-08-06' }, 'Alice')).toBe(
 			'Alice away 2026-08-04 → 2026-08-06',
 		);
 	});
@@ -336,19 +336,23 @@ describe('what an absence note is called', () => {
 	it('is the one producer, so both acts derive the same name from the same facts', () => {
 		// Stated as the property rather than trusted: the create path and the edit path each
 		// call this, which is what stops them disagreeing about what an absence is called.
-		const facts = { resource: { file: null, raw: 'Bob' }, start: '2026-09-01', target: '2026-09-04' };
+		const facts = { start: '2026-09-01', target: '2026-09-04' };
 
-		expect(absenceTitle(facts)).toBe(absenceTitle({ ...facts }));
-		expect(absenceTitle(facts)).toBe('Bob away 2026-09-01 → 2026-09-04');
+		expect(absenceTitle(facts, 'Bob')).toBe(absenceTitle({ ...facts }, 'Bob'));
+		expect(absenceTitle(facts, 'Bob')).toBe('Bob away 2026-09-01 → 2026-09-04');
 	});
 
-	it('names the resolved note over the raw text it was spelled with', () => {
-		// A hand-typed alias or a differently-cased link still resolves to one note, and the
-		// derived name has to follow the note rather than whatever the link happened to say.
-		const resolved = { file: { basename: 'Bob' } as TFile, raw: '[[bob|Bobby]]' };
-
-		expect(absenceTitle({ resource: resolved, start: '2026-09-01', target: '2026-09-04' })).toBe(
-			'Bob away 2026-09-01 → 2026-09-04',
+	it('names whatever the caller passes as the label, never a resource of its own', () => {
+		// The label used to be derived from `facts.resource` here; now it is not a fact about
+		// the absence at all (Task 6 follow-up) — it is the caller's own collision-aware name,
+		// the same one `namedTargets` gives two `Resource` notes sharing a basename in different
+		// folders. Passing a DIFFERENT label for the same two dates derives a different name,
+		// which is the whole point: two same-named resources must not share a note name.
+		expect(absenceTitle({ start: '2026-09-01', target: '2026-09-04' }, 'Team/Bob')).toBe(
+			'Team/Bob away 2026-09-01 → 2026-09-04',
+		);
+		expect(absenceTitle({ start: '2026-09-01', target: '2026-09-04' }, 'Support/Bob')).toBe(
+			'Support/Bob away 2026-09-01 → 2026-09-04',
 		);
 	});
 });

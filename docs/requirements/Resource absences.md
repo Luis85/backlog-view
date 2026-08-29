@@ -173,11 +173,16 @@ already looks.
 - **4l — the title is derived, not asked for** (added 2026-08-14). The form asks for the
   resource, a start and an end, and the note is named `<resource> away <start> → <end>`
   (`absenceTitle` in `src/domain/absences.ts`, the one producer, so the create path and the
-  edit path cannot disagree). Both dates are in it so two stretches of one resource over
-  DIFFERENT days read apart — a basename is read in the explorer, in search and in a link,
-  none of which has a row beside it to supply the dates. Not "never collides": the same
-  resource over the same days derives the same name, and so does a note already sitting at
-  it, so `uniqueNotePath` still appends a number sometimes — and a rename asks it about the
+  edit path cannot disagree). `<resource>` is the collision-aware LABEL `namedTargets`
+  gives the note (`domain/readItems.ts`, via `BacklogModel.resourceLabels`), passed in
+  rather than read off the facts — added 2026-08-28 once two `Resource` notes sharing a
+  basename in different folders turned out to derive the identical name, telling a reader
+  in the explorer or in search which absence belonged to which person only by luck. Both
+  dates are in it so two stretches of one resource over DIFFERENT days read apart — a
+  basename is read in the explorer, in search and in a link, none of which has a row
+  beside it to supply the dates. Not "never collides": the same resource over the same
+  days derives the same name, and so does a note already sitting at it, so
+  `uniqueNotePath` still appends a number sometimes — and a rename asks it about the
   note's OWN path, or a note that landed at `… 1` would ratchet to `… 2` on the next edit.
   **The other direction is wanted and is not a ratchet**: once whatever occupied the plain
   name goes away, the next edit moves the note back onto it. A suffix is the mark of a
@@ -192,7 +197,15 @@ already looks.
   against the name the OLD facts would have produced, a second rule whose failure mode is a
   note that silently stops following its own dates. Nothing is retroactive: an absence that
   already exists keeps its name until it is edited, and `readAbsence` never required a
-  derived one.
+  derived one. **The label widens that cost since 2026-08-28**, and it is worth saying
+  plainly: the derived name is no longer a function of the two dates and a fixed resource
+  name alone. A second `Resource` note sharing this one's basename appearing or leaving the
+  roster changes the label, and so changes the name this same absence derives for the
+  identical dates — a real weakening of "rename it, edit a date, get the derived name
+  back," since the roster can move between those two edits too. Paid anyway: an ambiguous
+  filename that two different people's absences both answer to is a worse failure than a
+  name that re-derives differently after a roster change, and the collision is exactly the
+  case a reader most needs the name to resolve.
 - **4m — the band header counts what's still ahead** (added 2026-08-14, reshaped the same
   day). An item count and a weeks-away pill, each dropped entirely at zero rather than one
   string counting both — the pill counting only stretches whose end is today or later, and

@@ -73,11 +73,7 @@ export function countingVault(stretches: Array<{ title: string; start: string; t
 }
 
 /** The one absence in `absenceVault`, at the path the create path would actually file it under. */
-export const ALICE_AWAY = absenceTitle({
-	resource: { file: null, raw: 'Alice' },
-	start: '2026-08-04',
-	target: '2026-08-06',
-});
+export const ALICE_AWAY = absenceTitle({ start: '2026-08-04', target: '2026-08-06' }, 'Alice');
 export const ALICE_AWAY_PATH = `${ALICE_AWAY}.md`;
 
 /**

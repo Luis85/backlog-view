@@ -5,7 +5,7 @@ import { AbsencePromptModal, AbsenceResult } from '../../ui/prompts';
 import { Absence, absencesConfigured, absenceTitle } from '../../domain/absences';
 import { formatCivil } from '../../domain/timeline';
 import { folderForType } from '../../domain/itemTypes';
-import { namedTargets } from '../../domain/readItems';
+import { namedTargets, resourceLabelsOf } from '../../domain/readItems';
 import { AssignableLane } from '../../domain/roadmap';
 import { configProblems } from '../../domain/settingsConsistency';
 import { ABSENCE_TYPE } from '../../domain/typeVocabulary';
@@ -43,6 +43,20 @@ function resourceChoices(host: BacklogViewHost): { id: string; label: string }[]
 /** The `Resource` note an offered id names, or null once the model has moved past it. */
 function resourceById(host: BacklogViewHost, id: string): TFile | null {
 	return host.model?.resources.find((resource) => resource.file.path === id)?.file ?? null;
+}
+
+/**
+ * The name `absenceTitle` derives an absence's own note name from — the collision-aware
+ * label `BacklogModel.resourceLabels` already built for this resource, falling back to
+ * its bare basename for the corner nothing here can reach today (a model rebuild dropping
+ * the resource between the picker resolving it and this call). Same lookup
+ * `cardMoves.ts`'s own `resourceLabel` makes, kept as its own copy rather than exported
+ * from there: that one names a MOVE's target in a notice, this one names a FILE, and the
+ * two call sites sharing a helper would be a coincidence of implementation rather than one
+ * concept.
+ */
+function absenceResourceLabel(host: BacklogViewHost, resource: TFile): string {
+	return resourceLabelsOf(host.model).get(resource.path) ?? resource.basename;
 }
 
 /**
@@ -288,7 +302,7 @@ async function editAbsence(host: BacklogViewHost, absence: Absence, result: Abse
 		await renameAbsenceNote(
 			host.app,
 			absence.file,
-			absenceTitle({ resource: { file: resource, raw: resource.basename }, start: result.start, target: result.target }),
+			absenceTitle({ start: result.start, target: result.target }, absenceResourceLabel(host, resource)),
 		);
 		// The note's OWN name, never the requested one — `uniqueNotePath` sanitizes the
 		// title and appends a number where one is taken, so a rename onto an existing
@@ -316,10 +330,11 @@ async function writeAbsence(host: BacklogViewHost, result: AbsenceResult): Promi
 		return;
 	}
 	try {
-		const title = absenceTitle({ resource: { file: resource, raw: resource.basename }, start: result.start, target: result.target });
+		const label = absenceResourceLabel(host, resource);
+		const title = absenceTitle({ start: result.start, target: result.target }, label);
 		const spec: AbsenceSpec = { resource, start: result.start, target: result.target, folder: absenceFolder(host), title };
 		const file = await createAbsenceNote(host.app, host.settings, spec);
-		new Notice(t('absence.created', { resource: resource.basename, name: file.basename }));
+		new Notice(t('absence.created', { resource: label, name: file.basename }));
 	} catch (e) {
 		console.error('Product Backlog: failed to create the absence', e);
 		new Notice(t('absence.createFailed'));

@@ -496,12 +496,19 @@ export function renderLaneContextRow(ctx: RowContext, content: HTMLElement, item
  * `domain/` genuinely may not, which is why the question is asked here rather than beside
  * `absenceTitle` — the sanitizer is what a title becomes ON DISK, and only the two layers
  * that can see a disk may ask.
+ *
+ * `laneName` is the lane's own `ResourceLane.name` — the same collision-aware label
+ * `absenceTitle` was given when this stretch was written or renamed, since both come from
+ * the identical `BacklogModel.resourceLabels` lookup for the identical resource. A stretch
+ * only ever draws inside the lane that owns it, so there is no second label to disagree
+ * with the one the caller already has in hand. Named apart from `bar.label` (the HTML
+ * element `drawBandCollision` and `renderAbsenceWash` pass around below) so the two kinds
+ * of "label" in this file are never one parameter mistaken for the other.
  */
-function absenceSaid(absence: Absence): string {
+function absenceSaid(absence: Absence, laneName: string): string {
 	const start = formatCivil(absence.start);
 	const target = formatCivil(absence.target);
-	if (absence.title.startsWith(sanitizeTitle(absenceTitle({ resource: absence.resource, start, target }))))
-		return absence.title;
+	if (absence.title.startsWith(sanitizeTitle(absenceTitle({ start, target }, laneName)))) return absence.title;
 	return t('lane.absenceSaid', { title: absence.title, start, target });
 }
 
@@ -600,12 +607,15 @@ function renderLaneAbsences(
 		})
 		.sort((a, b) => a.box.left - b.box.left);
 	const sublanes = packLanes(marks.map((mark) => mark.box));
-	head.setAttribute('aria-description', t('lane.unavailable', { items: marks.map((mark) => absenceSaid(mark.absence)) }));
+	head.setAttribute(
+		'aria-description',
+		t('lane.unavailable', { items: marks.map((mark) => absenceSaid(mark.absence, lane.name)) }),
+	);
 	for (const [index, { absence, geometry }] of marks.entries()) {
 		const mark = track.createDiv({ cls: ['pbl-absence', ...edgeClasses(geometry)].join(' ') });
 		placeSpan(mark, geometry, ruler.scale);
 		mark.setCssProps({ '--pbl-sublane': String(sublanes[index]) });
-		setTooltip(mark, absenceSaid(absence));
+		setTooltip(mark, absenceSaid(absence, lane.name));
 		mark.addEventListener('contextmenu', (evt) => showAbsenceMenu(host, absence, evt));
 	}
 	head.setCssProps({ '--pbl-lane-sublanes': String(Math.max(...sublanes) + 1) });
@@ -737,10 +747,19 @@ function renderAbsenceWash(
  * abbreviates on the row — folded into `said` so the tooltip and the sr-only span always
  * carry the whole count even where the row itself only ever shows the short token, or
  * shows nothing at all because the title's own label was dropped.
+ *
+ * `laneName` is `drawBandCollision`'s own `lane.name`, passed through to `absenceSaid` for
+ * every crossed stretch: every absence in `crossed` is drawn inside that one lane, so one
+ * name serves them all.
  */
-function noteAbsenceClash(bar: { row: HTMLElement; lead: HTMLElement }, crossed: Absence[], costSentence: string): void {
+function noteAbsenceClash(
+	bar: { row: HTMLElement; lead: HTMLElement },
+	crossed: Absence[],
+	costSentence: string,
+	laneName: string,
+): void {
 	if (crossed.length === 0) return;
-	const spans = crossed.map(absenceSaid).join('; ');
+	const spans = crossed.map((absence) => absenceSaid(absence, laneName)).join('; ');
 	const said = t('lane.absenceClash', { count: crossed.length, cost: costSentence, spans });
 	bar.row.createSpan({ cls: 'pbl-sr-only', text: said });
 	// A hatched swatch in the away key rather than the `calendar-x` glyph it replaced, so the
@@ -981,7 +1000,7 @@ export function drawBandCollision(bar: { row: HTMLElement; lead: HTMLElement; tr
 	const crossed = crossedAbsences(row.bar.span, lane.absences);
 	if (crossed.length === 0) return;
 	const cost = absenceCost(row, crossed);
-	noteAbsenceClash(bar, crossed, cost.full);
+	noteAbsenceClash(bar, crossed, cost.full, lane.name);
 	if (bar.label === null) return;
 	bar.label.createSpan({ cls: 'pbl-days-lost', text: cost.short, attr: { 'aria-hidden': 'true' } });
 	drawn.daysLost = true;

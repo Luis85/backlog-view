@@ -36,13 +36,9 @@ export interface Absence {
 }
 
 /**
- * What names an absence, for the one thing this layer computes from it: its derived
- * title (`absenceTitle` below). A link rather than a plain string, so the derivation
- * reads a resource exactly as `Absence.resource` does — the resolved note's own basename
- * where the link resolves, its raw text otherwise — and a title computed while WRITING
- * (from a `Resource` just chosen off the roster) and one recomputed while READING
- * (`absenceSaid` in `render/lanes.ts`, off an already-parsed `Absence`) can never disagree
- * about what a stretch is called.
+ * The two DATES an absence note is asked for — what names it, minus the resource, which
+ * is no longer a field here (see `absenceTitle` below for why it moved to that
+ * function's own second argument).
  *
  * Here rather than in `storage/`, where it was declared until 2026-08-14: it is what an
  * absence IS CALLED, this layer is where that is defined, and `domain/` may not import
@@ -52,7 +48,6 @@ export interface Absence {
  * there is no unresolved case left to represent.
  */
 export interface AbsenceFacts {
-	resource: LinkEntry;
 	/** Both ends as `YYYY-MM-DD` — this is a request to write, not a reading. */
 	start: string;
 	target: string;
@@ -154,8 +149,20 @@ function isPending(absence: Absence, today: CivilDate): boolean {
 }
 
 /**
- * What an absence note is CALLED, derived from the facts it holds — so recording one asks
- * for the dates and nothing else.
+ * What an absence note is CALLED — the dates it holds, plus a caller-supplied LABEL for
+ * who it names, so recording one asks for a resource and the dates and nothing else.
+ *
+ * **The label is not a fact about the absence**, which is why it is a second argument
+ * rather than a field on `AbsenceFacts` alongside the dates: it is the collision-aware
+ * name `namedTargets` gives the resource (`domain/readItems.ts`, read through
+ * `BacklogModel.resourceLabels` — see `resourceLabelsOf`), the same disambiguation every
+ * other surface that names a resource to the reader goes through — the assignee chip, the
+ * roadmap's lane headers, `Set iteration`. Two `Resource` notes sharing a basename in
+ * different folders (`Team/Alex.md`, `Support/Alex.md`) derived the identical name here
+ * until this label existed, so a reader could not tell whose absence an Explorer entry
+ * was even from the note's own title. This function stays pure and stays here rather than
+ * taking the model itself: it does one string, and the roster walk that produces a label
+ * belongs where every other reader of it already goes.
  *
  * The one producer, which is the point rather than tidiness: creating an absence and editing
  * one already share a single form, a single validator and a single set of refusals, and a
@@ -169,17 +176,29 @@ function isPending(absence: Absence, today: CivilDate): boolean {
  * the same name, and so does any note already sitting at it, so `uniqueNotePath` still
  * appends a number sometimes — which is why a rename asks it about the note's own path
  * (`self`) rather than assuming the question cannot arise. Every character here survives
- * `sanitizeTitle`, which replaces `\/:*?"<>|#^[]` and leaves the arrow and the hyphens alone.
+ * `sanitizeTitle`, which replaces `\/:*?"<>|#^[]` and leaves the arrow and the hyphens alone
+ * — including a label carrying a `/` for a collision, which is filed as `Support-Alex away
+ * …` rather than refused or nested into a folder.
  *
  * **A hand rename does not survive the next edit**, and that is the accepted cost of the
  * name being a function of the facts rather than a defect: rename the note in Obsidian, edit
  * a date, and it takes the derived name back. The alternative — comparing against the name
  * this would have produced for the OLD facts — is a second rule whose failure mode is a note
  * that silently stops following its own dates.
+ *
+ * **The label widens that cost, and it is worth saying plainly rather than glossing over
+ * it: the derived name is no longer a function of the two dates and the roster alone stays
+ * fixed.** Add or remove a SECOND resource sharing this one's basename, touch nothing about
+ * this absence, and the label — and so the name this function derives for the identical
+ * dates — changes underneath it. That is a real weakening of "renaming the note and then
+ * editing a date takes the derived name back", because the roster the label depends on can
+ * itself move between those two edits. Paid anyway: an ambiguous filename — two notes an
+ * Explorer entry, a search result or a link cannot tell apart — is a worse failure than a
+ * name that re-derives differently after a roster change, and the collision case is exactly
+ * the one a reader most needs the name to resolve.
  */
-export function absenceTitle(facts: AbsenceFacts): string {
-	const name = facts.resource.file?.basename ?? facts.resource.raw;
-	return `${name} away ${facts.start} → ${facts.target}`;
+export function absenceTitle(facts: AbsenceFacts, label: string): string {
+	return `${label} away ${facts.start} → ${facts.target}`;
 }
 
 /**

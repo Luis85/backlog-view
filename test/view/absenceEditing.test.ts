@@ -188,6 +188,36 @@ describe('adding an absence', () => {
 		expect(laneAbsences('Support/Alex')).toBe(1);
 	});
 
+	it('names the note after the collision-aware label, not the bare basename both rows share', async () => {
+		// The regression this closes: `Team/Alex.md` and `Support/Alex.md` share a basename,
+		// and `absenceTitle` used to derive its name from `facts.resource.file.basename` —
+		// `Alex` either way — so both absences landed on the identical note name (or a `… 1`
+		// suffix picked between them by write order) and neither an Explorer entry nor a
+		// search hit could say whose stretch it was. It now takes the label
+		// `BacklogModel.resourceLabels` gives the note — `Team/Alex` / `Support/Alex`, the
+		// same disambiguation the row headers above already draw — so the two notes read
+		// apart, and `sanitizeTitle` (`storage/createNote.ts`) is what turns the `/` a label
+		// can carry into `Team-Alex away …` on disk rather than a nested folder.
+		const vault = new FakeVault();
+		vault.addFile('Team/Alex.md', { frontmatter: { type: 'Resource' } });
+		vault.addFile('Support/Alex.md', { frontmatter: { type: 'Resource' } });
+		const harness = laneRoadmap(vault);
+
+		addButton(harness.containerEl, 'Team/Alex')?.click();
+		expect(submitAbsence({ start: '2026-09-01', target: '2026-09-04' })).toBe(true);
+		await flush();
+		refresh(harness.view, vault);
+
+		addButton(harness.containerEl, 'Support/Alex')?.click();
+		expect(submitAbsence({ start: '2026-09-01', target: '2026-09-04' })).toBe(true);
+		await flush();
+
+		const teamFm = vault.fm('docs/Team-Alex away 2026-09-01 → 2026-09-04.md');
+		const supportFm = vault.fm('docs/Support-Alex away 2026-09-01 → 2026-09-04.md');
+		expect(teamFm['assignee']).toBe('[[Team/Alex]]');
+		expect(supportFm['assignee']).toBe('[[Support/Alex]]');
+	});
+
 	it('files it where the config says at SUBMIT, not where it said when the form opened', async () => {
 		// The same window `refusedByConfig` is re-asked in: Obsidian's options pane stays
 		// reachable while a modal is up, and a folder changed there is the reader's newest
