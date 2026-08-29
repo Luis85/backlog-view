@@ -328,6 +328,13 @@ export class ReleaseView extends BasesView {
 			typeKey: this.settings.typeKey,
 			parentKey: this.settings.parentKey,
 			orderKey: this.settings.orderKey,
+			// A FOURTH mapping, and the only one nothing on this screen READS: the scope
+			// tree's `New <child>` seeds the new note's membership, and the key it seeds is
+			// this view's own `membershipKey` rather than whatever the backlog resolver
+			// makes of this config. [[Putting work in a release]] states that rule — the
+			// offering view names the membership key it writes, and the two views may
+			// legitimately be pointed at different properties.
+			releaseKey: this.settings.membershipKey,
 		};
 		this.model = buildModel(this.app, this.data.data, backlogSettings);
 		// Derived BEFORE the no-releases branch, and that order is the whole of the fix for a
