@@ -477,8 +477,9 @@ export class FakeViewConfig {
 	 * `const configured = { assigneeProperty: 'note.assignee' }` is the shape — and a fake
 	 * that wrote into it would let one test's `set` reach every later test sharing that
 	 * object. Invisible until something started writing a key the tests also read: the
-	 * assignee roster, which `declareResource` appends to on every pick, made one test's
-	 * `Sam` appear in the next test's menu.
+	 * assignee roster used to work this way, appended to on every pick by a write path
+	 * Task 7 deleted (`declareResource`) — before that removal, one test's `Sam` could
+	 * appear in the next test's menu without this copy.
 	 */
 	constructor(values: Record<string, unknown> = {}) {
 		this.values = { ...values };

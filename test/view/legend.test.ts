@@ -245,7 +245,7 @@ describe('the roadmap legend', () => {
 		});
 		const { view, containerEl } = makeView(
 			vault,
-			{ ...DATE_AXIS, assigneeProperty: 'note.assignee', resourceNames: 'Alice' },
+			{ ...DATE_AXIS, assigneeProperty: 'note.assignee' },
 			{ collapsed: true },
 		);
 		view.setProjection('roadmap');

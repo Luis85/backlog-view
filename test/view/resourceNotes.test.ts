@@ -142,7 +142,7 @@ describe('creating a resource', () => {
 			frontmatter: { type: 'Absence', assignee: 'Dana', start: '2026-08-10', due: '2026-08-14' },
 		});
 		vault.addFile('Untimed work.md', { frontmatter: { type: 'Epic', order: 10, assignee: 'Erin' } });
-		const harness = laneRoadmap(vault, { resourceFolder: '', homeFolder: '', resourceNames: 'Alice, Bob' });
+		const harness = laneRoadmap(vault, { resourceFolder: '', homeFolder: '' });
 
 		promptNewResource(harness.view);
 		const modal = Modal.lastOpened;

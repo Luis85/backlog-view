@@ -26,7 +26,7 @@ const RESOURCES = {
 
 /** A roadmap on the resources axis with the rows expanded, this file's every fixture. */
 function laneRoadmap(vault: FakeVault, config: Record<string, unknown> = {}): Harness {
-	const harness = makeView(vault, { ...RESOURCES, resourceNames: 'Alice, Bob', ...config }, { collapsed: true });
+	const harness = makeView(vault, { ...RESOURCES, ...config }, { collapsed: true });
 	harness.view.setProjection('roadmap');
 	harness.view.setAxisPick('resources');
 	harness.view.setShelfCollapsed(false);

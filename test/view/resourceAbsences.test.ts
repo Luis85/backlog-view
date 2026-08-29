@@ -13,8 +13,7 @@ useViewHarness();
  * Open the row's own Add-absence form and submit it with a range, leaving the resource
  * exactly at its prefill — the row's own note (Task 6) — since these tests are about the
  * WRITE that follows, not about picking a different one. `absenceEditing.test.ts` is the
- * suite for the form's own fields; this is the read-side twin, over a fixture with no
- * `resourceNames` collision to remember.
+ * suite for the form's own fields; this is the read-side twin.
  */
 function addAbsenceFromRow(containerEl: HTMLElement, name: string, range: { start: string; target: string }): void {
 	const head = lanesOf(containerEl).find((el) => el.querySelector('.pbl-lane-name')?.textContent === name);

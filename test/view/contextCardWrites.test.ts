@@ -410,7 +410,6 @@ describe('write safety with context rows, across the resources axis’s entry po
 			assigneeProperty: 'note.assignee',
 			startProperty: 'note.start',
 			targetProperty: 'note.due',
-			resourceNames: 'Sam',
 		});
 		anyView.data = { data: vault.entries().filter((e) => !['Epic.md', 'Mid.md'].includes(e.file.path)) };
 		view.onDataUpdated();
