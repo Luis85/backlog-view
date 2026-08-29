@@ -2087,6 +2087,29 @@ export const en = {
 	 *  it in the note" and never name an option. */
 	'release.close.unreadableStatus': 'This release’s status cannot be read. Repair it in the note.',
 	'release.close.unreadableDate': 'This release’s released date cannot be read. Repair it in the note.',
+
+	/**
+	 * The GENERATED release notes' own prose (`src/domain/releaseNotesText.ts`) — words
+	 * written into a file in the vault rather than drawn on a screen.
+	 *
+	 * Keyed rather than left English like `backlogReadme.ts`'s prose, by the root guide's
+	 * own test: what breaks if two people with different Obsidian languages open one vault
+	 * is that each sees the notes in their own words, which is TEXT. Nothing here is
+	 * matched or persisted as an identity — the MARKER does that, and it is data — so
+	 * neither reader's view is unable to read the other's file. The cost is real and is
+	 * accepted: regenerating in another language rewrites the body, which a vault kept in
+	 * git sees as a diff.
+	 *
+	 * `population` promises only what this document can keep. It never says how many notes
+	 * the base excluded, because nothing can count those: membership lives on the ITEM, so
+	 * an excluded item is invisible to the view that would have to count it.
+	 */
+	'release.notes.generated': 'This file is generated. Edits to it do not survive the next regeneration.',
+	'release.notes.population': 'It lists what this base returned.',
+	'release.notes.empty': 'This release contained nothing.',
+	/** The heading for a type the vocabulary does not know — a note that quietly omitted
+	 *  work would be worse than an untidy heading. */
+	'release.notes.otherTypes': 'Other',
 	/**
 	 * A press that bound nothing, said rather than left silent — a standalone control with
 	 * no dialog after it would otherwise look dead. `release.new.bound` is what a press

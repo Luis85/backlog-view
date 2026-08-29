@@ -98,9 +98,11 @@ one file the plugin owns, written whole.
 
 ## Where it lives
 
-The text is composed in `src/domain/`, beside `src/domain/readmeText.ts` and shaped like it,
-from the model in `src/domain/model.ts` and the vocabulary in
-`src/domain/typeVocabulary.ts`. The marker that tells a generated file from a hand-written one
+The text is composed in `src/domain/releaseNotesText.ts`, beside `src/domain/backlogReadme.ts`
+and shaped like it, from the scope rows the screen already derived and the vocabulary in
+`src/domain/typeVocabulary.ts`. Nothing dated goes in its body, which is what makes a
+regeneration over an unchanged release byte-identical — the easy thing to get wrong, since
+the action beside it exists to write today's date. The marker that tells a generated file from a hand-written one
 is `src/domain/readmeMarker.ts`, whose `joinSource` names THREE parts here — base, view and
 the release itself — so a regeneration can be told from a collision between two releases that
 share a basename.
