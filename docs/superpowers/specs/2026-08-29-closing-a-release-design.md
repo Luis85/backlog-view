@@ -264,11 +264,24 @@ a file, because an empty release notes file is a fact and a missing one is ambig
 would withhold `Mark as released` on an unbound membership key, which is not one of its
 prerequisites: marking a release out reads the release note alone.
 
-So the actions area is drawn **before** both returns, and each action keeps its own gate:
-generation needs the notes folder and a clean configuration, marking needs its four
-release-note options, and neither asks about membership. The two empty states keep their
-own guidance beside it — `guidanceShell` and the actions are two rows on one screen, not
-alternatives.
+So the actions area is drawn **before** both returns, and each action keeps its own gate.
+Marking needs its four release-note options and nothing else: it reads the release note
+alone, so it is offered on both of those screens. Generation needs the notes folder, a
+clean configuration **and the membership key**.
+
+That last one is not symmetry, it is the difference between empty and unreadable.
+`membershipTarget` returns null for every item when `membershipKey` is unbound, so every
+release's scope reads as empty — and generation there would write a file saying the
+release contained nothing, and would overwrite a previously valid one to say it. Extension
+1a is about a release that genuinely has no members, with membership bound and nobody
+having named it; a population nothing can read is the other answer entirely, which is the
+distinction `ReleaseFigure` exists to keep — unconfigured is not zero, and a report that
+counts it as zero is the failure this epic's definition of done names first. So the
+unconfigured-membership screen offers marking and names the membership option beside a
+withheld generation, rather than offering both.
+
+The two empty states keep their own guidance beside the actions — `guidanceShell` and the
+actions are two rows on one screen, not alternatives.
 
 `src/i18n/en.ts` — the option names, the two refusals, the confirmation, the generated
 file's own sentences and the outcome notices.
@@ -307,10 +320,14 @@ design adds to them:
 - Every unbound prerequisite is NAMED on the screen, not merely absent: a fixture with each
   one unbound in turn draws a line naming that option, and the ✨ appears beside it only
   for the ones that are properties.
-- Both actions are reachable on a release with no members and on a base with no membership
-  key bound — the two screens `renderScope` returns early from. The empty release's
-  generated file is written from that screen, which is the only place extension 1a can be
-  exercised at all.
+- Both actions are reachable on a release with no members — the screen `renderScope`
+  returns early from, and the only place extension 1a can be exercised at all, since a
+  release with members never reaches it.
+- With the membership key unbound, marking is still offered and generation is NOT, with
+  that option named. The check is that no file is written on that screen: a fixture whose
+  release already has a valid generated file, opened with membership unbound, must still
+  have that file's contents afterwards — a criterion about the file, because the damage
+  here is the overwrite rather than the refusal.
 - `writeBacklogReadme`'s behaviour is unchanged by the extraction — its existing tests are
   the check, and they are watched passing before and after.
 - A release-notes file whose marker names another release is refused and named; one whose
