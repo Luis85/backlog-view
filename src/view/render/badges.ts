@@ -42,6 +42,11 @@ const NAMED_TYPE_STYLE: Record<string, { icon: string; badge: string }> = {
 	milestone: { icon: 'diamond', badge: 'pbl-lvl-milestone' },
 	iteration: { icon: 'calendar-clock', badge: 'pbl-lvl-iteration' },
 	deliverable: { icon: 'package', badge: 'pbl-lvl-deliverable' },
+	// `trending-up`, NOT `package`: an Improvement shares Deliverable's green (see
+	// `styles/badges.css` for why), and these two are the one pair on that hue that can be
+	// SIBLINGS under a single parent — both are extra types at the same rung — so the glyph
+	// is the whole of what separates their badges where it matters most.
+	improvement: { icon: 'trending-up', badge: 'pbl-lvl-improvement' },
 	// `rocket`, NOT `package`: a release shares Deliverable's green (see `styles/badges.css`
 	// for why that hue), and the icon is the whole of what separates the two badges. The
 	// plan named `package` here, which is the icon Deliverable already carries — the pair

@@ -365,7 +365,7 @@ describe('what the catalog offers', () => {
 		// rule rather than an oversight: a type with a view of its own is offered by no
 		// creation surface at all (`byProjectionType`), which took `Iteration` out long ago
 		// and `Release` out on 2026-08-24.
-		const plan = ['Epic', 'Feature', 'PBI', 'Task', 'Issue', 'Bug', 'Idea', 'Deliverable', 'Milestone'];
+		const plan = ['Epic', 'Feature', 'PBI', 'Task', 'Issue', 'Bug', 'Idea', 'Deliverable', 'Improvement', 'Milestone'];
 		expect(setTypeOn('Stray PBI')).toEqual(plan.filter((t) => t !== 'Task'));
 		expect(setTypeOn('A PBI')).toEqual(plan);
 		catalog(containerEl);

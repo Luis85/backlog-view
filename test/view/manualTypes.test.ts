@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { typesSection } from '../../src/view/manual/typesSection';
+import { manualSections } from '../../src/view/manual/sections';
 import { ALL_TYPES, EXTRA_TYPES, LEVELS, MARKER_TYPES } from '../../src/domain/typeVocabulary';
 import { en } from '../../src/i18n/en';
 
@@ -32,6 +33,32 @@ describe('the types section', () => {
 		const intro = typesSection().intro;
 		for (const name of [...LEVELS, ...EXTRA_TYPES, ...MARKER_TYPES]) {
 			expect(intro, `the intro never names ${name}`).toContain(name);
+		}
+	});
+
+	// The same rule asked of the AUTHORED sections rather than the generated one, and the
+	// gap that made it necessary: `sections.ts` spelled `(Issue, Bug, Idea, Deliverable)`
+	// twice — the `+` guidance and the focus guidance — so the in-app manual went on
+	// stating a complete extra-type vocabulary that was one name short the day a fifth
+	// joined. Found by a review bot on the PR that added `Improvement`, which is exactly
+	// the direction nothing here could see: the generated section covered every type, and
+	// the two hand-written parentheses beside it covered four.
+	//
+	// Asked of the CATEGORY at the place that can go stale, not of the names somebody
+	// remembered to list: both call sites now interpolate `EXTRA_TYPES`, and re-hardcoding
+	// either one fails here as soon as the vocabulary grows. It is deliberately narrowed
+	// to the extra types — the two sentences enumerate that category and no other, and a
+	// claim over `ALL_TYPES` would be one the authored prose has never made.
+	it('names every extra type in the authored sections, not just the generated one', () => {
+		const authored = manualSections()
+			.filter((section) => section.id !== 'types')
+			.flatMap((section) => [section.intro ?? '', ...section.entries.map((e) => `${e.term} ${e.text ?? ''}`)])
+			.join('\n');
+		// The prose enumerates the category twice, so a name reaching only one of them is
+		// still a stale list: assert the COUNT, not merely that the name occurs.
+		for (const name of EXTRA_TYPES) {
+			expect(authored.split(`(${EXTRA_TYPES.join(', ')})`).length - 1, `the manual's extra-type lists are not derived`).toBe(2);
+			expect(authored, `the authored manual never names ${name}`).toContain(name);
 		}
 	});
 

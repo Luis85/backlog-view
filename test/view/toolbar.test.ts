@@ -247,6 +247,7 @@ describe('toolbar controls', () => {
 			'New Bug',
 			'New Idea',
 			'New Deliverable',
+			'New Improvement',
 			// **`New Release` was here until 2026-08-24, and its absence is the whole of the
 			// marker rule.** `Iteration` has always been filtered out: the board's scope
 			// picker is a dedicated door that derives an iteration's number, dates and

@@ -231,6 +231,7 @@ const DATA = [
 	// entry left to be marked or unmarked. A release still reaches this menu as DATA and is
 	// still in this list — `1.0` below, the release NAME that `Set release` offers.
 	'Deliverable',
+	'Improvement',
 	'New',
 	'Active',
 	'Done',

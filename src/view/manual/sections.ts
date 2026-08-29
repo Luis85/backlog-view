@@ -1,4 +1,5 @@
 import { ManualSection } from '../../ui/manualDialog';
+import { EXTRA_TYPES } from '../../domain/typeVocabulary';
 import { SETUP } from './setupSection';
 import { typesSection } from './typesSection';
 
@@ -97,7 +98,7 @@ const CREATING: ManualSection = {
 			text:
 				'Offers the types that row may hold — but only on a row that is not already at the ' +
 				'deepest rung: there it offers that one type alone, the same as under a declared ' +
-				'extra type (Issue, Bug, Idea, Deliverable), whose own children are always the deepest ' +
+				`extra type (${EXTRA_TYPES.join(', ')}), whose own children are always the deepest ` +
 				'level. A non-deepest ladder row offers one rung down plus the types that sit beside ' +
 				"the ladder. A Milestone's + is absent altogether — it draws no add affordance. The " +
 				"toolbar's own New is a separate pair of controls, described below.",
@@ -165,7 +166,7 @@ const FINDING: ManualSection = {
 				'each branch becomes a root, so a match nested under one already found stays a ' +
 				'normal descendant rather than a second root. Focusing the rung a declared extra ' +
 				'type is pinned to (PBI, since a Bug\'s own children are always Tasks) promotes ' +
-				'every extra type (Issue, Bug, Idea, Deliverable) alongside that rung\'s own items; ' +
+				`every extra type (${EXTRA_TYPES.join(', ')}) alongside that rung's own items; ` +
 				'focusing an extra type by name matches only that one type. It is working position, ' +
 				'remembered per view per device, and never written to the base.',
 		},
