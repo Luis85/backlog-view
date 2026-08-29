@@ -434,6 +434,16 @@ export const en = {
 	'timeline.waitsFor': 'Waits for {items}',
 	'timeline.prerequisiteConflict': '{name} (conflict)',
 	'timeline.prerequisiteBroken': '{name} (broken)',
+	/**
+	 * The release marker's own label in the header band, and its tooltip — the one place a
+	 * mark across this grid says WHICH kind of thing it is, since a colour is no answer for
+	 * a reader who cannot see it. `{type}` is the type NAME (`RELEASE_TYPE`), which is data:
+	 * it is matched in frontmatter and renamed by nobody's locale, so it is a parameter here
+	 * exactly as the legend's own marker caption keeps it out of the catalog. `{names}` is a
+	 * LIST — two releases on one date share one line — joined as grammar by `Intl.ListFormat`
+	 * rather than by a joiner at the call site, `timeline.waitsFor`'s own rule above.
+	 */
+	'timeline.releaseLine': '{type}: {names}',
 
 	/** The tag cell's own controls. `{tag}` is vault data throughout. */
 	'column.addTag': 'Add tag',
@@ -833,6 +843,9 @@ export const en = {
 	'option.iterationBars': 'Draw iterations as bars',
 
 	'option.releaseProperty': 'Release property',
+	/** The date the ROADMAP draws a release marker at, read off the `Release` note itself —
+	 *  never the target date a work item states, which is `option.targetProperty` below. */
+	'option.releaseDateProperty': 'Release date property',
 
 	'option.testStateProperty': 'Test state property',
 	'option.testStateValues': 'Test workflow states (in order)',
@@ -1730,6 +1743,10 @@ export const en = {
 	/** The only way off one release's screen, so it is a real button and carries its own
 	 *  name — the icon alone says nothing to a reader who cannot see it. */
 	'release.scope.back': 'Back to all releases',
+	/** The way to the release NOTE — where its version, date and status are actually
+	 *  edited, since this view reads all three and writes none of them. Named rather than
+	 *  left to the icon, `release.scope.back`'s own reason one line up. */
+	'release.scope.openNote': 'Open release note',
 	/**
 	 * The ancestor drawn only to keep a member in its place — and NOT the tree's own
 	 * `row.contextMarker`, whose sentence is false here every time. That one says a row is

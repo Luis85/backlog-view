@@ -278,6 +278,15 @@ export function demoVault(layout: Layout = 'flat', extra = 0): FakeVault {
 		'Billing',
 	);
 
+	// A RELEASE, which is the dated axis's second full-height mark ([[A release on the dated
+	// axis]]) and no row of anything: it hangs from nothing, is drawn by no projection, and
+	// contributes a line across the grid and a legend swatch. Dated a fortnight after
+	// `Ship 1.0` so the release line and the milestone line are separate marks on one screen
+	// — which is the whole of what "visually distinct from a milestone" can be looked at for.
+	// Its date is `target-date`, the key `releaseDateProperty` ships pointing at, so this
+	// draws with no option set for it.
+	add('1.2.0', { type: 'Release', version: '1.2.0', 'target-date': '2026-10-14', status: 'Planned' });
+
 	// Four unavailable stretches, which are the resources axis's second SOURCE and are not
 	// work items at all — no parent, no rank, no state. One in a row that already has bars,
 	// so a stretch reads against the work it crosses; one for a resource nobody is assigned

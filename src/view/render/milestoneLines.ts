@@ -1,12 +1,20 @@
 import { setTooltip } from 'obsidian';
-import { TimelineBar } from '../../domain/bars';
+import { ReleaseMark, TimelineBar } from '../../domain/bars';
 import { drawsAsPoint, isIterationType } from '../../domain/itemTypes';
 import { CivilDate } from '../../domain/noteFields';
 import { barGeometry, daysBetween, TimelineScale, TimelineWindow } from '../../domain/timeline';
+import { RELEASE_TYPE } from '../../domain/typeVocabulary';
+import { t } from '../../i18n/t';
 
 /**
- * The grid's one full-height mark that comes from the PLAN rather than from the reader:
- * a line down every row per milestone date, with its name in the header band.
+ * The grid's full-height marks that come from the PLAN rather than from the reader: a line
+ * down every row per milestone date, and — since 2026-08-29 — one per release date, each
+ * with its name in the header band.
+ *
+ * TWO marks and one positioner. They are drawn by two functions because their SOURCES have
+ * nothing in common — the milestones' lines are computed from the bars this grid drew, and
+ * a release has neither a bar nor a row — and they share `drawDayLines`, because where a
+ * mark sits on this grid is one answer for both and two copies of it drift by a pixel.
  *
  * Its own module because `render/timeline.ts` is at the 400-line budget and this is the
  * piece with the least to do with the rest of it — the grid draws rows, and this draws
@@ -66,7 +74,79 @@ export function renderMilestoneLines(
 		if (isIterationType(bar.item.typeName)) iteration = true;
 		else milestone = true;
 	}
-	const todayDay = daysBetween(window.start, today);
+	drawDayLines({ grid, headerTrack }, byDay, daysBetween(window.start, today), {
+		scale,
+		leadWidth,
+		line: 'pbl-milestone-line',
+		label: 'pbl-milestone-label',
+		name: (names) => names.join(' · '),
+	});
+	return { milestone, iteration };
+}
+
+/**
+ * The same overlay for RELEASES ([[A release on the dated axis]]) — a line down every row
+ * at each release's own date, its name in the header band, drawn in its own colour so it is
+ * never read as a milestone.
+ *
+ * Its own function beside `renderMilestoneLines` rather than a sixth parameter of it, and
+ * the split is what the two actually are: the milestones' lines are computed from the BARS
+ * this grid drew, and a release has no bar and no row at all — it comes from
+ * `RoadmapModel.releaseMarks`, which `buildRoadmap` reads off `model.releases`. Sharing
+ * `drawDayLines` below is what keeps the two marks positioned identically without either
+ * one owning the other's source.
+ *
+ * Grouped by day for `renderMilestoneLines`' own reason: two lines a pixel apart read as
+ * one and quietly misreport the count, so two releases on one date are one line naming
+ * both. Insertion order is `releaseMarks`' order, which is model order — the stable order
+ * extension 3a asks for.
+ *
+ * A mark outside the window draws nothing: `barGeometry` says `outside`, and a line at the
+ * edge would claim a date the release does not have. That is the same treatment a
+ * milestone gets, and it is why the caller widens the window for these marks before this
+ * runs (`renderTimeline`) rather than after.
+ */
+export function renderReleaseLines(
+	mounts: { grid: HTMLElement; headerTrack: HTMLElement },
+	window: TimelineWindow,
+	marks: ReleaseMark[],
+	today: CivilDate,
+	ruler: { scale: TimelineScale; leadWidth: number },
+): boolean {
+	const byDay = new Map<number, string[]>();
+	for (const mark of marks) {
+		const geometry = barGeometry(window, { start: mark.date, target: mark.date });
+		if (geometry.outside) continue;
+		byDay.set(geometry.startDay, [...(byDay.get(geometry.startDay) ?? []), mark.item.title]);
+	}
+	drawDayLines(mounts, byDay, daysBetween(window.start, today), {
+		...ruler,
+		line: 'pbl-release-line',
+		label: 'pbl-release-label',
+		// The one place a release mark says out loud that it IS a release: the line and the
+		// label are told apart by colour, which is no answer at all for a reader who cannot
+		// see it or who has two cyan-ish themes. `RELEASE_TYPE` is DATA — the name matched in
+		// frontmatter — so it is a parameter to the sentence and never catalog text itself,
+		// the same rule the legend's own marker caption keeps.
+		name: (names) => t('timeline.releaseLine', { type: RELEASE_TYPE, names }),
+	});
+	return byDay.size > 0;
+}
+
+/**
+ * One line per DAY, down the grid, with its label in the header band — the positioning both
+ * marks share, stated once. Everything that differs between them (which classes, what the
+ * label says) is `mark`; everything that is about the GRID (the nudge past today, the two
+ * origins) is here.
+ */
+function drawDayLines(
+	mounts: { grid: HTMLElement; headerTrack: HTMLElement },
+	byDay: Map<number, string[]>,
+	todayDay: number,
+	mark: { scale: TimelineScale; leadWidth: number; line: string; label: string; name: (names: string[]) => string },
+): void {
+	const { grid, headerTrack } = mounts;
+	const { scale, leadWidth } = mark;
 	for (const [day, names] of byDay) {
 		// Today keeps its position and its place on top: it is the one mark on this grid
 		// that is the reader's own, and no plan may hide *now*. The milestone's line is
@@ -77,7 +157,7 @@ export function renderMilestoneLines(
 		// line and its label in the day after the one they belong to. `dayPx >= 2 *
 		// lineWidth` is what guarantees the step still fits inside the day it steps in.
 		const nudge = day === todayDay ? scale.lineWidth : 0;
-		const line = grid.createDiv({ cls: 'pbl-milestone-line', attr: { 'aria-hidden': 'true' } });
+		const line = grid.createDiv({ cls: mark.line, attr: { 'aria-hidden': 'true' } });
 		line.setCssProps({ '--pbl-milestone-left': `${leadWidth + day * scale.dayPx + nudge}px` });
 		// The label sits in the header band, and the full name stays in the tooltip:
 		// horizontal space is the scarce resource in an Obsidian pane, so the line survives
@@ -97,10 +177,9 @@ export function renderMilestoneLines(
 		//
 		// Same variable, different origin: the line is positioned in the grid, which
 		// includes the sticky lead column, and the label inside the track, which does not.
-		const label = names.join(' · ');
-		const labelEl = headerTrack.createDiv({ cls: 'pbl-milestone-label', text: label });
+		const label = mark.name(names);
+		const labelEl = headerTrack.createDiv({ cls: mark.label, text: label });
 		labelEl.setCssProps({ '--pbl-milestone-left': `${day * scale.dayPx + nudge}px` });
 		setTooltip(labelEl, label);
 	}
-	return { milestone, iteration };
 }

@@ -389,7 +389,21 @@ for (const file of files) {
 	// is filed is a user setting (`Folder for Absence items`), so a path rule here would be
 	// this checker deciding a configuration it cannot see. It still claims its name above,
 	// because a wikilink can still resolve to one.
-	if (type === "Absence") continue;
+	//
+	// A RELEASE and a RESOURCE are the same ruling for the same reason, and they arrived in
+	// this register the day it started holding both (2026-08-29). Neither is a work item:
+	// `createRelease` (`src/storage/createNote.ts`) deliberately seeds a release no parent,
+	// no order and no placement — it is a marker, it hangs from nothing and is ranked among
+	// nothing — and its `status` is its OWN vocabulary (a release ships, it is not Open or
+	// Done), while a `Resource` is a person, which `readItems.ts` recognises in order to
+	// refuse it as an item at all. Every rule below would fail one, and every one of them
+	// would be this checker asserting a schema the plugin does not write.
+	//
+	// Exempted by TYPE like the absence above, and for its reason exactly: where either is
+	// filed is a user setting (`Folder for Release items` is the release view's own
+	// `releaseFolder`), so a path rule would be this checker deciding a configuration it
+	// cannot see. Both still claim their names, so a wikilink to one resolves.
+	if (type === "Absence" || type === "Release" || type === "Resource") continue;
 	const parent = /^parent:\s*"?\[\[([^\]]+)\]\]"?/m.exec(fm.raw)?.[1] ?? null;
 	// `Number(field ?? 0)` manufactured a rank for a note that has none: a missing `order`
 	// became 0, which is a legal-looking value that no sibling had claimed, so the note

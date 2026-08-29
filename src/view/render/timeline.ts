@@ -20,14 +20,14 @@ import {
 } from './lanes';
 import { createCard, wireCardActivation } from './board';
 import { foldOnClick, renderBadge, renderChevron } from './rows';
-import { renderMilestoneLines } from './milestoneLines';
+import { renderMilestoneLines, renderReleaseLines } from './milestoneLines';
 import { dependencyNote, NO_CONFLICTS, renderDependencyArrows } from './timelineArrows';
 import { CardDragController } from '../interactions/cardDrag';
 import { wireBarLink, wireLinkPreview } from '../interactions/linkDrag';
 import { effectiveLeadWidth, renderLeadResize } from '../interactions/timelineLeadResize';
 import { BacklogViewHost, BarColors, DrawnColors } from '../host';
 import { BacklogItem } from '../../domain/model';
-import { barHolds, ShelfCard, TimelineBar, TimelineRow } from '../../domain/bars';
+import { barHolds, ReleaseMark, ShelfCard, TimelineBar, TimelineRow } from '../../domain/bars';
 import { dependencyArrows } from '../../domain/dependencies';
 import {
 	ownWorkflowReading,
@@ -173,6 +173,16 @@ export interface TimelineDrawing {
 	 */
 	lanes: ResourceLane[];
 	/**
+	 * The releases this grid marks, from `RoadmapModel.releaseMarks` — empty on the horizon
+	 * axis, which never reaches this pass at all, and on the dated axes only when the
+	 * release-date option is cleared or no release states a readable date.
+	 *
+	 * Both grid axes pass the same list, deliberately: a release is a mark ACROSS the rows,
+	 * so the resources axis draws it exactly as the plain dated axis does — which is the
+	 * whole of "a release is on the roadmap", one mechanism rather than one per axis.
+	 */
+	releases: ReleaseMark[];
+	/**
 	 * Report one element of a resource's band, and which row it belongs to. Null on the
 	 * dated axis, which has no rows to belong to — and that null is the one thing the two
 	 * grid axes do not share, so everything downstream that differs between them reads
@@ -220,7 +230,14 @@ export function renderTimeline(
 	// an open band draws nothing either way and is correctly absent from both lists. A mark
 	// the window was never widened for is clamped to the edge and painted on days it does
 	// not cover.
-	const window = timelineWindow(drawnSpans(entries, drawing.lanes), today);
+	// The release marks are in the window's own input, never only in what is drawn against
+	// it: a release is not a bar, so nothing else widens the window for one, and a release
+	// dated past the last bar would be clamped to the edge and then dropped by
+	// `barGeometry`'s `outside` — a mark silently missing from the grid it belongs on. The
+	// identical hazard `drawnSpans` exists for, one source further out; a marker's day is a
+	// zero-length span, which `timelineWindow` reads like any other.
+	const releaseSpans = drawing.releases.map((mark) => ({ start: mark.date, target: mark.date }));
+	const window = timelineWindow([...drawnSpans(entries, drawing.lanes), ...releaseSpans], today);
 	// Resolved ONCE, here, and threaded everywhere `TIMELINE_LEAD_PX` used to be read
 	// directly: the CSS width below and the TS arithmetic that places the today line,
 	// the milestone lines and the gridlines all have to agree on the same number, or a
@@ -278,6 +295,14 @@ export function renderTimeline(
 		leadWidth,
 		iterationBars: ctx.host.settings.iterationBars,
 	});
+	// The second overlay, drawn from the RELEASES rather than from the bars — see
+	// `renderReleaseLines`. After the milestones so that a release and a milestone on one
+	// day paint in a fixed order, and before the rows for the reason above: a line says what
+	// falls either side of a date and must not obscure the thing being asked about.
+	const releaseDrawn = renderReleaseLines({ grid: content, headerTrack: header.coarse }, window, drawing.releases, today, {
+		scale,
+		leadWidth,
+	});
 	const tracks = new Map<string, HTMLElement>();
 	const anchors = new Map<string, HTMLElement>();
 	// Computed ONCE, before any row exists, and from `bars`/`shelf` alone — never from
@@ -314,6 +339,7 @@ export function renderTimeline(
 		done: false,
 		milestone: milestoneLines.milestone,
 		iteration: milestoneLines.iteration,
+		release: releaseDrawn,
 		accent: false,
 		absence: false,
 		daysLost: false,

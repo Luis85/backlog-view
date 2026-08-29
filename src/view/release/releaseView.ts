@@ -356,7 +356,7 @@ export class ReleaseView extends BasesView {
 			);
 			// The bar's own ✨ never reaches this screen either, for the identical reason: it is
 			// `renderIndex` that draws it, and this branch returns before that runs. A base with
-			// zero releases is the FIRST-USE case that most needs all four bindings, so `fixes`
+			// zero releases is the FIRST-USE case that most needs every binding, so `fixes`
 			// is every option `RELEASE_SUGGESTED_KEYS` names rather than the one name the
 			// `noMembership` screen passes (`renderScope.ts`) — that screen is about ONE property
 			// and narrows on purpose; this one has nothing bound yet and nothing to narrow to.

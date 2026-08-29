@@ -2,7 +2,7 @@ import { TFile } from 'obsidian';
 import { t } from '../i18n/t';
 import { Absence } from './absences';
 import { firstPlacedIndex } from './board';
-import { deriveBars, placeItem, ShelfCard, statedEnds, TimelineBar } from './bars';
+import { deriveBars, placeItem, ReleaseMark, releaseMarks, ShelfCard, statedEnds, TimelineBar } from './bars';
 import { isIterationType, isMarkerType, isReleaseType } from './itemTypes';
 import { ITERATION_TYPE, MILESTONE_TYPE } from './typeVocabulary';
 import { BacklogItem, BacklogModel } from './model';
@@ -256,6 +256,16 @@ export interface RoadmapModel {
 	lanes: ResourceLane[];
 	/** Unplaced results in sibling order — the tree's own rank, not arrival order. */
 	shelf: ShelfCard[];
+	/**
+	 * The releases the dated grid draws a mark for, in model order; empty on the horizon
+	 * axis, which draws none at all — a horizon bucket is not a date, and a release placed
+	 * in one would be a position the view invented ([[A release on the dated axis]] 4b).
+	 *
+	 * Beside `bars` rather than among them, for `ReleaseMark`'s own reason: a release is a
+	 * mark ACROSS the rows and never a row, so nothing here ranks it, counts it or lets a
+	 * pointer hold it. `placedCount` and `eligibleResults` are untouched by it.
+	 */
+	releaseMarks: ReleaseMark[];
 	/**
 	 * Context rows with no place on the axis: rendered beside the shelf as
 	 * context, apart from the shelf's count — never shelved, never counted.
@@ -552,9 +562,15 @@ export function buildRoadmap(
 		lanes: [],
 		shelf: [],
 		context: [],
+		releaseMarks: [],
 		placedCount: 0,
 		eligibleResults: model.results.filter(onThisRoadmap).length,
 	};
+	// Read from `model.releases` and never from `rows`, which is the one funnel every axis
+	// takes and the one place a release is DROPPED (`roadmapRows`): a release is not a row of
+	// this projection and must not become one to be drawn. Only a GRID axis asks — see the
+	// field's own comment for why the horizon axis draws none.
+	if (drawsGrid(axis)) roadmap.releaseMarks = releaseMarks(model.releases);
 	if (axis === 'horizons') deriveBuckets(rows, settings, roadmap, visible);
 	else if (axis === 'resources') deriveLanes(rows, settings, roadmap, model);
 	else {

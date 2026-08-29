@@ -1,5 +1,7 @@
-/* The one full-height mark on this grid that comes from the PLAN rather than from the
-   reader — a line down every row per milestone date, and its name in the header band.
+/* The full-height marks on this grid that come from the PLAN rather than from the reader —
+   a line down every row per milestone date and per release date, each with its name in the
+   header band. Both are positioned by the same rules here; only the release's colour and
+   dash are its own, at the foot of the file.
    Its own partial beside `src/view/render/milestoneLines.ts`, which drew it out of
    `render/timeline.ts` for the same reason: `timeline.css` is at the 400-line cap, and
    this is the piece with the least to do with the rest of it.
@@ -8,11 +10,16 @@
    rules of equal specificity are decided by which came last, so the position preserves
    the cascade rather than restating the order in a comment. */
 
-/* A milestone's line runs the grid's full height at its date, behind the bars. Same
+/* A marker's line runs the grid's full height at its date, behind the bars. Same
    shape as .pbl-today and deliberately a lower layer: today stays on top because it is
    the reader's own mark, and the two sit side by side inside one day cell. Cyan to match
-   the milestone badge (--color-cyan-rgb) — purple is already .pbl-lvl-1 (Feature). */
-.pbl-milestone-line {
+   the milestone badge (--color-cyan-rgb).
+
+   Shared with the RELEASE line below rather than copied: everything here is about where a
+   mark sits on this grid, which is one answer for both — only the colour and the dash are
+   the release's own, and they are stated once, later in this file. */
+.pbl-milestone-line,
+.pbl-release-line {
 	position: absolute;
 	top: 0;
 	bottom: 0;
@@ -37,7 +44,8 @@
    over the month labels; truncating, because the full name is one hover away — which
    needs the label itself to receive the hover, so the presentational month cells and
    the bars (a different row entirely) never needed the pointer to pass through it. */
-.pbl-milestone-label {
+.pbl-milestone-label,
+.pbl-release-label {
 	position: absolute;
 	top: 0;
 	left: var(--pbl-milestone-left);
@@ -49,4 +57,30 @@
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
+}
+
+/* A RELEASE's line, the same overlay in a different colour — [[A release on the dated
+   axis]] asks for a mark that is visually distinct from a milestone's, and shape is not
+   available to it: both are one full-height line at one date, and both are drawn on the
+   resources axis as well as the plain dated one. Purple against the milestone's cyan, at
+   the same opacity, and DASHED as the second channel — a colour alone separates the two
+   only for a reader who can see both and whose theme keeps them apart.
+
+   The two rules above are shared with `.pbl-milestone-*` rather than restated, including
+   `--pbl-milestone-left`, which is the OVERLAY's offset for either mark and not the
+   milestones' own — `drawDayLines` (`src/view/render/milestoneLines.ts`) sets it for both,
+   which is what stops the two marks drifting apart by a pixel.
+
+   ORDER IS BEHAVIOUR: these are the same specificity as the shared rules above, so they
+   win by standing later. Moved above them, a release line would take the cyan back. */
+.pbl-release-line {
+	/* `transparent`, NOT the shared rule's colour: a background-IMAGE paints over the
+	   background-color, so the gradient's own transparent segments would show solid purple
+	   through and the line would read exactly like a milestone's. */
+	background-color: transparent;
+	background-image: repeating-linear-gradient(to bottom, var(--color-purple) 0 4px, transparent 4px 8px);
+}
+
+.pbl-release-label {
+	color: var(--color-purple);
 }

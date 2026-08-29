@@ -133,6 +133,48 @@ export function placeItem(item: BacklogItem, stated: StatedEnds, iterationBars: 
 	return bar === null ? { kind: 'shelf', reason: null } : { kind: 'bar', bar };
 }
 
+/**
+ * A `Release` note and the day it is drawn at — the dated axis's marker overlay, which is
+ * the ONE thing a release has on this roadmap ([[A release on the dated axis]]).
+ *
+ * Deliberately not a `TimelineBar`, and that is the whole design rather than a detail. A
+ * bar is a row: it is ranked among the others, it is a drop target, it is a handle its own
+ * dates can be dragged by, and it is counted in `placedCount`. A release is none of those —
+ * `placeItem` still answers null for one, `onThisRoadmap` still keeps it out of every row
+ * list, and nothing here is holdable — so the overlay draws ACROSS the rows from a list of
+ * dates instead, exactly as the milestone lines already do. That is also what keeps the
+ * dated axis's own invariant (placed plus shelved equals the visible results) untouched:
+ * a mark is not a result of this projection.
+ */
+export interface ReleaseMark {
+	item: BacklogItem;
+	date: CivilDate;
+}
+
+/**
+ * The releases this roadmap can position, in the order the model lists them — which is the
+ * stable order two releases on one date are drawn in (extension 3a).
+ *
+ * Three cases draw nothing and only one of them is a refusal. An unconfigured key reads
+ * absent for every release (`readItems`' own gate), a release that states no date is
+ * absent, and a date nobody can read is INVALID — all three drop out here, because a
+ * position guessed for any of them would be a claim the note does not make (extensions 2a,
+ * 2b and 2c). What tells the reader WHICH of the three happened is not this list: nothing
+ * on the grid reports it, and the release view is where an unreadable date is already
+ * named per release.
+ *
+ * `model.releases` is the input and it already excludes an `outsideFilter` release
+ * (`BacklogModel.releases`), which is extension 4a: a member's link gives a name and a name
+ * positions nothing.
+ */
+export function releaseMarks(releases: BacklogItem[]): ReleaseMark[] {
+	const marks: ReleaseMark[] = [];
+	for (const item of releases) {
+		if (item.releaseDate.value !== null) marks.push({ item, date: item.releaseDate.value });
+	}
+	return marks;
+}
+
 /** The rows of the dated axis, split as `buildRoadmap` needs them. */
 export interface DatedAxis {
 	bars: TimelineBar[];

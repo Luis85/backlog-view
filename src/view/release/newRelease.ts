@@ -1,7 +1,8 @@
 import { Notice, setIcon } from 'obsidian';
 import type { ReleaseView } from './releaseView';
 import { t } from '../../i18n/t';
-import { ReleaseSettings, resolveReleaseSettings } from '../../domain/releaseOptions';
+import { BasesViewConfig } from 'obsidian';
+import { declaredPropertyKeys, ReleaseSettings } from '../../domain/releaseOptions';
 import { createRelease } from '../../storage/createNote';
 import { NewReleaseResult, openNewReleaseDialog, ReleaseFieldId } from '../../ui/newReleaseDialog';
 import { runReleaseInit } from './init';
@@ -43,18 +44,19 @@ export function renderNewRelease(view: ReleaseView, parentEl: HTMLElement): void
  * with nothing after it would otherwise look dead.
  */
 export async function bindAndReport(view: ReleaseView): Promise<boolean> {
-	// A FRESH resolve of the live config, never `view.settings`: that field is a snapshot
-	// from the last data update, so an option bound since then reads as unset here and the
-	// press reports a configuration change it did not make — `init.ts`'s own documented trap,
-	// met on the reading side rather than the binding one.
-	const before = boundKeys(resolveReleaseSettings(view.config));
+	// Read from the LIVE config, never from `view.settings`: that field is a snapshot from
+	// the last data update, so an option bound since then reads as unset here and the press
+	// reports a configuration change it did not make — `init.ts`'s own documented trap, met
+	// on the reading side rather than the binding one. Both ends of the comparison ask the
+	// same config, so the difference can only be what {@link runReleaseInit} set.
+	const before = boundKeys(view.config);
 	// Run unconditionally rather than asking first which options are unset. `runReleaseInit`
 	// already puts that question to the live config (`adoptCandidates`), binds only what
 	// nobody has touched, leaves a cleared option alone and does nothing at all when
 	// everything is bound — a second reading of the same question here could only ever come
 	// to disagree with it.
 	await runReleaseInit(view);
-	return boundKeys(view.settings) !== before;
+	return boundKeys(view.config) !== before;
 }
 
 /**
@@ -100,10 +102,21 @@ function focusNewRelease(view: ReleaseView): void {
 	view.viewEl.querySelector<HTMLButtonElement>('.pbl-rel-new')?.focus({ preventScroll: true });
 }
 
-/** The four keys this press can bind, as one value, so "did it bind anything" is one
- *  comparison rather than four. A joined KEY LIST, never a sentence. */
-function boundKeys(settings: ReleaseSettings): string {
-	return [settings.membershipKey, settings.versionKey, settings.targetDateKey, settings.statusKey].join('\n');
+/**
+ * Every key this press can bind, as one value, so "did it bind anything" is one comparison
+ * rather than one per candidate. A joined KEY LIST, never a sentence.
+ *
+ * Read off the DECLARATION (`declaredPropertyKeys`) rather than off `ReleaseSettings`'
+ * own fields, and that is the same correction `declaredPropertyKeys`
+ * itself records: `stateProperty` is declared by this view and resolves onto
+ * `BacklogSettings.stateKey`, so it is on no field of `ReleaseSettings` and a sweep over
+ * that object cannot see it. With the hand-written four, a press whose only work was
+ * binding the state key — the whole progress half of this view — compared equal and
+ * reported that it had bound nothing, then skipped the redraw that would have shown the
+ * bars it had just switched on.
+ */
+function boundKeys(config: BasesViewConfig): string {
+	return declaredPropertyKeys(config).join('\n');
 }
 
 /**

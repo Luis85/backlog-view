@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
 import { en } from '../../../src/i18n/en';
+import { RELEASE_SUGGESTED_KEYS } from '../../../src/view/release/init';
 import { makeReleaseView, mountRelease, noReleaseVault } from '../../helpers/release';
 import { Notice } from '../../helpers/obsidian-mock';
 import { flush, useViewHarness } from '../../helpers/view';
@@ -78,20 +79,20 @@ describe('the release view’s ✨', () => {
 
 		it('is withheld there once every candidate is bound or cleared, unlike `New release`', () => {
 			// `New release` stays: it is offered whenever a type key is bound, and none of the
-			// four options this ✨ handles govern it.
-			const cleared = {
-				typeProperty: 'note.type',
-				membershipProperty: '',
-				versionProperty: '',
-				targetDateProperty: '',
-				releaseStatusProperty: '',
-			};
+			// options this ✨ handles govern it.
+			// Every candidate, derived rather than listed: a seventh joins this fixture by being
+			// declared in `RELEASE_SUGGESTED_KEYS`, which is the whole point of the check —
+			// a candidate nobody cleared here would leave the control drawn and pass nothing.
+			const cleared = Object.fromEntries([
+				['typeProperty', 'note.type'],
+				...RELEASE_SUGGESTED_KEYS.map((candidate) => [candidate.option, '']),
+			]);
 			const { view } = makeReleaseView(noReleaseVault(), cleared);
 			expect(view.viewEl.querySelector('.pbl-empty .pbl-rel-init')).toBeNull();
 			expect(view.viewEl.querySelector('.pbl-empty .pbl-rel-new')).not.toBeNull();
 		});
 
-		it('binds all four candidates from this screen, not only `membershipProperty`', async () => {
+		it('binds every candidate from this screen, not only `membershipProperty`', async () => {
 			// The `noMembership` screen names one option on purpose; this one has nothing bound
 			// yet and nothing to narrow to, so a press here must reach every candidate —
 			// otherwise a fresh vault would still need the bar (unreachable until a release
@@ -103,6 +104,12 @@ describe('the release view’s ✨', () => {
 			expect(view.config.get('versionProperty')).toBeTruthy();
 			expect(view.config.get('targetDateProperty')).toBeTruthy();
 			expect(view.config.get('releaseStatusProperty')).toBeTruthy();
+			// Derived, so the two candidates added on 2026-08-29 (the item state and the
+			// released date) are covered here by being declared rather than by anybody
+			// remembering to add a line — the same reason `cleared` above is derived.
+			for (const candidate of RELEASE_SUGGESTED_KEYS) {
+				expect(view.config.get(candidate.option), candidate.option).toBeTruthy();
+			}
 		});
 	});
 

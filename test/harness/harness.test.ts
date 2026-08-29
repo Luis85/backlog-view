@@ -493,6 +493,16 @@ describe('the harness draws the cases the dependency connector has to survive', 
 		expect(inferred.classList.contains('pbl-bar-inferred')).toBe(true);
 		expect(gripNames(containerEl, 'Welcome tour')).toEqual([]);
 		expect(inferred.querySelector('.pbl-bar-connector')).not.toBeNull();
+
+		// The grid's two full-height marks, on one screen because "a release is visually
+		// distinct from a milestone" is a question only a browser can answer and both have to
+		// be drawn for anyone to look — `Ship 1.0` and `1.2.0` are a fortnight apart in this
+		// fixture for exactly that. jsdom lays nothing out, so the colour and the dash stay a
+		// live-vault question; what is asserted is that both marks and both keys are drawn.
+		// The KEYS for both are asserted in `test/view/releaseMarkers.test.ts`, which has the
+		// room; what belongs here is that the fixture puts both marks on one screen.
+		expect(containerEl.querySelectorAll('.pbl-milestone-line').length).toBeGreaterThan(0);
+		expect(containerEl.querySelector('.pbl-release-label')?.textContent).toBe('Release: 1.2.0');
 	});
 
 	it('draws a clipped bar in the edge-case fixture, where it distorts nothing', () => {

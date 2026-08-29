@@ -578,3 +578,72 @@ describe('the hide-done preference outliving the control that undoes it', () => 
 		expect(row(view, 'D1.md', { optional: true })).toBeNull();
 	});
 });
+
+/**
+ * The two things a reader does from this screen that are not reading it: tell a finished
+ * member from an unfinished one at a glance, and open the release note itself.
+ */
+describe('the scope screen’s own two affordances', () => {
+	useViewHarness();
+
+	function coloredVault(): FakeVault {
+		const vault = new FakeVault();
+		vault.addFile('P.md', {
+			frontmatter: { type: 'Release', version: '1.0.0', 'target-date': '2026-09-12', status: 'In progress' },
+		});
+		vault.addFile('M1.md', { frontmatter: { type: 'Feature', order: 1, release: '[[P]]', status: 'Done' } });
+		vault.addFile('M2.md', { frontmatter: { type: 'Feature', order: 2, release: '[[P]]', status: 'Doing' } });
+		return vault;
+	}
+
+	it('colours a finished member’s chip and marks it with the check, like the tree’s own', () => {
+		// One word in one ink said `Done` and `Doing` alike, while the summary strip above
+		// counted one of the two as finished. `.pbl-state-done` is the same class
+		// `renderStateChip` puts on the backlog tree's chip, so one state means one thing on
+		// both screens — and the ICON is beside it because colour alone is one channel and
+		// this chip is static, with no hover, no menu and no name of its own to say it twice.
+		const { view, containerEl } = makeReleaseView(coloredVault(), RELEASE_CONFIG);
+		view.pick('P.md');
+
+		const done = containerEl.querySelector('.pbl-row[data-path="M1.md"] .pbl-state-chip')!;
+		expect(done.classList.contains('pbl-state-done')).toBe(true);
+		expect(done.querySelector('.pbl-state-icon')?.getAttribute('data-icon')).toBe('circle-check');
+		expect(done.textContent).toBe('Done');
+
+		const open = containerEl.querySelector('.pbl-row[data-path="M2.md"] .pbl-state-chip')!;
+		expect(open.classList.contains('pbl-state-done')).toBe(false);
+		expect(open.querySelector('.pbl-state-icon')?.getAttribute('data-icon')).toBe('circle');
+		// Static on both: this view writes nothing, so neither chip may look editable.
+		expect(done.classList.contains('pbl-state-static')).toBe(true);
+		expect(open.classList.contains('pbl-state-static')).toBe(true);
+	});
+
+	it('opens the release note from the header, where its version, date and status are edited', () => {
+		// This view reads all three figures and writes none of them, so without this control
+		// the only route to the note was the index behind the reader — and from the index,
+		// none at all.
+		const vault = coloredVault();
+		const { view, containerEl } = makeReleaseView(vault, RELEASE_CONFIG);
+		view.pick('P.md');
+
+		const openEl = containerEl.querySelector<HTMLElement>('.pbl-rel-header .pbl-rel-open')!;
+		expect(openEl.getAttribute('aria-label')).toBe('Open release note');
+		expect(openEl.dataset.tooltip).toBe('Open release note');
+		click(openEl);
+		// The CONFIGURED target, the same call a scope row's own click makes — never a tab
+		// this view named on the reader's behalf.
+		expect(vault.opened).toEqual([{ path: 'P.md', mode: 'split' }]);
+	});
+
+	it('draws it on the empty scope too, which is where opening the note matters most', () => {
+		// Both empty states sit below this header, so the control survives either — and a
+		// release with no members is exactly when the reader wants the note.
+		const vault = new FakeVault();
+		vault.addFile('P.md', { frontmatter: { type: 'Release', version: '1.0.0', status: 'Planned' } });
+		const { view, containerEl } = makeReleaseView(vault, RELEASE_CONFIG);
+		view.pick('P.md');
+
+		expect(containerEl.querySelector('.pbl-empty')).not.toBeNull();
+		expect(containerEl.querySelector('.pbl-rel-header .pbl-rel-open')).not.toBeNull();
+	});
+});

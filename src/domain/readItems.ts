@@ -24,7 +24,7 @@ import {
 	resolvedDeliverableStateKey,
 	resolvedTestStateKey,
 } from './optionalProperties';
-import { isAbsenceType, isMarkerType, isResourceType } from './itemTypes';
+import { isAbsenceType, isMarkerType, isReleaseType, isResourceType } from './itemTypes';
 import { Absence, readAbsence } from './absences';
 
 /**
@@ -174,6 +174,14 @@ export interface RawItem {
 	 * ends — `readString` unwraps it — so only a length above one is multiple.
 	 */
 	releaseMultiple: boolean;
+	/**
+	 * The date a `Release` note says it ships on, read off the ROADMAP's own release-date
+	 * key — the marker overlay's whole input ([[A release on the dated axis]]). Absent for
+	 * every other type, and absent rather than invalid when the option is cleared: there is
+	 * nothing to refuse where no key is named. Invalid is a release whose date nobody can
+	 * read, which draws no marker and is a different fact from a release that states none.
+	 */
+	releaseDate: FieldReading<CivilDate>;
 	/**
 	 * Which configured optional keys the note CARRIES — presence, not value, and the
 	 * two are different questions here: an empty horizon reads as absent (untriaged)
@@ -329,6 +337,12 @@ function addItem(
 		iterationEntry: readFirstLinkEntry(app, file, cache, settings.iterationKey),
 		releaseEntry: release[0] ?? null,
 		releaseMultiple: namesMultiple(ownValue(fm, settings.releaseKey)),
+		// Read for a `Release` and for nothing else, which is a rule about the TYPE and not
+		// an optimisation: this key is the date a RELEASE ships on, so the same key on a PBI
+		// is that PBI's own property and means nothing to the roadmap's marker overlay. The
+		// option ships a real default (`viewOptions.ts`), so without this gate every note in
+		// the vault would carry a reading nothing may use.
+		releaseDate: readReleaseDate(typeName, settings, fm),
 		// NOT read for a context row, which is the same test `outsideFilter` is made of
 		// two lines up. An excluded note may be NAMED by a result and may never do the
 		// naming, and until now that rule was kept only downstream, by `declaredEdges`
@@ -394,6 +408,25 @@ function divertAbsence(store: RawStore, entry: BasesEntry | null, absence: Absen
 function divertResource(store: RawStore, file: TFile, entry: BasesEntry | null): null {
 	if (entry !== null) store.resources.push({ file, title: file.basename });
 	return null;
+}
+
+/**
+ * A `Release` note's own target date, for the roadmap's marker overlay — read for a
+ * `Release` and for nothing else, which is a rule about the TYPE and not an optimisation:
+ * this key is the date a RELEASE ships on, so the same key on a PBI is that PBI's own
+ * property and means nothing to the overlay. The option ships a real default
+ * (`viewOptions.ts`), so without this gate every note in the vault would carry a reading
+ * nothing may use.
+ *
+ * Its own function rather than a ternary in `addItem`, which is at its complexity budget:
+ * a read whose gate is a type belongs beside `readGated` either way.
+ */
+function readReleaseDate(
+	typeName: string | null,
+	settings: BacklogSettings,
+	fm: Record<string, unknown> | undefined,
+): FieldReading<CivilDate> {
+	return isReleaseType(typeName) ? readGated(settings.releaseDateKey, fm, readDate) : absentReading();
 }
 
 /**

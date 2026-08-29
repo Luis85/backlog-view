@@ -1,5 +1,6 @@
 import { adoptCandidates, AdoptionCandidate, notePropertyId } from '../../domain/optionalProperties';
-import { declaredPropertyKeys, resolveReleaseSettings } from '../../domain/releaseOptions';
+import { declaredPropertyKeys, resolveReleaseSettings, SHARED_STATUS_OPTIONS } from '../../domain/releaseOptions';
+import { BasesViewConfig } from 'obsidian';
 import type { ReleaseView } from './releaseView';
 
 /**
@@ -18,10 +19,27 @@ import type { ReleaseView } from './releaseView';
  * from the other end: a blank the picker could offer is a value this view's own reader
  * reports as unreadable.
  *
- * Four keys, not every key `ReleaseSettings` reads. `typeProperty`, `parentProperty`
- * and `orderProperty` each ship a real `default:` in `getReleaseViewOptions`, so Bases'
- * own option resolution already supplies one without this action binding anything — same
- * for `releaseFolder`.
+ * SIX keys, not every key `ReleaseSettings` reads, and the list is what "makes every
+ * feature available" actually means here — a press that leaves a feature of this view
+ * unconfigured is a press that reported success and did half the job.
+ *
+ * `typeProperty`, `parentProperty` and `orderProperty` each ship a real `default:` in
+ * `getReleaseViewOptions`, so Bases' own option resolution already supplies one without
+ * this action binding anything — same for `releaseFolder`.
+ *
+ * `deliverableStateProperty` is deliberately NOT here, and its absence is the same
+ * decision the backlog view's own table records at `PROPERTY_TABLE.deliverableState`: a
+ * Deliverable with no key of its own reads the requirements workflow's through
+ * `resolvedDeliverableStateKey`, which is sharing a property by the fallback this codebase
+ * already trusts rather than by writing one key into two options.
+ *
+ * `stateProperty` and `releasedDateProperty` joined on 2026-08-29, and the first of the two
+ * is why {@link SHARED_STATUS_OPTIONS} exists. Without a state key bound, `ReleaseRow.done`
+ * is unconfigured for every release: no band shows progress, no scope row shows a rollup,
+ * the hide-done toggle is withheld and the summary strip says so instead of measuring — the
+ * whole progress half of this view, missing after a ✨ that said it had bound everything.
+ * Without a released-date key, [[Marking a release as released]]'s own figure is
+ * unconfigured the same way.
  *
  * `membershipProperty` DOES belong here, though `resolveReleaseSettings`'s own comment
  * ("a suggestion is not a binding") reads at first as forbidding exactly this. That
@@ -40,14 +58,68 @@ export const RELEASE_SUGGESTED_KEYS: AdoptionCandidate[] = [
 	{ option: 'versionProperty', suggested: 'version' },
 	{ option: 'targetDateProperty', suggested: 'target-date' },
 	{ option: 'releaseStatusProperty', suggested: 'status' },
+	{ option: 'stateProperty', suggested: 'status' },
+	{ option: 'releasedDateProperty', suggested: 'released' },
 ];
 
 /**
- * Bind the suggested key for every one of the four above the reader has never touched,
- * and resolve `view.settings` fresh so the caller can immediately ask which fields are
- * now bound. Three callers reach it, all through `bindAndReport` in `newRelease.ts`:
- * both `New release` presses, and the standalone ✨ (`initControl.ts`) that draws no
- * dialog of its own and exists only to run this and say what it did.
+ * Which of `candidates` a press would actually bind — the one question the ACTION and the
+ * control's own offer (`initControl.ts`'s `anythingToBind`) both ask, so what the ✨
+ * promises and what it does cannot come apart.
+ *
+ * **The seed is every key this view's own options already name**, read off the declaration
+ * (`declaredPropertyKeys`), and that is the whole of what stops this action corrupting a
+ * note. It seeded from the four candidates alone until 2026-08-25, on the argument that no
+ * model mapping could collide "since none of their suggested keys is `release`, `version`,
+ * `target-date` or `status`" — which reasons about what those options SUGGEST when the
+ * collision is with what they RESOLVE TO. A mapping is a free choice: `typeProperty:
+ * note.status` is legal, and with `releaseStatusProperty` untouched this action then bound
+ * the status onto the very key the type lives in. `createRelease` writes the type first and
+ * the status after it, both through `setOwn`, so the release came out carrying a status and
+ * NO type — a note this view cannot recognise as a release at all, reported to the reader as
+ * created. Found by review on PR #203 and driven end to end in `test/view/release/init.test.ts`.
+ * A hand-written seed list is what that rule failed to keep three times, so the set is READ
+ * OFF the option declaration and a tenth option is seeded by being declared.
+ *
+ * `ReleaseSettings` has no `configProblems` of its own, so this is not one guard of two here;
+ * it is the only one.
+ *
+ * **{@link SHARED_STATUS_OPTIONS} is the one exemption**, and it is asked candidate by
+ * candidate rather than by widening the shared set: those options may name one property, so
+ * each of them is offered against a seed the OTHERS' keys are absent from, and two of them
+ * adopting `status` in the same press is the intended outcome rather than a collision.
+ * `adoptCandidates` mutates its `taken` as it goes, which is what a plain second sweep would
+ * have used to refuse the second of the two — hence one call apiece.
+ *
+ * Every other candidate is one sweep, in declaration order, so a candidate still cannot take
+ * a key an earlier one in the same press has claimed.
+ */
+export function adoptableReleaseKeys(config: BasesViewConfig, candidates: AdoptionCandidate[]): AdoptionCandidate[] {
+	// A FRESH read of the live config, never `view.settings`: that field is a snapshot from
+	// the last data update, so a key bound since then would read as free here and get offered
+	// to a second option as well — `runEstimationInit`'s own documented trap for the identical
+	// reason.
+	const taken = new Set(declaredPropertyKeys(config).filter((key) => key !== ''));
+	const shares = (candidate: AdoptionCandidate): boolean => SHARED_STATUS_OPTIONS.includes(candidate.option);
+	// Sequenced rather than written as one array literal: `adoptCandidates` MUTATES `taken`,
+	// so the exempt seed below has to be built from it afterwards — a literal would have made
+	// that depend on the evaluation order of its own elements.
+	const adopted = adoptCandidates(config, candidates.filter((candidate) => !shares(candidate)), taken);
+	const held = new Set(declaredPropertyKeys(config, SHARED_STATUS_OPTIONS).filter((key) => key !== ''));
+	const free = [...taken].filter((key) => !held.has(key));
+	// One call per exempt candidate, each against its OWN copy: `adoptCandidates` adds a
+	// suggestion to `taken` as it takes it, which is exactly how a shared sweep would refuse
+	// the second of two options that are allowed to name one property.
+	const status = candidates.filter(shares).flatMap((c) => adoptCandidates(config, [c], new Set(free)));
+	return [...adopted, ...status];
+}
+
+/**
+ * Bind the suggested key for every candidate above the reader has never touched, and
+ * resolve `view.settings` fresh so the caller can immediately ask which fields are now
+ * bound. Three callers reach it, all through `bindAndReport` in `newRelease.ts`: both
+ * `New release` presses, and the standalone ✨ (`initControl.ts`) that draws no dialog of
+ * its own and exists only to run this and say what it did.
  *
  * `runEstimationInit` states an ORDER as a rule: decide the bindings, gate on the model
  * they would produce, and only then write — because a batch that changed the
@@ -57,62 +129,16 @@ export const RELEASE_SUGGESTED_KEYS: AdoptionCandidate[] = [
  * against. What survives from that order is "decide before writing config" — `pending`
  * below is decided in full before the single loop that calls `config.set`.
  *
- * `taken` seeds from a FRESH resolve of the live config, not from `view.settings`: that
- * field is a snapshot from the last data update, so a key bound since then would read as
- * free here and get offered to a second option as well — `runEstimationInit`'s own
- * documented trap for the identical reason.
+ * WHICH keys are free is {@link adoptableReleaseKeys}' question and not this function's,
+ * so the guard and the offer behind the control cannot come apart; every collision this
+ * action has shipped is recorded there.
  *
- * It seeds from **every property option this view DECLARES**, derived from the
- * declaration itself (`declaredPropertyKeys`, `domain/releaseOptions.ts`), and that is the
- * whole of what stops this action corrupting a note. It seeded from the four candidates
- * alone until 2026-08-25, on the argument that no
- * model mapping could collide "since none of their suggested keys is `release`, `version`,
- * `target-date` or `status`"
- * — which reasons about what those options SUGGEST when the collision is with what they
- * RESOLVE TO. A mapping is a free choice: `typeProperty: note.status` is legal, and with
- * `releaseStatusProperty` untouched this action then bound the status onto the very key
- * the type lives in. `createRelease` writes the type first and the status after it, both
- * through `setOwn`, so the release came out carrying a status and NO type — a note this
- * view cannot recognise as a release at all, reported to the reader as created. Found by
- * review on PR #203 and driven end to end in the test named for it below.
- *
- * Both siblings already seed this way and neither is a precedent that was missed so much
- * as one this file talked itself out of: `adoptableProperties` seeds from
- * `ownedProperties`, which carries parent, order and type, and `runEstimationInit` says in
- * its own comment that "binding a suggested key onto the property this view reads a type
- * from is exactly the collision it now refuses". The estimation view has a second line
- * behind that — it validates the settings its pending bindings WOULD produce and refuses
- * — and this view has none, since `ReleaseSettings` has no `configProblems` of its own. So
- * the seeding is not one guard of two here; it is the only one.
- *
- * `releasedDateKey` joined `taken` on 2026-08-25, the same class of bug as the model
- * mappings above: `releasedDateProperty` is a free choice, so `targetDateProperty: note.
- * target-date` and `releasedDateProperty: note.target-date` are each legal alone and ruin
- * each other bound together — `createRelease` writes the target date there, and
- * `releaseIndex` reads that same value back as the RELEASED date, so a brand-new release
- * reports as shipped with a zero-day slip. `releasedDateKey` is a READ binding
- * (`releaseIndex` reads it; nothing here writes it), which is why the failure is a wrong
- * reading rather than a corrupted note — but seeding it into `taken` is the same fix as the
- * others: this action must never hand out a key another of this view's own property
- * options already names.
- *
- * **A hand-written seed list is what that sentence failed to keep, three times.** It said
- * "this view's eight" while the view declared NINE property options: `stateProperty` is
- * declared here and resolves onto `BacklogSettings.stateKey` rather than onto
- * `ReleaseSettings`, so it is on no field the seed swept and no list anybody wrote
- * included it — `stateProperty: note.status` then handed `releaseStatusProperty` that same
- * key, and `stateProperty: note.release` handed it to `membershipProperty`, which
- * [[Two release options aimed at one property go unreported]] calls the worst pairing of
- * the lot. The set is now READ OFF the option declaration, so a tenth option is seeded by
- * being declared and this paragraph never has to state a number again.
- *
- * On the shipped defaults nothing changes: the mappings resolve to `parent`, `order` and
- * `type`, none of which any candidate suggests.
+ * On the shipped defaults nothing changes for the three model mappings: they resolve to
+ * `parent`, `order` and `type`, none of which any candidate suggests.
  */
 export async function runReleaseInit(view: ReleaseView): Promise<void> {
-	const taken = new Set(declaredPropertyKeys(view.config).filter((key) => key !== ''));
 	const pending = new Map<string, string>();
-	for (const { option, suggested } of adoptCandidates(view.config, RELEASE_SUGGESTED_KEYS, taken)) {
+	for (const { option, suggested } of adoptableReleaseKeys(view.config, RELEASE_SUGGESTED_KEYS)) {
 		pending.set(option, notePropertyId(suggested));
 	}
 	for (const [option, value] of pending) view.config.set(option, value);

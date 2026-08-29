@@ -1,7 +1,7 @@
 import { BacklogViewHost, DrawnColors } from '../host';
 import { paletteDone, stateColorPaint, StatePalette } from '../../domain/board';
 import { activeAxis, drawsGrid } from '../../domain/roadmap';
-import { ITERATION_TYPE, MILESTONE_TYPE } from '../../domain/typeVocabulary';
+import { ITERATION_TYPE, MILESTONE_TYPE, RELEASE_TYPE } from '../../domain/typeVocabulary';
 import { t } from '../../i18n/t';
 
 /**
@@ -86,6 +86,12 @@ export function renderLegend(
 					: MILESTONE_TYPE;
 		addSwatch(legendEl, 'pbl-legend-milestone', caption);
 	}
+	// The release mark, on the identical rule and reported the identical way: `drawn.release`
+	// is whether a line actually drew, so a base with no release, none dated, or none inside
+	// the window keys nothing. Its caption is the TYPE name from the vocabulary rather than a
+	// catalog key, for the reason the marker caption above states — it is data, matched in
+	// frontmatter and renamed by nobody's locale.
+	if (drawn.release) addSwatch(legendEl, 'pbl-legend-release', RELEASE_TYPE);
 	// The hatch, on the same rule and reported the same way: `drawn.absence` is the render's
 	// own word for "a stretch drew here", so this appears exactly where the mark does — on
 	// the resources axis, and stays lit through a fold, since a collapsed band's header

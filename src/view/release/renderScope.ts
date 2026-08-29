@@ -135,6 +135,7 @@ function drawHeader(view: ReleaseView, scope: ReleaseScope, release: ReleaseRow,
 	backEl.addEventListener('click', () => view.pick(null));
 
 	hlineEl.createEl('h2', { text: release.name });
+	drawOpenNote(view, hlineEl, release);
 	drawFigure(hlineEl, release.version, t('release.index.column.version'), (value) =>
 		hlineEl.createSpan({ cls: 'pbl-rel-version', text: value }),
 	);
@@ -156,6 +157,35 @@ function drawHeader(view: ReleaseView, scope: ReleaseScope, release: ReleaseRow,
 	);
 
 	drawSummary(headerEl, release, scope.members, planSettings);
+}
+
+/**
+ * The way to the release NOTE itself, which is the only place a version, a date or a
+ * status is edited: this view reads those three and writes none of them
+ * (`test/view/releaseNeverEdits.test.ts`), so without this control the reader's only
+ * route to the note was the index behind them, and from the index there was none at all.
+ *
+ * `view.opener.open` — the CONFIGURED target, and the same call a scope row's own click
+ * makes (`scopeTree.ts`), so the release note lands where this view's `openIn` says every
+ * other note lands and a modifier still outranks it. Never `openIn(…, 'tab')`: that is the
+ * target a reader NAMES (a middle click, a menu pick), and naming one on their behalf is
+ * what {@link OpenController}'s own two entry points exist to keep apart.
+ *
+ * Beside the title rather than in the toolbar below it: the toolbar's three controls are
+ * about the TREE (fold it, fold it back, hide what is finished), and this one is about the
+ * release the title names. It is drawn on every scope screen — including the two empty
+ * states, since both sit below this header — because a release with no readable membership
+ * and a release with no members are exactly the two cases where opening the note is what
+ * the reader came to do.
+ */
+function drawOpenNote(view: ReleaseView, hlineEl: HTMLElement, release: ReleaseRow): void {
+	const openEl = hlineEl.createEl('button', {
+		cls: 'clickable-icon pbl-rel-open',
+		attr: { type: 'button', 'aria-label': t('release.scope.openNote') },
+	});
+	setIcon(openEl, 'file-text');
+	setTooltip(openEl, t('release.scope.openNote'));
+	openEl.addEventListener('click', (evt) => view.opener.open(view.openContext(), release.item, evt));
 }
 
 /**

@@ -26,6 +26,9 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ### Fixed
 
+- A finished item in a release's scope now reads as finished: its state chip carries the done
+  colour and the check the backlog tree's own chip has, instead of `Done` and `Doing` in one
+  ink while the summary above counted one of them as complete.
 - An assignee chip whose value names no resource now says so to a screen reader, not only
   in the tooltip and the styling: its accessible name reads `Change assignee (currently
   Sarah, which names no resource in this base)`.
@@ -38,6 +41,29 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 - The `Resources (in order)` view option. The roster is the notes the base returns.
 
 ### Added
+
+- **Releases now draw on the roadmap.** A `Release` note with a target date draws a line
+  down the dated grid at that date, its name in the header band and a swatch in the legend —
+  purple and dashed, so it is never read as a milestone's cyan line. It draws on the
+  resources axis as well as the plain timeline, since the line crosses the rows either way,
+  and the window widens to hold a release dated past everything else on the grid. The date is
+  read through the roadmap's own new **Release date property** option, which ships pointing at
+  `target-date` — the key the release view suggests for the same date — so a vault gets the
+  markers without setting anything; clear it and no markers are drawn. Nothing is written by
+  any of it, and a release is still not a row: it is not ranked, not counted, not a drop
+  target, and the shelf and the placed count are unchanged.
+- **The release view's ✨ now binds everything that vault's release view can use**, not the
+  four properties it bound before. The item **state** property joins it, which is what
+  switches on every progress figure this view has — the index bands, the scope rollups and the
+  hide-done toggle were all left unconfigured by a press that reported success — and so does
+  the **released date**. The state and the release's own status may now both point at
+  `status`, which is what the folder layout this plugin creates actually looks like: they are
+  read on different notes, and the two are the one pair the setup action is allowed to give
+  one property to.
+
+- **A release's own screen opens the release note.** One control in the header, beside the
+  title, on every scope screen including the empty ones — the note is where a version, a
+  target date and a status are edited, and this view reads all three and writes none of them.
 
 - **The release list shows how far along each release is, and how far each one landed from
   its target.** Two new options on the release view turn them on. Bind **the property that

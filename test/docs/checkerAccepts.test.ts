@@ -87,6 +87,26 @@ describe('the gate accepts valid documents', () => {
 		await expectAccepted(files);
 	});
 
+	it('accepts a Release and a Resource, which are notes the plugin writes and not work items', async () => {
+		// Both arrived in this register on 2026-08-29 and every backlog rule refuses one: a
+		// release is seeded no parent, no order and no placement (`createRelease`), its
+		// `status` is its own vocabulary rather than Open/Active/Done/Dropped, and a
+		// `Resource` is a person — a note `readItems.ts` recognises in order to refuse it as
+		// an item at all. The `Absence` exemption is the precedent and the reason: the gate
+		// must not assert a schema the plugin does not write.
+		//
+		// Written with the frontmatter the plugin actually produces rather than through
+		// `note()`, which would supply the very `order`, `parent` and `status` this case is
+		// about not needing. Watched failing against the pre-fix checker, which reported four
+		// problems across the two files.
+		const files = baseRegister();
+		files['docs/releases/Feisty Reindeer.md'] =
+			'---\ntype: Release\nversion: 1.1.0\ntarget-date: 2026-11-01\nstatus: New\n---\n\n# Feisty Reindeer\n\nA release.\n';
+		files['docs/resources/Elli.md'] = '---\ntype: Resource\n---\n\n# Elli\n\nA person.\n';
+
+		await expectAccepted(files);
+	});
+
 	it('accepts an angle-bracket link destination, which is how a space is written', async () => {
 		// The defect this whole file exists for. `<…>` is CommonMark's destination form;
 		// the register happens to percent-encode everywhere, so it never met the bug.

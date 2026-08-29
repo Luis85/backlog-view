@@ -187,9 +187,36 @@ function releaseGroup(): BasesAllOptions {
 }
 
 /**
- * Every frontmatter key the DECLARED property options above currently resolve to — read
- * off the declaration, so an option added to either group joins this set without anybody
- * remembering to add it.
+ * The options that may legitimately name ONE property, so a key held by any of them does
+ * not stop {@link declaredPropertyKeys}' own reader handing it to another of them.
+ *
+ * `configProblems` (`domain/settingsConsistency.ts`) already carries exactly this
+ * exemption for the backlog view's own collision report — "skips the workflow-state roles
+ * that may legitimately share a key" — and this is that same ruling for this view's
+ * options, one of which is not a workflow state at all. The RELEASE's own status and an
+ * ITEM's workflow state are read of different notes by different readers (`releaseIndex`
+ * opens a release note, `buildModel` reads every row's state), and the vault this plugin
+ * creates spells both `status`: `docs/releases/*` carry one and every PBI under them
+ * carries the other.
+ *
+ * That is not a matter of taste for ✨. Seeding one flat "already taken" set from every
+ * declared option made the ordinary vault unreachable — whichever of the two was offered
+ * first took `status` and the other was left unbound — and for `stateProperty` unbound
+ * means `ReleaseRow.done` is unconfigured for every release: no band shows progress, no
+ * scope row shows a rollup, the hide-done toggle is withheld and the summary strip says so
+ * instead of measuring. Half this view, missing after a press that reported success.
+ *
+ * Every OTHER pairing stays refused, `typeProperty` included: an option outside this list
+ * holding `status` still blocks both of the two, which is the corruption PR #203 found (a
+ * release created with a status and no type) kept rather than traded away.
+ */
+export const SHARED_STATUS_OPTIONS = ['stateProperty', 'deliverableStateProperty', 'releaseStatusProperty'];
+
+/**
+ * Every frontmatter key the DECLARED property options currently resolve to — read off the
+ * declaration, so an option added to either group joins this set without anybody
+ * remembering to add it. `options` narrows it to the option ids named, which is how
+ * {@link SHARED_STATUS_OPTIONS}' own exemption is subtracted from the whole.
  *
  * It exists for `runReleaseInit`'s "never hand out a key another of this view's options
  * already names", and it is derived rather than listed because a LIST is what that rule
@@ -205,11 +232,12 @@ function releaseGroup(): BasesAllOptions {
  * real default and take it when nobody has touched them, and every other property option
  * defaults to nothing, where `clearablePropKey` and `propKey` answer identically.
  */
-export function declaredPropertyKeys(config: BasesViewConfig): string[] {
+export function declaredPropertyKeys(config: BasesViewConfig, options?: string[]): string[] {
 	const { clearablePropKey } = configReaders(config);
 	return getReleaseViewOptions(config)
 		.flatMap((entry) => (entry.type === 'group' ? entry.items : [entry]))
 		.filter((option): option is BasesPropertyOption => option.type === 'property')
+		.filter((option) => options === undefined || options.includes(option.key))
 		.map((option) => clearablePropKey(option.key, (option.default ?? '').replace(/^note\./, '')));
 }
 

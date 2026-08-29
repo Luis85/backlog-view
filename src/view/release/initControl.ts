@@ -1,10 +1,8 @@
 import { Notice, setIcon, setTooltip } from 'obsidian';
 import type { ReleaseView } from './releaseView';
 import { t } from '../../i18n/t';
-import { adoptCandidates } from '../../domain/optionalProperties';
-import { declaredPropertyKeys } from '../../domain/releaseOptions';
 import { bindAndReport } from './newRelease';
-import { RELEASE_SUGGESTED_KEYS } from './init';
+import { adoptableReleaseKeys, RELEASE_SUGGESTED_KEYS } from './init';
 
 /**
  * The release view's ✨, in two positions that answer the same question differently.
@@ -67,14 +65,13 @@ export function renderReleaseInit(
 
 /**
  * Whether a press could bind something `fixes` names — asked of the LIVE config through
- * the same `adoptCandidates` the action itself uses, never of `view.settings`, which is a
- * snapshot from the last data update (the trap `init.ts` already documents), and narrowed
- * to `fixes` BEFORE asking, not after: `adoptCandidates` mutates its `taken` set as it
- * finds each candidate free, and this view's action still binds every one of the four
+ * the same {@link adoptableReleaseKeys} the action itself uses, never of `view.settings`,
+ * which is a snapshot from the last data update (the trap `init.ts` already documents),
+ * and narrowed to `fixes` BEFORE asking, not after: the sweep behind it mutates a `taken`
+ * set as it finds each candidate free, and this view's action still binds every candidate
  * when pressed — only the frame's OFFER is narrower than what the press behind it does.
  */
 function anythingToBind(view: ReleaseView, fixes: string[]): boolean {
-	const taken = new Set(declaredPropertyKeys(view.config).filter((key) => key !== ''));
 	const candidates = RELEASE_SUGGESTED_KEYS.filter((candidate) => fixes.includes(candidate.option));
-	return adoptCandidates(view.config, candidates, taken).length > 0;
+	return adoptableReleaseKeys(view.config, candidates).length > 0;
 }

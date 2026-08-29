@@ -111,8 +111,12 @@ export const SETUP: ManualSection = {
 			text:
 				'The property that records which release an item ships in. The view reads it as ' +
 				'a link, never a name, so two releases sharing a basename still resolve to the one ' +
-				'that was picked.',
-			keys: ['releaseProperty'],
+				'that was picked. Release date property is the other half and points the other ' +
+				'way: it is read on the Release note itself, and the roadmap draws a marker down ' +
+				'the dated grid at that date, named in the legend beside the milestones. It is ' +
+				'read and never written — a release\'s own dates are edited on the note, or in ' +
+				'the Release view that made it — and clearing it draws no markers at all.',
+			keys: ['releaseProperty', 'releaseDateProperty'],
 		},
 		{
 			term: 'Placing work on the roadmap',
