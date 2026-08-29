@@ -176,20 +176,33 @@ than `.pbl-modal-error`'s `role="alert"` — nothing here is refused, so an assi
 technology user must be told without being interrupted on every keystroke — kept in the
 DOM and empty rather than created on demand — `.pbl-modal-error`'s own reason: a dialog
 must not resize under the pointer as the match is typed. The wording it carries
-(`resource.duplicateWarning`) claims only what `known` can answer — the roadmap's roster —
-never that a `Resource` note exists, since [[Rows from the Resource notes]] has not
-shipped and this dialog cannot see one.
+(`resource.duplicateWarning`) claimed only what `known` could answer — the roadmap's
+roster, and never that a `Resource` note exists — because [[Rows from the Resource notes]]
+had not shipped and this dialog could not see one. **That claim widened under it on
+2026-08-29** without the wording being asked to: `known` is now `host.model.resources`
+(below), which IS the base's `Resource` notes rather than a merge of a declared list and
+observed names, so the warning could now say a note exists and does not — it still reads
+as a softer claim than the fact underneath it, which costs nothing since a duplicate is a
+duplicate either way.
 
 `src/view/interactions/resourceNotes.ts` is the view's half: `promptNewResource` runs the
 `configProblems` gate before the form opens and again at submit — the write can be refused
 between the two, since Obsidian's options pane stays reachable while the modal is up —
 resolves the folder ladder (`resourceFolder` else `homeFolder`) at submit rather than at
-open for the same reason, and opens `ValuePromptModal` Name-only, passing the same
-three-source roster `assigneeChoices` computes (`interactions/labels.ts`) — the drawn
-lanes, the declared `resourceNames` and every observed assignee, merged case-insensitively
-through `mergedValues` (`domain/settings.ts`) — as `known` so 3a warns against what a
-reader would actually recognise. `promptNewResource` takes no lane and no item: the
-control that opens it is the resources axis's own, not a per-row action.
+open for the same reason, and opens `ValuePromptModal` Name-only. **It gained a second
+creation surface on 2026-08-28** ([[Linking an item to a resource]], Task 4):
+`promptNewResource(host, then?)` takes an optional callback, called with the created file
+after the creation notice and never on a failed creation, which is what lets the assignee
+menu's `New resource...` reuse the identical form and folder resolution rather than a copy
+of them, then assign the new note in the same gesture. The toolbar's **New resource**
+button (below) is the original surface and calls it with no `then`. `known` is no longer
+the three-source merge this note originally described — `assigneeChoices`'s declared
+`resourceNames` and observed-name union is gone with the option
+([[Rows from the Resource notes]]) — it is `host.model.resources.map(r => r.title)`, the
+actual roster of `Resource` notes the base returned, so 3a now warns against exactly what
+the base can name rather than against a guess assembled from three places. `promptNewResource`
+still takes no lane and no item of its own; the caller decides what happens with the file it
+hands back.
 
 `src/view/render/toolbarControls.ts`'s `renderNewResourceButton` draws **New resource** in
 `renderProjectionZone`'s roadmap case, gated on `activeAxis(...) === 'resources'` the way

@@ -244,8 +244,8 @@ export class ViewStateController {
 		this.hooks.renderTreeContent();
 	}
 
-	isLaneCollapsed(name: string): boolean {
-		return this.state.isLaneCollapsed(name);
+	isLaneCollapsed(identity: string): boolean {
+		return this.state.isLaneCollapsed(identity);
 	}
 
 	/**
@@ -253,8 +253,8 @@ export class ViewStateController {
 	 * the gridlines and every full-height mark are derived from the row set it changes —
 	 * the same reason a bar row's own chevron redraws the projection.
 	 */
-	setLaneCollapsed(name: string, collapsed: boolean): void {
-		if (this.state.setLaneCollapsed(name, collapsed)) this.hooks.renderTreeContent();
+	setLaneCollapsed(identity: string, collapsed: boolean): void {
+		if (this.state.setLaneCollapsed(identity, collapsed)) this.hooks.renderTreeContent();
 	}
 
 	columnCollapsed(scope: ColumnScope, value: string | null, autoCollapse: boolean): boolean {

@@ -97,11 +97,13 @@ export interface ItemWrite {
 	 */
 	priority?: string | null;
 	/**
-	 * Who the item is assigned to, or **null to remove the key** — the risk field's rule,
-	 * for the same reason: nobody assigned is a fact about the item, and a blank name
-	 * would read as someone called nothing.
+	 * Who the item is assigned to — a FILE, never a serialized string, and **null to
+	 * remove the key**. The writer spells the link itself, path-aware like the parent's,
+	 * the iteration's and the release's (`wikilinkTo`), because a link built from a
+	 * basename here would resolve to whichever of two same-named `Resource` notes
+	 * Obsidian picks. `undefined` leaves the key alone.
 	 */
-	assignee?: string | null;
+	assignee?: TFile | null;
 	/**
 	 * Optional properties to CREATE, empty, where the note does not carry them — the
 	 * backfill's whole vocabulary for "this feature needs a property and the note has
@@ -124,9 +126,10 @@ export interface ItemWrite {
 	iteration?: TFile | null;
 	/**
 	 * What an iteration is FOR, in one line, or **null to remove the key**. A plain
-	 * string on the Iteration note — `risk`'s and `assignee`'s rule exactly, so it is
-	 * written through the same label list in `storage/frontmatter.ts` rather than a
-	 * function of its own. `undefined` leaves the key alone.
+	 * string on the Iteration note — `risk`'s rule exactly, so it is written through the
+	 * same label list in `storage/frontmatter.ts` rather than a function of its own. The
+	 * assignee shared that list too until 2026-08-28, when it became a link and joined
+	 * `iteration`/`release` in `applyLinks` instead. `undefined` leaves the key alone.
 	 */
 	iterationGoal?: string | null;
 	/**
@@ -375,16 +378,20 @@ export function computePriorityWrites(item: BacklogItem, value: string | null): 
 }
 
 /**
- * The write an assignee pick means — `computeRiskWrites`' two rules, over the one field
- * whose vocabulary is observed rather than declared. That difference is entirely upstream:
- * what a menu may OFFER is a question about the base's results, while what a pick WRITES
- * is a question about this note, and the second one does not change because the first
- * has no configured list behind it.
+ * The write an assignee pick means — `computeIterationWrites`' two rules over the one
+ * link property that is a PERSON. Compared by PATH, never by the raw text: two spellings
+ * of one note are one resource, and a link that resolved to nothing has no path and is
+ * therefore never "already there" for any target.
+ *
+ * A removal is asked of PRESENCE (`ownKeys`), never of the parsed entry, for
+ * `computeIterationWrites`' stated reason: a hand-edited `assignee: ''` reads as no entry
+ * while the key still visibly holds something, and asking the entry would tick Clear on a
+ * note the reader can see is not empty.
  */
-export function computeAssigneeWrites(item: BacklogItem, value: string | null): ItemWrite[] {
-	if (value === null) return item.ownKeys.assignee ? [{ file: item.file, assignee: null }] : [];
-	if (sameValue(item.assigneeValue, value)) return [];
-	return [{ file: item.file, assignee: value }];
+export function computeAssigneeWrites(item: BacklogItem, target: TFile | null): ItemWrite[] {
+	if (target === null) return item.ownKeys.assignee ? [{ file: item.file, assignee: null }] : [];
+	if (item.assigneeEntry?.file?.path === target.path) return [];
+	return [{ file: item.file, assignee: target }];
 }
 
 /**
@@ -603,10 +610,10 @@ function timeframeOf(item: BacklogItem, target: BacklogItem): AxisWrite | undefi
  */
 export function computeResourceMoveWrites(
 	item: BacklogItem,
-	name: string | null,
+	target: TFile | null,
 	schedule: ScheduleGesture | null,
 ): ItemWrite[] {
-	const who = computeAssigneeWrites(item, name);
+	const who = computeAssigneeWrites(item, target);
 	const when = schedule ? computeScheduleWrites(item, schedule.plan, schedule.ends, schedule.from) : [];
 	if (who.length === 0 && when.length === 0) return [];
 	// Spread rather than assigned field by field: each planner owns which of its own

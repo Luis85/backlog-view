@@ -14,12 +14,22 @@ import { FakeVault } from './vault';
 
 /**
  * A team's worth of dated work, holding one of every case the axis has to answer for: two
- * items for one declared resource (the second spelling her name in another casing), one
- * for a resource nobody declared, one nobody is on at all, and one assigned but never
- * dated.
+ * items on one resource, one on a resource with no date to place it at, one assigned to
+ * nobody, and one nobody is assigned to at all.
+ *
+ * `Alice.md`, `Bob.md` and `Zoe.md` are `Resource` notes — every row is one now (Task 5),
+ * so every row a write in this fixture aims at needs a note behind it. `Cased.md`'s
+ * `assignee: alice` is the commonest pre-migration shape — a bare name, differently
+ * cased from the note it names — and it resolves to `Alice.md` because `FakeVault`'s
+ * `getFirstLinkpathDest` case-folds exactly as Obsidian's does; `resourceRoster.test.ts`
+ * covers the same shape at the domain level, where a bare name that resolves keeps its
+ * assignment (`docs/issues/No migration off the string assignees.md`).
  */
 export function resourceVault(): FakeVault {
 	const vault = new FakeVault();
+	vault.addFile('Alice.md', { frontmatter: { type: 'Resource' } });
+	vault.addFile('Bob.md', { frontmatter: { type: 'Resource' } });
+	vault.addFile('Zoe.md', { frontmatter: { type: 'Resource' } });
 	vault.addFile('Alice dated.md', {
 		frontmatter: { type: 'Epic', order: 10, assignee: 'Alice', start: '2026-08-01', due: '2026-08-10' },
 	});
@@ -35,14 +45,20 @@ export function resourceVault(): FakeVault {
 }
 
 /**
- * One resource with one dated bar, plus whichever stretches the caller wants counted.
+ * Two resources — one with one dated bar, one with nothing at all — plus whichever
+ * stretches the caller wants counted.
  *
  * Here rather than in a suite for this file's own stated reason: `resourceLanes.test.ts`
  * counts absences against it and `milestonesRow.test.ts` draws diamonds over it, and two
  * copies of one vault are two vaults free to drift while both claim to describe the axis.
+ * `Bob.md` is a `Resource` note with no work at all — every caller that reads a SECOND,
+ * empty row off this vault (the readout tests' own "quiet row") needs one behind it now
+ * that a row is a note (Task 5) rather than a name a work item happened to carry.
  */
 export function countingVault(stretches: Array<{ title: string; start: string; target: string }> = []): FakeVault {
 	const vault = new FakeVault();
+	vault.addFile('Alice.md', { frontmatter: { type: 'Resource' } });
+	vault.addFile('Bob.md', { frontmatter: { type: 'Resource' } });
 	vault.addFile('Work.md', {
 		frontmatter: { type: 'Epic', order: 10, assignee: 'Alice', start: '2026-08-01', due: '2026-08-10' },
 	});
@@ -55,7 +71,7 @@ export function countingVault(stretches: Array<{ title: string; start: string; t
 }
 
 /** The one absence in `absenceVault`, at the path the create path would actually file it under. */
-export const ALICE_AWAY = absenceTitle({ resource: 'Alice', start: '2026-08-04', target: '2026-08-06' });
+export const ALICE_AWAY = absenceTitle({ start: '2026-08-04', target: '2026-08-06' }, 'Alice');
 export const ALICE_AWAY_PATH = `${ALICE_AWAY}.md`;
 
 /**
@@ -74,9 +90,15 @@ export const ALICE_AWAY_PATH = `${ALICE_AWAY}.md`;
  * The HAND-named case still has fixtures of its own — `test/view/absenceCollision.test.ts`
  * and `test/view/legend.test.ts` plant their own `Alice away.md`, and `demoVault()` uses
  * prose — which is what keeps both branches of `absenceSaid` on screen.
+ *
+ * `Alice.md` and `Bob.md` are `Resource` notes: a row is one now (Task 5), so the stretch
+ * below needs one behind it to draw in at all, and the absence-editing flows this vault
+ * also serves need a SECOND row to open their form from without touching Alice's own.
  */
 export function absenceVault(): FakeVault {
 	const vault = new FakeVault();
+	vault.addFile('Alice.md', { frontmatter: { type: 'Resource' } });
+	vault.addFile('Bob.md', { frontmatter: { type: 'Resource' } });
 	vault.addFile('Work.md', {
 		frontmatter: { type: 'Epic', order: 10, assignee: 'Alice', start: '2026-08-01', due: '2026-08-10' },
 	});

@@ -121,17 +121,6 @@ export interface BacklogSettings extends ItemHandling {
 	 */
 	horizonValues: string[];
 	/**
-	 * Declared resource names, in roadmap row order. Ships EMPTY, unlike
-	 * `horizonValues`: nobody declares who exists, so the resources axis is configured
-	 * by its assignee property and a date property alone, and this list only ever adds
-	 * rows nothing has landed in yet. It never NARROWS what Set assignee offers — an
-	 * observed name is a fact and no roster overrules it — but it does lead that menu's
-	 * list wherever it opens, which it did not until 2026-08-14: naming a team here and
-	 * being offered them on one projection only reads as the setting not working. Not
-	 * `clearable`, because absence is the shipped state rather than a cleared default.
-	 */
-	resourceNames: string[];
-	/**
 	 * Frontmatter key holding the prerequisites this note waits for, or '' when the
 	 * feature is unconfigured. A LIST key, unlike every other optional property here,
 	 * which is why the read and the write both have their own shape.
@@ -173,12 +162,11 @@ export interface BacklogSettings extends ItemHandling {
 	priorityValues: string[];
 	/**
 	 * Frontmatter key holding who the item is assigned to, or '' when no assignee
-	 * property is named. Its companion list is OPTIONAL where risk's and the horizon's
-	 * are required — `resourceNames`, which the resources axis declares rows from and
-	 * `assigneeChoices` offers wherever the row menu opens, joined to the names the
-	 * RESULTS carry (`observedAssignees`) and to whatever the user types. So a named key
-	 * alone is still enough to draw the chip and fill its menu, and a roster is a
-	 * recommendation on top rather than the vocabulary.
+	 * property is named — a LINK to a `Resource` note (Task 4, 2026-08-28), not a typed
+	 * string. A named key alone is enough to draw the chip, fill its menu with the
+	 * `Resource` notes the base returned (Task 4), and populate the resources axis with
+	 * one row per such note, in the model's own order (Task 5, 2026-08-28) — there is no
+	 * declared roster beside it (Task 7, 2026-08-29, removed it).
 	 */
 	assigneeKey: string;
 	/**
@@ -357,7 +345,6 @@ export function defaultSettings(): BacklogSettings {
 		showCompleted: true,
 		horizonKey: '',
 		horizonValues: [...DEFAULT_HORIZON_VALUES],
-		resourceNames: [],
 		dependsOnKey: '',
 		startKey: '',
 		targetKey: '',
@@ -461,13 +448,13 @@ export function horizonMenuValues(settings: BacklogSettings, observedHorizons: s
  * spelling of a name winning and matches made case-insensitively — `sameValue`'s rule
  * applied to a list rather than to a pair.
  *
- * Two menus ask it and they ask it of different sources, which is why it takes lists
- * rather than a settings object: the horizon's is declared then observed, the assignee's
- * is drawn then declared then observed. What they share is that a declared value is a
- * recommendation and an observed one is a fact, and neither may hide the other or turn up
- * twice in two casings.
+ * `horizonMenuValues` is its one caller now: the assignee's own union — drawn rows, the
+ * declared roster, observed assignees — was deleted on 2026-08-28 (Task 4), once a
+ * resource became a note rather than a name gathered off three sources. A declared value
+ * is a recommendation and an observed one is a fact, and neither may hide the other or
+ * turn up twice in two casings.
  */
-export function mergedValues(...lists: readonly string[][]): string[] {
+function mergedValues(...lists: readonly string[][]): string[] {
 	const seen = new Set<string>();
 	const merged: string[] = [];
 	for (const list of lists) {

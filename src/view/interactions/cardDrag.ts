@@ -134,7 +134,7 @@ export function announceResourceMove(
 	roadmap: RoadmapModel | null | undefined,
 	title: string,
 	from: ResourceSource,
-	to: string | null,
+	to: TFile | null,
 	landed?: { change: DateChange; placement: Placement | null; ends: PlacementEnd[] },
 ): void {
 	if (!roadmap) return;

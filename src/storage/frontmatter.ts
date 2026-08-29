@@ -159,6 +159,7 @@ export async function applyWrites(
 			if (
 				refusesLiveType(settings, write, liveType) ||
 				refusesLiveMembership(app, write.release, settings) ||
+				refusesLiveAssignee(app, write.assignee, settings) ||
 				refusesAxis(fm, settings, write, ends)
 			) {
 				refused = true;
@@ -233,8 +234,7 @@ function applyInto(
 	// question, and the boundary rule believes the wrong one.
 	const leaving = settings.stateKey ? readString(ownValue(fm, settings.stateKey)) : null;
 	applyHierarchy(app, fm, settings, write);
-	applyIteration(app, fm, settings, write);
-	applyRelease(app, fm, settings, write);
+	applyLinks(app, fm, settings, write);
 	// The stateKey may be unset (progress tracking off) — never write to an empty key.
 	if (write.removeStateKey && settings.stateKey) delete fm[settings.stateKey];
 	else if (write.state !== undefined && settings.stateKey) setOwn(fm, settings.stateKey, write.state);
@@ -282,26 +282,30 @@ function applyHierarchy(app: App, fm: Record<string, unknown>, settings: Backlog
 }
 
 /**
- * The iteration link — path-aware like the parent's, and for the parent's reason: a link
- * serialized from a basename would resolve to whichever of two same-named notes Obsidian
- * picks, so this spells it from the editing note's own path with `wikilinkTo`, exactly as
- * `applyHierarchy` does for the parent. Never a key no property names; `null` removes it.
+ * The LINK properties: the iteration, the release, the assignee. Each is one note written
+ * as a wikilink spelt from the editing note's own path, an unconfigured key dropped, and
+ * null deleting the key rather than blanking it.
+ *
+ * `applyLabels`' shape one field-kind over, and extracted for `applyLabels`' own reason:
+ * these were two copies of one rule, so a third property wanting it is a row in this list
+ * rather than a third restatement — the assignee is exactly that third row, joining on
+ * 2026-08-28 once who an item is assigned to became a link to a `Resource` note rather
+ * than a typed string. The plain LABEL properties stay in `applyLabels` because a label is
+ * a string the reader picked and a link is a note — `wikilinkTo` is exactly the
+ * difference, and a helper general enough to cover both would carry the link spelling past
+ * the properties that must not have it.
  */
-function applyIteration(app: App, fm: Record<string, unknown>, settings: BacklogSettings, write: ItemWrite): void {
-	if (write.iteration === undefined || !settings.iterationKey) return;
-	if (write.iteration === null) delete fm[settings.iterationKey];
-	else setOwn(fm, settings.iterationKey, wikilinkTo(app, write.iteration, write.file.path));
-}
-
-/**
- * The release link — the iteration link's own rule ({@link applyIteration}), one property
- * later: path-aware `wikilinkTo` from the editing note's own path, never a key no property
- * names, and `null` removes it rather than blanking it.
- */
-function applyRelease(app: App, fm: Record<string, unknown>, settings: BacklogSettings, write: ItemWrite): void {
-	if (write.release === undefined || !settings.releaseKey) return;
-	if (write.release === null) delete fm[settings.releaseKey];
-	else setOwn(fm, settings.releaseKey, wikilinkTo(app, write.release, write.file.path));
+function applyLinks(app: App, fm: Record<string, unknown>, settings: BacklogSettings, write: ItemWrite): void {
+	const links: [TFile | null | undefined, string][] = [
+		[write.iteration, settings.iterationKey],
+		[write.release, settings.releaseKey],
+		[write.assignee, settings.assigneeKey],
+	];
+	for (const [target, key] of links) {
+		if (target === undefined || !key) continue;
+		if (target === null) delete fm[key];
+		else setOwn(fm, key, wikilinkTo(app, target, write.file.path));
+	}
 }
 
 /**
@@ -356,25 +360,25 @@ function applyAxis(fm: Record<string, unknown>, settings: BacklogSettings, write
 }
 
 /**
- * The plain LABEL properties — the risk level, who the item is assigned to, and what an
- * iteration is FOR — under this module's two standing rules: never a key no property
- * names, and a null REMOVES rather than blanks, because a note nobody has judged, a note
- * nobody is on and an iteration nobody has stated a goal for carry no such key at all.
+ * The plain LABEL properties — the risk level, the priority, and what an iteration is FOR
+ * — under this module's two standing rules: never a key no property names, and a null
+ * REMOVES rather than blanks, because a note nobody has judged and an iteration nobody
+ * has stated a goal for carry no such key at all.
  *
  * One loop rather than a statement per property, which is the trade-off the root
  * `CLAUDE.md` said to re-examine at the fourth optional property and this is it: a label
  * needs none of the axis's civil-date equality or datetime merge, so the second one that
  * wants exactly these two lines is where a shared statement starts costing less than
  * another copy of them. The state key still guards inline and the axis keys still go
- * through `axisEntries` — this covers what is genuinely the same, and a fifth label
- * property (the iteration's goal, here) is a row in the list rather than a fifth
- * restatement.
+ * through `axisEntries` — this covers what is genuinely the same. The assignee LEFT this
+ * list on 2026-08-28: it became a link to a `Resource` note rather than a typed string, so
+ * it moved to `applyLinks`, which spells a note as a wikilink the way the iteration and the
+ * release already do — a label is a string the reader picked, and a link is a note.
  */
 function applyLabels(fm: Record<string, unknown>, settings: BacklogSettings, write: ItemWrite): void {
 	const labels: [string | null | undefined, string][] = [
 		[write.risk, settings.riskKey],
 		[write.priority, settings.priorityKey],
-		[write.assignee, settings.assigneeKey],
 		[write.iterationGoal, settings.iterationGoalKey],
 	];
 	for (const [value, key] of labels) {
@@ -566,6 +570,47 @@ function refusesLiveType(settings: BacklogSettings, write: ItemWrite, liveType: 
 		['release', write.release],
 	];
 	return carried.some(([field, value]) => stated(value) && !mayHoldField(liveType, field, settings));
+}
+
+/**
+ * Whether an assignee write names a TARGET the vault no longer calls a `Resource` — the
+ * inverse question from {@link refusesLiveType} rather than a restatement of it: that one
+ * refuses a write TO a note that is a `Resource`; this refuses a write NAMING a note that
+ * is no longer one. Neither substitutes for the other, and a plan can fail either
+ * independently — the carrier retyped INTO a resource, or the target retyped OUT of one.
+ *
+ * Same shape and the same placement as {@link refusesLiveMembership} (`domain/releases.ts`),
+ * called beside it at this boundary for the same reason: a plan carries the `TFile` its
+ * picker was built from, and nothing between the pick and this write asks what that note
+ * is now. Retype a `Resource` between the menu rendering and the write landing and the
+ * link lands naming an ordinary note — which then reads as broken (`resourceLabelsOf`
+ * cannot find it in the roster) and the card shelves. A REMOVAL asks nothing: `null` is
+ * how the key comes off, and there is no target to be wrong about.
+ *
+ * **No cache is NO ANSWER, and must not be read as the wrong one.** Obsidian fills the
+ * metadata cache after `vault.create` resolves, so a note this plugin has only just
+ * written has no cache entry for a window of its own — and `New resource...` runs exactly
+ * there: `writeResource` (`view/interactions/resourceNotes.ts`) hands the fresh `TFile`
+ * straight to `chooseAssignee`. Fold that window into `!isResourceType(null)` and the one
+ * flow this check was never about — create a resource and assign it — creates the note and
+ * then refuses to link it. So the question is only ever asked of a cache that EXISTS: a
+ * note retyped away still has one (a type REMOVED leaves the entry, with no `type` key in
+ * it), which is the case this guard is for. `FakeVault.create` indexes synchronously, so
+ * nothing in the suite meets this window by accident — `unindex` is how a test asks for
+ * it (Codex review, PR #207).
+ *
+ * **A DELETED target has no cache either, and must not ride in on that.** The two are one
+ * state to `getFileCache` and two states to the vault, so the vault is what separates
+ * them — identity rather than existence, the same test `applyRestores` makes below: a path
+ * deleted and taken again by a different note answers "still there" to a bare null check
+ * while being a different file. A link to a note that is gone resolves to nothing, which
+ * is the one value this whole flow must not write (Codex review, PR #207, second round).
+ */
+function refusesLiveAssignee(app: App, target: TFile | null | undefined, settings: BacklogSettings): boolean {
+	if (!target) return false;
+	const cache = app.metadataCache.getFileCache(target);
+	if (cache === null) return app.vault.getAbstractFileByPath(target.path) !== target;
+	return !isResourceType(readString(ownValue(cache.frontmatter, settings.typeKey)));
 }
 
 /**

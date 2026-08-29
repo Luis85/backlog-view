@@ -122,18 +122,20 @@ can be checked by reading one directory.
   The rule is name-shaped by ruling (only a `Release` is asked) and widening it is an edit
   to that one function — see `docs/issues/Creation seeds a placement the type may not
   hold.md`.
-- The LABEL properties (`ItemWrite.risk`, `ItemWrite.priority`, `ItemWrite.assignee`) are
-  those same two rules a
+- The LABEL properties (`ItemWrite.risk`, `ItemWrite.priority`, `ItemWrite.iterationGoal`)
+  are those same two rules a
   third time, in `applyLabels`, and they share the axis's writer with none of them: a label
   is a value the user picked or typed, so it takes the horizon's plain `setOwn` rather than
   the dated ends' civil-date equality and datetime merge. One loop over a list pairing each
   planned value with its configured key, because they want the identical two lines —
   `applyRisk` alone was the third restatement of the rule, and the assignee was the fourth
   property, which is where the root guide said copying stops paying. The priority is the
-  proof it stopped: a third label cost one row in that list and nothing else here, and a
-  fourth is another row. Each key joins `touchedKeys` on the very condition the writer writes on,
-  which is what makes a label and its removal undoable — a key written but not captured is
-  a change no undo could reach.
+  proof it stopped: a third label cost one row in that list and nothing else here. The
+  assignee LEFT this list on 2026-08-28 (Task 4): it became a link to a `Resource` note
+  rather than a typed string, so it moved to `applyLinks` beside the iteration and the
+  release, which spell a note as a wikilink the way a label writer must not. Each key joins
+  `touchedKeys` on the very condition the writer writes on, which is what makes a label and
+  its removal undoable — a key written but not captured is a change no undo could reach.
 - Two writes here are not work items — the `.base` file and the generated README — and
   both are in this directory for the same reason: "everything that puts bytes in the vault
   is in `storage/`" is only checkable while it has no exceptions. `readmeFile.ts` is also

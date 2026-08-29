@@ -5,8 +5,13 @@ import { FakeVault } from '../helpers/vault';
 
 const settings = defaultSettings();
 
-/** One epic per ten notes, the rest features under it — a backlog shaped like a real one. */
-function backlog(notes: number): FakeVault {
+/**
+ * One epic per ten notes, the rest features under it — a backlog shaped like a real one
+ * — plus `resources` Resource notes, which never become items and never join a sibling
+ * group: they are the model's second, deliberately superlinear sort (`src/domain/CLAUDE.md`'s
+ * Cost section), so a fixture with none of them cannot exercise it.
+ */
+function backlog(notes: number, resources = 0): FakeVault {
 	const vault = new FakeVault();
 	for (let i = 0; i < notes; i++) {
 		if (i % 10 === 0) vault.addFile(`Epic ${i}.md`, { frontmatter: { type: 'Epic', order: i * 10 } });
@@ -16,16 +21,21 @@ function backlog(notes: number): FakeVault {
 				parentLink: `Epic ${i - (i % 10)}`,
 			});
 	}
+	for (let i = 0; i < resources; i++) vault.addFile(`Resource ${i}.md`, { frontmatter: { type: 'Resource' } });
 	return vault;
 }
 
 /**
  * What one `buildModel` costs, measured by the two things observable from outside it:
- * how often it read the vault, and how many items went through a sort. Both spies go on
- * immediately before the build, so nothing the fixture did on the way in is counted.
+ * how often it read the vault, and how many items (and resources) went through a sort.
+ * Both spies go on immediately before the build, so nothing the fixture did on the way
+ * in is counted.
  */
-function costOf(notes: number): { reads: number; sorted: number; items: number } {
-	const vault = backlog(notes);
+function costOf(
+	notes: number,
+	resources = 0,
+): { reads: number; sorted: number; resourcesSorted: number; items: number } {
+	const vault = backlog(notes, resources);
 	const entries = vault.entries();
 	const reads = vi.spyOn(vault.app.metadataCache, 'getFileCache');
 	const sort = vi.spyOn(Array.prototype, 'sort');
@@ -33,12 +43,18 @@ function costOf(notes: number): { reads: number; sorted: number; items: number }
 	// Both counts are taken BEFORE restoring: `mockRestore` resets the recorded calls
 	// along with the implementation, so reading them afterwards reports zero — which
 	// looked exactly like the property holding.
-	// The vocabulary collectors sort STRINGS; only the sibling groups hold items. An
-	// empty group has no first element to ask and contributes nothing either way.
-	const sorted = sort.mock.contexts
-		.filter((ctx): ctx is object[] => Array.isArray(ctx) && typeof ctx[0] === 'object')
+	// The vocabulary collectors sort STRINGS; only the sibling groups and the resource
+	// roster hold objects. An empty group has no first element to ask and contributes
+	// nothing either way. The two are told apart by `typeName`, a `RawItem`/`LinkedItem`
+	// field no `ResourceNote` carries — `readItems.ts`'s `divertResource` diverts a
+	// resource before it is ever an item, so this is the one shape distinguishing the
+	// build's two comparison sorts from outside it.
+	const groups = sort.mock.contexts.filter((ctx): ctx is object[] => Array.isArray(ctx) && typeof ctx[0] === 'object');
+	const sorted = groups.filter((g) => 'typeName' in g[0]).reduce((total, group) => total + group.length, 0);
+	const resourcesSorted = groups
+		.filter((g) => !('typeName' in g[0]))
 		.reduce((total, group) => total + group.length, 0);
-	const cost = { reads: reads.mock.calls.length, sorted, items: model.items.length };
+	const cost = { reads: reads.mock.calls.length, sorted, resourcesSorted, items: model.items.length };
 	sort.mockRestore();
 	reads.mockRestore();
 	return cost;
@@ -71,5 +87,25 @@ describe('model build cost', () => {
 		// item set once rather than once per level.
 		expect(small.sorted).toBe(small.items);
 		expect(large.sorted).toBe(large.items);
+	});
+
+	/**
+	 * The roster (`buildModel`'s `resources`, sorted in `model.ts` beside `sortSiblingsDeep`)
+	 * is the build's SECOND deliberately superlinear step — `src/domain/CLAUDE.md`'s Cost
+	 * section names it now. The test above cannot see it: `readItems.ts`'s `divertResource`
+	 * diverts a `Resource` note before it is ever an item, so a resource never joins a
+	 * sibling group and never counted toward `sorted` even when one existed in the fixture.
+	 * This pins the roster sort at its own seam instead of restating the item check.
+	 */
+	it('sorts the resource roster exactly once, separately from the items', () => {
+		const cost = costOf(20, 7);
+
+		expect(cost.items).toBe(20);
+		// Sorted exactly once: a second sort (or one moved into a per-item path) would sum
+		// to a multiple of the roster size instead of the roster size itself.
+		expect(cost.resourcesSorted).toBe(7);
+		// The two sorts must not be conflated: an item is never counted as a resource sort
+		// and a resource is never counted as an item sort.
+		expect(cost.sorted).toBe(cost.items);
 	});
 });

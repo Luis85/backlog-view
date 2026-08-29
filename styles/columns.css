@@ -298,6 +298,17 @@ button.pbl-date-chip {
 	border-style: dashed;
 }
 
+/* The assignee's third state: a value the vault carries that names no resource this base
+   can offer — not absent (there is a value to show) and not a valid pick either. No
+   neighbouring rule in this partial marks such a state, so there is no existing colour to
+   follow here; `--text-muted` with the unset chip's own dashed border is the placeholder,
+   and whether it reads as "broken" rather than merely "unset" beside Obsidian's own chrome
+   is a live-vault check, not something this stylesheet can settle alone. */
+.pbl-assignee-chip.pbl-assignee-broken {
+	color: var(--text-muted);
+	border-style: dashed;
+}
+
 /* Six chip classes now appear in each of the five lists above, and the next chip makes it
    seven in each. That is an enumeration, and it is still kept deliberately rather than
    collapsed onto a shared marker class: doing so means adding a class in every chip

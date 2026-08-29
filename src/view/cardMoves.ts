@@ -1,9 +1,10 @@
-import { Notice } from 'obsidian';
+import { Notice, TFile } from 'obsidian';
 import { BacklogItem } from '../domain/model';
 import { placementEnds, PlacementEnd } from '../domain/itemTypes';
 import { Placement, placeItem, plannedEnds } from '../domain/bars';
 import { DropTarget } from '../domain/dropTargets';
 import { horizonSource, resourceSource } from '../domain/roadmap';
+import { resourceLabelsOf } from '../domain/readItems';
 import { t } from '../i18n/t';
 import {
 	computeDeliverableStateWrites,
@@ -22,7 +23,6 @@ import {
 import { todayStamp } from '../domain/noteFields';
 import { WriteOutcome } from '../storage/frontmatter';
 import { BacklogViewHost } from './host';
-import { declareResource } from './interactions/labels';
 import { bucketLabel, bucketOf, bucketRepresentative, IterationBucket } from '../domain/board';
 import {
 	announceBoardMove,
@@ -179,7 +179,7 @@ export class CardMoveController {
 	 * says when. Both halves ride one `ItemWrite` (`computeResourceMoveWrites`), so a
 	 * two-dimensional drag is one batch, one undo and one sentence.
 	 */
-	async performResourceMove(item: BacklogItem, name: string | null, when?: ScheduleGesture): Promise<boolean> {
+	async performResourceMove(item: BacklogItem, target: TFile | null, when?: ScheduleGesture): Promise<boolean> {
 		// Both captures before the batch, for `applyCardMove`'s stated reason: the refresh
 		// that ends this write rebuilds `host.roadmap` before the await resolves, and the
 		// row just vacated may be gone with its last bar.
@@ -195,10 +195,14 @@ export class CardMoveController {
 		// rather than a closure over the item, so what is captured is a string that cannot
 		// go stale behind the write.
 		const stays =
-			name === null
+			target === null
 				? null
-				: shelvedWords(item, name, placeItem(item, plannedEnds(item, when?.plan ?? {}), this.host.settings.iterationBars));
-		const writes = computeResourceMoveWrites(item, name, when ?? null);
+				: shelvedWords(
+						item,
+						resourceLabel(this.host, target),
+						placeItem(item, plannedEnds(item, when?.plan ?? {}), this.host.settings.iterationBars),
+					);
+		const writes = computeResourceMoveWrites(item, target, when ?? null);
 		if (writes.length === 0) {
 			// 1a says nothing: a bar that stayed exactly where the cursor found it already
 			// answers the question. 1e does, because a shelved card that stays shelved does
@@ -214,22 +218,13 @@ export class CardMoveController {
 		const movedRow = writes[0].assignee !== undefined;
 		const outcome = await this.applyMove(item, writes);
 		if (outcome === null || !outcome.changed) return false;
-		// Naming somebody through this view is naming them: the row they land in becomes a
-		// declared one rather than a stray carrying "not one of the declared resources". The
-		// one place every input to this move already lands, so a drag, an Alt+arrow and the
-		// menu cannot disagree about it — see `declareResource`, which no-ops for a removal
-		// and for a name the roster already carries. AFTER the gate, never before: the
-		// roster is written on the same authority as the move, and a refused batch — a
-		// context card, a config problem — must not leave a `.base` amendment behind the
-		// refusal (`test/view/resourceRoster.test.ts` is the test that fails the other way).
-		declareResource(this.host, name);
 		const spoken = placementEnds(item.typeName, this.host.settings.iterationBars);
 		const landed = outcome.dates
 			? { change: outcome.dates, placement: placeItem(item, outcome.dates.after, this.host.settings.iterationBars), ends: spoken }
 			: undefined;
 		// Both halves in one sentence where both moved; the dated axis's own sentence where
 		// only the dates did, since there is no row change to frame it with.
-		if (movedRow) announceResourceMove(lanes, item.title, from, name, landed);
+		if (movedRow) announceResourceMove(lanes, item.title, from, target, landed);
 		else if (landed) announceScheduleMove(item.title, landed.change, landed.placement, spoken);
 		if (stays) new Notice(stays);
 		return true;
@@ -332,6 +327,21 @@ export class CardMoveController {
 		row?.classList.remove('pbl-pending');
 		return applied;
 	}
+}
+
+/**
+ * The name a resource-move notice puts on a target — the collision-aware label the model
+ * already built (`resourceLabels`), falling back to the bare basename for a target the
+ * roster does not carry. Reachable, not a corner Task 5 closed: `New resource…`
+ * (`promptNewResource`, `interactions/resourceNotes.ts`) creates the note and hands its
+ * `TFile` straight to `chooseAssignee` → `performResourceMove` before any data update has
+ * rebuilt `host.model` to include it, so `resourceLabelsOf(...).get(target.path)` misses
+ * on every such pick and this fallback fires. A lookup, not a scan: `namedTargets` runs
+ * ONCE per model to build this map, and a per-call rebuild here is exactly the row-cost
+ * mistake that map exists to avoid.
+ */
+function resourceLabel(host: BacklogViewHost, target: TFile): string {
+	return resourceLabelsOf(host.model).get(target.path) ?? target.basename;
 }
 
 /**

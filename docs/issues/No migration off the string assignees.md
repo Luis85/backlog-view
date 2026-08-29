@@ -25,18 +25,25 @@ assignee: ""
 ## The limitation
 
 [[Linking an item to a resource]] changes what the assignee property holds — from a name to
-a wikilink — and **nothing converts what is already on disk**. A vault that has been using
-[[Assignment]] since 2026-08-10 has notes carrying `assignee: Sarah`, and after that use case
-ships every one of them names nobody:
+a wikilink — but **not every assignment written before this shipped goes stale**. Resolution
+is what decides, not spelling: `assignee: Sarah` still resolves and still keeps its
+association wherever the vault already has a `Sarah.md` that is a `Resource` this base
+returns — a bare name is not a syntax this view refuses, it is a value that resolves like any
+other. Nothing here converts a name into a link on disk, but nothing has to, for that case.
+
+**What is actually lost is narrower**: every assignment naming somebody with **no** `Resource`
+note behind them in this base — a person never given a note, a typo, a name that never
+matched a file. For those, and only those:
 
 - no row on the resources axis, because a row is a `Resource` note the base returned
   ([[Rows from the Resource notes]]);
 - no chip styling, no menu entry, no properties — there is no note to read them off;
 - the item shelves, counted, alongside everything else with no resource.
 
-The text is still on the note and still renders, so nothing is destroyed. What is lost is
-every **association**: who had what. Rebuilding it means making a `Resource` note per person
-and re-picking the resource on each item by hand.
+The text is still on the note and still renders, so nothing is destroyed. What is lost, for
+that narrower set, is the **association**: who had what. Rebuilding it means making a
+`Resource` note per such person and re-picking the resource on each of their items by hand —
+which is also all a vault that already has a note per person has to do, namely nothing.
 
 The same applies to the roster. `resourceNames` is removed rather than deprecated, and the
 names in it are not turned into notes — a vault that declared eight people in that option
@@ -85,14 +92,16 @@ notes if step 2's skip is not exact.
 ## Impact
 
 Every vault using assignees today, once, at the version [[Linking an item to a resource]]
-ships in. It is not on a path anybody chooses and cannot be avoided by not touching the
-feature — the value shape changes underneath a note that is never edited.
+ships in — but only the fraction of assignments naming somebody with no `Resource` note. It
+is not on a path anybody chooses and cannot be avoided by not touching the feature — the
+value shape changes underneath a note that is never edited — but a vault that already has a
+`Resource` note for everybody it names loses nothing on this upgrade at all.
 
-Severity scales with how much a vault used the property: unused, nothing happens; heavily
-used, the association behind an entire roadmap axis goes blank in one upgrade. Nothing is
-deleted and nothing is silently rewritten, which is the one thing this limitation has going
-for it — the names are still on the notes, so the repair is possible by hand and, later,
-possible by the backfill above.
+Severity scales with how much of a vault's roster has no note behind it: nobody, nothing
+happens; a name assigned to work that nobody ever made a `Resource` note for, that name's
+whole association goes blank in one upgrade. Nothing is deleted and nothing is silently
+rewritten, which is the one thing this limitation has going for it — the names are still on
+the notes, so the repair is possible by hand and, later, possible by the backfill above.
 
 The release this lands in owes the cost a line in `CHANGELOG.md` under a breaking heading.
 An upgrade that empties a roadmap axis is not a note somebody should find by opening the

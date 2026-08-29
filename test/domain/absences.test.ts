@@ -30,7 +30,7 @@ function civil(text: string): CivilDate {
 }
 
 function away(title: string, start: string, target: string): Absence {
-	return { file: {} as TFile, title, resource: 'Alice', start: civil(start), target: civil(target) };
+	return { file: {} as TFile, title, resource: { file: null, raw: 'Alice' }, start: civil(start), target: civil(target) };
 }
 
 describe('an absence is never a work item', () => {
@@ -43,7 +43,9 @@ describe('an absence is never a work item', () => {
 		expect(model.items.map((i) => i.title)).toEqual(['Work']);
 		expect(model.byPath.has(ALICE_AWAY_PATH)).toBe(false);
 		expect(model.absences.map((a) => a.title)).toEqual([ALICE_AWAY]);
-		expect(model.absences[0].resource).toBe('Alice');
+		// A link now, resolved to the roster's own note — never the bare text a plain
+		// string comparison used to settle for.
+		expect(model.absences[0].resource.file?.basename).toBe('Alice');
 	});
 
 	it('is dropped with hierarchyOnly off, where every note becomes an item', () => {
@@ -63,17 +65,18 @@ describe('an absence is never a work item', () => {
 		// `loadOutsideParents` is only today's way in: any future caller handing `addItem` a
 		// note with no entry trips this.
 		const vault = new FakeVault();
+		vault.addFile('Alice.md', { frontmatter: { type: 'Resource' } });
 		vault.addFile('Work.md', {
 			frontmatter: { type: 'Epic', order: 10, assignee: 'Alice', start: '2026-08-01', due: '2026-08-10' },
 			parentLink: 'Away',
 		});
-		// Its resource is on no result at all, so a band named for it could only have been
-		// minted by the excluded note itself.
+		// Its resource is on no result at all and on no roster note either, so nothing
+		// could place its stretch anywhere even were it kept.
 		vault.addFile('Away.md', {
 			frontmatter: { type: 'Absence', assignee: 'Quinn', start: '2026-08-04', due: '2026-08-06' },
 		});
 		const settings = settingsFor();
-		const entries = vault.entries().filter((entry) => entry.file.path === 'Work.md');
+		const entries = vault.entries().filter((entry) => entry.file.path === 'Work.md' || entry.file.path === 'Alice.md');
 		const model = buildModel(vault.app, entries, settings);
 		const roadmap = buildRoadmap(model, settings, () => true, 'resources');
 
@@ -325,7 +328,7 @@ describe('what an absence note is called', () => {
 		// explorer, in search and in a link, where no row is there to supply the dates. Not
 		// "never collides" — the same days derive the same name, which is why `uniqueNotePath`
 		// still has a suffix and a rename still has to know its own path.
-		expect(absenceTitle({ resource: 'Alice', start: '2026-08-04', target: '2026-08-06' })).toBe(
+		expect(absenceTitle({ start: '2026-08-04', target: '2026-08-06' }, 'Alice')).toBe(
 			'Alice away 2026-08-04 → 2026-08-06',
 		);
 	});
@@ -333,9 +336,23 @@ describe('what an absence note is called', () => {
 	it('is the one producer, so both acts derive the same name from the same facts', () => {
 		// Stated as the property rather than trusted: the create path and the edit path each
 		// call this, which is what stops them disagreeing about what an absence is called.
-		const facts = { resource: 'Bob', start: '2026-09-01', target: '2026-09-04' };
+		const facts = { start: '2026-09-01', target: '2026-09-04' };
 
-		expect(absenceTitle(facts)).toBe(absenceTitle({ ...facts }));
-		expect(absenceTitle(facts)).toBe('Bob away 2026-09-01 → 2026-09-04');
+		expect(absenceTitle(facts, 'Bob')).toBe(absenceTitle({ ...facts }, 'Bob'));
+		expect(absenceTitle(facts, 'Bob')).toBe('Bob away 2026-09-01 → 2026-09-04');
+	});
+
+	it('names whatever the caller passes as the label, never a resource of its own', () => {
+		// The label used to be derived from `facts.resource` here; now it is not a fact about
+		// the absence at all (Task 6 follow-up) — it is the caller's own collision-aware name,
+		// the same one `namedTargets` gives two `Resource` notes sharing a basename in different
+		// folders. Passing a DIFFERENT label for the same two dates derives a different name,
+		// which is the whole point: two same-named resources must not share a note name.
+		expect(absenceTitle({ start: '2026-09-01', target: '2026-09-04' }, 'Team/Bob')).toBe(
+			'Team/Bob away 2026-09-01 → 2026-09-04',
+		);
+		expect(absenceTitle({ start: '2026-09-01', target: '2026-09-04' }, 'Support/Bob')).toBe(
+			'Support/Bob away 2026-09-01 → 2026-09-04',
+		);
 	});
 });

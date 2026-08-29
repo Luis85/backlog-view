@@ -158,10 +158,11 @@ function addEditableSections(host: BacklogViewHost, model: BacklogModel, menu: M
 	if (hasRiskLevels(host.settings)) addSetRiskMenu(host, menu, item);
 	// The same pair, for the same reason — a ladder with no property has nowhere to go.
 	if (hasPriorityLevels(host.settings)) addSetPriorityMenu(host, menu, item);
-	// The KEY alone, unlike risk above: **New assignee...** is always in that submenu, so
-	// a named property with nobody observed still opens onto something to pick. There is
-	// no second half to be missing, which is why there is no `hasAssignees` beside
-	// `hasRiskLevels` — a predicate that could only ever answer the same thing as this.
+	// The KEY alone, unlike risk above: **New resource...** is always in that submenu, so
+	// a named property with no `Resource` note in the base still opens onto something to
+	// do. There is no second half to be missing, which is why there is no `hasAssignees`
+	// beside `hasRiskLevels` — a predicate that could only ever answer the same thing as
+	// this.
 	if (host.settings.assigneeKey) addSetAssigneeMenu(host, menu, item);
 	// Four refusals of its own, none of which follows from the others, and all of them
 	// stated at `canSetIteration` rather than here: an unconfigured key, a marker, a

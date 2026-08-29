@@ -8,6 +8,7 @@ import { describe, expect, it } from 'vitest';
 import { applyRestores, applyWrites, RestoreWrite } from '../../src/storage/frontmatter';
 import { buildModel, inPlan } from '../../src/domain/model';
 import {
+	computeAssigneeWrites,
 	computeInitWrites,
 	computeIterationNoteWrites,
 	computeIterationWrites,
@@ -318,5 +319,119 @@ describe('the writer asks the LIVE type about a release membership', () => {
 		await applyWrites(vault.app, releaseSettings, [{ file, release: null }]);
 
 		expect(vault.fm('1.0.md')).toEqual({ type: 'Milestone' });
+	});
+});
+
+/**
+ * The assignee is the SAME window through a fourth field, and the inverse question from
+ * `refusesLiveType`: that one refuses a write TO a `Resource`, this refuses a write NAMING
+ * a note that is no longer one. Retype the target between the menu rendering and the write
+ * landing and the link lands naming an ordinary note, which then reads as broken and the
+ * card shelves.
+ */
+const assigneeSettings = settingsFrom({ assigneeProperty: 'note.assignee' });
+
+describe('the writer asks the LIVE type about an assignee target', () => {
+	it('refuses an assignee whose TARGET is no longer a Resource', async () => {
+		const vault = new FakeVault();
+		vault.addFile('Alex.md', { frontmatter: { type: 'Resource' } });
+		vault.addFile('1.0.md', { frontmatter: { type: 'PBI' } });
+		const model = buildModel(vault.app, vault.entries(), assigneeSettings);
+		const item = model.byPath.get('1.0.md');
+		const resource = model.resources.find((r) => r.file.path === 'Alex.md');
+		if (!item || !resource) throw new Error('fixture did not build');
+		const writes = computeAssigneeWrites(item, resource.file);
+		// The plan is legitimate — this is a refusal at the boundary, not a plan that was
+		// empty all along, which is the way a test like this passes on nothing.
+		expect(writes).toEqual([{ file: item.file, assignee: resource.file }]);
+
+		vault.fm('Alex.md').type = 'PBI';
+		const outcome = await applyWrites(vault.app, assigneeSettings, writes);
+
+		expect(vault.fm('1.0.md')).toEqual({ type: 'PBI' });
+		expect(outcome.changed).toBe(false);
+	});
+
+	it('lets a REMOVAL through, which is the only way this key comes off', async () => {
+		// A removal names no target, so there is nothing for this guard to be wrong about.
+		const vault = new FakeVault();
+		const file = vault.addFile('1.0.md', { frontmatter: { type: 'PBI', assignee: '[[Alex]]' } });
+
+		await applyWrites(vault.app, assigneeSettings, [{ file, assignee: null }]);
+
+		expect(vault.fm('1.0.md')).toEqual({ type: 'PBI' });
+	});
+
+	it('still links a target that is still a Resource', async () => {
+		// The control: the same plan, a target nobody retyped, lands.
+		const vault = new FakeVault();
+		vault.addFile('Alex.md', { frontmatter: { type: 'Resource' } });
+		vault.addFile('1.0.md', { frontmatter: { type: 'PBI' } });
+		const model = buildModel(vault.app, vault.entries(), assigneeSettings);
+		const item = model.byPath.get('1.0.md');
+		const resource = model.resources.find((r) => r.file.path === 'Alex.md');
+		if (!item || !resource) throw new Error('fixture did not build');
+
+		await applyWrites(vault.app, assigneeSettings, computeAssigneeWrites(item, resource.file));
+
+		expect(vault.fm('1.0.md')['assignee']).toBe('[[Alex]]');
+	});
+
+	it('lets a target through whose cache is not built yet, which is every fresh note', async () => {
+		// `New resource...` assigns the note it just created, and Obsidian fills the
+		// metadata cache after `vault.create` resolves — so the target has NO cache for a
+		// window of its own. Reading that as "not a Resource" would make the create-and-
+		// assign flow create the note and then refuse to link it (Codex review, PR #207).
+		const vault = new FakeVault();
+		vault.addFile('Alex.md', { frontmatter: { type: 'Resource' } });
+		vault.addFile('1.0.md', { frontmatter: { type: 'PBI' } });
+		const model = buildModel(vault.app, vault.entries(), assigneeSettings);
+		const item = model.byPath.get('1.0.md');
+		const resource = model.resources.find((r) => r.file.path === 'Alex.md');
+		if (!item || !resource) throw new Error('fixture did not build');
+		const writes = computeAssigneeWrites(item, resource.file);
+
+		vault.unindex('Alex.md');
+		await applyWrites(vault.app, assigneeSettings, writes);
+
+		expect(vault.fm('1.0.md')['assignee']).toBe('[[Alex]]');
+	});
+
+	it('still refuses a target whose cache EXISTS and carries no type at all', async () => {
+		// The other side of the same line: a type REMOVED leaves the cache entry behind, so
+		// this is a note the vault can answer about and the answer is "not a Resource".
+		const vault = new FakeVault();
+		vault.addFile('Alex.md', { frontmatter: { type: 'Resource' } });
+		vault.addFile('1.0.md', { frontmatter: { type: 'PBI' } });
+		const model = buildModel(vault.app, vault.entries(), assigneeSettings);
+		const item = model.byPath.get('1.0.md');
+		const resource = model.resources.find((r) => r.file.path === 'Alex.md');
+		if (!item || !resource) throw new Error('fixture did not build');
+		const writes = computeAssigneeWrites(item, resource.file);
+
+		vault.setFrontmatter('Alex.md', {});
+		const outcome = await applyWrites(vault.app, assigneeSettings, writes);
+
+		expect(vault.fm('1.0.md')).toEqual({ type: 'PBI' });
+		expect(outcome.changed).toBe(false);
+	});
+
+	it('refuses a target that was DELETED, which has no cache either', async () => {
+		// The other half of "no cache": a deleted note and a not-yet-indexed one are one
+		// state to `getFileCache` and two to the vault. Writing the link anyway would spell
+		// a wikilink that resolves to nothing (Codex review, PR #207, second round).
+		const vault = new FakeVault();
+		const resourceFile = vault.addFile('Alex.md', { frontmatter: { type: 'Resource' } });
+		vault.addFile('1.0.md', { frontmatter: { type: 'PBI' } });
+		const model = buildModel(vault.app, vault.entries(), assigneeSettings);
+		const item = model.byPath.get('1.0.md');
+		if (!item) throw new Error('fixture did not build');
+		const writes = computeAssigneeWrites(item, resourceFile);
+
+		await vault.app.fileManager.trashFile(resourceFile);
+		const outcome = await applyWrites(vault.app, assigneeSettings, writes);
+
+		expect(vault.fm('1.0.md')).toEqual({ type: 'PBI' });
+		expect(outcome.changed).toBe(false);
 	});
 });

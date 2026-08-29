@@ -44,6 +44,17 @@ the optional properties the ✨ button sets up and backfills
 ([[Backfill missing properties]]), one more menu whose checkmark is asked of the plan,
 and one more chip in the property column the base already shows.
 
+**Superseded, in part, 2026-08-29.** Main-flow steps 3 and 5 above — a menu of every name
+the results carry, and `New assignee...` for a name nobody carries yet — describe this
+property as it worked before [[Linking an item to a resource]] shipped. That use case
+changed what the property HOLDS, from a typed name to a link to a `Resource` note: the menu
+now lists the `Resource` notes the base returned rather than every observed name, and
+`New resource...` replaces `New assignee...`, creating the note and writing the link in one
+action. This note is kept rather than edited out from under itself, because it is the
+record of what shipped on 2026-08-10 and why — a team as a set nobody declares, a name
+reachable without configuring anything — and that reasoning is still why the property
+exists at all; only the value's shape and the two steps above are superseded.
+
 ## Use case
 
 | | |

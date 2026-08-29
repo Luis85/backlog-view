@@ -1,4 +1,4 @@
-import { App, BasesPropertyId, BasesViewConfig } from 'obsidian';
+import { App, BasesPropertyId, BasesViewConfig, TFile } from 'obsidian';
 import { BoardModel, IterationBucket, StatePalette } from '../domain/board';
 import { BacklogItem, BacklogModel } from '../domain/model';
 import { ShelfCard } from '../domain/bars';
@@ -487,15 +487,17 @@ export interface BacklogViewHost {
 	 * the notes it places, leaving the header. Not its absences: those draw in the header's
 	 * own track since 2026-08-14, so a fold leaves them exactly where they were.
 	 *
-	 * A third collapse question beside {@link isCollapsed} and {@link isCardCollapsed}, and
-	 * a third because it is asked of a NAME: a resource is not a note, so it has no path to
-	 * key a bit under and none of the machinery that key space carries (the vault-existence
-	 * prune, the rename migration, the collapse-new-parents pass) applies to it. A band a
-	 * reader has not ruled on is OPEN, unlike a tree parent — a row that hid its own work
-	 * until asked would answer the question this axis exists for with nothing.
+	 * A third collapse question beside {@link isCollapsed} and {@link isCardCollapsed}, asked
+	 * of the row's own identity (`laneIdentity`, `domain/roadmap.ts`) rather than of a path
+	 * in {@link isCollapsed}'s own key space — a lane band is still kept in its own store
+	 * apart from that machinery (the vault-existence prune, the rename migration, the
+	 * collapse-new-parents pass), a scope decision rather than a fact forced by the value's
+	 * shape now that a resource genuinely is a note. A band a reader has not ruled on is
+	 * OPEN, unlike a tree parent — a row that hid its own work until asked would answer the
+	 * question this axis exists for with nothing.
 	 */
-	isLaneCollapsed(name: string): boolean;
-	setLaneCollapsed(name: string, collapsed: boolean): void;
+	isLaneCollapsed(identity: string): boolean;
+	setLaneCollapsed(identity: string, collapsed: boolean): void;
 	/**
 	 * Whether one board column or horizon bucket is folded to its strip, asked of the
 	 * screen it is drawn on and its own value.
@@ -576,7 +578,7 @@ export interface BacklogViewHost {
 
 	/**
 	 * Plan and apply the assignee write a resource move means — the target row's own
-	 * name, or key removal for the shelf. The horizon axis's rule on this axis's
+	 * `Resource` note, or key removal for the shelf. The horizon axis's rule on this axis's
 	 * property: one path for all three inputs (a drop, an Alt+Up/Down, the row menu's
 	 * Set assignee), so no input can reach a row another cannot, and every move that
 	 * lands announces itself once. A move onto the row the card is already in plans
@@ -591,7 +593,7 @@ export interface BacklogViewHost {
 	 * Alt+Up/Down, the shelf's removal — and absent from a vertical drag too, which plans
 	 * no dates because it displaced none.
 	 */
-	performResourceMove(item: BacklogItem, name: string | null, when?: ScheduleGesture): Promise<boolean>;
+	performResourceMove(item: BacklogItem, target: TFile | null, when?: ScheduleGesture): Promise<boolean>;
 
 	/**
 	 * Plan and apply the date batch a schedule move means — the ends the item's own

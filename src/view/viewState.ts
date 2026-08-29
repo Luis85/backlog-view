@@ -82,13 +82,25 @@ function notePath(key: string): string {
 }
 
 /**
- * One resource's fold key. Lower-cased for `sameValue`'s reason and `deriveLanes`'
- * spelling of it — a band is one band whatever case names it, so its fold has to be one
- * bit. The stored value is this key rather than the display name, which nothing reads
+ * One resource's fold key — the identity `laneIdentity` (`domain/roadmap.ts`) hands over:
+ * a `Resource` note's own PATH, or the milestones' shared constant for the one row with no
+ * note behind it. Not lower-cased, and not any other fold of it: a vault path is
+ * case-SENSITIVE (`columnKey`'s own rule below), so there is no middle answer between two
+ * paths for a comparison to keep, the way there was between two spellings of one name.
+ * The stored value is this identity rather than the display name, which nothing reads
  * back onto a screen.
+ *
+ * **A ONE-TIME cost, stated rather than hidden.** Before this (2026-08-28), a band was
+ * identified by its lower-cased NAME — two resources sharing a basename shared one fold
+ * bit, and a rename opened a band silently. Every row is a note now, so the identity is
+ * its path; an entry a reader had already folded under the old name-keyed shape matches
+ * no path today and opens once, on the first render after upgrading. No fallback is kept
+ * for it: this repository carries no compatibility with an older stored shape, only with
+ * `minAppVersion`, and keeping the old key alive here would mean carrying two key shapes
+ * in the store forever to save one re-fold.
  */
-function laneKey(name: string): string {
-	return name.toLowerCase();
+function laneKey(identity: string): string {
+	return identity;
 }
 
 /**
@@ -98,9 +110,10 @@ function laneKey(name: string): string {
  *
  * SCOPED, because the same word can name a column on more than one screen — a requirements
  * `Done`, a Deliverables `Done` and a horizon called `Done` are three columns and three
- * folds. Lower-cased for {@link laneKey}'s reason, twice over: `boardColumns` indexes its
- * columns on `state.toLowerCase()` and `buildRoadmap` does the same for buckets, so a value
- * whose spelling changes is still one column and has to stay one fold.
+ * folds. Lower-cased because `boardColumns` indexes its columns on `state.toLowerCase()`
+ * and `buildRoadmap` does the same for buckets, so a value whose spelling changes is still
+ * one column and has to stay one fold — unlike a lane's own key above, which is a path
+ * and has no such casing to fold.
  *
  * A NUL joins the two halves rather than a printable separator, the reason
  * {@link TIMELINE_SCOPE} uses one: a state value is user data and may contain anything a
@@ -242,7 +255,7 @@ export class ViewState {
 	 * a width rather than a new prototype.
 	 */
 	private colWidths: Record<string, number> = Object.create(null) as Record<string, number>;
-	/** Resource bands folded shut, by name — see {@link isLaneCollapsed}. */
+	/** Resource bands folded shut, by {@link laneKey} — see {@link isLaneCollapsed}. */
 	private foldedLanes = new Set<string>();
 	/** Board columns and horizon buckets folded shut, by {@link columnKey}. */
 	private foldedColumns = new Set<string>();
@@ -475,27 +488,33 @@ export class ViewState {
 	}
 
 	/**
-	 * Whether one resource's whole band is folded shut, asked of the NAME.
+	 * Whether one resource's whole band is folded shut, asked of the row's own identity
+	 * (`laneIdentity`, `domain/roadmap.ts`) — the note's path, or the milestones' constant.
 	 *
 	 * Its own set rather than a scope in {@link set}'s key space, and the reason is the
-	 * flush: everything in there is a note PATH and is dropped when the vault has no file
-	 * for it, which a resource's name never has. It also needs none of that key space's
-	 * machinery — no rename migration, since nothing renames a resource, and no
-	 * `collapseNewParents` pass, since a band a reader has not ruled on is open.
+	 * flush: everything in there is a note PATH and is DROPPED when the vault has no file
+	 * for it — which this key now genuinely is for every row but the milestones', unlike
+	 * before this identity was a note at all. It stays out of that key space anyway,
+	 * deliberately narrower than a full migration: no `renamePath` entry, so a resource's
+	 * note renamed elsewhere leaves its old fold entry stranded rather than carried to the
+	 * new path, and no `collapseNewParents` pass, since a band a reader has not ruled on is
+	 * open. The stranded entry is a known, accepted cost (Task 5, 2026-08-28) — one
+	 * open band on the next rename, no worse than the case-changing rename a name-keyed
+	 * fold already could not survive — recorded here rather than silently fixed by adding
+	 * this key to the migrated space.
 	 *
-	 * Keyed by {@link laneKey}, never by the spelling on screen: a band is IDENTIFIED
-	 * case-insensitively (`deriveLanes` maps `name.toLowerCase()` to the lane), while its
-	 * displayed name is whichever source minted the row — the declared roster, else the
-	 * first result, else an absence. So the display can change case with no resource
-	 * changing, and a fold keyed on it would silently reopen and strand its old key.
+	 * Keyed by {@link laneKey}, never by the spelling on screen: two resources of one
+	 * basename draw ONE disambiguated label right up until they collide, and a rename
+	 * changes what `lane.name` says without the note itself changing — a fold keyed on
+	 * either would fold the wrong row, or reopen one the rename never touched.
 	 */
-	isLaneCollapsed(name: string): boolean {
-		return this.foldedLanes.has(laneKey(name));
+	isLaneCollapsed(identity: string): boolean {
+		return this.foldedLanes.has(laneKey(identity));
 	}
 
 	/** Returns true when the state actually changed — {@link set}'s own contract. */
-	setLaneCollapsed(name: string, collapsed: boolean): boolean {
-		const key = laneKey(name);
+	setLaneCollapsed(identity: string, collapsed: boolean): boolean {
+		const key = laneKey(identity);
 		if (this.foldedLanes.has(key) === collapsed) return false;
 		if (collapsed) this.foldedLanes.add(key);
 		else this.foldedLanes.delete(key);
@@ -670,9 +689,11 @@ export class ViewState {
 		// The stored map itself, not a copy: `PREF_READERS`' own reader already built it on
 		// a null prototype, which is the only property the live map needs of it.
 		this.colWidths = prefs.colWidths ?? (Object.create(null) as Record<string, number>);
-		// Normalized on the way back in as well, so an entry written before the key was
-		// canonical still shuts the band it was about.
-		this.foldedLanes = new Set(folds.lanes.map(laneKey));
+		// No normalization on the way back in: `laneKey` is the identity `laneIdentity`
+		// already hands over, so there is nothing left to canonicalize here. A legacy
+		// name-keyed entry from before this shape (2026-08-28) is not converted either —
+		// `laneKey`'s own comment states why — so it is simply never matched again.
+		this.foldedLanes = new Set(folds.lanes);
 		// Stored as minted — `columnKey` is already canonical, so unlike a lane's there is
 		// nothing left to normalize here.
 		this.foldedColumns = new Set(folds.collapsedColumns);

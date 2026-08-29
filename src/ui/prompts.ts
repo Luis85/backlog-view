@@ -390,6 +390,7 @@ export class SchedulePromptModal extends PromptModal<SchedulePromptOptions> {
 }
 
 export interface AbsenceResult {
+	/** The chosen resource's id — its note path. Never a name somebody typed. */
 	resource: string;
 	start: string;
 	target: string;
@@ -397,10 +398,13 @@ export interface AbsenceResult {
 
 export interface AbsencePromptOptions extends Refusable<AbsenceResult> {
 	heading: string;
-	/** Pre-filled from the row it was opened on, and editable — the row is a default, not a lock. */
+	/**
+	 * The resources this absence may name, as id/label pairs. Pairs rather than notes
+	 * because this module imports nothing — the caller maps the id back to its file.
+	 */
+	resources: { id: string; label: string }[];
+	/** Pre-selected from the row it was opened on, and changeable — the row is a default, not a lock. */
 	resource: string;
-	/** Names to suggest, so spellings stay consistent with the roster the view options name. */
-	known: string[];
 	/**
 	 * The stretch being EDITED, pre-filling the two date fields. Absent when adding one,
 	 * which is what makes this one form for both acts rather than two that can disagree
@@ -416,11 +420,19 @@ export interface AbsencePromptOptions extends Refusable<AbsenceResult> {
 /**
  * Prompt asking for one resource's unavailable stretch.
  *
- * Both ends, always — this is the one form in this file where an empty date is not a real
- * answer, because an absence has nothing beneath it to infer the other end from and no
- * shelf to wait on. So there is no per-field clear button either: `SchedulePromptModal`
- * carries one because clearing an end is how a single date is taken back, and here that
- * would offer a gesture whose result the validator must then refuse.
+ * The resource is a CHOICE, not text: `AbsencePromptOptions.resources` is the whole
+ * vocabulary this form may name, so a submission can never come back naming somebody
+ * this base does not carry a note for. That is a change of shape from the free-text
+ * field this form used to render (with a `KnownValueSuggest` merely suggesting a
+ * spelling) — a typed name that matched nothing was still a name the writer would spell
+ * onto the note, and that hole is what a `<select>` over a closed list closes.
+ *
+ * Both dates are required, always — this is the one form in this file where an empty
+ * date is not a real answer, because an absence has nothing beneath it to infer the
+ * other end from and no shelf to wait on. So there is no per-field clear button either:
+ * `SchedulePromptModal` carries one because clearing an end is how a single date is
+ * taken back, and here that would offer a gesture whose result the validator must then
+ * refuse.
  *
  * The date fields are `type="date"` for that same modal's reason: the platform's picker,
  * and the only values that can come back are a calendar date or nothing.
@@ -436,11 +448,37 @@ export class AbsencePromptModal extends PromptModal<AbsencePromptOptions> {
 		};
 
 		const { errorEl, submit } = refusableBody(this, this.options, () => ({
-			resource: values.resource.trim(),
+			resource: values.resource,
 			start: values.start.trim(),
 			target: values.target.trim(),
 		}));
-		const field = (name: string, key: keyof AbsenceResult, setup: (input: HTMLInputElement) => void) => {
+
+		new Setting(this.contentEl).setName(t('prompt.absenceResource')).addDropdown((dropdown) => {
+			// A placeholder option only where the pre-selection names nothing this form
+			// offers. Neither caller in `interactions/absences.ts` can hand this a mismatch
+			// from a freshly DRAWN mark or lane — an absence only draws in a lane its link
+			// already resolved to, and a lane is a `Resource` note by construction — so what
+			// this actually covers is a model rebuild in the window between opening the
+			// context menu (or the lane's own button) and this modal reading the roster,
+			// which is also why `resourceMissing`'s submit-time refusal exists beside it
+			// rather than as a defensive habit: neither guard is reachable from a stable
+			// model, only from one that moved under an open menu or an open form. This
+			// module imports nothing and so cannot lean on either caller's invariant
+			// regardless — it is this dialog's own contract with whatever calls it.
+			if (!this.options.resources.some((resource) => resource.id === values.resource)) {
+				dropdown.addOption('', t('prompt.absenceResourcePlaceholder'));
+			}
+			for (const resource of this.options.resources) dropdown.addOption(resource.id, resource.label);
+			dropdown.setValue(values.resource);
+			dropdown.onChange((v) => {
+				values.resource = v;
+				// The refusal was about what was entered, so it stops being true the moment
+				// the entry changes.
+				errorEl.setText('');
+			});
+		});
+
+		const field = (name: string, key: 'start' | 'target', setup: (input: HTMLInputElement) => void) => {
 			new Setting(this.contentEl).setName(name).addText((text) => {
 				text.setValue(values[key]);
 				text.onChange((v) => {
@@ -454,7 +492,6 @@ export class AbsencePromptModal extends PromptModal<AbsencePromptOptions> {
 			});
 		};
 
-		field(t('prompt.absenceResource'), 'resource', (input) => new KnownValueSuggest(this.app, input, this.options.known));
 		// Autofocused rather than the resource, which the row this was opened on already
 		// answered — and there is no title field to claim it since the name became a
 		// function of these three facts.

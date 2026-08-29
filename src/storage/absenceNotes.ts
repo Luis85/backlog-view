@@ -1,11 +1,10 @@
 import { App, stringifyYaml, TFile } from 'obsidian';
-import { AbsenceFacts } from '../domain/absences';
 import { isResourceType } from '../domain/itemTypes';
 import { ownValue, readString } from '../domain/noteFields';
 import { BacklogSettings } from '../domain/settings';
 import { vaultFolder } from '../domain/settingsResolve';
 import { ABSENCE_TYPE } from '../domain/typeVocabulary';
-import { ensureFolder, uniqueNotePath } from './createNote';
+import { ensureFolder, uniqueNotePath, wikilinkTo } from './createNote';
 import { setOwn } from './ownProperty';
 
 /**
@@ -21,8 +20,19 @@ import { setOwn } from './ownProperty';
  * names `trashFile` the way `no-restricted-syntax` names `vault.create`.
  */
 
-/** Everything a NEW absence note needs: what it says, plus where it goes and what it is called. */
-export interface AbsenceSpec extends AbsenceFacts {
+/**
+ * Everything a NEW absence note needs: the `Resource` it names, the days it covers, and
+ * where it goes and what it is called.
+ *
+ * Does NOT extend `AbsenceFacts` (`domain/absences.ts`) any more — that type carries the
+ * resource as a `LinkEntry`, read off a note that may not resolve, while by the time a
+ * `AbsenceSpec` exists the resource has already been chosen from the roster: there is no
+ * unresolved case left to represent, only a real `TFile` to spell as a link.
+ */
+export interface AbsenceSpec {
+	resource: TFile;
+	start: string;
+	target: string;
 	folder: string;
 	title: string;
 }
@@ -48,7 +58,7 @@ export async function createAbsenceNote(app: App, settings: BacklogSettings, spe
 	// fail in between and leave a note that is an absence in name and a blank note in fact.
 	const fm: Record<string, unknown> = {};
 	setOwn(fm, settings.typeKey, ABSENCE_TYPE);
-	setOwn(fm, settings.assigneeKey, spec.resource);
+	setOwn(fm, settings.assigneeKey, wikilinkTo(app, spec.resource, path));
 	setOwn(fm, settings.startKey, spec.start);
 	setOwn(fm, settings.targetKey, spec.target);
 	return app.vault.create(path, `---\n${stringifyYaml(fm)}---\n`);
@@ -83,12 +93,15 @@ export async function createAbsenceNote(app: App, settings: BacklogSettings, spe
  * `isResourceType` shape rather than a second reader. The caller (`editAbsence`) must not
  * rename a note this returns `false` for — the rename is the other half of what the
  * refusal is protecting a resource from.
+ *
+ * `spec` is `AbsenceSpec` minus its location and its name — the same three writable facts
+ * `createAbsenceNote` takes, `resource` already resolved to the `TFile` it names.
  */
 export async function updateAbsenceNote(
 	app: App,
 	settings: BacklogSettings,
 	file: TFile,
-	spec: AbsenceFacts,
+	spec: Pick<AbsenceSpec, 'resource' | 'start' | 'target'>,
 ): Promise<boolean> {
 	let refused = false;
 	await app.fileManager.processFrontMatter(file, (fm: Record<string, unknown>) => {
@@ -96,7 +109,7 @@ export async function updateAbsenceNote(
 			refused = true;
 			return;
 		}
-		setOwn(fm, settings.assigneeKey, spec.resource);
+		setOwn(fm, settings.assigneeKey, wikilinkTo(app, spec.resource, file.path));
 		setOwn(fm, settings.startKey, spec.start);
 		setOwn(fm, settings.targetKey, spec.target);
 	});

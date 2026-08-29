@@ -74,18 +74,6 @@
 	color: var(--text-normal);
 }
 
-/* Outside the declared roster — the bucket axis's own stray marking, in the one form a
-   row can carry it: `.pbl-bucket-undeclared` dims a column header, and this dims a row's. */
-.pbl-lane-undeclared .pbl-lane-name {
-	font-style: italic;
-}
-
-.pbl-lane-stray {
-	display: flex;
-	align-items: center;
-	color: var(--text-muted);
-}
-
 /* Muting is done to a row's CONTENT, never to the row — see `.pbl-absence-wash` further
    down for the rule and what breaks without it. A context row draws no bar, so its track is
    empty on purpose, and the muting is what says the row is here to place its children rather

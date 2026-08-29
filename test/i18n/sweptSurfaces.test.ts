@@ -56,6 +56,7 @@ const SWEPT = [
 	'prompt.create',
 	'prompt.clearDate',
 	'prompt.absenceResource',
+	'prompt.absenceResourcePlaceholder',
 	'prompt.absenceStart',
 	'prompt.absenceEnd',
 	'prompt.iterationName',
@@ -173,8 +174,10 @@ describe('the prompts read their own labels from the catalog', () => {
 		const modal = new AbsencePromptModal(vault.app as never, {
 			heading: 'Away',
 			description: 'Handed in by the caller.',
-			resource: 'Ada',
-			known: [],
+			// Named to NOT match either offered id, so the defensive placeholder draws too —
+			// the one option this dialog offers that no fixture elsewhere reaches.
+			resource: 'Gone.md',
+			resources: [{ id: 'Ada.md', label: 'Ada' }],
 			validate: () => null,
 			onSubmit: () => undefined,
 		});
@@ -185,6 +188,7 @@ describe('the prompts read their own labels from the catalog', () => {
 			marked('prompt.absenceStart'),
 			marked('prompt.absenceEnd'),
 		]);
+		expect(modal.contentEl.querySelector('option')?.textContent).toBe(marked('prompt.absenceResourcePlaceholder'));
 		expect(cta(modal.contentEl)).toBe(marked('prompt.save'));
 	});
 

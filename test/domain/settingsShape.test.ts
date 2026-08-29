@@ -61,11 +61,6 @@ describe('settingsInconsistency, and what the only producer guarantees', () => {
 		// under a falling-back key — the resolver would have copied `states` across.
 		expect(settingsInconsistency({ ...base, stateKey: 'status', states: ['New'] })).toContain('deliverableStates');
 		expect(settingsInconsistency({ ...base, tagsKey: 'parent' })).toContain('tagsKey');
-		// The roster is a resolver-produced list like the vocabularies beside it: it goes
-		// through `list()` and `dedupe()`, so a fixture holding what those would have
-		// changed is a fixture the producer could not have emitted.
-		expect(settingsInconsistency({ ...base, resourceNames: [' Alice'] })).toContain('resourceNames');
-		expect(settingsInconsistency({ ...base, resourceNames: ['Alice', 'alice'] })).toContain('resourceNames');
 	});
 
 	it('rejects a per-state map the resolver would have emptied, key or value', () => {
@@ -145,7 +140,6 @@ describe('settingsInconsistency, and what the only producer guarantees', () => {
 		).toContain('states repeats');
 		expect(settingsInconsistency({ ...base, horizonValues: ['Now', 'NOW'] })).toContain('horizonValues repeats');
 		expect(settingsInconsistency({ ...base, startedStates: ['A', 'a'] })).toContain('startedStates repeats');
-		expect(settingsInconsistency({ ...base, resourceNames: ['Dana', 'dana'] })).toContain('resourceNames repeats');
 		// The two declared LADDERS, which take `dedupe(list(...))` like every vocabulary
 		// above and were in this list neither. `riskValues` had been deduped and unchecked
 		// since the day it shipped; it was found only because `priorityValues` arrived

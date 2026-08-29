@@ -292,18 +292,6 @@ describe('resolveSettings roadmap options', () => {
 			'Later',
 		]);
 	});
-
-	it('ships the resource roster EMPTY, and reads it trimmed and deduped', () => {
-		// The opposite of the horizons above, and for a stated reason: nobody declares
-		// who exists, so absence is the shipped state rather than a cleared default —
-		// which is why this option is not `clearable` and has nothing to fall back to.
-		expect(resolveSettings(fakeConfig()).resourceNames).toEqual([]);
-		expect(resolveSettings(fakeConfig({ resourceNames: ' Alice , Bob ,, alice ' })).resourceNames).toEqual([
-			'Alice',
-			'Bob',
-		]);
-		expect(resolveSettings(fakeConfig({ resourceNames: '' })).resourceNames).toEqual([]);
-	});
 });
 
 describe('resolveSettings display options', () => {
