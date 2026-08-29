@@ -63,17 +63,18 @@ describe('an absence is never a work item', () => {
 		// `loadOutsideParents` is only today's way in: any future caller handing `addItem` a
 		// note with no entry trips this.
 		const vault = new FakeVault();
+		vault.addFile('Alice.md', { frontmatter: { type: 'Resource' } });
 		vault.addFile('Work.md', {
 			frontmatter: { type: 'Epic', order: 10, assignee: 'Alice', start: '2026-08-01', due: '2026-08-10' },
 			parentLink: 'Away',
 		});
-		// Its resource is on no result at all, so a band named for it could only have been
-		// minted by the excluded note itself.
+		// Its resource is on no result at all and on no roster note either, so nothing
+		// could place its stretch anywhere even were it kept.
 		vault.addFile('Away.md', {
 			frontmatter: { type: 'Absence', assignee: 'Quinn', start: '2026-08-04', due: '2026-08-06' },
 		});
 		const settings = settingsFor();
-		const entries = vault.entries().filter((entry) => entry.file.path === 'Work.md');
+		const entries = vault.entries().filter((entry) => entry.file.path === 'Work.md' || entry.file.path === 'Alice.md');
 		const model = buildModel(vault.app, entries, settings);
 		const roadmap = buildRoadmap(model, settings, () => true, 'resources');
 

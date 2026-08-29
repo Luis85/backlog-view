@@ -236,24 +236,6 @@ describe('what a resource move announces', () => {
 		expect(await announced()).toBe('Moved "Alice dated" from 2026-08-01 to 2026-08-10 to 2026-08-08 to 2026-08-17');
 	});
 
-	it('names a row in the casing on screen, never the casing on the note', async () => {
-		vi.useFakeTimers();
-		const vault = new FakeVault();
-		vault.addFile('Alice.md', { frontmatter: { type: 'Resource' } });
-		vault.addFile('Bob.md', { frontmatter: { type: 'Resource' } });
-		vault.addFile('Work.md', {
-			frontmatter: { type: 'Epic', order: 10, assignee: '[[Alice]]', start: '2026-08-01', due: '2026-08-10' },
-		});
-		// Declared lowercase on purpose, though the note's own basename is `Alice` — the
-		// row wears the roster's own casing (`resourceLabel` prefers the drawn LANE's
-		// name over the resolved file's basename), and the link resolves to the note
-		// either way, so this is real behaviour rather than a stub artifact.
-		const { view } = laneRoadmap(vault, { resourceNames: 'alice, Bob' });
-
-		await view.performResourceMove(view.model?.byPath.get('Work.md') as never, resourceFile(vault, 'Bob'));
-		expect(await announced()).toBe('Moved "Work" from alice to Bob');
-	});
-
 	it('names a resource no row draws, rather than calling the note silent', async () => {
 		vi.useFakeTimers();
 		const vault = resourceVault();
@@ -296,18 +278,31 @@ describe('moving between resources by drag', () => {
 		expect(vault.writeLog).toHaveLength(1);
 	});
 
-	it('the whole band takes the drop, not only its header', async () => {
-		// A header, its bars and the excluded notes it places are siblings over one shared
-		// day grid — there is no container to wire, so every element of the band is a
-		// target of its own and a drop on a NEIGHBOUR'S bar row means that neighbour.
-		const vault = resourceVault();
+	it('drops onto the row for a specific same-named resource, never its namesake in another folder', async () => {
+		// The regression Task 4's bridge shipped and Task 5 closes: a lane minted by NAME
+		// looked its file up with `resources.find(r => sameValue(r.title, name))`, which
+		// returns whichever same-basename resource comes first — so with `Team/Alex.md`
+		// and `Support/Alex.md` both on the roster, there was only ONE "Alex" row (names
+		// grouped case-insensitively) and a drop onto it could write the wrong Alex's
+		// file. Every lane is a note now, built 1:1 from `model.resources`, so the two
+		// notes draw as TWO rows — labelled by their disambiguated paths — and each
+		// lane's `file` is that resource's own note by construction, with no name lookup
+		// left to get wrong.
+		const vault = new FakeVault();
+		vault.addFile('Team/Alex.md', { frontmatter: { type: 'Resource' } });
+		vault.addFile('Support/Alex.md', { frontmatter: { type: 'Resource' } });
+		vault.addFile('Untimed.md', { frontmatter: { type: 'Epic', order: 10 } });
 		const { containerEl } = laneRoadmap(vault);
-		const aliceRow = barFor(containerEl, 'Cased').closest<HTMLElement>('.pbl-timeline-row');
 
-		cardDrag(barFor(containerEl, 'Stray'), aliceRow as HTMLElement);
+		expect(laneNames(containerEl)).toEqual(['Support/Alex', 'Team/Alex']);
+
+		// Dropped on the SECOND row (Support/Alex) — the exact shape that picked the wrong
+		// file under the old bridge, since `.find` always returns the first match
+		// regardless of which of the two rows the drop actually landed on.
+		cardDrag(cardByTitle(containerEl, 'Untimed'), laneHead(containerEl, 'Support/Alex'));
 		await flush();
 
-		expect(vault.fm('Stray.md')['assignee']).toBe('[[Alice]]');
+		expect(vault.fm('Untimed.md')['assignee']).toBe('[[Support/Alex]]');
 	});
 
 	it('every element the band actually draws takes the drop, whatever kind it is', async () => {
@@ -405,7 +400,7 @@ describe('moving between resources by drag', () => {
 		expect(vault.fm('Alice dated.md')['assignee']).toBe('Alice');
 	});
 
-	it('a minted row is a target like any other — observed vocabulary is writable', async () => {
+	it('every row is a target, whether or not anything is assigned to it yet', async () => {
 		const vault = resourceVault();
 		const { containerEl } = laneRoadmap(vault);
 
@@ -558,13 +553,13 @@ describe('moving between resources without a drag', () => {
 	});
 
 	it('reaches a card whose note names a resource NO row draws', async () => {
-		// This axis mints a row only where a BAR lands, so a card naming somebody with no
-		// date to sit beside names a resource that has no stop on the ladder at all — it is
+		// A row is a note now (Task 5), so a card naming somebody with no `Resource` note
+		// behind them names a resource that has no stop on the ladder at all — it is
 		// drawn on the shelf without being ON it, and taking that name off is a real,
 		// undoable write the drag and the menu can both express. The keyboard is the third
-		// input to one move, so it has to reach it too. `Quinn` is neither declared nor
-		// carried by any dated result, which is what makes the index genuinely absent —
-		// `Undated` would not do, since Alice's own row is drawn by her two bars.
+		// input to one move, so it has to reach it too. `Quinn` names no `Resource` note at
+		// all, which is what makes the index genuinely absent — `Undated` would not do,
+		// since Alice's own row is drawn by her two bars.
 		const vault = resourceVault();
 		vault.addFile('Quinn work.md', { frontmatter: { type: 'Epic', order: 60, assignee: 'Quinn' } });
 		const { view, containerEl } = laneRoadmap(vault);

@@ -66,14 +66,18 @@ describe('an absence on the resources axis', () => {
 		expect(away?.style.getPropertyValue('--pbl-bar-width')).toBe(`${3 * 4}px`);
 	});
 
-	it('gives a resource nothing else names a row of its own', () => {
+	it('gives no row to a resource no Resource note names, even from an absence', () => {
+		// The 4b "third source" a row could mint FROM before Task 5: an absence can still
+		// draw INTO a row, but it can no longer produce one where the roster has no note —
+		// a row is a note now, and an absence is a statement about a resource rather than a
+		// declaration of one.
 		const vault = absenceVault();
 		vault.addFile('Quinn away.md', {
 			frontmatter: { type: 'Absence', assignee: 'Quinn', start: '2026-08-02', due: '2026-08-03' },
 		});
 		const { containerEl } = laneRoadmap(vault);
 
-		expect(laneNames(containerEl)).toEqual(['Alice', 'Bob', 'Quinn']);
+		expect(laneNames(containerEl)).toEqual(['Alice', 'Bob']);
 	});
 
 	it('packs two that share a day onto two sub-lanes, and says how many', () => {
@@ -142,6 +146,7 @@ describe('an absence on the resources axis', () => {
 		// exactly here — a row minted BY an absence holds no bar, so nothing it exists to
 		// draw had any say in the window it is drawn against.
 		const vault = new FakeVault();
+		vault.addFile('Quinn.md', { frontmatter: { type: 'Resource' } });
 		vault.addFile('Work.md', {
 			frontmatter: { type: 'Epic', order: 10, assignee: 'Alice', start: '2026-08-01', due: '2026-08-10' },
 		});
@@ -165,6 +170,9 @@ describe('an absence on the resources axis', () => {
 		// its own geometry rather than resting on the window fix: a filled stripe on a
 		// calendar claims THESE are the days, exactly as a bar does.
 		const vault = new FakeVault();
+		vault.addFile('Alice.md', { frontmatter: { type: 'Resource' } });
+		vault.addFile('Quinn.md', { frontmatter: { type: 'Resource' } });
+		vault.addFile('Early.md', { frontmatter: { type: 'Resource' } });
 		vault.addFile('Work.md', {
 			frontmatter: { type: 'Epic', order: 10, assignee: 'Alice', start: '2020-01-01', due: '2032-01-01' },
 		});
@@ -178,10 +186,11 @@ describe('an absence on the resources axis', () => {
 		const marks = Array.from(containerEl.querySelectorAll<HTMLElement>('.pbl-absence'));
 
 		// Past the far edge and past the near one — the same open-end vocabulary a bar wears,
-		// so the direction it lies in is still readable.
+		// so the direction it lies in is still readable. In DRAWN row order, which is
+		// alphabetical over the roster's own notes (Task 5) — Early's row before Quinn's.
 		expect(marks.map((el) => el.className)).toEqual([
-			'pbl-absence pbl-bar-outside pbl-bar-open-end',
 			'pbl-absence pbl-bar-outside pbl-bar-open-start',
+			'pbl-absence pbl-bar-outside pbl-bar-open-end',
 		]);
 	});
 
@@ -193,6 +202,8 @@ describe('an absence on the resources axis', () => {
 		// apart in the note and the same rectangle on screen, which is why a pack over the
 		// DATES could never see it — and why the pack reads the drawn boxes instead.
 		const vault = new FakeVault();
+		vault.addFile('Alice.md', { frontmatter: { type: 'Resource' } });
+		vault.addFile('Quinn.md', { frontmatter: { type: 'Resource' } });
 		vault.addFile('Work.md', {
 			frontmatter: { type: 'Epic', order: 10, assignee: 'Alice', start: '2020-01-01', due: '2032-01-01' },
 		});
@@ -226,6 +237,8 @@ describe('an absence on the resources axis', () => {
 		// one line — and the later then paints over half the earlier, leaving a ~2px
 		// sliver as the only route to its tooltip and its Edit and Delete menu.
 		const vault = new FakeVault();
+		vault.addFile('Alice.md', { frontmatter: { type: 'Resource' } });
+		vault.addFile('Quinn.md', { frontmatter: { type: 'Resource' } });
 		vault.addFile('Work.md', {
 			frontmatter: { type: 'Epic', order: 10, assignee: 'Alice', start: '2026-08-01', due: '2026-08-10' },
 		});
@@ -252,6 +265,9 @@ describe('an absence on the resources axis', () => {
 
 	it('marks a stretch the window cuts through as running past whichever edge it crosses', () => {
 		const vault = new FakeVault();
+		vault.addFile('Alice.md', { frontmatter: { type: 'Resource' } });
+		vault.addFile('Quinn.md', { frontmatter: { type: 'Resource' } });
+		vault.addFile('Early.md', { frontmatter: { type: 'Resource' } });
 		vault.addFile('Work.md', {
 			frontmatter: { type: 'Epic', order: 10, assignee: 'Alice', start: '2020-01-01', due: '2032-01-01' },
 		});
@@ -266,9 +282,11 @@ describe('an absence on the resources axis', () => {
 		const { containerEl } = laneRoadmap(vault);
 		const marks = Array.from(containerEl.querySelectorAll<HTMLElement>('.pbl-absence'));
 
+		// In DRAWN row order — alphabetical over the roster's own notes (Task 5) — Early's
+		// row before Quinn's.
 		expect(marks.map((el) => el.className)).toEqual([
-			'pbl-absence pbl-bar-open-end pbl-bar-clipped-end',
 			'pbl-absence pbl-bar-open-start',
+			'pbl-absence pbl-bar-open-end pbl-bar-clipped-end',
 		]);
 	});
 
@@ -297,6 +315,7 @@ describe('an absence on the resources axis', () => {
 		// says nothing about when. Asked of the PRODUCER — a title equal to what `absenceTitle`
 		// derives from the same three facts — never of the string's shape.
 		const vault = new FakeVault();
+		vault.addFile('Alice.md', { frontmatter: { type: 'Resource' } });
 		vault.addFile('Offsite.md', {
 			frontmatter: { type: 'Absence', assignee: 'Alice', start: '2026-08-04', due: '2026-08-06' },
 		});

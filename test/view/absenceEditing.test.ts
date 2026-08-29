@@ -279,6 +279,7 @@ describe('editing a placed absence', () => {
 		// naming the note and reports a name the reader did not ask for. The note starts where
 		// the first collision already left it, which is the state the ratchet acts on.
 		const vault = new FakeVault();
+		vault.addFile('Alice.md', { frontmatter: { type: 'Resource' } });
 		vault.addFile('Alice away 2026-08-04 → 2026-08-06.md', { frontmatter: { type: 'Epic', order: 20 } });
 		vault.addFile('Alice away 2026-08-04 → 2026-08-06 1.md', {
 			frontmatter: { type: 'Absence', assignee: 'Alice', start: '2026-08-04', due: '2026-08-06' },
@@ -296,17 +297,20 @@ describe('editing a placed absence', () => {
 	});
 
 	it('leaves a name that only differs by a character the disk cannot take', async () => {
-		// The derived name can still hold one, through the resource: `A/B` sanitizes to `A-B`.
-		// Compared raw it reads as a new name, and `uniqueNotePath` then finds the note's own
-		// path occupied — renaming it for a character the disk was always going to drop.
+		// The derived name can still hold one, through the resource: `A:B` sanitizes to `A-B`
+		// (`:`, not `/` — a `Resource` is a note now, Task 5, and a literal `/` in its title
+		// would be a folder rather than a character to sanitize). Compared raw it reads as a
+		// new name, and `uniqueNotePath` then finds the note's own path occupied — renaming
+		// it for a character the disk was always going to drop.
 		const vault = new FakeVault();
+		vault.addFile('A:B.md', { frontmatter: { type: 'Resource' } });
 		vault.addFile('A-B away 2026-08-04 → 2026-08-06.md', {
-			frontmatter: { type: 'Absence', assignee: 'A/B', start: '2026-08-04', due: '2026-08-06' },
+			frontmatter: { type: 'Absence', assignee: 'A:B', start: '2026-08-04', due: '2026-08-06' },
 		});
 		const { containerEl } = laneRoadmap(vault);
 
 		openEdit(containerEl);
-		submitAbsence({ resource: 'A/B', start: '2026-08-04', target: '2026-08-06' });
+		submitAbsence({ resource: 'A:B', start: '2026-08-04', target: '2026-08-06' });
 		await flush();
 
 		expect(vault.files.has('A-B away 2026-08-04 → 2026-08-06.md')).toBe(true);

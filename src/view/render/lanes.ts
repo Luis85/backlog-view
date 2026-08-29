@@ -14,7 +14,7 @@ import { BarHold, barHolds, timelineRows, TimelineBar, TimelineRow } from '../..
 import { displayType, isIterationType, isMarkerType } from '../../domain/itemTypes';
 import { BacklogItem } from '../../domain/model';
 import { CivilDate } from '../../domain/noteFields';
-import { markerLane, markerLaneCaption, ResourceLane } from '../../domain/roadmap';
+import { laneIdentity, markerLane, markerLaneCaption, ResourceLane } from '../../domain/roadmap';
 import { ownWorkflowReading, stateKeyFor, WorkflowReading } from '../../domain/board';
 import { sanitizeTitle } from '../../storage/createNote';
 import {
@@ -216,10 +216,11 @@ export function laneEntries(lanes: ResourceLane[], folded: LaneFolds): TimelineE
 		// The markers row is never folded, and asking that HERE is what makes it true of
 		// everything downstream — the head's class, its rails, and the entries below. Its
 		// caption is a name a roster may legitimately hold (extension 1a of
-		// [[Milestones out of the resource rows]] accepts the two rows), and a band's fold is
-		// keyed by name, so `folded.lane` answers for a resource called `Milestones` and the
-		// diamonds' row alike. It has no disclosure to undo that with.
-		const collapsed = !lane.markers && folded.lane(lane.name);
+		// [[Milestones out of the resource rows]] accepts the two rows), and `laneIdentity`
+		// falls back to that same caption for the row with no note behind it, so `folded.lane`
+		// answers for a resource genuinely called `Milestones` and the diamonds' row alike. It
+		// has no disclosure to undo that with.
+		const collapsed = !lane.markers && folded.lane(laneIdentity(lane));
 		entries.push({ kind: 'lane', lane, collapsed });
 		// **The milestones' row is the header and nothing else.** Every marker draws as a
 		// diamond in that one header's own track (`drawMarkerDiamonds` in `./timeline.ts`),
@@ -242,8 +243,8 @@ export function laneEntries(lanes: ResourceLane[], folded: LaneFolds): TimelineE
  * owns both bits and this module stays pure.
  */
 export interface LaneFolds {
-	/** Is this resource's whole band shut? Asked of the NAME — a lane is not a note. */
-	lane: (name: string) => boolean;
+	/** Is this resource's whole band shut? Asked of `laneIdentity` — the note's own path, or the milestones' own constant. */
+	lane: (identity: string) => boolean;
 	/** Is this bar's subtree shut? Asked of the path, the dated axis's own bit. */
 	row: (path: string) => boolean;
 }
@@ -287,7 +288,6 @@ export function renderLaneHead(
 		cls:
 			'pbl-lane-head' +
 			(lane.markers ? ' pbl-lane-markers' : '') +
-			(lane.declared ? '' : ' pbl-lane-undeclared') +
 			(collapsed ? ' pbl-lane-collapsed' : '') +
 			(quiet ? ' pbl-lane-quiet' : ''),
 	});
@@ -298,21 +298,14 @@ export function renderLaneHead(
 	// exists to prevent.
 	if (!lane.markers) renderLaneChevron(ctx.host, lead, lane, collapsed);
 	// The milestones' row captions itself by what it holds (`markerLaneCaption`) — never
-	// `lane.name`, which stays the constant identity every other reader (the fold key, the
-	// roster refusal) has to keep matching. Every other row is still named by itself.
+	// `lane.name`, which stays the constant `laneIdentity`'s fallback reads. Every other
+	// row is still named by itself — the note's own collision-aware label, since every row
+	// is a note now and has no "outside the roster" mark left to draw.
 	lead.createSpan({ cls: 'pbl-lane-name', text: lane.markers ? markerLaneCaption(lane.bars) : lane.name });
 	if (lane.bars.length > 0) {
 		lead.createSpan({ cls: 'pbl-lane-count', text: t('count.items', { count: lane.bars.length }) });
 	}
 	renderAwayPill(lead, lane, ruler.today);
-	if (!lane.declared) {
-		const mark = lead.createSpan({ cls: 'pbl-lane-stray' });
-		drawIcon(mark, 'circle-help');
-		setTooltip(
-			head,
-			t('lane.undeclaredResource', { name: lane.name }),
-		);
-	}
 	renderLaneAbsenceAdd(ctx, lead, lane);
 	const track = renderLaneAbsences(ctx, head, lane, ruler);
 	if (collapsed) renderLaneRail(track, lane, ruler);
@@ -362,7 +355,7 @@ function renderAwayPill(lead: HTMLElement, lane: ResourceLane, today: CivilDate)
  * `label` is passed, which makes it a BUTTON — the header claims no role of its own, so
  * there is nothing else for `aria-expanded` to sit on.
  *
- * `hasChildren` is true on every band including an empty one. A declared resource with
+ * `hasChildren` is true on every band including an empty one. A resource note with
  * nothing assigned is exactly the row a roster exists to put on screen, and a disclosure
  * that appeared only once work arrived would be a control moving under the reader — the
  * leaf placeholder a childless tree row draws is the same decision made the other way, and
@@ -378,7 +371,10 @@ function renderLaneChevron(host: BacklogViewHost, lead: HTMLElement, lane: Resou
 		// … : …` until the i18n sweep asked what the other half said, and the answer was
 		// nothing — the branch had no reachable caller.
 		label: t(collapsed ? 'fold.showResource' : 'fold.hideResource', { name: lane.name }),
-		toggle: () => host.setLaneCollapsed(lane.name, !collapsed),
+		// `laneIdentity`, never `lane.name`: the label above is free to change with a rename
+		// or with a second resource joining a collision, and a fold keyed on it would reopen
+		// silently the moment either did.
+		toggle: () => host.setLaneCollapsed(laneIdentity(lane), !collapsed),
 	};
 	// The whole projection redraws — the window, the gridlines and every full-height mark
 	// come off the row set this changed — so focus goes to the PANE rather than to the

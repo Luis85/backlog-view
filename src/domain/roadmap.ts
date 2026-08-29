@@ -6,8 +6,7 @@ import { deriveBars, placeItem, ShelfCard, statedEnds, TimelineBar } from './bar
 import { isIterationType, isMarkerType, isReleaseType } from './itemTypes';
 import { ITERATION_TYPE, MILESTONE_TYPE } from './typeVocabulary';
 import { BacklogItem, BacklogModel } from './model';
-import { FieldReading, LinkEntry, sameValue } from './noteFields';
-import { assigneeName, ResourceNote } from './readItems';
+import { FieldReading, linkpathFromRawValue, LinkEntry, sameValue } from './noteFields';
 import { BacklogSettings } from './settings';
 
 /**
@@ -64,9 +63,11 @@ export function hasDateAxis(settings: BacklogSettings): boolean {
  * property the dated axis reads is what positions them inside it. So it needs both, and
  * it can never be configured where the dated axis is not — there is no parallel pair of
  * "resource dates" to name, and gating this on the assignee property alone is the one
- * mistake [[The resource timeline]] names as the one to not make. The ROSTER is
- * deliberately absent from this test: nobody declares who exists, so a row list is
- * optional and observed assignees supply the rest.
+ * mistake [[The resource timeline]] names as the one to not make. Whether the base
+ * RETURNS any `Resource` notes is deliberately absent from this test too: the axis is
+ * CONFIGURED the moment these two properties are, whether the roster it will draw turns
+ * out to hold anybody or not — an empty roster is the "no resources" advisory's question
+ * to answer, not a reason to call the axis unconfigured.
  */
 export function hasResourceAxis(settings: BacklogSettings): boolean {
 	return settings.assigneeKey !== '' && hasDateAxis(settings);
@@ -115,11 +116,12 @@ export interface HorizonBucket {
 }
 
 /**
- * A row of the resources axis: one resource, and everything drawn against it. Declared
- * rows render in declared order, empty or not; a result whose assignee is undeclared
- * mints a trailing row named by itself, the same rule an undeclared horizon mints a
- * bucket by. Context rows never mint one — an absence MAY, which is the one place this
- * axis has a third source rather than two.
+ * A row of the resources axis: one `Resource` note, and everything drawn against it. One
+ * row per note the model keeps (`BacklogModel.resources`), in the model's own order,
+ * whether or not anything is assigned to it — a roster is exactly this, a resource who
+ * exists whether or not work has reached them. Nothing mints a row any more: a result or
+ * an absence naming somebody with no `Resource` note behind them places nowhere, on the
+ * shelf or drawn nowhere at all rather than inventing a row for a name.
  *
  * A row draws from a list per SOURCE and the renderer walks each. [[Resource absences]]
  * needed that seam and this comment used to promise it in the wrong shape — that a
@@ -127,33 +129,51 @@ export interface HorizonBucket {
  * and an absence is deliberately never one, so the second list is `absences`.
  */
 /**
- * What the milestones' own row is CALLED — the header, and the key its fold is stored
- * under, since a band is collapsed by its name. A resource genuinely named this would share
- * that one bit and draw a second row beside it; recorded rather than guarded, because every
- * guard costs a rule about names the roster is otherwise free to choose.
+ * What the milestones' own row is CALLED — the header, and (since it has no note of its
+ * own to be keyed by) its fold key too, `laneIdentity`'s fallback below. A resource
+ * genuinely named this would share that one word and draw a second row beside it;
+ * recorded rather than guarded, because every guard costs a rule about names the roster is
+ * otherwise free to choose.
  */
 const MILESTONE_LANE = 'Milestones';
+
+/**
+ * A lane's identity — what a fold key and a keyboard stop have to agree it IS, not what its
+ * header happens to say. Every lane but the milestones' one is a `Resource` note now, so
+ * its own path is that identity; the marker row has no note behind it, so it keeps the
+ * constant caption as its key, which is safe for the reason above — the one caption a
+ * resource sharing it would collide with is a word the roster is free not to pick.
+ *
+ * Never `lane.name`: two resources sharing a basename draw ONE disambiguated label right up
+ * until they collide, and a rename changes the label without the note itself changing — a
+ * key built from either would fold the wrong row, or reopen a fold the rename never asked
+ * for. `viewState.ts`'s own `laneKey` is this identity's STORAGE form; this is what supplies
+ * it, so the two files cannot come to disagree about what identifies a row.
+ */
+export function laneIdentity(lane: ResourceLane): string {
+	return lane.file?.path ?? MILESTONE_LANE;
+}
 
 /**
  * The milestones' own row, holding the bars handed to it. **BOTH grid axes draw one**, which
  * is why it is a function here rather than an object literal inside `deriveLanes`: the name
  * and the three empty fields are the same statement on either, and a second literal spelt in
- * `view/render/lanes.ts` is a caption free to drift from the one the fold key, the roster
- * refusals and `assignableLanes` all read.
+ * `view/render/lanes.ts` is a caption free to drift from the one `laneIdentity` and
+ * `assignableLanes` both read.
  *
  * A row is still minted by the bar that LANDS in it: the caller decides whether an empty one
  * is drawn at all, and neither axis draws it empty.
  */
 export function markerLane(bars: TimelineBar[]): ResourceLane {
-	return { name: MILESTONE_LANE, declared: true, markers: true, bars, absences: [], context: [], file: null };
+	return { name: MILESTONE_LANE, markers: true, bars, absences: [], context: [], file: null };
 }
 
 /**
  * What the marker row's header SAYS — presentation derived from what the row holds,
- * never the lane's identity: `name` stays the constant the fold key and the roster
- * refusal read, and a caption that named a type the row is not drawing would be the
- * legend's own lie one element over. Decided by the user 2026-08-16 (content-aware over
- * a fixed word), spec `2026-08-16-finish-iterations-board-design.md`.
+ * never the lane's identity: `name` stays the constant `laneIdentity`'s fallback reads,
+ * and a caption that named a type the row is not drawing would be the legend's own lie
+ * one element over. Decided by the user 2026-08-16 (content-aware over a fixed word),
+ * spec `2026-08-16-finish-iterations-board-design.md`.
  */
 export function markerLaneCaption(bars: TimelineBar[]): string {
 	const iterations = bars.some((bar) => isIterationType(bar.item.typeName));
@@ -169,10 +189,14 @@ export function markerLaneCaption(bars: TimelineBar[]): string {
 }
 
 export interface ResourceLane {
-	/** The assignee value this row stands for, in its first-seen casing. */
+	/**
+	 * The name this row draws — the collision-aware label {@link resourceLabelsOf} gives
+	 * the note (`domain/readItems.ts`'s `namedTargets`, run once per model and read here
+	 * through `BacklogModel.resourceLabels`), never a second disambiguation of its own.
+	 * Every row is a note now, so this is that note's own name, not a value a result or an
+	 * absence happened to spell first.
+	 */
 	name: string;
-	/** False for a row minted by a result's undeclared assignee. */
-	declared: boolean;
 	/**
 	 * True for the ONE row that is not a resource at all — the milestones' own, drawn first.
 	 * A marker is a point in the plan rather than somebody's work, so it belongs to no
@@ -199,16 +223,20 @@ export interface ResourceLane {
 	 */
 	context: BacklogItem[];
 	/**
-	 * The `Resource` note this row IS, or null for the one row that is not a resource at
-	 * all (the milestones' own) and for a row minted by a name no `Resource` note carries.
-	 *
-	 * Bridged until the rows come from the notes (Task 5): a declared or minted lane is
-	 * still named by a STRING (`resourceNames`, or an item's own observed assignee), and
-	 * this is that name looked up against `BacklogModel.resources` rather than the row's
-	 * own identity. Once every lane comes from a note (Task 5) this field stops being a
-	 * lookup and starts being the thing a lane fundamentally is.
+	 * The `Resource` note this row IS — its own identity, not a lookup against one. Null
+	 * for the one row that is not a resource at all: the milestones' own, which stands for
+	 * no note and is never written to. Every other lane's file is this row's note, in tree
+	 * order off `BacklogModel.resources`, so a write aimed at a lane can never land on the
+	 * wrong person's note the way naming a lane by a STRING and searching for its first
+	 * same-named note once could (`AssignableLane` below is the narrowed type for exactly
+	 * that write).
 	 */
 	file: TFile | null;
+}
+
+/** A row that IS a resource — every lane but the milestones' one. */
+export interface AssignableLane extends ResourceLane {
+	file: TFile;
 }
 
 export interface RoadmapModel {
@@ -349,9 +377,20 @@ export function horizonSource(item: BacklogItem): HorizonSource {
  *
  * Takes the model as optional so a caller with no roadmap drawn at all gets an empty list
  * rather than a null check of its own.
+ *
+ * Narrows to `AssignableLane` by asking `file !== null` alone, never `!lane.markers` beside
+ * it: every lane but the milestones' carries a `file` by construction (`deriveLanes` builds
+ * one lane per resource note, and only `markerLane` ever sets `file: null`), so the two
+ * conditions are one fact asked twice. A compound `!lane.markers && lane.file !== null`
+ * stood here until the coverage floor caught it: with the invariant holding, the second
+ * half is never false, which means a lint-clean `&&` and a permanently dead branch is
+ * exactly what a covered `!lane.markers` check beside it produces. Still never `lane.name`
+ * — the rule this filter has always kept — because a resource genuinely called Milestones
+ * is a resource, and comparing against the constant would take a legitimate roster entry
+ * off the ladder.
  */
-export function assignableLanes(roadmap: RoadmapModel | undefined): ResourceLane[] {
-	return (roadmap?.lanes ?? []).filter((lane) => !lane.markers);
+export function assignableLanes(roadmap: RoadmapModel | undefined): AssignableLane[] {
+	return (roadmap?.lanes ?? []).filter((lane): lane is AssignableLane => lane.file !== null);
 }
 
 /**
@@ -516,7 +555,7 @@ export function buildRoadmap(
 		eligibleResults: model.results.filter(onThisRoadmap).length,
 	};
 	if (axis === 'horizons') deriveBuckets(rows, settings, roadmap, visible);
-	else if (axis === 'resources') deriveLanes(rows, settings, roadmap, model.absences, model.resources);
+	else if (axis === 'resources') deriveLanes(rows, settings, roadmap, model);
 	else {
 		const dated = deriveBars(rows, settings.iterationBars);
 		roadmap.bars = dated.bars;
@@ -602,11 +641,10 @@ function placeContext(item: BacklogItem, byValue: Map<string, HorizonBucket>, ro
 }
 
 /**
- * The resources axis. Two passes for `deriveBuckets`' own reason — only a result may
- * mint a row, so a context row joins one that already exists — with one difference that
- * follows from the axis being derivative: a result mints its row only where a BAR lands.
- * An assignee with no date to position has nothing to draw, so it would otherwise mint a
- * row whose only member is on the shelf.
+ * The resources axis. Two passes for `deriveBuckets`' own reason — a context row joins a
+ * row that already exists — but nothing here MINTS one any more: every row is a note, so
+ * the row LIST is built once, up front, from `resources` itself, and both passes only ever
+ * place into a row that is already there or fail to place at all.
  *
  * Every placement question is `placeItem`'s, asked unchanged: the marker reduction, the
  * unreadable and reversed refusals and the rollup inference are the dated axis's rules,
@@ -617,43 +655,55 @@ function placeContext(item: BacklogItem, byValue: Map<string, HorizonBucket>, ro
  * milestone is a fact about the plan rather than about a person. Two consequences follow
  * and both are the point — an unassigned milestone draws instead of shelving, since there
  * is no assignee left to be missing, and no fold of anybody's band can take it off screen.
- * The row is minted by its first placed marker, exactly as an undeclared assignee's is: a
- * roster with an empty Milestones header on every base would say nothing.
+ * The row is minted by its first placed marker, since the roster proper is never empty on
+ * its account: a base with no milestone in it draws no `Milestones` header at all.
  */
-function deriveLanes(
-	rows: BacklogItem[],
-	settings: BacklogSettings,
-	roadmap: RoadmapModel,
-	absences: Absence[],
-	resources: ResourceNote[],
-): void {
+function deriveLanes(rows: BacklogItem[], settings: BacklogSettings, roadmap: RoadmapModel, model: BacklogModel): void {
+	const { absences, resources, resourceLabels } = model;
 	const markers = markerLane([]);
-	const lanes = settings.resourceNames.map(
-		(name): ResourceLane => ({
-			name,
-			declared: true,
+	// One row per resource note, in the model's own order — every one, whether or not
+	// anything names them, which is what the removed `resourceNames` option existed for.
+	// Named through the model's own label index rather than a second `namedTargets` call
+	// here: that map is built ONCE per model (`BacklogModel.resourceLabels`), and every
+	// surface that names a resource to the reader reads it rather than disambiguating
+	// again on its own — the row header is one such surface, and re-deriving its label
+	// here is exactly the per-row scan that rule exists to keep out of a render path.
+	const lanes = resources.map(
+		(resource): ResourceLane => ({
+			file: resource.file,
+			name: resourceLabels.get(resource.file.path) ?? resource.title,
 			markers: false,
 			bars: [],
 			absences: [],
 			context: [],
-			// Bridged until the rows come from the notes (Task 5).
-			file: resources.find((r) => sameValue(r.title, name))?.file ?? null,
 		}),
 	);
-	const byName = new Map<string, ResourceLane>(lanes.map((lane) => [lane.name.toLowerCase(), lane]));
-	const mintLane = (name: string): ResourceLane => laneNamed(name, lanes, byName, resources);
+	// By PATH, never by a folded name: a link resolves or it does not, and there is no
+	// middle answer for a case-insensitive comparison to keep. Built from `resources`
+	// rather than from `lanes` (same length, same order), so the key comes from a `TFile`
+	// the type already guarantees instead of a non-null assertion on the lane's own.
+	const byPath = new Map<string, ResourceLane>(resources.map((resource, i) => [resource.file.path, lanes[i]]));
 	for (const item of rows) {
 		if (item.outsideFilter) continue;
 		if (isMarkerType(item.typeName)) placeBar(item, () => markers, roadmap, settings);
-		else placeAssigned(item, mintLane, roadmap, settings);
+		else placeAssigned(item, byPath, roadmap, settings);
 	}
-	// Second, so a resource a result already named keeps the casing that result gave its
-	// row — and third-source minting: unlike a context row, an absence MAY create one,
-	// because it is a statement this base's own notes make about a resource rather than a
-	// value borrowed from a note the filter excluded.
-	for (const absence of absences) mintLane(absence.resource).absences.push(absence);
+	// An absence names its resource by a plain STRING (`Absence.resource`; the link this
+	// axis reads for everything else is Task 6's, still open), which the prompt fills from
+	// a plain suggestion list but a hand edit may still spell as a wikilink — so the raw
+	// text is run through `linkpathFromRawValue` (strips brackets, an alias and a heading
+	// ref) before it is matched case-insensitively against the roster's own titles,
+	// `sameValue`'s ordinary rule. It can no longer MINT a row: a row is a note, and an
+	// absence is a statement about a resource rather than a declaration of one, so one
+	// naming nobody on the roster draws nowhere.
+	for (const absence of absences) {
+		const name = linkpathFromRawValue(absence.resource);
+		const resource = resources.find((r) => sameValue(r.title, name));
+		const lane = resource ? byPath.get(resource.file.path) : undefined;
+		lane?.absences.push(absence);
+	}
 	for (const item of rows) {
-		if (item.outsideFilter) placeContextLane(item, byName, roadmap);
+		if (item.outsideFilter) placeContextLane(item, byPath, roadmap);
 	}
 	roadmap.lanes = markers.bars.length > 0 ? [markers, ...lanes] : lanes;
 	// Flattened in row order — see `RoadmapModel.bars` for who asks and why.
@@ -665,26 +715,33 @@ function deriveLanes(
  * dates second, and that order is the rule rather than a convenience: a row is who and
  * not when, so an unassigned result shelves whatever its dates say — there is no row to
  * place it into.
+ *
+ * Resolved through the item's own LINK (`assigneeEntry.file`), never through the raw name
+ * a `.find`/`sameValue` scan would have to guess between two notes sharing one — the
+ * defect that shape carried until this function stopped minting rows to look one up in.
+ * One answer for three cases, and deliberately: nobody named, a link that resolves to
+ * nothing, and a link that resolves to a note this base holds but which is not a
+ * `Resource` (so it is not in `byPath` at all). A link is not a declaration and the type
+ * is, so all three shelve — visible, counted, and one drop away from being placed.
  */
 function placeAssigned(
 	item: BacklogItem,
-	mint: (name: string) => ResourceLane,
+	byPath: Map<string, ResourceLane>,
 	roadmap: RoadmapModel,
 	settings: BacklogSettings,
 ): void {
-	const name = assigneeName(item);
-	if (name === null) {
+	const lane = item.assigneeEntry?.file ? byPath.get(item.assigneeEntry.file.path) : undefined;
+	if (!lane) {
 		roadmap.shelf.push({ item, reason: null });
 		return;
 	}
-	placeBar(item, () => mint(name), roadmap, settings);
+	placeBar(item, () => lane, roadmap, settings);
 }
 
 /**
- * One result on the grid, or on the shelf with its reason. The row is a THUNK because a row
- * is minted by the bar that lands in it and never by one that shelves — the rule the roster
- * has always kept for an undeclared assignee, and the same reason the milestones' row is
- * absent from a base whose only marker has no readable date.
+ * One result on the grid, or on the shelf with its reason. The row is a THUNK for
+ * `placeAssigned`'s own shape — a shelved result must not push a bar into a row it never
+ * reached — even though every row now exists up front and nothing here mints on demand.
  */
 function placeBar(item: BacklogItem, lane: () => ResourceLane, roadmap: RoadmapModel, settings: BacklogSettings): void {
 	const placement = placeItem(item, statedEnds(item), settings.iterationBars);
@@ -699,50 +756,19 @@ function placeBar(item: BacklogItem, lane: () => ResourceLane, roadmap: RoadmapM
 }
 
 /**
- * The row this name belongs to, minting a trailing one where nothing has yet. Matching is
- * case-insensitive, exactly as the buckets match horizons, and the rule is stated once
- * because two sources may now mint: a result's own assignee, and an absence's.
- *
- * Not to be confused with `resourceLabel` above, which answers what a DRAWN row is
- * called for the sentence a move is announced in, is asked of a resolved LINK rather
- * than a name, and mints nothing.
- */
-function laneNamed(
-	name: string,
-	lanes: ResourceLane[],
-	byName: Map<string, ResourceLane>,
-	resources: ResourceNote[],
-): ResourceLane {
-	const existing = byName.get(name.toLowerCase());
-	if (existing) return existing;
-	const lane: ResourceLane = {
-		name,
-		declared: false,
-		markers: false,
-		bars: [],
-		absences: [],
-		context: [],
-		// Bridged until the rows come from the notes (Task 5).
-		file: resources.find((r) => sameValue(r.title, name))?.file ?? null,
-	};
-	byName.set(name.toLowerCase(), lane);
-	lanes.push(lane);
-	return lane;
-}
-
-/**
  * A context row joins a row that already exists, or the axis's undifferentiated context. A
  * marker joins the second whatever it names: "a milestone is in no resource's row" is a
  * rule about the row and not about the bar, so an excluded one must not reach a band by the
- * one path that positions nothing.
+ * one path that positions nothing. Resolved through the LINK, `placeAssigned`'s own rule:
+ * a context row is never a source of vocabulary, so it must not join a row by a name match
+ * a result would refuse.
  */
-function placeContextLane(item: BacklogItem, byName: Map<string, ResourceLane>, roadmap: RoadmapModel): void {
+function placeContextLane(item: BacklogItem, byPath: Map<string, ResourceLane>, roadmap: RoadmapModel): void {
 	if (isMarkerType(item.typeName)) {
 		roadmap.context.push(item);
 		return;
 	}
-	const name = assigneeName(item);
-	const lane = name === null ? undefined : byName.get(name.toLowerCase());
+	const lane = item.assigneeEntry?.file ? byPath.get(item.assigneeEntry.file.path) : undefined;
 	if (lane) lane.context.push(item);
 	else roadmap.context.push(item);
 }

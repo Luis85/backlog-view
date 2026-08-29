@@ -104,10 +104,10 @@ export function demoOptions(): Record<string, unknown> {
 		// supply rather than one declared here.
 		assigneeProperty: 'note.assignee',
 		// The resources axis, which needs the assignee key above plus the dates it already
-		// has. The roster is optional and is declared anyway, for the case a roster is FOR:
-		// `Priya` is on nothing, so her row draws empty — a resource exists whether or not
-		// work has reached them, and nothing else in the fixture can show that.
-		resourceNames: 'Dana, Kim, Priya',
+		// has. Every row is a `Resource` note now (Task 5, 2026-08-28) — `demoVault()` adds
+		// one each for Dana, Kim, Priya and Sam below — and `Priya` is on nothing, so her
+		// row draws empty: a resource exists whether or not work has reached them, and
+		// nothing else in the fixture can show that.
 		// The tags column has been in `demoOrder()` from the start and drew EMPTY on every
 		// row until 2026-08-15, because the key was never named and no note carried one:
 		// the pills, their remove buttons and the whole editing surface were unreachable in
@@ -188,6 +188,13 @@ export function folderOptions(): Record<string, unknown> {
 export function demoVault(layout: Layout = 'flat', extra = 0): FakeVault {
 	const vault = new FakeVault();
 	const add = adder(vault, layout);
+	// The roster: one `Resource` note per name this vault assigns anything to, plus `Priya`
+	// on nothing at all — a row is a note now (Task 5, 2026-08-28), so the resources axis
+	// draws exactly these four names and nobody else, in this order.
+	add('Dana', { type: 'Resource' });
+	add('Kim', { type: 'Resource' });
+	add('Priya', { type: 'Resource' });
+	add('Sam', { type: 'Resource' });
 	add('Onboarding', { type: 'Epic', order: 10, status: 'Active', horizon: 'Now', start: '2026-07-01', due: '2026-09-30' });
 	add('Sign-up flow', { type: 'Feature', order: 10, status: 'Active', horizon: 'Now', start: '2026-07-01', due: '2026-08-20' }, 'Onboarding');
 	// The two PBIs under this Feature sit in a `Use cases` folder that has no note of its

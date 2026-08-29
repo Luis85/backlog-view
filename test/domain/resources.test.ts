@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { BacklogSettings } from '../../src/domain/settings';
 import { settingsWith } from '../helpers/settings';
 import { buildModel } from '../../src/domain/model';
-import { buildRoadmap } from '../../src/domain/roadmap';
+import { buildRoadmap, laneIdentity, markerLane } from '../../src/domain/roadmap';
 import { resourceVault } from '../helpers/resources';
 import { FakeVault } from '../helpers/vault';
 
@@ -14,6 +14,10 @@ import { FakeVault } from '../helpers/vault';
  * Every POSITION question is deliberately not asked twice: the axis reuses `placeItem`
  * unchanged, so what is checked here is the grouping and one test that the two axes agree
  * about a span. `bars.test.ts` owns the placement rules themselves.
+ *
+ * Every row is a `Resource` note now (Task 5, 2026-08-28): there is no more declared
+ * roster setting for this file to configure, so a vault built for one of these tests
+ * carries a `Resource` note for every row the test expects, whether empty or not.
  */
 
 /** The resources axis needs an assignee property AND a date property — never one alone. */
@@ -29,19 +33,17 @@ function titles(bars: { item: { title: string } }[]): string[] {
 	return bars.map((bar) => bar.item.title);
 }
 
-
 describe('the resources axis', () => {
-	it('renders every declared resource in declared order, empty or not', () => {
-		const settings = resourceSettings({ resourceNames: ['Alice', 'Bob'] });
+	it('draws one row per resource note, in the model’s own order, empty or not', () => {
+		const settings = resourceSettings();
 		const roadmap = laneOf(resourceVault(), settings);
 
-		// Bob is empty and still there; the undeclared assignee appends after both.
+		// Bob is empty and still there; a row is a note now, not a bar that landed.
 		expect(roadmap.lanes.map((lane) => lane.name)).toEqual(['Alice', 'Bob', 'Zoe']);
-		expect(roadmap.lanes.map((lane) => lane.declared)).toEqual([true, true, false]);
 	});
 
-	it('groups by the note’s own assignee, case-insensitively, in tree order', () => {
-		const settings = resourceSettings({ resourceNames: ['Alice'] });
+	it('groups by the note’s own resolved assignee, in tree order', () => {
+		const settings = resourceSettings();
 		const roadmap = laneOf(resourceVault(), settings);
 
 		expect(titles(roadmap.lanes[0].bars)).toEqual(['Alice dated', 'Cased']);
@@ -52,7 +54,7 @@ describe('the resources axis', () => {
 		// right, since a person is in no resource's row either. What must not follow is a
 		// bar: a `Resource` carrying the configured date keys drew a diamond in the
 		// `Milestones` lane and minted that lane on a base with no milestone in it.
-		const settings = resourceSettings({ resourceNames: ['Alice'] });
+		const settings = resourceSettings();
 		const vault = resourceVault();
 		vault.addFile('Dana.md', { frontmatter: { type: 'Resource', start: '2026-08-01', due: '2026-08-31' } });
 		const roadmap = laneOf(vault, settings);
@@ -62,7 +64,7 @@ describe('the resources axis', () => {
 	});
 
 	it('positions a bar exactly as the dated axis does — no second date reading', () => {
-		const settings = resourceSettings({ resourceNames: ['Alice'] });
+		const settings = resourceSettings();
 		const vault = resourceVault();
 		const lanes = laneOf(vault, settings);
 		const dated = buildRoadmap(buildModel(vault.app, vault.entries(), settings), settings, () => true, 'dates');
@@ -73,7 +75,7 @@ describe('the resources axis', () => {
 	});
 
 	it('shelves a result with no assignee whatever its dates say — a row is who, not when', () => {
-		const settings = resourceSettings({ resourceNames: ['Alice'] });
+		const settings = resourceSettings();
 		const roadmap = laneOf(resourceVault(), settings);
 
 		const nobody = roadmap.shelf.find((card) => card.item.title === 'Nobody');
@@ -81,21 +83,37 @@ describe('the resources axis', () => {
 		expect(nobody?.reason).toBeNull();
 	});
 
-	it('shelves an assigned result with no date to place, and mints no row for it', () => {
+	it('draws no row at all for a name no Resource note carries, whatever its dates say', () => {
 		const settings = resourceSettings();
 		const vault = new FakeVault();
 		vault.addFile('Named only.md', { frontmatter: { type: 'Epic', order: 10, assignee: 'Bob' } });
 		const roadmap = laneOf(vault, settings);
 
-		// Naming a resource is not scheduling against them: a row with no date to
-		// position a bar at has nothing to draw, so nothing is drawn.
+		// A link is not a declaration and the type is: nothing on this roster names Bob, so
+		// there is no row to place the item in — dated or not.
 		expect(roadmap.lanes).toEqual([]);
 		expect(roadmap.shelf.map((card) => card.item.title)).toEqual(['Named only']);
 	});
 
-	it('keeps the dated axis’s own refusals and their reasons', () => {
-		const settings = resourceSettings({ resourceNames: ['Alice'] });
+	it('shelves an assigned result with no date to place, even though its row exists', () => {
+		const settings = resourceSettings();
 		const vault = new FakeVault();
+		vault.addFile('Bob.md', { frontmatter: { type: 'Resource' } });
+		vault.addFile('Named only.md', { frontmatter: { type: 'Epic', order: 10, assignee: 'Bob' } });
+		const roadmap = laneOf(vault, settings);
+
+		// Naming a resource is not scheduling against them: a row with no date to
+		// position a bar at has nothing to draw, so nothing is drawn — but the row itself
+		// is there regardless, since it is Bob's own note and not a bar that put it there.
+		expect(roadmap.lanes.map((lane) => lane.name)).toEqual(['Bob']);
+		expect(roadmap.lanes[0].bars).toEqual([]);
+		expect(roadmap.shelf.map((card) => card.item.title)).toEqual(['Named only']);
+	});
+
+	it('keeps the dated axis’s own refusals and their reasons', () => {
+		const settings = resourceSettings();
+		const vault = new FakeVault();
+		vault.addFile('Alice.md', { frontmatter: { type: 'Resource' } });
 		vault.addFile('Bad.md', { frontmatter: { type: 'Epic', order: 10, assignee: 'Alice', start: 'not a date' } });
 		const roadmap = laneOf(vault, settings);
 
@@ -104,8 +122,10 @@ describe('the resources axis', () => {
 	});
 
 	it('draws a dateless parent’s inferred bar in its own resource’s row', () => {
-		const settings = resourceSettings({ resourceNames: ['Alice', 'Bob'] });
+		const settings = resourceSettings();
 		const vault = new FakeVault();
+		vault.addFile('Alice.md', { frontmatter: { type: 'Resource' } });
+		vault.addFile('Bob.md', { frontmatter: { type: 'Resource' } });
 		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10, assignee: 'Alice' } });
 		vault.addFile('Child.md', {
 			frontmatter: { type: 'Feature', order: 10, assignee: 'Bob', start: '2026-08-01', due: '2026-08-10' },
@@ -122,7 +142,7 @@ describe('the resources axis', () => {
 	});
 
 	it('placed plus shelved equals the visible result rows', () => {
-		const settings = resourceSettings({ resourceNames: ['Alice'] });
+		const settings = resourceSettings();
 		const roadmap = laneOf(resourceVault(), settings);
 
 		const placed = roadmap.lanes.reduce((sum, lane) => sum + lane.bars.length, 0);
@@ -134,10 +154,46 @@ describe('the resources axis', () => {
 		// Two readers ask `bars` "is this path a drawn bar rather than a card" — the card
 		// menu's children section and the toolbar's collapse gate — so an axis that draws
 		// bars must report them, or a lane's bar answers "card" to both.
-		const settings = resourceSettings({ resourceNames: ['Alice'] });
+		const settings = resourceSettings();
 		const roadmap = laneOf(resourceVault(), settings);
 
 		expect(titles(roadmap.bars)).toEqual(['Alice dated', 'Cased', 'Stray']);
+	});
+
+	it('falls back to the note’s own title if the label index and the roster ever fall out of step', () => {
+		// `resourceLabels` is built from the SAME `resources` list `deriveLanes` reads, so
+		// every resource's path is a key in it by construction and this fallback never
+		// actually fires through `buildModel`. It stays a real fallback rather than a bare
+		// index read for the same reason `resourceLabel`'s own three-deep chain does
+		// (`domain/roadmap.ts`): a caller that hands `buildRoadmap` a model built some
+		// other way must not throw finding a lane's own name.
+		const settings = resourceSettings();
+		const vault = resourceVault();
+		const model = buildModel(vault.app, vault.entries(), settings);
+		(model.resourceLabels as Map<string, string>).delete('Bob.md');
+
+		const roadmap = buildRoadmap(model, settings, () => true, 'resources');
+
+		expect(roadmap.lanes.find((lane) => lane.file?.path === 'Bob.md')?.name).toBe('Bob');
+	});
+});
+
+describe('a lane’s own identity', () => {
+	it('is the note’s path for a resource, and the shared constant for the milestones’ row', () => {
+		// `laneIdentity` is what a fold key and a keyboard stop both have to agree a row
+		// IS — never `lane.name`, which two same-basename resources draw as one
+		// disambiguated label and a rename changes without the note itself changing. Both
+		// of today's callers already skip the milestones' row before asking (`!lane.markers`
+		// upstream of either call), so this is exercised directly rather than through them
+		// — the fallback is a real part of the function's own contract, not dead weight.
+		const vault = resourceVault();
+		const alice = vault.files.get('Alice.md');
+		if (!alice) throw new Error('fixture has no Alice.md');
+
+		expect(laneIdentity({ file: alice, name: 'Alice', markers: false, bars: [], absences: [], context: [] })).toBe(
+			'Alice.md',
+		);
+		expect(laneIdentity(markerLane([]))).toBe('Milestones');
 	});
 });
 
@@ -152,8 +208,8 @@ describe('the milestones’ own row', () => {
 		return vault;
 	}
 
-	it('draws first, ahead of every declared resource', () => {
-		const settings = resourceSettings({ resourceNames: ['Alice', 'Bob'] });
+	it('draws first, ahead of every other row', () => {
+		const settings = resourceSettings();
 		const roadmap = laneOf(markerVault('Alice'), settings);
 
 		expect(roadmap.lanes.map((lane) => lane.name)).toEqual(['Milestones', 'Alice', 'Bob', 'Zoe']);
@@ -162,7 +218,7 @@ describe('the milestones’ own row', () => {
 	});
 
 	it('takes the marker out of its assignee’s band, and reads that assignee for nothing', () => {
-		const settings = resourceSettings({ resourceNames: ['Alice'] });
+		const settings = resourceSettings();
 		const assigned = laneOf(markerVault('Alice'), settings);
 		const unassigned = laneOf(markerVault(), settings);
 
@@ -175,10 +231,10 @@ describe('the milestones’ own row', () => {
 	});
 
 	it('is absent from a roadmap whose markers none of them place', () => {
-		const settings = resourceSettings({ resourceNames: ['Alice'] });
+		const settings = resourceSettings();
 		const vault = resourceVault();
-		// A marker with no readable date shelves like anything else, and a row is minted by
-		// the bar that lands in it — never by an item that had one to shelve.
+		// A marker with no readable date shelves like anything else, and the row is minted
+		// by the bar that lands in it — never by an item that had one to shelve.
 		vault.addFile('No date.md', { frontmatter: { type: 'Milestone', order: 60, assignee: 'Alice' } });
 		const roadmap = laneOf(vault, settings);
 
@@ -187,7 +243,7 @@ describe('the milestones’ own row', () => {
 	});
 
 	it('counts a marker among the placed, and reports it on `bars` in row order', () => {
-		const settings = resourceSettings({ resourceNames: ['Alice'] });
+		const settings = resourceSettings();
 		const roadmap = laneOf(markerVault('Alice'), settings);
 
 		expect(titles(roadmap.bars)).toEqual(['Ship', 'Alice dated', 'Cased', 'Stray']);
@@ -206,7 +262,7 @@ describe('absences in the row list', () => {
 	}
 
 	function lanesWith(resource: string) {
-		return laneOf(withAbsence(resource), resourceSettings({ resourceNames: ['Alice', 'Bob'] }));
+		return laneOf(withAbsence(resource), resourceSettings());
 	}
 
 	it('draws in the row its own resource names, and nowhere else', () => {
@@ -216,19 +272,20 @@ describe('absences in the row list', () => {
 		expect(roadmap.lanes.filter((lane) => lane.absences.length > 0)).toHaveLength(1);
 	});
 
-	it('mints a row for a resource nothing else names — a third source', () => {
-		// 4b: an absence can be the first reason a row exists, extending the
-		// declared-or-observed row list rather than needing something assigned first.
-		const quinn = lanesWith('Quinn').lanes.find((lane) => lane.name === 'Quinn');
+	it('draws nowhere for a resource no Resource note carries — an absence cannot mint one', () => {
+		// A row is a note now: an absence naming somebody off the roster used to mint a
+		// trailing row for them (4b, "a third source"), and it no longer can — it is a
+		// statement about a resource, not a declaration of one, so it draws nowhere.
+		const roadmap = lanesWith('Quinn');
 
-		expect(quinn).toBeDefined();
-		expect(quinn?.declared).toBe(false);
-		expect(quinn?.bars).toEqual([]);
-		expect(quinn?.absences).toHaveLength(1);
+		expect(roadmap.lanes.map((lane) => lane.name)).not.toContain('Quinn');
+		expect(roadmap.lanes.every((lane) => lane.absences.length === 0)).toBe(true);
 	});
 
-	it('joins the row a result already minted, matched as the bars are', () => {
-		// Case-insensitively, the one matching rule this axis has.
+	it('matches an absence’s resource case-insensitively, unlike a link', () => {
+		// An absence names its resource by a plain string rather than a link
+		// (`Absence.resource`, Task 6's own open thread), so it is matched against the
+		// roster's titles with `sameValue` — case-insensitively — rather than resolved.
 		const roadmap = lanesWith('alice');
 
 		expect(roadmap.lanes.filter((lane) => lane.name.toLowerCase() === 'alice')).toHaveLength(1);
@@ -238,7 +295,7 @@ describe('absences in the row list', () => {
 	it('is never counted, and never changes what the shelf reports', () => {
 		// The row's count is RESULT bars, exactly as a bucket's count is results. An
 		// absence is neither a result nor a work item, so it moves no number here.
-		const settings = resourceSettings({ resourceNames: ['Alice', 'Bob'] });
+		const settings = resourceSettings();
 		const bare = laneOf(resourceVault(), settings);
 		const withOne = lanesWith('Alice');
 
@@ -272,10 +329,17 @@ describe('a context row on the resources axis', () => {
 	 * set. Both halves are needed and the second is the one worth stating: unfocused,
 	 * `roadmapRows` hands over `model.results`, which holds no context rows at all — so
 	 * an excluded ancestor reaches any roadmap axis only at the focus level, exactly as
-	 * the horizon axis's own context tests set up.
+	 * the horizon axis's own context tests set up. `resourceTitles` is the roster this
+	 * roadmap draws rows for — a note per name, since every row is one now (Task 5).
 	 */
-	function contextRoadmap(settings: BacklogSettings, epicAssignee: string, resultAssignee: string) {
+	function contextRoadmap(
+		settings: BacklogSettings,
+		epicAssignee: string,
+		resultAssignee: string,
+		resourceTitles: string[],
+	) {
 		const vault = new FakeVault();
+		for (const title of resourceTitles) vault.addFile(`${title}.md`, { frontmatter: { type: 'Resource' } });
 		vault.addFile('Outside epic.md', { frontmatter: { type: 'Epic', order: 10, assignee: epicAssignee } });
 		vault.addFile('Result.md', {
 			frontmatter: {
@@ -293,7 +357,7 @@ describe('a context row on the resources axis', () => {
 	}
 
 	it('groups into a row that already exists, uncounted and never shelved', () => {
-		const roadmap = contextRoadmap(resourceSettings({ resourceNames: ['Alice'] }), 'Alice', 'Alice');
+		const roadmap = contextRoadmap(resourceSettings(), 'Alice', 'Alice', ['Alice']);
 
 		const alice = roadmap.lanes[0];
 		expect(alice.context.map((item) => item.title)).toEqual(['Outside epic']);
@@ -308,8 +372,9 @@ describe('a context row on the resources axis', () => {
 		// [[Milestones out of the resource rows]] 4a: "a milestone is in no resource's row" is
 		// a rule about the ROW, so the one path that positions nothing has to keep it too —
 		// Alice's row exists here and the excluded marker still does not join it.
-		const settings = resourceSettings({ resourceNames: ['Alice'] });
+		const settings = resourceSettings();
 		const vault = new FakeVault();
+		vault.addFile('Alice.md', { frontmatter: { type: 'Resource' } });
 		vault.addFile('Outside ship.md', { frontmatter: { type: 'Milestone', order: 10, assignee: 'Alice' } });
 		vault.addFile('Result.md', {
 			frontmatter: { type: 'Feature', order: 10, assignee: 'Alice', start: '2026-08-01', due: '2026-08-02' },
@@ -323,10 +388,10 @@ describe('a context row on the resources axis', () => {
 		expect(roadmap.lanes.flatMap((lane) => lane.context.map((item) => item.title))).toEqual([]);
 	});
 
-	it('never mints a row of its own, and falls to the undifferentiated context', () => {
-		// The only declared row is Bob's — so Alice's does not exist, and the excluded
+	it('never joins a row of its own, and falls to the undifferentiated context', () => {
+		// The only row is Bob's — Alice has no Resource note at all here — so the excluded
 		// Epic that names her has none to join.
-		const roadmap = contextRoadmap(resourceSettings({ resourceNames: ['Bob'] }), 'Alice', 'Bob');
+		const roadmap = contextRoadmap(resourceSettings(), 'Alice', 'Bob', ['Bob']);
 
 		expect(roadmap.lanes.map((lane) => lane.name)).toEqual(['Bob']);
 		expect(roadmap.context.map((item) => item.title)).toEqual(['Outside epic']);

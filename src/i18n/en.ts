@@ -477,6 +477,17 @@ export const en = {
 		'The roadmap draws whichever axis the view options declare — confidence horizons, or dates. A horizon property is set, but "Horizons (in order)" is empty — fill it to get Now-Next-Later buckets, or set "Start date property" or "Target date property" for a timeline.',
 
 	/**
+	 * The resources axis with a configured assignee and date property, but no `Resource`
+	 * note in the base's own results — the "no resources" advisory
+	 * `renderRoadmapAdvisory` draws ahead of the ordinary empty-frame check, since a
+	 * dated milestone alone would otherwise make the frame look populated. `noAxisBody`'s
+	 * shape: one whole sentence naming the cause, never a clause spliced into a shared one.
+	 */
+	'roadmap.noResources.title': 'No resources in this base',
+	'roadmap.noResources.hint':
+		'This axis draws one row per resource note the base returns. Widen the base filter to include them, or press New resource to make one.',
+
+	/**
 	 * The busy indicator. The counted form drops the ellipsis because the count follows it
 	 * in its own element and reads as the continuation — which is the one thing a
 	 * translator must keep, and the reason these are two keys and not one with a suffix.
@@ -692,12 +703,9 @@ export const en = {
 
 	/**
 	 * The resources axis's own furniture. `{name}` is a resource, `{title}` a note's own
-	 * title and `{start}`/`{target}`/`{date}` are rendered dates — all data.
-	 * `lane.undeclaredResource` carries the view-option debt `board.undeclaredColumn`
-	 * states, and `lane.unavailable` takes a LIST, joined as grammar.
+	 * title and `{start}`/`{target}`/`{date}` are rendered dates — all data. `lane.unavailable`
+	 * takes a LIST, joined as grammar.
 	 */
-	'lane.undeclaredResource':
-		'"{name}" is not one of the declared resources. Add it to "Resources (in order)" in the view options, or re-assign its items.',
 	'lane.addAbsence': 'Add absence for {name}',
 	'lane.addAbsenceTooltip': 'Add absence for "{name}"',
 	'lane.unavailable': 'Unavailable: {items}',

@@ -138,6 +138,7 @@ describe('the roadmap legend', () => {
 		// its band is open or shut, so folding no longer takes the mark off screen — unlike
 		// before, when it was a row of its own that a fold's `laneEntries` skipped whole.
 		const vault = new FakeVault();
+		vault.addFile('Alice.md', { frontmatter: { type: 'Resource' } });
 		vault.addFile('Work.md', {
 			frontmatter: { type: 'Epic', order: 10, assignee: 'Alice', start: '2026-08-01', due: '2026-08-10' },
 		});
@@ -146,7 +147,7 @@ describe('the roadmap legend', () => {
 		});
 		const { view, containerEl } = makeView(
 			vault,
-			{ ...DATE_AXIS, assigneeProperty: 'note.assignee', resourceNames: 'Alice' },
+			{ ...DATE_AXIS, assigneeProperty: 'note.assignee' },
 			{ collapsed: true },
 		);
 		view.setProjection('roadmap');
@@ -158,7 +159,7 @@ describe('the roadmap legend', () => {
 		view.setAxisPick('resources');
 		expect(swatchLabels(containerEl)).toContain('Unavailable');
 
-		view.setLaneCollapsed('Alice', true);
+		view.setLaneCollapsed('Alice.md', true);
 		expect(swatchLabels(containerEl)).toContain('Unavailable');
 	});
 
@@ -170,6 +171,8 @@ describe('the roadmap legend', () => {
 		// legend is only as fresh as `syncAfterContent` makes it. Rendered from `render()`
 		// only, the swatch outlives the bar it keys.
 		const vault = new FakeVault();
+		vault.addFile('Alice.md', { frontmatter: { type: 'Resource' } });
+		vault.addFile('Bob.md', { frontmatter: { type: 'Resource' } });
 		vault.addFile('Alice work.md', {
 			frontmatter: { type: 'Epic', order: 10, assignee: 'Alice', status: 'New', start: '2026-08-01', due: '2026-08-10' },
 		});
@@ -181,18 +184,18 @@ describe('the roadmap legend', () => {
 		});
 		const { view, containerEl } = makeView(
 			vault,
-			{ ...DATE_AXIS, ...WORKFLOW, stateValues: 'New, Active', assigneeProperty: 'note.assignee', resourceNames: 'Alice, Bob' },
+			{ ...DATE_AXIS, ...WORKFLOW, stateValues: 'New, Active', assigneeProperty: 'note.assignee' },
 			{ collapsed: true },
 		);
 		view.setProjection('roadmap');
 		view.setAxisPick('resources');
 		expect(swatchLabels(containerEl)).toContain('Other');
 
-		view.setLaneCollapsed('Bob', true);
+		view.setLaneCollapsed('Bob.md', true);
 		expect(swatchLabels(containerEl)).not.toContain('Other');
 
 		// And opening it again brings the swatch back — it has to follow in both directions.
-		view.setLaneCollapsed('Bob', false);
+		view.setLaneCollapsed('Bob.md', false);
 		expect(swatchLabels(containerEl)).toContain('Other');
 	});
 
@@ -213,6 +216,7 @@ describe('the roadmap legend', () => {
 		// cost", asked the same way `drawn.absence` is — never a predicate over
 		// `roadmap.lanes`, which cannot see a fold or a filter taking the clash off screen.
 		const vault = new FakeVault();
+		vault.addFile('Alice.md', { frontmatter: { type: 'Resource' } });
 		vault.addFile('Work.md', {
 			frontmatter: { type: 'Epic', order: 10, assignee: 'Alice', start: '2026-08-01', due: '2026-08-10' },
 		});
@@ -221,7 +225,7 @@ describe('the roadmap legend', () => {
 		});
 		const { view, containerEl } = makeView(
 			vault,
-			{ ...DATE_AXIS, assigneeProperty: 'note.assignee', resourceNames: 'Alice' },
+			{ ...DATE_AXIS, assigneeProperty: 'note.assignee' },
 			{ collapsed: true },
 		);
 		view.setProjection('roadmap');
@@ -259,6 +263,7 @@ describe('the roadmap legend', () => {
 		// `absenceCollision.test.ts` reaches it: a near-term backlog at quarter zoom, where
 		// `timelineFurniture.test.ts` already establishes every bar's label is dropped.
 		const vault = new FakeVault();
+		vault.addFile('Alice.md', { frontmatter: { type: 'Resource' } });
 		vault.addFile('Work.md', {
 			frontmatter: { type: 'Epic', order: 10, assignee: 'Alice', start: '2026-08-01', due: '2026-08-10' },
 		});
@@ -267,7 +272,7 @@ describe('the roadmap legend', () => {
 		});
 		const { view, containerEl } = makeView(
 			vault,
-			{ ...DATE_AXIS, assigneeProperty: 'note.assignee', resourceNames: 'Alice' },
+			{ ...DATE_AXIS, assigneeProperty: 'note.assignee' },
 			{ collapsed: true },
 		);
 		view.setProjection('roadmap');

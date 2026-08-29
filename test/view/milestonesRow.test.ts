@@ -206,20 +206,22 @@ describe('the milestones row', () => {
 	});
 
 	it('stays open when a real resource of the same name is folded', () => {
-		// A band's fold is keyed by NAME and case-insensitively (`laneKey`), and extension 1a
-		// accepts that a roster entry genuinely called `Milestones` draws a second row. So
-		// folding the PERSON answered for the synthetic row as well: it took
-		// `pbl-lane-collapsed` and drew folded-work rails under diamonds that never left the
-		// screen — and with no disclosure of its own, nothing here could undo it.
-		const vault = countingVault([]);
+		// A resource genuinely called `Milestones` draws a second row of that caption
+		// (extension 1a) and its fold is keyed by its own PATH now (`laneIdentity`), never
+		// by the caption both rows happen to share. So folding the PERSON must not answer
+		// for the synthetic row as well: it once took `pbl-lane-collapsed` and drew
+		// folded-work rails under diamonds that never left the screen — and with no
+		// disclosure of its own, nothing there could undo it.
+		const vault = new FakeVault();
+		vault.addFile('Milestones.md', { frontmatter: { type: 'Resource' } });
 		vault.addFile('Ship.md', { frontmatter: { type: 'Milestone', order: 20, due: '2026-08-07' } });
 		vault.addFile('Theirs.md', {
 			frontmatter: { type: 'Epic', order: 30, assignee: 'Milestones', start: '2026-08-02', due: '2026-08-09' },
 		});
-		const harness = laneRoadmap(vault, { resourceNames: 'Milestones, Alice' });
+		const harness = laneRoadmap(vault);
 		// The premise, stated rather than assumed: two rows carry that caption, and the
 		// chevron belongs to the second one — the roster's, which has work to fold.
-		expect(laneNames(harness.containerEl).slice(0, 2)).toEqual(['Milestones', 'Milestones']);
+		expect(laneNames(harness.containerEl)).toEqual(['Milestones', 'Milestones']);
 		lanesOf(harness.containerEl)[1].querySelector('.pbl-chevron')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 
 		const [markers, roster] = lanesOf(harness.containerEl);
@@ -231,12 +233,16 @@ describe('the milestones row', () => {
 		expect(roster.querySelectorAll('.pbl-lane-rail')).toHaveLength(1);
 	});
 
-	it('keeps the empty advisory away when a milestone is the only thing drawn', () => {
+	it('names the missing roster rather than staying quiet, when a milestone is the only thing drawn', () => {
 		// The diamonds are deliberately absent from `drawnCards` — a mark in a shared
 		// header is no `option` and nothing could point the roving selection at it
-		// (extension 3c) — and the advisory's population was read off that same list. So a
-		// plan whose only visible note is a milestone announced itself as empty beside the
-		// milestone it was drawing. What the axis DREW as rows is not what it HOLDS.
+		// (extension 3c) — and the advisory's population used to be read off that same
+		// list, so a plan whose only visible note was a milestone announced itself as empty
+		// beside the milestone it was drawing. That population defect is fixed; what
+		// replaces its silence is not none — a base with a dated milestone and NO
+		// `Resource` note at all is exactly [[Rows from the Resource notes]]'s empty case
+		// (Task 5, 2026-08-28), and the advisory says so rather than looking like a working
+		// axis with nobody on the roster.
 		const vault = new FakeVault();
 		vault.addFile('Ship.md', { frontmatter: { type: 'Milestone', order: 20, due: '2026-08-07' } });
 		const harness = laneRoadmap(vault);
@@ -245,7 +251,7 @@ describe('the milestones row', () => {
 		// really is the only thing with no row of its own to be counted by.
 		expect(lanesOf(harness.containerEl)[0].querySelectorAll('.pbl-bar-milestone')).toHaveLength(1);
 		expect(harness.containerEl.querySelectorAll('.pbl-timeline-row')).toHaveLength(0);
-		expect(harness.containerEl.querySelector('.pbl-board-advisory')).toBeNull();
+		expect(harness.containerEl.querySelector('.pbl-empty-title')?.textContent).toBe('No resources in this base');
 	});
 
 	it('registers each diamond, so its parent bar is not offered the child it is looking at', () => {

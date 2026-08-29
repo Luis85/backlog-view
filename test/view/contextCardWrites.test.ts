@@ -476,12 +476,13 @@ describe('write safety with context rows, across the resources axis’s entry po
 		// falls to the general context strip — so this needs its own fixture: an
 		// excluded EPIC whose own assignee names a lane a real result also uses.
 		const vault = new FakeVault();
+		vault.addFile('Alice.md', { frontmatter: { type: 'Resource' } });
 		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10, assignee: 'Alice' } });
 		vault.addFile('Feature B.md', {
 			frontmatter: { type: 'Feature', order: 20, start: '2026-08-01', due: '2026-08-09' },
 			parentLink: 'Epic',
 		});
-		const { containerEl } = laneRoadmap(vault, {}, { only: ['Feature B.md'], focus: 'Epic' });
+		const { containerEl } = laneRoadmap(vault, {}, { only: ['Alice.md', 'Feature B.md'], focus: 'Epic' });
 		const row = containerEl.querySelector<HTMLElement>('.pbl-lane-context');
 		expect(row).not.toBeNull();
 

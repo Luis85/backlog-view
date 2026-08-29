@@ -2,7 +2,7 @@ import { BacklogViewHost, BoardSnapshot, RoadmapSnapshot } from '../host';
 import { isDeliverableType, isMarkerType } from '../../domain/itemTypes';
 import { BacklogItem, BacklogModel } from '../../domain/model';
 import { sameValue } from '../../domain/noteFields';
-import { assignableLanes, ResourceLane, RoadmapModel } from '../../domain/roadmap';
+import { AssignableLane, assignableLanes, RoadmapModel } from '../../domain/roadmap';
 import { indent, moveWithinSiblings, outdent } from './structure';
 import { projectionPopulation } from '../projection';
 
@@ -422,17 +422,15 @@ function horizonStops(roadmap: RoadmapModel): (string | null)[] | null {
  *
  * The milestones' row is not a stop: `assignableLanes` is what says so — the ladder's
  * own filter over `roadmap.lanes`, since the row stands for nobody and there is no
- * assignee to land an Alt+arrow on it as. **Filtered again to the lanes that HAVE a
- * file**, load-bearing until
- * Task 5: a lane minted by `laneNamed` for an observed name with no `Resource` note has
- * `file: null`, and `performResourceMove(card, null)` means UNASSIGN — so an Alt+arrow
- * onto such a row would silently take the assignee off instead of moving it there.
- * Task 5 makes this redundant by construction (every lane is a note) and
- * `AssignableLane` then carries the narrowing in the type; delete the filter there.
+ * assignee to land an Alt+arrow on it as. Every stop it returns carries a `file` by the
+ * type (`AssignableLane`): every lane but the marker row's is a `Resource` note now, so
+ * there is no longer a lane an Alt+arrow could land on with nothing to name — that used
+ * to be a second filter here, over a lane minted from an observed name with no note
+ * behind it, until Task 5 (2026-08-28) made every lane a note by construction.
  */
-function resourceStops(roadmap: RoadmapModel): (ResourceLane | null)[] | null {
+function resourceStops(roadmap: RoadmapModel): (AssignableLane | null)[] | null {
 	if (roadmap.axis !== 'resources') return null;
-	return [null, ...assignableLanes(roadmap).filter((lane) => lane.file !== null)];
+	return [null, ...assignableLanes(roadmap)];
 }
 
 /**
@@ -535,13 +533,13 @@ function handleResourceMoveKey(
 	const stops = resourceStops(roadmap);
 	if (!stops) return;
 	evt.preventDefault();
-	// Asked of the ENTRY's path, never of the observed name: every stop left in `stops`
-	// carries a note (the filter above), so the ladder matches what the CARD's link
-	// resolves to rather than what its raw text says. A card with no assignee at all
-	// matches the leading `null` stop exactly as an unreadable one never does, and a link
-	// that resolved to nothing matches no stop and lands off-ladder — the case `offLadder`
-	// already handles.
-	const current = stops.findIndex((stop) => (stop === null ? card.assigneeEntry === null : stop.file?.path === card.assigneeEntry?.file?.path));
+	// Asked of the ENTRY's path, never of the observed name: every stop but the leading
+	// `null` carries a note (`AssignableLane`'s own guarantee), so the ladder matches what
+	// the CARD's link resolves to rather than what its raw text says. A card with no
+	// assignee at all matches the leading `null` stop exactly as an unreadable one never
+	// does, and a link that resolved to nothing matches no stop and lands off-ladder — the
+	// case `offLadder` already handles.
+	const current = stops.findIndex((stop) => (stop === null ? card.assigneeEntry === null : stop.file.path === card.assigneeEntry?.file?.path));
 	const offLadder = current < 0;
 	const target = ladderStep(stops, offLadder ? 0 : current, evt.key === 'ArrowDown' ? 1 : -1, offLadder);
 	if (target === null) return;

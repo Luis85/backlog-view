@@ -174,11 +174,11 @@ export interface BacklogSettings extends ItemHandling {
 	/**
 	 * Frontmatter key holding who the item is assigned to, or '' when no assignee
 	 * property is named — a LINK to a `Resource` note (Task 4, 2026-08-28), not a typed
-	 * string. `resourceNames` is still what the resources axis declares rows from, but
-	 * Set assignee no longer reads it or `observedAssignees`: it offers the `Resource`
-	 * notes the base returned, so a named key alone is enough to draw the chip and fill
-	 * its menu, and the roster is a row-ordering hint for the axis rather than a
-	 * vocabulary for the menu.
+	 * string. `resourceNames` is no longer read by anything the assignee reaches: Set
+	 * assignee offers the `Resource` notes the base returned (Task 4) and the resources
+	 * axis draws one row per such note, in the model's own order (Task 5, 2026-08-28), so
+	 * a named key alone is enough to draw the chip, fill its menu and populate the axis —
+	 * `resourceNames` stays only as a setting Task 7 has yet to remove.
 	 */
 	assigneeKey: string;
 	/**

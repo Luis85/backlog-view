@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { buildModel } from '../../src/domain/model';
 import { assigneeName, resourceLabelsOf } from '../../src/domain/readItems';
+import { buildRoadmap } from '../../src/domain/roadmap';
 import { settingsWith } from '../helpers/settings';
 import { FakeVault } from '../helpers/vault';
 
@@ -116,5 +117,91 @@ describe('resourceLabelsOf', () => {
 		expect(resourceLabelsOf(null)).toEqual(new Map());
 		const labels = new Map([['Alex.md', 'Alex']]);
 		expect(resourceLabelsOf({ resourceLabels: labels })).toBe(labels);
+	});
+});
+
+describe('the rows the resources axis draws', () => {
+	const dated = settingsWith({
+		assigneeKey: 'assignee',
+		startKey: 'start',
+		targetKey: 'due',
+		hierarchyOnly: false,
+	});
+
+	/** A team of two, one of them with nothing assigned, plus whatever the caller adds. */
+	function team(): FakeVault {
+		const vault = new FakeVault();
+		vault.addFile('Alex.md', { frontmatter: { type: 'Resource' } });
+		vault.addFile('Sam.md', { frontmatter: { type: 'Resource' } });
+		return vault;
+	}
+
+	function lanesOf(vault: FakeVault) {
+		const model = buildModel(vault.app, vault.entries(), dated);
+		return buildRoadmap(model, dated, () => true, 'resources');
+	}
+
+	it('draws one row per resource note, alphabetically, including one nobody names', () => {
+		const vault = team();
+		vault.addFile('Work.md', {
+			frontmatter: { type: 'Epic', order: 10, assignee: '[[Sam]]', start: '2026-08-01', due: '2026-08-10' },
+		});
+		const roadmap = lanesOf(vault);
+
+		// Alex has nothing assigned and still gets a row. That is what the removed
+		// `resourceNames` option existed for, and it must not be lost with it.
+		expect(roadmap.lanes.map((l) => l.name)).toEqual(['Alex', 'Sam']);
+		expect(roadmap.lanes[1].bars).toHaveLength(1);
+	});
+
+	it('places a bare name that resolves to a resource note in that resource row', () => {
+		// The upgrade case, and the reason it is a row rather than a shelf entry: the
+		// value the note already carries resolves, so nothing was migrated and nothing
+		// was lost.
+		const vault = team();
+		vault.addFile('Work.md', {
+			frontmatter: { type: 'Epic', order: 10, assignee: 'Sam', start: '2026-08-01', due: '2026-08-10' },
+		});
+		const roadmap = lanesOf(vault);
+
+		expect(roadmap.lanes[1].bars).toHaveLength(1);
+		expect(roadmap.shelf).toEqual([]);
+	});
+
+	it('mints no row from a name nothing resolves — that item shelves', () => {
+		const vault = team();
+		vault.addFile('Stray.md', {
+			frontmatter: { type: 'Epic', order: 10, assignee: 'Sarah', start: '2026-08-01', due: '2026-08-10' },
+		});
+		const roadmap = lanesOf(vault);
+
+		expect(roadmap.lanes.map((l) => l.name)).toEqual(['Alex', 'Sam']);
+		expect(roadmap.shelf.map((s) => s.item.title)).toEqual(['Stray']);
+	});
+
+	it('shelves an item whose link resolves to a note that is not a Resource', () => {
+		// A link is not a declaration, and the type is.
+		const vault = team();
+		vault.addFile('Epic B.md', { frontmatter: { type: 'Epic', order: 5 } });
+		vault.addFile('Work.md', {
+			frontmatter: { type: 'Epic', order: 10, assignee: '[[Epic B]]', start: '2026-08-01', due: '2026-08-10' },
+		});
+		const roadmap = lanesOf(vault);
+
+		expect(roadmap.lanes.every((l) => l.bars.length === 0)).toBe(true);
+		expect(roadmap.shelf.map((s) => s.item.title)).toContain('Work');
+	});
+
+	it('puts an absence in its resource row, and draws it nowhere when it resolves to no row', () => {
+		const vault = team();
+		vault.addFile('Alex away.md', {
+			frontmatter: { type: 'Absence', assignee: '[[Alex]]', start: '2026-08-03', due: '2026-08-05' },
+		});
+		vault.addFile('Nobody away.md', {
+			frontmatter: { type: 'Absence', assignee: 'Sarah', start: '2026-08-03', due: '2026-08-05' },
+		});
+		const roadmap = lanesOf(vault);
+
+		expect(roadmap.lanes.map((l) => l.absences.length)).toEqual([1, 0]);
 	});
 });

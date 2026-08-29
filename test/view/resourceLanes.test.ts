@@ -34,16 +34,15 @@ const TODAY = readDate(todayStamp()).value ?? { year: 2026, month: 1, day: 1 };
 const dayFromToday = (offset: number): string => formatCivil(addDays(TODAY, offset));
 
 /**
- * A roadmap opened on the resources axis, with Alice and Bob declared. `only` narrows
- * what the Base returns, so everything else in the vault loads as context; `focus` is UI
- * state and never a config key (ADR 0011), which is why it goes to the harness rather
- * than into the view options beside the roster.
+ * A roadmap opened on the resources axis. `only` narrows what the Base returns, so
+ * everything else in the vault loads as context; `focus` is UI state and never a config
+ * key (ADR 0011), which is why it goes to the harness rather than into the view options.
  */
 function laneRoadmap(
 	vault: FakeVault,
 	{ only, focus, expanded, config }: { only?: string[]; focus?: string; expanded?: boolean; config?: Record<string, unknown> } = {},
 ): Harness {
-	const harness = makeView(vault, { ...RESOURCES, resourceNames: 'Alice, Bob', ...config }, {
+	const harness = makeView(vault, { ...RESOURCES, ...config }, {
 		collapsed: !expanded,
 		only,
 		focus,
@@ -59,14 +58,14 @@ function laneRoadmap(
 }
 
 describe('the resources axis on screen', () => {
-	it('draws a row per declared resource, empty or not, then the minted ones', () => {
+	it('draws one row per resource note, alphabetically, whether or not anything names it', () => {
 		const harness = laneRoadmap(resourceVault());
 		expect(laneNames(harness.containerEl)).toEqual(['Alice', 'Bob', 'Zoe']);
 	});
 
 	it('draws each resource’s bars under that resource’s own header', () => {
 		const harness = laneRoadmap(resourceVault());
-		// Bob is declared and empty, so his header is followed straight by Zoe's; the
+		// Bob has a note and nothing else, so his header is followed straight by Zoe's; the
 		// undated and unassigned results are on the shelf rather than in any row.
 		expect(laneOrder(harness.containerEl)).toEqual([
 			'lane:Alice',
@@ -76,15 +75,6 @@ describe('the resources axis on screen', () => {
 			'lane:Zoe',
 			'Stray',
 		]);
-	});
-
-	it('marks a minted row as outside the declared roster', () => {
-		const harness = laneRoadmap(resourceVault());
-		const [alice, bob, zoe] = lanesOf(harness.containerEl);
-		expect(alice.classList.contains('pbl-lane-undeclared')).toBe(false);
-		expect(bob.classList.contains('pbl-lane-undeclared')).toBe(false);
-		expect(zoe.classList.contains('pbl-lane-undeclared')).toBe(true);
-		expect(zoe.querySelector('.pbl-lane-stray')).not.toBeNull();
 	});
 
 	it('counts result bars on the header, and shelves what has no row to sit in', () => {
@@ -192,6 +182,8 @@ describe('folding on the resources axis', () => {
 	/** A band whose parent and child are on ONE resource, and a child on another. */
 	function nestedVault(): FakeVault {
 		const vault = new FakeVault();
+		vault.addFile('Alice.md', { frontmatter: { type: 'Resource' } });
+		vault.addFile('Bob.md', { frontmatter: { type: 'Resource' } });
 		vault.addFile('Epic.md', {
 			frontmatter: { type: 'Epic', order: 10, assignee: 'Alice', start: '2026-08-01', due: '2026-08-20' },
 		});
@@ -214,6 +206,7 @@ describe('folding on the resources axis', () => {
 	/** Alice's own near-dated parent, alone — the window this fixture would draw with no far bar at all. */
 	function nearOnlyVault(): FakeVault {
 		const vault = new FakeVault();
+		vault.addFile('Alice.md', { frontmatter: { type: 'Resource' } });
 		vault.addFile('Epic.md', {
 			frontmatter: { type: 'Epic', order: 10, assignee: 'Alice', start: dayFromToday(0), due: dayFromToday(5) },
 		});
@@ -281,7 +274,7 @@ describe('folding on the resources axis', () => {
 	});
 
 	it('draws a disclosure on an empty band too, so a long roster still folds away', () => {
-		// A declared resource with nothing on it is exactly the row a roster exists to put on
+		// A resource note with nothing on it is exactly the row a roster exists to put on
 		// screen; a control that appeared only once work arrived would move under the reader.
 		const { containerEl } = laneRoadmap(resourceVault());
 
@@ -340,7 +333,7 @@ describe('folding on the resources axis', () => {
 		// draw a rail — so unlike the row-collapsed case above, its bars must still reach
 		// the window or the rail it needs them for has nothing to draw into.
 		const harness = laneRoadmap(nearAndFarVault(), { expanded: true });
-		harness.view.setLaneCollapsed('Alice', true);
+		harness.view.setLaneCollapsed('Alice.md', true);
 
 		const baseline = laneRoadmap(nearOnlyVault());
 		// The direct reading, not the header-cell proxy — see the sibling test above. Pinned
@@ -393,6 +386,8 @@ describe('a context row inside a resource row', () => {
 	 */
 	function contextVault(): FakeVault {
 		const vault = new FakeVault();
+		vault.addFile('Alice.md', { frontmatter: { type: 'Resource' } });
+		vault.addFile('Bob.md', { frontmatter: { type: 'Resource' } });
 		vault.addFile('Outside epic.md', { frontmatter: { type: 'Epic', order: 10, assignee: 'Alice' } });
 		vault.addFile('Result.md', {
 			frontmatter: { type: 'Feature', order: 10, assignee: 'Alice', start: '2026-08-01', due: '2026-08-02' },
@@ -402,7 +397,7 @@ describe('a context row inside a resource row', () => {
 	}
 
 	it('draws in the row that places it, with no bar of its own', () => {
-		const harness = laneRoadmap(contextVault(), { only: ['Result.md'], focus: 'Epic' });
+		const harness = laneRoadmap(contextVault(), { only: ['Alice.md', 'Bob.md', 'Result.md'], focus: 'Epic' });
 
 		expect(laneOrder(harness.containerEl)).toEqual(['lane:Alice', 'Outside epic', 'lane:Bob']);
 		const context = harness.containerEl.querySelector<HTMLElement>('.pbl-lane-context');
@@ -413,7 +408,7 @@ describe('a context row inside a resource row', () => {
 	});
 
 	it('is never counted, and never shelved', () => {
-		const harness = laneRoadmap(contextVault(), { only: ['Result.md'], focus: 'Epic' });
+		const harness = laneRoadmap(contextVault(), { only: ['Alice.md', 'Bob.md', 'Result.md'], focus: 'Epic' });
 
 		// Placement, not population — the bucket axis's rule over a different property.
 		expect(laneCountOf(lanesOf(harness.containerEl)[0])).toBe('');
@@ -445,7 +440,7 @@ describe('a context row inside a resource row', () => {
 		vault.addFile('Bob epic.md', {
 			frontmatter: { type: 'Epic', order: 20, assignee: 'Bob', start: '2026-08-01', due: '2026-08-02' },
 		});
-		const { containerEl } = laneRoadmap(vault, { only: ['Result.md', 'Bob epic.md'], focus: 'Epic' });
+		const { containerEl } = laneRoadmap(vault, { only: ['Alice.md', 'Bob.md', 'Result.md', 'Bob epic.md'], focus: 'Epic' });
 		const tree = treeOf(containerEl);
 		expect(laneOrder(containerEl)).toEqual(['lane:Alice', 'Outside epic', 'lane:Bob', 'Bob epic']);
 
@@ -460,7 +455,7 @@ describe('a context row inside a resource row', () => {
 
 	it('opens its note on a click, like every other card on this grid', () => {
 		const vault = contextVault();
-		const { containerEl } = laneRoadmap(vault, { only: ['Result.md'], focus: 'Epic' });
+		const { containerEl } = laneRoadmap(vault, { only: ['Alice.md', 'Bob.md', 'Result.md'], focus: 'Epic' });
 
 		containerEl
 			.querySelector<HTMLElement>('.pbl-lane-context')
@@ -528,7 +523,7 @@ describe('the band header’s readout', () => {
 		const vault = countingVault([{ title: 'Ahead', start: dayFromToday(5), target: dayFromToday(9) }]);
 		const harness = laneRoadmap(vault);
 
-		harness.view.setLaneCollapsed('Alice', true);
+		harness.view.setLaneCollapsed('Alice.md', true);
 
 		expect(harness.containerEl.querySelectorAll('.pbl-absence')).toHaveLength(1);
 		expect(laneCountOf(lanesOf(harness.containerEl)[0])).toBe('1 item');
@@ -556,7 +551,7 @@ describe('the band header’s readout', () => {
 		const harness = laneRoadmap(countingVault([]));
 
 		expect(lanesOf(harness.containerEl)[0].querySelectorAll('.pbl-lane-rail')).toHaveLength(0);
-		harness.view.setLaneCollapsed('Alice', true);
+		harness.view.setLaneCollapsed('Alice.md', true);
 		expect(lanesOf(harness.containerEl)[0].querySelectorAll('.pbl-lane-rail')).toHaveLength(1);
 	});
 
@@ -570,7 +565,7 @@ describe('the band header’s readout', () => {
 			frontmatter: { type: 'Epic', order: 30, assignee: 'Alice', start: '2026-10-01', due: '2026-10-10' },
 		});
 		const harness = laneRoadmap(vault);
-		harness.view.setLaneCollapsed('Alice', true);
+		harness.view.setLaneCollapsed('Alice.md', true);
 
 		expect(lanesOf(harness.containerEl)[0].querySelectorAll('.pbl-lane-rail')).toHaveLength(2);
 	});
@@ -587,7 +582,7 @@ describe('the band header’s readout', () => {
 		// lane:Alice, Work's own row, lane:Bob.
 		expect(rowsWhenOpen).toBe(3);
 
-		harness.view.setLaneCollapsed('Bob', true);
+		harness.view.setLaneCollapsed('Bob.md', true);
 
 		expect(harness.containerEl.querySelectorAll('.pbl-lane-head, .pbl-timeline-row')).toHaveLength(rowsWhenOpen);
 	});

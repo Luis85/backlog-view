@@ -288,61 +288,69 @@ describe('collapse state persistence', () => {
 	});
 
 	it('persists a folded resource band, and forgets it when the reader opens it again', () => {
+		// The identity passed here is a resource's own PATH now (Task 5, 2026-08-28) — a
+		// plausible one, `Dana.md`, though nothing in this store checks it against the
+		// vault (see the next test): the STORE'S contract is what this is asking about,
+		// not the render that supplies the identity in practice.
 		const vault = fixture();
 		const first = makeView(vault, {}, { base: 'Backlog.base' });
-		first.view.setLaneCollapsed('Dana', true);
+		first.view.setLaneCollapsed('Dana.md', true);
 		// Folding one already folded is not a change and must not schedule a save.
-		first.view.setLaneCollapsed('Dana', true);
+		first.view.setLaneCollapsed('Dana.md', true);
 		first.view.onunload();
 
 		const second = makeView(vault, {}, { base: 'Backlog.base', collapsed: true });
-		expect(second.view.isLaneCollapsed('Dana')).toBe(true);
-		expect(second.view.isLaneCollapsed('Kim')).toBe(false);
+		expect(second.view.isLaneCollapsed('Dana.md')).toBe(true);
+		expect(second.view.isLaneCollapsed('Kim.md')).toBe(false);
 
-		// A band is a NAME, not a path, so nothing prunes it when the vault has no such
-		// file — and nothing has to, since opening it again is what takes the entry away.
-		second.view.setLaneCollapsed('Dana', false);
+		// A band's key is its own set, apart from the note-existence prune the tree's own
+		// fold keys go through — so nothing prunes it when the vault has no such file, and
+		// nothing has to, since opening it again is what takes the entry away.
+		second.view.setLaneCollapsed('Dana.md', false);
 		second.view.onunload();
-		expect(makeView(vault, {}, { base: 'Backlog.base', collapsed: true }).view.isLaneCollapsed('Dana')).toBe(false);
+		expect(makeView(vault, {}, { base: 'Backlog.base', collapsed: true }).view.isLaneCollapsed('Dana.md')).toBe(
+			false,
+		);
 	});
 
 	it('keeps a folded band and a stored pick when the flush prunes a note that is gone', () => {
-		// `folds.lanes` holds resource NAMES and `prefs` holds no key at all. The flush
-		// drops fold keys whose FILE is gone, and it may reach neither: a prune that took
-		// the whole folds bucket rather than the two path lists would shut nothing and
-		// silently reopen every band the reader folded, and one that reached the prefs
-		// would throw away every pick the same way.
+		// `folds.lanes` holds resource PATHS now and `prefs` holds no key at all. The flush
+		// drops fold keys whose FILE is gone — but only the tree's own path space
+		// (`settled`/`collapsed`), never `folds.lanes`, which is deliberately its own set
+		// apart from that machinery (see `isLaneCollapsed`'s own comment for why). A prune
+		// that reached a lane's own path here would silently reopen a band the moment the
+		// resource note it names left the vault — the very note the reader folded a whole
+		// row of work under — which this asserts does NOT happen, beside the ordinary
+		// path-space prune this file's other tests already cover.
 		const vault = fixture();
 		const first = makeView(vault, {}, { base: 'Backlog.base' });
-		first.view.setLaneCollapsed('Dana', true);
+		first.view.setLaneCollapsed('Dana.md', true);
 		first.view.setZoom('quarter');
 		vault.files.delete('Epic A.md');
 		first.view.onunload();
 
 		const second = makeView(vault, {}, { base: 'Backlog.base', collapsed: true });
-		expect(second.view.isLaneCollapsed('Dana')).toBe(true);
+		expect(second.view.isLaneCollapsed('Dana.md')).toBe(true);
 		expect(second.view.zoom).toBe('quarter');
 	});
 
-	it('folds a band by the resource, not by the casing the row happened to draw', () => {
-		// A band is one band whatever case names it — `deriveLanes` keys its own map on
-		// `name.toLowerCase()` — while the name DRAWN is whichever source minted the row:
-		// the declared roster, else the first result, else an absence. So the display can
-		// change case with no resource changing, and a fold keyed on it would reopen the
-		// band and strand the old entry where nothing would ever match it again.
+	it('folds a band by the note’s own path, case-SENSITIVELY, unlike the old name-keyed shape', () => {
+		// Overturned from what this test asserted before Task 5 (2026-08-28): a band used
+		// to be identified by its lower-cased NAME, so two spellings of one string folded
+		// one bit. Every row is a note now, and a vault path is case-sensitive — two paths
+		// differing only in case are two different notes — so there is no longer a middle
+		// answer for a differently-cased identity to fold through, and `laneKey` keeps
+		// nothing to normalize.
 		const vault = fixture();
 		const first = makeView(vault, {}, { base: 'Backlog.base' });
 
-		first.view.setLaneCollapsed('Dana', true);
-		expect(first.view.isLaneCollapsed('dana')).toBe(true);
+		first.view.setLaneCollapsed('Dana.md', true);
+		expect(first.view.isLaneCollapsed('dana.md')).toBe(false);
 		first.view.onunload();
 
 		const second = makeView(vault, {}, { base: 'Backlog.base', collapsed: true });
-		expect(second.view.isLaneCollapsed('DANA')).toBe(true);
-		// And opening it under the other spelling really opens it, rather than adding a
-		// second entry beside the one it could not see.
-		second.view.setLaneCollapsed('dana', false);
-		expect(second.view.isLaneCollapsed('Dana')).toBe(false);
+		expect(second.view.isLaneCollapsed('Dana.md')).toBe(true);
+		expect(second.view.isLaneCollapsed('DANA.MD')).toBe(false);
 	});
 
 	/**
