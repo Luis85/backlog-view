@@ -212,6 +212,44 @@ describe('describing a release', () => {
 	});
 });
 
+describe('focus across the redraw an edit causes', () => {
+	/**
+	 * Found by review (Codex, PR #211) on the open-note control, and true of all three of
+	 * this header's controls: each is a real tab stop that a redraw detaches, and none was in
+	 * `FOCUS_HANDLE_CLASSES`, so focus fell to the body. It bites hardest on the two that
+	 * WRITE, because pressing one causes the redraw that detaches it.
+	 */
+	it('keeps focus on the header control a routine data update detached', () => {
+		const { view, containerEl } = openScope();
+		for (const cls of ['pbl-rel-open', 'pbl-rel-status', 'pbl-rel-desc']) {
+			const before = containerEl.querySelector<HTMLElement>(`.${cls}`)!;
+			before.focus();
+			view.onDataUpdated();
+			const after = containerEl.querySelector<HTMLElement>(`.${cls}`);
+			expect(after, cls).not.toBe(before);
+			expect(document.activeElement, cls).toBe(after);
+		}
+	});
+
+	it('puts focus back on the description line after the dialog that closed before it wrote', async () => {
+		// `TextPromptModal` closes before it submits, so focus is off this view by the time
+		// the write's redraw runs and the handle mechanism above correctly answers null —
+		// `focusNewRelease`'s own case, and the same fresh look-up after the await.
+		const vault = editVault();
+		const { view, containerEl } = makeReleaseView(vault, RELEASE_CONFIG);
+		view.pick('R.md');
+		containerEl.querySelector<HTMLElement>('.pbl-rel-desc')!.click();
+		const modal = Modal.lastOpened!;
+		const area = modal.contentEl.querySelector('textarea')!;
+		area.value = 'Words.';
+		area.dispatchEvent(new Event('input', { bubbles: true }));
+		modal.contentEl.querySelector<HTMLButtonElement>('button')!.click();
+		await flush();
+
+		expect(document.activeElement).toBe(containerEl.querySelector('.pbl-rel-desc'));
+	});
+});
+
 describe('what an edit is, and is not', () => {
 	it('goes through the gate’s own writer, never the item-batch path', async () => {
 		// `applyWrites` and `applyRestores` are the BACKLOG's batches — a hierarchy, a state,

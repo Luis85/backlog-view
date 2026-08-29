@@ -51,6 +51,16 @@ const FOCUS_HANDLE_CLASSES = [
 	'pbl-tree',
 	'pbl-rel-new',
 	'pbl-rel-band',
+	// The scope header's own three, added 2026-08-29 (Codex, PR #211, which caught the
+	// first of them). Each is a real tab stop that this header draws exactly one of, so the
+	// exact-match branch below finds it with no `data-path` to disambiguate — and each is
+	// detached by a redraw the reader did not ask for: a Bases metadata refresh redraws the
+	// same scope screen, and without a handle here focus fell to the body. The two write
+	// controls make that sharper than the open control does: pressing one CAUSES the redraw
+	// that detaches it, so a keyboard reader would pay for every status they set.
+	'pbl-rel-open',
+	'pbl-rel-status',
+	'pbl-rel-desc',
 ];
 
 /**

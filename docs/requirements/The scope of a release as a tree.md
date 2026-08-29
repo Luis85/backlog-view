@@ -131,6 +131,9 @@ note assumed and `## Where it lives` explains it cannot be.
   a new tab.
 - The tree is one tab stop, and Right on a leaf does nothing: a leaf has nothing to step into,
   and moving would make one key mean two things depending on where it landed.
+- **The header's controls survive a redraw with focus intact** — the open control included,
+  which it was not when it landed (Codex, PR #211): it is a real tab stop the redraw
+  detaches, so it belongs in `FOCUS_HANDLE_CLASSES` with the back control and the toolbar's.
 - **The header's open control opens the release note through `OpenController.open`** — the
   CONFIGURED target, the same call a row's own click makes, never `openIn(…, 'tab')`, which is
   the target a reader NAMES for themselves. It is drawn on the empty scope too, which is where

@@ -130,6 +130,14 @@ whose whole job is to say what a release is. Asked for as a property by the auth
   whichever view wrote it" means rather than a gap.
 - `applyWrites` and `applyRestores` — the item-batch path — are still never called from
   `src/view/release/`: this view plans no hierarchy, no state and no placement.
+- **Focus survives the redraw an edit causes.** Both controls are in
+  `FOCUS_HANDLE_CLASSES` (`releaseView.ts`), so the reader who pressed one lands on its
+  replacement rather than on `document.body` — which bites hardest here of anywhere in this
+  view, since pressing one is what causes the redraw that detaches it. The description's own
+  dialog needs a second mechanism and gets `focusNewRelease`'s: `TextPromptModal` closes
+  BEFORE it submits, so focus is off this view by the time the write's redraw runs and the
+  handle mechanism correctly finds nothing to restore. Found by review on this PR, against
+  the open-note control [[The scope of a release as a tree]] added in the same branch.
 - **The chip's accessible name carries the VALUE**, not only what pressing it does: an
   `aria-label` replaces an element's content, so a name reading "Set the release status"
   would take the status away from the one reader who cannot see the chip. It reuses the

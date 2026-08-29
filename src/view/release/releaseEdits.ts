@@ -2,6 +2,7 @@ import { Menu } from 'obsidian';
 import type { ReleaseView } from './releaseView';
 import { t } from '../../i18n/t';
 import { ReleaseIndex, releaseStatusChoices, ReleaseRow } from '../../domain/releases';
+import { PropertyWrite } from '../../domain/estimationWritePlan';
 import { releaseDescriptionWrites, releaseStatusWrites } from '../../domain/releaseWritePlan';
 import { showMenuForClick } from '../interactions/menu';
 import { openTextPrompt } from '../../ui/textPrompt';
@@ -88,6 +89,26 @@ export function editReleaseDescription(view: ReleaseView, release: ReleaseRow): 
 		placeholder: t('release.scope.descriptionPlaceholder'),
 		ctaLabel: t('release.scope.descriptionSave'),
 		initial: current ?? '',
-		onSubmit: (text) => void view.applyRelease(releaseDescriptionWrites(release.item.file, view.settings.descriptionKey, current, text)),
+		onSubmit: (text) => void save(view, releaseDescriptionWrites(release.item.file, view.settings.descriptionKey, current, text)),
 	});
+}
+
+/**
+ * Apply the description's batch and put focus back on the line that opened the dialog.
+ *
+ * The dialog is why this exists rather than `FOCUS_HANDLE_CLASSES` covering it like the
+ * status chip: `TextPromptModal` CLOSES before it submits, so by the time the write's own
+ * redraw runs, focus is already off this view entirely and `focusedHandle` correctly
+ * answers null. `focusNewRelease` (`newRelease.ts`) has the identical shape for the
+ * identical reason — looked up FRESH after the await, never captured, because the redraw
+ * replaced the element the press was on.
+ *
+ * What it cannot promise is the same as there: it wins the refresh that lands inside the
+ * await, and a vault refreshing on its own schedule afterwards takes focus to the body
+ * again. A batch that wrote NOTHING redraws nothing, so the line the reader pressed is
+ * still on screen and still focused — this call finds that same element and no-ops.
+ */
+async function save(view: ReleaseView, writes: PropertyWrite[]): Promise<void> {
+	await view.applyRelease(writes);
+	view.viewEl.querySelector<HTMLElement>('.pbl-rel-desc')?.focus({ preventScroll: true });
 }
