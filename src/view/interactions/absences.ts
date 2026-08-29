@@ -131,9 +131,14 @@ function absenceFolder(host: BacklogViewHost): string {
  *
  * No `resourcesOrRefuse` here, unlike the add flow: this form opens from a drawn MARK,
  * and a mark draws only once `deriveLanes` has already resolved `absence.resource` to a
- * lane, which means a `Resource` note is already on the roster — the one this stretch
- * names. So the roster can never be empty at this call site, and a check that could never
- * refuse would be a branch nothing could ever take.
+ * lane — so AT THE MOMENT it was drawn, a `Resource` note was on the roster, the one this
+ * stretch names. That does not survive Obsidian's own `Menu` staying open between the
+ * right-click and the click on "Edit absence": a model rebuild in that window could drop
+ * the resource, or every resource, before `resourceChoices` reads the roster fresh here —
+ * the same gap `AbsencePromptModal`'s own placeholder comment names. Left unhandled by a
+ * gate on purpose rather than missed: the placeholder branch and `absenceProblem`'s
+ * refusal already answer an offered list with nothing matching, whatever emptied it, so a
+ * check here would refuse the same submission a second way rather than a new one.
  */
 function promptEditAbsence(host: BacklogViewHost, absence: Absence): void {
 	if (refusedByConfig(host)) return;

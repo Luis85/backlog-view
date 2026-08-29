@@ -456,9 +456,15 @@ export class AbsencePromptModal extends PromptModal<AbsencePromptOptions> {
 		new Setting(this.contentEl).setName(t('prompt.absenceResource')).addDropdown((dropdown) => {
 			// A placeholder option only where the pre-selection names nothing this form
 			// offers. Neither caller in `interactions/absences.ts` can hand this a mismatch
-			// today — each pre-fills from a note already known to be on the roster — but this
-			// module imports nothing and so cannot lean on that: it is this dialog's own
-			// contract with whatever calls it, not a branch either caller currently takes.
+			// from a freshly DRAWN mark or lane — an absence only draws in a lane its link
+			// already resolved to, and a lane is a `Resource` note by construction — so what
+			// this actually covers is a model rebuild in the window between opening the
+			// context menu (or the lane's own button) and this modal reading the roster,
+			// which is also why `resourceMissing`'s submit-time refusal exists beside it
+			// rather than as a defensive habit: neither guard is reachable from a stable
+			// model, only from one that moved under an open menu or an open form. This
+			// module imports nothing and so cannot lean on either caller's invariant
+			// regardless — it is this dialog's own contract with whatever calls it.
 			if (!this.options.resources.some((resource) => resource.id === values.resource)) {
 				dropdown.addOption('', t('prompt.absenceResourcePlaceholder'));
 			}
