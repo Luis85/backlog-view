@@ -228,6 +228,40 @@ export default defineConfig({
 			// writing the test" case above, met for the third time. The other was a real gap:
 			// every `renamePathPrefs` test saved both path picks, so the walk had never been
 			// asked about an entry holding neither.
+			//
+			// **2026-08-29, and this time the drift reached `main`.** The four numbers below were
+			// raised to 99.04/95.72/99.92/99.78 on the release-improvements branch, measured
+			// there and green there — while the paragraph above still ends at 95.63, which is the
+			// comment-versus-code defect this file has now recorded THREE times. What made this
+			// one expensive is not the drift itself: a second pull request merged first, and the
+			// tree that resulted from both measured 6350/6634 branches — 95.7190, floored to
+			// 95.71 — against the 95.72 raised from a tree that never contained it. `main` went
+			// red with every test passing on both platforms.
+			//
+			// **That is not the flake this comment is otherwise about, and the difference is what
+			// matters.** The flake is one covered unit moving between runs; this reproduced
+			// IDENTICALLY on Ubuntu, on Windows and on a third machine, all three reporting
+			// 6350/6634. A figure three environments agree on is a fact about the tree, so the
+			// answer was a branch, not a number: creating a child from a scope row at the VAULT
+			// ROOT was untested, and without the guard it covers the prompt offers to file the
+			// note `in folder "/"`. Covering it takes the tree to 6352/6634 — 95.7492.
+			//
+			// **The rise that arithmetic would allow is declined.** One fewer branch is 95.7341,
+			// so the headroom rule would put branches at 95.73 — one covered unit above the
+			// 95.72 standing, which is exactly the width the documented flake moves. The floor
+			// stays at 95.72, which this tree clears by two. That is a declined rise, not a
+			// lowered floor. The other three do not move either, by the arithmetic this comment
+			// has now stated seven times: one fewer statement is 99.0422 (99.04 standing), one
+			// fewer line 99.7750 (under the 99.78 standing) and one fewer function 99.8846
+			// (under 99.92).
+			//
+			// **The mechanism that would have prevented all of it is not in this file.** No check
+			// that runs on a tree can see a merge that has not happened yet — a branch's floor is
+			// measured against a `main` it may not contain by the time it lands. GitHub's
+			// "Require branches to be up to date before merging" is the setting for exactly this
+			// class, it is the maintainer's to enable, and
+			// `docs/issues/Two spec branches predate the use-case gate.md` has been asking for it
+			// since the same class last broke `main`.
 			thresholds: {
 				statements: 99.04,
 				branches: 95.72,

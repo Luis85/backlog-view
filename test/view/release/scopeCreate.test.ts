@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
-import { Menu, Notice } from '../../helpers/obsidian-mock';
+import { Menu, Modal, Notice } from '../../helpers/obsidian-mock';
 import { en } from '../../../src/i18n/en';
 import { makeReleaseView, mountFoldScope, refreshRelease, RELEASE_CONFIG, row, select } from '../../helpers/release';
 import { flush, submitPrompt, useViewHarness } from '../../helpers/view';
@@ -28,6 +28,14 @@ describe('creating a child from a release scope row', () => {
 	}
 
 	const titles = (menu: Menu): string[] => menu.items.map((item) => item.titleText);
+
+	/** The open prompt's detail line \u2014 where the folder the note will land in is
+	 *  named, which is the only place the reader sees it before the note exists. */
+	function promptDetail(): string {
+		const el = Modal.lastOpened?.contentEl.querySelector('.pbl-modal-detail');
+		if (!el) throw new Error('prompt has no detail line');
+		return el.textContent ?? '';
+	}
 
 	/** Everything the run put in the vault that was not there before. */
 	function created(vault: FakeVault, before: Set<string>): { path: string; fm: Record<string, unknown> }[] {
@@ -165,9 +173,24 @@ describe('creating a child from a release scope row', () => {
 
 		menu = openMenu(view, 'Filed/Owned.md');
 		menu.items.find((item) => item.titleText === 'New Feature')!.click();
+		expect(promptDetail()).toBe('Under "Owned" \u00b7 in folder "Filed"');
 		submitPrompt({ title: 'Beside its parent' });
 		await flush();
 		expect(created(vault, beforeSecond)[0].path).toBe('Filed/Beside its parent.md');
+
+		// And the row at the vault ROOT, which is the layout this plugin ships as its
+		// default \u2014 a flat folder of notes, so the fallback's own fallback is the
+		// commonest case rather than an edge. Obsidian spells a root file's parent `/`, and
+		// a folder of `/` handed to the creator would file the note in a folder LITERALLY
+		// named that; the empty string is the root, and the detail line has to say so rather
+		// than naming a folder the reader would not recognise.
+		const beforeThird = new Set(vault.files.keys());
+		menu = openMenu(view, 'Passwordless sign-in.md');
+		menu.items.find((item) => item.titleText === 'New Feature')!.click();
+		expect(promptDetail()).toBe('Under "Passwordless sign-in" \u00b7 in the vault root');
+		submitPrompt({ title: 'At the root' });
+		await flush();
+		expect(created(vault, beforeThird)[0].path).toBe('At the root.md');
 	});
 
 	it('reports a creation that failed, and leaves the fold alone', async () => {

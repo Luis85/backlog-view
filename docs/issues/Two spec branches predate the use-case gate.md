@@ -115,8 +115,26 @@ happened yet. `npm run check` was green on both branches and green on neither re
 - ~~#26 carries the use-case shape before it merges.~~ Done — its 19 PBIs were converted on
   the branch, and it merged green.
 - **Branch protection requiring branches to be up to date before merging.** Open, and the
-  maintainer's to enable. It is why this note stays `P1` with `main` currently green: the
-  class fired four times in one afternoon and nothing in the repository prevents a fifth.
+  maintainer's to enable. It is why this note stays `P1`: the class fired four times in one
+  afternoon, nothing in the repository prevented a fifth, and on 2026-08-29 the fifth
+  arrived.
+
+## The fifth instance, 2026-08-29
+
+Same mechanism, a different gate. PR #214 and PR #211 merged thirty-eight seconds apart,
+each green on its own merge commit. #211 had raised the coverage floor in
+`vitest.config.mts` to what its own tree measured; #214's code was not in that tree. The
+tree that resulted from both measured one covered branch fewer than the floor #211 set, and
+`main` went red with all 4135 tests passing on both platforms.
+
+It is worth naming that this instance broke a DIFFERENT gate from the four above — the
+register checker then, the coverage ratchet now. That is the argument for the setting
+rather than for a fix in either gate: what varies is which check happens to be
+sensitive to what the other branch changed, and the ratchet is the most sensitive
+check this repository has, because a floor set on one tree is asserted against another.
+The pull request that made `main` green again covered the branch rather than lowering the
+floor, and recorded the arithmetic in `vitest.config.mts` — but no test written there
+prevents the next instance, which is the whole of this note's point.
 
 ## What the conversion involves
 
