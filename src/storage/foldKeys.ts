@@ -55,15 +55,32 @@ export const CARD_SCOPE = '\u0000card:';
  */
 export const RELEASE_FOLD = '\u0000release:';
 
-/** The note path a key belongs to, whichever scope settled it. A release-fold key
+/** The note path a key is FILED under, whichever scope settled it. A release-fold key
  *  carries TWO paths — the release, then the member after a second NUL — and it is the
- *  member this key's PRUNE has to ask the vault about, so this takes everything after
- *  the LAST NUL rather than slicing off a fixed prefix length. */
+ *  member that answers this, so this takes everything after the LAST NUL rather than
+ *  slicing off a fixed prefix length. A prune asks {@link foldKeyPaths} instead: a key
+ *  dies with EITHER of its notes, and this deliberately names only one of them. */
 export function notePath(key: string): string {
 	if (key.startsWith(TIMELINE_SCOPE)) return key.slice(TIMELINE_SCOPE.length);
 	if (key.startsWith(CARD_SCOPE)) return key.slice(CARD_SCOPE.length);
 	if (key.startsWith(RELEASE_FOLD)) return key.slice(key.lastIndexOf('\u0000') + 1);
 	return key;
+}
+
+/**
+ * Every note path a key names: one for the tree's own scopes, TWO for a release fold —
+ * the release, then the member.
+ *
+ * Both, because a fold key is only alive while BOTH notes are. If the MEMBER is gone the
+ * key names a row nothing can draw; if the RELEASE is gone the whole scope is gone with
+ * it, since a release's screen is reached through the release note and every key under
+ * that prefix answers a question about a screen that no longer exists. {@link notePath}
+ * deliberately answers a narrower question — which single path a key is FILED under — so
+ * a prune that asked it alone would keep every fold of a deleted release forever.
+ */
+export function foldKeyPaths(key: string): string[] {
+	if (!key.startsWith(RELEASE_FOLD)) return [notePath(key)];
+	return [key.slice(RELEASE_FOLD.length, key.lastIndexOf('\u0000')), notePath(key)];
 }
 
 /** The scope prefix a settled key carries, or '' for the tree's own bare path. A

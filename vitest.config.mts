@@ -203,10 +203,10 @@ export default defineConfig({
 			// the same "a raise that changes nothing is not a raise" arithmetic this comment has
 			// now stated five times.
 			thresholds: {
-				statements: 98.98,
-				branches: 95.59,
-				functions: 99.90,
-				lines: 99.75,
+				statements: 98.99,
+				branches: 95.63,
+				functions: 99.91,
+				lines: 99.76,
 			},
 		},
 	},

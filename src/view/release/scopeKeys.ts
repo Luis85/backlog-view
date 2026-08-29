@@ -33,15 +33,14 @@ import { ScopeDraw, toggleFold } from './scopeTree';
  */
 export function wireScopeKeys(view: ReleaseView, treeEl: HTMLElement, releasePath: string, draw: ScopeDraw): void {
 	const { rows, kids, rowEls, folded } = draw;
-	const visible = rows;
 	let active = 0;
 	// The one element currently marked, cleared by reference rather than by a fresh scan
 	// of every row — the same reason `rowEls` replaces a `querySelector` per lookup.
 	let selectedEl: HTMLElement | null = null;
 	const show = (): void => {
-		// `visible` is never empty — the top-level row can never be hidden by a fold — and
+		// `rows` is never empty — the top-level row can never be hidden by a fold — and
 		// `rowEls` is built from that same array, so both reads below always hit.
-		const row = visible[active];
+		const row = rows[active];
 		if (selectedEl) {
 			selectedEl.removeAttribute('aria-selected');
 			selectedEl.classList.remove('pbl-selected');
@@ -64,12 +63,12 @@ export function wireScopeKeys(view: ReleaseView, treeEl: HTMLElement, releasePat
 		el.scrollIntoView({ block: 'nearest' });
 	};
 	const moveTo = (next: number): void => {
-		if (next < 0 || next >= visible.length) return;
+		if (next < 0 || next >= rows.length) return;
 		active = next;
 		show();
 	};
 	treeEl.addEventListener('keydown', (evt) => {
-		const row = visible[active];
+		const row = rows[active];
 		// `draw.folded` — the fold set `drawScopeTree` already computed for THIS render —
 		// never a fresh `foldedPaths` call here: this listener is rebuilt on every render
 		// (`toggleFold`/`setHideDone` both call `view.render()`), so the value cannot go
@@ -103,7 +102,7 @@ export function wireScopeKeys(view: ReleaseView, treeEl: HTMLElement, releasePat
 				// row above it — which is its parent, since the walk is pre-order.
 				if (hasKids && open) toggleFold(view, releasePath, row.item.file.path);
 				else {
-					const up = visible.slice(0, active).reduce((found, r, i) => (r.depth < row.depth ? i : found), -1);
+					const up = rows.slice(0, active).reduce((found, r, i) => (r.depth < row.depth ? i : found), -1);
 					if (up === -1) return;
 					moveTo(up);
 				}
@@ -112,7 +111,7 @@ export function wireScopeKeys(view: ReleaseView, treeEl: HTMLElement, releasePat
 				moveTo(0);
 				break;
 			case 'End':
-				moveTo(visible.length - 1);
+				moveTo(rows.length - 1);
 				break;
 			case 'Enter':
 			case ' ':
@@ -133,13 +132,13 @@ export function wireScopeKeys(view: ReleaseView, treeEl: HTMLElement, releasePat
 	// keyboard reader is stranded one press into the tree. The view's own scroll restore
 	// exists for the same re-render and is not enough, because focus is not scroll.
 	const wanted = view.activeScopePath;
-	const restored = wanted === null ? -1 : visible.findIndex((r) => r.item.file.path === wanted);
+	const restored = wanted === null ? -1 : rows.findIndex((r) => r.item.file.path === wanted);
 	// A row that has GONE must not take the keyboard with it. A refresh can drop the active
 	// member out of the scope — its membership edited elsewhere, the base's filter narrowed
 	// — and returning here without focusing would leave the reader Tabbing back in, which is
 	// the same stranding the restore exists to prevent. Falling back to the first row is the
 	// honest answer: the row they were on is not there to return to.
-	if (restored !== -1 || (view.scopeHadFocus && visible.length > 0)) {
+	if (restored !== -1 || (view.scopeHadFocus && rows.length > 0)) {
 		active = restored === -1 ? 0 : restored;
 		show();
 		if (view.scopeHadFocus) treeEl.focus();

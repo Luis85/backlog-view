@@ -8,15 +8,13 @@ import { FakeVault, FakeViewConfig } from '../helpers/vault';
 
 /**
  * The band's own progress line — split out of `releaseIndex.test.ts` (the 450-line test
- * budget) as its own subject: the design's layout, the ways progress can legitimately
- * draw nothing, and the gap named on a band that cannot compute one at all.
- */
-/**
- * The design's own layout: a bar, a counted phrase folding the member count in, and the
- * two ways progress can legitimately draw nothing (no members at all; a state property
- * that is unbound). Each test builds its own small vault rather than `releaseVault()`,
- * which has no members and is shared with `test/i18n/projections.test.ts` and
- * `test/domain/bars.test.ts` — files outside this task's whitelist.
+ * budget) as its own subject: the design's layout (a bar, and a counted phrase folding the
+ * member count in), the two ways progress can legitimately draw nothing (no members at
+ * all; a state property that is unbound), and the gap named on a band that cannot compute
+ * one at all.
+ *
+ * Each test builds its own small vault rather than `releaseVault()`, which has no members
+ * and is shared with `test/i18n/projections.test.ts` and `test/domain/bars.test.ts`.
  */
 describe('the band’s progress line', () => {
 	useViewHarness();

@@ -51,9 +51,18 @@ the one I am working in.
   which can be the thing renamed. The release view keeps no in-memory copy to migrate, so
   its folds are carried by the walk over the STORED entries.
 - **3b — stored paths no longer exist.** They are pruned, so the entry cannot grow forever.
+  A DELETE is pruned from the event, which reaches every stored entry and so covers the
+  release view, whose folds no loaded controller walks; a fold key naming two notes — the
+  release and the member — dies with either of them, since a release that has gone takes
+  its whole screen with it. The flush's own walk over the loaded view's keys stays beside
+  it, asking the same question of the same two paths, and is what catches a note that went
+  while nothing was watching.
 - **3c — the vault cannot answer whether a path exists.** Nothing is pruned at all. The
   prune deletes other views' entries, and "I cannot see it" is only evidence when the
-  reader can see anything — which is asked of the base this very view is drawing.
+  reader can see anything — which is asked of the base this very view is drawing. This
+  binds the prunes that ASK the vault. A prune driven by a delete event asks nothing —
+  the event is the removal being reported — so there is no unanswerable case for it to
+  guard against.
 
 ## Acceptance criteria
 
@@ -63,6 +72,9 @@ the one I am working in.
 - Renaming a note, a view or a base migrates the state rather than orphaning it — every
   fold key shape included, so renaming a release, or a member inside one, keeps the row
   folded rather than reopening it.
+- Deleting a note drops the folds that name it, in every stored entry rather than only in
+  the view that happens to be loaded — including the folds of every row on a deleted
+  release's own screen.
 - When the base cannot be identified the state is session-only — never a shared key.
 - A malformed stored value is read defensively and discarded, not thrown on.
 - A save made while the vault cannot resolve its own base prunes nothing.
@@ -83,7 +95,7 @@ both directions run through, and pruning — the only module allowed to touch lo
 storage) · `src/view/viewState.ts` (which rows are shut, the once-only default, the
 debounced save) · `src/view/viewStateController.ts` (the read/write pair each stored pick
 exposes to the toolbar, and the render depth each change needs).
-Tests: `test/storage/viewStateStore.test.ts`, `test/storage/viewIdentity.test.ts`,
-`test/view/viewStatePersistence.test.ts`.
+Tests: `test/storage/viewStateStore.test.ts`, `test/storage/viewStateFolds.test.ts`,
+`test/storage/viewIdentity.test.ts`, `test/view/viewStatePersistence.test.ts`.
 Base identity in a live vault is the one part this repository cannot check — see
 [[Verify base identity in a live vault]].

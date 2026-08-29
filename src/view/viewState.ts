@@ -13,7 +13,7 @@ import {
 	ViewPrefs,
 } from '../storage/viewStateStore';
 import { movedPath, resolveViewIdentity, ViewIdentity } from '../storage/viewIdentity';
-import { CARD_SCOPE, movedFoldKey, notePath, RELEASE_FOLD, TIMELINE_SCOPE } from '../storage/foldKeys';
+import { CARD_SCOPE, foldKeyPaths, movedFoldKey, notePath, RELEASE_FOLD, TIMELINE_SCOPE } from '../storage/foldKeys';
 import { BacklogViewHost, ColumnScope, Projection } from './host';
 
 // Re-exported rather than moved at every call site: eight modules and three suites name
@@ -610,8 +610,19 @@ export class ViewState {
 			const next = movedFoldKey(key, oldPath, newPath);
 			if (next === null) continue;
 			this.settled.delete(key);
+			// The target is deleted before it is added, `set` and `setColumnCollapsed`'s
+			// third site of the same shape: a bare `.add` of a key the set ALREADY holds
+			// leaves it at its original position, which `readFolds`'s tail-retention budget
+			// reads as old and evicts first. Not reachable today — Obsidian refuses a rename
+			// onto an existing note, so the new path can only already be settled if its key
+			// is stale — but a batch rename, or any caller that renamed A→B and then B→B,
+			// would reproduce it, and the cost of keeping it right is one line.
+			this.settled.delete(next);
 			this.settled.add(next);
-			if (this.collapsed.delete(key)) this.collapsed.add(next);
+			if (this.collapsed.delete(key)) {
+				this.collapsed.delete(next);
+				this.collapsed.add(next);
+			}
 			changed = true;
 		}
 		if (this.renameScoped(oldPath, newPath)) changed = true;
@@ -747,8 +758,12 @@ export class ViewState {
 		// rather than on the model: a query that has not warmed up yet, or a filter
 		// the user narrowed, must not be read as "these notes no longer exist" and
 		// throw away a session the user still wants.
+		//
+		// Asked of EVERY path the key names, not just the one it is filed under: a
+		// release-fold key holds its release as well as its member, and a fold whose
+		// release note is gone names a screen that can never be drawn again.
 		for (const key of this.settled) {
-			if (this.host.app.vault.getAbstractFileByPath(notePath(key)) !== null) continue;
+			if (foldKeyPaths(key).every((path) => this.host.app.vault.getAbstractFileByPath(path) !== null)) continue;
 			this.settled.delete(key);
 			this.collapsed.delete(key);
 		}

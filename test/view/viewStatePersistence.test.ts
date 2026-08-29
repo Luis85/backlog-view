@@ -226,6 +226,11 @@ describe('collapse state persistence', () => {
 	 */
 	it('keeps a release’s own fold when the backlog view flushes over the same identity', () => {
 		const vault = fixture();
+		// The release note has to BE there. The prune asks about every path the key names
+		// (`foldKeyPaths`), so a fixture without this file would prune the key for a
+		// perfectly good second reason and the assertion below could no longer tell a
+		// correctly-parsed key from a misparsed one.
+		vault.addFile('Releases/0.8.md', { frontmatter: { type: 'Release' } });
 		const releaseFoldKey = `${RELEASE_FOLD}Releases/0.8.md\u0000Epic B.md`;
 		vault.localStorage.set('product-backlog:view-state', {
 			'Backlog.base#Backlog': {
@@ -246,6 +251,34 @@ describe('collapse state persistence', () => {
 		view.onunload();
 
 		expect(stored(vault)['Backlog.base#Backlog'].folds.collapsed).toContain(releaseFoldKey);
+	});
+
+	/**
+	 * The other half of the key, and the reason `foldKeyPaths` exists beside `notePath`: a
+	 * fold is alive only while BOTH notes it names are. A release deleted takes its whole
+	 * scope with it — every key under that prefix asks about a screen that can never be
+	 * drawn again — while `notePath` answers only which path the key is FILED under, so a
+	 * prune asking it alone kept those keys forever and refolded the row if the member's
+	 * path ever came back.
+	 */
+	it('drops a release’s fold when the RELEASE note is gone, though the member remains', () => {
+		const vault = fixture();
+		const releaseFoldKey = `${RELEASE_FOLD}Releases/0.8.md\u0000Epic B.md`;
+		vault.localStorage.set('product-backlog:view-state', {
+			'Backlog.base#Backlog': {
+				base: 'Backlog.base',
+				folds: { collapsed: [releaseFoldKey], expanded: [], lanes: [] },
+				prefs: {},
+			},
+		});
+
+		// `Epic B.md` is in the fixture and stays there: only the release is missing, so a
+		// prune that asked about the member alone would keep this key.
+		const { view } = makeView(vault, {}, { base: 'Backlog.base', collapsed: true });
+		view.setZoom('quarter');
+		view.onunload();
+
+		expect(stored(vault)['Backlog.base#Backlog']?.folds.collapsed ?? []).not.toContain(releaseFoldKey);
 	});
 
 	/**
@@ -322,6 +355,10 @@ describe('collapse state persistence', () => {
 	 */
 	it('carries a release’s own fold to a renamed member, keeping it scoped to that release', () => {
 		const vault = fixture();
+		// Present for the same reason as in the flush test above: with no release note the
+		// flush would prune this key on its own account, and the migration under test would
+		// be unobservable.
+		vault.addFile('Releases/0.8.md', { frontmatter: { type: 'Release' } });
 		const releaseFoldKey = `${RELEASE_FOLD}Releases/0.8.md\u0000Epic B.md`;
 		vault.localStorage.set('product-backlog:view-state', {
 			'Backlog.base#Backlog': {

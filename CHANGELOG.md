@@ -112,6 +112,12 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ### Fixed
 
+- **Deleting a note now takes its folded rows with it.** A row you had folded shut left an
+  entry behind in this device's saved working position, which then counted against the cap
+  on how much a view may remember — and, if a note ever came back at that path, brought the
+  row back folded without you folding it. Deleting a folder takes everything under it, and
+  deleting a release takes the folds of every row on that release's own screen.
+
 - **A release holding only Deliverables now shows progress**, where it used to say progress
   was not configured. The figure now asks whether every kind of work a release's own members
   span can be read as done, rather than asking only about the plan's own state property — so

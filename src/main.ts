@@ -1,7 +1,7 @@
 import { Plugin } from 'obsidian';
 import { CREATE_BACKLOG_COMMAND_ID, promptCreateBacklogBase } from './commands/scaffold';
 import { WRITE_README_COMMAND_ID, writeBacklogReadmeCommand } from './commands/readme';
-import { rekeyBase, renamePathFolds, renamePathPrefs } from './storage/viewStateStore';
+import { pruneDeletedFolds, rekeyBase, renamePathFolds, renamePathPrefs } from './storage/viewStateStore';
 import { initLocale, t } from './i18n/t';
 import { registerBacklogView } from './view/registerBacklogView';
 import { registerEstimationView } from './view/estimation/register';
@@ -47,6 +47,12 @@ export default class ProductBacklogPlugin extends Plugin {
 				renamePathFolds(this.app, oldPath, file.path);
 			}),
 		);
+		// The other half of a fold key's lifecycle, and the only thing that runs it for a
+		// view holding no `ViewState`: a DELETED note's folds are dropped here rather than
+		// inferred from the index inside a save — see `pruneDeletedFolds` for why the event
+		// is better evidence than the question. Not filtered to notes, for the rename's own
+		// reason: deleting a folder reports the folder and never what was inside it.
+		this.registerEvent(this.app.vault.on('delete', (file) => pruneDeletedFolds(this.app, file.path)));
 		this.addCommand({
 			id: CREATE_BACKLOG_COMMAND_ID,
 			// Obsidian prefixes command names with the plugin name in the palette.

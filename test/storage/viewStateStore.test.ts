@@ -7,7 +7,6 @@ import {
 	MIN_TIMELINE_LEAD_PX,
 	PREF_READERS,
 	rekeyBase,
-	renamePathFolds,
 	renamePathPrefs,
 	saveViewState,
 	ViewFolds,
@@ -220,62 +219,6 @@ describe('a note path a saved view remembers', () => {
 
 		expect(loadViewState(vault.app, RELEASE_ID).prefs.release).toBe('releases/0.8.md');
 		expect(loadViewState(vault.app, RELEASE_ID).prefs.scope).toBe('sprints/12.md');
-	});
-});
-
-/**
- * The FOLD half of the same walk, over the same stored entries — `renamePathFolds` beside
- * `renamePathPrefs`. Asserted on the stored VALUE for that walk's own reason: a fold key
- * left behind and a fold key deleted look identical on screen (the row simply reopens),
- * so only the key at its new spelling tells a migration from a loss.
- */
-describe('a fold key a saved view remembers', () => {
-	const FOLD_ID = { base: 'Plan.base', view: 'Releases' };
-
-	function saveFolds(collapsed: string[], expanded: string[] = []): void {
-		saveViewState(vault.app, FOLD_ID, { folds: { ...emptyFolds(), collapsed, expanded }, prefs: {} });
-	}
-
-	it('renames every key shape a stored entry can hold, in both lists', () => {
-		saveFolds(['a.md', '\u0000card:a.md', '\u0000timeline:a.md', '\u0000release:Releases/0.8.md\u0000a.md'], ['a.md']);
-
-		renamePathFolds(vault.app, 'a.md', 'b.md');
-
-		const folds = loadViewState(vault.app, FOLD_ID).folds;
-		expect(folds.collapsed).toEqual(['b.md', '\u0000card:b.md', '\u0000timeline:b.md', '\u0000release:Releases/0.8.md\u0000b.md']);
-		expect(folds.expanded).toEqual(['b.md']);
-	});
-
-	it('moves a release fold when the RELEASE itself is renamed, not only its member', () => {
-		// The half `ViewState.renamePath`'s old expression never asked about: a release-fold
-		// key carries TWO paths, and renaming the release note stranded every fold in its
-		// scope under a prefix no reader would ask for again.
-		saveFolds(['\u0000release:Releases/0.8.md\u0000a.md']);
-
-		renamePathFolds(vault.app, 'Releases/0.8.md', 'Releases/0.8.1.md');
-
-		expect(loadViewState(vault.app, FOLD_ID).folds.collapsed).toEqual(['\u0000release:Releases/0.8.1.md\u0000a.md']);
-	});
-
-	it('carries a folder move above either path, which is the only event a folder reports', () => {
-		saveFolds(['\u0000release:Releases/0.8.md\u0000Backlog/a.md']);
-
-		renamePathFolds(vault.app, 'Backlog', 'Work');
-		renamePathFolds(vault.app, 'Releases', 'Archive/Releases');
-
-		expect(loadViewState(vault.app, FOLD_ID).folds.collapsed).toEqual([
-			'\u0000release:Archive/Releases/0.8.md\u0000Work/a.md',
-		]);
-	});
-
-	it('leaves a key no rename names exactly as it was', () => {
-		saveFolds(['a.md', '\u0000release:Releases/0.8.md\u0000a.md']);
-
-		// A path that merely shares a name prefix, and a rename of something else entirely.
-		renamePathFolds(vault.app, 'a.md.old', 'z.md');
-		renamePathFolds(vault.app, 'Epic.md', 'Story.md');
-
-		expect(loadViewState(vault.app, FOLD_ID).folds.collapsed).toEqual(['a.md', '\u0000release:Releases/0.8.md\u0000a.md']);
 	});
 });
 
