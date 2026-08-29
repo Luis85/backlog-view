@@ -107,10 +107,18 @@ case the union test let through — while letting one write carry two. Nothing e
 The planner is then handed to `ReleaseView.applyRelease`, which gives, with no other new
 plumbing:
 
-- one gate, one undo slot, and `applyRestores`' compare-and-swap per key, so undo
-  restores each field to what it held, which is the absence of a date only where there
-  was none — and one `captureInverse` over both keys rather than two, so there is no
-  arrangement of the undo slot in which one field comes back without the other;
+- one gate, one undo slot, and one `captureInverse` over both keys rather than two, so
+  the two fields are one entry in the undo history rather than two — **but not an atomic
+  restore, and the first draft of this line claimed one.** `restoreInto` compares and
+  swaps PER KEY: an entry whose live value is no longer what the batch wrote is skipped
+  and counted as a conflict while the others are restored. So a status hand-edited after
+  marking, with the date untouched, undoes to the newer status and no released date — the
+  state extension 3b is about, reached from the other direction. Undo restores each field
+  it can still safely restore and reports what it could not; that is the sentence the
+  check supports, and the wider one was written ahead of it. Making it all-or-nothing
+  means grouping the conflict test in `restoreInto`, which serves every undo in this
+  plugin and where a partial restore is sometimes right — its own change with its own
+  note, not a line in this increment;
 - `reconfiguredKey`'s check, which covers the keys being remapped while the dialog is
   open, and the write gate's own refusal of a batch naming a note outside the base (1b);
 - the empty-batch return, so a release already at the transition value writes nothing and
@@ -125,11 +133,18 @@ A small `ui/confirmDialog.ts` — Obsidian ships no confirm, and every existing 
 links, and a CTA.
 
 It states how many members are not finished and lists them by name, each opening its note
-through `view/openTarget.ts`. That is flow 4's "with the action that moves them" read as
-an **open**, not a write: a control that set a member's state here would need a second
-batch and a second undo slot, and would falsify the first acceptance criterion. Nothing
-outstanding, and the dialog says so instead of drawing an empty list (2b). Cancelling
-writes nothing and spends no undo slot (2c).
+through `view/openTarget.ts`.
+
+**That is a narrowing of flow 4 rather than a reading of it, and it is recorded as one.**
+The flow asks for "the action that moves them"; an open is navigation, so the per-member
+transition it names is not built here. It was weighed against a `Set state` control per
+row and the open was chosen: that control needs a second batch and a second undo slot
+beside the release's own, and it puts a member write on the screen whose whole point is
+that releasing touches the release note alone. The PBI keeps its criterion and gains a
+line saying which half landed, exactly as the readiness half above does.
+
+Nothing outstanding, and the dialog says so instead of drawing an empty list (2b).
+Cancelling writes nothing and spends no undo slot (2c).
 
 The outstanding list is **two** questions of `releaseScope`'s rows, not one. `context`
 false is the population — which is 4a, an excluded note naming this release is neither
@@ -184,6 +199,16 @@ keeping `'replace'` — a renamed base or view must not brick regeneration — a
 write over another release's notes cannot be taken back by the undo slot (4c). A file
 with no marker at all is refused by both (4b). One flag, two shipped products, no third
 caller invented for it.
+
+**The refuse branch asks its question inside `process`, not before it.** Today's callback
+re-reads the live first line and accepts anything that PARSES as a marker — the right test
+for replace-and-report, where another view's file may legitimately be taken, and the wrong
+one for refusing: sync can put another release's generated notes at that path between the
+`read` and the `process`, and a callback asking only "is this a marker" would overwrite the
+file it exists to protect. So `'refuse'` compares the live source against the INTENDED
+source inside the callback and hands the file back unchanged on a mismatch. That is this
+module's own rule about content, kept: the permission is about the bytes being replaced,
+and only the callback sees those.
 
 The path is the configured folder plus the release note's own basename and a fixed
 suffix — `Eratic Skunk release notes.md`. The basename is already a legal file name, so
@@ -306,8 +331,11 @@ design adds to them:
   call: a note retyped inside that callback writes neither field, and there is no input
   that leaves a released status without its date. The check is a test that retypes the
   note from within the write, not two assertions about two writes.
-- Undoing once takes both back, and a release whose status already equals the transition
-  value writes nothing and spends no undo slot.
+- Undoing once takes both back where neither field has been edited since; where one has,
+  it restores the other and reports the conflict. Asserted in both directions, so the
+  narrowing above is a checked statement rather than a caveat.
+- A release whose status already equals the transition value writes nothing and spends no
+  undo slot.
 - `reconfiguredKey` still refuses a write whose key is not its own role's, with the status
   and description options swapped mid-dialog — the PR #211 case, asked of a two-set write.
 - The outstanding list and its count come from non-context scope rows that are not done,
@@ -332,6 +360,10 @@ design adds to them:
   the check, and they are watched passing before and after.
 - A release-notes file whose marker names another release is refused and named; one whose
   marker names this release is overwritten; one with no marker is refused.
+- That refusal holds when the file CHANGES between the read and the write: a fixture that
+  swaps in another release's generated notes from inside `process` keeps its contents. The
+  check drives the callback, because a test that only arranges the file beforehand passes
+  against a writer that asks the question too early.
 - Two releases sharing a basename in different folders resolve to one output path, and the
   second is refused rather than silently replacing the first.
 - The generated file holds no date of its own, and two generations over an unchanged
