@@ -50,6 +50,10 @@ import { openTextPrompt } from '../../ui/textPrompt';
  * value here, so no clear is offered for it and the reader repairs it in the note — which
  * the header's own Open release note control is one press away from.
  */
+/** The chip's own selector, spelled once: three entries in the menu below write, and all
+ *  three put focus back on it. */
+const STATUS_CHIP = '.pbl-rel-status';
+
 export function showReleaseStatusMenu(view: ReleaseView, evt: MouseEvent, release: ReleaseRow, index: ReleaseIndex): void {
 	const key = view.settings.statusKey;
 	const current = release.status.value;
@@ -61,7 +65,14 @@ export function showReleaseStatusMenu(view: ReleaseView, evt: MouseEvent, releas
 			mi
 				.setTitle(choice)
 				.setChecked(writes.length === 0)
-				.onClick(() => void view.applyRelease(writes)),
+				// Through `save` rather than `applyRelease` directly, for the reason the
+				// description's dialog needs it: an Obsidian `Menu` is mounted on the BODY, so
+				// while it is open the view contains no focused element and `focusedHandle`
+				// correctly answers null — the write's own redraw then leaves a keyboard reader
+				// on `document.body`, having paid a lost place for every status they set
+				// (found by review, PR #211). `FOCUS_HANDLE_CLASSES` cannot reach a menu pick;
+				// only an explicit refocus after the await can.
+				.onClick(() => void save(view, writes, STATUS_CHIP)),
 		);
 	}
 	// **A menu that can set nothing is a control that lies.** With no declared values, no
@@ -84,8 +95,7 @@ export function showReleaseStatusMenu(view: ReleaseView, evt: MouseEvent, releas
 						placeholder: t('release.scope.newStatusPlaceholder'),
 						ctaLabel: t('release.scope.newStatusCta'),
 						known: [],
-						onSubmit: (value) =>
-							void save(view, releaseStatusWrites(release.item.file, key, current, value), '.pbl-rel-status'),
+						onSubmit: (value) => void save(view, releaseStatusWrites(release.item.file, key, current, value), STATUS_CHIP),
 					}).open(),
 				),
 		);
@@ -96,7 +106,9 @@ export function showReleaseStatusMenu(view: ReleaseView, evt: MouseEvent, releas
 			mi
 				.setTitle(t('release.scope.clearStatus'))
 				.setIcon('eraser')
-				.onClick(() => void view.applyRelease(releaseStatusWrites(release.item.file, key, current, null))),
+				// The Clear foot writes, so it takes the same route: it lands on the chip in its
+				// UNSET form, the same element by class and a different one by content.
+				.onClick(() => void save(view, releaseStatusWrites(release.item.file, key, current, null), STATUS_CHIP)),
 		);
 	}
 	showMenuForClick(menu, evt);

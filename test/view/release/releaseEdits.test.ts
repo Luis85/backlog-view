@@ -259,6 +259,29 @@ describe('focus across the redraw an edit causes', () => {
 		}
 	});
 
+	it('puts focus back on the status chip after a pick and after a clear', async () => {
+		// Found by review (Codex, PR #211), and the earlier focus fix could not cover it: an
+		// Obsidian `Menu` is mounted on the BODY, so while it is open `focusedHandle` correctly
+		// answers null — `viewEl` does not contain the focused element — and the write's own
+		// redraw then leaves the reader on `document.body`. `FOCUS_HANDLE_CLASSES` is the
+		// wrong mechanism here for the same reason the description's dialog needed a second
+		// one; this is that same explicit refocus, on the two entries that write.
+		const { containerEl } = openScope();
+		statusChip(containerEl).click();
+		await flush();
+		Menu.lastShown?.items.find((i) => i.titleText === 'Released')?.click();
+		await flush();
+		expect(document.activeElement).toBe(containerEl.querySelector('.pbl-rel-status'));
+
+		// The Clear foot writes too, so it takes the same route — and lands on the chip in
+		// its UNSET form, which is the same element by class and a different one by content.
+		statusChip(containerEl).click();
+		await flush();
+		Menu.lastShown?.items.find((i) => i.titleText === 'Clear status')?.click();
+		await flush();
+		expect(document.activeElement).toBe(containerEl.querySelector('.pbl-rel-status'));
+	});
+
 	it('puts focus back on the description line after the dialog that closed before it wrote', async () => {
 		// `TextPromptModal` closes before it submits, so focus is off this view by the time
 		// the write's redraw runs and the handle mechanism above correctly answers null —
