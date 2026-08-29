@@ -12,6 +12,7 @@ files:
   - src/domain/typeVocabulary.ts
   - src/view/render/badges.ts
   - src/view/manual/typesSection.ts
+  - src/view/manual/sections.ts
   - styles/badges.css
 started: ""
 finished: ""
@@ -134,6 +135,18 @@ the sharing decision recorded there the way every previous one is.
 
 `src/view/manual/typesSection.ts` — an `INTENT` entry, which
 `test/view/manualTypes.test.ts` already requires of every `ALL_TYPES` member.
+
+`src/view/manual/sections.ts` — the two AUTHORED sentences that enumerate the category,
+in the `+` guidance and the focus guidance, now interpolate `EXTRA_TYPES` instead of
+spelling `(Issue, Bug, Idea, Deliverable)`. Found by a review bot on this change, and it
+is the gap the generated section hid: the types section covered every type while the two
+hand-written parentheses beside it covered four, so the in-app manual would have stated a
+complete vocabulary that was one name short. ADR 0031 keeps this directory's prose out of
+the catalog and is untouched by that — a derived LIST inside authored prose is not a
+message the plugin composes. The guard is asked of the category at the place that can go
+stale (`test/view/manualTypes.test.ts`), so re-hardcoding either list fails as soon as the
+vocabulary grows. `README.md` carried the same four-name enumeration in four places and is
+hand prose, so it was updated by hand.
 
 `docs/README.md`, `scripts/docs-check.mjs` and `test/helpers/register.ts` — `docs/` is
 itself a backlog in this schema, so the register's hierarchy table, the checker's `EXTRA`
