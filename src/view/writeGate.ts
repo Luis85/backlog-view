@@ -185,6 +185,22 @@ export class WriteGate<W extends { file: TFile }> {
 	}
 
 	/**
+	 * A vault write that is not a frontmatter batch — the release notes file today.
+	 *
+	 * Reading `writing` is not the same as HOLDING the lock: generation awaits a folder
+	 * create and a file write, and a sibling batch starting inside that window would run
+	 * concurrently, landing this file from a membership that has since changed. This takes
+	 * the same exclusive section every batch takes.
+	 *
+	 * It installs no undo slot, because nothing here reports an inverse — a whole-file
+	 * write has no per-key restore to offer, which is exactly why the notes writer refuses
+	 * another release's file rather than replacing it.
+	 */
+	runFileWrite<T>(run: () => Promise<T>): Promise<T | null> {
+		return this.runExclusively(1, () => run());
+	}
+
+	/**
 	 * The gate itself: serialized, validated, published, and the undo slot. Inverses
 	 * install on the first EFFECTIVE write — a batch that changes nothing (a state
 	 * re-set to itself) emits none and leaves the previous undo in place, while a

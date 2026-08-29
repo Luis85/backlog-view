@@ -164,11 +164,11 @@ describe('marking a release as released', () => {
 		expect(vault.fm('0.9.md')['status']).toBe('In progress');
 	});
 
-	// Task 12 adds `.pbl-rel-notes` to this array with the button that carries it. The
-	// class is already registered beside this one, because the focus list is one
-	// vocabulary rather than a per-button registration.
-	it.each(['.pbl-rel-close'])('keeps focus on %s across a metadata refresh', (selector) => {
-		const { view } = releaseScreen({ status: 'In progress' });
+	// BOTH controls, in one parameterised case: registering one and forgetting the other
+	// is what the focus-handle list exists to prevent, and a test per button is how the
+	// second one gets forgotten.
+	it.each(['.pbl-rel-close', '.pbl-rel-notes'])('keeps focus on %s across a metadata refresh', (selector) => {
+		const { view } = releaseScreen({ status: 'In progress' }, scopeVault(), { releaseNotesFolder: 'notes' });
 		button(view, selector).focus();
 		view.onDataUpdated();
 		expect(document.activeElement).toBe(view.viewEl.querySelector(selector));

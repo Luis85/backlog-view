@@ -2110,6 +2110,22 @@ export const en = {
 	/** The heading for a type the vocabulary does not know — a note that quietly omitted
 	 *  work would be worse than an untidy heading. */
 	'release.notes.otherTypes': 'Other',
+
+	/**
+	 * `Generate release notes` — the second closing action. Every `{path}` is a vault path
+	 * and is data.
+	 *
+	 * `refused` covers the two outcomes that wrote nothing because the file was not this
+	 * release's: it says what happened to the FILE rather than naming a rule, because what
+	 * the reader has to do is look at it.
+	 */
+	'release.notes.action': 'Generate release notes',
+	'release.notes.bindFolder': 'To generate release notes, bind the release notes folder.',
+	'release.notes.bindMembership': 'To generate release notes, bind the release membership property.',
+	'release.notes.failed': 'The release notes could not be written to {path}.',
+	'release.notes.written': 'Release notes written to {path}.',
+	'release.notes.refused': '{path} was not written by this view and has been left alone.',
+	'release.notes.unchanged': 'The release notes at {path} were already up to date.',
 	/**
 	 * A press that bound nothing, said rather than left silent — a standalone control with
 	 * no dialog after it would otherwise look dead. `release.new.bound` is what a press

@@ -62,7 +62,7 @@ export function renderScope(
 	// Above both empty-state returns on purpose — see `releaseClose.ts`'s own header: the
 	// empty-scope screen is the only place extension 1a can be exercised at all, and the
 	// unconfigured-membership screen withholds nothing that marking reads.
-	drawReleaseActions(view, view.viewEl, release, scope);
+	drawReleaseActions(view, view.viewEl, release, scope, planSettings);
 	// Both empty states sit BELOW the header, so the back control survives either. A
 	// release nobody can read the scope of must not also be a dead end.
 	if (view.settings.membershipKey === '') {

@@ -1,5 +1,6 @@
 import { Notice } from 'obsidian';
 import type { ReleaseView } from './releaseView';
+import { BacklogSettings } from '../../domain/settings';
 import { t } from '../../i18n/t';
 import {
 	CloseOffer,
@@ -15,6 +16,12 @@ import { releaseClosureWrites } from '../../domain/releaseWritePlan';
 import { ownWorkflowReading } from '../../domain/board';
 import { ownValue, todayCivil } from '../../domain/noteFields';
 import { openConfirm } from '../../ui/confirmDialog';
+import { configProblems, membershipCollision, releaseNoteProblems } from '../../domain/settingsConsistency';
+import { releaseNotesContent } from '../../domain/releaseNotesText';
+import { joinSource } from '../../domain/readmeMarker';
+import { GeneratedWriteResult } from '../../storage/readmeFile';
+import { releaseNotesPath, writeReleaseNotes } from '../../storage/releaseNotesFile';
+import { resolveViewIdentity } from '../../storage/viewIdentity';
 
 /**
  * The release screen's closing actions. Drawn ABOVE `renderScope`'s two early returns,
@@ -24,9 +31,126 @@ import { openConfirm } from '../../ui/confirmDialog';
  * Each action keeps its OWN gate: marking reads the release note alone, so membership is
  * none of its business.
  */
-export function drawReleaseActions(view: ReleaseView, parentEl: HTMLElement, release: ReleaseRow, scope: ReleaseScope): void {
+export function drawReleaseActions(
+	view: ReleaseView,
+	parentEl: HTMLElement,
+	release: ReleaseRow,
+	scope: ReleaseScope,
+	planSettings: BacklogSettings,
+): void {
 	const areaEl = parentEl.createDiv({ cls: 'pbl-rel-actions' });
 	drawClose(view, areaEl, release, scope);
+	drawGenerate(view, areaEl, release, scope, planSettings);
+}
+
+function drawGenerate(
+	view: ReleaseView,
+	areaEl: HTMLElement,
+	release: ReleaseRow,
+	scope: ReleaseScope,
+	planSettings: BacklogSettings,
+): void {
+	const blocked = generationBlocked(view, planSettings);
+	if (blocked !== null) {
+		areaEl.createDiv({ cls: 'pbl-rel-actions-note', text: blocked });
+		return;
+	}
+	const btn = areaEl.createEl('button', {
+		cls: 'pbl-rel-notes',
+		text: t('release.notes.action'),
+		attr: { type: 'button' },
+	});
+	btn.disabled = view.gate.writing;
+	btn.addEventListener('click', () => void generate(view, release, scope));
+}
+
+/**
+ * Why generation may not run, or null. THREE reports and two bindings.
+ *
+ * `configProblems` is over the PLAN's settings rather than this view's, and it belongs
+ * here for a reason that is easy to miss: `stateProperty` pointed at the order key makes
+ * the model read workflow strings as ranks, and this file would then list a release's
+ * members in a sequence nothing can defend. `releaseNoteProblems` is the release-note
+ * roles. Removing either fails exactly one row of the gate suite and no other, so both
+ * are load-bearing here.
+ *
+ * `membershipCollision` is the domain's own rule and is kept, but the claim that "none of
+ * the three subsumes another" is NOT true from this view and is not made here: the plan's
+ * release key and this view's membership key are resolved from ONE option, so every
+ * collision on it is visible to `configProblems` as well, and removing this call fails no
+ * test. It is the check on the write rather than a check the suite can isolate — where it
+ * IS isolated is `test/domain/releaseOptions.test.ts`, against settings that separate the
+ * two keys.
+ */
+function generationBlocked(view: ReleaseView, planSettings: BacklogSettings): string | null {
+	if (view.settings.notesFolder === '') return t('release.notes.bindFolder');
+	// Bound is not the same as READABLE, and this one is not a collision: with the key
+	// unbound every scope reads empty, and a file saying the release contained nothing
+	// would replace one saying what shipped. Empty and unreadable are different answers.
+	if (view.settings.membershipKey === '') return t('release.notes.bindMembership');
+	const problems = [...configProblems(planSettings), ...releaseNoteProblems(view.settings)];
+	const collision = membershipCollision(view.settings, planSettings);
+	if (collision !== null) problems.push(collision);
+	return problems.length === 0 ? null : t('config.fixFirst', { problem: problems[0] });
+}
+
+async function generate(view: ReleaseView, release: ReleaseRow, scope: ReleaseScope): Promise<void> {
+	// The same identity `commands/readme.ts` builds for the backlog README, plus the
+	// release — `resolveViewIdentity` returns null for an embedded base, where the view
+	// name stands alone, which is the fallback that file already states.
+	const identity = resolveViewIdentity(view.app, view.viewEl, view.config.name ?? '');
+	// `release.path`, never `release.name`. The name is `file.basename`, and the whole
+	// reason this marker gained a third part is that two releases in different folders may
+	// share a basename — and therefore share this file's OUTPUT path, since that is built
+	// from the basename too. A marker naming the basename is identical for both, so the
+	// refusing writer would read `b/0.9.md`'s generation as `a/0.9.md`'s regeneration and
+	// overwrite the notes it exists to protect. The path is what tells them apart.
+	const source = identity
+		? joinSource(identity.base, identity.view, release.path)
+		: joinSource(view.config.name ?? '', release.path);
+	const content = releaseNotesContent(release, scope.rows, source);
+	// Through the gate, so `applying` is held for the whole write rather than sampled
+	// before it. A sibling batch cannot start underneath this one, and this one is
+	// refused (loudly, by the gate) if a sibling got there first.
+	//
+	// The write's OWN failure is caught INSIDE the callback, not around this call:
+	// `runExclusively` catches whatever the callback throws, logs it and shows the generic
+	// apply-failed notice, then returns null — so a `catch` out here never runs, and
+	// extension 4e's "reports the path it tried" would be lost to a message about backlog
+	// items. The gate's null then means only one thing: it refused.
+	const result = await view.gate.runFileWrite(async () => {
+		try {
+			return await writeReleaseNotes(view.app, view.settings.notesFolder, release.name, content);
+		} catch (err) {
+			console.error('Product Backlog: release notes write failed', err);
+			new Notice(t('release.notes.failed', { path: releaseNotesPath(view.settings.notesFolder, release.name) }));
+			return null;
+		}
+	});
+	if (result === null || result === undefined) return; // Refused by the gate, or failed and already reported.
+	new Notice(noticeFor(result));
+	// Opening is a convenience, not part of the guarantee (5a).
+	if (result.outcome !== 'foreign') {
+		const file = view.app.vault.getFileByPath(result.path);
+		if (file !== null) view.opener.openIn(view.openContext(), { file }, 'tab');
+	}
+}
+
+/**
+ * Which of the five outcomes happened, in the reader's terms. `foreign` and `replaced`
+ * are one sentence because they are one fact for the reader: the file that is there was
+ * not written for this release, and nothing was written over it.
+ */
+function noticeFor(result: GeneratedWriteResult): string {
+	switch (result.outcome) {
+		case 'foreign':
+		case 'replaced':
+			return t('release.notes.refused', { path: result.path });
+		case 'unchanged':
+			return t('release.notes.unchanged', { path: result.path });
+		default:
+			return t('release.notes.written', { path: result.path });
+	}
 }
 
 /**
