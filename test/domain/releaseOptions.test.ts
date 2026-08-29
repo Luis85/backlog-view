@@ -16,12 +16,13 @@ describe('the release view names its own keys', () => {
 		// Bases' own options menu — see the comment beside their declaration below.
 		// `descriptionProperty` and `releaseStatusValues` joined it on 2026-08-29 with
 		// [[Editing a release from its own screen]]: the field this view writes, and the
-		// vocabulary its status menu offers.
+		// vocabulary its status menu offers. `releasedStatusValues`, `releasedTransitionValue`
+		// and `releaseNotesFolder` joined it the same day with the closing actions
+		// (`Mark as released`, `Generate release notes`).
 		//
-		// The COUNT left this test's own name the same day. It read "all fourteen" while the
-		// list held fourteen and the view declared fourteen — true, and true of nothing else:
-		// a name that carries a number goes stale the moment an option is added, and the
-		// list below is the check either way.
+		// The COUNT left this test's own name earlier the same day: a name that carries a
+		// number goes stale the moment an option is added, and the list below is the check
+		// either way.
 		expect(keysOf(new FakeViewConfig({})).sort()).toEqual(
 			[
 				'deliverableDoneValues',
@@ -33,7 +34,10 @@ describe('the release view names its own keys', () => {
 				'orderProperty',
 				'parentProperty',
 				'releasedDateProperty',
+				'releasedStatusValues',
+				'releasedTransitionValue',
 				'releaseFolder',
+				'releaseNotesFolder',
 				'releaseStatusProperty',
 				'releaseStatusValues',
 				'stateProperty',
@@ -91,6 +95,36 @@ describe('the release view names its own keys', () => {
 	it('resolves its own open target, defaulting to split like the estimation view', () => {
 		expect(resolveReleaseSettings(new FakeViewConfig({}) as never).openIn).toBe('split');
 		expect(resolveReleaseSettings(new FakeViewConfig({ openIn: 'tab' }) as never).openIn).toBe('tab');
+	});
+
+	it('offers the declared released values as the transition dropdown\'s own choices', () => {
+		const items = getReleaseViewOptions(
+			new FakeViewConfig({ releasedStatusValues: 'Released, Archived' }) as never,
+		).flatMap((group) => ('items' in group ? group.items : []));
+		const dropdown = items.find((item) => (item as { key: string }).key === 'releasedTransitionValue') as {
+			options?: Record<string, string>;
+		};
+		expect(dropdown.options).toEqual({ Released: 'Released', Archived: 'Archived' });
+	});
+
+	it('resolves the three closing options, and leaves each unconfigured one empty', () => {
+		const bound = resolveReleaseSettings(
+			new FakeViewConfig({
+				releasedStatusValues: 'Released, Archived',
+				releasedTransitionValue: 'Released',
+				releaseNotesFolder: 'docs/notes',
+			}) as never,
+		);
+		expect(bound.releasedValues).toEqual(['Released', 'Archived']);
+		expect(bound.releasedTransition).toBe('Released');
+		expect(bound.notesFolder).toBe('docs/notes');
+
+		// Absence is a value: an unconfigured list is empty and an unconfigured folder is '',
+		// which is what every gate below reads as "not bound" rather than as "none".
+		const bare = resolveReleaseSettings(new FakeViewConfig({}) as never);
+		expect(bare.releasedValues).toEqual([]);
+		expect(bare.releasedTransition).toBe('');
+		expect(bare.notesFolder).toBe('');
 	});
 
 	it('resolves the released date key, and leaves it empty when unbound', () => {

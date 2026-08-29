@@ -816,6 +816,10 @@ export const en = {
 	 *  placeholder showing the SHAPE of a list, exactly as `option.stateValuesHint` is. */
 	'release.option.statusValues': 'Release statuses (in order)',
 	'release.option.statusValuesHint': 'Planned, In progress, Released',
+	'release.option.releasedValues': 'Statuses that mean released',
+	'release.option.releasedValuesHint': 'Released, Archived',
+	'release.option.transitionValue': 'Status to write when releasing',
+	'release.option.notesFolder': 'Release notes folder',
 	/** What a release is for, in the reader's own words, on the release note. */
 	'release.option.description': 'Release description property',
 	'release.option.releasedDate': 'Released date property',
