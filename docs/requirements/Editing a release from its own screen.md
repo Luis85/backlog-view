@@ -148,11 +148,14 @@ whose whole job is to say what a release is. Asked for as a property by the auth
   re-reads `releaseNoteProblems` at the submit — so a collision present at the open and
   repaired while the menu is up let a batch through carrying the key that collision was
   about, which can be the TYPE key: PR #203's corruption through the one door that fix did
-  not cover (found by review, PR #211). `applyRelease` refuses a batch naming any key the
-  settings do not NOW give this view — a whitelist of the three roles rather than a second
-  collision test, so it holds for a fourth field nobody has written — and the notice names
-  the key, so the reader knows which editor to reopen. It refuses the merely re-pointed case
-  with it, which is the better answer there too: the old write would land on a property this
+  not cover (found by review, PR #211). `applyRelease` refuses a batch whose key is not
+  NOW the key of the field it was planned for — asked per ROLE, which is why the plan carries
+  one, rather than against the three keys together: SWAP the status and description options
+  while a status menu is open and every captured key is still editable while each names the
+  OTHER field, so a union test passes the pick and lands the status on the description (found
+  by review, PR #211). A role has one key, so the rule holds for a fourth field nobody has
+  written, and the notice names the key so the reader knows which editor to reopen. It refuses
+  the merely re-pointed case with it, which is the better answer there too: the old write would land on a property this
   view no longer reads.
 - **4c — a description at CREATION.** `New release` asks for one too, as its fourth and last
   field, where the property is bound — see [[Creating a release from the release view]]. A

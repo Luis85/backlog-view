@@ -10,7 +10,7 @@ import { releaseIndex, releaseScope } from '../../domain/releases';
 import { todayCivil } from '../../domain/noteFields';
 import { resolveSettings } from '../../domain/settingsResolve';
 import { releaseNoteProblems } from '../../domain/settingsConsistency';
-import { reconfiguredKey } from '../../domain/releaseWritePlan';
+import { reconfiguredKey, ReleaseWrite } from '../../domain/releaseWritePlan';
 import { loadViewState, saveViewState } from '../../storage/viewStateStore';
 import { resolveViewIdentity } from '../../storage/viewIdentity';
 import { guidanceShell } from '../render/emptyStates';
@@ -234,14 +234,16 @@ export class ReleaseView extends BasesView {
 	 * (`WriteGate.flushedLastBatch`) — the estimation view's `applyPlan`, and its reason:
 	 * two full rebuilds of one screen for one write.
 	 */
-	async applyRelease(writes: PropertyWrite[]): Promise<void> {
+	async applyRelease(writes: ReleaseWrite[]): Promise<void> {
 		// **The key was captured; the CONFIGURATION was not.** Every control here plans with
 		// the key it was drawn with (the root guide's capture-before-the-await), and the gate
 		// re-reads `releaseNoteProblems` off the settings as they are NOW — so a collision
 		// present when a dialog opened and fixed while it was open lets a batch through
 		// carrying the key that collision was about, which can be the type key (found by
 		// review, PR #211). Asked of the batch rather than of the settings, because what is
-		// wrong is the batch: `namesReconfiguredKey` states the whitelist and its reasons.
+		// wrong is the batch, and asked per ROLE rather than of the three keys together,
+		// because two options SWAPPED leave every captured key still editable while each
+		// names the other field: `reconfiguredKey` states it and its reasons.
 		const foreign = reconfiguredKey(this.settings, writes);
 		if (foreign !== null) {
 			new Notice(t('gate.releaseReconfigured', { property: foreign }));

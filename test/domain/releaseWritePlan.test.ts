@@ -5,8 +5,9 @@ import {
 	releaseDescriptionWrites,
 	releaseReleasedWrites,
 	releaseStatusWrites,
+	ReleaseField,
+	ReleaseWrite,
 } from '../../src/domain/releaseWritePlan';
-import { PropertyWrite } from '../../src/domain/estimationWritePlan';
 
 /**
  * Every batch below carries `requiresType: 'Release'`, and it is asserted rather than
@@ -31,7 +32,7 @@ const file = { path: 'R.md', basename: 'R' } as TFile;
 describe('planning a release status', () => {
 	it('sets the key it is given', () => {
 		expect(releaseStatusWrites(file, 'status', null, 'Released')).toEqual([
-			{ file, sets: [{ key: 'status', value: 'Released' }], requiresType: 'Release' },
+			{ file, role: 'status', sets: [{ key: 'status', value: 'Released' }], requiresType: 'Release' },
 		]);
 	});
 
@@ -43,7 +44,7 @@ describe('planning a release status', () => {
 
 	it('removes the key rather than blanking it, and writes nothing when there is nothing to remove', () => {
 		expect(releaseStatusWrites(file, 'status', 'Planned', null)).toEqual([
-			{ file, sets: [{ key: 'status', value: null }], requiresType: 'Release' },
+			{ file, role: 'status', sets: [{ key: 'status', value: null }], requiresType: 'Release' },
 		]);
 		expect(releaseStatusWrites(file, 'status', null, null)).toEqual([]);
 	});
@@ -60,10 +61,10 @@ describe('planning a released date', () => {
 
 	it('sets the date the reader picked, and clears the key for an emptied field', () => {
 		expect(releaseReleasedWrites(file, 'released', null, '2026-09-20')).toEqual([
-			{ file, sets: [{ key: 'released', value: '2026-09-20' }], requiresType: 'Release' },
+			{ file, role: 'released', sets: [{ key: 'released', value: '2026-09-20' }], requiresType: 'Release' },
 		]);
 		expect(releaseReleasedWrites(file, 'released', on(2026, 9, 20), '')).toEqual([
-			{ file, sets: [{ key: 'released', value: null }], requiresType: 'Release' },
+			{ file, role: 'released', sets: [{ key: 'released', value: null }], requiresType: 'Release' },
 		]);
 	});
 
@@ -83,7 +84,7 @@ describe('planning a released date', () => {
 describe('planning a release description', () => {
 	it('trims the entry and sets it', () => {
 		expect(releaseDescriptionWrites(file, 'description', null, '  The billing rewrite. ')).toEqual([
-			{ file, sets: [{ key: 'description', value: 'The billing rewrite.' }], requiresType: 'Release' },
+			{ file, role: 'description', sets: [{ key: 'description', value: 'The billing rewrite.' }], requiresType: 'Release' },
 		]);
 	});
 
@@ -96,7 +97,7 @@ describe('planning a release description', () => {
 
 	it('clears the key for a box emptied or holding only spaces, and writes nothing when it was already empty', () => {
 		expect(releaseDescriptionWrites(file, 'description', 'Something.', '   ')).toEqual([
-			{ file, sets: [{ key: 'description', value: null }], requiresType: 'Release' },
+			{ file, role: 'description', sets: [{ key: 'description', value: null }], requiresType: 'Release' },
 		]);
 		expect(releaseDescriptionWrites(file, 'description', null, '')).toEqual([]);
 	});
@@ -108,24 +109,44 @@ describe('planning a release description', () => {
 
 describe('the keys this view may write', () => {
 	const settings = { statusKey: 'status', descriptionKey: 'summary', releasedDateKey: 'released' };
-	const write = (key: string): PropertyWrite[] => [{ file: file, sets: [{ key, value: 'x' }], requiresType: 'Release' }];
+	const write = (role: ReleaseField, key: string): ReleaseWrite[] => [
+		{ file: file, role, sets: [{ key, value: 'x' }], requiresType: 'Release' },
+	];
 
 	it('accepts each of the three roles the release screen edits', () => {
-		for (const key of ['status', 'summary', 'released']) expect(reconfiguredKey(settings, write(key))).toBeNull();
+		const roles: [ReleaseField, string][] = [
+			['status', 'status'],
+			['description', 'summary'],
+			['released', 'released'],
+		];
+		for (const [role, key] of roles) expect(reconfiguredKey(settings, write(role, key))).toBeNull();
 		expect(reconfiguredKey(settings, [])).toBeNull();
+	});
+
+	it('refuses a key that is still editable but names ANOTHER role — two options SWAPPED', () => {
+		// The corruption a union test cannot see: the status menu captured `status`, the
+		// reader swapped the status and description options while it was open, and `status`
+		// is now the DESCRIPTION key. Editable, and not this write's — submitting it would
+		// put the picked status in the release's description.
+		const swapped = { ...settings, statusKey: 'summary', descriptionKey: 'status' };
+		expect(reconfiguredKey(swapped, write('status', 'status'))).toBe('status');
+		expect(reconfiguredKey(swapped, write('description', 'summary'))).toBe('summary');
 	});
 
 	it('refuses a key the settings no longer name — the captured key of a re-pointed option', () => {
 		// The corruption this exists for: the description key CAPTURED while it aliased the
 		// type property, submitted after the reader fixed that collision. The gate re-reads
 		// the settings and sees no problem; the batch still says `type`.
-		expect(reconfiguredKey(settings, write('type'))).toBe('type');
+		expect(reconfiguredKey(settings, write('description', 'type'))).toBe('type');
 		// And the merely re-pointed case, refused with it: the old key is not this view's
 		// any more, whether or not anything else owns it.
-		expect(reconfiguredKey(settings, write('description'))).toBe('description');
+		expect(reconfiguredKey(settings, write('description', 'description'))).toBe('description');
 	});
 
-	it('refuses an UNCONFIGURED key rather than letting the writer drop it quietly', () => {
-		expect(reconfiguredKey({ ...settings, descriptionKey: '' }, write(''))).toBe('');
+	it('refuses the captured write of a role that has since been UNCONFIGURED', () => {
+		// No plan can carry the empty key — `fieldWrite` answers nothing for it — so the
+		// unbound case reaches here as the key the control was DRAWN with, against a role
+		// that now names nothing. Refused before `applyPropertyWrites` drops it quietly.
+		expect(reconfiguredKey({ ...settings, descriptionKey: '' }, write('description', 'summary'))).toBe('summary');
 	});
 });

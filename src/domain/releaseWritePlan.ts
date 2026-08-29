@@ -41,13 +41,24 @@ import { RELEASE_TYPE } from './typeVocabulary';
  * UNREADABLE to this view's own reader, so a cleared field written as `''` would come back
  * as somebody's mistake rather than as an unset field.
  */
-function fieldWrite(file: TFile, key: string, value: string | null): PropertyWrite[] {
+function fieldWrite(file: TFile, role: ReleaseField, key: string, value: string | null): ReleaseWrite[] {
 	// `requiresType` on every write this module plans: these three fields belong to a
 	// RELEASE, and the note may have been retyped between the menu opening and the pick —
 	// a window nothing upstream can see. See `PropertyWrite.requiresType` for what the
 	// writer does with it, and why the common `status`-sharing configuration is what makes
 	// this more than defensive.
-	return key === '' ? [] : [{ file, sets: [{ key, value }], requiresType: RELEASE_TYPE }];
+	return key === '' ? [] : [{ file, role, sets: [{ key, value }], requiresType: RELEASE_TYPE }];
+}
+
+/**
+ * Which of the three fields a batch was planned for — carried on the write itself, because
+ * the key alone cannot answer whether it is still the key of the control that captured it.
+ * See `reconfiguredKey`.
+ */
+export type ReleaseField = 'status' | 'description' | 'released';
+
+export interface ReleaseWrite extends PropertyWrite {
+	role: ReleaseField;
 }
 
 /**
@@ -67,10 +78,10 @@ export function releaseStatusWrites(
 	key: string,
 	current: string | null,
 	pick: string | null,
-): PropertyWrite[] {
+): ReleaseWrite[] {
 	if (pick === null && current === null) return [];
 	if (pick !== null && current !== null && sameValue(current, pick)) return [];
-	return fieldWrite(file, key, pick);
+	return fieldWrite(file, 'status', key, pick);
 }
 
 /**
@@ -93,11 +104,11 @@ export function releaseReleasedWrites(
 	key: string,
 	current: CivilDate | null,
 	entry: string,
-): PropertyWrite[] {
+): ReleaseWrite[] {
 	const next = entry.trim() === '' ? null : entry.trim();
 	const held = current === null ? null : formatCivil(current);
 	if (next === held) return [];
-	return fieldWrite(file, key, next);
+	return fieldWrite(file, 'released', key, next);
 }
 
 /**
@@ -113,14 +124,14 @@ export function releaseDescriptionWrites(
 	key: string,
 	current: string | null,
 	text: string,
-): PropertyWrite[] {
+): ReleaseWrite[] {
 	const next = text.trim() === '' ? null : text.trim();
 	// ONE comparison, where the status above needs two: `next === current` already answers
 	// the both-null case here, since neither side has been through `sameValue`. A second
 	// line for it was unreachable and is not defensive — an unreachable branch is a claim
 	// nothing can check.
 	if (next === current) return [];
-	return fieldWrite(file, key, next);
+	return fieldWrite(file, 'description', key, next);
 }
 
 /**
@@ -138,25 +149,38 @@ export function releaseDescriptionWrites(
  * key. The release loses its type and disappears from its own view, which is PR #203's
  * corruption arriving through the one door that fix did not cover.
  *
- * Stated as a WHITELIST rather than as "does it collide", and that is what makes it hold
- * for a fourth field nobody has written yet: this view edits three roles, a batch may name
- * nothing else, and a key that has stopped being one of the three is by definition a key
- * this view was not given. It refuses the harmless case with the dangerous one — the
- * description property merely re-pointed at some unrelated key, where the old write would
- * land somewhere nothing reads — and refusing there is the better answer anyway: the
- * reader retypes into a box that now names the property they configured.
+ * Asked PER ROLE — is this write's key still the key of the field it was planned for —
+ * never against the union of the three, and the difference is a second corruption (found
+ * by review, PR #211): SWAP the status and description options while a status menu is
+ * open, and a union test passes the captured key because it is now the DESCRIPTION key,
+ * so the pick lands the status value on the release's description. The role is what the
+ * key alone cannot say, so the plan carries it (`ReleaseWrite.role`).
  *
- * An unconfigured key never enters the set, so a batch naming one is refused here before
- * `applyPropertyWrites` drops it. Both are right; this one is loud.
+ * That also makes it hold for a fourth field nobody has written yet: a role has one key,
+ * and a write whose key is not that role's is by definition a write this view was not
+ * given. It refuses the harmless case with the dangerous one — the description property
+ * merely re-pointed at some unrelated key, where the old write would land somewhere
+ * nothing reads — and refusing there is the better answer anyway: the reader retypes into
+ * a box that now names the property they configured.
+ *
+ * An unconfigured key is the empty string, which no plan can carry, so a role that has
+ * been unbound refuses its captured write here before `applyPropertyWrites` drops it.
+ * Both are right; this one is loud.
  *
  * Answers the offending KEY rather than a flag, because the refusal names it: a reader told
  * only that something was wrong has to guess which of three editors to reopen.
  */
 export function reconfiguredKey(
 	settings: { statusKey: string; descriptionKey: string; releasedDateKey: string },
-	writes: PropertyWrite[],
+	writes: ReleaseWrite[],
 ): string | null {
-	const editable = new Set([settings.statusKey, settings.descriptionKey, settings.releasedDateKey].filter((k) => k !== ''));
-	for (const write of writes) for (const set of write.sets) if (!editable.has(set.key)) return set.key;
+	for (const write of writes)
+		for (const set of write.sets) if (set.key !== settings[ROLE_KEYS[write.role]]) return set.key;
 	return null;
 }
+
+const ROLE_KEYS = {
+	status: 'statusKey',
+	description: 'descriptionKey',
+	released: 'releasedDateKey',
+} as const;

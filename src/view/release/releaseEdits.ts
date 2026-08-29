@@ -2,8 +2,12 @@ import { Menu } from 'obsidian';
 import type { ReleaseView } from './releaseView';
 import { t } from '../../i18n/t';
 import { ReleaseIndex, releaseStatusChoices, ReleaseRow } from '../../domain/releases';
-import { PropertyWrite } from '../../domain/estimationWritePlan';
-import { releaseDescriptionWrites, releaseReleasedWrites, releaseStatusWrites } from '../../domain/releaseWritePlan';
+import {
+	releaseDescriptionWrites,
+	releaseReleasedWrites,
+	releaseStatusWrites,
+	ReleaseWrite,
+} from '../../domain/releaseWritePlan';
 import { formatCivil } from '../../domain/timeline';
 import { SchedulePromptModal, ValuePromptModal } from '../../ui/prompts';
 import { showMenuForClick } from '../interactions/menu';
@@ -186,7 +190,7 @@ export function editReleaseReleased(view: ReleaseView, release: ReleaseRow): voi
  * again. A batch that wrote NOTHING redraws nothing, so the line the reader pressed is
  * still on screen and still focused — this call finds that same element and no-ops.
  */
-async function save(view: ReleaseView, writes: PropertyWrite[], control: string): Promise<void> {
+async function save(view: ReleaseView, writes: ReleaseWrite[], control: string): Promise<void> {
 	await view.applyRelease(writes);
 	view.viewEl.querySelector<HTMLElement>(control)?.focus({ preventScroll: true });
 }
