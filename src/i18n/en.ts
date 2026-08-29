@@ -444,6 +444,13 @@ export const en = {
 	 * rather than by a joiner at the call site, `timeline.waitsFor`'s own rule above.
 	 */
 	'timeline.releaseLine': '{type}: {names}',
+	/**
+	 * The same marker as a sentence for a reader who cannot see the grid — the line, its
+	 * label and the legend swatch are all decoration, and a release has no ROW carrying its
+	 * name and date the way a milestone does. `{date}` is the calendar date the position
+	 * stands for, which is the fact the visible mark leaves to the eye.
+	 */
+	'timeline.releaseMark': '{type}: {names} — {date}',
 
 	/** The tag cell's own controls. `{tag}` is vault data throughout. */
 	'column.addTag': 'Add tag',

@@ -2,7 +2,7 @@ import { setTooltip } from 'obsidian';
 import { ReleaseMark, TimelineBar } from '../../domain/bars';
 import { drawsAsPoint, isIterationType } from '../../domain/itemTypes';
 import { CivilDate } from '../../domain/noteFields';
-import { barGeometry, daysBetween, TimelineScale, TimelineWindow } from '../../domain/timeline';
+import { barGeometry, daysBetween, formatCivil, TimelineScale, TimelineWindow } from '../../domain/timeline';
 import { RELEASE_TYPE } from '../../domain/typeVocabulary';
 import { t } from '../../i18n/t';
 
@@ -115,13 +115,19 @@ export function renderReleaseLines(
 	today: CivilDate,
 	ruler: { scale: TimelineScale; leadWidth: number; taken: Set<number> },
 ): boolean {
-	const byDay = new Map<number, string[]>();
+	const byDay = new Map<number, { names: string[]; date: CivilDate }>();
 	for (const mark of marks) {
 		const geometry = barGeometry(window, { start: mark.date, target: mark.date });
 		if (geometry.outside) continue;
-		byDay.set(geometry.startDay, [...(byDay.get(geometry.startDay) ?? []), mark.item.title]);
+		// The date is carried beside the names rather than looked up again: a day OFFSET is
+		// what the grid places by and a calendar date is what the sentence below has to say,
+		// and every mark landing on one offset is on one date by construction.
+		const held = byDay.get(geometry.startDay);
+		byDay.set(geometry.startDay, { names: [...(held?.names ?? []), mark.item.title], date: mark.date });
 	}
-	drawDayLines(mounts, byDay, new Set([daysBetween(window.start, today), ...ruler.taken]), {
+	const names = new Map([...byDay].map(([day, group]) => [day, group.names] as const));
+	announceReleases(mounts.grid, byDay);
+	drawDayLines(mounts, names, new Set([daysBetween(window.start, today), ...ruler.taken]), {
 		...ruler,
 		line: 'pbl-release-line',
 		label: 'pbl-release-label',
@@ -130,9 +136,40 @@ export function renderReleaseLines(
 		// see it or who has two cyan-ish themes. `RELEASE_TYPE` is DATA — the name matched in
 		// frontmatter — so it is a parameter to the sentence and never catalog text itself,
 		// the same rule the legend's own marker caption keeps.
-		name: (names) => t('timeline.releaseLine', { type: RELEASE_TYPE, names }),
+		name: (group) => t('timeline.releaseLine', { type: RELEASE_TYPE, names: group }),
 	});
 	return byDay.size > 0;
+}
+
+/**
+ * The same marks as a SENTENCE, visually hidden, one per date — because a release is the
+ * one mark on this grid with no row of its own to carry it.
+ *
+ * That is the whole reason this exists for releases and not for milestones. A milestone's
+ * line is decoration and says so (`aria-hidden`), which is honest there:
+ * [[A milestone line across the plan]] 4a puts the milestone's name and date in its ROW's
+ * accessible name, so nothing about it is available only by seeing the mark. A release is
+ * not a row on this roadmap at all ([[A release on the dated axis]]), so the line, the
+ * header label and the legend swatch — all three `aria-hidden` — were its ONLY
+ * representation, and a reader using a screen reader was told nothing about it whatsoever
+ * (found by review, PR #211).
+ *
+ * Mounted on the GRID rather than in the header band, whose tiers are `aria-hidden` as a
+ * whole (`renderCellHeader`) because they are a calendar of decorative cells. That makes
+ * this a div among `option` rows in a pane that is a `listbox` while cards render — the
+ * same accepted deviation `renderLaneHead` states and for the same reason, that a mark
+ * spanning every row cannot be a child of one of them. How a screen reader actually reads
+ * it is a live-vault check this harness cannot make.
+ */
+function announceReleases(grid: HTMLElement, byDay: Map<number, { names: string[]; date: CivilDate }>): void {
+	for (const [, group] of byDay) {
+		grid.createSpan({
+			cls: 'pbl-sr-only',
+			// The DATE in words, which the visible label leaves to the mark's position — the
+			// one fact a reader who cannot see the grid has no other way to get.
+			text: t('timeline.releaseMark', { type: RELEASE_TYPE, names: group.names, date: formatCivil(group.date) }),
+		});
+	}
 }
 
 /**

@@ -75,6 +75,16 @@ axis-specific rule of its own.
   [[Every release at once]] is where it is still visible.
 - **2b — the target date cannot be read as a date.** Treated exactly as 2a, and reported in the
   same place, so a typo is not silently a position.
+- **4c — the reader cannot see the grid.** Every visible part of a release mark is
+  decoration and marked as such — the line, its header label and the legend swatch are all
+  `aria-hidden` — so each release date also draws a visually-hidden sentence naming the
+  release and stating the date in words, one per date and naming both where two share one.
+  This is where a release DIFFERS from a milestone rather than following it:
+  [[A milestone line across the plan]] 4a leaves the line decorative because the milestone's
+  own ROW carries its name and date, and a release has no row on this roadmap at all — so
+  the mark was its only representation and a screen reader was told nothing about it
+  (found by review, PR #211). It is not focusable and adds no second selection stop, which
+  is 4a's rule kept.
 - **2e — the release states TWO dates.** Treated exactly as 2b: `target-date:
   [2026-09-01, 2026-10-01]` is a release stating no date of its own, so no marker is drawn.
   The overlay reads with `readSoleDate`, the same reading [[Every release in one list]]'s
@@ -128,6 +138,9 @@ axis-specific rule of its own.
 - A release with a target date draws one marker at that date, at every zoom, and a release
   without one draws none. An unreadable date draws none either — it is neither a position nor
   a shelf, and `releaseMarks` drops all three cases at one place.
+- **Every marker drawn is also stated in words to a reader who cannot see it** — one
+  visually-hidden sentence per date, carrying the release names and the date itself, since
+  the mark's three visible parts are all `aria-hidden` and no row carries a release.
 - A release the Base excludes draws no marker, even where a member on screen links to it.
   Free, and asserted anyway: `BacklogModel.releases` already excludes an `outsideFilter` row.
 - A marker is visually distinct from a milestone marker and is named in the roadmap's legend.

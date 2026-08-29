@@ -33,6 +33,11 @@ function releaseVault(): FakeVault {
 }
 
 const lines = (containerEl: HTMLElement) => containerEl.querySelectorAll('.pbl-release-line');
+/** What is left for a reader who cannot see any of it: the visually-hidden sentences. */
+const sightless = (containerEl: HTMLElement) =>
+	Array.from(containerEl.querySelectorAll<HTMLElement>('.pbl-timeline .pbl-sr-only'))
+		.map((el) => el.textContent ?? '')
+		.filter((text) => text.startsWith('Release'));
 const labels = (containerEl: HTMLElement) =>
 	Array.from(containerEl.querySelectorAll<HTMLElement>('.pbl-release-label')).map((el) => el.textContent ?? '');
 
@@ -104,6 +109,19 @@ describe('a release on the dated axis', () => {
 		expect(containerEl.querySelector('.pbl-timeline')).not.toBeNull();
 	});
 
+	it('says the release and its date to a reader who cannot see the grid', () => {
+		// The line, its header label and the legend swatch are all `aria-hidden`, and a
+		// release has no ROW to carry its name the way a milestone's does — so without this
+		// sentence a screen reader is told nothing about the mark at all (found by review,
+		// PR #211). The DATE is in it because the visible mark leaves that to its position.
+		const { containerEl } = roadmapView(releaseVault(), { ...DATES });
+
+		expect(sightless(containerEl)).toEqual(['Release: 1.1.0 — 2026-09-15']);
+		// Not vacuous: the visible mark is drawn and hidden from the same reader.
+		expect(lines(containerEl)).toHaveLength(1);
+		expect(containerEl.querySelector('.pbl-release-line')?.getAttribute('aria-hidden')).toBe('true');
+	});
+
 	it('draws no line for a release stating TWO dates, which the index calls unreadable', () => {
 		// One note, two views, one answer: `readSoleDate` refuses a list outright, where the
 		// tolerant `readDate` the placement axes share would take its first entry and mark
@@ -129,6 +147,8 @@ describe('a release on the dated axis', () => {
 
 		expect(lines(containerEl)).toHaveLength(1);
 		expect(labels(containerEl)).toEqual(['Release: 1.1.0 and 1.1.1']);
+		// One date is one sentence too, naming both — the hidden half of the same grouping.
+		expect(sightless(containerEl)).toEqual(['Release: 1.1.0 and 1.1.1 — 2026-09-15']);
 	});
 
 	it('widens the window to hold a release dated past every bar', () => {
