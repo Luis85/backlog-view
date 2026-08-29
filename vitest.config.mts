@@ -202,8 +202,34 @@ export default defineConfig({
 			// 99.75 respectively — 9693 is 98.9890, 2469 is 99.8786, 8062 is 99.7525), which is
 			// the same "a raise that changes nothing is not a raise" arithmetic this comment has
 			// now stated five times.
+			//
+			// Re-derived on 2026-08-29, after merging main (the resource-assignee work) into
+			// the release-detail branch, because the four numbers below had drifted AHEAD of
+			// this comment: the paragraph above ends at branches 95.59 and the block said
+			// 95.63, which is the same comment-versus-code defect this file has twice
+			// recorded fixing. Review caught it and proposed lowering the gate to 95.59;
+			// that is the one move ruled out, since a floor may not fall. So the arithmetic
+			// is redone here against the merged tree instead, and it turns out to justify
+			// what stands: this machine measures 9835/9932 statements, 6197/6479 branches,
+			// 2511/2513 functions and 8178/8196 lines. One fewer branch is 95.6320, which
+			// floors to exactly the 95.63 standing — so that number was already the headroom
+			// figure and needed no change. Only statements moves: 9834 is 99.0133, so it
+			// takes 99.01, over the 98.98 this branch started from. **Lines and functions
+			// stay, for the arithmetic this comment has now stated six times.** One fewer
+			// line is 99.7682, which floors to the 99.76 already standing. One fewer function
+			// is 99.8806, under the 99.91 standing, so headroom there would again be a
+			// decrease.
+			//
+			// The merge itself measured branches at 95.61 against the 95.63 floor, and the
+			// two branches that closed the gap are worth naming because neither was a test
+			// written to a number. One was DEAD — `scopeOf`'s `RELEASE_FOLD` arm in
+			// `storage/foldKeys.ts`, unreachable because its only caller returns inside its
+			// own `RELEASE_FOLD` branch first — which is the "look for the dead branch before
+			// writing the test" case above, met for the third time. The other was a real gap:
+			// every `renamePathPrefs` test saved both path picks, so the walk had never been
+			// asked about an entry holding neither.
 			thresholds: {
-				statements: 98.99,
+				statements: 99.01,
 				branches: 95.63,
 				functions: 99.91,
 				lines: 99.76,
