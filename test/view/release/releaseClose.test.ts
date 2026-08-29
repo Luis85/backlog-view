@@ -155,6 +155,32 @@ describe('marking a release as released', () => {
 		expect(document.activeElement).toBe(live);
 	});
 
+	it('falls back to the one control the screen always has when the close control goes', () => {
+		// A refresh mid-dialog can take the button away entirely rather than replace it —
+		// the release is out now, a date arrived, or it left the base's results. An
+		// optional query then focuses nothing and the reader is on the body again, which
+		// is the third shape of this one bug (found by review, Codex, PR #219). The back
+		// control is the terminus: `drawHeader` draws it above BOTH empty-state returns,
+		// for the reason it exists at all — a release nobody can read must not be a dead
+		// end — so there is always something to land on.
+		const { view, vault } = releaseScreen({ status: 'In progress' });
+		const opener = button(view, '.pbl-rel-close');
+		opener.focus();
+		opener.click();
+		opener.blur();
+
+		vault.fm('0.9.md')['status'] = 'Released';
+		const cache = vault.caches.get('0.9.md');
+		if (cache === undefined) throw new Error('no cache for 0.9.md');
+		cache.frontmatter = { ...cache.frontmatter, status: 'Released' };
+		view.onDataUpdated();
+		expect(view.viewEl.querySelector('.pbl-rel-close')).toBeNull();
+
+		Modal.lastOpened?.close();
+
+		expect(document.activeElement).toBe(view.viewEl.querySelector('.pbl-rel-back'));
+	});
+
 	it('refuses when the transition value changed to ANOTHER valid one mid-dialog', async () => {
 		// The case a re-asked `closeOffer` cannot catch: the configuration is still
 		// perfectly valid, just not the one the reader agreed to.

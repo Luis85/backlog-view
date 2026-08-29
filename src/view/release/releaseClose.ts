@@ -249,18 +249,37 @@ function askThenClose(view: ReleaseView, release: ReleaseRow, scope: ReleaseScop
 			open: () => view.opener.openIn(view.openContext(), row.item, 'tab'),
 		})),
 		cta: t('release.close.action'),
-		// Focus back on the control that opened this, on EVERY way out — and before the
-		// write, so the redraw it triggers finds the button under `document.activeElement`
-		// and `FOCUS_HANDLE_CLASSES` can put the reader back on it.
-		//
-		// Queried at close time, never the element captured at the press. A Bases metadata
-		// refresh can redraw this whole screen while the dialog is up, and focusing the
-		// detached button it left behind is a silent no-op that leaves the reader on the
-		// body — the very place this exists to keep them off (found by review, Codex, PR
-		// #219). The selector is stable across that redraw; the element is not.
-		onClosed: () => view.viewEl.querySelector<HTMLElement>('.pbl-rel-close')?.focus(),
+		// Focus back on a control, on EVERY way out — and before the write, so the redraw it
+		// triggers finds it under `document.activeElement` and `FOCUS_HANDLE_CLASSES` can
+		// put the reader back on it.
+		onClosed: () => focusAfterDialog(view),
 		onConfirm: () => void submitClose(view, release, confirmed, raw),
 	});
+}
+
+/**
+ * Where the reader lands when the confirmation goes away. Two selectors, and both are
+ * needed — this is one bug in three shapes, each found after the previous fix.
+ *
+ * QUERIED, never the element captured at the press: a Bases metadata refresh can redraw
+ * this whole screen while the dialog is up, and focusing the detached button it left
+ * behind is a silent no-op.
+ *
+ * And the close control is not guaranteed to come BACK from that redraw — the release is
+ * out now, a date arrived, or it left the base's results, and `closeOffer` withholds it.
+ * The back control is the terminus: `drawHeader` draws it above BOTH of `renderScope`'s
+ * empty-state returns, for the reason it exists at all — a release nobody can read the
+ * scope of must not also be a dead end — so on a scope screen there is always something
+ * to land on.
+ */
+function focusAfterDialog(view: ReleaseView): void {
+	for (const selector of ['.pbl-rel-close', '.pbl-rel-back']) {
+		const el = view.viewEl.querySelector<HTMLElement>(selector);
+		if (el !== null) {
+			el.focus();
+			return;
+		}
+	}
 }
 
 /**
