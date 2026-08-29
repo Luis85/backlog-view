@@ -252,24 +252,29 @@ export default defineConfig({
 			// change removing a covered line would have turned `main` red a second time, for
 			// the same reason, with the first fix already merged. It was covered rather than
 			// lowered too — `refreshSubtree`'s fallback when the row it was handed is not on
-			// screen. The tree now measures 10137/10232 statements, 6353/6634 branches,
-			// 2598/2600 functions and 8429/8445 lines.
-			//
-			// **Every rise that arithmetic now allows is declined, and the four numbers below
-			// are the last ones this comment computes by hand.** One fewer would put statements
-			// at 99.06, branches at 95.74 and lines at 99.79, each a real raise by the headroom
-			// rule — and each measured against THIS tree, which is the move that produced the
-			// red above. A floor raised on a branch is asserted against a merge, so a raise is
-			// worth taking when the tree it was measured on is the tree that lands, and this is
-			// not that moment. The floors stay where they are, cleared by three, two and two.
+			// screen.
 			//
 			// **What replaces the arithmetic is `scripts/coverage-floors.mjs`**, which
 			// `npm run test:coverage` runs on the coverage file the run just wrote. It asks the
 			// one question this comment has answered by hand seven times — how many covered
 			// units can this tree lose before the floor fails? — and fails the run at zero.
 			// `functions` is named in its own list as knowingly tight, for the reason stated
-			// above rather than as an exemption to forget. The history of which decimal moved
-			// in which increment is in git, which this comment already said once.
+			// above rather than as an exemption to forget.
+			//
+			// **So this comment stops recording measurements, and the reason is the merge
+			// again.** `main` moved once more while the branch carrying this paragraph was
+			// open — a small fix covering the progress gap — and the figures written here two
+			// hours earlier were stale on arrival for the third time in one day. A measurement
+			// is a fact about ONE tree and this file is read on every other; the gate above
+			// re-derives it per run, which is the only spelling that cannot drift. What stays
+			// here is the rule and the episodes that shaped it. The history of which decimal
+			// moved in which increment is in git, which this comment already said once.
+			//
+			// **Every rise the arithmetic allows is declined for the same reason.** A floor
+			// raised on a branch is asserted against a merge, and that is exactly the move that
+			// produced the red above. A raise is worth taking when the tree it was measured on
+			// is the tree that lands, and a branch open beside four others is never that tree.
+			// The four numbers below stay; the gate is what guarantees they have room.
 			//
 			// **The mechanism that would have prevented all of it is not in this file.** No check
 			// that runs on a tree can see a merge that has not happened yet — a branch's floor is

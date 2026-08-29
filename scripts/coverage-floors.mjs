@@ -21,9 +21,14 @@ import { fileURLToPath } from "node:url";
  *
  * What it deliberately does NOT do is re-check the floors themselves — vitest already
  * fails the run for that, and a second opinion on the same comparison would only be a
- * place for the two to disagree. The totals below are computed the same way vitest's v8
- * reporter computes them, verified against a full run: 10137/10232 statements,
- * 6353/6634 branches, 2598/2600 functions and 8429/8445 lines on 2026-08-29.
+ * place for the two to disagree.
+ *
+ * The totals below are computed the same way vitest's v8 reporter computes them, checked
+ * on 2026-08-29 by running both over one tree and comparing all four pairs. That is a
+ * claim about the METHOD and stays true as the tree grows; a figure from that run would
+ * not, which is why none is written here. `test/verification/coverageFloors.test.ts`
+ * holds the method to a fixture — a line carrying two statements, one covered, is the
+ * case that separates counting lines from counting statements.
  *
  * **It does not see the failure that prompted it, and saying so is the point.** `main`
  * went red on 2026-08-29 because one branch raised a floor against a tree that a second
