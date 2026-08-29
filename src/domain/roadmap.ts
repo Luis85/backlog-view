@@ -6,7 +6,7 @@ import { deriveBars, placeItem, ShelfCard, statedEnds, TimelineBar } from './bar
 import { isIterationType, isMarkerType, isReleaseType } from './itemTypes';
 import { ITERATION_TYPE, MILESTONE_TYPE } from './typeVocabulary';
 import { BacklogItem, BacklogModel } from './model';
-import { FieldReading, linkpathFromRawValue, LinkEntry, sameValue } from './noteFields';
+import { FieldReading, LinkEntry, sameValue } from './noteFields';
 import { ResourceNote } from './readItems';
 import { BacklogSettings } from './settings';
 
@@ -662,8 +662,9 @@ function placeContext(item: BacklogItem, byValue: Map<string, HorizonBucket>, ro
 
 /**
  * A resource's own label, read off the model's index rather than recomputed — the "every
- * surface names a resource through `namedTargets`" rule applied to this row's own header
- * and to an absence's match alike. Asserted rather than guarded with a fallback:
+ * surface names a resource through `namedTargets`" rule applied to this row's own header.
+ * An absence's own match is by PATH now (Task 6) and never reaches this at all. Asserted
+ * rather than guarded with a fallback:
  * `resourceLabels` is built from this SAME `resources` array one call up, in `buildModel`
  * (`model.ts`), so every entry's path is a key in it by construction for any model this
  * function is actually handed. A `?? resource.title` stood here until the coverage floor
@@ -705,23 +706,19 @@ function deriveLanes(rows: BacklogItem[], settings: BacklogSettings, roadmap: Ro
 		if (isMarkerType(item.typeName)) placeBar(item, () => markers, roadmap, settings);
 		else placeAssigned(item, byPath, roadmap, settings);
 	}
-	// An absence names its resource by a plain STRING (`Absence.resource`; the link this
-	// axis reads for everything else is Task 6's, still open), which the prompt fills from
-	// a plain suggestion list but a hand edit may still spell as a wikilink — so the raw
-	// text is run through `linkpathFromRawValue` (strips brackets, an alias and a heading
-	// ref) before it is matched case-insensitively, `sameValue`'s ordinary rule. Matched
-	// against the LABEL (`labelOf`) — the same collision-aware string the prompt prefills
-	// from (`lane.name`) — and never the bare `r.title` alone: two resources sharing a
-	// basename have one `title` each but two distinct labels ("Support/Alex", "Team/Alex"),
-	// so matching on the label is what lets the round trip land on the resource the form
-	// was actually opened for, rather than whichever of the two `resources.find` happens
-	// to reach first. It can no longer MINT a row: a row is a note, and an absence is a
-	// statement about a resource rather than a declaration of one, so one naming nobody on
-	// the roster draws nowhere.
+	// An absence names its resource by a LINK now (Task 6), read exactly as an item's own
+	// assignee is, so this is `placeAssigned`'s own one-answer-three-cases rule read again:
+	// nobody named, a link that resolves to nothing, and a link that resolves to a note
+	// this base does not carry as a `Resource` row all draw nowhere, alike, on a single
+	// `byPath.get` miss rather than three tests. Reusing `byPath` — the SAME map
+	// `placeAssigned` looks up into two lines up, not a second index or a `resources.find`
+	// scan — is what keeps this loop O(1) per absence rather than O(absences × resources):
+	// a real roster and a year of absence history pay that cost on every model rebuild,
+	// which is every write and every full render. It can no longer MINT a row either: a row
+	// is a note, and an absence is a statement about a resource rather than a declaration
+	// of one, so one naming nobody on the roster draws nowhere.
 	for (const absence of absences) {
-		const name = linkpathFromRawValue(absence.resource);
-		const resource = resources.find((r) => sameValue(labelOf(r, resourceLabels), name));
-		const lane = resource ? byPath.get(resource.file.path) : undefined;
+		const lane = absence.resource.file ? byPath.get(absence.resource.file.path) : undefined;
 		lane?.absences.push(absence);
 	}
 	for (const item of rows) {

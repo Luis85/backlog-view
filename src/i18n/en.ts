@@ -1042,6 +1042,8 @@ export const en = {
 	/** Empties one date field. `{name}` is the field's own label, handed in by the caller. */
 	'prompt.clearDate': 'Clear {name}',
 	'prompt.absenceResource': 'Resource',
+	/** The defensive placeholder option — see `AbsencePromptModal`'s own comment for when it draws. */
+	'prompt.absenceResourcePlaceholder': 'Choose a resource…',
 	'prompt.absenceStart': 'Start',
 	'prompt.absenceEnd': 'End',
 	'prompt.iterationName': 'Name',
@@ -1231,6 +1233,11 @@ export const en = {
 	'absence.edit': 'Edit absence',
 	'absence.delete': 'Delete absence',
 	'absence.needsProperties': 'Name the assignee and both date properties before recording absences.',
+	/**
+	 * Checked before the form opens at all — `resourcesOrRefuse` — since an absence with
+	 * nobody to be away is not a thing to collect.
+	 */
+	'absence.noResources': 'Add a Resource note before recording who is away.',
 	/** What the absence entry refuses, one whole sentence per reason. */
 	'absence.nameResource': 'Name the resource this absence is for.',
 	'absence.needsBothDates': 'An absence needs both a start and an end date.',
@@ -1245,6 +1252,11 @@ export const en = {
 	 * identical race rather than `saveFailed`'s, since nothing here actually failed.
 	 */
 	'absence.becameResource': 'That note became a resource while the edit was in flight, so nothing was changed.',
+	/**
+	 * The chosen resource left the roster between the form opening and this submit — the
+	 * one race `validate` cannot see, since it checks against the list captured at open.
+	 */
+	'absence.resourceMissing': 'That resource is no longer in this base, so nothing was written.',
 	'absence.created': 'Marked {resource} away — "{name}".',
 	'absence.createFailed': 'Could not create the absence. See the developer console for details.',
 
@@ -1252,9 +1264,11 @@ export const en = {
 	 * The New resource prompt (`view/interactions/resourceNotes.ts`) — the roadmap's
 	 * resources axis and Set assignee's own **New resource...** are its two ways in.
 	 * `resource.duplicateWarning` is `ValuePromptOptions.duplicateWarning`: shown, never
-	 * refused, the same *guides rather than arbitrates* rule `absence.nameResource`'s
-	 * modal already keeps. Its wording can now claim that a `Resource` note exists,
-	 * which it could not on 2026-08-22 — `known` is `host.model.resources`, the notes
+	 * refused — a rule the absence form's own resource field kept only until Task 6, which
+	 * turned that field from a suggested name into a choice off a closed list and so from
+	 * something that guided into something that arbitrates. Its wording can now claim that
+	 * a `Resource` note exists, which it could not on 2026-08-22 — `known` is
+	 * `host.model.resources`, the notes
 	 * themselves, rather than a roster gathered off the roadmap's rows and settings.
 	 */
 	'resource.createHeading': 'New resource',

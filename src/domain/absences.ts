@@ -1,5 +1,5 @@
-import { TFile } from 'obsidian';
-import { CivilDate, ownValue, readDate, readString } from './noteFields';
+import { App, CachedMetadata, TFile } from 'obsidian';
+import { CivilDate, LinkEntry, ownValue, readDate, readFirstLinkEntry } from './noteFields';
 import { BacklogSettings } from './settings';
 import { DateSpan, daysBetween, reversedSpan, unionDays } from './timeline';
 
@@ -21,27 +21,38 @@ import { DateSpan, daysBetween, reversedSpan, unionDays } from './timeline';
 export interface Absence {
 	file: TFile;
 	title: string;
-	/** The resource whose row it draws in — matched case-insensitively, as bars are. */
-	resource: string;
+	/**
+	 * The resource this stretch names — a link, read exactly as an item's own assignee is
+	 * (`readFirstLinkEntry`, the same field on the same key), and matched against a row by
+	 * the note it RESOLVES to (`deriveLanes`, `domain/roadmap.ts`) rather than by any name
+	 * either side spells. Unresolved is a real value here and not a defect: a stale rename,
+	 * a resource note that left the base's results, or a hand-typed value that is not a
+	 * link at all all draw nowhere, the same one-answer-three-cases rule `placeAssigned`
+	 * already keeps for a work item's own assignee.
+	 */
+	resource: LinkEntry;
 	start: CivilDate;
 	target: CivilDate;
 }
 
 /**
- * What an absence SAYS — the three facts that reach its frontmatter, as strings, straight
- * from the form that produced them and already validated.
+ * What names an absence, for the one thing this layer computes from it: its derived
+ * title (`absenceTitle` below). A link rather than a plain string, so the derivation
+ * reads a resource exactly as `Absence.resource` does — the resolved note's own basename
+ * where the link resolves, its raw text otherwise — and a title computed while WRITING
+ * (from a `Resource` just chosen off the roster) and one recomputed while READING
+ * (`absenceSaid` in `render/lanes.ts`, off an already-parsed `Absence`) can never disagree
+ * about what a stretch is called.
  *
  * Here rather than in `storage/`, where it was declared until 2026-08-14: it is what an
- * absence IS, this layer is where that is defined, and `absenceTitle` below consumes it —
- * a type belongs with the code that produces it, and `domain/` may not import `storage/`
- * to reach one. `AbsenceSpec` in `src/storage/absenceNotes.ts` still extends it with the
- * two facts that decide where the note IS rather than what it says.
- *
- * Distinct from `Absence` and deliberately so: that one holds parsed `CivilDate`s and a
- * `TFile`, and is what reading a note back produces.
+ * absence IS CALLED, this layer is where that is defined, and `domain/` may not import
+ * `storage/` to reach one. `AbsenceSpec` in `src/storage/absenceNotes.ts` does NOT extend
+ * this any more (Task 6) — that one carries the resource as an already-resolved `TFile`,
+ * because by the time a spec exists the resource has been chosen from the roster and
+ * there is no unresolved case left to represent.
  */
 export interface AbsenceFacts {
-	resource: string;
+	resource: LinkEntry;
 	/** Both ends as `YYYY-MM-DD` — this is a request to write, not a reading. */
 	start: string;
 	target: string;
@@ -74,13 +85,18 @@ export function absencesConfigured(settings: BacklogSettings): boolean {
  * no shelf — it draws in one row or nowhere — so the answer here is nowhere, silently.
  */
 export function readAbsence(
+	app: App,
 	file: TFile,
-	fm: Record<string, unknown> | undefined,
+	cache: CachedMetadata | null,
 	settings: BacklogSettings,
 ): Absence | null {
 	if (!absencesConfigured(settings)) return null;
-	const resource = readString(ownValue(fm, settings.assigneeKey));
+	const resource = readFirstLinkEntry(app, file, cache, settings.assigneeKey);
 	if (resource === null) return null;
+	// `resolveParent`'s own shape (`noteFields.ts`): derived from the cache already in
+	// hand rather than taken as a fourth reading of it, which is what let the caller's
+	// param count stay under the lint budget without a bundled object to carry it.
+	const fm = cache?.frontmatter;
 	const start = readDate(ownValue(fm, settings.startKey));
 	const target = readDate(ownValue(fm, settings.targetKey));
 	// Both ends STATED and readable: `invalid` is a value the reader refused, and null is
@@ -162,7 +178,8 @@ function isPending(absence: Absence, today: CivilDate): boolean {
  * that silently stops following its own dates.
  */
 export function absenceTitle(facts: AbsenceFacts): string {
-	return `${facts.resource} away ${facts.start} → ${facts.target}`;
+	const name = facts.resource.file?.basename ?? facts.resource.raw;
+	return `${name} away ${facts.start} → ${facts.target}`;
 }
 
 /**

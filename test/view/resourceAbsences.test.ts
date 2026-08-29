@@ -1,13 +1,42 @@
 ﻿// @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { FakeVault } from '../helpers/vault';
-import { Menu } from '../helpers/obsidian-mock';
-import { flush, useViewHarness } from '../helpers/view';
+import { Menu, Modal } from '../helpers/obsidian-mock';
+import { flush, refresh, submitButton, useViewHarness } from '../helpers/view';
 import { barFor, laneCountOf, laneNames, laneRoadmap, lanesOf } from '../helpers/roadmap';
 import { ALICE_AWAY, absenceVault } from '../helpers/resources';
 import { cardDrag } from '../helpers/dnd';
 
 useViewHarness();
+
+/**
+ * Open the row's own Add-absence form and submit it with a range, leaving the resource
+ * exactly at its prefill — the row's own note (Task 6) — since these tests are about the
+ * WRITE that follows, not about picking a different one. `absenceEditing.test.ts` is the
+ * suite for the form's own fields; this is the read-side twin, over a fixture with no
+ * `resourceNames` collision to remember.
+ */
+function addAbsenceFromRow(containerEl: HTMLElement, name: string, range: { start: string; target: string }): void {
+	const head = lanesOf(containerEl).find((el) => el.querySelector('.pbl-lane-name')?.textContent === name);
+	head?.querySelector<HTMLButtonElement>('.pbl-lane-absence-add')?.click();
+	const modal = Modal.lastOpened;
+	if (!modal) throw new Error('prompt not opened');
+	const [start, target] = Array.from(modal.contentEl.querySelectorAll('input'));
+	start.value = range.start;
+	start.dispatchEvent(new Event('input', { bubbles: true }));
+	target.value = range.target;
+	target.dispatchEvent(new Event('input', { bubbles: true }));
+	submitButton(modal)?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+}
+
+/** How many marks each row header carries, by the row's own name. */
+function absenceCountsByLane(containerEl: HTMLElement): Record<string, number> {
+	const counts: Record<string, number> = {};
+	for (const head of lanesOf(containerEl)) {
+		counts[head.querySelector('.pbl-lane-name')?.textContent ?? ''] = head.querySelectorAll('.pbl-absence').length;
+	}
+	return counts;
+}
 
 /**
  * An absence on screen: a blocked stretch in one resource's row and nowhere else.
@@ -360,5 +389,58 @@ describe('an absence on the resources axis', () => {
 		expect(harness.containerEl.querySelectorAll('.pbl-absence')).toHaveLength(0);
 		harness.view.setAxisPick('horizons');
 		expect(harness.containerEl.querySelectorAll('.pbl-absence')).toHaveLength(0);
+	});
+});
+
+describe('an absence names its resource by link', () => {
+	it('writes the resource as a link, so one fact has one spelling', async () => {
+		// The absence writer shares none of `applyWrites`' path, which is exactly why it is
+		// easy to leave spelling a resource the old way while everything else spells it the
+		// new one — a sweep of the batch writer finds nothing here.
+		const vault = new FakeVault();
+		vault.addFile('Alex.md', { frontmatter: { type: 'Resource' } });
+		vault.addFile('Work.md', {
+			frontmatter: { type: 'Epic', order: 10, assignee: '[[Alex]]', start: '2026-08-01', due: '2026-08-10' },
+		});
+		const { containerEl } = laneRoadmap(vault);
+
+		addAbsenceFromRow(containerEl, 'Alex', { start: '2026-08-03', target: '2026-08-05' });
+		await flush();
+
+		const created = [...vault.files.keys()].find((path) => path.includes('away'));
+		expect(vault.fm(created!)['assignee']).toBe('[[Alex]]');
+	});
+
+	it('draws that absence in its resource row and in no other', () => {
+		const vault = new FakeVault();
+		vault.addFile('Alex.md', { frontmatter: { type: 'Resource' } });
+		vault.addFile('Sam.md', { frontmatter: { type: 'Resource' } });
+		vault.addFile('Alex away.md', {
+			frontmatter: { type: 'Absence', assignee: '[[Alex]]', start: '2026-08-03', due: '2026-08-05' },
+		});
+		const { containerEl } = laneRoadmap(vault);
+
+		expect(absenceCountsByLane(containerEl)).toEqual({ Alex: 1, Sam: 0 });
+	});
+
+	it('lands on the row it was opened from by PATH, not by a name two resources share', async () => {
+		// `Team/Alex.md` and `Support/Alex.md` share a basename — the exact case a name or
+		// label match cannot tell apart, and the whole reason matching moved to the link's
+		// own resolved file (Task 6). Opened from the SECOND row, so a regression back to
+		// matching by name or by the disambiguated label would land this on whichever of
+		// the two sorts first rather than on the one actually opened.
+		const vault = new FakeVault();
+		vault.addFile('Team/Alex.md', { frontmatter: { type: 'Resource' } });
+		vault.addFile('Support/Alex.md', { frontmatter: { type: 'Resource' } });
+		const harness = laneRoadmap(vault);
+
+		addAbsenceFromRow(harness.containerEl, 'Support/Alex', { start: '2026-08-03', target: '2026-08-05' });
+		await flush();
+
+		const created = [...vault.files.keys()].find((path) => path.includes('away'));
+		expect(vault.fm(created!)['assignee']).toBe('[[Support/Alex]]');
+
+		refresh(harness.view, vault);
+		expect(absenceCountsByLane(harness.containerEl)).toEqual({ 'Team/Alex': 0, 'Support/Alex': 1 });
 	});
 });

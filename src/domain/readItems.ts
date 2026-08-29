@@ -1,4 +1,4 @@
-import { App, BasesEntry, CachedMetadata, TFile } from 'obsidian';
+import { App, BasesEntry, TFile } from 'obsidian';
 import { nearestFolderNote } from './folderNotes';
 import {
 	absentReading,
@@ -8,6 +8,7 @@ import {
 	ownValue,
 	ParentRef,
 	readDate,
+	readFirstLinkEntry,
 	readLinkList,
 	readNumber,
 	readPlacement,
@@ -278,7 +279,7 @@ function addItem(
 	// `getFileCache` call site `buildModel` reaches, and `test/domain/modelCost.test.ts` pins one
 	// read per note loaded, so a second reader would either double that count or have to
 	// read through `BasesEntry.getValue()`. The cache is open on this line.
-	if (isAbsenceType(typeName)) return divertAbsence(store, file, entry, fm, settings);
+	if (isAbsenceType(typeName)) return divertAbsence(store, entry, readAbsence(app, file, cache, settings));
 	// **A RESOURCE is refused here too, and this one line is the whole of "a person is not
 	// in the backlog".** Beside the absence gate rather than filtered per projection: the
 	// tree, both boards, both roadmap axes, the shelf, the toolbar's count and every menu
@@ -366,18 +367,14 @@ function addItem(
  * absence as its parent, or sitting under one as a folder note, pulls it in through
  * `loadOutsideParents` — and until 2026-08-14 it minted a band, drew a stretch and was
  * counted on the header. The check is on the KEEPING rather than on that path, so a future
- * caller handing this function an entry-less note is refused too.
+ * caller handing this function an entry-less note is refused too — which is also why
+ * `absence` is read at the call site and handed in already resolved rather than reread
+ * here: the read is unconditional (`readAbsence`'s own concern), only the KEEP is gated,
+ * and folding both into one function would have pushed this past the five-parameter
+ * budget the moment `readAbsence` needed the app and the cache too.
  */
-function divertAbsence(
-	store: RawStore,
-	file: TFile,
-	entry: BasesEntry | null,
-	fm: Record<string, unknown> | undefined,
-	settings: BacklogSettings,
-): null {
-	if (entry === null) return null;
-	const absence = readAbsence(file, fm, settings);
-	if (absence) store.absences.push(absence);
+function divertAbsence(store: RawStore, entry: BasesEntry | null, absence: Absence | null): null {
+	if (entry !== null && absence) store.absences.push(absence);
 	return null;
 }
 
@@ -397,16 +394,6 @@ function divertAbsence(
 function divertResource(store: RawStore, file: TFile, entry: BasesEntry | null): null {
 	if (entry !== null) store.resources.push({ file, title: file.basename });
 	return null;
-}
-
-/**
- * One `LinkEntry`-shaped field read off a note, gated on its key being configured — out
- * of line so `addItem` stays under its complexity budget, and shared by every such field
- * (today: iteration, release) rather than one copy per field. An unconfigured key reads
- * as absence; otherwise, the first link the note declares, or nothing.
- */
-function readFirstLinkEntry(app: App, file: TFile, cache: CachedMetadata | null, key: string): LinkEntry | null {
-	return key ? (readLinkList(app, file, cache, key)[0] ?? null) : null;
 }
 
 /**

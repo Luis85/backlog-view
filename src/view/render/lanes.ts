@@ -14,7 +14,7 @@ import { BarHold, barHolds, timelineRows, TimelineBar, TimelineRow } from '../..
 import { displayType, isIterationType, isMarkerType } from '../../domain/itemTypes';
 import { BacklogItem } from '../../domain/model';
 import { CivilDate } from '../../domain/noteFields';
-import { laneIdentity, markerLane, markerLaneCaption, ResourceLane } from '../../domain/roadmap';
+import { AssignableLane, laneIdentity, markerLane, markerLaneCaption, ResourceLane } from '../../domain/roadmap';
 import { ownWorkflowReading, stateKeyFor, WorkflowReading } from '../../domain/board';
 import { sanitizeTitle } from '../../storage/createNote';
 import {
@@ -409,7 +409,13 @@ function renderLaneAbsenceAdd(ctx: RowContext, lead: HTMLElement, lane: Resource
 	});
 	drawIcon(btn, 'user-x');
 	setTooltip(btn, t('lane.addAbsenceTooltip', { name: lane.name }));
-	btn.addEventListener('click', () => promptAddAbsence(host, lane));
+	// Every lane but the markers' one is a `Resource` note by construction now
+	// (`deriveLanes`, Task 5) — the guard a lane minted from an observed name with no note
+	// behind it once needed is gone with the minting, so past the `markers` check above
+	// `file` is never null. Asserted rather than re-checked, `render/roadmap.ts`'s own
+	// identical narrowing.
+	const assignable = lane as AssignableLane;
+	btn.addEventListener('click', () => promptAddAbsence(host, assignable));
 }
 
 /**

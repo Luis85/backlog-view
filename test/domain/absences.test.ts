@@ -30,7 +30,7 @@ function civil(text: string): CivilDate {
 }
 
 function away(title: string, start: string, target: string): Absence {
-	return { file: {} as TFile, title, resource: 'Alice', start: civil(start), target: civil(target) };
+	return { file: {} as TFile, title, resource: { file: null, raw: 'Alice' }, start: civil(start), target: civil(target) };
 }
 
 describe('an absence is never a work item', () => {
@@ -43,7 +43,9 @@ describe('an absence is never a work item', () => {
 		expect(model.items.map((i) => i.title)).toEqual(['Work']);
 		expect(model.byPath.has(ALICE_AWAY_PATH)).toBe(false);
 		expect(model.absences.map((a) => a.title)).toEqual([ALICE_AWAY]);
-		expect(model.absences[0].resource).toBe('Alice');
+		// A link now, resolved to the roster's own note — never the bare text a plain
+		// string comparison used to settle for.
+		expect(model.absences[0].resource.file?.basename).toBe('Alice');
 	});
 
 	it('is dropped with hierarchyOnly off, where every note becomes an item', () => {
@@ -326,7 +328,7 @@ describe('what an absence note is called', () => {
 		// explorer, in search and in a link, where no row is there to supply the dates. Not
 		// "never collides" — the same days derive the same name, which is why `uniqueNotePath`
 		// still has a suffix and a rename still has to know its own path.
-		expect(absenceTitle({ resource: 'Alice', start: '2026-08-04', target: '2026-08-06' })).toBe(
+		expect(absenceTitle({ resource: { file: null, raw: 'Alice' }, start: '2026-08-04', target: '2026-08-06' })).toBe(
 			'Alice away 2026-08-04 → 2026-08-06',
 		);
 	});
@@ -334,9 +336,19 @@ describe('what an absence note is called', () => {
 	it('is the one producer, so both acts derive the same name from the same facts', () => {
 		// Stated as the property rather than trusted: the create path and the edit path each
 		// call this, which is what stops them disagreeing about what an absence is called.
-		const facts = { resource: 'Bob', start: '2026-09-01', target: '2026-09-04' };
+		const facts = { resource: { file: null, raw: 'Bob' }, start: '2026-09-01', target: '2026-09-04' };
 
 		expect(absenceTitle(facts)).toBe(absenceTitle({ ...facts }));
 		expect(absenceTitle(facts)).toBe('Bob away 2026-09-01 → 2026-09-04');
+	});
+
+	it('names the resolved note over the raw text it was spelled with', () => {
+		// A hand-typed alias or a differently-cased link still resolves to one note, and the
+		// derived name has to follow the note rather than whatever the link happened to say.
+		const resolved = { file: { basename: 'Bob' } as TFile, raw: '[[bob|Bobby]]' };
+
+		expect(absenceTitle({ resource: resolved, start: '2026-09-01', target: '2026-09-04' })).toBe(
+			'Bob away 2026-09-01 → 2026-09-04',
+		);
 	});
 });

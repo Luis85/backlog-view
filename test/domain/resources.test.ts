@@ -306,14 +306,15 @@ describe('absences in the row list', () => {
 		expect(roadmap.lanes.every((lane) => lane.absences.length === 0)).toBe(true);
 	});
 
-	it('matches an absence’s resource case-insensitively, unlike a link', () => {
-		// An absence names its resource by a plain string rather than a link
-		// (`Absence.resource`, Task 6's own open thread), so it is matched against the
-		// roster's titles with `sameValue` — case-insensitively — rather than resolved.
-		const roadmap = lanesWith('alice');
+	it('draws nowhere when the link resolves to a note that is not on the roster', () => {
+		// An absence names its resource by a LINK now (Task 6), read and matched exactly as
+		// an item's own assignee is — `placeAssigned`'s one-answer-three-cases rule read
+		// again: a link that resolves to a real note this base does not carry as a
+		// `Resource` (here, the Epic `Alice dated`) names nobody as far as this row list is
+		// concerned, the same as a link that resolves to nothing at all.
+		const roadmap = lanesWith('[[Alice dated]]');
 
-		expect(roadmap.lanes.filter((lane) => lane.name.toLowerCase() === 'alice')).toHaveLength(1);
-		expect(roadmap.lanes.find((lane) => lane.name === 'Alice')?.absences).toHaveLength(1);
+		expect(roadmap.lanes.every((lane) => lane.absences.length === 0)).toBe(true);
 	});
 
 	it('is never counted, and never changes what the shelf reports', () => {
