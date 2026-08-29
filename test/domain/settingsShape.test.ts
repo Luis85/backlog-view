@@ -57,6 +57,11 @@ describe('settingsInconsistency, and what the only producer guarantees', () => {
 		const base = defaultSettings();
 		expect(settingsInconsistency({ ...base, doneValues: [] })).toContain('doneValues');
 		expect(settingsInconsistency({ ...base, deliverableDoneValues: [] })).toContain('deliverableDoneValues');
+		// The TEST catalog's workflow, asked the same question — the guarantee is the
+		// category's ("both secondary workflows get the same two", says the function), and
+		// only one of the two had a check under it. A shared predicate is exactly the shape
+		// where one caller passing is read as both.
+		expect(settingsInconsistency({ ...base, testDoneValues: [] })).toContain('testDoneValues');
 		// The one that bit: a populated requirements list beside an empty Deliverable one
 		// under a falling-back key — the resolver would have copied `states` across.
 		expect(settingsInconsistency({ ...base, stateKey: 'status', states: ['New'] })).toContain('deliverableStates');
