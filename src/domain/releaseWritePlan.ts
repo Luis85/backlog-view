@@ -1,5 +1,6 @@
 import { TFile } from 'obsidian';
-import { PropertyWrite } from './estimationWritePlan';
+import { PropertySet, PropertyWrite } from './estimationWritePlan';
+import { ReleaseSettings } from './releaseOptions';
 import { CivilDate, sameValue } from './noteFields';
 import { formatCivil } from './timeline';
 import { RELEASE_TYPE } from './typeVocabulary';
@@ -47,18 +48,34 @@ function fieldWrite(file: TFile, role: ReleaseField, key: string, value: string 
 	// a window nothing upstream can see. See `PropertyWrite.requiresType` for what the
 	// writer does with it, and why the common `status`-sharing configuration is what makes
 	// this more than defensive.
-	return key === '' ? [] : [{ file, role, sets: [{ key, value }], requiresType: RELEASE_TYPE }];
+	return key === '' ? [] : [{ file, sets: [{ key, value, role }], requiresType: RELEASE_TYPE }];
 }
 
 /**
- * Which of the three fields a batch was planned for — carried on the write itself, because
- * the key alone cannot answer whether it is still the key of the control that captured it.
- * See `reconfiguredKey`.
+ * Which of the three fields a batch was planned for — carried on the SET rather than the
+ * write, because closing a release (`releaseClosureWrites`) plans two fields in one write
+ * and `reconfiguredKey` has to ask each key against its own role's key: a two-set write
+ * under a single role would compare the date key against the status key and refuse every
+ * release. See `reconfiguredKey`.
  */
 export type ReleaseField = 'status' | 'description' | 'released';
 
-export interface ReleaseWrite extends PropertyWrite {
+/** One key to set, carrying the FIELD it was planned for. */
+export interface ReleaseSet extends PropertySet {
 	role: ReleaseField;
+	/**
+	 * The raw value this set expects to find on the live note. Declared here rather than
+	 * on the shared `PropertySet` because the writer does not read it yet — the follow-up
+	 * increment lifts it onto that type and teaches `applyPropertyWrites` to refuse the
+	 * whole write when it has moved (the "closing a release" write's own reason to exist:
+	 * a retype between the plan and the write must not land the status with no date, or
+	 * the date over a status the note no longer holds).
+	 */
+	expects?: unknown;
+}
+
+export interface ReleaseWrite extends PropertyWrite {
+	sets: ReleaseSet[];
 }
 
 /**
@@ -154,7 +171,9 @@ export function releaseDescriptionWrites(
  * by review, PR #211): SWAP the status and description options while a status menu is
  * open, and a union test passes the captured key because it is now the DESCRIPTION key,
  * so the pick lands the status value on the release's description. The role is what the
- * key alone cannot say, so the plan carries it (`ReleaseWrite.role`).
+ * key alone cannot say, so the plan carries it — on each SET rather than on the write,
+ * since closing a release plans two fields in one write and each has its own role
+ * (`ReleaseSet.role`).
  *
  * That also makes it hold for a fourth field nobody has written yet: a role has one key,
  * and a write whose key is not that role's is by definition a write this view was not
@@ -175,7 +194,7 @@ export function reconfiguredKey(
 	writes: ReleaseWrite[],
 ): string | null {
 	for (const write of writes)
-		for (const set of write.sets) if (set.key !== settings[ROLE_KEYS[write.role]]) return set.key;
+		for (const set of write.sets) if (set.key !== settings[ROLE_KEYS[set.role]]) return set.key;
 	return null;
 }
 
@@ -184,3 +203,53 @@ const ROLE_KEYS = {
 	description: 'descriptionKey',
 	released: 'releasedDateKey',
 } as const;
+
+/**
+ * Closing a release: the transition status and today's date, as ONE write.
+ *
+ * Not a concatenation of `releaseStatusWrites` and `releaseReleasedWrites` — those return
+ * a write each, and `applyPropertyWrites` opens a `processFrontMatter` per write, so the
+ * two fields would be two saves. A retype landing between them refuses the second and
+ * leaves a release marked shipped with no record of when, which is the one half of this
+ * that cannot be reconstructed later.
+ *
+ * Both sets carry the raw value they EXPECT to find, so a later increment can refuse the
+ * whole write if either has moved. Deliberately not `ifMissing` on the date: that asks
+ * whether the KEY IS PRESENT, and the question here is whether the note holds a readable
+ * date — a bare `released:` is present and absent at the same time, which is the commonest
+ * shape in a vault.
+ *
+ * `current` and `raw` are two different readings of the same two fields. `current` is the
+ * NORMALISED reading — trimmed, coerced to a string — and is the right one for the
+ * "already at the transition value" no-op test, case-insensitively like every other pick
+ * in this plugin. `raw` is what the frontmatter literally holds, carried on `expects`
+ * rather than `current`: a note spelling `status: " In progress "` would never equal its
+ * own normalised reading, so an `expects` built from `current` would refuse the write it
+ * was meant to allow.
+ */
+export function releaseClosureWrites(
+	file: TFile,
+	settings: ReleaseSettings,
+	current: { status: string | null; released: CivilDate | null },
+	raw: { status: unknown; released: unknown },
+	today: CivilDate,
+): ReleaseWrite[] {
+	if (settings.statusKey === '' || settings.releasedDateKey === '' || settings.releasedTransition === '') return [];
+	// The NORMALISED reading, case-insensitively — the rule every other pick keeps.
+	if (current.status !== null && sameValue(current.status, settings.releasedTransition)) return [];
+	return [
+		{
+			file,
+			requiresType: RELEASE_TYPE,
+			sets: [
+				// The RAW value, never `current.status`: the writer compares this against
+				// what the frontmatter literally holds, and the normalised reading trims and
+				// coerces. A note spelling `status: " In progress "` reads as valid and would
+				// never equal its own normalised form, so the action would be offered and
+				// then always refused with nothing concurrent happening at all.
+				{ key: settings.statusKey, value: settings.releasedTransition, role: 'status', expects: raw.status },
+				{ key: settings.releasedDateKey, value: formatCivil(today), role: 'released', expects: null },
+			],
+		},
+	];
+}

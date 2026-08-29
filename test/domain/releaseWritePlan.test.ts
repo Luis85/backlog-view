@@ -2,12 +2,17 @@ import { describe, expect, it } from 'vitest';
 import { TFile } from 'obsidian';
 import {
 	reconfiguredKey,
+	releaseClosureWrites,
 	releaseDescriptionWrites,
 	releaseReleasedWrites,
 	releaseStatusWrites,
 	ReleaseField,
 	ReleaseWrite,
 } from '../../src/domain/releaseWritePlan';
+import { releaseSettingsWith } from '../helpers/releaseSettings';
+import { CivilDate } from '../../src/domain/noteFields';
+
+const TODAY: CivilDate = { year: 2026, month: 8, day: 29 };
 
 /**
  * Every batch below carries `requiresType: 'Release'`, and it is asserted rather than
@@ -32,7 +37,7 @@ const file = { path: 'R.md', basename: 'R' } as TFile;
 describe('planning a release status', () => {
 	it('sets the key it is given', () => {
 		expect(releaseStatusWrites(file, 'status', null, 'Released')).toEqual([
-			{ file, role: 'status', sets: [{ key: 'status', value: 'Released' }], requiresType: 'Release' },
+			{ file, sets: [{ key: 'status', value: 'Released', role: 'status' }], requiresType: 'Release' },
 		]);
 	});
 
@@ -44,7 +49,7 @@ describe('planning a release status', () => {
 
 	it('removes the key rather than blanking it, and writes nothing when there is nothing to remove', () => {
 		expect(releaseStatusWrites(file, 'status', 'Planned', null)).toEqual([
-			{ file, role: 'status', sets: [{ key: 'status', value: null }], requiresType: 'Release' },
+			{ file, sets: [{ key: 'status', value: null, role: 'status' }], requiresType: 'Release' },
 		]);
 		expect(releaseStatusWrites(file, 'status', null, null)).toEqual([]);
 	});
@@ -61,10 +66,10 @@ describe('planning a released date', () => {
 
 	it('sets the date the reader picked, and clears the key for an emptied field', () => {
 		expect(releaseReleasedWrites(file, 'released', null, '2026-09-20')).toEqual([
-			{ file, role: 'released', sets: [{ key: 'released', value: '2026-09-20' }], requiresType: 'Release' },
+			{ file, sets: [{ key: 'released', value: '2026-09-20', role: 'released' }], requiresType: 'Release' },
 		]);
 		expect(releaseReleasedWrites(file, 'released', on(2026, 9, 20), '')).toEqual([
-			{ file, role: 'released', sets: [{ key: 'released', value: null }], requiresType: 'Release' },
+			{ file, sets: [{ key: 'released', value: null, role: 'released' }], requiresType: 'Release' },
 		]);
 	});
 
@@ -84,7 +89,7 @@ describe('planning a released date', () => {
 describe('planning a release description', () => {
 	it('trims the entry and sets it', () => {
 		expect(releaseDescriptionWrites(file, 'description', null, '  The billing rewrite. ')).toEqual([
-			{ file, role: 'description', sets: [{ key: 'description', value: 'The billing rewrite.' }], requiresType: 'Release' },
+			{ file, sets: [{ key: 'description', value: 'The billing rewrite.', role: 'description' }], requiresType: 'Release' },
 		]);
 	});
 
@@ -97,7 +102,7 @@ describe('planning a release description', () => {
 
 	it('clears the key for a box emptied or holding only spaces, and writes nothing when it was already empty', () => {
 		expect(releaseDescriptionWrites(file, 'description', 'Something.', '   ')).toEqual([
-			{ file, role: 'description', sets: [{ key: 'description', value: null }], requiresType: 'Release' },
+			{ file, sets: [{ key: 'description', value: null, role: 'description' }], requiresType: 'Release' },
 		]);
 		expect(releaseDescriptionWrites(file, 'description', null, '')).toEqual([]);
 	});
@@ -110,7 +115,7 @@ describe('planning a release description', () => {
 describe('the keys this view may write', () => {
 	const settings = { statusKey: 'status', descriptionKey: 'summary', releasedDateKey: 'released' };
 	const write = (role: ReleaseField, key: string): ReleaseWrite[] => [
-		{ file: file, role, sets: [{ key, value: 'x' }], requiresType: 'Release' },
+		{ file: file, sets: [{ key, value: 'x', role }], requiresType: 'Release' },
 	];
 
 	it('accepts each of the three roles the release screen edits', () => {
@@ -148,5 +153,96 @@ describe('the keys this view may write', () => {
 		// unbound case reaches here as the key the control was DRAWN with, against a role
 		// that now names nothing. Refused before `applyPropertyWrites` drops it quietly.
 		expect(reconfiguredKey({ ...settings, descriptionKey: '' }, write('description', 'summary'))).toBe('summary');
+	});
+});
+
+describe('closing a release', () => {
+	it('plans the status and the date as ONE write with two sets', () => {
+		const file = new TFile('0.9.md');
+		const settings = releaseSettingsWith({
+			statusKey: 'status',
+			releasedDateKey: 'released',
+			releasedTransition: 'Released',
+		});
+		const writes = releaseClosureWrites(
+			file,
+			settings,
+			{ status: 'In progress', released: null },
+			{ status: ' In progress ', released: undefined },
+			TODAY,
+		);
+
+		// ONE write, because `applyPropertyWrites` opens one `processFrontMatter` per write:
+		// two writes would be two saves, and a retype between them would land the status and
+		// refuse the date — a release marked shipped with no record of when.
+		expect(writes).toHaveLength(1);
+		expect(writes[0].sets.map((s) => [s.key, s.value])).toEqual([
+			['status', 'Released'],
+			['released', '2026-08-29'],
+		]);
+		// The role is on each SET now, so `reconfiguredKey` can still ask per role.
+		expect(writes[0].sets.map((s) => s.role)).toEqual(['status', 'released']);
+		expect(writes[0].requiresType).toBe('Release');
+		// The RAW spelling, not the trimmed reading: this is the value the writer compares
+		// against the live frontmatter, and a normalised one would never match it.
+		expect(writes[0].sets[0].expects).toBe(' In progress ');
+	});
+
+	it('plans nothing when the release is already at the transition value', () => {
+		const settings = releaseSettingsWith({ statusKey: 'status', releasedDateKey: 'released', releasedTransition: 'Released' });
+		// `sameValue`, case-insensitively, the rule every other pick in this plugin keeps.
+		expect(
+			releaseClosureWrites(
+				new TFile('0.9.md'),
+				settings,
+				{ status: 'released', released: null },
+				{ status: 'released', released: undefined },
+				TODAY,
+			),
+		).toEqual([]);
+	});
+
+	it('reconfiguredKey checks the two-set write PER SET, never against one shared role', () => {
+		// A two-set write under a single role would compare the date set's key against the
+		// status key and refuse every release closure — the reason `role` moved onto the set.
+		const settings = releaseSettingsWith({ statusKey: 'status', releasedDateKey: 'released', releasedTransition: 'Released' });
+		const writes = releaseClosureWrites(
+			new TFile('0.9.md'),
+			settings,
+			{ status: 'In progress', released: null },
+			{ status: 'In progress', released: undefined },
+			TODAY,
+		);
+		expect(reconfiguredKey(settings, writes)).toBeNull();
+	});
+
+	it('plans nothing where the closing options are not configured', () => {
+		expect(
+			releaseClosureWrites(
+				new TFile('0.9.md'),
+				releaseSettingsWith({ statusKey: '', releasedDateKey: 'released', releasedTransition: 'Released' }),
+				{ status: 'In progress', released: null },
+				{ status: 'In progress', released: undefined },
+				TODAY,
+			),
+		).toEqual([]);
+		expect(
+			releaseClosureWrites(
+				new TFile('0.9.md'),
+				releaseSettingsWith({ statusKey: 'status', releasedDateKey: '', releasedTransition: 'Released' }),
+				{ status: 'In progress', released: null },
+				{ status: 'In progress', released: undefined },
+				TODAY,
+			),
+		).toEqual([]);
+		expect(
+			releaseClosureWrites(
+				new TFile('0.9.md'),
+				releaseSettingsWith({ statusKey: 'status', releasedDateKey: 'released', releasedTransition: '' }),
+				{ status: 'In progress', released: null },
+				{ status: 'In progress', released: undefined },
+				TODAY,
+			),
+		).toEqual([]);
 	});
 });
