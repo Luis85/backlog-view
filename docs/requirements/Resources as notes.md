@@ -2,11 +2,11 @@
 type: Feature
 parent: "[[Resource Management]]"
 order: 10
-status: Active
+status: Done
 created: 2026-08-20
 source: user request
 started: 2026-08-21
-finished: ""
+finished: 2026-08-29
 horizon: ""
 start: ""
 due: ""
