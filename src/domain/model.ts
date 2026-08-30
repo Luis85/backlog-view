@@ -3,6 +3,7 @@ import { Absence } from './absences';
 import { inferFolderParent } from './folderNotes';
 import { DependencyNode, resolveDependencies } from './dependencies';
 import { createItems, namedTargets, RawItem, RawStore, ResourceNote } from './readItems';
+import { rankedItems } from './rankOrder';
 import {
 	childLevelIndex,
 	EXTRA_TYPE_RANK,
@@ -135,6 +136,18 @@ export interface BacklogModel {
 	/** All rendered rows in depth-first (visual) order — including context rows. */
 	items: BacklogItem[];
 	/**
+	 * Every loaded item — results and `outsideFilter` context rows alike — in global
+	 * rank order. **The only array ranking arithmetic may read.** Never a projection's
+	 * list: a `Test suite` and an `Epic` share a rank space, so ranking against one
+	 * projection's slice takes a midpoint a hidden root may already hold. Context rows
+	 * are IN it because their orders are read for placement and knowing more occupied
+	 * ranks can only reduce collisions; they stay unwritable through `applySafely`.
+	 *
+	 * A focus level is a FILTER over this array, and filtering a sorted array preserves
+	 * order — which is why `collectFocusRoots` needs no sort of its own.
+	 */
+	ranked: BacklogItem[];
+	/**
 	 * The rendered rows the Bases query actually returned. Anything describing *this
 	 * base* — counts, the level breakdown, how much is hidden — must use this, or
 	 * ancestors loaded only for context inflate the answer.
@@ -265,12 +278,14 @@ export function buildModel(app: App, entries: BasesEntry[], settings: BacklogSet
 	const resources = [...store.resources].sort(
 		(a, b) => a.title.localeCompare(b.title) || a.file.path.localeCompare(b.file.path),
 	);
+	const ranked = rankedItems(items);
 	// One pass, here, rather than one `.some`/`.find` per row: see `BacklogModel.resourceLabels`.
 	const resourceLabels: ReadonlyMap<string, string> = new Map(
 		namedTargets(resources).map((target) => [target.item.file.path, target.label]),
 	);
 	const rest = {
 		realRoots: roots,
+		ranked,
 		byPath,
 		// The PLAN's vocabulary — the whole unfocused tree minus the catalog, and minus a
 		// release. All three halves matter: unfocused, so what a menu offers never narrows

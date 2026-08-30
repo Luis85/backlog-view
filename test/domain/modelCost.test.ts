@@ -34,7 +34,7 @@ function backlog(notes: number, resources = 0): FakeVault {
 function costOf(
 	notes: number,
 	resources = 0,
-): { reads: number; sorted: number; resourcesSorted: number; items: number } {
+): { reads: number; sorted: number; resourcesSorted: number; rankSorts: number; items: number } {
 	const vault = backlog(notes, resources);
 	const entries = vault.entries();
 	const reads = vi.spyOn(vault.app.metadataCache, 'getFileCache');
@@ -43,18 +43,23 @@ function costOf(
 	// Both counts are taken BEFORE restoring: `mockRestore` resets the recorded calls
 	// along with the implementation, so reading them afterwards reports zero — which
 	// looked exactly like the property holding.
-	// The vocabulary collectors sort STRINGS; only the sibling groups and the resource
-	// roster hold objects. An empty group has no first element to ask and contributes
-	// nothing either way. The two are told apart by `typeName`, a `RawItem`/`LinkedItem`
-	// field no `ResourceNote` carries — `readItems.ts`'s `divertResource` diverts a
-	// resource before it is ever an item, so this is the one shape distinguishing the
-	// build's two comparison sorts from outside it.
+	// The vocabulary collectors sort STRINGS; only the sibling groups, the global rank
+	// pass and the resource roster hold objects. An empty group has no first element to
+	// ask and contributes nothing either way. The two are told apart by `typeName`, a
+	// `RawItem`/`LinkedItem` field no `ResourceNote` carries — `readItems.ts`'s
+	// `divertResource` diverts a resource before it is ever an item, so this is the one
+	// shape distinguishing the build's comparison sorts from outside it.
 	const groups = sort.mock.contexts.filter((ctx): ctx is object[] => Array.isArray(ctx) && typeof ctx[0] === 'object');
-	const sorted = groups.filter((g) => 'typeName' in g[0]).reduce((total, group) => total + group.length, 0);
+	const itemGroups = groups.filter((g) => 'typeName' in g[0]);
+	// TWO passes over items now, each once: `sortSiblingsDeep` over the sibling groups,
+	// and the global rank sort. A third would still fail this.
+	const wholeSet = itemGroups.filter((g) => g.length === model.items.length);
+	const sorted = itemGroups.filter((g) => !wholeSet.includes(g)).reduce((total, g) => total + g.length, 0);
+	const rankSorts = wholeSet.length;
 	const resourcesSorted = groups
 		.filter((g) => !('typeName' in g[0]))
 		.reduce((total, group) => total + group.length, 0);
-	const cost = { reads: reads.mock.calls.length, sorted, resourcesSorted, items: model.items.length };
+	const cost = { reads: reads.mock.calls.length, sorted, resourcesSorted, rankSorts, items: model.items.length };
 	sort.mockRestore();
 	reads.mockRestore();
 	return cost;
@@ -107,5 +112,9 @@ describe('model build cost', () => {
 		// The two sorts must not be conflated: an item is never counted as a resource sort
 		// and a resource is never counted as an item sort.
 		expect(cost.sorted).toBe(cost.items);
+	});
+
+	it('sorts the whole item set exactly once for the global rank', () => {
+		expect(costOf(200).rankSorts).toBe(1);
 	});
 });
