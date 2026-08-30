@@ -1,7 +1,7 @@
 import { setIcon, setTooltip } from 'obsidian';
 import type { ReleaseView } from './releaseView';
 import { t } from '../../i18n/t';
-import { ReleaseFigure, ReleaseIndex, ReleaseRow, ReleaseScope } from '../../domain/releases';
+import { closeOffer, ReleaseFigure, ReleaseIndex, ReleaseRow, ReleaseScope } from '../../domain/releases';
 import { editReleaseDescription, editReleaseReleased, showReleaseStatusMenu } from './releaseEdits';
 import { formatCivil } from '../../domain/timeline';
 import { BacklogSettings } from '../../domain/settings';
@@ -286,8 +286,23 @@ function drawStatus(view: ReleaseView, hlineEl: HTMLElement, release: ReleaseRow
  * an invitation to write over it blind, and — the sharper reason here — an unreadable date
  * and an absent one both reach the planner as `null`, so a dialog opened on one could not
  * tell the reader's "leave it empty" from "it already is", and clearing the broken value
- * would look available and write nothing. An UNSET date draws the invitation, because this
- * is the one figure on the screen the reader can fill.
+ * would look available and write nothing.
+ *
+ * An UNSET date draws the invitation **only where `Mark as released` is withheld**
+ * (`!closeOffer(release, view.settings).offered`, `releaseClose.ts`'s own predicate,
+ * asked here rather than compared against beside it — the codebase's own rule that a
+ * checkmark, an offer or a visibility question is asked of the ONE plan that decides it,
+ * never restated in a second place the two could drift apart from). That action covers
+ * the ordinary case — a release still open, cleanly configured, not already marked out —
+ * by writing the status AND the date together, so a second control offering the same
+ * field there would be two controls for one property. But `offered` is four conjuncts,
+ * not one: `dateFree` (this figure absent) is only the last of them, and the other three
+ * — a missing closing option, an unreadable status, or a release whose status already
+ * reads as released while its date does not (an imported or hand-edited note) — each
+ * leave `Mark as released` withheld while this field is still bound and empty. Those
+ * three would have no way to set a date from this screen at all if this control also
+ * stayed silent on their account, so it does not: it is the fallback the footline's own
+ * button does not cover, not a second copy of what it does.
  *
  * It is drawn as a LABELLED value (`Released 2026-09-12`) where the target beside it is a
  * bare date: two dates side by side in one row are only told apart on the index by the
@@ -303,6 +318,11 @@ function drawReleased(view: ReleaseView, factsEl: HTMLElement, release: ReleaseR
 		return;
 	}
 	const date = release.released.value;
+	// Bound and empty draws the invitation only where `Mark as released` is withheld —
+	// see this function's own docblock. Where that action IS offered, it is the way to
+	// set this field and this control draws nothing, `drawFigure`'s own rule for an
+	// absent figure.
+	if (date === null && closeOffer(release, view.settings).offered) return;
 	const btn = factsEl.createEl('button', {
 		cls: 'pbl-rel-released' + (date === null ? ' pbl-rel-released-unset' : ''),
 		// No `aria-label`: the button's own text says both what it holds and what it is,

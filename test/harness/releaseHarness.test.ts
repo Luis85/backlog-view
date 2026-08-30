@@ -175,21 +175,23 @@ describe('the release harness mounts', () => {
 
 		// SET: `0.8` is the only release carrying a description, and the only screen where
 		// the sentence has to wrap under a two-line header — the thing a browser is opened
-		// for. Its status is a plain chip, and its released date is the INVITATION, since
-		// nothing has shipped it.
+		// for. Its status is a plain chip, and its released date draws NOTHING now:
+		// `Mark as released` below is offered (2026-08-30) and is this fixture's way to set
+		// it, so a second invitation on the same field would be two controls for one.
 		view.pick('Releases/0.8.md');
 		expect(header()?.querySelector('.pbl-rel-desc')?.classList.contains('pbl-rel-desc-empty')).toBe(false);
 		expect(header()?.querySelector('.pbl-rel-status.pbl-state-unset')).toBeNull();
-		expect(header()?.querySelector('.pbl-rel-released-unset')?.textContent).toBe(en['release.scope.markReleased']);
+		expect(header()?.querySelector('.pbl-rel-released')).toBeNull();
+		expect(containerEl.querySelector('.pbl-rel-close')).not.toBeNull();
 
-		// UNSET, all three at once: `Someday` is the release nobody has ruled on — no
-		// version, no target, no status, no description — so its header is the whole of what
-		// an invitation looks like. Each is still a real control opening its own editor;
-		// absence is what the reader is being asked to fill, never a figure withheld.
+		// UNSET: `Someday` is the release nobody has ruled on — no version, no target, no
+		// status, no description. Its status and description are still invitations; its
+		// released date is withheld for the same reason 0.8's is — `Mark as released` is
+		// offered here too, since a release with nothing ruled on is not already out.
 		view.pick('Releases/Someday.md');
 		expect(header()?.querySelector('.pbl-rel-status.pbl-state-unset')).not.toBeNull();
 		expect(header()?.querySelector('.pbl-rel-desc.pbl-rel-desc-empty')).not.toBeNull();
-		expect(header()?.querySelector('.pbl-rel-released-unset')).not.toBeNull();
+		expect(header()?.querySelector('.pbl-rel-released')).toBeNull();
 
 		// SHIPPED: the released date as a VALUE rather than an invitation — the state the
 		// index's Shipped group is built on, and the one form of this control no screen drew

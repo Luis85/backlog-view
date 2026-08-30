@@ -358,7 +358,9 @@ describe('focus across the redraw an edit causes', () => {
 		// The same hole, one control over each time — the reason the fix is on the shared base
 		// rather than on the prompt review named. Neither dialog's opening control is destroyed
 		// by the cancel, so what a reader loses here is their PLACE rather than the way back.
-		const { containerEl } = openScope();
+		// `releasedStatusValues` cleared so `Mark as released` is withheld and the invitation
+		// still draws — the fixture's status alone would leave `.pbl-rel-released` absent.
+		const { containerEl } = openScope({ ...RELEASE_CONFIG, releasedStatusValues: '' });
 		for (const cls of ['.pbl-rel-desc', '.pbl-rel-released']) {
 			containerEl.querySelector<HTMLElement>(cls)!.click();
 			Modal.lastOpened!.close();
@@ -409,8 +411,10 @@ describe('recording the day a release shipped', () => {
 		// The whole reason this control exists: NOTHING in the plugin wrote this key before,
 		// so a bound released property could never come to hold anything and the index's
 		// Shipped group and slip figure were unreachable without hand-editing a note.
+		// `releasedStatusValues` cleared so `Mark as released` is withheld — otherwise
+		// R.md's status alone offers it and this invitation never draws.
 		const vault = editVault();
-		const { view, containerEl } = makeReleaseView(vault, RELEASE_CONFIG);
+		const { view, containerEl } = makeReleaseView(vault, { ...RELEASE_CONFIG, releasedStatusValues: '' });
 		view.pick('R.md');
 		expect(containerEl.querySelector('.pbl-rel-released')?.textContent).toBe('Set released date');
 
