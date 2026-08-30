@@ -17,6 +17,19 @@ export interface DropTarget {
 	peers: BacklogItem[];
 	/** Position among `peers` where the dragged item should land. */
 	insertIndex: number;
+	/**
+	 * `parent` is `dragged`'s own current parent, RESTATED rather than decided — a focus
+	 * rank's way of asking for no parent change at all, never an explicit placement.
+	 * Every other producer states a real decision, even where it happens to agree with
+	 * the current parent; only this one restates it verbatim, including when it is
+	 * `null` for an unresolved link. That distinction is load-bearing and cannot be
+	 * recovered from the values alone: an explicit top-level drop with an unresolved
+	 * link and a focus rank that never touched the parent both reach `computeParentField`
+	 * as `parent === null, dragged.parent === null, hasParentValue === true`, and only
+	 * the first of those may clear the stale key. Set `true` only by the branch that
+	 * means it; every other producer leaves it unset.
+	 */
+	parentUnchanged?: boolean;
 }
 
 /**
@@ -133,7 +146,7 @@ function siblingPosition(
 		const peers = model.roots.filter((r) => r !== dragged);
 		const idx = peers.indexOf(item);
 		if (idx === -1) return null;
-		return { parent: dragged.parent, peers, insertIndex: zone === 'before' ? idx : idx + 1 };
+		return { parent: dragged.parent, peers, insertIndex: zone === 'before' ? idx : idx + 1, parentUnchanged: true };
 	}
 	if (item.focusRoot) return null;
 	const parent = item.parent;

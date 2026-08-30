@@ -210,8 +210,21 @@ export interface AxisWrite {
 	from?: Partial<Record<PlacementEnd, string | null>>;
 }
 
-/** The parent frontmatter update, or undefined when the parent is unchanged. */
-function computeParentField(dragged: BacklogItem, parent: BacklogItem | null): TFile | null | undefined {
+/**
+ * The parent frontmatter update, or undefined when the parent is unchanged.
+ *
+ * `target.parentUnchanged` is asked FIRST and short-circuits everything below it — a
+ * focus rank restates `dragged`'s own current parent rather than deciding one, and when
+ * that parent is `null` (an unresolved link) it is otherwise indistinguishable from an
+ * EXPLICIT top-level placement, which is the one case the stale-link clearing below
+ * exists for. Without this check a focused reorder of a row with an unresolved parent
+ * link would delete the property on every move: `parent === null`, `dragged.parent ===
+ * null` and `dragged.hasParentValue` all read exactly as they do for a genuine drop onto
+ * the root group, and the two cannot be told apart from the values alone.
+ */
+function computeParentField(dragged: BacklogItem, target: DropTarget): TFile | null | undefined {
+	if (target.parentUnchanged) return undefined;
+	const parent = target.parent;
 	const oldParentPath = dragged.parent?.file.path ?? null;
 	const newParentPath = parent?.file.path ?? null;
 	// An item whose parent link points outside the view renders as a root while the
@@ -806,7 +819,7 @@ export function orderForTarget(ranked: BacklogItem[], target: DropTarget): RankR
 export function computeDropWrites(dragged: BacklogItem, target: DropTarget, ranked: BacklogItem[]): ItemWrite[] {
 	const placed = dropPlacement(dragged, target, ranked);
 	if ('refusal' in placed) return [];
-	return [{ file: dragged.file, parent: computeParentField(dragged, target.parent), order: placed.order }];
+	return [{ file: dragged.file, parent: computeParentField(dragged, target), order: placed.order }];
 }
 
 /**

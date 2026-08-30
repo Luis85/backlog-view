@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { dropTargetFor, isInvalidParent, zoneForRatio } from '../../src/domain/dropTargets';
+import { computeDropWrites } from '../../src/domain/writePlan';
 import { BacklogItem, buildModel } from '../../src/domain/model';
 import { defaultSettings } from '../../src/domain/settings';
 import { FakeVault } from '../helpers/vault';
@@ -99,6 +100,56 @@ describe('dropTargetFor', () => {
 		const target = dropTargetFor(model, model.roots[0], 'after', orphan, plan);
 		expect(target).not.toBeNull();
 		expect(target?.parent).toBeNull();
+	});
+
+	it('leaves an unresolved parent link UNTOUCHED on a focused rank, writing only order', () => {
+		// Fix round 2 (Codex, rated P2 — the coordinator called that wrong): the focus
+		// branch sets `target.parent = dragged.parent`, which for an unresolved link is
+		// `null`. `computeParentField` used to read that as `parent === null,
+		// dragged.parent === null, hasParentValue === true` — indistinguishable from an
+		// EXPLICIT top-level drop — and deleted the property. `DropTarget.parentUnchanged`
+		// is what tells them apart now: the focus branch sets it, so `computeParentField`
+		// never runs the stale-link heuristic against a restated value at all.
+		const vault = new FakeVault();
+		vault.addFile('PBI Other.md', { frontmatter: { type: 'PBI', order: 10 } });
+		vault.addFile('PBI Orphan.md', { frontmatter: { type: 'PBI', order: 30 }, parentLink: 'Missing' });
+		const model = buildModel(vault.app, vault.entries(), { ...settings, focusLevel: 'PBI' });
+		const get = (title: string) => model.items.find((i) => i.title === title) as BacklogItem;
+		const orphan = get('PBI Orphan');
+		const other = get('PBI Other');
+		expect(orphan.parent).toBeNull();
+		expect(orphan.hasParentValue).toBe(true);
+
+		const target = dropTargetFor(model, other, 'before', orphan, plan);
+		expect(target).not.toBeNull();
+		const writes = computeDropWrites(orphan, target!, model.ranked);
+
+		expect(writes).toHaveLength(1);
+		// The write's parent field, not the note's eventual value — `undefined` here means
+		// `storage/frontmatter.ts` never touches the key at all, which a note's own read-back
+		// value cannot distinguish from "written back to what it already was".
+		expect(writes[0].parent).toBeUndefined();
+		expect(typeof writes[0].order).toBe('number');
+	});
+
+	it('still clears a stale parent link on an ordinary root drop — the write, not just the target shape', () => {
+		// The behaviour the fix above must not break: dragging a stale-link root among
+		// the other roots is an EXPLICIT top-level placement, and `parentUnchanged` is
+		// unset here (this is the plain tree path), so the stale-link heuristic still
+		// runs and still clears the key.
+		const vault = new FakeVault();
+		vault.addFile('Root.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('Orphan.md', { frontmatter: { order: 20 }, parentLink: 'Missing' });
+		const model = buildModel(vault.app, vault.entries(), settings);
+		const root = model.roots[0];
+		const orphan = model.roots.find((r) => r.title === 'Orphan') as BacklogItem;
+
+		const target = dropTargetFor(model, root, 'after', orphan, plan);
+		expect(target).not.toBeNull();
+		const writes = computeDropWrites(orphan, target!, model.ranked);
+
+		expect(writes).toHaveLength(1);
+		expect(writes[0].parent).toBeNull();
 	});
 
 	it('ranks a sibling drop between focus roots — a legal move now, not a refusal', () => {
