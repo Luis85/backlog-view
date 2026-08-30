@@ -10,6 +10,7 @@ source: Decomposition of [[New cards in place]]
 files:
   - src/view/render/board.ts
   - src/view/projection.ts
+  - src/view/render/toolbar.ts
   - src/view/interactions/columnMenu.ts
   - src/view/interactions/keyboard.ts
   - src/i18n/en.ts
@@ -76,11 +77,21 @@ for the state preset to drift out of step.
    The affordance is therefore gated on the board's scope, not drawn by `renderColumn`
    unconditionally. Creation on the other two boards is a use case each, and neither has
    been written.
-3. The type is the **projection-filtered** one — `newItemType` put through
-   `offerableTypes`, which is what `primaryNewType` in `toolbar.ts` already does — and not
-   a per-column picker.
+3. **The type is whatever the toolbar's own `New` button would create**, and not a
+   per-column picker. Reuse that decision by **extracting** it, never by re-deriving it:
+   `primaryNewType` is private to `render/toolbar.ts` today, so it moves beside
+   `offerableTypes` in `view/projection.ts` and both callers take it from there.
 
-   The raw helper is the trap, and copying the roadmap's bucket `+` is how it is reached:
+   Re-deriving it is what fails, and re-deriving it "the obvious way" fails silently:
+   passing `[newItemType(…)]` through `offerableTypes` as a **singleton** returns an empty
+   list whenever the focused type is the one this board filters out, so a retained
+   `Deliverable` focus would leave the column offering no type at all. `primaryNewType`
+   answers that with a fallback — `offered.includes(focused) ? focused : offered[0]`, over
+   the *whole* vocabulary rather than one candidate — which is a second decision beyond
+   "filter it", and the one a re-derivation drops. Found by review (Codex, PR #225).
+
+   The raw helper is the trap underneath all of that, and copying the roadmap's bucket
+   `+` is how it is reached:
    `newItemType` returns the focus target unfiltered, so a `Deliverable` focus retained on
    the requirements board makes it answer `Deliverable` — a type that board excludes. The
    roadmap's `+` may use it because the roadmap draws every type; this board may not. The
@@ -128,9 +139,12 @@ for the state preset to drift out of step.
   the same column frame and would each need a different type or a different placement.
 - With a `Deliverable` **or an `Iteration`** focus retained on the requirements board, the
   three offer a type that board can display — never one `inPlan` will refuse to draw. The
-  `Deliverable` half holds through `offerableTypes` today; the `Iteration` half does not
-  until [[An Iteration focus offers a type the board cannot draw]] is fixed, which this
-  Task depends on rather than performs.
+  `Deliverable` half holds once the fallback moves with the decision; the `Iteration` half
+  does not until [[An Iteration focus offers a type the board cannot draw]] is fixed,
+  which this Task depends on rather than performs.
+- **Neither focus leaves a column offering nothing.** A type is always resolved, because
+  the extracted decision falls back to the vocabulary's first offerable entry — the
+  failure a filter without a fallback produces instead.
 - A stray (out-of-workflow) column offers none of the three, while still taking a drop —
   [[New cards in place]] extension 1b.
 - The no-state column offers all three, and the note it creates carries no state key.
