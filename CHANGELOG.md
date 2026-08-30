@@ -13,6 +13,22 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ### Added
 
+- **Rank the rows of a focused backlog by hand.** With a focus level on, dragging one row
+  above or below another writes its rank — as do Alt+↑/↓ and the four `Move` entries in
+  its menu, which plan the identical write. One note is written, its `order` and nothing
+  else: a focus rank never touches the parent key, and indent and outdent stay refused
+  across the synthetic top row. Where no rank fits between the two neighbours nothing is
+  written and a notice names the remedy rather than the drop doing nothing in silence.
+- Two commands in the palette, offered while a backlog view is showing results.
+  **`Seed ranks from the hierarchy`** numbers every note in the order the tree draws it —
+  what a vault whose orders were never spread for this needs, and correct exactly once,
+  since a second run discards any order set by hand at a focus level. **`Respace ranks`**
+  keeps the order already on screen and puts room between each pair again. Each asks first,
+  with the count it would write; each recomputes that batch when you answer, so a vault
+  that changed while the dialog was open is not overwritten with a stale plan; and each is
+  one undo. Neither writes a note the base excludes, and where the notes they would rank
+  are wedged against ones it cannot write, nothing is written and the notice names them.
+
 - A `pbl-id` property on every note the plugin creates — one integer, taken from the
   highest the vault already holds, written in the same single write that makes the note. It
   is a handle for naming an item outside Obsidian, where a title is going to change and a
@@ -60,6 +76,24 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   under the home folder by default.
 
 ### Changed
+
+- **`order` is now one rank over everything the base returns, not a position inside a
+  sibling group.** That is what makes a focused backlog orderable at all: its rows come
+  from many different parents, and they can only be ranked against each other if the
+  number means the same thing for all of them. Two consequences worth knowing before
+  upgrading. **Ordering a focused list also orders each item inside its own group** —
+  there is one rank, and it is the tree's. And **a move with no room left between its two
+  neighbours is now refused** rather than renumbering the group to make room: a drop
+  writes one note or none, and `Respace ranks` is what reopens the space. An existing
+  vault keeps working untouched — where two neighbouring ranks are equal, which is what
+  the old scheme produced, the placement falls back to the arithmetic that vault was
+  written with — but it will draw its focused lists in tree order until its ranks are
+  seeded, and nothing announces which of the two is answering.
+- The ✨ set-up button now gives a blank `order` a rank that keeps the row exactly where it
+  is drawn, instead of appending it after its siblings, and says so honestly when it
+  cannot: a rank it could not place is reported as skipped rather than counted as nothing
+  to do. It still fills only blanks — two existing ranks that already contradict the
+  drawn order are Seed's to fix, not the backfill's.
 
 - **`Show completed items` is now the toolbar's eye alone, kept per saved view on this
   device rather than in the `.base` file.** It was a view option and a toolbar toggle at
