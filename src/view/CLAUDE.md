@@ -201,7 +201,8 @@ free of runtime code so imports stay cycle-free.
   counts are measured against cannot disagree about what is in a column.
 - "Show completed items" hides only fully-done subtrees (`subtreeDone`) and only at
   render level (`isRowHidden`): the model, rollups and ALL order math keep using full
-  sibling lists — hidden siblings still get renumber writes. Structure ops and the move menu target the nearest *visible*
+  sibling lists and the full ranked population — a hidden row still occupies its rank, and
+  a placement is refused rather than landing on it. Structure ops and the move menu target the nearest *visible*
   neighbor (`visibleNeighbor`) so no command is visually inert; a parent whose
   children all hide renders as a leaf (chevron and aria-expanded follow visible
   children, not `children.length`).

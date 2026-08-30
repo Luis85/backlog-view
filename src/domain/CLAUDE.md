@@ -30,7 +30,13 @@ older wording of this paragraph got wrong was forbidding a *second* superlinear 
 outright rather than bounding it: the rule that matters is that nothing here sorts a set
 that can outgrow the items, not that there is exactly one sort.
 
-Three of those properties are checks (`test/domain/modelCost.test.ts`) and the rest of the
+A **third** joined them with the global rank (ADR 0032): `rankedItems` (`rankOrder.ts`)
+sorts every loaded item by `order` once per build to make `model.ranked`. It is bounded
+exactly as the other two are — over the item set, once per build rather than per row — so
+three passes leave the build's bound at **O(n log n)**, which is the whole of what the
+paragraph above asks of a new sort.
+
+Four of those properties are checks (`test/domain/modelCost.test.ts`) and the rest of the
 paragraph above is prose. Checked: the vault is read **once per note loaded** — `addItem`
 holds the only `getFileCache` call site `buildModel` reaches, so a later phase re-reading
 the cache per item shows up as n² — **every item is sorted exactly once**, the sum of the
@@ -40,7 +46,10 @@ exactly once**, the same shape of check at the seam the item count is blind to: 
 `Resource` never becomes an item, so a fixture with no resources in it never exercises this
 sort at all, and the item-count check alone cannot see a duplicated or per-item roster
 sort. The two sorts are told apart by `typeName`, a field every `RawItem`/`LinkedItem`
-carries and no `ResourceNote` does. Not checked, and deliberately
+carries and no `ResourceNote` does. And **the whole item set is sorted exactly once for
+the global rank** — told apart from a sibling-group sort by GROUP SIZE alone, which is
+sound only while no sibling group is as large as the item set, so that check asserts the
+fixture stays hierarchical before it counts anything. Not checked, and deliberately
 not claimed: a traversal phase that turned quadratic without reading the vault again or
 sorting again. Nothing observes a walk from outside `buildModel`, and inventing a seam to
 count one would be a seam built for the test. Nothing here measures elapsed time either;
@@ -112,13 +121,16 @@ a node test that did would be measuring the runner.
 - `model.roots` is the PLAN's rendered forest (synthetic under focus, and re-rooted past
   any catalog member); every data operation (backfill, ranking parentless items,
   root-level outdent) must use `model.realRoots`. That rule stopped being advice the day a
-  second projection existed: an `order` is a number scoped to the notes sharing a parent,
-  and a `Test suite` and an `Epic` share the null one, so ranking against one projection's
-  slice of that group takes a midpoint a hidden root may already hold. Three lists, and
-  conflating any two breaks something — the RENDERED roots (what is on screen), the
-  POSITIONABLE roots (what a move at the top level MEANS, which is a question about the
-  screen), and the RANKING group (`realRoots`, what number it gets), which is not a
-  projection's list at all and which no projection may narrow.
+  second projection existed: a `Test suite` and an `Epic` share the null parent, so a
+  projection's slice of that group is not the group. **Four lists** now, and conflating
+  any two breaks something — the RENDERED roots (what is on screen), the POSITIONABLE
+  roots (what a move at the top level MEANS, which is a question about the screen), the
+  PEER group (`realRoots` at the top level, `parent.children` below it — the rows a move
+  is aimed among, which is intent and not arithmetic), and the RANK POPULATION
+  (`model.ranked`, what number the move gets). The last two parted company with ADR 0032:
+  a `DropTarget`'s `peers` says where the user aimed and `anchoredOrder` reads
+  `model.ranked` for the number, so neither the peer list nor any projection's slice of
+  it may be handed to the arithmetic as if it were the population.
   Checked by lint in `writePlan.ts` and `interactions/create.ts` — the two files that
   rank. The two files that POSITION at the top level hold both lists at once and must not
   let either answer the other's question: `dropTargets.ts` ranks against `realRoots` while
@@ -325,26 +337,48 @@ a node test that did would be measuring the runner.
   must therefore skip such a row's whole BRANCH rather than step over the row and carry
   on: half-updating a subtree past a note that may not be written to leaves the tree worse
   than not touching it.
-- Renumbering rewrites a whole sibling group, so `computeDropWrites` refuses that path
-  when the group holds an `outsideFilter` row and places the item after the highest known
-  order instead (`afterHighestKnown`) — the single choke point that makes the context-row
-  invariant hold. Because that fallback lands the item last, the *positional* operations
-  refuse such a group up front instead of landing somewhere other than aimed:
-  `siblingPosition` (before/after drops), `canReorder` (the move menu, Alt+arrow) and
-  `outdentTarget`. Appends — dropping *into* a parent, indent — stay
-  available, since last is what they mean anyway. Gate each command on what it actually
-  does: `canReorder` covers only the four move commands, while Indent follows its
-  neighbour and Outdent answers for its own destination — gating those on `canReorder`
-  too would make the menu offer less than Alt+arrow already allows.
-- Orders are sibling-scoped fractional ranks; when a gap `< MIN_GAP` the whole sibling
-  group renumbers. Missing orders sort last, in Bases result order (`entryIndex`) —
-  `data.data` arrives presorted by the user's Bases sort config, so never re-sort it.
-- Known limitation, not specific to context rows: in a filtered base any parent whose
-  children are partly excluded has a partial `children` list, so `insidePosition` +
-  `computeInsertOrder` can compute an order that duplicates an excluded sibling's. Equal
-  orders fall back to `entryIndex` and the group self-corrects on the next renumbering
-  drop. Fixing it properly needs the complete child set (backlinks + folder scan), which
-  `computeDropWrites` cannot reach without giving up its purity. Recorded in
+- **`order` is ONE fractional rank over everything the Base returns** (ADR 0032), not a
+  per-group number. There is no gap threshold and no renumbering path: `MIN_GAP`,
+  `renumberWrites`, `afterHighestKnown` and `reorderableGroup` are all deleted. A
+  placement is a midpoint between the anchor's two neighbours in `model.ranked`
+  (`anchoredOrder`, reached through `orderForTarget` and `dropPlacement`), so a drop, an
+  indent, an outdent and a keyboard move each write exactly ONE note. Missing orders sort
+  last, in Bases result order (`entryIndex`) — `data.data` arrives presorted by the user's
+  Bases sort config, so never re-sort it.
+- **When there is no room, the placement REFUSES; it never makes room.** `RankResult` is
+  a number or one of four refusals — `gapSpent`, `tied`, `unranked`, `parentGone` — and
+  `refusalKey` is the one `switch` that maps each to the sentence naming its own remedy,
+  so a fifth refusal is a compile error rather than a wrong message. `midpoint` asks
+  whether the ROUNDED value is strictly between both ends, which is the only form of the
+  question that stays right at large magnitudes; a fixed minimum gap does not, and that
+  is why there is no second test beside it.
+- **The context-row invariant no longer rests on a group-level refusal — it rests on
+  where a context row may be READ and may not be WRITTEN.** `anchoredOrder` SKIPS an
+  unranked one (it can never be given a rank, so refusing beside one would be a permanent
+  block behind advice that cannot work), `rankTaken` counts a RANKED one as occupying its
+  number, and `computeInitWrites` and `spreadAround` write neither. What refuses up front
+  is the ROW in hand rather than its group: `siblingPosition` (drag), `siblingContext`
+  (Alt+arrow and the move menu) and `outdentTarget` each decline an `outsideFilter` row.
+- **Every structural command asks the write path's own question before it is offered.**
+  `plans` (`interactions/structure.ts`) runs `dropPlacement` against that command's OWN
+  target, so `canReorder`, `canMoveToEdge`, `outdentTarget` and `indentTarget` each answer
+  for what they would actually write — one answer covering two commands offers a `Move to
+  top` that is inert because the adjacent swap happened to work. Indent was the last one
+  without that preflight and drew an `Indent under "X"` that did nothing and said nothing.
+- **An unseeded vault falls back to ranking among the destination's peers alone** — ADR
+  0008's arithmetic, kept as a bridge — and the fallback is gated on the `tied` refusal,
+  a fact about the two rows the placement landed between, never on a question asked of
+  the whole population. Both wider gates were built here and both were wrong; ADR 0032
+  records why, and `docs/issues/The unseeded fallback is silent.md` records what the
+  switch still does not tell the user.
+- Known limitation, not specific to context rows: **the rank space is the BASE's
+  population, not the vault.** A note the filter excludes and no result claims as a parent
+  is never loaded, so it is not in `model.ranked` and no placement can see the rank it
+  holds — a midpoint may duplicate it, invisibly until that note re-enters the results.
+  This is WIDER than the sibling-scoped rank it replaces, where only a hidden sibling
+  could collide. Reading every rank-bearing note from the metadata cache would make this
+  layer read the vault rather than what Bases hands it; `Respace ranks` is the repair once
+  a collision surfaces. Recorded in
   `docs/issues/Duplicate orders in a partially filtered group.md`.
 - `breakCycles` re-roots `cycleEntry(item)`, the node that actually closes the loop, not the
   first unreachable item found: with outside-filter ancestors the unreachable item is usually

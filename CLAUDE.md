@@ -310,9 +310,12 @@ that forgot the rule rather than a new rule: **an `outsideFilter` row is never a
 target, never a ranking peer, and never a source of anything derived from the Base's
 results** (counts, level breakdown, state and tag vocabulary, creation folder). It renders, it
 parents, and that is all. "Never a ranking peer" means never written to and never
-renumbered — its `order` is still *read* (`afterHighestKnown`, `endOfSiblingsOrder`,
-the backfill's max-order scan), because the row is on screen and a rank that ignored
-it would place an item above something the user can see. Ask that question of any new
+renumbered — its `order` is still *read* (`anchoredOrder`'s neighbour walk, `rankTaken`'s
+occupancy check, the backfill's own floor and ceiling), because the row is on screen and a
+rank that ignored it would place an item above something the user can see. An UNRANKED one
+is the exception both ways: it constrains nothing, so `anchoredOrder` skips it rather than
+refusing beside it — a refusal there would send the user to a backfill that may never
+write it. Ask that question of any new
 code touching the tree; the "write safety with context rows, across every entry point"
 test in `test/view/contextRowWrites.test.ts` drives every interaction against a fixture
 with context rows above, beside and between results, so a new write path fails it

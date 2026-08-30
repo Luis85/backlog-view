@@ -426,12 +426,11 @@ Context rows are italic and dimmed, with a `↳` marker. They are **not results*
   real siblings, so there is no sibling order to rank them within;
 - **nothing ever writes into them.** Their state chip is display-only, and the context
   menu drops **Set type**, **Set state** and the parent-link commands — a note the filter
-  excluded is not yours to edit from a view that doesn't contain it. Re-ranking a sibling
-  group also renumbers all of it when the gaps run out, so a group that contains a context
-  row offers no reordering at all: no before/after drop, no **Move up/down/to top/to
-  bottom**, no **Outdent** — even for an ordinary result row that happens to sit next to
-  one. Dropping *into* a parent, dropping on the tree background and **Indent** keep
-  working, because those append;
+  excluded is not yours to edit from a view that doesn't contain it. The rows *around* one
+  still reorder normally — what is refused is a move of the context row itself (no
+  before/after drop onto it, no **Move up/down/to top/to bottom**, no **Outdent** from it)
+  and any placement whose number a context row already holds, which the view declines with
+  a notice rather than writing a duplicate;
 - they don't influence where new notes go: the folder for new items is inferred from the
   Base's own results, never from ancestors that live somewhere else in the vault — and
   **New \<child\>** on a context row creates the note in that results folder rather than
@@ -457,11 +456,11 @@ Context rows are italic and dimmed, with a `↳` marker. They are **not results*
 
 The last point generalizes into the one real caveat of working in a filtered base: **any
 parent whose children are partly filtered out has a partial sibling list**, whether it is
-a context row or a match. Dropping *into* such a parent appends after the last *visible*
-child, so the new `order` is computed without knowing the excluded children's values and
-can duplicate one of them. Nothing breaks — items with equal orders fall back to the
-Base's own sort, and the group is renumbered by the next drop that needs the room — but
-if you care about exact ranking, do the reordering in an unfiltered base.
+a context row or a match. The rank a move computes is a number free among the notes *this
+base returned*, so a note the filter excludes entirely can be holding it already. Nothing
+breaks while that note stays filtered out — and if it comes back, the two equal orders fall
+back to the Base's own sort until **Respace ranks** (command palette) spreads them apart
+again. If you care about exact ranking, do the reordering in an unfiltered base.
 
 Turn **Show parents outside the filter** off to go back to a flat list of matches, where
 items whose parent is missing show the unlink icon.
@@ -476,8 +475,8 @@ touches frontmatter) still re-renders every row, because the Base re-runs its qu
 any visible property may have changed; collapsing the levels you're not working on is the
 best lever there.
 
-A **batch** — "Assign missing type and order properties" over a whole backlog, or a drop
-that renumbers a large sibling group — writes one note at a time, and each of those writes
+A **batch** — "Assign missing type and order properties" over a whole backlog, or one of
+the two ranking commands rewriting every rank in it — writes one note at a time, and each of those writes
 would otherwise come back as its own refresh. The view rebuilds once when the batch
 finishes instead, so the tree doesn't churn through hundreds of half-applied states on the
 way. Nothing is frozen while that happens: you can scroll, filter, expand and select
@@ -513,9 +512,14 @@ forgetting, because two backlogs would keep opening each other's rows.
 
 ### Ranking details
 
-Sibling order is a number (`10, 20, 30…`). Dropping between two items assigns the halfway
-value; when the gap gets too small the view transparently renumbers that sibling group.
-Items without an `order` sort after ranked siblings, alphabetically.
+`order` is one number ranking the whole backlog, not a position inside a sibling group.
+Dropping between two items assigns the halfway value, and one note is written — never the
+group. When two numbers have no room left between them the move is refused with a notice
+instead of renumbering anything; **Respace ranks** in the command palette rewrites every
+rank with even spacing again, keeping the order you are looking at. **Seed ranks from the
+hierarchy** is its blunter neighbour: it numbers every note in tree order, which is what a
+backlog whose orders were never set this way needs, and what discards any order you set by
+hand at a focus level. Items without an `order` sort after ranked ones.
 
 ## The board
 
