@@ -40,9 +40,22 @@ What this skill adds is the two things a decomposition gets wrong:
 
 ## Phase 0 — the subject
 
-Read the whole PBI note **and every note that already names it as `parent`** — a PBI
-decomposed once before is not decomposed from nothing, and phase 3 already assumes those
-children exist when it ranks against them. If the named note is not a `PBI`, stop: an `Epic` or a `Feature`
+Read the whole PBI note, and three things around it:
+
+- **Its parent Feature and that Feature's Epic.** A Feature may carry
+  `## Landmines, before implementation`, which the register reserves for exactly what no
+  single use case can state — the order the work must be done in, and the seams that fail
+  silently in the wrong one. Read from the PBI alone and those constraints are invisible
+  precisely because they were kept out of it.
+- **Every note that already names the PBI as `parent`.** A PBI decomposed once before is
+  not decomposed from nothing, and phase 3 already assumes those children exist when it
+  ranks against them.
+- **Every note that links to the PBI without being its child.** An earlier decomposition's
+  `Test case`, `Test suite` or ADR names no `parent`, so the search above cannot find one;
+  a `[[<Title>]]` search over `docs/` is what does. Miss them and the sweep writes the same
+  verification or the same decision a second time under another title.
+
+If the named note is not a `PBI`, stop: an `Epic` or a `Feature`
 does not hold Tasks, and the child it does hold is another requirement — say which note is
 wanted instead.
 
@@ -51,7 +64,8 @@ extensions, its acceptance criteria and its `## Where it lives`, and ask whether
 still what is being built. A decomposition of a
 stale use case is worse than none.
 
-**Exit when** the user confirms the PBI as read.
+**Exit when** the user confirms the PBI as read, and every note found around it is named
+as already covering something or as covering nothing.
 
 ## Phase 1 — the slices
 
@@ -148,6 +162,10 @@ Read the whole set back — each output, its type, its parent, its rank, and one
 what it delivers, with an ADR read back as carrying none of those three — and name what you
 are still assuming. **This gate is the only thing that
 unlocks writing.**
+
+**Exit when** the user has answered — the readback is a question, not an announcement, and
+a mistaken parent or rank is caught here or not at all. Reading it back and carrying on is
+the gate not happening.
 
 ## The close
 
