@@ -1135,87 +1135,83 @@ function initWriteFor(item: BacklogItem, settings: BacklogSettings, nextOrder: (
  * without touching values that already exist. Walks the real tree, so a focused view
  * still backfills hidden ancestors and branches outside the focus level.
  *
- * **What it guarantees about ORDER, written to what the tests check and no wider.** Every
- * rank it hands out lands between the ranks of the rows drawn either side of the blank, so
- * filling a blank never moves the row that blank belongs to. It does NOT guarantee that a
- * projection looks the same afterwards, and the difference is the whole reason `Seed ranks
- * from the hierarchy` is a separate command: a focused list renders in tree order while any
- * of its rows is unranked and in rank order once none is, so if two EXISTING ranks already
- * contradict the drawn order, that switch flips them and no action that only fills blanks
- * can prevent it. Pinned as a known reorder by
- * `test/view/backfillFocusOrder.test.ts`; Seed is the remedy, because rewriting every rank
- * is the only thing that can be.
+ * **What it guarantees about ORDER, and the scope is deliberate.** Every rank it hands out
+ * is strictly ABOVE every rank drawn over the blank and strictly BELOW every rank drawn
+ * under it, so filling a blank never moves that blank. That covers both places this plugin
+ * orders rows by `order` — sibling order in the tree (`compareSiblings`) and a focus level
+ * (`inRankOrder`) — and it covers them because the bound is read off the DRAWN sequence
+ * rather than off the rank sequence. Nothing else needs covering: a board column and a
+ * roadmap bucket sort by the Base's own `entryIndex`, so no rank this writes can move a
+ * card in one.
+ *
+ * **When no such rank exists the blank keeps none**, which is the same fail-closed rule
+ * the other two places a rank is produced already keep. It is reachable and ordinary: a
+ * row drawn later under a different parent can hold a LOWER rank than the row drawn
+ * before this one, and then no number is both above the first and below the second.
+ *
+ * What it does NOT promise is that a projection looks the same afterwards, and that is the
+ * whole reason `Seed ranks from the hierarchy` (`domain/rankSpread.ts`) exists: a focused
+ * list renders in tree order while any of its rows is unranked and in rank order once none
+ * is, so two EXISTING ranks that already contradict the drawn order flip when the list
+ * becomes sortable. No pass that only fills blanks can prevent that; Seed rewrites every
+ * rank and can. Both the guarantee and the residual are pinned in
+ * `test/view/backfillFocusOrder.test.ts`.
  */
 export function computeInitWrites(model: BacklogModel, settings: BacklogSettings): ItemWrite[] {
 	const writes: ItemWrite[] = [];
-	// Every rank the population already holds, ascending — `model.ranked` is sorted, and
-	// context rows are IN it because their numbers occupy the space whether or not this
-	// action may write to them. Each rank handed out is inserted, so the next blank sees it.
-	const bounds = model.ranked.map((item) => item.order).filter((order): order is number => order !== null);
-	// The HIGHEST rank among the rows drawn above the one being placed — a real one, or one
-	// this walk has just handed out. Null until the walk has passed a ranked row at all.
-	//
-	// The highest and not the last, which is the correction a context row forced: a subtree
-	// can end on a row ranked BELOW its own parent (a context ancestor at 1000 whose child
-	// carries 10), and a blank drawn after it must clear everything above it rather than
-	// only its immediate predecessor — otherwise it lands between the two and moves up the
-	// screen. Being a running maximum also makes the values this walk hands out increase
-	// along the walk, so two blanks can never invert each other.
-	let highestDrawn: number | null = null;
-	/**
-	 * The next rank, or null when there is none to be had.
-	 *
-	 * **Each blank is placed where it is DRAWN, between its neighbours, and never above the
-	 * population's maximum** — which is as far as a blanks-only pass can go; see the
-	 * function's own comment for what that does not buy. A monotonic counter seeded past the
-	 * maximum was the first version, and it is wrong for the projection the rank change
-	 * exists for:
-	 * a focus level renders in TREE order while one of its rows is unranked (a null defeats
-	 * `inRankOrder`'s distinctness test) and in RANK order once none is, so pushing a blank
-	 * to the end of the population reverses a list the moment it becomes sortable. The
-	 * counter could not see that, because "a monotonic sequence never inverts a SIBLING
-	 * pair" is a true sentence about a different population.
-	 *
-	 * `rankBetween` is the same arithmetic every placement uses, and the bounds make it
-	 * the same question: the value lands in an OPEN interval of the bound set, so it can
-	 * collide with nothing already there and with nothing this walk has already handed out.
-	 *
-	 * **Fails closed**, like the two other places a rank is produced: a spent gap leaves
-	 * that one item unranked rather than writing a number that jumps over a drawn row.
-	 */
-	const nextOrder = (): number | null => {
-		// The nearest bound above the row drawn before this one — a linear scan and a splice
-		// per blank, which is quadratic in the worst mix of ranked and blank rows. Left that
-		// way on purpose: this runs once per press of a button, not once per render, and a
-		// sorted-insert structure here would be more to read than the rule it implements.
-		const above = bounds.find((order) => order > (highestDrawn ?? Number.NEGATIVE_INFINITY));
-		const placed = rankBetween(highestDrawn, above ?? null);
-		if ('refusal' in placed) return null;
-		bounds.splice(above === undefined ? bounds.length : bounds.indexOf(above), 0, placed.order);
-		highestDrawn = placed.order;
-		return placed.order;
-	};
-	const visit = (siblings: BacklogItem[]) => {
+	// The DRAWN sequence — DFS preorder over the real tree, context rows included, because
+	// one is on screen and a rank that ignored it would move a row the user can see.
+	const drawn: BacklogItem[] = [];
+	const collect = (siblings: BacklogItem[]) => {
 		for (const item of siblings) {
-			// Every DRAWN row raises the floor, context rows included: one is on screen, so a
-			// blank after it must rank after it. An unranked context row constrains nothing
-			// and is skipped here for the same reason `anchoredOrder` skips it as an anchor.
-			if (item.order !== null && (highestDrawn === null || item.order > highestDrawn)) {
-				highestDrawn = item.order;
-			}
-			// Ancestors pulled in from outside the filter are context, not results —
-			// the backfill must not write properties into notes the base excluded.
-			if (item.outsideFilter) {
-				visit(item.children);
-				continue;
-			}
-			const write = initWriteFor(item, settings, nextOrder);
-			if (write) writes.push(write);
-			visit(item.children);
+			drawn.push(item);
+			collect(item.children);
 		}
 	};
-	visit(model.realRoots);
+	collect(model.realRoots);
+	// `ceilings[i]` is the SMALLEST rank drawn after position i — the value a blank there
+	// must stay below to keep its place. **Read off what is drawn LATER, not off the next
+	// rank above the floor**, and that distinction is the whole of the fix this replaced:
+	// the two agree while a subtree's ranks run upward with the screen, and part company
+	// exactly when a later-drawn row under a DIFFERENT parent holds a lower rank. Every
+	// fixture that missed this bug stayed inside one increasing run.
+	const ceilings: (number | null)[] = new Array<number | null>(drawn.length).fill(null);
+	for (let i = drawn.length - 2; i >= 0; i--) {
+		ceilings[i] = lowerOf(drawn[i + 1].order, ceilings[i + 1]);
+	}
+	// The HIGHEST rank drawn above the current row — a real one, or one this walk has just
+	// handed out. The highest and not the last: a subtree can end on a row ranked below its
+	// own parent, and a blank after it must clear everything above it. Being a running
+	// maximum also makes the values handed out increase along the walk, so two blanks never
+	// invert each other, and every value lands in a gap no existing rank occupies — above
+	// all of them drawn earlier, below all of them drawn later.
+	let floor: number | null = null;
+	let ceiling: number | null = null;
+	const nextOrder = (): number | null => {
+		const placed = rankBetween(floor, ceiling);
+		if ('refusal' in placed) return null;
+		floor = placed.order;
+		return placed.order;
+	};
+	for (let i = 0; i < drawn.length; i++) {
+		const item = drawn[i];
+		// An unranked context row constrains nothing and is skipped here for the same reason
+		// `anchoredOrder` skips it as an anchor.
+		if (item.order !== null && (floor === null || item.order > floor)) floor = item.order;
+		// Ancestors pulled in from outside the filter are context, not results — the
+		// backfill must not write properties into notes the base excluded.
+		if (item.outsideFilter) continue;
+		ceiling = ceilings[i];
+		const write = initWriteFor(item, settings, nextOrder);
+		if (write) writes.push(write);
+	}
 	return writes;
+}
+
+/** The smaller of two ranks, either of which may be absent. */
+function lowerOf(a: number | null, b: number | null): number | null {
+	if (a === null) return b;
+	return b === null ? a : Math.min(a, b);
 }
 
 

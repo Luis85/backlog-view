@@ -9,12 +9,24 @@ useViewHarness();
  * What the ✨ promises about ORDER, asked of the projection this whole rank change exists
  * for rather than of a sibling group.
  *
- * The distinction is the bug this file was written for. "A backfilled rank never inverts a
- * sibling pair" is true of a monotonic counter and says nothing about a FOCUS LEVEL, which
- * is not a sibling group: before the backfill a focused list renders in TREE order, because
- * one missing rank defeats `inRankOrder`'s distinctness test; afterwards every rank is
- * distinct and the same list renders in RANK order. The switch is what reorders, and only a
- * test that looks at the drawn rows on both sides of the press can see it.
+ * **The scope, stated once so the three tests below can be read against it: filling a blank
+ * never moves that blank, in the tree or at any focus level.** Those are the two places
+ * this plugin orders rows by `order` — `compareSiblings` and `inRankOrder` — and a board
+ * column or roadmap bucket needs no cover because it sorts by the Base's own `entryIndex`.
+ * The promise is about the BLANK. It is not "the projection looks the same afterwards",
+ * which no pass that only fills blanks can deliver; the third test pins why.
+ *
+ * Two mistakes are buried here, both of which read as settled at the time:
+ *
+ * "A backfilled rank never inverts a SIBLING pair" is true of a monotonic counter and says
+ * nothing about a focus level, which is not a sibling group — before the backfill a focused
+ * list renders in TREE order, because one missing rank defeats `inRankOrder`'s distinctness
+ * test, and in RANK order once none is. The switch is what reorders.
+ *
+ * Then, having bounded the blank by the next rank ABOVE the highest one drawn over it: that
+ * is the same thing only while a subtree's ranks run upward with the screen. It takes a
+ * later-drawn row under a DIFFERENT parent, holding a LOWER rank, to tell them apart, and
+ * every fixture written for the first bug stayed inside one increasing run.
  */
 describe('the backfill and the focused order', () => {
 	const initButton = (containerEl: HTMLElement) =>
@@ -36,6 +48,29 @@ describe('the backfill and the focused order', () => {
 		await flush();
 		refresh(view, vault);
 
+		expect(titlesOf(containerEl)).toEqual(before);
+	});
+
+	it('leaves a blank alone when no rank can keep it where it is drawn', async () => {
+		const vault = new FakeVault();
+		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 1000 } });
+		vault.addFile('A1.md', { frontmatter: { type: 'Feature' }, parentLink: 'Epic A' });
+		vault.addFile('Epic B.md', { frontmatter: { type: 'Epic', order: 2000 } });
+		// **Drawn AFTER A1 and ranked BELOW Epic A** — the shape every earlier fixture
+		// missed, because it needs a later-drawn row under a DIFFERENT parent holding a
+		// lower rank. There is no number both above everything drawn over A1 (1000) and
+		// below everything drawn under it (500), so the only placement that keeps A1 where
+		// it is drawn is no placement at all.
+		vault.addFile('B1.md', { frontmatter: { type: 'Feature', order: 500 }, parentLink: 'Epic B' });
+		const { view, containerEl } = makeView(vault, noOptionalProperties(), { focus: 'Feature' });
+		const before = titlesOf(containerEl);
+		expect(before).toEqual(['A1', 'B1']);
+
+		initButton(containerEl)?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await flush();
+		refresh(view, vault);
+
+		expect(vault.fm('A1.md')['order']).toBeUndefined();
 		expect(titlesOf(containerEl)).toEqual(before);
 	});
 
