@@ -115,10 +115,18 @@ implementable:
 | A `Task` | The subagent's | It is engineering work with a test |
 | An `Issue` holding an **open question** | The human's | The work cannot settle it; that is why it is an Issue |
 | An `Issue` recording a **decision or a limitation** | The subagent's | It is prose stating something already settled |
+| A `Bug` | The subagent's | A defect with a fix and a test, and `docs/README.md` gives it a shape — the same work a `Task` is |
+| An `Improvement` | The subagent's | Engineering work like a `Task`, and it closes the same way |
+| An `Idea` | The human's | A proposal nobody has committed to. Implementing an Idea decides it, which is not this run's call |
 | A `Deliverable` | Ask | A non-code artifact may be either, and the register documents no shape for it |
 | An ADR *(not a child)* | The subagent's | Prose it can write, once phase 2 has the five things `docs/adrs/README.md` wants |
 | A `Test suite` *(not a child)* | The subagent's | Prose saying what the group walks; it checks nothing itself, and it must exist before a case can hang from it. Written, never closed — it stays `Open` while its cases are re-walked |
 | A `Test case` *(not a child)* | The human's | A live vault, which no subagent reaches — Obsidian cannot run here |
+
+**Every type the register lets a PBI hold has a row.** `docs/README.md` makes a PBI's legal
+children `Task`, `Issue`, `Bug`, `Idea`, `Deliverable` and `Improvement`; phase 2 cannot exit
+until each output is assigned, so a type with no row is a phase that cannot close over a
+legal decomposition.
 
 The human's outputs are **named in the plan's header, never given a task**. They are still
 part of the picture — the prompt reads them as context, and the readback shows the split —
@@ -147,7 +155,7 @@ landed, or every remaining one the human's — steps 2, 3, 4 and 7 do not happen
 save question, no prompt. Asking whether to save "this prompt" when there is no prompt would
 write a handoff `Task` whose `Approach` points at a plan nobody created. The children's edits
 from phase 1 and 2 are still written and committed, and the close says what remains and
-whose it is.
+whose it is. Everything below assumes there is work.
 
 Otherwise, in this order, so the work lands in one commit and the prompt is the last thing on
 screen to copy:
@@ -213,7 +221,8 @@ the controller constructs — never the prompt. A rule that lives only in the pr
 nobody who writes code. So the plan's **Global Constraints** carries what every task shares:
 root `CLAUDE.md`, `test/CLAUDE.md`, `superpowers:test-driven-development`, the
 red-green-`npm run check`-commit cycle, the `[Unreleased]` changelog rule, and closing the
-note.
+note. `subagent-driven-development` passes that section into every dispatch, which is
+exactly why the header cannot be skipped.
 
 **The cycle is for the tasks that write code.** A decision-or-limitation `Issue`, an ADR and
 a `Test suite` are prose, with no behaviour to make fail first, so they run write,
@@ -295,3 +304,42 @@ On yes, one note at the next free rank among the PBI's children, in the `Task` s
 | Acceptance criteria | Every sibling the run **executes** closed, and `npm run check` green — naming the human's siblings as what it deliberately does not cover |
 | Risks | **The prompt is a pointer, not a snapshot** — a later run re-reads the notes it names rather than trusting anything it summarises |
 | Outcome | Written after the run, like any Task |
+
+## Red flags — stop and go back
+
+- A phase's exit gate asks for less than that phase's walk covered.
+- A child went unmentioned in phase 2 because it "obviously fits".
+- The prompt paraphrases a rule that lives in a guide.
+- Execution detail went into the prompt instead of the note.
+- The plan carries execution detail instead of pointing at the note that holds it.
+- A `## Task N` was numbered from a note's `order` rather than from its dispatch position.
+- A live-vault `Test case` was written into the plan as a task.
+- An `Issue` holding an open question was given a `## Task N`.
+- An output was left unassigned because it is a child and children are "obviously" the
+  subagent's.
+- A legal child type reached phase 2 with no row in the ownership table.
+- The close committed on `npm run docs` alone.
+- A rule that every implementer needs was written into the prompt alone, where only the
+  controller reads it.
+- The plan gave a task to an output the human owns, or to one phase 0 found already landed.
+- A run finished with its children's `## Outcome` unwritten and their `status` still `Open`.
+- An ADR task was told to write `status: Done`, or to add a `closed:` or an `## Outcome`.
+- A prose-only task was given a red-green cycle it cannot satisfy.
+- A `Test suite` was closed because its prose was written.
+- An output with no rank was given a task number among the ranked children.
+- The prompt told a run to close a handoff the user declined to save.
+- The controller's own close was left in the working tree, with no gate and no commit.
+- An empty plan was written, and a prompt printed, for a PBI with no work left in it.
+- The save question was asked on a run that produced no prompt to save.
+- An `Issue` or a `Deliverable` was closed with an `## Outcome` its shape does not have.
+- A `Deliverable` gained a `closed:` key the register does not give it.
+- The prompt told every task to run red-green, including the prose ones.
+- A rerun overwrote the earlier plan at the same path, inheriting its ledger.
+- A saved handoff promised to close siblings the run was never going to touch.
+- A child was re-scoped to fit the order, instead of the order being corrected.
+- The saved handoff `Task` appears in the set of children the prompt executes.
+- The prompt puts the commit before `npm run check`.
+- You wrote a note before phase 3 to keep track.
+- You started writing source code.
+
+All of these mean: the sweep is not finished. Go back to the phase you left.
