@@ -187,7 +187,10 @@ Expected: PASS, including the pre-existing sibling-sort assertion.
 - [ ] **Step 7: Commit**
 
 ```bash
-git add src/domain/model.ts test/domain/model.test.ts test/domain/modelCost.test.ts
+git add src/domain/rankOrder.ts src/domain/model.ts test/domain/model.test.ts test/domain/modelCost.test.ts
+# Stage every file you CREATED as well as every file you changed. A new module left
+# untracked still passes local checks — it is on disk — and fails CI on a fresh
+# checkout, where the import cannot resolve. Confirm with `git show --stat HEAD`.
 git commit -m "feat(domain): add the global ranked population
 
 One sort over every loaded item, ties on entryIndex, unranked last. The
@@ -298,7 +301,7 @@ Expected: PASS. If a focus test asserts DFS ordering, it is asserting the old ru
 - [ ] **Step 7: Commit**
 
 ```bash
-git add src/domain/model.ts test/domain/model.test.ts test/domain/roadmap.test.ts
+git add src/domain/rankOrder.ts src/domain/model.ts test/domain/model.test.ts test/domain/roadmap.test.ts
 git commit -m "feat(domain): focus rows render in global rank order
 
 A filter over the ranked array rather than a sort of its own, so
@@ -315,7 +318,7 @@ collectFocusRoots decides membership and ranked decides sequence."
 
 **Interfaces:**
 - Consumes: `BacklogModel.ranked` (the caller passes the array, not the model — `writePlan.ts` stays pure).
-- Produces, exported from `src/domain/writePlan.ts`:
+- Produces, exported from `src/domain/writePlan.ts` (`dropPlacement` arrives in Task 4):
 
 ```ts
 export const ORDER_SPACING = 1000;
@@ -503,6 +506,7 @@ export interface DropTarget {
 
 // src/domain/writePlan.ts
 export function orderForTarget(ranked: BacklogItem[], target: DropTarget): RankResult;
+export function dropPlacement(dragged: BacklogItem, target: DropTarget, ranked: BacklogItem[]): RankResult;
 export function computeDropWrites(dragged: BacklogItem, target: DropTarget, ranked: BacklogItem[]): ItemWrite[];
 ```
 
@@ -594,13 +598,26 @@ export function orderForTarget(ranked: BacklogItem[], target: DropTarget): RankR
  * unranked neighbour — and the caller says which.
  */
 export function computeDropWrites(dragged: BacklogItem, target: DropTarget, ranked: BacklogItem[]): ItemWrite[] {
-	const parentField = computeParentField(dragged, target.parent);
-	const placed = orderForTarget(
+	const placed = dropPlacement(dragged, target, ranked);
+	if ('refusal' in placed) return [];
+	return [{ file: dragged.file, parent: computeParentField(dragged, target.parent), order: placed.order }];
+}
+
+/**
+ * The placement a drop would take — the planner's own answer, exported so the caller
+ * that names a remedy asks the SAME question rather than a similar one.
+ *
+ * The dragged row is removed from the population before its neighbours are found, or
+ * it becomes its own neighbour. That filter must not be written twice: a caller that
+ * diagnosed against the unfiltered array could see a number where the planner refused
+ * — a drop that does nothing and shows no remedy — which is why the diagnosis goes
+ * through here instead of calling `orderForTarget` beside it.
+ */
+export function dropPlacement(dragged: BacklogItem, target: DropTarget, ranked: BacklogItem[]): RankResult {
+	return orderForTarget(
 		ranked.filter((item) => item !== dragged),
 		target,
 	);
-	if ('refusal' in placed) return [];
-	return [{ file: dragged.file, parent: parentField, order: placed.order }];
 }
 ```
 
@@ -1141,8 +1158,11 @@ In `src/i18n/en.ts`, beside the existing `command.*` keys (line ~1270):
 ```
 
 The last two are the two refusals from Task 4. Wire them where `performDrop` receives an
-empty write list: ask `orderForTarget(host.model.ranked, target)` for the reason and show
-`t('rank.gapSpent')` or `t('rank.unranked')` accordingly. Add a check for each — a drop on
+empty write list: ask **`dropPlacement(dragged, target, host.model.ranked)`** — the
+planner's own function, not `orderForTarget` beside it — for the reason, and show
+`t('rank.gapSpent')` or `t('rank.unranked')` accordingly. Calling `orderForTarget`
+directly here would skip the dragged-row filter and could report a number where the
+planner refused, leaving a drop that does nothing and says nothing. Add a check for each — a drop on
 a spent gap names Respace, a drop beside an unranked note names the set-up button — because
 a notice naming the wrong remedy is advice that does not work, and no type would catch it.
 
@@ -1196,7 +1216,13 @@ function runRank(app: App, plan: (model: BacklogModel) => ItemWrite[], title: st
 		cta: title,
 		onConfirm: () => {
 			void (async () => {
-				const live: LiveBacklogView = view;
+				// **Re-resolved, not the captured view.** `BacklogView.onunload` calls
+				// `forgetBacklogView` and disposes the gate but leaves `model` NON-NULL,
+				// so a view closed while the dialog was open still answers with a
+				// snapshot that stopped refreshing. Asking the registry again is the
+				// only thing that can tell a live view from a disposed one.
+				const live = activeBacklogView(app);
+				if (live === null || live.model === null) return;
 				// **Recomputed, never the previewed batch.** These commands rewrite the
 				// rank of EVERY note, and the dialog can stay open across a vault sync,
 				// a write from another view, or another plugin. Applying the captured
@@ -1204,7 +1230,6 @@ function runRank(app: App, plan: (model: BacklogModel) => ItemWrite[], title: st
 				// `applySafely` serializes and gates, but it does not check a planned
 				// value against what the note now holds. The count may differ from the
 				// one the dialog showed; the notice reports what was actually written.
-				if (live.model === null) return;
 				const writes = plan(live.model);
 				const outcome = await live.applySafely(writes);
 				if (outcome) new Notice(t('rank.done', { count: writes.length }));
@@ -1240,6 +1265,13 @@ In `src/main.ts`, beside the two existing `addCommand` calls:
 - [ ] **Step 5: Check the recompute**
 
 ```ts
+it('writes nothing when the view was closed while the dialog was open', async () => {
+	const dialog = openRespaceDialog(harness);
+	harness.closeView();
+	dialog.confirm();
+	expect(harness.writes).toEqual([]);
+});
+
 it('ranks the model as it is on confirm, not as it was when the dialog opened', async () => {
 	const dialog = openRespaceDialog(harness);
 	await harness.addNote('Late Epic.md', { type: 'Epic', order: 500 });
