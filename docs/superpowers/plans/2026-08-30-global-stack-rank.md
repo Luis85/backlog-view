@@ -552,7 +552,10 @@ neighbours read from the global array. Spacing 1000, six decimals, MIN_GAP
 - Test: `test/domain/writePlan.test.ts`, `test/domain/writePlanContextRows.test.ts`
 
 **Interfaces:**
-- Consumes: `anchoredOrder` from Task 3.
+- Consumes: `anchoredOrder` from Task 3 — note it ships as `anchoredOrder` plus two
+  helpers, `isUnrankedContext` and `neighbourPair`. Task 3 split it because the single
+  function the plan gave measured cyclomatic complexity 21 against this repo's
+  `complexity: 16` lint rule. Same logic, three functions; call `anchoredOrder`.
 - Produces:
 
 ```ts
@@ -618,6 +621,20 @@ Also add the case the spec names as retained: the existing missing-order test in
 
 Run: `npx vitest run test/domain/writePlan.test.ts`
 Expected: FAIL — `computeDropWrites` takes two arguments and `target.peers` does not exist.
+
+- [ ] **Step 0: Delete Task 3's shim — this task exists to remove it**
+
+Task 3 left a marked shim in `computeDropWrites`:
+
+```ts
+// TODO(Task 4): rewire onto the global `ranked` population and `orderForTarget`.
+```
+
+It passes `siblings` where the global population belongs, reproducing the OLD sibling-scoped
+behaviour through the new arithmetic so the build compiled between the two tasks. **The
+rewrite below replaces it entirely.** Grep for `TODO(Task 4)` when you are done and confirm
+there are no hits: a marker like this is precisely the kind that outlives the task that
+promised to remove it, and while it stands the drop path is not globally ranked at all.
 
 - [ ] **Step 3: Rename the field and delete the guard**
 
