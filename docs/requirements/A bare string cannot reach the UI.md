@@ -19,7 +19,6 @@ iteration: ""
 An English literal passed to a user-facing API fails `npm run lint`, rather than being
 caught in review or not at all.
 
-
 **As** someone maintaining this plugin after the sweep, **I want** an English literal on a
 UI path to fail the build, **so that** the translation does not decay one convenient
 string at a time.

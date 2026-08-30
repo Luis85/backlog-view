@@ -22,7 +22,7 @@ iteration: ""
 ## The decision
 
 The board's drag layer is Atlassian's Pragmatic drag and drop
-(https://github.com/atlassian/pragmatic-drag-and-drop), not a hand-rolled listener set.
+(<https://github.com/atlassian/pragmatic-drag-and-drop>), not a hand-rolled listener set.
 Decided by the maintainer on 2026-08-01, recorded here with the constraints that have
 to hold — open until the verification list at the bottom has been run, not because the
 choice is in doubt.

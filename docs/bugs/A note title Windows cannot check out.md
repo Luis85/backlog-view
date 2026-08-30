@@ -32,7 +32,7 @@ five steps, `git add` took it, and the push succeeded.
 
 The Windows CI job then failed with
 
-```
+```text
 error: invalid path 'docs/issues/Finding 4 — "a few hundred rows" is a comment, not a check.md'
 ```
 

@@ -130,7 +130,6 @@ left to clear.
 | `styles/busy.css`, `.pbl-busy-done` | `text-align: right` | `text-align: end` |
 | `styles/cardChildren.css`, `button.pbl-card-kid` | `text-align: left`, and the four-value `padding` | `text-align: start`, `padding-block` + `padding-inline` |
 
-
 **Two rows of these tables were stale when they were checked on 2026-08-18**, which is the
 hazard a table of selectors carries and the reason to re-derive rather than read: `.pbl-filter`
 went with the quick filter in 0.9.1, and `.pbl-timeline-month` was replaced by the tiered

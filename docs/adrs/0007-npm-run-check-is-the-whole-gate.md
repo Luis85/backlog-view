@@ -21,10 +21,16 @@ each step passes for someone and the combination has never passed for anyone.
 ## Decision
 
 ```bash
-npm run check   # build + lint + coverage-thresholded tests + fallow + docs register
+npm run check   # build + lint + markdown + coverage-thresholded tests + fallow + docs register
 ```
 
-All five must pass before committing. CI runs the identical five steps, in the same order.
+Every step must pass before committing. CI runs the identical steps, in the same order.
+
+**Five when this was written; a sixth joined them on 2026-08-30** — `lint:md`, between `lint` and `test:coverage`. It is
+inside the command rather than beside it for this ADR's own reason, and against the revisit
+condition below: it costs about a second. See
+[ADR 0032](0032-lint-the-markdown-a-person-reads.md) for what it reads and what it refuses to
+have an opinion about.
 
 Each step gates something different:
 
@@ -32,6 +38,7 @@ Each step gates something different:
 | --- | --- |
 | `build` | Typecheck (`tsc -noEmit`) then bundle |
 | `lint` | The Obsidian ruleset, plus **this project's structural rules**: layer direction, the write boundary, ranking over real roots, menu anchoring, level maths, and size budgets |
+| `lint:md` *(added 2026-08-30)* | The Markdown a person reads: a table whose cells outnumber its header, a list or a fence with no blank line around it, a section heading written twice under one parent. What it deliberately has no opinion about, and which documents it does not read at all, is [ADR 0032](0032-lint-the-markdown-a-person-reads.md) |
 | `test:coverage` | The suite, under thresholds that **only ever go up** |
 | `analyze` | fallow: dead code, duplication, complexity/CRAP fed by the coverage file, dependency hygiene |
 | `docs` | The register and the ADRs: hierarchy, sibling orders, wikilinks, source paths, use-case shape, ADR frontmatter, and every module being named by some note. ADR sections must be present *and in order*. Surfaces that need the *code's* values — option keys, command ids — are checked in `test/docs/surfaces.test.ts` instead, by importing the modules and running the registration rather than scanning the source |

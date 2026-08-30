@@ -33,7 +33,6 @@ view option, and a new item is written as `<folder>/<Title>/<Title>.md` instead 
 Flat stays the default and stays the shipped layout. This is a choice about how a backlog
 is filed, not a claim that folders are better.
 
-
 **As** someone who wants a work item to own the folder its attachments and notes live in,
 **I want** new items written as `<folder>/<Title>/<Title>.md`, **so that** the file tree
 and the item tree are the same hierarchy instead of two views that only agree by hand.

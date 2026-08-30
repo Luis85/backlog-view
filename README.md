@@ -61,6 +61,7 @@ unless a section says otherwise.
     property is the "no state, not planned yet" the item was already in — it just becomes
     visible and editable in Obsidian's own property editor, and pickable in the view
     options.
+
 > [!WARNING]
 > **Quote any frontmatter value that contains ` #` before you run this.** In YAML, a hash
 > after a space starts a comment inside an unquoted value, so `source: review of PR #56, and

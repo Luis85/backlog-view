@@ -19,7 +19,6 @@ iteration: ""
 The stylesheet properties that are true today become properties that stay true, enforced
 by `npm run check`.
 
-
 **As** someone adding a style, **I want** the stylesheet's rules enforced by the build,
 **so that** they hold after the person who knew them has stopped reviewing every diff.
 

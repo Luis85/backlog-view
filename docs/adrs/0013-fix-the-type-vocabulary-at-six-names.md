@@ -22,7 +22,7 @@ arbitrary strings. What it bought was a rename.
 
 The vocabulary is **fixed**, as constants, not options:
 
-```
+```text
 LEVELS       = Epic · Feature · PBI · Task
 EXTRA_TYPES  = Issue · Bug · Idea
 MARKER_TYPES = Milestone

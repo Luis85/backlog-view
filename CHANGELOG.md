@@ -24,6 +24,11 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ## [Unreleased]
 
+### Added
+
+- `npm run check` has a sixth step, `lint:md`, gating the Markdown in `docs/` and the
+  root documents.
+
 ## [0.10.0] - 2026-08-30
 
 ### Added

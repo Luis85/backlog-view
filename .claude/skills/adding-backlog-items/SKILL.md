@@ -34,7 +34,8 @@ If the user asks to design or build the thing rather than to record it, that is
 Baseline runs without this skill already research `docs/` for prior art, find the note
 that refused a design, pick a legal parent and a free sibling `order`, and write a note
 that passes `npm run docs`. **None of that is repeated here** — the shapes live in
-`docs/README.md` and the gate is `npm run docs`. Read them; do not restate them.
+`docs/README.md` and `npm run docs` is the step that checks them, inside the `npm run check`
+the close runs. Read them; do not restate them.
 
 What baseline runs failed at, every time, is the whole of this skill:
 
@@ -120,13 +121,19 @@ is right. **This gate is the only thing that unlocks writing.**
 
 1. Write one note to `docs/requirements/<Title>.md`. Frontmatter in the register's
    vocabulary; the basename claimed against every note in `docs/`.
-2. Run `npm run docs` and fix what it reports.
+2. Run `npm run check` and fix what it reports. The full gate, not one step of it: the diff
+   is one markdown note, so **two** of the six read it — the register step, and `lint:md`,
+   which is what refuses a table whose cells outnumber its header
+   (ADR 0032). Root
+   `CLAUDE.md` states the rule unconditionally in any case, and a skill that carves its own
+   exception is where exceptions start. Both skills downstream of this one commit under that
+   rule; the first link is no different.
 3. Commit the note alone. No push, no pull request.
 4. Print exactly this, and nothing else in the block:
 
    For an `Epic` or a `Feature`:
 
-   ```
+   ```text
    Read docs/requirements/<Title>.md. Write an implementation plan for it
    using the writing-plans skill. Do not write code.
    ```
@@ -134,7 +141,7 @@ is right. **This gate is the only thing that unlocks writing.**
    For a `PBI` — a use case holds Tasks, so the next session breaks them out rather
    than planning the code:
 
-   ```
+   ```text
    Read docs/requirements/<Title>.md. Decompose it into its child notes using the
    decompose-pbi skill. Do not write code.
    ```
@@ -146,5 +153,6 @@ is right. **This gate is the only thing that unlocks writing.**
 - You wrote anything to disk to "keep track" before phase 4.
 - You asked three questions in one message to "save the user time".
 - You started sketching the implementation because the design felt settled.
+- The close committed on `npm run docs` alone.
 
 All of these mean: the interview is not finished. Go back to the phase you left.

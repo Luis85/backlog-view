@@ -19,7 +19,6 @@ iteration: ""
 The suite asserts behaviour, not wording, so the whole thing passes in any locale and a
 copy edit does not turn into a red build.
 
-
 **As** someone changing a message, **I want** the suite to assert behaviour rather than
 wording, **so that** a copy edit does not turn into a red build and a locale bug is not
 hidden by tests that only ever ran in English.

@@ -29,7 +29,7 @@ The software design document of 2026-08-16 proposes a five-area structure —
 inward and the domain importing neither Obsidian nor the DOM. This repository already
 enforces a four-layer structure with the same *intent* and different names and edges:
 
-```
+```text
 main → commands → view → storage → domain
 ```
 

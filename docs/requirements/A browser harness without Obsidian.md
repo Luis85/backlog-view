@@ -113,7 +113,7 @@ by a screenshot from here.
   `@media (hover: none)` rule in `styles/touch.css` are outside what it answers. So are a
   dialog, a running filter, the roadmap's open shelf and a focus level (`test/harness/
   knobs.ts`), each of which hides a whole surface behind a control a URL cannot press.
-- The harness costs `npm run check` no sixth step, and costs the PLUGIN no dependency:
+- The harness costs `npm run check` no step of its own, and costs the PLUGIN no dependency:
   nothing it needs is shipped, and nothing it needs drives a browser. It carries one
   devDependency, `lucide-static` — static icon data, no binary to download and no version
   to pin against a browser's. This criterion read "no new dependency" flat until icons

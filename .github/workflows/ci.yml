@@ -36,6 +36,9 @@ jobs:
       - name: Lint (Obsidian plugin guidelines)
         run: npm run lint
 
+      - name: Lint the Markdown a person reads
+        run: npm run lint:md
+
       - name: Run tests with coverage thresholds
         run: npm run test:coverage
 

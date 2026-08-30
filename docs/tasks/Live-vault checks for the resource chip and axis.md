@@ -43,7 +43,7 @@ The base filter is `file.inFolder("docs")`, so both are returned without touchin
 
 `docs/resources/Sarah.md`
 
-```
+```yaml
 ---
 type: Resource
 ---
@@ -51,7 +51,7 @@ type: Resource
 
 `docs/resources/Chris.md`
 
-```
+```yaml
 ---
 type: Resource
 ---

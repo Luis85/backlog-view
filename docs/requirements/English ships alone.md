@@ -24,7 +24,6 @@ is a plugin whose strings all come from a catalog, not a plugin available in fiv
 languages, and shipping a translation nobody on the project can review would be a worse
 first move than shipping none.
 
-
 **As** the maintainer, **I want** the first round to ship English only, **so that** the
 deliverable is a plugin whose strings all come from a catalog rather than a plugin shipping
 a translation nobody on the project can review.

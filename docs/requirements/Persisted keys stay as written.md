@@ -19,7 +19,6 @@ iteration: ""
 Everything the plugin puts in a `.base` file, in localStorage or on disk is byte-identical
 in every locale.
 
-
 **As** someone whose vault is configured in one language and opened in another, **I want**
 everything the plugin persists to be byte-identical across locales, **so that** switching
 language never silently resets my configuration.

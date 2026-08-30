@@ -233,7 +233,6 @@ answered by a function rather than by a screen. The actions that open the dialog
 module that already owns every gated creation flow — and both run `configProblems` before
 opening rather than at submit.
 
-
 `iterationLengthDays` option is declared in `src/domain/viewOptions.ts` and resolved in
 `src/domain/settings.ts`. The two picker entries are drawn in
 `src/view/render/toolbarControls.ts`, where the scope picker itself is. Creating goes

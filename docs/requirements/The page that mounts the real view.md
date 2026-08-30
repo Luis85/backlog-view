@@ -102,7 +102,7 @@ suite.
 - `test/harness/harness.test.ts` mounts it and asserts each projection draws content, so
   a harness that stopped building fails in the suite rather than the next time someone
   looks.
-- No new dependency, and no sixth step in `npm run check`.
+- No new dependency, and no step of its own in `npm run check`.
 
 ## Where it lives
 

@@ -19,7 +19,6 @@ iteration: ""
 The places where the *locale* changes an ordering or a rendering even though no string is
 being translated. Small, easy to miss, and nothing else in this feature will surface them.
 
-
 **As** someone whose language sorts and folds letters differently, **I want** ordering,
 matching and number formatting to follow my locale, **so that** a list reads in my
 alphabet and the filter finds what is plainly on screen.

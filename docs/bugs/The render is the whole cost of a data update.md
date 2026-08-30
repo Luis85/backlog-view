@@ -239,7 +239,7 @@ harness has no screen reader.
 
 ## How to check
 
-```
+```bash
 npm run harness
 ```
 

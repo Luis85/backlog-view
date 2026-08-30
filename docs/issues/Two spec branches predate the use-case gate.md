@@ -38,7 +38,7 @@ not enabled.
 
 That is not a hypothetical this note is guarding against — it is the event:
 
-```
+```text
 docs/requirements/Backlog as folder notes.md: use case has no ## Use case
 docs/requirements/Backlog as folder notes.md: use-case table has no | **Actor** | row
 docs/requirements/Backlog as folder notes.md: **Extensions** block could not be parsed

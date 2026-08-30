@@ -18,10 +18,10 @@ Requires Obsidian 1.12.0+ (Bases custom view API, with config-aware view options
 ## Definition of done
 
 ```bash
-npm run check   # build + lint + coverage-thresholded tests + fallow + docs register
+npm run check   # build + lint + markdown + coverage-thresholded tests + fallow + docs register
 ```
 
-All five must pass before committing; CI runs the same steps, on Ubuntu **and Windows** —
+All six must pass before committing; CI runs the same steps, on Ubuntu **and Windows** —
 paths and line endings are the only things that differ between them, and both have already
 produced a defect this repository could not see. Coverage thresholds
 (vitest.config.mts) only ever go up. Fallow (config: .fallowrc.json) gates dead code,
@@ -88,7 +88,7 @@ Four layers, outermost first. **Each may reach anything below it and nothing abo
 `eslint.config.mjs` enforces this with per-directory `no-restricted-imports`, so a
 violation fails `npm run lint` rather than waiting for review:
 
-```
+```text
 main → commands → view → storage → domain
                     ↘________________↗
 ```
@@ -256,9 +256,14 @@ writer and the view that read them. Both used to sit upstream and made the pure 
 depend on the effectful one.
 
 **Everything `npm run` invokes lives in `scripts/`** — the build, the harness, the vault
-handover, the version bump, and the register gate with its Markdown layer. Two files stay
+handover, the version bump, and the register gate with its Markdown layer. Three files stay
 at the repository root because a TOOL finds them there rather than a script calling them:
-`eslint.config.mjs` (which `eslint .` discovers) and `vitest.config.mts`. Every script
+`eslint.config.mjs` (which `eslint .` discovers), `vitest.config.mts`, and
+`.markdownlint-cli2.jsonc` — the Markdown gate's scope and the CONTRIBUTOR's rule set,
+which ADR 0032 explains and which is the one of the three whose exclusions are a decision
+rather than a default. That set stops at `docs/`: the backlog is a vault its owner writes
+notes in and pushes to `main`, so `docs/.markdownlint.jsonc` holds those notes to the
+rules where a note loses content and to no rule about how it is typed. Every script
 resolves its paths from the WORKING DIRECTORY, not from its own location — npm scripts and
 vitest both run from the root — so `scripts/styles-assemble.mjs` reading `styles/` is
 correct and not a bug waiting to happen. That is stated in the one file where the
@@ -440,7 +445,6 @@ correct rule. Read `docs/issues/The outcome report was built from one sentence.m
 before building it again: the open question is that nothing correlates a Bases pass with
 a write, and a design that needs that correlation cannot be made to work here.
 
-
 ## Claims, and the checks under them
 
 The rules above are the ones this codebase learned from bugs. These are the ones it
@@ -516,7 +520,7 @@ change that was fixing the previous instance.
   a hand-written pattern; ADR 0021 is why patterns over Markdown lost that argument once
   already.
 - Dependencies are noticed by Dependabot and verified by `npm run check` — ADR 0019, which
-  also says why `npm audit` is not a sixth step — and ADR 0022, which keeps it out of
+  also says why `npm audit` is not a step of it — and ADR 0022, which keeps it out of
   `check` for that reason while running `npm audit --omit=dev --audit-level=critical`
   as its own CI job, because "no patched version exists" is a hazard that scales with
   how much of the tree is audited and what ships is three packages. Two upgrades are refused on

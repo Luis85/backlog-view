@@ -9,7 +9,8 @@ prints the prompt a fresh session pastes to run them.
 
 Three outputs:
 
-1. **Edits to the children**, so each one carries what an implementer subagent needs.
+1. **Edits to the outputs** — the children, so each carries what an implementer subagent
+   needs, and the non-child prose this run's close repairs.
 2. **A pointer plan** at `docs/superpowers/plans/YYYY-MM-DD-<pbi-slug>.md` — the file
    `subagent-driven-development` cannot run without, holding no detail of its own.
 3. **An inline copy+paste prompt** naming that plan and the notes, optionally saved as a
@@ -30,21 +31,23 @@ So the plan is written, and made as thin as the tooling allows:
 
 - The header `writing-plans` requires — goal, architecture, and a **Global Constraints**
   section, which carries the reading and the cycle for every task (below).
-- **One `## Task N` per output that is the subagent's *and* still owed**, child or not, in
-  rank order — each naming the note's path and saying to read it. That is the whole
-  generation rule: an output the human owns and an output phase 0 found already landed each
-  get no task. **`N` is the dispatch index, not the note's `order`** — ranks carry gaps and
+- **One `## Task N` per child that is the subagent's *and* still owed**, in rank order —
+  each naming the note's path and saying to read it. That is the whole generation rule: an
+  output the human owns and an output phase 0 found already landed each get no task.
+  **`N` is the dispatch index, not the note's `order`** — ranks carry gaps and
   `task-brief` matches on the integer it is given, so the indices are consecutive from 1
   over the tasks that survive the filter.
-- **An output that carries no rank runs first.** An ADR has no `order` by design, and a new
-  `Test suite` is ranked in the roots' namespace rather than among the PBI's children, so
-  neither has a position in the sequence the children are in. Both are context the ranked
-  work rests on — an ADR states the decision the code is written against, a suite has to
-  exist before a case can hang from it — so they take the low task numbers, in the order
-  phase 2 named them, and the ranked children follow. Interleaving them by a rank they do
-  not share is the failure this rule prevents.
+- **Every task is a child, so every task carries a rank.** The only two outputs with no
+  `order` are the ADR and the `Test suite` — and those are exactly the two `decompose-pbi`
+  writes complete at decomposition, which phase 2 assigns to this run's own close rather
+  than to the subagent. So there is no rankless work left to interleave, and the plan's
+  sequence is the children's own. An earlier draft of this design gave those two the low
+  task numbers instead, which handed an implementer a pointer to prose already on disk:
+  nothing to do, and an implementer with nothing to do writes something.
 - Everything filtered out is **named in the header** with the reason — the human's outputs
-  as what this run will not deliver, the landed ones as already done. Named, because a plan
+  as what this run will not deliver, the landed ones as already done, the ADR and the suite
+  as prose the decomposition wrote and this close repaired, and an earlier run's handoff as
+  superseded and dropped. Named, because a plan
   that silently omits them reads as a decomposition someone forgot half of; not tasked,
   because a `Test case` is a live vault, an open-question `Issue` is a question the work
   cannot answer, and re-dispatching landed work is how a partially implemented PBI gets
@@ -89,13 +92,19 @@ So the reading is placed where it actually travels, in two halves:
   every implementer, which is why the header cannot be skipped — and why each pointer task
   names it again, for the reason the close gives below.
 
-  **That cycle is for the tasks that write code.** A decision-or-limitation `Issue`, an ADR
-  and a `Test suite` are prose by definition, and there is no behaviour to make fail first —
-  a brief demanding red-green from one is unsatisfiable, and an implementer handed an
-  impossible instruction invents a test to satisfy it. Those tasks run write,
+  **That cycle is for the tasks that write code.** A decision-or-limitation `Issue` and a
+  subagent-owned `Deliverable` are prose by definition, and there is no behaviour to make
+  fail first — a brief demanding red-green from one is unsatisfiable, and an implementer
+  handed an impossible instruction invents a test to satisfy it. Those tasks run write,
   `npm run check`, commit: same gate, same commit discipline, no red step. Global
   Constraints says which cycle each kind of output takes rather than stating one and
-  hoping.
+  hoping. **A `Deliverable` is on that list by definition rather than by inspection** —
+  `decompose-pbi` types a non-code artifact as one, so a code-bearing Deliverable is not a
+  case that arises — and it is named because the shape it closes by is settled per run
+  rather than by the register, which reads as a reason to say nothing about it and is not
+  one. An ADR and a `Test suite` are prose too and are absent from this list for the
+  opposite reason: no task reaches either, so a constraint about them would be a rule
+  handed to implementers who cannot act on it.
 - **Each pointer task** names the layer guide for the layer *it* touches —
   `src/domain/CLAUDE.md`, `src/storage/CLAUDE.md`, `src/view/CLAUDE.md` — beside the note
   path, **and names the plan's own `## Global Constraints` by path as required reading**.
@@ -135,16 +144,26 @@ says it in the two places that travel:
   for it — an `## Outcome` only if that shape has one, since the register documents none and
   inventing the heading here would undo the asking — and it takes no `closed:` key, which the
   register limits to Tasks, Issues and Bugs.
-  **A `Test suite` is written and never closed.** Every suite in `docs/tests/suites/` is
-  `Open`, because a suite is a persistent container for live-vault cases that are re-walked
-  at each release and `RELEASING.md`'s sweep reads them. Writing its prose is the task;
-  closing it would report a verification nobody has run.
-  **That shape is also the backlog's, and an ADR is not a backlog item.** `docs/adrs/README.md`
-  gives it `adr`, `title`, `status`, `date` and `area`, where `status` is `Accepted`,
-  `Proposed` or `Superseded` and there is no `closed:` and no `## Outcome` — so an ADR task
-  is done when the record is written and its status is `Accepted`, and writing `Done` there
-  is a value the register does not have. The constraint says both shapes and which output
-  takes which, because a task told to do the impossible does the nearest thing instead.
+  **The `Test suite`'s shape and the ADR's are not in this section**, and their absence is
+  the rule rather than an omission: no task reaches either, since phase 2 assigns both to
+  this run's own close, so a constraint describing how to close them would be a rule handed
+  to implementers who cannot act on it. Both rules live where the writing happens — close
+  step 1. A `Test suite` is written and never closed: every suite in `docs/tests/suites/` is
+  `Open`, because a suite is a persistent container for live-vault cases re-walked at each
+  release and `RELEASING.md`'s sweep reads them, and closing one would report a verification
+  nobody has run. An ADR is not a backlog item at all — `docs/adrs/README.md` gives it `adr`,
+  `title`, `status`, `date` and `area`, where `status` is `Accepted`, `Proposed` or
+  `Superseded` and there is no `closed:` and no `## Outcome` — so it is done when the record
+  is written and its status is `Accepted`, and writing `Done` there is a value the register
+  does not have.
+  **The PBI itself is in neither place, because nothing closes it.** Every output reaching
+  `Done` is a different claim from the use case's guarantee holding: acceptance criteria are
+  read against the flow a person walks, and a PBI whose verification is a `Test case` cannot
+  be judged by anything that never opened Obsidian. It keeps `status: Open` through this run
+  and through the run the prompt starts, and the human closes it after the walk — decided
+  that way rather than left that way. A run that flipped it on the strength of its children
+  being closed would report a verification nobody performed, which is the same defect as
+  closing a `Test suite`.
 - **The prompt's last step**, controller-owned rather than a task: once every task is
   through, close the saved handoff `Task` the same way, **then run `npm run check` and
   commit it**. It is excluded from dispatch, so no task's own cycle covers this write, and
@@ -167,8 +186,12 @@ brief that forgot its values.
 
 ## Scope, and what it refuses
 
-- The subject is **one PBI that has already been decomposed**. No children means the
-  decomposition has not happened: stop and send the user to `decompose-pbi`.
+- The subject is **one PBI that has already been decomposed**. No outputs *at all* means
+  the decomposition has not happened: stop and send the user to `decompose-pbi`. Children
+  are not the test, and the refusal is applied in phase 0 rather than before it — a
+  decomposition can produce a `Test case`, its `Test suite` and an ADR and no child at all,
+  none of which carries a `parent`, so a refusal that fires on an empty `parent` search
+  sends a decomposed PBI back to be decomposed again.
 - A note that is not a `PBI` is refused the same way `decompose-pbi` refuses one — an
   `Epic` or a `Feature` holds requirements, not Tasks.
 - It never re-opens the PBI. A child that contradicts the use case goes back to
@@ -184,6 +207,19 @@ done in is stated — and that Feature's `Epic`, every note naming the PBI as `p
 every note that links to it **without** being its child. That last search is what finds the
 `Test case`, the `Test suite` and the ADR a decomposition produced: none of them carries a
 `parent`, so a `[[wikilink]]` search over `docs/` is the only thing that sees them.
+
+**That search returns candidates, and a second test turns a candidate into an output.** A
+link is not evidence of parentage, and most of the register's links are not: a limitation
+note names the PBI whose property it cannot migrate, a sibling use case names the rule it
+rests on, a plan cites the one it argued from. `decompose-pbi`'s close supplies the test —
+every output it writes names the PBI as a `[[wikilink]]` in the sentence saying **what
+produced it** — which sits wherever that type's shape puts that sentence: the `Evidence`
+section of a `Task`, `## Why this exists` in a `Test case`, the first paragraph in the rest.
+Requiring the first paragraph is what rejects a real one, since a `Test case` opens with a
+fixed lead and says what produced it in the heading below (Codex, PR #233).
+A candidate whose only mention sits anywhere else is an unrelated note and is left
+alone. Without the test the cost is not a wasted read: an unrelated note taken for an output
+is assigned an owner, given a task, and closed by a run that had no business touching it.
 
 ## Where the execution detail lands
 
@@ -243,15 +279,16 @@ work somebody is going to do. An `Idea` and an open-question `Issue` are the hum
 run that asked them for a failing test would either stall or invent one. So settle ownership
 by the table under *Not every child is executable*, then ask these rows of the outputs the
 subagent will execute. The human's are named, and the phase exits on them being named rather
-than on them being executable.
+than on them being executable — and the two the decomposition already wrote are named the
+same way, since neither is work anybody is about to do.
 
 **And the rows are engineering questions, so they reach the code-bearing outputs only.** The
-same split the cycle already uses holds here: a decision-or-limitation `Issue`, an ADR and a
-`Test suite` are prose the subagent writes, with no behaviour to make fail, no coverage to
-move and no lint rule to refuse them. Asking those four rows of one stalls the phase or
-invents engineering detail for a record that has none. What a prose output is asked is what
-it can answer — what produced it, what it must say, and what would make it wrong — and
-`docs/adrs/README.md`'s five things are that question for an ADR.
+same split the cycle already uses holds here: a decision-or-limitation `Issue`, a
+subagent-owned `Deliverable`, an ADR and a `Test suite` are prose, with no behaviour to make
+fail, no coverage to move and no lint rule to refuse them. Asking those four rows of any of
+them stalls the phase or invents engineering detail for a record that has none. What a prose
+output is asked is what it can answer — what produced it, what it must say, and what would
+make it wrong — and `docs/adrs/README.md`'s five things are that question for an ADR.
 
 | Row | The question |
 | --- | --- |
@@ -300,28 +337,65 @@ in its `Approach`, not as a surprise for the implementer.
 
 ### Not every child is executable
 
-The same pass assigns **every output — child or not — to the subagent or to the human**, and
-that assignment decides which get a `## Task N` in the plan. Assigning only the non-child
-outputs would send an intentionally unanswerable note through the TDD loop, because
+The same pass assigns **every output — child or not — to the subagent, to the human, or to
+this run's own close**, and that assignment decides which get a `## Task N` in the plan.
+There is no fourth bucket for an output nobody owns: an earlier run's superseded handoff was
+one until 2026-08-30, and leaving it ownerless left it `Open` in the backlog for good, which
+is the state this phase's own red flag names.
+Assigning only the non-child outputs would send an intentionally unanswerable note through
+the TDD loop, because
 `decompose-pbi` deliberately produces children that are not implementable:
 
 | Output | Whose | Why |
 | --- | --- | --- |
 | A `Task` | The subagent's | It is engineering work with a test |
+| A `Task` whose **first body line declares it a handoff** — the line after its frontmatter, not the `---` that opens it | This run's close | It is an earlier run's prompt, not work, so it gets no task — and **its own `status` decides what the close does with it, which is a write in one case only.** Still `Open`: this pass supersedes it and the close **drops** it — `status: Dropped`, `closed:` dated, one line naming **this run**, not a successor note, since the save question has a real no and the no-work path never asks it. Already `Done`: its run happened, so it is a record and is named as already landed and left alone — rewriting it to `Dropped` would turn a completed execution into a refusal. Already `Dropped`: an earlier rerun retired it, and re-dating it says a second run refused what one already had. `Done` is never written here either way, which would report a run that did not happen; `docs/README.md` gives `Dropped` for exactly the open case, "refused, kept for the record" |
 | An `Issue` holding an **open question** | The human's | The work cannot settle it; that is why it is an Issue |
 | An `Issue` recording a **decision or a limitation** | The subagent's | It is prose stating something already settled |
 | A `Bug` | The subagent's | A defect with a fix and a test, and `docs/README.md` gives it a shape — the same work a `Task` is |
 | An `Improvement` | The subagent's | Engineering work like a `Task`, but the register gives it no `closed:` key — the closing rule says how |
 | An `Idea` | The human's | A proposal nobody has committed to. Implementing an Idea decides it, which is not this run's call |
 | A `Deliverable` | Ask | A non-code artifact may be either, and the register documents no shape for it |
-| An ADR *(not a child)* | The subagent's | Prose it can write — but only once phase 2 has read the five things `docs/adrs/README.md` wants and found them there |
-| A `Test suite` *(not a child)* | The subagent's | Prose saying what the group walks; it checks nothing itself, and it must exist before a case can hang from it. Written, never closed — it stays `Open` while its cases are re-walked |
+| An ADR *(not a child)* | This run's close | `decompose-pbi` already wrote it. Phase 2 reads the five things `docs/adrs/README.md` wants; whatever is missing is supplied here and written at close step 1, never dispatched |
+| A `Test suite` *(not a child)* | This run's close | `decompose-pbi` already wrote it too — prose saying what the group walks, checking nothing itself. Repaired here if phase 2 finds it thin. Written, never closed — it stays `Open` while its cases are re-walked |
 | A `Test case` *(not a child)* | The human's | A live vault, which no subagent reaches — Obsidian cannot run here |
 
 **Every type the register lets a PBI hold has a row.** `docs/README.md` makes a PBI's legal
 children `Task`, `Issue`, `Bug`, `Idea`, `Deliverable` and `Improvement`; phase 2 cannot
 exit until each output is assigned, so a type with no row is a phase that cannot close over
 a legal decomposition.
+
+**The third bucket is three rows, and what they share is that this run writes them itself.**
+An ADR and a `Test suite` are the two outputs `decompose-pbi` writes *complete* at
+decomposition — the ADR under `docs/adrs/README.md`'s conventions with its index entry, the
+suite as the shortest of the ones already in `docs/tests/suites/`. Neither is work owed to
+anybody, so neither is the subagent's: phase 2 reads them, and whatever they still need is
+written by this skill at close step 1 beside the children's edits. That is what keeps them
+out of the plan's task list, and it is why the two-bucket split this design first drew was
+wrong — with only "the subagent's" available, prose already on disk read as prose somebody
+had to write.
+
+A superseded handoff is the third row, and it is here for the opposite reason: not because it
+is already finished but because, while it is still `Open`, it never will be, and something
+has to retire it. One already `Done` is a record of a run that happened and needs nothing;
+one already `Dropped` was retired by an earlier rerun. The close
+**drops** it rather than completing it, when it is still `Open` — `status: Dropped`,
+`closed:` dated, one line naming
+this refinement pass as what superseded it — never the note step 4 may write, since the save
+question has a real no and the no-work path never asks it. `Done` would report a run that
+never happened, which is the
+defect the PBI's own closure rule and the `Test suite`'s both guard against; `docs/README.md`
+gives `Dropped` for exactly this case, "refused, kept for the record", so nothing has to be
+invented for it.
+
+The handoff row is the same kind of correction. The saved note is a `Task` child, so on a
+rerun the `Task` row above sends it to the subagent and the plan dispatches an implementer
+to run the prompt it is already running. The note's self-declaring first body line — the one after its frontmatter, since a `Task` is
+written with frontmatter and a physical first line would be the `---` — is the marker;
+this row is the rule that acts on it, and a marker with no rule behind it stops nothing. The
+row does two things, because stopping the dispatch was only half of it: the older note is
+also dropped by this run's close when it is still `Open`, since a handoff nobody will execute and nobody retires sits
+`Open` in the backlog for good.
 
 The human's outputs are **named in the plan's header, never given a task**. They are still
 part of the picture — the prompt reads them as context, and the readback shows the split —
@@ -336,23 +410,28 @@ what each rejected option cost, what got harder and what would revisit it before
 the record — but an older decomposition may not have, and `npm run docs` cannot tell:
 `docs/README.md` says the gate sees whether a heading is present and never whether the
 paragraph under it says anything. So phase 2 opens the record and reads the five. Empty
-headings under a passing gate are the failure, and the answer is the same as an unanswered
-shape — the output is blocked, and the readback says so.
+headings under a passing gate are the failure, and what follows is the shape question's own
+sequence: ask the user for what is missing, write the answers into the record at close step
+1, and — where the answers do not come — block the output and say so in the readback.
+Writing the five from what the code seems to imply is what that replaces; the ADR records a
+decision somebody took, and nobody here took it.
 
 **Exit when** every child is either "executable as written" or has an answer to write into
-it, **every output, child or not, is assigned** to the subagent or to the human, and
-**nothing is left blocked**. Blocked is a real state this phase can reach — a shape the
-register does not document and nobody has settled, an ADR whose five headings are empty, an
-open question the work cannot start without — and it belongs to non-child outputs as much as
-to children, which the first clause alone does not reach. A blocked output gets no task: the
-plan omits it, its header names it as blocked, and the readback says which and why. The gate
+it, **every output, child or not, is assigned** to the subagent, to the human, to this
+run's close, and **nothing is left blocked**. Blocked is a real state this phase can reach —
+a shape the register does not document and nobody has settled, an ADR whose five headings are
+empty, an open question the work cannot start without — and it belongs to non-child outputs
+as much as to children, which the first clause alone does not reach. A blocked output gets
+neither a task nor a repair: the plan omits it, its header names it as blocked, and the
+readback says which and why. The gate
 does not pass on the strength of an owner alone.
 
 ### Phase 3 — the readback gate
 
 Read the ordered set back: each output with its rank, **whose it is**, and one sentence of
 what gets delivered — the subagent's as the task it becomes, the human's as the thing the
-run will not do — plus what you are still assuming.
+run will not do, this run's close's as what it repairs or drops before committing — plus what you are
+still assuming.
 
 **Exit when the user has answered.** The readback is a question, not an announcement — a
 mistaken order or a misread deliverable is caught here or not at all.
@@ -384,16 +463,30 @@ The `[Unreleased]` changelog row is part of done for a child that earns one.
 or every remaining one the human's — steps 2, 3, 4 and 7 do not happen: no plan, no save
 question, no prompt. Asking whether to save "this prompt" when there is no prompt would
 write a handoff `Task` whose `Approach` points at a plan that was never created. The
-children's edits are still written and committed, and the close says what remains and whose
-it is. Everything below assumes there is work.
+children's edits are still written, and the gate and the commit run **only if there were
+any**: a run that found the remainder executable as written leaves the tree clean, and an
+empty commit is not how that is reported. The close says what remains and whose it is either
+way. Everything below assumes there is work.
 
 Otherwise, in this order, so the work lands in one commit and the prompt is the last thing
 on screen:
 
 1. Write every refined output's edits — the children, and the non-child outputs phase 2
-   repaired, an ADR whose five things were supplied among them. The plan and the prompt only
-   point at those notes; nothing carries the phase's conversation, so an edit left unwritten
-   is an edit the implementer never sees.
+   repaired: an ADR whose five things were supplied, a `Test suite` phase 2 found thin. The
+   plan and the prompt only point at those notes; nothing carries the phase's conversation,
+   so an edit left unwritten is an edit the implementer never sees. **This step is the only
+   place those two are written**, since neither is dispatched — an ADR closes at
+   `status: Accepted` with no `closed:` and no `## Outcome`, and a `Test suite` stays `Open`
+   because it is a container for cases re-walked at each release. **An earlier run's
+   superseded handoff is dropped in this same step, when it is still `Open`** —
+   `status: Dropped`, `closed:` dated,
+   one line naming **this refinement pass** as what superseded it — for the same reason:
+   nothing downstream touches it, so a step that skipped it would leave it `Open` for good.
+   **What supersedes it is the pass, never the note step 4 may write.** Step 3's question
+   has a real no and the no-work path never reaches it, so a line naming the replacement
+   would be one this step cannot always write — and the old prompt is stale either way,
+   since it enumerates outputs by path from before this run's edits and names a plan this
+   run did not write.
 2. Write the pointer plan.
 3. Ask the save question.
 4. Write the `Task` note if the answer is yes.
@@ -416,18 +509,25 @@ Fenced, and nothing else in the block:
   sees this prompt
 - read `docs/requirements/<Title>.md`, then its children **by path, in rank order** — a
   saved handoff `Task` is **not** among them (below)
-- read every non-child output **by path**, each marked subagent's or human's
+- read every non-child output **by path**, each marked as the human's or as prose already
+  written — the ADR and the `Test suite` are context to write against, not work
 - execute with `superpowers:subagent-driven-development` against
   `docs/superpowers/plans/<file>.md`, whose every task points at one of those notes
-- for a task that writes code: red, green, `npm run check`, then commit — all five steps
-  pass before the commit, never after. For a prose task — a decision-or-limitation `Issue`,
-  an ADR, a `Test suite` — write, `npm run check`, commit: same gate, no red step, because
+- for a task that writes code: red, green, `npm run check`, then commit — every step passes
+  before the commit, never after. For a prose task — a decision-or-limitation `Issue`,
+  a `Deliverable` — write, `npm run check`, commit: same gate, no red step, because
   there is no behaviour to make fail first
-- close each output in the shape its type owes, as Global Constraints states
+- close each note **a plan task dispatched you to**, in the shape its type owes, as Global
+  Constraints states — and nothing else, save the one exception the bullet below states for
+  itself when this prompt carries it. The notes two bullets up are context: an ADR and a
+  `Test suite` are already written, a suite stays `Open` because its cases are re-walked at
+  each release, and a `Test case` is a walk in a live vault nobody in this run can perform.
+  Closing one of those reports a verification that did not happen
 - *(only when a handoff was saved)* when every task is through, close the saved handoff
   `Task` the same way, then `npm run check` and commit — nothing else will, since it is
   not dispatched
-- do not re-open the PBI — a child that contradicts it goes back to `adding-backlog-items`
+- do not re-open the PBI — a child that contradicts it goes back to `adding-backlog-items` —
+  and do not close it either: whether its guarantee holds is a walk only the human makes
 
 Naming the non-child outputs is not decoration, for the same reason `decompose-pbi`'s
 handoff names them: a `Test case`, its `Test suite` and an ADR are unreachable from the
@@ -447,9 +547,12 @@ shut, and both are needed because they fail differently:
 
 - **The prompt enumerates the children it executes by path.** A path list cannot pick up a
   note written after it, so the saved note is outside the set by construction.
-- **The saved note says so in its own first line** — *this note is the handoff, not a task
+- **The saved note says so in its own first body line**, after its frontmatter — *this note is the handoff, not a task
   to implement.* That is what a later run catches, since a rerun re-derives the children
-  from `parent` and would otherwise find it there.
+  from `parent` and would otherwise find it there. **The line is a marker; the ownership
+  table's own row is what acts on it.** Without that row the first guard fails exactly where
+  it was meant to hold: the rerun's path list is a fresh one built from the rerun's own
+  children, and it names the saved note because the note is one of them.
 
 Its own `Outcome` is what closes it: the note is done when the run it handed off is done,
 which is the same condition as its `Acceptance criteria` below.
@@ -469,6 +572,10 @@ On yes, one note at the next free rank among the PBI's children, in the shape
 ## Red flags — stop and go back
 
 - A phase's exit gate asks for less than that phase's walk covered.
+- A note that merely mentions the PBI was taken for an output of its decomposition, because
+  the `[[wikilink]]` search found it.
+- A PBI was sent back to `decompose-pbi` for having no children, when its decomposition
+  produced only outputs that carry no `parent`.
 - A child went unmentioned in phase 2 because it "obviously fits".
 - The prompt paraphrases a rule that lives in a guide.
 - Execution detail went into the prompt instead of the note.
@@ -487,10 +594,18 @@ On yes, one note at the next free rank among the PBI's children, in the shape
   `## Outcome` unwritten on an output whose shape has one. A `Test suite` staying `Open` is
   the rule, not this flag — the flag below is the one that watches it.
 - An edit phase 2 agreed was never written, so the implementer read the note unchanged.
-- An ADR task was told to write `status: Done`, or to add a `closed:` or an `## Outcome`.
+- An ADR this close repaired was left without `status: Accepted`, or given a `closed:` key
+  or an `## Outcome` the record does not have.
 - A prose-only task was given a red-green cycle it cannot satisfy.
 - A `Test suite` was closed because its prose was written.
-- An output with no rank was given a task number among the ranked children.
+- A superseded handoff was left `Open`, or was closed `Done` as though the run it handed off
+  had happened, or was dropped with a line naming a successor note this run never wrote.
+- A handoff already `Done` was rewritten to `Dropped` by a rerun, turning the record of a run
+  that happened into a refusal — or one already `Dropped` was re-dated by a second one.
+- The prompt told the executor to "close each output", so a note no task dispatched — a
+  human's `Test case`, an already-written ADR or suite — was in scope for closing.
+- An ADR or a `Test suite` was given a `## Task N`, though `decompose-pbi` wrote it at
+  decomposition and the task would hand an implementer nothing to do.
 - The prompt told a run to close a handoff the user declined to save.
 - The controller's own close was left in the working tree, with no gate and no commit.
 - An empty plan was written, and a prompt printed, for a PBI with no work left in it.
@@ -498,10 +613,16 @@ On yes, one note at the next free rank among the PBI's children, in the shape
 - An `Issue` or a `Deliverable` was closed with an `## Outcome` its shape does not have.
 - A `Deliverable` gained a `closed:` key the register does not give it.
 - The prompt told every task to run red-green, including the prose ones.
+- A subagent-owned `Deliverable` went unnamed in the prose list, so a non-code artifact was
+  left to a cycle that asks it for a failing test.
 - A rerun overwrote the earlier plan at the same path, inheriting its ledger.
 - A saved handoff promised to close siblings the run was never going to touch.
 - A child was re-scoped to fit the order, instead of the order being corrected.
 - The saved handoff `Task` appears in the set of outputs the prompt executes.
+- An earlier run's saved handoff was given a `## Task N` on a rerun, because the ownership
+  table sends every `Task` to the subagent.
 - The prompt puts the commit before `npm run check`.
+- The PBI was closed because its children were, or because the run reached the end.
+- The no-work path took an empty commit to have something to show for itself.
 - You wrote a note before phase 3 to keep track.
 - You started writing source code.

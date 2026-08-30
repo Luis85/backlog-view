@@ -198,19 +198,22 @@ the gate not happening.
 
    Whatever the shape, the note says what produced it — the PBI slice or the perspective
    row — rather than opening with a proposal. In a `Task` that is the `Evidence` section by
-   name; in the others it is the first paragraph. Name the PBI there as a **`[[wikilink]]`**,
+   name; in a `Test case` it is `## Why this exists`, below the fixed lead that type opens
+   with; in the others it is the first paragraph. Name the PBI there as a **`[[wikilink]]`**,
    not in prose, and in every output including the ones that are not its children: a
    `Test case`, a `Test suite` and an ADR carry no `parent`, so that link is the only thing
    a rerun's phase 0 search can find them by, and prose naming the same PBI is invisible
    to it.
-2. Run `npm run check` and fix what it reports. The full gate, not `npm run docs` alone:
-   the diff is markdown under `docs/`, so the register step is realistically the only one
-   of the five with anything to say about it, but root `CLAUDE.md` states the rule
-   unconditionally and a skill that carves its own exception is where exceptions start.
+2. Run `npm run check` and fix what it reports. The full gate, not one step of it: the
+   diff is markdown under `docs/`, so **two** of the six read it — the register step, and
+   `lint:md`, which is what refuses a table whose cells outnumber its header
+   (ADR 0032). Root
+   `CLAUDE.md` states the rule unconditionally in any case, and a skill that carves its own
+   exception is where exceptions start.
 3. Commit the notes alone. No push, no pull request.
 4. Print exactly this, and nothing else in the block:
 
-   ```
+   ```text
    Read docs/requirements/<Title>.md and its child notes, plus <every output that is
    not one of its children, by path>. Make it executable using the resolve-pbi skill.
    Do not write code.

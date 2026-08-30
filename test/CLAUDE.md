@@ -311,4 +311,4 @@ unanswerable is a USER's colours — a community theme replaces exactly these va
 accent is picked in settings — so this replaces NO live-vault
 verification, and asserting appearance from it is refused in
 [ADR 0020](../docs/adrs/0020-the-browser-harness-draws-it-does-not-assert.md): no
-baselines, no screenshot suite, no sixth step in `npm run check`.
+baselines, no screenshot suite, no step of its own in `npm run check`.

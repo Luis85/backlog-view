@@ -3,7 +3,7 @@
 A new skill at `.claude/skills/adding-backlog-items/SKILL.md`. It interviews the
 product owner until both sides share one understanding of a wanted `Epic`,
 `Feature` or `PBI`, then writes that item into `docs/requirements/` in this
-register's own shape, verifies it against `npm run docs`, commits it, and offers a
+register's own shape, verifies it against `npm run check`, commits it, and offers a
 copy-and-paste prompt for a fresh session that will plan the implementation.
 
 It writes no source code.
@@ -162,9 +162,14 @@ On approval, in order:
    `parent` as a quoted wikilink **for a `Feature` and a `PBI`**. An `Epic` gets no
    `parent` key at all. The basename is claimed against every note in `docs/` — a
    collision makes every `[[wikilink]]` and `parent:` to either one ambiguous.
-2. Run `npm run docs` and fix what it reports. This is the skill's own gate. It
+2. Run `npm run check` and fix what it reports. The register step inside it is what
    catches the duplicate sibling order, the illegal parent, the unresolved wikilink
-   and the missing use-case section, so the skill restates none of those rules.
+   and the missing use-case section, so the skill restates none of those rules — and it
+   is the whole gate rather than that step alone, because root `CLAUDE.md` states the
+   rule unconditionally and a skill that carves its own exception is where exceptions
+   start. (This design first said `npm run docs`; the run measured below was made under
+   that wording, and the other two skills in the chain were corrected to `npm run check`
+   before it was.)
 3. Commit the note alone. No push and no pull request: a backlog note is not a branch
    of work.
 4. Print the handoff prompt as a fenced block with nothing else inside it:
