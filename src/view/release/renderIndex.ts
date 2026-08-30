@@ -522,8 +522,9 @@ function drawAbsences(listEl: HTMLElement, rows: ReleaseRow[]): void {
  */
 export function drawUnresolved(listEl: HTMLElement, index: ReleaseIndex, collision: string | null): void {
 	const count = index.unresolved.length;
-	if (count === 0) return;
-	note(listEl, 'circle-alert', t('release.index.unresolved', { count })).addClass('pbl-rel-unresolved');
+	if (count > 0) {
+		note(listEl, 'circle-alert', t('release.index.unresolved', { count })).addClass('pbl-rel-unresolved');
+	}
 	// The count is the whole of the signal a reader gets — nothing on screen says WHICH
 	// notes were counted — so a configuration that produces the count spuriously reads as
 	// work they have mis-assigned. Aiming the membership key at a property the plan or a
@@ -535,9 +536,18 @@ export function drawUnresolved(listEl: HTMLElement, index: ReleaseIndex, collisi
 	// one mis-binding and leaves the reader looking at a plugin that lost their data
 	// instead of a binding they can change.
 	//
-	// Drawn only WITH the count, never alone: a collision that produced no unresolved
-	// membership has explained nothing, and a line about a binding under an otherwise
-	// correct list is noise.
+	// **Drawn whenever there is a collision, with or without a count.** This said the
+	// opposite for one commit — drawn only WITH the count, on the reasoning that a
+	// collision producing no unresolved membership has explained nothing — and the
+	// reasoning was wrong. Aiming the membership key at a property only a RELEASE note
+	// carries (the released date, say) means no work item carries it at all: nothing
+	// resolves, so nothing is unresolved, the count is ZERO, and every release reads
+	// `No items yet` with the line that would explain it withheld. That is the quietest
+	// state this screen has, and it was the one being kept quiet.
+	//
+	// A collision is never a state a correct base is in — `membershipCollision` answers
+	// non-null only where the membership key is aimed at a property something else owns —
+	// so there is no reading of it that is noise.
 	if (collision !== null) note(listEl, 'settings-2', collision).addClass('pbl-rel-unresolved-why');
 }
 

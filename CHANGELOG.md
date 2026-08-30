@@ -147,8 +147,9 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 - No screen offers `Iteration` or `Release` under `New` or `Set type` any more. The
   requirements board still did, and the note it made vanished from the board that made it.
-- The release index says which binding produced its unresolved count, instead of reporting
-  work you had never mis-assigned.
+- The release index says which binding is wrong when the membership property is aimed at a
+  property something else owns — instead of reporting work you had never mis-assigned, or
+  showing `No items yet` on every release with nothing to explain it.
 - A release whose vault has no statuses yet can be given one.
 - A release can no longer lose its type to an editor left open.
 - A release band that cannot compute its own progress says so, instead of showing nothing.

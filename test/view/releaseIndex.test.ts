@@ -167,11 +167,26 @@ describe('the release index', () => {
 		// rather than only the news that one is wrong.
 		expect(why?.textContent).toContain('status');
 
-		// And only beside the count: a correct base draws neither line, so an explanation
-		// with nothing to explain is never on screen.
+		// A correct base draws neither line, so an explanation with nothing to explain is
+		// never on screen.
 		const clean = makeReleaseView(releaseVault(), RELEASE_CONFIG);
 		expect(clean.containerEl.querySelector('.pbl-rel-unresolved')).toBeNull();
 		expect(clean.containerEl.querySelector('.pbl-rel-unresolved-why')).toBeNull();
+	});
+
+	it('names the binding even where the collision leaves nothing to count', () => {
+		// The quietest state this screen has, and the one a first draft of the line above
+		// kept quiet. Aimed at a property only a RELEASE note carries, the membership key
+		// is on no work item at all — so nothing resolves, nothing is UNRESOLVED, the count
+		// is zero, and every release reads `No items yet` with no other signal anywhere.
+		// Verified against the fixture before this was written: the released-date binding
+		// empties all four bands while reporting zero unresolved.
+		const { containerEl } = makeReleaseView(releaseVault(), {
+			...RELEASE_CONFIG,
+			membershipProperty: 'note.released',
+		});
+		expect(containerEl.querySelector('.pbl-rel-unresolved')).toBeNull();
+		expect(containerEl.querySelector('.pbl-rel-unresolved-why')?.textContent).toContain('released');
 	});
 
 	it('plans no write', async () => {
