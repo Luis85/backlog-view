@@ -397,8 +397,9 @@ On yes, one note at the next free rank among the PBI's children, in the `Task` s
 - A rule that every implementer needs was written into the prompt alone, where only the
   controller reads it.
 - The plan gave a task to an output the human owns, or to one phase 0 found already landed.
-- A run finished with its outputs left `Open`, or with an `## Outcome` unwritten on an output
-  whose shape has one.
+- A run finished with an output left `Open` that its type says should close, or with an
+  `## Outcome` unwritten on an output whose shape has one. A `Test suite` staying `Open` is
+  the rule, not this flag — the flag below is the one that watches it.
 - An edit phase 2 agreed was never written, so the implementer read the note unchanged.
 - An ADR task was told to write `status: Done`, or to add a `closed:` or an `## Outcome`.
 - A prose-only task was given a red-green cycle it cannot satisfy.
