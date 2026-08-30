@@ -65,7 +65,7 @@ as still owed or as already done.
 ## Phase 1 — the order
 
 `order` is a rank, not a dependency graph. Walk the children in rank against the Feature's
-`## Landmines` from phase 0 — the only place the order the work must be done in is stated.
+`## Landmines` from phase 0.
 
 Two outcomes, and they are different repairs:
 
@@ -99,6 +99,13 @@ test file, which assertion, which threshold.
 | What would refuse it | The 400-line cap, the layer's `no-restricted-imports`, the write-boundary ban |
 | Risks | Is there one worth naming? |
 
+**Every answer lands in the note, and four of the rows do not say where.** `Evidence`,
+`Approach`, `Acceptance criteria` and `Risks` name their own section. The other four do not
+have one: the files, the failing test, the coverage move and what would refuse the work all
+belong in the `Approach`, as the steps that carry them out. Put them there rather than
+inventing a heading — a shape the register does not document is `decompose-pbi`'s own red
+flag, one skill upstream.
+
 The failing-test row is the specific assertion, never "add tests". Where the child's whole
 deliverable is an invariant, root `CLAUDE.md`'s rule applies and belongs in the `Approach`:
 the test is **watched failing** — revert the fix, run it, see red, restore.
@@ -120,10 +127,10 @@ implementable:
 | An `Issue` holding an **open question** | The human's | The work cannot settle it; that is why it is an Issue |
 | An `Issue` recording a **decision or a limitation** | The subagent's | It is prose stating something already settled |
 | A `Bug` | The subagent's | A defect with a fix and a test, and `docs/README.md` gives it a shape — the same work a `Task` is |
-| An `Improvement` | The subagent's | Engineering work like a `Task`, and it closes the same way |
+| An `Improvement` | The subagent's | Engineering work like a `Task`, but the register gives it no `closed:` key — the closing rule says how |
 | An `Idea` | The human's | A proposal nobody has committed to. Implementing an Idea decides it, which is not this run's call |
 | A `Deliverable` | Ask | A non-code artifact may be either, and the register documents no shape for it |
-| An ADR *(not a child)* | The subagent's | Prose it can write, once phase 2 has the five things `docs/adrs/README.md` wants |
+| An ADR *(not a child)* | The subagent's | Prose it can write, from the five things `docs/adrs/README.md` wants — which `decompose-pbi` collected before it wrote the record |
 | A `Test suite` *(not a child)* | The subagent's | Prose saying what the group walks; it checks nothing itself, and it must exist before a case can hang from it. Written, never closed — it stays `Open` while its cases are re-walked |
 | A `Test case` *(not a child)* | The human's | A live vault, which no subagent reaches — Obsidian cannot run here |
 
@@ -180,8 +187,9 @@ where exceptions start.
 ### The pointer plan
 
 `subagent-driven-development` cannot consume child notes. Its three scripts each take a
-`PLAN_FILE` and exit 2 without one, and `task-brief` extracts a task by matching
-`^#+[ \t]+Task[ \t]+N` **inside that file**. A plan beside an already-ranked set of children
+`PLAN_FILE` and exit 2 without one, and `task-brief` finds a task by its `## Task N`
+heading **inside that file** — the heading format is load-bearing, and the script owns how it
+matches. A plan beside an already-ranked set of children
 is a second copy of that order that can disagree with the register — a real cost — but it is
 paid because there is no other artifact those scripts will run against.
 
@@ -225,8 +233,9 @@ the controller constructs — never the prompt. A rule that lives only in the pr
 nobody who writes code. So the plan's **Global Constraints** carries what every task shares:
 root `CLAUDE.md`, `test/CLAUDE.md`, `superpowers:test-driven-development`, the
 red-green-`npm run check`-commit cycle, the `[Unreleased]` changelog rule, and closing the
-note. `subagent-driven-development` passes that section into every dispatch, which is
-exactly why the header cannot be skipped.
+note. That is the section `subagent-driven-development` hands to every implementer, which
+is why the header cannot be skipped — and why each pointer task names it again, for a reason
+the close gives below.
 
 **The cycle is for the tasks that write code.** A decision-or-limitation `Issue`, an ADR and
 a `Test suite` are prose, with no behaviour to make fail first, so they run write,

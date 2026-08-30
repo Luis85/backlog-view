@@ -261,10 +261,10 @@ outputs would send an intentionally unanswerable note through the TDD loop, beca
 | An `Issue` holding an **open question** | The human's | The work cannot settle it; that is why it is an Issue |
 | An `Issue` recording a **decision or a limitation** | The subagent's | It is prose stating something already settled |
 | A `Bug` | The subagent's | A defect with a fix and a test, and `docs/README.md` gives it a shape — the same work a `Task` is |
-| An `Improvement` | The subagent's | Engineering work like a `Task`, and it closes the same way |
+| An `Improvement` | The subagent's | Engineering work like a `Task`, but the register gives it no `closed:` key — the closing rule says how |
 | An `Idea` | The human's | A proposal nobody has committed to. Implementing an Idea decides it, which is not this run's call |
 | A `Deliverable` | Ask | A non-code artifact may be either, and the register documents no shape for it |
-| An ADR *(not a child)* | The subagent's | Prose it can write, once phase 2 has the five things `docs/adrs/README.md` wants |
+| An ADR *(not a child)* | The subagent's | Prose it can write, from the five things `docs/adrs/README.md` wants — which `decompose-pbi` collected before it wrote the record |
 | A `Test suite` *(not a child)* | The subagent's | Prose saying what the group walks; it checks nothing itself, and it must exist before a case can hang from it. Written, never closed — it stays `Open` while its cases are re-walked |
 | A `Test case` *(not a child)* | The human's | A live vault, which no subagent reaches — Obsidian cannot run here |
 
