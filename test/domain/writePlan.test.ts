@@ -42,10 +42,10 @@ describe('computeDropWrites', () => {
 			siblings: siblingsWithout(model.roots, dragged),
 			insertIndex: 1,
 		};
-		// no third root, so insertIndex 1 means "after Epic B" -> floor(20)+10
+		// no third root, so insertIndex 1 means "after Epic B" -> floor(20)+1000
 		const writes = computeDropWrites(dragged, target);
 		expect(writes).toHaveLength(1);
-		expect(writes[0].order).toBe(30);
+		expect(writes[0].order).toBe(1020);
 		expect(writes[0].parent).toBeUndefined();
 		expect(writes[0].typeName).toBeUndefined();
 	});
@@ -58,9 +58,12 @@ describe('computeDropWrites', () => {
 			siblings: siblingsWithout(model.roots, dragged),
 			insertIndex: 0,
 		};
+		// Epic A's order (10) predates the 1000 spacing, so "one spacing before it"
+		// is negative — a real number a note reader accepts, not a bug in this
+		// fixture's stale scale.
 		const writes = computeDropWrites(dragged, target);
 		expect(writes).toHaveLength(1);
-		expect(writes[0].order).toBe(0);
+		expect(writes[0].order).toBe(-990);
 	});
 
 	it('computes the midpoint between two ordered neighbors', () => {
@@ -79,8 +82,9 @@ describe('computeDropWrites', () => {
 
 	it('renumbers the sibling group when the gap is exhausted', () => {
 		const vault = new FakeVault();
-		vault.addFile('One.md', { frontmatter: { order: 10 } });
-		vault.addFile('Two.md', { frontmatter: { order: 10.001 } });
+		vault.addFile('One.md', { frontmatter: { order: ORDER_SPACING } });
+		// A gap under the new six-decimal MIN_GAP (0.000002) — too tight to subdivide.
+		vault.addFile('Two.md', { frontmatter: { order: ORDER_SPACING + 0.000001 } });
 		vault.addFile('Mover.md', { frontmatter: { order: 50 } });
 		const model = buildModel(vault.app, vault.entries(), unscoped);
 		const dragged = model.roots.find((r) => r.title === 'Mover') as BacklogItem;
@@ -89,7 +93,8 @@ describe('computeDropWrites', () => {
 			dragged,
 			{ parent: null, siblings: siblingsWithout(model.roots, dragged), insertIndex: 1 });
 
-		// Sequence becomes One, Mover, Two -> 10, 20, 30; One already has 10.
+		// Sequence becomes One, Mover, Two -> spacing, 2*spacing, 3*spacing; One
+		// already sits at 1*spacing so only Mover and Two need a write.
 		expect(writes).toHaveLength(2);
 		const mover = writes.find((w) => w.file.path === 'Mover.md');
 		const two = writes.find((w) => w.file.path === 'Two.md');
@@ -185,7 +190,9 @@ describe('computeDropWrites', () => {
 			{ parent, siblings: siblingsWithout(parent.children, dragged), insertIndex: 0 });
 		expect(writes).toHaveLength(1);
 		expect(writes[0].parent).toBeUndefined();
-		expect(writes[0].order).toBe(0);
+		// Feature B1's order (10) predates the 1000 spacing — see the note on
+		// "places an item before the first sibling with room to spare" above.
+		expect(writes[0].order).toBe(-990);
 	});
 
 	it('assigns the default spacing for the first child of an empty parent', () => {
@@ -270,7 +277,8 @@ describe('computeInitWrites', () => {
 		// Feat gets an order within its REAL sibling group (children of Epic)
 		expect(byPath.get('Feat.md')?.order).toBe(ORDER_SPACING);
 		// The hidden branch is backfilled too, ranked after the existing root
-		expect(byPath.get('Bare Epic.md')?.order).toBe(20);
+		// (Epic.md's order of 10 predates the 1000 spacing): floor(10) + 1000.
+		expect(byPath.get('Bare Epic.md')?.order).toBe(1010);
 		expect(byPath.get('Story.md')?.typeName).toBe('PBI');
 		expect(byPath.get('Story.md')?.order).toBe(ORDER_SPACING);
 	});

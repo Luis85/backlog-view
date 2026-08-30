@@ -24,9 +24,13 @@ import {
  */
 
 /** Spacing between freshly assigned order values, leaving room to drop items in between. */
-export const ORDER_SPACING = 10;
-/** Below this gap between neighbors, sibling orders get renumbered instead of subdivided. */
-const MIN_GAP = 0.002;
+export const ORDER_SPACING = 1000;
+/**
+ * Below this gap between neighbours a drop refuses rather than subdividing. Six
+ * decimals is the floor `roundOrder` can represent, and the pair gives about thirty
+ * halvings of one interval — the price of frontmatter a human reads, paid knowingly.
+ */
+const MIN_GAP = 0.000002;
 
 /** A pending frontmatter update for a single file. Fields left undefined are not touched. */
 export interface ItemWrite {
@@ -222,9 +226,15 @@ export function computeDropWrites(dragged: BacklogItem, target: DropTarget): Ite
 	const { parent, siblings, insertIndex } = target;
 	const parentField = computeParentField(dragged, parent);
 
-	const order = computeInsertOrder(siblings, insertIndex);
-	if (order !== null) {
-		return [{ file: dragged.file, parent: parentField, order }];
+	// TODO(Task 4): rewire onto the global `ranked` population and `orderForTarget`.
+	// Passing `siblings` here reproduces this function's pre-existing sibling-scoped
+	// behaviour through the new arithmetic; it is not yet the global rank the plan
+	// calls for.
+	const anchor = insertIndex > 0 ? siblings[insertIndex - 1] : null;
+	const side: 'before' | 'after' = anchor ? 'after' : 'before';
+	const result = anchoredOrder(siblings, anchor ?? (siblings[insertIndex] ?? null), side);
+	if ('order' in result) {
+		return [{ file: dragged.file, parent: parentField, order: result.order }];
 	}
 	// Renumbering rewrites every sibling, and the view never writes to a note the
 	// Base excluded. Placing the item past the highest order we can see keeps the
@@ -683,21 +693,75 @@ export function computeScheduleWrites(
 	return planned ? [{ file: item.file, axis }] : [];
 }
 
-/** The order value for the insertion slot, or null when the group needs renumbering. */
-function computeInsertOrder(siblings: BacklogItem[], insertIndex: number): number | null {
-	const prev = insertIndex > 0 ? siblings[insertIndex - 1] : null;
-	const next = insertIndex < siblings.length ? siblings[insertIndex] : null;
-	if (!prev && !next) return ORDER_SPACING;
-	if (prev && next) return orderBetween(prev.order, next.order);
-	if (prev) return prev.order !== null ? Math.floor(prev.order) + ORDER_SPACING : null;
-	return next !== null && next.order !== null ? roundOrder(Math.ceil(next.order) - ORDER_SPACING) : null;
+/** Why a placement produced no number. Each names its own remedy at the notice. */
+export type RankRefusal = 'gapSpent' | 'unranked';
+export type RankResult = { order: number } | { refusal: RankRefusal };
+
+/**
+ * The rank for a placement, stated ONCE for every placement there is.
+ *
+ * A placement decides an anchor row and a side; the number comes from the anchor's
+ * neighbours in the globally rank-sorted population — never from the peer group, and
+ * never from forest traversal. After one cross-parent move DFS preorder is no longer
+ * global order, so "the next row in the forest" can hold a LOWER rank than the last
+ * peer, and a midpoint of an inverted pair is not a near miss.
+ *
+ * `ranked` must not contain the item being placed, or it becomes its own neighbour.
+ */
+export function anchoredOrder(
+	ranked: BacklogItem[],
+	anchor: BacklogItem | null,
+	side: 'before' | 'after',
+): RankResult {
+	// **An unranked CONTEXT row is skipped, not refused.** It can never be given a
+	// rank — `computeInitWrites` skips `outsideFilter` rows and `spreadAround` filters
+	// them, both correctly, because the view may not write to a note the Base excluded
+	// — so refusing beside one is a permanent block behind advice that cannot work:
+	// `rank.unranked` tells the user to run the backfill, and the backfill is one of
+	// the two things that will not touch it. Constraining nothing, it is ignored here.
+	//
+	// An unranked WRITABLE row still refuses. The backfill CAN rank that one, so the
+	// advice is actionable and the refusal is a prompt rather than a dead end. The two
+	// look identical at the `order === null` test and must not be treated alike.
+	const usable = ranked.filter((item) => !(item.outsideFilter && item.order === null));
+	// The anchor itself can be one: a context parent is a legal destination for
+	// `New <child>`. There is no positional information in a rankless row, so the
+	// child goes to the end rather than nowhere.
+	if (isUnrankedContext(anchor)) return anchoredOrder(usable, null, 'after');
+	if (usable.length === 0) return { order: ORDER_SPACING };
+	const pair = neighbourPair(usable, anchor, side);
+	if (pair === null) return { refusal: 'unranked' };
+	const { prev, next } = pair;
+	if (!prev) return next.order !== null ? { order: Math.floor(next.order) - ORDER_SPACING } : { refusal: 'unranked' };
+	if (!next) return prev.order !== null ? { order: Math.floor(prev.order) + ORDER_SPACING } : { refusal: 'unranked' };
+	if (prev.order === null || next.order === null) return { refusal: 'unranked' };
+	if (next.order - prev.order <= MIN_GAP) return { refusal: 'gapSpent' };
+	return { order: roundOrder(prev.order + (next.order - prev.order) / 2) };
 }
 
-/** Halfway between two ordered neighbors; null when a value is missing or the gap is spent. */
-function orderBetween(prevOrder: number | null, nextOrder: number | null): number | null {
-	if (prevOrder === null || nextOrder === null) return null;
-	if (nextOrder - prevOrder <= MIN_GAP) return null;
-	return roundOrder(prevOrder + (nextOrder - prevOrder) / 2);
+/** A context row with nothing to rank from — see `anchoredOrder`'s own comment. */
+function isUnrankedContext(anchor: BacklogItem | null): boolean {
+	return anchor !== null && anchor.outsideFilter && anchor.order === null;
+}
+
+/**
+ * The anchor's neighbours in `ranked` for the given side, or null when the anchor
+ * is not in the population at all.
+ */
+function neighbourPair(
+	ranked: BacklogItem[],
+	anchor: BacklogItem | null,
+	side: 'before' | 'after',
+): { prev: BacklogItem | null; next: BacklogItem | null } | null {
+	if (anchor === null) {
+		// No anchor means an edge of the whole population.
+		return side === 'after' ? { prev: ranked[ranked.length - 1], next: null } : { prev: null, next: ranked[0] };
+	}
+	const idx = ranked.indexOf(anchor);
+	if (idx === -1) return null;
+	return side === 'before'
+		? { prev: ranked[idx - 1] ?? null, next: anchor }
+		: { prev: anchor, next: ranked[idx + 1] ?? null };
 }
 
 /** Renumber the whole sibling group, including the dragged item at its new position. */

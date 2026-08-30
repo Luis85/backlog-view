@@ -51,8 +51,9 @@ describe('computeDropWrites in a group holding an outside-filter row', () => {
 		const writes = computeDropWrites(mover, { parent: epic, siblings, insertIndex: siblings.length });
 
 		expect(writes.map((w) => w.file.path)).toEqual(['Mover.md']);
-		// Past the highest order it can see, rather than renumbering the group
-		expect(writes[0].order).toBe(30);
+		// Past the highest order it can see (Feature B, 20), rather than renumbering
+		// the group: floor(20) + 1000.
+		expect(writes[0].order).toBe(1020);
 		expect(writes.some((w) => w.file.path === 'Feature A.md')).toBe(false);
 	});
 
@@ -135,8 +136,8 @@ describe('backfill ranking beside a context sibling', () => {
 		const writes = computeInitWrites(model, settings);
 
 		// One spacing past everything visible: filling in a blank must not reorder
-		// the tree. Ignoring the context row's 1000 would rank it 20 and move it up.
-		expect(writes.find((w) => w.file.path === 'Unranked.md')?.order).toBe(1010);
+		// the tree. Ignoring the context row's 1000 would rank it 1000 and move it up.
+		expect(writes.find((w) => w.file.path === 'Unranked.md')?.order).toBe(2000);
 		// ...while still never writing to the context note itself
 		expect(writes.some((w) => w.file.path === 'Context.md')).toBe(false);
 	});
