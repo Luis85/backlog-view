@@ -825,9 +825,12 @@ plus how far along it is and how far it landed from its plan: *3 days left*, *2 
 *shipped 4 days early*. **New release** sits at the head of the list.
 
 **A release's own screen** — activate a row. Its header holds the release's status, its
-description, its target date and the day it shipped, all editable in place, and opens the
-release note. Below it is the release's **scope**: the work it names, as a foldable tree with
-its own toolbar (collapse all, expand all, hide done) and its own keyboard walk. A row's
+description, the day it shipped, its version and its target date. The **first three are
+editable in place**; the version and the target date are read here and edited in the
+release note, which one control in the header opens.
+
+Below it is the release's **scope**: the work it names, as a foldable tree with its own
+toolbar (collapse all, expand all, hide done) and its own keyboard walk. A row's
 context menu offers **New \<type\>** for every type that row may hold, and the note it creates
 hangs from that row and joins the open release in the same write.
 
@@ -854,7 +857,11 @@ bind rather than failing quietly.
 | Workflow state property / States that count as done | How the view decides a member is finished |
 
 The toolbar's ✨ **Add missing properties** binds every one of these that you have not named,
-and backfills them, in one press.
+in one press. **It binds the view options and writes to no note** — unlike the backlog view's
+✨, this one never edits a note that already exists, so nothing is backfilled onto your
+releases or your work items. Obsidian's property picker can only offer a property some note
+already carries, so a key nothing carries stays bindable by suggestion here rather than
+pickable from that list until a note gains it.
 
 **A release with a target date also draws on the roadmap**, as a line across the plan, beside
 the milestones.
