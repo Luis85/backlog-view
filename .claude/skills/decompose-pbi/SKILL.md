@@ -44,8 +44,9 @@ Read the whole PBI note. If the named note is not a `PBI`, stop: an `Epic` or a 
 does not hold Tasks, and the child it does hold is another requirement — say which note is
 wanted instead.
 
-Report back its guarantee, its main flow, its extensions, its acceptance criteria and its
-`## Where it lives`, and ask whether that is still what is being built. A decomposition of a
+Report back its actor, its trigger, its preconditions, its guarantee, its main flow, its
+extensions, its acceptance criteria and its `## Where it lives`, and ask whether that is
+still what is being built. A decomposition of a
 stale use case is worse than none.
 
 **Exit when** the user confirms the PBI as read.
@@ -53,17 +54,20 @@ stale use case is worse than none.
 ## Phase 1 — the slices
 
 Walk the PBI's own structure for work, one question per slice: each step of the main flow,
-each extension, each acceptance criterion, each path named under `## Where it lives` — and
-the **guarantee**, which is walked separately because it belongs to no step. It is what
-survives every branch, so it is the one thing a decomposition can cover on paper and miss
-in fact: ask which child holds it on each extension, not only on the main flow.
+each extension, each acceptance criterion, each path named under `## Where it lives` — then
+its **trigger** and its **preconditions**, and the **guarantee**. Those last three are
+walked separately because none of them belongs to a step. The trigger is the entry point,
+which is wiring no step describes; a precondition is what must already hold, which is often
+work rather than an assumption. The guarantee is what survives every branch, so it is the
+one thing a decomposition can cover on paper and miss in fact: ask which child holds it on
+each extension, not only on the main flow.
 
 A slice is a child note when it can fail on its own. Two slices that can only pass or fail
 together are one note.
 
-**Exit when** every step, extension, criterion **and path under `## Where it lives`** is
-either claimed by a slice or spoken for as needing none, and the guarantee is claimed on
-every branch. The gate covers exactly what the walk covered: a path named there and by no
+**Exit when** every step, extension, criterion, **path under `## Where it lives`**,
+**the trigger and each precondition** is either claimed by a slice or spoken for as needing
+none, and the guarantee is claimed on every branch. The gate covers exactly what the walk covered: a path named there and by no
 step is precisely the cross-cutting module or test that vanishes from a decomposition.
 
 ## Phase 2 — the perspective sweep
@@ -110,8 +114,10 @@ type table in `docs/README.md` is the vocabulary, and three of its answers are e
   this PBI**. It is still part of the picture; it just parents elsewhere. Name the suite it
   joins; when no existing suite fits, the new `Test suite` is itself an output of this
   decomposition, and filing the case under an unrelated suite instead is the failure. A
-  `Test suite` is a **root** — no `parent`, ranked among the suites already in
-  `docs/tests/suites/`.
+  `Test suite` is a **root** — no `parent`, and ranked against **every** parentless note
+  rather than against the suites alone: `docs-check.mjs` groups orders by `parent` only, so
+  one namespace holds the suites, the Epics and the Releases together, and a rank free in
+  `docs/tests/suites/` can still be taken by a Release.
 
 Then the ranks, **against the parent each child actually got** — a `Test case` ranks among
 its `Test suite`'s cases, not among the PBI's children. Same rule either way: unique among
