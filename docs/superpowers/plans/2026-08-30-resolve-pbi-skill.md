@@ -195,10 +195,17 @@ grep -n "writing-plans skill" .claude/skills/decompose-pbi/SKILL.md
 ```
 
 Expected: `npm run check` exits 0. The line count is under 120 (the file is a quarter
-written). The third command prints **two** lines — the fenced handoff and the precedence
-routing. The fourth prints **nothing**: `writing-plans` should no longer appear in
-`decompose-pbi` at all, and a surviving line means one of the two entry paths still points
-at it.
+written).
+
+The two greps need care, because the prescribed replacement text does not contain the
+phrases a naive probe would look for. `resolve-pbi skill` appears **once** — in the fenced
+handoff — since the precedence line reads "that is `resolve-pbi` against the decomposed PBI"
+and never juxtaposes those two words. Search for the bare skill names instead: `grep -n
+"resolve-pbi" .claude/skills/decompose-pbi/SKILL.md` should print the fenced handoff and
+both precedence bullets you edited. `grep -n "writing-plans"` will still print the bullets
+that legitimately mention it — read each hit and confirm **none of them routes a decomposed
+PBI's plan or build request anywhere but `resolve-pbi`**. That reading is the check; a count
+is not.
 
 Then the real check, which no command performs: read your `Precedence` section beside the
 spec's `## Scope, and what it refuses` and confirm every refusal in the spec is in the file.
@@ -349,8 +356,15 @@ is covered and neither task carries it alone.
 
 - [ ] **Step 1: Write the close's ordered steps**
 
-Seven steps, exactly as the spec's `## The close` gives them, and say why the order is what
-it is: the work lands in one commit and the prompt is the last thing on screen to copy.
+Open with the **no-work exit**, which the spec puts before the numbered steps: when the
+filter left no task, steps 2, 3, 4 and 7 do not happen — no plan, no save question, no
+prompt — because asking whether to save "this prompt" when there is none writes a handoff
+whose `Approach` points at a plan nobody created. The children's edits are still written and
+committed, and the close says what remains and whose it is.
+
+Then the seven steps, exactly as the spec's `## The close` gives them, and say why the order
+is what it is: the work lands in one commit and the prompt is the last thing on screen to
+copy.
 
 ```
 1. Write the children's edits.
@@ -512,7 +526,7 @@ over the whole spec.
 Append `## Red flags — stop and go back`, ending with `decompose-pbi`'s own closing line:
 *All of these mean: the sweep is not finished. Go back to the phase you left.*
 
-Every entry from the spec's red-flag list — twenty-six items. Most were real defects in the
+Every entry from the spec's red-flag list — twenty-seven items. Most were real defects in the
 spec itself, caught by review, so none is decoration:
 
 - A phase's exit gate asks for less than that phase's walk covered.
@@ -530,6 +544,7 @@ spec itself, caught by review, so none is decoration:
   controller reads it.
 - A run finished with its children's `## Outcome` unwritten and their `status` still `Open`.
 - An empty plan was written, and a prompt printed, for a PBI with no work left in it.
+- The save question was asked on a run that produced no prompt to save.
 - A saved handoff promised to close siblings the run was never going to touch.
 - An ADR task was told to write `status: Done`, or to add a `closed:` or an `## Outcome`.
 - A prose-only task was given a red-green cycle it cannot satisfy.

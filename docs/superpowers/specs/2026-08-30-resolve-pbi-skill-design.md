@@ -290,7 +290,15 @@ The `[Unreleased]` changelog row is part of done for a child that earns one.
 
 ## The close
 
-In this order, so the work lands in one commit and the prompt is the last thing on screen:
+**The no-work path leaves at step 1.** When the filter left no task — every output landed,
+or every remaining one the human's — steps 2, 3, 4 and 7 do not happen: no plan, no save
+question, no prompt. Asking whether to save "this prompt" when there is no prompt would
+write a handoff `Task` whose `Approach` points at a plan that was never created. The
+children's edits are still written and committed, and the close says what remains and whose
+it is. Everything below assumes there is work.
+
+Otherwise, in this order, so the work lands in one commit and the prompt is the last thing
+on screen:
 
 1. Write the children's edits.
 2. Write the pointer plan.
@@ -387,6 +395,7 @@ On yes, one note at the next free rank among the PBI's children, in the shape
 - The prompt told a run to close a handoff the user declined to save.
 - The controller's own close was left in the working tree, with no gate and no commit.
 - An empty plan was written, and a prompt printed, for a PBI with no work left in it.
+- The save question was asked on a run that produced no prompt to save.
 - A saved handoff promised to close siblings the run was never going to touch.
 - A child was re-scoped to fit the order, instead of the order being corrected.
 - The saved handoff `Task` appears in the set of children the prompt executes.
