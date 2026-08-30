@@ -193,7 +193,7 @@ children that are not implementable:
 | Output | Whose | Why |
 | --- | --- | --- |
 | A `Task` | The subagent's | It is engineering work with a test |
-| A `Task` whose **first body line declares it a handoff** — the line after its frontmatter, not the `---` that opens it | This run's close | It is an earlier run's prompt, not work, so it gets no task. It is not left `Open` either: this refinement pass supersedes it, and the close **drops** it — `status: Dropped`, `closed:` dated, one line naming **this run** as what superseded it. Not a successor note: the save question has a real no and the no-work path never asks it, so a line naming the replacement would be a line the run cannot always write. Not `Done` either, which would report a run that never happened; `docs/README.md` gives `Dropped` for exactly this, "refused, kept for the record" |
+| A `Task` whose **first body line declares it a handoff** — the line after its frontmatter, not the `---` that opens it | This run's close | It is an earlier run's prompt, not work, so it gets no task — and **its own `status` decides what the close does with it, which is a write in one case only.** Still `Open`: this pass supersedes it and the close **drops** it — `status: Dropped`, `closed:` dated, one line naming **this run**, not a successor note, since the save question has a real no and the no-work path never asks it. Already `Done`: its run happened, so it is a record and is named as already landed and left alone — rewriting it to `Dropped` would turn a completed execution into a refusal. Already `Dropped`: an earlier rerun retired it, and re-dating it says a second run refused what one already had. `Done` is never written here either way, which would report a run that did not happen; `docs/README.md` gives `Dropped` for exactly the open case, "refused, kept for the record" |
 | An `Issue` holding an **open question** | The human's | The work cannot settle it; that is why it is an Issue |
 | An `Issue` recording a **decision or a limitation** | The subagent's | It is prose stating something already settled |
 | A `Bug` | The subagent's | A defect with a fix and a test, and `docs/README.md` gives it a shape — the same work a `Task` is |
@@ -217,7 +217,8 @@ anybody, so neither is the subagent's: phase 2 reads them, and whatever they sti
 written by this skill at close step 1, beside the children's edits. Both are named in the
 plan's header as already written and **neither gets a `## Task N`**. A superseded handoff is
 the third, and it is in this bucket for the opposite reason — not because it is already
-finished but because it never will be, and something has to retire it. A pointer task at a note whose prose
+finished but because, while it is still `Open`, it never will be, and something has to
+retire it. One already `Done` is a record of a run that happened and needs nothing. A pointer task at a note whose prose
 is already on disk hands an implementer nothing to do, and an implementer with nothing to do
 writes something.
 
@@ -280,7 +281,8 @@ screen to copy:
    place those two are written**, since neither is dispatched — an ADR closes at
    `status: Accepted` with no `closed:` and no `## Outcome`, and a `Test suite` stays `Open`
    because it is a container for cases re-walked at each release. **An earlier run's
-   superseded handoff is dropped in this same step** — `status: Dropped`, `closed:` dated,
+   superseded handoff is dropped in this same step, when it is still `Open`** —
+   `status: Dropped`, `closed:` dated,
    one line naming **this refinement pass** as what superseded it — for the same reason:
    nothing downstream touches it, so a step that skipped it would leave it `Open` for good.
    **What supersedes it is the pass, never the note step 4 may write.** Step 3's question
@@ -459,7 +461,7 @@ hold: the path list is a fresh one, built from this rerun's own children, and it
 saved note because the note is one of them. The rerun's last dispatch would then be an
 implementer told to run the prompt it is already running. The marker's effect is that row,
 not the sentence itself — and the row does two things, because stopping the dispatch was only
-half of it: the older note is also **dropped** by this run's close, since a handoff nobody
+half of it: an older note still `Open` is also **dropped** by this run's close, since a handoff nobody
 will execute and nobody retires sits `Open` in the backlog for good.
 
 On yes, one note at the next free rank among the PBI's children, in the `Task` shape
@@ -505,6 +507,8 @@ On yes, one note at the next free rank among the PBI's children, in the `Task` s
 - A `Test suite` was closed because its prose was written.
 - A superseded handoff was left `Open`, or was closed `Done` as though the run it handed off
   had happened, or was dropped with a line naming a successor note this run never wrote.
+- A handoff already `Done` was rewritten to `Dropped` by a rerun, turning the record of a run
+  that happened into a refusal — or one already `Dropped` was re-dated by a second one.
 - The prompt told the executor to "close each output", so a note no task dispatched — a
   human's `Test case`, an already-written ADR or suite — was in scope for closing.
 - An ADR or a `Test suite` was given a `## Task N`, though `decompose-pbi` wrote it at
