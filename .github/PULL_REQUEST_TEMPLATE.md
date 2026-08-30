@@ -2,8 +2,8 @@
 
 ## Test plan
 
-- [ ] `npm run check` passes locally (build, lint, coverage-thresholded tests, fallow,
-      docs register) — CI runs the same five steps on Ubuntu **and** Windows.
+- [ ] `npm run check` passes locally (build, lint, markdown, coverage-thresholded tests,
+      fallow, docs register) — CI runs the same six steps on Ubuntu **and** Windows.
 - [ ] Every `src/` module touched is still specified in `docs/` (a use case's
       `## Where it lives`, or an ADR's `## Decision`), and any behaviour change is
       reflected in the relevant note.
