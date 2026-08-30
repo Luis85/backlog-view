@@ -118,6 +118,13 @@ export interface ValueCandidate {
  * `releasedTransitionValue: Shipped` and no vocabulary was bound `Released`, and the press
  * reported success on a configuration that withheld the very actions it exists to enable
  * (found by review, Codex, PR #221).
+ *
+ * ONE seeded pair still cannot agree, and the guarantee is written no wider than that: a
+ * transition holding a COMMA names no single value, since `list` splits the vocabulary on
+ * exactly that character — so no list this press can write contains it. `releaseNoteProblems`
+ * reports it and the reader repairs the box; a seed cannot. Padding IS repaired, and not
+ * here — `resolveReleaseSettings` trims the transition, so what this reads is already the
+ * value `closeOffer` will compare.
  */
 export const RELEASE_SUGGESTED_VALUES: ValueCandidate[] = [
 	{ option: 'releaseNotesFolder', value: () => 'docs/release-notes' },

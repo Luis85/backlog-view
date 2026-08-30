@@ -156,30 +156,55 @@ describe('marking a release as released', () => {
 		expect(document.activeElement).toBe(live);
 	});
 
-	it('falls back to the one control the screen always has when the close control goes', () => {
-		// A refresh mid-dialog can take the button away entirely rather than replace it —
-		// the release is out now, a date arrived, or it left the base's results. An
-		// optional query then focuses nothing and the reader is on the body again, which
-		// is the third shape of this one bug (found by review, Codex, PR #219). The back
-		// control is the terminus: `drawHeader` draws it above BOTH empty-state returns,
-		// for the reason it exists at all — a release nobody can read must not be a dead
-		// end — so there is always something to land on.
-		const { view, vault } = releaseScreen({ status: 'In progress' });
+	it('falls back to the one control the screen always has when BOTH closing controls go', () => {
+		// A refresh mid-dialog can take the button away entirely rather than replace it. An
+		// optional query then focuses nothing and the reader is on the body again, which is
+		// the third shape of this one bug (found by review, Codex, PR #219). The back control
+		// is the terminus: `drawHeader` draws it above BOTH empty-state returns, for the
+		// reason it exists at all — a release nobody can read must not be a dead end — so
+		// there is always something to land on.
+		//
+		// UNBINDING the released-date key is what reaches it, and the ordinary way of losing
+		// the close button no longer does: a release that went out mid-dialog draws
+		// `.pbl-rel-released` in its place, which is the neighbour the case below lands on.
+		// With no date key there is no such control — `drawReleased` returns on
+		// `unconfigured` — and `closeOffer` withholds the close button for the same reason,
+		// so this is the screen that genuinely has only the terminus left.
+		const { view } = releaseScreen({ status: 'In progress' });
 		const opener = button(view, '.pbl-rel-close');
 		opener.focus();
 		opener.click();
 		opener.blur();
 
-		vault.fm('0.9.md')['status'] = 'Released';
-		const cache = vault.caches.get('0.9.md');
-		if (cache === undefined) throw new Error('no cache for 0.9.md');
-		cache.frontmatter = { ...cache.frontmatter, status: 'Released' };
+		view.config.set('releasedDateProperty', '');
+		view.settings = resolveReleaseSettings(view.config as never);
 		view.onDataUpdated();
 		expect(view.viewEl.querySelector('.pbl-rel-close')).toBeNull();
+		expect(view.viewEl.querySelector('.pbl-rel-released')).toBeNull();
 
 		Modal.lastOpened?.close();
 
 		expect(document.activeElement).toBe(view.viewEl.querySelector('.pbl-rel-back'));
+	});
+
+	it('lands on the date it just stamped rather than on Back, after a close that worked', async () => {
+		// The mirror of the fallback above, and the case that is not exceptional at all: a
+		// close that SUCCEEDS always removes its own button, so the redraw's handle restore
+		// finds no `.pbl-rel-close` and falls to the screen's first button — Back. A keyboard
+		// reader's next Space or Enter then left the screen they had just acted on (found by
+		// review, PR #221). `.pbl-rel-released` now holds the date this write stamped, which
+		// is `focusControl`'s own answer in `releaseEdits.ts` for the reverse transition.
+		const { view } = releaseScreen({ status: 'In progress' });
+		const opener = button(view, '.pbl-rel-close');
+		opener.focus();
+		opener.click();
+		// Focus moves into the modal, the same reason the two cases above blur.
+		opener.blur();
+
+		await confirmDialog();
+
+		expect(view.viewEl.querySelector('.pbl-rel-close')).toBeNull();
+		expect(document.activeElement).toBe(view.viewEl.querySelector('.pbl-rel-released'));
 	});
 
 	it('refuses when the transition value changed to ANOTHER valid one mid-dialog', async () => {

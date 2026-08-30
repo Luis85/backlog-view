@@ -131,10 +131,15 @@ function drawAllDoneState(viewEl: HTMLElement, count: number): void {
 }
 
 /**
- * Two lines: the back control and the release's own three figures, then the summary
- * strip beneath them — `.pbl-rel-hline` for the first, `.pbl-rel-summary` for the second,
- * which is what lets `styles/releaseScope.css` stack them without either line's own flex
- * rules fighting the other's.
+ * THREE lines: the back control with the release's own figures (`.pbl-rel-hline`), the
+ * description under it (`.pbl-rel-desc`), and the footline (`.pbl-rel-footline`), which
+ * carries the summary strip and the closing actions on one row. Three children of
+ * `.pbl-rel-header`, which is what lets `styles/releaseScope.css` stack them without any
+ * line's own flex rules fighting another's.
+ *
+ * It said two — the hline and `.pbl-rel-summary` — until 2026-08-30, when the summary
+ * moved INSIDE the footline and the actions joined it there, so `.pbl-rel-summary` is no
+ * longer a child of the header at all.
  */
 function drawHeader(
 	view: ReleaseView,

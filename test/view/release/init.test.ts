@@ -221,49 +221,58 @@ describe('runReleaseInit', () => {
 });
 
 describe('the press binds the options that are not properties', () => {
-	it('binds the notes folder to the option’s own placeholder', () => {
+	it('binds the notes folder to the option’s own placeholder', async () => {
 		const { view } = mountRelease({ bindAll: false });
-		void runReleaseInit(view);
+		await runReleaseInit(view);
 		expect(view.config.get('releaseNotesFolder')).toBe('docs/release-notes');
 	});
 
-	it('binds the released vocabulary from domain data, never from the catalog', () => {
+	it('binds the released vocabulary from domain data, never from the catalog', async () => {
 		// The option's placeholder is `t('release.option.releasedValuesHint')` — the string
 		// `Released, Archived`. Binding a placeholder uniformly would write the CATALOG's
 		// language into the `.base`, which is data in the wrong artifact.
 		const { view } = mountRelease({ bindAll: false });
-		void runReleaseInit(view);
+		await runReleaseInit(view);
 		expect(view.config.get('releasedStatusValues')).toBe('Released');
 		expect(view.config.get('releasedStatusValues')).not.toBe(en['release.option.releasedValuesHint']);
 	});
 
-	it('binds the transition to the FIRST of the reader’s own list, not the literal', () => {
+	it('binds the transition to the FIRST of the reader’s own list, not the literal', async () => {
 		// The case a fixture spelling `Released` cannot see: with a vocabulary already
 		// declared, binding the literal would fail `configProblems`' own check that the
 		// transition is one of the released values.
 		const { view } = mountRelease({ bindAll: false });
 		view.config.set('releasedStatusValues', 'Shipped, Archived');
-		void runReleaseInit(view);
+		await runReleaseInit(view);
 		expect(view.config.get('releasedTransitionValue')).toBe('Shipped');
 	});
 
-	it('seeds the vocabulary FROM a transition the reader set first, so the pair agrees either way', () => {
-		// The mirror of the case above it, and the direction the docblock's "by construction"
-		// claim did not hold in (found by review, Codex, PR #221). With the transition touched
-		// and the vocabulary unset, seeding the list from `DEFAULT_RELEASED_VALUES` bound
-		// `Released` beside a transition of `Shipped`: `closeOffer` then reads the transition
-		// as not one of the released values, pushes it into `missing` and withholds BOTH
-		// closing actions, while `releaseNoteProblems` raises a configuration problem — after
-		// a press that reported it had configured the view.
-		const { view } = mountRelease({ bindAll: false });
-		view.config.set('releasedTransitionValue', 'Shipped');
-		void runReleaseInit(view);
-		const settings = resolveReleaseSettings(view.config);
-		expect(settings.releasedValues).toContain('Shipped');
-		expect(releaseNoteProblems(settings)).toEqual([]);
-	});
+	// The PADDED spelling is the second case and not a variation on the first: the value is
+	// seeded through `resolveReleaseSettings`, whose `releasedTransition` was untrimmed while
+	// `releasedValues` trims every item — so ` Shipped` seeded the list `['Shipped']` and then
+	// matched none of it, which is the very mismatch this seeding exists to prevent (found by
+	// review, PR #221). A hand edit of the `.base` is the only way in; the dropdown's own
+	// values come from `releasedValuesOf` and are trimmed already.
+	it.each(['Shipped', ' Shipped'])(
+		'seeds the vocabulary FROM a transition the reader set first (%j), so the pair agrees either way',
+		async (transition) => {
+			// The mirror of the case above it, and the direction the docblock's "by construction"
+			// claim did not hold in (found by review, Codex, PR #221). With the transition touched
+			// and the vocabulary unset, seeding the list from `DEFAULT_RELEASED_VALUES` bound
+			// `Released` beside a transition of `Shipped`: `closeOffer` then reads the transition
+			// as not one of the released values, pushes it into `missing` and withholds BOTH
+			// closing actions, while `releaseNoteProblems` raises a configuration problem — after
+			// a press that reported it had configured the view.
+			const { view } = mountRelease({ bindAll: false });
+			view.config.set('releasedTransitionValue', transition);
+			await runReleaseInit(view);
+			const settings = resolveReleaseSettings(view.config);
+			expect(settings.releasedValues).toContain('Shipped');
+			expect(releaseNoteProblems(settings)).toEqual([]);
+		},
+	);
 
-	it('binds nothing for a transition with no list to choose from, rather than writing an empty value', () => {
+	it('binds nothing for a transition with no list to choose from, rather than writing an empty value', async () => {
 		// The empty-value guard `wouldBindValue` carries: with `releasedStatusValues`
 		// cleared, `releasedValuesOf` returns `[]`, so the transition candidate computes
 		// `''`. Without the guard that `''` would be WRITTEN — reporting as touched to the
@@ -271,23 +280,23 @@ describe('the press binds the options that are not properties', () => {
 		// states beside the sweep.
 		const { view } = mountRelease({ bindAll: false });
 		view.config.set('releasedStatusValues', '');
-		void runReleaseInit(view);
+		await runReleaseInit(view);
 		expect(view.config.get('releasedTransitionValue')).toBeUndefined();
 	});
 
-	it('never overwrites an option the reader has touched', () => {
+	it('never overwrites an option the reader has touched', async () => {
 		// Cleared is not untouched, and neither is set — `adoptCandidates`' own rule,
 		// applied to the three that reach none of its machinery.
 		const { view } = mountRelease({ bindAll: false });
 		view.config.set('releaseNotesFolder', 'notes/ship');
-		void runReleaseInit(view);
+		await runReleaseInit(view);
 		expect(view.config.get('releaseNotesFolder')).toBe('notes/ship');
 	});
 
-	it('leaves a fully configured view with no configuration problems', () => {
+	it('leaves a fully configured view with no configuration problems', async () => {
 		// The promise of the press, as one assertion rather than five.
 		const { view } = mountRelease({ bindAll: false });
-		void runReleaseInit(view);
+		await runReleaseInit(view);
 		const settings = resolveReleaseSettings(view.config);
 		expect(settings.notesFolder).not.toBe('');
 		expect(settings.releasedValues).toContain(settings.releasedTransition);

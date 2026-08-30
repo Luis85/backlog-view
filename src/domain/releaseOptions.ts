@@ -384,7 +384,14 @@ export function resolveReleaseSettings(config: BasesViewConfig): ReleaseSettings
 		descriptionKey: propKey('descriptionProperty', ''),
 		statusValues: dedupe(list('releaseStatusValues')),
 		releasedValues: list('releasedStatusValues'),
-		releasedTransition: str('releasedTransitionValue'),
+		// TRIMMED, and not for tidiness: every reader of this value compares it against
+		// `releasedValues`, which `list` has already trimmed item by item. So a `.base`
+		// holding ` Released` matched nothing — `releaseNoteProblems` reported a mismatch
+		// and `closeOffer` withheld BOTH closing actions over two halves the options screen
+		// shows as agreeing. The dropdown offers `releasedValuesOf`, which is trimmed, so
+		// padding only ever arrives by a hand edit — the case `text`'s own docblock says
+		// these readers are tolerant for.
+		releasedTransition: str('releasedTransitionValue').trim(),
 		notesFolder: str('releaseNotesFolder'),
 		// A PATH, not a property key: same reading `resolveFolders` gives every type
 		// folder — trimmed and normalized by `vaultFolder`, clearable because the default

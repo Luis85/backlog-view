@@ -369,7 +369,8 @@ button.pbl-rel-toggle-on {
    rule read `flex: 1 1 auto` (right alignment survived anyway, by grow-filling the row
    plus `justify-content: flex-end`, but the margin itself was dead weight beside a stale
    claim). With grow back at 0 the margin is load-bearing again, as its presence here
-   implies it should be. */
+   implies it should be. The two `0`s CANCEL the INDEX head's own chrome off the bare rule
+   (`release.css` states it there); its `gap` and `align-items` are wanted. */
 .pbl-rel-actions.pbl-rel-scope-actions {
 	display: flex;
 	flex: 0 1 auto;
@@ -378,6 +379,7 @@ button.pbl-rel-toggle-on {
 	justify-content: flex-end;
 	gap: var(--size-4-2);
 	margin-inline-start: auto;
+	margin-bottom: 0;
 	padding: 0;
 }
 
