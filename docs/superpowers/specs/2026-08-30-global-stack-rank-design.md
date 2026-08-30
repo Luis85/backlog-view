@@ -269,6 +269,16 @@ still fills blanks only and never overwrites.
 
 ## Migration
 
+**The focused list keeps TREE order until the vault is seeded.** Legacy ranks are
+sibling-scoped, so every first child holds 10 and every second holds 20; sorting those
+globally interleaves the parents rather than revealing a priority — `A1, A2, B1, B2`
+becomes `A1, B1, A2, B2`, measured on a fixture rather than supposed. Since the ordering
+change lands before the Seed command does, without a guard an upgrade would scramble every
+focused view and give the user no hint that a command repairs it. So `inRankOrder` falls
+back to tree order whenever the focused rows' ranks are not all distinct, which is exactly
+the condition under which a global rank is not yet a global order. It is self-healing: the
+first Seed run makes the ranks distinct and rank order takes over with nothing to switch on.
+
 An existing vault renders identically in tree mode after the redefinition — siblings within
 a group already hold distinct orders. Only the flat list needs seeding: every PBI across
 every parent carries `10` or `20`, so a focus-level list sorted by a global `order` is ties
