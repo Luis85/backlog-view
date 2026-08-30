@@ -1055,7 +1055,7 @@ orderForTarget like every other placement."
 - Produces:
 
 ```ts
-export function computeSeedWrites(model: BacklogModel): ItemWrite[] {
+export function computeSeedWrites(model: BacklogModel): SpreadResult {
 	const sequence: BacklogItem[] = [];
 	const visit = (items: BacklogItem[]) => {
 		for (const item of items) {
@@ -1072,12 +1072,16 @@ export function computeSeedWrites(model: BacklogModel): ItemWrite[] {
  * preserves every ranking decision, which is what makes it the answer to a spent gap
  * and to a tie — and what makes it, not the seed, the one an implementer reaches for.
  *
- * Over the WHOLE loaded population, never the focused slice: respacing one rung and
- * leaving every other rank where it was is not a repair.
+ * Over the WHOLE loaded population, never the focused slice.
  */
-export function computeRespaceWrites(model: BacklogModel): ItemWrite[] {
+export function computeRespaceWrites(model: BacklogModel): SpreadResult {
 	return spreadAround(model.ranked);
 }
+
+/** A plan, or the rows that could not be given distinct ranks. Never a bare `[]` for
+ *  a refusal: an empty plan and a wedged one are different answers and the command
+ *  says different things about them. */
+export type SpreadResult = { writes: ItemWrite[] } | { wedged: BacklogItem[] };
 
 /**
  * Give every writable row in `sequence` a new rank that keeps the sequence, leaving
@@ -1085,59 +1089,61 @@ export function computeRespaceWrites(model: BacklogModel): ItemWrite[] {
  *
  * **Both commands share this**, and that is the point rather than a convenience: they
  * differ only in the sequence they hand it — Seed passes DFS preorder, Respace passes
- * the ranked population — and the immovable-context rule is identical for both. An
- * earlier revision wrote the rule into Respace alone and left Seed numbering from zero,
- * so a loaded context ancestor at rank 1000 collided with the first writable descendant:
- * the same defect, fixed once and missed once, which is what one allocator prevents.
+ * the ranked population — and the immovable-context rule is identical for both.
  *
- * Context rows are FIXED POINTS. Each run of writable rows between two of them is spread
- * inside that open interval; a run before the first fixed point is placed BELOW it, and a
- * run after the last is placed above. The leading run must not be spread from a synthetic
- * zero: `floor(min) - spacing` walks negative after repeated prepends, so a fixed row at
- * or below zero would make the step zero or negative and refuse a backlog that respaces
- * perfectly well.
+ * **Immovability and rank availability are two different facts, and conflating them
+ * writes to a context row.** An earlier revision decided "is this a fixed point?" by
+ * asking for the row's ORDER, so an `outsideFilter` ancestor with no rank — ordinary on
+ * a legacy filtered backlog — read as writable, joined a run, and got an `ItemWrite`.
+ * `applySafely` refuses a batch naming any excluded path, so both commands would have
+ * failed outright rather than skipping context as promised. Here `outsideFilter` alone
+ * decides the boundary; the rank only decides whether that boundary constrains its
+ * neighbours.
  */
-function spreadAround(sequence: BacklogItem[]): ItemWrite[] {
+function spreadAround(sequence: BacklogItem[]): SpreadResult {
 	const writes: ItemWrite[] = [];
-	const fixedAt = (i: number): number | null =>
-		sequence[i].outsideFilter ? (sequence[i].order ?? null) : null;
 	let start = 0;
 	for (let i = 0; i <= sequence.length; i++) {
-		const bound = i === sequence.length ? null : fixedAt(i);
-		if (i !== sequence.length && bound === null) continue;
+		const atEnd = i === sequence.length;
+		// Every immovable row is a boundary, ranked or not. Everything between two
+		// boundaries is writable by construction, so no context row can reach `writes`.
+		if (!atEnd && !sequence[i].outsideFilter) continue;
 		const run = sequence.slice(start, i);
 		if (run.length > 0) {
+			const bound = atEnd ? null : (sequence[i].order ?? null);
 			const lower = start === 0 ? null : (sequence[start - 1].order ?? null);
 			if (lower === null && bound === null) {
-				// No fixed point anywhere: plain spacing from the origin.
 				run.forEach((item, k) => writes.push({ file: item.file, order: (k + 1) * ORDER_SPACING }));
 			} else if (lower === null) {
-				// LEADING run: below the first fixed point, never up from zero.
+				// LEADING run: below its fixed point, never up from a synthetic zero.
 				run.forEach((item, k) =>
 					writes.push({ file: item.file, order: roundOrder(bound - (run.length - k) * ORDER_SPACING) }),
 				);
 			} else if (bound === null) {
-				// TRAILING run: above the last fixed point.
 				run.forEach((item, k) => writes.push({ file: item.file, order: roundOrder(lower + (k + 1) * ORDER_SPACING) }));
 			} else {
 				const step = (bound - lower) / (run.length + 1);
-				if (step <= MIN_GAP) return [];
+				if (step <= MIN_GAP) return { wedged: run };
 				run.forEach((item, k) => writes.push({ file: item.file, order: roundOrder(lower + step * (k + 1)) }));
 			}
 		}
 		start = i + 1;
 	}
-	return writes;
+	return { writes };
 }
 ```
 
-**Only a BOUNDED run can be unspreadable**, and that is a real refusal rather than a
-rounding nuisance: two context rows a hair apart with three writable rows between them
-cannot be given three distinct six-decimal values. `step <= MIN_GAP` plans nothing and
-tells the user which rows are wedged — respacing part of the backlog and silently tying
-the rest is worse than refusing. The leading and trailing runs can never hit it, because
-neither is squeezed between two fixed values; applying the bounded test to them is what
-the previous revision got wrong.
+**Only a BOUNDED run can be unspreadable**: two context rows a hair apart with three
+writable rows between them cannot be given three distinct six-decimal values. The leading
+and trailing runs can never hit it, since neither is squeezed between two fixed values —
+applying the bounded test to them is what an earlier revision got wrong.
+
+**A wedged run returns `{ wedged: run }`, never `[]`.** An earlier revision returned an
+empty array, which is indistinguishable from a plan with nothing to do: the command would
+have opened a confirmation for zero notes, `applySafely([])` would have returned `null`,
+and the user would have seen no notice at all — while this document claimed the command
+tells them which rows are wedged. A claim with no mechanism behind it. The command now
+reads the result and names the wedged rows through `t('rank.wedged', { titles })`.
 
 - [ ] **Step 4: Run and watch pass**
 
@@ -1196,6 +1202,8 @@ In `src/i18n/en.ts`, beside the existing `command.*` keys (line ~1270):
 	'rank.gapSpent': 'No room left between those two items. Run "Respace ranks" from the command palette.',
 	'rank.unranked': 'That item has no rank yet. Use the toolbar’s set-up button to fill in the missing ones.',
 	'rank.parentGone': 'That item’s parent no longer exists, so nothing was created.',
+	'rank.wedged':
+		'These items sit between two notes this base cannot write, with no room left between them: {titles}. Nothing was changed. Run this on an unfiltered base.',
 ```
 
 The last two are the two refusals from Task 4. Wire them in **`src/view/cardMoves.ts`**, at the `computeDropWrites` call on line 282 —
@@ -1245,15 +1253,20 @@ export const RESPACE_RANKS_COMMAND_ID = 'respace-ranks';
  * derived from the other, and a single command guessing between them by inspecting the
  * data is the kind of cleverness that gets decoded at 3am.
  */
-function runRank(app: App, plan: (model: BacklogModel) => ItemWrite[], title: string, message: string): void {
+function runRank(app: App, plan: (model: BacklogModel) => SpreadResult, title: string, message: string): void {
 	const view = activeBacklogView(app);
 	if (view === null || view.model === null) return;
 	// The count in the dialog is from the model NOW, because the dialog has to say a
 	// number before the user answers.
 	const preview = plan(view.model);
+	// A wedged preview never opens a dialog: there is nothing to confirm.
+	if ('wedged' in preview) {
+		new Notice(t('rank.wedged', { titles: list(preview.wedged.map((i) => i.file.basename)) }));
+		return;
+	}
 	confirmDialog(app, {
 		title,
-		message: message.replace('{count}', String(preview.length)),
+		message: message.replace('{count}', String(preview.writes.length)),
 		cta: title,
 		onConfirm: () => {
 			void (async () => {
@@ -1277,9 +1290,13 @@ function runRank(app: App, plan: (model: BacklogModel) => ItemWrite[], title: st
 				// `applySafely` serializes and gates, but it does not check a planned
 				// value against what the note now holds. The count may differ from the
 				// one the dialog showed; the notice reports what was actually written.
-				const writes = plan(live.model);
-				const outcome = await live.applySafely(writes);
-				if (outcome) new Notice(t('rank.done', { count: writes.length }));
+				const planned = plan(live.model);
+				if ('wedged' in planned) {
+					new Notice(t('rank.wedged', { titles: list(planned.wedged.map((i) => i.file.basename)) }));
+					return;
+				}
+				const outcome = await live.applySafely(planned.writes);
+				if (outcome) new Notice(t('rank.done', { count: planned.writes.length }));
 			})();
 		},
 	});
