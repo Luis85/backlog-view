@@ -122,6 +122,13 @@ function siblingPosition(
 	// BOTH rows, not just the hovered one. Checking `item` alone lets a DESCENDANT
 	// dragged onto a focus row take this branch: it would keep its own parent and get
 	// ranked among a rung it does not belong to, silently, where today it is refused.
+	// An `outsideFilter` row sitting exactly at the focus level is ALSO a `model.roots`
+	// member — `collectFocusRoots` promotes on level match alone, not on filter
+	// membership — so `dragged` being both is a reachable model state this branch does
+	// not guard against directly. It relies on the render never handing such a row a
+	// drag to begin with (`row.draggable = !item.outsideFilter` in `render/rows.ts`,
+	// re-checked at drag time in `interactions/dragDrop.ts`), the same reliance
+	// `cardDrag.ts` places on the same flag.
 	if (model.focused && model.roots.includes(item) && model.roots.includes(dragged)) {
 		const peers = model.roots.filter((r) => r !== dragged);
 		const idx = peers.indexOf(item);

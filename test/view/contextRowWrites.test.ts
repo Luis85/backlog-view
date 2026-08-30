@@ -456,6 +456,59 @@ describe('write safety with context rows, across every entry point', () => {
 		expect(applied).toBeNull();
 		expect(vault.writeLog).toEqual([]);
 	});
+
+	/**
+	 * Task 5's own gap: nothing above focuses the view, so the sweep above never drives
+	 * the new focus-rank branch at all. `collectFocusRoots` promotes on level match
+	 * alone (`src/domain/model.ts`), not on filter membership, so a context row sitting
+	 * exactly at the focus level becomes a `model.roots` member — `focusRoot: true` —
+	 * while staying `outsideFilter`. The rule holds anyway, structurally: `row.draggable
+	 * = !item.outsideFilter` (`render/rows.ts`, re-checked at drag time in
+	 * `interactions/dragDrop.ts`) keeps it off the `dragged` side, and
+	 * `siblingPosition`'s own `item.outsideFilter` check keeps it off the `item` side
+	 * before the focus branch is ever reached.
+	 */
+	function focusedStressView() {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('PBI Ctx.md', { frontmatter: { type: 'PBI', order: 20 }, parentLink: 'Epic' });
+		vault.addFile('Task Ctx.md', { frontmatter: { type: 'Task', order: 10 }, parentLink: 'PBI Ctx' });
+		vault.addFile('PBI A.md', { frontmatter: { type: 'PBI', order: 30 }, parentLink: 'Epic' });
+		vault.addFile('PBI B.md', { frontmatter: { type: 'PBI', order: 40 }, parentLink: 'Epic' });
+		const containerEl = document.body.createDiv();
+		const view = new ProductBacklogView({} as never, containerEl);
+		const anyView = view as unknown as Record<string, unknown>;
+		anyView.app = vault.app;
+		anyView.config = new FakeViewConfig({});
+		anyView.data = { data: vault.entries().filter((e) => !['Epic.md', 'PBI Ctx.md'].includes(e.file.path)) };
+		view.onDataUpdated();
+		view.setFocusLevel('PBI');
+		clickExpandAll(containerEl);
+		return { view, containerEl, vault };
+	}
+
+	it('never writes to a context row promoted into the focus rank, whatever is dragged around it', async () => {
+		const { view, containerEl, vault } = focusedStressView();
+		const ctx = view.model?.byPath.get('PBI Ctx.md');
+		// Not vacuous: the state the comment above describes really is what this fixture
+		// produces, not merely what it was written to produce.
+		expect(ctx?.outsideFilter).toBe(true);
+		expect(ctx?.focusRoot).toBe(true);
+
+		const allRows = rows(containerEl);
+		for (const from of allRows) {
+			for (const to of allRows) {
+				if (from === to) continue;
+				for (const zone of ['before', 'after', 'inside'] as const) {
+					drag(from, to, zone);
+					await flush();
+				}
+			}
+		}
+		expect(vault.writeLog.some((w) => w.path === 'PBI Ctx.md')).toBe(false);
+		// Not vacuous the other way: real rank writes did happen among the other rows.
+		expect(vault.writeLog.length).toBeGreaterThan(0);
+	});
 });
 
 describe('undo across the filter boundary', () => {

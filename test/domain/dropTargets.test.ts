@@ -121,6 +121,26 @@ describe('dropTargetFor', () => {
 		expect(inside?.parent).toBe(b1);
 	});
 
+	it('refuses a descendant dropped beside its own focus-root parent — it is not itself a focus row', () => {
+		// Focus at PBI. PBI B1 is a focus root; its own child Task is drawn and fully
+		// draggable (only ancestors above the focus level are hidden). Dropping Task
+		// after its own parent must still refuse: `item` (PBI B1) is a `model.roots`
+		// member but `dragged` (Task) is not, and checking `item` alone would let the
+		// branch fire, keeping Task's real parent while ranking it among the two
+		// unrelated top-level PBIs — a descendant silently promoted to a rank it does
+		// not belong to.
+		const vault = new FakeVault();
+		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('PBI A1.md', { frontmatter: { type: 'PBI', order: 20 }, parentLink: 'Epic A' });
+		vault.addFile('Epic B.md', { frontmatter: { type: 'Epic', order: 30 } });
+		vault.addFile('PBI B1.md', { frontmatter: { type: 'PBI', order: 40 }, parentLink: 'Epic B' });
+		vault.addFile('Task.md', { frontmatter: { type: 'Task', order: 10 }, parentLink: 'PBI B1' });
+		const model = buildModel(vault.app, vault.entries(), { ...settings, focusLevel: 'PBI' });
+		const get = (title: string) => model.items.find((i) => i.title === title) as BacklogItem;
+
+		expect(dropTargetFor(model, get('PBI B1'), 'after', get('Task'), plan)).toBeNull();
+	});
+
 	it('treats a drop between visually adjacent roots as the no-op it looks like', () => {
 		// Real roots interleave: Epic A, Suite, Epic B. The plan draws A then B with nothing
 		// between them, so dropping A before B moves nothing on either screen — and must not

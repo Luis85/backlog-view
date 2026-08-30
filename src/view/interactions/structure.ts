@@ -15,8 +15,12 @@ import { computeInitWrites, dropPlacement } from '../../domain/writePlan';
 /** The item's sibling list and index within it, or null when it cannot be moved. */
 function siblingContext(host: BacklogViewHost, item: BacklogItem): { fullList: BacklogItem[]; idx: number } | null {
 	const model = host.model;
-	// Focus roots share no ranking; an ancestor from outside the filter has siblings
-	// the query never returned, so ordering it against the loaded ones would be a guess.
+	// Focus roots share no ranking THROUGH THIS PATH — Alt+arrow and the move/outdent
+	// menu, which this function serves. The drag path is no longer the same claim:
+	// `dropTargets.ts`'s `siblingPosition` ranks two focus rows against each other
+	// (Task 5); a keyboard/menu equivalent is Task 6's, not built here. An ancestor
+	// from outside the filter has siblings the query never returned, so ordering it
+	// against the loaded ones would be a guess.
 	if (!model || item.focusRoot || item.outsideFilter) return null;
 	// The real root group, not the rendered forest — the same rule `siblingPosition`
 	// keeps: an `order` is scoped to the notes sharing a parent, and a `Test suite` and an
