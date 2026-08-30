@@ -76,9 +76,15 @@ unless a section says otherwise.
   is a handle for naming an item outside Obsidian, where a title is going to change and a
   path is going to move. Notes that already exist are left exactly as they are: there is no
   backfill.
-- **Any of those writes can be taken back** — <kbd>Ctrl/Cmd</kbd>+<kbd>Z</kbd> or the ↩
-  toolbar button, however many notes the change touched (see [Undo](#undo)). The undo slot
-  is plugin-wide: one ↩, whichever of the three views made the change.
+- **Every write that EDITS a note can be taken back** — <kbd>Ctrl/Cmd</kbd>+<kbd>Z</kbd> or
+  the ↩ toolbar button, however many notes the change touched (see [Undo](#undo)). That is
+  every move, retype, state change, schedule, label and backfill, because each is a batch
+  whose inverse is captured as it lands. The undo slot is plugin-wide: one ↩, whichever of
+  the three views made the change.
+- **Creating a note is not undone**, and that is a rule rather than a gap: a creation
+  captures no inverse, so there is nothing to take back. The new note stays where it was
+  filed and you delete it yourself. This covers every creator — an item, a resource, an
+  absence, an iteration and a release.
 
 ## Requirements
 
@@ -331,14 +337,19 @@ Once in the tree (mirroring Azure DevOps backlog shortcuts where sensible):
 
 Every property change the view writes — a drop, a move, a state or tag change, the ✨
 backfill — can be taken back right afterwards: click the **↩** toolbar button or press
-<kbd>Ctrl/Cmd</kbd>+<kbd>Z</kbd> in the tree. Undoing the undo redoes. One level is
-kept, per view and per session, and quick no-ops don't spend it — re-picking an item's
-current state won't cost you the undo of the drop before it. A batch that failed
-partway can still take back the part that landed.
+<kbd>Ctrl/Cmd</kbd>+<kbd>Z</kbd> in the tree. Undoing the undo redoes. Quick no-ops don't
+spend it — re-picking an item's current state won't cost you the undo of the drop before
+it. A batch that failed partway can still take back the part that landed.
 
-Creating an item is the one exception: undo never deletes a note, so a new item stays —
-and the undo button still points at the last property change from before it. Delete the
-note itself to take a creation back.
+**One level is kept for the whole vault, per session — not one per view.** Undo takes back
+the last batch anything wrote, whichever of the three views wrote it, and the ↩ in each of
+them is the same slot: a score saved in the estimation view is what the backlog view's ↩
+takes back, if that was the last write.
+
+Creating a note is the exception: undo never deletes one, so a new note stays — and the
+undo button still points at the last property change from before it. Delete the note
+yourself to take a creation back. That covers every creator: an item, a resource, an
+absence, an iteration and a release.
 
 Undo puts back exactly what was there before, and only where the note still holds what
 the view wrote: a property you edited by hand in the meantime is kept rather than
