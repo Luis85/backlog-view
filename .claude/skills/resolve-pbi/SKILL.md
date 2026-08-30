@@ -115,6 +115,13 @@ any child; write the answer into a section the child's own type already has. Inv
 heading to hold it is a shape the register does not document — `decompose-pbi`'s own red
 flag, one skill upstream.
 
+**Some types have no documented shape, and that is a question rather than a licence.** The
+register's shape table covers a `Task`, an `Issue`, a `Bug` and a `Test case`; an
+`Improvement` and a `Deliverable` are legal children with no row in it and no note in
+`docs/` to read as precedent. So there is no section to write into and none to invent:
+phase 2 asks what shape the note takes, which is the ask `decompose-pbi` already makes for
+the same two types. An unanswered shape blocks that child, and the readback says so.
+
 The failing-test row is the specific assertion, never "add tests". Where the child's whole
 deliverable is an invariant, root `CLAUDE.md`'s rule applies and belongs in the `Approach`:
 the test is **watched failing** — revert the fix, run it, see red, restore.
