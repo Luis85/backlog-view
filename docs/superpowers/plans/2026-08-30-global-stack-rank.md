@@ -1452,6 +1452,7 @@ the entry points the context-row suite drives."
 
 **Files:**
 - Create: `docs/adrs/<next-number> Order is a global rank.md`, `docs/requirements/Ranking at the focused level.md`
+- Create: `docs/issues/The unseeded fallback is silent.md`
 - Modify: `docs/requirements/Sibling ranking.md`, `docs/requirements/Focus level.md`, `src/domain/CLAUDE.md`, `docs/issues/Duplicate orders in a partially filtered group.md`, `docs/issues/Board order is derived not stored.md`, `CHANGELOG.md`
 
 **Interfaces:**
@@ -1477,6 +1478,17 @@ Read `docs/README.md` and the ADR frontmatter of the most recent ADR. Pick the n
 - `src/domain/CLAUDE.md` — the sibling-scope sentence, the three-lists paragraph (a fourth list now: `ranked`), the `MIN_GAP` bullet, and the Cost section's two named sorts.
 - `docs/issues/Duplicate orders in a partially filtered group.md` — the impact section's "renumbers itself on the next renumbering drop" is gone; **Respace ranks** replaces it, and *not* Seed.
 - `docs/issues/Board order is derived not stored.md` — a shared rank now exists, so in-column ranking became possible and is deliberately not taken. The issue stays open with its premise corrected.
+
+- **New issue note** — *The unseeded fallback is silent*. `inRankOrder` reverts the focused
+  list to tree order whenever the focused rows' ranks are not all distinct. That is right
+  for the legacy state it was built for, and it cannot tell that state apart from a tie
+  arising LATER — a defect in Seed, a half-applied batch, a hand-edited frontmatter. In
+  those cases the focused order silently stops being the rank order and nothing says so,
+  which could hide a real regression indefinitely. Recorded rather than fixed: the
+  alternative on the table was scrambled priority with no explanation, which is worse, and
+  `domain/` cannot raise a notice. Re-open it if a post-Seed tie is ever reported. Follow
+  the shape of `docs/issues/Board order is derived not stored.md`, and name no `src/` path
+  it does not actually describe.
 
 - [ ] **Step 5: Add the changelog entry**
 
