@@ -342,9 +342,13 @@ spend it — re-picking an item's current state won't cost you the undo of the d
 it. A batch that failed partway can still take back the part that landed.
 
 **One level is kept for the whole vault, per session — not one per view.** Undo takes back
-the last batch anything wrote, whichever of the three views wrote it, and the ↩ in each of
-them is the same slot: a score saved in the estimation view is what the backlog view's ↩
-takes back, if that was the last write.
+the last batch anything wrote, whichever of the three views wrote it: a score saved in the
+estimation view is what the backlog view's ↩ takes back, if that was the last write.
+
+**The ↩ itself is not on every view.** The backlog view has one and the estimation view has
+its own; the release view draws none, so a status or description edited on a release's own
+screen is taken back from the **backlog view's** ↩. That is what one slot for the vault
+means in practice — the button you reach for is not always in the view you were working in.
 
 Creating a note is the exception: undo never deletes one, so a new note stays — and the
 undo button still points at the last property change from before it. Delete the note

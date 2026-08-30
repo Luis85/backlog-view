@@ -42,7 +42,17 @@ describe('a frontmatter value YAML would not read as written', () => {
 					'status: Open\nsource: [[Another note]], and why\n',
 				);
 			},
-			'opens with `[`, which YAML reads as a collection',
+			'opens with `[[`, so YAML reads the wikilink as a nested list',
+		],
+		[
+			'prose after a flow collection, which ends the value at the closing bracket',
+			(files) => {
+				files['docs/requirements/Thing.md'] = files['docs/requirements/Thing.md'].replace(
+					'status: Open\n',
+					'status: Open\nsource: [one, two], and why\n',
+				);
+			},
+			'opens a flow collection and does not end at its close',
 		],
 		[
 			'an unquoted value whose hash opens a comment',

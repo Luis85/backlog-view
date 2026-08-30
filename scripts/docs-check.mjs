@@ -885,10 +885,18 @@ for (const [, note] of notes) {
  *   that state. It is the same hazard as
  *   [[A hash in a value is a comment the first rewrite erases]], met from the other side:
  *   that note is about the bytes a REWRITE drops, this is about the block never parsing.
- * - **A value starting with `[` or `{`.** That opens a flow collection, so an unquoted
- *   wikilink is read as a nested list, and any prose after the closing bracket is a parse
- *   error. Two notes were in that state, both of them written on the branch that added
- *   this rule.
+ * - **A value opening with `[[`.** An unquoted wikilink is read as a nested list rather
+ *   than a link, and any prose after the closing bracket is a parse error outright. Two
+ *   notes were in that state, both written on the branch that added this rule.
+ * - **A flow collection that does not end at its own close.** `[one, two], and why` ends
+ *   the mapping value at the `]`, and the rest is unparseable.
+ *
+ * **A flow collection that IS the whole value is legal and must pass.** `tags: [a, b]` and
+ * `aliases: [Backlog, Planning]` are ordinary Obsidian frontmatter, and quoting them would
+ * change their type from a list to a string — so a first version of this rule that refused
+ * every value opening with `[` or `{` was refusing a legal form to catch an illegal one
+ * (found by review, PR #232). Nothing in `docs/` writes flow style today, which is exactly
+ * why `checkerAccepts.test.ts` has to state it rather than the corpus imply it.
  *
  * Both are fixed the same way and the register already spells it that way everywhere else:
  * quote the value. `parent: "[[...]]"` has always been quoted here.
@@ -908,8 +916,10 @@ for (const file of files) {
 	for (const { key, value } of entries) {
 		const text = value.trim();
 		if (text === "" || /^["']/.test(text)) continue;
-		if (/^[[{]/.test(text)) {
-			fail(file, `\`${key}:\` opens with \`${text[0]}\`, which YAML reads as a collection — quote the value`);
+		if (/^\[\[/.test(text)) {
+			fail(file, `\`${key}:\` opens with \`[[\`, so YAML reads the wikilink as a nested list — quote the value`);
+		} else if (/^\[[\s\S]*[^\]]$|^\{[\s\S]*[^}]$/.test(text)) {
+			fail(file, `\`${key}:\` opens a flow collection and does not end at its close — quote the value`);
 		} else if (/\s#/.test(text)) {
 			fail(file, `\`${key}:\` holds \` #\`, which starts a YAML comment — quote the value`);
 		}

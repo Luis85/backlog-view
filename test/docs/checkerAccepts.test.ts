@@ -707,6 +707,20 @@ describe('the gate accepts valid documents', () => {
 
 		await expectAccepted(files);
 	});
+	it('accepts a flow collection, which is legal YAML and changes type if quoted', async () => {
+		// The direction the first version of this rule got wrong (found by review, PR #232):
+		// it refused every value opening with `[` or `{`, which is `tags: [a, b]` and
+		// `aliases: [...]` — ordinary Obsidian frontmatter whose type would change from a
+		// list to a string if quoted as the message advised. Nothing in `docs/` writes flow
+		// style today, so the corpus cannot imply this and the case has to state it.
+		const files = baseRegister();
+		files['docs/requirements/Thing.md'] = files['docs/requirements/Thing.md'].replace(
+			'status: Open\n',
+			'status: Open\naliases: [Backlog, Planning]\n',
+		);
+
+		await expectAccepted(files);
+	});
 	it('accepts an Issue that is not a verification and says nothing about cadence', async () => {
 		// Most of `docs/issues/` is this: decisions and limitations, no `## How to check`,
 		// no `cadence:`. The biconditional has to leave them alone, or the gate added for
