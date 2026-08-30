@@ -18,7 +18,8 @@ written."
 - `superpowers:brainstorming` and `writing-plans` both end in an implementation plan, which
   is not what is asked for. A decomposition is register notes with ranks and parents; a
   plan is one file for one session. Hand over when the user wants the plan.
-- If the request is "build it", that is `writing-plans` against the PBI, not this.
+- If the request is "build it", that is `resolve-pbi` against the decomposed PBI, not this
+  and not `writing-plans` — the children have to be executable before anything runs them.
 
 ## What this skill teaches, and what it does not
 
@@ -209,8 +210,8 @@ the gate not happening.
 
    ```
    Read docs/requirements/<Title>.md and its child notes, plus <every output that is
-   not one of its children, by path>. Write an implementation plan for it using the
-   writing-plans skill. Do not write code.
+   not one of its children, by path>. Make it executable using the resolve-pbi skill.
+   Do not write code.
    ```
 
    The second half is not decoration. A `Test case`, its `Test suite` and an ADR are not
