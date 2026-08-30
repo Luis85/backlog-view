@@ -19,7 +19,14 @@ describe('createRelease', () => {
 			version: '2.4.0',
 		});
 		expect(file.path).toBe('Releases/2.4.md');
-		expect(vault.fm('Releases/2.4.md')).toEqual({ type: 'Release', v: '2.4.0' });
+		expect(vault.fm('Releases/2.4.md')).toEqual({ 'pbl-id': 1, type: 'Release', v: '2.4.0' });
+	});
+
+	it('stamps the release with an id from the same sequence every note uses', async () => {
+		const vault = new FakeVault();
+		await createRelease(vault.app, releaseSettingsWith({ folder: 'Releases' }), { title: '2.4' });
+
+		expect(vault.fm('Releases/2.4.md')).toEqual({ 'pbl-id': 1, type: 'Release' });
 	});
 
 	it('writes no key the view has not bound', async () => {
@@ -34,7 +41,7 @@ describe('createRelease', () => {
 			title: '2.4',
 			version: '2.4.0',
 		});
-		expect(vault.fm('Releases/2.4.md')).toEqual({ type: 'Release' });
+		expect(vault.fm('Releases/2.4.md')).toEqual({ 'pbl-id': 1, type: 'Release' });
 	});
 
 	it('writes no key for a field the creator left blank', async () => {
@@ -48,7 +55,7 @@ describe('createRelease', () => {
 			releaseSettingsWith({ folder: 'Releases', versionKey: 'v', targetDateKey: 'target-date', statusKey: 'status' }),
 			{ title: '2.4', version: '', targetDate: '  ', status: 'Planned' },
 		);
-		expect(vault.fm('Releases/2.4.md')).toEqual({ type: 'Release', status: 'Planned' });
+		expect(vault.fm('Releases/2.4.md')).toEqual({ 'pbl-id': 1, type: 'Release', status: 'Planned' });
 	});
 
 	it('writes target date and status alongside version when all three are bound', async () => {
@@ -59,6 +66,7 @@ describe('createRelease', () => {
 			{ title: '2.4', version: '2.4.0', targetDate: '2026-09-12', status: 'Planned' },
 		);
 		expect(vault.fm('Releases/2.4.md')).toEqual({
+			'pbl-id': 1,
 			type: 'Release',
 			v: '2.4.0',
 			'target-date': '2026-09-12',
@@ -72,7 +80,7 @@ describe('createRelease', () => {
 		// surface adds; this asserts it of the note rather than trusting the comment.
 		const vault = new FakeVault();
 		await createRelease(vault.app, releaseSettingsWith({ folder: 'Releases' }), { title: '2.4' });
-		expect(Object.keys(vault.fm('Releases/2.4.md'))).toEqual(['type']);
+		expect(Object.keys(vault.fm('Releases/2.4.md'))).toEqual(['pbl-id', 'type']);
 	});
 
 	it('refuses to create when two of its properties name one key', async () => {

@@ -199,6 +199,12 @@ export class FakeVault {
 					folder.name = path.split('/').pop() ?? path;
 					return folder;
 				}),
+			/**
+			 * Markdown files only, as the real one is: no folders, and nothing whose
+			 * extension is not `md`. `getAllLoadedFiles` above answers with FOLDERS, so a
+			 * caller that wants notes cannot reach them through it at all.
+			 */
+			getMarkdownFiles: () => [...this.files.values()].filter((file) => file.extension === 'md'),
 			create: async (path: string, content: string) => {
 				// A creation is a write, so it takes the same BEFORE hook the frontmatter
 				// writer does — the mirror of the `afterWrite` argument below, and the

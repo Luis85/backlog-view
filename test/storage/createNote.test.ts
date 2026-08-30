@@ -20,7 +20,7 @@ describe('createBacklogItem', () => {
 		expect(first.path).toBe('Backlog/Items/My- Story.md');
 		expect(vault.folders.has('Backlog')).toBe(true);
 		expect(vault.folders.has('Backlog/Items')).toBe(true);
-		expect(vault.fm(first.path)).toEqual({ type: 'PBI', parent: '[[Epic]]', order: 10 });
+		expect(vault.fm(first.path)).toEqual({ 'pbl-id': 1, type: 'PBI', parent: '[[Epic]]', order: 10 });
 
 		const second = await createBacklogItem(vault.app, settings, {
 			folder: 'Backlog/Items',
@@ -30,7 +30,47 @@ describe('createBacklogItem', () => {
 			order: 20,
 		});
 		expect(second.path).toBe('Backlog/Items/My- Story 1.md');
-		expect(vault.fm(second.path)).toEqual({ type: 'PBI', order: 20 });
+		expect(vault.fm(second.path)).toEqual({ 'pbl-id': 2, type: 'PBI', order: 20 });
+	});
+
+	it('stamps every created note with the next id in the vault, in the same write', async () => {
+		const vault = new FakeVault();
+
+		const first = await createBacklogItem(vault.app, settings, {
+			folder: 'Backlog',
+			title: 'First',
+			typeName: 'Epic',
+			parent: null,
+			order: 10,
+		});
+		const second = await createBacklogItem(vault.app, settings, {
+			folder: 'Backlog',
+			title: 'Second',
+			typeName: 'Epic',
+			parent: null,
+			order: 20,
+		});
+
+		expect(vault.fm(first.path)).toEqual({ 'pbl-id': 1, type: 'Epic', order: 10 });
+		expect(vault.fm(second.path)).toEqual({ 'pbl-id': 2, type: 'Epic', order: 20 });
+	});
+
+	it('gives a resource note an id from the same sequence as an item', async () => {
+		const vault = new FakeVault();
+
+		const item = await createBacklogItem(vault.app, settings, {
+			folder: 'Backlog',
+			title: 'Work',
+			typeName: 'Epic',
+			parent: null,
+			order: 10,
+		});
+		const resource = await createResourceNote(vault.app, settings, { folder: 'People', title: 'Alice' });
+
+		// One global sequence over every note the plugin makes — a resource is not on the
+		// tree, and it is still numbered out of the same run.
+		expect(vault.fm(item.path)['pbl-id']).toBe(1);
+		expect(vault.fm(resource.path)).toEqual({ 'pbl-id': 2, type: 'Resource' });
 	});
 
 	it('writes the bucket a note was created from, in the same single write', async () => {
@@ -48,7 +88,7 @@ describe('createBacklogItem', () => {
 
 		// One atomic write: the note never exists in a bucket its frontmatter does
 		// not claim, because there is no moment at which the placement is missing.
-		expect(vault.fm(file.path)).toEqual({ type: 'Epic', order: 10, horizon: 'Later' });
+		expect(vault.fm(file.path)).toEqual({ 'pbl-id': 1, type: 'Epic', order: 10, horizon: 'Later' });
 
 		// No horizon asked for, and no horizon key configured: neither writes one.
 		const plain = await createBacklogItem(vault.app, planned, {
@@ -58,7 +98,7 @@ describe('createBacklogItem', () => {
 			parent: null,
 			order: 20,
 		});
-		expect(vault.fm(plain.path)).toEqual({ type: 'Epic', order: 20 });
+		expect(vault.fm(plain.path)).toEqual({ 'pbl-id': 2, type: 'Epic', order: 20 });
 		const unconfigured = await createBacklogItem(vault.app, settings, {
 			folder: 'Backlog',
 			title: 'Nowhere',
@@ -67,7 +107,7 @@ describe('createBacklogItem', () => {
 			order: 30,
 			horizon: 'Later',
 		});
-		expect(vault.fm(unconfigured.path)).toEqual({ type: 'Epic', order: 30 });
+		expect(vault.fm(unconfigured.path)).toEqual({ 'pbl-id': 3, type: 'Epic', order: 30 });
 	});
 
 	it('seeds no placement onto a release, from either surface that seeds one', async () => {
@@ -107,7 +147,7 @@ describe('createBacklogItem', () => {
 		// mildest: `canSetIteration` refuses a marker, so a release joined to a sprint
 		// board's population would carry a key no edit path will write again or offer to
 		// clear.
-		expect(vault.fm(release.path)).toEqual({ type: 'Release', order: 10 });
+		expect(vault.fm(release.path)).toEqual({ 'pbl-id': 1, type: 'Release', order: 10 });
 
 		// The type it must not disturb: an ordinary item created the same way keeps both.
 		const work = await createBacklogItem(vault.app, planned, {
@@ -122,6 +162,7 @@ describe('createBacklogItem', () => {
 			release: shipping,
 		});
 		expect(vault.fm(work.path)).toEqual({
+			'pbl-id': 2,
 			type: 'PBI',
 			order: 20,
 			horizon: 'Later',
@@ -150,7 +191,7 @@ describe('createBacklogItem', () => {
 			release: shipping,
 		});
 
-		expect(vault.fm(file.path)).toEqual({ type: 'PBI', order: 10 });
+		expect(vault.fm(file.path)).toEqual({ 'pbl-id': 1, type: 'PBI', order: 10 });
 	});
 
 	it('pins parentless creations in folder mode', async () => {
@@ -195,7 +236,7 @@ describe('createResourceNote', () => {
 			title: 'Alex',
 		});
 
-		expect(vault.fm(file.path)).toEqual({ type: 'Resource' });
+		expect(vault.fm(file.path)).toEqual({ 'pbl-id': 1, type: 'Resource' });
 	});
 
 	it('creates the folder and dedupes a taken title', async () => {
