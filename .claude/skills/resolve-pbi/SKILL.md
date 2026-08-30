@@ -84,6 +84,14 @@ One line per child, out loud, saying what an implementer subagent will not find 
 a thin child costs a question; **silence on a child is the failure this phase exists to
 stop.**
 
+**Whose an output is comes first, and the rows follow from it.** The table below asks for a
+failing test, a coverage move, the files and what would refuse the work — questions about
+work somebody is going to do. An `Idea` and an open-question `Issue` are the human's, and a
+run that asked them for a failing test would either stall or invent one. So settle ownership
+by the table under *Not every child is executable*, then ask these rows of the outputs the
+subagent will execute. The human's are named, and the phase exits on them being named rather
+than on them being executable.
+
 The red-green-`npm run check`-commit cycle belongs once, in the plan's Global Constraints —
 never copied into a child's `Approach`. What a child's row states is the specific: which
 test file, which assertion, which threshold.
@@ -276,8 +284,10 @@ their own documented shapes: an Issue's two shapes carry no `## Outcome`, a Deli
 shape is whatever `decompose-pbi` agreed with the user, and the register gives a Deliverable
 no `closed:` key at all. A `Bug` closes with `status: Done` and `closed:` dated like a Task,
 but its shape is `What happened` · `Fix` · `Lesson` — no `## Outcome`. An `Improvement`
-closes with `## Outcome` and `status: Done` like a Task, but the register limits
-`created`/`closed` to Tasks, Issues and Bugs — an Improvement takes no `closed:` key. A
+closes with `status: Done` and by the shape phase 2 agreed for it — an `## Outcome` only if
+that shape has one, since the register documents none and inventing the heading here would
+undo the asking. It takes no `closed:` key either way: the register limits `created`/`closed`
+to Tasks, Issues and Bugs. A
 `Test suite` is **written but never closed** — every suite in
 `docs/tests/suites/` is `Open`, because it is a container for cases re-walked at each
 release, and closing one reports a verification nobody ran.

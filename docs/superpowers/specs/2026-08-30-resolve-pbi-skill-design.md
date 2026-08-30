@@ -129,6 +129,12 @@ says it in the two places that travel:
   must not overwrite it; the register also limits `closed:` to Tasks, Issues and Bugs, so a
   Deliverable never gains that key. For both, closing is `status: Done` and whatever the
   note's own shape already says — nothing added.
+  **A `Bug` and an `Improvement` are not Task-shaped either.** A `Bug` takes `status: Done`
+  and a `closed:` date, but its shape is *What happened · Fix · Lesson* and gains no
+  `## Outcome`. An `Improvement` takes `status: Done` and closes by the shape phase 2 agreed
+  for it — an `## Outcome` only if that shape has one, since the register documents none and
+  inventing the heading here would undo the asking — and it takes no `closed:` key, which the
+  register limits to Tasks, Issues and Bugs.
   **A `Test suite` is written and never closed.** Every suite in `docs/tests/suites/` is
   `Open`, because a suite is a persistent container for live-vault cases that are re-walked
   at each release and `RELEASING.md`'s sweep reads them. Writing its prose is the task;
@@ -230,6 +236,14 @@ Two outcomes, and they are different repairs:
 
 One line per child, saying what an implementer subagent will not find in it. Only a thin
 child costs a question; **silence on a child is the failure this phase exists to stop.**
+
+**Whose an output is comes first, and the rows follow from it.** The table below asks for a
+failing test, a coverage move, the files and what would refuse the work — questions about
+work somebody is going to do. An `Idea` and an open-question `Issue` are the human's, and a
+run that asked them for a failing test would either stall or invent one. So settle ownership
+by the table under *Not every child is executable*, then ask these rows of the outputs the
+subagent will execute. The human's are named, and the phase exits on them being named rather
+than on them being executable.
 
 | Row | The question |
 | --- | --- |
