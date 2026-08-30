@@ -162,24 +162,34 @@ const NOT_WORK_ITEMS = /(^|[/\\])(adrs[/\\].*|README)\.md$/;
  * `superpowers/`, where the `brainstorming` and `writing-plans` skills save design specs
  * and implementation plans (CLAUDE.md), and `prds/` and `sdds/`, where a requirements or
  * design document arrives from outside and is kept verbatim as the evidence the register's
- * own notes cite, and `product/`, which holds the playbooks a definition is produced BY.
- * None of them carries the frontmatter this file requires of everything
+ * own notes cite. None of them carries the frontmatter this file requires of everything
  * else — those documents are the source a backlog is derived FROM, so giving one a `type`
  * and a rank would file the evidence as work.
  *
- * `product/` was added on 2026-08-30, after `Product Definition Playbook.md` arrived with
- * no frontmatter and turned the gate red on `main` itself. It is exempted rather than
- * given a `type` for the reason the sentence above states: a playbook is the METHOD a
+ * **`docs/product/` is deliberately NOT here**, and that is the correction of 2026-08-30
+ * (Codex, PR #229). It needs the same frontmatter exemption — a playbook is the METHOD a
  * product definition is produced by, so filing it as a work item would rank a process
- * document among the work it governs. The alternative considered and rejected was moving
- * it to `prds/` — that folder is for a document that arrives from OUTSIDE and is kept
- * verbatim, and a playbook this repository follows is neither. Both are anchored to the `docs/` root exactly like `RECORDS`, rather than a bare
+ * document among the work it governs — but it must NOT have the link exemption, because
+ * this list carries both and a playbook is written HERE. Put on this list it would have
+ * been skipped by the cross-reference loop and the checked-claim loop as well, so a stale
+ * wikilink or a dead source path in it would have gone unreported. It joins `SOURCE_DOCS`
+ * directly instead, beside `superpowers/`, whose own sentence below states exactly this
+ * distinction. The first version of the fix made that mistake while its PR argued the
+ * playbook is "neither received nor verbatim" — the prose was right and the code did the
+ * other thing. Both are anchored to the `docs/` root exactly like `RECORDS`, rather than a bare
  * `superpowers[/\\].*` regex: an unanchored pattern would also exempt a coincidental
  * `docs/requirements/superpowers/`, and `walk` descends nested directories so that would go
  * unnoticed rather than unmatched.
  */
-const RECEIVED_DOCS = [path.join(DOCS, "prds"), path.join(DOCS, "sdds"), path.join(DOCS, "product")];
-const SOURCE_DOCS = [path.join(DOCS, "superpowers"), ...RECEIVED_DOCS];
+const RECEIVED_DOCS = [path.join(DOCS, "prds"), path.join(DOCS, "sdds")];
+/**
+ * Frontmatter-exempt, but NOT outside the link rules: `superpowers/` and `product/` are
+ * written HERE, so their links are checked like anyone else's — the distinction the
+ * `RECEIVED_DOCS` docblock draws, and the one this list exists to keep. A playbook with a
+ * dead wikilink is a defect in this repository's own prose; a customer interview naming a
+ * note that never existed here is not.
+ */
+const SOURCE_DOCS = [path.join(DOCS, "superpowers"), path.join(DOCS, "product"), ...RECEIVED_DOCS];
 const isSourceDoc = (file) => SOURCE_DOCS.some((dir) => file.startsWith(dir + path.sep));
 /**
  * The narrower half, and the distinction matters: a **received** document was written
