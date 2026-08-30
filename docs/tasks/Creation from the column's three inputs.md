@@ -24,6 +24,8 @@ risk: ""
 assignee: ""
 iteration: ""
 release: "[[Eratic Skunk]]"
+dependsOn:
+  - "[[An Iteration focus offers a type the board cannot draw]]"
 ---
 
 # Creation from the column's three inputs
@@ -114,7 +116,9 @@ for the state preset to drift out of step.
    the same way today, through `primaryNewType`. It is
    [[An Iteration focus offers a type the board cannot draw]], which owns the fix and is
    this step's **prerequisite** — not a change this Task carries, and not an untracked
-   one either. Both halves found by review (Codex, PR #225).
+   one either. Declared in this note's `dependsOn`, not only here: `docs/` is a backlog in
+   this plugin's own schema and the base binds `dependsOnProperty`, so a prerequisite
+   stated in prose alone is one the view cannot see, order by, or draw an edge for. Both halves found by review (Codex, PR #225).
 4. **Configured columns only.** A stray column — `outsideWorkflow` — offers no creation
    while still taking a drop. This is [[New cards in place]] extension 1b, and the
    reasoning lives there rather than here.
