@@ -744,13 +744,28 @@ export function anchoredOrder(
 	const pair = neighbourPair(usable, anchor, side);
 	if (pair === null) return { refusal: 'unranked' };
 	const { prev, next } = pair;
-	if (!prev) {
-		if (!next || next.order === null) return { refusal: 'unranked' };
-		return edgeRank(next.order, 'before');
+	// **A neighbour that EXISTS without a rank is a refusal, not an open end.** `rankBetween`
+	// reads null as "nothing that side", and the two are different facts about the vault:
+	// one is the edge of the population, the other is a row whose rank nobody has written.
+	if ((prev !== null && prev.order === null) || (next !== null && next.order === null)) {
+		return { refusal: 'unranked' };
 	}
-	if (!next) return prev.order !== null ? edgeRank(prev.order, 'after') : { refusal: 'unranked' };
-	if (prev.order === null || next.order === null) return { refusal: 'unranked' };
-	return midpoint(prev.order, next.order);
+	return rankBetween(prev?.order ?? null, next?.order ?? null);
+}
+
+/**
+ * The rank between two numbers, either of which may be absent — **the one arithmetic**, so
+ * that the placement a drop takes and the rank the backfill fills a blank with cannot
+ * disagree. `anchoredOrder` reaches it with the neighbours it found by identity in the
+ * ranked population; `computeInitWrites` reaches it with the bounds it is walking between.
+ *
+ * Null means "no neighbour that side", which is why both-null answers `ORDER_SPACING`:
+ * the first rank in an empty population has nothing to be between.
+ */
+function rankBetween(prev: number | null, next: number | null): RankResult {
+	if (prev === null) return next === null ? { order: ORDER_SPACING } : edgeRank(next, 'before');
+	if (next === null) return edgeRank(prev, 'after');
+	return midpoint(prev, next);
 }
 
 /**
@@ -1114,50 +1129,75 @@ function initWriteFor(item: BacklogItem, settings: BacklogSettings, nextOrder: (
  * Fill in missing order, type and optional properties across the whole hierarchy
  * without touching values that already exist. Walks the real tree, so a focused view
  * still backfills hidden ancestors and branches outside the focus level.
+ *
+ * **What it guarantees about ORDER, written to what the tests check and no wider.** Every
+ * rank it hands out lands between the ranks of the rows drawn either side of the blank, so
+ * filling a blank never moves the row that blank belongs to. It does NOT guarantee that a
+ * projection looks the same afterwards, and the difference is the whole reason `Seed ranks
+ * from the hierarchy` is a separate command: a focused list renders in tree order while any
+ * of its rows is unranked and in rank order once none is, so if two EXISTING ranks already
+ * contradict the drawn order, that switch flips them and no action that only fills blanks
+ * can prevent it. Pinned as a known reorder by
+ * `test/view/backfillFocusOrder.test.ts`; Seed is the remedy, because rewriting every rank
+ * is the only thing that can be.
  */
 export function computeInitWrites(model: BacklogModel, settings: BacklogSettings): ItemWrite[] {
 	const writes: ItemWrite[] = [];
-	// **ONE counter for the whole walk, not one per sibling group.** `order` is a rank
-	// over the whole population now, so a counter reset at each group handed the first
-	// unranked child of every group the same `ORDER_SPACING` — duplicates, manufactured
-	// by the very action a user presses to make a vault work, and duplicates are what
-	// force the read side back to tree order and make a later placement refuse as `tied`.
+	// Every rank the population already holds, ascending — `model.ranked` is sorted, and
+	// context rows are IN it because their numbers occupy the space whether or not this
+	// action may write to them. Each rank handed out is inserted, so the next blank sees it.
+	const bounds = model.ranked.map((item) => item.order).filter((order): order is number => order !== null);
+	// The HIGHEST rank among the rows drawn above the one being placed — a real one, or one
+	// this walk has just handed out. Null until the walk has passed a ranked row at all.
 	//
-	// Seeded past the highest rank anything already holds, `model.ranked` being every
-	// loaded item — context rows INCLUDED. They are *rendered*, so a rank that ignored
-	// them would place a backfilled item above a row the user can see, and a backfill
-	// that fills in blanks must not reorder the tree. Reading them is required; writing
-	// to them is forbidden, and the walk below is where that half is kept.
-	//
-	// The tree is not reordered by the sequence either: an unranked sibling already
-	// sorts LAST in its group (`compareSiblings`), the walk visits siblings in that
-	// drawn order, and every number this hands out is above every rank in the vault —
-	// so each backfilled item keeps its place among its own siblings.
-	let counter = model.ranked.reduce((max, item) => (item.order !== null && item.order > max ? item.order : max), 0);
+	// The highest and not the last, which is the correction a context row forced: a subtree
+	// can end on a row ranked BELOW its own parent (a context ancestor at 1000 whose child
+	// carries 10), and a blank drawn after it must clear everything above it rather than
+	// only its immediate predecessor — otherwise it lands between the two and moves up the
+	// screen. Being a running maximum also makes the values this walk hands out increase
+	// along the walk, so two blanks can never invert each other.
+	let highestDrawn: number | null = null;
 	/**
-	 * The next number, or null when the arithmetic cannot get clear of the last one —
-	 * `midpoint` and `edgeRank`'s check, in the third and last place a rank is produced.
-	 * Above about 1e20 the IEEE-754 unit exceeds `ORDER_SPACING`, so `floor(n) + 1000` IS
-	 * `n` and the sequence stops advancing.
+	 * The next rank, or null when there is none to be had.
 	 *
-	 * **It fails CLOSED, and that is a change from what this used to do.** The other two
-	 * refuse a placement; this one leaves the item unranked and lets the rest of the
-	 * backfill land, which is the closest thing to refusing that an action filling in many
-	 * notes at once has. Do not read it as harmless: the item keeps no rank, so a later
-	 * placement beside it refuses `unranked` and names this very action as the remedy — a
-	 * dead end the vault only leaves by hand, editing the enormous `order` down. That is
-	 * still the better half of the trade, because the alternative is what shipped: the same
-	 * number written onto every unranked note in the vault, by the one action whose whole
-	 * purpose is to make the vault rankable.
+	 * **Each blank is placed where it is DRAWN, between its neighbours, and never above the
+	 * population's maximum** — which is as far as a blanks-only pass can go; see the
+	 * function's own comment for what that does not buy. A monotonic counter seeded past the
+	 * maximum was the first version, and it is wrong for the projection the rank change
+	 * exists for:
+	 * a focus level renders in TREE order while one of its rows is unranked (a null defeats
+	 * `inRankOrder`'s distinctness test) and in RANK order once none is, so pushing a blank
+	 * to the end of the population reverses a list the moment it becomes sortable. The
+	 * counter could not see that, because "a monotonic sequence never inverts a SIBLING
+	 * pair" is a true sentence about a different population.
+	 *
+	 * `rankBetween` is the same arithmetic every placement uses, and the bounds make it
+	 * the same question: the value lands in an OPEN interval of the bound set, so it can
+	 * collide with nothing already there and with nothing this walk has already handed out.
+	 *
+	 * **Fails closed**, like the two other places a rank is produced: a spent gap leaves
+	 * that one item unranked rather than writing a number that jumps over a drawn row.
 	 */
 	const nextOrder = (): number | null => {
-		const next = Math.floor(counter) + ORDER_SPACING;
-		if (!(next > counter)) return null;
-		counter = next;
-		return next;
+		// The nearest bound above the row drawn before this one — a linear scan and a splice
+		// per blank, which is quadratic in the worst mix of ranked and blank rows. Left that
+		// way on purpose: this runs once per press of a button, not once per render, and a
+		// sorted-insert structure here would be more to read than the rule it implements.
+		const above = bounds.find((order) => order > (highestDrawn ?? Number.NEGATIVE_INFINITY));
+		const placed = rankBetween(highestDrawn, above ?? null);
+		if ('refusal' in placed) return null;
+		bounds.splice(above === undefined ? bounds.length : bounds.indexOf(above), 0, placed.order);
+		highestDrawn = placed.order;
+		return placed.order;
 	};
 	const visit = (siblings: BacklogItem[]) => {
 		for (const item of siblings) {
+			// Every DRAWN row raises the floor, context rows included: one is on screen, so a
+			// blank after it must rank after it. An unranked context row constrains nothing
+			// and is skipped here for the same reason `anchoredOrder` skips it as an anchor.
+			if (item.order !== null && (highestDrawn === null || item.order > highestDrawn)) {
+				highestDrawn = item.order;
+			}
 			// Ancestors pulled in from outside the filter are context, not results —
 			// the backfill must not write properties into notes the base excluded.
 			if (item.outsideFilter) {

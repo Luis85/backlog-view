@@ -405,6 +405,10 @@ describe('computeInitWrites', () => {
 		expect(new Set(orders).size).toBe(orders.length);
 		// Nor may it move a row the user can already see.
 		expect(drawn(after)).toEqual(before);
+		// The mechanism, stated: each blank lands BETWEEN the ranks drawn either side of it,
+		// so Epic A's two children stay inside the 10..20 gap instead of being pushed past
+		// Epic B to the end of the population.
+		expect(orders).toEqual([10, 15, 17.5, 20, 1020, 2020]);
 	});
 });
 
