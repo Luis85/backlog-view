@@ -200,7 +200,7 @@ describe('New release', () => {
 
 	it('binds nothing and says nothing when every option is already bound', async () => {
 		// `RELEASE_CONFIG` deliberately leaves `releaseNotesFolder` unbound (see its own
-		// comment), so it is bound here explicitly — this test's claim is about a
+		// docblock), so it is bound here explicitly — this test's claim is about a
 		// genuinely fully-configured view.
 		await openNewRelease(noReleaseVault(), { ...RELEASE_CONFIG, releaseNotesFolder: 'docs/release-notes' });
 		expect(Notice.messages).toEqual([]);

@@ -56,7 +56,7 @@ describe('runReleaseInit', () => {
 
 	it('adopts nothing already bound, and leaves an unrelated key alone', async () => {
 		// `RELEASE_CONFIG` deliberately leaves `releaseNotesFolder` unbound (see its own
-		// comment) so the folder-bind test below has something to bind — bound here
+		// docblock) so the folder-bind test below has something to bind — bound here
 		// explicitly, since THIS test's claim is about a genuinely fully-configured view.
 		const { view } = makeReleaseView(new FakeVault(), { ...RELEASE_CONFIG, releaseNotesFolder: 'docs/release-notes' });
 		await runReleaseInit(view);
@@ -245,6 +245,18 @@ describe('the press binds the options that are not properties', () => {
 		view.config.set('releasedStatusValues', 'Shipped, Archived');
 		void runReleaseInit(view);
 		expect(view.config.get('releasedTransitionValue')).toBe('Shipped');
+	});
+
+	it('binds nothing for a transition with no list to choose from, rather than writing an empty value', () => {
+		// The empty-value guard `wouldBindValue` carries: with `releasedStatusValues`
+		// cleared, `releasedValuesOf` returns `[]`, so the transition candidate computes
+		// `''`. Without the guard that `''` would be WRITTEN — reporting as touched to the
+		// next press, which is exactly the failure mode `runReleaseInit`'s own comment
+		// states beside the sweep.
+		const { view } = mountRelease({ bindAll: false });
+		view.config.set('releasedStatusValues', '');
+		void runReleaseInit(view);
+		expect(view.config.get('releasedTransitionValue')).toBeUndefined();
 	});
 
 	it('never overwrites an option the reader has touched', () => {

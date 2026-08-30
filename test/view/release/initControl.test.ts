@@ -13,7 +13,7 @@ describe('the release view’s ✨', () => {
 		// Every candidate already bound: the bar control is a fixture of the bar, not a
 		// state of the config — `render/toolbar.ts` and `estimation/toolbar.ts` both draw
 		// theirs unconditionally, and a control that came and went would be worse.
-		const { view } = mountRelease({ bindAll: true });
+		const { view } = mountRelease({ bindAll: true, notesFolder: 'docs/release-notes' });
 		expect(view.viewEl.querySelector('.pbl-rel-init')).not.toBeNull();
 	});
 
