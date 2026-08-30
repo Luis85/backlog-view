@@ -381,6 +381,30 @@ describe('computeInitWrites', () => {
 		expect(computeInitWrites(ordinaryModel, settings).map((w) => w.order)).toEqual([1010, 2010]);
 	});
 
+	it('anchors the first blank on a ranked item elsewhere in the population, not on the walk', () => {
+		// The root Epic is the very first thing the DFS visits and it carries no order, so
+		// `nextOrder`'s own `highestDrawn` is still null when it asks for a rank. The bound
+		// comes from the CHILD's order instead — read straight out of `model.ranked`, which
+		// is built before the walk runs, not out of anything the walk has passed yet.
+		// `?? Number.NEGATIVE_INFINITY` is what makes that bound visible at all: dropped, the
+		// comparison becomes `order > null`, which coerces `null` to `0` rather than to "no
+		// floor" — a POSITIVE bound passes either way (this is why a child ranked at, say,
+		// 500 does not tell the two apart), so the order below is negative on purpose, the
+		// one magnitude where the coercion answers a different question than the fallback
+		// does.
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic' } });
+		vault.addFile('Child.md', { frontmatter: { type: 'Feature', order: -50 }, parentLink: 'Epic' });
+		const model = buildModel(vault.app, vault.entries(), settings);
+
+		const writes = computeInitWrites(model, settings);
+
+		// One spacing clear of -50, on the low side — the Epic has to sit above every
+		// ranked note in the vault, this child included, even though DFS reaches the
+		// Epic first and has handed out no rank of its own yet to measure from.
+		expect(writes).toEqual([{ file: expect.objectContaining({ path: 'Epic.md' }), order: -1050 }]);
+	});
+
 	it('ranks every missing order distinctly without reordering the tree', () => {
 		const vault = new FakeVault();
 		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10 } });

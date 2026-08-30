@@ -816,8 +816,13 @@ function edgeRank(neighbour: number, side: 'before' | 'after'): RankResult {
 	return clear ? { order } : { refusal: 'gapSpent' };
 }
 
-/** A context row with nothing to rank from — see `anchoredOrder`'s own comment. */
-function isUnrankedContext(anchor: BacklogItem | null): boolean {
+/**
+ * A context row with nothing to rank from — see `anchoredOrder`'s own comment. Exported
+ * for `siblingContext` (`view/interactions/structure.ts`), which asks the same question
+ * of a focused peer rather than of an anchor: the row is on screen, but it can never be
+ * GIVEN a rank, so it constrains nothing and must not be offered as one to swap past.
+ */
+export function isUnrankedContext(anchor: BacklogItem | null): boolean {
 	return anchor !== null && anchor.outsideFilter && anchor.order === null;
 }
 
