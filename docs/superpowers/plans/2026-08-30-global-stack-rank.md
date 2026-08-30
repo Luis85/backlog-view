@@ -27,6 +27,11 @@ Copied from the spec and from `CLAUDE.md`. Every task's requirements implicitly 
 - **`domain/` never touches the DOM and never writes.** It has node tests, not jsdom tests.
 - **Ranking runs over `model.realRoots`, never a projection's list** — lint-enforced in `writePlan.ts` and `view/interactions/create.ts` (`VISUAL_DEPTH` and the ranking rule in `src/domain/CLAUDE.md`).
 - **An invariant asserted in a comment gets a test that fails without it, and the test is watched failing.** Revert the fix, run it, see red, restore.
+- **`npx tsc --noEmit` is part of every task's gate, without exception.** Vitest
+  transpiles without typechecking and eslint does not typecheck either, so a task that
+  runs only tests and lint can push a diff that does not COMPILE. That happened on Task 3
+  (`'next' is possibly 'null'`), went green locally, and failed both CI platforms. If the
+  full `npm run check` will not finish, `tsc --noEmit` is the one step you may not drop.
 - **Definition of done:** `npm run check` (build + lint + coverage-thresholded tests + fallow + docs register). All five must pass before committing. Coverage thresholds in `vitest.config.mts` only ever go up.
 - **New constants:** `ORDER_SPACING = 1000`, `MIN_GAP = 0.000002`, `roundOrder` to **6** decimals.
 - **`CHANGELOG.md`** gains an `[Unreleased]` entry in this pull request.
