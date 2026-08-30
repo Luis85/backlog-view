@@ -98,7 +98,20 @@ create-then-stamp pair could fail in between and leave an id-less note behind, w
 - `createAbsenceNote` — `storage/absenceNotes.ts`
 
 `readmeFile.ts` and `baseFile.ts` create files too and get nothing: a generated README and
-a `.base` are artifacts the plugin maintains, not items somebody tracks.
+a `.base` are artifacts the plugin maintains, not items somebody tracks. They are the two
+names the structural check in section 4 exempts, and that list is the only place the
+exemption exists.
+
+**A configured property may name `pbl-id`, and when it does the configured property wins.**
+Obsidian's picker offers the properties a vault HAS, so once notes carry this key a view
+option can be pointed at it — `typeKey`, say — and the type then lands on top of the stamp.
+The id is written FIRST in each creator for exactly that reason: what the user configured
+is the note's real data, and this is bookkeeping. The note gets no usable id, and nothing
+reports it. Deliberately not a `configProblems` row: that gate blocks EVERY write in the
+view, which [[Backfill missing properties]] extension 2c already ruled a worse state than
+the feature it was protecting — and this feature is a number nothing reads back. The scan
+is unharmed either way, since `Number('Epic')` is `NaN` and ignored. Raised by automated
+review on PR #226.
 
 No sentence reaches a screen, so the catalog gains no keys.
 
@@ -111,9 +124,19 @@ No sentence reaches a screen, so the catalog gains no keys.
 - a non-numeric, absent or malformed `pbl-id` is ignored rather than poisoning the max
 - two calls with no cache update between them do not repeat a number
 
-and one assertion per creator that a created note's frontmatter carries the key — driven
-through the existing creation tests rather than a new suite, so a fifth creator added later
-fails the one that already covers its neighbours.
+and one assertion per creator that a created note's frontmatter carries the key, driven
+through the existing creation tests rather than a new suite.
+
+**Those four assertions do not hold the rule, and this note claimed they did.** "Every
+creator stamps an id" is a category invariant, and `CLAUDE.md` says such a thing is checked
+at the forbidden thing rather than by listing the places somebody thought of: a fifth
+creator added later calls `vault.create` on a path no existing test drives, and the suite
+stays green. So the rule is checked where the calls are — one test walks every file in
+`src/storage/`, finds those calling `vault.create`, and requires each to reach
+`nextItemId` unless it is one of the two named artifact writers (`readmeFile.ts`,
+`baseFile.ts`). A new creator fails it on the day it is written, and adding a third
+exemption is a deliberate edit rather than an omission. Raised by automated review on
+PR #226, which is the same rule catching this note that this note was written to keep.
 
 `docs/requirements/` gains the note that specifies `domain/itemIds.ts`, which `docs-check.mjs`
 rule 7 requires of every module in `src/`.
