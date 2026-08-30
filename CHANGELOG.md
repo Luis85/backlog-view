@@ -11,6 +11,8 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-08-30
+
 ### Added
 
 - A `pbl-id` property on every note the plugin creates — one integer, taken from the
