@@ -1,3 +1,4 @@
+import { EXTRA_TYPE_RANK, isExtraType } from './itemTypes';
 import type { BacklogItem } from './model';
 
 /**
@@ -64,4 +65,21 @@ export function inRankOrder(rows: BacklogItem[], ranked: BacklogItem[]): Backlog
 function distinctlyRanked(rows: BacklogItem[]): boolean {
 	const orders = rows.filter((item) => !item.outsideFilter).map((item) => item.order);
 	return !orders.some((o) => o === null) && new Set(orders).size === orders.length;
+}
+
+/**
+ * The rows that could stand beside this one in a single `inRankOrder` list — equal keys
+ * mean a shared list is possible, and only then does one row's rank constrain another's.
+ * Beside the mechanism it has to agree with rather than beside the one caller
+ * (`computeInitWrites`, which bounds a backfilled rank against exactly these rows).
+ *
+ * `collectFocusRoots` takes a level by `levelIndex` and an extra type — which has none —
+ * by the rung it is pinned to, so those two answer one key and every other item answers
+ * its own level. Conservative where it cannot be exact: a catalog row is never a focus
+ * root at all, and an unknown custom type matches no focus level, yet both keep an
+ * ordinary key here rather than an exemption. Over-constraining a caller is a rank not
+ * handed out; under-constraining one is a row that moves.
+ */
+export function focusKey(item: BacklogItem): number {
+	return isExtraType(item.typeName) ? EXTRA_TYPE_RANK : item.levelIndex;
 }

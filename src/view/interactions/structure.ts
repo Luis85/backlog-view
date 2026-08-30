@@ -3,7 +3,7 @@ import { list, t } from '../../i18n/t';
 import { keepsProjection } from '../../domain/itemTypes';
 import { BacklogViewHost } from '../host';
 import { BacklogItem } from '../../domain/model';
-import { DropTarget } from '../../domain/dropTargets';
+import { DropTarget, isInvalidParent } from '../../domain/dropTargets';
 import { configProblems } from '../../domain/settingsConsistency';
 import { computeInitWrites, dropPlacement, isUnrankedContext } from '../../domain/writePlan';
 
@@ -209,7 +209,11 @@ export function outdent(host: BacklogViewHost, item: BacklogItem): void {
  * nothing and said nothing — the same defect `Move to top` and `Move to bottom` were fixed
  * for, in the command that fix did not reach.
  */
-export function indentTarget(host: BacklogViewHost, item: BacklogItem): DropTarget | null {
+export function indentTarget(
+	host: BacklogViewHost,
+	item: BacklogItem,
+	newParent: BacklogItem | null = visibleNeighbor(host, item, -1),
+): DropTarget | null {
 	// Its own refusal, not one inherited from `siblingContext` — that function answers for
 	// active focus rows now, so `visibleNeighbor` hands back a focus PEER and this would
 	// offer `Indent under X` across the synthetic row. Ranking there is this feature;
@@ -218,17 +222,39 @@ export function indentTarget(host: BacklogViewHost, item: BacklogItem): DropTarg
 	// offering the entry, and an offered command that does nothing is what this repo
 	// refuses ahead of a withheld one.
 	if (item.focusRoot) return null;
-	const newParent = visibleNeighbor(host, item, -1);
 	if (!newParent) return null;
+	// A destination handed in was resolved by PATH, so the vault may have put it anywhere
+	// since the menu named it — including under the item itself, which the previous
+	// visible sibling could never be. The neighbour `visibleNeighbor` computes passes this
+	// for free; a re-resolved one is the reason it is asked at all.
+	if (isInvalidParent(newParent, item)) return null;
 	const peers = newParent.children.filter((s) => s !== item);
 	const target: DropTarget = { parent: newParent, peers, insertIndex: peers.length };
 	return plans(host, item, target) ? target : null;
 }
 
-/** Nest the item under its previous visible sibling, at the end of its children. */
-export function indent(host: BacklogViewHost, item: BacklogItem): void {
+/**
+ * Nest the item under `namedParentPath`, or — when no path is named — under its previous
+ * visible sibling, at the end of that row's children.
+ *
+ * **Re-resolving a command's SUBJECT without re-resolving its TARGET makes the label and
+ * the action disagree.** A command whose title names a specific note must re-resolve THAT
+ * note by path and refuse if it is no longer a valid destination; it may never silently
+ * compute a fresh one. `liveItem` re-resolving the subject is what made this a wrong
+ * structural write rather than a harmless refusal: before it, a stale item failed every
+ * lookup and the move did nothing, and afterwards the subject is faithfully re-resolved
+ * and the write lands — against a destination recomputed from whatever the row's previous
+ * visible neighbour happens to be NOW. A Bases refresh between opening the menu and
+ * clicking is all it takes to reparent the note under a row the menu never named.
+ *
+ * The keyboard passes no path, deliberately: Alt+Right draws no label and promises no
+ * note, so the neighbour at the moment of the press IS what the user asked for.
+ */
+export function indent(host: BacklogViewHost, item: BacklogItem, namedParentPath?: string): void {
 	const live = liveItem(host, item);
-	const target = indentTarget(host, live);
+	const named = namedParentPath === undefined ? undefined : host.model?.byPath.get(namedParentPath);
+	if (namedParentPath !== undefined && !named) return;
+	const target = indentTarget(host, live, named);
 	if (target) void host.performDrop(live, target);
 }
 

@@ -7,6 +7,7 @@ import { readDate, sameValue } from './noteFields';
 import { daysBetween, formatCivil } from './timeline';
 import { hasHorizonAxis } from './roadmap';
 import { stateKeyFor } from './board';
+import { focusKey } from './rankOrder';
 import { BacklogSettings, isDoneValue, isStartedValue } from './settings';
 import {
 	OPTIONAL_FIELDS,
@@ -1137,12 +1138,35 @@ function initWriteFor(item: BacklogItem, settings: BacklogSettings, nextOrder: (
  *
  * **What it guarantees about ORDER, and the scope is deliberate.** Every rank it hands out
  * is strictly ABOVE every rank drawn over the blank and strictly BELOW every rank drawn
- * under it, so filling a blank never moves that blank. That covers both places this plugin
- * orders rows by `order` — sibling order in the tree (`compareSiblings`) and a focus level
- * (`inRankOrder`) — and it covers them because the bound is read off the DRAWN sequence
- * rather than off the rank sequence. Nothing else needs covering: a board column and a
- * roadmap bucket sort by the Base's own `entryIndex`, so no rank this writes can move a
- * card in one.
+ * under it *that the blank could be ordered against*, so filling a blank never moves that
+ * blank. That covers both places this plugin orders rows by `order` — sibling order in the
+ * tree (`compareSiblings`) and a focus level (`inRankOrder`) — and it covers them because
+ * the bound is read off the DRAWN sequence rather than off the rank sequence. Nothing else
+ * needs covering: a board column and a roadmap bucket sort by the Base's own `entryIndex`,
+ * so no rank this writes can move a card in one.
+ *
+ * **Bounded against the rows it can COLLIDE with, not against every row drawn later**, and
+ * the two halves of the guarantee reach that differently:
+ *
+ * - Above: the floor is the running maximum over everything drawn so far, so a rank clears
+ *   every earlier one whether or not the two are ever compared. Left global deliberately —
+ *   it is also what keeps every rank handed out increasing along the walk and landing in a
+ *   gap no existing rank occupies, and a narrower floor buys a lower number at the price of
+ *   both. The sibling half of the guarantee needs nothing else: an unranked row sorts LAST
+ *   in its group (`compareSiblings`), so every ranked sibling is drawn before the blank and
+ *   is already under the floor.
+ * - Below: only rows that could share a focus list with the blank (`focusKey`) constrain
+ *   it. A row at another level is never `inRankOrder`'s peer and never `compareSiblings`',
+ *   so nothing requires the blank to rank below it — and bounding against it refused whole
+ *   vaults for nothing. `Epic A(1000) > blank Feature` drawn before `Epic B(2000) > an Epic
+ *   ranked 10` is the shape: the 10 is drawn later and below the floor, the two rows can
+ *   never appear in one list, and the blank was skipped. That is worst on exactly the
+ *   heterogeneous legacy vault this action exists to migrate.
+ * - Below, second bound: the smallest rank in the vault ABOVE the floor, whatever level it
+ *   is at. Not part of the guarantee — it is what keeps the value in a free gap, so the
+ *   backfill can never mint the duplicate rank that `dropPlacement` reads as a legacy
+ *   sibling-scoped vault. A rank at or under the floor needs no bound of its own, since
+ *   every value handed out is strictly above the floor and cannot land on one.
  *
  * **When no such rank exists the blank keeps none**, which is the same fail-closed rule
  * the other two places a rank is produced already keep. It is reachable and ordinary: a
@@ -1169,26 +1193,38 @@ export function computeInitWrites(model: BacklogModel, settings: BacklogSettings
 		}
 	};
 	collect(model.realRoots);
-	// `ceilings[i]` is the SMALLEST rank drawn after position i — the value a blank there
-	// must stay below to keep its place. **Read off what is drawn LATER, not off the next
-	// rank above the floor**, and that distinction is the whole of the fix this replaced:
-	// the two agree while a subtree's ranks run upward with the screen, and part company
-	// exactly when a later-drawn row under a DIFFERENT parent holds a lower rank. Every
-	// fixture that missed this bug stayed inside one increasing run.
+	// `ceilings[i]` is the SMALLEST rank drawn after position i BY A ROW THAT COULD BE
+	// ORDERED AGAINST IT — the value a blank there must stay below to keep its place.
+	// **Read off what is drawn LATER, not off the next rank above the floor**, and that
+	// distinction is the whole of the fix this replaced: the two agree while a subtree's
+	// ranks run upward with the screen, and part company exactly when a later-drawn row
+	// under a DIFFERENT parent holds a lower rank. Every fixture that missed this bug
+	// stayed inside one increasing run. One backward pass, keeping the lowest rank seen
+	// per focus key, because the answer for a row is a suffix minimum over its own key.
 	const ceilings: (number | null)[] = new Array<number | null>(drawn.length).fill(null);
-	for (let i = drawn.length - 2; i >= 0; i--) {
-		ceilings[i] = lowerOf(drawn[i + 1].order, ceilings[i + 1]);
+	const lowestLater = new Map<number, number>();
+	for (let i = drawn.length - 1; i >= 0; i--) {
+		const key = focusKey(drawn[i]);
+		ceilings[i] = lowestLater.get(key) ?? null;
+		const order = drawn[i].order;
+		if (order !== null) lowestLater.set(key, Math.min(order, lowestLater.get(key) ?? Infinity));
 	}
+	// Every rank in the vault, ascending. `above` walks it forwards only, which is sound
+	// because the floor never falls; what it skips are the ranks at or under the floor,
+	// which no value handed out can land on anyway.
+	const occupied = model.ranked.map((item) => item.order).filter((order): order is number => order !== null);
+	let above = 0;
 	// The HIGHEST rank drawn above the current row — a real one, or one this walk has just
 	// handed out. The highest and not the last: a subtree can end on a row ranked below its
 	// own parent, and a blank after it must clear everything above it. Being a running
 	// maximum also makes the values handed out increase along the walk, so two blanks never
-	// invert each other, and every value lands in a gap no existing rank occupies — above
-	// all of them drawn earlier, below all of them drawn later.
+	// invert each other, and — with `occupied` below — every value lands in a gap no
+	// existing rank occupies: above every rank drawn earlier, below the next one above it.
 	let floor: number | null = null;
 	let ceiling: number | null = null;
 	const nextOrder = (): number | null => {
-		const placed = rankBetween(floor, ceiling);
+		while (above < occupied.length && occupied[above] <= (floor ?? -Infinity)) above++;
+		const placed = rankBetween(floor, lowerOf(ceiling, occupied[above] ?? null));
 		if ('refusal' in placed) return null;
 		floor = placed.order;
 		return placed.order;

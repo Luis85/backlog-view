@@ -272,7 +272,12 @@ function addMoveSection(host: BacklogViewHost, menu: Menu, item: BacklogItem): v
 			mi
 				.setTitle(t('menu.indentUnder', { title: prev.title }))
 				.setIcon('indent-increase')
-				.onClick(() => indent(host, item)),
+				// The PATH of the row this title names, so the click re-resolves that note
+				// rather than recomputing a destination — see `indent`'s own note. The only
+				// entry in this menu whose title names a note it writes to; `Move up`,
+				// `Move down`, the two edge moves and `Outdent` all name their destination
+				// by relation, so a refresh can move the row without making the label lie.
+				.onClick(() => indent(host, item, prev.file.path)),
 		);
 	}
 	if (rankedDown && next) {

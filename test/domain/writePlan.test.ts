@@ -405,6 +405,50 @@ describe('computeInitWrites', () => {
 		expect(writes).toEqual([{ file: expect.objectContaining({ path: 'Epic.md' }), order: -1050 }]);
 	});
 
+	/**
+	 * **The bound is what the blank could COLLIDE with, not everything drawn after it.**
+	 * The guarantee covers two mechanisms — `compareSiblings` and `inRankOrder` at one focus
+	 * level — and both compare rows that share a level or a parent, so a row at another
+	 * level constrains nothing. Bounding against it anyway refused blanks for nothing, worst
+	 * on the heterogeneous legacy vault the ✨ exists to migrate. Every fixture above keeps
+	 * the constraining row at the blank's own level, which is why the suite could not see it.
+	 */
+	it('ranks a blank a row at ANOTHER level is drawn below', () => {
+		const vault = new FakeVault();
+		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 1000 } });
+		vault.addFile('Blank.md', { frontmatter: { type: 'Feature' }, parentLink: 'Epic A' });
+		vault.addFile('Epic B.md', { frontmatter: { type: 'Epic', order: 2000 } });
+		// Drawn after the blank and ranked below everything above it — and an Epic under an
+		// Epic, so it crosses both a level and a type boundary. It is no sibling of the
+		// blank and can never share a focus list with it, so nothing requires the blank to
+		// rank under it.
+		vault.addFile('C1.md', { frontmatter: { type: 'Epic', order: 10 }, parentLink: 'Epic B' });
+		const model = buildModel(vault.app, vault.entries(), settings);
+
+		// 1500, not 2000: the second bound is the next rank ABOVE the floor whatever its
+		// level, so the value still lands in a gap nothing holds. Writing Epic B's own 2000
+		// would mint the duplicate `dropPlacement` reads as an unmigrated vault.
+		expect(computeInitWrites(model, settings)).toEqual([
+			{ file: expect.objectContaining({ path: 'Blank.md' }), order: 1500 },
+		]);
+	});
+
+	it('still refuses when a row that could share the blank\'s focus list is drawn below it', () => {
+		const vault = new FakeVault();
+		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 1000 } });
+		vault.addFile('Blank.md', { frontmatter: { type: 'PBI' }, parentLink: 'Epic A' });
+		vault.addFile('Epic B.md', { frontmatter: { type: 'Epic', order: 2000 } });
+		// A `Bug` holds no rung and so has no `levelIndex` to match — but focusing the rung
+		// it is PINNED to draws it beside the PBIs, so the two can stand in one
+		// `inRankOrder` list and this one is drawn later holding a lower rank. Different
+		// type, different level, and still a bound: the narrowing is by what can be
+		// compared, never by what looks alike.
+		vault.addFile('Bug 1.md', { frontmatter: { type: 'Bug', order: 10 }, parentLink: 'Epic B' });
+		const model = buildModel(vault.app, vault.entries(), settings);
+
+		expect(computeInitWrites(model, settings)).toEqual([]);
+	});
+
 	it('ranks every missing order distinctly without reordering the tree', () => {
 		const vault = new FakeVault();
 		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10 } });

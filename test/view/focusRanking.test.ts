@@ -213,4 +213,81 @@ describe('a menu outlives the model it was built from', () => {
 
 		expect(vault.fm('PBI B1.md')['order']).toBe(1500);
 	});
+
+	/**
+	 * The other half of that re-resolution, and the half it broke: re-resolving the
+	 * SUBJECT without re-resolving the TARGET makes the label and the write disagree.
+	 * `Indent under "X"` is the one entry in this menu whose title names the note it
+	 * reparents onto, and the click recomputed that destination from the row's previous
+	 * visible neighbour AT CLICK TIME. Before the by-path lookup the stale item simply
+	 * failed every lookup and the move refused — silently, but harmlessly; afterwards the
+	 * subject resolves, the write lands, and it lands on the wrong parent.
+	 *
+	 * Both tests rebuild the model deliberately between opening the menu and clicking.
+	 * jsdom refreshes on nothing of its own, so a test without that rebuild proves nothing.
+	 */
+	function indentFixture() {
+		const vault = new FakeVault();
+		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 1000 } });
+		vault.addFile('F1.md', { frontmatter: { type: 'Feature', order: 2000 }, parentLink: 'Epic A' });
+		vault.addFile('F2.md', { frontmatter: { type: 'Feature', order: 3000 }, parentLink: 'Epic A' });
+		return vault;
+	}
+
+	it('indents under the note the title named, not the neighbour the refresh produced', async () => {
+		const vault = indentFixture();
+		const { view, containerEl } = makeView(vault);
+
+		expect(menuTitles(containerEl, 'F2')).toContain('Indent under "F1"');
+		const captured = Menu.lastShown?.item('Indent under "F1"');
+		// A new sibling lands between the two, so F2's previous visible neighbour is no
+		// longer the row the open menu is naming.
+		vault.addFile('F15.md', { frontmatter: { type: 'Feature', order: 2500 }, parentLink: 'Epic A' });
+		refresh(view, vault);
+		captured?.click();
+		await flush();
+
+		expect(vault.fm('F2.md')['parent']).toBe('[[F1]]');
+	});
+
+	it('refuses when the named note has become the item\'s own descendant', async () => {
+		const vault = indentFixture();
+		const { view, containerEl } = makeView(vault);
+
+		expect(menuTitles(containerEl, 'F2')).toContain('Indent under "F1"');
+		const captured = Menu.lastShown?.item('Indent under "F1"');
+		// The named row is still THERE, and still resolves by path — it has just been moved
+		// under the very item the menu is about. A previous visible sibling can never be a
+		// descendant, so the recomputed destination never had to ask; a re-resolved one is
+		// wherever the vault has since put it, and writing this one makes a cycle.
+		vault.files.delete('F1.md');
+		vault.caches.delete('F1.md');
+		vault.addFile('F1.md', { frontmatter: { type: 'Feature', order: 2000 }, parentLink: 'F2' });
+		refresh(view, vault);
+		captured?.click();
+		await flush();
+
+		expect(vault.fm('F2.md')['parent']).toBe('[[Epic A]]');
+		expect(vault.writeLog).toEqual([]);
+	});
+
+	it('refuses when the named note is no longer a destination at all', async () => {
+		const vault = indentFixture();
+		vault.addFile('F0.md', { frontmatter: { type: 'Feature', order: 1500 }, parentLink: 'Epic A' });
+		const { view, containerEl } = makeView(vault);
+
+		expect(menuTitles(containerEl, 'F2')).toContain('Indent under "F1"');
+		const captured = Menu.lastShown?.item('Indent under "F1"');
+		// The named row leaves the vault. F0 is what a recomputed neighbour would find,
+		// and the write must not go there — a command that cannot do what its title says
+		// does nothing, the refusal this path had before the subject was re-resolved.
+		vault.files.delete('F1.md');
+		vault.caches.delete('F1.md');
+		refresh(view, vault);
+		captured?.click();
+		await flush();
+
+		expect(vault.fm('F2.md')['parent']).toBe('[[Epic A]]');
+		expect(vault.writeLog).toEqual([]);
+	});
 });
