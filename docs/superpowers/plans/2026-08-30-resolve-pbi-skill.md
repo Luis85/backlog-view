@@ -413,7 +413,15 @@ So:
   `[Unreleased]` changelog rule, and **closing the note** — `## Outcome` written,
   `status: Done`, `closed:` dated, in the same commit as the work. Carry the spec's
   carve-out with it: that shape is the backlog's, and an ADR takes `status: Accepted` with
-  no `closed:` and no `## Outcome`, because `docs/adrs/README.md` gives it neither.
+  no `closed:` and no `## Outcome`, because `docs/adrs/README.md` gives it neither. And a
+  `Test suite` is **written but never closed** — every suite in `docs/tests/suites/` is
+  `Open`, because a suite is a container for cases re-walked at each release, and closing one
+  reports a verification nobody ran.
+- **The red-green cycle is for the tasks that write code.** A decision-or-limitation
+  `Issue`, an ADR and a `Test suite` are prose, with no behaviour to make fail first, so
+  they run write, `npm run check`, commit. Global Constraints says which cycle each kind of
+  output takes: a brief demanding red-green from prose is unsatisfiable, and an implementer
+  handed an impossible instruction invents a test to satisfy it.
 - **Each pointer task** names the layer guide for the layer *it* touches —
   `src/domain/CLAUDE.md`, `src/storage/CLAUDE.md`, `src/view/CLAUDE.md` — **and names the
   plan's own `## Global Constraints` by path as required reading**. In Global Constraints all
@@ -504,7 +512,7 @@ over the whole spec.
 Append `## Red flags — stop and go back`, ending with `decompose-pbi`'s own closing line:
 *All of these mean: the sweep is not finished. Go back to the phase you left.*
 
-Every entry from the spec's red-flag list — twenty-four items. Most were real defects in the
+Every entry from the spec's red-flag list — twenty-six items. Most were real defects in the
 spec itself, caught by review, so none is decoration:
 
 - A phase's exit gate asks for less than that phase's walk covered.
@@ -524,6 +532,8 @@ spec itself, caught by review, so none is decoration:
 - An empty plan was written, and a prompt printed, for a PBI with no work left in it.
 - A saved handoff promised to close siblings the run was never going to touch.
 - An ADR task was told to write `status: Done`, or to add a `closed:` or an `## Outcome`.
+- A prose-only task was given a red-green cycle it cannot satisfy.
+- A `Test suite` was closed because its prose was written.
 - An output with no rank was given a task number among the ranked children.
 - The prompt told a run to close a handoff the user declined to save.
 - The controller's own close was left in the working tree, with no gate and no commit.

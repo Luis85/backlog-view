@@ -76,6 +76,14 @@ So the reading is placed where it actually travels, in two halves:
   `superpowers:test-driven-development`, the red-green-`npm run check`-commit cycle, and the
   `[Unreleased]` changelog rule. `subagent-driven-development` passes that section into
   every dispatch, which is exactly why the header cannot be skipped.
+
+  **That cycle is for the tasks that write code.** A decision-or-limitation `Issue`, an ADR
+  and a `Test suite` are prose by definition, and there is no behaviour to make fail first —
+  a brief demanding red-green from one is unsatisfiable, and an implementer handed an
+  impossible instruction invents a test to satisfy it. Those tasks run write,
+  `npm run check`, commit: same gate, same commit discipline, no red step. Global
+  Constraints says which cycle each kind of output takes rather than stating one and
+  hoping.
 - **Each pointer task** names the layer guide for the layer *it* touches —
   `src/domain/CLAUDE.md`, `src/storage/CLAUDE.md`, `src/view/CLAUDE.md` — beside the note
   path, **and names the plan's own `## Global Constraints` by path as required reading**.
@@ -101,7 +109,11 @@ says it in the two places that travel:
 
 - **Global Constraints**: closing the note is part of a task's definition of done, in the
   same commit as the work — `## Outcome` written, `status: Done`, `closed:` dated.
-  **That shape is the backlog's, and an ADR is not a backlog item.** `docs/adrs/README.md`
+  **A `Test suite` is written and never closed.** Every suite in `docs/tests/suites/` is
+  `Open`, because a suite is a persistent container for live-vault cases that are re-walked
+  at each release and `RELEASING.md`'s sweep reads them. Writing its prose is the task;
+  closing it would report a verification nobody has run.
+  **That shape is also the backlog's, and an ADR is not a backlog item.** `docs/adrs/README.md`
   gives it `adr`, `title`, `status`, `date` and `area`, where `status` is `Accepted`,
   `Proposed` or `Superseded` and there is no `closed:` and no `## Outcome` — so an ADR task
   is done when the record is written and its status is `Accepted`, and writing `Done` there
@@ -232,7 +244,7 @@ outputs would send an intentionally unanswerable note through the TDD loop, beca
 | An `Issue` recording a **decision or a limitation** | The subagent's | It is prose stating something already settled |
 | A `Deliverable` | Ask | A non-code artifact may be either, and the register documents no shape for it |
 | An ADR *(not a child)* | The subagent's | Prose it can write, once phase 2 has the five things `docs/adrs/README.md` wants |
-| A `Test suite` *(not a child)* | The subagent's | Prose saying what the group walks; it checks nothing itself, and it must exist before a case can hang from it |
+| A `Test suite` *(not a child)* | The subagent's | Prose saying what the group walks; it checks nothing itself, and it must exist before a case can hang from it. Written, never closed — it stays `Open` while its cases are re-walked |
 | A `Test case` *(not a child)* | The human's | A live vault, which no subagent reaches — Obsidian cannot run here |
 
 The human's outputs are **named in the plan's header, never given a task**. They are still
@@ -369,6 +381,8 @@ On yes, one note at the next free rank among the PBI's children, in the shape
 - The plan gave a task to an output the human owns, or to one phase 0 found already landed.
 - A run finished with its children's `## Outcome` unwritten and their `status` still `Open`.
 - An ADR task was told to write `status: Done`, or to add a `closed:` or an `## Outcome`.
+- A prose-only task was given a red-green cycle it cannot satisfy.
+- A `Test suite` was closed because its prose was written.
 - An output with no rank was given a task number among the ranked children.
 - The prompt told a run to close a handoff the user declined to save.
 - The controller's own close was left in the working tree, with no gate and no commit.
