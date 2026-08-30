@@ -274,8 +274,9 @@ coverage move and what would refuse the work belong with the steps that carry th
 
 **The rows are named for a `Task`, and the subagent owns other shapes.** A `Bug` is
 *What happened · Fix · Lesson*; a decision-or-limitation `Issue` has its own headings. Ask
-the row's question of any child; write the answer into a section that child's own type
-already has. And where the register documents no shape at all — an `Improvement` and a
+each row of the children it applies to — the engineering four of the code-bearing ones, as
+the rule above says — and write every answer into a section that child's own type already
+has. And where the register documents no shape at all — an `Improvement` and a
 `Deliverable` have no row in its shape table and no note in `docs/` to read as precedent —
 phase 2 asks what shape the note takes, which is the ask `decompose-pbi` already makes for
 those two. An unanswered shape blocks that child, and the readback says so. Inventing a

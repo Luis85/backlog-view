@@ -126,8 +126,9 @@ work all belong with the steps that carry them out — the `Approach` in a `Task
 **The rows are named for a `Task`, and the subagent owns two other shapes.** A `Bug` is
 *What happened · Fix · Lesson*; a decision-or-limitation `Issue` has its own headings again.
 Neither has an `Approach`, so the answers go to whichever of its sections says how the work
-will be done, and `docs/README.md` is where that shape is written. Ask the row's question of
-any child; write the answer into a section the child's own type already has. Inventing a
+will be done, and `docs/README.md` is where that shape is written. Ask each row of the
+children it applies to — the engineering four of the code-bearing ones, as the rule above
+says — and write every answer into a section that child's own type already has. Inventing a
 heading to hold it is a shape the register does not document — `decompose-pbi`'s own red
 flag, one skill upstream.
 
