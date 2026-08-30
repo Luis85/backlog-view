@@ -53,13 +53,16 @@ stale use case is worse than none.
 ## Phase 1 — the slices
 
 Walk the PBI's own structure for work, one question per slice: each step of the main flow,
-each extension, each acceptance criterion, each path named under `## Where it lives`.
+each extension, each acceptance criterion, each path named under `## Where it lives` — and
+the **guarantee**, which is walked separately because it belongs to no step. It is what
+survives every branch, so it is the one thing a decomposition can cover on paper and miss
+in fact: ask which child holds it on each extension, not only on the main flow.
 
 A slice is a child note when it can fail on its own. Two slices that can only pass or fail
 together are one note.
 
 **Exit when** every step, extension and criterion is either claimed by a slice or spoken
-for as needing none.
+for as needing none, and the guarantee is claimed on every branch.
 
 ## Phase 2 — the perspective sweep
 
@@ -96,8 +99,11 @@ type table in `docs/README.md` is the vocabulary, and three of its answers are e
 - A **live-vault check** is a `Test case`, and it hangs from a `Test suite` — **not from
   this PBI**. It is still part of the picture; it just parents elsewhere.
 
-Then the ranks: each child's `order` unique among the PBI's existing children, in the order
-the work must be done.
+Then the ranks, **against the parent each child actually got** — a `Test case` ranks among
+its `Test suite`'s cases, not among the PBI's children. Same rule either way: unique among
+that parent's existing children, in the order the work must be done. Ranking a child
+against the PBI it was decomposed from is how a `Test case` collides with a case it has
+never met, or lands correct-looking and misplaced.
 
 **Exit when** every child has a type legal under its parent and a free `order`.
 
@@ -109,9 +115,16 @@ unlocks writing.**
 
 ## The close
 
-1. Write one note per child, into the folder its type belongs to. Each opens with its
-   **Evidence**: the PBI slice or the perspective row that produced it, not a proposal.
-   `## Outcome` is left for after the work.
+1. Write one note per child, into the folder its type belongs to, **in the shape that type
+   owes** — `docs/README.md` gives one per kind, and a `Task` skeleton over an `Issue` or a
+   `Test case` passes `npm run docs`, which gates neither. So: a `Task` opens with
+   **Evidence** and leaves `## Outcome` for after the work; an `Issue` says in its first
+   heading whether it is a decision or a limitation; a `Test case` opens with
+   `Why this exists` and a `Preconditions` line.
+
+   Whatever the shape, the note says what produced it — the PBI slice or the perspective
+   row — rather than opening with a proposal. In a `Task` that is the `Evidence` section by
+   name; in the others it is the first paragraph.
 2. Run `npm run docs` and fix what it reports.
 3. Commit the notes alone. No push, no pull request.
 4. Print exactly this, and nothing else in the block:
