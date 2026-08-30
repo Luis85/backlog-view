@@ -1316,6 +1316,24 @@ nothing and says nothing. Add a check for each — a drop on
 a spent gap names Respace, a drop beside an unranked note names the set-up button — because
 a notice naming the wrong remedy is advice that does not work, and no type would catch it.
 
+- [ ] **Step 1b: The config gate must fire on an EMPTY batch too**
+
+Task 4 exposed this and correctly left it alone. With a corrupt `orderProperty` no note
+has a rank, so a move refuses, `computeDropWrites` returns `[]`, and `applySafely` returns
+on the empty batch **before** it reaches the `configProblems` gate. The result today is
+total silence: the banner still warns and nothing is written, but the command the user
+just invoked says nothing at all. `test/view/rendering.test.ts` currently asserts that
+silence (`expect(Notice.messages).toEqual([])`), which enshrines it.
+
+Adding the refusal notices without fixing this makes it worse rather than better: the
+`unranked` refusal advises running the backfill, and the backfill is blocked by the very
+same `configProblems`. The user would be sent to a button that cannot help them.
+
+So the gate is asked **about the configuration, not about the batch** — it runs before the
+empty-batch return, and a corrupt configuration reports itself whether or not the plan
+produced writes. Restore the assertion in `rendering.test.ts` to expect
+`Fix the view options first`, and say in your report that you watched it fail first.
+
 - [ ] **Step 2: Publish `applySafely` on the live view**
 
 In `src/view/registry.ts`, add to `LiveBacklogView`:
