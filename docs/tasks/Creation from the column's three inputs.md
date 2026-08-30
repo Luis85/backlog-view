@@ -88,7 +88,21 @@ for the state preset to drift out of step.
    `Deliverable` on the requirements board narrows it to roots that board excludes,
    leaving it empty"*, and `offerableTypes` itself says an `Epic` card offering
    `New Deliverable` is *"the same broken creation this function exists to close"*.
-   Found by review (Codex, PR #225).
+
+   **`offerableTypes` does not close it for `Iteration` today, and the rule to build
+   against is the sentence rather than the helper.** `byProjectionType`'s `board` branch
+   returns after filtering `isDeliverableType` alone, so the `Iteration`/`Release` filter
+   in its final return is never reached on this board; `honouredFocusLevel` rejects only
+   `isReleaseType`, so an `Iteration` focus is honoured and reachable. `inPlan` then
+   refuses to draw the created note. The requirement here is **a type the board can
+   actually draw**, and it is met by fixing that helper rather than by adding a second
+   filter beside it — its own comment already states the rule the gap breaks: *"a
+   projection offers only the types it can show"*.
+
+   This is not a defect this Task introduces: the toolbar's own `New` button reaches it
+   the same way today, through `primaryNewType`. Fixing it is a change of its own, named
+   here as this step's precondition rather than folded in. Both halves found by review
+   (Codex, PR #225).
 4. **Configured columns only.** A stray column — `outsideWorkflow` — offers no creation
    while still taking a drop. This is [[New cards in place]] extension 1b, and the
    reasoning lives there rather than here.
@@ -111,8 +125,10 @@ for the state preset to drift out of step.
   empty-column stop each open the same creation flow, in that column's state.
 - None of the three appears on the Deliverables board or the iteration board, which share
   the same column frame and would each need a different type or a different placement.
-- With a `Deliverable` focus retained on the requirements board, the three offer a type
-  that board can display — never the excluded one `newItemType` alone would answer.
+- With a `Deliverable` **or an `Iteration`** focus retained on the requirements board, the
+  three offer a type that board can display — never one `inPlan` will refuse to draw. The
+  `Deliverable` half holds through `offerableTypes` today; the `Iteration` half does not
+  until that helper's board branch stops returning early.
 - A stray (out-of-workflow) column offers none of the three, while still taking a drop —
   [[New cards in place]] extension 1b.
 - The no-state column offers all three, and the note it creates carries no state key.
