@@ -34,7 +34,14 @@ function backlog(notes: number, resources = 0): FakeVault {
 function costOf(
 	notes: number,
 	resources = 0,
-): { reads: number; sorted: number; resourcesSorted: number; rankSorts: number; items: number } {
+): {
+	reads: number;
+	sorted: number;
+	resourcesSorted: number;
+	rankSorts: number;
+	items: number;
+	maxSiblingGroup: number;
+} {
 	const vault = backlog(notes, resources);
 	const entries = vault.entries();
 	const reads = vi.spyOn(vault.app.metadataCache, 'getFileCache');
@@ -59,7 +66,19 @@ function costOf(
 	const resourcesSorted = groups
 		.filter((g) => !('typeName' in g[0]))
 		.reduce((total, group) => total + group.length, 0);
-	const cost = { reads: reads.mock.calls.length, sorted, resourcesSorted, rankSorts, items: model.items.length };
+	// The size-based split above (`wholeSet`) trusts that no SIBLING group in this fixture
+	// is as large as the whole item set — checked directly here, off the model rather than
+	// off the spy, so a fixture change that breaks that assumption fails this instead of
+	// silently letting a sibling-group sort get counted as the rank sort.
+	const maxSiblingGroup = Math.max(model.realRoots.length, ...model.items.map((item) => item.children.length));
+	const cost = {
+		reads: reads.mock.calls.length,
+		sorted,
+		resourcesSorted,
+		rankSorts,
+		items: model.items.length,
+		maxSiblingGroup,
+	};
 	sort.mockRestore();
 	reads.mockRestore();
 	return cost;
@@ -115,6 +134,13 @@ describe('model build cost', () => {
 	});
 
 	it('sorts the whole item set exactly once for the global rank', () => {
-		expect(costOf(200).rankSorts).toBe(1);
+		const cost = costOf(200);
+		// This fixture must stay hierarchical: `wholeSet` above tells the rank sort apart
+		// from a sibling-group sort only by group size, which is sound only as long as no
+		// sibling group is as large as the whole item set. If a later change flattens the
+		// fixture (every item a root), this fails here instead of silently letting the
+		// root sibling-group sort get counted as the rank sort below.
+		expect(cost.maxSiblingGroup).toBeLessThan(cost.items);
+		expect(cost.rankSorts).toBe(1);
 	});
 });
