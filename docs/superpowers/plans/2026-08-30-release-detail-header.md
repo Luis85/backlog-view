@@ -202,7 +202,7 @@ Expected: lint clean. The new test still FAILS (nothing binds a folder yet) and 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/view/release/newRelease.ts test/view/release/init.test.ts
+git add src/view/release/newRelease.ts src/view/release/init.ts src/domain/releaseOptions.ts test/view/release/init.test.ts
 git commit -m "Let the bind report see options that are not properties
 
 The new test is red until the sweep that binds them lands in the next
@@ -377,7 +377,7 @@ Expected: all clean. `analyze` needs a coverage file — it runs in Task 7.
 - [ ] **Step 7: Commit**
 
 ```bash
-git add src/view/release/init.ts src/domain/releaseOptions.ts test/view/release/init.test.ts
+git add src/view/release/init.ts test/view/release/init.test.ts
 git commit -m "Let the sparkle bind the three options that are not properties
 
 The folder takes its option's own placeholder, the rule all seven

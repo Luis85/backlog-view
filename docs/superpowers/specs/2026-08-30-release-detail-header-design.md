@@ -2,9 +2,10 @@
 
 The two closing actions ([[Marking a release as released]], [[Generating the release notes]])
 shipped on 2026-08-30 as a floating band between the release detail header and the scope
-toolbar. This folds them into the header, retires the standalone `Set released date`
-control the closing action made redundant, and widens ✨ to bind the three options those
-actions need that are not properties.
+toolbar. This folds them into the header, narrows the standalone `Set released date` control to the
+states the closing action cannot cover (corrected 2026-08-30 — see "The released date is
+the control" below; the control is not retired), and widens ✨ to bind the three options
+those actions need that are not properties.
 
 Nothing here changes what a write does. Every batch, every gate and every refusal is the
 one already shipped; what changes is where a control is drawn, which control carries the
@@ -70,31 +71,45 @@ their own line intact and the summary stays whole.
 
 ### The released date is the control
 
-`drawReleased` stops drawing a labelled button and starts drawing the value as the button:
+> **Corrected on 2026-08-30, after implementation.** This section's premise was false:
+> `Mark as released` does not cover every bound-and-empty released date. `closeOffer` gates
+> on `missing.length === 0 && unreadable === null && !alreadyOut && dateFree` — four
+> conjuncts, of which `dateFree` is only the last — so a missing closing option, an
+> unreadable status, or a release already marked released each leave the field bound and
+> empty with `Mark as released` withheld. Retiring the invitation in those three states
+> would have removed the only route to the field. What shipped keeps the invitation exactly
+> there: `release.scope.markReleased` and `button.pbl-rel-released-unset` both survive.
+> Recorded here rather than silently patched — the ruling is in the SDD ledger for
+> `docs/superpowers/plans/2026-08-30-release-detail-header.md`.
+
+`drawReleased` stops drawing a labelled button unconditionally and starts drawing the value
+as the button, falling back to the invitation only where the header's own action cannot
+cover the field:
 
 - **A date exists** — `Released 2026-06-18`, a real `<button>` opening the same
   `SchedulePromptModal` `editReleaseReleased` opens today. Clearing, correcting and
   backdating all survive unchanged, because the dialog is unchanged.
 - **The key is unconfigured, or the value unreadable** — exactly as today (nothing, and the
   `.pbl-rel-unreadable` marker respectively).
-- **The key is bound and the value absent** — **nothing is drawn.** This is the change.
+- **The key is bound, the value absent, and `Mark as released` is offered** — nothing is
+  drawn. The footline's button is the one-press path to this field.
+- **The key is bound, the value absent, and `Mark as released` is withheld** — the
+  `pbl-rel-released-unset` invitation draws, same as today. This is the field's only
+  remaining route in the three states `closeOffer` refuses: a missing closing option, an
+  unreadable status, or a status already reading as released.
 
-That last case is today's `pbl-rel-released-unset` invitation, and retiring it is the whole
-of what "there is no need for `Set released date` any more" means. The rule it moves to is
-already this header's own, stated at `drawFigure`'s target-date caller: an absent target
-date draws nothing here. The reason the released date was an exception — absence is an
-invitation for a field the screen can write — stops applying the moment a button below it
-is the invitation.
+The rule for the first of those four cases is already this header's own, stated at
+`drawFigure`'s target-date caller: an absent target date draws nothing here. What is new is
+that the released date now follows that rule ONLY when the footline covers the field —
+gated on `closeOffer(release, view.settings).offered`, not on absence alone.
 
-So `release.scope.markReleased` and `button.pbl-rel-released-unset` both go. What replaces
-the affordance is `Mark as released`, whose own offer predicate already fires on exactly the
-condition that used to draw the invitation (`released.value === null && !released.invalid`).
-
-**Accepted cost, stated rather than hidden.** Setting a released date *without* also writing
-the status is no longer reachable in one step: press `Mark as released` (which writes both),
-then click the date to correct it. A reader who wants a date and no status change has two
-presses where they had one. That is the price of one control per field, and it is worth
-paying because the one-press path was the ambiguous one.
+**Accepted cost, stated rather than hidden — narrower than first drafted.** Where
+`Mark as released` is offered, setting a released date *without* also writing the status is
+no longer reachable in one step: press `Mark as released` (which writes both), then click
+the date to correct it. That two-press cost is real, but it is not universal — in the three
+states the closing action is withheld, the invitation is still the one-press path to the
+date, unchanged from today. The price of one control per field is paid only where the
+footline's control exists to pay it.
 
 ### Refusals get their own line
 
@@ -192,7 +207,9 @@ all — which is why `Generate release notes` was undrawable in the browser harn
 
 - `src/view/release/renderScope.ts` — `drawHeader` gains the footline and calls
   `drawReleaseActions`; `drawReleased` draws the value as the control and draws nothing
-  when the key is bound and empty.
+  when the key is bound and empty — but only where `closeOffer(...).offered` is true;
+  where it is false, the `pbl-rel-released-unset` invitation still draws (corrected
+  2026-08-30, see "The released date is the control" above).
 - `src/view/release/releaseClose.ts` — `drawReleaseActions` takes the footline as its
   parent and marks its area `.pbl-rel-scope-actions`; nothing about its two gates changes.
 - `src/view/release/init.ts` — `RELEASE_SUGGESTED_VALUES`, the non-property candidates, and
@@ -201,22 +218,27 @@ all — which is why `Generate release notes` was undrawable in the browser harn
   beside the two constants that already exist for the same reason.
 - `src/view/release/releaseView.ts` — `syncBusy`'s selector is unchanged; its comment gains
   the sentence saying the shared class is what makes it cover both areas.
-- `src/i18n/en.ts` — `release.scope.markReleased` is removed.
+- `src/i18n/en.ts` — `release.scope.markReleased` survives (corrected 2026-08-30): it is
+  still the invitation's label in the three states `Mark as released` cannot cover.
 - `styles/releaseScope.css` — `.pbl-rel-footline`, `.pbl-rel-scope-actions`, the note's own
-  full-width line; `button.pbl-rel-released-unset` is removed.
+  full-width line; `button.pbl-rel-released-unset` survives for the same reason.
 
 ## Testing
 
 Each of these was watched failing in the harness before it was written down, and each gets a
 test that fails without it:
 
-- **The released date draws nothing when bound and empty**, and draws a button when a date
-  exists. `test/view/release/releaseEdits.test.ts`, which already owns the released-date
-  control — the case that must fail is the one that draws an invitation.
-- **`Mark as released` is still offered on exactly that release**, so retiring the
-  invitation loses no path: the offer predicate is untouched and its own suite already
-  covers it, but a test asserting BOTH facts of one release is what stops a future change
-  removing the invitation and the offer together.
+- **The released date draws nothing when bound and empty AND `Mark as released` is
+  offered**, and draws the invitation in the three states it is withheld (corrected
+  2026-08-30: not unconditional on absence — `closeOffer` is the gate). New file
+  `test/view/release/releaseHeader.test.ts`, not `releaseEdits.test.ts`: that file is
+  already at lint's 450-line budget with no headroom for these cases.
+- **`Mark as released` is still offered on exactly the release that draws nothing**, so
+  narrowing the invitation loses no path there; and the invitation still draws — with its
+  `markReleased` label — on a release already marked released, the case `Mark as released`
+  cannot reach. Both asserted in `releaseHeader.test.ts` against one fixture each, so a
+  future change cannot remove the invitation and the offer together without a visible
+  failure.
 - **The actions are inside the header**, so both empty-state screens still draw them —
   the nine tests [[Generating the release notes]] extension 1a already turns red are the
   guard, and they must go on passing with the call moved rather than be edited to match.
