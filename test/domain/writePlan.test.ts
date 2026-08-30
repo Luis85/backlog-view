@@ -361,6 +361,16 @@ describe('computeInitWrites', () => {
 		// `Huge`'s own number onto anything.
 		expect(new Set(orders).size).toBe(orders.length);
 		expect(orders).not.toContain(1e20);
+		// **A refused rank is not a refused WRITE**, which the comment at `nextOrder` claims
+		// and nothing checked: an UNTYPED note beside the enormous rank still gets its type.
+		const typeless = new FakeVault();
+		typeless.addFile('Huge.md', { frontmatter: { type: 'Epic', order: 1e20 } });
+		typeless.addFile('Bare.md', { parentLink: 'Huge' });
+		const typelessModel = buildModel(typeless.app, typeless.entries(), settings);
+		expect(computeInitWrites(typelessModel, settings)).toEqual([
+			{ file: expect.objectContaining({ path: 'Bare.md' }), typeName: 'Feature' },
+		]);
+
 		// The control: the same two notes at an ordinary magnitude are ranked, so the
 		// assertion above is not passing on an empty list by accident.
 		const ordinary = new FakeVault();

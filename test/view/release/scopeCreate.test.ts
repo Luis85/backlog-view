@@ -63,6 +63,28 @@ describe('creating a child from a release scope row', () => {
 		return vault;
 	}
 
+	it('creates nothing when the last sibling has no rank to place against', async () => {
+		const vault = new FakeVault();
+		vault.addFile('R.md', { frontmatter: { type: 'Release', version: '1.0.0', order: 10 } });
+		vault.addFile('Sign-in.md', { frontmatter: { type: 'Epic', order: 20, release: '[[R]]' } });
+		// No rank: absence is not a low rank, so there is no position to append after.
+		vault.addFile('Magic link.md', { frontmatter: { type: 'Task', release: '[[R]]' }, parentLink: 'Sign-in' });
+		const { view } = makeReleaseView(vault, RELEASE_CONFIG);
+		view.pick('R.md');
+		const before = new Set(vault.files.keys());
+
+		const menu = openMenu(view, 'Sign-in.md');
+		menu.items.find((item) => item.titleText === 'New Feature')!.click();
+		Notice.messages.length = 0;
+		submitPrompt({ title: 'Passkeys' });
+		await flush();
+
+		// The refusal is the same one the backlog's own creation gives, because it is the
+		// same question — this screen just has no ✨ of its own to answer it with.
+		expect(created(vault, before)).toEqual([]);
+		expect(Notice.messages).toEqual([en['rank.unranked']]);
+	});
+
 	it('never ranks a new member onto a number another subtree already holds', async () => {
 		const vault = collidingVault();
 		const { view } = makeReleaseView(vault, RELEASE_CONFIG);
@@ -80,6 +102,47 @@ describe('creating a child from a release scope row', () => {
 		// refuse, and this screen has no ✨ to undo it with.
 		const taken = [...before].map((path) => vault.fm(path)['order']);
 		for (const note of created(vault, before)) expect(taken).not.toContain(note.fm.order);
+	});
+
+	/**
+	 * The rank anchor is found by IDENTITY, so the row captured when the menu opened has to
+	 * be re-resolved against the model that is live at submit. Both tests rebuild the model
+	 * deliberately: jsdom never refreshes on its own, so one that did not would pass
+	 * whatever the code did.
+	 */
+	it('creates a child after the model rebuilt under the open prompt', async () => {
+		const { view, vault } = mountFoldScope({ pick: 'Releases/0.8.md' });
+		const before = new Set(vault.files.keys());
+
+		const menu = openMenu(view, 'Passwordless sign-in.md');
+		menu.items.find((item) => item.titleText === 'New Feature')!.click();
+		// A Bases pass while the reader is typing. Every item in the model is a new object
+		// after it, including the one the menu closed over.
+		refreshRelease(view, vault);
+		submitPrompt({ title: 'Passkeys' });
+		await flush();
+
+		// A fully ranked vault: refusing here would show a backfill notice for a vault that
+		// has nothing to backfill.
+		expect(created(vault, before)).toHaveLength(1);
+	});
+
+	it('creates nothing when the parent row was deleted while the prompt was open', async () => {
+		const { view, vault } = mountFoldScope({ pick: 'Releases/0.8.md' });
+		const before = new Set(vault.files.keys());
+
+		const menu = openMenu(view, 'Passwordless sign-in.md');
+		menu.items.find((item) => item.titleText === 'New Feature')!.click();
+		vault.files.delete('Passwordless sign-in.md');
+		refreshRelease(view, vault);
+		Notice.messages.length = 0;
+		submitPrompt({ title: 'Orphan' });
+		await flush();
+
+		// Not ranked among the roots instead: the write would still name the captured file,
+		// so the note would be parented to something gone and ranked somewhere else.
+		expect(created(vault, before)).toEqual([]);
+		expect(Notice.messages).toEqual([en['rank.parentGone']]);
 	});
 
 	it('offers one New entry per type the row may hold, and nothing that edits the row', () => {

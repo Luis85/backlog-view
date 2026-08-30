@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import { Menu, Modal } from 'obsidian';
+import { Menu, Modal, Notice } from 'obsidian';
 import { FakeVault } from '../helpers/vault';
 import { flush, makeView, refresh, submitButton, useViewHarness } from '../helpers/view';
+import { en } from '../../src/i18n/en';
 
 useViewHarness();
 
@@ -93,6 +94,22 @@ describe('New iteration…', () => {
 		// sprint is a planning act, and taking the reader off the board they are planning
 		// on is what opening it would cost.
 		expect(harness.vault.opened).toEqual([]);
+	});
+
+	it('creates nothing when the rank placement refuses', async () => {
+		// An iteration is a root, so it ranks after the last real root — and here that root
+		// carries no rank at all, which is an anchor with no position to place against. The
+		// dialog's own path has to refuse it like every other creation; a sprint written at
+		// a guessed number is a sprint the board draws in the wrong place.
+		const vault = sprintVault();
+		vault.addFile('Unranked.md', { frontmatter: { type: 'Epic' } });
+		const harness = open(OPTIONS, SPRINT, vault);
+		Menu.lastShown?.item('New iteration…')?.click();
+		Notice.messages.length = 0;
+		await submitDialog({ Name: 'Sprint 13', Goal: 'Finish the importer' });
+
+		expect(harness.vault.files.has('Sprint 13 - Finish the importer.md')).toBe(false);
+		expect(Notice.messages).toEqual([en['rank.unranked']]);
 	});
 
 	it('prefills the name with the next index', async () => {

@@ -220,22 +220,42 @@ interface NewMember {
  * report of a note that should never have been made that way. Found by review
  * (Codex, PR #214), the same finding PR #201 made against the edit path.
  *
- * **The PARENT is deliberately not re-read beside it, and neither are the settings** —
- * `docs/issues/A creation outlives what it was planned against.md` states both, and why
- * the release is the one of the three that earned a guard: the edit path already had this
- * exact function, so the creation path was inconsistent with a rule already written down.
- * A parent refusal belongs in `createBacklogItem`, where one covers this caller and
- * `view/interactions/create.ts` together rather than making two creation paths disagree.
+ * **The settings are deliberately not re-read beside it** —
+ * `docs/issues/A creation outlives what it was planned against.md` states why the release
+ * is the one that earned a guard: the edit path already had this exact function, so the
+ * creation path was inconsistent with a rule already written down.
+ *
+ * The PARENT was on that list too until the rank became global. It is re-resolved now, and
+ * for a different reason than the release's: not "may this note still be written" but
+ * "where does the new note rank", which is a question about the LIVE population. The file
+ * written as the parent link is still the captured one; only the anchor is re-read. See
+ * the comment at the lookup.
  */
 async function createMember(view: ReleaseView, release: ReleaseRow, settings: BacklogSettings, row: ScopeRow, spec: NewMember): Promise<void> {
 	if (refusesLiveMembership(view.app, release.item.file, settings)) {
 		new Notice(t('release.scope.staleRelease'));
 		return;
 	}
-	const peers = row.item.children;
-	// An empty population is the one case with no anchor to refuse against, and
-	// `dropPlacement` already answers `ORDER_SPACING` for it — so no branch here.
-	const placed = dropPlacement(null, { parent: row.item, peers, insertIndex: peers.length }, view.model?.ranked ?? []);
+	// **Routing a caller through a shared helper transfers the helper's REQUIREMENTS, not
+	// only its behaviour**, and this is the third place that lesson has been learnt on this
+	// branch. `dropPlacement` finds its anchor by IDENTITY (`ranked.indexOf`), so the row
+	// the menu closed over is the wrong object the moment a Bases pass rebuilds the model
+	// under the open modal: it scores -1, and a fully ranked vault refuses `unranked` —
+	// a notice sending the reader to a backfill with nothing to fill. Re-resolved by path,
+	// with the peers AND the population read off that same live model.
+	// `view.model` is asserted, the way `row.item.file.parent` is two functions up: this runs
+	// from a menu on a row the scope tree DREW, and there is no tree before there is a model.
+	const model = view.model!;
+	const parent = model.byPath.get(row.item.file.path);
+	// A parent that no longer resolves is not a root request. The write below still names
+	// the CAPTURED file, so ranking it among the roots would make a note parented to
+	// something gone and ranked nowhere near it.
+	if (!parent) {
+		new Notice(t(refusalKey('parentGone')));
+		return;
+	}
+	const peers = parent.children;
+	const placed = dropPlacement(null, { parent, peers, insertIndex: peers.length }, model.ranked);
 	if ('refusal' in placed) {
 		new Notice(t(refusalKey(placed.refusal)));
 		return;
