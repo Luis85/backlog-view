@@ -560,6 +560,22 @@ describe('the gate accepts valid documents', () => {
 		await expectAccepted(files);
 	});
 
+	it('accepts a product playbook with no backlog frontmatter', async () => {
+		// docs/product/ holds the playbooks a product definition is produced BY — the METHOD
+		// rather than the work, so filing one as a work item would rank a process document
+		// among the work it governs. Same exemption as `prds/` and `sdds/` for a neighbouring
+		// reason: those arrive from outside, this one is followed here.
+		//
+		// Added 2026-08-30, the day `Product Definition Playbook.md` landed on `main` with no
+		// frontmatter and turned this gate red on `main` itself — so the accept side was
+		// unprovable until the exemption existed.
+		const files = baseRegister();
+		files['docs/product/Product Definition Playbook.md'] =
+			'# Product Definition Playbook\n\n## 1. Purpose\n\nHow a definition gets made.\n';
+
+		await expectAccepted(files);
+	});
+
 	it('accepts a supersession chain declared from both ends', async () => {
 		const files = baseRegister();
 		files['docs/adrs/0001-the-first-decision.md'] = adr(1, 'the-first-decision', {
