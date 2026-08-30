@@ -28,7 +28,7 @@ The dated roadmap's legend draws one swatch per state, and on the demo fixture t
 items resolve to nine distinct colours. Measured in headless Chromium off the rendered
 legend, dark and light:
 
-```
+```text
 COLLISION rgb(2, 122, 255)  <- Ready, Active, Concept
 COLLISION rgb(68, 207, 110) <- Done, Published
 ```

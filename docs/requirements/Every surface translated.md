@@ -24,7 +24,6 @@ and every notice.
 text sits on adjacent lines to keys that must not move, and it carries a domain-layer
 change with it, so it is reviewed on its own.
 
-
 **As** someone using the plugin in another language, **I want** every label, tooltip and
 notice to come from the catalog, **so that** the view does not read as half-translated —
 which is worse than not translated at all.

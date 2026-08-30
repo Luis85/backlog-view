@@ -1,7 +1,5 @@
 ## Summary
 
-
-
 ## Test plan
 
 - [ ] `npm run check` passes locally (build, lint, coverage-thresholded tests, fallow,

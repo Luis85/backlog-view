@@ -19,7 +19,6 @@ iteration: ""
 Every shipped locale is checked against English: nothing missing that would silently fall
 back, nothing left over that no longer exists.
 
-
 **As** someone maintaining a translation, **I want** a missing or stale key to fail the
 build, **so that** a half-finished catalog is caught here rather than by a user reading a
 half-English view.

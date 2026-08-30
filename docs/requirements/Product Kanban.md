@@ -129,17 +129,17 @@ DevOps, Jira, GitHub Projects, Linear, Trello and Notion, plus the Obsidian ecos
 followed the view API). Load-bearing sources:
 
 - Kanban Guide, 2020.12 and 2025.5 — the definition of workflow, WIP control, flow
-  measures: https://kanbanguides.org/
+  measures: <https://kanbanguides.org/>
 - Obsidian roadmap (kanban view for Bases: active, unshipped) and Bases layouts:
-  https://obsidian.md/roadmap/ and https://obsidian.md/help/bases/views
+  <https://obsidian.md/roadmap/> and <https://obsidian.md/help/bases/views>
 - Column-to-state mapping and soft WIP limits: Azure Boards and Jira documentation
-  (https://learn.microsoft.com/en-us/azure/devops/boards/boards/add-columns,
-  https://support.atlassian.com/jira-software-cloud/docs/configure-columns/)
+  (<https://learn.microsoft.com/en-us/azure/devops/boards/boards/add-columns>,
+  <https://support.atlassian.com/jira-software-cloud/docs/configure-columns/>)
 - Layout as a persisted per-view setting, and the sorted-board rule: GitHub Projects
   and Linear documentation
-  (https://docs.github.com/en/issues/planning-and-tracking-with-projects/customizing-views-in-your-project/customizing-the-board-layout,
-  https://linear.app/docs/board-layout)
+  (<https://docs.github.com/en/issues/planning-and-tracking-with-projects/customizing-views-in-your-project/customizing-the-board-layout>,
+  <https://linear.app/docs/board-layout>)
 - Accessible board interaction: Atlassian's Pragmatic drag and drop accessibility
-  guidelines (https://atlassian.design/components/pragmatic-drag-and-drop/accessibility-guidelines)
+  guidelines (<https://atlassian.design/components/pragmatic-drag-and-drop/accessibility-guidelines>)
   and WCAG 2.2 SC 2.5.7. The library those guidelines describe is the chosen drag
-  engine (https://github.com/atlassian/pragmatic-drag-and-drop, Apache-2.0).
+  engine (<https://github.com/atlassian/pragmatic-drag-and-drop>, Apache-2.0).

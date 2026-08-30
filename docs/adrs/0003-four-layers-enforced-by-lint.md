@@ -21,7 +21,7 @@ individually reasonable, until the tree-building code needs a DOM to test.
 
 Four layers, outermost first, **each reaching anything below it and nothing above**:
 
-```
+```text
 main → commands → view → storage → domain
 ```
 

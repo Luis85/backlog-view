@@ -13,11 +13,12 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage && node scripts/coverage-floors.mjs",
     "lint": "eslint .",
+    "lint:md": "markdownlint-cli2",
     "analyze": "fallow",
     "docs": "node scripts/docs-check.mjs",
     "health": "node scripts/health-collect.mjs && node scripts/health-render.mjs",
     "audit": "npm audit --omit=dev --audit-level=critical",
-    "check": "npm run build && npm run lint && npm run test:coverage && npm run analyze && npm run docs",
+    "check": "npm run build && npm run lint && npm run lint:md && npm run test:coverage && npm run analyze && npm run docs",
     "version": "node scripts/version-bump.mjs && git add manifest.json versions.json"
   },
   "keywords": [
@@ -38,6 +39,7 @@
     "fallow": "^3.19.0",
     "jsdom": "^30.0.1",
     "lucide-static": "^1.34.0",
+    "markdownlint-cli2": "^0.23.2",
     "mdast-util-from-markdown": "^2.0.3",
     "mdast-util-gfm-table": "^2.0.0",
     "micromark-extension-gfm-table": "^2.1.1",

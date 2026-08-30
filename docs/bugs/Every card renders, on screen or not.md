@@ -169,14 +169,14 @@ The row's list, asked again of a card — none of it can be answered here.
 
 ## How to check
 
-```
+```bash
 npm run perf -- --notes=800
 ```
 
 prints the table above in any environment with a Chromium, display or not. To reproduce
 the comparison, build the other side in a worktree and alternate:
 
-```
+```bash
 git worktree add ../base <ref> && (cd ../base && npm ci && npm run harness)
 npm run perf -- --notes=800 --runs=4 --against ../base/.harness
 ```

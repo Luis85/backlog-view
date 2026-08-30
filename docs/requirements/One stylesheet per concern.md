@@ -25,7 +25,6 @@ vault script and the test suite all go through. What was decided rather than inh
 in **The three decisions this PBI had to make** below; the equivalence evidence is in
 **What was proven, and how**.
 
-
 **As** someone changing how one part of the view looks, **I want** to open a file about
 that part, **so that** I am not reading 1995 lines to find the forty that matter.
 

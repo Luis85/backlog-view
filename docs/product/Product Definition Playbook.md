@@ -7,17 +7,16 @@ This playbook defines a repeatable process for turning an early product idea int
 It is designed for situations where you start with:
 
 - a rough product idea
-    
+
 - a known user problem
-    
+
 - a business opportunity
-    
+
 - an existing product that needs repositioning
-    
+
 - a collection of requested features
-    
+
 - a vague concept that needs structure
-    
 
 The process deliberately avoids jumping directly from idea to PRD.
 
@@ -80,38 +79,36 @@ Document the original product idea without trying to make it perfect.
 Anything from:
 
 - founder idea
-    
+
 - customer request
-    
+
 - internal pain point
-    
+
 - competitor observation
-    
+
 - market opportunity
-    
+
 - technical opportunity
-    
+
 - feature request
-    
+
 - strategic initiative
-    
 
 ## Questions
 
 Capture:
 
 - What triggered the idea?
-    
+
 - Who seems to have the problem?
-    
+
 - What are they trying to achieve?
-    
+
 - What appears difficult today?
-    
+
 - What solution are we currently imagining?
-    
+
 - Which assumptions are we already making?
-    
 
 ## Important Rule
 
@@ -180,60 +177,58 @@ Do not yet define the product.
 Look for:
 
 - user goals
-    
+
 - current behaviour
-    
+
 - workarounds
-    
+
 - frustrations
-    
+
 - uncertainties
-    
+
 - information gaps
-    
+
 - coordination problems
-    
+
 - economic consequences
-    
+
 - emotional consequences
-    
+
 - risk
-    
+
 - frequency
-    
+
 - context
-    
+
 - dependencies
-    
 
 ## Useful Sources
 
 Depending on the product:
 
 - user interviews
-    
+
 - observation
-    
+
 - support requests
-    
+
 - app reviews
-    
+
 - Reddit/forums
-    
+
 - competitor reviews
-    
+
 - product communities
-    
+
 - search behaviour
-    
+
 - existing workflow analysis
-    
+
 - sales conversations
-    
+
 - internal domain experts
-    
+
 - analytics
-    
 
 ## Problem Expansion Technique
 
@@ -296,29 +291,28 @@ Break the problem down into meaningful dimensions.
 Typical dimensions include:
 
 - understanding
-    
+
 - planning
-    
+
 - coordination
-    
+
 - information
-    
+
 - decision-making
-    
+
 - cost
-    
+
 - time
-    
+
 - people
-    
+
 - workflow
-    
+
 - documentation
-    
+
 - execution
-    
+
 - learning
-    
 
 ### Consequences
 
@@ -327,15 +321,14 @@ Describe what happens when the problem remains unsolved.
 Include:
 
 - practical consequences
-    
+
 - financial consequences
-    
+
 - time consequences
-    
+
 - quality consequences
-    
+
 - emotional consequences
-    
 
 ## Primary Problem Statement Template
 
@@ -428,15 +421,14 @@ The North Star should be a **user state**, not a business KPI.
 It should be:
 
 - user-centred
-    
+
 - memorable
-    
+
 - outcome-oriented
-    
+
 - broad enough to survive feature changes
-    
+
 - specific enough to guide prioritisation
-    
 
 ## Formula
 
@@ -455,13 +447,12 @@ Examples:
 Ask:
 
 - What should the user be able to say when the product works?
-    
+
 - What uncertainty should disappear?
-    
+
 - What decision becomes easier?
-    
+
 - What progress becomes possible?
-    
 
 ## North-Star Test
 
@@ -630,13 +621,12 @@ North-Star Contribution:
 Do not define:
 
 - page names
-    
+
 - button labels
-    
+
 - UI layout
-    
+
 - service architecture
-    
 
 yet.
 
@@ -669,17 +659,16 @@ Guidance
 These clusters may later inform:
 
 - navigation
-    
+
 - architecture
-    
+
 - bounded contexts
-    
+
 - teams
-    
+
 - epics
-    
+
 - product modules
-    
 
 But do not assume a 1:1 mapping yet.
 
@@ -688,13 +677,12 @@ But do not assume a 1:1 mapping yet.
 Ask:
 
 - Which capabilities operate on the same information?
-    
+
 - Which capabilities belong to the same user mental model?
-    
+
 - Which capabilities form a coherent workflow?
-    
+
 - Which capabilities have strong dependencies?
-    
 
 ## Artifact
 
@@ -741,19 +729,18 @@ Capture → Organise → Prioritise → Act → Review
 ## Questions
 
 - What repeatedly triggers product usage?
-    
+
 - What information enters the system?
-    
+
 - What transformation occurs?
-    
+
 - What decision follows?
-    
+
 - What action occurs?
-    
+
 - What feedback does the user receive?
-    
+
 - Why do they return?
-    
 
 ## Artifact
 
@@ -848,17 +835,16 @@ Explicitly excluded.
 For each capability ask:
 
 - Does the core journey fail without it?
-    
+
 - Does it significantly reduce user uncertainty?
-    
+
 - Does it contribute directly to the North Star?
-    
+
 - Can it initially be represented in a simpler form?
-    
+
 - Does another capability depend on it?
-    
+
 - Is it necessary to validate the product hypothesis?
-    
 
 ## Artifact
 
@@ -875,17 +861,16 @@ Describe how the user gets from zero to meaningful value.
 ## Questions
 
 - What is the user's entry point?
-    
+
 - What can they start with?
-    
+
 - What minimum information is required?
-    
+
 - When does the first useful result appear?
-    
+
 - What is the first “aha” moment?
-    
+
 - What does the user do next?
-    
 
 ## Example
 
@@ -937,17 +922,16 @@ Person
 ## Questions
 
 - What things exist in the user's world?
-    
+
 - Which things have persistent identity?
-    
+
 - What relationships matter?
-    
+
 - What information has a lifecycle?
-    
+
 - What must be historical?
-    
+
 - What can be derived?
-    
 
 ## Rule
 
@@ -990,50 +974,48 @@ It should specify the already-understood product.
 The PRD should inherit from:
 
 - Problem Definition
-    
+
 - JTBD
-    
+
 - North Star
-    
+
 - Product Vision
-    
+
 - Capability Map
-    
+
 - MVP Scope
-    
+
 - User Journey
-    
+
 - Domain Model
-    
 
 ## PRD Focus
 
 Now define:
 
 - goals
-    
+
 - scope
-    
+
 - functional requirements
-    
+
 - user flows
-    
+
 - states
-    
+
 - rules
-    
+
 - acceptance criteria
-    
+
 - NFRs
-    
+
 - analytics
-    
+
 - risks
-    
+
 - dependencies
-    
+
 - success metrics
-    
 
 ## Artifact
 
@@ -1050,25 +1032,24 @@ Translate requirements into interaction design.
 Now determine:
 
 - navigation
-    
+
 - views
-    
+
 - interaction patterns
-    
+
 - screens
-    
+
 - information hierarchy
-    
+
 - mobile behaviour
-    
+
 - empty states
-    
+
 - onboarding
-    
+
 - error states
-    
+
 - progressive disclosure
-    
 
 ## Principle
 
@@ -1087,48 +1068,46 @@ Technical architecture should follow the product definition.
 ## Inputs
 
 - domain model
-    
+
 - capability boundaries
-    
+
 - UX flows
-    
+
 - functional requirements
-    
+
 - NFRs
-    
+
 - platform constraints
-    
 
 ## Define
 
 - architectural drivers
-    
+
 - system context
-    
+
 - containers
-    
+
 - components
-    
+
 - domain boundaries
-    
+
 - data model
-    
+
 - APIs
-    
+
 - event model
-    
+
 - persistence
-    
+
 - security
-    
+
 - observability
-    
+
 - error handling
-    
+
 - testing
-    
+
 - deployment
-    
 
 ## Artifact
 
@@ -1242,15 +1221,14 @@ Introduce explicit gates between the major phases.
 Before Product Vision:
 
 - Is the user identifiable?
-    
+
 - Is the desired outcome understood?
-    
+
 - Are the main problems documented?
-    
+
 - Have we separated problem from solution?
-    
+
 - Do we understand current alternatives?
-    
 
 If not, continue Discovery.
 
@@ -1261,13 +1239,12 @@ If not, continue Discovery.
 Before Capability Mapping:
 
 - Is the North Star clear?
-    
+
 - Does the vision address the problem?
-    
+
 - Is differentiation understandable?
-    
+
 - Are product boundaries explicit?
-    
 
 ---
 
@@ -1276,13 +1253,12 @@ Before Capability Mapping:
 Before the PRD:
 
 - Is the smallest useful journey defined?
-    
+
 - Are capabilities prioritised?
-    
+
 - Are Later and Out-of-Scope items explicit?
-    
+
 - Does MVP demonstrate the North Star?
-    
 
 ---
 
@@ -1291,17 +1267,16 @@ Before the PRD:
 Before implementation:
 
 - Is the user journey understood?
-    
+
 - Is the domain model stable enough?
-    
+
 - Are requirements testable?
-    
+
 - Are NFRs captured?
-    
+
 - Is architecture aligned?
-    
+
 - Are major unknowns resolved?
-    
 
 ---
 
@@ -1312,55 +1287,48 @@ Every product produced through this process should be challenged against these q
 ## Problem
 
 - Are we solving a real user problem?
-    
+
 - Have we described it without our proposed solution?
-    
+
 - Do we understand why the current situation is difficult?
-    
 
 ## User
 
 - Is the primary user clear?
-    
+
 - Do we understand their context and constraints?
-    
 
 ## Outcome
 
 - Do we know what progress means?
-    
+
 - Is there a clear North Star?
-    
 
 ## Product
 
 - Does the vision explain why the product should exist?
-    
+
 - Is the differentiation meaningful?
-    
+
 - Are the boundaries clear?
-    
 
 ## Scope
 
 - Is MVP a coherent end-to-end experience?
-    
+
 - Have we deliberately deferred non-essential capabilities?
-    
 
 ## Experience
 
 - Can a new user achieve value without already understanding our domain model?
-    
+
 - Does complexity emerge progressively?
-    
 
 ## Delivery
 
 - Can every major requirement trace back to a user problem or outcome?
-    
+
 - Can every backlog item trace back to product intent?
-    
 
 ---
 
@@ -1476,56 +1444,56 @@ This keeps the reasoning chain close to implementation.
 The following prompt can be used when starting a new product:
 
 > You are helping define a new product.
-> 
+>
 > Do not jump directly into features or implementation.
-> 
+>
 > Work progressively through the following stages:
-> 
+>
 > 1. Understand the starting idea and separate observed problems from proposed solutions.
->     
+>
 > 2. Identify the primary user, context, desired outcome, current behaviour, constraints, pains and uncertainties.
->     
+>
 > 3. Create a detailed problem definition.
->     
+>
 > 4. Derive the primary and supporting Jobs to Be Done.
->     
+>
 > 5. Propose a user-centred North Star that describes the experience created when the product succeeds.
->     
+>
 > 6. Create a Product Vision including purpose, user, desired future state, product principles, differentiation, boundaries and long-term direction.
->     
+>
 > 7. Translate the problem space into a Problem → User Need → Desired Outcome → Capability Map.
->     
+>
 > 8. Cluster related capabilities into product domains.
->     
+>
 > 9. Identify the core product loop.
->     
+>
 > 10. Prioritise capabilities into Core Loop, Supporting, Later and Out of Scope.
->     
+>
 > 11. Define the smallest coherent MVP journey that demonstrates the North Star.
->     
+>
 > 12. Only after these stages, derive the domain model, PRD, UX specification, architecture and delivery backlog.
->     
-> 
+>
+>
 > At every stage, challenge assumptions and maintain traceability from proposed capabilities back to user problems and desired outcomes.
-> 
+>
 > Prefer progressive complexity and user language over professional or technical jargon.
-> 
+>
 > The final product definition should make clear:
-> 
+>
 > - who the user is
->     
+>
 > - what they are trying to achieve
->     
+>
 > - why it is difficult today
->     
+>
 > - what experience the product should create
->     
+>
 > - what the product must be capable of
->     
+>
 > - what it should solve first
->     
+>
 > - what it deliberately does not attempt to solve
->     
+>
 
 ---
 
@@ -1533,42 +1501,41 @@ The following prompt can be used when starting a new product:
 
 Before moving into detailed PRD work, the following should be true:
 
--  Primary user is defined.
-    
--  User context is understood.
-    
--  Core problem is documented.
-    
--  Major problem dimensions are known.
-    
--  Desired outcomes are clear.
-    
--  Primary JTBD exists.
-    
--  Supporting JTBDs exist.
-    
--  North Star is explicit.
-    
--  Product Vision exists.
-    
--  Product principles are documented.
-    
--  Product differentiation is clear.
-    
--  Product boundaries are explicit.
-    
--  Capability Map exists.
-    
--  Capabilities trace to problems.
-    
--  Core product loop exists.
-    
--  Capability priorities exist.
-    
--  MVP demonstrates the North Star.
-    
--  Important assumptions and unknowns are visible.
-    
+- Primary user is defined.
+
+- User context is understood.
+
+- Core problem is documented.
+
+- Major problem dimensions are known.
+
+- Desired outcomes are clear.
+
+- Primary JTBD exists.
+
+- Supporting JTBDs exist.
+
+- North Star is explicit.
+
+- Product Vision exists.
+
+- Product principles are documented.
+
+- Product differentiation is clear.
+
+- Product boundaries are explicit.
+
+- Capability Map exists.
+
+- Capabilities trace to problems.
+
+- Core product loop exists.
+
+- Capability priorities exist.
+
+- MVP demonstrates the North Star.
+
+- Important assumptions and unknowns are visible.
 
 Once these are true, detailed product specification is justified.
 

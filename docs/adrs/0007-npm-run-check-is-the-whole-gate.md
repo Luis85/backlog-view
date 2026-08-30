@@ -26,6 +26,12 @@ npm run check   # build + lint + coverage-thresholded tests + fallow + docs regi
 
 All five must pass before committing. CI runs the identical five steps, in the same order.
 
+**A sixth joined them on 2026-08-30** — `lint:md`, between `lint` and `test:coverage`. It is
+inside the command rather than beside it for this ADR's own reason, and against the revisit
+condition below: it costs about a second. See
+[ADR 0032](0032-lint-the-markdown-a-person-reads.md) for what it reads and what it refuses to
+have an opinion about.
+
 Each step gates something different:
 
 | Step | Gates |

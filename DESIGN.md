@@ -509,7 +509,7 @@ parses.
 
 ## Do's and Don'ts
 
-### Do:
+### Do
 
 - **Do** reach for an Obsidian variable first, every time — `--text-*`, `--background-*`,
   `--interactive-accent`, `--size-*`, `--radius-*`, `--font-ui-*`, `--icon-*`. If no token
@@ -526,7 +526,7 @@ parses.
   justify, and say in its header why it sits there if the position is load-bearing.
 - **Do** add a new type's colour as an unclaimed hue in `styles/badges.css`.
 
-### Don't:
+### Don't
 
 - **Don't** write a colour literal. Not a hex, not `rgb()`, not `hsl()`, not a named colour.
   The one in the tree today is a `var()` fallback nothing can render, and it is the open

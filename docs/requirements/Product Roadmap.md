@@ -134,34 +134,34 @@ Grounded in a survey run on 2026-08-01 of the roadmap-format literature, the roa
 surfaces of the major trackers, and the Obsidian ecosystem. Load-bearing sources:
 
 - Now-Next-Later's semantics and its case against dated commitment: ProdPad
-  (https://www.prodpad.com/blog/invented-now-next-later-roadmap/ and
-  https://www.prodpad.com/glossary/now-next-later-roadmap/); the feature-factory
+  (<https://www.prodpad.com/blog/invented-now-next-later-roadmap/> and
+  <https://www.prodpad.com/glossary/now-next-later-roadmap/>); the feature-factory
   critique of dated output roadmaps: SVPG
-  (https://www.svpg.com/the-alternative-to-roadmaps/); precision that decays with
-  distance: ProductPlan (https://www.productplan.com/learn/what-is-a-product-roadmap).
+  (<https://www.svpg.com/the-alternative-to-roadmaps/>); precision that decays with
+  distance: ProductPlan (<https://www.productplan.com/learn/what-is-a-product-roadmap>).
 - Rollup rules — earliest child start, latest child target, manual dates win, inferred
   bars styled as inferred, rolled-up values never written to the items: Jira Plans
-  (https://support.atlassian.com/jira-software-cloud/docs/how-advanced-roadmaps-rolls-up-dates/).
+  (<https://support.atlassian.com/jira-software-cloud/docs/how-advanced-roadmaps-rolls-up-dates/>).
 - Placement fields and the scheduling gesture — start and target date or iteration,
   drag to set: GitHub Projects roadmap layout
-  (https://docs.github.com/en/issues/planning-and-tracking-with-projects/customizing-views-in-your-project/customizing-the-roadmap-layout)
+  (<https://docs.github.com/en/issues/planning-and-tracking-with-projects/customizing-views-in-your-project/customizing-the-roadmap-layout>)
   and Azure DevOps Delivery Plans
-  (https://learn.microsoft.com/en-us/azure/devops/boards/plans/review-team-plans).
+  (<https://learn.microsoft.com/en-us/azure/devops/boards/plans/review-team-plans>).
 - The unscheduled section and the parking lot — undated work visible beside the
-  timeline, never omitted: Linear (https://linear.app/docs/projects) and Aha!
-  (https://www.aha.io/support/roadmaps/strategic-roadmaps/releases-and-schedules/parking-lot-backlog).
+  timeline, never omitted: Linear (<https://linear.app/docs/projects>) and Aha!
+  (<https://www.aha.io/support/roadmaps/strategic-roadmaps/releases-and-schedules/parking-lot-backlog>).
 - Obsidian prior art: the Bases view API
-  (https://docs.obsidian.md/plugins/guides/bases-view), the forum request for a Bases
-  timeline (https://forum.obsidian.md/t/bases-add-gantt-timeline-view/102390), the
+  (<https://docs.obsidian.md/plugins/guides/bases-view>), the forum request for a Bases
+  timeline (<https://forum.obsidian.md/t/bases-add-gantt-timeline-view/102390>), the
   Gantt Bases view whose undated notes do not appear
-  (https://github.com/lhassa8/obsidian-bases-gantt), the Time & Line beta's
+  (<https://github.com/lhassa8/obsidian-bases-gantt>), the Time & Line beta's
   narrow-pane and accessibility lessons
-  (https://forum.obsidian.md/t/time-line-a-set-of-gantt-chart-timeline-views-for-bases-beta/112884),
+  (<https://forum.obsidian.md/t/time-line-a-set-of-gantt-chart-timeline-views-for-bases-beta/112884>),
   and the Tasks plugin's date vocabulary the shipped placeholders stay compatible with
-  (https://publish.obsidian.md/tasks/Getting+Started/Dates).
+  (<https://publish.obsidian.md/tasks/Getting+Started/Dates>).
 - Accessible timeline interaction: the treegrid shape commercial Gantt components
-  document (https://www.telerik.com/design-system/docs/components/gantt/accessibility/),
+  document (<https://www.telerik.com/design-system/docs/components/gantt/accessibility/>),
   GitHub's keyboard pick-up, move, commit pattern
-  (https://github.blog/news-insights/the-library/project-navigation-for-the-way-you-work/),
+  (<https://github.blog/news-insights/the-library/project-navigation-for-the-way-you-work/>),
   and WCAG 2.2 SC 2.5.7 on single-pointer alternatives to dragging — the same
   obligation the board epic already carries.

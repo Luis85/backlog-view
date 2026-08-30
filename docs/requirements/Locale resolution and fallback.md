@@ -33,7 +33,6 @@ Resolution happens **once**, at load. Obsidian requires a restart to change its 
 so re-reading per render would be cost with no observable benefit; `main.ts` registers
 the view name and the command name at `onload` and could not react anyway.
 
-
 **As** someone running Obsidian in a language this plugin has not been translated into,
 **I want** the view to fall back cleanly rather than blank out, **so that** an untranslated
 string is merely English instead of missing.

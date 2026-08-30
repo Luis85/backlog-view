@@ -19,7 +19,6 @@ iteration: ""
 `Epic`, `Feature`, `PBI`, `Task`, `Issue` and `Bug` keep their spelling in frontmatter in
 every locale. What changes is the **label** shown beside them.
 
-
 **As** someone whose vault was typed in one language and opened in another, **I want** the
 type written in frontmatter to stay the same everywhere, **so that** my notes keep reading
 as work items instead of quietly losing their type.

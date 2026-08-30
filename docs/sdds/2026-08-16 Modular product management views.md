@@ -54,7 +54,7 @@ Internal state must never become authoritative over vault state.
 
 **3.3 Views are projections.** A Bases view is not a separate domain:
 
-```
+```text
 Feature.md
    │
    ├── Product Backlog View
@@ -153,7 +153,7 @@ entries, vault events, transactions, undo.
 
 ## 6. Proposed module structure
 
-```
+```text
 src/
 │
 ├── main.ts
@@ -320,7 +320,7 @@ settings should remain minimal.
 
 **10.2 View-level settings** — most behavior belongs here:
 
-```
+```text
 Prioritization View
 valueProperty = business-value
 effortProperty = effort
@@ -731,7 +731,7 @@ functionality grows:
 
 ## 42. Target architecture principle
 
-```
+```text
 Backlog View Plugin
         │
         ├── Shared Product Management Kernel

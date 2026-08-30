@@ -19,7 +19,6 @@ iteration: ""
 The view is checked in both theme variants, with reduced motion on, and against a
 non-default theme — and the checklist stays, because none of it can be tested here.
 
-
 **As** someone using a community theme, a dark mode, or reduced motion, **I want** the
 backlog to look right in my setup, **so that** it reads as part of Obsidian rather than as
 a plugin that assumed the default theme.

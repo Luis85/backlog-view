@@ -107,7 +107,7 @@ identify enabling or foundational work.
 
 Each backlog item can have an Estimation Profile.
 
-```
+```text
 Backlog Item
     │
     └── Estimation Profile
@@ -286,7 +286,7 @@ Weights must be configurable. The weights must total 100%.
 
 Example:
 
-```
+```text
 Strategic Alignment  5 × 0.20 = 1.00
 Customer Value       4 × 0.20 = 0.80
 Business Impact      4 × 0.15 = 0.60
@@ -318,7 +318,7 @@ objectively correct priority. Instead, it should be labeled as a Prioritization 
 
 Selecting Estimate on a backlog item opens the Estimation View.
 
-```
+```text
 ┌─────────────────────────────────────────────────────┐
 │ Feature: Automated Invoice Reconciliation           │
 │                                                     │
@@ -364,7 +364,7 @@ Changing a score recalculates results immediately.
 Each dimension should be displayed as an interactive 1–5 selector. Hovering or selecting a
 value displays its semantic definition:
 
-```
+```text
 Customer Value
 1      2      3      4      5
 ○      ○      ○      ●      ○
@@ -389,7 +389,7 @@ or 5.
 
 Users should be able to provide a short rationale per dimension:
 
-```
+```text
 Customer Value: 5
 Rationale:
 Invoice reconciliation currently requires approximately
@@ -419,7 +419,7 @@ Effort, individual dimensions, and estimation status.
 
 The view should provide a portfolio visualization:
 
-```
+```text
 HIGH VALUE
     │
     │  Strategic Bets       Quick Wins
@@ -457,7 +457,7 @@ next.
 
 Every estimatable item receives an estimation lifecycle:
 
-```
+```text
 Not Estimated → Draft → Estimated → Validated → Needs Re-estimation
 ```
 
@@ -468,7 +468,7 @@ Changes to important underlying information may mark an estimation as Needs Re-e
 The system should retain estimation history. Each revision records timestamp, estimator,
 dimension values, calculated Business Value, Confidence, Effort, rationale.
 
-```
+```text
 May 04
 Value 3.4 → 4.2
 Confidence 2 → 4
@@ -497,7 +497,7 @@ Different backlog levels may use different estimation dimensions.
 
 Inherited values must visually indicate their source:
 
-```
+```text
 Strategic Alignment
 5 / 5
 ↑ inherited from Epic "Finance Automation"

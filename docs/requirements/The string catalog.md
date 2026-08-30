@@ -19,7 +19,6 @@ iteration: ""
 Every message the plugin can show, once, in one file per locale, typed so that a caller
 cannot ask for a key that does not exist.
 
-
 **As** someone maintaining this plugin, **I want** every message in one typed place per
 locale, **so that** a caller cannot ask for a key that does not exist and a translator can
 work without reading the code.

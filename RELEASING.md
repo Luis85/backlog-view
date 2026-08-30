@@ -224,4 +224,3 @@ attached.
 
 Publishing is public and a release cannot be un-published without deleting it, so an
 agent session should have been told to release, not infer it from a merged PR.
-

@@ -36,7 +36,7 @@ It never asks the other: *does a valid one pass?* And the last finding of the re
 the only one in the whole sequence that came from asking it — and the only one that would
 have cost someone real time:
 
-```
+```markdown
 [the filter](<The quick filter on the board.md>)
 ```
 

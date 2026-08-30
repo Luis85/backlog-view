@@ -276,10 +276,11 @@ screen to copy:
 6. Commit the notes and the plan alone. No push, no pull request.
 7. Print the prompt.
 
-Step 5 is the full gate, not `npm run docs` alone: the diff is markdown, so the register step
-is realistically the only one of the five with anything to say about it, but root
-`CLAUDE.md` states the rule unconditionally, and a skill that carves its own exception is
-where exceptions start.
+Step 5 is the full gate, not one step of it: the diff is markdown, so **two** of the six read
+it — the register step, and `lint:md`, which is what refuses a table whose cells outnumber its
+header (ADR 0032). Root
+`CLAUDE.md` states the rule unconditionally in any case, and a skill that carves its own
+exception is where exceptions start.
 
 **Nothing here closes the PBI, and neither does the run the prompt starts.** Every output
 reaching `Done` is a different claim from the use case's guarantee holding: acceptance

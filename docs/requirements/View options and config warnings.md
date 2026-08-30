@@ -20,7 +20,6 @@ The 30 sites in `domain/viewOptions.ts` — four group names, every `displayName
 `placeholder` — plus the problem sentences `configProblems` produces. The highest-risk
 file in the sweep, because half of what it contains must **not** change.
 
-
 **As** someone configuring the view in another language, **I want** the options menu and
 its warnings in my language, **so that** I can set the plugin up without the settings
 being the one English surface left.
@@ -108,7 +107,7 @@ omission, and both numbers had moved by the time anyone looked.
   | --- | --- | --- |
   | Mirrors the option's real `default` | `DEFAULT_DONE_VALUES.join(', ')` on `doneValues` | Stays as written — clearing the field falls back to the string on screen |
   | An **example** of what to type | `stateValues` is `default: ''` with `placeholder: 'New, Active, Done'` (`viewOptions.ts:112-117`); `Item title`, `Sprint-12` in `ui/prompts.ts` | Translated — never parsed, so leaving it English protects nothing |
-  | **Mixed**: user data with a literal fallback | `placeholder: homeFolder || 'Home folder'` on every type folder (`viewOptions.ts:156`) | The path renders as the user's own; the fallback label is translated |
+  | **Mixed**: user data with a literal fallback | `placeholder: homeFolder \|\| 'Home folder'` on every type folder (`viewOptions.ts:156`) | The path renders as the user's own; the fallback label is translated |
 
 - The type-folder placeholder is the one to get right, because it looks like the first
   kind and is not. `resolveFolders` falls back to `defaultTypeFolder(type, homeFolder)`

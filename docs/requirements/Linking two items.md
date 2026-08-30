@@ -191,6 +191,7 @@ a different control.
   list forbids. It is also the state ✨ would produce if [[Dependencies as a property]] did
   not exempt this key from the stub pass, and a hole reachable by hand is worth closing
   whether or not the view can create it.
+
 ## Acceptance criteria
 
 - Both entries appear only on results, and neither appears where the dependency property is

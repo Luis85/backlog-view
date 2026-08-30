@@ -191,7 +191,7 @@ The user can:
 
 A Feature could contain:
 
-```
+```text
 Feature: Backlog Estimation
 ├── PBI: Configure estimation dimensions
 │
@@ -228,7 +228,7 @@ and obtain a UX-oriented planning surface.
 
 Example workflow:
 
-```
+```text
 Planned
    ↓
 Research
@@ -248,7 +248,7 @@ This allows a designer to manage their own work while retaining links to the Pro
 
 Example:
 
-```
+```text
 RESEARCH
 [Analyse estimation workflow]
 Feature: Estimation
@@ -312,7 +312,7 @@ evidence:
 
 The item UI may surface:
 
-```
+```text
 Feature: Business Value Estimation
 Evidence  3
 Design    2
@@ -377,7 +377,7 @@ readiness:
 
 The Feature might therefore appear:
 
-```
+```text
 Feature: Estimation
 Product       ✓
 UX            ◐
@@ -434,7 +434,7 @@ result: issues-found
 
 The backlog can display an aggregate:
 
-```
+```text
 Feature: Estimation
 UX validation
 5 participants
@@ -454,7 +454,7 @@ A usability study may generate Findings.
 
 Example:
 
-```
+```text
 Usability Test
       │
       ├── Finding
@@ -497,7 +497,7 @@ Provide Product Managers with a single view of Feature readiness across discipli
 
 Example:
 
-```
+```text
 Feature                    Product    UX        Dev       QA
 Backlog Estimation          ✓          ✓         ◐         -
 Roadmap Dependencies        ✓          ◐         -         -
@@ -543,14 +543,14 @@ This allows Product Backlog to surface accumulated design debt alongside technic
 
 A Feature starts as:
 
-```
+```text
 FEATURE
 Improve backlog estimation
 ```
 
 Product creates discovery work:
 
-```
+```text
 Task
 Understand how Product Managers currently estimate work
 discipline: product
@@ -558,7 +558,7 @@ discipline: product
 
 UX creates:
 
-```
+```text
 Task
 Observe backlog refinement workflow
 discipline: ux
@@ -567,7 +567,7 @@ activity: research
 
 Research produces:
 
-```
+```text
 Research Note
 Backlog refinement observations
 ```
@@ -576,7 +576,7 @@ The Feature links to that evidence.
 
 UX then creates:
 
-```
+```text
 Task
 Design estimation interaction
 discipline: ux
@@ -585,7 +585,7 @@ activity: interaction-design
 
 followed by:
 
-```
+```text
 Task
 Prototype estimation workflow
 discipline: ux
@@ -594,7 +594,7 @@ activity: prototype
 
 and:
 
-```
+```text
 Task
 Validate estimation workflow
 discipline: ux
@@ -607,7 +607,7 @@ Engineering Tasks then appear underneath those PBIs.
 
 The same Feature therefore evolves through:
 
-```
+```text
           FEATURE
              │
      ┌───────┴─────────┐
@@ -632,7 +632,7 @@ The same underlying notes can support different team perspectives.
 
 ### Product Backlog
 
-```
+```text
 Epic
   Feature
     PBI
@@ -652,7 +652,7 @@ Board:
 
 Filter:
 
-```
+```text
 activity IN
 research
 prototype
@@ -693,7 +693,7 @@ Product Backlog manages the work required to produce it and its relationship to 
 
 The model therefore becomes:
 
-```
+```text
                     PRODUCT BACKLOG
                          Epic
                           │

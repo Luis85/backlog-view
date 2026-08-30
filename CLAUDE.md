@@ -18,10 +18,10 @@ Requires Obsidian 1.12.0+ (Bases custom view API, with config-aware view options
 ## Definition of done
 
 ```bash
-npm run check   # build + lint + coverage-thresholded tests + fallow + docs register
+npm run check   # build + lint + markdown + coverage-thresholded tests + fallow + docs register
 ```
 
-All five must pass before committing; CI runs the same steps, on Ubuntu **and Windows** —
+All six must pass before committing; CI runs the same steps, on Ubuntu **and Windows** —
 paths and line endings are the only things that differ between them, and both have already
 produced a defect this repository could not see. Coverage thresholds
 (vitest.config.mts) only ever go up. Fallow (config: .fallowrc.json) gates dead code,
@@ -88,7 +88,7 @@ Four layers, outermost first. **Each may reach anything below it and nothing abo
 `eslint.config.mjs` enforces this with per-directory `no-restricted-imports`, so a
 violation fails `npm run lint` rather than waiting for review:
 
-```
+```text
 main → commands → view → storage → domain
                     ↘________________↗
 ```
@@ -256,9 +256,12 @@ writer and the view that read them. Both used to sit upstream and made the pure 
 depend on the effectful one.
 
 **Everything `npm run` invokes lives in `scripts/`** — the build, the harness, the vault
-handover, the version bump, and the register gate with its Markdown layer. Two files stay
+handover, the version bump, and the register gate with its Markdown layer. Three files stay
 at the repository root because a TOOL finds them there rather than a script calling them:
-`eslint.config.mjs` (which `eslint .` discovers) and `vitest.config.mts`. Every script
+`eslint.config.mjs` (which `eslint .` discovers), `vitest.config.mts`, and
+`.markdownlint-cli2.jsonc` — the Markdown gate's scope and rule set, which ADR 0032
+explains and which is the one of the three whose exclusions are a decision rather than a
+default. Every script
 resolves its paths from the WORKING DIRECTORY, not from its own location — npm scripts and
 vitest both run from the root — so `scripts/styles-assemble.mjs` reading `styles/` is
 correct and not a bug waiting to happen. That is stated in the one file where the
@@ -439,7 +442,6 @@ it from one sentence took eleven review findings across seven rounds without rea
 correct rule. Read `docs/issues/The outcome report was built from one sentence.md`
 before building it again: the open question is that nothing correlates a Bases pass with
 a write, and a design that needs that correlation cannot be made to work here.
-
 
 ## Claims, and the checks under them
 
