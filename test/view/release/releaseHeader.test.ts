@@ -5,6 +5,26 @@ import { en } from '../../../src/i18n/en';
 import { Modal } from '../../helpers/obsidian-mock';
 import { flush } from '../../helpers/view';
 
+describe('the default screen opens a release that has members', () => {
+	// The fixture's own invariant, checked because it silently was not true until
+	// 2026-08-30: `releaseScreen` adds and picks `0.9` while `scopeVault()`'s members named
+	// `R`, so every caller taking the default drove the EMPTY scope — the screen
+	// `renderScope` returns early from. Nothing failed, because the cases that take the
+	// default assert withholding, locking and paths, which no member can affect; the one
+	// that lost a real check is `releaseNotes.test.ts`'s idempotence case, and it now
+	// builds its own populated vault rather than leaning on this.
+	//
+	// `.pbl-rel-summary` is the assertion rather than a row count because `drawSummary`
+	// WITHHOLDS it on a memberless release — so this is the one element whose presence
+	// cannot be true of the empty screen, and repointing the members again fails here
+	// rather than quietly somewhere downstream.
+	it('draws the summary strip, which a memberless release withholds', () => {
+		const { view } = releaseScreen({ status: 'In progress' });
+		expect(view.viewEl.querySelector('.pbl-rel-summary')).not.toBeNull();
+		expect(view.viewEl.querySelectorAll('.pbl-row').length).toBe(2);
+	});
+});
+
 describe('the released date is a control only when there is one, or Mark as released cannot cover it', () => {
 	it('draws nothing when the key is bound, the value absent, and Mark as released is offered', () => {
 		// `Mark as released` covers exactly this condition when it is offered: writing the

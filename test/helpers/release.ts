@@ -236,6 +236,19 @@ export function scopeVault(): FakeVault {
 	vault.addFile('E.md', { frontmatter: { type: 'Epic' } });
 	vault.addFile('F1.md', { frontmatter: { type: 'Feature', parent: 'E', order: 1, release: '[[R]]' } });
 	vault.addFile('F2.md', { frontmatter: { type: 'Feature', parent: 'E', order: 2, release: '[[R]]' } });
+	// `[[0.9]]`, and that is the point of them: `releaseScreen` adds `0.9.md` to whatever
+	// vault it is given and PICKS it, so without these the default screen was a release with
+	// no members — the empty scope `renderScope` returns early from — for every caller that
+	// did not pass a vault of its own. Two, one of them done, so the default also has a real
+	// rollup and a half-filled bar rather than a strip `drawSummary` withholds.
+	//
+	// The pair above stays on `[[R]]` rather than moving: `scopeVault()` is used two ways,
+	// and the other one (`makeReleaseView` directly, as `releaseNeverEdits.test.ts` does)
+	// never adds `0.9` at all — repointing them there leaves a vault whose members name a
+	// release that does not exist, which is the one test that failed when this was tried
+	// that way (2026-08-30). Each release keeps its own members.
+	vault.addFile('M1.md', { frontmatter: { type: 'PBI', order: 1, release: '[[0.9]]' } });
+	vault.addFile('M2.md', { frontmatter: { type: 'PBI', order: 2, release: '[[0.9]]', status: 'Done' } });
 	addToolbarReleases(vault);
 	return vault;
 }

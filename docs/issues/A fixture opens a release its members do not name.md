@@ -2,7 +2,7 @@
 type: Issue
 order: 230
 parent: "[[Invariants as checks, not conventions]]"
-status: Open
+status: Done
 priority: P3
 area: verification
 created: 2026-08-30
@@ -10,6 +10,7 @@ source: surfaced while folding the release actions into the header — PR
 files:
   - test/helpers/release.ts
   - test/view/release/releaseNotes.test.ts
+  - test/view/release/releaseHeader.test.ts
 started: ""
 finished: ""
 horizon: ""
@@ -58,21 +59,50 @@ on the old fixture.
 
 ## What is left, and why it is not a rewrite
 
-The default itself. `scopeVault()` could name `0.9`, and then every `releaseScreen` caller
-would open a populated release — which is **not** obviously an improvement:
+**Nothing, and the reasoning that said otherwise was argued rather than measured.** This
+section first refused the fix on the grounds that the default is consumed by eight test
+files and that several assert the empty-scope screen on purpose, so repointing the members
+would move them onto a different path silently. Kept here rather than deleted, because the
+refusal was wrong in a way worth reading: none of it had been tried.
 
-- The default is consumed by eight test files, not one. `releaseClose.test.ts`,
-  `releaseEdits.test.ts`, `releaseHeader.test.ts`, `scopeTree.test.ts`, `scopeKeys.test.ts`,
-  `scopeCreate.test.ts`, `rowChrome.test.ts` and `scopeToolbar.test.ts` all reach for it.
-- Several assert the empty-scope screen **on purpose** — it is the screen `renderScope`
-  returns early from, and the reason the actions area has to be drawn above that return.
-  Repointing the members would silently move those onto a different path.
-- The cases that need members already say so at the call site: `twoWorkflowVault()`,
-  `emptyReleaseVault()`, or a vault built in the test. That is the honest shape — a fixture
-  named for what it holds, chosen by a test that knows why it needs it.
+**The measurement.** Repointing `F1`/`F2` from `[[R]]` to `[[0.9]]` and running the release
+suites failed **one** test of 205 — not several, and not in any of the files the paragraph
+above named as asserting emptiness deliberately. The one failure was
+`releaseNeverEdits.test.ts`, and it named the real coupling, which no amount of reading the
+call sites had surfaced: `scopeVault()` is used **two ways**. `releaseScreen` adds `0.9.md`
+to it and picks that; `makeReleaseView` is also handed it directly, and then `0.9` does not
+exist in the vault at all. Members repointed to `0.9` leave that second caller with a vault
+whose members name a release that is not there.
 
-What would change this verdict: a second case found where the default's emptiness weakens a
-claim the test's own name makes. One is a fixed instance; two is a default that lies. The
-instrument for finding them is the one used above — read what each case ASSERTS and ask
-whether a member could change it, never the test's name, which is what produced the estimate
-this note corrects.
+**The fix follows from that.** Each release keeps its own members: `F1`/`F2` stay on `[[R]]`,
+and `M1`/`M2` are added naming `[[0.9]]`, one of them done so the default screen also has a
+real rollup and a half-filled bar. Full suite green — 266 files, 4252 tests.
+
+## The check under it
+
+All-green after a fixture change is exactly the reading this repository distrusts, since it
+is equally consistent with "nothing observed the change". So the difference is asserted
+directly, in `releaseHeader.test.ts`: **the default screen draws `.pbl-rel-summary`**, which
+`drawSummary` WITHHOLDS on a memberless release — the one element whose presence cannot be
+true of the empty screen. Watched failing with the two members removed.
+
+That is also the guard against this recurring. The defect was silent for the whole life of
+the fixture because every symptom of it was a test passing for a slightly weaker reason;
+repointing the members again now fails one named assertion instead.
+
+## What this cost, in order
+
+Worth keeping as a sequence rather than a conclusion, because the conclusion was reached
+last:
+
+1. The PR body carried the estimate — "~9 cases named for populated releases actually
+   exercise the empty-scope screen" — read off the test NAMES.
+2. Counting what each case ASSERTS corrected it: 9 of 12 take the default, 8 of the 9 cannot
+   be affected by a member, 1 lost a real check.
+3. That one was fixed on its own, and this note filed refusing the wider fix on reasoning.
+4. The wider fix was then tried, took one minute, and failed one test — which explained the
+   real constraint and produced a better fix than either the estimate or the refusal.
+
+Step 3 is the one to notice. The repository's own rule is *measure with an instrument that
+can see all of it*, and a refusal is a claim like any other: **"this would break eight test
+files" was never run.**
