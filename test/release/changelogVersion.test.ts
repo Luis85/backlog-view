@@ -94,6 +94,27 @@ describe('each changelog section groups its entries once', () => {
 	const sectionOf = (at: number) =>
 		sections.filter((h) => h.index < at).at(-1)?.text ?? '(before any section)';
 
+	it('sees a group heading at every indent CommonMark permits', () => {
+		// The instrument before its verdict. Review (Codex, PR #232) read
+		// `source(text, node).startsWith(marker)` as rejecting an ATX heading indented by
+		// the 0-3 spaces CommonMark allows, which would let `  ### Added` slip the check
+		// above. It does not: mdast puts `position.start` at the `#` rather than at the
+		// line start, so the slice begins with the marker whatever the indent — and this
+		// asserts that rather than leaving it read off the source.
+		//
+		// The guard's actual subject is unchanged and is the reason it cannot simply go:
+		// a Setext heading (a paragraph underlined with `---`) parses at depth two and
+		// starts with neither marker, which is what kept the YAML frontmatter of every
+		// note in the register from reading as a heading (see `headings()`'s own comment).
+		for (const pad of ['', ' ', '  ', '   ']) {
+			const doc = `## [x]\n\npara\n\n### Added\n\npara\n\n${pad}### Added\n\npara\n`;
+			expect(headings(doc, 3).map((h: { text: string }) => h.text), `indent ${pad.length}`).toEqual([
+				'Added',
+				'Added',
+			]);
+		}
+	});
+
 	it('never repeats a group heading within one release', () => {
 		const seen = new Set<string>();
 		const repeated: string[] = [];
