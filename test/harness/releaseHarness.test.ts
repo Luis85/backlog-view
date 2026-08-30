@@ -43,6 +43,9 @@ describe('the release harness mounts', () => {
 			// row that shows which of line 1's cells yields its width first.
 			LONG_NAME,
 			'1.1',
+			// Undated too, so it sorts with `Someday` rather than among the dated rows — the
+			// release whose status already reads as released with no date beside it.
+			'1.2',
 			'Someday',
 			'0.7',
 			'0.6',
@@ -56,7 +59,9 @@ describe('the release harness mounts', () => {
 		// releases at all: with every release in flight the browser draws ONE heading and
 		// the two-group layout cannot be looked at.
 		expect(Array.from(containerEl.querySelectorAll('.pbl-rel-group')).map((el) => el.textContent)).toEqual([
-			'In flight (6)',
+			// `1.2` is in flight, not shipped: `shipped` is a readable released DATE and never
+			// the status word, which is exactly the disagreement its band exists to show.
+			'In flight (7)',
 			'Shipped (2)',
 		]);
 	});
@@ -90,7 +95,8 @@ describe('the release harness mounts', () => {
 			en['column.rollupTooltip'].other.replace('{done}', '1').replace('{count}', '3'),
 			en['column.rollupTooltip'].one.replace('{done}', '0').replace('{count}', '1'),
 			en['column.rollupTooltip'].one.replace('{done}', '0').replace('{count}', '1'),
-			// 1.1 and Someday, neither with members.
+			// 1.1, 1.2 and Someday, none with members.
+			en['release.index.noMembers'],
 			en['release.index.noMembers'],
 			en['release.index.noMembers'],
 			// The two shipped releases: one done member each, so the bar reads full — the
@@ -142,7 +148,7 @@ describe('the release harness mounts', () => {
 		expect(containerEl.querySelector('.pbl-rel-band-note')).toBeNull();
 		// Every release reads in flight, so the Shipped heading has nothing to head.
 		expect(Array.from(containerEl.querySelectorAll('.pbl-rel-group')).map((el) => el.textContent)).toEqual([
-			'In flight (8)',
+			'In flight (9)',
 		]);
 		// And the missing binding is named once beneath the list rather than left to be
 		// guessed at from a screen that has quietly stopped saying anything.
@@ -175,21 +181,24 @@ describe('the release harness mounts', () => {
 
 		// SET: `0.8` is the only release carrying a description, and the only screen where
 		// the sentence has to wrap under a two-line header — the thing a browser is opened
-		// for. Its status is a plain chip, and its released date is the INVITATION, since
-		// nothing has shipped it.
+		// for. Its status is a plain chip, and its released date draws NOTHING now:
+		// `Mark as released` below is offered (2026-08-30) and is this fixture's way to set
+		// it, so a second invitation on the same field would be two controls for one.
 		view.pick('Releases/0.8.md');
 		expect(header()?.querySelector('.pbl-rel-desc')?.classList.contains('pbl-rel-desc-empty')).toBe(false);
 		expect(header()?.querySelector('.pbl-rel-status.pbl-state-unset')).toBeNull();
-		expect(header()?.querySelector('.pbl-rel-released-unset')?.textContent).toBe(en['release.scope.markReleased']);
+		expect(header()?.querySelector('.pbl-rel-released')).toBeNull();
+		expect(containerEl.querySelector('.pbl-rel-close')).not.toBeNull();
 
-		// UNSET, all three at once: `Someday` is the release nobody has ruled on — no
-		// version, no target, no status, no description — so its header is the whole of what
-		// an invitation looks like. Each is still a real control opening its own editor;
-		// absence is what the reader is being asked to fill, never a figure withheld.
+		// UNSET: `Someday` is the release nobody has ruled on — no version, no target, no
+		// status, no description. Its status and description are still invitations; its
+		// released date is withheld for the same reason 0.8's is — `Mark as released` is
+		// offered here too, since a release with nothing ruled on is not already out.
 		view.pick('Releases/Someday.md');
 		expect(header()?.querySelector('.pbl-rel-status.pbl-state-unset')).not.toBeNull();
 		expect(header()?.querySelector('.pbl-rel-desc.pbl-rel-desc-empty')).not.toBeNull();
-		expect(header()?.querySelector('.pbl-rel-released-unset')).not.toBeNull();
+		expect(header()?.querySelector('.pbl-rel-released')).toBeNull();
+		expect(containerEl.querySelector('.pbl-rel-close')).not.toBeNull();
 
 		// SHIPPED: the released date as a VALUE rather than an invitation — the state the
 		// index's Shipped group is built on, and the one form of this control no screen drew
@@ -199,6 +208,16 @@ describe('the release harness mounts', () => {
 		expect(header()?.querySelector('.pbl-rel-released')?.textContent).toBe(
 			en['release.scope.releasedOn'].replace('{date}', '2026-06-18'),
 		);
+
+		// INVITED: `1.2` carries a status that already reads as released and no date, so
+		// `closeOffer` withholds `Mark as released` on `alreadyOut` and this control draws
+		// the invitation instead — the one branch of it the harness could not reach at all
+		// until this fixture existed, which is why the whole increment shipped unlookable.
+		view.pick('Releases/1.2.md');
+		expect(header()?.querySelector('button.pbl-rel-released-unset')?.textContent).toBe(
+			en['release.scope.markReleased'],
+		);
+		expect(containerEl.querySelector('.pbl-rel-close')).toBeNull();
 	});
 
 	it('refuses all three controls on the release whose every figure is unreadable', () => {

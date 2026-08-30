@@ -57,6 +57,12 @@ const STATUS_CHIP = '.pbl-rel-status';
  *  chip's is above: the write's own refocus after the await, and the CANCEL's before it. */
 const DESCRIPTION_LINE = '.pbl-rel-desc';
 const RELEASED_BUTTON = '.pbl-rel-released';
+/** `drawReleased`'s own replacement for the case that made this the one control of the
+ *  three that can be gone after the write it caused: clearing the date can make `Mark as
+ *  released` offered again, and `renderScope.ts` withholds the button on exactly that
+ *  condition — see `focusControl`'s own note on why this is the fallback rather than the
+ *  body. */
+const CLOSE_BUTTON = '.pbl-rel-close';
 
 export function showReleaseStatusMenu(view: ReleaseView, evt: MouseEvent, release: ReleaseRow, index: ReleaseIndex): void {
 	const key = view.settings.statusKey;
@@ -185,20 +191,30 @@ export function editReleaseReleased(view: ReleaseView, release: ReleaseRow): voi
 		// (`interactions/plan.ts`), and what `prompt.clearDate` names in its tooltip.
 		fields: [{ field: 'released', name: key, value: current === null ? '' : formatCivil(current) }],
 		validate: () => null,
-		onClosed: () => focusControl(view, RELEASED_BUTTON),
+		// `CLOSE_BUTTON` here too, and not only on the submitting exit below: the control this
+		// dialog was opened from can be gone by the time it CLOSES without writing anything.
+		// An external edit clearing the date mid-dialog makes `Mark as released` offered, and
+		// `drawReleased` then draws nothing — so a cancel found no `.pbl-rel-released` and put
+		// the reader on the body, which is the same defect the write path was fixed for and
+		// the same neighbour repairs it (found by review, Codex, PR #221). The general
+		// focus-handle restore cannot cover it: the modal held focus across that redraw, so
+		// `focusedHandle` correctly answered null.
+		onClosed: () => focusControl(view, RELEASED_BUTTON, CLOSE_BUTTON),
 		onSubmit: (values) =>
 			// `values.released` and not `?? ''`: the modal submits the fields it was GIVEN, and
 			// this one gave it exactly one — a fallback here is a branch nothing can take.
-			void save(view, releaseReleasedWrites(release.item.file, key, current, values.released), RELEASED_BUTTON),
+			void save(view, releaseReleasedWrites(release.item.file, key, current, values.released), RELEASED_BUTTON, CLOSE_BUTTON),
 	}).open();
 }
 
 /**
- * Apply a dialog's batch and put focus back on the control that opened it — the
- * description's line, or the released date's own button.
+ * Apply a batch and put focus back on the control that opened it — its three callers'
+ * controls are the status chip, the description's line and the released date's own button,
+ * which is why `control` is a parameter rather than a constant here.
  *
- * A dialog is why this exists rather than `FOCUS_HANDLE_CLASSES` covering it like the
- * status chip: `TextPromptModal` CLOSES before it submits, so by the time the write's own
+ * `FOCUS_HANDLE_CLASSES` covers neither of the two shapes that reach this: a MENU pick
+ * (the comment at the Set-status entries above), and a DIALOG — `TextPromptModal` CLOSES
+ * before it submits, so by the time the write's own
  * redraw runs, focus is already off this view entirely and `focusedHandle` correctly
  * answers null. `focusNewRelease` (`newRelease.ts`) has the identical shape for the
  * identical reason — looked up FRESH after the await, never captured, because the redraw
@@ -208,10 +224,14 @@ export function editReleaseReleased(view: ReleaseView, release: ReleaseRow): voi
  * await, and a vault refreshing on its own schedule afterwards takes focus to the body
  * again. A batch that wrote NOTHING redraws nothing, so the line the reader pressed is
  * still on screen and still focused — this call finds that same element and no-ops.
+ *
+ * `fallback` is `focusControl`'s own — passed through rather than decided here, since this
+ * function does not know which of its three callers' controls can vanish with the write it
+ * just caused.
  */
-async function save(view: ReleaseView, writes: ReleaseWrite[], control: string): Promise<void> {
+async function save(view: ReleaseView, writes: ReleaseWrite[], control: string, fallback?: string): Promise<void> {
 	await view.applyRelease(writes);
-	focusControl(view, control);
+	focusControl(view, control, fallback);
 }
 
 /**
@@ -227,7 +247,18 @@ async function save(view: ReleaseView, writes: ReleaseWrite[], control: string):
  * submitting one too, BEFORE `onSubmit`, so on that path this call is the one that loses:
  * the redraw inside the await replaces the element it found, and `save`'s own refocus after
  * the await is what holds.
+ *
+ * `fallback` is `render/rows.ts`'s own class of defect, on this screen rather than a fold:
+ * clearing the released date can make `Mark as released` offered again, and
+ * `renderScope.ts`'s `drawReleased` withholds `RELEASED_BUTTON` on exactly that condition
+ * — the control the reader just pressed is gone with the frame, same as `renderChevron`'s
+ * button, and `refocus` (`shelfControls.ts`) is the shape this follows rather than a
+ * general mechanism: a stable neighbour, never the body. Unlike a fold's pane, this
+ * header has no single composite to fall back to, so the neighbour is the specific control
+ * that now covers the field — `Mark as released` — passed in by the one caller whose
+ * control can vanish, rather than guessed at here for controls that never do.
  */
-function focusControl(view: ReleaseView, control: string): void {
-	view.viewEl.querySelector<HTMLElement>(control)?.focus({ preventScroll: true });
+function focusControl(view: ReleaseView, control: string, fallback?: string): void {
+	const target = view.viewEl.querySelector<HTMLElement>(control) ?? (fallback ? view.viewEl.querySelector<HTMLElement>(fallback) : null);
+	target?.focus({ preventScroll: true });
 }
