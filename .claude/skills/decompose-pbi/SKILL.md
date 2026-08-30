@@ -61,8 +61,10 @@ in fact: ask which child holds it on each extension, not only on the main flow.
 A slice is a child note when it can fail on its own. Two slices that can only pass or fail
 together are one note.
 
-**Exit when** every step, extension and criterion is either claimed by a slice or spoken
-for as needing none, and the guarantee is claimed on every branch.
+**Exit when** every step, extension, criterion **and path under `## Where it lives`** is
+either claimed by a slice or spoken for as needing none, and the guarantee is claimed on
+every branch. The gate covers exactly what the walk covered: a path named there and by no
+step is precisely the cross-cutting module or test that vanishes from a decomposition.
 
 ## Phase 2 — the perspective sweep
 
@@ -105,12 +107,23 @@ that parent's existing children, in the order the work must be done. Ranking a c
 against the PBI it was decomposed from is how a `Test case` collides with a case it has
 never met, or lands correct-looking and misplaced.
 
-**Exit when** every child has a type legal under its parent and a free `order`.
+**An ADR is not a child of anything.** The sweep's ADR row produces a note with **no
+`type`, no `parent` and no `order`** — `docs/adrs/README.md` puts it outside the work-item
+hierarchy on purpose — so it is ranked against nothing and gated by none of the rules
+above. It is still an output of this decomposition.
+
+That makes two kinds of output, and the second kind is the one that gets lost: **a
+`Test case` and an ADR are part of the picture and are not the PBI's children.** Keep them
+by name from here on — they travel through phase 4 and the handoff like everything else.
+
+**Exit when** every child has a type legal under its parent and a free `order`, and every
+output that is neither is named as such.
 
 ## Phase 4 — shared understanding
 
-Read the whole set back — each child, its type, its parent, its rank, and one sentence of
-what it delivers — and name what you are still assuming. **This gate is the only thing that
+Read the whole set back — each output, its type, its parent, its rank, and one sentence of
+what it delivers, with an ADR read back as carrying none of those three — and name what you
+are still assuming. **This gate is the only thing that
 unlocks writing.**
 
 ## The close
@@ -130,12 +143,20 @@ unlocks writing.**
 4. Print exactly this, and nothing else in the block:
 
    ```
-   Read docs/requirements/<Title>.md and its child notes. Write an implementation plan
-   for it using the writing-plans skill. Do not write code.
+   Read docs/requirements/<Title>.md and its child notes, plus <every output that is
+   not one of its children, by path>. Write an implementation plan for it using the
+   writing-plans skill. Do not write code.
    ```
+
+   The second half is not decoration. A `Test case` and an ADR are not reachable from the
+   PBI's children, so a handoff that names only those hands the planner a picture missing
+   exactly the verification and the decision this sweep just established were needed.
 
 ## Red flags — stop and go back
 
+- A phase's exit gate asks for less than that phase's walk covered.
+- An output that is not a child of the PBI stopped being mentioned after the phase that
+  found it.
 - A perspective row went unmentioned because it "obviously does not apply".
 - Every child came out a `Task`.
 - You wrote a note before phase 4 to keep track.
