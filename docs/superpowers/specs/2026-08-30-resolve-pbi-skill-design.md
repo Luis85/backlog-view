@@ -245,6 +245,14 @@ by the table under *Not every child is executable*, then ask these rows of the o
 subagent will execute. The human's are named, and the phase exits on them being named rather
 than on them being executable.
 
+**And the rows are engineering questions, so they reach the code-bearing outputs only.** The
+same split the cycle already uses holds here: a decision-or-limitation `Issue`, an ADR and a
+`Test suite` are prose the subagent writes, with no behaviour to make fail, no coverage to
+move and no lint rule to refuse them. Asking those four rows of one stalls the phase or
+invents engineering detail for a record that has none. What a prose output is asked is what
+it can answer — what produced it, what it must say, and what would make it wrong — and
+`docs/adrs/README.md`'s five things are that question for an ADR.
+
 | Row | The question |
 | --- | --- |
 | Evidence | What produced this child — the PBI slice, or the perspective row? |
