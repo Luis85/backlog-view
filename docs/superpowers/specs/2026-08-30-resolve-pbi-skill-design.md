@@ -346,7 +346,7 @@ the TDD loop, because
 | Output | Whose | Why |
 | --- | --- | --- |
 | A `Task` | The subagent's | It is engineering work with a test |
-| A `Task` whose **first line declares it a handoff** | Nobody's | It is an earlier run's prompt, not work. This run's own handoff supersedes it, so it is named as superseded and given no task |
+| A `Task` whose **first body line declares it a handoff** — the line after its frontmatter, not the `---` that opens it | Nobody's | It is an earlier run's prompt, not work. This run's own handoff supersedes it, so it is named as superseded and given no task |
 | An `Issue` holding an **open question** | The human's | The work cannot settle it; that is why it is an Issue |
 | An `Issue` recording a **decision or a limitation** | The subagent's | It is prose stating something already settled |
 | A `Bug` | The subagent's | A defect with a fix and a test, and `docs/README.md` gives it a shape — the same work a `Task` is |
@@ -373,7 +373,8 @@ only "the subagent's" available, prose already on disk read as prose somebody ha
 
 The handoff row is the same kind of correction. The saved note is a `Task` child, so on a
 rerun the `Task` row above sends it to the subagent and the plan dispatches an implementer
-to run the prompt it is already running. The note's self-declaring first line is the marker;
+to run the prompt it is already running. The note's self-declaring first body line — the one after its frontmatter, since a `Task` is
+written with frontmatter and a physical first line would be the `---` — is the marker;
 this row is the rule that acts on it, and a marker with no rule behind it stops nothing.
 
 The human's outputs are **named in the plan's header, never given a task**. They are still
@@ -517,7 +518,7 @@ shut, and both are needed because they fail differently:
 
 - **The prompt enumerates the children it executes by path.** A path list cannot pick up a
   note written after it, so the saved note is outside the set by construction.
-- **The saved note says so in its own first line** — *this note is the handoff, not a task
+- **The saved note says so in its own first body line**, after its frontmatter — *this note is the handoff, not a task
   to implement.* That is what a later run catches, since a rerun re-derives the children
   from `parent` and would otherwise find it there. **The line is a marker; the ownership
   table's own row is what acts on it.** Without that row the first guard fails exactly where
