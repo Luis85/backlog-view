@@ -732,7 +732,10 @@ export function anchoredOrder(
 	const pair = neighbourPair(usable, anchor, side);
 	if (pair === null) return { refusal: 'unranked' };
 	const { prev, next } = pair;
-	if (!prev) return next.order !== null ? { order: Math.floor(next.order) - ORDER_SPACING } : { refusal: 'unranked' };
+	if (!prev) {
+		if (!next || next.order === null) return { refusal: 'unranked' };
+		return { order: Math.floor(next.order) - ORDER_SPACING };
+	}
 	if (!next) return prev.order !== null ? { order: Math.floor(prev.order) + ORDER_SPACING } : { refusal: 'unranked' };
 	if (prev.order === null || next.order === null) return { refusal: 'unranked' };
 	if (next.order - prev.order <= MIN_GAP) return { refusal: 'gapSpent' };
