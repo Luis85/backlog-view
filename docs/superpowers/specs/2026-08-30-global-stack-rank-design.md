@@ -121,9 +121,22 @@ neighbours in the globally rank-sorted results — never from the peer group, an
 forest traversal.**
 
 The peer group is intent: it says the user aimed before this row, or after that one, or at
-the end of this parent's children. It is not arithmetic. Arithmetic reads one array —
-`results` sorted by `(order, entryIndex)` — finds the anchor in it, and takes
-`orderBetween` of the two entries flanking the destination.
+the end of this parent's children. It is not arithmetic. Arithmetic reads one array, finds
+the anchor in it, and takes `orderBetween` of the two entries flanking the destination.
+
+**That array is every loaded item — the whole tree under `realRoots` — sorted by
+`(order, entryIndex)`. Never `model.results`, and never any other projection's list.**
+`src/domain/CLAUDE.md` already forbids this and names the failure: *"the RANKING group
+(`realRoots`), which is not a projection's list at all and which no projection may
+narrow"*, because a `Test suite` and an `Epic` share a rank space and ranking against one
+projection's slice of it "takes a midpoint a hidden root may already hold". It is enforced
+by lint in `writePlan.ts`, so an earlier draft of this spec — which said `results` — would
+have failed `npm run lint` before it failed review.
+
+`outsideFilter` rows belong **in** the array. Their orders are read for placement today
+([[Sibling ranking]] 1b) and reading more occupied ranks can only reduce collisions; they
+stay unwritable through `applySafely`, which is where that rule lives. Excluding them
+would be the same mistake one step smaller.
 
 Forest traversal cannot substitute for that array, and the Cost section below is the proof:
 after one cross-parent focus move, DFS preorder is no longer global order, so "the next row
@@ -142,11 +155,20 @@ Two true edges remain, and only two: before the global first (`floor(min) - spac
 after the global last (`floor(max) + spacing`). Both are free by construction, because
 there is nothing beyond them.
 
-### Refusal
+### Two refusals, not one
 
-`orderBetween` returns `null` when the gap is spent. Today that falls through to the
-renumber; now it plans no writes and the host announces it. One new catalog key, naming
-the command below. That is the only new user-facing text.
+`orderBetween` returns `null` in **two** cases, and deleting the renumber exposes both.
+Earlier drafts described only the first.
+
+1. **The gap is spent** between two ranked neighbours. The remedy is **Respace ranks**.
+2. **A neighbour has no rank at all.** `orderBetween` refuses a `null` order, and today
+   the renumber absorbs it. A backlog that has never been seeded is full of these. The
+   remedy is the one that already exists: the toolbar's ✨, whose `computeInitWrites` fills
+   missing orders without touching values that are there.
+
+Both plan no writes and announce themselves, and each names its own remedy — a notice that
+sent someone to Respace over an unranked neighbour would be advice that does not work. Two
+catalog keys. That is the only new user-facing text.
 
 ### Collisions with ranks the Base hides
 
@@ -196,8 +218,9 @@ global rank, because there the hierarchy *is* the order on screen. Run it a seco
 after anyone has ranked across parents, and it silently discards every one of those
 decisions — so the confirm dialog says that, and says it in those words.
 
-**Respace ranks** — the repair, correct any number of times. Sorts the results by
-`(order, entryIndex)` — the order already on screen — and rewrites them spaced. It
+**Respace ranks** — the repair, correct any number of times. Sorts the same whole loaded
+population the placement arithmetic reads — not the focused slice, which would respace a
+rung and leave every other rank where it was — and rewrites it spaced. It
 preserves every ranking decision, which is what makes it the answer to a spent gap and to
 a tie, and what makes it the one an implementer reaches for by default.
 
@@ -221,7 +244,7 @@ either on an unfiltered base.
 
 ## Cost
 
-One new pass: the results sorted by `(order, entryIndex)`. It is what every placement reads
+One new pass: every loaded item sorted by `(order, entryIndex)`. It is what every placement reads
 its neighbours from, and it is also what the focused list renders — a focus level is a
 *filter* over it, and filtering a sorted array preserves order, so `collectFocusRoots`
 needs no sort of its own. One sort, two readers.
@@ -238,8 +261,8 @@ rank sort, each running once. A third would still fail it. The Cost section of
 
 ## Checks
 
-- `test/domain/writePlan.test.ts` — one write per move; the midpoint is global; a spent gap
-  plans **no writes**.
+- `test/domain/writePlan.test.ts` — one write per move; the midpoint is global; **both**
+  refusals plan no writes, and each names its own remedy.
 - `test/domain/writePlanContextRows.test.ts` — an excluded row *between* two visible
   neighbours: the drop still writes one note, and never the excluded one. The
   "renumber refused, append instead" cases are deleted with the branch, watched failing
@@ -252,6 +275,14 @@ rank sort, each running once. A third would still fail it. The Cost section of
   reads the peer group or walks the forest fails it, including one not yet written.
 - New: the two edges. Before the global first and after the global last are the only
   placements that do not take a midpoint.
+- New: the array is the whole loaded population. A fixture holding a `Test suite` ranked
+  between two PBIs — a catalog row, loaded and not hidden by the Base — proves a PBI
+  insertion does not take the suite's rank. This is the case `model.results` gets wrong
+  and the one `src/domain/CLAUDE.md` already names.
+- **Retained, not deleted**: the existing missing-order case in
+  `test/domain/writePlan.test.ts` asserts renumbering today. It becomes an assertion that
+  the drop refuses and names the backfill. Deleting it with the renumber branch is how a
+  partly-seeded vault would acquire undefined move behaviour unnoticed.
 - `test/view/contextRowWrites.test.ts` — the load-bearing suite. Dropping `reorderableGroup`
   from three gates *widens* the write surface, so this one must not weaken. The rule stays
   checked at the forbidden thing (`applySafely` plus the spy on the call), not by listing
