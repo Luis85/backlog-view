@@ -102,7 +102,10 @@ from.
   order will replace what is drawn. Narrowing the promise rather than refusing: refusing
   sends the user to Seed, which discards hand-set focus ranks. Two commands rather than one that guesses: they
   look alike and mean very different things to a backlog somebody has ordered by hand.
-  **Checked by** `test/commands/rank.test.ts` — "ranks the model as it is on confirm, not as it was when the dialog opened"
+  **Checked by** `test/commands/rank.test.ts` — "ranks the model as it is on confirm, not as
+  it was when the dialog opened", and the narrowed promise by "warns that respacing will
+  redraw a population that is not distinctly ranked" beside "respaces without changing the
+  order already on screen", which is the same claim from the other side.
 - **2f — the notes a rewrite would rank are wedged against ones the base excluded.**
   Nothing is written and the notice names them. Both commands leave every excluded rank
   exactly where it is and fit the writable rows into the gaps between them, so a run of

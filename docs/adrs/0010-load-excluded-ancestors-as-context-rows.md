@@ -40,7 +40,13 @@ It renders, it parents, and that is all.
 - "Never a ranking peer" means never **written to** — but its `order` is still **read**,
   because the row is on screen and a rank that ignored it would place an item above
   something the user can see. That distinction, read-but-never-written, is the subtlest
-  thing in this codebase.
+  thing in this codebase, and [ADR 0032](0032-order-is-a-global-rank.md) sharpened it
+  rather than softening it: a RANKED context row is a legal ANCHOR at the focus level, so
+  a row may be dropped or moved by keyboard immediately before or after one and take a
+  rank against its number. Nothing about it is written. What is still refused everywhere
+  is moving the context row ITSELF, and the reason is unchanged — its real siblings were
+  never loaded, so no reparenting can be aimed. An UNRANKED one is skipped instead of
+  refused beside, since it constrains nothing and no command could ever give it a number.
 - "Derived from the results" includes numbers computed *while walking the tree*: a rollup
   traverses **through** a context row and never counts it, so an excluded note's own state
   can neither skew a progress bar nor keep a finished subtree on screen.

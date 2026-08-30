@@ -38,6 +38,25 @@ describe('applyWrites', () => {
 		expect(vault.writeLog).toHaveLength(3);
 	});
 
+	// The count is a fact about the BATCH, not about who is watching it. It was written as
+	// `onProgress?.(++outcome.written, …)` for one round, and an optional call short-circuits
+	// its ARGUMENTS when the callee is nullish — so every caller that reports no progress
+	// counted zero, and a zero count is what the rank commands and the backfill now read as
+	// "say nothing". No caller in the plugin omits the reporter today, which is exactly why
+	// this is asserted here rather than left to one.
+	it('counts what it wrote even with nobody watching the progress', async () => {
+		const vault = new FakeVault();
+		const files = ['A.md', 'B.md', 'C.md'].map((p) => vault.addFile(p));
+
+		const outcome = await applyWrites(
+			vault.app,
+			settings,
+			files.map((file, i) => ({ file, order: (i + 1) * 10 })),
+		);
+
+		expect(outcome.written).toBe(3);
+	});
+
 	it('writes the state to the configured key, and never to an empty key', async () => {
 		const vault = new FakeVault();
 		const item = vault.addFile('Item.md', { frontmatter: { status: 'Open' } });

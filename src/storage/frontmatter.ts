@@ -215,7 +215,15 @@ export async function applyWrites(
 			outcome.changed = true;
 			onInverse?.(inverse);
 		}
-		onProgress?.(++outcome.written, writes.length);
+		// Counted on its own statement, NEVER inside the optional call's argument: an
+		// optional call short-circuits its ARGUMENTS when the callee is nullish, so
+		// `onProgress?.(++outcome.written, …)` leaves the count at zero for any caller
+		// that passes no progress reporter — and a zero count now means SILENCE at every
+		// caller that announces one. Unreachable through the view today, which always
+		// supplies one; the docblock above promises the count to every caller, so the
+		// count has to be a fact about the batch rather than about who is watching it.
+		outcome.written += 1;
+		onProgress?.(outcome.written, writes.length);
 	}
 	return outcome;
 }
