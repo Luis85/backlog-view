@@ -5,7 +5,7 @@ import { BasesViewConfig } from 'obsidian';
 import { declaredPropertyKeys, ReleaseSettings } from '../../domain/releaseOptions';
 import { createRelease } from '../../storage/createNote';
 import { NewReleaseResult, openNewReleaseDialog, ReleaseFieldId } from '../../ui/newReleaseDialog';
-import { runReleaseInit } from './init';
+import { RELEASE_SUGGESTED_VALUES, runReleaseInit } from './init';
 
 /**
  * The `New release` control, and the one function behind it.
@@ -114,20 +114,21 @@ function focusNewRelease(view: ReleaseView): void {
 }
 
 /**
- * Every key this press can bind, as one value, so "did it bind anything" is one comparison
- * rather than one per candidate. A joined KEY LIST, never a sentence.
+ * Every option a press could change, as one comparable string.
  *
- * Read off the DECLARATION (`declaredPropertyKeys`) rather than off `ReleaseSettings`'
- * own fields, and that is the same correction `declaredPropertyKeys`
- * itself records: `stateProperty` is declared by this view and resolves onto
- * `BacklogSettings.stateKey`, so it is on no field of `ReleaseSettings` and a sweep over
- * that object cannot see it. With the hand-written four, a press whose only work was
- * binding the state key — the whole progress half of this view — compared equal and
- * reported that it had bound nothing, then skipped the redraw that would have shown the
- * bars it had just switched on.
+ * **Not `declaredPropertyKeys` alone**, which filters to `type === 'property'` and so
+ * cannot see the three the closing actions need — a folder, a value list and a dropdown.
+ * This is the same defect the paragraph above records for `stateProperty`, met a second
+ * time from the other side: there a declared key was missing from a hand-written list,
+ * here a bound option is of a kind the list's own filter drops. A press whose only work
+ * is binding the notes folder would otherwise compare equal, report that it bound
+ * nothing, and skip the redraw that draws `Generate release notes`.
  */
 function boundKeys(config: BasesViewConfig): string {
-	return declaredPropertyKeys(config).join('\n');
+	const others = RELEASE_SUGGESTED_VALUES.map(
+		({ option }) => `${option}=${String((config.get(option) as string | undefined) ?? '')}`,
+	);
+	return [...declaredPropertyKeys(config), ...others].join('\n');
 }
 
 /**

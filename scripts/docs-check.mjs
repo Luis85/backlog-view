@@ -164,13 +164,32 @@ const NOT_WORK_ITEMS = /(^|[/\\])(adrs[/\\].*|README)\.md$/;
  * design document arrives from outside and is kept verbatim as the evidence the register's
  * own notes cite. None of them carries the frontmatter this file requires of everything
  * else — those documents are the source a backlog is derived FROM, so giving one a `type`
- * and a rank would file the evidence as work. Both are anchored to the `docs/` root exactly like `RECORDS`, rather than a bare
+ * and a rank would file the evidence as work.
+ *
+ * **`docs/product/` is deliberately NOT here**, and that is the correction of 2026-08-30
+ * (Codex, PR #229). It needs the same frontmatter exemption — a playbook is the METHOD a
+ * product definition is produced by, so filing it as a work item would rank a process
+ * document among the work it governs — but it must NOT have the link exemption, because
+ * this list carries both and a playbook is written HERE. Put on this list it would have
+ * been skipped by the cross-reference loop and the checked-claim loop as well, so a stale
+ * wikilink or a dead source path in it would have gone unreported. It joins `SOURCE_DOCS`
+ * directly instead, beside `superpowers/`, whose own sentence below states exactly this
+ * distinction. The first version of the fix made that mistake while its PR argued the
+ * playbook is "neither received nor verbatim" — the prose was right and the code did the
+ * other thing. Both are anchored to the `docs/` root exactly like `RECORDS`, rather than a bare
  * `superpowers[/\\].*` regex: an unanchored pattern would also exempt a coincidental
  * `docs/requirements/superpowers/`, and `walk` descends nested directories so that would go
  * unnoticed rather than unmatched.
  */
 const RECEIVED_DOCS = [path.join(DOCS, "prds"), path.join(DOCS, "sdds")];
-const SOURCE_DOCS = [path.join(DOCS, "superpowers"), ...RECEIVED_DOCS];
+/**
+ * Frontmatter-exempt, but NOT outside the link rules: `superpowers/` and `product/` are
+ * written HERE, so their links are checked like anyone else's — the distinction the
+ * `RECEIVED_DOCS` docblock draws, and the one this list exists to keep. A playbook with a
+ * dead wikilink is a defect in this repository's own prose; a customer interview naming a
+ * note that never existed here is not.
+ */
+const SOURCE_DOCS = [path.join(DOCS, "superpowers"), path.join(DOCS, "product"), ...RECEIVED_DOCS];
 const isSourceDoc = (file) => SOURCE_DOCS.some((dir) => file.startsWith(dir + path.sep));
 /**
  * The narrower half, and the distinction matters: a **received** document was written

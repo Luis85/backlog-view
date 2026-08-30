@@ -418,6 +418,7 @@ describe('creating a card on an iteration board', () => {
 		harness.view.setBoardScope(SPRINT);
 		await createOn(harness);
 		expect(vault.fm('New work.md')).toEqual({
+			'pbl-id': expect.any(Number),
 			// Whatever type the primary button makes — the claim is the three keys below it,
 			// which is what puts the card on the board that made it.
 			type: expect.any(String),

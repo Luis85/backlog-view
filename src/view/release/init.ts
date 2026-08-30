@@ -1,5 +1,11 @@
 import { adoptCandidates, AdoptionCandidate, notePropertyId } from '../../domain/optionalProperties';
-import { declaredPropertyKeys, resolveReleaseSettings, SHARED_STATUS_OPTIONS } from '../../domain/releaseOptions';
+import {
+	declaredPropertyKeys,
+	releasedValuesOf,
+	resolveReleaseSettings,
+	SHARED_STATUS_OPTIONS,
+} from '../../domain/releaseOptions';
+import { DEFAULT_RELEASED_VALUES } from '../../domain/settings';
 import { BasesViewConfig } from 'obsidian';
 import type { ReleaseView } from './releaseView';
 
@@ -19,9 +25,15 @@ import type { ReleaseView } from './releaseView';
  * from the other end: a blank the picker could offer is a value this view's own reader
  * reports as unreadable.
  *
- * SIX keys, not every key `ReleaseSettings` reads, and the list is what "makes every
- * feature available" actually means here — a press that leaves a feature of this view
+ * The keys ABOVE and not every key `ReleaseSettings` reads, and the list is what "makes
+ * every feature available" actually means here — a press that leaves a feature of this view
  * unconfigured is a press that reported success and did half the job.
+ *
+ * **Counted nowhere**, which is `initControl.ts`'s own decision one file over, taken there
+ * after its count went stale twice in two days. This sentence read "SIX keys" above a
+ * SEVEN-entry list until 2026-08-30 — `descriptionProperty` joined on 2026-08-29 and the
+ * number did not follow. A count of the thing directly beneath it earns nothing a reader
+ * cannot get by looking, and goes wrong the moment a row is added.
  *
  * `typeProperty`, `parentProperty` and `orderProperty` each ship a real `default:` in
  * `getReleaseViewOptions`, so Bases' own option resolution already supplies one without
@@ -70,6 +82,82 @@ export const RELEASE_SUGGESTED_KEYS: AdoptionCandidate[] = [
 	{ option: 'releasedDateProperty', suggested: 'released' },
 	{ option: 'descriptionProperty', suggested: 'description' },
 ];
+
+/** An option ✨ binds that names no property, and how to decide its value at bind time. */
+export interface ValueCandidate {
+	option: string;
+	value: (config: BasesViewConfig) => string;
+}
+
+/**
+ * The three the closing actions need and {@link RELEASE_SUGGESTED_KEYS} cannot carry: a
+ * folder, a value list and a dropdown over that list. They reach none of
+ * `adoptCandidates`' machinery because they name no property — there is no key for
+ * `taken` to guard and no collision to report. What they share with the property candidates
+ * above is the ONE rule that applies to them, applied in {@link runReleaseInit}: an option
+ * the reader has touched is never overwritten, and cleared is not untouched.
+ *
+ * **`releaseNotesFolder` binds `docs/release-notes`**, which is the string
+ * `releaseOptions.ts` also spells as that option's placeholder. Two literals, and nothing
+ * checks they agree — the claim here is only that ✨ picks what the option already offers
+ * to type, not that the two are coupled. Not derived from `defaultTypeFolder(RELEASE_TYPE)`
+ * (`docs/releases`): the placeholder already says `docs/release-notes`, and a second answer
+ * beside it is drift.
+ *
+ * **`releasedStatusValues` must NOT bind a placeholder**, and this is the trap. Its
+ * placeholder is `t('release.option.releasedValuesHint')` — the string `Released,
+ * Archived`, in the translation catalog. Binding it would make ✨ write the CATALOG's
+ * language into the `.base`, so a reader on a German Obsidian binds German status words,
+ * stamps them onto release notes, and hands over a vault whose releases an English
+ * reader's view reports as not-released. Its answer is {@link DEFAULT_RELEASED_VALUES},
+ * which is domain data for exactly that reason — but only where the reader has stated
+ * nothing to seed from; see the invariant below.
+ *
+ * **The vocabulary and the transition must agree, whichever the reader set first.**
+ * `releaseNoteProblems` refuses a transition that is not one of the released values, and
+ * `closeOffer` withholds BOTH closing actions for the same mismatch, so two independent
+ * answers here are two statements that must agree. The list is ORDERED and swept in order,
+ * and each half reads the other: an unset transition takes the FIRST of whatever list the
+ * config holds after the row above has run, and an unset vocabulary is seeded FROM a
+ * non-empty transition the reader already set rather than from the default beside it.
+ * Both directions, because only one of them held until 2026-08-30 — a view carrying
+ * `releasedTransitionValue: Shipped` and no vocabulary was bound `Released`, and the press
+ * reported success on a configuration that withheld the very actions it exists to enable
+ * (found by review, Codex, PR #221).
+ *
+ * ONE seeded pair still cannot agree, and the guarantee is written no wider than that: a
+ * transition holding a COMMA names no single value, since `list` splits the vocabulary on
+ * exactly that character — so no list this press can write contains it. `releaseNoteProblems`
+ * reports it and the reader repairs the box; a seed cannot. Padding IS repaired, and not
+ * here — `resolveReleaseSettings` trims the transition, so what this reads is already the
+ * value `closeOffer` will compare.
+ */
+export const RELEASE_SUGGESTED_VALUES: ValueCandidate[] = [
+	{ option: 'releaseNotesFolder', value: () => 'docs/release-notes' },
+	{
+		option: 'releasedStatusValues',
+		// The reader's own transition wins over the shipped default: a vocabulary that
+		// omitted it is the one configuration this press can produce that withholds every
+		// closing action. `resolveReleaseSettings` rather than `config.get`, so the value
+		// compared here is read through the reader `closeOffer` itself will use.
+		value: (config) =>
+			resolveReleaseSettings(config).releasedTransition || DEFAULT_RELEASED_VALUES.join(', '),
+	},
+	{ option: 'releasedTransitionValue', value: (config) => releasedValuesOf(config)[0] ?? '' },
+];
+
+/**
+ * Whether a press would actually bind {@link candidate} — untouched, and a non-empty
+ * computed value — the same test {@link runReleaseInit}'s own sweep applies to decide
+ * whether to write. Exported so `initControl.ts`'s `anythingToBind` asks the identical
+ * question rather than a second copy of it: the property half of that offer already
+ * reads `adoptableReleaseKeys` rather than restating `adoptCandidates`' rule, and a
+ * value candidate reaching none of that machinery is not a reason to state its own rule
+ * twice either.
+ */
+export function wouldBindValue(config: BasesViewConfig, candidate: ValueCandidate): boolean {
+	return config.get(candidate.option) === undefined && candidate.value(config) !== '';
+}
 
 /**
  * Which of `candidates` a press would actually bind — the one question the ACTION and the
@@ -160,5 +248,14 @@ export async function runReleaseInit(view: ReleaseView): Promise<void> {
 		pending.set(option, notePropertyId(suggested));
 	}
 	for (const [option, value] of pending) view.config.set(option, value);
+	// The second sweep, in order: each candidate reads the config as the one before it
+	// left it, which is what lets the transition pick from a vocabulary this same press
+	// may have just supplied. `wouldBindValue` is the one guard — an option the reader has
+	// touched is never overwritten, and an empty computed value binds nothing (a
+	// transition with no list to choose from is not a value, and writing `''` would
+	// report as touched to the next press).
+	for (const candidate of RELEASE_SUGGESTED_VALUES) {
+		if (wouldBindValue(view.config, candidate)) view.config.set(candidate.option, candidate.value(view.config));
+	}
 	view.settings = resolveReleaseSettings(view.config);
 }

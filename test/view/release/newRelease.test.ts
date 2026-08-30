@@ -96,7 +96,16 @@ describe('New release', () => {
 		const fromIndex = await createRelease(indexVault);
 		const fromEmpty = await createRelease(emptyVault);
 		expect(fromIndex).toEqual([
-			{ path: 'docs/releases/2.4.md', fm: { type: 'Release', version: '2.4.0', 'target-date': '2026-11-30', status: 'Planned' } },
+			{
+				path: 'docs/releases/2.4.md',
+				fm: {
+					'pbl-id': expect.any(Number),
+					type: 'Release',
+					version: '2.4.0',
+					'target-date': '2026-11-30',
+					status: 'Planned',
+				},
+			},
 		]);
 		expect(fromEmpty).toEqual(fromIndex);
 		// And the design's §5 on the one gesture that reaches a writer at all: this view
@@ -199,7 +208,10 @@ describe('New release', () => {
 	});
 
 	it('binds nothing and says nothing when every option is already bound', async () => {
-		await openNewRelease(noReleaseVault(), RELEASE_CONFIG);
+		// `RELEASE_CONFIG` deliberately leaves `releaseNotesFolder` unbound (see its own
+		// docblock), so it is bound here explicitly — this test's claim is about a
+		// genuinely fully-configured view.
+		await openNewRelease(noReleaseVault(), { ...RELEASE_CONFIG, releaseNotesFolder: 'docs/release-notes' });
 		expect(Notice.messages).toEqual([]);
 	});
 
@@ -209,7 +221,8 @@ describe('New release', () => {
 		// press binds nothing and must therefore report nothing: a notice here would tell
 		// the reader their view's configuration changed when it did not.
 		const { view, config } = makeReleaseView(noReleaseVault(), {});
-		for (const [option, value] of Object.entries(RELEASE_CONFIG)) config.set(option, value);
+		const fullyBound = { ...RELEASE_CONFIG, releaseNotesFolder: 'docs/release-notes' };
+		for (const [option, value] of Object.entries(fullyBound)) config.set(option, value);
 		const bound = config.setCalls.length;
 		newBtn(view.viewEl).click();
 		await flush();
@@ -230,7 +243,10 @@ describe('New release', () => {
 		// this test is about the first of them.
 		await confirm(modal, '2.4', ['2026-11-30', 'Planned']);
 		expect(createdNotes(vault, before)).toEqual([
-			{ path: 'docs/releases/2.4.md', fm: { type: 'Release', 'target-date': '2026-11-30', status: 'Planned' } },
+			{
+				path: 'docs/releases/2.4.md',
+				fm: { 'pbl-id': expect.any(Number), type: 'Release', 'target-date': '2026-11-30', status: 'Planned' },
+			},
 		]);
 	});
 
@@ -249,7 +265,9 @@ describe('New release', () => {
 		const { modal } = await openNewRelease(vault, cleared);
 		expect(fieldNames(modal)).toEqual(['Title']);
 		await confirm(modal, '2.4');
-		expect(createdNotes(vault, before)).toEqual([{ path: 'docs/releases/2.4.md', fm: { type: 'Release' } }]);
+		expect(createdNotes(vault, before)).toEqual([
+			{ path: 'docs/releases/2.4.md', fm: { 'pbl-id': expect.any(Number), type: 'Release' } },
+		]);
 	});
 
 	it('files the note where the vault is configured NOW, not where it was when the dialog opened', async () => {
@@ -272,7 +290,7 @@ describe('New release', () => {
 		await confirm(modal, '2.4', ['9.9.9']);
 
 		expect(createdNotes(vault, before)).toEqual([
-			{ path: 'shipped/2.4.md', fm: { kind: 'Release', version: '9.9.9' } },
+			{ path: 'shipped/2.4.md', fm: { 'pbl-id': expect.any(Number), kind: 'Release', version: '9.9.9' } },
 		]);
 	});
 
@@ -331,7 +349,10 @@ describe('New release', () => {
 		await flush();
 
 		expect(createdNotes(vault, before)).toEqual([
-			{ path: 'docs/releases/2.4.md', fm: { type: 'Release', description: 'The billing rewrite.' } },
+			{
+				path: 'docs/releases/2.4.md',
+				fm: { 'pbl-id': expect.any(Number), type: 'Release', description: 'The billing rewrite.' },
+			},
 		]);
 	});
 
@@ -359,7 +380,10 @@ describe('New release', () => {
 		await flush();
 
 		expect(createdNotes(vault, before)).toEqual([
-			{ path: 'docs/releases/2.4.md', fm: { type: 'Release', description: 'The billing rewrite.' } },
+			{
+				path: 'docs/releases/2.4.md',
+				fm: { 'pbl-id': expect.any(Number), type: 'Release', description: 'The billing rewrite.' },
+			},
 		]);
 	});
 

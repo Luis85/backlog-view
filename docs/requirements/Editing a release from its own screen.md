@@ -120,11 +120,32 @@ whose whole job is to say what a release is. Asked for as a property by the auth
   the LIVE type.
 - **5b — a member's own fields.** Never editable here. Nothing on this screen writes to a
   member, and the two actions name `release.item.file` and nothing else.
-- **6a — the release has no released date yet.** The control draws **Set released date**.
+- **6a — the release has no released date yet.** The control draws **Set released date** —
+  **but only where [[Marking a release as released]] is withheld**, which is the correction of
+  2026-08-30 and not an appendix beneath the old rule. This bullet stated the invitation unconditionally
+  and that stopped being true the day the closing action landed on the same screen: two
+  controls offering one field is what the 2026-08-29 rename below made bearable rather than
+  fixed. Where `Mark as released` is offered it IS the way to a first date — it writes the
+  status and the date in one gated batch — and this control draws nothing there, which is the
+  rule every absent figure in the row already follows.
+
+  **It is not gone, and the three states that keep it are why.** `closeOffer` withholds that
+  action on four conjuncts and only one of them is "this date is absent". A closing option
+  still unbound — the status property, the released values or the transition value; NOT this
+  field's own key, which leaves the figure unconfigured and draws nothing at all — a status
+  no reader can parse, and a release whose status already reads as released while its date
+  does not (an imported or hand-edited note) each leave this field bound and empty with no
+  other way on this screen to fill it. The invitation draws on
+  exactly those, asked as `!closeOffer(...).offered` rather than restated beside it — so no
+  release loses its way to set a date, and none has two ways to set one.
+
   It opens the same dialog as a release that has one — nothing is written by pressing it —
   so the wording claims nothing the action does not do. In particular it writes **no
   status**: that is [[Marking a release as released]]'s own half of the transition, along
-  with its confirmation and its outstanding-work list.
+  with its confirmation and its outstanding-work list. What the narrowing costs is the
+  reverse case: where the closing action IS offered, writing a date WITHOUT the status is no
+  longer reachable from this screen at all. That is the price of one control per field, and
+  the field-versus-transition split the rename made already implied it.
 
   It drew **Mark as released** until 2026-08-29, on the ground that saying it shipped was
   the plainest name for the gesture. **That reason expired when
@@ -141,7 +162,13 @@ whose whole job is to say what a release is. Asked for as a property by the auth
   own canonical spelling: a note holding `2026-9-1` is not rewritten as `2026-09-01` by a
   reader who opened the dialog and pressed Save. The rule `computeScheduleWrites` keeps for
   the roadmap's own two ends.
-- **7b — the field is emptied.** The key is removed, by 3b's rule.
+- **7b — the field is emptied.** The key is removed, by 3b's rule. **Clearing it can also
+  remove the control that was pressed**, and that is the one write on this screen where the
+  focus restore has to name a second element: clearing the date can make `Mark as released`
+  offered again, and 6a withholds this button on exactly that condition — so the element
+  `focusControl` looks up is gone by the time it looks, and focus fell to the document body.
+  It falls back to the closing action itself, which is the control the write just brought
+  back (found by review, and confirmed independently, PR #221).
 - **2c — the vault has no status vocabulary at all.** Nothing declared, no other release
   carrying one, nothing on this note: the menu would hold no entry and no Clear, so the chip
   invited a press and opened an empty box — the one configuration where the control could not
@@ -187,8 +214,9 @@ whose whole job is to say what a release is. Asked for as a property by the auth
 - **The released date is settable, which is what makes the key exist at all.** Nothing in
   this plugin wrote it before (`createRelease` explicitly does not), so a bound released
   property could never come to hold anything and the index's Shipped group and its slip
-  figure were unreachable without hand-editing a note. ✨ binds the key; this is what fills
-  it.
+  figure were unreachable without hand-editing a note. ✨ binds the key; **which control
+  fills it is 6a's question** — `Mark as released` where that action is offered, this
+  invitation only where it is withheld.
 - The date dialog is `SchedulePromptModal` with ONE field — the same modal, the same native
   date input and the same per-field clear button the roadmap's Schedule uses — prefilled
   with what the note states and never with today: a dialog holding a date the note does not
@@ -271,6 +299,12 @@ and which refuses a file whose LIVE type is not the one the plan named
 (`PropertyWrite.requiresType`, `src/domain/estimationWritePlan.ts`), the guard 5c is about.
 `releaseStatusChoices` in `src/domain/releases.ts` is the menu's vocabulary, beside the
 `ReleaseRow` figures it unions.
+
+Whether the released date is drawn as a control at all is `closeOffer` in the same module,
+asked from `drawReleased` rather than compared against beside it (6a). That coupling is also
+why `releaseEdits.ts`'s `focusControl` and `save` carry a `fallback` selector since
+2026-08-30: this is the only one of the three controls that the write it caused can remove,
+so the destination is looked up fresh AND has a second name to try.
 
 `src/view/release/releaseView.ts` owns the `WriteGate` and takes the plugin-wide `WriteLock`
 through `src/view/release/register.ts` — which it did not until this note: a create captures

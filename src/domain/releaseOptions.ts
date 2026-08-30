@@ -243,8 +243,11 @@ function releaseGroup(config: BasesViewConfig): BasesAllOptions {
 }
 
 /** The declared released values, read straight off the config for the dropdown that
- *  offers them — the same text `resolveReleaseSettings` turns into `releasedValues`. */
-function releasedValuesOf(config: BasesViewConfig): string[] {
+ *  offers them — the same text `resolveReleaseSettings` turns into `releasedValues`.
+ *  Exported since 2026-08-30 for ✨'s own second reader (`view/release/init.ts`): the
+ *  transition it binds must be one of these, and re-splitting the same string beside it
+ *  is the two-readers-disagreeing hazard this codebase states at every model boundary. */
+export function releasedValuesOf(config: BasesViewConfig): string[] {
 	const raw = config.get('releasedStatusValues');
 	return typeof raw === 'string' ? raw.split(',').map((v) => v.trim()).filter((v) => v !== '') : [];
 }
@@ -381,7 +384,14 @@ export function resolveReleaseSettings(config: BasesViewConfig): ReleaseSettings
 		descriptionKey: propKey('descriptionProperty', ''),
 		statusValues: dedupe(list('releaseStatusValues')),
 		releasedValues: list('releasedStatusValues'),
-		releasedTransition: str('releasedTransitionValue'),
+		// TRIMMED, and not for tidiness: every reader of this value compares it against
+		// `releasedValues`, which `list` has already trimmed item by item. So a `.base`
+		// holding ` Released` matched nothing — `releaseNoteProblems` reported a mismatch
+		// and `closeOffer` withheld BOTH closing actions over two halves the options screen
+		// shows as agreeing. The dropdown offers `releasedValuesOf`, which is trimmed, so
+		// padding only ever arrives by a hand edit — the case `text`'s own docblock says
+		// these readers are tolerant for.
+		releasedTransition: str('releasedTransitionValue').trim(),
 		notesFolder: str('releaseNotesFolder'),
 		// A PATH, not a property key: same reading `resolveFolders` gives every type
 		// folder — trimmed and normalized by `vaultFolder`, clearable because the default

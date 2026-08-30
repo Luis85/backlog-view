@@ -311,6 +311,20 @@ export const DEFAULT_DONE_VALUES = ['Done', 'Closed', 'Completed', 'Removed'];
  */
 export const DEFAULT_HORIZON_VALUES = ['Now', 'Next', 'Later'];
 /**
+ * The shipped vocabulary for "this release is out" — what `Mark as released` writes and
+ * what `Generate release notes` asks a release against, where the reader has declared
+ * nothing of their own. A default the user edits freely, exactly as the two lists above.
+ *
+ * **A constant and never `t('release.option.releasedValuesHint')`, which holds the same
+ * kind of string.** That hint is a placeholder: drawn, never written, so translating an
+ * example of what to type is display. This is BOUND into the `.base` and then matched
+ * against what release notes carry, so a catalog-sourced value would have a reader on a
+ * German Obsidian write German status words and hand over a vault whose releases an
+ * English reader's view reports as not-released. The root guide's own test — "one sees
+ * different words" is text, "one writes notes the other's view cannot read" is data.
+ */
+export const DEFAULT_RELEASED_VALUES = ['Released'];
+/**
  * The shipped risk vocabulary. Numbered because risk is read as a ranking far more
  * often than as a label, and a list that sorts the way it reads costs nothing to
  * write down. A default the user edits freely, never a fixed list.

@@ -2,7 +2,13 @@ import { BasesViewConfig } from 'obsidian';
 import { describe, expect, it } from 'vitest';
 import { settingsWith } from '../helpers/settings';
 import { FakeViewConfig } from '../helpers/vault';
-import { DEFAULT_DONE_VALUES, defaultSettings, horizonMenuValues, stateMenuValues } from '../../src/domain/settings';
+import {
+	DEFAULT_DONE_VALUES,
+	DEFAULT_RELEASED_VALUES,
+	defaultSettings,
+	horizonMenuValues,
+	stateMenuValues,
+} from '../../src/domain/settings';
 import { adoptableProperties, resolvedTestStateKey } from '../../src/domain/optionalProperties';
 import { configProblems } from '../../src/domain/settingsConsistency';
 import { en } from '../../src/i18n/en';
@@ -417,5 +423,14 @@ describe('the marker category', () => {
 		expect(defaultTypeFolder('Milestone')).toBe('docs/milestones');
 		expect(defaultTypeFolder('Milestone', 'work')).toBe('work/milestones');
 		expect(defaultSettings().typeFolders.milestone).toBe('docs/milestones');
+	});
+});
+
+describe('the shipped released vocabulary', () => {
+	it('is a value list, not a sentence', () => {
+		// A vocabulary is DATA: it is matched against what a release note carries, so it
+		// must never come from the catalog. Two people on different Obsidian languages
+		// must not write status values the other's view reports as not-released.
+		expect(DEFAULT_RELEASED_VALUES).toEqual(['Released']);
 	});
 });

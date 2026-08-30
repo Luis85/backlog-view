@@ -1,5 +1,6 @@
 import { App, normalizePath, stringifyYaml, TFile } from 'obsidian';
 import { isReleaseType } from '../domain/itemTypes';
+import { ITEM_ID_KEY, nextItemId } from '../domain/itemIds';
 import { BacklogSettings } from '../domain/settings';
 import { ReleaseSettings } from '../domain/releaseOptions';
 import { AxisWrite } from '../domain/writePlan';
@@ -76,7 +77,11 @@ export async function createBacklogItem(app: App, settings: BacklogSettings, spe
 
 	// One atomic write: a create-then-update pair could fail in between and leave
 	// a blank note without its hierarchy properties behind.
-	const fm: Record<string, unknown> = { [settings.typeKey]: spec.typeName };
+	// The id first, which is also what settles a collision: once notes carry `pbl-id`
+	// Obsidian's picker offers it, so a view option can be pointed at it and the configured
+	// property then lands on top of the stamp. That is the intended outcome — what the user
+	// configured is the note's real data and this is bookkeeping.
+	const fm: Record<string, unknown> = { [ITEM_ID_KEY]: nextItemId(app), [settings.typeKey]: spec.typeName };
 	if (spec.parent) setOwn(fm, settings.parentKey, wikilinkTo(app, spec.parent, path));
 	// In folder mode a missing parent key would let folder inference nest this
 	// intentionally top-level note — pin it with an explicitly empty parent.
@@ -153,6 +158,7 @@ export async function createResourceNote(app: App, settings: BacklogSettings, sp
 	await ensureFolder(app, folder);
 	const path = uniqueNotePath(app, folder, spec.title);
 	const fm: Record<string, unknown> = {};
+	setOwn(fm, ITEM_ID_KEY, nextItemId(app));
 	setOwn(fm, settings.typeKey, RESOURCE_TYPE);
 	return app.vault.create(path, `---\n${stringifyYaml(fm)}---\n`);
 }
@@ -259,6 +265,8 @@ export async function createRelease(app: App, settings: ReleaseSettings, spec: N
 	await ensureFolder(app, folder);
 	const path = uniqueNotePath(app, folder, spec.title);
 	const fm: Record<string, unknown> = {};
+	// Below both of this function's refusals, so a creation it turns away burns no number.
+	setOwn(fm, ITEM_ID_KEY, nextItemId(app));
 	setOwn(fm, settings.typeKey, RELEASE_TYPE);
 	if (stated(spec.version) && settings.versionKey) setOwn(fm, settings.versionKey, spec.version);
 	if (stated(spec.targetDate) && settings.targetDateKey) setOwn(fm, settings.targetDateKey, spec.targetDate);

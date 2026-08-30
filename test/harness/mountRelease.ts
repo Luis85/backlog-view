@@ -49,10 +49,14 @@ export type ReleaseConfigVariant = 'full' | 'empty' | 'notype' | 'nomembership' 
  * Every key bound — `RELEASE_CONFIG` plus the notes FOLDER, which that constant omits on
  * purpose: the suite's default is the unbound case (`releaseNotes.test.ts` asserts the
  * "bind the folder" note against it, and its neighbour passes an override to get the
- * button). The harness wants the opposite default, because a folder is not a property, so
- * nothing on this page offers to bind one — with the key unbound, `Generate release notes`
- * is undrawable here and the paragraph above claiming this variant "binds every key" was
- * false for the one control the closing increment added.
+ * button). The harness wants the opposite default, so that the paragraph above claiming
+ * this variant "binds every key" is true of the one control the closing increment added.
+ *
+ * It was a folder being undrawable by Obsidian's PROPERTY picker that made this necessary,
+ * and ✨ has bound the option since 2026-08-30 — so that is no longer the reason. The reason
+ * narrows rather than going away: this mount hands the view a config directly and presses
+ * nothing, so what the constant supplies is the state AFTER a press, which is what "binds
+ * every key" has to mean on a page with no press in it.
  */
 const FULL = { ...RELEASE_CONFIG, releaseNotesFolder: 'Releases/Notes' };
 
@@ -86,9 +90,10 @@ function inDays(days: number): string {
 }
 
 /**
- * A release programme rather than the suite's own three-note fixtures: eight releases —
- * six in flight (one OVERDUE, one carrying a date nobody can read) and two shipped, so the
- * index has an order AND both group headings to show — members under an Epic that is NOT a member so the scope screen
+ * A release programme rather than the suite's own three-note fixtures: nine releases —
+ * seven in flight (one OVERDUE, one carrying a date nobody can read, one whose STATUS says
+ * released while its date is empty) and two shipped, so the index has an order AND both
+ * group headings to show — members under an Epic that is NOT a member so the scope screen
  * draws a context row, and both kinds of unresolved membership so the note under the list
  * has something to count.
  *
@@ -162,6 +167,15 @@ function releaseHarnessVault(variant: ReleaseConfigVariant): FakeVault {
 		// so the state a reader meets on a release nobody has ruled on was undrawable. This is
 		// the release with nothing set at all, which is what makes it the honest place for it.
 		release('Releases/Someday.md', {});
+		// The state this whole increment turns on, and no fixture could reach it: a status
+		// that already READS as released with no released date beside it. `closeOffer`
+		// withholds `Mark as released` on `alreadyOut` — marking a release that is already
+		// out would write a date over a decision somebody has already recorded — so this is
+		// where `drawReleased` draws its invitation instead, which is the one branch of that
+		// control a browser had no way to look at. NO target date on purpose: this release
+		// must not join the overdue treatment the two assertions above are about, and an
+		// undated row is the honest shape for one whose status says it has already gone out.
+		release('Releases/1.2.md', { version: '1.2.0', status: 'Released', order: 7 });
 		// The SHIPPED tail, without which the browser draws one heading and the two-group
 		// layout is unlookable — the whole point of this increment. Both released dates are
 		// fixed and already past, so the group is stable whatever day the page is opened,

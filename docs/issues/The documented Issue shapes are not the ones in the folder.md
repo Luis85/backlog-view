@@ -81,6 +81,19 @@ Whichever, the two headings in no shape at all get a home first: they are either
 shape worth documenting or two notes to rewrite, and that is answerable without settling
 the larger question.
 
+**A fifth heading arrived on 2026-08-30, and from the README rather than from the
+folder.** The type table names an `Issue` as *"a question, a decision taken, or a
+limitation accepted"* — three kinds — while the shapes below it document two. So the
+open question is a kind the register offers and then gives no shape for, which is an
+inconsistency inside `docs/README.md` rather than the drift between it and the folder
+that the rest of this note measures. It surfaced while decomposing
+[[New cards in place]], whose blocked extensions needed exactly that kind;
+[[Which pass answers a write]] was written to
+`## The question` · `## What blocks it` · `## What would settle it` ·
+`## Acceptance criteria`, chosen deliberately rather than invented on the spot, and it
+is a candidate answer to the "fourth shape or rewrite" question above rather than a
+decision taken here.
+
 ## Acceptance criteria
 
 None; recorded so the trade-off is re-decided knowingly rather than rediscovered. Gating

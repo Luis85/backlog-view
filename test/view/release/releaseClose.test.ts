@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { readFileSync } from 'node:fs';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { Modal } from '../../helpers/obsidian-mock';
 import {
@@ -155,30 +156,55 @@ describe('marking a release as released', () => {
 		expect(document.activeElement).toBe(live);
 	});
 
-	it('falls back to the one control the screen always has when the close control goes', () => {
-		// A refresh mid-dialog can take the button away entirely rather than replace it —
-		// the release is out now, a date arrived, or it left the base's results. An
-		// optional query then focuses nothing and the reader is on the body again, which
-		// is the third shape of this one bug (found by review, Codex, PR #219). The back
-		// control is the terminus: `drawHeader` draws it above BOTH empty-state returns,
-		// for the reason it exists at all — a release nobody can read must not be a dead
-		// end — so there is always something to land on.
-		const { view, vault } = releaseScreen({ status: 'In progress' });
+	it('falls back to the one control the screen always has when BOTH closing controls go', () => {
+		// A refresh mid-dialog can take the button away entirely rather than replace it. An
+		// optional query then focuses nothing and the reader is on the body again, which is
+		// the third shape of this one bug (found by review, Codex, PR #219). The back control
+		// is the terminus: `drawHeader` draws it above BOTH empty-state returns, for the
+		// reason it exists at all — a release nobody can read must not be a dead end — so
+		// there is always something to land on.
+		//
+		// UNBINDING the released-date key is what reaches it, and the ordinary way of losing
+		// the close button no longer does: a release that went out mid-dialog draws
+		// `.pbl-rel-released` in its place, which is the neighbour the case below lands on.
+		// With no date key there is no such control — `drawReleased` returns on
+		// `unconfigured` — and `closeOffer` withholds the close button for the same reason,
+		// so this is the screen that genuinely has only the terminus left.
+		const { view } = releaseScreen({ status: 'In progress' });
 		const opener = button(view, '.pbl-rel-close');
 		opener.focus();
 		opener.click();
 		opener.blur();
 
-		vault.fm('0.9.md')['status'] = 'Released';
-		const cache = vault.caches.get('0.9.md');
-		if (cache === undefined) throw new Error('no cache for 0.9.md');
-		cache.frontmatter = { ...cache.frontmatter, status: 'Released' };
+		view.config.set('releasedDateProperty', '');
+		view.settings = resolveReleaseSettings(view.config as never);
 		view.onDataUpdated();
 		expect(view.viewEl.querySelector('.pbl-rel-close')).toBeNull();
+		expect(view.viewEl.querySelector('.pbl-rel-released')).toBeNull();
 
 		Modal.lastOpened?.close();
 
 		expect(document.activeElement).toBe(view.viewEl.querySelector('.pbl-rel-back'));
+	});
+
+	it('lands on the date it just stamped rather than on Back, after a close that worked', async () => {
+		// The mirror of the fallback above, and the case that is not exceptional at all: a
+		// close that SUCCEEDS always removes its own button, so the redraw's handle restore
+		// finds no `.pbl-rel-close` and falls to the screen's first button — Back. A keyboard
+		// reader's next Space or Enter then left the screen they had just acted on (found by
+		// review, PR #221). `.pbl-rel-released` now holds the date this write stamped, which
+		// is `focusControl`'s own answer in `releaseEdits.ts` for the reverse transition.
+		const { view } = releaseScreen({ status: 'In progress' });
+		const opener = button(view, '.pbl-rel-close');
+		opener.focus();
+		opener.click();
+		// Focus moves into the modal, the same reason the two cases above blur.
+		opener.blur();
+
+		await confirmDialog();
+
+		expect(view.viewEl.querySelector('.pbl-rel-close')).toBeNull();
+		expect(document.activeElement).toBe(view.viewEl.querySelector('.pbl-rel-released'));
 	});
 
 	it('refuses when the transition value changed to ANOTHER valid one mid-dialog', async () => {
@@ -238,5 +264,89 @@ describe('marking a release as released', () => {
 		Modal.lastOpened?.close();
 		expect(vault.fm('0.9.md')['status']).toBe('In progress');
 		expect(vault.fm('0.9.md')['released']).toBeUndefined();
+	});
+});
+
+describe('the actions live in the header', () => {
+	it('draws them inside the header block, not between it and the toolbar', () => {
+		// The division is the codebase's own, stated at `drawOpenNote`: the toolbar's
+		// controls are about the TREE, and these two are about the release the title names.
+		const { view } = releaseScreen({ status: 'In progress' });
+		expect(view.viewEl.querySelector('.pbl-rel-header .pbl-rel-scope-actions')).not.toBeNull();
+	});
+
+	it('puts the summary and the actions on one line', () => {
+		// `scopeVault()` links its members to a DIFFERENT release ('R'), which leaves this
+		// release with none and `drawSummary` withholds the strip entirely (extension 1a) —
+		// so this needs a vault whose members actually name '0.9', the same fixture
+		// `twoWorkflowVault` already supplies for the closing tests above.
+		const { view } = releaseScreen({ status: 'In progress' }, twoWorkflowVault());
+		const foot = view.viewEl.querySelector('.pbl-rel-footline');
+		expect(foot?.querySelector('.pbl-rel-summary')).not.toBeNull();
+		expect(foot?.querySelector('.pbl-rel-scope-actions')).not.toBeNull();
+	});
+
+	it('still draws them on a release with no members', () => {
+		// The empty-scope screen is the one place extension 1a can be exercised at all.
+		// Drawn inside the header this holds structurally rather than by a comment nobody
+		// must break — and this test is what says so.
+		const { view } = releaseScreen({ status: 'In progress' }, emptyReleaseVault());
+		expect(view.viewEl.querySelector('.pbl-rel-scope-actions')).not.toBeNull();
+	});
+});
+
+describe('a refusal is not a caption on the button beside it', () => {
+	// **Narrower than the claim, and the narrow sentence is the honest one** —
+	// `rowChrome.test.ts`'s own shape and reason. jsdom computes no layout, so what is
+	// checked is that `styles/releaseScope.css` still declares the full-width line. It
+	// would not notice a different rule overriding it.
+	const css = readFileSync('styles/releaseScope.css', 'utf8');
+
+	it('gives the note a line of its own inside the action area', () => {
+		// Before this, the area was a plain horizontal row and a refusal replaced its own
+		// button IN PLACE — so `[Mark as released]  To generate release notes, bind the
+		// release membership property.` put a sentence about generation immediately right
+		// of the marking button. Both sentences name their own action; the layout invited
+		// the wrong reading anyway.
+		const block = css.match(/\.pbl-rel-actions-note\s*\{[^}]*\}/);
+		expect(block, 'no rule for the actions note').not.toBeNull();
+		expect(block?.[0]).toContain('flex: 1 0 100%');
+	});
+
+	// Two findings carried from Task 5's review, landing in the same compound rule. jsdom
+	// asserts neither claim directly — one is about the CASCADE (a declaration this rule
+	// must supply itself rather than borrow) and the other about wrapping (seen only in the
+	// browser harness, at a narrow window, with `?pick=Releases/1.1.md`: the area's own
+	// `flex: 0 0 auto` sized it to the unwrapped note's max-content width and the line ran
+	// past the pane) — so both are pinned as a declaration the partial must keep making.
+	const areaBlock = css.match(/\.pbl-rel-actions\.pbl-rel-scope-actions\s*\{[^}]*\}/);
+
+	it('supplies its own display: flex rather than borrowing release.css’s bare .pbl-rel-actions', () => {
+		// `flex-wrap`, `justify-content` and `gap` on this rule are inert without a `display:
+		// flex` of its own — the compound rule laid out only because the bare `.pbl-rel-actions`
+		// in `styles/release.css` supplied it, which contradicts `releaseClose.ts`'s own
+		// docblock: `.pbl-rel-scope-actions` is documented as "this area's LAYOUT alone".
+		expect(areaBlock, 'no rule for the compound actions/scope-actions selector').not.toBeNull();
+		expect(areaBlock?.[0]).toContain('display: flex');
+	});
+
+	it('lets the action area shrink (never grow), so a full-width note can wrap instead of overflowing the pane', () => {
+		// `flex: 0 0 auto` refused to shrink, so the area sized itself to the NOTE's own
+		// max-content width (the note's `flex: 1 0 100%` resolves against the area's own
+		// box) — at a narrow window the sentence ran off the edge of the pane rather than
+		// wrapping. Seen in the browser harness at 400px and 320px on `?pick=Releases/1.1.md`
+		// and `?pick=Releases/0.8.md&config=nomembership`; confirmed fixed at both widths
+		// once the area could shrink. `min-inline-size: 0` is what lets it shrink past its
+		// content's own min-content width, which a flex item refuses by default.
+		//
+		// GROW stays at 0, not 1: `flex: 1 1 auto` fixed the overflow too, but it also gave
+		// this area a share of the row's leftover space, which the `.pbl-rel-footline`
+		// comment's own 560px benchmark assumed went entirely to `.pbl-rel-summary` — and it
+		// made `margin-inline-start: auto` below inert (auto margins claim free space only
+		// AFTER flex-grow has taken its share, and grow:1 here left none). `flex: 0 1 auto`
+		// is the surgical fix: shrink alone clears the overflow and leaves both the
+		// summary's growth and the margin's own right-alignment exactly as documented.
+		expect(areaBlock?.[0]).toContain('flex: 0 1 auto');
+		expect(areaBlock?.[0]).toContain('min-inline-size: 0');
 	});
 });
