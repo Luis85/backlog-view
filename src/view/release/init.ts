@@ -91,31 +91,45 @@ export interface ValueCandidate {
  * rule that applies to them, applied in {@link runReleaseInit}: an option the reader has
  * touched is never overwritten, and cleared is not untouched.
  *
- * **`releaseNotesFolder` binds the option's own placeholder** (`releaseOptions.ts`), which
- * is the rule all seven property candidates already follow — `versionProperty` suggests
- * and places `version`, `releasedDateProperty` suggests and places `released`. A
- * placeholder is where this codebase writes down what it would pick, so picking anything
- * else is the plugin holding two opinions about one option. Not derived from
- * `defaultTypeFolder(RELEASE_TYPE)` (`docs/releases`) for that reason: the placeholder
- * already says `docs/release-notes`, and a second answer beside it is drift.
+ * **`releaseNotesFolder` binds `docs/release-notes`**, which is the string
+ * `releaseOptions.ts` also spells as that option's placeholder. Two literals, and nothing
+ * checks they agree — the claim here is only that ✨ picks what the option already offers
+ * to type, not that the two are coupled. Not derived from `defaultTypeFolder(RELEASE_TYPE)`
+ * (`docs/releases`): the placeholder already says `docs/release-notes`, and a second answer
+ * beside it is drift.
  *
- * **`releasedStatusValues` must NOT follow that rule**, and this is the trap. Its
+ * **`releasedStatusValues` must NOT bind a placeholder**, and this is the trap. Its
  * placeholder is `t('release.option.releasedValuesHint')` — the string `Released,
  * Archived`, in the translation catalog. Binding it would make ✨ write the CATALOG's
  * language into the `.base`, so a reader on a German Obsidian binds German status words,
  * stamps them onto release notes, and hands over a vault whose releases an English
- * reader's view reports as not-released. It binds {@link DEFAULT_RELEASED_VALUES}, which
- * is domain data for exactly that reason.
+ * reader's view reports as not-released. Its answer is {@link DEFAULT_RELEASED_VALUES},
+ * which is domain data for exactly that reason — but only where the reader has stated
+ * nothing to seed from; see the invariant below.
  *
- * **`releasedTransitionValue` reads the list rather than restating the literal.**
- * `configProblems` refuses a transition that is not one of the released values, so two
- * independent literals would be two statements that must agree. Reading whatever the
- * config holds AFTER the row above has run makes the invariant hold by construction —
- * and it is why this list is ORDERED and swept in order.
+ * **The vocabulary and the transition must agree, whichever the reader set first.**
+ * `releaseNoteProblems` refuses a transition that is not one of the released values, and
+ * `closeOffer` withholds BOTH closing actions for the same mismatch, so two independent
+ * answers here are two statements that must agree. The list is ORDERED and swept in order,
+ * and each half reads the other: an unset transition takes the FIRST of whatever list the
+ * config holds after the row above has run, and an unset vocabulary is seeded FROM a
+ * non-empty transition the reader already set rather than from the default beside it.
+ * Both directions, because only one of them held until 2026-08-30 — a view carrying
+ * `releasedTransitionValue: Shipped` and no vocabulary was bound `Released`, and the press
+ * reported success on a configuration that withheld the very actions it exists to enable
+ * (found by review, Codex, PR #221).
  */
 export const RELEASE_SUGGESTED_VALUES: ValueCandidate[] = [
 	{ option: 'releaseNotesFolder', value: () => 'docs/release-notes' },
-	{ option: 'releasedStatusValues', value: () => DEFAULT_RELEASED_VALUES.join(', ') },
+	{
+		option: 'releasedStatusValues',
+		// The reader's own transition wins over the shipped default: a vocabulary that
+		// omitted it is the one configuration this press can produce that withholds every
+		// closing action. `resolveReleaseSettings` rather than `config.get`, so the value
+		// compared here is read through the reader `closeOffer` itself will use.
+		value: (config) =>
+			resolveReleaseSettings(config).releasedTransition || DEFAULT_RELEASED_VALUES.join(', '),
+	},
 	{ option: 'releasedTransitionValue', value: (config) => releasedValuesOf(config)[0] ?? '' },
 ];
 

@@ -247,6 +247,22 @@ describe('the press binds the options that are not properties', () => {
 		expect(view.config.get('releasedTransitionValue')).toBe('Shipped');
 	});
 
+	it('seeds the vocabulary FROM a transition the reader set first, so the pair agrees either way', () => {
+		// The mirror of the case above it, and the direction the docblock's "by construction"
+		// claim did not hold in (found by review, Codex, PR #221). With the transition touched
+		// and the vocabulary unset, seeding the list from `DEFAULT_RELEASED_VALUES` bound
+		// `Released` beside a transition of `Shipped`: `closeOffer` then reads the transition
+		// as not one of the released values, pushes it into `missing` and withholds BOTH
+		// closing actions, while `releaseNoteProblems` raises a configuration problem — after
+		// a press that reported it had configured the view.
+		const { view } = mountRelease({ bindAll: false });
+		view.config.set('releasedTransitionValue', 'Shipped');
+		void runReleaseInit(view);
+		const settings = resolveReleaseSettings(view.config);
+		expect(settings.releasedValues).toContain('Shipped');
+		expect(releaseNoteProblems(settings)).toEqual([]);
+	});
+
 	it('binds nothing for a transition with no list to choose from, rather than writing an empty value', () => {
 		// The empty-value guard `wouldBindValue` carries: with `releasedStatusValues`
 		// cleared, `releasedValuesOf` returns `[]`, so the transition candidate computes
