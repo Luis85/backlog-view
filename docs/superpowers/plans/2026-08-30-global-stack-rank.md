@@ -440,7 +440,11 @@ export function orderForTarget(ranked: BacklogItem[], target: DropTarget): RankR
 export function computeDropWrites(dragged: BacklogItem, target: DropTarget, ranked: BacklogItem[]): ItemWrite[];
 ```
 
-`computeDropWrites` returns `[]` on a refusal. The caller reports it.
+`computeDropWrites` returns `[]` on a refusal, and **the reason is not in that return.**
+The caller that needs to name a remedy calls `orderForTarget(ranked, target)` itself and
+reads the `refusal` field — one extra pure call rather than a richer return type through
+every existing call site. Task 9 wires the two notices to it. Do not collapse them: an
+unranked neighbour sent to Respace is advice that does not work.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -460,6 +464,14 @@ it('plans no writes when the gap is spent', () => {
 
 it('plans no writes when a neighbour has no rank', () => {
 	expect(computeDropWrites(dragged, target, rankedWithNulls)).toEqual([]);
+});
+
+it('reads the whole loaded population, not a projection slice', () => {
+	// A catalog `Test suite` ranked 2000 sits between PBI A1 (1000) and PBI B1 (3000).
+	// It is loaded and not hidden by the Base, so a PBI insertion must not take 2000.
+	// This is the case `model.results` gets wrong and `src/domain/CLAUDE.md` names.
+	const writes = computeDropWrites(dragged, { parent: epicA, peers: [pbiA1], insertIndex: 1 }, ranked);
+	expect(writes[0].order).toBe(1500);
 });
 
 it('anchors on the destination when the peer group is empty', () => {
@@ -776,8 +788,9 @@ it('backfills orders with one running counter across the whole tree', () => {
 });
 
 it('creates a new child ranked between its parent and the next global row', () => {
-	// Epic A (1000), PBI A1 (2000). A new child of Epic A appended after A1.
-	expect(orderForNewChild(ranked, epicA, [pbiA1])).toEqual({ order: 2500 });
+	// Epic A (1000), PBI A1 (2000), Epic B (3000). A new child of Epic A appends after
+	// A1 — between 2000 and 3000, NOT a spacing past A1, which would land past Epic B.
+	expect(orderForTarget(ranked, { parent: epicA, peers: [pbiA1], insertIndex: 1 })).toEqual({ order: 2500 });
 });
 ```
 
@@ -1019,7 +1032,11 @@ In `src/i18n/en.ts`, beside the existing `command.*` keys (line ~1270):
 	'rank.unranked': 'That item has no rank yet. Use the toolbar’s set-up button to fill in the missing ones.',
 ```
 
-The last two are the two refusals from Task 4. Wire them at the call site that receives an empty `computeDropWrites` result — `orderForTarget` returns the reason, so the host reports `t('rank.gapSpent')` or `t('rank.unranked')` accordingly. Do **not** collapse them into one message: an unranked neighbour sent to Respace is advice that does not work.
+The last two are the two refusals from Task 4. Wire them where `performDrop` receives an
+empty write list: ask `orderForTarget(host.model.ranked, target)` for the reason and show
+`t('rank.gapSpent')` or `t('rank.unranked')` accordingly. Add a check for each — a drop on
+a spent gap names Respace, a drop beside an unranked note names the set-up button — because
+a notice naming the wrong remedy is advice that does not work, and no type would catch it.
 
 - [ ] **Step 2: Publish `applySafely` on the live view**
 
