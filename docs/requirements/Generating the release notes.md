@@ -2,10 +2,10 @@
 type: PBI
 parent: "[[Release notes from its own scope]]"
 order: 10
-status: Open
+status: Active
 created: 2026-08-21
 source: user request — release management concept refinement, 2026-08-21
-started: ""
+started: 2026-08-29
 finished: ""
 horizon: ""
 start: ""
@@ -22,8 +22,10 @@ release: "[[Eratic Skunk]]"
 **As** someone who has just shipped, **I want** the release's members written out as a Markdown
 note grouped by type, **so that** I can hand out what shipped without retyping the backlog.
 
-Nothing yet. The work reuses the generated-file shape [[A README in the backlog folder]] built:
-one file the plugin owns, written whole.
+Built on 2026-08-29, reusing the generated-file shape [[A README in the backlog folder]]
+built: one file the plugin owns, written whole. **Active rather than Done**: what a live
+vault has to confirm is the file as Obsidian renders it, including whether the marker
+comment is invisible in reading view.
 
 ## Use case
 
@@ -99,9 +101,30 @@ one file the plugin owns, written whole.
 
 ## Where it lives
 
-The text is composed in `src/domain/`, beside `src/domain/readmeText.ts` and shaped like it,
-from the model in `src/domain/model.ts` and the vocabulary in
-`src/domain/typeVocabulary.ts`. The marker that tells a generated file from a hand-written one
-is `src/domain/readmeMarker.ts`. The file is written by a new module in `src/storage/`, beside
-`src/storage/readmeFile.ts` — the only directory that may put bytes in the vault — and the
-output folder is declared in `src/domain/viewOptions.ts`.
+The text is composed in `src/domain/releaseNotesText.ts`, beside `src/domain/backlogReadme.ts`
+and shaped like it, from the scope rows the screen already derived and the vocabulary in
+`src/domain/typeVocabulary.ts`. Nothing dated goes in its body, which is what makes a
+regeneration over an unchanged release byte-identical — the easy thing to get wrong, since
+the action beside it exists to write today's date. The marker that tells a generated file
+from a hand-written one is `src/domain/readmeMarker.ts`, whose `joinSource` names THREE parts
+here — base, view and the release's own PATH — so a regeneration can be told from a collision
+between two releases that share a basename.
+
+The file is written by `src/storage/releaseNotesFile.ts`, which decides where it goes and
+whether it may be written at all. What it shares with the README is `writeGeneratedFile` in
+`src/storage/readmeFile.ts` — the read-then-`process` race close, the BOM and carriage-return
+trim, and the five outcomes — over one `mismatch` flag, because the two callers answer
+differently about a generated file naming another source: the README REPLACES one (a renamed
+base or view leaves it behind, and regenerating is the repair), and these notes REFUSE it (a
+whole-file write over another release's notes is in no undo slot and cannot be taken back).
+The output folder is declared in `src/domain/releaseOptions.ts`.
+
+The button and its gate are in `src/view/release/releaseClose.ts`, beside the other closing
+action. The write takes the plugin-wide lock for its whole duration through
+`src/view/writeGate.ts` — reading the lock is not taking one, and a sibling batch starting
+mid-write would land this file from a membership that has since changed.
+
+**A correction to extension 4e.** It lists "the folder does not exist" as a failure to
+report; the folder is CREATED instead, because every write path in this plugin makes its own.
+What holds of 4e is its second half: a write that fails reports the path it tried and leaves
+nothing partial behind.

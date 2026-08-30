@@ -325,8 +325,10 @@ The note is opened after writing, and a failure to open is not a failure of the 
 ## Where it lives
 
 `src/domain/releaseOptions.ts` — `releasedStatusValues`, `releasedTransitionValue` and
-`releaseNotesFolder`, with the transition dropdown reading the config. `ReleaseSettings`
-and `src/domain/settingsResolve.ts` gain the three resolved fields.
+`releaseNotesFolder`, with the transition dropdown reading the config. `ReleaseSettings` and
+`resolveReleaseSettings`, both in that same file, gain the three resolved fields.
+(Corrected during implementation: this line said `src/domain/settingsResolve.ts`, which
+resolves the BACKLOG settings and has no release view fields at all.)
 
 `src/domain/settingsConsistency.ts` — the two refusals in `releaseNoteProblems`, and the
 membership-collision check beside it. That one is NOT added to `releaseNoteProblems`: that

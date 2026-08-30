@@ -33,6 +33,11 @@ export function releaseSettingsWith(overrides: Partial<ReleaseSettings> = {}): R
 		releasedDateKey: '',
 		descriptionKey: '',
 		statusValues: [],
+		// Three more added 2026-08-29 with the closing actions (Task 1 of [[Closing a
+		// release]]) — the same by-hand rule stated above, now paid a second time.
+		releasedValues: [],
+		releasedTransition: '',
+		notesFolder: '',
 		openIn: 'split',
 		folder: '',
 		...overrides,

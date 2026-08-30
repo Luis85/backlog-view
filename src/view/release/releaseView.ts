@@ -64,6 +64,15 @@ const FOCUS_HANDLE_CLASSES = [
 	'pbl-rel-status',
 	'pbl-rel-desc',
 	'pbl-rel-released',
+	// The two closing actions, added with `releaseClose.ts`. Both are the sharp case this
+	// list's header describes rather than the mild one: pressing either CAUSES the redraw
+	// that detaches it, so without a handle a keyboard reader pays a lost place for every
+	// release they close or write up. `pbl-rel-notes` is registered here with its sibling
+	// even though the button that carries it arrives with `Generate release notes`: the
+	// list is one vocabulary, and registering one and leaving the other is exactly the
+	// defect it exists to stop.
+	'pbl-rel-close',
+	'pbl-rel-notes',
 ];
 
 /**
@@ -212,16 +221,23 @@ export class ReleaseView extends BasesView {
 	}
 
 	/**
-	 * What this view publishes while a batch is in flight: `aria-busy` on the pane, and
-	 * nothing else. The estimation view's own `syncBusy` minus the toolbar, because this
-	 * view has no write control to disable — the two that write open a menu and a dialog,
-	 * both of which are gone from the screen before the batch they started runs.
+	 * What this view publishes while a batch is in flight: `aria-busy` on the pane, and —
+	 * since the closing actions — the actions themselves disabled.
+	 *
+	 * The premise this method used to state was that this view has no persistent write
+	 * control: its writers opened a menu and a dialog, both gone from the screen before
+	 * their batch ran. `releaseClose.ts` is what made that false. A press during a SIBLING
+	 * view's batch is the case that matters — `onDataUpdated` defers the model rebuild
+	 * while the lock is held, so the press would act on a stale model.
 	 *
 	 * It asks the LOCK (`gate.writing`) rather than this view's own progress, the rule ADR
 	 * 0030 states: a batch is a fact about the vault, so a sibling view says so too.
 	 */
 	private syncBusy(): void {
 		this.viewEl.toggleAttribute('aria-busy', this.gate.writing);
+		for (const el of this.viewEl.querySelectorAll<HTMLButtonElement>('.pbl-rel-actions button')) {
+			el.disabled = this.gate.writing;
+		}
 	}
 
 	/**

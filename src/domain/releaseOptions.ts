@@ -1,4 +1,4 @@
-import { BasesAllOptions, BasesPropertyOption, BasesViewConfig } from 'obsidian';
+import { BasesAllOptions, BasesOptions, BasesPropertyOption, BasesViewConfig } from 'obsidian';
 import { configReaders, vaultFolder } from './settingsResolve';
 import { notePropsOnly } from './optionalProperties';
 import { defaultTypeFolder, RELEASE_TYPE } from './typeVocabulary';
@@ -51,6 +51,21 @@ export interface ReleaseSettings {
 	 * this with what the releases in the base actually carry.
 	 */
 	statusValues: string[];
+	/**
+	 * Which of this vault's release statuses mean ALREADY OUT. Empty is unconfigured
+	 * rather than "none" — the action is absent either way, and the distinction is only
+	 * ever read as "say which option to bind".
+	 */
+	releasedValues: string[];
+	/**
+	 * The ONE value `Mark as released` writes. A list is not a choice: a view that picked
+	 * from `releasedValues` would write a different status depending on how somebody
+	 * ordered it.
+	 */
+	releasedTransition: string;
+	/** Where `Generate release notes` files its output. A PATH, not a property key, and
+	 *  with no default: the action does not choose a folder on the reader's behalf. */
+	notesFolder: string;
 	/** Where `New release` files a note. A PATH, not a property key. */
 	folder: string;
 	/** Where a scope row's click opens its note — this view's OWN option, never the
@@ -59,8 +74,8 @@ export interface ReleaseSettings {
 	openIn: OpenTarget;
 }
 
-export function getReleaseViewOptions(_config: BasesViewConfig): BasesAllOptions[] {
-	return [modelGroup(), releaseGroup()];
+export function getReleaseViewOptions(config: BasesViewConfig): BasesAllOptions[] {
+	return [modelGroup(), releaseGroup(config)];
 }
 
 function modelGroup(): BasesAllOptions {
@@ -96,7 +111,7 @@ function modelGroup(): BasesAllOptions {
 	};
 }
 
-function releaseGroup(): BasesAllOptions {
+function releaseGroup(config: BasesViewConfig): BasesAllOptions {
 	return {
 		type: 'group',
 		displayName: t('release.option.group.release'),
@@ -198,6 +213,7 @@ function releaseGroup(): BasesAllOptions {
 				displayName: t('release.option.statusValues'),
 				placeholder: t('release.option.statusValuesHint'),
 			},
+			...closingOptionItems(config),
 			// What a release is FOR, in the reader's own words, on the release note itself.
 			// A property rather than the note body — see `ReleaseSettings.descriptionKey` for
 			// the standing decision this reverses and why it is reversed for this type alone.
@@ -224,6 +240,43 @@ function releaseGroup(): BasesAllOptions {
 			},
 		],
 	};
+}
+
+/** The declared released values, read straight off the config for the dropdown that
+ *  offers them — the same text `resolveReleaseSettings` turns into `releasedValues`. */
+function releasedValuesOf(config: BasesViewConfig): string[] {
+	const raw = config.get('releasedStatusValues');
+	return typeof raw === 'string' ? raw.split(',').map((v) => v.trim()).filter((v) => v !== '') : [];
+}
+
+/** The three closing options — split out of {@link releaseGroup} to keep that function
+ *  under the line-count lint budget, not because they are a separate concern. */
+function closingOptionItems(config: BasesViewConfig): BasesOptions[] {
+	return [
+		{
+			type: 'text',
+			key: 'releasedStatusValues',
+			displayName: t('release.option.releasedValues'),
+			placeholder: t('release.option.releasedValuesHint'),
+		},
+		{
+			// A DROPDOWN over the list above, which is what `getReleaseViewOptions`'
+			// config parameter is for: it makes "the transition value is one of the
+			// released values" structural at the point of entry. It does not make it
+			// TRUE — a hand-edited `.base` stores what it likes, which is why Task 2
+			// adds the read-back check as well.
+			type: 'dropdown',
+			key: 'releasedTransitionValue',
+			displayName: t('release.option.transitionValue'),
+			options: Object.fromEntries(releasedValuesOf(config).map((value) => [value, value])),
+		},
+		{
+			type: 'folder',
+			key: 'releaseNotesFolder',
+			displayName: t('release.option.notesFolder'),
+			placeholder: 'docs/release-notes',
+		},
+	];
 }
 
 /**
@@ -327,6 +380,9 @@ export function resolveReleaseSettings(config: BasesViewConfig): ReleaseSettings
 		// cleared BACK to, which is what `clearable` exists for.
 		descriptionKey: propKey('descriptionProperty', ''),
 		statusValues: dedupe(list('releaseStatusValues')),
+		releasedValues: list('releasedStatusValues'),
+		releasedTransition: str('releasedTransitionValue'),
+		notesFolder: str('releaseNotesFolder'),
 		// A PATH, not a property key: same reading `resolveFolders` gives every type
 		// folder — trimmed and normalized by `vaultFolder`, clearable because the default
 		// is a real value (`config.get` cannot tell "cleared" from "never set" otherwise).

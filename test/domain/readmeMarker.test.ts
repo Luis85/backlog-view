@@ -105,3 +105,19 @@ describe('the generated README identifies its own source', () => {
 		expect(readmeSource(around('a%252Db'))).toBe('a%2Db');
 	});
 });
+
+describe('a source with more than two parts', () => {
+	it('joins any number of parts, and keeps them apart', () => {
+		// Written against LITERALS rather than against `joinSource` on both sides: compared
+		// with itself, a third argument this function ignores would satisfy every equality
+		// here and the test would pass without the change it exists for.
+		expect(joinSource('work/P.base', 'Releases', '0.9')).toBe('work/P.base › Releases › 0.9');
+		// Injective with three parts for the same reason it is with two: a release called
+		// `b › c` under view `a` must not produce the line view `a › b` release `c` does.
+		expect(joinSource('work/P.base', 'Releases › 0.9')).toBe('work/P.base › Releases %E2%80%BA 0.9');
+		// The round trip recovers all three, which is what the collision comparison rests on.
+		expect(readmeSource(readmeMarker(joinSource('a', 'b', 'c')))).toBe('a › b › c');
+		// And the two-argument callers are untouched.
+		expect(joinSource('a', 'b')).toBe('a › b');
+	});
+});

@@ -2,10 +2,10 @@
 type: PBI
 parent: "[[Shipping a release]]"
 order: 10
-status: Open
+status: Active
 created: 2026-08-21
 source: user request — release management concept refinement, 2026-08-21
-started: ""
+started: 2026-08-29
 finished: ""
 horizon: ""
 start: ""
@@ -23,8 +23,10 @@ release: "[[Eratic Skunk]]"
 day recorded, **so that** the plan closes and the date it actually happened survives the plan
 it happened against.
 
-Nothing yet. It is one small batch against the release note alone, through the same gate as
-every write.
+Built on 2026-08-29 — one batch against the release note alone, through the same gate as
+every write. **Active rather than Done**: what a live vault has to confirm is the undo, which
+is the only place the single-entry claim can be seen rather than asserted, and the actions
+area's appearance beside the header.
 
 ## Use case
 
@@ -94,8 +96,32 @@ every write.
 
 ## Where it lives
 
-One host method in `src/view/host.ts`, planned in `src/domain/writePlan.ts` and applied by
-`src/storage/frontmatter.ts` over `src/view/writeGate.ts`. The status key, its released values, the
-transition value and the actual-date key are declared in `src/domain/viewOptions.ts`, with the
-same-key refusal and the transition-value check in `src/domain/settingsConsistency.ts`. The confirmation reuses `src/ui/prompts.ts`, and the
-outstanding list is drawn by the release view's render module in `src/view/render/`.
+The action is `src/view/release/releaseClose.ts`, drawn from `src/view/release/renderScope.ts`
+ABOVE both of its empty-state returns — a release with no members at all is the one screen
+extension 1a is about, and an action drawn below that return could never be pressed there.
+The batch is planned by `releaseClosureWrites` in `src/domain/releaseWritePlan.ts` as ONE
+write with two sets, and applied by `src/storage/propertyWrite.ts` over
+`src/view/writeGate.ts`.
+
+The status key, its released values, the transition value and the actual-date key are
+declared in `src/domain/releaseOptions.ts`, with the same-key refusal and the
+transition-value check in `src/domain/settingsConsistency.ts`. Whether the action is offered
+at all, and which option is still unbound, is `closeOffer` in `src/domain/releases.ts`;
+whether the row on screen still matches the live note is `closingFieldsMoved` beside it. The
+confirmation is `src/ui/confirmDialog.ts` — the one dialog shape `src/ui/prompts.ts` does not
+cover, because every modal there collects a VALUE and this one collects a decision, with the
+outstanding members as rows it can open.
+
+**Two narrowings, recorded rather than quietly taken.** Flow 2 asks the confirmation to
+state unsatisfied readiness criteria; readiness is [[Answering the readiness checklist]] and
+is not built, so the confirmation states outstanding members only. Flow 4 asks for "the
+action that moves them"; what shipped is an OPEN, so the per-member transition it names is
+not built here — a `Set state` control per row needs a second batch and a second undo slot
+beside the release's own.
+
+**And two corrections.** This section named `configProblems` as the gate; this view's own
+collision report is `releaseNoteProblems`, which did not exist when this note was written.
+And extension 3a's "the release screen says which option to bind" is answered by
+`closeOffer.missing`, a UNION rather than a list of strings, so an option this action
+refuses to run without and has no name for is a build error rather than a blank in a
+sentence.

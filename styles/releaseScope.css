@@ -317,3 +317,23 @@ button.pbl-rel-toggle-on {
 .pbl-rel-alldone-icon.pbl-empty-filter-icon {
 	color: rgb(var(--color-green-rgb));
 }
+
+/* The closing actions, drawn between the header and whatever the scope turns out to be
+   (`src/view/release/releaseClose.ts`). A row rather than a block because a second button
+   joins it with `Generate release notes`, and `flex-wrap` because two full labels do not
+   fit a narrow pane side by side. */
+.pbl-rel-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--size-4-2);
+	align-items: center;
+	margin-bottom: var(--size-4-3);
+}
+
+/* Why an action is not offered: an option to bind, or a field to repair. Muted and small,
+   the shell every other secondary sentence on this screen uses — it is an explanation
+   beside a control, never a refusal of something the reader just did. */
+.pbl-rel-actions-note {
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+}

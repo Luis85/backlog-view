@@ -629,11 +629,16 @@ In `applyPropertyWrites`, inside `processFrontMatter` after the `requiresType` c
 Note `expects: null` must compare equal to an ABSENT key as well as to a null-valued one — both are "no value here". Extend the comparison rather than special-casing at the call site:
 
 ```ts
-/** Whether the live value is the one a set expected. `null` expects ABSENT — a missing
- *  key and an explicit `released:` are the same answer to "is there a date here", and a
- *  presence-only test gets the second one wrong. */
+/** Whether the live value is the one a set expected. `null` and `undefined` both expect
+ *  ABSENT — a missing key and an explicit `released:` are the same answer to "is there a
+ *  value here", and a presence-only test gets the second one wrong.
+ *
+ *  `undefined` is not a nicety: `readLabel` calls a missing key valid-and-absent, so the
+ *  action is OFFERED on a release whose status property is not there, and `ownValue`
+ *  hands that plan `undefined` as the value to expect. Treating it as a moved value
+ *  refuses every such release forever — the note that most needs marking. */
 function stillExpected(live: RawValue, expected: unknown): boolean {
-	if (expected === null) return !live.present || live.value === null;
+	if (expected === null || expected === undefined) return !live.present || live.value === null;
 	return live.present && sameRaw(live, { present: true, value: expected });
 }
 ```
@@ -667,6 +672,28 @@ it('treats a bare `released:` as absent, and fills it', async () => {
 ```
 
 Run it, then change `stillExpected`'s first branch to `return !live.present` and run again. Expected: FAIL — the write is refused on a note every reader calls dateless. Restore.
+
+- [ ] **Step 7b: Add and watch the ABSENT-key test**
+
+The sibling case, and the one that reaches this function as `undefined` rather than
+`null`: a release with no status property at all. `readLabel` calls that valid absence, so
+the action is offered, and `ownValue` then hands the plan `undefined`.
+
+```ts
+it('treats an absent key as the absence a set expected', async () => {
+    const vault = new FakeVault();
+    // No `status` key at all. `readLabel(undefined)` is valid-and-absent, so `closeOffer`
+    // offers this release — and the raw value the plan captures is `undefined`.
+    vault.addFile('0.9.md', { frontmatter: { type: 'Release' } });
+    await applyPropertyWrites(vault.app, [
+        { file: vault.file('0.9.md'), requiresType: 'Release', sets: [{ key: 'status', value: 'Released', expects: undefined }] },
+    ], 'type');
+    expect(vault.frontmatter('0.9.md').status).toBe('Released');
+});
+```
+
+Run it, then drop `|| expected === undefined` from `stillExpected` and run again.
+Expected: FAIL — the release can never be marked. Restore.
 
 - [ ] **Step 8: Commit**
 
@@ -1081,6 +1108,28 @@ it('refuses when the transition value changed to ANOTHER valid one mid-dialog', 
     expect(vault.frontmatter('0.9.md').status).toBe('In progress');
 });
 
+it('writes to the key it confirmed against, never one remapped mid-dialog', async () => {
+    // The KEY moves across this await as well as the value, and this case slips past
+    // every guard that reads the live settings: remapped from one EMPTY property to
+    // another, `closeOffer` stays valid, the row is unchanged, and `reconfiguredKey`
+    // compares the planned key against the NEW role key and agrees with it. Planning
+    // against the CAPTURED settings is what turns that check back into a refusal.
+    const { view, vault } = releaseScreen({ status: 'In progress' }, scopeVault(), {
+        releasedDateProperty: 'note.released',
+        releasedStatusValues: 'Released',
+        releasedTransitionValue: 'Released',
+    });
+    button(view, '.pbl-rel-close').click();
+    view.config.set('releasedDateProperty', 'note.shipped'); // also empty on this note
+    view.settings = resolveReleaseSettings(view.config);
+    await confirmDialog();
+    // Neither key is written: the batch named `released`, and `reconfiguredKey` refuses it
+    // because that is no longer the released-date role's key.
+    expect(vault.frontmatter('0.9.md').shipped).toBeUndefined();
+    expect(vault.frontmatter('0.9.md').released).toBeUndefined();
+    expect(vault.frontmatter('0.9.md').status).toBe('In progress');
+});
+
 // BOTH controls, in one parameterised case: registering one and forgetting the other is
 // what the focus-handle list exists to prevent, and a test per button is how the second
 // one gets forgotten.
@@ -1151,11 +1200,18 @@ function askThenClose(view: ReleaseView, release: ReleaseRow, scope: ReleaseScop
 	// Captured BEFORE the await, the rule the root guide states: the batch's own refresh
 	// rebuilds `scope` before it resolves.
 	const outstanding = unfinishedMembers(release, scope);
-	// The transition value the reader is about to agree to. Captured because the option is
-	// editable while the dialog is open, and re-asking `closeOffer` at the submit does NOT
-	// catch this: a change from one valid released value to another leaves the offer
-	// perfectly valid, and the planner would then write the value nobody confirmed.
-	const confirmed = view.settings.releasedTransition;
+	// The SETTINGS the reader is about to agree to — the whole object, not just the
+	// transition value. `releaseView.ts` reassigns `this.settings` to a fresh object on
+	// every config refresh, so this reference is the configuration as the screen showed
+	// it, frozen for the life of the dialog.
+	//
+	// The whole object rather than the value, because the KEYS move across this await too.
+	// A date key remapped from one empty property to another leaves `closeOffer` valid and
+	// the row unchanged, and planning against the LIVE settings would then write the date
+	// into a property nobody confirmed — with `reconfiguredKey` waving it through, since
+	// the planned key would equal the new role key it is compared against. Planning
+	// against the CAPTURED keys turns that same check into the refusal it exists to be.
+	const confirmed = view.settings;
 	// And the RAW frontmatter, which is what the write's own expectations compare against.
 	const raw = rawFields(view, release);
 	openConfirm(view.app, {
@@ -1186,7 +1242,7 @@ and the submit, which re-asks everything that can move across the await:
 async function submitClose(
 	view: ReleaseView,
 	release: ReleaseRow,
-	confirmed: string,
+	confirmed: ReleaseSettings,
 	raw: { status: unknown; released: unknown },
 ): Promise<void> {
 	// The CONFIGURATION moves across an await as well as the note. `reconfiguredKey`
@@ -1198,14 +1254,18 @@ async function submitClose(
 	// configuration is still usable, and this says it is still the SAME. A transition
 	// changed from one valid released value to another passes the first and fails here,
 	// which is the case that would otherwise write a status nobody agreed to.
-	if (!offer.offered || view.settings.releasedTransition !== confirmed) {
+	if (!offer.offered || view.settings.releasedTransition !== confirmed.releasedTransition) {
 		new Notice(t('release.close.changed'));
 		return;
 	}
 	await view.applyRelease(
 		releaseClosureWrites(
 			release.item.file,
-			view.settings,
+			// The CAPTURED settings, so the keys planned against are the keys confirmed
+			// against. A remap since then makes `reconfiguredKey` refuse the batch at the
+			// gate — which is the answer wanted here, and the one planning against the
+			// live settings quietly loses.
+			confirmed,
 			{ status: release.status.value, released: release.released.value },
 			raw,
 			todayCivil(),
@@ -1233,6 +1293,13 @@ In `renderScope`, immediately after `drawHeader(...)` and BEFORE the `membership
 	// Above both empty-state returns on purpose — see `releaseClose.ts`'s own header.
 	drawReleaseActions(view, view.viewEl, release, scope, planSettings);
 ```
+
+- [ ] **Step 4b: Watch the captured keys matter**
+
+Change `submitClose`'s planner argument from `confirmed` back to `view.settings` and run
+`npx vitest run test/view/release/releaseClose.test.ts -t 'remapped mid-dialog'`.
+Expected: FAIL — the date lands in `shipped`, a property the reader never confirmed.
+Restore.
 
 - [ ] **Step 5: Register the focus handle and the busy state**
 
@@ -1699,6 +1766,20 @@ it('names the path it tried when the write fails', async () => {
     expect(lastNotice()).toContain('notes/0.9 release notes.md');
 });
 
+it('refuses another release\u2019s notes at the same output path', async () => {
+    // Extension 4c, and the reason the marker gained a third part. Obsidian lets
+    // `a/0.9.md` and `b/0.9.md` coexist, and the output path is built from the BASENAME,
+    // so both want `notes/0.9 release notes.md`. The marker is what must tell them
+    // apart — which it only does if it names the release by PATH: by name, both markers
+    // are the same string and the second generation reads as the first's regeneration,
+    // silently overwriting the notes this refusal exists to protect.
+    const { view, vault } = releaseScreen({ status: 'Released' }, twoReleasesOneBasename(), { releaseNotesFolder: 'notes' });
+    vault.addRaw('notes/0.9 release notes.md', `${markerFor('a/0.9.md')}\nwhat a shipped\n`);
+    await click(view, '.pbl-rel-notes'); // the screen is showing b/0.9.md
+    expect(vault.raw('notes/0.9 release notes.md')).toContain('what a shipped');
+    expect(lastNotice()).toContain(en['release.notes.foreign']);
+});
+
 it('HOLDS the lock for the whole write, not just before it', async () => {
     // The disabled attribute and a `gate.writing` check both read the lock at an instant.
     // What this asserts is the window AFTER that: a sibling starting mid-write would land
@@ -1787,9 +1868,15 @@ async function generate(view: ReleaseView, release: ReleaseRow, scope: ReleaseSc
 	// release — `resolveViewIdentity` returns null for an embedded base, where the view
 	// name stands alone, which is the fallback that file already states.
 	const identity = resolveViewIdentity(view.app, view.viewEl, view.config.name ?? '');
+	// `release.path`, never `release.name`. The name is `file.basename`, and the whole
+	// reason this marker gained a third part is that two releases in different folders may
+	// share a basename — and therefore share this file's OUTPUT path, since that is built
+	// from the basename too. A marker naming the basename is identical for both, so the
+	// refusing writer would read `b/0.9.md`'s generation as `a/0.9.md`'s regeneration and
+	// overwrite the notes it exists to protect. The path is what tells them apart.
 	const source = identity
-		? joinSource(identity.base, identity.view, release.name)
-		: joinSource(view.config.name ?? '', release.name);
+		? joinSource(identity.base, identity.view, release.path)
+		: joinSource(view.config.name ?? '', release.path);
 	const content = releaseNotesContent(release, scope.rows, source);
 	// Through the gate, so `applying` is held for the whole write rather than sampled
 	// before it. A sibling batch cannot start underneath this one, and this one is
@@ -1848,6 +1935,13 @@ async function generate(view: ReleaseView, release: ReleaseRow, scope: ReleaseSc
 
 Run: `npx vitest run test/view/release/`
 Expected: PASS.
+
+- [ ] **Step 6b: Watch the marker\u2019s identity matter**
+
+Change the source's third part from `release.path` back to `release.name` and run
+`npx vitest run test/view/release/releaseNotes.test.ts -t 'same output path'`.
+Expected: FAIL — the second release's generation overwrites the first's notes, because
+both markers are the same string. Restore.
 
 - [ ] **Step 7: Watch each gate on its own**
 

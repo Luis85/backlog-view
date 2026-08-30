@@ -3,6 +3,7 @@ import { ReleaseSettings } from './releaseOptions';
 import { t } from '../i18n/t';
 import { ownedProperties, OwnedRole } from './optionalProperties';
 import { colorableStates, stateColor } from './stateColors';
+import { sameValue } from './noteFields';
 
 /**
  * Whether a `BacklogSettings` is one `resolveSettings` could have produced.
@@ -331,5 +332,59 @@ export function releaseNoteProblems(settings: ReleaseSettings): string[] {
 		// The array, not a joined string — `configProblems`' own note on why.
 		problems.push(t('settings.sharedKey', { properties: users.map((role) => t(`property.${role}`)), key }));
 	}
+	// The plan and the record must be two keys. This is NOT expressible through the
+	// `owned` collision map above, because that reports a key claimed by two ROLES and
+	// these two roles are both legitimately date keys — what is wrong is specifically
+	// that a record overwriting the plan destroys the evidence a release slipped.
+	if (settings.releasedDateKey !== '' && settings.releasedDateKey === settings.targetDateKey) {
+		problems.push(t('settings.releasedIsTarget', { key: settings.releasedDateKey }));
+	}
+	// The dropdown offers only declared values; a hand-edited `.base` is why this is asked
+	// again at read time. Case-insensitive, `sameValue`'s own reason: it is the same match
+	// every other vocabulary membership check in this view makes (`plan.ts`, `menu.ts`,
+	// `labels.ts`), and `releasedValues` itself carries no case folding to lean on instead.
+	//
+	// **An EMPTY list is unconfigured, not a mismatch**, and the guard for it is
+	// load-bearing rather than tidy: this function is the release view's `writeProblems`,
+	// so anything reported here blocks every write the view has — the status chip, the
+	// description, the released date — and generation with them. A closing action somebody
+	// half-configured must not disable the editing screen around it. Withholding the CLOSE
+	// action is `closeOffer`'s job, which names the option instead of refusing everything.
+	//
+	// The line above said exactly this before the check did (found by review): the comment
+	// stated the rule and the condition did not implement it, which is the shape
+	// `docs/issues/A comment that states a rule is not a check.md` exists for.
+	if (
+		settings.releasedTransition !== '' &&
+		settings.releasedValues.length > 0 &&
+		!settings.releasedValues.some((v) => sameValue(v, settings.releasedTransition))
+	) {
+		problems.push(t('settings.transitionNotReleased', { value: settings.releasedTransition }));
+	}
 	return problems;
+}
+
+/**
+ * Whether this view's membership key is aimed at a property the MODEL already owns — the
+ * gap neither collision report above can see. `configProblems` has no membership role,
+ * and `releaseNoteProblems` deliberately excludes the item side.
+ *
+ * It matters because `membershipTarget` resolves whatever that key holds as a release
+ * link: pointed at the type key it reads `type: PBI` as a membership, every scope reads
+ * empty, and a generated notes file would say the release contained nothing — over a
+ * previously valid one saying what shipped. Empty and unreadable are different answers,
+ * and this is what keeps them apart.
+ *
+ * DERIVED from `ownedProperties` rather than naming roles, so a property added later is
+ * covered without anybody remembering this function. One exemption: `release` is itself
+ * an optional property — the BACKLOG view's own membership key — and the two legitimately
+ * agree. That is the shipped default, not an edge case.
+ */
+export function membershipCollision(release: ReleaseSettings, plan: BacklogSettings): string | null {
+	if (release.membershipKey === '') return null;
+	for (const { role, key } of ownedProperties(plan)) {
+		if (role === 'release' || key === '') continue;
+		if (key === release.membershipKey) return t('settings.membershipCollides', { key, role: t(`property.${role}`) });
+	}
+	return null;
 }

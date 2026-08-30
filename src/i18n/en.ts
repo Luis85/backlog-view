@@ -816,6 +816,10 @@ export const en = {
 	 *  placeholder showing the SHAPE of a list, exactly as `option.stateValuesHint` is. */
 	'release.option.statusValues': 'Release statuses (in order)',
 	'release.option.statusValuesHint': 'Planned, In progress, Released',
+	'release.option.releasedValues': 'Statuses that mean released',
+	'release.option.releasedValuesHint': 'Released, Archived',
+	'release.option.transitionValue': 'Status to write when releasing',
+	'release.option.notesFolder': 'Release notes folder',
 	/** What a release is for, in the reader's own words, on the release note. */
 	'release.option.description': 'Release description property',
 	'release.option.releasedDate': 'Released date property',
@@ -907,6 +911,9 @@ export const en = {
 	 * is data.
 	 */
 	'settings.sharedKey': 'the {properties} properties share the key "{key}"',
+	'settings.releasedIsTarget': 'the released date and the target date both use {key}',
+	'settings.transitionNotReleased': '{value} is not one of the statuses that mean released',
+	'settings.membershipCollides': 'the release membership property and {role} both use {key}',
 
 	/**
 	 * What this view calls each property it owns, wherever a collision names them. Keyed by
@@ -1196,6 +1203,13 @@ export const en = {
 	 * exactly as it is in the legend's marker caption.
 	 */
 	'gate.retyped': 'That note is no longer a {type}, so nothing was written to it.',
+	/**
+	 * `PropertySet.expects`' own refusal — a set stated the raw value it expected to find,
+	 * and the live note holds something else. Worded beside `gate.retyped`: both are the
+	 * note having moved under an open dialog, this one at the FIELD rather than the type.
+	 * `{property}` is the key itself — vault data, not a word from this catalog.
+	 */
+	'gate.valueMoved': 'Nothing was written: {property} changed while the dialog was open.',
 	/**
 	 * The release screen's own refusal, and the third thing that can be wrong with a batch by
 	 * the time it lands. Not a collision (`configProblems` reports those) and not a retype
@@ -1873,14 +1887,17 @@ export const en = {
 	 * screen whose value is a DATE rather than a label. `{name}` is the release note's own
 	 * name and `{date}` is the date as the register spells one (`formatCivil`), both data.
 	 *
-	 * `markReleased` is the invitation a release with no date draws, and it is the plainest
-	 * name for the gesture rather than "Set released date": what the reader is doing is
-	 * saying it shipped. It opens the same dialog either way, so nothing is claimed by the
-	 * wording that the action does not do — in particular it writes no status, which is
-	 * [[Marking a release as released]]'s own half of that transition and is still Open.
+	 * `markReleased` said `Mark as released` until 2026-08-29, on the stated ground that
+	 * saying it shipped was the whole of the gesture. **That premise expired the day
+	 * [[Marking a release as released]] was built**: the closing action writes the status
+	 * AND the date, and this control writes only the date and is the only one that CLEARS
+	 * it. Two controls on one screen under one label is worse than a field named as a
+	 * field, so this one is now named for the field it edits and the transition keeps the
+	 * shorter name. The comment above is kept rather than deleted because the reason the
+	 * old wording was chosen is the reason it stopped being right.
 	 */
 	'release.scope.releasedOn': 'Released {date}',
-	'release.scope.markReleased': 'Mark as released',
+	'release.scope.markReleased': 'Set released date',
 	'release.scope.releasedTitle': 'Released date for {name}',
 	'release.scope.releasedHint': 'The day this release actually shipped. Clearing it takes the date off the note.',
 	/**
@@ -2027,6 +2044,13 @@ export const en = {
 	'newRelease.create': 'Create',
 	'newRelease.cancel': 'Cancel',
 
+	/** The generic confirm dialog's own cancel — its own key rather than a reuse of
+	 *  `newRelease.cancel`, which names THAT dialog's way out and would drift the moment
+	 *  either is reworded. Every other word this dialog shows is supplied by the caller,
+	 *  because the question, the rows and the CTA are about what is being confirmed and
+	 *  belong to the screen that asks. */
+	'confirm.cancel': 'Cancel',
+
 	/**
 	 * The ✨ standalone control (`src/view/release/initControl.ts`), drawn on the index bar
 	 * and on the `noMembership` scope empty state. One label serves both the accessible
@@ -2034,6 +2058,97 @@ export const en = {
 	 * screen already says what it does.
 	 */
 	'release.init.label': 'Add missing properties',
+
+	/**
+	 * `Mark as released` — the closing action (`src/view/release/releaseClose.ts`), and the
+	 * transition [[Marking a release as released]] is about. Distinct from
+	 * `release.scope.markReleased` above, which edits the DATE field alone.
+	 *
+	 * `{name}` is the release note's own name and `{count}`/`{total}` are counts, all data.
+	 * `outstanding` states a fact and refuses nothing: extension 2a is explicit that the
+	 * checklist informs the judgement and does not make it.
+	 */
+	'release.close.action': 'Mark as released',
+	'release.close.title': 'Mark {name} as released?',
+	'release.close.outstanding': '{count} of {total} members are not finished.',
+	'release.close.allDone': 'Everything in this release is finished.',
+	/** Progress cannot be read at all — no state key, or a workflow this release's members
+	 *  span that nothing answers for. Not the same sentence as "everything is finished",
+	 *  which is what collapsing the two would say about a release nobody can count. */
+	'release.close.progressUnreadable': 'Whether this release is finished cannot be read here.',
+	/** The submit's own refusal: the note or the configuration moved while the dialog was
+	 *  open. One sentence for both, because what the reader has to do is the same — look at
+	 *  what it says now and decide again. */
+	'release.close.changed': 'Nothing was written: the release or its configuration changed while the dialog was open.',
+	/** Extension 3a: the screen NAMES the options rather than only withholding the button.
+	 *  `{options}` is a LIST, joined as grammar by `Intl.ListFormat`. */
+	'release.close.bind': 'To mark a release as released, bind {options}.',
+	/** A NOTE problem rather than a configuration one — which is why these two say "repair
+	 *  it in the note" and never name an option. */
+	'release.close.unreadableStatus': 'This release’s status cannot be read. Repair it in the note.',
+	'release.close.unreadableDate': 'This release’s released date cannot be read. Repair it in the note.',
+
+	/**
+	 * The GENERATED release notes' own prose (`src/domain/releaseNotesText.ts`) — words
+	 * written into a file in the vault rather than drawn on a screen.
+	 *
+	 * Keyed rather than left English like `backlogReadme.ts`'s prose, by the root guide's
+	 * own test: what breaks if two people with different Obsidian languages open one vault
+	 * is that each sees the notes in their own words, which is TEXT. Nothing here is
+	 * matched or persisted as an identity — the MARKER does that, and it is data — so
+	 * neither reader's view is unable to read the other's file. The cost is real and is
+	 * accepted: regenerating in another language rewrites the body, which a vault kept in
+	 * git sees as a diff.
+	 *
+	 * `population` promises only what this document can keep, and it was NARROWED on
+	 * 2026-08-29 after review: it said "what this base returned", which is wider than what
+	 * the file lists. A note the base returns can still be pruned from the model — a
+	 * parentless row whose type the vocabulary does not know is dropped by
+	 * `pruneOutsideHierarchy` — and it is then on no screen and in no file. What the file
+	 * actually lists is the release's own scope rows, which is exactly what the reader was
+	 * just looking at, so that is what it now says.
+	 *
+	 * It still never says how many notes the base EXCLUDED, because nothing can count
+	 * those: membership lives on the ITEM, so an excluded item is invisible to the view
+	 * that would have to count it.
+	 */
+	'release.notes.generated': 'This file is generated. Edits to it do not survive the next regeneration.',
+	'release.notes.population': 'It lists this release’s members, as its scope tree draws them.',
+	'release.notes.empty': 'This release contained nothing.',
+	/** The heading for a type the vocabulary does not know — a note that quietly omitted
+	 *  work would be worse than an untidy heading. */
+	'release.notes.otherTypes': 'Other',
+
+	/**
+	 * `Generate release notes` — the second closing action. Every `{path}` is a vault path
+	 * and is data.
+	 *
+	 * `refused` covers the two outcomes that wrote nothing because the file was not this
+	 * release's: it says what happened to the FILE rather than naming a rule, because what
+	 * the reader has to do is look at it.
+	 */
+	'release.notes.action': 'Generate release notes',
+	/**
+	 * Why generation is withheld inside an embedded base. `resolveViewIdentity` refuses to
+	 * give two bases embedded in one note a shared identity, and the release notes marker
+	 * needs a unique one: without it, two such views writing to one folder would each read
+	 * the other's file as their own to replace.
+	 */
+	'release.notes.embedded': 'Release notes can only be generated from a base file, not from a base embedded in a note.',
+	'release.notes.bindFolder': 'To generate release notes, bind the release notes folder.',
+	'release.notes.bindMembership': 'To generate release notes, bind the release membership property.',
+	'release.notes.failed': 'The release notes could not be written to {path}.',
+	'release.notes.written': 'Release notes written to {path}.',
+	/**
+	 * The refusal, and it has to say what to DO. Refusing is recoverable and overwriting is
+	 * not, which is why this mode exists — but a message that only reports the refusal
+	 * leaves the reader at a dead end, since the same refusal repeats on every press. The
+	 * escape is theirs to take: remove or rename that file and the next generation claims
+	 * the name.
+	 */
+	'release.notes.refused':
+		'{path} was not written from this release, so it has been left alone. Remove or rename it to generate there.',
+	'release.notes.unchanged': 'The release notes at {path} were already up to date.',
 	/**
 	 * A press that bound nothing, said rather than left silent — a standalone control with
 	 * no dialog after it would otherwise look dead. `release.new.bound` is what a press

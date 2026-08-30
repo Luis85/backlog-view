@@ -5,7 +5,7 @@ import { configProblems } from '../domain/settingsConsistency';
 import { BacklogModel } from '../domain/model';
 import { BacklogSettings } from '../domain/settings';
 import { displaySource, joinSource, sourceComponent } from '../domain/readmeMarker';
-import { ReadmeWriteResult, writeBacklogReadme } from '../storage/readmeFile';
+import { GeneratedWriteResult, writeBacklogReadme } from '../storage/readmeFile';
 import { resolveViewIdentity } from '../storage/viewIdentity';
 import { activeBacklogView, LiveBacklogView } from '../view/registry';
 
@@ -24,7 +24,7 @@ interface LoadedBacklogView {
 export const WRITE_README_COMMAND_ID = 'write-backlog-readme';
 
 /** What the user is told, per outcome. The two that wrote nothing say so plainly. */
-function outcomeNotice({ outcome, path, previous }: ReadmeWriteResult): string {
+function outcomeNotice({ outcome, path, previous }: GeneratedWriteResult): string {
 	switch (outcome) {
 		case 'created':
 			return t('readme.created', { path });

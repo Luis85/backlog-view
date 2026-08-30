@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { getReleaseViewOptions, resolveReleaseSettings } from '../../src/domain/releaseOptions';
+import { membershipCollision, releaseNoteProblems } from '../../src/domain/settingsConsistency';
+import { resolveSettings } from '../../src/domain/settingsResolve';
+import { optionalKeyFor } from '../../src/domain/optionalProperties';
 import { FakeViewConfig } from '../helpers/vault';
+import { releaseSettingsWith } from '../helpers/releaseSettings';
 
 function keysOf(config: FakeViewConfig): string[] {
 	return getReleaseViewOptions(config as never)
@@ -16,12 +20,13 @@ describe('the release view names its own keys', () => {
 		// Bases' own options menu — see the comment beside their declaration below.
 		// `descriptionProperty` and `releaseStatusValues` joined it on 2026-08-29 with
 		// [[Editing a release from its own screen]]: the field this view writes, and the
-		// vocabulary its status menu offers.
+		// vocabulary its status menu offers. `releasedStatusValues`, `releasedTransitionValue`
+		// and `releaseNotesFolder` joined it the same day with the closing actions
+		// (`Mark as released`, `Generate release notes`).
 		//
-		// The COUNT left this test's own name the same day. It read "all fourteen" while the
-		// list held fourteen and the view declared fourteen — true, and true of nothing else:
-		// a name that carries a number goes stale the moment an option is added, and the
-		// list below is the check either way.
+		// The COUNT left this test's own name earlier the same day: a name that carries a
+		// number goes stale the moment an option is added, and the list below is the check
+		// either way.
 		expect(keysOf(new FakeViewConfig({})).sort()).toEqual(
 			[
 				'deliverableDoneValues',
@@ -33,7 +38,10 @@ describe('the release view names its own keys', () => {
 				'orderProperty',
 				'parentProperty',
 				'releasedDateProperty',
+				'releasedStatusValues',
+				'releasedTransitionValue',
 				'releaseFolder',
+				'releaseNotesFolder',
 				'releaseStatusProperty',
 				'releaseStatusValues',
 				'stateProperty',
@@ -93,6 +101,36 @@ describe('the release view names its own keys', () => {
 		expect(resolveReleaseSettings(new FakeViewConfig({ openIn: 'tab' }) as never).openIn).toBe('tab');
 	});
 
+	it('offers the declared released values as the transition dropdown\'s own choices', () => {
+		const items = getReleaseViewOptions(
+			new FakeViewConfig({ releasedStatusValues: 'Released, Archived' }) as never,
+		).flatMap((group) => ('items' in group ? group.items : []));
+		const dropdown = items.find((item) => (item as { key: string }).key === 'releasedTransitionValue') as {
+			options?: Record<string, string>;
+		};
+		expect(dropdown.options).toEqual({ Released: 'Released', Archived: 'Archived' });
+	});
+
+	it('resolves the three closing options, and leaves each unconfigured one empty', () => {
+		const bound = resolveReleaseSettings(
+			new FakeViewConfig({
+				releasedStatusValues: 'Released, Archived',
+				releasedTransitionValue: 'Released',
+				releaseNotesFolder: 'docs/notes',
+			}) as never,
+		);
+		expect(bound.releasedValues).toEqual(['Released', 'Archived']);
+		expect(bound.releasedTransition).toBe('Released');
+		expect(bound.notesFolder).toBe('docs/notes');
+
+		// Absence is a value: an unconfigured list is empty and an unconfigured folder is '',
+		// which is what every gate below reads as "not bound" rather than as "none".
+		const bare = resolveReleaseSettings(new FakeViewConfig({}) as never);
+		expect(bare.releasedValues).toEqual([]);
+		expect(bare.releasedTransition).toBe('');
+		expect(bare.notesFolder).toBe('');
+	});
+
 	it('resolves the released date key, and leaves it empty when unbound', () => {
 		// `propKey`, not `clearablePropKey`: the default is '' so the two resolve the same
 		// value for every input, exactly as `versionKey` and the other release-own keys do.
@@ -100,5 +138,72 @@ describe('the release view names its own keys', () => {
 			resolveReleaseSettings(new FakeViewConfig({ releasedDateProperty: 'note.released' }) as never).releasedDateKey,
 		).toBe('released');
 		expect(resolveReleaseSettings(new FakeViewConfig({}) as never).releasedDateKey).toBe('');
+	});
+
+	it('refuses a released date aimed at the target date, and a transition outside the list', () => {
+		// Same key for the plan and the record: a released date written onto the target date
+		// destroys the only evidence a release slipped, which is the one thing nobody can
+		// reconstruct afterwards.
+		//
+		// The `owned` collision map above ALSO reports this pair generically ("the release
+		// target date and released date properties share the key…"), since both are
+		// ordinary roles in it with no exemption — so a bare `.toContain('due')` would pass
+		// on that message alone and never watch-fail if the new check below were deleted.
+		// Asserted against the SPECIFIC sentence instead, so the check is of the new code.
+		const collided = releaseNoteProblems(releaseSettingsWith({ targetDateKey: 'due', releasedDateKey: 'due' }));
+		expect(collided).toContain('the released date and the target date both use due');
+
+		// A hand-edited `.base` can spell a transition the dropdown never offered. Nothing
+		// in the `owned` map can catch this one — `releasedTransition` names no frontmatter
+		// property key at all, so this is the whole check.
+		const stray = releaseNoteProblems(
+			releaseSettingsWith({ releasedValues: ['Released'], releasedTransition: 'Shipped' }),
+		);
+		expect(stray).toContain('Shipped is not one of the statuses that mean released');
+
+		// Case-insensitive, the same match every vocabulary membership check in this view
+		// makes (`sameValue`) — a dropdown pick and a hand-typed value that differ only in
+		// case are the same status.
+		expect(
+			releaseNoteProblems(
+				releaseSettingsWith({ releasedValues: ['Released'], releasedTransition: 'released' }),
+			),
+		).toEqual([]);
+
+		// And the exact pair reports nothing.
+		expect(
+			releaseNoteProblems(releaseSettingsWith({ releasedValues: ['Released'], releasedTransition: 'Released' })),
+		).toEqual([]);
+
+		// **An UNCONFIGURED list is not a mismatch**, and this one matters far beyond the
+		// message: `releaseNoteProblems` is the release view's `writeProblems`, so a
+		// problem reported here blocks every write the view has — the status chip, the
+		// description, the released date — plus generation. A half-configured closing
+		// action must not disable the editing screen around it. Withholding the CLOSE
+		// action is `closeOffer`'s job, and it names `releasedStatusValues` for the reader.
+		expect(
+			releaseNoteProblems(releaseSettingsWith({ releasedValues: [], releasedTransition: 'Released' })),
+		).toEqual([]);
+	});
+
+	it('reports a membership key aimed at any item-side property, except the backlog’s own release key', () => {
+		// `releaseProperty` bound, or the exemption below would compare against '' — the
+		// same value the unbound case already checks, and the test would pass whether or
+		// not the exemption existed.
+		const plan = resolveSettings(new FakeViewConfig({ releaseProperty: 'note.release' }) as never);
+
+		// Derived from `ownedProperties`, not a list of roles somebody thought of: `tags` is
+		// the case a four-role check passes and this one catches.
+		expect(membershipCollision(releaseSettingsWith({ membershipKey: plan.typeKey }), plan)).not.toBeNull();
+		expect(membershipCollision(releaseSettingsWith({ membershipKey: plan.tagsKey }), plan)).not.toBeNull();
+
+		// The ONE exemption, and it is the shipped default rather than an edge case: the
+		// backlog view's own release property and this view's membership key legitimately
+		// name one property. Sharing a suggestion is not sharing a setting.
+		const releaseKey = optionalKeyFor(plan, 'release');
+		expect(membershipCollision(releaseSettingsWith({ membershipKey: releaseKey }), plan)).toBeNull();
+
+		// And an unbound key is not a collision — it is the offer predicate's business.
+		expect(membershipCollision(releaseSettingsWith({ membershipKey: '' }), plan)).toBeNull();
 	});
 });

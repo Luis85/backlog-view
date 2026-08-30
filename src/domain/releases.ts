@@ -382,6 +382,116 @@ export function releaseStatusChoices(settings: ReleaseSettings, index: ReleaseIn
 	return choices;
 }
 
+/**
+ * An option `Mark as released` cannot run without. A UNION rather than a string, so a
+ * clause added to `closeOffer` cannot report an option the screen has no name for: the
+ * label map in `view/release/releaseClose.ts` is keyed by this type, and a fifth member
+ * added here without a label there is a compile error rather than an `undefined` drawn
+ * into a sentence.
+ */
+export type CloseOption =
+	| 'releaseStatusProperty'
+	| 'releasedStatusValues'
+	| 'releasedTransitionValue'
+	| 'releasedDateProperty';
+
+export interface CloseOffer {
+	/** Option keys the reader must bind, in the order the panel lists them. Empty when
+	 *  everything this action needs is configured. */
+	missing: CloseOption[];
+	/** A field this release holds a value for that no reader can parse, or null. The
+	 *  screen names it so the reader repairs the NOTE rather than the configuration. */
+	unreadable: 'status' | 'released' | null;
+	/** True only when the action may be pressed: nothing missing, nothing unreadable,
+	 *  the release not already out, and no date to overwrite. */
+	offered: boolean;
+}
+
+/**
+ * Whether `Mark as released` may be pressed on this release, and what to say when not.
+ *
+ * Answers the MISSING OPTIONS rather than a boolean, because withholding a button is only
+ * half of what extension 3a asks for: the screen has to name the option to bind, and a
+ * predicate that answered yes/no could not.
+ *
+ * Every field it reads carries three answers, and both are asked the same way:
+ * unconfigured is a configuration problem the reader fixes in the options panel, invalid
+ * is a NOTE problem the reader fixes in the note, and only a readable value is an input.
+ * The released date is the sharper of the two — it must read as ABSENT, not merely as
+ * readable, because a date already there is a record this action must never replace.
+ */
+export function closeOffer(release: ReleaseRow, settings: ReleaseSettings): CloseOffer {
+	const missing: CloseOption[] = [];
+	if (settings.statusKey === '') missing.push('releaseStatusProperty');
+	if (settings.releasedValues.length === 0) missing.push('releasedStatusValues');
+	// UNCONFIGURED covers two shapes, not one: never set, and set to a value this vault
+	// does not count as released. The second reads as configured everywhere else and is
+	// the more dangerous of the two, because the release can already CARRY that value —
+	// `releaseClosureWrites` then plans nothing, the empty batch returns before
+	// `applyRelease` reaches the gate, and a confirmed press writes nothing and says
+	// nothing. `releaseNoteProblems` reports the same mismatch and would refuse loudly, but
+	// only a NON-EMPTY batch ever gets there (found by review, Codex, PR #219).
+	//
+	// Named as the option to fix rather than left to the gate: the reader is told which of
+	// the two values disagrees, where the gate could only say the configuration is wrong.
+	const transitionUnusable =
+		settings.releasedTransition === '' ||
+		(settings.releasedValues.length > 0 &&
+			!settings.releasedValues.some((v) => sameValue(v, settings.releasedTransition)));
+	if (transitionUnusable) missing.push('releasedTransitionValue');
+	if (settings.releasedDateKey === '') missing.push('releasedDateProperty');
+
+	// A value no reader can parse is the note's problem, and this screen already refuses
+	// to edit one: `drawStatus` draws a marker and no chip for exactly this. Writing over
+	// what the control beside it will not touch would be the inconsistency, not the fix.
+	const unreadable = release.status.invalid ? 'status' : release.released.invalid ? 'released' : null;
+
+	const alreadyOut =
+		release.status.value !== null && settings.releasedValues.some((v) => sameValue(v, release.status.value ?? ''));
+	// ABSENT, not merely readable. A date already recorded is the half of this that cannot
+	// be reconstructed, and recording one twice is what 1a withholds the action for.
+	const dateFree = release.released.value === null && !release.released.invalid;
+
+	return { missing, unreadable, offered: missing.length === 0 && unreadable === null && !alreadyOut && dateFree };
+}
+
+/**
+ * Whether the two closing fields on the LIVE note still read as the row on screen says
+ * they do — asked before the confirmation opens, and the answer to a hazard the write's
+ * own compare-and-swap cannot see.
+ *
+ * `ReleaseRow` is built when Bases last handed this view its results. Obsidian's metadata
+ * cache advances FIRST, so between that render and the press the note can already hold an
+ * external edit: the screen still says `In progress`, and the raw value captured at the
+ * press is the new one. Handing that raw value to the write as its expectation BLESSES the
+ * change instead of catching it — the compare-and-swap only ever sees what happened after
+ * the dialog opened (found by review, Codex, PR #219).
+ *
+ * Read through the same two readers the row itself was built with, never `===` on the raw
+ * value: a note respelled `2026-9-1` to `2026-09-01`, or `status` retrimmed, is the same
+ * answer to the reader and must not refuse an action.
+ */
+export function closingFieldsMoved(app: App, release: ReleaseRow, settings: ReleaseSettings): boolean {
+	const fm = app.metadataCache.getFileCache(release.item.file)?.frontmatter;
+	const status = settings.statusKey ? figure(readLabel(ownValue(fm, settings.statusKey))) : UNCONFIGURED;
+	const released = settings.releasedDateKey
+		? figure(readSoleDate(ownValue(fm, settings.releasedDateKey)))
+		: UNCONFIGURED;
+	return !sameFigure(status, release.status, sameValue) || !sameFigure(released, release.released, sameCivil);
+}
+
+/** Two readings of one field agree when they are the same KIND of answer and, where that
+ *  is a value, the same value. `invalid` is part of it: a status that became unreadable
+ *  while the row still shows the old one is exactly a move. */
+function sameFigure<T>(live: ReleaseFigure<T>, drawn: ReleaseFigure<T>, same: (a: T, b: T) => boolean): boolean {
+	if (live.unconfigured !== drawn.unconfigured || live.invalid !== drawn.invalid) return false;
+	if (live.value === null || drawn.value === null) return live.value === drawn.value;
+	return same(live.value, drawn.value);
+}
+
+const sameCivil = (a: CivilDate, b: CivilDate): boolean =>
+	a.year === b.year && a.month === b.month && a.day === b.day;
+
 export interface ReleaseIndexOptions {
 	/**
 	 * `BacklogSettings.stateKey` — the PLAN's own state key. Not one of `ReleaseSettings`'

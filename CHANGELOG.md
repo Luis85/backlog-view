@@ -13,6 +13,27 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ### Added
 
+- `Mark as released` on a release's own screen: one gated batch writing the configured
+  released status and today's date to the release note and to nothing else, undoable as one
+  entry. It asks first, listing the members that are not finished — each openable from the
+  dialog without answering it — and a member finished by its own workflow, a `Deliverable`
+  say, counts as finished. It is withheld, and says which option to bind, until the status
+  property, the statuses that mean released, the status to write and the released-date
+  property are all configured; and on a release that is already out, that carries a date
+  already, or whose status or date cannot be read. Nothing is written if the release or its
+  configuration changed while the dialog was open, or if the note had already moved on
+  before it opened.
+- `Generate release notes` beside it: one Markdown file per release, named for it, grouped
+  by type in the order the release's own scope tree draws them. It is written whole and
+  regenerating it is byte-identical, it says so at its top, and it refuses a file at that
+  path that this view did not write or that belongs to another release — including a second
+  release that shares the first's basename. A release with no members still gets a file
+  saying so, because an empty release notes file is a fact and a missing one is ambiguous.
+- Two release view options for the first of those actions — the statuses that mean released,
+  and the single status marking one writes — plus a folder for the generated notes. Binding
+  the released-date property to the target-date property is refused where it is entered: a
+  record that overwrites the plan destroys the only evidence a release slipped.
+
 - A row of a release's scope tree carries a context menu, offering `New <type>` for every
   type that row may hold. The note it creates hangs from the row, ranks after that row's
   existing children, and joins the open release in the same write — so it appears under
@@ -30,6 +51,12 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   under the home folder by default.
 
 ### Changed
+
+- The release header's released-date control is now labelled `Set released date`. It said
+  `Mark as released`, which is what the new closing action beside it is called — and that
+  one writes the status as well as the date, while this one writes only the date and is the
+  only thing that clears it. Two controls on one screen under one label is worse than a
+  field named as a field.
 
 - **Breaking:** an item names its assignee by link to a `Resource` note rather than by
   name. A name still resolves where the vault already has the note — `assignee: Sarah`

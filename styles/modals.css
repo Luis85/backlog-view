@@ -28,3 +28,36 @@
 .pbl-modal-warning:not(:empty) {
 	margin-bottom: var(--size-4-2);
 }
+
+/* The confirm dialog — `src/ui/confirmDialog.ts`. */
+
+.pbl-confirm-message {
+	margin-top: 0;
+	margin-bottom: var(--size-4-3);
+}
+
+/* One row the reader may open before answering. A BUTTON so it is a real tab stop, which
+   is why every one of these declarations is here: a bare `<button>` inherits none of the
+   list appearance it needs, the mistake `test/harness/theme.css` recorded on 2026-08-08. */
+.pbl-confirm-link {
+	display: block;
+	width: 100%;
+	box-shadow: none;
+	background-color: transparent;
+	border-radius: var(--radius-s);
+	color: var(--text-accent);
+	cursor: pointer;
+	font-size: var(--font-ui-small);
+	padding: var(--size-4-1) var(--size-4-2);
+	text-align: start;
+}
+
+.pbl-confirm-link:hover {
+	background-color: var(--background-modifier-hover);
+	color: var(--text-accent-hover);
+}
+
+/* The row before the button container needs the gap the message above it already has. */
+.pbl-confirm-link:last-of-type {
+	margin-bottom: var(--size-4-3);
+}
