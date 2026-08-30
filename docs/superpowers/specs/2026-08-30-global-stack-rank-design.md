@@ -115,11 +115,30 @@ simply wrong about which code runs. Both go through `siblingContext` in
 at the focused level and the keyboard and the menu would silently not — the opposite of
 the one-move rule this repository keeps for card projections.
 
-`siblingContext` returns the focus peer list for a focus root instead. Its
-`outsideFilter` refusal stays: a context row is not movable, which is a different question
-from whether its rank is *read* (it is, and it is in the arithmetic array above).
+`siblingContext` returns the focus peer list instead — but **not for every `focusRoot`,
+and the flag is the wrong test.** `projectionForest` sets `focusRoot` on any promoted root,
+including with `model.focused` false, and `src/domain/model.ts` says so in as many words:
+*"not 'like' a focus root but the same category: a root of the rendered forest that is not
+a root of the model"*, naming `siblingContext` as one of four call sites that refuse it.
+A catalog `Test suite` promoted past a non-member is one of these, and its real siblings
+are not on screen.
 
-**That change needs a guard added at the same time, or it grants what this spec refuses.**
+The test is **membership in the active focus forest** — `model.focused` and the item in
+`model.roots` — not the flag. Every other promoted root keeps today's refusal, unchanged.
+
+Its `outsideFilter` refusal stays too: a context row is not movable, which is a different
+question from whether its rank is *read* (it is, and it is in the arithmetic array above).
+
+**The drag's no-op branch moves to the peers too, or the three inputs disagree.**
+`dropTargetFor` returns `null` when a drop changes nothing on screen, and it asks that
+question of the *real* sibling list. A focus rank sets `target.parent` to the dragged
+item's own parent, so that branch always runs — and when both rows are only children, both
+indices are zero and the drag is rejected as a no-op while the keyboard and the menu move
+the row. Its own comment already states the right rule (*"a drop that moves the row past
+nothing anyone can see"*), so this is applying that rule to the list the user is actually
+looking at, which under focus is the peer list.
+
+**A guard is also needed at the same time, or the change grants what this spec refuses.**
 `indent` takes its new parent from `visibleNeighbor`, which is built on `siblingContext` —
 so a focus root that starts returning a peer list also starts offering Indent across the
 synthetic row. `indent` and `outdent` therefore get their own `focusRoot` refusal rather
@@ -175,6 +194,13 @@ Three cases remain that are not midpoints, and the previous revision counted two
   `endOfSiblingsOrder` deletes today's `[] → ORDER_SPACING` with it. Left unstated, the
   first creation has no rank at all and every creation after it meets an unranked
   neighbour — refusal 2 below, on a vault whose only fault is being new.
+
+An **empty peer group in a non-empty vault** is not a fourth case, and is the commonest
+placement of all — the first child of a parent, a drop inside a leaf. It has no peer to
+anchor on, which is why the anchor rule is stated over the *destination* rather than over
+the peers: **the anchor is the last peer, or the destination row itself when there is
+none.** The first child of `P` ranks between `P` and whatever follows `P` in the global
+array, which is where it renders. No peer group is consulted to get there.
 
 The first two are free by construction, because there is nothing beyond them.
 
@@ -300,8 +326,15 @@ rank sort, each running once. A third would still fail it. The Cost section of
   the empty population, which is the first note in a new vault and must rank rather than
   refuse.
 - New: one move, three inputs, at the focused level. The drag, Alt+arrow and the menu land
-  the same rank; the check drives all three, because `siblingContext` refusing focus roots
-  is exactly the shape of defect where one input works and two do nothing.
+  the same rank; the check drives all three, because this design has now produced that
+  defect twice in opposite directions — `siblingContext` refusing focus roots (two inputs
+  dead), and the no-op branch reading real siblings (the drag dead, on a fixture of two
+  only-children).
+- New: a promoted root that is **not** an active focus row — a catalog member, or a plan
+  promotion with focus off — still refuses to rank. The flag they share is why this is
+  checked rather than assumed.
+- New: an empty peer group in a non-empty vault ranks off its destination. The first child
+  of a parent is the commonest placement there is, and it has no peer.
 - New: Indent and Outdent stay refused across the synthetic focus row *after*
   `siblingContext` starts answering for it. Written from the rule, since the guard that
   used to supply this answer is the one being removed.
