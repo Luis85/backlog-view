@@ -4,6 +4,12 @@
 // root files, the workflow READMEs, and the three skills this repository wrote. Two
 // exclusions below carry the scope decision, and ADR 0032 carries why.
 //
+// **The rules in this file are the CONTRIBUTOR's set, and they stop at `docs/`.** The
+// backlog is a vault somebody writes notes in from Obsidian and commits to `main`, where
+// CI runs and the release waits on it, so `docs/.markdownlint.jsonc` narrows this set to
+// the four rules that catch a note losing content rather than a note being typed. That
+// file states which and why; nothing below is a rule the backlog owner has to know.
+//
 // What it gates is Markdown that RENDERS WRONG — a list glued to the paragraph above it,
 // a fence with no blank line around it, a table whose row count disagrees with its header,
 // a section heading written twice under one parent. What it does not gate is house style:

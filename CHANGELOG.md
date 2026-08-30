@@ -13,6 +13,18 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ### Added
 
+- **`npm run check` gained a sixth step, `lint:md`, so the Markdown is gated the way the
+  code is.** `docs-check.mjs` reads what the register *means* — hierarchy, orders,
+  wikilinks, source paths — and had no opinion about the Markdown itself, which is how a
+  three-column table in a use case came to carry a row of five cells: GFM splits a row on
+  the pipe before it parses anything inline, so `` `homeFolder || 'Home folder'` `` was two
+  extra cells and every renderer dropped the last two. It is also how `[Unreleased]` came
+  to hold three separate `Added` sections. What the new step reads is what a person
+  maintains, and what it refuses to have an opinion about — a wrap width, a bold lead-in —
+  is in ADR 0032 beside the three rules that are off because they read a line instead of
+  the parsed document, which is [ADR 0021](docs/adrs/0021-parse-the-register-with-mdast.md)'s
+  finding one layer up.
+
 - A `pbl-id` property on every note the plugin creates — one integer, taken from the
   highest the vault already holds, written in the same single write that makes the note. It
   is a handle for naming an item outside Obsidian, where a title is going to change and a

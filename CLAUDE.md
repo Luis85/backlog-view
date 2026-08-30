@@ -259,9 +259,11 @@ depend on the effectful one.
 handover, the version bump, and the register gate with its Markdown layer. Three files stay
 at the repository root because a TOOL finds them there rather than a script calling them:
 `eslint.config.mjs` (which `eslint .` discovers), `vitest.config.mts`, and
-`.markdownlint-cli2.jsonc` — the Markdown gate's scope and rule set, which ADR 0032
-explains and which is the one of the three whose exclusions are a decision rather than a
-default. Every script
+`.markdownlint-cli2.jsonc` — the Markdown gate's scope and the CONTRIBUTOR's rule set,
+which ADR 0032 explains and which is the one of the three whose exclusions are a decision
+rather than a default. That set stops at `docs/`: the backlog is a vault its owner writes
+notes in and pushes to `main`, so `docs/.markdownlint.jsonc` holds those notes to the four
+rules where a note loses content and to no rule about how it is typed. Every script
 resolves its paths from the WORKING DIRECTORY, not from its own location — npm scripts and
 vitest both run from the root — so `scripts/styles-assemble.mjs` reading `styles/` is
 correct and not a bug waiting to happen. That is stated in the one file where the

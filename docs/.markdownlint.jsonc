@@ -1,0 +1,44 @@
+// The backlog's own rule set, and it is deliberately four rules wide.
+//
+// `docs/` is a vault. The backlog owner opens it in Obsidian, writes notes, and commits
+// them to `main` — and `.github/workflows/ci.yml` runs on a push to `main`, while
+// `release.yml` will not publish until that run's `verify` check is green. So a Markdown
+// rule that fires on ordinary typing does not "keep the register tidy": it turns main red
+// for somebody who was writing a note, and blocks the next release until they learn a rule
+// nobody told them about. The root `.markdownlint-cli2.jsonc` keeps its full set for the
+// files a CONTRIBUTOR maintains — the root documents, `.github/`, and this repository's own
+// skills. This file is what the OWNER writes under, and it is narrower on purpose.
+//
+// What survives is the class where the note means something other than what it says, or
+// loses content outright. Everything else — a blank line before a list, a tab-indented
+// sub-list, a pasted bare URL, a trailing space, a fence with no language — is how Obsidian
+// writes Markdown and renders correctly in both Obsidian and GitHub. Those are a
+// convention here, not a gate. The one-time normalisation that ADR 0032 records is kept;
+// what is given up is enforcing it on notes written from now on, which is the price of the
+// owner's own workflow and is cheaper than the workflow.
+//
+// **Nothing here relaxes `docs-check.mjs`.** The register's own rules — hierarchy, sibling
+// orders, wikilinks that resolve, source paths that exist, the use-case shape, ADR
+// frontmatter — are gated exactly as before, and they are the rules that are actually about
+// this backlog. This file governs Markdown syntax alone.
+{
+	"default": false,
+
+	// A row with more cells than the header silently DROPS the extra ones, in Obsidian and
+	// on GitHub alike — GFM splits a row on `|` before it parses anything inline, so a
+	// code span does not protect a pipe inside it. This is the rule that earned the gate:
+	// `docs/requirements/View options and config warnings.md` had been showing a
+	// three-column row with two cells missing since it was written. Write `\|` for a
+	// literal pipe.
+	"MD056": true,
+	// The same loss from the other direction — a row whose leading or trailing pipe is
+	// missing parses with a different cell count than its neighbours.
+	"MD055": true,
+	// `(text)[url]` is a link written backwards. It renders as literal text, so the
+	// destination is on screen and unclickable, and nothing else reports it:
+	// `docs-check.mjs` resolves the links it can SEE, and this is not one.
+	"MD011": true,
+	// A link with no destination at all — `[like this]()` — which reads as a link and goes
+	// nowhere.
+	"MD042": true
+}

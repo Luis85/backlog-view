@@ -396,7 +396,7 @@ the block only when a handoff was saved — omit it otherwise:
   written — the ADR and the `Test suite` are context to write against, not work
 - execute with `superpowers:subagent-driven-development` against
   `docs/superpowers/plans/<file>.md`, whose every task points at one of those notes
-- for a task that writes code: red, green, `npm run check`, then commit — all five steps pass
+- for a task that writes code: red, green, `npm run check`, then commit — every step passes
   before the commit, never after. For a prose task — a decision-or-limitation `Issue`, a
   `Deliverable` — write, `npm run check`, commit: same gate, no red step, because there is no
   behaviour to make fail first
