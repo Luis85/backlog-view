@@ -284,12 +284,20 @@ this changed no answer it should not have."
 ### Task 3: ✨ binds the three non-property options
 
 **Files:**
-- Modify: `src/view/release/init.ts` (add `RELEASE_SUGGESTED_VALUES`; extend `runReleaseInit`)
+- Modify: `src/view/release/init.ts` (extend `runReleaseInit` — and nothing else; the
+  candidate list it sweeps was declared in Task 2)
 - Test: `test/view/release/init.test.ts`
 
 **Interfaces:**
-- Consumes: `DEFAULT_RELEASED_VALUES` (Task 1); `config.get(option) !== undefined` as the "touched" test, the rule `adoptCandidates` documents.
-- Produces: `export const RELEASE_SUGGESTED_VALUES: ValueCandidate[]` where `interface ValueCandidate { option: string; value: (config: BasesViewConfig) => string }` — read by Task 2's `boundKeys` for its option names, and by `runReleaseInit` to bind.
+- Consumes: `DEFAULT_RELEASED_VALUES` (Task 1); `RELEASE_SUGGESTED_VALUES` and its
+  `ValueCandidate` type, both **declared in Task 2** and only READ here; `config.get(option)
+  !== undefined` as the "touched" test, the rule `adoptCandidates` documents.
+- Produces: nothing exported. The sweep inside `runReleaseInit`, and that alone.
+- **This contract said "Produces `RELEASE_SUGGESTED_VALUES`" until 2026-08-30**, after the
+  step below had already been corrected not to declare it — so a reader following the summary
+  rather than the step still duplicated the identifier and broke the checkpoint (found by
+  review, Codex, PR #221). A task's own file list and interface are part of its instructions,
+  not a preamble to them.
 
 **Why a `value` function and not a string.** `releasedTransitionValue` must be one of `releasedStatusValues` or `configProblems` refuses it (`settings.transitionNotReleased`). Binding both to the literal `Released` independently is two statements that must agree; reading the list at bind time makes the invariant hold by construction, including where the reader declared their own vocabulary and left the transition untouched.
 
@@ -592,11 +600,23 @@ git commit -m "Draw the released date only where Mark as released cannot cover i
 - Modify: `src/view/release/renderScope.ts` (`renderScope` loses the call; `drawHeader` gains the footline)
 - Modify: `src/view/release/releaseClose.ts:41` (the area's classes)
 - Modify: `styles/releaseScope.css` (`.pbl-rel-footline`, the scope area's layout)
+- Modify: `styles/release.css` (the index head keeps what the rule below stops giving it)
 - Test: `test/view/release/releaseClose.test.ts`
 
 **Interfaces:**
 - Consumes: `drawReleaseActions(view, parentEl, release, scope, planSettings)` — signature unchanged; only its `parentEl` argument changes at the call site.
 - Produces: `.pbl-rel-footline` inside `.pbl-rel-header`, containing `.pbl-rel-summary` then `.pbl-rel-actions.pbl-rel-scope-actions`.
+
+**Two screens share `.pbl-rel-actions`, and this task stops one of them borrowing from the
+other.** `releaseScope.css`'s bare `.pbl-rel-actions` rule imports AFTER `release.css`'s, so
+at equal specificity it was styling the release INDEX head too — supplying its `flex-wrap`,
+`align-items`, the larger `gap` and the 12px below it. Making that rule a compound selector
+takes all four away from a screen this task does not otherwise touch: the index ✨ stretches
+to the CTA's height and the space above the first band collapses to the 4px of its own
+padding. So `release.css` must DECLARE what it was borrowing, in this same commit, and the
+compound rule must cancel the two that are the index's own chrome. Missed when this shipped
+and fixed after the fact (found by review, Codex, PR #221); stated here so following the plan
+does not reproduce it.
 
 **Ordering note.** `drawSummary` currently appends to `headerEl`. It must now append to the footline, so `drawHeader` builds the footline and passes it down.
 
@@ -681,7 +701,12 @@ In `src/view/release/releaseClose.ts`, change line 41:
 	const areaEl = parentEl.createDiv({ cls: 'pbl-rel-actions pbl-rel-scope-actions' });
 ```
 
-In `styles/releaseScope.css`, replace the `.pbl-rel-actions` rule with:
+In `styles/release.css`, give the index head the four declarations it has been borrowing —
+`flex-wrap: wrap`, `align-items: center`, `gap: var(--size-4-2)` (up from `--size-4-1`, which
+was declared and never won) and `margin-bottom: var(--size-4-3)` — and say in its comment that
+they were in effect long before they were declared.
+
+Then in `styles/releaseScope.css`, replace the `.pbl-rel-actions` rule with:
 
 ```css
 /* The header's last line: the summary keeps the left, the actions take the right.
@@ -706,7 +731,8 @@ In `styles/releaseScope.css`, replace the `.pbl-rel-actions` rule with:
    class too. `.pbl-rel-scope-actions` alone would also be (0,1,0) and the winner would be
    whichever partial `index.css` imports last — the tie this repository has already shipped
    as a defect twice. At (0,2,0) it wins on specificity and neither import position
-   matters. */
+   matters. The two `0`s CANCEL the INDEX head's own chrome off the bare rule
+   (`release.css` states it there); its `gap` and `align-items` are wanted. */
 .pbl-rel-actions.pbl-rel-scope-actions {
 	display: flex;
 	flex: 0 1 auto;
@@ -715,6 +741,7 @@ In `styles/releaseScope.css`, replace the `.pbl-rel-actions` rule with:
 	justify-content: flex-end;
 	gap: var(--size-4-2);
 	margin-inline-start: auto;
+	margin-bottom: 0;
 	padding: 0;
 }
 ```
@@ -734,7 +761,7 @@ Expected: FAIL — several tests, including `still draws them on a release with 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add src/view/release/renderScope.ts src/view/release/releaseClose.ts styles/releaseScope.css test/view/release/releaseClose.test.ts
+git add src/view/release/renderScope.ts src/view/release/releaseClose.ts styles/releaseScope.css styles/release.css test/view/release/releaseClose.test.ts
 git commit -m "Fold the release actions into the header
 
 Three control bands become two. The division is the codebase's own,
