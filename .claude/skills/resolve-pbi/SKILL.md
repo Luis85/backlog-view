@@ -100,10 +100,16 @@ test file, which assertion, which threshold.
 | Risks | Is there one worth naming? |
 
 **Every answer lands in the note, and four of the rows do not say where.** `Evidence`,
-`Approach`, `Acceptance criteria` and `Risks` name their own section. The other four do not
-have one: the files, the failing test, the coverage move and what would refuse the work all
-belong in the `Approach`, as the steps that carry them out. Put them there rather than
-inventing a heading — a shape the register does not document is `decompose-pbi`'s own red
+`Approach`, `Acceptance criteria` and `Risks` name a section of the `Task` shape. The other
+four name none: the files, the failing test, the coverage move and what would refuse the
+work all belong with the steps that carry them out — the `Approach` in a `Task`.
+
+**The rows are named for a `Task`, and the subagent owns two other shapes.** A `Bug` is
+*What happened · Fix · Lesson*; a decision-or-limitation `Issue` has its own headings again.
+Neither has an `Approach`, so the answers go to whichever of its sections says how the work
+will be done, and `docs/README.md` is where that shape is written. Ask the row's question of
+any child; write the answer into a section the child's own type already has. Inventing a
+heading to hold it is a shape the register does not document — `decompose-pbi`'s own red
 flag, one skill upstream.
 
 The failing-test row is the specific assertion, never "add tests". Where the child's whole
