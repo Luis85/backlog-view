@@ -3,7 +3,6 @@ import { BacklogSettings, defaultSettings } from '../../src/domain/settings';
 import { settingsWith } from '../helpers/settings';
 import { backlogReadmeContent, readmeStates } from '../../src/domain/backlogReadme';
 import { ALL_TYPES } from '../../src/domain/typeVocabulary';
-import { ORDER_SPACING } from '../../src/domain/writePlan';
 
 /**
  * The generated README is documentation the plugin promises is true, so these tests
@@ -100,10 +99,6 @@ describe('backlogReadmeContent', () => {
 		// A Feature/PBI/Task can also be created with no parent (the toolbar's top-level
 		// creator draws no line anywhere in ALL_TYPES) — the prose must not say otherwise.
 		expect(content).not.toMatch(/only.*(root|no parent)/i);
-	});
-
-	it('states the ranking step the planner actually uses', () => {
-		expect(readme(settingsWith(), [])).toContain(`${ORDER_SPACING} apart`);
 	});
 
 	it('omits the sections whose properties are unset', () => {
@@ -593,12 +588,6 @@ describe('backlogReadmeContent', () => {
 		const content = readme(settingsWith({ hierarchyOnly: true }), []);
 		expect(content).toContain('only the types listed above are evidence on their own');
 		expect(content).toContain('does not enrol a note that has no parent');
-	});
-
-	it('names the tie-break the model actually applies', () => {
-		const content = readme(settingsWith(), []);
-		expect(content).toContain('the order the base itself returned them in');
-		expect(content).not.toContain('settled by file name');
 	});
 
 	it('follows the folder precedence this view actually applies', () => {

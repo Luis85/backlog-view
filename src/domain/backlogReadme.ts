@@ -8,6 +8,7 @@ import { andList, cell, code, list, yamlScalar } from './readmeText';
 import { hasHorizonAxis } from './roadmap';
 import { planningSection } from './readmePlanning';
 import { ORDER_SPACING } from './writePlan';
+import { t } from '../i18n/t';
 
 /**
  * The README this plugin writes into a backlog folder: what the notes are, which
@@ -192,7 +193,7 @@ function fieldRows(settings: BacklogSettings): string[] {
 		: 'Every item except a root';
 	const rows = [
 		`| ${cell(settings.parentKey)} | ${parentOn} | A link to the parent note: ${code('"[[Note name]]"')}. Quote it, or YAML reads the brackets as a list. Present but empty means the top level |`,
-		`| ${cell(settings.orderKey)} | Anything you want ranked | A number. The rank among the notes sharing a parent — see below. Without one an item sorts after the ranked ones |`,
+		`| ${cell(settings.orderKey)} | Anything you want ranked | A number. One rank over every note this view returns, not a rank within a parent — see below. Without one an item sorts after the ranked ones |`,
 		`| ${cell(settings.typeKey)} | Anything you want typed | One of the type names above, or one of your own. Without one an item takes the level its position implies |`,
 	];
 	// One property or two is decided by the resolved KEY, never by whether the Deliverable
@@ -269,16 +270,26 @@ function rankingSection(settings: BacklogSettings): string[] {
 	return [
 		'## Ranking',
 		'',
-		`${code(settings.orderKey)} ranks an item among the notes that share its parent — lowest ` +
-			`first. Nothing is global: the same number under two different parents is two ` +
-			`unrelated ranks. The view writes them ${ORDER_SPACING} apart, leaving room to insert ` +
-			'without renumbering, and renumbers a group only when a move needs it.',
+		`${code(settings.orderKey)} is **one** rank over every note this view returns — lowest ` +
+			`first, and not a number scoped to one parent. Two notes holding the same number are ` +
+			`two notes claiming one place, wherever in the tree they sit. The view writes ranks ` +
+			`${ORDER_SPACING} apart, and a move renumbers only the note that moved: it takes a free ` +
+			'number beside its new neighbours, which keep the ones they had. No group is ever ' +
+			'renumbered.',
 		'',
-		'Two siblings may end up sharing a number, and an item may carry none at all. Nothing ' +
-			'breaks: the tie is settled by the order the base itself returned them in — whatever ' +
-			'sort is configured in the Bases toolbar, file name by default — and items without a ' +
-			'number sort last. That means the tie-break is a view setting rather than a property ' +
-			'of these notes, so give siblings distinct numbers when writing by hand.',
+		'An item may carry no number at all, and then it sorts after the ranked ones. Where two ' +
+			'numbers are equal the tie is settled by the order the base itself returned them in — ' +
+			'whatever sort is configured in the Bases toolbar, file name by default — so a tie is ' +
+			'decided by a view setting rather than by these notes. It also leaves a move nowhere ' +
+			'to go, because no number fits between two equal ones, and the view will not make room ' +
+			'by renumbering: where it can find no free number it refuses the move and names the ' +
+			'remedy. **Write distinct numbers across the whole backlog**, not merely among ' +
+			'siblings.',
+		'',
+		`Two commands in the command palette rewrite every rank at once. **${t('command.seedRanks')}** ` +
+			'numbers the notes in the order the tree draws them, which is what a backlog whose ' +
+			`numbers only ever ranked siblings needs once. **${t('command.respaceRanks')}** keeps the ` +
+			'ranking already in place and puts the room back between each pair.',
 	];
 }
 
@@ -391,9 +402,9 @@ function exampleSection(settings: BacklogSettings, states: StateEntry[]): string
 		'## A note, written by hand',
 		'',
 		`A ${code(child)} under a ${code(feature)} called *Checkout redesign*, ranked ` +
-			`${ORDER_SPACING * 2} — after every sibling ranked below that and before every sibling ` +
-			'above it, which is all a number here ever means. Nothing else is needed: the view ' +
-			'fills in what it writes itself.',
+			`${ORDER_SPACING * 2} — after every note ranked below that and before every note ranked ` +
+			'above it, anywhere in this backlog, which is all a number here ever means. Nothing ' +
+			'else is needed: the view fills in what it writes itself.',
 		'',
 		'```markdown',
 		...lines,
