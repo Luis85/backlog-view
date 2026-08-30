@@ -41,12 +41,15 @@ export function inRankOrder(rows: BacklogItem[], ranked: BacklogItem[]): Backlog
 
 /**
  * Whether these rows' ranks answer the question a global order asks — every writable one
- * present, and no two the same. **This is the plugin's single test for "is this vault
- * migrated", and it is deliberately one function rather than two agreeing ones.** The
- * read side asks it to decide whether a focused list may be sorted by rank at all; the
- * write side (`dropPlacement`) asks the SAME question to decide whether its sibling-scoped
- * fallback is allowed to answer. Two copies would be two rules that can drift, and a drift
- * between exactly these two shipped a fallback writing a rank another row already held.
+ * present, and no two the same. **A question about the WHOLE list, and only the read side
+ * may ask it.** Sorting is all-or-nothing: one row without a rank leaves the list with no
+ * defined order, so the whole list falls back to tree order and that is right.
+ *
+ * The write side must not reuse it, and tried twice. Whether a PLACEMENT may fall back to
+ * sibling-scoped arithmetic is a fact about the two rows it landed between, not about the
+ * vault: one stray unranked note, or one legacy tie in an unrelated corner, makes this
+ * false for a subtree that is perfectly seeded, and the fallback then writes a rank
+ * another row holds. `dropPlacement` reads the tie at the drop site instead.
  *
  * Distinctness is the test because it is exactly what makes a global rank a global ORDER.
  * Ties (and absent ranks) mean the number is not yet answering the question. Self-healing:
@@ -58,7 +61,7 @@ export function inRankOrder(rows: BacklogItem[], ranked: BacklogItem[]): Backlog
  * would keep this view in tree order forever, even once every writable note has a distinct
  * rank.
  */
-export function distinctlyRanked(rows: BacklogItem[]): boolean {
+function distinctlyRanked(rows: BacklogItem[]): boolean {
 	const orders = rows.filter((item) => !item.outsideFilter).map((item) => item.order);
 	return !orders.some((o) => o === null) && new Set(orders).size === orders.length;
 }

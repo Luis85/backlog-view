@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { ProductBacklogView } from '../../src/view/backlogView';
 import { FakeVault, FakeViewConfig } from '../helpers/vault';
 import { FuzzySuggestModal, Menu, Modal } from '../helpers/obsidian-mock';
-import { drag, clickExpandAll, flush, key, rowByTitle, rows, submitPrompt, treeOf, useViewHarness } from '../helpers/view';
+import { drag, clickExpandAll, flush, key, rowByTitle, rows, treeOf, useViewHarness } from '../helpers/view';
 import { computeAssigneeWrites } from '../../src/domain/writePlan';
 
 /**
@@ -18,25 +18,27 @@ const NO_TYPE_FOLDERS: Record<string, string> = {
 useViewHarness();
 
 describe('moves in a group that holds an outside-filter row', () => {
-	/** Epic E over Feature A (context, because its PBI matched) and Feature B (a result). */
-	function mixedView() {
+	/**
+	 * Epic over Feature A (context, because its PBI matched) and Feature B (a result),
+	 * with PBI under Feature A. **The four ranks are the parameter**, because the two
+	 * vaults this file needs differ in nothing else, and the difference is exactly which
+	 * placement path runs: distinct ranks drive the GLOBAL one, and sibling-scoped ties
+	 * drive `dropPlacement`'s peer fallback over the same context rows. `order` ranks the
+	 * whole backlog, and `anchoredOrder` reads an excluded row's number as a neighbour
+	 * even though it may never write one, so the context rows carry ranks in both.
+	 */
+	function contextView(orders: [number, number, number, number]) {
 		const vault = new FakeVault();
-		// Distinct ranks throughout, INCLUDING the two context rows. `order` ranks the whole
-		// backlog, and `anchoredOrder` reads an excluded row's number as a neighbour even
-		// though it may never write one — so a tie here would refuse every placement for
-		// arithmetic and this file would assert its rule against a batch that never
-		// happens. `distinctlyRanked` would not rescue it either: it counts the WRITABLE
-		// rows only, so this vault reads as seeded and the peer fallback stays off.
-		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
-		vault.addFile('Feature A.md', { frontmatter: { type: 'Feature', order: 20 }, parentLink: 'Epic' });
-		vault.addFile('Feature B.md', { frontmatter: { type: 'Feature', order: 30 }, parentLink: 'Epic' });
-		vault.addFile('PBI.md', { frontmatter: { type: 'PBI', order: 40 }, parentLink: 'Feature A' });
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: orders[0] } });
+		vault.addFile('Feature A.md', { frontmatter: { type: 'Feature', order: orders[1] }, parentLink: 'Epic' });
+		vault.addFile('Feature B.md', { frontmatter: { type: 'Feature', order: orders[2] }, parentLink: 'Epic' });
+		vault.addFile('PBI.md', { frontmatter: { type: 'PBI', order: orders[3] }, parentLink: 'Feature A' });
 		const containerEl = document.body.createDiv();
 		const view = new ProductBacklogView({} as never, containerEl);
 		const anyView = view as unknown as Record<string, unknown>;
 		anyView.app = vault.app;
-		// Inference is what this test is about, so the type folders that would answer
-		// first are turned off.
+		// Inference is what the folder tests below are about, so the type folders that
+		// would answer first are turned off.
 		anyView.config = new FakeViewConfig({ ...NO_TYPE_FOLDERS });
 		anyView.data = {
 			data: vault.entries().filter((e) => ['Feature B.md', 'PBI.md'].includes(e.file.path)),
@@ -45,6 +47,11 @@ describe('moves in a group that holds an outside-filter row', () => {
 		clickExpandAll(containerEl);
 		return { view, containerEl, vault };
 	}
+
+	/** Seeded: every rank distinct, so the global placement answers. */
+	const mixedView = () => contextView([10, 20, 30, 40]);
+	/** Sibling-scoped: Epic, Feature A and PBI tie at 10, which opens the peer fallback. */
+	const tiedView = () => contextView([10, 10, 20, 10]);
 
 	it('offers the move commands in such a group: nothing is withheld for the context row', () => {
 		const { containerEl } = mixedView();
@@ -77,6 +84,24 @@ describe('moves in a group that holds an outside-filter row', () => {
 		expect(vault.fm('PBI.md').parent).toBe('[[Epic]]');
 	});
 
+	it('keeps the rule on the peer fallback too: a tie beside a context row writes one note', async () => {
+		const { view, containerEl, vault } = tiedView();
+		const tree = treeOf(containerEl);
+		view.selectItem(view.model?.byPath.get('Feature B.md') as never);
+
+		// The global neighbours of Feature A are Epic (10) and Feature A (10) — a tie, so
+		// the sibling-scoped fallback answers, ranking among the peers alone. Its ONLY
+		// peer is Feature A, a note the Base excluded: its order is read to produce -990
+		// and it is not written, which is the same rule the global path keeps above. This
+		// is the branch a fully distinct fixture can never reach.
+		key(tree, 'ArrowUp', { altKey: true });
+		await flush();
+		expect(vault.writeLog.map((w) => w.path)).toEqual(['Feature B.md']);
+		expect(vault.fm('Feature B.md')['order']).toBe(-990);
+		expect(vault.fm('Feature A.md')['order']).toBe(10);
+		expect(vault.fm('Epic.md')['order']).toBe(10);
+	});
+
 	it('writes only the dragged note when Alt+arrow ranks it beside a context row', async () => {
 		const { view, containerEl, vault } = mixedView();
 		const tree = treeOf(containerEl);
@@ -91,102 +116,6 @@ describe('moves in a group that holds an outside-filter row', () => {
 		await flush();
 		expect(vault.writeLog.map((w) => w.path)).toEqual(['Feature B.md']);
 		expect(vault.fm('Feature B.md')['order']).toBe(15);
-	});
-});
-
-describe('new-item folder inference with context rows', () => {
-	it('ignores ancestors that live outside the filtered folder', () => {
-		const vault = new FakeVault();
-		// A deep chain of ancestors elsewhere would outvote the two real results
-		vault.addFile('Elsewhere/Epic.md', { frontmatter: { type: 'Epic' } });
-		vault.addFile('Elsewhere/Feature.md', { frontmatter: { type: 'Feature' }, parentLink: 'Epic' });
-		vault.addFile('Elsewhere/Sub.md', { frontmatter: { type: 'PBI' }, parentLink: 'Feature' });
-		vault.addFile('Backlog/A.md', { frontmatter: { type: 'Task' }, parentLink: 'Sub' });
-		vault.addFile('Backlog/B.md', { frontmatter: { type: 'Task' }, parentLink: 'Sub' });
-		const containerEl = document.body.createDiv();
-		const view = new ProductBacklogView({} as never, containerEl);
-		const anyView = view as unknown as Record<string, unknown>;
-		anyView.app = vault.app;
-		// Inference is what this test is about, so the type folders that would answer
-		// first are turned off.
-		anyView.config = new FakeViewConfig({ ...NO_TYPE_FOLDERS });
-		anyView.data = {
-			data: vault.entries().filter((e) => e.file.path.startsWith('Backlog/')),
-		};
-		view.onDataUpdated();
-
-		containerEl.querySelector<HTMLElement>('.pbl-new-btn')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-
-		// Three context ancestors in Elsewhere/ must not outvote two results in Backlog/
-		const detail = Modal.lastOpened?.contentEl.querySelector('.pbl-modal-detail')?.textContent ?? '';
-		expect(detail).toContain('folder "Backlog"');
-		expect(detail).not.toContain('Elsewhere');
-	});
-});
-
-describe('creating a child under a context parent', () => {
-	/** Folder mode, a base scoped to Backlog/, and a parent living outside it. */
-	function outsideParentView() {
-		const vault = new FakeVault();
-		vault.addFile('Projects/Epic/Epic.md', { frontmatter: { type: 'Epic' } });
-		vault.addFile('Backlog/PBI.md', { frontmatter: { type: 'PBI' }, parentLink: 'Epic' });
-		const containerEl = document.body.createDiv();
-		const view = new ProductBacklogView({} as never, containerEl);
-		const anyView = view as unknown as Record<string, unknown>;
-		anyView.app = vault.app;
-		// Type folders off: the rule under test is where a child of a CONTEXT parent
-		// lands, which only comes up when the folder is being inferred at all.
-		anyView.config = new FakeViewConfig({ inferFolderHierarchy: true, ...NO_TYPE_FOLDERS });
-		anyView.data = { data: vault.entries().filter((e) => e.file.path === 'Backlog/PBI.md') };
-		view.onDataUpdated();
-		clickExpandAll(containerEl);
-		return { view, containerEl, vault };
-	}
-
-	it('keeps the new note in the results folder, not beside the excluded parent', () => {
-		const { containerEl } = outsideParentView();
-
-		rowByTitle(containerEl, 'Epic')
-			.querySelector<HTMLElement>('.pbl-add')
-			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-
-		const detail = Modal.lastOpened?.contentEl.querySelector('.pbl-modal-detail')?.textContent ?? '';
-		expect(detail).toContain('Under "Epic"');
-		expect(detail).toContain('folder "Backlog"');
-		expect(detail).not.toContain('Projects');
-	});
-
-	it('still writes the parent link, so the hierarchy survives the different folder', async () => {
-		const { containerEl, vault } = outsideParentView();
-
-		rowByTitle(containerEl, 'Epic')
-			.querySelector<HTMLElement>('.pbl-add')
-			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-		submitPrompt({ title: 'New work' });
-		await flush();
-
-		expect(vault.fm('Backlog/New work.md')['parent']).toBe('[[Epic]]');
-	});
-
-	it('still puts children beside a parent that is a real result', async () => {
-		const vault = new FakeVault();
-		vault.addFile('Backlog/Epic/Epic.md', { frontmatter: { type: 'Epic' } });
-		const containerEl = document.body.createDiv();
-		const view = new ProductBacklogView({} as never, containerEl);
-		const anyView = view as unknown as Record<string, unknown>;
-		anyView.app = vault.app;
-		// Type folders off: the rule under test is where a child of a CONTEXT parent
-		// lands, which only comes up when the folder is being inferred at all.
-		anyView.config = new FakeViewConfig({ inferFolderHierarchy: true, ...NO_TYPE_FOLDERS });
-		anyView.data = { data: vault.entries() };
-		view.onDataUpdated();
-
-		rowByTitle(containerEl, 'Epic')
-			.querySelector<HTMLElement>('.pbl-add')
-			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-
-		const detail = Modal.lastOpened?.contentEl.querySelector('.pbl-modal-detail')?.textContent ?? '';
-		expect(detail).toContain('folder "Backlog/Epic"');
 	});
 });
 

@@ -67,18 +67,27 @@ and each is recorded below as it arrives, rather than the record being written o
   and `dropPlacement` re-asks the same question against the destination's peers alone.
   That is ADR 0008's arithmetic, kept so that an unmigrated vault does not lose ordinary
   reordering before a seeding command exists.
-- **The fallback is gated on the POPULATION, not on the refusal**, and the distinction is
-  load-bearing rather than a detail of the implementation. A refusal is not evidence of a
-  legacy vault: `gapSpent` is the correct answer on a fully seeded one, where the remedy is
-  Respace. Gated on the refusal, the fallback answers from the peer bounds alone — and any
-  non-peer row ranked between those bounds already sits there, so it can write a rank
-  another row holds. Being between the peer bounds is what makes that collision possible,
-  not what prevents it, and the duplicate then fails the very distinctness test that decides
-  whether a focused view may be sorted by rank at all. So the gate is that test:
-  `distinctlyRanked` in `src/domain/rankOrder.ts`, exported and asked by both sides rather
-  than restated on each, because two questions that should be one is exactly how the
-  collision above got written. It is therefore self-limiting: once every writable row has a
-  distinct rank the branch is unreachable and a refusal is reported as a refusal.
+- **The fallback is gated on a TIE between the two neighbours the placement landed
+  between** — a fact about the drop site, not about the vault. Two rows holding the same
+  number is what the sibling-scoped scheme produces and what nothing else does, so
+  `midpoint` reports it as its own refusal (`tied`, beside `gapSpent` and `unranked`) and
+  that refusal alone opens the fallback. A `tied` that reaches a notice takes the backfill
+  as its remedy rather than Respace: respacing a range holding two equal numbers cannot
+  separate them.
+- **Two wider gates were built here first and both were wrong**, which is why the narrow
+  one is worth a record of its own. Gated on *any* refusal, the fallback answers over a
+  `gapSpent` that is correct on a seeded vault, taking a number from the peer bounds alone
+  — where any non-peer row between those bounds already sits, so being between them is what
+  makes the collision possible rather than what prevents it. Gated on *the population being
+  distinctly ranked*, one unrelated row defeats it from either direction: a single freshly
+  created note with no `order` yet, or one legacy tie in another corner of the vault,
+  re-opens the fallback for a subtree that is perfectly seeded. Every whole-population
+  predicate has that shape of hole, so narrowing it was abandoned rather than repaired.
+  `distinctlyRanked` stays in `src/domain/rankOrder.ts` for the READ side only, where the
+  question genuinely is about the whole list: sorting is all-or-nothing, so one missing
+  rank leaves the list with no defined order.
+- Self-limiting: once the rows around a drop hold distinct ranks there is no tie to switch
+  on, and the refusal the fallback used to swallow is reported instead.
 - The fallback is **silent** — nothing tells the user which of the two regimes answered —
   which is a known gap recorded rather than closed.
 

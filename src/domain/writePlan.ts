@@ -1,7 +1,6 @@
 import { TFile } from 'obsidian';
 import { DropTarget } from './dropTargets';
 import { BacklogItem, BacklogModel } from './model';
-import { distinctlyRanked } from './rankOrder';
 import { childLevelIndex, isReleaseType, mayHoldField, PlacementEnd, schemaEnds } from './itemTypes';
 import { statedEnds } from './bars';
 import { readDate, sameValue } from './noteFields';
@@ -649,8 +648,15 @@ export function computeScheduleWrites(
 	return planned ? [{ file: item.file, axis }] : [];
 }
 
-/** Why a placement produced no number. Each names its own remedy at the notice. */
-export type RankRefusal = 'gapSpent' | 'unranked';
+/**
+ * Why a placement produced no number. Each names its own remedy at the notice, and the
+ * three are genuinely different advice: `gapSpent` sends the user to Respace, `unranked`
+ * to the backfill, and `tied` to the backfill too — a tie is the sibling-scoped scheme
+ * showing through, and respacing a range that holds two equal numbers cannot separate
+ * them. `tied` reaches a notice only when the peer fallback ALSO refuses; when it
+ * succeeds, `dropPlacement` answers with a rank and nothing is said.
+ */
+export type RankRefusal = 'gapSpent' | 'tied' | 'unranked';
 export type RankResult = { order: number } | { refusal: RankRefusal };
 
 /**
@@ -690,9 +696,9 @@ export function anchoredOrder(
 	const { prev, next } = pair;
 	if (!prev) {
 		if (!next || next.order === null) return { refusal: 'unranked' };
-		return { order: Math.floor(next.order) - ORDER_SPACING };
+		return edgeRank(next.order, 'before');
 	}
-	if (!next) return prev.order !== null ? { order: Math.floor(prev.order) + ORDER_SPACING } : { refusal: 'unranked' };
+	if (!next) return prev.order !== null ? edgeRank(prev.order, 'after') : { refusal: 'unranked' };
 	if (prev.order === null || next.order === null) return { refusal: 'unranked' };
 	return midpoint(prev.order, next.order);
 }
@@ -714,8 +720,35 @@ export function anchoredOrder(
  * formula. Strictly between both ends is exactly what the caller needs and all it needs.
  */
 function midpoint(prev: number, next: number): RankResult {
+	// **An exact tie is a different refusal from a spent gap**, and the difference is the
+	// only reliable signal that a vault's ranks are still sibling-scoped. Two rows holding
+	// the SAME number is what that scheme produces — every first child carries its
+	// parent's value — and it is visible right here, at the drop site, without asking
+	// anything about the rest of the vault. Every whole-population test of "is this vault
+	// migrated" has the same hole: one stray null or one unrelated tie, anywhere, flips it
+	// for a subtree that is perfectly seeded. A neighbourhood question has no such hole.
+	if (prev === next) return { refusal: 'tied' };
 	const mid = roundOrder(prev + (next - prev) / 2);
 	return mid > prev && mid < next ? { order: mid } : { refusal: 'gapSpent' };
+}
+
+/**
+ * One spacing clear of the population's own first or last row, or `gapSpent` when the
+ * arithmetic cannot get clear of it.
+ *
+ * The check is the same one `midpoint` makes, for the same reason and in the one other
+ * place a rank is computed: above about 1e19 the IEEE-754 unit exceeds `ORDER_SPACING`,
+ * so `Math.floor(order) + 1000` IS `order` and the append writes the anchor's own rank —
+ * a duplicate, which then fails the distinctness test that decides whether a focused view
+ * may be sorted by rank at all. The prepend has the mirror problem at large negative
+ * magnitudes. Both branches call this rather than spelling the expression, so the two
+ * places that produce a rank both refuse an unusable one and a third cannot appear
+ * without the check.
+ */
+function edgeRank(neighbour: number, side: 'before' | 'after'): RankResult {
+	const order = Math.floor(neighbour) + (side === 'after' ? ORDER_SPACING : -ORDER_SPACING);
+	const clear = side === 'after' ? order > neighbour : order < neighbour;
+	return clear ? { order } : { refusal: 'gapSpent' };
 }
 
 /** A context row with nothing to rank from — see `anchoredOrder`'s own comment. */
@@ -780,35 +813,40 @@ export function computeDropWrites(dragged: BacklogItem, target: DropTarget, rank
  * through here instead of calling `orderForTarget` beside it.
  */
 export function dropPlacement(dragged: BacklogItem, target: DropTarget, ranked: BacklogItem[]): RankResult {
-	const population = ranked.filter((item) => item !== dragged);
-	const global = orderForTarget(population, target);
+	const global = orderForTarget(
+		ranked.filter((item) => item !== dragged),
+		target,
+	);
 	// **An unmigrated vault falls back to ranking among the peers alone**, which is
 	// exactly the sibling-scoped arithmetic this change replaces. Measured, not
 	// supposed: with legacy ranks (Epic A 10, A1 10, A2 20) moving A2 before A1 sees
-	// Epic A and A1 as its global neighbours, a gap of zero, and refuses — so every
-	// existing vault would lose ordinary tree reordering, the plugin's core gesture,
-	// with no migration available until the Seed command ships several tasks later.
+	// Epic A and A1 as its global neighbours and refuses — so every existing vault would
+	// lose ordinary tree reordering, the plugin's core gesture, with no migration
+	// available until the Seed command ships several tasks later.
 	//
-	// **Gated on the POPULATION, never on the refusal.** A refusal is not evidence of a
-	// legacy vault: `gapSpent` is the correct, designed answer on a fully seeded one, and
-	// Respace is its remedy. Falling back over it substitutes a number taken from the
-	// peer bounds alone — which is where any non-peer row ranked between those bounds
-	// already sits, so the fallback can write a rank another row holds. Being between the
-	// peer bounds is what makes that collision possible, not what prevents it. The
-	// duplicate then fails `distinctlyRanked`, and the whole focused view drops back to
-	// tree order: the exact failure this design exists to prevent, caused by the guard
-	// meant to protect it. Measured on a seeded fixture, not reasoned about.
+	// **Gated on the TIE, which is a fact about the drop site — never on the refusal, and
+	// never on a question asked of the whole population.** Both of the wider gates were
+	// built here and both were wrong, in ways worth keeping written down:
 	//
-	// `distinctlyRanked` is `inRankOrder`'s own question, imported rather than restated —
-	// one notion of "this vault is migrated" for the read side and the write side, because
-	// two that can disagree is precisely how the bug above happened. Asked of the
-	// population WITHOUT the dragged row: the row being placed has no rank yet in the
-	// arrangement under construction, and its own absent number says nothing about whether
-	// the vault was ever seeded.
+	// - Gated on "the global placement refused", the fallback answers over a `gapSpent`
+	//   that is CORRECT on a seeded vault, substituting a number from the peer bounds
+	//   alone — which is exactly where any non-peer row between those bounds already
+	//   sits. Being between the peer bounds is what makes that collision possible, not
+	//   what prevents it.
+	// - Gated on "the population is not distinctly ranked", one unrelated row defeats it
+	//   from either direction: a single freshly created note with no `order` yet, or one
+	//   legacy tie in some other corner of the vault, re-opens the fallback for a subtree
+	//   that is perfectly seeded. Every whole-population predicate has that shape of hole,
+	//   which is why narrowing it was abandoned rather than repaired.
 	//
-	// Self-healing and self-limiting: once Seed gives every writable row a distinct rank
-	// this branch is unreachable, and the refusal it used to swallow is reported instead.
-	if ('order' in global || distinctlyRanked(population)) return global;
+	// A tie has neither problem. Two neighbours holding the SAME number is what the
+	// sibling-scoped scheme produces and what nothing else does, and it is read at the
+	// two rows the placement actually landed between. A spent gap stays a spent gap and
+	// keeps its own remedy; a missing rank stays `unranked` and keeps the backfill.
+	//
+	// Self-limiting: once every row around the drop holds a distinct rank there is no tie
+	// to switch on, and the refusal this used to swallow is reported instead.
+	if (!('refusal' in global) || global.refusal !== 'tied') return global;
 	return orderForTarget(
 		target.peers.filter((item) => item !== dragged),
 		target,

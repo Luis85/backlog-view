@@ -42,6 +42,21 @@ describe('anchoredOrder', () => {
 		expect(anchoredOrder(ranked(1000), ranked(5000)[0], 'after')).toEqual({ refusal: 'unranked' });
 	});
 
+	it('refuses an append whose spacing cannot clear the row it appends after', () => {
+		// Above about 1e19 the IEEE-754 unit exceeds ORDER_SPACING, so
+		// `Math.floor(prev) + 1000` IS `prev` — the append writes the anchor's own rank.
+		// The identical defect `midpoint` already refuses, in the branch that never went
+		// through it. Reachable only by a hand-edited rank, but the rule has to be uniform.
+		const list = ranked(1e20);
+		expect(anchoredOrder(list, list[0], 'after')).toEqual({ refusal: 'gapSpent' });
+	});
+
+	it('refuses a prepend whose spacing cannot clear the row it prepends before', () => {
+		// The mirror, at large negative magnitude: `Math.floor(next) - 1000` is `next`.
+		const list = ranked(-1e20);
+		expect(anchoredOrder(list, list[0], 'before')).toEqual({ refusal: 'gapSpent' });
+	});
+
 	it('refuses a wide gap whose midpoint still rounds onto its own neighbour', () => {
 		// At 1e12 the IEEE-754 spacing (about 0.00012) is wider than the six-decimal
 		// rounding grid, so a gap of 0.0001 clears any fixed minimum and STILL rounds the
@@ -124,6 +139,59 @@ describe('dropPlacement', () => {
 		expect(y.order).toBe(2000);
 		expect(dropPlacement(c, { parent: null, peers: [a, b], insertIndex: 1 }, list)).toEqual({
 			refusal: 'gapSpent',
+		});
+	});
+
+	it('is not opened by one unranked row: a null is not evidence of a legacy vault', () => {
+		// The case above plus U, a writable row with no rank at all — a note created a
+		// moment ago and not yet backfilled, which is the ORDINARY state of a working
+		// vault rather than an edge case. A gate that asks "are these ranks perfect"
+		// answers no here and lets the fallback write Y's 2000 all over again. The
+		// fallback needs evidence of the sibling-scoped SCHEME, and only a repeated rank
+		// is that. A null means "not backfilled yet", whose own remedy is the `unranked`
+		// refusal telling the user to run the backfill.
+		const list = ranked(1000, 1000.000001, 2000, 3000, 4000, null);
+		const [a, , , b, c, u] = list;
+		expect(u.order).toBeNull();
+		expect(dropPlacement(c, { parent: null, peers: [a, b], insertIndex: 1 }, list)).toEqual({
+			refusal: 'gapSpent',
+		});
+	});
+
+	it('is not opened by a legacy tie somewhere else in the vault', () => {
+		// L1 and L2 hold the same rank — a genuine legacy pair, and nowhere near the drop.
+		// The rows the placement lands between, A and X, are distinct, so the gap really is
+		// spent and the answer is the refusal. Asking "is this vault migrated" of the whole
+		// population answers no here and lets the fallback duplicate Y's 2000 again; asking
+		// the two neighbours does not.
+		const list = ranked(500, 500, 1000, 1000.000001, 2000, 3000, 4000);
+		const [, , a, , , b, c] = list;
+		expect(dropPlacement(c, { parent: null, peers: [a, b], insertIndex: 1 }, list)).toEqual({
+			refusal: 'gapSpent',
+		});
+	});
+
+	it('falls back on a tie at the drop site, which is the sibling-scoped signature', () => {
+		// The positive case, stated on its own rather than only through the vault fixture
+		// in `writePlan.test.ts`: two neighbours holding the SAME number is what a
+		// sibling-scoped vault produces, and it is the one condition that opens the
+		// fallback. Peers [P(10)] alone, so the answer is one spacing below P.
+		const list = ranked(10, 10, 20);
+		const [, p, c] = list;
+		expect(dropPlacement(c, { parent: null, peers: [p], insertIndex: 0 }, list)).toEqual({
+			order: 10 - ORDER_SPACING,
+		});
+	});
+
+	it('refuses a wholly unranked vault as unranked, never with a fallback number', () => {
+		// No rank anywhere, so there is no sibling-scoped scheme to fall back ONTO — and
+		// the refusal is the actionable one: `rank.unranked` sends the user to the
+		// backfill, which is exactly what this vault needs. A fallback here would invent
+		// a number and hide the one piece of advice that works.
+		const list = ranked(null, null, null);
+		const [p, q, r] = list;
+		expect(dropPlacement(r, { parent: null, peers: [p, q], insertIndex: 1 }, list)).toEqual({
+			refusal: 'unranked',
 		});
 	});
 });
