@@ -10,6 +10,14 @@
 
 ## Global Constraints
 
+**Every task that adds a file under `src/` must add its register entry in the SAME commit.**
+`docs-check.mjs` rule 7 fails with `no use case or ADR specifies <path>` the moment an
+unnamed module lands, and `npm run check` — the Definition of Done — includes it. Deferring
+the register to the end makes every intermediate commit red. It cannot land early either,
+because the note must name a path that EXISTS. Same commit as the module, never before and
+never after. Task 10 extends those notes; it does not introduce them.
+
+
 Copied from the spec and from `CLAUDE.md`. Every task's requirements implicitly include this section.
 
 - **Layering:** `main → commands → view → storage → domain`. Each layer may reach anything below it and nothing above. `i18n/` is below every layer. Violations fail `npm run lint`.
@@ -1308,7 +1316,13 @@ Note the fallow gotcha: annotate the local (`const live: LiveBacklogView = view`
 
 Use `t('rank.seedConfirm', { count })` properly through the catalog's parameter typing rather than the `String.replace` sketch above — read `src/i18n/t.ts` for the exact call shape and use it.
 
-- [ ] **Step 4: Register them**
+- [ ] **Step 4: Add the register entry for `src/commands/rank.ts`**
+
+Rule 7 fails this commit otherwise, and `npm run check` is the gate. Add the path to the
+`## Decision` section of the ADR Task 1 started, in this same commit. Verify with
+`npm run docs` before committing, not after.
+
+- [ ] **Step 5: Register them with Obsidian**
 
 In `src/main.ts`, beside the two existing `addCommand` calls:
 
@@ -1394,7 +1408,7 @@ Read `docs/README.md` and the ADR frontmatter of the most recent ADR. Pick the n
 
 - [ ] **Step 2: Write the ADR**
 
-`docs/adrs/<n> Order is a global rank.md` — the decision, the alternative refused (a second `rank` property, the `kanban_order` failure), and the consequence stated plainly: a focus-level rank moves the item among its own siblings too. Its `## Decision` names `src/commands/rank.ts`.
+**Extend** the ADR Task 1 started at `docs/adrs/<n> Order is a global rank.md`. It already names `src/domain/rankOrder.ts`, because rule 7 required that in Task 1's own commit. Fill in the decision, the alternative refused (a second `rank` property, the `kanban_order` failure), and the consequence stated plainly: a focus-level rank moves the item among its own siblings too. Its `## Decision` also names `src/commands/rank.ts`, added by Task 9 for the same reason.
 
 - [ ] **Step 3: Write the PBI**
 
