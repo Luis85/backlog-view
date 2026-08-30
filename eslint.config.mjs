@@ -207,6 +207,31 @@ const VISUAL_DEPTH = {
 };
 
 /**
+ * A `DropTarget.parent` that merely RESTATES `dragged`'s own current parent must set
+ * `parentUnchanged` — the flag `computeParentField` (`writePlan.ts`) needs to tell a
+ * RANK (no relocation intended, so a restated `null` link must never read as an explicit
+ * top-level drop) from a genuine PLACEMENT that happens to equal the current parent
+ * (which must still clear a stale link). This is exactly the shape the bug shipped in:
+ * `parent: dragged.parent` with the flag forgotten silently deletes a note's parent
+ * property on every focused reorder whose link does not resolve.
+ *
+ * Narrow on purpose — it sees only the literal spelling `dragged.parent`, the name this
+ * module's own drag-handling functions use for the item being moved. A producer
+ * elsewhere naming its subject something else (`item`, as `interactions/structure.ts`'s
+ * own keyboard/menu functions do) needs the same RANK-vs-PLACEMENT reasoning applied by
+ * a person: that distinction is about INTENT, not about the value, so `item.parent` is
+ * legitimately unflagged there today (a real placement) and a future keyboard/menu focus
+ * rank restating it would legitimately need the same flag this rule cannot see under that
+ * name. See `src/domain/CLAUDE.md`, beside `DropTarget`'s own entry.
+ */
+const DROP_TARGET_RESTATEMENT = {
+	selector:
+		"ObjectExpression:has(> Property[key.name='parent'][value.object.name='dragged'][value.property.name='parent']):not(:has(> Property[key.name='parentUnchanged']))",
+	message:
+		'A DropTarget whose parent restates dragged.parent must also set parentUnchanged, or an unresolved link (parent: null) reads as an explicit top-level drop and the key is deleted.',
+};
+
+/**
  * `board.ts` states its own guarantee in a comment: "Nothing that PLANS a write
  * imports this" — a WIP limit is display math over a count, never a refusal, which is
  * the cheapest guarantee a limit can make (`docs/requirements/WIP limits.md`). This
@@ -751,7 +776,7 @@ export default defineConfig([
 		// storage/, ui/, commands/, main.ts.
 		files: ['src/**/*.ts'],
 		ignores: [STORAGE, VIEW, ...RANKING_DOMAIN, ...SWEPT],
-		rules: syntaxRules([...WRITE_BOUNDARY, ...SVG_CLASS_TOKENS, MENU_ANCHOR, OVERBY, TREE_SCAN]),
+		rules: syntaxRules([...WRITE_BOUNDARY, ...SVG_CLASS_TOKENS, MENU_ANCHOR, OVERBY, TREE_SCAN, DROP_TARGET_RESTATEMENT]),
 	},
 	{
 		// ui/ and commands/, carved out of the general region for the two text bans alone:
