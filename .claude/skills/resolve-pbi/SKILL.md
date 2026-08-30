@@ -54,8 +54,10 @@ Then find every output the decomposition already produced: every note naming the
 `Test suite` and an ADR carry no `parent` — the first search cannot see them, and a rerun
 that skips the second treats them as never written.
 
-Report back what was read, name every output found, and ask whether this is still what is
-being built. A child whose work already landed is named as such rather than resolved again.
+Report back its actor, its trigger, its preconditions, its guarantee, its main flow, its
+extensions, its acceptance criteria and its `## Where it lives`, name every output found,
+and ask whether this is still what is being built. A child whose work already landed is
+named as such rather than resolved again.
 
 **Exit when** the user confirms the decomposition as read, and every output found is named
 as still owed or as already done.
