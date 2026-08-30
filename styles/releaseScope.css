@@ -318,16 +318,36 @@ button.pbl-rel-toggle-on {
 	color: rgb(var(--color-green-rgb));
 }
 
-/* The closing actions, drawn between the header and whatever the scope turns out to be
-   (`src/view/release/releaseClose.ts`). A row rather than a block because a second button
-   joins it with `Generate release notes`, and `flex-wrap` because two full labels do not
-   fit a narrow pane side by side. */
-.pbl-rel-actions {
+/* The header's last line: the summary keeps the left, the actions take the right.
+
+   The summary's basis is wide enough that the ACTIONS wrap first — at a narrow pane the
+   buttons drop to their own line and the strip keeps `33%` beside `1 of 3 items done`
+   rather than orphaning the sentence under a squeezed bar. Measured at 560px in the
+   browser harness. */
+.pbl-rel-footline {
 	display: flex;
 	flex-wrap: wrap;
-	gap: var(--size-4-2);
 	align-items: center;
-	margin-bottom: var(--size-4-3);
+	gap: var(--size-4-3);
+}
+
+.pbl-rel-footline .pbl-rel-summary {
+	flex: 1 1 22em;
+}
+
+/* A COMPOUND selector, and that is load-bearing: `styles/release.css` styles the bare
+   `.pbl-rel-actions` for the index's own head at (0,1,0), and this element carries that
+   class too. `.pbl-rel-scope-actions` alone would also be (0,1,0) and the winner would be
+   whichever partial `index.css` imports last — the tie this repository has already shipped
+   as a defect twice. At (0,2,0) it wins on specificity and neither import position
+   matters. */
+.pbl-rel-actions.pbl-rel-scope-actions {
+	flex: 0 0 auto;
+	flex-wrap: wrap;
+	justify-content: flex-end;
+	gap: var(--size-4-2);
+	margin-inline-start: auto;
+	padding: 0;
 }
 
 /* Why an action is not offered: an option to bind, or a field to repair. Muted and small,

@@ -59,10 +59,6 @@ export function renderScope(
 	index: ReleaseIndex,
 ): void {
 	drawHeader(view, scope, release, planSettings, index);
-	// Above both empty-state returns on purpose — see `releaseClose.ts`'s own header: the
-	// empty-scope screen is the only place extension 1a can be exercised at all, and the
-	// unconfigured-membership screen withholds nothing that marking reads.
-	drawReleaseActions(view, view.viewEl, release, scope, planSettings);
 	// Both empty states sit BELOW the header, so the back control survives either. A
 	// release nobody can read the scope of must not also be a dead end.
 	if (view.settings.membershipKey === '') {
@@ -179,7 +175,18 @@ function drawHeader(
 	drawReleased(view, factsEl, release);
 
 	drawDescription(view, headerEl, release);
-	drawSummary(headerEl, release, scope.members, planSettings);
+	// The header's last line: the summary on the left, the actions on the right. Both are
+	// about the RELEASE rather than the tree, which is the division `drawOpenNote` above
+	// already states — so the band that used to sit between this header and the tree's own
+	// toolbar is gone and the actions are on the correct side of that line.
+	//
+	// It is also what makes the ordering STRUCTURAL. Drawn from `renderScope`, this call
+	// had to sit above two empty-state returns and a comment had to say why; the header is
+	// drawn on every screen, so the empty-scope case that `Generating the release notes`
+	// extension 1a is about now gets the actions by construction.
+	const footEl = headerEl.createDiv({ cls: 'pbl-rel-footline' });
+	drawSummary(footEl, release, scope.members, planSettings);
+	drawReleaseActions(view, footEl, release, scope, planSettings);
 }
 
 /**

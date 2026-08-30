@@ -240,3 +240,31 @@ describe('marking a release as released', () => {
 		expect(vault.fm('0.9.md')['released']).toBeUndefined();
 	});
 });
+
+describe('the actions live in the header', () => {
+	it('draws them inside the header block, not between it and the toolbar', () => {
+		// The division is the codebase's own, stated at `drawOpenNote`: the toolbar's
+		// controls are about the TREE, and these two are about the release the title names.
+		const { view } = releaseScreen({ status: 'In progress' });
+		expect(view.viewEl.querySelector('.pbl-rel-header .pbl-rel-scope-actions')).not.toBeNull();
+	});
+
+	it('puts the summary and the actions on one line', () => {
+		// `scopeVault()` links its members to a DIFFERENT release ('R'), which leaves this
+		// release with none and `drawSummary` withholds the strip entirely (extension 1a) —
+		// so this needs a vault whose members actually name '0.9', the same fixture
+		// `twoWorkflowVault` already supplies for the closing tests above.
+		const { view } = releaseScreen({ status: 'In progress' }, twoWorkflowVault());
+		const foot = view.viewEl.querySelector('.pbl-rel-footline');
+		expect(foot?.querySelector('.pbl-rel-summary')).not.toBeNull();
+		expect(foot?.querySelector('.pbl-rel-scope-actions')).not.toBeNull();
+	});
+
+	it('still draws them on a release with no members', () => {
+		// The empty-scope screen is the one place extension 1a can be exercised at all.
+		// Drawn inside the header this holds structurally rather than by a comment nobody
+		// must break — and this test is what says so.
+		const { view } = releaseScreen({ status: 'In progress' }, emptyReleaseVault());
+		expect(view.viewEl.querySelector('.pbl-rel-scope-actions')).not.toBeNull();
+	});
+});

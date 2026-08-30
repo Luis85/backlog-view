@@ -24,9 +24,11 @@ import { releaseNotesPath, writeReleaseNotes } from '../../storage/releaseNotesF
 import { resolveViewIdentity, ViewIdentity } from '../../storage/viewIdentity';
 
 /**
- * The release screen's closing actions. Drawn ABOVE `renderScope`'s two early returns,
- * because the empty-scope screen is the only place extension 1a can be exercised at all
- * and the unconfigured-membership screen withholds nothing that marking reads.
+ * The release screen's closing actions, drawn inside the header's footline
+ * (`renderScope.ts`'s `drawHeader`) on every screen — which is what makes the ordering
+ * structural rather than a comment somebody must not break: the empty-scope screen is
+ * the only place extension 1a can be exercised at all, and the unconfigured-membership
+ * screen withholds nothing that marking reads.
  *
  * Each action keeps its OWN gate: marking reads the release note alone, so membership is
  * none of its business.
@@ -38,7 +40,14 @@ export function drawReleaseActions(
 	scope: ReleaseScope,
 	planSettings: BacklogSettings,
 ): void {
-	const areaEl = parentEl.createDiv({ cls: 'pbl-rel-actions' });
+	// Two classes, two jobs. `.pbl-rel-actions` is shared with the index's own head
+	// (`renderIndex.ts`) and means "an action area, disabled while a write is in flight" —
+	// `syncBusy` sweeps `.pbl-rel-actions button` and that is correct for `New release`
+	// too, since a note created during a sibling view's batch acts on a stale model the
+	// same way. `.pbl-rel-scope-actions` is this area's LAYOUT alone, which is what the
+	// index's rule was supplying by accident: `styles/release.css` gives that class
+	// `justify-content: flex-end` and a padding for a component this is not.
+	const areaEl = parentEl.createDiv({ cls: 'pbl-rel-actions pbl-rel-scope-actions' });
 	drawClose(view, areaEl, release, scope);
 	drawGenerate(view, areaEl, release, scope, planSettings);
 }
