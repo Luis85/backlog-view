@@ -244,6 +244,24 @@ describe('the seed and respace rank commands', () => {
 		]);
 	});
 
+	it('says nothing of its own when the FIRST note stops the batch', async () => {
+		// Nothing landed, so the writer's own refusal is the whole story — a "Ranked 0 notes"
+		// beside it would be a second sentence about the same nothing.
+		const vault = crossedVault();
+		openBacklog(vault);
+
+		seedRanksCommand(vault.app as never, false);
+		vault.onNextProcess('Epic A.md', (fm) => {
+			fm['type'] = 'Resource';
+		});
+		confirm();
+		await flush();
+
+		expect(Notice.messages).toEqual([
+			'That note changed while the move was in flight, so nothing was written.',
+		]);
+	});
+
 	it('changes nothing and names the notes when the writable rows are wedged', () => {
 		// Two excluded epics a single grid step apart, with two results between them: no
 		// pair of six-decimal ranks fits, and the run cannot be split without breaking the
