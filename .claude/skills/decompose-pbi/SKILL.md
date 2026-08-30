@@ -129,11 +129,22 @@ unlocks writing.**
 ## The close
 
 1. Write one note per child, into the folder its type belongs to, **in the shape that type
-   owes** — `docs/README.md` gives one per kind, and a `Task` skeleton over an `Issue` or a
-   `Test case` passes `npm run docs`, which gates neither. So: a `Task` opens with
-   **Evidence** and leaves `## Outcome` for after the work; an `Issue` says in its first
-   heading whether it is a decision or a limitation; a `Test case` opens with
-   `Why this exists` and a `Preconditions` line.
+   owes** — a `Task` skeleton over an `Issue` or a `Test case` passes `npm run docs`, which
+   gates neither. Where `docs/README.md` documents a shape, follow it: a `Task` opens with
+   **Evidence** and leaves `## Outcome` for after the work; a `Test case` opens with
+   `Why this exists` and a `Preconditions` line; an `Issue` that records **a decision taken
+   or a limitation accepted** says which in its first heading.
+
+   **It does not document one for every type this skill can produce, and two of the gaps
+   are on paths phase 3 sends work down.** An `Issue` holding an **open question** is one:
+   the register names the question as an Issue and then gives shapes for the decision and
+   the limitation only, so the documented headings would have the note answer a question it
+   exists because nobody can answer. A `Deliverable` is the other: no row in the shape
+   table, and no note of that type anywhere in `docs/` to read as precedent. Ask the user
+   for the shape rather than inventing one — the register owns shapes, this skill does not,
+   and a shape invented here is ungated prose that passes the gate this skill names as its
+   check. The gap is itself worth an `Issue` against `docs/`; offer it, do not write it
+   unasked.
 
    Whatever the shape, the note says what produced it — the PBI slice or the perspective
    row — rather than opening with a proposal. In a `Task` that is the `Evidence` section by
@@ -155,6 +166,7 @@ unlocks writing.**
 ## Red flags — stop and go back
 
 - A phase's exit gate asks for less than that phase's walk covered.
+- You invented a note shape the register does not document, rather than asking for it.
 - An output that is not a child of the PBI stopped being mentioned after the phase that
   found it.
 - A perspective row went unmentioned because it "obviously does not apply".
