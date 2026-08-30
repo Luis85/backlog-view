@@ -64,10 +64,21 @@ carries the why.
 
 ## Outcome
 
-Not yet run. The creation gesture added on 2026-08-25 is unrun with the rest of it, and so is
-the band that replaced the index's column grid the same day — **nothing in either increment
-has been seen in Obsidian**, and neither the browser harness nor a headless-Chromium
-measurement is a substitute: both answer layout against Obsidian's DEFAULT colours and neither
+**2026-08-30 — exercised during development, not walked as a sweep.** The maintainer
+reports testing this behaviour in a vault while 0.10.0 was built. That is evidence of use
+and it is recorded as such; it is **not** a run of the steps below, which were not walked
+one by one. Everything here that needs a community theme, a themed accent, a real pane
+width or a screen reader is therefore still unanswered — those are the questions this note
+exists for, and the ones development use is least likely to have asked. The note stays open
+for the next sweep.
+
+Not walked as a sweep. The creation gesture added on 2026-08-25 is unrun with the rest of it, and so is
+the band that replaced the index's column grid the same day. **This paragraph said "nothing
+in either increment has been seen in Obsidian" until the stamp above corrected it** — the
+maintainer has since used both while building. What that changes is narrow and is the whole
+reason the distinction is kept: use answers whether a thing works, and a sweep answers the
+questions listed above it, which are mostly about a theme, an accent and a width. Neither the
+browser harness nor a headless-Chromium measurement is a substitute for the second: both answer layout against Obsidian's DEFAULT colours and neither
 answers a theme, an accent, or anything Bases hands the view. The pull request's test-plan box
 for this is deliberately unticked, and stays unticked until a maintainer has opened a vault
 and worked through the five cases beneath this suite. `Mark as released` and `Generate release
