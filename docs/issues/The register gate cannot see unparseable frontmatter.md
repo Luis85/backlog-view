@@ -22,6 +22,35 @@ iteration: ""
 
 # The register gate cannot see unparseable frontmatter
 
+
+## Narrowed, 2026-08-30 — the two spellings that have actually occurred are refused
+
+Not closed: `frontmatter()` is still a regex reader and still answers for a block no YAML
+parser would accept. What changed is that the gate now refuses the two spellings this
+register has actually produced, rather than continuing to report them green.
+
+It was found the hard way. Review (Codex, PR #232) caught two notes added on that very
+branch carrying `source: [[...]], and more` — an unquoted wikilink, which YAML reads as a
+flow collection and which then fails on the prose after the closing bracket. A parse over
+the whole register found **five** unparseable notes; the new rule, run once, found **two
+more** that parse and silently mean less than they say. Both counts are the point: the YAML
+parse cannot see the truncating case, and the rule can see both.
+
+- A value containing ` #` opens a comment. `source: Review of PR #114, which found it` has
+  always MEANT `source: Review of PR`. Where the value continues onto another line the
+  comment ends the scalar and the block stops parsing. This is
+  [[A hash in a value is a comment the first rewrite erases]] met from the other side —
+  that note is about the bytes a rewrite drops, this is about the block never parsing.
+- A value opening with `[` or `{` opens a flow collection.
+
+**What is still open is the general case**, and it is open for a stated reason rather than
+by omission: parsing YAML properly means a parser dependency for one rule, and this
+repository refuses dependencies it can do without ([ADR 0019](adrs/0019-let-dependabot-and-check-carry-dependency-hygiene.md)).
+A third spelling will therefore still pass. The claim is written to what the check reaches:
+two spellings, named, with a planted case each in
+`test/docs/checkerRejectsFrontmatter.test.ts` and the legal quoted form guarded from the
+accept side.
+
 ## The limitation
 
 `docs-check.mjs` never parses YAML. It reads a note's frontmatter by matching each field it

@@ -2,6 +2,8 @@ import { setIcon } from 'obsidian';
 import type { ReleaseView } from './releaseView';
 import { t } from '../../i18n/t';
 import { ReleaseFigure, ReleaseIndex, ReleaseRow } from '../../domain/releases';
+import { BacklogSettings } from '../../domain/settings';
+import { membershipCollision } from '../../domain/settingsConsistency';
 import { formatCivil } from '../../domain/timeline';
 import { drawIcon } from '../render/icons';
 import { renderNewRelease } from './newRelease';
@@ -29,7 +31,7 @@ import { unconfiguredProgressText } from './renderScope';
  * with no note behind it. None EDITS a note that already exists, which is the whole of
  * what this view refuses (`test/view/releaseNeverEdits.test.ts`).
  */
-export function renderIndex(view: ReleaseView, index: ReleaseIndex): void {
+export function renderIndex(view: ReleaseView, index: ReleaseIndex, plan: BacklogSettings): void {
 	// Above the scroller rather than in it: the controls are chrome for the screen, and one
 	// inside `.pbl-rel-list` would scroll away with the rows. There is no toolbar on this
 	// view to hang them on — `viewEl` holds screens — so the head of the index IS the head
@@ -56,7 +58,7 @@ export function renderIndex(view: ReleaseView, index: ReleaseIndex): void {
 	}
 
 	drawAbsences(listEl, index.rows);
-	drawUnresolved(listEl, index);
+	drawUnresolved(listEl, index, membershipCollision(view.settings, plan));
 }
 
 /**
@@ -518,10 +520,35 @@ function drawAbsences(listEl: HTMLElement, rows: ReleaseRow[]): void {
  * an item is reported among the unresolved "rather than silently dropped", so the empty state
  * carries this line beneath it.
  */
-export function drawUnresolved(listEl: HTMLElement, index: ReleaseIndex): void {
+export function drawUnresolved(listEl: HTMLElement, index: ReleaseIndex, collision: string | null): void {
 	const count = index.unresolved.length;
-	if (count === 0) return;
-	note(listEl, 'circle-alert', t('release.index.unresolved', { count })).addClass('pbl-rel-unresolved');
+	if (count > 0) {
+		note(listEl, 'circle-alert', t('release.index.unresolved', { count })).addClass('pbl-rel-unresolved');
+	}
+	// The count is the whole of the signal a reader gets — nothing on screen says WHICH
+	// notes were counted — so a configuration that produces the count spuriously reads as
+	// work they have mis-assigned. Aiming the membership key at a property the plan or a
+	// release note already owns does exactly that: at the type key every typed item is
+	// unresolved, and at the status key every release counts itself. Both notes this closes
+	// ([[A membership key aimed at a release's own property]], [[Two release options aimed
+	// at one property go unreported]]) rule the same way and for the same reason — a REPORT
+	// beside the count rather than a refusal, because refusing puts the whole screen behind
+	// one mis-binding and leaves the reader looking at a plugin that lost their data
+	// instead of a binding they can change.
+	//
+	// **Drawn whenever there is a collision, with or without a count.** This said the
+	// opposite for one commit — drawn only WITH the count, on the reasoning that a
+	// collision producing no unresolved membership has explained nothing — and the
+	// reasoning was wrong. Aiming the membership key at a property only a RELEASE note
+	// carries (the released date, say) means no work item carries it at all: nothing
+	// resolves, so nothing is unresolved, the count is ZERO, and every release reads
+	// `No items yet` with the line that would explain it withheld. That is the quietest
+	// state this screen has, and it was the one being kept quiet.
+	//
+	// A collision is never a state a correct base is in — `membershipCollision` answers
+	// non-null only where the membership key is aimed at a property something else owns —
+	// so there is no reading of it that is noise.
+	if (collision !== null) note(listEl, 'settings-2', collision).addClass('pbl-rel-unresolved-why');
 }
 
 /** A line ABOUT the list rather than a row in it, so it sits outside the bands. */
