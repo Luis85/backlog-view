@@ -27,13 +27,21 @@ Copied from the spec and from `CLAUDE.md`. Every task's requirements implicitly 
 ## File Structure
 
 **Created:**
+- `src/domain/rankOrder.ts` — the global rank comparator, the ranked-array build, and the
+  focus-rows filter. **It exists because `src/domain/model.ts` has 6 code lines of headroom
+  under the lint `max-lines: 400` cap and Tasks 1-2 need about 14** — measured with eslint,
+  not estimated. Only `src/i18n/en.ts` is exempt from that cap. Keeping the new code here
+  also gives the ranking concern its own module, which is the repo's one-file-per-concern
+  rule rather than a workaround.
 - `src/commands/rank.ts` — the two palette commands (Seed ranks from the hierarchy, Respace ranks). One module, two commands.
 - `test/domain/rankedPlacement.test.ts` — the placement rule, driven at the rule rather than at each placement.
 - `test/domain/rankCommands.test.ts` — Seed vs Respace, and that they are not interchangeable.
 - `test/view/focusRanking.test.ts` — one move, three inputs, at the focused level; the guards that stay.
 
 **Modified:**
-- `src/domain/model.ts` — adds `BacklogModel.ranked`; focused rendering reads it.
+- `src/domain/model.ts` — adds `BacklogModel.ranked` and calls into `rankOrder.ts`. Keep
+  the additions here to 2-3 code lines: **there are only 6**, and Task 2 spends some too.
+  Verify with `npx eslint src/domain/model.ts` before committing, not after.
 - `src/domain/writePlan.ts` — `anchoredOrder` replaces `computeInsertOrder`/`orderBetween`/`afterHighestKnown`/`renumberWrites`; adds `computeSeedWrites`/`computeRespaceWrites`; `computeInitWrites` gains a running counter.
 - `src/domain/dropTargets.ts` — `DropTarget.siblings` → `peers`; `siblingPosition` answers for focus rows; the no-op branch reads peers; `reorderableGroup` deleted.
 - `src/view/interactions/structure.ts` — `siblingContext` keys on focus-forest membership; `indent`/`outdent` gain their own `focusRoot` refusal.
@@ -50,8 +58,15 @@ Copied from the spec and from `CLAUDE.md`. Every task's requirements implicitly 
 ### Task 1: The ranked population
 
 **Files:**
+- Create: `src/domain/rankOrder.ts`
 - Modify: `src/domain/model.ts`
 - Test: `test/domain/modelCost.test.ts`, `test/domain/model.test.ts`
+
+**Line budget — read before writing.** `src/domain/model.ts` passes lint with **6** code
+lines to spare (blank lines and comments are skipped by the rule; comments are free).
+Task 2 needs some of them. Put the comparator and the build in `rankOrder.ts` and keep
+model.ts to the field declaration, the call, and the returned property. Check with
+`npx eslint src/domain/model.ts` before you commit.
 
 **Interfaces:**
 - Consumes: nothing.
@@ -97,27 +112,46 @@ In `src/domain/model.ts`, in the `BacklogModel` interface beside `items` (around
 	ranked: BacklogItem[];
 ```
 
-In `buildModel`, immediately after the `resources` sort (around line 265), add:
+Create `src/domain/rankOrder.ts`:
 
 ```ts
-	// The build's second object sort, declared in `src/domain/CLAUDE.md`'s Cost section:
-	// bounded by the item count, run once per build rather than per row, so the bound
-	// stays O(n log n). Unranked items sort last, in Bases result order, which is the
-	// rule `compareSiblings` already keeps.
-	const ranked = [...items].sort(compareRank);
-```
+import { BacklogItem } from './model';
 
-And add beside `compareSiblings` (around line 661):
-
-```ts
+/**
+ * Global rank order: the `order` property ascending, ties broken by the Bases result
+ * order. Unranked items sort last — absence is not a low rank, and `compareSiblings`
+ * already keeps that rule for a sibling group.
+ */
 function compareRank(a: BacklogItem, b: BacklogItem): number {
 	const ao = a.order ?? Number.POSITIVE_INFINITY;
 	const bo = b.order ?? Number.POSITIVE_INFINITY;
 	return ao - bo || a.entryIndex - b.entryIndex;
 }
+
+/**
+ * Every loaded item in global rank order — the build's second object sort, declared in
+ * `src/domain/CLAUDE.md`'s Cost section: bounded by the item count, run once per build
+ * rather than per row, so the build's bound stays O(n log n).
+ */
+export function rankedItems(items: BacklogItem[]): BacklogItem[] {
+	return [...items].sort(compareRank);
+}
 ```
 
-Add `ranked` to the returned object in the `rest` literal (beside `realRoots`, around line 273).
+In `buildModel`, immediately after the `resources` sort (around line 265), add **one line**:
+
+```ts
+	const ranked = rankedItems(items);
+```
+
+Add `ranked` to the returned object in the `rest` literal (beside `realRoots`, around
+line 273) — **one more line** — and import `rankedItems` at the top.
+
+`rankOrder.ts` importing a type from `model.ts` while `model.ts` imports a function from
+it is a cycle in the module graph. If the build or lint objects, move `BacklogItem` to a
+type-only import (`import type { BacklogItem } from './model'`), which erases at compile
+time. Do not solve it by moving the code back into `model.ts` — the cap is why this module
+exists.
 
 - [ ] **Step 4: Run it and watch it pass**
 
@@ -166,8 +200,12 @@ by widening the exactly-once assertion."
 ### Task 2: The focused list renders in rank order
 
 **Files:**
-- Modify: `src/domain/model.ts` (`collectFocusRoots` call site, around line 334)
-- Test: `test/domain/model.test.ts`
+- Modify: `src/domain/rankOrder.ts`, `src/domain/model.ts` (`collectFocusRoots` call site,
+  around line 334)
+- Test: `test/domain/model.test.ts`, `test/domain/roadmap.test.ts`
+
+**Line budget:** `src/domain/model.ts` had 6 code lines of headroom before Task 1 spent
+two. The filter body goes in `rankOrder.ts`; model.ts keeps a one-line call.
 
 **Interfaces:**
 - Consumes: `BacklogModel.ranked` from Task 1.
@@ -211,12 +249,22 @@ with:
 	// filtering a sorted array preserves order, so this costs one pass and no
 	// comparison. `collectFocusRoots` still decides membership (which rungs and which
 	// extra types); `ranked` decides sequence.
-	const focusRoots = focused
-		? (() => {
-				const members = new Set(collectFocusRoots(roots, focusIdx, focusExtra, settings));
-				return ranked.filter((item) => members.has(item));
-			})()
-		: roots;
+	const focusRoots = focused ? inRankOrder(collectFocusRoots(roots, focusIdx, focusExtra, settings), ranked) : roots;
+```
+
+with this in `src/domain/rankOrder.ts`:
+
+```ts
+/**
+ * The given rows, in global rank order. A focus level is a FILTER over the ranked
+ * array, never a sort of its own: filtering a sorted array preserves order, so this
+ * costs one pass and no comparison. `collectFocusRoots` decides MEMBERSHIP — which
+ * rungs and which extra types — and `ranked` decides SEQUENCE.
+ */
+export function inRankOrder(rows: BacklogItem[], ranked: BacklogItem[]): BacklogItem[] {
+	const members = new Set(rows);
+	return ranked.filter((item) => members.has(item));
+}
 ```
 
 - [ ] **Step 4: Run it and watch it pass**
