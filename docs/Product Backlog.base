@@ -67,6 +67,9 @@ views:
     deliverableStateProperty: note.status
     releasedDateProperty: note.released
     descriptionProperty: note.description
+    releaseNotesFolder: docs/release-notes
+    releasedStatusValues: Released
+    releasedTransitionValue: Released
   - type: table
     name: ADRs
     filters:

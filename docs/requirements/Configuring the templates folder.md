@@ -11,6 +11,7 @@ risk: ""
 assignee: ""
 priority: ""
 iteration: ""
+horizon: ""
 ---
 
 # Configuring the templates folder
