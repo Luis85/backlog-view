@@ -279,9 +279,16 @@ the rule above says — and write every answer into a section that child's own t
 has. And where the register documents no shape at all — an `Improvement` and a
 `Deliverable` have no row in its shape table and no note in `docs/` to read as precedent —
 phase 2 asks what shape the note takes, which is the ask `decompose-pbi` already makes for
-those two. An unanswered shape blocks that child, and the readback says so. Inventing a
+those two. An unanswered shape blocks that output, and the readback says so. Inventing a
 heading is never the answer: a shape the register does not document is `decompose-pbi`'s own
 red flag.
+
+**The question is only worth asking of an output this run will write.** A `Deliverable` the
+table assigns to the human is named and left alone like every other human-owned output — a
+run that stalled over the shape of an artifact it was never going to produce would block on
+work nobody asked it to do. Every rule in this phase reads the same way: it applies to what
+the subagent will write, and the human's outputs need a name and an owner and nothing
+else.
 
 The failing-test row is the specific assertion, never "add tests". Where the child's whole
 deliverable is an invariant, root `CLAUDE.md`'s rule applies and belongs in the `Approach`:
