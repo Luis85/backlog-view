@@ -198,7 +198,8 @@ the gate not happening.
 
    Whatever the shape, the note says what produced it — the PBI slice or the perspective
    row — rather than opening with a proposal. In a `Task` that is the `Evidence` section by
-   name; in the others it is the first paragraph. Name the PBI there as a **`[[wikilink]]`**,
+   name; in a `Test case` it is `## Why this exists`, below the fixed lead that type opens
+   with; in the others it is the first paragraph. Name the PBI there as a **`[[wikilink]]`**,
    not in prose, and in every output including the ones that are not its children: a
    `Test case`, a `Test suite` and an ADR carry no `parent`, so that link is the only thing
    a rerun's phase 0 search can find them by, and prose naming the same PBI is invisible

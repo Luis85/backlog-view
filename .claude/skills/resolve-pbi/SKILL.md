@@ -64,8 +64,15 @@ that skips the second treats them as never written.
 parentage, and most of the register's links are not: a limitation note names the PBI whose
 property it cannot migrate, a sibling use case names the rule it rests on, a plan cites the
 one it argued from. `decompose-pbi`'s close is what separates them — every output it writes
-names the PBI as a `[[wikilink]]` **in the sentence saying what produced it**, the
-`Evidence` section of a `Task` and the first paragraph of everything else. A candidate whose
+names the PBI as a `[[wikilink]]` **in the sentence saying what produced it** — which sits
+wherever that type's shape puts that sentence, not in one fixed position: the `Evidence`
+section of a `Task`, `## Why this exists` in a `Test case`, the first paragraph in the rest.
+**Read the type's shape; a filter that requires the first paragraph rejects a genuine
+output.** `docs/tests/cases/Creating a card in a column.md` is one — it opens with the fixed
+`Test case` lead *"A verification to run."* and names [[New cards in place]] in the heading
+below, and it is parented to a `Test suite` rather than to the PBI, so dropping it here
+loses it from ownership, readback and the prompt with no second search to recover it. Found
+by review (Codex, PR #233). A candidate whose
 only mention of the PBI sits anywhere else is an unrelated note, and it is left alone. The
 failure this prevents is not a wasted read: an unrelated note taken for an output is
 assigned an owner, given a task and closed by a run that had no business touching it.
@@ -176,8 +183,10 @@ in its `Approach`, not as a surprise for the implementer.
 
 ### Not every child is executable
 
-The same pass assigns **every output — child or not — to the subagent, to the human, or to
-this run's own close**. Assigning only the non-child outputs would send an intentionally
+The same pass assigns **every output — child or not — to the subagent, to the human, to
+this run's own close, or to nobody** — the fourth bucket is the superseded handoff below,
+and it is a bucket rather than an omission because an output with no owner is what the
+readback has to name. Assigning only the non-child outputs would send an intentionally
 unanswerable note through the TDD loop, because `decompose-pbi` deliberately produces
 children that are not implementable:
 
@@ -230,8 +239,8 @@ five from what the code seems to imply is the failure this replaces; the ADR rec
 decision somebody took, and nobody here took it.
 
 **Exit when** every child is either "executable as written" or has an answer to write into
-it, **every output, child or not, is assigned** to the subagent, to the human or to this
-run's close, and **nothing is left blocked**. Blocked is a real state this phase can reach —
+it, **every output, child or not, is assigned** to the subagent, to the human, to this
+run's close or to nobody, and **nothing is left blocked**. Blocked is a real state this phase can reach —
 a shape the register does not document and nobody has settled, an ADR whose five headings are
 empty, an open question the work cannot start without — and it belongs to non-child outputs
 as much as to children, which the first clause alone does not reach. A blocked output gets
@@ -403,7 +412,8 @@ the block only when a handoff was saved — omit it otherwise:
   `Deliverable` — write, `npm run check`, commit: same gate, no red step, because there is no
   behaviour to make fail first
 - close each note **a plan task dispatched you to**, in the shape its type owes, as Global
-  Constraints states — and nothing else. The notes two bullets up are context: an ADR and a
+  Constraints states — and nothing else, save the one exception the bullet below states for
+  itself when this prompt carries it. The notes two bullets up are context: an ADR and a
   `Test suite` are already written, a suite stays `Open` because its cases are re-walked at
   each release, and a `Test case` is a walk in a live vault nobody in this run can perform.
   Closing one of those reports a verification that did not happen

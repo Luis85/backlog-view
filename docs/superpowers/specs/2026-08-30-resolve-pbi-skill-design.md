@@ -212,8 +212,11 @@ link is not evidence of parentage, and most of the register's links are not: a l
 note names the PBI whose property it cannot migrate, a sibling use case names the rule it
 rests on, a plan cites the one it argued from. `decompose-pbi`'s close supplies the test —
 every output it writes names the PBI as a `[[wikilink]]` in the sentence saying **what
-produced it**, the `Evidence` section of a `Task` and the first paragraph of everything
-else. A candidate whose only mention sits anywhere else is an unrelated note and is left
+produced it** — which sits wherever that type's shape puts that sentence: the `Evidence`
+section of a `Task`, `## Why this exists` in a `Test case`, the first paragraph in the rest.
+Requiring the first paragraph is what rejects a real one, since a `Test case` opens with a
+fixed lead and says what produced it in the heading below (Codex, PR #233).
+A candidate whose only mention sits anywhere else is an unrelated note and is left
 alone. Without the test the cost is not a wasted read: an unrelated note taken for an output
 is assigned an owner, given a task, and closed by a run that had no business touching it.
 
@@ -333,8 +336,9 @@ in its `Approach`, not as a surprise for the implementer.
 
 ### Not every child is executable
 
-The same pass assigns **every output — child or not — to the subagent, to the human, or to
-this run's own close**, and that assignment decides which get a `## Task N` in the plan.
+The same pass assigns **every output — child or not — to the subagent, to the human, to
+this run's own close, or to nobody** — the fourth bucket is the superseded handoff in the
+table below — and that assignment decides which get a `## Task N` in the plan.
 Assigning only the non-child outputs would send an intentionally unanswerable note through
 the TDD loop, because
 `decompose-pbi` deliberately produces children that are not implementable:
@@ -484,7 +488,8 @@ Fenced, and nothing else in the block:
   a `Deliverable` — write, `npm run check`, commit: same gate, no red step, because
   there is no behaviour to make fail first
 - close each note **a plan task dispatched you to**, in the shape its type owes, as Global
-  Constraints states — and nothing else. The notes two bullets up are context: an ADR and a
+  Constraints states — and nothing else, save the one exception the bullet below states for
+  itself when this prompt carries it. The notes two bullets up are context: an ADR and a
   `Test suite` are already written, a suite stays `Open` because its cases are re-walked at
   each release, and a `Test case` is a walk in a live vault nobody in this run can perform.
   Closing one of those reports a verification that did not happen
