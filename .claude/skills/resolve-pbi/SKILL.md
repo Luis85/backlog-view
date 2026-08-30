@@ -193,7 +193,7 @@ children that are not implementable:
 | Output | Whose | Why |
 | --- | --- | --- |
 | A `Task` | The subagent's | It is engineering work with a test |
-| A `Task` whose **first line declares it a handoff** | Nobody's | It is an earlier run's prompt, not work. This run's own handoff supersedes it, so it is named as superseded and given no task |
+| A `Task` whose **first body line declares it a handoff** — the line after its frontmatter, not the `---` that opens it | Nobody's | It is an earlier run's prompt, not work. This run's own handoff supersedes it, so it is named as superseded and given no task |
 | An `Issue` holding an **open question** | The human's | The work cannot settle it; that is why it is an Issue |
 | An `Issue` recording a **decision or a limitation** | The subagent's | It is prose stating something already settled |
 | A `Bug` | The subagent's | A defect with a fix and a test, and `docs/README.md` gives it a shape — the same work a `Task` is |
@@ -436,10 +436,12 @@ The saved note is a `Task` child of the PBI, which makes it a sibling of the wor
 executes, and **it is never itself dispatched.** Two guards keep that shut, needed because
 they fail differently: the plan and the prompt enumerate the outputs they run **by path**,
 so a note written afterwards is outside the set by construction; and the saved note says so
-in its own first line — *this note is the handoff, not a task to implement* — which is the
-line a later rerun reads when it re-derives children from `parent`.
+in its own first **body** line, the one after the closing `---` of its frontmatter — *this note
+is the handoff, not a task to implement* — which is the line a later rerun reads when it
+re-derives children from `parent`. A `Task` is written with frontmatter, so a marker defined
+as the note's physical first line would be the `---` and would never match.
 
-**That first line is a marker, and the ownership table is what acts on it.** A rerun finds
+**That body line is a marker, and the ownership table is what acts on it.** A rerun finds
 the note as an ordinary `Task` child, and the row above sends every `Task` to the subagent —
 so without the row that reads the marker, the first guard fails exactly where it was meant to
 hold: the path list is a fresh one, built from this rerun's own children, and it names the
