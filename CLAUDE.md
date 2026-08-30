@@ -27,8 +27,10 @@ produced a defect this repository could not see. Coverage thresholds
 duplication, complexity/CRAP (fed by the vitest coverage file) and dependency hygiene —
 framework-invoked members (`BasesView.type`, suggest callbacks) are declared in
 `usedClassMembers`, not suppressed inline. `docs-check.mjs` gates `docs/` the same way:
-the register's hierarchy and sibling orders, every wikilink, every source path a current
-note names, the use-case shape, the ADR frontmatter — and the check that finds *missing*
+the register's hierarchy and sibling orders, every link and every source path a current
+note names — `tasks/`, `issues/`, `bugs/` and `superpowers/` are records, so a reference of
+theirs that stopped resolving is listed rather than failed — the use-case shape, the ADR
+frontmatter — and the check that finds *missing*
 notes, since every module in `src/` must be *specified* by at least one — in a use case's
 `## Where it lives` or an ADR's `## Decision`, a mention anywhere else counting for
 nothing. `test/` is deliberately outside that rule: naming a path is not describing it, so

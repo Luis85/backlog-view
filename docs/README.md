@@ -416,22 +416,31 @@ can run is worse than none, because it invites trust it has not earned:
 2. No two siblings share an `order` — the register must not demonstrate the one ranking
    limitation the plugin has.
 3. Every wikilink resolves to a note, and **every relative markdown link resolves to a
-   file** — anywhere in `docs/`, whatever it points at, percent-encoding decoded and
-   anchors stripped. Links inside code spans are examples, not references, and are
-   skipped; so are external URLs. **`prds/` and `sdds/` are outside this rule and the
-   `**Checked by**` rule below**, and they are the only two folders that are: a received
-   document names notes, files and interviews from wherever it was written, so checking
-   them would force the one edit the verbatim rule exists to prevent, and the marker is
-   this repository's convention rather than a fact about prose. `superpowers/` is written
-   HERE and points at this register, so it keeps every rule in this list except the
-   frontmatter in rule 1. The cost is stated rather than hidden: a link in a received
-   document that does name a note here is unverified, which is why the editorial preamble
-   on each one names its notes in prose instead of linking them.
-4. Every `src/` or `test/` path named by a note in **`requirements/` or `adrs/`** exists.
-   Those two describe the code as it is now. `tasks/`, `issues/` and `bugs/` are records
-   of a moment and may legitimately name a file since split away — rewriting them would
-   falsify the record — so their stale paths are **listed rather than failed**. Being
-   listed is the point: visible, not silently exempt.
+   file** — whatever it points at, percent-encoding decoded and anchors stripped. Links
+   inside code spans are examples, not references, and are skipped; so are external URLs.
+   **`prds/` and `sdds/` are outside this rule and the `**Checked by**` rule below**, and
+   they are the only two folders outside it altogether: a received document names notes,
+   files and interviews from wherever it was written, so checking them would force the one
+   edit the verbatim rule exists to prevent, and the marker is this repository's convention
+   rather than a fact about prose. The cost is stated rather than hidden: a link in a
+   received document that does name a note here is unverified, which is why the editorial
+   preamble on each one names its notes in prose instead of linking them.
+4. **The records are `tasks/`, `issues/`, `bugs/` and `superpowers/`**, and a reference in
+   one that no longer resolves is **listed rather than failed** — every `src/` or `test/`
+   path they name, every wikilink, every relative link. They are records of a moment: a
+   file has since been split away, or a note deleted, and rewriting the record to match
+   would falsify it. Being listed is the point — visible, not silently exempt.
+
+   Everywhere else, all three must resolve. That includes this file, `releases/` and
+   `resources/` as much as `requirements/`, `adrs/` and `tests/`: the rule names the
+   records rather than their complement, so a folder nobody has classified is checked
+   until somebody argues it is a record. It was spelled the other way round for one
+   afternoon on 2026-08-29 and that made the leniency the default — a dead link in this
+   very file reported as allowed history.
+
+   What it costs, said plainly: **a typo in a generated plan is now listed rather than
+   failed.** That is the trade for being able to delete a note without rewriting the dated
+   specs that mention it, and deleting a note is ordinary backlog work.
 5. Every use case has all its sections **exactly once and in the documented order**; the
    whole `**As** … **I want** … **so that** …` opening, not just its first word; and the four
    table fields as **rows of the table**, parsed inside the block it occupies — ordering

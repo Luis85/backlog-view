@@ -166,16 +166,6 @@ describe('the backlog tree', () => {
 			'backlog note has no `type` in its frontmatter',
 		],
 		[
-			'a superpowers doc with an unresolved wikilink',
-			(files) => {
-				// The verbatim exemption is for RECEIVED documents — `prds/` and `sdds/`. A
-				// spec written in this repository points at this register, so its links are
-				// checked like anyone else's, or a generated plan accumulates broken ones.
-				files['docs/superpowers/plans/2026-08-02-example.md'] = '# A plan\n\nSee [[No such note]].\n';
-			},
-			'unresolved wikilink',
-		],
-		[
 			'a superpowers doc sharing a basename with a backlog note',
 			(files) => {
 				// Exempt from carrying a `type`, never from claiming a name: it is still
@@ -195,6 +185,25 @@ describe('cross-references', () => {
 				files['docs/requirements/Thing.md'] = note('Epic', 10, null, '# Thing\n\nSee [[Ghost]].\n');
 			},
 			'unresolved wikilink [[Ghost]]',
+		],
+		[
+			// The leniency is for RECORDS — `tasks/`, `issues/`, `bugs/`, `superpowers/` —
+			// named as themselves rather than as everything outside a living list. Spelled
+			// the other way round it was the DEFAULT, and the register's own index, its
+			// releases and its resources were all exempt by omission. These two cases are
+			// the strict side of that: a folder nobody classified is checked.
+			'a dead link in the register index',
+			(files) => {
+				files['docs/README.md'] += '\nSee [[Ghost]].\n';
+			},
+			'unresolved wikilink [[Ghost]]',
+		],
+		[
+			'a dead source path in the register index',
+			(files) => {
+				files['docs/README.md'] += '\nThe view is `src/gone.ts`.\n';
+			},
+			'names src/gone.ts, which does not exist',
 		],
 		[
 			'a relative link that resolves to nothing',

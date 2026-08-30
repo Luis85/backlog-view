@@ -113,27 +113,48 @@ const ADR_SECTIONS = ["## Context", "## Decision", "## Consequences", "## Altern
 const ADR_STATUSES = new Set(["Accepted", "Superseded", "Proposed"]);
 const ADR_AREAS = new Set(["architecture", "domain", "platform", "storage", "testing", "tooling"]);
 /**
- * Folders whose notes describe the code as it is now, so every path they name must
- * exist. The others (`tasks/`, `issues/`, `bugs/`) are records of a moment and may name
- * a file that has since been split or removed — rewriting them would falsify the record.
+ * The folders that are records of a moment: they may name a file that has since been split
+ * or removed, and may link a note that has since been deleted — rewriting one would falsify
+ * the record, and deleting a note is ordinary backlog work. Everything else describes the
+ * register as it is now and is held to both.
  *
- * `tests/` (both `suites/` and `cases/`) joined this list rather than staying out of it,
- * and that was a measured choice, not a default: the test-catalog migration moved three
- * `Feature`s to `docs/tests/suites/` (retyped `Test suite`) and twenty-five `Issue`s to
- * `docs/tests/cases/` (retyped `Test case`), and the move silently took their source-path
- * citations out of this check — the same shape as the cadence gate this migration went to
- * lengths to keep live (see `SWEPT_TYPES` below), reintroduced here through a different
- * rule. Adding the whole of `docs/tests/` was tried against the real corpus before being
- * kept: nothing in it fails living. A `Test case`'s `## Runs` table is a record of a
- * moment in the same way an `Issue`'s is, but that is a claim about its OWN content, not
- * about whether the source paths it cites still exist — and no case in the corpus cites
- * one that does not. If that ever stops being true, the fix is to narrow this list to
- * `tests/suites/` alone and say in this comment why `tests/cases/` stayed out, not to
- * silently drop the folder that broke it.
+ * **Named as the records rather than as their complement**, which is the correction of
+ * 2026-08-29. The rule was written the other way round — a `LIVING` list of
+ * `requirements/`, `adrs/` and `tests/`, with everything outside it treated as historical —
+ * and that made the leniency the DEFAULT: `docs/README.md`, `releases/` and `resources/`
+ * are current documentation, none of them was on either list, and a dead link or a dead
+ * path in the register's own index reported as allowed history. A folder added tomorrow had
+ * the same hole waiting. Listing the records instead makes the strict side the default, so
+ * a new folder is checked until somebody argues it is a record.
+ *
+ * `superpowers/` is here for the same reason the other three are, and its cost is stated
+ * where it was argued: a spec written in this repository points at this register, so a
+ * typo in a generated plan is now listed in the run summary rather than failing the build.
+ * `prds/` and `sdds/` are outside every link rule already (`isReceivedDoc`) and so are not
+ * on this list — the exemption they need is wider than this one.
+ *
+ * `tests/` is deliberately NOT here, and that was measured, not defaulted: the test-catalog
+ * migration moved three `Feature`s to `docs/tests/suites/` (retyped `Test suite`) and
+ * twenty-five `Issue`s to `docs/tests/cases/` (retyped `Test case`), and while the rule was
+ * spelled as its complement that move silently took their source-path citations out of the
+ * check. A `Test case`'s `## Runs` table is a record of a moment in the same way an
+ * `Issue`'s is, but that is a claim about its OWN content, not about whether the paths and
+ * notes it cites still exist — a case names the fixture the runner is to open, so a dead
+ * name there is an instruction that cannot be followed. That was tested against the real
+ * corpus before being kept, in both directions: nothing in `docs/tests/` fails it, and
+ * `docs/tests/cases/Roadmap milestone appearance.md` was rewritten rather than exempted the
+ * day a deleted milestone made it fail. If that ever stops being true, the fix is to add
+ * `tests/cases/` here and say in this comment why `tests/suites/` stayed out, not to
+ * silently exempt the folder that broke it.
  */
-const LIVING = [path.join(DOCS, "requirements"), path.join(DOCS, "adrs"), path.join(DOCS, "tests")];
+const RECORDS = [
+	path.join(DOCS, "tasks"),
+	path.join(DOCS, "issues"),
+	path.join(DOCS, "bugs"),
+	path.join(DOCS, "superpowers"),
+];
 /** Anywhere beneath one of them: `walk` finds nested notes, so the rule has to reach them. */
-const isLiving = (file) => LIVING.some((dir) => file.startsWith(dir + path.sep));
+const isRecord = (file) => RECORDS.some((dir) => file.startsWith(dir + path.sep));
 /** The only files legitimately outside the work-item hierarchy: ADRs, and the index pages. */
 const NOT_WORK_ITEMS = /(^|[/\\])(adrs[/\\].*|README)\.md$/;
 /**
@@ -143,7 +164,7 @@ const NOT_WORK_ITEMS = /(^|[/\\])(adrs[/\\].*|README)\.md$/;
  * design document arrives from outside and is kept verbatim as the evidence the register's
  * own notes cite. None of them carries the frontmatter this file requires of everything
  * else — those documents are the source a backlog is derived FROM, so giving one a `type`
- * and a rank would file the evidence as work. Both are anchored to the `docs/` root exactly like `LIVING`, rather than a bare
+ * and a rank would file the evidence as work. Both are anchored to the `docs/` root exactly like `RECORDS`, rather than a bare
  * `superpowers[/\\].*` regex: an unanchored pattern would also exempt a coincidental
  * `docs/requirements/superpowers/`, and `walk` descends nested directories so that would go
  * unnoticed rather than unmatched.
@@ -473,21 +494,31 @@ for (const file of files) {
 	// link in a received document that DOES name a note here is unverified, so an editorial
 	// preamble on one names its notes in prose rather than pretending to a checked link.
 	if (isReceivedDoc(file)) continue;
+	const record = isRecord(file);
 	// A link the 100-column wrap breaks across two lines used to be captured with the
 	// newline inside it, fail the stem lookup, and report as unresolved — a documented
 	// limitation with no detection, so the contributor saw only a false "unresolved
 	// wikilink". `wikilinks` flattens the wrap, so that link resolves now.
+	//
+	// A record's dead link is reported, not failed — the same split `RECORDS` already makes
+	// for source paths, and for the same reason: deleting a note is ordinary backlog work,
+	// and the only ways a dated spec can pass afterwards are to rewrite it, which falsifies
+	// the record, or to keep every note the register ever held. It is not unchecked — 140-odd
+	// historical paths already print in that summary — and the direction that matters is
+	// unchanged, since every other folder describes the register as it is now and still
+	// resolves every link it makes.
 	for (const target of wikilinks(text)) {
-		if (!stems.has(target)) fail(file, `unresolved wikilink [[${target}]]`);
+		if (stems.has(target)) continue;
+		if (record) historical.push(`${file} -> [[${target}]]`);
+		else fail(file, `unresolved wikilink [[${target}]]`);
 	}
-	const living = isLiving(file);
 	// `proseWithSpans`, not raw text: the path lives in a code span so spans must survive,
 	// but an HTML COMMENT must not — a path parked inside one renders nowhere and is not a
 	// reference, the same rule the citation scan follows one section down.
 	for (const [, referenced] of proseWithSpans(text).matchAll(/`((?:src|test)\/[\w./-]+\.ts)`/g)) {
 		if (await exists(referenced)) continue;
-		if (living) fail(file, `names ${referenced}, which does not exist`);
-		else historical.push(`${file} -> ${referenced}`);
+		if (record) historical.push(`${file} -> ${referenced}`);
+		else fail(file, `names ${referenced}, which does not exist`);
 	}
 	// Every relative markdown link, of any shape — not just the `NNNN-slug.md` between
 	// ADRs. A link to `assets/diagram.svg` breaks exactly as loudly as a link to a note.
@@ -496,8 +527,21 @@ for (const file of files) {
 	// destination with a space ahead of the whitespace-delimited form, and getting that
 	// order wrong resolved `[x](<The quick filter on the board.md>)` as a file called
 	// `The` — a legal link **failed**, which is the more expensive direction here.
+	//
+	// Under the same `RECORDS` split as the two rules above, and that is the correction of
+	// 2026-08-29: it was left failing everywhere while the other two learned the split, so
+	// deleting a note reached CI through whichever spelling the record happened to use.
+	// Every plan under `superpowers/plans/` links its own spec this way
+	// (`[...](../specs/....md)`), so the fix that let a dated spec keep its dead
+	// `[[wikilink]]` still broke the plan beside it. **A category invariant is checked at
+	// the forbidden thing, not per spelling** — a rule that holds for one of three ways to
+	// name a note is not the rule it reads as. No exception for a non-note asset: a record
+	// naming a deleted diagram cannot be rewritten either, for exactly the reason a record
+	// naming a deleted note cannot.
 	for (const { href, target } of localLinks(text)) {
-		if (!(await exists(path.join(path.dirname(file), target)))) fail(file, `links ${href}, which does not exist`);
+		if (await exists(path.join(path.dirname(file), target))) continue;
+		if (record) historical.push(`${file} -> ${href}`);
+		else fail(file, `links ${href}, which does not exist`);
 	}
 }
 
@@ -518,7 +562,7 @@ for (const file of files) {
  * the test name would have.
  *
  * Two things it does that the source-path rule above cannot. It holds in a CLOSED note
- * too — that rule lets a historical path slide for anything outside `LIVING`, which is
+ * too — that rule lets a historical path slide anywhere in `RECORDS`, which is
  * right for prose naming a file and wrong for a citation, since a citation claims the
  * check is live. And it covers the root `README.md`, which is not in
  * the register at all and is where the sentence this rule exists for was read by users.
@@ -1097,7 +1141,7 @@ console.log(
 	`docs: ${notes.size} backlog notes · ${useCases} use cases · ${adrFiles.length} ADRs · ${sources.length} modules`,
 );
 if (historical.length > 0) {
-	console.log(`\n  ${historical.length} historical path reference(s) in record notes (allowed, not an error):`);
+	console.log(`\n  ${historical.length} historical reference(s) in record notes (allowed, not an error):`);
 	for (const line of historical) console.log(`    ${line}`);
 }
 if (problems.length > 0) {
