@@ -78,8 +78,14 @@ So the reading is placed where it actually travels, in two halves:
   every dispatch, which is exactly why the header cannot be skipped.
 - **Each pointer task** names the layer guide for the layer *it* touches —
   `src/domain/CLAUDE.md`, `src/storage/CLAUDE.md`, `src/view/CLAUDE.md` — beside the note
-  path. A layer guide in Global Constraints would hand every implementer all three; in the
-  task it is the one that binds.
+  path, **and names the plan's own `## Global Constraints` by path as required reading**.
+  A layer guide in Global Constraints would hand every implementer all three; in the task it
+  is the one that binds. The back-reference is belt and braces against an ambiguity in
+  `subagent-driven-development` itself: its numbered dispatch contract lists the brief,
+  scene-setting, interfaces and ambiguity resolutions, while the paragraph two below it says
+  a fresh subagent needs "its task, the interfaces it touches, and the global constraints".
+  The second sentence is the one this design relies on; the back-reference means the brief
+  carries the pointer either way, since `task-brief` extracts the task and nothing above it.
 
 ### Closing what the run finishes
 

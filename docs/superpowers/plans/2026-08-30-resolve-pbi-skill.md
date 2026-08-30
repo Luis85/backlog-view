@@ -166,6 +166,25 @@ Do not write code.
 Leave the paragraph below that block untouched — it explains why the non-child outputs are
 named, and that reason is unchanged.
 
+**Then fix the second entry path in the same file**, which the fenced block does not cover.
+`decompose-pbi`'s `## Precedence, and what this is not` currently ends with:
+
+```
+- If the request is "build it", that is `writing-plans` against the PBI, not this.
+```
+
+In a continuing session the user says "build it" rather than pasting the handoff, and that
+line routes them straight past the executability pass into a plan built from unrefined
+children. Replace it with:
+
+```
+- If the request is "build it", that is `resolve-pbi` against the decomposed PBI, not this
+  and not `writing-plans` — the children have to be executable before anything runs them.
+```
+
+Both entry paths then use the same three-skill chain. Changing only the fenced block leaves
+the faster path pointing at the old one.
+
 - [ ] **Step 7: Verify what can be verified**
 
 ```bash
@@ -176,9 +195,10 @@ grep -n "writing-plans skill" .claude/skills/decompose-pbi/SKILL.md
 ```
 
 Expected: `npm run check` exits 0. The line count is under 120 (the file is a quarter
-written). The third command prints one line, inside the fenced handoff block. The fourth
-prints **nothing** — if it prints a line, the old handoff survived and the chain still
-points at `writing-plans`.
+written). The third command prints **two** lines — the fenced handoff and the precedence
+routing. The fourth prints **nothing**: `writing-plans` should no longer appear in
+`decompose-pbi` at all, and a surviving line means one of the two entry paths still points
+at it.
 
 Then the real check, which no command performs: read your `Precedence` section beside the
 spec's `## Scope, and what it refuses` and confirm every refusal in the spec is in the file.
@@ -395,8 +415,12 @@ So:
   carve-out with it: that shape is the backlog's, and an ADR takes `status: Accepted` with
   no `closed:` and no `## Outcome`, because `docs/adrs/README.md` gives it neither.
 - **Each pointer task** names the layer guide for the layer *it* touches —
-  `src/domain/CLAUDE.md`, `src/storage/CLAUDE.md`, `src/view/CLAUDE.md`. In Global
-  Constraints all three would reach every implementer; in the task it is the one that binds.
+  `src/domain/CLAUDE.md`, `src/storage/CLAUDE.md`, `src/view/CLAUDE.md` — **and names the
+  plan's own `## Global Constraints` by path as required reading**. In Global Constraints all
+  three guides would reach every implementer; in the task it is the one that binds. Carry
+  the spec's reason for the back-reference: SDD's numbered dispatch contract omits Global
+  Constraints while the paragraph below it requires them, and `task-brief` extracts the task
+  and nothing above it, so the pointer in the task closes the gap either way.
 
 State why closure has to be said at all: SDD's completion record is its ledger, under a
 gitignored `.superpowers/`, which never reaches the register. Without this, every child
