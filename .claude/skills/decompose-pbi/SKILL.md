@@ -1,0 +1,132 @@
+---
+name: decompose-pbi
+description: Use when a PBI in docs/requirements/ is agreed and needs its engineering work broken out — the user asks to decompose, break down, slice or plan out a PBI, or to see everything needed to implement one across all product perspectives, before any code is written
+---
+
+# Decomposing a PBI
+
+Interview against **one** PBI until every perspective is answered, then write its child
+notes into `docs/`. Write no source code, and no implementation plan.
+
+**Announce at start:** "Using decompose-pbi to sweep every perspective before anything is
+written."
+
+## Precedence, and what this is not
+
+- `adding-backlog-items` wrote the PBI. This skill is its follow-up and never re-opens it:
+  a slice that contradicts the use case goes back there, it is not fixed here.
+- `superpowers:brainstorming` and `writing-plans` both end in an implementation plan, which
+  is not what is asked for. A decomposition is register notes with ranks and parents; a
+  plan is one file for one session. Hand over when the user wants the plan.
+- If the request is "build it", that is `writing-plans` against the PBI, not this.
+
+## What this skill teaches, and what it does not
+
+The note shapes, the legal parents, the frontmatter vocabulary and the `order` rule are in
+`docs/README.md`, and `npm run docs` gates them. Read them; do not restate them here.
+
+What this skill adds is the two things a decomposition gets wrong:
+
+| Failure | The rule here |
+| --- | --- |
+| Tasks for the code, nothing for the rest | Phase 2 — every perspective answered out loud |
+| Everything written as a `Task` | Phase 3 — the type is chosen per child |
+
+## Two rules that hold across every phase
+
+**Nothing reaches disk before phase 4 passes.** No note, no draft, no scratch list.
+
+**One question per message.**
+
+## Phase 0 — the subject
+
+Read the whole PBI note. If the named note is not a `PBI`, stop: an `Epic` or a `Feature`
+does not hold Tasks, and the child it does hold is another requirement — say which note is
+wanted instead.
+
+Report back its guarantee, its main flow, its extensions, its acceptance criteria and its
+`## Where it lives`, and ask whether that is still what is being built. A decomposition of a
+stale use case is worse than none.
+
+**Exit when** the user confirms the PBI as read.
+
+## Phase 1 — the slices
+
+Walk the PBI's own structure for work, one question per slice: each step of the main flow,
+each extension, each acceptance criterion, each path named under `## Where it lives`.
+
+A slice is a child note when it can fail on its own. Two slices that can only pass or fail
+together are one note.
+
+**Exit when** every step, extension and criterion is either claimed by a slice or spoken
+for as needing none.
+
+## Phase 2 — the perspective sweep
+
+This is the phase that makes the picture full, and it is done **out loud**: every row gets
+a child note or an explicit "not needed, because …". Silence on a row is the failure this
+skill exists to stop.
+
+| Perspective | The question |
+| --- | --- |
+| Domain | What rule, rank, scope or placement changes in `src/domain/`? |
+| Storage | Does anything new get persisted, and does it go through the write gate? |
+| View | What is drawn, and which inputs reach it? |
+| One move, three inputs | Drag, keyboard and menu — does each reach the one host method? |
+| Undo | Is every new write takeable back? |
+| Context rows | Can a new write path target an `outsideFilter` item? |
+| i18n | Which sentences are new, and are they data or text? |
+| Styles | Which partial, and does `index.css` order matter? |
+| Tests | Node, jsdom, or both — and what does the coverage threshold move to? |
+| Live vault | What can Obsidian only answer in a real vault? |
+| Register | Does a new module in `src/` need a use case's `## Where it lives` or an ADR? |
+| ADR | Was an alternative genuinely available? If not, there is no ADR. |
+| Changelog | What does `[Unreleased]` gain? |
+
+**Exit when** every row has a note or a stated reason.
+
+## Phase 3 — the type of each child
+
+A decomposition is not a pile of Tasks. Per child, ask which the content promises — the
+type table in `docs/README.md` is the vocabulary, and three of its answers are easy to miss:
+
+- An **open question** the work cannot settle is an `Issue`, not a Task with a question in
+  it.
+- A **non-code artifact** the work owes is a `Deliverable`.
+- A **live-vault check** is a `Test case`, and it hangs from a `Test suite` — **not from
+  this PBI**. It is still part of the picture; it just parents elsewhere.
+
+Then the ranks: each child's `order` unique among the PBI's existing children, in the order
+the work must be done.
+
+**Exit when** every child has a type legal under its parent and a free `order`.
+
+## Phase 4 — shared understanding
+
+Read the whole set back — each child, its type, its parent, its rank, and one sentence of
+what it delivers — and name what you are still assuming. **This gate is the only thing that
+unlocks writing.**
+
+## The close
+
+1. Write one note per child, into the folder its type belongs to. Each opens with its
+   **Evidence**: the PBI slice or the perspective row that produced it, not a proposal.
+   `## Outcome` is left for after the work.
+2. Run `npm run docs` and fix what it reports.
+3. Commit the notes alone. No push, no pull request.
+4. Print exactly this, and nothing else in the block:
+
+   ```
+   Read docs/requirements/<Title>.md and its child notes. Write an implementation plan
+   for it using the writing-plans skill. Do not write code.
+   ```
+
+## Red flags — stop and go back
+
+- A perspective row went unmentioned because it "obviously does not apply".
+- Every child came out a `Task`.
+- You wrote a note before phase 4 to keep track.
+- You started sketching the implementation because the slices felt settled.
+- You changed the PBI to fit the slices.
+
+All of these mean: the sweep is not finished. Go back to the phase you left.

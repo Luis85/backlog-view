@@ -124,9 +124,19 @@ is right. **This gate is the only thing that unlocks writing.**
 3. Commit the note alone. No push, no pull request.
 4. Print exactly this, and nothing else in the block:
 
+   For an `Epic` or a `Feature`:
+
    ```
    Read docs/requirements/<Title>.md. Write an implementation plan for it
    using the writing-plans skill. Do not write code.
+   ```
+
+   For a `PBI` — a use case holds Tasks, so the next session breaks them out rather
+   than planning the code:
+
+   ```
+   Read docs/requirements/<Title>.md. Decompose it into its child notes using the
+   decompose-pbi skill. Do not write code.
    ```
 
 ## Red flags — stop and go back
