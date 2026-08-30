@@ -100,8 +100,11 @@ test file, which assertion, which threshold.
 | Risks | Is there one worth naming? |
 
 **Every answer lands in the note, and four of the rows do not say where.** `Evidence`,
-`Approach`, `Acceptance criteria` and `Risks` name a section of the `Task` shape. The other
-four name none: the files, the failing test, the coverage move and what would refuse the
+`Approach`, `Acceptance criteria` and `Risks` name a section of the `Task` shape. The paths
+have a home of their own: `files` is a frontmatter key the register gives to a `Task`, an
+`Issue` and a `Bug` — the same three shapes the subagent owns — so the answer to the files
+row goes there rather than into prose, and a reader lands in the code from the note's head.
+The other three name nothing: the failing test, the coverage move and what would refuse the
 work all belong with the steps that carry them out — the `Approach` in a `Task`.
 
 **The rows are named for a `Task`, and the subagent owns two other shapes.** A `Bug` is
