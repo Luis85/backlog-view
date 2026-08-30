@@ -590,7 +590,16 @@ and check three things. Fix what you find, in place:
 2. **Contradiction.** No two sections disagree. The spec itself shipped this defect twice —
    phase 2 assigned ownership while the plan section still said "one task per child" — so
    look specifically for a rule stated in two places with different words.
-3. **Restatement.** Nothing paraphrases `docs/README.md`, root `CLAUDE.md` or
+3. **Two sentences the close dropped**, found by review after Task 3 committed. Restore
+   both, in the flattened prose where they belong:
+   - The reason Global Constraints cannot be skipped — the spec's
+     *"`subagent-driven-development` passes that section into every dispatch, which is
+     exactly why the header cannot be skipped"*. Without it the file states the rule and
+     not the mechanism that makes the rule work, which is the half a reader needs to trust
+     it.
+   - The spec's *"Everything below assumes there is work."*, closing the no-work paragraph
+     before the numbered steps.
+4. **Restatement.** Nothing paraphrases `docs/README.md`, root `CLAUDE.md` or
    `subagent-driven-development`. Where the file explains a rule those own, replace the
    explanation with a pointer and keep only what this skill adds.
 
