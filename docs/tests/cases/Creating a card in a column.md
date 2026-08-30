@@ -55,7 +55,7 @@ and no stray column either**. Two things to add before starting:
   files hold the value. Found by review (Codex, PR #225).
 
 **Restore afterwards**: remove `Blocked, Waiting` from `stateValues`, set
-`folderHierarchy` back to where you found it, and delete the `Parked` note and
+`inferFolderHierarchy` back to where you found it, and delete the `Parked` note and
 everything created below.
 
 ## How to check
@@ -75,8 +75,11 @@ everything created below.
    column it draws would outlive the test.
 7. **Folder placement, one fresh note per mode.** Folder mode is read *when the note is
    created* and relocates nothing afterwards, so this cannot be checked by toggling and
-   re-reading the notes above. With `folderHierarchy` off, create one note from a column
-   and note where it landed; turn it on, create another from the same column, and compare.
+   re-reading the notes above. The option is **`inferFolderHierarchy`** in the `.base`,
+   shown in the options UI as *"Infer hierarchy from folder notes"* — not
+   `folderHierarchy`, which is only what `resolveSettings` calls it internally, and
+   editing that name changes nothing. With it off, create one note from a column and note
+   where it landed; turn it on, create another from the same column, and compare.
 8. On a phone or tablet, try the `+` and the menu entry.
 
 ## Acceptance criteria
