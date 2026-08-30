@@ -37,6 +37,29 @@ describe('nextItemId', () => {
 		expect(nextItemId(vault.app)).toBe(6);
 	});
 
+	it('ignores a shape that COERCES to a plausible id', () => {
+		// The two Obsidian's own property editor can produce, and the pair the test above
+		// could not see because every input in it coerces to `0` or `NaN`: retyping the
+		// property to a checkbox reads `true` as `1`, and to a list reads `[900]` as `900`.
+		// Neither is an id, and counting either advances the sequence off a value nothing
+		// wrote. Reported by automated review on PR #226.
+		const vault = new FakeVault();
+		withId(vault, 'Backlog/Checkbox.md', true);
+		withId(vault, 'Backlog/List.md', [900]);
+
+		expect(nextItemId(vault.app)).toBe(1);
+	});
+
+	it('counts a numeric string, which is the same id typed as text', () => {
+		// Admitted rather than refused: `pbl-id: "7"` is what retyping the property to text
+		// leaves behind, and skipping it would hand `7` to a second note — two notes that
+		// read as the same item to anyone looking at them.
+		const vault = new FakeVault();
+		withId(vault, 'Backlog/Text.md', '7');
+
+		expect(nextItemId(vault.app)).toBe(8);
+	});
+
 	it('floors a fractional id rather than issuing a fractional one', () => {
 		// Floored rather than ignored: ignoring `7.5` would let the next creation land on
 		// `7`, which reads as the same item to anyone who rounded it.

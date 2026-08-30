@@ -49,7 +49,10 @@ const floors = new WeakMap<App, number>();
  * absurd value breaking the sequence permanently, since `1e21 + 1` is still `1e21` in a
  * double and every later id would be that same number forever. `NaN` needs no guard of its
  * own — `NaN > highest` is false whichever way it is asked — which is why one comparison
- * covers `''`, a word, an object and `Infinity` alike.
+ * covers `''`, a word and `Infinity` alike — but NOT an object or a boolean, which is why
+ * the shape is asked before the arithmetic rather than left to the comparison. Raised by
+ * automated review on PR #226, whose evidence was that the malformed-value test only used
+ * inputs coercing to `0` or `NaN` and so could not see either.
  *
  * What this canNOT reach, twice over, and both are the guarantee rather than a gap to close
  * later. **Two devices, both offline**, each having synced a maximum of `N`: neither can see
@@ -72,7 +75,17 @@ const floors = new WeakMap<App, number>();
 export function nextItemId(app: App): number {
 	let highest = floors.get(app) ?? 0;
 	for (const file of app.vault.getMarkdownFiles()) {
-		const value = Math.floor(Number(app.metadataCache.getFileCache(file)?.frontmatter?.[ITEM_ID_KEY]));
+		// `unknown`, not the `any` the typings hand back: the two `typeof` guards below are the
+		// whole point, and an `any` would let a shape past them without the compiler noticing.
+		const raw: unknown = app.metadataCache.getFileCache(file)?.frontmatter?.[ITEM_ID_KEY];
+		// The SHAPE first, because `Number` coerces two shapes Obsidian's own property
+		// editor can produce into plausible ids: a checkbox reads `true` as `1`, and a
+		// one-element list reads `[900]` as `900`. Both would advance the sequence off a
+		// value that is not an id at all. A string is admitted rather than refused —
+		// `pbl-id: "7"` is a text-typed property, and skipping it would hand `7` to a
+		// second note that then reads as the same item to anyone looking at the two notes.
+		if (typeof raw !== 'number' && typeof raw !== 'string') continue;
+		const value = Math.floor(Number(raw));
 		if (value > highest && value < Number.MAX_SAFE_INTEGER) highest = value;
 	}
 	const next = highest + 1;

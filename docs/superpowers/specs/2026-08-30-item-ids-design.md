@@ -49,6 +49,15 @@ that same number, forever. Ignored rather than clamped — a note holding `1e21`
 an import artefact, not a position in this sequence. `NaN` needs no guard of its own,
 because `NaN > highest` is false whichever way it is asked.
 
+**The SHAPE is asked before any of that arithmetic**, and it has to be: `Number` coerces
+two shapes Obsidian's own property editor produces into plausible ids — a checkbox-typed
+`true` reads as `1`, a list-typed `[900]` reads as `900` — so a comparison alone advances
+the sequence off a value that is not an id. Only a `number` or a `string` is counted. The
+string is admitted rather than refused because `pbl-id: "7"` is what retyping the property
+to text leaves behind, and skipping it would hand `7` to a second note that then reads as
+the same item. Raised by automated review on PR #226, whose evidence was that the
+malformed-value test used only inputs coercing to `0` or `NaN` and so could not see either.
+
 **The number ISSUED is held to the same range, and that is a second guard rather than the
 same one.** A note holding `MAX_SAFE_INTEGER - 1` passes the scan's ceiling legitimately,
 and the call after it would issue `MAX_SAFE_INTEGER + 1` — a value adding one no longer

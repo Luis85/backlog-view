@@ -46,7 +46,12 @@ commit message, a chat or a standup without pasting a title that is going to cha
   on `7`, which reads as the same item to anyone who rounded it.
 - **2c — a note carries a `pbl-id` that is not a number at all.** Ignored: a blank key is
   what a hand-edited or stubbed note looks like, and letting `NaN` through would make every
-  later id `NaN` too.
+  later id `NaN` too. The SHAPE is asked before the arithmetic, because two shapes
+  Obsidian's own property editor produces coerce into plausible ids — retyping the property
+  to a checkbox makes `true`, which reads as `1`, and to a list makes `[900]`, which reads
+  as `900`. A numeric STRING is the one non-number that counts: `pbl-id: "7"` is what
+  retyping to text leaves behind, and skipping it would hand `7` to a second note that then
+  reads as the same item as the first.
 - **2d — a note the Base filtered out carries a higher id.** Still counted. The number must
   be unique across the VAULT, so the scan reads the vault rather than the view's results —
   the one place the context-row rule's "never derived from the results" is satisfied by
