@@ -50,6 +50,15 @@ So the plan is written, and made as thin as the tooling allows:
   built twice.
 - Nothing else. No steps, no code blocks, no acceptance criteria.
 
+**A plan with no tasks is not written.** Both filters can empty it — every child already
+landed, or every remaining output the human's — and a plan with no `## Task N` heading is
+one `subagent-driven-development` cannot run: `task-brief` exits when the heading it asks
+for is absent. So when the filter leaves nothing, phase 3 reads back a run with no work in
+it and the close writes no plan and prints no prompt. It says which outputs remain and whose
+they are, which is the honest answer for a PBI that is finished, or one whose remainder is a
+question only a person can settle. That is a real state, not an error, and a decomposition
+that reaches it deserves to be told so rather than handed an empty plan.
+
 **This is not `writing-plans`.** That skill decides granularity, file layout and TDD steps;
 here all three already live in the register, and the plan is generated mechanically from the
 ranks in the same pass that fixed them.
@@ -96,8 +105,11 @@ says it in the two places that travel:
   through, close the saved handoff `Task` the same way, **then run `npm run check` and
   commit it**. It is excluded from dispatch, so no task's own cycle covers this write, and
   a close left in the working tree is a close that never happened. Its `Acceptance criteria`
-  — every sibling closed — is then a thing a reader can check rather than a sentence that
-  can never come true.
+  is then a thing a reader can check rather than a sentence that can never come true —
+  provided it is written about the siblings the run **executes**. "Every sibling closed"
+  cannot be satisfied while an open-question `Issue` sits beside them by design, so the
+  criterion names the executed set and names the human's siblings as what it does not cover.
+  A criterion nobody can ever tick reads as unfinished work forever.
 
   **This step exists only when a handoff was saved.** The save offer is a question with a
   real "no", and the prompt is generated after it is answered, so a run that declined one
@@ -329,7 +341,7 @@ On yes, one note at the next free rank among the PBI's children, in the shape
 | Evidence | This refinement pass and the decomposition behind it, naming the PBI as a `[[wikilink]]` |
 | Why it matters | It is the execution handoff; without it a later session re-derives the order |
 | Approach | The fenced prompt, verbatim |
-| Acceptance criteria | Every sibling closed, and `npm run check` green |
+| Acceptance criteria | Every sibling the run **executes** closed, and `npm run check` green — naming the human's siblings as what it deliberately does not cover |
 | Risks | **The prompt is a pointer, not a snapshot** — a later run re-reads the notes it names rather than trusting anything it summarises |
 | Outcome | Written after the run, like any Task |
 
@@ -354,6 +366,8 @@ On yes, one note at the next free rank among the PBI's children, in the shape
 - An output with no rank was given a task number among the ranked children.
 - The prompt told a run to close a handoff the user declined to save.
 - The controller's own close was left in the working tree, with no gate and no commit.
+- An empty plan was written, and a prompt printed, for a PBI with no work left in it.
+- A saved handoff promised to close siblings the run was never going to touch.
 - A child was re-scoped to fit the order, instead of the order being corrected.
 - The saved handoff `Task` appears in the set of children the prompt executes.
 - The prompt puts the commit before `npm run check`.

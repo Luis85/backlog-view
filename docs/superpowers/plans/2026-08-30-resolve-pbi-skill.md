@@ -360,6 +360,10 @@ Then the four construction bullets from the spec, unchanged in substance:
 - **one `## Task N` per output that is the subagent's *and* still owed**, child or not, in
   rank order, each naming the note's path and saying to read it — `N` is the dispatch index,
   not the note's `order`, consecutive from 1 over the tasks that survive the filter;
+- **a plan with no tasks is not written at all** — both filters can empty it, and
+  `task-brief` exits when the heading it asks for is absent, so a run with no work left
+  reads that back at phase 3 and closes without a plan or a prompt, naming what remains and
+  whose it is;
 - **an output that carries no rank runs first** — an ADR has no `order`, a new `Test suite`
   is ranked among the roots rather than among the PBI's children, and both are context the
   ranked work rests on, so they take the low numbers and the children follow;
@@ -422,7 +426,9 @@ the handoff and not a task, which is what a later rerun catches when it re-deriv
 from `parent`.
 
 Then the six-row shape table from the spec's `### The save offer`: Evidence, Why it matters,
-Approach (the fenced prompt verbatim), Acceptance criteria, Risks (**the prompt is a
+Approach (the fenced prompt verbatim), Acceptance criteria (every sibling the run
+**executes**, not every sibling — an open-question `Issue` sits beside them by design and a
+criterion nobody can tick reads as unfinished work forever), Risks (**the prompt is a
 pointer, not a snapshot**), Outcome. State that this is the `Task` shape `docs/README.md`
 already documents — no invented shape.
 
@@ -474,7 +480,7 @@ over the whole spec.
 Append `## Red flags — stop and go back`, ending with `decompose-pbi`'s own closing line:
 *All of these mean: the sweep is not finished. Go back to the phase you left.*
 
-Every entry from the spec's red-flag list — twenty-two items. Most were real defects in the
+Every entry from the spec's red-flag list — twenty-four items. Most were real defects in the
 spec itself, caught by review, so none is decoration:
 
 - A phase's exit gate asks for less than that phase's walk covered.
@@ -491,6 +497,8 @@ spec itself, caught by review, so none is decoration:
 - A rule that every implementer needs was written into the prompt alone, where only the
   controller reads it.
 - A run finished with its children's `## Outcome` unwritten and their `status` still `Open`.
+- An empty plan was written, and a prompt printed, for a PBI with no work left in it.
+- A saved handoff promised to close siblings the run was never going to touch.
 - An ADR task was told to write `status: Done`, or to add a `closed:` or an `## Outcome`.
 - An output with no rank was given a task number among the ranked children.
 - The prompt told a run to close a handoff the user declined to save.
