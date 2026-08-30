@@ -78,7 +78,17 @@ export function dropTargetFor(
 	// rewrites `order` and spends the undo slot with both screens unchanged. With no
 	// interleaving the two readings coincide exactly, which is why this is a correction
 	// rather than a behaviour change for every existing base.
-	if (position.parent === dragged.parent && !clearsStaleLink(position.parent, dragged)) {
+	// A FOCUS rank asks its no-op question of the focus list, and asks it exactly.
+	// `peers` is `model.roots` minus the dragged row, so splicing the row back in at
+	// its own original index reproduces `model.roots` — which means the drop is a
+	// no-op precisely when the insert index equals that original index. No filtering
+	// and no translation.
+	if (model.focused && model.roots.includes(dragged) && position.parent === dragged.parent) {
+		if (position.insertIndex === model.roots.indexOf(dragged)) return null;
+	} else if (position.parent === dragged.parent && !clearsStaleLink(position.parent, dragged)) {
+		// The TREE keeps today's rule unchanged: the real group filtered to this
+		// projection, because a sibling group can interleave the projections and
+		// crossing a row nobody can see is not a move.
 		const fullList = position.parent ? position.parent.children : model.realRoots;
 		const drawnIndex = fullList.filter(member).indexOf(dragged);
 		const drawnInsert = position.peers.slice(0, position.insertIndex).filter(member).length;
@@ -100,10 +110,25 @@ function siblingPosition(
 	zone: DropZone,
 	dragged: BacklogItem,
 ): DropTarget | null {
-	// The top row of a focused view groups items from different real parents;
-	// there is no shared sibling ranking to insert into. An ancestor pulled in from
-	// outside the filter is the same problem: most of its siblings were never loaded.
-	if (item.focusRoot || item.outsideFilter) return null;
+	// An ancestor pulled in from outside the filter still has siblings the query never
+	// returned, so ordering it against the loaded ones would be a guess.
+	if (item.outsideFilter) return null;
+	// An ACTIVE focus row is a ranking destination now: the peers are the rendered
+	// focus rows, and the parent is the dragged item's OWN — a focus rank writes
+	// `order` and never `parent`. Membership in the focus forest is the test, not the
+	// `focusRoot` flag: `projectionForest` sets that flag on any promoted root,
+	// including with `model.focused` false, so a catalog `Test suite` carries it while
+	// its real siblings are off screen.
+	// BOTH rows, not just the hovered one. Checking `item` alone lets a DESCENDANT
+	// dragged onto a focus row take this branch: it would keep its own parent and get
+	// ranked among a rung it does not belong to, silently, where today it is refused.
+	if (model.focused && model.roots.includes(item) && model.roots.includes(dragged)) {
+		const peers = model.roots.filter((r) => r !== dragged);
+		const idx = peers.indexOf(item);
+		if (idx === -1) return null;
+		return { parent: dragged.parent, peers, insertIndex: zone === 'before' ? idx : idx + 1 };
+	}
+	if (item.focusRoot) return null;
 	const parent = item.parent;
 	// `realRoots`, not the rendered forest: `order` is a number scoped to the notes
 	// sharing a parent, and a `Test suite` and an `Epic` share the null one — so ranking a
