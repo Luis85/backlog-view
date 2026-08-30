@@ -4,6 +4,7 @@ import { ownValue, readString } from '../domain/noteFields';
 import { BacklogSettings } from '../domain/settings';
 import { vaultFolder } from '../domain/settingsResolve';
 import { ABSENCE_TYPE } from '../domain/typeVocabulary';
+import { ITEM_ID_KEY, nextItemId } from '../domain/itemIds';
 import { ensureFolder, uniqueNotePath, wikilinkTo } from './createNote';
 import { refusesLiveAssignee } from './frontmatter';
 import { setOwn } from './ownProperty';
@@ -99,6 +100,8 @@ export async function createAbsenceNote(app: App, settings: BacklogSettings, spe
 	// One atomic write, `createBacklogItem`'s own rule: a create-then-update pair could
 	// fail in between and leave a note that is an absence in name and a blank note in fact.
 	const fm: Record<string, unknown> = {};
+	// Below `refusesLiveAssignee` above, so a refused creation burns no number.
+	setOwn(fm, ITEM_ID_KEY, nextItemId(app));
 	setOwn(fm, settings.typeKey, ABSENCE_TYPE);
 	setOwn(fm, settings.assigneeKey, wikilinkTo(app, spec.resource, path));
 	setOwn(fm, settings.startKey, spec.start);

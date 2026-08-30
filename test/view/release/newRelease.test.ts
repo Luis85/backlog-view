@@ -96,7 +96,16 @@ describe('New release', () => {
 		const fromIndex = await createRelease(indexVault);
 		const fromEmpty = await createRelease(emptyVault);
 		expect(fromIndex).toEqual([
-			{ path: 'docs/releases/2.4.md', fm: { type: 'Release', version: '2.4.0', 'target-date': '2026-11-30', status: 'Planned' } },
+			{
+				path: 'docs/releases/2.4.md',
+				fm: {
+					'pbl-id': expect.any(Number),
+					type: 'Release',
+					version: '2.4.0',
+					'target-date': '2026-11-30',
+					status: 'Planned',
+				},
+			},
 		]);
 		expect(fromEmpty).toEqual(fromIndex);
 		// And the design's §5 on the one gesture that reaches a writer at all: this view
@@ -234,7 +243,10 @@ describe('New release', () => {
 		// this test is about the first of them.
 		await confirm(modal, '2.4', ['2026-11-30', 'Planned']);
 		expect(createdNotes(vault, before)).toEqual([
-			{ path: 'docs/releases/2.4.md', fm: { type: 'Release', 'target-date': '2026-11-30', status: 'Planned' } },
+			{
+				path: 'docs/releases/2.4.md',
+				fm: { 'pbl-id': expect.any(Number), type: 'Release', 'target-date': '2026-11-30', status: 'Planned' },
+			},
 		]);
 	});
 
@@ -253,7 +265,9 @@ describe('New release', () => {
 		const { modal } = await openNewRelease(vault, cleared);
 		expect(fieldNames(modal)).toEqual(['Title']);
 		await confirm(modal, '2.4');
-		expect(createdNotes(vault, before)).toEqual([{ path: 'docs/releases/2.4.md', fm: { type: 'Release' } }]);
+		expect(createdNotes(vault, before)).toEqual([
+			{ path: 'docs/releases/2.4.md', fm: { 'pbl-id': expect.any(Number), type: 'Release' } },
+		]);
 	});
 
 	it('files the note where the vault is configured NOW, not where it was when the dialog opened', async () => {
@@ -276,7 +290,7 @@ describe('New release', () => {
 		await confirm(modal, '2.4', ['9.9.9']);
 
 		expect(createdNotes(vault, before)).toEqual([
-			{ path: 'shipped/2.4.md', fm: { kind: 'Release', version: '9.9.9' } },
+			{ path: 'shipped/2.4.md', fm: { 'pbl-id': expect.any(Number), kind: 'Release', version: '9.9.9' } },
 		]);
 	});
 
@@ -335,7 +349,10 @@ describe('New release', () => {
 		await flush();
 
 		expect(createdNotes(vault, before)).toEqual([
-			{ path: 'docs/releases/2.4.md', fm: { type: 'Release', description: 'The billing rewrite.' } },
+			{
+				path: 'docs/releases/2.4.md',
+				fm: { 'pbl-id': expect.any(Number), type: 'Release', description: 'The billing rewrite.' },
+			},
 		]);
 	});
 
@@ -363,7 +380,10 @@ describe('New release', () => {
 		await flush();
 
 		expect(createdNotes(vault, before)).toEqual([
-			{ path: 'docs/releases/2.4.md', fm: { type: 'Release', description: 'The billing rewrite.' } },
+			{
+				path: 'docs/releases/2.4.md',
+				fm: { 'pbl-id': expect.any(Number), type: 'Release', description: 'The billing rewrite.' },
+			},
 		]);
 	});
 

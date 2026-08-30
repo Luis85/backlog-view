@@ -80,6 +80,7 @@ describe('New iteration…', () => {
 		await submitDialog({ Name: 'Sprint 13', Goal: 'Finish the importer' });
 		// Named for what it is FOR: the confirmed name, then the confirmed goal.
 		expect(harness.vault.fm('Sprint 13 - Finish the importer.md')).toEqual({
+			'pbl-id': expect.any(Number),
 			type: 'Iteration',
 			order: expect.any(Number),
 			// The day after Sprint 12's target, running fourteen inclusive days.
@@ -146,7 +147,11 @@ describe('New iteration…', () => {
 		// A name alone still makes a perfectly good iteration note.
 		expect(fields()).toEqual(['Name']);
 		await submitDialog({ Name: 'Sprint 13' });
-		expect(harness.vault.fm('Sprint 13.md')).toEqual({ type: 'Iteration', order: expect.any(Number) });
+		expect(harness.vault.fm('Sprint 13.md')).toEqual({
+			'pbl-id': expect.any(Number),
+			type: 'Iteration',
+			order: expect.any(Number),
+		});
 	});
 
 	it('refuses a confirmed target before its start, keeping the dialog open', async () => {

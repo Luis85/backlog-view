@@ -99,6 +99,10 @@ describe('adding an absence', () => {
 		expect(fm['assignee']).toBe('[[Bob]]');
 		expect(fm['start']).toBe('2026-09-01');
 		expect(fm['due']).toBe('2026-09-04');
+		// Stamped like every note this plugin creates. A `typeof` check rather than a
+		// literal: this vault is a fixture holding notes of its own, so the exact number is
+		// a function of how many the fixture made rather than of the rule being asserted.
+		expect(typeof fm['pbl-id']).toBe('number');
 		// No parent, no order: it is not in the hierarchy and has no rank among anything.
 		expect('parent' in fm).toBe(false);
 		expect('order' in fm).toBe(false);
