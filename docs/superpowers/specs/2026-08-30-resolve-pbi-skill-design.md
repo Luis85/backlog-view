@@ -260,10 +260,18 @@ outputs would send an intentionally unanswerable note through the TDD loop, beca
 | A `Task` | The subagent's | It is engineering work with a test |
 | An `Issue` holding an **open question** | The human's | The work cannot settle it; that is why it is an Issue |
 | An `Issue` recording a **decision or a limitation** | The subagent's | It is prose stating something already settled |
+| A `Bug` | The subagent's | A defect with a fix and a test, and `docs/README.md` gives it a shape — the same work a `Task` is |
+| An `Improvement` | The subagent's | Engineering work like a `Task`, and it closes the same way |
+| An `Idea` | The human's | A proposal nobody has committed to. Implementing an Idea decides it, which is not this run's call |
 | A `Deliverable` | Ask | A non-code artifact may be either, and the register documents no shape for it |
 | An ADR *(not a child)* | The subagent's | Prose it can write, once phase 2 has the five things `docs/adrs/README.md` wants |
 | A `Test suite` *(not a child)* | The subagent's | Prose saying what the group walks; it checks nothing itself, and it must exist before a case can hang from it. Written, never closed — it stays `Open` while its cases are re-walked |
 | A `Test case` *(not a child)* | The human's | A live vault, which no subagent reaches — Obsidian cannot run here |
+
+**Every type the register lets a PBI hold has a row.** `docs/README.md` makes a PBI's legal
+children `Task`, `Issue`, `Bug`, `Idea`, `Deliverable` and `Improvement`; phase 2 cannot
+exit until each output is assigned, so a type with no row is a phase that cannot close over
+a legal decomposition.
 
 The human's outputs are **named in the plan's header, never given a task**. They are still
 part of the picture — the prompt reads them as context, and the readback shows the split —
@@ -404,6 +412,7 @@ On yes, one note at the next free rank among the PBI's children, in the shape
 - An `Issue` holding an open question was given a `## Task N`.
 - An output was left unassigned because it is a child and children are "obviously" the
   subagent's.
+- A legal child type reached phase 2 with no row in the ownership table.
 - The close committed on `npm run docs` alone.
 - A rule that every implementer needs was written into the prompt alone, where only the
   controller reads it.

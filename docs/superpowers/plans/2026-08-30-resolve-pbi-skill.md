@@ -534,7 +534,7 @@ over the whole spec.
 Append `## Red flags — stop and go back`, ending with `decompose-pbi`'s own closing line:
 *All of these mean: the sweep is not finished. Go back to the phase you left.*
 
-Every entry from the spec's red-flag list — thirty-one items. Most were real defects in the
+Every entry from the spec's red-flag list — thirty-two items. Most were real defects in the
 spec itself, caught by review, so none is decoration:
 
 - A phase's exit gate asks for less than that phase's walk covered.
@@ -553,6 +553,7 @@ spec itself, caught by review, so none is decoration:
 - A run finished with its children's `## Outcome` unwritten and their `status` still `Open`.
 - An empty plan was written, and a prompt printed, for a PBI with no work left in it.
 - The save question was asked on a run that produced no prompt to save.
+- A legal child type reached phase 2 with no row in the ownership table.
 - An `Issue` or a `Deliverable` was closed with an `## Outcome` its shape does not have.
 - A `Deliverable` gained a `closed:` key the register does not give it.
 - The prompt told every task to run red-green, including the prose ones.
@@ -576,8 +577,16 @@ spec itself, caught by review, so none is decoration:
 Read `.claude/skills/resolve-pbi/SKILL.md` start to finish, then the spec start to finish,
 and check three things. Fix what you find, in place:
 
-1. **Coverage.** Every spec heading has a section that implements it. The spec has
-   seventeen `##`/`###` headings; walk them.
+1. **Coverage.** Every spec heading has a section that implements it. Walk the spec's
+   `##`/`###` headings one by one.
+
+   **One known gap to close in this pass**, found by review after Task 2 committed: the
+   ownership table in `### Not every child is executable` was written before the spec gained
+   rows for `Bug`, `Improvement` and `Idea`. `docs/README.md` makes a PBI's legal children
+   `Task`, `Issue`, `Bug`, `Idea`, `Deliverable` and `Improvement`, and phase 2 cannot exit
+   until every output is assigned — so a type with no row is a phase that cannot close over
+   a legal decomposition. Copy the three rows from the spec's table verbatim, in the spec's
+   order, and add the spec's paragraph stating that every legal child type has a row.
 2. **Contradiction.** No two sections disagree. The spec itself shipped this defect twice —
    phase 2 assigned ownership while the plan section still said "one task per child" — so
    look specifically for a rule stated in two places with different words.
