@@ -60,10 +60,20 @@ for the state preset to drift out of step.
    it.
 2. The type is `newItemType(host.settings, model)`, resolved as the roadmap's bucket
    `+` resolves it, not a per-column picker.
-3. **Configured columns only.** A stray column — `outsideWorkflow` — offers no creation:
-   it exists because a note was *observed* holding a value the workflow does not
-   declare, and minting a new note into that value is manufacturing it rather than
-   observing it. Drops still land there, so nothing already in that state is stranded.
+3. **Configured columns only — and this contradicts the use case as written.**
+   [[New cards in place]] says *"Each column offers creation"* and names no exception; a
+   stray column — `outsideWorkflow` — is a column. The decision taken during the
+   decomposition was to withhold creation there: a stray column exists because a note was
+   *observed* holding a value the workflow does not declare, and minting a new note into
+   that value is manufacturing it rather than observing it, which the epic's
+   *"no state string written that the user did not configure or observe"* reads against.
+   Drops still land there, so nothing already in that state is stranded.
+
+   **That decision is not this Task's to hold.** A decomposition may not narrow a use
+   case's acceptance criterion — the exception belongs on [[New cards in place]] as an
+   extension, written through `adding-backlog-items`, before this Task ships. Until it is
+   there, the PBI's criterion is the one that governs and this step is blocked rather
+   than merely undecided. Found by review (Codex, PR #225).
 4. `styles/board.css` gains the header button, mirroring `.pbl-bucket-add` in
    `roadmap.css`; the new class joins the hit-target list `touch.css` already keeps.
    No new partial, so no `index.css` ordering question.
@@ -75,7 +85,10 @@ for the state preset to drift out of step.
 
 - A `+` on the column header, an entry in the column's context menu, and Enter on the
   empty-column stop each open the same creation flow, in that column's state.
-- A stray (out-of-workflow) column offers none of the three, while still taking a drop.
+- A stray (out-of-workflow) column offers none of the three, while still taking a drop —
+  **conditional on [[New cards in place]] carrying that exception as an extension.**
+  Without it this criterion and the PBI's *"each column offers creation"* cannot both
+  hold, and the PBI wins.
 - The no-state column offers all three, and the note it creates carries no state key.
 - The context-row rule holds by construction **and is asserted**: the entry points pass
   `parentItem: null`, so the `outsideFilter` folder trap in `promptCreateItem` is
