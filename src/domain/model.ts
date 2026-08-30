@@ -3,7 +3,7 @@ import { Absence } from './absences';
 import { inferFolderParent } from './folderNotes';
 import { DependencyNode, resolveDependencies } from './dependencies';
 import { createItems, namedTargets, RawItem, RawStore, ResourceNote } from './readItems';
-import { rankedItems } from './rankOrder';
+import { inRankOrder, rankedItems } from './rankOrder';
 import {
 	childLevelIndex,
 	EXTRA_TYPE_RANK,
@@ -346,7 +346,11 @@ export function buildModel(app: App, entries: BasesEntry[], settings: BacklogSet
 	// root. Under a focus the two compose: focus decides where the tree is re-rooted, and
 	// this decides which of those rows the plan actually draws.
 	const focused = focusIdx >= 0 || focusExtra !== '';
-	const focusRoots = focused ? collectFocusRoots(roots, focusIdx, focusExtra, settings) : roots;
+	// A focus level is a FILTER over the ranked array, never a sort of its own:
+	// filtering a sorted array preserves order, so this costs one pass and no
+	// comparison. `collectFocusRoots` still decides membership (which rungs and which
+	// extra types); `ranked` decides sequence.
+	const focusRoots = focused ? inRankOrder(collectFocusRoots(roots, focusIdx, focusExtra, settings), ranked) : roots;
 	const plan = projectionForest(focusRoots, inPlan, settings, false);
 	// `rest` LAST, and the order is load-bearing: both objects carry the same `observed*`
 	// lists, and the plan's must be the whole-tree-minus-catalog ones in `rest` rather than

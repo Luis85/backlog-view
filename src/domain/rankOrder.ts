@@ -19,3 +19,14 @@ function compareRank(a: BacklogItem, b: BacklogItem): number {
 export function rankedItems(items: BacklogItem[]): BacklogItem[] {
 	return [...items].sort(compareRank);
 }
+
+/**
+ * The given rows, in global rank order. A focus level is a FILTER over the ranked
+ * array, never a sort of its own: filtering a sorted array preserves order, so this
+ * costs one pass and no comparison. `collectFocusRoots` decides MEMBERSHIP — which
+ * rungs and which extra types — and `ranked` decides SEQUENCE.
+ */
+export function inRankOrder(rows: BacklogItem[], ranked: BacklogItem[]): BacklogItem[] {
+	const members = new Set(rows);
+	return ranked.filter((item) => members.has(item));
+}
