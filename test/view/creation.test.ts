@@ -54,7 +54,7 @@ describe('item creation', () => {
 		const fm = vault.fm('Backlog/Login flow.md');
 		expect(fm['type']).toBe('Feature');
 		expect(fm['parent']).toBe('[[Epic A]]');
-		expect(fm['order']).toBe(20);
+		expect(fm['order']).toBe(1010);
 		expect(Notice.messages.some((m) => m.startsWith('Created'))).toBe(true);
 	});
 
@@ -185,7 +185,7 @@ describe('creation flows', () => {
 		await flush();
 
 		// After the real epics (order 200), not squeezed between the focus rows
-		expect(vault.fm('Fresh Feature.md')['order']).toBe(210);
+		expect(vault.fm('Fresh Feature.md')['order']).toBe(1200);
 	});
 
 	it('infers the folder from hidden items when a focused view is empty', async () => {

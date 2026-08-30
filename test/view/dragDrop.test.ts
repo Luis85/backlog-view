@@ -50,7 +50,9 @@ describe('drag and drop', () => {
 		drag(rowByTitle(containerEl, 'Epic B'), rowByTitle(containerEl, 'Epic A'), 'before');
 		await flush();
 
-		expect(vault.fm('Epic B.md')['order']).toBe(0);
+		// One spacing below the global first (Epic A at 10) — the rank is a place in the
+		// whole population now, so a legacy vault's small numbers put the new one negative.
+		expect(vault.fm('Epic B.md')['order']).toBe(-990);
 		expect(vault.fm('Epic B.md')['parent']).toBeUndefined();
 	});
 
@@ -63,7 +65,7 @@ describe('drag and drop', () => {
 
 		const fm = vault.fm('Epic A.md');
 		expect(fm['parent']).toBe('[[Feature B2]]');
-		expect(fm['order']).toBe(10);
+		expect(fm['order']).toBe(1040);
 		// An Epic two rungs below where the ladder would put it, and left as one: the drop
 		// writes the parent and the rank, and a type is the note's own statement.
 		expect(fm['type']).toBe('Epic');

@@ -19,7 +19,7 @@ describe('undoing the last change', () => {
 
 		drag(rowByTitle(containerEl, 'Epic A'), rowByTitle(containerEl, 'Epic B'), 'inside');
 		await flush();
-		expect(vault.fm('Epic A.md')).toEqual({ type: 'Epic', order: 30, parent: '[[Epic B]]' });
+		expect(vault.fm('Epic A.md')).toEqual({ type: 'Epic', order: 1040, parent: '[[Epic B]]' });
 
 		undoButton(containerEl).dispatchEvent(new MouseEvent('click', { bubbles: true }));
 		await flush();
@@ -69,7 +69,7 @@ describe('undoing the last change', () => {
 		key(tree, 'z', { ctrlKey: true });
 		await flush();
 
-		expect(vault.fm('Epic A.md')).toEqual({ type: 'Epic', order: 30, parent: '[[Epic B]]' });
+		expect(vault.fm('Epic A.md')).toEqual({ type: 'Epic', order: 1040, parent: '[[Epic B]]' });
 	});
 
 	it('keeps a key edited since the write, restores the rest, and says what it kept', async () => {
@@ -144,20 +144,20 @@ describe('undoing the last change', () => {
 			.querySelector<HTMLElement>('[aria-label="Assign missing properties"]')
 			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 		await flush();
-		expect(orders()).toEqual([10, 20, 30]);
+		expect(orders()).toEqual([1000, 2000, 3000]);
 
 		// The replay runs newest-first (C, B, A); B's write fails after C restored.
 		vault.failWrites.add('B.md');
 		key(tree, 'z', { ctrlKey: true });
 		await flush();
-		expect(orders()).toEqual([10, 20, undefined]);
+		expect(orders()).toEqual([1000, 2000, undefined]);
 
 		// The retry must not redo C — and it fails one file later itself.
 		vault.failWrites.delete('B.md');
 		vault.failWrites.add('A.md');
 		key(tree, 'z', { ctrlKey: true });
 		await flush();
-		expect(orders()).toEqual([10, undefined, undefined]);
+		expect(orders()).toEqual([1000, undefined, undefined]);
 
 		// The third attempt finishes the undo.
 		vault.failWrites.delete('A.md');
@@ -169,7 +169,7 @@ describe('undoing the last change', () => {
 		// failures included, not just the file the last attempt restored.
 		key(tree, 'z', { ctrlKey: true });
 		await flush();
-		expect(orders()).toEqual([10, 20, 30]);
+		expect(orders()).toEqual([1000, 2000, 3000]);
 	});
 
 	it('a retry consumed by conflicts still leaves the restored prefix redoable', async () => {
@@ -185,7 +185,7 @@ describe('undoing the last change', () => {
 			.querySelector<HTMLElement>('[aria-label="Assign missing properties"]')
 			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 		await flush();
-		expect(orders()).toEqual([10, 20, 30]);
+		expect(orders()).toEqual([1000, 2000, 3000]);
 
 		// The undo restores C and fails on B; the unreached files are then edited.
 		vault.failWrites.add('B.md');
@@ -207,7 +207,7 @@ describe('undoing the last change', () => {
 		expect(undoButton(containerEl).disabled).toBe(false);
 		undoButton(containerEl).dispatchEvent(new MouseEvent('click', { bubbles: true }));
 		await flush();
-		expect(orders()).toEqual([99, 99, 30]);
+		expect(orders()).toEqual([99, 99, 3000]);
 	});
 
 	it('a no-op write does not cost the slot: re-picking the checked state keeps the real undo', async () => {

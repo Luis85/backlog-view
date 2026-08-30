@@ -217,49 +217,6 @@ export interface AxisWrite {
 	from?: Partial<Record<PlacementEnd, string | null>>;
 }
 
-/**
- * Compute the frontmatter writes for dropping `dragged` at the given target position.
- * Uses the gap between neighbor orders when possible; falls back to renumbering
- * the whole sibling group when orders are missing or too tightly packed.
- */
-export function computeDropWrites(dragged: BacklogItem, target: DropTarget): ItemWrite[] {
-	const { parent, siblings, insertIndex } = target;
-	const parentField = computeParentField(dragged, parent);
-
-	// TODO(Task 4): rewire onto the global `ranked` population and `orderForTarget`.
-	// Passing `siblings` here reproduces this function's pre-existing sibling-scoped
-	// behaviour through the new arithmetic; it is not yet the global rank the plan
-	// calls for. One known divergence from the old `computeInsertOrder`: the
-	// "insert before the first sibling" case now takes `Math.floor(next.order) -
-	// ORDER_SPACING` where the old code took `roundOrder(Math.ceil(next.order) -
-	// ORDER_SPACING)` — these differ when `next.order` is not an integer. No
-	// fixture here exercises that, and Task 4 removes this shim entirely rather
-	// than inheriting the mismatch.
-	const anchor = insertIndex > 0 ? siblings[insertIndex - 1] : null;
-	const side: 'before' | 'after' = anchor ? 'after' : 'before';
-	const result = anchoredOrder(siblings, anchor ?? (siblings[insertIndex] ?? null), side);
-	if ('order' in result) {
-		return [{ file: dragged.file, parent: parentField, order: result.order }];
-	}
-	// Renumbering rewrites every sibling, and the view never writes to a note the
-	// Base excluded. Placing the item past the highest order we can see keeps the
-	// drop working while touching only the note being moved. Callers refuse the
-	// *positional* drops in such a group, so landing last is what was asked for.
-	if (siblings.some((s) => s.outsideFilter)) {
-		return [{ file: dragged.file, parent: parentField, order: afterHighestKnown(siblings) }];
-	}
-	return renumberWrites(dragged, siblings, insertIndex, parentField);
-}
-
-/** One spacing beyond the highest order in the group, ignoring siblings that have none. */
-function afterHighestKnown(siblings: BacklogItem[]): number {
-	let max = 0;
-	for (const sibling of siblings) {
-		if (sibling.order !== null && sibling.order > max) max = sibling.order;
-	}
-	return Math.floor(max) + ORDER_SPACING;
-}
-
 /** The parent frontmatter update, or undefined when the parent is unchanged. */
 function computeParentField(dragged: BacklogItem, parent: BacklogItem | null): TFile | null | undefined {
 	const oldParentPath = dragged.parent?.file.path ?? null;
@@ -772,25 +729,47 @@ function neighbourPair(
 		: { prev: anchor, next: ranked[idx + 1] ?? null };
 }
 
-/** Renumber the whole sibling group, including the dragged item at its new position. */
-function renumberWrites(
-	dragged: BacklogItem,
-	siblings: BacklogItem[],
-	insertIndex: number,
-	parentField: TFile | null | undefined,
-): ItemWrite[] {
-	const sequence = [...siblings];
-	sequence.splice(insertIndex, 0, dragged);
-	const writes: ItemWrite[] = [];
-	sequence.forEach((item, i) => {
-		const slot = (i + 1) * ORDER_SPACING;
-		if (item === dragged) {
-			writes.push({ file: item.file, parent: parentField, order: slot });
-		} else if (item.order !== slot) {
-			writes.push({ file: item.file, order: slot });
-		}
-	});
-	return writes;
+/**
+ * The anchor a target implies: the last peer, or the destination row itself when
+ * there is none. An empty peer group is the commonest placement there is — the first
+ * child of a parent, a drop inside a leaf — which is why the anchor is stated over the
+ * DESTINATION rather than over the peers.
+ */
+export function orderForTarget(ranked: BacklogItem[], target: DropTarget): RankResult {
+	const { peers, insertIndex, parent } = target;
+	if (peers.length === 0) return anchoredOrder(ranked, parent, 'after');
+	if (insertIndex === 0) return anchoredOrder(ranked, peers[0], 'before');
+	return anchoredOrder(ranked, peers[insertIndex - 1], 'after');
+}
+
+/**
+ * The frontmatter writes for dropping `dragged` at the given target.
+ *
+ * Always ONE note: the rank is a midpoint in the global population, so no group is
+ * ever renumbered. An empty result means the placement refused — a spent gap or an
+ * unranked neighbour — and the caller says which.
+ */
+export function computeDropWrites(dragged: BacklogItem, target: DropTarget, ranked: BacklogItem[]): ItemWrite[] {
+	const placed = dropPlacement(dragged, target, ranked);
+	if ('refusal' in placed) return [];
+	return [{ file: dragged.file, parent: computeParentField(dragged, target.parent), order: placed.order }];
+}
+
+/**
+ * The placement a drop would take — the planner's own answer, exported so the caller
+ * that names a remedy asks the SAME question rather than a similar one.
+ *
+ * The dragged row is removed from the population before its neighbours are found, or
+ * it becomes its own neighbour. That filter must not be written twice: a caller that
+ * diagnosed against the unfiltered array could see a number where the planner refused
+ * — a drop that does nothing and shows no remedy — which is why the diagnosis goes
+ * through here instead of calling `orderForTarget` beside it.
+ */
+export function dropPlacement(dragged: BacklogItem, target: DropTarget, ranked: BacklogItem[]): RankResult {
+	return orderForTarget(
+		ranked.filter((item) => item !== dragged),
+		target,
+	);
 }
 
 /**
@@ -949,7 +928,8 @@ export function computeInitWrites(model: BacklogModel, settings: BacklogSettings
 		// rank that ignored them would place a backfilled item above a row the user
 		// can see — a backfill that fills in blanks must not reorder the tree. Not
 		// writing to them is the rule; not looking at them would break this. The drop
-		// and creation paths (afterHighestKnown, endOfSiblingsOrder) do the same.
+		// path (`anchoredOrder`, over the global population) and the creation path
+		// (`endOfSiblingsOrder`) do the same.
 		let maxOrder = 0;
 		for (const item of siblings) {
 			if (item.order !== null && item.order > maxOrder) maxOrder = item.order;

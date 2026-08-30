@@ -413,9 +413,10 @@ function rulesSection(settings: BacklogSettings): string[] {
 			// `keepsProjection` gates every reparenting target, and `ladderFor` chains from the
 			// parent for a `Task` and a note with no `type` and for nothing else — so every other
 			// name answers from itself and can never change ladder by moving. And the "for a type
-			// reason" qualifier is the other half: `isInvalidParent` and `reorderableGroup` refuse
-			// drops for reasons that have nothing to do with type, so an unqualified "the one move
-			// the view withholds" would be as false as the "nothing is refused" this replaced.
+			// reason" qualifier is the other half: `isInvalidParent` and `computeDropWrites` (a
+			// spent gap, an unranked neighbour) refuse drops for reasons that have nothing to do
+			// with type, so an unqualified "the one move the view withholds" would be as false as
+			// the "nothing is refused" this replaced.
 			` The one move the view withholds for a **type** reason is a move between the two ladders above, and only for the two notes that read ` +
 			`their ladder from where they hang: a ${code(LEVELS[LEVELS.length - 1])}, the rung both ladders share, and a note with ` +
 			`no ${code('type')} at all. Either would change ladder by being moved, and the row would leave the screen it was moved on, so the move is not offered. Every other type keeps its ladder wherever it lands.` +

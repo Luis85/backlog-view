@@ -671,7 +671,13 @@ describe('rendering', () => {
 		key(tree, 'ArrowDown', { altKey: true });
 		await flush();
 		expect(vault.writeLog).toHaveLength(0);
-		expect(Notice.messages.some((m) => m.startsWith('Fix the view options first'))).toBe(true);
+		// The BANNER is the warning on this path, and the silence is exact rather than
+		// incidental: an `orderProperty` pointed at the parent link leaves every note
+		// unranked, so the placement refuses and `applySafely` returns on the empty batch
+		// before the config gate is reached. The gate's own notice is asserted by the
+		// creation case below, which still plans a write under these same options. Task 9
+		// gives a refused placement its own notice; until then this path only blocks.
+		expect(Notice.messages).toEqual([]);
 	});
 
 	it('blocks item creation while the configuration is corrupt', () => {
@@ -768,8 +774,9 @@ describe('targeted subtree rendering', () => {
 
 		drag(b2, rowByTitle(containerEl, 'Feature B1'), 'before');
 		await flush();
-		// Ranked ahead of Feature B1 (order 10), a full spacing below it
-		expect(vault.fm('Feature B2.md').order).toBe(0);
+		// Ranked ahead of Feature B1 (order 30): the midpoint of it and the row above it in
+		// the global population, Epic B (20).
+		expect(vault.fm('Feature B2.md').order).toBe(25);
 	});
 
 	it('drops the collapsed subtree from the selection index', () => {

@@ -51,7 +51,9 @@ describe('context menu', () => {
 		Menu.lastShown?.item('Move to top')?.click();
 		await flush();
 
-		expect(vault.fm('Feature B2.md')['order']).toBe(0);
+		// The midpoint of Epic B (20) and Feature B1 (30): top of its own group is still a
+		// place in the GLOBAL population, so the number comes from the rows either side.
+		expect(vault.fm('Feature B2.md')['order']).toBe(25);
 	});
 
 	/**
@@ -69,7 +71,9 @@ describe('context menu', () => {
 	 */
 	it('swaps an item with its neighbour rather than sending it to the edge', async () => {
 		const vault = fixture();
-		vault.addFile('Feature B3.md', { frontmatter: { type: 'Feature', order: 30 }, parentLink: 'Epic B' });
+		// 50, not 30: `fixture()` already ranks Feature B1 there, and two rows sharing a
+		// rank is a spent gap the placement refuses.
+		vault.addFile('Feature B3.md', { frontmatter: { type: 'Feature', order: 50 }, parentLink: 'Epic B' });
 		const { view, containerEl } = makeView(vault);
 		const order = (title: string): number => vault.fm(`${title}.md`)['order'] as number;
 
@@ -156,7 +160,7 @@ describe('context menu', () => {
 		rowByTitle(containerEl, 'Feature B1').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
 		Menu.lastShown?.item('Move to bottom')?.click();
 		await flush();
-		expect(vault.fm('Feature B1.md')['order']).toBe(30);
+		expect(vault.fm('Feature B1.md')['order']).toBe(1040);
 	});
 
 	it('clears a stale parent link through the menu', async () => {
@@ -282,14 +286,24 @@ describe('focused structure operations', () => {
 	});
 });
 
-describe('move commands that do not rank', () => {
+/**
+ * A sibling group holding a context row. It used to offer no ranking command at all —
+ * `reorderableGroup` refused the whole group, because renumbering it would have written
+ * to the excluded note. A rank is a midpoint in the global population now, so nothing
+ * but the moved note is ever written and the refusal has gone with the function. What
+ * has NOT changed is the rule these tests are here for: whichever command is taken, the
+ * context row is never in the write log.
+ */
+describe('move commands in a group holding a context row', () => {
 	/** Epic over Feature A (context, its PBI matched) and Feature B (a result). */
 	function mixedSiblings() {
 		const vault = new FakeVault();
+		// Distinct ranks throughout — see `fixture()`: a shared number is a spent gap, and
+		// a refusal for arithmetic would hide the context-row question this block asks.
 		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
-		vault.addFile('Feature A.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Epic' });
-		vault.addFile('Feature B.md', { frontmatter: { type: 'Feature', order: 20 }, parentLink: 'Epic' });
-		vault.addFile('PBI.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: 'Feature A' });
+		vault.addFile('Feature A.md', { frontmatter: { type: 'Feature', order: 20 }, parentLink: 'Epic' });
+		vault.addFile('Feature B.md', { frontmatter: { type: 'Feature', order: 30 }, parentLink: 'Epic' });
+		vault.addFile('PBI.md', { frontmatter: { type: 'PBI', order: 40 }, parentLink: 'Feature A' });
 		const containerEl = document.body.createDiv();
 		const view = new ProductBacklogView({} as never, containerEl);
 		const anyView = view as unknown as Record<string, unknown>;
@@ -303,14 +317,28 @@ describe('move commands that do not rank', () => {
 		return { view, containerEl, vault };
 	}
 
-	it('still offers indent, which appends instead of ranking', () => {
+	it('offers both reordering and indent beside a context row', () => {
 		const { containerEl } = mixedSiblings();
 
 		rowByTitle(containerEl, 'Feature B').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
 		const titles = Menu.lastShown?.items.map((i) => i.titleText) ?? [];
-		// Reordering stays out, but indenting under the previous sibling is safe
-		expect(titles).not.toContain('Move up');
+		// Move up ranks Feature B before Feature A by taking a number between it and the
+		// Epic — one write, to Feature B. The context row is read for its rank and left
+		// alone, which is what `src/CLAUDE.md`'s context-row rule asks of a ranking peer.
+		expect(titles).toContain('Move up');
 		expect(titles).toContain('Indent under "Feature A"');
+	});
+
+	it('ranks past a context row without writing to it', async () => {
+		const { containerEl, vault } = mixedSiblings();
+
+		rowByTitle(containerEl, 'Feature B').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+		Menu.lastShown?.item('Move up')?.click();
+		await flush();
+
+		// The midpoint of Epic (10) and Feature A (20), written to the result alone.
+		expect(vault.writeLog.map((w) => w.path)).toEqual(['Feature B.md']);
+		expect(vault.fm('Feature B.md').order).toBe(15);
 	});
 
 	it('indents into a mixed group without writing to the context row', async () => {

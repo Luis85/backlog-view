@@ -1,12 +1,11 @@
 import { Notice } from 'obsidian';
 import { list, t } from '../../i18n/t';
-import { reorderableGroup } from '../../domain/dropTargets';
 import { keepsProjection } from '../../domain/itemTypes';
 import { BacklogViewHost } from '../host';
 import { BacklogItem } from '../../domain/model';
 import { DropTarget } from '../../domain/dropTargets';
 import { configProblems } from '../../domain/settingsConsistency';
-import { computeInitWrites } from '../../domain/writePlan';
+import { computeInitWrites, dropPlacement } from '../../domain/writePlan';
 
 /**
  * Structural operations shared by the context menu and keyboard shortcuts.
@@ -43,33 +42,50 @@ export function visibleNeighbor(host: BacklogViewHost, item: BacklogItem, delta:
 }
 
 /**
- * True when the item can be reordered among its own siblings. Reordering renumbers
- * the group if the gaps run out, which must never write to a note the Base excluded
- * — so a group holding a context row offers no move commands at all.
+ * The target `moveWithinSiblings` would land on for this delta, or null when there
+ * is no visible neighbor to swap with. Shared with `canReorder` so offering the
+ * command and performing it can never disagree about the destination.
  */
-export function canReorder(host: BacklogViewHost, item: BacklogItem): boolean {
+function withinSiblingsTarget(host: BacklogViewHost, item: BacklogItem, delta: -1 | 1): DropTarget | null {
 	const ctx = siblingContext(host, item);
-	return ctx !== null && reorderableGroup(ctx.fullList);
+	const neighbor = visibleNeighbor(host, item, delta);
+	if (!ctx || !neighbor) return null;
+	// Land on the far side of the visible neighbor; order math still runs over the
+	// full sibling list, so hidden rows in between are simply skipped past.
+	const peers = ctx.fullList.filter((s) => s !== item);
+	const insertIndex = delta === -1 ? peers.indexOf(neighbor) : peers.indexOf(neighbor) + 1;
+	return { parent: item.parent, peers, insertIndex };
+}
+
+/**
+ * True when reordering `item` one slot in the given direction would actually write
+ * something. Asked of the SAME placement `computeDropWrites` would plan — a rank is
+ * a midpoint in the global population, so a spent gap or an unranked neighbour
+ * refuses silently, and an offered command that does nothing is what this repo
+ * refuses ahead of a withheld one. Gates both the adjacent swap and Move to
+ * top/bottom in the same direction: with no rendered neighbour beyond the immediate
+ * one, moving one slot and moving to the edge ask the identical question.
+ */
+export function canReorder(host: BacklogViewHost, item: BacklogItem, delta: -1 | 1): boolean {
+	const model = host.model;
+	const target = withinSiblingsTarget(host, item, delta);
+	if (!model || !target) return false;
+	return !('refusal' in dropPlacement(item, target, model.ranked));
 }
 
 export function moveWithinSiblings(host: BacklogViewHost, item: BacklogItem, delta: -1 | 1): void {
-	const ctx = siblingContext(host, item);
-	const neighbor = visibleNeighbor(host, item, delta);
-	if (!ctx || !neighbor || !reorderableGroup(ctx.fullList)) return;
-	// Land on the far side of the visible neighbor; order math still runs over the
-	// full sibling list, so hidden rows in between are simply skipped past.
-	const siblings = ctx.fullList.filter((s) => s !== item);
-	const insertIndex = delta === -1 ? siblings.indexOf(neighbor) : siblings.indexOf(neighbor) + 1;
-	void host.performDrop(item, { parent: item.parent, siblings, insertIndex });
+	const target = withinSiblingsTarget(host, item, delta);
+	if (!target) return;
+	void host.performDrop(item, target);
 }
 
 export function moveToEdge(host: BacklogViewHost, item: BacklogItem, edge: 'top' | 'bottom'): void {
 	const ctx = siblingContext(host, item);
-	if (!ctx || !reorderableGroup(ctx.fullList)) return;
+	if (!ctx) return;
 	if (ctx.idx === (edge === 'top' ? 0 : ctx.fullList.length - 1)) return;
-	const siblings = ctx.fullList.filter((s) => s !== item);
-	const insertIndex = edge === 'top' ? 0 : siblings.length;
-	void host.performDrop(item, { parent: item.parent, siblings, insertIndex });
+	const peers = ctx.fullList.filter((s) => s !== item);
+	const insertIndex = edge === 'top' ? 0 : peers.length;
+	void host.performDrop(item, { parent: item.parent, peers, insertIndex });
 }
 
 /**
@@ -84,17 +100,19 @@ export function outdentTarget(host: BacklogViewHost, item: BacklogItem): DropTar
 	const grandparent = parent.parent;
 	// Root-level outdents rank among the real top level, not the focus rows.
 	const fullList = grandparent ? grandparent.children : model.realRoots;
-	const siblings = fullList.filter((s) => s !== item);
-	// This lands the item at a position among the parent's siblings — and that group
-	// holds the context parent itself whenever the Base excluded it.
-	if (!reorderableGroup(siblings)) return null;
+	const peers = fullList.filter((s) => s !== item);
 	// The grandparent may be on the other ladder — `Epic → Test case → Task` is the
 	// reachable shape, since the case is drawn in the catalog as a promoted root and its
 	// task is an ordinary child. Refused at the TARGET, not at the write: this function is
 	// what the menu asks to decide whether to OFFER the command, and an offered command
 	// that does nothing is what this repo refuses ahead of a withheld one.
 	if (!keepsProjection(item, grandparent)) return null;
-	return { parent: grandparent, siblings, insertIndex: siblings.indexOf(parent) + 1 };
+	const target: DropTarget = { parent: grandparent, peers, insertIndex: peers.indexOf(parent) + 1 };
+	// Same reasoning as `canReorder`: ask the write path's own question rather than a
+	// second, weaker opinion about it, so Outdent never offers a rank the global
+	// population would refuse (a spent gap, an unranked neighbour).
+	if ('refusal' in dropPlacement(item, target, model.ranked)) return null;
+	return target;
 }
 
 /** Make the item a sibling of its parent, placed right after it. */
@@ -110,8 +128,8 @@ export function outdent(host: BacklogViewHost, item: BacklogItem): void {
 export function indent(host: BacklogViewHost, item: BacklogItem): void {
 	const newParent = visibleNeighbor(host, item, -1);
 	if (!newParent) return;
-	const siblings = newParent.children.filter((s) => s !== item);
-	void host.performDrop(item, { parent: newParent, siblings, insertIndex: siblings.length });
+	const peers = newParent.children.filter((s) => s !== item);
+	void host.performDrop(item, { parent: newParent, peers, insertIndex: peers.length });
 }
 
 /**

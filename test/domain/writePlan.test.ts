@@ -13,13 +13,19 @@ import { FakeVault } from '../helpers/vault';
 const settings = defaultSettings();
 /** Fixtures made of plain notes: opt out of the hierarchy scope so they survive the build. */
 const unscoped = { ...settings, hierarchyOnly: false };
-/** Standard fixture: two epics, the second with two features. */
+/**
+ * Standard fixture: two root Epics, the second with two Features. The Features sit
+ * BETWEEN the two Epics' orders (13, 16, against Epic A's 10 and Epic B's 20) so the
+ * root-level tests below can reason about "the next/previous root" without a Feature's
+ * order colliding with a root's — a rank is now global, so a fixture's numbers have to
+ * stay collision-free across levels on purpose rather than by accident.
+ */
 function fixture() {
 	const vault = new FakeVault();
 	vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10 } });
 	vault.addFile('Epic B.md', { frontmatter: { type: 'Epic', order: 20 } });
-	vault.addFile('Feature B1.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Epic B' });
-	vault.addFile('Feature B2.md', { frontmatter: { type: 'Feature', order: 20 }, parentLink: 'Epic B' });
+	vault.addFile('Feature B1.md', { frontmatter: { type: 'Feature', order: 13 }, parentLink: 'Epic B' });
+	vault.addFile('Feature B2.md', { frontmatter: { type: 'Feature', order: 16 }, parentLink: 'Epic B' });
 	const model = buildModel(vault.app, vault.entries(), settings);
 	const get = (title: string): BacklogItem => {
 		const item = model.items.find((i) => i.title === title);
@@ -29,7 +35,7 @@ function fixture() {
 	return { vault, model, get };
 }
 
-function siblingsWithout(list: BacklogItem[], dragged: BacklogItem): BacklogItem[] {
+function peersWithout(list: BacklogItem[], dragged: BacklogItem): BacklogItem[] {
 	return list.filter((i) => i !== dragged);
 }
 
@@ -39,11 +45,12 @@ describe('computeDropWrites', () => {
 		const dragged = get('Epic A');
 		const target: DropTarget = {
 			parent: null,
-			siblings: siblingsWithout(model.roots, dragged),
+			peers: peersWithout(model.roots, dragged),
 			insertIndex: 1,
 		};
-		// no third root, so insertIndex 1 means "after Epic B" -> floor(20)+1000
-		const writes = computeDropWrites(dragged, target);
+		// No root ranks higher than Epic B globally, so "after Epic B" has no next:
+		// floor(20) + 1000.
+		const writes = computeDropWrites(dragged, target, model.ranked);
 		expect(writes).toHaveLength(1);
 		expect(writes[0].order).toBe(1020);
 		expect(writes[0].parent).toBeUndefined();
@@ -55,13 +62,12 @@ describe('computeDropWrites', () => {
 		const dragged = get('Epic B');
 		const target: DropTarget = {
 			parent: null,
-			siblings: siblingsWithout(model.roots, dragged),
+			peers: peersWithout(model.roots, dragged),
 			insertIndex: 0,
 		};
-		// Epic A's order (10) predates the 1000 spacing, so "one spacing before it"
-		// is negative — a real number a note reader accepts, not a bug in this
-		// fixture's stale scale.
-		const writes = computeDropWrites(dragged, target);
+		// Nothing globally ranks below Epic A (10), so "before Epic A" has no
+		// previous either: floor(10) - 1000, a real number a note reader accepts.
+		const writes = computeDropWrites(dragged, target, model.ranked);
 		expect(writes).toHaveLength(1);
 		expect(writes[0].order).toBe(-990);
 	});
@@ -75,12 +81,14 @@ describe('computeDropWrites', () => {
 		const dragged = model.roots[2]; // Three
 		const writes = computeDropWrites(
 			dragged,
-			{ parent: null, siblings: siblingsWithout(model.roots, dragged), insertIndex: 1 });
+			{ parent: null, peers: peersWithout(model.roots, dragged), insertIndex: 1 },
+			model.ranked,
+		);
 		expect(writes).toHaveLength(1);
 		expect(writes[0].order).toBe(15);
 	});
 
-	it('renumbers the sibling group when the gap is exhausted', () => {
+	it('plans no writes when the gap is spent', () => {
 		const vault = new FakeVault();
 		vault.addFile('One.md', { frontmatter: { order: ORDER_SPACING } });
 		// A gap under the new six-decimal MIN_GAP (0.000002) — too tight to subdivide.
@@ -89,20 +97,19 @@ describe('computeDropWrites', () => {
 		const model = buildModel(vault.app, vault.entries(), unscoped);
 		const dragged = model.roots.find((r) => r.title === 'Mover') as BacklogItem;
 
+		// Insert Mover between One and Two — exactly the gap the fixture spent.
 		const writes = computeDropWrites(
 			dragged,
-			{ parent: null, siblings: siblingsWithout(model.roots, dragged), insertIndex: 1 });
+			{ parent: null, peers: peersWithout(model.roots, dragged), insertIndex: 1 },
+			model.ranked,
+		);
 
-		// Sequence becomes One, Mover, Two -> spacing, 2*spacing, 3*spacing; One
-		// already sits at 1*spacing so only Mover and Two need a write.
-		expect(writes).toHaveLength(2);
-		const mover = writes.find((w) => w.file.path === 'Mover.md');
-		const two = writes.find((w) => w.file.path === 'Two.md');
-		expect(mover?.order).toBe(2 * ORDER_SPACING);
-		expect(two?.order).toBe(3 * ORDER_SPACING);
+		// No group renumber any more: a spent gap refuses rather than rewriting
+		// every sibling, so the only writable note comes back untouched.
+		expect(writes).toEqual([]);
 	});
 
-	it('renumbers when a neighbor is missing its order property', () => {
+	it('plans no writes when a neighbor has no rank', () => {
 		const vault = new FakeVault();
 		vault.addFile('Ordered.md', { frontmatter: { order: 10 } });
 		vault.addFile('Unordered.md');
@@ -110,37 +117,37 @@ describe('computeDropWrites', () => {
 		const model = buildModel(vault.app, vault.entries(), unscoped);
 		const dragged = model.roots.find((r) => r.title === 'Mover') as BacklogItem;
 
-		// Insert between Ordered and Unordered
+		// Insert between Ordered and Unordered — the backfill can rank Unordered,
+		// so the refusal is a prompt rather than a dead end, not a renumber.
 		const writes = computeDropWrites(
 			dragged,
-			{ parent: null, siblings: siblingsWithout(model.roots, dragged), insertIndex: 1 });
+			{ parent: null, peers: peersWithout(model.roots, dragged), insertIndex: 1 },
+			model.ranked,
+		);
 
-		expect(writes.length).toBeGreaterThanOrEqual(2);
-		const unordered = writes.find((w) => w.file.path === 'Unordered.md');
-		expect(unordered?.order).toBe(3 * ORDER_SPACING);
+		expect(writes).toEqual([]);
 	});
 
 	it('never plans a type: a drop writes the parent and the rank and nothing else', () => {
 		// The rule that outlived the re-typing option: a move is a move, not a
-		// re-classification. Asked of a real reparent, of a reorder among siblings, and of
-		// a renumbering drop — the three shapes `computeDropWrites` returns from — because
-		// a type slipped back into any one of them is a note leaving the projection it was
-		// dragged on, silently.
+		// re-classification. Asked of a real reparent and of a reorder among
+		// siblings — the two shapes `computeDropWrites` returns from now that no
+		// group is ever renumbered — because a type slipped back into either would
+		// be a note leaving the projection it was dragged on, silently.
 		const { model, get } = fixture();
-		const reparent = computeDropWrites(get('Epic B'), { parent: get('Epic A'), siblings: [], insertIndex: 0 });
+		const reparent = computeDropWrites(
+			get('Epic B'),
+			{ parent: get('Epic A'), peers: [], insertIndex: 0 },
+			model.ranked,
+		);
 		const parent = get('Epic B');
-		const reorder = computeDropWrites(get('Feature B2'), {
-			parent,
-			siblings: siblingsWithout(parent.children, get('Feature B2')),
-			insertIndex: 0,
-		});
-		const unordered = new FakeVault();
-		unordered.addFile('A.md', { frontmatter: { type: 'Epic' } });
-		unordered.addFile('B.md', { frontmatter: { type: 'Epic' } });
-		const flat = buildModel(unordered.app, unordered.entries(), settings);
-		const renumber = computeDropWrites(flat.roots[1], { parent: null, siblings: [flat.roots[0]], insertIndex: 0 });
+		const reorder = computeDropWrites(
+			get('Feature B2'),
+			{ parent, peers: peersWithout(parent.children, get('Feature B2')), insertIndex: 0 },
+			model.ranked,
+		);
 
-		for (const batch of [reparent, reorder, renumber]) {
+		for (const batch of [reparent, reorder]) {
 			expect(batch.length).toBeGreaterThan(0);
 			expect(batch.every((w) => w.typeName === undefined)).toBe(true);
 		}
@@ -159,7 +166,9 @@ describe('computeDropWrites', () => {
 
 		const writes = computeDropWrites(
 			dragged,
-			{ parent: null, siblings: siblingsWithout(model.roots, dragged), insertIndex: 0 });
+			{ parent: null, peers: peersWithout(model.roots, dragged), insertIndex: 0 },
+			model.ranked,
+		);
 
 		expect(writes).toHaveLength(1);
 		// null means "delete the parent property"
@@ -172,35 +181,67 @@ describe('computeDropWrites', () => {
 		vault.addFile('Orphan.md', { frontmatter: { order: 20 }, parentLink: 'Not In View' });
 		const model = buildModel(vault.app, vault.entries(), settings);
 		const dragged = model.roots.find((r) => r.title === 'Orphan') as BacklogItem;
-		const siblings = siblingsWithout(model.roots, dragged);
+		const peers = peersWithout(model.roots, dragged);
 
 		// Outdenting a root appends at the end of the root group — positionally a no-op.
-		const writes = computeDropWrites(dragged, { parent: null, siblings, insertIndex: siblings.length });
+		const writes = computeDropWrites(dragged, { parent: null, peers, insertIndex: peers.length }, model.ranked);
 
 		expect(writes).toHaveLength(1);
 		expect(writes[0].parent).toBeNull();
 	});
 
 	it('omits the parent write when reordering within the same parent', () => {
-		const { get } = fixture();
+		const { model, get } = fixture();
 		const dragged = get('Feature B2');
 		const parent = get('Epic B');
 		const writes = computeDropWrites(
 			dragged,
-			{ parent, siblings: siblingsWithout(parent.children, dragged), insertIndex: 0 });
+			{ parent, peers: peersWithout(parent.children, dragged), insertIndex: 0 },
+			model.ranked,
+		);
 		expect(writes).toHaveLength(1);
 		expect(writes[0].parent).toBeUndefined();
-		// Feature B1's order (10) predates the 1000 spacing — see the note on
-		// "places an item before the first sibling with room to spare" above.
-		expect(writes[0].order).toBe(-990);
+		// Globally, Epic A (10) sits below Feature B1 (13): the midpoint of the two.
+		expect(writes[0].order).toBe(11.5);
 	});
 
-	it('assigns the default spacing for the first child of an empty parent', () => {
-		const { get } = fixture();
+	it('anchors on the destination when the peer group is empty', () => {
+		const { model, get } = fixture();
 		const dragged = get('Epic A');
 		const parent = get('Feature B2');
-		const writes = computeDropWrites(dragged, { parent, siblings: [], insertIndex: 0 });
-		expect(writes[0].order).toBe(ORDER_SPACING);
+		// First child of an otherwise-empty parent: the anchor is the destination
+		// itself, and the number comes from ITS global neighbours (Feature B1 below,
+		// Epic B above) rather than a flat default.
+		const writes = computeDropWrites(dragged, { parent, peers: [], insertIndex: 0 }, model.ranked);
+		expect(writes).toHaveLength(1);
+		expect(writes[0].order).toBe(18);
+	});
+
+	it('reads the whole loaded population, not a projection slice', () => {
+		// A catalog `Test suite` ranked 15 sits between the two real Epics (10, 20).
+		// It is loaded and not hidden by the Base, so ranking against just the two
+		// real roots (what `peers` holds here) must not skip over it — this is the
+		// case `model.results` gets wrong, per `src/domain/CLAUDE.md`.
+		const vault = new FakeVault();
+		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('Test suite.md', { frontmatter: { type: 'Test suite', order: 15 } });
+		vault.addFile('Epic B.md', { frontmatter: { type: 'Epic', order: 20 } });
+		vault.addFile('Mover.md', { frontmatter: { type: 'Epic', order: 99 } });
+		const model = buildModel(vault.app, vault.entries(), settings);
+		const get = (title: string) => model.items.find((i) => i.title === title) as BacklogItem;
+		const dragged = get('Mover');
+		const epicA = get('Epic A');
+		const epicB = get('Epic B');
+		// Drop Mover after Epic A: the peer list here is only the two real Epics
+		// (as `realRoots` presents them), but the NUMBER must still respect the
+		// Test suite's 15 sitting between them.
+		const writes = computeDropWrites(
+			dragged,
+			{ parent: null, peers: [epicA, epicB], insertIndex: 1 },
+			model.ranked,
+		);
+		expect(writes).toHaveLength(1);
+		expect(writes[0].order).toBe(12.5);
 	});
 });
 

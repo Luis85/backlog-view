@@ -5,16 +5,17 @@ import { BacklogItem, BacklogModel } from './model';
 export type DropZone = 'before' | 'after' | 'inside';
 
 /**
- * A resolved landing place: whose child the item becomes, and where among that
- * parent's children. Declared here with the functions that work it out, not with
- * the writer that consumes it — a position is a fact about the tree, and computing
- * one must not depend on anything that mutates the vault.
+ * A resolved landing place: whose child the item becomes, and among which rows it is
+ * ranked. **`peers` is intent, never arithmetic** — it says the user aimed before this
+ * row or after that one; the NUMBER comes from the global ranked population (see
+ * `anchoredOrder`). Declared here with the functions that work it out, not with the
+ * writer that consumes it.
  */
 export interface DropTarget {
 	parent: BacklogItem | null;
-	/** Children of the new parent in visual order, excluding the dragged item. */
-	siblings: BacklogItem[];
-	/** Position among `siblings` where the dragged item should land. */
+	/** Rows the item is ranked AMONG — intent, not arithmetic. */
+	peers: BacklogItem[];
+	/** Position among `peers` where the dragged item should land. */
 	insertIndex: number;
 }
 
@@ -33,17 +34,6 @@ export function zoneForRatio(ratio: number, isLeaf: boolean): DropZone {
 /** True when placing `dragged` under `parent` erases a parent link that points outside the view. */
 function clearsStaleLink(parent: BacklogItem | null, dragged: BacklogItem): boolean {
 	return parent === null && dragged.parent === null && dragged.hasParentValue;
-}
-
-/**
- * True when a sibling group can be *reordered*. Ranking rewrites the whole group
- * when the gaps run out, and the view never writes to a note the Base excluded —
- * so in a group holding one, an item would silently land at the end instead of
- * where it was aimed. Appending (dropping *into* a parent, indent) stays available:
- * landing last is what those mean anyway.
- */
-export function reorderableGroup(siblings: BacklogItem[]): boolean {
-	return !siblings.some((s) => s.outsideFilter);
 }
 
 /** True when `parent` is the dragged item itself or one of its descendants. */
@@ -91,7 +81,7 @@ export function dropTargetFor(
 	if (position.parent === dragged.parent && !clearsStaleLink(position.parent, dragged)) {
 		const fullList = position.parent ? position.parent.children : model.realRoots;
 		const drawnIndex = fullList.filter(member).indexOf(dragged);
-		const drawnInsert = position.siblings.slice(0, position.insertIndex).filter(member).length;
+		const drawnInsert = position.peers.slice(0, position.insertIndex).filter(member).length;
 		if (drawnInsert === drawnIndex) return null;
 	}
 	return position;
@@ -99,8 +89,8 @@ export function dropTargetFor(
 
 /** Append as the last child of the hovered item. */
 function insidePosition(item: BacklogItem, dragged: BacklogItem): DropTarget {
-	const siblings = item.children.filter((c) => c !== dragged);
-	return { parent: item, siblings, insertIndex: siblings.length };
+	const peers = item.children.filter((c) => c !== dragged);
+	return { parent: item, peers, insertIndex: peers.length };
 }
 
 /** Insert before or after the hovered item within its sibling group. */
@@ -126,9 +116,8 @@ function siblingPosition(
 	// the caller's: `dropTargetFor`'s own no-op check asks it against `member` rather than
 	// assuming the two orderings agree.
 	const fullList = parent ? parent.children : model.realRoots;
-	const siblings = fullList.filter((c) => c !== dragged);
-	if (!reorderableGroup(siblings)) return null;
-	const idx = siblings.indexOf(item);
+	const peers = fullList.filter((c) => c !== dragged);
+	const idx = peers.indexOf(item);
 	if (idx === -1) return null;
-	return { parent, siblings, insertIndex: zone === 'before' ? idx : idx + 1 };
+	return { parent, peers, insertIndex: zone === 'before' ? idx : idx + 1 };
 }

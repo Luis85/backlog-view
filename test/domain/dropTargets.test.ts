@@ -59,7 +59,7 @@ describe('dropTargetFor', () => {
 		const target = dropTargetFor(model, get('Epic B'), 'inside', get('Epic A'), plan);
 		expect(target?.parent?.title).toBe('Epic B');
 		expect(target?.insertIndex).toBe(2);
-		expect(target?.siblings.map((s) => s.title)).toEqual(['Feature B1', 'Feature B2']);
+		expect(target?.peers.map((s) => s.title)).toEqual(['Feature B1', 'Feature B2']);
 	});
 
 	it('rejects drops into the dragged item’s own subtree', () => {
@@ -210,14 +210,22 @@ describe('reordering a group that holds an outside-filter row', () => {
 		};
 	}
 
-	it('refuses positional drops even when the hovered row is a result', () => {
+	it('positions a drop even when the sibling group holds a context row', () => {
+		// `DropTarget.peers` is intent, never arithmetic (see its own doc comment):
+		// `dropTargetFor` states WHERE among the rendered siblings the drop lands, and
+		// says nothing about whether ranking it would write anything. That question —
+		// and the guarantee that it can never write to the context row itself — is
+		// `computeDropWrites`'s, asked separately (see `test/domain/writePlan.test.ts`
+		// and `writePlanContextRows.test.ts`).
 		const { model, epic, featureB, mover } = mixedGroup();
 		// Feature B is an ordinary result, but its sibling group holds a context row
 		expect(featureB.outsideFilter).toBe(false);
 		expect(epic.children.some((c) => c.outsideFilter)).toBe(true);
 
-		expect(dropTargetFor(model, featureB, 'before', mover, plan)).toBeNull();
-		expect(dropTargetFor(model, featureB, 'after', mover, plan)).toBeNull();
+		const before = dropTargetFor(model, featureB, 'before', mover, plan);
+		expect(before?.parent).toBe(epic);
+		expect(before?.peers.some((p) => p.outsideFilter)).toBe(true);
+		expect(dropTargetFor(model, featureB, 'after', mover, plan)).not.toBeNull();
 	});
 
 	it('still allows appending into the parent', () => {

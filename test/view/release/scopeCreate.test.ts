@@ -76,7 +76,7 @@ describe('creating a child from a release scope row', () => {
 		expect(notes[0].fm.release).toBe('[[0.8]]');
 		// `Send the magic link` and `Expire the link` are ranked 1 and 2, so the next child
 		// ranks past both rather than colliding with either.
-		expect(notes[0].fm.order).toBe(12);
+		expect(notes[0].fm.order).toBe(1002);
 
 		// The claim the membership seed exists FOR: the note the gesture made is a member of
 		// the open release, so the next pass draws it under the row it was created from.

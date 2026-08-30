@@ -82,7 +82,9 @@ describe('opening and keyboard', () => {
 		key(tree, 'ArrowDown', { altKey: true });
 		await flush();
 
-		expect(vault.fm('Epic A.md')['order']).toBe(30);
+		// The midpoint of Epic B (20) and the next row in the global population,
+		// Feature B1 (30) — one write, never a renumbered group.
+		expect(vault.fm('Epic A.md')['order']).toBe(25);
 	});
 
 	it('jumps to the first and last visible item with Home and End', () => {
@@ -257,7 +259,7 @@ describe('keyboard structure shortcuts', () => {
 		key(tree, 'ArrowDown'); // Epic B
 		key(tree, 'ArrowUp', { altKey: true });
 		await flush();
-		expect(vault.fm('Epic B.md')['order']).toBe(0);
+		expect(vault.fm('Epic B.md')['order']).toBe(-990);
 
 		key(tree, 'ArrowRight', { altKey: true }); // indent under Epic A (previous sibling)
 		await flush();

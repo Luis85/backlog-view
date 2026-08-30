@@ -238,9 +238,12 @@ function addMoveSection(host: BacklogViewHost, menu: Menu, item: BacklogItem): v
 	// Only *reordering* renumbers the item's own group, so only reordering needs
 	// this. Indent and outdent land the item elsewhere and answer for their own
 	// destination — hiding them here would make the menu offer less than Alt+arrow.
-	const ranked = canReorder(host, item);
+	// Asked per direction, never as one blanket flag: a rank the global population
+	// would refuse in one direction says nothing about the other.
+	const rankedUp = canReorder(host, item, -1);
+	const rankedDown = canReorder(host, item, 1);
 
-	if (ranked && prev) {
+	if (rankedUp && prev) {
 		menu.addItem((mi) =>
 			mi.setTitle(t('menu.moveUp')).setIcon('arrow-up').onClick(() => moveWithinSiblings(host, item, -1)),
 		);
@@ -253,17 +256,17 @@ function addMoveSection(host: BacklogViewHost, menu: Menu, item: BacklogItem): v
 				.onClick(() => indent(host, item)),
 		);
 	}
-	if (ranked && next) {
+	if (rankedDown && next) {
 		menu.addItem((mi) =>
 			mi.setTitle(t('menu.moveDown')).setIcon('arrow-down').onClick(() => moveWithinSiblings(host, item, 1)),
 		);
 	}
-	if (ranked && prev) {
+	if (rankedUp && prev) {
 		menu.addItem((mi) =>
 			mi.setTitle(t('menu.moveToTop')).setIcon('arrow-up-to-line').onClick(() => moveToEdge(host, item, 'top')),
 		);
 	}
-	if (ranked && next) {
+	if (rankedDown && next) {
 		menu.addItem((mi) =>
 			mi
 				.setTitle(t('menu.moveToBottom'))

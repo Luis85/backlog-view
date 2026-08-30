@@ -431,7 +431,7 @@ describe('creating from a bucket', () => {
 		const created = vault.fm('docs/requirements/Planned work.md');
 		expect(created['horizon']).toBe('Later');
 		expect(created['type']).toBe('Epic');
-		expect(created['order']).toBe(40);
+		expect(created['order']).toBe(1030);
 	});
 
 	it('mints into a bucket a stray value named, the value it renders under', async () => {

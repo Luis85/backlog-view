@@ -211,7 +211,11 @@ export function key(tree: HTMLElement, keyName: string, modifiers: Partial<Keybo
 }
 
 /**
- * Two epics; the second has two features. `empty` returns a vault with nothing in it —
+ * Two epics; the second has two features, ranked 10/20/30/40. **The four ranks are
+ * globally DISTINCT, not sibling-scoped** — `order` is one rank over the whole backlog
+ * now, so two rows sharing a number are a legacy vault that every placement refuses
+ * (`anchoredOrder`'s spent gap). Keep any rank added here distinct from all of them.
+ * `empty` returns a vault with nothing in it —
  * `renderEmptyState`'s own case. `allDone` returns two epics already at a shipped done
  * value, the shape `renderAllDoneState` needs — pair it with `showCompleted: false` in
  * the view options, since the default is `true` and nothing would be hidden otherwise.
@@ -226,8 +230,8 @@ export function fixture(opts: { empty?: boolean; allDone?: boolean } = {}): Fake
 	}
 	vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10 } });
 	vault.addFile('Epic B.md', { frontmatter: { type: 'Epic', order: 20 } });
-	vault.addFile('Feature B1.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Epic B' });
-	vault.addFile('Feature B2.md', { frontmatter: { type: 'Feature', order: 20 }, parentLink: 'Epic B' });
+	vault.addFile('Feature B1.md', { frontmatter: { type: 'Feature', order: 30 }, parentLink: 'Epic B' });
+	vault.addFile('Feature B2.md', { frontmatter: { type: 'Feature', order: 40 }, parentLink: 'Epic B' });
 	return vault;
 }
 

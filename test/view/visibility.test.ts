@@ -77,7 +77,7 @@ describe('completed items', () => {
 		key(tree, 'ArrowDown', { altKey: true });
 		await flush();
 		// A lands after B, the next visible sibling — past the hidden H.
-		expect(vault.fm('A.md').order).toBe(40);
+		expect(vault.fm('A.md').order).toBe(1030);
 	});
 
 	it('omits move commands that could only swap with hidden rows', () => {
