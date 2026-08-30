@@ -59,6 +59,16 @@ they are, which is the honest answer for a PBI that is finished, or one whose re
 question only a person can settle. That is a real state, not an error, and a decomposition
 that reaches it deserves to be told so rather than handed an empty plan.
 
+**A rerun writes a plan under a new identity.** `subagent-driven-development` keys its
+workspace and its ledger by the plan's **basename**, and treats each `Task N: complete`
+entry there as authoritative. A second `resolve-pbi` run on the same PBI on the same day
+would land on the same dated path, filter out what has since landed, and renumber the
+survivors from 1 — so a stale ledger entry for the old task 3 would silently mark the new
+task 3 done, skipping work nobody notices is missing. So a rerun that finds a plan already
+at its path does not overwrite it: it writes a distinct basename (a `-2` suffix is enough),
+which gives it a fresh workspace and a fresh ledger. The cost is a stale plan file left on
+disk, which is a record of what the earlier run was going to do and reads as one.
+
 **This is not `writing-plans`.** That skill decides granularity, file layout and TDD steps;
 here all three already live in the register, and the plan is generated mechanically from the
 ranks in the same pass that fixed them.
@@ -109,6 +119,14 @@ says it in the two places that travel:
 
 - **Global Constraints**: closing the note is part of a task's definition of done, in the
   same commit as the work — `## Outcome` written, `status: Done`, `closed:` dated.
+  **An `Issue` and a `Deliverable` close by their own shapes, not this one.**
+  `docs/README.md` gives an Issue two shapes — a decision taken, or a limitation accepted —
+  and **neither has an `## Outcome`**; writing one turns the note into a Task-shaped record
+  of a different kind. A `Deliverable` has no documented shape at all, which is why
+  `decompose-pbi` asks the user for one, so the shape agreed there governs and this rule
+  must not overwrite it; the register also limits `closed:` to Tasks, Issues and Bugs, so a
+  Deliverable never gains that key. For both, closing is `status: Done` and whatever the
+  note's own shape already says — nothing added.
   **A `Test suite` is written and never closed.** Every suite in `docs/tests/suites/` is
   `Open`, because a suite is a persistent container for live-vault cases that are re-walked
   at each release and `RELEASING.md`'s sweep reads them. Writing its prose is the task;
@@ -326,7 +344,10 @@ Fenced, and nothing else in the block:
 - read every non-child output **by path**, each marked subagent's or human's
 - execute with `superpowers:subagent-driven-development` against
   `docs/superpowers/plans/<file>.md`, whose every task points at one of those notes
-- red, green, `npm run check`, then commit — all five steps pass before the commit, never after
+- for a task that writes code: red, green, `npm run check`, then commit — all five steps
+  pass before the commit, never after. For a prose task — a decision-or-limitation `Issue`,
+  an ADR, a `Test suite` — write, `npm run check`, commit: same gate, no red step, because
+  there is no behaviour to make fail first
 - close each child as its task lands: `## Outcome`, `status: Done`, `closed:` — an ADR
   instead reaches `status: Accepted`, since it carries neither of the other two
 - *(only when a handoff was saved)* when every task is through, close the saved handoff
@@ -396,6 +417,10 @@ On yes, one note at the next free rank among the PBI's children, in the shape
 - The controller's own close was left in the working tree, with no gate and no commit.
 - An empty plan was written, and a prompt printed, for a PBI with no work left in it.
 - The save question was asked on a run that produced no prompt to save.
+- An `Issue` or a `Deliverable` was closed with an `## Outcome` its shape does not have.
+- A `Deliverable` gained a `closed:` key the register does not give it.
+- The prompt told every task to run red-green, including the prose ones.
+- A rerun overwrote the earlier plan at the same path, inheriting its ledger.
 - A saved handoff promised to close siblings the run was never going to touch.
 - A child was re-scoped to fit the order, instead of the order being corrected.
 - The saved handoff `Task` appears in the set of children the prompt executes.

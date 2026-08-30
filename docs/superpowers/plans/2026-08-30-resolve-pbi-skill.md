@@ -394,6 +394,10 @@ Then the four construction bullets from the spec, unchanged in substance:
 - **one `## Task N` per output that is the subagent's *and* still owed**, child or not, in
   rank order, each naming the note's path and saying to read it — `N` is the dispatch index,
   not the note's `order`, consecutive from 1 over the tasks that survive the filter;
+- **a rerun writes a plan under a new identity** — SDD keys its workspace and ledger by the
+  plan's basename and trusts every `Task N: complete` in it, so a second run landing on the
+  same dated path would renumber the survivors and let a stale entry mark a different task
+  done; a rerun that finds a plan already at its path writes a distinct basename instead;
 - **a plan with no tasks is not written at all** — both filters can empty it, and
   `task-brief` exits when the heading it asks for is absent, so a run with no work left
   reads that back at phase 3 and closes without a plan or a prompt, naming what remains and
@@ -428,6 +432,9 @@ So:
   `status: Done`, `closed:` dated, in the same commit as the work. Carry the spec's
   carve-out with it: that shape is the backlog's, and an ADR takes `status: Accepted` with
   no `closed:` and no `## Outcome`, because `docs/adrs/README.md` gives it neither. And a
+  an `Issue` and a `Deliverable` close by their own shapes — an Issue's two documented
+  shapes carry no `## Outcome`, a Deliverable's shape is whatever `decompose-pbi` agreed
+  with the user, and the register gives a Deliverable no `closed:` key at all — and a
   `Test suite` is **written but never closed** — every suite in `docs/tests/suites/` is
   `Open`, because a suite is a container for cases re-walked at each release, and closing one
   reports a verification nobody ran.
@@ -453,7 +460,8 @@ stays `Open` with its `## Outcome` unwritten.
 Fenced, and nothing else in the block. The eight bullets from the spec's `### The prompt`,
 verbatim in substance — the reading, the PBI and its children by path in rank order with the
 saved handoff excluded, the non-child outputs by path marked subagent's or human's, the SDD
-invocation against the plan path, the red-green-check-commit cycle, per-child closure, the
+invocation against the plan path, the cycle each task takes — red-green-check-commit for code, write-check-commit for prose,
+never one rule for both — per-child closure, the
 controller-owned close of the saved handoff, and the refusal to re-open the PBI. Two
 details in those bullets are easy to drop and both were review findings: the handoff bullet
 is written **only when a handoff was saved**, and it carries its own `npm run check` and
@@ -526,7 +534,7 @@ over the whole spec.
 Append `## Red flags — stop and go back`, ending with `decompose-pbi`'s own closing line:
 *All of these mean: the sweep is not finished. Go back to the phase you left.*
 
-Every entry from the spec's red-flag list — twenty-seven items. Most were real defects in the
+Every entry from the spec's red-flag list — thirty-one items. Most were real defects in the
 spec itself, caught by review, so none is decoration:
 
 - A phase's exit gate asks for less than that phase's walk covered.
@@ -545,6 +553,10 @@ spec itself, caught by review, so none is decoration:
 - A run finished with its children's `## Outcome` unwritten and their `status` still `Open`.
 - An empty plan was written, and a prompt printed, for a PBI with no work left in it.
 - The save question was asked on a run that produced no prompt to save.
+- An `Issue` or a `Deliverable` was closed with an `## Outcome` its shape does not have.
+- A `Deliverable` gained a `closed:` key the register does not give it.
+- The prompt told every task to run red-green, including the prose ones.
+- A rerun overwrote the earlier plan at the same path, inheriting its ledger.
 - A saved handoff promised to close siblings the run was never going to touch.
 - An ADR task was told to write `status: Done`, or to add a `closed:` or an `## Outcome`.
 - A prose-only task was given a red-green cycle it cannot satisfy.
