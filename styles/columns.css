@@ -288,14 +288,67 @@ button.pbl-date-chip {
 	border-color: rgba(var(--color-green-rgb), 0.35);
 }
 
+/* An absent property is an AFFORDANCE, not a fact, and it is drawn only while the reader
+   is at the row or card that owns it.
+
+   Two measured problems, one rule. A default tree row draws a chip in 7 of 9 columns, all
+   of them saying "nothing here", so the most repeated word on a first screen was
+   `Assignee` in grey — the view spent its visual budget on absence. And the chips were
+   `--text-faint`: 2.57:1 in dark and 2.12:1 in light at 12px, against AA's 4.5:1, on an
+   element that is also a real `<button>` a click sets the property through. Unreadable and
+   clickable at once is the worst pair of the two.
+
+   `opacity`, never `display` or `visibility`. The chip keeps its box, so revealing one
+   reflows nothing and the columns stay in line whether or not a row is hovered — a grid
+   that re-laid itself under the pointer would be a worse noise than the one this removes.
+   It also keeps the chip HIT-TESTABLE, which is what makes hover-to-reveal work at all: a
+   `visibility: hidden` chip cannot be hovered, so the row's own hover is what reveals it
+   and the pointer is already there by the time it appears.
+
+   `:focus-within` is the keyboard's half and is not decoration. Every chip is a real
+   `<button tabindex="-1">` reached by the tree's roving focus (`chips.ts`), so focus
+   landing on one raises its row and the chip the reader is on is the chip they can see.
+   Without it a keyboard user would rove through controls that never appear.
+
+   The colour is raised in the same rule rather than in a follow-up: `--text-muted` clears
+   AA, and the state where it is READ is now the only state where it is drawn. A dashed
+   border still separates it from a real value. */
 .pbl-state-chip.pbl-state-unset,
 .pbl-horizon-chip.pbl-horizon-unset,
 .pbl-risk-chip.pbl-risk-unset,
 .pbl-priority-chip.pbl-priority-unset,
 .pbl-assignee-chip.pbl-assignee-unset,
 .pbl-date-chip.pbl-date-unset {
-	color: var(--text-faint);
+	color: var(--text-muted);
 	border-style: dashed;
+	opacity: 0;
+}
+
+.pbl-row:hover .pbl-state-chip.pbl-state-unset,
+.pbl-row:hover .pbl-horizon-chip.pbl-horizon-unset,
+.pbl-row:hover .pbl-risk-chip.pbl-risk-unset,
+.pbl-row:hover .pbl-priority-chip.pbl-priority-unset,
+.pbl-row:hover .pbl-assignee-chip.pbl-assignee-unset,
+.pbl-row:hover .pbl-date-chip.pbl-date-unset,
+.pbl-row:focus-within .pbl-state-chip.pbl-state-unset,
+.pbl-row:focus-within .pbl-horizon-chip.pbl-horizon-unset,
+.pbl-row:focus-within .pbl-risk-chip.pbl-risk-unset,
+.pbl-row:focus-within .pbl-priority-chip.pbl-priority-unset,
+.pbl-row:focus-within .pbl-assignee-chip.pbl-assignee-unset,
+.pbl-row:focus-within .pbl-date-chip.pbl-date-unset,
+.pbl-card:hover .pbl-state-chip.pbl-state-unset,
+.pbl-card:hover .pbl-horizon-chip.pbl-horizon-unset,
+.pbl-card:hover .pbl-risk-chip.pbl-risk-unset,
+.pbl-card:hover .pbl-priority-chip.pbl-priority-unset,
+.pbl-card:hover .pbl-assignee-chip.pbl-assignee-unset,
+.pbl-card:hover .pbl-date-chip.pbl-date-unset,
+.pbl-card:focus-within .pbl-state-chip.pbl-state-unset,
+.pbl-card:focus-within .pbl-horizon-chip.pbl-horizon-unset,
+.pbl-card:focus-within .pbl-risk-chip.pbl-risk-unset,
+.pbl-card:focus-within .pbl-priority-chip.pbl-priority-unset,
+.pbl-card:focus-within .pbl-assignee-chip.pbl-assignee-unset,
+.pbl-card:focus-within .pbl-date-chip.pbl-date-unset {
+	opacity: 1;
 }
 
 /* The assignee's third state: a value the vault carries that names no resource this base

@@ -251,9 +251,23 @@
 	font-size: var(--font-ui-small);
 }
 
+/* The selected projection. Three signals carry the state — the tint, the underline and
+   the weight — and the LABEL is not one of them.
+
+   It was `--text-accent` on `--background-modifier-active-hover`, which is accent on an
+   accent tint: measured at 2.56:1 dark and 1.65:1 light, against 6.69-8.13:1 for every
+   inactive tab beside it. The one control that answers "where am I" was the least
+   readable thing in the toolbar, and the light theme was the worse of the two. Accent on
+   its own tint cannot clear 3:1 at any lightness — the two move together — so the label
+   has to leave the accent rather than be tuned within it.
+
+   The underline is already `--interactive-accent` at full strength against the toolbar,
+   so the accent is still what marks the tab; it is carried by the two signals that have
+   a background to contrast against. */
 .pbl-mode-btn.is-active {
 	background-color: var(--background-modifier-active-hover);
-	color: var(--text-accent);
+	color: var(--text-normal);
+	font-weight: var(--font-medium);
 	box-shadow: inset 0 -2px 0 var(--interactive-accent);
 }
 
