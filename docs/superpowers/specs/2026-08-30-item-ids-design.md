@@ -3,7 +3,7 @@
 Date: 2026-08-30 · Branch: `claude/plugin-item-id-generation-mgncyj`
 
 A note this plugin creates gets a `pbl-id` property: one integer, unique among the notes
-the creating device can see, assigned in the same write that makes the note. It is a handle a person can say out loud
+Obsidian has indexed on the creating device, assigned in the same write that makes the note. It is a handle a person can say out loud
 and paste into a commit message — a title changes, a path moves, an id does not.
 
 Out of scope: rendering the id anywhere in the view, searching by it, and existing notes.
@@ -41,11 +41,22 @@ vault that holds none.
 
 A value is counted only while `Math.floor` of it lands **below `Number.MAX_SAFE_INTEGER`**.
 Both halves of that are load-bearing. The floor is what keeps a hand-typed `pbl-id: 7.5`
-from issuing `8.5`, and the ceiling is what stops a single absurd value from breaking the
-sequence permanently: `1e21 + 1` is still `1e21` in a double, so a note carrying one would
-make every later id that same number, forever. Ignored rather than clamped — a note holding
-`1e21` is a typo or an import artefact, not a position in this sequence. `NaN` needs no
-guard of its own, because `NaN > highest` is false whichever way it is asked.
+from issuing `8.5` — it counts as `7`, so the next id is `8`, and ignoring it instead would
+let the next creation land on `7`, which reads as the same item to anyone who rounded it.
+The ceiling is what stops a single absurd value from breaking the sequence permanently:
+`1e21 + 1` is still `1e21` in a double, so a note carrying one would make every later id
+that same number, forever. Ignored rather than clamped — a note holding `1e21` is a typo or
+an import artefact, not a position in this sequence. `NaN` needs no guard of its own,
+because `NaN > highest` is false whichever way it is asked.
+
+**The number ISSUED is held to the same range, and that is a second guard rather than the
+same one.** A note holding `MAX_SAFE_INTEGER - 1` passes the scan's ceiling legitimately,
+and the call after it would issue `MAX_SAFE_INTEGER + 1` — a value adding one no longer
+moves, so every call after that repeats it. `nextItemId` therefore refuses outright rather
+than handing back a duplicate. Unreachable in a real vault by nine orders of magnitude, and
+a throw for `createRelease`'s stated reason: a state the caller is supposed to have ruled
+out. Raised by automated review on PR #226, which found the boundary the first guard left
+open.
 
 Deriving it from the Base's results was refused twice over: the context-row rule forbids
 it (*never a source of anything derived from the Base's results*), and it would be wrong
@@ -70,6 +81,15 @@ is the only state both devices share, and while they are apart there is no vault
 share. So the guarantee this note makes is narrower than "unique in the vault", and is
 written narrow deliberately: **an id is unique among the notes the creating device could
 see.** Nothing here reconciles a collision afterwards, and nothing reports one.
+
+**A file on disk that Obsidian has not indexed yet is invisible to this too** — just
+synced, just restored, or written by another program. `getMarkdownFiles()` returns it while
+`getFileCache` answers `null`, so the id it holds is not read and can be issued again on
+the same device. It is the same guarantee stated once more precisely: unique among the
+notes Obsidian has INDEXED on the creating device. Reading the file instead would make
+every creation wait on a parse of every unindexed note in the vault, and would make
+`nextItemId` async into all four creators, for a number nothing reads back. Also raised by
+automated review on PR #226.
 
 That is the price of the shape asked for. A short incremental integer and offline
 multi-device uniqueness cannot both hold without coordination — the fixes are a per-device
