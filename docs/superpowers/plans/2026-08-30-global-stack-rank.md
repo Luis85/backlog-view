@@ -1124,7 +1124,10 @@ Checked as not interchangeable so a later simplification cannot merge them."
 
 **Files:**
 - Create: `src/commands/rank.ts`
-- Modify: `src/main.ts`, `src/view/registry.ts`, `src/view/registerBacklogView.ts`, `src/i18n/en.ts`
+- Modify: `src/main.ts`, `src/view/registry.ts`, `src/view/registerBacklogView.ts`,
+  `src/i18n/en.ts`, **`src/view/cardMoves.ts`** (line 282 is the only `computeDropWrites`
+  call site in `src/`, so it is where a refused drop must name its remedy)
+- Test: `test/view/contextRowWrites.test.ts`, `test/view/focusRanking.test.ts`
 
 **Interfaces:**
 - Consumes: `computeSeedWrites`, `computeRespaceWrites` from Task 8; `activeBacklogView` from `src/view/registry.ts`; `confirmDialog` from `src/ui/confirmDialog.ts`.
@@ -1157,8 +1160,8 @@ In `src/i18n/en.ts`, beside the existing `command.*` keys (line ~1270):
 	'rank.unranked': 'That item has no rank yet. Use the toolbar’s set-up button to fill in the missing ones.',
 ```
 
-The last two are the two refusals from Task 4. Wire them where `performDrop` receives an
-empty write list: ask **`dropPlacement(dragged, target, host.model.ranked)`** — the
+The last two are the two refusals from Task 4. Wire them in **`src/view/cardMoves.ts`**, at the `computeDropWrites` call on line 282 —
+the only call site in `src/`, so this is the one place a refused drop can speak: ask **`dropPlacement(dragged, target, host.model.ranked)`** — the
 planner's own function, not `orderForTarget` beside it — for the reason, and show
 `t('rank.gapSpent')` or `t('rank.unranked')` accordingly. Calling `orderForTarget`
 directly here would skip the dragged-row filter and could report a number where the
@@ -1216,13 +1219,19 @@ function runRank(app: App, plan: (model: BacklogModel) => ItemWrite[], title: st
 		cta: title,
 		onConfirm: () => {
 			void (async () => {
-				// **Re-resolved, not the captured view.** `BacklogView.onunload` calls
-				// `forgetBacklogView` and disposes the gate but leaves `model` NON-NULL,
-				// so a view closed while the dialog was open still answers with a
-				// snapshot that stopped refreshing. Asking the registry again is the
-				// only thing that can tell a live view from a disposed one.
+				// **Re-resolved AND identity-checked.** Two different failures, and
+				// fixing only one causes the other:
+				//   - `BacklogView.onunload` calls `forgetBacklogView` and disposes the
+				//     gate but leaves `model` NON-NULL, so the captured view still
+				//     answers with a snapshot that stopped refreshing. Only the registry
+				//     can tell a live view from a disposed one.
+				//   - `activeBacklogView` answers for whatever is active NOW. Navigate
+				//     from Base A to Base B with the dialog open and it returns B — so
+				//     re-resolving alone would rewrite B's ranks under a dialog that
+				//     counted A's. Worse than the staleness it replaced.
+				// So: ask the registry, and require the same object back.
 				const live = activeBacklogView(app);
-				if (live === null || live.model === null) return;
+				if (live === null || live !== view || live.model === null) return;
 				// **Recomputed, never the previewed batch.** These commands rewrite the
 				// rank of EVERY note, and the dialog can stay open across a vault sync,
 				// a write from another view, or another plugin. Applying the captured
@@ -1272,6 +1281,14 @@ it('writes nothing when the view was closed while the dialog was open', async ()
 	expect(harness.writes).toEqual([]);
 });
 
+it('writes nothing when another base became active while the dialog was open', async () => {
+	// The dialog counted base A. Confirming must not rewrite base B's ranks.
+	const dialog = openRespaceDialog(harnessA);
+	activate(harnessB);
+	dialog.confirm();
+	expect(harnessB.writes).toEqual([]);
+});
+
 it('ranks the model as it is on confirm, not as it was when the dialog opened', async () => {
 	const dialog = openRespaceDialog(harness);
 	await harness.addNote('Late Epic.md', { type: 'Epic', order: 500 });
@@ -1295,7 +1312,9 @@ Expected: PASS. Lint will flag any bare string that should be a catalog key, and
 - [ ] **Step 8: Commit**
 
 ```bash
-git add src/commands/rank.ts src/main.ts src/view/registry.ts src/view/registerBacklogView.ts src/i18n/en.ts test/view/contextRowWrites.test.ts
+git add src/commands/rank.ts src/view/cardMoves.ts src/main.ts src/view/registry.ts src/view/registerBacklogView.ts src/i18n/en.ts test/view/contextRowWrites.test.ts test/view/focusRanking.test.ts
+# `npm run check` runs against the DIRTY worktree, so it passes on files you never
+# staged. Stage every file the task touched, then confirm with `git show --stat HEAD`.
 git commit -m "feat(commands): seed and respace ranks
 
 Two palette commands, named apart because they look similar and must never be
