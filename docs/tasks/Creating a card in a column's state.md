@@ -10,6 +10,7 @@ source: Decomposition of [[New cards in place]]
 files:
   - src/storage/createNote.ts
   - src/view/interactions/create.ts
+  - src/domain/writePlan.ts
 started: ""
 finished: ""
 horizon: ""
@@ -66,7 +67,23 @@ between and leave a blank note without its hierarchy properties behind"*.
 2. `createBacklogItem` writes it under `settings.stateKey`, gated by `seeded` — the same
    condition the iteration and release keys carry, so a `Release` created from a column
    is seeded nothing, and by `settings.stateKey` being configured at all.
-3. The no-state column passes `state: null`, and `createBacklogItem` writes **no** key
+3. **The transition stamps ride the same write.** A card created into a started state
+   carries `started: today`, and one created into a done state carries the finish stamp —
+   under the same two conditions every other stamp has, that the key is configured and
+   the state qualifies (`isStartedValue` / `isDoneValue`).
+
+   `computeStateWrites` is where that logic lives, and it is reached only from
+   `cardMoves.ts` today, so creation would otherwise write the state and no stamp.
+   [[Stamp when work starts and finishes]] is unambiguous about the cost: *"a transition
+   nobody stamped is gone"*, and *"a state change that is not stamped at write time is
+   unrecoverable"*. That use case's own guarantee — *"a stamp is never a second write. It
+   rides the batch that caused it"* — is what fixes the shape here: the batch that caused
+   it is the `vault.create`, so the stamp belongs inside it and not in a write after it.
+
+   Reuse the stamp decision rather than restating it; a second copy of "which values count
+   as started" is the drift this repository has already paid for elsewhere. Found by
+   review (Codex, PR #225).
+4. The no-state column passes `state: null`, and `createBacklogItem` writes **no** key
    for it, rather than an empty one. This is `applyLabels`' rule arriving on the creation
    path: an unconfigured or absent key is never written, and `''` is a key the register
    says is not written at all. The distinction of step 1 is about what the *placement*
@@ -85,8 +102,13 @@ Not in this task: which columns offer creation, and from where. That is
   even though both write the same frontmatter — the bit [[Creating an item from a
   template]] extension 5c needs in order to strip a template's state in the first case
   and keep it in the second.
+- A card created into a started state carries `started` with the creation date, and one
+  created into a done state carries the finish stamp — both in the same `vault.create`
+  call, and both only where the key is configured.
+- A card created into a state that is neither carries neither stamp.
 - A `Release` created from a column is seeded no state, exactly as it is seeded no
-  sprint and no horizon today.
+  sprint and no horizon today — and therefore no stamp either, since the stamps follow
+  the state.
 - With no state property configured, creation writes no state key and does not fail.
 - Creation writes the new note only, never a sibling.
 

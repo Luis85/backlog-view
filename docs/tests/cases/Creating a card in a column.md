@@ -55,7 +55,8 @@ and no stray column either**. Two things to add before starting:
   files hold the value. Found by review (Codex, PR #225).
 
 **Restore afterwards**: remove `Blocked, Waiting` from `stateValues`, set
-`folderHierarchy` back to where you found it, and delete the `Parked` note and everything created below.
+`folderHierarchy` back to where you found it, and delete the `Parked` note and
+everything created below.
 
 ## How to check
 
