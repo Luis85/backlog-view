@@ -37,13 +37,25 @@
    `.pbl-rel-list` below takes all the slack — an auto-sized item here would otherwise be
    squeezed by it. `gap` spaces the two buttons on the CONTAINER, not a margin on either,
    so neither repeats it if a third joins. Both are Obsidian's own chrome — `clickable-icon`,
-   `mod-cta` — nothing here paints either. */
+   `mod-cta` — nothing here paints either.
+
+   `align-items`, `flex-wrap`, the `gap` and the `margin-bottom` are DECLARED here as of
+   2026-08-30 and were in effect long before: `releaseScope.css` used to style the bare
+   `.pbl-rel-actions` for the scope screen, imports later, and so supplied all four to this
+   head as well. That rule is a compound selector now (the scope's actions are its own
+   element), which took them away from a head nobody meant to touch — the ✨ stretched to the
+   CTA's height, and the 12px above the first band collapsed to the 4px of this padding.
+   Two files sharing one class by import order is what that change was fixing; the values
+   this head actually wants belong in its own rule. */
 .pbl-rel-actions {
 	flex: 0 0 auto;
 	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
 	justify-content: flex-end;
-	gap: var(--size-4-1);
+	gap: var(--size-4-2);
 	padding: var(--size-4-2) var(--size-4-2) var(--size-4-1);
+	margin-bottom: var(--size-4-3);
 }
 
 /* The control's icon sits on its label the way every other icon-and-text button in the

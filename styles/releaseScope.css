@@ -27,10 +27,12 @@
    second time here.
    ========================================================================== */
 
-/* The header now stacks two lines: the release's identity (with its facts), then one
-   strip of figures — `.pbl-rel-hline` is the first line, `.pbl-rel-summary` below is the
-   second, and this is what gives them separate flex rows to arrange rather than one row
-   both must agree on. */
+/* The header stacks THREE lines: the release's identity with its facts
+   (`.pbl-rel-hline`), the description under it (`.pbl-rel-desc`), and the footline
+   (`.pbl-rel-footline`), which is the summary and the closing actions on one row. This is
+   what gives the three separate flex rows to arrange rather than one row they must all
+   agree on. It said two — hline and `.pbl-rel-summary` — until 2026-08-30, when the
+   summary moved INSIDE the footline and the actions joined it there. */
 .pbl-rel-header {
 	display: flex;
 	flex-direction: column;
@@ -318,22 +320,80 @@ button.pbl-rel-toggle-on {
 	color: rgb(var(--color-green-rgb));
 }
 
-/* The closing actions, drawn between the header and whatever the scope turns out to be
-   (`src/view/release/releaseClose.ts`). A row rather than a block because a second button
-   joins it with `Generate release notes`, and `flex-wrap` because two full labels do not
-   fit a narrow pane side by side. */
-.pbl-rel-actions {
+/* The header's last line: the summary keeps the left, the actions take the right.
+
+   The summary's basis is wide enough that the ACTIONS wrap first — at a narrow pane the
+   buttons drop to their own line and the strip keeps `33%` beside `1 of 3 items done`
+   rather than orphaning the sentence under a squeezed bar. Measured at 560px in the
+   browser harness. */
+.pbl-rel-footline {
 	display: flex;
 	flex-wrap: wrap;
-	gap: var(--size-4-2);
 	align-items: center;
-	margin-bottom: var(--size-4-3);
+	gap: var(--size-4-3);
+}
+
+.pbl-rel-footline .pbl-rel-summary {
+	flex: 1 1 22em;
+}
+
+/* A COMPOUND selector, and that is load-bearing: `styles/release.css` styles the bare
+   `.pbl-rel-actions` for the index's own head at (0,1,0), and this element carries that
+   class too. `.pbl-rel-scope-actions` alone would also be (0,1,0) and the winner would be
+   whichever partial `index.css` imports last — the tie this repository has already shipped
+   as a defect twice. At (0,2,0) it wins on specificity and neither import position
+   matters.
+
+   `display: flex` is this rule's OWN — `flex-wrap`, `justify-content` and `gap` are inert
+   without it, and until 2026-08-30 it laid out only because the bare `.pbl-rel-actions`
+   above happened to supply one; that silently contradicted `releaseClose.ts`'s own
+   docblock, which calls `.pbl-rel-scope-actions` "this area's LAYOUT alone".
+
+   `flex: 0 1 auto` — SHRINK only, no grow. Growth stays `.pbl-rel-footline .pbl-rel-summary`'s
+   alone, which is what that rule's own comment above promises ("the summary's basis is
+   wide enough that the ACTIONS wrap first"); giving this area `flex-grow: 1` too would
+   split the line's leftover space between the two and narrow the summary below the 560px
+   benchmark that comment measured. Shrink is real, though: `flex-basis: auto` sizes this
+   box to its own content — normally the buttons, but `.pbl-rel-actions-note`'s
+   `flex: 1 0 100%` sizes it to a withheld action's REASON instead, and the note's `100%`
+   resolves against THIS box's width. A rigid `flex: 0 0 auto` here sized the box (and so
+   the note) to the sentence's own unwrapped max-content width, which ran past the pane at
+   a narrow window rather than wrapping — measured in the browser harness at 400px and
+   320px on `?pick=Releases/1.1.md`. `min-inline-size: 0` is what lets the shrink go past
+   the content's own min-content width, which a flex item refuses by default.
+
+   `margin-inline-start: auto` pushes this box to the row's far end — and needs
+   `flex-grow: 0` to do it: the flexbox spec hands positive free space to `flex-grow`
+   FIRST and only what is left over to an auto margin, so a grow of 1 here leaves nothing
+   for the margin to act on — which is exactly what happened for the one revision this
+   rule read `flex: 1 1 auto` (right alignment survived anyway, by grow-filling the row
+   plus `justify-content: flex-end`, but the margin itself was dead weight beside a stale
+   claim). With grow back at 0 the margin is load-bearing again, as its presence here
+   implies it should be. The two `0`s CANCEL the INDEX head's own chrome off the bare rule
+   (`release.css` states it there); its `gap` and `align-items` are wanted. */
+.pbl-rel-actions.pbl-rel-scope-actions {
+	display: flex;
+	flex: 0 1 auto;
+	min-inline-size: 0;
+	flex-wrap: wrap;
+	justify-content: flex-end;
+	gap: var(--size-4-2);
+	margin-inline-start: auto;
+	margin-bottom: 0;
+	padding: 0;
 }
 
 /* Why an action is not offered: an option to bind, or a field to repair. Muted and small,
    the shell every other secondary sentence on this screen uses — it is an explanation
-   beside a control, never a refusal of something the reader just did. */
+   beside a control, never a refusal of something the reader just did.
+
+   A FULL-WIDTH line inside the action area, so it can only be read as its own statement.
+   The area is a wrapping flex row of buttons; a note sized to its content sat horizontally
+   beside whichever button was still offered, and since a refusal replaces its OWN button in
+   place, the one on screen was always the other action's. Buttons keep the row; sentences
+   take a line. */
 .pbl-rel-actions-note {
+	flex: 1 0 100%;
 	color: var(--text-muted);
 	font-size: var(--font-ui-small);
 }

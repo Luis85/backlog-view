@@ -24,9 +24,11 @@ import { releaseNotesPath, writeReleaseNotes } from '../../storage/releaseNotesF
 import { resolveViewIdentity, ViewIdentity } from '../../storage/viewIdentity';
 
 /**
- * The release screen's closing actions. Drawn ABOVE `renderScope`'s two early returns,
- * because the empty-scope screen is the only place extension 1a can be exercised at all
- * and the unconfigured-membership screen withholds nothing that marking reads.
+ * The release screen's closing actions, drawn inside the header's footline
+ * (`renderScope.ts`'s `drawHeader`) on every screen — which is what makes the ordering
+ * structural rather than a comment somebody must not break: the empty-scope screen is
+ * the only place extension 1a can be exercised at all, and the unconfigured-membership
+ * screen withholds nothing that marking reads.
  *
  * Each action keeps its OWN gate: marking reads the release note alone, so membership is
  * none of its business.
@@ -38,7 +40,14 @@ export function drawReleaseActions(
 	scope: ReleaseScope,
 	planSettings: BacklogSettings,
 ): void {
-	const areaEl = parentEl.createDiv({ cls: 'pbl-rel-actions' });
+	// Two classes, two jobs. `.pbl-rel-actions` is shared with the index's own head
+	// (`renderIndex.ts`) and means "an action area, disabled while a write is in flight" —
+	// `syncBusy` sweeps `.pbl-rel-actions button` and that is correct for `New release`
+	// too, since a note created during a sibling view's batch acts on a stale model the
+	// same way. `.pbl-rel-scope-actions` is this area's LAYOUT alone, which is what the
+	// index's rule was supplying by accident: `styles/release.css` gives that class
+	// `justify-content: flex-end` and a padding for a component this is not.
+	const areaEl = parentEl.createDiv({ cls: 'pbl-rel-actions pbl-rel-scope-actions' });
 	drawClose(view, areaEl, release, scope);
 	drawGenerate(view, areaEl, release, scope, planSettings);
 }
@@ -291,8 +300,8 @@ function askThenClose(view: ReleaseView, release: ReleaseRow, scope: ReleaseScop
 }
 
 /**
- * Where the reader lands when the confirmation goes away. Two selectors, and both are
- * needed — this is one bug in three shapes, each found after the previous fix.
+ * Where the reader lands when the confirmation goes away. Three selectors, and all three
+ * are needed — this is one bug in four shapes, each found after the previous fix.
  *
  * QUERIED, never the element captured at the press: a Bases metadata refresh can redraw
  * this whole screen while the dialog is up, and focusing the detached button it left
@@ -300,13 +309,20 @@ function askThenClose(view: ReleaseView, release: ReleaseRow, scope: ReleaseScop
  *
  * And the close control is not guaranteed to come BACK from that redraw — the release is
  * out now, a date arrived, or it left the base's results, and `closeOffer` withholds it.
- * The back control is the terminus: `drawHeader` draws it above BOTH of `renderScope`'s
- * empty-state returns, for the reason it exists at all — a release nobody can read the
- * scope of must not also be a dead end — so on a scope screen there is always something
- * to land on.
+ *
+ * `.pbl-rel-released` is the NEIGHBOUR for the ordinary way that happens, and it is the
+ * mirror of `focusControl`'s own fallback in `releaseEdits.ts`: a successful close always
+ * removes its own button, and the control that now covers the field is the date this write
+ * just stamped. Without it every completed close ended on Back — a keyboard reader's next
+ * Space or Enter left the screen (found by review, PR #221).
+ *
+ * The back control is the last resort and the terminus: `drawHeader` draws it above BOTH of
+ * `renderScope`'s empty-state returns, for the reason it exists at all — a release nobody
+ * can read the scope of must not also be a dead end — so on a scope screen there is always
+ * something to land on.
  */
 function focusAfterDialog(view: ReleaseView): void {
-	for (const selector of ['.pbl-rel-close', '.pbl-rel-back']) {
+	for (const selector of ['.pbl-rel-close', '.pbl-rel-released', '.pbl-rel-back']) {
 		const el = view.viewEl.querySelector<HTMLElement>(selector);
 		if (el !== null) {
 			el.focus();
@@ -374,6 +390,13 @@ async function submitClose(
 			todayCivil(),
 		),
 	);
+	// AFTER the await, and that is the whole point of the second call: `onClosed` above runs
+	// while the close button is still on screen, so it lands there — and the write's own
+	// redraw then finds no `.pbl-rel-close` to restore and falls to the screen's first
+	// button, which is Back. `save`'s own refocus in `releaseEdits.ts` is this same rule for
+	// the same reason; the batch that wrote nothing redraws nothing and this call no-ops on
+	// the button the reader already has.
+	focusAfterDialog(view);
 }
 
 /** What the note's two closing fields LITERALLY hold right now, for the write's own

@@ -17,8 +17,11 @@ written."
   a slice that contradicts the use case goes back there, it is not fixed here.
 - `superpowers:brainstorming` and `writing-plans` both end in an implementation plan, which
   is not what is asked for. A decomposition is register notes with ranks and parents; a
-  plan is one file for one session. Hand over when the user wants the plan.
-- If the request is "build it", that is `writing-plans` against the PBI, not this.
+  plan is one file for one session. For a decomposed PBI, `resolve-pbi` writes the plan: it
+  writes a pointer plan over children it has just made executable. `writing-plans` still
+  applies to an Epic or a Feature, the same route `adding-backlog-items` already uses.
+- If the request is "build it", that is `resolve-pbi` against the decomposed PBI, not this
+  and not `writing-plans` — the children have to be executable before anything runs them.
 
 ## What this skill teaches, and what it does not
 
@@ -200,14 +203,17 @@ the gate not happening.
    `Test case`, a `Test suite` and an ADR carry no `parent`, so that link is the only thing
    a rerun's phase 0 search can find them by, and prose naming the same PBI is invisible
    to it.
-2. Run `npm run docs` and fix what it reports.
+2. Run `npm run check` and fix what it reports. The full gate, not `npm run docs` alone:
+   the diff is markdown under `docs/`, so the register step is realistically the only one
+   of the five with anything to say about it, but root `CLAUDE.md` states the rule
+   unconditionally and a skill that carves its own exception is where exceptions start.
 3. Commit the notes alone. No push, no pull request.
 4. Print exactly this, and nothing else in the block:
 
    ```
    Read docs/requirements/<Title>.md and its child notes, plus <every output that is
-   not one of its children, by path>. Write an implementation plan for it using the
-   writing-plans skill. Do not write code.
+   not one of its children, by path>. Make it executable using the resolve-pbi skill.
+   Do not write code.
    ```
 
    The second half is not decoration. A `Test case`, its `Test suite` and an ADR are not

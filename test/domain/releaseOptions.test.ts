@@ -131,6 +131,20 @@ describe('the release view names its own keys', () => {
 		expect(bare.notesFolder).toBe('');
 	});
 
+	it('trims a hand-edited transition, so it can match a vocabulary that is trimmed item by item', () => {
+		// `releasedValues` goes through `list`, which trims every item; the transition went
+		// through `str`, which did not. So ` Released` was compared against `Released` and
+		// matched nothing — `releaseNoteProblems` reported a mismatch and `closeOffer`
+		// withheld both closing actions, over two halves the options screen shows as
+		// agreeing (found by review, PR #221). The dropdown only ever offers trimmed values,
+		// so a hand edit of the `.base` is the whole of the way in.
+		const padded = resolveReleaseSettings(
+			new FakeViewConfig({ releasedStatusValues: 'Released, Archived', releasedTransitionValue: ' Released ' }) as never,
+		);
+		expect(padded.releasedTransition).toBe('Released');
+		expect(releaseNoteProblems(padded)).toEqual([]);
+	});
+
 	it('resolves the released date key, and leaves it empty when unbound', () => {
 		// `propKey`, not `clearablePropKey`: the default is '' so the two resolve the same
 		// value for every input, exactly as `versionKey` and the other release-own keys do.

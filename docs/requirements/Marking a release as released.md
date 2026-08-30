@@ -96,9 +96,12 @@ area's appearance beside the header.
 
 ## Where it lives
 
-The action is `src/view/release/releaseClose.ts`, drawn from `src/view/release/renderScope.ts`
-ABOVE both of its empty-state returns — a release with no members at all is the one screen
-extension 1a is about, and an action drawn below that return could never be pressed there.
+The action is `src/view/release/releaseClose.ts`, drawn from `drawHeader` in
+`src/view/release/renderScope.ts` into the header's own footline — so it is on the screen
+before any empty-state return is reached, and the ordering is structural rather than a
+comment somebody must not break. That is what extension 1a needs: a release with no members
+at all is the one screen it can be exercised on, and an action drawn below that return could
+never be pressed there.
 The batch is planned by `releaseClosureWrites` in `src/domain/releaseWritePlan.ts` as ONE
 write with two sets, and applied by `src/storage/propertyWrite.ts` over
 `src/view/writeGate.ts`.
@@ -111,6 +114,25 @@ whether the row on screen still matches the live note is `closingFieldsMoved` be
 confirmation is `src/ui/confirmDialog.ts` — the one dialog shape `src/ui/prompts.ts` does not
 cover, because every modal there collects a VALUE and this one collects a decision, with the
 outstanding members as rows it can open.
+
+**All four of those options are bound by ✨ since 2026-08-30, and three of them are not
+properties** — so the press has a second sweep of its own. `RELEASE_SUGGESTED_VALUES` and
+that sweep are in `src/view/release/init.ts`; the vocabulary it writes is
+`DEFAULT_RELEASED_VALUES` in `src/domain/settings.ts`, which is DOMAIN DATA and never the
+catalog — a bound status value is matched against what release notes carry, so a
+catalog-sourced one would have a reader on a German Obsidian hand over a vault whose
+releases an English reader's view reports as not released. The transition row reads
+`releasedValuesOf` (`src/domain/releaseOptions.ts`, exported for that second reader rather
+than re-split beside it), so the value it binds is one of the values the row above it has
+just bound — `configProblems`' own rule made structural instead of restated.
+
+Two readers of the press had to widen with it, and each was a way the offer and the action
+could come apart. `boundKeys` in `src/view/release/newRelease.ts` decides whether a press
+changed anything and read property keys alone, so a press whose only work was one of these
+three compared equal, reported that it bound nothing and skipped the redraw. `anythingToBind`
+in `src/view/release/initControl.ts` decides whether the empty state's ✨ is drawn at all, and
+on the same filter: an upgraded vault with every property bound and one closing option still
+unset would have been shown no button for work a press would really do.
 
 **Two narrowings, recorded rather than quietly taken.** Flow 2 asks the confirmation to
 state unsatisfied readiness criteria; readiness is [[Answering the readiness checklist]] and
