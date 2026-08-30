@@ -58,6 +58,27 @@ that answered over a `gapSpent` that was correct. Gating on the tie AT THE DROP 
 no such hole and is what shipped; ADR 0032 records both wrong gates in full, because both
 were built here.
 
+**A third instance, and the sharpest, found by PR review on 2026-08-30: with NO peers the
+fallback is not sibling arithmetic at all.** `orderForTarget` sends an empty peer list to
+`anchoredOrder(ranked, parent, 'after')`, and that opens with "an empty population's first
+rank is `ORDER_SPACING`" — so a FIRST child asked of the peer-scoped fallback answers a flat
+1000, which `rankTaken` then accepts because nobody holds it. On a hand-made legacy vault
+(`Epic A` 10, `Epic B` 10, `B1` 10) the new `A1` therefore ranks 1000 and draws LAST in the
+focused Feature list, below `B1`, where the hierarchy puts it first. Nothing already on
+screen moves — the list gains a member in a surprising place — and the tree still draws it
+correctly under `A`.
+
+It stands, and the reason is that there is no third answer. Under the legacy scheme a first
+child's natural rank is its parent's own number — the sentence `midpoint` states as "every
+first child carries its parent's value" — and writing `A1` = 10 collides with both `A` and
+`B`, which `rankTaken` refuses and which this feature refuses to write on principle. So the
+only alternative to 1000 is refusing, and that blocks creating the first child under any
+parent on an unmigrated vault: a harder block on a core gesture than a surprising position,
+and the opposite of the direction chosen in [[Ranking at the focused level]] when creation
+was given this fallback rather than allowed to refuse where reordering worked. What makes
+this instance sharper than the two above is that there the code cannot tell which regime it
+is in, while here the plugin's own write is what produces the surprise.
+
 Saying something is not free either: `domain/` cannot raise a notice — it touches no DOM
 and reads the vault without writing it — so the report would have to be carried out
 through every caller, and a `RankResult` carries a reason and never a row.
