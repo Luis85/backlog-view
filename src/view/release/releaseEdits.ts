@@ -191,7 +191,15 @@ export function editReleaseReleased(view: ReleaseView, release: ReleaseRow): voi
 		// (`interactions/plan.ts`), and what `prompt.clearDate` names in its tooltip.
 		fields: [{ field: 'released', name: key, value: current === null ? '' : formatCivil(current) }],
 		validate: () => null,
-		onClosed: () => focusControl(view, RELEASED_BUTTON),
+		// `CLOSE_BUTTON` here too, and not only on the submitting exit below: the control this
+		// dialog was opened from can be gone by the time it CLOSES without writing anything.
+		// An external edit clearing the date mid-dialog makes `Mark as released` offered, and
+		// `drawReleased` then draws nothing — so a cancel found no `.pbl-rel-released` and put
+		// the reader on the body, which is the same defect the write path was fixed for and
+		// the same neighbour repairs it (found by review, Codex, PR #221). The general
+		// focus-handle restore cannot cover it: the modal held focus across that redraw, so
+		// `focusedHandle` correctly answered null.
+		onClosed: () => focusControl(view, RELEASED_BUTTON, CLOSE_BUTTON),
 		onSubmit: (values) =>
 			// `values.released` and not `?? ''`: the modal submits the fields it was GIVEN, and
 			// this one gave it exactly one — a fallback here is a branch nothing can take.

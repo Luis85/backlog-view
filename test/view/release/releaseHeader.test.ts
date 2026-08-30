@@ -85,4 +85,29 @@ describe('the released date is a control only when there is one, or Mark as rele
 		expect(view.viewEl.querySelector('.pbl-rel-released')).toBeNull();
 		expect(document.activeElement).toBe(view.viewEl.querySelector('.pbl-rel-close'));
 	});
+
+	it('does not strand focus when a refresh takes that control off screen and the dialog is CANCELLED', async () => {
+		// The same defect on the exit that writes nothing (found by review, Codex, PR #221).
+		// An external edit clears the date while the dialog is open, so the redraw makes
+		// `Mark as released` offered and `drawReleased` draws nothing — and the cancel then
+		// looked for a control that is gone. The general focus-handle restore cannot help:
+		// the modal held focus across that redraw, so `focusedHandle` answers null.
+		const { view, vault } = releaseScreen({ status: 'In progress', released: '2026-06-18' });
+		const opener = view.viewEl.querySelector<HTMLButtonElement>('.pbl-rel-released')!;
+		opener.click();
+		// Focus moves into the modal, which is what makes the redraw below lose it.
+		opener.blur();
+
+		delete vault.fm('0.9.md')['released'];
+		const cache = vault.caches.get('0.9.md');
+		if (cache === undefined) throw new Error('no cache for 0.9.md');
+		delete (cache.frontmatter as Record<string, unknown>)['released'];
+		view.onDataUpdated();
+		expect(view.viewEl.querySelector('.pbl-rel-released')).toBeNull();
+
+		Modal.lastOpened?.close();
+		await flush();
+
+		expect(document.activeElement).toBe(view.viewEl.querySelector('.pbl-rel-close'));
+	});
 });
