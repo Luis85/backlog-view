@@ -36,7 +36,8 @@ between backlog and board.
 
 ## The change
 
-**`order` becomes one fractional rank over the whole backlog.** No projection owns a rank;
+**`order` becomes one fractional rank over the whole of what the Base returns.** No
+projection owns a rank;
 each reads a slice of the single order:
 
 | Projection | The slice it reads |
@@ -434,3 +435,23 @@ rank sort, each running once. A third would still fail it. The Cost section of
 Obsidian does not run in this repository. The migration command writes every note in a
 vault, and jsdom cannot report whether that feels safe to use. It needs `npm run test-build`
 and a live vault before it is called done.
+
+## The rank space is the Base's, not the vault's
+
+Recorded after the fact, on 2026-08-30, because the sentence above said "the whole backlog"
+and the code cannot deliver that. `createItems` loads the Base's own entries and nothing
+else but ancestors, and only when `showOutsideParents` is on. A note the filter excludes,
+which no result claims as a parent, is never loaded and never enters `model.ranked` — so a
+midpoint can be handed a number that note already holds. While it stays filtered out
+nothing looks wrong. The day it returns to the results the two are a duplicate,
+`distinctlyRanked` goes false, and the focused view falls back to tree order without
+saying why.
+
+This is **wider than the sibling-scoped rank it replaces**: before, only a hidden sibling
+could collide; now any hidden note can. Two alternatives were weighed and refused — reading
+every rank-bearing note out of the metadata cache would make `domain/` read the vault
+instead of what Bases hands it, and refusing writes whenever the Base filters would disable
+ranking on most real bases. Respace is the repair once a collision surfaces.
+
+The decision is recorded in ADR 0032's Consequences, and this section exists so the spec
+does not go on promising more than the check delivers.

@@ -24,8 +24,10 @@ parent.
 
 ## Decision
 
-**`order` is becoming one fractional rank over the whole backlog**, read by every
-projection as a slice of a single ordering rather than as several independent ones.
+**`order` is becoming one fractional rank over the whole of what the Base returns**, read
+by every projection as a slice of a single ordering rather than as several independent
+ones. "Global" is bounded by the Base and not by the vault — see the last Consequence
+below, which states what that costs.
 `src/domain/rankOrder.ts` is the first piece: it holds the comparator — `order` ascending,
 `null` sorting last, ties broken by the Bases result position (`entryIndex`) — and builds
 `BacklogModel.ranked`, one sort over every loaded item (results and `outsideFilter`
@@ -120,6 +122,23 @@ and each is recorded below as it arrives, rather than the record being written o
   on, and the refusal the fallback used to swallow is reported instead.
 - The fallback is **silent** — nothing tells the user which of the two regimes answered —
   which is a known gap recorded rather than closed.
+
+- **The rank space is the BASE's population, not the vault, and that is a real limitation
+  rather than a wording quibble.** `createItems` walks the Base's own entries and pulls in
+  nothing else except ancestors, through `loadOutsideParents`, and only when
+  `showOutsideParents` is on. A note the filter excludes and no result claims as a parent is
+  never loaded, so it is not in `model.ranked` and no placement can see the rank it holds. A
+  midpoint may therefore be handed a number that note already carries. Nothing is visibly
+  wrong while it stays filtered out; the day it re-enters the results the pair is a
+  duplicate, `distinctlyRanked` goes false, and the focused view drops back to tree order
+  without saying why.
+  **This is wider than the sibling-scoped rank it replaces**, and the widening is the point
+  worth carrying: before, only a hidden SIBLING could collide with a placement; now any
+  hidden note in the vault can. The two alternatives were weighed and refused — reading
+  every rank-bearing note from the metadata cache would make `domain/` read the vault rather
+  than what Bases hands it, and refusing every write on a filtered Base would disable
+  ranking for most real bases, since most of them filter something. The Respace command,
+  when it lands, is the repair once a collision surfaces.
 
 ## Alternatives
 
