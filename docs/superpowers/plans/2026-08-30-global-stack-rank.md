@@ -330,7 +330,7 @@ collectFocusRoots decides membership and ranked decides sequence."
 
 ```ts
 export const ORDER_SPACING = 1000;
-export type RankRefusal = 'gapSpent' | 'unranked';
+export type RankRefusal = 'gapSpent' | 'unranked' | 'parentGone';
 export type RankResult = { order: number } | { refusal: RankRefusal };
 export function anchoredOrder(
 	ranked: BacklogItem[],
@@ -967,9 +967,18 @@ function newItemOrder(host: BacklogViewHost, parentItem: BacklogItem | null): Ra
 	// `anchoredOrder` finds its anchor by identity (`ranked.indexOf`), so a stale
 	// object scores -1 and the creation is refused as `unranked` on a vault where
 	// every note is ranked correctly. The path is the thing that survives a rebuild.
-	const parent = parentItem ? (model.byPath.get(parentItem.file.path) ?? null) : null;
-	const peers = parent ? parent.children : model.realRoots;
-	return orderForTarget(model.ranked, { parent, peers, insertIndex: peers.length });
+	if (!parentItem) {
+		const roots = model.realRoots;
+		return orderForTarget(model.ranked, { parent: null, peers: roots, insertIndex: roots.length });
+	}
+	const parent = model.byPath.get(parentItem.file.path);
+	// **A parent that no longer resolves is NOT a root request.** Collapsing the two with
+	// `?? null` ranks the note among the roots while `createFromPrompt` still writes the
+	// captured `parentItem.file` as its parent link — a note parented to a missing file
+	// and ranked somewhere else entirely. The prompt is modal, so the parent really can
+	// be deleted while it is open.
+	if (!parent) return { refusal: 'parentGone' };
+	return orderForTarget(model.ranked, { parent, peers: parent.children, insertIndex: parent.children.length });
 }
 ```
 
@@ -990,6 +999,14 @@ sentences.
 - [ ] **Step 5: Check that a refused rank refuses the note**
 
 ```ts
+it('creates nothing when the parent was deleted while the prompt was open', async () => {
+	const prompt = openNewChildPrompt(harness, 'Epic A');
+	await harness.deleteNote('Epic A.md');
+	prompt.submit('New PBI');
+	expect(harness.created).toEqual([]);
+	expect(harness.notices).toContain(t('rank.parentGone'));
+});
+
 it('creates a child after the model rebuilt under the open prompt', async () => {
 	// The prompt holds a parent from the model that existed when it opened.
 	const prompt = openNewChildPrompt(harness, 'Epic A');
@@ -1038,90 +1055,16 @@ orderForTarget like every other placement."
 - Produces:
 
 ```ts
-export function computeSeedWrites(model: BacklogModel): ItemWrite[];
-export function computeRespaceWrites(model: BacklogModel): ItemWrite[];
-```
-
-Both skip `outsideFilter` items and emit `{ file, order }` only.
-
-- [ ] **Step 1: Write the failing tests**
-
-Create `test/domain/rankCommands.test.ts`:
-
-```ts
-it('seeds in DFS preorder', () => {
-	// Epic A > (F1, F2), Epic B. Ranks scrambled or absent.
-	expect(computeSeedWrites(model).map((w) => [w.file.basename, w.order])).toEqual([
-		['Epic A', 1000],
-		['F1', 2000],
-		['F2', 3000],
-		['Epic B', 4000],
-	]);
-});
-
-it('respaces in existing rank order, preserving every decision', () => {
-	// F2 was ranked above F1 by hand: F2 = 1500, F1 = 2000.
-	expect(computeRespaceWrites(model).map((w) => w.file.basename)).toEqual(['Epic A', 'F2', 'F1', 'Epic B']);
-});
-
-it('seed and respace are not interchangeable', () => {
-	// The same model carrying a cross-parent ranking decision.
-	const seeded = computeSeedWrites(model).map((w) => w.file.basename);
-	const respaced = computeRespaceWrites(model).map((w) => w.file.basename);
-	expect(respaced).not.toEqual(seeded);
-});
-
-it('spreads around context ranks instead of colliding with them', () => {
-	// ranked A(1000), context(2000), B(3000). Numbering the writable rows 1000, 2000
-	// would tie B with the context row — the collision this command exists to repair.
-	const orders = computeRespaceWrites(model).map((w) => w.order);
-	expect(orders).not.toContain(2000);
-	expect(orders[0]).toBeLessThan(2000);
-	expect(orders[1]).toBeGreaterThan(2000);
-});
-
-it('refuses rather than tying when a run cannot be spread', () => {
-	// Two context rows 0.000001 apart with two writable rows between them.
-	expect(computeRespaceWrites(wedgedModel)).toEqual([]);
-});
-
-it('never writes to a note the Base excluded', () => {
-	const files = [...computeSeedWrites(model), ...computeRespaceWrites(model)].map((w) => w.file.path);
-	expect(files).not.toContain('Excluded Epic.md');
-});
-```
-
-- [ ] **Step 2: Run them and watch them fail**
-
-Run: `npx vitest run test/domain/rankCommands.test.ts`
-Expected: FAIL — neither function is exported.
-
-- [ ] **Step 3: Write both**
-
-```ts
-/**
- * The migration, correct exactly ONCE: the hierarchy written into numbers, DFS
- * preorder. Its "nothing visible moves" promise holds only on a vault that has never
- * carried a global rank, because there the hierarchy IS the order on screen. Run after
- * anyone has ranked across parents it discards every one of those decisions, which is
- * why it is a separate command from `computeRespaceWrites` and says so in its dialog.
- */
 export function computeSeedWrites(model: BacklogModel): ItemWrite[] {
-	const writes: ItemWrite[] = [];
-	let counter = 0;
+	const sequence: BacklogItem[] = [];
 	const visit = (items: BacklogItem[]) => {
 		for (const item of items) {
-			// Context rows are never written; their branch is still walked, because
-			// results hang below them.
-			if (!item.outsideFilter) {
-				counter += ORDER_SPACING;
-				writes.push({ file: item.file, order: counter });
-			}
+			sequence.push(item);
 			visit(item.children);
 		}
 	};
 	visit(model.realRoots);
-	return writes;
+	return spreadAround(sequence);
 }
 
 /**
@@ -1133,24 +1076,54 @@ export function computeSeedWrites(model: BacklogModel): ItemWrite[] {
  * leaving every other rank where it was is not a repair.
  */
 export function computeRespaceWrites(model: BacklogModel): ItemWrite[] {
+	return spreadAround(model.ranked);
+}
+
+/**
+ * Give every writable row in `sequence` a new rank that keeps the sequence, leaving
+ * `outsideFilter` rows exactly where they are.
+ *
+ * **Both commands share this**, and that is the point rather than a convenience: they
+ * differ only in the sequence they hand it — Seed passes DFS preorder, Respace passes
+ * the ranked population — and the immovable-context rule is identical for both. An
+ * earlier revision wrote the rule into Respace alone and left Seed numbering from zero,
+ * so a loaded context ancestor at rank 1000 collided with the first writable descendant:
+ * the same defect, fixed once and missed once, which is what one allocator prevents.
+ *
+ * Context rows are FIXED POINTS. Each run of writable rows between two of them is spread
+ * inside that open interval; a run before the first fixed point is placed BELOW it, and a
+ * run after the last is placed above. The leading run must not be spread from a synthetic
+ * zero: `floor(min) - spacing` walks negative after repeated prepends, so a fixed row at
+ * or below zero would make the step zero or negative and refuse a backlog that respaces
+ * perfectly well.
+ */
+function spreadAround(sequence: BacklogItem[]): ItemWrite[] {
 	const writes: ItemWrite[] = [];
-	// Context rows are IMMOVABLE, not absent. Dropping them and numbering the rest
-	// 1000, 2000, … is how a repair creates the very collision it exists to fix:
-	// ranked A(1000), context(2000), B(3000) would write A=1000, B=2000 — tying B with
-	// the context row nobody may write. So they are FIXED POINTS, and each run of
-	// writable rows between two of them is spread inside that open interval.
+	const fixedAt = (i: number): number | null =>
+		sequence[i].outsideFilter ? (sequence[i].order ?? null) : null;
 	let start = 0;
-	const fixed = (i: number): number | null =>
-		i < model.ranked.length && model.ranked[i].outsideFilter ? (model.ranked[i].order ?? null) : null;
-	for (let i = 0; i <= model.ranked.length; i++) {
-		const bound = i === model.ranked.length ? null : fixed(i);
-		if (i !== model.ranked.length && bound === null) continue;
-		const run = model.ranked.slice(start, i).filter((item) => !item.outsideFilter);
-		const lower = start === 0 ? 0 : (model.ranked[start - 1].order ?? 0);
+	for (let i = 0; i <= sequence.length; i++) {
+		const bound = i === sequence.length ? null : fixedAt(i);
+		if (i !== sequence.length && bound === null) continue;
+		const run = sequence.slice(start, i);
 		if (run.length > 0) {
-			// Evenly inside (lower, bound), or past `lower` when nothing bounds above.
-			const step = bound === null ? ORDER_SPACING : (bound - lower) / (run.length + 1);
-			run.forEach((item, k) => writes.push({ file: item.file, order: roundOrder(lower + step * (k + 1)) }));
+			const lower = start === 0 ? null : (sequence[start - 1].order ?? null);
+			if (lower === null && bound === null) {
+				// No fixed point anywhere: plain spacing from the origin.
+				run.forEach((item, k) => writes.push({ file: item.file, order: (k + 1) * ORDER_SPACING }));
+			} else if (lower === null) {
+				// LEADING run: below the first fixed point, never up from zero.
+				run.forEach((item, k) =>
+					writes.push({ file: item.file, order: roundOrder(bound - (run.length - k) * ORDER_SPACING) }),
+				);
+			} else if (bound === null) {
+				// TRAILING run: above the last fixed point.
+				run.forEach((item, k) => writes.push({ file: item.file, order: roundOrder(lower + (k + 1) * ORDER_SPACING) }));
+			} else {
+				const step = (bound - lower) / (run.length + 1);
+				if (step <= MIN_GAP) return [];
+				run.forEach((item, k) => writes.push({ file: item.file, order: roundOrder(lower + step * (k + 1)) }));
+			}
 		}
 		start = i + 1;
 	}
@@ -1158,11 +1131,13 @@ export function computeRespaceWrites(model: BacklogModel): ItemWrite[] {
 }
 ```
 
-**A run can be unspreadable**, and that is a real refusal rather than a rounding nuisance: two
-context rows a hair apart with three writable rows between them cannot be given three
-distinct six-decimal values. Detect it (`step <= MIN_GAP`), plan nothing, and tell the
-user which rows are wedged — respacing part of the backlog and silently tying the rest is
-worse than refusing. Add a check for it.
+**Only a BOUNDED run can be unspreadable**, and that is a real refusal rather than a
+rounding nuisance: two context rows a hair apart with three writable rows between them
+cannot be given three distinct six-decimal values. `step <= MIN_GAP` plans nothing and
+tells the user which rows are wedged — respacing part of the backlog and silently tying
+the rest is worse than refusing. The leading and trailing runs can never hit it, because
+neither is squeezed between two fixed values; applying the bounded test to them is what
+the previous revision got wrong.
 
 - [ ] **Step 4: Run and watch pass**
 
@@ -1220,6 +1195,7 @@ In `src/i18n/en.ts`, beside the existing `command.*` keys (line ~1270):
 	'rank.done': 'Ranked {count} notes',
 	'rank.gapSpent': 'No room left between those two items. Run "Respace ranks" from the command palette.',
 	'rank.unranked': 'That item has no rank yet. Use the toolbar’s set-up button to fill in the missing ones.',
+	'rank.parentGone': 'That item’s parent no longer exists, so nothing was created.',
 ```
 
 The last two are the two refusals from Task 4. Wire them in **`src/view/cardMoves.ts`**, at the `computeDropWrites` call on line 282 —
