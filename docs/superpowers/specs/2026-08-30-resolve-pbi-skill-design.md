@@ -383,7 +383,10 @@ it is. Everything below assumes there is work.
 Otherwise, in this order, so the work lands in one commit and the prompt is the last thing
 on screen:
 
-1. Write the children's edits.
+1. Write every refined output's edits — the children, and the non-child outputs phase 2
+   repaired, an ADR whose five things were supplied among them. The plan and the prompt only
+   point at those notes; nothing carries the phase's conversation, so an edit left unwritten
+   is an edit the implementer never sees.
 2. Write the pointer plan.
 3. Ask the save question.
 4. Write the `Task` note if the answer is yes.
@@ -473,8 +476,9 @@ On yes, one note at the next free rank among the PBI's children, in the shape
 - A rule that every implementer needs was written into the prompt alone, where only the
   controller reads it.
 - The plan gave a task to an output the human owns, or to one phase 0 found already landed.
-- A run finished with its children left `Open`, or with an `## Outcome` unwritten on a child
+- A run finished with its outputs left `Open`, or with an `## Outcome` unwritten on an output
   whose shape has one.
+- An edit phase 2 agreed was never written, so the implementer read the note unchanged.
 - An ADR task was told to write `status: Done`, or to add a `closed:` or an `## Outcome`.
 - A prose-only task was given a red-green cycle it cannot satisfy.
 - A `Test suite` was closed because its prose was written.
@@ -489,7 +493,7 @@ On yes, one note at the next free rank among the PBI's children, in the shape
 - A rerun overwrote the earlier plan at the same path, inheriting its ledger.
 - A saved handoff promised to close siblings the run was never going to touch.
 - A child was re-scoped to fit the order, instead of the order being corrected.
-- The saved handoff `Task` appears in the set of children the prompt executes.
+- The saved handoff `Task` appears in the set of outputs the prompt executes.
 - The prompt puts the commit before `npm run check`.
 - You wrote a note before phase 3 to keep track.
 - You started writing source code.

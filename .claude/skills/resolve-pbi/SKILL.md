@@ -211,14 +211,17 @@ mistaken order or a misread deliverable is caught here or not at all.
 **The no-work path leaves at step 1.** When the filter left no task — every output already
 landed, or every remaining one the human's — steps 2, 3, 4 and 7 do not happen: no plan, no
 save question, no prompt. Asking whether to save "this prompt" when there is no prompt would
-write a handoff `Task` whose `Approach` points at a plan nobody created. The children's edits
+write a handoff `Task` whose `Approach` points at a plan nobody created. Every output's edits
 from phase 1 and 2 are still written and committed, and the close says what remains and
 whose it is. Everything below assumes there is work.
 
 Otherwise, in this order, so the work lands in one commit and the prompt is the last thing on
 screen to copy:
 
-1. Write the children's edits.
+1. Write every refined output's edits — the children, and the non-child outputs phase 2
+   repaired, an ADR whose five things were supplied among them. The plan and the prompt only
+   point at those notes; nothing carries the phase's conversation, so an edit left unwritten
+   is an edit the implementer never sees.
 2. Write the pointer plan.
 3. Ask the save question.
 4. Write the `Task` note if the answer is yes.
@@ -318,7 +321,7 @@ extracts the task and nothing above it.
 
 Closure has to be said here at all because `subagent-driven-development`'s own completion
 record is its ledger, under a gitignored `.superpowers/` that never reaches the register.
-Without the two paragraphs above, every child stays `Open` with its `## Outcome` unwritten.
+Without the two paragraphs above, every output stays `Open` with its `## Outcome` unwritten.
 
 ### The prompt
 
@@ -353,7 +356,7 @@ later run?
 
 The saved note is a `Task` child of the PBI, which makes it a sibling of the work it
 executes, and **it is never itself dispatched.** Two guards keep that shut, needed because
-they fail differently: the plan and the prompt enumerate the children they run **by path**,
+they fail differently: the plan and the prompt enumerate the outputs they run **by path**,
 so a note written afterwards is outside the set by construction; and the saved note says so
 in its own first line — *this note is the handoff, not a task to implement* — which is what a
 later rerun catches when it re-derives children from `parent`.
@@ -387,8 +390,9 @@ On yes, one note at the next free rank among the PBI's children, in the `Task` s
 - A rule that every implementer needs was written into the prompt alone, where only the
   controller reads it.
 - The plan gave a task to an output the human owns, or to one phase 0 found already landed.
-- A run finished with its children left `Open`, or with an `## Outcome` unwritten on a child
+- A run finished with its outputs left `Open`, or with an `## Outcome` unwritten on an output
   whose shape has one.
+- An edit phase 2 agreed was never written, so the implementer read the note unchanged.
 - An ADR task was told to write `status: Done`, or to add a `closed:` or an `## Outcome`.
 - A prose-only task was given a red-green cycle it cannot satisfy.
 - A `Test suite` was closed because its prose was written.
@@ -403,7 +407,7 @@ On yes, one note at the next free rank among the PBI's children, in the `Task` s
 - A rerun overwrote the earlier plan at the same path, inheriting its ledger.
 - A saved handoff promised to close siblings the run was never going to touch.
 - A child was re-scoped to fit the order, instead of the order being corrected.
-- The saved handoff `Task` appears in the set of children the prompt executes.
+- The saved handoff `Task` appears in the set of outputs the prompt executes.
 - The prompt puts the commit before `npm run check`.
 - You wrote a note before phase 3 to keep track.
 - You started writing source code.
