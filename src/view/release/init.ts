@@ -25,9 +25,15 @@ import type { ReleaseView } from './releaseView';
  * from the other end: a blank the picker could offer is a value this view's own reader
  * reports as unreadable.
  *
- * SIX keys, not every key `ReleaseSettings` reads, and the list is what "makes every
- * feature available" actually means here — a press that leaves a feature of this view
+ * The keys ABOVE and not every key `ReleaseSettings` reads, and the list is what "makes
+ * every feature available" actually means here — a press that leaves a feature of this view
  * unconfigured is a press that reported success and did half the job.
+ *
+ * **Counted nowhere**, which is `initControl.ts`'s own decision one file over, taken there
+ * after its count went stale twice in two days. This sentence read "SIX keys" above a
+ * SEVEN-entry list until 2026-08-30 — `descriptionProperty` joined on 2026-08-29 and the
+ * number did not follow. A count of the thing directly beneath it earns nothing a reader
+ * cannot get by looking, and goes wrong the moment a row is added.
  *
  * `typeProperty`, `parentProperty` and `orderProperty` each ship a real `default:` in
  * `getReleaseViewOptions`, so Bases' own option resolution already supplies one without
@@ -87,9 +93,9 @@ export interface ValueCandidate {
  * The three the closing actions need and {@link RELEASE_SUGGESTED_KEYS} cannot carry: a
  * folder, a value list and a dropdown over that list. They reach none of
  * `adoptCandidates`' machinery because they name no property — there is no key for
- * `taken` to guard and no collision to report. What they share with the seven is the ONE
- * rule that applies to them, applied in {@link runReleaseInit}: an option the reader has
- * touched is never overwritten, and cleared is not untouched.
+ * `taken` to guard and no collision to report. What they share with the property candidates
+ * above is the ONE rule that applies to them, applied in {@link runReleaseInit}: an option
+ * the reader has touched is never overwritten, and cleared is not untouched.
  *
  * **`releaseNotesFolder` binds `docs/release-notes`**, which is the string
  * `releaseOptions.ts` also spells as that option's placeholder. Two literals, and nothing
