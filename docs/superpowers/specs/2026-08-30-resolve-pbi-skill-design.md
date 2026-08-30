@@ -35,6 +35,13 @@ So the plan is written, and made as thin as the tooling allows:
   get no task. **`N` is the dispatch index, not the note's `order`** — ranks carry gaps and
   `task-brief` matches on the integer it is given, so the indices are consecutive from 1
   over the tasks that survive the filter.
+- **An output that carries no rank runs first.** An ADR has no `order` by design, and a new
+  `Test suite` is ranked in the roots' namespace rather than among the PBI's children, so
+  neither has a position in the sequence the children are in. Both are context the ranked
+  work rests on — an ADR states the decision the code is written against, a suite has to
+  exist before a case can hang from it — so they take the low task numbers, in the order
+  phase 2 named them, and the ranked children follow. Interleaving them by a rank they do
+  not share is the failure this rule prevents.
 - Everything filtered out is **named in the header** with the reason — the human's outputs
   as what this run will not deliver, the landed ones as already done. Named, because a plan
   that silently omits them reads as a decomposition someone forgot half of; not tasked,
@@ -79,10 +86,22 @@ says it in the two places that travel:
 
 - **Global Constraints**: closing the note is part of a task's definition of done, in the
   same commit as the work — `## Outcome` written, `status: Done`, `closed:` dated.
+  **That shape is the backlog's, and an ADR is not a backlog item.** `docs/adrs/README.md`
+  gives it `adr`, `title`, `status`, `date` and `area`, where `status` is `Accepted`,
+  `Proposed` or `Superseded` and there is no `closed:` and no `## Outcome` — so an ADR task
+  is done when the record is written and its status is `Accepted`, and writing `Done` there
+  is a value the register does not have. The constraint says both shapes and which output
+  takes which, because a task told to do the impossible does the nearest thing instead.
 - **The prompt's last step**, controller-owned rather than a task: once every task is
-  through, close the saved handoff `Task` the same way. It is excluded from dispatch, so
-  nothing else will, and its own `Acceptance criteria` — every sibling closed — is now a
-  thing a reader can check rather than a sentence that can never come true.
+  through, close the saved handoff `Task` the same way, **then run `npm run check` and
+  commit it**. It is excluded from dispatch, so no task's own cycle covers this write, and
+  a close left in the working tree is a close that never happened. Its `Acceptance criteria`
+  — every sibling closed — is then a thing a reader can check rather than a sentence that
+  can never come true.
+
+  **This step exists only when a handoff was saved.** The save offer is a question with a
+  real "no", and the prompt is generated after it is answered, so a run that declined one
+  gets a prompt without this bullet — not a bullet naming a note that was never written.
 
 One cost is real and stated rather than hidden: `subagent-driven-development` says exact
 values appear **only** in the task brief, and a pointer brief holds none — it names the note
@@ -195,6 +214,7 @@ outputs would send an intentionally unanswerable note through the TDD loop, beca
 | An `Issue` recording a **decision or a limitation** | The subagent's | It is prose stating something already settled |
 | A `Deliverable` | Ask | A non-code artifact may be either, and the register documents no shape for it |
 | An ADR *(not a child)* | The subagent's | Prose it can write, once phase 2 has the five things `docs/adrs/README.md` wants |
+| A `Test suite` *(not a child)* | The subagent's | Prose saying what the group walks; it checks nothing itself, and it must exist before a case can hang from it |
 | A `Test case` *(not a child)* | The human's | A live vault, which no subagent reaches — Obsidian cannot run here |
 
 The human's outputs are **named in the plan's header, never given a task**. They are still
@@ -269,9 +289,11 @@ Fenced, and nothing else in the block:
 - execute with `superpowers:subagent-driven-development` against
   `docs/superpowers/plans/<file>.md`, whose every task points at one of those notes
 - red, green, `npm run check`, then commit — all five steps pass before the commit, never after
-- close each child as its task lands: `## Outcome`, `status: Done`, `closed:`
-- when every task is through, close the saved handoff `Task` the same way — nothing else
-  will, since it is not dispatched
+- close each child as its task lands: `## Outcome`, `status: Done`, `closed:` — an ADR
+  instead reaches `status: Accepted`, since it carries neither of the other two
+- *(only when a handoff was saved)* when every task is through, close the saved handoff
+  `Task` the same way, then `npm run check` and commit — nothing else will, since it is
+  not dispatched
 - do not re-open the PBI — a child that contradicts it goes back to `adding-backlog-items`
 
 Naming the non-child outputs is not decoration, for the same reason `decompose-pbi`'s
@@ -328,6 +350,10 @@ On yes, one note at the next free rank among the PBI's children, in the shape
   controller reads it.
 - The plan gave a task to an output the human owns, or to one phase 0 found already landed.
 - A run finished with its children's `## Outcome` unwritten and their `status` still `Open`.
+- An ADR task was told to write `status: Done`, or to add a `closed:` or an `## Outcome`.
+- An output with no rank was given a task number among the ranked children.
+- The prompt told a run to close a handoff the user declined to save.
+- The controller's own close was left in the working tree, with no gate and no commit.
 - A child was re-scoped to fit the order, instead of the order being corrected.
 - The saved handoff `Task` appears in the set of children the prompt executes.
 - The prompt puts the commit before `npm run check`.

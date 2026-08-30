@@ -262,8 +262,10 @@ exists: assigning only the non-child outputs would send an intentionally unanswe
 through the TDD loop, because `decompose-pbi` deliberately produces children that are not
 implementable.
 
-Copy the six-row table verbatim — `Task`, open-question `Issue`, decision/limitation
-`Issue`, `Deliverable`, ADR, `Test case` — with its "Whose" and "Why" columns.
+Copy the seven-row table verbatim — `Task`, open-question `Issue`, decision/limitation
+`Issue`, `Deliverable`, ADR, `Test suite`, `Test case` — with its "Whose" and "Why" columns.
+The two test rows split on the same line and that is the point of having both: a suite is
+prose the subagent writes, a case is a live vault only a human reaches.
 
 Then the two paragraphs the spec gives: the human's outputs are **named in the plan's
 header, never given a task**; and an open question that *must* be answered before the work
@@ -358,6 +360,9 @@ Then the four construction bullets from the spec, unchanged in substance:
 - **one `## Task N` per output that is the subagent's *and* still owed**, child or not, in
   rank order, each naming the note's path and saying to read it — `N` is the dispatch index,
   not the note's `order`, consecutive from 1 over the tasks that survive the filter;
+- **an output that carries no rank runs first** — an ADR has no `order`, a new `Test suite`
+  is ranked among the roots rather than among the PBI's children, and both are context the
+  ranked work rests on, so they take the low numbers and the children follow;
 - everything filtered out is **named in the header** with its reason;
 - nothing else. No steps, no code blocks, no acceptance criteria.
 
@@ -382,7 +387,9 @@ So:
 - **Global Constraints** carries what every task shares: root `CLAUDE.md`, `test/CLAUDE.md`,
   `superpowers:test-driven-development`, the red-green-`npm run check`-commit cycle, the
   `[Unreleased]` changelog rule, and **closing the note** — `## Outcome` written,
-  `status: Done`, `closed:` dated, in the same commit as the work.
+  `status: Done`, `closed:` dated, in the same commit as the work. Carry the spec's
+  carve-out with it: that shape is the backlog's, and an ADR takes `status: Accepted` with
+  no `closed:` and no `## Outcome`, because `docs/adrs/README.md` gives it neither.
 - **Each pointer task** names the layer guide for the layer *it* touches —
   `src/domain/CLAUDE.md`, `src/storage/CLAUDE.md`, `src/view/CLAUDE.md`. In Global
   Constraints all three would reach every implementer; in the task it is the one that binds.
@@ -397,7 +404,10 @@ Fenced, and nothing else in the block. The eight bullets from the spec's `### Th
 verbatim in substance — the reading, the PBI and its children by path in rank order with the
 saved handoff excluded, the non-child outputs by path marked subagent's or human's, the SDD
 invocation against the plan path, the red-green-check-commit cycle, per-child closure, the
-controller-owned close of the saved handoff, and the refusal to re-open the PBI.
+controller-owned close of the saved handoff, and the refusal to re-open the PBI. Two
+details in those bullets are easy to drop and both were review findings: the handoff bullet
+is written **only when a handoff was saved**, and it carries its own `npm run check` and
+commit, since no task's cycle covers a write the controller makes.
 
 Then the spec's paragraph on why the non-child outputs are named — the same reason
 `decompose-pbi`'s handoff names them: a `Test case`, its `Test suite` and an ADR are
@@ -464,7 +474,7 @@ over the whole spec.
 Append `## Red flags — stop and go back`, ending with `decompose-pbi`'s own closing line:
 *All of these mean: the sweep is not finished. Go back to the phase you left.*
 
-Every entry from the spec's red-flag list — eighteen items. Most were real defects in the
+Every entry from the spec's red-flag list — twenty-two items. Most were real defects in the
 spec itself, caught by review, so none is decoration:
 
 - A phase's exit gate asks for less than that phase's walk covered.
@@ -481,6 +491,10 @@ spec itself, caught by review, so none is decoration:
 - A rule that every implementer needs was written into the prompt alone, where only the
   controller reads it.
 - A run finished with its children's `## Outcome` unwritten and their `status` still `Open`.
+- An ADR task was told to write `status: Done`, or to add a `closed:` or an `## Outcome`.
+- An output with no rank was given a task number among the ranked children.
+- The prompt told a run to close a handoff the user declined to save.
+- The controller's own close was left in the working tree, with no gate and no commit.
 - The saved handoff `Task` appears in the set of outputs the plan executes.
 - The prompt puts the commit before `npm run check`.
 - The close committed on `npm run docs` alone.
