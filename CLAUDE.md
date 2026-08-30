@@ -309,8 +309,8 @@ One rule covers the whole context-row feature, and every past bug in it was a pl
 that forgot the rule rather than a new rule: **an `outsideFilter` row is never a write
 target, never a ranking peer, and never a source of anything derived from the Base's
 results** (counts, level breakdown, state and tag vocabulary, creation folder). It renders, it
-parents, and that is all. "Never a ranking peer" means never written to and never
-renumbered — its `order` is still *read* (`anchoredOrder`'s neighbour walk, `rankTaken`'s
+parents, and that is all. "Never a ranking peer" means never written to — its `order`
+is still *read* (`anchoredOrder`'s neighbour walk, `rankTaken`'s
 occupancy check, the backfill's own floor and ceiling), because the row is on screen and a
 rank that ignored it would place an item above something the user can see. An UNRANKED one
 is the exception both ways: it constrains nothing, so `anchoredOrder` skips it rather than

@@ -237,6 +237,16 @@ base settings are saved on the view, working position on the device.
   can see it — and no projection may narrow it without inventing duplicate orders. It is
   already narrower than the vault, since the Base decides what loads; that is a limit this
   feature inherits rather than one it may widen.
+  **The premise of that argument was superseded on 2026-08-30 and the conclusion outlived
+  it**, which is why the passage above is kept as written rather than rewritten.
+  [ADR 0032](../adrs/0032-order-is-a-global-rank.md) made `order` one rank over everything
+  the Base returns, so the third list is now every LOADED item (`model.ranked`) rather than
+  every parentless one, and `computeInsertOrder`, `endOfSiblingsOrder` and the renumber path
+  named above are deleted — a placement takes a midpoint and writes one note, or refuses.
+  What that changes is the SIZE of the group a projection may not narrow; that it may not
+  narrow it is the same rule, arrived at here first, and `src/domain/CLAUDE.md` now states
+  it as four lists rather than three (the peer group and the rank population parted company
+  with the same ADR).
   It is not stuck either way. Dragging it onto a suite reparents it, which is the actual
   repair for a mis-parented test and the gesture a user reaches for anyway.
 - **2c — a test's parent is a work item** (the advisory drag of
@@ -298,8 +308,11 @@ base settings are saved on the view, working position on the device.
   refused both would break the repair this note offers for a mis-parented test.
 - A genuine catalog root lands **where** the visible neighbours say and takes a number the
   **loaded** real root group admits: no drop or creation in either projection produces two
-  parentless notes sharing an `order` **among the notes the model holds**, and no renumber
-  rewrites one projection's roots while leaving the other's. Asserted on a model holding
+  parentless notes sharing an `order` **among the notes the model holds**, and no projection's
+  slice of that group is ever what a number is computed against. Since
+  [ADR 0032](../adrs/0032-order-is-a-global-rank.md) the group is every loaded item rather
+  than the parentless ones, which can only widen the guarantee, and the renumber half of it
+  is now guaranteed by there being no renumber path at all. Asserted on a model holding
   suites and Epics interleaved by order — the arrangement where ranking against the visible
   list alone collides on the first drop, and where a projection-scoped renumber collides on
   every one after it.
@@ -313,13 +326,14 @@ base settings are saved on the view, working position on the device.
   whole loaded group rather than one projection's slice is exactly what keeps it from
   widening.
 - **Creation** is asserted separately from the drop, on a last suite at 10 with a hidden
-  plan root at 20: it is a different helper (`endOfSiblingsOrder`, a maximum rather than a
-  midpoint), it fails on a different arrangement, and a criterion written about drops alone
+  plan root at 20: it is a different entry point — it had a helper of its own
+  (`endOfSiblingsOrder`, a maximum rather than a midpoint) until ADR 0032 routed every rank
+  through `dropPlacement` — it fails on a different arrangement, and a criterion written about drops alone
   passed this PBI for two rounds while creation still handed the new suite the Epic's own
   number.
-- A promoted root is absent from the **positionable** roots: a new root's
-  `endOfSiblingsOrder` positions against the genuine roots alone, and no renumbering pass
-  rewrites a promoted note's `order`. Asserted with a promoted row present and no order gap
+- A promoted root is absent from the **positionable** roots: a new root positions against
+  the genuine roots alone (`newItemOrder` hands `model.realRoots` to the placement), and
+  nothing rewrites a promoted note's `order` — no pass renumbers a group at all. Asserted with a promoted row present and no order gap
   available — the arrangement where the wrong list does not merely mis-rank the new item but
   writes to a note nobody touched. The drop on the tree background was the other positioner
   and was deleted on 2026-08-11; the criterion is about the list, not about that gesture.
@@ -452,10 +466,12 @@ added per surface is the shape that leaves the sixth one behind.
 **Ranking moved to `model.realRoots`** in `src/domain/dropTargets.ts` and
 `src/view/interactions/structure.ts` — three reads that were `model.roots` only because
 the two were identical without a focus. That is the layer guide's own rule
-(*every data operation must use `realRoots`*) becoming load-bearing: an `order` is scoped
+(*every data operation must use `realRoots`*) becoming load-bearing: an `order` was scoped
 to the notes sharing a parent, and a `Test suite` and an `Epic` share the null one. It is
 smaller than the code it replaced and collision-free by construction, so 2d's three lists
-need no fourth mechanism — `endOfSiblingsOrder` was already handed the real group.
+need no fourth mechanism — creation was already handed the real group. ADR 0032 widened the
+rank space again without disturbing either half: the peers still say where, and the number
+now comes from `model.ranked`.
 
 **The stored round trip was fixed rather than extended.** `PROJECTION_MODES` in
 `src/storage/viewStateStore.ts` is the one list `readEntry` allows, and `projectionFor` in

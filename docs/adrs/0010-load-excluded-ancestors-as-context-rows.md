@@ -37,7 +37,7 @@ It renders, it parents, and that is all.
   refuses the **whole batch** if any write targets one. It rejects rather than filters —
   dropping the offending write alone would apply the rest and leave the hierarchy
   half-updated.
-- "Never a ranking peer" means never renumbered — but its `order` is still **read**,
+- "Never a ranking peer" means never **written to** — but its `order` is still **read**,
   because the row is on screen and a rank that ignored it would place an item above
   something the user can see. That distinction, read-but-never-written, is the subtlest
   thing in this codebase.

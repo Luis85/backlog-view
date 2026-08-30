@@ -245,8 +245,8 @@ function addMoveSection(host: BacklogViewHost, menu: Menu, item: BacklogItem): v
 	// at all — a focus root, or an ancestor loaded from outside the filter.
 	const prev = visibleNeighbor(host, item, -1);
 	const next = visibleNeighbor(host, item, 1);
-	// Only *reordering* renumbers the item's own group, so only reordering needs
-	// this. Indent and outdent land the item elsewhere and answer for their own
+	// Only *reordering* ranks the item against these neighbours, so only reordering
+	// needs this. Indent and outdent land the item elsewhere and answer for their own
 	// destination — hiding them here would make the menu offer less than Alt+arrow.
 	// Asked per direction AND per command, never as one blanket flag: a rank the global
 	// population would refuse in one direction says nothing about the other, and the edge

@@ -55,8 +55,12 @@ tool rather than an editing session across several notes' frontmatter.
   after it.
 - **3b — the drop changes nothing** (same parent, same position). No write at all: a batch
   that writes nothing must not cost the user their undo of the change before it.
-- **3c — the target group holds a row the Base excluded.** The item is appended instead of
-  renumbered — see [[Sibling ranking]].
+- **3c — the target group holds a row the Base excluded.** Nothing is appended and nothing
+  is renumbered. A ranked excluded row is read as a placement constraint like any other —
+  it is in the population `anchoredOrder` walks — so the drop takes a number between the
+  neighbours it landed among and writes the dragged note alone; an unranked one constrains
+  nothing and is skipped. Where no number fits between those neighbours the drop is refused
+  and the message names the remedy — see [[Sibling ranking]].
 
 ## Acceptance criteria
 

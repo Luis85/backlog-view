@@ -92,7 +92,8 @@ instead of being spent on which folder, which type and which order number.
 - The modal says where the item will land before it is created.
 - Creation goes through the same config gate as every other write.
 - Exactly one note is created and nothing else in the tree is written — the new item's
-  `order` places it after its siblings rather than renumbering them.
+  `order` is a rank of its own, taken after its last sibling in the one global order, so
+  no other note is touched.
 - The parent is expanded, so a new note the Base returns renders where it landed rather
   than inside a shut branch. Whether the Base returns it is the Base's to decide.
 - The note is not opened.

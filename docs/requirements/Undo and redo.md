@@ -188,12 +188,16 @@ above is a change to it, not a replacement for it.
 
 ### Evidence
 
-- One gesture can rewrite many notes: `renumberWrites` produces a write per sibling
-  when order gaps are spent, and the ✨ backfill (`computeInitWrites`) touches
-  every note missing `type` or `order` — over a real backlog, hundreds of files. A third
-  case counted here when this was written — a re-typing cascade down a moved subtree —
-  was removed on 2026-08-11, and the two that remain are why the machinery still looks
-  as it does.
+- One gesture can rewrite many notes: `renumberWrites` produced a write per sibling
+  when order gaps were spent, and the ✨ backfill (`computeInitWrites`) touches
+  every note missing `type` or `order` — over a real backlog, hundreds of files. Two of the
+  three cases counted here when this was written are gone: the re-typing cascade down a
+  moved subtree (2026-08-11), and `renumberWrites` itself with the sibling-scoped rank
+  ([ADR 0032](../adrs/0032-order-is-a-global-rank.md), 2026-08-30) — a drop writes one note
+  now. **This is a re-evidencing and not a retraction**: the backfill remains, and the two
+  commands that arrived with the global rank, `Seed ranks from the hierarchy` and
+  `Respace ranks`, each rewrite the rank of every note the base returns in a single batch.
+  The argument the machinery was built on is stronger than when it was made.
 - None of it could be taken back. `processFrontMatter` writes bypass the editor's undo
   stack, and File Recovery restores one note at a time — reconstructing a thirty-note
   renumber by hand is not a recovery path.

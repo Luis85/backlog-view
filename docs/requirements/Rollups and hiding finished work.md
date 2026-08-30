@@ -65,8 +65,10 @@ left rather than everything that ever was.
 **Guarantees**
 
 - Hiding is a **render** decision only. The model, the rollups and all order maths keep
-  using full sibling lists, so a hidden sibling still gets its renumber write and ranking
-  does not silently change meaning when the eye is pressed.
+  using the full lists, so a hidden row is still a ranking **neighbour**: `model.ranked`
+  holds every loaded item whether or not it is drawn, and a placement takes its number
+  between the neighbours it finds there. Ranking does not silently change meaning when the
+  eye is pressed.
 
 ## Acceptance criteria
 
@@ -75,7 +77,7 @@ left rather than everything that ever was.
   different reason — it is not a row from outside the results but a row that is not work at
   all, so counting it would let a date passing advance a bar over work that has not moved
   ([[Milestones as their own type]]).
-- Hiding is a render decision only — ranking still uses full sibling lists.
+- Hiding is a render decision only — ranking still reads the full loaded population.
 - A parent whose children are all hidden renders as a leaf, not as an empty expander.
 - Structure commands target the nearest *visible* neighbour while hiding is on, so none is
   visually inert.
