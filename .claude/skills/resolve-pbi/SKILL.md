@@ -189,7 +189,13 @@ headings under a passing gate are the failure, and the answer is the same as an 
 shape — the output is blocked, and the readback says so.
 
 **Exit when** every child is either "executable as written" or has an answer to write into
-it, and **every output, child or not, is assigned** to the subagent or to the human.
+it, **every output, child or not, is assigned** to the subagent or to the human, and
+**nothing is left blocked**. Blocked is a real state this phase can reach — a shape the
+register does not document and nobody has settled, an ADR whose five headings are empty, an
+open question the work cannot start without — and it belongs to non-child outputs as much as
+to children, which the first clause alone does not reach. A blocked output gets no task: the
+plan omits it, its header names it as blocked, and the readback says which and why. The gate
+does not pass on the strength of an owner alone.
 
 ## Phase 3 — the readback gate
 
