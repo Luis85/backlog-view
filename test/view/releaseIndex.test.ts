@@ -154,6 +154,41 @@ describe('the release index', () => {
 		);
 	});
 
+	it('names the binding that produced the unresolved count, and only beside it', () => {
+		// The count is the whole of the signal — nothing on screen says which notes were
+		// counted — so a membership key aimed at a property a RELEASE note carries reads as
+		// work the reader mis-assigned, at a figure that scales with the vault. Aim it at
+		// this view's own status key and every release counts itself.
+		const vault = releaseVault();
+		const { containerEl } = makeReleaseView(vault, { ...RELEASE_CONFIG, membershipProperty: 'note.status' });
+		expect(containerEl.querySelector('.pbl-rel-unresolved')).not.toBeNull();
+		const why = containerEl.querySelector('.pbl-rel-unresolved-why');
+		// The KEY and the role it collides with, so the reader has the binding to change
+		// rather than only the news that one is wrong.
+		expect(why?.textContent).toContain('status');
+
+		// A correct base draws neither line, so an explanation with nothing to explain is
+		// never on screen.
+		const clean = makeReleaseView(releaseVault(), RELEASE_CONFIG);
+		expect(clean.containerEl.querySelector('.pbl-rel-unresolved')).toBeNull();
+		expect(clean.containerEl.querySelector('.pbl-rel-unresolved-why')).toBeNull();
+	});
+
+	it('names the binding even where the collision leaves nothing to count', () => {
+		// The quietest state this screen has, and the one a first draft of the line above
+		// kept quiet. Aimed at a property only a RELEASE note carries, the membership key
+		// is on no work item at all — so nothing resolves, nothing is UNRESOLVED, the count
+		// is zero, and every release reads `No items yet` with no other signal anywhere.
+		// Verified against the fixture before this was written: the released-date binding
+		// empties all four bands while reporting zero unresolved.
+		const { containerEl } = makeReleaseView(releaseVault(), {
+			...RELEASE_CONFIG,
+			membershipProperty: 'note.released',
+		});
+		expect(containerEl.querySelector('.pbl-rel-unresolved')).toBeNull();
+		expect(containerEl.querySelector('.pbl-rel-unresolved-why')?.textContent).toContain('released');
+	});
+
 	it('plans no write', async () => {
 		const vault = releaseVault();
 		const { containerEl } = makeReleaseView(vault, RELEASE_CONFIG);

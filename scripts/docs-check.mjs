@@ -861,6 +861,75 @@ for (const [, note] of notes) {
 	}
 }
 
+/**
+ * **A frontmatter value that YAML would not read the way the note means it.**
+ *
+ * `frontmatter()` above is a regex reader, so it answers `field("cadence")` happily for a
+ * block no YAML parser will accept — which is exactly how five notes reached `main` with
+ * frontmatter Obsidian cannot parse at all. A note whose frontmatter does not parse has no
+ * `type` and no `cadence` in the metadata cache, so it is in no Bases query and on no
+ * projection: `docs/tests/cases/The assignee chip and Set assignee.md` was invisible to the
+ * Tests projection it had just been written for, and this gate said it was fine.
+ * [[The register gate cannot see unparseable frontmatter]] is that gap.
+ *
+ * **The claim is narrow on purpose, and narrower than the gap.** Parsing YAML properly
+ * would mean a parser dependency for one rule; what this does instead is refuse the two
+ * spellings that have actually gone wrong here, and it says which two rather than implying
+ * it covers the language:
+ *
+ * - **A value containing ` #`, in a PLAIN scalar.** A hash after a space opens a comment,
+ *   so `source: review of PR #114 raised the connector` has always MEANT
+ *   `source: review of PR` — Obsidian's own Properties panel shows it truncated. Where the
+ *   value continues onto another line, the comment ends the scalar and the continuation is
+ *   then an unexpected token, so the whole block fails to parse. Three notes here were in
+ *   that state. It is the same hazard as
+ *   [[A hash in a value is a comment the first rewrite erases]], met from the other side:
+ *   that note is about the bytes a REWRITE drops, this is about the block never parsing.
+ * - **A value opening with `[[`.** An unquoted wikilink is read as a nested list rather
+ *   than a link, and any prose after the closing bracket is a parse error outright. Two
+ *   notes were in that state, both written on the branch that added this rule.
+ *
+ * **Flow collections are not read at all, and that is a decision rather than an omission.**
+ * A third check here tried to refuse prose after a closing bracket, and review found a
+ * legal form it rejected on three consecutive rounds — a bare collection, one holding a
+ * quoted hash, and one with a trailing YAML comment. Measured against the seven notes this
+ * rule has actually caught, it caught NONE that the `[[` test above does not already catch:
+ * both wikilink notes open with `[[`, and the other five are hash cases. So it was deleted
+ * rather than narrowed a fourth time. That is the ADR 0021 shape — each fix closing one
+ * hole and opening the next — and the honest end of it here is a smaller claim, not a
+ * cleverer pattern, because a real YAML parse would mean a parser dependency for one rule.
+ *
+ * Both are fixed the same way and the register already spells it that way everywhere else:
+ * quote the value. `parent: "[[...]]"` has always been quoted here.
+ */
+for (const file of files) {
+	const block = /^---\n([\s\S]*?)\n---/.exec(texts.get(file) ?? "");
+	if (!block) continue;
+	// Key lines only — a continuation line is part of the value above it, and the value is
+	// what these two rules are about, so the whole entry is reassembled before it is read.
+	const lines = block[1].split("\n");
+	const entries = [];
+	for (const line of lines) {
+		const start = /^([A-Za-z_][\w-]*):\s?(.*)$/.exec(line);
+		if (start) entries.push({ key: start[1], value: start[2] });
+		else if (entries.length > 0) entries[entries.length - 1].value += ` ${line.trim()}`;
+	}
+	for (const { key, value } of entries) {
+		const text = value.trim();
+		if (text === "" || /^["']/.test(text)) continue;
+		if (/^\[\[/.test(text)) {
+			fail(file, `\`${key}:\` opens with \`[[\`, so YAML reads the wikilink as a nested list — quote the value`);
+		} else if (!/^[[{>|&*!]/.test(text) && /\s#/.test(text)) {
+			// PLAIN scalars only, which is where YAML's comment rule actually applies. A
+			// block scalar (`>` or `|`) takes its body literally, and a flow collection may
+			// hold a quoted string — `aliases: ["PR #114"]` — so a hash is content in both
+			// and refusing them is the same over-refusal the flow rule above was narrowed
+			// for (found by review, PR #232, twice on this one rule).
+			fail(file, `\`${key}:\` holds \` #\`, which starts a YAML comment — quote the value`);
+		}
+	}
+}
+
 // ----------------------------------------------------------------------------- ADRs
 /**
  * An ADR is any note under `docs/adrs/` that is not the index — discovered by **where it

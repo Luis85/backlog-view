@@ -2,7 +2,7 @@
 type: Issue
 order: 500
 parent: "[[What is in a release]]"
-status: Open
+status: Done
 priority: P2
 area: domain
 created: 2026-08-26
@@ -81,3 +81,27 @@ review fix:
 Until then the failure is a configuration nobody would choose on purpose, and the reason it is
 recorded rather than fixed is that the fix is a decision about
 [[The scope of a release as a tree]]'s own vocabulary and not an edit.
+
+## Closed, 2026-08-30 — both questions answered where they were asked
+
+The rule is `membershipCollision` (`src/domain/settingsConsistency.ts`), which already
+existed for the ITEM side and now scans both populations. It is asked where memberships
+resolve — the index draws it — rather than where releases are created, so it holds for a
+`.base` bound by hand, switched from another view type, or edited after the fact, which is
+what the section above required of any fix.
+
+**Is it a refusal or a report?** A report, exactly as this note argued: the line is drawn
+beside the unresolved count in `drawUnresolved` (`src/view/release/renderIndex.ts`) and
+withheld when there is no count to explain. Refusing would put the whole screen behind one
+mis-binding, and the count would still be wrong.
+
+**Which properties count as a release note's own?** The ones this view's options NAME, which
+is the set the section above called obvious and the only set any check can see. It is
+`releaseOwnedProperties`, extracted from `releaseNoteProblems` so both rules read one list —
+a release property added later joins both by being declared once, rather than joining the
+list somebody remembered. What stays outside the claim, said here rather than left implied:
+a vault can spell a release note with a property nobody bound, and no check reaches that.
+
+The remaining half of [[Two release options aimed at one property go unreported]] is still
+open, and this note is not it: that one is about collisions the membership key is not part
+of, which are reported at a write rather than on the screen.

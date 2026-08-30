@@ -300,11 +300,23 @@ type ReleaseNoteRole =
 	| 'releasedDate'
 	| 'releaseDescription';
 
-export function releaseNoteProblems(settings: ReleaseSettings): string[] {
-	// A UNION rather than `string`, `OwnedRole`'s own reason one function up: `t` derives
-	// its keys from the catalog by template literal type, so a role that names no
-	// `property.*` entry is a build error rather than a message rendered as its own key.
-	const owned: { role: ReleaseNoteRole; key: string }[] = [
+/**
+ * Every property THIS view owns, named by role — the release note's own fields plus the
+ * three model mappings it reads them through.
+ *
+ * Extracted from `releaseNoteProblems`, which built it inline, because a second rule now
+ * reads it: `membershipCollision` has to know a release note's own keys to say that the
+ * membership key is aimed at one, and a parallel list beside this one would be the
+ * enumerate-the-places shape `../../CLAUDE.md` warns about — a release property added
+ * later would join one list and not the other, and the rule that lost it would go quiet
+ * rather than fail.
+ *
+ * A UNION rather than `string`, `OwnedRole`'s own reason one function up: `t` derives its
+ * keys from the catalog by template literal type, so a role that names no `property.*`
+ * entry is a build error rather than a message rendered as its own key.
+ */
+function releaseOwnedProperties(settings: ReleaseSettings): { role: ReleaseNoteRole; key: string }[] {
+	return [
 		{ role: 'type', key: settings.typeKey },
 		// The two MODEL mappings, added 2026-08-29 after review pointed out that the set left
 		// them out while `releaseIndex` reads both on a release note (PR #211). They are read
@@ -321,6 +333,10 @@ export function releaseNoteProblems(settings: ReleaseSettings): string[] {
 		{ role: 'releasedDate', key: settings.releasedDateKey },
 		{ role: 'releaseDescription', key: settings.descriptionKey },
 	];
+}
+
+export function releaseNoteProblems(settings: ReleaseSettings): string[] {
+	const owned = releaseOwnedProperties(settings);
 	const keys = new Map<string, ReleaseNoteRole[]>();
 	for (const { role, key } of owned) {
 		if (!key) continue;
@@ -365,7 +381,7 @@ export function releaseNoteProblems(settings: ReleaseSettings): string[] {
 }
 
 /**
- * Whether this view's membership key is aimed at a property the MODEL already owns — the
+ * Whether this view's membership key is aimed at a property something already owns — the
  * gap neither collision report above can see. `configProblems` has no membership role,
  * and `releaseNoteProblems` deliberately excludes the item side.
  *
@@ -375,15 +391,34 @@ export function releaseNoteProblems(settings: ReleaseSettings): string[] {
  * previously valid one saying what shipped. Empty and unreadable are different answers,
  * and this is what keeps them apart.
  *
- * DERIVED from `ownedProperties` rather than naming roles, so a property added later is
- * covered without anybody remembering this function. One exemption: `release` is itself
- * an optional property — the BACKLOG view's own membership key — and the two legitimately
- * agree. That is the shipped default, not an edge case.
+ * **Two populations, because the membership key can collide with either.** The plan's
+ * properties are the ones read of a WORK ITEM, and aiming membership at one of those
+ * reads every item's own type, state or rank as its release
+ * ([[Two release options aimed at one property go unreported]]). This view's own
+ * properties are the ones read of a RELEASE NOTE, and aiming membership at one of those
+ * makes every release in the base report itself as an item whose membership could not be
+ * resolved — a count that scales with the vault and points at the releases themselves
+ * ([[A membership key aimed at a release's own property]]). That note asks two questions
+ * before anything closes it, and both are answered where they are asked: it is a REPORT
+ * rather than a refusal, because refusing puts the whole screen behind one mis-binding;
+ * and the properties that count as a release note's own are the ones this view's options
+ * NAME, which is the only set any check can see. A vault is free to spell a release note
+ * with something nobody bound, and that stays outside what this can say.
+ *
+ * DERIVED from `ownedProperties` and `releaseOwnedProperties` rather than naming roles, so
+ * a property added to either side is covered without anybody remembering this function.
+ * One exemption: `release` is itself an optional property — the BACKLOG view's own
+ * membership key — and the two legitimately agree. That is the shipped default, not an
+ * edge case.
  */
 export function membershipCollision(release: ReleaseSettings, plan: BacklogSettings): string | null {
 	if (release.membershipKey === '') return null;
-	for (const { role, key } of ownedProperties(plan)) {
-		if (role === 'release' || key === '') continue;
+	const owners = [
+		...ownedProperties(plan).filter((owned) => owned.role !== 'release'),
+		...releaseOwnedProperties(release),
+	];
+	for (const { role, key } of owners) {
+		if (key === '') continue;
 		if (key === release.membershipKey) return t('settings.membershipCollides', { key, role: t(`property.${role}`) });
 	}
 	return null;
