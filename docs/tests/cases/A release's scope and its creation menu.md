@@ -46,7 +46,15 @@ parent the base filter excludes, so a context ancestor is drawn.
 - **The context menu creates into the release.** Right-click a row, pick `New <type>`, name
   it: the note hangs from that row, ranks after that row's existing children, and joins the
   open release **in the same write** — so it appears under the row it was made from rather
-  than being filed and lost. Undo takes all of that back as one entry.
+  than being filed and lost. Check the note's own frontmatter for both keys, since "in the
+  same write" is what this step is really about — a creation that landed the parent and left
+  the membership for a second write would look identical on screen.
+
+  **Do not press undo here, and do not expect it to help.** `scopeCreate.ts` calls
+  `createBacklogItem` directly, so a creation captures no inverse and installs no undo slot;
+  the note stays and the ↩ still points at the last property change from *before* it, so
+  pressing it takes back an unrelated edit. Delete the note by hand to reset for the next
+  step.
 - The same menu opens from the **keyboard**, with the Menu key or Shift+F10, on the row the
   tree marks.
 - A **test-catalog row is offered no menu at all** — every child it could hold is a catalog

@@ -877,7 +877,7 @@ for (const [, note] of notes) {
  * spellings that have actually gone wrong here, and it says which two rather than implying
  * it covers the language:
  *
- * - **A value containing ` #`.** In a plain scalar a hash after a space opens a comment,
+ * - **A value containing ` #`, in a PLAIN scalar.** A hash after a space opens a comment,
  *   so `source: review of PR #114 raised the connector` has always MEANT
  *   `source: review of PR` — Obsidian's own Properties panel shows it truncated. Where the
  *   value continues onto another line, the comment ends the scalar and the continuation is
@@ -920,7 +920,12 @@ for (const file of files) {
 			fail(file, `\`${key}:\` opens with \`[[\`, so YAML reads the wikilink as a nested list — quote the value`);
 		} else if (/^\[[\s\S]*[^\]]$|^\{[\s\S]*[^}]$/.test(text)) {
 			fail(file, `\`${key}:\` opens a flow collection and does not end at its close — quote the value`);
-		} else if (/\s#/.test(text)) {
+		} else if (!/^[[{>|&*!]/.test(text) && /\s#/.test(text)) {
+			// PLAIN scalars only, which is where YAML's comment rule actually applies. A
+			// block scalar (`>` or `|`) takes its body literally, and a flow collection may
+			// hold a quoted string — `aliases: ["PR #114"]` — so a hash is content in both
+			// and refusing them is the same over-refusal the flow rule above was narrowed
+			// for (found by review, PR #232, twice on this one rule).
 			fail(file, `\`${key}:\` holds \` #\`, which starts a YAML comment — quote the value`);
 		}
 	}

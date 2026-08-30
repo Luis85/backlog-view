@@ -721,6 +721,19 @@ describe('the gate accepts valid documents', () => {
 
 		await expectAccepted(files);
 	});
+	it('accepts a hash where YAML reads it as content, not a comment', async () => {
+		// The second over-refusal on the same rule (review, PR #232). ` #` opens a comment
+		// only in a PLAIN scalar: a block scalar takes its body literally, and a flow
+		// collection may hold a quoted string. Both are legal and neither is in `docs/`
+		// today, so — like the flow case above — the corpus cannot imply this.
+		const files = baseRegister();
+		files['docs/requirements/Thing.md'] = files['docs/requirements/Thing.md'].replace(
+			'status: Open\n',
+			'status: Open\nsource: >\n  Review of PR #114, which found it\naliases: ["PR #114"]\n',
+		);
+
+		await expectAccepted(files);
+	});
 	it('accepts an Issue that is not a verification and says nothing about cadence', async () => {
 		// Most of `docs/issues/` is this: decisions and limitations, no `## How to check`,
 		// no `cadence:`. The biconditional has to leave them alone, or the gate added for
