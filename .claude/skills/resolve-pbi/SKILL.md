@@ -84,6 +84,10 @@ One line per child, out loud, saying what an implementer subagent will not find 
 a thin child costs a question; **silence on a child is the failure this phase exists to
 stop.**
 
+The red-green-`npm run check`-commit cycle belongs once, in the plan's Global Constraints —
+never copied into a child's `Approach`. What a child's row states is the specific: which
+test file, which assertion, which threshold.
+
 | Row | The question |
 | --- | --- |
 | Evidence | What produced this child — the PBI slice, or the perspective row? |
@@ -123,10 +127,10 @@ implementable:
 | A `Test suite` *(not a child)* | The subagent's | Prose saying what the group walks; it checks nothing itself, and it must exist before a case can hang from it. Written, never closed — it stays `Open` while its cases are re-walked |
 | A `Test case` *(not a child)* | The human's | A live vault, which no subagent reaches — Obsidian cannot run here |
 
-**Every type the register lets a PBI hold has a row.** `docs/README.md` makes a PBI's legal
-children `Task`, `Issue`, `Bug`, `Idea`, `Deliverable` and `Improvement`; phase 2 cannot exit
-until each output is assigned, so a type with no row is a phase that cannot close over a
-legal decomposition.
+**Every type the register lets a PBI hold has a row.** `docs/README.md`'s hierarchy table,
+the `PBI` row, is that list — read it there rather than here. Phase 2 cannot exit until
+each output is assigned, so a type with no row is a phase that cannot close over a legal
+decomposition.
 
 The human's outputs are **named in the plan's header, never given a task**. They are still
 part of the picture — the prompt reads them as context, and the readback shows the split —
@@ -237,7 +241,11 @@ does not fit every output. An ADR takes `status: Accepted` with no `closed:` and
 `## Outcome` — `docs/adrs/README.md` gives it neither. An `Issue` and a `Deliverable` close by
 their own documented shapes: an Issue's two shapes carry no `## Outcome`, a Deliverable's
 shape is whatever `decompose-pbi` agreed with the user, and the register gives a Deliverable
-no `closed:` key at all. A `Test suite` is **written but never closed** — every suite in
+no `closed:` key at all. A `Bug` closes with `status: Done` and `closed:` dated like a Task,
+but its shape is `What happened` · `Fix` · `Lesson` — no `## Outcome`. An `Improvement`
+closes with `## Outcome` and `status: Done` like a Task, but the register limits
+`created`/`closed` to Tasks, Issues and Bugs — an Improvement takes no `closed:` key. A
+`Test suite` is **written but never closed** — every suite in
 `docs/tests/suites/` is `Open`, because it is a container for cases re-walked at each
 release, and closing one reports a verification nobody ran.
 
@@ -256,7 +264,8 @@ Without the two paragraphs above, every child stays `Open` with its `## Outcome`
 
 ### The prompt
 
-Fenced, and nothing else in the block:
+Fenced, and nothing else in the block. The bullet that closes the saved handoff belongs in
+the block only when a handoff was saved — omit it otherwise:
 
 - read root `CLAUDE.md`, the layer guides for the layers touched, and `test/CLAUDE.md` — the
   plan repeats this where it travels, since a fresh implementer never sees this prompt
@@ -269,11 +278,9 @@ Fenced, and nothing else in the block:
   before the commit, never after. For a prose task — a decision-or-limitation `Issue`, an
   ADR, a `Test suite` — write, `npm run check`, commit: same gate, no red step, because there
   is no behaviour to make fail first
-- close each child as its task lands: `## Outcome`, `status: Done`, `closed:` — an ADR
-  instead reaches `status: Accepted`, since it carries neither of the other two
-- *(only when a handoff was saved)* when every task is through, close the saved handoff
-  `Task` the same way, then `npm run check` and commit — nothing else will, since it is not
-  dispatched
+- close each output in the shape its type owes, as Global Constraints states
+- when every task is through, close the saved handoff `Task` the same way, then
+  `npm run check` and commit — nothing else will, since it is not dispatched
 - do not re-open the PBI — a child that contradicts it goes back to `adding-backlog-items`
 
 The non-child outputs are named for the same reason `decompose-pbi`'s own handoff names
