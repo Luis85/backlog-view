@@ -11,6 +11,7 @@ risk: ""
 assignee: ""
 priority: ""
 iteration: ""
+horizon: ""
 ---
 
 # Adding templates from the plugin

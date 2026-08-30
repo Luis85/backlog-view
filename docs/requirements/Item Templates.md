@@ -12,6 +12,7 @@ assignee: Evi
 priority: ""
 iteration: ""
 release: "[[Feisty Reindeer]]"
+horizon: ""
 ---
 
 # Item Templates

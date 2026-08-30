@@ -146,9 +146,13 @@ describe('the tree empty states read their own text from the catalog', () => {
 	});
 
 	it('renders the all-done state and its way back from it', () => {
-		// `showCompleted` defaults to TRUE, so nothing is hidden without turning it off and
-		// this state never draws.
-		const { containerEl } = makeView(fixture({ allDone: true }), { stateProperty: 'note.status', showCompleted: false });
+		// The completed toggle defaults to SHOWING, so nothing is hidden without turning it
+		// off and this state never draws.
+		const { containerEl } = makeView(
+			fixture({ allDone: true }),
+			{ stateProperty: 'note.status' },
+			{ hideCompleted: true },
+		);
 
 		expect(containerEl.querySelector('.pbl-empty-filter')?.textContent).toContain(MARK);
 		expectAllMarked(containerEl);

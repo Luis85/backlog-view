@@ -376,8 +376,7 @@ describe('a release below a drawn row, which nothing traverses through any more'
 		vault.addFile('Finished.md', { frontmatter: { type: 'PBI', order: 10, status: 'Done' }, parentLink: 'Ship it' });
 		vault.addFile('Task.md', { frontmatter: { type: 'Task', order: 10, status: 'Done' }, parentLink: 'Finished' });
 		vault.addFile('Open work.md', { frontmatter: { type: 'PBI', order: 20, status: 'New' }, parentLink: 'Ship it' });
-		const cfg = { ...BOARD_WORKFLOW, showCompleted: false };
-		const { containerEl } = makeRoadmap(vault, cfg, { focus: 'Feature' });
+		const { containerEl } = makeRoadmap(vault, BOARD_WORKFLOW, { focus: 'Feature', hideCompleted: true });
 
 		const card = cardByTitle(containerEl, 'Ship it');
 		expect(disclosure(card)?.textContent).toContain('1 pbi');

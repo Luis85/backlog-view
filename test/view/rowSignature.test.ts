@@ -168,7 +168,7 @@ describe('rowSignature', () => {
 				frontmatter: { type: 'Task', order: 10, status: 'Done' },
 				parentLink: 'Alpha',
 			});
-			const harness = makeView(vault, { stateProperty: 'note.status', showCompleted });
+			const harness = makeView(vault, { stateProperty: 'note.status' }, { hideCompleted: !showCompleted });
 			return rowSignature(harness.view, itemIn(harness), PLACE);
 		};
 		expect(withChild(true)).not.toBe(withChild(false));

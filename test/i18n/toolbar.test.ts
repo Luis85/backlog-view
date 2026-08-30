@@ -182,7 +182,7 @@ describe('the toolbar row reads its own text from the catalog', () => {
 		const vault = new FakeVault();
 		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10, status: 'Done' } });
 		vault.addFile('Epic B.md', { frontmatter: { type: 'Epic', order: 20 } });
-		const { containerEl } = makeView(vault, { stateProperty: 'note.status', showCompleted: false });
+		const { containerEl } = makeView(vault, { stateProperty: 'note.status' }, { hideCompleted: true });
 		const drawn = drawnText(barOf(containerEl));
 
 		expect(drawn).toContain(MARK + en['toolbar.showCompletedHidden'].replace('{count}', '1'));
@@ -351,7 +351,7 @@ describe('the advisories and the projections nobody else drives read from it too
 	it('draws the completed toggle with nothing hidden from the third key', () => {
 		const vault = new FakeVault();
 		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10, status: 'Doing' } });
-		const { containerEl } = makeView(vault, { stateProperty: 'note.status', showCompleted: false });
+		const { containerEl } = makeView(vault, { stateProperty: 'note.status' }, { hideCompleted: true });
 
 		expect(drawnText(barOf(containerEl))).toContain(marked('toolbar.showCompleted'));
 	});

@@ -358,7 +358,7 @@ describe('the board keyboard', () => {
 
 describe('hiding finished work on the board', () => {
 	it('hides fully-done subtrees with the tree’s own predicate, columns intact', () => {
-		const { containerEl } = board(boardVault(), { showCompleted: false });
+		const { containerEl } = board(boardVault(), {}, { hideCompleted: true });
 
 		// Feature B1 is done and childless — hidden. Epic B has open work below: it stays.
 		expect(cardTitles(containerEl).sort()).toEqual(['Epic A', 'Epic B', 'Feature B2']);

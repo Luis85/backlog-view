@@ -19,6 +19,7 @@ due: ""
 risk: ""
 assignee: ""
 iteration: ""
+horizon: ""
 ---
 
 # Backlog as folder notes

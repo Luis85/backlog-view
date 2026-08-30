@@ -222,7 +222,7 @@ describe('the done column’s own default', () => {
 		const vault = new FakeVault();
 		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10, status: 'New' } });
 		vault.addFile('Shipped.md', { frontmatter: { type: 'Epic', order: 20, status: 'Done' } });
-		const { containerEl } = makeBoard(vault, { showCompleted: false }, { foldedColumns: true });
+		const { containerEl } = makeBoard(vault, {}, { foldedColumns: true, hideCompleted: true });
 
 		expect(cardTitles(columnByName(containerEl, 'Done'))).toEqual([]);
 		expect(folded(columnByName(containerEl, 'Done'))).toBe(true);

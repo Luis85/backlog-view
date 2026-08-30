@@ -231,7 +231,7 @@ describe('the catalog and the plan share a model and divide it', () => {
 			frontmatter: { type: 'Test case', order: 30, status: 'Done' },
 			parentLink: 'Suite',
 		});
-		const { containerEl } = makeView(vault, { stateProperty: 'note.status', showCompleted: false });
+		const { containerEl } = makeView(vault, { stateProperty: 'note.status' }, { hideCompleted: true });
 		expect(containerEl.querySelector('[aria-label^="Show completed items"]')).toBeTruthy();
 		catalog(containerEl);
 		expect(containerEl.querySelector('[aria-label^="Show completed items"]')).toBeNull();

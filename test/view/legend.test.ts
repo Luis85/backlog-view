@@ -465,8 +465,8 @@ describe('the legend keys a done bar only where one is actually on the grid', ()
 		vault.addFile('Shipped.md', { frontmatter: { type: 'PBI', order: 10, status: 'Done', due: '2026-08-05' } });
 		const { view, containerEl } = makeView(
 			vault,
-			{ ...DATE_AXIS, ...OMITS_DONE, showCompleted: false },
-			{ collapsed: true },
+			{ ...DATE_AXIS, ...OMITS_DONE },
+			{ collapsed: true, hideCompleted: true },
 		);
 		view.setProjection('roadmap');
 

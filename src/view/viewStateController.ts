@@ -156,6 +156,19 @@ export class ViewStateController {
 		this.hooks.render();
 	}
 
+	get showCompleted(): boolean {
+		return this.state.showCompleted();
+	}
+
+	setShowCompleted(value: boolean): void {
+		if (value === this.showCompleted) return;
+		this.state.setShowCompleted(value);
+		// A full render, like the click-action toggle above: nothing about the MODEL
+		// changes — `rowHidden` asks the rule per row — but the toolbar's own eye button
+		// and its hidden count have to come back saying the new value.
+		this.hooks.render();
+	}
+
 	get bucketGrid(): boolean {
 		return this.state.bucketGrid();
 	}

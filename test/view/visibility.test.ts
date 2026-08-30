@@ -19,12 +19,13 @@ describe('completed items', () => {
 		return vault;
 	}
 
-	// A factory: config.set() mutates the values object it was handed, so a
-	// shared literal would leak one test's toggle into the next.
-	const hiddenConfig = () => ({ stateProperty: 'note.status', showCompleted: false });
+	// The state property is the only CONFIG this suite needs; the eye itself is working
+	// position in the view-state store (ADR 0011), so it is a view OPTION here.
+	const STATE_CONFIG = { stateProperty: 'note.status' };
+	const HIDING = { hideCompleted: true };
 
 	it('hides fully done subtrees but keeps done parents with open children', () => {
-		const { containerEl } = makeView(completedFixture(), hiddenConfig());
+		const { containerEl } = makeView(completedFixture(), STATE_CONFIG, HIDING);
 
 		expect(titlesOf(containerEl)).toEqual(['Epic X', 'F open', 'Epic Z']);
 		// Visible siblings renumber the accessible positions.
@@ -42,7 +43,7 @@ describe('completed items', () => {
 		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10, status: 'Open' } });
 		vault.addFile('F1.md', { frontmatter: { order: 10, status: 'Done' }, parentLink: 'Epic' });
 		vault.addFile('F2.md', { frontmatter: { order: 20, status: 'Done' }, parentLink: 'Epic' });
-		const { containerEl } = makeView(vault, hiddenConfig());
+		const { containerEl } = makeView(vault, STATE_CONFIG, HIDING);
 
 		const epic = rowByTitle(containerEl, 'Epic');
 		expect(titlesOf(containerEl)).toEqual(['Epic']);
@@ -52,16 +53,20 @@ describe('completed items', () => {
 		expect(epic.querySelector('.pbl-progress-label')?.textContent).toBe('2/2');
 	});
 
-	it('toggles the option from the toolbar eye button', () => {
-		const shown = makeView(completedFixture(), { stateProperty: 'note.status' });
+	it('toggles the view state from the toolbar eye button, and writes no base setting', () => {
+		const shown = makeView(completedFixture(), STATE_CONFIG);
 		shown.containerEl.querySelector<HTMLElement>('.pbl-completed-toggle')
 			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-		expect(shown.config.setCalls).toContainEqual({ key: 'showCompleted', value: false });
+		expect(shown.view.showCompleted).toBe(false);
 
-		const hidden = makeView(completedFixture(), hiddenConfig());
+		const hidden = makeView(completedFixture(), STATE_CONFIG, HIDING);
 		hidden.containerEl.querySelector<HTMLElement>('.pbl-completed-toggle')
 			?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-		expect(hidden.config.setCalls).toContainEqual({ key: 'showCompleted', value: true });
+		expect(hidden.view.showCompleted).toBe(true);
+		// Never the `.base`: this moved OUT of it, so a write here would be the stored
+		// override beside a shared default ADR 0011 refuses.
+		expect(shown.config.setCalls.map((c) => c.key)).not.toContain('showCompleted');
+		expect(hidden.config.setCalls.map((c) => c.key)).not.toContain('showCompleted');
 	});
 
 	it('moves and navigates across hidden siblings to the next visible one', async () => {
@@ -69,7 +74,7 @@ describe('completed items', () => {
 		vault.addFile('A.md', { frontmatter: { type: 'Epic', order: 10, status: 'Open' } });
 		vault.addFile('H.md', { frontmatter: { type: 'Epic', order: 20, status: 'Done' } });
 		vault.addFile('B.md', { frontmatter: { type: 'Epic', order: 30, status: 'Open' } });
-		const { containerEl } = makeView(vault, hiddenConfig());
+		const { containerEl } = makeView(vault, STATE_CONFIG, HIDING);
 
 		const tree = treeOf(containerEl);
 		key(tree, 'ArrowDown');
@@ -85,7 +90,7 @@ describe('completed items', () => {
 		vault.addFile('A.md', { frontmatter: { type: 'Epic', order: 10, status: 'Open' } });
 		vault.addFile('H.md', { frontmatter: { type: 'Epic', order: 20, status: 'Done' } });
 		vault.addFile('B.md', { frontmatter: { type: 'Epic', order: 30, status: 'Open' } });
-		const { containerEl } = makeView(vault, hiddenConfig());
+		const { containerEl } = makeView(vault, STATE_CONFIG, HIDING);
 
 		rowByTitle(containerEl, 'B').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
 		const menu = Menu.lastShown;
@@ -99,7 +104,7 @@ describe('completed items', () => {
 		const vault = new FakeVault();
 		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10, status: 'Open' } });
 		vault.addFile('F1.md', { frontmatter: { order: 10, status: 'Done' }, parentLink: 'Epic' });
-		const { containerEl, config } = makeView(vault, hiddenConfig());
+		const { containerEl, config } = makeView(vault, STATE_CONFIG, HIDING);
 
 		const tree = treeOf(containerEl);
 		key(tree, 'ArrowDown');
@@ -125,7 +130,7 @@ describe('completed items', () => {
 		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10, status: 'Open' } });
 		vault.addFile('F done.md', { frontmatter: { order: 10, status: 'Done' }, parentLink: 'Epic' });
 		vault.addFile('F open.md', { frontmatter: { order: 20, status: 'Open' }, parentLink: 'Epic' });
-		const { containerEl } = makeView(vault, hiddenConfig());
+		const { containerEl } = makeView(vault, STATE_CONFIG, HIDING);
 		const tree = treeOf(containerEl);
 		expect(titlesOf(containerEl)).toEqual(['Epic', 'F open']);
 
@@ -141,12 +146,12 @@ describe('completed items', () => {
 		const vault = new FakeVault();
 		vault.addFile('A.md', { frontmatter: { type: 'Epic', order: 10, status: 'Done' } });
 		vault.addFile('B.md', { frontmatter: { type: 'Epic', order: 20, status: 'Closed' } });
-		const { containerEl, config } = makeView(vault, hiddenConfig());
+		const { containerEl, view } = makeView(vault, STATE_CONFIG, HIDING);
 
 		const empty = containerEl.querySelector('.pbl-empty-filter');
 		expect(empty?.textContent).toContain('All 2 items are done and hidden.');
 		empty?.querySelector('button')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-		expect(config.setCalls).toContainEqual({ key: 'showCompleted', value: true });
+		expect(view.showCompleted).toBe(true);
 	});
 });
 

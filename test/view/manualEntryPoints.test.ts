@@ -99,10 +99,11 @@ describe('the manual is reachable where its questions are asked', () => {
 		// in `test/view/visibility.test.ts`'s own "all-done" case — so this is
 		// `.pbl-empty-filter` too, and `showCompleted` has to be turned off explicitly:
 		// its default is `true`, so nothing would be hidden without it.
-		const { containerEl } = makeView(fixture({ allDone: true }), {
-			stateProperty: 'note.status',
-			showCompleted: false,
-		});
+		const { containerEl } = makeView(
+			fixture({ allDone: true }),
+			{ stateProperty: 'note.status' },
+			{ hideCompleted: true },
+		);
 		containerEl.querySelector<HTMLElement>('.pbl-empty-filter .pbl-help-link')?.click();
 		expect(openedOn()).toBe('Finding work');
 	});

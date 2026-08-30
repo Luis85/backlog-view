@@ -334,7 +334,7 @@ export class ProductBacklogView extends ViewStateSurface implements BacklogViewH
 	 */
 	private visibility(): VisibilityRule {
 		const axis = this.projection === 'roadmap' ? activeAxis(this.settings, this.axisPick) : null;
-		return visibilityRule(this.settings, this.projection, { scope: this.effectiveScope, axis });
+		return visibilityRule(this.settings, this.projection, { scope: this.effectiveScope, axis }, this.showCompleted);
 	}
 
 	/**

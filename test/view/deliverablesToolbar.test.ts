@@ -69,11 +69,11 @@ describe('the Deliverables board entry', () => {
 		vault.addFile('D.md', {
 			frontmatter: { type: 'Deliverable', order: 10, status: 'Done', deliverableStatus: 'Draft' },
 		});
-		const harness = makeView(vault, {
-			stateProperty: 'note.status',
-			showCompleted: false,
-			deliverableStateProperty: 'note.deliverableStatus',
-		});
+		const harness = makeView(
+			vault,
+			{ stateProperty: 'note.status', deliverableStateProperty: 'note.deliverableStatus' },
+			{ hideCompleted: true },
+		);
 		harness.view.setProjection('deliverables');
 		const { containerEl } = harness;
 

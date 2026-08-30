@@ -548,6 +548,35 @@ describe('collapse state persistence', () => {
 	});
 
 	/**
+	 * The completed-items eye, which moved out of the `.base` on 2026-08-30. Asserted
+	 * through what the reopened tree DRAWS, because that is the whole of what the pick
+	 * does — and through both directions of the inversion, since showing is the default and
+	 * is stored as the absence of `hideCompleted` rather than as a value.
+	 */
+	it('reopens hiding finished work when the last session turned it off, without writing the .base', () => {
+		const vault = fixture({ allDone: true });
+		const cfg = { stateProperty: 'note.status' };
+		const first = makeView(vault, cfg, { base: 'Backlog.base' });
+		first.view.setShowCompleted(false);
+		first.view.onunload();
+
+		// Working position: it goes to local storage and nowhere near the shared file.
+		expect(first.config.setCalls.some((c) => c.key === 'showCompleted')).toBe(false);
+
+		const second = makeView(vault, cfg, { base: 'Backlog.base' });
+		expect(second.view.showCompleted).toBe(false);
+		expect(second.containerEl.querySelector('.pbl-empty-filter')?.textContent).toContain('done and hidden');
+
+		// And back on: showing is the default, so it clears the field rather than storing it.
+		second.view.setShowCompleted(true);
+		second.view.onunload();
+		expect(stored(vault)[Object.keys(stored(vault))[0]]).not.toHaveProperty('hideCompleted');
+		const third = makeView(vault, cfg, { base: 'Backlog.base' });
+		expect(third.view.showCompleted).toBe(true);
+		expect(third.containerEl.querySelector('.pbl-empty-filter')).toBeNull();
+	});
+
+	/**
 	 * The bucket layout, the same way and for the same reason: a habit rather than a
 	 * property of the base. Asserted through what the roadmap DRAWS on reopening, not
 	 * through the flag alone — the row's class is the whole of what the pick does.

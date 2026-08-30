@@ -838,7 +838,6 @@ export const en = {
 	'option.startedDateProperty': 'Started date property',
 	'option.finishedDateProperty': 'Finished date property',
 	'option.assigneeProperty': 'Assignee property',
-	'option.showCompleted': 'Show completed items',
 	/** The two per-state boxes. Their keys are generated per state, so these are not. */
 	'option.wipLimit': 'WIP limit for {state}',
 	'option.wipLimitHint': 'No limit',

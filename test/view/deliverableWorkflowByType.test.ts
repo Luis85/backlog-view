@@ -355,15 +355,16 @@ describe('the toolbar counts one population, not two', () => {
 		vault.addFile('D.md', { frontmatter: { type: 'Deliverable', order: 20, status: 'Done', docStatus: 'Draft' } });
 		return vault;
 	}
-	// Completed items HIDDEN — the suffix only exists while the toggle offers to show them.
-	const CONFIG_DONE = { ...CONFIG, doneValues: 'Done', showCompleted: false };
+	// `Done` is a done value, and the one test below hides completed items through the view
+	// state — the suffix only exists while the toggle offers to show them.
+	const CONFIG_DONE = { ...CONFIG, doneValues: 'Done' };
 
 	it('never offers to reveal a hidden card the requirements board would not show', () => {
 		// `subtreeDone` is the requirements workflow's, and this Deliverable satisfies it —
 		// but it is not a card here at all, so counting it offered to reveal something
 		// pressing the button cannot produce. The label beside it was already scoped; the
 		// toggle was not, so the two readouts disagreed about the same board.
-		const harness = makeView(doneDeliverable(), CONFIG_DONE);
+		const harness = makeView(doneDeliverable(), CONFIG_DONE, { hideCompleted: true });
 		const { containerEl } = harness;
 		const toggleLabel = () => containerEl.querySelector('.pbl-completed-toggle')?.getAttribute('aria-label');
 

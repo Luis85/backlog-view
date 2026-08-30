@@ -10,7 +10,24 @@
 	.pbl-grip,
 	.pbl-add,
 	.pbl-chevron,
-	.pbl-col-grip::before {
+	.pbl-col-grip::before,
+	/* The unset property chips, which fade in when the reader reaches their row or card
+	   (`columns.css`). Listed here rather than left out because a reveal is exactly the
+	   kind of motion this query turns off — and the fade is decoration on it, never the
+	   reveal itself: the chip still appears, it just stops easing.
+
+	   This works only because `index.css` imports `columns.css` 7th and this file 11th. A
+	   media query adds NO specificity, so a `transition` declared in a partial loaded AFTER
+	   this one would beat `transition: none` on the tie and `prefers-reduced-motion` would
+	   silently do nothing — the trap `test/view/estimation/styleRules.test.ts` records for
+	   `estimationPanel.css`, which does load later and has to undo its own transition in
+	   place. Move either partial in the list and this stops working quietly. */
+	.pbl-state-chip.pbl-state-unset,
+	.pbl-horizon-chip.pbl-horizon-unset,
+	.pbl-risk-chip.pbl-risk-unset,
+	.pbl-priority-chip.pbl-priority-unset,
+	.pbl-assignee-chip.pbl-assignee-unset,
+	.pbl-date-chip.pbl-date-unset {
 		transition: none;
 	}
 

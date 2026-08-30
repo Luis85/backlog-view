@@ -348,9 +348,13 @@ export function syncCollapseCtls(host: BacklogViewHost, barEl: HTMLElement): voi
 }
 
 /**
- * Eye toggle for the "Show completed items" option — hides fully-done subtrees.
- * Only offered when a state property is configured; Bases persists the option
- * and refreshes the view.
+ * Eye toggle for "Show completed items" — hides fully-done subtrees. Only offered when a
+ * state property is configured.
+ *
+ * It was a `.base` option AND this toggle until 2026-08-30; it is now working position in
+ * the view-state store (ADR 0011, `host.showCompleted`), per saved view and per device, so
+ * this is its only surface — the click-action toggle's own history one function down, for
+ * its reason: what one person hides while working is not what a shared base should carry.
  */
 function renderCompletedToggle(host: BacklogViewHost, barEl: HTMLElement, model: BacklogModel): void {
 	// Withheld wherever the filtering it describes is off, which is one question and not
@@ -358,7 +362,7 @@ function renderCompletedToggle(host: BacklogViewHost, barEl: HTMLElement, model:
 	// projection that ignores it — the shape where a done row disappears and nothing on
 	// screen offers to bring it back.
 	if (!host.settings.stateKey || !hidesCompleted(host.projection)) return;
-	const showing = host.settings.showCompleted;
+	const showing = host.showCompleted;
 	// This projection's OWN population, the same one the count label answers for: on the
 	// requirements board a done Deliverable is not a hidden card, it is not a card at
 	// all, so counting it offered to reveal something pressing the button cannot show.
@@ -374,7 +378,7 @@ function renderCompletedToggle(host: BacklogViewHost, barEl: HTMLElement, model:
 	const btn = iconButton(barEl, showing ? 'eye' : 'eye-off', label, 'completed');
 	btn.addClass('pbl-completed-toggle');
 	btn.toggleClass('is-active', !showing);
-	btn.addEventListener('click', () => host.config.set('showCompleted', !showing));
+	btn.addEventListener('click', () => host.setShowCompleted(!showing));
 }
 
 /**

@@ -27,7 +27,6 @@ views:
     deliverableStateValues: Open, Active, Done
     startedDateProperty: note.started
     finishedDateProperty: note.finished
-    showCompleted: true
     openIn: split
     riskProperty: note.risk
     priorityProperty: note.priority
@@ -67,6 +66,9 @@ views:
     deliverableStateProperty: note.status
     releasedDateProperty: note.released
     descriptionProperty: note.description
+    releaseNotesFolder: docs/release-notes
+    releasedStatusValues: Released
+    releasedTransitionValue: Released
   - type: table
     name: ADRs
     filters:

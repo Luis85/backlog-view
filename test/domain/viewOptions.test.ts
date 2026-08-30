@@ -78,11 +78,14 @@ describe('getViewOptions', () => {
 	});
 	it('declares the progress and display option keys', () => {
 		const flat = getViewOptions(fakeConfig()).flatMap((o) => ('items' in o ? o.items : [o]));
-		expect(flat.map((o) => o.key)).toEqual(expect.arrayContaining(['stateValues', 'showCompleted', 'tagsProperty']));
+		expect(flat.map((o) => o.key)).toEqual(expect.arrayContaining(['stateValues', 'tagsProperty']));
 		// The property column width is NOT one of them any more: it is a per-column pick a
 		// reader drags, stored per device in the view-state store (ADR 0011), and a value
 		// is one or the other rather than an option with a stored override beside it.
 		expect(flat.map((o) => o.key)).not.toContain('propertyColumnWidth');
+		// Nor is the completed-items eye, since 2026-08-30, under that same rule: it is the
+		// toolbar's toggle and the view-state store's, never a shared default.
+		expect(flat.map((o) => o.key)).not.toContain('showCompleted');
 	});
 
 	it('declares the roadmap axis: properties to name, values prefilled, nothing detected', () => {
@@ -263,7 +266,6 @@ const KEYS = [
 	'startedDateProperty',
 	'finishedDateProperty',
 	'assigneeProperty',
-	'showCompleted',
 	'deliverableStateProperty',
 	'deliverableStateValues',
 	'deliverableDoneValues',

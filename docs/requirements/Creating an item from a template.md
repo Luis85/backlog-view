@@ -11,6 +11,7 @@ risk: ""
 assignee: ""
 priority: ""
 iteration: ""
+horizon: ""
 ---
 
 # Creating an item from a template
