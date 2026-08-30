@@ -147,6 +147,31 @@ describe('the seed and respace rank commands', () => {
 		expect(Notice.messages).toEqual(['Ranked 4 notes']);
 	});
 
+	it('reports what the batch actually wrote, not what it planned, when a note stops it partway', async () => {
+		const vault = crossedVault();
+		openBacklog(vault);
+
+		seedRanksCommand(vault.app as never, false);
+		// Retyped by another window while the dialog was open: `applyWrites` reads the live
+		// type as it opens the file and refuses the whole rest of the batch. Only `Epic A`,
+		// planned before it, lands — so a notice saying 3 would contradict the refusal it
+		// follows, over a rank population that is now half each scheme.
+		vault.onNextProcess('A1.md', (fm) => {
+			fm['type'] = 'Resource';
+		});
+		confirm();
+		await flush();
+
+		// `Epic B`, planned after the refusal, is never opened at all — the batch stops
+		// where it stands rather than skipping past.
+		expect(orderOf(vault, 'A1.md')).toBe(100);
+		expect(orderOf(vault, 'Epic B.md')).toBe(9500);
+		expect(Notice.messages).toEqual([
+			'That note changed while the move was in flight, so the rest of the move was not written.',
+			'Ranked 1 note',
+		]);
+	});
+
 	it('changes nothing and names the notes when the writable rows are wedged', () => {
 		// Two excluded epics a single grid step apart, with two results between them: no
 		// pair of six-decimal ranks fits, and the run cannot be split without breaking the

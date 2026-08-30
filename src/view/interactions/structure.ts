@@ -285,15 +285,16 @@ export async function runInit(host: BacklogViewHost): Promise<void> {
 	const model = host.model;
 	if (!model) return;
 	const { writes, unplaceable } = computeInitWrites(model, host.settings);
-	// applySafely reports its own notices when blocked or failing — only claim
-	// success for the writes when the whole batch actually went through.
-	const applied = writes.length > 0 && (await host.applySafely(writes)) !== null;
+	// applySafely reports its own notices when blocked or failing, and `written` is how far
+	// the batch actually got: a note that no longer fits stops `applyWrites` where it
+	// stands, so `writes.length` here would claim a backfill that half happened.
+	const outcome = writes.length > 0 ? await host.applySafely(writes) : null;
 	const done: string[] = [];
 	// The property KEYS are joined by `list()` like the fragments below: they are data, so
 	// the names pass through untranslated while the joining follows the catalog's grammar.
 	if (adopted.length > 0)
 		done.push(t('init.adopted', { properties: adopted.map((property) => property.suggested) }));
-	if (applied) done.push(t('init.updatedItems', { count: writes.length }));
+	if (outcome !== null && outcome.written > 0) done.push(t('init.updatedItems', { count: outcome.written }));
 	// Half the loop this action exists to close is outside it: a bound property draws no
 	// column until the base SHOWS it, and `BasesViewConfig` exposes no way to set the
 	// order from here. Naming the menu is the whole fix.

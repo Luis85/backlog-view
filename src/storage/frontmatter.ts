@@ -96,9 +96,17 @@ export interface DateChange {
  * user hearing about a move that did not happen is the failure this exists to prevent.
  * `dates` is the first axis write's before/after, from the values the writer itself
  * saw: the model may be a refresh behind, so the caller cannot name them.
+ *
+ * `written` is how many of the batch's files the writer GOT THROUGH — the count a caller
+ * that states a number has to report, because a batch can stop partway (`applyWrites`
+ * below returns on the first note that no longer fits) and the planned length is then a
+ * number nothing wrote. A no-op file counts: the note was reached and matched the plan,
+ * which is the same rule `changed` already keeps for the batch as a whole. A refused one
+ * does not.
  */
 export interface WriteOutcome {
 	changed: boolean;
+	written: number;
 	dates: DateChange | null;
 }
 
@@ -121,8 +129,7 @@ export async function applyWrites(
 	onProgress?: (done: number, total: number) => void,
 	onInverse?: (inverse: RestoreWrite) => void,
 ): Promise<WriteOutcome> {
-	const outcome: WriteOutcome = { changed: false, dates: null };
-	let done = 0;
+	const outcome: WriteOutcome = { changed: false, written: 0, dates: null };
 	for (const write of writes) {
 		let inverse: RestoreWrite | null = null;
 		let refused = false;
@@ -208,7 +215,7 @@ export async function applyWrites(
 			outcome.changed = true;
 			onInverse?.(inverse);
 		}
-		onProgress?.(++done, writes.length);
+		onProgress?.(++outcome.written, writes.length);
 	}
 	return outcome;
 }

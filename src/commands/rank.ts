@@ -46,7 +46,8 @@ function wedgedNotice(wedged: BacklogItem[]): void {
  * view or another plugin. Applying the captured batch would overwrite every ranking
  * change made in between: `applySafely` serializes and gates, but it does not compare a
  * planned value against what the note now holds. The count may therefore differ from the
- * one the dialog showed, and the notice reports what was actually written.
+ * one the dialog showed, and the notice reports what was actually written — `written` off
+ * the outcome, which is the only number that knows whether the batch finished.
  */
 async function applyRank(app: App, opened: LiveBacklogView, plan: Spread): Promise<void> {
 	const live: LiveBacklogView | null = activeBacklogView(app);
@@ -57,7 +58,12 @@ async function applyRank(app: App, opened: LiveBacklogView, plan: Spread): Promi
 		return;
 	}
 	const outcome = await live.applySafely(planned.writes);
-	if (outcome !== null) new Notice(t('rank.done', { count: planned.writes.length }));
+	// **What landed, never what was planned.** `applyWrites` stops at the first note that
+	// no longer fits the plan and returns the prefix it got through, so the planned length
+	// is a false success beside the refusal notice that batch has already fired — over a
+	// rank population that is now half the old scheme and half the new. Nothing at all
+	// written is that refusal's own sentence to say, not a second one here.
+	if (outcome !== null && outcome.written > 0) new Notice(t('rank.done', { count: outcome.written }));
 }
 
 /**
