@@ -111,6 +111,12 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   longer has to.
 
 ### Fixed
+- The docs register gate no longer fails on `docs/product/`. A playbook is the method a
+  product definition is produced by, not a work item, so it carries none of the
+  `type`/`order`/`status` frontmatter the gate requires — the same exemption `prds/` and
+  `sdds/` already have, for the neighbouring reason that those arrive from outside while
+  this one is followed here.
+
 
 - The reason a closing action is not offered now takes a line of its own instead of sitting
   beside whichever button is still there — which, since a reason replaces its own button,
