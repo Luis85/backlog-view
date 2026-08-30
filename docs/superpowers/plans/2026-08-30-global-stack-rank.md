@@ -673,7 +673,10 @@ In `siblingPosition`, replace the refusal:
 	// `focusRoot` flag: `projectionForest` sets that flag on any promoted root,
 	// including with `model.focused` false, so a catalog `Test suite` carries it while
 	// its real siblings are off screen.
-	if (model.focused && model.roots.includes(item)) {
+	// BOTH rows, not just the hovered one. Checking `item` alone lets a DESCENDANT
+	// dragged onto a focus row take this branch: it would keep its own parent and get
+	// ranked among a rung it does not belong to, silently, where today it is refused.
+	if (model.focused && model.roots.includes(item) && model.roots.includes(dragged)) {
 		const peers = model.roots.filter((r) => r !== dragged);
 		const idx = peers.indexOf(item);
 		if (idx === -1) return null;
@@ -687,19 +690,30 @@ In `siblingPosition`, replace the refusal:
 In `dropTargetFor`, the no-op check reads the *real* sibling list. Under a focus rank `position.parent === dragged.parent` is always true, so it always runs — and two only-children both read index zero. Replace the branch body:
 
 ```ts
-	if (position.parent === dragged.parent && !clearsStaleLink(position.parent, dragged)) {
-		// Asked of the list the user is LOOKING AT. Under focus that is the peer list
-		// itself; in the tree it is the real group filtered to this projection. Reading
-		// the real siblings under a focus rank rejects a real move as a no-op — two
-		// only-children both sit at index zero — while the keyboard and menu still act.
-		const drawn = model.focused && model.roots.includes(dragged) ? position.peers : (position.parent ? position.parent.children : model.realRoots).filter(member);
-		const drawnIndex = drawn.indexOf(dragged);
-		const drawnInsert = position.peers.slice(0, position.insertIndex).filter((p) => drawn.includes(p)).length;
+	// A FOCUS rank asks its no-op question of the focus list, and asks it exactly.
+	// `peers` is `model.roots` minus the dragged row, so splicing the row back in at
+	// its own original index reproduces `model.roots` — which means the drop is a
+	// no-op precisely when the insert index equals that original index. No filtering
+	// and no translation.
+	if (model.focused && model.roots.includes(dragged) && position.parent === dragged.parent) {
+		if (position.insertIndex === model.roots.indexOf(dragged)) return null;
+	} else if (position.parent === dragged.parent && !clearsStaleLink(position.parent, dragged)) {
+		// The TREE keeps today's rule unchanged: the real group filtered to this
+		// projection, because a sibling group can interleave the projections and
+		// crossing a row nobody can see is not a move.
+		const fullList = position.parent ? position.parent.children : model.realRoots;
+		const drawnIndex = fullList.filter(member).indexOf(dragged);
+		const drawnInsert = position.peers.slice(0, position.insertIndex).filter(member).length;
 		if (drawnInsert === drawnIndex) return null;
 	}
 ```
 
-Note `drawnIndex` is `-1` under focus because `peers` excludes the dragged item — which is correct: no insert index equals `-1`, so a focus rank is never rejected here. Add a test that a genuine focus no-op (dropping a row back where it was) still writes nothing, and if it does not, narrow this rather than leaving the claim standing.
+**Why not one branch for both.** An earlier draft used `position.peers` as the drawn list
+for focus rows and reasoned that `drawnIndex === -1` could never match, so a focus rank
+would never be rejected. That is the bug, not the safety: dropping a focused row back into
+the slot it already occupies would rewrite its rank and spend the undo slot with nothing on
+screen changed. Add the test for exactly that — drop a focused row onto its own position,
+assert no writes.
 
 - [ ] **Step 5: Run the suites**
 
@@ -900,38 +914,66 @@ export function computeInitWrites(model: BacklogModel, settings: BacklogSettings
 Delete the function from `src/view/interactions/create.ts` and both call sites. At line ~194:
 
 ```ts
-			order: newItemOrder(host, parentItem),
+			order: placed.order,
 ```
 
-and at line ~406:
-
-```ts
-			order: newItemOrder(host, null),
-```
-
-with, in the same file:
+with `placed` from the refusal guard shown below, and the same at line ~406 for the
+iteration path. The helper, in the same file:
 
 ```ts
 /**
  * The rank for a new note: appended among its parent's children, which under a global
  * rank means between the last of them and whatever follows in the ranked population —
  * NOT a spacing past the last child, which could land past a whole neighbouring
- * subtree. Falls back to the spacing on an empty vault, where nothing has a rank yet.
+ * subtree.
+ *
+ * Returns the REFUSAL rather than a fallback. An empty vault needs no fallback —
+ * `anchoredOrder([], null, …)` already answers `ORDER_SPACING` — so a refusal here
+ * always means a real one: a spent gap, or a neighbour with no rank. Creating the note
+ * at a default rank anyway would put it at a number that may already be taken and
+ * nowhere near the slot the user asked for, which is worse than not creating it.
  */
-function newItemOrder(host: BacklogViewHost, parentItem: BacklogItem | null): number {
+function newItemOrder(host: BacklogViewHost, parentItem: BacklogItem | null): RankResult {
 	const ranked = host.model?.ranked ?? [];
 	const peers = parentItem ? parentItem.children : (host.model?.realRoots ?? []);
-	const placed = orderForTarget(ranked, { parent: parentItem, peers, insertIndex: peers.length });
-	return 'order' in placed ? placed.order : ORDER_SPACING;
+	return orderForTarget(ranked, { parent: parentItem, peers, insertIndex: peers.length });
 }
 ```
 
-- [ ] **Step 5: Run and watch pass**
+Both call sites abort on a refusal and name its remedy, rather than creating the note:
+
+```ts
+	const placed = newItemOrder(host, parentItem);
+	if ('refusal' in placed) {
+		new Notice(placed.refusal === 'gapSpent' ? t('rank.gapSpent') : t('rank.unranked'));
+		return;
+	}
+```
+
+Note this reads as a ternary between two `t()` calls, which the `TEXT_TERNARY` lint rule
+may refuse. If it does, lift it to a small helper returning the key — do not inline the
+sentences.
+
+- [ ] **Step 5: Check that a refused rank refuses the note**
+
+```ts
+it('does not create a note when the rank placement refuses', async () => {
+	// A destination whose two neighbours have no gap left.
+	await createChildOf(harness, 'Epic A');
+	expect(harness.created).toEqual([]);
+	expect(harness.notices).toContain(t('rank.gapSpent'));
+});
+```
+
+A note created at a fallback rank is worse than no note: the rank may be taken, and it
+is nowhere near the slot the user asked for.
+
+- [ ] **Step 6: Run and watch pass**
 
 Run: `npx vitest run test/domain/writePlan.test.ts test/view/create.test.ts`
 Expected: PASS
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 7: Commit**
 
 ```bash
 git add src/domain/writePlan.ts src/view/interactions/create.ts test/
@@ -1145,14 +1187,25 @@ export const RESPACE_RANKS_COMMAND_ID = 'respace-ranks';
 function runRank(app: App, plan: (model: BacklogModel) => ItemWrite[], title: string, message: string): void {
 	const view = activeBacklogView(app);
 	if (view === null || view.model === null) return;
-	const writes = plan(view.model);
+	// The count in the dialog is from the model NOW, because the dialog has to say a
+	// number before the user answers.
+	const preview = plan(view.model);
 	confirmDialog(app, {
 		title,
-		message: message.replace('{count}', String(writes.length)),
+		message: message.replace('{count}', String(preview.length)),
 		cta: title,
 		onConfirm: () => {
 			void (async () => {
 				const live: LiveBacklogView = view;
+				// **Recomputed, never the previewed batch.** These commands rewrite the
+				// rank of EVERY note, and the dialog can stay open across a vault sync,
+				// a write from another view, or another plugin. Applying the captured
+				// batch would silently overwrite every ranking change made in between —
+				// `applySafely` serializes and gates, but it does not check a planned
+				// value against what the note now holds. The count may differ from the
+				// one the dialog showed; the notice reports what was actually written.
+				if (live.model === null) return;
+				const writes = plan(live.model);
 				const outcome = await live.applySafely(writes);
 				if (outcome) new Notice(t('rank.done', { count: writes.length }));
 			})();
@@ -1184,16 +1237,30 @@ In `src/main.ts`, beside the two existing `addCommand` calls:
 		});
 ```
 
-- [ ] **Step 5: Add the command to the context-row suite**
+- [ ] **Step 5: Check the recompute**
+
+```ts
+it('ranks the model as it is on confirm, not as it was when the dialog opened', async () => {
+	const dialog = openRespaceDialog(harness);
+	await harness.addNote('Late Epic.md', { type: 'Epic', order: 500 });
+	dialog.confirm();
+	expect(harness.writes.map((w) => w.path)).toContain('Late Epic.md');
+});
+```
+
+These commands rewrite every note's rank, so a stale batch is a data-loss shape rather
+than a stale count.
+
+- [ ] **Step 6: Add the command to the context-row suite**
 
 `test/view/contextRowWrites.test.ts` drives every write entry point against a fixture with context rows. Add both commands as entry points and confirm neither writes to an `outsideFilter` note. The rule stays checked at the forbidden thing (the `applySafely` spy), not by listing paths.
 
-- [ ] **Step 6: Run the full check**
+- [ ] **Step 7: Run the full check**
 
 Run: `npm run check`
 Expected: PASS. Lint will flag any bare string that should be a catalog key, and fallow will flag `applySafely` if the local is not annotated.
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 8: Commit**
 
 ```bash
 git add src/commands/rank.ts src/main.ts src/view/registry.ts src/view/registerBacklogView.ts src/i18n/en.ts test/view/contextRowWrites.test.ts
