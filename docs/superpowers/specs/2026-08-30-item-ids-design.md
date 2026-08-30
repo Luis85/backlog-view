@@ -2,8 +2,8 @@
 
 Date: 2026-08-30 · Branch: `claude/plugin-item-id-generation-mgncyj`
 
-A note this plugin creates gets a `pbl-id` property: one integer, unique in the vault,
-assigned in the same write that makes the note. It is a handle a person can say out loud
+A note this plugin creates gets a `pbl-id` property: one integer, unique among the notes
+the creating device can see, assigned in the same write that makes the note. It is a handle a person can say out loud
 and paste into a commit message — a title changes, a path moves, an id does not.
 
 Out of scope: rendering the id anywhere in the view, searching by it, and existing notes.
@@ -36,8 +36,16 @@ prefix is the plugin's own namespace and the collision surface is that one word.
 ## 2 — The number comes from the vault, every time
 
 `nextItemId(app)` walks `app.vault.getMarkdownFiles()`, reads `pbl-id` out of each
-`getFileCache` frontmatter, and returns the highest finite number it finds plus one — `1`
-in a vault that holds none.
+`getFileCache` frontmatter, and returns the highest number it finds plus one — `1` in a
+vault that holds none.
+
+A value is counted only while `Math.floor` of it lands **below `Number.MAX_SAFE_INTEGER`**.
+Both halves of that are load-bearing. The floor is what keeps a hand-typed `pbl-id: 7.5`
+from issuing `8.5`, and the ceiling is what stops a single absurd value from breaking the
+sequence permanently: `1e21 + 1` is still `1e21` in a double, so a note carrying one would
+make every later id that same number, forever. Ignored rather than clamped — a note holding
+`1e21` is a typo or an import artefact, not a position in this sequence. `NaN` needs no
+guard of its own, because `NaN > highest` is false whichever way it is asked.
 
 Deriving it from the Base's results was refused twice over: the context-row rule forbids
 it (*never a source of anything derived from the Base's results*), and it would be wrong
@@ -55,6 +63,20 @@ the highest number it has already issued, and returns `max(scanned, floor) + 1`.
 is a floor on a read and never a source of truth: it only ever moves up, a reload
 re-derives it from the vault, and a vault whose ids were edited by hand or restored from a
 backup is answered by the scan rather than by the floor.
+
+**What the floor cannot reach: two devices, both offline.** Each has synced a maximum of
+`N`, neither can see the note the other is about to make, and both issue `N+1`. The vault
+is the only state both devices share, and while they are apart there is no vault they
+share. So the guarantee this note makes is narrower than "unique in the vault", and is
+written narrow deliberately: **an id is unique among the notes the creating device could
+see.** Nothing here reconciles a collision afterwards, and nothing reports one.
+
+That is the price of the shape asked for. A short incremental integer and offline
+multi-device uniqueness cannot both hold without coordination — the fixes are a per-device
+suffix, a UUID, or a reconciliation pass over the merged vault, and each of the first two
+stops the id being the short number that was the point of it. Recorded here rather than
+solved, so the sentence and the code say the same thing. Raised by automated review on
+PR #226.
 
 The cost is one `getFileCache` per markdown file per creation. That is a user gesture, once,
 against a cache Obsidian already holds in memory — marked with a `ponytail:` comment naming
