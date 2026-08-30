@@ -28,20 +28,61 @@ without the one artifact it needs.
 So the plan is written, and made as thin as the tooling allows:
 
 - The header `writing-plans` requires — goal, architecture, and a **Global Constraints**
-  section, since `subagent-driven-development` passes that section into every dispatch and
-  a constraint absent from it reaches no implementer.
-- One `## Task N` per child, in rank order, each naming the child's path and saying to read
-  it. **`N` is the dispatch index, not the note's `order`** — ranks carry gaps and
-  `task-brief` matches on the integer it is given.
-- One `## Task N` for each **other output that is the subagent's**, child or not — an ADR is
-  prose it can write. Every output that is the **human's** is named in the header instead,
-  never as a task: a `Test case` is a live vault, and an `Issue` holding an open question is
-  a question the work cannot answer.
+  section, which carries the reading and the cycle for every task (below).
+- **One `## Task N` per output that is the subagent's *and* still owed**, child or not, in
+  rank order — each naming the note's path and saying to read it. That is the whole
+  generation rule: an output the human owns and an output phase 0 found already landed each
+  get no task. **`N` is the dispatch index, not the note's `order`** — ranks carry gaps and
+  `task-brief` matches on the integer it is given, so the indices are consecutive from 1
+  over the tasks that survive the filter.
+- Everything filtered out is **named in the header** with the reason — the human's outputs
+  as what this run will not deliver, the landed ones as already done. Named, because a plan
+  that silently omits them reads as a decomposition someone forgot half of; not tasked,
+  because a `Test case` is a live vault, an open-question `Issue` is a question the work
+  cannot answer, and re-dispatching landed work is how a partially implemented PBI gets
+  built twice.
 - Nothing else. No steps, no code blocks, no acceptance criteria.
 
 **This is not `writing-plans`.** That skill decides granularity, file layout and TDD steps;
 here all three already live in the register, and the plan is generated mechanically from the
 ranks in the same pass that fixed them.
+
+### What every implementer must be handed
+
+Naming the guides in the copy+paste prompt reaches the **controller** and stops there.
+`task-brief` extracts from a `## Task N` heading onward, and `subagent-driven-development`
+dispatches each fresh implementer with that brief plus context the controller constructs —
+never the prompt. A rule that lives only in the prompt reaches nobody who writes code.
+
+So the reading is placed where it actually travels, in two halves:
+
+- **Global Constraints** carries what every task shares: root `CLAUDE.md`, `test/CLAUDE.md`,
+  `superpowers:test-driven-development`, the red-green-`npm run check`-commit cycle, and the
+  `[Unreleased]` changelog rule. `subagent-driven-development` passes that section into
+  every dispatch, which is exactly why the header cannot be skipped.
+- **Each pointer task** names the layer guide for the layer *it* touches —
+  `src/domain/CLAUDE.md`, `src/storage/CLAUDE.md`, `src/view/CLAUDE.md` — beside the note
+  path. A layer guide in Global Constraints would hand every implementer all three; in the
+  task it is the one that binds.
+
+### Closing what the run finishes
+
+A run that implements a child and leaves its note open has not finished it. The register's
+own vocabulary is what "closed" means: `status: Done`, a `closed:` date, and the `## Outcome`
+paragraph `docs/README.md` reserves for after the work — *what actually happened, including
+what the task did not anticipate*, which is the most valuable paragraph in the folder and
+the one nobody writes from memory a week later.
+
+Nothing in `subagent-driven-development` does this. Its completion record is the SDD ledger,
+which lives under a gitignored `.superpowers/` and never reaches the register. So the plan
+says it in the two places that travel:
+
+- **Global Constraints**: closing the note is part of a task's definition of done, in the
+  same commit as the work — `## Outcome` written, `status: Done`, `closed:` dated.
+- **The prompt's last step**, controller-owned rather than a task: once every task is
+  through, close the saved handoff `Task` the same way. It is excluded from dispatch, so
+  nothing else will, and its own `Acceptance criteria` — every sibling closed — is now a
+  thing a reader can check rather than a sentence that can never come true.
 
 One cost is real and stated rather than hidden: `subagent-driven-development` says exact
 values appear **only** in the task brief, and a pointer brief holds none — it names the note
@@ -219,13 +260,18 @@ skills in this chain now commit under one rule.
 
 Fenced, and nothing else in the block:
 
-- read root `CLAUDE.md`, the layer guides for the layers touched, and `test/CLAUDE.md`
+- read root `CLAUDE.md`, the layer guides for the layers touched, and `test/CLAUDE.md` —
+  and know that the plan repeats this where it travels, since a fresh implementer never
+  sees this prompt
 - read `docs/requirements/<Title>.md`, then its children **by path, in rank order** — a
   saved handoff `Task` is **not** among them (below)
 - read every non-child output **by path**, each marked subagent's or human's
 - execute with `superpowers:subagent-driven-development` against
   `docs/superpowers/plans/<file>.md`, whose every task points at one of those notes
 - red, green, `npm run check`, then commit — all five steps pass before the commit, never after
+- close each child as its task lands: `## Outcome`, `status: Done`, `closed:`
+- when every task is through, close the saved handoff `Task` the same way — nothing else
+  will, since it is not dispatched
 - do not re-open the PBI — a child that contradicts it goes back to `adding-backlog-items`
 
 Naming the non-child outputs is not decoration, for the same reason `decompose-pbi`'s
@@ -278,6 +324,10 @@ On yes, one note at the next free rank among the PBI's children, in the shape
 - An output was left unassigned because it is a child and children are "obviously" the
   subagent's.
 - The close committed on `npm run docs` alone.
+- A rule that every implementer needs was written into the prompt alone, where only the
+  controller reads it.
+- The plan gave a task to an output the human owns, or to one phase 0 found already landed.
+- A run finished with its children's `## Outcome` unwritten and their `status` still `Open`.
 - A child was re-scoped to fit the order, instead of the order being corrected.
 - The saved handoff `Task` appears in the set of children the prompt executes.
 - The prompt puts the commit before `npm run check`.
