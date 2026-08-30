@@ -9,6 +9,7 @@ created: 2026-08-30
 source: Decomposition of [[New cards in place]]
 files:
   - src/view/render/board.ts
+  - src/view/projection.ts
   - src/view/interactions/columnMenu.ts
   - src/view/interactions/keyboard.ts
   - src/i18n/en.ts
@@ -75,10 +76,19 @@ for the state preset to drift out of step.
    The affordance is therefore gated on the board's scope, not drawn by `renderColumn`
    unconditionally. Creation on the other two boards is a use case each, and neither has
    been written.
-3. The type is `newItemType(host.settings, model)`, resolved as the roadmap's bucket
-   `+` resolves it, not a per-column picker. That helper is correct **because** of step 2:
-   it is the requirements board's own resolution, and the board this Task draws on is the
-   one it is right for.
+3. The type is the **projection-filtered** one — `newItemType` put through
+   `offerableTypes`, which is what `primaryNewType` in `toolbar.ts` already does — and not
+   a per-column picker.
+
+   The raw helper is the trap, and copying the roadmap's bucket `+` is how it is reached:
+   `newItemType` returns the focus target unfiltered, so a `Deliverable` focus retained on
+   the requirements board makes it answer `Deliverable` — a type that board excludes. The
+   roadmap's `+` may use it because the roadmap draws every type; this board may not. The
+   comment above `offerableTypes` in `toolbar.ts` names this exact case: *"focusing
+   `Deliverable` on the requirements board narrows it to roots that board excludes,
+   leaving it empty"*, and `offerableTypes` itself says an `Epic` card offering
+   `New Deliverable` is *"the same broken creation this function exists to close"*.
+   Found by review (Codex, PR #225).
 4. **Configured columns only.** A stray column — `outsideWorkflow` — offers no creation
    while still taking a drop. This is [[New cards in place]] extension 1b, and the
    reasoning lives there rather than here.
@@ -101,6 +111,8 @@ for the state preset to drift out of step.
   empty-column stop each open the same creation flow, in that column's state.
 - None of the three appears on the Deliverables board or the iteration board, which share
   the same column frame and would each need a different type or a different placement.
+- With a `Deliverable` focus retained on the requirements board, the three offer a type
+  that board can display — never the excluded one `newItemType` alone would answer.
 - A stray (out-of-workflow) column offers none of the three, while still taking a drop —
   [[New cards in place]] extension 1b.
 - The no-state column offers all three, and the note it creates carries no state key.
