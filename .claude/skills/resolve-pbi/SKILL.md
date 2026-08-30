@@ -193,7 +193,7 @@ children that are not implementable:
 | Output | Whose | Why |
 | --- | --- | --- |
 | A `Task` | The subagent's | It is engineering work with a test |
-| A `Task` whose **first body line declares it a handoff** — the line after its frontmatter, not the `---` that opens it | This run's close | It is an earlier run's prompt, not work, so it gets no task. It is not left `Open` either: this run's handoff supersedes it, and the close **drops** it — `status: Dropped`, `closed:` dated, one line naming the handoff that replaced it. Not `Done`, which would report a run that never happened; `docs/README.md` gives `Dropped` for exactly this, "refused, kept for the record" |
+| A `Task` whose **first body line declares it a handoff** — the line after its frontmatter, not the `---` that opens it | This run's close | It is an earlier run's prompt, not work, so it gets no task. It is not left `Open` either: this refinement pass supersedes it, and the close **drops** it — `status: Dropped`, `closed:` dated, one line naming **this run** as what superseded it. Not a successor note: the save question has a real no and the no-work path never asks it, so a line naming the replacement would be a line the run cannot always write. Not `Done` either, which would report a run that never happened; `docs/README.md` gives `Dropped` for exactly this, "refused, kept for the record" |
 | An `Issue` holding an **open question** | The human's | The work cannot settle it; that is why it is an Issue |
 | An `Issue` recording a **decision or a limitation** | The subagent's | It is prose stating something already settled |
 | A `Bug` | The subagent's | A defect with a fix and a test, and `docs/README.md` gives it a shape — the same work a `Task` is |
@@ -281,8 +281,13 @@ screen to copy:
    `status: Accepted` with no `closed:` and no `## Outcome`, and a `Test suite` stays `Open`
    because it is a container for cases re-walked at each release. **An earlier run's
    superseded handoff is dropped in this same step** — `status: Dropped`, `closed:` dated,
-   one line naming the handoff that replaced it — for the same reason: nothing downstream
-   touches it, so a step that skipped it would leave it `Open` for good.
+   one line naming **this refinement pass** as what superseded it — for the same reason:
+   nothing downstream touches it, so a step that skipped it would leave it `Open` for good.
+   **What supersedes it is the pass, never the note step 4 may write.** Step 3's question
+   has a real no and the no-work path never reaches it, so a line naming the replacement
+   would be one this step cannot always write — and the old prompt is stale either way,
+   since it enumerates outputs by path from before this run's edits and names a plan this
+   run did not write.
 2. Write the pointer plan.
 3. Ask the save question.
 4. Write the `Task` note if the answer is yes.
@@ -499,7 +504,7 @@ On yes, one note at the next free rank among the PBI's children, in the `Task` s
 - A prose-only task was given a red-green cycle it cannot satisfy.
 - A `Test suite` was closed because its prose was written.
 - A superseded handoff was left `Open`, or was closed `Done` as though the run it handed off
-  had happened.
+  had happened, or was dropped with a line naming a successor note this run never wrote.
 - The prompt told the executor to "close each output", so a note no task dispatched — a
   human's `Test case`, an already-written ADR or suite — was in scope for closing.
 - An ADR or a `Test suite` was given a `## Task N`, though `decompose-pbi` wrote it at
