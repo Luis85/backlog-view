@@ -39,15 +39,23 @@ this repository is open as a vault, and `docs/Product Backlog.base` is open in b
 mode.
 
 **Setup, and why it is needed.** That base configures `stateValues: Open, Active, Done`
-and every one of the three holds notes, so **the vault has no empty column to test
-with**. Add two throwaway states — `Blocked, Waiting` — to `stateValues` before starting,
-so steps 2 and 5 each get their own genuinely empty column rather than the second one
-finding the first already filled. The vault also holds `Accepted`, `Superseded` and
-`Proposed`, which no `stateValues` names, so it draws stray columns without any setup —
-that is step 6's subject.
+and every one of the three holds notes, so **the vault has no empty column to test with,
+and no stray column either**. Two things to add before starting:
+
+- Two throwaway states — `Blocked, Waiting` — on `stateValues`, so steps 2 and 5 each get
+  their own genuinely empty column rather than the second finding the first already
+  filled.
+- One throwaway **work item** carrying an undeclared state — a `Task` under any `PBI`
+  with `status: Parked` — which is what draws the stray column step 6 needs. The vault's
+  own `Accepted`, `Superseded` and `Proposed` notes do **not** draw one: all 31 of them
+  are ADRs in `docs/adrs/`, and an ADR carries no `type` and no `parent` on purpose, so
+  `pruneOutsideHierarchy` removes it before `requirementsWorkflow` collects the observed
+  states. Counting the statuses in `docs/` and concluding otherwise is the mistake this
+  sentence exists to stop — the question is which notes are *work items*, never which
+  files hold the value. Found by review (Codex, PR #225).
 
 **Restore afterwards**: remove `Blocked, Waiting` from `stateValues`, set
-`folderHierarchy` back to where you found it, and delete the notes created below.
+`folderHierarchy` back to where you found it, and delete the `Parked` note and everything created below.
 
 ## How to check
 
@@ -59,8 +67,8 @@ that is step 6's subject.
 4. Repeat step 1 from the column's context menu.
 5. With the keyboard: select the still-empty `Waiting` column and press Enter. (Its own
    column, because step 2 filled `Blocked` — a toggle cannot un-fill it.)
-6. Look at the `Accepted`, `Superseded` and `Proposed` columns: each should offer no
-   creation by any of the three paths, while still accepting a dropped card.
+6. Look at the `Parked` column the seeded item drew: it should offer no creation by any
+   of the three paths, while still accepting a dropped card.
 7. **Folder placement, one fresh note per mode.** Folder mode is read *when the note is
    created* and relocates nothing afterwards, so this cannot be checked by toggling and
    re-reading the notes above. With `folderHierarchy` off, create one note from a column
