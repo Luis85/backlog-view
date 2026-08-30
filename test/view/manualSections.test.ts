@@ -34,7 +34,12 @@ describe('the manual', () => {
 		expect(prose).toContain('excluded');
 		expect(prose).toContain('descendant');
 		expect(prose).not.toContain('nothing is refused');
-		expect(prose).toContain('focus-root row has no previous sibling');
+		// Indent on a focus row, which is still unavailable but no longer for the reason the
+		// entry gave: a global rank made the focus rows a ranking destination, so such a row
+		// DOES have a previous sibling on screen now — what it has no answer for is which
+		// parent nesting it under that row would mean. Asserted as the state rather than as
+		// the old sentence, which was pinned word for word and read true after it went false.
+		expect(prose).toContain('except on a focus row');
 	});
 
 	// The "To the top level" entry claimed there was NO drag for it, which `siblingPosition`
