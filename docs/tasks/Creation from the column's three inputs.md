@@ -141,7 +141,15 @@ for the state preset to drift out of step.
 ## Acceptance criteria
 
 - A `+` on the column header, an entry in the column's context menu, and Enter on the
-  empty-column stop each open the same creation flow, in that column's state.
+  column stop each open the same creation flow, in that column's state. **The column stop
+  is not the empty column's alone**: `nextBoardPosition` returns `card: -1` on `ArrowUp`
+  from a column's first card, so the stop is reachable on a column holding cards, and the
+  use case's trigger says *"Enter on a selected column"* without qualifying it. Narrowing
+  this to the empty column would let an implementation pass while Enter does nothing in a
+  reachable state — and would be this decomposition narrowing its own PBI, which it may
+  not do. [[Keyboard, menu and touch]]'s own sentence names the empty column because that
+  is the stop it could reach with no creation behind it, not because the other one is
+  exempt.
 - None of the three appears on the Deliverables board or the iteration board, which share
   the same column frame and would each need a different type or a different placement.
 - With a `Deliverable` **or an `Iteration`** focus retained on the requirements board, the

@@ -57,7 +57,7 @@ level is per-device UI state in localStorage rather than a `.base` setting, so a
 can arrive carrying one, and the two this decomposition discusses are exactly the ones
 that break the setup below: under a retained `Iteration` or `Deliverable` focus the
 seeded item is outside `model.results`, `requirementsWorkflow` never observes its state,
-and the stray column step 6 needs is not drawn at all. Found by review (Codex, PR #225).
+and the stray column step 7 needs is not drawn at all. Found by review (Codex, PR #225).
 
 **Setup, and why it is needed.** That base configures `stateValues: Open, Active, Done`
 and every one of the three holds notes, so **the vault has no empty column to test with,
@@ -67,7 +67,7 @@ and no stray column either**. Two things to add before starting:
   their own genuinely empty column rather than the second finding the first already
   filled.
 - One throwaway **work item** carrying an undeclared state — a `Task` under any `PBI`
-  with `status: Parked` — which is what draws the stray column step 6 needs. The vault's
+  with `status: Parked` — which is what draws the stray column step 7 needs. The vault's
   own `Accepted`, `Superseded` and `Proposed` notes do **not** draw one: all 31 of them
   are ADRs in `docs/adrs/`, and an ADR carries no `type` and no `parent` on purpose, so
   `pruneOutsideHierarchy` removes it before `requirementsWorkflow` collects the observed
@@ -89,12 +89,16 @@ everything created below.
 4. Repeat step 1 from the column's context menu.
 5. With the keyboard: select the still-empty `Waiting` column and press Enter. (Its own
    column, because step 2 filled `Blocked` — a toggle cannot un-fill it.)
-6. Look at the `Parked` column the seeded item drew: it should offer no creation by any
+6. With the keyboard again, on a column that **holds cards**: select its first card, press
+   `ArrowUp` once to land on the column stop, and press Enter. This is the same stop as
+   step 5 on a column that is not empty, and it is the path a fix scoped to empty columns
+   leaves dead.
+7. Look at the `Parked` column the seeded item drew: it should offer no creation by any
    of the three paths, while still accepting a dropped card. **Drop one of the throwaway
    cards created above, never a real one** — removing `Parked` from `stateValues` at the
    end would otherwise leave a genuine item carrying an undeclared state, and the stray
    column it draws would outlive the test.
-7. **Folder placement, one fresh note per mode.** Folder mode is read *when the note is
+8. **Folder placement, one fresh note per mode.** Folder mode is read *when the note is
    created* and relocates nothing afterwards, so this cannot be checked by toggling and
    re-reading the notes above. The option is **`inferFolderHierarchy`** in the `.base`,
    shown in the options UI as *"Infer hierarchy from folder notes"* — not
@@ -107,7 +111,7 @@ everything created below.
    two column-created notes to each other proves only that the column path is consistent
    with itself: both could land in the wrong folder, in both modes, and the comparison
    would still look right. Found by review (Codex, PR #225).
-8. On a phone or tablet, try the `+` and the menu entry.
+9. On a phone or tablet, try the `+` and the menu entry.
 
 ## Acceptance criteria
 
@@ -119,7 +123,10 @@ everything created below.
   created from the toolbar in that same mode — the column changes its state and nothing
   else about its placement. Checked against that control in each mode, never against the
   other mode's column note.
-- The menu and keyboard paths create the same note the `+` does, in the same column.
+- The menu and keyboard paths create the same note the `+` does, in the same column — and
+  the keyboard path is checked on an empty column **and** on one holding cards, since the
+  column stop is reachable on both and a fix scoped to the empty one leaves the other
+  dead.
 - A stray column — one whose value `stateValues` does not name — offers creation by none
   of the three paths, and still takes a drop ([[New cards in place]] extension 1b).
 - The `+` and the menu entry are usable on touch, or the failure is recorded here.
