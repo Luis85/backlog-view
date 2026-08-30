@@ -1207,6 +1207,18 @@ export const en = {
 	 * name a command at all: where writable rows are squeezed against a rank this base
 	 * cannot write, the plan changes nothing and says which notes and what to do instead.
 	 * `{titles}` are note titles — vault content, joined as grammar and never translated.
+	 * One squeezed row is reachable (a single writable note between two ranks a hair
+	 * apart), so it takes plural forms and a `count` like its four siblings. Only the
+	 * plural form spells `{count}`: "This item" reads better than "1 item", and a
+	 * placeholder in any one form is a parameter the key accepts.
+	 *
+	 * The last two are what the command says when it does NOT get as far as writing.
+	 * `rank.nothing` is the empty plan: `applySafely` answers null on an empty batch, so
+	 * without a sentence of its own a base with nothing to rank offers "Rank 0 notes", is
+	 * confirmed, and reports nothing at all. `rank.viewGone` is both stale-view aborts in
+	 * one — the view closed, or another base became active under the open dialog — because
+	 * what the reader has to know is the same in both: the answer arrived somewhere else,
+	 * and nothing was written.
 	 */
 	'rank.seedConfirm': {
 		one: 'Rank {count} note in the order it appears in the tree. This replaces every existing rank, including any order set by hand at a focus level. On a filtered base only the notes this base returns are ranked, so they may move relative to notes it excludes.',
@@ -1229,8 +1241,13 @@ export const en = {
 	'rank.respaceReorders':
 		'Some lists are drawn in tree order at the moment, because ranks are missing or repeated. Respacing writes the rank order into every note, so what you see may change.',
 	'rank.done': { one: 'Ranked {count} note', other: 'Ranked {count} notes' },
-	'rank.wedged':
-		'These items sit between two notes this base cannot write, with no room left between them: {titles}. Nothing was changed. Run this on an unfiltered base.',
+	'rank.wedged': {
+		one: 'This item sits between two notes this base cannot write, with no room left between them: {titles}. Nothing was changed. Run this on an unfiltered base.',
+		other:
+			'{count} items sit between two notes this base cannot write, with no room left between them: {titles}. Nothing was changed. Run this on an unfiltered base.',
+	},
+	'rank.nothing': 'There is nothing in this base to rank.',
+	'rank.viewGone': 'The backlog view this was started from is no longer showing, so nothing was ranked.',
 
 	/**
 	 * The write gate's four refusals. The two `console.error` prefixes beside them stay

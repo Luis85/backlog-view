@@ -1,7 +1,8 @@
 import { App, Notice } from 'obsidian';
 import { t } from '../i18n/t';
-import { BacklogItem, BacklogModel } from '../domain/model';
+import { BacklogModel } from '../domain/model';
 import { computeRespaceWrites, computeSeedWrites, SpreadResult } from '../domain/rankSpread';
+import { ItemWrite } from '../domain/writePlan';
 import { distinctlyRanked } from '../domain/rankOrder';
 import { openConfirm } from '../ui/confirmDialog';
 import { activeBacklogView, LiveBacklogView } from '../view/registry';
@@ -30,10 +31,31 @@ type Spread = (model: BacklogModel) => SpreadResult;
  *  parameters that could be given for different populations. */
 type Confirmation = (count: number, model: BacklogModel) => { message: string; note?: string };
 
-/** The refusal both share: writable rows squeezed against a rank this base may not
- *  write. Named notes, because "somewhere in your backlog" is not actionable. */
-function wedgedNotice(wedged: BacklogItem[]): void {
-	new Notice(t('rank.wedged', { titles: wedged.map((item) => item.title) }));
+/**
+ * The plan, or null with the reason already said out loud.
+ *
+ * **Every way out of these two commands speaks**, which the first version did not: a
+ * wedged population, an empty one, and (in `applyRank` below) a dialog answered after the
+ * view it counted went away. Fail-closed is right and silence is not — a command the user
+ * invoked and confirmed must never do nothing and say nothing, which is the same defect
+ * this whole task exists to fix on the drop path.
+ *
+ * The empty plan needs its own sentence because nothing else has one: `applySafely`
+ * returns null on an empty batch before any refusal it could report, so a base with
+ * nothing to rank would otherwise offer "Rank 0 notes", be confirmed, and answer nothing.
+ */
+function plannedWrites(model: BacklogModel, plan: Spread): ItemWrite[] | null {
+	const planned = plan(model);
+	if ('wedged' in planned) {
+		// Named notes, because "somewhere in your backlog" is not actionable.
+		new Notice(t('rank.wedged', { titles: planned.wedged.map((item) => item.title), count: planned.wedged.length }));
+		return null;
+	}
+	if (planned.writes.length === 0) {
+		new Notice(t('rank.nothing'));
+		return null;
+	}
+	return planned.writes;
 }
 
 /**
@@ -57,13 +79,13 @@ function wedgedNotice(wedged: BacklogItem[]): void {
  */
 async function applyRank(app: App, opened: LiveBacklogView, plan: Spread): Promise<void> {
 	const live: LiveBacklogView | null = activeBacklogView(app);
-	if (live === null || live !== opened || live.model === null) return;
-	const planned = plan(live.model);
-	if ('wedged' in planned) {
-		wedgedNotice(planned.wedged);
+	if (live === null || live !== opened || live.model === null) {
+		new Notice(t('rank.viewGone'));
 		return;
 	}
-	const outcome = await live.applySafely(planned.writes);
+	const planned = plannedWrites(live.model, plan);
+	if (planned === null) return;
+	const outcome = await live.applySafely(planned);
 	// **What landed, never what was planned.** `applyWrites` stops at the first note that
 	// no longer fits the plan and returns the prefix it got through, so the planned length
 	// is a false success beside the refusal notice that batch has already fired — over a
@@ -91,13 +113,13 @@ function rankCommand(
 	const view = activeBacklogView(app);
 	if (view === null || view.model === null) return false;
 	if (checking) return true;
-	const preview = plan(view.model);
-	// A wedged preview opens no dialog: there is nothing to confirm.
-	if ('wedged' in preview) wedgedNotice(preview.wedged);
-	else {
+	// A wedged or empty preview opens no dialog: there is nothing to confirm, and
+	// `plannedWrites` has already said which of the two it was.
+	const preview = plannedWrites(view.model, plan);
+	if (preview !== null) {
 		openConfirm(app, {
 			title,
-			...confirmation(preview.writes.length, view.model),
+			...confirmation(preview.length, view.model),
 			cta: title,
 			onConfirm: () => void applyRank(app, view, plan),
 		});

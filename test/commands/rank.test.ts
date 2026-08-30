@@ -200,6 +200,50 @@ describe('the seed and respace rank commands', () => {
 		]);
 	});
 
+	it('says so when there is nothing to rank, instead of confirming and going quiet', async () => {
+		// A base returning nothing: the plan is empty, and `applySafely` answers null on an
+		// empty batch before any refusal it could report.
+		const vault = crossedVault();
+		openBacklog(vault, 'Backlog.base', []);
+
+		expect(seedRanksCommand(vault.app as never, false)).toBe(true);
+
+		expect(Modal.lastOpened).toBeNull();
+		expect(Notice.messages).toEqual(['There is nothing in this base to rank.']);
+		expect(vault.writeLog).toEqual([]);
+	});
+
+	it('says so when the view it counted is gone by the time the dialog is answered', async () => {
+		const vault = crossedVault();
+		const { view } = openBacklog(vault);
+
+		seedRanksCommand(vault.app as never, false);
+		view.onunload();
+		confirm();
+		await flush();
+
+		expect(vault.writeLog).toEqual([]);
+		expect(Notice.messages).toEqual([
+			'The backlog view this was started from is no longer showing, so nothing was ranked.',
+		]);
+	});
+
+	it('names one squeezed note in the singular', () => {
+		// One writable row between two excluded ranks a single grid step apart.
+		const vault = new FakeVault();
+		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 2 } });
+		vault.addFile('A1.md', { frontmatter: { type: 'Feature', order: 2.0000002 }, parentLink: 'Epic A' });
+		vault.addFile('Epic B.md', { frontmatter: { type: 'Epic', order: 2.0000004 } });
+		vault.addFile('B1.md', { frontmatter: { type: 'Feature', order: 5000 }, parentLink: 'Epic B' });
+		openBacklog(vault, 'Backlog.base', ['A1.md', 'B1.md']);
+
+		expect(respaceRanksCommand(vault.app as never, false)).toBe(true);
+
+		expect(Notice.messages).toEqual([
+			'This item sits between two notes this base cannot write, with no room left between them: A1. Nothing was changed. Run this on an unfiltered base.',
+		]);
+	});
+
 	it('changes nothing and names the notes when the writable rows are wedged', () => {
 		// Two excluded epics a single grid step apart, with two results between them: no
 		// pair of six-decimal ranks fits, and the run cannot be split without breaking the
@@ -218,7 +262,7 @@ describe('the seed and respace rank commands', () => {
 		expect(Modal.lastOpened).toBeNull();
 		expect(vault.writeLog).toEqual([]);
 		expect(Notice.messages).toEqual([
-			'These items sit between two notes this base cannot write, with no room left between them: A1 and A2. Nothing was changed. Run this on an unfiltered base.',
+			'2 items sit between two notes this base cannot write, with no room left between them: A1 and A2. Nothing was changed. Run this on an unfiltered base.',
 		]);
 	});
 });
