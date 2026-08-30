@@ -1,4 +1,4 @@
-// The backlog's own rule set, and it is deliberately four rules wide.
+// The backlog's own rule set, and it is deliberately narrow.
 //
 // `docs/` is a vault. The backlog owner opens it in Obsidian, writes notes, and commits
 // them to `main` — and `.github/workflows/ci.yml` runs on a push to `main`, while
@@ -41,9 +41,14 @@
 	// three-column row with two cells missing since it was written. Write `\|` for a
 	// literal pipe.
 	"MD056": true,
-	// The same loss from the other direction — a row whose leading or trailing pipe is
-	// missing parses with a different cell count than its neighbours.
-	"MD055": true,
+	// MD055 (table-pipe-style) was here until 2026-08-30 and is deliberately OUT. It was
+	// added as "the same loss from the other direction", which GFM does not do: outer pipes
+	// are optional and are stripped before the cells are counted, so a row that omits one
+	// parses with the same cell count as its neighbours. What MD055 actually fires on is a
+	// table whose rows do not AGREE about outer pipes — a style question, and one that
+	// would turn main red for an owner whose note renders correctly. Checked both ways
+	// against markdownlint 0.41.1: a consistently pipe-less table passes MD055; a row
+	// genuinely short or long a cell is caught by MD056 above, with or without outer pipes.
 	// `(text)[url]` is a link written backwards. It renders as literal text, so the
 	// destination is on screen and unclickable, and nothing else reports it:
 	// `docs-check.mjs` resolves the links it can SEE, and this is not one.

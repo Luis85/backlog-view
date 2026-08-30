@@ -7,7 +7,7 @@
 // **The rules in this file are the CONTRIBUTOR's set, and they stop at `docs/`.** The
 // backlog is a vault somebody writes notes in from Obsidian and commits to `main`, where
 // CI runs and the release waits on it, so `docs/.markdownlint.jsonc` narrows this set to
-// the four rules that catch a note losing content rather than a note being typed. That
+// the rules that catch a note losing content rather than a note being typed. That
 // file states which and why; nothing below is a rule the backlog owner has to know.
 //
 // What it gates is Markdown that RENDERS WRONG — a list glued to the paragraph above it,

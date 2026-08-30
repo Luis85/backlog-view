@@ -61,9 +61,13 @@ Obsidian and commits them to `main`, `.github/workflows/ci.yml` runs on a push t
 and `release.yml` will not publish until that run's `verify` check is green — so a rule that
 fires on ordinary typing does not tidy the register, it turns main red for somebody who was
 writing a note and holds the next release until they learn a rule nobody told them about.
-`docs/.markdownlint.jsonc` therefore narrows the set there to four: `MD056` and `MD055`,
-where a table row loses cells; `MD011`, a link written backwards that renders as dead text;
-and `MD042`, a link with no destination. A blank line before a list, a tab-indented
+`docs/.markdownlint.jsonc` therefore narrows the set there to `MD056`, where a table row
+loses cells; `MD011`, a link written backwards that renders as dead text; and `MD042`, a
+link with no destination. `MD055` was a fourth until 2026-08-30, on the reasoning that a
+missing outer pipe loses a cell from the other direction. It does not: GFM strips the outer
+pipes before counting, so such a row parses like its neighbours, and what MD055 fires on is
+rows that disagree about outer pipes — style, in the one file that has none. Removed, with
+the check in that file's own comment. A blank line before a list, a tab-indented
 sub-list, a pasted bare URL, a fence with no language — all of it is how Obsidian writes
 Markdown, all of it renders correctly in Obsidian and on GitHub, and none of it fails
 anything. The one-time normalisation stands; enforcing it on notes written from here is what
@@ -130,7 +134,7 @@ a parser and not a pile of patterns.
 - **Leave `docs/` out and lint only the root files.** Twenty findings, and the three hundred
   notes a reader actually reads stay unchecked — which is where the broken table was. The
   nested config is this alternative done at rule granularity instead of file granularity:
-  the notes are still read, for the four rules that matter there.
+  the notes are still read, for the rules that matter there.
 - **Run the full set on `docs/` but skip `lint:md` on a push to `main`.** It protects the
   owner and keeps one rule set — and it makes the next contributor's pull request fail on
   violations somebody else pushed, which is the worst place to learn about them. Linting

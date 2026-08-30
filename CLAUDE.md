@@ -262,7 +262,7 @@ at the repository root because a TOOL finds them there rather than a script call
 `.markdownlint-cli2.jsonc` — the Markdown gate's scope and the CONTRIBUTOR's rule set,
 which ADR 0032 explains and which is the one of the three whose exclusions are a decision
 rather than a default. That set stops at `docs/`: the backlog is a vault its owner writes
-notes in and pushes to `main`, so `docs/.markdownlint.jsonc` holds those notes to the four
+notes in and pushes to `main`, so `docs/.markdownlint.jsonc` holds those notes to the
 rules where a note loses content and to no rule about how it is typed. Every script
 resolves its paths from the WORKING DIRECTORY, not from its own location — npm scripts and
 vitest both run from the root — so `scripts/styles-assemble.mjs` reading `styles/` is
