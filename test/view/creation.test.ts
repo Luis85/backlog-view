@@ -264,6 +264,34 @@ describe('creation flows', () => {
 			expect(vault.fm('Backlog/Fresh.md')['order']).toBe(2000);
 		});
 
+		it('places a child in a legacy vault through the same fallback a drop uses', async () => {
+			const vault = new FakeVault();
+			// Sibling-scoped ranks, which is what every vault holds before Seed ships: Epic A
+			// and its first child both carry 10. A drop reorders this vault fine (the peer
+			// fallback), so a creation that refused would leave a vault that can be dragged
+			// around but not added to.
+			vault.addFile('Backlog/Epic A.md', { frontmatter: { type: 'Epic', order: 10 } });
+			vault.addFile('Backlog/A1.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Epic A' });
+			vault.addFile('Backlog/A2.md', { frontmatter: { type: 'Feature', order: 20 }, parentLink: 'Epic A' });
+			vault.addFile('Backlog/Epic B.md', { frontmatter: { type: 'Epic', order: 20 } });
+			const { containerEl } = makeView(vault, NO_TYPE_FOLDERS);
+
+			rowByTitle(containerEl, 'Epic A')
+				.querySelector<HTMLElement>('.pbl-add')
+				?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+			submitPrompt({ title: 'A3' });
+			await flush();
+
+			const order = vault.fm('Backlog/A3.md')['order'];
+			expect(order).toBe(1020);
+			// The fallback's own rule: a peer-scoped number is only taken when the population
+			// does not already hold it.
+			const others = [...vault.files.keys()]
+				.filter((path) => path !== 'Backlog/A3.md')
+				.map((path) => vault.fm(path)['order']);
+			expect(others).not.toContain(order);
+		});
+
 		it('creates nothing under a parent whose neighbour has no rank yet', async () => {
 			const vault = new FakeVault();
 			// A vault nobody has run the set-up button over: absence is not a low rank, so
@@ -281,6 +309,42 @@ describe('creation flows', () => {
 			expect(Notice.messages).toContain(
 				'That item has no rank yet. Use the toolbar’s set-up button to fill in the missing ones.',
 			);
+		});
+
+		it('leaves a collapsed parent collapsed when the placement refuses', async () => {
+			// **Asserted on the collapse STATE, not on the rendered rows.** Nothing re-renders
+			// in this harness, so a row list reads the same either way and would pass against
+			// the defect — the trap `cardMoves.ts`'s identical fix was caught by.
+			const squeezed = new FakeVault();
+			squeezed.addFile('Backlog/Epic A.md', { frontmatter: { type: 'Epic', order: 1 } });
+			squeezed.addFile('Backlog/F1.md', { frontmatter: { type: 'Feature', order: 2 }, parentLink: 'Epic A' });
+			squeezed.addFile('Backlog/Epic B.md', { frontmatter: { type: 'Epic', order: 2.000001 } });
+			const refused = makeView(squeezed, NO_TYPE_FOLDERS, { collapsed: true });
+			expect(refused.view.isCollapsed('Backlog/Epic A.md')).toBe(true);
+
+			rowByTitle(refused.containerEl, 'Epic A')
+				.querySelector<HTMLElement>('.pbl-add')
+				?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+			submitPrompt({ title: 'Squeezed' });
+			await flush();
+
+			expect(refused.view.isCollapsed('Backlog/Epic A.md')).toBe(true);
+
+			// The control, or "never reveal" would pass this too: the same gesture with room
+			// left DOES open the parent, because the new child has to be visible.
+			const roomy = new FakeVault();
+			roomy.addFile('Backlog/Epic A.md', { frontmatter: { type: 'Epic', order: 1 } });
+			roomy.addFile('Backlog/F1.md', { frontmatter: { type: 'Feature', order: 2 }, parentLink: 'Epic A' });
+			roomy.addFile('Backlog/Epic B.md', { frontmatter: { type: 'Epic', order: 1000 } });
+			const accepted = makeView(roomy, NO_TYPE_FOLDERS, { collapsed: true });
+
+			rowByTitle(accepted.containerEl, 'Epic A')
+				.querySelector<HTMLElement>('.pbl-add')
+				?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+			submitPrompt({ title: 'Roomy' });
+			await flush();
+
+			expect(accepted.view.isCollapsed('Backlog/Epic A.md')).toBe(false);
 		});
 
 		it('creates nothing when there is no room left for the rank', async () => {

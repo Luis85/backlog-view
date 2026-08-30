@@ -8,7 +8,7 @@ import { focusTarget, folderForType, isIterationType } from '../../domain/itemTy
 import {
 	AxisWrite,
 	computeIterationNoteWrites,
-	orderForTarget,
+	dropPlacement,
 	ORDER_SPACING,
 	refusalKey,
 	RankResult,
@@ -187,15 +187,19 @@ async function createFromPrompt(host: BacklogViewHost, request: CreateRequest): 
 			console.error('Product Backlog: could not save folder to the view options', e);
 		}
 	}
-	// The new child has to be visible under its parent, collapsed or not.
+	// **Placed before anything is revealed.** A refused creation that had already opened
+	// the parent would leave the tree looking as though something had been added to it.
+	// `cardMoves.ts`'s `performDrop` had the identical defect and the identical fix: accept
+	// first, reveal second — a shape to look for wherever a gesture prepares the screen for
+	// an outcome it has not yet earned.
 	const parentItem = request.parentItem;
-	if (parentItem) host.setCollapsed(parentItem.file.path, false);
-
 	const placed = newItemOrder(host, parentItem);
 	if ('refusal' in placed) {
 		new Notice(t(refusalKey(placed.refusal)));
 		return;
 	}
+	// The new child has to be visible under its parent, collapsed or not.
+	if (parentItem) host.setCollapsed(parentItem.file.path, false);
 
 	try {
 		const file = await createBacklogItem(host.app, host.settings, {
@@ -219,9 +223,15 @@ async function createFromPrompt(host: BacklogViewHost, request: CreateRequest): 
  * rank means between the last of them and whatever follows in the ranked POPULATION —
  * not a spacing past the last child, which could land past a whole neighbouring subtree.
  *
- * Returns the REFUSAL rather than a fallback. An empty vault needs no fallback —
- * `orderForTarget` over an empty population already answers `ORDER_SPACING` — so a
- * refusal here is always a real one: a spent gap, a tie, or a neighbour with no rank.
+ * Asked of `dropPlacement` and not of `orderForTarget` beside it, with a null `dragged`
+ * because the note does not exist yet. That is the SAME question a drop asks, which is
+ * the point: `dropPlacement` carries the unmigrated-vault fallback, and calling one step
+ * below it left a legacy vault that could be dragged around but not added to — a reorder
+ * placed through the peer fallback while a `New <child>` on the same rows refused.
+ *
+ * Returns the REFUSAL rather than a rank nobody chose. An empty vault needs no fallback —
+ * an empty population already answers `ORDER_SPACING` — so a refusal here is always a
+ * real one: a spent gap, a tie the fallback could not free, or a neighbour with no rank.
  * Creating the note at a default rank anyway would put it at a number another note may
  * already hold and nowhere near the slot the user asked for, which is worse than not
  * creating it.
@@ -232,7 +242,7 @@ function newItemOrder(host: BacklogViewHost, parentItem: BacklogItem | null): Ra
 	// Parentless items rank among the real top level, not the focus rows.
 	if (!parentItem) {
 		const roots = model.realRoots;
-		return orderForTarget(model.ranked, { parent: null, peers: roots, insertIndex: roots.length });
+		return dropPlacement(null, { parent: null, peers: roots, insertIndex: roots.length }, model.ranked);
 	}
 	// **Re-resolved by PATH.** The title prompt is modal and the model rebuilds under it —
 	// on any vault change, and on the refresh that ends every write batch. A `parentItem`
@@ -247,7 +257,7 @@ function newItemOrder(host: BacklogViewHost, parentItem: BacklogItem | null): Ra
 	// and ranked somewhere else entirely. The prompt is modal, so the parent really can be
 	// deleted while it is open.
 	if (!parent) return { refusal: 'parentGone' };
-	return orderForTarget(model.ranked, { parent, peers: parent.children, insertIndex: parent.children.length });
+	return dropPlacement(null, { parent, peers: parent.children, insertIndex: parent.children.length }, model.ranked);
 }
 
 function normalizeFolder(path: string | undefined): string {

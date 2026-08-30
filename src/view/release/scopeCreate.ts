@@ -5,7 +5,7 @@ import { BacklogSettings } from '../../domain/settings';
 import { ReleaseRow, refusesLiveMembership, ScopeRow } from '../../domain/releases';
 import { childTypeChoices, folderForType, inCatalog } from '../../domain/itemTypes';
 import { configProblems } from '../../domain/settingsConsistency';
-import { ORDER_SPACING } from '../../domain/writePlan';
+import { dropPlacement, refusalKey } from '../../domain/writePlan';
 import { createBacklogItem } from '../../storage/createNote';
 import { TitlePromptModal } from '../../ui/prompts';
 import { showMenuAtElement, showMenuForClick } from '../interactions/menu';
@@ -185,17 +185,25 @@ interface NewMember {
 /**
  * The one place a note is created from this screen — both inputs above land here.
  *
- * The rank is `ORDER_SPACING` past the highest ranked child of the parent ROW's own
- * children, read from the model rather than from the tree: a scope row draws only this
- * release's members and their ancestors, so ranking against what is on screen would put a
- * new child on top of a sibling that belongs to another release and is merely not drawn
- * here — hence the item's full child list.
+ * The rank comes from `dropPlacement` — the same question the backlog's own creation and
+ * every drop ask, with a null `dragged` because the note does not exist yet. This screen
+ * used to compute it itself: one spacing past the highest ranked child of the parent row.
+ * That was right while `order` was a rank within a sibling group and became a duplicate
+ * generator the day it became one rank over the population, because both halves of it are
+ * functions of the PEER values alone — two subtrees whose children end at the same number
+ * are handed the same next number, and a note ranked between the peers is exactly where a
+ * peer midpoint lands.
  *
- * **Sibling-scoped, and the tree view's creation no longer is** (`newItemOrder` there
- * ranks against the whole population through `orderForTarget`). Not swept with it: no
- * task in the global-rank work covers this screen, and its own model is a release's
- * scope rather than the base's ranked population. A number from here can collide with a
- * rank another subtree holds, the same way every pre-global creation could.
+ * The PEERS are still the item's full child list read from the model rather than from the
+ * tree: a scope row draws only this release's members and their ancestors, so a peer group
+ * taken from the screen would put a new child on top of a sibling that belongs to another
+ * release and is merely not drawn here.
+ *
+ * **A refused rank refuses the note**, the same trade `view/interactions/create.ts` makes:
+ * a note at a number another row already holds, nowhere near the slot the reader asked
+ * for, is worse than no note. The remedies the notices name — the backlog toolbar's ✨,
+ * `Respace ranks` — are not on THIS screen, which is the honest state of it: they act on
+ * the same vault from one pane over.
  *
  * Unfolding is done AFTER the create and only when the parent is actually folded: a new
  * child under a closed row would otherwise land somewhere the reader cannot see it.
@@ -224,13 +232,21 @@ async function createMember(view: ReleaseView, release: ReleaseRow, settings: Ba
 		new Notice(t('release.scope.staleRelease'));
 		return;
 	}
+	const peers = row.item.children;
+	// An empty population is the one case with no anchor to refuse against, and
+	// `dropPlacement` already answers `ORDER_SPACING` for it — so no branch here.
+	const placed = dropPlacement(null, { parent: row.item, peers, insertIndex: peers.length }, view.model?.ranked ?? []);
+	if ('refusal' in placed) {
+		new Notice(t(refusalKey(placed.refusal)));
+		return;
+	}
 	try {
 		const file = await createBacklogItem(view.app, settings, {
 			folder: spec.folder,
 			title: spec.title,
 			typeName: spec.typeName,
 			parent: row.item.file,
-			order: endOfChildrenOrder(row),
+			order: placed.order,
 			release: release.item.file,
 		});
 		new Notice(t('create.created', { name: file.basename }));
@@ -243,11 +259,3 @@ async function createMember(view: ReleaseView, release: ReleaseRow, settings: Ba
 	if (foldedPaths(view, release.path).has(parentPath)) toggleFold(view, release.path, parentPath);
 }
 
-/** An order value placing the new child after every ranked child the parent already has. */
-function endOfChildrenOrder(row: ScopeRow): number {
-	let maxOrder = 0;
-	for (const child of row.item.children) {
-		if (child.order !== null && child.order > maxOrder) maxOrder = child.order;
-	}
-	return Math.floor(maxOrder) + ORDER_SPACING;
-}

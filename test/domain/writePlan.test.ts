@@ -343,6 +343,34 @@ describe('computeInitWrites', () => {
 		expect(writes.map((w) => w.order)).toEqual([1000, 2000, 3000, 4000, 5000]);
 	});
 
+	it('never repeats a rank when the counter cannot advance', () => {
+		const vault = new FakeVault();
+		// At 1e20 the IEEE-754 unit is wider than ORDER_SPACING, so `floor(n) + 1000` IS n.
+		// Reachable frontmatter, not a hypothetical — the same arithmetic `midpoint` and
+		// `edgeRank` refuse against, in the one place that used to fail OPEN instead.
+		vault.addFile('Huge.md', { frontmatter: { type: 'Epic', order: 1e20 } });
+		vault.addFile('A.md', { frontmatter: { type: 'Epic' } });
+		vault.addFile('B.md', { frontmatter: { type: 'Epic' } });
+		const model = buildModel(vault.app, vault.entries(), settings);
+
+		const orders = computeInitWrites(model, settings)
+			.map((w) => w.order)
+			.filter((order): order is number => order !== undefined);
+
+		// Whatever it writes, it must not write the same number twice — and must not write
+		// `Huge`'s own number onto anything.
+		expect(new Set(orders).size).toBe(orders.length);
+		expect(orders).not.toContain(1e20);
+		// The control: the same two notes at an ordinary magnitude are ranked, so the
+		// assertion above is not passing on an empty list by accident.
+		const ordinary = new FakeVault();
+		ordinary.addFile('Small.md', { frontmatter: { type: 'Epic', order: 10 } });
+		ordinary.addFile('C.md', { frontmatter: { type: 'Epic' } });
+		ordinary.addFile('D.md', { frontmatter: { type: 'Epic' } });
+		const ordinaryModel = buildModel(ordinary.app, ordinary.entries(), settings);
+		expect(computeInitWrites(ordinaryModel, settings).map((w) => w.order)).toEqual([1010, 2010]);
+	});
+
 	it('ranks every missing order distinctly without reordering the tree', () => {
 		const vault = new FakeVault();
 		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10 } });

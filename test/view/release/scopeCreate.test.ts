@@ -44,6 +44,44 @@ describe('creating a child from a release scope row', () => {
 			.map((path) => ({ path, fm: vault.frontmatter.get(path) ?? {} }));
 	}
 
+	/**
+	 * A vault whose two subtrees are ranked the OLD way — one sequence per sibling group —
+	 * so `Ledger`'s children end at 2 exactly as `Sign-in`'s do, and a rank read off the
+	 * parent's own children alone answers the same number for both. `Reconcile` already
+	 * holds that number, which is what makes the collision a fact of this fixture rather
+	 * than a hypothetical.
+	 */
+	function collidingVault(): FakeVault {
+		const vault = new FakeVault();
+		vault.addFile('R.md', { frontmatter: { type: 'Release', version: '1.0.0', order: 10 } });
+		vault.addFile('Sign-in.md', { frontmatter: { type: 'Epic', order: 20, release: '[[R]]' } });
+		vault.addFile('Magic link.md', { frontmatter: { type: 'Task', order: 1, release: '[[R]]' }, parentLink: 'Sign-in' });
+		vault.addFile('Expiry.md', { frontmatter: { type: 'Task', order: 2, release: '[[R]]' }, parentLink: 'Sign-in' });
+		vault.addFile('Ledger.md', { frontmatter: { type: 'Epic', order: 30, release: '[[R]]' } });
+		// The number a sibling-scoped rank would hand the next child of `Sign-in`.
+		vault.addFile('Reconcile.md', { frontmatter: { type: 'Task', order: 1002, release: '[[R]]' }, parentLink: 'Ledger' });
+		return vault;
+	}
+
+	it('never ranks a new member onto a number another subtree already holds', async () => {
+		const vault = collidingVault();
+		const { view } = makeReleaseView(vault, RELEASE_CONFIG);
+		view.pick('R.md');
+		const before = new Set(vault.files.keys());
+
+		const menu = openMenu(view, 'Sign-in.md');
+		menu.items.find((item) => item.titleText === 'New Feature')!.click();
+		submitPrompt({ title: 'Passkeys' });
+		await flush();
+
+		// Either a free rank or no note at all — never `Reconcile`'s 1002, which is what a
+		// rank read off the parent's own children answers here. A duplicate is what drops a
+		// focused view back to tree order and makes every later placement at that site
+		// refuse, and this screen has no ✨ to undo it with.
+		const taken = [...before].map((path) => vault.fm(path)['order']);
+		for (const note of created(vault, before)) expect(taken).not.toContain(note.fm.order);
+	});
+
 	it('offers one New entry per type the row may hold, and nothing that edits the row', () => {
 		const { view } = mountFoldScope({ pick: 'Releases/0.8.md' });
 		// An `Epic` on the plan's ladder: its child rung is `Feature`, plus the extra types
@@ -74,9 +112,11 @@ describe('creating a child from a release scope row', () => {
 		// `wikilinkTo` produces — a path here would be asserting the fixture rather than the
 		// write.
 		expect(notes[0].fm.release).toBe('[[0.8]]');
-		// `Send the magic link` and `Expire the link` are ranked 1 and 2, so the next child
-		// ranks past both rather than colliding with either.
-		expect(notes[0].fm.order).toBe(1002);
+		// `Send the magic link` and `Expire the link` are ranked 1 and 2 and the next row in
+		// the ranked POPULATION is `Releases/0.8` at 10, so the new child lands between the
+		// two — past both siblings, and not on top of the release note either. A rank read
+		// off the siblings alone would have answered 1002 and jumped the whole population.
+		expect(notes[0].fm.order).toBe(6);
 
 		// The claim the membership seed exists FOR: the note the gesture made is a member of
 		// the open release, so the next pass draws it under the row it was created from.
@@ -165,7 +205,10 @@ describe('creating a child from a release scope row', () => {
 
 		// Cleared by hand, the fallback is the row's OWN folder rather than the vault root:
 		// the work goes where the work it hangs from lives.
-		vault.addFile('Filed/Owned.md', { frontmatter: { type: 'Epic', release: '[[Releases/0.8]]' } });
+		// Ranked like every other note in the fixture: an unranked PARENT is an anchor the
+		// placement refuses against, so a blank here would test the refusal rather than the
+		// folder this test is about.
+		vault.addFile('Filed/Owned.md', { frontmatter: { type: 'Epic', order: 50, release: '[[Releases/0.8]]' } });
 		refreshRelease(view, vault);
 		view.config.set('typeFolder.feature', '');
 		view.onDataUpdated();

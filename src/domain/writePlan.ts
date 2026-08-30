@@ -853,16 +853,28 @@ export function computeDropWrites(dragged: BacklogItem, target: DropTarget, rank
 }
 
 /**
- * The placement a drop would take — the planner's own answer, exported so the caller
- * that names a remedy asks the SAME question rather than a similar one.
+ * The placement a MOVE OR A CREATION would take — the planner's own answer, exported so
+ * the caller that names a remedy asks the SAME question rather than a similar one.
  *
  * The dragged row is removed from the population before its neighbours are found, or
  * it becomes its own neighbour. That filter must not be written twice: a caller that
  * diagnosed against the unfiltered array could see a number where the planner refused
  * — a drop that does nothing and shows no remedy — which is why the diagnosis goes
  * through here instead of calling `orderForTarget` beside it.
+ *
+ * **`dragged` is null for a creation**, which is the whole reason it is nullable: the
+ * note does not exist yet, so there is no row to take out of the population and none to
+ * exclude from the collision check. Everything else a placement is — the global answer,
+ * the tie fallback, the check that the fallback's number is free — is the same question
+ * for a note being born as for one being moved, and it must be, or a legacy vault can be
+ * dragged around and not added to. That asymmetry shipped once: `newItemOrder` called
+ * `orderForTarget` directly and got no fallback, so on a sibling-scoped vault a reorder
+ * worked and a `New <child>` beside it refused.
+ *
+ * The name still says `drop` because a drop is the placement everything else is measured
+ * against, and the register (ADR 0032) names it.
  */
-export function dropPlacement(dragged: BacklogItem, target: DropTarget, ranked: BacklogItem[]): RankResult {
+export function dropPlacement(dragged: BacklogItem | null, target: DropTarget, ranked: BacklogItem[]): RankResult {
 	const global = orderForTarget(
 		ranked.filter((item) => item !== dragged),
 		target,
@@ -924,7 +936,8 @@ export function dropPlacement(dragged: BacklogItem, target: DropTarget, ranked: 
  * Whether some OTHER row already holds this rank.
  *
  * One exclusion, and it is load-bearing: the dragged row itself, or a drop landing where
- * the item already is would refuse for a collision with nobody.
+ * the item already is would refuse for a collision with nobody. A creation passes null —
+ * a note that does not exist holds no rank, so there is nothing to exclude.
  *
  * **A context row DOES occupy its rank**, and that is not the same question the read side
  * answers. `distinctlyRanked` skips `outsideFilter` rows because one can never be GIVEN a
@@ -942,7 +955,7 @@ export function dropPlacement(dragged: BacklogItem, target: DropTarget, ranked: 
  * distinctness off the writable rows alone — the harm accepting causes is the permanent
  * local refusal plus that latent duplicate, not an immediate drop to tree order.
  */
-function rankTaken(ranked: BacklogItem[], dragged: BacklogItem, order: number): boolean {
+function rankTaken(ranked: BacklogItem[], dragged: BacklogItem | null, order: number): boolean {
 	return ranked.some((item) => item !== dragged && item.order === order);
 }
 
@@ -1061,14 +1074,21 @@ function missingKeyStubs(item: BacklogItem, settings: BacklogSettings): Optional
 /**
  * The gaps in one item's properties, or null when it has none. `nextOrder` is asked
  * only when the rank is the gap, so an item that needs no order does not spend a
- * number from the population-wide sequence.
+ * number from the population-wide sequence — and it may answer null, which leaves the
+ * rank a gap rather than filling it with a number the sequence could not clear.
  */
-function initWriteFor(item: BacklogItem, settings: BacklogSettings, nextOrder: () => number): ItemWrite | null {
+function initWriteFor(item: BacklogItem, settings: BacklogSettings, nextOrder: () => number | null): ItemWrite | null {
 	const write: ItemWrite = { file: item.file };
 	let needed = false;
 	if (item.order === null) {
-		write.order = nextOrder();
-		needed = true;
+		const order = nextOrder();
+		// A refused rank is not a refused WRITE: the type and the stubs are unaffected by
+		// how big somebody's `order` is, and withholding them too would be a second failure
+		// caused by the first.
+		if (order !== null) {
+			write.order = order;
+			needed = true;
+		}
 	}
 	// An unresolved parent link means the item's real level is unknowable — don't
 	// write a type derived from its provisional top-level position.
@@ -1114,6 +1134,28 @@ export function computeInitWrites(model: BacklogModel, settings: BacklogSettings
 	// drawn order, and every number this hands out is above every rank in the vault —
 	// so each backfilled item keeps its place among its own siblings.
 	let counter = model.ranked.reduce((max, item) => (item.order !== null && item.order > max ? item.order : max), 0);
+	/**
+	 * The next number, or null when the arithmetic cannot get clear of the last one —
+	 * `midpoint` and `edgeRank`'s check, in the third and last place a rank is produced.
+	 * Above about 1e20 the IEEE-754 unit exceeds `ORDER_SPACING`, so `floor(n) + 1000` IS
+	 * `n` and the sequence stops advancing.
+	 *
+	 * **It fails CLOSED, and that is a change from what this used to do.** The other two
+	 * refuse a placement; this one leaves the item unranked and lets the rest of the
+	 * backfill land, which is the closest thing to refusing that an action filling in many
+	 * notes at once has. Do not read it as harmless: the item keeps no rank, so a later
+	 * placement beside it refuses `unranked` and names this very action as the remedy — a
+	 * dead end the vault only leaves by hand, editing the enormous `order` down. That is
+	 * still the better half of the trade, because the alternative is what shipped: the same
+	 * number written onto every unranked note in the vault, by the one action whose whole
+	 * purpose is to make the vault rankable.
+	 */
+	const nextOrder = (): number | null => {
+		const next = Math.floor(counter) + ORDER_SPACING;
+		if (!(next > counter)) return null;
+		counter = next;
+		return next;
+	};
 	const visit = (siblings: BacklogItem[]) => {
 		for (const item of siblings) {
 			// Ancestors pulled in from outside the filter are context, not results —
@@ -1122,7 +1164,7 @@ export function computeInitWrites(model: BacklogModel, settings: BacklogSettings
 				visit(item.children);
 				continue;
 			}
-			const write = initWriteFor(item, settings, () => (counter = Math.floor(counter) + ORDER_SPACING));
+			const write = initWriteFor(item, settings, nextOrder);
 			if (write) writes.push(write);
 			visit(item.children);
 		}
