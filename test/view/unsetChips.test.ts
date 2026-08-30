@@ -69,6 +69,24 @@ describe('an unset chip is drawn but shown only where the reader is', () => {
 		expect(css).toContain('.pbl-date-chip.pbl-date-unset:focus-visible');
 	});
 
+	it('drops the fade for a reader who asked for reduced motion', () => {
+		// The reveal is not the motion — the chip still appears — but the EASING is, and this
+		// repository turns every transition off in one place. `.pbl-add` is the precedent
+		// listed beside it.
+		//
+		// Ordering is load-bearing and is why this is asserted rather than assumed: a media
+		// query adds NO specificity, so `motion.css` beats `columns.css`'s `transition` only
+		// because `index.css` imports columns 7th and motion 11th. Measured in headless
+		// Chromium with `--force-prefers-reduced-motion`: 0.12s becomes 0s, the same as
+		// `.pbl-add`. `test/view/estimation/styleRules.test.ts` records the partial this
+		// does NOT hold for. (Codex, PR #228.)
+		const motion = readFileSync('styles/motion.css', 'utf8');
+		const block = motion.match(/@media \(prefers-reduced-motion: reduce\)[\s\S]*?transition: none;/);
+		expect(block, 'no reduced-motion block turning a transition off').not.toBeNull();
+		expect(block?.[0]).toContain('.pbl-date-chip.pbl-date-unset');
+		expect(block?.[0]).toContain('.pbl-state-chip.pbl-state-unset');
+	});
+
 	it('still renders the chip as a button, so it stays clickable and focusable', () => {
 		// The half jsdom answers exactly, and the one that guards against removing the
 		// affordance instead of hiding it.

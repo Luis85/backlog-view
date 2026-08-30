@@ -103,7 +103,7 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   its box either way, so nothing reflows, and it is still a real button, so clicking it
   still sets the property. The roving arrow-key selection counts as reaching it, and a
   device with no hover at all shows the chips outright, since there they can be reached
-  no other way.
+  no other way. A reader who asked for reduced motion gets the reveal without the fade.
 - The selected projection tab is readable. Its label was the accent colour on a tint of
   the same accent — 2.56:1 in dark and 1.65:1 in light, against 6.69-8.13:1 for every
   unselected tab beside it — so the one control that answers "where am I" was the hardest
