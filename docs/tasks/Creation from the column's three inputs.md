@@ -100,9 +100,10 @@ for the state preset to drift out of step.
    projection offers only the types it can show"*.
 
    This is not a defect this Task introduces: the toolbar's own `New` button reaches it
-   the same way today, through `primaryNewType`. Fixing it is a change of its own, named
-   here as this step's precondition rather than folded in. Both halves found by review
-   (Codex, PR #225).
+   the same way today, through `primaryNewType`. It is
+   [[An Iteration focus offers a type the board cannot draw]], which owns the fix and is
+   this step's **prerequisite** — not a change this Task carries, and not an untracked
+   one either. Both halves found by review (Codex, PR #225).
 4. **Configured columns only.** A stray column — `outsideWorkflow` — offers no creation
    while still taking a drop. This is [[New cards in place]] extension 1b, and the
    reasoning lives there rather than here.
@@ -128,7 +129,8 @@ for the state preset to drift out of step.
 - With a `Deliverable` **or an `Iteration`** focus retained on the requirements board, the
   three offer a type that board can display — never one `inPlan` will refuse to draw. The
   `Deliverable` half holds through `offerableTypes` today; the `Iteration` half does not
-  until that helper's board branch stops returning early.
+  until [[An Iteration focus offers a type the board cannot draw]] is fixed, which this
+  Task depends on rather than performs.
 - A stray (out-of-workflow) column offers none of the three, while still taking a drop —
   [[New cards in place]] extension 1b.
 - The no-state column offers all three, and the note it creates carries no state key.
