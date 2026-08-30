@@ -70,8 +70,14 @@ const htmlCode = (value: string): string =>
 		.replace(/>/g, '&gt;')
 		.replace(/\|/g, '&#124;');
 
-/** Values as cells, in a sentence — a starred entry is the document's own prose, not data. */
-export const list = (values: string[]): string =>
+/**
+ * Values as cells, in a sentence — a starred entry is the document's own prose, not data.
+ *
+ * `cellList` rather than `list`: `i18n/t.ts` exports a `list` of its own (the locale's own
+ * grammar for joining), and a module reaching for both — this one writes a table and names
+ * two commands out of the catalog — would be importing two functions with one name.
+ */
+export const cellList = (values: string[]): string =>
 	values.length > 0 ? values.map((v) => (v.startsWith('*') ? v : cell(v))).join(', ') : '*(nothing)*';
 
 /**

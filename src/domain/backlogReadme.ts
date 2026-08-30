@@ -4,7 +4,7 @@ import { ALL_TYPES, EXTRA_TYPES, LEVELS, MARKER_TYPES, TEST_LEVELS } from './typ
 import { childTypeChoices, EXTRA_TYPE_RANK, folderForType, LadderPosition, ladderFor } from './itemTypes';
 import { readmeMarker } from './readmeMarker';
 import { stampRows, stampRule, startedStates } from './readmeStamps';
-import { andList, cell, code, list, yamlScalar } from './readmeText';
+import { andList, cell, cellList, code, yamlScalar } from './readmeText';
 import { hasHorizonAxis } from './roadmap';
 import { planningSection } from './readmePlanning';
 import { ORDER_SPACING } from './writePlan';
@@ -117,7 +117,7 @@ function parentsOf(typeName: string): string[] {
 
 
 function typeSection(settings: BacklogSettings): string[] {
-	const rows = ALL_TYPES.map((t) => `| ${cell(t)} | ${list(parentsOf(t))} | ${list(childrenOf(t))} |`);
+	const rows = ALL_TYPES.map((t) => `| ${cell(t)} | ${cellList(parentsOf(t))} | ${cellList(childrenOf(t))} |`);
 	return [
 		`## ${TYPES_HEADING}`,
 		'',
