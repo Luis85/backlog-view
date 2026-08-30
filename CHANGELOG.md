@@ -13,6 +13,15 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ### Added
 
+- A `pbl-id` property on every note the plugin creates — one integer, taken from the
+  highest the vault already holds, written in the same single write that makes the note. It
+  is a handle for naming an item outside Obsidian, where a title is going to change and a
+  path is going to move. One global sequence over work items, resources, releases and
+  absences, with no type prefix. Notes that already exist are left exactly as they are:
+  there is no backfill. Best-effort unique rather than guaranteed: two devices creating
+  while offline, or a file that has reached the disk but not yet Obsidian's metadata cache,
+  can each produce the same number.
+
 - `Mark as released` on a release's own screen: one gated batch writing the configured
   released status and today's date to the release note and to nothing else, undoable as one
   entry. It asks first, listing the members that are not finished — each openable from the
