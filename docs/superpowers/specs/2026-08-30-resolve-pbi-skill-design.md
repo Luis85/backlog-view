@@ -7,15 +7,46 @@ prints the prompt a fresh session pastes to run them.
 
 ## What it produces
 
-**No plan file.** `docs/superpowers/plans/` gains nothing. The PBI's children *are* the
-task list — `decompose-pbi` already ranked them in the order the work must be done, and a
-plan file beside them is a second copy of that order which can disagree with the register.
-
-Two outputs instead:
+Three outputs:
 
 1. **Edits to the children**, so each one carries what an implementer subagent needs.
-2. **An inline copy+paste prompt** that points at those notes, optionally saved as a `Task`
-   child of the PBI for a later run.
+2. **A pointer plan** at `docs/superpowers/plans/YYYY-MM-DD-<pbi-slug>.md` — the file
+   `subagent-driven-development` cannot run without, holding no detail of its own.
+3. **An inline copy+paste prompt** naming that plan and the notes, optionally saved as a
+   `Task` child of the PBI for a later run.
+
+## The pointer plan, and why there is one
+
+The first draft of this design produced no plan file at all: the PBI's children are already
+a ranked task list, and a plan beside them is a second copy of that order which can disagree
+with the register. That is a real cost, and it is paid rather than avoided, because
+`subagent-driven-development` cannot consume child notes. Its three scripts each take a
+`PLAN_FILE` and exit 2 without one, and `task-brief` extracts a task by matching
+`^#+[ \t]+Task[ \t]+N` **inside that file**. A handoff naming only notes reaches that skill
+without the one artifact it needs.
+
+So the plan is written, and made as thin as the tooling allows:
+
+- The header `writing-plans` requires — goal, architecture, and a **Global Constraints**
+  section, since `subagent-driven-development` passes that section into every dispatch and
+  a constraint absent from it reaches no implementer.
+- One `## Task N` per child, in rank order, each naming the child's path and saying to read
+  it. **`N` is the dispatch index, not the note's `order`** — ranks carry gaps and
+  `task-brief` matches on the integer it is given.
+- One `## Task N` for each **non-child output that is the subagent's** — an ADR is prose it
+  can write. The outputs that are the **human's** are named in the header instead, never as
+  a task: a `Test case` is a live vault, and no subagent reaches one.
+- Nothing else. No steps, no code blocks, no acceptance criteria.
+
+**This is not `writing-plans`.** That skill decides granularity, file layout and TDD steps;
+here all three already live in the register, and the plan is generated mechanically from the
+ranks in the same pass that fixed them.
+
+One cost is real and stated rather than hidden: `subagent-driven-development` says exact
+values appear **only** in the task brief, and a pointer brief holds none — it names the note
+that does. The single source of requirements moves from the brief to the note the brief
+names, and the brief says so in those words, so an implementer knows it is not looking at a
+brief that forgot its values.
 
 ## Scope, and what it refuses
 
@@ -27,6 +58,8 @@ Two outputs instead:
   `adding-backlog-items`; it is not fixed here.
 - It writes **no source code** and it never executes. Executing is always a separate
   session the user starts by pasting the prompt.
+- The plan it writes is a **pointer**, never a second copy of the work. Detail in the plan
+  is detail that can contradict the note it came from.
 
 It reads the same surroundings `decompose-pbi` phase 0 reads: the parent `Feature` — for
 `## Landmines, before implementation`, which is the only place the order the work must be
@@ -41,12 +74,15 @@ every note that links to it **without** being its child. That last search is wha
 
 A child note says what work is owed; it does not say how to execute it. `resolve-pbi` fills
 that in — an ordered `Approach`, criteria that map to something a test asserts, the test
-file and the assertion, the risk worth naming — and commits it. The prompt that follows is
-short: read these notes, in this order, and execute.
+file and the assertion, the risk worth naming — and commits it. The plan and the prompt that
+follow are both short: read these notes, in this order, and execute.
 
-This is what makes the prompt durable. A prompt carrying an inline plan is a snapshot that
-rots the moment a note changes; a prompt that points is correct for as long as the notes
-are. That property is what the saved note's `Risks` section states out loud.
+This is what makes both durable. A plan or a prompt carrying the detail inline is a snapshot
+that rots the moment a note changes; one that points is correct for as long as the notes
+are. That property is what the saved note's `Risks` section states out loud, and it is the
+reason the plan is allowed to exist at all — a **thin** second copy of the order can be
+regenerated from the ranks; a thick one becomes an authority that disagrees with the
+register.
 
 ## The phases
 
@@ -144,11 +180,12 @@ The `[Unreleased]` changelog row is part of done for a child that earns one.
 In this order, so the work lands in one commit and the prompt is the last thing on screen:
 
 1. Write the children's edits.
-2. Ask the save question.
-3. Write the `Task` note if the answer is yes.
-4. Run `npm run docs` and fix what it reports.
-5. Commit the notes alone. No push, no pull request.
-6. Print the prompt.
+2. Write the pointer plan.
+3. Ask the save question.
+4. Write the `Task` note if the answer is yes.
+5. Run `npm run docs` and fix what it reports.
+6. Commit the notes and the plan alone. No push, no pull request.
+7. Print the prompt.
 
 ### The prompt
 
@@ -158,7 +195,8 @@ Fenced, and nothing else in the block:
 - read `docs/requirements/<Title>.md`, then its children **by path, in rank order** — a
   saved handoff `Task` is **not** among them (below)
 - read every non-child output **by path**, each marked subagent's or human's
-- execute with `superpowers:subagent-driven-development`, one task per child
+- execute with `superpowers:subagent-driven-development` against
+  `docs/superpowers/plans/<file>.md`, whose every task points at one of those notes
 - red, green, `npm run check`, then commit — all five steps pass before the commit, never after
 - do not re-open the PBI — a child that contradicts it goes back to `adding-backlog-items`
 
@@ -205,7 +243,9 @@ On yes, one note at the next free rank among the PBI's children, in the shape
 - A child went unmentioned in phase 2 because it "obviously fits".
 - The prompt paraphrases a rule that lives in a guide.
 - Execution detail went into the prompt instead of the note.
-- A plan file appeared in `docs/superpowers/plans/`.
+- The plan carries execution detail instead of pointing at the note that holds it.
+- A `## Task N` was numbered from a note's `order` rather than from its dispatch position.
+- A live-vault `Test case` was written into the plan as a task.
 - A child was re-scoped to fit the order, instead of the order being corrected.
 - The saved handoff `Task` appears in the set of children the prompt executes.
 - The prompt puts the commit before `npm run check`.
