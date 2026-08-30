@@ -33,9 +33,10 @@ So the plan is written, and made as thin as the tooling allows:
 - One `## Task N` per child, in rank order, each naming the child's path and saying to read
   it. **`N` is the dispatch index, not the note's `order`** — ranks carry gaps and
   `task-brief` matches on the integer it is given.
-- One `## Task N` for each **non-child output that is the subagent's** — an ADR is prose it
-  can write. The outputs that are the **human's** are named in the header instead, never as
-  a task: a `Test case` is a live vault, and no subagent reaches one.
+- One `## Task N` for each **other output that is the subagent's**, child or not — an ADR is
+  prose it can write. Every output that is the **human's** is named in the header instead,
+  never as a task: a `Test case` is a live vault, and an `Issue` holding an open question is
+  a question the work cannot answer.
 - Nothing else. No steps, no code blocks, no acceptance criteria.
 
 **This is not `writing-plans`.** That skill decides granularity, file layout and TDD steps;
@@ -139,17 +140,38 @@ The "what would refuse it" row is the clean-code gate asked before the work rath
 lint time. A child that cannot land without splitting a file over the cap says so as a step
 in its `Approach`, not as a surprise for the implementer.
 
-The same pass names each **non-child output** as the subagent's or the human's. An ADR is
-prose a subagent can write. A `Test case` is a live vault and no subagent reaches it — Obsidian
-cannot run in this environment, so that output stays the human's and the prompt says so.
+### Not every child is executable
+
+The same pass assigns **every output — child or not — to the subagent or to the human**, and
+that assignment decides which get a `## Task N` in the plan. Assigning only the non-child
+outputs would send an intentionally unanswerable note through the TDD loop, because
+`decompose-pbi` deliberately produces children that are not implementable:
+
+| Output | Whose | Why |
+| --- | --- | --- |
+| A `Task` | The subagent's | It is engineering work with a test |
+| An `Issue` holding an **open question** | The human's | The work cannot settle it; that is why it is an Issue |
+| An `Issue` recording a **decision or a limitation** | The subagent's | It is prose stating something already settled |
+| A `Deliverable` | Ask | A non-code artifact may be either, and the register documents no shape for it |
+| An ADR *(not a child)* | The subagent's | Prose it can write, once phase 2 has the five things `docs/adrs/README.md` wants |
+| A `Test case` *(not a child)* | The human's | A live vault, which no subagent reaches — Obsidian cannot run here |
+
+The human's outputs are **named in the plan's header, never given a task**. They are still
+part of the picture — the prompt reads them as context, and the readback shows the split —
+but the run does not pretend to deliver them.
+
+An open question that *must* be answered before the work can start is not deferred by this
+table: it is a phase 2 question to the user, and it either gets an answer that turns the
+Issue into work or it blocks the run. Say which, out loud, rather than letting it ride.
 
 **Exit when** every child is either "executable as written" or has an answer to write into
-it, and every non-child output is assigned.
+it, and **every output, child or not, is assigned** to the subagent or to the human.
 
 ### Phase 3 — the readback gate
 
-Read the ordered set back: each child with its rank and one sentence of what the subagent
-will do, each non-child output with whose it is, and what you are still assuming.
+Read the ordered set back: each output with its rank, **whose it is**, and one sentence of
+what gets delivered — the subagent's as the task it becomes, the human's as the thing the
+run will not do — plus what you are still assuming.
 
 **Exit when the user has answered.** The readback is a question, not an announcement — a
 mistaken order or a misread deliverable is caught here or not at all.
@@ -183,9 +205,15 @@ In this order, so the work lands in one commit and the prompt is the last thing 
 2. Write the pointer plan.
 3. Ask the save question.
 4. Write the `Task` note if the answer is yes.
-5. Run `npm run docs` and fix what it reports.
+5. Run **`npm run check`** and fix what it reports.
 6. Commit the notes and the plan alone. No push, no pull request.
 7. Print the prompt.
+
+`npm run check`, not `npm run docs`. The diff is markdown under `docs/`, so the register
+gate is the only one of the five with anything to say about it — but root `CLAUDE.md` states
+the rule unconditionally, and a skill that carves its own exception is where exceptions
+start. `decompose-pbi`'s close runs `npm run docs` alone and has the same gap; this spec
+does not inherit it.
 
 ### The prompt
 
@@ -246,6 +274,10 @@ On yes, one note at the next free rank among the PBI's children, in the shape
 - The plan carries execution detail instead of pointing at the note that holds it.
 - A `## Task N` was numbered from a note's `order` rather than from its dispatch position.
 - A live-vault `Test case` was written into the plan as a task.
+- An `Issue` holding an open question was given a `## Task N`.
+- An output was left unassigned because it is a child and children are "obviously" the
+  subagent's.
+- The close committed on `npm run docs` alone.
 - A child was re-scoped to fit the order, instead of the order being corrected.
 - The saved handoff `Task` appears in the set of children the prompt executes.
 - The prompt puts the commit before `npm run check`.
