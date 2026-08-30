@@ -243,8 +243,11 @@ function releaseGroup(config: BasesViewConfig): BasesAllOptions {
 }
 
 /** The declared released values, read straight off the config for the dropdown that
- *  offers them — the same text `resolveReleaseSettings` turns into `releasedValues`. */
-function releasedValuesOf(config: BasesViewConfig): string[] {
+ *  offers them — the same text `resolveReleaseSettings` turns into `releasedValues`.
+ *  Exported since 2026-08-30 for ✨'s own second reader (`view/release/init.ts`): the
+ *  transition it binds must be one of these, and re-splitting the same string beside it
+ *  is the two-readers-disagreeing hazard this codebase states at every model boundary. */
+export function releasedValuesOf(config: BasesViewConfig): string[] {
 	const raw = config.get('releasedStatusValues');
 	return typeof raw === 'string' ? raw.split(',').map((v) => v.trim()).filter((v) => v !== '') : [];
 }

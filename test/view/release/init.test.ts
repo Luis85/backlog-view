@@ -3,7 +3,8 @@ import { describe, expect, it } from 'vitest';
 import { getReleaseViewOptions, SHARED_STATUS_OPTIONS } from '../../../src/domain/releaseOptions';
 import { releaseNoteProblems } from '../../../src/domain/settingsConsistency';
 import { runReleaseInit } from '../../../src/view/release/init';
-import { makeReleaseView, RELEASE_CONFIG, scopeVault } from '../../helpers/release';
+import { bindAndReport } from '../../../src/view/release/newRelease';
+import { makeReleaseView, mountRelease, RELEASE_CONFIG, scopeVault } from '../../helpers/release';
 import { FakeVault } from '../../helpers/vault';
 import { useViewHarness } from '../../helpers/view';
 
@@ -203,5 +204,17 @@ describe('runReleaseInit', () => {
 		const { view } = makeReleaseView(new FakeVault(), {});
 		await runReleaseInit(view);
 		expect(view.settings.releasedDateKey).toBe('released');
+	});
+});
+
+describe('the press reports binding a non-property option', () => {
+	it('sees a folder bind that no property key reflects', async () => {
+		// Every PROPERTY already bound, so the only work left is the folder. `boundKeys`
+		// reads `declaredPropertyKeys`, which filters to property options — so before this
+		// fix the comparison was equal and the press reported it had bound nothing, then
+		// skipped the redraw that would show the button it had just switched on.
+		const { view } = mountRelease({ bindAll: true });
+		expect(view.config.get('releaseNotesFolder')).toBeUndefined();
+		expect(await bindAndReport(view)).toBe(true);
 	});
 });

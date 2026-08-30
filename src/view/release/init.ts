@@ -1,5 +1,11 @@
 import { adoptCandidates, AdoptionCandidate, notePropertyId } from '../../domain/optionalProperties';
-import { declaredPropertyKeys, resolveReleaseSettings, SHARED_STATUS_OPTIONS } from '../../domain/releaseOptions';
+import {
+	declaredPropertyKeys,
+	releasedValuesOf,
+	resolveReleaseSettings,
+	SHARED_STATUS_OPTIONS,
+} from '../../domain/releaseOptions';
+import { DEFAULT_RELEASED_VALUES } from '../../domain/settings';
 import { BasesViewConfig } from 'obsidian';
 import type { ReleaseView } from './releaseView';
 
@@ -69,6 +75,48 @@ export const RELEASE_SUGGESTED_KEYS: AdoptionCandidate[] = [
 	{ option: 'stateProperty', suggested: 'status' },
 	{ option: 'releasedDateProperty', suggested: 'released' },
 	{ option: 'descriptionProperty', suggested: 'description' },
+];
+
+/** An option ✨ binds that names no property, and how to decide its value at bind time. */
+export interface ValueCandidate {
+	option: string;
+	value: (config: BasesViewConfig) => string;
+}
+
+/**
+ * The three the closing actions need and {@link RELEASE_SUGGESTED_KEYS} cannot carry: a
+ * folder, a value list and a dropdown over that list. They reach none of
+ * `adoptCandidates`' machinery because they name no property — there is no key for
+ * `taken` to guard and no collision to report. What they share with the seven is the ONE
+ * rule that applies to them, applied in {@link runReleaseInit}: an option the reader has
+ * touched is never overwritten, and cleared is not untouched.
+ *
+ * **`releaseNotesFolder` binds the option's own placeholder** (`releaseOptions.ts`), which
+ * is the rule all seven property candidates already follow — `versionProperty` suggests
+ * and places `version`, `releasedDateProperty` suggests and places `released`. A
+ * placeholder is where this codebase writes down what it would pick, so picking anything
+ * else is the plugin holding two opinions about one option. Not derived from
+ * `defaultTypeFolder(RELEASE_TYPE)` (`docs/releases`) for that reason: the placeholder
+ * already says `docs/release-notes`, and a second answer beside it is drift.
+ *
+ * **`releasedStatusValues` must NOT follow that rule**, and this is the trap. Its
+ * placeholder is `t('release.option.releasedValuesHint')` — the string `Released,
+ * Archived`, in the translation catalog. Binding it would make ✨ write the CATALOG's
+ * language into the `.base`, so a reader on a German Obsidian binds German status words,
+ * stamps them onto release notes, and hands over a vault whose releases an English
+ * reader's view reports as not-released. It binds {@link DEFAULT_RELEASED_VALUES}, which
+ * is domain data for exactly that reason.
+ *
+ * **`releasedTransitionValue` reads the list rather than restating the literal.**
+ * `configProblems` refuses a transition that is not one of the released values, so two
+ * independent literals would be two statements that must agree. Reading whatever the
+ * config holds AFTER the row above has run makes the invariant hold by construction —
+ * and it is why this list is ORDERED and swept in order.
+ */
+export const RELEASE_SUGGESTED_VALUES: ValueCandidate[] = [
+	{ option: 'releaseNotesFolder', value: () => 'docs/release-notes' },
+	{ option: 'releasedStatusValues', value: () => DEFAULT_RELEASED_VALUES.join(', ') },
+	{ option: 'releasedTransitionValue', value: (config) => releasedValuesOf(config)[0] ?? '' },
 ];
 
 /**
