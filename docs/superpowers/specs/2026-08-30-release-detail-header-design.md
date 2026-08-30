@@ -43,10 +43,16 @@ reading anyway.
 
 ### The header's last line
 
-`.pbl-rel-header` gains a fourth child, `.pbl-rel-footline`: the summary strip on the left,
-the action area on the right. The band between the header and the toolbar is gone, and the
-header becomes one bordered block holding everything that is about the release rather than
-about the tree.
+`.pbl-rel-header` keeps three children, and the third one changes: `.pbl-rel-footline`
+takes the position `.pbl-rel-summary` held, with the summary strip moving INSIDE it on the
+left and the action area on the right. The header is the hline, the description and the
+footline. The band between the header and the toolbar is gone, and the header becomes one
+bordered block holding everything that is about the release rather than about the tree.
+
+**Read that as a replacement, not an addition** — it said "gains a fourth child" until
+2026-08-30 (found by review, Codex, PR #221), which contradicts the layout below it and
+invites an implementer to keep the old summary child beside the footline or draw it twice.
+`drawSummary` does not stay where it is; it is passed the footline instead of the header.
 
 That division is the codebase's own, already stated at `drawOpenNote`:
 

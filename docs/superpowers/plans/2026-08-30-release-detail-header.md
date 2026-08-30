@@ -131,44 +131,40 @@ git commit -m "Add the shipped released vocabulary as domain data"
 
 **Files:**
 - Modify: `src/view/release/newRelease.ts:129-131` (`boundKeys`)
-- Test: `test/view/release/init.test.ts`
+- Test: none in this commit — `test/view/release/init.test.ts` proves this task's change in
+  **Task 3**, for the reason Step 1 gives. What is asserted here is that every test already in
+  that file still passes.
 
 **Interfaces:**
 - Consumes: `declaredPropertyKeys(config)` from `src/domain/releaseOptions.ts` — returns `string[]`, and **filters to `option.type === 'property'`**.
 - Produces: `boundKeys` (module-private) now also reflects `releaseNotesFolder`, `releasedStatusValues` and `releasedTransitionValue`. Task 3 depends on this: without it, a press whose only work is binding those three compares equal and reports it bound nothing.
-- **Build order, corrected 2026-08-30.** This step imports `RELEASE_SUGGESTED_VALUES` from `./init`, and the plan as first written did not define it until Task 3 — so the intermediate commit would not compile, and `npm run build` at Step 4 would have failed for a reason nothing here explained. The definition is PULLED FORWARD into this task: Step 3 below adds `ValueCandidate`, `RELEASE_SUGGESTED_VALUES` and the `releasedValuesOf` export to `src/view/release/init.ts` and `src/domain/releaseOptions.ts` first, and Task 3 adds only the sweep that reads them. That is what shipped (commit `80b4da5`, which built, linted and passed CI); **Task 3 must not re-add them.**
+- **Build order, corrected 2026-08-30.** This step imports `RELEASE_SUGGESTED_VALUES` from `./init`, and the plan as first written did not define it until Task 3 — so the intermediate commit would not compile, and `npm run build` at Step 4 would have failed for a reason nothing here explained. The definition is PULLED FORWARD into this task: Step 3 below adds `ValueCandidate`, `RELEASE_SUGGESTED_VALUES` and the `releasedValuesOf` export to `src/view/release/init.ts` and `src/domain/releaseOptions.ts` first, and Task 3 adds only the sweep that reads them. That is what shipped (commit `80b4da5`, which built and linted); **Task 3 must not re-add them.** Read "passed CI" no wider than it goes: CI runs on a pushed HEAD, not on each commit under it, so what this checkpoint verified is `npm run build` and `npm run lint` locally — which is exactly why the test that could only be red here now lives in Task 3 (Step 1).
 
 **Why this task exists and comes first.** `bindAndReport` decides whether the press changed anything by comparing `boundKeys` before and after. `declaredPropertyKeys` filters to property options, and all three new options are `text`, `dropdown` and `folder` — invisible to it. This is the identical defect `boundKeys`' own docblock already records for `stateProperty`: "a press whose only work was binding the state key… compared equal and reported that it had bound nothing, then skipped the redraw." Fixing it first means Task 3's test can assert the report rather than working around it.
 
-- [ ] **Step 1: Write the failing test**
+- [ ] **Step 1: Read why this task carries no test of its own**
 
-Append to `test/view/release/init.test.ts`:
+**`boundKeys`' widening is unobservable until the sweep exists**, so the test that proves it
+can only be red in this commit — and a commit with a red suite fails this repository's own
+definition of done (`npm run check`, which CI runs step for step). The proof is therefore
+authored in **Task 3 Step 1**, one commit later, where it goes red and then green inside a
+single task the way every other task here works.
 
-```ts
-describe('the press reports binding a non-property option', () => {
-	it('sees a folder bind that no property key reflects', async () => {
-		// Every PROPERTY already bound, so the only work left is the folder. `boundKeys`
-		// reads `declaredPropertyKeys`, which filters to property options — so before this
-		// fix the comparison was equal and the press reported it had bound nothing, then
-		// skipped the redraw that would show the button it had just switched on.
-		const { view } = mountRelease({ bindAll: true });
-		expect(view.config.get('releaseNotesFolder')).toBeUndefined();
-		expect(await bindAndReport(view)).toBe(true);
-	});
-});
-```
+**This task DID carry that test until 2026-08-30**, appended here and committed red on
+purpose, with Step 4 below stating that it must stay red (found by review, Codex, PR #221).
+That instructed an intermediate commit no gate would pass, beside a build-order note two
+paragraphs up claiming this checkpoint passed CI — which it could only do because CI ran on
+the pushed head rather than on this commit. Both are corrected: the test moved, and the note
+now says what was actually verified here.
 
-Add to the file's imports: `bindAndReport` from `../../../src/view/release/newRelease`, and
-`mountRelease` from `../../helpers/release`. **The file currently imports `makeReleaseView`,
-not `mountRelease`** — both exist in that helper; `mountRelease({ bindAll: false })` mounts an
-UNTOUCHED config (`configValues = {}`), which is what every candidate test below needs, and
-`mountRelease({ bindAll: true })` spreads `RELEASE_CONFIG`, which binds every property and
-deliberately no folder.
+What this task still owes is the NEGATIVE claim, and Step 2 is where it is taken.
 
-- [ ] **Step 2: Run test to verify it fails**
+- [ ] **Step 2: Take the baseline before you touch anything**
 
-Run: `npx vitest run test/view/release/init.test.ts -t 'sees a folder bind'`
-Expected: FAIL — `expected false to be true`. (It fails for the right reason only once Task 3 makes the sweep bind the folder. **Run this step again at the end of Task 3** and confirm it goes green there; until then it is red because nothing binds a folder at all, which is a different reason. Note that in the commit message.)
+Run: `npx vitest run test/view/release/init.test.ts`
+Expected: PASS, all of it. This is the reading Step 4 is compared against — `boundKeys` feeds
+every existing candidate test in the file, so "every one of these still passes afterwards" is
+the whole of what says this widening changed no answer it should not have.
 
 - [ ] **Step 3: Write minimal implementation**
 
@@ -263,20 +259,24 @@ Add imports: `DEFAULT_RELEASED_VALUES` from `../../domain/settings`, and `releas
 ```
 
 
-- [ ] **Step 4: Run lint and the file's own suite**
+- [ ] **Step 4: Run the gate**
 
-Run: `npm run lint && npx vitest run test/view/release/init.test.ts`
-Expected: lint clean. The new test still FAILS (nothing binds a folder yet) and every other test in the file PASSES — a regression here means `boundKeys` changed an answer it should not have.
+Run: `npm run check`
+Expected: clean, all five steps — the same reading Step 2 took, now with the widening in
+place. Every test in `init.test.ts` still passes, which is what says `boundKeys` changed no
+answer it should not have; nothing here is expected to be red.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/view/release/newRelease.ts src/view/release/init.ts src/domain/releaseOptions.ts test/view/release/init.test.ts
+git add src/view/release/newRelease.ts src/view/release/init.ts src/domain/releaseOptions.ts
 git commit -m "Let the bind report see options that are not properties
 
-The new test is red until the sweep that binds them lands in the next
-commit; every existing test in the file stays green, which is what says
-this changed no answer it should not have."
+No test of its own: the widening is unobservable until the sweep that
+binds these options lands in the next commit, so the test that proves it
+is authored there rather than committed red here. Every existing test in
+init.test.ts still passes, which is what says this changed no answer it
+should not have."
 ```
 
 ---
@@ -303,7 +303,33 @@ this changed no answer it should not have."
 
 - [ ] **Step 1: Write the failing tests**
 
-Append to `test/view/release/init.test.ts`:
+Append to `test/view/release/init.test.ts` — **the folder-bind case first**, which was
+authored in Task 2 until 2026-08-30 and moved here so that no instructed checkpoint commits a
+red suite (see that task's Step 1):
+
+```ts
+describe('the press reports binding a non-property option', () => {
+	it('sees a folder bind that no property key reflects', async () => {
+		// Every PROPERTY already bound, so the only work left is the folder. `boundKeys`
+		// reads `declaredPropertyKeys`, which filters to property options — so before
+		// Task 2's fix the comparison was equal and the press reported it had bound
+		// nothing, then skipped the redraw that would show the button it had just
+		// switched on.
+		const { view } = mountRelease({ bindAll: true });
+		expect(view.config.get('releaseNotesFolder')).toBeUndefined();
+		expect(await bindAndReport(view)).toBe(true);
+	});
+});
+```
+
+Add to the file's imports: `bindAndReport` from `../../../src/view/release/newRelease`, and
+`mountRelease` from `../../helpers/release`. **The file currently imports `makeReleaseView`,
+not `mountRelease`** — both exist in that helper; `mountRelease({ bindAll: false })` mounts an
+UNTOUCHED config (`configValues = {}`), which is what every candidate test below needs, and
+`mountRelease({ bindAll: true })` spreads `RELEASE_CONFIG`, which binds every property and
+deliberately no folder.
+
+Then the sweep's own cases:
 
 ```ts
 describe('the press binds the options that are not properties', () => {
@@ -409,7 +435,7 @@ Then extend `runReleaseInit`, after the existing property loop and **before** `r
 - [ ] **Step 4: Run tests to verify they pass**
 
 Run: `npx vitest run test/view/release/init.test.ts`
-Expected: PASS, all of them — **including Task 2's `sees a folder bind that no property key reflects`**, which was left red on purpose.
+Expected: PASS, all of them — **including `sees a folder bind that no property key reflects`**, which proves Task 2's widening and could not go green until this sweep existed.
 
 - [ ] **Step 5: Watch the catalog invariant fail**
 
