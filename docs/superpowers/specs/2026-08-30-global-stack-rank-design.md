@@ -88,8 +88,7 @@ knowingly.
 
 Parent links. Indent and outdent across the synthetic focus row stay **refused** — that is
 a question about parentage, and nothing here answers it. Excluded rows are still read for
-placement (`afterHighestKnown`, `endOfSiblingsOrder`, the backfill's max-order scan) and
-never written. `applySafely` is untouched.
+placement and never written. `applySafely` is untouched.
 
 ### The consequence, stated plainly
 
@@ -122,9 +121,46 @@ the command below. That is the only new user-facing text.
 
 ### Appends and creation
 
-`afterHighestKnown` and `endOfSiblingsOrder` are unchanged. A new note still ranks among
-its siblings, which stays correct under a global order: `floor(max of peers) + spacing`
-lands it after the last peer, whatever else in the vault holds a higher number.
+`afterHighestKnown` does **not** survive the redefinition, and the first draft of this
+spec was wrong to say it did. `floor(max of peers) + spacing` is a sibling-scoped answer:
+appending a child to Epic 1 lands it a whole spacing past Epic 1's last child, which under
+a global rank can be past Epic 2's entire subtree. The tree hides that, because the tree
+renders by parent — the focused list does not.
+
+So an append is not a special case any more. It is the same two-neighbour midpoint every
+other drop takes, with **`next` read from the rendered forest rather than from the peer
+group**: the row that follows the last peer in global order, which for a sibling append is
+the parent's next sibling or whatever the subtree walk reaches next. Only a true
+end-of-backlog append — no next row at all — falls back to `floor(max) + spacing`, where
+that value is free by construction.
+
+`endOfSiblingsOrder` and the creation paths take the same neighbours. This is a deletion:
+one arithmetic for every placement, instead of one for drops and another for appends.
+
+### Collisions with ranks the Base hides
+
+A midpoint needs two visible neighbours and nothing else — that is what lets the renumber
+gate go. It does **not** make the value globally unique. With visible neighbours at 1000
+and 3000 and a note the Base excluded sitting at 2000, the drop writes 2000 and the two
+tie; `entryIndex` then decides, so the item can sort *next to* rather than *at* the
+position it was dropped, once the filter is cleared.
+
+This is `docs/issues/Duplicate orders in a partially filtered group.md`, and the change
+makes it worse in two ways that the issue note has to record:
+
+- **It is no longer self-correcting.** That note's impact section rests on "the group
+  renumbers itself on the next renumbering drop". There is no renumbering drop any more.
+  The **rank command** is the replacement, and it has to be named there: running it
+  respaces every result and clears every tie.
+- **The collision is likelier than chance.** Seeded ranks are round multiples of the
+  spacing, and the midpoint of two of them is another round multiple — exactly where a
+  seeded rank lives. Widening the spacing does not help; it moves the whole lattice.
+
+Not fixed here, for the reason the issue already gives: a correct fix needs the complete
+peer set — backlinks plus a folder scan — which `computeDropWrites` cannot reach without
+giving up the purity that makes the ranking rules testable without a vault. Refusing to
+rank on a filtered base is not the alternative it looks like: every Bases view is a
+filter, so that refuses the feature.
 
 ### `computeInitWrites`
 
@@ -178,6 +214,10 @@ have it appear underneath them.
   neighbours: the drop still writes one note, and never the excluded one. The
   "renumber refused, append instead" cases are deleted with the branch, watched failing
   first.
+- New: an append reads `next` from the rendered forest, not from the peer group — a child
+  appended to the first of two sibling subtrees ranks **before** the second subtree's
+  first item, not a spacing past it. This is the check the first draft of the spec had no
+  claim for.
 - `test/view/contextRowWrites.test.ts` — the load-bearing suite. Dropping `reorderableGroup`
   from three gates *widens* the write surface, so this one must not weaken. The rule stays
   checked at the forbidden thing (`applySafely` plus the spy on the call), not by listing
@@ -201,6 +241,8 @@ have it appear underneath them.
 - **Edit** [[Focus level]]: 3a now refuses indent and outdent only.
 - **Edit** `src/domain/CLAUDE.md`: the sibling-scope sentence, the three-lists paragraph,
   the `MIN_GAP` bullet, and the Cost section.
+- **Edit** `docs/issues/Duplicate orders in a partially filtered group.md`: the impact
+  section's self-correction is gone with the renumber, and the rank command replaces it.
 - **Edit** `docs/issues/Board order is derived not stored.md`: a shared rank now exists, so
   in-column ranking became possible and is deliberately not taken here. The issue stays
   open with its premise corrected.
