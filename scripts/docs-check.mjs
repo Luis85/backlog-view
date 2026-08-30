@@ -861,6 +861,61 @@ for (const [, note] of notes) {
 	}
 }
 
+/**
+ * **A frontmatter value that YAML would not read the way the note means it.**
+ *
+ * `frontmatter()` above is a regex reader, so it answers `field("cadence")` happily for a
+ * block no YAML parser will accept — which is exactly how five notes reached `main` with
+ * frontmatter Obsidian cannot parse at all. A note whose frontmatter does not parse has no
+ * `type` and no `cadence` in the metadata cache, so it is in no Bases query and on no
+ * projection: `docs/tests/cases/The assignee chip and Set assignee.md` was invisible to the
+ * Tests projection it had just been written for, and this gate said it was fine.
+ * [[The register gate cannot see unparseable frontmatter]] is that gap.
+ *
+ * **The claim is narrow on purpose, and narrower than the gap.** Parsing YAML properly
+ * would mean a parser dependency for one rule; what this does instead is refuse the two
+ * spellings that have actually gone wrong here, and it says which two rather than implying
+ * it covers the language:
+ *
+ * - **A value containing ` #`.** In a plain scalar a hash after a space opens a comment,
+ *   so `source: review of PR #114 raised the connector` has always MEANT
+ *   `source: review of PR` — Obsidian's own Properties panel shows it truncated. Where the
+ *   value continues onto another line, the comment ends the scalar and the continuation is
+ *   then an unexpected token, so the whole block fails to parse. Three notes here were in
+ *   that state. It is the same hazard as
+ *   [[A hash in a value is a comment the first rewrite erases]], met from the other side:
+ *   that note is about the bytes a REWRITE drops, this is about the block never parsing.
+ * - **A value starting with `[` or `{`.** That opens a flow collection, so an unquoted
+ *   wikilink is read as a nested list, and any prose after the closing bracket is a parse
+ *   error. Two notes were in that state, both of them written on the branch that added
+ *   this rule.
+ *
+ * Both are fixed the same way and the register already spells it that way everywhere else:
+ * quote the value. `parent: "[[...]]"` has always been quoted here.
+ */
+for (const file of files) {
+	const block = /^---\n([\s\S]*?)\n---/.exec(texts.get(file) ?? "");
+	if (!block) continue;
+	// Key lines only — a continuation line is part of the value above it, and the value is
+	// what these two rules are about, so the whole entry is reassembled before it is read.
+	const lines = block[1].split("\n");
+	const entries = [];
+	for (const line of lines) {
+		const start = /^([A-Za-z_][\w-]*):\s?(.*)$/.exec(line);
+		if (start) entries.push({ key: start[1], value: start[2] });
+		else if (entries.length > 0) entries[entries.length - 1].value += ` ${line.trim()}`;
+	}
+	for (const { key, value } of entries) {
+		const text = value.trim();
+		if (text === "" || /^["']/.test(text)) continue;
+		if (/^[[{]/.test(text)) {
+			fail(file, `\`${key}:\` opens with \`${text[0]}\`, which YAML reads as a collection — quote the value`);
+		} else if (/\s#/.test(text)) {
+			fail(file, `\`${key}:\` holds \` #\`, which starts a YAML comment — quote the value`);
+		}
+	}
+}
+
 // ----------------------------------------------------------------------------- ADRs
 /**
  * An ADR is any note under `docs/adrs/` that is not the index — discovered by **where it

@@ -6,8 +6,8 @@ status: Open
 area: ux
 priority: P2
 created: 2026-08-14
-source: Automated review of PR #140 (folding a board column), which found it on the fold
-  and where it is neither new nor the fold's
+source: "Automated review of PR #140 (folding a board column), which found it on the fold
+  and where it is neither new nor the fold's"
 files:
   - src/view/selection.ts
   - src/view/interactions/keyboard.ts

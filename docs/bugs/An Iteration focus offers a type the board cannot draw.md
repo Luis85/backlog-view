@@ -6,7 +6,7 @@ status: Done
 priority: P2
 area: view
 created: 2026-08-30
-source: Review of the [[New cards in place]] decomposition (Codex, PR #225)
+source: "Review of the [[New cards in place]] decomposition (Codex, PR #225)"
 files:
   - src/view/projection.ts
   - src/view/render/toolbar.ts

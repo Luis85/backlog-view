@@ -693,6 +693,20 @@ describe('the gate accepts valid documents', () => {
 
 		await expectAccepted(files);
 	});
+	it('accepts a quoted value holding a wikilink and a hash, which is how the register writes both', async () => {
+		// The direction that matters more than the rejections beside it: this rule refuses a
+		// SPELLING, and the legal spelling is everywhere in `docs/` — `parent: "[[...]]"` on
+		// most notes, and a `source:` naming a pull request by number on many. A rule that
+		// widened to the quoted forms would fail hundreds of real notes at once, which is
+		// the failure this case exists to catch rather than the one above.
+		const files = baseRegister();
+		files['docs/requirements/Thing.md'] = files['docs/requirements/Thing.md'].replace(
+			'status: Open\n',
+			'status: Open\nsource: "Review of [[A slice]] (Codex, PR #114)"\n',
+		);
+
+		await expectAccepted(files);
+	});
 	it('accepts an Issue that is not a verification and says nothing about cadence', async () => {
 		// Most of `docs/issues/` is this: decisions and limitations, no `## How to check`,
 		// no `cadence:`. The biconditional has to leave them alone, or the gate added for

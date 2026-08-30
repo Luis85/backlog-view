@@ -7,7 +7,7 @@ priority: P2
 area: verification
 cadence: release
 created: 2026-08-30
-source: [[Live-vault checks for the resource chip and axis]], the open task that names this check as owed
+source: "[[Live-vault checks for the resource chip and axis]], the open task that names this check as owed"
 started: ""
 finished: ""
 horizon: ""

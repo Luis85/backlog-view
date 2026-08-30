@@ -6,7 +6,7 @@ status: Open
 priority: P2
 area: design
 created: 2026-08-29
-source: PR #219 review, 2026-08-29
+source: "PR #219 review, 2026-08-29"
 files:
   - src/view/writeGate.ts
   - src/view/release/releaseClose.ts
