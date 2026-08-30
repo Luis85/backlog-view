@@ -17,7 +17,9 @@ written."
   a slice that contradicts the use case goes back there, it is not fixed here.
 - `superpowers:brainstorming` and `writing-plans` both end in an implementation plan, which
   is not what is asked for. A decomposition is register notes with ranks and parents; a
-  plan is one file for one session. Hand over when the user wants the plan.
+  plan is one file for one session. For a decomposed PBI, `resolve-pbi` writes the plan: it
+  writes a pointer plan over children it has just made executable. `writing-plans` still
+  applies to an Epic or a Feature, the same route `adding-backlog-items` already uses.
 - If the request is "build it", that is `resolve-pbi` against the decomposed PBI, not this
   and not `writing-plans` — the children have to be executable before anything runs them.
 
