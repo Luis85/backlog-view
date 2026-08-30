@@ -91,7 +91,8 @@ describe('computeDropWrites', () => {
 	it('plans no writes when the gap is spent', () => {
 		const vault = new FakeVault();
 		vault.addFile('One.md', { frontmatter: { order: ORDER_SPACING } });
-		// A gap under the new six-decimal MIN_GAP (0.000002) — too tight to subdivide.
+		// One step on the six-decimal grid `roundOrder` keeps, so the midpoint rounds onto
+		// a neighbour and there is no rank between the two.
 		vault.addFile('Two.md', { frontmatter: { order: ORDER_SPACING + 0.000001 } });
 		vault.addFile('Mover.md', { frontmatter: { order: 50 } });
 		const model = buildModel(vault.app, vault.entries(), unscoped);
@@ -322,5 +323,57 @@ describe('computeInitWrites', () => {
 		expect(byPath.get('Bare Epic.md')?.order).toBe(1010);
 		expect(byPath.get('Story.md')?.typeName).toBe('PBI');
 		expect(byPath.get('Story.md')?.order).toBe(ORDER_SPACING);
+	});
+});
+
+/**
+ * The peer fallback in `dropPlacement`. Two tests, and the second matters as much as the
+ * first: without it a fallback that fired ALWAYS would pass the legacy case and quietly
+ * make every seeded drop sibling-scoped again.
+ */
+describe('a drop in an unmigrated vault', () => {
+	/** Legacy, sibling-scoped ranks: Epic A and its first child both hold 10. */
+	function legacy() {
+		const vault = new FakeVault();
+		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('A1.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Epic A' });
+		vault.addFile('A2.md', { frontmatter: { type: 'Feature', order: 20 }, parentLink: 'Epic A' });
+		vault.addFile('Epic B.md', { frontmatter: { type: 'Epic', order: 20 } });
+		const model = buildModel(vault.app, vault.entries(), settings);
+		const get = (title: string): BacklogItem => {
+			const item = model.items.find((i) => i.title === title);
+			if (!item) throw new Error(`missing fixture item ${title}`);
+			return item;
+		};
+		return { model, get };
+	}
+
+	it('still reorders, ranking among the peers when the global neighbours give no gap', () => {
+		const { model, get } = legacy();
+		const dragged = get('A2');
+		// A2's global neighbours around A1 are Epic A (10) and A1 (10) — a gap of zero,
+		// so the global placement refuses and every legacy vault would lose ordinary
+		// tree reordering. Among the peers alone, A1 is the first and A2 goes before it.
+		const writes = computeDropWrites(dragged, { parent: get('Epic A'), peers: [get('A1')], insertIndex: 0 }, model.ranked);
+		expect(writes).toEqual([{ file: dragged.file, parent: undefined, order: 10 - ORDER_SPACING }]);
+	});
+
+	it('does not fire on a seeded vault: the number is still the GLOBAL midpoint', () => {
+		const vault = new FakeVault();
+		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 1000 } });
+		vault.addFile('A1.md', { frontmatter: { type: 'Feature', order: 2000 }, parentLink: 'Epic A' });
+		vault.addFile('Epic B.md', { frontmatter: { type: 'Epic', order: 3000 } });
+		vault.addFile('B1.md', { frontmatter: { type: 'Feature', order: 4000 }, parentLink: 'Epic B' });
+		const model = buildModel(vault.app, vault.entries(), settings);
+		const find = (title: string): BacklogItem => model.items.find((i) => i.title === title) as BacklogItem;
+		const dragged = find('B1');
+
+		const writes = computeDropWrites(dragged, { parent: find('Epic A'), peers: [find('A1')], insertIndex: 1 }, model.ranked);
+
+		// 2500 — the midpoint of A1 (2000) and the next GLOBAL row, Epic B (3000). The
+		// peer-only answer would be 3000 (one spacing past the only peer), so this number
+		// is the proof the fallback did not run.
+		expect(writes).toHaveLength(1);
+		expect(writes[0].order).toBe(2500);
 	});
 });

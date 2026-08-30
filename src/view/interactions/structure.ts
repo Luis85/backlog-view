@@ -58,19 +58,42 @@ function withinSiblingsTarget(host: BacklogViewHost, item: BacklogItem, delta: -
 }
 
 /**
- * True when reordering `item` one slot in the given direction would actually write
- * something. Asked of the SAME placement `computeDropWrites` would plan — a rank is
- * a midpoint in the global population, so a spent gap or an unranked neighbour
- * refuses silently, and an offered command that does nothing is what this repo
- * refuses ahead of a withheld one. Gates both the adjacent swap and Move to
- * top/bottom in the same direction: with no rendered neighbour beyond the immediate
- * one, moving one slot and moving to the edge ask the identical question.
+ * The target `moveToEdge` would land on, or null when the item is already there. A
+ * SEPARATE target from the adjacent swap's, which is the whole reason this function
+ * exists: `insertIndex` 0 and `peers.length` anchor on the first and last peer, never
+ * on the neighbour one slot away, so the two commands can be answered differently by
+ * the same population. Children ranked 20/30/40 with any other note at 20 is the
+ * reachable case — the swap succeeds and the edge move refuses.
  */
-export function canReorder(host: BacklogViewHost, item: BacklogItem, delta: -1 | 1): boolean {
+function edgeTarget(host: BacklogViewHost, item: BacklogItem, edge: 'top' | 'bottom'): DropTarget | null {
+	const ctx = siblingContext(host, item);
+	if (!ctx || ctx.idx === (edge === 'top' ? 0 : ctx.fullList.length - 1)) return null;
+	const peers = ctx.fullList.filter((s) => s !== item);
+	return { parent: item.parent, peers, insertIndex: edge === 'top' ? 0 : peers.length };
+}
+
+/**
+ * Whether that placement would actually write something. Asked of the SAME plan
+ * `computeDropWrites` would make — a rank is a midpoint in the global population, so a
+ * spent gap or an unranked neighbour refuses silently, and an offered command that does
+ * nothing is what this repo refuses ahead of a withheld one. Each command asks it of
+ * its OWN target: one answer covering both would offer a Move to top that is inert
+ * because the adjacent swap happened to work.
+ */
+function plans(host: BacklogViewHost, item: BacklogItem, target: DropTarget | null): boolean {
 	const model = host.model;
-	const target = withinSiblingsTarget(host, item, delta);
 	if (!model || !target) return false;
 	return !('refusal' in dropPlacement(item, target, model.ranked));
+}
+
+/** True when reordering `item` one slot in the given direction would write something. */
+export function canReorder(host: BacklogViewHost, item: BacklogItem, delta: -1 | 1): boolean {
+	return plans(host, item, withinSiblingsTarget(host, item, delta));
+}
+
+/** True when sending `item` to that end of its own group would write something. */
+export function canMoveToEdge(host: BacklogViewHost, item: BacklogItem, edge: 'top' | 'bottom'): boolean {
+	return plans(host, item, edgeTarget(host, item, edge));
 }
 
 export function moveWithinSiblings(host: BacklogViewHost, item: BacklogItem, delta: -1 | 1): void {
@@ -80,12 +103,8 @@ export function moveWithinSiblings(host: BacklogViewHost, item: BacklogItem, del
 }
 
 export function moveToEdge(host: BacklogViewHost, item: BacklogItem, edge: 'top' | 'bottom'): void {
-	const ctx = siblingContext(host, item);
-	if (!ctx) return;
-	if (ctx.idx === (edge === 'top' ? 0 : ctx.fullList.length - 1)) return;
-	const peers = ctx.fullList.filter((s) => s !== item);
-	const insertIndex = edge === 'top' ? 0 : peers.length;
-	void host.performDrop(item, { parent: item.parent, peers, insertIndex });
+	const target = edgeTarget(host, item, edge);
+	if (target) void host.performDrop(item, target);
 }
 
 /**
@@ -111,8 +130,7 @@ export function outdentTarget(host: BacklogViewHost, item: BacklogItem): DropTar
 	// Same reasoning as `canReorder`: ask the write path's own question rather than a
 	// second, weaker opinion about it, so Outdent never offers a rank the global
 	// population would refuse (a spent gap, an unranked neighbour).
-	if ('refusal' in dropPlacement(item, target, model.ranked)) return null;
-	return target;
+	return plans(host, item, target) ? target : null;
 }
 
 /** Make the item a sibling of its parent, placed right after it. */

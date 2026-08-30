@@ -98,6 +98,31 @@ describe('context menu', () => {
 		expect(order('Feature B1')).toBeLessThan(order('Feature B2'));
 	});
 
+	/**
+	 * The edge moves anchor on the FIRST or LAST peer; the adjacent swap anchors on the
+	 * neighbour one slot away. Different anchors, so they must be asked as different
+	 * questions — one flag covering both offers a `Move to bottom` that does nothing
+	 * because `Move down` happened to work. Reachable with one un-backfilled note in the
+	 * group: ranking after it is refused (`unranked`), ranking after C2 is not.
+	 */
+	it('asks the edge moves their own question, not the adjacent swap’s', () => {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('C1.md', { frontmatter: { type: 'Feature', order: 20 }, parentLink: 'Epic' });
+		vault.addFile('C2.md', { frontmatter: { type: 'Feature', order: 30 }, parentLink: 'Epic' });
+		vault.addFile('C3.md', { frontmatter: { type: 'Feature', order: 40 }, parentLink: 'Epic' });
+		// No order at all, so it sorts last among its siblings AND last in the global
+		// population — the anchor `Move to bottom` would take, and the one it must refuse.
+		vault.addFile('C4.md', { frontmatter: { type: 'Feature' }, parentLink: 'Epic' });
+		const { containerEl } = makeView(vault);
+		clickExpandAll(containerEl);
+
+		rowByTitle(containerEl, 'C1').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+		const titles = Menu.lastShown?.items.map((i) => i.titleText) ?? [];
+		expect(titles).toContain('Move down');
+		expect(titles).not.toContain('Move to bottom');
+	});
+
 	it('sets the type through the submenu', async () => {
 		const vault = fixture();
 		const { containerEl } = makeView(vault);

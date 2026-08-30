@@ -34,10 +34,10 @@ arithmetic may read**, in `src/domain/model.ts`'s own field comment, because a `
 suite` and an `Epic` sharing the null parent means a rank taken against one projection's
 slice of the tree can collide with a hidden root's.
 
-Nothing reads `BacklogModel.ranked` yet. This record is the decision to build ranking on
-top of a single sorted population instead of a per-projection one; the placement math that
-reads it — a focus level's reorder, a drop, an indent — is later work this ADR expects to
-gain a Consequences entry for as each piece lands, rather than a record written once
+This record is the decision to build ranking on top of a single sorted population instead
+of a per-projection one. The placement math that reads it — `anchoredOrder`,
+`orderForTarget` and `dropPlacement` in `src/domain/writePlan.ts` — lands piece by piece
+and each is recorded below as it arrives, rather than the record being written once
 `order`'s write path has already changed underneath it.
 
 ## Consequences
@@ -51,13 +51,25 @@ gain a Consequences entry for as each piece lands, rather than a record written 
   sibling rank agree about what an absent or tied number means; only the SCOPE they compare
   within differs.
 - Context rows join the population deliberately: their `order` is already read for
-  placement inside a sibling group (`afterHighestKnown`, the backfill's max-order scan), and
-  including them here can only reduce collisions, never manufacture one — they stay
+  placement (the backfill's max-order scan, and now `anchoredOrder`'s own neighbour walk),
+  and including them here can only reduce collisions, never manufacture one — they stay
   unwritable through `applySafely` regardless of which array names their rank.
-- ADR 0008's scoping is not reversed by this alone. `order` is still *written*
-  sibling-scoped today; only the *read* side has a global population to draw from. A
-  sibling group's own reorder is unaffected until a later piece plans a write against
-  `BacklogModel.ranked` instead.
+- **A drop's rank is now planned from this population.** `dropPlacement` and
+  `computeDropWrites` in `src/domain/writePlan.ts` take a midpoint between the anchor's
+  neighbours in `ranked`, so a drop, an indent, an outdent and a keyboard reorder all
+  write ONE note and no group is ever renumbered — `renumberWrites`, `afterHighestKnown`
+  and `dropTargets.ts`'s `reorderableGroup` are deleted with the sibling-scoped arithmetic
+  they served. When there is no room between the two neighbours the placement refuses
+  rather than making room by rewriting the group.
+- **ADR 0008's scoping survives as the fallback, not as the rule.** On a vault whose ranks
+  were never seeded, sibling-scoped numbers collide across parents — every first child
+  holds the same value as its parent — so the global placement refuses for a gap of zero
+  and `dropPlacement` re-asks the same question against the destination's peers alone.
+  That is ADR 0008's arithmetic, kept so that an unmigrated vault does not lose ordinary
+  reordering before a seeding command exists. It is self-limiting: on a seeded vault the
+  global placement succeeds and the fallback is never reached, and if both refuse the
+  refusal stands. It is also **silent** — nothing tells the user which of the two answered
+  — which is a known gap recorded rather than closed.
 
 ## Alternatives
 
@@ -74,10 +86,10 @@ gain a Consequences entry for as each piece lands, rather than a record written 
 
 ## Revisit when
 
-- **A write path plans against `BacklogModel.ranked`.** The day a drop, an indent or a
-  focus-level reorder computes its target order from this population instead of from a
-  sibling group, this record gains the Consequences entry that says so, and the sentence
-  above about `order` still being written sibling-scoped stops being true.
+- **The peer fallback stops being reached.** Once a seeding command has run over the
+  vaults that need it, the fallback is dead weight rather than a bridge — and while it
+  stands, a silent switch between two rank scopes is a thing the register says nothing
+  about at the moment it happens.
 - **`order` stops being sibling-scoped in the note itself.** If a later piece renumbers
   across the whole backlog rather than within a group, ADR 0008 is superseded outright
   rather than extended, and this record should say so in its frontmatter.

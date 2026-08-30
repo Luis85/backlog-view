@@ -30,7 +30,16 @@ import {
 	ownWorkflowReading,
 	stateKeyFor,
 } from '../../domain/board';
-import { canReorder, indent, moveToEdge, moveWithinSiblings, outdent, outdentTarget, visibleNeighbor } from './structure';
+import {
+	canMoveToEdge,
+	canReorder,
+	indent,
+	moveToEdge,
+	moveWithinSiblings,
+	outdent,
+	outdentTarget,
+	visibleNeighbor,
+} from './structure';
 import { promptCreateItem } from './create';
 import { addShelfLayoutItems, addShelfSearchItems, addShelfSortItems, addShelfTypeItems } from './shelfMenu';
 import { addHorizonItems, canPlaceHorizon, canSchedule, carriesDates, promptSchedule, unschedule } from './plan';
@@ -238,10 +247,15 @@ function addMoveSection(host: BacklogViewHost, menu: Menu, item: BacklogItem): v
 	// Only *reordering* renumbers the item's own group, so only reordering needs
 	// this. Indent and outdent land the item elsewhere and answer for their own
 	// destination — hiding them here would make the menu offer less than Alt+arrow.
-	// Asked per direction, never as one blanket flag: a rank the global population
-	// would refuse in one direction says nothing about the other.
+	// Asked per direction AND per command, never as one blanket flag: a rank the global
+	// population would refuse in one direction says nothing about the other, and the edge
+	// moves anchor on the first or last peer rather than on the neighbour one slot away,
+	// so they are a different question again — `Move up` can succeed where `Move to top`
+	// refuses, and an offered entry that does nothing is what this repo refuses first.
 	const rankedUp = canReorder(host, item, -1);
 	const rankedDown = canReorder(host, item, 1);
+	const rankedTop = canMoveToEdge(host, item, 'top');
+	const rankedBottom = canMoveToEdge(host, item, 'bottom');
 
 	if (rankedUp && prev) {
 		menu.addItem((mi) =>
@@ -261,12 +275,12 @@ function addMoveSection(host: BacklogViewHost, menu: Menu, item: BacklogItem): v
 			mi.setTitle(t('menu.moveDown')).setIcon('arrow-down').onClick(() => moveWithinSiblings(host, item, 1)),
 		);
 	}
-	if (rankedUp && prev) {
+	if (rankedTop && prev) {
 		menu.addItem((mi) =>
 			mi.setTitle(t('menu.moveToTop')).setIcon('arrow-up-to-line').onClick(() => moveToEdge(host, item, 'top')),
 		);
 	}
-	if (rankedDown && next) {
+	if (rankedBottom && next) {
 		menu.addItem((mi) =>
 			mi
 				.setTitle(t('menu.moveToBottom'))

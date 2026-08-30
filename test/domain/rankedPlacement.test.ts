@@ -42,8 +42,19 @@ describe('anchoredOrder', () => {
 		expect(anchoredOrder(ranked(1000), ranked(5000)[0], 'after')).toEqual({ refusal: 'unranked' });
 	});
 
+	it('refuses a wide gap whose midpoint still rounds onto its own neighbour', () => {
+		// At 1e12 the IEEE-754 spacing (about 0.00012) is wider than the six-decimal
+		// rounding grid, so a gap of 0.0001 clears any fixed minimum and STILL rounds the
+		// midpoint back onto `prev` — a duplicate rank, which then fails `inRankOrder`'s
+		// distinctness test and silently drops the whole focused view back to tree order.
+		// `order` is hand-editable frontmatter, so a rank this large is reachable. The
+		// guard has to ask about the ROUNDED value, not about the width of the gap.
+		const list = ranked(1e12, 1e12 + 0.0001);
+		expect(anchoredOrder(list, list[0], 'after')).toEqual({ refusal: 'gapSpent' });
+	});
+
 	it('keeps a midpoint distinct from both neighbours past four decimals', () => {
-		// Gap 0.00003 clears MIN_GAP (0.000002), so this subdivides. The true
+		// A gap of 0.00003 leaves room on the six-decimal grid, so this subdivides. The true
 		// midpoint (1000.000015) needs six decimals to survive rounding — at four
 		// it collapses onto `prev`, a silent duplicate rather than a new rank.
 		const list = ranked(1000, 1000.00003);

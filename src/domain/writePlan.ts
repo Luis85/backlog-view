@@ -25,13 +25,6 @@ import {
 
 /** Spacing between freshly assigned order values, leaving room to drop items in between. */
 export const ORDER_SPACING = 1000;
-/**
- * Below this gap between neighbours a drop refuses rather than subdividing. Six
- * decimals is the floor `roundOrder` can represent, and the pair gives about thirty
- * halvings of one interval — the price of frontmatter a human reads, paid knowingly.
- */
-const MIN_GAP = 0.000002;
-
 /** A pending frontmatter update for a single file. Fields left undefined are not touched. */
 export interface ItemWrite {
 	file: TFile;
@@ -700,8 +693,28 @@ export function anchoredOrder(
 	}
 	if (!next) return prev.order !== null ? { order: Math.floor(prev.order) + ORDER_SPACING } : { refusal: 'unranked' };
 	if (prev.order === null || next.order === null) return { refusal: 'unranked' };
-	if (next.order - prev.order <= MIN_GAP) return { refusal: 'gapSpent' };
-	return { order: roundOrder(prev.order + (next.order - prev.order) / 2) };
+	return midpoint(prev.order, next.order);
+}
+
+/**
+ * The rank between two neighbours, or `gapSpent` when there is no room left for one.
+ *
+ * The question is asked of the ROUNDED value and of nothing else: "is the gap wide
+ * enough" is a different question, and at large magnitudes the two disagree. IEEE-754
+ * spacing near 1e12 is about 0.00012, wider than the six decimals `roundOrder` keeps, so
+ * a gap of 0.0001 clears any fixed minimum and still rounds the midpoint back onto
+ * `prev`. That writes a DUPLICATE rank, and two equal ranks fail `inRankOrder`'s
+ * distinctness test — the whole focused view drops back to tree order for a reason the
+ * user is never shown. A hand-edited `order` that large is reachable frontmatter, not a
+ * hypothetical.
+ *
+ * One rule rather than a minimum gap beside it: a second test can only ever disagree
+ * with this one, and a magnitude-dependent epsilon is that second test wearing a
+ * formula. Strictly between both ends is exactly what the caller needs and all it needs.
+ */
+function midpoint(prev: number, next: number): RankResult {
+	const mid = roundOrder(prev + (next - prev) / 2);
+	return mid > prev && mid < next ? { order: mid } : { refusal: 'gapSpent' };
 }
 
 /** A context row with nothing to rank from — see `anchoredOrder`'s own comment. */
@@ -766,8 +779,24 @@ export function computeDropWrites(dragged: BacklogItem, target: DropTarget, rank
  * through here instead of calling `orderForTarget` beside it.
  */
 export function dropPlacement(dragged: BacklogItem, target: DropTarget, ranked: BacklogItem[]): RankResult {
-	return orderForTarget(
+	const global = orderForTarget(
 		ranked.filter((item) => item !== dragged),
+		target,
+	);
+	if ('order' in global) return global;
+	// **An unmigrated vault falls back to ranking among the peers alone**, which is
+	// exactly the sibling-scoped arithmetic this change replaces. Measured, not
+	// supposed: with legacy ranks (Epic A 10, A1 10, A2 20) moving A2 before A1 sees
+	// Epic A and A1 as its global neighbours, a gap of zero, and refuses — so every
+	// existing vault would lose ordinary tree reordering, the plugin's core gesture,
+	// with no migration available until the Seed command ships several tasks later.
+	//
+	// Self-healing and self-limiting: on a seeded vault the global placement succeeds
+	// and this line is never reached, so the two regimes never coexist for the same
+	// drop. If BOTH refuse, the refusal stands — the fallback adds a second chance,
+	// never a guarantee.
+	return orderForTarget(
+		target.peers.filter((item) => item !== dragged),
 		target,
 	);
 }
@@ -951,7 +980,7 @@ export function computeInitWrites(model: BacklogModel, settings: BacklogSettings
 }
 
 
-/** Orders are fractional ranks; six decimals is the floor MIN_GAP is set against. */
+/** Orders are fractional ranks, kept to six decimals — the grid `midpoint` refuses against. */
 function roundOrder(value: number): number {
 	return Math.round(value * 1000000) / 1000000;
 }

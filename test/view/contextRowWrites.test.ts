@@ -40,55 +40,52 @@ describe('moves in a group that holds an outside-filter row', () => {
 		return { view, containerEl, vault };
 	}
 
-	it('offers no move commands on a result whose siblings include a context row', () => {
+	it('offers the move commands in such a group: nothing is withheld for the context row', () => {
 		const { containerEl } = mixedView();
 
 		rowByTitle(containerEl, 'Feature B').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
 		const titles = Menu.lastShown?.items.map((i) => i.titleText) ?? [];
-		// **Withheld for a SPENT GAP, not for the context row.** Epic, Feature A and PBI
-		// all sit at order 10 here, so every rank this row could take is refused by the
-		// arithmetic before the context row is ever a question — `reorderableGroup`'s
-		// refusal, which used to be the reason, is deleted. The same fixture with distinct
-		// ranks DOES offer these commands, and `menu.test.ts`'s
-		// 'move commands in a group holding a context row' is where that case is asserted.
-		// What this file still holds either way is the rule in its own name: whatever is
-		// offered, the write log never names the excluded note.
-		expect(titles).not.toContain('Move up');
-		expect(titles).not.toContain('Move down');
-		expect(titles).not.toContain('Move to top');
+		// `reorderableGroup` used to withhold every one of these, because a renumber would
+		// have rewritten the whole group and so touched the excluded note. A rank is a
+		// midpoint now — one write, to the moved note — so the refusal is deleted and the
+		// commands come back. The rule this file exists for did not move with it: what the
+		// tests below check is not that these are absent but that TAKING them writes to
+		// `Feature B.md` and to nothing else.
+		expect(titles).toContain('Move up');
+		expect(titles).toContain('Move to top');
 	});
 
-	it('offers no outdent when the rank it would take is refused', () => {
-		const { containerEl } = mixedView();
+	it('offers outdent past a context parent, and writes only the outdented note', async () => {
+		const { containerEl, vault } = mixedView();
 
 		rowByTitle(containerEl, 'PBI').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
-		const titles = Menu.lastShown?.items.map((i) => i.titleText) ?? [];
-		// Outdenting would rank PBI right after Feature A (a context row, but one with
-		// a real order here) among Epic's children — and Epic, Feature A and PBI all
-		// share order 10 in this fixture, so the gap `computeDropWrites` would need is
-		// already spent. `outdentTarget` asks that same question before offering the
-		// command, so a refused rank never reaches the menu as a dead entry.
-		expect(titles).not.toContain('Outdent');
+		expect(Menu.lastShown?.item('Outdent')).toBeDefined();
+		Menu.lastShown?.item('Outdent')?.click();
+		await flush();
+
+		// PBI leaves Feature A (a context row) for Epic (another one), ranked right after
+		// Feature A among Epic's children. BOTH of the notes that frame the move are ones
+		// the Base excluded, and neither is in the write log: their orders are READ, which
+		// the context-row rule has always allowed, and the batch names one file.
+		expect(vault.writeLog.map((w) => w.path)).toEqual(['PBI.md']);
+		expect(vault.fm('PBI.md').parent).toBe('[[Epic]]');
 	});
 
-	it('ranks past a context row rather than refusing near one, writing only to the dragged note', async () => {
+	it('writes only the dragged note when Alt+arrow ranks it beside a context row', async () => {
 		const { view, containerEl, vault } = mixedView();
 		const tree = treeOf(containerEl);
 		view.selectItem(view.model?.byPath.get('Feature B.md') as never);
 
-		// Move up refuses for the same reason the outdent above does — Feature A ties
-		// Epic and PBI at order 10, so the gap is spent — and writes nothing. The
-		// outdent that follows is a DIFFERENT rank: Feature B leaving Epic's children
-		// for the top level, right after Epic itself. Nothing else ranks after Epic
-		// once Feature B is filtered out, so this succeeds — reading Epic's real order
-		// as data is exactly what the context-row rule has always allowed, and the
-		// write lands on Feature B.md alone. Epic.md, a note the Base excluded, is
-		// never touched by either step.
+		// Feature B moves above Feature A, which is a context row. The rank it takes is
+		// read FROM Feature A (one spacing below its order of 10), and Feature A itself is
+		// not written — the distinction the whole file turns on. `-990` rather than a
+		// midpoint because this fixture is sibling-scoped: Epic, Feature A and PBI all
+		// hold 10, so the global placement refuses and `dropPlacement`'s peer fallback
+		// answers, with Feature A the only peer and nothing ranked below it.
 		key(tree, 'ArrowUp', { altKey: true });
-		key(tree, 'ArrowLeft', { altKey: true });
 		await flush();
 		expect(vault.writeLog.map((w) => w.path)).toEqual(['Feature B.md']);
-		expect(vault.fm('Feature B.md')['order']).toBe(1010);
+		expect(vault.fm('Feature B.md')['order']).toBe(-990);
 	});
 });
 
