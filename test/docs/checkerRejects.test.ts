@@ -166,6 +166,18 @@ describe('the backlog tree', () => {
 			'backlog note has no `type` in its frontmatter',
 		],
 		[
+			'a product playbook whose wikilink names nothing',
+			(files) => {
+				// The whole point of exempting `product/` in SOURCE_DOCS rather than in
+				// RECEIVED_DOCS: that second list carries a LINK exemption as well, and a
+				// playbook is written here, so its links are owed a target exactly like
+				// `superpowers/`'s. The first version of the fix put it on the wrong list and
+				// this case is what proves it stayed off. (Codex, PR #229.)
+				files['docs/product/A playbook.md'] = '# A playbook\n\nFollow [[No Such Note]] first.\n';
+			},
+			'unresolved wikilink',
+		],
+		[
 			'a superpowers doc sharing a basename with a backlog note',
 			(files) => {
 				// Exempt from carrying a `type`, never from claiming a name: it is still
