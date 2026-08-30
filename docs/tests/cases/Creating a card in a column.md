@@ -87,8 +87,14 @@ everything created below.
    re-reading the notes above. The option is **`inferFolderHierarchy`** in the `.base`,
    shown in the options UI as *"Infer hierarchy from folder notes"* — not
    `folderHierarchy`, which is only what `resolveSettings` calls it internally, and
-   editing that name changes nothing. With it off, create one note from a column and note
-   where it landed; turn it on, create another from the same column, and compare.
+   editing that name changes nothing.
+
+   **Each mode needs a control, not the other mode.** With it off, create one note from a
+   column *and* one from the toolbar's **New** — the existing flow the criterion names —
+   and check they landed in the same folder. Turn it on and do both again. Comparing the
+   two column-created notes to each other proves only that the column path is consistent
+   with itself: both could land in the wrong folder, in both modes, and the comparison
+   would still look right. Found by review (Codex, PR #225).
 8. On a phone or tablet, try the `+` and the menu entry.
 
 ## Acceptance criteria
@@ -97,9 +103,10 @@ everything created below.
   render rather than after a manual refresh.
 - The note created from the no-state column carries no state key at all — not an empty
   value.
-- Each of the two notes created in step 7 lands where the tree's own creation puts it
-  under that mode; the column it was created from changes its state and nothing else
-  about its placement.
+- In each folder mode, the note created from a column lands in the same folder as one
+  created from the toolbar in that same mode — the column changes its state and nothing
+  else about its placement. Checked against that control in each mode, never against the
+  other mode's column note.
 - The menu and keyboard paths create the same note the `+` does, in the same column.
 - A stray column — one whose value `stateValues` does not name — offers creation by none
   of the three paths, and still takes a drop ([[New cards in place]] extension 1b).
