@@ -16,6 +16,9 @@ due: ""
 risk: ""
 assignee: ""
 iteration: ""
+dependsOn:
+  - "[[Creating a card in a column's state]]"
+  - "[[Creation from the column's three inputs]]"
 ---
 
 # Creating a card in a column
@@ -42,6 +45,10 @@ by [[Which pass answers a write]], and blocked on a rule nobody has decided. A s
 asserting a report that cannot appear would fail by design rather than find anything.
 This case gains those steps in the same change that builds the mechanism. Scope stated
 after review (Codex, PR #225) asked for the steps.
+
+This case cannot run until both Tasks under [[New cards in place]] have shipped, so it
+declares them in `dependsOn` rather than only in the preconditions below: a check whose
+subject does not exist yet is not ready, and readiness is what that property answers.
 
 **Preconditions** — `npm run test-build` has installed the plugin into this repository,
 this repository is open as a vault, and `docs/Product Backlog.base` is open in board

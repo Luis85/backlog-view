@@ -25,6 +25,7 @@ assignee: ""
 iteration: ""
 release: "[[Eratic Skunk]]"
 dependsOn:
+  - "[[Creating a card in a column's state]]"
   - "[[An Iteration focus offers a type the board cannot draw]]"
 ---
 
@@ -61,7 +62,9 @@ for the state preset to drift out of step.
 
 1. All three inputs call `promptCreateItem(host, [type], null, { state })` — the method
    [[Creating a card in a column's state]] extends. None of them plans a write beside
-   it.
+   it. That Task is this one's **prerequisite** and is declared in `dependsOn` for it:
+   the `{ state }` contract does not exist until it lands, and `order` ranks siblings
+   rather than gating readiness.
 2. **The requirements board only** — [[New cards in place]]'s own precondition since the
    same review. `renderBoard` is one frame with three callers —
    `board.ts` twice, for the requirements and Deliverables boards, and
