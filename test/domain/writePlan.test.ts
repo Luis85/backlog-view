@@ -256,7 +256,7 @@ describe('computeInitWrites', () => {
 		// NoType has neither a type nor a parent — only the opt-out puts it in scope.
 		const model = buildModel(vault.app, vault.entries(), unscoped);
 
-		const writes = computeInitWrites(model, settings);
+		const writes = computeInitWrites(model, settings).writes;
 
 		expect(writes.map((w) => w.file.path).sort()).toEqual(['Child.md', 'NoOrder.md', 'NoType.md']);
 		const noType = writes.find((w) => w.file.path === 'NoType.md');
@@ -281,14 +281,14 @@ describe('computeInitWrites', () => {
 		const model = buildModel(vault.app, vault.entries(), settings);
 
 		// Backfilling a plain note would stamp "type: Epic" onto it — the scope prevents that.
-		expect(computeInitWrites(model, settings)).toEqual([]);
+		expect(computeInitWrites(model, settings).writes).toEqual([]);
 	});
 
 	it('returns nothing when every item is complete', () => {
 		const vault = new FakeVault();
 		vault.addFile('Done.md', { frontmatter: { type: 'Epic', order: 10 } });
 		const model = buildModel(vault.app, vault.entries(), settings);
-		expect(computeInitWrites(model, settings)).toHaveLength(0);
+		expect(computeInitWrites(model, settings).writes).toHaveLength(0);
 	});
 
 	it('does not write a type for items whose parent is outside the view', () => {
@@ -296,7 +296,7 @@ describe('computeInitWrites', () => {
 		vault.addFile('Orphan.md', { parentLink: 'Missing' });
 		const model = buildModel(vault.app, vault.entries(), settings);
 
-		const writes = computeInitWrites(model, settings);
+		const writes = computeInitWrites(model, settings).writes;
 
 		// The orphan's real level is unknowable: it gets an order, never a type.
 		expect(writes).toHaveLength(1);
@@ -315,7 +315,7 @@ describe('computeInitWrites', () => {
 		const model = buildModel(vault.app, vault.entries(), focusSettings);
 		expect(model.focused).toBe(true);
 
-		const writes = computeInitWrites(model, focusSettings);
+		const writes = computeInitWrites(model, focusSettings).writes;
 		const byPath = new Map(writes.map((w) => [w.file.path, w]));
 
 		// One sequence for the whole tree, seeded past Epic.md's 10 and spent in DFS
@@ -336,7 +336,7 @@ describe('computeInitWrites', () => {
 		vault.addFile('F3.md', { frontmatter: { type: 'Feature' }, parentLink: 'Epic B' });
 		const model = buildModel(vault.app, vault.entries(), settings);
 
-		const writes = computeInitWrites(model, settings);
+		const writes = computeInitWrites(model, settings).writes;
 
 		// One sequence for the whole DFS. A counter per sibling group handed the first
 		// child of every group the same 1000, which under a global rank is a duplicate.
@@ -353,7 +353,7 @@ describe('computeInitWrites', () => {
 		vault.addFile('B.md', { frontmatter: { type: 'Epic' } });
 		const model = buildModel(vault.app, vault.entries(), settings);
 
-		const orders = computeInitWrites(model, settings)
+		const orders = computeInitWrites(model, settings).writes
 			.map((w) => w.order)
 			.filter((order): order is number => order !== undefined);
 
@@ -367,7 +367,7 @@ describe('computeInitWrites', () => {
 		typeless.addFile('Huge.md', { frontmatter: { type: 'Epic', order: 1e20 } });
 		typeless.addFile('Bare.md', { parentLink: 'Huge' });
 		const typelessModel = buildModel(typeless.app, typeless.entries(), settings);
-		expect(computeInitWrites(typelessModel, settings)).toEqual([
+		expect(computeInitWrites(typelessModel, settings).writes).toEqual([
 			{ file: expect.objectContaining({ path: 'Bare.md' }), typeName: 'Feature' },
 		]);
 
@@ -378,7 +378,7 @@ describe('computeInitWrites', () => {
 		ordinary.addFile('C.md', { frontmatter: { type: 'Epic' } });
 		ordinary.addFile('D.md', { frontmatter: { type: 'Epic' } });
 		const ordinaryModel = buildModel(ordinary.app, ordinary.entries(), settings);
-		expect(computeInitWrites(ordinaryModel, settings).map((w) => w.order)).toEqual([1010, 2010]);
+		expect(computeInitWrites(ordinaryModel, settings).writes.map((w) => w.order)).toEqual([1010, 2010]);
 	});
 
 	it('anchors the first blank on a ranked item elsewhere in the population, not on the walk', () => {
@@ -397,7 +397,7 @@ describe('computeInitWrites', () => {
 		vault.addFile('Child.md', { frontmatter: { type: 'Feature', order: -50 }, parentLink: 'Epic' });
 		const model = buildModel(vault.app, vault.entries(), settings);
 
-		const writes = computeInitWrites(model, settings);
+		const writes = computeInitWrites(model, settings).writes;
 
 		// One spacing clear of -50, on the low side — the Epic has to sit above every
 		// ranked note in the vault, this child included, even though DFS reaches the
@@ -428,7 +428,7 @@ describe('computeInitWrites', () => {
 		// 1500, not 2000: the second bound is the next rank ABOVE the floor whatever its
 		// level, so the value still lands in a gap nothing holds. Writing Epic B's own 2000
 		// would mint the duplicate `dropPlacement` reads as an unmigrated vault.
-		expect(computeInitWrites(model, settings)).toEqual([
+		expect(computeInitWrites(model, settings).writes).toEqual([
 			{ file: expect.objectContaining({ path: 'Blank.md' }), order: 1500 },
 		]);
 	});
@@ -446,7 +446,7 @@ describe('computeInitWrites', () => {
 		vault.addFile('Bug 1.md', { frontmatter: { type: 'Bug', order: 10 }, parentLink: 'Epic B' });
 		const model = buildModel(vault.app, vault.entries(), settings);
 
-		expect(computeInitWrites(model, settings)).toEqual([]);
+		expect(computeInitWrites(model, settings).writes).toEqual([]);
 	});
 
 	it('ranks every missing order distinctly without reordering the tree', () => {
@@ -461,7 +461,7 @@ describe('computeInitWrites', () => {
 		const model = buildModel(vault.app, vault.entries(), settings);
 		const before = drawn(model);
 
-		for (const write of computeInitWrites(model, settings)) {
+		for (const write of computeInitWrites(model, settings).writes) {
 			vault.setFrontmatter(write.file.path, { ...vault.fm(write.file.path), order: write.order });
 		}
 		const after = buildModel(vault.app, vault.entries(), settings);

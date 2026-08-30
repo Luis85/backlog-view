@@ -188,7 +188,7 @@ describe('computeInitWrites and the optional keys', () => {
 	it('stubs the configured axis keys, so nothing gains a placement', () => {
 		const { model, get } = build({ 'A.md': { type: 'Epic', order: 10 } });
 
-		const writes = computeInitWrites(model, AXES);
+		const writes = computeInitWrites(model, AXES).writes;
 
 		expect(writes).toHaveLength(1);
 		expect(writes[0].stubs).toEqual(['horizon', 'start', 'target']);
@@ -204,7 +204,7 @@ describe('computeInitWrites and the optional keys', () => {
 
 		// The gap this fills is the same one on every optional property: a key no note
 		// carries is one Obsidian's own editor cannot show and its picker cannot offer.
-		expect(computeInitWrites(model, settings)[0].stubs).toEqual([
+		expect(computeInitWrites(model, settings).writes[0].stubs).toEqual([
 			'state',
 			'startedDate',
 			'finishedDate',
@@ -217,7 +217,7 @@ describe('computeInitWrites and the optional keys', () => {
 	it('fills only the keys the note lacks', () => {
 		const { model } = build({ 'A.md': { type: 'Epic', order: 10, horizon: 'Now', start: '2026-08-03' } });
 
-		expect(computeInitWrites(model, AXES)[0].stubs).toEqual(['target']);
+		expect(computeInitWrites(model, AXES).writes[0].stubs).toEqual(['target']);
 	});
 
 	it('plans nothing for a note that carries every configured key', () => {
@@ -225,7 +225,7 @@ describe('computeInitWrites and the optional keys', () => {
 
 		// Present-but-empty is a key the note carries: the backfill fills gaps in the
 		// schema, and there is no gap left here.
-		expect(computeInitWrites(model, AXES)).toEqual([]);
+		expect(computeInitWrites(model, AXES).writes).toEqual([]);
 	});
 
 	it('creates no horizon key while the bucket axis is unconfigured', () => {
@@ -235,7 +235,7 @@ describe('computeInitWrites and the optional keys', () => {
 		const settings = { ...AXES, horizonValues: [] };
 		const { model } = build({ 'A.md': { type: 'Epic', order: 10 } }, settings);
 
-		expect(computeInitWrites(model, settings)[0].stubs).toEqual(['start', 'target']);
+		expect(computeInitWrites(model, settings).writes[0].stubs).toEqual(['start', 'target']);
 	});
 
 	it('stubs a date end only where the type has one', () => {
@@ -247,7 +247,7 @@ describe('computeInitWrites and the optional keys', () => {
 		// generated README already tells the reader this view will never place it by. That
 		// case was shipped and untested, and an automated reviewer found it.
 		const { model } = build({ 'Ship.md': { type: 'Milestone' }, 'A.md': { type: 'Epic', order: 10 } }, AXES);
-		const stubsFor = (path: string) => computeInitWrites(model, AXES).find((w) => w.file.path === path)?.stubs ?? [];
+		const stubsFor = (path: string) => computeInitWrites(model, AXES).writes.find((w) => w.file.path === path)?.stubs ?? [];
 
 		expect(stubsFor('Ship.md')).toEqual(['horizon', 'target']);
 		// Ordinary work is untouched: the narrowing is the type's, not the backfill's.
@@ -269,7 +269,7 @@ describe('computeInitWrites and the optional keys', () => {
 		for (const bars of [false, true]) {
 			const { model } = build(files, settingsWith({ horizonKey: 'horizon', startKey: 'start', targetKey: 'due', iterationBars: bars }));
 			const settings = settingsWith({ horizonKey: 'horizon', startKey: 'start', targetKey: 'due', iterationBars: bars });
-			expect(computeInitWrites(model, settings)[0].stubs).toEqual(['horizon', 'start', 'target']);
+			expect(computeInitWrites(model, settings).writes[0].stubs).toEqual(['horizon', 'start', 'target']);
 		}
 	});
 
@@ -277,7 +277,7 @@ describe('computeInitWrites and the optional keys', () => {
 		const settings = settingsWith({ horizonKey: 'horizon' });
 		const { model } = build({ 'A.md': { type: 'Epic', order: 10 } }, settings);
 
-		expect(computeInitWrites(model, settings)[0].stubs).toEqual(['horizon']);
+		expect(computeInitWrites(model, settings).writes[0].stubs).toEqual(['horizon']);
 	});
 
 	it('leaves a context row alone', () => {
@@ -288,7 +288,7 @@ describe('computeInitWrites and the optional keys', () => {
 		const entries = vault.entries().filter((e) => e.file.path === 'PBI.md');
 		const model = buildModel(vault.app, entries, AXES);
 
-		const writes = computeInitWrites(model, AXES);
+		const writes = computeInitWrites(model, AXES).writes;
 
 		expect(writes.map((w) => w.file.path)).toEqual(['PBI.md']);
 	});

@@ -83,7 +83,7 @@ describe('two ladders', () => {
 		// it would move the note into the plan, permanently, with nobody asking.
 		expect(displayType(get('Untyped under suite'))).toBe('Test case');
 		expect(displayType(get('Untyped under case'))).toBe('Task');
-		const writes = computeInitWrites(model, settings);
+		const writes = computeInitWrites(model, settings).writes;
 		const typeOf = (path: string) => writes.find((w) => w.file.path === path)?.typeName;
 		expect(typeOf('Untyped under suite.md')).toBe('Test case');
 		expect(typeOf('Untyped under case.md')).toBe('Task');

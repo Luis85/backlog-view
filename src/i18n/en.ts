@@ -1435,6 +1435,21 @@ export const en = {
 	'init.outcomeWithColumns':
 		'Product Backlog: {summary}. Add them in the properties menu to show them as columns.',
 	'init.nothingToDo': 'All items already have the properties this view writes.',
+	/**
+	 * A rank the backfill could not fill, said as its OWN sentence rather than as a
+	 * fragment of the summary above: the summary lists what was done, and this is what was
+	 * not. It also replaces `init.nothingToDo`, which is a false statement whenever this
+	 * number is above zero.
+	 *
+	 * It names Seed and not the ✨ the user just pressed. The backfill keeps a blank where
+	 * it is DRAWN, so where nothing fits between the rows around it no repeat press can
+	 * ever fill it; Seed rewrites every rank from the hierarchy and is bounded by nothing.
+	 */
+	'init.ranksSkipped': {
+		one: '{count} item was left without a rank, because no number fits where it is drawn. Run "Seed ranks from the hierarchy" from the command palette to renumber the whole backlog.',
+		other:
+			'{count} items were left without a rank, because no number fits where they are drawn. Run "Seed ranks from the hierarchy" from the command palette to renumber the whole backlog.',
+	},
 
 	/** `{parts}` is joined by `list()` — grammar, so it follows the catalog's locale. */
 	'undo.outcome': 'Undo: {parts}.',

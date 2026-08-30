@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { FakeVault } from '../helpers/vault';
+import { Notice } from '../helpers/obsidian-mock';
 import { flush, makeView, noOptionalProperties, refresh, titlesOf, useViewHarness } from '../helpers/view';
 
 useViewHarness();
@@ -72,6 +73,29 @@ describe('the backfill and the focused order', () => {
 
 		expect(vault.fm('A1.md')['order']).toBeUndefined();
 		expect(titlesOf(containerEl)).toEqual(before);
+	});
+
+	it('says the rank was skipped rather than claiming there was nothing to do', async () => {
+		// The same vault as above, asked what the user is TOLD. A refused rank used to be
+		// reduced to `null` inside the plan, so the action reported the one outcome that
+		// was certainly false: every other property was already present, no write was
+		// planned, and the ✨ said the backfill had nothing left to do while a blank rank
+		// stayed blank. The remedy named is the one that reaches this row — the backfill
+		// bounds a blank by what is drawn around it and here nothing fits, while Seed
+		// rewrites every rank and is not bounded by anything.
+		const vault = new FakeVault();
+		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 1000 } });
+		vault.addFile('A1.md', { frontmatter: { type: 'Feature' }, parentLink: 'Epic A' });
+		vault.addFile('Epic B.md', { frontmatter: { type: 'Epic', order: 2000 } });
+		vault.addFile('B1.md', { frontmatter: { type: 'Feature', order: 500 }, parentLink: 'Epic B' });
+		const { containerEl } = makeView(vault, noOptionalProperties(), { focus: 'Feature' });
+
+		initButton(containerEl)?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await flush();
+
+		expect(Notice.messages).toEqual([
+			'1 item was left without a rank, because no number fits where it is drawn. Run "Seed ranks from the hierarchy" from the command palette to renumber the whole backlog.',
+		]);
 	});
 
 	it('still flips a pair whose EXISTING ranks contradict the drawn order', async () => {

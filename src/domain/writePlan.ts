@@ -1173,6 +1173,14 @@ function initWriteFor(item: BacklogItem, settings: BacklogSettings, nextOrder: (
  * row drawn later under a different parent can hold a LOWER rank than the row drawn
  * before this one, and then no number is both above the first and below the second.
  *
+ * **That refusal is COUNTED and returned, which is why this answers a plan rather than an
+ * array.** Reduced to a null inside the walk it left the caller unable to tell "nothing was
+ * missing" from "a rank was missing and could not be filled", and `runInit` reported the
+ * first — `All items already have the properties this view writes`, said over a note whose
+ * rank is still blank. A false statement rather than a gap, so the number of blanks left
+ * that way comes out with the writes and the action names `Seed ranks from the hierarchy`,
+ * the one pass not bounded by what is drawn around the row.
+ *
  * What it does NOT promise is that a projection looks the same afterwards, and that is the
  * whole reason `Seed ranks from the hierarchy` (`domain/rankSpread.ts`) exists: a focused
  * list renders in tree order while any of its rows is unranked and in rank order once none
@@ -1181,8 +1189,15 @@ function initWriteFor(item: BacklogItem, settings: BacklogSettings, nextOrder: (
  * rank and can. Both the guarantee and the residual are pinned in
  * `test/view/backfillFocusOrder.test.ts`.
  */
-export function computeInitWrites(model: BacklogModel, settings: BacklogSettings): ItemWrite[] {
+export function computeInitWrites(
+	model: BacklogModel,
+	settings: BacklogSettings,
+): { writes: ItemWrite[]; unplaceable: number } {
 	const writes: ItemWrite[] = [];
+	// Counted where the refusal happens rather than re-derived afterwards: `nextOrder` is
+	// asked exactly once per blank rank, so a second pass would be a second idea of which
+	// rows are blank.
+	let unplaceable = 0;
 	// The DRAWN sequence — DFS preorder over the real tree, context rows included, because
 	// one is on screen and a rank that ignored it would move a row the user can see.
 	const drawn: BacklogItem[] = [];
@@ -1225,7 +1240,10 @@ export function computeInitWrites(model: BacklogModel, settings: BacklogSettings
 	const nextOrder = (): number | null => {
 		while (above < occupied.length && occupied[above] <= (floor ?? -Infinity)) above++;
 		const placed = rankBetween(floor, lowerOf(ceiling, occupied[above] ?? null));
-		if ('refusal' in placed) return null;
+		if ('refusal' in placed) {
+			unplaceable++;
+			return null;
+		}
 		floor = placed.order;
 		return placed.order;
 	};
@@ -1241,7 +1259,7 @@ export function computeInitWrites(model: BacklogModel, settings: BacklogSettings
 		const write = initWriteFor(item, settings, nextOrder);
 		if (write) writes.push(write);
 	}
-	return writes;
+	return { writes, unplaceable };
 }
 
 /** The smaller of two ranks, either of which may be absent. */

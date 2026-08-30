@@ -138,7 +138,7 @@ describe('the ✨ backfill stubs no key a release may not hold', () => {
 		vault.addFile('1.0.md', { frontmatter: { type: 'Release', order: 10 } });
 		vault.addFile('Work.md', { frontmatter: { type: 'PBI', order: 20 } });
 		const model = buildModel(vault.app, vault.entries(), settings);
-		const writes = computeInitWrites(model, settings);
+		const writes = computeInitWrites(model, settings).writes;
 
 		// What ✨ OFFERS, first, and asserted apart from the frontmatter below: the two
 		// guards catch this in different windows, so each has to be able to fail alone —

@@ -284,7 +284,7 @@ export async function runInit(host: BacklogViewHost): Promise<void> {
 	const adopted = host.adoptDefaultProperties();
 	const model = host.model;
 	if (!model) return;
-	const writes = computeInitWrites(model, host.settings);
+	const { writes, unplaceable } = computeInitWrites(model, host.settings);
 	// applySafely reports its own notices when blocked or failing — only claim
 	// success for the writes when the whole batch actually went through.
 	const applied = writes.length > 0 && (await host.applySafely(writes)) !== null;
@@ -306,7 +306,11 @@ export async function runInit(host: BacklogViewHost): Promise<void> {
 	const summary = list(done);
 	if (done.length > 0)
 		new Notice(adopted.length > 0 ? t('init.outcomeWithColumns', { summary }) : t('init.outcome', { summary }));
+	// A blank rank no number fits is reported whatever else happened, and it is what
+	// `init.nothingToDo` must not be said over: that sentence claims every property is
+	// present, and this one is not.
+	if (unplaceable > 0) new Notice(t('init.ranksSkipped', { count: unplaceable }));
 	// Nothing bound and nothing to write is the one case with no outcome to report;
 	// a failed batch has already reported itself.
-	else if (writes.length === 0) new Notice(t('init.nothingToDo'));
+	else if (done.length === 0 && writes.length === 0) new Notice(t('init.nothingToDo'));
 }

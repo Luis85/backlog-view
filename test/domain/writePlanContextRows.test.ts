@@ -15,7 +15,7 @@ describe('computeInitWrites with parents outside the filter', () => {
 
 		// The Epic is present only as context; only the match is missing an order
 		expect(model.roots[0].outsideFilter).toBe(true);
-		expect(computeInitWrites(model, settings).map((w) => w.file.path)).toEqual(['PBI.md']);
+		expect(computeInitWrites(model, settings).writes.map((w) => w.file.path)).toEqual(['PBI.md']);
 	});
 });
 
@@ -146,7 +146,7 @@ describe('backfill ranking beside a context sibling', () => {
 		expect(epic.children.map((c) => c.title)).toEqual(['Ranked', 'Context', 'Unranked']);
 		expect(model.byPath.get('Context.md')?.outsideFilter).toBe(true);
 
-		const writes = computeInitWrites(model, settings);
+		const writes = computeInitWrites(model, settings).writes;
 
 		// One spacing past everything visible: filling in a blank must not reorder
 		// the tree. Ignoring the context row's 1000 would rank it 1000 and move it up.
