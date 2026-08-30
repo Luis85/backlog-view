@@ -85,6 +85,7 @@ skill exists to stop.
 | Tests | Node, jsdom, or both — and what does the coverage threshold move to? |
 | Live vault | What can Obsidian only answer in a real vault? |
 | Register | Does a new module in `src/` need a use case's `## Where it lives` or an ADR? |
+| Changelog | What does `[Unreleased]` gain? |
 | ADR | Was an alternative genuinely available? If not, there is no ADR. |
 
 The ADR row is answered with the decision itself or not at all. `docs/adrs/README.md`
@@ -94,7 +95,6 @@ documentation, not an ADR. A decomposition does not hold any of that on its own,
 the row says yes, ask for those five before phase 4 rather than at the close: an ADR
 written from a one-line "an ADR is owed" is the empty record the register's own gate cannot
 see, since it checks the five headings and never what is under them.
-| Changelog | What does `[Unreleased]` gain? |
 
 **Exit when** every row has a note or a stated reason.
 
@@ -107,7 +107,11 @@ type table in `docs/README.md` is the vocabulary, and three of its answers are e
   it.
 - A **non-code artifact** the work owes is a `Deliverable`.
 - A **live-vault check** is a `Test case`, and it hangs from a `Test suite` — **not from
-  this PBI**. It is still part of the picture; it just parents elsewhere.
+  this PBI**. It is still part of the picture; it just parents elsewhere. Name the suite it
+  joins; when no existing suite fits, the new `Test suite` is itself an output of this
+  decomposition, and filing the case under an unrelated suite instead is the failure. A
+  `Test suite` is a **root** — no `parent`, ranked among the suites already in
+  `docs/tests/suites/`.
 
 Then the ranks, **against the parent each child actually got** — a `Test case` ranks among
 its `Test suite`'s cases, not among the PBI's children. Same rule either way: unique among
@@ -121,8 +125,9 @@ hierarchy on purpose — so it is ranked against nothing and gated by none of th
 above. It is still an output of this decomposition.
 
 That makes two kinds of output, and the second kind is the one that gets lost: **a
-`Test case` and an ADR are part of the picture and are not the PBI's children.** Keep them
-by name from here on — they travel through phase 4 and the handoff like everything else.
+`Test case`, any `Test suite` it needed, and an ADR are part of the picture and are not the
+PBI's children.** Keep them by name from here on — they travel through phase 4 and the
+handoff like everything else.
 
 **Exit when** every child has a type legal under its parent and a free `order`, and every
 output that is neither is named as such.
@@ -146,15 +151,18 @@ unlocks writing.**
    `Why this exists` and a `Preconditions` line; an `Issue` that records **a decision taken
    or a limitation accepted** says which in its first heading.
 
-   **It does not document one for every type this skill can produce, and two of the gaps
+   **It does not document one for every type this skill can produce, and three of the gaps
    are on paths phase 3 sends work down.** An `Issue` holding an **open question** is one:
    the register names the question as an Issue and then gives shapes for the decision and
    the limitation only, so the documented headings would have the note answer a question it
-   exists because nobody can answer. A `Deliverable` is the other: no row in the shape
-   table, and no note of that type anywhere in `docs/` to read as precedent. Ask the user
-   for the shape rather than inventing one — the register owns shapes, this skill does not,
-   and a shape invented here is ungated prose that passes the gate this skill names as its
-   check. The gap is itself worth an `Issue` against `docs/`; offer it, do not write it
+   exists because nobody can answer. A `Deliverable` is the second: no row in the shape
+   table, and no note of that type anywhere in `docs/` to read as precedent. For those two,
+   ask the user for the shape rather than inventing one — the register owns shapes, this
+   skill does not, and a shape invented here is ungated prose that passes the gate this
+   skill names as its check. A new `Test suite` is the third gap and the one that needs no
+   asking: no row in the shape table either, but `docs/tests/suites/` holds several to read
+   as precedent, so follow the shortest of them — the prose that says what the group walks,
+   and nothing to check itself. The gap is itself worth an `Issue` against `docs/`; offer it, do not write it
    unasked.
 
    Whatever the shape, the note says what produced it — the PBI slice or the perspective
@@ -170,9 +178,10 @@ unlocks writing.**
    writing-plans skill. Do not write code.
    ```
 
-   The second half is not decoration. A `Test case` and an ADR are not reachable from the
-   PBI's children, so a handoff that names only those hands the planner a picture missing
-   exactly the verification and the decision this sweep just established were needed.
+   The second half is not decoration. A `Test case`, its `Test suite` and an ADR are not
+   reachable from the PBI's children, so a handoff that names only those hands the planner a
+   picture missing exactly the verification and the decision this sweep just established
+   were needed.
 
 ## Red flags — stop and go back
 
