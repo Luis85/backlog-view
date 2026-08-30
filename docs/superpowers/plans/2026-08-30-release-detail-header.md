@@ -284,15 +284,19 @@ should not have."
 ### Task 3: ✨ binds the three non-property options
 
 **Files:**
-- Modify: `src/view/release/init.ts` (extend `runReleaseInit` — and nothing else; the
-  candidate list it sweeps was declared in Task 2)
-- Test: `test/view/release/init.test.ts`
+- Modify: `src/view/release/init.ts` (export `wouldBindValue`, extend `runReleaseInit` — and
+  nothing else declared here; the candidate list both read was declared in Task 2)
+- Modify: `src/view/release/initControl.ts` (`anythingToBind` asks the value half too)
+- Modify: `src/view/release/releaseView.ts` (the `noReleases` screen's `fixes`)
+- Test: `test/view/release/init.test.ts`, `test/view/release/initControl.test.ts`
 
 **Interfaces:**
 - Consumes: `DEFAULT_RELEASED_VALUES` (Task 1); `RELEASE_SUGGESTED_VALUES` and its
   `ValueCandidate` type, both **declared in Task 2** and only READ here; `config.get(option)
   !== undefined` as the "touched" test, the rule `adoptCandidates` documents.
-- Produces: nothing exported. The sweep inside `runReleaseInit`, and that alone.
+- Produces: `wouldBindValue(config, candidate)` — the one question "would a press bind this?"
+  — plus the sweep inside `runReleaseInit` that decides a write with it, and the OFFER that
+  asks it before drawing the button.
 - **This contract said "Produces `RELEASE_SUGGESTED_VALUES`" until 2026-08-30**, after the
   step below had already been corrected not to declare it — so a reader following the summary
   rather than the step still duplicated the identifier and broke the checkpoint (found by
@@ -432,9 +436,44 @@ Then extend `runReleaseInit`, after the existing property loop and **before** `r
 	}
 ```
 
+**And the OFFER, which is half of this task rather than a follow-up.** A sweep the control
+does not know about is the offer and the action coming apart, which is exactly what
+`adoptableReleaseKeys`' own docblock forbids: an upgraded vault with every property bound and
+one of the three closing options still unset would hide a ✨ that, pressed, would do real
+work. So the same question the sweep asks is exported and asked by the control.
+
+Export the guard from `init.ts` rather than restating it — `wouldBindValue(config, candidate)`,
+untouched and a non-empty computed value — and have the sweep call it, so there is one rule
+and not two copies. Then in `src/view/release/initControl.ts`, `anythingToBind` asks it of
+every value candidate the `fixes` list names, after its existing property question:
+
+```ts
+	const valueCandidates = RELEASE_SUGGESTED_VALUES.filter((candidate) => fixes.includes(candidate.option));
+	return valueCandidates.some((candidate) => wouldBindValue(view.config, candidate));
+```
+
+And in `src/view/release/releaseView.ts`, the `noReleases` screen passes `fixes` DERIVED from
+both lists rather than the property one alone — a base with zero releases is the first-use
+case that most needs every binding:
+
+```ts
+			renderReleaseInit(this, empty, 'empty', [
+				...RELEASE_SUGGESTED_KEYS.map((candidate) => candidate.option),
+				...RELEASE_SUGGESTED_VALUES.map((candidate) => candidate.option),
+			]);
+```
+
+Derived, never a second list written out here: a further candidate is then covered by being
+declared in `init.ts` and not by a list beside it going stale. `initControl.test.ts` gains the
+case — every property bound, one value option unset, the button still offered.
+
+**This half was in no executable step until 2026-08-30** (found by review, Codex, PR #221).
+It shipped inside this task's own commit (`2c53cdf`), and the plan named it only in Task 7's
+register update — so the tasks as written produced the sweep and left the button hidden.
+
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `npx vitest run test/view/release/init.test.ts`
+Run: `npx vitest run test/view/release/init.test.ts test/view/release/initControl.test.ts`
 Expected: PASS, all of them — **including `sees a folder bind that no property key reflects`**, which proves Task 2's widening and could not go green until this sweep existed.
 
 - [ ] **Step 5: Watch the catalog invariant fail**
@@ -453,7 +492,7 @@ Expected: all clean. `analyze` needs a coverage file — it runs in Task 7.
 - [ ] **Step 7: Commit**
 
 ```bash
-git add src/view/release/init.ts test/view/release/init.test.ts
+git add src/view/release/init.ts src/view/release/initControl.ts src/view/release/releaseView.ts test/view/release/init.test.ts test/view/release/initControl.test.ts
 git commit -m "Let the sparkle bind the three options that are not properties
 
 The folder takes its option's own placeholder, the rule all seven
@@ -476,6 +515,11 @@ literals agreeing."
 - Modify: `src/view/release/renderScope.ts` (`drawReleased`) and its docblock above it
 - Modify: `src/view/release/releaseEdits.ts` (`focusControl`/`save` gain a `fallback`)
 - Create: `test/view/release/releaseHeader.test.ts`
+- Modify: `test/view/release/releaseEdits.test.ts` and `test/harness/releaseHarness.test.ts` —
+  both carry cases written against the UNCONDITIONAL invitation, so both fail on the narrowed
+  rule until they are adjusted. Named here as well as in the step below because a file a task
+  must change is part of its contract, and this one was in neither its file list nor its
+  staging command until 2026-08-30 (found by review, Codex, PR #221)
 - **Unchanged, and that is the correction of 2026-08-30:** `src/i18n/en.ts` keeps
   `release.scope.markReleased`, and `styles/releaseScope.css` keeps
   `button.pbl-rel-released-unset`. The first draft of this task deleted both on the premise
@@ -602,7 +646,7 @@ Rewrite the paragraph in its docblock that reads *"An UNSET date draws the invit
 - [ ] **Step 4: Run tests to verify they pass**
 
 Run: `npx vitest run test/view/release/releaseHeader.test.ts && npm run lint && npm run build`
-Expected: PASS, and `build` clean. Also run `test/view/release/releaseEdits.test.ts` and `test/view/releaseHarness.test.ts` — both carry cases written against the unconditional invitation and both need adjusting to the narrowed rule.
+Expected: PASS, and `build` clean. Also run `test/view/release/releaseEdits.test.ts` and `test/harness/releaseHarness.test.ts` — both carry cases written against the unconditional invitation and both need adjusting to the narrowed rule. (`test/harness/`, not `test/view/`: the plan said the latter until 2026-08-30 and no such file exists.)
 
 - [ ] **Step 5: Watch the paired invariant fail**
 
@@ -614,7 +658,7 @@ Expected: FAIL on `draws the invitation when the status is already released`, wh
 - [ ] **Step 6: Commit**
 
 ```bash
-git add src/view/release/renderScope.ts src/view/release/releaseEdits.ts test/view/release/releaseHeader.test.ts
+git add src/view/release/renderScope.ts src/view/release/releaseEdits.ts test/view/release/releaseHeader.test.ts test/view/release/releaseEdits.test.ts test/harness/releaseHarness.test.ts
 git commit -m "Draw the released date only where Mark as released cannot cover it"
 ```
 
