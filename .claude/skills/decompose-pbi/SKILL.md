@@ -200,7 +200,10 @@ the gate not happening.
    `Test case`, a `Test suite` and an ADR carry no `parent`, so that link is the only thing
    a rerun's phase 0 search can find them by, and prose naming the same PBI is invisible
    to it.
-2. Run `npm run docs` and fix what it reports.
+2. Run `npm run check` and fix what it reports. The full gate, not `npm run docs` alone:
+   the diff is markdown under `docs/`, so the register step is realistically the only one
+   of the five with anything to say about it, but root `CLAUDE.md` states the rule
+   unconditionally and a skill that carves its own exception is where exceptions start.
 3. Commit the notes alone. No push, no pull request.
 4. Print exactly this, and nothing else in the block:
 

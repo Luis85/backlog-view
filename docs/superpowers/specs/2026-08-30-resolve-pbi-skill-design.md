@@ -212,8 +212,8 @@ In this order, so the work lands in one commit and the prompt is the last thing 
 `npm run check`, not `npm run docs`. The diff is markdown under `docs/`, so the register
 gate is the only one of the five with anything to say about it — but root `CLAUDE.md` states
 the rule unconditionally, and a skill that carves its own exception is where exceptions
-start. `decompose-pbi`'s close runs `npm run docs` alone and has the same gap; this spec
-does not inherit it.
+start. `decompose-pbi`'s close had the same gap and was corrected to match, so the two
+skills in this chain now commit under one rule.
 
 ### The prompt
 
