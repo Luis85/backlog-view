@@ -123,9 +123,11 @@ mistaken order or a misread deliverable is caught here or not at all.
 Every rule this skill needs already exists in this repository. `decompose-pbi`'s rule
 applies unchanged: read them, do not restate them.
 
-**The cycle is stated once, in the prompt, never per child** — red, green, commit, and
-`npm run check` (all five steps) before a task is called done. Copied into every note it
-drifts. What *is* per child is the specific: which test file, which assertion, which
+**The cycle is stated once, in the prompt, never per child** — red, green, **`npm run
+check`, then commit**. That order is not a preference: root `CLAUDE.md` requires all five
+steps to pass *before* committing, so a commit taken first is an unverified commit that
+costs a cleanup commit or a rewrite when lint, coverage, fallow or the docs register
+refuses it. Copied into every note the cycle drifts. What *is* per child is the specific: which test file, which assertion, which
 threshold moves.
 
 **The prompt names the reading rather than carrying it:** root `CLAUDE.md`, the layer guide
@@ -153,10 +155,11 @@ In this order, so the work lands in one commit and the prompt is the last thing 
 Fenced, and nothing else in the block:
 
 - read root `CLAUDE.md`, the layer guides for the layers touched, and `test/CLAUDE.md`
-- read `docs/requirements/<Title>.md`, then its children **by path, in rank order**
+- read `docs/requirements/<Title>.md`, then its children **by path, in rank order** — a
+  saved handoff `Task` is **not** among them (below)
 - read every non-child output **by path**, each marked subagent's or human's
 - execute with `superpowers:subagent-driven-development`, one task per child
-- red, green, commit; `npm run check` before a task is done
+- red, green, `npm run check`, then commit — all five steps pass before the commit, never after
 - do not re-open the PBI — a child that contradicts it goes back to `adding-backlog-items`
 
 Naming the non-child outputs is not decoration, for the same reason `decompose-pbi`'s
@@ -168,6 +171,21 @@ the verification and the decision the sweep established were needed.
 
 A question with no default, asked once: save this prompt as a `Task` under the PBI for a
 later run?
+
+The saved note is a `Task` child of the PBI, and that makes it a sibling of the work it
+executes. **It is never itself dispatched.** A prompt that says "one task per child" and a
+note that is both a child and the prompt is a self-reference: the executor's last dispatch
+would be an implementer told to run the prompt it is already running. Two things keep that
+shut, and both are needed because they fail differently:
+
+- **The prompt enumerates the children it executes by path.** A path list cannot pick up a
+  note written after it, so the saved note is outside the set by construction.
+- **The saved note says so in its own first line** — *this note is the handoff, not a task
+  to implement.* That is what a later run catches, since a rerun re-derives the children
+  from `parent` and would otherwise find it there.
+
+Its own `Outcome` is what closes it: the note is done when the run it handed off is done,
+which is the same condition as its `Acceptance criteria` below.
 
 On yes, one note at the next free rank among the PBI's children, in the shape
 `docs/README.md` documents for a `Task` — no invented shape:
@@ -189,5 +207,7 @@ On yes, one note at the next free rank among the PBI's children, in the shape
 - Execution detail went into the prompt instead of the note.
 - A plan file appeared in `docs/superpowers/plans/`.
 - A child was re-scoped to fit the order, instead of the order being corrected.
+- The saved handoff `Task` appears in the set of children the prompt executes.
+- The prompt puts the commit before `npm run check`.
 - You wrote a note before phase 3 to keep track.
 - You started writing source code.
