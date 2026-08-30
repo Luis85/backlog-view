@@ -441,6 +441,24 @@ export function anchoredOrder(
 	anchor: BacklogItem | null,
 	side: 'before' | 'after',
 ): RankResult {
+	// **An unranked CONTEXT row is skipped, not refused.** It can never be given a
+	// rank — `computeInitWrites` skips `outsideFilter` rows and `spreadAround` filters
+	// them, both correctly, because the view may not write to a note the Base excluded
+	// — so refusing beside one is a permanent block behind advice that cannot work:
+	// `rank.unranked` tells the user to run the backfill, and the backfill is one of
+	// the two things that will not touch it. Constraining nothing, it is ignored here.
+	//
+	// An unranked WRITABLE row still refuses. The backfill CAN rank that one, so the
+	// advice is actionable and the refusal is a prompt rather than a dead end. The two
+	// look identical at the `order === null` test and must not be treated alike.
+	const usable = ranked.filter((item) => !(item.outsideFilter && item.order === null));
+	// The anchor itself can be one: a context parent is a legal destination for
+	// `New <child>`. There is no positional information in a rankless row, so the
+	// child goes to the end rather than nowhere.
+	if (anchor !== null && anchor.outsideFilter && anchor.order === null) {
+		return anchoredOrder(usable, null, 'after');
+	}
+	ranked = usable;
 	if (ranked.length === 0) return { order: ORDER_SPACING };
 	let prev: BacklogItem | null;
 	let next: BacklogItem | null;
