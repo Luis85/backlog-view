@@ -140,14 +140,29 @@ export function outdent(host: BacklogViewHost, item: BacklogItem): void {
 }
 
 /**
- * Nest the item under its previous visible sibling, at the end of its children.
- * An append, so a partially loaded destination is fine: last is last either way.
+ * Where indenting would put the item — last among the previous visible sibling's children
+ * — or null when that is unavailable. An append, so a partially loaded destination is
+ * fine: last is last either way.
+ *
+ * Exported for the same reason `outdentTarget` is, and it was the one structural command
+ * without it: an append still has to be RANKED, and the row after the new parent's last
+ * child in the global population can be unranked or a spacing away, so the placement
+ * refuses. Gated on the previous sibling alone, the menu offered `Indent under X`, wrote
+ * nothing and said nothing — the same defect `Move to top` and `Move to bottom` were fixed
+ * for, in the command that fix did not reach.
  */
-export function indent(host: BacklogViewHost, item: BacklogItem): void {
+export function indentTarget(host: BacklogViewHost, item: BacklogItem): DropTarget | null {
 	const newParent = visibleNeighbor(host, item, -1);
-	if (!newParent) return;
+	if (!newParent) return null;
 	const peers = newParent.children.filter((s) => s !== item);
-	void host.performDrop(item, { parent: newParent, peers, insertIndex: peers.length });
+	const target: DropTarget = { parent: newParent, peers, insertIndex: peers.length };
+	return plans(host, item, target) ? target : null;
+}
+
+/** Nest the item under its previous visible sibling, at the end of its children. */
+export function indent(host: BacklogViewHost, item: BacklogItem): void {
+	const target = indentTarget(host, item);
+	if (target) void host.performDrop(item, target);
 }
 
 /**

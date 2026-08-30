@@ -123,6 +123,34 @@ describe('context menu', () => {
 		expect(titles).not.toContain('Move to bottom');
 	});
 
+	/**
+	 * Indent is the last structural command to get a preflight, and it needed one for the
+	 * same reason `Move to bottom` did: it appends after the new parent's last child — or
+	 * after the parent itself, childless — which is a placement the global population can
+	 * refuse. Gated on `prev` alone the entry was offered, did nothing and said nothing.
+	 *
+	 * Two-sided, because a gate that is simply off passes the withholding half: C2 indents
+	 * under C1, whose append runs into the un-backfilled C4 and refuses; C4 indents under
+	 * C2, whose append is past the end of the population and works.
+	 */
+	it('withholds indent when the nesting would refuse, and offers it where it works', () => {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('C1.md', { frontmatter: { type: 'Feature', order: 20 }, parentLink: 'Epic' });
+		vault.addFile('C2.md', { frontmatter: { type: 'Feature', order: 30 }, parentLink: 'Epic' });
+		// No order, so it sorts last in the group AND last globally — the row an append
+		// after C1 lands next to, and the one that makes the rank `unranked`.
+		vault.addFile('C4.md', { frontmatter: { type: 'Feature' }, parentLink: 'Epic' });
+		const { containerEl } = makeView(vault);
+		clickExpandAll(containerEl);
+
+		rowByTitle(containerEl, 'C2').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+		expect(Menu.lastShown?.items.map((i) => i.titleText)).not.toContain('Indent under "C1"');
+
+		rowByTitle(containerEl, 'C4').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+		expect(Menu.lastShown?.items.map((i) => i.titleText)).toContain('Indent under "C2"');
+	});
+
 	it('sets the type through the submenu', async () => {
 		const vault = fixture();
 		const { containerEl } = makeView(vault);

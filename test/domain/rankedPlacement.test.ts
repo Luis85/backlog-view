@@ -247,15 +247,26 @@ describe('the peer fallback checks its own result', () => {
 		});
 	});
 
-	it('ignores a context row on the number: a refusal there names a remedy that cannot run', () => {
-		// The rows the check reads are the WRITABLE ones, for `distinctlyRanked`'s own
-		// reason: an excluded row's rank is not in the order the read side sorts, and the
-		// backfill this refusal would send the user to skips it forever. Refusing here
-		// would be a permanent block behind advice that cannot work.
-		const list = [...ranked(10, 10, 20), contextRow(-990)];
-		const [, b1, z] = list;
-		expect(dropPlacement(z, { parent: null, peers: [b1], insertIndex: 0 }, list)).toEqual({
-			order: -990,
+	it('counts a context row: a rank is taken whoever is allowed to write it', () => {
+		// C(-990) is a row the Base excluded — ranked, on screen, unwritable. A'(10) and
+		// A(10) tie at the drop site, so the fallback opens and prepends one spacing below
+		// the first peer: -990, which is C's.
+		//
+		// Both answers describe a dead end, so the question is which. ACCEPTING writes the
+		// collision: every later placement at this site then refuses `tied` forever, and the
+		// duplicate is latent — if C's filter membership flips (a `hide done` filter
+		// switched off, the note edited back into the results) two WRITABLE rows hold -990
+		// and the focused view silently drops to tree order. REFUSING merely declines one
+		// gesture, which the user recovers from by dropping elsewhere.
+		//
+		// Stated no wider than measured: a writable/context tie does not break focused
+		// ordering TODAY, because `inRankOrder` reads distinctness off the writable rows
+		// alone. The harm is the permanent local refusal and the latent duplicate, not an
+		// immediate drop to tree order.
+		const list = [contextRow(-990), ...ranked(10, 10, 20, 30)];
+		const [, , a, b, z] = list;
+		expect(dropPlacement(z, { parent: null, peers: [a, b], insertIndex: 0 }, list)).toEqual({
+			refusal: 'tied',
 		});
 	});
 });

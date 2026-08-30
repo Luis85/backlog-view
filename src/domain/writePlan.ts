@@ -656,6 +656,12 @@ export function computeScheduleWrites(
  * them. `tied` reaches a notice only when the peer fallback fails to answer — refusing
  * itself, or producing a number another row already holds; when it answers a free one,
  * `dropPlacement` returns that rank and nothing is said.
+ *
+ * **One case where the backfill is advice that cannot work**, recorded here for the task
+ * that wires the notice: when the row holding the number is one the Base EXCLUDED, no write
+ * path may ever move it, so running the backfill changes nothing at that site. The refusal
+ * is still right — see `rankTaken` for why the alternative is worse — but the sentence
+ * offered with it would be false, and this refusal cannot tell the two apart from here.
  */
 export type RankRefusal = 'gapSpent' | 'tied' | 'unranked';
 export type RankResult = { order: number } | { refusal: RankRefusal };
@@ -874,14 +880,27 @@ export function dropPlacement(dragged: BacklogItem, target: DropTarget, ranked: 
 /**
  * Whether some OTHER row already holds this rank.
  *
- * Two exclusions, both load-bearing. The dragged row itself, or a drop landing where the
- * item already is would refuse for a collision with nobody. And every `outsideFilter` row,
- * for `distinctlyRanked`'s own reason — an excluded row's rank is not in the order the read
- * side sorts, and no write path may ever move it, so refusing beside one is a permanent
- * block behind advice that cannot work.
+ * One exclusion, and it is load-bearing: the dragged row itself, or a drop landing where
+ * the item already is would refuse for a collision with nobody.
+ *
+ * **A context row DOES occupy its rank**, and that is not the same question the read side
+ * answers. `distinctlyRanked` skips `outsideFilter` rows because one can never be GIVEN a
+ * rank — a fact about the backfill's reach. Occupancy is a fact about the NUMBER: it is
+ * taken regardless of who is allowed to write it. Being stricter here than the read side's
+ * definition is right, because the two are answering different questions.
+ *
+ * Both answers are a dead end, so the question is which. Accepting WRITES the collision:
+ * every later placement at that site refuses `tied` forever, and the duplicate is latent —
+ * if the excluded note's filter membership flips (a `hide done` filter switched off, the
+ * note edited back into the results) two writable rows hold the number and the focused view
+ * drops to tree order with nothing said. Refusing merely declines one gesture, which the
+ * user recovers from by dropping elsewhere. Stated no wider than measured: a
+ * writable/context tie does NOT break focused ordering today, since `inRankOrder` reads
+ * distinctness off the writable rows alone — the harm accepting causes is the permanent
+ * local refusal plus that latent duplicate, not an immediate drop to tree order.
  */
 function rankTaken(ranked: BacklogItem[], dragged: BacklogItem, order: number): boolean {
-	return ranked.some((item) => item !== dragged && !item.outsideFilter && item.order === order);
+	return ranked.some((item) => item !== dragged && item.order === order);
 }
 
 /**

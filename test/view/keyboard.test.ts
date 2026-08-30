@@ -269,6 +269,35 @@ describe('keyboard structure shortcuts', () => {
 		expect(vault.writeLog.some((w) => w.path === 'Feature B1.md')).toBe(false);
 	});
 
+	/**
+	 * The keyboard reaches indent through the same `indentTarget` the menu is gated on, so
+	 * neither can act on a nesting the other withholds.
+	 *
+	 * **Green before that gate existed**, and recorded as a pin rather than a proof: an
+	 * ungated indent plans no writes either, because the refusal happens in the planner.
+	 * What was broken on this path was the OFFER, and the menu test is where the gate is
+	 * measured. What this holds is the other direction — an indent that ever planned its
+	 * own write beside the gate instead of through it would land here.
+	 */
+	it('writes nothing on Alt+ArrowRight when the nesting would refuse', async () => {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('C1.md', { frontmatter: { type: 'Feature', order: 20 }, parentLink: 'Epic' });
+		vault.addFile('C2.md', { frontmatter: { type: 'Feature', order: 30 }, parentLink: 'Epic' });
+		vault.addFile('C4.md', { frontmatter: { type: 'Feature' }, parentLink: 'Epic' });
+		const { containerEl } = makeView(vault);
+		const tree = treeOf(containerEl);
+
+		key(tree, 'ArrowDown'); // Epic
+		key(tree, 'ArrowDown'); // C1
+		key(tree, 'ArrowDown'); // C2
+		key(tree, 'ArrowRight', { altKey: true });
+		await flush();
+
+		expect(vault.writeLog).toHaveLength(0);
+		expect(vault.fm('C2.md')['parent']).toBe('[[Epic]]');
+	});
+
 	it('outdents to the top level with Alt+ArrowLeft', async () => {
 		const vault = fixture();
 		const { containerEl } = makeView(vault);

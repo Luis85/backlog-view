@@ -99,10 +99,23 @@ and each is recorded below as it arrives, rather than the record being written o
   first drop in each group answers a number nobody holds, and the remedy `tied` names is
   the backfill, which is what a vault dense enough to collide here needs. The question is
   asked of the population WITHOUT the dragged row — a drop landing where the item already
-  is would otherwise refuse for a collision with itself — and without `outsideFilter`
-  rows, for `distinctlyRanked`'s own reason: an excluded row's rank is not in the order the
-  read side sorts, and no write path may ever move it, so refusing beside one is a
-  permanent block behind advice that cannot work.
+  is would otherwise refuse for a collision with itself — and of every other row, context
+  rows included.
+- **A context row occupies its rank, and that is a different question from the one the read
+  side asks.** `distinctlyRanked` skips `outsideFilter` rows because one can never be GIVEN
+  a rank — a fact about the backfill's reach. Occupancy is a fact about the NUMBER: it is
+  taken whoever is allowed to write it, so the write side is deliberately stricter than the
+  read side's definition. Both answers are a dead end and the question is which: accepting
+  WRITES the collision, after which every later placement at that site refuses forever and
+  the duplicate is latent — if the excluded note's filter membership flips (a `hide done`
+  filter switched off, the note edited back into the results) two writable rows hold the
+  number and the focused view drops to tree order with nothing said, and it is this code
+  that wrote it. Refusing merely declines one gesture, which the user recovers from by
+  dropping elsewhere. Bounded honestly: a writable/context tie does not break focused
+  ordering today, since `inRankOrder` reads distinctness off the writable rows alone. One
+  consequence recorded and not fixed here — when the row holding the number is an excluded
+  one, the `tied` refusal's remedy (run the backfill) is advice that cannot work, and the
+  notice task inherits it.
 - Self-limiting: once the rows around a drop hold distinct ranks there is no tie to switch
   on, and the refusal the fallback used to swallow is reported instead.
 - The fallback is **silent** — nothing tells the user which of the two regimes answered —
