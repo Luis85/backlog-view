@@ -108,8 +108,23 @@ tree those are the parent's children; under focus they are the rendered focus ro
 No flag is added. A focus-level rank sets `target.parent` to the dragged item's **own**
 parent, so `parentUpdate` already returns `undefined` and only `order` is written.
 
-Alt+arrow and the move menu reach the focus row list through the same `siblingPosition`,
-so the three inputs stay one move — the rule the card projections already keep.
+Alt+arrow and the move menu do **not** reach `siblingPosition`, and an earlier draft was
+simply wrong about which code runs. Both go through `siblingContext` in
+`src/view/interactions/structure.ts`, whose first line refuses every focus root:
+`if (!model || item.focusRoot || item.outsideFilter) return null`. So the drag would rank
+at the focused level and the keyboard and the menu would silently not — the opposite of
+the one-move rule this repository keeps for card projections.
+
+`siblingContext` returns the focus peer list for a focus root instead. Its
+`outsideFilter` refusal stays: a context row is not movable, which is a different question
+from whether its rank is *read* (it is, and it is in the arithmetic array above).
+
+**That change needs a guard added at the same time, or it grants what this spec refuses.**
+`indent` takes its new parent from `visibleNeighbor`, which is built on `siblingContext` —
+so a focus root that starts returning a peer list also starts offering Indent across the
+synthetic row. `indent` and `outdent` therefore get their own `focusRoot` refusal rather
+than inheriting one from a function that has stopped saying no. The pair is one edit:
+lifting the guard and adding the narrower one are not two changes that can land apart.
 
 ### The peers say where, the global order says what
 
@@ -151,9 +166,17 @@ This is a deletion, and a larger one than the drafts it replaces. All of these g
   at 2500.
 - `endOfSiblingsOrder` and the creation paths' own arithmetic.
 
-Two true edges remain, and only two: before the global first (`floor(min) - spacing`) and
-after the global last (`floor(max) + spacing`). Both are free by construction, because
-there is nothing beyond them.
+Three cases remain that are not midpoints, and the previous revision counted two:
+
+- **Before the global first** — `floor(min) - spacing`.
+- **After the global last** — `floor(max) + spacing`.
+- **An empty population** — `ORDER_SPACING`. The first item in an empty vault has no
+  anchor, no minimum and no maximum, and `NewItemSpec.order` is required, so deleting
+  `endOfSiblingsOrder` deletes today's `[] → ORDER_SPACING` with it. Left unstated, the
+  first creation has no rank at all and every creation after it meets an unranked
+  neighbour — refusal 2 below, on a vault whose only fault is being new.
+
+The first two are free by construction, because there is nothing beyond them.
 
 ### Two refusals, not one
 
@@ -273,8 +296,15 @@ rank sort, each running once. A third would still fail it. The Cost section of
   disagree — one cross-parent move is enough to make them — with an append, a prepend and
   an insert each asserted to land between the right two global neighbours. A placement that
   reads the peer group or walks the forest fails it, including one not yet written.
-- New: the two edges. Before the global first and after the global last are the only
-  placements that do not take a midpoint.
+- New: the three non-midpoint cases — before the global first, after the global last, and
+  the empty population, which is the first note in a new vault and must rank rather than
+  refuse.
+- New: one move, three inputs, at the focused level. The drag, Alt+arrow and the menu land
+  the same rank; the check drives all three, because `siblingContext` refusing focus roots
+  is exactly the shape of defect where one input works and two do nothing.
+- New: Indent and Outdent stay refused across the synthetic focus row *after*
+  `siblingContext` starts answering for it. Written from the rule, since the guard that
+  used to supply this answer is the one being removed.
 - New: the array is the whole loaded population. A fixture holding a `Test suite` ranked
   between two PBIs — a catalog row, loaded and not hidden by the Base — proves a PBI
   insertion does not take the suite's rank. This is the case `model.results` gets wrong
