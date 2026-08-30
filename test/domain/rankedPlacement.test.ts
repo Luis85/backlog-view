@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { anchoredOrder, ORDER_SPACING, orderForTarget } from '../../src/domain/writePlan';
+import { anchoredOrder, dropPlacement, ORDER_SPACING, orderForTarget } from '../../src/domain/writePlan';
 import { BacklogItem } from '../../src/domain/model';
 
 /** The only fields `anchoredOrder` reads. */
@@ -98,6 +98,31 @@ describe('orderForTarget', () => {
 	it('passes a refusal through rather than inventing a number', () => {
 		const list = ranked(1000, 1000.000001);
 		expect(orderForTarget(list, { parent: null, peers: [list[0], list[1]], insertIndex: 1 })).toEqual({
+			refusal: 'gapSpent',
+		});
+	});
+});
+
+/**
+ * `dropPlacement`'s peer fallback exists for ONE population — a vault whose ranks were
+ * never seeded, where sibling-scoped numbers collide across parents and the global
+ * placement refuses for a gap of zero. It must not be reachable on a seeded one, where a
+ * refusal is the designed answer and Respace is the remedy.
+ */
+describe('dropPlacement', () => {
+	it('lets a spent gap refuse on a seeded vault rather than falling back over it', () => {
+		// A(1000) and B(3000) are the peers; X(1000.000001) and Y(2000) are ranked between
+		// them but are not peers. Dropping C after A is a genuinely spent gap — the
+		// midpoint of A and its global neighbour X rounds onto X. Ranking among the peers
+		// alone would answer 2000, which is Y's rank: a DUPLICATE, and a duplicate is what
+		// `inRankOrder`'s distinctness test reads as "not seeded", so one bad write would
+		// drop every focused view back to tree order. The refusal is the right answer here
+		// and the user's remedy is Respace.
+		const list = ranked(1000, 1000.000001, 2000, 3000, 4000);
+		const [a, x, y, b, c] = list;
+		expect(x.order).toBe(1000.000001);
+		expect(y.order).toBe(2000);
+		expect(dropPlacement(c, { parent: null, peers: [a, b], insertIndex: 1 }, list)).toEqual({
 			refusal: 'gapSpent',
 		});
 	});

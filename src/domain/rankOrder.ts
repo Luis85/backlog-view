@@ -34,19 +34,31 @@ export function inRankOrder(rows: BacklogItem[], ranked: BacklogItem[]): Backlog
 	// arrives in a later task than this ordering does, so without this guard an upgrade
 	// scrambles the visible priority of every focused view and leaves the user no clue
 	// that a command would fix it.
-	//
-	// Distinctness is the test because it is exactly what makes a global rank a global
-	// ORDER. Ties (and absent ranks) mean the number is not yet answering the question,
-	// so the tree's own order is the better answer. Self-healing: the moment Seed gives
-	// the rows distinct ranks, this returns rank order with nothing to switch on.
-	//
-	// Read only off the WRITABLE rows — the same reasoning `anchoredOrder` already uses
-	// to skip an unranked context row when picking a neighbour. Seed and Respace never
-	// write a context note, so counting one here would be a permanent veto: a row
-	// nothing can ever migrate would keep this view in tree order forever, even once
-	// every writable note has a distinct rank.
-	const orders = rows.filter((item) => !item.outsideFilter).map((item) => item.order);
-	if (orders.some((o) => o === null) || new Set(orders).size !== orders.length) return rows;
+	if (!distinctlyRanked(rows)) return rows;
 	const members = new Set(rows);
 	return ranked.filter((item) => members.has(item));
+}
+
+/**
+ * Whether these rows' ranks answer the question a global order asks — every writable one
+ * present, and no two the same. **This is the plugin's single test for "is this vault
+ * migrated", and it is deliberately one function rather than two agreeing ones.** The
+ * read side asks it to decide whether a focused list may be sorted by rank at all; the
+ * write side (`dropPlacement`) asks the SAME question to decide whether its sibling-scoped
+ * fallback is allowed to answer. Two copies would be two rules that can drift, and a drift
+ * between exactly these two shipped a fallback writing a rank another row already held.
+ *
+ * Distinctness is the test because it is exactly what makes a global rank a global ORDER.
+ * Ties (and absent ranks) mean the number is not yet answering the question. Self-healing:
+ * the moment Seed gives the rows distinct ranks, this turns true with nothing to switch on.
+ *
+ * Read only off the WRITABLE rows — the same reasoning `anchoredOrder` already uses to skip
+ * an unranked context row when picking a neighbour. Seed and Respace never write a context
+ * note, so counting one here would be a permanent veto: a row nothing can ever migrate
+ * would keep this view in tree order forever, even once every writable note has a distinct
+ * rank.
+ */
+export function distinctlyRanked(rows: BacklogItem[]): boolean {
+	const orders = rows.filter((item) => !item.outsideFilter).map((item) => item.order);
+	return !orders.some((o) => o === null) && new Set(orders).size === orders.length;
 }

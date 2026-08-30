@@ -21,10 +21,16 @@ describe('moves in a group that holds an outside-filter row', () => {
 	/** Epic E over Feature A (context, because its PBI matched) and Feature B (a result). */
 	function mixedView() {
 		const vault = new FakeVault();
+		// Distinct ranks throughout, INCLUDING the two context rows. `order` ranks the whole
+		// backlog, and `anchoredOrder` reads an excluded row's number as a neighbour even
+		// though it may never write one — so a tie here would refuse every placement for
+		// arithmetic and this file would assert its rule against a batch that never
+		// happens. `distinctlyRanked` would not rescue it either: it counts the WRITABLE
+		// rows only, so this vault reads as seeded and the peer fallback stays off.
 		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
-		vault.addFile('Feature A.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Epic' });
-		vault.addFile('Feature B.md', { frontmatter: { type: 'Feature', order: 20 }, parentLink: 'Epic' });
-		vault.addFile('PBI.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: 'Feature A' });
+		vault.addFile('Feature A.md', { frontmatter: { type: 'Feature', order: 20 }, parentLink: 'Epic' });
+		vault.addFile('Feature B.md', { frontmatter: { type: 'Feature', order: 30 }, parentLink: 'Epic' });
+		vault.addFile('PBI.md', { frontmatter: { type: 'PBI', order: 40 }, parentLink: 'Feature A' });
 		const containerEl = document.body.createDiv();
 		const view = new ProductBacklogView({} as never, containerEl);
 		const anyView = view as unknown as Record<string, unknown>;
@@ -76,16 +82,15 @@ describe('moves in a group that holds an outside-filter row', () => {
 		const tree = treeOf(containerEl);
 		view.selectItem(view.model?.byPath.get('Feature B.md') as never);
 
-		// Feature B moves above Feature A, which is a context row. The rank it takes is
-		// read FROM Feature A (one spacing below its order of 10), and Feature A itself is
-		// not written — the distinction the whole file turns on. `-990` rather than a
-		// midpoint because this fixture is sibling-scoped: Epic, Feature A and PBI all
-		// hold 10, so the global placement refuses and `dropPlacement`'s peer fallback
-		// answers, with Feature A the only peer and nothing ranked below it.
+		// Feature B moves above Feature A, which is a context row. Both rows that frame the
+		// new rank are excluded ones — Epic (10) below and Feature A (20) above — and the
+		// midpoint of them, 15, is read from notes that are never written. That is the
+		// distinction the whole file turns on: an excluded row constrains a rank and never
+		// receives one.
 		key(tree, 'ArrowUp', { altKey: true });
 		await flush();
 		expect(vault.writeLog.map((w) => w.path)).toEqual(['Feature B.md']);
-		expect(vault.fm('Feature B.md')['order']).toBe(-990);
+		expect(vault.fm('Feature B.md')['order']).toBe(15);
 	});
 });
 

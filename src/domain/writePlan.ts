@@ -1,6 +1,7 @@
 import { TFile } from 'obsidian';
 import { DropTarget } from './dropTargets';
 import { BacklogItem, BacklogModel } from './model';
+import { distinctlyRanked } from './rankOrder';
 import { childLevelIndex, isReleaseType, mayHoldField, PlacementEnd, schemaEnds } from './itemTypes';
 import { statedEnds } from './bars';
 import { readDate, sameValue } from './noteFields';
@@ -779,11 +780,8 @@ export function computeDropWrites(dragged: BacklogItem, target: DropTarget, rank
  * through here instead of calling `orderForTarget` beside it.
  */
 export function dropPlacement(dragged: BacklogItem, target: DropTarget, ranked: BacklogItem[]): RankResult {
-	const global = orderForTarget(
-		ranked.filter((item) => item !== dragged),
-		target,
-	);
-	if ('order' in global) return global;
+	const population = ranked.filter((item) => item !== dragged);
+	const global = orderForTarget(population, target);
 	// **An unmigrated vault falls back to ranking among the peers alone**, which is
 	// exactly the sibling-scoped arithmetic this change replaces. Measured, not
 	// supposed: with legacy ranks (Epic A 10, A1 10, A2 20) moving A2 before A1 sees
@@ -791,10 +789,26 @@ export function dropPlacement(dragged: BacklogItem, target: DropTarget, ranked: 
 	// existing vault would lose ordinary tree reordering, the plugin's core gesture,
 	// with no migration available until the Seed command ships several tasks later.
 	//
-	// Self-healing and self-limiting: on a seeded vault the global placement succeeds
-	// and this line is never reached, so the two regimes never coexist for the same
-	// drop. If BOTH refuse, the refusal stands — the fallback adds a second chance,
-	// never a guarantee.
+	// **Gated on the POPULATION, never on the refusal.** A refusal is not evidence of a
+	// legacy vault: `gapSpent` is the correct, designed answer on a fully seeded one, and
+	// Respace is its remedy. Falling back over it substitutes a number taken from the
+	// peer bounds alone — which is where any non-peer row ranked between those bounds
+	// already sits, so the fallback can write a rank another row holds. Being between the
+	// peer bounds is what makes that collision possible, not what prevents it. The
+	// duplicate then fails `distinctlyRanked`, and the whole focused view drops back to
+	// tree order: the exact failure this design exists to prevent, caused by the guard
+	// meant to protect it. Measured on a seeded fixture, not reasoned about.
+	//
+	// `distinctlyRanked` is `inRankOrder`'s own question, imported rather than restated —
+	// one notion of "this vault is migrated" for the read side and the write side, because
+	// two that can disagree is precisely how the bug above happened. Asked of the
+	// population WITHOUT the dragged row: the row being placed has no rank yet in the
+	// arrangement under construction, and its own absent number says nothing about whether
+	// the vault was ever seeded.
+	//
+	// Self-healing and self-limiting: once Seed gives every writable row a distinct rank
+	// this branch is unreachable, and the refusal it used to swallow is reported instead.
+	if ('order' in global || distinctlyRanked(population)) return global;
 	return orderForTarget(
 		target.peers.filter((item) => item !== dragged),
 		target,

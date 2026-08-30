@@ -66,10 +66,21 @@ and each is recorded below as it arrives, rather than the record being written o
   holds the same value as its parent — so the global placement refuses for a gap of zero
   and `dropPlacement` re-asks the same question against the destination's peers alone.
   That is ADR 0008's arithmetic, kept so that an unmigrated vault does not lose ordinary
-  reordering before a seeding command exists. It is self-limiting: on a seeded vault the
-  global placement succeeds and the fallback is never reached, and if both refuse the
-  refusal stands. It is also **silent** — nothing tells the user which of the two answered
-  — which is a known gap recorded rather than closed.
+  reordering before a seeding command exists.
+- **The fallback is gated on the POPULATION, not on the refusal**, and the distinction is
+  load-bearing rather than a detail of the implementation. A refusal is not evidence of a
+  legacy vault: `gapSpent` is the correct answer on a fully seeded one, where the remedy is
+  Respace. Gated on the refusal, the fallback answers from the peer bounds alone — and any
+  non-peer row ranked between those bounds already sits there, so it can write a rank
+  another row holds. Being between the peer bounds is what makes that collision possible,
+  not what prevents it, and the duplicate then fails the very distinctness test that decides
+  whether a focused view may be sorted by rank at all. So the gate is that test:
+  `distinctlyRanked` in `src/domain/rankOrder.ts`, exported and asked by both sides rather
+  than restated on each, because two questions that should be one is exactly how the
+  collision above got written. It is therefore self-limiting: once every writable row has a
+  distinct rank the branch is unreachable and a refusal is reported as a refusal.
+- The fallback is **silent** — nothing tells the user which of the two regimes answered —
+  which is a known gap recorded rather than closed.
 
 ## Alternatives
 
