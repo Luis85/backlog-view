@@ -483,7 +483,11 @@ Fenced, and nothing else in the block:
   before the commit, never after. For a prose task — a decision-or-limitation `Issue`,
   a `Deliverable` — write, `npm run check`, commit: same gate, no red step, because
   there is no behaviour to make fail first
-- close each output in the shape its type owes, as Global Constraints states
+- close each note **a plan task dispatched you to**, in the shape its type owes, as Global
+  Constraints states — and nothing else. The notes two bullets up are context: an ADR and a
+  `Test suite` are already written, a suite stays `Open` because its cases are re-walked at
+  each release, and a `Test case` is a walk in a live vault nobody in this run can perform.
+  Closing one of those reports a verification that did not happen
 - *(only when a handoff was saved)* when every task is through, close the saved handoff
   `Task` the same way, then `npm run check` and commit — nothing else will, since it is
   not dispatched
@@ -559,6 +563,8 @@ On yes, one note at the next free rank among the PBI's children, in the shape
   or an `## Outcome` the record does not have.
 - A prose-only task was given a red-green cycle it cannot satisfy.
 - A `Test suite` was closed because its prose was written.
+- The prompt told the executor to "close each output", so a note no task dispatched — a
+  human's `Test case`, an already-written ADR or suite — was in scope for closing.
 - An ADR or a `Test suite` was given a `## Task N`, though `decompose-pbi` wrote it at
   decomposition and the task would hand an implementer nothing to do.
 - The prompt told a run to close a handoff the user declined to save.
