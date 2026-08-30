@@ -38,7 +38,7 @@ describe('creating a resource', () => {
 		submitResource('Alex');
 		await flush();
 
-		expect(vault.fm('People/Alex.md')).toEqual({ type: 'Resource' });
+		expect(vault.fm('People/Alex.md')).toEqual({ 'pbl-id': expect.any(Number), type: 'Resource' });
 	});
 
 	it('falls back to the home folder when the resource folder is cleared', async () => {

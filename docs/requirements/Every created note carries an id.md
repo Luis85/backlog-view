@@ -104,4 +104,7 @@ each stamping the id into the frontmatter object it already builds) ·
 **not** here: a generated README and a `.base` are artifacts the plugin maintains, not items
 anyone tracks — they are the two names the structural check exempts, and that list is the
 only place the exemption exists.
-Tests: `test/domain/itemIds.test.ts`.
+Tests: `test/domain/itemIds.test.ts`, `test/storage/createNote.test.ts`,
+`test/storage/createRelease.test.ts`, `test/storage/everyCreationStamped.test.ts`
+(the category invariant, asked at the call rather than of the creators somebody listed),
+`test/view/absenceEditing.test.ts`.
