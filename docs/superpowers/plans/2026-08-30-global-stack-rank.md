@@ -951,9 +951,17 @@ iteration path. The helper, in the same file:
  * nowhere near the slot the user asked for, which is worse than not creating it.
  */
 function newItemOrder(host: BacklogViewHost, parentItem: BacklogItem | null): RankResult {
-	const ranked = host.model?.ranked ?? [];
-	const peers = parentItem ? parentItem.children : (host.model?.realRoots ?? []);
-	return orderForTarget(ranked, { parent: parentItem, peers, insertIndex: peers.length });
+	const model = host.model;
+	if (!model) return { order: ORDER_SPACING };
+	// **Re-resolved by PATH.** The title prompt is modal and the model rebuilds under
+	// it — on any vault change, and on the refresh that ends every write batch. A
+	// `parentItem` captured before that refresh is an object from the OLD model, and
+	// `anchoredOrder` finds its anchor by identity (`ranked.indexOf`), so a stale
+	// object scores -1 and the creation is refused as `unranked` on a vault where
+	// every note is ranked correctly. The path is the thing that survives a rebuild.
+	const parent = parentItem ? (model.byPath.get(parentItem.file.path) ?? null) : null;
+	const peers = parent ? parent.children : model.realRoots;
+	return orderForTarget(model.ranked, { parent, peers, insertIndex: peers.length });
 }
 ```
 
@@ -974,6 +982,14 @@ sentences.
 - [ ] **Step 5: Check that a refused rank refuses the note**
 
 ```ts
+it('creates a child after the model rebuilt under the open prompt', async () => {
+	// The prompt holds a parent from the model that existed when it opened.
+	const prompt = openNewChildPrompt(harness, 'Epic A');
+	await harness.refreshModel();
+	prompt.submit('New PBI');
+	expect(harness.created).toHaveLength(1);
+});
+
 it('does not create a note when the rank placement refuses', async () => {
 	// A destination whose two neighbours have no gap left.
 	await createChildOf(harness, 'Epic A');
@@ -1047,6 +1063,20 @@ it('seed and respace are not interchangeable', () => {
 	expect(respaced).not.toEqual(seeded);
 });
 
+it('spreads around context ranks instead of colliding with them', () => {
+	// ranked A(1000), context(2000), B(3000). Numbering the writable rows 1000, 2000
+	// would tie B with the context row — the collision this command exists to repair.
+	const orders = computeRespaceWrites(model).map((w) => w.order);
+	expect(orders).not.toContain(2000);
+	expect(orders[0]).toBeLessThan(2000);
+	expect(orders[1]).toBeGreaterThan(2000);
+});
+
+it('refuses rather than tying when a run cannot be spread', () => {
+	// Two context rows 0.000001 apart with two writable rows between them.
+	expect(computeRespaceWrites(wedgedModel)).toEqual([]);
+});
+
 it('never writes to a note the Base excluded', () => {
 	const files = [...computeSeedWrites(model), ...computeRespaceWrites(model)].map((w) => w.file.path);
 	expect(files).not.toContain('Excluded Epic.md');
@@ -1095,12 +1125,36 @@ export function computeSeedWrites(model: BacklogModel): ItemWrite[] {
  * leaving every other rank where it was is not a repair.
  */
 export function computeRespaceWrites(model: BacklogModel): ItemWrite[] {
-	let counter = 0;
-	return model.ranked
-		.filter((item) => !item.outsideFilter)
-		.map((item) => ({ file: item.file, order: (counter += ORDER_SPACING) }));
+	const writes: ItemWrite[] = [];
+	// Context rows are IMMOVABLE, not absent. Dropping them and numbering the rest
+	// 1000, 2000, … is how a repair creates the very collision it exists to fix:
+	// ranked A(1000), context(2000), B(3000) would write A=1000, B=2000 — tying B with
+	// the context row nobody may write. So they are FIXED POINTS, and each run of
+	// writable rows between two of them is spread inside that open interval.
+	let start = 0;
+	const fixed = (i: number): number | null =>
+		i < model.ranked.length && model.ranked[i].outsideFilter ? (model.ranked[i].order ?? null) : null;
+	for (let i = 0; i <= model.ranked.length; i++) {
+		const bound = i === model.ranked.length ? null : fixed(i);
+		if (i !== model.ranked.length && bound === null) continue;
+		const run = model.ranked.slice(start, i).filter((item) => !item.outsideFilter);
+		const lower = start === 0 ? 0 : (model.ranked[start - 1].order ?? 0);
+		if (run.length > 0) {
+			// Evenly inside (lower, bound), or past `lower` when nothing bounds above.
+			const step = bound === null ? ORDER_SPACING : (bound - lower) / (run.length + 1);
+			run.forEach((item, k) => writes.push({ file: item.file, order: roundOrder(lower + step * (k + 1)) }));
+		}
+		start = i + 1;
+	}
+	return writes;
 }
 ```
+
+**A run can be unspreadable**, and that is a real refusal rather than a rounding nuisance: two
+context rows a hair apart with three writable rows between them cannot be given three
+distinct six-decimal values. Detect it (`step <= MIN_GAP`), plan nothing, and tell the
+user which rows are wedged — respacing part of the backlog and silently tying the rest is
+worse than refusing. Add a check for it.
 
 - [ ] **Step 4: Run and watch pass**
 
