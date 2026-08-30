@@ -653,8 +653,9 @@ export function computeScheduleWrites(
  * three are genuinely different advice: `gapSpent` sends the user to Respace, `unranked`
  * to the backfill, and `tied` to the backfill too — a tie is the sibling-scoped scheme
  * showing through, and respacing a range that holds two equal numbers cannot separate
- * them. `tied` reaches a notice only when the peer fallback ALSO refuses; when it
- * succeeds, `dropPlacement` answers with a rank and nothing is said.
+ * them. `tied` reaches a notice only when the peer fallback fails to answer — refusing
+ * itself, or producing a number another row already holds; when it answers a free one,
+ * `dropPlacement` returns that rank and nothing is said.
  */
 export type RankRefusal = 'gapSpent' | 'tied' | 'unranked';
 export type RankResult = { order: number } | { refusal: RankRefusal };
@@ -847,10 +848,40 @@ export function dropPlacement(dragged: BacklogItem, target: DropTarget, ranked: 
 	// Self-limiting: once every row around the drop holds a distinct rank there is no tie
 	// to switch on, and the refusal this used to swallow is reported instead.
 	if (!('refusal' in global) || global.refusal !== 'tied') return global;
-	return orderForTarget(
+	const peerScoped = orderForTarget(
 		target.peers.filter((item) => item !== dragged),
 		target,
 	);
+	// **The ANSWER is checked, not only the entry.** Every gate above is about whether the
+	// sibling-scoped arithmetic is the right KIND for this vault, and none of them can say
+	// whether the number it produces is free: both shapes it can return — a midpoint
+	// between two peers, an edge rank one spacing past the outermost one — are functions of
+	// the PEER values alone, while the rows sitting between or beside those peers are by
+	// definition not peers. Two ways it collides, both measured: a non-peer already ranked
+	// between the peer bounds is exactly where a peer midpoint lands, and on a legacy vault
+	// every group is anchored on the same small numbers, so a drop in one group and a drop
+	// in another compute the same edge rank.
+	//
+	// Refused rather than nudged onto a free value. Refusing keeps the arithmetic the one
+	// line ADR 0008 already specifies, it costs nothing on the case this fallback exists
+	// for — the first drop in each group answers a number nobody holds — and the remedy the
+	// `tied` refusal names is the backfill, which is precisely what a vault dense enough to
+	// collide here needs.
+	if ('refusal' in peerScoped || !rankTaken(ranked, dragged, peerScoped.order)) return peerScoped;
+	return global;
+}
+
+/**
+ * Whether some OTHER row already holds this rank.
+ *
+ * Two exclusions, both load-bearing. The dragged row itself, or a drop landing where the
+ * item already is would refuse for a collision with nobody. And every `outsideFilter` row,
+ * for `distinctlyRanked`'s own reason — an excluded row's rank is not in the order the read
+ * side sorts, and no write path may ever move it, so refusing beside one is a permanent
+ * block behind advice that cannot work.
+ */
+function rankTaken(ranked: BacklogItem[], dragged: BacklogItem, order: number): boolean {
+	return ranked.some((item) => item !== dragged && !item.outsideFilter && item.order === order);
 }
 
 /**

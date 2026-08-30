@@ -277,11 +277,16 @@ export class CardMoveController {
 	}
 
 	async performDrop(dragged: BacklogItem, target: DropTarget): Promise<void> {
-		// Dropping into a collapsed parent reveals where the item landed.
-		if (target.parent) this.host.setCollapsed(target.parent.file.path, false);
 		const model = this.host.model;
 		if (!model) return;
-		await this.applyMove(dragged, computeDropWrites(dragged, target, model.ranked));
+		const writes = computeDropWrites(dragged, target, model.ranked);
+		// Dropping into a collapsed parent reveals where the item landed — asked of the
+		// PLANNED batch, because a placement can refuse (a spent gap, an unranked
+		// neighbour, a fallback rank another row holds) and a gesture that moved nothing
+		// must not leave the tree opened up as if it had.
+		if (writes.length === 0) return;
+		if (target.parent) this.host.setCollapsed(target.parent.file.path, false);
+		await this.applyMove(dragged, writes);
 	}
 
 	/**

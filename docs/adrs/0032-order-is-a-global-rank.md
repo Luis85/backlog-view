@@ -86,6 +86,23 @@ and each is recorded below as it arrives, rather than the record being written o
   `distinctlyRanked` stays in `src/domain/rankOrder.ts` for the READ side only, where the
   question genuinely is about the whole list: sorting is all-or-nothing, so one missing
   rank leaves the list with no defined order.
+- **A gate on the fallback's ENTRY cannot vouch for its ANSWER, so the answer is checked
+  too.** Both numbers the fallback can produce — a midpoint between two peers, an edge rank
+  one spacing past the outermost one — are functions of the peer values alone, while the
+  rows sitting between or beside those peers are by definition not peers. So a non-peer
+  already ranked between the peer bounds is exactly where a peer midpoint lands, and on a
+  legacy vault, where every group is anchored on the same small numbers, a drop in one
+  group and a drop in another compute the same edge rank. `dropPlacement` therefore asks
+  whether any other writable row already holds the number, and returns the `tied` refusal
+  when one does — rather than searching for a free value, which would invent an arithmetic
+  ADR 0008 does not specify. It costs nothing on the case the fallback exists for: the
+  first drop in each group answers a number nobody holds, and the remedy `tied` names is
+  the backfill, which is what a vault dense enough to collide here needs. The question is
+  asked of the population WITHOUT the dragged row — a drop landing where the item already
+  is would otherwise refuse for a collision with itself — and without `outsideFilter`
+  rows, for `distinctlyRanked`'s own reason: an excluded row's rank is not in the order the
+  read side sorts, and no write path may ever move it, so refusing beside one is a
+  permanent block behind advice that cannot work.
 - Self-limiting: once the rows around a drop hold distinct ranks there is no tie to switch
   on, and the refusal the fallback used to swallow is reported instead.
 - The fallback is **silent** — nothing tells the user which of the two regimes answered —

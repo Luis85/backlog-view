@@ -195,3 +195,67 @@ describe('dropPlacement', () => {
 		});
 	});
 });
+
+/**
+ * The fallback's ANSWER, which no gate on its entry can vouch for. Both numbers it can
+ * produce — a midpoint between two peers, an edge rank one spacing past the outermost one
+ * — are functions of the peer values alone, and the rows between or beside those peers are
+ * not peers. So the tie that opens the fallback says the arithmetic is the right KIND for
+ * this vault, and says nothing about whether the number is free.
+ */
+describe('the peer fallback checks its own result', () => {
+	/** A row the Base excluded: ranked, on screen, and unwritable by anything. */
+	function contextRow(order: number): BacklogItem {
+		return { order, entryIndex: 99, outsideFilter: true } as BacklogItem;
+	}
+
+	it('refuses a peer midpoint a non-peer between the peers already holds', () => {
+		// A(1000) and X(1000) tie at the drop site, so the fallback opens — correctly, this
+		// is the sibling-scoped signature. Among the peers A(1000) and B(3000) alone it
+		// answers 2000, and 2000 is Y: a duplicate, which fails `inRankOrder`'s distinctness
+		// test and drops every focused view back to tree order with nothing said. Being
+		// between the peer bounds is exactly where a non-peer row is reachable.
+		const list = ranked(1000, 1000, 2000, 3000, 4000);
+		const [a, , y, b, c] = list;
+		expect(y.order).toBe(2000);
+		expect(dropPlacement(c, { parent: null, peers: [a, b], insertIndex: 1 }, list)).toEqual({
+			refusal: 'tied',
+		});
+	});
+
+	it('refuses an edge rank a drop in another group already took', () => {
+		// The second half of the case the first half passes: on a legacy vault every group
+		// is anchored on the same small numbers, so two groups compute the SAME edge rank.
+		// Epic B(10) > B1(10), and X(-990) is where an earlier drop under Epic A landed.
+		// Dropping Z before B1 ties at the site, falls back, and answers -990 again.
+		const list = ranked(-990, 10, 10, 20);
+		const [x, , b1, z] = list;
+		expect(x.order).toBe(-990);
+		expect(dropPlacement(z, { parent: null, peers: [b1], insertIndex: 0 }, list)).toEqual({
+			refusal: 'tied',
+		});
+	});
+
+	it('asks the population WITHOUT the dragged row, so a re-drop where it already is holds', () => {
+		// Z is itself at -990 — dropped there a moment ago and dragged to the same place
+		// again. Counting its own rank as occupied would make the second gesture refuse for
+		// a collision with nobody, which is the shape this check is most likely to get wrong.
+		const list = ranked(-990, 10, 10);
+		const [z, , b1] = list;
+		expect(dropPlacement(z, { parent: null, peers: [b1], insertIndex: 0 }, list)).toEqual({
+			order: -990,
+		});
+	});
+
+	it('ignores a context row on the number: a refusal there names a remedy that cannot run', () => {
+		// The rows the check reads are the WRITABLE ones, for `distinctlyRanked`'s own
+		// reason: an excluded row's rank is not in the order the read side sorts, and the
+		// backfill this refusal would send the user to skips it forever. Refusing here
+		// would be a permanent block behind advice that cannot work.
+		const list = [...ranked(10, 10, 20), contextRow(-990)];
+		const [, b1, z] = list;
+		expect(dropPlacement(z, { parent: null, peers: [b1], insertIndex: 0 }, list)).toEqual({
+			order: -990,
+		});
+	});
+});

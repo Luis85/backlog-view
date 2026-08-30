@@ -13,6 +13,7 @@ import {
 	treeOf,
 	useViewHarness,
 } from '../helpers/view';
+import { FakeVault } from '../helpers/vault';
 
 useViewHarness();
 
@@ -450,5 +451,48 @@ describe('a drag whose note leaves the model', () => {
 		to.dispatchEvent(new MouseEvent('drop', { bubbles: true, clientY: 3 }));
 		await flush();
 		expect(vault.writeLog).toHaveLength(0);
+	});
+});
+
+/**
+ * Revealing where the item landed is part of the MOVE, so a drop that moves nothing may
+ * not do it. Newly reachable: until a placement could refuse, an inside drop always wrote.
+ *
+ * Asked of the collapse BIT rather than of the rows on screen. `setCollapsed` stores the
+ * bit and nothing re-renders here (the harness runs no Bases refresh), so a rendered row
+ * list answers the same either way — the test that reads it passes over the defect.
+ */
+describe('an inside drop on a collapsed parent', () => {
+	/** Epic A's only child has no rank, so any placement after it refuses as `unranked`. */
+	function unrankedChild(): FakeVault {
+		const vault = new FakeVault();
+		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('Feature A1.md', { frontmatter: { type: 'Feature' }, parentLink: 'Epic A' });
+		vault.addFile('Epic B.md', { frontmatter: { type: 'Epic', order: 20 } });
+		return vault;
+	}
+
+	it('reveals the destination when the item actually lands there', async () => {
+		const vault = fixture();
+		const { containerEl, view } = makeView(vault, {}, { collapsed: true });
+
+		drag(rowByTitle(containerEl, 'Epic A'), rowByTitle(containerEl, 'Epic B'), 'inside');
+		await flush();
+
+		expect(vault.fm('Epic A.md')['parent']).toBe('[[Epic B]]');
+		expect(view.isCollapsed('Epic B.md')).toBe(false);
+	});
+
+	it('leaves it collapsed when the placement refuses', async () => {
+		const vault = unrankedChild();
+		const { containerEl, view } = makeView(vault, {}, { collapsed: true });
+
+		drag(rowByTitle(containerEl, 'Epic B'), rowByTitle(containerEl, 'Epic A'), 'inside');
+		await flush();
+
+		// Nothing was written, so nothing moved — and a gesture that moved nothing must
+		// not leave the tree opened up as if it had.
+		expect(vault.writeLog).toHaveLength(0);
+		expect(view.isCollapsed('Epic A.md')).toBe(true);
 	});
 });
