@@ -44,10 +44,15 @@ gives each level its own board — without the levels above them taking up the s
   of how it was classified is worse than no filter.
 - **2b — an item of the focused level whose parent is also of that level.** It renders
   where it really is, not twice.
-- **3a — the user tries to rank, indent or outdent across the synthetic top row.**
-  Refused. Those rows are *not* a real sibling group — they are items from all over the
-  tree that share a level — and treating them as siblings would write ranks that mean
-  nothing when the focus clears.
+- **3a — the user tries to indent or outdent across the synthetic top row.** Refused.
+  Those rows are *not* a real sibling group — they are items from all over the tree that
+  share a level — and a reparent there is a question about parentage that nothing in this
+  screen answers. RANKING them is no longer refused: since
+  [ADR 0032](../adrs/0032-order-is-a-global-rank.md) every item shares one rank, so rows
+  from different parents can be ordered against each other and a focus-level drag writes
+  a number that still means something when the focus clears. That is its own use case —
+  [[Ranking at the focused level]] — including the price: one rank, so ordering the
+  focused list also orders each item inside its own sibling group.
 - **4a — the view is closed and reopened before the focus is cleared.** It comes back
   focused on the same type, from **vault-scoped local storage** rather than the `.base` —
   per saved view, per device. Focus is one person's altitude for the afternoon, not
@@ -66,10 +71,12 @@ gives each level its own board — without the levels above them taking up the s
 - Items keep their real parents; only the rendering is re-rooted.
 - The pick is never written to the `.base`: it is working position, and it survives a
   reopen from local storage instead.
-- Ranking, indent and outdent are disabled across the synthetic top row, which is not a
-  real sibling group.
+- Indent and outdent are disabled across the synthetic top row, which is not a real
+  sibling group. Ranking is not: it writes the one rank every item shares
+  ([[Ranking at the focused level]]).
 - Types that rank with the focused level appear beside it rather than vanishing.
-- Ranking always runs over the real roots — enforced by lint ([[Sibling ranking]]).
+- No rank is computed from the rendered roots — enforced by lint in the two files that
+  produce one ([[Sibling ranking]]).
 
 ## Where it lives
 

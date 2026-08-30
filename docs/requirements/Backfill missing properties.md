@@ -47,8 +47,11 @@ frontmatter, **I want** one button that sets the properties up and writes them f
    this view writes: `type`, `order`, and every optional property that is configured —
    the ones just bound included.
 4. For each, it plans the value already being *shown*: the implied level
-   ([[Level ladder and implied types]]) for `type`, and a place at the end of its sibling
-   group for `order`.
+   ([[Level ladder and implied types]]) for `type`, and for `order` a rank that keeps the
+   row exactly where it is drawn — above every rank drawn over it and below every rank
+   drawn under it that the row could ever be ordered against. One walk in draw order
+   hands those out, so two blanks cannot invert each other and no value lands on a rank
+   the vault already holds.
 5. A missing optional key is created **empty**. The property becomes visible and
    editable in Obsidian's own editor while the item keeps the state and the placement it
    had — none — so neither the board nor the roadmap moves. A horizon, a date or a state
@@ -56,7 +59,9 @@ frontmatter, **I want** one button that sets the properties up and writes them f
    decision.
 6. The batch is written, progress ticking in the toolbar as each file lands.
 7. One refresh follows — not one per file — the whole batch is a single undo, and the
-   notice names both halves: what was set up, and how many items were updated.
+   notice names both halves: what was set up, and how many items were updated. Where a
+   rank could not be placed the notice says the rank was skipped rather than claiming
+   there was nothing to do.
 
 **Extensions**
 
@@ -75,8 +80,9 @@ frontmatter, **I want** one button that sets the properties up and writes them f
   the configuration is never changed by an action that then refuses every write.
 - **3a — the note came from outside the Base's filter.** Never written to — but the walk
   descends **through** it, so results below one are still backfilled. Its `order` is still
-  *read* for the sibling maximum, because it is on screen: a backfill that fills in blanks
-  must not reorder the tree by placing an item above a row the user can see.
+  *read*, as one of the ranks bounding each blank, because it is on screen: a backfill
+  that fills in blanks must not reorder the tree by placing an item above a row the user
+  can see.
 - **3b — a configured property's key is not the one this item's own workflow reads.**
   There are three state workflows now (requirements, Deliverable, test), each keyed by
   its own optional property, and a note follows exactly one — its type, or its ladder
@@ -131,14 +137,23 @@ frontmatter, **I want** one button that sets the properties up and writes them f
   was the rationale of the CATEGORY gate this key-equality gate REPLACED; it is recorded
   here as history so it is not restored as a fact. The README row describes what the
   property carries, not what the backfill creates.
-- **4a — the item is an orphan**, its parent link resolving to nothing. `order` is written;
+- **4a — no rank fits where the row is drawn.** The blank keeps none, and the rest of
+  that note's write still lands: the type and the stubs do not depend on how big somebody
+  else's `order` is, and withholding them would be a second failure caused by the first.
+  It is ordinary rather than exotic — a row drawn later under a different parent can hold
+  a LOWER rank than the row drawn before this one, and then no number is both above the
+  first and below the second. The count comes out with the writes so the notice can say
+  it, and the remedy it names is **Seed ranks from the hierarchy**, the one pass not
+  bounded by what is drawn around the row.
+  **Checked by** `test/view/backfillFocusOrder.test.ts` — "says the rank was skipped rather than claiming there was nothing to do"
+- **4b — the item is an orphan**, its parent link resolving to nothing. `order` is written;
   `type` is not. Its real level is unknowable, so an implied one would be derived from the
   provisional top-level position the broken link put it in — a guess about a guess.
-- **4b — the item's parent is a context row.** `type` **is** written, from that parent's
+- **4c — the item's parent is a context row.** `type` **is** written, from that parent's
   own level. The parent was loaded from the vault, so its level is known and is the one
   already rendering; the value written is the badge the user is looking at. What the rule
   forbids is *writing to* an excluded note, not *reading* one.
-- **4c — the item already has the property.** Skipped. This is the rule the whole feature
+- **4d — the item already has the property.** Skipped. This is the rule the whole feature
   turns on.
 - **5a — the note carries the key with an empty value.** Skipped: presence is the
   question here, and an empty horizon is a key the note has. The *reading* of it says
@@ -166,7 +181,14 @@ frontmatter, **I want** one button that sets the properties up and writes them f
 - The whole batch is one refresh and one undo, with progress shown while it runs.
 - The values written are the ones that were already on screen, so nothing moves when the
   button is pressed: a created key is empty, an empty placement is the shelf the item was
-  already on, and an empty state is the no-state column it was already in.
+  already on, and an empty state is the no-state column it was already in. **Filling a
+  blank rank never moves the row it filled** — and that guarantee stops exactly there, at
+  the blank. Two rows whose EXISTING ranks already contradict the drawn order still swap
+  when a focused list becomes sortable, because a focused list draws in tree order while
+  any of its rows is unranked and in rank order once none is: the SWITCH is what reorders
+  it, and no pass that only fills blanks can prevent that. **Seed ranks from the
+  hierarchy** rewrites every rank and can.
+  **Checked by** `test/view/backfillFocusOrder.test.ts` — "still flips a pair whose EXISTING ranks contradict the drawn order"
 - Only configured keys are created — a horizon property with no declared values is not
   one — and only on notes that do not carry them.
 
@@ -175,14 +197,17 @@ frontmatter, **I want** one button that sets the properties up and writes them f
 `src/domain/optionalProperties.ts` (`OPTIONAL_PROPERTIES`, the one table of what each
 optional
 property is called and suggests, and `adoptableProperties`) ·
-`src/domain/writePlan.ts` (`computeInitWrites`, over `initWriteFor` and
-`missingKeyStubs`) · `src/domain/model.ts` (`ownKeys`, which key a note carries) ·
+`src/domain/writePlan.ts` (`computeInitWrites`, over `initWriteFor`,
+`missingKeyStubs` and the `rankBetween` arithmetic every placement shares) ·
+`src/domain/rankOrder.ts` (`focusKey`, which decides whether a row drawn later can
+constrain a blank at all) · `src/domain/model.ts` (`ownKeys`, which key a note carries) ·
 `src/view/interactions/structure.ts` (`runInit`, the action both entry points call) ·
 `src/view/backlogView.ts` (`adoptDefaultProperties`, the one write to the `.base` that
 is not a user turning an option) · `src/storage/frontmatter.ts` (`applyInto`, where a
 stub becomes a key on the note, and only while the live note still lacks it) ·
 `src/storage/writeKeys.ts` (`stubKeys`, which resolves a stub field to the raw key both
 that write and its captured inverse are named by).
-Tests: `test/domain/settings.test.ts`, `test/domain/writePlan.test.ts`,
+Tests: `test/view/backfillFocusOrder.test.ts`, `test/domain/settings.test.ts`,
+`test/domain/writePlan.test.ts`,
 `test/domain/writePlanAxis.test.ts`, `test/storage/frontmatter.test.ts`,
 `test/view/toolbar.test.ts`, `test/view/contextRowWrites.test.ts`.
