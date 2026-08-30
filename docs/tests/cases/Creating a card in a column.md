@@ -51,8 +51,13 @@ declares them in `dependsOn` rather than only in the preconditions below: a chec
 subject does not exist yet is not ready, and readiness is what that property answers.
 
 **Preconditions** — `npm run test-build` has installed the plugin into this repository,
-this repository is open as a vault, and `docs/Product Backlog.base` is open in board
-mode.
+this repository is open as a vault, `docs/Product Backlog.base` is open in board mode,
+and **no focus level is active** — clear it from the toolbar before starting. The focus
+level is per-device UI state in localStorage rather than a `.base` setting, so a vault
+can arrive carrying one, and the two this decomposition discusses are exactly the ones
+that break the setup below: under a retained `Iteration` or `Deliverable` focus the
+seeded item is outside `model.results`, `requirementsWorkflow` never observes its state,
+and the stray column step 6 needs is not drawn at all. Found by review (Codex, PR #225).
 
 **Setup, and why it is needed.** That base configures `stateValues: Open, Active, Done`
 and every one of the three holds notes, so **the vault has no empty column to test with,
