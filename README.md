@@ -1,9 +1,18 @@
 # Product Backlog — an Obsidian Bases view
 
-An [Obsidian](https://obsidian.md) plugin that adds a **Product Backlog** view type to
-[Bases](https://help.obsidian.md/bases). It turns a flat list of notes into a sortable
-work-item tree — **Epics → Features → PBIs → Tasks** — inspired by the backlog in
-Azure DevOps Boards.
+An [Obsidian](https://obsidian.md) plugin that adds **three view types** to
+[Bases](https://help.obsidian.md/bases). The first turns a flat list of notes into a
+sortable work-item tree — **Epics → Features → PBIs → Tasks** — inspired by the backlog in
+Azure DevOps Boards; the other two read the same notes and answer different questions.
+
+| View type | What it draws |
+| --- | --- |
+| **Product Backlog** | The tree, and three more projections of it: a [kanban board](#the-board), a [Deliverables board](#the-deliverables-board) and a [roadmap](#the-roadmap) |
+| **Estimation** | A [weighted value model](#the-estimation-view) over the same items, with RICE, ICE, WSJF or value-over-effort as the ranking indicator |
+| **Release** | The [releases](#the-release-view) in the vault, what each one holds, and how far it landed from its plan |
+
+Pick one in the Bases view picker. Everything below describes the Product Backlog view
+unless a section says otherwise.
 
 ```text
 ▾ [Epic]    Customer Portal            (7)
@@ -29,7 +38,10 @@ Azure DevOps Boards.
   - **`order`** — a number that ranks an item among its siblings.
   - **`type`** — the ladder `Epic → Feature → PBI → Task`, the **extra types** `Issue`,
     `Bug`, `Idea`, `Deliverable` and `Improvement` that sit beside it rather than on it, or a **marker**
-    on neither — `Milestone` and `Iteration` — which states a date rather than work.
+    on neither — `Milestone`, `Iteration` and `Release` — which states a date, a time box
+    or a set of things going out together rather than work. A `Resource` is outside all of
+    that: a person the plan points at, never part of it (see
+    [Resources and assignees](#resources-and-assignees)).
 - **You never have to maintain these properties by hand.** The view assigns them:
   - Creating an item via the view writes `type`, `parent` and `order`.
   - Dragging an item writes its new `parent` and `order`, and leaves `type` alone —
@@ -49,8 +61,14 @@ Azure DevOps Boards.
     property is the "no state, not planned yet" the item was already in — it just becomes
     visible and editable in Obsidian's own property editor, and pickable in the view
     options.
+- **Every note the plugin creates also gets a `pbl-id`** — one integer, taken from the
+  highest the vault already holds, written in the same single write that makes the note. It
+  is a handle for naming an item outside Obsidian, where a title is going to change and a
+  path is going to move. Notes that already exist are left exactly as they are: there is no
+  backfill.
 - **Any of those writes can be taken back** — <kbd>Ctrl/Cmd</kbd>+<kbd>Z</kbd> or the ↩
-  toolbar button, however many notes the change touched (see [Undo](#undo)).
+  toolbar button, however many notes the change touched (see [Undo](#undo)). The undo slot
+  is plugin-wide: one ↩, whichever of the three views made the change.
 
 ## Requirements
 
@@ -703,9 +721,139 @@ With both configured, an axis picker appears in the toolbar — **Show horizons*
 - **Planned dates are different properties from the board's transition stamps**, so a plan
   can never overwrite a record of what actually happened.
 
+## Resources and assignees
+
+**A resource is a note, not a string.** A `Resource` is a person work is assigned to. It is
+a declared type like any other, and notes carrying it stay **out of the backlog**: a
+resource is pointed at by the plan, never part of it, so one draws no row on the tree, no
+card on the board and no bar on the timeline.
+
+An item names its assignee by **link** to that note, the way it names its parent. Right-click
+a row or card → **Set assignee** lists the `Resource` notes the base returns, and offers
+**New resource...**, which creates the note and assigns it in one step — so the first
+assignment does not send you off to make a note first.
+
+The roadmap's **resources axis** draws one row per `Resource` note the base returns, with
+each person's assigned work on their own row, and an **absence** band for time they are away.
+The roster is the notes the base returns — there is no list to keep in step with it.
+
+> **Upgrading from 0.9.x:** an assignee used to be a plain name. It is a link now, and
+> **resolution decides, not spelling** — `assignee: Sarah` keeps its association wherever
+> the base already returns a `Sarah.md` typed `Resource`. What goes stale is narrower: an
+> assignment naming somebody with **no** `Resource` note behind it draws no row on the
+> resources axis. Give that person a note, or set the assignee again. Nothing is rewritten
+> on disk either way.
+
+## The estimation view
+
+A second Bases view type — **Estimation** (`product-estimation`, its own icon in the view
+picker). It reads the same notes and answers a different question: **what is this worth, and
+what should we do first?**
+
+The view is a table, one row per item, beside a panel for the row you have selected.
+
+| Column | What it says |
+| --- | --- |
+| **Item** | The note. Its name in the panel header opens it |
+| **Value** | The business value the model computed, from the dimensions you scored |
+| **Coverage** | How many of the model's dimensions this item has answers for — `3/5` |
+| **Confidence** / **Effort** | The scales beside the value model |
+| **Indicator** | The ranking score — RICE, WSJF, or whatever you configured |
+| **Currency** | Whether the stored number still describes the note on disk |
+
+**The value model is yours to shape.** Each dimension has a weight, a range and a rubric
+per point, all in the view options. The panel says **Why this scored what it scored** for
+the selected row: every dimension, the answer it holds, and the arithmetic that reached the
+total.
+
+**Presets are for the indicator, not the value.** The toolbar's calculator offers **RICE**,
+**ICE**, **WSJF** and **Value over effort** under *Start from a known framework*. Each one
+configures the indicator that sits beside the business value; the value model is unchanged
+whichever you pick, so trying WSJF costs you nothing you already scored.
+
+**A stored score says which model produced it.** Every write stamps the coverage and a
+fingerprint of the model, so the Currency column can tell you:
+
+| Chip | Meaning |
+| --- | --- |
+| **Needs re-estimation** | The inputs changed after the total was stored |
+| **Another model** | The total was produced by a different model than this view's |
+| **Hand-written** | A total with no stamp — someone typed it, and it is left alone |
+| **Inputs gone** | A stamp whose dimensions no longer exist; offered for removal |
+
+A stale total can be recalculated where it is reported, and a hand-written one is never
+offered for deletion.
+
+| Action | How |
+| --- | --- |
+| Set the view up | The toolbar's ✨ **Bind and backfill the estimation properties**, or name your own in the view options |
+| Score an item | Select its row, answer the dimensions in the panel |
+| Rank by a framework | The toolbar's calculator → **Start from a known framework** |
+| Recalculate a stale total | The panel, where it is reported |
+| Take back the last batch | The toolbar's ↩ **Undo last change** |
+
+Writes here go through the same gate as everything else — serialized, refused while the
+configuration has a problem, and undoable as one batch. The undo slot is **plugin-wide**:
+one ↩, whichever view made the change.
+
+## The release view
+
+A third Bases view type — **Release** (`product-release`, its own icon in the view picker).
+A release is a set of things going out together, and it is a note of its own: `type: Release`,
+carrying a version and a target date.
+
+**Releases do not appear in the backlog.** They are not rows on the tree, not cards on the
+board and not items in a rollup — a release names work, it does not contain it. Work joins
+one from the **item's** own menu in the backlog view, and the item carries the membership
+property that names its release.
+
+The view has two screens.
+
+**The release index** — one row per release, grouped **in flight** and **shipped**. Each row
+carries the version, the status, the target date, the released date and the member count,
+plus how far along it is and how far it landed from its plan: *3 days left*, *2 days overdue*,
+*shipped 4 days early*. **New release** sits at the head of the list.
+
+**A release's own screen** — activate a row. Its header holds the release's status, its
+description, its target date and the day it shipped, all editable in place, and opens the
+release note. Below it is the release's **scope**: the work it names, as a foldable tree with
+its own toolbar (collapse all, expand all, hide done) and its own keyboard walk. A row's
+context menu offers **New \<type\>** for every type that row may hold, and the note it creates
+hangs from that row and joins the open release in the same write.
+
+Two closing actions sit in the header:
+
+- **Mark as released** writes the configured released status and today's date to the release
+  note and to nothing else, as one undoable batch. It asks first, listing the members that
+  are not finished — each openable from the dialog without answering it.
+- **Generate release notes** writes one Markdown file per release, grouped by type in the
+  order the scope tree draws them. Regenerating it is byte-identical, and it refuses a file
+  at that path that this view did not write or that belongs to another release.
+
+Both are **withheld until the properties they write are bound**, and both say which option to
+bind rather than failing quietly.
+
+| Option | Purpose |
+| --- | --- |
+| Membership property | The property **on an item** that names its release |
+| Version property | The release's version |
+| Target date property | The day it is planned for — what the roadmap draws it at |
+| Status property | The release's own status, and **Statuses that mean released** / the status **Mark as released** writes |
+| Released date property | The day it shipped. **Binding it to the target date is refused** — a record that overwrites the plan destroys the only evidence a release slipped |
+| Release folder / Release notes folder | Where new releases and generated notes are filed |
+| Workflow state property / States that count as done | How the view decides a member is finished |
+
+The toolbar's ✨ **Add missing properties** binds every one of these that you have not named,
+and backfills them, in one press.
+
+**A release with a target date also draws on the roadmap**, as a line across the plan, beside
+the milestones.
+
 ## View options
 
-Open the view options in the Bases toolbar to configure:
+Open the view options in the Bases toolbar to configure **the backlog view** — its
+board, its Deliverables board and its roadmap. The estimation view and the release view
+carry their own options, listed in their sections above.
 
 | Option | Default | Purpose |
 | --- | --- | --- |

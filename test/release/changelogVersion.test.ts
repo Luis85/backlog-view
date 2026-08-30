@@ -65,3 +65,43 @@ describe('the changelog names the released version', () => {
 		expect(dated?.[1]).toBe(manifest.version);
 	});
 });
+
+/**
+ * One release, one group of each kind.
+ *
+ * A pull request that adds a bullet writes its own `### Added` rather than finding the
+ * section's, and nothing noticed: by 0.10.0 the `[Unreleased]` section carried ten group
+ * headings for four groups, and 0.9.0 had shipped with `### Changed` twice. That is not a
+ * tidiness question. `changelogNotes()` slices a version's whole section into the file
+ * `gh release create --notes-file` reads, so the published release body restarts
+ * "Added / Changed / Fixed" once per pull request that touched it — see
+ * [ADR 0025](../../docs/adrs/0025-put-the-changelog-entry-in-the-github-release-body.md).
+ *
+ * Every section is checked, not just the one being released, because the older entries
+ * are what a reader deciding whether to upgrade scrolls through, and a duplicate there
+ * reads exactly as badly.
+ *
+ * What this cannot say: that the groups are in Keep a Changelog's order, or that a bullet
+ * is under the right one. A `Fixed` entry filed under `Added` is a judgement about the
+ * sentence, and no parse reaches it. The claim is uniqueness alone.
+ */
+describe('each changelog section groups its entries once', () => {
+	const changelog = readFileSync('CHANGELOG.md', 'utf8');
+	const sections = headings(changelog);
+	const groups = headings(changelog, 3);
+
+	/** The `## ` heading a `### ` heading falls under — the last one before it. */
+	const sectionOf = (at: number) =>
+		sections.filter((h) => h.index < at).at(-1)?.text ?? '(before any section)';
+
+	it('never repeats a group heading within one release', () => {
+		const seen = new Set<string>();
+		const repeated: string[] = [];
+		for (const group of groups) {
+			const key = `${sectionOf(group.index)} -> ### ${group.text}`;
+			if (seen.has(key)) repeated.push(key);
+			seen.add(key);
+		}
+		expect(repeated).toEqual([]);
+	});
+});

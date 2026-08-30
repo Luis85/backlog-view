@@ -129,12 +129,18 @@ const source = (text, node) => text.slice(node.position.start.offset, node.posit
  * 161 notes parsed as a heading whose text was the whole block, and any paragraph above a
  * horizontal rule became one too. Nothing downstream matched those labels, so nothing
  * failed — a rule reading them as section boundaries would have been wrong quietly.
+ *
+ * `depth` defaults to the level-two headings every caller here reads. `CHANGELOG.md`'s
+ * group headings (`### Added`) are the one level-three case, and they are asked of this
+ * parser for the same reason the level-two ones are: a pattern over Markdown is the
+ * mistake [ADR 0021](../docs/adrs/0021-parse-the-register-with-mdast.md) retired.
  */
-export function headings(text) {
+export function headings(text, depth = 2) {
+	const marker = "#".repeat(depth);
 	const found = [];
 	for (const node of tree(text).children) {
-		if (node.type !== "heading" || node.depth !== 2 || !node.position) continue;
-		if (!source(text, node).startsWith("##")) continue;
+		if (node.type !== "heading" || node.depth !== depth || !node.position) continue;
+		if (!source(text, node).startsWith(marker)) continue;
 		const first = node.children[0];
 		const last = node.children.at(-1);
 		const label = first && last ? text.slice(first.position.start.offset, last.position.end.offset) : "";
