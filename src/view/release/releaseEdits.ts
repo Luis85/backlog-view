@@ -200,11 +200,13 @@ export function editReleaseReleased(view: ReleaseView, release: ReleaseRow): voi
 }
 
 /**
- * Apply a dialog's batch and put focus back on the control that opened it — the
- * description's line, or the released date's own button.
+ * Apply a batch and put focus back on the control that opened it — its three callers'
+ * controls are the status chip, the description's line and the released date's own button,
+ * which is why `control` is a parameter rather than a constant here.
  *
- * A dialog is why this exists rather than `FOCUS_HANDLE_CLASSES` covering it like the
- * status chip: `TextPromptModal` CLOSES before it submits, so by the time the write's own
+ * `FOCUS_HANDLE_CLASSES` covers neither of the two shapes that reach this: a MENU pick
+ * (the comment at the Set-status entries above), and a DIALOG — `TextPromptModal` CLOSES
+ * before it submits, so by the time the write's own
  * redraw runs, focus is already off this view entirely and `focusedHandle` correctly
  * answers null. `focusNewRelease` (`newRelease.ts`) has the identical shape for the
  * identical reason — looked up FRESH after the await, never captured, because the redraw

@@ -71,8 +71,10 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 - ✨ on a release view also binds the notes folder, the statuses that mean released, and the
   status to write — the three things the closing actions need that Obsidian's property
   picker can never offer, because none of them is a property. The button now offers itself
-  when any of the three is unbound, instead of only when a property is. No option gains a
-  default: a vault that never presses ✨ still opens its options panel empty.
+  when a press would bind any of the three, instead of only when a property is free. The
+  vocabulary and the status to write are seeded from each other, so setting either one first
+  and pressing ✨ leaves a pair the closing actions accept. No option gains a default: a
+  vault that never presses ✨ still opens its options panel empty.
 
 - **Breaking:** an item names its assignee by link to a `Resource` note rather than by
   name. A name still resolves where the vault already has the note — `assignee: Sarah`

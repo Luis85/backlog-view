@@ -27,10 +27,12 @@
    second time here.
    ========================================================================== */
 
-/* The header now stacks two lines: the release's identity (with its facts), then one
-   strip of figures — `.pbl-rel-hline` is the first line, `.pbl-rel-summary` below is the
-   second, and this is what gives them separate flex rows to arrange rather than one row
-   both must agree on. */
+/* The header stacks THREE lines: the release's identity with its facts
+   (`.pbl-rel-hline`), the description under it (`.pbl-rel-desc`), and the footline
+   (`.pbl-rel-footline`), which is the summary and the closing actions on one row. This is
+   what gives the three separate flex rows to arrange rather than one row they must all
+   agree on. It said two — hline and `.pbl-rel-summary` — until 2026-08-30, when the
+   summary moved INSIDE the footline and the actions joined it there. */
 .pbl-rel-header {
 	display: flex;
 	flex-direction: column;

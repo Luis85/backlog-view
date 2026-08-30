@@ -190,10 +190,15 @@ function drawHeader(
 }
 
 /**
- * The way to the release NOTE itself, which is the only place a version, a date or a
- * status is edited: this view reads those three and writes none of them
- * (`test/view/releaseNeverEdits.test.ts`), so without this control the reader's only
- * route to the note was the index behind them, and from the index there was none at all.
+ * The way to the release NOTE itself, which is the only place the VERSION is edited: this
+ * screen reads it and offers no control that writes it. The other two are no longer of that
+ * kind — the status chip writes the status (2026-08-29) and both the date and
+ * `Mark as released` write the released date — so `test/view/releaseNeverEdits.test.ts` is
+ * cited nowhere near this sentence any more: its own docblock records that its claim was
+ * narrowed twice and is no longer a ban on the edit path. What is left for this control is
+ * still what earned it: without it the reader's only route to the version, and to every
+ * field this screen does not offer at all, was the index behind them, and from the index
+ * there was none at all.
  *
  * `view.opener.open` — the CONFIGURED target, and the same call a scope row's own click
  * makes (`scopeTree.ts`), so the release note lands where this view's `openIn` says every

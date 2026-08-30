@@ -214,8 +214,9 @@ whose whole job is to say what a release is. Asked for as a property by the auth
 - **The released date is settable, which is what makes the key exist at all.** Nothing in
   this plugin wrote it before (`createRelease` explicitly does not), so a bound released
   property could never come to hold anything and the index's Shipped group and its slip
-  figure were unreachable without hand-editing a note. ✨ binds the key; this is what fills
-  it.
+  figure were unreachable without hand-editing a note. ✨ binds the key; **which control
+  fills it is 6a's question** — `Mark as released` where that action is offered, this
+  invitation only where it is withheld.
 - The date dialog is `SchedulePromptModal` with ONE field — the same modal, the same native
   date input and the same per-field clear button the roadmap's Schedule uses — prefilled
   with what the note states and never with today: a dialog holding a date the note does not

@@ -96,9 +96,12 @@ area's appearance beside the header.
 
 ## Where it lives
 
-The action is `src/view/release/releaseClose.ts`, drawn from `src/view/release/renderScope.ts`
-ABOVE both of its empty-state returns — a release with no members at all is the one screen
-extension 1a is about, and an action drawn below that return could never be pressed there.
+The action is `src/view/release/releaseClose.ts`, drawn from `drawHeader` in
+`src/view/release/renderScope.ts` into the header's own footline — so it is on the screen
+before any empty-state return is reached, and the ordering is structural rather than a
+comment somebody must not break. That is what extension 1a needs: a release with no members
+at all is the one screen it can be exercised on, and an action drawn below that return could
+never be pressed there.
 The batch is planned by `releaseClosureWrites` in `src/domain/releaseWritePlan.ts` as ONE
 write with two sets, and applied by `src/storage/propertyWrite.ts` over
 `src/view/writeGate.ts`.

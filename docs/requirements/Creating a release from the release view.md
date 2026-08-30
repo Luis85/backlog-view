@@ -158,7 +158,9 @@ separate act of bringing the release note itself into being.
   nothing bound yet and nothing to narrow to, and it is the base `renderIndex`'s own bar can
   never reach: `ReleaseView.draw` returns before that module ever runs.
   `test/view/release/initControl.test.ts` pins both that the control appears there when
-  anything is adoptable and that it binds all four, not only membership.
+  anything is adoptable and that it binds every candidate this action has, not only
+  membership. No number here: a count of the candidates has been wrong three times, and the
+  rule that cannot go stale is that the list is DERIVED from what `init.ts` declares.
 - **A no-op press redraws nothing.** Nothing changed, so there is nothing for a redraw to
   show — and skipping it is also what keeps the pressed button attached and focused, since
   `view.render()` empties `viewEl` whether or not a bind happened. A press that DID bind
@@ -214,17 +216,24 @@ result object. It is a `ui/` leaf — it knows no property keys and writes nothi
 matching `estimationPresetDialog.ts`'s own pattern of taking plain rows in and handing plain
 data back.
 
-`src/view/release/init.ts` is the ✨ ACTION (`runReleaseInit`): it binds the suggested key
-for `release` (the membership property), `version`, `target date`, `status`, the ITEM state
-and the released date — whichever this vault has never touched — reading the live
-`BasesViewConfig` so a deliberately cleared option is left alone. WHICH of them are free is
-`adoptableReleaseKeys` in the same module, asked by the action and by the control's own offer
-alike so the two cannot come apart, and `SHARED_STATUS_OPTIONS` (`src/domain/releaseOptions.ts`)
-is the one exemption from its collision guard — 1c above. It writes no note: this view never edits a note that already
-exists (`test/view/releaseNeverEdits.test.ts`). The accepted cost is that Obsidian's own
-property picker cannot offer `version`, `target date` or `status` until a release note
-carries them, which the first release CARRYING one supplies — a blank box is written
-nowhere, so a press alone is not enough. The same cost was already taken for the
+`src/view/release/init.ts` is the ✨ ACTION (`runReleaseInit`), and it binds TWO kinds of
+option, declared as two lists rather than counted here. `RELEASE_SUGGESTED_KEYS` names the
+PROPERTIES — membership, version, target date, the release status, the ITEM state, the
+released date and the description — and `RELEASE_SUGGESTED_VALUES` names the options that
+are not properties at all: the release-notes folder, the released-status vocabulary and the
+transition value written when a release is marked. Both are read from the live
+`BasesViewConfig`, and in each list an option this vault has touched is left alone — cleared
+is touched. Which PROPERTY keys are free is `adoptableReleaseKeys` in the same module, and
+whether a non-property option would bind is `wouldBindValue` beside it; the action and the
+control's own offer (`anythingToBind`, `initControl.ts`) ask BOTH of those same two
+questions, so what ✨ promises and what it does cannot come apart. `SHARED_STATUS_OPTIONS`
+(`src/domain/releaseOptions.ts`) is the one exemption from the collision guard — 1c above.
+The two VALUE options that must agree are the vocabulary and the transition, and each is
+seeded from the other so the pair holds whichever the reader set first — that invariant is
+stated at `RELEASE_SUGGESTED_VALUES` itself. It writes no note. The accepted cost is that
+Obsidian's own property picker cannot offer `version`, `target date` or `status` until a
+release note carries them, which the first release CARRYING one supplies — a blank box is
+written nowhere, so a press alone is not enough. The same cost was already taken for the
 membership key last increment.
 
 `src/view/release/initControl.ts` is the ✨'s own control (`renderReleaseInit`), in the
@@ -241,9 +250,11 @@ but narrowed past that rule's own shape: it asks not "is anything at all adoptab
 one of THIS screen's own `fixes` still adoptable", because a `versionProperty` merely
 untouched is a fact about a different screen, and drawing the button for it would report
 success while redrawing this exact empty state. `noMembership` names one option because
-that is the one thing that screen is about; `noReleases` names all four
-(`RELEASE_SUGGESTED_KEYS`, derived rather than copied) because nothing there is bound yet
-and there is nothing to narrow to. All three call sites run the SAME bind, `bindAndReport`
+that is the one thing that screen is about; `noReleases` names every option this action can
+bind — `RELEASE_SUGGESTED_KEYS` and `RELEASE_SUGGESTED_VALUES` both, spread rather than
+copied (`releaseView.ts`) — because nothing there is bound yet and there is nothing to
+narrow to. Spread and not enumerated on purpose: a candidate added to either list is covered
+by being declared there, and a count written here would be the fourth one to go stale. All three call sites run the SAME bind, `bindAndReport`
 (below), so no two presses can come to disagree about what one press did — and the SAME
 click handler, which skips its redraw on a no-op and otherwise redraws and leaves the focus
 restore to `ReleaseView.render` itself, the one place that answers for every control on this

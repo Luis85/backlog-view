@@ -10,7 +10,13 @@
 > and `button.pbl-rel-released-unset` both survive. **Task 4** also gained a focus fix the plan
 > did not foresee, recorded in its Interfaces. **Task 2** imported a symbol Task 3 was to
 > define, which as written yields an unbuildable intermediate commit; the symbol was pulled
-> forward into Task 2 and the step now says so. The superseded text is not preserved in place
+> forward into Task 2 and the step now says so. **Task 5** (corrected 2026-08-30, in the
+> post-review fix wave) carried two more: its CSS snippet showed `flex: 0 0 auto` and omitted
+> `display: flex` and `min-inline-size: 0`, all three of which the shipped rule needs and two
+> of which Task 6's own review round put there; and its second test snippet used
+> `releaseScreen`'s default `scopeVault()`, whose members point at `R.md` while the helper
+> opens `0.9.md`, so `drawSummary` withheld the very element the checkpoint asserts. The
+> shipped test passes `twoWorkflowVault()`. The superseded text is not preserved in place
 > — an instruction that breaks if followed is a trap, and this repository keeps what was
 > DECIDED, which is what this note is. The rulings themselves are in the SDD ledger for this
 > plan.
@@ -566,7 +572,10 @@ describe('the actions live in the header', () => {
 	});
 
 	it('puts the summary and the actions on one line', () => {
-		const { view } = releaseScreen({ status: 'In progress' });
+		// `twoWorkflowVault()`, never `releaseScreen`'s default `scopeVault()`: that fixture's
+		// members name `R.md` while this helper opens `0.9.md`, so the scope is empty,
+		// `drawSummary` withholds `.pbl-rel-summary` and the checkpoint below is unreachable.
+		const { view } = releaseScreen({ status: 'In progress' }, twoWorkflowVault());
 		const foot = view.viewEl.querySelector('.pbl-rel-footline');
 		expect(foot?.querySelector('.pbl-rel-summary')).not.toBeNull();
 		expect(foot?.querySelector('.pbl-rel-scope-actions')).not.toBeNull();
@@ -581,6 +590,9 @@ describe('the actions live in the header', () => {
 	});
 });
 ```
+
+Add `twoWorkflowVault` to the file's existing `../../helpers/release` import — the second
+test above needs a fixture whose members actually name the release the helper opens.
 
 - [ ] **Step 2: Run tests to verify they fail**
 
@@ -652,7 +664,9 @@ In `styles/releaseScope.css`, replace the `.pbl-rel-actions` rule with:
    as a defect twice. At (0,2,0) it wins on specificity and neither import position
    matters. */
 .pbl-rel-actions.pbl-rel-scope-actions {
-	flex: 0 0 auto;
+	display: flex;
+	flex: 0 1 auto;
+	min-inline-size: 0;
 	flex-wrap: wrap;
 	justify-content: flex-end;
 	gap: var(--size-4-2);
