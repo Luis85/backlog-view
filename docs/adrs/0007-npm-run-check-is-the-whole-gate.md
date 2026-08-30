@@ -21,7 +21,7 @@ each step passes for someone and the combination has never passed for anyone.
 ## Decision
 
 ```bash
-npm run check   # build + lint + coverage-thresholded tests + fallow + docs register
+npm run check   # build + lint + markdown + coverage-thresholded tests + fallow + docs register
 ```
 
 Every step must pass before committing. CI runs the identical steps, in the same order.
