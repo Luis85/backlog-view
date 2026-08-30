@@ -83,7 +83,9 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   property nobody had filled in. The chip appears when the row is hovered or when the
   keyboard reaches it, which is when it is an affordance rather than a texture. It keeps
   its box either way, so nothing reflows, and it is still a real button, so clicking it
-  still sets the property.
+  still sets the property. The roving arrow-key selection counts as reaching it, and a
+  device with no hover at all shows the chips outright, since there they can be reached
+  no other way.
 - The selected projection tab is readable. Its label was the accent colour on a tint of
   the same accent — 2.56:1 in dark and 1.65:1 in light, against 6.69-8.13:1 for every
   unselected tab beside it — so the one control that answers "where am I" was the hardest
