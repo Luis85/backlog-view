@@ -58,9 +58,27 @@ for the state preset to drift out of step.
 1. All three inputs call `promptCreateItem(host, [type], null, { state })` — the method
    [[Creating a card in a column's state]] extends. None of them plans a write beside
    it.
-2. The type is `newItemType(host.settings, model)`, resolved as the roadmap's bucket
-   `+` resolves it, not a per-column picker.
-3. **Configured columns only — and this contradicts the use case as written.**
+2. **The requirements board only.** `renderBoard` is one frame with three callers —
+   `board.ts` twice, for the requirements and Deliverables boards, and
+   `iterationBoard.ts` — so an affordance added to the shared column header appears on
+   all three. Neither of the other two is this Task's, and each is wrong for a different
+   reason:
+
+   - The **Deliverables** board creates a `Deliverable`, never a focus-dependent type;
+     `toolbar.ts` already branches this way (`onDeliverables ? DELIVERABLE_TYPE : …`).
+   - The **iteration** board's columns are *buckets*, not states. `BoardColumn.bucket`
+     exists precisely because *"a bucket is not its state"*, and two of its buckets hold
+     `state: null` while meaning different things — so a state preset read off the column
+     would write the wrong thing, or nothing, on two of three columns.
+
+   The affordance is therefore gated on the board's scope, not drawn by `renderColumn`
+   unconditionally. Creation on the other two boards is a use case each, and neither has
+   been written. Found by review (Codex, PR #225).
+3. The type is `newItemType(host.settings, model)`, resolved as the roadmap's bucket
+   `+` resolves it, not a per-column picker. That helper is correct **because** of step 2:
+   it is the requirements board's own resolution, and the board this Task draws on is the
+   one it is right for.
+4. **Configured columns only — and this contradicts the use case as written.**
    [[New cards in place]] says *"Each column offers creation"* and names no exception; a
    stray column — `outsideWorkflow` — is a column. The decision taken during the
    decomposition was to withhold creation there: a stray column exists because a note was
@@ -74,10 +92,10 @@ for the state preset to drift out of step.
    extension, written through `adding-backlog-items`, before this Task ships. Until it is
    there, the PBI's criterion is the one that governs and this step is blocked rather
    than merely undecided. Found by review (Codex, PR #225).
-4. `styles/board.css` gains the header button, mirroring `.pbl-bucket-add` in
+5. `styles/board.css` gains the header button, mirroring `.pbl-bucket-add` in
    `roadmap.css`; the new class joins the hit-target list `touch.css` already keeps.
    No new partial, so no `index.css` ordering question.
-5. Two new catalog keys, mirroring `roadmap.newInBucket` and its tooltip. The frame is
+6. Two new catalog keys, mirroring `roadmap.newInBucket` and its tooltip. The frame is
    text; the column's own label is the configured state string, which is **data** and
    stays out of the catalog.
 
@@ -85,6 +103,8 @@ for the state preset to drift out of step.
 
 - A `+` on the column header, an entry in the column's context menu, and Enter on the
   empty-column stop each open the same creation flow, in that column's state.
+- None of the three appears on the Deliverables board or the iteration board, which share
+  the same column frame and would each need a different type or a different placement.
 - A stray (out-of-workflow) column offers none of the three, while still taking a drop —
   **conditional on [[New cards in place]] carrying that exception as an extension.**
   Without it this criterion and the PBI's *"each column offers creation"* cannot both

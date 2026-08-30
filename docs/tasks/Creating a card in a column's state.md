@@ -51,13 +51,26 @@ between and leave a blank note without its hierarchy properties behind"*.
 
 ## Approach
 
-1. `CreatePlacement` gains `state?: string`, and `NewItemSpec` with it.
+1. `CreatePlacement` gains `state?: string | null`, and `NewItemSpec` with it. **The
+   three values are three different facts and the type has to say so**: a string is that
+   column's state, `null` is the no-state column's *deliberate* absence, and the property
+   being missing is creation with no column context at all — the tree's `+`, the
+   toolbar's **New**, a row's context menu.
+
+   Collapsing the last two into one omission is the defect this step exists to avoid, and
+   the register already names the case: [[Creating an item from a template]] extension 5c
+   says a template's state survives ordinary creation but must **not** survive the
+   no-state column, because *"the no-state column's placement is an explicit absence, not
+   the absence of a placement"*. With `state?: string` and nothing written in both cases,
+   nothing downstream can tell them apart. Found by review (Codex, PR #225).
 2. `createBacklogItem` writes it under `settings.stateKey`, gated by `seeded` — the same
    condition the iteration and release keys carry, so a `Release` created from a column
    is seeded nothing, and by `settings.stateKey` being configured at all.
-3. The no-state column passes **no** `state`, rather than an empty one. This is
-   `applyLabels`' rule arriving on the creation path: an unconfigured or absent key is
-   never written, and `''` is a key the register says is not written at all.
+3. The no-state column passes `state: null`, and `createBacklogItem` writes **no** key
+   for it, rather than an empty one. This is `applyLabels`' rule arriving on the creation
+   path: an unconfigured or absent key is never written, and `''` is a key the register
+   says is not written at all. The distinction of step 1 is about what the *placement*
+   records, never about what reaches the frontmatter — both cases write nothing.
 
 Not in this task: which columns offer creation, and from where. That is
 [[Creation from the column's three inputs]].
@@ -68,6 +81,10 @@ Not in this task: which columns offer creation, and from where. That is
   `vault.create` call as its type, parent and order — never a second write.
 - A note created from the no-state column carries **no** state key. Not an empty string,
   not a null: the key is absent.
+- The placement distinguishes the no-state column from creation with no column context,
+  even though both write the same frontmatter — the bit [[Creating an item from a
+  template]] extension 5c needs in order to strip a template's state in the first case
+  and keep it in the second.
 - A `Release` created from a column is seeded no state, exactly as it is seeded no
   sprint and no horizon today.
 - With no state property configured, creation writes no state key and does not fail.
