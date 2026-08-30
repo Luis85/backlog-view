@@ -68,7 +68,10 @@ and no stray column either**. Two things to add before starting:
 5. With the keyboard: select the still-empty `Waiting` column and press Enter. (Its own
    column, because step 2 filled `Blocked` — a toggle cannot un-fill it.)
 6. Look at the `Parked` column the seeded item drew: it should offer no creation by any
-   of the three paths, while still accepting a dropped card.
+   of the three paths, while still accepting a dropped card. **Drop one of the throwaway
+   cards created above, never a real one** — removing `Parked` from `stateValues` at the
+   end would otherwise leave a genuine item carrying an undeclared state, and the stray
+   column it draws would outlive the test.
 7. **Folder placement, one fresh note per mode.** Folder mode is read *when the note is
    created* and relocates nothing afterwards, so this cannot be checked by toggling and
    re-reading the notes above. With `folderHierarchy` off, create one note from a column
