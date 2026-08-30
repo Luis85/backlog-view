@@ -97,16 +97,22 @@ export function makeReleaseView(
 }
 
 /**
- * Every key bound — what a fully configured vault looks like. `stateProperty` and
- * `releasedDateProperty` joined this on 2026-08-25, the band's own two options: without
- * them `done` and `released` read as unconfigured on every row, which made a shipped band
- * and a real progress bar both unreachable through this fixture (Task 7's Shipped
- * heading among them). `stateProperty` points at the SAME key `releaseStatusProperty`
- * does — `note.status` — because it names a different note's frontmatter: the release's
- * own status chip reads a release note, and this reads a MEMBER's own workflow state, and
- * vault authors commonly spell both `status`. `doneValues` is left unbound: the default
- * list (`DEFAULT_DONE_VALUES`) already includes `Done`, which is the only done value any
- * fixture in this file writes.
+ * Every key bound EXCEPT `releaseNotesFolder` — what a fully configured vault looks like,
+ * with that one exception held out on purpose (2026-08-30): the folder-bind test
+ * (`init.test.ts`'s `sees a folder bind that no property key reflects`) needs a view
+ * where every PROPERTY and the other two closing options are bound but the folder is not,
+ * so a press still has exactly one thing to do. A test whose own claim is "truly nothing
+ * left to bind" spreads this object plus an explicit `releaseNotesFolder`
+ * (`mountRelease`'s `notesFolder` override, or the literal inline) rather than reading
+ * this fixture as complete on its own. `stateProperty` and `releasedDateProperty` joined
+ * this on 2026-08-25, the band's own two options: without them `done` and `released` read
+ * as unconfigured on every row, which made a shipped band and a real progress bar both
+ * unreachable through this fixture (Task 7's Shipped heading among them). `stateProperty`
+ * points at the SAME key `releaseStatusProperty` does — `note.status` — because it names
+ * a different note's frontmatter: the release's own status chip reads a release note, and
+ * this reads a MEMBER's own workflow state, and vault authors commonly spell both
+ * `status`. `doneValues` is left unbound: the default list (`DEFAULT_DONE_VALUES`)
+ * already includes `Done`, which is the only done value any fixture in this file writes.
  */
 export const RELEASE_CONFIG = {
 	typeProperty: 'note.type',
@@ -124,11 +130,13 @@ export const RELEASE_CONFIG = {
 	// above are — a suite that wants the unbound case clears the key it is about.
 	descriptionProperty: 'note.description',
 	releaseStatusValues: 'Planned, In progress, Released',
-	// The closing actions' own three (2026-08-29), here for the reason every key above is:
-	// this fixture is what "fully configured" means, and a suite that wants one of them
-	// unbound clears the one it is about. `releasedStatusValues` is what "is this release
-	// already out" is asked against; `releasedTransitionValue` is the single value marking
-	// one WRITES, which a list cannot answer.
+	// The closing actions' own three (2026-08-29) — but only TWO of them here.
+	// `releasedStatusValues` is what "is this release already out" is asked against;
+	// `releasedTransitionValue` is the single value marking one WRITES, which a list
+	// cannot answer; both are bound for the same reason every key above is, and a suite
+	// that wants one of them unbound clears the one it is about. `releaseNotesFolder` is
+	// the THIRD and is deliberately held OUT of this object — see this const's own
+	// docblock above for why.
 	releasedStatusValues: 'Released',
 	releasedTransitionValue: 'Released',
 };
@@ -140,9 +148,11 @@ export const RELEASE_CONFIG = {
  * `scopeVault` (which carries a release to `pick`) for the latter.
  */
 export interface MountReleaseOptions {
-	/** Every candidate the ✨ could bind is already bound when true (`RELEASE_CONFIG`); an
-	 *  untouched config (nothing bound but the three model mappings, which resolve to their
-	 *  own defaults) when false. */
+	/** Every candidate the ✨ could bind is already bound when true (`RELEASE_CONFIG`)
+	 *  EXCEPT `releaseNotesFolder`, which that fixture holds out on purpose (see its own
+	 *  docblock) so a `bindAll: true` press still has one thing to do; an untouched config
+	 *  (nothing bound but the three model mappings, which resolve to their own defaults)
+	 *  when false. */
 	bindAll?: boolean;
 	/** Overrides `membershipProperty` on top of `bindAll` — `''` CLEARS it, which
 	 *  `adoptCandidates` reads as a decision rather than as untouched (see
@@ -155,6 +165,11 @@ export interface MountReleaseOptions {
 	/** Overrides `stateProperty` on top of `bindAll` — `''` clears the plan's own state key,
 	 *  the scope toolbar's own gate for its hide-done control (`scopeToolbar.test.ts`). */
 	stateKey?: string;
+	/** Overrides `releaseNotesFolder` on top of `bindAll` — `RELEASE_CONFIG`'s own docblock
+	 *  states why that fixture holds this one key out; a test whose claim is "truly
+	 *  nothing left to bind" passes it explicitly rather than relying on `RELEASE_CONFIG`
+	 *  alone. */
+	notesFolder?: string;
 }
 
 /** Hand the view a fresh result set, the way Bases does after a vault change —
@@ -165,11 +180,12 @@ export function refreshRelease(view: ReleaseView, vault: FakeVault): void {
 }
 
 export function mountRelease(opts: MountReleaseOptions = {}): ReleaseHarness & { vault: FakeVault } {
-	const { bindAll = true, membership, pick, stateKey } = opts;
+	const { bindAll = true, membership, pick, stateKey, notesFolder } = opts;
 	const vault = pick === undefined ? releaseVault() : scopeVault();
 	const configValues: Record<string, unknown> = bindAll ? { ...RELEASE_CONFIG } : {};
 	if (membership !== undefined) configValues.membershipProperty = membership;
 	if (stateKey !== undefined) configValues.stateProperty = stateKey;
+	if (notesFolder !== undefined) configValues.releaseNotesFolder = notesFolder;
 	const harness = makeReleaseView(vault, configValues);
 	if (pick !== undefined) harness.view.pick(pick);
 	return { ...harness, vault };
@@ -220,6 +236,19 @@ export function scopeVault(): FakeVault {
 	vault.addFile('E.md', { frontmatter: { type: 'Epic' } });
 	vault.addFile('F1.md', { frontmatter: { type: 'Feature', parent: 'E', order: 1, release: '[[R]]' } });
 	vault.addFile('F2.md', { frontmatter: { type: 'Feature', parent: 'E', order: 2, release: '[[R]]' } });
+	// `[[0.9]]`, and that is the point of them: `releaseScreen` adds `0.9.md` to whatever
+	// vault it is given and PICKS it, so without these the default screen was a release with
+	// no members — the empty scope `renderScope` returns early from — for every caller that
+	// did not pass a vault of its own. Two, one of them done, so the default also has a real
+	// rollup and a half-filled bar rather than a strip `drawSummary` withholds.
+	//
+	// The pair above stays on `[[R]]` rather than moving: `scopeVault()` is used two ways,
+	// and the other one (`makeReleaseView` directly, as `releaseNeverEdits.test.ts` does)
+	// never adds `0.9` at all — repointing them there leaves a vault whose members name a
+	// release that does not exist, which is the one test that failed when this was tried
+	// that way (2026-08-30). Each release keeps its own members.
+	vault.addFile('M1.md', { frontmatter: { type: 'PBI', order: 1, release: '[[0.9]]' } });
+	vault.addFile('M2.md', { frontmatter: { type: 'PBI', order: 2, release: '[[0.9]]', status: 'Done' } });
 	addToolbarReleases(vault);
 	return vault;
 }

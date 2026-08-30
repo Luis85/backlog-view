@@ -15,7 +15,7 @@ import { loadViewState, saveViewState } from '../../storage/viewStateStore';
 import { resolveViewIdentity } from '../../storage/viewIdentity';
 import { guidanceShell } from '../render/emptyStates';
 import { OpenContext, OpenController } from '../openTarget';
-import { RELEASE_SUGGESTED_KEYS } from './init';
+import { RELEASE_SUGGESTED_KEYS, RELEASE_SUGGESTED_VALUES } from './init';
 import { renderReleaseInit } from './initControl';
 import { renderNewRelease } from './newRelease';
 import { drawUnresolved, renderIndex } from './renderIndex';
@@ -508,13 +508,18 @@ export class ReleaseView extends BasesView {
 			// The bar's own ✨ never reaches this screen either, for the identical reason: it is
 			// `renderIndex` that draws it, and this branch returns before that runs. A base with
 			// zero releases is the FIRST-USE case that most needs every binding, so `fixes`
-			// is every option `RELEASE_SUGGESTED_KEYS` names rather than the one name the
-			// `noMembership` screen passes (`renderScope.ts`) — that screen is about ONE property
-			// and narrows on purpose; this one has nothing bound yet and nothing to narrow to.
-			// Derived rather than copied, so a further candidate is covered by being declared
-			// there and not by a second list here going stale beside it — which is why this says
-			// "further" and not the ordinal it said until 2026-08-29.
-			renderReleaseInit(this, empty, 'empty', RELEASE_SUGGESTED_KEYS.map((candidate) => candidate.option));
+			// is every option BOTH `RELEASE_SUGGESTED_KEYS` and `RELEASE_SUGGESTED_VALUES` name
+			// (the seven properties and, since 2026-08-30, the folder, the vocabulary and the
+			// transition) rather than the one name the `noMembership` screen passes
+			// (`renderScope.ts`) — that screen is about ONE property and narrows on purpose;
+			// this one has nothing bound yet and nothing to narrow to. Derived rather than
+			// copied, so a further candidate is covered by being declared there and not by a
+			// second list here going stale beside it — which is why this says "further" and not
+			// the ordinal it said until 2026-08-29.
+			renderReleaseInit(this, empty, 'empty', [
+				...RELEASE_SUGGESTED_KEYS.map((candidate) => candidate.option),
+				...RELEASE_SUGGESTED_VALUES.map((candidate) => candidate.option),
+			]);
 			renderNewRelease(this, empty);
 			drawUnresolved(this.viewEl, index);
 			return null;

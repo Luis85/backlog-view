@@ -118,6 +118,15 @@ differently about a generated file naming another source: the README REPLACES on
 base or view leaves it behind, and regenerating is the repair), and these notes REFUSE it (a
 whole-file write over another release's notes is in no undo slot and cannot be taken back).
 The output folder is declared in `src/domain/releaseOptions.ts`.
+✨ binds it since
+2026-08-30, which it could not before: a folder is not a property, so Obsidian's picker can
+never offer one, and a vault that had bound everything the picker COULD offer still had no
+route to this action. The candidate is in `RELEASE_SUGGESTED_VALUES`
+(`src/view/release/init.ts`), the offer that decides whether the empty state's ✨ is drawn at
+all is `anythingToBind` (`src/view/release/initControl.ts`), and `boundKeys` in
+`src/view/release/newRelease.ts` is what reports the press as a change — it read property
+keys alone, so a press whose only work was this folder compared equal, said it bound nothing
+and skipped the redraw that would have drawn this very button.
 
 The button and its gate are in `src/view/release/releaseClose.ts`, beside the other closing
 action. The write takes the plugin-wide lock for its whole duration through

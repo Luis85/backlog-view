@@ -171,9 +171,21 @@ describe('generating the release notes', () => {
 	});
 
 	it('says so, and writes nothing, when the notes are already up to date', async () => {
-		const { view, vault } = releaseScreen({ status: 'Released' }, scopeVault(), NOTES_ON);
+		// A POPULATED release, built the way `writes the notes, and opens them` builds one:
+		// `scopeVault()`'s own members name `R` while this helper opens `0.9`, so the default
+		// generates the empty-release file — and byte-identical regeneration is a claim whose
+		// whole risk lives in the body that file does not have. Grouping, ordering and the
+		// per-member lines are what a second pass could reorder; an empty file cannot vary.
+		const vault = scopeVault();
+		vault.addFile('First PBI.md', { frontmatter: { type: 'PBI', release: '[[0.9]]', order: 1 } });
+		vault.addFile('Second PBI.md', { frontmatter: { type: 'PBI', release: '[[0.9]]', order: 2 } });
+		const { view } = releaseScreen({ status: 'Released' }, vault, NOTES_ON);
 		await press(view, '.pbl-rel-notes');
 		const first = vault.contents.get(NOTES);
+		// The guard on the guard: with no members this read the empty-release sentence and the
+		// comparison below still passed.
+		expect(first).toContain('First PBI');
+		expect(first).toContain('Second PBI');
 
 		Notice.reset();
 		await press(view, '.pbl-rel-notes');

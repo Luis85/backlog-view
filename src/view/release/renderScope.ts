@@ -1,7 +1,7 @@
 import { setIcon, setTooltip } from 'obsidian';
 import type { ReleaseView } from './releaseView';
 import { t } from '../../i18n/t';
-import { ReleaseFigure, ReleaseIndex, ReleaseRow, ReleaseScope } from '../../domain/releases';
+import { closeOffer, ReleaseFigure, ReleaseIndex, ReleaseRow, ReleaseScope } from '../../domain/releases';
 import { editReleaseDescription, editReleaseReleased, showReleaseStatusMenu } from './releaseEdits';
 import { formatCivil } from '../../domain/timeline';
 import { BacklogSettings } from '../../domain/settings';
@@ -59,10 +59,6 @@ export function renderScope(
 	index: ReleaseIndex,
 ): void {
 	drawHeader(view, scope, release, planSettings, index);
-	// Above both empty-state returns on purpose — see `releaseClose.ts`'s own header: the
-	// empty-scope screen is the only place extension 1a can be exercised at all, and the
-	// unconfigured-membership screen withholds nothing that marking reads.
-	drawReleaseActions(view, view.viewEl, release, scope, planSettings);
 	// Both empty states sit BELOW the header, so the back control survives either. A
 	// release nobody can read the scope of must not also be a dead end.
 	if (view.settings.membershipKey === '') {
@@ -135,10 +131,15 @@ function drawAllDoneState(viewEl: HTMLElement, count: number): void {
 }
 
 /**
- * Two lines: the back control and the release's own three figures, then the summary
- * strip beneath them — `.pbl-rel-hline` for the first, `.pbl-rel-summary` for the second,
- * which is what lets `styles/releaseScope.css` stack them without either line's own flex
- * rules fighting the other's.
+ * THREE lines: the back control with the release's own figures (`.pbl-rel-hline`), the
+ * description under it (`.pbl-rel-desc`), and the footline (`.pbl-rel-footline`), which
+ * carries the summary strip and the closing actions on one row. Three children of
+ * `.pbl-rel-header`, which is what lets `styles/releaseScope.css` stack them without any
+ * line's own flex rules fighting another's.
+ *
+ * It said two — the hline and `.pbl-rel-summary` — until 2026-08-30, when the summary
+ * moved INSIDE the footline and the actions joined it there, so `.pbl-rel-summary` is no
+ * longer a child of the header at all.
  */
 function drawHeader(
 	view: ReleaseView,
@@ -179,14 +180,30 @@ function drawHeader(
 	drawReleased(view, factsEl, release);
 
 	drawDescription(view, headerEl, release);
-	drawSummary(headerEl, release, scope.members, planSettings);
+	// The header's last line: the summary on the left, the actions on the right. Both are
+	// about the RELEASE rather than the tree, which is the division `drawOpenNote` above
+	// already states — so the band that used to sit between this header and the tree's own
+	// toolbar is gone and the actions are on the correct side of that line.
+	//
+	// It is also what makes the ordering STRUCTURAL. Drawn from `renderScope`, this call
+	// had to sit above two empty-state returns and a comment had to say why; the header is
+	// drawn on every screen, so the empty-scope case that `Generating the release notes`
+	// extension 1a is about now gets the actions by construction.
+	const footEl = headerEl.createDiv({ cls: 'pbl-rel-footline' });
+	drawSummary(footEl, release, scope.members, planSettings);
+	drawReleaseActions(view, footEl, release, scope, planSettings);
 }
 
 /**
- * The way to the release NOTE itself, which is the only place a version, a date or a
- * status is edited: this view reads those three and writes none of them
- * (`test/view/releaseNeverEdits.test.ts`), so without this control the reader's only
- * route to the note was the index behind them, and from the index there was none at all.
+ * The way to the release NOTE itself, which is the only place the VERSION is edited: this
+ * screen reads it and offers no control that writes it. The other two are no longer of that
+ * kind — the status chip writes the status (2026-08-29) and both the date and
+ * `Mark as released` write the released date — so `test/view/releaseNeverEdits.test.ts` is
+ * cited nowhere near this sentence any more: its own docblock records that its claim was
+ * narrowed twice and is no longer a ban on the edit path. What is left for this control is
+ * still what earned it: without it the reader's only route to the version, and to every
+ * field this screen does not offer at all, was the index behind them, and from the index
+ * there was none at all.
  *
  * `view.opener.open` — the CONFIGURED target, and the same call a scope row's own click
  * makes (`scopeTree.ts`), so the release note lands where this view's `openIn` says every
@@ -286,8 +303,23 @@ function drawStatus(view: ReleaseView, hlineEl: HTMLElement, release: ReleaseRow
  * an invitation to write over it blind, and — the sharper reason here — an unreadable date
  * and an absent one both reach the planner as `null`, so a dialog opened on one could not
  * tell the reader's "leave it empty" from "it already is", and clearing the broken value
- * would look available and write nothing. An UNSET date draws the invitation, because this
- * is the one figure on the screen the reader can fill.
+ * would look available and write nothing.
+ *
+ * An UNSET date draws the invitation **only where `Mark as released` is withheld**
+ * (`!closeOffer(release, view.settings).offered`, `releaseClose.ts`'s own predicate,
+ * asked here rather than compared against beside it — the codebase's own rule that a
+ * checkmark, an offer or a visibility question is asked of the ONE plan that decides it,
+ * never restated in a second place the two could drift apart from). That action covers
+ * the ordinary case — a release still open, cleanly configured, not already marked out —
+ * by writing the status AND the date together, so a second control offering the same
+ * field there would be two controls for one property. But `offered` is four conjuncts,
+ * not one: `dateFree` (this figure absent) is only the last of them, and the other three
+ * — a missing closing option, an unreadable status, or a release whose status already
+ * reads as released while its date does not (an imported or hand-edited note) — each
+ * leave `Mark as released` withheld while this field is still bound and empty. Those
+ * three would have no way to set a date from this screen at all if this control also
+ * stayed silent on their account, so it does not: it is the fallback the footline's own
+ * button does not cover, not a second copy of what it does.
  *
  * It is drawn as a LABELLED value (`Released 2026-09-12`) where the target beside it is a
  * bare date: two dates side by side in one row are only told apart on the index by the
@@ -303,6 +335,11 @@ function drawReleased(view: ReleaseView, factsEl: HTMLElement, release: ReleaseR
 		return;
 	}
 	const date = release.released.value;
+	// Bound and empty draws the invitation only where `Mark as released` is withheld —
+	// see this function's own docblock. Where that action IS offered, it is the way to
+	// set this field and this control draws nothing, `drawFigure`'s own rule for an
+	// absent figure.
+	if (date === null && closeOffer(release, view.settings).offered) return;
 	const btn = factsEl.createEl('button', {
 		cls: 'pbl-rel-released' + (date === null ? ' pbl-rel-released-unset' : ''),
 		// No `aria-label`: the button's own text says both what it holds and what it is,
