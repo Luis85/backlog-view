@@ -342,7 +342,9 @@ button.pbl-rel-toggle-on {
    as a defect twice. At (0,2,0) it wins on specificity and neither import position
    matters. */
 .pbl-rel-actions.pbl-rel-scope-actions {
-	flex: 0 0 auto;
+	display: flex;
+	flex: 1 1 auto;
+	min-inline-size: 0;
 	flex-wrap: wrap;
 	justify-content: flex-end;
 	gap: var(--size-4-2);
@@ -352,8 +354,15 @@ button.pbl-rel-toggle-on {
 
 /* Why an action is not offered: an option to bind, or a field to repair. Muted and small,
    the shell every other secondary sentence on this screen uses — it is an explanation
-   beside a control, never a refusal of something the reader just did. */
+   beside a control, never a refusal of something the reader just did.
+
+   A FULL-WIDTH line inside the action area, so it can only be read as its own statement.
+   The area is a wrapping flex row of buttons; a note sized to its content sat horizontally
+   beside whichever button was still offered, and since a refusal replaces its OWN button in
+   place, the one on screen was always the other action's. Buttons keep the row; sentences
+   take a line. */
 .pbl-rel-actions-note {
+	flex: 1 0 100%;
 	color: var(--text-muted);
 	font-size: var(--font-ui-small);
 }

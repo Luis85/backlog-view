@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { readFileSync } from 'node:fs';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { Modal } from '../../helpers/obsidian-mock';
 import {
@@ -266,5 +267,53 @@ describe('the actions live in the header', () => {
 		// must break — and this test is what says so.
 		const { view } = releaseScreen({ status: 'In progress' }, emptyReleaseVault());
 		expect(view.viewEl.querySelector('.pbl-rel-scope-actions')).not.toBeNull();
+	});
+});
+
+describe('a refusal is not a caption on the button beside it', () => {
+	// **Narrower than the claim, and the narrow sentence is the honest one** —
+	// `rowChrome.test.ts`'s own shape and reason. jsdom computes no layout, so what is
+	// checked is that `styles/releaseScope.css` still declares the full-width line. It
+	// would not notice a different rule overriding it.
+	const css = readFileSync('styles/releaseScope.css', 'utf8');
+
+	it('gives the note a line of its own inside the action area', () => {
+		// Before this, the area was a plain horizontal row and a refusal replaced its own
+		// button IN PLACE — so `[Mark as released]  To generate release notes, bind the
+		// release membership property.` put a sentence about generation immediately right
+		// of the marking button. Both sentences name their own action; the layout invited
+		// the wrong reading anyway.
+		const block = css.match(/\.pbl-rel-actions-note\s*\{[^}]*\}/);
+		expect(block, 'no rule for the actions note').not.toBeNull();
+		expect(block?.[0]).toContain('flex: 1 0 100%');
+	});
+
+	// Two findings carried from Task 5's review, landing in the same compound rule. jsdom
+	// asserts neither claim directly — one is about the CASCADE (a declaration this rule
+	// must supply itself rather than borrow) and the other about wrapping (seen only in the
+	// browser harness, at a narrow window, with `?pick=Releases/1.1.md`: the area's own
+	// `flex: 0 0 auto` sized it to the unwrapped note's max-content width and the line ran
+	// past the pane) — so both are pinned as a declaration the partial must keep making.
+	const areaBlock = css.match(/\.pbl-rel-actions\.pbl-rel-scope-actions\s*\{[^}]*\}/);
+
+	it('supplies its own display: flex rather than borrowing release.css’s bare .pbl-rel-actions', () => {
+		// `flex-wrap`, `justify-content` and `gap` on this rule are inert without a `display:
+		// flex` of its own — the compound rule laid out only because the bare `.pbl-rel-actions`
+		// in `styles/release.css` supplied it, which contradicts `releaseClose.ts`'s own
+		// docblock: `.pbl-rel-scope-actions` is documented as "this area's LAYOUT alone".
+		expect(areaBlock, 'no rule for the compound actions/scope-actions selector').not.toBeNull();
+		expect(areaBlock?.[0]).toContain('display: flex');
+	});
+
+	it('lets the action area shrink, so a full-width note can wrap instead of overflowing the pane', () => {
+		// `flex: 0 0 auto` refused to shrink, so the area sized itself to the NOTE's own
+		// max-content width (the note's `flex: 1 0 100%` resolves against the area's own
+		// box) — at a narrow window the sentence ran off the edge of the pane rather than
+		// wrapping. Seen in the browser harness at 400px and 320px on `?pick=Releases/1.1.md`
+		// and `?pick=Releases/0.8.md&config=nomembership`; confirmed fixed at both widths
+		// once the area could shrink. `min-inline-size: 0` is what lets it shrink past its
+		// content's own min-content width, which a flex item refuses by default.
+		expect(areaBlock?.[0]).toContain('flex: 1 1 auto');
+		expect(areaBlock?.[0]).toContain('min-inline-size: 0');
 	});
 });
