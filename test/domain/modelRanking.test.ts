@@ -56,4 +56,30 @@ describe('buildModel ranking', () => {
 		const model = buildModel(vault.app, vault.entries(), { ...settings, focusLevel: 'PBI' });
 		expect(model.roots.map((i) => i.file.basename)).toEqual(['PBI B2', 'PBI B1', 'PBI A2', 'PBI A1']);
 	});
+
+	it('reaches rank order despite an unranked context row at the focused level', () => {
+		// Seed and Respace never write context notes, so a context row with no order is
+		// permanent — the distinctness check must look only at the WRITABLE rows, or one
+		// such row vetoes rank order forever, even once every writable note is migrated.
+		const vault = new FakeVault();
+		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 1000 } });
+		vault.addFile('Epic B.md', { frontmatter: { type: 'Epic', order: 2000 } });
+		// No order at all: this PBI is excluded from the base's own results below, so it
+		// is loaded only as context for its child — never a write target, never migrated.
+		vault.addFile('PBI A1.md', { frontmatter: { type: 'PBI' }, parentLink: 'Epic A' });
+		vault.addFile('Task A1a.md', { frontmatter: { type: 'Task', order: 10 }, parentLink: 'PBI A1' });
+		vault.addFile('PBI B1.md', { frontmatter: { type: 'PBI', order: 20 }, parentLink: 'Epic B' });
+		vault.addFile('PBI B2.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: 'Epic B' });
+		// The base returns only the two writable PBIs and the Task; PBI A1 is context.
+		const entries = vault
+			.entries()
+			.filter((e) => ['Task A1a.md', 'PBI B1.md', 'PBI B2.md'].includes(e.file.path));
+		const model = buildModel(vault.app, entries, { ...settings, focusLevel: 'PBI' });
+		const pbiA1 = model.byPath.get('PBI A1.md');
+		expect(pbiA1?.outsideFilter).toBe(true);
+		expect(pbiA1?.order).toBeNull();
+		// The two writable ranks are distinct, so rank order applies; the unranked
+		// context row still sorts last, exactly as `ranked` already places it.
+		expect(model.roots.map((i) => i.file.basename)).toEqual(['PBI B2', 'PBI B1', 'PBI A1']);
+	});
 });

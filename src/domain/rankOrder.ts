@@ -39,7 +39,13 @@ export function inRankOrder(rows: BacklogItem[], ranked: BacklogItem[]): Backlog
 	// ORDER. Ties (and absent ranks) mean the number is not yet answering the question,
 	// so the tree's own order is the better answer. Self-healing: the moment Seed gives
 	// the rows distinct ranks, this returns rank order with nothing to switch on.
-	const orders = rows.map((item) => item.order);
+	//
+	// Read only off the WRITABLE rows — the same reasoning `anchoredOrder` already uses
+	// to skip an unranked context row when picking a neighbour. Seed and Respace never
+	// write a context note, so counting one here would be a permanent veto: a row
+	// nothing can ever migrate would keep this view in tree order forever, even once
+	// every writable note has a distinct rank.
+	const orders = rows.filter((item) => !item.outsideFilter).map((item) => item.order);
 	if (orders.some((o) => o === null) || new Set(orders).size !== orders.length) return rows;
 	const members = new Set(rows);
 	return ranked.filter((item) => members.has(item));
