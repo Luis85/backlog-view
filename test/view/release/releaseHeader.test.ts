@@ -2,6 +2,8 @@
 import { describe, expect, it } from 'vitest';
 import { releaseScreen } from '../../helpers/release';
 import { en } from '../../../src/i18n/en';
+import { Modal } from '../../helpers/obsidian-mock';
+import { flush } from '../../helpers/view';
 
 describe('the released date is a control only when there is one, or Mark as released cannot cover it', () => {
 	it('draws nothing when the key is bound, the value absent, and Mark as released is offered', () => {
@@ -42,5 +44,25 @@ describe('the released date is a control only when there is one, or Mark as rele
 		const el = view.viewEl.querySelector('.pbl-rel-released');
 		expect(el).not.toBeNull();
 		expect(el?.textContent).toBe(en['release.scope.markReleased']);
+	});
+
+	it('does not strand focus when clearing a date takes its own control off screen', async () => {
+		// Found on review, `renderChevron`/`refocus`'s own class of defect: clearing this
+		// release's date makes `Mark as released` offered again, so the button the reader
+		// just pressed is gone with the redraw. Its replacement — the same control this
+		// release's own screen now offers for the field — is the stable neighbour, `refocus`'s
+		// own shape rather than a body a keyboard reader would be dropped on.
+		const { view } = releaseScreen({ status: 'In progress', released: '2026-06-18' });
+		view.viewEl.querySelector<HTMLButtonElement>('.pbl-rel-released')!.click();
+		const modal = Modal.lastOpened!;
+		const input = modal.contentEl.querySelector('input')!;
+		input.value = '';
+		input.dispatchEvent(new Event('input', { bubbles: true }));
+		const buttons = Array.from(modal.contentEl.querySelectorAll<HTMLButtonElement>('button'));
+		buttons[buttons.length - 1].click();
+		await flush();
+
+		expect(view.viewEl.querySelector('.pbl-rel-released')).toBeNull();
+		expect(document.activeElement).toBe(view.viewEl.querySelector('.pbl-rel-close'));
 	});
 });

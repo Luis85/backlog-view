@@ -192,6 +192,7 @@ describe('the release harness mounts', () => {
 		expect(header()?.querySelector('.pbl-rel-status.pbl-state-unset')).not.toBeNull();
 		expect(header()?.querySelector('.pbl-rel-desc.pbl-rel-desc-empty')).not.toBeNull();
 		expect(header()?.querySelector('.pbl-rel-released')).toBeNull();
+		expect(containerEl.querySelector('.pbl-rel-close')).not.toBeNull();
 
 		// SHIPPED: the released date as a VALUE rather than an invitation — the state the
 		// index's Shipped group is built on, and the one form of this control no screen drew
