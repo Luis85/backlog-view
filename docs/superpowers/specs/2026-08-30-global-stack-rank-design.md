@@ -43,16 +43,27 @@ each reads a slice of the single order:
 | --- | --- |
 | Tree | the items sharing a parent |
 | Focus level | the items at that rung, plus the extra types ranking beside it |
-| Board column, roadmap shelf | unchanged — the Base's own sort |
+| Board column | unchanged — the Base's own sort (`entryIndex`) |
+| Roadmap shelf and timeline | unchanged mechanism — they take `roadmapRows`' order as given |
 
 Sibling ranking stops being a rule and becomes a consequence. A sibling group is a subset
 of a total order, so `compareSiblings` is untouched.
 
 ### Scope
 
-Tree and focus level only. Board columns and the roadmap shelf keep today's behaviour.
-A global rank makes in-column ranking *possible*, and this work deliberately does not take
-it — see **Register** below.
+Tree and focus level only. A global rank makes in-column ranking *possible*, and this work
+deliberately does not take it — see **Register** below.
+
+**One consequence reaches the roadmap anyway, and an earlier draft denied it.** The shelf
+and the timeline do not sort at all: `roadmapRows` is
+`(model.focused ? model.roots : model.results).filter(visible)`, with no `entryIndex` pass
+— so they keep whatever order they are handed, which `src/domain/CLAUDE.md` calls tree
+order. Unfocused, that is `model.results` and nothing here touches it. **Focused, it is
+`model.roots`, which this change reorders by rank.** So a focused roadmap's rows follow the
+focused tree, exactly as they do today; what changes is what the focused tree's order
+*means*. That is the right answer — the two surfaces would otherwise disagree about the
+same rung — but it is a behaviour change, and it is stated rather than filed under
+"unchanged".
 
 ### What this deletes
 
@@ -129,14 +140,20 @@ The test is **membership in the active focus forest** — `model.focused` and th
 Its `outsideFilter` refusal stays too: a context row is not movable, which is a different
 question from whether its rank is *read* (it is, and it is in the arithmetic array above).
 
-**The drag's no-op branch moves to the peers too, or the three inputs disagree.**
+**The drag's no-op branch reads the peers for a focus row — and only for one.**
 `dropTargetFor` returns `null` when a drop changes nothing on screen, and it asks that
 question of the *real* sibling list. A focus rank sets `target.parent` to the dragged
 item's own parent, so that branch always runs — and when both rows are only children, both
 indices are zero and the drag is rejected as a no-op while the keyboard and the menu move
 the row. Its own comment already states the right rule (*"a drop that moves the row past
-nothing anyone can see"*), so this is applying that rule to the list the user is actually
-looking at, which under focus is the peer list.
+nothing anyone can see"*), so this applies that rule to the list the user is looking at.
+
+**The `member` filter stays for every ordinary tree row**, and swapping it for the raw peer
+list would break the case that comment was written for: with real roots `Epic A`,
+`Test suite`, `Epic B`, the plan draws only the two epics, so dropping A immediately before
+B must stay a no-op. Comparing the unfiltered peers reads crossing the hidden suite as a
+move, rewrites `order` and spends the undo slot with both screens unchanged. So: the focus
+peer list for an active focus row, the `member`-filtered real group for everything else.
 
 **A guard is also needed at the same time, or the change grants what this spec refuses.**
 `indent` takes its new parent from `visibleNeighbor`, which is built on `siblingContext` —

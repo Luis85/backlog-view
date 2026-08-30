@@ -224,15 +224,33 @@ with:
 Run: `npx vitest run test/domain/model.test.ts -t "orders focus rows by global rank"`
 Expected: PASS
 
-- [ ] **Step 5: Run the whole domain suite for regressions**
+- [ ] **Step 5: Cover the surface this reaches beyond the tree**
+
+`roadmapRows` (`src/domain/roadmap.ts:513`) is
+`(model.focused ? model.roots : model.results).filter(visible)` — no sort of its own — so a
+**focused** roadmap's shelf and timeline rows follow this change. That is intended: the two
+surfaces would otherwise disagree about the same rung. It is still a behaviour change, so
+it gets a check rather than a discovery:
+
+```ts
+it('orders a focused roadmap by rank, and an unfocused one as before', () => {
+	// Same fixture as above: PBI B1 (3000) ranks before PBI A1 (9000).
+	expect(roadmapRowTitles(focusedModel)).toEqual(['PBI B1', 'PBI A1']);
+	expect(roadmapRowTitles(unfocusedModel)).toEqual(unfocusedTreeOrder);
+});
+```
+
+Put it in `test/domain/roadmap.test.ts`, beside that file's existing row-order cases.
+
+- [ ] **Step 6: Run the whole domain suite for regressions**
 
 Run: `npx vitest run test/domain/`
 Expected: PASS. If a focus test asserts DFS ordering, it is asserting the old rule — update it and say so in the commit.
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 7: Commit**
 
 ```bash
-git add src/domain/model.ts test/domain/model.test.ts
+git add src/domain/model.ts test/domain/model.test.ts test/domain/roadmap.test.ts
 git commit -m "feat(domain): focus rows render in global rank order
 
 A filter over the ranked array rather than a sort of its own, so
