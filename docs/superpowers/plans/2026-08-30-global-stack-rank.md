@@ -987,14 +987,34 @@ Both call sites abort on a refusal and name its remedy, rather than creating the
 ```ts
 	const placed = newItemOrder(host, parentItem);
 	if ('refusal' in placed) {
-		new Notice(placed.refusal === 'gapSpent' ? t('rank.gapSpent') : t('rank.unranked'));
+		new Notice(t(refusalKey(placed.refusal)));
 		return;
 	}
 ```
 
-Note this reads as a ternary between two `t()` calls, which the `TEXT_TERNARY` lint rule
-may refuse. If it does, lift it to a small helper returning the key — do not inline the
-sentences.
+with one mapping, in `src/domain/writePlan.ts` beside the type it switches on:
+
+```ts
+/** The catalog key that names each refusal's remedy. A `switch` and not a ternary,
+ *  so adding a fourth refusal is a compile error rather than a wrong message: the
+ *  third one was added while a two-way ternary was still routing everything that was
+ *  not `gapSpent` to the backfill advice, telling a user whose parent had been deleted
+ *  to initialize their ranks. */
+export function refusalKey(refusal: RankRefusal): 'rank.gapSpent' | 'rank.unranked' | 'rank.parentGone' {
+	switch (refusal) {
+		case 'gapSpent':
+			return 'rank.gapSpent';
+		case 'unranked':
+			return 'rank.unranked';
+		case 'parentGone':
+			return 'rank.parentGone';
+	}
+}
+```
+
+A `switch` over a union with no `default` is what makes a fourth refusal fail to compile.
+It also sidesteps `TEXT_TERNARY`, which would refuse a sentence picked between two
+literals — the keys are data, and only `t()` reaches the catalog.
 
 - [ ] **Step 5: Check that a refused rank refuses the note**
 
@@ -1103,12 +1123,17 @@ export type SpreadResult = { writes: ItemWrite[] } | { wedged: BacklogItem[] };
 function spreadAround(sequence: BacklogItem[]): SpreadResult {
 	const writes: ItemWrite[] = [];
 	let start = 0;
+	// A boundary is a context row that HAS a rank. An unranked one constrains nothing,
+	// so it must not split the allocation: an earlier revision made every context row a
+	// boundary, and an unranked one then left the runs on either side each restarting at
+	// ORDER_SPACING — writable root B at 1000 and writable descendant A at 1000, a
+	// collision manufactured by the migration itself. It is still never written; it is
+	// filtered out of the run below instead.
+	const isBoundary = (i: number) => sequence[i].outsideFilter && sequence[i].order !== null;
 	for (let i = 0; i <= sequence.length; i++) {
 		const atEnd = i === sequence.length;
-		// Every immovable row is a boundary, ranked or not. Everything between two
-		// boundaries is writable by construction, so no context row can reach `writes`.
-		if (!atEnd && !sequence[i].outsideFilter) continue;
-		const run = sequence.slice(start, i);
+		if (!atEnd && !isBoundary(i)) continue;
+		const run = sequence.slice(start, i).filter((item) => !item.outsideFilter);
 		if (run.length > 0) {
 			const bound = atEnd ? null : (sequence[i].order ?? null);
 			const lower = start === 0 ? null : (sequence[start - 1].order ?? null);
@@ -1208,10 +1233,11 @@ In `src/i18n/en.ts`, beside the existing `command.*` keys (line ~1270):
 
 The last two are the two refusals from Task 4. Wire them in **`src/view/cardMoves.ts`**, at the `computeDropWrites` call on line 282 —
 the only call site in `src/`, so this is the one place a refused drop can speak: ask **`dropPlacement(dragged, target, host.model.ranked)`** — the
-planner's own function, not `orderForTarget` beside it — for the reason, and show
-`t('rank.gapSpent')` or `t('rank.unranked')` accordingly. Calling `orderForTarget`
-directly here would skip the dragged-row filter and could report a number where the
-planner refused, leaving a drop that does nothing and says nothing. Add a check for each — a drop on
+planner's own function, not `orderForTarget` beside it — for the reason, and show `t(refusalKey(...))`. Never a ternary
+over the refusals — there are three, and a two-way branch silently routes the third to
+the wrong advice. Calling `orderForTarget` directly here would skip the dragged-row
+filter and could report a number where the planner refused, leaving a drop that does
+nothing and says nothing. Add a check for each — a drop on
 a spent gap names Respace, a drop beside an unranked note names the set-up button — because
 a notice naming the wrong remedy is advice that does not work, and no type would catch it.
 
