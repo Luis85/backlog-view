@@ -86,6 +86,14 @@ skill exists to stop.
 | Live vault | What can Obsidian only answer in a real vault? |
 | Register | Does a new module in `src/` need a use case's `## Where it lives` or an ADR? |
 | ADR | Was an alternative genuinely available? If not, there is no ADR. |
+
+The ADR row is answered with the decision itself or not at all. `docs/adrs/README.md`
+wants the context, the option taken, what each rejected option cost, what got **harder**,
+and what would revisit it — and a record that could only ever have gone one way is
+documentation, not an ADR. A decomposition does not hold any of that on its own, so when
+the row says yes, ask for those five before phase 4 rather than at the close: an ADR
+written from a one-line "an ADR is owed" is the empty record the register's own gate cannot
+see, since it checks the five headings and never what is under them.
 | Changelog | What does `[Unreleased]` gain? |
 
 **Exit when** every row has a note or a stated reason.
@@ -128,8 +136,11 @@ unlocks writing.**
 
 ## The close
 
-1. Write one note per child, into the folder its type belongs to, **in the shape that type
-   owes** — a `Task` skeleton over an `Issue` or a `Test case` passes `npm run docs`, which
+1. Write one note per **output** — every child, plus the ones phase 3 named as not being
+   children — into the folder its type belongs to, **in the shape that type owes**. An ADR
+   goes to `docs/adrs/` under that README's own conventions, its number and its index entry
+   included; writing only the children leaves the handoff pointing at a path that was never
+   created. — a `Task` skeleton over an `Issue` or a `Test case` passes `npm run docs`, which
    gates neither. Where `docs/README.md` documents a shape, follow it: a `Task` opens with
    **Evidence** and leaves `## Outcome` for after the work; a `Test case` opens with
    `Why this exists` and a `Preconditions` line; an `Issue` that records **a decision taken
@@ -168,7 +179,8 @@ unlocks writing.**
 - A phase's exit gate asks for less than that phase's walk covered.
 - You invented a note shape the register does not document, rather than asking for it.
 - An output that is not a child of the PBI stopped being mentioned after the phase that
-  found it.
+  found it — the close writing "per child" is that flag's usual spelling.
+- An ADR is owed and nobody has said what the alternative was or what it cost.
 - A perspective row went unmentioned because it "obviously does not apply".
 - Every child came out a `Task`.
 - You wrote a note before phase 4 to keep track.
