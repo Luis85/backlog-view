@@ -40,7 +40,9 @@ What this skill adds is the two things a decomposition gets wrong:
 
 ## Phase 0 — the subject
 
-Read the whole PBI note. If the named note is not a `PBI`, stop: an `Epic` or a `Feature`
+Read the whole PBI note **and every note that already names it as `parent`** — a PBI
+decomposed once before is not decomposed from nothing, and phase 3 already assumes those
+children exist when it ranks against them. If the named note is not a `PBI`, stop: an `Epic` or a `Feature`
 does not hold Tasks, and the child it does hold is another requirement — say which note is
 wanted instead.
 
@@ -63,11 +65,13 @@ one thing a decomposition can cover on paper and miss in fact: ask which child h
 each extension, not only on the main flow.
 
 A slice is a child note when it can fail on its own. Two slices that can only pass or fail
-together are one note.
+together are one note. A slice an existing child already holds is **that child**, named as
+such and not written again: `npm run docs` catches a repeated file name and never the same
+work under a second title.
 
 **Exit when** every step, extension, criterion, **path under `## Where it lives`**,
-**the trigger and each precondition** is either claimed by a slice or spoken for as needing
-none, and the guarantee is claimed on every branch. The gate covers exactly what the walk covered: a path named there and by no
+**the trigger and each precondition** is either claimed by a slice — new or existing — or
+spoken for as needing none, and the guarantee is claimed on every branch. The gate covers exactly what the walk covered: a path named there and by no
 step is precisely the cross-cutting module or test that vanishes from a decomposition.
 
 ## Phase 2 — the perspective sweep
