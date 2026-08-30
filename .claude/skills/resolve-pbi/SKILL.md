@@ -381,7 +381,8 @@ On yes, one note at the next free rank among the PBI's children, in the `Task` s
 - A rule that every implementer needs was written into the prompt alone, where only the
   controller reads it.
 - The plan gave a task to an output the human owns, or to one phase 0 found already landed.
-- A run finished with its children's `## Outcome` unwritten and their `status` still `Open`.
+- A run finished with its children left `Open`, or with an `## Outcome` unwritten on a child
+  whose shape has one.
 - An ADR task was told to write `status: Done`, or to add a `closed:` or an `## Outcome`.
 - A prose-only task was given a red-green cycle it cannot satisfy.
 - A `Test suite` was closed because its prose was written.
