@@ -9,7 +9,7 @@ import { ReleaseSettings, resolveReleaseSettings } from '../../domain/releaseOpt
 import { releaseIndex, releaseScope } from '../../domain/releases';
 import { todayCivil } from '../../domain/noteFields';
 import { resolveSettings } from '../../domain/settingsResolve';
-import { releaseNoteProblems } from '../../domain/settingsConsistency';
+import { membershipCollision, releaseNoteProblems } from '../../domain/settingsConsistency';
 import { reconfiguredKey, ReleaseWrite } from '../../domain/releaseWritePlan';
 import { loadViewState, saveViewState } from '../../storage/viewStateStore';
 import { resolveViewIdentity } from '../../storage/viewIdentity';
@@ -521,14 +521,14 @@ export class ReleaseView extends BasesView {
 				...RELEASE_SUGGESTED_VALUES.map((candidate) => candidate.option),
 			]);
 			renderNewRelease(this, empty);
-			drawUnresolved(this.viewEl, index);
+			drawUnresolved(this.viewEl, index, membershipCollision(this.settings, backlogSettings));
 			return null;
 		}
 		const scope = this.pickedPath === null ? null : releaseScope(this.app, this.model, this.settings, index, this.pickedPath);
 		// A remembered release that no longer exists returns the INDEX, silently. A working
 		// position that has gone is not a failure and must not raise one.
 		if (scope === null || scope.release === null) {
-			renderIndex(this, index);
+			renderIndex(this, index, backlogSettings);
 			return null;
 		}
 		// The release is passed alongside the scope it came from: the check above is what

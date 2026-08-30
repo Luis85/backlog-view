@@ -636,6 +636,18 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ### Fixed
 
+- **The release index now says which binding produced its unresolved count.** Aiming the
+  membership property at a property something else already owns made that count report work
+  you had never mis-assigned — at the type property essentially every typed item, at the
+  release view's own status or released-date property every release counting itself, a
+  figure that grows with the vault. Nothing on screen said which notes were counted or why,
+  so it read as a plugin that had lost your data rather than as one property picker away
+  from correct. The collision is now named beside the count, with the key and the option it
+  collides with, and only where there is a count to explain. It is a report and not a
+  refusal on purpose: refusing would put the whole screen behind one mis-binding and leave
+  the count wrong anyway. What it can see is the properties this view's options **name** — a
+  release note spelled with a property nobody bound is still outside what any check reaches.
+
 - The docs register gate no longer fails on `docs/product/`. A playbook is the method a
   product definition is produced by, not a work item, so it carries none of the
   `type`/`order`/`status` frontmatter the gate requires — the same exemption `prds/` and

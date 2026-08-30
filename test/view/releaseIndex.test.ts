@@ -154,6 +154,26 @@ describe('the release index', () => {
 		);
 	});
 
+	it('names the binding that produced the unresolved count, and only beside it', () => {
+		// The count is the whole of the signal — nothing on screen says which notes were
+		// counted — so a membership key aimed at a property a RELEASE note carries reads as
+		// work the reader mis-assigned, at a figure that scales with the vault. Aim it at
+		// this view's own status key and every release counts itself.
+		const vault = releaseVault();
+		const { containerEl } = makeReleaseView(vault, { ...RELEASE_CONFIG, membershipProperty: 'note.status' });
+		expect(containerEl.querySelector('.pbl-rel-unresolved')).not.toBeNull();
+		const why = containerEl.querySelector('.pbl-rel-unresolved-why');
+		// The KEY and the role it collides with, so the reader has the binding to change
+		// rather than only the news that one is wrong.
+		expect(why?.textContent).toContain('status');
+
+		// And only beside the count: a correct base draws neither line, so an explanation
+		// with nothing to explain is never on screen.
+		const clean = makeReleaseView(releaseVault(), RELEASE_CONFIG);
+		expect(clean.containerEl.querySelector('.pbl-rel-unresolved')).toBeNull();
+		expect(clean.containerEl.querySelector('.pbl-rel-unresolved-why')).toBeNull();
+	});
+
 	it('plans no write', async () => {
 		const vault = releaseVault();
 		const { containerEl } = makeReleaseView(vault, RELEASE_CONFIG);
