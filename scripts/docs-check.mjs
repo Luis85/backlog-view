@@ -888,15 +888,16 @@ for (const [, note] of notes) {
  * - **A value opening with `[[`.** An unquoted wikilink is read as a nested list rather
  *   than a link, and any prose after the closing bracket is a parse error outright. Two
  *   notes were in that state, both written on the branch that added this rule.
- * - **A flow collection that does not end at its own close.** `[one, two], and why` ends
- *   the mapping value at the `]`, and the rest is unparseable.
  *
- * **A flow collection that IS the whole value is legal and must pass.** `tags: [a, b]` and
- * `aliases: [Backlog, Planning]` are ordinary Obsidian frontmatter, and quoting them would
- * change their type from a list to a string — so a first version of this rule that refused
- * every value opening with `[` or `{` was refusing a legal form to catch an illegal one
- * (found by review, PR #232). Nothing in `docs/` writes flow style today, which is exactly
- * why `checkerAccepts.test.ts` has to state it rather than the corpus imply it.
+ * **Flow collections are not read at all, and that is a decision rather than an omission.**
+ * A third check here tried to refuse prose after a closing bracket, and review found a
+ * legal form it rejected on three consecutive rounds — a bare collection, one holding a
+ * quoted hash, and one with a trailing YAML comment. Measured against the seven notes this
+ * rule has actually caught, it caught NONE that the `[[` test above does not already catch:
+ * both wikilink notes open with `[[`, and the other five are hash cases. So it was deleted
+ * rather than narrowed a fourth time. That is the ADR 0021 shape — each fix closing one
+ * hole and opening the next — and the honest end of it here is a smaller claim, not a
+ * cleverer pattern, because a real YAML parse would mean a parser dependency for one rule.
  *
  * Both are fixed the same way and the register already spells it that way everywhere else:
  * quote the value. `parent: "[[...]]"` has always been quoted here.
@@ -918,8 +919,6 @@ for (const file of files) {
 		if (text === "" || /^["']/.test(text)) continue;
 		if (/^\[\[/.test(text)) {
 			fail(file, `\`${key}:\` opens with \`[[\`, so YAML reads the wikilink as a nested list — quote the value`);
-		} else if (/^\[[\s\S]*[^\]]$|^\{[\s\S]*[^}]$/.test(text)) {
-			fail(file, `\`${key}:\` opens a flow collection and does not end at its close — quote the value`);
 		} else if (!/^[[{>|&*!]/.test(text) && /\s#/.test(text)) {
 			// PLAIN scalars only, which is where YAML's comment rule actually applies. A
 			// block scalar (`>` or `|`) takes its body literally, and a flow collection may

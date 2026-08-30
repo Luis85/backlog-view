@@ -708,15 +708,17 @@ describe('the gate accepts valid documents', () => {
 		await expectAccepted(files);
 	});
 	it('accepts a flow collection, which is legal YAML and changes type if quoted', async () => {
-		// The direction the first version of this rule got wrong (found by review, PR #232):
-		// it refused every value opening with `[` or `{`, which is `tags: [a, b]` and
-		// `aliases: [...]` — ordinary Obsidian frontmatter whose type would change from a
-		// list to a string if quoted as the message advised. Nothing in `docs/` writes flow
-		// style today, so the corpus cannot imply this and the case has to state it.
+		// Three rounds of review found three legal flow forms this rule refused: a bare
+		// collection, one holding a quoted hash, and — asserted here — one with a trailing
+		// YAML comment, where the value no longer ends at its `]`. The check that refused
+		// them is gone rather than narrowed a fourth time: measured against the seven notes
+		// the rule has caught, it caught none the `[[` test does not already catch. Nothing
+		// in `docs/` writes flow style, so only this case stands between the rule and a
+		// fourth attempt at the same mistake.
 		const files = baseRegister();
 		files['docs/requirements/Thing.md'] = files['docs/requirements/Thing.md'].replace(
 			'status: Open\n',
-			'status: Open\naliases: [Backlog, Planning]\n',
+			'status: Open\naliases: [Backlog, Planning] # legacy names\n',
 		);
 
 		await expectAccepted(files);
