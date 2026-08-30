@@ -229,7 +229,12 @@ export function computeDropWrites(dragged: BacklogItem, target: DropTarget): Ite
 	// TODO(Task 4): rewire onto the global `ranked` population and `orderForTarget`.
 	// Passing `siblings` here reproduces this function's pre-existing sibling-scoped
 	// behaviour through the new arithmetic; it is not yet the global rank the plan
-	// calls for.
+	// calls for. One known divergence from the old `computeInsertOrder`: the
+	// "insert before the first sibling" case now takes `Math.floor(next.order) -
+	// ORDER_SPACING` where the old code took `roundOrder(Math.ceil(next.order) -
+	// ORDER_SPACING)` — these differ when `next.order` is not an integer. No
+	// fixture here exercises that, and Task 4 removes this shim entirely rather
+	// than inheriting the mismatch.
 	const anchor = insertIndex > 0 ? siblings[insertIndex - 1] : null;
 	const side: 'before' | 'after' = anchor ? 'after' : 'before';
 	const result = anchoredOrder(siblings, anchor ?? (siblings[insertIndex] ?? null), side);
@@ -966,7 +971,7 @@ export function computeInitWrites(model: BacklogModel, settings: BacklogSettings
 }
 
 
-/** Orders are fractional ranks; four decimals is well past the gap that triggers renumbering. */
+/** Orders are fractional ranks; six decimals is the floor MIN_GAP is set against. */
 function roundOrder(value: number): number {
-	return Math.round(value * 10000) / 10000;
+	return Math.round(value * 1000000) / 1000000;
 }

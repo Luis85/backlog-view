@@ -41,4 +41,13 @@ describe('anchoredOrder', () => {
 	it('refuses an anchor that is not in the population', () => {
 		expect(anchoredOrder(ranked(1000), ranked(5000)[0], 'after')).toEqual({ refusal: 'unranked' });
 	});
+
+	it('keeps a midpoint distinct from both neighbours past four decimals', () => {
+		// Gap 0.00003 clears MIN_GAP (0.000002), so this subdivides. The true
+		// midpoint (1000.000015) needs six decimals to survive rounding — at four
+		// it collapses onto `prev`, a silent duplicate rather than a new rank.
+		const list = ranked(1000, 1000.00003);
+		const result = anchoredOrder(list, list[0], 'after');
+		expect(result).toEqual({ order: 1000.000015 });
+	});
 });
