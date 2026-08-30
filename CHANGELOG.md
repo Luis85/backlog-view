@@ -95,6 +95,20 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   alphabetically, including a resource nobody is assigned to yet.
 - `Set assignee` lists those notes and offers `New resource...`, which creates the note
   and assigns it in one action. `New assignee...` is gone.
+- An unset property chip is no longer drawn at rest. The tree spent its visual budget on
+  absence — 7 of 9 columns on a typical row showed a grey chip meaning "nothing here", 30
+  of them on the demo backlog — so a first screen's most repeated word was the name of a
+  property nobody had filled in. The chip appears when the row is hovered or when the
+  keyboard reaches it, which is when it is an affordance rather than a texture. It keeps
+  its box either way, so nothing reflows, and it is still a real button, so clicking it
+  still sets the property. The roving arrow-key selection counts as reaching it, and a
+  device with no hover at all shows the chips outright, since there they can be reached
+  no other way. A reader who asked for reduced motion gets the reveal without the fade.
+- The selected projection tab is readable. Its label was the accent colour on a tint of
+  the same accent — 2.56:1 in dark and 1.65:1 in light, against 6.69-8.13:1 for every
+  unselected tab beside it — so the one control that answers "where am I" was the hardest
+  to read in the toolbar. The tint and the underline still carry the accent; the label no
+  longer has to.
 
 ### Fixed
 - The docs register gate no longer fails on `docs/product/`. A playbook is the method a
@@ -111,6 +125,10 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   can make `Mark as released` offered again, which removes the very button the dialog was
   opened from, so the focus restore had nothing left to find; it now falls back to the
   closing action the write brought back.
+- An unset property chip meets AA contrast when it is shown. It was `--text-faint`, at
+  2.57:1 in dark and 2.12:1 in light against the 4.5:1 a 12px label needs, on an element
+  that is also a button — unreadable and clickable at once. Measured at 7.03:1 and 6.19:1
+  after the change.
 
 - The rows in a confirmation dialog — the unfinished members `Mark as released` lists, each
   openable before answering — now read as the accent-coloured links they are, instead of

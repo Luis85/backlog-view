@@ -288,14 +288,88 @@ button.pbl-date-chip {
 	border-color: rgba(var(--color-green-rgb), 0.35);
 }
 
+/* An absent property is an AFFORDANCE, not a fact, and it is drawn only while the reader
+   is at the row or card that owns it.
+
+   Two measured problems, one treatment. A default tree row drew a chip in 7 of 9 columns,
+   all saying "nothing here" — 30 on the demo backlog — so the most repeated word on a
+   first screen was `Assignee` in grey, at 2.57:1 dark and 2.12:1 light against AA's 4.5:1,
+   on an element that is also a real `<button>`. Unreadable and clickable at once.
+
+   **The visibility travels as an inherited custom property, not as a selector matrix**, and
+   that is what makes it correct rather than merely short. The chip list is enumerated twice
+   here instead of once per ancestor per state; written as a cross product it would be some
+   fifty selectors, and the version that shipped for review took the opposite shortcut — one
+   GLOBAL hide plus a row/card reveal — which made the release header's own status chip
+   (`renderScope.ts`, in no row and no card) permanently invisible with no selector that
+   could ever reveal it. The default here is `1`: a chip outside a row or card is shown,
+   so a surface that grows one later is visible by construction rather than by remembering
+   to add a selector. (Codex, PR #228.)
+
+   `opacity`, never `display` or `visibility`. The chip keeps its box, so revealing one
+   reflows nothing and the columns stay in line; it also stays hit-testable, which is what
+   makes hover-to-reveal work at all — the row's hover fires with the pointer already over
+   the chip.
+
+   The colour is raised in the same pass: `--text-muted` clears AA (measured 7.03:1 dark,
+   6.19:1 light), and the state where it is READ is now the only state where it is drawn. */
+.pbl-row,
+.pbl-card {
+	--pbl-unset-chip: 0;
+}
+
+/* `.pbl-selected` is not decoration here and was the second defect in the reviewed version.
+   The tree and the board are COMPOSITES: arrow keys keep DOM focus on `.pbl-tree` and move
+   `aria-activedescendant`, so `:focus-within` on a row never becomes true from the keyboard
+   and the chips stayed hidden for exactly the reader the reveal was claimed to serve. The
+   roving selection's own class is what marks that row. `:focus-within` stays beside it for
+   the pointer-then-keyboard path, where a real chip does hold focus. (Codex, PR #228.) */
+.pbl-row:hover,
+.pbl-row:focus-within,
+.pbl-row.pbl-selected,
+.pbl-card:hover,
+.pbl-card:focus-within,
+.pbl-card.pbl-selected {
+	--pbl-unset-chip: 1;
+}
+
+/* A touch user can produce neither the hover above nor a tab stop — these chips are
+   `tabindex="-1"`, because the tree and the board are each one stop — so without this the
+   chips are not merely hidden, they are unreachable.
+
+   It sits HERE, immediately after the rules it overrides, for the reason `styles/touch.css`
+   states for the six controls that came before it: a media query adds no specificity, so a
+   reveal written above the rule it undoes silently reveals nothing. */
+@media (hover: none) {
+	.pbl-row,
+	.pbl-card {
+		--pbl-unset-chip: 1;
+	}
+}
+
 .pbl-state-chip.pbl-state-unset,
 .pbl-horizon-chip.pbl-horizon-unset,
 .pbl-risk-chip.pbl-risk-unset,
 .pbl-priority-chip.pbl-priority-unset,
 .pbl-assignee-chip.pbl-assignee-unset,
 .pbl-date-chip.pbl-date-unset {
-	color: var(--text-faint);
+	color: var(--text-muted);
 	border-style: dashed;
+	/* The fallback is the whole scoping rule: no ancestor declared it, so nothing hides it. */
+	opacity: var(--pbl-unset-chip, 1);
+	transition: opacity 120ms ease-in-out;
+}
+
+/* Focus can only arrive programmatically on these, but a control that is focused and
+   invisible is worse than one merely always shown — `.pbl-add`'s own rule, one screen up,
+   and the same one `test/view/rendering.test.ts` asks of every hover-hidden control. */
+.pbl-state-chip.pbl-state-unset:focus-visible,
+.pbl-horizon-chip.pbl-horizon-unset:focus-visible,
+.pbl-risk-chip.pbl-risk-unset:focus-visible,
+.pbl-priority-chip.pbl-priority-unset:focus-visible,
+.pbl-assignee-chip.pbl-assignee-unset:focus-visible,
+.pbl-date-chip.pbl-date-unset:focus-visible {
+	opacity: 1;
 }
 
 /* The assignee's third state: a value the vault carries that names no resource this base
