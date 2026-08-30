@@ -101,13 +101,20 @@ describe('dropTargetFor', () => {
 		expect(target?.parent).toBeNull();
 	});
 
-	it('disallows sibling drops relative to focus roots', () => {
+	it('ranks a sibling drop between focus roots — a legal move now, not a refusal', () => {
+		// Task 5: a focus row is a ranking destination, so `siblingPosition` no longer
+		// refuses on `item.focusRoot`. b1 and b2 share a real parent here (both are
+		// `Epic B`'s features), so the parent this plans is the one they already have.
 		const { vault } = fixture();
 		const focusSettings = { ...settings, focusLevel: 'Feature' };
 		const model = buildModel(vault.app, vault.entries(), focusSettings);
 		const [b1, b2] = model.roots;
 
-		expect(dropTargetFor(model, b1, 'before', b2, plan)).toBeNull();
+		const before = dropTargetFor(model, b1, 'before', b2, plan);
+		expect(before?.parent).toBe(b2.parent);
+		expect(before?.insertIndex).toBe(0);
+		// After b1 is the slot b2 already occupies (`model.roots` is `[b1, b2]`) — a
+		// no-op, asked against the focus list rather than refused for a different reason.
 		expect(dropTargetFor(model, b1, 'after', b2, plan)).toBeNull();
 		// Nesting under a focus root stays a legitimate reparent
 		const inside = dropTargetFor(model, b1, 'inside', b2, plan);
