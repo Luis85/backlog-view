@@ -58,8 +58,9 @@ leaf drawing it has one.
   collapsed. That is the right trade for state this personal, but it is a real one.
 - The entry has since taken every other piece of working position — the projection, the
   roadmap axis and zoom, the shelf's own controls, the **focus level**, (2026-08-11)
-  **whether a click on a row folds it**, and (2026-08-14) **each property column's own
-  width**, all of which moved out of the `.base` under exactly this decision. Focus is the
+  **whether a click on a row folds it**, (2026-08-14) **each property column's own
+  width**, and (2026-08-30) **whether completed items are shown**, all of which moved out
+  of the `.base` under exactly this decision. Focus is the
   one that also feeds the MODEL rather than only the render, so the view restores before
   it builds; a `.base` written before either move keeps a `focusLevel` or `clickAction`
   key that nothing reads.
@@ -73,6 +74,14 @@ leaf drawing it has one.
   sent to a colleague no longer arrives folding on click. The property column width paid
   the same price three days later, and the fact that it did is the point: the rule is not
   about folding, and a second value reaching for a stored override would have made it one.
+  The **completed-items eye** is the third (2026-08-30) and was the loudest case of the
+  pair: it had a `showCompleted` view option AND a toolbar toggle from the beginning, and
+  the toggle wrote the option — so one person hiding finished work for an afternoon
+  rewrote a shared file for everyone the base syncs to. It is stored as its OFF state
+  (`prefs.hideCompleted`), because showing is the default and a default is written as
+  nothing at all. The price is the same one folding paid: a base sent to a colleague no
+  longer arrives with finished work hidden, and a `.base` written before the move keeps a
+  `showCompleted` key that nothing reads.
 - **The entry is `{ folds, prefs }` as of 2026-08-15**, and the key is
   `product-backlog:view-state`. Two thirds of what it holds was never a fold — `zoom`,
   `density` and `leadWidth` are layout preferences, `clickFolds` and `shelfSort` are

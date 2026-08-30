@@ -280,11 +280,11 @@ describe('the unplaced shelf', () => {
 		const vault = new FakeVault();
 		vault.addFile('Open.md', { frontmatter: { type: 'Epic', order: 10, status: 'Active' } });
 		vault.addFile('Done.md', { frontmatter: { type: 'Epic', order: 20, status: 'Done' } });
-		const { containerEl } = roadmapView(vault, {
-			...HORIZONS,
-			stateProperty: 'note.status',
-			showCompleted: false,
-		});
+		const { containerEl } = roadmapView(
+			vault,
+			{ ...HORIZONS, stateProperty: 'note.status' },
+			{ hideCompleted: true },
+		);
 
 		expect(shelfTitles(containerEl)).toEqual(['Open']);
 		// The toolbar count agrees: the projections and their numbers never disagree.
@@ -319,7 +319,7 @@ describe('the advisory beside the frame', () => {
 		const mixed = new FakeVault();
 		mixed.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10, status: 'Done' } });
 		mixed.addFile('1.0.md', { frontmatter: { type: 'Release', order: 20 } });
-		const hidden = roadmapView(mixed, { ...HORIZONS, stateProperty: 'note.status', showCompleted: false });
+		const hidden = roadmapView(mixed, { ...HORIZONS, stateProperty: 'note.status' }, { hideCompleted: true });
 		expect(hidden.containerEl.querySelector('.pbl-board-advisory')?.textContent).toContain(
 			'All 1 item is done and hidden.',
 		);

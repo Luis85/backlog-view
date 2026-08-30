@@ -315,7 +315,7 @@ describe('milestone lines', () => {
 		vault.addFile('Ship 1.0.md', {
 			frontmatter: { type: 'Milestone', order: 10, due: '2026-12-01', status: 'Done' },
 		});
-		const { containerEl } = roadmapView(vault, { ...DATES, stateProperty: 'note.status', showCompleted: false });
+		const { containerEl } = roadmapView(vault, { ...DATES, stateProperty: 'note.status' }, { hideCompleted: true });
 
 		expect(containerEl.querySelectorAll('.pbl-milestone-line')).toHaveLength(0);
 		// And the mark goes with it — the shared row is minted by a PLACED marker, so with the

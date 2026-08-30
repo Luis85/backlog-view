@@ -331,7 +331,6 @@ export function resolveSettings(config: BasesViewConfig): BacklogSettings {
 		// optional key in `...optionalKeys` above, read off `PROPERTY_TABLE` itself.
 		startedStates: dedupe(list('startedStates')),
 		states,
-		showCompleted: bool('showCompleted', fallback.showCompleted),
 		// A real default that must stay clearable: an emptied list means "no bucket
 		// axis", and only an option never touched falls back to Now, Next, Later.
 		horizonValues: clearable('horizonValues', fallback.horizonValues, () => dedupe(list('horizonValues'))),

@@ -46,6 +46,7 @@ describe('a UI-state value set to what it already is', () => {
 		view.setAxisPick(view.axisPick as 'horizons');
 		view.setFocusLevel('');
 		view.setClickFolds(view.clickFolds);
+		view.setShowCompleted(view.showCompleted);
 		view.setBucketGrid(view.bucketGrid);
 		view.setShelfCollapsed(view.shelfCollapsed);
 		view.setShelfSort(view.shelfSort);

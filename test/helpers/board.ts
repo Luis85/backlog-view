@@ -54,9 +54,14 @@ export function boardVault(): FakeVault {
 export function makeBoard(
 	vault: FakeVault,
 	extra: Record<string, unknown> = {},
-	{ focus, folds, foldedColumns }: { focus?: string; folds?: boolean; foldedColumns?: boolean } = {},
+	{
+		focus,
+		folds,
+		foldedColumns,
+		hideCompleted,
+	}: { focus?: string; folds?: boolean; foldedColumns?: boolean; hideCompleted?: boolean } = {},
 ): Harness {
-	const harness = makeView(vault, { ...BOARD_WORKFLOW, ...extra }, { collapsed: true, focus, folds });
+	const harness = makeView(vault, { ...BOARD_WORKFLOW, ...extra }, { collapsed: true, focus, folds, hideCompleted });
 	harness.view.setProjection('board');
 	if (!foldedColumns) expandColumns(harness.containerEl);
 	return harness;

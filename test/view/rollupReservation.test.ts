@@ -139,13 +139,12 @@ describe('the rollup label reservation', () => {
 				parentLink: 'Big',
 			});
 		}
-		const { containerEl, view, config } = makeView(vault, { stateProperty: 'note.status' }, { collapsed: true });
+		const { containerEl, view } = makeView(vault, { stateProperty: 'note.status' }, { collapsed: true });
 		// Collapsed to the two roots — `Big`'s own `120/120` is on screen, and nothing under
 		// either root is. The reservation is the same as it will be expanded.
 		expect(treeOf(containerEl).style.getPropertyValue('--pbl-rollup-label')).toBe('7ch');
 
-		config.set('showCompleted', false);
-		view.onDataUpdated();
+		view.setShowCompleted(false);
 
 		// `Big` and its 120 are all hidden now, so the widest label left is `Small`'s.
 		expect(rowByTitle(containerEl, 'Small').querySelector('.pbl-progress-label')?.textContent).toBe('1/1');

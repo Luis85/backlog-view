@@ -45,8 +45,16 @@ describe('the three-bucket board', () => {
 		return vault;
 	}
 
-	function onBoard(extra: Record<string, unknown> = {}, vault = boardVault()) {
-		const harness = makeView(vault, { ...OPTIONS, iterationGoalProperty: 'note.goal', ...extra }, { base: 'Plan.base' });
+	function onBoard(
+		extra: Record<string, unknown> = {},
+		vault = boardVault(),
+		{ hideCompleted }: { hideCompleted?: boolean } = {},
+	) {
+		const harness = makeView(
+			vault,
+			{ ...OPTIONS, iterationGoalProperty: 'note.goal', ...extra },
+			{ base: 'Plan.base', hideCompleted },
+		);
 		harness.view.setBoardScope(SPRINT);
 		return { ...harness, vault };
 	}
@@ -155,7 +163,7 @@ describe('the three-bucket board', () => {
 	it('keeps finished work on screen, whatever the completed toggle says', () => {
 		// The Resolved column IS the finished work, so hiding a done subtree would empty
 		// the column this board exists to show.
-		const { containerEl } = onBoard({ showCompleted: false });
+		const { containerEl } = onBoard({}, undefined, { hideCompleted: true });
 		expect(cardTitles(columnByName(containerEl, RESOLVED))).toEqual(['Finished']);
 	});
 

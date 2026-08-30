@@ -181,9 +181,10 @@ describe('context rows follow the results they place', () => {
 		const view = new ProductBacklogView({} as never, containerEl);
 		const anyView = view as unknown as Record<string, unknown>;
 		anyView.app = vault.app;
-		anyView.config = new FakeViewConfig({ stateProperty: 'note.status', showCompleted: false });
+		anyView.config = new FakeViewConfig({ stateProperty: 'note.status' });
 		anyView.data = { data: vault.entries().filter((e) => e.file.path === 'PBI.md') };
 		view.onDataUpdated();
+		view.setShowCompleted(false);
 		clickExpandAll(containerEl);
 		return { view, containerEl, vault };
 	}
@@ -204,8 +205,7 @@ describe('context rows follow the results they place', () => {
 
 	it('brings the context row back with its result', () => {
 		const { view, containerEl } = doneUnderContext();
-		(view as unknown as { settings: { showCompleted: boolean } }).settings.showCompleted = true;
-		view.render();
+		view.setShowCompleted(true);
 
 		expect(titlesOf(containerEl)).toEqual(['Epic', 'PBI']);
 		expect(containerEl.querySelector('.pbl-count-label')?.textContent).toBe('1 item');
@@ -220,9 +220,10 @@ describe('context rows follow the results they place', () => {
 		const view = new ProductBacklogView({} as never, containerEl);
 		const anyView = view as unknown as Record<string, unknown>;
 		anyView.app = vault.app;
-		anyView.config = new FakeViewConfig({ stateProperty: 'note.status', showCompleted: false });
+		anyView.config = new FakeViewConfig({ stateProperty: 'note.status' });
 		anyView.data = { data: vault.entries().filter((e) => e.file.path !== 'Epic.md') };
 		view.onDataUpdated();
+		view.setShowCompleted(false);
 		clickExpandAll(containerEl);
 
 		expect(titlesOf(containerEl)).toEqual(['Epic', 'Open']);
