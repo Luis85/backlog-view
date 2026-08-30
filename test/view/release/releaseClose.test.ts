@@ -305,7 +305,7 @@ describe('a refusal is not a caption on the button beside it', () => {
 		expect(areaBlock?.[0]).toContain('display: flex');
 	});
 
-	it('lets the action area shrink, so a full-width note can wrap instead of overflowing the pane', () => {
+	it('lets the action area shrink (never grow), so a full-width note can wrap instead of overflowing the pane', () => {
 		// `flex: 0 0 auto` refused to shrink, so the area sized itself to the NOTE's own
 		// max-content width (the note's `flex: 1 0 100%` resolves against the area's own
 		// box) — at a narrow window the sentence ran off the edge of the pane rather than
@@ -313,7 +313,15 @@ describe('a refusal is not a caption on the button beside it', () => {
 		// and `?pick=Releases/0.8.md&config=nomembership`; confirmed fixed at both widths
 		// once the area could shrink. `min-inline-size: 0` is what lets it shrink past its
 		// content's own min-content width, which a flex item refuses by default.
-		expect(areaBlock?.[0]).toContain('flex: 1 1 auto');
+		//
+		// GROW stays at 0, not 1: `flex: 1 1 auto` fixed the overflow too, but it also gave
+		// this area a share of the row's leftover space, which the `.pbl-rel-footline`
+		// comment's own 560px benchmark assumed went entirely to `.pbl-rel-summary` — and it
+		// made `margin-inline-start: auto` below inert (auto margins claim free space only
+		// AFTER flex-grow has taken its share, and grow:1 here left none). `flex: 0 1 auto`
+		// is the surgical fix: shrink alone clears the overflow and leaves both the
+		// summary's growth and the margin's own right-alignment exactly as documented.
+		expect(areaBlock?.[0]).toContain('flex: 0 1 auto');
 		expect(areaBlock?.[0]).toContain('min-inline-size: 0');
 	});
 });
