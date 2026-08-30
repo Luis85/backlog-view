@@ -71,6 +71,12 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ### Fixed
 
+- The rows in a confirmation dialog — the unfinished members `Mark as released` lists, each
+  openable before answering — now read as the accent-coloured links they are, instead of
+  painting Obsidian's filled, boxed default button underneath. Their reset was a bare class
+  and lost the cascade to Obsidian's own `button` rule outright, so all three of its
+  declarations did nothing in a vault; they also gain the focus outline the fix costs, on a
+  control whose whole reason for being a button is that it is a tab stop.
 - A finished item in a release's scope now reads as finished: its state chip carries the done
   colour and the check the backlog tree's own chip has, instead of `Done` and `Doing` in one
   ink while the summary above counted one of them as complete.

@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it } from 'vitest';
+import { readFileSync } from 'node:fs';
 import { installObsidianDom } from '../helpers/dom';
 import { FakeVault } from '../helpers/vault';
 import { Modal } from '../helpers/obsidian-mock';
@@ -98,5 +99,42 @@ describe('the confirm dialog', () => {
 		const modal = open({ onConfirm: () => undefined });
 		expect(modal.titleEl.textContent).toBe('Release 0.9?');
 		expect(btn(modal, '.pbl-confirm-message').textContent).toBe('2 members are not finished');
+	});
+});
+
+/**
+ * **Narrower than the claim it guards, and the narrow sentence is the honest one** —
+ * `rowChrome.test.ts`'s own shape and its own reason: no test here can compute a
+ * selector's specificity against Obsidian's stylesheet, since `app.css` is not a
+ * dependency, jsdom computes no styles, and the harness draws without asserting (ADR
+ * 0020). What is checked is that `styles/modals.css` — the PARTIAL as written, read off
+ * disk — still spells this reset at a COMPOUND selector, so a change that lowers it back
+ * to a bare class fails here. It would not notice a different Obsidian rule outranking a
+ * different declaration.
+ *
+ * The measurement that found the defect is a headless-Chromium probe on the release
+ * harness: `rgb(51, 51, 51)` / `rgb(218, 218, 218)` / an inset ring at the bare class,
+ * transparent / `--text-accent` / none once qualified.
+ */
+describe('a member row does not paint as an Obsidian button', () => {
+	const css = readFileSync('styles/modals.css', 'utf8');
+
+	it('resets the chrome at a compound selector', () => {
+		// `button.pbl-confirm-link` is (0,1,1) and ties Obsidian's own
+		// `button:not(.clickable-icon)`, then wins on source order. A bare
+		// `.pbl-confirm-link` is (0,1,0) and loses outright — which is how all three of the
+		// declarations below shipped inert.
+		const block = css.match(/button\.pbl-confirm-link\s*\{[^}]*\}/);
+		expect(block, 'no element-qualified reset for the member row').not.toBeNull();
+		expect(block?.[0]).toContain('background-color: transparent');
+		expect(block?.[0]).toContain('box-shadow: none');
+		expect(block?.[0]).toContain('color: var(--text-accent)');
+	});
+
+	it('keeps a focus indicator that does not depend on Obsidian’s ring', () => {
+		// The reset declares `box-shadow: none` at (0,1,1), which ties Obsidian's own
+		// `button:focus-visible` and wins on order — so without an explicit outline, focus
+		// would go invisible on the one control in this dialog that exists to be tabbed to.
+		expect(css).toMatch(/\.pbl-confirm-link:focus-visible\s*\{[^}]*outline:/);
 	});
 });

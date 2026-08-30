@@ -45,11 +45,22 @@ import { FileView } from '../helpers/obsidian-mock';
  */
 export type ReleaseConfigVariant = 'full' | 'empty' | 'notype' | 'nomembership' | 'noreleased';
 
+/**
+ * Every key bound — `RELEASE_CONFIG` plus the notes FOLDER, which that constant omits on
+ * purpose: the suite's default is the unbound case (`releaseNotes.test.ts` asserts the
+ * "bind the folder" note against it, and its neighbour passes an override to get the
+ * button). The harness wants the opposite default, because a folder is not a property, so
+ * nothing on this page offers to bind one — with the key unbound, `Generate release notes`
+ * is undrawable here and the paragraph above claiming this variant "binds every key" was
+ * false for the one control the closing increment added.
+ */
+const FULL = { ...RELEASE_CONFIG, releaseNotesFolder: 'Releases/Notes' };
+
 function configValues(variant: ReleaseConfigVariant): Record<string, unknown> {
-	if (variant === 'notype') return { ...RELEASE_CONFIG, typeProperty: '' };
-	if (variant === 'nomembership') return { ...RELEASE_CONFIG, membershipProperty: '' };
-	if (variant === 'noreleased') return { ...RELEASE_CONFIG, releasedDateProperty: '' };
-	return RELEASE_CONFIG;
+	if (variant === 'notype') return { ...FULL, typeProperty: '' };
+	if (variant === 'nomembership') return { ...FULL, membershipProperty: '' };
+	if (variant === 'noreleased') return { ...FULL, releasedDateProperty: '' };
+	return FULL;
 }
 
 /** The one release named rather than numbered — see the fixture's own note below.

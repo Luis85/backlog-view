@@ -38,8 +38,19 @@
 
 /* One row the reader may open before answering. A BUTTON so it is a real tab stop, which
    is why every one of these declarations is here: a bare `<button>` inherits none of the
-   list appearance it needs, the mistake `test/harness/theme.css` recorded on 2026-08-08. */
-.pbl-confirm-link {
+   list appearance it needs, the mistake `test/harness/theme.css` recorded on 2026-08-08.
+
+   **Element-qualified, not a bare class**, and the rule below shipped bare — the same
+   specificity defect [[Four other controls still lose to Obsidian's button rule]] closed
+   for five other controls, arriving on a sixth. `.pbl-confirm-link` is `(0,1,0)`;
+   Obsidian's own `button:not(.clickable-icon)` is `(0,1,1)` and sets `background-color`,
+   `color` and `box-shadow`, so all three of the declarations here that name them did
+   nothing in a vault: every member row painted Obsidian's filled, boxed default button
+   instead of the accent-coloured link it reads as in this file. Measured in the harness
+   against the real vendored `app.css` — `rgb(51, 51, 51)` / `rgb(218, 218, 218)` / an
+   inset ring before, transparent / `--text-accent` / none after. NOT verified in a live
+   vault. */
+button.pbl-confirm-link {
 	display: block;
 	width: 100%;
 	box-shadow: none;
@@ -52,9 +63,19 @@
 	text-align: start;
 }
 
-.pbl-confirm-link:hover {
+button.pbl-confirm-link:hover {
 	background-color: var(--background-modifier-hover);
 	color: var(--text-accent-hover);
+}
+
+/* The base rule's own `box-shadow: none` also beats Obsidian's `button:focus-visible`
+   ring (a plain `box-shadow`) at the same `(0,1,1)` tie, so without a rule of its own
+   here, Tabbing to a member row would show no focus indicator at all — and this control
+   exists to BE tabbed to. The same trap every fix in [[Four other controls still lose to
+   Obsidian's button rule]] had to close beside its own; the outline is theirs. */
+button.pbl-confirm-link:focus-visible {
+	outline: 1px solid var(--interactive-accent);
+	outline-offset: -1px;
 }
 
 /* The row before the button container needs the gap the message above it already has. */
