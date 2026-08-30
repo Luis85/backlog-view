@@ -24,11 +24,11 @@ parent.
 
 ## Decision
 
-**`order` is becoming one fractional rank over the whole of what the Base returns**, read
+**`order` is one fractional rank over the whole of what the Base returns**, read
 by every projection as a slice of a single ordering rather than as several independent
 ones. "Global" is bounded by the Base and not by the vault — see the last Consequence
 below, which states what that costs.
-`src/domain/rankOrder.ts` is the first piece: it holds the comparator — `order` ascending,
+`src/domain/rankOrder.ts` holds the comparator — `order` ascending,
 `null` sorting last, ties broken by the Bases result position (`entryIndex`) — and builds
 `BacklogModel.ranked`, one sort over every loaded item (results and `outsideFilter`
 context rows alike). That population is declared as **the only array any ranking
@@ -52,24 +52,30 @@ batch when the answer arrives rather than applying the previewed one, and writes
 the active view's own `applySafely` — which is why `LiveBacklogView` in
 `src/view/registry.ts` publishes it.
 
-This record is the decision to build ranking on top of a single sorted population instead
-of a per-projection one. The placement math that reads it — `anchoredOrder`,
-`orderForTarget` and `dropPlacement` in `src/domain/writePlan.ts` — lands piece by piece
-and each is recorded below as it arrives, rather than the record being written once
-`order`'s write path has already changed underneath it.
+The placement math that reads that population is `anchoredOrder`, `orderForTarget` and
+`dropPlacement` in `src/domain/writePlan.ts`, and **every path that produces a rank goes
+through it** — a drop, an indent, an outdent, an Alt+arrow, a menu move, `New <child>`,
+the release scope screen's own creation, and the ✨ backfill filling a blank. That is the
+rule and not an observation: `newItemOrder` once called `orderForTarget` directly, missed
+the fallback below, and made a legacy vault one a user could drag around and not add to.
+A caller that wants to know WHY a placement produced nothing asks `dropPlacement` rather
+than re-deriving the answer beside it, since the two would disagree about the dragged
+row's own exclusion.
 
 ## Consequences
 
 - `BacklogModel.ranked` costs one more `O(n log n)` sort per build, beside
-  `sortSiblingsDeep`'s sibling-group sort — `src/domain/CLAUDE.md`'s Cost section names it
-  as the build's second deliberately superlinear step, bounded the same way: run once per
-  build over the item count, not per row.
+  `sortSiblingsDeep`'s sibling-group sort and the resource roster's — `src/domain/CLAUDE.md`'s
+  Cost section names it as the build's THIRD deliberately superlinear step, bounded the same
+  way: run once per build over the item count, not per row, so three passes leave the build
+  at O(n log n).
 - The comparator restates ADR 0008's own tie-break (missing `order` sorts last, ties go
   to the Bases result order) rather than inventing a new rule, because a global rank and a
   sibling rank agree about what an absent or tied number means; only the SCOPE they compare
   within differs.
 - Context rows join the population deliberately: their `order` is already read for
-  placement (the backfill's max-order scan, and now `anchoredOrder`'s own neighbour walk),
+  placement (the bounds the backfill fits a blank between, and `anchoredOrder`'s own
+  neighbour walk),
   and including them here can only reduce collisions, never manufacture one — they stay
   unwritable through `applySafely` regardless of which array names their rank.
 - **A drop's rank is now planned from this population.** `dropPlacement` and
@@ -84,7 +90,9 @@ and each is recorded below as it arrives, rather than the record being written o
   holds the same value as its parent — so the global placement refuses for a gap of zero
   and `dropPlacement` re-asks the same question against the destination's peers alone.
   That is ADR 0008's arithmetic, kept so that an unmigrated vault does not lose ordinary
-  reordering before a seeding command exists.
+  reordering. `Seed ranks from the hierarchy` now exists to end that state, and the
+  fallback still stands: a command a user has not run yet changes nothing about the vault
+  they are dragging in today.
 - **The fallback is gated on a TIE between the two neighbours the placement landed
   between** — a fact about the drop site, not about the vault. Two rows holding the same
   number is what the sibling-scoped scheme produces and what nothing else does, so
@@ -140,7 +148,25 @@ and each is recorded below as it arrives, rather than the record being written o
 - Self-limiting: once the rows around a drop hold distinct ranks there is no tie to switch
   on, and the refusal the fallback used to swallow is reported instead.
 - The fallback is **silent** — nothing tells the user which of the two regimes answered —
-  which is a known gap recorded rather than closed.
+  and so is the READ side's matching concession, `inRankOrder` reverting a focused list to
+  tree order whenever its rows' ranks are not all distinct. Recorded rather than closed, in
+  `docs/issues/The unseeded fallback is silent.md`, which also carries the other half:
+  distinctness is only a PROXY for a seeded vault, and a legacy vault whose sibling ranks
+  happen not to collide across parents is reordered anyway.
+- **A focus-level rank moves the item among its own siblings too**, and that is the price
+  of one rank rather than a defect. There is a single `order`, so ordering the PBI backlog
+  at a focus level also decides where each of those PBIs sits inside its own Feature. The
+  alternative is a second number, refused below. It is stated in
+  `docs/requirements/Ranking at the focused level.md` as an acceptance criterion so a
+  reader meets it as a designed consequence rather than as a surprise.
+- **The backfill fills a blank in the place the row is drawn**, using this same arithmetic
+  bounded by what is drawn above and below it, and leaves the blank alone where no such
+  number exists — reporting that rather than claiming there was nothing to do. What it
+  cannot promise is that a projection looks the same afterwards: a focused list draws in
+  tree order while any of its rows is unranked and in rank order once none is, so two
+  EXISTING ranks that already contradict the drawn order flip when the list becomes
+  sortable. No pass that only fills blanks can prevent that; Seed rewrites every rank and
+  can.
 
 - **The rank space is the BASE's population, not the vault, and that is a real limitation
   rather than a wording quibble.** `createItems` walks the Base's own entries and pulls in
@@ -161,6 +187,16 @@ and each is recorded below as it arrives, rather than the record being written o
 
 ## Alternatives
 
+- **A second property — a `rank` beside `order`, global while `order` stayed
+  sibling-scoped.** Rejected, and it is the alternative with a worked example in the wild:
+  the community Kanban board invented `kanban_order` beside the tree's own rank and now has
+  two numbers that can disagree about the same note, with nothing able to say which is
+  right. Every dual-surface tracker that got this right keeps ONE rank shared between its
+  backlog and its board — Jira's LexoRank, Azure DevOps' stack rank, Linear's manual
+  order. A second property also costs a second view option to bind, a second backfill and
+  a second thing for a user to understand, and buys only the consequence recorded above:
+  that a focus-level rank does not disturb sibling order. That consequence is a price
+  worth paying once; it is not worth a second source of truth in the frontmatter.
 - **Rank each focus-level list independently, scoped to what is currently visible.**
   Rejected: the rank would depend on which items happen to be on screen, so the same drag
   could mean a different write depending on which projection was open when it landed — the
@@ -174,10 +210,16 @@ and each is recorded below as it arrives, rather than the record being written o
 
 ## Revisit when
 
-- **The peer fallback stops being reached.** Once a seeding command has run over the
-  vaults that need it, the fallback is dead weight rather than a bridge — and while it
-  stands, a silent switch between two rank scopes is a thing the register says nothing
-  about at the moment it happens.
-- **`order` stops being sibling-scoped in the note itself.** If a later piece renumbers
-  across the whole backlog rather than within a group, ADR 0008 is superseded outright
-  rather than extended, and this record should say so in its frontmatter.
+- **The peer fallback stops being reached.** Once seeding has run over the vaults that
+  need it, the fallback is dead weight rather than a bridge. Deleting it is not free — it
+  is what keeps an unmigrated vault draggable — so the trigger is evidence that unmigrated
+  vaults are gone, not the mere existence of the command. The silence it switches in is
+  its own record now (`docs/issues/The unseeded fallback is silent.md`); a post-Seed tie
+  reported there is the same evidence read from the other end.
+- **ADR 0008 stops being partly in force.** That trigger has HALF fired and the supersede
+  was deliberately not taken: `Seed ranks from the hierarchy` does renumber across the
+  whole backlog, but ADR 0008's arithmetic is still live code — the peer fallback above is
+  it, exactly as written there. Marking 0008 `Superseded` while the plugin still runs its
+  rule would make the register say something false in order to look tidy. The day the
+  fallback goes, so does the last of 0008, and the frontmatter link is the change to make
+  in the same commit.

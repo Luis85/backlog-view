@@ -949,8 +949,9 @@ export function dropPlacement(dragged: BacklogItem | null, target: DropTarget, r
 	// Refused rather than nudged onto a free value. Refusing keeps the arithmetic the one
 	// line ADR 0008 already specifies, it costs nothing on the case this fallback exists
 	// for — the first drop in each group answers a number nobody holds — and the remedy the
-	// `tied` refusal names is the backfill, which is precisely what a vault dense enough to
-	// collide here needs.
+	// `tied` refusal names is Seed, which is precisely what a vault dense enough to
+	// collide here needs — the backfill only fills blanks, and respacing a range holding two
+	// equal numbers cannot separate them.
 	if ('refusal' in peerScoped || !rankTaken(ranked, dragged, peerScoped.order)) return peerScoped;
 	return global;
 }

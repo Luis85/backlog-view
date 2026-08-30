@@ -8,6 +8,14 @@ area: domain
 
 # ADR 0008 — Rank siblings with fractional orders
 
+> **Partly overtaken by [ADR 0032](0032-order-is-a-global-rank.md)** on 2026-08-30, which
+> is why this is not marked `Superseded`. The SCOPE below is gone: `order` is now one rank
+> over everything the Base returns, and no group is renumbered by anything — the renumber
+> branch, its minimum gap and the symbols that served them were deleted. The ARITHMETIC
+> below is still live code: 0032 keeps it as the fallback that lets a vault whose ranks were
+> never seeded go on reordering. Read this for the midpoint, the spacing and the tie-break;
+> read 0032 for what a rank is compared against.
+
 ## Context
 
 The rank lives in the notes ([ADR 0002](0002-keep-the-hierarchy-in-frontmatter.md)), so
