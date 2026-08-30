@@ -71,3 +71,11 @@ across notes I never touched.
 `src/domain/dropTargets.ts` (`reorderableGroup`).
 Tests: `test/domain/writePlan.test.ts`, `test/domain/writePlanContextRows.test.ts`,
 `test/view/contextRowWrites.test.ts`.
+
+The two rewrites that restate EVERY rank at once are the counterpart to this note rather
+than part of it — one move writes one note, and these two write all of them:
+`src/domain/rankSpread.ts` planning them, `src/commands/rank.ts` running them as the
+palette commands `seed-ranks` and `respace-ranks`. What they are for is
+[ADR 0032](../adrs/0032-order-is-a-global-rank.md); the use case they belong under is
+`Ranking at the focused level`, which is not written yet.
+Tests: `test/commands/rank.test.ts`.

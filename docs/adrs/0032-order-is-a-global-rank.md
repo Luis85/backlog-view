@@ -45,6 +45,13 @@ both leave every `outsideFilter` rank exactly where it is. They live beside
 `src/domain/writePlan.ts` rather than in it because every other plan there places ONE row
 against its neighbours.
 
+`src/commands/rank.ts` is how a user reaches them: two palette commands rather than one
+that guesses, because the two look alike and mean very different things to a backlog
+somebody has ordered by hand. Each confirms with the count it would write, recomputes that
+batch when the answer arrives rather than applying the previewed one, and writes through
+the active view's own `applySafely` — which is why `LiveBacklogView` in
+`src/view/registry.ts` publishes it.
+
 This record is the decision to build ranking on top of a single sorted population instead
 of a per-projection one. The placement math that reads it — `anchoredOrder`,
 `orderForTarget` and `dropPlacement` in `src/domain/writePlan.ts` — lands piece by piece
@@ -82,9 +89,9 @@ and each is recorded below as it arrives, rather than the record being written o
   between** — a fact about the drop site, not about the vault. Two rows holding the same
   number is what the sibling-scoped scheme produces and what nothing else does, so
   `midpoint` reports it as its own refusal (`tied`, beside `gapSpent` and `unranked`) and
-  that refusal alone opens the fallback. A `tied` that reaches a notice takes the backfill
-  as its remedy rather than Respace: respacing a range holding two equal numbers cannot
-  separate them.
+  that refusal alone opens the fallback. A `tied` that reaches a notice takes Seed as its
+  remedy rather than Respace or the backfill: the backfill only fills blanks, and respacing
+  a range holding two equal numbers cannot separate them.
 - **Two wider gates were built here first and both were wrong**, which is why the narrow
   one is worth a record of its own. Gated on *any* refusal, the fallback answers over a
   `gapSpent` that is correct on a seeded vault, taking a number from the peer bounds alone
@@ -108,7 +115,7 @@ and each is recorded below as it arrives, rather than the record being written o
   when one does — rather than searching for a free value, which would invent an arithmetic
   ADR 0008 does not specify. It costs nothing on the case the fallback exists for: the
   first drop in each group answers a number nobody holds, and the remedy `tied` names is
-  the backfill, which is what a vault dense enough to collide here needs. The question is
+  Seed, which is what a vault dense enough to collide here needs. The question is
   asked of the population WITHOUT the dragged row — a drop landing where the item already
   is would otherwise refuse for a collision with itself — and of every other row, context
   rows included.
@@ -124,9 +131,12 @@ and each is recorded below as it arrives, rather than the record being written o
   that wrote it. Refusing merely declines one gesture, which the user recovers from by
   dropping elsewhere. Bounded honestly: a writable/context tie does not break focused
   ordering today, since `inRankOrder` reads distinctness off the writable rows alone. One
-  consequence recorded and not fixed here — when the row holding the number is an excluded
-  one, the `tied` refusal's remedy (run the backfill) is advice that cannot work, and the
-  notice task inherits it.
+  consequence recorded and now bounded rather than fixed — when the row holding the number
+  is an excluded one, no remedy the notice can name moves it. What the notice does instead
+  is send the user one step further rather than in a circle: `rank.tied` names Seed, and
+  Seed reports `rank.wedged` over exactly the rows squeezed against a rank this base cannot
+  write. The refusal itself still cannot tell the two cases apart, because `RankRefusal`
+  carries a reason and never a row.
 - Self-limiting: once the rows around a drop hold distinct ranks there is no tie to switch
   on, and the refusal the fallback used to swallow is reported instead.
 - The fallback is **silent** — nothing tells the user which of the two regimes answered —
@@ -146,8 +156,8 @@ and each is recorded below as it arrives, rather than the record being written o
   hidden note in the vault can. The two alternatives were weighed and refused — reading
   every rank-bearing note from the metadata cache would make `domain/` read the vault rather
   than what Bases hands it, and refusing every write on a filtered Base would disable
-  ranking for most real bases, since most of them filter something. The Respace command,
-  when it lands, is the repair once a collision surfaces.
+  ranking for most real bases, since most of them filter something. `Respace ranks` is the
+  repair once a collision surfaces.
 
 ## Alternatives
 

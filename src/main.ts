@@ -1,6 +1,12 @@
 import { Plugin } from 'obsidian';
 import { CREATE_BACKLOG_COMMAND_ID, promptCreateBacklogBase } from './commands/scaffold';
 import { WRITE_README_COMMAND_ID, writeBacklogReadmeCommand } from './commands/readme';
+import {
+	RESPACE_RANKS_COMMAND_ID,
+	respaceRanksCommand,
+	SEED_RANKS_COMMAND_ID,
+	seedRanksCommand,
+} from './commands/rank';
 import { pruneDeletedFolds, rekeyBase, renamePathFolds, renamePathPrefs } from './storage/viewStateStore';
 import { initLocale, t } from './i18n/t';
 import { registerBacklogView } from './view/registerBacklogView';
@@ -64,6 +70,20 @@ export default class ProductBacklogPlugin extends Plugin {
 			// view's configuration, so with no such view there is nothing to describe and
 			// the command hides rather than writing something from the defaults.
 			checkCallback: (checking) => writeBacklogReadmeCommand(this.app, checking),
+		});
+		// Two check callbacks for the same reason: both rewrite the rank of every note in
+		// the active view's population, so with no such view there is nothing to rewrite.
+		// Registered apart and named far apart — one writes the hierarchy into numbers and
+		// discards any order set by hand, the other keeps the order on screen.
+		this.addCommand({
+			id: SEED_RANKS_COMMAND_ID,
+			name: t('command.seedRanks'),
+			checkCallback: (checking) => seedRanksCommand(this.app, checking),
+		});
+		this.addCommand({
+			id: RESPACE_RANKS_COMMAND_ID,
+			name: t('command.respaceRanks'),
+			checkCallback: (checking) => respaceRanksCommand(this.app, checking),
 		});
 	}
 }

@@ -1173,16 +1173,54 @@ export const en = {
 	 * a spent gap needs respacing, a missing rank needs the backfill, and a deleted
 	 * parent needs nothing at all.
 	 *
-	 * `rank.tied` names no command on purpose. A tie is the sibling-scoped scheme showing
-	 * through, and neither of the two remedies above reaches it — the backfill only fills
-	 * blanks, and respacing a range holding two equal numbers cannot separate them. The
-	 * command that can (`Seed ranks from the hierarchy`) is not built yet, so this
-	 * sentence states what the user can do TODAY rather than pointing at nothing.
+	 * `rank.tied` names Seed rather than either of those. A tie is the sibling-scoped
+	 * scheme showing through, and neither remedy above reaches it — the backfill only fills
+	 * blanks, and respacing a range holding two equal numbers cannot separate them. Seed
+	 * rewrites every rank from the hierarchy, which does.
+	 *
+	 * **What none of these three sentences can tell the user, stated here rather than left
+	 * to be discovered.** The row holding the colliding or missing number may be one the
+	 * base EXCLUDED, and no write path may ever move it — so at that site the remedy named
+	 * changes nothing. It is not distinguishable from the refusal: `RankRefusal` carries a
+	 * reason and never a row, and giving it one would put a model object inside a sentence.
+	 * What makes the advice honest anyway is that each command it names reports its own
+	 * dead end — Seed and Respace both answer `rank.wedged`, which says the notes are
+	 * squeezed against ones this base cannot write and names the unfiltered base. So the
+	 * user is sent one step further rather than in a circle. `rank.unranked` needs none of
+	 * that: `anchoredOrder` skips an unranked context row instead of refusing beside one,
+	 * so the blank that sentence is said over is always one the backfill can fill.
 	 */
 	'rank.gapSpent': 'No room left between those two items. Run "Respace ranks" from the command palette.',
 	'rank.unranked': 'That item has no rank yet. Use the toolbar’s set-up button to fill in the missing ones.',
-	'rank.tied': 'Two items there have the same rank, so nothing fits between them. Give one of them a different rank and try again.',
+	'rank.tied':
+		'Two items there have the same rank, so nothing fits between them. Run "Seed ranks from the hierarchy" from the command palette to renumber the whole backlog.',
 	'rank.parentGone': 'That item’s parent no longer exists, so nothing was created.',
+
+	/**
+	 * What the two rank commands say. Each confirmation states the whole of what the
+	 * command does to a note the user cannot see the effect of — a filtered base ranks only
+	 * what it returns, so a note it excludes can end up above or below where it was — and
+	 * Seed's adds the one thing that makes it different from Respace: it is correct exactly
+	 * once, and a second run discards every order set by hand at a focus level.
+	 *
+	 * `rank.wedged` is the refusal both share, and it is the reason the sentences above may
+	 * name a command at all: where writable rows are squeezed against a rank this base
+	 * cannot write, the plan changes nothing and says which notes and what to do instead.
+	 * `{titles}` are note titles — vault content, joined as grammar and never translated.
+	 */
+	'rank.seedConfirm': {
+		one: 'Rank {count} note in the order it appears in the tree. This replaces every existing rank, including any order set by hand at a focus level. On a filtered base only the notes this base returns are ranked, so they may move relative to notes it excludes.',
+		other:
+			'Rank {count} notes in the order they appear in the tree. This replaces every existing rank, including any order set by hand at a focus level. On a filtered base only the notes this base returns are ranked, so they may move relative to notes it excludes.',
+	},
+	'rank.respaceConfirm': {
+		one: 'Rewrite the rank of {count} note with even spacing, keeping the order it is in now. On a filtered base only the notes this base returns are respaced, so they may move relative to notes it excludes.',
+		other:
+			'Rewrite the ranks of {count} notes with even spacing, keeping the order they are in now. On a filtered base only the notes this base returns are respaced, so they may move relative to notes it excludes.',
+	},
+	'rank.done': { one: 'Ranked {count} note', other: 'Ranked {count} notes' },
+	'rank.wedged':
+		'These items sit between two notes this base cannot write, with no room left between them: {titles}. Nothing was changed. Run this on an unfiltered base.',
 
 	/**
 	 * The write gate's four refusals. The two `console.error` prefixes beside them stay
@@ -1288,6 +1326,14 @@ export const en = {
 	 */
 	'command.createBacklog': 'Create backlog',
 	'command.writeReadme': 'Write backlog readme',
+	/**
+	 * The two whole-population rank rewrites. Named far apart on purpose: they look alike
+	 * in a palette and must never be confused — Seed writes the HIERARCHY into numbers and
+	 * discards any order set by hand at a focus level, Respace keeps the order already on
+	 * screen. The confirmation says which, because the palette entry cannot.
+	 */
+	'command.seedRanks': 'Seed ranks from the hierarchy',
+	'command.respaceRanks': 'Respace ranks',
 
 	'dependency.dependsOn': 'Depends on…',
 	/** A prerequisite whose text names no note this base can see. */

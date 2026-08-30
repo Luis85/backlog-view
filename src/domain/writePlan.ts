@@ -665,17 +665,19 @@ export function computeScheduleWrites(
 /**
  * Why a placement produced no number. Each names its own remedy at the notice, and the
  * three are genuinely different advice: `gapSpent` sends the user to Respace, `unranked`
- * to the backfill, and `tied` to the backfill too — a tie is the sibling-scoped scheme
- * showing through, and respacing a range that holds two equal numbers cannot separate
- * them. `tied` reaches a notice only when the peer fallback fails to answer — refusing
- * itself, or producing a number another row already holds; when it answers a free one,
- * `dropPlacement` returns that rank and nothing is said.
+ * to the backfill, and `tied` to Seed — a tie is the sibling-scoped scheme showing through,
+ * the backfill only fills blanks, and respacing a range that holds two equal numbers cannot
+ * separate them. `tied` reaches a notice only when the peer fallback fails to answer —
+ * refusing itself, or producing a number another row already holds; when it answers a free
+ * one, `dropPlacement` returns that rank and nothing is said.
  *
- * **One case where the backfill is advice that cannot work**, recorded here for the task
- * that wires the notice: when the row holding the number is one the Base EXCLUDED, no write
- * path may ever move it, so running the backfill changes nothing at that site. The refusal
- * is still right — see `rankTaken` for why the alternative is worse — but the sentence
- * offered with it would be false, and this refusal cannot tell the two apart from here.
+ * **One case where no remedy named here can work**: when the row holding the number is one
+ * the Base EXCLUDED, no write path may ever move it, so nothing changes at that site. The
+ * refusal is still right — see `rankTaken` for why the alternative is worse — and this
+ * refusal cannot tell the two apart from here, because it carries a reason and never a row.
+ * What keeps the sentence honest is that the command it names reports its own dead end:
+ * Seed and Respace both answer `rank.wedged` over exactly the rows squeezed against a rank
+ * this base cannot write, so the user is sent one step further rather than in a circle.
  *
  * `parentGone` is the odd one: no function in this module produces it. A creation's
  * destination is re-resolved by PATH under a modal prompt (`view/interactions/create.ts`),
@@ -1189,10 +1191,7 @@ function initWriteFor(item: BacklogItem, settings: BacklogSettings, nextOrder: (
  * rank and can. Both the guarantee and the residual are pinned in
  * `test/view/backfillFocusOrder.test.ts`.
  */
-export function computeInitWrites(
-	model: BacklogModel,
-	settings: BacklogSettings,
-): { writes: ItemWrite[]; unplaceable: number } {
+export function computeInitWrites(model: BacklogModel, settings: BacklogSettings): { writes: ItemWrite[]; unplaceable: number } {
 	const writes: ItemWrite[] = [];
 	// Counted where the refusal happens rather than re-derived afterwards: `nextOrder` is
 	// asked exactly once per blank rank, so a second pass would be a second idea of which

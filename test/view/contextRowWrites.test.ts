@@ -2,7 +2,8 @@
 import { describe, expect, it } from 'vitest';
 import { ProductBacklogView } from '../../src/view/backlogView';
 import { FakeVault, FakeViewConfig } from '../helpers/vault';
-import { FuzzySuggestModal, Menu, Modal } from '../helpers/obsidian-mock';
+import { FileView, FuzzySuggestModal, Menu, Modal } from '../helpers/obsidian-mock';
+import { respaceRanksCommand, seedRanksCommand } from '../../src/commands/rank';
 import { drag, clickExpandAll, flush, key, rowByTitle, rows, treeOf, useViewHarness } from '../helpers/view';
 import { computeAssigneeWrites } from '../../src/domain/writePlan';
 
@@ -33,7 +34,10 @@ describe('moves in a group that holds an outside-filter row', () => {
 		vault.addFile('Feature A.md', { frontmatter: { type: 'Feature', order: orders[1] }, parentLink: 'Epic' });
 		vault.addFile('Feature B.md', { frontmatter: { type: 'Feature', order: orders[2] }, parentLink: 'Epic' });
 		vault.addFile('PBI.md', { frontmatter: { type: 'PBI', order: orders[3] }, parentLink: 'Feature A' });
-		const containerEl = document.body.createDiv();
+		// Nested in a leaf, because the palette commands below reach this view through the
+		// registry and the workspace rather than through an element a test already holds.
+		const leafEl = document.body.createDiv();
+		const containerEl = leafEl.createDiv();
 		const view = new ProductBacklogView({} as never, containerEl);
 		const anyView = view as unknown as Record<string, unknown>;
 		anyView.app = vault.app;
@@ -45,6 +49,7 @@ describe('moves in a group that holds an outside-filter row', () => {
 		};
 		view.onDataUpdated();
 		clickExpandAll(containerEl);
+		vault.activeView = new FileView(vault.addFile('Backlog.base'), leafEl);
 		return { view, containerEl, vault };
 	}
 
@@ -52,6 +57,26 @@ describe('moves in a group that holds an outside-filter row', () => {
 	const mixedView = () => contextView([10, 20, 30, 40]);
 	/** Sibling-scoped: Epic, Feature A and PBI tie at 10, which opens the peer fallback. */
 	const tiedView = () => contextView([10, 10, 20, 10]);
+
+	/**
+	 * The two whole-population rewrites, driven as write entry points like every other
+	 * gesture in this file. They are the widest write this plugin has — every note's rank at
+	 * once — so "never a write target" is the rule most worth asking of them, and the plan
+	 * has to leave the excluded rows out rather than relying on `applySafely` to refuse:
+	 * that refusal is whole-batch, so one context row in the plan writes NOTHING at all.
+	 */
+	it.each([
+		['seed', seedRanksCommand],
+		['respace', respaceRanksCommand],
+	])('the %s command ranks the results and writes to no context row', async (_name, command) => {
+		const { vault } = mixedView();
+
+		expect(command(vault.app as never, false)).toBe(true);
+		Modal.lastOpened?.contentEl.querySelector<HTMLElement>('.mod-cta')?.click();
+		await flush();
+
+		expect(vault.writeLog.map((w) => w.path).sort()).toEqual(['Feature B.md', 'PBI.md']);
+	});
 
 	it('offers the move commands in such a group: nothing is withheld for the context row', () => {
 		const { containerEl } = mixedView();
