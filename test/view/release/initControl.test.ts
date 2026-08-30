@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
 import { en } from '../../../src/i18n/en';
-import { RELEASE_SUGGESTED_KEYS } from '../../../src/view/release/init';
-import { makeReleaseView, mountRelease, noReleaseVault } from '../../helpers/release';
+import { RELEASE_SUGGESTED_KEYS, RELEASE_SUGGESTED_VALUES } from '../../../src/view/release/init';
+import { makeReleaseView, mountRelease, noReleaseVault, RELEASE_CONFIG } from '../../helpers/release';
 import { Notice } from '../../helpers/obsidian-mock';
 import { flush, useViewHarness } from '../../helpers/view';
 
@@ -18,7 +18,7 @@ describe('the release view’s ✨', () => {
 	});
 
 	it('says it bound nothing rather than looking dead', async () => {
-		const { view } = mountRelease({ bindAll: true });
+		const { view } = mountRelease({ bindAll: true, notesFolder: 'docs/release-notes' });
 		view.viewEl.querySelector<HTMLButtonElement>('.pbl-rel-init')!.click();
 		await vi.waitFor(() => expect(Notice.messages).toHaveLength(1));
 		expect(Notice.messages[0]).toBe(en['release.init.nothing']);
@@ -77,15 +77,29 @@ describe('the release view’s ✨', () => {
 			expect(view.viewEl.querySelector('.pbl-empty .pbl-rel-init')).not.toBeNull();
 		});
 
+		it('is drawn there when every PROPERTY is bound but a non-property value is not', () => {
+			// Codex, PR #221: `anythingToBind` used to filter `RELEASE_SUGGESTED_KEYS` alone,
+			// which cannot see the three non-property options — so an upgraded vault with
+			// every property already bound but the folder still unset (`RELEASE_CONFIG`
+			// deliberately leaves it that way) would hide a button that, pressed, would still
+			// do real work. `wouldBindValue` is what closes the gap: the offer and the press
+			// have to agree, and this fixture is exactly the case where they used not to.
+			const { view } = makeReleaseView(noReleaseVault(), RELEASE_CONFIG);
+			expect(view.config.get('releaseNotesFolder')).toBeUndefined();
+			expect(view.viewEl.querySelector('.pbl-empty .pbl-rel-init')).not.toBeNull();
+		});
+
 		it('is withheld there once every candidate is bound or cleared, unlike `New release`', () => {
 			// `New release` stays: it is offered whenever a type key is bound, and none of the
 			// options this ✨ handles govern it.
-			// Every candidate, derived rather than listed: a seventh joins this fixture by being
-			// declared in `RELEASE_SUGGESTED_KEYS`, which is the whole point of the check —
-			// a candidate nobody cleared here would leave the control drawn and pass nothing.
+			// Every candidate, derived rather than listed — properties AND the three
+			// non-property values since 2026-08-30: a further one joins this fixture by being
+			// declared in either list, which is the whole point of the check — a candidate
+			// nobody cleared here would leave the control drawn and pass nothing.
 			const cleared = Object.fromEntries([
 				['typeProperty', 'note.type'],
 				...RELEASE_SUGGESTED_KEYS.map((candidate) => [candidate.option, '']),
+				...RELEASE_SUGGESTED_VALUES.map((candidate) => [candidate.option, '']),
 			]);
 			const { view } = makeReleaseView(noReleaseVault(), cleared);
 			expect(view.viewEl.querySelector('.pbl-empty .pbl-rel-init')).toBeNull();
@@ -115,7 +129,7 @@ describe('the release view’s ✨', () => {
 
 	describe('focus after a press', () => {
 		it('does not redraw on a no-op, so the pressed button keeps its DOM identity and focus', async () => {
-			const { view } = mountRelease({ bindAll: true });
+			const { view } = mountRelease({ bindAll: true, notesFolder: 'docs/release-notes' });
 			const btn = view.viewEl.querySelector<HTMLButtonElement>('.pbl-rel-init')!;
 			const renderSpy = vi.spyOn(view, 'render');
 			btn.focus();

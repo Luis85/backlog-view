@@ -155,6 +155,11 @@ export interface MountReleaseOptions {
 	/** Overrides `stateProperty` on top of `bindAll` — `''` clears the plan's own state key,
 	 *  the scope toolbar's own gate for its hide-done control (`scopeToolbar.test.ts`). */
 	stateKey?: string;
+	/** Overrides `releaseNotesFolder` on top of `bindAll` — `RELEASE_CONFIG` deliberately
+	 *  leaves this one unbound (see its own comment) so a press against `bindAll: true`
+	 *  still finds something to do; a test whose claim is "truly nothing left to bind"
+	 *  passes it explicitly rather than relying on `RELEASE_CONFIG` alone. */
+	notesFolder?: string;
 }
 
 /** Hand the view a fresh result set, the way Bases does after a vault change —
@@ -165,11 +170,12 @@ export function refreshRelease(view: ReleaseView, vault: FakeVault): void {
 }
 
 export function mountRelease(opts: MountReleaseOptions = {}): ReleaseHarness & { vault: FakeVault } {
-	const { bindAll = true, membership, pick, stateKey } = opts;
+	const { bindAll = true, membership, pick, stateKey, notesFolder } = opts;
 	const vault = pick === undefined ? releaseVault() : scopeVault();
 	const configValues: Record<string, unknown> = bindAll ? { ...RELEASE_CONFIG } : {};
 	if (membership !== undefined) configValues.membershipProperty = membership;
 	if (stateKey !== undefined) configValues.stateProperty = stateKey;
+	if (notesFolder !== undefined) configValues.releaseNotesFolder = notesFolder;
 	const harness = makeReleaseView(vault, configValues);
 	if (pick !== undefined) harness.view.pick(pick);
 	return { ...harness, vault };

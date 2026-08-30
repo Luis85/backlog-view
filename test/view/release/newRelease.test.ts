@@ -199,7 +199,10 @@ describe('New release', () => {
 	});
 
 	it('binds nothing and says nothing when every option is already bound', async () => {
-		await openNewRelease(noReleaseVault(), RELEASE_CONFIG);
+		// `RELEASE_CONFIG` deliberately leaves `releaseNotesFolder` unbound (see its own
+		// comment), so it is bound here explicitly — this test's claim is about a
+		// genuinely fully-configured view.
+		await openNewRelease(noReleaseVault(), { ...RELEASE_CONFIG, releaseNotesFolder: 'docs/release-notes' });
 		expect(Notice.messages).toEqual([]);
 	});
 
@@ -209,7 +212,8 @@ describe('New release', () => {
 		// press binds nothing and must therefore report nothing: a notice here would tell
 		// the reader their view's configuration changed when it did not.
 		const { view, config } = makeReleaseView(noReleaseVault(), {});
-		for (const [option, value] of Object.entries(RELEASE_CONFIG)) config.set(option, value);
+		const fullyBound = { ...RELEASE_CONFIG, releaseNotesFolder: 'docs/release-notes' };
+		for (const [option, value] of Object.entries(fullyBound)) config.set(option, value);
 		const bound = config.setCalls.length;
 		newBtn(view.viewEl).click();
 		await flush();

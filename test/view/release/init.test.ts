@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import { getReleaseViewOptions, SHARED_STATUS_OPTIONS } from '../../../src/domain/releaseOptions';
+import { getReleaseViewOptions, resolveReleaseSettings, SHARED_STATUS_OPTIONS } from '../../../src/domain/releaseOptions';
 import { releaseNoteProblems } from '../../../src/domain/settingsConsistency';
-import { runReleaseInit } from '../../../src/view/release/init';
+import { en } from '../../../src/i18n/en';
+import { RELEASE_SUGGESTED_KEYS, runReleaseInit } from '../../../src/view/release/init';
 import { bindAndReport } from '../../../src/view/release/newRelease';
 import { makeReleaseView, mountRelease, RELEASE_CONFIG, scopeVault } from '../../helpers/release';
 import { FakeVault } from '../../helpers/vault';
@@ -54,7 +55,10 @@ describe('runReleaseInit', () => {
 	});
 
 	it('adopts nothing already bound, and leaves an unrelated key alone', async () => {
-		const { view } = makeReleaseView(new FakeVault(), RELEASE_CONFIG);
+		// `RELEASE_CONFIG` deliberately leaves `releaseNotesFolder` unbound (see its own
+		// comment) so the folder-bind test below has something to bind — bound here
+		// explicitly, since THIS test's claim is about a genuinely fully-configured view.
+		const { view } = makeReleaseView(new FakeVault(), { ...RELEASE_CONFIG, releaseNotesFolder: 'docs/release-notes' });
 		await runReleaseInit(view);
 		expect(view.config.setCalls).toEqual([]);
 	});
@@ -109,7 +113,16 @@ describe('runReleaseInit', () => {
 	it('hands out no key ANY declared property option already holds, outside the one exemption', async () => {
 		const { view: untouched } = makeReleaseView(new FakeVault(), {});
 		await runReleaseInit(untouched);
-		const suggested = untouched.config.setCalls.map((call) => String(call.value));
+		// Narrowed to the PROPERTY sweep's own writes: this check is about a declared
+		// property option colliding with a suggested property KEY, and since 2026-08-30 an
+		// unconstrained run's `setCalls` also carries the three value candidates (a folder
+		// path, a vocabulary, a transition) — strings no property option collides with by
+		// this rule, and counting them in `suggested` would ask a `typeProperty` fixture to
+		// hold a folder path as though it were a property key.
+		const suggestedKeys = new Set(RELEASE_SUGGESTED_KEYS.map((candidate) => candidate.option));
+		const suggested = untouched.config.setCalls
+			.filter((call) => suggestedKeys.has(call.key))
+			.map((call) => String(call.value));
 		expect(suggested.length).toBeGreaterThan(0);
 
 		const declared = getReleaseViewOptions(untouched.config)
@@ -204,6 +217,52 @@ describe('runReleaseInit', () => {
 		const { view } = makeReleaseView(new FakeVault(), {});
 		await runReleaseInit(view);
 		expect(view.settings.releasedDateKey).toBe('released');
+	});
+});
+
+describe('the press binds the options that are not properties', () => {
+	it('binds the notes folder to the option’s own placeholder', () => {
+		const { view } = mountRelease({ bindAll: false });
+		void runReleaseInit(view);
+		expect(view.config.get('releaseNotesFolder')).toBe('docs/release-notes');
+	});
+
+	it('binds the released vocabulary from domain data, never from the catalog', () => {
+		// The option's placeholder is `t('release.option.releasedValuesHint')` — the string
+		// `Released, Archived`. Binding a placeholder uniformly would write the CATALOG's
+		// language into the `.base`, which is data in the wrong artifact.
+		const { view } = mountRelease({ bindAll: false });
+		void runReleaseInit(view);
+		expect(view.config.get('releasedStatusValues')).toBe('Released');
+		expect(view.config.get('releasedStatusValues')).not.toBe(en['release.option.releasedValuesHint']);
+	});
+
+	it('binds the transition to the FIRST of the reader’s own list, not the literal', () => {
+		// The case a fixture spelling `Released` cannot see: with a vocabulary already
+		// declared, binding the literal would fail `configProblems`' own check that the
+		// transition is one of the released values.
+		const { view } = mountRelease({ bindAll: false });
+		view.config.set('releasedStatusValues', 'Shipped, Archived');
+		void runReleaseInit(view);
+		expect(view.config.get('releasedTransitionValue')).toBe('Shipped');
+	});
+
+	it('never overwrites an option the reader has touched', () => {
+		// Cleared is not untouched, and neither is set — `adoptCandidates`' own rule,
+		// applied to the three that reach none of its machinery.
+		const { view } = mountRelease({ bindAll: false });
+		view.config.set('releaseNotesFolder', 'notes/ship');
+		void runReleaseInit(view);
+		expect(view.config.get('releaseNotesFolder')).toBe('notes/ship');
+	});
+
+	it('leaves a fully configured view with no configuration problems', () => {
+		// The promise of the press, as one assertion rather than five.
+		const { view } = mountRelease({ bindAll: false });
+		void runReleaseInit(view);
+		const settings = resolveReleaseSettings(view.config);
+		expect(settings.notesFolder).not.toBe('');
+		expect(settings.releasedValues).toContain(settings.releasedTransition);
 	});
 });
 

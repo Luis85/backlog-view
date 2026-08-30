@@ -120,6 +120,19 @@ export const RELEASE_SUGGESTED_VALUES: ValueCandidate[] = [
 ];
 
 /**
+ * Whether a press would actually bind {@link candidate} — untouched, and a non-empty
+ * computed value — the same test {@link runReleaseInit}'s own sweep applies to decide
+ * whether to write. Exported so `initControl.ts`'s `anythingToBind` asks the identical
+ * question rather than a second copy of it: the property half of that offer already
+ * reads `adoptableReleaseKeys` rather than restating `adoptCandidates`' rule, and a
+ * value candidate reaching none of that machinery is not a reason to state its own rule
+ * twice either.
+ */
+export function wouldBindValue(config: BasesViewConfig, candidate: ValueCandidate): boolean {
+	return config.get(candidate.option) === undefined && candidate.value(config) !== '';
+}
+
+/**
  * Which of `candidates` a press would actually bind — the one question the ACTION and the
  * control's own offer (`initControl.ts`'s `anythingToBind`) both ask, so what the ✨
  * promises and what it does cannot come apart.
@@ -208,5 +221,14 @@ export async function runReleaseInit(view: ReleaseView): Promise<void> {
 		pending.set(option, notePropertyId(suggested));
 	}
 	for (const [option, value] of pending) view.config.set(option, value);
+	// The second sweep, in order: each candidate reads the config as the one before it
+	// left it, which is what lets the transition pick from a vocabulary this same press
+	// may have just supplied. `wouldBindValue` is the one guard — an option the reader has
+	// touched is never overwritten, and an empty computed value binds nothing (a
+	// transition with no list to choose from is not a value, and writing `''` would
+	// report as touched to the next press).
+	for (const candidate of RELEASE_SUGGESTED_VALUES) {
+		if (wouldBindValue(view.config, candidate)) view.config.set(candidate.option, candidate.value(view.config));
+	}
 	view.settings = resolveReleaseSettings(view.config);
 }
