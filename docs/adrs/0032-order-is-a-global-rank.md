@@ -109,9 +109,12 @@ row's own exclusion.
   created note with no `order` yet, or one legacy tie in another corner of the vault,
   re-opens the fallback for a subtree that is perfectly seeded. Every whole-population
   predicate has that shape of hole, so narrowing it was abandoned rather than repaired.
-  `distinctlyRanked` stays in `src/domain/rankOrder.ts` for the READ side only, where the
-  question genuinely is about the whole list: sorting is all-or-nothing, so one missing
-  rank leaves the list with no defined order.
+  `distinctlyRanked` stays in `src/domain/rankOrder.ts` for the question that genuinely is
+  about a whole list: sorting is all-or-nothing, so one missing rank leaves the list with no
+  defined order. That is the read side, and one caller on the write side that shares the
+  shape — `Respace ranks` asks it of the whole population to decide whether its
+  confirmation may promise to keep the order on screen. It gates no arithmetic and refuses
+  nothing; a PLACEMENT still may not ask it, for the reason above.
 - **A gate on the fallback's ENTRY cannot vouch for its ANSWER, so the answer is checked
   too.** Both numbers the fallback can produce — a midpoint between two peers, an edge rank
   one spacing past the outermost one — are functions of the peer values alone, while the

@@ -102,6 +102,34 @@ describe('the seed and respace rank commands', () => {
 		expect(b - a).toBeGreaterThan(1);
 	});
 
+	it('warns that respacing will redraw a population that is not distinctly ranked', async () => {
+		// Legacy, sibling-scoped ranks: `Epic A`'s child holds 100 and so does `Epic B`'s.
+		// Every focused list of them is drawn in TREE order (`inRankOrder`'s guard), and the
+		// rank order this rewrites into is a different sequence — so "keeping the order they
+		// are in now" is not what would happen.
+		const vault = crossedVault();
+		vault.addFile('B1.md', { frontmatter: { type: 'Feature', order: 100 }, parentLink: 'Epic B' });
+		openBacklog(vault);
+
+		respaceRanksCommand(vault.app as never, false);
+
+		expect(Modal.lastOpened?.contentEl.textContent).toContain('Some lists are drawn in tree order');
+		// The PLAN is untouched by the sentence: it still respaces every writable note.
+		confirm();
+		await flush();
+		expect(vault.writeLog.map((w) => w.path).sort()).toEqual(['A1.md', 'B1.md', 'Epic A.md', 'Epic B.md']);
+	});
+
+	it('says nothing extra when every rank is already distinct', () => {
+		const vault = crossedVault();
+		openBacklog(vault);
+
+		respaceRanksCommand(vault.app as never, false);
+
+		expect(Modal.lastOpened?.contentEl.textContent).toContain('Rewrite the ranks of 3 notes');
+		expect(Modal.lastOpened?.contentEl.textContent).not.toContain('Some lists are drawn in tree order');
+	});
+
 	it('writes nothing when the view was closed while the dialog was open', async () => {
 		const vault = crossedVault();
 		const { view } = openBacklog(vault);

@@ -92,10 +92,15 @@ from.
   **Checked by** `test/domain/modelRanking.test.ts` — "falls back to tree order when the focused rows' ranks are not globally distinct"
 - **2e — the vault's ranks were never spread for this.** Two palette commands rewrite
   them all: **Seed ranks from the hierarchy** (`seed-ranks`) numbers every note in the
-  order the tree draws it, and **Respace ranks** (`respace-ranks`) keeps the order already
-  on screen and puts room between each pair again. Each confirms with the count it would
+  order the tree draws it, and **Respace ranks** (`respace-ranks`) keeps the rank order and
+  puts room between each pair again. Each confirms with the count it would
   write, recomputes the batch when the answer arrives, and writes through the active
-  view's own gate as one undoable batch. Two commands rather than one that guesses: they
+  view's own gate as one undoable batch. Respace's confirmation says "the order they are in
+  now", and that is only the order on SCREEN while every rank is present and distinct — a
+  list without that is drawn in tree order (2d above), so where the population it is about
+  to rewrite is not distinctly ranked the dialog adds a second sentence saying the rank
+  order will replace what is drawn. Narrowing the promise rather than refusing: refusing
+  sends the user to Seed, which discards hand-set focus ranks. Two commands rather than one that guesses: they
   look alike and mean very different things to a backlog somebody has ordered by hand.
   **Checked by** `test/commands/rank.test.ts` — "ranks the model as it is on confirm, not as it was when the dialog opened"
 - **2f — the notes a rewrite would rank are wedged against ones the base excluded.**

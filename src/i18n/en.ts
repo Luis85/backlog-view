@@ -1218,6 +1218,16 @@ export const en = {
 		other:
 			'Rewrite the ranks of {count} notes with even spacing, keeping the order they are in now. On a filtered base only the notes this base returns are respaced, so they may move relative to notes it excludes.',
 	},
+	/**
+	 * The second paragraph of Respace's confirmation, and only where it is true. "Keeping
+	 * the order they are in now" is a promise about the DRAWN order, and a list whose rows
+	 * are not distinctly ranked is drawn in tree order rather than in rank order — so
+	 * respacing replaces what the user is looking at. A whole sentence of its own rather
+	 * than a clause spliced into the one above: a locale that leads with the caveat has no
+	 * way into a middle assembled at the call site.
+	 */
+	'rank.respaceReorders':
+		'Some lists are drawn in tree order at the moment, because ranks are missing or repeated. Respacing writes the rank order into every note, so what you see may change.',
 	'rank.done': { one: 'Ranked {count} note', other: 'Ranked {count} notes' },
 	'rank.wedged':
 		'These items sit between two notes this base cannot write, with no room left between them: {titles}. Nothing was changed. Run this on an unfiltered base.',

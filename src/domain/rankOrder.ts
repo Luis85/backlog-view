@@ -52,6 +52,15 @@ export function inRankOrder(rows: BacklogItem[], ranked: BacklogItem[]): Backlog
  * false for a subtree that is perfectly seeded, and the fallback then writes a rank
  * another row holds. `dropPlacement` reads the tie at the drop site instead.
  *
+ * **The one write-side caller that may ask is the one asking about the WHOLE list too**,
+ * and it decides nothing: `Respace ranks` (`commands/rank.ts`) rewrites the whole
+ * population and its confirmation promises to keep the order on screen, which is only
+ * true while every drawn list is sorted by rank. Every drawn list is a SUBSET of this
+ * population, so distinct here means none of them is falling back and the promise holds;
+ * false means one may be, and the sentence says so rather than the command refusing. A
+ * whole-population question ahead of a whole-population rewrite is the shape the ban is
+ * about the absence of — see ADR 0032, which recorded the ban before this caller existed.
+ *
  * Distinctness is the test because it is exactly what makes a global rank a global ORDER.
  * Ties (and absent ranks) mean the number is not yet answering the question. Self-healing:
  * the moment Seed gives the rows distinct ranks, this turns true with nothing to switch on.
@@ -62,7 +71,7 @@ export function inRankOrder(rows: BacklogItem[], ranked: BacklogItem[]): Backlog
  * would keep this view in tree order forever, even once every writable note has a distinct
  * rank.
  */
-function distinctlyRanked(rows: BacklogItem[]): boolean {
+export function distinctlyRanked(rows: BacklogItem[]): boolean {
 	const orders = rows.filter((item) => !item.outsideFilter).map((item) => item.order);
 	return !orders.some((o) => o === null) && new Set(orders).size === orders.length;
 }

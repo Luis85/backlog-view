@@ -36,9 +36,19 @@ export function computeSeedWrites(model: BacklogModel): SpreadResult {
 }
 
 /**
- * The repair, correct any number of times: the order already on screen, respaced. It
- * preserves every ranking decision, which is what makes it the answer to a spent gap
- * and to a tie — and what makes it, not the seed, the one an implementer reaches for.
+ * The repair, correct any number of times: the RANK order, respaced. It preserves every
+ * ranking decision, which is what makes it the answer to a spent gap and to a tie — and
+ * what makes it, not the seed, the one an implementer reaches for.
+ *
+ * **"The order already on screen" only while the population is distinctly ranked**, and
+ * that is why the confirmation asks (`distinctlyRanked`, `rankOrder.ts`). A list whose own
+ * rows are not distinctly ranked is DRAWN in tree order — `inRankOrder`'s guard against
+ * scrambling an unmigrated vault — and `model.ranked` is the global rank sort, a different
+ * sequence: focus rows drawn `A1(10), A2(20), B1(10)` respace to `A1, B1, A2`, distinctly
+ * ranked from then on, so the guard disengages and the view redraws in an order nobody
+ * chose. The command narrows what it promises rather than refusing (which would send the
+ * user to Seed, and Seed discards hand-set focus ranks) — there is no single rendered
+ * order for a whole-population rewrite to preserve.
  *
  * Over the WHOLE loaded population, never the focused slice.
  */

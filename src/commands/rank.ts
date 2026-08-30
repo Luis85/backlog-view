@@ -2,6 +2,7 @@ import { App, Notice } from 'obsidian';
 import { t } from '../i18n/t';
 import { BacklogItem, BacklogModel } from '../domain/model';
 import { computeRespaceWrites, computeSeedWrites, SpreadResult } from '../domain/rankSpread';
+import { distinctlyRanked } from '../domain/rankOrder';
 import { openConfirm } from '../ui/confirmDialog';
 import { activeBacklogView, LiveBacklogView } from '../view/registry';
 
@@ -23,6 +24,11 @@ export const RESPACE_RANKS_COMMAND_ID = 'respace-ranks';
 
 /** Which rewrite this is — the only thing the two commands differ in. */
 type Spread = (model: BacklogModel) => SpreadResult;
+
+/** What the dialog reads: the sentence, and a second one where the command has a caveat
+ *  to state. Both are the CONFIRMATION's, so the two arrive together rather than as two
+ *  parameters that could be given for different populations. */
+type Confirmation = (count: number, model: BacklogModel) => { message: string; note?: string };
 
 /** The refusal both share: writable rows squeezed against a rank this base may not
  *  write. Named notes, because "somewhere in your backlog" is not actionable. */
@@ -80,7 +86,7 @@ function rankCommand(
 	checking: boolean,
 	plan: Spread,
 	title: string,
-	message: (count: number) => string,
+	confirmation: Confirmation,
 ): boolean {
 	const view = activeBacklogView(app);
 	if (view === null || view.model === null) return false;
@@ -91,7 +97,7 @@ function rankCommand(
 	else {
 		openConfirm(app, {
 			title,
-			message: message(preview.writes.length),
+			...confirmation(preview.writes.length, view.model),
 			cta: title,
 			onConfirm: () => void applyRank(app, view, plan),
 		});
@@ -99,14 +105,40 @@ function rankCommand(
 	return true;
 }
 
+/**
+ * Respace's second sentence, or nothing at all.
+ *
+ * Its first one promises to keep "the order they are in now", and that is a promise about
+ * what is DRAWN: a list whose rows are not distinctly ranked is drawn in tree order
+ * (`inRankOrder`), while the sequence Respace writes is the global rank sort. So on such a
+ * population the command silently redraws the backlog in an order nobody chose, and the
+ * confirmation has to say so.
+ *
+ * **Narrowing the promise rather than refusing**, which was decided rather than defaulted:
+ * refusing whenever the population holds a tie bounces the user to Seed, and Seed discards
+ * hand-set focus ranks that may be perfectly distinct in their own list. Deriving a
+ * sequence that preserves the rendered order is not available either — `distinctlyRanked`
+ * is asked per RENDERED list and this is a whole-population rewrite, so there is no single
+ * rendered order to preserve. Told, the user decides; that is the one thing neither of the
+ * other two answers allows.
+ *
+ * Asked of the whole population, which is the only place this predicate is sound on the
+ * write side: every rendered list is a subset of it, so distinct here means none of them
+ * is falling back. See `distinctlyRanked`'s own note on why a PLACEMENT may not ask it.
+ */
+function respaceCaveat(model: BacklogModel): string | undefined {
+	return distinctlyRanked(model.ranked) ? undefined : t('rank.respaceReorders');
+}
+
 export function seedRanksCommand(app: App, checking: boolean): boolean {
-	return rankCommand(app, checking, computeSeedWrites, t('command.seedRanks'), (count) =>
-		t('rank.seedConfirm', { count }),
-	);
+	return rankCommand(app, checking, computeSeedWrites, t('command.seedRanks'), (count) => ({
+		message: t('rank.seedConfirm', { count }),
+	}));
 }
 
 export function respaceRanksCommand(app: App, checking: boolean): boolean {
-	return rankCommand(app, checking, computeRespaceWrites, t('command.respaceRanks'), (count) =>
-		t('rank.respaceConfirm', { count }),
-	);
+	return rankCommand(app, checking, computeRespaceWrites, t('command.respaceRanks'), (count, model) => ({
+		message: t('rank.respaceConfirm', { count }),
+		note: respaceCaveat(model),
+	}));
 }
