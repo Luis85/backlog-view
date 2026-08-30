@@ -697,8 +697,24 @@ export function computeDropWrites(dragged: BacklogItem, target: DropTarget, rank
  * through here instead of calling `orderForTarget` beside it.
  */
 export function dropPlacement(dragged: BacklogItem, target: DropTarget, ranked: BacklogItem[]): RankResult {
-	return orderForTarget(
+	const global = orderForTarget(
 		ranked.filter((item) => item !== dragged),
+		target,
+	);
+	if ('order' in global) return global;
+	// **An unmigrated vault falls back to ranking among the peers alone**, which is
+	// exactly the sibling-scoped arithmetic this change replaces. Measured, not
+	// supposed: with legacy ranks (Epic A 10, A1 10, A2 20) moving A2 before A1 sees
+	// Epic A and A1 as its global neighbours, a gap of zero, and refuses — so every
+	// existing vault would lose ordinary tree reordering, the plugin's core gesture,
+	// with no migration available until the Seed command ships several tasks later.
+	//
+	// Self-healing and self-limiting: on a seeded vault the global placement succeeds
+	// and this line is never reached, so the two regimes never coexist for the same
+	// drop. If BOTH refuse, the refusal stands — the fallback adds a second chance,
+	// never a guarantee.
+	return orderForTarget(
+		target.peers.filter((item) => item !== dragged),
 		target,
 	);
 }

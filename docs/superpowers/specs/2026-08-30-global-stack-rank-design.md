@@ -221,6 +221,20 @@ array, which is where it renders. No peer group is consulted to get there.
 
 The first two are free by construction, because there is nothing beyond them.
 
+### An unmigrated vault keeps working
+
+The render side falls back to tree order until a vault's ranks are distinct; the WRITE side
+needs the same courtesy, and for a sharper reason. Measured on a fixture: with legacy
+sibling-scoped ranks (`Epic A` 10, `A1` 10, `A2` 20), moving `A2` before `A1` sees
+`Epic A` and `A1` as its global neighbours, a gap of zero, and refuses. Ordinary tree
+reordering — the gesture this plugin exists for — would stop working for every existing
+user, with no migration available until the Seed command ships.
+
+So when the global placement refuses, the drop is re-planned **against the destination
+peers alone**, which is exactly the sibling-scoped arithmetic this change replaces. On a
+seeded vault the global placement succeeds and the fallback is never reached, so the two
+regimes never both answer for one drop; if both refuse, the refusal stands.
+
 ### Two refusals, not one
 
 `orderBetween` returns `null` in **two** cases, and deleting the renumber exposes both.
