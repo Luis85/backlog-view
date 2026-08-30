@@ -284,7 +284,7 @@ outputs would send an intentionally unanswerable note through the TDD loop, beca
 | An `Improvement` | The subagent's | Engineering work like a `Task`, but the register gives it no `closed:` key — the closing rule says how |
 | An `Idea` | The human's | A proposal nobody has committed to. Implementing an Idea decides it, which is not this run's call |
 | A `Deliverable` | Ask | A non-code artifact may be either, and the register documents no shape for it |
-| An ADR *(not a child)* | The subagent's | Prose it can write, from the five things `docs/adrs/README.md` wants — which `decompose-pbi` collected before it wrote the record |
+| An ADR *(not a child)* | The subagent's | Prose it can write — but only once phase 2 has read the five things `docs/adrs/README.md` wants and found them there |
 | A `Test suite` *(not a child)* | The subagent's | Prose saying what the group walks; it checks nothing itself, and it must exist before a case can hang from it. Written, never closed — it stays `Open` while its cases are re-walked |
 | A `Test case` *(not a child)* | The human's | A live vault, which no subagent reaches — Obsidian cannot run here |
 
@@ -300,6 +300,14 @@ but the run does not pretend to deliver them.
 An open question that *must* be answered before the work can start is not deferred by this
 table: it is a phase 2 question to the user, and it either gets an answer that turns the
 Issue into work or it blocks the run. Say which, out loud, rather than letting it ride.
+
+**An ADR is checked, not assumed.** `decompose-pbi` asks for the context, the option taken,
+what each rejected option cost, what got harder and what would revisit it before it writes
+the record — but an older decomposition may not have, and `npm run docs` cannot tell:
+`docs/README.md` says the gate sees whether a heading is present and never whether the
+paragraph under it says anything. So phase 2 opens the record and reads the five. Empty
+headings under a passing gate are the failure, and the answer is the same as an unanswered
+shape — the output is blocked, and the readback says so.
 
 **Exit when** every child is either "executable as written" or has an answer to write into
 it, and **every output, child or not, is assigned** to the subagent or to the human.
