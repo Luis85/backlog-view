@@ -81,6 +81,22 @@ function orphanedFixture() {
 	return vault;
 }
 
+/**
+ * A focus level whose top row is a CONTEXT row with a rank. `Epic` and `PBI Ctx` are
+ * outside the base; `PBI Ctx` still loads, as the ancestor of a result (`Task Ctx`), and
+ * `collectFocusRoots` promotes it on level match alone — so it is drawn among the focus
+ * peers, ranked, and immovable.
+ */
+function contextFocusFixture() {
+	const vault = new FakeVault();
+	vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 5 } });
+	vault.addFile('PBI Ctx.md', { frontmatter: { type: 'PBI', order: 20 }, parentLink: 'Epic' });
+	vault.addFile('Task Ctx.md', { frontmatter: { type: 'Task', order: 10 }, parentLink: 'PBI Ctx' });
+	vault.addFile('PBI A.md', { frontmatter: { type: 'PBI', order: 30 }, parentLink: 'Epic' });
+	vault.addFile('PBI B.md', { frontmatter: { type: 'PBI', order: 40 }, parentLink: 'Epic' });
+	return vault;
+}
+
 /** Select a row through the tree's own keyboard, so Alt+arrow acts on it. */
 function selectRow(containerEl: HTMLElement, title: string): HTMLElement {
 	const tree = treeOf(containerEl);
@@ -129,6 +145,40 @@ describe('one rank, three inputs', () => {
 		expect(byDrag).toBe(1500);
 		expect(keyVault.fm('PBI B1.md')['order']).toBe(byDrag);
 		expect(menuVault.fm('PBI B1.md')['order']).toBe(byDrag);
+	});
+
+	/**
+	 * The same three inputs beside a RANKED context row, which is where they disagreed:
+	 * `siblingContext` keeps such a row among the focus peers on purpose — its order is a
+	 * real placement constraint — while `siblingPosition` refused it as a drop anchor, so
+	 * Alt+arrow and the menu ranked across a row the drag would not even draw an indicator
+	 * for. The refusal's reason is about reparenting and a focus rank changes no parent.
+	 */
+	it('lands the same rank from all three beside a ranked context row', async () => {
+		const run = async (gesture: (containerEl: HTMLElement) => void) => {
+			const vault = contextFocusFixture();
+			const { containerEl } = makeView(vault, {}, { focus: 'PBI', only: ['Task Ctx.md', 'PBI A.md', 'PBI B.md'] });
+			gesture(containerEl);
+			await flush();
+			return vault;
+		};
+
+		const byDrag = await run((el) => drag(rowByTitle(el, 'PBI A'), rowByTitle(el, 'PBI Ctx'), 'before'));
+		const byKey = await run((el) => key(selectRow(el, 'PBI A'), 'ArrowUp', { altKey: true }));
+		const byMenu = await run((el) => {
+			menuTitles(el, 'PBI A');
+			Menu.lastShown?.item('Move up')?.click();
+		});
+
+		// Between the context row (20) and the row ranked below it (10) — stated as well as
+		// compared, because three inputs writing nothing agree too.
+		expect(byDrag.fm('PBI A.md')['order']).toBe(15);
+		expect(byKey.fm('PBI A.md')['order']).toBe(15);
+		expect(byMenu.fm('PBI A.md')['order']).toBe(15);
+		// The anchor is still a note this base may not touch, from any of the three.
+		for (const vault of [byDrag, byKey, byMenu]) {
+			expect(vault.writeLog.map((w) => w.path)).toEqual(['PBI A.md']);
+		}
 	});
 
 	it('still refuses indent and outdent across the focus row', () => {

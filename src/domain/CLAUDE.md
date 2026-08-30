@@ -317,9 +317,11 @@ a node test that did would be measuring the runner.
   returns matches without their parents, which would flatten the tree, so `loadOutsideParents`
   walks each item's parent chain through the *metadata cache* and adds the missing notes with
   `entry: null` and `outsideFilter: true`. They are context, not results: no Bases row (so no
-  property chips), not draggable, excluded from every ranking path (`siblingPosition`,
-  `siblingContext`, `outdent`, the move menu) because their real siblings were never loaded,
-  and skipped by `computeInitWrites`. They ARE valid drop parents and can take new children.
+  property chips), not draggable, never written to, and skipped by `computeInitWrites`.
+  Every ranking path (`siblingPosition`, `siblingContext`, `outdent`, the move menu) declines
+  to move one, because its real siblings were never loaded — but a RANKED one is still
+  something the rows around it are ranked AGAINST, at the focus level, where the rank
+  changes no parent: see the two bullets on the context-row invariant below. They ARE valid drop parents and can take new children.
   Their rollups describe the visible subtree only. `entry` is nullable for exactly this
   reason — anything reading `item.entry` must handle null, which the compiler enforces.
   The seed for the walk is `outsideParentSeed`, which mirrors `linkAll`'s precedence
@@ -359,6 +361,15 @@ a node test that did would be measuring the runner.
   number, and `computeInitWrites` and `spreadAround` write neither. What refuses up front
   is the ROW in hand rather than its group: `siblingPosition` (drag), `siblingContext`
   (Alt+arrow and the move menu) and `outdentTarget` each decline an `outsideFilter` row.
+- **A ranked context row is a legal ANCHOR at the focus level, and the drag and the
+  keyboard have to say so together.** The refusal above is about REPARENTING — an ancestor
+  from outside the filter has siblings the query never returned — and a focus rank writes
+  `order` alone, restating the parent. So `siblingPosition` asks its focus branch BEFORE
+  that refusal and `siblingContext` keeps a ranked context row among the focus peers; both
+  drop an UNRANKED one (`isUnrankedContext`, in `dropTargets.ts` because all three callers
+  reach it there). They disagreed for one task: the keyboard ranked across a row the drag
+  drew no indicator for, which is the read-side/write-side split this feature keeps
+  producing, and `test/view/focusRanking.test.ts` now drives all three inputs at that row.
 - **Every structural command asks the write path's own question before it is offered.**
   `plans` (`interactions/structure.ts`) runs `dropPlacement` against that command's OWN
   target, so `canReorder`, `canMoveToEdge`, `outdentTarget` and `indentTarget` each answer

@@ -3,9 +3,9 @@ import { list, t } from '../../i18n/t';
 import { keepsProjection } from '../../domain/itemTypes';
 import { BacklogViewHost } from '../host';
 import { BacklogItem } from '../../domain/model';
-import { DropTarget, isInvalidParent } from '../../domain/dropTargets';
+import { DropTarget, isInvalidParent, isUnrankedContext } from '../../domain/dropTargets';
 import { configProblems } from '../../domain/settingsConsistency';
-import { computeInitWrites, dropPlacement, isUnrankedContext } from '../../domain/writePlan';
+import { computeInitWrites, dropPlacement } from '../../domain/writePlan';
 
 /**
  * Structural operations shared by the context menu and keyboard shortcuts.

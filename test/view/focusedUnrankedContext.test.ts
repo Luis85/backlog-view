@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { ProductBacklogView } from '../../src/view/backlogView';
 import { FakeVault, FakeViewConfig } from '../helpers/vault';
 import { Menu } from '../helpers/obsidian-mock';
-import { clickExpandAll, flush, key, rowByTitle, titlesOf, treeOf, useViewHarness } from '../helpers/view';
+import { clickExpandAll, drag, flush, key, rowByTitle, titlesOf, treeOf, useViewHarness } from '../helpers/view';
 
 useViewHarness();
 
@@ -55,6 +55,18 @@ describe('an unranked context row among focused peers', () => {
 		rowByTitle(containerEl, 'PBI A').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
 		const titles = Menu.lastShown?.items.map((i) => i.titleText) ?? [];
 		expect(titles).not.toContain('Move down');
+	});
+
+	it('writes nothing when the row is DRAGGED onto that context peer either', async () => {
+		// The drag reaches the same focus branch Alt+arrow does, and must refuse the same
+		// anchor: `anchoredOrder` would read a rankless row as no position at all and send
+		// the card to the end of the whole population, which is not where it was dropped.
+		const { containerEl, vault } = unrankedContextView();
+
+		drag(rowByTitle(containerEl, 'PBI A'), rowByTitle(containerEl, 'PBI Ctx'), 'after');
+		await flush();
+
+		expect(vault.writeLog.length).toBe(0);
 	});
 
 	it('writes nothing and moves nothing when Alt+ArrowDown is pressed anyway', async () => {

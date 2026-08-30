@@ -33,6 +33,22 @@ export interface DropTarget {
 }
 
 /**
+ * A context row with nothing to rank from — see `anchoredOrder`'s own comment
+ * (`writePlan.ts`). The row is on screen, but it can never be GIVEN a rank: every writer
+ * skips an `outsideFilter` note, so it constrains nothing and is neither an anchor to
+ * rank against nor a peer to swap past.
+ *
+ * Here rather than beside either caller because there are three — `anchoredOrder`,
+ * `siblingContext` (`view/interactions/structure.ts`) and `siblingPosition` below — and
+ * this is the one module all three can reach: `writePlan.ts` imports this file, so the
+ * predicate cannot live there without a cycle, and one rule spelled three times is how
+ * the drag and the keyboard came to disagree about the same row.
+ */
+export function isUnrankedContext(anchor: BacklogItem | null): boolean {
+	return anchor !== null && anchor.outsideFilter && anchor.order === null;
+}
+
+/**
  * Map a pointer position (0..1 within the row height) to a drop zone. Rows
  * without children get a narrower "inside" band: reordering is the common
  * intent on leaves, and a half-height nest zone caught too many drops.
@@ -123,9 +139,6 @@ function siblingPosition(
 	zone: DropZone,
 	dragged: BacklogItem,
 ): DropTarget | null {
-	// An ancestor pulled in from outside the filter still has siblings the query never
-	// returned, so ordering it against the loaded ones would be a guess.
-	if (item.outsideFilter) return null;
 	// An ACTIVE focus row is a ranking destination now: the peers are the rendered
 	// focus rows, and the parent is the dragged item's OWN — a focus rank writes
 	// `order` and never `parent`. Membership in the focus forest is the test, not the
@@ -142,12 +155,29 @@ function siblingPosition(
 	// drag to begin with (`row.draggable = !item.outsideFilter` in `render/rows.ts`,
 	// re-checked at drag time in `interactions/dragDrop.ts`), the same reliance
 	// `cardDrag.ts` places on the same flag.
-	if (model.focused && model.roots.includes(item) && model.roots.includes(dragged)) {
+	//
+	// **A RANKED context row is a legal anchor here, and the refusal below is why this
+	// branch comes first.** That refusal's reason — an ancestor from outside the filter
+	// has siblings the query never returned, so ordering it against the loaded ones would
+	// be a guess — is a reason about REPARENTING, and this branch changes no parent: it
+	// restates the dragged row's own and writes `order` alone. Asked ahead of it, the drag
+	// lands where Alt+arrow and the move menu already land, which is the disagreement this
+	// ordering exists to end: `siblingContext` keeps a ranked context row among the focus
+	// peers deliberately, so the two paths were ranking the same gesture across the same
+	// row and only one of them drew an indicator for it. An UNRANKED one is refused by
+	// both — it can never be given a rank, so it constrains nothing and is nothing to land
+	// beside. `peers` still carries them, and must: `anchoredOrder` filters them out of the
+	// population and skips one as an anchor, so a second opinion here would be a third.
+	if (model.focused && model.roots.includes(item) && model.roots.includes(dragged) && !isUnrankedContext(item)) {
 		const peers = model.roots.filter((r) => r !== dragged);
 		const idx = peers.indexOf(item);
 		if (idx === -1) return null;
 		return { parent: dragged.parent, peers, insertIndex: zone === 'before' ? idx : idx + 1, parentUnchanged: true };
 	}
+	// An ancestor pulled in from outside the filter still has siblings the query never
+	// returned, so ordering it against the loaded ones would be a guess. Every path but
+	// the focus rank above, unchanged.
+	if (item.outsideFilter) return null;
 	if (item.focusRoot) return null;
 	const parent = item.parent;
 	// `realRoots`, not the rendered forest: `order` is a number scoped to the notes

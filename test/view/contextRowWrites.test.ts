@@ -489,9 +489,10 @@ describe('write safety with context rows, across every entry point', () => {
 	 * exactly at the focus level becomes a `model.roots` member — `focusRoot: true` —
 	 * while staying `outsideFilter`. The rule holds anyway, structurally: `row.draggable
 	 * = !item.outsideFilter` (`render/rows.ts`, re-checked at drag time in
-	 * `interactions/dragDrop.ts`) keeps it off the `dragged` side, and
-	 * `siblingPosition`'s own `item.outsideFilter` check keeps it off the `item` side
-	 * before the focus branch is ever reached.
+	 * `interactions/dragDrop.ts`) keeps it off the `dragged` side. It is NOT kept off the
+	 * `item` side any more — a ranked context row is a legal drop ANCHOR at the focus
+	 * level, as it has always been for Alt+arrow — and it does not need to be: an anchor is
+	 * a number to rank against, and the write lands on the row that moved.
 	 */
 	function focusedStressView() {
 		const vault = new FakeVault();
