@@ -73,6 +73,13 @@ without a pointer.
   Task under it.
 - The three rules already reached are written with it, so the next attempt starts from
   four rules rather than one sentence.
+- **This note does not close until the Task that builds the mechanism exists**, under
+  [[New cards in place]] and ranked after the two written today. Deciding the rule and
+  writing it down leaves the guarantee still held by nobody: the Issue and both existing
+  Tasks could all be finished while the second half of that guarantee is unowned, which
+  is the shape the previous attempt failed in — a mechanism built from a sentence with no
+  note owning it. Creating that Task is this note's last act, not a later reader's
+  inference. Found by review (Codex, PR #225).
 
 Until then [[New cards in place]] cannot reach Done: the second half of its guarantee —
 *"if the result is not visible on the next render, the view says so rather than letting

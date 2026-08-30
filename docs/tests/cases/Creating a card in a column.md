@@ -34,6 +34,15 @@ The touch half is the same shape as the verdict [[Keyboard, menu and touch]] lef
 device: whether the column header's `+` is reachable by thumb is not a claim the
 stylesheet can settle here.
 
+**Extensions 4a and 4b are deliberately not checked here.** The prescribed base carries
+no filter on the state property and sets `showCompleted: true`, so neither condition can
+arise in it — but adding that configuration would only prove the *absence* the register
+already records: the mechanism that reports a created-but-hidden note is unbuilt, owned
+by [[Which pass answers a write]], and blocked on a rule nobody has decided. A step
+asserting a report that cannot appear would fail by design rather than find anything.
+This case gains those steps in the same change that builds the mechanism. Scope stated
+after review (Codex, PR #225) asked for the steps.
+
 **Preconditions** — `npm run test-build` has installed the plugin into this repository,
 this repository is open as a vault, and `docs/Product Backlog.base` is open in board
 mode.
