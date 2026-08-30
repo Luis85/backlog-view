@@ -397,8 +397,8 @@ Writing the five from what the code seems to imply is what that replaces; the AD
 decision somebody took, and nobody here took it.
 
 **Exit when** every child is either "executable as written" or has an answer to write into
-it, **every output, child or not, is assigned** to the subagent, to the human or to this
-run's close, and **nothing is left blocked**. Blocked is a real state this phase can reach —
+it, **every output, child or not, is assigned** to the subagent, to the human, to this
+run's close or to nobody, and **nothing is left blocked**. Blocked is a real state this phase can reach —
 a shape the register does not document and nobody has settled, an ADR whose five headings are
 empty, an open question the work cannot start without — and it belongs to non-child outputs
 as much as to children, which the first clause alone does not reach. A blocked output gets
