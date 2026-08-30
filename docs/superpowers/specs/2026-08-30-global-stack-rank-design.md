@@ -2,7 +2,7 @@
 
 Covers ranking a backlog at a chosen level — the PBI backlog on its own, the Feature
 backlog on its own — the way Azure DevOps Boards does it, with one number rather than two.
-Reverses [[Focus level]] extension 3a, which refuses ranking across the synthetic top row,
+Relaxes [[Focus level]] extension 3a, which today refuses ranking across the synthetic top row,
 and re-decides the reasoning recorded in
 `docs/issues/Board order is derived not stored.md`.
 
@@ -192,7 +192,7 @@ have it appear underneath them.
 
 `docs-check.mjs` gates each of these.
 
-- **New ADR** — `order` is a global rank. It reverses [[Focus level]] 3a and re-decides the
+- **New ADR** — `order` is a global rank. It relaxes [[Focus level]] 3a and re-decides the
   reasoning in the board-order issue, so it needs a note of its own rather than an edit.
 - **New PBI** — *Ranking at the focused level*, under [[Reordering and reparenting]],
   naming `src/commands/rank.ts` in its `## Where it lives`. Rule 7 fails without it.
