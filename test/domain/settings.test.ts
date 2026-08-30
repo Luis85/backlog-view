@@ -174,10 +174,6 @@ describe('resolveSettings progress options', () => {
 		expect(resolveSettings(fakeConfig()).states).toEqual([]);
 	});
 
-	it('reads the completed-items toggle, defaulting to shown', () => {
-		expect(resolveSettings(fakeConfig()).showCompleted).toBe(true);
-		expect(resolveSettings(fakeConfig({ showCompleted: false })).showCompleted).toBe(false);
-	});
 });
 
 describe('configProblems', () => {

@@ -110,10 +110,11 @@ export function renderScope(
  * as a blank scroller.
  *
  * `renderAllDoneState` in `render/emptyStates.ts` is NOT reused: it takes a
- * `BacklogViewHost` this view has none of, and its way back is
- * `config.set('showCompleted', true)` — a `.base` setting, where this toggle is
- * deliberately per-device view state (ADR 0011). The way back here is the toolbar's own
- * toggle, drawn just above this by the caller and never touched by this function.
+ * `BacklogViewHost` this view has none of, and its way back is `host.setShowCompleted`.
+ * Both toggles are per-device view state now (ADR 0011) — the backlog's own eye moved out
+ * of the `.base` on 2026-08-30, so what separates the two states is the host, not where
+ * the value lives. The way back here is the toolbar's own toggle, drawn just above this by
+ * the caller and never touched by this function.
  *
  * `count` is `scope.members` — the same denominator the summary strip's own sentence
  * names ("N of N items done"), so the number this state reports is the one the header

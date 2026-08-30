@@ -38,7 +38,8 @@ device: whether the column header's `+` is reachable by thumb is not a claim the
 stylesheet can settle here.
 
 **Extensions 4a and 4b are deliberately not checked here.** The prescribed base carries
-no filter on the state property and sets `showCompleted: true`, so neither condition can
+no filter on the state property, and the completed-items eye defaults to showing (view
+state since 2026-08-30, no longer a base setting), so neither condition can
 arise in it — but adding that configuration would only prove the *absence* the register
 already records: the mechanism that reports a created-but-hidden note is unbuilt, owned
 by [[Which pass answers a write]], and blocked on a rule nobody has decided. A step

@@ -379,6 +379,20 @@ export class ViewState {
 	}
 
 	/**
+	 * Whether fully-done subtrees are drawn — the default, so the stored pick is its
+	 * absence. The inversion lives here and nowhere else, `bucketGrid`'s own rule below:
+	 * everything above asks about SHOWING, which is what the toggle is named for, while
+	 * the store keeps a default written as nothing at all.
+	 */
+	showCompleted(): boolean {
+		return !(this.prefs.hideCompleted ?? false);
+	}
+
+	setShowCompleted(value: boolean): void {
+		this.setPref('hideCompleted', value ? null : true);
+	}
+
+	/**
 	 * Whether a horizon bucket lays its cards out as a grid — the default, so the stored
 	 * pick is its absence. The inversion lives here and nowhere else: everything above
 	 * asks about the GRID, which is what the toggle is named for, while the store keeps

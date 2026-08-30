@@ -110,8 +110,6 @@ export interface BacklogSettings extends ItemHandling {
 	startedStates: string[];
 	/** Workflow states offered by the state menus, in order; [] falls back to observed values. */
 	states: string[];
-	/** Render items whose whole subtree is done; when off they hide. */
-	showCompleted: boolean;
 	/** Frontmatter key holding the roadmap horizon, or '' when no bucket axis is configured. */
 	horizonKey: string;
 	/**
@@ -365,7 +363,6 @@ export function defaultSettings(): BacklogSettings {
 		finishedDateKey: '',
 		startedStates: [],
 		states: [],
-		showCompleted: true,
 		horizonKey: '',
 		horizonValues: [...DEFAULT_HORIZON_VALUES],
 		dependsOnKey: '',

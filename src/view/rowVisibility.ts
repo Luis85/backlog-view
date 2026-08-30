@@ -88,11 +88,17 @@ export interface VisibilityRule {
  * positional ones that are only ever passed together. It is required: the one caller has
  * both in hand, and a default standing for "ask the plan's answer" is a second way to
  * spell what `projectionMember`'s own defaults already mean.
+ *
+ * `showCompleted` is a fourth parameter rather than a fifth field on `settings`, because
+ * it stopped being a setting on 2026-08-30: it is the view-state store's, per saved view
+ * and per device (ADR 0011), and the one caller reads it off the host beside the scope and
+ * the axis it already passes.
  */
 export function visibilityRule(
 	settings: BacklogSettings,
 	projection: Projection,
 	member: { scope: string | null; axis: RoadmapAxis | null },
+	showCompleted: boolean,
 ): VisibilityRule {
 	return {
 		// Resolved HERE, not carried as settings for `rowHidden` to re-read: the toggle's
@@ -119,7 +125,7 @@ export function visibilityRule(
 		// through a configured state key. The term stops being redundant the moment one
 		// exists and silently becomes the guard — and no test will say so either way, which
 		// is the reason to keep it rather than the reason it is here.
-		hideCompleted: hidesCompleted(projection) && !settings.showCompleted && settings.stateKey !== '',
+		hideCompleted: hidesCompleted(projection) && !showCompleted && settings.stateKey !== '',
 		// `iterationsOnTimeline` is taken away HERE rather than inside `projectionMember`,
 		// which has no settings in hand — and an axis this reader has turned iterations off
 		// for admits exactly what a non-grid axis admits, which is what a null axis already

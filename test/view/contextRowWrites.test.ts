@@ -557,9 +557,10 @@ describe('toolbar figures describe the Base results', () => {
 		const view = new ProductBacklogView({} as never, containerEl);
 		const anyView = view as unknown as Record<string, unknown>;
 		anyView.app = vault.app;
-		anyView.config = new FakeViewConfig({ stateProperty: 'note.status', showCompleted });
+		anyView.config = new FakeViewConfig({ stateProperty: 'note.status' });
 		anyView.data = { data: vault.entries().filter((e) => e.file.path !== 'Epic.md') };
 		view.onDataUpdated();
+		view.setShowCompleted(showCompleted);
 		clickExpandAll(containerEl);
 		return { view, containerEl };
 	}

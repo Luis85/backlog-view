@@ -444,6 +444,15 @@ export interface BacklogViewHost {
 	/** Flip what a click does and re-render; the view-state store persists the pick. */
 	setClickFolds(value: boolean): void;
 	/**
+	 * Whether items whose whole subtree is done are drawn — true, drawing them, is the
+	 * default. UI state like the click action above: the view-state store persists it per
+	 * saved view and per device, never the `.base`, because it is flipped while working
+	 * and a `.base` is shared. Only the projections `hidesCompleted` names read it.
+	 */
+	readonly showCompleted: boolean;
+	/** Flip what the eye shows and re-render; the view-state store persists the pick. */
+	setShowCompleted(value: boolean): void;
+	/**
 	 * Whether a horizon bucket lays its cards out as a responsive grid — the default —
 	 * rather than one card per row. UI state exactly like the density beside it: how wide
 	 * the pane in front of you is, per saved view and per device, never the `.base`.

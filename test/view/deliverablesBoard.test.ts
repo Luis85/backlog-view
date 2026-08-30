@@ -197,11 +197,11 @@ describe('the Deliverables board', () => {
 		vault.addFile('D.md', {
 			frontmatter: { type: 'Deliverable', order: 10, status: 'Done', deliverableStatus: 'Draft' },
 		});
-		const harness = makeView(vault, {
-			stateProperty: 'note.status',
-			deliverableStateProperty: 'note.deliverableStatus',
-			showCompleted: false,
-		});
+		const harness = makeView(
+			vault,
+			{ stateProperty: 'note.status', deliverableStateProperty: 'note.deliverableStatus' },
+			{ hideCompleted: true },
+		);
 		harness.view.setProjection('deliverables');
 		const { containerEl } = harness;
 
@@ -224,11 +224,11 @@ describe('the Deliverables board', () => {
 			frontmatter: { type: 'Task', order: 10, status: 'Done' },
 			parentLink: 'D',
 		});
-		const harness = makeView(vault, {
-			stateProperty: 'note.status',
-			deliverableStateProperty: 'note.deliverableStatus',
-			showCompleted: false,
-		});
+		const harness = makeView(
+			vault,
+			{ stateProperty: 'note.status', deliverableStateProperty: 'note.deliverableStatus' },
+			{ hideCompleted: true },
+		);
 		harness.view.setProjection('deliverables');
 		const { containerEl, view } = harness;
 

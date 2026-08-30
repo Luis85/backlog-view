@@ -654,7 +654,7 @@ free of runtime code so imports stay cycle-free.
   children on their own face and whose commonest card draws no disclosure at all. A LANE
   header is not the row this option is about: it holds no note, so a click on it can only
   ever mean fold.
-  **`host.clickFolds` is the plainest member of that family** and the newest (2026-08-11):
+  **`host.clickFolds` is the plainest member of that family** (2026-08-11):
   whether a plain click on a row folds it instead of opening the note, stored the same way
   and re-rendering the same way, with no model consequence at all. It reaches `settings`
   through nothing — `foldOnClick` reads the host directly — because unlike the focus level
@@ -663,6 +663,13 @@ free of runtime code so imports stay cycle-free.
   being a view option when it moved, since a value that is working position on the device
   cannot also be configuration on the view without a stored override beside a shared
   default. ADR 0011 records what that costs.
+  **`host.showCompleted` is the newest (2026-08-30) and the same shape**, with one
+  difference worth stating: it had been a `.base` key AND this toggle from the start, so
+  the move deleted a surface rather than declining to add one. `visibilityRule` takes it as
+  a parameter for the reason `clickFolds` reaches `settings` through nothing — it is not a
+  setting, and threading it back through the resolved settings would put the value back in
+  the one place ADR 0011 says it may not be. Stored as its OFF state, since showing is the
+  default and a default is written as nothing at all.
 - **Membership is asked once, in `rowHidden`**, beside the completed toggle. That placement is what keeps a second projection small: the renderer, the
   keyboard's move targets, the board's cards, the roadmap's rows and every count measured
   over the same walk consult that one predicate already, so they inherit the exclusion

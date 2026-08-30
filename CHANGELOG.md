@@ -61,6 +61,15 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ### Changed
 
+- **`Show completed items` is now the toolbar's eye alone, kept per saved view on this
+  device rather than in the `.base` file.** It was a view option and a toolbar toggle at
+  once, and the toggle wrote the option — so hiding finished work for an afternoon rewrote
+  a file everyone the base is shared with reads. Its own default is unchanged (completed
+  items show), and the eye is where it has always been. What it costs is the shared
+  default: a base sent to a colleague no longer arrives with finished work hidden, and the
+  pick does not follow you to another device. A `.base` written before this keeps a
+  `showCompleted` key that nothing reads.
+
 - The release header's released-date control is now labelled `Set released date`. It said
   `Mark as released`, which is what the new closing action beside it is called — and that
   one writes the status as well as the date, while this one writes only the date and is the
@@ -134,6 +143,9 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   weights that do not total 100. All of them now come from the catalog.
 
 ### Removed
+
+- The `Show completed items` view option — see **Changed**, above: the value is the
+  toolbar toggle's and the view-state store's now, never a `.base` setting.
 
 - The `Resources (in order)` view option. The roster is the notes the base returns.
 

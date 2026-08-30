@@ -56,9 +56,17 @@ export function makeRoadmap(
 		shelfList,
 		order,
 		only,
-	}: { shelfCollapsed?: boolean; focus?: string; shelfList?: boolean; order?: string[]; only?: string[] } = {},
+		hideCompleted,
+	}: {
+		shelfCollapsed?: boolean;
+		focus?: string;
+		shelfList?: boolean;
+		order?: string[];
+		only?: string[];
+		hideCompleted?: boolean;
+	} = {},
 ): Harness {
-	const harness = makeView(vault, { ...HORIZON_AXIS, ...extra }, { collapsed: true, focus, order, only });
+	const harness = makeView(vault, { ...HORIZON_AXIS, ...extra }, { collapsed: true, focus, order, only, hideCompleted });
 	harness.view.setProjection('roadmap');
 	if (!shelfCollapsed) harness.view.setShelfCollapsed(false);
 	if (shelfList) harness.view.setShelfLayout('list');
@@ -72,8 +80,12 @@ export function makeRoadmap(
  * the collapsed state, and `makeRoadmap`'s `shelfCollapsed` is where that escape
  * hatch already lives.
  */
-export function roadmapView(vault: FakeVault, cfg: Record<string, unknown>, { base }: { base?: string } = {}): Harness {
-	const harness = makeView(vault, cfg, { collapsed: true, base });
+export function roadmapView(
+	vault: FakeVault,
+	cfg: Record<string, unknown>,
+	{ base, hideCompleted }: { base?: string; hideCompleted?: boolean } = {},
+): Harness {
+	const harness = makeView(vault, cfg, { collapsed: true, base, hideCompleted });
 	harness.view.setProjection('roadmap');
 	harness.view.setShelfCollapsed(false);
 	return harness;

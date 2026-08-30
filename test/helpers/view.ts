@@ -61,9 +61,9 @@ export function useViewHarness(): void {
  * harness expands it through the real toolbar control. Pass `collapsed` to assert on
  * the opening state itself.
  *
- * `focus`, `folds` and `widths` are options rather than config values because none of
- * them is one: all three are working position, set through the view and stored in the
- * view state.
+ * `focus`, `folds`, `hideCompleted` and `widths` are options rather than config values
+ * because none of them is one: all four are working position, set through the view and
+ * stored in the view state.
  */
 export function makeView(
 	vault: FakeVault,
@@ -74,6 +74,7 @@ export function makeView(
 		viewName,
 		focus,
 		folds,
+		hideCompleted,
 		widths,
 		only,
 		order,
@@ -84,6 +85,8 @@ export function makeView(
 		viewName?: string;
 		focus?: string;
 		folds?: boolean;
+		/** Turn the toolbar's completed-items eye off — view state now, never a config value. */
+		hideCompleted?: boolean;
 		/** Property-column widths in pixels, by Bases property id — one `setColWidth` each. */
 		widths?: Record<string, number>;
 		only?: string[];
@@ -112,6 +115,7 @@ export function makeView(
 	view.onDataUpdated();
 	if (focus) view.setFocusLevel(focus);
 	if (folds) view.setClickFolds(true);
+	if (hideCompleted) view.setShowCompleted(false);
 	for (const [prop, px] of Object.entries(widths ?? {})) view.setColWidth(prop, px);
 	if (!collapsed) clickExpandAll(containerEl);
 	return { view, config, containerEl };
@@ -213,8 +217,8 @@ export function key(tree: HTMLElement, keyName: string, modifiers: Partial<Keybo
 /**
  * Two epics; the second has two features. `empty` returns a vault with nothing in it —
  * `renderEmptyState`'s own case. `allDone` returns two epics already at a shipped done
- * value, the shape `renderAllDoneState` needs — pair it with `showCompleted: false` in
- * the view options, since the default is `true` and nothing would be hidden otherwise.
+ * value, the shape `renderAllDoneState` needs — pair it with `hideCompleted` in the view
+ * OPTIONS, since the toggle defaults to showing and nothing would be hidden otherwise.
  */
 export function fixture(opts: { empty?: boolean; allDone?: boolean } = {}): FakeVault {
 	const vault = new FakeVault();

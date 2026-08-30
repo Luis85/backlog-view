@@ -155,15 +155,18 @@ export const SETUP: ManualSection = {
 		{
 			term: 'What progress means',
 			text:
-				'The workflow states offered for writing, done values, started values, and Show ' +
-				'completed items — deciding the rollups, done styling and which subtrees render. ' +
+				'The workflow states offered for writing, done values and started values — ' +
+				'deciding the rollups and the done styling. Whether a finished subtree RENDERS ' +
+				'is not here: the completed-items eye on the toolbar decides that, and it is ' +
+				'kept per view on this device, like the projection and the focus level, rather ' +
+				'than in the base. ' +
 				'A WIP limit and leave-column policy are offered per state, requirements only — ' +
 				'Deliverables carries no equivalent. Its own states/done-values boxes win the ' +
 				'moment either is filled in, whatever the property above is; only an EMPTY box\'s ' +
 				'fallback depends on it — these values with a shared property, the shipped ' +
 				'defaults once Deliverables has its own.',
 			keys: [
-				'stateValues', 'doneValues', 'startedStates', 'showCompleted',
+				'stateValues', 'doneValues', 'startedStates',
 				'deliverableStateValues', 'deliverableDoneValues',
 				'wipLimit.*', 'columnPolicy.*',
 			],

@@ -289,6 +289,6 @@ export function renderAllDoneState(
 ): void {
 	const empty = noticeShell(treeEl, 'circle-check', t('emptyState.allDone', { count: total }));
 	const btn = empty.createEl('button', { text: t('emptyState.showCompleted') });
-	btn.addEventListener('click', () => host.config.set('showCompleted', true));
+	btn.addEventListener('click', () => host.setShowCompleted(true));
 	manualLink(empty, host.app, manualSections(), { sectionId: 'finding', label: t('emptyState.whatShowsHere'), root });
 }

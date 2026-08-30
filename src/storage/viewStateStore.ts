@@ -239,6 +239,14 @@ export interface ViewPrefs {
 	focus?: string;
 	clickFolds?: boolean;
 	/**
+	 * Whether fully-done subtrees are hidden. Stored as the OFF state for the toggle,
+	 * because showing them is the default and a default stores nothing — `bucketList`'s
+	 * own rule. It was the **Handling items** group's `showCompleted` option until
+	 * 2026-08-30, and moving it out is what ADR 0011 costs: one answer per value, never a
+	 * stored override beside a shared default.
+	 */
+	hideCompleted?: boolean;
+	/**
 	 * Whether a horizon bucket lays its cards out one per row instead of the responsive
 	 * grid. Stored as the OFF state for the grid, because the grid is the default and a
 	 * default stores nothing — the same absence rule `density` keeps for comfortable rows.
@@ -439,6 +447,7 @@ export const PREF_READERS: { [K in keyof ViewPrefs]-?: Reader<NonNullable<ViewPr
 	leadWidth: inRange(MIN_TIMELINE_LEAD_PX, MAX_TIMELINE_LEAD_PX),
 	focus: anyName,
 	clickFolds: onlyTrue,
+	hideCompleted: onlyTrue,
 	bucketList: onlyTrue,
 	shelfExpanded: onlyTrue,
 	shelfSort: oneOf(SHELF_SORT_VALUES),

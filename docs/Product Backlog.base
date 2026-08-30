@@ -27,7 +27,6 @@ views:
     deliverableStateValues: Open, Active, Done
     startedDateProperty: note.started
     finishedDateProperty: note.finished
-    showCompleted: true
     openIn: split
     riskProperty: note.risk
     priorityProperty: note.priority

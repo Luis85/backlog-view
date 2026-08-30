@@ -134,7 +134,7 @@ describe('children on the card', () => {
 
 	it('excludes a child the view is hiding, and says so in the count', () => {
 		// Feature B1 is Done; with completed work hidden it is not a child on screen.
-		const { containerEl } = makeBoard(boardVault(), { showCompleted: false });
+		const { containerEl } = makeBoard(boardVault(), {}, { hideCompleted: true });
 		const card = cardByTitle(containerEl, 'Epic B');
 		expect(disclosure(card)?.textContent).toContain('1 feature');
 		disclosure(card)?.click();
@@ -144,7 +144,7 @@ describe('children on the card', () => {
 	// The rollup beside it still counts two. That disagreement is deliberate, and a
 	// deliberate disagreement nothing explains is indistinguishable from a bug.
 	it('explains the omitted child in the tooltip, and only when there is one', () => {
-		const hiding = makeBoard(boardVault(), { showCompleted: false });
+		const hiding = makeBoard(boardVault(), {}, { hideCompleted: true });
 		expect(disclosure(cardByTitle(hiding.containerEl, 'Epic B'))?.dataset.tooltip).toContain(
 			'1 more is hidden by the current view',
 		);
@@ -285,7 +285,7 @@ describe('children on the card', () => {
 	// pass the test above and delete the feature: Feature B1 is Done and hidden, so the note
 	// must still appear — and say one, not the two a raw subtraction would count.
 	it('still counts a completed child the view is hiding, and only that one', () => {
-		const { containerEl } = makeBoard(catalogChildVault(), { showCompleted: false });
+		const { containerEl } = makeBoard(catalogChildVault(), {}, { hideCompleted: true });
 		expect(disclosure(cardByTitle(containerEl, 'Epic B'))?.dataset.tooltip).toContain(
 			'1 more is hidden by the current view',
 		);

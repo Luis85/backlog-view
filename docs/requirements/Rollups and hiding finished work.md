@@ -82,7 +82,10 @@ left rather than everything that ever was.
 
 ## Where it lives
 
-`src/domain/viewOptions.ts` (`showCompleted`, `showCounts`) ·
+`src/domain/viewOptions.ts` (`showCounts`) ·
+`src/storage/viewStateStore.ts` (`hideCompleted`) and `src/view/viewState.ts`
+(`showCompleted`/`setShowCompleted`) — the eye is working position in the view-state
+store, per saved view and per device, never a `.base` setting (ADR 0011, 2026-08-30) ·
 `src/domain/model.ts` (`assignAll`, `subtreeDone`) ·
 `src/view/rowVisibility.ts` (`rowHidden` — the predicate; `src/view/backlogView.ts`'s
 `isRowHidden`/`isRowHiddenUnfiltered` are the `applyFilter` true/false calls into it) ·

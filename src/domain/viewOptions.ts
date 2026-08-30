@@ -221,12 +221,6 @@ function progressGroup(settings: BacklogSettings): BasesAllOptions {
 			// group's "Resources (in order)" is not that missing list — it declares the
 			// resources AXIS's rows and never narrows what this menu offers.
 			optionalPropertyOption('assignee', t('option.assigneeProperty')),
-			{
-				type: 'toggle',
-				key: 'showCompleted',
-				displayName: t('option.showCompleted'),
-				default: true,
-			},
 			// One box per configured state, the mechanism the per-type folder keys use.
 			// A limit is `text` rather than `slider` because a slider always holds a
 			// number and cannot say "unset" — and an unset limit is not a limit of zero.
