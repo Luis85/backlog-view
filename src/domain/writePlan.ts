@@ -675,9 +675,39 @@ export function computeScheduleWrites(
  * path may ever move it, so running the backfill changes nothing at that site. The refusal
  * is still right — see `rankTaken` for why the alternative is worse — but the sentence
  * offered with it would be false, and this refusal cannot tell the two apart from here.
+ *
+ * `parentGone` is the odd one: no function in this module produces it. A creation's
+ * destination is re-resolved by PATH under a modal prompt (`view/interactions/create.ts`),
+ * and a parent that has been deleted meanwhile is a placement that refuses for a reason
+ * the arithmetic never sees. It is a member here rather than a fourth thing beside
+ * `RankResult` so that every caller keeps ONE shape to test and `refusalKey` stays the
+ * single place a refusal becomes a sentence.
  */
-export type RankRefusal = 'gapSpent' | 'tied' | 'unranked';
+export type RankRefusal = 'gapSpent' | 'parentGone' | 'tied' | 'unranked';
 export type RankResult = { order: number } | { refusal: RankRefusal };
+
+/**
+ * The catalog key that names each refusal's remedy. A `switch` and not a ternary, so
+ * adding a fifth refusal is a compile error rather than a wrong message: a two-way
+ * ternary was still routing everything that was not `gapSpent` to the backfill advice
+ * when the third member landed, which would tell a user whose parent had been deleted
+ * to initialize their ranks.
+ *
+ * Keys and not sentences, which is also what keeps this out of `TEXT_TERNARY`'s way:
+ * only `t()` reaches the catalog.
+ */
+export function refusalKey(refusal: RankRefusal): 'rank.gapSpent' | 'rank.parentGone' | 'rank.tied' | 'rank.unranked' {
+	switch (refusal) {
+		case 'gapSpent':
+			return 'rank.gapSpent';
+		case 'parentGone':
+			return 'rank.parentGone';
+		case 'tied':
+			return 'rank.tied';
+		case 'unranked':
+			return 'rank.unranked';
+	}
+}
 
 /**
  * The rank for a placement, stated ONCE for every placement there is.
@@ -1030,8 +1060,8 @@ function missingKeyStubs(item: BacklogItem, settings: BacklogSettings): Optional
 
 /**
  * The gaps in one item's properties, or null when it has none. `nextOrder` is asked
- * only when the rank is the gap, so an item that needs no order does not consume a
- * slot in its sibling group.
+ * only when the rank is the gap, so an item that needs no order does not spend a
+ * number from the population-wide sequence.
  */
 function initWriteFor(item: BacklogItem, settings: BacklogSettings, nextOrder: () => number): ItemWrite | null {
 	const write: ItemWrite = { file: item.file };
@@ -1067,17 +1097,24 @@ function initWriteFor(item: BacklogItem, settings: BacklogSettings, nextOrder: (
  */
 export function computeInitWrites(model: BacklogModel, settings: BacklogSettings): ItemWrite[] {
 	const writes: ItemWrite[] = [];
+	// **ONE counter for the whole walk, not one per sibling group.** `order` is a rank
+	// over the whole population now, so a counter reset at each group handed the first
+	// unranked child of every group the same `ORDER_SPACING` — duplicates, manufactured
+	// by the very action a user presses to make a vault work, and duplicates are what
+	// force the read side back to tree order and make a later placement refuse as `tied`.
+	//
+	// Seeded past the highest rank anything already holds, `model.ranked` being every
+	// loaded item — context rows INCLUDED. They are *rendered*, so a rank that ignored
+	// them would place a backfilled item above a row the user can see, and a backfill
+	// that fills in blanks must not reorder the tree. Reading them is required; writing
+	// to them is forbidden, and the walk below is where that half is kept.
+	//
+	// The tree is not reordered by the sequence either: an unranked sibling already
+	// sorts LAST in its group (`compareSiblings`), the walk visits siblings in that
+	// drawn order, and every number this hands out is above every rank in the vault —
+	// so each backfilled item keeps its place among its own siblings.
+	let counter = model.ranked.reduce((max, item) => (item.order !== null && item.order > max ? item.order : max), 0);
 	const visit = (siblings: BacklogItem[]) => {
-		// Deliberately reads context siblings' orders too. They are *rendered*, so a
-		// rank that ignored them would place a backfilled item above a row the user
-		// can see — a backfill that fills in blanks must not reorder the tree. Not
-		// writing to them is the rule; not looking at them would break this. The drop
-		// path (`anchoredOrder`, over the global population) and the creation path
-		// (`endOfSiblingsOrder`) do the same.
-		let maxOrder = 0;
-		for (const item of siblings) {
-			if (item.order !== null && item.order > maxOrder) maxOrder = item.order;
-		}
 		for (const item of siblings) {
 			// Ancestors pulled in from outside the filter are context, not results —
 			// the backfill must not write properties into notes the base excluded.
@@ -1085,7 +1122,7 @@ export function computeInitWrites(model: BacklogModel, settings: BacklogSettings
 				visit(item.children);
 				continue;
 			}
-			const write = initWriteFor(item, settings, () => (maxOrder = Math.floor(maxOrder) + ORDER_SPACING));
+			const write = initWriteFor(item, settings, () => (counter = Math.floor(counter) + ORDER_SPACING));
 			if (write) writes.push(write);
 			visit(item.children);
 		}

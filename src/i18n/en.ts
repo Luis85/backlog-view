@@ -1165,6 +1165,26 @@ export const en = {
 	'config.fixAll': 'Fix the view options first: {problems}.',
 
 	/**
+	 * Why a placement produced no number, one sentence per member of `RankRefusal` —
+	 * `refusalKey` in `domain/writePlan.ts` is the only thing that picks between them,
+	 * and it is a `switch` so a fourth refusal cannot quietly land on a third's advice.
+	 *
+	 * Each names a DIFFERENT remedy, which is the whole reason they are four keys:
+	 * a spent gap needs respacing, a missing rank needs the backfill, and a deleted
+	 * parent needs nothing at all.
+	 *
+	 * `rank.tied` names no command on purpose. A tie is the sibling-scoped scheme showing
+	 * through, and neither of the two remedies above reaches it — the backfill only fills
+	 * blanks, and respacing a range holding two equal numbers cannot separate them. The
+	 * command that can (`Seed ranks from the hierarchy`) is not built yet, so this
+	 * sentence states what the user can do TODAY rather than pointing at nothing.
+	 */
+	'rank.gapSpent': 'No room left between those two items. Run "Respace ranks" from the command palette.',
+	'rank.unranked': 'That item has no rank yet. Use the toolbar’s set-up button to fill in the missing ones.',
+	'rank.tied': 'Two items there have the same rank, so nothing fits between them. Give one of them a different rank and try again.',
+	'rank.parentGone': 'That item’s parent no longer exists, so nothing was created.',
+
+	/**
 	 * The write gate's four refusals. The two `console.error` prefixes beside them stay
 	 * English and are not here: a developer console is not a user surface, the same line
 	 * `commands/scaffold.ts` and `commands/readme.ts` already draw.

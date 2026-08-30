@@ -259,15 +259,17 @@ describe('computeInitWrites', () => {
 		const writes = computeInitWrites(model, settings);
 
 		expect(writes.map((w) => w.file.path).sort()).toEqual(['Child.md', 'NoOrder.md', 'NoType.md']);
-		const noOrder = writes.find((w) => w.file.path === 'NoOrder.md');
-		expect(noOrder?.order).toBe(Math.floor(11) + ORDER_SPACING);
-		expect(noOrder?.typeName).toBeUndefined();
 		const noType = writes.find((w) => w.file.path === 'NoType.md');
 		expect(noType?.typeName).toBe('Epic');
 		expect(noType?.order).toBeUndefined();
+		// One sequence over the whole walk, seeded past the highest rank in the vault
+		// (11) and spent in DFS order: Complete's child first, then the last root.
 		const child = writes.find((w) => w.file.path === 'Child.md');
 		expect(child?.typeName).toBe('Feature');
-		expect(child?.order).toBe(ORDER_SPACING);
+		expect(child?.order).toBe(Math.floor(11) + ORDER_SPACING);
+		const noOrder = writes.find((w) => w.file.path === 'NoOrder.md');
+		expect(noOrder?.order).toBe(Math.floor(11) + 2 * ORDER_SPACING);
+		expect(noOrder?.typeName).toBeUndefined();
 		// Parent property is never touched by the backfill
 		expect(writes.every((w) => w.parent === undefined)).toBe(true);
 	});
@@ -316,13 +318,55 @@ describe('computeInitWrites', () => {
 		const writes = computeInitWrites(model, focusSettings);
 		const byPath = new Map(writes.map((w) => [w.file.path, w]));
 
-		// Feat gets an order within its REAL sibling group (children of Epic)
-		expect(byPath.get('Feat.md')?.order).toBe(ORDER_SPACING);
-		// The hidden branch is backfilled too, ranked after the existing root
-		// (Epic.md's order of 10 predates the 1000 spacing): floor(10) + 1000.
-		expect(byPath.get('Bare Epic.md')?.order).toBe(1010);
+		// One sequence for the whole tree, seeded past Epic.md's 10 and spent in DFS
+		// order — Feat, then its child, then the hidden branch. The hidden branch is
+		// backfilled too, which is what this test is about.
+		expect(byPath.get('Feat.md')?.order).toBe(1010);
 		expect(byPath.get('Story.md')?.typeName).toBe('PBI');
-		expect(byPath.get('Story.md')?.order).toBe(ORDER_SPACING);
+		expect(byPath.get('Story.md')?.order).toBe(2010);
+		expect(byPath.get('Bare Epic.md')?.order).toBe(3010);
+	});
+
+	it('backfills orders with one running counter across the whole tree', () => {
+		const vault = new FakeVault();
+		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic' } });
+		vault.addFile('F1.md', { frontmatter: { type: 'Feature' }, parentLink: 'Epic A' });
+		vault.addFile('F2.md', { frontmatter: { type: 'Feature' }, parentLink: 'Epic A' });
+		vault.addFile('Epic B.md', { frontmatter: { type: 'Epic' } });
+		vault.addFile('F3.md', { frontmatter: { type: 'Feature' }, parentLink: 'Epic B' });
+		const model = buildModel(vault.app, vault.entries(), settings);
+
+		const writes = computeInitWrites(model, settings);
+
+		// One sequence for the whole DFS. A counter per sibling group handed the first
+		// child of every group the same 1000, which under a global rank is a duplicate.
+		expect(writes.map((w) => w.order)).toEqual([1000, 2000, 3000, 4000, 5000]);
+	});
+
+	it('ranks every missing order distinctly without reordering the tree', () => {
+		const vault = new FakeVault();
+		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('A1.md', { frontmatter: { type: 'Feature' }, parentLink: 'Epic A' });
+		vault.addFile('A2.md', { frontmatter: { type: 'Feature' }, parentLink: 'Epic A' });
+		vault.addFile('Epic B.md', { frontmatter: { type: 'Epic', order: 20 } });
+		vault.addFile('B1.md', { frontmatter: { type: 'Feature' }, parentLink: 'Epic B' });
+		vault.addFile('B2.md', { frontmatter: { type: 'Feature' }, parentLink: 'Epic B' });
+		const drawn = (m: ReturnType<typeof buildModel>): string[] => m.items.map((i) => i.title);
+		const model = buildModel(vault.app, vault.entries(), settings);
+		const before = drawn(model);
+
+		for (const write of computeInitWrites(model, settings)) {
+			vault.setFrontmatter(write.file.path, { ...vault.fm(write.file.path), order: write.order });
+		}
+		const after = buildModel(vault.app, vault.entries(), settings);
+		const orders = after.items.map((i) => i.order);
+
+		// Two unranked items under two different parents, and the ✨ that makes a vault
+		// work must not manufacture the ties that force the read side back to tree order.
+		expect(orders).not.toContain(null);
+		expect(new Set(orders).size).toBe(orders.length);
+		// Nor may it move a row the user can already see.
+		expect(drawn(after)).toEqual(before);
 	});
 });
 

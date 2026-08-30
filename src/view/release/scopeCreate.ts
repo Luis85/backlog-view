@@ -189,8 +189,13 @@ interface NewMember {
  * children, read from the model rather than from the tree: a scope row draws only this
  * release's members and their ancestors, so ranking against what is on screen would put a
  * new child on top of a sibling that belongs to another release and is merely not drawn
- * here. Same shape as `endOfSiblingsOrder` in `view/interactions/create.ts`, over the
- * item's full child list for that reason.
+ * here — hence the item's full child list.
+ *
+ * **Sibling-scoped, and the tree view's creation no longer is** (`newItemOrder` there
+ * ranks against the whole population through `orderForTarget`). Not swept with it: no
+ * task in the global-rank work covers this screen, and its own model is a release's
+ * scope rather than the base's ranked population. A number from here can collide with a
+ * rank another subtree holds, the same way every pre-global creation could.
  *
  * Unfolding is done AFTER the create and only when the parent is actually folded: a new
  * child under a closed row would otherwise land somewhere the reader cannot see it.

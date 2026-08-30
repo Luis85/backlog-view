@@ -2,7 +2,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { FakeVault } from '../helpers/vault';
 import { Modal, Notice } from '../helpers/obsidian-mock';
-import { fixture, flush, makeView, rowByTitle, submitButton, submitPrompt, useViewHarness } from '../helpers/view';
+import { fixture, flush, makeView, refresh, rowByTitle, submitButton, submitPrompt, useViewHarness } from '../helpers/view';
 
 /**
  * Clear every configured folder, so folder INFERENCE is what runs. Both layers have to
@@ -220,6 +220,89 @@ describe('creation flows', () => {
 		const fm = vault.fm('Backlog/Epic X/Fast checkout.md');
 		expect(fm['type']).toBe('Feature');
 		expect(fm['parent']).toBe('[[Epic X]]');
+	});
+
+	/**
+	 * A rank is one number over the whole population now, so a creation asks
+	 * `orderForTarget` the same question every drop asks — and inherits its refusals.
+	 * A note created at a fallback rank is worse than no note: the number may be taken,
+	 * and it is nowhere near the slot the user asked for.
+	 */
+	describe('when the rank refuses', () => {
+		it('creates nothing when the parent was deleted while the prompt was open', async () => {
+			const vault = new FakeVault();
+			vault.addFile('Backlog/Epic A.md', { frontmatter: { type: 'Epic', order: 1000 } });
+			const { view, containerEl } = makeView(vault, NO_TYPE_FOLDERS);
+
+			rowByTitle(containerEl, 'Epic A')
+				.querySelector<HTMLElement>('.pbl-add')
+				?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+			// The prompt is modal and the model rebuilds under it.
+			vault.files.delete('Backlog/Epic A.md');
+			refresh(view, vault);
+			submitPrompt({ title: 'Orphan' });
+			await flush();
+
+			expect(vault.fm('Backlog/Orphan.md')).toEqual({});
+			expect(Notice.messages).toContain('That item’s parent no longer exists, so nothing was created.');
+		});
+
+		it('creates a child after the model rebuilt under the open prompt', async () => {
+			const vault = new FakeVault();
+			vault.addFile('Backlog/Epic A.md', { frontmatter: { type: 'Epic', order: 1000 } });
+			const { view, containerEl } = makeView(vault, NO_TYPE_FOLDERS);
+
+			rowByTitle(containerEl, 'Epic A')
+				.querySelector<HTMLElement>('.pbl-add')
+				?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+			// The captured parent is an object from the OLD model; the placement has to
+			// find the live one by PATH or every creation refuses on a healthy vault.
+			refresh(view, vault);
+			submitPrompt({ title: 'Fresh' });
+			await flush();
+
+			expect(vault.fm('Backlog/Fresh.md')['order']).toBe(2000);
+		});
+
+		it('creates nothing under a parent whose neighbour has no rank yet', async () => {
+			const vault = new FakeVault();
+			// A vault nobody has run the set-up button over: absence is not a low rank, so
+			// there is no position to place a new note relative to.
+			vault.addFile('Backlog/Epic A.md', { frontmatter: { type: 'Epic' } });
+			const { containerEl } = makeView(vault, NO_TYPE_FOLDERS);
+
+			rowByTitle(containerEl, 'Epic A')
+				.querySelector<HTMLElement>('.pbl-add')
+				?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+			submitPrompt({ title: 'Nowhere' });
+			await flush();
+
+			expect(vault.fm('Backlog/Nowhere.md')).toEqual({});
+			expect(Notice.messages).toContain(
+				'That item has no rank yet. Use the toolbar’s set-up button to fill in the missing ones.',
+			);
+		});
+
+		it('creates nothing when there is no room left for the rank', async () => {
+			const vault = new FakeVault();
+			vault.addFile('Backlog/Epic A.md', { frontmatter: { type: 'Epic', order: 1 } });
+			vault.addFile('Backlog/F1.md', { frontmatter: { type: 'Feature', order: 2 }, parentLink: 'Epic A' });
+			// The next row in the global population sits a rounding step above F1, so
+			// there is no six-decimal number strictly between them.
+			vault.addFile('Backlog/Epic B.md', { frontmatter: { type: 'Epic', order: 2.000001 } });
+			const { containerEl } = makeView(vault, NO_TYPE_FOLDERS);
+
+			rowByTitle(containerEl, 'Epic A')
+				.querySelector<HTMLElement>('.pbl-add')
+				?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+			submitPrompt({ title: 'Squeezed' });
+			await flush();
+
+			expect(vault.fm('Backlog/Squeezed.md')).toEqual({});
+			expect(Notice.messages).toContain(
+				'No room left between those two items. Run "Respace ranks" from the command palette.',
+			);
+		});
 	});
 
 	it('surfaces creation failures as a notice', async () => {

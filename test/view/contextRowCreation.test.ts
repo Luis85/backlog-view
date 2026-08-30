@@ -55,11 +55,18 @@ describe('new-item folder inference with context rows', () => {
 });
 
 describe('creating a child under a context parent', () => {
-	/** Folder mode, a base scoped to Backlog/, and a parent living outside it. */
+	/**
+	 * Folder mode, a base scoped to Backlog/, and a parent living outside it.
+	 *
+	 * Both notes carry a rank because a creation is a PLACEMENT now: it asks
+	 * `orderForTarget` the question every drop asks, and an unranked neighbour refuses
+	 * there rather than inventing a number. Ranks are what make this fixture about the
+	 * folder and the parent link, which is what these tests are for.
+	 */
 	function outsideParentView() {
 		const vault = new FakeVault();
-		vault.addFile('Projects/Epic/Epic.md', { frontmatter: { type: 'Epic' } });
-		vault.addFile('Backlog/PBI.md', { frontmatter: { type: 'PBI' }, parentLink: 'Epic' });
+		vault.addFile('Projects/Epic/Epic.md', { frontmatter: { type: 'Epic', order: 1000 } });
+		vault.addFile('Backlog/PBI.md', { frontmatter: { type: 'PBI', order: 2000 }, parentLink: 'Epic' });
 		const containerEl = document.body.createDiv();
 		const view = new ProductBacklogView({} as never, containerEl);
 		const anyView = view as unknown as Record<string, unknown>;

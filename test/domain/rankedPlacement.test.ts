@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { anchoredOrder, dropPlacement, ORDER_SPACING, orderForTarget } from '../../src/domain/writePlan';
+import { anchoredOrder, dropPlacement, ORDER_SPACING, orderForTarget, refusalKey } from '../../src/domain/writePlan';
 import { BacklogItem } from '../../src/domain/model';
 
 /** The only fields `anchoredOrder` reads. */
@@ -268,5 +268,15 @@ describe('the peer fallback checks its own result', () => {
 		expect(dropPlacement(z, { parent: null, peers: [a, b], insertIndex: 0 }, list)).toEqual({
 			refusal: 'tied',
 		});
+	});
+});
+
+describe('refusalKey', () => {
+	it('names a different remedy for every refusal', () => {
+		// One key per member, and all four distinct: a `switch` with no default is what
+		// makes a fifth refusal a compile error rather than a wrong sentence, and this is
+		// what makes the four it already has stop being each other's.
+		const keys = (['gapSpent', 'parentGone', 'tied', 'unranked'] as const).map(refusalKey);
+		expect(keys).toEqual(['rank.gapSpent', 'rank.parentGone', 'rank.tied', 'rank.unranked']);
 	});
 });

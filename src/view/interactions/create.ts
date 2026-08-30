@@ -5,7 +5,14 @@ import { manualLink } from '../../ui/manualDialog';
 import { manualSections } from '../manual/sections';
 import { BacklogItem, BacklogModel } from '../../domain/model';
 import { focusTarget, folderForType, isIterationType } from '../../domain/itemTypes';
-import { AxisWrite, computeIterationNoteWrites, ORDER_SPACING } from '../../domain/writePlan';
+import {
+	AxisWrite,
+	computeIterationNoteWrites,
+	orderForTarget,
+	ORDER_SPACING,
+	refusalKey,
+	RankResult,
+} from '../../domain/writePlan';
 import { createBacklogItem } from '../../storage/createNote';
 import { iterationNoteName, nextIterationDates, nextIterationName, previousIteration } from '../../domain/iterations';
 import { ITERATION_TYPE, LEVELS } from '../../domain/typeVocabulary';
@@ -184,14 +191,19 @@ async function createFromPrompt(host: BacklogViewHost, request: CreateRequest): 
 	const parentItem = request.parentItem;
 	if (parentItem) host.setCollapsed(parentItem.file.path, false);
 
+	const placed = newItemOrder(host, parentItem);
+	if ('refusal' in placed) {
+		new Notice(t(refusalKey(placed.refusal)));
+		return;
+	}
+
 	try {
 		const file = await createBacklogItem(host.app, host.settings, {
 			folder: request.folder,
 			title: request.title,
 			typeName: request.levelName,
 			parent: parentItem?.file ?? null,
-			// Parentless items rank among the real top level, not the focus rows.
-			order: endOfSiblingsOrder(parentItem ? parentItem.children : host.model?.realRoots ?? []),
+			order: placed.order,
 			horizon: request.horizon,
 			...iterationOf(host),
 		});
@@ -202,13 +214,40 @@ async function createFromPrompt(host: BacklogViewHost, request: CreateRequest): 
 	}
 }
 
-/** An order value placing a new item after every ranked sibling. */
-function endOfSiblingsOrder(siblings: BacklogItem[]): number {
-	let maxOrder = 0;
-	for (const s of siblings) {
-		if (s.order !== null && s.order > maxOrder) maxOrder = s.order;
+/**
+ * The rank for a new note: appended among its parent's children, which under a global
+ * rank means between the last of them and whatever follows in the ranked POPULATION —
+ * not a spacing past the last child, which could land past a whole neighbouring subtree.
+ *
+ * Returns the REFUSAL rather than a fallback. An empty vault needs no fallback —
+ * `orderForTarget` over an empty population already answers `ORDER_SPACING` — so a
+ * refusal here is always a real one: a spent gap, a tie, or a neighbour with no rank.
+ * Creating the note at a default rank anyway would put it at a number another note may
+ * already hold and nowhere near the slot the user asked for, which is worse than not
+ * creating it.
+ */
+function newItemOrder(host: BacklogViewHost, parentItem: BacklogItem | null): RankResult {
+	const model = host.model;
+	if (!model) return { order: ORDER_SPACING };
+	// Parentless items rank among the real top level, not the focus rows.
+	if (!parentItem) {
+		const roots = model.realRoots;
+		return orderForTarget(model.ranked, { parent: null, peers: roots, insertIndex: roots.length });
 	}
-	return Math.floor(maxOrder) + ORDER_SPACING;
+	// **Re-resolved by PATH.** The title prompt is modal and the model rebuilds under it —
+	// on any vault change, and on the refresh that ends every write batch. A `parentItem`
+	// captured before that rebuild is an object from the OLD model, and the placement finds
+	// its anchor by identity (`ranked.indexOf`), so a stale object scores -1 and the
+	// creation is refused as `unranked` on a vault where every note is ranked correctly.
+	// The path is the thing that survives a rebuild.
+	const parent = model.byPath.get(parentItem.file.path);
+	// **A parent that no longer resolves is NOT a root request.** Collapsing the two with
+	// `?? null` would rank the note among the roots while `createFromPrompt` still writes
+	// the captured `parentItem.file` as its parent link — a note parented to a missing file
+	// and ranked somewhere else entirely. The prompt is modal, so the parent really can be
+	// deleted while it is open.
+	if (!parent) return { refusal: 'parentGone' };
+	return orderForTarget(model.ranked, { parent, peers: parent.children, insertIndex: parent.children.length });
 }
 
 function normalizeFolder(path: string | undefined): string {
@@ -397,13 +436,20 @@ function openIterationPrompt(
  */
 async function createIteration(host: BacklogViewHost, result: IterationResult): Promise<void> {
 	const axis = axisFrom(host, result);
+	// An iteration is a root, so it takes the same placement the toolbar's parentless
+	// creation does — and the same refusal rather than a rank nobody chose.
+	const placed = newItemOrder(host, null);
+	if ('refusal' in placed) {
+		new Notice(t(refusalKey(placed.refusal)));
+		return;
+	}
 	try {
 		const file = await createBacklogItem(host.app, host.settings, {
 			folder: folderForType(ITERATION_TYPE, host.settings) || host.settings.homeFolder,
 			title: iterationNoteName(result.name, result.goal),
 			typeName: ITERATION_TYPE,
 			parent: null,
-			order: endOfSiblingsOrder(host.model?.realRoots ?? []),
+			order: placed.order,
 			axis: { ...(axis.start ? { start: axis.start } : {}), ...(axis.target ? { target: axis.target } : {}) },
 			...(host.settings.iterationGoalKey && result.goal ? { iterationGoal: result.goal } : {}),
 		});
