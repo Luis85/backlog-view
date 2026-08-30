@@ -49,10 +49,14 @@ export type ReleaseConfigVariant = 'full' | 'empty' | 'notype' | 'nomembership' 
  * Every key bound — `RELEASE_CONFIG` plus the notes FOLDER, which that constant omits on
  * purpose: the suite's default is the unbound case (`releaseNotes.test.ts` asserts the
  * "bind the folder" note against it, and its neighbour passes an override to get the
- * button). The harness wants the opposite default, because a folder is not a property, so
- * nothing on this page offers to bind one — with the key unbound, `Generate release notes`
- * is undrawable here and the paragraph above claiming this variant "binds every key" was
- * false for the one control the closing increment added.
+ * button). The harness wants the opposite default, so that the paragraph above claiming
+ * this variant "binds every key" is true of the one control the closing increment added.
+ *
+ * It was a folder being undrawable by Obsidian's PROPERTY picker that made this necessary,
+ * and ✨ has bound the option since 2026-08-30 — so that is no longer the reason. The reason
+ * narrows rather than going away: this mount hands the view a config directly and presses
+ * nothing, so what the constant supplies is the state AFTER a press, which is what "binds
+ * every key" has to mean on a page with no press in it.
  */
 const FULL = { ...RELEASE_CONFIG, releaseNotesFolder: 'Releases/Notes' };
 

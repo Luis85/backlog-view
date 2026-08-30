@@ -2,9 +2,22 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Fold the two closing actions into the release detail header, retire the standalone `Set released date` control they made redundant, and widen ✨ to bind the three options those actions need that are not properties.
+> **Corrected on 2026-08-30, after implementation.** Two of this plan's premises were false
+> and were ruled on during execution; the code that shipped follows the rulings, and the
+> instructions below have been rewritten to match it. What changed, and where: **Task 4**
+> assumed `Mark as released` covers every bound-and-empty released date — it does not, so
+> the invitation is withheld only where that action is OFFERED, and `release.scope.markReleased`
+> and `button.pbl-rel-released-unset` both survive. **Task 4** also gained a focus fix the plan
+> did not foresee, recorded in its Interfaces. **Task 2** imported a symbol Task 3 was to
+> define, which as written yields an unbuildable intermediate commit; the symbol was pulled
+> forward into Task 2 and the step now says so. The superseded text is not preserved in place
+> — an instruction that breaks if followed is a trap, and this repository keeps what was
+> DECIDED, which is what this note is. The rulings themselves are in the SDD ledger for this
+> plan.
 
-**Architecture:** Five independent changes over `src/view/release/` and two stylesheet partials. No write path, gate or refusal changes: every batch is the one already shipped. The actions move into `drawHeader`, `drawReleased` stops drawing an invitation, `.pbl-rel-actions-note` takes a full-width line, the scope's action area gains a layout-only modifier class, and `runReleaseInit` gains a second sweep over non-property options.
+**Goal:** Fold the two closing actions into the release detail header, narrow the standalone `Set released date` control to the states the closing action cannot cover, and widen ✨ to bind the three options those actions need that are not properties.
+
+**Architecture:** Five independent changes over `src/view/release/` and two stylesheet partials. No write path, gate or refusal changes: every batch is the one already shipped. The actions move into `drawHeader`, `drawReleased` draws its invitation only where `closeOffer` withholds the action below it, `.pbl-rel-actions-note` takes a full-width line, the scope's action area gains a layout-only modifier class, and `runReleaseInit` gains a second sweep over non-property options.
 
 **Tech Stack:** TypeScript, Obsidian Bases custom view API (1.12.0), vitest + jsdom, esbuild, plain CSS partials assembled by `scripts/styles-assemble.mjs`.
 
@@ -32,10 +45,11 @@
 | `src/domain/settings.ts` | gains `DEFAULT_RELEASED_VALUES`, the shipped released vocabulary, beside `DEFAULT_DONE_VALUES` and `DEFAULT_HORIZON_VALUES` |
 | `src/view/release/init.ts` | gains `RELEASE_SUGGESTED_VALUES` and the second sweep in `runReleaseInit` |
 | `src/view/release/newRelease.ts` | `boundKeys` learns to see non-property options |
-| `src/view/release/renderScope.ts` | `drawHeader` owns the footline and calls `drawReleaseActions`; `drawReleased` draws the value as the control and nothing when bound-and-empty |
+| `src/view/release/renderScope.ts` | `drawHeader` owns the footline and calls `drawReleaseActions`; `drawReleased` draws the value as the control, and the unset-date invitation only where `closeOffer(...).offered` is false |
 | `src/view/release/releaseClose.ts` | `drawReleaseActions` marks its area with the scope modifier class |
-| `src/i18n/en.ts` | `release.scope.markReleased` removed |
-| `styles/releaseScope.css` | `.pbl-rel-footline`, the scope action area's own layout, the note's full-width line; `button.pbl-rel-released-unset` removed |
+| `src/view/release/releaseEdits.ts` | `focusControl`/`save` take a `fallback` selector, so clearing a date does not strand focus on the body |
+| `src/i18n/en.ts` | unchanged — `release.scope.markReleased` is KEPT, since the invitation survives in three states |
+| `styles/releaseScope.css` | `.pbl-rel-footline`, the scope action area's own layout, the note's full-width line; `button.pbl-rel-released-unset` KEPT |
 | `test/view/release/releaseHeader.test.ts` | **new** — what the header draws for each state of the released figure |
 
 ---
@@ -116,6 +130,7 @@ git commit -m "Add the shipped released vocabulary as domain data"
 **Interfaces:**
 - Consumes: `declaredPropertyKeys(config)` from `src/domain/releaseOptions.ts` — returns `string[]`, and **filters to `option.type === 'property'`**.
 - Produces: `boundKeys` (module-private) now also reflects `releaseNotesFolder`, `releasedStatusValues` and `releasedTransitionValue`. Task 3 depends on this: without it, a press whose only work is binding those three compares equal and reports it bound nothing.
+- **Build order, corrected 2026-08-30.** This step imports `RELEASE_SUGGESTED_VALUES` from `./init`, and the plan as first written did not define it until Task 3 — so the intermediate commit would not compile, and `npm run build` at Step 4 would have failed for a reason nothing here explained. The definition is PULLED FORWARD into this task: Step 3 below adds `ValueCandidate`, `RELEASE_SUGGESTED_VALUES` and the `releasedValuesOf` export to `src/view/release/init.ts` and `src/domain/releaseOptions.ts` first, and Task 3 adds only the sweep that reads them. That is what shipped (commit `80b4da5`, which built, linted and passed CI); **Task 3 must not re-add them.**
 
 **Why this task exists and comes first.** `bindAndReport` decides whether the press changed anything by comparing `boundKeys` before and after. `declaredPropertyKeys` filters to property options, and all three new options are `text`, `dropdown` and `folder` — invisible to it. This is the identical defect `boundKeys`' own docblock already records for `stateProperty`: "a press whose only work was binding the state key… compared equal and reported that it had bound nothing, then skipped the redraw." Fixing it first means Task 3's test can assert the report rather than working around it.
 
@@ -171,7 +186,7 @@ function boundKeys(config: BasesViewConfig): string {
 }
 ```
 
-Import `RELEASE_SUGGESTED_VALUES` from `./init`.
+Import `RELEASE_SUGGESTED_VALUES` from `./init` — **and define it there in this same commit**, along with the `ValueCandidate` interface and the `releasedValuesOf` export in `src/domain/releaseOptions.ts`, per the build-order note above. Task 3's Step 3 then extends `runReleaseInit` alone.
 
 - [ ] **Step 4: Run lint and the file's own suite**
 
@@ -371,13 +386,20 @@ by construction rather than by two literals agreeing."
 
 ---
 
-### Task 4: The released date stops inviting
+### Task 4: The released date stops inviting where the closing action covers it
 
 **Files:**
-- Modify: `src/view/release/renderScope.ts:296-318` (`drawReleased`) and its docblock above it
-- Modify: `src/i18n/en.ts` (remove `release.scope.markReleased`)
-- Modify: `styles/releaseScope.css` (remove `button.pbl-rel-released-unset`)
+- Modify: `src/view/release/renderScope.ts` (`drawReleased`) and its docblock above it
+- Modify: `src/view/release/releaseEdits.ts` (`focusControl`/`save` gain a `fallback`)
 - Create: `test/view/release/releaseHeader.test.ts`
+- **Unchanged, and that is the correction of 2026-08-30:** `src/i18n/en.ts` keeps
+  `release.scope.markReleased`, and `styles/releaseScope.css` keeps
+  `button.pbl-rel-released-unset`. The first draft of this task deleted both on the premise
+  that `Mark as released` covers every bound-and-empty date. **It does not** — `closeOffer`
+  gates on `missing.length === 0 && unreadable === null && !alreadyOut && dateFree`, so the
+  invitation is still the only route to a date in three states. Deleting the key and the
+  rule would take the control away in exactly the states that need it, and the key deletion
+  would not even compile.
 
 **A NEW test file, and that is measured rather than preferred.** `releaseEdits.test.ts`
 already owns the released-date dialog and would be the obvious home — but it counts
@@ -387,32 +409,34 @@ reason worth reading. The four below go in a new file, which `test/` needs no re
 edit for (rule 7 covers `src/` only, deliberately).
 
 **Interfaces:**
-- Consumes: `ReleaseRow.released: ReleaseFigure<string>` — `{ unconfigured: boolean; invalid: boolean; value: string | null }`.
-- Produces: no new symbol. `.pbl-rel-released` is drawn **only** when a date exists; `RELEASED_BUTTON = '.pbl-rel-released'` in `releaseEdits.ts` and `'pbl-rel-released'` in `FOCUS_HANDLE_CLASSES` are both unchanged and both still correct — they name a control that is now sometimes absent, which they already tolerate (`focusControl` looks up fresh and no-ops on null).
+- Consumes: `ReleaseRow.released: ReleaseFigure<string>` — `{ unconfigured: boolean; invalid: boolean; value: string | null }` — and `closeOffer(release, settings): CloseOffer` from `src/domain/releases.ts`, already imported by `releaseClose.ts` and now by `renderScope.ts` too.
+- Produces: `.pbl-rel-released` is drawn when a date exists, and — carrying `pbl-rel-released-unset` — where `closeOffer(...).offered` is false. `'pbl-rel-released'` in `FOCUS_HANDLE_CLASSES` is unchanged.
+- **`releaseEdits.ts` is NOT untouched, and the first draft of this section was wrong to say so.** It claimed `focusControl` looking up fresh and no-opping on null was sufficient. A no-op is exactly the defect: clearing a date on an OFFERED release removes `.pbl-rel-released` — the write is what makes `Mark as released` offered again — so `focusControl(view, RELEASED_BUTTON)` finds nothing and focus falls to `<body>`, off the keyboard path entirely. `focusControl` and `save` gain an optional `fallback` selector, and the released-date dialog passes `CLOSE_BUTTON = '.pbl-rel-close'`: the control the write just brought back. The regression test is the last case in `releaseHeader.test.ts` — the existing clear test in `releaseEdits.test.ts` asserts frontmatter only and passes straight through the bug. Found by review and confirmed independently by Codex on PR #221.
 
 - [ ] **Step 1: Write the failing tests**
 
-Create `test/view/release/releaseHeader.test.ts`:
+Create `test/view/release/releaseHeader.test.ts` — the shipped file, which asserts the
+CORRECTED rule (a draft here asserted the unconditional one, and its first case would have
+locked the defect in):
 
 ```ts
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { releaseScreen } from '../../helpers/release';
 import { en } from '../../../src/i18n/en';
+import { Modal } from '../../helpers/obsidian-mock';
+import { flush } from '../../helpers/view';
 
-describe('the released date is a control only when there is a date', () => {
-	it('draws nothing when the key is bound and the value absent', () => {
-		// The invitation retired: `Mark as released` below is the way to set a date, so a
-		// second control offering the same field is two controls for one property. The
-		// rule this moves to is the target date's own — an absent figure draws nothing.
+describe('the released date is a control only when there is one, or Mark as released cannot cover it', () => {
+	it('draws nothing when the key is bound, the value absent, and Mark as released is offered', () => {
 		const { view } = releaseScreen({ status: 'In progress' });
 		expect(view.viewEl.querySelector('.pbl-rel-released')).toBeNull();
 	});
 
-	it('still offers marking on that very release', () => {
-		// Asserted BESIDE the absence, not in another file: retiring the invitation is only
-		// safe because this button covers it, and a future change that removed both would
-		// pass two suites that each still made sense on their own.
+	it('and that fixture really does offer Mark as released', () => {
+		// The premise the case above rests on. Asserted beside it, not in another file:
+		// a future change that withheld both would pass two suites that each still read
+		// as sensible on their own.
 		const { view } = releaseScreen({ status: 'In progress' });
 		expect(view.viewEl.querySelector('.pbl-rel-close')).not.toBeNull();
 	});
@@ -428,17 +452,33 @@ describe('the released date is a control only when there is a date', () => {
 		expect(view.viewEl.querySelector('.pbl-rel-released')).toBeNull();
 		expect(view.viewEl.querySelector('.pbl-rel-unreadable')).not.toBeNull();
 	});
+
+	it('draws the invitation when the status is already released but the date is not', () => {
+		// `alreadyOut` — one of the three states `Mark as released` cannot cover. Without
+		// this control an imported or hand-edited note here would have no way at all to
+		// record when it shipped.
+		const { view } = releaseScreen({ status: 'Released' });
+		expect(view.viewEl.querySelector('.pbl-rel-close')).toBeNull();
+		expect(view.viewEl.querySelector('.pbl-rel-released')?.textContent).toBe(en['release.scope.markReleased']);
+	});
+
+	// Plus the focus regression above: clear a date through the dialog on an offered
+	// release and assert `document.activeElement` is `.pbl-rel-close`, not the body.
 });
 ```
 
 - [ ] **Step 2: Run tests to verify they fail**
 
 Run: `npx vitest run test/view/release/releaseHeader.test.ts`
-Expected: FAIL on the first case — the invitation button is drawn, so `.pbl-rel-released` is not null.
+Expected: FAIL on the first case — the invitation is drawn unconditionally, so `.pbl-rel-released` is not null on an offered release. The `alreadyOut` case PASSES before the change and must keep passing after it: it is the half that says the narrowing did not go too far.
 
 - [ ] **Step 3: Write minimal implementation**
 
-Replace the `drawReleased` body in `src/view/release/renderScope.ts`:
+Replace the `drawReleased` body in `src/view/release/renderScope.ts`. **This is the
+`closeOffer`-gated form that shipped, not the unconditional `if (date === null) return;` an
+earlier draft carried** — that draft would take the only route to a released date away from
+the three states `Mark as released` is withheld in, and Codex confirmed on PR #221 that
+anyone executing it would reverse the fix:
 
 ```ts
 function drawReleased(view: ReleaseView, factsEl: HTMLElement, release: ReleaseRow): void {
@@ -451,63 +491,47 @@ function drawReleased(view: ReleaseView, factsEl: HTMLElement, release: ReleaseR
 		return;
 	}
 	const date = release.released.value;
-	// Bound and EMPTY draws nothing — `drawFigure`'s own rule for the target date beside
-	// it, which this figure was the one exception to. The exception's reason was that
-	// absence is an invitation for the one field this screen can fill; `Mark as released`
-	// in the footline below is that invitation now, and two controls for one property is
-	// worse than a field named as a field.
-	if (date === null) return;
+	// Bound and empty draws the invitation only where `Mark as released` is withheld —
+	// see this function's own docblock. Where that action IS offered, it is the way to
+	// set this field and this control draws nothing, `drawFigure`'s own rule for an
+	// absent figure.
+	if (date === null && closeOffer(release, view.settings).offered) return;
 	const btn = factsEl.createEl('button', {
-		cls: 'pbl-rel-released',
-		// No `aria-label` here: the button's own text says both what it holds and what it
-		// is, which is what a name over it would replace — `drawDescription`'s own rule.
+		cls: 'pbl-rel-released' + (date === null ? ' pbl-rel-released-unset' : ''),
+		// No `aria-label`: the button's own text says both what it holds and what it is,
+		// which is what a name over it would replace — `drawDescription`'s own rule.
 		attr: { type: 'button' },
-		text: t('release.scope.releasedOn', { date: formatCivil(date) }),
+		text: date === null ? t('release.scope.markReleased') : t('release.scope.releasedOn', { date: formatCivil(date) }),
 	});
 	setTooltip(btn, t('release.scope.releasedTitle', { name: release.name }));
-	// The date the button DRAWS, kept in its accessible name — see `drawStatus`' own note
-	// on why this follows the tooltip rather than preceding it.
-	btn.setAttribute('aria-label', chipName(t('release.index.column.released'), formatCivil(date)));
+	// The date the button DRAWS, kept in its accessible name — see `drawStatus`' own note on
+	// why this follows the tooltip rather than preceding it.
+	btn.setAttribute('aria-label', chipName(t('release.index.column.released'), date === null ? null : formatCivil(date)));
 	btn.addEventListener('click', () => editReleaseReleased(view, release));
 }
 ```
 
-Rewrite the paragraph in its docblock that reads *"An UNSET date draws the invitation, because this is the one figure on the screen the reader can fill."* to:
+Rewrite the paragraph in its docblock that reads *"An UNSET date draws the invitation, because this is the one figure on the screen the reader can fill."* to say what the gate above actually does — that an unset date draws the invitation **only where `Mark as released` is withheld**, asked as `!closeOffer(...).offered` rather than restated beside it; that `offered` is four conjuncts and `dateFree` is only the last, so a missing closing option, an unreadable status, or a release already carrying a released status each leave the field bound and empty with no other route; and that this control is therefore the fallback the footline's button does not cover rather than a second copy of it.
 
-```
- * An UNSET date draws NOTHING, which is `drawFigure`'s own rule for the target date beside
- * it and was this figure's one exception until 2026-08-30. The exception's reason —
- * absence is an invitation for the one field this screen can fill — stopped applying when
- * `Mark as released` landed in the footline below, whose offer predicate fires on exactly
- * this condition (`released.value === null && !released.invalid`). Editing the date is
- * still reachable on every release that HAS one; what is gone is a second control for a
- * field a button already offers.
-```
-
-Delete `'release.scope.markReleased': 'Set released date',` from `src/i18n/en.ts` (line 1900) and the sentence in the docblock above it that explains the rename. Delete the `button.pbl-rel-released-unset` rule and its comment from `styles/releaseScope.css`.
+**Nothing is deleted.** `release.scope.markReleased` stays in `src/i18n/en.ts` — it is the invitation's label in those three states, and the `t()` key type would not compile without it — and `button.pbl-rel-released-unset` stays in `styles/releaseScope.css`, since the class is still applied. `releaseEdits.ts` gains the `fallback` recorded under Interfaces above.
 
 - [ ] **Step 4: Run tests to verify they pass**
 
 Run: `npx vitest run test/view/release/releaseHeader.test.ts && npm run lint && npm run build`
-Expected: PASS, and `build` clean — `t()` derives its key type from the catalog, so a surviving caller of the removed key is a compile error rather than a runtime one.
+Expected: PASS, and `build` clean. Also run `test/view/release/releaseEdits.test.ts` and `test/view/releaseHarness.test.ts` — both carry cases written against the unconditional invitation and both need adjusting to the narrowed rule.
 
 - [ ] **Step 5: Watch the paired invariant fail**
 
-Revert only the `if (date === null) return;` line, run:
+Revert only the `&& closeOffer(release, view.settings).offered` clause — leaving `if (date === null) return;` — and run:
 
-Run: `npx vitest run test/view/release/releaseHeader.test.ts -t 'draws nothing when the key is bound'`
-Expected: FAIL. Restore and confirm PASS.
+Run: `npx vitest run test/view/release/releaseHeader.test.ts`
+Expected: FAIL on `draws the invitation when the status is already released`, which is the half the correction exists for. Then revert the whole guard instead (draw always) and confirm `draws nothing when the key is bound` fails. Restore and confirm both PASS: one revert each way is what says the gate is a gate rather than a constant.
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add src/view/release/renderScope.ts src/i18n/en.ts styles/releaseScope.css test/view/release/releaseHeader.test.ts
-git commit -m "Draw the released date only where there is one
-
-Set released date and Mark as released were two controls for one field.
-The invitation goes; the date itself stays the control that clears,
-corrects and backdates, so nothing the dialog could do is lost. The rule
-it moves to is the target date's own, one figure to its left."
+git add src/view/release/renderScope.ts src/view/release/releaseEdits.ts test/view/release/releaseHeader.test.ts
+git commit -m "Draw the released date only where Mark as released cannot cover it"
 ```
 
 ---
@@ -762,9 +786,10 @@ layout, so it checks the partial still declares the rule."
 **Files:**
 - Modify: `docs/requirements/Marking a release as released.md` (`## Where it lives`)
 - Modify: `docs/requirements/Generating the release notes.md` (`## Where it lives`)
-- Modify: `docs/requirements/Editing a release from its own screen.md` (an extension recording the retirement)
+- Modify: `docs/requirements/Editing a release from its own screen.md` (extension 6a rewritten, 7b's focus fix)
 - Modify: `CHANGELOG.md`
-- Modify: `test/harness/mountRelease.ts` (drop the `FULL` workaround)
+- Modify: `test/harness/mountRelease.ts` (correct the `FULL` docblock; the constant STAYS)
+- Modify: this plan file, for the three premises implementation falsified
 
 **Interfaces:**
 - Consumes: everything above.
@@ -787,19 +812,23 @@ Add to both PBIs, adjusting the sentence to each:
 ```
 - `src/view/release/newRelease.ts` — `boundKeys`, which decides whether a ✨ press changed
   anything and had to learn to see options that are not properties.
+- `src/view/release/initControl.ts` — `anythingToBind`, which decides whether the empty
+  state's ✨ is drawn at all and had to learn the same thing.
+- `src/domain/releaseOptions.ts` — `releasedValuesOf`, exported for ✨'s own second reader
+  so the transition it binds is one of the values it has just bound.
 ```
 
-- [ ] **Step 2: Record the retirement where it was decided**
+And to `Editing a release from its own screen.md`'s own `## Where it lives`:
+`src/view/release/releaseEdits.ts` — the `fallback` on `focusControl`/`save`, since the
+released date is the one control on this screen the write it caused can remove.
 
-`Editing a release from its own screen.md` extension 6a records the 2026-08-29 rename of this control. Append a sentence to that extension:
+- [ ] **Step 2: Record the narrowing where it was decided**
 
-```
-Retired on 2026-08-30. `Set released date` and `Mark as released` were two controls for
-one field, which is what the rename made bearable rather than fixed. The date itself is
-the control now — it is drawn only where a release has one, and it still clears, corrects
-and backdates through the same dialog. Setting a date without also writing the status
-stops being a one-press action: press `Mark as released`, then click the date.
-```
+`Editing a release from its own screen.md` extension 6a records the 2026-08-29 rename of this control **and states the invitation unconditionally**, which this work made stale. **Rewrite that bullet rather than appending under it** — an appended sentence contradicting the one above it leaves the register holding both. What it must now say: the invitation is drawn only where [[Marking a release as released]] is withheld; where that action is offered it is the route to a first date and this control draws nothing; the three states that keep it are a closing option OTHER than this field's own key still unbound, an unreadable status, and a release whose status already reads as released with no date beside it; and the price is that writing a date WITHOUT the status is no longer reachable where the action is offered.
+
+An earlier draft of this step said "retired… drawn only where a release has one". **That is false and must not be pasted:** `closeOffer` gates on four conjuncts and only one is `dateFree`.
+
+Extension 7b gains the focus fix: clearing the date can remove the very button that was pressed, so the restore names `.pbl-rel-close` as a fallback.
 
 - [ ] **Step 3: Add the changelog entries**
 
@@ -809,15 +838,21 @@ Under `## [Unreleased]` → `### Changed`, add:
 - A release's own screen draws the two closing actions inside its header rather than in a
   band between the header and the tree, beside the progress strip. At a narrow pane they
   wrap to their own line and the strip stays whole.
-- `Set released date` is gone from the release header. The released date itself is the
-  control: it is drawn only on a release that has one, and pressing it still clears,
-  corrects or backdates through the same dialog. `Mark as released` is how a release gets
-  its first date, so setting one without also writing the status now takes two presses.
+- The released date on that header is now the control wherever a release has one. Where the
+  date is empty, the invitation to set one is drawn only where `Mark as released` is
+  withheld — the status property, the released statuses or the transition value still
+  unbound, a status that cannot be read, or a release already carrying a released status
+  with no date beside it. Everywhere else that action is
+  the way to a first date and writes the status with it, so the ordinary release has one
+  control for the field instead of two.
 - ✨ on a release view also binds the notes folder, the statuses that mean released, and
   the status to write — the three the closing actions need that Obsidian's property picker
-  can never offer, because none of them is a property. Neither option gains a default: a
+  can never offer, because none of them is a property. The button now offers itself when any
+  of the three is unbound, instead of only when a property is. No option gains a default: a
   vault that never presses ✨ still opens its options panel empty.
 ```
+
+**Not** "`Set released date` is gone from the release header" — an earlier draft of this step said so and it is false in three states.
 
 Under `### Fixed`, add:
 
@@ -825,6 +860,10 @@ Under `### Fixed`, add:
 - The reason a closing action is not offered now takes a line of its own instead of sitting
   beside whichever button is still there — which, since a reason replaces its own button,
   was always the other action's, so it read as that button's caption.
+- Clearing a release's released date no longer drops keyboard focus to the page. Clearing it
+  can make `Mark as released` offered again, which removes the very button the dialog was
+  opened from, so the focus restore had nothing left to find; it now falls back to the
+  closing action the write brought back.
 ```
 
 - [ ] **Step 4: Correct the harness comment**
@@ -871,14 +910,20 @@ Then open a pull request against `main`, filling in `.github/PULL_REQUEST_TEMPLA
 
 ## Self-review
 
-**Spec coverage.** Every section of the spec maps to a task: the header's last line → Task 5; the released date as the control → Task 4; refusals on their own line → Task 6; the layout leak → Task 5; ✨'s three options → Tasks 1–3; the register, changelog and verification → Task 7. The spec's `## Testing` list is covered item for item, with one addition it did not name — Task 2, which exists because `boundKeys` filters to property options and would have reported Task 3's press as a no-op.
+**Spec coverage.** Every section of the spec maps to a task: the header's last line → Task 5; the released date as the control → Task 4; refusals on their own line → Task 6; the layout leak → Task 5; ✨'s three options → Tasks 1–3; the register, changelog and verification → Task 7. **Task 4's spec section was itself wrong**, and this self-review did not catch it: the spec claimed `Mark as released` covers every bound-and-empty released date, `closeOffer` says otherwise in three states, and what shipped follows `closeOffer`. Task 4 above carries the corrected form. The spec's `## Testing` list is covered item for item, with one addition it did not name — Task 2, which exists because `boundKeys` filters to property options and would have reported Task 3's press as a no-op.
+
+**Three things this plan got wrong, corrected on 2026-08-30 after implementation** — recorded here rather than quietly patched, because a plan that reads as if it was always right teaches nothing:
+
+1. Task 4 deleted `release.scope.markReleased` and `button.pbl-rel-released-unset` on a false premise about `closeOffer`. Both are kept; the invitation is gated, not retired.
+2. Task 4's Interfaces called the existing `focusControl` null no-op sufficient. It is the defect: clearing a date removes its own control, so a `fallback` selector was needed.
+3. Task 2 imported a symbol Task 3 defined, which as written does not build. The definition belongs in Task 2.
 
 **Two things the spec got wrong, corrected here rather than followed:**
 
 1. The spec says `drawReleaseActions` moving into `drawHeader` "retires a comment". It also moves `drawSummary`'s parent, which the spec does not mention — Task 5 states it, because a summary left on `headerEl` while the actions move to a footline is the half-applied version of this change and it looks right.
 2. The spec's `## Where it lives` does not name `src/view/release/newRelease.ts`. Task 2 changes it and Task 7 adds it, because rule 7 is checked against the tree rather than against the spec.
 
-**Type consistency.** `ValueCandidate.value` is `(config: BasesViewConfig) => string` in Task 3 and is called as `value(view.config)` there; `RELEASE_SUGGESTED_VALUES` is read in Task 2 for `.option` only, which that interface carries. `releasedValuesOf` returns `string[]` and is indexed `[0] ?? ''`. `ReleaseFigure<string>` is destructured as `unconfigured` / `invalid` / `value` in Task 4, matching `domain/releases.ts`.
+**Type consistency.** `ValueCandidate.value` is `(config: BasesViewConfig) => string` and is called as `value(view.config)`; `RELEASE_SUGGESTED_VALUES` is read in Task 2 for `.option` only, which that interface carries — **and both are defined in Task 2**, not Task 3, since Task 2 imports them (the build-order correction recorded there). `releasedValuesOf` returns `string[]` and is indexed `[0] ?? ''`. `ReleaseFigure<string>` is destructured as `unconfigured` / `invalid` / `value` in Task 4, matching `domain/releases.ts`.
 
 **Two measurements this plan got wrong before they were checked**, both from the same
 instrument and both caught by measuring the way the rule measures. An earlier draft of Task 5 warned that `renderScope.ts` was already over the 400-line budget at 542 and might need extracting. That was `wc -l` against a rule configured `skipComments: true` — the file counts 202. The warning would have sent an implementer into an unnecessary module split with a register edit attached. It is corrected in Task 5.

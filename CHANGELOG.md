@@ -58,6 +58,22 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   only thing that clears it. Two controls on one screen under one label is worse than a
   field named as a field.
 
+- A release's own screen draws the two closing actions inside its header rather than in a
+  band between the header and the tree, beside the release's summary line. At a narrow pane
+  they wrap to their own line and the summary stays whole.
+- The released date on that header is now the control wherever a release has one: pressing
+  it still clears, corrects or backdates through the same dialog. Where the date is empty,
+  the invitation to set one is drawn only where `Mark as released` is withheld — the status
+  property, the released statuses or the transition value still unbound, a status that
+  cannot be read, or a release already carrying a released status with no date beside it. Everywhere else that action is the way to a first
+  date, and it writes the status with it, so the ordinary release has one control for the
+  field instead of two.
+- ✨ on a release view also binds the notes folder, the statuses that mean released, and the
+  status to write — the three things the closing actions need that Obsidian's property
+  picker can never offer, because none of them is a property. The button now offers itself
+  when any of the three is unbound, instead of only when a property is. No option gains a
+  default: a vault that never presses ✨ still opens its options panel empty.
+
 - **Breaking:** an item names its assignee by link to a `Resource` note rather than by
   name. A name still resolves where the vault already has the note — `assignee: Sarah`
   keeps its assignment when `Sarah.md` is a `Resource` the base returns — so what is lost
@@ -70,6 +86,14 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   and assigns it in one action. `New assignee...` is gone.
 
 ### Fixed
+
+- The reason a closing action is not offered now takes a line of its own instead of sitting
+  beside whichever button is still there — which, since a reason replaces its own button,
+  was always the other action's, so it read as that button's caption.
+- Clearing a release's released date no longer drops keyboard focus to the page. Clearing it
+  can make `Mark as released` offered again, which removes the very button the dialog was
+  opened from, so the focus restore had nothing left to find; it now falls back to the
+  closing action the write brought back.
 
 - The rows in a confirmation dialog — the unfinished members `Mark as released` lists, each
   openable before answering — now read as the accent-coloured links they are, instead of
