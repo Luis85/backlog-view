@@ -192,7 +192,76 @@ function boundKeys(config: BasesViewConfig): string {
 }
 ```
 
-Import `RELEASE_SUGGESTED_VALUES` from `./init` — **and define it there in this same commit**, along with the `ValueCandidate` interface and the `releasedValuesOf` export in `src/domain/releaseOptions.ts`, per the build-order note above. Task 3's Step 3 then extends `runReleaseInit` alone.
+Import `RELEASE_SUGGESTED_VALUES` from `./init` — **and define it there in this same commit**, per the build-order note above, so this task's own checkpoint compiles. Task 3 then extends `runReleaseInit` alone and declares nothing.
+
+In `src/view/release/init.ts`, after `RELEASE_SUGGESTED_KEYS`:
+
+```ts
+/** An option ✨ binds that names no property, and how to decide its value at bind time. */
+export interface ValueCandidate {
+	option: string;
+	value: (config: BasesViewConfig) => string;
+}
+
+/**
+ * The three the closing actions need and {@link RELEASE_SUGGESTED_KEYS} cannot carry: a
+ * folder, a value list and a dropdown over that list. They reach none of
+ * `adoptCandidates`' machinery because they name no property — there is no key for
+ * `taken` to guard and no collision to report. What they share with the seven is the ONE
+ * rule that applies to them, applied in {@link runReleaseInit}: an option the reader has
+ * touched is never overwritten, and cleared is not untouched.
+ *
+ * **`releaseNotesFolder` binds the option's own placeholder** (`releaseOptions.ts`), which
+ * is the rule all seven property candidates already follow — `versionProperty` suggests
+ * and places `version`, `releasedDateProperty` suggests and places `released`. A
+ * placeholder is where this codebase writes down what it would pick, so picking anything
+ * else is the plugin holding two opinions about one option. Not derived from
+ * `defaultTypeFolder(RELEASE_TYPE)` (`docs/releases`) for that reason: the placeholder
+ * already says `docs/release-notes`, and a second answer beside it is drift.
+ *
+ * **`releasedStatusValues` must NOT follow that rule**, and this is the trap. Its
+ * placeholder is `t('release.option.releasedValuesHint')` — the string `Released,
+ * Archived`, in the translation catalog. Binding it would make ✨ write the CATALOG's
+ * language into the `.base`, so a reader on a German Obsidian binds German status words,
+ * stamps them onto release notes, and hands over a vault whose releases an English
+ * reader's view reports as not-released. Its answer is {@link DEFAULT_RELEASED_VALUES},
+ * which is domain data for exactly that reason — but only where the reader has stated
+ * nothing to seed from; see the invariant below.
+ *
+ * **The vocabulary and the transition must agree, whichever the reader set first.**
+ * `configProblems` refuses a transition that is not one of the released values, so two
+ * independent answers are two statements that must agree. The list is ORDERED and swept in
+ * order, and each half reads the other: an unset transition takes the FIRST of whatever
+ * list the config holds after the row above has run, and an unset vocabulary is seeded FROM
+ * a non-empty transition the reader already set rather than from the default beside it.
+ * Both directions, because a sweep carrying only the first binds `Released` beside a
+ * reader's own `Shipped` and withholds every closing action ✨ exists to enable — after a
+ * press that reported success (found by review, Codex, PR #221).
+ */
+export const RELEASE_SUGGESTED_VALUES: ValueCandidate[] = [
+	{ option: 'releaseNotesFolder', value: () => 'docs/release-notes' },
+	{
+		option: 'releasedStatusValues',
+		// `resolveReleaseSettings` rather than `config.get`, so the value compared here is
+		// read through the reader `closeOffer` itself will use — trimmed, which a raw read
+		// is not.
+		value: (config) =>
+			resolveReleaseSettings(config).releasedTransition || DEFAULT_RELEASED_VALUES.join(', '),
+	},
+	{ option: 'releasedTransitionValue', value: (config) => releasedValuesOf(config)[0] ?? '' },
+];
+```
+
+Add imports: `DEFAULT_RELEASED_VALUES` from `../../domain/settings`, and `releasedValuesOf` and `resolveReleaseSettings` from `../../domain/releaseOptions`. The second of those is already exported; **`releasedValuesOf` is not** — it is module-private (`src/domain/releaseOptions.ts:247`). Change `function releasedValuesOf` to `export function releasedValuesOf` and add to its docblock:
+
+```ts
+/** The declared released values, read straight off the config for the dropdown that
+ *  offers them — the same text `resolveReleaseSettings` turns into `releasedValues`.
+ *  Exported since 2026-08-30 for ✨'s own second reader (`view/release/init.ts`): the
+ *  transition it binds must be one of these, and re-splitting the same string beside it
+ *  is the two-readers-disagreeing hazard this codebase states at every model boundary. */
+```
+
 
 - [ ] **Step 4: Run lint and the file's own suite**
 
@@ -230,45 +299,64 @@ Append to `test/view/release/init.test.ts`:
 
 ```ts
 describe('the press binds the options that are not properties', () => {
-	it('binds the notes folder to the option’s own placeholder', () => {
+	// `await`, never `void`: `runReleaseInit` is async, and two of these assert ABSENCE — an
+	// unawaited press would let any await added inside it pass them vacuously and drop the
+	// guards silently (found by review, Codex, PR #221).
+	it('binds the notes folder to the option’s own placeholder', async () => {
 		const { view } = mountRelease({ bindAll: false });
-		void runReleaseInit(view);
+		await runReleaseInit(view);
 		expect(view.config.get('releaseNotesFolder')).toBe('docs/release-notes');
 	});
 
-	it('binds the released vocabulary from domain data, never from the catalog', () => {
+	it('binds the released vocabulary from domain data, never from the catalog', async () => {
 		// The option's placeholder is `t('release.option.releasedValuesHint')` — the string
 		// `Released, Archived`. Binding a placeholder uniformly would write the CATALOG's
 		// language into the `.base`, which is data in the wrong artifact.
 		const { view } = mountRelease({ bindAll: false });
-		void runReleaseInit(view);
+		await runReleaseInit(view);
 		expect(view.config.get('releasedStatusValues')).toBe('Released');
 		expect(view.config.get('releasedStatusValues')).not.toBe(en['release.option.releasedValuesHint']);
 	});
 
-	it('binds the transition to the FIRST of the reader’s own list, not the literal', () => {
+	it('binds the transition to the FIRST of the reader’s own list, not the literal', async () => {
 		// The case a fixture spelling `Released` cannot see: with a vocabulary already
 		// declared, binding the literal would fail `configProblems`' own check that the
 		// transition is one of the released values.
 		const { view } = mountRelease({ bindAll: false });
 		view.config.set('releasedStatusValues', 'Shipped, Archived');
-		void runReleaseInit(view);
+		await runReleaseInit(view);
 		expect(view.config.get('releasedTransitionValue')).toBe('Shipped');
 	});
 
-	it('never overwrites an option the reader has touched', () => {
+	// The MIRROR of the case above, and the direction a candidate list holding a constant
+	// cannot pass: with the transition touched and the vocabulary unset, seeding the list
+	// from the default alone binds `Released` beside a transition of `Shipped`, and both
+	// closing actions stay withheld after a press that reported success.
+	it.each(['Shipped', ' Shipped'])(
+		'seeds the vocabulary FROM a transition the reader set first (%j), so the pair agrees either way',
+		async (transition) => {
+			const { view } = mountRelease({ bindAll: false });
+			view.config.set('releasedTransitionValue', transition);
+			await runReleaseInit(view);
+			const settings = resolveReleaseSettings(view.config);
+			expect(settings.releasedValues).toContain('Shipped');
+			expect(releaseNoteProblems(settings)).toEqual([]);
+		},
+	);
+
+	it('never overwrites an option the reader has touched', async () => {
 		// Cleared is not untouched, and neither is set — `adoptCandidates`' own rule,
 		// applied to the three that reach none of its machinery.
 		const { view } = mountRelease({ bindAll: false });
 		view.config.set('releaseNotesFolder', 'notes/ship');
-		void runReleaseInit(view);
+		await runReleaseInit(view);
 		expect(view.config.get('releaseNotesFolder')).toBe('notes/ship');
 	});
 
-	it('leaves a fully configured view with no configuration problems', () => {
+	it('leaves a fully configured view with no configuration problems', async () => {
 		// The promise of the press, as one assertion rather than five.
 		const { view } = mountRelease({ bindAll: false });
-		void runReleaseInit(view);
+		await runReleaseInit(view);
 		const settings = resolveReleaseSettings(view.config);
 		expect(settings.notesFolder).not.toBe('');
 		expect(settings.releasedValues).toContain(settings.releasedTransition);
@@ -276,72 +364,25 @@ describe('the press binds the options that are not properties', () => {
 });
 ```
 
-Add to the file's imports: `resolveReleaseSettings` from `../../../src/domain/releaseOptions`
-and `en` from `../../../src/i18n/en`. `runReleaseInit` and `mountRelease` are already
+Add to the file's imports: `resolveReleaseSettings` from `../../../src/domain/releaseOptions`,
+`releaseNoteProblems` from `../../../src/domain/settingsConsistency`, and `en` from
+`../../../src/i18n/en`. `runReleaseInit` and `mountRelease` are already
 imported — the first by the file, the second by Task 2.
 
 - [ ] **Step 2: Run tests to verify they fail**
 
 Run: `npx vitest run test/view/release/init.test.ts -t 'options that are not properties'`
-Expected: FAIL — five failures, each `expected undefined to be …`.
+Expected: FAIL — six failures (the seeded pair is parameterised over two spellings), each
+`expected undefined to be …` or a vocabulary that does not contain the transition.
 
 - [ ] **Step 3: Write minimal implementation**
 
-In `src/view/release/init.ts`, after `RELEASE_SUGGESTED_KEYS`:
-
-```ts
-/** An option ✨ binds that names no property, and how to decide its value at bind time. */
-export interface ValueCandidate {
-	option: string;
-	value: (config: BasesViewConfig) => string;
-}
-
-/**
- * The three the closing actions need and {@link RELEASE_SUGGESTED_KEYS} cannot carry: a
- * folder, a value list and a dropdown over that list. They reach none of
- * `adoptCandidates`' machinery because they name no property — there is no key for
- * `taken` to guard and no collision to report. What they share with the seven is the ONE
- * rule that applies to them, applied in {@link runReleaseInit}: an option the reader has
- * touched is never overwritten, and cleared is not untouched.
- *
- * **`releaseNotesFolder` binds the option's own placeholder** (`releaseOptions.ts`), which
- * is the rule all seven property candidates already follow — `versionProperty` suggests
- * and places `version`, `releasedDateProperty` suggests and places `released`. A
- * placeholder is where this codebase writes down what it would pick, so picking anything
- * else is the plugin holding two opinions about one option. Not derived from
- * `defaultTypeFolder(RELEASE_TYPE)` (`docs/releases`) for that reason: the placeholder
- * already says `docs/release-notes`, and a second answer beside it is drift.
- *
- * **`releasedStatusValues` must NOT follow that rule**, and this is the trap. Its
- * placeholder is `t('release.option.releasedValuesHint')` — the string `Released,
- * Archived`, in the translation catalog. Binding it would make ✨ write the CATALOG's
- * language into the `.base`, so a reader on a German Obsidian binds German status words,
- * stamps them onto release notes, and hands over a vault whose releases an English
- * reader's view reports as not-released. It binds {@link DEFAULT_RELEASED_VALUES}, which
- * is domain data for exactly that reason.
- *
- * **`releasedTransitionValue` reads the list rather than restating the literal.**
- * `configProblems` refuses a transition that is not one of the released values, so two
- * independent literals would be two statements that must agree. Reading whatever the
- * config holds AFTER the row above has run makes the invariant hold by construction —
- * and it is why this list is ORDERED and swept in order.
- */
-export const RELEASE_SUGGESTED_VALUES: ValueCandidate[] = [
-	{ option: 'releaseNotesFolder', value: () => 'docs/release-notes' },
-	{ option: 'releasedStatusValues', value: () => DEFAULT_RELEASED_VALUES.join(', ') },
-	{ option: 'releasedTransitionValue', value: (config) => releasedValuesOf(config)[0] ?? '' },
-];
-```
-
-Add imports: `DEFAULT_RELEASED_VALUES` from `../../domain/settings`, and `releasedValuesOf` from `../../domain/releaseOptions` — **which must be exported there**; it is currently module-private (`src/domain/releaseOptions.ts:247`). Change `function releasedValuesOf` to `export function releasedValuesOf` and add to its docblock:
-
-```ts
-/** The declared released values, read straight off the config for the dropdown that
- *  offers them — the same text `resolveReleaseSettings` turns into `releasedValues`.
- *  Exported since 2026-08-30 for ✨'s own second reader (`view/release/init.ts`): the
- *  transition it binds must be one of these, and re-splitting the same string beside it
- *  is the two-readers-disagreeing hazard this codebase states at every model boundary. */
-```
+**Nothing is DECLARED here.** `ValueCandidate`, `RELEASE_SUGGESTED_VALUES` and the
+`releasedValuesOf` export landed in Task 2, which needed them to compile — see that task's
+build-order note. Re-adding them here is a duplicate exported identifier and a checkpoint
+that will not build (found by review, Codex, PR #221: the correction was written into Task 2
+and this snippet was left standing). This task adds the SWEEP that reads them, and nothing
+else.
 
 Then extend `runReleaseInit`, after the existing property loop and **before** `resolveReleaseSettings`:
 
@@ -364,10 +405,11 @@ Expected: PASS, all of them — **including Task 2's `sees a folder bind that no
 
 - [ ] **Step 5: Watch the catalog invariant fail**
 
-Temporarily change the `releasedStatusValues` row to `value: () => t('release.option.releasedValuesHint')` (importing `t`), run:
+Temporarily change the `releasedStatusValues` row's fallback to
+`t('release.option.releasedValuesHint')` (importing `t`), run:
 
 Run: `npx vitest run test/view/release/init.test.ts -t 'never from the catalog'`
-Expected: FAIL. Restore the constant and confirm PASS. **This is the invariant most likely to be "simplified" back by a later reader**, so it is the one worth watching red.
+Expected: FAIL. Restore `DEFAULT_RELEASED_VALUES` and confirm PASS. **This is the invariant most likely to be "simplified" back by a later reader**, so it is the one worth watching red.
 
 - [ ] **Step 6: Run the full gate**
 
@@ -385,9 +427,11 @@ property candidates already follow. The vocabulary does NOT: that
 placeholder is a t() call holding 'Released, Archived', so binding it
 uniformly would write the catalog's language into the .base and hand a
 German reader a vault an English reader's view reports as not-released.
-It binds DEFAULT_RELEASED_VALUES instead. The transition reads the list
-the row above may have just supplied, so configProblems' own check holds
-by construction rather than by two literals agreeing."
+It falls back to DEFAULT_RELEASED_VALUES instead, and seeds from the
+reader's own transition where they set one first. The transition reads
+the list the row above may have just supplied, so configProblems' own
+check holds by construction in both directions rather than by two
+literals agreeing."
 ```
 
 ---
