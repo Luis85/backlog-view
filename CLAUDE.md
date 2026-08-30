@@ -520,7 +520,7 @@ change that was fixing the previous instance.
   a hand-written pattern; ADR 0021 is why patterns over Markdown lost that argument once
   already.
 - Dependencies are noticed by Dependabot and verified by `npm run check` — ADR 0019, which
-  also says why `npm audit` is not a sixth step — and ADR 0022, which keeps it out of
+  also says why `npm audit` is not a step of it — and ADR 0022, which keeps it out of
   `check` for that reason while running `npm audit --omit=dev --audit-level=critical`
   as its own CI job, because "no patched version exists" is a hazard that scales with
   how much of the tree is audited and what ships is three packages. Two upgrades are refused on

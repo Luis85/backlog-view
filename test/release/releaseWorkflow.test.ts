@@ -13,7 +13,7 @@ import { describe, expect, it } from 'vitest';
  * only ever executes inside Actions.
  *
  * This is the check `docs/adrs/0007` would otherwise not have: a node test rather than a
- * sixth step in `npm run check`, the same argument `versionFiles.test.ts` makes — the
+ * step of its own in `npm run check`, the same argument `versionFiles.test.ts` makes — the
  * suite already runs in CI, so the gate gains a guarantee without changing what the gate
  * IS.
  *
