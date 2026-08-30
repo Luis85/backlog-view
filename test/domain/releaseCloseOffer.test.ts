@@ -126,6 +126,21 @@ describe('whether the note has moved past the row on screen', () => {
 		expect(closingFieldsMoved(vault.app as never, row, settings)).toBe(true);
 	});
 
+	it('withholds it when the transition is not one of the released values', () => {
+		// A hand-edited `.base` can set a transition this vault does not count as released,
+		// and the release can already CARRY that value. `alreadyOut` is then false — the
+		// status is not a RELEASED one — so the action was offered, `releaseClosureWrites`
+		// planned nothing because the status already equals the transition, and the empty
+		// batch returned before `applyRelease` reached the gate. A confirmed press wrote
+		// nothing and said nothing. `releaseNoteProblems` reports the same mismatch and
+		// would refuse loudly, but only a NON-EMPTY batch ever gets there.
+		const offer = offerFor({ status: 'Shipped' }, { ...BOUND, releasedValues: ['Released'], releasedTransition: 'Shipped' });
+		expect(offer.offered).toBe(false);
+		// Named, so the reader is told WHICH of the two values disagrees — the gate could
+		// only have said the configuration is wrong.
+		expect(offer.missing).toContain('releasedTransitionValue');
+	});
+
 	it('is a move when a field became UNREADABLE', () => {
 		// A different kind of answer, not a different value — and the row still shows the
 		// old one, so nothing about the value alone would notice.
@@ -133,4 +148,5 @@ describe('whether the note has moved past the row on screen', () => {
 		editLiveNote(vault, { status: { a: 1 } });
 		expect(closingFieldsMoved(vault.app as never, row, settings)).toBe(true);
 	});
+
 });

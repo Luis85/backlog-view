@@ -424,7 +424,21 @@ export function closeOffer(release: ReleaseRow, settings: ReleaseSettings): Clos
 	const missing: CloseOption[] = [];
 	if (settings.statusKey === '') missing.push('releaseStatusProperty');
 	if (settings.releasedValues.length === 0) missing.push('releasedStatusValues');
-	if (settings.releasedTransition === '') missing.push('releasedTransitionValue');
+	// UNCONFIGURED covers two shapes, not one: never set, and set to a value this vault
+	// does not count as released. The second reads as configured everywhere else and is
+	// the more dangerous of the two, because the release can already CARRY that value —
+	// `releaseClosureWrites` then plans nothing, the empty batch returns before
+	// `applyRelease` reaches the gate, and a confirmed press writes nothing and says
+	// nothing. `releaseNoteProblems` reports the same mismatch and would refuse loudly, but
+	// only a NON-EMPTY batch ever gets there (found by review, Codex, PR #219).
+	//
+	// Named as the option to fix rather than left to the gate: the reader is told which of
+	// the two values disagrees, where the gate could only say the configuration is wrong.
+	const transitionUnusable =
+		settings.releasedTransition === '' ||
+		(settings.releasedValues.length > 0 &&
+			!settings.releasedValues.some((v) => sameValue(v, settings.releasedTransition)));
+	if (transitionUnusable) missing.push('releasedTransitionValue');
 	if (settings.releasedDateKey === '') missing.push('releasedDateProperty');
 
 	// A value no reader can parse is the note's problem, and this screen already refuses
