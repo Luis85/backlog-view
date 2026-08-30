@@ -7,25 +7,45 @@
 // for somebody who was writing a note, and blocks the next release until they learn a rule
 // nobody told them about. The root `.markdownlint-cli2.jsonc` keeps its full set for the
 // files a CONTRIBUTOR maintains — the root documents, `.github/`, and this repository's own
-// skills. This file is what the OWNER writes under, and it is narrower on purpose.
+// three skills. This file is what the OWNER writes under.
 //
 // What survives is the class where the note means something other than what it says, or
-// loses content outright. Everything else — a blank line before a list, a tab-indented
-// sub-list, a pasted bare URL, a trailing space, a fence with no language — is how Obsidian
-// writes Markdown and renders correctly in both Obsidian and GitHub. Those are a
-// convention here, not a gate. The one-time normalisation that ADR 0032 records is kept;
-// what is given up is enforcing it on notes written from now on, which is the price of the
-// owner's own workflow and is cheaper than the workflow.
+// loses content outright. Everything else is a convention here, not a gate. The one-time
+// normalisation that ADR 0032 records is kept; what is given up is enforcing it on notes
+// written from now on, which is the price of the owner's own workflow and is cheaper than
+// the workflow.
 //
-// **The blank-line line above has ONE exception, and no rule here or in the root set can
-// gate it.** An ORDERED list may interrupt a paragraph only when it starts at `1.`, so a
-// `Steps:` line directly above `2. …` swallows the whole list into the paragraph. That is
-// content loss, not typing style — but it is invisible to markdownlint for the reason it is
-// content loss: the linter parses the document the renderer parses, both see one paragraph,
-// and MD032 has no list to be unsurrounded. Checked with `default: true`, which reports
-// nothing on it. So this is a gap in the gate rather than a rule left off, and ADR 0032
-// carries it as a revisit condition rather than this sentence promising more than the four
-// rules deliver.
+// **Which rules those are was measured against Obsidian's own documentation, not guessed.**
+// `test/docs/markdownScope.test.ts` plants a note using every construct the syntax pages
+// document — wikilinks, aliases, embeds, block references, comments, highlights, callouts
+// in all three forms, footnotes, task lists, Tab-nested lists, math and Mermaid — and
+// asserts this file reports nothing on it. Under `default: true` that same note draws
+// SEVEN findings from four rules, every one of them on a shape Obsidian itself prints as
+// the correct way to write:
+//
+//   - MD032 (blanks-around-lists) on a list inside a callout, which is the multi-paragraph
+//     callout example on <https://obsidian.md/help/callouts> verbatim.
+//   - MD028 (no-blanks-blockquote) on the blank line between two adjacent callouts.
+//   - MD007 (ul-indent) and MD010 (no-hard-tabs) on Tab-indented nesting, which
+//     <https://obsidian.md/help/syntax> names as THE way to nest a list: "indent list items
+//     with `Tab` or `Shift+Tab`".
+//
+// That is why those four are off, and it is a stronger reason than the one this file used
+// to give. Obsidian's own **style guide** (<https://obsidian.md/help/style-guide>) does ask
+// for the opposite of the first — "use newlines between Markdown blocks" — and it is not
+// adopted here for two reasons: it is the house style of Obsidian's DOCUMENTATION team for
+// help.obsidian.md, not a rule about vaults, and MD032, the rule that would enforce it,
+// fails on Obsidian's own callout example. A gate cannot hold a vault to a style whose
+// checker rejects the vault's own documented syntax.
+//
+// **One exception to the blank-line reasoning, and no rule anywhere can gate it.** An
+// ORDERED list may interrupt a paragraph only when it starts at `1.`, so a `Steps:` line
+// directly above `2. …` swallows the whole list into the paragraph. That is content loss,
+// not typing style — but it is invisible to markdownlint for the reason it is content loss:
+// the linter parses the document the renderer parses, both see one paragraph, and MD032 has
+// no list to be unsurrounded. Checked with `default: true`, which reports nothing on it. So
+// it is a gap in the gate rather than a rule left off, and ADR 0032 carries it as a revisit
+// condition rather than this comment promising more than the rules below deliver.
 //
 // **Nothing here relaxes `docs-check.mjs`.** The register's own rules — hierarchy, sibling
 // orders, wikilinks that resolve, source paths that exist, the use-case shape, ADR
@@ -38,8 +58,14 @@
 	// on GitHub alike — GFM splits a row on `|` before it parses anything inline, so a
 	// code span does not protect a pipe inside it. This is the rule that earned the gate:
 	// `docs/requirements/View options and config warnings.md` had been showing a
-	// three-column row with two cells missing since it was written. Write `\|` for a
-	// literal pipe.
+	// three-column row with two cells missing since it was written.
+	//
+	// It is also the one rule here that guards a mistake Obsidian's own documentation warns
+	// about. <https://obsidian.md/help/advanced-syntax> says a wikilink alias or an image
+	// size inside a table needs the pipe escaped — `[[A note\|shown text]]`,
+	// `![[Engelbart.jpg\|200]]` — and an owner who forgets loses the cell. Checked against
+	// markdownlint 0.41.1 both ways: the escaped form passes, and the unescaped
+	// `[[A note|shown text]]` in a table reports `table-column-count`.
 	"MD056": true,
 	// MD055 (table-pipe-style) was here until 2026-08-30 and is deliberately OUT. It was
 	// added as "the same loss from the other direction", which GFM does not do: outer pipes
@@ -49,11 +75,26 @@
 	// would turn main red for an owner whose note renders correctly. Checked both ways
 	// against markdownlint 0.41.1: a consistently pipe-less table passes MD055; a row
 	// genuinely short or long a cell is caught by MD056 above, with or without outer pipes.
+
 	// `(text)[url]` is a link written backwards. It renders as literal text, so the
 	// destination is on screen and unclickable, and nothing else reports it:
 	// `docs-check.mjs` resolves the links it can SEE, and this is not one.
 	"MD011": true,
 	// A link with no destination at all — `[like this]()` — which reads as a link and goes
 	// nowhere.
-	"MD042": true
+	"MD042": true,
+	// A footnote or reference definition nothing points at. The text is written and never
+	// renders, which is the same loss as the two rules above rather than a style question,
+	// and it cannot fire on typing: it takes a `[^x]:` definition and then no `[^x]` to
+	// reach it. Obsidian documents footnotes as first-class syntax, so the owner may well
+	// write one.
+	//
+	// Admitted on the principle rather than on an instance, and that is stated rather than
+	// implied: the vault contains no footnote today, so this rule has never fired here. So
+	// have MD011 and MD042 — neither has ever had an instance either, and both are in for
+	// the same reason. Checked for the false positive that would matter: a footnote
+	// referenced from inside a callout or a table is seen, and footnote-shaped text inside a
+	// code span, a fenced block, an inline `^[footnote]` or an Obsidian block id `^abc123`
+	// is not mistaken for one.
+	"MD053": true
 }

@@ -61,9 +61,10 @@ Obsidian and commits them to `main`, `.github/workflows/ci.yml` runs on a push t
 and `release.yml` will not publish until that run's `verify` check is green — so a rule that
 fires on ordinary typing does not tidy the register, it turns main red for somebody who was
 writing a note and holds the next release until they learn a rule nobody told them about.
-`docs/.markdownlint.jsonc` therefore narrows the set there to `MD056`, where a table row
-loses cells; `MD011`, a link written backwards that renders as dead text; and `MD042`, a
-link with no destination. `MD055` was a fourth until 2026-08-30, on the reasoning that a
+`docs/.markdownlint.jsonc` therefore narrows the set there to the rules where a note loses
+content: `MD056`, where a table row loses cells; `MD011`, a link written backwards that
+renders as dead text; `MD042`, a link with no destination; and `MD053`, a footnote
+definition nothing points at. `MD055` was among them until 2026-08-30, on the reasoning that a
 missing outer pipe loses a cell from the other direction. It does not: GFM strips the outer
 pipes before counting, so such a row parses like its neighbours, and what MD055 fires on is
 rows that disagree about outer pipes — style, in the one file that has none. Removed, with
@@ -74,6 +75,41 @@ anything. The one-time normalisation stands; enforcing it on notes written from 
 is given up, and the owner's own workflow is worth more than the enforcement. Nothing in
 that file touches `docs-check.mjs`, which gates the rules that are actually about this
 backlog.
+
+**The vault's rules were then checked against Obsidian's own documentation, and it moved
+one of them.** The four off-rules had been justified by asserting that "this is how Obsidian
+writes Markdown"; a note using every construct the syntax pages, the callouts page and the
+Obsidian-Flavored-Markdown page document now measures it. Under `default: true` that note
+draws seven findings from four rules, each on a shape Obsidian itself prints as correct:
+`MD032` on a list inside a callout, which is the multi-paragraph callout example verbatim;
+`MD028` on the blank line between two adjacent callouts; and `MD007` with `MD010` on
+Tab-indented nesting, which the syntax page names as *the* way to nest a list. `MD056` came
+out of it stronger rather than weaker: the advanced-syntax page says a wikilink alias or an
+image size inside a table needs its pipe escaped, and markdownlint agrees in both
+directions — the escaped `[[A note\|shown]]` passes, the unescaped one reports
+`table-column-count`. The one rule the vault enforces is the mistake Obsidian's own
+documentation warns about.
+
+**One rule was added by that review: `MD053`**, a footnote or reference definition nothing
+points at. The text is written and never renders, which is the loss `MD011` and `MD042`
+already cover from other directions, and it cannot fire on typing. It is admitted on the
+principle rather than on an instance — the vault has no footnote today — which is the same
+standing `MD011` and `MD042` have, neither having ever fired here either. Checked against
+the false positives that would matter: a footnote referenced from inside a callout or a
+table is seen, and footnote-shaped text in a code span, a fence, an inline `^[footnote]` or
+an Obsidian block id `^abc123` is not mistaken for one. `MD052` was examined for the
+converse case, a reference with no definition, and rejected: it catches neither that nor
+anything else here, with or without `shortcut_syntax`.
+
+**Obsidian's style guide contributes nothing else enforceable, and one thing it asks for is
+refused.** Sentence-case headings, em dashes between a bolded term and its description,
+bold for button text, `.png`/`.svg` images, keyboard shortcuts without spaces around the
+plus: no markdownlint rule expresses any of them. Its one mechanically checkable rule is
+"use newlines between Markdown blocks", which is `MD022`, `MD031`, `MD032` and `MD058` — and
+`MD032` is one of the four that fails on Obsidian's own callout example. It is also a house
+style written by Obsidian's documentation team for help.obsidian.md rather than a rule about
+vaults. A gate cannot hold a vault to a style whose checker rejects the vault's own
+documented syntax, so the contributor's set keeps those rules and the vault does not.
 
 **What it gates is Markdown that renders wrong**, never house style. A list glued to the
 paragraph above it, a fence with no blank line around it, a table whose cell count disagrees
@@ -113,6 +149,13 @@ a parser and not a pile of patterns.
   still fails. Nested-config precedence itself was checked on a scratch tree before the real
   one was written, because a config that silently did not apply would read exactly like a
   register with nothing wrong in it.
+- **The Obsidian claim is a test rather than a comment.** `test/docs/markdownScope.test.ts`
+  plants that construct note twice — under `docs/`, where the vault's rules must report
+  nothing, and at the root, where the contributor's set reports `MD007`, `MD010` and
+  `MD032`. The second assertion is what stops the first being vacuous, and writing it caught
+  an overclaim in the sentence above it: the contributor's set reports three of the four,
+  not four, because `MD028` is off there too. Three rather than four is now what the test
+  asserts, measured off the config rather than off a description of it.
 - **A note the owner writes is not held to Markdown style, and a note that loses content
   still fails.** That is the whole of what the split buys, and what it costs is drift: the
   one-time normalisation is not defended, so `docs/` will slowly stop being uniform. The
