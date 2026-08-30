@@ -36,6 +36,15 @@ arithmetic may read**, in `src/domain/model.ts`'s own field comment, because a `
 suite` and an `Epic` sharing the null parent means a rank taken against one projection's
 slice of the tree can collide with a hidden root's.
 
+`src/domain/rankSpread.ts` is the pair of whole-population rewrites that arithmetic needs
+behind it: **Seed** (`computeSeedWrites`) writes the hierarchy into numbers, and
+**Respace** (`computeRespaceWrites`) restates the order already on screen with room
+between each pair again. Both are pure plans over one shared spread, so the two differ
+only in the sequence they hand it — DFS preorder against `realRoots`, or `ranked` — and
+both leave every `outsideFilter` rank exactly where it is. They live beside
+`src/domain/writePlan.ts` rather than in it because every other plan there places ONE row
+against its neighbours.
+
 This record is the decision to build ranking on top of a single sorted population instead
 of a per-projection one. The placement math that reads it — `anchoredOrder`,
 `orderForTarget` and `dropPlacement` in `src/domain/writePlan.ts` — lands piece by piece

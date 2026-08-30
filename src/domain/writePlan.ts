@@ -1219,7 +1219,9 @@ export function computeInitWrites(model: BacklogModel, settings: BacklogSettings
 }
 
 
-/** Orders are fractional ranks, kept to six decimals — the grid `midpoint` refuses against. */
-function roundOrder(value: number): number {
+/** Orders are fractional ranks, kept to six decimals — the grid `midpoint` refuses against.
+ *  Exported for `rankSpread.ts`: the whole-population rewrites land on the same grid, and
+ *  a second definition of it is a second answer to what a rank may be. */
+export function roundOrder(value: number): number {
 	return Math.round(value * 1000000) / 1000000;
 }
