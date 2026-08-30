@@ -285,17 +285,33 @@ export function inRankOrder(rows: BacklogItem[], ranked: BacklogItem[]): Backlog
 	// ORDER. Ties (and absent ranks) mean the number is not yet answering the question,
 	// so the tree's own order is the better answer. Self-healing: the moment Seed gives
 	// the rows distinct ranks, this returns rank order with nothing to switch on.
-	const orders = rows.map((item) => item.order);
+	// **Context rows are excluded from the test, not counted by it.** They can never be
+	// given a rank — Seed and Respace both refuse to write a note the Base excluded — so
+	// a single unranked context row at the focused level would hold this view in tree
+	// order FOREVER, including long after every writable note was migrated. A permanent
+	// veto by a row nothing can fix.
+	const orders = rows.filter((item) => !item.outsideFilter).map((item) => item.order);
 	if (orders.some((o) => o === null) || new Set(orders).size !== orders.length) return rows;
 	const members = new Set(rows);
 	return ranked.filter((item) => members.has(item));
 }
 ```
 
+**Distinctness is a proxy, and a leaky one — say so rather than implying otherwise.** It
+does not prove the vault was seeded: a legacy backlog whose sibling ranks happen not to
+collide across parents (A's children at 30/40, B's at 10/20) has four distinct values, so
+this returns rank order and hoists B's whole subtree above A's on a vault nobody migrated.
+Accepted knowingly: the alternatives were not shipping the ordering until Seed exists, or
+inventing a fourth persistence mechanism to record "this vault has been migrated", and the
+residual case is narrow. Task 10 records it as a known limitation beside the silent-
+fallback note.
+
 **Checks for both states**, because a fallback nobody exercises is a fallback that rots:
 a legacy fixture (`A1/A2` and `B1/B2` at 10/20) renders `A1, A2, B1, B2`, and the same
 fixture with distinct ranks renders in rank order. The focused roadmap follows either way,
-since `roadmapRows` reads `model.roots`.
+since `roadmapRows` reads `model.roots`. A third check pins the veto fix: a focused list
+holding an UNRANKED context row still reaches rank order once its writable rows have
+distinct ranks.
 
 - [ ] **Step 4: Run it and watch it pass**
 
@@ -1479,7 +1495,10 @@ Read `docs/README.md` and the ADR frontmatter of the most recent ADR. Pick the n
 - `docs/issues/Duplicate orders in a partially filtered group.md` — the impact section's "renumbers itself on the next renumbering drop" is gone; **Respace ranks** replaces it, and *not* Seed.
 - `docs/issues/Board order is derived not stored.md` — a shared rank now exists, so in-column ranking became possible and is deliberately not taken. The issue stays open with its premise corrected.
 
-- **New issue note** — *The unseeded fallback is silent*. `inRankOrder` reverts the focused
+- **New issue note** — *The unseeded fallback is silent, and distinctness is a proxy*.
+  Two accepted limitations in one note. First, distinctness does not prove seeding: a
+  legacy vault whose sibling ranks happen not to collide across parents reorders anyway.
+  Second, `inRankOrder` reverts the focused
   list to tree order whenever the focused rows' ranks are not all distinct. That is right
   for the legacy state it was built for, and it cannot tell that state apart from a tie
   arising LATER — a defect in Seed, a half-applied batch, a hand-edited frontmatter. In

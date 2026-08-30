@@ -279,6 +279,15 @@ back to tree order whenever the focused rows' ranks are not all distinct, which 
 the condition under which a global rank is not yet a global order. It is self-healing: the
 first Seed run makes the ranks distinct and rank order takes over with nothing to switch on.
 
+Two limits of that test, both accepted knowingly rather than papered over. **Context rows
+are excluded from it**, because Seed and Respace never write them — counting one would let
+a single unranked context row hold a view in tree order permanently, a veto by a row
+nothing can lift. And **distinctness does not prove seeding**: a legacy backlog whose
+sibling ranks happen not to collide across parents (30/40 under one, 10/20 under another)
+passes the test and gets reordered. The alternatives were withholding the ordering until
+Seed ships, or inventing a fourth persistence mechanism to record that a vault has been
+migrated; the residual case is narrow enough that neither is worth its cost.
+
 An existing vault renders identically in tree mode after the redefinition — siblings within
 a group already hold distinct orders. Only the flat list needs seeding: every PBI across
 every parent carries `10` or `20`, so a focus-level list sorted by a global `order` is ties
