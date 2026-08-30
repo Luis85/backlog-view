@@ -364,15 +364,21 @@ a node test that did would be measuring the runner.
   `parent` merely restates the moved item's own current parent because the parent is not
   the user's subject at all (a focus rank); never where it happens to equal that value
   because the drop IS an explicit placement, which must still clear a stale link even
-  when the position does not change (`withinSiblingsTarget`/`edgeTarget` in
-  `interactions/structure.ts`, pinned by `test/domain/writePlan.test.ts`'s "clears the
-  stale link even when the orphan keeps its last-root position"). The distinction is
+  when the position does not change (pinned by `test/domain/writePlan.test.ts`'s "clears
+  the stale link even when the orphan keeps its last-root position"). The distinction is
   about INTENT and cannot be read off the value alone — `parent === null` looks the same
   either way — so `computeParentField` asks the flag first rather than the values.
-  `DROP_TARGET_RESTATEMENT` in `eslint.config.mjs` checks the one spelling that produced
-  the bug (`parent: dragged.parent` with the flag forgotten) and says plainly what it
-  cannot see: a producer naming its subject something other than `dragged` needs the same
-  reasoning applied by a person.
+  **The same producer answers both ways**, which is why the flag is carried rather than
+  spelled: `withinSiblingsTarget` and `edgeTarget` (`interactions/structure.ts`) build one
+  target for a focus rank and one for an ordinary reorder, and take the answer from
+  `siblingContext`'s `rankOnly` — the function that already knows which list the row is
+  being ranked in. A comparison written beside them could only re-derive it from the value
+  it cannot be read off.
+  `DROP_TARGET_RESTATEMENT` in `eslint.config.mjs` reaches both spellings — `dragged.parent`
+  in `dropTargets.ts` and `item.parent` in `structure.ts` — and asks for the flag to be
+  STATED rather than to be true, so a genuine placement passes by writing
+  `parentUnchanged: false`. What it still cannot see is a third subject name or a `parent`
+  put in a local first; those need the same reasoning applied by a person.
 - The roadmap's axis is DECLARED, never detected (`roadmap.ts`): a horizon property with
   a non-empty values list makes the bucket axis, either date property makes the timeline,
   and no property is ever picked by name-matching — nor is a date ever read as a horizon.

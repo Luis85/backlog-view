@@ -215,20 +215,25 @@ const VISUAL_DEPTH = {
  * `parent: dragged.parent` with the flag forgotten silently deletes a note's parent
  * property on every focused reorder whose link does not resolve.
  *
- * Narrow on purpose — it sees only the literal spelling `dragged.parent`, the name this
- * module's own drag-handling functions use for the item being moved. A producer
- * elsewhere naming its subject something else (`item`, as `interactions/structure.ts`'s
- * own keyboard/menu functions do) needs the same RANK-vs-PLACEMENT reasoning applied by
- * a person: that distinction is about INTENT, not about the value, so `item.parent` is
- * legitimately unflagged there today (a real placement) and a future keyboard/menu focus
- * rank restating it would legitimately need the same flag this rule cannot see under that
- * name. See `src/domain/CLAUDE.md`, beside `DropTarget`'s own entry.
+ * Two SPELLINGS, because the two producers name their subject differently: `dragged` in
+ * `domain/dropTargets.ts`, `item` in `view/interactions/structure.ts`. The second was
+ * outside the rule until the keyboard and the menu learned to rank a focus row, at which
+ * point the file this rule's own comment had predicted by name grew the very shape it
+ * describes. Widening it is what puts the check on the forbidden THING rather than on the
+ * places somebody listed.
+ *
+ * It asks for the flag to be STATED, not to be true: a genuine placement that restates the
+ * current parent — `withinSiblingsTarget` and `edgeTarget` outside a focus level — passes
+ * by writing `parentUnchanged: false`, which is the intent said out loud. What the rule
+ * still cannot see is a subject named neither of these two, or a `parent` computed into a
+ * local first; both need the same RANK-versus-PLACEMENT reasoning applied by a person. See
+ * `src/domain/CLAUDE.md`, beside `DropTarget`'s own entry.
  */
 const DROP_TARGET_RESTATEMENT = {
 	selector:
-		"ObjectExpression:has(> Property[key.name='parent'][value.object.name='dragged'][value.property.name='parent']):not(:has(> Property[key.name='parentUnchanged']))",
+		"ObjectExpression:has(> Property[key.name='parent'][value.property.name='parent']:matches([value.object.name='dragged'], [value.object.name='item'])):not(:has(> Property[key.name='parentUnchanged']))",
 	message:
-		'A DropTarget whose parent restates dragged.parent must also set parentUnchanged, or an unresolved link (parent: null) reads as an explicit top-level drop and the key is deleted.',
+		'A DropTarget whose parent restates the moved item\'s own parent must also state parentUnchanged, or an unresolved link (parent: null) reads as an explicit top-level drop and the key is deleted.',
 };
 
 /**
@@ -1058,6 +1063,13 @@ export default defineConfig([
 		// to name them (2026-08-20) and this comment corrected rather than left standing.
 		// `test/i18n/menus.test.ts` still reads each prompt back under a marked catalog:
 		// lint cannot tell whether a key is READ, only that a literal is not spelled.
+		//
+		// DROP_TARGET_RESTATEMENT is here and in the general region above, and between them
+		// they reach both files in `src/` that BUILD a `DropTarget`: `domain/dropTargets.ts`
+		// for the drag, `interactions/structure.ts` for the keyboard and the menu. Named as
+		// the two files rather than added to every view block, because that is the honest
+		// reach — a third producer written elsewhere under view/ is outside it, and the
+		// rule's own comment says what a person still has to reason about.
 		files: MENU_SWEPT,
 		rules: syntaxRules([
 			...SVG_CLASS_TOKENS,
@@ -1069,6 +1081,7 @@ export default defineConfig([
 			ALL_TYPES_IMPORT,
 			CHILD_TYPE_CHOICES_NULL,
 			DELIVERABLE_FIELD_READ,
+			DROP_TARGET_RESTATEMENT,
 			...TEXT_TERNARY,
 			UI_TEXT_LITERAL,
 			UI_TEXT_PROPERTY,

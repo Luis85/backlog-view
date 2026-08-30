@@ -12,23 +12,56 @@ import { computeInitWrites, dropPlacement } from '../../domain/writePlan';
  * All of them route through host.performDrop and reuse the drop-plan logic.
  */
 
-/** The item's sibling list and index within it, or null when it cannot be moved. */
-function siblingContext(host: BacklogViewHost, item: BacklogItem): { fullList: BacklogItem[]; idx: number } | null {
+/**
+ * The item's sibling list and index within it, or null when it cannot be moved.
+ *
+ * `rankOnly` says which of the two kinds of move this context is for, and it is the
+ * answer `withinSiblingsTarget` and `edgeTarget` turn into `DropTarget.parentUnchanged`
+ * — see their own note. It cannot be re-derived from the values downstream: a focus
+ * rank and an explicit top-level placement of the same row produce the same `parent`.
+ */
+function siblingContext(
+	host: BacklogViewHost,
+	item: BacklogItem,
+): { fullList: BacklogItem[]; idx: number; rankOnly: boolean } | null {
 	const model = host.model;
-	// Focus roots share no ranking THROUGH THIS PATH — Alt+arrow and the move/outdent
-	// menu, which this function serves. The drag path is no longer the same claim:
-	// `dropTargets.ts`'s `siblingPosition` ranks two focus rows against each other
-	// (Task 5); a keyboard/menu equivalent is Task 6's, not built here. An ancestor
-	// from outside the filter has siblings the query never returned, so ordering it
-	// against the loaded ones would be a guess.
-	if (!model || item.focusRoot || item.outsideFilter) return null;
+	// An ancestor from outside the filter has siblings the query never returned, so
+	// ordering it against the loaded ones would be a guess.
+	if (!model || item.outsideFilter) return null;
+	// An ACTIVE focus row ranks among the rendered focus rows — the same destination
+	// `dropTargets.ts`'s `siblingPosition` opened to the drag in Task 5, so Alt+arrow and
+	// the move menu land the rank a drag would. Membership, not the `focusRoot` flag:
+	// `projectionForest` sets that on any promoted root including with `model.focused`
+	// false, and a promoted catalog row's real siblings are not on screen. Every other
+	// promoted root keeps the refusal below.
+	if (model.focused && model.roots.includes(item)) {
+		return { fullList: model.roots, idx: model.roots.indexOf(item), rankOnly: true };
+	}
+	if (item.focusRoot) return null;
 	// The real root group, not the rendered forest — the same rule `siblingPosition`
 	// keeps: an `order` is scoped to the notes sharing a parent, and a `Test suite` and an
 	// `Epic` share the null one, so a move ranked against one projection's slice of it can
 	// land on a number a hidden root already holds. A promoted root returned above.
 	const fullList = item.parent ? item.parent.children : model.realRoots;
 	const idx = fullList.indexOf(item);
-	return idx === -1 ? null : { fullList, idx };
+	return idx === -1 ? null : { fullList, idx, rankOnly: false };
+}
+
+/**
+ * The item as THIS model holds it. A context menu captures its row when it opens, and a
+ * Bases refresh in between rebuilds every item as a new object — after which
+ * `model.roots.includes`, `children.indexOf` and `ranked.indexOf` all miss, the placement
+ * refuses `unranked`, and the pick does nothing at all with nothing said.
+ *
+ * Re-resolved by PATH here rather than by teaching `neighbourPair` to match on one: the
+ * staleness is not a single lookup's. The peer list, the no-op comparison and the
+ * planner's own "remove the dragged row from the population" filter all compare objects,
+ * so one lookup made path-aware would leave the rest reading a model nobody is showing.
+ * Called at the four entry points a captured handler reaches; the four PREDICATES beside
+ * them are asked while the menu is being built, when the model is the current one.
+ */
+function liveItem(host: BacklogViewHost, item: BacklogItem): BacklogItem {
+	return host.model?.byPath.get(item.file.path) ?? item;
 }
 
 /**
@@ -58,7 +91,13 @@ function withinSiblingsTarget(host: BacklogViewHost, item: BacklogItem, delta: -
 	// full sibling list, so hidden rows in between are simply skipped past.
 	const peers = ctx.fullList.filter((s) => s !== item);
 	const insertIndex = delta === -1 ? peers.indexOf(neighbor) : peers.indexOf(neighbor) + 1;
-	return { parent: item.parent, peers, insertIndex };
+	// `parentUnchanged` comes from the CONTEXT, never from the value. `item.parent` is a
+	// restatement under focus (rank the row, leave its parentage alone) and a real
+	// placement otherwise — which must still clear a stale link — and the two spell the
+	// same `null` for a row whose link does not resolve. `DROP_TARGET_RESTATEMENT` reads
+	// only the `dragged.parent` spelling and so cannot see this one; its own comment says
+	// exactly that, and this is the case it names.
+	return { parent: item.parent, peers, insertIndex, parentUnchanged: ctx.rankOnly };
 }
 
 /**
@@ -73,7 +112,10 @@ function edgeTarget(host: BacklogViewHost, item: BacklogItem, edge: 'top' | 'bot
 	const ctx = siblingContext(host, item);
 	if (!ctx || ctx.idx === (edge === 'top' ? 0 : ctx.fullList.length - 1)) return null;
 	const peers = ctx.fullList.filter((s) => s !== item);
-	return { parent: item.parent, peers, insertIndex: edge === 'top' ? 0 : peers.length };
+	// Same `parentUnchanged` reasoning as `withinSiblingsTarget`, and it has to be the
+	// same: the two commands differ in where they land, never in whether a landing is a
+	// rank or a relocation.
+	return { parent: item.parent, peers, insertIndex: edge === 'top' ? 0 : peers.length, parentUnchanged: ctx.rankOnly };
 }
 
 /**
@@ -101,14 +143,16 @@ export function canMoveToEdge(host: BacklogViewHost, item: BacklogItem, edge: 't
 }
 
 export function moveWithinSiblings(host: BacklogViewHost, item: BacklogItem, delta: -1 | 1): void {
-	const target = withinSiblingsTarget(host, item, delta);
+	const live = liveItem(host, item);
+	const target = withinSiblingsTarget(host, live, delta);
 	if (!target) return;
-	void host.performDrop(item, target);
+	void host.performDrop(live, target);
 }
 
 export function moveToEdge(host: BacklogViewHost, item: BacklogItem, edge: 'top' | 'bottom'): void {
-	const target = edgeTarget(host, item, edge);
-	if (target) void host.performDrop(item, target);
+	const live = liveItem(host, item);
+	const target = edgeTarget(host, live, edge);
+	if (target) void host.performDrop(live, target);
 }
 
 /**
@@ -139,8 +183,9 @@ export function outdentTarget(host: BacklogViewHost, item: BacklogItem): DropTar
 
 /** Make the item a sibling of its parent, placed right after it. */
 export function outdent(host: BacklogViewHost, item: BacklogItem): void {
-	const target = outdentTarget(host, item);
-	if (target) void host.performDrop(item, target);
+	const live = liveItem(host, item);
+	const target = outdentTarget(host, live);
+	if (target) void host.performDrop(live, target);
 }
 
 /**
@@ -156,6 +201,14 @@ export function outdent(host: BacklogViewHost, item: BacklogItem): void {
  * for, in the command that fix did not reach.
  */
 export function indentTarget(host: BacklogViewHost, item: BacklogItem): DropTarget | null {
+	// Its own refusal, not one inherited from `siblingContext` — that function answers for
+	// active focus rows now, so `visibleNeighbor` hands back a focus PEER and this would
+	// offer `Indent under X` across the synthetic row. Ranking there is this feature;
+	// reparenting there is a question about parentage that nothing here answers. Stated at
+	// the TARGET rather than in `indent`, because the target is what the menu asks before
+	// offering the entry, and an offered command that does nothing is what this repo
+	// refuses ahead of a withheld one.
+	if (item.focusRoot) return null;
 	const newParent = visibleNeighbor(host, item, -1);
 	if (!newParent) return null;
 	const peers = newParent.children.filter((s) => s !== item);
@@ -165,8 +218,9 @@ export function indentTarget(host: BacklogViewHost, item: BacklogItem): DropTarg
 
 /** Nest the item under its previous visible sibling, at the end of its children. */
 export function indent(host: BacklogViewHost, item: BacklogItem): void {
-	const target = indentTarget(host, item);
-	if (target) void host.performDrop(item, target);
+	const live = liveItem(host, item);
+	const target = indentTarget(host, live);
+	if (target) void host.performDrop(live, target);
 }
 
 /**
