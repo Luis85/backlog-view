@@ -46,7 +46,8 @@ So the plan is written, and made as thin as the tooling allows:
   nothing to do, and an implementer with nothing to do writes something.
 - Everything filtered out is **named in the header** with the reason — the human's outputs
   as what this run will not deliver, the landed ones as already done, the ADR and the suite
-  as prose the decomposition wrote and this close repaired. Named, because a plan
+  as prose the decomposition wrote and this close repaired, and an earlier run's handoff as
+  superseded and dropped. Named, because a plan
   that silently omits them reads as a decomposition someone forgot half of; not tasked,
   because a `Test case` is a live vault, an open-question `Issue` is a question the work
   cannot answer, and re-dispatching landed work is how a partially implemented PBI gets
@@ -336,9 +337,11 @@ in its `Approach`, not as a surprise for the implementer.
 
 ### Not every child is executable
 
-The same pass assigns **every output — child or not — to the subagent, to the human, to
-this run's own close, or to nobody** — the fourth bucket is the superseded handoff in the
-table below — and that assignment decides which get a `## Task N` in the plan.
+The same pass assigns **every output — child or not — to the subagent, to the human, or to
+this run's own close**, and that assignment decides which get a `## Task N` in the plan.
+There is no fourth bucket for an output nobody owns: an earlier run's superseded handoff was
+one until 2026-08-30, and leaving it ownerless left it `Open` in the backlog for good, which
+is the state this phase's own red flag names.
 Assigning only the non-child outputs would send an intentionally unanswerable note through
 the TDD loop, because
 `decompose-pbi` deliberately produces children that are not implementable:
@@ -346,7 +349,7 @@ the TDD loop, because
 | Output | Whose | Why |
 | --- | --- | --- |
 | A `Task` | The subagent's | It is engineering work with a test |
-| A `Task` whose **first body line declares it a handoff** — the line after its frontmatter, not the `---` that opens it | Nobody's | It is an earlier run's prompt, not work. This run's own handoff supersedes it, so it is named as superseded and given no task |
+| A `Task` whose **first body line declares it a handoff** — the line after its frontmatter, not the `---` that opens it | This run's close | It is an earlier run's prompt, not work, so it gets no task. It is not left `Open` either: this run's handoff supersedes it, and the close **drops** it — `status: Dropped`, `closed:` dated, one line naming the handoff that replaced it. Not `Done`, which would report a run that never happened; `docs/README.md` gives `Dropped` for exactly this, "refused, kept for the record" |
 | An `Issue` holding an **open question** | The human's | The work cannot settle it; that is why it is an Issue |
 | An `Issue` recording a **decision or a limitation** | The subagent's | It is prose stating something already settled |
 | A `Bug` | The subagent's | A defect with a fix and a test, and `docs/README.md` gives it a shape — the same work a `Task` is |
@@ -362,20 +365,32 @@ children `Task`, `Issue`, `Bug`, `Idea`, `Deliverable` and `Improvement`; phase 
 exit until each output is assigned, so a type with no row is a phase that cannot close over
 a legal decomposition.
 
-**The third bucket is narrow, and those two rows are the whole of it.** An ADR and a
-`Test suite` are the two outputs `decompose-pbi` writes *complete* at decomposition — the
-ADR under `docs/adrs/README.md`'s conventions with its index entry, the suite as the
-shortest of the ones already in `docs/tests/suites/`. Neither is work owed to anybody, so
-neither is the subagent's: phase 2 reads them, and whatever they still need is written by
-this skill at close step 1 beside the children's edits. That is what keeps them out of the
-plan's task list, and it is why the two-bucket split this design first drew was wrong — with
-only "the subagent's" available, prose already on disk read as prose somebody had to write.
+**The third bucket is three rows, and what they share is that this run writes them itself.**
+An ADR and a `Test suite` are the two outputs `decompose-pbi` writes *complete* at
+decomposition — the ADR under `docs/adrs/README.md`'s conventions with its index entry, the
+suite as the shortest of the ones already in `docs/tests/suites/`. Neither is work owed to
+anybody, so neither is the subagent's: phase 2 reads them, and whatever they still need is
+written by this skill at close step 1 beside the children's edits. That is what keeps them
+out of the plan's task list, and it is why the two-bucket split this design first drew was
+wrong — with only "the subagent's" available, prose already on disk read as prose somebody
+had to write.
+
+A superseded handoff is the third row, and it is here for the opposite reason: not because it
+is already finished but because it never will be, and something has to retire it. The close
+**drops** it rather than completing it — `status: Dropped`, `closed:` dated, one line naming
+the handoff that replaced it. `Done` would report a run that never happened, which is the
+defect the PBI's own closure rule and the `Test suite`'s both guard against; `docs/README.md`
+gives `Dropped` for exactly this case, "refused, kept for the record", so nothing has to be
+invented for it.
 
 The handoff row is the same kind of correction. The saved note is a `Task` child, so on a
 rerun the `Task` row above sends it to the subagent and the plan dispatches an implementer
 to run the prompt it is already running. The note's self-declaring first body line — the one after its frontmatter, since a `Task` is
 written with frontmatter and a physical first line would be the `---` — is the marker;
-this row is the rule that acts on it, and a marker with no rule behind it stops nothing.
+this row is the rule that acts on it, and a marker with no rule behind it stops nothing. The
+row does two things, because stopping the dispatch was only half of it: the older note is
+also dropped by this run's close, since a handoff nobody will execute and nobody retires sits
+`Open` in the backlog for good.
 
 The human's outputs are **named in the plan's header, never given a task**. They are still
 part of the picture — the prompt reads them as context, and the readback shows the split —
@@ -398,7 +413,7 @@ decision somebody took, and nobody here took it.
 
 **Exit when** every child is either "executable as written" or has an answer to write into
 it, **every output, child or not, is assigned** to the subagent, to the human, to this
-run's close or to nobody, and **nothing is left blocked**. Blocked is a real state this phase can reach —
+run's close, and **nothing is left blocked**. Blocked is a real state this phase can reach —
 a shape the register does not document and nobody has settled, an ADR whose five headings are
 empty, an open question the work cannot start without — and it belongs to non-child outputs
 as much as to children, which the first clause alone does not reach. A blocked output gets
@@ -410,7 +425,7 @@ does not pass on the strength of an owner alone.
 
 Read the ordered set back: each output with its rank, **whose it is**, and one sentence of
 what gets delivered — the subagent's as the task it becomes, the human's as the thing the
-run will not do, this run's close's as what it repairs before committing — plus what you are
+run will not do, this run's close's as what it repairs or drops before committing — plus what you are
 still assuming.
 
 **Exit when the user has answered.** The readback is a question, not an announcement — a
@@ -457,7 +472,10 @@ on screen:
    so an edit left unwritten is an edit the implementer never sees. **This step is the only
    place those two are written**, since neither is dispatched — an ADR closes at
    `status: Accepted` with no `closed:` and no `## Outcome`, and a `Test suite` stays `Open`
-   because it is a container for cases re-walked at each release.
+   because it is a container for cases re-walked at each release. **An earlier run's
+   superseded handoff is dropped in this same step** — `status: Dropped`, `closed:` dated,
+   one line naming the handoff that replaced it — for the same reason: nothing downstream
+   touches it, so a step that skipped it would leave it `Open` for good.
 2. Write the pointer plan.
 3. Ask the save question.
 4. Write the `Task` note if the answer is yes.
@@ -569,6 +587,8 @@ On yes, one note at the next free rank among the PBI's children, in the shape
   or an `## Outcome` the record does not have.
 - A prose-only task was given a red-green cycle it cannot satisfy.
 - A `Test suite` was closed because its prose was written.
+- A superseded handoff was left `Open`, or was closed `Done` as though the run it handed off
+  had happened.
 - The prompt told the executor to "close each output", so a note no task dispatched — a
   human's `Test case`, an already-written ADR or suite — was in scope for closing.
 - An ADR or a `Test suite` was given a `## Task N`, though `decompose-pbi` wrote it at
