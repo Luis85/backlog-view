@@ -142,3 +142,18 @@ a parser and not a pile of patterns.
 A rule that is off starts hiding a defect that reaches a reader. The three line-oriented ones
 are the candidates: if `markdownlint` learns to read them off the parsed document, the reason
 they are off has expired.
+
+**One content-loss shape is known and NO rule in this tool sees it.** An ordered list may
+interrupt a paragraph only when it starts at `1.`, so a note whose `Steps:` line sits
+directly above `2. …` renders the whole list as part of that paragraph, in Obsidian and on
+GitHub alike. It is invisible to markdownlint for the same reason it is loss: the linter
+parses what the renderer parses, both see one paragraph, and MD032 has no list to find
+unsurrounded — a run with `default: true` reports nothing on it. So this is not a rule
+refused above; it is a gap under the whole gate, and turning more rules on does not close it.
+
+`docs/` was measured for it rather than assumed clean, by rendering every note with
+`markdown-it` and looking for a digit-led line inside a `<p>`. Two hits, both false: prose
+wrapping onto `100. So the score…` and `3) says the toggle…`, which are the very case the
+CommonMark rule protects. The shape an author would lose a list to is not in the register
+today. Revisit if a rule scoped to a list that fails to interrupt appears, or if that scan
+ever returns a real one. Found by review, PR #233.

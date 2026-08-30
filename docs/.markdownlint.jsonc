@@ -17,6 +17,16 @@
 // what is given up is enforcing it on notes written from now on, which is the price of the
 // owner's own workflow and is cheaper than the workflow.
 //
+// **The blank-line line above has ONE exception, and no rule here or in the root set can
+// gate it.** An ORDERED list may interrupt a paragraph only when it starts at `1.`, so a
+// `Steps:` line directly above `2. …` swallows the whole list into the paragraph. That is
+// content loss, not typing style — but it is invisible to markdownlint for the reason it is
+// content loss: the linter parses the document the renderer parses, both see one paragraph,
+// and MD032 has no list to be unsurrounded. Checked with `default: true`, which reports
+// nothing on it. So this is a gap in the gate rather than a rule left off, and ADR 0032
+// carries it as a revisit condition rather than this sentence promising more than the four
+// rules deliver.
+//
 // **Nothing here relaxes `docs-check.mjs`.** The register's own rules — hierarchy, sibling
 // orders, wikilinks that resolve, source paths that exist, the use-case shape, ADR
 // frontmatter — are gated exactly as before, and they are the rules that are actually about
