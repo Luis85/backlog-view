@@ -413,8 +413,7 @@ Fenced, and nothing else in the block:
   pass before the commit, never after. For a prose task — a decision-or-limitation `Issue`,
   an ADR, a `Test suite` — write, `npm run check`, commit: same gate, no red step, because
   there is no behaviour to make fail first
-- close each child as its task lands: `## Outcome`, `status: Done`, `closed:` — an ADR
-  instead reaches `status: Accepted`, since it carries neither of the other two
+- close each output in the shape its type owes, as Global Constraints states
 - *(only when a handoff was saved)* when every task is through, close the saved handoff
   `Task` the same way, then `npm run check` and commit — nothing else will, since it is
   not dispatched
