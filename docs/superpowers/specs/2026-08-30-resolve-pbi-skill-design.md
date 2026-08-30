@@ -21,8 +21,9 @@ The first draft of this design produced no plan file at all: the PBI's children 
 a ranked task list, and a plan beside them is a second copy of that order which can disagree
 with the register. That is a real cost, and it is paid rather than avoided, because
 `subagent-driven-development` cannot consume child notes. Its three scripts each take a
-`PLAN_FILE` and exit 2 without one, and `task-brief` extracts a task by matching
-`^#+[ \t]+Task[ \t]+N` **inside that file**. A handoff naming only notes reaches that skill
+`PLAN_FILE` and exit 2 without one, and `task-brief` finds a task by its `## Task N`
+heading **inside that file** — the heading format is load-bearing, and the script owns how
+it matches. A handoff naming only notes reaches that skill
 without the one artifact it needs.
 
 So the plan is written, and made as thin as the tooling allows:
@@ -84,8 +85,9 @@ So the reading is placed where it actually travels, in two halves:
 
 - **Global Constraints** carries what every task shares: root `CLAUDE.md`, `test/CLAUDE.md`,
   `superpowers:test-driven-development`, the red-green-`npm run check`-commit cycle, and the
-  `[Unreleased]` changelog rule. `subagent-driven-development` passes that section into
-  every dispatch, which is exactly why the header cannot be skipped.
+  `[Unreleased]` changelog rule. That is the section `subagent-driven-development` hands to
+  every implementer, which is why the header cannot be skipped — and why each pointer task
+  names it again, for the reason the close gives below.
 
   **That cycle is for the tasks that write code.** A decision-or-limitation `Issue`, an ADR
   and a `Test suite` are prose by definition, and there is no behaviour to make fail first —
@@ -239,6 +241,24 @@ child costs a question; **silence on a child is the failure this phase exists to
 | Coverage | Does the threshold in `vitest.config.mts` move, and to what? |
 | What would refuse it | The 400-line cap, the layer's `no-restricted-imports`, the write-boundary ban |
 | Risks | Is there one worth naming? |
+
+**Every answer lands in the note, and four of the rows do not say where.** `Evidence`,
+`Approach`, `Acceptance criteria` and `Risks` name a section of the `Task` shape. The paths
+have a home of their own: `files` is a frontmatter key the register gives to a `Task`, an
+`Issue` and a `Bug` — the same three shapes the subagent owns — so the files row's answer
+goes there rather than into prose. The other three name nothing: the failing test, the
+coverage move and what would refuse the work belong with the steps that carry them out — the
+`Approach` in a `Task`.
+
+**The rows are named for a `Task`, and the subagent owns other shapes.** A `Bug` is
+*What happened · Fix · Lesson*; a decision-or-limitation `Issue` has its own headings. Ask
+the row's question of any child; write the answer into a section that child's own type
+already has. And where the register documents no shape at all — an `Improvement` and a
+`Deliverable` have no row in its shape table and no note in `docs/` to read as precedent —
+phase 2 asks what shape the note takes, which is the ask `decompose-pbi` already makes for
+those two. An unanswered shape blocks that child, and the readback says so. Inventing a
+heading is never the answer: a shape the register does not document is `decompose-pbi`'s own
+red flag.
 
 The failing-test row is the specific assertion, never "add tests". Where the child's whole
 deliverable is an invariant, root `CLAUDE.md`'s rule applies and belongs in the `Approach`:
