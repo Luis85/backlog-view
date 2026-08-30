@@ -638,6 +638,15 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ### Fixed
 
+- **No screen offers `Iteration` or `Release` under `New` or `Set type` any more.** The
+  requirements board still did. Each of those types has a door of its own — the board's
+  scope picker and the release view's `New release` — and neither is drawn on any
+  projection, so creating one from the board made a note that vanished from the board that
+  made it, and retyping a row that way took the row off the screen it was used on. The rule
+  was already written and the board returned before reaching it; it now applies to every
+  projection rather than to the fall-through, and is asked of the whole category in one
+  test rather than of a surface at a time.
+
 - **The release index now says which binding produced its unresolved count.** Aiming the
   membership property at a property something else already owns made that count report work
   you had never mis-assigned — at the type property essentially every typed item, at the

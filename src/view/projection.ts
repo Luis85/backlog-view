@@ -409,9 +409,23 @@ export function offerableTypes(host: BacklogViewHost, types: string[] = ALL_TYPE
  * offers.
  */
 function byProjectionType(projection: Projection, types: string[]): string[] {
-	if (projection === 'board') return types.filter((type) => !isDeliverableType(type));
-	if (projection === 'deliverables') return types.filter((type) => isDeliverableType(type));
-	if (projection === 'iteration') return types.filter((type) => !isMarkerType(type));
+	// **Applied FIRST, to every projection, rather than after the three branches below.**
+	// It sat in the fall-through and each branch returned before reaching it, so the
+	// requirements board went on offering both types it cannot draw
+	// ([[An Iteration focus offers a type the board cannot draw]]). The other two branches
+	// excluded them already and by accident — `isDeliverableType` keeps only `Deliverable`,
+	// and `isMarkerType` covers all three markers — which is why one screen was wrong and
+	// two were right for reasons that had nothing to do with this rule.
+	//
+	// The bug note names `Iteration`; `Release` leaked through the same return and is the
+	// same defect, so both are stated here and neither is fixed as its own case. That is
+	// this function's own lesson: **an early return in a function that narrows by rule drops
+	// every rule below it**, and the composing shape is the one `offerableTypes` already
+	// uses for the catalog narrowing, added after this same failure.
+	const offerable = types.filter((type) => !isIterationType(type) && !isReleaseType(type));
+	if (projection === 'board') return offerable.filter((type) => !isDeliverableType(type));
+	if (projection === 'deliverables') return offerable.filter((type) => isDeliverableType(type));
+	if (projection === 'iteration') return offerable.filter((type) => !isMarkerType(type));
 	// **No creation surface offers `Iteration`, and none offers `Release` either.** One
 	// control makes each — the board's scope picker, and the release view's own `New
 	// release` — and each derives the fields a `New` menu would leave to the reader. A
@@ -434,7 +448,7 @@ function byProjectionType(projection: Projection, types: string[]): string[] {
 	// rather than at any of them: `New` would make a note that vanished on the pass that
 	// created it, `Set type` would vanish the row it was used on, and the FOCUS picker would
 	// offer a `Release`-only scope drawing an empty screen with nothing saying why.
-	return types.filter((type) => !isIterationType(type) && !isReleaseType(type));
+	return offerable;
 }
 
 /**

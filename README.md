@@ -61,6 +61,16 @@ unless a section says otherwise.
     property is the "no state, not planned yet" the item was already in — it just becomes
     visible and editable in Obsidian's own property editor, and pickable in the view
     options.
+> [!WARNING]
+> **Quote any frontmatter value that contains ` #` before you run this.** In YAML, a hash
+> after a space starts a comment inside an unquoted value, so `source: review of PR #56, and
+> more` has always *meant* `source: review of PR` — Obsidian's own Properties panel already
+> shows it truncated. The bytes survive only until something re-serializes the block, and
+> **any** write this plugin makes to that note is such a re-serialization; ✨ is simply the
+> one that rewrites every result at once. Writing `source: "review of PR #56, and more"`
+> makes the hash part of the value for every reader. This is Obsidian's serialization, not
+> something the plugin can detect or put back.
+
 - **Every note the plugin creates also gets a `pbl-id`** — one integer, taken from the
   highest the vault already holds, written in the same single write that makes the note. It
   is a handle for naming an item outside Obsidian, where a title is going to change and a
