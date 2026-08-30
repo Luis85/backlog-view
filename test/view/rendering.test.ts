@@ -671,13 +671,15 @@ describe('rendering', () => {
 		key(tree, 'ArrowDown', { altKey: true });
 		await flush();
 		expect(vault.writeLog).toHaveLength(0);
-		// The BANNER is the warning on this path, and the silence is exact rather than
-		// incidental: an `orderProperty` pointed at the parent link leaves every note
-		// unranked, so the placement refuses and `applySafely` returns on the empty batch
-		// before the config gate is reached. The gate's own notice is asserted by the
-		// creation case below, which still plans a write under these same options. Task 9
-		// gives a refused placement its own notice; until then this path only blocks.
-		expect(Notice.messages).toEqual([]);
+		// The banner is not the only warning on this path any more. An `orderProperty`
+		// pointed at the parent link leaves every note unranked, so the placement refuses
+		// and plans no batch for `applySafely` to gate — which is why the refused move asks
+		// the configuration itself rather than leaving the gate to speak. The refusal's own
+		// remedy is withheld here on purpose: it names the backfill, and the backfill
+		// refuses at this same gate.
+		expect(Notice.messages).toEqual([
+			'Fix the view options first: the parent and order properties share the key "parent".',
+		]);
 	});
 
 	it('blocks item creation while the configuration is corrupt', () => {

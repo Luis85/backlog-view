@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { FakeVault } from '../helpers/vault';
-import { Menu } from '../helpers/obsidian-mock';
+import { Menu, Notice } from '../helpers/obsidian-mock';
 import {
 	drag,
 	flush,
@@ -289,5 +289,70 @@ describe('a menu outlives the model it was built from', () => {
 
 		expect(vault.fm('F2.md')['parent']).toBe('[[Epic A]]');
 		expect(vault.writeLog).toEqual([]);
+	});
+});
+
+/**
+ * A refused placement is the one drop outcome nothing used to report. The indicator
+ * accepts the drop — `dropTargets.ts` decides where a row may LAND, and the rank is an
+ * arithmetic question asked afterwards — so silence reads as a broken gesture rather than
+ * as a full range, and the remedy each refusal names is the whole value of saying it.
+ */
+describe('a drop that cannot be ranked says why', () => {
+	/** Two ranks a rounding step apart, so no six-decimal number fits between them. */
+	function squeezedFixture() {
+		const vault = new FakeVault();
+		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 2 } });
+		vault.addFile('PBI A1.md', { frontmatter: { type: 'PBI', order: 2.000001 }, parentLink: 'Epic A' });
+		vault.addFile('Epic B.md', { frontmatter: { type: 'Epic', order: 3000 } });
+		vault.addFile('PBI B1.md', { frontmatter: { type: 'PBI', order: 4000 }, parentLink: 'Epic B' });
+		return vault;
+	}
+
+	it('names Respace when the gap between the two neighbours is spent', async () => {
+		const vault = squeezedFixture();
+		const { containerEl } = makeView(vault, {}, { focus: 'PBI' });
+
+		drag(rowByTitle(containerEl, 'PBI B1'), rowByTitle(containerEl, 'PBI A1'), 'before');
+		await flush();
+
+		expect(vault.writeLog).toEqual([]);
+		expect(Notice.messages).toEqual([
+			'No room left between those two items. Run "Respace ranks" from the command palette.',
+		]);
+	});
+
+	it('names the set-up button when a neighbour has no rank at all', async () => {
+		const vault = squeezedFixture();
+		// A blank rank is a different fact from a full range, and it takes the other
+		// remedy: the backfill can fill this one in, and Respace cannot invent a position.
+		vault.addFile('PBI A2.md', { frontmatter: { type: 'PBI' }, parentLink: 'Epic A' });
+		const { containerEl } = makeView(vault, {}, { focus: 'PBI' });
+
+		// Landing after the blank makes the blank the anchor, and an anchor with no number
+		// is the one thing no arithmetic can place against.
+		drag(rowByTitle(containerEl, 'PBI A1'), rowByTitle(containerEl, 'PBI A2'), 'after');
+		await flush();
+
+		expect(vault.writeLog).toEqual([]);
+		expect(Notice.messages).toEqual([
+			'That item has no rank yet. Use the toolbar’s set-up button to fill in the missing ones.',
+		]);
+	});
+
+	it('reports the CONFIGURATION instead, because every remedy above is blocked by it', async () => {
+		// Both roles on one key: no note has a readable rank, so the placement refuses
+		// `unranked` — and the button that sentence names refuses at the same gate. The
+		// advice would be a dead end, so the gate's own refusal is what is said.
+		const vault = squeezedFixture();
+		const { containerEl } = makeView(vault, { orderProperty: 'note.parent' }, { focus: 'PBI' });
+
+		drag(rowByTitle(containerEl, 'PBI B1'), rowByTitle(containerEl, 'PBI A1'), 'before');
+		await flush();
+
+		expect(vault.writeLog).toEqual([]);
+		expect(Notice.messages).toEqual([
+			'Fix the view options first: the parent and order properties share the key "parent".',
+		]);
 	});
 });
