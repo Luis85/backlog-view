@@ -27,6 +27,20 @@ export function rankedItems(items: BacklogItem[]): BacklogItem[] {
  * rungs and which extra types — and `ranked` decides SEQUENCE.
  */
 export function inRankOrder(rows: BacklogItem[], ranked: BacklogItem[]): BacklogItem[] {
+	// **An unseeded vault keeps tree order.** Legacy ranks are sibling-scoped, so every
+	// first child holds 10 and every second holds 20 — sorting those globally does not
+	// reveal a priority, it interleaves the parents: A1, A2, B1, B2 becomes A1, B1, A2,
+	// B2. Measured, not supposed. `Seed ranks from the hierarchy` is the remedy, and it
+	// arrives in a later task than this ordering does, so without this guard an upgrade
+	// scrambles the visible priority of every focused view and leaves the user no clue
+	// that a command would fix it.
+	//
+	// Distinctness is the test because it is exactly what makes a global rank a global
+	// ORDER. Ties (and absent ranks) mean the number is not yet answering the question,
+	// so the tree's own order is the better answer. Self-healing: the moment Seed gives
+	// the rows distinct ranks, this returns rank order with nothing to switch on.
+	const orders = rows.map((item) => item.order);
+	if (orders.some((o) => o === null) || new Set(orders).size !== orders.length) return rows;
 	const members = new Set(rows);
 	return ranked.filter((item) => members.has(item));
 }

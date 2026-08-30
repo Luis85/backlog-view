@@ -26,4 +26,34 @@ describe('buildModel ranking', () => {
 		const model = buildModel(vault.app, vault.entries(), { ...settings, focusLevel: 'PBI' });
 		expect(model.roots.map((i) => i.file.basename)).toEqual(['PBI B1', 'PBI A1']);
 	});
+
+	it('falls back to tree order when the focused rows\' ranks are not globally distinct', () => {
+		// Legacy, unseeded ranks are sibling-scoped: every first child holds 10 and every
+		// second holds 20. Sorting those globally would interleave the parents (A1, B1,
+		// A2, B2) rather than reveal a priority, so the guard keeps tree order instead.
+		const vault = new FakeVault();
+		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('Epic B.md', { frontmatter: { type: 'Epic', order: 20 } });
+		vault.addFile('PBI A1.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: 'Epic A' });
+		vault.addFile('PBI A2.md', { frontmatter: { type: 'PBI', order: 20 }, parentLink: 'Epic A' });
+		vault.addFile('PBI B1.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: 'Epic B' });
+		vault.addFile('PBI B2.md', { frontmatter: { type: 'PBI', order: 20 }, parentLink: 'Epic B' });
+		const model = buildModel(vault.app, vault.entries(), { ...settings, focusLevel: 'PBI' });
+		expect(model.roots.map((i) => i.file.basename)).toEqual(['PBI A1', 'PBI A2', 'PBI B1', 'PBI B2']);
+	});
+
+	it('renders in rank order once the same shape of fixture has distinct ranks', () => {
+		// Same structure as the legacy fixture above, but every rank is globally
+		// distinct — and deliberately reversed, so passing this could not be an
+		// accident of tree order already agreeing with rank order.
+		const vault = new FakeVault();
+		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('Epic B.md', { frontmatter: { type: 'Epic', order: 20 } });
+		vault.addFile('PBI A1.md', { frontmatter: { type: 'PBI', order: 40 }, parentLink: 'Epic A' });
+		vault.addFile('PBI A2.md', { frontmatter: { type: 'PBI', order: 30 }, parentLink: 'Epic A' });
+		vault.addFile('PBI B1.md', { frontmatter: { type: 'PBI', order: 20 }, parentLink: 'Epic B' });
+		vault.addFile('PBI B2.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: 'Epic B' });
+		const model = buildModel(vault.app, vault.entries(), { ...settings, focusLevel: 'PBI' });
+		expect(model.roots.map((i) => i.file.basename)).toEqual(['PBI B2', 'PBI B1', 'PBI A2', 'PBI A1']);
+	});
 });
