@@ -35,7 +35,7 @@ the base's filter, is a note the board writes and then cannot show.
 | --- | --- |
 | **Actor** | Backlog owner |
 | **Trigger** | Choosing to create from a column, by pointer, menu or Enter on a selected column |
-| **Preconditions** | Board mode is on and the config-problems gate is clear |
+| **Preconditions** | The **requirements** board is on and the config-problems gate is clear. Not the Deliverables board, whose creation type is its own (`Deliverable`, never a focus-dependent one), and not the iteration board, whose columns are buckets rather than states — two of which hold no state at all, meaning different things. Those two share this board's column frame and each needs a use case of its own. |
 | **Guarantee** | Creation writes the new note and nothing else — never a sibling. If the result is not visible on the next render, the view says so rather than letting it vanish. |
 
 **Main flow**
@@ -51,6 +51,12 @@ the base's filter, is a note the board writes and then cannot show.
 
 - **1a — the column is the no-state column.** Creation writes no state at all, rather than
   writing an empty one. Absence is a value here.
+- **1b — the column is out of workflow.** A stray column — one drawn because a note was
+  *observed* holding a value the workflow does not declare — offers no creation, while
+  still taking a drop. Creating there would write a state nobody configured, which
+  [[Product Kanban]]'s *"no state string written that the user did not configure or
+  observe"* reads against: observing a value and minting one are different acts. Nothing
+  already in that state is stranded, since a drop still lands.
 - **4a — the next render does not show it.** Folder rules cannot rescue a note from a
   *state* filter: a base can exclude a state the workflow still names —
   `status != Done` beside a Done column — and a filter is opaque to the view, so
@@ -62,9 +68,10 @@ the base's filter, is a note the board writes and then cannot show.
 
 ## Acceptance criteria
 
-- Each column offers creation. The new note goes through the existing gated flow with
-  the column's state preset, so everything that governs creation today still governs
-  it: type folders, folder mode, the config-problems gate.
+- Each **configured** column offers creation, and a stray column offers none while still
+  taking a drop. The new note goes through the existing gated flow with the column's
+  state preset, so everything that governs creation today still governs it: type folders,
+  folder mode, the config-problems gate.
 - Folder rules cannot rescue a note from a *state* filter: a base can exclude a state
   the workflow still names — `status != Done` beside a Done column — and a filter is
   opaque to the view, so compatibility is detected by outcome, not predicted. The
