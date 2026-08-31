@@ -115,3 +115,48 @@ adding a key. The keyboard path passes no path and is unaffected.
 
 **Tests.** A view test that opens `Indent under "X"` against a model that no longer holds X
 and asserts the notice, beside the existing silent-refusal coverage.
+
+## Task 4 — the remaining append sites forgot the same predicate
+
+**Defect.** Task 1 applied `rankablePeers` at the two population sites the review named.
+Task 1's own review then found a third, and a grep found two more. Every one of them builds
+`peers` from a children list and appends at `insertIndex === peers.length`, so
+`orderForTarget` takes the LAST peer as the anchor. When that trailing row is an unranked
+context row — `outsideFilter` with no order, which always sorts last — `anchoredOrder` skips
+it and the write lands past the end of the whole global population, nowhere near the parent
+the user aimed at. Silent, and it spends the undo slot. This is Task 1's defect at four more
+sites:
+
+- `insidePosition` (`src/domain/dropTargets.ts:157`) — the drag's `inside` zone.
+- `indentTarget` (`src/view/interactions/structure.ts:270`) — the menu's `Indent under "X"`
+  and Alt+Right.
+- `newItemOrder` (`src/view/interactions/create.ts:260`) — `New <child>`.
+- the release scope creation (`src/view/release/scopeCreate.ts:257`).
+
+A context row CAN sit among a real parent's children: an ancestor is pulled in for one
+grandchild (`src/domain/readItems.ts`), so its other children are the filtered-in ones and it
+is a middle sibling. The existing fixture that covers that shape
+(`test/domain/dropTargets.test.ts`, `mixedGroup`) uses a RANKED context sibling and asserts
+only `.parent`, which is why nothing saw this.
+
+**Required behaviour.** The rule is the one the context-row section of `CLAUDE.md` already
+states: an unranked context row is never a ranking peer. Apply `rankablePeers` — the function
+Task 1 generalised — at each of the four sites. A RANKED context row stays a peer everywhere,
+unchanged.
+
+`anchoredOrder`'s existing "a context PARENT is a legal destination for `New <child>`, so the
+child goes to the end" branch is about an empty peer group and stays exactly as it is. This
+task is about a trailing context CHILD beside real ranked ones, which is a different fact.
+
+**Also check, and report rather than assume:** `outdentTarget`
+(`src/view/interactions/structure.ts`) builds an unfiltered list too, but takes its anchor as
+`peers.indexOf(parent) + 1`. If the parent is always in that list the anchor is right by
+identity and there is nothing to fix; if `indexOf` can miss, `insertIndex` is 0 and the anchor
+becomes `peers[0]`, which can be an unranked context row on a `before` placement. Establish
+which, and say so in your report. Do not change it without evidence.
+
+**Tests.** One per site, at the level that site belongs to: `test/domain/dropTargets.test.ts`
+for the drag, `test/view/` for the menu, the keyboard and the two creation paths. Assert the
+written NUMBER, not just the parent — the existing fixture's blind spot is exactly that it
+asserted `.parent` alone. Assert a ranked context sibling still counts as a peer at one site,
+so the fix cannot be over-applied.
