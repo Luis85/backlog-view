@@ -11,6 +11,7 @@ import { drawIcon } from '../render/icons';
 import { guidanceShell } from '../render/emptyStates';
 import { foldedPaths, scopeFlag, toggleFold } from '../scopeFolds';
 import { TreeDraw, wireScopeKeys } from '../scopeKeys';
+import { resourceLabelsOf } from '../../domain/readItems';
 import { MYWORK_FOLD } from '../../storage/foldKeys';
 import { uniqueElementId } from '../selection';
 import { showMyWorkRowMenu, showMyWorkRowMenuAt } from './rowMenu';
@@ -94,9 +95,18 @@ export function drawMyWorkTree(view: MyWorkView, parentEl: HTMLElement): TreeDra
 		);
 		return null;
 	}
+	// The COLLISION-AWARE label, the picker's own — `person.title` is the bare basename,
+	// so two `Ada.md` notes in two folders name two identically labelled trees and a screen
+	// reader cannot tell which person is on screen. `resourceLabels` exists for exactly
+	// this, read through `resourceLabelsOf` like every other caller, with the title as the
+	// fallback a roster this path already proved non-empty will not need.
 	const treeEl = parentEl.createDiv({
 		cls: 'pbl-tree pbl-mw-tree',
-		attr: { role: 'tree', 'aria-label': person.title, tabindex: '0' },
+		attr: {
+			role: 'tree',
+			'aria-label': resourceLabelsOf(view.model).get(person.file.path) ?? person.title,
+			tabindex: '0',
+		},
 	});
 	// Over the hide-done list rather than the visible one: what to do next does not change
 	// because somebody folded the row above it.

@@ -278,3 +278,43 @@ describe('a data update that empties the tree does not strand focus on the body'
 		expect(document.activeElement).not.toBe(document.body);
 	});
 });
+
+/**
+ * Two people, one basename. `namedTargets` is what tells them apart, and
+ * `BacklogModel.resourceLabels` is the index built from it — the picker reads that index,
+ * so a tree naming the bare basename disagrees with the control that chose it. A screen
+ * reader gets the whole of "which person is this" from the tree's `aria-label`, so the two
+ * have to be the same answer.
+ *
+ * Found by review (PR #234, round 5). Watched failing against `person.title`: both trees
+ * came back labelled `Ada`.
+ */
+describe('the tree names the person the way the picker does', () => {
+	const twoAdas = (): FakeVault => {
+		const vault = new FakeVault();
+		vault.addFile('People/Ada.md', { frontmatter: { type: 'Resource' } });
+		vault.addFile('Archive/Ada.md', { frontmatter: { type: 'Resource' } });
+		vault.addFile('Current.md', {
+			frontmatter: { type: 'PBI', order: 1, assignee: '[[People/Ada|Ada]]' },
+		});
+		vault.addFile('Old.md', { frontmatter: { type: 'PBI', order: 2, assignee: '[[Archive/Ada|Ada]]' } });
+		return vault;
+	};
+
+	it('labels each of two same-named resources distinguishably', () => {
+		const vault = twoAdas();
+		const { view, containerEl } = makeMyWorkView(vault);
+		const labelFor = (path: string): string => {
+			view.pick(path);
+			return containerEl.querySelector<HTMLElement>('.pbl-mw-tree')!.getAttribute('aria-label')!;
+		};
+
+		const current = labelFor('People/Ada.md');
+		const archived = labelFor('Archive/Ada.md');
+
+		// The rule is that they DIFFER, not what the disambiguation spells: `namedTargets`
+		// owns that, and asserting its exact output here would restate it in a second place.
+		expect(current).not.toBe(archived);
+		expect(view.model!.resourceLabels.get('Archive/Ada.md')).toBe(archived);
+	});
+});
