@@ -63,6 +63,16 @@ export function isUnrankedContext(anchor: BacklogItem | null): boolean {
  * see, moved nothing the screen shows, and spent the undo slot doing it. A RANKED context
  * row stays in every population this filters, because its order is a real placement
  * constraint the rows around it are still ranked against.
+ *
+ * **The identical shape recurs at every APPEND, not only a reorder** (Task 4's own
+ * correction, same day): `insidePosition` below, `indentTarget` and both branches of
+ * `newItemOrder` (`view/interactions/create.ts`), and the release scope's `createMember`
+ * (`view/release/scopeCreate.ts`) all build a `DropTarget` whose `insertIndex` is
+ * `peers.length` — so an unfiltered list's LAST row becomes the anchor, and a trailing
+ * unranked context row reads the same way: `anchoredOrder` skips it and recurses to
+ * "append past the end of the whole population" instead of after the destination's own
+ * last real child or root. Filtering the append peers through this function the same way
+ * a reorder's peers already are is the whole of what each of those sites does.
  */
 export function rankablePeers(rows: BacklogItem[]): BacklogItem[] {
 	return rows.filter((row) => !isUnrankedContext(row));
@@ -153,10 +163,8 @@ export function dropTargetFor(
 }
 
 /**
- * Append as the last child of the hovered item. `rankablePeers` — see its own comment —
- * because a real parent's children can end in an unranked context row exactly as a
- * sibling group can, and appending past one anchored the drop on the wrong end of the
- * whole population rather than after the parent's own last child.
+ * Append as the last child of the hovered item. `rankablePeers` (own comment): the
+ * hovered item's children can end in an unranked context row.
  */
 function insidePosition(item: BacklogItem, dragged: BacklogItem): DropTarget {
 	const peers = rankablePeers(item.children).filter((c) => c !== dragged);

@@ -240,10 +240,8 @@ async function createFromPrompt(host: BacklogViewHost, request: CreateRequest): 
 function newItemOrder(host: BacklogViewHost, parentItem: BacklogItem | null): RankResult {
 	const model = host.model;
 	if (!model) return { order: ORDER_SPACING };
-	// `rankablePeers` (`domain/dropTargets.ts`, own comment) on both branches below: a
-	// trailing unranked context row among the real roots or the parent's children is not
-	// a peer to append past, and reading it as one anchored a new note's rank on the
-	// wrong end of the whole population rather than after its own last sibling.
+	// `rankablePeers` (`domain/dropTargets.ts`, own comment) on both branches below: the
+	// real roots or the parent's children can end in an unranked context row.
 	// Parentless items rank among the real top level, not the focus rows.
 	if (!parentItem) {
 		const roots = rankablePeers(model.realRoots);
