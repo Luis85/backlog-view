@@ -1,9 +1,9 @@
-import { setIcon, setTooltip } from 'obsidian';
 import type { ReleaseView } from './releaseView';
 import { t } from '../../i18n/t';
 import { ReleaseRow } from '../../domain/releases';
 import { ScopeRow } from '../../domain/scopeRows';
 import { hideDoneOn, setAllReleaseFolds, setHideDone } from './scopeTree';
+import { scopeIconButton } from '../scopeToolbarButton';
 
 /**
  * The scope screen's own toolbar — above the scroller, so it never scrolls away.
@@ -22,11 +22,11 @@ import { hideDoneOn, setAllReleaseFolds, setHideDone } from './scopeTree';
  */
 export function drawScopeToolbar(view: ReleaseView, parentEl: HTMLElement, release: ReleaseRow, rows: ScopeRow[]): void {
 	const barEl = parentEl.createDiv({ cls: 'pbl-rel-toolbar' });
-	iconBtn(barEl, 'chevrons-down-up', t('release.scope.collapseAll'), 'pbl-rel-collapse', () => {
+	scopeIconButton(barEl, 'chevrons-down-up', t('release.scope.collapseAll'), 'pbl-rel-collapse', () => {
 		setAllReleaseFolds(view, release.path, rows, true);
 		view.render();
 	});
-	iconBtn(barEl, 'chevrons-up-down', t('release.scope.expandAll'), 'pbl-rel-expand', () => {
+	scopeIconButton(barEl, 'chevrons-up-down', t('release.scope.expandAll'), 'pbl-rel-expand', () => {
 		setAllReleaseFolds(view, release.path, rows, false);
 		view.render();
 	});
@@ -45,12 +45,3 @@ export function drawScopeToolbar(view: ReleaseView, parentEl: HTMLElement, relea
 	btn.addEventListener('click', () => setHideDone(view, !on));
 }
 
-function iconBtn(barEl: HTMLElement, icon: string, label: string, cls: string, run: () => void): void {
-	const btn = barEl.createEl('button', {
-		cls: `clickable-icon ${cls}`,
-		attr: { type: 'button', 'aria-label': label },
-	});
-	setIcon(btn, icon);
-	setTooltip(btn, label);
-	btn.addEventListener('click', run);
-}

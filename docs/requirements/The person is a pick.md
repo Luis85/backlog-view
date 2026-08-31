@@ -262,7 +262,14 @@ through `namedTargets`, `domain/readItems.ts`), and — once somebody is picked 
 collapse-all and expand-all (`setAllFolds`, `view/scopeFolds.ts`) and hide-done
 (`setScopeFlag`), withheld with `anyWorkflowConfigured` false. Reads `hidesDone` and
 `anyWorkflowConfigured` from `view/mywork/renderTree.ts`, the tree's own gate, so the two
-screens can never disagree about what hiding means.
+screens can never disagree about what hiding means. Its three buttons are drawn through
+`src/view/scopeToolbarButton.ts` — `scopeIconButton`, one `clickable-icon` button with an
+`aria-label`/tooltip pair from a single `label` — which this toolbar shares with
+`view/release/scopeToolbar.ts` (fix round 1 on this task): the two toolbars' buttons were a
+byte-for-byte duplicate, not two views converging on one pattern the way
+`renderTree.ts`/`scopeTree.ts` and `myWorkView.ts`/`releaseView.ts` do, and `scopeIconButton`
+lives directly under `view/` — `scopeFolds.ts`'s and `scopeKeys.ts`'s own reason — because
+neither `release/` nor `mywork/` may import the other's directory.
 
 `src/view/mywork/register.ts` —
 `registerMyWorkView`, this view's own registration, composed behind the plugin's one

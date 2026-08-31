@@ -1,4 +1,3 @@
-import { setIcon, setTooltip } from 'obsidian';
 import type { MyWorkView } from './myWorkView';
 import { t } from '../../i18n/t';
 import { namedTargets } from '../../domain/readItems';
@@ -6,6 +5,7 @@ import { assignedRows } from '../../domain/assignedWork';
 import { anyWorkflowConfigured, hidesDone } from './renderTree';
 import { setAllFolds, setScopeFlag } from '../scopeFolds';
 import { MYWORK_FOLD } from '../../storage/foldKeys';
+import { scopeIconButton } from '../scopeToolbarButton';
 
 /**
  * This view's own toolbar — drawn above every roster-bearing screen (`myWorkView.ts`'s
@@ -31,11 +31,11 @@ export function drawMyWorkToolbar(view: MyWorkView, parentEl: HTMLElement): void
 	barEl.createDiv({ cls: 'pbl-mw-spacer' });
 	const person = view.pickedPerson;
 	if (person === null) return;
-	iconBtn(barEl, 'chevrons-down-up', t('mywork.collapseAll'), 'pbl-mw-collapse', () => {
+	scopeIconButton(barEl, 'chevrons-down-up', t('mywork.collapseAll'), 'pbl-mw-collapse', () => {
 		setAllFolds(view, MYWORK_FOLD, person, assignedRows(view.model!, person), true);
 		view.render();
 	});
-	iconBtn(barEl, 'chevrons-up-down', t('mywork.expandAll'), 'pbl-mw-expand', () => {
+	scopeIconButton(barEl, 'chevrons-up-down', t('mywork.expandAll'), 'pbl-mw-expand', () => {
 		setAllFolds(view, MYWORK_FOLD, person, assignedRows(view.model!, person), false);
 		view.render();
 	});
@@ -71,18 +71,4 @@ function drawPersonPicker(view: MyWorkView, barEl: HTMLElement): void {
 	}
 	selectEl.value = view.pickedPerson ?? '';
 	selectEl.addEventListener('change', () => view.pick(selectEl.value === '' ? null : selectEl.value));
-}
-
-/** `view/release/scopeToolbar.ts`'s own private helper, over this view's own three
- *  buttons — not shared with it, the same reason `hidesDone`'s doc states for the rule
- *  it carries rather than the shape: the two screens' toolbars are unrelated modules
- *  drawing the same kind of control, not one screen reusing the other's. */
-function iconBtn(barEl: HTMLElement, icon: string, label: string, cls: string, run: () => void): void {
-	const btn = barEl.createEl('button', {
-		cls: `clickable-icon ${cls}`,
-		attr: { type: 'button', 'aria-label': label },
-	});
-	setIcon(btn, icon);
-	setTooltip(btn, label);
-	btn.addEventListener('click', run);
 }
