@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import { makeMyWorkView, mwRow, mwTwisty, myWorkVault, rowPaths } from '../../helpers/mywork';
+import { makeMyWorkView, mwRow, mwTwisty, myWorkVault, refreshMyWork, rowPaths } from '../../helpers/mywork';
 import { setScopeFlag } from '../../../src/view/scopeFolds';
 import { FakeVault } from '../../helpers/vault';
 
@@ -217,5 +217,64 @@ describe('hide done and the Next marker ask the EFFECTIVE key, not the requireme
 
 		expect(mwRow(view, 'Deliv.md', { optional: true })).not.toBeNull();
 		expect(view.viewEl.querySelector('.pbl-mw-next')).toBeNull();
+	});
+});
+
+/**
+ * Fix round 1, finding 1: the global `anyWorkflowConfigured` gate is right for hide done
+ * (a row whose doneness is unknowable is not KNOWN done, so leaving it visible is
+ * correct) and wrong for the Next marker, which is a POSITIVE claim about ONE row. A
+ * workflow being configured somewhere in the tree says nothing about whether THIS row's
+ * own effective key (`stateKeyFor`) is bound.
+ */
+describe('the Next marker asks the PER-ROW key, not whether any workflow anywhere is bound', () => {
+	it('skips a member whose own key is unbound, even though another workflow in the tree is configured', () => {
+		const vault = new FakeVault();
+		vault.addFile('People/Ada.md', { frontmatter: { type: 'Resource' } });
+		// Ordered BEFORE the test item — plan order would pick this one first if its own
+		// key were readable at all.
+		vault.addFile('PBI.md', { frontmatter: { type: 'PBI', order: 1, assignee: 'Ada' } });
+		// A catalog member, whose own effective key falls back to `testStateProperty`
+		// rather than to the (cleared) requirements one — `resolvedTestStateKey`'s own rule.
+		vault.addFile('TestItem.md', { frontmatter: { type: 'Test case', order: 2, assignee: 'Ada' } });
+		// `stateProperty` cleared — the PBI's own effective key (`stateKeyFor` reads the
+		// requirements key for a plain item) is unbound, so its doneness is unknowable.
+		// `testStateProperty` bound — the test item's own key IS configured, even though no
+		// note carries a value for it yet (a real, readable "not done", not an unknowable one).
+		const { view } = makeMyWorkView(vault, { stateProperty: '', testStateProperty: 'note.status' });
+		view.pick('People/Ada.md');
+
+		const marked = view.viewEl.querySelectorAll('.pbl-mw-next');
+		expect(marked).toHaveLength(1);
+		expect(marked[0].closest('.pbl-row')?.getAttribute('data-path')).toBe('TestItem.md');
+	});
+});
+
+/**
+ * Fix round 1, finding 2: the fifth exit `drawMyWorkTree` returns `null` for (no work / all
+ * done) is reachable from a DATA UPDATE, not only from a fresh pick — a Bases refresh that
+ * removes the picked person's last assignment redraws straight into it. Task 4's own
+ * capture -> empty() -> draw() -> restoreFocus() structure exists precisely so a new exit
+ * like this one cannot lose focus to `document.body`; nothing before this fix round drove
+ * a redraw INTO this exit while focus was inside the tree.
+ */
+describe('a data update that empties the tree does not strand focus on the body', () => {
+	it('keeps focus somewhere in the view, and does not throw, when the last assignment disappears', () => {
+		const vault = new FakeVault();
+		vault.addFile('People/Ada.md', { frontmatter: { type: 'Resource' } });
+		vault.addFile('PBI.md', { frontmatter: { type: 'PBI', order: 1, assignee: 'Ada' } });
+		const { view, containerEl } = makeMyWorkView(vault);
+		view.pick('People/Ada.md');
+		const treeEl = containerEl.querySelector<HTMLElement>('.pbl-mw-tree')!;
+		treeEl.focus();
+		expect(document.activeElement).toBe(treeEl);
+
+		// The note stays in the base but is no longer Ada's — same shape a real Bases
+		// refresh takes when an item is reassigned or unassigned.
+		vault.setFrontmatter('PBI.md', { type: 'PBI', order: 1 });
+		expect(() => refreshMyWork(view, vault)).not.toThrow();
+
+		expect(document.activeElement).not.toBeNull();
+		expect(document.activeElement).not.toBe(document.body);
 	});
 });

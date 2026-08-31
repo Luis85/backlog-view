@@ -104,9 +104,16 @@ is a context row here".
 Deliverable, test — has a configured state key, never `stateKey` alone: a vault with the
 requirements property cleared and only `deliverableStateProperty` bound is a supported
 configuration whose Deliverable rows read their done-ness correctly, and gating on
-`stateKey` alone would call it blind. The same gate withholds the Next marker for the
-identical reason — with no key bound anywhere, every item would read as not done, which
-would mark the very first row Next on a tree that cannot tell what is finished.
+`stateKey` alone would call it blind. That GLOBAL question is right for hiding, because a
+row whose doneness is unknowable is not KNOWN done and leaving it visible is correct.
+
+**The Next marker asks a narrower, PER-ROW question instead (fix round 1)** — a candidate
+is skipped when its OWN effective key (`stateKeyFor`, `domain/board.ts`) is empty, never
+when some OTHER workflow in the tree happens to be unbound. A global gate here read a
+requirements PBI through an empty key as "not done" — indistinguishable from a genuinely
+unfinished one — and could mark it Next ahead of a test item whose own key WAS configured.
+Filtering per candidate before asking `nextAssigned` also covers the "no key anywhere"
+case with no separate check: a tree with every key unbound filters away every row.
 
 `src/domain/assignedWork.ts` is one person's whole answer to "whose work is this, and
 what is next" — three rules, pure, no DOM and no writes:

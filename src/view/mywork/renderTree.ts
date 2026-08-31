@@ -1,7 +1,7 @@
 import { setIcon, setTooltip } from 'obsidian';
 import type { MyWorkView } from './myWorkView';
 import { t } from '../../i18n/t';
-import { ownWorkflowReading } from '../../domain/board';
+import { ownWorkflowReading, stateKeyFor } from '../../domain/board';
 import { assignedRows, nextAssigned, pickedResource } from '../../domain/assignedWork';
 import { childRows, rowsAfterHideDone, ScopeRow, siblingPlaces, visibleRows } from '../../domain/scopeRows';
 import { MyWorkSettings } from '../../domain/myWorkOptions';
@@ -43,9 +43,12 @@ export interface TreeDraw {
  * kind. Task 3b made the Deliverable and test keys bindable independently of the
  * requirements one, so a vault with `stateProperty` cleared and `deliverableStateProperty`
  * set is a supported configuration whose Deliverable rows read their done-ness perfectly
- * well — gating on `stateKey` alone would call that configuration blind. This is the
- * "genuinely unavailable" case named at both call sites below: nothing here can tell what
- * is finished only when every one of the three keys is unbound.
+ * well — gating on `stateKey` alone would call that configuration blind.
+ *
+ * `hidesDone`'s own question, and ONLY `hidesDone`'s (fix round 1, finding 1): a row whose
+ * doneness is unknowable is not KNOWN done, so a GLOBAL "is anything readable" gate is the
+ * right question for whether hiding may act at all. The Next marker asks a narrower,
+ * PER-ROW question instead — see `drawMyWorkTree`'s own filter, below.
  */
 function anyWorkflowConfigured(settings: MyWorkSettings): boolean {
 	return settings.stateKey !== '' || settings.deliverableStateKey !== '' || settings.testStateKey !== '';
@@ -100,11 +103,20 @@ export function drawMyWorkTree(view: MyWorkView, parentEl: HTMLElement): TreeDra
 		attr: { role: 'tree', 'aria-label': person.title, tabindex: '0' },
 	});
 	// Over the hide-done list rather than the visible one: what to do next does not change
-	// because somebody folded the row above it. Gated on `anyWorkflowConfigured` for the
-	// reason that function states: with no key bound anywhere, `ownWorkflowReading` reports
-	// every item as not done, so this would mark the first row "Next" on a tree that cannot
-	// tell what is finished.
-	const next = anyWorkflowConfigured(view.settings) ? nextAssigned(afterHide) : null;
+	// because somebody folded the row above it.
+	//
+	// Filtered PER CANDIDATE by `stateKeyFor`, never gated by `anyWorkflowConfigured`
+	// (fix round 1, finding 1): that global question is right for `hidesDone` above — a row
+	// whose doneness is unknowable is not KNOWN done, so leaving it visible is correct — and
+	// wrong here, because Next is a POSITIVE claim about ONE row. A requirements PBI ordered
+	// before a bound-workflow test item, with `stateProperty` cleared, would otherwise read
+	// through an empty key (`ownWorkflowReading` reporting it not-done — indistinguishable
+	// from genuinely unfinished) and get marked Next while the tree cannot tell. Filtering
+	// out a candidate whose own effective key is empty BEFORE asking `nextAssigned` lets the
+	// search fall through to the next member in plan order instead, and — since a tree with
+	// every key unbound filters every row — it also covers the "no key anywhere" case
+	// `anyWorkflowConfigured` used to gate, with no separate check needed for it here.
+	const next = nextAssigned(afterHide.filter((row) => stateKeyFor(view.planSettings, row.item) !== ''));
 	// Built WHILE drawing rather than queried back out of the DOM — `src/view/CLAUDE.md`'s
 	// `TREE_SCAN` bans that scan, and the keyboard looks a row up on every arrow key.
 	const rowEls = new Map<string, HTMLElement>();
@@ -197,7 +209,7 @@ function drawDisclosure(view: MyWorkView, rowEl: HTMLElement, row: ScopeRow, pla
 	const { hasKids, open } = place;
 	const twistyEl = rowEl.createEl('button', {
 		cls: 'pbl-twisty' + (hasKids ? '' : ' pbl-twisty-leaf'),
-		attr: { type: 'button', tabindex: '-1', 'aria-label': t(open ? 'release.scope.collapse' : 'release.scope.expand') },
+		attr: { type: 'button', tabindex: '-1', 'aria-label': t(open ? 'mywork.collapseRow' : 'mywork.expandRow') },
 	});
 	if (!hasKids) return;
 	rowEl.setAttribute('aria-expanded', String(open));

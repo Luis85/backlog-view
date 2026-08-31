@@ -74,20 +74,21 @@ export function myWorkVault(opts: MyWorkVaultOptions = {}): FakeVault {
  * reads as "no identity" on purpose.
  *
  * This file deliberately does NOT carry every accessor `test/helpers/release.ts` has —
- * `press`, `active`, `pickPerson`, `menuOn`, `choose`, `labels`, `treeEl`, a
- * `refreshMyWork` and a re-exported `flush` were all drafted for Tasks 7 through 11
- * before this task's own commit and every one of them was flagged dead by `npm run
- * analyze` (`unused-exports`): fallow's dead-code check counts a test file's import the
- * same as production code's, so a helper nothing yet imports is unreachable regardless of
- * which future commit means to. Add each one back in the task that first writes a test
- * needing it, the way `release.ts`'s own accessors arrived one at a time as the release
- * feature's tasks landed — a helper file grows with its callers rather than being
- * drafted whole against a plan that has not shipped yet. `mwRow`, `rowPaths` and
- * `mwTwisty` are Task 6's own first three, added below for
- * `test/view/mywork/tree.test.ts` — named apart from `release.ts`'s identical `row`/
- * `twisty` rather than sharing those names, which is what a fallow duplicate-export
- * finding asked for the moment a second file exported the same bare names
- * (`src/view/scopeFolds.ts`'s own header records the identical fix for the fold trio).
+ * `press`, `active`, `pickPerson`, `menuOn`, `choose`, `labels`, `treeEl` and a
+ * re-exported `flush` were all drafted for Tasks 7 through 11 before this task's own
+ * commit and every one of them was flagged dead by `npm run analyze` (`unused-exports`):
+ * fallow's dead-code check counts a test file's import the same as production code's, so
+ * a helper nothing yet imports is unreachable regardless of which future commit means to.
+ * Add each one back in the task that first writes a test needing it, the way `release.ts`'s
+ * own accessors arrived one at a time as the release feature's tasks landed — a helper
+ * file grows with its callers rather than being drafted whole against a plan that has not
+ * shipped yet. `mwRow`, `rowPaths`, `mwTwisty` and `refreshMyWork` are Task 6's own first
+ * four, added below for `test/view/mywork/tree.test.ts` — `mwRow`/`mwTwisty` named apart
+ * from `release.ts`'s identical `row`/`twisty` rather than sharing those names, which is
+ * what a fallow duplicate-export finding asked for the moment a second file exported the
+ * same bare names (`src/view/scopeFolds.ts`'s own header records the identical fix for
+ * the fold trio); `refreshMyWork` joined in fix round 1, for the focus-restore test that
+ * drives a real data update rather than a fresh pick.
  */
 export function makeMyWorkView(
 	vault: FakeVault,
@@ -103,6 +104,15 @@ export function makeMyWorkView(
 	anyView.data = { data: baseResults(vault) };
 	view.onDataUpdated();
 	return { view, config, containerEl };
+}
+
+/** Re-pulls the base's results from `vault` and re-runs `onDataUpdated` — the same
+ *  mutate-then-refresh shape `test/helpers/release.ts`'s `refreshRelease` uses, over
+ *  `baseResults` rather than a bare `vault.entries()` so a refresh still honours whatever
+ *  `outsideFilter` exclusion the vault registered. */
+export function refreshMyWork(view: MyWorkView, vault: FakeVault): void {
+	(view as unknown as Record<string, unknown>).data = { data: baseResults(vault) };
+	view.onDataUpdated();
 }
 
 /** A drawn row by path — never optional, because every caller of this one already

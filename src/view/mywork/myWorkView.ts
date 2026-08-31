@@ -47,7 +47,13 @@ export class MyWorkView extends BasesView {
 
 	constructor(controller: QueryController, containerEl: HTMLElement, lock: WriteLock) {
 		super(controller);
-		this.viewEl = containerEl.createDiv({ cls: 'pbl-view pbl-mw-view' });
+		// `tabindex: '-1'` makes the ROOT itself a programmatic focus target — never a real
+		// tab stop, only `restoreFocus`'s own last resort (fix round 1, finding 2): a redraw
+		// into the guidance-only "no work"/"all done" state (`drawMyWorkTree` returning
+		// `null`) can detach the focused tree with no toolbar button yet drawn to land on
+		// (Task 8 has not landed), and an element removed from the document resets focus to
+		// `document.body` unless something else claims it first.
+		this.viewEl = containerEl.createDiv({ cls: 'pbl-view pbl-mw-view', attr: { tabindex: '-1' } });
 		this.viewEl.setText(t('mywork.loading'));
 		this.settings = resolveMyWorkSettings({ get: () => undefined, getAsPropertyId: () => null } as never);
 		this.gate = new WriteGate<ItemWrite>(
@@ -200,16 +206,22 @@ export class MyWorkView extends BasesView {
 
 	/**
 	 * Restore focus onto whichever control in {@link FOCUS_HANDLE_CLASSES} held it before
-	 * this render's `empty()` detached it — the exact match first, and the redrawn
-	 * screen's first `button` when the exact control is gone (a toolbar control that a
-	 * config change removed, `ReleaseView.render()`'s own fallback and its reason: a
-	 * keyboard user should not pay for a redraw that removed the very control they acted
-	 * on).
+	 * this render's `empty()` detached it — the exact match first, the redrawn screen's
+	 * first `button` when the exact control is gone (a toolbar control that a config change
+	 * removed, `ReleaseView.render()`'s own fallback and its reason: a keyboard user should
+	 * not pay for a redraw that removed the very control they acted on), and — third, fix
+	 * round 1's own addition — the view root itself when the redraw drew no button at all,
+	 * which the guidance-only "no work"/"all done" state can, with no toolbar control yet
+	 * built (Task 8) to fall back to.
 	 */
 	private restoreFocus(handle: string | null): void {
 		if (handle === null) return;
 		const match = this.viewEl.querySelector<HTMLElement>(`.${handle}`);
-		(match ?? this.viewEl.querySelector<HTMLElement>('button'))?.focus({ preventScroll: true });
+		// Third resort: the view root itself (see its own `tabindex` comment above), for the
+		// redraw this task's own fifth exit made reachable — a data update that empties the
+		// tree while it holds focus, landing on a screen with no button on it yet.
+		const fallback = match ?? this.viewEl.querySelector<HTMLElement>('button') ?? this.viewEl;
+		fallback.focus({ preventScroll: true });
 	}
 
 	/** The one class in {@link FOCUS_HANDLE_CLASSES} the currently focused element carries,

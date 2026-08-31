@@ -1737,6 +1737,16 @@ export const en = {
 	 *  order (`domain/assignedWork.ts`'s `nextAssigned`), drawn by `renderTree.ts`. */
 	'mywork.next': 'Next',
 	'mywork.nextTip': 'The first unfinished item of theirs in plan order.',
+	/**
+	 * This tree's own disclosure — never `release.scope.collapse`/`release.scope.expand`
+	 * (fix round 1, finding 3): the two projections evolve independently, and a key shared
+	 * verbatim across them means a wording change to one silently retexts the other's
+	 * control with no signal to the editor. Named `collapseRow`/`expandRow` rather than
+	 * bare `collapse`/`expand` to leave `mywork.collapseAll`/`mywork.expandAll` free for
+	 * Task 8's own bulk toolbar controls.
+	 */
+	'mywork.collapseRow': 'Collapse',
+	'mywork.expandRow': 'Expand',
 
 	/**
 	 * The two groups the index is drawn in, headed where a row's own `shipped` flag changes
