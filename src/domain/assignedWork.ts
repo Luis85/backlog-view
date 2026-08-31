@@ -12,9 +12,14 @@ import { ScopeRow, scopeRows } from './scopeRows';
  * person's path is never a key in `byPath`, and a guard asking `byPath` about a valid
  * pick answers no every time. The roster is short (one entry per declared person), so a
  * scan is the right shape and no second index has to be kept in step.
+ *
+ * Takes a NULLABLE model, `resourceLabelsOf`'s own shape and for its reason: "no model
+ * yet" is one answer given once here rather than a null test at each call site, and the
+ * two callers that ask this question — the view's body and its toolbar — must ask it
+ * identically or a control outlives the screen it belongs to.
  */
-export function pickedResource(model: BacklogModel, personPath: string): ResourceNote | null {
-	return model.resources.find((person) => person.file.path === personPath) ?? null;
+export function pickedResource(model: BacklogModel | null, personPath: string): ResourceNote | null {
+	return model?.resources.find((person) => person.file.path === personPath) ?? null;
 }
 
 /**

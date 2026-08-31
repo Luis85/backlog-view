@@ -65,7 +65,7 @@ export function hidesDone(view: MyWorkView): boolean {
 }
 
 export function drawMyWorkTree(view: MyWorkView, parentEl: HTMLElement): TreeDraw | null {
-	const person = pickedResource(view.model!, view.pickedPerson!)!;
+	const person = pickedResource(view.model, view.pickedPerson!)!;
 	const all = assignedRows(view.model!, view.pickedPerson!);
 	const folded = foldedPaths(view, MYWORK_FOLD, view.pickedPerson!);
 	// Hide-done first, fold second: `withKids` has to answer "does this row still have a

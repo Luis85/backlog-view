@@ -1,7 +1,7 @@
 import type { MyWorkView } from './myWorkView';
 import { t } from '../../i18n/t';
 import { namedTargets } from '../../domain/readItems';
-import { assignedRows } from '../../domain/assignedWork';
+import { assignedRows, pickedResource } from '../../domain/assignedWork';
 import { anyWorkflowConfigured, hidesDone } from './renderTree';
 import { setAllFolds, setScopeFlag } from '../scopeFolds';
 import { MYWORK_FOLD } from '../../storage/foldKeys';
@@ -29,8 +29,15 @@ export function drawMyWorkToolbar(view: MyWorkView, parentEl: HTMLElement): void
 	const barEl = parentEl.createDiv({ cls: 'pbl-mw-toolbar' });
 	drawPersonPicker(view, barEl);
 	barEl.createDiv({ cls: 'pbl-mw-spacer' });
+	// **The SAME question the body asks** (`myWorkView.ts`'s `draw()`), not the weaker
+	// non-null one. A stored pick outlives the note it names — the `Resource` is deleted, or
+	// the base's filter stops returning it — and the path stays non-null while nothing
+	// resolves it. The body correctly draws the no-pick guidance there; a toolbar gated on
+	// non-null alone drew Collapse all, Expand all and Hide done beside it, each handler
+	// calling `assignedRows` for a person who is not on the roster. Two gates asking
+	// different questions about one state is the shape the checkmark rule already names.
 	const person = view.pickedPerson;
-	if (person === null) return;
+	if (person === null || !pickedResource(view.model, person)) return;
 	scopeIconButton(barEl, 'chevrons-down-up', t('mywork.collapseAll'), 'pbl-mw-collapse', () => {
 		setAllFolds(view, MYWORK_FOLD, person, assignedRows(view.model!, person), true);
 		view.render();

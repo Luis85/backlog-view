@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import { makeMyWorkView, mwPickPerson, myWorkVault } from '../../helpers/mywork';
+import { makeMyWorkView, mwPickPerson, myWorkVault, refreshMyWork } from '../../helpers/mywork';
 import { FakeVault } from '../../helpers/vault';
 import type { MyWorkView } from '../../../src/view/mywork/myWorkView';
 
@@ -158,5 +158,36 @@ describe('focus after a redraw', () => {
 		expect(redrawn).not.toBeNull();
 		expect(redrawn).not.toBe(btn);
 		expect(document.activeElement).toBe(redrawn);
+	});
+});
+
+/**
+ * A stored pick outlives the note it names. The body already asks whether the path still
+ * RESOLVES on the roster (`myWorkView.ts`'s `draw()` — `pickedResource`, never a bare
+ * non-null test), because a `Resource` note is kept off `byPath` entirely. The toolbar was
+ * asking the weaker question, so a deleted person left three live controls beside the
+ * no-pick guidance, each one calling `assignedRows` for somebody not on the roster.
+ *
+ * Found by review (PR #234). Watched failing against `person === null` alone.
+ */
+describe('a pick whose person is gone', () => {
+	it('withholds the tree controls, exactly as the body withholds the tree', () => {
+		const vault = myWorkVault();
+		const { view } = makeMyWorkView(vault);
+		view.pick('People/Ada.md');
+		expect(view.viewEl.querySelector('.pbl-mw-collapse')).not.toBeNull();
+
+		// The note stops being a `Resource`, so the roster stops carrying it — the same end
+		// state as deleting it or filtering it out, reached without touching the shared
+		// fixture. The stored pick does not follow it, which is the whole point of the case.
+		vault.setFrontmatter('People/Ada.md', { type: 'PBI', order: 9 });
+		refreshMyWork(view, vault);
+
+		expect(view.pickedPerson).toBe('People/Ada.md');
+		// The picker itself stays: it is the way back out.
+		expect(view.viewEl.querySelector('.pbl-mw-person')).not.toBeNull();
+		expect(view.viewEl.querySelector('.pbl-mw-collapse')).toBeNull();
+		expect(view.viewEl.querySelector('.pbl-mw-expand')).toBeNull();
+		expect(view.viewEl.querySelector('.pbl-mw-hidedone')).toBeNull();
 	});
 });
