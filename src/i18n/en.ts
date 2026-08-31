@@ -1713,6 +1713,26 @@ export const en = {
 	'release.empty.noReleases.hint':
 		'A release is a note typed Release, carrying a version and a target date. Create the first one here.',
 
+	/** The my-work view's own label, `release.viewName`'s case exactly. */
+	'mywork.viewName': 'My work',
+	/** Between construction and the first result set Bases delivers — the other views' own
+	 *  reason for saying so rather than showing an empty pane. */
+	'mywork.loading': 'Loading assigned work…',
+	/**
+	 * The two unconfigured states, `release.empty.noType`'s own split: one is a mapping to
+	 * bind, the other is a base that simply holds no roster yet.
+	 */
+	'mywork.empty.noAssignee.title': 'No assignee property is set',
+	'mywork.empty.noAssignee.hint': 'Pick the property your notes name a person in, in this view’s options.',
+	'mywork.empty.noRoster.title': 'This base returns no people',
+	'mywork.empty.noRoster.hint': 'A person is a note of type Resource. Widen the filter, or make one.',
+	'mywork.empty.noPick.title': 'Pick a person',
+	'mywork.empty.noPick.hint': 'Their work appears below in plan order, with the next thing to do marked.',
+	'mywork.empty.noWork.title': 'Nothing is assigned to this person',
+	'mywork.empty.noWork.hint': 'Set the assignee on an item, in the backlog or on its own note, and it appears here.',
+	'mywork.empty.allDone.title': 'Everything here is done',
+	'mywork.empty.allDone.hint': 'Turn off Hide done to see the finished work.',
+
 	/**
 	 * The two groups the index is drawn in, headed where a row's own `shipped` flag changes
 	 * (`release/renderIndex.ts`). In flight is everything without a released date; shipped

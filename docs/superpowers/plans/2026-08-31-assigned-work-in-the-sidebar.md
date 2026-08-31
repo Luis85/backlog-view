@@ -617,7 +617,7 @@ the person, and draw the states that come before a tree.
   - `class MyWorkView extends BasesView` with `viewEl`, `settings: MyWorkSettings`, `planSettings: BacklogSettings`, `model: BacklogModel | null`, `pickedPerson: string | null`, `activeRowFile: TFile | null`, `treeHadFocus: boolean`, `gate: WriteGate<ItemWrite>`, `opener: OpenController`, `openContext()`, `pick(path: string | null)`, `render()`, `refresh()`
   - `function registerMyWorkView(plugin: Plugin, lock: WriteLock): void`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 `test/view/mywork/shell.test.ts`:
 
@@ -662,12 +662,12 @@ describe('the my-work view', () => {
 });
 ```
 
-- [ ] **Step 2: Run it and watch it fail**
+- [x] **Step 2: Run it and watch it fail**
 
 Run: `npx vitest run test/view/mywork/shell.test.ts`
 Expected: FAIL — `test/helpers/mywork` not found.
 
-- [ ] **Step 3: Add `prefs.person` to the store**
+- [x] **Step 3: Add `prefs.person` to the store**
 
 In `src/storage/viewStateStore.ts` — the file's own comment says a third path-valued pref
 is one entry and nothing else, so this is that entry:
@@ -699,7 +699,7 @@ resolving it, which this layer cannot do:
 	person: anyName,
 ```
 
-- [ ] **Step 4: Extend the store test and run it**
+- [x] **Step 4: Extend the store test and run it**
 
 In `test/storage/viewStateStore.test.ts`, beside the existing rename cases:
 
@@ -714,7 +714,7 @@ In `test/storage/viewStateStore.test.ts`, beside the existing rename cases:
 Run: `npx vitest run test/storage/viewStateStore.test.ts`
 Expected: PASS.
 
-- [ ] **Step 5: Write the view**
+- [x] **Step 5: Write the view**
 
 `src/view/mywork/myWorkView.ts`, modelled on `src/view/release/releaseView.ts`.
 
@@ -872,7 +872,7 @@ Until Tasks 6 and 8 land, declare `drawMyWorkToolbar` and `drawMyWorkTree` as on
 local stubs in this file and move them out in their own tasks. A stub that draws nothing
 keeps this task's tests honest and the build green.
 
-- [ ] **Step 6: Register it**
+- [x] **Step 6: Register it**
 
 `src/view/mywork/register.ts`:
 
@@ -903,7 +903,7 @@ export function registerMyWorkView(plugin: Plugin, lock: WriteLock): void {
 
 and one line in `src/main.ts` beside the other three: `registerMyWorkView(this, lock);`.
 
-- [ ] **Step 7: Add the catalog keys**
+- [x] **Step 7: Add the catalog keys**
 
 In `src/i18n/en.ts`, beside the `release.*` block:
 
@@ -922,7 +922,7 @@ In `src/i18n/en.ts`, beside the `release.*` block:
 	'mywork.empty.allDone.hint': 'Turn off Hide done to see the finished work.',
 ```
 
-- [ ] **Step 8: Write the test helper**
+- [x] **Step 8: Write the test helper**
 
 `test/helpers/mywork.ts`, in `test/helpers/release.ts`'s shape:
 `myWorkVault(opts)` builds an Epic, a Feature, two PBIs assigned to two different people, a
@@ -939,12 +939,12 @@ drives the real gesture), `menuOn(view, path)` (dispatches `contextmenu`),
 `choose(menu, label)` and `labels(menu)` over `Menu.lastShown`, and a re-export of `flush`
 from `test/helpers/view.ts`.
 
-- [ ] **Step 9: Run the tests**
+- [x] **Step 9: Run the tests**
 
 Run: `npx vitest run test/view/mywork test/storage/viewStateStore.test.ts`
 Expected: PASS.
 
-- [ ] **Step 10: Finish the PBI and commit**
+- [x] **Step 10: Finish the PBI and commit**
 
 `docs/requirements/The person is a pick.md`'s `## Where it lives` now also names
 `src/view/mywork/myWorkView.ts`, `src/view/mywork/register.ts` and

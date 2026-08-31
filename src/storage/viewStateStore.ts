@@ -228,7 +228,7 @@ export interface ViewFolds {
  * names, spelled once so {@link renamePathPrefs} and the interface cannot disagree about
  * which they are. A third path-valued pref is one entry here and nothing else.
  */
-const PATH_PREFS = ['scope', 'release'] as const;
+const PATH_PREFS = ['scope', 'release', 'person'] as const;
 
 export interface ViewPrefs {
 	mode?: string;
@@ -330,6 +330,17 @@ export interface ViewPrefs {
 	 * two keys from drifting in shape while staying two preferences.
 	 */
 	myWorkHideDone?: boolean;
+	/**
+	 * The person whose work is on screen, as a `Resource` note path — absent when nobody is
+	 * picked. A working position, per device and per saved view, never a `.base` setting
+	 * (ADR 0011): one saved view serves everybody, so the pick cannot be a value the file
+	 * carries.
+	 *
+	 * `PATH_PREFS`' third entry, and that is all a path-valued pref costs:
+	 * `renamePathPrefs` then carries it, so renaming a resource note keeps the panel on the
+	 * same person instead of emptying it without a word.
+	 */
+	person?: string;
 	/**
 	 * Which board the `Boards` position opens when no iteration scope is set — today the
 	 * one legal value is {@link DELIVERABLES_MODE}, and absence means the product board.
@@ -474,6 +485,10 @@ export const PREF_READERS: { [K in keyof ViewPrefs]-?: Reader<NonNullable<ViewPr
 	release: anyName,
 	releaseHideDone: onlyTrue,
 	myWorkHideDone: onlyTrue,
+	// `anyName`, `release`'s own reason: a path is checked by RESOLVING it against the
+	// vault, which this layer cannot do. A remembered person who has moved or been deleted
+	// is the view's own question to answer on render, not a failure here.
+	person: anyName,
 	board: oneOf([DELIVERABLES_MODE]),
 	estimationSort: oneOf(ESTIMATION_SORT_VALUES),
 };
