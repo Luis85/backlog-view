@@ -311,3 +311,78 @@ describe('reordering a group that holds an outside-filter row', () => {
 		expect(dropTargetFor(model, epic, 'inside', mover, plan)?.parent).toBe(epic);
 	});
 });
+
+describe('the tree branch of siblingPosition drops an unranked context row from its population', () => {
+	/**
+	 * Two context siblings in the SAME group, one ranked (an `order` frontmatter value)
+	 * and one not — so a single fixture answers both halves of the rule: the unranked one
+	 * is never a peer to rank among, and the ranked one still is, because its order is a
+	 * real placement constraint. `rankablePeers` is asked of `model.realRoots` here, the
+	 * ROOT population — `nestedFixture` below asks the same question of `parent.children`.
+	 */
+	function rootFixture() {
+		const vault = new FakeVault();
+		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 1000 } });
+		vault.addFile('Epic B.md', { frontmatter: { type: 'Epic', order: 2000 } });
+		vault.addFile('Epic Ranked.md', { frontmatter: { type: 'Epic', order: 1500 } });
+		vault.addFile('Feature R1.md', { frontmatter: { type: 'Feature', order: 1600 }, parentLink: 'Epic Ranked' });
+		vault.addFile('Epic Unranked.md', { frontmatter: { type: 'Epic' } });
+		vault.addFile('Feature U1.md', { frontmatter: { type: 'Feature', order: 3000 }, parentLink: 'Epic Unranked' });
+		const filtered = vault
+			.entries()
+			.filter((e) => !['Epic Ranked.md', 'Epic Unranked.md'].includes(e.file.path));
+		const model = buildModel(vault.app, filtered, settings);
+		const get = (title: string) => model.items.find((i) => i.title === title) as BacklogItem;
+		return { model, get };
+	}
+
+	/** Same shape, one level down: an Epic parent holding the four Feature-level siblings. */
+	function nestedFixture() {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('Feature A.md', { frontmatter: { type: 'Feature', order: 1000 }, parentLink: 'Epic' });
+		vault.addFile('Feature B.md', { frontmatter: { type: 'Feature', order: 2000 }, parentLink: 'Epic' });
+		vault.addFile('Feature Ranked.md', { frontmatter: { type: 'Feature', order: 1500 }, parentLink: 'Epic' });
+		vault.addFile('Task R1.md', { frontmatter: { type: 'Task', order: 1600 }, parentLink: 'Feature Ranked' });
+		vault.addFile('Feature Unranked.md', { frontmatter: { type: 'Feature' }, parentLink: 'Epic' });
+		vault.addFile('Task U1.md', { frontmatter: { type: 'Task', order: 3000 }, parentLink: 'Feature Unranked' });
+		const filtered = vault
+			.entries()
+			.filter((e) => !['Feature Ranked.md', 'Feature Unranked.md'].includes(e.file.path));
+		const model = buildModel(vault.app, filtered, settings);
+		const get = (title: string) => model.items.find((i) => i.title === title) as BacklogItem;
+		return { model, get };
+	}
+
+	it('drops the unranked context row and keeps the ranked one, at model.realRoots', () => {
+		const { model, get } = rootFixture();
+		const ranked = get('Epic Ranked');
+		const unranked = get('Epic Unranked');
+		expect(ranked.outsideFilter).toBe(true);
+		expect(ranked.order).toBe(1500);
+		expect(unranked.outsideFilter).toBe(true);
+		expect(unranked.order).toBeNull();
+
+		// A plain reorder among the two writable roots — the population it ranks among is
+		// the assertion, not the write itself.
+		const target = dropTargetFor(model, get('Epic A'), 'after', get('Epic B'), plan);
+		expect(target).not.toBeNull();
+		expect(target?.peers).toContain(ranked);
+		expect(target?.peers).not.toContain(unranked);
+	});
+
+	it('drops the unranked context row and keeps the ranked one, at parent.children', () => {
+		const { model, get } = nestedFixture();
+		const ranked = get('Feature Ranked');
+		const unranked = get('Feature Unranked');
+		expect(ranked.outsideFilter).toBe(true);
+		expect(ranked.order).toBe(1500);
+		expect(unranked.outsideFilter).toBe(true);
+		expect(unranked.order).toBeNull();
+
+		const target = dropTargetFor(model, get('Feature A'), 'after', get('Feature B'), plan);
+		expect(target).not.toBeNull();
+		expect(target?.peers).toContain(ranked);
+		expect(target?.peers).not.toContain(unranked);
+	});
+});

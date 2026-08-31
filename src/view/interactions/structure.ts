@@ -3,7 +3,7 @@ import { list, t } from '../../i18n/t';
 import { keepsProjection } from '../../domain/itemTypes';
 import { BacklogViewHost } from '../host';
 import { BacklogItem } from '../../domain/model';
-import { DropTarget, focusPeers, isInvalidParent } from '../../domain/dropTargets';
+import { DropTarget, isInvalidParent, rankablePeers } from '../../domain/dropTargets';
 import { configProblems } from '../../domain/settingsConsistency';
 import { computeInitWrites, dropPlacement } from '../../domain/writePlan';
 
@@ -35,7 +35,7 @@ function siblingContext(
 	// false, and a promoted catalog row's real siblings are not on screen. Every other
 	// promoted root keeps the refusal below.
 	if (model.focused && model.roots.includes(item)) {
-		// A context row with no order is never a ranking peer — `focusPeers` applies the
+		// A context row with no order is never a ranking peer — `rankablePeers` applies the
 		// same predicate `anchoredOrder` skips it with when it is a candidate ANCHOR, to a
 		// candidate PEER instead. It constrains nothing (there is no number to rank
 		// against), so keeping it in this list only ever produced a command that wrote a
@@ -44,7 +44,7 @@ function siblingContext(
 		// is a real placement constraint, and dropping it here would jump a swap past a row
 		// the population still has to be ranked against. The drag reads the SAME function,
 		// which is what ended the disagreement between the two.
-		const fullList = focusPeers(model);
+		const fullList = rankablePeers(model.roots);
 		return { fullList, idx: fullList.indexOf(item), rankOnly: true };
 	}
 	if (item.focusRoot) return null;
@@ -52,7 +52,12 @@ function siblingContext(
 	// keeps: an `order` is scoped to the notes sharing a parent, and a `Test suite` and an
 	// `Epic` share the null one, so a move ranked against one projection's slice of it can
 	// land on a number a hidden root already holds. A promoted root returned above.
-	const fullList = item.parent ? item.parent.children : model.realRoots;
+	// `rankablePeers` again — the correction of 2026-08-31 — because this branch used to
+	// read the group unfiltered: an unranked context row sorts last in it, so it became
+	// the anchor for `Move to bottom`/`Move down` past the last writable sibling, wrote a
+	// real order nobody could see land, and spent the undo slot without moving anything
+	// the draw shows. The drag reads the same function over the same population.
+	const fullList = rankablePeers(item.parent ? item.parent.children : model.realRoots);
 	const idx = fullList.indexOf(item);
 	return idx === -1 ? null : { fullList, idx, rankOnly: false };
 }

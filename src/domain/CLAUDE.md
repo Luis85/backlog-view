@@ -367,7 +367,7 @@ a node test that did would be measuring the runner.
   `order` alone, restating the parent. So `siblingPosition` asks its focus branch BEFORE
   that refusal and `siblingContext` keeps a ranked context row among the focus peers; both
   drop an UNRANKED one, and both do it by taking their peers from the ONE list —
-  `focusPeers` in `dropTargets.ts`, because all three callers reach it there. They
+  `rankablePeers` in `dropTargets.ts`, because all three callers reach it there. They
   disagreed twice, both times the read-side/write-side split this feature keeps producing.
   Once about the ANCHOR: the keyboard ranked across a row the drag drew no indicator for
   (`test/view/focusRanking.test.ts` drives all three inputs at that row). Once about the

@@ -51,6 +51,12 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   rather than appending it after its siblings, and reports a rank it could not place as
   skipped instead of counting it as nothing to do.
 
+### Fixed
+
+- `Move to bottom`/`Move down` on a tree row past an ancestor pulled in from outside the
+  filter no longer anchors on it: that row carries no rank to give, so the write landed
+  past the whole backlog instead of beside the sibling it looked like it moved next to.
+
 ## [0.10.0] - 2026-08-30
 
 ### Added

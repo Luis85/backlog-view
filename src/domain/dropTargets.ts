@@ -49,15 +49,23 @@ export function isUnrankedContext(anchor: BacklogItem | null): boolean {
 }
 
 /**
- * The focus rows a rank may be taken among: `model.roots` without the rows that carry no
- * position. **One list, reached by all three inputs** — `siblingPosition`'s focus branch
- * below and `siblingContext` (`view/interactions/structure.ts`) — because the two spelled
- * it separately and disagreed about the same gesture: the keyboard filtered, the drag did
- * not, and a drop aimed just below an unranked context row anchored on it and appended to
- * the END of the population instead.
+ * A ranking population with the rows that carry no position dropped — see
+ * `isUnrankedContext`. **One function, over whichever population its caller hands it**,
+ * because every ranking branch asks the same question of a different list: the focus
+ * branch here and in `siblingContext` (`view/interactions/structure.ts`) over
+ * `model.roots`, and the TREE branch of both over `parent.children` / `model.realRoots`.
+ * Both branches of both functions read it, which is what stops the drag and the keyboard
+ * disagreeing about the same row again — they have twice, on the focus branch and then
+ * on the tree branch (the correction of 2026-08-31): a null-order context row sorts
+ * last, so left unfiltered it became the anchor for any append and `anchoredOrder` (which
+ * skips it as an anchor, having no position to give) read that as "append past the END of
+ * the whole population" — `Move to bottom` on a tree row wrote past a sibling nobody could
+ * see, moved nothing the screen shows, and spent the undo slot doing it. A RANKED context
+ * row stays in every population this filters, because its order is a real placement
+ * constraint the rows around it are still ranked against.
  */
-export function focusPeers(model: BacklogModel): BacklogItem[] {
-	return model.roots.filter((row) => !isUnrankedContext(row));
+export function rankablePeers(rows: BacklogItem[]): BacklogItem[] {
+	return rows.filter((row) => !isUnrankedContext(row));
 }
 
 /**
@@ -120,18 +128,18 @@ export function dropTargetFor(
 	// interleaving the two readings coincide exactly, which is why this is a correction
 	// rather than a behaviour change for every existing base.
 	// A FOCUS rank asks its no-op question of the focus list, and asks it exactly.
-	// `peers` is `focusPeers` minus the dragged row, so splicing the row back in at its
-	// own original index in THAT list reproduces it — which means the drop is a no-op
+	// `peers` is `rankablePeers(model.roots)` minus the dragged row, so splicing the row
+	// back in at its own original index in THAT list reproduces it — which means the drop is a no-op
 	// precisely when the insert index equals that index. Read off `model.roots` instead
 	// and the comparison shifts by the number of unranked context rows above the row,
 	// so a drop that moves nothing reads as a move and spends the undo slot.
 	if (model.focused && model.roots.includes(dragged) && position.parent === dragged.parent) {
-		// `focusPeers`, matching the list `peers` was built from — the two disagree by the
-		// number of unranked context rows ABOVE the dragged row, and reading the unfiltered
-		// one there misses the no-op and writes to a row that did not move. `dragged` is
-		// assumed to be in that list: an `outsideFilter` row would score `-1` and never read
-		// as a no-op, which the render prevents by never handing one a drag.
-		if (position.insertIndex === focusPeers(model).indexOf(dragged)) return null;
+		// `rankablePeers(model.roots)`, matching the list `peers` was built from — the two
+		// disagree by the number of unranked context rows ABOVE the dragged row, and reading
+		// the unfiltered one there misses the no-op and writes to a row that did not move.
+		// `dragged` is assumed to be in that list: an `outsideFilter` row would score `-1`
+		// and never read as a no-op, which the render prevents by never handing one a drag.
+		if (position.insertIndex === rankablePeers(model.roots).indexOf(dragged)) return null;
 	} else if (position.parent === dragged.parent && !clearsStaleLink(position.parent, dragged)) {
 		// The TREE keeps today's rule unchanged: the real group filtered to this
 		// projection, because a sibling group can interleave the projections and
@@ -189,10 +197,10 @@ function siblingPosition(
 	// skipping one as an anchor, which is half true and the false half bites. That skip
 	// means *"this anchor carries no position, so append to the end"* — right for
 	// `New <child>` under a context parent, wrong for a drop the user aimed between two
-	// rows, which landed at the bottom of the backlog instead. `focusPeers` is the one list
-	// `siblingContext` already used, so all three inputs now read the same peers.
+	// rows, which landed at the bottom of the backlog instead. `rankablePeers` is the one
+	// function `siblingContext` already used, so all three inputs now read the same peers.
 	if (model.focused && model.roots.includes(item) && model.roots.includes(dragged) && !isUnrankedContext(item)) {
-		const peers = focusPeers(model).filter((r) => r !== dragged);
+		const peers = rankablePeers(model.roots).filter((r) => r !== dragged);
 		const idx = peers.indexOf(item);
 		if (idx === -1) return null;
 		return { parent: dragged.parent, peers, insertIndex: zone === 'before' ? idx : idx + 1, parentUnchanged: true };
@@ -213,7 +221,11 @@ function siblingPosition(
 	// move is worth making at all is a separate question, over the drawn order, and it is
 	// the caller's: `dropTargetFor`'s own no-op check asks it against `member` rather than
 	// assuming the two orderings agree.
-	const fullList = parent ? parent.children : model.realRoots;
+	// `rankablePeers` here too, not only on the focus branch above: an unranked context row
+	// sorts last in this group exactly as it does among the focus rows, so left in it became
+	// the anchor for a drop or a keyboard move past the last writable sibling — see the
+	// function's own comment for the write that produced.
+	const fullList = rankablePeers(parent ? parent.children : model.realRoots);
 	const peers = fullList.filter((c) => c !== dragged);
 	const idx = peers.indexOf(item);
 	if (idx === -1) return null;
