@@ -170,6 +170,17 @@ export class MyWorkView extends BasesView {
 			assigneeKey: this.settings.assigneeKey,
 			stateKey: this.settings.stateKey,
 			doneValues: this.settings.doneValues,
+			// Task 3b: the tree's own membership predicate (`assignedWork.ts`) admits
+			// Deliverables and test-catalog rows, whose done-ness `ownWorkflowReading`
+			// (`board.ts`) reads through THESE two fields rather than `stateKey` above — so
+			// they join the override for the identical reason the six above already are:
+			// this view's own resolver is where a cleared/unbound distinction on these
+			// options is decided, and the model must see that answer rather than whatever a
+			// second resolver over the same config happens to compute.
+			deliverableStateKey: this.settings.deliverableStateKey,
+			deliverableDoneValues: this.settings.deliverableDoneValues,
+			testStateKey: this.settings.testStateKey,
+			testDoneValues: this.settings.testDoneValues,
 		};
 		this.model = buildModel(this.app, this.data.data, this.planSettings);
 		if (this.model.resources.length === 0) {

@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { getMyWorkViewOptions, resolveMyWorkSettings } from '../../src/domain/myWorkOptions';
-import { FakeViewConfig } from '../helpers/vault';
+import { buildModel } from '../../src/domain/model';
+import { resolveSettings } from '../../src/domain/settingsResolve';
+import { BacklogSettings } from '../../src/domain/settings';
+import { FakeVault, FakeViewConfig } from '../helpers/vault';
 
 describe('my work options', () => {
 	it('offers the same suggestions the backlog view does, without sharing the setting', () => {
@@ -88,5 +91,71 @@ describe('my work options', () => {
 		expect(settings.startedDateKey).toBe('');
 		expect(settings.finishedDateKey).toBe('');
 		expect(settings.startedStates).toEqual([]);
+	});
+
+	// Task 3b: the tree's membership predicate admits Deliverables and test-catalog items
+	// (`assignedWork.ts`), whose done-ness `ownWorkflowReading` (`board.ts`) reads through
+	// the DELIVERABLE and TEST workflows, never the requirements one — so this view has to
+	// offer a way to bind those two properties too, or a vault that separates them is read
+	// at the wrong key (PR #234's P1).
+	it('offers the two secondary-workflow properties, once each', () => {
+		const keys = getMyWorkViewOptions(new FakeViewConfig({}) as never)
+			.flatMap((group) => group.items ?? [])
+			.map((item) => item.key);
+		for (const key of ['deliverableStateProperty', 'deliverableDoneValues', 'testStateProperty', 'testDoneValues']) {
+			expect(keys.filter((k) => k === key)).toHaveLength(1);
+		}
+	});
+
+	it('resolves each secondary workflow from an explicit binding', () => {
+		const settings = resolveMyWorkSettings(
+			new FakeViewConfig({
+				deliverableStateProperty: 'note.delivState',
+				deliverableDoneValues: 'Shipped',
+				testStateProperty: 'note.testState',
+				testDoneValues: 'Passed',
+			}) as never,
+		);
+		expect(settings.deliverableStateKey).toBe('delivState');
+		expect(settings.deliverableDoneValues).toEqual(['Shipped']);
+		expect(settings.testStateKey).toBe('testState');
+		expect(settings.testDoneValues).toEqual(['Passed']);
+	});
+
+	it('reads a CLEARED secondary-workflow property as unbound, never back to the fallback', () => {
+		const settings = resolveMyWorkSettings(new FakeViewConfig({ deliverableStateProperty: '' }) as never);
+		expect(settings.deliverableStateKey).toBe('');
+	});
+
+	// The point of the task: a Deliverable carrying its OWN state property, distinct from
+	// the requirements one, must read as done through THIS view's resolved settings — the
+	// same layering `MyWorkView.draw()` builds `planSettings` with. Fails without the new
+	// options, because `deliverableStateKey`/`deliverableDoneValues` do not exist to spread
+	// in and the model falls back to reading the plain `stateKey`, which this note never
+	// sets.
+	it('reads a Deliverable as done through its OWN configured state property', () => {
+		const mySettings = resolveMyWorkSettings(
+			new FakeViewConfig({
+				deliverableStateProperty: 'note.delivState',
+				deliverableDoneValues: 'Shipped',
+			}) as never,
+		);
+		const planSettings: BacklogSettings = {
+			...resolveSettings(new FakeViewConfig({}) as never),
+			typeKey: mySettings.typeKey,
+			parentKey: mySettings.parentKey,
+			orderKey: mySettings.orderKey,
+			assigneeKey: mySettings.assigneeKey,
+			stateKey: mySettings.stateKey,
+			doneValues: mySettings.doneValues,
+			deliverableStateKey: mySettings.deliverableStateKey,
+			deliverableDoneValues: mySettings.deliverableDoneValues,
+			testStateKey: mySettings.testStateKey,
+			testDoneValues: mySettings.testDoneValues,
+		};
+		const vault = new FakeVault();
+		vault.addFile('D.md', { frontmatter: { type: 'Deliverable', order: 1, assignee: 'Ada', delivState: 'Shipped' } });
+		const model = buildModel(vault.app, vault.entries(), planSettings);
+		expect(model.byPath.get('D.md')?.deliverableDone).toBe(true);
 	});
 });

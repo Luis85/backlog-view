@@ -1,7 +1,7 @@
 import { BasesAllOptions, BasesViewConfig } from 'obsidian';
-import { configReaders } from './settingsResolve';
+import { configReaders, DELIVERABLE_NAMES, resolveSecondaryWorkflow, TEST_NAMES } from './settingsResolve';
 import { notePropsOnly, optionalProperty } from './optionalProperties';
-import { DEFAULT_DONE_VALUES } from './settings';
+import { DEFAULT_DONE_VALUES, defaultSettings } from './settings';
 import { defaultItemHandling, openTargetOptions, OpenTarget, resolveItemHandling } from './itemHandling';
 import { t } from '../i18n/t';
 
@@ -29,6 +29,21 @@ export interface MyWorkSettings {
 	assigneeKey: string;
 	stateKey: string;
 	doneValues: string[];
+	/**
+	 * The Deliverable and test workflows' own state keys and done-value lists —
+	 * `ownWorkflowReading` (`board.ts`) reads a Deliverable or a catalog member's
+	 * done-ness through these, never through `stateKey`, and the membership predicate
+	 * (`assignedWork.ts`) admits both kinds of row into this view's tree. Resolved through
+	 * the identical `resolveSecondaryWorkflow` the backlog view's own `resolveSettings`
+	 * calls, over these SAME option keys, so an unbound one falls back to `stateKey` the
+	 * one way that fallback is stated anywhere (`resolvedDeliverableStateKey` /
+	 * `resolvedTestStateKey` in `optionalProperties.ts`, read by the model that consumes
+	 * these fields).
+	 */
+	deliverableStateKey: string;
+	deliverableDoneValues: string[];
+	testStateKey: string;
+	testDoneValues: string[];
 	/** The two stamp keys — see the class doc above for why this view binds them at all. */
 	startedDateKey: string;
 	finishedDateKey: string;
@@ -107,6 +122,40 @@ function workGroup(): BasesAllOptions {
 				default: DEFAULT_DONE_VALUES.join(', '),
 				placeholder: DEFAULT_DONE_VALUES.join(', '),
 			},
+			// The two secondary workflows the tree's own membership predicate admits rows
+			// from (`assignedWork.ts`): a Deliverable and a test-catalog member read their
+			// done-ness through THESE, never through `stateProperty` above. Suggestion and
+			// option id both come from `optionalProperty`/`DELIVERABLE_NAMES`/`TEST_NAMES`
+			// rather than a re-typed literal, the same rule `stateProperty`'s own comment
+			// states below.
+			{
+				type: 'property',
+				key: 'deliverableStateProperty',
+				displayName: t('option.deliverableStateProperty'),
+				placeholder: optionalProperty('deliverableState').suggested,
+				filter: notePropsOnly,
+			},
+			{
+				type: 'text',
+				key: 'deliverableDoneValues',
+				displayName: t('option.deliverableDoneValues'),
+				default: DEFAULT_DONE_VALUES.join(', '),
+				placeholder: DEFAULT_DONE_VALUES.join(', '),
+			},
+			{
+				type: 'property',
+				key: 'testStateProperty',
+				displayName: t('option.testStateProperty'),
+				placeholder: optionalProperty('testState').suggested,
+				filter: notePropsOnly,
+			},
+			{
+				type: 'text',
+				key: 'testDoneValues',
+				displayName: t('option.testDoneValues'),
+				default: DEFAULT_DONE_VALUES.join(', '),
+				placeholder: DEFAULT_DONE_VALUES.join(', '),
+			},
 			{
 				type: 'text',
 				key: 'startedStates',
@@ -142,6 +191,20 @@ function workGroup(): BasesAllOptions {
 export function resolveMyWorkSettings(config: BasesViewConfig): MyWorkSettings {
 	const { propKey, clearablePropKey, list, dedupe } = configReaders(config);
 	const doneValues = list('doneValues');
+	const effectiveDoneValues = doneValues.length > 0 ? doneValues : DEFAULT_DONE_VALUES;
+	// The identical function `resolveSettings` calls for the backlog view, over this
+	// view's OWN `deliverableStateProperty` / `testStateProperty` options — see the
+	// `MyWorkSettings` field doc above for why sharing the function is what keeps the two
+	// views' fallback rule from drifting apart. `fallback: defaultSettings()` for the same
+	// reason `resolveSettings` passes it: the "nothing configured at all" answer
+	// (`''` / the shipped done values) is a fact about `BacklogSettings`, not about either
+	// view. `states: []`, because this bag offers no state-vocabulary option for either
+	// workflow — a `Set state` menu is a later task's, not this one's — so the fallback
+	// vocabulary `resolveSecondaryWorkflow` would copy from is always empty here and its
+	// `states` return is unused.
+	const secondary = { propKey, list, dedupe, fallback: defaultSettings(), states: [], effectiveDoneValues };
+	const deliverable = resolveSecondaryWorkflow(secondary, DELIVERABLE_NAMES);
+	const test = resolveSecondaryWorkflow(secondary, TEST_NAMES);
 	return {
 		// `clearablePropKey`, not `propKey`, for all three: each ships a real default
 		// (`parent`/`order`/`type`), so `propKey` alone could never tell a reader's
@@ -161,7 +224,11 @@ export function resolveMyWorkSettings(config: BasesViewConfig): MyWorkSettings {
 		// untouched box to a frontmatter key the backlog view never reads, so a stock
 		// vault (whose items carry `status`) would show every finished item as open.
 		stateKey: clearablePropKey('stateProperty', optionalProperty('state').suggested),
-		doneValues: doneValues.length > 0 ? doneValues : DEFAULT_DONE_VALUES,
+		doneValues: effectiveDoneValues,
+		deliverableStateKey: deliverable.key,
+		deliverableDoneValues: deliverable.doneValues,
+		testStateKey: test.key,
+		testDoneValues: test.doneValues,
 		// `propKey`, not `clearablePropKey`: their default is `''`, so the two resolve the
 		// same value for every input — the reading `resolveReleaseSettings` gives every
 		// release-own key whose default is empty (`versionKey`, `targetDateKey`, …). No

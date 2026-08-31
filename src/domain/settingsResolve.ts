@@ -93,7 +93,7 @@ function resolveFolders(
  * ANOTHER of their own group — the key's fallback decides what the two lists fall back to
  * — so they are a unit wherever they are computed.
  */
-interface SecondaryWorkflowInputs {
+export interface SecondaryWorkflowInputs {
 	propKey: (key: string, def: string) => string;
 	list: (key: string) => string[];
 	dedupe: (values: string[]) => string[];
@@ -104,7 +104,7 @@ interface SecondaryWorkflowInputs {
 }
 
 /** Which option keys and which fallback fields this secondary workflow reads. */
-interface SecondaryWorkflowNames {
+export interface SecondaryWorkflowNames {
 	property: string;
 	stateValues: string;
 	doneValues: string;
@@ -112,7 +112,7 @@ interface SecondaryWorkflowNames {
 	fallbackDoneValues: 'deliverableDoneValues' | 'testDoneValues';
 }
 
-interface SecondaryWorkflow {
+export interface SecondaryWorkflow {
 	key: string;
 	states: string[];
 	doneValues: string[];
@@ -125,14 +125,14 @@ interface SecondaryWorkflow {
  * building the id from a shared prefix; naming the whole row once here is the alternative
  * that keeps `resolveSettings` to one line per workflow.
  */
-const DELIVERABLE_NAMES: SecondaryWorkflowNames = {
+export const DELIVERABLE_NAMES: SecondaryWorkflowNames = {
 	property: 'deliverableStateProperty',
 	stateValues: 'deliverableStateValues',
 	doneValues: 'deliverableDoneValues',
 	fallbackKey: 'deliverableStateKey',
 	fallbackDoneValues: 'deliverableDoneValues',
 };
-const TEST_NAMES: SecondaryWorkflowNames = {
+export const TEST_NAMES: SecondaryWorkflowNames = {
 	property: 'testStateProperty',
 	stateValues: 'testStateValues',
 	doneValues: 'testDoneValues',
@@ -140,7 +140,15 @@ const TEST_NAMES: SecondaryWorkflowNames = {
 	fallbackDoneValues: 'testDoneValues',
 };
 
-function resolveSecondaryWorkflow(inputs: SecondaryWorkflowInputs, names: SecondaryWorkflowNames): SecondaryWorkflow {
+/**
+ * Exported for `myWorkOptions.ts`'s own resolver, which reads the identical
+ * `deliverableStateProperty` / `testStateProperty` options through the same rule rather
+ * than a second, slightly different one: sharing the function is what keeps "falls back
+ * to the requirements workflow's key AND done values only when both are unconfigured"
+ * true in exactly one place for both views, rather than two resolvers drifting the moment
+ * either is edited.
+ */
+export function resolveSecondaryWorkflow(inputs: SecondaryWorkflowInputs, names: SecondaryWorkflowNames): SecondaryWorkflow {
 	const { propKey, list, dedupe, fallback, states, effectiveDoneValues } = inputs;
 	// The KEY's own fallback condition, named ONCE and consulted by both lists below: as
 	// the returned key directly, and as the gate BEHIND each list's own emptiness check —
