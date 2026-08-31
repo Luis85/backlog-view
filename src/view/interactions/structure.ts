@@ -3,7 +3,7 @@ import { list, t } from '../../i18n/t';
 import { keepsProjection } from '../../domain/itemTypes';
 import { BacklogViewHost } from '../host';
 import { BacklogItem } from '../../domain/model';
-import { DropTarget, isInvalidParent, rankablePeers } from '../../domain/dropTargets';
+import { DropTarget, isInvalidParent, isUnrankedContext, rankablePeers } from '../../domain/dropTargets';
 import { configProblems } from '../../domain/settingsConsistency';
 import { computeInitWrites, dropPlacement } from '../../domain/writePlan';
 
@@ -188,19 +188,33 @@ export function moveToEdge(host: BacklogViewHost, item: BacklogItem, edge: 'top'
 /**
  * Where outdenting would put the item — right after its parent among the parent's
  * siblings — or null when the move is not EXPRESSIBLE at all: no parent, a focus row, a
- * context row, or a grandparent on the other ladder.
+ * context row, a grandparent on the other ladder, or a parent with no rank of its own.
+ *
+ * **The last of those is not the arithmetic refusing — it is this function's own
+ * anchor.** The PARENT is the anchor `orderForTarget` (`domain/writePlan.ts`) would place
+ * against, never a peer skipped past on the way to one, so `anchoredOrder`'s skip (right
+ * for an APPEND, whose anchor is the group being appended into and carries no positional
+ * meaning of its own) does not apply here: `compareRank` sorts a null order last, and no
+ * finite number sorts after it, so "right after PARENT" specifically is inexpressible
+ * when parent carries none — not a looser number, a different placement nobody asked for.
+ * `writePlanContextRows.test.ts` pins the append reading at the domain level; this is the
+ * one case where an outdent's own anchor cannot borrow it, so it is refused here instead
+ * of asking `orderForTarget` to special-case an anchor it cannot tell was named this way.
  *
  * **Whether the placement would write anything is a separate question, and it is
  * `canOutdent`'s.** The same split `withinSiblingsTarget` and `canReorder` already keep,
  * and for the same reason: the menu withholds an entry a plan would refuse, while a
  * KEYPRESS is not an offer — there is nothing to withhold, so Alt+Left must reach
  * `performDrop` and let its one reporter name the remedy. Folding the plan into this
- * function made both paths silent.
+ * function made both paths silent. The unranked-parent case is not that split: it is
+ * decided here, before there is a plan to ask, the same as the other four EXPRESSIBILITY
+ * reasons above it — `outdent` re-derives the same fact to report it on the keypress,
+ * since this function's null return does not say which of the five applied.
  */
 function outdentTarget(host: BacklogViewHost, item: BacklogItem): DropTarget | null {
 	const model = host.model;
 	const parent = item.parent;
-	if (!model || !parent || item.focusRoot || item.outsideFilter) return null;
+	if (!model || !parent || item.focusRoot || item.outsideFilter || isUnrankedContext(parent)) return null;
 	const grandparent = parent.parent;
 	// Root-level outdents rank among the real top level, not the focus rows.
 	const fullList = grandparent ? grandparent.children : model.realRoots;
@@ -219,12 +233,26 @@ export function canOutdent(host: BacklogViewHost, item: BacklogItem): boolean {
 	return plans(host, item, outdentTarget(host, item));
 }
 
-/** Make the item a sibling of its parent, placed right after it. */
+/**
+ * Make the item a sibling of its parent, placed right after it.
+ *
+ * Four of `outdentTarget`'s five null reasons stay silent, the way an edge of a list
+ * does — there was nothing this keypress could have meant. The fifth reports: the
+ * parent IS there and the command names it in spirit even though `Outdent` draws no
+ * label naming it, so silence would look like a broken keypress rather than an
+ * inexpressible one. Re-derived rather than threaded through the null, because
+ * `outdentTarget`'s return does not say which reason fired — the same shape `indent`
+ * reads its own named-destination refusal by, one call further from a plan.
+ */
 export function outdent(host: BacklogViewHost, item: BacklogItem): void {
 	const live = liveItem(host, item);
 	if (!live) return;
 	const target = outdentTarget(host, live);
-	if (target) void host.performDrop(live, target);
+	if (target) {
+		void host.performDrop(live, target);
+		return;
+	}
+	if (live.parent && isUnrankedContext(live.parent)) new Notice(t('rank.unrankedParent'));
 }
 
 /**

@@ -68,6 +68,9 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   own add button, or a release's scope tree — no longer anchor on a trailing unranked
   context row among the destination's children (or the real roots): each now ranks
   against the last REAL sibling instead of silently landing past the whole population.
+- `Outdent` past a parent that is an unranked context row — no rank to place it after —
+  is withheld from the menu and reports on Alt+Left, instead of silently landing the item
+  at the bottom of the whole backlog.
 
 ## [0.10.0] - 2026-08-30
 

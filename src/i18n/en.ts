@@ -1214,6 +1214,22 @@ export const en = {
 	'rank.targetInvalid': 'That is no longer a valid destination, so nothing was moved.',
 
 	/**
+	 * `outdentTarget` (`view/interactions/structure.ts`) refuses when the item's own
+	 * parent — the row `Outdent` places it right after — is an unranked context row:
+	 * `compareRank` sorts a null order last, so no finite number sorts after it and the
+	 * placement this command names cannot be expressed. Not `rank.targetInvalid`: that
+	 * sentence says "no longer", a race between two reads of the same row, and this is
+	 * neither a race nor a race between reads — the shape is true of the tree as it
+	 * stands, every time it is asked, named by nothing that moved. Not `rank.unranked`
+	 * either, and deliberately: that sentence sends the reader to the backfill, and the
+	 * backfill (`computeInitWrites`) is one of the two places that will never write this
+	 * row a rank, because the base excludes it — the exact dead end `anchoredOrder`'s own
+	 * comment in `domain/writePlan.ts` refuses to create. So this states the fact and
+	 * names no remedy, the way `rank.itemGone` does for the sibling case.
+	 */
+	'rank.unrankedParent': 'That row has no rank of its own, so nothing can be placed next to it.',
+
+	/**
 	 * What the two rank commands say. Each confirmation states the whole of what the
 	 * command does to a note the user cannot see the effect of — a filtered base ranks only
 	 * what it returns, so a note it excludes can end up above or below where it was — and
