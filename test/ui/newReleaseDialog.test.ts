@@ -20,7 +20,7 @@ beforeEach(() => {
 function openDialog(fields: ReleaseFieldId[] = []) {
 	const vault = new FakeVault();
 	const results: NewReleaseResult[] = [];
-	openNewReleaseDialog(vault.app as never, fields, (result) => results.push(result));
+	openNewReleaseDialog(vault.app, fields, (result) => results.push(result));
 	const modal = Modal.lastOpened;
 	if (!modal) throw new Error('no dialog opened');
 	const el = modal.contentEl;
@@ -94,7 +94,7 @@ describe('the new-release dialog', () => {
 		const results: NewReleaseResult[] = [];
 		let closed = 0;
 		openNewReleaseDialog(
-			vault.app as never,
+			vault.app,
 			[],
 			(result) => results.push(result),
 			() => (closed += 1),

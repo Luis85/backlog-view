@@ -5,7 +5,7 @@ import { makeReleaseView, RELEASE_CONFIG, releaseVault, scopeVault } from '../he
 import { ReleaseView } from '../../src/view/release/releaseView';
 import { WriteLock } from '../../src/view/writeLock';
 import { useViewHarness } from '../helpers/view';
-import { FakeVault } from '../helpers/vault';
+import { fakeController, FakeVault } from '../helpers/vault';
 
 useViewHarness();
 
@@ -16,7 +16,7 @@ describe('the release view', () => {
 		// view has nothing but the constructor's own placeholder to show. The estimation
 		// view's own state test says the same thing about the same moment.
 		const containerEl = document.body.createDiv();
-		const view = new ReleaseView({} as never, containerEl, new WriteLock());
+		const view = new ReleaseView(fakeController(), containerEl, new WriteLock());
 		expect(containerEl.querySelector('.pbl-rel-view')?.textContent).toBe('Loading releases…');
 		view.onunload();
 	});

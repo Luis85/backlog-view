@@ -14,7 +14,7 @@ import { drawChrome } from './chrome';
 import { drawIcons } from './icons';
 import { installObsidianDom } from '../helpers/dom';
 import { demoOptions, demoOrder, demoResults, demoVault, edgeCaseVault, folderOptions } from '../helpers/fixtures';
-import { FakeVault, FakeViewConfig } from '../helpers/vault';
+import { fakeController, FakeVault, FakeViewConfig } from '../helpers/vault';
 import { FileView } from '../helpers/obsidian-mock';
 
 /**
@@ -184,7 +184,7 @@ export function mountHarness(root: HTMLElement, fixture: HarnessFixture = 'demo'
 	const containerEl = leafEl.createDiv();
 	vault.addLeaf(new FileView(vault.addFile('Demo.base'), leafEl));
 
-	const view = new ProductBacklogView({} as never, containerEl);
+	const view = new ProductBacklogView(fakeController(), containerEl);
 	const anyView = view as unknown as Record<string, unknown>;
 	anyView.app = vault.app;
 	const options = fixture === 'folders' ? folderOptions() : demoOptions();

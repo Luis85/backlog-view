@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { horizonVault, makeRoadmap, shelfCountOf, shelfGroupHeaders, shelfOf, shelfTitles } from '../helpers/roadmap';
 import { flush, key, useViewHarness } from '../helpers/view';
-import { FakeVault, FakeViewConfig } from '../helpers/vault';
+import { fakeController, FakeVault, FakeViewConfig } from '../helpers/vault';
 import { Menu, MenuItem } from '../helpers/obsidian-mock';
 import { ProductBacklogView } from '../../src/view/backlogView';
 import { cardDrag } from '../helpers/dnd';
@@ -395,7 +395,7 @@ describe('the shelf, collapsed by default', () => {
 		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10, horizon: 'now' } });
 		vault.addFile('F1.md', { frontmatter: { type: 'Feature', order: 10, horizon: 'Now' }, parentLink: 'Epic' });
 		const containerEl = document.body.createDiv();
-		const view = new ProductBacklogView({} as never, containerEl);
+		const view = new ProductBacklogView(fakeController(), containerEl);
 		const anyView = view as unknown as Record<string, unknown>;
 		anyView.app = vault.app;
 		anyView.config = new FakeViewConfig({ horizonProperty: 'note.horizon' });

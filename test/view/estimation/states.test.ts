@@ -4,7 +4,7 @@ import { EstimationView } from '../../../src/view/estimation/estimationView';
 import { WriteLock } from '../../../src/view/writeLock';
 import { click, makeEstimationView } from '../../helpers/estimation';
 import { configuredValues } from '../../helpers/estimationModel';
-import { FakeVault } from '../../helpers/vault';
+import { fakeController, FakeVault } from '../../helpers/vault';
 import { flush } from '../../helpers/view';
 import { viewStateKey } from '../../../src/storage/viewIdentity';
 
@@ -31,7 +31,7 @@ describe('the estimation view renders its own states', () => {
 		// onDataUpdated immediately — this is the one moment before that call, when the
 		// view has nothing but the constructor's own placeholder to show.
 		const containerEl = document.body.createDiv();
-		new EstimationView({} as never, containerEl, new WriteLock());
+		new EstimationView(fakeController(), containerEl, new WriteLock());
 		// `.pbl-est-shell` is the root now (`viewEl`) — no grid exists yet at this point,
 		// so the loading text sits directly on the shell.
 		expect(containerEl.querySelector('.pbl-est-shell')?.textContent).toBe('Loading estimation view…');

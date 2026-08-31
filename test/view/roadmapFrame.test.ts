@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { ProductBacklogView } from '../../src/view/backlogView';
 import { todayStamp } from '../../src/domain/noteFields';
-import { FakeVault, FakeViewConfig } from '../helpers/vault';
+import { fakeController, FakeVault, FakeViewConfig } from '../helpers/vault';
 import { clickExpandAll, refresh, useViewHarness } from '../helpers/view';
 import {
 	barFor,
@@ -333,7 +333,7 @@ describe('context rows on the roadmap', () => {
 		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10, ...epicFm } });
 		vault.addFile('F.md', { frontmatter: { type: 'Feature', order: 10, horizon: 'Now' }, parentLink: 'Epic' });
 		const containerEl = document.body.createDiv();
-		const view = new ProductBacklogView({} as never, containerEl);
+		const view = new ProductBacklogView(fakeController(), containerEl);
 		const config = new FakeViewConfig(cfg);
 		const anyView = view as unknown as Record<string, unknown>;
 		anyView.app = vault.app;

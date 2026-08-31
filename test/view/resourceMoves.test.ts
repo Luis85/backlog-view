@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { TFile } from '../helpers/obsidian-mock';
 import { FakeVault } from '../helpers/vault';
 import { Menu, Notice } from '../helpers/obsidian-mock';
-import { Harness, flush, key, makeView, refresh, treeOf, useViewHarness } from '../helpers/view';
+import { flush, Harness, itemAt, key, makeView, refresh, treeOf, useViewHarness } from '../helpers/view';
 import { announced, cardDrag } from '../helpers/dnd';
 import { cardByTitle } from '../helpers/board';
 import { barFor, laneHead, laneNames, laneOrder, laneRoadmap as bareLaneRoadmap, shelfOf, shelfTitles } from '../helpers/roadmap';
@@ -66,7 +66,7 @@ describe('the one method a resource move lands on', () => {
 		const vault = resourceVault();
 		const { view } = laneRoadmap(vault);
 
-		const moved = await view.performResourceMove(view.model?.byPath.get('Alice dated.md') as never, resourceFile(vault, 'Bob'));
+		const moved = await view.performResourceMove(itemAt(view, 'Alice dated.md'), resourceFile(vault, 'Bob'));
 
 		expect(moved).toBe(true);
 		expect(vault.fm('Alice dated.md')['assignee']).toBe('[[Bob]]');
@@ -81,7 +81,7 @@ describe('the one method a resource move lands on', () => {
 		const vault = resourceVault();
 		const { view } = laneRoadmap(vault);
 
-		await view.performResourceMove(view.model?.byPath.get('Alice dated.md') as never, null);
+		await view.performResourceMove(itemAt(view, 'Alice dated.md'), null);
 		expect('assignee' in vault.fm('Alice dated.md')).toBe(false);
 
 		await view.undoLast();
@@ -92,12 +92,12 @@ describe('the one method a resource move lands on', () => {
 		const vault = resourceVault();
 		const { view } = laneRoadmap(vault);
 
-		await view.performResourceMove(view.model?.byPath.get('Alice dated.md') as never, resourceFile(vault, 'Bob'));
+		await view.performResourceMove(itemAt(view, 'Alice dated.md'), resourceFile(vault, 'Bob'));
 		expect(vault.writeLog).toHaveLength(1);
 
 		// Compared by PATH, never by the raw text: `Undated` already names Alice's own
 		// note, so picking her again plans nothing — the checkmark's own question.
-		const moved = await view.performResourceMove(view.model?.byPath.get('Undated.md') as never, resourceFile(vault, 'Alice'));
+		const moved = await view.performResourceMove(itemAt(view, 'Undated.md'), resourceFile(vault, 'Alice'));
 
 		expect(moved).toBe(false);
 		expect(vault.writeLog).toHaveLength(1);
@@ -113,7 +113,7 @@ describe('the one method a resource move lands on', () => {
 		// The assignee changes and nothing visibly moves: `Undated` has no date to be
 		// positioned at, so it stays on the shelf under its new owner. Said out loud rather
 		// than left looking like a drop that missed.
-		const moved = await view.performResourceMove(view.model?.byPath.get('Undated.md') as never, resourceFile(vault, 'Bob'));
+		const moved = await view.performResourceMove(itemAt(view, 'Undated.md'), resourceFile(vault, 'Bob'));
 
 		expect(moved).toBe(true);
 		expect(vault.fm('Undated.md')['assignee']).toBe('[[Bob]]');
@@ -133,7 +133,7 @@ describe('the one method a resource move lands on', () => {
 		vault.addFile('Untimed.md', { frontmatter: { type: 'Epic', order: 10 } });
 		const { view } = laneRoadmap(vault);
 
-		const moved = await view.performResourceMove(view.model?.byPath.get('Untimed.md') as never, resourceFile(vault, 'Support/Alex'));
+		const moved = await view.performResourceMove(itemAt(view, 'Untimed.md'), resourceFile(vault, 'Support/Alex'));
 
 		expect(moved).toBe(true);
 		expect(Notice.messages).toContain(
@@ -148,7 +148,7 @@ describe('the one method a resource move lands on', () => {
 		// Nothing is written and the undo slot is untouched, exactly as 1a — but unlike a
 		// bar that stayed where the cursor found it, a shelved card that stays shelved
 		// gives the reader no other way to tell the drop landed on an unchanged value.
-		const moved = await view.performResourceMove(view.model?.byPath.get('Undated.md') as never, resourceFile(vault, 'Alice'));
+		const moved = await view.performResourceMove(itemAt(view, 'Undated.md'), resourceFile(vault, 'Alice'));
 
 		expect(moved).toBe(false);
 		expect(vault.writeLog).toEqual([]);
@@ -165,8 +165,8 @@ describe('the one method a resource move lands on', () => {
 		vault.addFile('Garbled.md', { frontmatter: { type: 'Epic', order: 70, start: 'soon', due: '2026-08-05' } });
 		const { view } = laneRoadmap(vault);
 
-		await view.performResourceMove(view.model?.byPath.get('Backwards.md') as never, resourceFile(vault, 'Bob'));
-		await view.performResourceMove(view.model?.byPath.get('Garbled.md') as never, resourceFile(vault, 'Bob'));
+		await view.performResourceMove(itemAt(view, 'Backwards.md'), resourceFile(vault, 'Bob'));
+		await view.performResourceMove(itemAt(view, 'Garbled.md'), resourceFile(vault, 'Bob'));
 
 		// Both dates are there, so "add a start or target date" would send the reader
 		// looking for a value they already typed instead of at the one they can see. The
@@ -181,7 +181,7 @@ describe('the one method a resource move lands on', () => {
 		const vault = resourceVault();
 		const { view } = laneRoadmap(vault);
 
-		const moved = await view.performResourceMove(view.model?.byPath.get('Alice dated.md') as never, resourceFile(vault, 'Alice'));
+		const moved = await view.performResourceMove(itemAt(view, 'Alice dated.md'), resourceFile(vault, 'Alice'));
 
 		expect(moved).toBe(false);
 		// 1a: a bar that stayed exactly where the cursor found it already answers the
@@ -196,10 +196,10 @@ describe('what a resource move announces', () => {
 		const vault = resourceVault();
 		const { view } = laneRoadmap(vault);
 
-		await view.performResourceMove(view.model?.byPath.get('Alice dated.md') as never, resourceFile(vault, 'Bob'));
+		await view.performResourceMove(itemAt(view, 'Alice dated.md'), resourceFile(vault, 'Bob'));
 		expect(await announced()).toBe('Moved "Alice dated" from Alice to Bob');
 
-		await view.performResourceMove(view.model?.byPath.get('Stray.md') as never, null);
+		await view.performResourceMove(itemAt(view, 'Stray.md'), null);
 		expect(await announced()).toBe('Moved "Stray" from Zoe to Unplaced');
 	});
 
@@ -211,7 +211,7 @@ describe('what a resource move announces', () => {
 		// The gesture a band drop hands over, driven at the one method it lands on: a live
 		// region is read in order, and two messages about one gesture are two events for a
 		// reader who made one.
-		await view.performResourceMove(view.model?.byPath.get('Alice dated.md') as never, resourceFile(vault, 'Bob'), {
+		await view.performResourceMove(itemAt(view, 'Alice dated.md'), resourceFile(vault, 'Bob'), {
 			plan: { start: '2026-08-08', target: '2026-08-17' },
 			ends: ['start', 'target'],
 			from: { start: '2026-08-01', target: '2026-08-10' },
@@ -227,7 +227,7 @@ describe('what a resource move announces', () => {
 
 		// A slide inside one row: there is no row change to frame the span with, so the
 		// sentence is the one the dated axis already says for the identical write.
-		await view.performResourceMove(view.model?.byPath.get('Alice dated.md') as never, resourceFile(vault, 'Alice'), {
+		await view.performResourceMove(itemAt(view, 'Alice dated.md'), resourceFile(vault, 'Alice'), {
 			plan: { start: '2026-08-08', target: '2026-08-17' },
 			ends: ['start', 'target'],
 			from: { start: '2026-08-01', target: '2026-08-10' },
@@ -244,7 +244,7 @@ describe('what a resource move announces', () => {
 		// `Undated` names Alice and has no date to sit at, so this axis mints no row for
 		// it — but the note plainly says Alice, and "from Unplaced" would be a lie about
 		// it. This is where the two axes' labels differ, and why they had to.
-		await view.performResourceMove(view.model?.byPath.get('Undated.md') as never, resourceFile(vault, 'Bob'));
+		await view.performResourceMove(itemAt(view, 'Undated.md'), resourceFile(vault, 'Bob'));
 		expect(await announced()).toBe('Moved "Undated" from Alice to Bob');
 	});
 
@@ -256,7 +256,7 @@ describe('what a resource move announces', () => {
 		vault.addFile('Stub.md', { frontmatter: { type: 'Epic', order: 10, assignee: '' } });
 		const { view } = laneRoadmap(vault);
 
-		const moved = await view.performResourceMove(view.model?.byPath.get('Stub.md') as never, null);
+		const moved = await view.performResourceMove(itemAt(view, 'Stub.md'), null);
 
 		expect(moved).toBe(true);
 		expect(await announced()).toBe('Moved "Stub" from an empty assignee to Unplaced');
@@ -467,7 +467,7 @@ describe('moving between resources without a drag', () => {
 		const vault = resourceVault();
 		const { view, containerEl } = laneRoadmap(vault);
 
-		view.selectItem(view.model?.byPath.get('Alice dated.md') as never);
+		view.selectItem(itemAt(view, 'Alice dated.md'));
 		key(treeOf(containerEl), 'ArrowDown', { altKey: true });
 		await flush();
 
@@ -486,7 +486,7 @@ describe('moving between resources without a drag', () => {
 		const { view, containerEl } = laneRoadmap(vault);
 		expect(laneNames(containerEl)[0]).toBe('Milestones');
 
-		view.selectItem(view.model?.byPath.get('Alice dated.md') as never);
+		view.selectItem(itemAt(view, 'Alice dated.md'));
 		key(treeOf(containerEl), 'ArrowUp', { altKey: true });
 		await flush();
 
@@ -500,13 +500,13 @@ describe('moving between resources without a drag', () => {
 
 		// The shelf leads the ladder, the horizon axis's own rule: it is where un-placing
 		// lives and where an untriaged card enters the axis from.
-		view.selectItem(view.model?.byPath.get('Alice dated.md') as never);
+		view.selectItem(itemAt(view, 'Alice dated.md'));
 		key(tree, 'ArrowUp', { altKey: true });
 		await flush();
 		expect('assignee' in vault.fm('Alice dated.md')).toBe(false);
 
 		// And there is nowhere further up: the edges hold rather than wrap.
-		view.selectItem(view.model?.byPath.get('Nobody.md') as never);
+		view.selectItem(itemAt(view, 'Nobody.md'));
 		key(tree, 'ArrowUp', { altKey: true });
 		await flush();
 		expect(vault.writeLog.map((w) => w.path)).toEqual(['Alice dated.md']);
@@ -525,7 +525,7 @@ describe('moving between resources without a drag', () => {
 		const { view, containerEl } = laneRoadmap(vault);
 
 		for (const path of ['Ship 1.0.md']) {
-			view.selectItem(view.model?.byPath.get(path) as never);
+			view.selectItem(itemAt(view, path));
 			const down = key(treeOf(containerEl), 'ArrowDown', { altKey: true });
 			const up = key(treeOf(containerEl), 'ArrowUp', { altKey: true });
 			await flush();
@@ -544,7 +544,7 @@ describe('moving between resources without a drag', () => {
 		const { view, containerEl } = laneRoadmap(vault);
 
 		// Zoe is the last row drawn.
-		view.selectItem(view.model?.byPath.get('Stray.md') as never);
+		view.selectItem(itemAt(view, 'Stray.md'));
 		key(treeOf(containerEl), 'ArrowDown', { altKey: true });
 		await flush();
 
@@ -565,7 +565,7 @@ describe('moving between resources without a drag', () => {
 		const { view, containerEl } = laneRoadmap(vault);
 		expect(shelfTitles(containerEl)).toContain('Quinn work');
 
-		view.selectItem(view.model?.byPath.get('Quinn work.md') as never);
+		view.selectItem(itemAt(view, 'Quinn work.md'));
 		key(treeOf(containerEl), 'ArrowUp', { altKey: true });
 		await flush();
 
@@ -576,7 +576,7 @@ describe('moving between resources without a drag', () => {
 		const vault = resourceVault();
 		const { view, containerEl } = laneRoadmap(vault);
 		const tree = treeOf(containerEl);
-		view.selectItem(view.model?.byPath.get('Alice dated.md') as never);
+		view.selectItem(itemAt(view, 'Alice dated.md'));
 
 		// Left/Right on this grid is reserved: resources sit ON the dated axis, and only
 		// one dimension can have those keys. A chord aimed at Obsidian or the OS must not
@@ -597,7 +597,7 @@ describe('moving between resources without a drag', () => {
 		vault.addFile('Item.md', { frontmatter: { type: 'Epic', order: 10, horizon: 'Now' } });
 		const harness = makeView(vault, { horizonProperty: 'note.horizon' }, { collapsed: true });
 		harness.view.setProjection('roadmap');
-		harness.view.selectItem(harness.view.model?.byPath.get('Item.md') as never);
+		harness.view.selectItem(itemAt(harness.view, 'Item.md'));
 
 		key(treeOf(harness.containerEl), 'ArrowDown', { altKey: true });
 		await flush();
@@ -610,7 +610,7 @@ describe('Set assignee on this axis', () => {
 	it('offers the resource notes the base returned, alphabetically', () => {
 		const { view } = laneRoadmap(resourceVault());
 
-		view.showContextMenuFor(view.model?.byPath.get('Alice dated.md') as never);
+		view.showContextMenuFor(itemAt(view, 'Alice dated.md'));
 		const submenu = Menu.lastShown?.item('Set assignee')?.submenu;
 
 		// The roster is the notes now, so Bob's own row draws from the SAME source this
@@ -636,7 +636,7 @@ describe('Set assignee on this axis', () => {
 		const { view, containerEl } = laneRoadmap(vault);
 		expect(laneNames(containerEl)[0]).toBe('Milestones');
 
-		view.showContextMenuFor(view.model?.byPath.get('Alice dated.md') as never);
+		view.showContextMenuFor(itemAt(view, 'Alice dated.md'));
 		const submenu = Menu.lastShown?.item('Set assignee')?.submenu;
 
 		expect(submenu?.items.map((i) => i.titleText)).toEqual([
@@ -653,7 +653,7 @@ describe('Set assignee on this axis', () => {
 		const { view } = laneRoadmap(resourceVault());
 		const spy = vi.spyOn(view, 'performResourceMove');
 
-		view.showContextMenuFor(view.model?.byPath.get('Alice dated.md') as never);
+		view.showContextMenuFor(itemAt(view, 'Alice dated.md'));
 		Menu.lastShown?.item('Set assignee')?.submenu?.item('Bob')?.clickHandler?.();
 
 		expect(spy).toHaveBeenCalledOnce();
@@ -664,7 +664,7 @@ describe('Set assignee on this axis', () => {
 		const vault = resourceVault();
 		const { view } = laneRoadmap(vault);
 
-		view.showContextMenuFor(view.model?.byPath.get('Alice dated.md') as never);
+		view.showContextMenuFor(itemAt(view, 'Alice dated.md'));
 		Menu.lastShown?.item('Set assignee')?.submenu?.item('Clear assignee')?.clickHandler?.();
 		await flush();
 
@@ -678,7 +678,7 @@ describe('Set assignee on this axis', () => {
 		const spy = vi.spyOn(view, 'performResourceMove');
 
 		view.setProjection('tree');
-		view.showContextMenuFor(view.model?.byPath.get('Alice dated.md') as never);
+		view.showContextMenuFor(itemAt(view, 'Alice dated.md'));
 		Menu.lastShown?.item('Set assignee')?.submenu?.item('Zoe')?.clickHandler?.();
 
 		// `announced` drives the live region's own timer, which flushes the write with it —

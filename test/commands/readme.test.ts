@@ -36,15 +36,15 @@ function leafElOf(vault: FakeVault, index: number): HTMLElement {
 describe('the write backlog readme command', () => {
 	it('offers itself only while a backlog view is the active leaf', () => {
 		const vault = openBacklog();
-		expect(writeBacklogReadmeCommand(vault.app as never, true)).toBe(true);
+		expect(writeBacklogReadmeCommand(vault.app, true)).toBe(true);
 
 		// The user moved to an ordinary note: there is no configuration to describe.
 		const note = new FileView(vault.addFile('Notes.md'), document.body.createDiv());
 		vault.activeView = note;
-		expect(writeBacklogReadmeCommand(vault.app as never, true)).toBe(false);
+		expect(writeBacklogReadmeCommand(vault.app, true)).toBe(false);
 
 		vault.activeView = null;
-		expect(writeBacklogReadmeCommand(vault.app as never, true)).toBe(false);
+		expect(writeBacklogReadmeCommand(vault.app, true)).toBe(false);
 	});
 
 	it('withholds itself while the view is still waiting for its first result set', () => {
@@ -58,7 +58,7 @@ describe('the write backlog readme command', () => {
 		rememberBacklogView(loading);
 		vault.activeView = leaf;
 
-		expect(writeBacklogReadmeCommand(vault.app as never, true)).toBe(false);
+		expect(writeBacklogReadmeCommand(vault.app, true)).toBe(false);
 
 		forgetBacklogView(loading);
 	});
@@ -66,7 +66,7 @@ describe('the write backlog readme command', () => {
 	it('writes the readme into the view s home folder, from the view s own settings', async () => {
 		const vault = openBacklog({ parentProperty: 'note.up', stateProperty: 'note.status' });
 
-		expect(writeBacklogReadmeCommand(vault.app as never, false)).toBe(true);
+		expect(writeBacklogReadmeCommand(vault.app, false)).toBe(true);
 		await flush();
 
 		const content = vault.contents.get(README) ?? '';
@@ -83,7 +83,7 @@ describe('the write backlog readme command', () => {
 	it('generates a file that cannot enrol itself in the backlog it documents', async () => {
 		const vault = openBacklog();
 
-		writeBacklogReadmeCommand(vault.app as never, false);
+		writeBacklogReadmeCommand(vault.app, false);
 		await flush();
 
 		// No frontmatter at all: no type and no parent is what keeps it out of the tree
@@ -96,7 +96,7 @@ describe('the write backlog readme command', () => {
 	it('persists nothing about itself', async () => {
 		const vault = openBacklog();
 
-		writeBacklogReadmeCommand(vault.app as never, false);
+		writeBacklogReadmeCommand(vault.app, false);
 		await flush();
 
 		// Not a base setting and not working position: the command has no state to keep.
@@ -105,12 +105,12 @@ describe('the write backlog readme command', () => {
 
 	it('writes nothing the second time, and says so', async () => {
 		const vault = openBacklog();
-		writeBacklogReadmeCommand(vault.app as never, false);
+		writeBacklogReadmeCommand(vault.app, false);
 		await flush();
 		const first = vault.contents.get(README);
 		Notice.reset();
 
-		writeBacklogReadmeCommand(vault.app as never, false);
+		writeBacklogReadmeCommand(vault.app, false);
 		await flush();
 
 		expect(vault.contents.get(README)).toBe(first);
@@ -121,7 +121,7 @@ describe('the write backlog readme command', () => {
 		const vault = openBacklog();
 		await vault.app.vault.create(README, '# Notes I keep here myself\n');
 
-		writeBacklogReadmeCommand(vault.app as never, false);
+		writeBacklogReadmeCommand(vault.app, false);
 		await flush();
 
 		expect(vault.contents.get(README)).toBe('# Notes I keep here myself\n');
@@ -133,14 +133,14 @@ describe('the write backlog readme command', () => {
 		// one readme — but never silently, which was the whole complaint against a
 		// generic marker.
 		const vault = openBacklog();
-		writeBacklogReadmeCommand(vault.app as never, false);
+		writeBacklogReadmeCommand(vault.app, false);
 		await flush();
 		const first = vault.contents.get(README);
 		Notice.reset();
 
 		makeView(vault, { homeFolder: 'work', parentProperty: 'note.up' }, { base: 'work/Other.base' });
 		vault.activeView = vault.leaves[1].view;
-		writeBacklogReadmeCommand(vault.app as never, false);
+		writeBacklogReadmeCommand(vault.app, false);
 		await flush();
 
 		expect(vault.contents.get(README)).not.toBe(first);
@@ -156,7 +156,7 @@ describe('the write backlog readme command', () => {
 		makeView(vault, { homeFolder: 'work' }, { viewName: 'Sprint %25' });
 		vault.activeView = new FileView(vault.addFile('Note.md'), document.body);
 
-		writeBacklogReadmeCommand(vault.app as never, false);
+		writeBacklogReadmeCommand(vault.app, false);
 		await flush();
 
 		// What matters is the round trip: whatever the line spells, the name comes back.
@@ -169,7 +169,7 @@ describe('the write backlog readme command', () => {
 		// generated from it would state that key as the one answer for both roles.
 		const vault = openBacklog({ parentProperty: 'note.rank', orderProperty: 'note.rank' });
 
-		writeBacklogReadmeCommand(vault.app as never, false);
+		writeBacklogReadmeCommand(vault.app, false);
 		await flush();
 
 		expect(vault.files.has(README)).toBe(false);
@@ -184,7 +184,7 @@ describe('the write backlog readme command', () => {
 		const logged: unknown[] = [];
 		console.error = (...args: unknown[]) => logged.push(args);
 
-		writeBacklogReadmeCommand(vault.app as never, false);
+		writeBacklogReadmeCommand(vault.app, false);
 		await flush();
 
 		expect(Notice.messages.some((m) => m.includes('See the developer console'))).toBe(true);
@@ -195,12 +195,12 @@ describe('the write backlog readme command', () => {
 describe('the live view registry', () => {
 	it('forgets a view that has been unloaded', () => {
 		const vault = openBacklog();
-		expect(activeBacklogView(vault.app as never)).not.toBeNull();
+		expect(activeBacklogView(vault.app)).not.toBeNull();
 
-		const view = activeBacklogView(vault.app as never);
+		const view = activeBacklogView(vault.app);
 		(view as unknown as { onunload: () => void }).onunload();
 
-		expect(activeBacklogView(vault.app as never)).toBeNull();
+		expect(activeBacklogView(vault.app)).toBeNull();
 	});
 
 	it('picks the view in the active leaf, not merely any open one', () => {
@@ -208,10 +208,10 @@ describe('the live view registry', () => {
 		const other = makeView(vault, { homeFolder: 'other' }, { base: 'other/Other.base' });
 
 		vault.activeView = vault.leaves[1].view;
-		expect(activeBacklogView(vault.app as never)).toBe(other.view);
+		expect(activeBacklogView(vault.app)).toBe(other.view);
 
 		vault.activeView = vault.leaves[0].view;
-		expect(activeBacklogView(vault.app as never)).not.toBe(other.view);
+		expect(activeBacklogView(vault.app)).not.toBe(other.view);
 	});
 
 	it('answers nothing when one leaf holds two backlog views', () => {
@@ -221,10 +221,10 @@ describe('the live view registry', () => {
 		const second = { viewEl: leafElOf(vault, 0).createDiv(), config: { name: 'Backlog' }, settings: defaultSettings(), model: null };
 		rememberBacklogView(second);
 
-		expect(activeBacklogView(vault.app as never)).toBeNull();
+		expect(activeBacklogView(vault.app)).toBeNull();
 
 		forgetBacklogView(second);
-		expect(activeBacklogView(vault.app as never)).not.toBeNull();
+		expect(activeBacklogView(vault.app)).not.toBeNull();
 	});
 
 	it('tells two leaves showing the same base apart', () => {
@@ -234,9 +234,9 @@ describe('the live view registry', () => {
 		const second = makeView(vault, { homeFolder: 'elsewhere' }, { base: BASE });
 
 		vault.activeView = vault.leaves[0].view;
-		expect(activeBacklogView(vault.app as never)).not.toBe(second.view);
+		expect(activeBacklogView(vault.app)).not.toBe(second.view);
 
 		vault.activeView = vault.leaves[1].view;
-		expect(activeBacklogView(vault.app as never)).toBe(second.view);
+		expect(activeBacklogView(vault.app)).toBe(second.view);
 	});
 });

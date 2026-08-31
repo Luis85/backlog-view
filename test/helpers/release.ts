@@ -5,6 +5,7 @@ import { installObsidianDom } from './dom';
 import { Modal } from './obsidian-mock';
 import { FakeVault, FakeViewConfig, mountLeaf } from './vault';
 import { flush } from './view';
+import { fakeController } from '../helpers/vault';
 
 /** `t.pbl-row[data-path="…"]` — the scope tree's own row, or null when `optional` says a
  *  missing one is the assertion rather than a broken fixture. Reads `view.viewEl` rather
@@ -90,7 +91,7 @@ export function makeReleaseView(
 	{ base, viewName, lock }: { base?: string; viewName?: string; lock?: WriteLock } = {},
 ): ReleaseHarness {
 	const containerEl = mountLeaf(vault, base);
-	const view = new ReleaseView({} as never, containerEl, lock ?? new WriteLock());
+	const view = new ReleaseView(fakeController(), containerEl, lock ?? new WriteLock());
 	const config = new FakeViewConfig(configValues);
 	if (viewName) config.name = viewName;
 	const anyView = view as unknown as Record<string, unknown>;

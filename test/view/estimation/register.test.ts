@@ -7,7 +7,7 @@ import { ESTIMATION_VIEW_TYPE, EstimationView } from '../../../src/view/estimati
 import { useViewHarness, captureRegistrations } from '../../helpers/view';
 import { makeEstimationView } from '../../helpers/estimation';
 import { configuredValues } from '../../helpers/estimationModel';
-import { FakeVault, FakeViewConfig } from '../../helpers/vault';
+import { fakeController, FakeVault, FakeViewConfig } from '../../helpers/vault';
 
 useViewHarness();
 
@@ -32,7 +32,7 @@ describe('registerEstimationView', () => {
 		const spec = specs.get(ESTIMATION_VIEW_TYPE)!;
 
 		const containerEl = document.body.createDiv();
-		const view = spec.factory({} as never, containerEl);
+		const view = spec.factory(fakeController(), containerEl);
 
 		expect(view).toBeInstanceOf(EstimationView);
 		expect((view as EstimationView).lock).toBe(lock);
@@ -48,7 +48,7 @@ describe('registerEstimationView', () => {
 		const spec = specs.get(ESTIMATION_VIEW_TYPE)!;
 
 		const containerA = document.body.createDiv();
-		const viewA = spec.factory({} as never, containerA) as unknown as Record<string, unknown>;
+		const viewA = spec.factory(fakeController(), containerA) as unknown as Record<string, unknown>;
 		viewA.app = vault.app;
 		viewA.config = new FakeViewConfig(configuredValues());
 		viewA.data = { data: vault.entries() };

@@ -4,6 +4,7 @@ import { Menu } from '../helpers/obsidian-mock';
 import { fixture, key, makeView, rowByTitle, titlesOf, treeOf, useViewHarness } from '../helpers/view';
 import { boardVault, cardByTitle, makeBoard } from '../helpers/board';
 import { resolveSettings } from '../../src/domain/settingsResolve';
+import { FakeViewConfig } from '../helpers/vault';
 
 useViewHarness();
 
@@ -13,7 +14,7 @@ function click(row: HTMLElement, modifiers: Partial<MouseEventInit> = {}): void 
 }
 
 /** The view config Bases would hand back for a hand-written `.base`. */
-const config = (values: Record<string, unknown>) => ({ get: (key: string) => values[key], getAsPropertyId: () => null }) as never;
+const config = (values: Record<string, unknown>): FakeViewConfig => new FakeViewConfig(values);
 
 describe('what a click on an item does', () => {
 	it('opens in the current tab by default', () => {

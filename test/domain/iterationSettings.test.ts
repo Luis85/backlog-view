@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { configProblems } from '../../src/domain/settingsConsistency';
 import { resolveSettings } from '../../src/domain/settingsResolve';
 import { optionalKeyFor } from '../../src/domain/optionalProperties';
+import { FakeViewConfig } from '../helpers/vault';
 
 /**
  * What an iterations vault configures: the two properties an item and an iteration
@@ -12,14 +13,8 @@ import { optionalKeyFor } from '../../src/domain/optionalProperties';
  */
 
 /** Stand-in for BasesViewConfig backed by a plain object. */
-function fakeConfig(values: Record<string, unknown> = {}) {
-	return {
-		get: (key: string) => values[key],
-		getAsPropertyId: (key: string) => {
-			const v = values[key];
-			return typeof v === 'string' && v.includes('.') ? v : null;
-		},
-	} as never;
+function fakeConfig(values: Record<string, unknown> = {}): FakeViewConfig {
+	return new FakeViewConfig(values);
 }
 
 describe('resolveSettings — the two iteration properties', () => {

@@ -99,7 +99,7 @@ describe('whether the note has moved past the row on screen', () => {
 
 	it('is not a move when nothing changed', () => {
 		const { row, vault } = screenOf({ status: 'In progress', released: '2026-08-01' });
-		expect(closingFieldsMoved(vault.app as never, row, settings)).toBe(false);
+		expect(closingFieldsMoved(vault.app, row, settings)).toBe(false);
 	});
 
 	it('is not a move when the note was merely RESPELLED', () => {
@@ -108,13 +108,13 @@ describe('whether the note has moved past the row on screen', () => {
 		// refusing an action over them would be a refusal the reader cannot act on.
 		const { row, vault } = screenOf({ status: 'In progress', released: '2026-08-01' });
 		editLiveNote(vault, { status: '  In progress  ', released: '2026-8-1' });
-		expect(closingFieldsMoved(vault.app as never, row, settings)).toBe(false);
+		expect(closingFieldsMoved(vault.app, row, settings)).toBe(false);
 	});
 
 	it('is a move when the status changed', () => {
 		const { row, vault } = screenOf({ status: 'In progress' });
 		editLiveNote(vault, { status: 'Released' });
-		expect(closingFieldsMoved(vault.app as never, row, settings)).toBe(true);
+		expect(closingFieldsMoved(vault.app, row, settings)).toBe(true);
 	});
 
 	it('is a move when a date ARRIVED that the row does not have', () => {
@@ -123,7 +123,7 @@ describe('whether the note has moved past the row on screen', () => {
 		// recorded — as the value it EXPECTS to find.
 		const { row, vault } = screenOf({ status: 'In progress' });
 		editLiveNote(vault, { released: '2026-08-01' });
-		expect(closingFieldsMoved(vault.app as never, row, settings)).toBe(true);
+		expect(closingFieldsMoved(vault.app, row, settings)).toBe(true);
 	});
 
 	it('withholds it when the transition is not one of the released values', () => {
@@ -146,7 +146,7 @@ describe('whether the note has moved past the row on screen', () => {
 		// old one, so nothing about the value alone would notice.
 		const { row, vault } = screenOf({ status: 'In progress' });
 		editLiveNote(vault, { status: { a: 1 } });
-		expect(closingFieldsMoved(vault.app as never, row, settings)).toBe(true);
+		expect(closingFieldsMoved(vault.app, row, settings)).toBe(true);
 	});
 
 });

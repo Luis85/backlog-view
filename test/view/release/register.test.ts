@@ -6,6 +6,7 @@ import { getReleaseViewOptions } from '../../../src/domain/releaseOptions';
 import { RELEASE_VIEW_TYPE, ReleaseView } from '../../../src/view/release/releaseView';
 import { WriteLock } from '../../../src/view/writeLock';
 import { useViewHarness, captureRegistrations } from '../../helpers/view';
+import { fakeController } from '../../helpers/vault';
 
 useViewHarness();
 
@@ -37,7 +38,7 @@ describe('registerReleaseView', () => {
 		const spec = specs.get(RELEASE_VIEW_TYPE)!;
 
 		const containerEl = document.body.createDiv();
-		const view = spec.factory({} as never, containerEl);
+		const view = spec.factory(fakeController(), containerEl);
 
 		expect(view).toBeInstanceOf(ReleaseView);
 		expect(containerEl.querySelector('.pbl-rel-view')).toBe((view as ReleaseView).viewEl);

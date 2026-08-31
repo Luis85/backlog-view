@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { ProductBacklogView } from '../../src/view/backlogView';
-import { FakeVault, FakeViewConfig } from '../helpers/vault';
+import { fakeController, FakeVault, FakeViewConfig } from '../helpers/vault';
 import { Menu, Modal, Notice } from '../helpers/obsidian-mock';
 import {
 	fixture,
@@ -427,7 +427,7 @@ describe('long operations stay legible and non-blocking', () => {
 
 	it('shows a loading state until the first result set arrives', () => {
 		const containerEl = document.body.createDiv();
-		const view = new ProductBacklogView({} as never, containerEl);
+		const view = new ProductBacklogView(fakeController(), containerEl);
 
 		// Bases constructs the view and delivers data separately; the gap must not
 		// look like a broken view.

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
-import { FakeVault, FakeViewConfig } from '../helpers/vault';
+import { fakeController, FakeVault, FakeViewConfig } from '../helpers/vault';
 import { Menu, Modal } from '../helpers/obsidian-mock';
 import { ProductBacklogView } from '../../src/view/backlogView';
 import { clickExpandAll, flush, makeView, rowByTitle, submitButton, useViewHarness } from '../helpers/view';
@@ -83,7 +83,7 @@ describe('Set assignee', () => {
 		// thing being refused.
 		vault.addFile('Feature R1.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Retired' });
 		const containerEl = document.body.createDiv();
-		const view = new ProductBacklogView({} as never, containerEl);
+		const view = new ProductBacklogView(fakeController(), containerEl);
 		const anyView = view as unknown as Record<string, unknown>;
 		anyView.app = vault.app;
 		anyView.config = new FakeViewConfig(configured);
@@ -242,7 +242,7 @@ describe('the assignee chip', () => {
 		vault.addFile('Retired.md', { frontmatter: { type: 'Epic', order: 40, assignee: 'Ghost' } });
 		vault.addFile('Feature R1.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Retired' });
 		const containerEl = document.body.createDiv();
-		const view = new ProductBacklogView({} as never, containerEl);
+		const view = new ProductBacklogView(fakeController(), containerEl);
 		const anyView = view as unknown as Record<string, unknown>;
 		anyView.app = vault.app;
 		const config = new FakeViewConfig(configured);

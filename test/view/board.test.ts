@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { ProductBacklogView } from '../../src/view/backlogView';
-import { FakeVault, FakeViewConfig } from '../helpers/vault';
+import { fakeController, FakeVault, FakeViewConfig } from '../helpers/vault';
 import { flush, makeView, projectionButton, refresh, useViewHarness } from '../helpers/view';
 import { cardDrag } from '../helpers/dnd';
 import { cardByTitle, cardTitles, columnByName, columnNames, columnsOf, countOf, expandColumns } from '../helpers/board';
@@ -354,7 +354,7 @@ describe('focus on the board', () => {
 		vault.addFile('F1.md', { frontmatter: { type: 'Feature', order: 10, status: 'Active' }, parentLink: 'Epic' });
 		vault.addFile('F2.md', { frontmatter: { type: 'Feature', order: 20, status: 'New' }, parentLink: 'Epic' });
 		const containerEl = document.body.createDiv();
-		const view = new ProductBacklogView({} as never, containerEl);
+		const view = new ProductBacklogView(fakeController(), containerEl);
 		const config = new FakeViewConfig(configValues);
 		const anyView = view as unknown as Record<string, unknown>;
 		anyView.app = vault.app;

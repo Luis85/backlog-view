@@ -1,4 +1,4 @@
-import type { App, BasesEntry, BasesPropertyId, BasesSortConfig, BasesViewConfig, Value } from 'obsidian';
+import type { App, BasesEntry, BasesPropertyId, BasesSortConfig, BasesViewConfig, QueryController, Value } from 'obsidian';
 import { FileView, TFile, TFolder } from './obsidian-mock';
 
 /**
@@ -12,6 +12,23 @@ const asFake = <Target,>(fake: unknown): Target => fake as Target;
 
 /** `asFake` for the app surface, keeping the fake's own members visible beside `App`'s. */
 const asApp = <T>(fake: T): T & App => asFake<T & App>(fake);
+
+/**
+ * The Bases controller a view's constructor takes and never reads — every view here is
+ * driven through `app`, `config` and `data`, all assigned after construction. One cast
+ * here instead of `{} as never` at forty call sites: the ARGUMENT is typechecked again,
+ * so a constructor that grows a second parameter, or reorders these two, fails at the
+ * call rather than passing whatever `never` is assignable to.
+ */
+export const fakeController = (): QueryController => asFake<QueryController>({});
+
+/**
+ * An `App` nothing reads — the argument a dialog takes to hand to `Modal` and never
+ * touches itself. Same trade as {@link fakeController}, and the same warning: a test
+ * whose subject needs a working vault behind it passes `new FakeVault().app` instead,
+ * which is a real double rather than an empty one.
+ */
+export const fakeApp = (): App => asFake<App>({});
 
 interface FakeLink {
 	key: string;

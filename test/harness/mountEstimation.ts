@@ -18,7 +18,7 @@ import { drawChrome } from './chrome';
 import { drawIcons } from './icons';
 import { installObsidianDom } from '../helpers/dom';
 import { estimationOptions, estimationVault } from '../helpers/fixtures';
-import { FakeVault, FakeViewConfig } from '../helpers/vault';
+import { fakeController, FakeVault, FakeViewConfig } from '../helpers/vault';
 import { FileView } from '../helpers/obsidian-mock';
 
 /**
@@ -56,7 +56,7 @@ export function mountEstimationHarness(root: HTMLElement, variant: EstimationCon
 	const containerEl = leafEl.createDiv();
 	vault.addLeaf(new FileView(vault.addFile('Estimation demo.base'), leafEl));
 
-	const view = new EstimationView({} as never, containerEl, new WriteLock());
+	const view = new EstimationView(fakeController(), containerEl, new WriteLock());
 	const anyView = view as unknown as Record<string, unknown>;
 	anyView.app = vault.app;
 	const config = new FakeViewConfig(configValues(variant));

@@ -177,7 +177,7 @@ describe('marking a release as released', () => {
 		opener.blur();
 
 		view.config.set('releasedDateProperty', '');
-		view.settings = resolveReleaseSettings(view.config as never);
+		view.settings = resolveReleaseSettings(view.config);
 		view.onDataUpdated();
 		expect(view.viewEl.querySelector('.pbl-rel-close')).toBeNull();
 		expect(view.viewEl.querySelector('.pbl-rel-released')).toBeNull();
@@ -216,7 +216,7 @@ describe('marking a release as released', () => {
 		});
 		button(view, '.pbl-rel-close').click();
 		view.config.set('releasedTransitionValue', 'Archived');
-		view.settings = resolveReleaseSettings(view.config as never);
+		view.settings = resolveReleaseSettings(view.config);
 		await confirmDialog();
 		expect(vault.fm('0.9.md')['status']).toBe('In progress');
 	});
@@ -230,7 +230,7 @@ describe('marking a release as released', () => {
 		const { view, vault } = releaseScreen({ status: 'In progress' });
 		button(view, '.pbl-rel-close').click();
 		view.config.set('releasedDateProperty', 'note.shipped'); // also empty on this note
-		view.settings = resolveReleaseSettings(view.config as never);
+		view.settings = resolveReleaseSettings(view.config);
 		await confirmDialog();
 		// Neither key is written: the batch named `released`, and `reconfiguredKey` refuses
 		// it because that is no longer the released-date role's key.

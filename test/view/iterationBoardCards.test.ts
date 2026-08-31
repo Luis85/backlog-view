@@ -4,7 +4,7 @@ import { Menu } from '../helpers/obsidian-mock';
 import { FakeVault } from '../helpers/vault';
 import { cardByTitle, cardTitles, columnByName, columnNames } from '../helpers/board';
 import { cardDrag } from '../helpers/dnd';
-import { flush, key, makeView, submitPrompt, treeOf, useViewHarness } from '../helpers/view';
+import { flush, itemAt, key, makeView, submitPrompt, treeOf, useViewHarness } from '../helpers/view';
 
 useViewHarness();
 
@@ -345,7 +345,7 @@ describe('one move, three inputs, all through the bucket', () => {
 		expect(vault.fm('A deliverable.md').deliverableStatus).toBeUndefined();
 
 		const tree = treeOf(containerEl);
-		view.selectItem(view.model?.byPath.get('A deliverable.md') as never);
+		view.selectItem(itemAt(view, 'A deliverable.md'));
 		key(tree, 'ArrowRight', { altKey: true });
 		await flush();
 		expect(vault.fm('A deliverable.md').status).toBe('Doing');

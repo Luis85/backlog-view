@@ -148,5 +148,9 @@ than it appears to:
    off `test/` for the reason that was always the real one — the doubles exist to do what
    it forbids. Turning it on for `test/` is a separate decision with its own exemption
    list, not a follow-on from this.
-4. **Nothing forces a new test directory into the include.** `test/**/*.ts` is a glob, so
+4. **The suite's own escape hatches were not counted.** 340 `as never` casts sat in
+   `test/` when this landed, and `never` satisfies every parameter — so the gate reads
+   nothing at each one. Counted and mostly removed by
+   [[Close the holes the test typecheck cannot see through]]; 101 remain.
+5. **Nothing forces a new test directory into the include.** `test/**/*.ts` is a glob, so
    this holds by construction today; a suite moved outside `test/` would leave silently.

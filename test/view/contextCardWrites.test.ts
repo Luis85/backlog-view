@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
 import { ProductBacklogView } from '../../src/view/backlogView';
-import { FakeVault, FakeViewConfig } from '../helpers/vault';
+import { fakeController, FakeVault, FakeViewConfig } from '../helpers/vault';
 import { Menu, Notice } from '../helpers/obsidian-mock';
-import { flush, key, makeView, treeOf, useViewHarness } from '../helpers/view';
+import { flush, itemAt, key, makeView, treeOf, useViewHarness } from '../helpers/view';
 import { cardDrag } from '../helpers/dnd';
 import { cardByTitle, expandColumns } from '../helpers/board';
 import { bucketNames, laneCountOf, laneNames, laneRoadmap, lanesOf, rowFor, shelfTitles } from '../helpers/roadmap';
@@ -48,7 +48,7 @@ describe('write safety with context rows, across the board’s entry points', ()
 		// current projection is not showing.
 		vault.addFile('Sprint 12.md', { frontmatter: { type: 'Iteration', order: 30, start: '2026-09-07', due: '2026-09-18' } });
 		const containerEl = document.body.createDiv();
-		const view = new ProductBacklogView({} as never, containerEl);
+		const view = new ProductBacklogView(fakeController(), containerEl);
 		const anyView = view as unknown as Record<string, unknown>;
 		anyView.app = vault.app;
 		anyView.config = new FakeViewConfig({
@@ -114,7 +114,7 @@ describe('write safety with context rows, across the board’s entry points', ()
 		// nobody named. The card menu is a second set of entry points onto one rule, which
 		// is what this file exists to ask — and `Set iteration` reached it (2026-08-16)
 		// asserting nothing until this line.
-		view.showContextMenuFor(view.model?.byPath.get('PBI.md') as never);
+		view.showContextMenuFor(itemAt(view, 'PBI.md'));
 		expect(Menu.lastShown?.item('Set iteration')).toBeDefined();
 	});
 
@@ -190,7 +190,7 @@ describe('write safety with context rows, across the Deliverables board’s entr
 		});
 		vault.addFile('Task.md', { frontmatter: { type: 'Task', order: 10 }, parentLink: 'Ctx' });
 		const containerEl = document.body.createDiv();
-		const view = new ProductBacklogView({} as never, containerEl);
+		const view = new ProductBacklogView(fakeController(), containerEl);
 		const anyView = view as unknown as Record<string, unknown>;
 		anyView.app = vault.app;
 		anyView.config = new FakeViewConfig({ deliverableStateProperty: 'note.deliverableStatus' });
@@ -290,7 +290,7 @@ describe('write safety with context rows, across the roadmap’s entry points', 
 		vault.addFile('Mid.md', { frontmatter: { type: 'PBI', order: 10, horizon: 'Ancient' }, parentLink: 'Feature B' });
 		vault.addFile('Task.md', { frontmatter: { type: 'Task', order: 10 }, parentLink: 'Mid' });
 		const containerEl = document.body.createDiv();
-		const view = new ProductBacklogView({} as never, containerEl);
+		const view = new ProductBacklogView(fakeController(), containerEl);
 		const anyView = view as unknown as Record<string, unknown>;
 		anyView.app = vault.app;
 		anyView.config = new FakeViewConfig({ horizonProperty: 'note.horizon' });
@@ -365,7 +365,7 @@ describe('write safety with context rows, across the roadmap’s entry points', 
 		// leads with the drawn buckets and then names what the RESULTS carry — cannot
 		// offer it either. Both halves, because either one alone would let it back in.
 		expect(bucketNames(containerEl)).toEqual(['Now', 'Next', 'Later']);
-		view.showContextMenuFor(view.model?.byPath.get('PBI.md') as never);
+		view.showContextMenuFor(itemAt(view, 'PBI.md'));
 		const offered = Menu.lastShown?.item('Set horizon')?.submenu?.items.map((i) => i.titleText);
 		expect(offered).toEqual(['Now', 'Next', 'Later', 'Clear horizon']);
 	});
@@ -403,7 +403,7 @@ describe('write safety with context rows, across the resources axis’s entry po
 		});
 		vault.addFile('Task.md', { frontmatter: { type: 'Task', order: 10 }, parentLink: 'Mid' });
 		const containerEl = document.body.createDiv();
-		const view = new ProductBacklogView({} as never, containerEl);
+		const view = new ProductBacklogView(fakeController(), containerEl);
 		const anyView = view as unknown as Record<string, unknown>;
 		anyView.app = vault.app;
 		anyView.config = new FakeViewConfig({
@@ -548,7 +548,7 @@ describe('write safety with context rows, across the resources axis’s entry po
 		// RESULTS carry — must not offer it from the other end.
 		const { view } = laneStressView();
 
-		view.showContextMenuFor(view.model?.byPath.get('PBI.md') as never);
+		view.showContextMenuFor(itemAt(view, 'PBI.md'));
 		const offered = Menu.lastShown?.item('Set assignee')?.submenu?.items.map((i) => i.titleText);
 
 		expect(offered).toEqual(['Sam', 'New resource...', 'Clear assignee']);
@@ -589,7 +589,7 @@ describe('write safety with context rows, across the timeline’s entry points',
 		});
 		vault.addFile('Task.md', { frontmatter: { type: 'Task', order: 10 }, parentLink: 'Mid' });
 		const containerEl = document.body.createDiv();
-		const view = new ProductBacklogView({} as never, containerEl);
+		const view = new ProductBacklogView(fakeController(), containerEl);
 		const anyView = view as unknown as Record<string, unknown>;
 		anyView.app = vault.app;
 		anyView.config = new FakeViewConfig({

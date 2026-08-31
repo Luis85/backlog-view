@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { ProductBacklogView } from '../../src/view/backlogView';
-import { FakeVault, FakeViewConfig } from '../helpers/vault';
+import { fakeController, FakeVault, FakeViewConfig } from '../helpers/vault';
 import { Menu } from '../helpers/obsidian-mock';
-import { clickExpandAll, flush, key, rowByTitle, titlesOf, treeOf, useViewHarness } from '../helpers/view';
+import { clickExpandAll, flush, itemAt, key, rowByTitle, titlesOf, treeOf, useViewHarness } from '../helpers/view';
 
 useViewHarness();
 
@@ -15,7 +15,7 @@ describe('parents outside the filter', () => {
 		vault.addFile('Feature.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Epic' });
 		vault.addFile('PBI.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: 'Feature' });
 		const containerEl = document.body.createDiv();
-		const view = new ProductBacklogView({} as never, containerEl);
+		const view = new ProductBacklogView(fakeController(), containerEl);
 		const config = new FakeViewConfig(configValues);
 		const anyView = view as unknown as Record<string, unknown>;
 		anyView.app = vault.app;
@@ -62,7 +62,7 @@ describe('parents outside the filter', () => {
 	it('ignores Alt+arrow on a context row', async () => {
 		const { view, containerEl, vault } = filteredView();
 		const tree = treeOf(containerEl);
-		view.selectItem(view.model?.byPath.get('Epic.md') as never);
+		view.selectItem(itemAt(view, 'Epic.md'));
 
 		key(tree, 'ArrowDown', { altKey: true });
 		await flush();
@@ -88,7 +88,7 @@ describe('context rows are read-only', () => {
 		vault.addFile('Feature.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Epic' });
 		vault.addFile('PBI.md', { frontmatter: { type: 'PBI', order: 10, status: 'New' }, parentLink: 'Feature' });
 		const containerEl = document.body.createDiv();
-		const view = new ProductBacklogView({} as never, containerEl);
+		const view = new ProductBacklogView(fakeController(), containerEl);
 		const anyView = view as unknown as Record<string, unknown>;
 		anyView.app = vault.app;
 		const config = new FakeViewConfig(configValues);
@@ -178,7 +178,7 @@ describe('context rows follow the results they place', () => {
 		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10, status: 'Active' } });
 		vault.addFile('PBI.md', { frontmatter: { type: 'PBI', order: 10, status: 'Done' }, parentLink: 'Epic' });
 		const containerEl = document.body.createDiv();
-		const view = new ProductBacklogView({} as never, containerEl);
+		const view = new ProductBacklogView(fakeController(), containerEl);
 		const anyView = view as unknown as Record<string, unknown>;
 		anyView.app = vault.app;
 		anyView.config = new FakeViewConfig({ stateProperty: 'note.status' });
@@ -217,7 +217,7 @@ describe('context rows follow the results they place', () => {
 		vault.addFile('Done.md', { frontmatter: { type: 'PBI', order: 10, status: 'Done' }, parentLink: 'Epic' });
 		vault.addFile('Open.md', { frontmatter: { type: 'PBI', order: 20, status: 'New' }, parentLink: 'Epic' });
 		const containerEl = document.body.createDiv();
-		const view = new ProductBacklogView({} as never, containerEl);
+		const view = new ProductBacklogView(fakeController(), containerEl);
 		const anyView = view as unknown as Record<string, unknown>;
 		anyView.app = vault.app;
 		anyView.config = new FakeViewConfig({ stateProperty: 'note.status' });

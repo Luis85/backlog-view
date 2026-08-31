@@ -2,7 +2,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { FolderSuggest, KnownValueSuggest, TitlePromptModal, ValuePromptModal } from '../../src/ui/prompts';
 import { installObsidianDom } from '../helpers/dom';
-import { FakeVault } from '../helpers/vault';
+import { fakeApp, FakeVault } from '../helpers/vault';
 import { openTextPrompt } from '../../src/ui/textPrompt';
 import { Modal, TFolder } from '../helpers/obsidian-mock';
 
@@ -11,7 +11,7 @@ installObsidianDom();
 function openModal(options: { askFolder?: boolean; detail?: () => string; types?: string[] } = {}) {
 	const vault = new FakeVault();
 	const results: { title: string; folder?: string; typeName?: string }[] = [];
-	const modal = new TitlePromptModal(vault.app as never, {
+	const modal = new TitlePromptModal(vault.app, {
 		heading: 'New Epic',
 		detail: options.detail,
 		types: options.types ?? ['Epic'],
@@ -84,7 +84,7 @@ describe('FolderSuggest', () => {
 		vault.folders.add('Backlog');
 		vault.folders.add('Archive');
 		const input = document.body.createEl('input') as HTMLInputElement;
-		const suggest = new FolderSuggest(vault.app as never, input);
+		const suggest = new FolderSuggest(vault.app, input);
 
 		const matches = (
 			suggest as unknown as { getSuggestions: (query: string) => TFolder[] }
@@ -114,7 +114,7 @@ describe('ValuePromptModal', () => {
 		const added: string[] = [];
 		// The tag prompt's own arguments: the one caller with a sigil, which is the half
 		// of this modal a plain value prompt does not exercise.
-		const modal = new ValuePromptModal(vault.app as never, {
+		const modal = new ValuePromptModal(vault.app, {
 			title: 'Add tag',
 			fieldName: 'Tag',
 			placeholder: 'Sprint-12',
@@ -171,7 +171,7 @@ describe('ValuePromptModal', () => {
 
 	it('suggests the known tags, matching with or without the hash', () => {
 		const { input } = openTagPrompt(['alpha', 'beta', 'alphabet']);
-		const suggest = new KnownValueSuggest({} as never, input, ['alpha', 'beta', 'alphabet'], '#');
+		const suggest = new KnownValueSuggest(fakeApp(), input, ['alpha', 'beta', 'alphabet'], '#');
 		const matches = (suggest as unknown as { getSuggestions: (q: string) => string[] }).getSuggestions('#alph');
 		expect(matches).toEqual(['alpha', 'alphabet']);
 
@@ -189,7 +189,7 @@ describe('ValuePromptModal', () => {
 	it('warns on a case-insensitive duplicate, clears when edited away, and still submits', () => {
 		const vault = new FakeVault();
 		const added: string[] = [];
-		const modal = new ValuePromptModal(vault.app as never, {
+		const modal = new ValuePromptModal(vault.app, {
 			title: 'New resource',
 			fieldName: 'Name',
 			placeholder: 'Alex Chen',
@@ -223,7 +223,7 @@ describe('ValuePromptModal', () => {
 		// alert is right because it stops a submit. `aria-describedby` is what a screen
 		// reader user needs to hear it at all, since nothing here is refused.
 		const vault = new FakeVault();
-		const modal = new ValuePromptModal(vault.app as never, {
+		const modal = new ValuePromptModal(vault.app, {
 			title: 'New resource',
 			fieldName: 'Name',
 			placeholder: 'Alex Chen',
@@ -258,7 +258,7 @@ describe('ValuePromptModal', () => {
 describe('openTextPrompt', () => {
 	it('puts the caret in the field, like every prompt beside it', async () => {
 		const vault = new FakeVault();
-		openTextPrompt(vault.app as never, {
+		openTextPrompt(vault.app, {
 			title: 'Describe',
 			fieldName: 'Description',
 			placeholder: '',

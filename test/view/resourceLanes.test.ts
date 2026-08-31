@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { FakeVault } from '../helpers/vault';
 import { shelfRemoval } from '../../src/view/render/shelf';
-import { clickExpandAll, Harness, key, makeView, treeOf, useViewHarness } from '../helpers/view';
+import { clickExpandAll, Harness, itemAt, key, makeView, treeOf, useViewHarness } from '../helpers/view';
 import { gripNames, laneAwayOf, laneCountOf, laneNames, laneOrder, lanesOf, rowFor, shelfTitles } from '../helpers/roadmap';
 import { countingVault, resourceVault } from '../helpers/resources';
 import { addDays, formatCivil } from '../../src/domain/timeline';
@@ -150,7 +150,7 @@ describe('the resources axis on screen', () => {
 		vault.addFile('Ship 1.0.md', { frontmatter: { type: 'Milestone', due: '2026-08-10' } });
 		const harness = laneRoadmap(vault);
 		const removal = shelfRemoval(harness.view, 'resources');
-		const at = (path: string) => harness.view.model?.byPath.get(path) as never;
+		const at = (path: string) => itemAt(harness.view, path);
 
 		// The marker that CAN take a date keeps its drag, and so does ordinary work — the
 		// gate is the writable end, not the category.

@@ -7,6 +7,7 @@ import { OPTIONAL_PROPERTIES } from '../../src/domain/optionalProperties';
 import { installObsidianDom } from './dom';
 import { FakeVault, FakeViewConfig, mountLeaf } from './vault';
 import { Menu, Modal, Notice } from './obsidian-mock';
+import { fakeController } from '../helpers/vault';
 
 installObsidianDom();
 
@@ -97,7 +98,7 @@ export function makeView(
 	// Bases mounts the view inside the leaf showing the .base file; that leaf is how
 	// the view identifies which base it is, so persistence tests need the real nesting.
 	const containerEl = mountLeaf(vault, base);
-	const view = new ProductBacklogView({} as never, containerEl, lock);
+	const view = new ProductBacklogView(fakeController(), containerEl, lock);
 	const config = new FakeViewConfig(configValues);
 	if (viewName) config.name = viewName;
 	// The Bases properties menu decides which properties are columns, chips included, so

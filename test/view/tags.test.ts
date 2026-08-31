@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import { FakeVault, FakeViewConfig } from '../helpers/vault';
+import { fakeController, FakeVault, FakeViewConfig } from '../helpers/vault';
 import { Menu, Notice } from '../helpers/obsidian-mock';
 import { ProductBacklogView } from '../../src/view/backlogView';
 import { clickExpandAll, flush, Harness, makeView, rowByTitle, submitPrompt, useViewHarness } from '../helpers/view';
@@ -203,7 +203,7 @@ describe('tag editing', () => {
 		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10, tags: ['outside'] } });
 		vault.addFile('PBI.md', { frontmatter: { type: 'PBI', order: 10, tags: ['alpha'] }, parentLink: 'Epic' });
 		const containerEl = document.body.createDiv();
-		const view = new ProductBacklogView({} as never, containerEl);
+		const view = new ProductBacklogView(fakeController(), containerEl);
 		const anyView = view as unknown as Record<string, unknown>;
 		anyView.app = vault.app;
 		const config = new FakeViewConfig({});

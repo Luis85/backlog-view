@@ -15,7 +15,7 @@ import { promptCreateBacklogBase } from '../../src/commands/scaffold';
 import { writeBacklogReadmeCommand } from '../../src/commands/readme';
 import { installObsidianDom } from '../helpers/dom';
 import { Modal, Notice } from '../helpers/obsidian-mock';
-import { FakeVault } from '../helpers/vault';
+import { fakeApp, FakeVault } from '../helpers/vault';
 import { flush, makeView, useViewHarness } from '../helpers/view';
 import { MARK, markedCatalog } from './fixtures';
 
@@ -115,7 +115,7 @@ const cta = (el: HTMLElement): string =>
 describe('the prompts read their own labels from the catalog', () => {
 	it('draws the new-item prompt from it, field names, placeholders and button alike', () => {
 		const vault = new FakeVault();
-		const modal = new TitlePromptModal(vault.app as never, {
+		const modal = new TitlePromptModal(vault.app, {
 			heading: 'New Epic',
 			types: ['Epic', 'Feature'],
 			askFolder: true,
@@ -138,7 +138,7 @@ describe('the prompts read their own labels from the catalog', () => {
 	it('gives the folder prompt the same folder label the new-item prompt has', () => {
 		// One key, two forms — so the two cannot drift into naming one thing differently.
 		const vault = new FakeVault();
-		const modal = new FolderPromptModal(vault.app as never, {
+		const modal = new FolderPromptModal(vault.app, {
 			heading: 'Somewhere',
 			description: 'Handed in by the caller.',
 			ctaLabel: 'Also the caller s',
@@ -151,7 +151,7 @@ describe('the prompts read their own labels from the catalog', () => {
 
 	it('names the schedule prompt s clear button after the field it empties', () => {
 		const vault = new FakeVault();
-		const modal = new SchedulePromptModal(vault.app as never, {
+		const modal = new SchedulePromptModal(vault.app, {
 			heading: 'Schedule',
 			description: 'Handed in by the caller.',
 			fields: [{ field: 'start', name: 'Planned start', value: '' }],
@@ -171,7 +171,7 @@ describe('the prompts read their own labels from the catalog', () => {
 
 	it('draws the absence prompt s three fields and the save it shares with the schedule', () => {
 		const vault = new FakeVault();
-		const modal = new AbsencePromptModal(vault.app as never, {
+		const modal = new AbsencePromptModal(vault.app, {
 			heading: 'Away',
 			description: 'Handed in by the caller.',
 			// Named to NOT match either offered id, so the defensive placeholder draws too —
@@ -194,7 +194,7 @@ describe('the prompts read their own labels from the catalog', () => {
 
 	it('draws the iteration prompt s fields from keys of its own, not the absence s', () => {
 		const vault = new FakeVault();
-		const modal = new IterationPromptModal(vault.app as never, {
+		const modal = new IterationPromptModal(vault.app, {
 			heading: 'Iteration',
 			description: 'Handed in by the caller.',
 			name: '',
@@ -220,7 +220,7 @@ describe('the prompts read their own labels from the catalog', () => {
 describe('the dialogs read their own text from the catalog', () => {
 	it('titles the state-colour dialog and its reset from it', () => {
 		openStateColorsDialog(
-			{} as never,
+			fakeApp(),
 			[{ state: 'Doing', value: '#111111', defaultValue: '#222222', isSet: true }],
 			() => undefined,
 		);
@@ -237,7 +237,7 @@ describe('the dialogs read their own text from the catalog', () => {
 	});
 
 	it('titles the manual dialog from it', () => {
-		openManual({} as never, [{ id: 'one', title: 'First', entries: [{ term: 'A', text: 'alpha' }] }], 'one');
+		openManual(fakeApp(), [{ id: 'one', title: 'First', entries: [{ term: 'A', text: 'alpha' }] }], 'one');
 		expect(Modal.lastOpened?.titleEl.textContent).toBe(marked('manual.dialogTitle'));
 	});
 });
@@ -245,7 +245,7 @@ describe('the dialogs read their own text from the catalog', () => {
 describe('the scaffold command reads its prompt and its notice from the catalog', () => {
 	it('draws the prompt from it, and reports the file it made', async () => {
 		const vault = new FakeVault();
-		promptCreateBacklogBase(vault.app as never);
+		promptCreateBacklogBase(vault.app);
 		const modal = Modal.lastOpened;
 		if (!modal) throw new Error('prompt not opened');
 
@@ -280,7 +280,7 @@ describe('the readme command reads its outcome notices from the catalog', () => 
 		makeView(vault, { homeFolder: 'work' }, { base: 'work/Product Backlog.base' });
 		vault.activeView = vault.leaves[vault.leaves.length - 1].view;
 
-		writeBacklogReadmeCommand(vault.app as never, false);
+		writeBacklogReadmeCommand(vault.app, false);
 		await flush();
 
 		// The path is vault content and arrives as a parameter; the sentence around it is
@@ -300,7 +300,7 @@ describe('the readme command reads its outcome notices from the catalog', () => 
 		);
 		vault.activeView = vault.leaves[vault.leaves.length - 1].view;
 
-		writeBacklogReadmeCommand(vault.app as never, false);
+		writeBacklogReadmeCommand(vault.app, false);
 		await flush();
 
 		expect(Notice.messages.some((m) => m.startsWith(MARK))).toBe(true);

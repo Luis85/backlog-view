@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { ProductBacklogView } from '../../src/view/backlogView';
-import { FakeVault, FakeViewConfig } from '../helpers/vault';
+import { fakeController, FakeVault, FakeViewConfig } from '../helpers/vault';
 import { FuzzySuggestModal, Menu, Modal } from '../helpers/obsidian-mock';
-import { drag, clickExpandAll, flush, key, rowByTitle, rows, submitPrompt, treeOf, useViewHarness } from '../helpers/view';
+import { clickExpandAll, drag, flush, itemAt, key, rowByTitle, rows, submitPrompt, treeOf, useViewHarness } from '../helpers/view';
 import { computeAssigneeWrites } from '../../src/domain/writePlan';
 
 /**
@@ -26,7 +26,7 @@ describe('moves in a group that holds an outside-filter row', () => {
 		vault.addFile('Feature B.md', { frontmatter: { type: 'Feature', order: 20 }, parentLink: 'Epic' });
 		vault.addFile('PBI.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: 'Feature A' });
 		const containerEl = document.body.createDiv();
-		const view = new ProductBacklogView({} as never, containerEl);
+		const view = new ProductBacklogView(fakeController(), containerEl);
 		const anyView = view as unknown as Record<string, unknown>;
 		anyView.app = vault.app;
 		// Inference is what this test is about, so the type folders that would answer
@@ -62,7 +62,7 @@ describe('moves in a group that holds an outside-filter row', () => {
 	it('writes nothing when Alt+arrow targets such a group', async () => {
 		const { view, containerEl, vault } = mixedView();
 		const tree = treeOf(containerEl);
-		view.selectItem(view.model?.byPath.get('Feature B.md') as never);
+		view.selectItem(itemAt(view, 'Feature B.md'));
 
 		key(tree, 'ArrowUp', { altKey: true });
 		key(tree, 'ArrowLeft', { altKey: true });
@@ -81,7 +81,7 @@ describe('new-item folder inference with context rows', () => {
 		vault.addFile('Backlog/A.md', { frontmatter: { type: 'Task' }, parentLink: 'Sub' });
 		vault.addFile('Backlog/B.md', { frontmatter: { type: 'Task' }, parentLink: 'Sub' });
 		const containerEl = document.body.createDiv();
-		const view = new ProductBacklogView({} as never, containerEl);
+		const view = new ProductBacklogView(fakeController(), containerEl);
 		const anyView = view as unknown as Record<string, unknown>;
 		anyView.app = vault.app;
 		// Inference is what this test is about, so the type folders that would answer
@@ -108,7 +108,7 @@ describe('creating a child under a context parent', () => {
 		vault.addFile('Projects/Epic/Epic.md', { frontmatter: { type: 'Epic' } });
 		vault.addFile('Backlog/PBI.md', { frontmatter: { type: 'PBI' }, parentLink: 'Epic' });
 		const containerEl = document.body.createDiv();
-		const view = new ProductBacklogView({} as never, containerEl);
+		const view = new ProductBacklogView(fakeController(), containerEl);
 		const anyView = view as unknown as Record<string, unknown>;
 		anyView.app = vault.app;
 		// Type folders off: the rule under test is where a child of a CONTEXT parent
@@ -149,7 +149,7 @@ describe('creating a child under a context parent', () => {
 		const vault = new FakeVault();
 		vault.addFile('Backlog/Epic/Epic.md', { frontmatter: { type: 'Epic' } });
 		const containerEl = document.body.createDiv();
-		const view = new ProductBacklogView({} as never, containerEl);
+		const view = new ProductBacklogView(fakeController(), containerEl);
 		const anyView = view as unknown as Record<string, unknown>;
 		anyView.app = vault.app;
 		// Type folders off: the rule under test is where a child of a CONTEXT parent
@@ -237,7 +237,7 @@ describe('write safety with context rows, across every entry point', () => {
 		vault.addFile('Robin.md', { frontmatter: { type: 'Resource' } });
 
 		const containerEl = document.body.createDiv();
-		const view = new ProductBacklogView({} as never, containerEl);
+		const view = new ProductBacklogView(fakeController(), containerEl);
 		const anyView = view as unknown as Record<string, unknown>;
 		anyView.app = vault.app;
 		// Both roadmap axes configured, so the placement writes are entry points this
@@ -512,7 +512,7 @@ describe('undo across the filter boundary', () => {
 		vault.addFile('Parent.md', { frontmatter: { type: 'Epic', order: 10, status: 'Active' } });
 		vault.addFile('Child.md', { frontmatter: { type: 'PBI', order: 10, status: 'New' }, parentLink: 'Parent' });
 		const containerEl = document.body.createDiv();
-		const view = new ProductBacklogView({} as never, containerEl);
+		const view = new ProductBacklogView(fakeController(), containerEl);
 		const anyView = view as unknown as Record<string, unknown>;
 		anyView.app = vault.app;
 		const config = new FakeViewConfig({ stateProperty: 'note.status' });
@@ -554,7 +554,7 @@ describe('toolbar figures describe the Base results', () => {
 		vault.addFile('Done.md', { frontmatter: { type: 'PBI', order: 10, status: 'Done' }, parentLink: 'Epic' });
 		vault.addFile('Open.md', { frontmatter: { type: 'PBI', order: 20, status: 'New' }, parentLink: 'Epic' });
 		const containerEl = document.body.createDiv();
-		const view = new ProductBacklogView({} as never, containerEl);
+		const view = new ProductBacklogView(fakeController(), containerEl);
 		const anyView = view as unknown as Record<string, unknown>;
 		anyView.app = vault.app;
 		anyView.config = new FakeViewConfig({ stateProperty: 'note.status' });
@@ -600,7 +600,7 @@ describe('rollups describe the Base results only', () => {
 		vault.addFile('Mid.md', { frontmatter: { type: 'PBI', order: 10, status: 'Done' }, parentLink: 'Feature B' });
 		vault.addFile('Task.md', { frontmatter: { type: 'Task', order: 10, status: 'New' }, parentLink: 'Mid' });
 		const containerEl = document.body.createDiv();
-		const view = new ProductBacklogView({} as never, containerEl);
+		const view = new ProductBacklogView(fakeController(), containerEl);
 		const anyView = view as unknown as Record<string, unknown>;
 		anyView.app = vault.app;
 		anyView.config = new FakeViewConfig({ stateProperty: 'note.status' });

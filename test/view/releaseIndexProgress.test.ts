@@ -95,7 +95,7 @@ describe('the band’s progress line', () => {
 	 * a declared option and the settings reader that consumes it are asked to agree.
 	 */
 	it('binds through whatever key the release view actually declares for the Deliverable state', () => {
-		const declared = getReleaseViewOptions(new FakeViewConfig({}) as never)
+		const declared = getReleaseViewOptions(new FakeViewConfig({}))
 			.flatMap((entry) => (entry.type === 'group' ? entry.items : [entry]))
 			.find((option) => option.type === 'property' && option.displayName === en['option.deliverableStateProperty']);
 		expect(declared).toBeDefined();
