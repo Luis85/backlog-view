@@ -12,11 +12,18 @@ import { fakeController } from '../helpers/vault';
  *  than a `containerEl` the caller would otherwise have to keep threading through: every
  *  scope-tree test already holds the view.
  *
+ *  Takes the view by what it USES — an element to query — rather than by `ReleaseView`:
+ *  the scope-tree tests hold the real view, and the one caller that holds a lighter
+ *  stand-in was casting to reach a parameter this function never reads.
+ *
  *  Overloaded rather than always nullable: without `optional` this throws on a miss, so
  *  the caller holds an element and should not have to say so again at every use. */
-export function row(view: ReleaseView, path: string): HTMLElement;
-export function row(view: ReleaseView, path: string, opts: { optional: true }): HTMLElement | null;
-export function row(view: ReleaseView, path: string, opts: { optional?: boolean } = {}): HTMLElement | null {
+/** What `row` actually needs of a view: an element to query. */
+export type HasViewEl = { viewEl: HTMLElement };
+
+export function row(view: HasViewEl, path: string): HTMLElement;
+export function row(view: HasViewEl, path: string, opts: { optional: true }): HTMLElement | null;
+export function row(view: HasViewEl, path: string, opts: { optional?: boolean } = {}): HTMLElement | null {
 	const el = view.viewEl.querySelector<HTMLElement>(`.pbl-row[data-path="${path}"]`);
 	if (el === null && !opts.optional) throw new Error(`row not found: ${path}`);
 	return el;
@@ -76,6 +83,12 @@ export interface ReleaseHarness {
 	view: ReleaseView;
 	config: FakeViewConfig;
 	containerEl: HTMLElement;
+	/**
+	 * The vault the view was built over, handed back rather than dug out of
+	 * `view.app.vault` — which is typed as the app's and was being cast back at the one
+	 * caller that wanted it.
+	 */
+	vault: FakeVault;
 }
 
 /**
@@ -99,7 +112,7 @@ export function makeReleaseView(
 	anyView.config = config;
 	anyView.data = { data: vault.entries() };
 	view.onDataUpdated();
-	return { view, config, containerEl };
+	return { view, config, containerEl, vault };
 }
 
 /**
@@ -185,7 +198,7 @@ export function refreshRelease(view: ReleaseView, vault: FakeVault): void {
 	view.onDataUpdated();
 }
 
-export function mountRelease(opts: MountReleaseOptions = {}): ReleaseHarness & { vault: FakeVault } {
+export function mountRelease(opts: MountReleaseOptions = {}): ReleaseHarness {
 	const { bindAll = true, membership, pick, stateKey, notesFolder } = opts;
 	const vault = pick === undefined ? releaseVault() : scopeVault();
 	const configValues: Record<string, unknown> = bindAll ? { ...RELEASE_CONFIG } : {};
@@ -194,7 +207,7 @@ export function mountRelease(opts: MountReleaseOptions = {}): ReleaseHarness & {
 	if (notesFolder !== undefined) configValues.releaseNotesFolder = notesFolder;
 	const harness = makeReleaseView(vault, configValues);
 	if (pick !== undefined) harness.view.pick(pick);
-	return { ...harness, vault };
+	return harness;
 }
 
 /**

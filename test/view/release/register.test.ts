@@ -20,7 +20,7 @@ describe('registerReleaseView', () => {
 	it('registers the release view with the correct config', () => {
 		const { plugin: fakePlugin, specs } = captureRegistrations<BasesViewRegistration>();
 
-		registerReleaseView(fakePlugin as never, new WriteLock());
+		registerReleaseView(fakePlugin, new WriteLock());
 
 		expect(specs.has(RELEASE_VIEW_TYPE)).toBe(true);
 		const spec = specs.get(RELEASE_VIEW_TYPE)!;
@@ -34,7 +34,7 @@ describe('registerReleaseView', () => {
 
 	it('factory-built view is a ReleaseView, mounted in the container it was given', () => {
 		const { plugin: fakePlugin, specs } = captureRegistrations<BasesViewRegistration>();
-		registerReleaseView(fakePlugin as never, new WriteLock());
+		registerReleaseView(fakePlugin, new WriteLock());
 		const spec = specs.get(RELEASE_VIEW_TYPE)!;
 
 		const containerEl = document.body.createDiv();

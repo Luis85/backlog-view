@@ -117,7 +117,7 @@ describe('the release view names its own keys', () => {
 				releasedStatusValues: 'Released, Archived',
 				releasedTransitionValue: 'Released',
 				releaseNotesFolder: 'docs/notes',
-			}) as never,
+			}),
 		);
 		expect(bound.releasedValues).toEqual(['Released', 'Archived']);
 		expect(bound.releasedTransition).toBe('Released');

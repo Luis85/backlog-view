@@ -4,7 +4,7 @@ import { Menu } from '../helpers/obsidian-mock';
 import { todayStamp } from '../../src/domain/noteFields';
 import { FakeVault } from '../helpers/vault';
 import { useViewHarness } from '../helpers/view';
-import { barFor, gripNames, labelTexts, markersLane, markFor, roadmapView, rowFor, timelineRows } from '../helpers/roadmap';
+import { barFor, gripNames, labelTexts, markersLane, markFor, roadmapView, rowFor, timelineRowEls } from '../helpers/roadmap';
 
 /**
  * Markers on the dated axis: a milestone's own mark (reduced to a point, drawn clipped
@@ -204,7 +204,7 @@ describe('the grab-cursor class', () => {
 
 		// Asked of the RULE, not a hardcoded true/false per fixture: the class must
 		// agree with `barHolds`' own answer for every bar this vault draws.
-		const titles = timelineRows(containerEl).map((row) => row.querySelector('.pbl-card-title')?.textContent ?? '');
+		const titles = timelineRowEls(containerEl).map((row) => row.querySelector('.pbl-card-title')?.textContent ?? '');
 		const expected = titles.map((title) => gripNames(containerEl, title).includes('body'));
 		const actual = titles.map((title) => barFor(containerEl, title).hasClass('pbl-bar-holdable'));
 		expect(actual).toEqual(expected);

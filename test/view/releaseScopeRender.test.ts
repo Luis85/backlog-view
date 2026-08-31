@@ -402,7 +402,7 @@ describe('the summary strip', () => {
 		const { view, containerEl } = makeReleaseView(progressVault(), RELEASE_CONFIG);
 		view.pick('P.md');
 		const strip = containerEl.querySelector('.pbl-rel-summary') as HTMLElement;
-		const provenanceEl = strip.querySelector('.pbl-sr-only') as HTMLElement | null;
+		const provenanceEl = strip.querySelector('.pbl-sr-only');
 		expect(provenanceEl).not.toBeNull();
 		// One sentence, not two wordings for one question — the same text the tooltip
 		// carries.
@@ -418,10 +418,10 @@ describe('the summary strip', () => {
 		// "is computed nowhere else". A second derivation would pass this only by luck.
 		const vault = progressVault();
 		const { containerEl: indexEl } = makeReleaseView(vault, RELEASE_CONFIG);
-		const band = indexEl.querySelector('[data-path="P.md"]')!.textContent!;
+		const band = indexEl.querySelector('[data-path="P.md"]')!.textContent;
 		const { view, containerEl: scopeEl } = makeReleaseView(vault, RELEASE_CONFIG);
 		view.pick('P.md');
-		const strip = scopeEl.querySelector('.pbl-rel-summary')!.textContent!;
+		const strip = scopeEl.querySelector('.pbl-rel-summary')!.textContent;
 		expect(band).toContain('1 of 3');
 		expect(strip).toContain('1 of 3');
 	});
@@ -433,7 +433,7 @@ describe('the summary strip', () => {
 		const strip = containerEl.querySelector('.pbl-rel-summary')!;
 		expect(strip.querySelector('.pbl-rel-bar')).toBeNull();
 		expect(strip.textContent).toContain('3 items');
-		expect(strip.textContent!.toLowerCase()).toContain('not configured');
+		expect(strip.textContent.toLowerCase()).toContain('not configured');
 	});
 
 	it('names WHICH workflow is unconfigured, on a release spanning more than one', () => {
@@ -455,7 +455,7 @@ describe('the summary strip', () => {
 		view.pick('Q.md');
 		const strip = containerEl.querySelector('.pbl-rel-summary')!;
 		expect(strip.querySelector('.pbl-rel-bar')).toBeNull();
-		const text = strip.textContent!;
+		const text = strip.textContent;
 		expect(text.toLowerCase()).toContain('not configured');
 		expect(text).toContain('Work');
 		expect(text).not.toContain('Deliverables');

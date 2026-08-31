@@ -14,7 +14,7 @@ describe('registerBacklogView', () => {
 		const { plugin: fakePlugin, specs } = captureRegistrations<BasesViewRegistration>();
 
 		const lock = new WriteLock();
-		registerBacklogView(fakePlugin as never, lock);
+		registerBacklogView(fakePlugin, lock);
 
 		expect(specs.has(PRODUCT_BACKLOG_VIEW_TYPE)).toBe(true);
 		const spec = specs.get(PRODUCT_BACKLOG_VIEW_TYPE)!;
@@ -28,12 +28,12 @@ describe('registerBacklogView', () => {
 
 		// Register and capture the spec
 		const { plugin: fakePlugin, specs } = captureRegistrations<BasesViewRegistration>();
-		registerBacklogView(fakePlugin as never, lockA);
+		registerBacklogView(fakePlugin, lockA);
 		const spec = specs.get(PRODUCT_BACKLOG_VIEW_TYPE)!;
 
 		// Create first view via factory
 		const containerA = document.body.createDiv();
-		const viewA = spec.factory!(fakeController(), containerA) as unknown as Record<string, unknown>;
+		const viewA = spec.factory(fakeController(), containerA) as unknown as Record<string, unknown>;
 
 		// Set up the necessary properties like makeView does
 		viewA.app = vault.app;

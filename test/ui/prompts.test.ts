@@ -83,7 +83,7 @@ describe('FolderSuggest', () => {
 		vault.folders.add('Backlog/Items');
 		vault.folders.add('Backlog');
 		vault.folders.add('Archive');
-		const input = document.body.createEl('input') as HTMLInputElement;
+		const input = document.body.createEl('input');
 		const suggest = new FolderSuggest(vault.app, input);
 
 		const matches = (

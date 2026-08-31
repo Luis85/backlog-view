@@ -152,9 +152,9 @@ describe('context rows are read-only', () => {
 
 	it('refuses a write aimed at a context note even if one gets through', async () => {
 		const { view, vault } = readOnlyView();
-		const epic = view.model?.byPath.get('Epic.md');
+		const epic = itemAt(view, 'Epic.md');
 
-		const applied = await view.applySafely([{ file: epic?.file as never, state: 'Done' }]);
+		const applied = await view.applySafely([{ file: epic.file, state: 'Done' }]);
 
 		expect(applied).toBeNull();
 		expect(vault.writeLog).toEqual([]);
@@ -162,9 +162,9 @@ describe('context rows are read-only', () => {
 
 	it('keeps writes to real results working', async () => {
 		const { view, vault } = readOnlyView();
-		const pbi = view.model?.byPath.get('PBI.md');
+		const pbi = itemAt(view, 'PBI.md');
 
-		const applied = await view.applySafely([{ file: pbi?.file as never, state: 'Done' }]);
+		const applied = await view.applySafely([{ file: pbi.file, state: 'Done' }]);
 
 		expect(applied).not.toBeNull();
 		expect(vault.fm('PBI.md').status).toBe('Done');

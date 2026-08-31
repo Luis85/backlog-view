@@ -1,3 +1,4 @@
+import type { Plugin } from 'obsidian';
 import { afterEach, beforeEach, vi } from 'vitest';
 import { cleanup as liveRegionCleanup } from '@atlaskit/pragmatic-drag-and-drop-live-region';
 import { ProductBacklogView } from '../../src/view/backlogView';
@@ -22,13 +23,18 @@ export interface Harness {
  * type — `registerBacklogView.test.ts`'s and the estimation view's own register test's
  * identical three lines, generic over each suite's own `BasesViewRegistration`-shaped
  * spec so neither loses its typing to a shared `unknown`.
+ *
+ * The double is widened to `Plugin` HERE, once, rather than cast at each `register…View`
+ * call: the registration functions take the real type, and a cast at the call site is a
+ * hole in the typecheck at every one of them.
  */
 export function captureRegistrations<Spec>(): {
-	plugin: { registerBasesView: (type: string, spec: Spec) => void };
+	plugin: Plugin & { registerBasesView: (type: string, spec: Spec) => void };
 	specs: Map<string, Spec>;
 } {
 	const specs = new Map<string, Spec>();
-	return { plugin: { registerBasesView: (type, spec) => specs.set(type, spec) }, specs };
+	const plugin = { registerBasesView: (type: string, spec: Spec) => specs.set(type, spec) };
+	return { plugin: plugin as typeof plugin & Plugin, specs };
 }
 
 /**
@@ -196,7 +202,7 @@ export function flush(): Promise<void> {
 
 export function stubRect(row: HTMLElement): void {
 	row.getBoundingClientRect = () =>
-		({ top: 0, bottom: 30, height: 30, left: 0, right: 100, width: 100, x: 0, y: 0, toJSON: () => ({}) }) as DOMRect;
+		({ top: 0, bottom: 30, height: 30, left: 0, right: 100, width: 100, x: 0, y: 0, toJSON: () => ({}) });
 }
 
 export function drag(from: HTMLElement, to: HTMLElement, zone: 'before' | 'after' | 'inside'): void {

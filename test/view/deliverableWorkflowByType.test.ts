@@ -389,11 +389,11 @@ describe('the toolbar counts one population, not two', () => {
 		const scratch = document.createElement('div');
 		renderToolbar(harness.view, scratch);
 		const firstText = scratch.querySelector('.pbl-count-label')?.textContent;
-		const firstTooltip = (scratch.querySelector('.pbl-count-label') as HTMLElement | null)?.dataset.tooltip;
+		const firstTooltip = scratch.querySelector<HTMLElement>('.pbl-count-label')?.dataset.tooltip;
 
 		syncCountLabel(harness.view, scratch);
 		const syncedText = scratch.querySelector('.pbl-count-label')?.textContent;
-		const syncedTooltip = (scratch.querySelector('.pbl-count-label') as HTMLElement | null)?.dataset.tooltip;
+		const syncedTooltip = scratch.querySelector<HTMLElement>('.pbl-count-label')?.dataset.tooltip;
 
 		// The requirements board excludes the Deliverable, so the correct answer is "1
 		// item" (the PBI alone) — a regression would paint "2 items" here first.

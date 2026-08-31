@@ -312,7 +312,7 @@ export class Menu {
 export class TextComponent {
 	inputEl: HTMLInputElement;
 	constructor(containerEl: HTMLElement) {
-		this.inputEl = containerEl.createEl('input') as HTMLInputElement;
+		this.inputEl = containerEl.createEl('input');
 	}
 	setPlaceholder(placeholder: string): this {
 		this.inputEl.placeholder = placeholder;
@@ -340,7 +340,7 @@ export class TextComponent {
 export class TextAreaComponent {
 	inputEl: HTMLTextAreaElement;
 	constructor(containerEl: HTMLElement) {
-		this.inputEl = containerEl.createEl('textarea') as HTMLTextAreaElement;
+		this.inputEl = containerEl.createEl('textarea');
 	}
 	setPlaceholder(placeholder: string): this {
 		this.inputEl.placeholder = placeholder;
@@ -359,7 +359,7 @@ export class TextAreaComponent {
 export class ButtonComponent {
 	buttonEl: HTMLButtonElement;
 	constructor(containerEl: HTMLElement) {
-		this.buttonEl = containerEl.createEl('button') as HTMLButtonElement;
+		this.buttonEl = containerEl.createEl('button');
 	}
 	setButtonText(text: string): this {
 		this.buttonEl.textContent = text;
@@ -417,7 +417,7 @@ export class ExtraButtonComponent {
 export class DropdownComponent {
 	selectEl: HTMLSelectElement;
 	constructor(containerEl: HTMLElement) {
-		this.selectEl = containerEl.createEl('select') as HTMLSelectElement;
+		this.selectEl = containerEl.createEl('select');
 	}
 	addOption(value: string, display: string): this {
 		this.selectEl.createEl('option', { value, text: display });
@@ -442,7 +442,7 @@ export class DropdownComponent {
 export class ColorComponent {
 	colorEl: HTMLInputElement;
 	constructor(containerEl: HTMLElement) {
-		this.colorEl = containerEl.createEl('input') as HTMLInputElement;
+		this.colorEl = containerEl.createEl('input');
 		this.colorEl.type = 'color';
 	}
 	setValue(value: string): this {

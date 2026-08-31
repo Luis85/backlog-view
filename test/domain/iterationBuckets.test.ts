@@ -24,7 +24,7 @@ function iterationSettings(extra: Record<string, unknown> = {}): BacklogSettings
 			iterationOpenStates: 'New, Ready',
 			iterationResolvedStates: 'In review',
 			...extra,
-		}) as never,
+		}),
 	);
 }
 

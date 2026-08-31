@@ -300,16 +300,16 @@ describe('one move, three inputs, all through the bucket', () => {
 
 	it('writes nothing when the card is already in the target bucket', async () => {
 		const { view, vault } = moving();
-		const card = view.model?.byPath.get('Ready one.md');
-		await view.performIterationBoardMove(card as never, 'open');
+		const card = itemAt(view, 'Ready one.md');
+		await view.performIterationBoardMove(card, 'open');
 		await flush();
 		expect(vault.writeLog).toEqual([]);
 	});
 
 	it('writes the bucket representative when the bucket changes', async () => {
 		const { view, vault } = moving();
-		const card = view.model?.byPath.get('Ready one.md');
-		await view.performIterationBoardMove(card as never, 'inProgress');
+		const card = itemAt(view, 'Ready one.md');
+		await view.performIterationBoardMove(card, 'inProgress');
 		await flush();
 		expect(vault.fm('Ready one.md').status).toBe('Doing');
 	});
@@ -318,8 +318,8 @@ describe('one move, three inputs, all through the bucket', () => {
 		// Every declared state named by the two outer lists, so In progress has no
 		// representative — and no drop, no menu entry and no keyboard target either.
 		const { view, vault, containerEl } = moving({ iterationOpenStates: 'New, Ready, Doing' });
-		const card = view.model?.byPath.get('Ready one.md');
-		await view.performIterationBoardMove(card as never, 'inProgress');
+		const card = itemAt(view, 'Ready one.md');
+		await view.performIterationBoardMove(card, 'inProgress');
 		await flush();
 		expect(vault.writeLog).toEqual([]);
 		// And the column is not drawn as the key-removal one either: it carries the same
@@ -327,7 +327,7 @@ describe('one move, three inputs, all through the bucket', () => {
 		// here clears the state" name all ask `takesDrop` rather than the null.
 		expect(columnByName(containerEl, 'In progress').classList.contains('pbl-col-nostate')).toBe(false);
 
-		view.showContextMenuFor(card as never);
+		view.showContextMenuFor(card);
 		const setState = Menu.lastShown?.item('Set state');
 		expect((setState?.submenu?.items ?? []).map((mi) => mi.titleText)).toEqual(['Open', 'Resolved']);
 	});
@@ -337,8 +337,8 @@ describe('one move, three inputs, all through the bucket', () => {
 		// asked first — so a Deliverable would reach the Deliverables move and write a
 		// second vocabulary onto a board that narrows one.
 		const { view, vault, containerEl } = moving({ deliverableStateProperty: 'note.deliverableStatus' });
-		const card = view.model?.byPath.get('A deliverable.md');
-		view.showContextMenuFor(card as never);
+		const card = itemAt(view, 'A deliverable.md');
+		view.showContextMenuFor(card);
 		Menu.lastShown?.item('Set state')?.submenu?.item('In progress')?.click();
 		await flush();
 		expect(vault.fm('A deliverable.md').status).toBe('Doing');
@@ -378,8 +378,8 @@ describe('one move, three inputs, all through the bucket', () => {
 
 	it('checks the bucket the card is in, not the column whose state it matches', async () => {
 		const { view } = moving();
-		const card = view.model?.byPath.get('Ready one.md');
-		view.showContextMenuFor(card as never);
+		const card = itemAt(view, 'Ready one.md');
+		view.showContextMenuFor(card);
 		const checked = (Menu.lastShown?.item('Set state')?.submenu?.items ?? [])
 			.filter((mi) => mi.checked)
 			.map((mi) => mi.titleText);

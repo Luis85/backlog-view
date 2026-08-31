@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { App } from 'obsidian';
+import type { App, CachedMetadata } from 'obsidian';
 import { TFile } from '../helpers/obsidian-mock';
 import { hasTag, normalizeTag, readDate, readPlacement, readTags, resolveParent } from '../../src/domain/noteFields';
 
@@ -140,7 +140,7 @@ describe('resolveParent', () => {
 		// present (so this is not folder-mode's "top level" marker), it just names
 		// nothing this lookup can resolve.
 		const app = { metadataCache: { getFirstLinkpathDest: () => null } } as unknown as App;
-		const cache = { frontmatterLinks: [], frontmatter: { parent: '[[#Heading]]' } } as never;
+		const cache: CachedMetadata = { frontmatterLinks: [], frontmatter: { parent: '[[#Heading]]' } };
 		const result = resolveParent(app, null as unknown as TFile, cache, 'parent');
 		expect(result).toEqual({ file: null, hasValue: true, explicitRoot: false });
 	});

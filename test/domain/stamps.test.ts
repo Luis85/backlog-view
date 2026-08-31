@@ -28,7 +28,7 @@ const stamped = resolveSettings(
 		startedStates: 'Active',
 		startedDateProperty: 'note.started',
 		finishedDateProperty: 'note.finished',
-	}) as never,
+	}),
 );
 
 /** An item holding `state`, plus whatever else its note already says. */

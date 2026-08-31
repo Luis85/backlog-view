@@ -551,6 +551,18 @@ export class FakeVault {
 		);
 	}
 
+	/**
+	 * The file at `path`, or a thrown error naming it. `files.get` answers
+	 * `TFile | undefined`, and a test that asserts about a file it planted is holding a
+	 * broken fixture rather than an outcome when the lookup misses — saying so here is
+	 * what keeps the cast off every call site.
+	 */
+	fileAt(path: string): TFile {
+		const file = this.files.get(path);
+		if (!file) throw new Error(`no file at ${path}`);
+		return file;
+	}
+
 	fm(path: string): Record<string, unknown> {
 		return this.frontmatter.get(path) ?? {};
 	}

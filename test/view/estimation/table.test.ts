@@ -36,7 +36,7 @@ function row(containerEl: HTMLElement, path: string): HTMLElement {
 }
 
 function progressOf(cell: Element): string | null {
-	return (cell.querySelector('.pbl-est-strip') as HTMLElement | null)?.style.getPropertyValue('--pbl-progress') ?? null;
+	return cell.querySelector<HTMLElement>('.pbl-est-strip')?.style.getPropertyValue('--pbl-progress') ?? null;
 }
 
 describe('the estimation table', () => {

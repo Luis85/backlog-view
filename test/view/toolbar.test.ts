@@ -346,7 +346,7 @@ describe('menus opened without a pointer', () => {
 	/** Enter or Space on a focused button: a click carrying no coordinates. */
 	function pressButton(el: HTMLElement, rect: { left: number; bottom: number }): void {
 		el.getBoundingClientRect = () =>
-			({ ...rect, top: 0, right: 0, width: 0, height: 0, x: 0, y: 0, toJSON: () => ({}) }) as DOMRect;
+			({ ...rect, top: 0, right: 0, width: 0, height: 0, x: 0, y: 0, toJSON: () => ({}) });
 		el.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 	}
 

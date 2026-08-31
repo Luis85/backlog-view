@@ -64,9 +64,9 @@ describe('a move on the dated axis names both its ends from the catalog', () => 
 		const vault = new FakeVault();
 		vault.addFile('Both.md', { frontmatter: { type: 'PBI', order: 10, start: '2026-08-01', target: '2026-08-31' } });
 		const { view } = datedView(vault);
-		const item = view.model?.byPath.get('Both.md');
+		const item = itemAt(view, 'Both.md');
 
-		await view.performScheduleMove(item as never, { start: null, target: null });
+		await view.performScheduleMove(item, { start: null, target: null });
 
 		expect(await announced()).toBe(
 			said('Both', key('lane.spanRange', { start: '2026-08-01', target: '2026-08-31' }), key('placement.unscheduled')),

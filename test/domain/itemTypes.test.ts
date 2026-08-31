@@ -9,6 +9,7 @@ import {
 	isMarkerType,
 	isReleaseType,
 	isResourceType,
+	LadderPosition,
 	placementEnds,
 	PlacementEnd,
 } from '../../src/domain/itemTypes';
@@ -472,8 +473,8 @@ describe('Release is a marker, not a rung', () => {
 	// it already makes of a `Milestone`, because the fixture and the dated settings it
 	// needs are that file's.
 	it('offers no legal children — a release holds nothing', () => {
-		const release = { ladder: LEVELS, typeName: RELEASE_TYPE, effectiveLevelIndex: -1 };
-		expect(childTypeChoices(release as never)).toEqual([]);
+		const release: LadderPosition = { ladder: LEVELS, typeName: RELEASE_TYPE, levelIndex: -1, effectiveLevelIndex: -1 };
+		expect(childTypeChoices(release)).toEqual([]);
 	});
 
 	it('leaves every other classification alone', () => {

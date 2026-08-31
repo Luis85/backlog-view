@@ -180,6 +180,12 @@ describe('the write backlog readme command', () => {
 
 	it('reports a failed write instead of failing silently', async () => {
 		const vault = openBacklog();
+		// The compiler and `no-unnecessary-type-assertion` disagree here, and the compiler
+		// is right: `create` is an INTERSECTION of two call signatures, which no single
+		// stub satisfies, and the rule reads only the first. Suppressed at the line rather
+		// than the rule turned off — it is the one site in the suite where the two gates
+		// contradict, and the next one should be looked at rather than inherited.
+		// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
 		vault.app.vault.create = (() => Promise.reject(new Error('disk full'))) as unknown as typeof vault.app.vault.create;
 		const logged: unknown[] = [];
 		console.error = (...args: unknown[]) => logged.push(args);

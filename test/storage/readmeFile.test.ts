@@ -124,7 +124,7 @@ describe('writeBacklogReadme', () => {
 		// window, a second command. The re-check inside `process` is what closes that gap.
 		await writeBacklogReadme(vault.app, 'docs', GENERATED);
 		const theirs = '# Mine now\n';
-		const file = vault.files.get('docs/README_PRODUCT_BACKLOG.md') as never;
+		const file = vault.fileAt('docs/README_PRODUCT_BACKLOG.md');
 		const process = vault.app.vault.process;
 		vault.app.vault.process = (async (f: never, fn: (data: string) => string) => {
 			vault.contents.set('docs/README_PRODUCT_BACKLOG.md', theirs);

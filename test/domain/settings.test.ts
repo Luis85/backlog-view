@@ -242,7 +242,7 @@ describe('three workflows may share one state key', () => {
 				deliverableStateProperty: 'note.status',
 				testStateProperty: 'note.status',
 				...extra,
-			}) as unknown as BasesViewConfig,
+			}),
 		);
 	}
 
@@ -359,7 +359,7 @@ describe('the test workflow resolves like the Deliverable one', () => {
 				stateProperty: 'note.status',
 				stateValues: 'Draft, Ready, Approved',
 				doneValues: 'Approved',
-			}) as unknown as BasesViewConfig,
+			}),
 		);
 		expect(settings.testStateKey).toBe('');
 		expect(resolvedTestStateKey(settings)).toBe('status');
@@ -376,7 +376,7 @@ describe('the test workflow resolves like the Deliverable one', () => {
 				stateValues: 'Draft, Ready, Approved',
 				doneValues: 'Approved',
 				testStateProperty: 'note.testStatus',
-			}) as unknown as BasesViewConfig,
+			}),
 		);
 		expect(settings.testStateKey).toBe('testStatus');
 		expect(resolvedTestStateKey(settings)).toBe('testStatus');

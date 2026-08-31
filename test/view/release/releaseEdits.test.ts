@@ -35,7 +35,7 @@ function editVault(): FakeVault {
 function openScope(config: Record<string, unknown> = RELEASE_CONFIG) {
 	const harness = makeReleaseView(editVault(), config);
 	harness.view.pick('R.md');
-	return { ...harness, vault: harness.view.app.vault as never as FakeVault };
+	return harness;
 }
 
 const statusChip = (containerEl: HTMLElement) => containerEl.querySelector<HTMLElement>('.pbl-rel-status')!;
