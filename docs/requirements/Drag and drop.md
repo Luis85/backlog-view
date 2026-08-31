@@ -47,7 +47,9 @@ tool rather than an editing session across several notes' frontmatter.
   visual neighbours are not siblings, and a drop "between" two of them would mean
   something the user did not see.
 - **1b — the row came from outside the Base's filter.** It is context only: never
-  draggable, never a drop's ranking peer, never written to.
+  draggable, never written to, and never a drop's ranking peer — unless it is *ranked* and
+  the drop is a focus-level rank, where it is a legal anchor another row can land before or
+  after ([[Ranking at the focused level]]).
 - **2a — the pointer is over a collapsed row.** Hovering long enough expands it, so a drop
   deep in the tree is reachable without giving up the drag.
 - **3a — the drop is onto the row itself, or onto one of its own descendants.** Refused: it
@@ -68,7 +70,8 @@ tool rather than an editing session across several notes' frontmatter.
   onto itself) is refused rather than corrupting the tree.
 - Hovering a collapsed row long enough expands it, so a drop deep in the tree is reachable.
 - Dragging is disabled while the quick filter is active: visual neighbours are not siblings.
-- A row from outside the Base's filter is never draggable and never a ranking peer.
+- A row from outside the Base's filter is never draggable and never written to; it is a
+  ranking peer only when it is ranked and the drop is a focus-level rank.
 - A drop that changes nothing writes nothing.
 
 ## Where it lives
