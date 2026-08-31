@@ -192,3 +192,40 @@ report that there is only one.
 
 **Tests.** None beyond `npm run check`'s markdown and docs-register gates: this is
 documentation. If the in-app manual carries the claim, its own text test may need updating.
+
+## Task 6 — `indent` reports half of its own rule
+
+**Defect.** Task 3 made `indent` (`src/view/interactions/structure.ts`) report a named
+destination that no longer resolves. It did not make it report a named destination that
+resolves and is then REFUSED:
+
+```ts
+const target = indentTarget(host, live, named);
+if (target) void host.performDrop(live, target);
+```
+
+`indentTarget` returns null for a named destination that has become the subject's own
+descendant (`isInvalidParent`) or has been retyped onto the other ladder
+(`keepsProjection`) while the menu sat open. Both discard the refusal in silence, so the
+still-visible `Indent under "X"` does nothing and says nothing — the defect Task 3 was
+fixing, at the two conditions it did not cover.
+
+`indent`'s own docblock already states the whole rule: a command whose title names a
+specific note "must re-resolve THAT note by path and refuse if it is no longer a valid
+destination". Reporting only the vanished-path case keeps half of it.
+
+**Required behaviour.** A NAMED destination that `indentTarget` refuses reports, the way the
+vanished-path case now does. `rank.itemGone` is the existing key and says the right thing
+about a destination that left the base; judge whether it fits the retyped case too and say
+what you judged — if it does not, the register's rule is that a refusal carries a reason,
+and `refusalKey` is where a reason becomes a sentence.
+
+**Out of scope, and it must stay working.** Alt+Right passes no path, draws no label and
+promises no note, so the neighbour at the moment of the press is what the user asked for and
+a null target there is "not expressible" — it stays silent. Verify that, do not assume it:
+the guard must key on the named path, not on the null target.
+
+**Tests.** Two cases in `test/view/staleSubject.test.ts`, beside Task 3's: a named
+destination retyped onto the other ladder, and one that has become the subject's descendant.
+Assert the notice AND that nothing was written. Assert the keyboard path stays silent, so the
+fix cannot over-apply.
