@@ -40,6 +40,11 @@ export class MyWorkView extends BasesView {
 	settings: MyWorkSettings;
 	model: BacklogModel | null = null;
 	pickedPerson: string | null = null;
+
+	/** Whose tree the last `render()` actually drew — the subject the remembered scroll
+	 *  offset belongs to. `pickedPerson` cannot answer that: `pick()` writes it before the
+	 *  render that redraws for it, so at capture time it already names the NEW person. */
+	private drawnPerson: string | null = null;
 	planSettings: BacklogSettings = defaultSettings();
 	activeRowFile: TFile | null = null;
 	treeHadFocus = false;
@@ -137,18 +142,25 @@ export class MyWorkView extends BasesView {
 		this.treeHadFocus = treeEl?.contains(document.activeElement) === true;
 		// Read beside the focus, and for the same reason: `empty()` is about to detach the
 		// scroller. `.pbl-tree` IS the scroll container (`styles/tree.css` — `overflow-y:
-		// auto`), so unlike `ReleaseView` this view needs no separate `scrollerEl()`, and it
-		// needs no `drawnKey` either: the element's own presence after `draw()` is the "same
-		// screen" test. A redraw that lands on guidance instead finds no tree to restore
-		// onto and correctly restores nothing.
+		// auto`), so unlike `ReleaseView` this view needs no separate `scrollerEl()`.
 		//
 		// Without this, a state write's own refresh — and every ordinary Bases update —
 		// jumps a scrolled reader back to the top. `wireScopeKeys` hides it from the
 		// KEYBOARD, which scrolls its row back into view; a pointer user has no such row.
-		const previousTop = treeEl?.scrollTop ?? 0;
+		//
+		// **An offset belongs to the PERSON it was scrolled in, which is why this needs
+		// `drawnPerson` and the element's own presence is not enough** (PR #234, review):
+		// `pick()` sets `pickedPerson` and then renders, so a switch reaches here with the
+		// old tree still mounted and the new person already picked. Carrying that offset
+		// over opened the next person halfway down an unrelated tree, with their highest
+		// ranked work above the fold — the one thing this view exists to put in front of
+		// them. `ReleaseView` keeps `drawnKey` for exactly this question; the tree element
+		// answers "same screen", never "same subject".
+		const previousTop = this.drawnPerson === this.pickedPerson ? (treeEl?.scrollTop ?? 0) : 0;
 		const focusHandle = this.focusedHandle();
 		this.viewEl.empty();
 		this.draw();
+		this.drawnPerson = this.pickedPerson;
 		const drawnEl = this.viewEl.querySelector('.pbl-mw-tree');
 		// Clamped to the FRESH `scrollHeight`, `releaseView.ts`'s own rule: a redraw with
 		// fewer rows — an item reassigned away, hide-done switched on — must not park the

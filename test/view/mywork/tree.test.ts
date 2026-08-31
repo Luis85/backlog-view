@@ -365,3 +365,36 @@ describe('a redraw keeps the reader where they were', () => {
 		expect(containerEl.querySelector<HTMLElement>('.pbl-mw-tree')!.scrollTop).toBe(90);
 	});
 });
+
+/**
+ * An offset belongs to the person it was scrolled in. `pick()` writes `pickedPerson` and
+ * then renders, so a switch arrives with the old tree still mounted and the new person
+ * already picked — carrying the offset across opened the next person halfway down an
+ * unrelated tree, with their highest ranked work above the fold.
+ *
+ * Found by review (PR #234, round 7) against the fix one round earlier: the tree element's
+ * presence answers "same screen", never "same subject".
+ */
+describe('switching people starts at the top', () => {
+	it('does not carry one person’s scroll offset into another’s tree', () => {
+		vi.spyOn(HTMLElement.prototype, 'scrollHeight', 'get').mockReturnValue(400);
+		const { view, containerEl } = makeMyWorkView(myWorkVault());
+		view.pick('People/Ada.md');
+		containerEl.querySelector<HTMLElement>('.pbl-mw-tree')!.scrollTop = 200;
+
+		view.pick('People/Bo.md');
+
+		expect(containerEl.querySelector<HTMLElement>('.pbl-mw-tree')!.scrollTop).toBe(0);
+	});
+
+	it('still keeps the offset when the same person is redrawn', () => {
+		vi.spyOn(HTMLElement.prototype, 'scrollHeight', 'get').mockReturnValue(400);
+		const { view, containerEl } = makeMyWorkView(myWorkVault());
+		view.pick('People/Ada.md');
+		containerEl.querySelector<HTMLElement>('.pbl-mw-tree')!.scrollTop = 200;
+
+		view.render();
+
+		expect(containerEl.querySelector<HTMLElement>('.pbl-mw-tree')!.scrollTop).toBe(200);
+	});
+});
