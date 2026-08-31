@@ -55,4 +55,11 @@ notes is how the two drift.
   a second ranking graph, and this register refuses those.
 - **It is a place to work.** An item can be acted on from the list, and every such write goes
   through the same gate and the same context-row refusals as every other projection — a row
-  the Base excluded renders, parents, and is never written to.
+  the Base excluded is never written to. **Narrowed against the release scope's own walk,
+  which this tree reuses ([[One person's tree]]):** an `outsideFilter` ancestor is not the row
+  this tree draws as context — it is skipped, and the walk continues upward to the nearest
+  INCLUDED ancestor, exactly as `scopeRows` does for a release. Rendering it anyway would put
+  a row this base excluded on screen as scaffolding, which is a source derived from something
+  outside the results; skipping it re-roots the member one level up instead. The one thing
+  unchanged is the refusal itself — an excluded row, wherever it sits, is still never a write
+  target.

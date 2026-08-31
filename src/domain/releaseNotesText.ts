@@ -1,5 +1,6 @@
 import { t } from '../i18n/t';
-import { ReleaseRow, ScopeRow } from './releases';
+import { ReleaseRow } from './releases';
+import { ScopeRow } from './scopeRows';
 import { readmeMarker } from './readmeMarker';
 import { ALL_TYPES } from './typeVocabulary';
 import { sameValue } from './noteFields';

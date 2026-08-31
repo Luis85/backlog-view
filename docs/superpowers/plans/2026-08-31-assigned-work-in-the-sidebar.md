@@ -92,7 +92,7 @@ assertion edited.
   - `function siblingPlaces(rows: ScopeRow[]): { row: ScopeRow; pos: number; count: number }[]`
   - `function childRows(rows: ScopeRow[]): Set<string>`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 `test/domain/scopeRows.test.ts` — the generic behaviour, stated over a predicate that is
 not the release one.
@@ -159,12 +159,12 @@ describe('scopeRows', () => {
 });
 ```
 
-- [ ] **Step 2: Run it and watch it fail**
+- [x] **Step 2: Run it and watch it fail**
 
 Run: `npx vitest run test/domain/scopeRows.test.ts`
 Expected: FAIL with `Cannot find module '../../src/domain/scopeRows'`.
 
-- [ ] **Step 3: Create `src/domain/scopeRows.ts` by MOVING the code**
+- [x] **Step 3: Create `src/domain/scopeRows.ts` by MOVING the code**
 
 Move — do not retype — `ScopeRow` with its whole docblock out of `src/domain/releases.ts`,
 and the four list transforms out of `src/view/release/scopeTree.ts`. Every comment travels
@@ -251,7 +251,7 @@ Then paste `rowsAfterHideDone`, `visibleRows`, `siblingPlaces` and `childRows` i
 byte for byte from `scopeTree.ts`, and export all four — three of them were file-private
 there and now cross a module boundary.
 
-- [ ] **Step 4: Point `releaseScope` at it**
+- [x] **Step 4: Point `releaseScope` at it**
 
 In `src/domain/releases.ts`, replace the member, keep and walk body with one call, keeping
 the release's own membership question and its members count:
@@ -277,18 +277,18 @@ export function releaseScope(
 `scannableRows` in that file becomes dead once nothing else calls it — delete it rather
 than leaving it for `npm run analyze` to report.
 
-- [ ] **Step 5: Follow the imports in the release view**
+- [x] **Step 5: Follow the imports in the release view**
 
 `scopeTree.ts`, `renderScope.ts`, `scopeToolbar.ts` and `scopeKeys.ts` take `ScopeRow` and
 the four transforms from `../../domain/scopeRows`. Update the import sites rather than
 re-exporting from `releases.ts` — a type belongs with the code that produces it.
 
-- [ ] **Step 6: Run the new test and the release suite**
+- [x] **Step 6: Run the new test and the release suite**
 
 Run: `npx vitest run test/domain/scopeRows.test.ts test/domain/releaseScope.test.ts test/view/release`
 Expected: PASS, with no release assertion edited.
 
-- [ ] **Step 7: Write the PBI that specifies the module**
+- [x] **Step 7: Write the PBI that specifies the module**
 
 Create `docs/requirements/One person's tree.md` with frontmatter
 `type: PBI`, `parent: "[[Assigned work in the sidebar]]"`, `order: 10`, `status: Open`,
@@ -303,7 +303,7 @@ Preconditions and Guarantee table rows), `**Main flow**`, `**Extensions**`,
 in Task 2. State the rule the extraction rests on: one walk, two membership questions, so
 the two screens cannot drift about what a context row is.
 
-- [ ] **Step 8: Run the gates and commit**
+- [x] **Step 8: Run the gates and commit**
 
 Run: `npm run lint && npm run docs && npx vitest run test/domain test/view/release`
 

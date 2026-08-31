@@ -2,7 +2,8 @@ import { setIcon, setTooltip } from 'obsidian';
 import type { ReleaseView } from './releaseView';
 import { t } from '../../i18n/t';
 import { ownWorkflowReading } from '../../domain/board';
-import { ReleaseRow, ScopeRow } from '../../domain/releases';
+import { ReleaseRow } from '../../domain/releases';
+import { childRows, rowsAfterHideDone, ScopeRow, siblingPlaces, visibleRows } from '../../domain/scopeRows';
 import { displayType } from '../../domain/itemTypes';
 import { badgeStyleFor } from '../render/badges';
 import { drawIcon } from '../render/icons';
@@ -227,103 +228,6 @@ export function setHideDone(view: ReleaseView, next: boolean): void {
 		saveViewState(view.app, id, { ...state, prefs: { ...state.prefs, releaseHideDone: next ? true : undefined } });
 	}
 	view.render();
-}
-
-/**
- * The rows the hide-done toggle leaves standing, in the same pre-order the walk produced.
- *
- * A finished subtree (`row.subtreeDone`) drops the ROW ITSELF and everything below it —
- * never just its children, which is what {@link visibleRows}' fold-hiding does instead and
- * why this is a separate pass rather than one more condition folded into that one: a
- * folded row stays on screen with its disclosure closed, while a done row is gone, and a
- * release whose every root is done must therefore leave NO rows at all — the fact
- * `renderScope.ts` reads to choose the all-done state over an empty tree.
- *
- * Off (`hideDone` false) returns `rows` unchanged, so a caller need not branch around it.
- */
-export function rowsAfterHideDone(rows: ScopeRow[], hideDone: boolean): ScopeRow[] {
-	if (!hideDone) return rows;
-	let hiddenBelow: number | null = null;
-	return rows.filter((row) => {
-		if (hiddenBelow !== null && row.depth > hiddenBelow) return false;
-		hiddenBelow = null;
-		if (row.subtreeDone) {
-			hiddenBelow = row.depth;
-			return false;
-		}
-		return true;
-	});
-}
-
-/**
- * The rows a fold set leaves on screen, in the same pre-order the walk produced.
- *
- * A row is hidden by an ANCESTOR being folded, never by its own state, so the test is
- * "is any open fold shallower than me still in force" — the same shape `siblingPlaces`
- * uses to close a sibling group, and for the same reason: `rows` carries its own depth
- * and nothing else says who a row's parent was.
- *
- * Composed with {@link rowsAfterHideDone} rather than folded into one combined predicate:
- * `drawScopeTree` needs the hide-done-only view to decide which rows still have a CHILD
- * (a parent whose children all hid draws as a leaf, whatever its own fold state), and the
- * hide-done+fold view for what actually draws — two questions, asked over the same rows in
- * sequence, never one comparison trying to answer both at once.
- */
-function visibleRows(rows: ScopeRow[], folded: ReadonlySet<string>): ScopeRow[] {
-	let hiddenBelow: number | null = null;
-	return rows.filter((row) => {
-		if (hiddenBelow !== null && row.depth > hiddenBelow) return false;
-		hiddenBelow = null;
-		if (folded.has(row.item.file.path)) hiddenBelow = row.depth;
-		return true;
-	});
-}
-
-/**
- * Each row's position among its SIBLINGS at its own level, never its index in the flat row
- * list — which would announce a three-row scope as one list of three and defeat the point
- * of drawing a tree.
- *
- * `scope.rows` is a pre-order walk carrying its own depth, so a group of siblings is the
- * run of rows at one depth that no shallower row has interrupted: a row shallower than an
- * open group closes it, and the next row at that depth starts a new one under a new parent.
- * Each entry holds the group it joined, so `count` is read after the whole walk rather than
- * guessed while it is still growing.
- *
- * Run over the VISIBLE rows, not the full walk: a folded row's children are never drawn at
- * all, so the group and position a screen reader hears must be the ones actually on screen
- * — including a group that a fold has thinned to fewer members than the model holds.
- */
-function siblingPlaces(rows: ScopeRow[]): { row: ScopeRow; pos: number; count: number }[] {
-	const open = new Map<number, number[]>();
-	const joined = rows.map((row) => {
-		// The group-closing line, and the whole rule lives in it: a row shallower than an open
-		// group ends that group, so the next row at that depth starts a fresh one under a new
-		// parent. Without it every row at one depth joins one group for the length of the
-		// scope, and a second Epic's members are announced as `3 of 4` instead of `1 of 2`.
-		for (const depth of [...open.keys()]) if (depth > row.depth) open.delete(depth);
-		const group = open.get(row.depth) ?? [];
-		open.set(row.depth, group);
-		group.push(group.length + 1);
-		return { row, pos: group.length, group };
-	});
-	return joined.map(({ row, pos, group }) => ({ row, pos, count: group.length }));
-}
-
-/**
- * Whether each row (by path) in the FULL walk has a child — the next row one level deeper
- * — computed once over the UNFOLDED list, so a folded parent keeps its disclosure. Reading
- * this off the fold set instead would make a leaf whose stale fold entry survived a rename
- * (or a subtree that emptied out from under it) answer as a parent with nothing left to
- * expand: {@link foldedPaths} answers "was this path ever folded", never "does it have
- * children now".
- */
-function childRows(rows: ScopeRow[]): Set<string> {
-	const withKids = new Set<string>();
-	for (let i = 0; i < rows.length - 1; i++) {
-		if (rows[i + 1].depth > rows[i].depth) withKids.add(rows[i].item.file.path);
-	}
-	return withKids;
 }
 
 /**

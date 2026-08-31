@@ -1,7 +1,8 @@
 import { setIcon, setTooltip } from 'obsidian';
 import type { ReleaseView } from './releaseView';
 import { t } from '../../i18n/t';
-import { ReleaseRow, ScopeRow } from '../../domain/releases';
+import { ReleaseRow } from '../../domain/releases';
+import { ScopeRow } from '../../domain/scopeRows';
 import { hideDoneOn, setAllFolds, setHideDone } from './scopeTree';
 
 /**

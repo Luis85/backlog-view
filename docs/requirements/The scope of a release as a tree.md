@@ -145,12 +145,16 @@ note assumed and `## Where it lives` explains it cannot be.
 
 ## Where it lives
 
-The membership read is `src/domain/releases.ts`, beside `src/domain/board.ts` and
-`src/domain/roadmap.ts` and shaped like them — it derives from the model in
-`src/domain/model.ts` and touches no DOM. The same module computes each row's own
-`memberTotal`/`memberDone` in the walk that already visits exactly this release's members,
-which is what keeps the rollup from ever counting a note this screen is not showing. The
-membership key, and this view's own open-note target (`openIn`), are declared in
+The membership read (`membershipTarget`) is `src/domain/releases.ts`, beside
+`src/domain/board.ts` and `src/domain/roadmap.ts` and shaped like them — it derives from the
+model in `src/domain/model.ts` and touches no DOM. **The walk itself — the keep set, the
+pre/post-order rollup, `memberTotal`/`memberDone`, `subtreeDone` — moved to
+`src/domain/scopeRows.ts` (see [[One person's tree]]), over any membership predicate rather
+than this one alone.** `releaseScope` now calls `scopeRows` with the membership question
+above as its predicate, which is what keeps the rollup from ever counting a note this screen
+is not showing: one walk, so the release scope and the assigned-work tree cannot drift about
+what a context row is. The membership key, and this view's own open-note target (`openIn`),
+are declared in
 `src/domain/releaseOptions.ts`, this view's own option set. `src/view/release/releaseView.ts`
 CHOOSES between this scope and the index; `src/view/release/renderScope.ts` draws the header
 and the two empty states above the tree — including the header's own open-note control

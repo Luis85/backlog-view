@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { active, mountFoldScope, row, twisty } from '../../helpers/release';
 import { useViewHarness } from '../../helpers/view';
 import { foldedPaths, hideDoneOn, setAllFolds, setHideDone, toggleFold } from '../../../src/view/release/scopeTree';
-import { ScopeRow } from '../../../src/domain/releases';
+import { ScopeRow } from '../../../src/domain/scopeRows';
 import { loadViewState, renamePathFolds, saveViewState } from '../../../src/storage/viewStateStore';
 import { resolveViewIdentity } from '../../../src/storage/viewIdentity';
 
