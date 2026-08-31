@@ -142,6 +142,18 @@ understood as *changing where entries are kept*, not as rewriting undo:
   with absence a first-class state.
 - Replay is compare-and-swap: a key goes back only where the note still holds what the
   batch wrote.
+- **The FORWARD path is not**, and the asymmetry is deliberate rather than an omission.
+  A batch writes sequentially, so a note edited by the user, a sync or another plugin
+  after the plan was computed but before the writer reaches that file is overwritten
+  without a comparison. That is not specific to any one command — it is as old as the
+  backfill, which has written hundreds of notes in one batch since long before the two
+  rank commands widened the exposure by rewriting values rather than filling blanks.
+  What makes it survivable is the bullet above it: the inverse is captured from the LIVE
+  frontmatter inside the same `processFrontMatter` call, so it holds what the concurrent
+  edit wrote and undo puts that back. Raised in review on 2026-08-30 against `Seed` and
+  `Respace`; recorded here, where it belongs, rather than fixed in one caller of a shared
+  path. Adding a forward comparison would also contradict what `Seed` confirms it does —
+  a rank that arrives mid-batch is one the user has already agreed to replace.
 - Inverses are handed over incrementally, so a batch that fails partway leaves an
   undoable prefix.
 - Authorization is capture-time, not replay-time.
