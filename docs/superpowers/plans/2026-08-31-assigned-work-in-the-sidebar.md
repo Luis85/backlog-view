@@ -1448,7 +1448,7 @@ smallest honest version of that is Set state from a row's menu.
 - Consumes: `computeStateWrites` (`src/domain/writePlan.ts`), the state vocabulary (`src/domain/vocabulary.ts` — use the same reader the backlog's `Set state` menu uses), `todayCivil` (`src/domain/noteFields.ts`), `showMenuForClick` (`src/view/interactions/menu.ts`), `view.gate.applySafely`
 - Produces: `function showMyWorkRowMenu(view: MyWorkView, row: ScopeRow, evt: MouseEvent): void`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```ts
 it('sets a state through the gate, and stamps it', async () => {
@@ -1485,12 +1485,12 @@ it('blocks every write while the settings have a problem', async () => {
 });
 ```
 
-- [ ] **Step 2: Run it and watch it fail**
+- [x] **Step 2: Run it and watch it fail**
 
 Run: `npx vitest run test/view/mywork/writes.test.ts`
 Expected: FAIL — no menu is shown.
 
-- [ ] **Step 3: Write the menu**
+- [x] **Step 3: Write the menu**
 
 ```ts
 export function showMyWorkRowMenu(view: MyWorkView, row: ScopeRow, evt: MouseEvent): void {
@@ -1512,18 +1512,18 @@ the PLAN, never of a comparison beside it. Its `onClick` calls
 
 New keys: `mywork.menu.open`, `mywork.menu.openTab`, `mywork.menu.setState`.
 
-- [ ] **Step 4: Run the test**
+- [x] **Step 4: Run the test**
 
 Run: `npx vitest run test/view/mywork/writes.test.ts`
 Expected: PASS.
 
-- [ ] **Step 5: Watch the context-row test fail without the guard**
+- [x] **Step 5: Watch the context-row test fail without the guard**
 
 Delete the `!row.context` clause, re-run, watch the context-row test go red, restore it. An
 invariant asserted in a comment gets a test that fails without it, and the test is watched
 failing.
 
-- [ ] **Step 6: Write the PBI and commit**
+- [x] **Step 6: Write the PBI and commit**
 
 Create `docs/requirements/A tree that fits a sidebar.md` — `type: PBI`,
 `parent: "[[Assigned work in the sidebar]]"`, `order: 30`, `status: Open`, six sections in

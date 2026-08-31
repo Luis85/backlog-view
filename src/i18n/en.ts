@@ -1760,6 +1760,16 @@ export const en = {
 	'mywork.hideDone': 'Hide done',
 
 	/**
+	 * Task 9's own row menu (`view/mywork/rowMenu.ts`): open, open in a new tab, and the
+	 * one write this surface offers. Named apart from the backlog view's own
+	 * `menu.openInNewTab`/`menu.setState` for the identical reason `collapseRow` is named
+	 * apart from `release.scope.collapse` above — the two menus evolve independently.
+	 */
+	'mywork.menu.open': 'Open',
+	'mywork.menu.openTab': 'Open in a new tab',
+	'mywork.menu.setState': 'Set state',
+
+	/**
 	 * The two groups the index is drawn in, headed where a row's own `shipped` flag changes
 	 * (`release/renderIndex.ts`). In flight is everything without a released date; shipped
 	 * is everything with one — never a state VALUE, which is a vault's own vocabulary and

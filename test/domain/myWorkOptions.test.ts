@@ -45,6 +45,47 @@ describe('my work options', () => {
 		expect(untouched.typeKey).toBe('type');
 	});
 
+	// Task 9: until this joined the bag, the menu could only ever offer a value some row
+	// already carried — `settings.states` was always `[]`, so `Blocked` on a tree with
+	// nothing blocked was unreachable. Over the SAME `stateValues` option key
+	// `viewOptions.ts` declares for the backlog view.
+	it('resolves the requirements workflow’s own declared vocabulary', () => {
+		const settings = resolveMyWorkSettings(new FakeViewConfig({ stateValues: 'Open, In progress, Done' }) as never);
+		expect(settings.states).toEqual(['Open', 'In progress', 'Done']);
+	});
+
+	it('leaves the requirements vocabulary empty by default', () => {
+		expect(resolveMyWorkSettings(new FakeViewConfig({}) as never).states).toEqual([]);
+	});
+
+	// The Deliverable and test workflows' own declared vocabularies, resolved through the
+	// SAME `resolveSecondaryWorkflow` call the key and done-values pair already share —
+	// an explicit binding never borrows the requirements list.
+	it('resolves each secondary workflow’s own declared vocabulary from an explicit binding', () => {
+		const settings = resolveMyWorkSettings(
+			new FakeViewConfig({
+				deliverableStateProperty: 'note.delivState',
+				deliverableStateValues: 'Draft, Shipped',
+				testStateProperty: 'note.testState',
+				testStateValues: 'Ready, Passed',
+			}) as never,
+		);
+		expect(settings.deliverableStates).toEqual(['Draft', 'Shipped']);
+		expect(settings.testStates).toEqual(['Ready', 'Passed']);
+	});
+
+	// The copy-fallback rule `resolveSecondaryWorkflow` states for the done-values pair
+	// applies to the declared vocabulary too: an UNBOUND secondary workflow (the key
+	// falls back) with no vocabulary of its own copies the requirements one, rather than
+	// staying empty while the requirements workflow declares a real list. This is also
+	// what keeps `secondaryWorkflowProblem` (`settingsConsistency.ts`) from ever firing on
+	// a production `resolveMyWorkSettings` output — see the `buildModel` test below.
+	it('copies the requirements vocabulary into an unbound secondary workflow', () => {
+		const settings = resolveMyWorkSettings(new FakeViewConfig({ stateValues: 'Open, Done' }) as never);
+		expect(settings.deliverableStates).toEqual(['Open', 'Done']);
+		expect(settings.testStates).toEqual(['Open', 'Done']);
+	});
+
 	it('offers every key exactly once', () => {
 		const keys = getMyWorkViewOptions(new FakeViewConfig({}) as never)
 			.flatMap((group) => ('items' in group ? group.items : []))
@@ -59,6 +100,10 @@ describe('my work options', () => {
 			'Completed',
 			'Removed',
 		]);
+	});
+
+	it('resolves an explicit done-values list', () => {
+		expect(resolveMyWorkSettings(new FakeViewConfig({ doneValues: 'Shipped' }) as never).doneValues).toEqual(['Shipped']);
 	});
 
 	it('carries a default on its open-target dropdown, and resolves split when unset', () => {
@@ -157,5 +202,32 @@ describe('my work options', () => {
 		vault.addFile('D.md', { frontmatter: { type: 'Deliverable', order: 1, assignee: 'Ada', delivState: 'Shipped' } });
 		const model = buildModel(vault.app, vault.entries(), planSettings);
 		expect(model.byPath.get('D.md')?.deliverableDone).toBe(true);
+	});
+
+	// Task 9: before the requirements vocabulary joined this bag, `settings.states` was
+	// always `[]`, so `secondaryWorkflowProblem`'s (`settingsConsistency.ts`) own
+	// `baseStates.length > 0` guard could never fire for a my-work configuration — it was
+	// unreachable rather than satisfied. Configuring `stateValues` ARMS it; what keeps a
+	// REAL `resolveMyWorkSettings` output from tripping it is `resolveSecondaryWorkflow`'s
+	// own copy-fallback rule (an unbound secondary workflow copies the requirements list
+	// rather than staying empty) — checked here over the SAME layering
+	// `MyWorkView.draw()` builds `planSettings` with (the six-field override, no more),
+	// off the SAME config object both resolvers read, with no Deliverable or test
+	// workflow configured at all.
+	it('does not trip the secondary-workflow guard when only the requirements vocabulary is configured', () => {
+		const config = new FakeViewConfig({ stateValues: 'Open, In progress, Done' });
+		const mySettings = resolveMyWorkSettings(config as never);
+		const planSettings: BacklogSettings = {
+			...resolveSettings(config as never),
+			typeKey: mySettings.typeKey,
+			parentKey: mySettings.parentKey,
+			orderKey: mySettings.orderKey,
+			assigneeKey: mySettings.assigneeKey,
+			stateKey: mySettings.stateKey,
+			doneValues: mySettings.doneValues,
+		};
+		const vault = new FakeVault();
+		vault.addFile('X.md', { frontmatter: { type: 'PBI', order: 1, assignee: 'Ada' } });
+		expect(() => buildModel(vault.app, vault.entries(), planSettings)).not.toThrow();
 	});
 });

@@ -13,6 +13,7 @@ import { foldedPaths, scopeFlag, toggleFold } from '../scopeFolds';
 import { TreeDraw, wireScopeKeys } from '../scopeKeys';
 import { MYWORK_FOLD } from '../../storage/foldKeys';
 import { uniqueElementId } from '../selection';
+import { showMyWorkRowMenu } from './rowMenu';
 
 /**
  * One person's tree — Task 1's row shape and transforms, Task 2's membership and "what is
@@ -134,6 +135,23 @@ export function drawMyWorkTree(view: MyWorkView, parentEl: HTMLElement): TreeDra
 	// this module back. `MYWORK_FOLD` and the picked person's own path are this tree's
 	// `scope`, the way `RELEASE_FOLD` and the open release's path are the other tree's.
 	wireScopeKeys(view, treeEl, { prefix: MYWORK_FOLD, path: view.pickedPerson! }, draw);
+	// Task 9's own write: one delegated listener on the pane, the release scope's own
+	// `wireScopeCreate` shape — resolve the row from the event's target rather than a
+	// per-row listener, and build the menu through `showMyWorkRowMenu`, which is the one
+	// place the context-row rule (no Set state on a context row) and the workflow dispatch
+	// (Deliverable / test / requirements) are stated.
+	//
+	// `evt.target` is asserted rather than tested — `scopeCreate.ts`'s own reason: this
+	// listener is on `treeEl`, so a dispatched event always reports an element under it,
+	// and an `instanceof` guard here would be the unreachable branch that module's own
+	// header already argues against.
+	treeEl.addEventListener('contextmenu', (evt) => {
+		const rowEl = (evt.target as Element).closest('.pbl-row');
+		const row = visible.find((r) => rowEls.get(r.item.file.path) === rowEl);
+		if (!row) return;
+		evt.preventDefault();
+		showMyWorkRowMenu(view, row, evt);
+	});
 	return draw;
 }
 

@@ -117,6 +117,35 @@ unreachable; review found that belief false (the two calls agree, so nothing was
 risk) and the untested extra scope was removed rather than kept and justified after the
 fact.
 
+**Task 9 (added 2026-08-31): the bag was widened a third time, for the menu the write
+path needed.** `view/mywork/rowMenu.ts`'s Set state offers a workflow's declared
+vocabulary, the same way the backlog view's own Set state does — but this bag bound none:
+`resolveMyWorkSettings` passed `states: []` into every `resolveSecondaryWorkflow` call, so
+`stateMenuValues` could only ever offer a value some visible row already carried, and a
+state nothing on screen held yet (`Blocked` on a tree with nothing blocked) was
+unreachable from the menu. `stateValues`, `deliverableStateValues` and
+`testStateValues` join the bag to close it — over the identical option keys
+`viewOptions.ts` declares for the backlog view, so `resolveMyWorkSettings`'s own `states`
+field and `resolveSettings(this.config)`'s own `states` field (which `MyWorkView.draw()`
+spreads into `planSettings` unchanged) read the identical answer off the same config, and
+the two views' pickers can never disagree about what a vault has declared. `MyWorkSettings`
+gained `states`, `deliverableStates` and `testStates` alongside the three keys, following
+the backlog view's own definitions.
+
+This is also the change that ARMS a guard Task 3b's own review had found permanently
+unreachable: `secondaryWorkflowProblem` (`settingsConsistency.ts`) refuses a secondary
+workflow whose key falls back with an empty vocabulary while the requirements workflow
+declares a real one — a combination `resolveSecondaryWorkflow`'s own copy-fallback rule
+never produces (an unbound secondary workflow COPIES the requirements list rather than
+staying empty), but a rule stated as a predicate over VALUES rather than derived from that
+resolver can still be asked of one. With `states` always `[]` before this task, the
+guard's own `baseStates.length > 0` clause was never true for a my-work configuration, so
+it could never fire — armed now that `states` is real, and still never TRIPPED: a
+configuration this view's own options screen can produce always carries the copy-fallback
+rule's guarantee, checked in `test/domain/myWorkOptions.test.ts` ("does not trip the
+secondary-workflow guard when only the requirements vocabulary is configured") over the
+same six-field layering `MyWorkView.draw()` builds `planSettings` with.
+
 ## The pick itself, and where it lives
 
 Task 4 of [[Assigned work in the sidebar]] registers the view this options bag describes
@@ -177,10 +206,11 @@ will give `syncBusy` a second half.
 ## Acceptance criteria
 
 - `getMyWorkViewOptions` declares `typeProperty`, `parentProperty`, `orderProperty`,
-  `assigneeProperty`, `stateProperty`, `doneValues`, `deliverableStateProperty`,
-  `deliverableDoneValues`, `testStateProperty`, `testDoneValues`, `startedStates`,
-  `startedDateProperty`, `finishedDateProperty` and `openIn` — fourteen keys, each
-  exactly once.
+  `assigneeProperty`, `stateProperty`, `stateValues`, `doneValues`,
+  `deliverableStateProperty`, `deliverableStateValues`, `deliverableDoneValues`,
+  `testStateProperty`, `testStateValues`, `testDoneValues`, `startedStates`,
+  `startedDateProperty`, `finishedDateProperty` and `openIn` — seventeen keys (Task 9
+  added the three `*StateValues` boxes), each exactly once.
 - `resolveMyWorkSettings` resolves `parentKey`/`orderKey`/`typeKey` to `parent`/`order`/
   `type` and `assigneeKey` to `assignee` when nothing is configured — the same
   suggestions the backlog view offers, read through this view's own option keys.
@@ -233,8 +263,10 @@ will give `syncBusy` a second half.
 
 `src/domain/myWorkOptions.ts` — `getMyWorkViewOptions`, `resolveMyWorkSettings` and the
 `MyWorkSettings` interface (`parentKey`, `orderKey`, `typeKey`, `assigneeKey`,
-`stateKey`, `doneValues`, `deliverableStateKey`, `deliverableDoneValues`, `testStateKey`,
-`testDoneValues`, `startedDateKey`, `finishedDateKey`, `startedStates`, `openIn`). It
+`stateKey`, `doneValues`, `states`, `deliverableStateKey`, `deliverableDoneValues`,
+`deliverableStates`, `testStateKey`, `testDoneValues`, `testStates`, `startedDateKey`,
+`finishedDateKey`, `startedStates`, `openIn` — `states`/`deliverableStates`/`testStates`
+are Task 9's own addition, for `view/mywork/rowMenu.ts`'s Set state menu). It
 reads `configReaders`/`resolveSecondaryWorkflow`/`DELIVERABLE_NAMES`/`TEST_NAMES` from
 `src/domain/settingsResolve.ts` (the last three exported there for this reuse, Task 3b),
 `notePropsOnly`/`optionalProperty` from `src/domain/optionalProperties.ts`,
