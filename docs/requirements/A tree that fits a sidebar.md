@@ -163,10 +163,24 @@ marker, and an `outsideFilter` ancestor re-rooting its member one level up:**
 - **240px** (below the threshold) — the state column is gone, the row's available width
   grows back by the 92px it was reserving, and the toolbar's "Hide done" button wraps to
   its own line rather than clipping. The Next marker is now the row's own rightmost
-  content rather than sharing the row with a fixed column, though at this fixture's depth
-  it can still sit close to the pane's edge — the general per-row clipping trade-off
-  `tree.css` already accepts for every projection, not a defect this task's rule
-  introduces or is positioned to close.
+  content rather than sharing the row with a fixed column.
+
+  **This paragraph said "can still sit close to the pane's edge" until it was measured.**
+  It was 17px OUTSIDE it: `tree.css` gives `.pbl-title` a `min-width: 60px` floor that
+  every projection shares, so the title stopped shrinking while the marker kept its
+  intrinsic width, and `.pbl-tree`'s `overflow-x: hidden` made the marker invisible rather
+  than cut. Below the threshold — where this rule HAS fired and the column IS gone — the
+  view was losing its headline answer, which is not the general per-row trade-off
+  `tree.css` accepts but a gap this rule was positioned to close and did not. The narrow
+  block now also drops that floor to `0` for `.pbl-mw-view` alone, so the title yields to
+  the marker instead: measured with the harness at 260px, 240px, 220px and 200px, the
+  marker sits inside the pane at every one (12px of clearance at the first three, 3px at
+  200px, where the deepest row's title is reduced to nothing and every other row still
+  reads). No other projection's floor moves.
+
+  Above the threshold, 280px is unchanged and still clips — that band is the entry above,
+  and tuning the 260px cutoff to cover it was refused on this task's own terms rather than
+  reversed here.
 
 **What this still does not answer, honestly**: a themed vault's colours, its accent, and
 anything Bases hands the view — `test/harness/theme.css`'s own stated limits, unchanged

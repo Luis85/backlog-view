@@ -118,4 +118,18 @@ button.pbl-mw-toggle-on {
 	.pbl-mw-view .pbl-mw-toolbar {
 		flex-wrap: wrap;
 	}
+
+	/* The title yields to the Next marker here, and only here. `tree.css` gives
+	   `.pbl-title` a `min-width: 60px` floor that every projection shares, so below about
+	   260px the title stops shrinking, the marker is pushed past the pane edge, and
+	   `.pbl-tree`'s `overflow-x: hidden` makes it invisible rather than cut — measured at
+	   240px, 17px outside the pane. Losing the marker loses this view's headline answer;
+	   losing title characters does not, since the row still opens the note and the tree
+	   still says what the row IS through its type badge. `0` rather than a smaller floor
+	   on purpose: a number here would be this fixture's depth and title lengths again,
+	   which is the mistake the 260px cutoff already documents. Scoped to `.pbl-mw-view`,
+	   inside the narrow block, so no other projection's floor moves. */
+	.pbl-mw-view .pbl-title {
+		min-width: 0;
+	}
 }
