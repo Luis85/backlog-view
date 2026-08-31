@@ -160,3 +160,35 @@ for the drag, `test/view/` for the menu, the keyboard and the two creation paths
 written NUMBER, not just the parent — the existing fixture's blind spot is exactly that it
 asserted `.parent` alone. Assert a ranked context sibling still counts as a peer at one site,
 so the fix cannot be over-applied.
+
+## Task 5 — the README overstates what a context row refuses
+
+**Defect.** `README.md` (the context-rows list, the bullet beginning "**nothing ever writes
+into them.**") says of a context row: "what is refused is a move of the context row itself
+(no before/after drop onto it, no **Move up/down/to top/to bottom**, no **Outdent** from
+it)".
+
+The "no before/after drop onto it" clause stopped being true on this branch.
+`siblingPosition`'s focus branch (`src/domain/dropTargets.ts`) runs BEFORE the
+`item.outsideFilter` refusal and admits a RANKED context row, and `siblingContext`
+(`src/view/interactions/structure.ts`) keeps one among the focus peers for the keyboard and
+the menu. So at a focus level, a before/after drop onto a ranked context row is offered and
+lands — the README tells the reader it never is, hiding behaviour this branch introduces.
+
+The clauses beside it are still correct and must stay: **Move up/down/to top/to bottom** and
+**Outdent** move the context row ITSELF, which `siblingContext` still refuses for every
+`outsideFilter` row.
+
+**Required behaviour.** Qualify the drop clause rather than deleting it: a before/after drop
+onto a context row is refused when it is unranked, or when the placement is not a focus-level
+rank. Say what a reader can act on — at a focus level, a context row that carries a rank is a
+position other rows can be ranked around, because its rank is a real constraint the view can
+see. Keep the surrounding prose's voice and length; this is a qualification, not a new
+section.
+
+Check the same claim wherever else the register states it — `docs/requirements/` and the
+in-app manual (`src/view/manual/`) may carry the same sentence. Fix every copy you find, or
+report that there is only one.
+
+**Tests.** None beyond `npm run check`'s markdown and docs-register gates: this is
+documentation. If the in-app manual carries the claim, its own text test may need updating.
