@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
-import { CARD_SCOPE, RELEASE_FOLD, TIMELINE_SCOPE } from '../../src/view/viewState';
+import { CARD_SCOPE, MYWORK_FOLD, RELEASE_FOLD, TIMELINE_SCOPE } from '../../src/view/viewState';
 import { saveViewState } from '../../src/storage/viewStateStore';
 import { FakeVault } from '../helpers/vault';
 import { fixture, makeView, refresh, rowByTitle, titlesOf, useViewHarness } from '../helpers/view';
@@ -353,6 +353,28 @@ describe('collapse state persistence', () => {
 	 * `scopeOf`'s own answer — is what has to survive in front of the renamed member, or
 	 * the key would migrate to a bare path and lose which release it was scoped to.
 	 */
+	it('does not let a mywork-scoped fold seed a card-scope fold for its member', () => {
+		const vault = fixture();
+		// The same hazard `seedCardScope`'s release exclusion guards against, asked of the
+		// OTHER two-path prefix: a leaf member, so a collapsed card here can only be
+		// `seedCardScope` reading the mywork key as a bare path.
+		const myWorkFoldKey = `${MYWORK_FOLD}People/Ada.md\u0000Feature B1.md`;
+		vault.localStorage.set('product-backlog:view-state', {
+			'Backlog.base#Backlog': {
+				base: 'Backlog.base',
+				folds: { collapsed: [myWorkFoldKey], expanded: [], lanes: [] },
+				prefs: {},
+			},
+		});
+
+		const { view } = makeView(vault, {}, { base: 'Backlog.base', collapsed: true });
+		view.setZoom('quarter');
+		view.onunload();
+
+		const collapsed = stored(vault)['Backlog.base#Backlog'].folds.collapsed;
+		expect(collapsed).not.toContain(`${CARD_SCOPE}Feature B1.md`);
+	});
+
 	it('carries a release’s own fold to a renamed member, keeping it scoped to that release', () => {
 		const vault = fixture();
 		// Present for the same reason as in the flush test above: with no release note the

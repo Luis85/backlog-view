@@ -55,6 +55,9 @@ const FULL_PREFS: Required<ViewPrefs> = {
 	// The release scope's own hide-done toggle — the ON state, `bucketList`'s own rule for
 	// storing only the non-default.
 	releaseHideDone: true,
+	// The assigned-work tree's own hide-done toggle — a second key rather than a shared
+	// one, since the two screens' readers keep this choice independently.
+	myWorkHideDone: true,
 	// A WORD beside the path above — which board the Board position opens with no scope
 	// set. In live state the two are never both set (the controller clears each on the
 	// other's way in); the fixture holds both because the round trip is per key.

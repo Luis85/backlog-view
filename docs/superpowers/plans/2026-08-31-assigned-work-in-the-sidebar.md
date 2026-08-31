@@ -984,7 +984,7 @@ rather than copy: the whole of what varies is the key prefix.
   - `function scopeFlag(host: FoldHost, key: 'releaseHideDone' | 'myWorkHideDone'): boolean`
   - `function setScopeFlag(host: FoldHost, key: 'releaseHideDone' | 'myWorkHideDone', next: boolean): void`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 `test/view/scopeFolds.test.ts` — the same three questions the release fold tests ask,
 asked of a host that is not a release view:
@@ -1007,12 +1007,12 @@ it('falls back to a session-only set with no view identity', () => {
 });
 ```
 
-- [ ] **Step 2: Run it and watch it fail**
+- [x] **Step 2: Run it and watch it fail**
 
 Run: `npx vitest run test/view/scopeFolds.test.ts`
 Expected: FAIL — module not found.
 
-- [ ] **Step 3: Move the code**
+- [x] **Step 3: Move the code**
 
 Move `foldPrefix`, `sessionFolds`, `readRawFolds`, `writeRawFolds`, `foldedPaths`,
 `writeFolds`, `toggleFold` and `setAllFolds` out of `src/view/release/scopeTree.ts` into
@@ -1048,18 +1048,18 @@ the shape this rule exists to refuse. Take the prefix as a parameter rather than
 second literal: one branch answering both scopes cannot drift, and a third scope costs a
 row. Both renames get a test — the scope's own path and a member's.
 
-- [ ] **Step 4: Call it from the release tree**
+- [x] **Step 4: Call it from the release tree**
 
 `scopeTree.ts` keeps `effectiveHideDone` — it asks a release-shaped question
 (`release.done.unconfigured`) — and calls the shared functions with `RELEASE_FOLD` and
 `release.path`.
 
-- [ ] **Step 5: Run both suites**
+- [x] **Step 5: Run both suites**
 
 Run: `npx vitest run test/view/scopeFolds.test.ts test/view/release test/storage/foldKeys.test.ts`
 Expected: PASS, with no release assertion edited.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/view/scopeFolds.ts src/storage/foldKeys.ts src/view/release src/view/viewState.ts test/view/scopeFolds.test.ts

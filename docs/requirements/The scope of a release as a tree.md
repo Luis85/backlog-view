@@ -160,10 +160,14 @@ CHOOSES between this scope and the index; `src/view/release/renderScope.ts` draw
 and the two empty states above the tree — including the header's own open-note control
 (`drawOpenNote`), which is beside the title rather than in the toolbar below it because the
 toolbar's three controls are about the TREE and this one is about the release the title names; `src/view/release/scopeTree.ts` draws the tree
-itself — the rows, the disclosure, the fold set (scoped to the open release, never a bare
-path — see that module's own comment) and a row's click (and middle click), which open the
+itself — the rows, the disclosure and a row's click (and middle click), which open the
 note through `src/view/openTarget.ts`'s `OpenController`, the estimation view's own
-mechanism. `src/view/release/scopeKeys.ts` is the tree's keyboard: one tab stop on the
+mechanism. **The fold set — scoped to the open release, never a bare path — and the
+hide-done flag beside it moved to `src/view/scopeFolds.ts`** (Task 5 of [[Assigned work in
+the sidebar]]): the assigned-work tree asks the identical two questions per person rather
+than per release, and the whole of what varied was the key prefix, so `scopeTree.ts` now
+calls the shared functions with `RELEASE_FOLD` and the open release's path rather than
+keeping a second copy. `src/view/release/scopeKeys.ts` is the tree's keyboard: one tab stop on the
 container and a roving `aria-activedescendant`, moved by the four arrows plus Enter and
 Space, over the same fold set and the same `OpenController` — never `src/view/selection.ts`,
 which is built around a `BacklogViewHost` and the two card projections' own selection, so

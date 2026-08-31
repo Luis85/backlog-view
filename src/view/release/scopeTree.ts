@@ -7,17 +7,15 @@ import { childRows, rowsAfterHideDone, ScopeRow, siblingPlaces, visibleRows } fr
 import { displayType } from '../../domain/itemTypes';
 import { badgeStyleFor } from '../render/badges';
 import { drawIcon } from '../render/icons';
-import { loadViewState, saveViewState } from '../../storage/viewStateStore';
-import { resolveViewIdentity, ViewIdentity } from '../../storage/viewIdentity';
+import { foldedPaths as sharedFoldedPaths, scopeFlag, setAllFolds as sharedSetAllFolds, setScopeFlag, toggleFold as sharedToggleFold } from '../scopeFolds';
 import { RELEASE_FOLD } from '../viewState';
 import { uniqueElementId } from '../selection';
 
 /**
- * The scope tree's own rows: the disclosure, the fold set and the two row figures the
- * design shows — split out of `renderScope.ts` (Task 3) once that module's own header
- * grew a fourth reason to change on top of the header and the two empty states it still
- * owns. `renderScope.ts` calls {@link drawScopeTree} for the tree and keeps everything
- * else.
+ * The scope tree's own rows: the disclosure and the two row figures the design shows —
+ * split out of `renderScope.ts` (Task 3) once that module's own header grew a fourth
+ * reason to change on top of the header and the two empty states it still owns.
+ * `renderScope.ts` calls {@link drawScopeTree} for the tree and keeps everything else.
  *
  * **Nothing here writes a note.** A fold touches localStorage through the view-state
  * store, and a click opens a note through `OpenController` — neither is a write this
@@ -35,166 +33,52 @@ import { uniqueElementId } from '../selection';
  * exist for exactly this failure, over the backlog's own two projections; this scope
  * multiplies it by "however many releases the base holds" instead of by two.
  *
- * `RELEASE_FOLD` itself now lives in `storage/foldKeys.ts`, not here (and is re-exported
- * by `view/viewState.ts`, which is where this module still names it): the backlog view's
+ * `RELEASE_FOLD` itself lives in `storage/foldKeys.ts`, not here (and is re-exported by
+ * `view/viewState.ts`, which is where this module still names it): the backlog view's
  * own `ViewState` has to recognise the prefix too, since a saved view's TYPE can change
  * while its stored identity does not, and a `.base` view switched from this one to the
  * backlog view carries whatever this module wrote under that identity — see that
  * constant's own comment for what silently broke before it moved.
+ *
+ * The fold set itself, and the hide-done flag beside it, are `view/scopeFolds.ts`'s own
+ * (Task 5 of [[Assigned work in the sidebar]]): this module asks the identical questions
+ * per release that the assigned-work tree asks per person, and the whole of what varied
+ * was the key prefix — every function below is a one-line call into that shared module
+ * with `RELEASE_FOLD` and the open release's path, so nothing that already called these
+ * names had to change.
  */
 
-/** `<NUL>release:<release path><NUL>` — everything after it is the member path, and the
- *  NUL is safe as a separator for the same reason it is safe as a prefix: neither path
- *  can contain one. */
-function foldPrefix(releasePath: string): string {
-	return `${RELEASE_FOLD}${releasePath}\u0000`;
-}
-
 /**
- * The session-only fallback {@link readRawFolds}/{@link writeRawFolds} use where there is
- * no view identity — `restorePick`'s own asymmetry (`releaseView.ts`), read from the other
- * end: an embedded base has no identity, so its folds are session-only rather than absent
- * — gone on reload, exactly as the pick is, and the tree is one press from reopening.
- * Keyed on the VIEW, so a remounted view starts fresh, as every other session-only value
- * here does.
- *
- * Neither store-level walk reaches this map — not the rename's, and not
- * `pruneDeletedFolds`'. For a DELETE that costs nothing: the row goes with the note, so
- * the key it leaves is unreachable and dies at the end of the session anyway. For a rename
- * it costs one reopened row until reload, which is the accepted limitation recorded above
- * — subscribing this view to vault events to close it would buy back less than this
- * backend already discards on every remount.
- */
-const sessionFolds = new WeakMap<ReleaseView, string[]>();
-
-/** Every fold key this view's own entry currently holds, whichever backend answers for
- *  it — the identity-backed store, or the session fallback above. Both read and write
- *  sides work over this one flat list, so which backend is live is decided in exactly
- *  two places. */
-function readRawFolds(view: ReleaseView, id: ViewIdentity | null): string[] {
-	if (id === null) return sessionFolds.get(view) ?? [];
-	return loadViewState(view.app, id).folds.collapsed;
-}
-
-function writeRawFolds(view: ReleaseView, id: ViewIdentity | null, all: string[]): void {
-	if (id === null) {
-		sessionFolds.set(view, all);
-		return;
-	}
-	const state = loadViewState(view.app, id);
-	saveViewState(view.app, id, { ...state, folds: { ...state.folds, collapsed: all } });
-}
-
-/**
- * The paths folded shut in the OPEN release's scope, from the same per-identity entry the
- * pick is stored in. Nothing new is persisted: `folds.collapsed` already exists and this
- * view's identity gives it its own copy.
- *
- * Neither of `ViewStateController`'s two rename walks reaches these keys, and that is not
- * a cost any more: both are methods of a controller this view holds none of — it reads and
- * writes `folds.collapsed` directly through `loadViewState`/`saveViewState` — so the walk
- * that carries a fold here is `renamePathFolds` (`storage/viewStateStore.ts`), over the
- * STORED entries and wired to `vault.on('rename')` at the plugin. Renaming a member, or the
- * open release itself, therefore migrates the fold rather than reopening the row. What made
- * that affordable was moving the key shape DOWN rather than copying it: `notePath`,
- * `scopeOf` and `movedFoldKey` live in `storage/foldKeys.ts`, the layer that stores the key,
- * so `storage/` needs no import from `view/` and there is still exactly one `notePath`.
+ * The paths folded shut in the OPEN release's scope. See `view/scopeFolds.ts`'s own
+ * `foldedPaths` for the shape and the identity/session-fallback split.
  */
 export function foldedPaths(view: ReleaseView, releasePath: string): Set<string> {
-	const id = resolveViewIdentity(view.app, view.viewEl, view.config.name ?? '');
-	const prefix = foldPrefix(releasePath);
-	// Only THIS release's keys, stripped back to member paths — the caller asks about the
-	// rows it is drawing, and a key from another release's scope answers a different
-	// question about the same note.
-	return new Set(
-		readRawFolds(view, id)
-			.filter((k) => k.startsWith(prefix))
-			.map((k) => k.slice(prefix.length)),
-	);
-}
-
-/** Write this release's fold set back, keeping every other release's keys — and any
- *  other fold this store already holds — untouched.
- *
- *  The set is the WHOLE truth about this scope: a path in it is folded and a path absent is
- *  open, with no third state for "nobody has ruled on this row". So a release nobody has
- *  folded anything in opens whole — decided rather than emergent, and stated with the reason
- *  in `docs/requirements/The scope of a release as a tree.md` extension 2b, along with why
- *  seeding this set on first open would be worse than the default it replaces. */
-function writeFolds(view: ReleaseView, releasePath: string, folded: ReadonlySet<string>): void {
-	const id = resolveViewIdentity(view.app, view.viewEl, view.config.name ?? '');
-	const prefix = foldPrefix(releasePath);
-	const others = readRawFolds(view, id).filter((k) => !k.startsWith(prefix));
-	const mine = [...folded].map((path) => `${prefix}${path}`);
-	writeRawFolds(view, id, [...others, ...mine]);
+	return sharedFoldedPaths(view, RELEASE_FOLD, releasePath);
 }
 
 /**
- * Flips one row's fold and redraws — one call rather than two repeated at every caller.
- * The disclosure's own click used to pair `toggleFold` with `view.render()` itself, and
- * `scopeKeys.ts`'s keyboard Left/Right need the identical pair; moving the render in here
- * is what lets both call one function instead of each remembering the redraw.
+ * Flips one row's fold and redraws — `view/scopeFolds.ts`'s own `toggleFold`, scoped to
+ * this release.
  */
 export function toggleFold(view: ReleaseView, releasePath: string, path: string): void {
-	const folded = foldedPaths(view, releasePath);
-	if (folded.has(path)) folded.delete(path);
-	else folded.add(path);
-	writeFolds(view, releasePath, folded);
-	view.render();
+	sharedToggleFold(view, RELEASE_FOLD, releasePath, path);
 }
 
 /**
- * Fold or unfold every row THIS scope drew, without touching another release's set —
- * `rows` is what makes "exactly this scope" precise rather than "everything".
- *
- * **Collapsing writes a key only for rows `childRows` says have a child** — never for a
- * leaf. A leaf has no disclosure to close, so a leaf's fold key is not a fold anything can
- * ever act on: it sits in `folds.collapsed` forever, indistinguishable from a stale entry
- * `childRows` already has to defend against elsewhere in this module. That would cost
- * nothing on its own if the list were free, but it is not — `folds.collapsed` spends from
- * one `MAX_FOLDS` budget shared across every scope this saved view holds
- * (`storage/viewStateStore.ts`'s `readFolds`), which keeps the FIRST entries read and
- * drops the rest once it runs out. A key per leaf is pure waste against that budget: it
- * cannot be un-collapsed, it cannot be seen, and every one written is a slot a REAL fold —
- * on this release or another — can no longer buy, so folding a row eventually stops
- * working with no error, the redraw simply leaving it open. Expanding needs no such
- * filter: it already writes the empty set.
- *
- * **`rows` here is the caller's FULL `scope.rows`, not the hide-done-filtered rows
- * `drawScopeTree` computes its own `withKids` over** — `scopeToolbar.ts`'s own caller
- * draws before the tree does — so with hide-done ON this can write a key for a row that
- * `drawScopeTree` currently draws as a leaf; accepted rather than threaded through, since
- * the key reads correctly again the moment hide-done goes off and nothing draws a
- * chevron over an empty subtree meanwhile.
+ * Fold or unfold every row THIS scope drew — `view/scopeFolds.ts`'s own `setAllFolds`,
+ * scoped to this release. See that function's own comment for why a leaf gets no key and
+ * why `rows` must be the caller's FULL scope rather than a hide-done-filtered subset.
  */
 export function setAllFolds(view: ReleaseView, releasePath: string, rows: ScopeRow[], folded: boolean): void {
-	if (!folded) {
-		writeFolds(view, releasePath, new Set());
-		return;
-	}
-	const withKids = childRows(rows);
-	writeFolds(view, releasePath, new Set(rows.filter((row) => withKids.has(row.item.file.path)).map((row) => row.item.file.path)));
+	sharedSetAllFolds(view, RELEASE_FOLD, releasePath, rows, folded);
 }
 
 /**
- * The session-only fallback for {@link hideDoneOn}/{@link setHideDone}, `sessionFolds`'s
- * own reason: an embedded base has no identity, so the toggle is session-only there —
- * gone on reload, exactly as the pick and the folds are.
- */
-const sessionHideDone = new WeakMap<ReleaseView, boolean>();
-
-/**
- * Whether the scope screen is hiding finished subtrees — ONE flag for the whole view,
- * never scoped per release the way {@link foldedPaths} is: a fold set has to answer "is
- * THIS row open" for as many releases as the base holds, but hiding is a single working
- * preference the reader carries from one release's screen to the next, `bucketList`'s own
- * shape (`storage/viewStateStore.ts`). Read through the same per-identity entry the pick
- * and the folds use, so it survives exactly as they do and no further.
+ * Whether the scope screen is hiding finished subtrees — `view/scopeFolds.ts`'s own
+ * `scopeFlag`, asked with this screen's own preference key.
  */
 export function hideDoneOn(view: ReleaseView): boolean {
-	const id = resolveViewIdentity(view.app, view.viewEl, view.config.name ?? '');
-	if (id === null) return sessionHideDone.get(view) ?? false;
-	return loadViewState(view.app, id).prefs.releaseHideDone === true;
+	return scopeFlag(view, 'releaseHideDone');
 }
 
 /**
@@ -214,20 +98,9 @@ export function effectiveHideDone(view: ReleaseView, release: ReleaseRow): boole
 	return hideDoneOn(view) && !release.done.unconfigured;
 }
 
-/** Flip the toggle and redraw — `toggleFold`'s own pairing, for the identical reason:
- *  every caller wants the write and the render together rather than remembering both. */
+/** Flip the toggle and redraw — `view/scopeFolds.ts`'s own `setScopeFlag`. */
 export function setHideDone(view: ReleaseView, next: boolean): void {
-	const id = resolveViewIdentity(view.app, view.viewEl, view.config.name ?? '');
-	if (id === null) {
-		sessionHideDone.set(view, next);
-	} else {
-		const state = loadViewState(view.app, id);
-		// `undefined` for the default rather than `false`: absence IS the off state, and a
-		// stored `false` would be a value meaning "none" — `readPrefs`'s own rule
-		// (`storage/viewStateStore.ts`).
-		saveViewState(view.app, id, { ...state, prefs: { ...state.prefs, releaseHideDone: next ? true : undefined } });
-	}
-	view.render();
+	setScopeFlag(view, 'releaseHideDone', next);
 }
 
 /**

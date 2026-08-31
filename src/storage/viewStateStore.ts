@@ -322,6 +322,15 @@ export interface ViewPrefs {
 	 */
 	releaseHideDone?: boolean;
 	/**
+	 * Whether the assigned-work tree is hiding finished subtrees — {@link releaseHideDone}'s
+	 * own rule with the scope swapped: the ON state of a toggle that starts OFF, so a
+	 * default writes nothing. A second row rather than a shared one, because the two
+	 * screens' readers each keep their own working choice about a question they answer
+	 * independently — `view/scopeFolds.ts`'s `scopeFlag`/`setScopeFlag` are what keep the
+	 * two keys from drifting in shape while staying two preferences.
+	 */
+	myWorkHideDone?: boolean;
+	/**
 	 * Which board the `Boards` position opens when no iteration scope is set — today the
 	 * one legal value is {@link DELIVERABLES_MODE}, and absence means the product board.
 	 * A WORD, never a path, so unlike `scope` beside it neither the prune nor the rename
@@ -464,6 +473,7 @@ export const PREF_READERS: { [K in keyof ViewPrefs]-?: Reader<NonNullable<ViewPr
 	// deleted returns the index, which the view decides on render — not a failure.
 	release: anyName,
 	releaseHideDone: onlyTrue,
+	myWorkHideDone: onlyTrue,
 	board: oneOf([DELIVERABLES_MODE]),
 	estimationSort: oneOf(ESTIMATION_SORT_VALUES),
 };
