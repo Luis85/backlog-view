@@ -126,6 +126,11 @@ export function dropTargetFor(
 	// and the comparison shifts by the number of unranked context rows above the row,
 	// so a drop that moves nothing reads as a move and spends the undo slot.
 	if (model.focused && model.roots.includes(dragged) && position.parent === dragged.parent) {
+		// `focusPeers`, matching the list `peers` was built from — the two disagree by the
+		// number of unranked context rows ABOVE the dragged row, and reading the unfiltered
+		// one there misses the no-op and writes to a row that did not move. `dragged` is
+		// assumed to be in that list: an `outsideFilter` row would score `-1` and never read
+		// as a no-op, which the render prevents by never handing one a drag.
 		if (position.insertIndex === focusPeers(model).indexOf(dragged)) return null;
 	} else if (position.parent === dragged.parent && !clearsStaleLink(position.parent, dragged)) {
 		// The TREE keeps today's rule unchanged: the real group filtered to this

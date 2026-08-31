@@ -157,15 +157,19 @@ describe('ranking PAST an unranked context row', () => {
 		expect(rankOf(menued.vault, 'PBI B.md')).toBe(dragRank);
 	});
 
+	// **The context row is ABOVE both, and the dragged row is the LAST one.** That is what
+	// makes this discriminating, and the first version of this test was not: with the
+	// context row in the middle and the FIRST row dragged, both index lists answer 0 and
+	// the assertion passed whichever list the guard read. Here they disagree by exactly the
+	// one unranked context row above — `focusPeers` says 1, `model.roots` says 2 — so a
+	// guard reading the unfiltered list misses the no-op and writes to a row that did not
+	// move. Peers and index have to come off the SAME list, and only this shape shows it.
 	it('still reads the no-op index off the SAME filtered list', async () => {
-		// `PBI A` is already before `PBI B`, so this drop moves the row past nothing. Read
-		// against the unfiltered `model.roots`, the row's own index is one too high — the
-		// no-op is missed, the placement anchors on the context row and the drop writes
-		// 6000 to a row that did not move.
-		const { containerEl, vault } = focusedView(['A', 'Ctx', 'B']);
-		expect(titlesOf(containerEl)).toEqual(['PBI A', 'PBI Ctx', 'Task Ctx', 'PBI B']);
+		const { containerEl, vault } = focusedView(['Ctx', 'A', 'B']);
+		expect(titlesOf(containerEl)).toEqual(['PBI Ctx', 'Task Ctx', 'PBI A', 'PBI B']);
 
-		drag(rowByTitle(containerEl, 'PBI A'), rowByTitle(containerEl, 'PBI B'), 'before');
+		// `PBI B` is already after `PBI A`, so this drop moves the row past nothing.
+		drag(rowByTitle(containerEl, 'PBI B'), rowByTitle(containerEl, 'PBI A'), 'after');
 		await flush();
 
 		expect(vault.writeLog.length).toBe(0);
