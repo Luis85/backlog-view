@@ -10,7 +10,7 @@ import { ORDER_SPACING } from '../../domain/writePlan';
 import { createBacklogItem } from '../../storage/createNote';
 import { TitlePromptModal } from '../../ui/prompts';
 import { showMenuAtElement, showMenuForClick } from '../interactions/menu';
-import { ScopeDraw, foldedPaths, toggleFold } from './scopeTree';
+import { ScopeDraw, releaseFoldedPaths, toggleReleaseFold } from './scopeTree';
 
 /**
  * The scope tree's one write: **New \<child\> on a row**, which creates a note rather than
@@ -195,7 +195,7 @@ interface NewMember {
  *
  * Unfolding is done AFTER the create and only when the parent is actually folded: a new
  * child under a closed row would otherwise land somewhere the reader cannot see it.
- * `toggleFold` re-renders, which is also how the tree picks the note up once the base's
+ * `toggleReleaseFold` re-renders, which is also how the tree picks the note up once the base's
  * next pass returns it.
  *
  * **The release is re-read here, not trusted from the row** — `refusesLiveMembership`, the
@@ -236,7 +236,7 @@ async function createMember(view: ReleaseView, release: ReleaseRow, settings: Ba
 		return;
 	}
 	const parentPath = row.item.file.path;
-	if (foldedPaths(view, release.path).has(parentPath)) toggleFold(view, release.path, parentPath);
+	if (releaseFoldedPaths(view, release.path).has(parentPath)) toggleReleaseFold(view, release.path, parentPath);
 }
 
 /** An order value placing the new child after every ranked child the parent already has. */

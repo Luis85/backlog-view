@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { active, makeReleaseView, press, RELEASE_CONFIG, refreshRelease, row, select, twisty } from '../../helpers/release';
-import { foldedPaths } from '../../../src/view/release/scopeTree';
+import { releaseFoldedPaths } from '../../../src/view/release/scopeTree';
 import { useViewHarness } from '../../helpers/view';
 import { FakeVault } from '../../helpers/vault';
 
@@ -144,7 +144,7 @@ describe('the scope tree’s keyboard', () => {
 	it('ArrowRight does nothing on a row whose fold entry outlived its last child — a stale fold is not evidence of one', () => {
 		// Folded while it still had children, then those children are removed: the
 		// stored fold key survives (nothing prunes a release fold when its subtree
-		// empties out), so `foldedPaths` still calls this row folded even though the
+		// empties out), so `releaseFoldedPaths` still calls this row folded even though the
 		// CURRENT render draws no disclosure on it at all. `hasKids` has to be asked
 		// of `kids` (the rendered tree's own answer) rather than of the fold set, or
 		// this row reads as a closed PARENT and ArrowRight toggles a phantom fold
@@ -155,7 +155,7 @@ describe('the scope tree’s keyboard', () => {
 			vault.files.delete(child);
 		}
 		refreshRelease(view, vault);
-		expect(foldedPaths(view, 'Releases/0.8.md').has('Passwordless sign-in.md')).toBe(true);
+		expect(releaseFoldedPaths(view, 'Releases/0.8.md').has('Passwordless sign-in.md')).toBe(true);
 
 		select(view, 'Passwordless sign-in.md');
 		press(view, 'ArrowRight');
@@ -163,11 +163,11 @@ describe('the scope tree’s keyboard', () => {
 		expect(active(view)).toBe('Passwordless sign-in.md');
 		// Untouched, not merely re-set: a toggle would have REMOVED it from the fold
 		// set, which is exactly what the phantom-fold bug would do.
-		expect(foldedPaths(view, 'Releases/0.8.md').has('Passwordless sign-in.md')).toBe(true);
+		expect(releaseFoldedPaths(view, 'Releases/0.8.md').has('Passwordless sign-in.md')).toBe(true);
 	});
 
 	it('keeps the tree focused across the redraw an unfold triggers, and the next arrow continues from there', () => {
-		// `toggleFold` empties `viewEl` and rebuilds the controller from scratch — without
+		// `toggleReleaseFold` empties `viewEl` and rebuilds the controller from scratch — without
 		// the restore's own focus carry, this drops focus to the body and stalls the
 		// keyboard one press into the tree (`scopeKeys.ts`'s own comment on why).
 		const { view } = mountKeys();
@@ -218,7 +218,7 @@ describe('the scope tree’s keyboard', () => {
 	/**
 	 * Carried finding 4, task 5: `activeScopeFile` used to be a bare note path `pick()`
 	 * never cleared — the identical bug already fixed for fold keys
-	 * (`foldedPaths`/`toggleFold` scope every key to `release.path`), in the sibling field
+	 * (`releaseFoldedPaths`/`toggleReleaseFold` scope every key to `release.path`), in the sibling field
 	 * that fix did not sweep. Its own vault: `Ctx.md` is a context ancestor in BOTH
 	 * releases, and — the fixture's whole point — it is the FIRST row of 0.8's scope but
 	 * NOT of 0.9's, where `Standalone.md` (ordered ahead of it) is. A leaked path that

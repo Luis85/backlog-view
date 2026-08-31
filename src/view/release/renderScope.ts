@@ -27,9 +27,9 @@ import { drawReleaseActions } from './releaseClose';
  *
  * **This module is also what keeps `scopeTree.ts` and `scopeKeys.ts` themselves acyclic.**
  * The tree's keyboard needs the fold set `scopeTree.ts` owns (`ScopeDraw.folded`,
- * `toggleFold`), and `scopeTree.ts` has no reason to import the keyboard back — so
+ * `toggleReleaseFold`), and `scopeTree.ts` has no reason to import the keyboard back — so
  * `drawScopeTree` returns what it drew (`ScopeDraw`, `folded` included, so the keyboard
- * never has to ask `foldedPaths` again itself) instead of wiring the keyboard itself, and
+ * never has to ask `releaseFoldedPaths` again itself) instead of wiring the keyboard itself, and
  * this module, which already imports both leaves, calls `wireScopeKeys` as the second
  * step. Two one-directional edges from here rather than one cycle between them.
  *

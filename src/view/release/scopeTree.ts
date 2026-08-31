@@ -7,7 +7,7 @@ import { childRows, rowsAfterHideDone, ScopeRow, siblingPlaces, visibleRows } fr
 import { displayType } from '../../domain/itemTypes';
 import { badgeStyleFor } from '../render/badges';
 import { drawIcon } from '../render/icons';
-import { foldedPaths as sharedFoldedPaths, scopeFlag, setAllFolds as sharedSetAllFolds, setScopeFlag, toggleFold as sharedToggleFold } from '../scopeFolds';
+import { foldedPaths, scopeFlag, setAllFolds, setScopeFlag, toggleFold } from '../scopeFolds';
 import { RELEASE_FOLD } from '../viewState';
 import { uniqueElementId } from '../selection';
 
@@ -43,25 +43,30 @@ import { uniqueElementId } from '../selection';
  * The fold set itself, and the hide-done flag beside it, are `view/scopeFolds.ts`'s own
  * (Task 5 of [[Assigned work in the sidebar]]): this module asks the identical questions
  * per release that the assigned-work tree asks per person, and the whole of what varied
- * was the key prefix — every function below is a one-line call into that shared module
- * with `RELEASE_FOLD` and the open release's path, so nothing that already called these
- * names had to change.
+ * was the key prefix — `releaseFoldedPaths`, `toggleReleaseFold` and `setAllReleaseFolds`
+ * below are each a one-line call into that shared module with `RELEASE_FOLD` and the open
+ * release's path. Named apart from `scopeFolds.ts`'s own `foldedPaths`/`toggleFold`/
+ * `setAllFolds` rather than re-exported under those names (fix round 1, 2026-08-31):
+ * `hideDoneOn`/`setHideDone` already took this shape for the flag pair, and a fallow
+ * duplicate-export finding is what made the fold trio follow suit — two files exporting
+ * the same name is the fingerprint of an incomplete extraction even where every caller
+ * names an explicit path and no collision is reachable today.
  */
 
 /**
  * The paths folded shut in the OPEN release's scope. See `view/scopeFolds.ts`'s own
  * `foldedPaths` for the shape and the identity/session-fallback split.
  */
-export function foldedPaths(view: ReleaseView, releasePath: string): Set<string> {
-	return sharedFoldedPaths(view, RELEASE_FOLD, releasePath);
+export function releaseFoldedPaths(view: ReleaseView, releasePath: string): Set<string> {
+	return foldedPaths(view, RELEASE_FOLD, releasePath);
 }
 
 /**
  * Flips one row's fold and redraws — `view/scopeFolds.ts`'s own `toggleFold`, scoped to
  * this release.
  */
-export function toggleFold(view: ReleaseView, releasePath: string, path: string): void {
-	sharedToggleFold(view, RELEASE_FOLD, releasePath, path);
+export function toggleReleaseFold(view: ReleaseView, releasePath: string, path: string): void {
+	toggleFold(view, RELEASE_FOLD, releasePath, path);
 }
 
 /**
@@ -69,8 +74,8 @@ export function toggleFold(view: ReleaseView, releasePath: string, path: string)
  * scoped to this release. See that function's own comment for why a leaf gets no key and
  * why `rows` must be the caller's FULL scope rather than a hide-done-filtered subset.
  */
-export function setAllFolds(view: ReleaseView, releasePath: string, rows: ScopeRow[], folded: boolean): void {
-	sharedSetAllFolds(view, RELEASE_FOLD, releasePath, rows, folded);
+export function setAllReleaseFolds(view: ReleaseView, releasePath: string, rows: ScopeRow[], folded: boolean): void {
+	setAllFolds(view, RELEASE_FOLD, releasePath, rows, folded);
 }
 
 /**
@@ -123,11 +128,11 @@ export interface ScopeDraw {
 	readonly rowEls: ReadonlyMap<string, HTMLElement>;
 	/**
 	 * The fold set this draw was computed against — `drawScopeTree`'s own call to
-	 * {@link foldedPaths}, handed out rather than left for a caller to ask again. It
-	 * cannot change during the controller's life: `toggleFold` and `setHideDone` both
+	 * {@link releaseFoldedPaths}, handed out rather than left for a caller to ask again. It
+	 * cannot change during the controller's life: `toggleReleaseFold` and `setHideDone` both
 	 * call `view.render()`, which rebuilds this whole listener from a fresh draw, so a
 	 * value that answers for the WHOLE render pass can be read once here instead of
-	 * asked fresh on every keydown. `scopeKeys.ts` used to call {@link foldedPaths}
+	 * asked fresh on every keydown. `scopeKeys.ts` used to call {@link releaseFoldedPaths}
 	 * itself at the top of every keydown — including the ones that do nothing — which is
 	 * `resolveViewIdentity` plus `loadViewState`'s full JSON parse and validation of
 	 * every stored view entry, paid on every ArrowDown of a key-repeat rather than once
@@ -145,7 +150,7 @@ export function drawScopeTree(view: ReleaseView, release: ReleaseRow, rows: Scop
 		cls: 'pbl-tree',
 		attr: { role: 'tree', 'aria-label': release.name, tabindex: '0' },
 	});
-	const folded = foldedPaths(view, release.path);
+	const folded = releaseFoldedPaths(view, release.path);
 	// Hide-done first, fold second — `rowsAfterHideDone`'s own comment on why this is two
 	// passes rather than one: `withKids` has to answer "does this row still have a child"
 	// AFTER a finished subtree has gone, or a parent whose children all hid would keep the
@@ -310,7 +315,7 @@ function drawDisclosure(view: ReleaseView, release: ReleaseRow, rowEl: HTMLEleme
 		// the tree rather than this one — worse than the body it currently falls to.
 		// `wireScopeKeys`'s own restore reads exactly this field.
 		view.activeScopeFile = row.item.file;
-		toggleFold(view, release.path, row.item.file.path);
+		toggleReleaseFold(view, release.path, row.item.file.path);
 	});
 }
 

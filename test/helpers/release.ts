@@ -26,7 +26,7 @@ export function twisty(view: ReleaseView, path: string): HTMLElement {
 
 /**
  * Dispatches a keydown at the tree, `scopeKeys.test.ts`'s own way in. Re-queried every
- * call rather than captured once: `toggleFold` and the ArrowLeft/Right cases redraw the
+ * call rather than captured once: `toggleReleaseFold` and the ArrowLeft/Right cases redraw the
  * tree, which detaches the element a stale reference would still be pointing at.
  */
 export function press(view: ReleaseView, key: string): void {

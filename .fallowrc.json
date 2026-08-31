@@ -5,17 +5,6 @@
 	"duplicates": {
 		"ignore": ["test/harness/obsidian.css"]
 	},
-	// `scopeTree.ts` keeps three names — `foldedPaths`, `toggleFold`, `setAllFolds` — under
-	// their OLD (release-only) signatures, each a one-line call into `view/scopeFolds.ts`'s
-	// function of the same name (Task 5 of [[Assigned work in the sidebar]]). Every caller
-	// names an explicit file, never a barrel, so the collision this rule exists to catch
-	// cannot happen here — it is the delegation the extraction is FOR.
-	"ignoreExports": [
-		{
-			"file": "src/view/release/scopeTree.ts",
-			"exports": ["foldedPaths", "toggleFold", "setAllFolds"]
-		}
-	],
 	"usedClassMembers": [
 		{ "extends": "ViewStateSurface", "members": ["type"] },
 		{ "extends": "BasesView", "members": ["type"] },

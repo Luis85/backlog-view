@@ -1,5 +1,5 @@
 import type { ReleaseView } from './releaseView';
-import { ScopeDraw, toggleFold } from './scopeTree';
+import { ScopeDraw, toggleReleaseFold } from './scopeTree';
 
 /**
  * The scope tree's keyboard: one tab stop on the container and a roving
@@ -70,8 +70,8 @@ export function wireScopeKeys(view: ReleaseView, treeEl: HTMLElement, releasePat
 	treeEl.addEventListener('keydown', (evt) => {
 		const row = rows[active];
 		// `draw.folded` — the fold set `drawScopeTree` already computed for THIS render —
-		// never a fresh `foldedPaths` call here: this listener is rebuilt on every render
-		// (`toggleFold`/`setHideDone` both call `view.render()`), so the value cannot go
+		// never a fresh `releaseFoldedPaths` call here: this listener is rebuilt on every render
+		// (`toggleReleaseFold`/`setHideDone` both call `view.render()`), so the value cannot go
 		// stale between renders, and asking again on every keydown was a full
 		// `loadViewState` JSON parse and validation paid on every ArrowDown of a
 		// key-repeat rather than once per render. See `ScopeDraw.folded`'s own comment.
@@ -93,14 +93,14 @@ export function wireScopeKeys(view: ReleaseView, treeEl: HTMLElement, releasePat
 			case 'ArrowRight':
 				// Step IN, never step NEXT. A leaf has nothing to enter, and moving here
 				// would make one key mean two things depending on where it landed.
-				if (hasKids && !open) toggleFold(view, releasePath, row.item.file.path);
+				if (hasKids && !open) toggleReleaseFold(view, releasePath, row.item.file.path);
 				else if (hasKids) moveTo(active + 1);
 				else return;
 				break;
 			case 'ArrowLeft':
 				// Fold what is open; only a CLOSED row steps out, to the nearest shallower
 				// row above it — which is its parent, since the walk is pre-order.
-				if (hasKids && open) toggleFold(view, releasePath, row.item.file.path);
+				if (hasKids && open) toggleReleaseFold(view, releasePath, row.item.file.path);
 				else {
 					const up = rows.slice(0, active).reduce((found, r, i) => (r.depth < row.depth ? i : found), -1);
 					if (up === -1) return;
@@ -125,7 +125,7 @@ export function wireScopeKeys(view: ReleaseView, treeEl: HTMLElement, releasePat
 	});
 	treeEl.addEventListener('focus', show);
 	// The active row SURVIVES the re-render, and the tree takes focus back when it was the
-	// thing focused before. `toggleFold` calls `view.render()`, which `empty()`s `viewEl` —
+	// thing focused before. `toggleReleaseFold` calls `view.render()`, which `empty()`s `viewEl` —
 	// detaching the focused tree and building this controller again from scratch. Without
 	// these two lines, pressing Right to unfold a row moves focus to the body and drops the
 	// active row to the first: the next arrow key reaches no listener at all, and a

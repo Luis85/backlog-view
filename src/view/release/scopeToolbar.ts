@@ -3,7 +3,7 @@ import type { ReleaseView } from './releaseView';
 import { t } from '../../i18n/t';
 import { ReleaseRow } from '../../domain/releases';
 import { ScopeRow } from '../../domain/scopeRows';
-import { hideDoneOn, setAllFolds, setHideDone } from './scopeTree';
+import { hideDoneOn, setAllReleaseFolds, setHideDone } from './scopeTree';
 
 /**
  * The scope screen's own toolbar — above the scroller, so it never scrolls away.
@@ -23,11 +23,11 @@ import { hideDoneOn, setAllFolds, setHideDone } from './scopeTree';
 export function drawScopeToolbar(view: ReleaseView, parentEl: HTMLElement, release: ReleaseRow, rows: ScopeRow[]): void {
 	const barEl = parentEl.createDiv({ cls: 'pbl-rel-toolbar' });
 	iconBtn(barEl, 'chevrons-down-up', t('release.scope.collapseAll'), 'pbl-rel-collapse', () => {
-		setAllFolds(view, release.path, rows, true);
+		setAllReleaseFolds(view, release.path, rows, true);
 		view.render();
 	});
 	iconBtn(barEl, 'chevrons-up-down', t('release.scope.expandAll'), 'pbl-rel-expand', () => {
-		setAllFolds(view, release.path, rows, false);
+		setAllReleaseFolds(view, release.path, rows, false);
 		view.render();
 	});
 	barEl.createDiv({ cls: 'pbl-rel-spacer' });
