@@ -9,7 +9,7 @@ import { en } from '../../../src/i18n/en';
 
 beforeEach(() => {
 	document.body.empty();
-	Modal.lastOpened = null;
+	Modal.forget();
 	Notice.reset();
 });
 

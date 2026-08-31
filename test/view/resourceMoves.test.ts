@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
-import { TFile } from 'obsidian';
+import { TFile } from '../helpers/obsidian-mock';
 import { FakeVault } from '../helpers/vault';
 import { Menu, Notice } from '../helpers/obsidian-mock';
 import { Harness, flush, key, makeView, refresh, treeOf, useViewHarness } from '../helpers/view';

@@ -326,7 +326,7 @@ describe('write safety with context rows, across every entry point', () => {
 	async function chooseFirstSuggestion(): Promise<void> {
 		const modal = Modal.lastOpened;
 		if (!(modal instanceof FuzzySuggestModal)) return;
-		Modal.lastOpened = null;
+		Modal.forget();
 		const offered = (modal as FuzzySuggestModal<unknown>).offered();
 		if (offered.length > 0) (modal as FuzzySuggestModal<unknown>).choose(offered[0]);
 		await flush();
@@ -336,7 +336,7 @@ describe('write safety with context rows, across every entry point', () => {
 	async function confirmSchedulePrompt(): Promise<void> {
 		const modal = Modal.lastOpened;
 		if (!modal?.titleEl.textContent?.startsWith('Schedule ')) return;
-		Modal.lastOpened = null;
+		Modal.forget();
 		for (const input of modal.contentEl.querySelectorAll('input')) {
 			input.value = '2026-08-03';
 			input.dispatchEvent(new Event('input', { bubbles: true }));

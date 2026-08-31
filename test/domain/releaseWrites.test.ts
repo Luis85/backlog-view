@@ -5,6 +5,7 @@ import { releaseIndex } from '../../src/domain/releases';
 import { CivilDate } from '../../src/domain/noteFields';
 import { computeReleaseWrites } from '../../src/domain/writePlan';
 import { FakeVault } from '../helpers/vault';
+import { releaseSettingsWith } from '../helpers/releaseSettings';
 
 /** This suite is not about `today` either, so a fixed value stands in for it. */
 const TODAY: CivilDate = { year: 2026, month: 1, day: 1 };
@@ -44,7 +45,7 @@ function fixture(opts: {
 			!releaseIndex(
 				vault.app,
 				model,
-				{
+				releaseSettingsWith({
 					parentKey: 'parent',
 					orderKey: 'order',
 					typeKey: 'type',
@@ -52,7 +53,7 @@ function fixture(opts: {
 					versionKey: 'version',
 					targetDateKey: 'target-date',
 					statusKey: 'status',
-				},
+				}),
 				{ stateKey: settings.stateKey, today: TODAY },
 			).unresolved.some((i) => i.file.path === 'PBI-1.md'),
 	};

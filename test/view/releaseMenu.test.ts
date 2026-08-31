@@ -20,7 +20,7 @@ useViewHarness();
 describe('the Set release menu', () => {
 	/** The submenu's entries — empty where the row is offered no `Set release` at all. */
 	function releaseEntries(view: ProductBacklogView, path: string): MenuItem[] {
-		Menu.lastShown = null;
+		Menu.forget();
 		view.showContextMenuFor(itemAt(view, path));
 		return Menu.lastShown?.item('Set release')?.submenu?.items ?? [];
 	}

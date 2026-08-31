@@ -1,4 +1,26 @@
-import { Catalog } from '../../src/i18n/t';
+import { en } from '../../src/i18n/en';
+import { Catalog, MessageKey } from '../../src/i18n/t';
+
+/** The prefix a marked catalog puts in front of every value. See `markedCatalog`. */
+export const MARK = 'XX ';
+
+/**
+ * The whole English catalog behind `MARK`, so a projection can be driven and whatever
+ * renders UNMARKED is data rather than text. One builder rather than the nine copies
+ * this was, and one place where `Forms`'s required `other` is carried across the map —
+ * `Object.fromEntries` alone answers an index signature, which the shape does not accept.
+ */
+export function markedCatalog(keys: readonly MessageKey[] = Object.keys(en) as MessageKey[]): Catalog {
+	return Object.fromEntries(
+		keys.map((key) => {
+			const entry = en[key];
+			return [key, typeof entry === 'string' ? MARK + entry : { ...entry, ...mark(entry) }];
+		}),
+	);
+}
+
+const mark = (forms: Record<string, string>): Record<string, string> =>
+	Object.fromEntries(Object.entries(forms).map(([form, value]) => [form, MARK + value]));
 
 /**
  * Fixture catalogs, which are not languages.

@@ -22,7 +22,7 @@ const help = (containerEl: HTMLElement) => {
 
 describe('the manual is reachable from the toolbar', () => {
 	beforeEach(() => {
-		Modal.lastOpened = null;
+		Modal.forget();
 	});
 
 	it('is a real button in the toolbar', () => {
@@ -78,7 +78,7 @@ describe('the manual is reachable from the toolbar', () => {
 
 describe('the manual is reachable where its questions are asked', () => {
 	beforeEach(() => {
-		Modal.lastOpened = null;
+		Modal.forget();
 	});
 
 	const openedOn = () =>

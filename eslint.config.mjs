@@ -32,11 +32,14 @@ const forbidden = (layer, groups, reason) => ({
 });
 
 /**
- * The Obsidian ruleset is about *shipped plugin* code, and it is type-aware, which
- * `test/` cannot satisfy: tsconfig.json covers `src/` only, and the test doubles exist
- * precisely to do what those rules forbid — the DOM helper defines `createEl`, the fake
- * vault casts to `TFile`. So the plugin rules stop at `src/`, and `test/` gets the
- * TypeScript baseline plus this repo's own budgets, below.
+ * The Obsidian ruleset is about *shipped plugin* code, and `test/` is not that: the test
+ * doubles exist precisely to do what those rules forbid — the DOM helper defines
+ * `createEl`, the fake vault casts to `TFile`. So the plugin rules stop at `src/`, and
+ * `test/` gets the TypeScript baseline plus this repo's own budgets, below.
+ *
+ * The reason used to be that `test/` had no tsconfig at all and so could not carry a
+ * type-aware rule. `tsconfig.test.json` covers it now (`npm run typecheck:test`), so what
+ * is left is the reason that was always the real one — the doubles.
  */
 const pluginRules = obsidianmd.configs.recommended.map((c) => ({ ...c, ignores: [...(c.ignores ?? []), TESTS] }));
 

@@ -35,9 +35,10 @@ import { intlLocale, resolveCatalog, SOURCE_LOCALE } from './locale';
  * with `few` alone type-checked and rendered a BLANK label, against this module's own
  * "every key renders something" guarantee. Stated in the type rather than guarded at the
  * lookup, so it holds for a catalog nobody has written yet — checked by the compiler for
- * every catalog under `src/`, which is every catalog that ships. `tsconfig.json` covers
- * `src/` only, so a `test/` fixture is its author's problem. Found by review
- * (Codex, PR #151).
+ * every catalog under `src/`, which is every catalog that ships. Since `tsconfig.test.json`
+ * (`npm run typecheck:test`), a `test/` fixture is held to the same shape — the nine
+ * hand-rolled marked catalogs it caught are now one `markedCatalog()` in
+ * `test/i18n/fixtures.ts`. Found by review (Codex, PR #151).
  */
 type Forms = Partial<Record<Intl.LDMLPluralRule, string>> & { other: string };
 type Entry = string | Forms;

@@ -1,4 +1,4 @@
-import { BasesViewConfig } from 'obsidian';
+import type { BasesViewConfig } from 'obsidian';
 import { describe, expect, it } from 'vitest';
 import { settingsWith } from '../helpers/settings';
 import { FakeViewConfig } from '../helpers/vault';

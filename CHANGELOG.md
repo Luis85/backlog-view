@@ -28,6 +28,8 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 - `npm run check` has a sixth step, `lint:md`, gating the Markdown in `docs/` and the
   root documents.
+- `npm run check` typechecks `test/` as well as `src/` (`npm run typecheck:test`), so a
+  test calling a function with the wrong arguments fails the gate instead of passing.
 
 ## [0.10.0] - 2026-08-30
 

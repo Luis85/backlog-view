@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
-import { Menu } from 'obsidian';
+import { Menu } from '../helpers/obsidian-mock';
 import { FakeVault } from '../helpers/vault';
 import {
 	flush,
@@ -228,7 +228,7 @@ describe('roadmap keyboard support', () => {
 		key(tree, 'ContextMenu');
 		expect(Menu.lastShown?.item('Open in new tab')).toBeDefined();
 
-		Menu.lastShown = null;
+		Menu.forget();
 		key(tree, 'F10', { shiftKey: true });
 		// Cards are not tab stops, so these keys are the menu's only keyboard route.
 		expect(Menu.lastShown?.item('Open in new tab')).toBeDefined();

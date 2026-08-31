@@ -3,8 +3,19 @@ import { FakeVault } from '../helpers/vault';
 import { buildModel } from '../../src/domain/model';
 import { resolveSettings } from '../../src/domain/settingsResolve';
 import { FakeViewConfig } from '../helpers/vault';
-import { barHolds, deriveBars, placeItem, statedEnds, timelineRows, withoutEnds } from '../../src/domain/bars';
+import { barHolds, deriveBars, placeItem, Placement, statedEnds, timelineRows, withoutEnds } from '../../src/domain/bars';
 import { drawsAsPoint, placementEnds } from '../../src/domain/itemTypes';
+
+/**
+ * `placeItem` answers null for an item the axis cannot place AT ALL — a type that draws
+ * no bar. Every case below is about bar-versus-shelf, so null is a broken fixture rather
+ * than an outcome, and saying so once here is what lets each case narrow on `kind`.
+ */
+function place(...args: Parameters<typeof placeItem>): Placement {
+	const placement = placeItem(...args);
+	if (placement === null) throw new Error('placeItem answered null; the fixture is not placeable');
+	return placement;
+}
 
 const DATE_AXIS = { startProperty: 'note.start', targetProperty: 'note.target' };
 
@@ -31,8 +42,8 @@ describe('placeItem', () => {
 		vault.addFile('Child.md', { frontmatter: { type: 'PBI', order: 10, start: '2026-08-10', target: '2026-08-20' }, parentLink: 'Parent' });
 		const { item } = itemFor(vault, 'Parent.md');
 
-		expect(placeItem(item, statedEnds(item), false).kind).toBe('bar');
-		const left = placeItem(item, withoutEnds(statedEnds(item), ['start', 'target']), false);
+		expect(place(item, statedEnds(item), false).kind).toBe('bar');
+		const left = place(item, withoutEnds(statedEnds(item), ['start', 'target']), false);
 		expect(left.kind).toBe('bar');
 		// Its own dates gone, the descendants still supply a span: it keeps a bar,
 		// inferred, and the shelf preview would be a lie.
@@ -47,7 +58,7 @@ describe('placeItem', () => {
 		vault.addFile('Child.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: 'Parent' });
 		const { item } = itemFor(vault, 'Parent.md');
 
-		expect(placeItem(item, withoutEnds(statedEnds(item), ['start']), false).kind).toBe('shelf');
+		expect(place(item, withoutEnds(statedEnds(item), ['start']), false).kind).toBe('shelf');
 	});
 
 	it('shelves a marker whose target goes, however stale a start it keeps', () => {
@@ -58,7 +69,7 @@ describe('placeItem', () => {
 		vault.addFile('Ship.md', { frontmatter: { type: 'Milestone', order: 10, start: '2026-07-01', target: '2026-09-30' } });
 		const { item } = itemFor(vault, 'Ship.md');
 
-		const left = placeItem(item, withoutEnds(statedEnds(item), ['target']), false);
+		const left = place(item, withoutEnds(statedEnds(item), ['target']), false);
 		expect(left.kind).toBe('shelf');
 		if (left.kind !== 'shelf') throw new Error('unreachable');
 		expect(left.reason).toBeNull();
@@ -69,12 +80,12 @@ describe('placeItem', () => {
 		vault.addFile('Broken.md', { frontmatter: { type: 'PBI', order: 10, start: 'soon', target: '2026-08-01' } });
 		vault.addFile('Backwards.md', { frontmatter: { type: 'PBI', order: 20, start: '2026-08-31', target: '2026-08-01' } });
 
-		expect(placeItem(itemFor(vault, 'Broken.md').item, statedEnds(itemFor(vault, 'Broken.md').item), false)).toEqual({
+		expect(place(itemFor(vault, 'Broken.md').item, statedEnds(itemFor(vault, 'Broken.md').item), false)).toEqual({
 			kind: 'shelf',
 			reason: 'Unreadable start date',
 		});
 		const backwards = itemFor(vault, 'Backwards.md').item;
-		expect(placeItem(backwards, statedEnds(backwards), false)).toEqual({
+		expect(place(backwards, statedEnds(backwards), false)).toEqual({
 			kind: 'shelf',
 			reason: 'Target date precedes the start date',
 		});
@@ -159,7 +170,7 @@ describe('barHolds', () => {
 		const vault = new FakeVault();
 		vault.addFile('Item.md', { frontmatter: { order: 10, ...frontmatter } });
 		const { item, settings } = itemFor(vault, 'Item.md', values);
-		const placement = placeItem(item, statedEnds(item), false);
+		const placement = place(item, statedEnds(item), false);
 		if (placement.kind !== 'bar') throw new Error('expected a bar');
 		return barHolds(item, settings, placement.bar);
 	}
@@ -193,7 +204,7 @@ describe('barHolds', () => {
 		// With no target property there is no bar either, so the shelf card is what a
 		// gesture would have to grip — and it offers nothing. Asserted through the
 		// placement so the two answers cannot disagree.
-		expect(placeItem(item, statedEnds(item), false).kind).toBe('shelf');
+		expect(place(item, statedEnds(item), false).kind).toBe('shelf');
 		expect(barHolds(item, settings, { item, span: { start: null, target: null }, inferredStart: false, inferredEnd: false })).toEqual([]);
 	});
 
@@ -207,7 +218,7 @@ describe('barHolds', () => {
 		vault.addFile('Parent.md', { frontmatter: { type: 'Feature', order: 10 } });
 		vault.addFile('Child.md', { frontmatter: { type: 'PBI', order: 10, target: '2026-09-01' }, parentLink: 'Parent' });
 		const { item, settings } = itemFor(vault, 'Parent.md');
-		const placement = placeItem(item, statedEnds(item), false);
+		const placement = place(item, statedEnds(item), false);
 		if (placement.kind !== 'bar') throw new Error('expected a bar');
 
 		expect(placement.bar.inferredStart).toBe(false);
@@ -222,7 +233,7 @@ describe('barHolds', () => {
 		vault.addFile('Parent.md', { frontmatter: { type: 'Feature', order: 10, start: '2026-08-01' } });
 		vault.addFile('Child.md', { frontmatter: { type: 'PBI', order: 10, target: '2026-08-20' }, parentLink: 'Parent' });
 		const { item, settings } = itemFor(vault, 'Parent.md');
-		const placement = placeItem(item, statedEnds(item), false);
+		const placement = place(item, statedEnds(item), false);
 		if (placement.kind !== 'bar') throw new Error('expected a bar');
 
 		expect(placement.bar.inferredEnd).toBe(true);
@@ -288,14 +299,14 @@ describe('an iteration on the dated axis', () => {
 
 	it('is a point at its target while the option is off, its start ignored', () => {
 		const { item } = itemFor(sprintVault({ start: '2026-09-07', target: '2026-09-20' }), 'Sprint 12.md');
-		const placed = placeItem(item, statedEnds(item), false);
+		const placed = place(item, statedEnds(item), false);
 		if (placed.kind !== 'bar') throw new Error('expected a bar');
 		expect(placed.bar.span).toEqual({ start: placed.bar.span.target, target: placed.bar.span.target });
 	});
 
 	it('is a start→target span while the option is on', () => {
 		const { item } = itemFor(sprintVault({ start: '2026-09-07', target: '2026-09-20' }), 'Sprint 12.md');
-		const placed = placeItem(item, statedEnds(item), true);
+		const placed = place(item, statedEnds(item), true);
 		if (placed.kind !== 'bar') throw new Error('expected a bar');
 		expect(placed.bar.span.start).toEqual({ year: 2026, month: 9, day: 7 });
 		expect(placed.bar.span.target).toEqual({ year: 2026, month: 9, day: 20 });
@@ -303,24 +314,24 @@ describe('an iteration on the dated axis', () => {
 
 	it('shelves with no target in line mode, places open-ended on a start in bar mode', () => {
 		const { item } = itemFor(sprintVault({ start: '2026-09-07' }), 'Sprint 12.md');
-		expect(placeItem(item, statedEnds(item), false).kind).toBe('shelf');
-		const barMode = placeItem(item, statedEnds(item), true);
+		expect(place(item, statedEnds(item), false).kind).toBe('shelf');
+		const barMode = place(item, statedEnds(item), true);
 		expect(barMode.kind).toBe('bar');
 	});
 
 	it('shelves a reversed span in bar mode with the ordinary reason', () => {
 		const { item } = itemFor(sprintVault({ start: '2026-09-20', target: '2026-09-07' }), 'Sprint 12.md');
-		const placed = placeItem(item, statedEnds(item), true);
+		const placed = place(item, statedEnds(item), true);
 		if (placed.kind !== 'shelf') throw new Error('expected the shelf');
 		expect(placed.reason).toBe('Target date precedes the start date');
 	});
 
 	it('holds: body-only as a point, grips per configured key as a bar', () => {
 		const { item, settings } = itemFor(sprintVault({ start: '2026-09-07', target: '2026-09-20' }), 'Sprint 12.md');
-		const point = placeItem(item, statedEnds(item), false);
+		const point = place(item, statedEnds(item), false);
 		if (point.kind !== 'bar') throw new Error('unreachable');
 		expect(barHolds(item, settings, point.bar)).toEqual(['body']);
-		const span = placeItem(item, { ...statedEnds(item) }, true);
+		const span = place(item, { ...statedEnds(item) }, true);
 		if (span.kind !== 'bar') throw new Error('unreachable');
 		const on = { ...settings, iterationBars: true };
 		expect(barHolds(item, on, span.bar)).toEqual(['start', 'end', 'body']);

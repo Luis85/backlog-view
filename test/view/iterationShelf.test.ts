@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import { Menu } from 'obsidian';
+import { Menu } from '../helpers/obsidian-mock';
 import { FakeVault } from '../helpers/vault';
 import { cardDrag } from '../helpers/dnd';
 import { cardByTitle, cardTitles, columnByName } from '../helpers/board';
@@ -73,7 +73,7 @@ describe('the iteration shelf', () => {
 		const cols = containerEl.querySelector('.pbl-board-cols');
 		expect(shelf).not.toBeNull();
 		// `DOCUMENT_POSITION_FOLLOWING`: the columns come after the shelf in the frame.
-		expect(shelf?.compareDocumentPosition(cols as Node) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+		expect((shelf?.compareDocumentPosition(cols as Node) ?? 0) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
 	});
 
 	it('is not drawn on the product board, which is scoped to no iteration at all', () => {
@@ -208,7 +208,7 @@ describe('the iteration shelf', () => {
 			// feature fails at its own purpose. The board's own rule, stated at its
 			// hidden-match links.
 			const { containerEl } = onSprint(sprintVault());
-			Menu.lastShown = null;
+			Menu.forget();
 			cardByTitle(containerEl, 'Uncommitted').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
 			const titles = Menu.lastShown?.items.map((item) => item.titleText) ?? [];
 			expect(titles).toContain('Shelf layout');
@@ -279,7 +279,7 @@ describe('the iteration shelf', () => {
 		 */
 		function pickSortAndGetFocus(containerEl: HTMLElement): Element | null {
 			const btn = shelfOf(containerEl)?.querySelector<HTMLElement>('.pbl-shelf-sort');
-			Menu.lastShown = null;
+			Menu.forget();
 			btn?.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: 10, clientY: 10 }));
 			const entry = Menu.lastShown?.items.find((i) => i.titleText === 'Title (A to Z)');
 			if (!entry) throw new Error('sort menu did not offer Title (A to Z)');
@@ -310,7 +310,7 @@ describe('the iteration shelf', () => {
 			// `In sprint`, committed to this iteration and drawn in the Open column.
 			const { view, containerEl } = onSprint(sprintVault());
 			view.setColumnCollapsed('backlog', null, true);
-			Menu.lastShown = null;
+			Menu.forget();
 			cardByTitle(containerEl, 'In sprint').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
 			const titles = Menu.lastShown?.items.map((item) => item.titleText) ?? [];
 			expect(titles).not.toContain('Sort the shelf');
@@ -326,7 +326,7 @@ describe('the iteration shelf', () => {
 			// jsdom. `emptySprintVault` again, for `paneHasCards`' own reason above.
 			const { view, containerEl } = onSprint(emptySprintVault());
 			view.setShelfSearch('nothing matches this');
-			Menu.lastShown = null;
+			Menu.forget();
 			shelfOf(containerEl)
 				?.querySelector<HTMLElement>('.pbl-shelf-filter')
 				?.dispatchEvent(new MouseEvent('click', { bubbles: true }));

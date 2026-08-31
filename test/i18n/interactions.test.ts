@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
 import { describe, expect, it, afterEach, beforeEach } from 'vitest';
 import { en } from '../../src/i18n/en';
-import { Catalog, MessageKey, setLocale } from '../../src/i18n/t';
+import { Catalog, setLocale } from '../../src/i18n/t';
 import { FuzzySuggestModal, Menu, Modal, Notice } from '../helpers/obsidian-mock';
 import { FakeVault } from '../helpers/vault';
 import { flush, makeView, rowByTitle, useViewHarness } from '../helpers/view';
+import { MARK, markedCatalog } from './fixtures';
 
 useViewHarness();
 
@@ -40,7 +41,6 @@ useViewHarness();
  *     fails partway, which no fixture here reaches.
  */
 
-const MARK = 'XX ';
 /**
  * The WHOLE catalog behind a marker.
  *
@@ -55,17 +55,7 @@ const MARK = 'XX ';
  * Nothing has to be edited when a key is added now, and the assertions are unchanged:
  * they read the MARKER, never the wording behind it.
  */
-const xx: Catalog = Object.fromEntries(
-	Object.keys(en).map((key) => {
-		const entry = en[key as MessageKey];
-		return [
-			key,
-			typeof entry === 'string'
-				? MARK + entry
-				: Object.fromEntries(Object.entries(entry).map(([form, value]) => [form, MARK + value])),
-		];
-	}),
-);
+const xx: Catalog = markedCatalog();
 
 beforeEach(() => setLocale('xx', { xx }));
 // Resolution is module state by design (once, at load), so each test puts it back.

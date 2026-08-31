@@ -22,14 +22,13 @@ export function releaseSettingsWith(overrides: Partial<ReleaseSettings> = {}): R
 		versionKey: '',
 		targetDateKey: '',
 		statusKey: '',
-		// EVERY field, and the four below were missing until 2026-08-29 — `tsconfig.json`
-		// includes `src/**/*.ts` and nothing under `test/`, so the compiler never checked
-		// this literal against the shape it claims to return, and a field added to
+		// EVERY field, and the four below were missing until 2026-08-29 — nothing then
+		// checked this literal against the shape it claims to return, so a field added to
 		// `ReleaseSettings` arrived here as `undefined` rather than as a build error. That
 		// is not cosmetic: `createRelease`'s "two release properties name one key" guard
 		// collects its keys and filters `!== ''`, so two `undefined`s read as one key
-		// spoken twice and every creation threw. A field added to `ReleaseSettings` from
-		// here on has to be added here by hand.
+		// spoken twice and every creation threw. `npm run typecheck:test` is what checks it
+		// now: a field added to `ReleaseSettings` fails the gate here until it is added.
 		releasedDateKey: '',
 		descriptionKey: '',
 		statusValues: [],

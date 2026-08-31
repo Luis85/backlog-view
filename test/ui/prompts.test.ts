@@ -102,7 +102,7 @@ describe('FolderSuggest', () => {
 
 		let inputEvents = 0;
 		input.addEventListener('input', () => inputEvents++);
-		suggest.selectSuggestion(matches[0], new MouseEvent('click'));
+		suggest.selectSuggestion(matches[0]);
 		expect(input.value).toBe('Backlog');
 		expect(inputEvents).toBe(1);
 	});
@@ -181,7 +181,7 @@ describe('ValuePromptModal', () => {
 
 		let inputEvents = 0;
 		input.addEventListener('input', () => inputEvents++);
-		suggest.selectSuggestion('alpha', new MouseEvent('click'));
+		suggest.selectSuggestion('alpha');
 		expect(input.value).toBe('alpha');
 		expect(inputEvents).toBe(1);
 	});

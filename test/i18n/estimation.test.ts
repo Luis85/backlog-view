@@ -5,6 +5,7 @@ import { Catalog, MessageKey, setLocale } from '../../src/i18n/t';
 import { makeEstimationView, selectItem } from '../helpers/estimation';
 import { configured, configuredValues } from '../helpers/estimationModel';
 import { FakeVault } from '../helpers/vault';
+import { MARK, markedCatalog } from './fixtures';
 
 /**
  * The Estimation view, driven under a catalog that is not English — `src/view/estimation/`,
@@ -50,18 +51,7 @@ const REUSED = ['toolbar.undo'] as const;
 
 const SWEPT: MessageKey[] = [...OWN, ...REUSED];
 
-const MARK = 'XX ';
-const xx: Catalog = Object.fromEntries(
-	SWEPT.map((key) => {
-		const entry = en[key];
-		return [
-			key,
-			typeof entry === 'string'
-				? MARK + entry
-				: Object.fromEntries(Object.entries(entry).map(([form, value]) => [form, MARK + value])),
-		];
-	}),
-);
+const xx: Catalog = markedCatalog(SWEPT);
 
 const marked = (key: MessageKey): string => {
 	const entry = en[key];

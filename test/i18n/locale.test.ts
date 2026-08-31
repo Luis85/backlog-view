@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { intlLocale, resolveCatalog } from '../../src/i18n/locale';
-import { list, setLocale, t, activeLocale } from '../../src/i18n/t';
+import { Catalog, list, setLocale, t, activeLocale } from '../../src/i18n/t';
 import { shelfLabel } from '../../src/domain/roadmap';
 import { unscheduledLabel } from '../../src/domain/bars';
 import { noStateCollisionLabel, noStateLabel } from '../../src/domain/board';
