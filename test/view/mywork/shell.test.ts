@@ -54,6 +54,19 @@ describe('focus across a redraw (PR #234 correction 1)', () => {
 	});
 });
 
+describe('the tree carries the shared .pbl-tree class (fix round 1)', () => {
+	it('draws .pbl-tree once a person is picked, and never before', () => {
+		const { view }: { view: MyWorkView } = makeMyWorkView(myWorkVault());
+		// Nobody picked yet: the earlier `.pbl-tree` assertion above is only honest if a
+		// drawn tree really would carry this class — proven by the positive case below.
+		expect(view.viewEl.querySelector('.pbl-tree')).toBeNull();
+
+		view.pick('People/Ada.md');
+
+		expect(view.viewEl.querySelector('.pbl-tree')).not.toBeNull();
+	});
+});
+
 describe('a stale model after the assignee property is unbound (PR #234 correction 2)', () => {
 	it('refuses a write planned before the property was cleared', async () => {
 		const vault = myWorkVault();
@@ -63,12 +76,20 @@ describe('a stale model after the assignee property is unbound (PR #234 correcti
 
 		config.values.assigneeProperty = '';
 		view.onDataUpdated();
-		expect(view.model).toBeNull();
 
 		const before = vault.writeLog.length;
 		await view.gate.applySafely([{ file: target, state: 'Done' }]);
 
+		// The behavioural claim first, so a broken fix fails HERE rather than at the
+		// mechanism assertion below (fix round 1, PR #234 finding 4: watching the wrong
+		// half fail never actually observed the refusal fail).
 		expect(vault.writeLog.length).toBe(before);
-		expect(vault.fm(target.path).state).toBeUndefined();
+		// `state` maps through the default `stateKey` suggestion, `status`
+		// (`optionalProperty('state').suggested`) — never the raw `state` field name a
+		// write's own shape happens to share (finding 3: the prior key asserted an absence
+		// that would have held even if the write had landed).
+		expect(vault.fm(target.path).status).toBeUndefined();
+		// The mechanism behind the refusal, corroborating rather than gating the claim above.
+		expect(view.model).toBeNull();
 	});
 });

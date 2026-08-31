@@ -114,11 +114,29 @@ export class MyWorkView extends BasesView {
 	 * a keyboard user who changes the person or activates a toolbar control is dropped
 	 * onto `document.body` on every redraw, because nothing else in this class ever reads
 	 * `focusedHandle()`'s answer (PR #234, correction 1).
+	 *
+	 * **The restore happens ONCE, after `draw()` returns, never inside it** — fix round 1
+	 * on PR #234's own finding: the brief's shape called `this.restoreFocus(focusHandle)`
+	 * at all four of `draw`'s exits, which is the defect correction 1 fixed made
+	 * reappearable by anyone adding a fifth exit (`noWork`, `allDone`) who forgets the
+	 * call — nothing would fail. `ReleaseView.render()` does not have this shape either:
+	 * it captures, empties, calls `this.draw()`, and restores once. Structuring it the same
+	 * way here means a state `draw()` adds later needs no reminder to restore focus, because
+	 * it never had the choice not to.
 	 */
 	render(): void {
 		this.treeHadFocus = this.viewEl.querySelector('.pbl-mw-tree')?.contains(document.activeElement) === true;
 		const focusHandle = this.focusedHandle();
 		this.viewEl.empty();
+		this.draw();
+		this.restoreFocus(focusHandle);
+	}
+
+	/** Draw whichever state applies, over the current `settings`/`data` — the four
+	 *  screens `render()` used to restore focus after individually. Returning at each
+	 *  early exit is still how a screen picks itself; only the focus restore moved out,
+	 *  to the one place `render()` runs it. */
+	private draw(): void {
 		if (!this.settings.assigneeKey) {
 			// A property nothing is bound to is a configuration to fix, and a DIFFERENT
 			// answer from a base that simply holds no roster yet.
@@ -136,7 +154,6 @@ export class MyWorkView extends BasesView {
 			this.model = null;
 			this.planSettings = defaultSettings();
 			guidanceShell(this.viewEl, 'settings-2', t('mywork.empty.noAssignee.title'), t('mywork.empty.noAssignee.hint'));
-			this.restoreFocus(focusHandle);
 			return;
 		}
 		// The model is built with THIS view's own mappings layered onto the backlog
@@ -157,7 +174,6 @@ export class MyWorkView extends BasesView {
 		this.model = buildModel(this.app, this.data.data, this.planSettings);
 		if (this.model.resources.length === 0) {
 			guidanceShell(this.viewEl, 'users', t('mywork.empty.noRoster.title'), t('mywork.empty.noRoster.hint'));
-			this.restoreFocus(focusHandle);
 			return;
 		}
 		// The picker is drawn in every state that HAS a roster, including the one below:
@@ -168,11 +184,9 @@ export class MyWorkView extends BasesView {
 		// `byPath` and that guard would send every valid pick to the no-pick state.
 		if (this.pickedPerson === null || !pickedResource(this.model, this.pickedPerson)) {
 			guidanceShell(this.viewEl, 'user-round-search', t('mywork.empty.noPick.title'), t('mywork.empty.noPick.hint'));
-			this.restoreFocus(focusHandle);
 			return;
 		}
 		drawMyWorkTree(this, this.viewEl);
-		this.restoreFocus(focusHandle);
 	}
 
 	/**
@@ -209,8 +223,14 @@ function drawMyWorkToolbar(_view: MyWorkView, _parentEl: HTMLElement): void {
 }
 
 function drawMyWorkTree(_view: MyWorkView, parentEl: HTMLElement): void {
-	// Task 6 draws the rows here — a bare, focusable container for now, the same shape
-	// `backlogView.ts`'s own `.pbl-tree` root carries, so this task's own focus-restore
-	// mechanism has a real tab stop to answer about.
-	parentEl.createDiv({ cls: 'pbl-mw-tree', attr: { tabindex: '0' } });
+	// Task 6 draws the rows here — a bare, focusable container for now, carrying BOTH the
+	// shared `pbl-tree` class every scope tree in this plugin draws (`backlogView.ts`'s own
+	// root, `scopeTree.ts`'s release scope) and this view's own `pbl-mw-tree` handle. Both,
+	// not either: `shell.test.ts`'s "no tree when unbound" case asserts `.pbl-tree` is
+	// absent, which is only a real assertion about THIS view if a drawn tree actually
+	// carries it — a stub with `pbl-mw-tree` alone left that assertion unable to fail
+	// (fix round 1, PR #234) — and `pbl-mw-tree` is what this task's own focus-restore
+	// mechanism above answers about, since it is this view's own handle rather than the
+	// class every tree shares.
+	parentEl.createDiv({ cls: 'pbl-tree pbl-mw-tree', attr: { tabindex: '0' } });
 }
