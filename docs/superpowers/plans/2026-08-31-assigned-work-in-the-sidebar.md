@@ -1684,3 +1684,32 @@ open the register with the plugin displaying it.
   withhold most of it — the call `renderScope.ts` already made, for the same reason. What
   IS shared is what is genuinely the same shape: the scope walk, the fold set, the
   keyboard, the badges and the icons.
+
+## Open questions the implementing session settles
+
+Three findings from review (PR #234) that are design decisions rather than defects. Each
+is stated here rather than answered, because the answer wants real fixtures in front of
+it. **Settle each one before writing the task it names, and record the answer where the
+plan says the behaviour is** — an open question left open past its task becomes the
+behaviour nobody chose.
+
+- **Do excluded ancestors survive in this tree?** (Task 1, `scopeRows`.) The walk skips an
+  `outsideFilter` ancestor, which is right for a release — `drawContextMarker` says a
+  context row there is in the base and merely not a member — and is what re-roots a member
+  whose parent the base excluded. [[My work]] asks for the other thing: "a row the Base
+  excluded renders, parents, and is never written to." The plan is currently on both sides
+  of this: its write gate and its row menu guard against context rows its own row builder
+  cannot produce. Either parameterize the skip so each screen states its own answer, or
+  narrow the epic's sentence — but not neither, and not both.
+- **Does this view stamp a state transition?** (Tasks 3 and 9.) `MyWorkSettings` binds no
+  `startedDateProperty`, `finishedDateProperty` or `startedStates`, so `resolveSettings`
+  leaves the stamp keys empty and `computeStateWrites` cannot produce the `finished` value
+  Task 9 expects. Widen the options bag, or drop the stamp from what this view claims. A
+  promise the bag cannot bind is the first kind of untrue sentence this register refuses.
+- **Which workflow does Set state write?** (Task 9.) The tree READS state through
+  `ownWorkflowReading`, which dispatches to the deliverable and test workflows, and WRITES
+  through `computeStateWrites` on the requirements workflow alone. On a vault whose
+  Deliverables carry a distinct state property, picking a menu entry writes the wrong key
+  and the row's displayed state does not move. Dispatch the vocabulary, the key and the
+  planner by item workflow as the backlog's own Set state menu does, or offer the menu
+  only on items that read the requirements workflow.
