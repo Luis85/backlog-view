@@ -436,6 +436,45 @@ describe('collapse state persistence', () => {
 		expect(stored(vault)['Backlog.base#Backlog'].prefs?.release).toBe('archive/releases/0.8.1.md');
 	});
 
+	/**
+	 * `releasePref`'s own rename-carry test, asked of the THIRD path-valued pref
+	 * (`person`, the my-work view's own pick) — added because `renameScoped` carried only
+	 * `boardScope` and `releasePref` (fix round 2, PR #234): a saved view holding a
+	 * my-work pick but currently loaded as the BACKLOG view (a view whose type was
+	 * switched keeps its identity and its entry, `releasePref`'s own comment) would have
+	 * this controller flush its stale in-memory `person` straight back over whatever the
+	 * store-level walk (`renamePathPrefs`) had already corrected — reopening My Work would
+	 * then show no pick, indistinguishable from the note having been deleted.
+	 *
+	 * Exercises the real sequence, not `renameScoped` directly: a loaded controller
+	 * already holding the stored `person` pref, a rename through the vault's own event,
+	 * then a flush (`onunload`) — proving the CONTROLLER's in-memory copy followed the
+	 * rename rather than merely the store's own walk (already covered by
+	 * `test/storage/viewStateStore.test.ts`'s "carries a renamed person pick").
+	 */
+	it('carries the stored my-work pick through a rename of the note, and of a folder above it', () => {
+		const vault = fixture();
+		vault.addFile('People/Ada.md', { frontmatter: { type: 'Resource' } });
+		vault.localStorage.set('product-backlog:view-state', {
+			'Backlog.base#Backlog': {
+				base: 'Backlog.base',
+				folds: { collapsed: [], expanded: [], lanes: [] },
+				prefs: { person: 'People/Ada.md' },
+			},
+		});
+
+		const first = makeView(vault, {}, { base: 'Backlog.base' });
+		vault.renameFile('People/Ada.md', 'People/Ada Lovelace.md');
+		first.view.onunload();
+		expect(stored(vault)['Backlog.base#Backlog'].prefs?.person).toBe('People/Ada Lovelace.md');
+
+		// A folder move reports the FOLDER, never the notes under it.
+		const second = makeView(vault, {}, { base: 'Backlog.base' });
+		vault.renameFolder('People', 'Team/People');
+		second.view.onunload();
+		expect(stored(vault)['Backlog.base#Backlog'].prefs?.person).toBe('Team/People/Ada Lovelace.md');
+	});
+
 	it('ignores stored state it cannot read rather than failing to render', () => {
 		const vault = fixture();
 		vault.localStorage.set('product-backlog:view-state', 'not an object');

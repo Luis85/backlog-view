@@ -333,6 +333,27 @@ export class ViewState {
 	}
 
 	/**
+	 * The person whose work is on screen, as the reader LEFT it — `releasePref`'s own two
+	 * halves, for the my-work view's own pick: this module never resolves the path (whether
+	 * it still names a `Resource` is the my-work view's question, asked on every render),
+	 * and {@link renameScoped} carries it when the note moves so a rename does not read as
+	 * a deletion. And `renameScoped` is not the only carry — `storage/viewStateStore.ts`'s
+	 * `renamePathPrefs` walks every stored entry whatever view is loaded, for the ordinary
+	 * case where the my-work view is the one on screen. This one is still needed beside it
+	 * for `releasePref`'s own reason: a view whose type was switched to the backlog view
+	 * keeps its identity and its entry, and `flush` writes `prefs` back wholesale — a
+	 * stale in-memory `person` would overwrite the stored walk's correct answer the next
+	 * time this controller saves (fix round 2, PR #234).
+	 */
+	personPref(): string | null {
+		return this.prefs.person ?? null;
+	}
+
+	setPersonPref(path: string | null): void {
+		this.setPref('person', path);
+	}
+
+	/**
 	 * Which board the `Boards` position opens when no iteration scope is set — the stored
 	 * word, `deliverables` or null for the product. Retained and cleared by the
 	 * controller, which keeps it and `scope` from ever both being set.
@@ -667,8 +688,8 @@ export class ViewState {
 
 	/**
 	 * The stored values that hold a note path without being a fold KEYED by one: the
-	 * iteration this board is scoped to, the release whose screen is open, and the column
-	 * folds keyed by that same iteration path.
+	 * iteration this board is scoped to, the release whose screen is open, the person the
+	 * my-work view has picked, and the column folds keyed by that same iteration path.
 	 *
 	 * Out of line from the loop above rather than merged into it, because they are a
 	 * different question asked of a different collection — that loop walks `settled`,
@@ -678,10 +699,11 @@ export class ViewState {
 	 * worse than merely silent — a stale path resolves to no release, so a renamed note
 	 * drops the reader to the index indistinguishably from a deleted one.
 	 *
-	 * The STORE has a walk of its own over the same two values (`renamePathPrefs`, wired
+	 * The STORE has a walk of its own over the same three values (`renamePathPrefs`, wired
 	 * at the plugin), and this is not a duplicate of it: that one covers every stored
 	 * entry whatever view is loaded, this one covers the in-memory `prefs` that `flush`
-	 * writes back wholesale. Neither replaces the other — see `releasePref` above.
+	 * writes back wholesale. Neither replaces the other — see `releasePref` and
+	 * `personPref` above.
 	 */
 	private renameScoped(oldPath: string, newPath: string): boolean {
 		let changed = false;
@@ -696,6 +718,7 @@ export class ViewState {
 		};
 		carry(this.boardScope(), (path) => this.setBoardScope(path));
 		carry(this.releasePref(), (path) => this.setReleasePref(path));
+		carry(this.personPref(), (path) => this.setPersonPref(path));
 		for (const set of [this.foldedColumns, this.openedColumns]) {
 			for (const key of [...set]) {
 				const moved = movedColumnKey(key, oldPath, newPath);
