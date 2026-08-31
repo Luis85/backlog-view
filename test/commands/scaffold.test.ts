@@ -14,7 +14,7 @@ function flush(): Promise<void> {
 beforeEach(() => {
 	document.body.empty();
 	Notice.reset();
-	Modal.lastOpened = null;
+	Modal.forget();
 });
 
 describe('promptCreateBacklogBase', () => {

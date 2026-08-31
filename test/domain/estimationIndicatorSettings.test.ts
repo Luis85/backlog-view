@@ -49,6 +49,6 @@ describe('the indicator, read off the view options', () => {
 	it('offers an Indicator group with the three boxes', () => {
 		const groups = getEstimationViewOptions(new FakeViewConfig(configuredValues()) as never);
 		const group = groups.find((g) => g.displayName === 'Indicator');
-		expect(group?.items.map((item) => item.key)).toEqual(['indicatorLabel', 'indicatorOperands', 'indicatorDivisor']);
+		expect(group && 'items' in group ? group.items.map((item) => item.key) : []).toEqual(['indicatorLabel', 'indicatorOperands', 'indicatorDivisor']);
 	});
 });

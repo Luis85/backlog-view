@@ -198,14 +198,14 @@ describe('buildModel', () => {
 
 		// Case-insensitive match against the configured level names
 		expect(top?.levelIndex).toBe(0);
-		expect(top ? displayType(top, settings) : '').toBe('Epic');
+		expect(top ? displayType(top) : '').toBe('Epic');
 		// Unknown type keeps its raw name with no level color
 		expect(custom?.levelIndex).toBe(-1);
-		expect(custom ? displayType(custom, settings) : '').toBe('Bugfix');
+		expect(custom ? displayType(custom) : '').toBe('Bugfix');
 		// Missing type implies the level from tree depth
 		expect(untyped?.impliedType).toBe(true);
 		expect(untyped?.levelIndex).toBe(1);
-		expect(untyped ? displayType(untyped, settings) : '').toBe('Feature');
+		expect(untyped ? displayType(untyped) : '').toBe('Feature');
 	});
 
 	it('implies child levels from the parent type, not the visual depth', () => {
@@ -220,7 +220,7 @@ describe('buildModel', () => {
 		// Depth-based implication would wrongly say Feature (depth 1); the parent
 		// is a Feature, so the child must imply PBI.
 		expect(child.impliedType).toBe(true);
-		expect(displayType(child, settings)).toBe('PBI');
+		expect(displayType(child)).toBe('PBI');
 	});
 
 	it('chains the ladder through unknown types without focus re-rooting', () => {
@@ -236,8 +236,8 @@ describe('buildModel', () => {
 
 		expect(bugfix.effectiveLevelIndex).toBe(2);
 		// New or backfilled children of the Bugfix must be Tasks, not PBIs
-		expect(childLevelIndex(bugfix, settings.levels)).toBe(3);
-		expect(displayType(grandchild, settings)).toBe('Task');
+		expect(childLevelIndex(bugfix)).toBe(3);
+		expect(displayType(grandchild)).toBe('Task');
 	});
 
 	it('clamps implied levels to the deepest configured level', () => {
@@ -254,7 +254,7 @@ describe('buildModel', () => {
 
 		expect(item.depth).toBe(4);
 		expect(item.levelIndex).toBe(LEVELS.length - 1);
-		expect(displayType(item, settings)).toBe('Task');
+		expect(displayType(item)).toBe('Task');
 	});
 });
 
@@ -364,7 +364,7 @@ describe('buildModel with folder hierarchy', () => {
 		const pbi = feature.children[0];
 		expect(pbi.orphan).toBe(false);
 		expect(pbi.impliedType).toBe(true);
-		expect(displayType(pbi, folderSettings)).toBe('PBI');
+		expect(displayType(pbi)).toBe('PBI');
 	});
 
 	it('stays off unless the option is enabled', () => {
@@ -484,7 +484,7 @@ describe('buildModel with a focus level', () => {
 		// at the PBI slot, so its children imply Task (index 3), not PBI
 		expect(bugfix.depth).toBe(1);
 		expect(bugfix.effectiveLevelIndex).toBe(2);
-		expect(childLevelIndex(bugfix, settings.levels)).toBe(3);
+		expect(childLevelIndex(bugfix)).toBe(3);
 	});
 
 	it('ignores a focus level that is not in the configured levels', () => {

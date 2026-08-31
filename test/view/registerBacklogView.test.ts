@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import { BasesViewRegistration } from 'obsidian';
+import type { BasesViewRegistration } from 'obsidian';
 import { registerBacklogView } from '../../src/view/registerBacklogView';
 import { WriteLock } from '../../src/view/writeLock';
 import { PRODUCT_BACKLOG_VIEW_TYPE } from '../../src/view/backlogView';

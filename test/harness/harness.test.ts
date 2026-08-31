@@ -667,7 +667,7 @@ describe('the page can open a dialog by URL', () => {
 		// The mock records the last modal on a static, and the suites above this one open
 		// several — so "nothing was opened" has to start from a cleared slot rather than
 		// from whatever ran before it.
-		Modal.lastOpened = null;
+		Modal.forget();
 
 		openWantedDialog(view, containerEl, '?view=board');
 		expect(Modal.lastOpened).toBeNull();

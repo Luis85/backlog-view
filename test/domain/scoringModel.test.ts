@@ -82,7 +82,7 @@ describe('the scoring model configuration', () => {
 		// something else bound this is a model that would score and write its total
 		// nowhere, and the keys it would write under are ''.
 		const { valueProperty: _v, stampProperty: _s, ...dimensionsOnly } = configuredValues();
-		const problems = modelProblems(resolveEstimationSettings(new FakeViewConfig(dimensionsOnly)).model);
+		const problems = modelProblems(resolveEstimationSettings(new FakeViewConfig(dimensionsOnly)).model, 'type');
 		expect(problems.join(' ')).toMatch(/business value property/i);
 		expect(problems.join(' ')).toMatch(/stamp/i);
 	});

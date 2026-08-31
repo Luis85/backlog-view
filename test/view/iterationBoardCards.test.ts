@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import { Menu } from 'obsidian';
+import { Menu } from '../helpers/obsidian-mock';
 import { FakeVault } from '../helpers/vault';
 import { cardByTitle, cardTitles, columnByName, columnNames } from '../helpers/board';
 import { cardDrag } from '../helpers/dnd';

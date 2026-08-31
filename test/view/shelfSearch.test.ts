@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { Menu, Modal } from 'obsidian';
+import { Menu, Modal } from '../helpers/obsidian-mock';
 import { horizonVault, makeRoadmap, shelfCountOf, shelfGroupHeaders, shelfTitles } from '../helpers/roadmap';
 import { useViewHarness } from '../helpers/view';
 import { FakeVault } from '../helpers/vault';
@@ -25,7 +25,7 @@ function typeSearch(containerEl: HTMLElement, text: string): void {
 }
 
 function openTypeMenu(containerEl: HTMLElement): Menu {
-	Menu.lastShown = null;
+	Menu.forget();
 	containerEl
 		.querySelector<HTMLButtonElement>('.pbl-shelf-filter')
 		?.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: 10, clientY: 10 }));
@@ -34,7 +34,7 @@ function openTypeMenu(containerEl: HTMLElement): Menu {
 }
 
 function cardMenu(containerEl: HTMLElement, title: string): Menu {
-	Menu.lastShown = null;
+	Menu.forget();
 	cardByTitle(containerEl, title).dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
 	if (!Menu.lastShown) throw new Error('no card menu opened');
 	return Menu.lastShown;
@@ -197,7 +197,7 @@ describe("the shelf's type picker", () => {
 		const { containerEl } = makeRoadmap(searchVault());
 		const first = openTypeMenu(containerEl);
 
-		Menu.lastShown = null;
+		Menu.forget();
 		first.items.find((i) => i.titleText === 'Task (1)')?.click();
 
 		// A pick rebuilds the pane and Obsidian's menu closes itself, so "stays open" is a
@@ -227,7 +227,7 @@ describe("the shelf's type picker", () => {
 		const first = openTypeMenu(containerEl);
 		expect(Menu.lastPosition).toEqual({ x: 44, y: 26 });
 
-		Menu.lastPosition = null;
+		Menu.forget();
 		first.items.find((i) => i.titleText === 'Task (1)')?.click();
 		expect(Menu.lastPosition).toEqual({ x: 44, y: 26 });
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { TFile } from 'obsidian';
+import { TFile } from '../helpers/obsidian-mock';
 import {
 	reconfiguredKey,
 	releaseClosureWrites,

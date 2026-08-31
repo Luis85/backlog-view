@@ -138,8 +138,8 @@ describe('paletteFor', () => {
 		const deliverable = model.byPath.get('D.md')!;
 		const pbi = model.byPath.get('P.md')!;
 
-		expect(paletteFor(palettes, deliverable).label).toBe('Deliverables');
-		expect(paletteFor(palettes, pbi).label).toBe('Work');
+		expect(paletteFor(palettes, deliverable)?.label).toBe('Deliverables');
+		expect(paletteFor(palettes, pbi)?.label).toBe('Work');
 	});
 
 	it('has no palette to name where no workflow has a key', () => {

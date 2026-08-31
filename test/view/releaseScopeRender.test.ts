@@ -131,7 +131,7 @@ describe("a release's scope on screen", () => {
 		// would still read correctly and colour as nothing.
 		const badge = rows[0].querySelector('.pbl-badge') as HTMLElement;
 		expect(badge.classList.contains(badgeStyleFor('Epic').badge)).toBe(true);
-		expect(badge.querySelector('.pbl-badge-icon')?.dataset.icon).toBe(badgeStyleFor('Epic').icon);
+		expect(badge.querySelector<HTMLElement>('.pbl-badge-icon')?.dataset.icon).toBe(badgeStyleFor('Epic').icon);
 	});
 
 	it('names the tree after the release and tooltips every title', () => {

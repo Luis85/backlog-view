@@ -17,6 +17,7 @@ import { installObsidianDom } from '../helpers/dom';
 import { Modal, Notice } from '../helpers/obsidian-mock';
 import { FakeVault } from '../helpers/vault';
 import { flush, makeView, useViewHarness } from '../helpers/view';
+import { MARK, markedCatalog } from './fixtures';
 
 installObsidianDom();
 useViewHarness();
@@ -86,15 +87,14 @@ const SWEPT = [
 	'readme.failed',
 ] as const;
 
-const MARK = 'XX ';
-const xx: Catalog = Object.fromEntries(SWEPT.map((key) => [key, MARK + en[key]]));
+const xx: Catalog = markedCatalog(SWEPT);
 
 /** What that key renders as under the fixture — the assertion's own single source. */
 const marked = (key: (typeof SWEPT)[number]): string => MARK + en[key];
 
 beforeEach(() => {
 	document.body.empty();
-	Modal.lastOpened = null;
+	Modal.forget();
 	Notice.reset();
 	setLocale('xx', { xx });
 });

@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { horizonVault, makeRoadmap, shelfCountOf, shelfGroupHeaders, shelfOf, shelfTitles } from '../helpers/roadmap';
 import { flush, key, useViewHarness } from '../helpers/view';
 import { FakeVault, FakeViewConfig } from '../helpers/vault';
-import { Menu, MenuItem } from 'obsidian';
+import { Menu, MenuItem } from '../helpers/obsidian-mock';
 import { ProductBacklogView } from '../../src/view/backlogView';
 import { cardDrag } from '../helpers/dnd';
 import { cardByTitle } from '../helpers/board';
@@ -18,7 +18,7 @@ function disclosureOf(containerEl: HTMLElement): HTMLButtonElement | null {
 function openMenu(containerEl: HTMLElement, selector: string): Menu {
 	const btn = containerEl.querySelector<HTMLButtonElement>(selector);
 	if (!btn) throw new Error(`shelf control not rendered: ${selector}`);
-	Menu.lastShown = null;
+	Menu.forget();
 	btn.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: 10, clientY: 10 }));
 	if (!Menu.lastShown) throw new Error(`no menu opened from ${selector}`);
 	return Menu.lastShown;
@@ -273,7 +273,7 @@ describe('the shelf\'s own header controls', () => {
 		vault.addFile('A Task.md', { frontmatter: { type: 'Task', order: 40 } });
 		const { containerEl } = makeRoadmap(vault, {}, { shelfCollapsed: true });
 
-		Menu.lastShown = null;
+		Menu.forget();
 		cardByTitle(containerEl, 'Now item').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
 		const menu = Menu.lastShown;
 		if (!menu) throw new Error('no card menu opened');
@@ -294,7 +294,7 @@ describe('the shelf\'s own header controls', () => {
 		vault.addFile('A Task.md', { frontmatter: { type: 'Task', order: 40 } });
 		const { containerEl } = makeRoadmap(vault);
 
-		Menu.lastShown = null;
+		Menu.forget();
 		cardByTitle(containerEl, 'Now item').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
 		const menu = Menu.lastShown;
 		if (!menu) throw new Error('no card menu opened');

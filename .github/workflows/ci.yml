@@ -33,6 +33,9 @@ jobs:
       - name: Typecheck and build
         run: npm run build
 
+      - name: Typecheck the test suite
+        run: npm run typecheck:test
+
       - name: Lint (Obsidian plugin guidelines)
         run: npm run lint
 

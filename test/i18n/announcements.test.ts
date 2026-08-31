@@ -7,6 +7,7 @@ import { installObsidianDom } from '../helpers/dom';
 import { roadmapView } from '../helpers/roadmap';
 import { FakeVault } from '../helpers/vault';
 import { useViewHarness } from '../helpers/view';
+import { MARK, markedCatalog } from './fixtures';
 
 installObsidianDom();
 useViewHarness();
@@ -33,13 +34,7 @@ useViewHarness();
  * the tree rollup's own blind spot, one slice later and on a surface with no DOM.
  */
 
-const MARK = 'XX ';
-const xx: Catalog = Object.fromEntries(
-	Object.entries(en).map(([key, entry]) => [
-		key,
-		typeof entry === 'string' ? MARK + entry : Object.fromEntries(Object.entries(entry).map(([f, v]) => [f, MARK + v])),
-	]),
-);
+const xx: Catalog = markedCatalog();
 
 beforeEach(() => setLocale('xx', { xx }));
 afterEach(() => setLocale('en'));

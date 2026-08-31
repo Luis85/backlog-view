@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import { Menu, Modal } from 'obsidian';
+import { Menu, Modal } from '../helpers/obsidian-mock';
 import { FakeVault } from '../helpers/vault';
 import {
 	clickExpandAll,

@@ -19,9 +19,9 @@ describe('runReleaseInit', () => {
 		// is explicitly cleared (present in the config, holding ''), while
 		// `membershipProperty`, `targetDateProperty` and `releaseStatusProperty` are simply
 		// absent, i.e. never set.
-		const { view } = makeReleaseView(new FakeVault(), { versionProperty: '' });
+		const { view, config } = makeReleaseView(new FakeVault(), { versionProperty: '' });
 		await runReleaseInit(view);
-		const boundKeys = view.config.setCalls.map((c) => c.key);
+		const boundKeys = config.setCalls.map((c) => c.key);
 		expect(boundKeys).toContain('membershipProperty');
 		expect(boundKeys).toContain('targetDateProperty');
 		expect(boundKeys).toContain('releaseStatusProperty');
@@ -58,9 +58,9 @@ describe('runReleaseInit', () => {
 		// `RELEASE_CONFIG` deliberately leaves `releaseNotesFolder` unbound (see its own
 		// docblock) so the folder-bind test below has something to bind — bound here
 		// explicitly, since THIS test's claim is about a genuinely fully-configured view.
-		const { view } = makeReleaseView(new FakeVault(), { ...RELEASE_CONFIG, releaseNotesFolder: 'docs/release-notes' });
+		const { view, config } = makeReleaseView(new FakeVault(), { ...RELEASE_CONFIG, releaseNotesFolder: 'docs/release-notes' });
 		await runReleaseInit(view);
-		expect(view.config.setCalls).toEqual([]);
+		expect(config.setCalls).toEqual([]);
 	});
 
 	it('does not hand out an already-taken suggested key a second time', async () => {
@@ -68,9 +68,9 @@ describe('runReleaseInit', () => {
 		// otherwise suggest for itself ('status'). releaseStatusProperty is left unset, so
 		// without the collision guard it would adopt 'status' too, and the two options
 		// would silently read the same property.
-		const { view } = makeReleaseView(new FakeVault(), { versionProperty: 'note.status' });
+		const { view, config } = makeReleaseView(new FakeVault(), { versionProperty: 'note.status' });
 		await runReleaseInit(view);
-		const bound = new Map(view.config.setCalls.map((c) => [c.key, c.value]));
+		const bound = new Map(config.setCalls.map((c) => [c.key, c.value]));
 		expect(bound.get('releaseStatusProperty')).toBeUndefined();
 	});
 
@@ -80,9 +80,9 @@ describe('runReleaseInit', () => {
 		// targetDateProperty would adopt 'target-date' too — aliasing the target date and
 		// the released date onto one key, so `createRelease` writes the target date there
 		// and `releaseIndex` reads that same value back as the release having shipped.
-		const { view } = makeReleaseView(new FakeVault(), { releasedDateProperty: 'note.target-date' });
+		const { view, config } = makeReleaseView(new FakeVault(), { releasedDateProperty: 'note.target-date' });
 		await runReleaseInit(view);
-		const bound = new Map(view.config.setCalls.map((c) => [c.key, c.value]));
+		const bound = new Map(config.setCalls.map((c) => [c.key, c.value]));
 		expect(bound.get('targetDateProperty')).toBeUndefined();
 	});
 
@@ -90,9 +90,9 @@ describe('runReleaseInit', () => {
 		// membershipProperty is explicitly bound to the key releaseStatusProperty would
 		// otherwise suggest for itself ('status'). Without membershipKey seeded into
 		// `taken`, releaseStatusProperty would adopt 'status' too.
-		const { view } = makeReleaseView(new FakeVault(), { membershipProperty: 'note.status' });
+		const { view, config } = makeReleaseView(new FakeVault(), { membershipProperty: 'note.status' });
 		await runReleaseInit(view);
-		const bound = new Map(view.config.setCalls.map((c) => [c.key, c.value]));
+		const bound = new Map(config.setCalls.map((c) => [c.key, c.value]));
 		expect(bound.get('releaseStatusProperty')).toBeUndefined();
 	});
 
@@ -111,7 +111,7 @@ describe('runReleaseInit', () => {
 	 * the third finding of this one shape in this one file.
 	 */
 	it('hands out no key ANY declared property option already holds, outside the one exemption', async () => {
-		const { view: untouched } = makeReleaseView(new FakeVault(), {});
+		const { view: untouched, config: untouchedConfig } = makeReleaseView(new FakeVault(), {});
 		await runReleaseInit(untouched);
 		// Narrowed to the PROPERTY sweep's own writes: this check is about a declared
 		// property option colliding with a suggested property KEY, and since 2026-08-30 an
@@ -120,7 +120,7 @@ describe('runReleaseInit', () => {
 		// this rule, and counting them in `suggested` would ask a `typeProperty` fixture to
 		// hold a folder path as though it were a property key.
 		const suggestedKeys = new Set(RELEASE_SUGGESTED_KEYS.map((candidate) => candidate.option));
-		const suggested = untouched.config.setCalls
+		const suggested = untouchedConfig.setCalls
 			.filter((call) => suggestedKeys.has(call.key))
 			.map((call) => String(call.value));
 		expect(suggested.length).toBeGreaterThan(0);
@@ -139,9 +139,9 @@ describe('runReleaseInit', () => {
 			// holding `status` is in this loop and is still a collision.
 			if (SHARED_STATUS_OPTIONS.includes(option)) continue;
 			for (const key of suggested) {
-				const { view } = makeReleaseView(new FakeVault(), { [option]: key });
+				const { view, config } = makeReleaseView(new FakeVault(), { [option]: key });
 				await runReleaseInit(view);
-				const collisions = view.config.setCalls.filter((call) => call.value === key);
+				const collisions = config.setCalls.filter((call) => call.value === key);
 				expect(collisions, `${option} already holds ${key}`).toEqual([]);
 			}
 		}
@@ -159,9 +159,9 @@ describe('runReleaseInit', () => {
 	 * that reported success.
 	 */
 	it('binds the item state and the release status onto one property, which is the shipped vault', async () => {
-		const { view } = makeReleaseView(new FakeVault(), {});
+		const { view, config } = makeReleaseView(new FakeVault(), {});
 		await runReleaseInit(view);
-		const bound = new Map(view.config.setCalls.map((c) => [c.key, c.value]));
+		const bound = new Map(config.setCalls.map((c) => [c.key, c.value]));
 		expect(bound.get('stateProperty')).toBe('note.status');
 		expect(bound.get('releaseStatusProperty')).toBe('note.status');
 		expect(view.settings.statusKey).toBe('status');
@@ -175,9 +175,9 @@ describe('runReleaseInit', () => {
 			['stateProperty', 'releaseStatusProperty'],
 			['releaseStatusProperty', 'stateProperty'],
 		]) {
-			const { view } = makeReleaseView(new FakeVault(), { [held]: 'note.status' });
+			const { view, config } = makeReleaseView(new FakeVault(), { [held]: 'note.status' });
 			await runReleaseInit(view);
-			const bound = new Map(view.config.setCalls.map((c) => [c.key, c.value]));
+			const bound = new Map(config.setCalls.map((c) => [c.key, c.value]));
 			expect(bound.get(adopting), `${held} held status; ${adopting} should still adopt it`).toBe('note.status');
 		}
 	});
@@ -189,12 +189,12 @@ describe('runReleaseInit', () => {
 		// state both on `status`, subtracting freed it, ✨ bound the release status onto the
 		// version's key, and `releaseNoteProblems` — landed the same day — then blocked every
 		// write in the view. The rule is "does a NON-shared option hold it".
-		const { view } = makeReleaseView(new FakeVault(), {
+		const { view, config } = makeReleaseView(new FakeVault(), {
 			versionProperty: 'note.status',
 			stateProperty: 'note.status',
 		});
 		await runReleaseInit(view);
-		const bound = new Map(view.config.setCalls.map((c) => [c.key, c.value]));
+		const bound = new Map(config.setCalls.map((c) => [c.key, c.value]));
 		expect(bound.get('releaseStatusProperty')).toBeUndefined();
 		// And the press left the view writable rather than bricking it.
 		expect(releaseNoteProblems(view.settings)).toEqual([]);
@@ -204,9 +204,9 @@ describe('runReleaseInit', () => {
 		// `typeProperty: note.status` is the PR #203 corruption: `createRelease` writes the
 		// type first and the status after it, so a release came out carrying a status and no
 		// type. The exemption must not reopen it — neither status option may adopt here.
-		const { view } = makeReleaseView(new FakeVault(), { typeProperty: 'note.status' });
+		const { view, config } = makeReleaseView(new FakeVault(), { typeProperty: 'note.status' });
 		await runReleaseInit(view);
-		const bound = new Map(view.config.setCalls.map((c) => [c.key, c.value]));
+		const bound = new Map(config.setCalls.map((c) => [c.key, c.value]));
 		expect(bound.get('releaseStatusProperty')).toBeUndefined();
 		expect(bound.get('stateProperty')).toBeUndefined();
 	});

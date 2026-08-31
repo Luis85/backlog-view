@@ -122,7 +122,7 @@ describe('context rows are read-only', () => {
 
 	it('opens no state menu when a context chip is clicked', () => {
 		const { containerEl, vault } = readOnlyView();
-		Menu.lastShown = null;
+		Menu.forget();
 
 		rowByTitle(containerEl, 'Epic')
 			.querySelector<HTMLElement>('.pbl-state-chip')

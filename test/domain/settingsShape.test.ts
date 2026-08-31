@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { defaultSettings } from '../../src/domain/settings';
+import { BacklogSettings, defaultSettings } from '../../src/domain/settings';
 import { settingsFrom, settingsWith } from '../helpers/settings';
 import { resolveSettings } from '../../src/domain/settingsResolve';
 import { settingsInconsistency } from '../../src/domain/settingsConsistency';

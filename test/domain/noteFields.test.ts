@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { App, TFile } from 'obsidian';
+import type { App } from 'obsidian';
+import { TFile } from '../helpers/obsidian-mock';
 import { hasTag, normalizeTag, readDate, readPlacement, readTags, resolveParent } from '../../src/domain/noteFields';
 
 describe('readTags', () => {

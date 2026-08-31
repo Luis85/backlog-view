@@ -11,7 +11,7 @@ installObsidianDom();
 beforeEach(() => {
 	document.body.empty();
 	Notice.reset();
-	Modal.lastOpened = null;
+	Modal.forget();
 });
 
 describe('baseFileContent', () => {

@@ -1,4 +1,4 @@
-import { TFile } from 'obsidian';
+import { TFile } from '../helpers/obsidian-mock';
 import { describe, expect, it } from 'vitest';
 import { buildModel } from '../../src/domain/model';
 import { buildRoadmap } from '../../src/domain/roadmap';
