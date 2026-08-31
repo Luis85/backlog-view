@@ -331,7 +331,7 @@ git commit -m "Take the scope walk out of the release view, over any membership 
   - `function assignedRows(model: BacklogModel, personPath: string): ScopeRow[]`
   - `function nextAssigned(rows: ScopeRow[]): ScopeRow | null`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```ts
 import { describe, expect, it } from 'vitest';
@@ -400,12 +400,12 @@ describe('nextAssigned', () => {
 });
 ```
 
-- [ ] **Step 2: Run it and watch it fail**
+- [x] **Step 2: Run it and watch it fail**
 
 Run: `npx vitest run test/domain/assignedWork.test.ts`
 Expected: FAIL — module not found.
 
-- [ ] **Step 3: Write the module**
+- [x] **Step 3: Write the module**
 
 ```ts
 import { BacklogItem, BacklogModel, inPlan } from './model';
@@ -461,18 +461,18 @@ export function nextAssigned(rows: ScopeRow[]): ScopeRow | null {
 }
 ```
 
-- [ ] **Step 4: Run the test**
+- [x] **Step 4: Run the test**
 
 Run: `npx vitest run test/domain/assignedWork.test.ts`
 Expected: PASS.
 
-- [ ] **Step 5: Finish the PBI**
+- [x] **Step 5: Finish the PBI**
 
 Add `src/domain/assignedWork.ts` to `## Where it lives`, with the three rules in prose: the
 link's target decides, plan order decides what is next, and a context row is neither a
 member nor an answer.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/domain/assignedWork.ts test/domain/assignedWork.test.ts "docs/requirements/One person's tree.md"

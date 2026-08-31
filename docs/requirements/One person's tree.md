@@ -75,10 +75,9 @@ cannot drift about what a member is, what a context row is, or what a rollup cou
 - `subtreeDone` on a row is true exactly when every member at or below it, its own
   membership included, is done — never `item.subtreeDone`, which counts every
   non-marker descendant the base returned regardless of membership.
-- `releaseScope` (`src/domain/releases.ts`) and the assigned-work tree's own domain
-  module (Task 2 of [[Assigned work in the sidebar]]) both call `scopeRows` with their
-  own membership predicate, and neither keeps a second copy of the keep-set walk or the
-  rollup.
+- `releaseScope` (`src/domain/releases.ts`) and `src/domain/assignedWork.ts`'s
+  `assignedRows` both call `scopeRows` with their own membership predicate, and neither
+  keeps a second copy of the keep-set walk or the rollup.
 - `rowsAfterHideDone`, `visibleRows`, `siblingPlaces` and `childRows` take and return
   only `ScopeRow[]` (plus a fold set, where needed) and read no membership.
 - Nothing under this note writes a note.
@@ -89,10 +88,33 @@ The walk (`ScopeRow`, the keep set, the pre/post-order rollup) and the four row-
 transforms are `src/domain/scopeRows.ts` — pure, over any membership predicate, reading
 the model in `src/domain/model.ts` and touching no DOM. `releaseScope` in
 `src/domain/releases.ts` calls it with the release membership property as its predicate;
-the assigned-work tree's own domain module (Task 2 of [[Assigned work in the sidebar]],
-not yet written) will call it with the assignee as its own. `src/view/release/scopeTree.ts`,
+`src/domain/assignedWork.ts` calls it with the assignee as its own. `src/view/release/scopeTree.ts`,
 `src/view/release/renderScope.ts` and `src/view/release/scopeToolbar.ts` draw the
 release's own rows from these; the assigned-work view's own render module does the same
 for its tree. One walk, two membership questions, is the whole of what this note is for:
 it is what stops the release scope and the assigned-work tree from ever drawing two
 different answers to "what is a context row here".
+
+`src/domain/assignedWork.ts` is one person's whole answer to "whose work is this, and
+what is next" — three rules, pure, no DOM and no writes:
+
+- **Whose work: the assignee LINK's own target, never its spelling.** `assignedTo` reads
+  `item.assigneeEntry?.file?.path`, so two notes naming one person through different link
+  text — a bare name and a path — are one person's tree rather than two, and a value
+  resolving to nobody is nobody's work. `pickedResource` looks the picked path up on
+  `model.resources`, the roster, rather than in `byPath`: a `Resource` note is diverted
+  before it is ever a `BacklogItem`, so a person's own path is never a key there.
+- **Membership is `inPlan` OR `inCatalog`, minus every marker — of every type, per
+  [[My work]].** `inPlan` alone would refuse the whole test catalog ladder along with a
+  `Release` and an `Iteration`; a test case somebody is assigned is still work they do, so
+  `assignedRows` admits `inCatalog` beside it. A `Release` and an `Iteration` stay refused
+  even so — they are containers work is put IN, not work a person does — and `isMarkerType`
+  refuses every marker the same way `inIteration` already does. This was an open question
+  the plan left for this task to settle (PR #234); the answer is "admit the catalog,
+  still refuse every marker."
+- **Plan order decides what is next, and a context row is never the answer.**
+  `nextAssigned` walks the rows `scopeRows` already produced and returns the first one
+  that is both a MEMBER (`!row.context`) and unfinished (`!ownWorkflowReading(row.item).done`).
+  There is no second `order` per person — plan order already says what is ranked highest —
+  and a context row is skipped regardless of its own state, because it is never a write
+  target and therefore never something to do next.
