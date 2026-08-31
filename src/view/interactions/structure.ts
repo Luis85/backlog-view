@@ -229,6 +229,14 @@ export function indentTarget(
 	// visible sibling could never be. The neighbour `visibleNeighbor` computes passes this
 	// for free; a re-resolved one is the reason it is asked at all.
 	if (isInvalidParent(newParent, item)) return null;
+	// And it may be on the OTHER LADDER — `byPath` holds every loaded item, including one
+	// retyped while the menu sat open, so `Indent under "X"` can reparent a `Task` or a
+	// typeless row out of the plan and into the test catalog, off the screen it was moved
+	// on. The same question the drag and `outdentTarget` ask, and sound by construction
+	// here only while the destination was always the previous VISIBLE sibling — a row on
+	// this screen carries this screen's ladder. The keyboard passes no path and computes
+	// its neighbour at the moment of the press, so only the menu was exposed.
+	if (!keepsProjection(item, newParent)) return null;
 	const peers = newParent.children.filter((s) => s !== item);
 	const target: DropTarget = { parent: newParent, peers, insertIndex: peers.length };
 	return plans(host, item, target) ? target : null;

@@ -321,6 +321,34 @@ describe('a menu outlives the model it was built from', () => {
 		expect(vault.writeLog).toEqual([]);
 	});
 
+	it('refuses when the named note has changed LADDER since the menu was built', async () => {
+		// `keepsProjection` was asked by the drag and by `outdentTarget` and not here,
+		// sound by construction only while the destination was always the previous VISIBLE
+		// sibling — a row on this screen, carrying this screen's ladder. Re-resolving a
+		// named parent by path broke that: `byPath` holds every loaded item, including one
+		// retyped onto the other ladder while the menu sat open, and a `Task` reparented
+		// under a `Test case` leaves the plan for the catalog — off the screen it was
+		// moved on. Only the menu is exposed; Alt+Right computes its neighbour at the
+		// moment of the press.
+		const vault = new FakeVault();
+		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 1000 } });
+		vault.addFile('PBI P.md', { frontmatter: { type: 'PBI', order: 2000 }, parentLink: 'Epic A' });
+		vault.addFile('A1.md', { frontmatter: { type: 'Task', order: 3000 }, parentLink: 'PBI P' });
+		vault.addFile('T.md', { frontmatter: { type: 'Task', order: 4000 }, parentLink: 'PBI P' });
+		const { view, containerEl } = makeView(vault);
+
+		expect(menuTitles(containerEl, 'T')).toContain('Indent under "A1"');
+		const captured = Menu.lastShown?.item('Indent under "A1"');
+		vault.fm('A1.md')['type'] = 'Test case';
+		refresh(view, vault);
+		expect(view.model?.byPath.get('A1.md')?.ladder).not.toEqual(view.model?.byPath.get('T.md')?.ladder);
+		captured?.click();
+		await flush();
+
+		expect(vault.fm('T.md')['parent']).toBe('[[PBI P]]');
+		expect(vault.writeLog).toEqual([]);
+	});
+
 	it('refuses when the named note is no longer a destination at all', async () => {
 		const vault = indentFixture();
 		vault.addFile('F0.md', { frontmatter: { type: 'Feature', order: 1500 }, parentLink: 'Epic A' });
