@@ -161,7 +161,8 @@ describe('ranking PAST an unranked context row', () => {
 	// makes this discriminating, and the first version of this test was not: with the
 	// context row in the middle and the FIRST row dragged, both index lists answer 0 and
 	// the assertion passed whichever list the guard read. Here they disagree by exactly the
-	// one unranked context row above — `focusPeers` says 1, `model.roots` says 2 — so a
+	// one unranked context row above — `rankablePeers(model.roots)` says 1, `model.roots`
+	// says 2 — so a
 	// guard reading the unfiltered list misses the no-op and writes to a row that did not
 	// move. Peers and index have to come off the SAME list, and only this shape shows it.
 	it('still reads the no-op index off the SAME filtered list', async () => {
