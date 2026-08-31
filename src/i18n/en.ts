@@ -824,6 +824,8 @@ export const en = {
 	'release.option.description': 'Release description property',
 	'release.option.releasedDate': 'Released date property',
 	'release.option.folder': 'Release folder',
+	'mywork.option.group.model': 'Model',
+	'mywork.option.group.work': 'Work',
 	'option.typeProperty': 'Item type property',
 	'option.hierarchyOnly': 'Ignore notes outside the hierarchy',
 	'option.showOutsideParents': 'Show parents outside the filter',

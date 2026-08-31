@@ -501,7 +501,7 @@ and a state property to know what is done.
   - `function getMyWorkViewOptions(config: BasesViewConfig): BasesAllOptions[]`
   - `function resolveMyWorkSettings(config: BasesViewConfig): MyWorkSettings`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```ts
 import { describe, expect, it } from 'vitest';
@@ -532,12 +532,12 @@ describe('my work options', () => {
 Check `FakeViewConfig`'s real constructor shape in `test/helpers/vault.ts` before writing —
 `test/domain/releaseOptions.test.ts` is the working example to copy.
 
-- [ ] **Step 2: Run it and watch it fail**
+- [x] **Step 2: Run it and watch it fail**
 
 Run: `npx vitest run test/domain/myWorkOptions.test.ts`
 Expected: FAIL — module not found.
 
-- [ ] **Step 3: Write the module**
+- [x] **Step 3: Write the module**
 
 Follow `src/domain/releaseOptions.ts` exactly: the same `modelGroup()` shape, the same
 `configReaders` destructuring, every label through `t()`. Its `openIn` entry too, verbatim
@@ -575,12 +575,12 @@ export function resolveMyWorkSettings(config: BasesViewConfig): MyWorkSettings {
 Verify the reader names against `resolveReleaseSettings` before writing: a cleared option
 must resolve to `''`, never to the suggestion.
 
-- [ ] **Step 4: Run the test**
+- [x] **Step 4: Run the test**
 
 Run: `npx vitest run test/domain/myWorkOptions.test.ts`
 Expected: PASS.
 
-- [ ] **Step 5: Start the PBI**
+- [x] **Step 5: Start the PBI**
 
 Create `docs/requirements/The person is a pick.md` — `type: PBI`,
 `parent: "[[Assigned work in the sidebar]]"`, `order: 20`, `status: Open`, the same
@@ -588,7 +588,7 @@ frontmatter fields as Task 1's note, and the six sections in order. `## Where it
 names `src/domain/myWorkOptions.ts`, and every option key is written in backticks so the
 register specifies the surface rather than merely mentioning it.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/domain/myWorkOptions.ts test/domain/myWorkOptions.test.ts "docs/requirements/The person is a pick.md"
