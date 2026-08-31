@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
-// @ts-expect-error — a plain .mjs helper with no type declarations, imported for what it does.
 import { collapsed, containerAt, headings, localLinks, prose, proseWithSpans, sectionBody, wikilinks } from '../../scripts/docs-markdown.mjs';
 
 /**
@@ -203,6 +202,13 @@ describe('wikilinks', () => {
 	});
 });
 
+/** `containerAt`, which answers null for an offset no block owns — a broken fixture here. */
+function blockAt(text: string, index: number): { text: string } {
+	const block = containerAt(text, index);
+	if (block === null) throw new Error(`no block at offset ${index}`);
+	return block;
+}
+
 describe('the block a citation is bounded by', () => {
 	it('bounds at the paragraph, without scanning for blank lines', () => {
 		// What the citation rule needs. Its first version hunted for `\n[ \t]*\n`, which is
@@ -210,8 +216,8 @@ describe('the block a citation is bounded by', () => {
 		// the reader had not already normalized it.
 		const text = 'One paragraph.\n\nAnother one.\n';
 
-		expect(containerAt(text, 2).text.trim()).toBe('One paragraph.');
-		expect(containerAt(text, text.indexOf('Another')).text.trim()).toBe('Another one.');
+		expect(blockAt(text, 2).text.trim()).toBe('One paragraph.');
+		expect(blockAt(text, text.indexOf('Another')).text.trim()).toBe('Another one.');
 	});
 
 	it('bounds inside a TABLE CELL, which is not a paragraph', () => {
@@ -223,14 +229,14 @@ describe('the block a citation is bounded by', () => {
 		const at = text.indexOf('see the tests');
 
 		// The cell's own span, pipes included — narrower than the row, which is the point.
-		expect(containerAt(text, at).text).toContain('see the tests');
-		expect(containerAt(text, at).text).not.toContain('It happens');
+		expect(blockAt(text, at).text).toContain('see the tests');
+		expect(blockAt(text, at).text).not.toContain('It happens');
 	});
 
 	it('bounds at the list item, not the whole list', () => {
 		const text = '- first item\n- second item\n';
 
-		expect(containerAt(text, text.indexOf('second')).text.trim()).toBe('second item');
+		expect(blockAt(text, text.indexOf('second')).text.trim()).toBe('second item');
 	});
 });
 

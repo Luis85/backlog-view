@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest';
-// @ts-expect-error — a plain .mjs helper with no type declarations, imported for what it does.
 import { changelogNotes } from '../../scripts/changelog-notes.mjs';
 
 /**

@@ -1,4 +1,4 @@
-import { TFile } from 'obsidian';
+import { TFile } from './obsidian-mock';
 import { WriteLock } from '../../src/view/writeLock';
 import { ReleaseView } from '../../src/view/release/releaseView';
 import { installObsidianDom } from './dom';
@@ -9,7 +9,12 @@ import { flush } from './view';
 /** `t.pbl-row[data-path="…"]` — the scope tree's own row, or null when `optional` says a
  *  missing one is the assertion rather than a broken fixture. Reads `view.viewEl` rather
  *  than a `containerEl` the caller would otherwise have to keep threading through: every
- *  scope-tree test already holds the view. */
+ *  scope-tree test already holds the view.
+ *
+ *  Overloaded rather than always nullable: without `optional` this throws on a miss, so
+ *  the caller holds an element and should not have to say so again at every use. */
+export function row(view: ReleaseView, path: string): HTMLElement;
+export function row(view: ReleaseView, path: string, opts: { optional: true }): HTMLElement | null;
 export function row(view: ReleaseView, path: string, opts: { optional?: boolean } = {}): HTMLElement | null {
 	const el = view.viewEl.querySelector<HTMLElement>(`.pbl-row[data-path="${path}"]`);
 	if (el === null && !opts.optional) throw new Error(`row not found: ${path}`);

@@ -5,8 +5,9 @@ import { BacklogSettings } from '../../src/domain/settings';
 import { CivilDate } from '../../src/domain/noteFields';
 import { FakeVault } from '../helpers/vault';
 import { settingsWith } from '../helpers/settings';
+import { releaseSettingsWith } from '../helpers/releaseSettings';
 
-const KEYS = {
+const KEYS = releaseSettingsWith({
 	parentKey: 'parent',
 	orderKey: 'order',
 	typeKey: 'type',
@@ -15,7 +16,7 @@ const KEYS = {
 	targetDateKey: 'target-date',
 	statusKey: 'status',
 	releasedDateKey: 'released',
-};
+});
 
 // `stateKey: 'status'` by default so `done` reads the same `status` property the fixtures
 // already write `Done`/`Doing` into — the fixture the `done` tests below build without

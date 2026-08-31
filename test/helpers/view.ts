@@ -45,9 +45,8 @@ export function useViewHarness(): void {
 		// announcement build a fresh one.
 		liveRegionCleanup();
 		Notice.reset();
-		Menu.lastShown = null;
-		Menu.lastPosition = null;
-		Modal.lastOpened = null;
+		Menu.forget();
+		Modal.forget();
 	});
 
 	afterEach(() => {

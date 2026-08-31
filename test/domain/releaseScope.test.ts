@@ -5,11 +5,12 @@ import { BacklogSettings } from '../../src/domain/settings';
 import { CivilDate } from '../../src/domain/noteFields';
 import { FakeVault } from '../helpers/vault';
 import { settingsWith } from '../helpers/settings';
+import { releaseSettingsWith } from '../helpers/releaseSettings';
 
 /** This suite is not about `today` either, so a fixed value stands in for it. */
 const TODAY: CivilDate = { year: 2026, month: 1, day: 1 };
 
-const KEYS = {
+const KEYS = releaseSettingsWith({
 	parentKey: 'parent',
 	orderKey: 'order',
 	typeKey: 'type',
@@ -17,7 +18,7 @@ const KEYS = {
 	versionKey: 'version',
 	targetDateKey: 'target-date',
 	statusKey: 'status',
-};
+});
 
 function scopeOf(vault: FakeVault, path: string, settings: BacklogSettings = settingsWith()) {
 	return scopeIn(buildModel(vault.app, vault.entries(), settings), vault, path, settings.stateKey);

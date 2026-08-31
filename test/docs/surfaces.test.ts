@@ -1,6 +1,6 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { BasesViewConfig } from 'obsidian';
+import type { BasesViewConfig, PluginManifest } from 'obsidian';
 import { describe, expect, it } from 'vitest';
 import ProductBacklogPlugin from '../../src/main';
 import { getViewOptions } from '../../src/domain/viewOptions';
@@ -90,7 +90,7 @@ const named = (name: string): boolean => SPEC_TOKENS.has(name);
 
 /** What `onload` registers, by running it against the mock `Plugin`. */
 function loadPlugin() {
-	const plugin = new ProductBacklogPlugin(new FakeVault().app) as unknown as {
+	const plugin = new ProductBacklogPlugin(new FakeVault().app, {} as PluginManifest) as unknown as {
 		onload: () => void;
 		commands: { id: string; name: string }[];
 		basesViews: { type: string; name: string }[];

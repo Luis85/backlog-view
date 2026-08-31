@@ -8,6 +8,7 @@ import { boardVault } from '../helpers/board';
 import { installObsidianDom } from '../helpers/dom';
 import { FakeVault } from '../helpers/vault';
 import { fixture, makeView, noOptionalProperties, projectionButton, useViewHarness } from '../helpers/view';
+import { MARK, markedCatalog } from './fixtures';
 
 installObsidianDom();
 useViewHarness();
@@ -75,13 +76,7 @@ const SWEPT = [
 	'emptyState.noAxisBodyHalfSet',
 ] as const;
 
-const MARK = 'XX ';
-const xx: Catalog = Object.fromEntries(
-	SWEPT.map((key) => {
-		const entry = en[key];
-		return [key, typeof entry === 'string' ? MARK + entry : Object.fromEntries(Object.entries(entry).map(([f, v]) => [f, MARK + v]))];
-	}),
-);
+const xx: Catalog = markedCatalog(SWEPT);
 
 beforeEach(() => setLocale('xx', { xx }));
 // Resolution is module state by design (once, at load), so each test puts it back.

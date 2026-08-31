@@ -197,7 +197,7 @@ describe('the board’s card menu', () => {
 		key(treeOf(containerEl), 'ContextMenu');
 		expect(Menu.lastShown?.item('Set state')).toBeDefined();
 
-		Menu.lastShown = null;
+		Menu.forget();
 		key(treeOf(containerEl), 'F10', { shiftKey: true });
 		expect(Menu.lastShown?.item('Set state')).toBeDefined();
 	});

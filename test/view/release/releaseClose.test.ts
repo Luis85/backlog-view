@@ -16,7 +16,7 @@ import { en } from '../../../src/i18n/en';
 
 beforeEach(() => {
 	document.body.empty();
-	Modal.lastOpened = null;
+	Modal.forget();
 });
 
 /** Every row the confirmation offers to open, in the order it lists them. */

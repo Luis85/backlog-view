@@ -1,4 +1,17 @@
+import type { App, BasesEntry, BasesPropertyId, BasesSortConfig, BasesViewConfig, Value } from 'obsidian';
 import { FileView, TFile, TFolder } from './obsidian-mock';
+
+/**
+ * Widen a fake to the app type a module asks for, WITHOUT losing the fake's own members:
+ * the intersection keeps `app.vault.trashFile` visible to a test while `app` still passes
+ * where an `App` is expected. One cast here in place of a cast at every call site — which
+ * is the whole reason the doubles are typechecked at all: a test that got the fake's shape
+ * wrong fails here rather than at run time.
+ */
+const asFake = <Target,>(fake: unknown): Target => fake as Target;
+
+/** `asFake` for the app surface, keeping the fake's own members visible beside `App`'s. */
+const asApp = <T>(fake: T): T & App => asFake<T & App>(fake);
 
 interface FakeLink {
 	key: string;
@@ -112,7 +125,7 @@ export class FakeVault {
 	/** Handlers registered through workspace.on('css-change'), fired by `changeCss`. */
 	private cssChangeHandlers: (() => void)[] = [];
 
-	readonly app = {
+	readonly app = asApp({
 		workspace: {
 			// A leaf the view made, not one it is drawn in: it carries an element of its
 			// own so the walk that looks for THIS view's leaf can rule it out, the way a
@@ -296,7 +309,7 @@ export class FakeVault {
 				this.trashed.push(file.path);
 			},
 		},
-	};
+	});
 
 	/** Paths `fileManager.trashFile` removed, in the order they went. */
 	readonly trashed: string[] = [];
@@ -506,12 +519,19 @@ export class FakeVault {
 	/** Per-file property values served through the BasesEntry stand-ins (keyed by property id). */
 	entryValues = new Map<string, Record<string, unknown>>();
 
-	/** BasesEntry stand-ins in insertion order. */
-	entries(): { file: TFile; getValue: (propertyId: string) => unknown }[] {
-		return [...this.files.values()].map((file) => ({
-			file,
-			getValue: (propertyId: string) => this.entryValues.get(file.path)?.[propertyId] ?? null,
-		}));
+	/**
+	 * BasesEntry stand-ins in insertion order. `entryValues` is deliberately `unknown` —
+	 * a test plants whatever shape the reader must survive, including ones Bases would
+	 * never hand over — so the widening to `Value` happens here, once, rather than at
+	 * every caller.
+	 */
+	entries(): BasesEntry[] {
+		return [...this.files.values()].map((file) =>
+			asFake<BasesEntry>({
+				file,
+				getValue: (propertyId: string) => (this.entryValues.get(file.path)?.[propertyId] ?? null) as Value | null,
+			}),
+		);
 	}
 
 	fm(path: string): Record<string, unknown> {
@@ -549,6 +569,12 @@ export function mountLeaf(vault: FakeVault, base?: string): HTMLElement {
 
 /** In-memory BasesViewConfig double that records set() calls. */
 export class FakeViewConfig {
+	/**
+	 * Formula evaluation, which the plugin never asks for. DECLARED rather than stubbed:
+	 * no runtime cost, and if a module ever does call it the test fails loudly instead of
+	 * reading a silent default.
+	 */
+	declare getEvaluatedFormula: BasesViewConfig['getEvaluatedFormula'];
 	/** User-facing view name — part of the key the view-state store is written under. */
 	name = 'Backlog';
 	values: Record<string, unknown>;
@@ -575,17 +601,17 @@ export class FakeViewConfig {
 		this.values[key] = value;
 		this.setCalls.push({ key, value });
 	}
-	getAsPropertyId(key: string): string | null {
+	getAsPropertyId(key: string): BasesPropertyId | null {
 		const v = this.values[key];
-		return typeof v === 'string' && v.includes('.') ? v : null;
+		return typeof v === 'string' && v.includes('.') ? (v as BasesPropertyId) : null;
 	}
-	getOrder(): string[] {
-		return [...this.order];
+	getOrder(): BasesPropertyId[] {
+		return [...this.order] as BasesPropertyId[];
 	}
 	getDisplayName(propertyId: string): string {
 		return propertyId.substring(propertyId.indexOf('.') + 1);
 	}
-	getSort(): unknown[] {
+	getSort(): BasesSortConfig[] {
 		return [];
 	}
 }

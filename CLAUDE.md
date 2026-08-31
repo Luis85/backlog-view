@@ -18,10 +18,10 @@ Requires Obsidian 1.12.0+ (Bases custom view API, with config-aware view options
 ## Definition of done
 
 ```bash
-npm run check   # build + lint + markdown + coverage-thresholded tests + fallow + docs register
+npm run check   # build + test typecheck + lint + markdown + coverage-thresholded tests + fallow + docs register
 ```
 
-All six must pass before committing; CI runs the same steps, on Ubuntu **and Windows** —
+All seven must pass before committing; CI runs the same steps, on Ubuntu **and Windows** —
 paths and line endings are the only things that differ between them, and both have already
 produced a defect this repository could not see. Coverage thresholds
 (vitest.config.mts) only ever go up. Fallow (config: .fallowrc.json) gates dead code,
@@ -287,6 +287,15 @@ there. What stays here binds while you are editing `src/`:
   is the one that grows: split by subject before a file becomes the place tests hide. The
   Obsidian ruleset deliberately stops at `src/` — it is type-aware, and the test doubles
   exist to do what it forbids.
+- **`test/` is typechecked too**, by `tsconfig.test.json` (`npm run typecheck:test`), which
+  is `tsconfig.json` plus the test tree, `lib: ES2021` and Node's types. It is a SECOND file
+  rather than a widened include so that `src/` keeps the DOM-and-ES2020 surface
+  `minAppVersion` promises. It is not a style rule: the run that added it found eight calls
+  passing an argument the function does not take, two fixtures behind the shape they claim,
+  and eight `@ts-expect-error` directives suppressing nothing — see
+  `docs/tasks/Typecheck the test suite.md`. A double that cannot satisfy a real type is
+  widened ONCE in the helper that makes it (`asApp`, the `declare`d `TFile` members), never
+  by an `any` or a suppression at the call site.
 - **An invariant asserted in a comment gets a test that fails without it, and the test is
   watched failing.** Revert the fix, run it, see red, restore. Six of ten review findings
   on one pull request were comments precisely stating the rule the code beside them

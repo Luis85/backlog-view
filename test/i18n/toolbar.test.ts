@@ -7,6 +7,7 @@ import { FakeVault } from '../helpers/vault';
 import { boardVault, makeBoard } from '../helpers/board';
 import { horizonVault, makeRoadmap, roadmapView } from '../helpers/roadmap';
 import { fixture, makeView, useViewHarness } from '../helpers/view';
+import { MARK, markedCatalog } from './fixtures';
 
 /**
  * The toolbar row, driven under a catalog that is not English — `render/toolbar.ts`,
@@ -54,18 +55,7 @@ const REUSED = ['count.items', 'config.fixAll'] as const;
 
 const SWEPT: MessageKey[] = [...OWN, ...REUSED];
 
-const MARK = 'XX ';
-const xx: Catalog = Object.fromEntries(
-	SWEPT.map((key) => {
-		const entry = en[key];
-		return [
-			key,
-			typeof entry === 'string'
-				? MARK + entry
-				: Object.fromEntries(Object.entries(entry).map(([form, value]) => [form, MARK + value])),
-		];
-	}),
-);
+const xx: Catalog = markedCatalog(SWEPT);
 
 const marked = (key: MessageKey): string => {
 	const entry = en[key];
@@ -86,7 +76,7 @@ const record = (strings: readonly string[]): string[] => {
 };
 
 beforeEach(() => {
-	Menu.lastShown = null;
+	Menu.forget();
 	setLocale('xx', { xx });
 });
 // Resolution is module state by design (once, at load), so each test puts it back.
@@ -131,7 +121,7 @@ const unmarked = (strings: readonly string[]): string[] => [
 
 /** Open the control this selector names, and hand back the menu it showed. */
 function open(bar: HTMLElement, selector: string): Menu {
-	Menu.lastShown = null;
+	Menu.forget();
 	const btn = bar.querySelector<HTMLElement>(selector);
 	if (!btn) throw new Error(`no toolbar control at ${selector}`);
 	btn.dispatchEvent(new MouseEvent('click', { bubbles: true }));

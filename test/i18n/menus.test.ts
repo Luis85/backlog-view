@@ -7,6 +7,7 @@ import { FakeVault } from '../helpers/vault';
 import { boardVault, cardByTitle, makeBoard } from '../helpers/board';
 import { makeRoadmap, shelfHeavyVault } from '../helpers/roadmap';
 import { flush, makeView, rowByTitle, useViewHarness } from '../helpers/view';
+import { MARK, markedCatalog } from './fixtures';
 
 /**
  * Every menu the view opens, driven under a catalog that is not English —
@@ -71,18 +72,7 @@ const REUSED = [
 
 const SWEPT: MessageKey[] = [...OWN, ...REUSED];
 
-const MARK = 'XX ';
-const xx: Catalog = Object.fromEntries(
-	SWEPT.map((key) => {
-		const entry = en[key];
-		return [
-			key,
-			typeof entry === 'string'
-				? MARK + entry
-				: Object.fromEntries(Object.entries(entry).map(([form, value]) => [form, MARK + value])),
-		];
-	}),
-);
+const xx: Catalog = markedCatalog(SWEPT);
 
 /** What that key renders as under the fixture — the assertion's own single source. */
 const marked = (key: MessageKey): string => {
@@ -104,8 +94,8 @@ const record = <T>(strings: readonly string[], value: T): T => {
 };
 
 beforeEach(() => {
-	Menu.lastShown = null;
-	Modal.lastOpened = null;
+	Menu.forget();
+	Modal.forget();
 	Notice.reset();
 	setLocale('xx', { xx });
 });
@@ -126,7 +116,7 @@ function titlesOf(menu: Menu): string[] {
 const unmarked = (menu: Menu): string[] => titlesOf(menu).filter((title) => !title.startsWith(MARK));
 
 function openMenuOn(el: HTMLElement, what: string): Menu {
-	Menu.lastShown = null;
+	Menu.forget();
 	el.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
 	const menu = Menu.lastShown;
 	if (!menu) throw new Error(`no menu opened on ${what}`);

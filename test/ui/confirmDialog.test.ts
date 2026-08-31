@@ -10,7 +10,7 @@ installObsidianDom();
 
 beforeEach(() => {
 	document.body.empty();
-	Modal.lastOpened = null;
+	Modal.forget();
 });
 
 function open(options: Partial<ConfirmOptions> & { onConfirm: () => void }) {

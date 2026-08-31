@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import { NullValue } from 'obsidian';
+import { NullValue } from '../helpers/obsidian-mock';
 import { FakeVault } from '../helpers/vault';
 import { Harness, makeView, useViewHarness } from '../helpers/view';
 import { BacklogItem } from '../../src/domain/model';

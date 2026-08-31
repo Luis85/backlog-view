@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import { BasesViewRegistration } from 'obsidian';
+import type { BasesViewRegistration } from 'obsidian';
 import { registerReleaseView } from '../../../src/view/release/register';
 import { getReleaseViewOptions } from '../../../src/domain/releaseOptions';
 import { RELEASE_VIEW_TYPE, ReleaseView } from '../../../src/view/release/releaseView';

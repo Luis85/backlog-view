@@ -13,7 +13,7 @@
  * pass here, no `metadataCache` behind the fake, no vault I/O and no theme.
  */
 import { ProductBacklogView } from '../../src/view/backlogView';
-import type { Projection } from '../../src/view/viewStateController';
+import type { Projection } from '../../src/view/host';
 import { drawnHeight, type Mount } from './mount';
 
 /** Samples per row. Enough that one GC pause moves the worst column and not the median. */

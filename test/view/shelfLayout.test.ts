@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { Menu, MenuItem } from 'obsidian';
+import { Menu, MenuItem } from '../helpers/obsidian-mock';
 import { horizonVault, makeRoadmap, shelfCountOf, shelfOf, shelfTitles } from '../helpers/roadmap';
 import { FakeVault } from '../helpers/vault';
 import { cardByTitle } from '../helpers/board';
@@ -28,7 +28,7 @@ describe('the shelf’s card and list layouts', () => {
 	function openMenu(containerEl: HTMLElement, selector: string): Menu {
 		const btn = containerEl.querySelector<HTMLButtonElement>(selector);
 		if (!btn) throw new Error(`shelf control not rendered: ${selector}`);
-		Menu.lastShown = null;
+		Menu.forget();
 		btn.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: 10, clientY: 10 }));
 		if (!Menu.lastShown) throw new Error(`no menu opened from ${selector}`);
 		return Menu.lastShown;
@@ -128,7 +128,7 @@ describe('the shelf’s card and list layouts', () => {
 
 	it('offers the pick in the card menu, which is the keyboard’s way to it', () => {
 		const { containerEl, view } = makeRoadmap(horizonVault());
-		Menu.lastShown = null;
+		Menu.forget();
 		cardByTitle(containerEl, 'Untriaged').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
 		const menu = Menu.lastShown;
 		expect(menu).not.toBeNull();
@@ -378,11 +378,8 @@ describe('the shelf’s card and list layouts', () => {
 				shelfList: true,
 				order: ['note.points', 'note.owner'],
 			});
-			const counts = shelfOf(containerEl)
-				?.querySelectorAll<HTMLElement>('.pbl-card-summary > .pbl-props')
-				.values()
-				.map((props) => props.querySelectorAll('.pbl-prop').length);
-			const seen = new Set([...(counts ?? [])]);
+			const props = shelfOf(containerEl)?.querySelectorAll<HTMLElement>('.pbl-card-summary > .pbl-props');
+			const seen = new Set([...(props ?? [])].map((el) => el.querySelectorAll('.pbl-prop').length));
 			expect(seen.size).toBe(1);
 		});
 

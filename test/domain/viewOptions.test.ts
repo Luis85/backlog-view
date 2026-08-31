@@ -1,11 +1,11 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { BasesAllOptions, BasesViewConfig } from 'obsidian';
-import { en } from '../../src/i18n/en';
+import type { BasesAllOptions, BasesViewConfig } from 'obsidian';
 import { Catalog, setLocale } from '../../src/i18n/t';
 import { getViewOptions } from '../../src/domain/viewOptions';
 import { resolveSettings } from '../../src/domain/settingsResolve';
 import { defaultResourceFolder, defaultTypeFolder } from '../../src/domain/typeVocabulary';
 import { FakeViewConfig } from '../helpers/vault';
+import { MARK, markedCatalog } from '../i18n/fixtures';
 
 
 /**
@@ -341,13 +341,7 @@ describe('the persisted key set', () => {
  * exactly the data, so a literal spelled at a new option fails without anyone naming it,
  * and a key given to a value the resolver reads back fails too.
  */
-const MARK = 'XX ';
-const xx: Catalog = Object.fromEntries(
-	Object.entries(en).map(([key, entry]) => [
-		key,
-		typeof entry === 'string' ? MARK + entry : Object.fromEntries(Object.entries(entry).map(([f, v]) => [f, MARK + v])),
-	]),
-);
+const xx: Catalog = markedCatalog();
 
 /**
  * Every word the menu shows: a group's name, an option's name, its placeholder, and the
@@ -369,7 +363,7 @@ function shown(options: BasesAllOptions[]): string[] {
 		if ('items' in option) {
 			for (const item of option.items) {
 				if (item.displayName !== undefined) words.push(item.displayName);
-				if (item.placeholder !== undefined) words.push(item.placeholder);
+				if ('placeholder' in item && item.placeholder !== undefined) words.push(item.placeholder);
 				const choices = (item as { options?: Record<string, string> }).options;
 				if (choices) words.push(...Object.values(choices));
 			}
@@ -435,7 +429,7 @@ describe('the options menu reads its words from the catalog', () => {
 		// it is this word, and a fixture reaching one branch would leave the other free.
 		const folders = flatten(getViewOptions(fakeConfig({ homeFolder: '' }))).filter((o) => o.key.startsWith('typeFolder.'));
 		expect(folders.length).toBeGreaterThan(0);
-		expect([...new Set(folders.map((o) => o.placeholder))]).toEqual([MARK + 'Home folder']);
+		expect([...new Set(folders.map((o) => ('placeholder' in o ? o.placeholder : undefined)))]).toEqual([MARK + 'Home folder']);
 	});
 
 	it('names a generated box after the state it is for, as a parameter', () => {

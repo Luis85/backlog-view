@@ -23,7 +23,7 @@ const settings = resolveSettings(
 	new FakeViewConfig({ stateProperty: 'note.status', stateValues: 'New, Active, Done', doneValues: 'Done' }) as never,
 );
 
-const everything = () => true;
+const everything = (_item: BacklogItem): boolean => true;
 
 /** The date the caller hands the planner — fixed, because planning stays pure. */
 const TODAY = '2026-08-02';
