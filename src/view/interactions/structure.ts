@@ -69,9 +69,22 @@ function siblingContext(
  * so one lookup made path-aware would leave the rest reading a model nobody is showing.
  * Called at the four entry points a captured handler reaches; the four PREDICATES beside
  * them are asked while the menu is being built, when the model is the current one.
+ *
+ * **A miss REFUSES; it never falls back to the captured object.** A path the model no
+ * longer holds is a note this base no longer returns — and the write gate cannot say so
+ * for it, because `outsideFilter` reads the item's own flag and an absent path has no
+ * flag to read. Handing the stale object back made the four commands plan against a
+ * live parent and a dead subject, and the batch landed on a note the base excludes:
+ * the one thing this view never does. `saveIteration` (`interactions/create.ts`) is the
+ * same lookup with the same answer — notice, and return.
  */
-function liveItem(host: BacklogViewHost, item: BacklogItem): BacklogItem {
-	return host.model?.byPath.get(item.file.path) ?? item;
+function liveItem(host: BacklogViewHost, item: BacklogItem): BacklogItem | null {
+	const live = host.model?.byPath.get(item.file.path);
+	if (!live) {
+		new Notice(t('rank.itemGone'));
+		return null;
+	}
+	return live;
 }
 
 /**
@@ -154,6 +167,7 @@ export function canMoveToEdge(host: BacklogViewHost, item: BacklogItem, edge: 't
 
 export function moveWithinSiblings(host: BacklogViewHost, item: BacklogItem, delta: -1 | 1): void {
 	const live = liveItem(host, item);
+	if (!live) return;
 	const target = withinSiblingsTarget(host, live, delta);
 	if (!target) return;
 	void host.performDrop(live, target);
@@ -161,6 +175,7 @@ export function moveWithinSiblings(host: BacklogViewHost, item: BacklogItem, del
 
 export function moveToEdge(host: BacklogViewHost, item: BacklogItem, edge: 'top' | 'bottom'): void {
 	const live = liveItem(host, item);
+	if (!live) return;
 	const target = edgeTarget(host, live, edge);
 	if (target) void host.performDrop(live, target);
 }
@@ -202,6 +217,7 @@ export function canOutdent(host: BacklogViewHost, item: BacklogItem): boolean {
 /** Make the item a sibling of its parent, placed right after it. */
 export function outdent(host: BacklogViewHost, item: BacklogItem): void {
 	const live = liveItem(host, item);
+	if (!live) return;
 	const target = outdentTarget(host, live);
 	if (target) void host.performDrop(live, target);
 }
@@ -274,6 +290,7 @@ export function canIndent(host: BacklogViewHost, item: BacklogItem): boolean {
  */
 export function indent(host: BacklogViewHost, item: BacklogItem, namedParentPath?: string): void {
 	const live = liveItem(host, item);
+	if (!live) return;
 	const named = namedParentPath === undefined ? undefined : host.model?.byPath.get(namedParentPath);
 	if (namedParentPath !== undefined && !named) return;
 	const target = indentTarget(host, live, named);

@@ -1195,6 +1195,14 @@ export const en = {
 	'rank.tied':
 		'Two items there have the same rank, so nothing fits between them. Run "Seed ranks from the hierarchy" from the command palette to renumber the whole backlog.',
 	'rank.parentGone': 'That item’s parent no longer exists, so nothing was created.',
+	/**
+	 * The SUBJECT of a structural command left the base while the menu (or the row's
+	 * selection) sat there — `liveItem` in `view/interactions/structure.ts`. Beside
+	 * `rank.parentGone` because both name a note the command was ABOUT rather than a
+	 * refused number, and worded off `absence.resourceMissing`, which is the same fact
+	 * said of a resource: gone from the base, so nothing was written.
+	 */
+	'rank.itemGone': 'That item is no longer in this base, so nothing was moved.',
 
 	/**
 	 * What the two rank commands say. Each confirmation states the whole of what the
