@@ -93,6 +93,11 @@ export const prose = (text) => blankOut(text, spans(text, CODE));
  * does not have. This is what the hand-rolled stripper did, and the one caller that
  * reads sentences rather than indexes still needs it.
  */
+/**
+ * @param {string} text - a Markdown document.
+ * @returns {string} the same text with every code span and fenced block blanked, so an
+ *   offset into it still indexes the original.
+ */
 export function collapsed(text) {
 	const cuts = spans(text, CODE).sort((a, b) => a[0] - b[0]);
 	let out = "";
@@ -135,6 +140,11 @@ const source = (text, node) => text.slice(node.position.start.offset, node.posit
  * parser for the same reason the level-two ones are: a pattern over Markdown is the
  * mistake [ADR 0021](../docs/adrs/0021-parse-the-register-with-mdast.md) retired.
  */
+/**
+ * @param {string} text - a Markdown document.
+ * @param {number} [depth] - which heading level to collect; 2 (`##`) by default.
+ * @returns {{ text: string, index: number }[]} each heading's label and its start offset.
+ */
 export function headings(text, depth = 2) {
 	const marker = "#".repeat(depth);
 	const found = [];
@@ -158,6 +168,11 @@ export function headings(text, depth = 2) {
  * register writes every path in backticks, and a path appearing only inside a fenced
  * example would otherwise credit a module as specified by a block that describes nothing.
  * Offsets survive the blanking, so the heading indexes still address this string.
+ */
+/**
+ * @param {string} text - a Markdown document.
+ * @param {string} title - a `##` heading's exact label.
+ * @returns {string} that section's body, or '' when no heading matches.
  */
 export function sectionBody(text, title) {
 	const all = headings(text);
@@ -187,6 +202,11 @@ export function sectionBody(text, title) {
  * file that is gone is dead prose worth the same report.
  */
 const LINKING = new Set(["link", "image", "definition"]);
+/**
+ * @param {string} text - a Markdown document.
+ * @returns {{ href: string, target: string }[]} every link to a path in this repository,
+ *   external and protocol-relative ones excluded.
+ */
 export function localLinks(text) {
 	const out = [];
 	for (const node of nodes(text)) {
@@ -214,6 +234,10 @@ export function localLinks(text) {
  * really holds reports a resolving link as unresolved. The fix for one false failure must
  * not introduce another.
  */
+/**
+ * @param {string} text - a Markdown document.
+ * @returns {string[]} every `[[target]]`, without its alias or heading fragment.
+ */
 export function wikilinks(text) {
 	return [...prose(text).matchAll(/\[\[([^\]|#]+)/g)].map(([, target]) => target.replace(/\n[ \t]*/g, " ").trim());
 }
@@ -232,6 +256,12 @@ export function wikilinks(text) {
  * `strong`): bounding a citation at the marker would leave nothing after it to read.
  */
 const BLOCKS = new Set(["paragraph", "tableCell", "listItem", "heading", "blockquote", "definition"]);
+/**
+ * @param {string} text - a Markdown document.
+ * @param {number} index - an offset into it.
+ * @returns {{ start: number, end: number, text: string } | null} the narrowest block that
+ *   owns the offset, or null when no block does.
+ */
 export function containerAt(text, index) {
 	let best = null;
 	for (const node of nodes(text)) {
@@ -302,6 +332,12 @@ export function markers(text, label) {
  * the first validates one document while a reader sees two. Found in review, as the same
  * defect one level up from duplicate ROWS. An empty array is a real answer (no such
  * table) and a caller has to tell it from a table that is empty.
+ */
+/**
+ * @param {string} text - a Markdown document.
+ * @param {string[]} headings - header labels a table must carry to be returned.
+ * @returns {{ code: string[], text: string }[][][]} matching tables, each a list of rows,
+ *   each row a list of cells.
  */
 export function tablesWith(text, headings) {
 	// The cell's own descendants, never a source slice: mdast gives a table cell a position

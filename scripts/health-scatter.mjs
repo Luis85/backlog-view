@@ -226,6 +226,10 @@ const trendNote = (hot) =>
  * hotspot is. There is deliberately no boundary drawn: fallow's own `hotspot_count` is the
  * only threshold in evidence, and where it is zero, a box would be an invention.
  */
+/**
+ * @param {{ fallow: { hotspots?: { path: string, score: number, weighted_commits: number, complexity_density: number }[], vitalSigns: { hotspot_top_pct_count?: number } } }} report
+ * @returns {string} the scatter as HTML, or '' when fallow ranked nothing.
+ */
 export function churnScatter(report) {
 	const hot = report.fallow.hotspots ?? [];
 	if (hot.length === 0) return "";
