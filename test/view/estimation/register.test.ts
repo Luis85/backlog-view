@@ -7,7 +7,7 @@ import { ESTIMATION_VIEW_TYPE, EstimationView } from '../../../src/view/estimati
 import { useViewHarness, captureRegistrations } from '../../helpers/view';
 import { makeEstimationView } from '../../helpers/estimation';
 import { configuredValues } from '../../helpers/estimationModel';
-import { FakeVault, FakeViewConfig } from '../../helpers/vault';
+import { fakeController, FakeVault, FakeViewConfig, mountView } from '../../helpers/vault';
 
 useViewHarness();
 
@@ -16,7 +16,7 @@ describe('registerEstimationView', () => {
 		const { plugin: fakePlugin, specs } = captureRegistrations<BasesViewRegistration>();
 
 		const lock = new WriteLock();
-		registerEstimationView(fakePlugin as never, lock);
+		registerEstimationView(fakePlugin, lock);
 
 		expect(specs.has(ESTIMATION_VIEW_TYPE)).toBe(true);
 		const spec = specs.get(ESTIMATION_VIEW_TYPE)!;
@@ -28,11 +28,11 @@ describe('registerEstimationView', () => {
 	it('factory-built view is an EstimationView constructed with the given lock', () => {
 		const { plugin: fakePlugin, specs } = captureRegistrations<BasesViewRegistration>();
 		const lock = new WriteLock();
-		registerEstimationView(fakePlugin as never, lock);
+		registerEstimationView(fakePlugin, lock);
 		const spec = specs.get(ESTIMATION_VIEW_TYPE)!;
 
 		const containerEl = document.body.createDiv();
-		const view = spec.factory({} as never, containerEl);
+		const view = spec.factory(fakeController(), containerEl);
 
 		expect(view).toBeInstanceOf(EstimationView);
 		expect((view as EstimationView).lock).toBe(lock);
@@ -44,15 +44,12 @@ describe('registerEstimationView', () => {
 		const lockA = new WriteLock();
 
 		const { plugin: fakePlugin, specs } = captureRegistrations<BasesViewRegistration>();
-		registerEstimationView(fakePlugin as never, lockA);
+		registerEstimationView(fakePlugin, lockA);
 		const spec = specs.get(ESTIMATION_VIEW_TYPE)!;
 
 		const containerA = document.body.createDiv();
-		const viewA = spec.factory({} as never, containerA) as unknown as Record<string, unknown>;
-		viewA.app = vault.app;
-		viewA.config = new FakeViewConfig(configuredValues());
-		viewA.data = { data: vault.entries() };
-		(viewA as unknown as EstimationView).onDataUpdated();
+		const viewA = spec.factory(fakeController(), containerA);
+		mountView(viewA, vault, new FakeViewConfig(configuredValues()), vault.entries());
 
 		// A second view with the SAME lock, built the ordinary test-helper way.
 		const { view: viewB } = makeEstimationView(vault, configuredValues(), { lock: lockA });

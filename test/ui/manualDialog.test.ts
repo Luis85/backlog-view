@@ -4,6 +4,7 @@ import { assembleStyles } from '../../scripts/styles-assemble.mjs';
 import { installObsidianDom } from '../helpers/dom';
 import { ManualSection, manualLink, openManual } from '../../src/ui/manualDialog';
 import { Modal } from '../helpers/obsidian-mock';
+import { fakeApp } from '../helpers/vault';
 
 installObsidianDom();
 
@@ -26,12 +27,12 @@ describe('the manual dialog', () => {
 	});
 
 	it('opens on the section it was asked for, not the first one', () => {
-		openManual({} as never, SECTIONS, 'two');
+		openManual(fakeApp(), SECTIONS, 'two');
 		expect(content().querySelector('.pbl-manual-pane h3')?.textContent).toBe('Second');
 	});
 
 	it('lists every section in the sidebar, marking the open one', () => {
-		openManual({} as never, SECTIONS, 'two');
+		openManual(fakeApp(), SECTIONS, 'two');
 		const tabs = Array.from(content().querySelectorAll('.vertical-tab-nav-item'));
 		expect(tabs.map((t) => t.textContent)).toEqual(['First', 'Second']);
 		expect(tabs.filter((t) => t.hasClass('is-active')).map((t) => t.textContent)).toEqual(['Second']);
@@ -41,7 +42,7 @@ describe('the manual dialog', () => {
 	});
 
 	it('switches the pane when a sidebar item is clicked', () => {
-		openManual({} as never, SECTIONS, 'one');
+		openManual(fakeApp(), SECTIONS, 'one');
 		const tabs = Array.from(content().querySelectorAll<HTMLElement>('.vertical-tab-nav-item'));
 		const [first, second] = tabs;
 		expect(first.getAttribute('aria-pressed')).toBe('true');
@@ -55,7 +56,7 @@ describe('the manual dialog', () => {
 	});
 
 	it('falls back to the first section when the id is unknown', () => {
-		openManual({} as never, SECTIONS, 'nope');
+		openManual(fakeApp(), SECTIONS, 'nope');
 		expect(content().querySelector('.pbl-manual-pane h3')?.textContent).toBe('First');
 	});
 
@@ -66,7 +67,7 @@ describe('the manual dialog', () => {
 	// and `.is-phone .modal.mod-settings.mod-sidebar-layout` — neither matches on
 	// `mod-settings` alone, so dropping either class loses a layout silently.
 	it('marks the modal element itself with both classes the vendored rules require', () => {
-		openManual({} as never, SECTIONS, 'one');
+		openManual(fakeApp(), SECTIONS, 'one');
 		const modalEl = Modal.lastOpened?.modalEl;
 		expect(modalEl?.hasClass('mod-settings')).toBe(true);
 		expect(modalEl?.hasClass('mod-sidebar-layout')).toBe(true);
@@ -79,7 +80,7 @@ describe('the manual dialog', () => {
 	// back — where focus lands is each door's own test, in `manualEntryPoints.test.ts`.
 	it('tells the caller when it closes, so focus policy stays out of ui/', () => {
 		let closed = 0;
-		openManual({} as never, SECTIONS, 'one', () => {
+		openManual(fakeApp(), SECTIONS, 'one', () => {
 			closed += 1;
 		});
 		expect(closed).toBe(0);
@@ -88,7 +89,7 @@ describe('the manual dialog', () => {
 	});
 
 	it('closes cleanly with no callback at all', () => {
-		openManual({} as never, SECTIONS, 'one');
+		openManual(fakeApp(), SECTIONS, 'one');
 		expect(() => Modal.lastOpened?.close()).not.toThrow();
 	});
 
@@ -97,7 +98,7 @@ describe('the manual dialog', () => {
 			{ id: 'a', title: 'A', intro: 'Read this first.', entries: [{ term: 'T', text: 'd' }] },
 			{ id: 'b', title: 'B', entries: [{ term: 'T', text: 'd' }] },
 		];
-		openManual({} as never, withAndWithoutIntro, 'a');
+		openManual(fakeApp(), withAndWithoutIntro, 'a');
 		expect(content().querySelector('.pbl-manual-intro')?.textContent).toBe('Read this first.');
 
 		const second = Array.from(content().querySelectorAll<HTMLElement>('.vertical-tab-nav-item'))[1];
@@ -106,7 +107,7 @@ describe('the manual dialog', () => {
 	});
 
 	it('renders a badge when an entry carries one', () => {
-		openManual({} as never, [{ id: 'x', title: 'X', entries: [{ term: 'Epic', text: 'e', badge: { text: 'Epic', cls: 'pbl-lvl-0' } }] }], 'x');
+		openManual(fakeApp(), [{ id: 'x', title: 'X', entries: [{ term: 'Epic', text: 'e', badge: { text: 'Epic', cls: 'pbl-lvl-0' } }] }], 'x');
 		const badge = content().querySelector('.pbl-badge');
 		expect(badge?.hasClass('pbl-lvl-0')).toBe(true);
 		expect(badge?.textContent).toBe('Epic');
@@ -116,7 +117,7 @@ describe('the manual dialog', () => {
 	// title that only matched on a single-section test would look right for the wrong
 	// reason — the point of this test is the second assertion, after a switch.
 	it('gives the dialog a stable accessible name that does not change when the section does', () => {
-		openManual({} as never, SECTIONS, 'one');
+		openManual(fakeApp(), SECTIONS, 'one');
 		const titleEl = Modal.lastOpened?.titleEl;
 		expect(titleEl?.textContent).toBe('Product backlog manual');
 
@@ -127,7 +128,7 @@ describe('the manual dialog', () => {
 	});
 
 	it('resets the pane to the top when the section changes, so a scrolled reader is not stranded mid-section', () => {
-		openManual({} as never, SECTIONS, 'one');
+		openManual(fakeApp(), SECTIONS, 'one');
 		const pane = content().querySelector<HTMLElement>('.pbl-manual-pane');
 		if (!pane) throw new Error('no pane');
 		// jsdom does no layout, so nothing here produces a real scroll — setting the
@@ -149,7 +150,7 @@ describe('the point-of-need link', () => {
 
 	it('opens on its own section and carries its own label and section id', () => {
 		const parent = document.body.createDiv();
-		manualLink(parent, {} as never, SECTIONS, { sectionId: 'two', label: 'Read more', root: parent });
+		manualLink(parent, fakeApp(), SECTIONS, { sectionId: 'two', label: 'Read more', root: parent });
 		const link = parent.querySelector<HTMLButtonElement>('.pbl-help-link');
 		expect(link?.textContent).toBe('Read more');
 		expect(link?.getAttribute('data-pbl-section')).toBe('two');
@@ -168,7 +169,7 @@ describe('the point-of-need link', () => {
 	it('does not run onClosed when the live opener still resolves — tier 1 wins over a caller-supplied fallback', () => {
 		const root = document.body.createDiv();
 		let closed = 0;
-		manualLink(root, {} as never, SECTIONS, { sectionId: 'one', label: 'Help', root }, () => {
+		manualLink(root, fakeApp(), SECTIONS, { sectionId: 'one', label: 'Help', root }, () => {
 			closed += 1;
 		});
 		const link = root.querySelector<HTMLButtonElement>('.pbl-help-link');
@@ -182,7 +183,7 @@ describe('the point-of-need link', () => {
 		const root = document.body.createDiv(); // no tabindex: tier 2 fails too
 		const wrap = root.createDiv();
 		let closed = 0;
-		manualLink(wrap, {} as never, SECTIONS, { sectionId: 'one', label: 'Help', root }, () => {
+		manualLink(wrap, fakeApp(), SECTIONS, { sectionId: 'one', label: 'Help', root }, () => {
 			closed += 1;
 		});
 		wrap.querySelector<HTMLButtonElement>('.pbl-help-link')?.click();
@@ -198,7 +199,7 @@ describe('the point-of-need link', () => {
 	// behind an ancestor, and neither of those with nowhere left to fall back to.
 	it('default: refocuses the live link when it is connected and visible', () => {
 		const root = document.body.createDiv();
-		manualLink(root, {} as never, SECTIONS, { sectionId: 'one', label: 'Help', root });
+		manualLink(root, fakeApp(), SECTIONS, { sectionId: 'one', label: 'Help', root });
 		const link = root.querySelector<HTMLButtonElement>('.pbl-help-link');
 		link?.click();
 		Modal.lastOpened?.close();
@@ -216,7 +217,7 @@ describe('the point-of-need link', () => {
 	it('default: does nothing when an ancestor is hidden and root cannot itself take focus', () => {
 		const root = document.body.createDiv();
 		const wrap = root.createDiv();
-		manualLink(wrap, {} as never, SECTIONS, { sectionId: 'one', label: 'Help', root });
+		manualLink(wrap, fakeApp(), SECTIONS, { sectionId: 'one', label: 'Help', root });
 		wrap.querySelector<HTMLButtonElement>('.pbl-help-link')?.click();
 		wrap.style.display = 'none'; // the ancestor hides; the link's own rule is untouched
 		Modal.lastOpened?.close();
@@ -233,7 +234,7 @@ describe('the point-of-need link', () => {
 		const root = document.body.createDiv();
 		root.tabIndex = 0;
 		const wrap = root.createDiv();
-		manualLink(wrap, {} as never, SECTIONS, { sectionId: 'one', label: 'Help', root });
+		manualLink(wrap, fakeApp(), SECTIONS, { sectionId: 'one', label: 'Help', root });
 		wrap.querySelector<HTMLButtonElement>('.pbl-help-link')?.click();
 		wrap.style.display = 'none';
 		Modal.lastOpened?.close();
@@ -242,7 +243,7 @@ describe('the point-of-need link', () => {
 
 	it('default: does nothing when the section it opened is gone by closing time, and root cannot itself take focus', () => {
 		const parent = document.body.createDiv();
-		manualLink(parent, {} as never, SECTIONS, { sectionId: 'one', label: 'Help', root: parent });
+		manualLink(parent, fakeApp(), SECTIONS, { sectionId: 'one', label: 'Help', root: parent });
 		parent.querySelector<HTMLButtonElement>('.pbl-help-link')?.click();
 		parent.empty(); // the caller's own re-render replaced the whole row
 		expect(() => Modal.lastOpened?.close()).not.toThrow();
@@ -253,7 +254,7 @@ describe('the point-of-need link', () => {
 		const root = document.body.createDiv();
 		root.tabIndex = 0;
 		const wrap = root.createDiv();
-		manualLink(wrap, {} as never, SECTIONS, { sectionId: 'one', label: 'Help', root });
+		manualLink(wrap, fakeApp(), SECTIONS, { sectionId: 'one', label: 'Help', root });
 		wrap.querySelector<HTMLButtonElement>('.pbl-help-link')?.click();
 		root.empty(); // the caller's own re-render replaced the whole row, root included its content
 		expect(() => Modal.lastOpened?.close()).not.toThrow();
@@ -272,14 +273,14 @@ describe('the point-of-need link', () => {
 	it('default: resolves through the stable root, never through the ephemeral shell the link was drawn into', () => {
 		const root = document.body.createDiv();
 		const shellA = root.createDiv();
-		manualLink(shellA, {} as never, SECTIONS, { sectionId: 'one', label: 'Help', root });
+		manualLink(shellA, fakeApp(), SECTIONS, { sectionId: 'one', label: 'Help', root });
 		shellA.querySelector<HTMLButtonElement>('.pbl-help-link')?.click();
 
 		// The re-render: the shell that drew the clicked link is gone, replaced by a new
 		// one holding the new instance of the same door — same section id, new element.
 		root.empty();
 		const shellB = root.createDiv();
-		manualLink(shellB, {} as never, SECTIONS, { sectionId: 'one', label: 'Help', root });
+		manualLink(shellB, fakeApp(), SECTIONS, { sectionId: 'one', label: 'Help', root });
 		const rebuilt = shellB.querySelector<HTMLButtonElement>('.pbl-help-link');
 
 		Modal.lastOpened?.close();
@@ -292,12 +293,12 @@ describe('the point-of-need link', () => {
 	it('resolving from the stale shell instead finds nothing, which is the bug the fix closes', () => {
 		const root = document.body.createDiv();
 		const shellA = root.createDiv();
-		manualLink(shellA, {} as never, SECTIONS, { sectionId: 'one', label: 'Help', root: shellA });
+		manualLink(shellA, fakeApp(), SECTIONS, { sectionId: 'one', label: 'Help', root: shellA });
 		shellA.querySelector<HTMLButtonElement>('.pbl-help-link')?.click();
 
 		root.empty(); // shellA (the resolve root this caller chose) is now detached
 		const shellB = root.createDiv();
-		const rebuilt = manualLink(shellB, {} as never, SECTIONS, { sectionId: 'one', label: 'Help', root: shellA });
+		const rebuilt = manualLink(shellB, fakeApp(), SECTIONS, { sectionId: 'one', label: 'Help', root: shellA });
 
 		Modal.lastOpened?.close();
 		expect(document.activeElement).not.toBe(rebuilt);

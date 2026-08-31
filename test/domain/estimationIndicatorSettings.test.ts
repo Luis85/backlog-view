@@ -5,7 +5,7 @@ import { FakeViewConfig } from '../helpers/vault';
 import { configuredValues } from '../helpers/estimationModel';
 
 function resolve(over: Record<string, unknown> = {}) {
-	return resolveEstimationSettings(new FakeViewConfig(configuredValues(over)) as never);
+	return resolveEstimationSettings(new FakeViewConfig(configuredValues(over)));
 }
 
 describe('the indicator, read off the view options', () => {
@@ -47,7 +47,7 @@ describe('the indicator, read off the view options', () => {
 	});
 
 	it('offers an Indicator group with the three boxes', () => {
-		const groups = getEstimationViewOptions(new FakeViewConfig(configuredValues()) as never);
+		const groups = getEstimationViewOptions(new FakeViewConfig(configuredValues()));
 		const group = groups.find((g) => g.displayName === 'Indicator');
 		expect(group && 'items' in group ? group.items.map((item) => item.key) : []).toEqual(['indicatorLabel', 'indicatorOperands', 'indicatorDivisor']);
 	});

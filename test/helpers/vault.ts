@@ -1,4 +1,15 @@
-import type { App, BasesEntry, BasesPropertyId, BasesSortConfig, BasesViewConfig, Value } from 'obsidian';
+import type {
+	App,
+	BasesEntry,
+	BasesEntryGroup,
+	BasesPropertyId,
+	BasesQueryResult,
+	BasesSortConfig,
+	BasesView,
+	BasesViewConfig,
+	QueryController,
+	Value,
+} from 'obsidian';
 import { FileView, TFile, TFolder } from './obsidian-mock';
 
 /**
@@ -12,6 +23,23 @@ const asFake = <Target,>(fake: unknown): Target => fake as Target;
 
 /** `asFake` for the app surface, keeping the fake's own members visible beside `App`'s. */
 const asApp = <T>(fake: T): T & App => asFake<T & App>(fake);
+
+/**
+ * The Bases controller a view's constructor takes and never reads — every view here is
+ * driven through `app`, `config` and `data`, all assigned after construction. One cast
+ * here instead of `{} as never` at forty call sites: the ARGUMENT is typechecked again,
+ * so a constructor that grows a second parameter, or reorders these two, fails at the
+ * call rather than passing whatever `never` is assignable to.
+ */
+export const fakeController = (): QueryController => asFake<QueryController>({});
+
+/**
+ * An `App` nothing reads — the argument a dialog takes to hand to `Modal` and never
+ * touches itself. Same trade as {@link fakeController}, and the same warning: a test
+ * whose subject needs a working vault behind it passes `new FakeVault().app` instead,
+ * which is a real double rather than an empty one.
+ */
+export const fakeApp = (): App => asFake<App>({});
 
 interface FakeLink {
 	key: string;
@@ -534,6 +562,18 @@ export class FakeVault {
 		);
 	}
 
+	/**
+	 * The file at `path`, or a thrown error naming it. `files.get` answers
+	 * `TFile | undefined`, and a test that asserts about a file it planted is holding a
+	 * broken fixture rather than an outcome when the lookup misses — saying so here is
+	 * what keeps the cast off every call site.
+	 */
+	fileAt(path: string): TFile {
+		const file = this.files.get(path);
+		if (!file) throw new Error(`no file at ${path}`);
+		return file;
+	}
+
 	fm(path: string): Record<string, unknown> {
 		return this.frontmatter.get(path) ?? {};
 	}
@@ -567,12 +607,82 @@ export function mountLeaf(vault: FakeVault, base?: string): HTMLElement {
 	return containerEl;
 }
 
+/**
+ * Everything Bases delivers to a view between construction and its first render: the app,
+ * the view config and the first result set. Every projection's mount is this — the three
+ * view harnesses, the three browser-harness entries, and `makeView`, which is this plus a
+ * fixture and the working position. A view built some other way (through the registered
+ * factory, or constructed early to assert what it draws before any results arrive) drives
+ * the same three assignments rather than writing them out again.
+ *
+ * It lives here rather than in `view.ts` because the browser harness bundles its callers
+ * and that module pulls vitest in.
+ *
+ * None of the three assignments is a cast: `app` and `config` satisfy their own types, and
+ * {@link setResults} is where the result set is widened, once.
+ */
+export function mountView(view: BasesView, vault: FakeVault, config: FakeViewConfig, entries: BasesEntry[]): void {
+	view.app = vault.app;
+	view.config = config;
+	setResults(view, entries);
+}
+
+/**
+ * Hand a view a result set and let it rebuild — what Bases does on every vault change, and
+ * the second half of {@link mountView}. Takes entries rather than a vault, because the
+ * tests that call it directly are about a set the vault cannot produce on its own: a
+ * filtered one, an empty one, or one entry whose `getValue` throws.
+ */
+export function setResults(view: BasesView, entries: BasesEntry[], groups?: BasesEntryGroup[]): void {
+	view.data = new FakeQueryResult(entries, groups);
+	view.onDataUpdated();
+}
+
+/**
+ * The result set Bases hands a view, as `view.data` takes it.
+ *
+ * `groupedData` is REAL, not declared, because `detectIgnoredGrouping` reads it — the
+ * grouping advisory is the whole reason it exists. This class said "the view reads `data`
+ * and nothing else" until 2026-08-31, which is a guarantee written ahead of its check: the
+ * three tests driving that advisory could not use this double at all and cast past it to
+ * assign `view.data` by hand, so the one member the plugin actually consults was the one
+ * the double did not carry. `properties` and `getSummaryValue` stay DECLARED — nothing in
+ * `src/` reads either TODAY — checked, not assumed — and a module that starts to will find
+ * `undefined` rather than a loud failure, which is the whole hazard `groupedData` proved.
+ * Re-check with a walk over `src/` before adding a fourth.
+ *
+ * It exists so that HANDING A VIEW ITS RESULTS NEEDS NO CAST. `{ data: entries }` is not a
+ * `BasesQueryResult`, so every mount in the suite reached `view.data` through
+ * `as unknown as Record<string, unknown>` — a cast that also covered `app` and `config`,
+ * which have satisfied their own types since the doubles were widened, and so read as
+ * necessary long after it had stopped being. A double that cannot satisfy a real type is
+ * widened once, here, rather than cast at each mount.
+ */
+export class FakeQueryResult {
+	declare properties: BasesQueryResult['properties'];
+	declare getSummaryValue: BasesQueryResult['getSummaryValue'];
+	readonly groupedData: BasesEntryGroup[];
+
+	constructor(
+		public data: BasesEntry[],
+		groups: BasesEntryGroup[] = [],
+	) {
+		this.groupedData = groups;
+	}
+}
+
 /** In-memory BasesViewConfig double that records set() calls. */
 export class FakeViewConfig {
 	/**
 	 * Formula evaluation, which the plugin never asks for. DECLARED rather than stubbed:
-	 * no runtime cost, and if a module ever does call it the test fails loudly instead of
-	 * reading a silent default.
+	 * no runtime cost. It is NOT loud, and this comment said it was until 2026-08-31: a
+	 * `declare` emits nothing, so a module that starts calling it finds `undefined` and
+	 * fails wherever that lands, which may be a truthiness test that quietly answers no.
+	 * `groupedData` was exactly that on `FakeQueryResult` — declared, read by
+	 * `detectIgnoredGrouping`, and therefore `undefined` in every test, so the three cases
+	 * driving the grouping advisory had to cast past the double to plant it. A `declare`
+	 * here is a bet that `src/` never reads the member, and the bet has been lost once.
+	 * `getEvaluatedFormula` is checked: nothing in `src/` calls it.
 	 */
 	declare getEvaluatedFormula: BasesViewConfig['getEvaluatedFormula'];
 	/** User-facing view name — part of the key the view-state store is written under. */

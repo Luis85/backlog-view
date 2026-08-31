@@ -11,7 +11,7 @@ import { FakeVault, FakeViewConfig } from '../helpers/vault';
  * checked is the derivation and never a write.
  */
 const settings = resolveSettings(
-	new FakeViewConfig({ startProperty: 'note.start', targetProperty: 'note.due' }) as never,
+	new FakeViewConfig({ startProperty: 'note.start', targetProperty: 'note.due' }),
 );
 
 /** A civil date from the spelling a test reads best. */

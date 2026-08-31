@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { ProductBacklogView } from '../../src/view/backlogView';
-import { FakeVault } from '../helpers/vault';
+import { FakeVault, setResults } from '../helpers/vault';
 import { FuzzySuggestModal, Menu, Modal, Notice, TFile } from '../helpers/obsidian-mock';
 import { flush, makeView, refresh, rowByTitle, useViewHarness } from '../helpers/view';
 
@@ -56,8 +56,7 @@ function suggester(): FuzzySuggestModal<unknown> {
 /** Rebuild the model with one note dropped from the Base's own results — the way an
  *  external edit can remove a note while a suggester sits open over it. */
 function refreshExcluding(view: ProductBacklogView, vault: FakeVault, path: string): void {
-	(view as unknown as Record<string, unknown>).data = { data: vault.entries().filter((e) => e.file.path !== path) };
-	view.onDataUpdated();
+	setResults(view, vault.entries().filter((e) => e.file.path !== path));
 }
 
 /** Rebuild the model with a DIFFERENT file object at the same path — the shape a note
@@ -65,9 +64,15 @@ function refreshExcluding(view: ProductBacklogView, vault: FakeVault, path: stri
  *  file in place, so this is the one way `byPath` can hold something that is not the
  *  note the menu was opened on. */
 function refreshReplacingFile(view: ProductBacklogView, vault: FakeVault, path: string): void {
-	const entries = vault.entries().map((e) => (e.file.path === path ? { ...e, file: new TFile(path) } : e));
-	(view as unknown as Record<string, unknown>).data = { data: entries };
-	view.onDataUpdated();
+	// `getValue` is carried over explicitly rather than spread: on a real `BasesEntry` it is
+	// a prototype method, so `{ ...entry }` drops it and the fixture stops being a shape a
+	// vault could hand out. The typecheck says so now that the mount is not casting.
+	setResults(
+		view,
+		vault
+			.entries()
+			.map((e) => (e.file.path === path ? { file: new TFile(path), getValue: e.getValue.bind(e) } : e)),
+	);
 }
 
 describe('when the entries are offered at all', () => {

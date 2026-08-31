@@ -24,7 +24,7 @@ import { FakeVault, FakeViewConfig } from '../helpers/vault';
  */
 
 const settings = resolveSettings(
-	new FakeViewConfig({ stateProperty: 'note.status', stateValues: 'New, Active, Done', doneValues: 'Done' }) as never,
+	new FakeViewConfig({ stateProperty: 'note.status', stateValues: 'New, Active, Done', doneValues: 'Done' }),
 );
 
 const everything = () => true;

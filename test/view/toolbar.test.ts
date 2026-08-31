@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { ProductBacklogView } from '../../src/view/backlogView';
-import { FakeVault, FakeViewConfig } from '../helpers/vault';
+import { fakeController, FakeVault, FakeViewConfig, mountView } from '../helpers/vault';
 import { Menu, Modal, Notice } from '../helpers/obsidian-mock';
 import {
 	fixture,
@@ -346,7 +346,7 @@ describe('menus opened without a pointer', () => {
 	/** Enter or Space on a focused button: a click carrying no coordinates. */
 	function pressButton(el: HTMLElement, rect: { left: number; bottom: number }): void {
 		el.getBoundingClientRect = () =>
-			({ ...rect, top: 0, right: 0, width: 0, height: 0, x: 0, y: 0, toJSON: () => ({}) }) as DOMRect;
+			({ ...rect, top: 0, right: 0, width: 0, height: 0, x: 0, y: 0, toJSON: () => ({}) });
 		el.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 	}
 
@@ -427,17 +427,13 @@ describe('long operations stay legible and non-blocking', () => {
 
 	it('shows a loading state until the first result set arrives', () => {
 		const containerEl = document.body.createDiv();
-		const view = new ProductBacklogView({} as never, containerEl);
+		const view = new ProductBacklogView(fakeController(), containerEl);
 
 		// Bases constructs the view and delivers data separately; the gap must not
 		// look like a broken view.
 		expect(containerEl.querySelector('.pbl-loading')?.textContent).toContain('Loading backlog');
 
-		const anyView = view as unknown as Record<string, unknown>;
-		anyView.app = fixture().app;
-		anyView.config = new FakeViewConfig({});
-		anyView.data = { data: [] };
-		view.onDataUpdated();
+		mountView(view, fixture(), new FakeViewConfig({}), []);
 		expect(containerEl.querySelector('.pbl-loading')).toBeNull();
 	});
 

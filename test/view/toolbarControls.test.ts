@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { installObsidianDom } from '../helpers/dom';
 import { ProductBacklogView } from '../../src/view/backlogView';
 import { collapseAll, expandAll } from '../../src/view/render/toolbarControls';
+import { fakeController } from '../helpers/vault';
 
 installObsidianDom();
 
@@ -13,7 +14,7 @@ describe('expandAll and collapseAll before a model exists', () => {
 	// menu, once it can render before a load finishes) must get a no-op, not a throw.
 	it('does nothing when the host has no model yet', () => {
 		const containerEl = document.body.createDiv();
-		const view = new ProductBacklogView({} as never, containerEl);
+		const view = new ProductBacklogView(fakeController(), containerEl);
 
 		expect(view.model).toBeNull();
 		expect(() => expandAll(view)).not.toThrow();

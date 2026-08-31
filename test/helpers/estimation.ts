@@ -2,7 +2,8 @@ import { vi } from 'vitest';
 import { EstimationView } from '../../src/view/estimation/estimationView';
 import { WriteLock } from '../../src/view/writeLock';
 import { installObsidianDom } from './dom';
-import { FakeVault, FakeViewConfig, mountLeaf } from './vault';
+import { FakeVault, FakeViewConfig, mountLeaf, mountView } from './vault';
+import { fakeController } from '../helpers/vault';
 
 installObsidianDom();
 
@@ -25,14 +26,10 @@ export function makeEstimationView(
 	// Bases mounts the view inside the leaf showing the .base file, the same nesting
 	// `makeView` builds (`mountLeaf`, shared) — persistence needs the real leaf to identify it.
 	const containerEl = mountLeaf(vault, base);
-	const view = new EstimationView({} as never, containerEl, lock);
+	const view = new EstimationView(fakeController(), containerEl, lock);
 	const config = new FakeViewConfig(configValues);
 	if (viewName) config.name = viewName;
-	const anyView = view as unknown as Record<string, unknown>;
-	anyView.app = vault.app;
-	anyView.config = config;
-	anyView.data = { data: vault.entries() };
-	view.onDataUpdated();
+	mountView(view, vault, config, vault.entries());
 	return { view, config, containerEl };
 }
 

@@ -28,7 +28,7 @@ describe('readmePath', () => {
 
 describe('writeBacklogReadme', () => {
 	it('creates the file, and the folder it needs', async () => {
-		const result = await writeBacklogReadme(vault.app as never, 'work/backlog', GENERATED);
+		const result = await writeBacklogReadme(vault.app, 'work/backlog', GENERATED);
 
 		expect(result).toEqual({ outcome: 'created', path: 'work/backlog/README_PRODUCT_BACKLOG.md' });
 		expect(vault.contents.get('work/backlog/README_PRODUCT_BACKLOG.md')).toBe(GENERATED);
@@ -38,7 +38,7 @@ describe('writeBacklogReadme', () => {
 	it('creates the folder under the same spelling it writes the file under', async () => {
 		// A hand-edited or Windows-shaped home folder: creating `work\backlog` and then
 		// writing `work/backlog/README...` is a create whose parent does not exist.
-		const result = await writeBacklogReadme(vault.app as never, 'work\\\\backlog//', GENERATED);
+		const result = await writeBacklogReadme(vault.app, 'work\\\\backlog//', GENERATED);
 
 		expect(result).toEqual({ outcome: 'created', path: 'work/backlog/README_PRODUCT_BACKLOG.md' });
 		expect([...vault.folders]).toContain('work/backlog');
@@ -46,20 +46,20 @@ describe('writeBacklogReadme', () => {
 	});
 
 	it('writes nothing when the file already matches', async () => {
-		await writeBacklogReadme(vault.app as never, 'docs', GENERATED);
+		await writeBacklogReadme(vault.app, 'docs', GENERATED);
 		const before = vault.contents.get('docs/README_PRODUCT_BACKLOG.md');
 
-		const result = await writeBacklogReadme(vault.app as never, 'docs', GENERATED);
+		const result = await writeBacklogReadme(vault.app, 'docs', GENERATED);
 
 		expect(result.outcome).toBe('unchanged');
 		expect(vault.contents.get('docs/README_PRODUCT_BACKLOG.md')).toBe(before);
 	});
 
 	it('replaces its own output when the configuration changed', async () => {
-		await writeBacklogReadme(vault.app as never, 'docs', GENERATED);
+		await writeBacklogReadme(vault.app, 'docs', GENERATED);
 		const updated = `${GENERATED}\n## Workflow states\n`;
 
-		const result = await writeBacklogReadme(vault.app as never, 'docs', updated);
+		const result = await writeBacklogReadme(vault.app, 'docs', updated);
 
 		expect(result.outcome).toBe('updated');
 		expect(vault.contents.get('docs/README_PRODUCT_BACKLOG.md')).toBe(updated);
@@ -72,7 +72,7 @@ describe('writeBacklogReadme', () => {
 		const theirs = `${readmeMarker('other/Other.base › Board')}\n\n# This folder is a product backlog\n`;
 		await vault.app.vault.create('docs/README_PRODUCT_BACKLOG.md', theirs);
 
-		const result = await writeBacklogReadme(vault.app as never, 'docs', GENERATED);
+		const result = await writeBacklogReadme(vault.app, 'docs', GENERATED);
 
 		expect(result).toEqual({
 			outcome: 'replaced',
@@ -88,7 +88,7 @@ describe('writeBacklogReadme', () => {
 		// report every regeneration as somebody else's document.
 		await vault.app.vault.create('docs/README_PRODUCT_BACKLOG.md', GENERATED.replace(/\n/g, '\r\n'));
 
-		const result = await writeBacklogReadme(vault.app as never, 'docs', `${GENERATED}\n## Workflow states\n`);
+		const result = await writeBacklogReadme(vault.app, 'docs', `${GENERATED}\n## Workflow states\n`);
 
 		expect(result.outcome).toBe('updated');
 		expect(result.previous).toBeUndefined();
@@ -100,7 +100,7 @@ describe('writeBacklogReadme', () => {
 		// and refuse every regeneration until a human found the invisible character.
 		await vault.app.vault.create('docs/README_PRODUCT_BACKLOG.md', `\uFEFF${GENERATED}`);
 
-		const result = await writeBacklogReadme(vault.app as never, 'docs', `${GENERATED}\n## Workflow states\n`);
+		const result = await writeBacklogReadme(vault.app, 'docs', `${GENERATED}\n## Workflow states\n`);
 
 		expect(result.outcome).toBe('updated');
 	});
@@ -112,7 +112,7 @@ describe('writeBacklogReadme', () => {
 		const theirs = `${README_MARKER_PREFIX} of my own, thanks -->\n\n# Notes\n`;
 		await vault.app.vault.create('docs/README_PRODUCT_BACKLOG.md', theirs);
 
-		const result = await writeBacklogReadme(vault.app as never, 'docs', GENERATED);
+		const result = await writeBacklogReadme(vault.app, 'docs', GENERATED);
 
 		expect(result.outcome).toBe('foreign');
 		expect(vault.contents.get('docs/README_PRODUCT_BACKLOG.md')).toBe(theirs);
@@ -122,16 +122,16 @@ describe('writeBacklogReadme', () => {
 		// The permission is about the file's content, and `read`-then-`modify` answers it
 		// about content that need not still be there when the write lands — sync, a second
 		// window, a second command. The re-check inside `process` is what closes that gap.
-		await writeBacklogReadme(vault.app as never, 'docs', GENERATED);
+		await writeBacklogReadme(vault.app, 'docs', GENERATED);
 		const theirs = '# Mine now\n';
-		const file = vault.files.get('docs/README_PRODUCT_BACKLOG.md') as never;
+		const file = vault.fileAt('docs/README_PRODUCT_BACKLOG.md');
 		const process = vault.app.vault.process;
 		vault.app.vault.process = (async (f: never, fn: (data: string) => string) => {
 			vault.contents.set('docs/README_PRODUCT_BACKLOG.md', theirs);
 			return process(f, fn);
 		}) as typeof vault.app.vault.process;
 
-		const result = await writeBacklogReadme(vault.app as never, 'docs', `${GENERATED}\n## Workflow states\n`);
+		const result = await writeBacklogReadme(vault.app, 'docs', `${GENERATED}\n## Workflow states\n`);
 
 		expect(result.outcome).toBe('foreign');
 		expect(vault.contents.get('docs/README_PRODUCT_BACKLOG.md')).toBe(theirs);
@@ -142,7 +142,7 @@ describe('writeBacklogReadme', () => {
 		// A third view wins the same race: the write is still permitted — the file is one
 		// of ours — but the notice must name what this write took over, or it reports a
 		// document nobody touched.
-		await writeBacklogReadme(vault.app as never, 'docs', GENERATED);
+		await writeBacklogReadme(vault.app, 'docs', GENERATED);
 		const theirs = `${readmeMarker('third/Third.base › Planning')}\n\n# This folder is a product backlog\n`;
 		const process = vault.app.vault.process;
 		vault.app.vault.process = (async (f: never, fn: (data: string) => string) => {
@@ -150,7 +150,7 @@ describe('writeBacklogReadme', () => {
 			return process(f, fn);
 		}) as typeof vault.app.vault.process;
 
-		const result = await writeBacklogReadme(vault.app as never, 'docs', `${GENERATED}\n## Workflow states\n`);
+		const result = await writeBacklogReadme(vault.app, 'docs', `${GENERATED}\n## Workflow states\n`);
 
 		expect(result).toEqual({
 			outcome: 'replaced',
@@ -171,7 +171,7 @@ describe('writeBacklogReadme', () => {
 			return create(path, content);
 		};
 
-		const result = await writeBacklogReadme(vault.app as never, 'docs', GENERATED);
+		const result = await writeBacklogReadme(vault.app, 'docs', GENERATED);
 
 		expect(result.outcome).toBe('foreign');
 		expect(vault.contents.get('docs/README_PRODUCT_BACKLOG.md')).toBe(theirs);
@@ -185,14 +185,14 @@ describe('writeBacklogReadme', () => {
 			throw new Error('EACCES');
 		};
 
-		await expect(writeBacklogReadme(vault.app as never, 'docs', GENERATED)).rejects.toThrow('EACCES');
+		await expect(writeBacklogReadme(vault.app, 'docs', GENERATED)).rejects.toThrow('EACCES');
 	});
 
 	it('refuses a file of the same name that it did not write', async () => {
 		const theirs = '# My own notes about this folder\n';
 		await vault.app.vault.create('docs/README_PRODUCT_BACKLOG.md', theirs);
 
-		const result = await writeBacklogReadme(vault.app as never, 'docs', GENERATED);
+		const result = await writeBacklogReadme(vault.app, 'docs', GENERATED);
 
 		expect(result.outcome).toBe('foreign');
 		expect(vault.contents.get('docs/README_PRODUCT_BACKLOG.md')).toBe(theirs);

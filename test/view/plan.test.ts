@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import { FakeVault } from '../helpers/vault';
+import { FakeVault, setResults } from '../helpers/vault';
 import { Menu, MenuItem, Modal } from '../helpers/obsidian-mock';
 import {
 	clickExpandAll,
@@ -240,10 +240,7 @@ describe('the horizon chip on a row', () => {
 		vault.addFile('Feature.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Epic' });
 		// The Epic is context: an ancestor the filter did not return.
 		const { view, containerEl } = makeView(vault, AXES, visible);
-		(view as unknown as Record<string, unknown>).data = {
-			data: vault.entries().filter((e) => e.file.path === 'Feature.md'),
-		};
-		view.onDataUpdated();
+		setResults(view, vault.entries().filter((e) => e.file.path === 'Feature.md'));
 		clickExpandAll(containerEl);
 
 		const context = rowByTitle(containerEl, 'Epic').querySelector('.pbl-horizon-chip');

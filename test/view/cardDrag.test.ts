@@ -5,21 +5,14 @@
 import { describe, expect, it, vi } from 'vitest';
 import { BacklogItem } from '../../src/domain/model';
 import { BacklogViewHost } from '../../src/view/host';
-import { ProductBacklogView } from '../../src/view/backlogView';
 import { CardDragController } from '../../src/view/interactions/cardDrag';
-import { flush, makeView, refresh, useViewHarness } from '../helpers/view';
+import { flush, itemAt, makeView, refresh, useViewHarness } from '../helpers/view';
 import { announced, cardDrag, gridDrag, overlayOf, pannedGrid, startCardDrag } from '../helpers/dnd';
 import { boardVault, cardByTitle, columnByName, makeBoard } from '../helpers/board';
 import { gripOf, horizonVault, makeRoadmap } from '../helpers/roadmap';
 import { FakeVault } from '../helpers/vault';
 
 useViewHarness();
-
-function itemAt(view: ProductBacklogView, path: string): BacklogItem {
-	const item = view.model?.byPath.get(path);
-	if (!item) throw new Error(`no item loaded: ${path}`);
-	return item;
-}
 
 describe('a card move made while its projection is not on screen', () => {
 	it('moves the card and announces nothing — no columns, no vocabulary to say it in', async () => {

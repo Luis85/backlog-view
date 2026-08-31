@@ -1198,8 +1198,20 @@ export default defineConfig([
 	{
 		files: [`${TESTS}/*.ts`],
 		extends: [tseslint.configs.recommended],
-		languageOptions: { parser: tsparser },
+		// Typed, against `tsconfig.test.json` — the project service reads `tsconfig.json`
+		// by name and that one covers `src/` only, so a type-aware rule here reports every
+		// test file as "not found by the project service" rather than as clean.
+		languageOptions: { parser: tsparser, parserOptions: { project: './tsconfig.test.json', tsconfigRootDir: import.meta.dirname } },
 		rules: {
+			// ONE type-aware rule, not the Obsidian ruleset. Measured on 2026-08-31: the
+			// whole ruleset reports 212 findings here, and 164 of them are the doubles doing
+			// what they exist to do — `no-nodejs-modules` at a suite that reads files,
+			// `prefer-create-el` at the DOM helper that DEFINES `createEl`, the five
+			// `no-unsafe-*` rules at every fake. Nine exemptions to buy the 48 that are
+			// real, and all 48 come from this rule: an assertion the compiler can see is
+			// doing nothing. That is the cast census as a check rather than a grep, so it
+			// holds for casts not yet written.
+			'@typescript-eslint/no-unnecessary-type-assertion': 'error',
 			// `src/` had a size budget and `test/` had none, which is how one view suite
 			// grew to 59% of all test code while every source file stayed in budget. The
 			// cap is looser than src/'s 400 — a test file is mostly fixture setup — and it

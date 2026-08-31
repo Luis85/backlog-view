@@ -2,7 +2,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { makeEstimationView, scrollReads } from '../../helpers/estimation';
 import { configured, configuredValues } from '../../helpers/estimationModel';
-import { FakeVault } from '../../helpers/vault';
+import { FakeVault, setResults } from '../../helpers/vault';
 import { key } from '../../helpers/view';
 import { computeTotal, stampValue } from '../../../src/domain/weightedScore';
 
@@ -36,7 +36,7 @@ function row(containerEl: HTMLElement, path: string): HTMLElement {
 }
 
 function progressOf(cell: Element): string | null {
-	return (cell.querySelector('.pbl-est-strip') as HTMLElement | null)?.style.getPropertyValue('--pbl-progress') ?? null;
+	return cell.querySelector<HTMLElement>('.pbl-est-strip')?.style.getPropertyValue('--pbl-progress') ?? null;
 }
 
 describe('the estimation table', () => {
@@ -416,10 +416,7 @@ describe('the selection when its own row leaves the results', () => {
 
 		// The selected note leaves the base's results — deleted, or filtered out — the
 		// same "onDataUpdated with a narrower set" shape a real vault change has.
-		(view as unknown as { data: unknown }).data = {
-			data: vault.entries().filter((e) => e.file.path !== 'Partial.md'),
-		};
-		view.onDataUpdated();
+		setResults(view, vault.entries().filter((e) => e.file.path !== 'Partial.md'));
 
 		expect(view.selectedPath).toBe('Full.md');
 		expect(containerEl.querySelector('.pbl-selected')).not.toBeNull();
@@ -432,8 +429,7 @@ describe('the selection when its own row leaves the results', () => {
 		const { view, containerEl } = makeEstimationView(vault, configuredValues());
 		expect(view.selectedPath).toBe('Only.md');
 
-		(view as unknown as { data: unknown }).data = { data: [] };
-		view.onDataUpdated();
+		setResults(view, []);
 
 		expect(view.selectedPath).toBeNull();
 		expect(containerEl.querySelector('.pbl-selected')).toBeNull();
@@ -467,8 +463,7 @@ describe('the table scroll position across a rebuild', () => {
 		(containerEl.querySelector('.pbl-est-table') as HTMLElement).scrollTop = 900;
 
 		scrollHeight.mockReturnValue(80);
-		(view as unknown as { data: unknown }).data = { data: vault.entries().filter((e) => e.file.path === 'Full.md') };
-		view.onDataUpdated();
+		setResults(view, vault.entries().filter((e) => e.file.path === 'Full.md'));
 
 		expect((containerEl.querySelector('.pbl-est-table') as HTMLElement).scrollTop).toBe(80);
 	});

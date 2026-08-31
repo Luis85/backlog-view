@@ -17,6 +17,11 @@ import { ESLint } from "eslint";
  */
 
 /** Repo-relative and forward-slashed, from the HOST platform's absolute path. */
+/**
+ * @param {string} absolute - a path from a tool this machine just ran.
+ * @param {string} root - the repository root to make it relative to.
+ * @returns {string} the repo-relative path, forward-slashed on every platform.
+ */
 export function toRepoPath(absolute, root) {
 	return path.relative(root, absolute).split(path.sep).join("/");
 }
@@ -25,6 +30,11 @@ export function toRepoPath(absolute, root) {
  * `main.ts` is its own answer rather than part of `view`: it is the only place anything
  * is registered with Obsidian, and it is the one file `vitest.config.mts` excludes from
  * coverage, so folding it into a layer would misreport that layer twice over.
+ */
+/**
+ * @param {string} repoPath - a repo-relative, forward-slashed path.
+ * @returns {string | null} the architecture layer it belongs to, or null for anything
+ *   outside `src/`.
  */
 export function layerOf(repoPath) {
 	if (repoPath === "src/main.ts") return "main";
@@ -35,6 +45,10 @@ export function layerOf(repoPath) {
 }
 
 /** The caps `eslint.config.mjs` sets. `.mjs` and everything else is uncapped. */
+/**
+ * @param {string} repoPath - a repo-relative, forward-slashed path.
+ * @returns {number | null} the line budget lint holds that file to, or null when none does.
+ */
 export function capFor(repoPath) {
 	if (/^src\/.+\.ts$/.test(repoPath)) return 400;
 	if (/^test\/.+\.ts$/.test(repoPath)) return 450;
@@ -45,6 +59,11 @@ export function capFor(repoPath) {
 const ratio = (covered, total) => (total === 0 ? 100 : Math.round((covered / total) * 1000) / 10);
 
 /** One istanbul entry to three percentages. A file with nothing to cover is covered. */
+/**
+ * @param {{ s?: Record<string, number>, f?: Record<string, number>, b?: Record<string, number[]> }} entry
+ *   one file's entry from Istanbul's `coverage-final.json`.
+ * @returns {{ statements: number, functions: number, branches: number }} percentages.
+ */
 export function coverageRatios(entry) {
 	const statements = Object.values(entry.s ?? {});
 	const functions = Object.values(entry.f ?? {});

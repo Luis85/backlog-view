@@ -1,9 +1,8 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import { ProductBacklogView } from '../../src/view/backlogView';
-import { FakeVault, FakeViewConfig } from '../helpers/vault';
+import { FakeVault, setResults } from '../helpers/vault';
 import { FuzzySuggestModal, Menu, Modal } from '../helpers/obsidian-mock';
-import { drag, clickExpandAll, flush, key, rowByTitle, rows, submitPrompt, treeOf, useViewHarness } from '../helpers/view';
+import { drag, flush, itemAt, key, makeView, rowByTitle, rows, submitPrompt, treeOf, useViewHarness } from '../helpers/view';
 import { computeAssigneeWrites } from '../../src/domain/writePlan';
 
 /**
@@ -25,18 +24,9 @@ describe('moves in a group that holds an outside-filter row', () => {
 		vault.addFile('Feature A.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Epic' });
 		vault.addFile('Feature B.md', { frontmatter: { type: 'Feature', order: 20 }, parentLink: 'Epic' });
 		vault.addFile('PBI.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: 'Feature A' });
-		const containerEl = document.body.createDiv();
-		const view = new ProductBacklogView({} as never, containerEl);
-		const anyView = view as unknown as Record<string, unknown>;
-		anyView.app = vault.app;
 		// Inference is what this test is about, so the type folders that would answer
 		// first are turned off.
-		anyView.config = new FakeViewConfig({ ...NO_TYPE_FOLDERS });
-		anyView.data = {
-			data: vault.entries().filter((e) => ['Feature B.md', 'PBI.md'].includes(e.file.path)),
-		};
-		view.onDataUpdated();
-		clickExpandAll(containerEl);
+		const { view, containerEl } = makeView(vault, { ...NO_TYPE_FOLDERS }, { only: ['Feature B.md', 'PBI.md'] });
 		return { view, containerEl, vault };
 	}
 
@@ -62,7 +52,7 @@ describe('moves in a group that holds an outside-filter row', () => {
 	it('writes nothing when Alt+arrow targets such a group', async () => {
 		const { view, containerEl, vault } = mixedView();
 		const tree = treeOf(containerEl);
-		view.selectItem(view.model?.byPath.get('Feature B.md') as never);
+		view.selectItem(itemAt(view, 'Feature B.md'));
 
 		key(tree, 'ArrowUp', { altKey: true });
 		key(tree, 'ArrowLeft', { altKey: true });
@@ -80,17 +70,13 @@ describe('new-item folder inference with context rows', () => {
 		vault.addFile('Elsewhere/Sub.md', { frontmatter: { type: 'PBI' }, parentLink: 'Feature' });
 		vault.addFile('Backlog/A.md', { frontmatter: { type: 'Task' }, parentLink: 'Sub' });
 		vault.addFile('Backlog/B.md', { frontmatter: { type: 'Task' }, parentLink: 'Sub' });
-		const containerEl = document.body.createDiv();
-		const view = new ProductBacklogView({} as never, containerEl);
-		const anyView = view as unknown as Record<string, unknown>;
-		anyView.app = vault.app;
 		// Inference is what this test is about, so the type folders that would answer
 		// first are turned off.
-		anyView.config = new FakeViewConfig({ ...NO_TYPE_FOLDERS });
-		anyView.data = {
-			data: vault.entries().filter((e) => e.file.path.startsWith('Backlog/')),
-		};
-		view.onDataUpdated();
+		const { containerEl } = makeView(
+			vault,
+			{ ...NO_TYPE_FOLDERS },
+			{ collapsed: true, only: ['Backlog/A.md', 'Backlog/B.md'] },
+		);
 
 		containerEl.querySelector<HTMLElement>('.pbl-new-btn')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 
@@ -107,16 +93,13 @@ describe('creating a child under a context parent', () => {
 		const vault = new FakeVault();
 		vault.addFile('Projects/Epic/Epic.md', { frontmatter: { type: 'Epic' } });
 		vault.addFile('Backlog/PBI.md', { frontmatter: { type: 'PBI' }, parentLink: 'Epic' });
-		const containerEl = document.body.createDiv();
-		const view = new ProductBacklogView({} as never, containerEl);
-		const anyView = view as unknown as Record<string, unknown>;
-		anyView.app = vault.app;
 		// Type folders off: the rule under test is where a child of a CONTEXT parent
 		// lands, which only comes up when the folder is being inferred at all.
-		anyView.config = new FakeViewConfig({ inferFolderHierarchy: true, ...NO_TYPE_FOLDERS });
-		anyView.data = { data: vault.entries().filter((e) => e.file.path === 'Backlog/PBI.md') };
-		view.onDataUpdated();
-		clickExpandAll(containerEl);
+		const { view, containerEl } = makeView(
+			vault,
+			{ inferFolderHierarchy: true, ...NO_TYPE_FOLDERS },
+			{ only: ['Backlog/PBI.md'] },
+		);
 		return { view, containerEl, vault };
 	}
 
@@ -148,15 +131,9 @@ describe('creating a child under a context parent', () => {
 	it('still puts children beside a parent that is a real result', async () => {
 		const vault = new FakeVault();
 		vault.addFile('Backlog/Epic/Epic.md', { frontmatter: { type: 'Epic' } });
-		const containerEl = document.body.createDiv();
-		const view = new ProductBacklogView({} as never, containerEl);
-		const anyView = view as unknown as Record<string, unknown>;
-		anyView.app = vault.app;
 		// Type folders off: the rule under test is where a child of a CONTEXT parent
 		// lands, which only comes up when the folder is being inferred at all.
-		anyView.config = new FakeViewConfig({ inferFolderHierarchy: true, ...NO_TYPE_FOLDERS });
-		anyView.data = { data: vault.entries() };
-		view.onDataUpdated();
+		const { containerEl } = makeView(vault, { inferFolderHierarchy: true, ...NO_TYPE_FOLDERS }, { collapsed: true });
 
 		rowByTitle(containerEl, 'Epic')
 			.querySelector<HTMLElement>('.pbl-add')
@@ -236,13 +213,9 @@ describe('write safety with context rows, across every entry point', () => {
 		// targeted refusal below.
 		vault.addFile('Robin.md', { frontmatter: { type: 'Resource' } });
 
-		const containerEl = document.body.createDiv();
-		const view = new ProductBacklogView({} as never, containerEl);
-		const anyView = view as unknown as Record<string, unknown>;
-		anyView.app = vault.app;
 		// Both roadmap axes configured, so the placement writes are entry points this
 		// sweep drives too — Set horizon, Clear horizon, Schedule, Unschedule.
-		const config = new FakeViewConfig({
+		const configValues = {
 			stateProperty: 'note.status',
 			horizonProperty: 'note.horizon',
 			startProperty: 'note.start',
@@ -268,27 +241,24 @@ describe('write safety with context rows, across every entry point', () => {
 			// the entry is withheld everywhere and the sweep drove nothing, which the
 			// `commandsDriven` check now refuses to let happen again.
 			iterationProperty: 'note.iteration',
-		});
+		};
 		// Every chip is a write surface too, and a chip is drawn by a VISIBLE column, so
 		// the sweep only reaches them if the base shows their properties. Without this
 		// the state, horizon and risk chips are absent and each `?.dispatchEvent` below
 		// drives nothing while still passing.
-		config.order = [
-			'note.tags',
-			'note.status',
-			'note.horizon',
-			'note.risk',
-			'note.priority',
-			'note.assignee',
-			'note.start',
-			'note.due',
-		];
-		anyView.config = config;
-		anyView.data = {
-			data: vault.entries().filter((e) => !CONTEXT_PATHS.includes(e.file.path)),
-		};
-		view.onDataUpdated();
-		clickExpandAll(containerEl);
+		const { view, containerEl } = makeView(vault, configValues, {
+			except: CONTEXT_PATHS,
+			order: [
+				'note.tags',
+				'note.status',
+				'note.horizon',
+				'note.risk',
+				'note.priority',
+				'note.assignee',
+				'note.start',
+				'note.due',
+			],
+		});
 		return { view, containerEl, vault };
 	}
 
@@ -511,17 +481,8 @@ describe('undo across the filter boundary', () => {
 		const vault = new FakeVault();
 		vault.addFile('Parent.md', { frontmatter: { type: 'Epic', order: 10, status: 'Active' } });
 		vault.addFile('Child.md', { frontmatter: { type: 'PBI', order: 10, status: 'New' }, parentLink: 'Parent' });
-		const containerEl = document.body.createDiv();
-		const view = new ProductBacklogView({} as never, containerEl);
-		const anyView = view as unknown as Record<string, unknown>;
-		anyView.app = vault.app;
-		const config = new FakeViewConfig({ stateProperty: 'note.status' });
 		// A chip is drawn by a VISIBLE column, so the base has to show the property.
-		config.order = ['note.status'];
-		anyView.config = config;
-		anyView.data = { data: vault.entries() };
-		view.onDataUpdated();
-		clickExpandAll(containerEl);
+		const { view, containerEl } = makeView(vault, { stateProperty: 'note.status' }, { order: ['note.status'] });
 
 		// Mark the parent done through its chip — an ordinary write to a result row.
 		rowByTitle(containerEl, 'Parent')
@@ -533,8 +494,7 @@ describe('undo across the filter boundary', () => {
 
 		// The base's filter excludes done items, so the requery demotes the parent
 		// to a context row above its still-open child.
-		anyView.data = { data: vault.entries().filter((e) => e.file.path !== 'Parent.md') };
-		view.onDataUpdated();
+		setResults(view, vault.entries().filter((e) => e.file.path !== 'Parent.md'));
 		expect(view.model?.byPath.get('Parent.md')?.outsideFilter).toBe(true);
 
 		// The replay-time context-row verdict would refuse exactly this restore;
@@ -553,15 +513,11 @@ describe('toolbar figures describe the Base results', () => {
 		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10, status: 'Active' } });
 		vault.addFile('Done.md', { frontmatter: { type: 'PBI', order: 10, status: 'Done' }, parentLink: 'Epic' });
 		vault.addFile('Open.md', { frontmatter: { type: 'PBI', order: 20, status: 'New' }, parentLink: 'Epic' });
-		const containerEl = document.body.createDiv();
-		const view = new ProductBacklogView({} as never, containerEl);
-		const anyView = view as unknown as Record<string, unknown>;
-		anyView.app = vault.app;
-		anyView.config = new FakeViewConfig({ stateProperty: 'note.status' });
-		anyView.data = { data: vault.entries().filter((e) => e.file.path !== 'Epic.md') };
-		view.onDataUpdated();
-		view.setShowCompleted(showCompleted);
-		clickExpandAll(containerEl);
+		const { view, containerEl } = makeView(
+			vault,
+			{ stateProperty: 'note.status' },
+			{ except: ['Epic.md'], hideCompleted: !showCompleted },
+		);
 		return { view, containerEl };
 	}
 
@@ -599,15 +555,11 @@ describe('rollups describe the Base results only', () => {
 		vault.addFile('PBI.md', { frontmatter: { type: 'PBI', status: 'New' }, parentLink: 'Feature A' });
 		vault.addFile('Mid.md', { frontmatter: { type: 'PBI', order: 10, status: 'Done' }, parentLink: 'Feature B' });
 		vault.addFile('Task.md', { frontmatter: { type: 'Task', order: 10, status: 'New' }, parentLink: 'Mid' });
-		const containerEl = document.body.createDiv();
-		const view = new ProductBacklogView({} as never, containerEl);
-		const anyView = view as unknown as Record<string, unknown>;
-		anyView.app = vault.app;
-		anyView.config = new FakeViewConfig({ stateProperty: 'note.status' });
-		anyView.data = {
-			data: vault.entries().filter((e) => !['Epic.md', 'Feature A.md', 'Mid.md'].includes(e.file.path)),
-		};
-		view.onDataUpdated();
+		const { view } = makeView(
+			vault,
+			{ stateProperty: 'note.status' },
+			{ collapsed: true, except: ['Epic.md', 'Feature A.md', 'Mid.md'] },
+		);
 
 		// Stated from the rule, not from the implementation: a rollup counts the
 		// results below an item, and nothing else.

@@ -1,9 +1,8 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
-import { ProductBacklogView } from '../../src/view/backlogView';
-import { FakeVault, FakeViewConfig } from '../helpers/vault';
+import { FakeVault } from '../helpers/vault';
 import { Menu, Notice } from '../helpers/obsidian-mock';
-import { flush, key, makeView, treeOf, useViewHarness } from '../helpers/view';
+import { flush, itemAt, key, makeView, treeOf, useViewHarness } from '../helpers/view';
 import { cardDrag } from '../helpers/dnd';
 import { cardByTitle, expandColumns } from '../helpers/board';
 import { bucketNames, laneCountOf, laneNames, laneRoadmap, lanesOf, rowFor, shelfTitles } from '../helpers/roadmap';
@@ -47,19 +46,16 @@ describe('write safety with context rows, across the board’s entry points', ()
 		// is built from the MODEL, which is the reason the menu can offer an iteration the
 		// current projection is not showing.
 		vault.addFile('Sprint 12.md', { frontmatter: { type: 'Iteration', order: 30, start: '2026-09-07', due: '2026-09-18' } });
-		const containerEl = document.body.createDiv();
-		const view = new ProductBacklogView({} as never, containerEl);
-		const anyView = view as unknown as Record<string, unknown>;
-		anyView.app = vault.app;
-		anyView.config = new FakeViewConfig({
-			stateProperty: 'note.status',
-			stateValues: 'New, Active, Done',
-			iterationProperty: 'note.iteration',
-		});
-		anyView.data = { data: vault.entries().filter((e) => !['Epic.md', 'Mid.md'].includes(e.file.path)) };
-		view.onDataUpdated();
 		// Focus is working position, not a base setting: set through the view.
-		view.setFocusLevel('PBI');
+		const { view, containerEl } = makeView(
+			vault,
+			{
+				stateProperty: 'note.status',
+				stateValues: 'New, Active, Done',
+				iterationProperty: 'note.iteration',
+			},
+			{ collapsed: true, except: ['Epic.md', 'Mid.md'], focus: 'PBI' },
+		);
 		view.setProjection('board');
 		// Every column open: this asks what a write path does to a context card, and a
 		// folded Done column would take the context card off screen before the question.
@@ -89,13 +85,13 @@ describe('write safety with context rows, across the board’s entry points', ()
 
 	it('never writes to a context card from the keyboard or the menu either', async () => {
 		const { view, containerEl, vault } = boardStressView();
-		const mid = view.model?.byPath.get('Mid.md');
+		const mid = itemAt(view, 'Mid.md');
 		expect(mid?.outsideFilter).toBe(true);
 		const tree = treeOf(containerEl);
 
 		// Selected as a card and moved with the shortcut: the path a drag cannot take
 		// (a context card is never wired as a draggable) and a keyboard can.
-		view.selectItem(mid as never);
+		view.selectItem(mid);
 		key(tree, 'ArrowRight', { altKey: true });
 		key(tree, 'ArrowLeft', { altKey: true });
 		await flush();
@@ -103,7 +99,7 @@ describe('write safety with context rows, across the board’s entry points', ()
 		// And the menu, the one path that works everywhere: it withholds every entry
 		// that would edit this note — Set state included, which on the board is the
 		// drag's equal and so must be withheld exactly as the drag is.
-		view.showContextMenuFor(mid as never);
+		view.showContextMenuFor(mid);
 		expect(Menu.lastShown?.item('Set state')).toBeUndefined();
 		expect(Menu.lastShown?.item('Set type')).toBeUndefined();
 		expect(Menu.lastShown?.item('Set iteration')).toBeUndefined();
@@ -114,18 +110,18 @@ describe('write safety with context rows, across the board’s entry points', ()
 		// nobody named. The card menu is a second set of entry points onto one rule, which
 		// is what this file exists to ask — and `Set iteration` reached it (2026-08-16)
 		// asserting nothing until this line.
-		view.showContextMenuFor(view.model?.byPath.get('PBI.md') as never);
+		view.showContextMenuFor(itemAt(view, 'PBI.md'));
 		expect(Menu.lastShown?.item('Set iteration')).toBeDefined();
 	});
 
 	it('refuses the whole batch if a board write ever names a context item', async () => {
 		const { view, vault } = boardStressView();
-		const mid = view.model?.byPath.get('Mid.md');
+		const mid = itemAt(view, 'Mid.md');
 		expect(mid?.outsideFilter).toBe(true);
 
 		// No UI produces this — that is the point: the last line of defence is
 		// structural, so a future entry point cannot reopen the hole by omission.
-		const applied = await view.performBoardMove(mid as never, 'New');
+		const applied = await view.performBoardMove(mid, 'New');
 
 		expect(applied).toBe(false);
 		expect(vault.writeLog).toEqual([]);
@@ -189,22 +185,19 @@ describe('write safety with context rows, across the Deliverables board’s entr
 			parentLink: 'Epic',
 		});
 		vault.addFile('Task.md', { frontmatter: { type: 'Task', order: 10 }, parentLink: 'Ctx' });
-		const containerEl = document.body.createDiv();
-		const view = new ProductBacklogView({} as never, containerEl);
-		const anyView = view as unknown as Record<string, unknown>;
-		anyView.app = vault.app;
-		anyView.config = new FakeViewConfig({ deliverableStateProperty: 'note.deliverableStatus' });
-		anyView.data = { data: vault.entries().filter((e) => e.file.path !== 'Ctx.md') };
-		view.onDataUpdated();
 		// Focus is working position, not a base setting: set through the view.
-		view.setFocusLevel('PBI');
+		const { view, containerEl } = makeView(
+			vault,
+			{ deliverableStateProperty: 'note.deliverableStatus' },
+			{ collapsed: true, except: ['Ctx.md'], focus: 'PBI' },
+		);
 		view.setProjection('deliverables');
 		return { view, containerEl, vault };
 	}
 
 	it('never draws a card for the context row, whatever candidates the board considers', () => {
 		const { view, containerEl } = deliverablesStressView();
-		const ctx = view.model?.byPath.get('Ctx.md');
+		const ctx = itemAt(view, 'Ctx.md');
 		expect(ctx?.outsideFilter).toBe(true);
 		// It IS a focus root here — a board that read `model.roots` (the requirements
 		// board's own shape) would draw it as a context card, exactly like the PBI
@@ -218,7 +211,7 @@ describe('write safety with context rows, across the Deliverables board’s entr
 
 	it('never writes to a context card from the keyboard or the menu either', async () => {
 		const { view, containerEl, vault } = deliverablesStressView();
-		const ctx = view.model?.byPath.get('Ctx.md');
+		const ctx = itemAt(view, 'Ctx.md');
 		expect(ctx?.outsideFilter).toBe(true);
 		const tree = treeOf(containerEl);
 		// `applySafely`'s own structural refusal would catch a stray write regardless, so
@@ -233,7 +226,7 @@ describe('write safety with context rows, across the Deliverables board’s entr
 		// finding the path among `snapshot.board.columns[*].cards`, and the test above
 		// already established Ctx is never among them — there is no fallback to the
 		// model that a keyboard-only path could exploit to reach what the drag cannot.
-		view.selectItem(ctx as never);
+		view.selectItem(ctx);
 		key(tree, 'ArrowRight', { altKey: true });
 		key(tree, 'ArrowLeft', { altKey: true });
 		await flush();
@@ -248,7 +241,7 @@ describe('write safety with context rows, across the Deliverables board’s entr
 		// Set state on a Deliverables-board card when only the Deliverable key is
 		// configured') — the withholding here is `editable`'s (`!item.outsideFilter`),
 		// not the key being unconfigured.
-		view.showContextMenuFor(ctx as never);
+		view.showContextMenuFor(ctx);
 		expect(Menu.lastShown?.item('Set state')).toBeUndefined();
 		expect(Menu.lastShown?.item('Set type')).toBeUndefined();
 		expect(vault.writeLog).toEqual([]);
@@ -256,7 +249,7 @@ describe('write safety with context rows, across the Deliverables board’s entr
 
 	it('refuses the whole batch if a Deliverables board write ever names a context item', async () => {
 		const { view, vault } = deliverablesStressView();
-		const ctx = view.model?.byPath.get('Ctx.md');
+		const ctx = itemAt(view, 'Ctx.md');
 		expect(ctx?.outsideFilter).toBe(true);
 
 		// No UI produces this — that is the point: the last line of defence is
@@ -265,7 +258,7 @@ describe('write safety with context rows, across the Deliverables board’s entr
 		// withholds Set state outright (the two tests above); the structural backstop is
 		// exercised directly, exactly as the board and roadmap blocks above exercise
 		// `performBoardMove`/`performHorizonMove`.
-		const applied = await view.performDeliverablesBoardMove(ctx as never, 'Review');
+		const applied = await view.performDeliverablesBoardMove(ctx, 'Review');
 
 		expect(applied).toBe(false);
 		expect(vault.writeLog).toEqual([]);
@@ -289,15 +282,12 @@ describe('write safety with context rows, across the roadmap’s entry points', 
 		// the buckets or the menu can only have come from the context row itself.
 		vault.addFile('Mid.md', { frontmatter: { type: 'PBI', order: 10, horizon: 'Ancient' }, parentLink: 'Feature B' });
 		vault.addFile('Task.md', { frontmatter: { type: 'Task', order: 10 }, parentLink: 'Mid' });
-		const containerEl = document.body.createDiv();
-		const view = new ProductBacklogView({} as never, containerEl);
-		const anyView = view as unknown as Record<string, unknown>;
-		anyView.app = vault.app;
-		anyView.config = new FakeViewConfig({ horizonProperty: 'note.horizon' });
-		anyView.data = { data: vault.entries().filter((e) => !['Epic.md', 'Mid.md'].includes(e.file.path)) };
-		view.onDataUpdated();
 		// Focus is working position, not a base setting: set through the view.
-		view.setFocusLevel('PBI');
+		const { view, containerEl } = makeView(
+			vault,
+			{ horizonProperty: 'note.horizon' },
+			{ collapsed: true, except: ['Epic.md', 'Mid.md'], focus: 'PBI' },
+		);
 		view.setProjection('roadmap');
 		return { view, containerEl, vault };
 	}
@@ -325,12 +315,12 @@ describe('write safety with context rows, across the roadmap’s entry points', 
 
 	it('never writes to a context card from the keyboard or the menu either', async () => {
 		const { view, containerEl, vault } = roadmapStressView();
-		const mid = view.model?.byPath.get('Mid.md');
+		const mid = itemAt(view, 'Mid.md');
 		const tree = treeOf(containerEl);
 
 		// Selected as a card and moved with the shortcut: the path a drag cannot take
 		// (a context card is never wired as a draggable) and a keyboard can.
-		view.selectItem(mid as never);
+		view.selectItem(mid);
 		key(tree, 'ArrowRight', { altKey: true });
 		key(tree, 'ArrowLeft', { altKey: true });
 		await flush();
@@ -338,7 +328,7 @@ describe('write safety with context rows, across the roadmap’s entry points', 
 		// And the menu, the one path that works everywhere: it withholds every entry
 		// that would edit this note — Set horizon included, which on the roadmap is
 		// the drag's equal and so must be withheld exactly as the drag is.
-		view.showContextMenuFor(mid as never);
+		view.showContextMenuFor(mid);
 		expect(Menu.lastShown?.item('Set horizon')).toBeUndefined();
 		expect(Menu.lastShown?.item('Set type')).toBeUndefined();
 		expect(vault.writeLog).toEqual([]);
@@ -346,11 +336,11 @@ describe('write safety with context rows, across the roadmap’s entry points', 
 
 	it('refuses the whole batch if a horizon write ever names a context item', async () => {
 		const { view, vault } = roadmapStressView();
-		const mid = view.model?.byPath.get('Mid.md');
+		const mid = itemAt(view, 'Mid.md');
 
 		// No UI produces this — that is the point: the last line of defence is
 		// structural, so a future entry point cannot reopen the hole by omission.
-		const applied = await view.performHorizonMove(mid as never, 'Now');
+		const applied = await view.performHorizonMove(mid, 'Now');
 
 		expect(applied).toBe(false);
 		expect(vault.writeLog).toEqual([]);
@@ -365,7 +355,7 @@ describe('write safety with context rows, across the roadmap’s entry points', 
 		// leads with the drawn buckets and then names what the RESULTS carry — cannot
 		// offer it either. Both halves, because either one alone would let it back in.
 		expect(bucketNames(containerEl)).toEqual(['Now', 'Next', 'Later']);
-		view.showContextMenuFor(view.model?.byPath.get('PBI.md') as never);
+		view.showContextMenuFor(itemAt(view, 'PBI.md'));
 		const offered = Menu.lastShown?.item('Set horizon')?.submenu?.items.map((i) => i.titleText);
 		expect(offered).toEqual(['Now', 'Next', 'Later', 'Clear horizon']);
 	});
@@ -402,18 +392,15 @@ describe('write safety with context rows, across the resources axis’s entry po
 			parentLink: 'Feature B',
 		});
 		vault.addFile('Task.md', { frontmatter: { type: 'Task', order: 10 }, parentLink: 'Mid' });
-		const containerEl = document.body.createDiv();
-		const view = new ProductBacklogView({} as never, containerEl);
-		const anyView = view as unknown as Record<string, unknown>;
-		anyView.app = vault.app;
-		anyView.config = new FakeViewConfig({
-			assigneeProperty: 'note.assignee',
-			startProperty: 'note.start',
-			targetProperty: 'note.due',
-		});
-		anyView.data = { data: vault.entries().filter((e) => !['Epic.md', 'Mid.md'].includes(e.file.path)) };
-		view.onDataUpdated();
-		view.setFocusLevel('PBI');
+		const { view, containerEl } = makeView(
+			vault,
+			{
+				assigneeProperty: 'note.assignee',
+				startProperty: 'note.start',
+				targetProperty: 'note.due',
+			},
+			{ collapsed: true, except: ['Epic.md', 'Mid.md'], focus: 'PBI' },
+		);
 		view.setProjection('roadmap');
 		view.setAxisPick('resources');
 		return { view, containerEl, vault };
@@ -446,12 +433,12 @@ describe('write safety with context rows, across the resources axis’s entry po
 
 	it('never writes to a context card from the keyboard or the menu either', async () => {
 		const { view, containerEl, vault } = laneStressView();
-		const mid = view.model?.byPath.get('Mid.md');
+		const mid = itemAt(view, 'Mid.md');
 		const tree = treeOf(containerEl);
 
 		// Selected as a card and moved with the shortcut: the path a drag cannot take (a
 		// context card is never wired as a draggable) and a keyboard can.
-		view.selectItem(mid as never);
+		view.selectItem(mid);
 		key(tree, 'ArrowUp', { altKey: true });
 		key(tree, 'ArrowDown', { altKey: true });
 		await flush();
@@ -459,7 +446,7 @@ describe('write safety with context rows, across the resources axis’s entry po
 		// And the menu, the one path that works everywhere: it withholds every entry that
 		// would edit this note — Set assignee included, which on this axis is the drag's
 		// equal and so must be withheld exactly as the drag is.
-		view.showContextMenuFor(mid as never);
+		view.showContextMenuFor(mid);
 		expect(Menu.lastShown?.item('Set assignee')).toBeUndefined();
 		expect(Menu.lastShown?.item('Set type')).toBeUndefined();
 		expect(vault.writeLog).toEqual([]);
@@ -500,12 +487,12 @@ describe('write safety with context rows, across the resources axis’s entry po
 
 	it('refuses the whole batch if a resource write ever names a context item', async () => {
 		const { view, vault } = laneStressView();
-		const mid = view.model?.byPath.get('Mid.md');
+		const mid = itemAt(view, 'Mid.md');
 		const sam = vault.files.get('Sam.md');
 
 		// No UI produces this — that is the point: the last line of defence is structural,
 		// so a future entry point cannot reopen the hole by omission.
-		const applied = await view.performResourceMove(mid as never, sam ?? null);
+		const applied = await view.performResourceMove(mid, sam ?? null);
 
 		expect(applied).toBe(false);
 		expect(vault.writeLog).toEqual([]);
@@ -514,13 +501,13 @@ describe('write safety with context rows, across the resources axis’s entry po
 
 	it('refuses it WHOLE when the move also carries dates', async () => {
 		const { view, vault } = laneStressView();
-		const mid = view.model?.byPath.get('Mid.md');
+		const mid = itemAt(view, 'Mid.md');
 		const sam = vault.files.get('Sam.md');
 
 		// The axis's second dimension does not get its own answer here: both halves ride
 		// one `ItemWrite`, and the gate refuses a batch whole, so there is no arrangement
 		// in which the dates land on an excluded note and the assignee does not.
-		const applied = await view.performResourceMove(mid as never, sam ?? null, {
+		const applied = await view.performResourceMove(mid, sam ?? null, {
 			plan: { start: '2026-08-08', target: '2026-08-17' },
 			ends: ['start', 'target'],
 		});
@@ -531,7 +518,7 @@ describe('write safety with context rows, across the resources axis’s entry po
 
 	it('never mints a row from a context value, and never counts one', () => {
 		const { view, containerEl } = laneStressView();
-		const mid = view.model?.byPath.get('Mid.md');
+		const mid = itemAt(view, 'Mid.md');
 		expect(mid?.outsideFilter).toBe(true);
 
 		// The membership half of the rule: an excluded note's assignee is not this base's
@@ -548,7 +535,7 @@ describe('write safety with context rows, across the resources axis’s entry po
 		// RESULTS carry — must not offer it from the other end.
 		const { view } = laneStressView();
 
-		view.showContextMenuFor(view.model?.byPath.get('PBI.md') as never);
+		view.showContextMenuFor(itemAt(view, 'PBI.md'));
 		const offered = Menu.lastShown?.item('Set assignee')?.submenu?.items.map((i) => i.titleText);
 
 		expect(offered).toEqual(['Sam', 'New resource...', 'Clear assignee']);
@@ -588,18 +575,15 @@ describe('write safety with context rows, across the timeline’s entry points',
 			parentLink: 'Feature B',
 		});
 		vault.addFile('Task.md', { frontmatter: { type: 'Task', order: 10 }, parentLink: 'Mid' });
-		const containerEl = document.body.createDiv();
-		const view = new ProductBacklogView({} as never, containerEl);
-		const anyView = view as unknown as Record<string, unknown>;
-		anyView.app = vault.app;
-		anyView.config = new FakeViewConfig({
-			startProperty: 'note.start',
-			targetProperty: 'note.target',
-		});
-		anyView.data = { data: vault.entries().filter((e) => !['Epic.md', 'Mid.md'].includes(e.file.path)) };
-		view.onDataUpdated();
 		// Focus is working position, not a base setting: set through the view.
-		view.setFocusLevel('PBI');
+		const { view, containerEl } = makeView(
+			vault,
+			{
+				startProperty: 'note.start',
+				targetProperty: 'note.target',
+			},
+			{ collapsed: true, except: ['Epic.md', 'Mid.md'], focus: 'PBI' },
+		);
 		view.setProjection('roadmap');
 		return { view, containerEl, vault };
 	}
@@ -626,9 +610,9 @@ describe('write safety with context rows, across the timeline’s entry points',
 		// rather than filtering, because dropping the offending write alone would apply
 		// the rest and leave the hierarchy half-updated.
 		const { view, vault } = timelineStressView();
-		const mid = view.model?.byPath.get('Mid.md');
+		const mid = itemAt(view, 'Mid.md');
 
-		const moved = await view.performScheduleMove(mid as never, { start: '2026-09-01' });
+		const moved = await view.performScheduleMove(mid, { start: '2026-09-01' });
 
 		expect(moved).toBe(false);
 		expect(vault.fm('Mid.md').start).toBe('2026-08-01');
@@ -649,9 +633,9 @@ describe('write safety with context rows, across the timeline’s entry points',
 
 	it('offers no Schedule or Unschedule on a context row’s menu', () => {
 		const { view } = timelineStressView();
-		const mid = view.model?.byPath.get('Mid.md');
+		const mid = itemAt(view, 'Mid.md');
 
-		view.showContextMenuFor(mid as never);
+		view.showContextMenuFor(mid);
 
 		expect(Menu.lastShown?.item('Schedule')).toBeUndefined();
 		expect(Menu.lastShown?.item('Unschedule')).toBeUndefined();
@@ -723,8 +707,8 @@ describe('write safety with context rows, at the dependency connector', () => {
 		// reach — the shape that holds for an entry point not yet written.
 		const vault = linkStressVault();
 		const { view } = linkStressView(vault);
-		const context = view.model?.byPath.get('Epic.md');
-		const other = view.model?.byPath.get('Other.md');
+		const context = itemAt(view, 'Epic.md');
+		const other = itemAt(view, 'Other.md');
 		if (!context || !other) throw new Error('fixture not as expected');
 		expect(context.outsideFilter).toBe(true);
 		await view.applySafely([{ file: context.file, dependsOn: { add: other.file } }]);

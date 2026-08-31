@@ -2,7 +2,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { FakeVault } from '../helpers/vault';
 import { Menu, Notice } from '../helpers/obsidian-mock';
-import { fixture, flush, key, makeView, rowByTitle, titlesOf, treeOf, useViewHarness } from '../helpers/view';
+import { fixture, flush, key, makeView, refresh, rowByTitle, titlesOf, treeOf, useViewHarness } from '../helpers/view';
 
 useViewHarness();
 
@@ -70,8 +70,7 @@ describe('view state details', () => {
 		view.setCollapsed('Epic A.md', false);
 		// The write lands and Bases refreshes with the child present.
 		vault.addFile('PBI A1.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: 'Epic A' });
-		(view as unknown as Record<string, unknown>).data = { data: vault.entries() };
-		view.onDataUpdated();
+		refresh(view, vault);
 
 		// The initial collapse must not apply here and hide what was just put there.
 		expect(titlesOf(containerEl)).toContain('PBI A1');

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { NullValue } from '../helpers/obsidian-mock';
-import { FakeVault } from '../helpers/vault';
+import { fakeController, FakeVault } from '../helpers/vault';
 import { Harness, makeView, useViewHarness } from '../helpers/view';
 import { BacklogItem } from '../../src/domain/model';
 import { ProductBacklogView } from '../../src/view/backlogView';
@@ -324,7 +324,7 @@ describe('renderInputs', () => {
 	it('answers before the first data update, with no model to probe', () => {
 		// Bases mounts the view before it has handed it anything, so a pass can ask for the
 		// fingerprint with `host.model` still null.
-		const view = new ProductBacklogView({} as never, document.body.createDiv());
+		const view = new ProductBacklogView(fakeController(), document.body.createDiv());
 		expect(() => renderInputs(view)).not.toThrow();
 	});
 

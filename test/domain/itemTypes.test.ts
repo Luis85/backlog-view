@@ -9,6 +9,7 @@ import {
 	isMarkerType,
 	isReleaseType,
 	isResourceType,
+	LadderPosition,
 	placementEnds,
 	PlacementEnd,
 } from '../../src/domain/itemTypes';
@@ -27,19 +28,13 @@ import {
 	typeFolderKey,
 } from '../../src/domain/typeVocabulary';
 import { settingsWith } from '../helpers/settings';
-import { FakeVault } from '../helpers/vault';
+import { FakeVault, FakeViewConfig } from '../helpers/vault';
 
 const settings = defaultSettings();
 
 /** Stand-in for BasesViewConfig backed by a plain object. */
-function fakeConfig(values: Record<string, unknown> = {}) {
-	return {
-		get: (key: string) => values[key],
-		getAsPropertyId: (key: string) => {
-			const v = values[key];
-			return typeof v === 'string' && v.includes('.') ? v : null;
-		},
-	} as never;
+function fakeConfig(values: Record<string, unknown> = {}): FakeViewConfig {
+	return new FakeViewConfig(values);
 }
 
 /** A backlog holding one of everything, so a rung can be asked for by name. */
@@ -478,8 +473,8 @@ describe('Release is a marker, not a rung', () => {
 	// it already makes of a `Milestone`, because the fixture and the dated settings it
 	// needs are that file's.
 	it('offers no legal children — a release holds nothing', () => {
-		const release = { ladder: LEVELS, typeName: RELEASE_TYPE, effectiveLevelIndex: -1 };
-		expect(childTypeChoices(release as never)).toEqual([]);
+		const release: LadderPosition = { ladder: LEVELS, typeName: RELEASE_TYPE, levelIndex: -1, effectiveLevelIndex: -1 };
+		expect(childTypeChoices(release)).toEqual([]);
 	});
 
 	it('leaves every other classification alone', () => {

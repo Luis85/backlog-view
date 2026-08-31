@@ -98,7 +98,7 @@ export function pannedGrid(
 	// own edge, not the content's, the geometry mismatch `overLeadColumn` guards against.
 	const left = rectLeft - scrollLeft;
 	overlay.getBoundingClientRect = () =>
-		({ left, right: 4000, top: 0, bottom: 400, width: 4000, height: 400, x: left, y: 0, toJSON: () => ({}) }) as DOMRect;
+		({ left, right: 4000, top: 0, bottom: 400, width: 4000, height: 400, x: left, y: 0, toJSON: () => ({}) });
 	// The SCROLLER's own rect, unlike the overlay's, does not move with its internal
 	// scroll — a real element's position in the page is unaffected by how far it has
 	// scrolled its own content. Constant at `rectLeft - TIMELINE_LEAD_PX`: at zero scroll
@@ -115,7 +115,7 @@ export function pannedGrid(
 			x: scrollerLeft,
 			y: 0,
 			toJSON: () => ({}),
-		}) as DOMRect;
+		});
 	// The viewport X of a given GRID OFFSET, computed from this helper's own inputs and
 	// never by reading the stubbed rect back. A test that asked the rect would mirror
 	// whatever the implementation does with it, including getting the sign wrong; stating

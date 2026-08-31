@@ -15,7 +15,7 @@ const settings = resolveSettings(
 		stateProperty: 'note.status',
 		stateValues: 'New, Doing, Done',
 		iterationProperty: 'note.iteration',
-	}) as never,
+	}),
 );
 
 const SPRINT = 'Sprint 12.md';

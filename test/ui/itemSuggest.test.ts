@@ -2,6 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { installObsidianDom } from '../helpers/dom';
 import { ItemSuggestModal } from '../../src/ui/itemSuggest';
+import { fakeApp } from '../helpers/vault';
 
 installObsidianDom();
 
@@ -15,7 +16,7 @@ describe('the item suggester', () => {
 		{ label: 'No detail', value: 2 },
 	];
 	const modal = () =>
-		new ItemSuggestModal({} as never, { placeholder: 'Pick one', choices, onChoose: () => undefined });
+		new ItemSuggestModal(fakeApp(), { placeholder: 'Pick one', choices, onChoose: () => undefined });
 
 	it('searches the detail as well as the label', () => {
 		// A title is not always the word someone remembers; a path often is.
