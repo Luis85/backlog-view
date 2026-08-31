@@ -1,0 +1,117 @@
+# PR 223 review fixes — ranking findings
+
+Three findings from the code review of PR 223 (`feat: one global rank, ranking at the
+focused level`). Two write a wrong rank; one refuses in silence. Each is fixed where every
+caller routes through it, not at the reported symptom.
+
+## Context
+
+The branch `claude/backlog-ranking-levels-152ntx` replaced sibling-scoped ordering with one
+global rank. A rank comes from `anchoredOrder` (`src/domain/writePlan.ts`): a placement
+names an anchor row and a side, and the number is a midpoint between that anchor's
+neighbours in the globally rank-sorted population. Three inputs reach it — a drag
+(`src/domain/dropTargets.ts`), Alt+arrow and the move menu (both via
+`src/view/interactions/structure.ts`).
+
+`isUnrankedContext(row)` (`src/domain/dropTargets.ts`) is `row.outsideFilter && row.order
+=== null`: a row the Base excluded that carries no rank. No writer may ever give it one, so
+it constrains nothing. `focusPeers(model)` is `model.roots` with those rows dropped.
+
+## Global constraints
+
+- `npm run check` passes: build, lint, markdown, coverage-thresholded tests, fallow, docs
+  register. All six. Coverage thresholds in `vitest.config.mts` only ever go up.
+- Every invariant a comment states gets a test that fails without it, and the test is
+  **watched failing**: revert the fix, run it, see red, restore. Say in the report that you
+  did this and what the failure output was.
+- No new i18n keys unless no existing key says the fact. Text rules in `CLAUDE.md` apply.
+- No new module and no new abstraction. Each fix is inside an existing function or is one
+  existing predicate applied at a population site that forgot it.
+- Add the `[Unreleased]` entry your change earns to `CHANGELOG.md`.
+- Comment in the register's voice: state the rule and the defect it prevents, not the
+  mechanics of the diff.
+
+## Task 1 — the tree branch drops unranked context rows from the population
+
+**Defect.** `siblingContext` (`src/view/interactions/structure.ts`) and `siblingPosition`
+(`src/domain/dropTargets.ts`) both filter unranked context rows out of the population in
+their FOCUS branch (via `focusPeers`) and both leave them in the TREE branch, where the
+population is `item.parent ? item.parent.children : model.realRoots`.
+
+An unranked context row always sorts last, so it becomes the anchor for any append.
+`anchoredOrder` then skips it as an anchor and appends past the END of the whole global
+population.
+
+Reproduced: root group `Epic A(1000)`, `Epic B(2000)`, `Epic C(outsideFilter, order null)`,
+with a nested `Feature C1(3000)`. `Move to bottom` / `Move down` on Epic A writes `4000` —
+past Feature C1 — instead of a slot beside Epic B. `compareSiblings` keeps the unranked
+context row last, so the rendered tree does not change: an offered command that writes,
+spends the undo slot and moves nothing.
+
+`edgeTarget`'s "already at that edge" test (`ctx.idx === ctx.fullList.length - 1`) reads the
+same unfiltered list, which is why `Move to bottom` is offered at all.
+
+**Required behaviour.** The tree branch ranks among the same rows the focus branch does: an
+unranked context row is neither a peer to swap past nor an anchor to land beside, in either
+branch. A RANKED context row stays in both — its order is a real placement constraint.
+
+Both `siblingContext` and `siblingPosition` must read one shared function, not two spellings
+of one rule: the keyboard and the drag disagreeing about the same row is the defect this
+whole area keeps producing. `focusPeers` is today's shared function over `model.roots`;
+generalise it to the population it is handed rather than adding a second filter beside it.
+
+**Tests.** `test/domain/dropTargets.test.ts` for the drag, `test/view/` for the keyboard and
+menu paths. Assert the rule at BOTH kinds of population — a nested group
+(`parent.children`) and `model.realRoots` — and assert that a RANKED context row is still a
+peer. `test/view/contextRowWrites.test.ts` is the invariant suite for this area; read it
+before writing new fixtures.
+
+## Task 2 — `anchoredOrder` ignores its anchor when the population is empty
+
+**Defect.** `anchoredOrder` (`src/domain/writePlan.ts`) answers a hard-coded `ORDER_SPACING`
+when `usable.length === 0`, discarding the anchor. `dropPlacement`'s peer-scoped fallback
+reaches it whenever the target has no peers, because that fallback's population IS the peer
+list.
+
+Reproduced on a legacy vault: dropping inside a childless `Feature A1(10)` — tied with
+`Feature B1(10)`, which is what puts the drop on the fallback path — returns `{order: 1000}`,
+a rank unrelated to the drop site. And because it is a constant, `rankTaken` finds 1000
+occupied on the next such gesture anywhere in the vault, so the legacy-vault fallback works
+exactly once per vault and refuses `tied` from then on.
+
+**Required behaviour.** An empty population with an anchor is not an empty population. Only
+the anchorless case is the first rank in an empty backlog.
+
+- No anchor: `ORDER_SPACING`, unchanged — nothing to be between.
+- Anchor carrying an order: a rank one spacing clear of it on the given side. `edgeRank` is
+  the one arithmetic for that and already refuses a value it cannot get clear of; do not
+  spell the expression a second time.
+- Anchor carrying no order: the `unranked` refusal, which is what the global path already
+  answers for a null-order neighbour (see the neighbour check below the early return). An
+  unranked CONTEXT anchor is handled above this line already and must stay handled there.
+
+**Tests.** `test/domain/rankedPlacement.test.ts` and the `writePlan` suites. Drive it through
+`dropPlacement` with an empty peer group on a tied legacy fixture — `orderForTarget` is
+deliberately not exported (ADR 0033) and the test must not re-open that door. Assert the
+second gesture too: the bug's signature is that the first drop worked and the second refused.
+
+## Task 3 — `indent` refuses a vanished named destination in silence
+
+**Defect.** `indent` (`src/view/interactions/structure.ts`) returns with no notice when
+`namedParentPath` no longer resolves in the model:
+
+```ts
+if (namedParentPath !== undefined && !named) return;
+```
+
+Its own docblock says such a command "must re-resolve THAT note by path and refuse if it is
+no longer a valid destination". It does refuse — silently. `liveItem`, `performDrop` and
+`newItemOrder` all report the same fact.
+
+**Required behaviour.** Report it, the way `liveItem` does. `rank.itemGone` already says it
+("That item is no longer in this base, so nothing was moved.") and names the note the
+command was about, which is exactly what the vanished destination is — reuse it rather than
+adding a key. The keyboard path passes no path and is unaffected.
+
+**Tests.** A view test that opens `Indent under "X"` against a model that no longer holds X
+and asserts the notice, beside the existing silent-refusal coverage.
