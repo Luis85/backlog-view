@@ -1723,7 +1723,7 @@ open the register with the plugin displaying it.
 
 ## Open questions the implementing session settles
 
-Three findings from review (PR #234) that are design decisions rather than defects. Each
+Four findings from review (PR #234) that are design decisions rather than defects. Each
 is stated here rather than answered, because the answer wants real fixtures in front of
 it. **Settle each one before writing the task it names, and record the answer where the
 plan says the behaviour is** — an open question left open past its task becomes the
@@ -1742,6 +1742,16 @@ behaviour nobody chose.
   leaves the stamp keys empty and `computeStateWrites` cannot produce the `finished` value
   Task 9 expects. Widen the options bag, or drop the stamp from what this view claims. A
   promise the bag cannot bind is the first kind of untrue sentence this register refuses.
+- **Does "of every type" reach the test catalog?** (Task 2, `assignedRows`.) The predicate
+  is `inPlan`, which returns false for the whole catalog ladder (`inCatalog` — a `Test
+  suite`, a `Test case`, and a `Task` chained onto either), and false for a `Release` and an
+  `Iteration` too. [[My work]] says the view shows "that person's work, of every type", and
+  a test case somebody is assigned is work they do. The other three exclusions are not: a
+  release and an iteration are containers work is put IN, which is why `inPlan` refuses them
+  and why the fix is not simply dropping the predicate. Either admit catalog members beside
+  plan members while still refusing markers, releases and iterations, or say in the epic
+  that "every type" means the plan ladder — the sentence and the predicate currently
+  disagree, and the predicate is the one that ships.
 - **Which workflow does Set state write?** (Task 9.) The tree READS state through
   `ownWorkflowReading`, which dispatches to the deliverable and test workflows, and WRITES
   through `computeStateWrites` on the requirements workflow alone. On a vault whose
