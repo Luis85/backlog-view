@@ -77,8 +77,18 @@ function plannedWrites(model: BacklogModel, plan: Spread): ItemWrite[] | null {
  * planned value against what the note now holds. The count may therefore differ from the
  * one the dialog showed, and the notice reports what was actually written — `written` off
  * the outcome, which is the only number that knows whether the batch finished.
+ *
+ * **And the recomputed batch is checked against the sentence that was agreed to.** A
+ * refreshed model can need a caveat the dialog never showed, and applying then keeps a
+ * promise the data no longer supports — see the recheck below.
  */
-async function applyRank(app: App, opened: LiveBacklogView, plan: Spread): Promise<void> {
+async function applyRank(
+	app: App,
+	opened: LiveBacklogView,
+	plan: Spread,
+	confirmation: Confirmation,
+	shownNote: string | undefined,
+): Promise<void> {
 	const live: LiveBacklogView | null = activeBacklogView(app);
 	if (live === null || live !== opened || live.model === null) {
 		new Notice(t('rank.viewGone'));
@@ -86,6 +96,18 @@ async function applyRank(app: App, opened: LiveBacklogView, plan: Spread): Promi
 	}
 	const planned = plannedWrites(live.model, plan);
 	if (planned === null) return;
+	// **The caveat is recomputed beside the batch**, because the dialog said what this
+	// would DO and the model it said it of is the one that may have moved. A population
+	// that was distinctly ranked when the dialog opened and is not now would be respaced
+	// under a promise to keep the order on screen, and respacing is exactly what breaks
+	// that promise on such a population. Asked one way only: a caveat that has STOPPED
+	// applying makes the sentence stricter than the truth, which is safe to keep, so
+	// nothing is refused for it.
+	const note = confirmation(planned.length, live.model).note;
+	if (note !== undefined && note !== shownNote) {
+		new Notice(t('rank.caveatChanged'));
+		return;
+	}
 	const outcome = await live.applySafely(planned);
 	// **What landed, never what was planned.** `applyWrites` stops at the first note that
 	// no longer fits the plan and returns the prefix it got through, so the planned length
@@ -136,11 +158,14 @@ function rankCommand(
 	// `plannedWrites` has already said which of the two it was.
 	const preview = plannedWrites(view.model, plan);
 	if (preview !== null) {
+		const said = confirmation(preview.length, view.model);
 		openConfirm(app, {
 			title,
-			...confirmation(preview.length, view.model),
+			...said,
 			cta: title,
-			onConfirm: () => void applyRank(app, view, plan),
+			// The note that was SHOWN travels with the confirmation, so `applyRank` can ask
+			// whether the model still says the same thing rather than trusting that it does.
+			onConfirm: () => void applyRank(app, view, plan, confirmation, said.note),
 		});
 	}
 	return true;

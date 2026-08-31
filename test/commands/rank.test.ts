@@ -130,6 +130,46 @@ describe('the seed and respace rank commands', () => {
 		expect(Modal.lastOpened?.contentEl.textContent).not.toContain('Some lists are drawn in tree order');
 	});
 
+	it('writes nothing when the population stopped matching the caveat the dialog showed', async () => {
+		// Distinct ranks when the dialog opened, so it promised to keep the order on screen
+		// and showed no caveat. A sync then gives `Epic B`'s child the rank `A1` already
+		// holds: every focused list of them falls back to tree order, and respacing would
+		// write the rank order instead — the one thing the sentence they agreed to said
+		// would not happen.
+		const vault = crossedVault();
+		const { view } = openBacklog(vault);
+
+		respaceRanksCommand(vault.app as never, false);
+		expect(Modal.lastOpened?.contentEl.textContent).not.toContain('Some lists are drawn in tree order');
+		vault.addFile('B1.md', { frontmatter: { type: 'Feature', order: 100 }, parentLink: 'Epic B' });
+		refresh(view, vault);
+		confirm();
+		await flush();
+
+		expect(vault.writeLog).toEqual([]);
+		expect(Notice.messages).toEqual([
+			'The backlog changed while this dialog was open, and this command no longer does what the dialog said. Nothing was ranked — run it again to read the new warning.',
+		]);
+	});
+
+	it('applies when the caveat the dialog showed stopped applying, rather than refusing twice', async () => {
+		// The other direction: the dialog warned, the population became distinctly ranked
+		// under it, and the sentence they agreed to is now merely stricter than the truth.
+		// Refusing here would send the user back through a dialog saying less.
+		const vault = crossedVault();
+		vault.addFile('B1.md', { frontmatter: { type: 'Feature', order: 100 }, parentLink: 'Epic B' });
+		const { view } = openBacklog(vault);
+
+		respaceRanksCommand(vault.app as never, false);
+		expect(Modal.lastOpened?.contentEl.textContent).toContain('Some lists are drawn in tree order');
+		vault.fm('B1.md')['order'] = 200;
+		refresh(view, vault);
+		confirm();
+		await flush();
+
+		expect(vault.writeLog.map((w) => w.path).sort()).toEqual(['A1.md', 'B1.md', 'Epic A.md', 'Epic B.md']);
+	});
+
 	it('writes nothing when the view was closed while the dialog was open', async () => {
 		const vault = crossedVault();
 		const { view } = openBacklog(vault);

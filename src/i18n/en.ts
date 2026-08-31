@@ -1281,6 +1281,16 @@ export const en = {
 	},
 	'rank.nothing': 'There is nothing in this base to rank.',
 	'rank.viewGone': 'The backlog view this was started from is no longer showing, so nothing was ranked.',
+	/**
+	 * The dialog was answered, but what the command would DO stopped matching what the
+	 * dialog said — a population that was distinctly ranked when it opened is not now, so
+	 * `rank.respaceReorders` would have had to be shown and was not. Its own sentence
+	 * rather than `rank.viewGone`'s: the view is still there and the command is still
+	 * available, and what the reader has to know is that running it again will say
+	 * something different.
+	 */
+	'rank.caveatChanged':
+		'The backlog changed while this dialog was open, and this command no longer does what the dialog said. Nothing was ranked — run it again to read the new warning.',
 
 	/**
 	 * The write gate's four refusals. The two `console.error` prefixes beside them stay
