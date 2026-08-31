@@ -55,7 +55,7 @@ Every task's requirements implicitly include all of these.
 | `src/view/release/scopeTree.ts` | The fold helpers and the row transforms come from the extracted modules |
 | `src/view/release/scopeKeys.ts` | Moved to `src/view/scopeKeys.ts`; `renderScope.ts` calls it there |
 | `src/view/release/renderScope.ts`, `src/view/release/scopeToolbar.ts` | Import sites follow the moves |
-| `src/storage/foldKeys.ts` | `MYWORK_FOLD` joins the prefix vocabulary |
+| `src/storage/foldKeys.ts` | `MYWORK_FOLD` joins the prefix vocabulary, reads and renames alike |
 | `src/storage/viewStateStore.ts` | `prefs.person`, in `ViewPrefs`, `PREF_READERS` and `PATH_PREFS` |
 | `src/main.ts` | `registerMyWorkView(this, lock)` |
 | `src/i18n/en.ts` | The `mywork.*` keys |
@@ -326,6 +326,7 @@ git commit -m "Take the scope walk out of the release view, over any membership 
 
 - Consumes: `scopeRows`, `ScopeRow` (Task 1); `inPlan` (`src/domain/model.ts`); `ownWorkflowReading` (`src/domain/board.ts`); `isMarkerType` (`src/domain/itemTypes.ts`)
 - Produces:
+  - `function pickedResource(model: BacklogModel, personPath: string): ResourceNote | null`
   - `function assignedTo(item: BacklogItem, personPath: string): boolean`
   - `function assignedRows(model: BacklogModel, personPath: string): ScopeRow[]`
   - `function nextAssigned(rows: ScopeRow[]): ScopeRow | null`
@@ -410,7 +411,21 @@ Expected: FAIL — module not found.
 import { BacklogItem, BacklogModel, inPlan } from './model';
 import { ownWorkflowReading } from './board';
 import { isMarkerType } from './itemTypes';
+import { ResourceNote } from './readItems';
 import { ScopeRow, scopeRows } from './scopeRows';
+
+/**
+ * The picked person, looked up on the ROSTER rather than in `byPath`.
+ *
+ * `divertResource` keeps a `Resource` note on `model.resources` and returns null instead
+ * of a `BacklogItem`, which is the whole of "a person is not in the backlog" — so a
+ * person's path is never a key in `byPath`, and a guard asking `byPath` about a valid
+ * pick answers no every time. The roster is short (one entry per declared person), so a
+ * scan is the right shape and no second index has to be kept in step.
+ */
+export function pickedResource(model: BacklogModel, personPath: string): ResourceNote | null {
+	return model.resources.find((person) => person.file.path === personPath) ?? null;
+}
 
 /**
  * Whose work this item is — the assignee link's own TARGET, never its text.
@@ -588,7 +603,7 @@ the person, and draw the states that come before a tree.
 
 **Interfaces:**
 
-- Consumes: `resolveMyWorkSettings` (Task 3); `buildModel` (`src/domain/model.ts`); `resolveSettings` (`src/domain/settingsResolve.ts`); `configProblems` (`src/domain/settingsConsistency.ts`); `applyWrites` (`src/storage/frontmatter.ts`); `WriteGate` (`src/view/writeGate.ts`); `guidanceShell` (`src/view/render/emptyStates.ts`); `OpenController` (`src/view/openTarget.ts`)
+- Consumes: `resolveMyWorkSettings` (Task 3); `pickedResource` (Task 2); `buildModel` (`src/domain/model.ts`); `resolveSettings` (`src/domain/settingsResolve.ts`); `configProblems` (`src/domain/settingsConsistency.ts`); `applyWrites` (`src/storage/frontmatter.ts`); `WriteGate` (`src/view/writeGate.ts`); `guidanceShell` (`src/view/render/emptyStates.ts`); `OpenController` (`src/view/openTarget.ts`)
 - Produces:
   - `const MY_WORK_VIEW_TYPE = 'product-my-work'`
   - `class MyWorkView extends BasesView` with `viewEl`, `settings: MyWorkSettings`, `planSettings: BacklogSettings`, `model: BacklogModel | null`, `pickedPerson: string | null`, `activeRowFile: TFile | null`, `treeHadFocus: boolean`, `gate: WriteGate<ItemWrite>`, `opener: OpenController`, `openContext()`, `pick(path: string | null)`, `render()`, `refresh()`
@@ -816,7 +831,10 @@ export class MyWorkView extends BasesView {
 		// The picker is drawn in every state that HAS a roster, including the two below: the
 		// way out of "nobody picked" is the control itself.
 		drawMyWorkToolbar(this, this.viewEl);
-		if (this.pickedPerson === null || !this.model.byPath.has(this.pickedPerson)) {
+		// Asked of `resources`, never of `byPath`: `divertResource` keeps a `Resource` note
+		// on the roster and produces no `BacklogItem`, so a picked person's path is never a
+		// key in `byPath` and that guard would send every valid pick to the no-pick state.
+		if (this.pickedPerson === null || !pickedResource(this.model, this.pickedPerson)) {
 			guidanceShell(this.viewEl, 'user-round-search', t('mywork.empty.noPick.title'), t('mywork.empty.noPick.hint'));
 			return;
 		}
@@ -924,7 +942,7 @@ rather than copy: the whole of what varies is the key prefix.
 **Files:**
 
 - Create: `src/view/scopeFolds.ts`
-- Modify: `src/storage/foldKeys.ts` (add `MYWORK_FOLD`; teach `notePath` and `foldKeyPaths` the prefix)
+- Modify: `src/storage/foldKeys.ts` (add `MYWORK_FOLD`; teach `notePath`, `foldKeyPaths` and `movedFoldKey` the prefix)
 - Modify: `src/storage/viewStateStore.ts` (add `myWorkHideDone?: boolean` to `ViewPrefs`, and `myWorkHideDone: onlyTrue` to `PREF_READERS` — absence IS the off state, so a default writes nothing; NOT a `PATH_PREFS` entry, since its value is a flag rather than a path)
 - Modify: `src/view/release/scopeTree.ts` (delete the fold half, call the shared one)
 - Modify: `src/view/viewState.ts` (re-export the new prefix beside the other three)
@@ -995,6 +1013,16 @@ export const MYWORK_FOLD = '\u0000mywork:';
 Extend `notePath` and `foldKeyPaths` to treat it exactly as `RELEASE_FOLD`: both keys carry
 two paths, so both answer from the LAST NUL, and both die with either of their notes.
 
+**And `movedFoldKey` with them — the one the reading pair does not cover.** Its two-path
+branch tests `RELEASE_FOLD` alone, so a `MYWORK_FOLD` key falls through to the scoped
+branch, where `scopeOf` cannot state a two-path span and rebuilds the entry as a BARE fold
+key. Renaming a member would then silently strip the person from the key, and renaming the
+PERSON would move the pick (`renamePathPrefs` walks `prefs.person`) while leaving every
+fold entry under the old path — the pick survives and the folds under it do not, which is
+the shape this rule exists to refuse. Take the prefix as a parameter rather than adding a
+second literal: one branch answering both scopes cannot drift, and a third scope costs a
+row. Both renames get a test — the scope's own path and a member's.
+
 - [ ] **Step 4: Call it from the release tree**
 
 `scopeTree.ts` keeps `effectiveHideDone` — it asks a release-shaped question
@@ -1026,7 +1054,7 @@ git commit -m "Share one fold set per scope between the two trees that need one"
 
 **Interfaces:**
 
-- Consumes: `assignedRows`, `nextAssigned` (Task 2); `rowsAfterHideDone`, `visibleRows`, `siblingPlaces`, `childRows` (Task 1); `foldedPaths`, `toggleFold`, `scopeFlag` (Task 5); `MYWORK_FOLD` (Task 5); `drawIcon` (`src/view/render/icons.ts`); `badgeStyleFor` (`src/view/render/badges.ts`); `uniqueElementId` (`src/view/selection.ts`); `ownWorkflowReading` (`src/domain/board.ts`)
+- Consumes: `assignedRows`, `nextAssigned`, `pickedResource` (Task 2); `rowsAfterHideDone`, `visibleRows`, `siblingPlaces`, `childRows` (Task 1); `foldedPaths`, `toggleFold`, `scopeFlag` (Task 5); `MYWORK_FOLD` (Task 5); `drawIcon` (`src/view/render/icons.ts`); `badgeStyleFor` (`src/view/render/badges.ts`); `uniqueElementId` (`src/view/selection.ts`); `ownWorkflowReading` (`src/domain/board.ts`)
 - Produces:
   - `interface TreeDraw { treeEl: HTMLElement; rows: ScopeRow[]; kids: ReadonlySet<string>; rowEls: ReadonlyMap<string, HTMLElement>; folded: ReadonlySet<string> }`
   - `function drawMyWorkTree(view: MyWorkView, parentEl: HTMLElement): TreeDraw`
@@ -1101,7 +1129,7 @@ nowhere near the catalog.
 
 ```ts
 export function drawMyWorkTree(view: MyWorkView, parentEl: HTMLElement): TreeDraw {
-	const person = view.model!.byPath.get(view.pickedPerson!)!;
+	const person = pickedResource(view.model!, view.pickedPerson!)!;
 	const treeEl = parentEl.createDiv({
 		cls: 'pbl-tree pbl-mw-tree',
 		attr: { role: 'tree', 'aria-label': person.title, tabindex: '0' },
