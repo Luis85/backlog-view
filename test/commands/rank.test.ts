@@ -283,4 +283,37 @@ describe('the seed and respace rank commands', () => {
 			'2 items sit between two notes this base cannot write, with no room left between them: A1 and A2. Nothing was changed. Run this on an unfiltered base.',
 		]);
 	});
+
+	// **The collision must not involve the ORDER key**, and the first version of this test
+	// got that wrong: mapping `orderProperty` onto `note.parent` makes every rank unreadable,
+	// so nothing wedges, the plan fills blanks instead, and the dialog opens — a different
+	// path that reaches the gate and is already reported correctly. It would have passed
+	// with the fix and failed without it for the wrong reason. `type`/`state` collide while
+	// the ranks stay readable, which is the only shape that reproduces this defect.
+	//
+	// The SAME wedged vault, with the view options colliding as well. The wedged sentence
+	// is a real remedy for a real problem — run it on an unfiltered base — and it is the
+	// wrong thing to say here, because while `configProblems` is non-empty the gate refuses
+	// every rank write and the user would come back to the same message. Extension 2c of
+	// [[Ranking at the focused level]] states the rule; the drag path kept it through
+	// `reportRefusal` and the commands did not, because a wedged or empty plan answers
+	// before the gate is ever reached.
+	it('names the configuration instead, when that is what blocks every remedy', () => {
+		const vault = new FakeVault();
+		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 2 } });
+		vault.addFile('A1.md', { frontmatter: { type: 'Feature', order: 2.0000002 }, parentLink: 'Epic A' });
+		vault.addFile('A2.md', { frontmatter: { type: 'Feature', order: 2.0000004 }, parentLink: 'Epic A' });
+		vault.addFile('Epic B.md', { frontmatter: { type: 'Epic', order: 2.000001 } });
+		vault.addFile('B1.md', { frontmatter: { type: 'Feature', order: 5000 }, parentLink: 'Epic B' });
+		makeView(vault, { stateProperty: 'note.type' }, { base: 'Backlog.base', only: ['A1.md', 'A2.md', 'B1.md'] });
+		vault.activeView = vault.leaves[vault.leaves.length - 1].view;
+
+		expect(respaceRanksCommand(vault.app as never, false)).toBe(true);
+
+		expect(Modal.lastOpened).toBeNull();
+		expect(vault.writeLog).toEqual([]);
+		expect(Notice.messages).toEqual([
+			'Fix the view options first: the type and state properties share the key "type".',
+		]);
+	});
 });

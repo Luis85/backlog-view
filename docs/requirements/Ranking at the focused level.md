@@ -84,6 +84,12 @@ from.
   reported instead. Every remedy above is a write, and the write gate refuses all of them
   while `configProblems` is non-empty, so naming one would send the user in a circle.
   **Checked by** `test/view/focusRanking.test.ts` — "reports the CONFIGURATION instead, because every remedy above is blocked by it"
+  The two palette commands (2e) keep the same rule and did not at first: a wedged or empty
+  plan answers before the write gate is ever reached, so `Respace` on a misconfigured view
+  told the user to run it on an unfiltered base — a real remedy for a different problem,
+  and one that cannot work while the options collide. `rankCommand` asks `configProblems`
+  before it plans.
+  **Checked by** `test/commands/rank.test.ts` — "names the configuration instead, when that is what blocks every remedy"
 - **2d — the ranks of the focused rows are not all distinct.** The list draws in TREE
   order instead, which is what an unmigrated vault looks like: a sibling-scoped `order`
   gives every first child its parent's number, and sorting on ties would scramble the

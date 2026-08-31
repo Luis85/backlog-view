@@ -4,6 +4,7 @@ import { BacklogModel } from '../domain/model';
 import { computeRespaceWrites, computeSeedWrites, SpreadResult } from '../domain/rankSpread';
 import { ItemWrite } from '../domain/writePlan';
 import { distinctlyRanked } from '../domain/rankOrder';
+import { configProblems } from '../domain/settingsConsistency';
 import { openConfirm } from '../ui/confirmDialog';
 import { activeBacklogView, LiveBacklogView } from '../view/registry';
 
@@ -113,6 +114,24 @@ function rankCommand(
 	const view = activeBacklogView(app);
 	if (view === null || view.model === null) return false;
 	if (checking) return true;
+	// **The configuration is asked BEFORE the plan, for the reason `reportRefusal` gives on
+	// the drag path** ([[Ranking at the focused level]] extension 2c): while
+	// `configProblems` is non-empty the gate refuses every rank write, so any other advice
+	// sends the user in a circle. It matters here only where the plan answers nothing —
+	// a wedged plan tells them to run this on an unfiltered base, which is a real remedy
+	// for a different problem and will not work while the options collide. A plan with
+	// writes in it reaches the gate and is reported correctly already; asking here as well
+	// costs nothing and means the two paths cannot come to disagree.
+	//
+	// REPORTED, never withheld: the command stays offered, because a user whose view is
+	// misconfigured needs to be told which property to fix rather than to find the entry
+	// missing. That is the same choice `reportRefusal` made and the opposite of the menu's,
+	// where an entry that does nothing is the thing being avoided.
+	const problems = configProblems(view.settings);
+	if (problems.length > 0) {
+		new Notice(t('config.fixFirst', { problem: problems[0] }));
+		return true;
+	}
 	// A wedged or empty preview opens no dialog: there is nothing to confirm, and
 	// `plannedWrites` has already said which of the two it was.
 	const preview = plannedWrites(view.model, plan);
