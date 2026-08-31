@@ -13,7 +13,7 @@ import { foldedPaths, scopeFlag, toggleFold } from '../scopeFolds';
 import { TreeDraw, wireScopeKeys } from '../scopeKeys';
 import { MYWORK_FOLD } from '../../storage/foldKeys';
 import { uniqueElementId } from '../selection';
-import { showMyWorkRowMenu } from './rowMenu';
+import { showMyWorkRowMenu, showMyWorkRowMenuAt } from './rowMenu';
 
 /**
  * One person's tree — Task 1's row shape and transforms, Task 2's membership and "what is
@@ -151,6 +151,24 @@ export function drawMyWorkTree(view: MyWorkView, parentEl: HTMLElement): TreeDra
 		if (!row) return;
 		evt.preventDefault();
 		showMyWorkRowMenu(view, row, evt);
+	});
+	// The keyboard's own route to the same menu — `scopeCreate.ts`'s own second listener,
+	// for the identical reason: DOM focus never leaves `treeEl` (the tree is one tab stop,
+	// rows are reached through `aria-activedescendant`), so a keyboard-fired `contextmenu`
+	// targets the TREE rather than a row and the listener above's `.closest` lookup would
+	// always miss. `view.activeRowFile` is what `wireScopeKeys` writes on every roving
+	// move, so it names the row without this listener keeping a second idea of which one
+	// is active.
+	treeEl.addEventListener('keydown', (evt) => {
+		// Both spellings — a keyboard without a Menu key has only the second.
+		if (evt.key !== 'ContextMenu' && !(evt.key === 'F10' && evt.shiftKey)) return;
+		const file = view.activeRowFile;
+		const row = file === null ? undefined : visible.find((r) => r.item.file === file);
+		if (!row) return;
+		evt.preventDefault();
+		// `!` for `wireScopeKeys`'s own reason: `row` came out of `visible`, and `rowEls`
+		// was built from that same list while drawing it, so the lookup always hits.
+		showMyWorkRowMenuAt(view, row, rowEls.get(row.item.file.path)!);
 	});
 	return draw;
 }

@@ -30,21 +30,27 @@ export interface MyWorkSettings {
 	stateKey: string;
 	doneValues: string[];
 	/**
-	 * The requirements workflow's own declared state vocabulary — Task 9's own addition,
-	 * for the one write this view offers (`view/mywork/rowMenu.ts`). Until this joined the
-	 * bag, `stateMenuValues` could only ever offer a value some row already carried: this
-	 * view bound no `stateValues` option, so the vocabulary this field feeds was always
-	 * empty and a state nothing visible held yet — `Blocked` on a tree with nothing
-	 * blocked — was unreachable from the menu. Read through the SAME `stateValues` option
-	 * key `viewOptions.ts` declares for the backlog view, so a vault that already has one
-	 * configured cannot silently disagree between the two views' pickers.
+	 * The requirements workflow's own declared state vocabulary — Task 9's own addition.
+	 * Until `stateValues` joined the options bag, this was always `[]`, so the menu
+	 * (`view/mywork/rowMenu.ts`) could only ever offer a value some row already carried —
+	 * `Blocked` on a tree with nothing blocked was unreachable from it. Read through the
+	 * SAME `stateValues` option key `viewOptions.ts` declares for the backlog view, so a
+	 * vault that already has one configured cannot silently disagree between the two
+	 * views' pickers.
+	 *
+	 * **No production code reads this FIELD** (fix round 1, PR review): the menu reads
+	 * `view.planSettings.states`/`.deliverableStates`/`.testStates` — `BacklogSettings`,
+	 * resolved independently by `resolveSettings(this.config)` off the identical option
+	 * keys — never `view.settings.*`. What this field's LOCAL counterpart (the `states`
+	 * const inside `resolveMyWorkSettings`, below) is actually FOR is feeding
+	 * `resolveSecondaryWorkflow`'s copy-fallback for the two secondary workflows; the
+	 * returned field exists so this bag's own tests can assert the requirements
+	 * vocabulary resolves correctly without reaching for `resolveSettings` instead. The
+	 * secondary workflows' own two fields (`deliverableStates`/`testStates`) had no such
+	 * reader anywhere — not even a test needing THIS bag's own copy rather than
+	 * `resolveSettings`'s — so fix round 1 dropped them from the interface entirely.
 	 */
 	states: string[];
-	/** Same addition, for the Deliverable and test workflows' own declared vocabularies —
-	 *  see {@link states}'s own comment for why the menu needed all three rather than the
-	 *  one workflow this view happened to default to. */
-	deliverableStates: string[];
-	testStates: string[];
 	/**
 	 * The Deliverable and test workflows' own state keys and done-value lists —
 	 * `ownWorkflowReading` (`board.ts`) reads a Deliverable or a catalog member's
@@ -302,10 +308,8 @@ export function resolveMyWorkSettings(config: BasesViewConfig): MyWorkSettings {
 		states,
 		deliverableStateKey: deliverable.key,
 		deliverableDoneValues: deliverable.doneValues,
-		deliverableStates: deliverable.states,
 		testStateKey: test.key,
 		testDoneValues: test.doneValues,
-		testStates: test.states,
 		// `propKey`, not `clearablePropKey`: their default is `''`, so the two resolve the
 		// same value for every input — the reading `resolveReleaseSettings` gives every
 		// release-own key whose default is empty (`versionKey`, `targetDateKey`, …). No

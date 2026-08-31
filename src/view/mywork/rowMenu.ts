@@ -9,7 +9,7 @@ import { menuValues, stateMenuValues } from '../../domain/settings';
 import { sameValue, todayStamp } from '../../domain/noteFields';
 import { computeDeliverableStateWrites, computeStateWrites, computeTestStateWrites, ItemWrite } from '../../domain/writePlan';
 import { rowVocabulary } from '../projection';
-import { showMenuForClick } from '../interactions/menu';
+import { showMenuAtElement, showMenuForClick } from '../interactions/menu';
 
 /**
  * The epic's definition of done for this Feature: an item can be acted on from the list,
@@ -29,7 +29,7 @@ import { showMenuForClick } from '../interactions/menu';
  * property, never the requirements one, so a vault whose Deliverables carry a distinct
  * state property gets a menu that actually moves the row it is drawn on.
  */
-export function showMyWorkRowMenu(view: MyWorkView, row: ScopeRow, evt: MouseEvent): void {
+function buildRowMenu(view: MyWorkView, row: ScopeRow): Menu {
 	const menu = new Menu();
 	addOpenSection(menu, view, row.item);
 	// Gated on the ROW's own effective key (`stateKeyFor`, over `view.planSettings`), never
@@ -39,7 +39,25 @@ export function showMyWorkRowMenu(view: MyWorkView, row: ScopeRow, evt: MouseEve
 	// a perfectly writable Deliverable row whenever the requirements property happens to be
 	// cleared.
 	if (!row.context && stateKeyFor(view.planSettings, row.item) !== '') addSetStateMenu(menu, view, row.item);
-	showMenuForClick(menu, evt);
+	return menu;
+}
+
+/** The pointer's own entry point — `contextmenu` on a row, shown at the click. */
+export function showMyWorkRowMenu(view: MyWorkView, row: ScopeRow, evt: MouseEvent): void {
+	showMenuForClick(buildRowMenu(view, row), evt);
+}
+
+/**
+ * The keyboard's own entry point — ContextMenu / Shift+F10 on the tree's roving
+ * selection, anchored at the row's own element rather than at an event: DOM focus never
+ * leaves `treeEl` (the tree is one tab stop, rows are reached through
+ * `aria-activedescendant`), so a keyboard-fired `contextmenu` event targets the TREE, not
+ * the row — `.closest('.pbl-row')` on it returns null, the same reason
+ * `scopeCreate.ts`'s own keyboard listener reads `view.activeRowFile` and calls
+ * `showMenuAtElement` rather than reusing the pointer path's event-driven lookup.
+ */
+export function showMyWorkRowMenuAt(view: MyWorkView, row: ScopeRow, el: HTMLElement): void {
+	showMenuAtElement(buildRowMenu(view, row), el);
 }
 
 /** Open, and open in a new tab — the two entries every row offers regardless of the

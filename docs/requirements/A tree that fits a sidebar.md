@@ -49,6 +49,15 @@ everything else a note carries.
 
 **Extensions**
 
+- **1a — the trigger is the keyboard (ContextMenu, or Shift+F10) rather than a
+  right-click.** The tree is one tab stop and a row is reached through
+  `aria-activedescendant` (`src/view/CLAUDE.md`), so DOM focus never leaves the tree
+  itself — a keyboard-fired `contextmenu` event would target the tree, not the row, and
+  a listener that read the event's target would always miss. The menu is instead
+  resolved from `view.activeRowFile` (written by the shared roving keyboard on every
+  move, `view/scopeKeys.ts`) and anchored at that row's own element with
+  `showMenuAtElement` — the same split `view/release/scopeCreate.ts`'s own two listeners
+  keep, over the identical reason.
 - **2a — the row is a context ancestor.** Set state is never offered: a context row
   renders, it parents, and that is all. Opening it still offers Open and Open in a new
   tab — reading a note is not a write.
@@ -69,9 +78,30 @@ everything else a note carries.
   applied, and the entry was already drawn checked — there is nothing for the batch to
   do and no undo slot is spent.
 
+**No Clear state entry, and no undo control, on this view — both deliberate, and named
+here rather than left implied.** There is no way to remove a state once set (only to set
+a different one), and nothing in `view/mywork/` wires `undoLast`: each view owns its own
+`WriteGate`, so a batch this menu applies could not be taken back from the backlog
+view's own undo button even if one were drawn here. A note that carried an unconfigured
+value (one absent from the declared vocabulary) before this menu touched it — the
+`Blocked` example the vocabulary widening above exists for — cannot be put back to that
+value from this surface either: `addStateEntries` (`rowMenu.ts`) appends only the item's
+own CURRENT value to the offered list, not every value the vault might have held before.
+**The recovery path for all three is the same one every other unconfigured control on
+this view already relies on: open the note and edit its frontmatter directly** — Open
+and Open in a new tab are offered on every row for exactly this reason, context rows
+included. Both omissions are the scope this task and its plan are explicit about
+(anything wider is its own PBI), not a gap nobody noticed.
+
 ## Acceptance criteria
 
-- `showMyWorkRowMenu(view, row, evt)` always offers Open and Open in a new tab.
+- `showMyWorkRowMenu(view, row, evt)` (pointer) and `showMyWorkRowMenuAt(view, row, el)`
+  (keyboard) build and show the IDENTICAL menu — the same `buildRowMenu`, shown at the
+  click for one and anchored at the row's own element for the other — so the two inputs
+  can never drift into offering different actions.
+- The keyboard (ContextMenu, or Shift+F10) opens the same menu as a right-click, resolved
+  from `view.activeRowFile` rather than the event's target — the tree is one tab stop, so
+  a keyboard-fired `contextmenu` targets the tree itself, never a row.
 - Set state is offered exactly when `!row.context && stateKeyFor(view.planSettings,
   row.item) !== ''` — never on `view.settings.stateKey` alone, and never on a context row
   regardless of that key.
@@ -98,28 +128,41 @@ everything else a note carries.
 
 ## Where it lives
 
-`src/view/mywork/rowMenu.ts` — `showMyWorkRowMenu`, the whole of this surface's one
+`src/view/mywork/rowMenu.ts` — `buildRowMenu` (private), the whole of this surface's one
 write: the context-row guard, the per-row workflow dispatch (vocabulary and planner
-alike), and the checkmark asked of the plan. Reads `stateKeyFor`/`ownWorkflowReading`/
-`deliverablesWorkflow` from `src/domain/board.ts`, `computeStateWrites`/
-`computeDeliverableStateWrites`/`computeTestStateWrites` from `src/domain/writePlan.ts`,
-`stateMenuValues`/`menuValues` from `src/domain/settings.ts`, `rowVocabulary` from
-`src/view/projection.ts`, and `showMenuForClick` from `src/view/interactions/menu.ts`.
+alike), and the checkmark asked of the plan. `showMyWorkRowMenu(view, row, evt)` shows it
+at a pointer click (`showMenuForClick`); `showMyWorkRowMenuAt(view, row, el)` shows the
+IDENTICAL menu anchored at a row element (`showMenuAtElement`) for the keyboard path —
+one builder, two entry points, so neither input can offer an action the other does not.
+Reads `stateKeyFor`/`ownWorkflowReading`/`deliverablesWorkflow` from
+`src/domain/board.ts`, `computeStateWrites`/`computeDeliverableStateWrites`/
+`computeTestStateWrites` from `src/domain/writePlan.ts`, `stateMenuValues`/`menuValues`
+from `src/domain/settings.ts`, `rowVocabulary` from `src/view/projection.ts`, and
+`showMenuForClick`/`showMenuAtElement` from `src/view/interactions/menu.ts`.
 
-`src/view/mywork/renderTree.ts` — wires one delegated `contextmenu` listener on the
-tree, the release scope's own `wireScopeCreate` shape: resolve the row from the event's
-target against the draw's own `rowEls` index, then build the menu through
-`showMyWorkRowMenu`.
+`src/view/mywork/renderTree.ts` — wires TWO delegated listeners on the tree, the release
+scope's own `wireScopeCreate` shape (`src/view/release/scopeCreate.ts:51-91`): a
+`contextmenu` listener resolving the row from the event's target against the draw's own
+`rowEls` index, and a `keydown` listener (ContextMenu / Shift+F10) resolving the row from
+`view.activeRowFile` — the field the shared roving keyboard (`view/scopeKeys.ts`) writes
+on every move — because a keyboard-fired `contextmenu` targets the TREE, never a row,
+once focus is managed through `aria-activedescendant` rather than real DOM focus. The
+first calls `showMyWorkRowMenu`, the second `showMyWorkRowMenuAt`.
 
 `src/view/mywork/toolbar.ts`, `src/view/scopeFolds.ts` and `src/view/scopeKeys.ts` carry
-no change for this task; they are named here because they are this view's other
-`view/mywork/` neighbours and this note is where the narrow-pane behaviour and the one
-write both live, per the epic's own file table. `styles/mywork.css` carries whatever
-this surface needs beyond the menu's own default chrome — today, nothing new: a context
-menu is Obsidian's own widget.
+no change for this task beyond `scopeKeys.ts`'s own pre-existing `activeRowFile` write;
+they are named here because they are this view's other `view/mywork/` neighbours and
+this note is where the narrow-pane behaviour and the one write both live, per the epic's
+own file table. `styles/mywork.css` carries whatever this surface needs beyond the
+menu's own default chrome — today, nothing new: a context menu is Obsidian's own widget.
 
 `src/domain/myWorkOptions.ts` — the three added vocabulary options (`stateValues`,
-`deliverableStateValues`, `testStateValues`) and the three `MyWorkSettings` fields they
-resolve into (`states`, `deliverableStates`, `testStates`), over the identical option
-keys and the identical `resolveSecondaryWorkflow` reader `viewOptions.ts` and
-`resolveSettings` already use for the backlog view.
+`deliverableStateValues`, `testStateValues`) — Bases can only store a box the options
+schema draws, so all three are required regardless of what reads them back — and one new
+`MyWorkSettings` field, `states`, resolved the same way `resolveSettings` resolves it
+(`dedupe(list('stateValues'))`). `deliverableStates` and `testStates` are NOT fields on
+this interface: nothing in `src/` ever read them back off `MyWorkSettings` (the menu
+reads `view.planSettings.deliverableStates`/`.testStates` — `BacklogSettings`, resolved
+independently by `resolveSettings(this.config)` off the identical option keys) — only
+`states` earns a place, and only because `resolveMyWorkSettings`'s own local copy feeds
+`resolveSecondaryWorkflow`'s copy-fallback for the other two.

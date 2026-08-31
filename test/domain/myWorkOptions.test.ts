@@ -58,33 +58,18 @@ describe('my work options', () => {
 		expect(resolveMyWorkSettings(new FakeViewConfig({}) as never).states).toEqual([]);
 	});
 
-	// The Deliverable and test workflows' own declared vocabularies, resolved through the
-	// SAME `resolveSecondaryWorkflow` call the key and done-values pair already share —
-	// an explicit binding never borrows the requirements list.
-	it('resolves each secondary workflow’s own declared vocabulary from an explicit binding', () => {
-		const settings = resolveMyWorkSettings(
-			new FakeViewConfig({
-				deliverableStateProperty: 'note.delivState',
-				deliverableStateValues: 'Draft, Shipped',
-				testStateProperty: 'note.testState',
-				testStateValues: 'Ready, Passed',
-			}) as never,
-		);
-		expect(settings.deliverableStates).toEqual(['Draft', 'Shipped']);
-		expect(settings.testStates).toEqual(['Ready', 'Passed']);
-	});
-
-	// The copy-fallback rule `resolveSecondaryWorkflow` states for the done-values pair
-	// applies to the declared vocabulary too: an UNBOUND secondary workflow (the key
-	// falls back) with no vocabulary of its own copies the requirements one, rather than
-	// staying empty while the requirements workflow declares a real list. This is also
-	// what keeps `secondaryWorkflowProblem` (`settingsConsistency.ts`) from ever firing on
-	// a production `resolveMyWorkSettings` output — see the `buildModel` test below.
-	it('copies the requirements vocabulary into an unbound secondary workflow', () => {
-		const settings = resolveMyWorkSettings(new FakeViewConfig({ stateValues: 'Open, Done' }) as never);
-		expect(settings.deliverableStates).toEqual(['Open', 'Done']);
-		expect(settings.testStates).toEqual(['Open', 'Done']);
-	});
+	// The Deliverable and test workflows' own declared vocabularies (`deliverableStateValues`/
+	// `testStateValues`) are resolved through the SAME `resolveSecondaryWorkflow` call the
+	// key and done-values pair already share, but `MyWorkSettings` carries no field for
+	// either (fix round 1: nothing in `src/` ever read `deliverableStates`/`testStates` off
+	// this bag — the menu reads `view.planSettings.*`, resolved independently by
+	// `resolveSettings`). What an explicit binding and the copy-fallback rule actually
+	// produce is checked where it is actually consumed: `test/view/mywork/writes.test.ts`'s
+	// "dispatches a Deliverable row through its OWN workflow" and "…a test-catalog row…"
+	// drive a configured `deliverableStateValues`/`testStateValues` all the way to the
+	// menu's own offered labels, and the guard test right below checks the copy-fallback
+	// case (nothing configured on either secondary workflow) never trips
+	// `secondaryWorkflowProblem`.
 
 	it('offers every key exactly once', () => {
 		const keys = getMyWorkViewOptions(new FakeViewConfig({}) as never)

@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { Menu } from '../../helpers/obsidian-mock';
 import { flush } from '../../helpers/view';
-import { makeMyWorkView, mwRow, myWorkVault, refreshMyWork, treeEl } from '../../helpers/mywork';
+import { makeMyWorkView, mwActive, mwPress, mwRow, myWorkVault, refreshMyWork, treeEl } from '../../helpers/mywork';
 import { t } from '../../../src/i18n/t';
 import type { MyWorkView } from '../../../src/view/mywork/myWorkView';
 import { FakeVault } from '../../helpers/vault';
@@ -124,6 +124,23 @@ describe('the my-work row menu writes', () => {
 		menuOn(view, 'PBI Ada.md');
 		Menu.lastShown?.item(t('mywork.menu.openTab'))?.click();
 		expect(vault.opened.at(-1)).toEqual({ path: 'PBI Ada.md', mode: 'tab' });
+	});
+
+	it('opens the same menu from the keyboard, anchored at the roving row', () => {
+		const { view } = makeMyWorkView(myWorkVault());
+		view.pick('People/Ada.md');
+
+		// The tree is one tab stop and rows are reached through `aria-activedescendant`
+		// (`src/view/CLAUDE.md`), so DOM focus never leaves `treeEl` — the context menu is
+		// the documented keyboard route to a row, not a pointer-only convenience.
+		mwPress(view, 'ArrowDown'); // Epic.md -> Feature.md
+		mwPress(view, 'ArrowDown'); // Feature.md -> PBI Ada.md
+		expect(mwActive(view)).toBe('PBI Ada.md');
+
+		Menu.forget();
+		mwPress(view, 'ContextMenu');
+
+		expect(labels(Menu.lastShown)).toEqual([t('mywork.menu.open'), t('mywork.menu.openTab'), t('mywork.menu.setState')]);
 	});
 
 	it('offers no action when the pointer never lands on a row', () => {
