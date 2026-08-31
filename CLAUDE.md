@@ -112,8 +112,8 @@ language, so nothing re-reads it. What must never enter the catalog is anything 
 writes, matches or persists — type names, state values, option keys, tags, file names. The
 test when it is not obvious: **ask what breaks if two people with different Obsidian
 languages open the same vault.** "One sees different words" is text; "one writes notes the
-other's view cannot read" is data. 686 keys are in it, counted two ways on the MERGED tree
-on 2026-08-29 and agreeing — an AST walk over the `as const`
+other's view cannot read" is data. 761 keys are in it, counted two ways on the MERGED tree
+on 2026-08-31 and agreeing — an AST walk over the `as const`
 object's own properties, and a match-counting
 `grep -Po` over the key lines. Two rather than the three the 2026-08-26 count used: the
 `Object.keys` over the BUNDLED catalog was not re-run, and this sentence says two because
@@ -123,11 +123,15 @@ some of these keys carry their value on the FOLLOWING line, which is exactly wha
 instrument gets wrong. The two DISAGREEING would itself be a finding rather than a nuisance:
 a walk that reports its DISTINCT properties beside its total drops a duplicate key the text
 still shows, so the pair answers "how many" and "are any of them the same key twice" in one
-pass — 686 total and 686 distinct on 2026-08-29. **A count is dated the moment
+pass — 761 total and 761 distinct on 2026-08-31. **A count is dated the moment
 it is written, and this paragraph has now been a merge conflict five times in one day** —
-550, 542, 553, 577, 556, 588, 591, 559, 597, 630, 643 and 655 were each true of the branch that
-wrote them and of nothing else, and 686 is what the merged tree measures rather than what any
-side's arithmetic predicted. Re-measure on the merged tree rather than picking a side.
+550, 542, 553, 577, 556, 588, 591, 559, 597, 630, 643, 655 and 686 were each true of the branch
+that wrote them and of nothing else, and 761 is what the merged tree measures rather than what
+any side's arithmetic predicted. Re-measure on the merged tree rather than picking a side.
+**686 is the worked example of why**: it was measured on a merged tree too, and 0.10.0
+shipping the release view, the estimation view and the resource roster took it to 761 without
+anybody editing this sentence. A branch that adds one key and finds the number 75 out has not
+found a miscount — it has found that the number was never the branch's to keep current.
 `ui/`, `commands/`, `view/interactions/`, `view/estimation/`, the whole of `view/render/`,
 `view/writeGate.ts`, `view/cardMoves.ts`, `main.ts`, `domain/viewOptions.ts`, the whole of
 `storage/` and — since 2026-08-22 — `domain/estimationOptions.ts`, `domain/board.ts`,
