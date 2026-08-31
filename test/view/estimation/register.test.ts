@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import { BasesViewRegistration } from 'obsidian';
+import type { BasesViewRegistration } from 'obsidian';
 import { registerEstimationView } from '../../../src/view/estimation/register';
 import { WriteLock } from '../../../src/view/writeLock';
 import { ESTIMATION_VIEW_TYPE, EstimationView } from '../../../src/view/estimation/estimationView';

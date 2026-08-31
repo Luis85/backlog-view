@@ -289,16 +289,16 @@ describe('context menu', () => {
 		const tree = treeOf(containerEl);
 		key(tree, 'ArrowDown');
 
-		Menu.lastShown = null;
+		Menu.forget();
 		key(tree, 'ContextMenu');
 		expect(Menu.lastShown?.item('Open in new tab')).toBeDefined();
 
-		Menu.lastShown = null;
+		Menu.forget();
 		key(tree, 'F10', { shiftKey: true });
 		expect(Menu.lastShown?.item('Open in new tab')).toBeDefined();
 
 		// Plain F10 is not a menu shortcut
-		Menu.lastShown = null;
+		Menu.forget();
 		key(tree, 'F10');
 		expect(Menu.lastShown).toBeNull();
 	});

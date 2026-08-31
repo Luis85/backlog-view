@@ -28,6 +28,8 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 - `npm run check` has a sixth step, `lint:md`, gating the Markdown in `docs/` and the
   root documents.
+- `npm run check` typechecks `test/` as well as `src/` (`npm run typecheck:test`), so a
+  test calling a function with the wrong arguments fails the gate instead of passing.
 - Rank the rows of a focused backlog by hand: with a focus level on, a drag, Alt+↑/↓ or the
   menu's `Move` entries write the dragged row's `order` and nothing else.
 - Two palette commands rewrite every rank at once — `Seed ranks from the hierarchy` in the

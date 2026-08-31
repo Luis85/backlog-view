@@ -28,9 +28,9 @@ function vaultWith(frontmatter: Record<string, unknown> = {}): FakeVault {
 
 /** Open the dialog the way the toolbar button does, and hand back what it drew. */
 function openPicker(options: Record<string, string> = {}, vault = vaultWith()) {
-	const { view, containerEl } = makeView(vault, { ...WORKFLOW, ...options }, { collapsed: true });
+	const { view, config, containerEl } = makeView(vault, { ...WORKFLOW, ...options }, { collapsed: true });
 	openStateColors(view);
-	return { view, containerEl };
+	return { view, config, containerEl };
 }
 
 function rows(): { label: string; input: HTMLInputElement; reset: HTMLElement }[] {
@@ -155,13 +155,13 @@ describe('the state-colour picker', () => {
 		// the SLOT paints. jsdom resolves neither (both are the grey fallback), so what is
 		// asserted here is the half that survives: the row knows it is set, so its reset is
 		// live, and using it clears the key.
-		const { view } = openPicker({ [stateColorKey('Active')]: 'orange' });
+		const { config } = openPicker({ [stateColorKey('Active')]: 'orange' });
 		const active = rows()[1];
 		expect(active.reset.hasAttribute('disabled')).toBe(false);
 
 		active.reset.dispatchEvent(new MouseEvent('click'));
 
-		expect(view.config.setCalls).toEqual([{ key: stateColorKey('Active'), value: null }]);
+		expect(config.setCalls).toEqual([{ key: stateColorKey('Active'), value: null }]);
 	});
 
 	it('offers nothing for a workflow that declares states but names no property', () => {
@@ -192,16 +192,16 @@ describe('the state-colour picker', () => {
 	it('writes each choice as it is made, and only for the row touched', () => {
 		// There is no Save: a row nobody touched must write nothing, and a dialog submitting
 		// its whole row set would turn every seeded swatch into a choice.
-		const { view } = openPicker();
+		const { config } = openPicker();
 		pick(rows()[1], '#ff0000');
 
-		expect(view.config.setCalls).toEqual([{ key: stateColorKey('Active'), value: '#ff0000' }]);
+		expect(config.setCalls).toEqual([{ key: stateColorKey('Active'), value: '#ff0000' }]);
 	});
 
 	it('writes nothing at all when nothing is touched', () => {
-		const { view } = openPicker();
+		const { config } = openPicker();
 
-		expect(view.config.setCalls).toEqual([]);
+		expect(config.setCalls).toEqual([]);
 	});
 
 	it('clears a choice through the reset, and puts the DEFAULT back in the swatch', () => {
@@ -214,13 +214,13 @@ describe('the state-colour picker', () => {
 		// would then swallow the `change` event if the user immediately re-picked it. The
 		// seed is the grey fallback here (jsdom paints nothing), which is what makes the two
 		// distinguishable at all under test.
-		const { view } = openPicker({ [stateColorKey('Active')]: '#ff0000' });
+		const { config } = openPicker({ [stateColorKey('Active')]: '#ff0000' });
 		const active = rows()[1];
 		expect(active.input.value).toBe('#ff0000');
 
 		active.reset.dispatchEvent(new MouseEvent('click'));
 
-		expect(view.config.setCalls).toEqual([{ key: stateColorKey('Active'), value: null }]);
+		expect(config.setCalls).toEqual([{ key: stateColorKey('Active'), value: null }]);
 		expect(active.input.value).not.toBe('#ff0000');
 		expect(active.input.value).toMatch(/^#[0-9a-f]{6}$/);
 	});
@@ -229,7 +229,7 @@ describe('the state-colour picker', () => {
 		// `isSet` is a snapshot from the moment the dialog opened, so the reset has to track
 		// the row as it is USED: choosing on a default row makes a setting that now exists,
 		// and a control disabled over it would strand the user until they closed the dialog.
-		const { view } = openPicker();
+		const { config } = openPicker();
 		const active = rows()[1];
 		expect(active.reset.hasAttribute('disabled')).toBe(true);
 
@@ -240,7 +240,7 @@ describe('the state-colour picker', () => {
 
 		// And back again: the row is on its default once more, so the control goes with it.
 		expect(active.reset.hasAttribute('disabled')).toBe(true);
-		expect(view.config.setCalls).toEqual([
+		expect(config.setCalls).toEqual([
 			{ key: stateColorKey('Active'), value: '#ff0000' },
 			{ key: stateColorKey('Active'), value: null },
 		]);
@@ -251,11 +251,11 @@ describe('the state-colour picker', () => {
 		// that for the collapse controls, where a click landing on a child element bubbles
 		// past it. So the handler asks the same question the attribute answers, and clicking
 		// an unchosen row's reset writes nothing rather than clearing a key nobody set.
-		const { view } = openPicker({ [stateColorKey('Active')]: '#ff0000' });
+		const { config } = openPicker({ [stateColorKey('Active')]: '#ff0000' });
 
 		rows()[0].reset.dispatchEvent(new MouseEvent('click'));
 
-		expect(view.config.setCalls).toEqual([]);
+		expect(config.setCalls).toEqual([]);
 	});
 
 	it('offers no reset on a row with nothing to reset', () => {

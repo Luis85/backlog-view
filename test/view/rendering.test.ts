@@ -1,6 +1,5 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-// @ts-expect-error — a build script, deliberately outside tsconfig's `src/**` include.
 import { assembleStyles } from '../../scripts/styles-assemble.mjs';
 import { FakeVault } from '../helpers/vault';
 import { ALL_TYPES, EXTRA_TYPES, ITERATION_TYPE, MARKER_TYPES, RELEASE_TYPE } from '../../src/domain/typeVocabulary';

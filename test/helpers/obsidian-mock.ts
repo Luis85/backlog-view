@@ -4,6 +4,8 @@
  * under vitest. Only what those modules touch at runtime is implemented.
  */
 
+import type { TAbstractFile, TFolder as RealTFolder, Vault as RealVault } from 'obsidian';
+
 export type BasesPropertyId = `${'note' | 'formula' | 'file'}.${string}`;
 
 export interface BasesProperty {
@@ -52,14 +54,34 @@ export function normalizePath(path: string): string {
 export class TFolder {
 	path = '';
 	name = '';
+	/**
+	 * Members the app's `TFolder` carries and nothing here reads. DECLARED, not assigned:
+	 * no runtime cost, and a fake folder stays assignable where the real type is asked for.
+	 */
+	declare children: TAbstractFile[];
+	declare vault: RealVault;
+	declare parent: RealTFolder | null;
+
+	isRoot(): boolean {
+		return this.path === '/';
+	}
 }
 
 export class TFile {
-	path: string;
-	basename: string;
-	extension: string;
-	parent: { path: string } | null;
+	// Assigned by `moveTo`, which the constructor calls — the `!` is what says so, since
+	// definite-assignment analysis does not follow a method call out of the constructor.
+	path!: string;
+	basename!: string;
+	extension!: string;
+	name = '';
+	parent!: TFolder | null;
 	stat: { mtime: number; ctime: number; size: number };
+	/**
+	 * The app's `TFile` carries a back-reference to its vault. Nothing in the fake reads
+	 * it, so it is DECLARED rather than assigned — no runtime cost, and a fake file stays
+	 * assignable where a module asks for the real type.
+	 */
+	declare vault: RealVault;
 
 	constructor(path: string, mtime = 0) {
 		this.stat = { mtime, ctime: mtime, size: 0 };
@@ -79,9 +101,13 @@ export class TFile {
 		const slash = path.lastIndexOf('/');
 		const name = slash === -1 ? path : path.substring(slash + 1);
 		const dot = name.lastIndexOf('.');
+		this.name = name;
 		this.basename = dot === -1 ? name : name.substring(0, dot);
 		this.extension = dot === -1 ? '' : name.substring(dot + 1);
-		this.parent = { path: slash === -1 ? '/' : path.substring(0, slash) };
+		const parent = new TFolder();
+		parent.path = slash === -1 ? '/' : path.substring(0, slash);
+		parent.name = parent.path.split('/').pop() ?? parent.path;
+		this.parent = parent;
 	}
 }
 
@@ -243,6 +269,17 @@ export class Menu {
 	static lastShown: Menu | null = null;
 	/** Where it was anchored: the point for showAtPosition, null for a mouse event. */
 	static lastPosition: { x: number; y: number } | null = null;
+
+	/**
+	 * Forget the last menu, so a test can assert that the NEXT interaction opened one.
+	 * A method rather than `Menu.lastShown = null` at the call site: the compiler narrows
+	 * a static to `null` after an assignment and never widens it again — nothing it can
+	 * see reassigns it — so every later `Menu.lastShown?.item(…)` read as `never`.
+	 */
+	static forget(): void {
+		Menu.lastShown = null;
+		Menu.lastPosition = null;
+	}
 	items: MenuItem[] = [];
 	separators = 0;
 
@@ -484,6 +521,11 @@ export class Setting {
 export class Modal {
 	/** The modal most recently opened — flows that create modals internally are tested through this. */
 	static lastOpened: Modal | null = null;
+
+	/** `Menu.forget`'s reason, for the same reason: an assignment narrows the static. */
+	static forget(): void {
+		Modal.lastOpened = null;
+	}
 	app: unknown;
 	/**
 	 * The dialog's own frame, and the element a caller writes classes to: `manualDialog`

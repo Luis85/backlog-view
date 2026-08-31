@@ -524,7 +524,7 @@ describe('what an edit is, and is not', () => {
 		await flush();
 		Menu.lastShown?.item('Released')?.click();
 		await flush();
-		vault.afterWrite = undefined;
+		vault.afterWrite = null;
 
 		// The screen the flush drew is the one the write produced: the chip reads back the
 		// value on the note, and the reader is still on the same release.

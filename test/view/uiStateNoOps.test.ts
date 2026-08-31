@@ -77,8 +77,8 @@ describe('a UI-state value set to what it already is', () => {
 		const content = vi.spyOn(depths, 'renderTreeContent');
 		const refresh = vi.spyOn(depths, 'refreshFromData');
 
-		view.setZoom(view.zoom === 'weeks' ? 'months' : 'weeks');
-		view.setShelfSort(view.shelfSort === 'rank' ? 'title' : 'rank');
+		view.setZoom(view.zoom === 'week' ? 'month' : 'week');
+		view.setShelfSort(view.shelfSort === 'tree' ? 'title' : 'tree');
 		view.setFocusLevel('Epic');
 
 		// Called, not counted: `refreshFromData` renders and `render` renders the content,

@@ -56,7 +56,7 @@ describe('the horizon board’s card menu carries no children section', () => {
 	 * second call.
 	 */
 	const menuTitles = (card: HTMLElement): string[] => {
-		Menu.lastShown = null;
+		Menu.forget();
 		card.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
 		const menu = Menu.lastShown;
 		if (!menu) throw new Error('no menu shown');

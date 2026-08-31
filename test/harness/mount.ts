@@ -8,6 +8,7 @@
  * the substitute for Obsidian in tests (ADR 0006), and a real vault remains the only
  * place appearance is verified (ADR 0020).
  */
+import type { BasesPropertyId } from 'obsidian';
 import { ProductBacklogView } from '../../src/view/backlogView';
 import { drawChrome } from './chrome';
 import { drawIcons } from './icons';
@@ -218,7 +219,7 @@ export function mountHarness(root: HTMLElement, fixture: HarnessFixture = 'demo'
 		// and it is here because the fingerprint's promise is "the inputs the view was
 		// handed" and an input left out of it opens silently the day a fixture supplies
 		// one. (Codex, PR #137.)
-		...results.map((entry) => order.map((id) => stableJson(entry.getValue(id))).join('\u0001')),
+		...results.map((entry) => order.map((id) => stableJson(entry.getValue(id as BasesPropertyId))).join('\u0001')),
 	]);
 
 	let settle: ReturnType<typeof setTimeout> | undefined;

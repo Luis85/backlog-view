@@ -1,6 +1,5 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { en } from '../../src/i18n/en';
 import { Catalog, setLocale } from '../../src/i18n/t';
 import { BOARD_WORKFLOW, boardVault, expandColumns, makeBoard } from '../helpers/board';
 import { installObsidianDom } from '../helpers/dom';
@@ -9,6 +8,7 @@ import { makeReleaseView, RELEASE_CONFIG, releaseVault, scopeVault } from '../he
 import { countingVault, resourceVault } from '../helpers/resources';
 import { FakeVault } from '../helpers/vault';
 import { clickExpandAll, fixture, makeView, treeOf } from '../helpers/view';
+import { MARK, markedCatalog } from './fixtures';
 
 installObsidianDom();
 
@@ -42,7 +42,6 @@ installObsidianDom();
  * tests above render straight past.
  */
 
-const MARK = 'XX ';
 /**
  * The WHOLE catalog behind a marker, never a hand-kept list of this slice's keys: a list
  * checks the keys somebody remembered, and `interactions.test.ts` already says its own
@@ -52,12 +51,7 @@ const MARK = 'XX ';
  * a parameter's own text arrives untouched — which is what makes the remainder below
  * readable as data rather than as noise.
  */
-const xx: Catalog = Object.fromEntries(
-	Object.entries(en).map(([key, entry]) => [
-		key,
-		typeof entry === 'string' ? MARK + entry : Object.fromEntries(Object.entries(entry).map(([f, v]) => [f, MARK + v])),
-	]),
-);
+const xx: Catalog = markedCatalog();
 
 beforeEach(() => setLocale('xx', { xx }));
 // Resolution is module state by design (once, at load), so each test puts it back.

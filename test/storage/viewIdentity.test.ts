@@ -51,7 +51,7 @@ describe('rekeyBase', () => {
 	});
 
 	function folds(): ViewFolds {
-		return { collapsed: ['Epic.md'], expanded: [], lanes: [] };
+		return { collapsed: ['Epic.md'], expanded: [], lanes: [], collapsedColumns: [], expandedColumns: [] };
 	}
 
 	function save(base: string, view: string): void {
@@ -128,7 +128,7 @@ describe('rekeyBase across a folder move', () => {
 		saveViewState(
 			vault.app,
 			{ base, view: 'Backlog' },
-			{ folds: { collapsed: ['Epic.md'], expanded: [], lanes: [] }, prefs: {} },
+			{ folds: { collapsed: ['Epic.md'], expanded: [], lanes: [], collapsedColumns: [], expandedColumns: [] }, prefs: {} },
 		);
 	}
 

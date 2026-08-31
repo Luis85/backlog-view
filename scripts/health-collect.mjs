@@ -70,8 +70,21 @@ const BANDS = ["high", "medium", "low"];
  *
  * Sorting is by band, then by each source's OWN figure descending. Figures from
  * different sources are never added, and never compared across a band boundary.
+ *
+ * The shapes are spelled out because this file is JavaScript that TypeScript reads:
+ * without them every default above infers `never[]`, and the test that calls this
+ * function with a real fixture cannot typecheck against it.
+ *
+ * @param {{
+ *   hotspots?: { path: string, score: number, trend?: string, actions?: { description: string }[] }[],
+ *   topCount?: number,
+ *   caps?: { path: string, counted: number, cap: number }[],
+ *   coverage?: { path: string, statements: number }[],
+ *   debt?: { kind: string, title: string, path: string }[],
+ * }} sources
  */
 export function rank({ hotspots = [], topCount = 0, caps = [], coverage = [], debt = [] }) {
+	/** @type {{ band: string, title: string, where: string, why: string, source: string, sort: number, trend?: string }[]} */
 	const rows = [];
 	// Fallow's `hotspots` array is every file it ranked, not every file that IS one:
 	// this repository's `hotspot_count` is 0 across 104 entries. `hotspot_top_pct_count`

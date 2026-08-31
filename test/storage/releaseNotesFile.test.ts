@@ -64,10 +64,10 @@ describe('writeReleaseNotes', () => {
 		await writeReleaseNotes(vault.app as never, 'notes', '0.9', GENERATED);
 		const theirs = `${THEIRS}\ntheirs\n`;
 		const process = vault.app.vault.process;
-		vault.app.vault.process = async (f: never, fn: (data: string) => string) => {
+		vault.app.vault.process = (async (f: never, fn: (data: string) => string) => {
 			vault.contents.set('notes/0.9 release notes.md', theirs);
 			return process(f, fn);
-		};
+		}) as typeof vault.app.vault.process;
 
 		const result = await writeReleaseNotes(vault.app as never, 'notes', '0.9', `${GENERATED}\n## Scope\n`);
 

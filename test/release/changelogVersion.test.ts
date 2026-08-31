@@ -1,6 +1,5 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-// @ts-expect-error — a plain .mjs helper with no type declarations, imported for what it does.
 import { headings } from '../../scripts/docs-markdown.mjs';
 
 /**

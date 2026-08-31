@@ -20,7 +20,7 @@ describe('creating a child from a release scope row', () => {
 
 	/** Right-click a row and hand back the menu it opened, or fail naming the row. */
 	function openMenu(view: { viewEl: HTMLElement }, path: string): Menu {
-		Menu.lastShown = null;
+		Menu.forget();
 		const rowEl = row(view as never, path)!;
 		rowEl.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }));
 		if (!Menu.lastShown) throw new Error(`no menu opened on ${path}`);
@@ -210,7 +210,7 @@ describe('creating a child from a release scope row', () => {
 	it('opens the same menu from the keyboard, on the row the roving selection marks', () => {
 		const { view } = mountFoldScope({ pick: 'Releases/0.8.md' });
 		select(view, 'Send the magic link.md');
-		Menu.lastShown = null;
+		Menu.forget();
 
 		const treeEl = view.viewEl.querySelector<HTMLElement>('.pbl-tree')!;
 		treeEl.dispatchEvent(new KeyboardEvent('keydown', { key: 'F10', shiftKey: true, bubbles: true, cancelable: true }));
@@ -224,7 +224,7 @@ describe('creating a child from a release scope row', () => {
 
 	it('draws no menu on a row that can hold nothing, rather than an empty one', () => {
 		const { view } = mountFoldScope({ pick: 'Releases/0.8.md' });
-		Menu.lastShown = null;
+		Menu.forget();
 		// The release note itself is a marker and holds no child. It is not a scope ROW, so
 		// the gesture that reaches nothing here is a right-click on the tree's own padding —
 		// which must leave the pane's own menu alone rather than opening an empty one.
@@ -355,7 +355,7 @@ describe('creating a child from a release scope row', () => {
 		// The context row IS drawn — the guard has to be about what it offers, not about
 		// whether the row is there.
 		const suiteEl = row(view, 'Suite.md')!;
-		Menu.lastShown = null;
+		Menu.forget();
 		suiteEl.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }));
 		expect(Menu.lastShown).toBeNull();
 
@@ -367,7 +367,7 @@ describe('creating a child from a release scope row', () => {
 		// leaves the right-click alone: a reader on a row with no menu of ours must still
 		// reach the pane's own, so the event is consumed only once there is one to show.
 		select(view, 'Suite.md');
-		Menu.lastShown = null;
+		Menu.forget();
 		const chord = new KeyboardEvent('keydown', { key: 'ContextMenu', bubbles: true, cancelable: true });
 		view.viewEl.querySelector<HTMLElement>('.pbl-tree')!.dispatchEvent(chord);
 		expect(Menu.lastShown).toBeNull();
@@ -376,7 +376,7 @@ describe('creating a child from a release scope row', () => {
 
 	it('opens nothing from the keyboard before the tree has an active row', () => {
 		const { view } = mountFoldScope({ pick: 'Releases/0.8.md' });
-		Menu.lastShown = null;
+		Menu.forget();
 		// Nothing has moved the roving selection yet, so there is no row the menu would be
 		// about — and a menu anchored to the first row would be about a row the reader did
 		// not choose.

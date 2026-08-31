@@ -126,10 +126,10 @@ describe('writeBacklogReadme', () => {
 		const theirs = '# Mine now\n';
 		const file = vault.files.get('docs/README_PRODUCT_BACKLOG.md') as never;
 		const process = vault.app.vault.process;
-		vault.app.vault.process = async (f: never, fn: (data: string) => string) => {
+		vault.app.vault.process = (async (f: never, fn: (data: string) => string) => {
 			vault.contents.set('docs/README_PRODUCT_BACKLOG.md', theirs);
 			return process(f, fn);
-		};
+		}) as typeof vault.app.vault.process;
 
 		const result = await writeBacklogReadme(vault.app as never, 'docs', `${GENERATED}\n## Workflow states\n`);
 
@@ -145,10 +145,10 @@ describe('writeBacklogReadme', () => {
 		await writeBacklogReadme(vault.app as never, 'docs', GENERATED);
 		const theirs = `${readmeMarker('third/Third.base › Planning')}\n\n# This folder is a product backlog\n`;
 		const process = vault.app.vault.process;
-		vault.app.vault.process = async (f: never, fn: (data: string) => string) => {
+		vault.app.vault.process = (async (f: never, fn: (data: string) => string) => {
 			vault.contents.set('docs/README_PRODUCT_BACKLOG.md', theirs);
 			return process(f, fn);
-		};
+		}) as typeof vault.app.vault.process;
 
 		const result = await writeBacklogReadme(vault.app as never, 'docs', `${GENERATED}\n## Workflow states\n`);
 

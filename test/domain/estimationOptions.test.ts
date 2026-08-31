@@ -1,10 +1,10 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { en } from '../../src/i18n/en';
 import { Catalog, setLocale } from '../../src/i18n/t';
 import { getEstimationViewOptions } from '../../src/domain/estimationOptions';
 import { dimOption } from '../../src/domain/estimationSettings';
 import { DEFAULT_DIMENSIONS } from '../../src/domain/defaultModel';
 import { FakeViewConfig } from '../helpers/vault';
+import { MARK, markedCatalog } from '../i18n/fixtures';
 
 /** Every option across every group, the way `viewOptions.test.ts` flattens the backlog's own. */
 function flatten(options: ReturnType<typeof getEstimationViewOptions>) {
@@ -149,13 +149,7 @@ describe('a dimension group is headed the way the panel heads it', () => {
  * the boxes and this list read, so adding a ninth dimension does not edit this test, and
  * keying one of its words still fails it.
  */
-const MARK = 'XX ';
-const xx: Catalog = Object.fromEntries(
-	Object.entries(en).map(([key, entry]) => [
-		key,
-		typeof entry === 'string' ? MARK + entry : Object.fromEntries(Object.entries(entry).map(([f, v]) => [f, MARK + v])),
-	]),
-);
+const xx: Catalog = markedCatalog();
 
 /** Every word the menu shows: a group's heading, an option's name, and its placeholder. */
 function shown(options: ReturnType<typeof getEstimationViewOptions>): string[] {
@@ -165,7 +159,7 @@ function shown(options: ReturnType<typeof getEstimationViewOptions>): string[] {
 		if (!('items' in option)) continue;
 		for (const item of option.items) {
 			if (item.displayName !== undefined) words.push(item.displayName);
-			if (item.placeholder !== undefined) words.push(item.placeholder);
+			if ('placeholder' in item && item.placeholder !== undefined) words.push(item.placeholder);
 		}
 	}
 	return [...new Set(words)].sort();

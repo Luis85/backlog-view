@@ -18,10 +18,10 @@ Requires Obsidian 1.12.0+ (Bases custom view API, with config-aware view options
 ## Definition of done
 
 ```bash
-npm run check   # build + lint + markdown + coverage-thresholded tests + fallow + docs register
+npm run check   # build + test typecheck + lint + markdown + coverage-thresholded tests + fallow + docs register
 ```
 
-All six must pass before committing; CI runs the same steps, on Ubuntu **and Windows** —
+All seven must pass before committing; CI runs the same steps, on Ubuntu **and Windows** —
 paths and line endings are the only things that differ between them, and both have already
 produced a defect this repository could not see. Coverage thresholds
 (vitest.config.mts) only ever go up. Fallow (config: .fallowrc.json) gates dead code,
@@ -112,22 +112,22 @@ language, so nothing re-reads it. What must never enter the catalog is anything 
 writes, matches or persists — type names, state values, option keys, tags, file names. The
 test when it is not obvious: **ask what breaks if two people with different Obsidian
 languages open the same vault.** "One sees different words" is text; "one writes notes the
-other's view cannot read" is data. 761 keys are in it, counted two ways on the MERGED tree
-on 2026-08-31 and agreeing — an AST walk over the `as const`
-object's own properties, and a match-counting
+other's view cannot read" is data. 763 keys are in it, counted two ways on the MERGED tree
+on 2026-08-31 and agreeing — `Object.keys` over the BUNDLED
+catalog, and a match-counting
 `grep -Po` over the key lines. Two rather than the three the 2026-08-26 count used: the
-`Object.keys` over the BUNDLED catalog was not re-run, and this sentence says two because
-two is what was done. `grep -c` would count LINES, which is one of
+AST walk over the `as const` object's own properties was not re-run, and this sentence
+says two because two is what was done. `grep -c` would count LINES, which is one of
 the three wrong numbers this epic has produced from an instrument that looked right, and
 some of these keys carry their value on the FOLLOWING line, which is exactly what such an
 instrument gets wrong. The two DISAGREEING would itself be a finding rather than a nuisance:
 a walk that reports its DISTINCT properties beside its total drops a duplicate key the text
 still shows, so the pair answers "how many" and "are any of them the same key twice" in one
-pass — 761 total and 761 distinct on 2026-08-31. **A count is dated the moment
+pass — 763 total and 763 distinct on 2026-08-31. **A count is dated the moment
 it is written, and this paragraph has now been a merge conflict five times in one day** —
-550, 542, 553, 577, 556, 588, 591, 559, 597, 630, 643, 655 and 686 were each true of the branch
-that wrote them and of nothing else, and 761 is what the merged tree measures rather than what
-any side's arithmetic predicted. Re-measure on the merged tree rather than picking a side.
+550, 542, 553, 577, 556, 588, 591, 559, 597, 630, 643, 655, 686 and 761 were each true of the
+branch that wrote them and of nothing else, and 763 is what the merged tree measures rather
+than what any side's arithmetic predicted. Re-measure on the merged tree rather than picking a side.
 **686 is the worked example of why**: it was measured on a merged tree too, and 0.10.0
 shipping the release view, the estimation view and the resource roster took it to 761 without
 anybody editing this sentence. A branch that adds one key and finds the number 75 out has not
@@ -291,6 +291,15 @@ there. What stays here binds while you are editing `src/`:
   is the one that grows: split by subject before a file becomes the place tests hide. The
   Obsidian ruleset deliberately stops at `src/` — it is type-aware, and the test doubles
   exist to do what it forbids.
+- **`test/` is typechecked too**, by `tsconfig.test.json` (`npm run typecheck:test`), which
+  is `tsconfig.json` plus the test tree, `lib: ES2021` and Node's types. It is a SECOND file
+  rather than a widened include so that `src/` keeps the DOM-and-ES2020 surface
+  `minAppVersion` promises. It is not a style rule: the run that added it found eight calls
+  passing an argument the function does not take, two fixtures behind the shape they claim,
+  and eight `@ts-expect-error` directives suppressing nothing — see
+  `docs/tasks/Typecheck the test suite.md`. A double that cannot satisfy a real type is
+  widened ONCE in the helper that makes it (`asApp`, the `declare`d `TFile` members), never
+  by an `any` or a suppression at the call site.
 - **An invariant asserted in a comment gets a test that fails without it, and the test is
   watched failing.** Revert the fix, run it, see red, restore. Six of ten review findings
   on one pull request were comments precisely stating the rule the code beside them

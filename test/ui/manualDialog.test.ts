@@ -1,6 +1,5 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it } from 'vitest';
-// @ts-expect-error — a build script, deliberately outside tsconfig's `src/**` include.
 import { assembleStyles } from '../../scripts/styles-assemble.mjs';
 import { installObsidianDom } from '../helpers/dom';
 import { ManualSection, manualLink, openManual } from '../../src/ui/manualDialog';
@@ -22,7 +21,7 @@ const content = () => {
 
 describe('the manual dialog', () => {
 	beforeEach(() => {
-		Modal.lastOpened = null;
+		Modal.forget();
 		document.body.empty();
 	});
 
@@ -144,7 +143,7 @@ describe('the manual dialog', () => {
 
 describe('the point-of-need link', () => {
 	beforeEach(() => {
-		Modal.lastOpened = null;
+		Modal.forget();
 		document.body.empty();
 	});
 
