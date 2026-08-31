@@ -90,9 +90,23 @@ The other open item from [[Close the holes the test typecheck cannot see through
 Every other call landed on an implicit `any`, so `npm run typecheck:test` read nothing at
 that boundary.
 
-The 19 exports tests actually call are typed by JSDoc now, and only those — an export no
+The **21** exports tests actually call are typed by JSDoc now, and only those — an export no
 test reaches gains nothing. `--checkJs` over `scripts/` reports 253 errors and stays a
 project of its own.
+
+**It was 19, and the instrument is why.** The census read `grep -oP "^export function \K\w+"`,
+which cannot see `export const prose = (text) => …`. `prose` and `proseWithSpans` are arrow
+functions, both directly imported and called by `test/docs/markdown.test.ts`, and both were
+left untyped while this note claimed every test-reached export was covered — a guarantee
+written ahead of its check, in the note whose own subject is that mistake. Codex found it on
+review. The instrument that sees both forms is `^export (function|const) \K\w+`, and it is
+the one to use.
+
+That is the **third** miscount in this run of work, each from a pattern whose window was
+wrong rather than whose logic was: `as never` matching inside "was never", the `architecture`
+shape read from a grep that ran past the end of its function, and now an export form the
+pattern did not spell. **Test the instrument first** is not advice this repository needs
+repeating to itself; it is advice it keeps failing to take.
 
 **It bit twice while being written**, which is what a boundary type is for:
 

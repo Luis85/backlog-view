@@ -78,10 +78,21 @@ const blankOut = (text, ranges) => {
 	return out;
 };
 
-/** Fenced blocks blanked. A `## Decision` inside one is an example, never a section. */
+/**
+ * Fenced blocks blanked. A `## Decision` inside one is an example, never a section.
+ *
+ * @param {string} text - a Markdown document.
+ * @returns {string} the same text with fenced blocks blanked, so an offset into it still
+ *   indexes the original.
+ */
 export const proseWithSpans = (text) => blankOut(text, spans(text, new Set(["code"])));
 
-/** Fenced blocks AND inline spans blanked: inside backticks nothing is a reference. */
+/**
+ * Fenced blocks AND inline spans blanked: inside backticks nothing is a reference.
+ *
+ * @param {string} text - a Markdown document.
+ * @returns {string} the same text with both blanked, offsets preserved.
+ */
 export const prose = (text) => blankOut(text, spans(text, CODE));
 
 /**
