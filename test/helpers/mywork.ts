@@ -1,4 +1,4 @@
-import { TFile } from 'obsidian';
+import { BasesEntry } from 'obsidian';
 import { WriteLock } from '../../src/view/writeLock';
 import { MyWorkView } from '../../src/view/mywork/myWorkView';
 import { installObsidianDom } from './dom';
@@ -29,7 +29,7 @@ export interface MyWorkVaultOptions {
  */
 const OUTSIDE_FILTER_PATHS = new WeakMap<FakeVault, string[]>();
 
-function baseResults(vault: FakeVault): { file: TFile; getValue: (propertyId: string) => unknown }[] {
+function baseResults(vault: FakeVault): BasesEntry[] {
 	const excluded = new Set(OUTSIDE_FILTER_PATHS.get(vault) ?? []);
 	return vault.entries().filter((e) => !excluded.has(e.file.path));
 }

@@ -99,12 +99,23 @@ task writes one. Resolved through `resolveSecondaryWorkflow`, exported from
 `settingsResolve.ts` for exactly this reuse, rather than a second, hand-written version of
 "falls back to the requirements key and done values only when both are unconfigured": the
 two views read the identical option keys, so sharing the function is what keeps their
-fallback rule from drifting the moment either is edited. `MyWorkView.draw()`'s own
-`planSettings` layering — already overriding six fields for the cleared-vs-unset
-distinction `resolveSettings`'s plain `propKey` cannot draw — now overrides these four
-too, for a narrower reason: this view's own resolver is the single place a reader's
-choice on these options is decided, and the model must see that answer rather than
-whatever a second resolver over the same config happens to compute.
+fallback rule from drifting the moment either is edited.
+
+`MyWorkView.draw()`'s own `planSettings` layering — already overriding six fields —
+needs no fifth-through-eighth entry for these four, and that is a fact about THIS
+function rather than a rule this task got to skip. The six existing overrides exist
+because `resolveSettings`'s plain `propKey` cannot tell a cleared option from an untouched
+one for those six, while `resolveMyWorkSettings` draws that distinction with
+`clearablePropKey` and a real per-field default — so the two resolvers, called on the
+same config, would genuinely disagree without the override. These four have no such
+default to protect: `resolveSecondaryWorkflow` resolves them with plain `propKey` on
+BOTH sides, the identical option keys, and the identical `fallback: defaultSettings()` —
+so `resolveSettings(this.config)` above already computes the exact answer
+`resolveMyWorkSettings` would. A first draft of this task added the four fields to the
+override anyway, on the mistaken belief that omitting them would leave the new options
+unreachable; review found that belief false (the two calls agree, so nothing was ever at
+risk) and the untested extra scope was removed rather than kept and justified after the
+fact.
 
 ## The pick itself, and where it lives
 
@@ -191,10 +202,13 @@ against.
 `src/view/mywork/myWorkView.ts` — `MY_WORK_VIEW_TYPE`, `MyWorkView`: the `BasesView`
 that builds the model from this options bag, resolves and persists the picked person,
 and draws the states that come before a tree (unbound assignee, an empty roster, nobody
-picked yet). Its `draw()` layers ten of this bag's fields onto `resolveSettings(this.config)`
-before building the model — the six from the original bag plus the four Task 3b added —
-so the model always sees this view's own cleared-vs-unset reading rather than a second
-resolver's incidental agreement with it. `src/view/mywork/register.ts` —
+picked yet). Its `draw()` layers six of this bag's fields onto `resolveSettings(this.config)`
+before building the model, wherever the two resolvers could disagree (a cleared option
+this bag's own `clearablePropKey` reports as unbound, that `resolveSettings`'s plain
+`propKey` would still resolve to its default). Task 3b's four fields need no such
+override: `resolveSecondaryWorkflow` resolves them identically on both sides (see the
+Task 3b paragraph above), so `resolveSettings(this.config)` alone already carries them
+correctly. `src/view/mywork/register.ts` —
 `registerMyWorkView`, this view's own registration, composed behind the plugin's one
 shared `WriteLock` in `src/main.ts` (ADR 0030). `src/storage/viewStateStore.ts` —
 `prefs.person` in `ViewPrefs`, its `PREF_READERS` row and its `PATH_PREFS` entry, which is

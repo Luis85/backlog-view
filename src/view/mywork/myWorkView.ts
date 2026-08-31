@@ -170,17 +170,14 @@ export class MyWorkView extends BasesView {
 			assigneeKey: this.settings.assigneeKey,
 			stateKey: this.settings.stateKey,
 			doneValues: this.settings.doneValues,
-			// Task 3b: the tree's own membership predicate (`assignedWork.ts`) admits
-			// Deliverables and test-catalog rows, whose done-ness `ownWorkflowReading`
-			// (`board.ts`) reads through THESE two fields rather than `stateKey` above — so
-			// they join the override for the identical reason the six above already are:
-			// this view's own resolver is where a cleared/unbound distinction on these
-			// options is decided, and the model must see that answer rather than whatever a
-			// second resolver over the same config happens to compute.
-			deliverableStateKey: this.settings.deliverableStateKey,
-			deliverableDoneValues: this.settings.deliverableDoneValues,
-			testStateKey: this.settings.testStateKey,
-			testDoneValues: this.settings.testDoneValues,
+			// Task 3b's four new fields (`deliverableStateKey`/`deliverableDoneValues`/
+			// `testStateKey`/`testDoneValues`) need NO override here, unlike the six above:
+			// `resolveMyWorkSettings` resolves them with `resolveSecondaryWorkflow` over
+			// the SAME option keys, the SAME `fallback: defaultSettings()`, and plain
+			// `propKey` (no clearable distinction to protect, since these four ship no real
+			// default to begin with) — so `resolveSettings(this.config)` above already
+			// computes the identical answer. Overriding them anyway was reviewed off this
+			// list: it added untested scope for no behavioural difference.
 		};
 		this.model = buildModel(this.app, this.data.data, this.planSettings);
 		if (this.model.resources.length === 0) {

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
 import { CARD_SCOPE, MYWORK_FOLD, RELEASE_FOLD, TIMELINE_SCOPE } from '../../src/view/viewState';
-import { saveViewState } from '../../src/storage/viewStateStore';
+import { saveViewState, ViewPrefs } from '../../src/storage/viewStateStore';
 import { FakeVault } from '../helpers/vault';
 import { fixture, makeView, refresh, rowByTitle, titlesOf, useViewHarness } from '../helpers/view';
 
@@ -10,7 +10,10 @@ useViewHarness();
 describe('collapse state persistence', () => {
 	interface StoredEntry {
 		folds: { collapsed: string[]; expanded: string[]; lanes: string[] };
-		prefs?: { release?: string };
+		// The real `ViewPrefs`, not a re-typed subset: a hand-picked `{ release?: string }`
+		// here is exactly what went stale the moment Task 4 added `person` to the
+		// production type without a second edit landing here too.
+		prefs?: ViewPrefs;
 	}
 
 	function stored(vault: FakeVault): Record<string, StoredEntry> {

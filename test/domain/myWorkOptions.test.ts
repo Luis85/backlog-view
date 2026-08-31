@@ -47,7 +47,7 @@ describe('my work options', () => {
 
 	it('offers every key exactly once', () => {
 		const keys = getMyWorkViewOptions(new FakeViewConfig({}) as never)
-			.flatMap((group) => group.items ?? [])
+			.flatMap((group) => ('items' in group ? group.items : []))
 			.map((item) => item.key);
 		expect(new Set(keys).size).toBe(keys.length);
 	});
@@ -63,7 +63,7 @@ describe('my work options', () => {
 
 	it('carries a default on its open-target dropdown, and resolves split when unset', () => {
 		const openIn = getMyWorkViewOptions(new FakeViewConfig({}) as never)
-			.flatMap((group) => group.items ?? [])
+			.flatMap((group) => ('items' in group ? group.items : []))
 			.find((item) => item.key === 'openIn') as { default?: unknown } | undefined;
 		expect(openIn?.default).toBe('split');
 		expect(resolveMyWorkSettings(new FakeViewConfig({}) as never).openIn).toBe('split');
@@ -100,7 +100,7 @@ describe('my work options', () => {
 	// at the wrong key (PR #234's P1).
 	it('offers the two secondary-workflow properties, once each', () => {
 		const keys = getMyWorkViewOptions(new FakeViewConfig({}) as never)
-			.flatMap((group) => group.items ?? [])
+			.flatMap((group) => ('items' in group ? group.items : []))
 			.map((item) => item.key);
 		for (const key of ['deliverableStateProperty', 'deliverableDoneValues', 'testStateProperty', 'testDoneValues']) {
 			expect(keys.filter((k) => k === key)).toHaveLength(1);
