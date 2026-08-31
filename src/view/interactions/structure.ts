@@ -308,7 +308,19 @@ export function indent(host: BacklogViewHost, item: BacklogItem, namedParentPath
 		return;
 	}
 	const target = indentTarget(host, live, named);
-	if (target) void host.performDrop(live, target);
+	if (target) {
+		void host.performDrop(live, target);
+		return;
+	}
+	// The named destination RESOLVED but `indentTarget` still refused it — retyped onto
+	// the other ladder, or turned into the subject's own descendant, while the menu sat
+	// open. `rank.itemGone` does not fit either: the note is still in this base, just no
+	// longer a valid PARENT for this subject, and saying it left would be false. Keyed on
+	// the PATH, not on the null target, the same distinction the vanished-path branch
+	// above draws: Alt+Right passes no path and promises no note, so a null target there
+	// is "not expressible" and must stay silent, exactly as `indentTarget`'s own docblock
+	// says.
+	if (namedParentPath !== undefined) new Notice(t('rank.targetInvalid'));
 }
 
 /**

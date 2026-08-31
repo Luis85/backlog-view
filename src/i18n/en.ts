@@ -1205,6 +1205,15 @@ export const en = {
 	'rank.itemGone': 'That item is no longer in this base, so nothing was moved.',
 
 	/**
+	 * The named destination on `indent` RESOLVED — it is still in this base — but
+	 * `indentTarget` refused it anyway: retyped onto the other ladder, or become the
+	 * subject's own descendant, while the menu sat open. `rank.itemGone` says the note
+	 * left the base, which is false here, so it gets its own sentence rather than
+	 * borrowing that one.
+	 */
+	'rank.targetInvalid': 'That is no longer a valid destination, so nothing was moved.',
+
+	/**
 	 * What the two rank commands say. Each confirmation states the whole of what the
 	 * command does to a note the user cannot see the effect of — a filtered base ranks only
 	 * what it returns, so a note it excludes can end up above or below where it was — and

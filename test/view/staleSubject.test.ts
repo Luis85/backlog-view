@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { FakeVault } from '../helpers/vault';
 import { Menu, Notice } from '../helpers/obsidian-mock';
-import { clickExpandAll, flush, makeView, rowByTitle, useViewHarness } from '../helpers/view';
+import { clickExpandAll, flush, key, makeView, refresh, rowByTitle, treeOf, useViewHarness } from '../helpers/view';
 
 useViewHarness();
 
@@ -115,6 +115,97 @@ describe('indent whose named destination left the base', () => {
 
 		expect(harness.vault.writeLog).toEqual([]);
 		expect(Notice.messages).toEqual([GONE]);
+	});
+});
+
+/** What `indent` says when its named destination resolved but is no longer a valid parent. */
+const TARGET_INVALID = 'That is no longer a valid destination, so nothing was moved.';
+
+/**
+ * The other half of the sibling case: the named destination did not vanish, it stopped
+ * being a valid PARENT while the menu sat open — `indentTarget` refuses it for a reason
+ * `rank.itemGone` cannot honestly say, since the note is still in this base. Two ways to
+ * get there (Task 6's brief): retyped onto the other ladder, and turned into the
+ * subject's own descendant. Both go through the menu path, which names the destination
+ * and so must report; both are proven silent on the keyboard path beside them, which
+ * names nothing and computes its own neighbour fresh — see `indentTarget`'s own comment
+ * on why a null target there is "not expressible" rather than a refusal to report.
+ */
+describe('indent whose named destination resolves but is no longer valid', () => {
+	it('reports a destination retyped onto the other ladder, and stays silent on the keyboard path for the same condition', async () => {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('F1.md', { frontmatter: { type: 'Feature', order: 20 }, parentLink: 'Epic' });
+		vault.addFile('T1.md', { frontmatter: { type: 'Task', order: 30 }, parentLink: 'Epic' });
+		const { containerEl, view } = makeView(vault);
+		clickExpandAll(containerEl);
+
+		rowByTitle(containerEl, 'T1').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+		const menu = Menu.lastShown;
+		if (!menu) throw new Error('menu not shown');
+		const entry = menu.item('Indent under "F1"');
+		expect(entry).toBeDefined();
+
+		// F1 stays in the base and stays T1's previous sibling — it is retyped onto the
+		// test ladder, which is what `keepsProjection` refuses: T1 is a `Task`, ambiguous
+		// between both ladders, and would cross into the catalog rather than stay on the
+		// plan its real parent (`Epic`) still puts it on.
+		vault.setFrontmatter('F1.md', { type: 'Test suite', order: 20 });
+		refresh(view, vault);
+		Notice.messages = [];
+
+		entry?.click();
+		await flush();
+
+		expect(vault.writeLog).toEqual([]);
+		expect(Notice.messages).toEqual([TARGET_INVALID]);
+
+		// The keyboard path, asked of the SAME condition with no path named: `visibleNeighbor`
+		// recomputes T1's previous sibling fresh and finds the same now-retyped F1, so
+		// `indentTarget` refuses the same way — but Alt+Right draws no label and promises no
+		// note, so a null target there must stay silent rather than borrow this sentence.
+		Notice.messages = [];
+		const tree = treeOf(containerEl);
+		key(tree, 'ArrowDown'); // Epic
+		key(tree, 'ArrowDown'); // F1
+		key(tree, 'ArrowDown'); // T1
+		key(tree, 'ArrowRight', { altKey: true });
+		await flush();
+
+		expect(vault.writeLog).toEqual([]);
+		expect(Notice.messages).toEqual([]);
+	});
+
+	it('reports a destination that became the subject’s own descendant', async () => {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('F1.md', { frontmatter: { type: 'Feature', order: 20 }, parentLink: 'Epic' });
+		vault.addFile('F2.md', { frontmatter: { type: 'Feature', order: 30 }, parentLink: 'Epic' });
+		const { containerEl, view } = makeView(vault);
+		clickExpandAll(containerEl);
+
+		rowByTitle(containerEl, 'F2').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+		const menu = Menu.lastShown;
+		if (!menu) throw new Error('menu not shown');
+		const entry = menu.item('Indent under "F1"');
+		expect(entry).toBeDefined();
+
+		// F1 stays in the base but is reparented under F2 — the subject the menu was
+		// opened on — which is what `isInvalidParent` refuses: nesting F2 under its own
+		// child. `setFrontmatter` alone leaves the old `parentLink` cache entry standing
+		// (its own doc: it replaces `cache.frontmatter`, not `frontmatterLinks`), so the
+		// resolved link is rewritten by hand the way `addFile` would have produced it.
+		vault.setFrontmatter('F1.md', { type: 'Feature', order: 20, parent: '[[F2]]' });
+		const f1Cache = vault.caches.get('F1.md');
+		if (f1Cache) f1Cache.frontmatterLinks = [{ key: 'parent', link: 'F2', original: '[[F2]]' }];
+		refresh(view, vault);
+		Notice.messages = [];
+
+		entry?.click();
+		await flush();
+
+		expect(vault.writeLog).toEqual([]);
+		expect(Notice.messages).toEqual([TARGET_INVALID]);
 	});
 });
 
