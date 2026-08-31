@@ -472,9 +472,11 @@ Context rows are italic and dimmed, with a `↳` marker. They are **not results*
   menu drops **Set type**, **Set state** and the parent-link commands — a note the filter
   excluded is not yours to edit from a view that doesn't contain it. The rows *around* one
   still reorder normally — what is refused is a move of the context row itself (no
-  before/after drop onto it, no **Move up/down/to top/to bottom**, no **Outdent** from it)
-  and any placement whose number a context row already holds, which the view declines with
-  a notice rather than writing a duplicate;
+  **Move up/down/to top/to bottom**, no **Outdent** from it), and a before/after drop onto
+  one is refused too — unless it is a *ranked* context row and the drop is a focus-level
+  rank, where its number is a real constraint the view can see and other rows can still be
+  ranked around it — and any placement whose number a context row already holds, which the
+  view declines with a notice rather than writing a duplicate;
 - they don't influence where new notes go: the folder for new items is inferred from the
   Base's own results, never from ancestors that live somewhere else in the vault — and
   **New \<child\>** on a context row creates the note in that results folder rather than
