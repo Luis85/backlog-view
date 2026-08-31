@@ -111,7 +111,16 @@ export function dropTargetFor(
 	item: BacklogItem,
 	zone: DropZone,
 	dragged: BacklogItem,
-	member: (item: BacklogItem) => boolean,
+	/**
+	 * Whether this row is DRAWN on the screen the drag is happening on — projection
+	 * membership AND the completed toggle AND an emptied context scaffold, which is what
+	 * `rowHidden` composes and what the view passes inverted. It answers the no-op
+	 * question in both branches below and nothing else, so a row the user cannot see is
+	 * never something a drop can be said to have moved past. Narrowed from a
+	 * projection-only predicate on 2026-08-31: a hidden completed row counted as a
+	 * neighbour, and a drop that changed nothing visible wrote and spent the undo slot.
+	 */
+	drawn: (item: BacklogItem) => boolean,
 ): DropTarget | null {
 	const position = zone === 'inside' ? insidePosition(item, dragged) : siblingPosition(model, item, zone, dragged);
 	if (!position) return null;
@@ -148,14 +157,25 @@ export function dropTargetFor(
 		// the unfiltered one there misses the no-op and writes to a row that did not move.
 		// `dragged` is assumed to be in that list: an `outsideFilter` row would score `-1`
 		// and never read as a no-op, which the render prevents by never handing one a drag.
-		if (position.insertIndex === rankablePeers(model.roots).indexOf(dragged)) return null;
+		//
+		// **And filtered to what is DRAWN, by the same arithmetic the tree branch below
+		// uses.** A raw index counts rows the completed toggle is hiding, so with `A`, a
+		// hidden done `H` and `B` ranked in that order, dropping `B` where it already
+		// appears — straight after `A` — reads as a move to the slot before `H` and writes.
+		// The screen is identical afterwards and the undo slot is gone. `visibleNeighbor`
+		// has always skipped hidden rows so that "structural commands never produce a
+		// visually inert change"; this is the drag being held to the same promise.
+		const focusList = rankablePeers(model.roots);
+		const drawnIndex = focusList.filter(drawn).indexOf(dragged);
+		const drawnInsert = position.peers.slice(0, position.insertIndex).filter(drawn).length;
+		if (drawnInsert === drawnIndex) return null;
 	} else if (position.parent === dragged.parent && !clearsStaleLink(position.parent, dragged)) {
 		// The TREE keeps today's rule unchanged: the real group filtered to this
 		// projection, because a sibling group can interleave the projections and
 		// crossing a row nobody can see is not a move.
 		const fullList = position.parent ? position.parent.children : model.realRoots;
-		const drawnIndex = fullList.filter(member).indexOf(dragged);
-		const drawnInsert = position.peers.slice(0, position.insertIndex).filter(member).length;
+		const drawnIndex = fullList.filter(drawn).indexOf(dragged);
+		const drawnInsert = position.peers.slice(0, position.insertIndex).filter(drawn).length;
 		if (drawnInsert === drawnIndex) return null;
 	}
 	return position;

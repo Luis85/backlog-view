@@ -1,5 +1,4 @@
 import { dropTargetFor, zoneForRatio } from '../../domain/dropTargets';
-import { projectionMember } from '../projection';
 import { DropZone } from '../../domain/dropTargets';
 import { BacklogViewHost } from '../host';
 import { BacklogItem, BacklogModel } from '../../domain/model';
@@ -66,7 +65,7 @@ export class DragDropController {
 				return;
 			}
 			const zone = this.zoneFor(evt, row, this.hasVisibleChildren(item));
-			const dropTarget = dropTargetFor(drag.model, item, zone, drag.dragged, projectionMember(this.host.projection, this.host.effectiveScope));
+			const dropTarget = dropTargetFor(drag.model, item, zone, drag.dragged, (row) => !this.host.isRowHidden(row));
 			if (!dropTarget) {
 				this.setDropIndicator(row, null);
 				return;
@@ -96,7 +95,7 @@ export class DragDropController {
 			const zone = this.zoneFor(evt, target.row, this.hasVisibleChildren(target.item));
 			const dropTarget =
 				drag && drag.dragged !== target.item
-					? dropTargetFor(drag.model, target.item, zone, drag.dragged, projectionMember(this.host.projection, this.host.effectiveScope))
+					? dropTargetFor(drag.model, target.item, zone, drag.dragged, (row) => !this.host.isRowHidden(row))
 					: null;
 			this.clearDragState();
 			if (drag && dropTarget) void this.host.performDrop(drag.dragged, dropTarget);

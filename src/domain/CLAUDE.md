@@ -134,8 +134,10 @@ a node test that did would be measuring the runner.
   Checked by lint in `writePlan.ts` and `interactions/create.ts` — the two files that
   rank. The two files that POSITION at the top level hold both lists at once and must not
   let either answer the other's question: `dropTargets.ts` ranks against `realRoots` while
-  asking its no-op question of the drawn order through the `member` predicate the view
-  hands it, and `structure.ts` ranks a root-level outdent the same way. That split is the
+  asking its no-op question of the drawn order through the `drawn` predicate the view
+  hands it — projection membership AND the completed toggle AND an emptied context
+  scaffold, which is `rowHidden` inverted, and it was projection ALONE until 2026-08-31 —
+  and `structure.ts` ranks a root-level outdent the same way. That split is the
   subtlety worth reading twice before editing.
 - Focus mode: the top row is a synthetic grouping — `focusRoot` items keep their real
   `parent` pointer, and reordering/outdent/indent across that row must stay disabled.
@@ -383,6 +385,15 @@ a node test that did would be measuring the runner.
   population*, so a drop aimed just below such a row landed at the bottom of the backlog
   (`test/view/focusedUnrankedContext.test.ts`). A no-op comparison beside such a list has
   to read the SAME list, or it shifts by the rows the filter removed.
+  **And it has to be filtered to what is DRAWN, which is a second question over the same
+  list and was missed on both branches.** Hiding finished work is a RENDER decision, so a
+  done row stays in `model.roots` and stays a ranking neighbour — correct, and what
+  [[Rollups and hiding finished work]] guarantees — but counting it as a row a drop moved
+  PAST is not: with `A`, a hidden done `H` and `B` ranked in that order, dropping `B`
+  where it already appears wrote a rank and left the screen identical. `visibleNeighbor`
+  had skipped hidden rows for exactly this reason since long before; the drag caught up on
+  2026-08-31 (`test/view/hiddenRowNoOp.test.ts`, which drives both branches because both
+  had it — the tree's was older than the global rank).
 - **Every structural command asks the write path's own question before it is offered.**
   `plans` (`interactions/structure.ts`) runs `dropPlacement` against that command's OWN
   target, so `canReorder`, `canMoveToEdge`, `outdentTarget` and `indentTarget` each answer
