@@ -108,6 +108,30 @@ project of its own.
 Checked in both directions before committing: `headings(42)` fails the gate, and removing it
 returns to zero.
 
+## The remaining escape hatches, classified rather than swept
+
+The last open item was the leftover casts. Counted with word boundaries, because the
+instrument matters here twice over — `grep "as any"` reports four and three of them are the
+words *"the same as any other"* in prose, exactly the family of miscount the previous two
+tasks each made once:
+
+- **`as any`: one, now none.** `registerBacklogView.test.ts` reached a view's `applySafely`
+  through the widest hatch there is; it names that one method's type instead.
+- **`as unknown as Record<string, unknown>`: 11 → 7.** The four in
+  `estimation/openNote.test.ts` widened a whole workspace to a bag of unknowns to assign
+  `getLeaf`; they go through a helper that names that member. The seven left patch
+  `HTMLElement.prototype` in `test/helpers/dom.ts` and set `window.__pbl` in the browser
+  harness — a prototype IS a bag of unknowns, and no narrower type is honest.
+- **The 12 inline shapes stay.** `as unknown as { render(): void }` and its siblings reach
+  past a class's public surface to spy on one method, which `eslint.config.mjs` says the
+  harness exists to do. Each names exactly the member it reaches, which is the narrowest
+  form the reach can take.
+- **The six `as never` stay**, commented, for the reason
+  [[Close the holes the test typecheck cannot see through]] gives: each is the subject of
+  its own test.
+
+Classifying and declining is the finished state of this item, not a skipped one.
+
 ## Acceptance criteria
 
 - `npm run check` passes whole, no coverage floor moved, 4299 tests passing.
