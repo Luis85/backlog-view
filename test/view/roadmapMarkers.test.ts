@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { Menu } from '../helpers/obsidian-mock';
 import { todayStamp } from '../../src/domain/noteFields';
-import { FakeVault } from '../helpers/vault';
+import { FakeVault, setResults } from '../helpers/vault';
 import { useViewHarness } from '../helpers/view';
 import { barFor, gripNames, labelTexts, markersLane, markFor, roadmapView, rowFor, timelineRowEls } from '../helpers/roadmap';
 
@@ -290,10 +290,7 @@ describe('milestone lines', () => {
 		// A line across every result is derived FROM the results, and a context row is
 		// never a source of one: exclude 'Excluded' from the base's own results — its
 		// explicit parent link on Result pulls it back in as context, not a result.
-		(view as unknown as { data: unknown }).data = {
-			data: vault.entries().filter((e) => e.file.path !== 'Excluded.md'),
-		};
-		view.onDataUpdated();
+		setResults(view, vault.entries().filter((e) => e.file.path !== 'Excluded.md'));
 
 		expect(containerEl.querySelectorAll('.pbl-milestone-line')).toHaveLength(0);
 	});

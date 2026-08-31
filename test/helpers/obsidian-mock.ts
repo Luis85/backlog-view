@@ -57,6 +57,8 @@ export class TFolder {
 	/**
 	 * Members the app's `TFolder` carries and nothing here reads. DECLARED, not assigned:
 	 * no runtime cost, and a fake folder stays assignable where the real type is asked for.
+	 * A `declare` is a bet that `src/` never reads the member — see `FakeQueryResult` in
+	 * `vault.ts` for the one time that bet was lost, and what it looked like.
 	 */
 	declare children: TAbstractFile[];
 	declare vault: RealVault;
@@ -79,7 +81,8 @@ export class TFile {
 	/**
 	 * The app's `TFile` carries a back-reference to its vault. Nothing in the fake reads
 	 * it, so it is DECLARED rather than assigned — no runtime cost, and a fake file stays
-	 * assignable where a module asks for the real type.
+	 * assignable where a module asks for the real type. Reading one answers `undefined`, not
+	 * an error; the bet is that `src/` never does.
 	 */
 	declare vault: RealVault;
 

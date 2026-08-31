@@ -1,6 +1,7 @@
 import type {
 	App,
 	BasesEntry,
+	BasesEntryGroup,
 	BasesPropertyId,
 	BasesQueryResult,
 	BasesSortConfig,
@@ -632,16 +633,23 @@ export function mountView(view: BasesView, vault: FakeVault, config: FakeViewCon
  * tests that call it directly are about a set the vault cannot produce on its own: a
  * filtered one, an empty one, or one entry whose `getValue` throws.
  */
-export function setResults(view: BasesView, entries: BasesEntry[]): void {
-	view.data = new FakeQueryResult(entries);
+export function setResults(view: BasesView, entries: BasesEntry[], groups?: BasesEntryGroup[]): void {
+	view.data = new FakeQueryResult(entries, groups);
 	view.onDataUpdated();
 }
 
 /**
- * The result set Bases hands a view, as `view.data` takes it. The view reads `data` and
- * nothing else, so the three members Bases computes are DECLARED — no runtime cost, and a
- * module that starts reading one fails loudly instead of finding a silent stub, the same
- * trade the mock `TFile`'s `declare`d members make.
+ * The result set Bases hands a view, as `view.data` takes it.
+ *
+ * `groupedData` is REAL, not declared, because `detectIgnoredGrouping` reads it — the
+ * grouping advisory is the whole reason it exists. This class said "the view reads `data`
+ * and nothing else" until 2026-08-31, which is a guarantee written ahead of its check: the
+ * three tests driving that advisory could not use this double at all and cast past it to
+ * assign `view.data` by hand, so the one member the plugin actually consults was the one
+ * the double did not carry. `properties` and `getSummaryValue` stay DECLARED — nothing in
+ * `src/` reads either TODAY — checked, not assumed — and a module that starts to will find
+ * `undefined` rather than a loud failure, which is the whole hazard `groupedData` proved.
+ * Re-check with a walk over `src/` before adding a fourth.
  *
  * It exists so that HANDING A VIEW ITS RESULTS NEEDS NO CAST. `{ data: entries }` is not a
  * `BasesQueryResult`, so every mount in the suite reached `view.data` through
@@ -651,18 +659,30 @@ export function setResults(view: BasesView, entries: BasesEntry[]): void {
  * widened once, here, rather than cast at each mount.
  */
 export class FakeQueryResult {
-	declare groupedData: BasesQueryResult['groupedData'];
 	declare properties: BasesQueryResult['properties'];
 	declare getSummaryValue: BasesQueryResult['getSummaryValue'];
-	constructor(public data: BasesEntry[]) {}
+	readonly groupedData: BasesEntryGroup[];
+
+	constructor(
+		public data: BasesEntry[],
+		groups: BasesEntryGroup[] = [],
+	) {
+		this.groupedData = groups;
+	}
 }
 
 /** In-memory BasesViewConfig double that records set() calls. */
 export class FakeViewConfig {
 	/**
 	 * Formula evaluation, which the plugin never asks for. DECLARED rather than stubbed:
-	 * no runtime cost, and if a module ever does call it the test fails loudly instead of
-	 * reading a silent default.
+	 * no runtime cost. It is NOT loud, and this comment said it was until 2026-08-31: a
+	 * `declare` emits nothing, so a module that starts calling it finds `undefined` and
+	 * fails wherever that lands, which may be a truthiness test that quietly answers no.
+	 * `groupedData` was exactly that on `FakeQueryResult` — declared, read by
+	 * `detectIgnoredGrouping`, and therefore `undefined` in every test, so the three cases
+	 * driving the grouping advisory had to cast past the double to plant it. A `declare`
+	 * here is a bet that `src/` never reads the member, and the bet has been lost once.
+	 * `getEvaluatedFormula` is checked: nothing in `src/` calls it.
 	 */
 	declare getEvaluatedFormula: BasesViewConfig['getEvaluatedFormula'];
 	/** User-facing view name — part of the key the view-state store is written under. */

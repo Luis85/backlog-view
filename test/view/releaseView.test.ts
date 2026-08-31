@@ -5,7 +5,7 @@ import { makeReleaseView, RELEASE_CONFIG, releaseVault, scopeVault } from '../he
 import { ReleaseView } from '../../src/view/release/releaseView';
 import { WriteLock } from '../../src/view/writeLock';
 import { useViewHarness } from '../helpers/view';
-import { fakeController, FakeVault } from '../helpers/vault';
+import { FakeVault, fakeController, setResults } from '../helpers/vault';
 
 useViewHarness();
 
@@ -287,8 +287,7 @@ describe('the release view keeps the reader’s place', () => {
 		// Two of the three releases leave the base's results, so the list is shorter than
 		// the offset the reader left behind.
 		scrollHeight.mockReturnValue(60);
-		(view as unknown as { data: unknown }).data = { data: vault.entries().filter((e) => e.file.path === '0.8.md') };
-		view.onDataUpdated();
+		setResults(view, vault.entries().filter((e) => e.file.path === '0.8.md'));
 
 		expect((containerEl.querySelector('.pbl-rel-list') as HTMLElement).scrollTop).toBe(60);
 	});
