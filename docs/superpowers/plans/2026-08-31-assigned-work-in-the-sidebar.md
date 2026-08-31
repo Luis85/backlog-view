@@ -540,7 +540,10 @@ Expected: FAIL — module not found.
 - [ ] **Step 3: Write the module**
 
 Follow `src/domain/releaseOptions.ts` exactly: the same `modelGroup()` shape, the same
-`configReaders` destructuring, every label through `t()`.
+`configReaders` destructuring, every label through `t()`. Its `openIn` entry too, verbatim
+— `default: defaultItemHandling('split').openIn` — so the dropdown SHOWS the value the
+resolver falls back to. A stated default and a resolver default that disagree is one
+setting with two answers, which the register has already paid for once.
 
 ```ts
 export function getMyWorkViewOptions(config: BasesViewConfig): BasesAllOptions[] {
@@ -559,7 +562,12 @@ export function resolveMyWorkSettings(config: BasesViewConfig): MyWorkSettings {
 		assigneeKey: clearablePropKey('assigneeProperty', 'assignee'),
 		stateKey: clearablePropKey('stateProperty', 'state'),
 		doneValues: doneValues.length > 0 ? doneValues : DEFAULT_DONE_VALUES,
-		openIn: resolveItemHandling(str).openIn,
+		// `'split'`, never the bare default — `releaseOptions.ts` and `estimationSettings.ts`
+		// both pass it, and this view needs it most. `resolveItemHandling`'s own fallback is
+		// `'active'`, which `OpenController` opens with `getLeaf(false)`: the active leaf,
+		// replaced. That is the one thing this Feature exists not to do, and Task 6's
+		// "does not evict the note the reader is on" asserts against exactly that mode.
+		openIn: resolveItemHandling(str, 'split').openIn,
 	};
 }
 ```
@@ -908,6 +916,10 @@ In `src/i18n/en.ts`, beside the `release.*` block:
 	'mywork.empty.noRoster.hint': 'A person is a note of type Resource. Widen the filter, or make one.',
 	'mywork.empty.noPick.title': 'Pick a person',
 	'mywork.empty.noPick.hint': 'Their work appears below in plan order, with the next thing to do marked.',
+	'mywork.empty.noWork.title': 'Nothing is assigned to this person',
+	'mywork.empty.noWork.hint': 'Set the assignee on an item, in the backlog or on its own note, and it appears here.',
+	'mywork.empty.allDone.title': 'Everything here is done',
+	'mywork.empty.allDone.hint': 'Turn off Hide done to see the finished work.',
 ```
 
 - [ ] **Step 8: Write the test helper**
@@ -1067,10 +1079,13 @@ git commit -m "Share one fold set per scope between the two trees that need one"
 
 **Interfaces:**
 
-- Consumes: `assignedRows`, `nextAssigned`, `pickedResource` (Task 2); `rowsAfterHideDone`, `visibleRows`, `siblingPlaces`, `childRows` (Task 1); `foldedPaths`, `toggleFold`, `scopeFlag` (Task 5); `MYWORK_FOLD` (Task 5); `drawIcon` (`src/view/render/icons.ts`); `badgeStyleFor` (`src/view/render/badges.ts`); `uniqueElementId` (`src/view/selection.ts`); `ownWorkflowReading` (`src/domain/board.ts`)
+- Consumes: `assignedRows`, `nextAssigned`, `pickedResource` (Task 2); `guidanceShell` (`src/view/render/emptyStates.ts`); `rowsAfterHideDone`, `visibleRows`, `siblingPlaces`, `childRows` (Task 1); `foldedPaths`, `toggleFold`, `scopeFlag` (Task 5); `MYWORK_FOLD` (Task 5); `drawIcon` (`src/view/render/icons.ts`); `badgeStyleFor` (`src/view/render/badges.ts`); `uniqueElementId` (`src/view/selection.ts`); `ownWorkflowReading` (`src/domain/board.ts`)
 - Produces:
   - `interface TreeDraw { treeEl: HTMLElement; rows: ScopeRow[]; kids: ReadonlySet<string>; rowEls: ReadonlyMap<string, HTMLElement>; folded: ReadonlySet<string> }`
-  - `function drawMyWorkTree(view: MyWorkView, parentEl: HTMLElement): TreeDraw`
+  - `function drawMyWorkTree(view: MyWorkView, parentEl: HTMLElement): TreeDraw | null` — `null`
+    when there is no tree to draw, so the caller wires no keyboard onto a widget that does
+    not exist. A `TreeDraw` with a fabricated `treeEl` would type-check and then hand
+    `wireScopeKeys` a guidance panel to put a roving selection in.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -1141,12 +1156,8 @@ hide-done list, `siblingPlaces` over the visible list. The CONTAINER is the tab 
 nowhere near the catalog.
 
 ```ts
-export function drawMyWorkTree(view: MyWorkView, parentEl: HTMLElement): TreeDraw {
+export function drawMyWorkTree(view: MyWorkView, parentEl: HTMLElement): TreeDraw | null {
 	const person = pickedResource(view.model!, view.pickedPerson!)!;
-	const treeEl = parentEl.createDiv({
-		cls: 'pbl-tree pbl-mw-tree',
-		attr: { role: 'tree', 'aria-label': person.title, tabindex: '0' },
-	});
 	const all = assignedRows(view.model!, view.pickedPerson!);
 	const folded = foldedPaths(view, MYWORK_FOLD, view.pickedPerson!);
 	// Hide-done first, fold second: `withKids` has to answer "does this row still have a
@@ -1155,6 +1166,31 @@ export function drawMyWorkTree(view: MyWorkView, parentEl: HTMLElement): TreeDra
 	const afterHide = rowsAfterHideDone(all, hidesDone(view));
 	const withKids = childRows(afterHide);
 	const visible = visibleRows(afterHide, folded);
+	// **A picked person with nothing is a SUPPORTED state, not a broken one.** The roster
+	// lists declared people, and [[My work]] requires that somebody with nothing assigned
+	// yet still appears in it — so this is reachable on the first click of a working vault,
+	// and an empty `role="tree"` would answer it with a blank pane and a stray tab stop.
+	//
+	// Two causes, two sentences, because the second one is the reader's own doing and is
+	// undone by a control already on screen: nothing is assigned, or hide-done took the
+	// last row. Drawn INSTEAD of the tree and before it exists — the toolbar is already up
+	// (`render()` draws it for every state that has a roster), so the way out stays in
+	// reach. A folded-away row is NOT a third case: the parent it folded into is still
+	// drawn, so `visible` is only empty when `afterHide` is.
+	if (afterHide.length === 0) {
+		const done = all.length > 0;
+		guidanceShell(
+			parentEl,
+			done ? 'check-check' : 'coffee',
+			done ? t('mywork.empty.allDone.title') : t('mywork.empty.noWork.title'),
+			done ? t('mywork.empty.allDone.hint') : t('mywork.empty.noWork.hint'),
+		);
+		return null;
+	}
+	const treeEl = parentEl.createDiv({
+		cls: 'pbl-tree pbl-mw-tree',
+		attr: { role: 'tree', 'aria-label': person.title, tabindex: '0' },
+	});
 	// Over the hide-done list rather than the visible one: what to do next does not change
 	// because somebody folded the row above it.
 	const next = nextAssigned(afterHide);
