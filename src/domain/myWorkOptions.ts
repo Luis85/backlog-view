@@ -1,6 +1,6 @@
 import { BasesAllOptions, BasesViewConfig } from 'obsidian';
 import { configReaders } from './settingsResolve';
-import { notePropsOnly } from './optionalProperties';
+import { notePropsOnly, optionalProperty } from './optionalProperties';
 import { DEFAULT_DONE_VALUES } from './settings';
 import { defaultItemHandling, openTargetOptions, OpenTarget, resolveItemHandling } from './itemHandling';
 import { t } from '../i18n/t';
@@ -87,14 +87,17 @@ function workGroup(): BasesAllOptions {
 				type: 'property',
 				key: 'assigneeProperty',
 				displayName: t('option.assigneeProperty'),
-				placeholder: 'assignee',
+				// Sourced from the same table `viewOptions.ts` reads for the backlog view's
+				// own picker, so the two suggestions cannot drift apart the way the state
+				// property's did (see the resolver's own comment below).
+				placeholder: optionalProperty('assignee').suggested,
 				filter: notePropsOnly,
 			},
 			{
 				type: 'property',
 				key: 'stateProperty',
 				displayName: t('option.stateProperty'),
-				placeholder: 'state',
+				placeholder: optionalProperty('state').suggested,
 				filter: notePropsOnly,
 			},
 			{
@@ -140,13 +143,24 @@ export function resolveMyWorkSettings(config: BasesViewConfig): MyWorkSettings {
 	const { propKey, clearablePropKey, list, dedupe } = configReaders(config);
 	const doneValues = list('doneValues');
 	return {
-		parentKey: propKey('parentProperty', 'parent'),
-		orderKey: propKey('orderProperty', 'order'),
-		typeKey: propKey('typeProperty', 'type'),
+		// `clearablePropKey`, not `propKey`, for all three: each ships a real default
+		// (`parent`/`order`/`type`), so `propKey` alone could never tell a reader's
+		// deliberate "off" from a box nobody has touched — the same distinction
+		// `resolveReleaseSettings` draws for its own three model mappings, and the one
+		// this view's own options screen promises (a cleared mapping shows as disabled,
+		// so it must resolve as disabled).
+		parentKey: clearablePropKey('parentProperty', 'parent'),
+		orderKey: clearablePropKey('orderProperty', 'order'),
+		typeKey: clearablePropKey('typeProperty', 'type'),
 		// Clearable: turning a property off is a decision this view must not overrule, and
 		// an unbound assignee is the state the first empty state exists for.
-		assigneeKey: clearablePropKey('assigneeProperty', 'assignee'),
-		stateKey: clearablePropKey('stateProperty', 'state'),
+		assigneeKey: clearablePropKey('assigneeProperty', optionalProperty('assignee').suggested),
+		// Sourced from `PROPERTY_TABLE` via `optionalProperty`, not re-typed: the backlog
+		// view's own suggestion for this field is `status` (`optionalProperty('state')`),
+		// never the field's own name — a hard-coded `'state'` here bound this view's
+		// untouched box to a frontmatter key the backlog view never reads, so a stock
+		// vault (whose items carry `status`) would show every finished item as open.
+		stateKey: clearablePropKey('stateProperty', optionalProperty('state').suggested),
 		doneValues: doneValues.length > 0 ? doneValues : DEFAULT_DONE_VALUES,
 		// `propKey`, not `clearablePropKey`: their default is `''`, so the two resolve the
 		// same value for every input — the reading `resolveReleaseSettings` gives every

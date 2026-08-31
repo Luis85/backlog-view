@@ -38,8 +38,10 @@ tell the truth about what is bound and what is not.
 **Main flow**
 
 1. Bases calls `getMyWorkViewOptions` to draw this view's own options panel — never the
-   backlog view's, even though the two happen to offer the same suggested keys for
-   `type`/`parent`/`order`/`assignee`/`state`.
+   backlog view's, even though the two happen to offer the same suggested keys for the
+   type, parent, order, assignee and state properties — `type`, `parent`, `order`,
+   `assignee` and `status` (the state property's own suggestion, sourced from the same
+   `PROPERTY_TABLE` the backlog view reads, never re-typed as the field's own name).
 2. The reader leaves the three model mappings at their suggested keys, or points them at
    whatever properties this vault actually uses for hierarchy.
 3. The reader names an assignee property (so the view knows whose work this is) and,

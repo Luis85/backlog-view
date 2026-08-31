@@ -9,12 +9,37 @@ describe('my work options', () => {
 		expect(settings.orderKey).toBe('order');
 		expect(settings.typeKey).toBe('type');
 		expect(settings.assigneeKey).toBe('assignee');
-		expect(settings.stateKey).toBe('state');
+		// The backlog view's own suggestion for the state property is `status`, not the
+		// field's own name — `optionalProperty('state').suggested` in
+		// `src/domain/optionalProperties.ts`. A vault's items carry `status`, never `state`,
+		// so this view's untouched box has to bind the same key or a stock vault's finished
+		// items would read as open here.
+		expect(settings.stateKey).toBe('status');
 	});
 
 	it('reads a CLEARED option as unbound rather than as the default', () => {
 		const settings = resolveMyWorkSettings(new FakeViewConfig({ assigneeProperty: '' }) as never);
 		expect(settings.assigneeKey).toBe('');
+	});
+
+	// Fix round 1: the three model mappings ship a real default (`parent`/`order`/`type`),
+	// so a reader who deliberately clears one must see it resolve to unbound — exactly the
+	// distinction `clearablePropKey` exists to draw, and exactly what the PBI
+	// ("The person is a pick") already promised for these three. `propKey` alone cannot
+	// tell that clear from an untouched box, so this is the case that would still pass
+	// with the bug: it fails without `clearablePropKey` on all three fields.
+	it('tells a CLEARED model mapping from one never set, for all three hierarchy keys', () => {
+		const cleared = resolveMyWorkSettings(
+			new FakeViewConfig({ parentProperty: '', orderProperty: '', typeProperty: '' }) as never,
+		);
+		expect(cleared.parentKey).toBe('');
+		expect(cleared.orderKey).toBe('');
+		expect(cleared.typeKey).toBe('');
+
+		const untouched = resolveMyWorkSettings(new FakeViewConfig({}) as never);
+		expect(untouched.parentKey).toBe('parent');
+		expect(untouched.orderKey).toBe('order');
+		expect(untouched.typeKey).toBe('type');
 	});
 
 	it('offers every key exactly once', () => {
