@@ -749,7 +749,14 @@ export class MyWorkView extends BasesView {
 				writeProblems: () => configProblems(this.planSettings),
 				// The context-row rule, structurally: a row the Base excluded is never a write
 				// target, so a batch naming one is refused WHOLE rather than filtered.
-				outsideFilter: (path) => this.model?.byPath.get(path)?.outsideFilter === true,
+				//
+				// `!== false`, never `=== true`, and that is the whole of failing CLOSED
+				// (`releaseView.ts`): a menu left open across a Bases update names a note the
+				// fresh model no longer holds, so `get` answers `undefined` — which `=== true`
+				// reads as "in the filter, write it". Absent is not proof of inclusion, and
+				// the one path that may skip this check is undo, whose authorization came at
+				// capture time.
+				outsideFilter: (path) => this.model?.byPath.get(path)?.outsideFilter !== false,
 			},
 			{ syncBusy: () => this.syncBusy(), flushDataUpdate: () => this.refresh() },
 			lock,
@@ -801,6 +808,12 @@ export class MyWorkView extends BasesView {
 	}
 
 	render(): void {
+		// Read BEFORE the detach, `ReleaseView.render()` exactly: a fold toggled from the
+		// keyboard re-renders, and a tree emptied without this leaves `wireScopeKeys`
+		// restoring the selected row onto a tree nothing is focused on — the next arrow key
+		// reaches no listener and navigation stops after one fold. `contains`, not `===`, so
+		// a mouse press on a row's own disclosure counts as focus inside the widget.
+		this.treeHadFocus = this.viewEl.querySelector('.pbl-mw-tree')?.contains(document.activeElement) === true;
 		this.viewEl.empty();
 		// A property nothing is bound to is a configuration to fix, and a different answer
 		// from a base that simply holds no people.
