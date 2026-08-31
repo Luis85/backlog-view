@@ -152,9 +152,14 @@ export function dropTargetFor(
 	return position;
 }
 
-/** Append as the last child of the hovered item. */
+/**
+ * Append as the last child of the hovered item. `rankablePeers` — see its own comment —
+ * because a real parent's children can end in an unranked context row exactly as a
+ * sibling group can, and appending past one anchored the drop on the wrong end of the
+ * whole population rather than after the parent's own last child.
+ */
 function insidePosition(item: BacklogItem, dragged: BacklogItem): DropTarget {
-	const peers = item.children.filter((c) => c !== dragged);
+	const peers = rankablePeers(item.children).filter((c) => c !== dragged);
 	return { parent: item, peers, insertIndex: peers.length };
 }
 

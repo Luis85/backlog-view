@@ -394,6 +394,46 @@ describe('creating a child from a release scope row', () => {
 		expect(Menu.lastShown).toBeNull();
 	});
 
+	/**
+	 * Task 4: `createMember` built its append peers from `parent.children` unfiltered, so
+	 * a `New <child>` whose destination's last DOMAIN child is an unranked context row
+	 * (a note the base excluded, pulled in only because ITS child is a result) anchored on
+	 * that row rather than on the last real sibling — `rankablePeers`
+	 * (`domain/dropTargets.ts`, own comment) is the fix, applied here too. This is a
+	 * different "context" from the scope tree's own (a non-member ancestor still drawn):
+	 * `Ctx Feature` below is excluded from the base's own results entirely.
+	 */
+	it('anchors on the last ranked child, not a trailing DOMAIN context row excluded from the base', async () => {
+		const vault = new FakeVault();
+		vault.addFile('R.md', { frontmatter: { type: 'Release', version: '1.0.0', order: 1 } });
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('Feature A.md', { frontmatter: { type: 'Feature', order: 100, release: '[[R]]' }, parentLink: 'Epic' });
+		// Excluded from the base's own results — a domain context row, not merely a
+		// release non-member — and present at all only because its own child is a result.
+		vault.addFile('Ctx Feature.md', { frontmatter: { type: 'Feature' }, parentLink: 'Epic' });
+		vault.addFile('Ctx Task.md', { frontmatter: { type: 'Task', order: 2, release: '[[R]]' }, parentLink: 'Ctx Feature' });
+		vault.addFile('Other Epic.md', { frontmatter: { type: 'Epic', order: 5 } });
+		vault.addFile('Far.md', { frontmatter: { type: 'Feature', order: 95000, release: '[[R]]' }, parentLink: 'Other Epic' });
+		const { view } = makeReleaseView(vault, RELEASE_CONFIG);
+		const only = ['R.md', 'Epic.md', 'Feature A.md', 'Ctx Task.md', 'Other Epic.md', 'Far.md'];
+		(view as unknown as { data: unknown }).data = { data: vault.entries().filter((e) => only.includes(e.file.path)) };
+		view.onDataUpdated();
+		view.pick('R.md');
+		const before = new Set(vault.files.keys());
+
+		const menu = openMenu(view, 'Epic.md');
+		menu.items.find((item) => item.titleText === 'New Feature')!.click();
+		submitPrompt({ title: 'New Child' });
+		await flush();
+
+		const notes = created(vault, before);
+		expect(notes.length).toBe(1);
+		// Anchored on `Feature A` (100) against its own next neighbour in the GLOBAL
+		// population (`Far`, 95000) — a real midpoint, nowhere near `Far`'s own edge
+		// (96000), which is what anchoring on the unranked `Ctx Feature` instead reads as.
+		expect(notes[0].fm.order).toBe(47550);
+	});
+
 	it('unfolds the parent it created under, so the new child is not written out of sight', async () => {
 		const { view } = mountFoldScope({ pick: 'Releases/0.8.md' });
 		row(view, 'Passwordless sign-in.md')!.querySelector<HTMLElement>('.pbl-twisty')!.click();

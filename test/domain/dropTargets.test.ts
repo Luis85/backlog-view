@@ -386,3 +386,66 @@ describe('the tree branch of siblingPosition drops an unranked context row from 
 		expect(target?.peers).not.toContain(unranked);
 	});
 });
+
+describe('insidePosition drops an unranked trailing context row from its population', () => {
+	/**
+	 * Task 4: `insidePosition` built `peers` from `item.children` unfiltered, so an
+	 * `inside` drop whose hovered parent's last child is an unranked context row anchored
+	 * on that row — `anchoredOrder` skips it as a candidate anchor and recurses to
+	 * "append after the END of the whole ranked population" instead of after the parent's
+	 * own last real child. `Far` is ranked far above everything under `Epic`, so the two
+	 * readings land on visibly different numbers rather than agreeing by coincidence.
+	 *
+	 * `Ctx Ranked` is the control the same fixture buys for free: a RANKED context row
+	 * (its own `order`) stays a peer and is the anchor the fix actually lands on, so this
+	 * one fixture proves both halves of the rule at once.
+	 */
+	function fixtureWithTrailingContext() {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('Feature A.md', { frontmatter: { type: 'Feature', order: 100 }, parentLink: 'Epic' });
+		vault.addFile('Ctx Ranked.md', { frontmatter: { type: 'Feature', order: 150 }, parentLink: 'Epic' });
+		vault.addFile('Ctx Ranked Task.md', { frontmatter: { type: 'Task', order: 1 }, parentLink: 'Ctx Ranked' });
+		vault.addFile('Ctx Unranked.md', { frontmatter: { type: 'Feature' }, parentLink: 'Epic' });
+		vault.addFile('Ctx Unranked Task.md', { frontmatter: { type: 'Task', order: 2 }, parentLink: 'Ctx Unranked' });
+		vault.addFile('Other.md', { frontmatter: { type: 'Epic', order: 5 } });
+		vault.addFile('Far.md', { frontmatter: { type: 'Feature', order: 90000 }, parentLink: 'Other' });
+		vault.addFile('Mover.md', { frontmatter: { type: 'Epic', order: 20 } });
+		const filtered = vault
+			.entries()
+			.filter((e) => !['Ctx Ranked.md', 'Ctx Unranked.md'].includes(e.file.path));
+		const model = buildModel(vault.app, filtered, settings);
+		const get = (title: string) => model.items.find((i) => i.title === title) as BacklogItem;
+		return { model, get };
+	}
+
+	it('anchors on the last RANKED peer and drops the trailing unranked one, in both the target and the write', () => {
+		const { model, get } = fixtureWithTrailingContext();
+		const epic = get('Epic');
+		const ctxRanked = get('Ctx Ranked');
+		const ctxUnranked = get('Ctx Unranked');
+		const mover = get('Mover');
+		expect(ctxRanked.outsideFilter).toBe(true);
+		expect(ctxRanked.order).toBe(150);
+		expect(ctxUnranked.outsideFilter).toBe(true);
+		expect(ctxUnranked.order).toBeNull();
+
+		const target = dropTargetFor(model, epic, 'inside', mover, plan);
+		expect(target).not.toBeNull();
+		// Over-application check: a RANKED context row is still a real peer.
+		expect(target?.peers).toContain(ctxRanked);
+		// The unranked one is not — it constrains nothing and is dropped.
+		expect(target?.peers).not.toContain(ctxUnranked);
+
+		// The written NUMBER, not just the parent: anchored on `Ctx Ranked` (150), a
+		// midpoint against its own next neighbour in the GLOBAL population (`Far`, 90000) —
+		// 45075. The unfiltered anchor (`Ctx Unranked`, no rank) reads as "append past the
+		// end of the whole population" instead and writes one spacing past `Far` itself,
+		// 91000 — a different number entirely, and nowhere near either of `Epic`'s own
+		// children.
+		const writes = computeDropWrites(mover, target!, model.ranked);
+		expect(writes).toHaveLength(1);
+		expect(writes[0].parent).toBe(epic.file);
+		expect(writes[0].order).toBe(45075);
+	});
+});

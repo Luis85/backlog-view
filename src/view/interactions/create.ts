@@ -5,6 +5,7 @@ import { manualLink } from '../../ui/manualDialog';
 import { manualSections } from '../manual/sections';
 import { BacklogItem, BacklogModel } from '../../domain/model';
 import { focusTarget, folderForType, isIterationType } from '../../domain/itemTypes';
+import { rankablePeers } from '../../domain/dropTargets';
 import {
 	AxisWrite,
 	computeIterationNoteWrites,
@@ -239,9 +240,13 @@ async function createFromPrompt(host: BacklogViewHost, request: CreateRequest): 
 function newItemOrder(host: BacklogViewHost, parentItem: BacklogItem | null): RankResult {
 	const model = host.model;
 	if (!model) return { order: ORDER_SPACING };
+	// `rankablePeers` (`domain/dropTargets.ts`, own comment) on both branches below: a
+	// trailing unranked context row among the real roots or the parent's children is not
+	// a peer to append past, and reading it as one anchored a new note's rank on the
+	// wrong end of the whole population rather than after its own last sibling.
 	// Parentless items rank among the real top level, not the focus rows.
 	if (!parentItem) {
-		const roots = model.realRoots;
+		const roots = rankablePeers(model.realRoots);
 		return dropPlacement(null, { parent: null, peers: roots, insertIndex: roots.length }, model.ranked);
 	}
 	// **Re-resolved by PATH.** The title prompt is modal and the model rebuilds under it —
@@ -257,7 +262,8 @@ function newItemOrder(host: BacklogViewHost, parentItem: BacklogItem | null): Ra
 	// and ranked somewhere else entirely. The prompt is modal, so the parent really can be
 	// deleted while it is open.
 	if (!parent) return { refusal: 'parentGone' };
-	return dropPlacement(null, { parent, peers: parent.children, insertIndex: parent.children.length }, model.ranked);
+	const peers = rankablePeers(parent.children);
+	return dropPlacement(null, { parent, peers, insertIndex: peers.length }, model.ranked);
 }
 
 function normalizeFolder(path: string | undefined): string {

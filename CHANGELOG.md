@@ -61,6 +61,10 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   drop anywhere in the vault and refused every one after the first.
 - `Indent under "X"` now reports when `X` has left the base between opening the menu and
   clicking, instead of doing nothing with no explanation.
+- A drop into a parent, an indent, and `New <child>` — from the backlog toolbar, a row's
+  own add button, or a release's scope tree — no longer anchor on a trailing unranked
+  context row among the destination's children (or the real roots): each now ranks
+  against the last REAL sibling instead of silently landing past the whole population.
 
 ## [0.10.0] - 2026-08-30
 

@@ -340,6 +340,39 @@ describe('keyboard structure shortcuts', () => {
 		expect('parent' in fm).toBe(false);
 		expect(fm['order']).toBe(30);
 	});
+
+	/**
+	 * Task 4: `indentTarget` built its append peers from `newParent.children` unfiltered,
+	 * so indenting under a parent whose LAST child is an unranked context row anchored on
+	 * that row rather than on the parent's own last real child — `rankablePeers`
+	 * (`domain/dropTargets.ts`, own comment) is the fix, applied here too.
+	 */
+	it('indents under a parent whose last child is an unranked context row, anchored on the ranked one', async () => {
+		const vault = new FakeVault();
+		vault.addFile('Other.md', { frontmatter: { type: 'Epic', order: 5 } });
+		vault.addFile('Far.md', { frontmatter: { type: 'Feature', order: 90000 }, parentLink: 'Other' });
+		vault.addFile('Parent.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('Real Child.md', { frontmatter: { type: 'Feature', order: 100 }, parentLink: 'Parent' });
+		// A context row (no order of its own) that only appears because one of ITS
+		// children is a result — the same shape every other context-row fixture in this
+		// repository uses.
+		vault.addFile('Ctx Child.md', { frontmatter: { type: 'Feature' }, parentLink: 'Parent' });
+		vault.addFile('Ctx Grandchild.md', { frontmatter: { type: 'Task', order: 2 }, parentLink: 'Ctx Child' });
+		vault.addFile('Mover.md', { frontmatter: { type: 'Epic', order: 20 } });
+		const only = ['Other.md', 'Far.md', 'Parent.md', 'Real Child.md', 'Ctx Grandchild.md', 'Mover.md'];
+		const { containerEl } = makeView(vault, {}, { only });
+		const tree = treeOf(containerEl);
+
+		rowByTitle(containerEl, 'Mover').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		key(tree, 'ArrowRight', { altKey: true }); // indent under Parent, its previous root sibling
+		await flush();
+
+		expect(vault.fm('Mover.md')['parent']).toBe('[[Parent]]');
+		// Anchored on `Real Child` (100) against its own next neighbour in the GLOBAL
+		// population (`Far`, 90000) — a real midpoint, and nowhere near `Far`'s own edge
+		// (91000), which is what anchoring on the unranked `Ctx Child` instead reads as.
+		expect(vault.fm('Mover.md')['order']).toBe(45050);
+	});
 });
 
 describe('the Deliverables board keyboard', () => {

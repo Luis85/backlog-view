@@ -126,3 +126,67 @@ describe('creating a child under a context parent', () => {
 		expect(detail).toContain('folder "Backlog/Epic"');
 	});
 });
+
+/**
+ * Task 4: `newItemOrder`'s two branches built their append peers unfiltered, so a
+ * `New <child>` whose destination's last child (or last real root) is an unranked
+ * context row anchored on that row rather than on the last REAL sibling —
+ * `rankablePeers` (`domain/dropTargets.ts`, own comment) is the fix, applied to both.
+ */
+describe('new-item rank drops an unranked trailing context row from its population', () => {
+	it('parented branch: anchors on the last ranked child, not the trailing context one', async () => {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('Feature A.md', { frontmatter: { type: 'Feature', order: 100 }, parentLink: 'Epic' });
+		// A context row (no order) that only appears because one of its children is a
+		// result — the shape every other context-row fixture in this repository uses.
+		vault.addFile('Ctx Feature.md', { frontmatter: { type: 'Feature' }, parentLink: 'Epic' });
+		vault.addFile('Ctx Task.md', { frontmatter: { type: 'Task', order: 1 }, parentLink: 'Ctx Feature' });
+		vault.addFile('Other Epic.md', { frontmatter: { type: 'Epic', order: 5 } });
+		vault.addFile('Far.md', { frontmatter: { type: 'Feature', order: 90000 }, parentLink: 'Other Epic' });
+		const containerEl = document.body.createDiv();
+		const view = new ProductBacklogView({} as never, containerEl);
+		const anyView = view as unknown as Record<string, unknown>;
+		anyView.app = vault.app;
+		anyView.config = new FakeViewConfig({ ...NO_TYPE_FOLDERS });
+		const only = ['Epic.md', 'Feature A.md', 'Ctx Task.md', 'Other Epic.md', 'Far.md'];
+		anyView.data = { data: vault.entries().filter((e) => only.includes(e.file.path)) };
+		view.onDataUpdated();
+		clickExpandAll(containerEl);
+
+		rowByTitle(containerEl, 'Epic').querySelector<HTMLElement>('.pbl-add')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		submitPrompt({ title: 'New Child' });
+		await flush();
+
+		// Anchored on `Feature A` (100) against its own next neighbour in the GLOBAL
+		// population (`Far`, 90000) — a real midpoint, nowhere near `Far`'s own edge
+		// (91000), which is what anchoring on the unranked `Ctx Feature` instead reads as.
+		expect(vault.fm('New Child.md')['order']).toBe(45050);
+	});
+
+	it('parentless branch: anchors on the last ranked root, not the trailing context one', async () => {
+		const vault = new FakeVault();
+		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 200 } });
+		// A context ROOT — no order, and present only because its own child is a result.
+		vault.addFile('Ctx Root.md', { frontmatter: { type: 'Epic' } });
+		vault.addFile('Ctx Child.md', { frontmatter: { type: 'PBI', order: 5 }, parentLink: 'Ctx Root' });
+		vault.addFile('Far.md', { frontmatter: { type: 'PBI', order: 80000 }, parentLink: 'Epic A' });
+		const containerEl = document.body.createDiv();
+		const view = new ProductBacklogView({} as never, containerEl);
+		const anyView = view as unknown as Record<string, unknown>;
+		anyView.app = vault.app;
+		anyView.config = new FakeViewConfig({ ...NO_TYPE_FOLDERS });
+		const only = ['Epic A.md', 'Ctx Child.md', 'Far.md'];
+		anyView.data = { data: vault.entries().filter((e) => only.includes(e.file.path)) };
+		view.onDataUpdated();
+
+		containerEl.querySelector<HTMLElement>('.pbl-new-btn')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		submitPrompt({ title: 'New Root' });
+		await flush();
+
+		// Anchored on `Epic A` (200) against its own next neighbour in the GLOBAL
+		// population (`Far`, 80000) — a real midpoint, nowhere near `Far`'s own edge
+		// (81000), which is what anchoring on the unranked `Ctx Root` instead reads as.
+		expect(vault.fm('New Root.md')['order']).toBe(40100);
+	});
+});

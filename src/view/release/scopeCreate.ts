@@ -5,6 +5,7 @@ import { BacklogSettings } from '../../domain/settings';
 import { ReleaseRow, refusesLiveMembership, ScopeRow } from '../../domain/releases';
 import { childTypeChoices, folderForType, inCatalog } from '../../domain/itemTypes';
 import { configProblems } from '../../domain/settingsConsistency';
+import { rankablePeers } from '../../domain/dropTargets';
 import { dropPlacement, refusalKey } from '../../domain/writePlan';
 import { createBacklogItem } from '../../storage/createNote';
 import { TitlePromptModal } from '../../ui/prompts';
@@ -254,7 +255,9 @@ async function createMember(view: ReleaseView, release: ReleaseRow, settings: Ba
 		new Notice(t(refusalKey('parentGone')));
 		return;
 	}
-	const peers = parent.children;
+	// `rankablePeers` (`domain/dropTargets.ts`, own comment): a trailing unranked context
+	// row among the parent's real children is not a peer to append past.
+	const peers = rankablePeers(parent.children);
 	const placed = dropPlacement(null, { parent, peers, insertIndex: peers.length }, model.ranked);
 	if ('refusal' in placed) {
 		new Notice(t(refusalKey(placed.refusal)));

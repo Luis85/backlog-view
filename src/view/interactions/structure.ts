@@ -267,7 +267,10 @@ function indentTarget(
 	// this screen carries this screen's ladder. The keyboard passes no path and computes
 	// its neighbour at the moment of the press, so only the menu was exposed.
 	if (!keepsProjection(item, newParent)) return null;
-	const peers = newParent.children.filter((s) => s !== item);
+	// `rankablePeers` (`dropTargets.ts`, own comment): the previous sibling's children can
+	// end in an unranked context row, and appending past it anchored the indent on the
+	// wrong end of the whole population rather than after that parent's own last child.
+	const peers = rankablePeers(newParent.children).filter((s) => s !== item);
 	return { parent: newParent, peers, insertIndex: peers.length };
 }
 
