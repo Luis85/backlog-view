@@ -28,6 +28,25 @@ describe('anchoredOrder', () => {
 		expect(anchoredOrder([], null, 'after')).toEqual({ order: ORDER_SPACING });
 	});
 
+	it('anchors one spacing clear of an anchor that is outside a genuinely empty population', () => {
+		// The peer-scoped fallback's own population IS the peer list, so an anchor from
+		// outside it — the destination row, when there are no peers — reaches here with
+		// `usable` empty. An empty population with an anchor is not an empty population:
+		// discarding the anchor answered a constant unrelated to the drop site.
+		const anchor = ranked(10)[0];
+		expect(anchoredOrder([], anchor, 'after')).toEqual({ order: 10 + ORDER_SPACING });
+		expect(anchoredOrder([], anchor, 'before')).toEqual({ order: 10 - ORDER_SPACING });
+	});
+
+	it('refuses an unranked anchor outside an empty population, rather than discarding it', () => {
+		// The anchor carries no order of its own — nothing to get one spacing clear of —
+		// which is the same `unranked` refusal the global path answers for a null-order
+		// neighbour below. An unranked CONTEXT anchor is a different case, handled above
+		// this one by the `isUnrankedContext` branch.
+		const anchor = ranked(null)[0];
+		expect(anchoredOrder([], anchor, 'after')).toEqual({ refusal: 'unranked' });
+	});
+
 	it('refuses a spent gap', () => {
 		const list = ranked(1000, 1000.000001);
 		expect(anchoredOrder(list, list[0], 'after')).toEqual({ refusal: 'gapSpent' });
@@ -187,6 +206,31 @@ describe('dropPlacement', () => {
 		expect(dropPlacement(c, { parent: null, peers: [p], insertIndex: 0 }, list)).toEqual({
 			order: 10 - ORDER_SPACING,
 		});
+	});
+
+	it('answers a site-based rank on a childless tied anchor, not a shared constant', () => {
+		// Reproduces a legacy vault: Feature A1(10) is tied with A2(10), which is what
+		// opens the fallback, and A1 has no children — so the fallback's own population
+		// (the peer list) is EMPTY and the anchor is A1 itself, a row that population
+		// never held. Dropping the first child in must rank one spacing clear of A1, not
+		// answer `ORDER_SPACING` regardless of the drop site.
+		const first = ranked(10, 10);
+		const [a1] = first;
+		const firstDrop = dropPlacement(null, { parent: a1, peers: [], insertIndex: 0 }, first);
+		expect(firstDrop).toEqual({ order: 10 + ORDER_SPACING });
+
+		// The bug's signature: because the discarded answer was a CONSTANT, the number
+		// this drop actually wrote collides with the very next tied, childless drop
+		// anywhere in the vault, refusing `tied` forever after the first. B1(30) is tied
+		// with B2(30) — unrelated to A1/A2 — and W is the note the first drop just wrote,
+		// now part of the vault the second gesture sees.
+		if ('refusal' in firstDrop) throw new Error('expected a rank, not a refusal');
+		const w = { order: firstDrop.order, entryIndex: 4 } as BacklogItem;
+		const second = [...ranked(10, 10), ...ranked(30, 30), w];
+		const b1 = second[2];
+		expect(b1.order).toBe(30);
+		const secondDrop = dropPlacement(null, { parent: b1, peers: [], insertIndex: 0 }, second);
+		expect(secondDrop).toEqual({ order: 30 + ORDER_SPACING });
 	});
 
 	it('refuses a wholly unranked vault as unranked, never with a fallback number', () => {

@@ -56,6 +56,9 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 - `Move to bottom`/`Move down` on a tree row past an ancestor pulled in from outside the
   filter no longer anchors on it: that row carries no rank to give, so the write landed
   past the whole backlog instead of beside the sibling it looked like it moved next to.
+- Dropping the first child into a childless, tied item on an unseeded vault now ranks one
+  spacing clear of it instead of a shared constant, which collided on the very next such
+  drop anywhere in the vault and refused every one after the first.
 
 ## [0.10.0] - 2026-08-30
 

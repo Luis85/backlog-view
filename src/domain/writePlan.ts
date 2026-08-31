@@ -743,7 +743,22 @@ export function anchoredOrder(
 	// `New <child>`. There is no positional information in a rankless row, so the
 	// child goes to the end rather than nowhere.
 	if (isUnrankedContext(anchor)) return anchoredOrder(usable, null, 'after');
-	if (usable.length === 0) return { order: ORDER_SPACING };
+	// **An empty population with an anchor is not an empty population.** The peer-scoped
+	// fallback's own population IS the peer list (`dropPlacement`), so a childless drop
+	// target reaches here with `usable` empty and the destination row itself as anchor —
+	// a row this population never held to begin with. Discarding it answered a constant
+	// unrelated to the drop site, and because it was a constant, `rankTaken` found it
+	// occupied on the very next such drop anywhere in the vault: the fallback worked once
+	// per vault and refused `tied` from then on. Only the anchorless case is the first
+	// rank in an empty backlog; an anchor still has something to be one spacing clear of,
+	// via the one arithmetic `edgeRank` already is — and an anchor with no order of its
+	// own has nothing to get clear of, which is the same `unranked` refusal the global
+	// path answers for a null-order neighbour just below.
+	if (usable.length === 0) {
+		if (anchor === null) return { order: ORDER_SPACING };
+		if (anchor.order === null) return { refusal: 'unranked' };
+		return edgeRank(anchor.order, side);
+	}
 	const pair = neighbourPair(usable, anchor, side);
 	if (pair === null) return { refusal: 'unranked' };
 	const { prev, next } = pair;
