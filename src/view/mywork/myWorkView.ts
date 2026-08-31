@@ -15,23 +15,24 @@ import { resolveViewIdentity } from '../../storage/viewIdentity';
 import { guidanceShell } from '../render/emptyStates';
 import { OpenContext, OpenController } from '../openTarget';
 import { drawMyWorkTree } from './renderTree';
+import { drawMyWorkToolbar } from './toolbar';
 
 export const MY_WORK_VIEW_TYPE = 'product-my-work';
 
 /**
  * The classes a redraw's own controls carry — `ReleaseView.render()`'s own
  * `FOCUS_HANDLE_CLASSES` mechanism (`view/release/releaseView.ts`), over this view's own
- * vocabulary. `pbl-mw-tree` is the only entry today: the toolbar is a stub until Task 8, so
- * nothing else this view draws yet carries a class of its own. Task 6 and Task 8 append
- * their own controls' classes here as they land — `ReleaseView`'s own list grew the same
- * way, one control at a time, and three separate fixes for a lost focus shipped on that
- * branch before the list did.
+ * vocabulary. `pbl-mw-tree` (Task 6) and Task 8's own four toolbar controls — the
+ * person picker and the collapse-all/expand-all/hide-done trio (`toolbar.ts`) — are what
+ * this view draws today. `ReleaseView`'s own list grew the same way, one control at a
+ * time, and three separate fixes for a lost focus shipped on that branch before the list
+ * did.
  *
  * No `data-path` tiebreak, unlike `ReleaseView`'s: nothing this view draws repeats one
  * handle class per item (there is one tree, one picker, one of each toolbar button), so a
  * bare class is already a unique answer.
  */
-const FOCUS_HANDLE_CLASSES = ['pbl-mw-tree'];
+const FOCUS_HANDLE_CLASSES = ['pbl-mw-tree', 'pbl-mw-person', 'pbl-mw-collapse', 'pbl-mw-expand', 'pbl-mw-hidedone'];
 
 export class MyWorkView extends BasesView {
 	type = MY_WORK_VIEW_TYPE;
@@ -49,10 +50,10 @@ export class MyWorkView extends BasesView {
 		super(controller);
 		// `tabindex: '-1'` makes the ROOT itself a programmatic focus target — never a real
 		// tab stop, only `restoreFocus`'s own last resort (fix round 1, finding 2): a redraw
-		// into the guidance-only "no work"/"all done" state (`drawMyWorkTree` returning
-		// `null`) can detach the focused tree with no toolbar button yet drawn to land on
-		// (Task 8 has not landed), and an element removed from the document resets focus to
-		// `document.body` unless something else claims it first.
+		// into the "no assignee"/"no roster" guidance states draws no toolbar at all (`draw()`
+		// returns before `drawMyWorkToolbar` runs), so a config change reached from a focused
+		// control there has no button to land on, and an element removed from the document
+		// resets focus to `document.body` unless something else claims it first.
 		this.viewEl = containerEl.createDiv({ cls: 'pbl-view pbl-mw-view', attr: { tabindex: '-1' } });
 		this.viewEl.setText(t('mywork.loading'));
 		this.settings = resolveMyWorkSettings({ get: () => undefined, getAsPropertyId: () => null } as never);
@@ -211,8 +212,9 @@ export class MyWorkView extends BasesView {
 	 * removed, `ReleaseView.render()`'s own fallback and its reason: a keyboard user should
 	 * not pay for a redraw that removed the very control they acted on), and — third, fix
 	 * round 1's own addition — the view root itself when the redraw drew no button at all,
-	 * which the guidance-only "no work"/"all done" state can, with no toolbar control yet
-	 * built (Task 8) to fall back to.
+	 * which the "no assignee"/"no roster" guidance states still can: `draw()` returns
+	 * before `drawMyWorkToolbar` runs for either, so there is no button anywhere on
+	 * screen to fall back to.
 	 */
 	private restoreFocus(handle: string | null): void {
 		if (handle === null) return;
@@ -234,11 +236,18 @@ export class MyWorkView extends BasesView {
 		return FOCUS_HANDLE_CLASSES.find((name) => active.classList.contains(name)) ?? null;
 	}
 
+	/**
+	 * Publish the gate's progress the way `ReleaseView.syncBusy` does for the identical
+	 * reason (ADR 0030): `aria-busy` on the whole pane, asked of the LOCK rather than
+	 * this view's own gate — a sibling view's batch changes the very notes this tree
+	 * reads, and `onDataUpdated` already defers this view's own model rebuild while it
+	 * runs. No per-control disabling to go with it, unlike `ReleaseView`'s or the
+	 * estimation view's own `syncBusy`: every control this toolbar draws today touches
+	 * only view state (a pick, a fold, the hide-done flag), never a note, so none of them
+	 * has anything to be refused for — Task 9's own write control is what will give this
+	 * a second half.
+	 */
 	private syncBusy(): void {
-		// Nothing to publish yet — Task 8 gives the toolbar its indicator.
+		this.viewEl.toggleAttribute('aria-busy', this.gate.writing);
 	}
-}
-
-function drawMyWorkToolbar(_view: MyWorkView, _parentEl: HTMLElement): void {
-	// Task 8 draws the person picker, collapse-all, expand-all and hide-done here.
 }

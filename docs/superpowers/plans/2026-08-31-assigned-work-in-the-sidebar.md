@@ -1365,7 +1365,7 @@ git commit -m "Share one scope-tree keyboard between the two trees that need one
 - Consumes: `namedTargets` (`src/domain/readItems.ts`) for the collision-aware labels, `model.resources` for the roster, `view.pick` (Task 4), `setAllFolds` / `scopeFlag` / `setScopeFlag` (Task 5)
 - Produces: `function drawMyWorkToolbar(view: MyWorkView, parentEl: HTMLElement): void`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```ts
 it('lists every Resource note the base returned, including one carrying nothing', () => {
@@ -1392,12 +1392,12 @@ it('withholds hide-done when no state property is bound', () => {
 it('collapses and expands every row of THIS person’s tree and no other', () => { /* … */ });
 ```
 
-- [ ] **Step 2: Run it and watch it fail**
+- [x] **Step 2: Run it and watch it fail**
 
 Run: `npx vitest run test/view/mywork/toolbar.test.ts`
 Expected: FAIL — no picker is drawn.
 
-- [ ] **Step 3: Write the toolbar**
+- [x] **Step 3: Write the toolbar**
 
 A native `<select>` over `namedTargets(view.model.resources)` — the control that already
 collapses to nothing in a narrow pane, and that is reachable by keyboard and screen reader
@@ -1416,12 +1416,12 @@ New keys:
 	'mywork.hideDone': 'Hide done',
 ```
 
-- [ ] **Step 4: Run the test**
+- [x] **Step 4: Run the test**
 
 Run: `npx vitest run test/view/mywork`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/view/mywork/toolbar.ts src/view/mywork/myWorkView.ts src/i18n/en.ts test/view/mywork/toolbar.test.ts "docs/requirements/The person is a pick.md"

@@ -532,7 +532,10 @@ describe('the my-work view reads every word it draws from the catalog', () => {
 		expect(markedAt(containerEl, '.pbl-mw-next')).toHaveLength(1);
 		// Every title and every type badge is the notes' own data; nothing else is drawn
 		// unmarked — no state chip, since none of these notes carry a configured state.
-		expect(remainder(containerEl)).toEqual(['Ada', 'Epic', 'Feature', 'PBI', 'PBI Ada', 'PBI Hidden']);
+		// `Bo` joins the remainder here (Task 8): the toolbar's own person picker names
+		// every `Resource` the base returned, and an option's TEXT is a person's name —
+		// data, the same as `Ada` already was from the tree's own `aria-label`.
+		expect(remainder(containerEl)).toEqual(['Ada', 'Bo', 'Epic', 'Feature', 'PBI', 'PBI Ada', 'PBI Hidden']);
 	});
 
 	it('draws its state chip from the catalog too, on a done member', () => {
@@ -555,18 +558,20 @@ describe('the my-work view reads every word it draws from the catalog', () => {
 		expect(markedAt(noRoster.containerEl, '.pbl-empty-title')).toHaveLength(1);
 		expect(remainder(noRoster.containerEl)).toEqual([]);
 
-		// A roster, nobody picked yet.
+		// A roster, nobody picked yet — the toolbar (Task 8) draws its picker here too,
+		// naming both `Resource` notes in `myWorkVault()`'s own roster.
 		const noPick = makeMyWorkView(myWorkVault());
 		expect(markedAt(noPick.containerEl, '.pbl-empty-title')).toHaveLength(1);
-		expect(remainder(noPick.containerEl)).toEqual([]);
+		expect(remainder(noPick.containerEl)).toEqual(['Ada', 'Bo']);
 
-		// Picked, nothing assigned to them.
+		// Picked, nothing assigned to them. Only Ada is on this roster, so the picker
+		// names just her.
 		const noWorkVault = new FakeVault();
 		noWorkVault.addFile('People/Ada.md', { frontmatter: { type: 'Resource' } });
 		const noWork = makeMyWorkView(noWorkVault);
 		noWork.view.pick('People/Ada.md');
 		expect(markedAt(noWork.containerEl, '.pbl-empty-title')).toHaveLength(1);
-		expect(remainder(noWork.containerEl)).toEqual([]);
+		expect(remainder(noWork.containerEl)).toEqual(['Ada']);
 
 		// Everything of theirs is done and hidden.
 		const allDoneVault = new FakeVault();
@@ -576,6 +581,6 @@ describe('the my-work view reads every word it draws from the catalog', () => {
 		allDone.view.pick('People/Ada.md');
 		setScopeFlag(allDone.view, 'myWorkHideDone', true);
 		expect(markedAt(allDone.containerEl, '.pbl-empty-title')).toHaveLength(1);
-		expect(remainder(allDone.containerEl)).toEqual([]);
+		expect(remainder(allDone.containerEl)).toEqual(['Ada']);
 	});
 });

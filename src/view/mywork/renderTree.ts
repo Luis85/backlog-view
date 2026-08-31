@@ -41,8 +41,12 @@ import { uniqueElementId } from '../selection';
  * doneness is unknowable is not KNOWN done, so a GLOBAL "is anything readable" gate is the
  * right question for whether hiding may act at all. The Next marker asks a narrower,
  * PER-ROW question instead — see `drawMyWorkTree`'s own filter, below.
+ *
+ * Exported for `view/mywork/toolbar.ts` (Task 8): the toolbar's own hide-done control is
+ * withheld on this SAME question — `view/release/scopeToolbar.ts`'s own
+ * `release.done.unconfigured` gate, asked here of the settings rather than of a row.
  */
-function anyWorkflowConfigured(settings: MyWorkSettings): boolean {
+export function anyWorkflowConfigured(settings: MyWorkSettings): boolean {
 	return settings.stateKey !== '' || settings.deliverableStateKey !== '' || settings.testStateKey !== '';
 }
 
@@ -50,12 +54,11 @@ function anyWorkflowConfigured(settings: MyWorkSettings): boolean {
  * This view's own gate on the stored hide-done preference — the stored flag AND a
  * configured key, `effectiveHideDone`'s own rule (`view/release/scopeTree.ts`) asked of
  * this view's question: a control that could hide rows with nothing left on screen to
- * bring them back is worse than no control. Not yet exported: Task 8's toolbar is the
- * only other caller this view will ever need to agree with, and it has not landed —
- * `export` joins this the day that task's own commit imports it, the same discipline
- * `test/helpers/mywork.ts`'s own header states for its accessors.
+ * bring them back is worse than no control. Exported for `view/mywork/toolbar.ts` (Task
+ * 8), its one other caller: the toolbar's hide-done control reads its ON/OFF state
+ * through this SAME function rather than a second copy of the rule.
  */
-function hidesDone(view: MyWorkView): boolean {
+export function hidesDone(view: MyWorkView): boolean {
 	return scopeFlag(view, 'myWorkHideDone') && anyWorkflowConfigured(view.settings);
 }
 

@@ -1,7 +1,8 @@
 /* ==========================================================================
-   The my-work tree's own rows (`view/mywork/renderTree.ts`): a context ancestor dimmed
-   the way the release scope's own tree dims one, one column for the static state chip,
-   and the "what is next" marker beside the title.
+   The my-work view's own toolbar (`view/mywork/toolbar.ts`) and tree
+   (`view/mywork/renderTree.ts`): the person picker and its bulk controls above, a
+   context ancestor dimmed the way the release scope's own tree dims one, one column for
+   the static state chip, and the "what is next" marker beside the title, below.
 
    Position in `styles/index.css`'s import list is NOT load-bearing: every selector here
    is `.pbl-mw-*`, a vocabulary no other partial declares, and this file re-targets
@@ -11,6 +12,54 @@
    (`.pbl-state-chip`, `.pbl-state-static`, …, `columns.css`) are all used here exactly as
    drawn, with no property in common with anything declared here.
    ========================================================================== */
+
+/* The toolbar bar itself (`toolbar.ts`) — `.pbl-rel-toolbar`'s own shape
+   (`releaseScope.css`), under this view's own class rather than shared with it: two
+   unrelated screens drawing the same kind of bar, not one screen reusing the other's. */
+.pbl-mw-toolbar {
+	flex: 0 0 auto;
+	display: flex;
+	align-items: center;
+	gap: var(--size-4-1);
+	padding: var(--size-4-1) var(--size-4-3);
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.pbl-mw-spacer {
+	flex: 1 1 auto;
+}
+
+/* The person `<select>` — `dropdown` is Obsidian's own class, styled by the real
+   app.css; this rule only keeps it from stretching the bar past the collapse/expand/
+   hide-done trio that follows it. */
+.pbl-mw-person {
+	flex: 0 1 auto;
+	min-inline-size: 0;
+}
+
+/* The hide-done toggle — `.pbl-rel-toggle`/`.pbl-rel-toggle-on`'s own shape
+   (`releaseScope.css`), named apart for the identical reason `.pbl-mw-toolbar` is. */
+button.pbl-mw-toggle {
+	block-size: auto;
+	padding: var(--size-2-1) var(--size-4-2);
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+	background-color: transparent;
+	box-shadow: none;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-s);
+	cursor: pointer;
+}
+
+button.pbl-mw-toggle:hover {
+	background-color: var(--background-modifier-hover);
+}
+
+button.pbl-mw-toggle-on {
+	color: var(--text-on-accent);
+	background-color: var(--interactive-accent);
+	border-color: var(--interactive-accent);
+}
 
 /* A context ancestor is scaffolding holding a member in place, not something the reader
    asked to see — dimmed for that, never hidden, or the member loses its place. The

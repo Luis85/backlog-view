@@ -1749,6 +1749,17 @@ export const en = {
 	'mywork.expandRow': 'Expand',
 
 	/**
+	 * Task 8's own toolbar (`view/mywork/toolbar.ts`): the person picker and the bulk
+	 * collapse/expand pair, named apart from the per-row `collapseRow`/`expandRow` above
+	 * for the identical reason those two are named apart from `release.scope.*`.
+	 */
+	'mywork.person': 'Person',
+	'mywork.personPlaceholder': 'Nobody picked',
+	'mywork.collapseAll': 'Collapse all',
+	'mywork.expandAll': 'Expand all',
+	'mywork.hideDone': 'Hide done',
+
+	/**
 	 * The two groups the index is drawn in, headed where a row's own `shipped` flag changes
 	 * (`release/renderIndex.ts`). In flight is everything without a released date; shipped
 	 * is everything with one — never a state VALUE, which is a vault's own vocabulary and

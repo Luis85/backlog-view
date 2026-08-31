@@ -141,6 +141,39 @@ absent.** `resolveViewIdentity` returns null for a base embedded in a note, and
 assigning `null` in that branch would reset the pick on every ordinary Bases data update,
 which arrives far more often than a reader would expect their choice to be forgotten.
 
+## The toolbar
+
+Task 8 gives this options bag and the pick above a way to be operated: a native
+`<select>` over `namedTargets(model.resources)` for the pick itself, plus collapse-all,
+expand-all and hide-done once somebody is picked.
+
+The `<select>` rather than a menu of ours, for the same reason a later task in
+[[Assigned work in the sidebar]] wants every control here to give way in a narrow pane:
+it collapses to nothing on its own, and it is reachable by keyboard and screen reader
+with no code here to get wrong. Its options are named the way every other surface in this codebase names a
+resource — `namedTargets` (`domain/readItems.ts`), the basename for everybody and the
+path-minus-extension for the pair that happens to share one — and the VALUE is always
+the file's own path, never the label, so two people sharing a name still resolve to two
+different picks.
+
+Collapse-all and expand-all are withheld until somebody is picked: a control asking
+about a tree that does not exist yet is worse than none. Hide-done is withheld a second
+time, on `anyWorkflowConfigured` (`view/mywork/renderTree.ts`) — no requirements,
+Deliverable or test workflow bound to a state property at all — the release scope
+toolbar's own `release.done.unconfigured` gate (`view/release/scopeToolbar.ts`), asked
+here of this view's settings rather than of one release row. Its ON/OFF reading comes
+from `hidesDone`, the SAME function the tree's own hide-done pass reads
+(`view/mywork/renderTree.ts`) — both exported for exactly this second caller, so the
+toolbar can never disagree with the tree about what hiding means.
+
+`MyWorkView.syncBusy` — until now an empty stub — publishes `aria-busy` on the whole
+pane from the shared `WriteLock` (ADR 0030), the same question `ReleaseView.syncBusy`
+and the estimation view's own ask: a sibling view's batch changes the very notes this
+tree reads. No control here is disabled alongside it: every control this toolbar draws
+touches only view state (a pick, a fold, the hide-done flag), never a note, so none of
+them is a write a concurrent batch could corrupt. Task 9's own write control is what
+will give `syncBusy` a second half.
+
 ## Acceptance criteria
 
 - `getMyWorkViewOptions` declares `typeProperty`, `parentProperty`, `orderProperty`,
@@ -182,6 +215,19 @@ which arrives far more often than a reader would expect their choice to be forgo
   `prefs.person` rather than leaving it naming a path that no longer resolves.
 - With no assignee property bound, the stale model and settings from the last configured
   render are cleared rather than retained, so a write attempted against them is refused.
+- The toolbar's `<select>` lists every `Resource` note the base returned, named through
+  `namedTargets` — a shared basename told apart by path, everybody else by their own —
+  and changing it calls `MyWorkView.pick`.
+- Collapse-all and expand-all are drawn once a person is picked, and act on that
+  person's own tree only.
+- Hide-done is withheld with no requirements, Deliverable or test state property bound
+  (`anyWorkflowConfigured`), and its ON/OFF reading and its effect on the tree never
+  disagree — both read the same `hidesDone`.
+- Every toolbar control survives the redraw its own activation causes: a keyboard user
+  who picks a person, or presses collapse-all, expand-all or hide-done, lands back on
+  that same control rather than on `document.body`.
+- `MyWorkView.syncBusy` toggles `aria-busy` on the pane from the shared write lock,
+  agreeing with every other view in the plugin about what a concurrent batch means.
 
 ## Where it lives
 
@@ -208,7 +254,17 @@ this bag's own `clearablePropKey` reports as unbound, that `resolveSettings`'s p
 `propKey` would still resolve to its default). Task 3b's four fields need no such
 override: `resolveSecondaryWorkflow` resolves them identically on both sides (see the
 Task 3b paragraph above), so `resolveSettings(this.config)` alone already carries them
-correctly. `src/view/mywork/register.ts` —
+correctly. Its `syncBusy` toggles `aria-busy` on `viewEl` from the shared `WriteLock`
+(ADR 0030).
+
+`src/view/mywork/toolbar.ts` — `drawMyWorkToolbar`: the person `<select>` (named
+through `namedTargets`, `domain/readItems.ts`), and — once somebody is picked —
+collapse-all and expand-all (`setAllFolds`, `view/scopeFolds.ts`) and hide-done
+(`setScopeFlag`), withheld with `anyWorkflowConfigured` false. Reads `hidesDone` and
+`anyWorkflowConfigured` from `view/mywork/renderTree.ts`, the tree's own gate, so the two
+screens can never disagree about what hiding means.
+
+`src/view/mywork/register.ts` —
 `registerMyWorkView`, this view's own registration, composed behind the plugin's one
 shared `WriteLock` in `src/main.ts` (ADR 0030). `src/storage/viewStateStore.ts` —
 `prefs.person` in `ViewPrefs`, its `PREF_READERS` row and its `PATH_PREFS` entry, which is

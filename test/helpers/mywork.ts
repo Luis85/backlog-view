@@ -170,3 +170,22 @@ export function mwPress(view: MyWorkView, key: string): void {
 export function mwActive(view: MyWorkView): string | null {
 	return view.viewEl.querySelector<HTMLElement>('.pbl-row[aria-selected="true"]')?.getAttribute('data-path') ?? null;
 }
+
+/**
+ * Task 8's own accessor: drives the real `<select>` the toolbar draws (`toolbar.ts`)
+ * rather than calling `view.pick` directly, so a toolbar test exercises the control a
+ * reader actually operates. Focused first — a real pick never arrives at a `<select>`
+ * with no focus on it, and the toolbar's own focus-restore tests need it there when the
+ * `change` handler fires `view.render()` synchronously. Named `mwPickPerson` rather than
+ * the bare `select` `test/helpers/release.ts` already exports for an unrelated shape
+ * (setting `activeRowFile` directly) — the identical fallow duplicate-export collision
+ * `mwRow`/`mwTwisty`/`mwPress`/`mwActive` were each named apart from `release.ts` to
+ * avoid.
+ */
+export function mwPickPerson(view: MyWorkView, path: string): void {
+	const selectEl = view.viewEl.querySelector<HTMLSelectElement>('.pbl-mw-person');
+	if (!selectEl) throw new Error('no person picker mounted');
+	selectEl.focus();
+	selectEl.value = path;
+	selectEl.dispatchEvent(new Event('change', { bubbles: true }));
+}
