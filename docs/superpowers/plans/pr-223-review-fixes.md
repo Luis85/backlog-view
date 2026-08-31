@@ -229,3 +229,51 @@ the guard must key on the named path, not on the null target.
 destination retyped onto the other ladder, and one that has become the subject's descendant.
 Assert the notice AND that nothing was written. Assert the keyboard path stays silent, so the
 fix cannot over-apply.
+
+## Task 7 — an outdent past an unranked context parent cannot be expressed
+
+**Defect.** `outdentTarget` (`src/view/interactions/structure.ts`) places the item right
+after its parent among the grandparent's children:
+
+```ts
+return { parent: grandparent, peers, insertIndex: peers.indexOf(parent) + 1 };
+```
+
+The anchor is therefore the PARENT itself. Its guard refuses when the ITEM is
+`outsideFilter`; it says nothing about the parent. So an included child drawn beneath an
+excluded ancestor — the ordinary context-row shape, an ancestor pulled in because one
+descendant matched — reaches this with an unranked context row as its anchor.
+`anchoredOrder`'s `isUnrankedContext(anchor)` branch then skips it and recurses to a global
+append.
+
+That number can never satisfy the request. `compareRank` (`src/domain/rankOrder.ts`) maps a
+null order to `POSITIVE_INFINITY`, so an unranked row sorts last and **no finite rank sorts
+after it**. The outdented child lands before the row it asked to follow. `canOutdent` offers
+the entry regardless, because `dropPlacement` returned a number rather than a refusal — the
+"offered command that writes and moves nothing" this repo refuses ahead of a withheld one.
+
+Task 4's review cleared `outdentTarget`, correctly, against a different question: whether
+`peers.indexOf(parent)` could return -1. It cannot. This is the branch where it succeeds.
+
+**Required behaviour.** The placement is refused. A rank that cannot express what the
+command names is not a rank to write.
+
+**The tension this task must resolve, and it is the substance of the task.** Refusing inside
+`outdentTarget` makes the menu withhold the entry, which is right — but it also makes
+Alt+Left silent, and `outdentTarget`'s own docblock says the opposite in as many words: "a
+KEYPRESS is not an offer — there is nothing to withhold, so Alt+Left must reach
+`performDrop` and let its one reporter name the remedy. Folding the plan into this function
+made both paths silent." That docblock is the rule; honour it. Task 6 solves the same shape
+one function away, and the two should not answer it differently — read what Task 6 did
+before choosing, and say in your report why your answer agrees with it.
+
+Which refusal it is matters: `rank.unranked` sends the reader to the backfill, and the
+backfill is one of the two things that will never rank an `outsideFilter` row — the exact
+dead end `anchoredOrder`'s own comment refuses to create. Do not reach for it without
+saying why it is actionable here.
+
+**Tests.** In `test/view/` beside the other structural-command tests: the menu withholds
+`Outdent` when the parent is an unranked context row, Alt+Left reports rather than going
+quiet, nothing is written on either path, and — the control — an outdent past a RANKED
+context parent still works and still writes the number it used to. `test/view/contextRowWrites.test.ts`
+is the invariant suite for this area.
