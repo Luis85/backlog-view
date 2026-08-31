@@ -177,7 +177,7 @@ export function moveToEdge(host: BacklogViewHost, item: BacklogItem, edge: 'top'
  * `performDrop` and let its one reporter name the remedy. Folding the plan into this
  * function made both paths silent.
  */
-export function outdentTarget(host: BacklogViewHost, item: BacklogItem): DropTarget | null {
+function outdentTarget(host: BacklogViewHost, item: BacklogItem): DropTarget | null {
 	const model = host.model;
 	const parent = item.parent;
 	if (!model || !parent || item.focusRoot || item.outsideFilter) return null;
@@ -219,7 +219,7 @@ export function outdent(host: BacklogViewHost, item: BacklogItem): void {
  * defect `Move to top` and `Move to bottom` were fixed for. Alt+Right does not withhold
  * anything and reports instead.
  */
-export function indentTarget(
+function indentTarget(
 	host: BacklogViewHost,
 	item: BacklogItem,
 	newParent: BacklogItem | null = visibleNeighbor(host, item, -1),

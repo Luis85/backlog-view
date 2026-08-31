@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { anchoredOrder, dropPlacement, ORDER_SPACING, orderForTarget, refusalKey } from '../../src/domain/writePlan';
+import { anchoredOrder, dropPlacement, ORDER_SPACING, refusalKey } from '../../src/domain/writePlan';
 import { BacklogItem } from '../../src/domain/model';
 
 /** The only fields `anchoredOrder` reads. */
@@ -79,40 +79,46 @@ describe('anchoredOrder', () => {
 });
 
 /**
- * `orderForTarget` turns a landing place into an anchor and a side. Three branches, and
- * the one that is easy to get wrong is the empty peer group: the anchor is then the
- * DESTINATION row, not a peer, which is what makes "first child of a parent" and "drop
- * inside a leaf" — the commonest placements there are — rank after the parent instead of
- * refusing for want of a peer to aim at.
+ * Turning a landing place into an anchor and a side. Three branches, and the one that is
+ * easy to get wrong is the empty peer group: the anchor is then the DESTINATION row, not
+ * a peer, which is what makes "first child of a parent" and "drop inside a leaf" — the
+ * commonest placements there are — rank after the parent instead of refusing for want of
+ * a peer to aim at.
+ *
+ * Asked through `dropPlacement` rather than of `orderForTarget` beside it, which is the
+ * rule ADR 0033 states for every production caller and so may not be broken for a test:
+ * an export only the test used is the door the ADR's own shipped bug came through. A
+ * null `dragged` is the creation case — nothing to take out of the population — and none
+ * of these fixtures is tied, so the fallback between the two is inert here.
  */
-describe('orderForTarget', () => {
+describe('the anchor a landing place implies', () => {
 	it('anchors on the last peer before the insertion point', () => {
 		const list = ranked(1000, 3000, 5000);
-		expect(orderForTarget(list, { parent: null, peers: [list[0], list[2]], insertIndex: 1 })).toEqual({
+		expect(dropPlacement(null, { parent: null, peers: [list[0], list[2]], insertIndex: 1 }, list)).toEqual({
 			order: 2000,
 		});
 	});
 
 	it('anchors before the first peer when the item lands at the top', () => {
 		const list = ranked(1000, 3000);
-		expect(orderForTarget(list, { parent: null, peers: [list[1]], insertIndex: 0 })).toEqual({ order: 2000 });
+		expect(dropPlacement(null, { parent: null, peers: [list[1]], insertIndex: 0 }, list)).toEqual({ order: 2000 });
 	});
 
 	it('anchors on the destination itself when there are no peers', () => {
 		const list = ranked(1000, 3000);
-		expect(orderForTarget(list, { parent: list[0], peers: [], insertIndex: 0 })).toEqual({ order: 2000 });
+		expect(dropPlacement(null, { parent: list[0], peers: [], insertIndex: 0 }, list)).toEqual({ order: 2000 });
 	});
 
 	it('ranks at the end of the whole population when there is no destination either', () => {
 		const list = ranked(1000, 3000);
-		expect(orderForTarget(list, { parent: null, peers: [], insertIndex: 0 })).toEqual({
+		expect(dropPlacement(null, { parent: null, peers: [], insertIndex: 0 }, list)).toEqual({
 			order: 3000 + ORDER_SPACING,
 		});
 	});
 
 	it('passes a refusal through rather than inventing a number', () => {
 		const list = ranked(1000, 1000.000001);
-		expect(orderForTarget(list, { parent: null, peers: [list[0], list[1]], insertIndex: 1 })).toEqual({
+		expect(dropPlacement(null, { parent: null, peers: [list[0], list[1]], insertIndex: 1 }, list)).toEqual({
 			refusal: 'gapSpent',
 		});
 	});

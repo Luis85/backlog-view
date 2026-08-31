@@ -844,8 +844,16 @@ function neighbourPair(
  * there is none. An empty peer group is the commonest placement there is — the first
  * child of a parent, a drop inside a leaf — which is why the anchor is stated over the
  * DESTINATION rather than over the peers.
+ *
+ * **Not exported, and that is the rule ADR 0033 states rather than a tidy-up**: every
+ * placement goes through `dropPlacement`, because a caller reaching this function
+ * directly skips the dragged-row filter and the peer fallback — which is the shipped bug
+ * the ADR records (`newItemOrder` made a legacy vault one a user could drag around and
+ * not add to). An export only the test used re-opened that door; the test asks
+ * `dropPlacement` with a null `dragged`, which is this function plus a fallback no
+ * fixture there is tied enough to reach.
  */
-export function orderForTarget(ranked: BacklogItem[], target: DropTarget): RankResult {
+function orderForTarget(ranked: BacklogItem[], target: DropTarget): RankResult {
 	const { peers, insertIndex, parent } = target;
 	if (peers.length === 0) return anchoredOrder(ranked, parent, 'after');
 	if (insertIndex === 0) return anchoredOrder(ranked, peers[0], 'before');
