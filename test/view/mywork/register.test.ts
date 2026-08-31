@@ -15,7 +15,7 @@ describe('registerMyWorkView', () => {
 	it('registers the my-work view with the correct config', () => {
 		const { plugin: fakePlugin, specs } = captureRegistrations<BasesViewRegistration>();
 
-		registerMyWorkView(fakePlugin as never, new WriteLock());
+		registerMyWorkView(fakePlugin, new WriteLock());
 
 		expect(specs.has(MY_WORK_VIEW_TYPE)).toBe(true);
 		const spec = specs.get(MY_WORK_VIEW_TYPE)!;
@@ -29,7 +29,7 @@ describe('registerMyWorkView', () => {
 
 	it('factory-built view is a MyWorkView, mounted in the container it was given', () => {
 		const { plugin: fakePlugin, specs } = captureRegistrations<BasesViewRegistration>();
-		registerMyWorkView(fakePlugin as never, new WriteLock());
+		registerMyWorkView(fakePlugin, new WriteLock());
 		const spec = specs.get(MY_WORK_VIEW_TYPE)!;
 
 		const containerEl = document.body.createDiv();
@@ -46,7 +46,7 @@ describe('registerMyWorkView', () => {
 		const lock = new WriteLock();
 
 		const { plugin: fakePlugin, specs } = captureRegistrations<BasesViewRegistration>();
-		registerMyWorkView(fakePlugin as never, lock);
+		registerMyWorkView(fakePlugin, lock);
 		const spec = specs.get(MY_WORK_VIEW_TYPE)!;
 
 		const containerA = document.body.createDiv();

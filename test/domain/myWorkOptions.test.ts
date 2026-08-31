@@ -7,7 +7,7 @@ import { FakeVault, FakeViewConfig } from '../helpers/vault';
 
 describe('my work options', () => {
 	it('offers the same suggestions the backlog view does, without sharing the setting', () => {
-		const settings = resolveMyWorkSettings(new FakeViewConfig({}) as never);
+		const settings = resolveMyWorkSettings(new FakeViewConfig({}));
 		expect(settings.parentKey).toBe('parent');
 		expect(settings.orderKey).toBe('order');
 		expect(settings.typeKey).toBe('type');
@@ -21,7 +21,7 @@ describe('my work options', () => {
 	});
 
 	it('reads a CLEARED option as unbound rather than as the default', () => {
-		const settings = resolveMyWorkSettings(new FakeViewConfig({ assigneeProperty: '' }) as never);
+		const settings = resolveMyWorkSettings(new FakeViewConfig({ assigneeProperty: '' }));
 		expect(settings.assigneeKey).toBe('');
 	});
 
@@ -33,13 +33,13 @@ describe('my work options', () => {
 	// with the bug: it fails without `clearablePropKey` on all three fields.
 	it('tells a CLEARED model mapping from one never set, for all three hierarchy keys', () => {
 		const cleared = resolveMyWorkSettings(
-			new FakeViewConfig({ parentProperty: '', orderProperty: '', typeProperty: '' }) as never,
+			new FakeViewConfig({ parentProperty: '', orderProperty: '', typeProperty: '' }),
 		);
 		expect(cleared.parentKey).toBe('');
 		expect(cleared.orderKey).toBe('');
 		expect(cleared.typeKey).toBe('');
 
-		const untouched = resolveMyWorkSettings(new FakeViewConfig({}) as never);
+		const untouched = resolveMyWorkSettings(new FakeViewConfig({}));
 		expect(untouched.parentKey).toBe('parent');
 		expect(untouched.orderKey).toBe('order');
 		expect(untouched.typeKey).toBe('type');
@@ -50,7 +50,7 @@ describe('my work options', () => {
 	// nothing blocked was unreachable. Over the SAME `stateValues` option key
 	// `viewOptions.ts` declares for the backlog view.
 	it('resolves the requirements workflow’s own declared vocabulary', () => {
-		const settings = resolveMyWorkSettings(new FakeViewConfig({ stateValues: 'Open, In progress, Done' }) as never);
+		const settings = resolveMyWorkSettings(new FakeViewConfig({ stateValues: 'Open, In progress, Done' }));
 		expect(settings.states).toEqual(['Open', 'In progress', 'Done']);
 	});
 
@@ -109,7 +109,7 @@ describe('my work options', () => {
 				startedDateProperty: 'note.started',
 				finishedDateProperty: 'note.finished',
 				startedStates: 'Active, In review',
-			}) as never,
+			}),
 		);
 		expect(settings.startedDateKey).toBe('started');
 		expect(settings.finishedDateKey).toBe('finished');
@@ -117,7 +117,7 @@ describe('my work options', () => {
 	});
 
 	it('leaves the stamp keys and started-states list unconfigured by default', () => {
-		const settings = resolveMyWorkSettings(new FakeViewConfig({}) as never);
+		const settings = resolveMyWorkSettings(new FakeViewConfig({}));
 		expect(settings.startedDateKey).toBe('');
 		expect(settings.finishedDateKey).toBe('');
 		expect(settings.startedStates).toEqual([]);
@@ -144,7 +144,7 @@ describe('my work options', () => {
 				deliverableDoneValues: 'Shipped',
 				testStateProperty: 'note.testState',
 				testDoneValues: 'Passed',
-			}) as never,
+			}),
 		);
 		expect(settings.deliverableStateKey).toBe('delivState');
 		expect(settings.deliverableDoneValues).toEqual(['Shipped']);
@@ -153,7 +153,7 @@ describe('my work options', () => {
 	});
 
 	it('reads a CLEARED secondary-workflow property as unbound, never back to the fallback', () => {
-		const settings = resolveMyWorkSettings(new FakeViewConfig({ deliverableStateProperty: '' }) as never);
+		const settings = resolveMyWorkSettings(new FakeViewConfig({ deliverableStateProperty: '' }));
 		expect(settings.deliverableStateKey).toBe('');
 	});
 
@@ -168,10 +168,10 @@ describe('my work options', () => {
 			new FakeViewConfig({
 				deliverableStateProperty: 'note.delivState',
 				deliverableDoneValues: 'Shipped',
-			}) as never,
+			}),
 		);
 		const planSettings: BacklogSettings = {
-			...resolveSettings(new FakeViewConfig({}) as never),
+			...resolveSettings(new FakeViewConfig({})),
 			typeKey: mySettings.typeKey,
 			parentKey: mySettings.parentKey,
 			orderKey: mySettings.orderKey,
@@ -201,9 +201,9 @@ describe('my work options', () => {
 	// workflow configured at all.
 	it('does not trip the secondary-workflow guard when only the requirements vocabulary is configured', () => {
 		const config = new FakeViewConfig({ stateValues: 'Open, In progress, Done' });
-		const mySettings = resolveMyWorkSettings(config as never);
+		const mySettings = resolveMyWorkSettings(config);
 		const planSettings: BacklogSettings = {
-			...resolveSettings(config as never),
+			...resolveSettings(config),
 			typeKey: mySettings.typeKey,
 			parentKey: mySettings.parentKey,
 			orderKey: mySettings.orderKey,
