@@ -133,10 +133,27 @@ export class MyWorkView extends BasesView {
 	 * it never had the choice not to.
 	 */
 	render(): void {
-		this.treeHadFocus = this.viewEl.querySelector('.pbl-mw-tree')?.contains(document.activeElement) === true;
+		const treeEl = this.viewEl.querySelector('.pbl-mw-tree');
+		this.treeHadFocus = treeEl?.contains(document.activeElement) === true;
+		// Read beside the focus, and for the same reason: `empty()` is about to detach the
+		// scroller. `.pbl-tree` IS the scroll container (`styles/tree.css` — `overflow-y:
+		// auto`), so unlike `ReleaseView` this view needs no separate `scrollerEl()`, and it
+		// needs no `drawnKey` either: the element's own presence after `draw()` is the "same
+		// screen" test. A redraw that lands on guidance instead finds no tree to restore
+		// onto and correctly restores nothing.
+		//
+		// Without this, a state write's own refresh — and every ordinary Bases update —
+		// jumps a scrolled reader back to the top. `wireScopeKeys` hides it from the
+		// KEYBOARD, which scrolls its row back into view; a pointer user has no such row.
+		const previousTop = treeEl?.scrollTop ?? 0;
 		const focusHandle = this.focusedHandle();
 		this.viewEl.empty();
 		this.draw();
+		const drawnEl = this.viewEl.querySelector('.pbl-mw-tree');
+		// Clamped to the FRESH `scrollHeight`, `releaseView.ts`'s own rule: a redraw with
+		// fewer rows — an item reassigned away, hide-done switched on — must not park the
+		// pane below its own last row.
+		if (drawnEl !== null) drawnEl.scrollTop = Math.min(previousTop, drawnEl.scrollHeight);
 		this.restoreFocus(focusHandle);
 	}
 

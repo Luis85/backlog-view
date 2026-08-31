@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { makeMyWorkView, mwRow, mwTwisty, myWorkVault, refreshMyWork, rowPaths } from '../../helpers/mywork';
 import { setScopeFlag } from '../../../src/view/scopeFolds';
 import { FakeVault } from '../../helpers/vault';
@@ -20,6 +20,10 @@ import { FakeVault } from '../../helpers/vault';
  * BACKLOG's own hierarchy it is level 3 (Epic -> Hidden Feature -> PBI Hidden), but in
  * Ada's own tree it re-roots one level up.
  */
+
+afterEach(() => {
+	vi.restoreAllMocks();
+});
 
 describe('the my-work tree', () => {
 	it('draws a member under its ancestors, with the ancestors marked as context', () => {
@@ -316,5 +320,48 @@ describe('the tree names the person the way the picker does', () => {
 		// owns that, and asserting its exact output here would restate it in a second place.
 		expect(current).not.toBe(archived);
 		expect(view.model!.resourceLabels.get('Archive/Ada.md')).toBe(archived);
+	});
+});
+
+/**
+ * `.pbl-tree` is the scroll container itself (`styles/tree.css`), and `render()` detaches
+ * it on every redraw — a state write's own refresh, and every ordinary Bases update. A
+ * reader scrolled down a long tree was returned to the top by each one. The keyboard hid
+ * it, because `wireScopeKeys` scrolls the active row back into view; a pointer user has no
+ * active row to be scrolled to.
+ *
+ * Stubbed on the PROTOTYPE, `test/view/releaseView.test.ts`'s own shape: jsdom lays nothing
+ * out, so `scrollHeight` is 0 on the redrawn element as well as the detached one, and the
+ * clamp would swallow the very behaviour under test.
+ *
+ * Found by review (PR #234, round 6). Watched failing before the capture: 0, not 120.
+ */
+describe('a redraw keeps the reader where they were', () => {
+	it('restores the tree scroll offset', () => {
+		vi.spyOn(HTMLElement.prototype, 'scrollHeight', 'get').mockReturnValue(400);
+		const { view, containerEl } = makeMyWorkView(myWorkVault());
+		view.pick('People/Ada.md');
+		const treeEl = containerEl.querySelector<HTMLElement>('.pbl-mw-tree')!;
+		treeEl.scrollTop = 120;
+
+		view.render();
+
+		const redrawn = containerEl.querySelector<HTMLElement>('.pbl-mw-tree')!;
+		expect(redrawn).not.toBe(treeEl);
+		expect(redrawn.scrollTop).toBe(120);
+	});
+
+	it('clamps to the fresh height when the redraw is shorter', () => {
+		const scrollHeight = vi.spyOn(HTMLElement.prototype, 'scrollHeight', 'get').mockReturnValue(400);
+		const { view, containerEl } = makeMyWorkView(myWorkVault());
+		view.pick('People/Ada.md');
+		containerEl.querySelector<HTMLElement>('.pbl-mw-tree')!.scrollTop = 380;
+
+		// The redraw is shorter — an item reassigned away, hide-done switched on — so the
+		// offset must come back to the new last row rather than park below it.
+		scrollHeight.mockReturnValue(90);
+		view.render();
+
+		expect(containerEl.querySelector<HTMLElement>('.pbl-mw-tree')!.scrollTop).toBe(90);
 	});
 });
