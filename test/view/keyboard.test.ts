@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { FakeVault } from '../helpers/vault';
+import { Notice } from '../helpers/obsidian-mock';
 import { fixture, flush, key, makeView, rowByTitle, titlesOf, treeOf, useViewHarness } from '../helpers/view';
 
 useViewHarness();
@@ -270,16 +271,14 @@ describe('keyboard structure shortcuts', () => {
 	});
 
 	/**
-	 * The keyboard reaches indent through the same `indentTarget` the menu is gated on, so
-	 * neither can act on a nesting the other withholds.
-	 *
-	 * **Green before that gate existed**, and recorded as a pin rather than a proof: an
-	 * ungated indent plans no writes either, because the refusal happens in the planner.
-	 * What was broken on this path was the OFFER, and the menu test is where the gate is
-	 * measured. What this holds is the other direction — an indent that ever planned its
-	 * own write beside the gate instead of through it would land here.
+	 * The keyboard reaches indent through the same target the menu is gated on, so neither
+	 * can act on a nesting the other withholds — and it SAYS SO, which is the half that
+	 * was missing. The menu withholding an entry is an offer declined; a keypress is not
+	 * an offer, so there is nothing to withhold and silence tells the user nothing at all.
+	 * Alt+Up/Down already named a remedy through `performDrop`'s one reporter, and these
+	 * two returned before reaching it. Same reporter, never a second sentence beside it.
 	 */
-	it('writes nothing on Alt+ArrowRight when the nesting would refuse', async () => {
+	it('writes nothing on Alt+ArrowRight when the nesting would refuse, and names the remedy', async () => {
 		const vault = new FakeVault();
 		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
 		vault.addFile('C1.md', { frontmatter: { type: 'Feature', order: 20 }, parentLink: 'Epic' });
@@ -296,6 +295,34 @@ describe('keyboard structure shortcuts', () => {
 
 		expect(vault.writeLog).toHaveLength(0);
 		expect(vault.fm('C2.md')['parent']).toBe('[[Epic]]');
+		expect(Notice.messages).toEqual([
+			'That item has no rank yet. Use the toolbar’s set-up button to fill in the missing ones.',
+		]);
+	});
+
+	it('writes nothing on Alt+ArrowLeft when the outdent would refuse, and names the remedy', async () => {
+		// The mirror. An outdent lands right after `C1` among `Epic`'s children, and the
+		// next rank in the whole population is one six-decimal step away, so there is no
+		// number to give it.
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('C1.md', { frontmatter: { type: 'Feature', order: 10.000001 }, parentLink: 'Epic' });
+		vault.addFile('Other.md', { frontmatter: { type: 'Epic', order: 10.000002 } });
+		vault.addFile('C2.md', { frontmatter: { type: 'Feature', order: 30 }, parentLink: 'C1' });
+		const { containerEl } = makeView(vault);
+		const tree = treeOf(containerEl);
+
+		key(tree, 'ArrowDown'); // Epic
+		key(tree, 'ArrowDown'); // C1
+		key(tree, 'ArrowDown'); // C2
+		key(tree, 'ArrowLeft', { altKey: true });
+		await flush();
+
+		expect(vault.writeLog).toHaveLength(0);
+		expect(vault.fm('C2.md')['parent']).toBe('[[C1]]');
+		expect(Notice.messages).toEqual([
+			'No room left between those two items. Run "Respace ranks" from the command palette.',
+		]);
 	});
 
 	it('outdents to the top level with Alt+ArrowLeft', async () => {

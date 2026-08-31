@@ -167,8 +167,15 @@ export function moveToEdge(host: BacklogViewHost, item: BacklogItem, edge: 'top'
 
 /**
  * Where outdenting would put the item — right after its parent among the parent's
- * siblings — or null when that is unavailable. Exported so the menu can offer the
- * command on exactly the rows where it works.
+ * siblings — or null when the move is not EXPRESSIBLE at all: no parent, a focus row, a
+ * context row, or a grandparent on the other ladder.
+ *
+ * **Whether the placement would write anything is a separate question, and it is
+ * `canOutdent`'s.** The same split `withinSiblingsTarget` and `canReorder` already keep,
+ * and for the same reason: the menu withholds an entry a plan would refuse, while a
+ * KEYPRESS is not an offer — there is nothing to withhold, so Alt+Left must reach
+ * `performDrop` and let its one reporter name the remedy. Folding the plan into this
+ * function made both paths silent.
  */
 export function outdentTarget(host: BacklogViewHost, item: BacklogItem): DropTarget | null {
 	const model = host.model;
@@ -184,11 +191,12 @@ export function outdentTarget(host: BacklogViewHost, item: BacklogItem): DropTar
 	// what the menu asks to decide whether to OFFER the command, and an offered command
 	// that does nothing is what this repo refuses ahead of a withheld one.
 	if (!keepsProjection(item, grandparent)) return null;
-	const target: DropTarget = { parent: grandparent, peers, insertIndex: peers.indexOf(parent) + 1 };
-	// Same reasoning as `canReorder`: ask the write path's own question rather than a
-	// second, weaker opinion about it, so Outdent never offers a rank the global
-	// population would refuse (a spent gap, an unranked neighbour).
-	return plans(host, item, target) ? target : null;
+	return { parent: grandparent, peers, insertIndex: peers.indexOf(parent) + 1 };
+}
+
+/** True when outdenting `item` would write something — what the MENU is gated on. */
+export function canOutdent(host: BacklogViewHost, item: BacklogItem): boolean {
+	return plans(host, item, outdentTarget(host, item));
 }
 
 /** Make the item a sibling of its parent, placed right after it. */
@@ -200,15 +208,16 @@ export function outdent(host: BacklogViewHost, item: BacklogItem): void {
 
 /**
  * Where indenting would put the item — last among the previous visible sibling's children
- * — or null when that is unavailable. An append, so a partially loaded destination is
- * fine: last is last either way.
+ * — or null when the move is not EXPRESSIBLE. An append, so a partially loaded destination
+ * is fine: last is last either way.
  *
- * Exported for the same reason `outdentTarget` is, and it was the one structural command
- * without it: an append still has to be RANKED, and the row after the new parent's last
- * child in the global population can be unranked or a spacing away, so the placement
- * refuses. Gated on the previous sibling alone, the menu offered `Indent under X`, wrote
- * nothing and said nothing — the same defect `Move to top` and `Move to bottom` were fixed
- * for, in the command that fix did not reach.
+ * Whether the placement would WRITE anything is `canIndent`'s question, for the reason
+ * `outdentTarget` states: an append still has to be RANKED, and the row after the new
+ * parent's last child in the global population can be unranked or a spacing away, so the
+ * placement refuses. The menu withholds the entry on that answer — gated on the previous
+ * sibling alone it offered `Indent under X`, wrote nothing and said nothing, the same
+ * defect `Move to top` and `Move to bottom` were fixed for. Alt+Right does not withhold
+ * anything and reports instead.
  */
 export function indentTarget(
 	host: BacklogViewHost,
@@ -238,8 +247,12 @@ export function indentTarget(
 	// its neighbour at the moment of the press, so only the menu was exposed.
 	if (!keepsProjection(item, newParent)) return null;
 	const peers = newParent.children.filter((s) => s !== item);
-	const target: DropTarget = { parent: newParent, peers, insertIndex: peers.length };
-	return plans(host, item, target) ? target : null;
+	return { parent: newParent, peers, insertIndex: peers.length };
+}
+
+/** True when indenting `item` under its previous visible sibling would write something. */
+export function canIndent(host: BacklogViewHost, item: BacklogItem): boolean {
+	return plans(host, item, indentTarget(host, item));
 }
 
 /**

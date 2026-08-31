@@ -34,11 +34,11 @@ import {
 	canMoveToEdge,
 	canReorder,
 	indent,
-	indentTarget,
+	canIndent,
 	moveToEdge,
 	moveWithinSiblings,
 	outdent,
-	outdentTarget,
+	canOutdent,
 	visibleNeighbor,
 } from './structure';
 import { promptCreateItem } from './create';
@@ -259,8 +259,8 @@ function addMoveSection(host: BacklogViewHost, menu: Menu, item: BacklogItem): v
 	const rankedBottom = canMoveToEdge(host, item, 'bottom');
 	// Indent asks its own question too — its destination is another row's child list, so
 	// nothing the four above answer covers it. `prev` stays beside it only because the
-	// TITLE names that row; the offer is the target's to make.
-	const indentUnder = indentTarget(host, item);
+	// TITLE names that row; the offer is the plan's to make.
+	const indentUnder = canIndent(host, item);
 
 	if (rankedUp && prev) {
 		menu.addItem((mi) =>
@@ -298,7 +298,7 @@ function addMoveSection(host: BacklogViewHost, menu: Menu, item: BacklogItem): v
 				.onClick(() => moveToEdge(host, item, 'bottom')),
 		);
 	}
-	if (outdentTarget(host, item)) {
+	if (canOutdent(host, item)) {
 		menu.addItem((mi) => mi.setTitle(t('menu.outdent')).setIcon('indent-decrease').onClick(() => outdent(host, item)));
 	}
 }

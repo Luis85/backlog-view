@@ -97,8 +97,9 @@ const MOVING: ManualSection = {
 				'the two rows it landed between hold the same rank, or the gap between them has ' +
 				'been used up, or one of them has no rank at all. The message names the remedy — ' +
 				'Seed ranks from the hierarchy, or Respace ranks, both in the command palette, or ' +
-				"the toolbar's set-up button for the missing ranks. The menu and Alt+arrow ask the " +
-				'same question before they offer a move, so there the entry is simply absent.',
+				"the toolbar's set-up button for the missing ranks. The menu asks that same " +
+				'question before it offers a move, so there the entry is simply absent instead. ' +
+				'Alt+arrow has no entry to withhold, so it names the remedy the way a drop does.',
 		},
 	],
 };
