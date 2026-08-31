@@ -297,7 +297,14 @@ export function indent(host: BacklogViewHost, item: BacklogItem, namedParentPath
 	const live = liveItem(host, item);
 	if (!live) return;
 	const named = namedParentPath === undefined ? undefined : host.model?.byPath.get(namedParentPath);
-	if (namedParentPath !== undefined && !named) return;
+	// The named destination, not the subject: `liveItem` above already refused a vanished
+	// SUBJECT with the same notice, and a vanished DESTINATION is the sibling case the
+	// docblock promises — "refuse if it is no longer a valid destination" said nothing
+	// about silence.
+	if (namedParentPath !== undefined && !named) {
+		new Notice(t('rank.itemGone'));
+		return;
+	}
 	const target = indentTarget(host, live, named);
 	if (target) void host.performDrop(live, target);
 }

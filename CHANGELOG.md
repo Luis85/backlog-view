@@ -59,6 +59,8 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 - Dropping the first child into a childless, tied item on an unseeded vault now ranks one
   spacing clear of it instead of a shared constant, which collided on the very next such
   drop anywhere in the vault and refused every one after the first.
+- `Indent under "X"` now reports when `X` has left the base between opening the menu and
+  clicking, instead of doing nothing with no explanation.
 
 ## [0.10.0] - 2026-08-30
 

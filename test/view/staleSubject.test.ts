@@ -79,6 +79,46 @@ describe('a structural command whose subject left the base', () => {
 });
 
 /**
+ * The sibling case: the SUBJECT is still here, but the note a command's own label
+ * names as its destination is not. `indent` re-resolves `namedParentPath` by path
+ * before planning, and a miss there must report the same way `liveItem` does for a
+ * vanished subject — the docblock's own words are "refuse if it is no longer a valid
+ * destination", not "refuse in silence".
+ */
+describe('indent whose named destination left the base', () => {
+	function view() {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
+		vault.addFile('F1.md', { frontmatter: { type: 'Feature', order: 20 }, parentLink: 'Epic' });
+		vault.addFile('F2.md', { frontmatter: { type: 'Feature', order: 30 }, parentLink: 'Epic' });
+		const harness = makeView(vault);
+		clickExpandAll(harness.containerEl);
+		return { ...harness, vault };
+	}
+
+	it('reports the vanished destination and writes nothing', async () => {
+		const harness = view();
+		rowByTitle(harness.containerEl, 'F2').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+		const menu = Menu.lastShown;
+		if (!menu) throw new Error('menu not shown');
+		const entry = menu.item('Indent under "F1"');
+		expect(entry).toBeDefined();
+
+		// F1 — the named destination, not F2 the subject — drops out of the results.
+		const anyView = harness.view as unknown as Record<string, unknown>;
+		anyView.data = { data: harness.vault.entries().filter((e) => e.file.path !== 'F1.md') };
+		harness.view.onDataUpdated();
+		Notice.messages = [];
+
+		entry?.click();
+		await flush();
+
+		expect(harness.vault.writeLog).toEqual([]);
+		expect(Notice.messages).toEqual([GONE]);
+	});
+});
+
+/**
  * The same fact asked at the FORBIDDEN THING rather than at the four places that reach
  * it. The gate's exclusion test used to read `outsideFilter === true`, which answers
  * false for a path the model does not hold — so absence, which is a different fact from
