@@ -1733,6 +1733,11 @@ export const en = {
 	'mywork.empty.allDone.title': 'Everything here is done',
 	'mywork.empty.allDone.hint': 'Turn off Hide done to see the finished work.',
 
+	/** The one row this tree marks apart from state — the first unfinished member in plan
+	 *  order (`domain/assignedWork.ts`'s `nextAssigned`), drawn by `renderTree.ts`. */
+	'mywork.next': 'Next',
+	'mywork.nextTip': 'The first unfinished item of theirs in plan order.',
+
 	/**
 	 * The two groups the index is drawn in, headed where a row's own `shipped` flag changes
 	 * (`release/renderIndex.ts`). In flight is everything without a released date; shipped

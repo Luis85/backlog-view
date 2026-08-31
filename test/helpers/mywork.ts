@@ -74,15 +74,20 @@ export function myWorkVault(opts: MyWorkVaultOptions = {}): FakeVault {
  * reads as "no identity" on purpose.
  *
  * This file deliberately does NOT carry every accessor `test/helpers/release.ts` has —
- * `row`, `twisty`, `press`, `active`, `pickPerson`, `menuOn`, `choose`, `labels`,
- * `treeEl`, `rowPaths`, a `refreshMyWork` and a re-exported `flush` were all drafted for
- * Tasks 6 through 11 before this task's own commit and every one of them was flagged
- * dead by `npm run analyze` (`unused-exports`): fallow's dead-code check counts a test
- * file's import the same as production code's, so a helper nothing yet imports is
- * unreachable regardless of which future commit means to. Add each one back in the task
- * that first writes a test needing it, the way `release.ts`'s own accessors arrived one
- * at a time as the release feature's tasks landed — a helper file grows with its callers
- * rather than being drafted whole against a plan that has not shipped yet.
+ * `press`, `active`, `pickPerson`, `menuOn`, `choose`, `labels`, `treeEl`, a
+ * `refreshMyWork` and a re-exported `flush` were all drafted for Tasks 7 through 11
+ * before this task's own commit and every one of them was flagged dead by `npm run
+ * analyze` (`unused-exports`): fallow's dead-code check counts a test file's import the
+ * same as production code's, so a helper nothing yet imports is unreachable regardless of
+ * which future commit means to. Add each one back in the task that first writes a test
+ * needing it, the way `release.ts`'s own accessors arrived one at a time as the release
+ * feature's tasks landed — a helper file grows with its callers rather than being
+ * drafted whole against a plan that has not shipped yet. `mwRow`, `rowPaths` and
+ * `mwTwisty` are Task 6's own first three, added below for
+ * `test/view/mywork/tree.test.ts` — named apart from `release.ts`'s identical `row`/
+ * `twisty` rather than sharing those names, which is what a fallow duplicate-export
+ * finding asked for the moment a second file exported the same bare names
+ * (`src/view/scopeFolds.ts`'s own header records the identical fix for the fold trio).
  */
 export function makeMyWorkView(
 	vault: FakeVault,
@@ -98,4 +103,31 @@ export function makeMyWorkView(
 	anyView.data = { data: baseResults(vault) };
 	view.onDataUpdated();
 	return { view, config, containerEl };
+}
+
+/** A drawn row by path — never optional, because every caller of this one already
+ *  expects it on screen. `{ optional: true }` is the exception, `test/helpers/release.ts`'s
+ *  own overload shape, for a caller checking a row is ABSENT (a fold, a hide-done pass). */
+export function mwRow(view: MyWorkView, path: string): HTMLElement;
+export function mwRow(view: MyWorkView, path: string, opts: { optional: true }): HTMLElement | null;
+export function mwRow(view: MyWorkView, path: string, opts: { optional?: boolean } = {}): HTMLElement | null {
+	const el = view.viewEl.querySelector<HTMLElement>(`.pbl-row[data-path="${path}"]`);
+	if (el === null && !opts.optional) throw new Error(`row not found: ${path}`);
+	return el;
+}
+
+/** Every row's path, in the tree's own drawn order — `renderTree.ts`'s pre-order walk,
+ *  never a second sort of our own. */
+export function rowPaths(view: MyWorkView): string[] {
+	return Array.from(view.viewEl.querySelectorAll<HTMLElement>('.pbl-row')).map(
+		(el) => el.getAttribute('data-path') ?? '',
+	);
+}
+
+/** The disclosure button on one row — never optional, because every caller of this one
+ *  already knows the row has children. */
+export function mwTwisty(view: MyWorkView, path: string): HTMLElement {
+	const el = mwRow(view, path)?.querySelector<HTMLElement>('.pbl-twisty');
+	if (!el) throw new Error(`twisty not found: ${path}`);
+	return el;
 }

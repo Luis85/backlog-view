@@ -1,0 +1,45 @@
+/* ==========================================================================
+   The my-work tree's own rows (`view/mywork/renderTree.ts`): a context ancestor dimmed
+   the way the release scope's own tree dims one, one column for the static state chip,
+   and the "what is next" marker beside the title.
+
+   Position in `styles/index.css`'s import list is NOT load-bearing: every selector here
+   is `.pbl-mw-*`, a vocabulary no other partial declares, and this file re-targets
+   nothing another partial writes — the row itself (`.pbl-row`, `tree.css`), the
+   disclosure (`button.pbl-twisty`, `releaseScope.css`), the spacer
+   (`.pbl-row-spacer`, `propertyColumns.css`) and the state chip's own base rules
+   (`.pbl-state-chip`, `.pbl-state-static`, …, `columns.css`) are all used here exactly as
+   drawn, with no property in common with anything declared here.
+   ========================================================================== */
+
+/* A context ancestor is scaffolding holding a member in place, not something the reader
+   asked to see — dimmed for that, never hidden, or the member loses its place. The
+   identical rule `.pbl-rel-context` states for the release scope's own tree
+   (`releaseScope.css`), under this view's own class because the two trees are unrelated
+   screens sharing a shape rather than one screen the other includes. */
+.pbl-mw-context {
+	opacity: 0.62;
+}
+
+/* One column for the chip, so a row with no state leaves a gap rather than sliding its
+   neighbours left — `.pbl-rel-statecol`'s own reason, narrower here: this tree draws no
+   rollup beside it, so the column need not reserve room for one. */
+.pbl-mw-statecol {
+	flex: 0 0 auto;
+	display: flex;
+	justify-content: flex-end;
+	inline-size: 92px;
+}
+
+/* What to do next: a small pill in the accent, past the state chip at the row's end —
+   never a second chip shape, because this states a fact about ORDER rather than about
+   state and earns its own look for it. */
+.pbl-mw-next {
+	flex: 0 0 auto;
+	padding: 1px var(--size-4-1);
+	font-size: var(--font-ui-smaller);
+	font-weight: var(--font-medium);
+	color: var(--text-on-accent);
+	background-color: var(--interactive-accent);
+	border-radius: var(--radius-s);
+}

@@ -14,6 +14,7 @@ import { loadViewState, saveViewState } from '../../storage/viewStateStore';
 import { resolveViewIdentity } from '../../storage/viewIdentity';
 import { guidanceShell } from '../render/emptyStates';
 import { OpenContext, OpenController } from '../openTarget';
+import { drawMyWorkTree } from './renderTree';
 
 export const MY_WORK_VIEW_TYPE = 'product-my-work';
 
@@ -228,17 +229,4 @@ export class MyWorkView extends BasesView {
 
 function drawMyWorkToolbar(_view: MyWorkView, _parentEl: HTMLElement): void {
 	// Task 8 draws the person picker, collapse-all, expand-all and hide-done here.
-}
-
-function drawMyWorkTree(_view: MyWorkView, parentEl: HTMLElement): void {
-	// Task 6 draws the rows here — a bare, focusable container for now, carrying BOTH the
-	// shared `pbl-tree` class every scope tree in this plugin draws (`backlogView.ts`'s own
-	// root, `scopeTree.ts`'s release scope) and this view's own `pbl-mw-tree` handle. Both,
-	// not either: `shell.test.ts`'s "no tree when unbound" case asserts `.pbl-tree` is
-	// absent, which is only a real assertion about THIS view if a drawn tree actually
-	// carries it — a stub with `pbl-mw-tree` alone left that assertion unable to fail
-	// (fix round 1, PR #234) — and `pbl-mw-tree` is what this task's own focus-restore
-	// mechanism above answers about, since it is this view's own handle rather than the
-	// class every tree shares.
-	parentEl.createDiv({ cls: 'pbl-tree pbl-mw-tree', attr: { tabindex: '0' } });
 }

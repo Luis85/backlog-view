@@ -90,10 +90,23 @@ the model in `src/domain/model.ts` and touching no DOM. `releaseScope` in
 `src/domain/releases.ts` calls it with the release membership property as its predicate;
 `src/domain/assignedWork.ts` calls it with the assignee as its own. `src/view/release/scopeTree.ts`,
 `src/view/release/renderScope.ts` and `src/view/release/scopeToolbar.ts` draw the
-release's own rows from these; the assigned-work view's own render module does the same
-for its tree. One walk, two membership questions, is the whole of what this note is for:
-it is what stops the release scope and the assigned-work tree from ever drawing two
-different answers to "what is a context row here".
+release's own rows from these; `src/view/mywork/renderTree.ts` does the same for one
+person's tree — the identical hide-done-then-fold sequence, `childRows` over the
+hide-done list and `siblingPlaces` over the visible one, drawing the disclosure, the type
+badge, the title, the static state chip and — this screen's own addition —
+`domain/assignedWork.ts`'s `nextAssigned` marked on the one row that is next. One walk,
+two membership questions, is the whole of what this note is for: it is what stops the
+release scope and the assigned-work tree from ever drawing two different answers to "what
+is a context row here".
+
+`src/view/mywork/renderTree.ts`'s own gate on the stored hide-done preference
+(`hidesDone`) asks whether ANY of the three workflows this view can bind — requirements,
+Deliverable, test — has a configured state key, never `stateKey` alone: a vault with the
+requirements property cleared and only `deliverableStateProperty` bound is a supported
+configuration whose Deliverable rows read their done-ness correctly, and gating on
+`stateKey` alone would call it blind. The same gate withholds the Next marker for the
+identical reason — with no key bound anywhere, every item would read as not done, which
+would mark the very first row Next on a tree that cannot tell what is finished.
 
 `src/domain/assignedWork.ts` is one person's whole answer to "whose work is this, and
 what is next" — three rules, pure, no DOM and no writes:
