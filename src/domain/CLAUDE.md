@@ -366,10 +366,17 @@ a node test that did would be measuring the runner.
   from outside the filter has siblings the query never returned — and a focus rank writes
   `order` alone, restating the parent. So `siblingPosition` asks its focus branch BEFORE
   that refusal and `siblingContext` keeps a ranked context row among the focus peers; both
-  drop an UNRANKED one (`isUnrankedContext`, in `dropTargets.ts` because all three callers
-  reach it there). They disagreed for one task: the keyboard ranked across a row the drag
-  drew no indicator for, which is the read-side/write-side split this feature keeps
-  producing, and `test/view/focusRanking.test.ts` now drives all three inputs at that row.
+  drop an UNRANKED one, and both do it by taking their peers from the ONE list —
+  `focusPeers` in `dropTargets.ts`, because all three callers reach it there. They
+  disagreed twice, both times the read-side/write-side split this feature keeps producing.
+  Once about the ANCHOR: the keyboard ranked across a row the drag drew no indicator for
+  (`test/view/focusRanking.test.ts` drives all three inputs at that row). Once about the
+  PEERS, which is why one list rather than one predicate spelled twice: the drag kept
+  unranked context rows among its peers on the argument that `anchoredOrder` skips one as
+  an anchor anyway — half true, since that skip means *append to the end of the
+  population*, so a drop aimed just below such a row landed at the bottom of the backlog
+  (`test/view/focusedUnrankedContext.test.ts`). A no-op comparison beside such a list has
+  to read the SAME list, or it shifts by the rows the filter removed.
 - **Every structural command asks the write path's own question before it is offered.**
   `plans` (`interactions/structure.ts`) runs `dropPlacement` against that command's OWN
   target, so `canReorder`, `canMoveToEdge`, `outdentTarget` and `indentTarget` each answer

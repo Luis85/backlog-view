@@ -49,6 +49,18 @@ export function isUnrankedContext(anchor: BacklogItem | null): boolean {
 }
 
 /**
+ * The focus rows a rank may be taken among: `model.roots` without the rows that carry no
+ * position. **One list, reached by all three inputs** — `siblingPosition`'s focus branch
+ * below and `siblingContext` (`view/interactions/structure.ts`) — because the two spelled
+ * it separately and disagreed about the same gesture: the keyboard filtered, the drag did
+ * not, and a drop aimed just below an unranked context row anchored on it and appended to
+ * the END of the population instead.
+ */
+export function focusPeers(model: BacklogModel): BacklogItem[] {
+	return model.roots.filter((row) => !isUnrankedContext(row));
+}
+
+/**
  * Map a pointer position (0..1 within the row height) to a drop zone. Rows
  * without children get a narrower "inside" band: reordering is the common
  * intent on leaves, and a half-height nest zone caught too many drops.
@@ -108,12 +120,13 @@ export function dropTargetFor(
 	// interleaving the two readings coincide exactly, which is why this is a correction
 	// rather than a behaviour change for every existing base.
 	// A FOCUS rank asks its no-op question of the focus list, and asks it exactly.
-	// `peers` is `model.roots` minus the dragged row, so splicing the row back in at
-	// its own original index reproduces `model.roots` — which means the drop is a
-	// no-op precisely when the insert index equals that original index. No filtering
-	// and no translation.
+	// `peers` is `focusPeers` minus the dragged row, so splicing the row back in at its
+	// own original index in THAT list reproduces it — which means the drop is a no-op
+	// precisely when the insert index equals that index. Read off `model.roots` instead
+	// and the comparison shifts by the number of unranked context rows above the row,
+	// so a drop that moves nothing reads as a move and spends the undo slot.
 	if (model.focused && model.roots.includes(dragged) && position.parent === dragged.parent) {
-		if (position.insertIndex === model.roots.indexOf(dragged)) return null;
+		if (position.insertIndex === focusPeers(model).indexOf(dragged)) return null;
 	} else if (position.parent === dragged.parent && !clearsStaleLink(position.parent, dragged)) {
 		// The TREE keeps today's rule unchanged: the real group filtered to this
 		// projection, because a sibling group can interleave the projections and
@@ -166,10 +179,15 @@ function siblingPosition(
 	// peers deliberately, so the two paths were ranking the same gesture across the same
 	// row and only one of them drew an indicator for it. An UNRANKED one is refused by
 	// both — it can never be given a rank, so it constrains nothing and is nothing to land
-	// beside. `peers` still carries them, and must: `anchoredOrder` filters them out of the
-	// population and skips one as an anchor, so a second opinion here would be a third.
+	// beside. **`peers` drops them too, and that is the correction of 2026-08-31**: leaving
+	// them in was justified here by `anchoredOrder` filtering them from the population and
+	// skipping one as an anchor, which is half true and the false half bites. That skip
+	// means *"this anchor carries no position, so append to the end"* — right for
+	// `New <child>` under a context parent, wrong for a drop the user aimed between two
+	// rows, which landed at the bottom of the backlog instead. `focusPeers` is the one list
+	// `siblingContext` already used, so all three inputs now read the same peers.
 	if (model.focused && model.roots.includes(item) && model.roots.includes(dragged) && !isUnrankedContext(item)) {
-		const peers = model.roots.filter((r) => r !== dragged);
+		const peers = focusPeers(model).filter((r) => r !== dragged);
 		const idx = peers.indexOf(item);
 		if (idx === -1) return null;
 		return { parent: dragged.parent, peers, insertIndex: zone === 'before' ? idx : idx + 1, parentUnchanged: true };

@@ -3,7 +3,7 @@ import { list, t } from '../../i18n/t';
 import { keepsProjection } from '../../domain/itemTypes';
 import { BacklogViewHost } from '../host';
 import { BacklogItem } from '../../domain/model';
-import { DropTarget, isInvalidParent, isUnrankedContext } from '../../domain/dropTargets';
+import { DropTarget, focusPeers, isInvalidParent } from '../../domain/dropTargets';
 import { configProblems } from '../../domain/settingsConsistency';
 import { computeInitWrites, dropPlacement } from '../../domain/writePlan';
 
@@ -35,15 +35,16 @@ function siblingContext(
 	// false, and a promoted catalog row's real siblings are not on screen. Every other
 	// promoted root keeps the refusal below.
 	if (model.focused && model.roots.includes(item)) {
-		// A context row with no order is never a ranking peer — `isUnrankedContext` is the
-		// same predicate `anchoredOrder` skips it with when it is a candidate ANCHOR, asked
-		// here of a candidate PEER instead. It constrains nothing (there is no number to
-		// rank against), so keeping it in this list only ever produced a command that wrote
-		// a real order and left the draw unchanged: a null order sorts last regardless of
+		// A context row with no order is never a ranking peer — `focusPeers` applies the
+		// same predicate `anchoredOrder` skips it with when it is a candidate ANCHOR, to a
+		// candidate PEER instead. It constrains nothing (there is no number to rank
+		// against), so keeping it in this list only ever produced a command that wrote a
+		// real order and left the draw unchanged: a null order sorts last regardless of
 		// what the writable row's own order becomes. A RANKED context row stays — its order
 		// is a real placement constraint, and dropping it here would jump a swap past a row
-		// the population still has to be ranked against.
-		const fullList = model.roots.filter((row) => !isUnrankedContext(row));
+		// the population still has to be ranked against. The drag reads the SAME function,
+		// which is what ended the disagreement between the two.
+		const fullList = focusPeers(model);
 		return { fullList, idx: fullList.indexOf(item), rankOnly: true };
 	}
 	if (item.focusRoot) return null;

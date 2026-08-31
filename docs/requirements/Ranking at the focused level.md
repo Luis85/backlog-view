@@ -64,12 +64,15 @@ from.
   the middle of another still reparents it, because `insidePosition` asks nothing about
   focus. That is the one place the three inputs disagree, and it is recorded rather than
   settled: [[A focus row is reparented by drag and not by menu]].
-- **2a — an unranked context row sits among the focus rows.** Skipped as a neighbour. It
+- **2a — an unranked context row sits among the focus rows.** Skipped as a neighbour, by
+  all three inputs and at both ends: it is neither a row to land beside nor a row to be
+  ranked PAST. It
   can never be given a rank — no write path may touch a note the base excluded — so a
   refusal beside one would be permanent, behind advice that cannot work. A *ranked*
   context row stays: its number is a real constraint, and a swap past it would put the
   moved row above something on screen.
   **Checked by** `test/view/focusedUnrankedContext.test.ts` — "does not offer Move down past a context row with nothing to rank from"
+  **Checked by** `test/view/focusedUnrankedContext.test.ts` — "lands the drag, Alt+ArrowUp and the move menu on the SAME rank above PBI A"
 - **2b — the two neighbours have no room between them.** Nothing is written and a notice
   names the remedy: **Respace ranks** for a spent gap, the toolbar's set-up button for a
   neighbour with no rank at all, **Seed ranks from the hierarchy** for two neighbours
