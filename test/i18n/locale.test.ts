@@ -171,6 +171,8 @@ describe('lookup is total', () => {
 		// `selectForm`'s own fallback picks a category (English `other` at 0) rather than
 		// throwing; `fill` has no value to substitute, so the placeholder itself stays —
 		// a broken caller reads as an odd label rather than a crash.
+		// `as never` on purpose: the claim is what `t` renders when the parameter it needs is
+		// absent, which a caller cannot express without getting past the parameter type.
 		expect(t('count.items', {} as never)).toBe('{count} items');
 	});
 });

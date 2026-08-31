@@ -6,7 +6,7 @@ import { Catalog, setLocale } from '../../src/i18n/t';
 import { renderEmptyIterationState } from '../../src/view/render/emptyStates';
 import { boardVault } from '../helpers/board';
 import { installObsidianDom } from '../helpers/dom';
-import { FakeVault } from '../helpers/vault';
+import { fakeController, FakeVault } from '../helpers/vault';
 import { fixture, makeView, noOptionalProperties, projectionButton, useViewHarness } from '../helpers/view';
 import { MARK, markedCatalog } from './fixtures';
 
@@ -118,7 +118,7 @@ function expectAllMarked(el: HTMLElement): void {
 describe('the tree empty states read their own text from the catalog', () => {
 	it('renders the loading state from it, before any result set arrives', () => {
 		const containerEl = document.body.createDiv();
-		new ProductBacklogView({} as never, containerEl);
+		new ProductBacklogView(fakeController(), containerEl);
 		expect(containerEl.querySelector('.pbl-loading')?.textContent).toBe(MARK + en['emptyState.loading']);
 	});
 

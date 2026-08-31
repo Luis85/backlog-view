@@ -17,6 +17,11 @@ import { headings } from './docs-markdown.mjs';
  * none) is testable directly, in `test/release/changelogNotes.test.ts`, rather than only
  * through the release workflow that calls it.
  */
+/**
+ * @param {string} changelog - the whole of CHANGELOG.md.
+ * @param {string} version - the version whose section to return, e.g. `0.10.0`.
+ * @returns {string} that section's body, trimmed, without its own heading.
+ */
 export function changelogNotes(changelog, version) {
 	const dated = new RegExp(`^\\[${version.replace(/\./g, '\\.')}\\] - \\d{4}-\\d{2}-\\d{2}$`);
 	const all = headings(changelog);

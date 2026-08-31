@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import { FakeVault } from '../helpers/vault';
+import { FakeVault, setResults } from '../helpers/vault';
 import { Menu } from '../helpers/obsidian-mock';
 import { flush, makeView, noOptionalProperties, rowByTitle } from '../helpers/view';
 import { cardByTitle } from '../helpers/board';
@@ -389,11 +389,11 @@ describe('the toolbar counts one population, not two', () => {
 		const scratch = document.createElement('div');
 		renderToolbar(harness.view, scratch);
 		const firstText = scratch.querySelector('.pbl-count-label')?.textContent;
-		const firstTooltip = (scratch.querySelector('.pbl-count-label') as HTMLElement | null)?.dataset.tooltip;
+		const firstTooltip = scratch.querySelector<HTMLElement>('.pbl-count-label')?.dataset.tooltip;
 
 		syncCountLabel(harness.view, scratch);
 		const syncedText = scratch.querySelector('.pbl-count-label')?.textContent;
-		const syncedTooltip = (scratch.querySelector('.pbl-count-label') as HTMLElement | null)?.dataset.tooltip;
+		const syncedTooltip = scratch.querySelector<HTMLElement>('.pbl-count-label')?.dataset.tooltip;
 
 		// The requirements board excludes the Deliverable, so the correct answer is "1
 		// item" (the PBI alone) — a regression would paint "2 items" here first.
@@ -417,9 +417,7 @@ describe('a context Deliverable is never a source of this board’s vocabulary',
 		vault.addFile('Live spec.md', { frontmatter: { type: 'Deliverable', order: 20, docStatus: 'Draft' } });
 		const harness = makeView(vault, CONFIG);
 		// The excluded ancestor is in the vault and out of the Base's results.
-		const anyView = harness.view as unknown as Record<string, unknown>;
-		anyView.data = { data: vault.entries().filter((e) => e.file.path !== 'Old handbook.md') };
-		harness.view.onDataUpdated();
+		setResults(harness.view, vault.entries().filter((e) => e.file.path !== 'Old handbook.md'));
 		harness.view.setProjection('deliverables');
 
 		const columns = [...harness.containerEl.querySelectorAll('.pbl-board-col-name')].map((el) => el.textContent);

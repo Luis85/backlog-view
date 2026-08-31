@@ -106,7 +106,7 @@ describe('a picked colour', () => {
 		// over one key, and the manual's coverage check would then demand an entry claiming
 		// `stateColor.*` — which is the other half of this, checked in `surfaces.test.ts`.
 		const config = new FakeViewConfig({ stateValues: 'New, Active, Done' });
-		const keys = getViewOptions(config as never)
+		const keys = getViewOptions(config)
 			.flatMap((group) => ('items' in group ? group.items : []))
 			.map((option) => option.key);
 

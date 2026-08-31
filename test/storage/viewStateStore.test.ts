@@ -556,6 +556,9 @@ describe('the picked release', () => {
 		saveViewState(vault.app, id, { ...none, prefs: { release: 'Releases/0.8.md' } });
 		expect(loadViewState(vault.app, id).prefs.release).toBe('Releases/0.8.md');
 
+		// `as never` on PURPOSE, and the only kind this suite keeps: the claim is what the
+		// reader does with a stored value its type forbids, so the value has to get past the
+		// type to be planted at all.
 		saveViewState(vault.app, id, { ...none, prefs: { release: 42 as never } });
 		expect(loadViewState(vault.app, id).prefs.release).toBeUndefined();
 	});
@@ -572,6 +575,7 @@ describe('the release scope’s hide-done toggle', () => {
 		saveViewState(vault.app, id, { ...none, prefs: { releaseHideDone: true } });
 		expect(loadViewState(vault.app, id).prefs.releaseHideDone).toBe(true);
 
+		// Planted past the type for the same reason as the numeric one above.
 		saveViewState(vault.app, id, { ...none, prefs: { releaseHideDone: 'yes' as never } });
 		expect(loadViewState(vault.app, id).prefs.releaseHideDone).toBeUndefined();
 	});

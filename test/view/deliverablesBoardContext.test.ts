@@ -1,7 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import { ProductBacklogView } from '../../src/view/backlogView';
-import { FakeVault, FakeViewConfig } from '../helpers/vault';
+import { FakeVault } from '../helpers/vault';
 import { makeView, useViewHarness } from '../helpers/view';
 import { cardTitles, columnByName, countOf } from '../helpers/board';
 
@@ -37,15 +36,11 @@ describe('an excluded Deliverable still carries a matching descendant', () => {
 
 	function excludedDeliverableView(focus: string) {
 		const vault = contextVault();
-		const containerEl = document.body.createDiv();
-		const view = new ProductBacklogView({} as never, containerEl);
-		const config = new FakeViewConfig(WORKFLOW);
-		const anyView = view as unknown as Record<string, unknown>;
-		anyView.app = vault.app;
-		anyView.config = config;
-		anyView.data = { data: vault.entries().filter((e) => e.file.path !== 'D.md') };
-		view.onDataUpdated();
-		view.setFocusLevel(focus);
+		const { view, config, containerEl } = makeView(vault, WORKFLOW, {
+			collapsed: true,
+			except: ['D.md'],
+			focus,
+		});
 		view.setProjection('board');
 		return { view, config, containerEl, vault };
 	}

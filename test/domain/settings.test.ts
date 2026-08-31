@@ -17,14 +17,8 @@ import { resolveSettings } from '../../src/domain/settingsResolve';
 import { ALL_TYPES, byName, defaultTypeFolder, EXTRA_TYPES, LEVELS, MARKER_TYPES, TEST_LEVELS } from '../../src/domain/typeVocabulary';
 
 /** Stand-in for BasesViewConfig backed by a plain object. */
-function fakeConfig(values: Record<string, unknown> = {}) {
-	return {
-		get: (key: string) => values[key],
-		getAsPropertyId: (key: string) => {
-			const v = values[key];
-			return typeof v === 'string' && v.includes('.') ? v : null;
-		},
-	} as never;
+function fakeConfig(values: Record<string, unknown> = {}): FakeViewConfig {
+	return new FakeViewConfig(values);
 }
 
 describe('resolveSettings', () => {
@@ -248,7 +242,7 @@ describe('three workflows may share one state key', () => {
 				deliverableStateProperty: 'note.status',
 				testStateProperty: 'note.status',
 				...extra,
-			}) as unknown as BasesViewConfig,
+			}),
 		);
 	}
 
@@ -365,7 +359,7 @@ describe('the test workflow resolves like the Deliverable one', () => {
 				stateProperty: 'note.status',
 				stateValues: 'Draft, Ready, Approved',
 				doneValues: 'Approved',
-			}) as unknown as BasesViewConfig,
+			}),
 		);
 		expect(settings.testStateKey).toBe('');
 		expect(resolvedTestStateKey(settings)).toBe('status');
@@ -382,7 +376,7 @@ describe('the test workflow resolves like the Deliverable one', () => {
 				stateValues: 'Draft, Ready, Approved',
 				doneValues: 'Approved',
 				testStateProperty: 'note.testStatus',
-			}) as unknown as BasesViewConfig,
+			}),
 		);
 		expect(settings.testStateKey).toBe('testStatus');
 		expect(resolvedTestStateKey(settings)).toBe('testStatus');

@@ -1,9 +1,8 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import { ProductBacklogView } from '../../src/view/backlogView';
-import { FakeVault, FakeViewConfig } from '../helpers/vault';
+import { FakeVault } from '../helpers/vault';
 import { Menu } from '../helpers/obsidian-mock';
-import { clickExpandAll, flush, key, rowByTitle, titlesOf, treeOf, useViewHarness } from '../helpers/view';
+import { flush, itemAt, key, makeView, rowByTitle, titlesOf, treeOf, useViewHarness } from '../helpers/view';
 
 useViewHarness();
 
@@ -14,15 +13,7 @@ describe('parents outside the filter', () => {
 		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
 		vault.addFile('Feature.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Epic' });
 		vault.addFile('PBI.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: 'Feature' });
-		const containerEl = document.body.createDiv();
-		const view = new ProductBacklogView({} as never, containerEl);
-		const config = new FakeViewConfig(configValues);
-		const anyView = view as unknown as Record<string, unknown>;
-		anyView.app = vault.app;
-		anyView.config = config;
-		anyView.data = { data: vault.entries().filter((e) => e.file.path === 'PBI.md') };
-		view.onDataUpdated();
-		clickExpandAll(containerEl);
+		const { view, config, containerEl } = makeView(vault, configValues, { only: ['PBI.md'] });
 		return { view, config, containerEl, vault };
 	}
 
@@ -62,7 +53,7 @@ describe('parents outside the filter', () => {
 	it('ignores Alt+arrow on a context row', async () => {
 		const { view, containerEl, vault } = filteredView();
 		const tree = treeOf(containerEl);
-		view.selectItem(view.model?.byPath.get('Epic.md') as never);
+		view.selectItem(itemAt(view, 'Epic.md'));
 
 		key(tree, 'ArrowDown', { altKey: true });
 		await flush();
@@ -87,17 +78,8 @@ describe('context rows are read-only', () => {
 		// in it, which is a different thing from a cell that is not there.
 		vault.addFile('Feature.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Epic' });
 		vault.addFile('PBI.md', { frontmatter: { type: 'PBI', order: 10, status: 'New' }, parentLink: 'Feature' });
-		const containerEl = document.body.createDiv();
-		const view = new ProductBacklogView({} as never, containerEl);
-		const anyView = view as unknown as Record<string, unknown>;
-		anyView.app = vault.app;
-		const config = new FakeViewConfig(configValues);
 		// A chip is drawn by a VISIBLE column, so the base has to show the property.
-		config.order = ['note.status'];
-		anyView.config = config;
-		anyView.data = { data: vault.entries().filter((e) => e.file.path === 'PBI.md') };
-		view.onDataUpdated();
-		clickExpandAll(containerEl);
+		const { view, containerEl } = makeView(vault, configValues, { only: ['PBI.md'], order: ['note.status'] });
 		return { view, containerEl, vault };
 	}
 
@@ -152,9 +134,9 @@ describe('context rows are read-only', () => {
 
 	it('refuses a write aimed at a context note even if one gets through', async () => {
 		const { view, vault } = readOnlyView();
-		const epic = view.model?.byPath.get('Epic.md');
+		const epic = itemAt(view, 'Epic.md');
 
-		const applied = await view.applySafely([{ file: epic?.file as never, state: 'Done' }]);
+		const applied = await view.applySafely([{ file: epic.file, state: 'Done' }]);
 
 		expect(applied).toBeNull();
 		expect(vault.writeLog).toEqual([]);
@@ -162,9 +144,9 @@ describe('context rows are read-only', () => {
 
 	it('keeps writes to real results working', async () => {
 		const { view, vault } = readOnlyView();
-		const pbi = view.model?.byPath.get('PBI.md');
+		const pbi = itemAt(view, 'PBI.md');
 
-		const applied = await view.applySafely([{ file: pbi?.file as never, state: 'Done' }]);
+		const applied = await view.applySafely([{ file: pbi.file, state: 'Done' }]);
 
 		expect(applied).not.toBeNull();
 		expect(vault.fm('PBI.md').status).toBe('Done');
@@ -177,15 +159,11 @@ describe('context rows follow the results they place', () => {
 		const vault = new FakeVault();
 		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10, status: 'Active' } });
 		vault.addFile('PBI.md', { frontmatter: { type: 'PBI', order: 10, status: 'Done' }, parentLink: 'Epic' });
-		const containerEl = document.body.createDiv();
-		const view = new ProductBacklogView({} as never, containerEl);
-		const anyView = view as unknown as Record<string, unknown>;
-		anyView.app = vault.app;
-		anyView.config = new FakeViewConfig({ stateProperty: 'note.status' });
-		anyView.data = { data: vault.entries().filter((e) => e.file.path === 'PBI.md') };
-		view.onDataUpdated();
-		view.setShowCompleted(false);
-		clickExpandAll(containerEl);
+		const { view, containerEl } = makeView(
+			vault,
+			{ stateProperty: 'note.status' },
+			{ only: ['PBI.md'], hideCompleted: true },
+		);
 		return { view, containerEl, vault };
 	}
 
@@ -216,15 +194,11 @@ describe('context rows follow the results they place', () => {
 		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10, status: 'Active' } });
 		vault.addFile('Done.md', { frontmatter: { type: 'PBI', order: 10, status: 'Done' }, parentLink: 'Epic' });
 		vault.addFile('Open.md', { frontmatter: { type: 'PBI', order: 20, status: 'New' }, parentLink: 'Epic' });
-		const containerEl = document.body.createDiv();
-		const view = new ProductBacklogView({} as never, containerEl);
-		const anyView = view as unknown as Record<string, unknown>;
-		anyView.app = vault.app;
-		anyView.config = new FakeViewConfig({ stateProperty: 'note.status' });
-		anyView.data = { data: vault.entries().filter((e) => e.file.path !== 'Epic.md') };
-		view.onDataUpdated();
-		view.setShowCompleted(false);
-		clickExpandAll(containerEl);
+		const { containerEl } = makeView(
+			vault,
+			{ stateProperty: 'note.status' },
+			{ except: ['Epic.md'], hideCompleted: true },
+		);
 
 		expect(titlesOf(containerEl)).toEqual(['Epic', 'Open']);
 		expect(containerEl.querySelector('.pbl-count-label')?.textContent).toBe('1 of 2');

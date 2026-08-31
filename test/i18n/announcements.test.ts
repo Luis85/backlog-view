@@ -6,7 +6,7 @@ import { announced } from '../helpers/dnd';
 import { installObsidianDom } from '../helpers/dom';
 import { roadmapView } from '../helpers/roadmap';
 import { FakeVault } from '../helpers/vault';
-import { useViewHarness } from '../helpers/view';
+import { itemAt, useViewHarness } from '../helpers/view';
 import { MARK, markedCatalog } from './fixtures';
 
 installObsidianDom();
@@ -64,9 +64,9 @@ describe('a move on the dated axis names both its ends from the catalog', () => 
 		const vault = new FakeVault();
 		vault.addFile('Both.md', { frontmatter: { type: 'PBI', order: 10, start: '2026-08-01', target: '2026-08-31' } });
 		const { view } = datedView(vault);
-		const item = view.model?.byPath.get('Both.md');
+		const item = itemAt(view, 'Both.md');
 
-		await view.performScheduleMove(item as never, { start: null, target: null });
+		await view.performScheduleMove(item, { start: null, target: null });
 
 		expect(await announced()).toBe(
 			said('Both', key('lane.spanRange', { start: '2026-08-01', target: '2026-08-31' }), key('placement.unscheduled')),
@@ -80,9 +80,9 @@ describe('a move on the dated axis names both its ends from the catalog', () => 
 		vault.addFile('Until.md', { frontmatter: { type: 'PBI', order: 20, target: '2026-08-31' } });
 		const { view } = datedView(vault);
 
-		await view.performScheduleMove(view.model?.byPath.get('Open.md') as never, { start: null, target: null });
+		await view.performScheduleMove(itemAt(view, 'Open.md'), { start: null, target: null });
 		const fromSaid = await announced();
-		await view.performScheduleMove(view.model?.byPath.get('Until.md') as never, { start: null, target: null });
+		await view.performScheduleMove(itemAt(view, 'Until.md'), { start: null, target: null });
 		const untilSaid = await announced();
 
 		expect(fromSaid).toBe(said('Open', key('lane.spanFrom', { start: '2026-08-01' }), key('placement.unscheduled')));
@@ -95,7 +95,7 @@ describe('a move on the dated axis names both its ends from the catalog', () => 
 		vault.addFile('Bad.md', { frontmatter: { type: 'PBI', order: 10, start: 'soon' } });
 		const { view } = datedView(vault);
 
-		await view.performScheduleMove(view.model?.byPath.get('Bad.md') as never, { start: null, target: null });
+		await view.performScheduleMove(itemAt(view, 'Bad.md'), { start: null, target: null });
 
 		expect(await announced()).toBe(said('Bad', key('lane.unreadableStart'), key('placement.unscheduled')));
 	});

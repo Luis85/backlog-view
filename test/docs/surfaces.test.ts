@@ -102,8 +102,8 @@ const registeredCommands = () => loadPlugin().commands;
 const registeredViews = () => loadPlugin().basesViews;
 
 /** Stand-in for BasesViewConfig backed by a plain object. */
-function fakeConfig(values: Record<string, unknown> = {}) {
-	return { get: (key: string) => values[key], getAsPropertyId: () => null } as never;
+function fakeConfig(values: Record<string, unknown> = {}): FakeViewConfig {
+	return new FakeViewConfig(values);
 }
 
 /** Every option, flattened out of its groups — the shape Bases is handed. */
@@ -202,7 +202,7 @@ describe('every user-facing surface is specified', () => {
 		// A STRING: `resolveSettings` reads `stateValues` through a comma-split, so an array
 		// resolves to no states and the generated families stay empty — the vacuum again.
 		const config = new FakeViewConfig({ stateValues: 'Todo, Doing, Done' });
-		const declared = optionKeys(config as never);
+		const declared = optionKeys(config);
 
 		const claims = (manualSections().find((s) => s.id === 'setup')?.entries ?? []).flatMap(
 			(e) => e.keys ?? [],

@@ -16,7 +16,7 @@ import { FakeViewConfig } from '../helpers/vault';
 
 /** Stand-in for BasesViewConfig backed by a plain object. */
 function fakeConfig(values: Record<string, unknown> = {}) {
-	return new FakeViewConfig(values) as never;
+	return new FakeViewConfig(values);
 }
 
 describe('settingsInconsistency, and what the only producer guarantees', () => {
@@ -48,7 +48,7 @@ describe('settingsInconsistency, and what the only producer guarantees', () => {
 	];
 
 	it.each(CONFIGS)('resolveSettings emits a consistent object for %o', (options) => {
-		expect(settingsInconsistency(resolveSettings(fakeConfig(options) as never))).toBeNull();
+		expect(settingsInconsistency(resolveSettings(fakeConfig(options)))).toBeNull();
 	});
 
 	it('names each relationship it can see broken, so the message points at the fixture', () => {

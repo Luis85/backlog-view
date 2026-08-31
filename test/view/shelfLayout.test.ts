@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { Menu, MenuItem } from '../helpers/obsidian-mock';
 import { horizonVault, makeRoadmap, shelfCountOf, shelfOf, shelfTitles } from '../helpers/roadmap';
-import { FakeVault } from '../helpers/vault';
+import { FakeVault, setResults } from '../helpers/vault';
 import { cardByTitle } from '../helpers/board';
 import { Harness, makeView, useViewHarness } from '../helpers/view';
 import { bodyOf } from '../helpers/cssVars';
@@ -478,8 +478,7 @@ describe('the shelf’s card and list layouts', () => {
 						}
 					: entry,
 			);
-			(view as unknown as Record<string, unknown>).data = { data: entries };
-			view.onDataUpdated();
+			setResults(view, entries);
 
 			expect(shelfOf(containerEl)?.querySelectorAll('.pbl-props .pbl-prop')).toHaveLength(0);
 		});

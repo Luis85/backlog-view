@@ -65,6 +65,12 @@ function exempt(metric, floor) {
  * Covered and total for each metric, from a v8 `coverage-final.json`. Three are stored
  * outright; lines are derived — see `lineHits`.
  */
+/**
+ * @param {Record<string, { s?: Record<string, number>, f?: Record<string, number>, b?: Record<string, number[]>, statementMap?: Record<string, { start: { line: number } }> }>} coverage
+ *   Istanbul's `coverage-final.json`, keyed by file.
+ * @returns {{ statements: [number, number], branches: [number, number], functions: [number, number], lines: [number, number] }}
+ *   `[covered, total]` per metric.
+ */
 export function totals(coverage) {
 	const sum = { statements: [0, 0], branches: [0, 0], functions: [0, 0], lines: [0, 0] };
 	for (const file of Object.values(coverage)) {
@@ -107,6 +113,12 @@ function lineHits(file) {
  * of one when this suite was a third of its size — and the flake this guards against moves
  * in units, not in points.
  */
+/**
+ * @param {{ statements: [number, number], branches: [number, number], functions: [number, number], lines: [number, number] }} measured
+ *   What `totals` returned.
+ * @param {Record<string, number>} floors - what `readFloors` returned.
+ * @returns {{ metric: string, covered: number, total: number, percent: number, floor: number, headroom: number, tight: boolean }[]}
+ */
 export function floorReport(measured, floors) {
 	return Object.entries(floors).map(([metric, floor]) => {
 		const [covered, total] = measured[metric];
@@ -125,6 +137,10 @@ export function floorReport(measured, floors) {
 }
 
 /** The four numbers in the `thresholds` block, read from the config rather than repeated. */
+/**
+ * @param {string} configSource - the whole of vitest.config.mts.
+ * @returns {Record<string, number>} the four floors its `thresholds` block names.
+ */
 export function readFloors(configSource) {
 	const block = /thresholds:\s*\{([^}]*)\}/.exec(configSource);
 	if (!block) throw new Error("vitest.config.mts has no thresholds block");

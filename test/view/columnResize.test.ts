@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { FakeVault } from '../helpers/vault';
-import { makeView, rowByTitle, treeOf, useViewHarness } from '../helpers/view';
+import { itemAt, makeView, rowByTitle, treeOf, useViewHarness } from '../helpers/view';
 import {
 	DEFAULT_PROP_COLUMN_WIDTH,
 	MAX_PROP_COLUMN_WIDTH,
@@ -284,7 +284,7 @@ describe('the property-column resize grip', () => {
 			// it is checked here, at the grip: a key the grip does not claim bubbles out
 			// and must still move no selection.
 			const { containerEl, view } = makeView(fixture(), {}, COLUMNS);
-			view.selectItem(view.model?.items[0] as never, false);
+			view.selectItem(itemAt(view, 'Epic A.md'), false);
 			const selected = view.selectedPath;
 
 			const el = grip(containerEl);

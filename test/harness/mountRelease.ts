@@ -22,7 +22,7 @@ import { drawChrome } from './chrome';
 import { drawIcons } from './icons';
 import { installObsidianDom } from '../helpers/dom';
 import { RELEASE_CONFIG } from '../helpers/release';
-import { FakeVault, FakeViewConfig } from '../helpers/vault';
+import { fakeController, FakeVault, FakeViewConfig, mountView } from '../helpers/vault';
 import { FileView } from '../helpers/obsidian-mock';
 
 /**
@@ -262,14 +262,10 @@ export function mountReleaseHarness(root: HTMLElement, variant: ReleaseConfigVar
 	const containerEl = leafEl.createDiv();
 	vault.addLeaf(new FileView(vault.addFile('Releases demo.base'), leafEl));
 
-	const view = new ReleaseView({} as never, containerEl, new WriteLock());
-	const anyView = view as unknown as Record<string, unknown>;
-	anyView.app = vault.app;
+	const view = new ReleaseView(fakeController(), containerEl, new WriteLock());
 	const config = new FakeViewConfig(configValues(variant));
 	config.name = 'Releases';
-	anyView.config = config;
-	anyView.data = { data: vault.entries() };
-	view.onDataUpdated();
+	mountView(view, vault, config, vault.entries());
 
 	return { view, vault, containerEl };
 }

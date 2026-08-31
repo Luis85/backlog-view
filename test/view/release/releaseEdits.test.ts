@@ -4,7 +4,7 @@ import { Menu, Modal, Notice } from '../../helpers/obsidian-mock';
 import * as frontmatter from '../../../src/storage/frontmatter';
 import { makeReleaseView, RELEASE_CONFIG } from '../../helpers/release';
 import { WriteLock } from '../../../src/view/writeLock';
-import { FakeVault } from '../../helpers/vault';
+import { FakeVault, setResults } from '../../helpers/vault';
 import { flush, submitPrompt, useViewHarness } from '../../helpers/view';
 
 /**
@@ -35,7 +35,7 @@ function editVault(): FakeVault {
 function openScope(config: Record<string, unknown> = RELEASE_CONFIG) {
 	const harness = makeReleaseView(editVault(), config);
 	harness.view.pick('R.md');
-	return { ...harness, vault: harness.view.app.vault as never as FakeVault };
+	return harness;
 }
 
 const statusChip = (containerEl: HTMLElement) => containerEl.querySelector<HTMLElement>('.pbl-rel-status')!;
@@ -651,10 +651,7 @@ describe('what an edit is, and is not', () => {
 		await flush();
 		const pick = Menu.lastShown?.item('Released');
 
-		(view as unknown as { data: unknown }).data = {
-			data: vault.entries().filter((e) => e.file.path !== 'R.md'),
-		};
-		view.onDataUpdated();
+		setResults(view, vault.entries().filter((e) => e.file.path !== 'R.md'));
 		// The release is still IN the model — as the context parent `Child.md` names — which
 		// is what makes this different from the case below.
 		expect(view.model?.byPath.get('R.md')?.outsideFilter).toBe(true);
@@ -678,10 +675,7 @@ describe('what an edit is, and is not', () => {
 
 		// The menu was built while R was a result; the Base then stops returning it, which is
 		// the window between a menu opening and its pick that every gate refusal exists for.
-		(view as unknown as { data: unknown }).data = {
-			data: vault.entries().filter((e) => e.file.path !== 'R.md'),
-		};
-		view.onDataUpdated();
+		setResults(view, vault.entries().filter((e) => e.file.path !== 'R.md'));
 		pick?.click();
 		await flush();
 

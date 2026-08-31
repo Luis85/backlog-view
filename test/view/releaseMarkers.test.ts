@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import { FakeVault } from '../helpers/vault';
+import { FakeVault, setResults } from '../helpers/vault';
 import { useViewHarness } from '../helpers/view';
 import { laneRoadmap, roadmapView } from '../helpers/roadmap';
 
@@ -239,10 +239,7 @@ describe('a release on the dated axis', () => {
 		// worse than the gap.
 		const vault = releaseVault();
 		const { view, containerEl } = roadmapView(vault, { ...DATES });
-		(view as unknown as { data: unknown }).data = {
-			data: vault.entries().filter((e) => e.file.path !== '1.1.0.md'),
-		};
-		view.onDataUpdated();
+		setResults(view, vault.entries().filter((e) => e.file.path !== '1.1.0.md'));
 
 		expect(lines(containerEl)).toHaveLength(0);
 	});

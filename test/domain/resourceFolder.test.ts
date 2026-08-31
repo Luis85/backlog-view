@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { defaultSettings } from '../../src/domain/settings';
 import { resolveSettings } from '../../src/domain/settingsResolve';
 import { defaultResourceFolder } from '../../src/domain/typeVocabulary';
+import { FakeViewConfig } from '../helpers/vault';
 
 /**
  * `resourceFolder` — a `Resource` note's own folder, in a file of its own rather than
@@ -11,11 +12,8 @@ import { defaultResourceFolder } from '../../src/domain/typeVocabulary';
  */
 
 /** Stand-in for BasesViewConfig backed by a plain object, matching settings.test.ts's own. */
-function fakeConfig(values: Record<string, unknown> = {}) {
-	return {
-		get: (key: string) => values[key],
-		getAsPropertyId: () => null,
-	} as never;
+function fakeConfig(values: Record<string, unknown> = {}): FakeViewConfig {
+	return new FakeViewConfig(values);
 }
 
 describe('defaultResourceFolder', () => {

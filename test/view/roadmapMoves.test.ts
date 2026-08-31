@@ -2,7 +2,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { FakeVault } from '../helpers/vault';
 import { Menu, Notice } from '../helpers/obsidian-mock';
-import { flush, key, makeView, refresh, submitPrompt, treeOf, useViewHarness } from '../helpers/view';
+import { flush, itemAt, key, makeView, refresh, submitPrompt, treeOf, useViewHarness } from '../helpers/view';
 import { announced, cardDrag } from '../helpers/dnd';
 import { cardByTitle } from '../helpers/board';
 import { bucketByName, bucketNames, horizonVault, makeRoadmap, shelfOf, shelfTitles } from '../helpers/roadmap';
@@ -221,13 +221,13 @@ describe('moving between horizons without a drag', () => {
 		const tree = treeOf(containerEl);
 
 		// The shelf leads the ladder: it is the roadmap's no-state column.
-		view.selectItem(view.model?.byPath.get('Now item.md') as never);
+		view.selectItem(itemAt(view, 'Now item.md'));
 		key(tree, 'ArrowLeft', { altKey: true });
 		await flush();
 		expect('horizon' in vault.fm('Now item.md')).toBe(false);
 
 		// And there is nowhere further left: the edges hold rather than wrap.
-		view.selectItem(view.model?.byPath.get('Untriaged.md') as never);
+		view.selectItem(itemAt(view, 'Untriaged.md'));
 		key(tree, 'ArrowLeft', { altKey: true });
 		await flush();
 		expect(vault.writeLog.map((w) => w.path)).toEqual(['Now item.md']);
@@ -245,7 +245,7 @@ describe('moving between horizons without a drag', () => {
 		// both plan for the same card. The keyboard is the third input to one move, so
 		// it must reach it too; indexing these at stop 0 made the edge rule swallow it.
 		for (const path of ['Garbled.md', 'Stub.md']) {
-			view.selectItem(view.model?.byPath.get(path) as never);
+			view.selectItem(itemAt(view, path));
 			key(tree, 'ArrowLeft', { altKey: true });
 			await flush();
 			expect('horizon' in vault.fm(path)).toBe(false);
@@ -254,7 +254,7 @@ describe('moving between horizons without a drag', () => {
 
 		// And the edge still holds for a card with no key at all: nothing to clean up,
 		// so nothing is written and the undo slot is not spent.
-		view.selectItem(view.model?.byPath.get('Untriaged.md') as never);
+		view.selectItem(itemAt(view, 'Untriaged.md'));
 		key(tree, 'ArrowLeft', { altKey: true });
 		await flush();
 		expect(vault.writeLog).toHaveLength(2);
@@ -264,7 +264,7 @@ describe('moving between horizons without a drag', () => {
 		const vault = horizonVault();
 		const { view, containerEl } = makeRoadmap(vault);
 
-		view.selectItem(view.model?.byPath.get('Later item.md') as never);
+		view.selectItem(itemAt(view, 'Later item.md'));
 		key(treeOf(containerEl), 'ArrowRight', { altKey: true });
 		await flush();
 
@@ -276,7 +276,7 @@ describe('moving between horizons without a drag', () => {
 		const vault = horizonVault();
 		const { view, containerEl } = makeRoadmap(vault);
 		const tree = treeOf(containerEl);
-		view.selectItem(view.model?.byPath.get('Now item.md') as never);
+		view.selectItem(itemAt(view, 'Now item.md'));
 
 		// Within-bucket order is derived, so there is no rank to move within; and a
 		// chord aimed at Obsidian or the OS must not land as a frontmatter write.
@@ -293,7 +293,7 @@ describe('moving between horizons without a drag', () => {
 
 	it('the shortcut is silent on the dated axis, where the moves are not built', async () => {
 		const { view, containerEl, vault } = datedRoadmap();
-		view.selectItem(view.model?.byPath.get('Dated.md') as never);
+		view.selectItem(itemAt(view, 'Dated.md'));
 
 		key(treeOf(containerEl), 'ArrowRight', { altKey: true });
 		await flush();
@@ -305,7 +305,7 @@ describe('moving between horizons without a drag', () => {
 		vault.addFile('Stray.md', { frontmatter: { type: 'Epic', order: 40, horizon: 'Someday' } });
 		const { view } = makeRoadmap(vault);
 
-		view.showContextMenuFor(view.model?.byPath.get('Now item.md') as never);
+		view.showContextMenuFor(itemAt(view, 'Now item.md'));
 		// Declared and minted alike, in the order the frame draws them — every bucket a
 		// drop can reach, so the menu's targets cannot be a different set from the
 		// drag's. `Clear horizon` is the way out, offered because this note carries the
@@ -324,7 +324,7 @@ describe('moving between horizons without a drag', () => {
 		vault.addFile('Garbled.md', { frontmatter: { type: 'Epic', order: 10, horizon: { when: 'soon' } } });
 		const { view } = makeRoadmap(vault);
 
-		view.showContextMenuFor(view.model?.byPath.get('Garbled.md') as never);
+		view.showContextMenuFor(itemAt(view, 'Garbled.md'));
 		const submenu = Menu.lastShown?.item('Set horizon')?.submenu;
 
 		// The card is on the shelf, but its key still holds something, so clearing
@@ -340,14 +340,14 @@ describe('moving between horizons without a drag', () => {
 		const vault = horizonVault();
 		const { view } = makeRoadmap(vault);
 
-		view.showContextMenuFor(view.model?.byPath.get('Now item.md') as never);
+		view.showContextMenuFor(itemAt(view, 'Now item.md'));
 		Menu.lastShown?.item('Set horizon')?.submenu?.item('Clear horizon')?.clickHandler?.();
 		await flush();
 
 		expect('horizon' in vault.fm('Now item.md')).toBe(false);
 		// Nothing to clear is not offered at all, so no entry in this menu can write
 		// nothing: an untriaged note has no way out to be given.
-		view.showContextMenuFor(view.model?.byPath.get('Untriaged.md') as never);
+		view.showContextMenuFor(itemAt(view, 'Untriaged.md'));
 		expect(Menu.lastShown?.item('Set horizon')?.submenu?.item('Clear horizon')).toBeUndefined();
 	});
 
@@ -362,13 +362,13 @@ describe('moving between horizons without a drag', () => {
 		// On the roadmap, drawing the OTHER axis: no bucket is on screen to drop on,
 		// and the placement is offered anyway.
 		view.setAxisPick('dates');
-		view.showContextMenuFor(view.model?.byPath.get('Now item.md') as never);
+		view.showContextMenuFor(itemAt(view, 'Now item.md'));
 		expect(Menu.lastShown?.item('Set horizon')).toBeDefined();
 
 		// And in the tree, where no roadmap is on screen at all — where it writes
 		// through the plain gate, there being no frame to announce into.
 		view.setProjection('tree');
-		view.showContextMenuFor(view.model?.byPath.get('Now item.md') as never);
+		view.showContextMenuFor(itemAt(view, 'Now item.md'));
 		Menu.lastShown?.item('Set horizon')?.submenu?.item('Later')?.clickHandler?.();
 		await flush();
 		expect(vault.fm('Now item.md')['horizon']).toBe('Later');
@@ -385,7 +385,7 @@ describe('what a horizon move announces', () => {
 		expect(await announced()).toBe('Moved "Now item" from Now to Next');
 
 		// The menu says it in the same words the drag did.
-		view.showContextMenuFor(view.model?.byPath.get('Later item.md') as never);
+		view.showContextMenuFor(itemAt(view, 'Later item.md'));
 		Menu.lastShown?.item('Set horizon')?.submenu?.item('Now')?.clickHandler?.();
 		expect(await announced()).toBe('Moved "Later item" from Later to Now');
 	});
@@ -486,7 +486,7 @@ describe('creating from a bucket', () => {
 		expect(created).toContain('New Milestone');
 		expect(created).not.toContain('New Release');
 
-		view.showContextMenuFor(view.model?.byPath.get('Now item.md') as never);
+		view.showContextMenuFor(itemAt(view, 'Now item.md'));
 		const retype = Menu.lastShown?.item('Set type')?.submenu?.items.map((i) => i.titleText) ?? [];
 		expect(retype).toContain('Milestone');
 		expect(retype).not.toContain('Release');
@@ -550,11 +550,11 @@ describe('scheduling from the row, on the one path', () => {
 		vi.useFakeTimers();
 		const vault = datedVault();
 		const { view } = datedView(vault);
-		const item = view.model?.byPath.get('Child.md');
+		const item = itemAt(view, 'Child.md');
 		// The note moved under the row: the screen says the 10th, the note says the 11th.
 		vault.fm('Child.md').start = '2026-08-11';
 
-		await view.performScheduleMove(item as never, { start: '2026-08-12' });
+		await view.performScheduleMove(item, { start: '2026-08-12' });
 
 		expect(await announced()).toBe('Moved "Child" from 2026-08-11 to 2026-08-20 to 2026-08-12 to 2026-08-20');
 	});
@@ -563,9 +563,9 @@ describe('scheduling from the row, on the one path', () => {
 		vi.useFakeTimers();
 		const vault = datedVault();
 		const { view } = datedView(vault);
-		const item = view.model?.byPath.get('Child.md');
+		const item = itemAt(view, 'Child.md');
 
-		const moved = await view.performScheduleMove(item as never, { start: '2026-08-10' });
+		const moved = await view.performScheduleMove(item, { start: '2026-08-10' });
 
 		expect(moved).toBe(false);
 		expect(await announced()).toBe('');
@@ -579,9 +579,9 @@ describe('scheduling from the row, on the one path', () => {
 		vi.useFakeTimers();
 		const vault = datedVault();
 		const { view } = datedView(vault);
-		const item = view.model?.byPath.get('Parent.md');
+		const item = itemAt(view, 'Parent.md');
 
-		await view.performScheduleMove(item as never, { start: null, target: null });
+		await view.performScheduleMove(item, { start: null, target: null });
 
 		expect(await announced()).toBe('Moved "Parent" from 2026-08-01 to 2026-08-31 to 2026-08-10 to 2026-08-20');
 	});
@@ -591,9 +591,9 @@ describe('scheduling from the row, on the one path', () => {
 		const vault = new FakeVault();
 		vault.addFile('Alone.md', { frontmatter: { type: 'PBI', order: 10, start: '2026-08-01' } });
 		const { view } = datedView(vault);
-		const item = view.model?.byPath.get('Alone.md');
+		const item = itemAt(view, 'Alone.md');
 
-		await view.performScheduleMove(item as never, { start: null, target: null });
+		await view.performScheduleMove(item, { start: null, target: null });
 
 		expect(await announced()).toBe('Moved "Alone" from 2026-08-01 onwards to Unscheduled');
 	});
@@ -606,9 +606,9 @@ describe('scheduling from the row, on the one path', () => {
 		const vault = new FakeVault();
 		vault.addFile('Garbled.md', { frontmatter: { type: 'PBI', order: 10, start: 'soon' } });
 		const { view } = datedView(vault);
-		const item = view.model?.byPath.get('Garbled.md');
+		const item = itemAt(view, 'Garbled.md');
 
-		const moved = await view.performScheduleMove(item as never, { start: null, target: null });
+		const moved = await view.performScheduleMove(item, { start: null, target: null });
 
 		expect(moved).toBe(true);
 		expect(await announced()).toBe('Moved "Garbled" from an unreadable start date to Unscheduled');
@@ -625,9 +625,9 @@ describe('scheduling from the row, on the one path', () => {
 		const vault = new FakeVault();
 		vault.addFile('Half.md', { frontmatter: { type: 'PBI', order: 10, start: '2026-08-01', target: 'soon' } });
 		const { view } = datedView(vault);
-		const item = view.model?.byPath.get('Half.md');
+		const item = itemAt(view, 'Half.md');
 
-		const moved = await view.performScheduleMove(item as never, { start: '2026-08-05' });
+		const moved = await view.performScheduleMove(item, { start: '2026-08-05' });
 
 		expect(moved).toBe(true);
 		expect(await announced()).toBe('Moved "Half" from an unreadable target date to an unreadable target date');
@@ -643,9 +643,9 @@ describe('scheduling from the row, on the one path', () => {
 			frontmatter: { type: 'Milestone', order: 10, start: '2026-07-01', target: '2026-09-30' },
 		});
 		const { view } = datedView(vault);
-		const item = view.model?.byPath.get('Ship.md');
+		const item = itemAt(view, 'Ship.md');
 
-		await view.performScheduleMove(item as never, { target: '2026-10-15' });
+		await view.performScheduleMove(item, { target: '2026-10-15' });
 
 		expect(await announced()).toBe('Moved "Ship" from 2026-09-30 to 2026-10-15');
 	});
@@ -655,9 +655,9 @@ describe('scheduling from the row, on the one path', () => {
 		const vault = datedVault();
 		const { view } = datedView(vault);
 		const spy = vi.spyOn(view, 'performScheduleMove');
-		const item = view.model?.byPath.get('Child.md');
+		const item = itemAt(view, 'Child.md');
 
-		await unschedule(view, item as never);
+		await unschedule(view, item);
 
 		expect(spy).toHaveBeenCalledOnce();
 	});

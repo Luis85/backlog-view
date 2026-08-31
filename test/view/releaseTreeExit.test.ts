@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { FakeVault } from '../helpers/vault';
-import { makeView, makeViewWithReleases, rows, titlesOf, useViewHarness } from '../helpers/view';
+import { itemAt, makeView, makeViewWithReleases, rows, titlesOf, useViewHarness } from '../helpers/view';
 import { Menu } from '../helpers/obsidian-mock';
 
 useViewHarness();
@@ -114,7 +114,7 @@ describe('a release in the tree', () => {
 		expect(menuTitles()).toContain('New Milestone');
 		expect(menuTitles()).not.toContain('New Release');
 
-		view.showContextMenuFor(view.model?.byPath.get('F.md') as never);
+		view.showContextMenuFor(itemAt(view, 'F.md'));
 		const retype = Menu.lastShown?.item('Set type')?.submenu?.items.map((one) => one.titleText) ?? [];
 		expect(retype).toContain('Milestone');
 		expect(retype).not.toContain('Release');

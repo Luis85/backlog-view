@@ -163,7 +163,7 @@ describe('clicking a timeline row with the toggle set to fold', () => {
 	 * The tree's own rule about a leaf, kept here rather than re-decided: a row with
 	 * nothing under it folds nothing and does not open either. One gesture cannot mean
 	 * "fold" on a parent and "open" on a leaf without being unpredictable on both — and
-	 * on this axis the question is `timelineRows`' own, since a bar's children are not
+	 * on this axis the question is `timelineRowEls`' own, since a bar's children are not
 	 * always rows on the grid.
 	 */
 	it('spends the click on a bar with no rows under it', () => {

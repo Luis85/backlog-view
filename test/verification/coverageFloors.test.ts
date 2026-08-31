@@ -52,9 +52,15 @@ describe('totals', () => {
 	});
 });
 
+type Measured = { statements: [number, number]; branches: [number, number]; functions: [number, number]; lines: [number, number] };
+
 describe('floorReport', () => {
-	/** One metric's measurement, so each case below states only what it is about. */
-	const measured = (covered: number, total: number) => ({
+	/**
+	 * One metric's measurement, so each case below states only what it is about. The pairs
+	 * are annotated because `floorReport` destructures each as `[covered, total]`, and an
+	 * inferred `number[]` promises neither element exists.
+	 */
+	const measured = (covered: number, total: number): Measured => ({
 		statements: [covered, total],
 		branches: [0, 0],
 		functions: [0, 0],

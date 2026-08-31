@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import { FakeVault } from '../helpers/vault';
+import { FakeVault, setResults } from '../helpers/vault';
 import { fixture, makeView, titlesOf, useViewHarness } from '../helpers/view';
 
 useViewHarness();
@@ -18,11 +18,7 @@ describe('grouping advisory', () => {
 		const { view, containerEl } = makeView(vault);
 		expect(containerEl.querySelector('.pbl-grouping-note')).toBeNull();
 
-		(view as unknown as { data: unknown }).data = {
-			data: vault.entries(),
-			groupedData: [{ hasKey: () => true, entries: [] }],
-		};
-		view.onDataUpdated();
+		setResults(view, vault.entries(), [{ hasKey: () => true, entries: [] }]);
 
 		expect(containerEl.querySelector('.pbl-grouping-note')?.textContent).toBe('Grouping ignored');
 	});
@@ -30,11 +26,7 @@ describe('grouping advisory', () => {
 	it('stays quiet for the implicit single ungrouped group', () => {
 		const vault = fixture();
 		const { view, containerEl } = makeView(vault);
-		(view as unknown as { data: unknown }).data = {
-			data: vault.entries(),
-			groupedData: [{ hasKey: () => false, entries: [] }],
-		};
-		view.onDataUpdated();
+		setResults(view, vault.entries(), [{ hasKey: () => false, entries: [] }]);
 
 		expect(containerEl.querySelector('.pbl-grouping-note')).toBeNull();
 	});
@@ -50,18 +42,14 @@ describe('grouping advisory', () => {
 	it('treats grouping it cannot read as none, and still draws the tree', () => {
 		const vault = fixture();
 		const { view, containerEl } = makeView(vault);
-		(view as unknown as { data: unknown }).data = {
-			data: vault.entries(),
-			groupedData: [
+		setResults(view, vault.entries(), [
 				{
 					hasKey: () => {
 						throw new Error('not a shape this version has');
 					},
 					entries: [],
 				},
-			],
-		};
-		view.onDataUpdated();
+			]);
 
 		expect(containerEl.querySelector('.pbl-grouping-note')).toBeNull();
 		expect(titlesOf(containerEl)).toContain('Epic A');

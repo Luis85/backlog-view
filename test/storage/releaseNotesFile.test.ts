@@ -29,15 +29,15 @@ describe('releaseNotesPath', () => {
 
 describe('writeReleaseNotes', () => {
 	it('creates the file and the folder it needs', async () => {
-		const result = await writeReleaseNotes(vault.app as never, 'notes', '0.9', GENERATED);
+		const result = await writeReleaseNotes(vault.app, 'notes', '0.9', GENERATED);
 
 		expect(result).toEqual({ outcome: 'created', path: 'notes/0.9 release notes.md' });
 		expect(vault.folders.has('notes')).toBe(true);
 	});
 
 	it('regenerates its own file', async () => {
-		await writeReleaseNotes(vault.app as never, 'notes', '0.9', GENERATED);
-		const result = await writeReleaseNotes(vault.app as never, 'notes', '0.9', `${GENERATED}\n## Scope\n`);
+		await writeReleaseNotes(vault.app, 'notes', '0.9', GENERATED);
+		const result = await writeReleaseNotes(vault.app, 'notes', '0.9', `${GENERATED}\n## Scope\n`);
 
 		expect(result).toEqual({ outcome: 'updated', path: 'notes/0.9 release notes.md' });
 	});
@@ -47,7 +47,7 @@ describe('writeReleaseNotes', () => {
 		// because a renamed base leaves one behind and regenerating is the repair. A whole
 		// file written over another release's notes is in no undo slot at all.
 		await vault.app.vault.create('notes/0.9 release notes.md', `${THEIRS}\ntheirs\n`);
-		const result = await writeReleaseNotes(vault.app as never, 'notes', '0.9', GENERATED);
+		const result = await writeReleaseNotes(vault.app, 'notes', '0.9', GENERATED);
 
 		expect(result).toEqual({
 			outcome: 'foreign',
@@ -61,7 +61,7 @@ describe('writeReleaseNotes', () => {
 		// Sync lands another release's generated file at this path AFTER the read. A
 		// callback that only asks "does this parse as a marker" would overwrite the very
 		// file the refuse mode exists to protect.
-		await writeReleaseNotes(vault.app as never, 'notes', '0.9', GENERATED);
+		await writeReleaseNotes(vault.app, 'notes', '0.9', GENERATED);
 		const theirs = `${THEIRS}\ntheirs\n`;
 		const process = vault.app.vault.process;
 		vault.app.vault.process = (async (f: never, fn: (data: string) => string) => {
@@ -69,15 +69,15 @@ describe('writeReleaseNotes', () => {
 			return process(f, fn);
 		}) as typeof vault.app.vault.process;
 
-		const result = await writeReleaseNotes(vault.app as never, 'notes', '0.9', `${GENERATED}\n## Scope\n`);
+		const result = await writeReleaseNotes(vault.app, 'notes', '0.9', `${GENERATED}\n## Scope\n`);
 
 		expect(result.outcome).toBe('foreign');
 		expect(vault.contents.get('notes/0.9 release notes.md')).toBe(theirs);
 	});
 
 	it('leaves an identical file untouched', async () => {
-		await writeReleaseNotes(vault.app as never, 'notes', '0.9', GENERATED);
-		const result = await writeReleaseNotes(vault.app as never, 'notes', '0.9', GENERATED);
+		await writeReleaseNotes(vault.app, 'notes', '0.9', GENERATED);
+		const result = await writeReleaseNotes(vault.app, 'notes', '0.9', GENERATED);
 
 		expect(result).toEqual({ outcome: 'unchanged', path: 'notes/0.9 release notes.md' });
 	});

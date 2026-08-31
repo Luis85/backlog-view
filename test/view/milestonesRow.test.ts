@@ -158,7 +158,7 @@ describe('the milestones row', () => {
 		vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (this: Element): DOMRect {
 			if (!(this instanceof HTMLElement) || !this.matches('.pbl-lane-markers .pbl-bar')) return real.call(this);
 			const top = 15 + Number(this.style.getPropertyValue('--pbl-sublane') || '0') * 17;
-			return { top, bottom: top + 12, height: 12, left: 0, right: 12, width: 12, x: 0, y: top, toJSON: () => ({}) } as DOMRect;
+			return { top, bottom: top + 12, height: 12, left: 0, right: 12, width: 12, x: 0, y: top, toJSON: () => ({}) };
 		});
 		const vault = countingVault([]);
 		vault.addFile('Ship.md', { frontmatter: { type: 'Milestone', order: 20, due: '2026-08-07' } });
@@ -267,7 +267,7 @@ describe('the milestones row', () => {
 			parentLink: 'Work',
 		});
 		// The second child is what OPENS the section at all: `datedEntries` and each band
-		// alike hand `timelineRows` the work bars with the markers split out, so a chevron
+		// alike hand `timelineRowEls` the work bars with the markers split out, so a chevron
 		// is never decided by a marker and a parent whose only child is one draws none.
 		vault.addFile('Follow.md', {
 			frontmatter: { type: 'Feature', order: 30, assignee: 'Alice', start: '2026-08-02', due: '2026-08-09' },

@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { en } from '../../src/i18n/en';
 import { Catalog, MessageKey, setLocale } from '../../src/i18n/t';
 import { Menu } from '../helpers/obsidian-mock';
-import { FakeVault } from '../helpers/vault';
+import { FakeVault, setResults } from '../helpers/vault';
 import { boardVault, makeBoard } from '../helpers/board';
 import { horizonVault, makeRoadmap, roadmapView } from '../helpers/roadmap';
 import { fixture, makeView, useViewHarness } from '../helpers/view';
@@ -327,11 +327,7 @@ describe('the advisories and the projections nobody else drives read from it too
 	it('draws the grouping advisory from the catalog when Bases reports a group-by', () => {
 		const vault = fixture();
 		const { view, containerEl } = makeView(vault);
-		(view as unknown as { data: unknown }).data = {
-			data: vault.entries(),
-			groupedData: [{ hasKey: () => true, entries: [] }],
-		};
-		view.onDataUpdated();
+		setResults(view, vault.entries(), [{ hasKey: () => true, entries: [] }]);
 		const drawn = drawnText(barOf(containerEl));
 
 		expect(drawn).toContain(marked('toolbar.groupingIgnored'));
