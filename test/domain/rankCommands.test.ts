@@ -196,6 +196,20 @@ describe('rows that cannot be given distinct ranks', () => {
 		expect(computeSeedWrites(model)).toEqual({ wedged: [model.byPath.get('PBI.md')] });
 	});
 
+	it('wedges rather than writing Infinity when the floor is at the top of the float range', () => {
+		// `1e308 + ORDER_SPACING === 1e308` in float, so the step does nothing — and
+		// `roundOrder` used to OVERFLOW there (`Math.round(1e308 * 1e6)` is Infinity), which
+		// cleared `placeRun`'s own `order <= previous` guard and wrote a value YAML cannot
+		// hold. The next build's `readNumber` then rejects it and a note that HAD a rank
+		// loses it. `order` is hand-editable frontmatter, so 1e308 is reachable.
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 1e308 } });
+		vault.addFile('PBI.md', { frontmatter: { type: 'PBI' }, parentLink: 'Epic' });
+		const results = vault.entries().filter((e) => e.file.path === 'PBI.md');
+		const model = buildModel(vault.app, results, settings);
+		expect(computeSeedWrites(model)).toEqual({ wedged: [model.byPath.get('PBI.md')] });
+	});
+
 	it('hangs a leading run below its context row rather than counting up from zero', () => {
 		const vault = new FakeVault();
 		vault.addFile('Root.md', { frontmatter: { type: 'Epic', order: 5 } });

@@ -6,6 +6,7 @@ import {
 	computeInitWrites,
 	DropTarget,
 	ORDER_SPACING,
+	roundOrder,
 } from '../../src/domain/writePlan';
 import { defaultSettings } from '../../src/domain/settings';
 import { FakeVault } from '../helpers/vault';
@@ -529,5 +530,24 @@ describe('a drop in an unmigrated vault', () => {
 		// is the proof the fallback did not run.
 		expect(writes).toHaveLength(1);
 		expect(writes[0].order).toBe(2500);
+	});
+});
+
+describe('roundOrder', () => {
+	it('keeps six decimals, which is the grid every placement is refused against', () => {
+		expect(roundOrder(1000.00000049)).toBe(1000);
+		expect(roundOrder(1000.0000005)).toBe(1000.000001);
+	});
+
+	it('hands back the UNROUNDED value where rounding would not be finite', () => {
+		// `Math.round(value * 1e6)` overflows above about 1.8e302, so rounding a legal
+		// hand-edited rank returned Infinity — and every guard downstream reads the ROUNDED
+		// value, so `placeRun` compared Infinity against its floor, accepted, and wrote a
+		// number YAML cannot hold. Above that threshold the float spacing is about 1e286, so
+		// six decimals are already meaningless and `value` IS what rounding would give if it
+		// could.
+		expect(roundOrder(1e308)).toBe(1e308);
+		expect(roundOrder(-1e308)).toBe(-1e308);
+		expect(roundOrder(1.9e302)).toBe(1.9e302);
 	});
 });

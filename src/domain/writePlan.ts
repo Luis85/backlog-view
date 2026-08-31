@@ -1261,7 +1261,19 @@ function lowerOf(a: number | null, b: number | null): number | null {
 
 /** Orders are fractional ranks, kept to six decimals — the grid `midpoint` refuses against.
  *  Exported for `rankSpread.ts`: the whole-population rewrites land on the same grid, and
- *  a second definition of it is a second answer to what a rank may be. */
+ *  a second definition of it is a second answer to what a rank may be.
+ *
+ *  **A value the grid cannot hold comes back unrounded, and that is not a fudge.**
+ *  `Math.round(value * 1e6)` overflows above about 1.8e302, so rounding a legal
+ *  hand-edited `order` of 1e308 returned Infinity — and every guard downstream reads the
+ *  ROUNDED value, by design (see `midpoint`), so `placeRun` asked `Infinity <= 1e308`,
+ *  accepted, and planned a rank YAML cannot hold; `readNumber` then rejects it on the next
+ *  build and a note that HAD a rank silently loses it. Above that threshold the float
+ *  spacing is about 1e286, so six decimals are already meaningless there and `value` IS
+ *  what rounding would give if it could. Fixed here rather than at the two callers because
+ *  both then refuse on the guards they already have — `placeRun`'s `order <= previous` and
+ *  `midpoint`'s strictly-between test — and nothing below the threshold changes. */
 export function roundOrder(value: number): number {
-	return Math.round(value * 1000000) / 1000000;
+	const rounded = Math.round(value * 1000000) / 1000000;
+	return Number.isFinite(rounded) ? rounded : value;
 }
