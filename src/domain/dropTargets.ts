@@ -38,11 +38,10 @@ export interface DropTarget {
  * skips an `outsideFilter` note, so it constrains nothing and is neither an anchor to
  * rank against nor a peer to swap past.
  *
- * Here rather than beside either caller because there are three — `anchoredOrder`,
- * `siblingContext` (`view/interactions/structure.ts`) and `siblingPosition` below — and
- * this is the one module all three can reach: `writePlan.ts` imports this file, so the
- * predicate cannot live there without a cycle, and one rule spelled three times is how
- * the drag and the keyboard came to disagree about the same row.
+ * Here rather than beside a caller because this is the one module every ranking caller
+ * can reach without a cycle: `writePlan.ts` imports this file, so the predicate cannot
+ * live there, and a rule spelled once per caller is how the drag and the keyboard came
+ * to disagree about the same row.
  */
 export function isUnrankedContext(anchor: BacklogItem | null): boolean {
 	return anchor !== null && anchor.outsideFilter && anchor.order === null;

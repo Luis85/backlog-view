@@ -359,8 +359,14 @@ a node test that did would be measuring the runner.
   unranked one (it can never be given a rank, so refusing beside one would be a permanent
   block behind advice that cannot work), `rankTaken` counts a RANKED one as occupying its
   number, and `computeInitWrites` and `spreadAround` write neither. What refuses up front
-  is the ROW in hand rather than its group: `siblingPosition` (drag), `siblingContext`
-  (Alt+arrow and the move menu) and `outdentTarget` each decline an `outsideFilter` row.
+  is the ROW in hand, and since Tasks 1 and 4 its GROUP as well: `siblingPosition` (drag),
+  `siblingContext` (Alt+arrow and the move menu) and `outdentTarget` each decline an
+  `outsideFilter` row outright, and every population any ranking site reads — both
+  branches of both functions, plus `insidePosition`, `indentTarget` and the two creation
+  paths — is filtered through `rankablePeers` first, so an unranked context row is
+  dropped as a peer wherever it would otherwise sort last and become the anchor.
+  `outdentTarget` declines one row more than that: a PARENT that is itself an unranked
+  context row, a different refusal from `outsideFilter` and Task 7's own addition.
 - **A ranked context row is a legal ANCHOR at the focus level, and the drag and the
   keyboard have to say so together.** The refusal above is about REPARENTING — an ancestor
   from outside the filter has siblings the query never returned — and a focus rank writes

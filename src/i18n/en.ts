@@ -1227,7 +1227,7 @@ export const en = {
 	 * comment in `domain/writePlan.ts` refuses to create. So this states the fact and
 	 * names no remedy, the way `rank.itemGone` does for the sibling case.
 	 */
-	'rank.unrankedParent': 'That row has no rank of its own, so nothing can be placed next to it.',
+	'rank.unrankedParent': 'Its parent has no rank of its own, so nothing can be placed next to it.',
 
 	/**
 	 * What the two rank commands say. Each confirmation states the whole of what the

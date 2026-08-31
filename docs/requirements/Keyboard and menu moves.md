@@ -81,6 +81,12 @@ usable rather than merely viewable when dragging is not an option.
   nearest *visible* neighbour instead. A command whose effect is invisible reads as broken.
 - **3c — the row came from outside the Base's filter.** The move commands are withheld
   from its menu entirely.
+- **3d — an outdent would land right after a PARENT that carries no rank of its own**
+  (an unranked context row). `Outdent` is withheld from the menu, as 3a's rule says, but
+  `Alt`+`←` is not disabled: a keypress draws no label and promises no note, so it still
+  reaches the write path and reports rather than going quiet — the placement cannot be
+  expressed, not merely refused, and a silent key there would read as broken rather than
+  inexpressible.
 
 ## Acceptance criteria
 

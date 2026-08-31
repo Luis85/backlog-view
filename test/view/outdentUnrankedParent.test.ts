@@ -61,7 +61,7 @@ describe('outdenting past a context parent with no rank', () => {
 
 		expect(vault.writeLog).toEqual([]);
 		expect(vault.fm('Item.md').parent).toBe('[[Parent]]');
-		expect(Notice.messages).toEqual(['That row has no rank of its own, so nothing can be placed next to it.']);
+		expect(Notice.messages).toEqual(['Its parent has no rank of its own, so nothing can be placed next to it.']);
 	});
 
 	/** The control: a RANKED context parent is an ordinary anchor and still works. */
@@ -75,8 +75,9 @@ describe('outdenting past a context parent with no rank', () => {
 
 		expect(vault.writeLog.map((w) => w.path)).toEqual(['Item.md']);
 		expect(vault.fm('Item.md').parent).toBe('[[Epic]]');
-		// One spacing clear of Parent's own rank (15), its only global neighbour once
-		// Item itself is filtered out of the ranked population it is being placed into.
+		// One spacing clear of Parent's own rank (15): Parent has no NEXT neighbour in
+		// the ranked population once Item is filtered out of it — Epic(10) is in that
+		// population too, just not adjacent on this side.
 		expect(vault.fm('Item.md')['order']).toBe(1015);
 		expect(Notice.messages).toEqual([]);
 	});
