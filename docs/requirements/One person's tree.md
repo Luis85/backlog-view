@@ -138,3 +138,23 @@ what is next" — three rules, pure, no DOM and no writes:
   There is no second `order` per person — plan order already says what is ranked highest —
   and a context row is skipped regardless of its own state, because it is never a write
   target and therefore never something to do next.
+
+**This tree's keyboard is the release scope's own, shared rather than copied** (Task 7 of
+[[Assigned work in the sidebar]]): `src/view/scopeKeys.ts` is one tab stop on the
+container and a roving `aria-activedescendant`, moved by the four arrows plus Enter and
+Space, over `src/view/scopeFolds.ts`'s fold set and `src/view/openTarget.ts`'s
+`OpenController` — the identical mechanism `src/view/release/scopeTree.ts`'s tree already
+used, before this task moved it out of that view's own directory into this shared one.
+The whole of what varied between the two trees was the fold-key prefix and the scope's
+own path, both parameters now (`{ prefix, path }`), and the two identifiers that used to
+carry `Release` in their name — `ReleaseView.activeScopeFile` and `.scopeHadFocus` —
+renamed to `activeRowFile` and `treeHadFocus` on both views, so one interface
+(`ScopeKeyHost`) states what either tree has to offer rather than carrying two names for
+one idea. `TreeDraw` — the rows, the disclosure set, the row-element index and the fold
+set a finished draw hands the keyboard — lives in the same shared module for the reason
+`src/view/release/scopeTree.ts`'s own note gives: neither tree module has to import the
+other's, and the keyboard module imports neither back, which is what keeps every pair a
+DAG rather than the cycle `npm run analyze` refuses. `src/view/mywork/renderTree.ts`
+wires it as the last step of `drawMyWorkTree`, passing `MYWORK_FOLD`
+(`src/storage/foldKeys.ts`) and the picked person's own path — `src/view/release/renderScope.ts`'s
+own second step, over `RELEASE_FOLD` and the open release's path instead.

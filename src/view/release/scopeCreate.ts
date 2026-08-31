@@ -10,7 +10,8 @@ import { ORDER_SPACING } from '../../domain/writePlan';
 import { createBacklogItem } from '../../storage/createNote';
 import { TitlePromptModal } from '../../ui/prompts';
 import { showMenuAtElement, showMenuForClick } from '../interactions/menu';
-import { ScopeDraw, releaseFoldedPaths, toggleReleaseFold } from './scopeTree';
+import { TreeDraw } from '../scopeKeys';
+import { releaseFoldedPaths, toggleReleaseFold } from './scopeTree';
 
 /**
  * The scope tree's one write: **New \<child\> on a row**, which creates a note rather than
@@ -43,7 +44,7 @@ import { ScopeDraw, releaseFoldedPaths, toggleReleaseFold } from './scopeTree';
  * and for the same reason — it is the module that already holds both the draw and the
  * settings, so the leaves stay acyclic.
  */
-export function wireScopeCreate(view: ReleaseView, release: ReleaseRow, settings: BacklogSettings, draw: ScopeDraw): void {
+export function wireScopeCreate(view: ReleaseView, release: ReleaseRow, settings: BacklogSettings, draw: TreeDraw): void {
 	const { treeEl, rows, rowEls } = draw;
 	const menuFor = (row: ScopeRow): Menu | null => scopeMenu(view, release, settings, row);
 
@@ -69,11 +70,11 @@ export function wireScopeCreate(view: ReleaseView, release: ReleaseRow, settings
 		// Both spellings, because a keyboard without a Menu key has only the second — the
 		// pair `view/interactions/keyboard.ts` already wires for the backlog's own tree.
 		if (evt.key !== 'ContextMenu' && !(evt.key === 'F10' && evt.shiftKey)) return;
-		// `activeScopeFile` rather than an index of our own: `scopeKeys.ts` writes it on
+		// `activeRowFile` rather than an index of our own: `scopeKeys.ts` writes it on
 		// every move of its roving selection, so reading it here is what stops two
 		// controllers on one tree disagreeing about which row is active. Matched on the
 		// FILE for that module's own reason — Obsidian mutates a `TFile` in place on rename.
-		const file = view.activeScopeFile;
+		const file = view.activeRowFile;
 		const row = file === null ? undefined : rows.find((r) => r.item.file === file);
 		if (!row) return;
 		const menu = menuFor(row);

@@ -11,9 +11,10 @@ import { renderReleaseInit } from './initControl';
 import { drawScopeTree, effectiveHideDone } from './scopeTree';
 import { rowsAfterHideDone } from '../../domain/scopeRows';
 import { drawScopeToolbar } from './scopeToolbar';
-import { wireScopeKeys } from './scopeKeys';
+import { wireScopeKeys } from '../scopeKeys';
 import { wireScopeCreate } from './scopeCreate';
 import { drawReleaseActions } from './releaseClose';
+import { RELEASE_FOLD } from '../viewState';
 
 /**
  * One release's screen (`docs/requirements/The scope of a release as a tree.md`): the
@@ -25,13 +26,15 @@ import { drawReleaseActions } from './releaseClose';
  * A free function over the view, `renderIndex.ts`'s own shape, importing the view for its
  * TYPE alone so the pair stays acyclic at runtime.
  *
- * **This module is also what keeps `scopeTree.ts` and `scopeKeys.ts` themselves acyclic.**
- * The tree's keyboard needs the fold set `scopeTree.ts` owns (`ScopeDraw.folded`,
- * `toggleReleaseFold`), and `scopeTree.ts` has no reason to import the keyboard back — so
- * `drawScopeTree` returns what it drew (`ScopeDraw`, `folded` included, so the keyboard
- * never has to ask `releaseFoldedPaths` again itself) instead of wiring the keyboard itself, and
- * this module, which already imports both leaves, calls `wireScopeKeys` as the second
- * step. Two one-directional edges from here rather than one cycle between them.
+ * **This module is also what keeps `scopeTree.ts` and the shared `view/scopeKeys.ts`
+ * acyclic.** The tree's keyboard needs the fold set `drawScopeTree` computed
+ * (`TreeDraw.folded`), and `scopeKeys.ts` — shared with the assigned-work tree since Task 7
+ * of [[Assigned work in the sidebar]] — has no reason to import this release-specific
+ * module at all: `drawScopeTree` returns what it drew (`TreeDraw`, `folded` included, so
+ * the keyboard never has to ask `releaseFoldedPaths` again itself) instead of wiring the
+ * keyboard itself, and this module, which already imports both, calls `wireScopeKeys` as
+ * the second step, handing it `RELEASE_FOLD` and this release's own path as its `scope`.
+ * One-directional edges from here rather than a cycle between the two tree modules.
  *
  * **Nothing here writes a note, and one thing this WIRES does.** Nothing in this module
  * touches the vault: the back control sets view state, a row's click opens a note
@@ -98,7 +101,7 @@ export function renderScope(
 		return;
 	}
 	const draw = drawScopeTree(view, release, scope.rows);
-	wireScopeKeys(view, draw.treeEl, release.path, draw);
+	wireScopeKeys(view, draw.treeEl, { prefix: RELEASE_FOLD, path: release.path }, draw);
 	// The third step, for `wireScopeKeys`' own reason: this module already holds the draw
 	// and the settings, so the row menu is wired from here rather than by `scopeTree.ts`
 	// importing a writer back. It is the one write this screen offers, and it creates a

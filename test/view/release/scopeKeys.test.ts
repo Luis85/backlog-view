@@ -216,7 +216,7 @@ describe('the scope tree’s keyboard', () => {
 	});
 
 	/**
-	 * Carried finding 4, task 5: `activeScopeFile` used to be a bare note path `pick()`
+	 * Carried finding 4, task 5: `activeRowFile` used to be a bare note path `pick()`
 	 * never cleared — the identical bug already fixed for fold keys
 	 * (`releaseFoldedPaths`/`toggleReleaseFold` scope every key to `release.path`), in the sibling field
 	 * that fix did not sweep. Its own vault: `Ctx.md` is a context ancestor in BOTH
@@ -255,7 +255,7 @@ describe('the scope tree’s keyboard', () => {
 		// it there and select it, which is exactly the defect this clears. Nothing else has
 		// asked the keyboard to pick a row yet, so the field itself, and the DOM it drives,
 		// both read as unset rather than defaulting to the first row on their own.
-		expect(view.activeScopeFile).toBeNull();
+		expect(view.activeRowFile).toBeNull();
 		expect(active(view)).toBeNull();
 	});
 
@@ -266,11 +266,11 @@ describe('the scope tree’s keyboard', () => {
 		view.pick('Releases/0.8.md');
 		select(view, 'Ctx.md');
 
-		// A data update, not a pick — `onDataUpdated` never clears `activeScopeFile`, which
+		// A data update, not a pick — `onDataUpdated` never clears `activeRowFile`, which
 		// is what lets the restore in `scopeKeys.ts` put the selection right back.
 		refreshRelease(view, vault);
 
-		expect(view.activeScopeFile?.path).toBe('Ctx.md');
+		expect(view.activeRowFile?.path).toBe('Ctx.md');
 		expect(active(view)).toBe('Ctx.md');
 	});
 
@@ -294,7 +294,7 @@ describe('the scope tree’s keyboard', () => {
 		refreshRelease(view, vault);
 
 		expect(active(view)).toBe('Mail the magic link.md');
-		expect(view.activeScopeFile?.path).toBe('Mail the magic link.md');
+		expect(view.activeRowFile?.path).toBe('Mail the magic link.md');
 	});
 
 	it('a refresh that drops the active row focuses a surviving row, not the body', () => {

@@ -10,32 +10,24 @@ import { badgeStyleFor } from '../render/badges';
 import { drawIcon } from '../render/icons';
 import { guidanceShell } from '../render/emptyStates';
 import { foldedPaths, scopeFlag, toggleFold } from '../scopeFolds';
+import { TreeDraw, wireScopeKeys } from '../scopeKeys';
 import { MYWORK_FOLD } from '../../storage/foldKeys';
 import { uniqueElementId } from '../selection';
 
 /**
  * One person's tree — Task 1's row shape and transforms, Task 2's membership and "what is
- * next", Task 5's shared fold set, drawn the way `view/release/scopeTree.ts` draws the
- * release scope's own rows: hide-done first, fold second, `childRows` over the hide-done
- * list, `siblingPlaces` over the visible one. Nothing here writes a note — a fold touches
- * localStorage through the view-state store and a click opens a note through
- * `OpenController`, neither of which this view's own write rule refuses.
+ * next", Task 5's shared fold set, Task 7's shared keyboard, drawn the way
+ * `view/release/scopeTree.ts` draws the release scope's own rows: hide-done first, fold
+ * second, `childRows` over the hide-done list, `siblingPlaces` over the visible one.
+ * Nothing here writes a note — a fold touches localStorage through the view-state store
+ * and a click opens a note through `OpenController`, neither of which this view's own
+ * write rule refuses.
+ *
+ * `TreeDraw` itself lives in `view/scopeKeys.ts`, not here — the shape this module builds
+ * and hands to `wireScopeKeys` below, moved out to the module both trees' draws feed so
+ * neither tree module has to import the other and `scopeKeys.ts` need import neither back
+ * (the same DAG `view/release/scopeTree.ts`'s own header states for its half of it).
  */
-
-export interface TreeDraw {
-	readonly treeEl: HTMLElement;
-	/** The rows actually DRAWN, in order — `visibleRows`' own output, never the full walk
-	 *  (a folded-away row is not in the DOM for a keyboard to arrow onto). */
-	readonly rows: ScopeRow[];
-	/** The paths this draw put a disclosure on — the rendered tree's own answer, never the
-	 *  fold set's (a stale fold entry must not make a leaf answer as a parent). */
-	readonly kids: ReadonlySet<string>;
-	/** Path → element, built while drawing rather than queried back out of the DOM —
-	 *  `src/view/CLAUDE.md`'s `TREE_SCAN` bans exactly that scan. */
-	readonly rowEls: ReadonlyMap<string, HTMLElement>;
-	/** The fold set this draw was computed against. */
-	readonly folded: ReadonlySet<string>;
-}
 
 /**
  * Whether ANY workflow this tree could draw a row for has a configured state key —
@@ -132,7 +124,14 @@ export function drawMyWorkTree(view: MyWorkView, parentEl: HTMLElement): TreeDra
 			}),
 		);
 	}
-	return { treeEl, rows: visible, kids: withKids, rowEls, folded };
+	const draw: TreeDraw = { treeEl, rows: visible, kids: withKids, rowEls, folded };
+	// The keyboard, wired as the last step — `renderScope.ts`'s own second step, for the
+	// identical reason: this module already holds the draw, so the tree's own roving
+	// selection is wired here rather than `wireScopeKeys` (`view/scopeKeys.ts`) importing
+	// this module back. `MYWORK_FOLD` and the picked person's own path are this tree's
+	// `scope`, the way `RELEASE_FOLD` and the open release's path are the other tree's.
+	wireScopeKeys(view, treeEl, { prefix: MYWORK_FOLD, path: view.pickedPerson! }, draw);
+	return draw;
 }
 
 /** A row's place in its sibling group, its own fold state, and whether it is what is

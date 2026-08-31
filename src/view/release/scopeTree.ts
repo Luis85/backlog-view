@@ -8,6 +8,7 @@ import { displayType } from '../../domain/itemTypes';
 import { badgeStyleFor } from '../render/badges';
 import { drawIcon } from '../render/icons';
 import { foldedPaths, scopeFlag, setAllFolds, setScopeFlag, toggleFold } from '../scopeFolds';
+import { TreeDraw } from '../scopeKeys';
 import { RELEASE_FOLD } from '../viewState';
 import { uniqueElementId } from '../selection';
 
@@ -109,39 +110,15 @@ export function setHideDone(view: ReleaseView, next: boolean): void {
 }
 
 /**
- * What `scopeKeys.ts`'s `wireScopeKeys` needs of a finished draw, produced here rather
- * than in that module: `scopeTree.ts` has no reason to import `scopeKeys.ts` back —
- * `drawScopeTree` returns this and `renderScope.ts` (which already imports both) wires
- * the keyboard as a second step, which is what keeps the two release-tree modules a DAG
- * rather than a cycle `npm run analyze` refuses.
+ * What `scopeKeys.ts`'s `wireScopeKeys` needs of a finished draw — `TreeDraw`, defined in
+ * that shared module rather than here (Task 7 of [[Assigned work in the sidebar]] moved
+ * it out of this file, where it used to be `ScopeDraw`): `scopeTree.ts` has no reason to
+ * import `scopeKeys.ts` back and neither does `scopeKeys.ts` import this file — the type
+ * lives below both, so `drawScopeTree` returns it and `renderScope.ts` (which already
+ * imports both tree modules) wires the keyboard as a second step, which is what keeps the
+ * two release-tree modules a DAG rather than a cycle `npm run analyze` refuses.
  */
-export interface ScopeDraw {
-	readonly treeEl: HTMLElement;
-	/** The rows the tree actually DREW, in order — `visibleRows`' own output, never the
-	 *  full walk (a folded-away row is not in the DOM to arrow onto). */
-	readonly rows: ScopeRow[];
-	/** The paths `drawScopeTree` drew a disclosure on — the rendered tree's own answer,
-	 *  never the fold set's (a stale fold entry must not make a leaf answer as a parent). */
-	readonly kids: ReadonlySet<string>;
-	/** Path → element, built while drawing rather than queried back out of the DOM —
-	 *  `src/view/CLAUDE.md`'s `TREE_SCAN` bans exactly that scan. */
-	readonly rowEls: ReadonlyMap<string, HTMLElement>;
-	/**
-	 * The fold set this draw was computed against — `drawScopeTree`'s own call to
-	 * {@link releaseFoldedPaths}, handed out rather than left for a caller to ask again. It
-	 * cannot change during the controller's life: `toggleReleaseFold` and `setHideDone` both
-	 * call `view.render()`, which rebuilds this whole listener from a fresh draw, so a
-	 * value that answers for the WHOLE render pass can be read once here instead of
-	 * asked fresh on every keydown. `scopeKeys.ts` used to call {@link releaseFoldedPaths}
-	 * itself at the top of every keydown — including the ones that do nothing — which is
-	 * `resolveViewIdentity` plus `loadViewState`'s full JSON parse and validation of
-	 * every stored view entry, paid on every ArrowDown of a key-repeat rather than once
-	 * per render.
-	 */
-	readonly folded: ReadonlySet<string>;
-}
-
-export function drawScopeTree(view: ReleaseView, release: ReleaseRow, rows: ScopeRow[]): ScopeDraw {
+export function drawScopeTree(view: ReleaseView, release: ReleaseRow, rows: ScopeRow[]): TreeDraw {
 	// Named by the release, so a reader arriving at the tree hears which one it is. The
 	// name is vault content rather than text — it goes nowhere near the catalog.
 	// `tabindex="0"` makes the CONTAINER the tab stop — a composite widget's own rule
@@ -314,7 +291,7 @@ function drawDisclosure(view: ReleaseView, release: ReleaseRow, rowEl: HTMLEleme
 		// `.pbl-twisty`, so a class-keyed restore would land on the FIRST disclosure in
 		// the tree rather than this one — worse than the body it currently falls to.
 		// `wireScopeKeys`'s own restore reads exactly this field.
-		view.activeScopeFile = row.item.file;
+		view.activeRowFile = row.item.file;
 		toggleReleaseFold(view, release.path, row.item.file.path);
 	});
 }

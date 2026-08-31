@@ -109,11 +109,11 @@ export class MyWorkView extends BasesView {
 	 * Redraw. Two things are read before `empty()` detaches them, for the identical
 	 * reason `ReleaseView.render()` states: a detached element answers nothing.
 	 *
-	 * `treeHadFocus` is consumed downstream, by whichever module wires the tree's own
-	 * roving keyboard (Task 7's `scopeKeys.ts`-shared mechanism, the way
-	 * `ReleaseView.scopeHadFocus` is consumed by `scopeKeys.ts` rather than by `render()`
-	 * itself) — it answers "was focus somewhere INSIDE the tree", which only that module
-	 * can act on once it knows which row to restore it to.
+	 * `treeHadFocus` is consumed downstream, by `wireScopeKeys` (`view/scopeKeys.ts`, Task
+	 * 7's shared mechanism — the way `ReleaseView.treeHadFocus` is consumed there too,
+	 * rather than by either view's own `render()`) — it answers "was focus somewhere
+	 * INSIDE the tree", which only that module can act on once it knows which row to
+	 * restore it to.
 	 *
 	 * `focusedHandle()` is this render's own to answer, because it is a different
 	 * question: "did focus sit on one of THIS view's own controls" — a toolbar button, or

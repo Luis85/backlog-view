@@ -74,21 +74,24 @@ export function myWorkVault(opts: MyWorkVaultOptions = {}): FakeVault {
  * reads as "no identity" on purpose.
  *
  * This file deliberately does NOT carry every accessor `test/helpers/release.ts` has —
- * `press`, `active`, `pickPerson`, `menuOn`, `choose`, `labels`, `treeEl` and a
- * re-exported `flush` were all drafted for Tasks 7 through 11 before this task's own
- * commit and every one of them was flagged dead by `npm run analyze` (`unused-exports`):
- * fallow's dead-code check counts a test file's import the same as production code's, so
- * a helper nothing yet imports is unreachable regardless of which future commit means to.
- * Add each one back in the task that first writes a test needing it, the way `release.ts`'s
- * own accessors arrived one at a time as the release feature's tasks landed — a helper
- * file grows with its callers rather than being drafted whole against a plan that has not
- * shipped yet. `mwRow`, `rowPaths`, `mwTwisty` and `refreshMyWork` are Task 6's own first
- * four, added below for `test/view/mywork/tree.test.ts` — `mwRow`/`mwTwisty` named apart
- * from `release.ts`'s identical `row`/`twisty` rather than sharing those names, which is
- * what a fallow duplicate-export finding asked for the moment a second file exported the
- * same bare names (`src/view/scopeFolds.ts`'s own header records the identical fix for
- * the fold trio); `refreshMyWork` joined in fix round 1, for the focus-restore test that
- * drives a real data update rather than a fresh pick.
+ * `pickPerson`, `menuOn`, `choose`, `labels` and a re-exported `flush` were all drafted
+ * for Tasks 8 through 11 before this task's own commit and every one of them was flagged
+ * dead by `npm run analyze` (`unused-exports`): fallow's dead-code check counts a test
+ * file's import the same as production code's, so a helper nothing yet imports is
+ * unreachable regardless of which future commit means to. Add each one back in the task
+ * that first writes a test needing it, the way `release.ts`'s own accessors arrived one
+ * at a time as the release feature's tasks landed — a helper file grows with its callers
+ * rather than being drafted whole against a plan that has not shipped yet. `mwRow`,
+ * `rowPaths`, `mwTwisty` and `refreshMyWork` are Task 6's own first four, added below for
+ * `test/view/mywork/tree.test.ts` — `mwRow`/`mwTwisty` named apart from `release.ts`'s
+ * identical `row`/`twisty` rather than sharing those names, which is what a fallow
+ * duplicate-export finding asked for the moment a second file exported the same bare
+ * names (`src/view/scopeFolds.ts`'s own header records the identical fix for the fold
+ * trio); `refreshMyWork` joined in fix round 1, for the focus-restore test that drives a
+ * real data update rather than a fresh pick. `treeEl`, `mwPress` and `mwActive` are Task
+ * 7's own, for `test/view/mywork/keys.test.ts` — `treeEl` named as its own bare word
+ * rather than apart from `release.ts` the way `mwRow`/`mwTwisty`/`mwPress`/`mwActive` had
+ * to be, because `release.ts` never exported one under that name to begin with.
  */
 export function makeMyWorkView(
 	vault: FakeVault,
@@ -140,4 +143,30 @@ export function mwTwisty(view: MyWorkView, path: string): HTMLElement {
 	const el = mwRow(view, path)?.querySelector<HTMLElement>('.pbl-twisty');
 	if (!el) throw new Error(`twisty not found: ${path}`);
 	return el;
+}
+
+/** The tree element itself — never optional, because every caller of this one already
+ *  knows a person is picked. `test/helpers/release.ts`'s own `.pbl-tree` query, over
+ *  this view's tree rather than the release scope's. */
+export function treeEl(view: MyWorkView): HTMLElement {
+	const el = view.viewEl.querySelector<HTMLElement>('.pbl-tree');
+	if (!el) throw new Error('no tree mounted');
+	return el;
+}
+
+/** Dispatches a keydown at the tree — `test/helpers/release.ts`'s own `press`, re-queried
+ *  every call rather than captured once: a fold redraws the tree, which detaches the
+ *  element a stale reference would still be pointing at. Named `mwPress` rather than the
+ *  bare `press` — `mwRow`/`mwTwisty`'s own reason: a second file exporting the identical
+ *  bare name is a fallow duplicate-export finding, caught here before it shipped rather
+ *  than discovered at the gate. */
+export function mwPress(view: MyWorkView, key: string): void {
+	treeEl(view).dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
+}
+
+/** The row the roving selection currently marks, by path — or null before anything has
+ *  set one. `test/helpers/release.ts`'s own `active`, named `mwActive` apart from it for
+ *  the identical reason `mwPress` is. */
+export function mwActive(view: MyWorkView): string | null {
+	return view.viewEl.querySelector<HTMLElement>('.pbl-row[aria-selected="true"]')?.getAttribute('data-path') ?? null;
 }

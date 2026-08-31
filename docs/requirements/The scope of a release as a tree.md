@@ -167,17 +167,24 @@ hide-done flag beside it moved to `src/view/scopeFolds.ts`** (Task 5 of [[Assign
 the sidebar]]): the assigned-work tree asks the identical two questions per person rather
 than per release, and the whole of what varied was the key prefix, so `scopeTree.ts` now
 calls the shared functions with `RELEASE_FOLD` and the open release's path rather than
-keeping a second copy. `src/view/release/scopeKeys.ts` is the tree's keyboard: one tab stop on the
-container and a roving `aria-activedescendant`, moved by the four arrows plus Enter and
-Space, over the same fold set and the same `OpenController` — never `src/view/selection.ts`,
-which is built around a `BacklogViewHost` and the two card projections' own selection, so
-reusing it would mean satisfying a host interface in order to withhold most of it, the same
-call this note's own next paragraph already made about `render/rows.ts`. `renderScope.ts` is
-what WIRES the keyboard, not `scopeTree.ts`: `drawScopeTree` returns what it drew rather than
-calling `scopeKeys.ts` itself, because that module reads the fold set `scopeTree.ts` owns, and
-a call the other way as well would be the import cycle `npm run analyze` refuses — `renderScope.ts`
-already imports both leaves, so it is the one place that can call each in turn without either
-importing the other.
+keeping a second copy. **The keyboard moved the same way, one task later**:
+`src/view/scopeKeys.ts` is the tree's keyboard — one tab stop on the container and a
+roving `aria-activedescendant`, moved by the four arrows plus Enter and Space, over the
+same fold set and the same `OpenController` — never `src/view/selection.ts`, which is
+built around a `BacklogViewHost` and the two card projections' own selection, so reusing
+it would mean satisfying a host interface in order to withhold most of it, the same call
+this note's own next paragraph already made about `render/rows.ts`. It used to live one
+directory down, release-only — moved out to this shared home (Task 7 of [[Assigned work
+in the sidebar]]) once the assigned-work tree needed the identical mechanism over a
+different fold prefix:
+`ScopeKeyHost` is the structural type either view satisfies and `TreeDraw` is the shape
+either tree's own draw hands it, both defined in the shared module rather than in either
+tree's own. `renderScope.ts` is what WIRES the keyboard, not `scopeTree.ts`:
+`drawScopeTree` returns what it drew rather than calling `scopeKeys.ts` itself, because
+that module reads the fold set `scopeTree.ts` owns, and a call the other way as well
+would be the import cycle `npm run analyze` refuses — `renderScope.ts` already imports
+both leaves, so it is the one place that can call each in turn without either importing
+the other.
 
 This note said the rows reuse `src/view/render/rows.ts` and the context marking already there.
 They do not, and cannot: that module takes a `BacklogViewHost` and wires menus, create prompts,

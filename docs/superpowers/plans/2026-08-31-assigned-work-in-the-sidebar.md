@@ -1293,7 +1293,7 @@ release-shaped things in that module are the view type and the fold scope.
   - `interface ScopeKeyHost extends FoldHost { opener: OpenController; openContext(): OpenContext; activeRowFile: TFile | null; treeHadFocus: boolean }`
   - `function wireScopeKeys(host: ScopeKeyHost, treeEl: HTMLElement, scope: { prefix: string; path: string }, draw: TreeDraw): void`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 `test/view/mywork/keys.test.ts`:
 
@@ -1314,12 +1314,12 @@ it('keeps the selected row across the redraw a fold causes', () => { /* activeRo
 it('reaches both ends with Home and End', () => { /* … */ });
 ```
 
-- [ ] **Step 2: Run it and watch it fail**
+- [x] **Step 2: Run it and watch it fail**
 
 Run: `npx vitest run test/view/mywork/keys.test.ts`
 Expected: FAIL — nothing wires a keydown.
 
-- [ ] **Step 3: Move the module**
+- [x] **Step 3: Move the module**
 
 ```bash
 git mv src/view/release/scopeKeys.ts src/view/scopeKeys.ts
@@ -1331,18 +1331,18 @@ Replace `ReleaseView` with `ScopeKeyHost`, `releasePath` with the `scope` bag, a
 one interface rather than the interface carrying two names for one idea. `ScopeDraw`
 becomes `TreeDraw` in both callers.
 
-- [ ] **Step 4: Wire both callers**
+- [x] **Step 4: Wire both callers**
 
 `renderScope.ts` passes `{ prefix: RELEASE_FOLD, path: release.path }`;
 `renderTree.ts` passes `{ prefix: MYWORK_FOLD, path: view.pickedPerson! }` as the step after
 the draw, exactly as `renderScope.ts` does.
 
-- [ ] **Step 5: Run both suites**
+- [x] **Step 5: Run both suites**
 
 Run: `npx vitest run test/view/release test/view/mywork`
 Expected: PASS, with no release assertion edited.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add -A src/view test/view "docs/requirements/One person's tree.md"
