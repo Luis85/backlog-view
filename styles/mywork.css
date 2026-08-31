@@ -92,3 +92,30 @@ button.pbl-mw-toggle-on {
 	background-color: var(--interactive-accent);
 	border-radius: var(--radius-s);
 }
+
+/* Task 10: a `.base` tab drags into the left sidebar already, so this pane is where the
+   plugin's own promise that "nothing needs width it will not get" is either kept or
+   broken. `container-type: inline-size` makes `.pbl-mw-view` a query container over its
+   OWN width, never the window's — a `@media` rule would answer with the viewport's width,
+   which is the wrong number for a narrow pane sitting in a wide window, exactly the case
+   this view is built to be docked in. */
+.pbl-mw-view {
+	container-type: inline-size;
+}
+
+/* Below this width the title and the Next marker are what the panel exists to answer,
+   and the state chip is decoration it can no longer afford. **The COLUMN is hidden, not
+   only the chip inside it** — `.pbl-mw-statecol` reserves `inline-size: 92px` above
+   whether or not it holds a chip, so hiding `.pbl-state-chip` alone would leave that 92px
+   squeezing the title regardless (the confirmed finding this rule closes). The toolbar
+   wraps its own controls rather than clipping them, `toolbarFit.css`'s narrow answer for
+   the header bar applied here to this pane's own bar. */
+@container (max-width: 260px) {
+	.pbl-mw-view .pbl-mw-statecol {
+		display: none;
+	}
+
+	.pbl-mw-view .pbl-mw-toolbar {
+		flex-wrap: wrap;
+	}
+}
