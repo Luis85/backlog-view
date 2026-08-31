@@ -77,3 +77,30 @@ describe('a structural command whose subject left the base', () => {
 		expect(Notice.messages).toEqual(titles.map(() => GONE));
 	});
 });
+
+/**
+ * The same fact asked at the FORBIDDEN THING rather than at the four places that reach
+ * it. The gate's exclusion test used to read `outsideFilter === true`, which answers
+ * false for a path the model does not hold — so absence, which is a different fact from
+ * "present and included", authorized the write. Every caller is a place somebody thought
+ * of; the gate holds for the one written next year.
+ */
+describe('the write gate on a note the model does not hold', () => {
+	it('refuses the whole batch and says so', async () => {
+		const vault = new FakeVault();
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10 } });
+		// In the vault, never in the results: the base returns `Epic` alone, and nothing
+		// claims this note as an ancestor, so it is in no `byPath` this view ever builds.
+		const outside = vault.addFile('Elsewhere.md', { frontmatter: { type: 'Epic', order: 20 } });
+		const { view } = makeView(vault, {}, { only: ['Epic.md'] });
+		Notice.messages = [];
+
+		expect(await view.applySafely([{ file: outside, order: 99 }])).toBeNull();
+		await flush();
+
+		expect(vault.writeLog).toEqual([]);
+		expect(Notice.messages).toEqual([
+			'That change would edit a note outside this base’s filter, so nothing was written.',
+		]);
+	});
+});

@@ -366,7 +366,11 @@ refused whole if any write targets an `outsideFilter` item — and a replay skip
 one reason read twice: its authorization came at capture time, and it restores RAW
 captured keys rather than planning against these settings, so a collision that would
 corrupt a note through the planner is unreachable from one. Serialization is the refusal
-all three share. All three live in
+all three share. **Every view answers that second question the same way, and absence is
+part of the answer**: a path the model does not hold is unwritable, because absent and
+"present and included" are different facts and only the second one authorizes a write. The
+backlog view read absence as permission until 2026-08-31 and a stale menu subject was
+written to through the hole. All three live in
 `view/writeGate.ts` — the view owns a `WriteGate`, delegates the host's three write
 methods to it, and publishes its progress; the gate itself touches no DOM. Everything applied was
 planned by `domain/writePlan.ts`, which touches nothing, and applied by
