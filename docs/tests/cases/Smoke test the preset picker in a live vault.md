@@ -110,5 +110,13 @@ container, title and content rules.
 
 ## Outcome
 
-Not yet run. **This is a checklist to re-run, not a record.** It reopens with the next
+**2026-08-30 — exercised during development, not walked as a sweep.** The maintainer
+reports testing this behaviour in a vault while 0.10.0 was built. That is evidence of use
+and it is recorded as such; it is **not** a run of the steps below, which were not walked
+one by one. Everything here that needs a community theme, a themed accent, a real pane
+width or a screen reader is therefore still unanswered — those are the questions this note
+exists for, and the ones development use is least likely to have asked. The note stays open
+for the next sweep.
+
+Not walked as a sweep. **This is a checklist to re-run, not a record.** It reopens with the next
 change to the dialog, its stylesheet partial, or the preset data.

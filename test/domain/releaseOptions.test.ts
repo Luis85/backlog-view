@@ -220,4 +220,24 @@ describe('the release view names its own keys', () => {
 		// And an unbound key is not a collision — it is the offer predicate's business.
 		expect(membershipCollision(releaseSettingsWith({ membershipKey: '' }), plan)).toBeNull();
 	});
+
+	it('reports a membership key aimed at a property the RELEASE NOTE itself owns', () => {
+		// The second population, and the gap neither report could see: `configProblems` has
+		// no membership role and `releaseNoteProblems` deliberately excludes the item side,
+		// so `membershipKey` pointed at this view's own status or released-date key was
+		// reported by nothing — while every release in the base counted itself among the
+		// unresolved memberships, a figure that scales with the vault.
+		const plan = resolveSettings(new FakeViewConfig({}) as never);
+		for (const key of ['versionKey', 'targetDateKey', 'statusKey', 'releasedDateKey', 'descriptionKey'] as const) {
+			const settings = releaseSettingsWith({ [key]: 'shared', membershipKey: 'shared' });
+			expect(membershipCollision(settings, plan), key).not.toBeNull();
+		}
+
+		// Derived from `releaseOwnedProperties`, the same list `releaseNoteProblems` reads,
+		// so a release property added later is covered by being declared once. A key this
+		// view names nowhere is outside what any check can see, and stays a clean answer.
+		expect(
+			membershipCollision(releaseSettingsWith({ membershipKey: 'nothing-names-this' }), plan),
+		).toBeNull();
+	});
 });

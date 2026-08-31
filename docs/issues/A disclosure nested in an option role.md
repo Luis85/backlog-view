@@ -6,8 +6,8 @@ status: Open
 area: ux
 priority: P2
 created: 2026-08-08
-source: Automated review of PR #96 (the timeline's row disclosure), which found the
-  first half of it and then the second half of it
+source: "Automated review of PR #96 (the timeline's row disclosure), which found the
+  first half of it and then the second half of it"
 files:
   - src/view/render/rows.ts
   - src/view/render/cardChildren.ts

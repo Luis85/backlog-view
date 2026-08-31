@@ -7,9 +7,9 @@ area: view
 priority: P3
 created: 2026-08-09
 closed: 2026-08-09
-source: Found while fixing the same defect on the dependency connector — Codex review on
+source: "Found while fixing the same defect on the dependency connector — Codex review on
   PR #114 raised the connector, and the grips turned out to be the identical case one
-  pixel away
+  pixel away"
 files:
   - src/view/render/timeline.ts
   - src/view/render/board.ts

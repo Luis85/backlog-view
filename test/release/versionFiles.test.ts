@@ -22,7 +22,7 @@ import { describe, expect, it } from 'vitest';
  *   client has no compatibility answer for it, which is a user-facing bug that no test
  *   in this repository would otherwise catch and no reviewer reliably notices.
  *
- * A node test rather than a sixth step in `npm run check` (ADR 0007): the suite already
+ * A node test rather than a step of its own in `npm run check` (ADR 0007): the suite already
  * runs in CI, so this is enforced everywhere the gate is without changing what the gate
  * IS.
  */

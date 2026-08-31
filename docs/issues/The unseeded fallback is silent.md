@@ -55,7 +55,7 @@ every whole-population predicate that was tried as a gate had a hole in it — o
 created note with no `order` yet, or one legacy tie in another corner of the vault,
 re-opens the fallback for a subtree that is perfectly seeded, and the wider gate before
 that answered over a `gapSpent` that was correct. Gating on the tie AT THE DROP SITE has
-no such hole and is what shipped; ADR 0032 records both wrong gates in full, because both
+no such hole and is what shipped; ADR 0033 records both wrong gates in full, because both
 were built here.
 
 **A third instance, and the sharpest, found by PR review on 2026-08-30: with NO peers the

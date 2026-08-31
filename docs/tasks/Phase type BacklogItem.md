@@ -56,7 +56,7 @@ Each of those is currently defended by prose and tests rather than by types.
 
 Stage the build in the type system so invalid states cannot be named:
 
-```
+```text
 RawItem      // what addItem produces: file, entry, frontmatter-derived fields
 LinkedItem   // + parent, children, orphan — after linkParents/breakCycles
 BacklogItem  // + depth, levels, rollups, focusRoot — after assignAll

@@ -733,7 +733,7 @@ each was rejected, where "simpler" is not a reason and "cost N and bought a rena
   its quoted strings, whole. The form is a backticked path and a quoted test name on one
   line:
 
-  ```
+  ```markdown
   **Checked by** `test/domain/settings.test.ts` — "keeps its own declared states over the shared list once configured"
   ```
 

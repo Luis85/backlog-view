@@ -30,7 +30,7 @@ older wording of this paragraph got wrong was forbidding a *second* superlinear 
 outright rather than bounding it: the rule that matters is that nothing here sorts a set
 that can outgrow the items, not that there is exactly one sort.
 
-A **third** joined them with the global rank (ADR 0032): `rankedItems` (`rankOrder.ts`)
+A **third** joined them with the global rank (ADR 0033): `rankedItems` (`rankOrder.ts`)
 sorts every loaded item by `order` once per build to make `model.ranked`. It is bounded
 exactly as the other two are — over the item set, once per build rather than per row — so
 three passes leave the build's bound at **O(n log n)**, which is the whole of what the
@@ -127,7 +127,7 @@ a node test that did would be measuring the runner.
   roots (what a move at the top level MEANS, which is a question about the screen), the
   PEER group (`realRoots` at the top level, `parent.children` below it — the rows a move
   is aimed among, which is intent and not arithmetic), and the RANK POPULATION
-  (`model.ranked`, what number the move gets). The last two parted company with ADR 0032:
+  (`model.ranked`, what number the move gets). The last two parted company with ADR 0033:
   a `DropTarget`'s `peers` says where the user aimed and `anchoredOrder` reads
   `model.ranked` for the number, so neither the peer list nor any projection's slice of
   it may be handed to the arithmetic as if it were the population.
@@ -339,7 +339,7 @@ a node test that did would be measuring the runner.
   must therefore skip such a row's whole BRANCH rather than step over the row and carry
   on: half-updating a subtree past a note that may not be written to leaves the tree worse
   than not touching it.
-- **`order` is ONE fractional rank over everything the Base returns** (ADR 0032), not a
+- **`order` is ONE fractional rank over everything the Base returns** (ADR 0033), not a
   per-group number. There is no gap threshold and no renumbering path: `MIN_GAP`,
   `renumberWrites`, `afterHighestKnown` and `reorderableGroup` are all deleted. A
   placement is a midpoint between the anchor's two neighbours in `model.ranked`
@@ -379,7 +379,7 @@ a node test that did would be measuring the runner.
 - **An unseeded vault falls back to ranking among the destination's peers alone** — ADR
   0008's arithmetic, kept as a bridge — and the fallback is gated on the `tied` refusal,
   a fact about the two rows the placement landed between, never on a question asked of
-  the whole population. Both wider gates were built here and both were wrong; ADR 0032
+  the whole population. Both wider gates were built here and both were wrong; ADR 0033
   records why, and `docs/issues/The unseeded fallback is silent.md` records what the
   switch still does not tell the user.
 - Known limitation, not specific to context rows: **the rank space is the BASE's

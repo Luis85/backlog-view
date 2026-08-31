@@ -885,7 +885,7 @@ export function computeDropWrites(dragged: BacklogItem, target: DropTarget, rank
  * worked and a `New <child>` beside it refused.
  *
  * The name still says `drop` because a drop is the placement everything else is measured
- * against, and the register (ADR 0032) names it.
+ * against, and the register (ADR 0033) names it.
  */
 export function dropPlacement(dragged: BacklogItem | null, target: DropTarget, ranked: BacklogItem[]): RankResult {
 	const global = orderForTarget(

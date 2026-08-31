@@ -88,7 +88,7 @@ And the distribution ALTERNATES in stretches, which is the strongest single fact
 Taking the whole PR in push order, runs fired on three, then none on three, then two,
 then none on three:
 
-```
+```text
 6e605bb ✓  5740be1 ✓  670b111 ✓   243a4f2 ✗  521d3d7 ✗  277a6bd ✗
 7053f94 ✓  ad70dbe ✓               803ee6d ✗  2052860 ✗  e03b3ea ✗
 ```

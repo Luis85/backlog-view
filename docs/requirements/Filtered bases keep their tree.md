@@ -58,7 +58,7 @@ structure that makes the answer mean anything.
 | | |
 | --- | --- |
 | A write target | Refused structurally, not by remembering |
-| A ranking peer | Never **written to** — though its `order` is still **read**, so nothing lands above something visible, and a RANKED one is a legal anchor to be dropped beside at the focus level ([ADR 0032](../adrs/0032-order-is-a-global-rank.md)) |
+| A ranking peer | Never **written to** — though its `order` is still **read**, so nothing lands above something visible, and a RANKED one is a legal anchor to be dropped beside at the focus level ([ADR 0032](../adrs/0033-order-is-a-global-rank.md)) |
 | Counted in a rollup | Traversed *through*, never counted |
 | A source of vocabulary | Not in the states, the tags, the level breakdown or the creation folder |
 

@@ -19,7 +19,6 @@ iteration: ""
 Translated strings are a different length and sometimes a different direction. The view
 has a fixed-width column model and a depth-indented tree, so both are load-bearing.
 
-
 **As** someone reading the plugin in a language with longer words or the other reading
 direction, **I want** the tree to still line up and point the right way, **so that** the
 view is usable rather than merely translated.

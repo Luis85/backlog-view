@@ -87,6 +87,35 @@ collide, drawn instead of the index. Designing that is the work, and it is why t
 deferred rather than patched: a guard with nowhere to speak is a silent refusal, which is
 the failure this note is about wearing different clothes.
 
+## Narrowed, 2026-08-30 — the worst pairing is reported; the rest is reported only at a write
+
+Two of the three things this note said were missing now exist, and the note is narrowed
+rather than closed because the third does not.
+
+**The role vocabulary exists.** `ReleaseNoteRole` and `releaseOwnedProperties`
+(`src/domain/settingsConsistency.ts`) are this view's options collected as `{ role, key }`
+pairs, and `releaseNoteProblems` reports any key carrying more than one role — the same
+algorithm `configProblems` runs for the backlog view, not re-derived.
+
+**The worst pairing has somewhere to speak.** The membership key aimed at the type key —
+the one that reports essentially every typed item as unresolved, every member count `0` and
+every scope empty — is `membershipCollision`, which as of today scans the plan's properties
+AND this view's own, and is drawn beside the unresolved count in `drawUnresolved`
+(`src/view/release/renderIndex.ts`). That is a report and not the empty state this note
+proposed: [[A membership key aimed at a release's own property]] ruled on the shape while
+closing, and ruled the other way for a stated reason — an empty state drawn instead of the
+index puts the whole screen behind one mis-binding, while the count that is already wrong
+goes on being wrong with nothing explaining it. The register is followed here, not this
+paragraph.
+
+**What is still unreported is narrower, and is the reason this stays open.** A collision
+between two RELEASE-NOTE keys — the version and the target date on one property, say — is
+detected by `releaseNoteProblems`, but that function is this view's `writeProblems`: it
+refuses a batch and says so *at the moment of an edit*. Nothing draws it on the index or on
+a release's header, so a reader who only looks sees three figures reporting one value and no
+line saying why. The surface is what is missing, exactly as this note said; only its worst
+case has since been given one.
+
 ## Impact
 
 Reaching the worst state needs one deliberate act — picking the same property for the

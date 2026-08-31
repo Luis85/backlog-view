@@ -19,7 +19,6 @@ iteration: ""
 The plugin publishes a small set of custom properties a theme or snippet author can
 override, and says which ones they are.
 
-
 **As** a theme or snippet author, **I want** a named set of custom properties I can
 override, **so that** I can recolour the backlog without guessing which of the plugin's
 internals will survive the next release.

@@ -2,11 +2,11 @@
 type: Bug
 order: 20
 parent: "[[A board scoped to Deliverables]]"
-status: Open
+status: Done
 priority: P2
 area: view
 created: 2026-08-30
-source: Review of the [[New cards in place]] decomposition (Codex, PR #225)
+source: "Review of the [[New cards in place]] decomposition (Codex, PR #225)"
 files:
   - src/view/projection.ts
   - src/view/render/toolbar.ts
@@ -48,7 +48,7 @@ state needs a retained `Iteration` focus, which the picker offers for the same r
 
 ## Fix
 
-Not yet made. The narrowing belongs in one pass rather than one branch: the
+Made 2026-08-30, before 0.10.0. The narrowing belongs in one pass rather than one branch: the
 `Iteration`/`Release` filter has to apply to the board projections too, not only to the
 fall-through. The shape that composes — a filter applied to every projection's result
 rather than a branch that returns early — is the one `offerableTypes` already uses for
@@ -60,6 +60,20 @@ caller there still offered `Test suite` and `Test case`."*
 The test that must fail without it: `offerableTypes` on the `board` projection returns no
 `Iteration`, asked of the helper rather than of a surface — the category is what broke
 three times, and a test per surface is what let the second and third through.
+
+That is `test/view/offerableTypes.test.ts`, and it asks every projection rather than the
+board alone, for both types rather than the one named here — **`Release` leaked through
+the same early return and is the same defect**, which this note did not say because it was
+written from the `Iteration` symptom. The other two branches excluded both already and by
+accident: `isDeliverableType` keeps only `Deliverable`, and `isMarkerType` covers all three
+markers. So one screen was wrong and two were right for reasons that had nothing to do with
+this rule — which is why the fix moves the filter above all three branches rather than
+adding it to the one that was caught. Watched failing: restoring the board's early return
+reds it, naming the projection.
+
+A second assertion sits beside it for the instrument's own sake: every projection still
+offers something. A narrowing that returned nothing everywhere would satisfy the first
+assertion and break every New menu in the plugin.
 
 ## Lesson
 

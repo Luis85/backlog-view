@@ -7,891 +7,224 @@ upgrade — not the commit log. The format follows
 [ADR 0016](docs/adrs/0016-break-compatibility-freely-before-1-0.md): before 1.0, a
 breaking change gets a line here rather than a deprecation window.
 
+**One entry is one sentence: what changed, for the reader.** The reasoning behind a change
+does not belong here — it is already in `docs/`, in the note that argued it, and a changelog
+that repeats it is a second copy to keep in step and a wall nobody reads. 0.10.0 was written
+the other way first and came to 11,267 words across 113 entries, 37 of them full paragraphs
+and one of them 430 words; rewritten to this rule it is a fifth of that and says the same
+things. A breaking change is the one exception and keeps the room it needs, because what an
+upgrader has to *do* is the whole reason they opened the file.
+
+Add the entry in the pull request that earns it, under the section's existing `### Added` /
+`### Changed` / `### Removed` / `### Fixed` heading rather than a second copy of one —
+`test/release/changelogVersion.test.ts` fails on a repeated group heading, because the whole
+section is what the release workflow publishes as the release body.
+
 See [RELEASING.md](RELEASING.md) for how this file is kept in step with a release.
 
 ## [Unreleased]
 
 ### Added
 
-- **Rank the rows of a focused backlog by hand.** With a focus level on, dragging one row
-  above or below another writes its rank — as do Alt+↑/↓ and the four `Move` entries in
-  its menu, which plan the identical write. One note is written, its `order` and nothing
-  else: a focus rank never touches the parent key, and indent and outdent stay refused
-  across the synthetic top row. Where no rank fits between the two neighbours nothing is
-  written and a notice names the remedy rather than the drop doing nothing in silence.
-- Two commands in the palette, offered while a backlog view is showing results.
-  **`Seed ranks from the hierarchy`** numbers every note in the order the tree draws it —
-  what a vault whose orders were never spread for this needs, and correct exactly once,
-  since a second run discards any order set by hand at a focus level. **`Respace ranks`**
-  keeps the order already on screen and puts room between each pair again. Each asks first,
-  with the count it would write; each recomputes that batch when you answer, so a vault
-  that changed while the dialog was open is not overwritten with a stale plan; and each is
-  one undo. Neither writes a note the base excludes, and where the notes they would rank
-  are wedged against ones it cannot write, nothing is written and the notice names them.
-
-- A `pbl-id` property on every note the plugin creates — one integer, taken from the
-  highest the vault already holds, written in the same single write that makes the note. It
-  is a handle for naming an item outside Obsidian, where a title is going to change and a
-  path is going to move. One global sequence over work items, resources, releases and
-  absences, with no type prefix. Notes that already exist are left exactly as they are:
-  there is no backfill. Best-effort unique rather than guaranteed: two devices creating
-  while offline, or a file that has reached the disk but not yet Obsidian's metadata cache,
-  can each produce the same number.
-
-- `Mark as released` on a release's own screen: one gated batch writing the configured
-  released status and today's date to the release note and to nothing else, undoable as one
-  entry. It asks first, listing the members that are not finished — each openable from the
-  dialog without answering it — and a member finished by its own workflow, a `Deliverable`
-  say, counts as finished. It is withheld, and says which option to bind, until the status
-  property, the statuses that mean released, the status to write and the released-date
-  property are all configured; and on a release that is already out, that carries a date
-  already, or whose status or date cannot be read. Nothing is written if the release or its
-  configuration changed while the dialog was open, or if the note had already moved on
-  before it opened.
-- `Generate release notes` beside it: one Markdown file per release, named for it, grouped
-  by type in the order the release's own scope tree draws them. It is written whole and
-  regenerating it is byte-identical, it says so at its top, and it refuses a file at that
-  path that this view did not write or that belongs to another release — including a second
-  release that shares the first's basename. A release with no members still gets a file
-  saying so, because an empty release notes file is a fact and a missing one is ambiguous.
-- Two release view options for the first of those actions — the statuses that mean released,
-  and the single status marking one writes — plus a folder for the generated notes. Binding
-  the released-date property to the target-date property is refused where it is entered: a
-  record that overwrites the plan destroys the only evidence a release slipped.
-
-- A row of a release's scope tree carries a context menu, offering `New <type>` for every
-  type that row may hold. The note it creates hangs from the row, ranks after that row's
-  existing children, and joins the open release in the same write — so it appears under
-  the row it was made from rather than being filed and lost. Available on a context
-  ancestor too, which is still not a write to that row. Reachable from the keyboard with
-  the Menu key or Shift+F10 on the row the tree marks. A release deleted or retyped while
-  the title is being entered refuses the creation rather than making a note whose
-  membership cannot be resolved. A test-catalog row is offered no menu at all: every child
-  it could hold is a catalog note, which a release does not hold.
-- `Improvement`, a fifth type beside the ladder. It hangs under an `Epic`, a `Feature` or
-  a `PBI` and holds `Task`s, wherever it hangs — so a further round of work on something
-  already delivered gets its own note and its own release, instead of the shipped item's
-  release being moved forward and the release that shipped it losing a member. It is
-  offered by the `+`, the toolbar's creator and `Set type`, and files into `improvements/`
-  under the home folder by default.
+- `npm run check` has a sixth step, `lint:md`, gating the Markdown in `docs/` and the
+  root documents.
+- Rank the rows of a focused backlog by hand: with a focus level on, a drag, Alt+↑/↓ or the
+  menu's `Move` entries write the dragged row's `order` and nothing else.
+- Two palette commands rewrite every rank at once — `Seed ranks from the hierarchy` in the
+  order the tree draws it, and `Respace ranks` keeping the order already on screen.
 
 ### Changed
 
-- **`order` is now one rank over everything the base returns, not a position inside a
-  sibling group.** That is what makes a focused backlog orderable at all: its rows come
-  from many different parents, and they can only be ranked against each other if the
-  number means the same thing for all of them. Two consequences worth knowing before
-  upgrading. **Ordering a focused list also orders each item inside its own group** —
-  there is one rank, and it is the tree's. And **a move with no room left between its two
-  neighbours is now refused** rather than renumbering the group to make room: a drop
-  writes one note or none, and `Respace ranks` is what reopens the space. An existing
-  vault keeps working untouched — where two neighbouring ranks are equal, which is what
-  the old scheme produced, the placement falls back to the arithmetic that vault was
-  written with — but it will draw its focused lists in tree order until its ranks are
-  seeded, and nothing announces which of the two is answering.
-- The ✨ set-up button now gives a blank `order` a rank that keeps the row exactly where it
-  is drawn, instead of appending it after its siblings, and says so honestly when it
-  cannot: a rank it could not place is reported as skipped rather than counted as nothing
-  to do. It still fills only blanks — two existing ranks that already contradict the
-  drawn order are Seed's to fix, not the backfill's.
+- **Breaking:** `order` is one rank over everything the base returns rather than a position
+  inside a sibling group, which is what makes a focused backlog orderable at all — its rows
+  come from many parents and can only be ranked against each other if the number means the
+  same thing for all of them. Two consequences before you upgrade: ordering a focused list
+  also orders each item inside its own group, since there is one rank and it is the tree's;
+  and a move with no room left between its two neighbours is refused rather than renumbering
+  the group to make room, so a drop writes one note or none and `Respace ranks` is what
+  reopens the space. An existing vault keeps working untouched — where two neighbouring
+  ranks are equal, which is what the old scheme produced, the placement falls back to the
+  arithmetic that vault was written with — but it draws its focused lists in tree order
+  until you run `Seed ranks from the hierarchy` once, and nothing announces which of the two
+  is answering.
+- The ✨ set-up button gives a blank `order` a rank that keeps the row where it is drawn
+  rather than appending it after its siblings, and reports a rank it could not place as
+  skipped instead of counting it as nothing to do.
 
-- **`Show completed items` is now the toolbar's eye alone, kept per saved view on this
-  device rather than in the `.base` file.** It was a view option and a toolbar toggle at
-  once, and the toggle wrote the option — so hiding finished work for an afternoon rewrote
-  a file everyone the base is shared with reads. Its own default is unchanged (completed
-  items show), and the eye is where it has always been. What it costs is the shared
-  default: a base sent to a colleague no longer arrives with finished work hidden, and the
-  pick does not follow you to another device. A `.base` written before this keeps a
-  `showCompleted` key that nothing reads.
+## [0.10.0] - 2026-08-30
 
-- The release header's released-date control is now labelled `Set released date`. It said
-  `Mark as released`, which is what the new closing action beside it is called — and that
-  one writes the status as well as the date, while this one writes only the date and is the
-  only thing that clears it. Two controls on one screen under one label is worse than a
-  field named as a field.
+### Added
 
-- A release's own screen draws the two closing actions inside its header rather than in a
-  band between the header and the tree, beside the release's summary line. At a narrow pane
-  they wrap to their own line and the summary stays whole.
-- The released date on that header is now the control wherever a release has one: pressing
-  it still clears, corrects or backdates through the same dialog. Where the date is empty,
-  the invitation to set one is drawn only where `Mark as released` is withheld — the status
-  property, the released statuses or the transition value still unbound, a status that
-  cannot be read, or a release already carrying a released status with no date beside it. Everywhere else that action is the way to a first
-  date, and it writes the status with it, so the ordinary release has one control for the
-  field instead of two.
-- ✨ on a release view also binds the notes folder, the statuses that mean released, and the
-  status to write — the three things the closing actions need that Obsidian's property
-  picker can never offer, because none of them is a property. The button now offers itself
-  when a press would bind any of the three, instead of only when a property is free. The
-  vocabulary and the status to write are seeded from each other, so setting either one first
-  and pressing ✨ leaves a pair the closing actions accept. No option gains a default: a
-  vault that never presses ✨ still opens its options panel empty.
-
-- **Breaking:** an item names its assignee by link to a `Resource` note rather than by
-  name. A name still resolves where the vault already has the note — `assignee: Sarah`
-  keeps its assignment when `Sarah.md` is a `Resource` the base returns — so what is lost
-  is only assignees naming somebody with no resource note behind it: the text renders,
-  marked, and the item shelves. There is no migration, and none is needed for the names
-  that resolve — see `docs/issues/No migration off the string assignees.md`.
+- **Release**, a third Bases view (`product-release`): every release the base holds as one
+  list, and one release's scope drawn as a tree.
+- **Estimation**, a second Bases view (`product-estimation`): score each item against a
+  configurable weighted model — eight value dimensions plus confidence, effort and
+  complexity — and rank by the result.
+- `Improvement`, a fifth type beside the ladder, for a further round of work on something
+  already delivered: it takes its own release rather than moving the shipped item's.
+- `Resource`, a declared type for the people work is assigned to. A `Resource` note is
+  recognised and then left out of every projection — the plan points at a person, it does
+  not contain one.
+- `Release` joins the fixed type vocabulary as a marker, beside `Milestone` and `Iteration`.
+- A `pbl-id` on every note the plugin creates: one integer from the highest the vault holds,
+  written in the same write that makes the note. A handle for naming an item outside
+  Obsidian. Existing notes are untouched — there is no backfill.
+- `Mark as released` on a release's own screen: one undoable batch writing the configured
+  released status and today's date to the release note and nothing else. It asks first,
+  listing the members that are not finished.
+- `Generate release notes` beside it: one Markdown file per release, grouped by type.
+  Regenerating it is byte-identical, and it refuses a file it did not write.
+- `Set release` on an item's own menu, with **No release** at the foot to take it back out.
+- A context menu on a release scope's rows, offering `New <type>` for every type that row
+  may hold — the note hangs from that row and joins the open release in one write. Reachable
+  from the keyboard with the Menu key or Shift+F10.
+- **New release** at the head of the release list, and again on the empty state.
+- A release's status, its description and the day it shipped are set from its own screen.
+- Releases draw on the roadmap: a `Release` with a target date draws a dashed purple line
+  at that date, with a swatch in the legend.
+- A control in the release header opens the release note.
+- The release list shows how far along each release is, and how far it landed from target.
+- A release's own screen opens with the same figure, counted over its own members.
+- A release's scope folds, takes a keyboard walk (arrows, `Home`/`End`, `Enter`), and has
+  its own toolbar: collapse all, expand all, hide done.
+- Release view options for all of the above: the statuses that mean released, the single
+  status `Mark as released` writes, a notes folder, the item state property and its done
+  values, and the Deliverable workflow's own pair. Binding the released-date property to the
+  target-date property is refused where it is entered — a record that overwrites the plan
+  destroys the only evidence a release slipped.
+- ✨ on the release view binds every property that view can use, without making a release.
+- The estimation view has a toolbar: the backfill action, an undo, and how many results are
+  scored.
+- The estimation view ranks by a framework you pick — RICE, ICE, WSJF or value over effort —
+  previewing what it would change before it configures the indicator.
+- A business value stamp left without its total is reported, and offers the cleanup.
+- A stale business value can be recalculated where it is reported.
+- The item's name in the estimation panel opens the note, and so does `Enter` in the table.
+- **New resource** on the roadmap's resources axis toolbar.
 - The roadmap's resources axis draws one row per `Resource` note the base returns,
   alphabetically, including a resource nobody is assigned to yet.
-- `Set assignee` lists those notes and offers `New resource...`, which creates the note
-  and assigns it in one action. `New assignee...` is gone.
-- An unset property chip is no longer drawn at rest. The tree spent its visual budget on
-  absence — 7 of 9 columns on a typical row showed a grey chip meaning "nothing here", 30
-  of them on the demo backlog — so a first screen's most repeated word was the name of a
-  property nobody had filled in. The chip appears when the row is hovered or when the
-  keyboard reaches it, which is when it is an affordance rather than a texture. It keeps
-  its box either way, so nothing reflows, and it is still a real button, so clicking it
-  still sets the property. The roving arrow-key selection counts as reaching it, and a
-  device with no hover at all shows the chips outright, since there they can be reached
-  no other way. A reader who asked for reduced motion gets the reveal without the fade.
-- The selected projection tab is readable. Its label was the accent colour on a tint of
-  the same accent — 2.56:1 in dark and 1.65:1 in light, against 6.69-8.13:1 for every
-  unselected tab beside it — so the one control that answers "where am I" was the hardest
-  to read in the toolbar. The tint and the underline still carry the accent; the label no
-  longer has to.
+- The roadmap's shelf switches between cards and a compact list.
+- The open shelf's height is yours to set: drag the grip, or step it with the arrow keys.
+- The iteration board's shelf carries the same four picks as the roadmap's — layout, sort,
+  type filter and search.
 
-### Fixed
-- The docs register gate no longer fails on `docs/product/`. A playbook is the method a
-  product definition is produced by, not a work item, so it carries none of the
-  `type`/`order`/`status` frontmatter the gate requires — the same exemption `prds/` and
-  `sdds/` already have, for the neighbouring reason that those arrive from outside while
-  this one is followed here.
+### Changed
 
-
-- The reason a closing action is not offered now takes a line of its own instead of sitting
-  beside whichever button is still there — which, since a reason replaces its own button,
-  was always the other action's, so it read as that button's caption.
-- Clearing a release's released date no longer drops keyboard focus to the page. Clearing it
-  can make `Mark as released` offered again, which removes the very button the dialog was
-  opened from, so the focus restore had nothing left to find; it now falls back to the
-  closing action the write brought back.
-- An unset property chip meets AA contrast when it is shown. It was `--text-faint`, at
-  2.57:1 in dark and 2.12:1 in light against the 4.5:1 a 12px label needs, on an element
-  that is also a button — unreadable and clickable at once. Measured at 7.03:1 and 6.19:1
-  after the change.
-
-- The rows in a confirmation dialog — the unfinished members `Mark as released` lists, each
-  openable before answering — now read as the accent-coloured links they are, instead of
-  painting Obsidian's filled, boxed default button underneath. Their reset was a bare class
-  and lost the cascade to Obsidian's own `button` rule outright, so all three of its
-  declarations did nothing in a vault; they also gain the focus outline the fix costs, on a
-  control whose whole reason for being a button is that it is a tab stop.
-- A finished item in a release's scope now reads as finished: its state chip carries the done
-  colour and the check the backlog tree's own chip has, instead of `Done` and `Doing` in one
-  ink while the summary above counted one of them as complete.
-- An assignee chip whose value names no resource now says so to a screen reader, not only
-  in the tooltip and the styling: its accessible name reads `Change assignee (currently
-  Sarah, which names no resource in this base)`.
-- Marking or editing an absence now refuses when the resource it names stopped being a
-  `Resource` note — retyped or deleted — between the form opening and the submit, instead
-  of writing a link that draws in no lane. The same check the assignee write already made.
-- Two surfaces that were still English in every language: the way a move on the dated axis
-  names a one-ended span (`2026-08-01 onwards`, `up to 2026-08-31`) and the two-date form
-  between them, and every sentence the estimation view draws instead of its table when the
-  model is misconfigured — the ranges, the rubric counts, the unbound properties, the
-  weights that do not total 100. All of them now come from the catalog.
+- **Breaking:** an item names its assignee by link to a `Resource` note rather than by name.
+  Resolution decides, not spelling — `assignee: Sarah` keeps its assignment wherever the
+  base already returns a `Sarah.md` typed `Resource`. What goes stale is narrower: an
+  assignment naming somebody with **no** `Resource` note behind them draws no row on the
+  resources axis. Nothing is rewritten on disk either way. Give that person a note, or set
+  the assignee again.
+- **`Show completed items` is the toolbar's eye alone now, kept per saved view on this
+  device rather than in the `.base` file.** It was an option and a toggle at once, and the
+  toggle wrote the option — so hiding finished work for an afternoon rewrote a file everyone
+  the base is shared with reads. The default is unchanged. What it costs: a base sent to a
+  colleague no longer arrives with finished work hidden, and the pick does not follow you to
+  another device. A `.base` written before this keeps a `showCompleted` key nothing reads.
+- **Releases no longer appear in the backlog** — no rows, no cards, and no New menu or Set
+  type offers the type. The release view is where a release is made, listed and read.
+- The plugin reads in your Obsidian's language. Every surface the view draws now takes its
+  words from the message catalog: the tree, both boards and the roadmap; the whole toolbar;
+  every menu; every empty state; every dialog and both commands; the view-options menu; the
+  writer's mid-move notices; the words for "no placement"; and the estimation view's own
+  options, refusals and sentences.
+- The write path's serialization and single undo slot are plugin-wide: a write in one Bases
+  view briefly holds back the other's write controls, and undo takes back the vault's last
+  batch whichever view wrote it.
+- Both undo buttons read `Undo last change`.
+- The release list is a list of releases now, not a grid of columns: each release is a
+  two-line band.
+- A release's own screen draws its two closing actions inside the header, and the released
+  date is the control wherever a release has one.
+- The release header's released-date control is labelled `Set released date` — the action
+  beside it is what `Mark as released` means now.
+- An unset property chip is no longer drawn at rest. Seven of nine columns on a typical row
+  showed a grey chip meaning "nothing here".
+- The selected projection tab is readable: it was 2.56:1 in dark and 1.65:1 in light.
+- The shelf's resize handle sits on the edge the shelf actually shares with the roadmap.
+- The shelf's title bar stays on screen while you scroll the shelf.
+- A compact shelf row draws aligned columns, reusing the tree's own stored property widths.
+- A shelved parent's disclosure moves onto its own row, so a shut parent costs no more
+  height than a leaf.
+- A card lists work below a row the screen is not showing — a task committed to the sprint
+  under a story that is not.
+- The configuration warning reads as one sentence, the same one in all three places it
+  appears.
+- Assign missing properties no longer creates a date property on a note that cannot use one:
+  a `Milestone` gets the target and not the start.
+- A new iteration is named for its goal — `1 - Iteration - Ship the board`.
+- The manual's item-types paragraph is built from the type vocabulary rather than written
+  around it.
+- The estimation view's table and panel are readable: proportional strips on value and
+  coverage, a currency chip that spends colour only where something needs doing, and columns
+  that line up across every row.
+- A sorted column header says which direction, not just that it is active.
+- A dimension problem names the dimension the way its own settings panel does —
+  `Strategic alignment`, not `strategic-alignment`.
+- Each dimension's box is labelled `Weight (% of 100)`, and a refusal says the delta.
+- A refused estimation setup names every configuration problem, not just the first.
 
 ### Removed
 
-- The `Show completed items` view option — see **Changed**, above: the value is the
-  toolbar toggle's and the view-state store's now, never a `.base` setting.
-
+- The `Show completed items` view option — see **Changed** above.
 - The `Resources (in order)` view option. The roster is the notes the base returns.
 
-### Added
-
-- **A release's status, its description and the day it shipped are now set from its own
-  screen.** The status chip in the release header opens a menu of the statuses your
-  vault declares (a new **Release statuses (in order)** option), plus the ones your other
-  releases already carry, plus this one's own — with the current one ticked and a **Clear
-  status** entry where there is something to clear. Re-picking the status a release already
-  has writes nothing. The description is a new property (**Release description property**,
-  bound by ✨ along with everything else): the **New release** dialog asks for one as its
-  last field, and the release's own screen draws it under the header as a line you press to
-  edit. Emptying the box takes the key off the note rather than leaving it blank.
-  The **released date** sits beside the target in the header: a release with none draws
-  **Mark as released**, and pressing it opens the same date picker the roadmap's Schedule
-  uses, prefilled with whatever the note already says. This is what makes the released
-  property usable at all — ✨ binds the key, and until now nothing in the plugin ever wrote
-  it, so the **Shipped** group and the `7 days late` figure could only be reached by editing
-  the note by hand. It writes the date and no status: marking a release released as one
-  transition, with its confirmation and its list of outstanding work, is still to come.
-  **This is the first thing the release view edits.** It creates release notes and,
-  until now, nothing else — so two things follow. It writes to the release note and never to
-  a member: work is edited on the backlog view. And the edit joins the plugin's one undo
-  slot, which this view draws no button for: a status you set here is taken back with the
-  backlog view's undo, the same slot every view shares.
-- **Releases now draw on the roadmap.** A `Release` note with a target date draws a line
-  down the dated grid at that date, its name in the header band and a swatch in the legend —
-  purple and dashed, so it is never read as a milestone's cyan line. It draws on the
-  resources axis as well as the plain timeline, since the line crosses the rows either way,
-  and the window widens to hold a release dated past everything else on the grid. The date is
-  read through the roadmap's own new **Release date property** option, which ships pointing at
-  `target-date` — the key the release view suggests for the same date — so a vault gets the
-  markers without setting anything; clear it and no markers are drawn. Nothing is written by
-  any of it, and a release is still not a row: it is not ranked, not counted, not a drop
-  target, and the shelf and the placed count are unchanged.
-- **The release view's ✨ now binds everything that vault's release view can use**, not the
-  four properties it bound before. The item **state** property joins it, which is what
-  switches on every progress figure this view has — the index bands, the scope rollups and the
-  hide-done toggle were all left unconfigured by a press that reported success — and so does
-  the **released date**. The state and the release's own status may now both point at
-  `status`, which is what the folder layout this plugin creates actually looks like: they are
-  read on different notes, and the two are the one pair the setup action is allowed to give
-  one property to.
-
-- **A release's own screen opens the release note.** One control in the header, beside the
-  title, on every scope screen including the empty ones — the note is where a version, a
-  target date and a status are edited, and this view reads all three and writes none of them.
-
-- **The release list shows how far along each release is, and how far each one landed from
-  its target.** Two new options on the release view turn them on. Bind **the property that
-  holds a work item's state** — and, if your vault does not spell them the usual way, the
-  values that mean done — and every release grows a progress bar and a `8 of 14 done` phrase
-  counted over its own items. Bind **the property that holds a release's released date** and
-  a release that carries one moves to a **Shipped** group, says how far it landed from its
-  target (`7 days late`, `7 days early`, `Shipped on time`), and stops being counted as work
-  in flight.
-  **Until you bind them the figures are absent rather than wrong**, which is worth knowing
-  because it is what you will see on the first open. With no state property bound the bar and
-  the phrase are not drawn at all — deliberately not drawn as 0%, which would look exactly
-  like a release where nothing is finished. With no released-date property bound **no release
-  is ever marked overdue**, however long its target has been past: without that one value the
-  view cannot tell a release that is late from one that shipped weeks ago, and it would
-  rather say nothing than say the wrong one of those. Since the option is new, that is the
-  state every saved release view is in until you set it. Both missing bindings are named in
-  one line beneath the list, so a screen that is staying quiet says why.
-
-- **The Deliverable workflow's own state property and done values are now options on the
-  release view too**, beside the ones above. A release holding only Deliverables reads its
-  progress off these when they are bound, so you no longer need to bind them on a backlog
-  view first, or hand-edit the `.base` file, to get a Deliverables-only release counting
-  correctly — the release view's own options menu can do it directly.
-
-- **A release's own screen opens with the same figure, over its own members.** Pick a
-  release from the list and its scope now starts with a progress bar, a percentage and an
-  `N of M items done` phrase, counted over what that one release holds rather than the
-  whole list. Hover it and it says WHICH property and which values decided the count — the
-  state property and the done values you bound, or, when a release's members span more
-  than one workflow, which workflows they are. With no state property bound the strip
-  still draws an item count, but names the property that is not configured instead of a
-  bar — never `0%`, which would look exactly like a release where nothing is finished. (The
-  release LIST'S bar, on the other hand, is withheld entirely with no state property bound
-  — that rule is unchanged.) A release with nothing in it withholds the strip too, since a
-  `0 of 0` figure beside a screen already saying the release is empty would say it twice.
-
-- **Releases are made from the release view.** A **New release** button now sits at the head
-  of the release list, and again on the screen you see when there are no releases yet. It
-  asks for a name and — where your vault tracks them — a version, a target date and a status,
-  and writes one note with those and nothing else. The first press also binds the release
-  view's own properties for you if you have never set them, and says so; a property you
-  deliberately cleared is left alone and is not asked for, and a property one of the view's
-  other options already points at is never handed out a second time — two options aimed at
-  one property is a state this view cannot report, so it will not create one.
-  Two things worth knowing before you use it. **New releases land in `docs/releases` unless
-  you say otherwise** — that is the shipped default and it is a new option on the release
-  view. If you moved your backlog's home folder, your releases used to go to
-  `<your folder>/releases`, and the release view cannot see that setting, so the next one
-  goes to `docs/releases` until you point the new option somewhere else. Nothing warns about
-  this; check where the note lands the first time. And **creating a note cannot be undone** —
-  that is true of every New in this plugin, not just this one — so a release made by mistake
-  is deleted the ordinary way.
-  A box you leave blank is left off the note entirely rather than written empty. That has
-  one consequence worth knowing: Obsidian's own property picker only offers a property some
-  note already carries, so in the view options the version, target-date and status boxes may
-  show a suggested name rather than a pickable one until a release you have made actually
-  carries that field. Fill a box in once and that property is pickable like any other.
-
-- **The release view has its own ✨ for binding those properties, without making a
-  release.** It sits at the head of the release list always, next to New release, and it
-  is offered again on the empty state that tells you no membership property is mapped —
-  withheld there only when you cleared that property on purpose, since a press could then
-  only bind something else and leave you looking at the same screen. A press says what it
-  bound, or that there was nothing left to add. Like every ✨ in this plugin, it touches
-  only the view's own configuration — it writes no note.
-
-- **A release's scope can be folded, and a row opens the note it names.** Every row that
-  holds children now carries a disclosure, so a large release can be collapsed down to its
-  Epics and Features rather than always drawing every Task; a leaf holds the same width in
-  reserve so titles at one level still line up. Folding never changes a figure — a folded
-  parent keeps its own progress, since the count is over the subtree rather than over what
-  happens to be drawn. Each row that holds a state also shows it, and a row with members
-  below it shows a compact progress figure of its own, the same bar the release-wide summary
-  above the tree already draws. Clicking anywhere on a row but the disclosure opens its note,
-  in the pane the view's own new **Open the note in** option names — the same choice the
-  estimation table already offers, defaulting to a split pane here too. A fold is remembered
-  per release: folding an Epic while looking at one release leaves it open in another, and —
-  where this view can tell which saved view it is — survives closing and reopening it;
-  embedded in a note, it lasts only the session.
-
-- **A release's scope is reachable from the keyboard.** The tree now takes one Tab stop
-  rather than none: the arrow keys move a highlighted row up and down between the ones on
-  screen, `Home`/`End` jump to the first and last, `Enter` (or `Space`) opens the highlighted
-  row's note, and Left/Right fold a row, unfold it, step into its children or step back out
-  to its parent — a leaf has nothing to step into, so Right does nothing on one. A middle
-  click on a row, anywhere but the disclosure, now opens the note in a new tab too, the same
-  gesture every other tree and card in this plugin already offers.
-
-- **A release's scope has its own toolbar: collapse all, expand all, and hide done.** The
-  third control folds away every finished subtree at once, leaving the rest exactly as
-  ranked; press it again to bring them back. When hiding takes the whole tree with it — every
-  member finished — the screen says so by name (`All 14 items are done.`) instead of going
-  blank, with the toggle still there beside it as the way back. Hide done is withheld
-  wherever the progress figure above it already reads "not configured": a control that could
-  hide rows the summary refuses to count would answer the same question twice, and
-  disagree.
-
 ### Fixed
 
-- **A release whose vault has no statuses yet can now be given one.** The status menu
-  offers what your options declare and what your other releases carry — so with neither, it
-  opened empty while the chip went on inviting a press. It now offers **New status...** in
-  exactly that case, which is how a vault writes its first one.
-
-- **A release can no longer lose its type to an editor left open.** If two release
-  properties named one key, every edit was refused — but fixing that while an editor was
-  still open let the pending edit through, still aimed at the key it was configured with,
-  which could be the type property. The edit is now refused with a notice naming the key,
-  and the same refusal covers an option re-pointed under an open editor.
-
-- **The release screen's description and released date no longer paint as filled, raised
-  Obsidian buttons.** Both are controls you press, so both are real buttons — and Obsidian's
-  own button styling outranked the flat look they asked for, so the description drew as a
-  boxed banner of normal-weight text across the header and the invitation to set a released
-  date drew as a raised box beside two plain dates. The description also read centred, and
-  now reads from the start of the line like the sentence it is. Nothing about what either
-  control does has changed.
-
-- **The release screen says "Description unreadable"** where it used to say "Release
-  description property unreadable" — the name of the setting, in a sentence about a note.
-  The dialog that edits it labels its box the same way.
-
-- **Deleting a note now takes its folded rows with it.** A row you had folded shut left an
-  entry behind in this device's saved working position, which then counted against the cap
-  on how much a view may remember — and, if a note ever came back at that path, brought the
-  row back folded without you folding it. Deleting a folder takes everything under it, and
-  deleting a release takes the folds of every row on that release's own screen.
-
-- **A release holding only Deliverables now shows progress**, where it used to say progress
-  was not configured. The figure now asks whether every kind of work a release's own members
-  span can be read as done, rather than asking only about the plan's own state property — so
-  a release scoped entirely to Deliverables reads its own workflow correctly, on the list and
-  on the release's own screen alike.
-
-- **A row's progress no longer reads `0/2` on a release where progress is not configured.**
-  With no state property bound, a parent with members below it used to draw a rollup anyway,
-  which looked exactly like a genuine "nothing here is finished yet" — the same absence the
-  summary strip above the tree already knew to leave blank rather than count as zero. The row
-  now leaves the same blank lane, agreeing with the header above it.
-
-- **A release's rows line up.** The state chip and the progress figure at the end of each row
-  used to pack against whichever title happened to be short, reading ragged down a scope with
-  titles of different lengths; they now anchor to the row's end, the same rule every column in
-  the backlog tree already follows.
-
-- **Selecting a title with the mouse no longer opens the note.** Titles in a release's scope
-  can be selected and copied, and finishing that drag by releasing the pointer over the row
-  used to dispatch a click that opened the note out from under the selection just made. A
-  plain click still opens it; a drag that ends one does not.
-
-- **Picking a different release no longer starts the keyboard on a row left over from the
-  last one.** If the same note happened to sit in both releases' scopes — most often a shared
-  ancestor drawn as context in each — the tree could open already highlighted on it instead of
-  its own first row. Picking a release now always starts fresh; reopening the SAME release
-  (a background refresh, an edit elsewhere) still returns you to where you were.
-- **The shelf's compact rows no longer reserve room for columns that are empty on every
-  card in the band.** In the list layout each row carries the same property columns your tree
-  does, so that the values line up down the band — but a column the whole shelf has nothing
-  in was still taking its width from every row, and the row's title was being squeezed to
-  make space for it. On the shipped demo backlog that was three columns of nothing on every
-  row, and titles cut short at about a third of the width they now get. A column any card in
-  the band has a value in is unchanged: it is still held open on the rows that have none, so
-  nothing shifts from row to row.
-
-- **The shelf's type headers no longer let the cards under them show through, and they look
-  the same in both layouts.** The header naming each type — `FEATURE`, `PBI` — stays pinned
-  at the top of the shelf as you scroll it, and it was painted in a see-through colour, so a
-  row passing beneath it was drawn straight through the type name. It is opaque now. The same
-  header also used to be drawn two different ways: a plain line in the card grid, a banded
-  strip with its count in a pill in the compact list. It is one header in both, and it pins in
-  both.
-
-- **The release list no longer draws every row as a raised Obsidian button.** Each row really
-  is a button — that is what makes it reachable with Tab, and openable with Enter and Space —
-  and it was carrying Obsidian's own button background and shadow, so the list read as a stack
-  of controls rather than as a list of releases. The reset was there and simply lost to
-  Obsidian's own rule; it is fixed at the rule rather than by changing the element, so the
-  keyboard still reaches every release. A second defect of the same kind went with it:
-  Obsidian gives a bare button a fixed height, which squashed the new two-line band down to
-  one line and spilled its second line into the release below.
-
-- **A focused roadmap no longer loses work beneath a parent the base filtered out.** A
-  parent shown for context, with a release between it and the work below, counted as an
-  empty scaffold and took that work off the screen with it — and the roadmap then said
-  every item was done and hidden, offering to show completed items that would not have
-  brought any of it back. A row shown for context now stays while any of the work it places
-  is drawn BENEATH it, whatever rows lie in between. It still goes when nothing is left
-  under it — including when the work it was placing is drawn in its own right instead of as
-  its child, which is what happens when the row between the two is a release the base
-  excludes, or a sprint, which the plan does not hold whether or not the base returns it.
-  Filtering a row out is not on its own what promotes the work: an excluded feature between
-  the two is still shown for context, and everything under it stays its child.
-  The same reading reaches the iteration board, where it ADDS a card rather than restoring
-  one: a parent shown for context appears there when a task committed to the sprint hangs
-  below it through a story that is not in the sprint.
-
-- **Clicking a release scope's disclosure with the mouse no longer drops keyboard focus out
-  of the tree.** Folding or unfolding a row redraws it, and focus used to land on the page
-  body afterward — so the very next Tab press started over from outside the tree instead of
-  continuing from the row you were just on. Focus now returns to the row you clicked.
-
-- **A release band that cannot compute its own progress now says so, instead of quietly
-  showing nothing.** A release whose members are all readable but whose workflow state is
-  not — one workflow bound, another left unconfigured, on a release mixing the two — used to
-  leave that release's line blank with no bar and no explanation, while a neighbouring
-  release drew its progress normally. The band now names what is not configured, the same
-  sentence its own detail screen already gives.
-
-- **Folding a row no longer silently does nothing once you have folded roughly 12,000 rows
-  across your releases.** The stored fold list has a size budget, and it used to keep the
-  OLDEST folds and discard whichever one you had just made when the budget was already full
-  — so folding a row could appear to have no effect, with nothing on screen saying why. A
-  full budget now drops the oldest fold to make room for the new one instead.
-
-- **Renaming a release, or a work item inside one, no longer reopens every row you had
-  folded in it.** A release scope's folded/unfolded state is stored by note path, and a
-  rename was not carried over — folding survived everywhere else in this plugin except
-  here. Renaming now keeps the tree exactly as you left it, whether it is the item that
-  moved or the release note itself.
-
-### Changed
-
-- **The shelf's resize handle now sits on the edge the shelf actually shares with the
-  roadmap.** On the timeline and resources axes the unplaced shelf is drawn below the grid,
-  so the edge between the two is the shelf's TOP — that is where the handle is, and dragging
-  it **up** makes the shelf taller (the arrow keys follow the same direction). On the horizon
-  axis and on both boards the shelf leads and the handle stays at its foot, where a downward
-  drag still grows it. On those axes the shelf also keeps a proper gap below its last row of
-  cards, matching the space at its left and right, and the handle sits on the band's own top
-  border with room between it and the title row rather than against it. **The handle is also
-  no longer see-through**: scrolling the shelf used to draw its own cards inside the strip you
-  grab, on every projection that has one.
-
-- **The shelf's title bar stays on screen while you scroll the shelf.** Its sort, type filter
-  and search box are the controls that decide what the band is showing, and they used to leave
-  the screen exactly when a long shelf gave you a reason to reach for them. They are now pinned
-  to the top of the band on every projection that draws one, so a shelf scrolled to its end
-  still has them.
-
-- **The release list is a list of releases now, not a grid of columns.** Each release is a
-  two-line band: its name, its version, a date and its status chip on the first line; a
-  progress bar, the count of its finished items and — where there is one — an overdue warning
-  or a slip on the second. A release whose target has passed with nothing shipped is drawn in
-  the error colour, with a rule down its leading edge and a note counting the days. The five
-  columns are gone and so are their fixed widths, which changes how the screen behaves in a
-  narrow pane: a band gives its width to whichever figure needs it, and **the release's own
-  name is the last thing to shorten** — a long version ellipsises down to its first few
-  characters before the name it belongs to gives up any, rather than keeping its full width
-  beside a name cut down to nothing. Past that point the name ellipsises too; neither figure
-  is ever cut off without the ellipsis that says so, and neither is shrunk away to nothing.
-  **The order changed with it, and that changes what is at the top of your screen.**
-  Releases are split into **In flight** and **Shipped**, each headed with its own count. In
-  flight is ordered by target date as before; shipped releases are ordered by released date,
-  newest first, in their own group at the bottom. Until now a release that had already
-  shipped sorted on its old target date and floated to the top, burying the one shipping
-  next.
-  The Items column is not lost: its number is the denominator of `8 of 14 done`. A release
-  with no items says `No items yet` and draws no bar, because an empty bar reads as failure
-  where the answer is emptiness.
-
-- **Releases no longer appear in the backlog.** They are not drawn as rows on the tree, they
-  do not appear on either board, and no New menu or Set type offers the type any more. The
-  release view is where a release is made, listed and read — it now has a control for making
-  one, which is what the backlog's own entry was standing in for. Nothing is lost: the notes
-  are untouched, work that names a release still names it, and the release view shows every
-  one of them. If you had set a folder for Release items in the backlog view's settings, that
-  box is gone and the release view's own releases folder is what applies.
-
-- **A card lists work below a row this screen is not showing.** On the iteration board a
-  card now lists a child that names the sprint even where the row between them does not —
-  a task committed to the sprint under a story that is not, for example. That task already
-  had a card of its own on the board; what it did not have was a place under the card it
-  belongs to, so the face and the board disagreed. On the roadmap the gap was wider: a
-  release hand-hung between a feature and its stories left those stories on no card at all
-  under a focus, while their dates went on moving the feature's bar. Nothing joins a board
-  or a roadmap it was not already on: each note is still asked for itself, and a row in
-  between is passed through rather than promoted.
-
-- **The three notices the writer shows when a note changes mid-move read in your Obsidian's
-  language.** Retype a note while a drag is in flight, or edit one while an estimation score
-  is being saved, and the message explaining that nothing was written now comes from the
-  string catalog like every other notice. Nothing about what is written changes.
-
-- **The estimation view's options menu, the iteration board's columns, the roadmap legend
-  and the reasons a card is on the shelf read in your Obsidian's language.** These were the
-  last words the view drew from its own code rather than from the string catalog. Nothing a
-  note holds changes: the scoring model's dimension names, its rubric sentences, the type
-  names, the workflow values and the horizon list are the same in every language, so a vault
-  set up in one language still opens correctly in another. English is still the only catalog
-  that ships.
-
-- **The view-options menu reads in your Obsidian's language.** Every group name, every
-  option's name and every placeholder that is a hint rather than a value now comes from the
-  plugin's string catalog. Nothing that is written down changes: the settings a base stores,
-  the frontmatter keys a property picker suggests, and the placeholders that mirror an
-  option's own default are the same in every language, so a vault set up in one language
-  opens correctly in another. English is still the only catalog that ships.
-
-- **The configuration warning reads as one sentence.** The toolbar's warning chip, the
-  refusal that gates a write and the readme command all state a bad configuration the same
-  way — `Fix the view options first: the parent and order properties share the key "rank".`
-  — instead of running whole sentences together when more than one property collides.
-
-### Added
-
-- **Work can be put in a release, and taken out again, from the item's own menu.** Right-click
-  a story — or press the menu key on it — and `Set release` lists every release the base
-  holds, with **No release** at the foot to take the item back out. The pick writes one
-  property and nothing else: not the parent, not the rank, not the state, and no dates, so
-  joining a release commits the item to a version without scheduling it. It is one batch
-  through the same gate as every other write, so one undo takes it back, and the release view
-  then shows the item under that release's scope. The release the item is already in is
-  ticked, and picking it again writes nothing rather than spending your undo. Two releases
-  whose notes share a name are listed by their path, so you can tell which one you are
-  picking, and the value written is a link to that note rather than its name. `Set release` is
-  offered on work only — never on a milestone, an iteration or another release — and it is
-  absent entirely, rather than present and inert, until the property that holds a membership
-  is named. **There is no drag yet**: the release view is read-only, so there is nowhere to
-  drop an item.
-
-  One thing to know when you configure it: **the property that holds a release membership is a
-  view option, so the backlog view and the release view each name their own.** Both suggest
-  the same name, so a vault that accepts the suggestion in both is already consistent. Bind
-  them to different properties and the release view will not see what the backlog view wrote —
-  every scope empty, nothing reported as unresolved, and **no warning**, because neither view
-  may read the other's configuration and the result is indistinguishable from a vault where
-  nothing has been assigned yet. If your scopes are empty after assigning work, check that the
-  two options name the same property.
-
-  Also: **✨ does not create the release property on your notes**, unlike most of them, and
-  like the prerequisite list. An empty value there would read as an item pointing at a release that cannot be
-  found, so the whole backlog would be reported as unresolved on the release screen. The cost
-  is that Obsidian's property picker cannot offer the property until at least one note carries
-  it — so in the release view's own options, pick the property AFTER the first `Set release`,
-  which is what puts it in the vault.
-
-- **A third Bases view, Release** (`product-release`, its own icon in the view picker) —
-  every release the base holds as one list, and one release's scope drawn as the tree it
-  already is. A row states the release's version, target date, status and how many items
-  name it; picking one opens that release and shows its members with the ancestors that
-  hold them in place, marked as context and carrying no numbers. Membership is a note's
-  own property and one value: it never cascades to a parent or a child, and an item whose
-  value names no release in the base is counted and reported rather than dropped in
-  silence. Which release is open is remembered per device and per saved view, and follows
-  the note through a rename — a base embedded in a note remembers it for the session
-  instead, as every base does, and there a rename returns you to the list. Both screens
-  keep your place: a refresh of the same screen — an edit somewhere else in the vault, a
-  query re-running — leaves you scrolled where you were, while opening a release or going
-  back starts at the top of the screen you asked for. **The view is read-only** — it plans no write to any note and
-  none to the `.base`. Which properties hold the version, the target date, the status and
-  the membership are the view's own options; a column whose property nobody bound is
-  absent, and named once beneath the list rather than left blank on every row.
-  **The list works without a mouse**: every release in it is a button, so Tab reaches each
-  one in turn and Enter or Space opens it, with the row outlined while it has focus. Its
-  figures line up down the screen in fixed columns, so a value too long for its column is
-  shortened with an ellipsis rather than pushing that row's figures out of line with the
-  rows above it. On a release's own screen the rows are text and behave like it — nothing
-  to click, nothing to fold, and the titles can be selected and copied.
-
-- **`Release` joins the fixed type vocabulary as a marker**, beside `Milestone` and
-  `Iteration`: a root by nature, holding nothing, offered by the backlog's `New` menu and
-  by Set type. It is placed by no planning axis — no horizon, no dates — so the roadmap
-  draws no card for one, the placement actions are withheld from it, and **Assign missing
-  properties** adds it none of those keys.
-
-- **A second Bases view, Estimation** (`product-estimation`, its own icon in the view
-  picker) — score each item against a configurable weighted model: eight value
-  dimensions plus confidence, effort and complexity, each scored against a rubric
-  sentence per point. The consolidated business value writes back to the note with a
-  model stamp and its coverage; everything else derives fresh on every read instead —
-  the confidence-adjusted value, the value-to-effort indicator, and whether a stored
-  total can still be trusted (Current, Needs re-estimation, Another model,
-  Hand-written). A guided empty state binds and backfills the properties it needs in one
-  gated batch, and the table ranks by whichever column you sort — reading only, never
-  the backlog's own order. Rubric sentences ship with the default model and are edited
-  in the `.base` file this round, with no options-menu box for one yet.
-
-- The estimation view has a toolbar — the backfill action, an undo for the last batch, and
-  how many of the results are scored. The backfill is offered wherever the view cannot
-  score yet, the configuration warning included: a dimension added after setup binds no
-  property, which is exactly what replaces the toolbar with a warning, and Obsidian's
-  picker cannot offer a property no note carries.
-
-- **A business value model stamp left without its total is reported.** Deleting the
-  business value property outside the plugin used to leave the stamp behind with nothing
-  on screen to say so and no action that would accept it. The row now reports it — *Inputs
-  gone* where the scores are gone too, so the cleanup removes the stray stamp, and *Needs
-  re-estimation* where the scores remain, so the recalculation writes the total back.
-
-- **A stored business value can be recalculated where it is reported as out of date.** A
-  total reading *Needs re-estimation* or *Another model* now offers one action that rewrites
-  it and its model stamp from the scores already on the note. The only route out before was
-  to change a score to a value you did not mean and change it back. A *Hand-written* total
-  is never touched by it — that number is yours — and an orphaned total still gets the
-  cleanup that removes it instead.
-- **`Resource` is a declared type, and notes carrying it stay out of the backlog.** A
-  person is something the plan points at rather than work it contains, so a `Resource`
-  note is recognised and then left out of every view this plugin draws — the tree, both
-  boards, both roadmap axes, the shelf, the item count and every menu that offers a type.
-  It is the same treatment an `Absence` already gets, and it is one gate rather than a rule
-  each view has to remember. Resources are for the resource timeline and for a dedicated
-  resource view later. Nothing creates one from the backlog view yet, and nothing about
-  `assignee` changes — it is still the text you type, and the roadmap's rows still come
-  from it.
-
-- **A resource note can be made without leaving the roadmap.** The resources axis's
-  toolbar gets its own **New resource** button, beside the axis controls it already owns.
-  It opens a name prompt — warned rather than refused when the name already matches
-  someone on the roster, since two real people can share a first name — and writes the
-  note into its own `resourceFolder` view option, a subfolder of the home folder by
-  default. The note carries only its type and title: no `order`, no `parent`, and it
-  never enters the backlog, exactly like every other `Resource` note. The roster itself is
-  unchanged for now — the axis still draws its rows from declared names, assignees and
-  absences, so a note made this way earns a row of its own once the axis starts reading
-  resource notes directly.
-
-- **The roadmap's shelf switches between cards and a compact list.** A third picker in the
-  shelf's own header, beside the sort and the type filter, and a `Shelf layout` submenu in
-  any shelf card's menu for a reader with no pointer. List mode draws one row per item —
-  the type badge, the title, and everything the card already carried on one line — plus the
-  item's workflow state, which a card does not show because a board column or a horizon
-  bucket already says it and a shelved card sits in neither. The pick narrows nothing: the
-  same cards are drawn either way, so the shelf's count is the same true total in both. It
-  is remembered for the saved view on this device, like the sort beside it, and cards stay
-  the default.
-
-- **The open shelf's height is yours to set.** A grip along the band's foot, dragged with a
-  pointer or stepped with ArrowUp/ArrowDown once it has focus; a double click or Home hands
-  the height back to the share of the pane the shelf has always taken. A band you have sized
-  is exactly that tall — it scrolls when the cards need more and shows space when they need
-  less — and a height picked in a tall split comes back in full rather than being written
-  down to a narrow one. Until you drag it, nothing is stored and the shelf takes the share of
-  the pane it always has. It applies to the iteration board's backlog band as well — one
-  band, one height — and it is remembered per saved view per device without anything
-  reaching the `.base`.
-
-- **The iteration board's shelf carries the same four picks as the roadmap's** — layout,
-  sort, type filter and search. They were withheld before now only because their
-  keyboard path, the card menu's shelf section, was built for the roadmap alone; it
-  serves both surfaces now, so narrowing a sprint's uncommitted backlog no longer means
-  switching projections. Five labels that called a backlog "unplaced" — `Search
-  unplaced`, `Sort unplaced`, `Filter unplaced by type` among them — now say `shelf`
-  instead, since the board's band is a backlog too, not only the roadmap's.
-
-- **The estimation view ranks by a framework you pick.** A new toolbar action offers RICE,
-  ICE, WSJF and value over effort; picking one previews what it would change and configures
-  the indicator in one act, without touching the value model or any stored total. The
-  indicator is a product of named operands over an optional divisor — no expression, and
-  nothing parses one — so swapping an operand afterwards is an edit to a text box. It takes
-  a column in the table that sorts, with an item whose operands are unanswered sorting with
-  the unmeasured rather than at one end, and it draws beside the confidence-adjusted value
-  in the panel. Clear the operands box and there is no indicator and no column.
-
-- **Open the note you are scoring, from the panel.** The item's name in the panel header now
-  carries an Open note control, and the table's `Enter` goes the same way — both through the
-  same controller the backlog view uses, so the estimation view gains an `Open in` setting
-  and, on its default, opens the note beside itself rather than over itself.
-
-### Changed
-
-- **Assign missing properties no longer creates a date property on a note that cannot use
-  one.** A `Milestone` is a point, so ✨ gives it the target property and no longer the
-  start one — which this view has never placed a milestone by. An `Iteration` still gets
-  both, whichever way the roadmap is set to draw it: how a thing is drawn must not decide
-  what properties its note carries. Every other type is unchanged, and no existing property
-  is touched either way.
-
-- **Everything the tree, the boards and the roadmap draw takes its words from the message
-  catalog now** — every row marker and property chip, the tag pills, the rollup, each
-  board column's announced name with its limit and overage, the card's parent line and
-  children, the shelf and its context strip, the roadmap's buckets, the timeline's legend,
-  today line, dependency arrows and span sentences, and every notice the write gate shows.
-  With `main.ts`'s two palette commands and a handful of prompts and grip tooltips that a
-  previous round reported as done and had missed, that leaves the plugin's user interface
-  translated apart from the built-in manual. Nothing reads differently in English except
-  where a list is involved: a row's prerequisites and a resource's absences are joined as
-  the language's own grammar joins a list rather than with a fixed separator, so English
-  now reads "A, B, and C" where it read "A, B, C". Nothing OF your vault is translated —
-  titles, type names, workflow states, horizon values, resources, tags and dates appear
-  exactly as your notes spell them.
-
-- **The whole toolbar takes its words from the message catalog now** — the New button and
-  its type picker, the projection switcher, the focus picker, the board scope picker, the
-  roadmap's axis and zoom pickers, every icon control's tooltip, the `⋯` menu, the item
-  count and its breakdown, the ignored-note and grouping advisories, the configuration
-  warning and the busy indicator. Nothing reads differently in English, and nothing the row
-  shows OF your vault is translated: type names, iteration titles and the type each button
-  offers to create appear exactly as your notes spell them.
-
-- **Every menu takes its words from the message catalog now** — the row and card menu, the
-  board column's fold, the shelf's sort, type filter and search, and the Set state, Set
-  risk, Set priority, Set assignee, Set iteration, Set horizon, Set type and Edit tags
-  submenus, along with the prompts they open. Nothing reads differently in English, and
-  nothing a menu LISTS is translated: your type names, workflow states, risk and priority
-  rungs, assignees, iterations, horizon buckets and tags are what your notes hold, so they
-  appear exactly as you wrote them in every language. Two entries are still English —
-  `Clear horizon` and `Depends on…` — and follow with the rest of their own files.
-
-- **Everything the view says when it has nothing to show comes from the message catalog
-  now** — the empty backlog and its focused form, the empty test catalog, the guidance both
-  boards show without a workflow, the roadmap without an axis, the empty Deliverables board
-  and iteration, and the "all done and hidden" notice. Nothing reads differently in
-  English. Type names are not translated and never will be: they are what `type:` holds in
-  your notes, so a sentence that quotes one takes it as it is written.
-
-- **Every dialog and both commands take their words from the message catalog now** — the
-  new-item, folder, schedule, absence and iteration prompts, the state-colour dialog, the
-  manual's title, and the notices from `Create backlog` and `Write backlog readme`. Nothing
-  reads differently in English except one line of punctuation: the readme command's
-  configuration refusal used to run its problems together as `"…".; "…"..` and now joins
-  them as a list. With more than one problem that list still reads a little oddly, since
-  what it joins are whole sentences; the rest of it waits on those sentences being
-  translated. The plugin's own name is still its name in every language.
-
-- **The write path's serialization and single undo slot are now plugin-wide** — a write
-  in one Bases view briefly holds back the other's write controls, and undo always takes
-  back the vault's last batch, whichever view wrote it
-  ([ADR 0030](docs/adrs/0030-domain-is-the-kernel.md)).
-
-- **The words the plugin uses for "no placement" come from the message catalog now** —
-  `Unplaced`, `Unscheduled`, `No state` and the `Unset` a real state collides with, plus
-  the shelf's search labels and the marker row's header. Nothing reads differently in
-  English. What changes is that they can be translated at all: they were constants in the
-  code, and a constant is fixed before the plugin has read which language Obsidian is in.
-
-- **The manual's item-types paragraph is built from the type vocabulary, not written around
-  it.** It reads the same, with two small improvements the change came with: the lists in it
-  now join the way English joins lists (`Issue, Bug, Idea, and Deliverable`), and the rungs
-  the `+` offers under are named from the ladder itself rather than spelled out, so adding a
-  rung to the ladder or a type beside it describes the new one instead of leaving the
-  sentence quietly wrong. One thing it still does not adapt to: the paragraph says markers
-  "are" neither, so a vocabulary reduced to a single marker type would read oddly until the
-  sentence is rewritten.
-
-- **A new iteration is named for its goal.** `New iteration…` names the note
-  `1 - Iteration - Ship the board` rather than `1 - Iteration`, so a folder of sprints says
-  what each one was for without opening one. The goal is appended to the name you confirm,
-  sanitized into a legal file name and capped at 60 characters; with no goal, or with no
-  goal property configured, the name is unchanged.
-
-- The estimation view's table and panel are readable: a proportional strip on value and
-  coverage, a currency chip that spends colour only where something needs doing, columns
-  that line up across every row, and a panel whose total is stated above its inputs and
-  stays on screen while they scroll.
-
-- **A sorted column header now says which direction, not just that it is active.** The
-  active header draws a chevron pointing the way it sorts and states the direction in its
-  own accessible name; `aria-sort` stays as the style hook it always was, but nothing
-  depended on it being read aloud any more.
-
-- **A dimension problem names the dimension the way its own settings panel does.** A
-  refusal used to read `strategic-alignment: the weight must be a positive number`; it now
-  reads `Strategic alignment`, and a dimension group in the options menu is headed by that
-  same resolved label rather than by its id.
-
-- **The weight rule is stated at the box that can break it.** Each dimension's `Weight` box
-  is now labelled `Weight (% of 100)`, the refusal for a total that is off says the delta
-  (`the weights total 87, not 100 (13 short)`), and the lead sentence on the view's own
-  problem block names where to go and fix it.
-
-- **Both undo buttons now read `Undo last change`.** There is one undo slot for the whole
-  vault ([ADR 0030](docs/adrs/0030-domain-is-the-kernel.md)), so `Undo last backlog change`
-  and `Undo last estimation change` each promised a scope the slot does not have — either
-  button always took back the vault's last batch, whichever view wrote it. The behaviour is
-  unchanged; the labels were the wrong half, and the two are now one label.
-
-- **A refused estimation setup names every configuration problem, not just the first.** A
-  model with two faults took one round trip per fault to fix; the refusal now lists all of
-  them, joined the way the rest of the plugin joins a list.
-
-- **A compact shelf row draws aligned columns**, reusing the tree's own stored property
-  widths instead of sizing each cell to its own content: titles now land at one x
-  position where there were four. The row itself grew a little to do it — 28px where it
-  measured 22.4px before — because the fix is the tree's own row anatomy, badge and
-  property cells included, not a narrower one.
-
-- **A shelved parent's disclosure moves onto its own row**, into a leading fold slot
-  beside the badge, instead of drawing as a line of its own beneath the title. A shut
-  parent now costs no more height than a leaf — both 28px — and its expanded children
-  are indented so a child's badge lines up under the parent's own title.
-
-### Fixed
-
-- **Alt+Up/Down on a milestone's card no longer writes an assignee nothing shows.** The
-  resources axis draws every marker in its own Milestones row whatever the note says, so
-  the keyboard ladder was changing the note, leaving the card exactly where it was, and
-  spending the undo on it. Dragging one already knew this; the keyboard now agrees. Set
-  assignee still writes one — a note may record who owns a date.
-
-- **The shelf's own title no longer moves when the band is opened or closed.** Opening the
-  shelf adds its search box, and that box was 11px taller than everything else in the
-  header — Obsidian styles `input[type='search']` itself and outranked the height this
-  plugin asked for — while the band's padding halved when it shut. Together those moved the
-  shelf's name 9.5px down the pane at the moment a reader pressed the disclosure beside it.
-  The header now reserves one row height in both states and the band keeps one padding, so
-  the title stays exactly where it is. A shut shelf is five pixels taller than it was.
-
-- A long currency word pushed every numeric column on its row out of line with the header
-  above it.
-- The estimation panel's total and item name rendered at the wrong size, and the table
-  rendered at the reading size rather than a UI size.
-- **The panel's title now wears the same weight as every other Title-level piece of text.**
-  It rendered semibold against a Title entry that has always declared 500.
-- **The four numeric columns' values now share one baseline.** The value and coverage
-  strips used to make their own cells taller than a plain cell, so their numbers sat about
-  3px above the numbers in Confidence and Effort — in a table whose whole job is comparing
-  numbers across a row.
-
-- **The estimation panel's clear control no longer draws over the last point of its row.**
-  The gutter held open for it at the end of the row was narrower than the control itself,
-  so it reached back over the last button and pointing at a row took that point out of
-  reach.
-
-- **A business value typed in by hand is no longer offered for deletion.** A total with no
-  model stamp and no scores behind it reported *Inputs gone*, and the panel offered the
-  cleanup that removes it. A total with no stamp now reads *Hand-written* whatever its
-  scores say, and only a **stamped** total whose scores are gone can be cleaned up.
-
-- **The guided estimation setup is all-or-nothing.** With another write in flight —
-  including one from a different Bases view, since the write lock is vault-wide — it could
-  bind every suggested property to the view and then have the backfill refused, leaving a
-  configured model over notes carrying none of its keys. It now says a change is being
-  saved and changes nothing at all, and the button on the empty state goes quiet while a
-  write is running, like the toolbar's own.
-
-- **A sorted column header keeps keyboard focus.** Activating a header rebuilds the table,
-  which destroyed the button that was just pressed and dropped focus to the page, so a
-  second `Enter` could not flip the direction back.
-
-- **Stepping through the estimation table with the arrow keys no longer parks the selected
-  row behind the column labels.** The header is sticky, and a step upwards scrolled the row
-  flush to the top of the list — which is underneath it.
-
-- **The estimation table's sort buttons are no longer pruned from the accessibility
-  tree.** The list role sat on the box holding both the header and the rows, so the six
-  sort buttons were non-option children of a list and dropped, `aria-sort` with them. The
-  role now covers the rows alone, and with no results the element is a plain region
-  instead, so the empty-table message is not dropped either.
-
-- **The shelf's resize grip no longer strands itself mid-band when everything inside is
-  collapsed.** `position: sticky` holds an element inside its scrollport, but it never
-  pushes one down — so a band picked taller than its collapsed cards left the grip
-  sitting under the last group instead of at the foot you sized: measured with every
-  type group folded and a 400px pick, it sat 139px short. A scoped margin now pulls it
-  the rest of the way.
+- No screen offers `Iteration` or `Release` under `New` or `Set type` any more. The
+  requirements board still did, and the note it made vanished from the board that made it.
+- The release index says which binding is wrong when the membership property is aimed at a
+  property something else owns — instead of reporting work you had never mis-assigned, or
+  showing `No items yet` on every release with nothing to explain it.
+- A release whose vault has no statuses yet can be given one.
+- A release can no longer lose its type to an editor left open.
+- A release band that cannot compute its own progress says so, instead of showing nothing.
+- A release holding only Deliverables shows progress, where it used to say progress was not
+  configured.
+- A row's progress no longer reads `0/2` where progress is not configured at all.
+- A finished item in a release's scope reads as finished — the done colour and the check.
+- A release's rows line up: the state chip and progress figure anchor to the row's end.
+- Picking a different release no longer starts the keyboard on a row left over from the last.
+- Clicking a release scope's disclosure no longer drops keyboard focus out of the tree.
+- Selecting a title with the mouse no longer opens the note.
+- Clearing a release's released date no longer drops keyboard focus to the page.
+- The reason a closing action is not offered takes a line of its own, instead of reading as
+  the other action's.
+- The release screen says `Description unreadable`, not the name of the setting.
+- The release list, the release screen's description and released date, and a confirmation
+  dialog's member rows no longer paint as raised Obsidian buttons.
+- Renaming a release, or an item in one, no longer reopens every row you had folded.
+- Folding a row no longer silently does nothing once you have folded roughly 12,000 rows —
+  the stored list discarded your newest fold rather than your oldest.
+- Deleting a note takes its folded rows with it, instead of leaving an entry against the cap.
+- A focused roadmap no longer loses work beneath a parent the base filtered out.
+- Alt+Up/Down on a milestone's card no longer writes an assignee nothing shows.
+- An assignee chip naming no resource says so to a screen reader, not only in colour.
+- Marking or editing an absence refuses when the resource it names stopped being one between
+  the form opening and the submit.
+- An unset property chip meets AA contrast when it is shown. It was 2.57:1 in dark against
+  the 4.5:1 a 12px label needs — unreadable and clickable at once.
+- The shelf's compact rows no longer reserve room for columns empty on every card in the band.
+- The shelf's type headers no longer let the cards under them show through.
+- The shelf's own title no longer moves when the band is opened or closed.
+- The shelf's resize grip no longer strands itself mid-band when everything inside is
+  collapsed.
+- The estimation panel's clear control no longer draws over the last point of its row.
+- The four numeric columns' values share one baseline.
+- The estimation panel's title wears the same weight as every other Title-level text, and
+  its total, item name and table render at the right sizes.
+- A long currency word no longer pushes a row's numeric columns out of line with the header.
+- A business value typed in by hand is no longer offered for deletion.
+- The guided estimation setup is all-or-nothing: it can no longer bind every property and
+  then have the writes refused.
+- A sorted column header keeps keyboard focus.
+- Stepping through the estimation table with the arrow keys no longer parks the selected row
+  behind the column labels.
+- The estimation table's sort buttons are no longer pruned from the accessibility tree.
+- Two surfaces that were still English in every language: how a move on the dated axis names
+  a one-ended span, and every sentence the estimation view refuses with.
+- The docs register gate no longer fails on `docs/product/`.
 
 ## [0.9.1] - 2026-08-17
 
@@ -1004,20 +337,6 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ## [0.9.0] - 2026-08-16
 
-### Changed
-
-- **Milestones now share one row at the top of the dated roadmap.** Instead of a row each
-  among the bars, every milestone draws as a diamond in a single `Milestones` row ahead of
-  the first bar — the same row the resources axis already had — so the dates the plan is
-  measured against read across the work beneath them and the work starts at the top of the
-  grid. Each diamond names itself (title, exact date and workflow state) and opens its note
-  on a click; the full-height line and its label are unchanged, and so is everything about
-  where a milestone lands, what a drag writes and what the shelf does with it. Two
-  consequences worth knowing: no fold can take a milestone off the grid any more, not even
-  folding its parent — that is the point of the row — and a milestone is no longer a stop
-  for the roadmap's arrow keys, so reach one from the tree or the board when there is no
-  pointer.
-
 ### Added
 
 - **A MoSCoW priority on every row.** Name a priority property under the new
@@ -1116,6 +435,18 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ### Changed
 
+- **Milestones now share one row at the top of the dated roadmap.** Instead of a row each
+  among the bars, every milestone draws as a diamond in a single `Milestones` row ahead of
+  the first bar — the same row the resources axis already had — so the dates the plan is
+  measured against read across the work beneath them and the work starts at the top of the
+  grid. Each diamond names itself (title, exact date and workflow state) and opens its note
+  on a click; the full-height line and its label are unchanged, and so is everything about
+  where a milestone lands, what a drag writes and what the shelf does with it. Two
+  consequences worth knowing: no fold can take a milestone off the grid any more, not even
+  folding its parent — that is the point of the row — and a milestone is no longer a stop
+  for the roadmap's arrow keys, so reach one from the tree or the board when there is no
+  pointer.
+
 - **The board and the shelf only draw the cards you can see** — a column, a horizon bucket
   and the shelf now let the browser skip the layout and paint of cards scrolled out of
   view, which the tree's rows have done since 0.7. Measured over ~800 notes in the
@@ -1125,6 +456,14 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 - **Recording an absence now asks for the dates alone.**
 
 - **State colours no longer offer a done state.**
+
+### Removed
+
+- **The card's right-click menu no longer offers Expand/Collapse unplaced**.
+
+- **The card's right-click menu no longer lists the children one by one** — the
+  **Show/Hide children** toggle stays, and so does the list on the card itself. A card with
+  many children no longer pushes the rest of its menu off the screen.
 
 ### Fixed
 
@@ -1177,14 +516,6 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 - **The Property column width option is gone.** The width is a per-column pick you drag
   now, kept on the device rather than in the shared `.base`
-
-### Removed
-
-- **The card's right-click menu no longer offers Expand/Collapse unplaced**.
-
-- **The card's right-click menu no longer lists the children one by one** — the
-  **Show/Hide children** toggle stays, and so does the list on the card itself. A card with
-  many children no longer pushes the rest of its menu off the screen.
 
 ## [0.8.0] - 2026-08-14
 

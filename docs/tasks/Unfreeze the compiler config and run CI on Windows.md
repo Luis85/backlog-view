@@ -34,7 +34,7 @@ runs in.
 **The compiler.** `tsconfig.json` set `baseUrl: "."` and `moduleResolution: "node"`.
 TypeScript 6.0.2, run against that file unchanged, does not warn about either — it errors:
 
-```
+```text
 tsconfig.json(3,5):  error TS5101: Option 'baseUrl' is deprecated and will stop functioning in TypeScript 7.0.
 tsconfig.json(12,25): error TS5107: Option 'moduleResolution=node10' is deprecated and will stop functioning in TypeScript 7.0.
 ```

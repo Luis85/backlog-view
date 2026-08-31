@@ -20,7 +20,7 @@ capabilities they need by adding the corresponding view to a Base. A Base may co
 contain several different Backlog View projections over the same underlying Markdown notes
 and properties.
 
-```
+```text
 Product.base
 │
 ├── Product Backlog
@@ -41,7 +41,7 @@ tags, and Bases remain the source of truth.
 Backlog View turns an Obsidian vault into a local-first product management environment
 connecting:
 
-```
+```text
 Product Knowledge → Strategy → Discovery → Evidence → Prioritization
 → Planning → Backlog → Delivery → Review
 ```
@@ -233,7 +233,7 @@ the generated backlog item.
 **Feature 2.7 — Discovery readiness.** Show whether an opportunity has sufficient
 information to move forward:
 
-```
+```text
 Problem defined            ✓
 Target user identified     ✓
 Evidence attached          ✓
@@ -284,7 +284,7 @@ Compliance, Customer Retention, Cost Reduction. Each scenario may apply differen
 
 **Feature 3.8 — Priority explanation.** Selecting an item displays the score decomposition:
 
-```
+```text
 Overall Score: 73
 Strategic Alignment     5 × 25%
 Customer Value          4 × 25%
@@ -316,7 +316,7 @@ entity.
 **Feature 4.5 — Strategy coverage.** Display how much work is associated with each
 Objective:
 
-```
+```text
 Improve Retention       █████████████ 42%
 Reduce Cost             ███████       23%
 Increase Conversion     █████████     31%
@@ -357,7 +357,7 @@ no evidence, evidence not linked to product decisions, and heavily supported opp
 
 **Feature 5.6 — Evidence summary.** For a selected Feature:
 
-```
+```text
 Evidence
 12 customer requests
 4 support incidents
@@ -417,7 +417,7 @@ progress, open blockers, risks, unestimated work.
 
 **Feature 7.4 — Release capacity.** Optionally configure capacity:
 
-```
+```text
 Capacity       320
 Committed      347
 Difference     +27
@@ -432,7 +432,7 @@ immediately persisting the scenario.
 
 **Feature 7.6 — Release readiness.** Evaluate configurable readiness criteria:
 
-```
+```text
 All items estimated       ✓
 Dependencies resolved     ⚠
 Critical risks addressed  ✓
@@ -503,7 +503,7 @@ must remain explainable.
 
 **Feature 10.3 — Health dashboard.**
 
-```
+```text
 Structural Integrity     96%
 Estimation Coverage      84%
 Strategic Alignment      73%
@@ -562,7 +562,7 @@ Objectives, Releases, Opportunities, Evidence.
 
 **Feature 12.3 — Decision register.** A chronological view:
 
-```
+```text
 16 Aug — Prioritize Guest Checkout
 12 Aug — Move SSO to Q4
 02 Aug — Drop Legacy Export
@@ -612,7 +612,7 @@ because all capabilities originate from the same plugin.
 
 When a user adds a Backlog View view type, provide guided empty states:
 
-```
+```text
 No Prioritization configuration found.
 [Use recommended defaults]
 [Configure properties]
@@ -633,7 +633,7 @@ remains the integration layer.
 The current Product Backlog implementation contains several projections that should
 gradually become dedicated views:
 
-```
+```text
 Current Product Backlog
 ├── Tree               → Product Backlog
 ├── Board              → potentially Backlog Board
@@ -701,7 +701,7 @@ capabilities become increasingly useful as the quantity and maturity of product 
 
 The complete product should enable the following lifecycle without leaving the vault:
 
-```
+```text
 Capture an Idea → Identify an Opportunity → Attach Evidence → Define Assumptions
 → Validate Opportunity → Connect to Objective / JTBD → Score and Compare
 → Promote to Backlog → Place on Roadmap → Assign to Release → Resolve Dependencies
@@ -734,7 +734,7 @@ Backlog View succeeds when:
 
 ## 31. Target product architecture
 
-```
+```text
                    OBSIDIAN VAULT
                         │
         Markdown + Properties + Links

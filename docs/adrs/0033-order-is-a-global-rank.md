@@ -1,12 +1,12 @@
 ---
-adr: 32
+adr: 33
 title: Order is a global rank
 status: Accepted
 date: 2026-08-30
 area: domain
 ---
 
-# 0032 — Order is a global rank
+# 0033 — Order is a global rank
 
 ## Context
 

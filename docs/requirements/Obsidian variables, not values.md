@@ -19,7 +19,6 @@ iteration: ""
 Sizing and spacing come from Obsidian's design tokens wherever a token exists, so a theme
 that rescales the app rescales this plugin with it.
 
-
 **As** someone using a theme that rescales Obsidian, **I want** this plugin to rescale with
 it, **so that** the backlog does not sit at one fixed size inside a UI that moved.
 

@@ -59,7 +59,7 @@ export function inRankOrder(rows: BacklogItem[], ranked: BacklogItem[]): Backlog
  * population, so distinct here means none of them is falling back and the promise holds;
  * false means one may be, and the sentence says so rather than the command refusing. A
  * whole-population question ahead of a whole-population rewrite is the shape the ban is
- * about the absence of — see ADR 0032, which recorded the ban before this caller existed.
+ * about the absence of — see ADR 0033, which recorded the ban before this caller existed.
  *
  * Distinctness is the test because it is exactly what makes a global rank a global ORDER.
  * Ties (and absent ranks) mean the number is not yet answering the question. Self-healing:

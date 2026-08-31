@@ -18,7 +18,6 @@ iteration: ""
 
 A width that CSS applies and TypeScript adds up is written once, so the two cannot drift.
 
-
 **As** someone changing a width, **I want** to change it in one place, **so that** the
 column-fit arithmetic cannot silently disagree with the stylesheet and clip a row.
 

@@ -19,7 +19,6 @@ iteration: ""
 A message with a count or a name in it is one catalog entry with named parameters, not
 an English sentence built out of pieces.
 
-
 **As** someone reading the plugin in a language with different plural rules or word order,
 **I want** counted and parameterised messages to be whole sentences in my language,
 **so that** they read as written rather than as English assembled from parts.

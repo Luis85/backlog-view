@@ -23,6 +23,10 @@ iteration: ""
 
 # Live-vault checks for the resource chip and axis
 
+> **2026-08-30** — both checks are now declared where `RELEASING.md`'s pre-tag sweep can find
+> them: [[The assignee chip and Set assignee]] and [[The resources axis and its absences]].
+> This task stays open until they have been **run** — a written check is not a run one.
+
 Two things jsdom cannot answer, recorded at the end of [[Linking an item to a resource]]
 and left there rather than guessed at. The build is already made: `npm run test-build`
 puts the plugin in `.obsidian/plugins/product-backlog-view/` in the repository root, so
@@ -39,7 +43,7 @@ The base filter is `file.inFolder("docs")`, so both are returned without touchin
 
 `docs/resources/Sarah.md`
 
-```
+```yaml
 ---
 type: Resource
 ---
@@ -47,7 +51,7 @@ type: Resource
 
 `docs/resources/Chris.md`
 
-```
+```yaml
 ---
 type: Resource
 ---

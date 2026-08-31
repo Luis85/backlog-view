@@ -24,7 +24,7 @@ iteration: ""
 ## Evidence
 
 `demoVault()` was written against the sibling-scoped `order` of ADR 0008: `order: 10`
-recurs under every parent, by design, because that is what the scheme meant. ADR 0032
+recurs under every parent, by design, because that is what the scheme meant. ADR 0033
 made `order` one rank over the whole population, so the fixture is now a **legacy vault**
 — and `npm run harness` is the tool this repository reaches for when the question is what
 a change looks like.
