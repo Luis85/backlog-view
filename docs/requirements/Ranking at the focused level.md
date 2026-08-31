@@ -115,6 +115,18 @@ from.
   rows squeezed against a number no write path may move has nowhere to go. The advice is
   to run the command on an unfiltered base, which is the one thing that changes the answer.
   **Checked by** `test/domain/rankCommands.test.ts` — "answers with the wedged rows rather than an empty plan"
+  **One case reports wedged for a different reason, and it is accepted rather than fixed**
+  (PR review, 2026-08-31): where two excluded ranks span more than the float range can
+  subtract — `-1e308` and `1e308` — `ceiling - floor` is `Infinity`, every value the spread
+  computes is non-finite, and the plan refuses. The interval has enormous room and the
+  arithmetic cannot see it, so the notice is right that nothing was written and wrong about
+  why. It fails CLOSED, which is the property that matters, and it is unreachable without two
+  hand-edited context ranks at opposite extremes. The overflow-safe form — interpolating from
+  weighted endpoints instead of subtracting the bounds — is refused for a stated reason:
+  `(ceiling - floor) / (n + 1)` and `ceiling / (n + 1) - floor / (n + 1)` are not
+  bit-identical, so it would perturb every ordinary spread to repair one that essentially
+  never happens. The `Infinity` this same overflow used to WRITE was a different matter and
+  was fixed, in `roundOrder`.
 - **3a — the model was rebuilt between opening the menu and clicking it.** The row the
   menu named is re-resolved by path against the live model, and the peers and the
   population are read off that model too. A `DropTarget` finds its anchor by identity, so
