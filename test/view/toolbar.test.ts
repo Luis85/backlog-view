@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { ProductBacklogView } from '../../src/view/backlogView';
-import { fakeController, FakeVault, FakeViewConfig } from '../helpers/vault';
+import { fakeController, FakeVault, FakeViewConfig, mountView } from '../helpers/vault';
 import { Menu, Modal, Notice } from '../helpers/obsidian-mock';
 import {
 	fixture,
@@ -433,11 +433,7 @@ describe('long operations stay legible and non-blocking', () => {
 		// look like a broken view.
 		expect(containerEl.querySelector('.pbl-loading')?.textContent).toContain('Loading backlog');
 
-		const anyView = view as unknown as Record<string, unknown>;
-		anyView.app = fixture().app;
-		anyView.config = new FakeViewConfig({});
-		anyView.data = { data: [] };
-		view.onDataUpdated();
+		mountView(view, fixture(), new FakeViewConfig({}), []);
 		expect(containerEl.querySelector('.pbl-loading')).toBeNull();
 	});
 

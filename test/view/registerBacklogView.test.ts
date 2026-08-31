@@ -5,7 +5,7 @@ import { registerBacklogView } from '../../src/view/registerBacklogView';
 import { WriteLock } from '../../src/view/writeLock';
 import { PRODUCT_BACKLOG_VIEW_TYPE } from '../../src/view/backlogView';
 import { useViewHarness, fixture, makeView, captureRegistrations } from '../helpers/view';
-import { fakeController, FakeViewConfig } from '../helpers/vault';
+import { fakeController, FakeViewConfig, mountView } from '../helpers/vault';
 
 useViewHarness();
 
@@ -33,13 +33,10 @@ describe('registerBacklogView', () => {
 
 		// Create first view via factory
 		const containerA = document.body.createDiv();
-		const viewA = spec.factory(fakeController(), containerA) as unknown as Record<string, unknown>;
+		const viewA = spec.factory(fakeController(), containerA);
 
-		// Set up the necessary properties like makeView does
-		viewA.app = vault.app;
-		viewA.config = new FakeViewConfig({});
-		viewA.data = { data: vault.entries() };
-		(viewA as any).onDataUpdated();
+		// Everything Bases delivers between construction and the first render.
+		mountView(viewA, vault, new FakeViewConfig({}), vault.entries());
 
 		// Create a second view with the SAME lock using makeView
 		const { view: viewB } = makeView(vault, {}, { lock: lockA });

@@ -6,7 +6,7 @@ import { BacklogItem } from '../../src/domain/model';
 import { WriteLock } from '../../src/view/writeLock';
 import { OPTIONAL_PROPERTIES } from '../../src/domain/optionalProperties';
 import { installObsidianDom } from './dom';
-import { FakeVault, FakeViewConfig, mountLeaf } from './vault';
+import { FakeVault, FakeViewConfig, mountLeaf, mountView, setResults } from './vault';
 import { Menu, Modal, Notice } from './obsidian-mock';
 import { fakeController } from '../helpers/vault';
 
@@ -83,6 +83,7 @@ export function makeView(
 		hideCompleted,
 		widths,
 		only,
+		except,
 		order,
 		lock,
 	}: {
@@ -96,6 +97,14 @@ export function makeView(
 		/** Property-column widths in pixels, by Bases property id — one `setColWidth` each. */
 		widths?: Record<string, number>;
 		only?: string[];
+		/**
+		 * The other way to say which notes the Base returned: everything in the vault
+		 * except these. A context-row fixture is nearly always written this way — one
+		 * ancestor is cut and the rest are results — and spelling that as `only` means
+		 * re-listing every note, which is a list that goes stale the next time the
+		 * fixture gains one.
+		 */
+		except?: string[];
 		order?: string[];
 		/** The plugin-wide write lock to share with another view; a fresh one by default. */
 		lock?: WriteLock;
@@ -112,13 +121,17 @@ export function makeView(
 	// update, which is where the columns are resolved; a test about the RESOLUTION itself
 	// assigns `config.order` afterwards and renders again instead.
 	if (order) config.order = order;
-	const anyView = view as unknown as Record<string, unknown>;
-	anyView.app = vault.app;
-	anyView.config = config;
-	// `only` narrows what the BASE returns, so everything else in the vault loads as a
-	// context row — the shape a filtered base has, without hand-building a view for it.
-	anyView.data = { data: only ? vault.entries().filter((e) => only.includes(e.file.path)) : vault.entries() };
-	view.onDataUpdated();
+	// `only` and `except` narrow what the BASE returns, so everything else in the vault
+	// loads as a context row — the shape a filtered base has, without hand-building a
+	// view for it.
+	mountView(
+		view,
+		vault,
+		config,
+		vault
+			.entries()
+			.filter((e) => (!only || only.includes(e.file.path)) && !except?.includes(e.file.path)),
+	);
 	if (focus) view.setFocusLevel(focus);
 	if (folds) view.setClickFolds(true);
 	if (hideCompleted) view.setShowCompleted(false);
@@ -148,10 +161,9 @@ export function clickExpandAll(containerEl: HTMLElement): void {
 	btn.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 }
 
-/** Hand the view a fresh result set, the way Bases does after a vault change. */
+/** Hand the view everything the vault now holds, the way Bases does after a change. */
 export function refresh(view: ProductBacklogView, vault: FakeVault): void {
-	(view as unknown as Record<string, unknown>).data = { data: vault.entries() };
-	view.onDataUpdated();
+	setResults(view, vault.entries());
 }
 
 export function rows(containerEl: HTMLElement): HTMLElement[] {

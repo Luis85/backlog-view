@@ -1,8 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
-import { fakeController, FakeVault, FakeViewConfig } from '../helpers/vault';
+import { FakeVault } from '../helpers/vault';
 import { Menu, Modal } from '../helpers/obsidian-mock';
-import { ProductBacklogView } from '../../src/view/backlogView';
 import { clickExpandAll, flush, makeView, rowByTitle, submitButton, useViewHarness } from '../helpers/view';
 
 useViewHarness();
@@ -82,14 +81,7 @@ describe('Set assignee', () => {
 		// would assert nothing — the row has to be ON SCREEN for its value to be the
 		// thing being refused.
 		vault.addFile('Feature R1.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Retired' });
-		const containerEl = document.body.createDiv();
-		const view = new ProductBacklogView(fakeController(), containerEl);
-		const anyView = view as unknown as Record<string, unknown>;
-		anyView.app = vault.app;
-		anyView.config = new FakeViewConfig(configured);
-		anyView.data = { data: vault.entries().filter((e) => e.file.path !== 'Retired.md') };
-		view.onDataUpdated();
-		clickExpandAll(containerEl);
+		const { view, containerEl } = makeView(vault, configured, { except: ['Retired.md'] });
 
 		expect(view.model?.byPath.get('Retired.md')?.outsideFilter).toBe(true);
 		// The roster is unaffected by the filter either way — it is the `Resource` notes
@@ -241,16 +233,7 @@ describe('the assignee chip', () => {
 		const vault = assignedVault();
 		vault.addFile('Retired.md', { frontmatter: { type: 'Epic', order: 40, assignee: 'Ghost' } });
 		vault.addFile('Feature R1.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Retired' });
-		const containerEl = document.body.createDiv();
-		const view = new ProductBacklogView(fakeController(), containerEl);
-		const anyView = view as unknown as Record<string, unknown>;
-		anyView.app = vault.app;
-		const config = new FakeViewConfig(configured);
-		config.order = ['note.assignee'];
-		anyView.config = config;
-		anyView.data = { data: vault.entries().filter((e) => e.file.path !== 'Retired.md') };
-		view.onDataUpdated();
-		clickExpandAll(containerEl);
+		const { containerEl } = makeView(vault, configured, { except: ['Retired.md'], order: ['note.assignee'] });
 
 		const shown = chip(containerEl, 'Retired');
 		expect(shown?.textContent).toBe('Ghost');

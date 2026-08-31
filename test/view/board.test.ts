@@ -1,7 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import { ProductBacklogView } from '../../src/view/backlogView';
-import { fakeController, FakeVault, FakeViewConfig } from '../helpers/vault';
+import { FakeVault } from '../helpers/vault';
 import { flush, makeView, projectionButton, refresh, useViewHarness } from '../helpers/view';
 import { cardDrag } from '../helpers/dnd';
 import { cardByTitle, cardTitles, columnByName, columnNames, columnsOf, countOf, expandColumns } from '../helpers/board';
@@ -353,16 +352,12 @@ describe('focus on the board', () => {
 		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10, status: 'Someday' } });
 		vault.addFile('F1.md', { frontmatter: { type: 'Feature', order: 10, status: 'Active' }, parentLink: 'Epic' });
 		vault.addFile('F2.md', { frontmatter: { type: 'Feature', order: 20, status: 'New' }, parentLink: 'Epic' });
-		const containerEl = document.body.createDiv();
-		const view = new ProductBacklogView(fakeController(), containerEl);
-		const config = new FakeViewConfig(configValues);
-		const anyView = view as unknown as Record<string, unknown>;
-		anyView.app = vault.app;
-		anyView.config = config;
-		anyView.data = { data: vault.entries().filter((e) => e.file.path !== 'Epic.md') };
-		view.onDataUpdated();
 		// Not a config value: focus is working position, set through the view.
-		view.setFocusLevel(focus);
+		const { view, config, containerEl } = makeView(vault, configValues, {
+			collapsed: true,
+			except: ['Epic.md'],
+			focus,
+		});
 		view.setProjection('board');
 		return { view, config, containerEl, vault };
 	}

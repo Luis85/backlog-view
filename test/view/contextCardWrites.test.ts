@@ -1,7 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
-import { ProductBacklogView } from '../../src/view/backlogView';
-import { fakeController, FakeVault, FakeViewConfig } from '../helpers/vault';
+import { FakeVault } from '../helpers/vault';
 import { Menu, Notice } from '../helpers/obsidian-mock';
 import { flush, itemAt, key, makeView, treeOf, useViewHarness } from '../helpers/view';
 import { cardDrag } from '../helpers/dnd';
@@ -47,19 +46,16 @@ describe('write safety with context rows, across the board’s entry points', ()
 		// is built from the MODEL, which is the reason the menu can offer an iteration the
 		// current projection is not showing.
 		vault.addFile('Sprint 12.md', { frontmatter: { type: 'Iteration', order: 30, start: '2026-09-07', due: '2026-09-18' } });
-		const containerEl = document.body.createDiv();
-		const view = new ProductBacklogView(fakeController(), containerEl);
-		const anyView = view as unknown as Record<string, unknown>;
-		anyView.app = vault.app;
-		anyView.config = new FakeViewConfig({
-			stateProperty: 'note.status',
-			stateValues: 'New, Active, Done',
-			iterationProperty: 'note.iteration',
-		});
-		anyView.data = { data: vault.entries().filter((e) => !['Epic.md', 'Mid.md'].includes(e.file.path)) };
-		view.onDataUpdated();
 		// Focus is working position, not a base setting: set through the view.
-		view.setFocusLevel('PBI');
+		const { view, containerEl } = makeView(
+			vault,
+			{
+				stateProperty: 'note.status',
+				stateValues: 'New, Active, Done',
+				iterationProperty: 'note.iteration',
+			},
+			{ collapsed: true, except: ['Epic.md', 'Mid.md'], focus: 'PBI' },
+		);
 		view.setProjection('board');
 		// Every column open: this asks what a write path does to a context card, and a
 		// folded Done column would take the context card off screen before the question.
@@ -189,15 +185,12 @@ describe('write safety with context rows, across the Deliverables board’s entr
 			parentLink: 'Epic',
 		});
 		vault.addFile('Task.md', { frontmatter: { type: 'Task', order: 10 }, parentLink: 'Ctx' });
-		const containerEl = document.body.createDiv();
-		const view = new ProductBacklogView(fakeController(), containerEl);
-		const anyView = view as unknown as Record<string, unknown>;
-		anyView.app = vault.app;
-		anyView.config = new FakeViewConfig({ deliverableStateProperty: 'note.deliverableStatus' });
-		anyView.data = { data: vault.entries().filter((e) => e.file.path !== 'Ctx.md') };
-		view.onDataUpdated();
 		// Focus is working position, not a base setting: set through the view.
-		view.setFocusLevel('PBI');
+		const { view, containerEl } = makeView(
+			vault,
+			{ deliverableStateProperty: 'note.deliverableStatus' },
+			{ collapsed: true, except: ['Ctx.md'], focus: 'PBI' },
+		);
 		view.setProjection('deliverables');
 		return { view, containerEl, vault };
 	}
@@ -289,15 +282,12 @@ describe('write safety with context rows, across the roadmap’s entry points', 
 		// the buckets or the menu can only have come from the context row itself.
 		vault.addFile('Mid.md', { frontmatter: { type: 'PBI', order: 10, horizon: 'Ancient' }, parentLink: 'Feature B' });
 		vault.addFile('Task.md', { frontmatter: { type: 'Task', order: 10 }, parentLink: 'Mid' });
-		const containerEl = document.body.createDiv();
-		const view = new ProductBacklogView(fakeController(), containerEl);
-		const anyView = view as unknown as Record<string, unknown>;
-		anyView.app = vault.app;
-		anyView.config = new FakeViewConfig({ horizonProperty: 'note.horizon' });
-		anyView.data = { data: vault.entries().filter((e) => !['Epic.md', 'Mid.md'].includes(e.file.path)) };
-		view.onDataUpdated();
 		// Focus is working position, not a base setting: set through the view.
-		view.setFocusLevel('PBI');
+		const { view, containerEl } = makeView(
+			vault,
+			{ horizonProperty: 'note.horizon' },
+			{ collapsed: true, except: ['Epic.md', 'Mid.md'], focus: 'PBI' },
+		);
 		view.setProjection('roadmap');
 		return { view, containerEl, vault };
 	}
@@ -402,18 +392,15 @@ describe('write safety with context rows, across the resources axis’s entry po
 			parentLink: 'Feature B',
 		});
 		vault.addFile('Task.md', { frontmatter: { type: 'Task', order: 10 }, parentLink: 'Mid' });
-		const containerEl = document.body.createDiv();
-		const view = new ProductBacklogView(fakeController(), containerEl);
-		const anyView = view as unknown as Record<string, unknown>;
-		anyView.app = vault.app;
-		anyView.config = new FakeViewConfig({
-			assigneeProperty: 'note.assignee',
-			startProperty: 'note.start',
-			targetProperty: 'note.due',
-		});
-		anyView.data = { data: vault.entries().filter((e) => !['Epic.md', 'Mid.md'].includes(e.file.path)) };
-		view.onDataUpdated();
-		view.setFocusLevel('PBI');
+		const { view, containerEl } = makeView(
+			vault,
+			{
+				assigneeProperty: 'note.assignee',
+				startProperty: 'note.start',
+				targetProperty: 'note.due',
+			},
+			{ collapsed: true, except: ['Epic.md', 'Mid.md'], focus: 'PBI' },
+		);
 		view.setProjection('roadmap');
 		view.setAxisPick('resources');
 		return { view, containerEl, vault };
@@ -588,18 +575,15 @@ describe('write safety with context rows, across the timeline’s entry points',
 			parentLink: 'Feature B',
 		});
 		vault.addFile('Task.md', { frontmatter: { type: 'Task', order: 10 }, parentLink: 'Mid' });
-		const containerEl = document.body.createDiv();
-		const view = new ProductBacklogView(fakeController(), containerEl);
-		const anyView = view as unknown as Record<string, unknown>;
-		anyView.app = vault.app;
-		anyView.config = new FakeViewConfig({
-			startProperty: 'note.start',
-			targetProperty: 'note.target',
-		});
-		anyView.data = { data: vault.entries().filter((e) => !['Epic.md', 'Mid.md'].includes(e.file.path)) };
-		view.onDataUpdated();
 		// Focus is working position, not a base setting: set through the view.
-		view.setFocusLevel('PBI');
+		const { view, containerEl } = makeView(
+			vault,
+			{
+				startProperty: 'note.start',
+				targetProperty: 'note.target',
+			},
+			{ collapsed: true, except: ['Epic.md', 'Mid.md'], focus: 'PBI' },
+		);
 		view.setProjection('roadmap');
 		return { view, containerEl, vault };
 	}

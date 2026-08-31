@@ -14,7 +14,7 @@ import { drawChrome } from './chrome';
 import { drawIcons } from './icons';
 import { installObsidianDom } from '../helpers/dom';
 import { demoOptions, demoOrder, demoResults, demoVault, edgeCaseVault, folderOptions } from '../helpers/fixtures';
-import { fakeController, FakeVault, FakeViewConfig } from '../helpers/vault';
+import { fakeController, FakeQueryResult, FakeVault, FakeViewConfig, setResults } from '../helpers/vault';
 import { FileView } from '../helpers/obsidian-mock';
 
 /**
@@ -185,17 +185,18 @@ export function mountHarness(root: HTMLElement, fixture: HarnessFixture = 'demo'
 	vault.addLeaf(new FileView(vault.addFile('Demo.base'), leafEl));
 
 	const view = new ProductBacklogView(fakeController(), containerEl);
-	const anyView = view as unknown as Record<string, unknown>;
-	anyView.app = vault.app;
 	const options = fixture === 'folders' ? folderOptions() : demoOptions();
 	const config = new FakeViewConfig(options);
 	// The Bases properties menu is what puts a column on a row, chips included, so the
 	// page has to declare a visible order or it draws a strip with nothing in it.
 	const order = demoOrder();
 	config.order = order;
-	anyView.config = config;
 	const results = demoResults(vault);
-	anyView.data = { data: results };
+	// `mountView`'s three assignments, written out because this is the one mount that must
+	// NOT update here: the first `onDataUpdated` is the timed one, below.
+	view.app = vault.app;
+	view.config = config;
+	view.data = new FakeQueryResult(results);
 	// The CONFIGURATION is workload too, not just the notes: the visible property order,
 	// the workflow states, the horizons and the scale all change what each card and bucket
 	// draws while every note stays as it was — and then the counts and the contents match
@@ -226,8 +227,7 @@ export function mountHarness(root: HTMLElement, fixture: HarnessFixture = 'demo'
 	vault.afterWrite = () => {
 		clearTimeout(settle);
 		settle = setTimeout(() => {
-			anyView.data = { data: demoResults(vault) };
-			view.onDataUpdated();
+			setResults(view, demoResults(vault));
 		}, SETTLE_MS);
 	};
 

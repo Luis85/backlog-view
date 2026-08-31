@@ -7,7 +7,7 @@ import { ESTIMATION_VIEW_TYPE, EstimationView } from '../../../src/view/estimati
 import { useViewHarness, captureRegistrations } from '../../helpers/view';
 import { makeEstimationView } from '../../helpers/estimation';
 import { configuredValues } from '../../helpers/estimationModel';
-import { fakeController, FakeVault, FakeViewConfig } from '../../helpers/vault';
+import { fakeController, FakeVault, FakeViewConfig, mountView } from '../../helpers/vault';
 
 useViewHarness();
 
@@ -48,11 +48,8 @@ describe('registerEstimationView', () => {
 		const spec = specs.get(ESTIMATION_VIEW_TYPE)!;
 
 		const containerA = document.body.createDiv();
-		const viewA = spec.factory(fakeController(), containerA) as unknown as Record<string, unknown>;
-		viewA.app = vault.app;
-		viewA.config = new FakeViewConfig(configuredValues());
-		viewA.data = { data: vault.entries() };
-		(viewA as unknown as EstimationView).onDataUpdated();
+		const viewA = spec.factory(fakeController(), containerA);
+		mountView(viewA, vault, new FakeViewConfig(configuredValues()), vault.entries());
 
 		// A second view with the SAME lock, built the ordinary test-helper way.
 		const { view: viewB } = makeEstimationView(vault, configuredValues(), { lock: lockA });

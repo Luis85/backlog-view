@@ -1,10 +1,8 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import { fakeController, FakeVault } from '../helpers/vault';
+import { FakeVault } from '../helpers/vault';
 import { Menu } from '../helpers/obsidian-mock';
-import { ProductBacklogView } from '../../src/view/backlogView';
-import { FakeViewConfig } from '../helpers/vault';
-import { clickExpandAll, fixture, flush, makeView, rowByTitle, treeOf, useViewHarness } from '../helpers/view';
+import { fixture, flush, makeView, rowByTitle, treeOf, useViewHarness } from '../helpers/view';
 
 useViewHarness();
 
@@ -204,16 +202,7 @@ describe('the risk chip', () => {
 		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10, risk: '1 - High' } });
 		vault.addFile('Feature.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Epic' });
 		vault.addFile('PBI.md', { frontmatter: { type: 'PBI', order: 10 }, parentLink: 'Feature' });
-		const containerEl = document.body.createDiv();
-		const view = new ProductBacklogView(fakeController(), containerEl);
-		const anyView = view as unknown as Record<string, unknown>;
-		anyView.app = vault.app;
-		const config = new FakeViewConfig(configured);
-		config.order = ['note.risk'];
-		anyView.config = config;
-		anyView.data = { data: vault.entries().filter((e) => e.file.path === 'PBI.md') };
-		view.onDataUpdated();
-		clickExpandAll(containerEl);
+		const { containerEl } = makeView(vault, configured, { only: ['PBI.md'], order: ['note.risk'] });
 
 		// It renders and it parents; it is never a write target. So: shown, not pressable.
 		const context = chipOf(containerEl, 'Epic');

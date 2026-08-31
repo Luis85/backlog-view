@@ -3,7 +3,7 @@ import { WriteLock } from '../../src/view/writeLock';
 import { ReleaseView } from '../../src/view/release/releaseView';
 import { installObsidianDom } from './dom';
 import { Modal } from './obsidian-mock';
-import { FakeVault, FakeViewConfig, mountLeaf } from './vault';
+import { FakeVault, FakeViewConfig, mountLeaf, mountView, setResults } from './vault';
 import { flush } from './view';
 import { fakeController } from '../helpers/vault';
 
@@ -107,11 +107,7 @@ export function makeReleaseView(
 	const view = new ReleaseView(fakeController(), containerEl, lock ?? new WriteLock());
 	const config = new FakeViewConfig(configValues);
 	if (viewName) config.name = viewName;
-	const anyView = view as unknown as Record<string, unknown>;
-	anyView.app = vault.app;
-	anyView.config = config;
-	anyView.data = { data: vault.entries() };
-	view.onDataUpdated();
+	mountView(view, vault, config, vault.entries());
 	return { view, config, containerEl, vault };
 }
 
@@ -191,11 +187,10 @@ export interface MountReleaseOptions {
 	notesFolder?: string;
 }
 
-/** Hand the view a fresh result set, the way Bases does after a vault change —
- *  `test/helpers/view.ts`'s own `refresh`, for the release view's own `data` shape. */
+/** Hand the view everything the vault now holds, the way Bases does after a change —
+ *  `test/helpers/view.ts`'s own `refresh`, named for the release view. */
 export function refreshRelease(view: ReleaseView, vault: FakeVault): void {
-	(view as unknown as Record<string, unknown>).data = { data: vault.entries() };
-	view.onDataUpdated();
+	setResults(view, vault.entries());
 }
 
 export function mountRelease(opts: MountReleaseOptions = {}): ReleaseHarness {

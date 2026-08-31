@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import { FakeVault } from '../helpers/vault';
+import { FakeVault, setResults } from '../helpers/vault';
 import { Menu } from '../helpers/obsidian-mock';
 import { flush, makeView, noOptionalProperties, rowByTitle } from '../helpers/view';
 import { cardByTitle } from '../helpers/board';
@@ -417,9 +417,7 @@ describe('a context Deliverable is never a source of this board’s vocabulary',
 		vault.addFile('Live spec.md', { frontmatter: { type: 'Deliverable', order: 20, docStatus: 'Draft' } });
 		const harness = makeView(vault, CONFIG);
 		// The excluded ancestor is in the vault and out of the Base's results.
-		const anyView = harness.view as unknown as Record<string, unknown>;
-		anyView.data = { data: vault.entries().filter((e) => e.file.path !== 'Old handbook.md') };
-		harness.view.onDataUpdated();
+		setResults(harness.view, vault.entries().filter((e) => e.file.path !== 'Old handbook.md'));
 		harness.view.setProjection('deliverables');
 
 		const columns = [...harness.containerEl.querySelectorAll('.pbl-board-col-name')].map((el) => el.textContent);

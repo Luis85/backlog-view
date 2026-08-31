@@ -1,4 +1,14 @@
-import type { App, BasesEntry, BasesPropertyId, BasesSortConfig, BasesViewConfig, QueryController, Value } from 'obsidian';
+import type {
+	App,
+	BasesEntry,
+	BasesPropertyId,
+	BasesQueryResult,
+	BasesSortConfig,
+	BasesView,
+	BasesViewConfig,
+	QueryController,
+	Value,
+} from 'obsidian';
 import { FileView, TFile, TFolder } from './obsidian-mock';
 
 /**
@@ -594,6 +604,57 @@ export function mountLeaf(vault: FakeVault, base?: string): HTMLElement {
 	const containerEl = leafEl.createDiv();
 	if (base) vault.addLeaf(new FileView(vault.addFile(base), leafEl));
 	return containerEl;
+}
+
+/**
+ * Everything Bases delivers to a view between construction and its first render: the app,
+ * the view config and the first result set. Every projection's mount is this — the three
+ * view harnesses, the three browser-harness entries, and `makeView`, which is this plus a
+ * fixture and the working position. A view built some other way (through the registered
+ * factory, or constructed early to assert what it draws before any results arrive) drives
+ * the same three assignments rather than writing them out again.
+ *
+ * It lives here rather than in `view.ts` because the browser harness bundles its callers
+ * and that module pulls vitest in.
+ *
+ * None of the three assignments is a cast: `app` and `config` satisfy their own types, and
+ * {@link setResults} is where the result set is widened, once.
+ */
+export function mountView(view: BasesView, vault: FakeVault, config: FakeViewConfig, entries: BasesEntry[]): void {
+	view.app = vault.app;
+	view.config = config;
+	setResults(view, entries);
+}
+
+/**
+ * Hand a view a result set and let it rebuild — what Bases does on every vault change, and
+ * the second half of {@link mountView}. Takes entries rather than a vault, because the
+ * tests that call it directly are about a set the vault cannot produce on its own: a
+ * filtered one, an empty one, or one entry whose `getValue` throws.
+ */
+export function setResults(view: BasesView, entries: BasesEntry[]): void {
+	view.data = new FakeQueryResult(entries);
+	view.onDataUpdated();
+}
+
+/**
+ * The result set Bases hands a view, as `view.data` takes it. The view reads `data` and
+ * nothing else, so the three members Bases computes are DECLARED — no runtime cost, and a
+ * module that starts reading one fails loudly instead of finding a silent stub, the same
+ * trade the mock `TFile`'s `declare`d members make.
+ *
+ * It exists so that HANDING A VIEW ITS RESULTS NEEDS NO CAST. `{ data: entries }` is not a
+ * `BasesQueryResult`, so every mount in the suite reached `view.data` through
+ * `as unknown as Record<string, unknown>` — a cast that also covered `app` and `config`,
+ * which have satisfied their own types since the doubles were widened, and so read as
+ * necessary long after it had stopped being. A double that cannot satisfy a real type is
+ * widened once, here, rather than cast at each mount.
+ */
+export class FakeQueryResult {
+	declare groupedData: BasesQueryResult['groupedData'];
+	declare properties: BasesQueryResult['properties'];
+	declare getSummaryValue: BasesQueryResult['getSummaryValue'];
+	constructor(public data: BasesEntry[]) {}
 }
 
 /** In-memory BasesViewConfig double that records set() calls. */

@@ -1,8 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import { fakeController, FakeVault, FakeViewConfig } from '../helpers/vault';
-import { ProductBacklogView } from '../../src/view/backlogView';
-import { clickExpandAll, makeView, rowByTitle, useViewHarness } from '../helpers/view';
+import { FakeVault } from '../helpers/vault';
+import { makeView, rowByTitle, useViewHarness } from '../helpers/view';
 
 useViewHarness();
 
@@ -97,16 +96,7 @@ describe('the assignee chip´s broken state', () => {
 		vault.addFile('Alex.md', { frontmatter: { type: 'Resource' } });
 		vault.addFile('Retired.md', { frontmatter: { type: 'Epic', order: 40, assignee: '[[Alex]]' } });
 		vault.addFile('Feature R1.md', { frontmatter: { type: 'Feature', order: 10 }, parentLink: 'Retired' });
-		const containerEl = document.body.createDiv();
-		const view = new ProductBacklogView(fakeController(), containerEl);
-		const anyView = view as unknown as Record<string, unknown>;
-		anyView.app = vault.app;
-		const config = new FakeViewConfig(ASSIGNEE);
-		config.order = ['note.assignee'];
-		anyView.config = config;
-		anyView.data = { data: vault.entries().filter((e) => e.file.path !== 'Retired.md') };
-		view.onDataUpdated();
-		clickExpandAll(containerEl);
+		const { containerEl } = makeView(vault, ASSIGNEE, { except: ['Retired.md'], order: ['note.assignee'] });
 
 		const shown = chipOf(containerEl, 'Retired');
 		expect(shown?.classList.contains('pbl-assignee-broken')).toBe(false);

@@ -1,10 +1,9 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { horizonVault, makeRoadmap, shelfCountOf, shelfGroupHeaders, shelfOf, shelfTitles } from '../helpers/roadmap';
-import { flush, key, useViewHarness } from '../helpers/view';
-import { fakeController, FakeVault, FakeViewConfig } from '../helpers/vault';
+import { flush, key, makeView, useViewHarness } from '../helpers/view';
+import { FakeVault } from '../helpers/vault';
 import { Menu, MenuItem } from '../helpers/obsidian-mock';
-import { ProductBacklogView } from '../../src/view/backlogView';
 import { cardDrag } from '../helpers/dnd';
 import { cardByTitle } from '../helpers/board';
 
@@ -394,17 +393,14 @@ describe('the shelf, collapsed by default', () => {
 		const vault = new FakeVault();
 		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10, horizon: 'now' } });
 		vault.addFile('F1.md', { frontmatter: { type: 'Feature', order: 10, horizon: 'Now' }, parentLink: 'Epic' });
-		const containerEl = document.body.createDiv();
-		const view = new ProductBacklogView(fakeController(), containerEl);
-		const anyView = view as unknown as Record<string, unknown>;
-		anyView.app = vault.app;
-		anyView.config = new FakeViewConfig({ horizonProperty: 'note.horizon' });
 		// The Base returns only the feature; the Epic surfaces purely as context, the
-		// same shape the domain fixture's own vault.entries().filter(...) sets up.
-		anyView.data = { data: vault.entries().filter((e) => e.file.path !== 'Epic.md') };
-		view.onDataUpdated();
-		// Focus is working position, not a base setting: set through the view.
-		view.setFocusLevel('Epic');
+		// same shape the domain fixture's own excluded-path filter sets up. Focus is
+		// working position, not a base setting: set through the view.
+		const { view, containerEl } = makeView(
+			vault,
+			{ horizonProperty: 'note.horizon' },
+			{ collapsed: true, except: ['Epic.md'], focus: 'Epic' },
+		);
 		view.setProjection('roadmap');
 
 		expect(containerEl.querySelector('.pbl-board-advisory')).toBeNull();

@@ -2,7 +2,7 @@ import { vi } from 'vitest';
 import { EstimationView } from '../../src/view/estimation/estimationView';
 import { WriteLock } from '../../src/view/writeLock';
 import { installObsidianDom } from './dom';
-import { FakeVault, FakeViewConfig, mountLeaf } from './vault';
+import { FakeVault, FakeViewConfig, mountLeaf, mountView } from './vault';
 import { fakeController } from '../helpers/vault';
 
 installObsidianDom();
@@ -29,11 +29,7 @@ export function makeEstimationView(
 	const view = new EstimationView(fakeController(), containerEl, lock);
 	const config = new FakeViewConfig(configValues);
 	if (viewName) config.name = viewName;
-	const anyView = view as unknown as Record<string, unknown>;
-	anyView.app = vault.app;
-	anyView.config = config;
-	anyView.data = { data: vault.entries() };
-	view.onDataUpdated();
+	mountView(view, vault, config, vault.entries());
 	return { view, config, containerEl };
 }
 

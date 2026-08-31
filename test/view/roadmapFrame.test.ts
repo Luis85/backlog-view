@@ -1,9 +1,8 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import { ProductBacklogView } from '../../src/view/backlogView';
 import { todayStamp } from '../../src/domain/noteFields';
-import { fakeController, FakeVault, FakeViewConfig } from '../helpers/vault';
-import { clickExpandAll, refresh, useViewHarness } from '../helpers/view';
+import { FakeVault } from '../helpers/vault';
+import { clickExpandAll, makeView, refresh, useViewHarness } from '../helpers/view';
 import {
 	barFor,
 	barOf,
@@ -332,16 +331,8 @@ describe('context rows on the roadmap', () => {
 		const vault = new FakeVault();
 		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10, ...epicFm } });
 		vault.addFile('F.md', { frontmatter: { type: 'Feature', order: 10, horizon: 'Now' }, parentLink: 'Epic' });
-		const containerEl = document.body.createDiv();
-		const view = new ProductBacklogView(fakeController(), containerEl);
-		const config = new FakeViewConfig(cfg);
-		const anyView = view as unknown as Record<string, unknown>;
-		anyView.app = vault.app;
-		anyView.config = config;
-		anyView.data = { data: vault.entries().filter((e) => e.file.path !== 'Epic.md') };
-		view.onDataUpdated();
 		// Focus is working position, not a base setting: set through the view.
-		view.setFocusLevel('Epic');
+		const { view, containerEl } = makeView(vault, cfg, { collapsed: true, except: ['Epic.md'], focus: 'Epic' });
 		view.setProjection('roadmap');
 		return { view, containerEl, vault };
 	}
