@@ -35,7 +35,8 @@ unless a section says otherwise.
 - Each item is an ordinary markdown note. The view reads three frontmatter properties:
   - **`parent`** — a link to the parent item (`"[[Customer Portal]]"`). Items without a
     parent are top-level.
-  - **`order`** — a number that ranks an item among its siblings.
+  - **`order`** — a number that ranks an item against everything else the base returns,
+    not only its siblings. Ranking details are below.
   - **`type`** — the ladder `Epic → Feature → PBI → Task`, the **extra types** `Issue`,
     `Bug`, `Idea`, `Deliverable` and `Improvement` that sit beside it rather than on it, or a **marker**
     on neither — `Milestone`, `Iteration` and `Release` — which states a date, a time box
