@@ -2,12 +2,13 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { en } from '../../src/i18n/en';
 import { Catalog, MessageKey, setLocale } from '../../src/i18n/t';
+import { resetLocale } from '../helpers/locale';
 import { Menu } from '../helpers/obsidian-mock';
 import { FakeVault, setResults } from '../helpers/vault';
 import { boardVault, makeBoard } from '../helpers/board';
 import { horizonVault, makeRoadmap, roadmapView } from '../helpers/roadmap';
 import { fixture, makeView, useViewHarness } from '../helpers/view';
-import { MARK, markedCatalog } from './fixtures';
+import { filled, MARK, markedCatalog } from './fixtures';
 
 /**
  * The toolbar row, driven under a catalog that is not English — `render/toolbar.ts`,
@@ -80,7 +81,7 @@ beforeEach(() => {
 	setLocale('xx', { xx });
 });
 // Resolution is module state by design (once, at load), so each test puts it back.
-afterEach(() => setLocale('en'));
+afterEach(() => resetLocale());
 
 const barOf = (containerEl: HTMLElement): HTMLElement => {
 	const bar = containerEl.querySelector<HTMLElement>('.pbl-toolbar');
@@ -263,8 +264,12 @@ describe('the advisories and the projections nobody else drives read from it too
 		const { containerEl } = makeView(vault, { parentProperty: 'note.rank', orderProperty: 'note.rank' });
 		const drawn = drawnText(barOf(containerEl));
 
-		expect(drawn).toContain(MARK + en['toolbar.ignoredNotes'].one.replace('{count}', '1'));
-		expect(drawn).toContain(MARK + en['toolbar.ignoredTooltip'].one.replace('{count}', '1'));
+		expect(drawn).toContain(MARK + filled(en['toolbar.ignoredNotes'].one, { count: 1 }));
+		// The option this sentence tells the reader to turn off is a PARAMETER, filled from
+		// `option.hierarchyOnly` — the label is keyed once and quoted, never re-spelled.
+		expect(drawn).toContain(
+			MARK + filled(en['toolbar.ignoredTooltip'].one, { count: 1, option: en['option.hierarchyOnly'] }),
+		);
 		expect(drawn).toContain(marked('toolbar.checkViewOptions'));
 		expect(drawn).toContain(marked('toolbar.configHelp'));
 		// The warning's accessible name is ONE sentence from the catalog with the problems

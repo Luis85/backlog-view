@@ -2,12 +2,12 @@
 type: PBI
 parent: "[[Multilang]]"
 order: 40
-status: Open
-started: ""
-finished: ""
+status: Done
+started: 2026-09-01
+finished: 2026-09-01
 horizon: ""
-start: ""
-due: ""
+start: 2026-09-01
+due: 2026-09-01
 risk: ""
 assignee: ""
 priority: ""
@@ -47,15 +47,23 @@ which is worse than not translated at all.
 **Extensions**
 
 - **1a — the string names a view option.** It quotes the *translated* option label, so the
-  sentence points at a control the user can find. **Ten catalog keys quote ten distinct
-  option labels** today, not the two this line claimed — counted 2026-08-21 by matching
-  every `option.*` value against the rest of the catalog, an instrument that reads the
-  labels from the catalog rather than from a list and so cannot go stale by wording. It
-  became possible that day and not before: `View options and config warnings` moved those
-  labels into the catalog, so a sentence can take one as a parameter instead of spelling it
-  a second time. Until it does, a copy edit to an option's name leaves ten sentences
-  pointing at a control that no longer reads that way, and a translator has to spell each
-  label identically in two places.
+  sentence points at a control the user can find. **Paid on 2026-09-01**, and the debt was
+  real for eleven days: the same instrument that found it — matching every `option.*` value
+  against the rest of the catalog, which reads the labels from the catalog rather than from
+  a list and so cannot go stale by wording — found **nine keys quoting ten distinct option
+  labels**, and each is now one parameter filled from the option's own key. The count is
+  nine rather than the ten this line said, and the two are different quantities: one
+  sentence quotes two labels and another quotes four, so keys and labels were never going
+  to agree. It became possible on 2026-08-21 and not before, when
+  `View options and config warnings` moved those labels into the catalog.
+
+  **The rule is checked at the forbidden thing rather than at the nine.**
+  `test/i18n/optionLabels.test.ts` refuses a QUOTED option label anywhere in the catalog
+  but the option's own key, so a tenth sentence written next year fails without anyone
+  remembering this note. Quoted rather than merely contained, because
+  `option.group.release` is the single word *Release* and an unquoted rule would refuse
+  every sentence that mentions one. Watched failing on a revert of
+  `roadmap.undeclaredBucket`.
 - **1b — the string is withheld for a context row.** It stays withheld. `Set type`,
   `Set state` and the parent-link actions are *absent* for an `outsideFilter` row, not
   translated and disabled.
@@ -113,9 +121,9 @@ which is correct: Obsidian needs a restart to change language.
   catalog. Screen-reader text is UI text; leaving it English translates the view for
   sighted users only.
 - The sentences that name a view option by its label quote the **translated** label, so
-  the text points at a control the user can find. Two of them spell *"Ignore notes
-  outside the hierarchy"* as a literal today (`emptyStates.ts:50`, `toolbar.ts:140`);
-  afterwards it is one parameter from one key.
+  the text points at a control the user can find. Met 2026-09-01 at all nine, and the
+  quotation MARKS stay inside the message rather than being added around the parameter —
+  which marks a language uses is its own grammar.
 - The menu's item order and its withheld-for-context-row set are unchanged — `Set type`,
   `Set state` and the parent-link actions stay *absent* for an `outsideFilter` row, not
   translated-but-disabled. `test/view/contextRowWrites.test.ts` passes untouched.
@@ -797,6 +805,22 @@ and five more — `absences.ts`'s derived note NAME, `estimationPresets.ts`'s
 fragments of generated `.base` content. The catalog is **686 keys**, counted both ways on
 the merged tree and 686 DISTINCT.
 
+**Closed on 2026-09-01, on the one criterion left standing.** No sweep: the residue below
+was re-derived and is unchanged, and what moved was the second acceptance criterion, owed
+at nine keys since the labels were keyed. Each sentence that told a reader to set a view
+option spelled that option's label a second time — `emptyState.noAxisBody` spelled four of
+them — so a copy edit to an option's name left the sentence pointing at a control that no
+longer read that way, and a translator had to spell each label identically in two places.
+They are parameters now, filled from `option.*` at the four call sites that draw them
+(`emptyStates.ts`, `toolbarStatus.ts`, `roadmap.ts`, `board.ts`). The catalog is unchanged
+in size: nine messages gained a placeholder and no key was added or removed.
+
+What that leaves the note owing is nothing, and the two earlier debts it recorded are both
+settled elsewhere: the configuration problems' punctuation went with
+[[View options and config warnings]], and making a bare string unable to reach the UI at
+all is [[A bare string cannot reach the UI]], which is a different mechanism rather than
+more of this one.
+
 ## Where it lives
 
 **`src/i18n/en.ts`** carries the keys; the swept call sites are `src/ui/prompts.ts`,
@@ -853,7 +877,10 @@ untouched — they guard the two behaviours this sweep is most likely to disturb
 `test/i18n/sweptSurfaces.test.ts`, `test/i18n/emptyStates.test.ts`,
 `test/i18n/menus.test.ts`, `test/i18n/interactions.test.ts`, `test/i18n/toolbar.test.ts`,
 `test/i18n/estimation.test.ts`, `test/i18n/projections.test.ts` and
-`test/i18n/announcements.test.ts` are the swept half's own checks, and each is a PAIR with lint rather than a substitute for it: they drive each
+`test/i18n/announcements.test.ts` are the swept half's own checks, and
+`test/i18n/optionLabels.test.ts` is the ninth — the rule that an option label is quoted
+from its own key and never re-spelled, asked of the whole catalog rather than of the nine
+keys that broke it, and each is a PAIR with lint rather than a substitute for it: they drive each
 surface under a fixture catalog, so a literal left at a call site renders English beside
 overridden neighbours, while `UI_TEXT_LITERAL` and `UI_TEXT_PROPERTY` in
 `eslint.config.mjs` refuse a NEW one. A test cannot see a call site
