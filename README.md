@@ -563,10 +563,17 @@ forgetting, because two backlogs would keep opening each other's rows.
 Dropping between two items assigns the halfway value, and one note is written — never the
 group. When two numbers have no room left between them the move is refused with a notice
 instead of renumbering anything; **Respace ranks** in the command palette rewrites every
-rank with even spacing again, keeping the order you are looking at. **Seed ranks from the
-hierarchy** is its blunter neighbour: it numbers every note in tree order, which is what a
-backlog whose orders were never set this way needs, and what discards any order you set by
-hand at a focus level. Items without an `order` sort after ranked ones.
+rank with even spacing again, keeping the order you are looking at — with one exception it
+warns you about first: a list that is *drawn* in tree order, because its ranks are missing
+or repeated, is rewritten into rank order instead, and the confirmation says so before you
+apply it. **Seed ranks from the hierarchy** is its blunter neighbour: it numbers every note
+in tree order, which is what a backlog whose orders were never set this way needs, and what
+discards any order you set by hand at a focus level.
+
+Inside a sibling group, items without an `order` sort after ranked ones. A focused list is
+all-or-nothing instead: one row with no rank of its own leaves the whole list in tree order,
+because a global rank orders nothing until every row has one. The toolbar's ✨ button fills
+in the blanks, keeping each row where it is drawn.
 
 ## The board
 
