@@ -144,6 +144,16 @@ in one test, since the entry English calls complete is over-supplied for `ja` an
 `ja` calls complete is incomplete for English. A malformed tag goes through `intlLocale`
 and falls back rather than throwing a `RangeError` out of a check.
 
+**It asks that of a PLAIN entry too, and that was the first version's hole.** The rule was
+written as "an entry supplying no forms has no categories to have", which reads as
+tolerance for a locale that says the same thing at every count — Japanese — and is a hole
+everywhere else: `t()` never plural-selects a string, so a German catalog spelling
+`count.items` as one sentence would render one form forever and the check would pass it
+silently. The condition asks the LOCALE rather than the catalog now: a plain entry where
+English is plural is reported wherever the locale has more than one category, and accepted
+where it does not. Found by review (Codex, PR #240), and the test that had asserted the
+old behaviour is the one that was watched failing.
+
 **The parameter rule is UNIONED across a plural entry's forms, and that ceiling is written
 into the check rather than left to be found.** English's own `lane.absenceClash` names
 `{count}` in `other` and not in `one` — *an absence* needs no count and *three absences* do

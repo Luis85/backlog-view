@@ -155,9 +155,17 @@ by building the release with the development `define`, and the pseudo-locale is 
 **Reaching it needed a way in, and Obsidian offers none:** `getLanguage()` answers the
 app's own language, and no Obsidian ships `en-x-pseudo`. So `initLocale()` reads
 `localStorage['product-backlog-locale']` ahead of it — a development knob, not a setting.
-Nothing writes it, nothing lists it, and in a release build any value resolves to a shipped
-catalog, so the worst it can do is nothing. In the `npm run test-build` vault it is one
-line in the console and a reload.
+Nothing writes it and nothing lists it. In the `npm run test-build` vault it is one line in
+the console and a reload.
+
+**The override is behind the same `define` as the catalog, and that correction is worth
+recording because the sentence above it was written ahead of the code.** This note first
+said "in a release build any value resolves to a shipped catalog, so the worst it can do is
+nothing" — true of the TEXT and false of the numbers. The catalog falls back, but `activate`
+hands `Intl` the REQUESTED code, so a key left behind in a vault that later loaded a
+release would have given a German reader English number formatting until they cleared it by
+hand. A development knob that survives into a release is not a development knob. The build
+gate refuses both strings now, not just the catalog's. Found by review (Codex, PR #240).
 
 The parity half is [[Catalogs stay complete]]'s and landed the same day; what it settles
 here is the second criterion, since the check now reads `CATALOGS` rather than a list of

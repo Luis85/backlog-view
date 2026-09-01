@@ -75,12 +75,16 @@ export function compareToSource(locale: string, catalog: Catalog): Divergence {
 		}
 		const params = diff(key, parametersOf(en[key as keyof typeof en]), parametersOf(entry));
 		if (params) report.parameters.push(params);
-		// A plain message has no categories to have, and a catalog is free to spell a
-		// message plainly where English spells it plurally — `other` alone IS that, and the
-		// check would refuse it as incomplete if it read the source's shape instead of the
-		// locale's grammar.
+		// A plain message has no categories to have. Spelling one plainly where English
+		// spells it plurally is legitimate in a language that says the same thing at every
+		// count — Japanese has `other` alone — and a DEFECT anywhere else, because `t()`
+		// never plural-selects a string, so a German catalog written that way would render
+		// one form forever and this check would have passed it. Found by review
+		// (Codex, PR #240), which is also why the condition asks the locale rather than
+		// asking whether anything was supplied.
 		const supplied = categoriesOf(entry);
-		if (supplied.size > 0) {
+		const pluralHere = typeof en[key as keyof typeof en] !== 'string' && categories.size > 1;
+		if (supplied.size > 0 || pluralHere) {
 			const plurals = diff(key, categories, supplied);
 			if (plurals) report.plurals.push(plurals);
 		}

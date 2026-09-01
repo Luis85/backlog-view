@@ -1,7 +1,8 @@
-import { describe, expect, it } from 'vitest';
+// @vitest-environment jsdom
+import { afterEach, describe, expect, it } from 'vitest';
 import { en } from '../../src/i18n/en';
 import { PSEUDO_LOCALE, pseudoCatalog } from '../../src/i18n/pseudo';
-import { CATALOGS, setLocale, t } from '../../src/i18n/t';
+import { activeLocale, CATALOGS, initLocale, setLocale, t } from '../../src/i18n/t';
 import { resetLocale } from '../helpers/locale';
 import { compareToSource } from './parity';
 
@@ -74,5 +75,36 @@ describe('what it does to a sentence is what makes it worth looking at', () => {
 		resetLocale();
 
 		expect(one).not.toBe(many);
+	});
+});
+
+describe('the override is the only way to ask for it, and it is the development build’s', () => {
+	const KEY = 'product-backlog-locale';
+
+	afterEach(() => {
+		window.localStorage.removeItem(KEY);
+		resetLocale();
+	});
+
+	it('reads the key ahead of the app’s own language', () => {
+		window.localStorage.setItem(KEY, PSEUDO_LOCALE);
+		initLocale();
+
+		expect(activeLocale().catalog).toBe(PSEUDO_LOCALE);
+	});
+
+	it('falls back to the app’s language with no key set', () => {
+		initLocale();
+
+		// The mock answers `'en'`, which is what a vault with no override gets.
+		expect(activeLocale().catalog).toBe('en');
+	});
+
+	it('never leaves a malformed value deciding anything', () => {
+		window.localStorage.setItem(KEY, '!!!');
+		initLocale();
+
+		expect(activeLocale().catalog).toBe('en');
+		expect(activeLocale().numbers).toBe('en');
 	});
 });

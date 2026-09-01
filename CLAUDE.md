@@ -113,9 +113,12 @@ and no key list has to be kept in step. The sentence is the unit of translation:
 builds a message by joining pieces, plural forms and list joining follow the CATALOG's
 locale because they are grammar, and numbers follow the USER's because they are data
 presentation. `initLocale()` runs once in `main.ts`; Obsidian needs a restart to change
-language, so nothing re-reads it — and it reads one override ahead of Obsidian's own
-answer, `localStorage['product-backlog-locale']`, which is the only way to ask for the
-pseudo-locale `pseudo.ts` registers in development builds and the release bundle refuses.
+language, so nothing re-reads it — and in a DEVELOPMENT build it reads one override ahead
+of Obsidian's own answer, `localStorage['product-backlog-locale']`, which is the only way
+to ask for the pseudo-locale `pseudo.ts` registers. Both strings are gated on the build's
+`NODE_ENV` and the release bundle is read and refused if it carries either: the catalog
+falls back in a release but the requested code still reaches `Intl`, so an override left
+in a vault would have changed a reader's NUMBERS.
 A message may not re-spell a view option's LABEL: it takes it as a parameter from the
 option's own key, and `test/i18n/optionLabels.test.ts` refuses a quoted one anywhere else.
 Every catalog in the registry is compared to English — keys, parameters and plural

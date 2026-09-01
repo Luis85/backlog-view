@@ -164,16 +164,24 @@ export function setLocale(code: string, catalogs: Record<string, Catalog> = CATA
 /**
  * The one call `main.ts` makes: Obsidian's language, applied.
  *
- * One override comes ahead of it, and it is a DEVELOPMENT knob rather than a setting:
- * Obsidian offers no way to ask for a language it does not itself ship, so the
+ * One override comes ahead of it in a DEVELOPMENT build, and it is a knob rather than a
+ * setting: Obsidian offers no way to ask for a language it does not itself ship, so the
  * pseudo-locale above would be unreachable from the `npm run test-build` vault without
  * it. Set `localStorage['product-backlog-locale'] = 'en-x-pseudo'` in the console and
- * reload. It is deliberately not a view option and not a command — nothing writes it,
- * nothing lists it, and in a release build any value resolves to a shipped catalog, so
- * the worst it can do is nothing.
+ * reload. It is deliberately not a view option and not a command — nothing writes it and
+ * nothing lists it.
+ *
+ * **It is behind the same `define` as the catalog it exists for, and that is the
+ * correction rather than symmetry for its own sake.** This said "in a release build any
+ * value resolves to a shipped catalog, so the worst it can do is nothing", and that was
+ * a guarantee written ahead of what the code does: the catalog falls back, but `activate`
+ * gives `Intl` the REQUESTED code, so a key left behind in a vault would have given a
+ * German reader English number formatting off a production build until they cleared it by
+ * hand. A development knob that survives into a release is not a development knob. Found
+ * by review (Codex, PR #240).
  */
 export function initLocale(): void {
-	setLocale(localeOverride() ?? getLanguage());
+	setLocale(process.env.NODE_ENV === 'production' ? getLanguage() : (localeOverride() ?? getLanguage()));
 }
 
 function localeOverride(): string | null {

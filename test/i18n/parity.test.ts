@@ -113,12 +113,27 @@ describe('plural categories are the locale’s own, checked against Intl', () =>
 		expect(compareToSource('en', { ...complete, 'emptyState.noItems': 'XX' }).plurals).toEqual([]);
 	});
 
-	it('does not read a plural entry where English has a plain one, or the reverse', () => {
+	it('reads a plural entry where English has a plain one, by the locale’s categories', () => {
 		const asPlural = compareToSource('en', { ...complete, 'emptyState.noItems': { other: 'XX' } });
 		expect(asPlural.plurals).toEqual([{ key: 'emptyState.noItems', missing: ['one'], extra: [] }]);
-		const asPlain = compareToSource('en', { ...complete, 'count.items': 'XX {count} items' });
-		expect(asPlain.plurals).toEqual([]);
-		expect(asPlain.parameters).toEqual([]);
+	});
+
+	it('refuses a PLAIN entry where the locale needs forms, and allows it where it does not', () => {
+		// `t()` never plural-selects a string, so a German catalog spelling `count.items`
+		// plainly would render one form at every count — and the check saw nothing, because
+		// it asked whether forms were SUPPLIED rather than whether the locale wants any.
+		// Found by review (Codex, PR #240).
+		const plain = { ...complete, 'count.items': 'XX {count} items' };
+		expect(compareToSource('en', plain).plurals).toEqual([
+			{ key: 'count.items', missing: ['one', 'other'], extra: [] },
+		]);
+		// Nothing else changed about it: the parameters are still read off the string.
+		expect(compareToSource('en', plain).parameters).toEqual([]);
+		// Japanese says the same thing at every count, so a string IS the whole message.
+		// Asked of this key rather than of the report, since a clone of English is
+		// over-supplied for `ja` at every other plural key and that is the next test's
+		// subject, not this one's.
+		expect(compareToSource('ja', plain).plurals.map((entry) => entry.key)).not.toContain('count.items');
 	});
 });
 
