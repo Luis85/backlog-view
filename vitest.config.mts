@@ -11,6 +11,9 @@ export default defineConfig({
 	test: {
 		environment: 'node',
 		include: ['test/**/*.test.ts'],
+		// One frozen day for every test file — see `test/helpers/clock.ts` for why the whole
+		// suite reads one, and why the freeze is not left to a hook.
+		setupFiles: ['./test/helpers/clock.ts'],
 		coverage: {
 			provider: 'v8',
 			include: ['src/**/*.ts'],
