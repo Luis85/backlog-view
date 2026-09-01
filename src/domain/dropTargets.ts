@@ -173,7 +173,15 @@ export function dropTargetFor(
 		// The TREE keeps today's rule unchanged: the real group filtered to this
 		// projection, because a sibling group can interleave the projections and
 		// crossing a row nobody can see is not a move.
-		const fullList = position.parent ? position.parent.children : model.realRoots;
+		//
+		// **Through `rankablePeers`, the list `position.peers` was counted over.** The two
+		// readings agree today only because an unranked context row sorts LAST in its group
+		// — ancestors resolve after every result, so they hold the highest `entryIndex`,
+		// which is `compareSiblings`' tiebreak among blank ranks — and so is never above the
+		// dragged row. That is an ordering held elsewhere, not a property of this
+		// arithmetic, so the two are made one list rather than left to keep agreeing. No
+		// test can fail without this line while that ordering holds.
+		const fullList = rankablePeers(position.parent ? position.parent.children : model.realRoots);
 		const drawnIndex = fullList.filter(drawn).indexOf(dragged);
 		const drawnInsert = position.peers.slice(0, position.insertIndex).filter(drawn).length;
 		if (drawnInsert === drawnIndex) return null;
