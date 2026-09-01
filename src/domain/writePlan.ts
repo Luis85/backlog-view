@@ -1250,11 +1250,17 @@ export function computeInitWrites(model: BacklogModel, settings: BacklogSettings
 	// existing rank occupies: above every rank drawn earlier, below the next one above it.
 	let floor: number | null = null;
 	let ceiling: number | null = null;
-	const nextOrder = (): number | null => {
+	// **A refusal poisons its focus key for the rest of the walk.** A blank left blank sorts
+	// LAST, so a later blank that takes a number ranks itself ahead of the row just refused
+	// and MOVES it: `X(100), A, B` with an Epic `A1(50)` inside `A` drew `X, B, A`. Per KEY,
+	// since that is the only population the two are ever compared in.
+	const refusedKeys = new Set<number>();
+	const nextOrder = (key: number): number | null => {
 		while (above < occupied.length && occupied[above] <= (floor ?? -Infinity)) above++;
 		const placed = rankBetween(floor, lowerOf(ceiling, occupied[above] ?? null));
 		if ('refusal' in placed) {
 			unplaceable++;
+			refusedKeys.add(key);
 			return null;
 		}
 		floor = placed.order;
@@ -1264,12 +1270,17 @@ export function computeInitWrites(model: BacklogModel, settings: BacklogSettings
 		const item = drawn[i];
 		// An unranked context row constrains nothing and is skipped here for the same reason
 		// `anchoredOrder` skips it as an anchor.
-		if (item.order !== null && (floor === null || item.order > floor)) floor = item.order;
+		if (item.order !== null) floor = Math.max(item.order, floor ?? item.order);
 		// Ancestors pulled in from outside the filter are context, not results — the
 		// backfill must not write properties into notes the base excluded.
 		if (item.outsideFilter) continue;
-		ceiling = ceilings[i];
-		const write = initWriteFor(item, settings, nextOrder);
+		// A poisoned key is spelled as a ceiling BELOW everything, which is the truth of it:
+		// there is no room above a row that was left with no number at all. Both arms of
+		// `rankBetween` refuse it — `midpoint` is not strictly between, and `edgeRank`
+		// cannot get under `-Infinity` — so the row is counted and left blank like the one
+		// that poisoned the key.
+		ceiling = refusedKeys.has(focusKey(item)) ? -Infinity : ceilings[i];
+		const write = initWriteFor(item, settings, () => nextOrder(focusKey(item)));
 		if (write) writes.push(write);
 	}
 	return { writes, unplaceable };

@@ -75,6 +75,36 @@ describe('the backfill and the focused order', () => {
 		expect(titlesOf(containerEl)).toEqual(before);
 	});
 
+	it('leaves the blanks drawn AFTER a refused one alone too, rather than ranking them past it', async () => {
+		// The refusal above, one row further on. A blank that stays blank sorts LAST among
+		// its siblings, so a later blank that receives a number does not merely rank itself
+		// — it ranks itself ahead of the row the walk just refused, and that row moves. The
+		// guarantee is about the blank, and this is the blank being moved by somebody
+		// else's placement.
+		//
+		// `A1` is an Epic under an Epic, which is what puts it in the roots' own focus key
+		// while it is drawn INSIDE `A`: that is what makes `A`'s ceiling (50) fall below its
+		// floor (100), with no number in between.
+		const vault = new FakeVault();
+		vault.addFile('X.md', { frontmatter: { type: 'Epic', order: 100 } });
+		vault.addFile('A.md', { frontmatter: { type: 'Epic' } });
+		vault.addFile('A1.md', { frontmatter: { type: 'Epic', order: 50 }, parentLink: 'A' });
+		vault.addFile('B.md', { frontmatter: { type: 'Epic' } });
+		const { view, containerEl } = makeView(vault, noOptionalProperties());
+		const before = titlesOf(containerEl);
+		expect(before).toEqual(['X', 'A', 'A1', 'B']);
+
+		initButton(containerEl)?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await flush();
+		refresh(view, vault);
+
+		// `B` is refused WITH `A` rather than placed above it: the two are unranked
+		// together, which is the only state that keeps them in the order they are drawn.
+		expect(vault.fm('A.md')['order']).toBeUndefined();
+		expect(vault.fm('B.md')['order']).toBeUndefined();
+		expect(titlesOf(containerEl)).toEqual(before);
+	});
+
 	it('says the rank was skipped rather than claiming there was nothing to do', async () => {
 		// The same vault as above, asked what the user is TOLD. A refused rank used to be
 		// reduced to `null` inside the plan, so the action reported the one outcome that
