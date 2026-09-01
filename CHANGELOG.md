@@ -36,6 +36,12 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 - `npm run check` typechecks `test/` as well as `src/` (`npm run typecheck:test`), so a
   test calling a function with the wrong arguments fails the gate instead of passing.
 
+### Fixed
+
+- My work: the Next marker stays inside the pane at every width, the state chip shows its
+  value in full where there is room and its icon where there is not, a title can be
+  selected and copied, and a narrow pane keeps the state instead of dropping it.
+
 ## [0.10.0] - 2026-08-30
 
 ### Added
