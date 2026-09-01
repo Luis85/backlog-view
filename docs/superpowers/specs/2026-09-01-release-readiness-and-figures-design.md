@@ -61,9 +61,13 @@ protects against. A separate "cleared at" list is a later slice, for the day a v
 dependency short of done.
 
 **Unconfigured is a third answer everywhere, never zero and never a pass.** A missing key —
-and a risk criterion whose key is bound with an empty value list — both read *not configured*
-and name what is missing. `Summing up a release` extensions 2a, 3a and 3b; the readiness
-note's "a key bound with no value list is unconfigured, not empty".
+and a risk criterion whose key is bound with **either** value list empty — both read *not
+configured* and name what is missing. `Summing up a release` extensions 2a, 3a and 3b; the
+readiness note's "a key bound with no value list is unconfigured, not empty". **Either**,
+because the readiness note names both halves of that criterion — "which risk values are
+critical **and** which values count as addressed" — so with no way to say a risk has been
+dealt with, "3 of 3 outstanding" is an unfinished configuration reported as a finding about
+the release.
 
 ## Where it lives
 
@@ -114,13 +118,20 @@ every release as blocked — a configuration mistake dressed as a finding about 
 `2 of 5 outstanding` are indistinguishable, and the tooltip that would separate them sits on
 a static, unfocusable div and reaches a pointer alone.
 
+**The effort figures survive an unconfigured progress figure.** They read the estimate key,
+not the state workflow, so the summary strip's early return for unreadable progress must not
+take them with it — a release with estimates and no bound workflow still says how much it is
+and how much of it carries no estimate.
+
 **Whether anything was estimated is decided by the COUNT of estimated members, never by the
 sum.** `0` is a valid estimate this predicate accepts, so a release whose members all
 estimate zero — or whose estimates cancel — must not be drawn like one nobody has estimated
 at all, and the percentage needs its own guard against a zero total.
 
-The last four were raised by a review bot against the first draft of the plan and each was
-confirmed against the code before it was taken.
+The last six were raised by a review bot against drafts of the plan, and each was confirmed
+against the code — or, for the risk vocabularies, against this register — before it was
+taken. That one was an internal contradiction rather than a missed case: the plan's own test
+required both lists while the module beside it required one.
 
 **`src/view/release/renderReadiness.ts`** (new) draws the chip row and the new figures;
 `renderScope.ts` is at 584 lines and calls it from `drawHeader` after `drawSummary`. Chips
