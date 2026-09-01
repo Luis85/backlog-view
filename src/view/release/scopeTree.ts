@@ -333,6 +333,12 @@ function drawStateChip(rowEl: HTMLElement, row: ScopeRow): void {
 	});
 	drawIcon(chipEl.createSpan({ cls: 'pbl-state-icon' }), reading.done ? 'circle-check' : 'circle');
 	chipEl.createSpan({ cls: 'pbl-state-text', text: reading.value });
+	// The value in full, because the chip often cannot show it: `.pbl-state-chip` caps at
+	// 140px in every projection, and this cell ellipsises the chip once the row runs short
+	// of room (`styles/releaseScope.css`). Set unconditionally and measured by nothing —
+	// `.pbl-row` carries `content-visibility: auto`, the same reason the title beside it is
+	// tooltipped unconditionally above.
+	setTooltip(chipEl, reading.value);
 }
 
 /**
