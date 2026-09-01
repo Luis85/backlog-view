@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
 import { en } from '../../../src/i18n/en';
+import { notePropertyId } from '../../../src/domain/optionalProperties';
 import { RELEASE_SUGGESTED_KEYS, RELEASE_SUGGESTED_VALUES } from '../../../src/view/release/init';
 import { makeReleaseView, mountRelease, noReleaseVault, RELEASE_CONFIG } from '../../helpers/release';
 import { Notice } from '../../helpers/obsidian-mock';
@@ -29,7 +30,7 @@ describe('the release view’s ✨', () => {
 		view.viewEl.querySelector<HTMLButtonElement>('.pbl-rel-init')!.click();
 		await vi.waitFor(() => expect(Notice.messages).toHaveLength(1));
 		expect(Notice.messages[0]).not.toBe(en['release.init.nothing']);
-		expect(view.config.get('membershipProperty')).toBeTruthy();
+		expect(view.config.get('membershipProperty')).toBe(notePropertyId('release'));
 	});
 
 	it('is WITHHELD on the noMembership empty state when nothing is adoptable', () => {
@@ -114,15 +115,17 @@ describe('the release view’s ✨', () => {
 			const { view } = makeReleaseView(noReleaseVault(), { typeProperty: 'note.type' });
 			view.viewEl.querySelector<HTMLButtonElement>('.pbl-empty .pbl-rel-init')!.click();
 			await vi.waitFor(() => expect(Notice.messages).toHaveLength(1));
-			expect(view.config.get('membershipProperty')).toBeTruthy();
-			expect(view.config.get('versionProperty')).toBeTruthy();
-			expect(view.config.get('targetDateProperty')).toBeTruthy();
-			expect(view.config.get('releaseStatusProperty')).toBeTruthy();
+			// Each option carries the key `RELEASE_SUGGESTED_KEYS` suggests for IT, which is
+			// what "binds every candidate" means and what a truthy check could not say: two
+			// of these seven suggest the same key (`status`, for the item state and the
+			// release's own), so a press that bound the right number of options to the wrong
+			// ones passed every assertion this used to make.
+			//
 			// Derived, so the two candidates added on 2026-08-29 (the item state and the
 			// released date) are covered here by being declared rather than by anybody
 			// remembering to add a line — the same reason `cleared` above is derived.
 			for (const candidate of RELEASE_SUGGESTED_KEYS) {
-				expect(view.config.get(candidate.option), candidate.option).toBeTruthy();
+				expect(view.config.get(candidate.option), candidate.option).toBe(notePropertyId(candidate.suggested));
 			}
 		});
 	});
