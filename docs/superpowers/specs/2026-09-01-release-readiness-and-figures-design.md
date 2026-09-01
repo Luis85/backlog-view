@@ -98,8 +98,29 @@ generically (`domain/settingsResolve.ts`), and `releaseView.ts` builds its model
 this view is what points the model's resolution at the key the criterion reads, so the two
 cannot drift: there is only one.
 
-An entry that did not resolve is **unreadable**, not cleared. It costs the member its
-criterion and is reported separately (extension 5a).
+An entry that did not resolve is **unreadable**, not cleared. So is a prerequisite whose own
+workflow is unconfigured: `ownWorkflowReading(...).done` is false for every item under an
+unbound key or an empty done list, so calling that "unfinished" would report a Deliverable
+prerequisite as blocking in a vault that never configured the Deliverable workflow. Either
+way it costs the member its criterion and is reported separately (extension 5a) — and the
+count is **shown**, not merely computed: the chip says how many it could not read.
+
+**A key is half of a workflow, the other half is which values clear it**, and the dependency
+criterion is unconfigured unless some workflow has both. Gating on the state key alone leaves
+a bound key with an empty done vocabulary clearing nothing, which reports every member of
+every release as blocked — a configuration mistake dressed as a finding about the release.
+
+**Every chip that is not satisfied names its own criterion.** Two chips reading
+`2 of 5 outstanding` are indistinguishable, and the tooltip that would separate them sits on
+a static, unfocusable div and reaches a pointer alone.
+
+**Whether anything was estimated is decided by the COUNT of estimated members, never by the
+sum.** `0` is a valid estimate this predicate accepts, so a release whose members all
+estimate zero — or whose estimates cancel — must not be drawn like one nobody has estimated
+at all, and the percentage needs its own guard against a zero total.
+
+The last four were raised by a review bot against the first draft of the plan and each was
+confirmed against the code before it was taken.
 
 **`src/view/release/renderReadiness.ts`** (new) draws the chip row and the new figures;
 `renderScope.ts` is at 584 lines and calls it from `drawHeader` after `drawSummary`. Chips

@@ -279,10 +279,11 @@ export function releaseReadiness(app: App, scope: ReleaseScope, settings: Releas
   renders all of it. `isEstimated` is exported for `A definition of ready` to reuse later —
   one predicate, not two.
 - **`releaseReadiness` widens in Task 3** to
-  `(app, scope, settings, stateConfigured: boolean)` — the blocked criterion needs telling
-  whether a state key is bound, since an edge key alone answers half its question. Write the
-  three-parameter form here; Task 3 adds the fourth and updates this task's own test helper.
-  Task 5 calls the four-parameter form.
+  `(app, scope, settings, planSettings: BacklogSettings)` — the blocked criterion asks each
+  prerequisite's own workflow whether it has a key AND clearing values, which is a settings
+  question rather than a boolean the caller can precompute. Write the three-parameter form
+  here; Task 3 adds the fourth and updates this task's own test helper. Task 5 calls the
+  four-parameter form.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -369,7 +370,7 @@ function readinessOf(
     vault: FakeVault,
     path: string,
     overrides: Partial<Parameters<typeof releaseSettingsWith>[0]> = {},
-    planOverrides: { stateKey?: string; dependsOnKey?: string } = {},
+    planOverrides: { stateKey?: string; dependsOnKey?: string; doneValues?: string[] } = {},
 ) {
     const plan = settingsWith({ stateKey: 'status', doneValues: ['Done'], ...planOverrides });
     const settings = releaseSettingsWith({
@@ -385,7 +386,7 @@ function readinessOf(
     const model = buildModel(vault.app, vault.entries(), plan);
     const index = releaseIndex(vault.app, model, settings, { stateKey: plan.stateKey, today: TODAY });
     const scope = releaseScope(vault.app, model, settings, index, path);
-    return releaseReadiness(vault.app, scope, settings, plan.stateKey !== '');
+    return releaseReadiness(vault.app, scope, settings, plan);
 }
 
 /** Three members: 6 done, 9 not done, and one carrying no estimate at all. */
@@ -429,7 +430,9 @@ member `dependsOn: '[[P4]]'` with `P4` done; `independentVault()` is `effortVaul
 `dependsOn` key anywhere; `unreadablePrereqVault()` has one member naming `'[[Nowhere]]'`,
 a note the vault does not hold. `selfAndCycleVault()` has one member naming ITSELF and two
 members naming each other, with every one of those targets marked `status: Done` — so a
-reader that resolved the raw links would call all three cleared. `multiRiskVault()` gives one member
+reader that resolved the raw links would call all three cleared.
+`deliverablePrereqVault()` has one member whose prerequisite is a `Deliverable`, in a vault
+binding no `deliverableStateProperty` and no `deliverableDoneValues`. `multiRiskVault()` gives one member
 `risk: ['Low', 'Critical', 'Medium']` and one member `risk: 'Low'`;
 `lowAndBlankRiskVault()` has one member at `Low` and one with no risk key;
 `addressedRiskVault()` gives one member `risk: ['Critical', 'Mitigated']`;
@@ -687,6 +690,28 @@ describe('the blocked predicate', () => {
         expect(noState.blocked.unconfigured).toBe(true);
     });
 
+    it('is unconfigured with a state key bound but no done values', () => {
+        // A key is half of a workflow. With an empty `doneValues` nothing clears, so
+        // `ownWorkflowReading(...).done` is false for every prerequisite — a gate on the key
+        // alone reports every member of every release as blocked, which is a configuration
+        // mistake dressed as a finding about the release.
+        const emptyVocabulary = readinessOf(
+            blockedVault(),
+            'R.md',
+            { dependsOnKey: 'dependsOn' },
+            { doneValues: [], dependsOnKey: 'dependsOn' },
+        );
+        expect(emptyVocabulary.blocked.unconfigured).toBe(true);
+    });
+
+    it('counts a prerequisite in an unconfigured secondary workflow as unreadable', () => {
+        // A Deliverable prerequisite in a vault that never configured the Deliverable
+        // workflow is unreadable, not unfinished — the same distinction, one workflow down.
+        const criterion = blockedReadiness(deliverablePrereqVault()).criteria.find((c) => c.key === 'blocked');
+        expect(criterion?.unreadable).toBe(1);
+        expect(criterion?.cleared).toBe(0);
+    });
+
     it('counts a self-reference and a cycle as unreadable, never as cleared by a done target', () => {
         // `resolveDependencies` puts both in `brokenPrerequisites` on purpose. Re-reading the
         // raw links here would resolve a self-reference happily and then call the member
@@ -759,37 +784,68 @@ In `src/domain/releaseReadiness.ts`, replace the hard-coded `blocked: UNCONFIGUR
  * A broken entry IS unreadable: the wait cannot be shown to be over. It costs the member its
  * criterion and is reported separately (extension 5a).
  */
-function blockedCriterion(members: BacklogItem[], settings: ReleaseSettings, stateConfigured: boolean): ReleaseCriterion {
-	if (settings.dependsOnKey === '' || !stateConfigured) return unconfiguredCriterion('blocked');
+function blockedCriterion(
+	members: BacklogItem[],
+	settings: ReleaseSettings,
+	planSettings: BacklogSettings,
+): ReleaseCriterion {
+	// Unconfigured when there is no edge key, and equally when NO workflow could say a
+	// prerequisite is done: with nothing clearing anything, "every member blocked" is a
+	// configuration mistake reported as a finding about the release.
+	const anyWorkflow = WORKFLOW_KINDS.some((kind) => workflowClears(kind, planSettings));
+	if (settings.dependsOnKey === '' || !anyWorkflow) return unconfiguredCriterion('blocked');
 	let cleared = 0;
 	let outstanding = 0;
 	let unreadable = 0;
 	for (const item of members) {
 		// Counted ONCE per member however many entries it holds — the acceptance criterion.
 		const broken = item.brokenPrerequisites.length > 0;
-		const waiting = item.prerequisites.some((prerequisite) => !ownWorkflowReading(prerequisite).done);
-		if (broken) unreadable += 1;
-		if (broken || waiting) outstanding += 1;
+		// A prerequisite whose OWN workflow is unconfigured is unreadable, not unfinished:
+		// `ownWorkflowReading(...).done` is false for every item under an unbound key or an
+		// empty done list, so counting it as waiting would report a Deliverable prerequisite
+		// as blocking on a vault that never configured the Deliverable workflow.
+		const unread = item.prerequisites.some((p) => !workflowClears(ownWorkflowKind(p), planSettings));
+		const waiting = item.prerequisites.some(
+			(p) => workflowClears(ownWorkflowKind(p), planSettings) && !ownWorkflowReading(p).done,
+		);
+		if (broken || unread) unreadable += 1;
+		if (broken || unread || waiting) outstanding += 1;
 		else cleared += 1;
 	}
 	return { key: 'blocked', verdict: verdictOf(cleared, outstanding), cleared, outstanding, unreadable };
 }
+
+/** Every workflow a prerequisite can belong to — `WorkflowKind`'s own three. */
+const WORKFLOW_KINDS: WorkflowKind[] = ['requirements', 'deliverable', 'test'];
+
+/**
+ * **A key is half of a workflow; the other half is which values clear it** — the same rule
+ * the risk criterion keeps, read here for the state vocabulary. A bound `stateKey` with an
+ * empty `doneValues` clears nothing, so `ownWorkflowReading(...).done` is false for every
+ * item and a criterion gated on the key alone would report every member of every release as
+ * blocked. Raised by a review bot against this plan's first draft, which gated on
+ * `planSettings.stateKey !== ''` and had exactly that hole.
+ */
+function workflowClears(kind: WorkflowKind, planSettings: BacklogSettings): boolean {
+	const info = workflowStateInfo(kind, planSettings);
+	return info.key !== '' && info.doneValues.length > 0;
+}
 ```
 
-`releaseReadiness` gains only the `stateConfigured` flag — no model, no link resolution, no
-lookup map:
+`releaseReadiness` gains only the plan settings — no model, no link resolution, no lookup
+map:
 
 ```ts
 export function releaseReadiness(
 	app: App,
 	scope: ReleaseScope,
 	settings: ReleaseSettings,
-	stateConfigured: boolean,
+	planSettings: BacklogSettings,
 ): ReleaseReadiness {
 	const members = scope.rows.filter((row) => !row.context).map((row) => row.item);
 	// Each criterion is computed once and reused: the figure beside it IS its outstanding
 	// count, so a second call here would be the second walk this module exists to avoid.
-	const blocked = blockedCriterion(members, settings, stateConfigured);
+	const blocked = blockedCriterion(members, settings, planSettings);
 	return {
 		criteria: [estimateCriterion(app, members, settings), blocked],
 		...effortFigures(app, members, settings),
@@ -804,8 +860,9 @@ function figureFrom(criterion: ReleaseCriterion): ReleaseFigure<number> {
 }
 ```
 
-No new import beyond `BacklogItem`, which Task 2 already has. Update Task 2's callers in the
-test helper for the one new parameter.
+Add `ownWorkflowKind`, `workflowStateInfo` and `WorkflowKind` to the `./board` import, and
+`BacklogSettings` from `./settings`. Update Task 2's callers in the test helper for the one
+new parameter.
 
 - [ ] **Step 4: Run the test to verify it passes**
 
@@ -1062,6 +1119,28 @@ describe("a release's readiness on screen", () => {
         expect(chips[0].textContent).toBe('Readiness: 3 criteria not configured');
     });
 
+    it('names the criterion in every chip that is not satisfied', () => {
+        // Two chips both reading "2 of 5 outstanding" are indistinguishable, and the tooltip
+        // that would separate them is on a static unfocusable div — a pointer-only channel.
+        const { containerEl } = openScope({ ...RELEASE_CONFIG, estimateProperty: 'note.effort',
+            dependsOnProperty: 'note.dependsOn', riskProperty: 'note.risk',
+            criticalRiskValues: 'Critical', addressedRiskValues: 'Mitigated' });
+        const chips = [...containerEl.querySelectorAll('.pbl-rel-crit')] as HTMLElement[];
+        for (const chip of chips) {
+            if (chip.classList.contains('pbl-rel-crit-ok')) continue;
+            expect(chip.textContent).toMatch(/Estimated|Dependencies resolved|Critical risks addressed/);
+        }
+    });
+
+    it('draws the effort figure for a release whose every estimate is zero', () => {
+        // `0` is a valid estimate, so this is not the same release as one nobody estimated —
+        // and the percentage must not be a NaN drawn as one.
+        const { containerEl } = openScope({ ...RELEASE_CONFIG, estimateProperty: 'note.effort' }, 'Zeros.md');
+        const strip = containerEl.querySelector('.pbl-rel-summary') as HTMLElement;
+        expect(strip.textContent).toContain('0 of 0 pts (0%)');
+        expect(strip.textContent).not.toContain('NaN');
+    });
+
     it('keeps individual chips when only some are unconfigured', () => {
         // A mix is where the unconfigured one is the actionable item, so it keeps its own
         // chip rather than being folded away with the answers beside it.
@@ -1088,7 +1167,8 @@ describe("a release's readiness on screen", () => {
 ```
 
 Write `openScope(config, path = 'R.md')` as a local helper mirroring
-`releaseScopeRender.test.ts`'s own. If the release view's write entry point is not
+`releaseScopeRender.test.ts`'s own. Add a `Zeros.md` release to the fixture vault whose two
+members both carry `effort: 0`, for the zero-total assertion. If the release view's write entry point is not
 `applySafely` on the view, spy on whatever `view/writeGate.ts` actually exposes for this
 view — read it and name the real method rather than the one this plan guessed.
 
@@ -1106,7 +1186,13 @@ In `src/i18n/en.ts`, beside the other `release.scope.*` keys:
 	'release.scope.readinessBlocked': 'Dependencies resolved',
 	'release.scope.readinessRisk': 'Critical risks addressed',
 	/** A criterion partly met: the number somebody actually acts on comes first. */
-	'release.scope.readinessPartly': '{outstanding} of {count} outstanding',
+	/** A criterion not fully met NAMES itself: two chips both reading "2 of 5 outstanding"
+	 *  are indistinguishable, and the only identity would be a tooltip on a static,
+	 *  unfocusable div — which reaches a pointer alone. */
+	'release.scope.readinessPartly': '{criterion}: {outstanding} of {count} outstanding',
+	/** The same, where some of those could not be read at all — extension 5a wants the
+	 *  unreadable ones stated rather than folded into the total. */
+	'release.scope.readinessPartlyUnreadable': '{criterion}: {outstanding} of {count} outstanding, {unreadable} unreadable',
 	'release.scope.readinessUnconfigured': '{criterion}: not configured',
 	/** Every criterion unconfigured — one chip rather than three saying nothing. The
 	 *  tooltip names all three, so nothing is hidden by the collapse. */
@@ -1194,11 +1280,24 @@ function chipText(criterion: ReleaseCriterion, name: string): string {
 	if (criterion.outstanding === null || criterion.cleared === null) return name;
 	if (criterion.verdict === 'satisfied') return name;
 	// "Satisfied, partly and not are a count, not a judgement" — so a criterion that is not
-	// satisfied says HOW MANY, which is the number somebody acts on.
-	return t('release.scope.readinessPartly', {
-		outstanding: criterion.outstanding,
-		count: criterion.cleared + criterion.outstanding,
-	});
+	// satisfied says HOW MANY, which is the number somebody acts on. It also says WHICH: two
+	// unsatisfied criteria both reading "2 of 5 outstanding" are indistinguishable, and the
+	// tooltip that would tell them apart is on a static unfocusable div and reaches a pointer
+	// alone. The harness mock had the name in every chip; an earlier draft of this module
+	// dropped it, and a review bot caught the regression.
+	const count = criterion.cleared + criterion.outstanding;
+	// The unreadable ones are STATED rather than folded into the total — extension 5a. Zero
+	// of them takes the shorter sentence, so an ordinary release does not carry a ", 0
+	// unreadable" nobody needs.
+	if (criterion.unreadable !== null && criterion.unreadable > 0) {
+		return t('release.scope.readinessPartlyUnreadable', {
+			criterion: name,
+			outstanding: criterion.outstanding,
+			count,
+			unreadable: criterion.unreadable,
+		});
+	}
+	return t('release.scope.readinessPartly', { criterion: name, outstanding: criterion.outstanding, count });
 }
 
 /** A `Verdict` is domain vocabulary; this is the stylesheet's. Kept apart deliberately —
@@ -1227,9 +1326,16 @@ export function drawReadinessFigures(sumEl: HTMLElement, readiness: ReleaseReadi
 		return;
 	}
 	// A release whose every member is unestimated has nothing to sum, which is a different
-	// statement from a total of zero — extension 4a. The unestimated count says it instead.
-	if (total > 0) {
-		const pct = Math.round((100 * done) / total);
+	// statement from a total of zero — extension 4a. **Decided from the COUNT of estimated
+	// members, never from the sum**: `0` is a valid estimate this predicate accepts, so a
+	// release whose members all estimate zero (or whose estimates cancel) would otherwise be
+	// drawn exactly like one nobody has estimated at all. A review bot caught that on this
+	// plan's first draft, which tested `total > 0`.
+	const estimatedMembers = readiness.criteria.find((criterion) => criterion.key === 'estimated')?.cleared ?? 0;
+	if (estimatedMembers > 0) {
+		// Guarded separately from the decision above: a real total of zero has no percentage
+		// to compute, and dividing by it produces the `NaN` that would be drawn as one.
+		const pct = total === 0 ? 0 : Math.round((100 * done) / total);
 		sumEl.createSpan({ cls: 'pbl-rel-figure', text: t('release.scope.effort', { done, total, pct }) });
 	}
 	if (readiness.unestimated.value !== null) {
@@ -1301,7 +1407,7 @@ readiness is computed **once** and handed to both, never derived twice:
 
 ```ts
 	const footEl = headerEl.createDiv({ cls: 'pbl-rel-footline' });
-	const readiness = releaseReadiness(view.app, scope, releaseSettings, planSettings.stateKey !== '');
+	const readiness = releaseReadiness(view.app, scope, releaseSettings, planSettings);
 	drawSummary(footEl, release, scope.members, planSettings, readiness);
 	drawReleaseActions(view, footEl, release, scope, planSettings);
 	drawReadiness(headerEl, readiness);
@@ -1625,6 +1731,11 @@ MSG
 | No edges is resolved | 3 |
 | Unreadable prerequisite reported separately (5a) | 3 |
 | Self-references and cycles stay unreadable, via the model's own resolution | 3 |
+| A workflow with a key but no done values is unconfigured, not "all blocked" | 3 |
+| A prerequisite in an unconfigured secondary workflow is unreadable | 3 |
+| Every unsatisfied chip names its own criterion | 5 |
+| The unreadable count is stated, not folded into the total | 5 |
+| A release estimated entirely at zero is not "nothing estimated" | 5 |
 | Critical risks, counted once per member | 4 |
 | Absence is an answer for risk | 4 |
 | A key with no vocabulary is unconfigured | 4 |
