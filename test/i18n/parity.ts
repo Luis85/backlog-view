@@ -48,6 +48,41 @@ const parametersOf = (entry: Catalog[string]): Set<string> => new Set(formsOf(en
 const categoriesOf = (entry: Catalog[string]): Set<string> =>
 	new Set(typeof entry === 'string' ? [] : Object.keys(entry));
 
+/**
+ * Whether a message can plural-select AT ALL, which is a property of the MESSAGE and never
+ * of English's shape. `selectForm` reads `values.count`, and a key that names no `{count}`
+ * is called without one — so `select(0)` picks `other` at every use and any other form is
+ * text nothing can reach. Seven English messages name `{count}` and spell one string:
+ * English needs no second form for them and another language may, so asking "is the
+ * English entry plural" would both miss those seven and refuse a legitimate translation.
+ * Found by review (Codex, PR #240).
+ */
+const selectable = (source: Catalog[string]): boolean => parametersOf(source).has('count');
+
+/**
+ * What an entry's plural forms owe its own locale — three cases, because a shape is wrong
+ * for three different reasons and a translator reading a failure has to know which.
+ *
+ * - **Forms where nothing selects them.** The source names no count, so every form but
+ *   `other` is dead text and even `other` is a plain string wearing an object. Reported
+ *   whole, as `extra`: the fix is to spell it as a string.
+ * - **Forms that are not this locale's.** Supplying any means supplying exactly the
+ *   categories `Intl.PluralRules` gives the catalog's language — no `few` English cannot
+ *   select, no missing `many` Russian needs.
+ * - **A plain string where English needed forms.** `t()` never plural-selects a string, so
+ *   a German catalog spelling `count.items` as one sentence renders one form forever.
+ *   Refused wherever the locale has more than one category, and accepted where it does
+ *   not: Japanese says the same thing at every count.
+ */
+function pluralDiff(key: string, source: Catalog[string], entry: Catalog[string], categories: Set<string>): NameDiff | null {
+	const supplied = categoriesOf(entry);
+	if (!selectable(source)) {
+		return supplied.size === 0 ? null : { key, missing: [], extra: [...supplied].sort() };
+	}
+	const owed = supplied.size > 0 || (typeof source !== 'string' && categories.size > 1);
+	return owed ? diff(key, categories, supplied) : null;
+}
+
 function diff(key: string, source: Set<string>, catalog: Set<string>): NameDiff | null {
 	const missing = [...source].filter((name) => !catalog.has(name)).sort();
 	const extra = [...catalog].filter((name) => !source.has(name)).sort();
@@ -73,21 +108,11 @@ export function compareToSource(locale: string, catalog: Catalog): Divergence {
 			report.missing.push(key);
 			continue;
 		}
-		const params = diff(key, parametersOf(en[key as keyof typeof en]), parametersOf(entry));
+		const source = en[key as keyof typeof en];
+		const params = diff(key, parametersOf(source), parametersOf(entry));
 		if (params) report.parameters.push(params);
-		// A plain message has no categories to have. Spelling one plainly where English
-		// spells it plurally is legitimate in a language that says the same thing at every
-		// count — Japanese has `other` alone — and a DEFECT anywhere else, because `t()`
-		// never plural-selects a string, so a German catalog written that way would render
-		// one form forever and this check would have passed it. Found by review
-		// (Codex, PR #240), which is also why the condition asks the locale rather than
-		// asking whether anything was supplied.
-		const supplied = categoriesOf(entry);
-		const pluralHere = typeof en[key as keyof typeof en] !== 'string' && categories.size > 1;
-		if (supplied.size > 0 || pluralHere) {
-			const plurals = diff(key, categories, supplied);
-			if (plurals) report.plurals.push(plurals);
-		}
+		const plurals = pluralDiff(key, source, entry, categories);
+		if (plurals) report.plurals.push(plurals);
 	}
 
 	for (const key of Object.keys(catalog)) {

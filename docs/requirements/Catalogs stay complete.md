@@ -144,14 +144,33 @@ in one test, since the entry English calls complete is over-supplied for `ja` an
 `ja` calls complete is incomplete for English. A malformed tag goes through `intlLocale`
 and falls back rather than throwing a `RangeError` out of a check.
 
-**It asks that of a PLAIN entry too, and that was the first version's hole.** The rule was
-written as "an entry supplying no forms has no categories to have", which reads as
-tolerance for a locale that says the same thing at every count — Japanese — and is a hole
-everywhere else: `t()` never plural-selects a string, so a German catalog spelling
-`count.items` as one sentence would render one form forever and the check would pass it
-silently. The condition asks the LOCALE rather than the catalog now: a plain entry where
-English is plural is reported wherever the locale has more than one category, and accepted
-where it does not. Found by review (Codex, PR #240), and the test that had asserted the
+**The plural rule took two rounds of review to state, and both corrections are the same
+mistake: it read English's SHAPE where it should have read the message.** It is three
+cases now, kept apart because a shape is wrong for three different reasons and a
+translator reading a failure has to know which.
+
+- **Forms where nothing selects them.** `selectForm` reads `values.count`, so a key naming
+  no `{count}` is called without one and `select(0)` picks `other` at every use. Every
+  other form there is text nothing can reach, and even a lone `other` is a plain string
+  wearing an object. Reported whole, as `extra`, because the fix is to spell it as a
+  string — the first version of this rule reported a MISSING `one` on that entry, which is
+  the opposite advice.
+- **Forms that are not this locale's.** Supplying any means supplying exactly the
+  categories `Intl.PluralRules` gives the catalog's language.
+- **A plain string where English needed forms.** Refused wherever the locale has more than
+  one category, accepted where it does not. The first version accepted it everywhere,
+  written as "an entry supplying no forms has no categories to have" — which reads as
+  tolerance for Japanese and is a hole in German, where the message would render one form
+  forever.
+
+**The predicate is the parameter, never English's shape**, and that is what the second
+round found: seven English messages name `{count}` and spell one string, because English
+needs no second form for them. A rule asking "is the English entry plural" would refuse a
+legitimate German translation of those seven AND miss a German catalog spelling them
+plainly. Nothing in English is plural without a count, measured on the merged tree, so the
+rule fires on no shipped key.
+
+Both rounds found by review (Codex, PR #240), and in both the test that had asserted the
 old behaviour is the one that was watched failing.
 
 **The parameter rule is UNIONED across a plural entry's forms, and that ceiling is written

@@ -113,9 +113,30 @@ describe('plural categories are the locale’s own, checked against Intl', () =>
 		expect(compareToSource('en', { ...complete, 'emptyState.noItems': 'XX' }).plurals).toEqual([]);
 	});
 
-	it('reads a plural entry where English has a plain one, by the locale’s categories', () => {
-		const asPlural = compareToSource('en', { ...complete, 'emptyState.noItems': { other: 'XX' } });
-		expect(asPlural.plurals).toEqual([{ key: 'emptyState.noItems', missing: ['one'], extra: [] }]);
+	it('refuses forms on a message nothing can plural-select, whole', () => {
+		// `emptyState.noItems` names no `{count}`, so its call site passes none and
+		// `selectForm` reads 0 at every use: `one` would be text nothing reaches, and even
+		// a lone `other` is a plain string wearing an object. Reported as `extra` rather
+		// than as a missing `one`, because the fix is to spell it as a string — the first
+		// version of this rule gave the opposite advice. Found by review (Codex, PR #240).
+		const one = compareToSource('en', { ...complete, 'emptyState.noItems': { other: 'XX' } });
+		expect(one.plurals).toEqual([{ key: 'emptyState.noItems', missing: [], extra: ['other'] }]);
+		const both = compareToSource('en', { ...complete, 'emptyState.noItems': { one: 'XX', other: 'XX' } });
+		expect(both.plurals).toEqual([{ key: 'emptyState.noItems', missing: [], extra: ['one', 'other'] }]);
+	});
+
+	it('asks the MESSAGE for a count, never English’s shape', () => {
+		// Seven English messages name `{count}` and spell one string — English needs no
+		// second form for them and another language may — so a rule reading "is the English
+		// entry plural" would refuse a legitimate translation of them and miss a German
+		// catalog spelling them plainly. `toolbar.levelCount` is one.
+		const forms = { one: 'XX {count}', other: 'XX {count}' };
+		expect(compareToSource('en', { ...complete, 'toolbar.levelCount': forms }).plurals).toEqual([]);
+		expect(compareToSource('ja', { ...complete, 'toolbar.levelCount': forms }).plurals).toContainEqual({
+			key: 'toolbar.levelCount',
+			missing: [],
+			extra: ['one'],
+		});
 	});
 
 	it('refuses a PLAIN entry where the locale needs forms, and allows it where it does not', () => {
