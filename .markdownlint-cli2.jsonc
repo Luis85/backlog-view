@@ -27,6 +27,10 @@
 		// going to do, not notes this register maintains. Reformatting them rewrites
 		// history to no end.
 		"!docs/superpowers",
+		// The subagent-driven-development workspace: gitignored scratch — ledger, task
+		// briefs cut from a plan, subagent reports. Same reason as the line above, one
+		// directory up: a record of what a session did, not a document this register keeps.
+		"!.superpowers",
 		// Vendored agent tooling — third-party skills installed into the tree, read the
 		// way `node_modules` is. The three below are this repository's own and are linted.
 		"!.claude",

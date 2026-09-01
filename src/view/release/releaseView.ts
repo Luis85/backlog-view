@@ -27,7 +27,7 @@ export const RELEASE_VIEW_TYPE = 'product-release';
  * The classes a redraw's own controls carry — the fixed vocabulary {@link ReleaseView.render}
  * restores a lost focus through, in place of a bespoke restore per control. Three separate
  * fixes for the same class of bug shipped on this branch before this list did: the ✨
- * (`initControl.ts`), the scope tree's own row (`activeScopeFile`/`scopeHadFocus`, left
+ * (`initControl.ts`), the scope tree's own row (`activeRowFile`/`treeHadFocus`, left
  * alone below — a different question, which ROW, not answered here), and the toolbar
  * (`scopeToolbar.ts`). None of the eight controls that carry one of these classes carries a
  * second, so checking them in this order is deterministic without needing to be.
@@ -129,12 +129,12 @@ export class ReleaseView extends BasesView {
 	 *  no rename subscription of its own to keep. A note deleted and recreated at the same
 	 *  path is deliberately NOT a match: that is a different file, and the row the reader
 	 *  was on is genuinely not there. */
-	activeScopeFile: TFile | null = null;
+	activeRowFile: TFile | null = null;
 	/** Whether the SCOPE TREE — never the index list, never a button — held focus just
 	 *  before the current render's `empty()` detached it. Captured in `render()`, below,
 	 *  beside `previousTop` and for the identical reason: a detached element answers
 	 *  nothing, so this has to be read before the teardown rather than after it. */
-	scopeHadFocus = false;
+	treeHadFocus = false;
 
 	/**
 	 * The gate every edit passes, over the plugin-wide lock this view is handed. There is
@@ -288,7 +288,7 @@ export class ReleaseView extends BasesView {
 	/**
 	 * Picking a row, or the back control's null. Persists, then redraws.
 	 *
-	 * **Clears `activeScopeFile`.** A pick is a change of SCREEN — the scroll restore
+	 * **Clears `activeRowFile`.** A pick is a change of SCREEN — the scroll restore
 	 * already treats it as a reset (see `render`'s own comment) — and without this a
 	 * context ancestor selected in release A stayed the keyboard's starting row in release
 	 * B, whenever the same path happened to sit in B's scope too: `scopeKeys.ts`'s restore
@@ -298,7 +298,7 @@ export class ReleaseView extends BasesView {
 	 */
 	pick(path: string | null): void {
 		this.pickedPath = path;
-		this.activeScopeFile = null;
+		this.activeRowFile = null;
 		const id = resolveViewIdentity(this.app, this.viewEl, this.config.name ?? '');
 		if (id) {
 			const state = loadViewState(this.app, id);
@@ -375,10 +375,10 @@ export class ReleaseView extends BasesView {
 		// `contains`, not `===`: a MOUSE press on a per-row control inside the tree (the
 		// disclosure) focuses that button, and the redraw this render is performing is
 		// about to detach it. Focus was inside the composite widget, so it belongs back on
-		// the composite widget — `wireScopeKeys` puts it on the row `activeScopeFile`
+		// the composite widget — `wireScopeKeys` puts it on the row `activeRowFile`
 		// names. An element contains itself, so the keyboard case (focus ON the tree) is
 		// unchanged.
-		this.scopeHadFocus = previousEl !== null && previousEl.classList.contains('pbl-tree') && previousEl.contains(document.activeElement);
+		this.treeHadFocus = previousEl !== null && previousEl.classList.contains('pbl-tree') && previousEl.contains(document.activeElement);
 		// Read for the identical reason, one line up: which control (if any) held focus,
 		// named by the one class in `FOCUS_HANDLE_CLASSES` it carries — and, where the
 		// control says which note it is about, that path beside it.
@@ -418,10 +418,10 @@ export class ReleaseView extends BasesView {
 	 *  with its `data-path` where it has one, since a class alone does not identify a
 	 *  control there is one of per release — or null when focus is outside this view or on
 	 *  something the redraw does not track —
-	 *  a per-row control, say. `scopeHadFocus` (above) is what covers that case now: a
+	 *  a per-row control, say. `treeHadFocus` (above) is what covers that case now: a
 	 *  MOUSE press on a per-row control inside the tree, `.pbl-twisty`, focuses the twisty
 	 *  itself, this method returns null for it (twisty is not in `FOCUS_HANDLE_CLASSES`),
-	 *  and `scopeHadFocus`'s `contains` check catches it instead — the tree is the focus
+	 *  and `treeHadFocus`'s `contains` check catches it instead — the tree is the focus
 	 *  TARGET a composite widget hands focus back to, never the button, which is exactly
 	 *  why the twisty is deliberately not added to `FOCUS_HANDLE_CLASSES` here. */
 	private focusedHandle(): { cls: string; path: string | null } | null {

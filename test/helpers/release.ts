@@ -39,7 +39,7 @@ export function twisty(view: ReleaseView, path: string): HTMLElement {
 
 /**
  * Dispatches a keydown at the tree, `scopeKeys.test.ts`'s own way in. Re-queried every
- * call rather than captured once: `toggleFold` and the ArrowLeft/Right cases redraw the
+ * call rather than captured once: `toggleReleaseFold` and the ArrowLeft/Right cases redraw the
  * tree, which detaches the element a stale reference would still be pointing at.
  */
 export function press(view: ReleaseView, key: string): void {
@@ -57,7 +57,7 @@ export function active(view: ReleaseView): string | null {
 /**
  * Jumps the roving selection to a path directly, without walking the arrow keys there —
  * `scopeKeys.test.ts`'s own setup step for a test whose SUBJECT is a later key, not the
- * walk. Goes through `activeScopeFile` and a render rather than reaching into the
+ * walk. Goes through `activeRowFile` and a render rather than reaching into the
  * controller's closure, which is exactly the restore path a real re-render already takes
  * (a fold, `onDataUpdated`), so this drives the same code a keyboard user's session would.
  *
@@ -66,7 +66,7 @@ export function active(view: ReleaseView): string | null {
  * would match nothing and every caller would silently start on row 0.
  */
 export function select(view: ReleaseView, path: string): void {
-	view.activeScopeFile = view.app.vault.getAbstractFileByPath(path) as TFile;
+	view.activeRowFile = view.app.vault.getAbstractFileByPath(path) as TFile;
 	view.render();
 }
 

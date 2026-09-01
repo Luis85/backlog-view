@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
-import { CARD_SCOPE, RELEASE_FOLD, TIMELINE_SCOPE } from '../../src/view/viewState';
-import { saveViewState } from '../../src/storage/viewStateStore';
+import { CARD_SCOPE, MYWORK_FOLD, RELEASE_FOLD, TIMELINE_SCOPE } from '../../src/view/viewState';
+import { saveViewState, ViewPrefs } from '../../src/storage/viewStateStore';
 import { FakeVault } from '../helpers/vault';
 import { fixture, makeView, refresh, rowByTitle, titlesOf, useViewHarness } from '../helpers/view';
 
@@ -10,7 +10,10 @@ useViewHarness();
 describe('collapse state persistence', () => {
 	interface StoredEntry {
 		folds: { collapsed: string[]; expanded: string[]; lanes: string[] };
-		prefs?: { release?: string };
+		// The real `ViewPrefs`, not a re-typed subset: a hand-picked `{ release?: string }`
+		// here is exactly what went stale the moment Task 4 added `person` to the
+		// production type without a second edit landing here too.
+		prefs?: ViewPrefs;
 	}
 
 	function stored(vault: FakeVault): Record<string, StoredEntry> {
@@ -353,6 +356,28 @@ describe('collapse state persistence', () => {
 	 * `scopeOf`'s own answer — is what has to survive in front of the renamed member, or
 	 * the key would migrate to a bare path and lose which release it was scoped to.
 	 */
+	it('does not let a mywork-scoped fold seed a card-scope fold for its member', () => {
+		const vault = fixture();
+		// The same hazard `seedCardScope`'s release exclusion guards against, asked of the
+		// OTHER two-path prefix: a leaf member, so a collapsed card here can only be
+		// `seedCardScope` reading the mywork key as a bare path.
+		const myWorkFoldKey = `${MYWORK_FOLD}People/Ada.md\u0000Feature B1.md`;
+		vault.localStorage.set('product-backlog:view-state', {
+			'Backlog.base#Backlog': {
+				base: 'Backlog.base',
+				folds: { collapsed: [myWorkFoldKey], expanded: [], lanes: [] },
+				prefs: {},
+			},
+		});
+
+		const { view } = makeView(vault, {}, { base: 'Backlog.base', collapsed: true });
+		view.setZoom('quarter');
+		view.onunload();
+
+		const collapsed = stored(vault)['Backlog.base#Backlog'].folds.collapsed;
+		expect(collapsed).not.toContain(`${CARD_SCOPE}Feature B1.md`);
+	});
+
 	it('carries a release’s own fold to a renamed member, keeping it scoped to that release', () => {
 		const vault = fixture();
 		// Present for the same reason as in the flush test above: with no release note the
@@ -412,6 +437,45 @@ describe('collapse state persistence', () => {
 		vault.renameFolder('releases', 'archive/releases');
 		second.view.onunload();
 		expect(stored(vault)['Backlog.base#Backlog'].prefs?.release).toBe('archive/releases/0.8.1.md');
+	});
+
+	/**
+	 * `releasePref`'s own rename-carry test, asked of the THIRD path-valued pref
+	 * (`person`, the my-work view's own pick) — added because `renameScoped` carried only
+	 * `boardScope` and `releasePref` (fix round 2, PR #234): a saved view holding a
+	 * my-work pick but currently loaded as the BACKLOG view (a view whose type was
+	 * switched keeps its identity and its entry, `releasePref`'s own comment) would have
+	 * this controller flush its stale in-memory `person` straight back over whatever the
+	 * store-level walk (`renamePathPrefs`) had already corrected — reopening My Work would
+	 * then show no pick, indistinguishable from the note having been deleted.
+	 *
+	 * Exercises the real sequence, not `renameScoped` directly: a loaded controller
+	 * already holding the stored `person` pref, a rename through the vault's own event,
+	 * then a flush (`onunload`) — proving the CONTROLLER's in-memory copy followed the
+	 * rename rather than merely the store's own walk (already covered by
+	 * `test/storage/viewStateStore.test.ts`'s "carries a renamed person pick").
+	 */
+	it('carries the stored my-work pick through a rename of the note, and of a folder above it', () => {
+		const vault = fixture();
+		vault.addFile('People/Ada.md', { frontmatter: { type: 'Resource' } });
+		vault.localStorage.set('product-backlog:view-state', {
+			'Backlog.base#Backlog': {
+				base: 'Backlog.base',
+				folds: { collapsed: [], expanded: [], lanes: [] },
+				prefs: { person: 'People/Ada.md' },
+			},
+		});
+
+		const first = makeView(vault, {}, { base: 'Backlog.base' });
+		vault.renameFile('People/Ada.md', 'People/Ada Lovelace.md');
+		first.view.onunload();
+		expect(stored(vault)['Backlog.base#Backlog'].prefs?.person).toBe('People/Ada Lovelace.md');
+
+		// A folder move reports the FOLDER, never the notes under it.
+		const second = makeView(vault, {}, { base: 'Backlog.base' });
+		vault.renameFolder('People', 'Team/People');
+		second.view.onunload();
+		expect(stored(vault)['Backlog.base#Backlog'].prefs?.person).toBe('Team/People/Ada Lovelace.md');
 	});
 
 	it('ignores stored state it cannot read rather than failing to render', () => {

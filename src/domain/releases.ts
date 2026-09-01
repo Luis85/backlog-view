@@ -4,6 +4,7 @@ import { ReleaseSettings } from './releaseOptions';
 import { CivilDate, FieldReading, linkpathFromRawValue, ownValue, readSoleDate, readString, sameValue } from './noteFields';
 import { isMarkerType, isReleaseType } from './itemTypes';
 import { ownWorkflowKind, ownWorkflowReading, WorkflowKind } from './board';
+import { ScopeRow, scopeRows } from './scopeRows';
 
 /**
  * A figure with THREE answers, not two. `FieldReading` in `noteFields.ts` separates a
@@ -765,52 +766,6 @@ function membershipTarget(
 	return releasePaths.has(file.path) ? file.path : UNRESOLVED;
 }
 
-export interface ScopeRow {
-	item: BacklogItem;
-	/**
-	 * Depth within THIS tree, not the backlog's: depth 0 is the topmost KEPT row, which is
-	 * normally a CONTEXT ancestor rather than a member. Every row an ancestor chain passes
-	 * through without keeping — a marker, an excluded row — costs a level, so the tree
-	 * closes up around what it does not draw.
-	 */
-	depth: number;
-	/** True for an ancestor drawn only to keep a member in its place. */
-	context: boolean;
-	/**
-	 * Members at or below this row, and how many of them are done — the rollup the row
-	 * draws, over THIS release's members rather than over the model's descendants.
-	 *
-	 * `item.descendantCount` and `item.doneDescendants` are the wrong pair for the same
-	 * reason `item.subtreeDone` is: they count every non-marker descendant the BASE
-	 * returned, consulting no membership, so a Feature with two members here and five
-	 * items elsewhere would report `1/7` on a screen whose every other figure is over
-	 * seven fewer notes.
-	 *
-	 * Zero on a row with no members below it, which is what makes a CONTEXT row's
-	 * `memberTotal` the count of the members it is holding in place — and what keeps the
-	 * row itself out of both numbers, since a context row is never counted anywhere on
-	 * this screen. Each member's doneness is `ownWorkflowReading`'s, so a Deliverable
-	 * answers by its own workflow.
-	 */
-	memberTotal: number;
-	memberDone: number;
-	/**
-	 * Whether every MEMBER at or below this row is done — the predicate hiding uses, and
-	 * deliberately not `item.subtreeDone`.
-	 *
-	 * That model field is `item.done && done === count` over every non-marker descendant
-	 * the BASE returned, consulting no membership at all, so a done member whose only
-	 * unfinished child belongs to another release (or to none) would never hide by it.
-	 * This one asks the same question of this release's own population, which is the
-	 * population every other figure on this screen is measured over.
-	 *
-	 * A CONTEXT row answers for its members alone: its own state is not this base's
-	 * plan, so it can neither keep a finished subtree on screen nor take an unfinished
-	 * one off it — the context-row rule, in the shape `assignAll` already keeps it.
-	 */
-	subtreeDone: boolean;
-}
-
 export interface ReleaseScope {
 	release: ReleaseRow | null;
 	rows: ScopeRow[];
@@ -844,98 +799,7 @@ export function releaseScope(
 ): ReleaseScope {
 	const release = index.rows.find((row) => row.path === path) ?? null;
 	if (release === null) return { release: null, rows: [], members: 0 };
-
 	const releasePaths: ReadonlySet<string> = new Set(model.releases.map((r) => r.file.path));
-	const members = new Set<string>();
-	// Members plus every ancestor that holds one in place — **except the two kinds walked
-	// THROUGH rather than kept.**
-	//
-	// Two rules meet at the first of them and both say the same thing. `Releases as their
-	// own type` 4a: an excluded release "never arrives as a context row" and "appears as no
-	// row anywhere" — and because this plan keeps the hand-written parent edge, a member
-	// filed under a release would otherwise drag that release in as a context ancestor,
-	// excluded or not. And the model's own rule: `descendantCount` scores a marker 0 and
-	// traverses through it, so a marker is never the thing that holds a row in place; the
-	// real ancestor above it is.
-	const keep = new Set<string>();
-	for (const item of scannableRows(model)) {
-		if (membershipTarget(app, item, releasePaths, settings) !== path) continue;
-		members.add(item.file.path);
-		keep.add(item.file.path);
-		for (let up = item.parent; up !== null; up = up.parent) {
-			// Both skips CONTINUE the walk upward rather than stopping it — an included
-			// ancestor further up is still the member's rightful place.
-			//
-			// A MARKER, for the two reasons above, and because a release drawn inside another
-			// release's scope is nonsense.
-			//
-			// An `outsideFilter` ancestor, because it is not in the results.
-			// `showOutsideParents` DEFAULTS TO TRUE, so an excluded Epic between a member and
-			// the top is loaded as a context row and would otherwise be rendered here — and
-			// extension 2a says a member whose ancestor is missing from the results is drawn
-			// at the top level, not under it. It is also the register's context-row rule
-			// verbatim: such a row is never a source of anything derived from the results,
-			// and being somebody's scaffolding in THIS projection is exactly that.
-			if (isMarkerType(up.typeName) || up.outsideFilter) continue;
-			keep.add(up.file.path);
-		}
-	}
-
-	const rows: ScopeRow[] = [];
-	// One pass, pre-order for `rows` (the tree's own drawing order) and post-order for the
-	// rollup: a row's `memberTotal`/`memberDone` need every descendant visited before they
-	// can be summed, so the row is pushed on the way DOWN — to keep `rows` in the order the
-	// tree draws — and filled in on the way BACK UP, once its children's totals are known.
-	// `rows` holds the same object the recursion mutates, never a second copy.
-	const walk = (item: BacklogItem, depth: number): { total: number; done: number } => {
-		// A row that is not kept is walked THROUGH, never stopped at. A member filed under a
-		// marker — the hand-written parent edge this plan deliberately keeps — has that
-		// marker as an ancestor, and a marker is never kept; returning here would drop the
-		// MEMBER along with it while the header went on counting it, so the scope and the
-		// index would disagree about one release. That is the one defect this module exists
-		// to prevent. Descending without drawing it leaves the depth alone too, so the
-		// member re-roots at the level the marker occupied.
-		const kept = keep.has(item.file.path);
-		const isMember = members.has(item.file.path);
-		let row: ScopeRow | null = null;
-		if (kept) {
-			row = { item, depth, context: !isMember, memberTotal: 0, memberDone: 0, subtreeDone: false };
-			rows.push(row);
-		}
-		let belowTotal = 0;
-		let belowDone = 0;
-		for (const child of item.children) {
-			const sub = walk(child, kept ? depth + 1 : depth);
-			belowTotal += sub.total;
-			belowDone += sub.done;
-		}
-		// The row reports what is BELOW it, never itself — the same rule that makes a
-		// context row's number exactly the members it is holding in place, stated once for
-		// every row rather than as a context-only exception: a leaf member's own row has
-		// nothing below it and draws no rollup, which is what keeps this screen from
-		// putting a trivial `1/1` on every leaf.
-		if (row) {
-			row.memberTotal = belowTotal;
-			row.memberDone = belowDone;
-		}
-		// This item's own membership, THEN everything below it — bubbled to the parent's
-		// sum AND, right here, what `subtreeDone` reads. Deliberately not `row.memberTotal`
-		// /`row.memberDone`, which exclude the row itself so a leaf draws no trivial `1/1`
-		// rollup: hiding asks a different question than the rollup does — "is EVERY member
-		// at or below this row done", the row's own membership included — and `total`/`done`
-		// is that question's answer whether or not `row` exists, so a context row (never a
-		// member itself) reads it exactly as it reads `memberTotal`/`memberDone`: only its
-		// members below. One pass, one pair of numbers, two questions asked of it.
-		const total = belowTotal + (isMember ? 1 : 0);
-		const done = belowDone + (isMember && ownWorkflowReading(item).done ? 1 : 0);
-		if (row) row.subtreeDone = total > 0 && done === total;
-		return { total, done };
-	};
-	// From the model's REAL roots, not its rendered ones: a focus level set on the backlog
-	// view must not decide what a release's scope contains. A member whose ancestor is
-	// absent from the results is an orphan, which `linkAll` makes a root of that same list,
-	// so the walk reaches it at depth 0 with no branch of its own.
-	for (const root of model.realRoots) walk(root, 0);
-
-	return { release, rows, members: members.size };
+	const rows = scopeRows(model, (item) => membershipTarget(app, item, releasePaths, settings) === path);
+	return { release, rows, members: rows.filter((row) => !row.context).length };
 }

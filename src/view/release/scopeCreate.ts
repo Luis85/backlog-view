@@ -2,14 +2,16 @@ import { Menu, Notice } from 'obsidian';
 import type { ReleaseView } from './releaseView';
 import { t } from '../../i18n/t';
 import { BacklogSettings } from '../../domain/settings';
-import { ReleaseRow, refusesLiveMembership, ScopeRow } from '../../domain/releases';
+import { ReleaseRow, refusesLiveMembership } from '../../domain/releases';
+import { ScopeRow } from '../../domain/scopeRows';
 import { childTypeChoices, folderForType, inCatalog } from '../../domain/itemTypes';
 import { configProblems } from '../../domain/settingsConsistency';
 import { ORDER_SPACING } from '../../domain/writePlan';
 import { createBacklogItem } from '../../storage/createNote';
 import { TitlePromptModal } from '../../ui/prompts';
 import { showMenuAtElement, showMenuForClick } from '../interactions/menu';
-import { ScopeDraw, foldedPaths, toggleFold } from './scopeTree';
+import { TreeDraw } from '../scopeKeys';
+import { releaseFoldedPaths, toggleReleaseFold } from './scopeTree';
 
 /**
  * The scope tree's one write: **New \<child\> on a row**, which creates a note rather than
@@ -42,7 +44,7 @@ import { ScopeDraw, foldedPaths, toggleFold } from './scopeTree';
  * and for the same reason — it is the module that already holds both the draw and the
  * settings, so the leaves stay acyclic.
  */
-export function wireScopeCreate(view: ReleaseView, release: ReleaseRow, settings: BacklogSettings, draw: ScopeDraw): void {
+export function wireScopeCreate(view: ReleaseView, release: ReleaseRow, settings: BacklogSettings, draw: TreeDraw): void {
 	const { treeEl, rows, rowEls } = draw;
 	const menuFor = (row: ScopeRow): Menu | null => scopeMenu(view, release, settings, row);
 
@@ -68,11 +70,11 @@ export function wireScopeCreate(view: ReleaseView, release: ReleaseRow, settings
 		// Both spellings, because a keyboard without a Menu key has only the second — the
 		// pair `view/interactions/keyboard.ts` already wires for the backlog's own tree.
 		if (evt.key !== 'ContextMenu' && !(evt.key === 'F10' && evt.shiftKey)) return;
-		// `activeScopeFile` rather than an index of our own: `scopeKeys.ts` writes it on
+		// `activeRowFile` rather than an index of our own: `scopeKeys.ts` writes it on
 		// every move of its roving selection, so reading it here is what stops two
 		// controllers on one tree disagreeing about which row is active. Matched on the
 		// FILE for that module's own reason — Obsidian mutates a `TFile` in place on rename.
-		const file = view.activeScopeFile;
+		const file = view.activeRowFile;
 		const row = file === null ? undefined : rows.find((r) => r.item.file === file);
 		if (!row) return;
 		const menu = menuFor(row);
@@ -194,7 +196,7 @@ interface NewMember {
  *
  * Unfolding is done AFTER the create and only when the parent is actually folded: a new
  * child under a closed row would otherwise land somewhere the reader cannot see it.
- * `toggleFold` re-renders, which is also how the tree picks the note up once the base's
+ * `toggleReleaseFold` re-renders, which is also how the tree picks the note up once the base's
  * next pass returns it.
  *
  * **The release is re-read here, not trusted from the row** — `refusesLiveMembership`, the
@@ -235,7 +237,7 @@ async function createMember(view: ReleaseView, release: ReleaseRow, settings: Ba
 		return;
 	}
 	const parentPath = row.item.file.path;
-	if (foldedPaths(view, release.path).has(parentPath)) toggleFold(view, release.path, parentPath);
+	if (releaseFoldedPaths(view, release.path).has(parentPath)) toggleReleaseFold(view, release.path, parentPath);
 }
 
 /** An order value placing the new child after every ranked child the parent already has. */

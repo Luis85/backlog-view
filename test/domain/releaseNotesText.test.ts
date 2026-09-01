@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { releaseIndex, releaseScope, ReleaseRow, ScopeRow } from '../../src/domain/releases';
+import { releaseIndex, releaseScope, ReleaseRow } from '../../src/domain/releases';
+import { ScopeRow } from '../../src/domain/scopeRows';
 import { releaseNotesContent } from '../../src/domain/releaseNotesText';
 import { joinSource } from '../../src/domain/readmeMarker';
 import { buildModel } from '../../src/domain/model';

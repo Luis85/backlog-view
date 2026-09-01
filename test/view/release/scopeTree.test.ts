@@ -2,8 +2,8 @@
 import { describe, expect, it } from 'vitest';
 import { active, mountFoldScope, row, twisty } from '../../helpers/release';
 import { useViewHarness } from '../../helpers/view';
-import { foldedPaths, hideDoneOn, setAllFolds, setHideDone, toggleFold } from '../../../src/view/release/scopeTree';
-import { ScopeRow } from '../../../src/domain/releases';
+import { hideDoneOn, releaseFoldedPaths, setAllReleaseFolds, setHideDone, toggleReleaseFold } from '../../../src/view/release/scopeTree';
+import { ScopeRow } from '../../../src/domain/scopeRows';
 import { loadViewState, renamePathFolds, saveViewState } from '../../../src/storage/viewStateStore';
 import { resolveViewIdentity } from '../../../src/storage/viewIdentity';
 
@@ -53,8 +53,8 @@ describe('the scope tree', () => {
 
 		renamePathFolds(view.app, 'Releases/0.8.md', 'Releases/0.8.1.md');
 
-		expect([...foldedPaths(view, 'Releases/0.8.1.md')]).toEqual(['Passwordless sign-in.md']);
-		expect(foldedPaths(view, 'Releases/0.8.md').size).toBe(0);
+		expect([...releaseFoldedPaths(view, 'Releases/0.8.1.md')]).toEqual(['Passwordless sign-in.md']);
+		expect(releaseFoldedPaths(view, 'Releases/0.8.md').size).toBe(0);
 	});
 
 	it('carries a folder move above the release, which is the only event a folder reports', () => {
@@ -63,7 +63,7 @@ describe('the scope tree', () => {
 
 		renamePathFolds(view.app, 'Releases', 'Archive/Releases');
 
-		expect([...foldedPaths(view, 'Archive/Releases/0.8.md')]).toEqual(['Passwordless sign-in.md']);
+		expect([...releaseFoldedPaths(view, 'Archive/Releases/0.8.md')]).toEqual(['Passwordless sign-in.md']);
 	});
 
 	it('folds the same ancestor independently in two releases', () => {
@@ -84,7 +84,7 @@ describe('the scope tree', () => {
 		expect(row(view, 'Passwordless sign-in.md').getAttribute('aria-expanded')).toBe('false');
 		view.onDataUpdated();
 		expect(row(view, 'Send the magic link.md', { optional: true })).toBeNull();
-		// The other half of `toggleFold` — closing what a first click opened, folded here
+		// The other half of `toggleReleaseFold` — closing what a first click opened, folded here
 		// with an existing fold already stored, is what covers `writeFolds` carrying every
 		// OTHER release's key forward through a non-empty list rather than an empty one.
 		twisty(view, 'Passwordless sign-in.md').click();
@@ -92,20 +92,20 @@ describe('the scope tree', () => {
 		expect(row(view, 'Passwordless sign-in.md').getAttribute('aria-expanded')).toBe('true');
 	});
 
-	it('toggleFold flips one path in one release’s own set', () => {
+	it('toggleReleaseFold flips one path in one release’s own set', () => {
 		// The disclosure's own click handler calls this directly — driven here through the
 		// same function the click reaches, rather than only through the button, so a caller
 		// outside the click (a future keyboard shortcut, Task 5's own bulk control) has one
 		// function to reach for rather than a DOM click nothing else in this plugin fakes.
 		const { view } = mountFoldScope({ pick: 'Releases/0.8.md' });
-		expect(foldedPaths(view, 'Releases/0.8.md').has('Passwordless sign-in.md')).toBe(false);
-		toggleFold(view, 'Releases/0.8.md', 'Passwordless sign-in.md');
-		expect(foldedPaths(view, 'Releases/0.8.md').has('Passwordless sign-in.md')).toBe(true);
-		toggleFold(view, 'Releases/0.8.md', 'Passwordless sign-in.md');
-		expect(foldedPaths(view, 'Releases/0.8.md').has('Passwordless sign-in.md')).toBe(false);
+		expect(releaseFoldedPaths(view, 'Releases/0.8.md').has('Passwordless sign-in.md')).toBe(false);
+		toggleReleaseFold(view, 'Releases/0.8.md', 'Passwordless sign-in.md');
+		expect(releaseFoldedPaths(view, 'Releases/0.8.md').has('Passwordless sign-in.md')).toBe(true);
+		toggleReleaseFold(view, 'Releases/0.8.md', 'Passwordless sign-in.md');
+		expect(releaseFoldedPaths(view, 'Releases/0.8.md').has('Passwordless sign-in.md')).toBe(false);
 	});
 
-	it('setAllFolds folds or unfolds every row THIS scope drew, scoped to its release', () => {
+	it('setAllReleaseFolds folds or unfolds every row THIS scope drew, scoped to its release', () => {
 		// Task 5's own control, exercised directly here since nothing on screen calls it
 		// yet — the real fixture's own shape (`Passwordless sign-in.md` a parent, its two
 		// children leaves), not an arbitrary one, so `depth` says exactly what a real
@@ -116,15 +116,15 @@ describe('the scope tree', () => {
 			{ item: { file: { path: 'Send the magic link.md' } }, depth: 1 },
 			{ item: { file: { path: 'Expire the link.md' } }, depth: 1 },
 		].map((row) => row as unknown as ScopeRow);
-		setAllFolds(view, 'Releases/0.8.md', scopeRows, true);
+		setAllReleaseFolds(view, 'Releases/0.8.md', scopeRows, true);
 		// Only the PARENT gets a key. A leaf has no disclosure to close, so a fold key for
 		// one is a fold nothing can ever act on — and `folds.collapsed` spends from one
 		// shared, CAPPED budget (`MAX_FOLDS`, `storage/viewStateStore.ts`) across every
 		// scope this saved view holds, so a key that buys nothing still costs a slot a
 		// real fold elsewhere could have used.
-		expect(foldedPaths(view, 'Releases/0.8.md')).toEqual(new Set(['Passwordless sign-in.md']));
-		setAllFolds(view, 'Releases/0.8.md', scopeRows, false);
-		expect(foldedPaths(view, 'Releases/0.8.md').size).toBe(0);
+		expect(releaseFoldedPaths(view, 'Releases/0.8.md')).toEqual(new Set(['Passwordless sign-in.md']));
+		setAllReleaseFolds(view, 'Releases/0.8.md', scopeRows, false);
+		expect(releaseFoldedPaths(view, 'Releases/0.8.md').size).toBe(0);
 	});
 
 	it('keeps a fold made while the budget is already full', () => {
@@ -141,7 +141,7 @@ describe('the scope tree', () => {
 
 		twisty(view, 'Passwordless sign-in.md').click();
 
-		expect(foldedPaths(view, 'Releases/0.8.md')).toContain('Passwordless sign-in.md');
+		expect(releaseFoldedPaths(view, 'Releases/0.8.md')).toContain('Passwordless sign-in.md');
 	});
 
 	it('keeps a folded parent’s own rollup', () => {

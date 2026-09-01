@@ -824,6 +824,8 @@ export const en = {
 	'release.option.description': 'Release description property',
 	'release.option.releasedDate': 'Released date property',
 	'release.option.folder': 'Release folder',
+	'mywork.option.group.model': 'Model',
+	'mywork.option.group.work': 'Work',
 	'option.typeProperty': 'Item type property',
 	'option.hierarchyOnly': 'Ignore notes outside the hierarchy',
 	'option.showOutsideParents': 'Show parents outside the filter',
@@ -1710,6 +1712,62 @@ export const en = {
 	'release.empty.noReleases.title': 'No releases in this base',
 	'release.empty.noReleases.hint':
 		'A release is a note typed Release, carrying a version and a target date. Create the first one here.',
+
+	/** The my-work view's own label, `release.viewName`'s case exactly. */
+	'mywork.viewName': 'My work',
+	/** Between construction and the first result set Bases delivers — the other views' own
+	 *  reason for saying so rather than showing an empty pane. */
+	'mywork.loading': 'Loading assigned work…',
+	/**
+	 * The two unconfigured states, `release.empty.noType`'s own split: one is a mapping to
+	 * bind, the other is a base that simply holds no roster yet.
+	 */
+	'mywork.empty.noAssignee.title': 'No assignee property is set',
+	'mywork.empty.noAssignee.hint': 'Pick the property your notes name a person in, in this view’s options.',
+	'mywork.empty.noRoster.title': 'This base returns no people',
+	'mywork.empty.noRoster.hint': 'A person is a note of type Resource. Widen the filter, or make one.',
+	'mywork.empty.noPick.title': 'Pick a person',
+	'mywork.empty.noPick.hint': 'Their work appears below in plan order, with the next thing to do marked.',
+	'mywork.empty.noWork.title': 'Nothing is assigned to this person',
+	'mywork.empty.noWork.hint': 'Set the assignee on an item, in the backlog or on its own note, and it appears here.',
+	'mywork.empty.allDone.title': 'Everything here is done',
+	'mywork.empty.allDone.hint': 'Turn off Hide done to see the finished work.',
+
+	/** The one row this tree marks apart from state — the first unfinished member in plan
+	 *  order (`domain/assignedWork.ts`'s `nextAssigned`), drawn by `renderTree.ts`. */
+	'mywork.next': 'Next',
+	'mywork.nextTip': 'The first unfinished item of theirs in plan order.',
+	/**
+	 * This tree's own disclosure — never `release.scope.collapse`/`release.scope.expand`
+	 * (fix round 1, finding 3): the two projections evolve independently, and a key shared
+	 * verbatim across them means a wording change to one silently retexts the other's
+	 * control with no signal to the editor. Named `collapseRow`/`expandRow` rather than
+	 * bare `collapse`/`expand` to leave `mywork.collapseAll`/`mywork.expandAll` free for
+	 * Task 8's own bulk toolbar controls.
+	 */
+	'mywork.collapseRow': 'Collapse',
+	'mywork.expandRow': 'Expand',
+
+	/**
+	 * Task 8's own toolbar (`view/mywork/toolbar.ts`): the person picker and the bulk
+	 * collapse/expand pair, named apart from the per-row `collapseRow`/`expandRow` above
+	 * for the identical reason those two are named apart from `release.scope.*`.
+	 */
+	'mywork.person': 'Person',
+	'mywork.personPlaceholder': 'Nobody picked',
+	'mywork.collapseAll': 'Collapse all',
+	'mywork.expandAll': 'Expand all',
+	'mywork.hideDone': 'Hide done',
+
+	/**
+	 * Task 9's own row menu (`view/mywork/rowMenu.ts`): open, open in a new tab, and the
+	 * one write this surface offers. Named apart from the backlog view's own
+	 * `menu.openInNewTab`/`menu.setState` for the identical reason `collapseRow` is named
+	 * apart from `release.scope.collapse` above — the two menus evolve independently.
+	 */
+	'mywork.menu.open': 'Open',
+	'mywork.menu.openTab': 'Open in a new tab',
+	'mywork.menu.setState': 'Set state',
 
 	/**
 	 * The two groups the index is drawn in, headed where a row's own `shipped` flag changes

@@ -145,31 +145,46 @@ note assumed and `## Where it lives` explains it cannot be.
 
 ## Where it lives
 
-The membership read is `src/domain/releases.ts`, beside `src/domain/board.ts` and
-`src/domain/roadmap.ts` and shaped like them — it derives from the model in
-`src/domain/model.ts` and touches no DOM. The same module computes each row's own
-`memberTotal`/`memberDone` in the walk that already visits exactly this release's members,
-which is what keeps the rollup from ever counting a note this screen is not showing. The
-membership key, and this view's own open-note target (`openIn`), are declared in
+The membership read (`membershipTarget`) is `src/domain/releases.ts`, beside
+`src/domain/board.ts` and `src/domain/roadmap.ts` and shaped like them — it derives from the
+model in `src/domain/model.ts` and touches no DOM. **The walk itself — the keep set, the
+pre/post-order rollup, `memberTotal`/`memberDone`, `subtreeDone` — moved to
+`src/domain/scopeRows.ts` (see [[One person's tree]]), over any membership predicate rather
+than this one alone.** `releaseScope` now calls `scopeRows` with the membership question
+above as its predicate, which is what keeps the rollup from ever counting a note this screen
+is not showing: one walk, so the release scope and the assigned-work tree cannot drift about
+what a context row is. The membership key, and this view's own open-note target (`openIn`),
+are declared in
 `src/domain/releaseOptions.ts`, this view's own option set. `src/view/release/releaseView.ts`
 CHOOSES between this scope and the index; `src/view/release/renderScope.ts` draws the header
 and the two empty states above the tree — including the header's own open-note control
 (`drawOpenNote`), which is beside the title rather than in the toolbar below it because the
 toolbar's three controls are about the TREE and this one is about the release the title names; `src/view/release/scopeTree.ts` draws the tree
-itself — the rows, the disclosure, the fold set (scoped to the open release, never a bare
-path — see that module's own comment) and a row's click (and middle click), which open the
+itself — the rows, the disclosure and a row's click (and middle click), which open the
 note through `src/view/openTarget.ts`'s `OpenController`, the estimation view's own
-mechanism. `src/view/release/scopeKeys.ts` is the tree's keyboard: one tab stop on the
-container and a roving `aria-activedescendant`, moved by the four arrows plus Enter and
-Space, over the same fold set and the same `OpenController` — never `src/view/selection.ts`,
-which is built around a `BacklogViewHost` and the two card projections' own selection, so
-reusing it would mean satisfying a host interface in order to withhold most of it, the same
-call this note's own next paragraph already made about `render/rows.ts`. `renderScope.ts` is
-what WIRES the keyboard, not `scopeTree.ts`: `drawScopeTree` returns what it drew rather than
-calling `scopeKeys.ts` itself, because that module reads the fold set `scopeTree.ts` owns, and
-a call the other way as well would be the import cycle `npm run analyze` refuses — `renderScope.ts`
-already imports both leaves, so it is the one place that can call each in turn without either
-importing the other.
+mechanism. **The fold set — scoped to the open release, never a bare path — and the
+hide-done flag beside it moved to `src/view/scopeFolds.ts`** (Task 5 of [[Assigned work in
+the sidebar]]): the assigned-work tree asks the identical two questions per person rather
+than per release, and the whole of what varied was the key prefix, so `scopeTree.ts` now
+calls the shared functions with `RELEASE_FOLD` and the open release's path rather than
+keeping a second copy. **The keyboard moved the same way, one task later**:
+`src/view/scopeKeys.ts` is the tree's keyboard — one tab stop on the container and a
+roving `aria-activedescendant`, moved by the four arrows plus Enter and Space, over the
+same fold set and the same `OpenController` — never `src/view/selection.ts`, which is
+built around a `BacklogViewHost` and the two card projections' own selection, so reusing
+it would mean satisfying a host interface in order to withhold most of it, the same call
+this note's own next paragraph already made about `render/rows.ts`. It used to live one
+directory down, release-only — moved out to this shared home (Task 7 of [[Assigned work
+in the sidebar]]) once the assigned-work tree needed the identical mechanism over a
+different fold prefix:
+`ScopeKeyHost` is the structural type either view satisfies and `TreeDraw` is the shape
+either tree's own draw hands it, both defined in the shared module rather than in either
+tree's own. `renderScope.ts` is what WIRES the keyboard, not `scopeTree.ts`:
+`drawScopeTree` returns what it drew rather than calling `scopeKeys.ts` itself, because
+that module reads the fold set `scopeTree.ts` owns, and a call the other way as well
+would be the import cycle `npm run analyze` refuses — `renderScope.ts` already imports
+both leaves, so it is the one place that can call each in turn without either importing
+the other.
 
 This note said the rows reuse `src/view/render/rows.ts` and the context marking already there.
 They do not, and cannot: that module takes a `BacklogViewHost` and wires menus, create prompts,
