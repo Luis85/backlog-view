@@ -2,12 +2,12 @@
 type: PBI
 parent: "[[Multilang]]"
 order: 110
-status: Open
-started: ""
-finished: ""
+status: Done
+started: 2026-09-01
+finished: 2026-09-01
 horizon: ""
-start: ""
-due: ""
+start: 2026-09-01
+due: 2026-09-01
 risk: ""
 assignee: ""
 priority: ""
@@ -118,11 +118,51 @@ rather than an assumption that `npm run check` already covers it.
 - A deliberately broken locale fixture proves each check fails. A completeness check that
   has never failed is a check nobody has tested.
 
+## What landed (2026-09-01)
+
+`test/i18n/parity.ts` is the comparator and `test/i18n/parity.test.ts` drives it. It runs
+inside `npm run check` as part of the suite rather than as a step of its own, which is
+what the design above meant by "the same shape as the register's gate" — a gate is a gate
+wherever it is spelled, and a `.test.ts` file needs no new script, no new CI entry and no
+second way to be run.
+
+**It reads the REGISTRY, not a list of its own.** `CATALOGS` is exported from `t.ts` for
+exactly that: a language added there is compared against English with no test edit, which
+is the claim [[English ships alone]] makes about this round being a starting point. The
+sweep over the registry is `it.each` over its entries, so the failure names the locale.
+
+Four divergences, kept apart because they have four different fixes — `missing` (English
+has the key, this catalog does not, so it renders in English), `stale` (nothing will ever
+read it), `parameters`, and `plurals`. Each is proved by a fixture that breaks it and by
+nothing else: a complete clone of English passes, one key deleted reports `missing` and
+not `stale`, one key added reports the reverse, a message with `{type}` removed reports
+the parameter and a message with `{kind}` invented reports both directions at once.
+
+**The plural rule asks the CATALOG's own locale**, so English carrying `one` and `other`
+does not force Japanese to invent a second form — the fixture asserts both halves of that
+in one test, since the entry English calls complete is over-supplied for `ja` and the one
+`ja` calls complete is incomplete for English. A malformed tag goes through `intlLocale`
+and falls back rather than throwing a `RangeError` out of a check.
+
+**The parameter rule is UNIONED across a plural entry's forms, and that ceiling is written
+into the check rather than left to be found.** English's own `lane.absenceClash` names
+`{count}` in `other` and not in `one` — *an absence* needs no count and *three absences* do
+— so a per-form rule would refuse the source catalog. What this cannot see is a translation
+that drops a parameter from one form and keeps it in another; the test asserts that
+limitation directly, next to the case it does catch.
+
+**Fallow needed nothing, and that is the decision rather than an accident.** The design
+asked for whatever it takes to be written into `.fallowrc.json` with a reason; the answer
+is that the file is unchanged. `en` is read through `t.ts` from `main.ts`, so the catalog
+is reachable from an entry point and its keys are values in an object literal rather than
+members fallow resolves — there is no lookup shape for it to follow and nothing to
+override. `CATALOGS` was made an export in this change and stays reachable the same way.
+
 ## Where it lives
 
-**Nothing yet — this note is design.** The check runs as part of `npm run check`, which
-already chains `npm run docs` for the register's own gate — the same shape, applied to the
-catalog.
-
-The fixtures live under `test/`, beside the harness in `test/helpers/view.ts` that already
-owns per-test setup.
+`test/i18n/parity.ts` holds `compareToSource`, the comparator, and
+`test/i18n/parity.test.ts` its fixtures and the registry sweep ·
+`src/i18n/t.ts` exports `CATALOGS`, which is what the sweep reads ·
+`src/i18n/locale.ts`'s `intlLocale` is how a locale code reaches `Intl.PluralRules`
+without throwing · `test/i18n/fixtures.ts`'s `markedCatalog()` builds the complete clone
+every broken fixture is a single delta against.
