@@ -271,19 +271,23 @@ export interface ReleaseReadiness {
     criticalRisks: ReleaseFigure<number>;
 }
 
+export function estimateValue(raw: unknown): number | null;
 export function isEstimated(raw: unknown): boolean;
-export function releaseReadiness(app: App, scope: ReleaseScope, settings: ReleaseSettings): ReleaseReadiness;
+export function releaseReadiness(
+    app: App,
+    scope: ReleaseScope,
+    settings: ReleaseSettings,
+    planSettings: BacklogSettings,
+): ReleaseReadiness;
 ```
 
   Task 3 fills the `blocked` figure and its criterion; Task 4 fills `criticalRisks`; Task 5
   renders all of it. `isEstimated` is exported for `A definition of ready` to reuse later —
   one predicate, not two.
-- **`releaseReadiness` widens in Task 3** to
-  `(app, scope, settings, planSettings: BacklogSettings)` — the blocked criterion asks each
-  prerequisite's own workflow whether it has a key AND clearing values, which is a settings
-  question rather than a boolean the caller can precompute. Write the three-parameter form
-  here; Task 3 adds the fourth and updates this task's own test helper. Task 5 calls the
-  four-parameter form.
+- **`planSettings` is a parameter from this task on**, not added later: the completed-effort
+  figure has to ask each member's own workflow whether it can say *done*, and Task 3's
+  blocked criterion asks the same of each prerequisite. `workflowClears` is written here and
+  reused there rather than being introduced twice.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -305,6 +309,14 @@ describe('the estimate predicate', () => {
         expect(isEstimated(0)).toBe(true);
         expect(isEstimated(2.5)).toBe(true);
         expect(isEstimated('TBD')).toBe(false);
+        // A numeric PREFIX is a placeholder, not an estimate. `noteFields.ts`'s shared
+        // `readNumber` parses both of these to a number, which is why this predicate does
+        // not use it — the two spellings a placeholder actually turns up in.
+        expect(isEstimated('5 TBD')).toBe(false);
+        expect(isEstimated('8 points')).toBe(false);
+        // A quoted numeric scalar is still an estimate: somebody typed a number as a string.
+        expect(isEstimated('5')).toBe(true);
+        expect(isEstimated('  7  ')).toBe(true);
         expect(isEstimated('')).toBe(false);
         expect(isEstimated(null)).toBe(false);
         expect(isEstimated(undefined)).toBe(false);
@@ -333,6 +345,24 @@ describe('the effort figures', () => {
         // The count reads the same key as the sums: a screen showing "2 unestimated" beside
         // "effort: not configured" contradicts itself, which is what the harness mock caught.
         expect(readiness.criteria.find((c) => c.key === 'estimated')?.verdict).toBe('unconfigured');
+    });
+
+    it('reports completed effort as unconfigured when no workflow can say done', () => {
+        // The estimated total and the unestimated count read the estimate key alone and still
+        // answer. The COMPLETED total needs a workflow, and without one every member reads as
+        // not done — a zero that looks measured and is not.
+        const readiness = readinessOf(effortVault(), 'R.md', { estimateKey: 'effort' }, { doneValues: [] });
+        expect(readiness.estimatedEffort).toEqual({ value: 15, invalid: false, unconfigured: false });
+        expect(readiness.unestimated).toEqual({ value: 1, invalid: false, unconfigured: false });
+        expect(readiness.completedEffort).toEqual({ value: null, invalid: false, unconfigured: true });
+    });
+
+    it('does not sum a placeholder wearing a number', () => {
+        // `effort: '5 TBD'` is unestimated, so it joins the count and reaches neither sum —
+        // the criterion and the total reading one predicate rather than two.
+        const readiness = readinessOf(placeholderEffortVault(), 'R.md', { estimateKey: 'effort' });
+        expect(readiness.estimatedEffort.value).toBe(6);
+        expect(readiness.unestimated.value).toBe(1);
     });
 
     it('counts no context ancestor in any figure', () => {
@@ -412,6 +442,20 @@ function contextEffortVault(): FakeVault {
     return vault;
 }
 
+/** One member estimated `6`, one carrying the placeholder `'5 TBD'`. */
+function placeholderEffortVault(): FakeVault {
+    const vault = new FakeVault();
+    vault.addFile('R.md', { frontmatter: { type: 'Release', version: '1.0.0' } });
+    vault.addFile('E.md', { frontmatter: { type: 'Epic' } });
+    vault.addFile('M1.md', {
+        frontmatter: { type: 'PBI', parent: 'E', order: 1, release: '[[R]]', effort: 6, status: 'Done' },
+    });
+    vault.addFile('M2.md', {
+        frontmatter: { type: 'PBI', parent: 'E', order: 2, release: '[[R]]', effort: '5 TBD', status: 'Doing' },
+    });
+    return vault;
+}
+
 /** A release nobody has filled. Not a release that is done. */
 function emptyReleaseVault(): FakeVault {
     const vault = new FakeVault();
@@ -437,6 +481,8 @@ binding no `deliverableStateProperty` and no `deliverableDoneValues`. `multiRisk
 `lowAndBlankRiskVault()` has one member at `Low` and one with no risk key;
 `addressedRiskVault()` gives one member `risk: ['Critical', 'Mitigated']`;
 `contextRiskVault()` is `multiRiskVault()` with `E.md` carrying `risk: 'Critical'`.
+`malformedRiskVault()` has one member whose `risk` is an object (`{ level: 'Critical' }`)
+and one with no risk key at all — so the assertion separates the unreadable from the absent.
 
 - [ ] **Step 2: Run test to verify it fails**
 
@@ -449,10 +495,11 @@ Create `src/domain/releaseReadiness.ts`:
 
 ```ts
 import { App } from 'obsidian';
-import { ownValue, readNumber } from './noteFields';
-import { ownWorkflowReading } from './board';
+import { ownValue } from './noteFields';
+import { ownWorkflowKind, ownWorkflowReading, WorkflowKind, workflowStateInfo } from './board';
 import { ReleaseFigure, ReleaseScope } from './releases';
 import { ReleaseSettings } from './releaseOptions';
+import { BacklogSettings } from './settings';
 import { BacklogItem } from './model';
 
 /**
@@ -524,23 +571,69 @@ function verdictOf(cleared: number, outstanding: number): Verdict {
 /**
  * **An estimate clears its criterion by being a number** — the predicate
  * `docs/requirements/Release readiness.md` states and `A definition of ready` will reuse,
- * which is why it is exported rather than inlined here. `TBD`, an empty string and anything
- * non-finite are the missing estimate wearing a value, and a criterion that accepted them
- * would report a release as fully estimated on the strength of somebody's placeholder.
+ * which is why {@link isEstimated} is exported rather than inlined. `TBD`, an empty string
+ * and anything non-finite are the missing estimate wearing a value, and a criterion that
+ * accepted them would report a release as fully estimated on the strength of somebody's
+ * placeholder.
  *
- * `readNumber` and not `typeof raw === 'number'`: a frontmatter `effort: "5"` is a number
- * somebody typed as a string, and refusing it would call an estimated item unestimated.
- * `readNumber` already refuses `NaN` and both infinities.
+ * **NOT `readNumber`, and that is the correction of this draft.** `noteFields.ts`'s shared
+ * reader parses a string with `Number.parseFloat`, which takes a numeric PREFIX: `'5 TBD'`
+ * reads as 5 and `'8 points'` as 8, so the two spellings a placeholder actually turns up in
+ * would both be counted and summed. That is the exact reading this predicate says it
+ * refuses. Raised by a review bot and reproduced before it was taken.
+ *
+ * A quoted numeric scalar is still an estimate — a frontmatter `effort: '5'` is a number
+ * somebody typed as a string, and refusing it would call an estimated item unestimated — so
+ * the test is that the WHOLE trimmed string is a finite number. `Number('')` is `0`, which
+ * is why the empty check comes first rather than being left to `Number.isFinite`.
+ *
+ * `readNumber` stays untouched: it is shared with readers this increment does not own, and
+ * narrowing it here would change figures nothing in this plan has looked at.
  */
-export function isEstimated(raw: unknown): boolean {
-	return readNumber(raw) !== null;
+/** Every workflow a member or a prerequisite can belong to — `WorkflowKind`'s own three. */
+const WORKFLOW_KINDS: WorkflowKind[] = ['requirements', 'deliverable', 'test'];
+
+/**
+ * **A key is half of a workflow; the other half is which values clear it** — the same rule
+ * the risk criterion keeps, read here for the state vocabulary. A bound `stateKey` with an
+ * empty `doneValues` clears nothing, so `ownWorkflowReading(...).done` is false for every
+ * item: a figure gated on the key alone reports a measured-looking zero, and a criterion
+ * gated on it reports every member of every release as blocked.
+ */
+function workflowClears(kind: WorkflowKind, planSettings: BacklogSettings): boolean {
+	const info = workflowStateInfo(kind, planSettings);
+	return info.key !== '' && info.doneValues.length > 0;
 }
 
-export function releaseReadiness(app: App, scope: ReleaseScope, settings: ReleaseSettings): ReleaseReadiness {
+export function estimateValue(raw: unknown): number | null {
+	if (typeof raw === 'number') return Number.isFinite(raw) ? raw : null;
+	if (typeof raw !== 'string') return null;
+	const trimmed = raw.trim();
+	if (trimmed === '') return null;
+	const parsed = Number(trimmed);
+	return Number.isFinite(parsed) ? parsed : null;
+}
+
+/**
+ * The criterion's own half of {@link estimateValue}. One predicate and one reader, so the
+ * sum and the verdict can never disagree about which members are estimated — a criterion
+ * calling `'5 TBD'` unestimated while the total beside it added 5 is the drift this pairing
+ * exists to prevent.
+ */
+export function isEstimated(raw: unknown): boolean {
+	return estimateValue(raw) !== null;
+}
+
+export function releaseReadiness(
+	app: App,
+	scope: ReleaseScope,
+	settings: ReleaseSettings,
+	planSettings: BacklogSettings,
+): ReleaseReadiness {
 	const members = scope.rows.filter((row) => !row.context).map((row) => row.item);
 	return {
 		criteria: [estimateCriterion(app, members, settings)],
-		...effortFigures(app, members, settings),
+		...effortFigures(app, members, settings, planSettings),
 		blocked: UNCONFIGURED,
 		criticalRisks: UNCONFIGURED,
 	};
@@ -556,10 +649,25 @@ function estimateCriterion(app: App, members: BacklogItem[], settings: ReleaseSe
 	return { key: 'estimated', verdict: verdictOf(cleared, outstanding), cleared, outstanding, unreadable: 0 };
 }
 
+/**
+ * **Three figures, two different configurations.** The estimated total and the unestimated
+ * count read the ESTIMATE key alone, so they answer wherever that key is bound. The
+ * COMPLETED total additionally needs a workflow that can say what done means, and without
+ * one `ownWorkflowReading(item).done` is false for every member — which would produce a
+ * completed effort of zero that looks measured and is not, drawn as `0 of 15 pts (0%)`.
+ * `ReleaseRow.done` already refuses to report that as a zero (`Summing up a release`
+ * extension 2c), and this figure must refuse it for the same reason. Raised by a review bot
+ * against a draft that made all three answer together.
+ *
+ * The test is over the members' OWN workflows: one member whose kind cannot clear is enough,
+ * because the total is a sum over all of them and a partial sum reported as a whole is the
+ * same false precision in smaller print.
+ */
 function effortFigures(
 	app: App,
 	members: BacklogItem[],
 	settings: ReleaseSettings,
+	planSettings: BacklogSettings,
 ): Pick<ReleaseReadiness, 'unestimated' | 'estimatedEffort' | 'completedEffort'> {
 	if (settings.estimateKey === '') {
 		// All three read the SAME key, so all three are unconfigured together. Drawing a
@@ -567,11 +675,12 @@ function effortFigures(
 		// this module existed, and `Summing up a release` extension 2a is amended to say so.
 		return { unestimated: UNCONFIGURED, estimatedEffort: UNCONFIGURED, completedEffort: UNCONFIGURED };
 	}
+	const doneReadable = members.every((item) => workflowClears(ownWorkflowKind(item), planSettings));
 	let estimated = 0;
 	let completed = 0;
 	let missing = 0;
 	for (const item of members) {
-		const value = readNumber(estimateOf(app, item, settings));
+		const value = estimateValue(estimateOf(app, item, settings));
 		if (value === null) {
 			missing += 1;
 			continue;
@@ -579,14 +688,18 @@ function effortFigures(
 		estimated += value;
 		// The member's OWN workflow, so a Deliverable answers by its own — the reader the
 		// progress bar above this already uses.
-		if (ownWorkflowReading(item).done) completed += value;
+		if (doneReadable && ownWorkflowReading(item).done) completed += value;
 	}
 	// ponytail: a member whose descendant in the same release also carries an estimate is
 	// double counted here. Naming those members is `Capacity against commitment`'s own
 	// figure (`docs/requirements/Capacity against commitment.md`), and it is the next
 	// increment; until it lands this total is wrong in a vault whose parent estimates are
 	// aggregates.
-	return { unestimated: counted(missing), estimatedEffort: counted(estimated), completedEffort: counted(completed) };
+	return {
+		unestimated: counted(missing),
+		estimatedEffort: counted(estimated),
+		completedEffort: doneReadable ? counted(completed) : UNCONFIGURED,
+	};
 }
 
 function estimateOf(app: App, item: BacklogItem, settings: ReleaseSettings): unknown {
@@ -815,21 +928,9 @@ function blockedCriterion(
 	return { key: 'blocked', verdict: verdictOf(cleared, outstanding), cleared, outstanding, unreadable };
 }
 
-/** Every workflow a prerequisite can belong to — `WorkflowKind`'s own three. */
-const WORKFLOW_KINDS: WorkflowKind[] = ['requirements', 'deliverable', 'test'];
-
-/**
- * **A key is half of a workflow; the other half is which values clear it** — the same rule
- * the risk criterion keeps, read here for the state vocabulary. A bound `stateKey` with an
- * empty `doneValues` clears nothing, so `ownWorkflowReading(...).done` is false for every
- * item and a criterion gated on the key alone would report every member of every release as
- * blocked. Raised by a review bot against this plan's first draft, which gated on
- * `planSettings.stateKey !== ''` and had exactly that hole.
- */
-function workflowClears(kind: WorkflowKind, planSettings: BacklogSettings): boolean {
-	const info = workflowStateInfo(kind, planSettings);
-	return info.key !== '' && info.doneValues.length > 0;
-}
+// `workflowClears` and `WORKFLOW_KINDS` are Task 2's, written there for the completed-effort
+// figure and reused here unchanged — the identical question asked of a prerequisite instead
+// of a member.
 ```
 
 `releaseReadiness` gains only the plan settings — no model, no link resolution, no lookup
@@ -848,7 +949,7 @@ export function releaseReadiness(
 	const blocked = blockedCriterion(members, settings, planSettings);
 	return {
 		criteria: [estimateCriterion(app, members, settings), blocked],
-		...effortFigures(app, members, settings),
+		...effortFigures(app, members, settings, planSettings),
 		blocked: figureFrom(blocked),
 		criticalRisks: UNCONFIGURED,
 	};
@@ -860,9 +961,8 @@ function figureFrom(criterion: ReleaseCriterion): ReleaseFigure<number> {
 }
 ```
 
-Add `ownWorkflowKind`, `workflowStateInfo` and `WorkflowKind` to the `./board` import, and
-`BacklogSettings` from `./settings`. Update Task 2's callers in the test helper for the one
-new parameter.
+No new imports: Task 2 already brings `ownWorkflowKind`, `workflowStateInfo`, `WorkflowKind`
+and `BacklogSettings`, and `releaseReadiness` already takes `planSettings`.
 
 - [ ] **Step 4: Run the test to verify it passes**
 
@@ -959,6 +1059,15 @@ describe('the critical risk predicate', () => {
         ).toBe(true);
     });
 
+    it('counts a malformed risk value as unreadable, never as absent', () => {
+        // Absence clears this criterion; a value the reader cannot interpret must not. A
+        // filter that dropped unreadable entries left an empty list indistinguishable from
+        // no list, so malformed critical-risk data made a release look ready.
+        const criterion = readinessOf(malformedRiskVault(), 'R.md', RISK).criteria.find((c) => c.key === 'risk');
+        expect(criterion?.unreadable).toBe(1);
+        expect(criterion?.outstanding).toBe(1);
+    });
+
     it('counts no context ancestor, whatever risk it carries', () => {
         const withContext = readinessOf(contextRiskVault(), 'R.md', RISK);
         expect(withContext.criticalRisks).toEqual(readinessOf(multiRiskVault(), 'R.md', RISK).criticalRisks);
@@ -1004,8 +1113,13 @@ In `src/domain/releaseReadiness.ts`:
  * with, "3 of 3 outstanding" is a configuration nobody finished, reported as a finding about
  * the release.
  *
- * `unreadable` is 0: a member with nothing where this looks has a stated answer (not
- * critical), so there is nothing 5a has to report separately for this criterion.
+ * **Absence and unreadability are different answers, and the filter used to collapse them.**
+ * A member with NOTHING where this looks clears the criterion — that is the exception above.
+ * A member whose risk property holds an object, or a list of them, has a value the reader
+ * cannot interpret: dropping those entries leaves an empty list indistinguishable from an
+ * absent one, so malformed critical-risk data would make a release look ready. A present but
+ * unreadable value costs the member the criterion and is reported in `unreadable`, which is
+ * what 5a asks. Raised by a review bot against a draft that filtered and forgot.
  */
 function riskCriterion(app: App, members: BacklogItem[], settings: ReleaseSettings): ReleaseCriterion {
 	// BOTH vocabularies, not just the critical one — see this function's own docblock.
@@ -1014,9 +1128,17 @@ function riskCriterion(app: App, members: BacklogItem[], settings: ReleaseSettin
 	}
 	let cleared = 0;
 	let outstanding = 0;
+	let unreadable = 0;
 	for (const item of members) {
-		const values = riskValuesOf(app, item, settings);
+		const reading = riskValuesOf(app, item, settings);
+		if (reading.unreadable) {
+			// A value the reader cannot interpret is not an absent one — see the docblock.
+			unreadable += 1;
+			outstanding += 1;
+			continue;
+		}
 		// Counted ONCE per member however many values it holds — the acceptance criterion.
+		const values = reading.values;
 		const exposed = values.some(
 			(value) =>
 				settings.criticalRiskValues.some((critical) => sameValue(value, critical)) &&
@@ -1025,13 +1147,25 @@ function riskCriterion(app: App, members: BacklogItem[], settings: ReleaseSettin
 		if (exposed) outstanding += 1;
 		else cleared += 1;
 	}
-	return { key: 'risk', verdict: verdictOf(cleared, outstanding), cleared, outstanding, unreadable: 0 };
+	return { key: 'risk', verdict: verdictOf(cleared, outstanding), cleared, outstanding, unreadable };
 }
 
-function riskValuesOf(app: App, item: BacklogItem, settings: ReleaseSettings): string[] {
+/**
+ * A member's risk values, and whether the property held something this reader refuses.
+ * `undefined` and `null` are ABSENCE and read as no values with `unreadable` false; anything
+ * else that yields no readable string — an object, a list of them, an empty string — is a
+ * value somebody wrote that this reader cannot use.
+ */
+function riskValuesOf(
+	app: App,
+	item: BacklogItem,
+	settings: ReleaseSettings,
+): { values: string[]; unreadable: boolean } {
 	const raw = ownValue(app.metadataCache.getFileCache(item.file)?.frontmatter, settings.riskKey);
-	const values = Array.isArray(raw) ? raw : [raw];
-	return values.map((value) => readString(value)).filter((text): text is string => text !== null);
+	if (raw === undefined || raw === null) return { values: [], unreadable: false };
+	const entries = Array.isArray(raw) ? raw : [raw];
+	const values = entries.map((value) => readString(value)).filter((text): text is string => text !== null);
+	return { values, unreadable: values.length === 0 };
 }
 ```
 
@@ -1045,7 +1179,7 @@ Wire it into `releaseReadiness`, computed once like the others:
 	const risk = riskCriterion(app, members, settings);
 	return {
 		criteria: [estimateCriterion(app, members, settings), blocked, risk],
-		...effortFigures(app, members, settings),
+		...effortFigures(app, members, settings, planSettings),
 		blocked: figureFrom(blocked),
 		criticalRisks: figureFrom(risk),
 	};
@@ -1155,6 +1289,10 @@ describe("a release's readiness on screen", () => {
         const strip = containerEl.querySelector('.pbl-rel-summary') as HTMLElement;
         expect(strip.textContent).toContain('unestimated');
         expect(strip.querySelector('.pbl-rel-unreadable')).not.toBeNull();
+        // The estimated total still answers; the progress THROUGH it does not, so it is
+        // stated alone rather than against a zero that would read as measured.
+        expect(strip.textContent).toContain('pts estimated');
+        expect(strip.textContent).not.toContain('0 of');
     });
 
     it('draws the effort figure for a release whose every estimate is zero', () => {
@@ -1226,6 +1364,9 @@ In `src/i18n/en.ts`, beside the other `release.scope.*` keys:
 		other: 'Readiness: {count} criteria not configured',
 	},
 	'release.scope.effort': '{done} of {total} pts ({pct}%)',
+	/** Estimated but not measurable: the estimate key is bound and no workflow can say what
+	 *  done means, so there is a total and no progress through it. */
+	'release.scope.effortEstimated': '{total} pts estimated',
 	'release.scope.effortUnconfigured': 'Effort is not configured',
 	'release.scope.unestimated': '{count} unestimated',
 ```
@@ -1346,7 +1487,8 @@ function verdictClass(verdict: ReleaseCriterion['verdict']): string {
 export function drawReadinessFigures(sumEl: HTMLElement, readiness: ReleaseReadiness): void {
 	const total = readiness.estimatedEffort.value;
 	const done = readiness.completedEffort.value;
-	if (total === null || done === null) {
+	if (total === null) {
+		// The estimate key itself is unbound, so none of the three figures answers.
 		sumEl.createSpan({ cls: 'pbl-rel-unreadable', text: t('release.scope.effortUnconfigured') });
 		return;
 	}
@@ -1358,10 +1500,17 @@ export function drawReadinessFigures(sumEl: HTMLElement, readiness: ReleaseReadi
 	// plan's first draft, which tested `total > 0`.
 	const estimatedMembers = readiness.criteria.find((criterion) => criterion.key === 'estimated')?.cleared ?? 0;
 	if (estimatedMembers > 0) {
-		// Guarded separately from the decision above: a real total of zero has no percentage
-		// to compute, and dividing by it produces the `NaN` that would be drawn as one.
-		const pct = total === 0 ? 0 : Math.round((100 * done) / total);
-		sumEl.createSpan({ cls: 'pbl-rel-figure', text: t('release.scope.effort', { done, total, pct }) });
+		// `done === null` is the estimate key bound with no workflow that can say done: there
+		// is a real total and no progress through it, so the total is stated alone rather
+		// than against a zero that would read as measured.
+		if (done === null) {
+			sumEl.createSpan({ cls: 'pbl-rel-figure', text: t('release.scope.effortEstimated', { total }) });
+		} else {
+			// Guarded separately from the decision above: a real total of zero has no
+			// percentage to compute, and dividing by it produces the `NaN` drawn as one.
+			const pct = total === 0 ? 0 : Math.round((100 * done) / total);
+			sumEl.createSpan({ cls: 'pbl-rel-figure', text: t('release.scope.effort', { done, total, pct }) });
+		}
 	}
 	if (readiness.unestimated.value !== null) {
 		sumEl.createSpan({
@@ -1772,6 +1921,9 @@ MSG
 | A release estimated entirely at zero is not "nothing estimated" | 5 |
 | Both risk vocabularies are required before the criterion answers | 4 |
 | The effort figures survive an unconfigured progress figure | 5 |
+| A numeric prefix (`5 TBD`) is a placeholder, not an estimate | 2 |
+| Completed effort is unconfigured when no workflow can say done | 2, 5 |
+| A malformed risk value is unreadable, never absent | 4 |
 | Critical risks, counted once per member | 4 |
 | Absence is an answer for risk | 4 |
 | A key with no vocabulary is unconfigured | 4 |

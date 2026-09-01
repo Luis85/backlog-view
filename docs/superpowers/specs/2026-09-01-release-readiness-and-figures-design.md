@@ -118,20 +118,40 @@ every release as blocked — a configuration mistake dressed as a finding about 
 `2 of 5 outstanding` are indistinguishable, and the tooltip that would separate them sits on
 a static, unfocusable div and reaches a pointer alone.
 
-**The effort figures survive an unconfigured progress figure.** They read the estimate key,
-not the state workflow, so the summary strip's early return for unreadable progress must not
-take them with it — a release with estimates and no bound workflow still says how much it is
-and how much of it carries no estimate.
+**The effort figures survive an unconfigured progress figure — but not all three of them.**
+The estimated total and the unestimated count read the estimate key alone, so the summary
+strip's early return for unreadable progress must not take them with it. The COMPLETED total
+is different: it needs a workflow that can say what done means, and without one every member
+reads as not done, which is a zero that looks measured and is not. So a release with
+estimates and no bound workflow states its total alone — `15 pts estimated` — rather than
+`0 of 15 pts (0%)`. `ReleaseRow.done` already refuses that same zero (extension 2c) and this
+figure refuses it for the same reason.
+
+**A numeric prefix is a placeholder, not an estimate.** `noteFields.ts`'s shared `readNumber`
+parses a string with `Number.parseFloat`, so `5 TBD` reads as 5 and `8 points` as 8 — the two
+spellings a placeholder actually turns up in, both counted and summed by the reader this
+increment first reached for. The predicate requires the WHOLE trimmed string to be a finite
+number, and one function answers both the criterion and the sums so they cannot disagree
+about which members are estimated. `readNumber` itself is left alone: it is shared with
+readers this increment does not own.
+
+**A risk value the reader cannot interpret is unreadable, never absent.** Absence clears the
+risk criterion deliberately; an object, or a list whose entries yield no string, is somebody
+having written something. Filtering those away leaves an empty list indistinguishable from an
+absent one, so malformed critical-risk data would make a release look ready.
 
 **Whether anything was estimated is decided by the COUNT of estimated members, never by the
 sum.** `0` is a valid estimate this predicate accepts, so a release whose members all
 estimate zero — or whose estimates cancel — must not be drawn like one nobody has estimated
 at all, and the percentage needs its own guard against a zero total.
 
-The last six were raised by a review bot against drafts of the plan, and each was confirmed
+The last nine were raised by a review bot against drafts of the plan, and each was confirmed
 against the code — or, for the risk vocabularies, against this register — before it was
-taken. That one was an internal contradiction rather than a missed case: the plan's own test
-required both lists while the module beside it required one.
+taken. Two are worth separating from the rest. The risk vocabularies were an internal
+contradiction rather than a missed case: the plan's own test required both lists while the
+module beside it required one. And the numeric prefix was a shared reader doing something
+reasonable for its own callers and wrong for this one, which is the argument for a predicate
+of this increment's own rather than a borrowed convenience.
 
 **`src/view/release/renderReadiness.ts`** (new) draws the chip row and the new figures;
 `renderScope.ts` is at 584 lines and calls it from `drawHeader` after `drawSummary`. Chips
