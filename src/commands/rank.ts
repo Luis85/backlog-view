@@ -118,8 +118,15 @@ async function applyRank(
 	// **And what CHANGED decides which sentence it is.** `written` counts every note the
 	// batch opened, a note already holding its planned number included — so respace run
 	// twice reported a rewrite over a vault it left alone, with no undo behind the claim.
+	//
+	// **And "nothing changed" is a claim about the WHOLE batch**, so only a batch that ran
+	// whole may make it. The two conditions meet: a refused batch can be idempotent as far
+	// as it got, and `{ changed: false, written: 1 }` is what that returns — over a
+	// population whose notes after the refusal were never opened. Said there, the sentence
+	// is false of them and contradicts the refusal notice it follows.
 	if (outcome === null || outcome.written === 0) return;
-	new Notice(outcome.changed ? t('rank.done', { count: outcome.written }) : t('rank.unchanged'));
+	if (outcome.changed) new Notice(t('rank.done', { count: outcome.written }));
+	else if (outcome.written === planned.length) new Notice(t('rank.unchanged'));
 }
 
 /**

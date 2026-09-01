@@ -264,6 +264,39 @@ describe('the seed and respace rank commands', () => {
 		expect(Notice.messages).toEqual(['Every rank already holds the number this would write. Nothing was changed.']);
 	});
 
+	it('does not call a refused batch unchanged, having only looked at the notes before the refusal', async () => {
+		// The two corrections meeting: a batch can be BOTH idempotent so far and stopped
+		// partway, and `{ changed: false, written: 1 }` is what `applyWrites` returns for
+		// it. "Every rank already holds the number this would write" is then false of every
+		// note after the refusal — which the batch never opened — and it contradicts the
+		// refusal notice it would follow. Only a batch that ran WHOLE can say nothing
+		// changed.
+		const vault = new FakeVault();
+		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 1000 } });
+		vault.addFile('Epic B.md', { frontmatter: { type: 'Epic', order: 2000 } });
+		vault.addFile('Epic C.md', { frontmatter: { type: 'Epic', order: 3000 } });
+		const { view } = openBacklog(vault);
+
+		respaceRanksCommand(vault.app, false);
+		confirm();
+		await flush();
+		refresh(view, vault);
+		Notice.messages.length = 0;
+
+		// Retyped by another window between the two runs: `Epic A` is opened and is a
+		// no-op, `Epic B` is refused, and `Epic C` is never reached at all.
+		vault.onNextProcess('Epic B.md', (fm) => {
+			fm['type'] = 'Resource';
+		});
+		respaceRanksCommand(vault.app, false);
+		confirm();
+		await flush();
+
+		expect(Notice.messages).toEqual([
+			'That note changed while the move was in flight, so nothing was written.',
+		]);
+	});
+
 	it('says so when there is nothing to rank, instead of confirming and going quiet', async () => {
 		// A base returning nothing: the plan is empty, and `applySafely` answers null on an
 		// empty batch before any refusal it could report.
