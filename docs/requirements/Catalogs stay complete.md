@@ -173,6 +173,23 @@ rule fires on no shipped key.
 Both rounds found by review (Codex, PR #240), and in both the test that had asserted the
 old behaviour is the one that was watched failing.
 
+**A third round asked for the rule to go further, and it cannot — the guarantee is
+narrowed here instead of the check being widened.** The ask was: once a message names
+`{count}`, require the locale's forms whatever the SOURCE entry's shape is, so a German
+catalog spelling `toolbar.levelCount` plainly is refused. The gap is real — German would
+want two forms for `release.close.outstanding`, where English wants one — but the rule
+refuses English itself: applied, `compareToSource('en', en)` reports all **seven** of the
+English messages that name `{count}` and spell one string, and ten tests go red including
+the registry sweep. Measured on this tree rather than argued.
+
+So the line the check can hold is this: **English's own shape is the only evidence
+available about whether a message's wording varies with its count, and the check uses it.**
+A catalog is refused for spelling plainly what English spelled plurally, and accepted for
+spelling plainly what English also spelled plainly — which may be wrong in that catalog's
+language and is not decidable from anything here. What would decide it is a translator or
+a per-message declaration, and neither exists in this round. Stated so nobody reads
+"catalogs stay complete" as "every plural in every language is correct".
+
 **The parameter rule is UNIONED across a plural entry's forms, and that ceiling is written
 into the check rather than left to be found.** English's own `lane.absenceClash` names
 `{count}` in `other` and not in `one` — *an absence* needs no count and *three absences* do

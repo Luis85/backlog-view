@@ -70,6 +70,18 @@ run the suite in a second CATALOG, which is what the criterion asks for, because
 assertions below make that impossible today: under `en-x-pseudo` the suite fails on wording
 at several hundred sites, which measures the assertions rather than the layer.
 
+**The reset is per TEST, and the first version was per file — which is the difference
+between running the suite in another locale and reporting that you had.** A setup file's
+top-level statement runs once per file, so a file driving `setLocale` in one test left it
+there for every test after it: three files outside `test/i18n/` restored a hard-coded
+`'en'` mid-file (`settings.test.ts`, `estimationOptions.test.ts`, `viewOptions.test.ts`),
+and the sweep that rewrote those restores had only covered `test/i18n/`. `beforeEach` is
+registered in the setup file now, so nothing inherits a locale and no file has to remember
+— the check is at the thing rather than at the files somebody listed. A file-local
+`beforeEach` still wins, being registered later, which is how the fixture catalogs still
+take effect. The whole suite passes under `de-DE` with the stricter reset. Found by review
+(Codex, PR #240).
+
 **The second pass found six assertions on its first run, which is the evidence that it is
 a check rather than a ceremony.** All six asserted ENGLISH number formatting while being
 about something else: `scoringModel.test.ts` spelled `99.999` and `0.001` into a weights

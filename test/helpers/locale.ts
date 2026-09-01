@@ -1,3 +1,4 @@
+import { beforeEach } from 'vitest';
 import { intlLocale } from '../../src/i18n/locale';
 import { setLocale } from '../../src/i18n/t';
 
@@ -31,6 +32,18 @@ export const TEST_LOCALE = process.env.PBL_TEST_LOCALE ?? 'en';
 export function resetLocale(): void {
 	setLocale(TEST_LOCALE);
 }
+
+/**
+ * Before EVERY test, not once per file — which is what a setup file's top-level statement
+ * would be. A file that drives `setLocale` in one test leaves it there for every test
+ * after it, so the second CI leg ran the tail of three files in English while reporting
+ * that it had run the suite in `de-DE`. Registered here rather than asked of each file,
+ * because "nothing inherits a locale" cannot be checked by driving the files somebody
+ * remembered. A file-local `beforeEach` still wins: it is registered after this one and
+ * so runs after it, which is how `test/i18n/`'s fixture catalogs still take effect.
+ * Found by review (Codex, PR #240).
+ */
+beforeEach(resetLocale);
 
 resetLocale();
 

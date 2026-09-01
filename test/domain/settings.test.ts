@@ -15,6 +15,7 @@ import { en } from '../../src/i18n/en';
 import { setLocale } from '../../src/i18n/t';
 import { resolveSettings } from '../../src/domain/settingsResolve';
 import { ALL_TYPES, byName, defaultTypeFolder, EXTRA_TYPES, LEVELS, MARKER_TYPES, TEST_LEVELS } from '../../src/domain/typeVocabulary';
+import { resetLocale } from '../helpers/locale';
 
 /** Stand-in for BasesViewConfig backed by a plain object. */
 function fakeConfig(values: Record<string, unknown> = {}): FakeViewConfig {
@@ -218,7 +219,7 @@ describe('configProblems', () => {
 				'XX the XX started date and XX tags properties share the key "tags"',
 			]);
 		} finally {
-			setLocale('en');
+			resetLocale();
 		}
 	});
 
