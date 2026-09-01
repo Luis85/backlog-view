@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { Catalog, setLocale } from '../../src/i18n/t';
+import { describe, expect, it } from 'vitest';
+import { Catalog } from '../../src/i18n/t';
 import { BOARD_WORKFLOW, boardVault, expandColumns, makeBoard } from '../helpers/board';
 import { installObsidianDom } from '../helpers/dom';
 import { setScopeFlag } from '../../src/view/scopeFolds';
@@ -10,7 +10,7 @@ import { makeReleaseView, RELEASE_CONFIG, releaseVault, scopeVault } from '../he
 import { countingVault, resourceVault } from '../helpers/resources';
 import { FakeVault } from '../helpers/vault';
 import { clickExpandAll, fixture, makeView, treeOf } from '../helpers/view';
-import { MARK, markedCatalog } from './fixtures';
+import { MARK, markedCatalog, useMarkedLocale } from './fixtures';
 
 installObsidianDom();
 
@@ -55,9 +55,7 @@ installObsidianDom();
  */
 const xx: Catalog = markedCatalog();
 
-beforeEach(() => setLocale('xx', { xx }));
-// Resolution is module state by design (once, at load), so each test puts it back.
-afterEach(() => setLocale('en'));
+useMarkedLocale(xx);
 
 /**
  * Every string a projection put where a person could read it — the leaves' text, and the

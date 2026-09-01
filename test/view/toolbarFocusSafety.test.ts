@@ -1,9 +1,8 @@
 // @vitest-environment jsdom
-import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { Modal } from '../helpers/obsidian-mock';
 import { syncBusy } from '../../src/view/render/toolbar';
-import { fixture, makeView, refresh, useViewHarness } from '../helpers/view';
+import { fixture, loadToolbarStyles, makeView, refresh, toolbarOf, useViewHarness } from '../helpers/view';
 
 useViewHarness();
 
@@ -15,18 +14,10 @@ useViewHarness();
  * final whole-branch review.
  *
  * The real partials, loaded once for the module so `getComputedStyle` answers for real
- * — jsdom parses a stylesheet it is given, it lays nothing out on its own. Same
- * mechanism `toolbarFit.test.ts` uses, for the one test here that needs it.
+ * — jsdom parses a stylesheet it is given, it lays nothing out on its own. The list of
+ * them is `loadToolbarStyles`'s, which states why each one is in it.
  */
-for (const partial of ['styles/toolbar.css', 'styles/toolbarFit.css', 'styles/busy.css']) {
-	document.head.createEl('style', { text: readFileSync(partial, 'utf8') });
-}
-
-const toolbarOf = (containerEl: HTMLElement) => {
-	const bar = containerEl.querySelector<HTMLElement>('.pbl-toolbar');
-	if (!bar) throw new Error('toolbar not rendered');
-	return bar;
-};
+loadToolbarStyles();
 
 describe('focus safety when the toolbar narrows or a batch ends', () => {
 	/**

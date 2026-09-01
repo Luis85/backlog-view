@@ -1,13 +1,13 @@
 // @vitest-environment jsdom
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { en } from '../../src/i18n/en';
-import { Catalog, MessageKey, setLocale } from '../../src/i18n/t';
+import { Catalog, MessageKey } from '../../src/i18n/t';
 import { Menu, MenuItem, Modal, Notice } from '../helpers/obsidian-mock';
 import { FakeVault } from '../helpers/vault';
 import { boardVault, cardByTitle, makeBoard } from '../helpers/board';
 import { makeRoadmap, shelfHeavyVault } from '../helpers/roadmap';
 import { flush, makeView, rowByTitle, useViewHarness } from '../helpers/view';
-import { MARK, markedCatalog } from './fixtures';
+import { MARK, marked, markedCatalog, sweep, unmarked, useMarkedLocale } from './fixtures';
 
 /**
  * Every menu the view opens, driven under a catalog that is not English —
@@ -74,46 +74,21 @@ const SWEPT: MessageKey[] = [...OWN, ...REUSED];
 
 const xx: Catalog = markedCatalog(SWEPT);
 
-/** What that key renders as under the fixture — the assertion's own single source. */
-const marked = (key: MessageKey): string => {
-	const entry = en[key];
-	if (typeof entry !== 'string') throw new Error(`${key} is a plural entry; assert its form directly`);
-	return MARK + entry;
-};
-
-/**
- * Every marked string this file watched reach a surface, accumulated across the whole run
- * and audited by the last test in the file. Module state on purpose: the audit's question
- * is about the file, not about any one test in it.
- */
-const seen = new Set<string>();
-
-const record = <T>(strings: readonly string[], value: T): T => {
-	for (const text of strings) if (text.startsWith(MARK)) seen.add(text);
-	return value;
-};
-
+useMarkedLocale(xx);
 beforeEach(() => {
 	Menu.forget();
 	Modal.forget();
 	Notice.reset();
-	setLocale('xx', { xx });
 });
-// Resolution is module state by design (once, at load), so each test puts it back.
-afterEach(() => setLocale('en'));
 
-/** Every title a menu draws, following submenus — the whole of what the reader sees. */
-function titlesOf(menu: Menu): string[] {
-	const out: string[] = [];
-	for (const item of menu.items) {
-		out.push(item.titleText);
-		if (item.submenu) out.push(...titlesOf(item.submenu));
-	}
-	return record(out, out);
-}
+/**
+ * Every marked string this file watched reach a surface, accumulated across the whole run
+ * and audited by the last test in the file — `sweep()`'s own reason for being a factory.
+ */
+const { seen, record, titlesOf } = sweep();
 
-/** What a surface drew that is NOT from the catalog — the set each test names in full. */
-const unmarked = (menu: Menu): string[] => titlesOf(menu).filter((title) => !title.startsWith(MARK));
+/** What a menu drew that is NOT from the catalog — the set each test names in full. */
+const unmarkedTitles = (menu: Menu): string[] => unmarked(titlesOf(menu));
 
 function openMenuOn(el: HTMLElement, what: string): Menu {
 	Menu.forget();
@@ -262,7 +237,7 @@ describe('the row menu reads every word it spells from the catalog', () => {
 		// horizon buckets and the tags. Translating any one of them would write a note
 		// another locale's vault cannot read — which is the whole of the rule this
 		// assertion exists to hold, stated as the set rather than as a promise.
-		expect(new Set(unmarked(menu))).toEqual(new Set([...DATA, ...UNSWEPT]));
+		expect(new Set(unmarkedTitles(menu))).toEqual(new Set([...DATA, ...UNSWEPT]));
 	});
 
 	it('names the structural moves, the opens and every submenu from it', () => {
