@@ -122,7 +122,10 @@ a static, unfocusable div and reaches a pointer alone.
 The estimated total and the unestimated count read the estimate key alone, so the summary
 strip's early return for unreadable progress must not take them with it. The COMPLETED total
 is different: it needs a workflow that can say what done means, and without one every member
-reads as not done, which is a zero that looks measured and is not. So a release with
+reads as not done, which is a zero that looks measured and is not. That test is over the
+members whose estimate is actually in the sum — an unestimated member reaches neither total,
+so its unknown done state cannot change either one, and letting it withhold a computable
+figure would hide a real answer. So a release with
 estimates and no bound workflow states its total alone — `15 pts estimated` — rather than
 `0 of 15 pts (0%)`. `ReleaseRow.done` already refuses that same zero (extension 2c) and this
 figure refuses it for the same reason.
@@ -145,7 +148,7 @@ sum.** `0` is a valid estimate this predicate accepts, so a release whose member
 estimate zero — or whose estimates cancel — must not be drawn like one nobody has estimated
 at all, and the percentage needs its own guard against a zero total.
 
-The last nine were raised by a review bot against drafts of the plan, and each was confirmed
+The last eleven were raised by a review bot against drafts of the plan, and each was confirmed
 against the code — or, for the risk vocabularies, against this register — before it was
 taken. Two are worth separating from the rest. The risk vocabularies were an internal
 contradiction rather than a missed case: the plan's own test required both lists while the
@@ -179,10 +182,14 @@ Mocked before implementation (`npm run harness -- test/harness/mock.ts`, uncommi
   `2 unestimated` beside `effort: estimate property not configured` — a contradiction, since
   both read the same key. Extension 2a names only the effort figures and the estimate
   denominator; the unestimated figure belongs in that list.
-- **All three unconfigured collapses to one chip** — `Readiness: 3 criteria not configured`,
-  naming all three in its tooltip. Three chips saying nothing three times is noise on exactly
-  the vault that most needs signal, and one chip still *lists* them, which is what the
-  readiness note requires. **Any mix keeps individual chips.**
+- **All three unconfigured collapses to one chip** — `Readiness: 3 criteria not configured`.
+  Three chips saying nothing three times is noise on exactly the vault that most needs
+  signal, and one chip still *lists* them, which is what the readiness note requires. **Any
+  mix keeps individual chips.** The three names are carried by a `.pbl-sr-only` span as well
+  as the tooltip: the chip is a static, unfocusable `div`, so a tooltip reaches a pointer and
+  nobody else — an earlier draft claimed the collapse "hides nothing" while hiding it from
+  everyone not using a mouse. `drawSummary`'s provenance sentence already uses that mechanism
+  for the same reason.
 - **An unconfigured chip is recessive** (muted, italic) beside a coloured verdict. Deliberate:
   an unbound key is a setup task, not a release blocker. Owed a live-vault look.
 

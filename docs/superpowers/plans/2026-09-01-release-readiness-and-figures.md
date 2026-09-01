@@ -357,6 +357,13 @@ describe('the effort figures', () => {
         expect(readiness.completedEffort).toEqual({ value: null, invalid: false, unconfigured: true });
     });
 
+    it('still measures completed effort when only an UNESTIMATED member has no workflow', () => {
+        // That member reaches neither total, so its unknown done state cannot change either
+        // one — withholding a fully computable figure over it would hide a real answer.
+        const readiness = readinessOf(mixedWorkflowVault(), 'R.md', { estimateKey: 'effort' });
+        expect(readiness.completedEffort).toEqual({ value: 6, invalid: false, unconfigured: false });
+    });
+
     it('does not sum a placeholder wearing a number', () => {
         // `effort: '5 TBD'` is unestimated, so it joins the count and reaches neither sum —
         // the criterion and the total reading one predicate rather than two.
@@ -453,6 +460,17 @@ function placeholderEffortVault(): FakeVault {
     vault.addFile('M2.md', {
         frontmatter: { type: 'PBI', parent: 'E', order: 2, release: '[[R]]', effort: '5 TBD', status: 'Doing' },
     });
+    return vault;
+}
+
+/**
+ * Two estimated `PBI`s under the requirements workflow, plus an UNESTIMATED `Deliverable` in
+ * a vault binding no `deliverableStateProperty` — the member whose unreadable workflow must
+ * not withhold a figure it contributes nothing to.
+ */
+function mixedWorkflowVault(): FakeVault {
+    const vault = effortVault();
+    vault.addFile('D1.md', { frontmatter: { type: 'Deliverable', parent: 'E', order: 4, release: '[[R]]' } });
     return vault;
 }
 
@@ -659,9 +677,12 @@ function estimateCriterion(app: App, members: BacklogItem[], settings: ReleaseSe
  * extension 2c), and this figure must refuse it for the same reason. Raised by a review bot
  * against a draft that made all three answer together.
  *
- * The test is over the members' OWN workflows: one member whose kind cannot clear is enough,
- * because the total is a sum over all of them and a partial sum reported as a whole is the
- * same false precision in smaller print.
+ * The test is over the OWN workflows of the members whose estimate is actually in the sum.
+ * One of those whose kind cannot clear is enough, because a partial sum reported as a whole
+ * is the same false precision in smaller print — but an UNESTIMATED member contributes to
+ * neither total, so its unknown done state cannot change either one, and letting it withhold
+ * a fully computable figure would hide a real answer for no reason. A draft tested every
+ * member; a review bot narrowed it.
  */
 function effortFigures(
 	app: App,
@@ -675,20 +696,19 @@ function effortFigures(
 		// this module existed, and `Summing up a release` extension 2a is amended to say so.
 		return { unestimated: UNCONFIGURED, estimatedEffort: UNCONFIGURED, completedEffort: UNCONFIGURED };
 	}
-	const doneReadable = members.every((item) => workflowClears(ownWorkflowKind(item), planSettings));
+	// Read every estimate first, so the readability test below sees exactly the members whose
+	// value reaches a total — never one whose estimate is missing anyway.
+	const weighed = members.map((item) => ({ item, value: estimateValue(estimateOf(app, item, settings)) }));
+	const missing = weighed.filter((entry) => entry.value === null).length;
+	const counting = weighed.filter((entry): entry is { item: BacklogItem; value: number } => entry.value !== null);
+	const doneReadable = counting.every((entry) => workflowClears(ownWorkflowKind(entry.item), planSettings));
 	let estimated = 0;
 	let completed = 0;
-	let missing = 0;
-	for (const item of members) {
-		const value = estimateValue(estimateOf(app, item, settings));
-		if (value === null) {
-			missing += 1;
-			continue;
-		}
-		estimated += value;
+	for (const entry of counting) {
+		estimated += entry.value;
 		// The member's OWN workflow, so a Deliverable answers by its own — the reader the
 		// progress bar above this already uses.
-		if (doneReadable && ownWorkflowReading(item).done) completed += value;
+		if (doneReadable && ownWorkflowReading(entry.item).done) completed += entry.value;
 	}
 	// ponytail: a member whose descendant in the same release also carries an estimate is
 	// double counted here. Naming those members is `Capacity against commitment`'s own
@@ -1266,7 +1286,13 @@ describe("a release's readiness on screen", () => {
         const { containerEl } = openScope(RELEASE_CONFIG);
         const chips = [...containerEl.querySelectorAll('.pbl-rel-crit')] as HTMLElement[];
         expect(chips).toHaveLength(1);
-        expect(chips[0].textContent).toBe('Readiness: 3 criteria not configured');
+        // The three names are reachable without a pointer: a tooltip on a static, unfocusable
+        // div reaches nobody using a keyboard or a screen reader, which is the same objection
+        // this row already answers for an unsatisfied chip.
+        const hidden = chips[0].querySelector('.pbl-sr-only') as HTMLElement;
+        expect(hidden.textContent).toBe('Estimated, Dependencies resolved, Critical risks addressed');
+        expect(hidden.getAttribute('aria-hidden')).toBeNull();
+        expect(chips[0].textContent).toContain('Readiness: 3 criteria not configured');
     });
 
     it('names the criterion in every chip that is not satisfied', () => {
@@ -1428,7 +1454,18 @@ function drawCollapsed(rowEl: HTMLElement, unconfigured: ReleaseCriterion[]): vo
 		cls: 'pbl-state-chip pbl-state-static pbl-rel-crit pbl-rel-crit-unset',
 		text: t('release.scope.readinessNoneConfigured', { count: unconfigured.length }),
 	});
-	setTooltip(chipEl, unconfigured.map((criterion) => CRITERION_NAME[criterion.key]()).join(', '));
+	const names = unconfigured.map((criterion) => CRITERION_NAME[criterion.key]()).join(', ');
+	setTooltip(chipEl, names);
+	// **Not the tooltip alone.** This chip is a static, unfocusable `div`, so `setTooltip`
+	// reaches a pointer and nobody else — the identical objection this module already
+	// answers for an unsatisfied chip by putting its criterion in the visible text. Here the
+	// visible text is the whole point of the collapse, so the names ride a `.pbl-sr-only`
+	// span instead: `drawSummary`'s own provenance sentence uses exactly this mechanism, and
+	// for exactly this reason (`aria-describedby` is not reliably exposed on a role-less,
+	// unfocusable host, and an `aria-label` would REPLACE the count the chip draws). Raised
+	// by a review bot, which was right that the earlier draft claimed the collapse "hides
+	// nothing" while hiding it from everyone not using a mouse.
+	chipEl.createSpan({ cls: 'pbl-sr-only', text: names });
 }
 
 function drawChip(rowEl: HTMLElement, criterion: ReleaseCriterion): void {
@@ -1924,6 +1961,8 @@ MSG
 | A numeric prefix (`5 TBD`) is a placeholder, not an estimate | 2 |
 | Completed effort is unconfigured when no workflow can say done | 2, 5 |
 | A malformed risk value is unreadable, never absent | 4 |
+| An unestimated member's workflow does not withhold the effort figure | 2 |
+| The collapsed chip's criterion names reach more than a pointer | 5 |
 | Critical risks, counted once per member | 4 |
 | Absence is an answer for risk | 4 |
 | A key with no vocabulary is unconfigured | 4 |
