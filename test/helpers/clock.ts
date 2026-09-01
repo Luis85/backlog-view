@@ -21,11 +21,18 @@ import { beforeEach, vi } from 'vitest';
  * **Only `Date` is faked.** Nothing in `src/` reads a time finer than a date, and faking
  * the timers wholesale would strand every test that awaits a real one.
  *
+ * **Built in LOCAL time, not from a UTC instant.** `dateStamp` reads `getFullYear`,
+ * `getMonth` and `getDate`, so what the view calls today is a CIVIL date in the runner's
+ * zone — and `2026-08-31T12:00:00Z` is already 1 September in UTC+12 and east of it. Pinned
+ * as an instant, the suite went on failing for a contributor in Auckland by the very
+ * mechanism it was added to remove; the local constructor pins the calendar day itself, in
+ * every zone. Midday, so no offset can carry it into a neighbouring day.
+ *
  * The day itself is the last one this suite passed CI on, and it is arbitrary in every
  * other respect. Move it and the four tests above must be re-derived, which is the cost
  * that made it worth pinning rather than following the clock.
  */
-const FROZEN_TODAY = new Date('2026-08-31T12:00:00.000Z');
+const FROZEN_TODAY = new Date(2026, 7, 31, 12, 0, 0, 0);
 
 vi.useFakeTimers({ toFake: ['Date'], now: FROZEN_TODAY });
 beforeEach(() => {

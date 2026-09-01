@@ -72,6 +72,14 @@ frozen one — the same defect wearing different clothes. The hook is the second
 because several suites call `vi.useRealTimers()` of their own and the test after one of
 those must not inherit the real clock.
 
+Built in LOCAL time, not from a UTC instant — the correction of the first round, raised by
+Codex on the pull request. `dateStamp` reads `getFullYear`, `getMonth` and `getDate`, so
+what the view calls today is a civil date in the runner's zone, and `2026-08-31T12:00:00Z`
+is already 1 September in UTC+12 and east of it. Pinned as an instant, the suite went on
+failing for a contributor in Auckland by the very mechanism the freeze was added to remove.
+Verified under `TZ=UTC`, `Pacific/Auckland`, `Pacific/Kiritimati` (UTC+14) and
+`America/Los_Angeles`.
+
 The day is arbitrary beyond being the last one this suite passed CI on. Moving it means
 re-deriving those four assertions, which is the cost that made it worth pinning.
 
@@ -82,3 +90,7 @@ re-deriving those four assertions, which is the cost that made it worth pinning.
 nobody has reached yet, which is exactly what shipped. Asked at the clock instead, it holds
 for tests not yet written, and it also pins the reachable half: an `await` on a real
 `setTimeout` still resolves.
+
+It asks for a CIVIL date rather than an instant, and that is the same correction again: the
+first version compared `toISOString()`, which passed under `TZ=Pacific/Auckland` while the
+two tests it stands for failed. A check that agrees with the defect is not a check.
