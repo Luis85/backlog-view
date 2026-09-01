@@ -1280,6 +1280,13 @@ export const en = {
 			'{count} items sit between two notes this base cannot write, with no room left between them: {titles}. Nothing was changed. Run this on an unfiltered base.',
 	},
 	'rank.nothing': 'There is nothing in this base to rank.',
+	/**
+	 * Its own sentence rather than `rank.done` with a count, because respace is correct any
+	 * number of times and the second run is the ordinary case: every note it opens already
+	 * holds the number planned for it. "Ranked N notes" there claims a rewrite nothing
+	 * received, and offers an undo that was never armed.
+	 */
+	'rank.unchanged': 'Every rank already holds the number this would write. Nothing was changed.',
 	'rank.viewGone': 'The backlog view this was started from is no longer showing, so nothing was ranked.',
 	/**
 	 * The dialog was answered, but what the command would DO stopped matching what the

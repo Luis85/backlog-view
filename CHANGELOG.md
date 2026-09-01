@@ -73,6 +73,9 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 - `Outdent` past a parent that is an unranked context row — no rank to place it after —
   is withheld from the menu and reports on Alt+Left, instead of silently landing the item
   at the bottom of the whole backlog.
+- `Respace ranks` run again over a backlog it has already spaced now says every rank
+  already holds the number it would write, instead of reporting a rewrite of notes it left
+  untouched and an undo it never armed.
 
 ## [0.10.0] - 2026-08-30
 

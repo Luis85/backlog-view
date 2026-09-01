@@ -240,6 +240,30 @@ describe('the seed and respace rank commands', () => {
 		]);
 	});
 
+	it('says nothing was changed when a second respace writes no new rank', async () => {
+		// Respace is correct any number of times, so the second run plans the same numbers
+		// the first one wrote and every note it opens is a no-op. `written` counts those
+		// files — it is how far the batch GOT, which is what the partial-batch notice above
+		// needs — so reporting on it alone claims a rewrite over a vault nothing touched,
+		// and the undo slot the sentence implies was never armed.
+		const vault = new FakeVault();
+		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 1000 } });
+		vault.addFile('Epic B.md', { frontmatter: { type: 'Epic', order: 2000 } });
+		const { view } = openBacklog(vault);
+
+		respaceRanksCommand(vault.app as never, false);
+		confirm();
+		await flush();
+		refresh(view, vault);
+		Notice.messages.length = 0;
+
+		respaceRanksCommand(vault.app as never, false);
+		confirm();
+		await flush();
+
+		expect(Notice.messages).toEqual(['Every rank already holds the number this would write. Nothing was changed.']);
+	});
+
 	it('says so when there is nothing to rank, instead of confirming and going quiet', async () => {
 		// A base returning nothing: the plan is empty, and `applySafely` answers null on an
 		// empty batch before any refusal it could report.

@@ -114,7 +114,12 @@ async function applyRank(
 	// is a false success beside the refusal notice that batch has already fired — over a
 	// rank population that is now half the old scheme and half the new. Nothing at all
 	// written is that refusal's own sentence to say, not a second one here.
-	if (outcome !== null && outcome.written > 0) new Notice(t('rank.done', { count: outcome.written }));
+	//
+	// **And what CHANGED decides which sentence it is.** `written` counts every note the
+	// batch opened, a note already holding its planned number included — so respace run
+	// twice reported a rewrite over a vault it left alone, with no undo behind the claim.
+	if (outcome === null || outcome.written === 0) return;
+	new Notice(outcome.changed ? t('rank.done', { count: outcome.written }) : t('rank.unchanged'));
 }
 
 /**
