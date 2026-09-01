@@ -279,10 +279,10 @@ export function releaseReadiness(app: App, scope: ReleaseScope, settings: Releas
   renders all of it. `isEstimated` is exported for `A definition of ready` to reuse later —
   one predicate, not two.
 - **`releaseReadiness` widens in Task 3** to
-  `(app, scope, settings, model: BacklogModel, stateConfigured: boolean)` — the blocked
-  criterion needs the model to resolve a prerequisite, and needs telling whether a state key
-  is bound. Write the three-parameter form here; Task 3 adds the two and updates this task's
-  own test helper. Task 5 calls the five-parameter form.
+  `(app, scope, settings, stateConfigured: boolean)` — the blocked criterion needs telling
+  whether a state key is bound, since an edge key alone answers half its question. Write the
+  three-parameter form here; Task 3 adds the fourth and updates this task's own test helper.
+  Task 5 calls the four-parameter form.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -369,7 +369,7 @@ function readinessOf(
     vault: FakeVault,
     path: string,
     overrides: Partial<Parameters<typeof releaseSettingsWith>[0]> = {},
-    planOverrides: { stateKey?: string } = {},
+    planOverrides: { stateKey?: string; dependsOnKey?: string } = {},
 ) {
     const plan = settingsWith({ stateKey: 'status', doneValues: ['Done'], ...planOverrides });
     const settings = releaseSettingsWith({
@@ -379,10 +379,13 @@ function readinessOf(
         membershipKey: 'release',
         ...overrides,
     });
+    // `plan.dependsOnKey` is what `readItems` reads the edges with, and in the real view it
+    // comes from this view's OWN `dependsOnProperty` through `resolveSettings` — so the
+    // fixture binds it here the same way rather than leaving `item.prerequisites` empty.
     const model = buildModel(vault.app, vault.entries(), plan);
     const index = releaseIndex(vault.app, model, settings, { stateKey: plan.stateKey, today: TODAY });
     const scope = releaseScope(vault.app, model, settings, index, path);
-    return releaseReadiness(vault.app, scope, settings, model, plan.stateKey !== '');
+    return releaseReadiness(vault.app, scope, settings, plan.stateKey !== '');
 }
 
 /** Three members: 6 done, 9 not done, and one carrying no estimate at all. */
@@ -424,7 +427,9 @@ Build Task 3's and Task 4's fixtures the same way, on this shape: `blockedVault(
 member `dependsOn: ['[[P1]]', '[[P2]]', '[[P3]]']` with all three unfinished and a second
 member `dependsOn: '[[P4]]'` with `P4` done; `independentVault()` is `effortVault()` with no
 `dependsOn` key anywhere; `unreadablePrereqVault()` has one member naming `'[[Nowhere]]'`,
-a note the vault does not hold. `multiRiskVault()` gives one member
+a note the vault does not hold. `selfAndCycleVault()` has one member naming ITSELF and two
+members naming each other, with every one of those targets marked `status: Done` — so a
+reader that resolved the raw links would call all three cleared. `multiRiskVault()` gives one member
 `risk: ['Low', 'Critical', 'Medium']` and one member `risk: 'Low'`;
 `lowAndBlankRiskVault()` has one member at `Low` and one with no risk key;
 `addressedRiskVault()` gives one member `risk: ['Critical', 'Mitigated']`;
@@ -631,7 +636,9 @@ MSG
 
 **Interfaces:**
 - Consumes: `dependsOnKey` from Task 1; `ReleaseCriterion`, `verdictOf`, `counted`,
-  `UNCONFIGURED`, `unconfiguredCriterion` from Task 2.
+  `UNCONFIGURED`, `unconfiguredCriterion` from Task 2; `BacklogItem.prerequisites` and
+  `BacklogItem.brokenPrerequisites` (`src/domain/model.ts`), which are
+  `resolveDependencies`' own resolved output — **never a second reading of the raw links**.
 - Produces: `releaseReadiness().blocked` is a real figure, and `criteria` gains its
   `'blocked'` entry.
 
@@ -642,7 +649,7 @@ Append to `test/domain/releaseReadiness.test.ts`:
 ```ts
 describe('the blocked predicate', () => {
     it('counts a member with three unmet prerequisites once, not three times', () => {
-        const readiness = readinessOf(blockedVault(), 'R.md', { dependsOnKey: 'dependsOn' });
+        const readiness = blockedReadiness(blockedVault());
         expect(readiness.blocked).toEqual({ value: 1, invalid: false, unconfigured: false });
     });
 
@@ -651,7 +658,7 @@ describe('the blocked predicate', () => {
         // nothing has no value where this criterion looks. The blanket "unreadable is not
         // cleared" rule would leave a release full of independent work unable to satisfy
         // this criterion at all — which is the readiness note's own stated exception.
-        const readiness = readinessOf(independentVault(), 'R.md', { dependsOnKey: 'dependsOn' });
+        const readiness = blockedReadiness(independentVault());
         expect(readiness.blocked).toEqual({ value: 0, invalid: false, unconfigured: false });
         expect(readiness.criteria.find((c) => c.key === 'blocked')?.verdict).toBe('satisfied');
     });
@@ -660,8 +667,7 @@ describe('the blocked predicate', () => {
         // A prerequisite outside the base, or a broken link: the wait cannot be shown to be
         // over, so the member does not clear — and 5a wants the number said out loud rather
         // than folded into the others.
-        const criterion = readinessOf(unreadablePrereqVault(), 'R.md', { dependsOnKey: 'dependsOn' })
-            .criteria.find((c) => c.key === 'blocked');
+        const criterion = blockedReadiness(unreadablePrereqVault()).criteria.find((c) => c.key === 'blocked');
         expect(criterion?.outstanding).toBe(1);
         expect(criterion?.unreadable).toBe(1);
     });
@@ -672,17 +678,32 @@ describe('the blocked predicate', () => {
             invalid: false,
             unconfigured: true,
         });
+        // Without this guard every member reads as having no prerequisites, so an unbound
+        // edge key would report every release as satisfied rather than as unconfigured.
         // An edge says what a thing waits for and nothing about whether the wait is over,
         // so with no state key bound this criterion is exactly as unconfigured as one with
         // no property at all.
-        const noState = readinessOf(blockedVault(), 'R.md', { dependsOnKey: 'dependsOn' }, { stateKey: '' });
+        const noState = readinessOf(blockedVault(), 'R.md', { dependsOnKey: 'dependsOn' }, { stateKey: '', dependsOnKey: 'dependsOn' });
         expect(noState.blocked.unconfigured).toBe(true);
+    });
+
+    it('counts a self-reference and a cycle as unreadable, never as cleared by a done target', () => {
+        // `resolveDependencies` puts both in `brokenPrerequisites` on purpose. Re-reading the
+        // raw links here would resolve a self-reference happily and then call the member
+        // cleared because the target it found is done — a release reporting nothing
+        // outstanding on exactly the items whose dependencies are malformed.
+        const criterion = blockedReadiness(selfAndCycleVault()).criteria.find((c) => c.key === 'blocked');
+        expect(criterion?.unreadable).toBe(2);
+        expect(criterion?.cleared).toBe(0);
     });
 });
 ```
 
-Extend `readinessOf` to take a fourth argument of plan-settings overrides, so the last
-assertion can unbind `stateKey`. Build `blockedVault()` with one member naming three
+Add `blockedReadiness(vault)` beside `readinessOf`, binding the edge key on BOTH bags —
+`readinessOf(vault, 'R.md', { dependsOnKey: 'dependsOn' }, { dependsOnKey: 'dependsOn' })` —
+since the release settings decide whether the criterion is configured and the plan settings
+are what `readItems` reads the entries with. `readinessOf`'s fourth argument of plan
+overrides is what lets the last assertion unbind `stateKey`. Build `blockedVault()` with one member naming three
 prerequisites that are all unfinished, plus one member naming a finished one.
 `independentVault()` has members carrying no `dependsOn` key at all.
 `unreadablePrereqVault()` has one member whose `dependsOn` names a note the model does not
@@ -707,81 +728,68 @@ In `src/domain/releaseReadiness.ts`, replace the hard-coded `blocked: UNCONFIGUR
  * which this does not do. A separate "cleared at" list is a later slice, for the day a vault
  * clears a dependency short of done.
  *
- * With no state key bound the criterion is unconfigured, and that is not a technicality: an
+ * With no edge key bound the criterion is unconfigured, and so it is with no state key: an
  * edge says what a thing waits for and nothing about whether the wait is over, so an edge
- * key alone answers half a question. The readiness note says so in its own words.
+ * key alone answers half a question. The readiness note says so in its own words. **The edge
+ * key guard is load-bearing rather than defensive**: with `dependsOnProperty` unbound every
+ * member carries no entries at all, so without it every release would read as satisfied.
  *
- * **No edges is RESOLVED** — the note's stated exception. An empty list is removed rather
- * than stored, so an item that waits for nothing has no value where this looks; counting
- * that as unreadable would leave a release of independent work unable to satisfy this
- * criterion at all.
+ * **The edges are the MODEL's, never re-read here.** `item.prerequisites` and
+ * `item.brokenPrerequisites` are `resolveDependencies`' own output (`domain/dependencies.ts`),
+ * and reading the raw links again would build a second, disagreeing graph: that resolver
+ * deliberately rejects an unresolvable entry, an item naming ITSELF, and any entry inside a
+ * cycle, all into `broken`. A hand-rolled reader resolves a self-reference happily and then
+ * calls the member cleared because the target it found is done — which is the release
+ * reporting nothing outstanding on exactly the items whose dependencies are malformed.
+ * Raised by a review bot against this plan's first draft and confirmed at
+ * `domain/dependencies.ts`'s `settle`.
  *
- * A prerequisite the model does not hold — outside the base, or a broken link — IS
- * unreadable: the wait cannot be shown to be over. It costs the member its criterion and is
- * reported separately (extension 5a).
+ * That this reads the RELEASE view's own key rather than the backlog view's is not luck:
+ * `resolveSettings` maps every `PROPERTY_TABLE` row's option to its settings key
+ * generically (`domain/settingsResolve.ts`), and `releaseView.ts` builds its model with
+ * `resolveSettings(this.config)` — this view's own config. Declaring `dependsOnProperty` in
+ * Task 1 is therefore what points the model's resolution at the key this criterion reads.
+ * The two cannot drift, because there is only one.
+ *
+ * **No edges is RESOLVED** — the readiness note's stated exception. An empty list is removed
+ * rather than stored, so an item that waits for nothing has no value where this looks;
+ * counting that as unreadable would leave a release of independent work unable to satisfy
+ * this criterion at all.
+ *
+ * A broken entry IS unreadable: the wait cannot be shown to be over. It costs the member its
+ * criterion and is reported separately (extension 5a).
  */
-function blockedCriterion(
-	app: App,
-	members: BacklogItem[],
-	settings: ReleaseSettings,
-	byPath: Map<string, BacklogItem>,
-	stateConfigured: boolean,
-): ReleaseCriterion {
+function blockedCriterion(members: BacklogItem[], settings: ReleaseSettings, stateConfigured: boolean): ReleaseCriterion {
 	if (settings.dependsOnKey === '' || !stateConfigured) return unconfiguredCriterion('blocked');
 	let cleared = 0;
 	let outstanding = 0;
 	let unreadable = 0;
 	for (const item of members) {
-		const edges = edgesOf(app, item, settings);
-		if (edges.length === 0) {
-			cleared += 1;
-			continue;
-		}
-		// Counted ONCE per member however many edges it holds — the acceptance criterion.
-		const missing = edges.some((linkpath) => !byPath.has(linkpath));
-		const waiting = edges.some((linkpath) => {
-			const prerequisite = byPath.get(linkpath);
-			return prerequisite !== undefined && !ownWorkflowReading(prerequisite).done;
-		});
-		if (missing) unreadable += 1;
-		if (missing || waiting) outstanding += 1;
+		// Counted ONCE per member however many entries it holds — the acceptance criterion.
+		const broken = item.brokenPrerequisites.length > 0;
+		const waiting = item.prerequisites.some((prerequisite) => !ownWorkflowReading(prerequisite).done);
+		if (broken) unreadable += 1;
+		if (broken || waiting) outstanding += 1;
 		else cleared += 1;
 	}
 	return { key: 'blocked', verdict: verdictOf(cleared, outstanding), cleared, outstanding, unreadable };
 }
-
-function edgesOf(app: App, item: BacklogItem, settings: ReleaseSettings): string[] {
-	const raw = ownValue(app.metadataCache.getFileCache(item.file)?.frontmatter, settings.dependsOnKey);
-	const values = Array.isArray(raw) ? raw : [raw];
-	return values
-		.map((value) => (typeof value === 'string' ? linkpathFromRawValue(value) : null))
-		.filter((linkpath): linkpath is string => linkpath !== null && linkpath.length > 0);
-}
 ```
 
-`releaseReadiness` builds the lookup once and passes it, rather than resolving a link per
-edge against the whole model:
+`releaseReadiness` gains only the `stateConfigured` flag — no model, no link resolution, no
+lookup map:
 
 ```ts
 export function releaseReadiness(
 	app: App,
 	scope: ReleaseScope,
 	settings: ReleaseSettings,
-	model: BacklogModel,
 	stateConfigured: boolean,
 ): ReleaseReadiness {
 	const members = scope.rows.filter((row) => !row.context).map((row) => row.item);
-	// Keyed by the linkpath a `dependsOn` value resolves to — the note's basename and its
-	// full path both, so a vault writing either spelling is read the same way. Built ONCE
-	// here rather than resolved per edge against the whole model.
-	const byPath = new Map<string, BacklogItem>();
-	for (const item of model.items) {
-		byPath.set(item.file.path, item);
-		byPath.set(item.file.basename, item);
-	}
 	// Each criterion is computed once and reused: the figure beside it IS its outstanding
 	// count, so a second call here would be the second walk this module exists to avoid.
-	const blocked = blockedCriterion(app, members, settings, byPath, stateConfigured);
+	const blocked = blockedCriterion(members, settings, stateConfigured);
 	return {
 		criteria: [estimateCriterion(app, members, settings), blocked],
 		...effortFigures(app, members, settings),
@@ -796,8 +804,8 @@ function figureFrom(criterion: ReleaseCriterion): ReleaseFigure<number> {
 }
 ```
 
-Add `linkpathFromRawValue` to the `./noteFields` import and `BacklogModel` to the `./model`
-import. Update Task 2's callers in the test helper for the two new parameters.
+No new import beyond `BacklogItem`, which Task 2 already has. Update Task 2's callers in the
+test helper for the one new parameter.
 
 - [ ] **Step 4: Run the test to verify it passes**
 
@@ -1293,7 +1301,7 @@ readiness is computed **once** and handed to both, never derived twice:
 
 ```ts
 	const footEl = headerEl.createDiv({ cls: 'pbl-rel-footline' });
-	const readiness = releaseReadiness(view.app, scope, releaseSettings, model, planSettings.stateKey !== '');
+	const readiness = releaseReadiness(view.app, scope, releaseSettings, planSettings.stateKey !== '');
 	drawSummary(footEl, release, scope.members, planSettings, readiness);
 	drawReleaseActions(view, footEl, release, scope, planSettings);
 	drawReadiness(headerEl, readiness);
@@ -1302,8 +1310,8 @@ readiness is computed **once** and handed to both, never derived twice:
 and inside `drawSummary`, after the existing `sumEl.createSpan(...)` for the rollup sentence,
 call `drawReadinessFigures(sumEl, readiness)`. Read `drawSummary`'s current signature and
 thread the parameter through rather than reaching for a module-level value. Where
-`releaseSettings` and `model` come from, follow what `renderScope.ts` already has in hand —
-`releaseView.ts` passes both to this module today.
+`releaseSettings` comes from, follow what `renderScope.ts` already has in hand —
+`releaseView.ts` passes it to this module today.
 
 - [ ] **Step 8: Run the tests to verify they pass**
 
@@ -1616,6 +1624,7 @@ MSG
 | Prerequisite cleared by this view's own state key | 3 |
 | No edges is resolved | 3 |
 | Unreadable prerequisite reported separately (5a) | 3 |
+| Self-references and cycles stay unreadable, via the model's own resolution | 3 |
 | Critical risks, counted once per member | 4 |
 | Absence is an answer for risk | 4 |
 | A key with no vocabulary is unconfigured | 4 |

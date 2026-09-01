@@ -80,10 +80,26 @@ It reuses rather than restates:
   prerequisite answers by its own workflow — the reader the progress bar already uses.
 - `scope.rows`, never a second walk of the model. Context rows are skipped: an excluded
   ancestor is not a member, so it is in no denominator and no count.
+- **`BacklogItem.prerequisites` and `BacklogItem.brokenPrerequisites`** for the edges —
+  `resolveDependencies`' own resolved output, never a second reading of the raw links.
 
-A prerequisite the model does not hold — outside the base, or a broken link — is
-**unreadable**, not cleared. It costs the member its criterion and is reported separately
-(extension 5a).
+**The edges are the model's, and that is a correctness point rather than a saving.** Amended
+2026-09-01 after a review bot raised it against the first draft, and confirmed at
+`domain/dependencies.ts`'s `settle`: that resolver deliberately rejects an unresolvable
+entry, an item naming ITSELF, and any entry inside a cycle, all into `broken`. A reader that
+went back to the raw links would resolve a self-reference happily and then call the member
+cleared because the target it found is done — the release reporting nothing outstanding on
+exactly the items whose dependencies are malformed.
+
+It reads the RELEASE view's own key rather than the backlog view's by construction, not by
+luck: `resolveSettings` maps every `PROPERTY_TABLE` row's option to its settings key
+generically (`domain/settingsResolve.ts`), and `releaseView.ts` builds its model with
+`resolveSettings(this.config)` — this view's own config. Declaring `dependsOnProperty` on
+this view is what points the model's resolution at the key the criterion reads, so the two
+cannot drift: there is only one.
+
+An entry that did not resolve is **unreadable**, not cleared. It costs the member its
+criterion and is reported separately (extension 5a).
 
 **`src/view/release/renderReadiness.ts`** (new) draws the chip row and the new figures;
 `renderScope.ts` is at 584 lines and calls it from `drawHeader` after `drawSummary`. Chips
