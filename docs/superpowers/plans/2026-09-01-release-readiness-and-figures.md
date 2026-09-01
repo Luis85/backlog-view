@@ -945,8 +945,16 @@ describe('the critical risk predicate', () => {
         // and for the same reason.
         expect(readinessOf(multiRiskVault(), 'R.md', {}).criticalRisks.unconfigured).toBe(true);
         expect(readinessOf(multiRiskVault(), 'R.md', { riskKey: 'risk' }).criticalRisks.unconfigured).toBe(true);
+        // BOTH lists, in both directions: this criterion reads two vocabularies, and either
+        // one missing leaves it unable to answer. With no way to say a risk has been dealt
+        // with, "3 of 3 outstanding" is an unfinished configuration reported as a finding
+        // about the release.
         expect(
             readinessOf(multiRiskVault(), 'R.md', { riskKey: 'risk', criticalRiskValues: ['High'] })
+                .criticalRisks.unconfigured,
+        ).toBe(true);
+        expect(
+            readinessOf(multiRiskVault(), 'R.md', { riskKey: 'risk', addressedRiskValues: ['Mitigated'] })
                 .criticalRisks.unconfigured,
         ).toBe(true);
     });
@@ -985,17 +993,25 @@ In `src/domain/releaseReadiness.ts`:
  * value that is not among the addressed ones costs the criterion an item, which is what the
  * criterion's own name says.
  *
- * **A key is half of a criterion; the other half is which values clear it.** A key bound
- * with an empty critical list is unconfigured, not empty — the same answer as no key at all.
- * The ADDRESSED list is not part of that test: a vault may legitimately have no word for
- * "addressed" yet, and every critical value then counts, which is a true reading rather than
- * a missing one.
+ * **A key is half of a criterion; the other half is which values clear it** — and this
+ * criterion reads TWO vocabularies, so a key bound with either list empty is unconfigured,
+ * the same answer as no key at all. `docs/requirements/Release readiness.md` names both:
+ * critical risks "names which risk values are critical AND which values count as addressed".
+ * An earlier draft of this comment argued that an empty addressed list is a true reading
+ * rather than a missing one — that a vault with no word for "addressed" simply has every
+ * critical value outstanding. It contradicted this task's own test two paragraphs up, and
+ * the test is the one that matches the register: with no way to say a risk has been dealt
+ * with, "3 of 3 outstanding" is a configuration nobody finished, reported as a finding about
+ * the release.
  *
  * `unreadable` is 0: a member with nothing where this looks has a stated answer (not
  * critical), so there is nothing 5a has to report separately for this criterion.
  */
 function riskCriterion(app: App, members: BacklogItem[], settings: ReleaseSettings): ReleaseCriterion {
-	if (settings.riskKey === '' || settings.criticalRiskValues.length === 0) return unconfiguredCriterion('risk');
+	// BOTH vocabularies, not just the critical one — see this function's own docblock.
+	if (settings.riskKey === '' || settings.criticalRiskValues.length === 0 || settings.addressedRiskValues.length === 0) {
+		return unconfiguredCriterion('risk');
+	}
 	let cleared = 0;
 	let outstanding = 0;
 	for (const item of members) {
@@ -1130,6 +1146,15 @@ describe("a release's readiness on screen", () => {
             if (chip.classList.contains('pbl-rel-crit-ok')) continue;
             expect(chip.textContent).toMatch(/Estimated|Dependencies resolved|Critical risks addressed/);
         }
+    });
+
+    it('keeps the effort figures when progress is unconfigured', () => {
+        // They read the ESTIMATE key, not the state workflow, so the summary's early return
+        // for unconfigured progress must not take them with it.
+        const { containerEl } = openScope({ ...RELEASE_CONFIG, estimateProperty: 'note.effort', stateProperty: '' });
+        const strip = containerEl.querySelector('.pbl-rel-summary') as HTMLElement;
+        expect(strip.textContent).toContain('unestimated');
+        expect(strip.querySelector('.pbl-rel-unreadable')).not.toBeNull();
     });
 
     it('draws the effort figure for a release whose every estimate is zero', () => {
@@ -1413,8 +1438,17 @@ readiness is computed **once** and handed to both, never derived twice:
 	drawReadiness(headerEl, readiness);
 ```
 
-and inside `drawSummary`, after the existing `sumEl.createSpan(...)` for the rollup sentence,
-call `drawReadinessFigures(sumEl, readiness)`. Read `drawSummary`'s current signature and
+and inside `drawSummary`, call `drawReadinessFigures(sumEl, readiness)` **in both branches** —
+immediately before the early `return` in the unconfigured-progress branch, and again at the
+end of the configured one, after the `.pbl-sr-only` provenance span.
+
+**Both, and that is the point.** `drawSummary` returns early when progress is unconfigured
+(`release.done.unconfigured || release.done.value === null`), and the effort figures and the
+unestimated count depend on the ESTIMATE key rather than on the state workflow. Placed only
+after the configured rollup, a release with an estimate key bound and no state workflow would
+lose readable figures along with the one that really is unreadable. The earlier return —
+`release.members.unconfigured || members === 0` — is different and needs no call: it fires
+before `sumEl` exists, and a release with no members has nothing to sum anyway. Read `drawSummary`'s current signature and
 thread the parameter through rather than reaching for a module-level value. Where
 `releaseSettings` comes from, follow what `renderScope.ts` already has in hand —
 `releaseView.ts` passes it to this module today.
@@ -1736,6 +1770,8 @@ MSG
 | Every unsatisfied chip names its own criterion | 5 |
 | The unreadable count is stated, not folded into the total | 5 |
 | A release estimated entirely at zero is not "nothing estimated" | 5 |
+| Both risk vocabularies are required before the criterion answers | 4 |
+| The effort figures survive an unconfigured progress figure | 5 |
 | Critical risks, counted once per member | 4 |
 | Absence is an answer for risk | 4 |
 | A key with no vocabulary is unconfigured | 4 |
