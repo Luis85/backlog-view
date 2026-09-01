@@ -263,6 +263,7 @@ export interface ReleaseCriterion {
 }
 
 export interface ReleaseReadiness {
+    members: number;
     criteria: ReleaseCriterion[];
     unestimated: ReleaseFigure<number>;
     estimatedEffort: ReleaseFigure<number>;
@@ -317,6 +318,11 @@ describe('the estimate predicate', () => {
         // A quoted numeric scalar is still an estimate: somebody typed a number as a string.
         expect(isEstimated('5')).toBe(true);
         expect(isEstimated('  7  ')).toBe(true);
+        // A negative effort is not an estimate: it lets totals CANCEL, which produced
+        // `5 of 0 pts (0%)`. `Capacity against commitment` refuses a negative capacity for
+        // the same reason — no unit here can be less than none.
+        expect(isEstimated(-1)).toBe(false);
+        expect(isEstimated('-3')).toBe(false);
         expect(isEstimated('')).toBe(false);
         expect(isEstimated(null)).toBe(false);
         expect(isEstimated(undefined)).toBe(false);
@@ -499,8 +505,10 @@ binding no `deliverableStateProperty` and no `deliverableDoneValues`. `multiRisk
 `lowAndBlankRiskVault()` has one member at `Low` and one with no risk key;
 `addressedRiskVault()` gives one member `risk: ['Critical', 'Mitigated']`;
 `contextRiskVault()` is `multiRiskVault()` with `E.md` carrying `risk: 'Critical'`.
+`mixedRiskVault()` gives one member `risk: ['Low', { level: 'Critical' }]`.
 `malformedRiskVault()` has one member whose `risk` is an object (`{ level: 'Critical' }`)
 and one with no risk key at all — so the assertion separates the unreadable from the absent.
+The mixed list is the harder case: its readable half alone would clear the criterion.
 
 - [ ] **Step 2: Run test to verify it fails**
 
@@ -555,6 +563,14 @@ export interface ReleaseCriterion {
 }
 
 export interface ReleaseReadiness {
+	/**
+	 * How many members every figure here was computed over — `scope.members` counted once,
+	 * so the renderer can ask whether the release is EMPTY without inferring it from the
+	 * verdicts. It cannot be inferred: a criterion nobody configured reads `unconfigured`
+	 * whether the release holds fifty members or none, so "every verdict is empty" is false
+	 * for an empty release the moment one criterion is unconfigured.
+	 */
+	members: number;
 	criteria: ReleaseCriterion[];
 	unestimated: ReleaseFigure<number>;
 	estimatedEffort: ReleaseFigure<number>;
@@ -624,6 +640,18 @@ function workflowClears(kind: WorkflowKind, planSettings: BacklogSettings): bool
 }
 
 export function estimateValue(raw: unknown): number | null {
+	const parsed = finiteFrom(raw);
+	// **Never negative.** `Capacity against commitment` already refuses a negative capacity
+	// "since no unit this feature names can be less than none", and an effort estimate is the
+	// same quantity from the other side. Allowing one lets estimates CANCEL: a completed 5
+	// against an unfinished -5 totals zero, and the strip drew `5 of 0 pts (0%)` — a
+	// contradiction, with negative and above-100 percentages available from the same door.
+	// Refusing it at the reader closes the whole class rather than guarding each figure, and
+	// leaves `0 <= completed <= estimated` true by construction.
+	return parsed === null || parsed < 0 ? null : parsed;
+}
+
+function finiteFrom(raw: unknown): number | null {
 	if (typeof raw === 'number') return Number.isFinite(raw) ? raw : null;
 	if (typeof raw !== 'string') return null;
 	const trimmed = raw.trim();
@@ -650,6 +678,7 @@ export function releaseReadiness(
 ): ReleaseReadiness {
 	const members = scope.rows.filter((row) => !row.context).map((row) => row.item);
 	return {
+		members: members.length,
 		criteria: [estimateCriterion(app, members, settings)],
 		...effortFigures(app, members, settings, planSettings),
 		blocked: UNCONFIGURED,
@@ -968,6 +997,7 @@ export function releaseReadiness(
 	// count, so a second call here would be the second walk this module exists to avoid.
 	const blocked = blockedCriterion(members, settings, planSettings);
 	return {
+		members: members.length,
 		criteria: [estimateCriterion(app, members, settings), blocked],
 		...effortFigures(app, members, settings, planSettings),
 		blocked: figureFrom(blocked),
@@ -1088,6 +1118,15 @@ describe('the critical risk predicate', () => {
         expect(criterion?.outstanding).toBe(1);
     });
 
+    it('counts a PARTLY readable risk list as unreadable', () => {
+        // `['Low', { level: 'Critical' }]` keeps its `Low`, so counting only the survivors
+        // clears the member on the strength of the half of the list that happened to parse —
+        // while the entry nobody could read might be the unaddressed critical risk.
+        const criterion = readinessOf(mixedRiskVault(), 'R.md', RISK).criteria.find((c) => c.key === 'risk');
+        expect(criterion?.unreadable).toBe(1);
+        expect(criterion?.cleared).toBe(0);
+    });
+
     it('counts no context ancestor, whatever risk it carries', () => {
         const withContext = readinessOf(contextRiskVault(), 'R.md', RISK);
         expect(withContext.criticalRisks).toEqual(readinessOf(multiRiskVault(), 'R.md', RISK).criticalRisks);
@@ -1184,8 +1223,23 @@ function riskValuesOf(
 	const raw = ownValue(app.metadataCache.getFileCache(item.file)?.frontmatter, settings.riskKey);
 	if (raw === undefined || raw === null) return { values: [], unreadable: false };
 	const entries = Array.isArray(raw) ? raw : [raw];
-	const values = entries.map((value) => readString(value)).filter((text): text is string => text !== null);
-	return { values, unreadable: values.length === 0 };
+	const values: string[] = [];
+	// **ANY rejected entry, not only a list where every entry was rejected.** A mixed list
+	// like `['Low', { level: 'Critical' }]` keeps its `Low` and would otherwise read as a
+	// clean, clearing value while the entry nobody could read might be the unaddressed
+	// critical risk. Counting the survivors is the version that reports a release ready on
+	// the strength of the half of a list that happened to parse.
+	let rejected = false;
+	for (const entry of entries) {
+		const text = readString(entry);
+		if (text === null) rejected = true;
+		else values.push(text);
+	}
+	// An empty LIST is absence, not a refusal: `risk: []` says the same thing as no key, the
+	// reading `dependsOn` already takes for an edge list nothing wrote. An empty STRING is
+	// not — `readString` refuses it, so it arrives here as a rejected entry, which is the
+	// register's own rule for a value somebody wrote and no reader will guess at.
+	return { values, unreadable: rejected };
 }
 ```
 
@@ -1198,6 +1252,7 @@ Wire it into `releaseReadiness`, computed once like the others:
 ```ts
 	const risk = riskCriterion(app, members, settings);
 	return {
+		members: members.length,
 		criteria: [estimateCriterion(app, members, settings), blocked, risk],
 		...effortFigures(app, members, settings, planSettings),
 		blocked: figureFrom(blocked),
@@ -1432,7 +1487,13 @@ const CRITERION_NAME: Record<ReleaseCriterion['key'], () => string> = {
 export function drawReadiness(headerEl: HTMLElement, readiness: ReleaseReadiness): void {
 	// Withheld whole for a release with no members, `drawSummary`'s own rule: three verdicts
 	// beside an empty state that already says the release is empty says it twice and worse.
-	if (readiness.criteria.every((criterion) => criterion.verdict === 'empty')) return;
+	//
+	// **The MEMBER COUNT, never the verdicts.** An unconfigured criterion reads
+	// `unconfigured` whether the release holds fifty members or none, so "every verdict is
+	// empty" is false for an empty release the moment one criterion is unconfigured — and
+	// true for no release where any criterion is. A review bot caught that against this
+	// plan's own `Empty.md` test, which binds the estimate key alone.
+	if (readiness.members === 0) return;
 	const rowEl = headerEl.createDiv({ cls: 'pbl-rel-ready' });
 	const unconfigured = readiness.criteria.filter((c) => c.verdict === 'unconfigured');
 	if (unconfigured.length === readiness.criteria.length) {
@@ -1543,8 +1604,10 @@ export function drawReadinessFigures(sumEl: HTMLElement, readiness: ReleaseReadi
 		if (done === null) {
 			sumEl.createSpan({ cls: 'pbl-rel-figure', text: t('release.scope.effortEstimated', { total }) });
 		} else {
-			// Guarded separately from the decision above: a real total of zero has no
-			// percentage to compute, and dividing by it produces the `NaN` drawn as one.
+			// A real total of zero has no percentage to compute, and dividing by it produces
+			// the `NaN` that would be drawn as one. Zero is the only case left: negative
+			// estimates are refused at the reader, so `0 <= done <= total` holds and the
+			// percentage cannot come out negative or above 100.
 			const pct = total === 0 ? 0 : Math.round((100 * done) / total);
 			sumEl.createSpan({ cls: 'pbl-rel-figure', text: t('release.scope.effort', { done, total, pct }) });
 		}
@@ -1963,6 +2026,9 @@ MSG
 | A malformed risk value is unreadable, never absent | 4 |
 | An unestimated member's workflow does not withhold the effort figure | 2 |
 | The collapsed chip's criterion names reach more than a pointer | 5 |
+| A partly readable risk list is unreadable, not cleared by its survivors | 4 |
+| A negative estimate is refused, so totals cannot cancel | 2 |
+| The empty release is decided by the member count, not by verdicts | 2, 5 |
 | Critical risks, counted once per member | 4 |
 | Absence is an answer for risk | 4 |
 | A key with no vocabulary is unconfigured | 4 |

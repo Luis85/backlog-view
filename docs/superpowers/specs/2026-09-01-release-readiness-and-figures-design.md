@@ -138,17 +138,32 @@ number, and one function answers both the criterion and the sums so they cannot 
 about which members are estimated. `readNumber` itself is left alone: it is shared with
 readers this increment does not own.
 
-**A risk value the reader cannot interpret is unreadable, never absent.** Absence clears the
-risk criterion deliberately; an object, or a list whose entries yield no string, is somebody
-having written something. Filtering those away leaves an empty list indistinguishable from an
-absent one, so malformed critical-risk data would make a release look ready.
+**A risk value the reader cannot interpret is unreadable, never absent — and ANY rejected
+entry counts.** Absence clears the risk criterion deliberately; an object, or an entry
+yielding no string, is somebody having written something. Filtering those away and judging
+what survives clears a member on the strength of the half of its list that happened to parse:
+`['Low', { level: 'Critical' }]` keeps its `Low` while the entry nobody could read might be
+the unaddressed critical risk. An empty *list* is still absence, the reading `dependsOn`
+already takes.
+
+**A negative estimate is refused at the reader.** `Capacity against commitment` refuses a
+negative capacity "since no unit this feature names can be less than none", and an effort
+estimate is the same quantity from the other side. Allowing one lets totals CANCEL — a
+completed 5 against an unfinished -5 sums to zero and draws `5 of 0 pts (0%)`, with negative
+and above-100 percentages through the same door. Refusing it closes the class rather than
+guarding each figure, and leaves `0 ≤ completed ≤ estimated` true by construction.
+
+**Whether a release is empty is its member count, never a pattern in the verdicts.** A
+criterion nobody configured reads *unconfigured* whether the release holds fifty members or
+none, so "every verdict is empty" is false for an empty release the moment one criterion is
+unconfigured.
 
 **Whether anything was estimated is decided by the COUNT of estimated members, never by the
 sum.** `0` is a valid estimate this predicate accepts, so a release whose members all
 estimate zero — or whose estimates cancel — must not be drawn like one nobody has estimated
 at all, and the percentage needs its own guard against a zero total.
 
-The last eleven were raised by a review bot against drafts of the plan, and each was confirmed
+The last fourteen were raised by a review bot against drafts of the plan, and each was confirmed
 against the code — or, for the risk vocabularies, against this register — before it was
 taken. Two are worth separating from the rest. The risk vocabularies were an internal
 contradiction rather than a missed case: the plan's own test required both lists while the
