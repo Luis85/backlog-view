@@ -28,6 +28,11 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 - `npm run check` has a sixth step, `lint:md`, gating the Markdown in `docs/` and the
   root documents.
+- **My work**, a fourth Bases view (`product-my-work`): one person's work as a backlog tree,
+  with the person picked in the view rather than in the Base, so one saved view serves
+  everybody. Dock the tab where you want it; the toolbar, the chips and the tree give way in
+  a narrow pane. The pick, the folds and "hide done" are remembered per device and per saved
+  view.
 - `npm run check` typechecks `test/` as well as `src/` (`npm run typecheck:test`), so a
   test calling a function with the wrong arguments fails the gate instead of passing.
 - Rank the rows of a focused backlog by hand: with a focus level on, a drag, Alt+↑/↓ or the

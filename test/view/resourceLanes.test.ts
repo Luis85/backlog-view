@@ -2,7 +2,9 @@
 import { describe, expect, it } from 'vitest';
 import { FakeVault } from '../helpers/vault';
 import { shelfRemoval } from '../../src/view/render/shelf';
-import { clickExpandAll, Harness, key, makeView, treeOf, useViewHarness } from '../helpers/view';
+import type { CardSource } from '../../src/view/interactions/cardDrag';
+import type { BarHold } from '../../src/domain/bars';
+import { clickExpandAll, Harness, itemAt, key, makeView, treeOf, useViewHarness } from '../helpers/view';
 import { gripNames, laneAwayOf, laneCountOf, laneNames, laneOrder, lanesOf, rowFor, shelfTitles } from '../helpers/roadmap';
 import { countingVault, resourceVault } from '../helpers/resources';
 import { addDays, formatCivil } from '../../src/domain/timeline';
@@ -125,15 +127,27 @@ describe('the resources axis on screen', () => {
 		// would leave triage a one-way street.
 		const harness = laneRoadmap(resourceVault());
 		const removal = shelfRemoval(harness.view, 'resources');
-		const item = harness.view.model?.byPath.get('Undated.md');
+		const item = itemAt(harness.view, 'Undated.md');
 
 		// A grip released here is not an un-assignment — that is a resize that overshot. A
 		// bar arriving by either body hold is, and so is a shelf card.
-		expect(removal.accepts({ item, hold: 'start' } as never)).toBe(false);
-		expect(removal.accepts({ item, hold: 'end' } as never)).toBe(false);
-		expect(removal.accepts({ item, hold: 'body' } as never)).toBe(true);
-		expect(removal.accepts({ item, hold: null } as never)).toBe(true);
-		expect(removal.canDrag(item as never)).toBe(true);
+		//
+		// The payload is built whole rather than cast: `accepts` reads `hold` alone, but a
+		// partial forced past the type is a place the typecheck stops reading, and the
+		// three fields it does not consult cost one line to state honestly.
+		const dragging = (hold: BarHold | null): CardSource => ({
+			item,
+			hold,
+			scrollLeft: null,
+			span: { start: item.plannedStart.value, target: item.plannedTarget.value },
+			ends: [],
+		});
+
+		expect(removal.accepts(dragging('start'))).toBe(false);
+		expect(removal.accepts(dragging('end'))).toBe(false);
+		expect(removal.accepts(dragging('body'))).toBe(true);
+		expect(removal.accepts(dragging(null))).toBe(true);
+		expect(removal.canDrag(item)).toBe(true);
 		// Nothing to distinguish before the release: a drop here always un-assigns.
 		expect(removal.outcome).toBeNull();
 	});
@@ -150,7 +164,7 @@ describe('the resources axis on screen', () => {
 		vault.addFile('Ship 1.0.md', { frontmatter: { type: 'Milestone', due: '2026-08-10' } });
 		const harness = laneRoadmap(vault);
 		const removal = shelfRemoval(harness.view, 'resources');
-		const at = (path: string) => harness.view.model?.byPath.get(path) as never;
+		const at = (path: string) => itemAt(harness.view, path);
 
 		// The marker that CAN take a date keeps its drag, and so does ordinary work — the
 		// gate is the writable end, not the category.

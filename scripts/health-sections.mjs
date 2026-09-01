@@ -214,6 +214,10 @@ const bandPanel = (band, rows, root, first) =>
  * the thing being counted. The band's rule stays visible inside the panel, because a tab
  * label short enough to read is too short to explain itself.
  */
+/**
+ * @param {{ root: string, actions: { band: string, title: string, where: string, why: string, source: string, trend?: string }[] }} report
+ * @returns {string} the worklist as HTML, or its own empty state.
+ */
 export function worklist(report) {
 	if (report.actions.length === 0) {
 		return `<section class="cluster wide-cluster"><h3>Nothing to act on</h3>
@@ -278,6 +282,13 @@ const group = (id, title, count, body, rows) =>
 	`<section class="group" id="g-${id}" data-matches="${rows}">
 		<h2>${escape(title)} <span class="count">${escape(count)}</span></h2>${body}</section>`;
 
+/**
+ * `layers` and nothing else — `caps`, `coverage` and `fallow` belong to `modules` below,
+ * and naming them here would make this function refuse a fixture it reads nothing from.
+ *
+ * @param {{ layers: { layer: string, files: number, lines: number, statements: number, avgMaintainability: number, fanIn: number, fanOut: number }[] }} report
+ * @returns {string} the architecture table as HTML.
+ */
 export function architecture(report) {
 	const columns = [
 		{ label: "layer" },

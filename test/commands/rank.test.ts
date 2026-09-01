@@ -48,19 +48,19 @@ describe('the seed and respace rank commands', () => {
 	it('offer themselves only while a backlog view is the active leaf', () => {
 		const vault = crossedVault();
 		openBacklog(vault);
-		expect(seedRanksCommand(vault.app as never, true)).toBe(true);
-		expect(respaceRanksCommand(vault.app as never, true)).toBe(true);
+		expect(seedRanksCommand(vault.app, true)).toBe(true);
+		expect(respaceRanksCommand(vault.app, true)).toBe(true);
 
 		vault.activeView = new FileView(vault.addFile('Notes.md'), document.body.createDiv());
-		expect(seedRanksCommand(vault.app as never, true)).toBe(false);
-		expect(respaceRanksCommand(vault.app as never, true)).toBe(false);
+		expect(seedRanksCommand(vault.app, true)).toBe(false);
+		expect(respaceRanksCommand(vault.app, true)).toBe(false);
 	});
 
 	it('writes nothing until the confirmation is answered', () => {
 		const vault = crossedVault();
 		openBacklog(vault);
 
-		expect(seedRanksCommand(vault.app as never, false)).toBe(true);
+		expect(seedRanksCommand(vault.app, false)).toBe(true);
 
 		// The count in the dialog is the plan's, said before the user can answer.
 		expect(Modal.lastOpened?.contentEl.textContent).toContain('Rank 3 notes in the order they appear');
@@ -71,7 +71,7 @@ describe('the seed and respace rank commands', () => {
 		const vault = crossedVault();
 		openBacklog(vault);
 
-		seedRanksCommand(vault.app as never, false);
+		seedRanksCommand(vault.app, false);
 		confirm();
 		await flush();
 
@@ -89,7 +89,7 @@ describe('the seed and respace rank commands', () => {
 		vault.addFile('Epic B.md', { frontmatter: { type: 'Epic', order: 2 } });
 		openBacklog(vault);
 
-		respaceRanksCommand(vault.app as never, false);
+		respaceRanksCommand(vault.app, false);
 		expect(Modal.lastOpened?.contentEl.textContent).toContain('Rewrite the ranks of 2 notes');
 		confirm();
 		await flush();
@@ -111,7 +111,7 @@ describe('the seed and respace rank commands', () => {
 		vault.addFile('B1.md', { frontmatter: { type: 'Feature', order: 100 }, parentLink: 'Epic B' });
 		openBacklog(vault);
 
-		respaceRanksCommand(vault.app as never, false);
+		respaceRanksCommand(vault.app, false);
 
 		expect(Modal.lastOpened?.contentEl.textContent).toContain('Some lists are drawn in tree order');
 		// The PLAN is untouched by the sentence: it still respaces every writable note.
@@ -124,7 +124,7 @@ describe('the seed and respace rank commands', () => {
 		const vault = crossedVault();
 		openBacklog(vault);
 
-		respaceRanksCommand(vault.app as never, false);
+		respaceRanksCommand(vault.app, false);
 
 		expect(Modal.lastOpened?.contentEl.textContent).toContain('Rewrite the ranks of 3 notes');
 		expect(Modal.lastOpened?.contentEl.textContent).not.toContain('Some lists are drawn in tree order');
@@ -139,7 +139,7 @@ describe('the seed and respace rank commands', () => {
 		const vault = crossedVault();
 		const { view } = openBacklog(vault);
 
-		respaceRanksCommand(vault.app as never, false);
+		respaceRanksCommand(vault.app, false);
 		expect(Modal.lastOpened?.contentEl.textContent).not.toContain('Some lists are drawn in tree order');
 		vault.addFile('B1.md', { frontmatter: { type: 'Feature', order: 100 }, parentLink: 'Epic B' });
 		refresh(view, vault);
@@ -160,7 +160,7 @@ describe('the seed and respace rank commands', () => {
 		vault.addFile('B1.md', { frontmatter: { type: 'Feature', order: 100 }, parentLink: 'Epic B' });
 		const { view } = openBacklog(vault);
 
-		respaceRanksCommand(vault.app as never, false);
+		respaceRanksCommand(vault.app, false);
 		expect(Modal.lastOpened?.contentEl.textContent).toContain('Some lists are drawn in tree order');
 		vault.fm('B1.md')['order'] = 200;
 		refresh(view, vault);
@@ -174,7 +174,7 @@ describe('the seed and respace rank commands', () => {
 		const vault = crossedVault();
 		const { view } = openBacklog(vault);
 
-		seedRanksCommand(vault.app as never, false);
+		seedRanksCommand(vault.app, false);
 		view.onunload();
 		confirm();
 		await flush();
@@ -188,7 +188,7 @@ describe('the seed and respace rank commands', () => {
 		const vault = crossedVault();
 		openBacklog(vault, 'A.base');
 
-		seedRanksCommand(vault.app as never, false);
+		seedRanksCommand(vault.app, false);
 		// The dialog counted base A. Re-resolving alone would rewrite whatever is active
 		// NOW, which is worse than the staleness it replaced — so the SAME object is
 		// required back, not merely a live one.
@@ -203,7 +203,7 @@ describe('the seed and respace rank commands', () => {
 		const vault = crossedVault();
 		const { view } = openBacklog(vault);
 
-		seedRanksCommand(vault.app as never, false);
+		seedRanksCommand(vault.app, false);
 		vault.addFile('Epic C.md', { frontmatter: { type: 'Epic', order: 9900 } });
 		refresh(view, vault);
 		confirm();
@@ -219,7 +219,7 @@ describe('the seed and respace rank commands', () => {
 		const vault = crossedVault();
 		openBacklog(vault);
 
-		seedRanksCommand(vault.app as never, false);
+		seedRanksCommand(vault.app, false);
 		// Retyped by another window while the dialog was open: `applyWrites` reads the live
 		// type as it opens the file and refuses the whole rest of the batch. Only `Epic A`,
 		// planned before it, lands — so a notice saying 3 would contradict the refusal it
@@ -251,13 +251,13 @@ describe('the seed and respace rank commands', () => {
 		vault.addFile('Epic B.md', { frontmatter: { type: 'Epic', order: 2000 } });
 		const { view } = openBacklog(vault);
 
-		respaceRanksCommand(vault.app as never, false);
+		respaceRanksCommand(vault.app, false);
 		confirm();
 		await flush();
 		refresh(view, vault);
 		Notice.messages.length = 0;
 
-		respaceRanksCommand(vault.app as never, false);
+		respaceRanksCommand(vault.app, false);
 		confirm();
 		await flush();
 
@@ -270,7 +270,7 @@ describe('the seed and respace rank commands', () => {
 		const vault = crossedVault();
 		openBacklog(vault, 'Backlog.base', []);
 
-		expect(seedRanksCommand(vault.app as never, false)).toBe(true);
+		expect(seedRanksCommand(vault.app, false)).toBe(true);
 
 		expect(Modal.lastOpened).toBeNull();
 		expect(Notice.messages).toEqual(['There is nothing in this base to rank.']);
@@ -281,7 +281,7 @@ describe('the seed and respace rank commands', () => {
 		const vault = crossedVault();
 		const { view } = openBacklog(vault);
 
-		seedRanksCommand(vault.app as never, false);
+		seedRanksCommand(vault.app, false);
 		view.onunload();
 		confirm();
 		await flush();
@@ -301,7 +301,7 @@ describe('the seed and respace rank commands', () => {
 		vault.addFile('B1.md', { frontmatter: { type: 'Feature', order: 5000 }, parentLink: 'Epic B' });
 		openBacklog(vault, 'Backlog.base', ['A1.md', 'B1.md']);
 
-		expect(respaceRanksCommand(vault.app as never, false)).toBe(true);
+		expect(respaceRanksCommand(vault.app, false)).toBe(true);
 
 		expect(Notice.messages).toEqual([
 			'This item sits between two notes this base cannot write, with no room left between them: A1. Nothing was changed. Run this on an unfiltered base.',
@@ -314,7 +314,7 @@ describe('the seed and respace rank commands', () => {
 		const vault = crossedVault();
 		openBacklog(vault);
 
-		seedRanksCommand(vault.app as never, false);
+		seedRanksCommand(vault.app, false);
 		vault.onNextProcess('Epic A.md', (fm) => {
 			fm['type'] = 'Resource';
 		});
@@ -338,7 +338,7 @@ describe('the seed and respace rank commands', () => {
 		vault.addFile('B1.md', { frontmatter: { type: 'Feature', order: 5000 }, parentLink: 'Epic B' });
 		openBacklog(vault, 'Backlog.base', ['A1.md', 'A2.md', 'B1.md']);
 
-		expect(respaceRanksCommand(vault.app as never, false)).toBe(true);
+		expect(respaceRanksCommand(vault.app, false)).toBe(true);
 
 		// No dialog at all: a wedged plan has nothing to confirm.
 		expect(Modal.lastOpened).toBeNull();
@@ -372,7 +372,7 @@ describe('the seed and respace rank commands', () => {
 		makeView(vault, { stateProperty: 'note.type' }, { base: 'Backlog.base', only: ['A1.md', 'A2.md', 'B1.md'] });
 		vault.activeView = vault.leaves[vault.leaves.length - 1].view;
 
-		expect(respaceRanksCommand(vault.app as never, false)).toBe(true);
+		expect(respaceRanksCommand(vault.app, false)).toBe(true);
 
 		expect(Modal.lastOpened).toBeNull();
 		expect(vault.writeLog).toEqual([]);

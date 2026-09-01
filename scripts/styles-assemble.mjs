@@ -36,6 +36,9 @@ const MAX_LINES = 400;
 
 const IMPORT = /^@import\s+"\.\/([\w.]+\.css)";$/gm;
 
+/**
+ * @returns {string} every partial `styles/index.css` imports, concatenated in its order.
+ */
 export function assembleStyles() {
 	const entry = readFileSync(`${DIR}index.css`, 'utf8');
 	const imported = [...entry.matchAll(IMPORT)].map((match) => match[1]);

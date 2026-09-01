@@ -1,3 +1,4 @@
+import type { Plugin } from 'obsidian';
 import { afterEach, beforeEach, vi } from 'vitest';
 import { cleanup as liveRegionCleanup } from '@atlaskit/pragmatic-drag-and-drop-live-region';
 import { ProductBacklogView } from '../../src/view/backlogView';
@@ -5,8 +6,9 @@ import { BacklogItem } from '../../src/domain/model';
 import { WriteLock } from '../../src/view/writeLock';
 import { OPTIONAL_PROPERTIES } from '../../src/domain/optionalProperties';
 import { installObsidianDom } from './dom';
-import { FakeVault, FakeViewConfig, mountLeaf } from './vault';
+import { FakeVault, FakeViewConfig, mountLeaf, mountView, setResults } from './vault';
 import { Menu, Modal, Notice } from './obsidian-mock';
+import { fakeController } from '../helpers/vault';
 
 installObsidianDom();
 
@@ -21,13 +23,18 @@ export interface Harness {
  * type — `registerBacklogView.test.ts`'s and the estimation view's own register test's
  * identical three lines, generic over each suite's own `BasesViewRegistration`-shaped
  * spec so neither loses its typing to a shared `unknown`.
+ *
+ * The double is widened to `Plugin` HERE, once, rather than cast at each `register…View`
+ * call: the registration functions take the real type, and a cast at the call site is a
+ * hole in the typecheck at every one of them.
  */
 export function captureRegistrations<Spec>(): {
-	plugin: { registerBasesView: (type: string, spec: Spec) => void };
+	plugin: Plugin & { registerBasesView: (type: string, spec: Spec) => void };
 	specs: Map<string, Spec>;
 } {
 	const specs = new Map<string, Spec>();
-	return { plugin: { registerBasesView: (type, spec) => specs.set(type, spec) }, specs };
+	const plugin = { registerBasesView: (type: string, spec: Spec) => specs.set(type, spec) };
+	return { plugin: plugin as typeof plugin & Plugin, specs };
 }
 
 /**
@@ -76,6 +83,7 @@ export function makeView(
 		hideCompleted,
 		widths,
 		only,
+		except,
 		order,
 		lock,
 	}: {
@@ -89,6 +97,14 @@ export function makeView(
 		/** Property-column widths in pixels, by Bases property id — one `setColWidth` each. */
 		widths?: Record<string, number>;
 		only?: string[];
+		/**
+		 * The other way to say which notes the Base returned: everything in the vault
+		 * except these. A context-row fixture is nearly always written this way — one
+		 * ancestor is cut and the rest are results — and spelling that as `only` means
+		 * re-listing every note, which is a list that goes stale the next time the
+		 * fixture gains one.
+		 */
+		except?: string[];
 		order?: string[];
 		/** The plugin-wide write lock to share with another view; a fresh one by default. */
 		lock?: WriteLock;
@@ -97,7 +113,7 @@ export function makeView(
 	// Bases mounts the view inside the leaf showing the .base file; that leaf is how
 	// the view identifies which base it is, so persistence tests need the real nesting.
 	const containerEl = mountLeaf(vault, base);
-	const view = new ProductBacklogView({} as never, containerEl, lock);
+	const view = new ProductBacklogView(fakeController(), containerEl, lock);
 	const config = new FakeViewConfig(configValues);
 	if (viewName) config.name = viewName;
 	// The Bases properties menu decides which properties are columns, chips included, so
@@ -105,13 +121,17 @@ export function makeView(
 	// update, which is where the columns are resolved; a test about the RESOLUTION itself
 	// assigns `config.order` afterwards and renders again instead.
 	if (order) config.order = order;
-	const anyView = view as unknown as Record<string, unknown>;
-	anyView.app = vault.app;
-	anyView.config = config;
-	// `only` narrows what the BASE returns, so everything else in the vault loads as a
-	// context row — the shape a filtered base has, without hand-building a view for it.
-	anyView.data = { data: only ? vault.entries().filter((e) => only.includes(e.file.path)) : vault.entries() };
-	view.onDataUpdated();
+	// `only` and `except` narrow what the BASE returns, so everything else in the vault
+	// loads as a context row — the shape a filtered base has, without hand-building a
+	// view for it.
+	mountView(
+		view,
+		vault,
+		config,
+		vault
+			.entries()
+			.filter((e) => (!only || only.includes(e.file.path)) && !except?.includes(e.file.path)),
+	);
 	if (focus) view.setFocusLevel(focus);
 	if (folds) view.setClickFolds(true);
 	if (hideCompleted) view.setShowCompleted(false);
@@ -141,10 +161,9 @@ export function clickExpandAll(containerEl: HTMLElement): void {
 	btn.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 }
 
-/** Hand the view a fresh result set, the way Bases does after a vault change. */
+/** Hand the view everything the vault now holds, the way Bases does after a change. */
 export function refresh(view: ProductBacklogView, vault: FakeVault): void {
-	(view as unknown as Record<string, unknown>).data = { data: vault.entries() };
-	view.onDataUpdated();
+	setResults(view, vault.entries());
 }
 
 export function rows(containerEl: HTMLElement): HTMLElement[] {
@@ -195,7 +214,7 @@ export function flush(): Promise<void> {
 
 export function stubRect(row: HTMLElement): void {
 	row.getBoundingClientRect = () =>
-		({ top: 0, bottom: 30, height: 30, left: 0, right: 100, width: 100, x: 0, y: 0, toJSON: () => ({}) }) as DOMRect;
+		({ top: 0, bottom: 30, height: 30, left: 0, right: 100, width: 100, x: 0, y: 0, toJSON: () => ({}) });
 }
 
 export function drag(from: HTMLElement, to: HTMLElement, zone: 'before' | 'after' | 'inside'): void {

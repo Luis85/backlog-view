@@ -20,12 +20,12 @@ beforeEach(() => {
 function openDialog(fields: ReleaseFieldId[] = []) {
 	const vault = new FakeVault();
 	const results: NewReleaseResult[] = [];
-	openNewReleaseDialog(vault.app as never, fields, (result) => results.push(result));
+	openNewReleaseDialog(vault.app, fields, (result) => results.push(result));
 	const modal = Modal.lastOpened;
 	if (!modal) throw new Error('no dialog opened');
 	const el = modal.contentEl;
-	const inputs = Array.from(el.querySelectorAll('input')) as HTMLInputElement[];
-	const createBtn = el.querySelector('.mod-cta') as HTMLButtonElement | null;
+	const inputs = Array.from(el.querySelectorAll('input'));
+	const createBtn = el.querySelector<HTMLButtonElement>('.mod-cta');
 	if (!createBtn) throw new Error('create button missing');
 	return { results, inputs, createBtn, el };
 }
@@ -94,14 +94,14 @@ describe('the new-release dialog', () => {
 		const results: NewReleaseResult[] = [];
 		let closed = 0;
 		openNewReleaseDialog(
-			vault.app as never,
+			vault.app,
 			[],
 			(result) => results.push(result),
 			() => (closed += 1),
 		);
 		const modal = Modal.lastOpened;
 		if (!modal) throw new Error('no dialog opened');
-		type(modal.contentEl.querySelectorAll('input')[0] as HTMLInputElement, 'Ignored');
+		type(modal.contentEl.querySelectorAll('input')[0], 'Ignored');
 		const buttons = Array.from(modal.contentEl.querySelectorAll('button'));
 		const cancelBtn = buttons.find((b) => !b.hasClass('mod-cta'));
 		if (!cancelBtn) throw new Error('cancel button missing');

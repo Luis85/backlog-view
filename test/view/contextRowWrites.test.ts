@@ -1,10 +1,21 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { ProductBacklogView } from '../../src/view/backlogView';
-import { FakeVault, FakeViewConfig } from '../helpers/vault';
-import { FileView, FuzzySuggestModal, Menu, Modal } from '../helpers/obsidian-mock';
+import { FakeVault, FakeViewConfig, setResults } from '../helpers/vault';
+import { FuzzySuggestModal, Menu, Modal } from '../helpers/obsidian-mock';
 import { respaceRanksCommand, seedRanksCommand } from '../../src/commands/rank';
-import { drag, clickExpandAll, flush, key, rowByTitle, rows, treeOf, useViewHarness } from '../helpers/view';
+import {
+	clickExpandAll,
+	drag,
+	flush,
+	itemAt,
+	key,
+	makeView,
+	rowByTitle,
+	rows,
+	treeOf,
+	useViewHarness,
+} from '../helpers/view';
 import { computeAssigneeWrites } from '../../src/domain/writePlan';
 
 /**
@@ -34,22 +45,17 @@ describe('moves in a group that holds an outside-filter row', () => {
 		vault.addFile('Feature A.md', { frontmatter: { type: 'Feature', order: orders[1] }, parentLink: 'Epic' });
 		vault.addFile('Feature B.md', { frontmatter: { type: 'Feature', order: orders[2] }, parentLink: 'Epic' });
 		vault.addFile('PBI.md', { frontmatter: { type: 'PBI', order: orders[3] }, parentLink: 'Feature A' });
-		// Nested in a leaf, because the palette commands below reach this view through the
-		// registry and the workspace rather than through an element a test already holds.
-		const leafEl = document.body.createDiv();
-		const containerEl = leafEl.createDiv();
-		const view = new ProductBacklogView({} as never, containerEl);
-		const anyView = view as unknown as Record<string, unknown>;
-		anyView.app = vault.app;
 		// Inference is what the folder tests below are about, so the type folders that
 		// would answer first are turned off.
-		anyView.config = new FakeViewConfig({ ...NO_TYPE_FOLDERS });
-		anyView.data = {
-			data: vault.entries().filter((e) => ['Feature B.md', 'PBI.md'].includes(e.file.path)),
-		};
-		view.onDataUpdated();
-		clickExpandAll(containerEl);
-		vault.activeView = new FileView(vault.addFile('Backlog.base'), leafEl);
+		// Named base, so the view mounts inside a real leaf: the palette commands below
+		// reach it through the registry and the workspace rather than through an element
+		// a test already holds, and that leaf is what the workspace has to call active.
+		const { view, containerEl } = makeView(
+			vault,
+			{ ...NO_TYPE_FOLDERS },
+			{ base: 'Backlog.base', only: ['Feature B.md', 'PBI.md'] },
+		);
+		vault.activeView = vault.leaves[vault.leaves.length - 1].view;
 		return { view, containerEl, vault };
 	}
 
@@ -71,7 +77,7 @@ describe('moves in a group that holds an outside-filter row', () => {
 	])('the %s command ranks the results and writes to no context row', async (_name, command) => {
 		const { vault } = mixedView();
 
-		expect(command(vault.app as never, false)).toBe(true);
+		expect(command(vault.app, false)).toBe(true);
 		Modal.lastOpened?.contentEl.querySelector<HTMLElement>('.mod-cta')?.click();
 		await flush();
 
@@ -130,7 +136,7 @@ describe('moves in a group that holds an outside-filter row', () => {
 	it('writes only the dragged note when Alt+arrow ranks it beside a context row', async () => {
 		const { view, containerEl, vault } = mixedView();
 		const tree = treeOf(containerEl);
-		view.selectItem(view.model?.byPath.get('Feature B.md') as never);
+		view.selectItem(itemAt(view, 'Feature B.md'));
 
 		// Feature B moves above Feature A, which is a context row. Both rows that frame the
 		// new rank are excluded ones — Epic (10) below and Feature A (20) above — and the
@@ -213,13 +219,9 @@ describe('write safety with context rows, across every entry point', () => {
 		// targeted refusal below.
 		vault.addFile('Robin.md', { frontmatter: { type: 'Resource' } });
 
-		const containerEl = document.body.createDiv();
-		const view = new ProductBacklogView({} as never, containerEl);
-		const anyView = view as unknown as Record<string, unknown>;
-		anyView.app = vault.app;
 		// Both roadmap axes configured, so the placement writes are entry points this
 		// sweep drives too — Set horizon, Clear horizon, Schedule, Unschedule.
-		const config = new FakeViewConfig({
+		const configValues = {
 			stateProperty: 'note.status',
 			horizonProperty: 'note.horizon',
 			startProperty: 'note.start',
@@ -245,27 +247,24 @@ describe('write safety with context rows, across every entry point', () => {
 			// the entry is withheld everywhere and the sweep drove nothing, which the
 			// `commandsDriven` check now refuses to let happen again.
 			iterationProperty: 'note.iteration',
-		});
+		};
 		// Every chip is a write surface too, and a chip is drawn by a VISIBLE column, so
 		// the sweep only reaches them if the base shows their properties. Without this
 		// the state, horizon and risk chips are absent and each `?.dispatchEvent` below
 		// drives nothing while still passing.
-		config.order = [
-			'note.tags',
-			'note.status',
-			'note.horizon',
-			'note.risk',
-			'note.priority',
-			'note.assignee',
-			'note.start',
-			'note.due',
-		];
-		anyView.config = config;
-		anyView.data = {
-			data: vault.entries().filter((e) => !CONTEXT_PATHS.includes(e.file.path)),
-		};
-		view.onDataUpdated();
-		clickExpandAll(containerEl);
+		const { view, containerEl } = makeView(vault, configValues, {
+			except: CONTEXT_PATHS,
+			order: [
+				'note.tags',
+				'note.status',
+				'note.horizon',
+				'note.risk',
+				'note.priority',
+				'note.assignee',
+				'note.start',
+				'note.due',
+			],
+		});
 		return { view, containerEl, vault };
 	}
 
@@ -542,17 +541,8 @@ describe('undo across the filter boundary', () => {
 		const vault = new FakeVault();
 		vault.addFile('Parent.md', { frontmatter: { type: 'Epic', order: 10, status: 'Active' } });
 		vault.addFile('Child.md', { frontmatter: { type: 'PBI', order: 10, status: 'New' }, parentLink: 'Parent' });
-		const containerEl = document.body.createDiv();
-		const view = new ProductBacklogView({} as never, containerEl);
-		const anyView = view as unknown as Record<string, unknown>;
-		anyView.app = vault.app;
-		const config = new FakeViewConfig({ stateProperty: 'note.status' });
 		// A chip is drawn by a VISIBLE column, so the base has to show the property.
-		config.order = ['note.status'];
-		anyView.config = config;
-		anyView.data = { data: vault.entries() };
-		view.onDataUpdated();
-		clickExpandAll(containerEl);
+		const { view, containerEl } = makeView(vault, { stateProperty: 'note.status' }, { order: ['note.status'] });
 
 		// Mark the parent done through its chip — an ordinary write to a result row.
 		rowByTitle(containerEl, 'Parent')
@@ -564,8 +554,7 @@ describe('undo across the filter boundary', () => {
 
 		// The base's filter excludes done items, so the requery demotes the parent
 		// to a context row above its still-open child.
-		anyView.data = { data: vault.entries().filter((e) => e.file.path !== 'Parent.md') };
-		view.onDataUpdated();
+		setResults(view, vault.entries().filter((e) => e.file.path !== 'Parent.md'));
 		expect(view.model?.byPath.get('Parent.md')?.outsideFilter).toBe(true);
 
 		// The replay-time context-row verdict would refuse exactly this restore;
@@ -584,15 +573,11 @@ describe('toolbar figures describe the Base results', () => {
 		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10, status: 'Active' } });
 		vault.addFile('Done.md', { frontmatter: { type: 'PBI', order: 10, status: 'Done' }, parentLink: 'Epic' });
 		vault.addFile('Open.md', { frontmatter: { type: 'PBI', order: 20, status: 'New' }, parentLink: 'Epic' });
-		const containerEl = document.body.createDiv();
-		const view = new ProductBacklogView({} as never, containerEl);
-		const anyView = view as unknown as Record<string, unknown>;
-		anyView.app = vault.app;
-		anyView.config = new FakeViewConfig({ stateProperty: 'note.status' });
-		anyView.data = { data: vault.entries().filter((e) => e.file.path !== 'Epic.md') };
-		view.onDataUpdated();
-		view.setShowCompleted(showCompleted);
-		clickExpandAll(containerEl);
+		const { view, containerEl } = makeView(
+			vault,
+			{ stateProperty: 'note.status' },
+			{ except: ['Epic.md'], hideCompleted: !showCompleted },
+		);
 		return { view, containerEl };
 	}
 
@@ -630,15 +615,11 @@ describe('rollups describe the Base results only', () => {
 		vault.addFile('PBI.md', { frontmatter: { type: 'PBI', status: 'New' }, parentLink: 'Feature A' });
 		vault.addFile('Mid.md', { frontmatter: { type: 'PBI', order: 10, status: 'Done' }, parentLink: 'Feature B' });
 		vault.addFile('Task.md', { frontmatter: { type: 'Task', order: 10, status: 'New' }, parentLink: 'Mid' });
-		const containerEl = document.body.createDiv();
-		const view = new ProductBacklogView({} as never, containerEl);
-		const anyView = view as unknown as Record<string, unknown>;
-		anyView.app = vault.app;
-		anyView.config = new FakeViewConfig({ stateProperty: 'note.status' });
-		anyView.data = {
-			data: vault.entries().filter((e) => !['Epic.md', 'Feature A.md', 'Mid.md'].includes(e.file.path)),
-		};
-		view.onDataUpdated();
+		const { view } = makeView(
+			vault,
+			{ stateProperty: 'note.status' },
+			{ collapsed: true, except: ['Epic.md', 'Feature A.md', 'Mid.md'] },
+		);
 
 		// Stated from the rule, not from the implementation: a rollup counts the
 		// results below an item, and nothing else.

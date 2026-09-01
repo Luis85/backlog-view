@@ -1,9 +1,8 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import { ProductBacklogView } from '../../src/view/backlogView';
 import { todayStamp } from '../../src/domain/noteFields';
-import { FakeVault, FakeViewConfig } from '../helpers/vault';
-import { clickExpandAll, refresh, useViewHarness } from '../helpers/view';
+import { FakeVault } from '../helpers/vault';
+import { clickExpandAll, makeView, refresh, useViewHarness } from '../helpers/view';
 import {
 	barFor,
 	barOf,
@@ -18,7 +17,7 @@ import {
 	shelfIsEmptyStrip,
 	shelfOf,
 	shelfTitles,
-	timelineRows,
+	timelineRowEls,
 } from '../helpers/roadmap';
 import { daysBetween, scaleFor } from '../../src/domain/timeline';
 
@@ -84,7 +83,7 @@ describe('the dated frame', () => {
 		vault.addFile('Mile.md', { frontmatter: { type: 'Epic', order: 30, start: '2026-08-10', due: '2026-08-10' } });
 		const { containerEl } = roadmapView(vault, { ...DATES });
 
-		const rows = timelineRows(containerEl);
+		const rows = timelineRowEls(containerEl);
 		expect(rows).toHaveLength(3);
 		// A bar states what the note states: a full span, an open end, a milestone.
 		expect(barOf(rows[0]).getAttribute('aria-label')).toBe('2026-08-01 → 2026-09-15');
@@ -119,7 +118,7 @@ describe('the dated frame', () => {
 		});
 		const { containerEl } = roadmapView(vault, { ...DATES });
 
-		expect(timelineRows(containerEl)).toHaveLength(0);
+		expect(timelineRowEls(containerEl)).toHaveLength(0);
 		expect(shelfTitles(containerEl)).toEqual(['Garbled', 'Reversed']);
 		const reasons = Array.from(containerEl.querySelectorAll('.pbl-shelf-reason')).map((r) => r.textContent);
 		expect(reasons).toEqual(['Unreadable start date', 'Target date precedes the start date']);
@@ -156,7 +155,7 @@ describe('the dated frame', () => {
 		// disclosure until something opens it.
 		clickExpandAll(containerEl);
 
-		const rows = timelineRows(containerEl);
+		const rows = timelineRowEls(containerEl);
 		// The epic is on the grid now, not the shelf, and it leads its children.
 		expect(rows).toHaveLength(3);
 		expect(shelfTitles(containerEl)).toEqual([]);
@@ -180,7 +179,7 @@ describe('the dated frame', () => {
 		});
 		const { containerEl } = roadmapView(vault, { ...DATES });
 
-		const epic = barOf(timelineRows(containerEl)[0]);
+		const epic = barOf(timelineRowEls(containerEl)[0]);
 		expect(epic.hasClass('pbl-bar-inferred')).toBe(true);
 		expect(epic.getAttribute('aria-label')).toBe('2026-08-01 → 2026-09-30 — inferred from children');
 	});
@@ -195,7 +194,7 @@ describe('the dated frame', () => {
 		vault.addFile('A.md', { frontmatter: { type: 'Feature', order: 10, due: '2026-09-30' }, parentLink: 'Epic' });
 		const { containerEl } = roadmapView(vault, { ...DATES });
 
-		const epic = barOf(timelineRows(containerEl)[0]);
+		const epic = barOf(timelineRowEls(containerEl)[0]);
 		expect(epic.hasClass('pbl-bar-inferred')).toBe(true);
 		expect(epic.hasClass('pbl-bar-open-start')).toBe(true);
 		expect(epic.getAttribute('aria-label')).toBe('Target 2026-09-30, start not set — inferred from children');
@@ -232,7 +231,7 @@ describe('the dated frame', () => {
 		});
 		const { containerEl } = roadmapView(vault, { ...DATES });
 
-		const epic = barOf(timelineRows(containerEl)[0]);
+		const epic = barOf(timelineRowEls(containerEl)[0]);
 		expect(epic.hasClass('pbl-bar-milestone')).toBe(true);
 		expect(epic.hasClass('pbl-bar-inferred')).toBe(true);
 		// The epic is an Epic, not a Milestone — an inferred equal pair still draws the
@@ -332,16 +331,8 @@ describe('context rows on the roadmap', () => {
 		const vault = new FakeVault();
 		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10, ...epicFm } });
 		vault.addFile('F.md', { frontmatter: { type: 'Feature', order: 10, horizon: 'Now' }, parentLink: 'Epic' });
-		const containerEl = document.body.createDiv();
-		const view = new ProductBacklogView({} as never, containerEl);
-		const config = new FakeViewConfig(cfg);
-		const anyView = view as unknown as Record<string, unknown>;
-		anyView.app = vault.app;
-		anyView.config = config;
-		anyView.data = { data: vault.entries().filter((e) => e.file.path !== 'Epic.md') };
-		view.onDataUpdated();
 		// Focus is working position, not a base setting: set through the view.
-		view.setFocusLevel('Epic');
+		const { view, containerEl } = makeView(vault, cfg, { collapsed: true, except: ['Epic.md'], focus: 'Epic' });
 		view.setProjection('roadmap');
 		return { view, containerEl, vault };
 	}
@@ -369,7 +360,7 @@ describe('context rows on the roadmap', () => {
 	it('is never placed by its own dates on the timeline', () => {
 		const { containerEl } = focusedRoadmap({ start: '2026-08-01', due: '2026-09-01' }, { ...DATES });
 
-		expect(timelineRows(containerEl)).toHaveLength(0);
+		expect(timelineRowEls(containerEl)).toHaveLength(0);
 		expect(containerEl.querySelector('.pbl-roadmap-context .pbl-card-title')?.textContent).toBe('Epic');
 		// Nothing else on this row set is a result, so the shelf renders empty rather
 		// than absent — the dated axis's shelf is a real target regardless.

@@ -150,3 +150,6 @@
    `.pbl-rel-spacer`, `release.css`'s own vocabulary, are the ones this file only ever
    USES rather than redeclares. */
 @import "./releaseScope.css";
+/* Position NOT load-bearing: every selector here is `.pbl-mw-*`, a vocabulary no other
+   partial declares — see the partial's own header. */
+@import "./mywork.css";

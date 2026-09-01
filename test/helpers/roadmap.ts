@@ -179,7 +179,7 @@ export function shelfCountOf(containerEl: HTMLElement): string {
 	return containerEl.querySelector('.pbl-shelf-count')?.textContent ?? '';
 }
 
-export function timelineRows(containerEl: HTMLElement): HTMLElement[] {
+export function timelineRowEls(containerEl: HTMLElement): HTMLElement[] {
 	return Array.from(containerEl.querySelectorAll<HTMLElement>('.pbl-timeline-row'));
 }
 
@@ -216,7 +216,7 @@ export function laneOrder(containerEl: HTMLElement): string[] {
 
 /** The titles the grid drew, in row order — what a disclosure adds to and takes away. */
 export function timelineTitles(containerEl: HTMLElement): string[] {
-	return timelineRows(containerEl).map((row) => row.querySelector('.pbl-card-title')?.textContent ?? '');
+	return timelineRowEls(containerEl).map((row) => row.querySelector('.pbl-card-title')?.textContent ?? '');
 }
 
 export function barOf(row: HTMLElement): HTMLElement {
@@ -227,7 +227,7 @@ export function barOf(row: HTMLElement): HTMLElement {
 
 /** The timeline row for a given title, or null when it is not on the grid at all. */
 export function rowFor(containerEl: HTMLElement, title: string): HTMLElement | null {
-	return timelineRows(containerEl).find((r) => r.querySelector('.pbl-card-title')?.textContent === title) ?? null;
+	return timelineRowEls(containerEl).find((r) => r.querySelector('.pbl-card-title')?.textContent === title) ?? null;
 }
 
 /**

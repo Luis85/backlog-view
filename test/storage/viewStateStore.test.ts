@@ -55,6 +55,12 @@ const FULL_PREFS: Required<ViewPrefs> = {
 	// The release scope's own hide-done toggle — the ON state, `bucketList`'s own rule for
 	// storing only the non-default.
 	releaseHideDone: true,
+	// The assigned-work tree's own hide-done toggle — a second key rather than a shared
+	// one, since the two screens' readers keep this choice independently.
+	myWorkHideDone: true,
+	// The my-work view's own pick — a note path like `scope` and `release`, and walked by
+	// the same `renamePathPrefs`.
+	person: 'People/Ada.md',
 	// A WORD beside the path above — which board the Board position opens with no scope
 	// set. In live state the two are never both set (the controller clears each on the
 	// other's way in); the fixture holds both because the round trip is per key.
@@ -209,6 +215,14 @@ describe('a note path a saved view remembers', () => {
 		renamePathPrefs(vault.app, 'sprints', 'archive/sprints');
 
 		expect(loadViewState(vault.app, RELEASE_ID).prefs.scope).toBe('archive/sprints/12.md');
+	});
+
+	it('carries a renamed person pick', () => {
+		saveViewState(vault.app, RELEASE_ID, { folds: emptyFolds(), prefs: { person: 'People/Ada.md' } });
+
+		renamePathPrefs(vault.app, 'People/Ada.md', 'Team/Ada Lovelace.md');
+
+		expect(loadViewState(vault.app, RELEASE_ID).prefs.person).toBe('Team/Ada Lovelace.md');
 	});
 
 	it('leaves an entry holding NEITHER path alone, rather than inventing one', () => {
@@ -542,6 +556,9 @@ describe('the picked release', () => {
 		saveViewState(vault.app, id, { ...none, prefs: { release: 'Releases/0.8.md' } });
 		expect(loadViewState(vault.app, id).prefs.release).toBe('Releases/0.8.md');
 
+		// `as never` on PURPOSE, and the only kind this suite keeps: the claim is what the
+		// reader does with a stored value its type forbids, so the value has to get past the
+		// type to be planted at all.
 		saveViewState(vault.app, id, { ...none, prefs: { release: 42 as never } });
 		expect(loadViewState(vault.app, id).prefs.release).toBeUndefined();
 	});
@@ -558,6 +575,7 @@ describe('the release scope’s hide-done toggle', () => {
 		saveViewState(vault.app, id, { ...none, prefs: { releaseHideDone: true } });
 		expect(loadViewState(vault.app, id).prefs.releaseHideDone).toBe(true);
 
+		// Planted past the type for the same reason as the numeric one above.
 		saveViewState(vault.app, id, { ...none, prefs: { releaseHideDone: 'yes' as never } });
 		expect(loadViewState(vault.app, id).prefs.releaseHideDone).toBeUndefined();
 	});

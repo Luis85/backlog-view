@@ -94,6 +94,13 @@ function matrixCell(from, to, counts, widest) {
 		title="${escape(from)} imports ${escape(to)}: ${escape(count)} edges">${escape(count)}</div>`;
 }
 
+/**
+ * Only the fields this function reads are named, which is what makes a wrong-shaped
+ * fixture a compile error rather than an empty chart.
+ *
+ * @param {{ graph: { from: string, to: string, count: number }[] }} report
+ * @returns {string} the matrix as HTML, or '' when no edge crosses a layer.
+ */
 export function layerMatrix(report) {
 	const cross = report.graph.filter((e) => e.from !== e.to);
 	if (cross.length === 0) return "";

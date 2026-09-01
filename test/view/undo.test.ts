@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { Menu, Notice } from '../helpers/obsidian-mock';
-import { FakeVault } from '../helpers/vault';
+import { FakeVault, setResults } from '../helpers/vault';
 import { drag, fixture, flush, key, makeView, rowByTitle, treeOf, useViewHarness } from '../helpers/view';
 
 useViewHarness();
@@ -99,8 +99,7 @@ describe('undoing the last change', () => {
 		Menu.lastShown?.item('Done')?.clickHandler?.();
 		await flush();
 		// The base's filter excludes done items; the requery now returns nothing.
-		(view as unknown as Record<string, unknown>).data = { data: [] };
-		view.onDataUpdated();
+		setResults(view, []);
 
 		key(treeOf(containerEl), 'z', { ctrlKey: true });
 		await flush();

@@ -31,7 +31,7 @@ import { FakeViewConfig } from './vault';
 
 /** Settings as the real resolver produces them from a view's options. */
 export function settingsFrom(options: Record<string, unknown> = {}): BacklogSettings {
-	return resolveSettings(new FakeViewConfig(options) as never);
+	return resolveSettings(new FakeViewConfig(options));
 }
 
 /**

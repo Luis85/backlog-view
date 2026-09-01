@@ -345,7 +345,7 @@ describe('dependency inverses', () => {
 		vault.addFile('A.md', {});
 		const item = vault.addFile('Item.md', {});
 
-		const target = vault.files.get('A.md') as never;
+		const target = vault.fileAt('A.md');
 		const inverses = await writeCapturing(vault, [{ file: item, dependsOn: { add: target } }], linked);
 		expect(vault.fm('Item.md')['dependsOn']).toEqual(['[[A]]']);
 		// Obsidian renames by mutating the one file object and rewriting the links that
@@ -382,7 +382,7 @@ describe('dependency inverses', () => {
 		vault.addFile('A.md', {});
 		const item = vault.addFile('Item.md', {});
 
-		const target = vault.files.get('A.md') as never;
+		const target = vault.fileAt('A.md');
 		const inverses = await writeCapturing(vault, [{ file: item, dependsOn: { add: target } }], linked);
 		expect(vault.fm('Item.md')['dependsOn']).toEqual(['[[A]]']);
 		// A is gone, so the line the plugin wrote is still sitting there and now names
@@ -400,7 +400,7 @@ describe('dependency inverses', () => {
 		vault.addFile('A.md', {});
 		const item = vault.addFile('Item.md', {});
 
-		const target = vault.files.get('A.md') as never;
+		const target = vault.fileAt('A.md');
 		const inverses = await writeCapturing(vault, [{ file: item, dependsOn: { add: target } }], linked);
 		expect(vault.fm('Item.md')['dependsOn']).toEqual(['[[A]]']);
 		// Renamed — Obsidian rewrites the plugin's line to match — and then deleted. The
@@ -459,7 +459,7 @@ describe('dependency inverses', () => {
 		vault.addFile('A.md', {});
 		const item = vault.addFile('Item.md', {});
 
-		const target = vault.files.get('A.md') as never;
+		const target = vault.fileAt('A.md');
 		const inverses = await writeCapturing(vault, [{ file: item, dependsOn: { add: target } }], linked);
 		// A is renamed, so Obsidian rewrites the plugin's line — and the user separately
 		// types the old name, which now resolves to nothing.
@@ -549,7 +549,7 @@ describe('dependency inverses', () => {
 		vault.addFile('A.md', {});
 		const item = vault.addFile('Item.md', {});
 
-		const target = vault.files.get('A.md') as never;
+		const target = vault.fileAt('A.md');
 		const inverses = await writeCapturing(vault, [{ file: item, dependsOn: { add: target } }], linked);
 		expect(vault.fm('Item.md')['dependsOn']).toEqual(['[[A]]']);
 		// The prerequisite is renamed, so Obsidian rewrites the plugin's live line...

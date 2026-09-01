@@ -10,7 +10,7 @@ import { movedPath } from './viewIdentity';
  * one rule in two places for the duplication gate to find. Moving it down instead leaves
  * exactly one `notePath` in the tree, in the layer whose FORMAT it describes; `view/`
  * imports it upward the same way it already imports `movedPath` from `viewIdentity.ts`.
- * `view/viewState.ts` re-exports the three prefixes, so nothing that names them had to move.
+ * `view/viewState.ts` re-exports the prefixes, so nothing that names them had to move.
  */
 
 /**
@@ -55,40 +55,61 @@ export const CARD_SCOPE = '\u0000card:';
  */
 export const RELEASE_FOLD = '\u0000release:';
 
-/** The note path a key is FILED under, whichever scope settled it. A release-fold key
- *  carries TWO paths — the release, then the member after a second NUL — and it is the
- *  member that answers this, so this takes everything after the LAST NUL rather than
- *  slicing off a fixed prefix length. A prune asks {@link foldKeyPaths} instead: a key
- *  dies with EITHER of its notes, and this deliberately names only one of them. */
+/**
+ * Prefix marking a key as ONE PERSON's own fold state — {@link RELEASE_FOLD}'s reason with
+ * the scope swapped. "Is this row open in Ada's tree" and "…in Bo's" are two questions
+ * about one note, and one bit answering both would move a reader's place in the other
+ * every time they used it. A shared ancestor sits in as many trees as it has assignees
+ * below it, which is exactly the case a bare-path key gets wrong.
+ */
+export const MYWORK_FOLD = '\u0000mywork:';
+
+/**
+ * Prefixes whose key carries TWO note paths rather than one — a scope shared by every
+ * tree that asks its question, rather than one bit per note. {@link notePath},
+ * {@link foldKeyPaths} and {@link movedFoldKey} all answer a two-path key from ONE arm
+ * keyed off this list rather than one arm per prefix, so a third scope wanting the same
+ * shape costs one row here and nothing else — the extraction {@link MYWORK_FOLD}'s own
+ * arrival is the worked example of.
+ */
+const TWO_PATH_PREFIXES = [RELEASE_FOLD, MYWORK_FOLD];
+
+/** The note path a key is FILED under, whichever scope settled it. A two-path key —
+ *  {@link RELEASE_FOLD} or {@link MYWORK_FOLD} — carries a SCOPE path and a MEMBER path
+ *  after a second NUL, and it is the member that answers this, so this takes everything
+ *  after the LAST NUL rather than slicing off a fixed prefix length. A prune asks
+ *  {@link foldKeyPaths} instead: a key dies with EITHER of its notes, and this
+ *  deliberately names only one of them. */
 export function notePath(key: string): string {
 	if (key.startsWith(TIMELINE_SCOPE)) return key.slice(TIMELINE_SCOPE.length);
 	if (key.startsWith(CARD_SCOPE)) return key.slice(CARD_SCOPE.length);
-	if (key.startsWith(RELEASE_FOLD)) return key.slice(key.lastIndexOf('\u0000') + 1);
+	if (TWO_PATH_PREFIXES.some((prefix) => key.startsWith(prefix))) return key.slice(key.lastIndexOf('\u0000') + 1);
 	return key;
 }
 
 /**
- * Every note path a key names: one for the tree's own scopes, TWO for a release fold —
- * the release, then the member.
+ * Every note path a key names: one for the tree's own scopes, TWO for a scoped fold —
+ * the scope's own note (a release, a person), then the member.
  *
  * Both, because a fold key is only alive while BOTH notes are. If the MEMBER is gone the
- * key names a row nothing can draw; if the RELEASE is gone the whole scope is gone with
- * it, since a release's screen is reached through the release note and every key under
- * that prefix answers a question about a screen that no longer exists. {@link notePath}
+ * key names a row nothing can draw; if the SCOPE's own note is gone the whole scope is
+ * gone with it, since its screen is reached through that note and every key under its
+ * prefix answers a question about a screen that no longer exists. {@link notePath}
  * deliberately answers a narrower question — which single path a key is FILED under — so
- * a prune that asked it alone would keep every fold of a deleted release forever.
+ * a prune that asked it alone would keep every fold of a deleted scope forever.
  */
 export function foldKeyPaths(key: string): string[] {
-	if (!key.startsWith(RELEASE_FOLD)) return [notePath(key)];
-	return [key.slice(RELEASE_FOLD.length, key.lastIndexOf('\u0000')), notePath(key)];
+	const prefix = TWO_PATH_PREFIXES.find((p) => key.startsWith(p));
+	if (prefix === undefined) return [notePath(key)];
+	return [key.slice(prefix.length, key.lastIndexOf('\u0000')), notePath(key)];
 }
 
 /** The scope prefix a settled key carries, or '' for the tree's own bare path. Not
  *  exported: {@link movedFoldKey} is the only caller, and an export nothing imports is
  *  what the dead-code gate is for.
  *
- *  It answers nothing about a RELEASE fold, and deliberately has no arm for one — that
- *  key's own "scope" is `RELEASE_FOLD` plus the release path, a span this cannot state as
+ *  It answers nothing about a TWO-PATH fold, and deliberately has no arm for one — such a
+ *  key's own "scope" is its prefix plus the scope's own path, a span this cannot state as
  *  a constant, and its one caller has already returned by the time it would matter. An arm
  *  for it was written and was dead on arrival: coverage found it, which is the only reason
  *  this sentence is here rather than the code. */
@@ -102,24 +123,26 @@ function scopeOf(key: string): string {
  * The same key with every note path it carries moved — or null for a key this rename does
  * not touch.
  *
- * A release-fold key carries TWO paths, the release and the member, and either can be the
- * thing renamed: `ViewState.renamePath`'s old expression asked only about the member, so
- * renaming the release note itself stranded every fold in its scope under a path no reader
- * would ever ask for again. `movedPath` matches the path itself OR its `oldPath/` prefix,
- * so a folder rename carries everything beneath it — the event names the folder and never
- * the notes in it.
+ * A two-path fold key carries TWO paths, the scope's own note and the member, and either
+ * can be the thing renamed: `ViewState.renamePath`'s old expression asked only about the
+ * member, so renaming the release note itself stranded every fold in its scope under a
+ * path no reader would ever ask for again — the same hazard a renamed PERSON note would
+ * be for {@link MYWORK_FOLD} if this took a literal prefix rather than a parameter.
+ * `movedPath` matches the path itself OR its `oldPath/` prefix, so a folder rename carries
+ * everything beneath it — the event names the folder and never the notes in it.
  */
 export function movedFoldKey(key: string, oldPath: string, newPath: string): string | null {
-	if (key.startsWith(RELEASE_FOLD)) {
+	const prefix = TWO_PATH_PREFIXES.find((p) => key.startsWith(p));
+	if (prefix !== undefined) {
 		const cut = key.lastIndexOf('\u0000');
-		const release = key.slice(RELEASE_FOLD.length, cut);
+		const scope = key.slice(prefix.length, cut);
 		const member = key.slice(cut + 1);
-		const movedRelease = movedPath(release, oldPath, newPath) ?? release;
+		const movedScope = movedPath(scope, oldPath, newPath) ?? scope;
 		const movedMember = movedPath(member, oldPath, newPath) ?? member;
 		// Null only when NEITHER half moved: a caller that swapped an unchanged key for an
 		// identical one would still count the walk as a change and rewrite the whole map.
-		if (movedRelease === release && movedMember === member) return null;
-		return `${RELEASE_FOLD}${movedRelease}\u0000${movedMember}`;
+		if (movedScope === scope && movedMember === member) return null;
+		return `${prefix}${movedScope}\u0000${movedMember}`;
 	}
 	const moved = movedPath(notePath(key), oldPath, newPath);
 	// Back into the scope it came from: a rename moves the item, never the question the

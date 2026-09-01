@@ -27,10 +27,12 @@
 		// going to do, not notes this register maintains. Reformatting them rewrites
 		// history to no end.
 		"!docs/superpowers",
-		// The `subagent-driven-development` skill's per-plan scratch: git-ignored ledgers,
-		// briefs and agent reports. Same argument as the line above, plus a mechanical one
-		// — it is not in the repository, so CI never sees it and only the contributor
-		// running the skill would have `npm run check` fail on files nobody can commit.
+		// The subagent-driven-development workspace: gitignored scratch — ledger, task
+		// briefs cut from a plan, subagent reports. Same reason as the line above, one
+		// directory up: a record of what a session did, not a document this register
+		// keeps — plus a mechanical one, since it is not in the repository at all: CI
+		// never sees it, so only the contributor running the skill would have
+		// `npm run check` fail on files nobody can commit.
 		"!.superpowers",
 		// Vendored agent tooling — third-party skills installed into the tree, read the
 		// way `node_modules` is. The three below are this repository's own and are linted.

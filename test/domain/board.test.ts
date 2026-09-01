@@ -20,7 +20,7 @@ import { FakeVault, FakeViewConfig } from '../helpers/vault';
  * configuration nobody could set. `assertResolvedSettings` rejects it now.
  */
 const settings = resolveSettings(
-	new FakeViewConfig({ stateProperty: 'note.status', stateValues: 'New, Active, Done', doneValues: 'Done' }) as never,
+	new FakeViewConfig({ stateProperty: 'note.status', stateValues: 'New, Active, Done', doneValues: 'Done' }),
 );
 
 const everything = (_item: BacklogItem): boolean => true;

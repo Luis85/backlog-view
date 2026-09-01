@@ -135,11 +135,13 @@ appear on the screen the gesture was made from — a press that reads as having 
 `src/view/release/scopeCreate.ts` is the whole of it: the two listeners, the menu, the title
 prompt and the one function that creates. It is DELEGATED onto the tree element rather than
 wired per row, and wired by `src/view/release/renderScope.ts` as a third step beside
-`src/view/release/scopeKeys.ts` — that module already holds the draw and the plan settings,
-so the leaves stay acyclic, and `drawRow` in `src/view/release/scopeTree.ts` already takes the
-five arguments lint allows and could not have carried a sixth.
+`src/view/scopeKeys.ts` (the shared keyboard, moved out of this view's own directory in
+Task 7 of [[Assigned work in the sidebar]] once the assigned-work tree needed it too) —
+that module already holds the draw and the plan settings, so the leaves stay acyclic, and
+`drawRow` in `src/view/release/scopeTree.ts` already takes the five arguments lint allows
+and could not have carried a sixth.
 
-The keyboard's half reads `ReleaseView.activeScopeFile` rather than an index of its own, so
+The keyboard's half reads `ReleaseView.activeRowFile` rather than an index of its own, so
 the two controllers on one tree cannot disagree about which row is active.
 
 What may be created is `childTypeChoices` (`src/domain/itemTypes.ts`), the same ladder question

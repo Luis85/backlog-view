@@ -13,13 +13,13 @@ import {
 	ViewPrefs,
 } from '../storage/viewStateStore';
 import { movedPath, resolveViewIdentity, ViewIdentity } from '../storage/viewIdentity';
-import { CARD_SCOPE, foldKeyPaths, movedFoldKey, notePath, RELEASE_FOLD, TIMELINE_SCOPE } from '../storage/foldKeys';
+import { CARD_SCOPE, foldKeyPaths, movedFoldKey, notePath, TIMELINE_SCOPE } from '../storage/foldKeys';
 import { BacklogViewHost, ColumnScope, Projection } from './host';
 
 // Re-exported rather than moved at every call site: eight modules and three suites name
 // these prefixes from here, and the constants did not change — only which layer defines
 // them. See `storage/foldKeys.ts` for why that layer is the right one.
-export { CARD_SCOPE, RELEASE_FOLD, TIMELINE_SCOPE } from '../storage/foldKeys';
+export { CARD_SCOPE, MYWORK_FOLD, RELEASE_FOLD, TIMELINE_SCOPE } from '../storage/foldKeys';
 
 /**
  * The stored `mode` value for each projection, null for the tree — a `Record` rather
@@ -132,26 +132,29 @@ function movedColumnKey(key: string, oldPath: string, newPath: string): string |
  * makes is exactly what stops it running again.
  */
 // NOT exported. `flush()`'s own vault-existence prune (below) always discards a
-// `RELEASE_FOLD` compound before it can reach storage, whether or not this guard runs —
-// the two never disagree at the persisted result, only in the Sets between `restore()`
-// and the next flush, which nothing outside this module can read. The guard stays
-// anyway: it costs one line and keeps this migration and `seedCardScope` beside it
-// symmetric for the next reader, but its effect is unobservable from outside the
-// module, and exporting production code to let a test watch an unobservable effect buys
-// a green line at the cost of a wider surface — the module's own boundary is worth more
-// than that one assertion. `seedCardScope`'s identical-looking guard is not the same
-// case and keeps its own direct test: its `notePath` reduction seeds a REAL note's card
-// as collapsed, which DOES reach disk, so that one is checked through a saved view.
+// two-path scoped key (`RELEASE_FOLD`, `MYWORK_FOLD`) before it can reach storage,
+// whether or not this guard runs — the two never disagree at the persisted result, only
+// in the Sets between `restore()` and the next flush, which nothing outside this module
+// can read. The guard stays anyway: it costs one line and keeps this migration and
+// `seedCardScope` beside it symmetric for the next reader, but its effect is
+// unobservable from outside the module, and exporting production code to let a test
+// watch an unobservable effect buys a green line at the cost of a wider surface — the
+// module's own boundary is worth more than that one assertion. `seedCardScope`'s
+// identical-looking guard is not the same case and keeps its own direct test: its
+// `notePath` reduction seeds a REAL note's card as collapsed, which DOES reach disk, so
+// that one is checked through a saved view.
 function seedTimelineScope(collapsed: Set<string>, settled: Set<string>): void {
 	const keys = [...settled];
 	if (keys.some((key) => key.startsWith(TIMELINE_SCOPE))) return;
 	for (const key of keys) {
-		// `RELEASE_FOLD` is new on this branch, so no entry it wrote predates the
-		// dated axis's own scope — there is nothing here for this one-time carry to
-		// recover. Left in, it mints a `TIMELINE_SCOPE + RELEASE_FOLD…` compound that
-		// names no note and can never match anything again, while still spending a
-		// slot against `MAX_FOLDS`.
-		if (key.startsWith(RELEASE_FOLD)) continue;
+		// Every two-path scoped prefix is new on this branch, so no entry any of them
+		// wrote predates the dated axis's own scope — there is nothing here for this
+		// one-time carry to recover. Left in, it mints a `TIMELINE_SCOPE + <scope>…`
+		// compound that names no note and can never match anything again, while still
+		// spending a slot against `MAX_FOLDS`. `foldKeyPaths(key).length > 1` is exactly
+		// "carries a scope path besides its member" — the same predicate a third scoped
+		// prefix would satisfy with no further row here.
+		if (foldKeyPaths(key).length > 1) continue;
 		settled.add(TIMELINE_SCOPE + key);
 		if (collapsed.has(key)) collapsed.add(TIMELINE_SCOPE + key);
 	}
@@ -181,12 +184,12 @@ function seedCardScope(collapsed: Set<string>, settled: Set<string>): void {
 	const keys = [...settled];
 	if (keys.some((key) => key.startsWith(CARD_SCOPE))) return;
 	const expanded = (key: string): boolean => settled.has(key) && !collapsed.has(key);
-	// Same exclusion as `seedTimelineScope`, for the same reason: a release fold
-	// predates neither scope, so there is no prior card bit to recover from it.
-	// `notePath` reduces it to the bare MEMBER path, so left in, folding a note on a
-	// release's own screen would seed that same note's card as collapsed on the
-	// backlog view too — a fold the reader never made there.
-	for (const path of new Set(keys.filter((key) => !key.startsWith(RELEASE_FOLD)).map(notePath))) {
+	// Same exclusion as `seedTimelineScope`, for the same reason: a two-path scoped fold
+	// (`RELEASE_FOLD`, `MYWORK_FOLD`) predates neither scope, so there is no prior card
+	// bit to recover from it. `notePath` reduces it to the bare MEMBER path, so left in,
+	// folding a note on a release's or a person's own screen would seed that same note's
+	// card as collapsed on the backlog view too — a fold the reader never made there.
+	for (const path of new Set(keys.filter((key) => foldKeyPaths(key).length === 1).map(notePath))) {
 		settled.add(CARD_SCOPE + path);
 		if (!expanded(path) && !expanded(TIMELINE_SCOPE + path)) collapsed.add(CARD_SCOPE + path);
 	}
@@ -327,6 +330,27 @@ export class ViewState {
 
 	setReleasePref(path: string | null): void {
 		this.setPref('release', path);
+	}
+
+	/**
+	 * The person whose work is on screen, as the reader LEFT it — `releasePref`'s own two
+	 * halves, for the my-work view's own pick: this module never resolves the path (whether
+	 * it still names a `Resource` is the my-work view's question, asked on every render),
+	 * and {@link renameScoped} carries it when the note moves so a rename does not read as
+	 * a deletion. And `renameScoped` is not the only carry — `storage/viewStateStore.ts`'s
+	 * `renamePathPrefs` walks every stored entry whatever view is loaded, for the ordinary
+	 * case where the my-work view is the one on screen. This one is still needed beside it
+	 * for `releasePref`'s own reason: a view whose type was switched to the backlog view
+	 * keeps its identity and its entry, and `flush` writes `prefs` back wholesale — a
+	 * stale in-memory `person` would overwrite the stored walk's correct answer the next
+	 * time this controller saves (fix round 2, PR #234).
+	 */
+	personPref(): string | null {
+		return this.prefs.person ?? null;
+	}
+
+	setPersonPref(path: string | null): void {
+		this.setPref('person', path);
 	}
 
 	/**
@@ -664,8 +688,8 @@ export class ViewState {
 
 	/**
 	 * The stored values that hold a note path without being a fold KEYED by one: the
-	 * iteration this board is scoped to, the release whose screen is open, and the column
-	 * folds keyed by that same iteration path.
+	 * iteration this board is scoped to, the release whose screen is open, the person the
+	 * my-work view has picked, and the column folds keyed by that same iteration path.
 	 *
 	 * Out of line from the loop above rather than merged into it, because they are a
 	 * different question asked of a different collection — that loop walks `settled`,
@@ -675,10 +699,11 @@ export class ViewState {
 	 * worse than merely silent — a stale path resolves to no release, so a renamed note
 	 * drops the reader to the index indistinguishably from a deleted one.
 	 *
-	 * The STORE has a walk of its own over the same two values (`renamePathPrefs`, wired
+	 * The STORE has a walk of its own over the same three values (`renamePathPrefs`, wired
 	 * at the plugin), and this is not a duplicate of it: that one covers every stored
 	 * entry whatever view is loaded, this one covers the in-memory `prefs` that `flush`
-	 * writes back wholesale. Neither replaces the other — see `releasePref` above.
+	 * writes back wholesale. Neither replaces the other — see `releasePref` and
+	 * `personPref` above.
 	 */
 	private renameScoped(oldPath: string, newPath: string): boolean {
 		let changed = false;
@@ -693,6 +718,7 @@ export class ViewState {
 		};
 		carry(this.boardScope(), (path) => this.setBoardScope(path));
 		carry(this.releasePref(), (path) => this.setReleasePref(path));
+		carry(this.personPref(), (path) => this.setPersonPref(path));
 		for (const set of [this.foldedColumns, this.openedColumns]) {
 			for (const key of [...set]) {
 				const moved = movedColumnKey(key, oldPath, newPath);

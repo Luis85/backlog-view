@@ -9,8 +9,8 @@ import {
 	closingFieldsMoved,
 	ReleaseRow,
 	ReleaseScope,
-	ScopeRow,
 } from '../../domain/releases';
+import { ScopeRow } from '../../domain/scopeRows';
 import { ReleaseSettings } from '../../domain/releaseOptions';
 import { releaseClosureWrites } from '../../domain/releaseWritePlan';
 import { ownWorkflowReading } from '../../domain/board';

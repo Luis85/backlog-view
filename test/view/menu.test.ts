@@ -1,7 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import { ProductBacklogView } from '../../src/view/backlogView';
-import { FakeVault, FakeViewConfig } from '../helpers/vault';
+import { FakeVault } from '../helpers/vault';
 import { Menu } from '../helpers/obsidian-mock';
 import { clickExpandAll, fixture, flush, key, makeView, refresh, rowByTitle, treeOf, useViewHarness } from '../helpers/view';
 import { cardByTitle } from '../helpers/board';
@@ -357,16 +356,7 @@ describe('move commands in a group holding a context row', () => {
 		vault.addFile('Feature A.md', { frontmatter: { type: 'Feature', order: 20 }, parentLink: 'Epic' });
 		vault.addFile('Feature B.md', { frontmatter: { type: 'Feature', order: 30 }, parentLink: 'Epic' });
 		vault.addFile('PBI.md', { frontmatter: { type: 'PBI', order: 40 }, parentLink: 'Feature A' });
-		const containerEl = document.body.createDiv();
-		const view = new ProductBacklogView({} as never, containerEl);
-		const anyView = view as unknown as Record<string, unknown>;
-		anyView.app = vault.app;
-		anyView.config = new FakeViewConfig({});
-		anyView.data = {
-			data: vault.entries().filter((e) => ['Feature B.md', 'PBI.md'].includes(e.file.path)),
-		};
-		view.onDataUpdated();
-		clickExpandAll(containerEl);
+		const { view, containerEl } = makeView(vault, {}, { only: ['Feature B.md', 'PBI.md'] });
 		return { view, containerEl, vault };
 	}
 

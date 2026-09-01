@@ -21,7 +21,7 @@ describe('creating a child from a release scope row', () => {
 	/** Right-click a row and hand back the menu it opened, or fail naming the row. */
 	function openMenu(view: { viewEl: HTMLElement }, path: string): Menu {
 		Menu.forget();
-		const rowEl = row(view as never, path)!;
+		const rowEl = row(view, path);
 		rowEl.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }));
 		if (!Menu.lastShown) throw new Error(`no menu opened on ${path}`);
 		return Menu.lastShown;
@@ -354,7 +354,7 @@ describe('creating a child from a release scope row', () => {
 
 		// The context row IS drawn — the guard has to be about what it offers, not about
 		// whether the row is there.
-		const suiteEl = row(view, 'Suite.md')!;
+		const suiteEl = row(view, 'Suite.md');
 		Menu.forget();
 		suiteEl.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }));
 		expect(Menu.lastShown).toBeNull();
@@ -436,14 +436,14 @@ describe('creating a child from a release scope row', () => {
 
 	it('unfolds the parent it created under, so the new child is not written out of sight', async () => {
 		const { view } = mountFoldScope({ pick: 'Releases/0.8.md' });
-		row(view, 'Passwordless sign-in.md')!.querySelector<HTMLElement>('.pbl-twisty')!.click();
-		expect(row(view, 'Passwordless sign-in.md')!.getAttribute('aria-expanded')).toBe('false');
+		row(view, 'Passwordless sign-in.md').querySelector<HTMLElement>('.pbl-twisty')!.click();
+		expect(row(view, 'Passwordless sign-in.md').getAttribute('aria-expanded')).toBe('false');
 
 		const menu = openMenu(view, 'Passwordless sign-in.md');
 		menu.items.find((item) => item.titleText === 'New Feature')!.click();
 		submitPrompt({ title: 'Passkey sign-in' });
 		await flush();
 
-		expect(row(view, 'Passwordless sign-in.md')!.getAttribute('aria-expanded')).toBe('true');
+		expect(row(view, 'Passwordless sign-in.md').getAttribute('aria-expanded')).toBe('true');
 	});
 });

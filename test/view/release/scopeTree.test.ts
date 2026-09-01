@@ -2,8 +2,8 @@
 import { describe, expect, it } from 'vitest';
 import { active, mountFoldScope, row, twisty } from '../../helpers/release';
 import { useViewHarness } from '../../helpers/view';
-import { foldedPaths, hideDoneOn, setAllFolds, setHideDone, toggleFold } from '../../../src/view/release/scopeTree';
-import { ScopeRow } from '../../../src/domain/releases';
+import { hideDoneOn, releaseFoldedPaths, setAllReleaseFolds, setHideDone, toggleReleaseFold } from '../../../src/view/release/scopeTree';
+import { ScopeRow } from '../../../src/domain/scopeRows';
 import { loadViewState, renamePathFolds, saveViewState } from '../../../src/storage/viewStateStore';
 import { resolveViewIdentity } from '../../../src/storage/viewIdentity';
 
@@ -18,10 +18,10 @@ describe('the scope tree', () => {
 
 	it('draws a disclosure on a row with children and a placeholder on a leaf', () => {
 		const { view } = mountFoldScope({ pick: 'Releases/0.8.md' });
-		const parent = row(view, 'Passwordless sign-in.md')!;
+		const parent = row(view, 'Passwordless sign-in.md');
 		expect(parent.querySelector('.pbl-twisty')).not.toBeNull();
 		expect(parent.getAttribute('aria-expanded')).toBe('true');
-		const leaf = row(view, 'Send the magic link.md')!;
+		const leaf = row(view, 'Send the magic link.md');
 		// The gutter is held so a level's titles share one x — but it announces nothing.
 		expect(leaf.querySelector('.pbl-twisty-leaf')).not.toBeNull();
 		expect(leaf.hasAttribute('aria-expanded')).toBe(false);
@@ -40,7 +40,7 @@ describe('the scope tree', () => {
 		renamePathFolds(view.app, 'Passwordless sign-in.md', 'Magic links.md');
 		view.onDataUpdated();
 
-		expect(row(view, 'Magic links.md')!.getAttribute('aria-expanded')).toBe('false');
+		expect(row(view, 'Magic links.md').getAttribute('aria-expanded')).toBe('false');
 	});
 
 	it('carries a folded row through a rename of the RELEASE its fold is scoped to', () => {
@@ -53,8 +53,8 @@ describe('the scope tree', () => {
 
 		renamePathFolds(view.app, 'Releases/0.8.md', 'Releases/0.8.1.md');
 
-		expect([...foldedPaths(view, 'Releases/0.8.1.md')]).toEqual(['Passwordless sign-in.md']);
-		expect(foldedPaths(view, 'Releases/0.8.md').size).toBe(0);
+		expect([...releaseFoldedPaths(view, 'Releases/0.8.1.md')]).toEqual(['Passwordless sign-in.md']);
+		expect(releaseFoldedPaths(view, 'Releases/0.8.md').size).toBe(0);
 	});
 
 	it('carries a folder move above the release, which is the only event a folder reports', () => {
@@ -63,7 +63,7 @@ describe('the scope tree', () => {
 
 		renamePathFolds(view.app, 'Releases', 'Archive/Releases');
 
-		expect([...foldedPaths(view, 'Archive/Releases/0.8.md')]).toEqual(['Passwordless sign-in.md']);
+		expect([...releaseFoldedPaths(view, 'Archive/Releases/0.8.md')]).toEqual(['Passwordless sign-in.md']);
 	});
 
 	it('folds the same ancestor independently in two releases', () => {
@@ -72,40 +72,40 @@ describe('the scope tree', () => {
 		const { view } = mountFoldScope({ pick: 'Releases/0.8.md' });
 		twisty(view, 'Sign-up flow.md').click();
 		view.pick('Releases/0.9.md');
-		expect(row(view, 'Sign-up flow.md')!.getAttribute('aria-expanded')).toBe('true');
+		expect(row(view, 'Sign-up flow.md').getAttribute('aria-expanded')).toBe('true');
 		view.pick('Releases/0.8.md');
-		expect(row(view, 'Sign-up flow.md')!.getAttribute('aria-expanded')).toBe('false');
+		expect(row(view, 'Sign-up flow.md').getAttribute('aria-expanded')).toBe('false');
 	});
 
 	it('folding hides the descendants and persists across a data update, and a second click reopens it', () => {
 		const { view } = mountFoldScope({ pick: 'Releases/0.8.md' });
 		twisty(view, 'Passwordless sign-in.md').click();
 		expect(row(view, 'Send the magic link.md', { optional: true })).toBeNull();
-		expect(row(view, 'Passwordless sign-in.md')!.getAttribute('aria-expanded')).toBe('false');
+		expect(row(view, 'Passwordless sign-in.md').getAttribute('aria-expanded')).toBe('false');
 		view.onDataUpdated();
 		expect(row(view, 'Send the magic link.md', { optional: true })).toBeNull();
-		// The other half of `toggleFold` — closing what a first click opened, folded here
+		// The other half of `toggleReleaseFold` — closing what a first click opened, folded here
 		// with an existing fold already stored, is what covers `writeFolds` carrying every
 		// OTHER release's key forward through a non-empty list rather than an empty one.
 		twisty(view, 'Passwordless sign-in.md').click();
 		expect(row(view, 'Send the magic link.md', { optional: true })).not.toBeNull();
-		expect(row(view, 'Passwordless sign-in.md')!.getAttribute('aria-expanded')).toBe('true');
+		expect(row(view, 'Passwordless sign-in.md').getAttribute('aria-expanded')).toBe('true');
 	});
 
-	it('toggleFold flips one path in one release’s own set', () => {
+	it('toggleReleaseFold flips one path in one release’s own set', () => {
 		// The disclosure's own click handler calls this directly — driven here through the
 		// same function the click reaches, rather than only through the button, so a caller
 		// outside the click (a future keyboard shortcut, Task 5's own bulk control) has one
 		// function to reach for rather than a DOM click nothing else in this plugin fakes.
 		const { view } = mountFoldScope({ pick: 'Releases/0.8.md' });
-		expect(foldedPaths(view, 'Releases/0.8.md').has('Passwordless sign-in.md')).toBe(false);
-		toggleFold(view, 'Releases/0.8.md', 'Passwordless sign-in.md');
-		expect(foldedPaths(view, 'Releases/0.8.md').has('Passwordless sign-in.md')).toBe(true);
-		toggleFold(view, 'Releases/0.8.md', 'Passwordless sign-in.md');
-		expect(foldedPaths(view, 'Releases/0.8.md').has('Passwordless sign-in.md')).toBe(false);
+		expect(releaseFoldedPaths(view, 'Releases/0.8.md').has('Passwordless sign-in.md')).toBe(false);
+		toggleReleaseFold(view, 'Releases/0.8.md', 'Passwordless sign-in.md');
+		expect(releaseFoldedPaths(view, 'Releases/0.8.md').has('Passwordless sign-in.md')).toBe(true);
+		toggleReleaseFold(view, 'Releases/0.8.md', 'Passwordless sign-in.md');
+		expect(releaseFoldedPaths(view, 'Releases/0.8.md').has('Passwordless sign-in.md')).toBe(false);
 	});
 
-	it('setAllFolds folds or unfolds every row THIS scope drew, scoped to its release', () => {
+	it('setAllReleaseFolds folds or unfolds every row THIS scope drew, scoped to its release', () => {
 		// Task 5's own control, exercised directly here since nothing on screen calls it
 		// yet — the real fixture's own shape (`Passwordless sign-in.md` a parent, its two
 		// children leaves), not an arbitrary one, so `depth` says exactly what a real
@@ -116,15 +116,15 @@ describe('the scope tree', () => {
 			{ item: { file: { path: 'Send the magic link.md' } }, depth: 1 },
 			{ item: { file: { path: 'Expire the link.md' } }, depth: 1 },
 		].map((row) => row as unknown as ScopeRow);
-		setAllFolds(view, 'Releases/0.8.md', scopeRows, true);
+		setAllReleaseFolds(view, 'Releases/0.8.md', scopeRows, true);
 		// Only the PARENT gets a key. A leaf has no disclosure to close, so a fold key for
 		// one is a fold nothing can ever act on — and `folds.collapsed` spends from one
 		// shared, CAPPED budget (`MAX_FOLDS`, `storage/viewStateStore.ts`) across every
 		// scope this saved view holds, so a key that buys nothing still costs a slot a
 		// real fold elsewhere could have used.
-		expect(foldedPaths(view, 'Releases/0.8.md')).toEqual(new Set(['Passwordless sign-in.md']));
-		setAllFolds(view, 'Releases/0.8.md', scopeRows, false);
-		expect(foldedPaths(view, 'Releases/0.8.md').size).toBe(0);
+		expect(releaseFoldedPaths(view, 'Releases/0.8.md')).toEqual(new Set(['Passwordless sign-in.md']));
+		setAllReleaseFolds(view, 'Releases/0.8.md', scopeRows, false);
+		expect(releaseFoldedPaths(view, 'Releases/0.8.md').size).toBe(0);
 	});
 
 	it('keeps a fold made while the budget is already full', () => {
@@ -141,21 +141,21 @@ describe('the scope tree', () => {
 
 		twisty(view, 'Passwordless sign-in.md').click();
 
-		expect(foldedPaths(view, 'Releases/0.8.md')).toContain('Passwordless sign-in.md');
+		expect(releaseFoldedPaths(view, 'Releases/0.8.md')).toContain('Passwordless sign-in.md');
 	});
 
 	it('keeps a folded parent’s own rollup', () => {
 		// The rollup is over the subtree, never over what is drawn: folding is a render
 		// decision and must not change a number.
 		const { view } = mountFoldScope({ pick: 'Releases/0.8.md' });
-		const before = row(view, 'Passwordless sign-in.md')!.querySelector('.pbl-progress-label')!.textContent;
+		const before = row(view, 'Passwordless sign-in.md').querySelector('.pbl-progress-label')!.textContent;
 		twisty(view, 'Passwordless sign-in.md').click();
-		expect(row(view, 'Passwordless sign-in.md')!.querySelector('.pbl-progress-label')!.textContent).toBe(before);
+		expect(row(view, 'Passwordless sign-in.md').querySelector('.pbl-progress-label')!.textContent).toBe(before);
 	});
 
 	it('a click on the row opens the note; a click on the disclosure does not', () => {
 		const { view, vault } = mountFoldScope({ pick: 'Releases/0.8.md' });
-		row(view, 'Expire the link.md')!.click();
+		row(view, 'Expire the link.md').click();
 		expect(vault.opened.map((o) => o.path)).toEqual(['Expire the link.md']);
 		twisty(view, 'Passwordless sign-in.md').click();
 		expect(vault.opened.map((o) => o.path)).toEqual(['Expire the link.md']);
@@ -171,7 +171,7 @@ describe('the scope tree', () => {
 	 */
 	it('a middle click opens the note in a new tab; the disclosure is exempt', () => {
 		const { view, vault } = mountFoldScope({ pick: 'Releases/0.8.md' });
-		row(view, 'Expire the link.md')!.dispatchEvent(new MouseEvent('auxclick', { button: 1, bubbles: true }));
+		row(view, 'Expire the link.md').dispatchEvent(new MouseEvent('auxclick', { button: 1, bubbles: true }));
 		expect(vault.opened).toEqual([{ path: 'Expire the link.md', mode: 'tab' }]);
 
 		twisty(view, 'Passwordless sign-in.md').dispatchEvent(new MouseEvent('auxclick', { button: 1, bubbles: true }));
@@ -180,14 +180,14 @@ describe('the scope tree', () => {
 
 	it('a right click through auxclick opens nothing — only the middle button does', () => {
 		const { view, vault } = mountFoldScope({ pick: 'Releases/0.8.md' });
-		row(view, 'Expire the link.md')!.dispatchEvent(new MouseEvent('auxclick', { button: 2, bubbles: true }));
+		row(view, 'Expire the link.md').dispatchEvent(new MouseEvent('auxclick', { button: 2, bubbles: true }));
 		expect(vault.opened).toEqual([]);
 	});
 
 	it('a context row carries no rollup or state chip, folded or not', () => {
 		// The context-row rule: it renders, it parents, and that is all.
 		const { view } = mountFoldScope({ pick: 'Releases/0.8.md' });
-		const el = row(view, 'Sign-up flow.md')!;
+		const el = row(view, 'Sign-up flow.md');
 		expect(el.querySelector('.pbl-progress')).toBeNull();
 		expect(el.querySelector('.pbl-state-chip')).toBeNull();
 	});

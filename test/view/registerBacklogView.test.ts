@@ -3,9 +3,9 @@ import { describe, expect, it } from 'vitest';
 import type { BasesViewRegistration } from 'obsidian';
 import { registerBacklogView } from '../../src/view/registerBacklogView';
 import { WriteLock } from '../../src/view/writeLock';
-import { PRODUCT_BACKLOG_VIEW_TYPE } from '../../src/view/backlogView';
+import { PRODUCT_BACKLOG_VIEW_TYPE, type ProductBacklogView } from '../../src/view/backlogView';
 import { useViewHarness, fixture, makeView, captureRegistrations } from '../helpers/view';
-import { FakeViewConfig } from '../helpers/vault';
+import { fakeController, FakeViewConfig, mountView } from '../helpers/vault';
 
 useViewHarness();
 
@@ -14,7 +14,7 @@ describe('registerBacklogView', () => {
 		const { plugin: fakePlugin, specs } = captureRegistrations<BasesViewRegistration>();
 
 		const lock = new WriteLock();
-		registerBacklogView(fakePlugin as never, lock);
+		registerBacklogView(fakePlugin, lock);
 
 		expect(specs.has(PRODUCT_BACKLOG_VIEW_TYPE)).toBe(true);
 		const spec = specs.get(PRODUCT_BACKLOG_VIEW_TYPE)!;
@@ -28,25 +28,22 @@ describe('registerBacklogView', () => {
 
 		// Register and capture the spec
 		const { plugin: fakePlugin, specs } = captureRegistrations<BasesViewRegistration>();
-		registerBacklogView(fakePlugin as never, lockA);
+		registerBacklogView(fakePlugin, lockA);
 		const spec = specs.get(PRODUCT_BACKLOG_VIEW_TYPE)!;
 
 		// Create first view via factory
 		const containerA = document.body.createDiv();
-		const viewA = spec.factory!({} as never, containerA) as unknown as Record<string, unknown>;
+		const viewA = spec.factory(fakeController(), containerA);
 
-		// Set up the necessary properties like makeView does
-		viewA.app = vault.app;
-		viewA.config = new FakeViewConfig({});
-		viewA.data = { data: vault.entries() };
-		(viewA as any).onDataUpdated();
+		// Everything Bases delivers between construction and the first render.
+		mountView(viewA, vault, new FakeViewConfig({}), vault.entries());
 
 		// Create a second view with the SAME lock using makeView
 		const { view: viewB } = makeView(vault, {}, { lock: lockA });
 
 		// Write through view A (factory-built) via applySafely
 		const fileOf = (path: string) => vault.entries().find((e) => e.file.path === path)!.file;
-		await (viewA as any).applySafely([{ file: fileOf('Epic A.md'), order: 99 }]);
+		await (viewA as unknown as { applySafely: ProductBacklogView['applySafely'] }).applySafely([{ file: fileOf('Epic A.md'), order: 99 }]);
 
 		// Observable proof: viewB can undo a write that viewA made
 		// This proves the factory view received the same lock, not a private one

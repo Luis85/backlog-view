@@ -15,7 +15,7 @@ beforeEach(() => {
 
 function open(options: Partial<ConfirmOptions> & { onConfirm: () => void }) {
 	const vault = new FakeVault();
-	openConfirm(vault.app as never, {
+	openConfirm(vault.app, {
 		title: 'Release 0.9?',
 		message: '2 members are not finished',
 		cta: 'Release',

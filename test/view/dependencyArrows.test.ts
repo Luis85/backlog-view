@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { FakeVault } from '../helpers/vault';
 import { useViewHarness } from '../helpers/view';
-import { markersLane, markFor, roadmapView, rowFor, shelfOf, shelfTitles, timelineRows } from '../helpers/roadmap';
+import { markersLane, markFor, roadmapView, rowFor, shelfOf, shelfTitles, timelineRowEls } from '../helpers/roadmap';
 
 /**
  * The arrow layer on the dated axis — `renderDependencyArrows` in
@@ -65,7 +65,7 @@ function stackRows(height = 30): void {
 		if (!this.classList.contains('pbl-timeline-row')) return real.call(this);
 		const rows = Array.from(this.parentElement?.querySelectorAll('.pbl-timeline-row') ?? []);
 		const top = rows.indexOf(this) * height;
-		return { top, bottom: top + height, height, left: 0, right: 100, width: 100, x: 0, y: top, toJSON: () => ({}) } as DOMRect;
+		return { top, bottom: top + height, height, left: 0, right: 100, width: 100, x: 0, y: top, toJSON: () => ({}) };
 	};
 }
 
@@ -80,7 +80,7 @@ describe('one element per edge', () => {
 		vault.addFile('D.md', { frontmatter: { type: 'PBI', order: 40, start: '2026-09-10', due: '2026-09-20' } });
 		const { containerEl } = roadmapView(vault, { ...DATES });
 
-		expect(timelineRows(containerEl)).toHaveLength(4);
+		expect(timelineRowEls(containerEl)).toHaveLength(4);
 		expect(arrows(containerEl)).toHaveLength(1);
 	});
 
@@ -95,7 +95,7 @@ describe('one element per edge', () => {
 		});
 		const { containerEl } = roadmapView(vault, { ...DATES });
 
-		expect(timelineRows(containerEl)).toHaveLength(1);
+		expect(timelineRowEls(containerEl)).toHaveLength(1);
 		expect(arrows(containerEl)).toHaveLength(0);
 	});
 
@@ -111,7 +111,7 @@ describe('one element per edge', () => {
 		});
 		const { containerEl } = roadmapView(vault, { ...DATES });
 
-		expect(timelineRows(containerEl)).toHaveLength(2);
+		expect(timelineRowEls(containerEl)).toHaveLength(2);
 		expect(arrows(containerEl)).toHaveLength(0);
 	});
 });
@@ -457,7 +457,7 @@ describe('nothing about the layer is focusable or written', () => {
 		expect(layer?.querySelectorAll('[role]')).toHaveLength(0);
 		// One selection stop per row, unchanged by the arrow layer: still one id'd row
 		// per bar, nothing else added to the roving-selection surface.
-		expect(containerEl.querySelectorAll('[role="option"]')).toHaveLength(timelineRows(containerEl).length);
+		expect(containerEl.querySelectorAll('[role="option"]')).toHaveLength(timelineRowEls(containerEl).length);
 	});
 
 	it('writes nothing at all while rendering with the dependency key bound', () => {
@@ -487,7 +487,7 @@ describe('a doubling-back route crosses a row boundary, never a row', () => {
 
 		const d = arrows(containerEl)[0]?.getAttribute('d') ?? '';
 		const verticals = [...d.matchAll(/V (-?\d+)/g)].map((m) => Number(m[1]));
-		const centres = timelineRows(containerEl).map((_row, i) => i * 30 + 15);
+		const centres = timelineRowEls(containerEl).map((_row, i) => i * 30 + 15);
 		// Two of them, and they are different claims. The FIRST is the lane the run
 		// doubles back along, and a row's own centre is exactly what it must not be: the
 		// layer paints behind the bars, so a run there is hidden by the very bar it was

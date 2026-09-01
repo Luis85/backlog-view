@@ -47,7 +47,7 @@ export function submitAbsence(fields: { resource?: string; start: string; target
 	const modal = Modal.lastOpened;
 	if (!modal) throw new Error('prompt not opened');
 	if (fields.resource !== undefined) {
-		const select = modal.contentEl.querySelector('select') as HTMLSelectElement | null;
+		const select = modal.contentEl.querySelector('select');
 		if (select) {
 			select.value = fields.resource;
 			select.dispatchEvent(new Event('change', { bubbles: true }));
@@ -57,7 +57,7 @@ export function submitAbsence(fields: { resource?: string; start: string; target
 	const values = [fields.start, fields.target];
 	inputs.forEach((input, i) => {
 		if (values[i] === undefined) return;
-		input.value = values[i] as string;
+		input.value = values[i];
 		input.dispatchEvent(new Event('input', { bubbles: true }));
 	});
 	submitButton(modal)?.dispatchEvent(new MouseEvent('click', { bubbles: true }));

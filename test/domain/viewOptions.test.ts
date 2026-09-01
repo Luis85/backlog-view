@@ -14,8 +14,8 @@ import { MARK, markedCatalog } from '../i18n/fixtures';
  * much as a coverage exercise.
  */
 /** Stand-in for BasesViewConfig backed by a plain object. */
-function fakeConfig(values: Record<string, unknown> = {}) {
-	return { get: (key: string) => values[key], getAsPropertyId: () => null } as never;
+function fakeConfig(values: Record<string, unknown> = {}): FakeViewConfig {
+	return new FakeViewConfig(values);
 }
 
 describe('getViewOptions', () => {

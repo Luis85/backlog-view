@@ -1,9 +1,8 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import { FakeVault, FakeViewConfig } from '../helpers/vault';
+import { FakeVault } from '../helpers/vault';
 import { Menu, Notice } from '../helpers/obsidian-mock';
-import { ProductBacklogView } from '../../src/view/backlogView';
-import { clickExpandAll, flush, Harness, makeView, rowByTitle, submitPrompt, useViewHarness } from '../helpers/view';
+import { flush, Harness, makeView, rowByTitle, submitPrompt, useViewHarness } from '../helpers/view';
 
 useViewHarness();
 
@@ -202,16 +201,7 @@ describe('tag editing', () => {
 		const vault = new FakeVault();
 		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 10, tags: ['outside'] } });
 		vault.addFile('PBI.md', { frontmatter: { type: 'PBI', order: 10, tags: ['alpha'] }, parentLink: 'Epic' });
-		const containerEl = document.body.createDiv();
-		const view = new ProductBacklogView({} as never, containerEl);
-		const anyView = view as unknown as Record<string, unknown>;
-		anyView.app = vault.app;
-		const config = new FakeViewConfig({});
-		config.order = ['note.tags'];
-		anyView.config = config;
-		anyView.data = { data: vault.entries().filter((e) => e.file.path === 'PBI.md') };
-		view.onDataUpdated();
-		clickExpandAll(containerEl);
+		const { containerEl } = makeView(vault, {}, { only: ['PBI.md'], order: ['note.tags'] });
 
 		const epic = rowByTitle(containerEl, 'Epic');
 		expect(tagsOf(containerEl, 'Epic')).toEqual(['#outside']);

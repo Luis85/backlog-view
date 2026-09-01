@@ -4,7 +4,7 @@ import { assembleStyles } from '../../scripts/styles-assemble.mjs';
 import { FakeVault } from '../helpers/vault';
 import { ALL_TYPES, EXTRA_TYPES, ITERATION_TYPE, MARKER_TYPES, RELEASE_TYPE } from '../../src/domain/typeVocabulary';
 import { Menu, Notice } from '../helpers/obsidian-mock';
-import { clickExpandAll, drag, fixture, flush, key, makeView, rowByTitle, rows, titlesOf, treeOf, useViewHarness } from '../helpers/view';
+import { clickExpandAll, drag, fixture, flush, itemAt, key, makeView, rowByTitle, rows, titlesOf, treeOf, useViewHarness } from '../helpers/view';
 import { inCatalog, ladderFor } from '../../src/domain/itemTypes';
 import { badgeStyleFor } from '../../src/view/render/badges';
 
@@ -783,7 +783,7 @@ describe('targeted subtree rendering', () => {
 	it('drops the collapsed subtree from the selection index', () => {
 		const { view, containerEl } = makeView(fixture());
 		const tree = treeOf(containerEl);
-		view.selectItem(view.model?.byPath.get('Feature B1.md') as never);
+		view.selectItem(itemAt(view, 'Feature B1.md'));
 		expect(tree.getAttribute('aria-activedescendant')).not.toBeNull();
 
 		rowByTitle(containerEl, 'Epic B')

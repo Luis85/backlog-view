@@ -10,6 +10,7 @@ import { settingsWith } from '../helpers/settings';
 import { defaultSettings } from '../../src/domain/settings';
 import { resolveSettings } from '../../src/domain/settingsResolve';
 import { configProblems } from '../../src/domain/settingsConsistency';
+import { FakeViewConfig } from '../helpers/vault';
 import {
 	adoptableProperties,
 	OPTIONAL_FIELDS,
@@ -19,14 +20,8 @@ import {
 } from '../../src/domain/optionalProperties';
 
 /** Stand-in for BasesViewConfig backed by a plain object. */
-function fakeConfig(values: Record<string, unknown> = {}) {
-	return {
-		get: (key: string) => values[key],
-		getAsPropertyId: (key: string) => {
-			const v = values[key];
-			return typeof v === 'string' && v.includes('.') ? v : null;
-		},
-	} as never;
+function fakeConfig(values: Record<string, unknown> = {}): FakeViewConfig {
+	return new FakeViewConfig(values);
 }
 
 describe('the optional-property table', () => {

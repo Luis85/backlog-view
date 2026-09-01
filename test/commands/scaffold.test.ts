@@ -20,7 +20,7 @@ beforeEach(() => {
 describe('promptCreateBacklogBase', () => {
 	it('prefills the folder, scaffolds the base and opens it', async () => {
 		const vault = new FakeVault();
-		promptCreateBacklogBase(vault.app as never);
+		promptCreateBacklogBase(vault.app);
 		const modal = Modal.lastOpened;
 		if (!modal) throw new Error('prompt not opened');
 

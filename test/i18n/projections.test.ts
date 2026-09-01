@@ -3,6 +3,8 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { Catalog, setLocale } from '../../src/i18n/t';
 import { BOARD_WORKFLOW, boardVault, expandColumns, makeBoard } from '../helpers/board';
 import { installObsidianDom } from '../helpers/dom';
+import { setScopeFlag } from '../../src/view/scopeFolds';
+import { makeMyWorkView, myWorkVault } from '../helpers/mywork';
 import { horizonVault, laneRoadmap, makeRoadmap, roadmapView } from '../helpers/roadmap';
 import { makeReleaseView, RELEASE_CONFIG, releaseVault, scopeVault } from '../helpers/release';
 import { countingVault, resourceVault } from '../helpers/resources';
@@ -512,5 +514,73 @@ describe('the release view reads every word it draws from the catalog', () => {
 		bare.view.pick('R.md');
 		expect(markedAt(bare.containerEl, '.pbl-empty-title')).toHaveLength(1);
 		expect(remainder(bare.containerEl)).toEqual(['R']);
+	});
+});
+
+/**
+ * The my-work view (Task 6 of [[Assigned work in the sidebar]]), the fifth surface this
+ * instrument is pointed at. Its own row is the release scope's shape again — the disclosure
+ * aria-label is `release.scope.collapse`/`release.scope.expand` reused rather than a second
+ * pair of keys — so nothing here is a new shape for this instrument to catch; what earns it
+ * a block is the one new sentence this task lands, `mywork.next`/`mywork.nextTip`.
+ */
+describe('the my-work view reads every word it draws from the catalog', () => {
+	it('leaves nothing but titles and type names unmarked, and marks the Next label', () => {
+		const { view, containerEl } = makeMyWorkView(myWorkVault());
+		view.pick('People/Ada.md');
+
+		expect(markedAt(containerEl, '.pbl-mw-next')).toHaveLength(1);
+		// Every title and every type badge is the notes' own data; nothing else is drawn
+		// unmarked — no state chip, since none of these notes carry a configured state.
+		// `Bo` joins the remainder here (Task 8): the toolbar's own person picker names
+		// every `Resource` the base returned, and an option's TEXT is a person's name —
+		// data, the same as `Ada` already was from the tree's own `aria-label`.
+		expect(remainder(containerEl)).toEqual(['Ada', 'Bo', 'Epic', 'Feature', 'PBI', 'PBI Ada', 'PBI Hidden']);
+	});
+
+	it('draws its state chip from the catalog too, on a done member', () => {
+		const vault = new FakeVault();
+		vault.addFile('People/Ada.md', { frontmatter: { type: 'Resource' } });
+		vault.addFile('PBI.md', { frontmatter: { type: 'PBI', order: 1, assignee: 'Ada', status: 'Done' } });
+		const { view, containerEl } = makeMyWorkView(vault, { stateProperty: 'note.status' });
+		view.pick('People/Ada.md');
+
+		// The state VALUE is data — what `status:` holds in the note — but the icon beside
+		// it carries no text, and nothing marks nothing: a done member with no Next marker
+		// (it is the only member, and it is finished) draws only its title, its type and its
+		// state value unmarked.
+		expect(remainder(containerEl)).toEqual(['Ada', 'Done', 'PBI']);
+	});
+
+	it('draws every empty state from the catalog', () => {
+		// No roster at all.
+		const noRoster = makeMyWorkView(myWorkVault({ resources: false }));
+		expect(markedAt(noRoster.containerEl, '.pbl-empty-title')).toHaveLength(1);
+		expect(remainder(noRoster.containerEl)).toEqual([]);
+
+		// A roster, nobody picked yet — the toolbar (Task 8) draws its picker here too,
+		// naming both `Resource` notes in `myWorkVault()`'s own roster.
+		const noPick = makeMyWorkView(myWorkVault());
+		expect(markedAt(noPick.containerEl, '.pbl-empty-title')).toHaveLength(1);
+		expect(remainder(noPick.containerEl)).toEqual(['Ada', 'Bo']);
+
+		// Picked, nothing assigned to them. Only Ada is on this roster, so the picker
+		// names just her.
+		const noWorkVault = new FakeVault();
+		noWorkVault.addFile('People/Ada.md', { frontmatter: { type: 'Resource' } });
+		const noWork = makeMyWorkView(noWorkVault);
+		noWork.view.pick('People/Ada.md');
+		expect(markedAt(noWork.containerEl, '.pbl-empty-title')).toHaveLength(1);
+		expect(remainder(noWork.containerEl)).toEqual(['Ada']);
+
+		// Everything of theirs is done and hidden.
+		const allDoneVault = new FakeVault();
+		allDoneVault.addFile('People/Ada.md', { frontmatter: { type: 'Resource' } });
+		allDoneVault.addFile('PBI.md', { frontmatter: { type: 'PBI', order: 1, assignee: 'Ada', status: 'Done' } });
+		const allDone = makeMyWorkView(allDoneVault, { stateProperty: 'note.status' });
+		allDone.view.pick('People/Ada.md');
+		setScopeFlag(allDone.view, 'myWorkHideDone', true);
+		expect(markedAt(allDone.containerEl, '.pbl-empty-title')).toHaveLength(1);
+		expect(remainder(allDone.containerEl)).toEqual(['Ada']);
 	});
 });

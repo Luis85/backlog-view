@@ -7,6 +7,7 @@ import {
 	saveViewState,
 	ViewFolds,
 } from '../../src/storage/viewStateStore';
+import { MYWORK_FOLD } from '../../src/storage/foldKeys';
 import { installObsidianDom } from '../helpers/dom';
 import { FakeVault } from '../helpers/vault';
 
@@ -46,12 +47,27 @@ describe('a fold key a saved view remembers', () => {
 	}
 
 	it('renames every key shape a stored entry can hold, in both lists', () => {
-		saveFolds(['a.md', '\u0000card:a.md', '\u0000timeline:a.md', '\u0000release:Releases/0.8.md\u0000a.md'], ['a.md']);
+		saveFolds(
+			[
+				'a.md',
+				'\u0000card:a.md',
+				'\u0000timeline:a.md',
+				'\u0000release:Releases/0.8.md\u0000a.md',
+				`${MYWORK_FOLD}People/Ada.md\u0000a.md`,
+			],
+			['a.md'],
+		);
 
 		renamePathFolds(vault.app, 'a.md', 'b.md');
 
 		const folds = loadViewState(vault.app, FOLD_ID).folds;
-		expect(folds.collapsed).toEqual(['b.md', '\u0000card:b.md', '\u0000timeline:b.md', '\u0000release:Releases/0.8.md\u0000b.md']);
+		expect(folds.collapsed).toEqual([
+			'b.md',
+			'\u0000card:b.md',
+			'\u0000timeline:b.md',
+			'\u0000release:Releases/0.8.md\u0000b.md',
+			`${MYWORK_FOLD}People/Ada.md\u0000b.md`,
+		]);
 		expect(folds.expanded).toEqual(['b.md']);
 	});
 
@@ -64,6 +80,19 @@ describe('a fold key a saved view remembers', () => {
 		renamePathFolds(vault.app, 'Releases/0.8.md', 'Releases/0.8.1.md');
 
 		expect(loadViewState(vault.app, FOLD_ID).folds.collapsed).toEqual(['\u0000release:Releases/0.8.1.md\u0000a.md']);
+	});
+
+	it('moves a mywork fold when the PERSON is renamed, not only the member', () => {
+		// `MYWORK_FOLD`'s own reason for taking a prefix PARAMETER (`storage/foldKeys.ts`):
+		// one branch answers this for every scoped prefix, so a third can never drift
+		// from the two it was copied from.
+		saveFolds([`${MYWORK_FOLD}People/Ada.md\u0000a.md`]);
+
+		renamePathFolds(vault.app, 'People/Ada.md', 'People/Ada Lovelace.md');
+
+		expect(loadViewState(vault.app, FOLD_ID).folds.collapsed).toEqual([
+			`${MYWORK_FOLD}People/Ada Lovelace.md\u0000a.md`,
+		]);
 	});
 
 	it('carries a folder move above either path, which is the only event a folder reports', () => {
