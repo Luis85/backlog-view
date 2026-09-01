@@ -92,16 +92,22 @@ type Values = Record<string, string | number | readonly string[]>;
  * a language added here is checked against English without a test edit, which is what
  * makes "nothing else anywhere" true rather than merely intended.
  *
- * The pseudo-locale is the second entry and is NOT a language: a development build
- * carries it so a layout can be looked at in something that is not English, and the
- * production `define` folds this ternary to its first branch, which leaves `pseudo.ts`
- * unreferenced and tree-shaken out of the release. That is what "ships in no release"
- * is, mechanically — not a flag somebody has to remember to turn off.
+ * The pseudo-locale is NOT a language and is added to that one row rather than beside it:
+ * a development build carries it so a layout can be looked at in something that is not
+ * English, and the production `define` folds the ternary to `SHIPPED`, which leaves
+ * `pseudo.ts` unreferenced and tree-shaken out of the release. That is what "ships in no
+ * release" is, mechanically — not a flag somebody has to remember to turn off.
+ *
+ * **`SHIPPED` is named rather than spelled in both arms, and that is the whole point of
+ * it.** Written as two object literals, a real catalog added to one arm alone either
+ * ships unchecked (the suite reads the development arm) or is checked and unreleasable —
+ * and "one row" would have become two edits that must agree, which is the promise this
+ * comment makes. Found by review (Codex, PR #240).
  */
+const SHIPPED: Record<string, Catalog> = { [SOURCE_LOCALE]: en };
+
 export const CATALOGS: Record<string, Catalog> =
-	process.env.NODE_ENV === 'production'
-		? { [SOURCE_LOCALE]: en }
-		: { [SOURCE_LOCALE]: en, [PSEUDO_LOCALE]: pseudoCatalog(en) };
+	process.env.NODE_ENV === 'production' ? SHIPPED : { ...SHIPPED, [PSEUDO_LOCALE]: pseudoCatalog(en) };
 
 /**
  * Everything about a locale that decides GRAMMAR: which plural form a count selects, and

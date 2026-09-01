@@ -171,6 +171,15 @@ The parity half is [[Catalogs stay complete]]'s and landed the same day; what it
 here is the second criterion, since the check now reads `CATALOGS` rather than a list of
 its own — so a language really is one file and one row, proved rather than intended.
 
+**Which the first version of the registry had quietly broken.** Gating the pseudo-locale
+was written as two object literals, one per arm of the ternary, and that makes two
+registries: a real catalog added to the production arm alone ships unchecked, because the
+suite reads the development arm, and one added to the development arm alone is checked and
+unreleasable. Either way "one row" is two edits that have to agree — the opposite of the
+criterion this note is about. The shipped set is named once now and the pseudo-locale is
+spread onto it, so there is one row to add to and the arms cannot disagree. Found by
+review (Codex, PR #240).
+
 ## Acceptance criteria
 
 - Exactly one catalog ships: English. The locale registry holds one entry, and the code
