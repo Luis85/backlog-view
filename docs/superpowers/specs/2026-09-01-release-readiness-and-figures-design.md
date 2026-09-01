@@ -27,7 +27,7 @@ estimate-denominator progress.
 ## Out of scope, and why
 
 - **The testing criterion.** A fourth vocabulary the vault must write, mapping to no figure.
-  A new PBI stub under *Release readiness* carries it.
+  A PBI stub under *Release readiness* is **created by this increment** to carry it.
 - **The double-count qualifier** — a member with an estimate whose descendant in the same
   release also has one. It belongs to *Capacity against commitment*, which is the next
   increment. **This is a known ceiling**: until then the effort total is wrong in a vault
@@ -145,3 +145,20 @@ screen renders — the category check on the call rather than a list of paths.
 so the new text is caught there rather than by a per-key list.
 
 `npm run check` — all seven steps, Ubuntu and Windows.
+
+## The register work this increment owes
+
+`docs-check.mjs` rule 7 requires every module in `src/` to be *specified* in a use case's
+`## Where it lives` or an ADR's `## Decision`, so both new modules are register edits, not
+afterthoughts:
+
+- `Summing up a release`'s `## Where it lives` says the remaining figures "are still nothing
+  yet". It must name `src/domain/releaseReadiness.ts` instead.
+- `Answering the readiness checklist` must name `src/view/release/renderReadiness.ts` and the
+  domain module beside it.
+- The **testing-criterion PBI stub** under *Release readiness*, in the plugin's own schema
+  (`type`/`parent`/`order`/`status`), stating what it defers and why.
+- Statuses: `Answering the readiness checklist` closes; `Summing up a release` stays Active
+  with the double-count qualifier named as its remainder.
+- `CHANGELOG.md` gains its `[Unreleased]` entry in this pull request, under the existing
+  `### Added` heading — one sentence.
