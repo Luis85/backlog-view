@@ -318,7 +318,23 @@ describe('what a bar SAYS it costs to cross an absence', () => {
 		// on a track shorter than twice the reserve" construction, reused here rather than
 		// re-derived. The `.pbl-sr-only` sentence in `noteAbsenceClash` is written
 		// unconditionally either way, so nothing is lost with the visible half.
-		const harness = laneRoadmap(absenceVault());
+		// `absenceVault()`'s own shape, with its dates OFFSET from the real clock rather than
+		// fixed at August 2026 — the repair of 2026-09-01, the same one `legend.test.ts` needed:
+		// the construction this test reuses is "a NEAR-TERM backlog at quarter zoom", and fixed
+		// dates stop being near-term as the clock moves past them, growing the window until the
+		// track clears twice the reserve and the label is drawn after all. The shared fixture
+		// keeps its fixed dates (other tests assert those exact days); only this test, whose
+		// subject is the window's own width, plants its own.
+		const vault = new FakeVault();
+		vault.addFile('Alice.md', { frontmatter: { type: 'Resource' } });
+		const day = (offset: number): string => formatCivil(addDays(TODAY, offset));
+		vault.addFile('Work.md', {
+			frontmatter: { type: 'Epic', order: 10, assignee: 'Alice', start: day(0), due: day(9) },
+		});
+		vault.addFile(ALICE_AWAY_PATH, {
+			frontmatter: { type: 'Absence', assignee: 'Alice', start: day(3), due: day(5) },
+		});
+		const harness = laneRoadmap(vault);
 		harness.view.setZoom('quarter');
 		const row = rowFor(harness.containerEl, 'Work');
 

@@ -137,13 +137,20 @@ describe('the roadmap legend', () => {
 		// 2026-08-14: a stretch draws in its resource's HEADER now, and a header draws whether
 		// its band is open or shut, so folding no longer takes the mark off screen — unlike
 		// before, when it was a row of its own that a fold's `laneEntries` skipped whole.
+		// Dates OFFSET from the real clock, this file's own rule two constants up, and the
+		// repair of 2026-09-01: written as fixed August 2026 days they read as "near term"
+		// only while the clock was near them. Once it moved a month past, the window grew to
+		// hold both the bar and today, the track passed twice the reserve, and the label this
+		// test needs dropped was drawn — the drift the constant above already warns about,
+		// arriving from the other direction. Unrelated to the my-work pass that found it.
 		const vault = new FakeVault();
 		vault.addFile('Alice.md', { frontmatter: { type: 'Resource' } });
+		const day = (offset: number): string => formatCivil(addDays(TODAY, offset));
 		vault.addFile('Work.md', {
-			frontmatter: { type: 'Epic', order: 10, assignee: 'Alice', start: '2026-08-01', due: '2026-08-10' },
+			frontmatter: { type: 'Epic', order: 10, assignee: 'Alice', start: day(0), due: day(9) },
 		});
 		vault.addFile('Alice away.md', {
-			frontmatter: { type: 'Absence', assignee: 'Alice', start: '2026-08-04', due: '2026-08-06' },
+			frontmatter: { type: 'Absence', assignee: 'Alice', start: day(3), due: day(5) },
 		});
 		const { view, containerEl } = makeView(
 			vault,
@@ -215,13 +222,20 @@ describe('the roadmap legend', () => {
 		// `drawn.daysLost` is the render's own word for "some row on this grid reported a
 		// cost", asked the same way `drawn.absence` is — never a predicate over
 		// `roadmap.lanes`, which cannot see a fold or a filter taking the clash off screen.
+		// Dates OFFSET from the real clock, this file's own rule two constants up, and the
+		// repair of 2026-09-01: written as fixed August 2026 days they read as "near term"
+		// only while the clock was near them. Once it moved a month past, the window grew to
+		// hold both the bar and today, the track passed twice the reserve, and the label this
+		// test needs dropped was drawn — the drift the constant above already warns about,
+		// arriving from the other direction. Unrelated to the my-work pass that found it.
 		const vault = new FakeVault();
 		vault.addFile('Alice.md', { frontmatter: { type: 'Resource' } });
+		const day = (offset: number): string => formatCivil(addDays(TODAY, offset));
 		vault.addFile('Work.md', {
-			frontmatter: { type: 'Epic', order: 10, assignee: 'Alice', start: '2026-08-01', due: '2026-08-10' },
+			frontmatter: { type: 'Epic', order: 10, assignee: 'Alice', start: day(0), due: day(9) },
 		});
 		vault.addFile('Alice away.md', {
-			frontmatter: { type: 'Absence', assignee: 'Alice', start: '2026-08-04', due: '2026-08-06' },
+			frontmatter: { type: 'Absence', assignee: 'Alice', start: day(3), due: day(5) },
 		});
 		const { view, containerEl } = makeView(
 			vault,
@@ -262,13 +276,20 @@ describe('the roadmap legend', () => {
 		// claim a key for a mark nothing on screen makes. Reached the same way
 		// `absenceCollision.test.ts` reaches it: a near-term backlog at quarter zoom, where
 		// `timelineFurniture.test.ts` already establishes every bar's label is dropped.
+		// Dates OFFSET from the real clock, this file's own rule two constants up, and the
+		// repair of 2026-09-01: written as fixed August 2026 days they read as "near term"
+		// only while the clock was near them. Once it moved a month past, the window grew to
+		// hold both the bar and today, the track passed twice the reserve, and the label this
+		// test needs dropped was drawn — the drift the constant above already warns about,
+		// arriving from the other direction. Unrelated to the my-work pass that found it.
 		const vault = new FakeVault();
 		vault.addFile('Alice.md', { frontmatter: { type: 'Resource' } });
+		const day = (offset: number): string => formatCivil(addDays(TODAY, offset));
 		vault.addFile('Work.md', {
-			frontmatter: { type: 'Epic', order: 10, assignee: 'Alice', start: '2026-08-01', due: '2026-08-10' },
+			frontmatter: { type: 'Epic', order: 10, assignee: 'Alice', start: day(0), due: day(9) },
 		});
 		vault.addFile('Alice away.md', {
-			frontmatter: { type: 'Absence', assignee: 'Alice', start: '2026-08-04', due: '2026-08-06' },
+			frontmatter: { type: 'Absence', assignee: 'Alice', start: day(3), due: day(5) },
 		});
 		const { view, containerEl } = makeView(
 			vault,
