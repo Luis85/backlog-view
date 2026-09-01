@@ -2,7 +2,8 @@
 import { describe, expect, it } from 'vitest';
 import { FakeVault } from '../helpers/vault';
 import { useViewHarness } from '../helpers/view';
-import { laneRoadmap, rowFor } from '../helpers/roadmap';
+import { laneRoadmap, nearTermSpan, rowFor } from '../helpers/roadmap';
+import { absenceTitle } from '../../src/domain/absences';
 import { ALICE_AWAY, ALICE_AWAY_PATH, absenceVault } from '../helpers/resources';
 import { addDays, formatCivil, MAX_TIMELINE_DAYS } from '../../src/domain/timeline';
 import { readDate, todayStamp } from '../../src/domain/noteFields';
@@ -315,10 +316,26 @@ describe('what a bar SAYS it costs to cross an absence', () => {
 		// width check of this feature's own any more — the cost lands INSIDE the bar's title
 		// label (`renderBarLabel`), so it is dropped exactly where the title is: a near-term
 		// backlog at quarter zoom, `timelineFurniture.test.ts`'s own "draws no bar label at all
-		// on a track shorter than twice the reserve" construction, reused here rather than
-		// re-derived. The `.pbl-sr-only` sentence in `noteAbsenceClash` is written
-		// unconditionally either way, so nothing is lost with the visible half.
-		const harness = laneRoadmap(absenceVault());
+		// on a track shorter than twice the reserve" construction. The `.pbl-sr-only` sentence
+		// in `noteAbsenceClash` is written unconditionally either way, so nothing is lost with
+		// the visible half.
+		//
+		// `nearTermSpan` rather than `absenceVault()`, whose dates are August 2026: this case
+		// is about the WIDTH of the drawn track, the window pads around TODAY, and a fixed
+		// date says "near term" only while the clock agrees. It said so until 2026-09-01, when
+		// the label came back and this test failed on a premise nothing had changed.
+		const span = nearTermSpan();
+		// One day away, three days into the work — inside the span whatever today is.
+		const away = nearTermSpan(3, 0);
+		const vault = new FakeVault();
+		vault.addFile('Alice.md', { frontmatter: { type: 'Resource' } });
+		vault.addFile('Work.md', {
+			frontmatter: { type: 'Epic', order: 10, assignee: 'Alice', start: span.start, due: span.due },
+		});
+		vault.addFile(`${absenceTitle({ start: away.start, target: away.due }, 'Alice')}.md`, {
+			frontmatter: { type: 'Absence', assignee: 'Alice', start: away.start, due: away.due },
+		});
+		const harness = laneRoadmap(vault);
 		harness.view.setZoom('quarter');
 		const row = rowFor(harness.containerEl, 'Work');
 
