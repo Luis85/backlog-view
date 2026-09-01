@@ -898,7 +898,7 @@ carry their own options, listed in their sections above.
 | Option | Default | Purpose |
 | --- | --- | --- |
 | Parent property | `parent` | Note property that links to the parent item |
-| Order property | `order` | Numeric sibling rank |
+| Order property | `order` | Numeric rank over every note the Base returns, not a position inside a sibling group |
 | Item type property | `type` | Hierarchy level of the item |
 | Ignore notes outside the hierarchy | on | Only treat notes with a supported `type` or a parent as backlog items |
 | Show parents outside the filter | on | Load the ancestors the Base's filter excluded, so matches keep their place in the tree |
