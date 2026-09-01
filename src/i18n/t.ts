@@ -1,6 +1,15 @@
 import { getLanguage } from 'obsidian';
 import { en } from './en';
 import { intlLocale, resolveCatalog, SOURCE_LOCALE } from './locale';
+import { PSEUDO_LOCALE, pseudoCatalog } from './pseudo';
+
+/**
+ * The bundler's own constant, the one every entry already defines — see the `define` in
+ * `scripts/esbuild.config.mjs`, `scripts/harness.mjs` and Node's own value under vitest.
+ * Declared rather than imported because `src/` is typed without Node, and a build-time
+ * literal is what lets the production bundle drop the pseudo catalog entirely.
+ */
+declare const process: { env: { NODE_ENV?: string } };
 
 /**
  * The lookup. One function answers "what does this key say", and it is total: every key
@@ -78,8 +87,21 @@ type Values = Record<string, string | number | readonly string[]>;
  * Every catalog that ships. One entry in this round, deliberately — see
  * `docs/requirements/English ships alone.md`. A second language is one file beside `en`
  * and one row here, and nothing else anywhere.
+ *
+ * Exported so the completeness check reads the REGISTRY rather than a list of its own:
+ * a language added here is checked against English without a test edit, which is what
+ * makes "nothing else anywhere" true rather than merely intended.
+ *
+ * The pseudo-locale is the second entry and is NOT a language: a development build
+ * carries it so a layout can be looked at in something that is not English, and the
+ * production `define` folds this ternary to its first branch, which leaves `pseudo.ts`
+ * unreferenced and tree-shaken out of the release. That is what "ships in no release"
+ * is, mechanically — not a flag somebody has to remember to turn off.
  */
-const CATALOGS: Record<string, Catalog> = { [SOURCE_LOCALE]: en };
+export const CATALOGS: Record<string, Catalog> =
+	process.env.NODE_ENV === 'production'
+		? { [SOURCE_LOCALE]: en }
+		: { [SOURCE_LOCALE]: en, [PSEUDO_LOCALE]: pseudoCatalog(en) };
 
 /**
  * Everything about a locale that decides GRAMMAR: which plural form a count selects, and
@@ -139,9 +161,29 @@ export function setLocale(code: string, catalogs: Record<string, Catalog> = CATA
 	active = activate(code, catalogs);
 }
 
-/** The one call `main.ts` makes: Obsidian's language, applied. */
+/**
+ * The one call `main.ts` makes: Obsidian's language, applied.
+ *
+ * One override comes ahead of it, and it is a DEVELOPMENT knob rather than a setting:
+ * Obsidian offers no way to ask for a language it does not itself ship, so the
+ * pseudo-locale above would be unreachable from the `npm run test-build` vault without
+ * it. Set `localStorage['product-backlog-locale'] = 'en-x-pseudo'` in the console and
+ * reload. It is deliberately not a view option and not a command — nothing writes it,
+ * nothing lists it, and in a release build any value resolves to a shipped catalog, so
+ * the worst it can do is nothing.
+ */
 export function initLocale(): void {
-	setLocale(getLanguage());
+	setLocale(localeOverride() ?? getLanguage());
+}
+
+function localeOverride(): string | null {
+	try {
+		return window.localStorage.getItem('product-backlog-locale');
+	} catch {
+		// A vault with storage denied is a vault that reads its own language, not one
+		// that fails to render.
+		return null;
+	}
 }
 
 /** Which catalog is being read, and which locale `Intl` was given. */

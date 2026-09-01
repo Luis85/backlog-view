@@ -2,12 +2,12 @@
 type: PBI
 parent: "[[Multilang]]"
 order: 130
-status: Open
-started: ""
-finished: ""
+status: Done
+started: 2026-09-01
+finished: 2026-09-01
 horizon: ""
-start: ""
-due: ""
+start: 2026-09-01
+due: 2026-09-01
 risk: ""
 assignee: ""
 priority: ""
@@ -130,6 +130,39 @@ Still owed, and not started: the **pseudo-locale**, and the parity check in
 `Catalogs stay complete`. Both are named here rather than left to be inferred from an
 unticked box.
 
+## What closed it (2026-09-01)
+
+Both of the two owed above landed, and the pseudo-locale is the half that belongs to this
+note. It is `src/i18n/pseudo.ts`: English, accented letter by letter, padded by a third
+and wrapped in `⟦⟧`, registered under `en-x-pseudo` — a private-use extension of English,
+so `Intl` gives it English's grammar without anyone declaring a plural rule for it.
+
+Three properties, each answering a question a round with one catalog otherwise cannot ask:
+every letter is accented, so a string still spelled at a call site stands out on screen
+without reading the source; the text is a third longer, which is roughly what German costs,
+so a control that only just fits stops fitting; and it is bracketed, so a truncation is
+visible without a guess about ellipses. A `{parameter}` passes through untouched — the name
+is what `t()` substitutes on.
+
+**"It ships in no release" is mechanical, and it is checked at the artifact.** `t.ts`
+registers it behind `process.env.NODE_ENV`, which every bundler entry already defines, so
+the production `define` folds the ternary and tree-shakes the module out. Trusting that is
+what a bundler setting can quietly stop doing, so `scripts/esbuild.config.mjs` reads the
+built `main.js` and refuses a production bundle carrying the tag at all — watched failing
+by building the release with the development `define`, and the pseudo-locale is absent from
+`main.js` on the real one.
+
+**Reaching it needed a way in, and Obsidian offers none:** `getLanguage()` answers the
+app's own language, and no Obsidian ships `en-x-pseudo`. So `initLocale()` reads
+`localStorage['product-backlog-locale']` ahead of it — a development knob, not a setting.
+Nothing writes it, nothing lists it, and in a release build any value resolves to a shipped
+catalog, so the worst it can do is nothing. In the `npm run test-build` vault it is one
+line in the console and a reload.
+
+The parity half is [[Catalogs stay complete]]'s and landed the same day; what it settles
+here is the second criterion, since the check now reads `CATALOGS` rather than a list of
+its own — so a language really is one file and one row, proved rather than intended.
+
 ## Acceptance criteria
 
 - Exactly one catalog ships: English. The locale registry holds one entry, and the code
@@ -160,10 +193,15 @@ because English is at least consistently wrong.
 
 ## Where it lives
 
-**Nothing yet — this note is design.** It records a scope decision rather than adding code,
-and the locale registry it constrains is part of the module `Locale resolution and fallback`
-describes.
+**`src/i18n/pseudo.ts`** derives the pseudo catalog from English and names the locale;
+`src/i18n/t.ts` registers it in `CATALOGS` behind the build's own `NODE_ENV`, and its
+`initLocale` reads the `localStorage` override that is the only way to ask for it ·
+`scripts/esbuild.config.mjs` refuses a production `main.js` that carries it, beside the
+bundle budget it already enforces · `src/i18n/en.ts`'s header is where the rule for what
+must NOT be translated is written down, which is where a translator copying the file will
+be standing rather than in this register.
 
-The fixtures and the pseudo-locale live under `test/`, and the pseudo-locale must be
-reachable from a `npm run test-build` vault — `test-build.mjs` is the script that builds
-one — while shipping in no release.
+The fixture catalogs stay under `test/` — `test/i18n/fixtures.ts` — because they are not
+languages and nothing loads them; the pseudo-locale is in `src/` instead because it is
+reachable from a `npm run test-build` vault, which `test-build.mjs` builds with the
+development bundle.
