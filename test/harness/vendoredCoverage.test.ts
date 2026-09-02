@@ -131,5 +131,18 @@ describe('the vendored app.css reaches what the harness draws', () => {
 		// that is NOT on the page at the end of the drive, which is what holds the
 		// per-state collection above in place.
 		expect([drawn.has('.modal-title'), drawn.has('.mod-cta')]).toEqual([true, true]);
-	});
+		// The one test in this suite carrying a timeout of its own, and the number is
+		// measured rather than picked: the drive costs ~2.4s locally, read with
+		// `performance.now()` — the suite's `Date`-only freeze leaves that real, where a
+		// first attempt with `Date.now()` reported every phase as 0ms. Renders are all of
+		// it: the mount, the expand and the two knobs are 1.3s between them and each
+		// projection or axis switch ~150ms, against ~8ms for each of the ten collections.
+		// It went over vitest's 5s default on BOTH CI legs while passing locally, because
+		// 303 files share a runner there and nothing here shares one.
+		//
+		// NOT trimmed to fit, and that was measured too: dropping the expand and the knobs
+		// saves 45% and loses no class today. Which is the wrong test to apply — this check
+		// exists to catch what ARRIVES, so a state left undriven is coverage given up in
+		// exchange for seconds. The budget was what was wrong, so the budget is what moved.
+	}, 30_000);
 });

@@ -93,6 +93,23 @@ Fixed by collecting after each rendered state and switching back to the roadmap 
 the axis loop. The floor assertion is now pinned at 21 and `.mod-cta` is pinned present:
 end-only collection fails on both, which is what was watched.
 
+### And CI found the budget, not the logic (PR #254)
+
+Green locally, red on BOTH `verify` legs: `Test timed out in 5000ms`. Not a flake and not
+platform-specific — the drive costs ~2.4s here and 303 files share one runner there.
+
+Timed with `performance.now()`, because the first attempt used `Date.now()` and read every
+phase as **0ms**: the suite freezes `Date` (`test/helpers/clock.ts`, `toFake: ['Date']`),
+so the obvious clock is the one instrument that cannot measure this. Renders are the whole
+cost — mount, expand and the two knobs are 1.3s between them, each projection or axis
+switch ~150ms, and the ten collections ~8ms each.
+
+**Not trimmed to fit**, and that was measured rather than assumed: dropping the expand and
+the knobs saves 45% and loses no class today. Applying it would have been the wrong lesson
+— this check exists to catch what ARRIVES, so a state left undriven is coverage traded for
+seconds, and the next Obsidian-classed element on the shelf would go unseen. The budget was
+what was wrong, so the budget moved: 30s, on the only test in the suite that carries one.
+
 ## What was refused
 
 **Filling the six gaps.** Every one is a real defect in what the harness draws — the
