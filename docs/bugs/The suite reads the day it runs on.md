@@ -83,6 +83,20 @@ Verified under `TZ=UTC`, `Pacific/Auckland`, `Pacific/Kiritimati` (UTC+14) and
 The day is arbitrary beyond being the last one this suite passed CI on. Moving it means
 re-deriving those four assertions, which is the cost that made it worth pinning.
 
+**Superseded on 2026-09-02, by a better answer to the same question.** `main` reached the
+civil-date problem independently and pinned the ZONE beside the instant
+(`process.env.TZ = 'UTC'`, assigned before anything constructs a `Date`) rather than
+building the frozen day from local components. The two fixes agree in UTC and the merge
+took `main`'s, because it closes a hole this one leaves open: the local constructor makes
+the civil day right in every zone but leaves the frozen INSTANT different in each, so
+anything reading the instant drifts by zone instead. What decided it is the check under it
+— the in-process assertions here pass for the wrong reason on a UTC host, and no assertion
+in the same process can tell a pinned zone from a host that was already in one, so `main`
+added a `zone` job to `.github/workflows/ci.yml` that runs the suite under
+`TZ=Pacific/Kiritimati` (UTC+14). Only there does deleting the pin turn anything red. The
+paragraph above records what this branch built and why; the shipped mechanism is the
+zone pin.
+
 ## The check
 
 `test/verification/frozenClock.test.ts` asks the CLOCK, not the four tests. Dropping the
