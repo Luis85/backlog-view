@@ -113,6 +113,20 @@ Ordered, because the first step is what makes the rest checkable.
   rejection is driven from `test/docs/checkerRejects.test.ts` with the legal forms it must
   still accept in `checkerAccepts.test.ts`.
 
+## Progress (2026-09-02)
+
+Steps 1 and 2 are done — `test/docs/surfaces.test.ts` loops `ALL_TYPES` through
+`typeFolderKey` and asserts the generated keys cover it, minus `RELEASE_TYPE`. Step 3 is
+done for the register: all five requirements named above already name the set rather than
+its length, and ADR 0013 gained an amendment that states `ALL_TYPES` as the source and
+declares itself finished with counts. The two remaining recited copies in `test/view/`
+are closed by [[Derive the type folders the fixtures clear]], which also measures the
+whole candidate set — 25 hits from an AST walk, 2 defects, 21 correct by design, 2 left
+with a stated reason.
+
+**Open on step 4 alone**, the `docs-check.mjs` rule, which the Risks below argue against
+attempting cheaply.
+
 ## Risks
 
 The sweep in step 3 is the part that can go wrong quietly: a note that says "six" about the

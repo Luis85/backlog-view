@@ -82,6 +82,17 @@ same name alone as a *descendant* — an asymmetry nobody chose, deleted with th
   this ADR decided changed: still fixed, still not an
   option, still matched case-insensitively. Every count in the title, the filename and
   the prose above is left as written, for the reason the first amendment gives.
+- **Amended 2026-09-02 (stop counting).** Three more names landed without an amendment
+  each — `Release` ([[Releases as their own type]]) and the catalog's `Test suite` and
+  `Test case` ([[Test Management]]) — and the honest reading is that the amendments
+  themselves had become the staleness: each one restated a total, and the total was wrong
+  again within a fortnight. So this is the last count this record states, and it states a
+  SOURCE instead: **the vocabulary is whatever `ALL_TYPES` (`src/domain/typeVocabulary.ts`)
+  holds**, and a name joining it owes the four shipped opinions the previous amendment
+  enumerates. Nothing this ADR decided changed. The counts in the title, the filename and
+  every amendment above stay as written — each was true of the day that wrote it, which is
+  what a record is for — and none of them should be read as current.
+  [[Read the vocabulary instead of reciting it]] is the general form.
 
 ## Alternatives
 

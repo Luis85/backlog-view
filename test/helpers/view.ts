@@ -6,6 +6,7 @@ import { ProductBacklogView } from '../../src/view/backlogView';
 import { BacklogItem } from '../../src/domain/model';
 import { WriteLock } from '../../src/view/writeLock';
 import { OPTIONAL_PROPERTIES } from '../../src/domain/optionalProperties';
+import { FILED_TYPES, typeFolderKey } from '../../src/domain/typeVocabulary';
 import { installObsidianDom } from './dom';
 import { FakeVault, FakeViewConfig, mountLeaf, mountView, setResults } from './vault';
 import { Menu, Modal, Notice } from './obsidian-mock';
@@ -155,6 +156,26 @@ export function makeView(
 export function noOptionalProperties(values: Record<string, unknown> = {}): Record<string, unknown> {
 	const cleared: Record<string, unknown> = {};
 	for (const property of OPTIONAL_PROPERTIES) cleared[property.option] = '';
+	return { ...cleared, ...values };
+}
+
+/**
+ * View options with the home folder and EVERY type's folder cleared, so folder
+ * INFERENCE is what runs. Both layers have to go: a type's own folder answers first,
+ * and the home folder answers next.
+ *
+ * Derived from `FILED_TYPES` — the same list the schema generates the boxes from — for
+ * the reason [[Read the vocabulary instead of reciting it]] gives: two copies of this
+ * recited six names, and by 2026-09-02 the vocabulary held fourteen. Eight types were
+ * therefore left at their SHIPPED folder in a fixture whose comment said every one was
+ * cleared, and a creation test for any of them measured the type folder while reading
+ * as a test of inference. `Release` is excluded because it carries no `typeFolder` box
+ * at all (`FILED_TYPES`), so naming one here would set an option the schema never
+ * declares.
+ */
+export function noTypeFolders(values: Record<string, unknown> = {}): Record<string, unknown> {
+	const cleared: Record<string, unknown> = { homeFolder: '' };
+	for (const type of FILED_TYPES) cleared[typeFolderKey(type)] = '';
 	return { ...cleared, ...values };
 }
 
