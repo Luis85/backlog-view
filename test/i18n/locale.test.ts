@@ -304,6 +304,21 @@ describe('collation, folding and numbers follow the requested locale', () => {
 		expect(foldForMatch('I')).toBe('i');
 	});
 
+	it('folds an accented capital I to the same thing as its lowercase, in every locale', () => {
+		// Lowercasing a soft-dotted letter KEEPS its dot above when an accent follows —
+		// always in Lithuanian, and in every locale but Turkish for `İ`. Correct casing,
+		// wrong for matching: the query no longer meets the title it was typed from.
+		// Found by review (Codex, PR #251).
+		for (const locale of ['lt', 'en', 'tr']) {
+			setLocale(locale);
+			expect(foldForMatch('Ì')).toBe(foldForMatch('ì'));
+			expect(foldForMatch('İ')).toBe(foldForMatch('i'));
+		}
+		// And the distinction that made the fold locale-aware still holds.
+		setLocale('tr');
+		expect(foldForMatch('I')).not.toBe(foldForMatch('i'));
+	});
+
 	it('formats a bare number with the SAME formatter a sentence uses', () => {
 		// German groups with a dot and there is no German catalog, so the sentence is
 		// English. The two numbers agreeing is what stops a count outside a sentence

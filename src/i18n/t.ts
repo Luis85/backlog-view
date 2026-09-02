@@ -277,9 +277,20 @@ export function compareText(a: string, b: string): number {
  * every other fold decides what something *is* — a type name, a state, a persisted option
  * key — and folding those with a locale corrupts vaults. `test/i18n/foldSites.ts`
  * classifies all of them and the suite holds the split.
+ *
+ * Lowercasing alone is not a case-INSENSITIVE form, which is the second half of this and
+ * the one review caught (Codex, PR #251). Lowercasing keeps a soft-dotted `i`/`j`'s dot
+ * above when an accent follows it — always in Lithuanian (`Ì` → `i̇̀`, while `ì` stays
+ * `ì`), and in every locale but Turkish for `İ` (→ `i̇`, which `i` then misses). Both are
+ * correct CASING and wrong for matching, so the dot is dropped after the fold and the
+ * result recomposed: `Ì` and `ì` meet at `ì` again, while Turkish keeps the distinction
+ * that made this locale-aware at all (`I` → `ı`, `i` → `i`). Unicode says the same thing
+ * by having case FOLDING carry no Lithuanian tailoring.
  */
+const SOFT_DOTTED_DOT = /([ij])\u0307/gu;
+
 export function foldForMatch(value: string): string {
-	return value.toLocaleLowerCase(active.requested);
+	return value.toLocaleLowerCase(active.requested).replace(SOFT_DOTTED_DOT, '$1').normalize('NFC');
 }
 
 /**
