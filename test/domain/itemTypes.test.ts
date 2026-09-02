@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { buildModel } from '../../src/domain/model';
 import {
 	childTypeChoices,
+	displayType,
 	drawsAsPoint,
 	EXTRA_TYPE_RANK,
 	folderForType,
@@ -501,5 +502,86 @@ describe('Release is a marker, not a rung', () => {
 		// The two it must not disturb.
 		expect(placementEnds('Milestone', false)).toEqual(['target']);
 		expect(placementEnds('Epic', false)).toEqual(['start', 'target']);
+	});
+});
+
+/**
+ * **`displayType` never answers an empty string**, and this settles a disagreement two
+ * files carried in comments and nothing checked
+ * ([[The second scope tree was a copy, and stayed one]]): `release/scopeTree.ts` guarded
+ * its badge on `if (!badgeText) return;` while `mywork/renderTree.ts` argued at length that
+ * the guard is unreachable. Both drew rows from the same walk, so they could not both be
+ * right.
+ *
+ * The claim is asked HERE rather than of either tree, because it is a property of
+ * `displayType` and holds for every item in every projection — the shared
+ * `drawScopeBadge` was only one of its readers. The reasoning it pins:
+ *
+ * - `typeName` reaches an item through `readString`, which answers `null` for a blank,
+ *   whitespace or absent value — so it is never the empty string, and the `typeName ?? ''`
+ *   fallback returns something whenever it is reached.
+ * - `ladderFor` answers `LEVELS` (4 rungs), `TEST_LEVELS` (3) or the parent's, so by
+ *   induction no ladder is ever empty.
+ * - With `typeName === null`, `levelIndex` is `childLevelIndex`, which is `0` at a root and
+ *   otherwise clamped into `[0, ladder.length - 1]` — in range of a non-empty ladder, so
+ *   `ladder[levelIndex]` is a real rung rather than `undefined`.
+ *
+ * The three cases below are the three ways that could break, driven through the real model
+ * rather than asserted from the paragraph.
+ */
+describe('displayType names something for every item the model builds', () => {
+	it('answers a rung for an untyped note, at a root and at the ladder floor', () => {
+		const vault = new FakeVault();
+		// A root with no `type` at all: `childLevelIndex(null)` is 0, so the top rung.
+		vault.addFile('Bare.md', { frontmatter: { order: 10 } });
+		// Untyped under untyped under untyped, walking past the ladder's own end — the
+		// clamp is what stops `levelIndex` running off it into `undefined`.
+		vault.addFile('Deep1.md', { frontmatter: { order: 10 }, parentLink: 'Bare' });
+		vault.addFile('Deep2.md', { frontmatter: { order: 10 }, parentLink: 'Deep1' });
+		vault.addFile('Deep3.md', { frontmatter: { order: 10 }, parentLink: 'Deep2' });
+		vault.addFile('Deep4.md', { frontmatter: { order: 10 }, parentLink: 'Deep3' });
+		const model = buildModel(vault.app, vault.entries(), settings);
+
+		expect(model.items.map((i) => displayType(i))).toEqual(['Epic', 'Feature', 'PBI', 'Task', 'Task']);
+	});
+
+	it('answers the raw name for a type on no ladder, rather than falling through to empty', () => {
+		const vault = new FakeVault();
+		vault.addFile('Custom.md', { frontmatter: { type: 'Bugfix', order: 10 } });
+		// The same shape one rung down, where `levelIndex` is -1 and the parent chain would
+		// otherwise be the only thing with an answer.
+		vault.addFile('Nested.md', { frontmatter: { type: 'Whatever', order: 10 }, parentLink: 'Custom' });
+		const model = buildModel(vault.app, vault.entries(), settings);
+
+		expect(model.items.map((i) => displayType(i))).toEqual(['Bugfix', 'Whatever']);
+	});
+
+	it('reads a blank type as absent, so the fallback is never handed an empty string', () => {
+		const vault = new FakeVault();
+		// Hung off a real Epic rather than left parentless, because under the default scope
+		// a note carrying only an order is not an item at all — three unenrolled notes
+		// would have made this pass over an empty list.
+		vault.addFile('Root.md', { frontmatter: { type: 'Epic', order: 10 } });
+		// The one input that would make `typeName ?? ''` answer `''` if it survived
+		// `readString` — three spellings of "the key is there and says nothing".
+		vault.addFile('Empty.md', { frontmatter: { type: '', order: 10 }, parentLink: 'Root' });
+		vault.addFile('Spaces.md', { frontmatter: { type: '   ', order: 20 }, parentLink: 'Root' });
+		vault.addFile('Null.md', { frontmatter: { type: null, order: 30 }, parentLink: 'Root' });
+		const model = buildModel(vault.app, vault.entries(), settings);
+		const blanks = model.items.filter((i) => i.title !== 'Root');
+
+		expect(blanks.map((i) => i.typeName)).toEqual([null, null, null]);
+		// The rung below their parent's, which is what an absent type takes.
+		expect(blanks.map((i) => displayType(i))).toEqual(['Feature', 'Feature', 'Feature']);
+	});
+
+	it('holds across every type the vocabulary ships, in one pass over the whole fixture', () => {
+		// The category form of the three cases above: whatever the fixture holds, no item
+		// in it draws an empty badge. `fixture()` carries a rung of each ladder, all five
+		// extra types and a marker.
+		for (const item of fixture().model.items) {
+			expect(displayType(item), item.title).not.toBe('');
+			expect(displayType(item), item.title).toBeTruthy();
+		}
 	});
 });

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it } from 'vitest';
-import { loadViewState, saveViewState, ViewFolds } from '../../src/storage/viewStateStore';
+import { loadViewState, saveViewState, updateViewPrefs, ViewFolds } from '../../src/storage/viewStateStore';
 import { installObsidianDom } from '../helpers/dom';
 import { FakeVault } from '../helpers/vault';
 
@@ -106,5 +106,49 @@ describe('pruning another view', () => {
 		saveViewState(vault.app, ID, { folds: none(), prefs: {} });
 
 		expect(Object.keys(stored(vault))).toEqual(['Other.base#Backlog']);
+	});
+});
+
+/**
+ * **A pick must not erase the picks beside it**, which is the whole of what
+ * `updateViewPrefs` exists for. Four callers were each spelling the read-modify-write out,
+ * and the two spreads in it are what stop one of them writing a snapshot that silently
+ * drops every other pref and the folds with them — a loss the caller cannot see, since the
+ * value it set is there and only what it did not name is gone.
+ *
+ * **Nothing checked that until now.** Removing the `...state.prefs` spread left the whole
+ * suite green (measured 2026-09-02, on the tree that extracted the helper), which is the
+ * root guide's own rule failing in the direction it warns about: four correct copies of a
+ * rule, and no way to notice a fifth getting it wrong. These are the check, watched failing
+ * on each spread in turn.
+ */
+describe('changing one preference', () => {
+	it('leaves the other preferences alone', () => {
+		saveViewState(vault.app, ID, { folds: none(), prefs: { zoom: 'month', density: 'compact' } });
+
+		updateViewPrefs(vault.app, ID, { release: 'Rel.md' });
+
+		expect(loadViewState(vault.app, ID).prefs).toEqual({ zoom: 'month', density: 'compact', release: 'Rel.md' });
+	});
+
+	it('leaves the folds alone', () => {
+		// The outer spread, which is a separate line and fails separately: a snapshot built
+		// from `prefs` alone hands `saveViewState` empty folds, and every collapsed row in
+		// the view is forgotten by a sort pick.
+		saveViewState(vault.app, ID, { folds: folded(), prefs: {} });
+
+		updateViewPrefs(vault.app, ID, { zoom: 'month' });
+
+		expect(loadViewState(vault.app, ID).folds).toEqual(folded());
+	});
+
+	it('removes a preference set to undefined rather than storing an empty one', () => {
+		// `saveViewState`'s absence rule, passed straight through — which is what lets a
+		// caller spell "clear the pick" as `path ?? undefined` and need nothing else.
+		saveViewState(vault.app, ID, { folds: folded(), prefs: { release: 'Rel.md', zoom: 'month' } });
+
+		updateViewPrefs(vault.app, ID, { release: undefined });
+
+		expect(loadViewState(vault.app, ID).prefs).toEqual({ zoom: 'month' });
 	});
 });
