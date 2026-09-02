@@ -1,3 +1,6 @@
+import { App } from 'obsidian';
+import { CivilDate, linkpathFromRawValue, ownValue, readDate, readString } from '../domain/noteFields';
+import { reversedSpan } from '../domain/timeline';
 import { BacklogSettings } from '../domain/settings';
 import {
 	AXIS_FIELDS,
@@ -18,19 +21,29 @@ import { AxisWrite, ItemWrite } from '../domain/writePlan';
  * Deliverable workflow merged into one write path. The seam is not arbitrary: everything
  * here answers "which keys", and everything left behind answers "what value goes in them".
  * Applying and capturing must read the SAME answer, so it belongs in one place either way.
+ *
+ * {@link plannedAxis} widens that by one word and no more — which of the keys an axis
+ * write NAMES it actually lands, asked of the live note. It is here for the same budget
+ * reason and it is the same kind of question; what it must never become is a filter on
+ * {@link touchedKeys}, which has to keep naming every key the write could touch or a value
+ * that did change would have no inverse to undo it with.
  */
+
+/** One axis key a write names, with the value it would put there. */
+export interface AxisEntry {
+	field: AxisField;
+	key: string;
+	value: string | null;
+}
 
 /**
  * The configured keys one axis write touches, each with the value it will write.
  * Applying and capturing read the SAME list: a key written but not captured would
  * be a change no undo could reach, which is exactly how a hole gets in.
  */
-export function axisEntries(
-	settings: BacklogSettings,
-	axis?: AxisWrite,
-): { field: AxisField; key: string; value: string | null }[] {
+export function axisEntries(settings: BacklogSettings, axis?: AxisWrite): AxisEntry[] {
 	if (!axis) return [];
-	const entries: { field: AxisField; key: string; value: string | null }[] = [];
+	const entries: AxisEntry[] = [];
 	for (const field of AXIS_FIELDS) {
 		const key = optionalKeyFor(settings, field);
 		const value = axis[field];
@@ -98,4 +111,97 @@ export function touchedKeys(settings: BacklogSettings, write: ItemWrite): string
 export function stubKeys(settings: BacklogSettings, stubs?: OptionalField[]): string[] {
 	if (!stubs) return [];
 	return stubs.map((field) => optionalKeyFor(settings, field)).filter((key) => key !== '');
+}
+
+/**
+ * The axis entries this write actually lands — every one it names, minus what a
+ * **fill-only** write withholds against the note as it
+ * stands ([ADR 0033](../../docs/adrs/0033-a-stale-rule-is-decided-at-the-writer.md);
+ * [[Joining a release dates the work]] 6c). Every other write withholds nothing and lands
+ * all of them, which is what keeps overwriting the default for the horizon drag, the
+ * timeline resize and the iteration join.
+ *
+ * Three questions, and each is one only the writer can ask because the answer can change
+ * between the row being drawn and the batch landing:
+ *
+ * - **Is this pick still a join?** A membership another view wrote while the submenu sat
+ *   open makes the link write a no-op, and topping the dates up on a note that was already
+ *   a member is exactly what extension 2a forbids. Read with the PLANNER's own semantics —
+ *   a resolved path with cardinality beside it — because raw text is wrong in both
+ *   directions: an alias or a relative spelling of the target reads as a non-match and
+ *   tops up a member, and a `release: [R, E]` starting with the target reads as a match
+ *   and skips the repair that IS the join.
+ * - **Does the note still hold that end?** A readable DATE, never a present key: a
+ *   backfilled `start: ''` is what ✨ Assign missing properties leaves behind, and asking
+ *   presence would make this write nothing in the vaults most likely to have it.
+ * - **Would writing it reverse the span against the end that stands?** In both directions,
+ *   and the end that "stands" for the start is the item's own due where it kept one and
+ *   the release's otherwise.
+ *
+ * **Both ends are decided from ONE snapshot, and that is why this is a function rather
+ * than a test inside `applyAxis`'s loop.** `AXIS_FIELDS` runs `start` before `target`, so a
+ * check written in that loop reads, at `target`, a start it wrote itself one iteration
+ * earlier — an undated item joining a past release then takes today as a start, nothing
+ * having stood to forbid it, and loses the due against it. That is the precise inverse of
+ * extension 4b. Called before `applyLinks` for the same reason `leaving` is: the membership
+ * has to be read before the write replaces it.
+ */
+export function plannedAxis(
+	app: App,
+	fm: Record<string, unknown>,
+	settings: BacklogSettings,
+	write: ItemWrite,
+): AxisEntry[] {
+	const skip = suppressedAxis(app, fm, settings, write);
+	return axisEntries(settings, write.axis).filter((entry) => !skip.has(entry.field));
+}
+
+/** Which of them {@link plannedAxis} withholds — see its own comment for the three questions. */
+function suppressedAxis(
+	app: App,
+	fm: Record<string, unknown>,
+	settings: BacklogSettings,
+	write: ItemWrite,
+): ReadonlySet<AxisField> {
+	if (!write.axis?.fillOnly) return NO_FIELDS;
+	if (!stillJoining(app, fm, settings, write)) return new Set(AXIS_FIELDS);
+	const liveStart = liveEnd(fm, settings, 'start');
+	const liveTarget = liveEnd(fm, settings, 'target');
+	const wanted = readDate(write.axis.target).value;
+	const skip = new Set<AxisField>();
+	if (liveTarget !== null || reversedSpan(liveStart, wanted)) skip.add('target');
+	// The due this write LEAVES standing — the item's own where it kept one, otherwise the
+	// release's where that one lands. Never a due the line above just suppressed.
+	const due = liveTarget ?? (skip.has('target') ? null : wanted);
+	if (liveStart !== null || reversedSpan(readDate(write.axis.start).value, due)) skip.add('start');
+	return skip;
+}
+
+const NO_FIELDS: ReadonlySet<AxisField> = new Set();
+
+/** One end as the note READS right now — absent for an unconfigured key, and for a value no reader accepts. */
+function liveEnd(fm: Record<string, unknown>, settings: BacklogSettings, field: AxisField): CivilDate | null {
+	const key = optionalKeyFor(settings, field);
+	return key === '' ? null : readDate(ownValue(fm, key)).value;
+}
+
+/**
+ * Whether the membership this write carries would still CHANGE the note — `computeReleaseWrites`'
+ * `settled` test asked of the live frontmatter instead of the model: exactly one slot, and
+ * it resolves to the file that was picked. Every other shape is a join, including the
+ * two-valued key whose first entry names the target, because membership is one value and
+ * repairing it is the join.
+ */
+function stillJoining(app: App, fm: Record<string, unknown>, settings: BacklogSettings, write: ItemWrite): boolean {
+	const target = write.release;
+	if (!target || !settings.releaseKey) return false;
+	const raw = ownValue(fm, settings.releaseKey);
+	if (Array.isArray(raw) && raw.length !== 1) return true;
+	const scalar: unknown = Array.isArray(raw) ? raw[0] : raw;
+	// A link is TEXT, refused for a non-string exactly as `readLinkList` and
+	// `membershipTarget` refuse one — a coerced `release: 2.4` would read as a membership
+	// here that neither of them sees.
+	const text = typeof scalar === 'string' ? readString(scalar) : null;
+	if (text === null) return true;
+	return app.metadataCache.getFirstLinkpathDest(linkpathFromRawValue(text), write.file.path)?.path !== target.path;
 }

@@ -2,10 +2,11 @@
 type: Task
 order: 10
 parent: "[[Joining a release dates the work]]"
-status: Open
+status: Done
 priority: P2
 area: storage
 created: 2026-09-02
+closed: 2026-09-02
 source: decomposition of [[Joining a release dates the work]], 2026-09-02
 files:
   - src/domain/writePlan.ts
@@ -15,9 +16,10 @@ files:
   - src/storage/frontmatter.ts
   - src/storage/writeKeys.ts
   - test/domain/releaseWrites.test.ts
+  - test/storage/releaseWrite.test.ts
   - test/storage/restore.test.ts
-  - test/view/contextRowWrites.test.ts
-  - test/view/contextCardWrites.test.ts
+  - test/storage/dependsOnRestore.test.ts
+  - test/storage/liveTypeKeys.test.ts
   - CHANGELOG.md
 started: ""
 finished: ""
@@ -193,3 +195,44 @@ plain-shaped race test.
 is a walk in a live vault, and nothing in this run can perform it.
 
 ## Outcome
+
+Done, in the two halves the note said could not ship apart.
+
+**The planner.** `computeReleaseWrites` takes `today` as a fourth argument and, on a join,
+carries an `AxisWrite` beside the link: `start` is today, `target` is the release's own
+`releaseDate` where it states a readable one, and the write is marked `fillOnly`. It filters
+neither against the captured item and gates neither on a key — `axisEntries` already drops an
+unconfigured one, which is 4d kept where the note is. `addReleaseItems` reads the clock once
+for the whole menu and `performReleaseMove` per move.
+
+**The writer.** `plannedAxis` (`src/storage/writeKeys.ts`) answers which axis entries a write
+actually lands, and `applyAxis` now takes that list rather than the write. For everything but
+a release join it is every entry the write names, which is what keeps overwriting the default
+for the horizon drag, the timeline resize and the iteration join. For a fill-only write it
+asks the three live questions from ONE snapshot taken in `applyInto` before `applyLinks` runs:
+is this pick still a join (resolved path plus cardinality, the planner's own semantics), does
+the note still hold that end (a readable date, so a backfilled `start: ''` is filled), and
+would writing it reverse the span against the end that stands (both directions, the standing
+due being the item's own where 3a kept it and the release's otherwise).
+
+**The extraction the Risks called for.** `frontmatter.ts` measured 393 effective lines against
+the 400 cap before a line was written, so the live decision went into `writeKeys.ts` — a module
+`storage/` already reaches, already named in the PBI's `## Where it lives`, and already the
+answer to "which keys does this write touch". Handing `applyAxis` the decided entries rather
+than a skip set is what paid for itself: `frontmatter.ts` came out at **394**, one line up on
+where it started. `writeKeys.ts` is 97.
+
+`test/storage/restore.test.ts` was at 447 of its own 450-line budget, so the one-batch undo
+went in only after `describe('dependency inverses')` moved to
+`test/storage/dependsOnRestore.test.ts` — its own subject, the identity rule
+`src/storage/CLAUDE.md` gives a section to. 261 and 229 effective lines.
+
+**Watched failing, both.** Making the planner name a state reddened two of the four
+state-key cases (the join and the release-to-release move; the removal and the agreeing
+re-pick plan nothing, correctly). Turning the fill-only test in `suppressedAxis` into
+`if (!write.axis)` — the flag as the writer's default — reddened exactly the three
+overwriting paths and nothing else.
+
+**Not done, and not this task's.** ADR 0033 stays `Proposed`;
+[[Making a release, and putting work in one]] stays open, since nothing here can walk a live
+vault; and 5d's silent departure is still [[The outcome report was built from one sentence]]'s.
