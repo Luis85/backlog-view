@@ -182,6 +182,21 @@ describe('a release join fills only what the note leaves empty', () => {
 		expect('due' in join.fm()).toBe(false);
 	});
 
+	it('still fills a configured start where the due key is unconfigured and the release has shipped', async () => {
+		// The due CANNOT land — its key is unnamed, so `axisEntries` drops it — and a due
+		// that cannot land is not a due the start has to be earlier than. 4c: with no due
+		// standing at all, today is written. Suppressing the start against a value nothing
+		// will write left the join with no scheduling date whatever, in a vault that had
+		// asked for one (Codex, PR #242).
+		const join = joining({
+			releaseDate: '2026-08-01',
+			settings: settingsWith({ releaseKey: 'release', startKey: 'start', targetKey: '' }),
+		});
+		await join.apply();
+		expect(join.fm().start).toBe('2026-09-02');
+		expect('due' in join.fm()).toBe(false);
+	});
+
 	it('writes no date at all under an unconfigured key, and still lands the link', async () => {
 		// 4d: absence is a value. The whole note, not just the two keys — `setOwn(fm, '', …)`
 		// would add the empty key as a real one nobody named.

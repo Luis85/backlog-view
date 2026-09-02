@@ -167,7 +167,12 @@ function suppressedAxis(
 	if (!stillJoining(app, fm, settings, write)) return new Set(AXIS_FIELDS);
 	const liveStart = liveEnd(fm, settings, 'start');
 	const liveTarget = liveEnd(fm, settings, 'target');
-	const wanted = readDate(write.axis.target).value;
+	// The due this write COULD land — `null` under an unconfigured key, because `axisEntries`
+	// drops that entry and a value nothing will write is not one the start has to be earlier
+	// than. Read here rather than at the comparison: a vault naming a start property and no
+	// due one asked for scheduling, and suppressing its start against a phantom due left the
+	// join with no date at all, which is 4c's own case answered backwards (Codex, PR #242).
+	const wanted = optionalKeyFor(settings, 'target') === '' ? null : readDate(write.axis.target).value;
 	const skip = new Set<AxisField>();
 	if (liveTarget !== null || reversedSpan(liveStart, wanted)) skip.add('target');
 	// The due this write LEAVES standing — the item's own where it kept one, otherwise the
