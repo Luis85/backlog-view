@@ -30,6 +30,13 @@ describe('the suite runs on one frozen day', () => {
 		// Not `new Date().toISOString()`: that is the instant, and the instant was never the
 		// problem. Every dated projection reads `todayCivil()`, which goes through local
 		// getters — so this is the assertion that fails in UTC+14 without a pinned zone.
+		//
+		// **In UTC it passes for the wrong reason, and nothing in-process can fix that.** A
+		// host already in UTC satisfies it whether or not the helper pinned anything, and
+		// `expect(process.env.TZ).toBe('UTC')` is the same tautology one level down — both
+		// were tried and both stayed green with the pin deleted. What guards the pin is the
+		// `zone` job in `.github/workflows/ci.yml`, which runs this suite under
+		// `TZ=Pacific/Kiritimati`: there, and only there, deleting the pin turns this red.
 		expect(todayStamp()).toBe('2026-08-31');
 		expect(todayCivil()).toEqual({ year: 2026, month: 8, day: 31 });
 	});

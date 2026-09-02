@@ -13,6 +13,7 @@ files:
   - test/helpers/clock.ts
   - test/verification/frozenClock.test.ts
   - test/domain/stamps.test.ts
+  - .github/workflows/ci.yml
 started: ""
 finished: ""
 horizon: ""
@@ -94,3 +95,24 @@ The general rule this is an instance of: **a test that depends on ambient enviro
 checking whatever the environment happens to be, which is not the same as checking the
 invariant.** Pinning the ambient value is right; the tests that are ABOUT that value have to
 set it themselves.
+
+## What guards the pin, and why nothing in-process could
+
+The fix is one line in a setup file, and **no assertion inside the suite can tell whether
+that line is there.** Every runner is UTC, so the civil-date check passes whether the helper
+pinned the zone or the host merely happened to agree with it; `expect(process.env.TZ)
+.toBe('UTC')` is the same tautology one level down. Both were written and both stayed green
+with the line deleted, under `TZ=UTC`.
+
+So the guard is a CI leg: **`zone`** in `.github/workflows/ci.yml` runs the suite under
+`TZ=Pacific/Kiritimati`, UTC+14 — the furthest a civil date can run ahead of the frozen
+instant, so it is the worst case rather than a representative one. Delete the pin and that
+job is the only thing in CI that goes red; verified both ways
+(`expected '2026-09-01' to be '2026-08-31'` with it removed, 4616 tests green with it
+restored).
+
+That is the same argument the two legs beside it already make, and it is why this is a job
+rather than a test: `verify` runs both platforms because a green Ubuntu run says nothing
+about path separators, and `locale` runs `de-DE` because a suite that has only ever run in
+English proves nothing about the translation layer. A suite that has only ever run in UTC
+proves nothing about the zone.

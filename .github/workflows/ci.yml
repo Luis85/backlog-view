@@ -82,6 +82,43 @@ jobs:
         env:
           PBL_TEST_LOCALE: de-DE
 
+  # The same suite, somewhere that is not UTC. A suite that has only ever run in UTC
+  # proves nothing about the zone the clock helper pins — the identical argument the
+  # `locale` leg above makes about the source language, and the one `verify`'s matrix
+  # makes about path separators.
+  #
+  # It is not hypothetical. `test/helpers/clock.ts` freezes `Date` at a midday-UTC instant
+  # so the suite reads one day whatever day it runs on, but `dateStamp`
+  # (`src/domain/noteFields.ts`) reads LOCAL getters — so east of UTC+12 that instant is
+  # already the next day and the freeze failed at the one thing it exists to do. Every
+  # runner here is UTC, so nothing was ever red; a contributor in NZ met it alone. See
+  # `docs/bugs/The frozen day is not frozen east of UTC+12.md`.
+  #
+  # `Pacific/Kiritimati` is UTC+14, the furthest a civil date can run ahead of the frozen
+  # instant, so it is the leg's worst case rather than a representative one. The pin
+  # inside the helper is what makes this pass; delete that line and this job is the only
+  # thing in CI that goes red.
+  #
+  # One platform, because a zone is not a path separator — `verify` asks the Windows
+  # question, and asking it twice buys nothing.
+  zone:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run the suite east of the date line
+        run: npm test
+        env:
+          TZ: Pacific/Kiritimati
+
   # Its own job, never a step in `verify`, and that separation is the decision rather
   # than a layout preference — see ADR 0022. `npm run check` is the offline definition
   # of done and every step in it can be satisfied by the commit being written; an
