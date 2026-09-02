@@ -3,14 +3,8 @@ import { describe, expect, it, vi } from 'vitest';
 import { FakeVault } from '../helpers/vault';
 import { useViewHarness } from '../helpers/view';
 import { laneRoadmap, rowFor } from '../helpers/roadmap';
-import { clampingSpan, fromToday, pastWindow } from '../helpers/window';
+import { clampingSpan, fromToday, HALF_WINDOW, pastWindow } from '../helpers/window';
 import { ALICE_AWAY, ALICE_AWAY_PATH, absenceVault } from '../helpers/resources';
-import { addDays, formatCivil, MAX_TIMELINE_DAYS } from '../../src/domain/timeline';
-import { readDate, todayStamp } from '../../src/domain/noteFields';
-
-/** `absenceCost`'s own construction, borrowed rather than re-derived — see its own test. */
-const TODAY = readDate(todayStamp()).value;
-if (TODAY === null) throw new Error('todayStamp() did not parse as a date');
 
 useViewHarness();
 
@@ -346,7 +340,9 @@ describe('what a bar SAYS it costs to cross an absence', () => {
 		// shape that forced deriving "all" from `row.bar.span` directly instead of from
 		// `geometry`.
 		const vault = clampedVault();
-		const windowStart = addDays(TODAY, -Math.floor(MAX_TIMELINE_DAYS / 2));
+		// `fromToday(-HALF_WINDOW)` rather than the arithmetic spelled out: this is the same
+		// clamped-window edge `test/helpers/window.ts` derives, and a second copy of it here
+		// is a second place to get `Math.floor` wrong.
 		// `Ancient` states a real span from 2000 to just inside the clamped window's own
 		// left edge, so its CLAMPED visible width is a couple of days while its REAL span is
 		// decades. The absence sits at that same edge, entirely within `Ancient`'s real span,
@@ -357,15 +353,15 @@ describe('what a bar SAYS it costs to cross an absence', () => {
 				order: 10,
 				assignee: 'Alice',
 				start: '2000-01-01',
-				due: formatCivil(addDays(windowStart, 1)),
+				due: fromToday(-HALF_WINDOW + 1),
 			},
 		});
 		vault.addFile('Edge away.md', {
 			frontmatter: {
 				type: 'Absence',
 				assignee: 'Alice',
-				start: formatCivil(addDays(windowStart, -2)),
-				due: formatCivil(addDays(windowStart, 1)),
+				start: fromToday(-HALF_WINDOW - 2),
+				due: fromToday(-HALF_WINDOW + 1),
 			},
 		});
 		const { containerEl } = laneRoadmap(vault);
