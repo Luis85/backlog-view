@@ -18,14 +18,21 @@
  * exactly the set of sites that changed category — which is the reviewable act, and the
  * one place in this feature where a careless sweep is worse than no change at all. A
  * reviewer reading a `why` that plainly describes a needle and a haystack (the shelf's
- * title search, the folder and tag suggests) is reading a site that is expected to move,
- * not a misclassification that was missed.
+ * title search, the folder and tag suggests, the prompt's duplicate warning) is reading a
+ * site that is expected to move, not a misclassification that was missed. Four more say
+ * UNCERTAIN in the `why` itself: two label folds and a type name lowered into a sentence
+ * are presentation rather than either half of this split, and the sentence ones would
+ * follow the CATALOG locale if they moved at all, which is a different rule from the one
+ * the matching sites take. Identity is where an undecided fold sits — it is the safe
+ * answer, not the researched one.
  *
- * One entry per CALL EXPRESSION, not per line and not per distinct spelling: eight lines
- * fold twice, and a spelling like `typeName.toLowerCase()` occurs eight times in one file
- * with a different reason each time. Identical `file`+`text` rows therefore repeat, in
- * source order within their group, and the test compares the two multisets rather than
- * two sets.
+ * One entry per CALL EXPRESSION, not per line and not per distinct spelling: a single line
+ * can carry two folds, and a spelling like `typeName.toLowerCase()` occurs eight times in
+ * one file with a different reason each time. Identical `file`+`text` rows therefore
+ * repeat, and the test compares the two multisets rather than two sets — which means it
+ * checks HOW MANY calls each spelling has and can bind no row to a particular one of them.
+ * A `why` inside such a group is read by a person, not by the suite, so a wrong one can
+ * ride along with a category flip and nothing will say so.
  *
  * No line numbers: they are correct until the next insertion above them (root
  * `CLAUDE.md`, "address code by name, not by position"). Sorted by `file`, then `text`.
@@ -41,12 +48,12 @@ export interface FoldSite {
 }
 
 export const FOLD_SITES: FoldSite[] = [
-	{ file: 'src/domain/backlogReadme.ts', text: 's.value.toLowerCase()', kind: 'identity', why: 'dedupe key for the states this workflow already offers' },
+	{ file: 'src/domain/backlogReadme.ts', text: 's.value.toLowerCase()', kind: 'identity', why: 'index key for the states this workflow offers, asked of each done value' },
 	{ file: 'src/domain/backlogReadme.ts', text: 's.value.toLowerCase()', kind: 'identity', why: 'matches an offered state against the done values, for the README table' },
-	{ file: 'src/domain/backlogReadme.ts', text: 'v.toLowerCase()', kind: 'identity', why: 'dedupe key for the observed state values' },
+	{ file: 'src/domain/backlogReadme.ts', text: 'v.toLowerCase()', kind: 'identity', why: 'index key for the observed state values, asked of each offered state' },
 	{ file: 'src/domain/backlogReadme.ts', text: 'v.toLowerCase()', kind: 'identity', why: 'dedupe key for the states the menus already offer' },
 	{ file: 'src/domain/backlogReadme.ts', text: 'v.toLowerCase()', kind: 'identity', why: 'matches a configured done value against the offered states' },
-	{ file: 'src/domain/backlogReadme.ts', text: 'v.toLowerCase()', kind: 'identity', why: 'dedupe key for the configured done values' },
+	{ file: 'src/domain/backlogReadme.ts', text: 'v.toLowerCase()', kind: 'identity', why: 'index key for the configured done values, asked of each offered state' },
 	{ file: 'src/domain/backlogReadme.ts', text: 'value.toLowerCase()', kind: 'identity', why: 'matches an offered state against the observed ones, to label its source' },
 	{ file: 'src/domain/backlogReadme.ts', text: 'value.toLowerCase()', kind: 'identity', why: 'matches an observed state against the ones already listed' },
 	{ file: 'src/domain/backlogReadme.ts', text: 'value.toLowerCase()', kind: 'identity', why: 'dedupe key for an observed state joining the list' },
@@ -56,10 +63,10 @@ export const FOLD_SITES: FoldSite[] = [
 	{ file: 'src/domain/board.ts', text: 'state.toLowerCase()', kind: 'identity', why: 'looks a card state up in the state-to-column map' },
 	{ file: 'src/domain/board.ts', text: 'state.toLowerCase()', kind: 'identity', why: 'matches a column state against the workflow done values' },
 	{ file: 'src/domain/board.ts', text: 'state.toLowerCase()', kind: 'identity', why: 'the state being named, matched against each column own state' },
-	{ file: 'src/domain/board.ts', text: 'v.toLowerCase()', kind: 'identity', why: 'dedupe key for the workflow done values' },
+	{ file: 'src/domain/board.ts', text: 'v.toLowerCase()', kind: 'identity', why: 'index key for the workflow done values, asked of each column' },
 	{ file: 'src/domain/board.ts', text: 'value.toLowerCase()', kind: 'identity', why: 'asks whether an observed state already has a column' },
 	{ file: 'src/domain/board.ts', text: 'value.toLowerCase()', kind: 'identity', why: 'index key for the column an observed state mints' },
-	{ file: 'src/domain/defaultModel.ts', text: 'd.label.toLowerCase()', kind: 'identity', why: 'lower-cases a SHIPPED English dimension label for mid-sentence use; a fixed literal, not user text' },
+	{ file: 'src/domain/defaultModel.ts', text: 'd.label.toLowerCase()', kind: 'identity', why: 'UNCERTAIN — lower-cases a SHIPPED English dimension label for mid-sentence use; presentation rather than identity or matching, but the literal is fixed, so no locale can change it here' },
 	{ file: 'src/domain/itemTypes.ts', text: 'ABSENCE_TYPE.toLowerCase()', kind: 'identity', why: 'matches a type name against the declared absence type name' },
 	{ file: 'src/domain/itemTypes.ts', text: 'DELIVERABLE_TYPE.toLowerCase()', kind: 'identity', why: 'matches a type name against the declared Deliverable type name' },
 	{ file: 'src/domain/itemTypes.ts', text: 'ITERATION_TYPE.toLowerCase()', kind: 'identity', why: 'matches a type name against the declared Iteration type name' },
@@ -96,19 +103,19 @@ export const FOLD_SITES: FoldSite[] = [
 	{ file: 'src/domain/readItems.ts', text: 'v.toLowerCase()', kind: 'identity', why: 'canonicalizes the configured done values for the membership test' },
 	{ file: 'src/domain/readItems.ts', text: 'v.toLowerCase()', kind: 'identity', why: 'canonicalizes the Deliverable workflow done values for the membership test' },
 	{ file: 'src/domain/readItems.ts', text: 'v.toLowerCase()', kind: 'identity', why: 'canonicalizes the test workflow done values for the membership test' },
-	{ file: 'src/domain/readmeStamps.ts', text: 'v.toLowerCase()', kind: 'identity', why: 'dedupe key for the state values the workflow lists' },
+	{ file: 'src/domain/readmeStamps.ts', text: 'v.toLowerCase()', kind: 'identity', why: 'index key for the state values the workflow lists, asked of each started state' },
 	{ file: 'src/domain/readmeStamps.ts', text: 'v.toLowerCase()', kind: 'identity', why: 'matches a configured started state against the listed values' },
 	{ file: 'src/domain/roadmap.ts', text: 'b.value.toLowerCase()', kind: 'identity', why: 'index key for the case-insensitive horizon-to-bucket map' },
 	{ file: 'src/domain/roadmap.ts', text: 'reading.value.toLowerCase()', kind: 'identity', why: 'looks a card horizon up in the bucket map' },
 	{ file: 'src/domain/roadmap.ts', text: 'reading.value.toLowerCase()', kind: 'identity', why: 'index key for the bucket an undeclared horizon mints' },
 	{ file: 'src/domain/roadmap.ts', text: 'value.toLowerCase()', kind: 'identity', why: 'looks a context row horizon up in the bucket map' },
-	{ file: 'src/domain/scoringModel.ts', text: 'd.label.toLowerCase()', kind: 'identity', why: 'lower-cases a dimension label for the middle of a problem sentence' },
+	{ file: 'src/domain/scoringModel.ts', text: 'd.label.toLowerCase()', kind: 'identity', why: 'UNCERTAIN — lower-cases a dimension label for the middle of a problem sentence; presentation rather than identity or matching, and the label can come from the options panel, so this folds USER data for display' },
 	{ file: 'src/domain/settings.ts', text: 'name.toLowerCase()', kind: 'identity', why: 'nameTable — the index key every per-state table is read back by' },
 	{ file: 'src/domain/settings.ts', text: 'state.toLowerCase()', kind: 'identity', why: 'PERSISTED option key wipLimit.<state> in the .base file' },
 	{ file: 'src/domain/settings.ts', text: 'state.toLowerCase()', kind: 'identity', why: 'PERSISTED option key columnPolicy.<state> in the .base file' },
 	{ file: 'src/domain/settings.ts', text: 'state.toLowerCase()', kind: 'identity', why: 'the state value matched against the configured done values' },
 	{ file: 'src/domain/settings.ts', text: 'state.toLowerCase()', kind: 'identity', why: 'the state value matched against the configured started states' },
-	{ file: 'src/domain/settings.ts', text: 'v.toLowerCase()', kind: 'identity', why: 'dedupe key for the done values a menu appends' },
+	{ file: 'src/domain/settings.ts', text: 'v.toLowerCase()', kind: 'identity', why: 'index key for the done values, asked of each observed value' },
 	{ file: 'src/domain/settings.ts', text: 'v.toLowerCase()', kind: 'identity', why: 'asks whether an observed value is already one of the done values' },
 	{ file: 'src/domain/settings.ts', text: 'v.toLowerCase()', kind: 'identity', why: 'each configured done value, matched against the state in hand' },
 	{ file: 'src/domain/settings.ts', text: 'v.toLowerCase()', kind: 'identity', why: 'each configured started state, matched against the state in hand' },
@@ -141,12 +148,12 @@ export const FOLD_SITES: FoldSite[] = [
 	{ file: 'src/storage/frontmatter.ts', text: 'leaving.toLowerCase()', kind: 'identity', why: 'the state being left, in the match that decides whether a write moves anything' },
 	{ file: 'src/storage/frontmatter.ts', text: 'state.toLowerCase()', kind: 'identity', why: 'the state being written, in that same match' },
 	{ file: 'src/ui/prompts.ts', text: 'file.path.toLowerCase()', kind: 'identity', why: 'the haystack of the folder suggest filter — a needle-and-haystack site, identity only for this round' },
-	{ file: 'src/ui/prompts.ts', text: 'k.toLowerCase()', kind: 'identity', why: 'a known value, matched against the typed one for the duplicate warning' },
+	{ file: 'src/ui/prompts.ts', text: 'k.toLowerCase()', kind: 'identity', why: 'UNCERTAIN — a known value, matched against the typed one; user text against a visible list, so matching-shaped, but what it decides is whether a warning appears' },
 	{ file: 'src/ui/prompts.ts', text: 'needle.toLowerCase()', kind: 'identity', why: 'the needle of the tag suggest filter — a needle-and-haystack site, identity only for this round' },
 	{ file: 'src/ui/prompts.ts', text: 'query.toLowerCase()', kind: 'identity', why: 'the needle of the folder suggest filter — a needle-and-haystack site, identity only for this round' },
 	{ file: 'src/ui/prompts.ts', text: 'value.toLowerCase()', kind: 'identity', why: 'the haystack of the tag suggest filter — a needle-and-haystack site, identity only for this round' },
-	{ file: 'src/ui/prompts.ts', text: 'value.trim().toLowerCase()', kind: 'identity', why: 'the typed value, matched against the known list for the duplicate warning' },
-	{ file: 'src/view/childrenList.ts', text: 'type.toLowerCase()', kind: 'identity', why: 'lower-cases a type name for the middle of a counted sentence' },
+	{ file: 'src/ui/prompts.ts', text: 'value.trim().toLowerCase()', kind: 'identity', why: 'UNCERTAIN — the typed value, matched against the known list; the other side of that same warning, and the PBI note lists neither' },
+	{ file: 'src/view/childrenList.ts', text: 'type.toLowerCase()', kind: 'identity', why: 'UNCERTAIN — lower-cases a user type name for the middle of a t() sentence; grammar, so it would follow the CATALOG locale rather than the requested one if it moved at all' },
 	{ file: 'src/view/interactions/keyboard.ts', text: 'evt.key.toLowerCase()', kind: 'identity', why: 'KeyboardEvent.key is a protocol value, matched against z for undo in the tree' },
 	{ file: 'src/view/interactions/keyboard.ts', text: 'evt.key.toLowerCase()', kind: 'identity', why: 'KeyboardEvent.key is a protocol value, matched against z for undo on the board' },
 	{ file: 'src/view/interactions/menu.ts', text: 'item.typeName.toLowerCase()', kind: 'identity', why: 'the type an item carries, in the comparison Set type checks by' },

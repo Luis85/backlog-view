@@ -20,15 +20,25 @@ import { FOLD_SITES, FoldSite } from './foldSites';
  * that changed category. Every entry is `identity` in this round on purpose; see
  * `foldSites.ts`'s own comment.
  *
- * The instrument is the TypeScript compiler API rather than a grep, and the difference is
- * measured rather than assumed: `grep -o 'toLowerCase('` over the same tree returns 120
- * against this walk's 113, and all seven extras are inside comments — three of them in
- * this feature's own notes about the folds. A comment is not a call.
+ * That check reads the spelling ANYWHERE in an entry's text, not the outermost callee, so a
+ * nested mixed fold (`foo(a.toLocaleLowerCase()).toLowerCase()`) would be judged by its
+ * inner one. No such site exists, and a nested pair is two calls and therefore two entries
+ * — the inner one is unambiguous, and it is the outer row's `why` that would have to say
+ * which fold it is about.
  *
- * What it cannot see, stated rather than implied: a fold reached through a variable
- * (`const fold = s.toLowerCase; fold()`) or through `String.prototype` by any other
- * spelling. Neither occurs here, and the assertion that this walk finds 113 calls in 26
- * files is what fails if the instrument ever stops seeing the tree at all.
+ * The instrument is the TypeScript compiler API rather than a grep, and the difference was
+ * measured rather than assumed: on 2026-09-02, `grep -o 'toLowerCase('` over the same tree
+ * returned 120 against this walk's 113, and every one of the seven extras was inside a
+ * comment — three of them in this feature's own notes about the folds. A comment is not a
+ * call. **Nothing asserts either figure**, and both drift: editing a comment that mentions
+ * a fold moves the grep number without moving anything real. It is dated for that reason,
+ * and the walk's own 113 is what the suite holds.
+ *
+ * What the walk cannot see, stated rather than implied: a fold not spelled as a property
+ * access — through a variable (`const fold = s.toLowerCase; fold()`) or through element
+ * access (`s['toLowerCase']()`). Neither occurs in `src/` today, and the assertion that
+ * this walk finds 113 calls in 26 files is what fails if the instrument ever stops seeing
+ * the tree at all.
  */
 
 const SRC = 'src';
@@ -48,7 +58,8 @@ function sources(dir: string): string[] {
 /** One fold call: the file it is in and its whitespace-collapsed source text. */
 type FoldCall = Pick<FoldSite, 'file' | 'text'>;
 
-/** Every `toLowerCase` / `toLocaleLowerCase` CALL in `src/`, comments excluded by construction. */
+/** Every `x.toLowerCase()` / `x.toLocaleLowerCase()` call in `src/` — a call on a property
+ * access, which is the only spelling `src/` uses. Comments are excluded by construction. */
 function foldCalls(): FoldCall[] {
 	const found: FoldCall[] = [];
 	for (const file of sources(SRC)) {
