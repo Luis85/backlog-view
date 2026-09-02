@@ -392,6 +392,29 @@ describe('collation, folding and numbers follow the requested locale', () => {
 		expect(formatNumber(1234.5, true)).toBe('1.234,5');
 	});
 
+	it('takes the exponent branch on a COMPUTED number too, and inside a sentence', () => {
+		// `precise` says whether typed digits may be rounded; the MAGNITUDE says whether
+		// the number can be written out at all. Tying the second to the first left every
+		// computed score spelling itself across 25 characters in a 72px cell: totals and
+		// indicators pass `precise` false, and a total is bounded by a range the USER
+		// writes — `parseRange` takes `-?\d+` and `modelProblems` asks only for integers,
+		// so `0-1000000000000000000000` is a valid model. Found by review (Codex, PR #251).
+		setLocale('en');
+		expect(formatNumber(1e21)).toBe('1E21');
+		expect(formatNumber(1e-21)).toBe('1E-21');
+		// A count still formats as a count — the branch is unreachable for a tally, which
+		// is why this was invisible for three rounds.
+		expect(formatNumber(1234)).toBe('1,234');
+		expect(formatNumber(0)).toBe('0');
+		// Rounding is still `precise`'s alone: the default cap keeps its three fraction
+		// digits, and nothing about the magnitude branch changes that.
+		expect(formatNumber(3.14159)).toBe('3.142');
+		expect(formatNumber(3.14159, true)).toBe('3.14159');
+		// And a number inside a sentence agrees with the same number outside one, which
+		// is the property `formatNumber` exists for.
+		expect(t('count.items', { count: 1e21 })).toBe('1E21 items');
+	});
+
 	it('shows a rounded-away negative as zero, not as minus zero', () => {
 		// IEEE negative zero is a real value `Math.round` produces — `round2(-0.001)` is
 		// `-0`, and a scoring model may legitimately span negatives (`outputMin` need only

@@ -354,6 +354,26 @@ function withoutNegativeZero(value: number): number {
 }
 
 /**
+ * Which of the three number formatters a value gets — asked of the VALUE's own magnitude,
+ * and only then of who is asking.
+ *
+ * The two questions are independent and were tangled once: `precise` says whether the
+ * digits someone TYPED may be rounded, while the magnitude says whether the number can be
+ * written out at all. Tying the second to the first left every computed score — totals and
+ * indicators, which pass `precise` false — spelling `1e21` across 25 characters in a cell
+ * that clips at 72px. Found by review (Codex, PR #251).
+ *
+ * `fill` asks it too, so a number inside a sentence and the same number outside one still
+ * cannot disagree — the property `formatNumber`'s own doc exists for.
+ */
+function formatterFor(shown: number, precise: boolean): Intl.NumberFormat {
+	const magnitude = Math.abs(shown);
+	const spelledOut = magnitude === 0 || (magnitude >= SPELLED_OUT_FROM && magnitude < SPELLED_OUT_BELOW);
+	if (!spelledOut) return active.numberScientific;
+	return precise ? active.numberPrecise : active.number;
+}
+
+/**
  * A bare number shown to a person, in the REQUESTED locale — presentation, like collation.
  * The SAME formatter `t()` gives a `{count}` parameter, so a count outside a sentence and
  * one inside it cannot disagree; they did, at a thousand, which is what this exists for.
@@ -373,15 +393,16 @@ function withoutNegativeZero(value: number): number {
  * Zero is excluded explicitly — it is not "very small", it has no exponent to show, and
  * `Intl` would otherwise render it `0E0`.
  *
- * `precise` alone takes this branch. A COUNT is a tally this plugin computed and cannot
- * reach either extreme, so the default formatter stays one formatter.
+ * **`precise` does not gate that branch, and this paragraph said it did.** The claim was
+ * that a COUNT cannot reach either extreme, which is true and answers the wrong question:
+ * `precise` is false for every COMPUTED number too, and a computed score is bounded by a
+ * range the user writes. `parseRange` takes `-?\d+` and `modelProblems` asks only for
+ * integers, so an output range of `0-1000000000000000000000` is a valid model and its
+ * total lands at `1e21` in the same 72px cell. Found by review (Codex, PR #251).
  */
 export function formatNumber(value: number, precise = false): string {
 	const shown = withoutNegativeZero(value);
-	if (!precise) return active.number.format(shown);
-	const magnitude = Math.abs(shown);
-	const spelledOut = magnitude === 0 || (magnitude >= SPELLED_OUT_FROM && magnitude < SPELLED_OUT_BELOW);
-	return (spelledOut ? active.numberPrecise : active.numberScientific).format(shown);
+	return formatterFor(shown, precise).format(shown);
 }
 
 /**
@@ -452,6 +473,8 @@ function fill(text: string, grammar: Grammar, values: Values | undefined): strin
 		const value = values[name];
 		if (value === undefined) return whole;
 		if (Array.isArray(value)) return grammar.list.format(value as readonly string[]);
-		return typeof value === 'number' ? active.number.format(withoutNegativeZero(value)) : (value as string);
+		if (typeof value !== 'number') return value as string;
+		const shown = withoutNegativeZero(value);
+		return formatterFor(shown, false).format(shown);
 	});
 }
