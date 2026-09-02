@@ -10,7 +10,7 @@ import type {
 	QueryController,
 	Value,
 } from 'obsidian';
-import { FileView, TFile, TFolder } from './obsidian-mock';
+import { FileView, TFile, TFolder, unimplemented } from './obsidian-mock';
 
 /**
  * Widen a fake to the app type a module asks for, WITHOUT losing the fake's own members:
@@ -646,10 +646,11 @@ export function setResults(view: BasesView, entries: BasesEntry[], groups?: Base
  * and nothing else" until 2026-08-31, which is a guarantee written ahead of its check: the
  * three tests driving that advisory could not use this double at all and cast past it to
  * assign `view.data` by hand, so the one member the plugin actually consults was the one
- * the double did not carry. `properties` and `getSummaryValue` stay DECLARED — nothing in
- * `src/` reads either TODAY — checked, not assumed — and a module that starts to will find
- * `undefined` rather than a loud failure, which is the whole hazard `groupedData` proved.
- * Re-check with a walk over `src/` before adding a fourth.
+ * the double did not carry. `properties` and `getSummaryValue` are still unimplemented —
+ * nothing in `src/` reads either, checked rather than assumed — but they no longer answer
+ * `undefined`: they THROW, which is the same bet made loud. See `unimplemented` in
+ * `obsidian-mock.ts` for why, and `test/helpers/doubles.test.ts` for the check that every
+ * one of them still does.
  *
  * It exists so that HANDING A VIEW ITS RESULTS NEEDS NO CAST. `{ data: entries }` is not a
  * `BasesQueryResult`, so every mount in the suite reached `view.data` through
@@ -659,8 +660,14 @@ export function setResults(view: BasesView, entries: BasesEntry[], groups?: Base
  * widened once, here, rather than cast at each mount.
  */
 export class FakeQueryResult {
-	declare properties: BasesQueryResult['properties'];
-	declare getSummaryValue: BasesQueryResult['getSummaryValue'];
+	/** Unimplemented, and LOUD about it — see `unimplemented` in `obsidian-mock.ts`, which
+	 *  this class's own lost bet is the worked example of. */
+	get properties(): BasesQueryResult['properties'] {
+		return unimplemented('BasesQueryResult', 'properties');
+	}
+	get getSummaryValue(): BasesQueryResult['getSummaryValue'] {
+		return unimplemented('BasesQueryResult', 'getSummaryValue');
+	}
 	readonly groupedData: BasesEntryGroup[];
 
 	constructor(
@@ -674,17 +681,15 @@ export class FakeQueryResult {
 /** In-memory BasesViewConfig double that records set() calls. */
 export class FakeViewConfig {
 	/**
-	 * Formula evaluation, which the plugin never asks for. DECLARED rather than stubbed:
-	 * no runtime cost. It is NOT loud, and this comment said it was until 2026-08-31: a
-	 * `declare` emits nothing, so a module that starts calling it finds `undefined` and
-	 * fails wherever that lands, which may be a truthiness test that quietly answers no.
-	 * `groupedData` was exactly that on `FakeQueryResult` — declared, read by
-	 * `detectIgnoredGrouping`, and therefore `undefined` in every test, so the three cases
-	 * driving the grouping advisory had to cast past the double to plant it. A `declare`
-	 * here is a bet that `src/` never reads the member, and the bet has been lost once.
-	 * `getEvaluatedFormula` is checked: nothing in `src/` calls it.
+	 * Formula evaluation, which the plugin never asks for — checked, not assumed. It was
+	 * DECLARED until 2026-09-02, which cost nothing and said nothing: a `declare` emits no
+	 * code, so a module that started calling it would find `undefined` and fail wherever
+	 * that landed, possibly a truthiness test that quietly answers no. It throws now, for
+	 * the reasons `unimplemented` in `obsidian-mock.ts` states in full.
 	 */
-	declare getEvaluatedFormula: BasesViewConfig['getEvaluatedFormula'];
+	get getEvaluatedFormula(): BasesViewConfig['getEvaluatedFormula'] {
+		return unimplemented('BasesViewConfig', 'getEvaluatedFormula');
+	}
 	/** User-facing view name — part of the key the view-state store is written under. */
 	name = 'Backlog';
 	values: Record<string, unknown>;
