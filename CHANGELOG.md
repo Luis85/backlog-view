@@ -50,8 +50,14 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
 
 ### Fixed
 
+- Every list you read — the state and tag menus, the resource roster, the folder suggest,
+  the shelf's cards and the estimation table — now sorts in your own language rather than
+  in whatever language the computer happens to be set to.
 - The shelf's title search and the folder, tag and resource-name suggests now fold case in
   your own language, so a Turkish reader typing `ışık` finds `Işık`.
+- Counts and ratios on screen are now grouped and separated the way your language writes
+  numbers, so a count on a card and the same number read aloud no longer disagree at a
+  thousand.
 - Two timeline tests measured against the calendar rather than a fixed day, so they began
   failing a fortnight after they were written.
 

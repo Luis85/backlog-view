@@ -5,6 +5,8 @@ import { buildModel } from '../../src/domain/model';
 import { buildRoadmap } from '../../src/domain/roadmap';
 import { organizeShelf, searchShelf } from '../../src/domain/shelf';
 import { columnPolicyKey, wipLimitKey } from '../../src/domain/settings';
+import { stateColorKey } from '../../src/domain/stateColors';
+import { typeFolderKey } from '../../src/domain/typeVocabulary';
 import { isIterationType } from '../../src/domain/itemTypes';
 import { setLocale } from '../../src/i18n/t';
 import { installObsidianDom } from '../helpers/dom';
@@ -136,7 +138,25 @@ describe('an identity fold is the same answer in every locale', () => {
 	/**
 	 * The mirror. Each of these decides what something IS, and each is a shape the PBI
 	 * note names as vault-corrupting if it ever took a locale: a persisted option key
-	 * built from a state name, and a type name matched against the fixed vocabulary.
+	 * built from a state name or a type name, and a type name matched against the fixed
+	 * vocabulary.
+	 *
+	 * **What the mirror catches and what it cannot**, because the difference is not
+	 * obvious from reading it. It drives `setLocale('tr')`, so it fails any fold that
+	 * reads the PLUGIN's requested locale — `toLocaleLowerCase(requested)` written by
+	 * hand, or a call to `foldForMatch`, which is the whole matching half of the split.
+	 * It stays GREEN against a sweep to a BARE `.toLocaleLowerCase()`: that spelling takes
+	 * the HOST's default locale, which is `en` under vitest whatever the plugin is set to,
+	 * so nothing here can tell it from `toLowerCase()`. Only `foldSites.test.ts`'s
+	 * spelling check sees that shape, and it sees it by the letters rather than by the
+	 * behaviour.
+	 *
+	 * The four keys below are the vault-facing ones: two workflow option keys, a state
+	 * colour and a per-type folder, all `.base` settings keyed on a value the user typed.
+	 * `view/viewState.ts`'s column fold key is the one identity fold of this shape left to
+	 * `foldSites.ts`'s spelling check alone, deliberately — it is device-local view state
+	 * rather than a vault value, so a locale-dependent fold there re-opens a folded column
+	 * instead of resetting a configuration, and reaching it needs the whole view harness.
 	 */
 	it('keeps a persisted option key spelled the way every other locale spells it', () => {
 		const keys = (code: string) =>
@@ -147,6 +167,24 @@ describe('an identity fold is the same answer in every locale', () => {
 		// locale would read differently in another.
 		expect(keys('tr')).toEqual(['wipLimit.in progress', 'columnPolicy.in progress']);
 		expect(keys('tr')).toEqual(keys('en'));
+	});
+
+	it('keeps the state colour a vault picked pointing at the state it was picked for', () => {
+		// `stateColor.ın progress` under a Turkish fold: the colour is still in the `.base`
+		// and no column claims it, so every painted column goes grey.
+		const keys = (code: string) => withLocale(code, () => stateColorKey('In progress'));
+
+		expect(keys('tr')).toBe('stateColor.in progress');
+		expect(keys('tr')).toBe(keys('en'));
+	});
+
+	it('keeps the per-type folder key spelled the way every other locale spells it', () => {
+		// `typeFolder.ıteratıon`: the configured folder stops answering for `Iteration`, so
+		// new notes of that type are created somewhere else.
+		const keys = (code: string) => withLocale(code, () => typeFolderKey('Iteration'));
+
+		expect(keys('tr')).toBe('typeFolder.iteration');
+		expect(keys('tr')).toBe(keys('en'));
 	});
 
 	it('still recognizes a declared type name a Turkish fold would not', () => {
