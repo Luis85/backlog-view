@@ -5,7 +5,7 @@ import { OpenTarget } from '../domain/itemHandling';
  *  `BacklogItem` when the estimation view became the second caller: this module never read
  *  anything else off one, and a controller that demands the backlog's own item type cannot
  *  be reused by a view that has a different one. */
-type Openable = { file: TFile };
+export type Openable = { file: TFile };
 
 /**
  * What opening a note needs of the view: the workspace, where the view is drawn, and

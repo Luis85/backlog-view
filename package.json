@@ -21,7 +21,7 @@
 		"audit": "npm audit --omit=dev --audit-level=critical",
 		"check": "npm run build && npm run typecheck:test && npm run lint && npm run lint:md && npm run test:coverage && npm run analyze && npm run docs",
 		"version": "node scripts/version-bump.mjs && git add manifest.json versions.json",
-		"clock": "vitest run --config scripts/vitest.clock.mts"
+		"clock": "vitest run"
 	},
 	"keywords": [
 		"obsidian",
