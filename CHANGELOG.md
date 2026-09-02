@@ -35,6 +35,10 @@ See [RELEASING.md](RELEASING.md) for how this file is kept in step with a releas
   view.
 - `npm run check` typechecks `test/` as well as `src/` (`npm run typecheck:test`), so a
   test calling a function with the wrong arguments fails the gate instead of passing.
+- A readiness row on a release's own screen: three chips — everything estimated, dependencies
+  resolved, critical risks addressed — each answered over the release's members as satisfied,
+  partly with a count, or not, with the effort totals, the estimate-denominator progress and
+  the unestimated count joining the summary strip beside them.
 
 ## [0.10.0] - 2026-08-30
 

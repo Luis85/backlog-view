@@ -2,7 +2,7 @@
 type: PBI
 parent: "[[The release summary]]"
 order: 10
-status: Open
+status: Done
 created: 2026-08-21
 source: user request — release management concept refinement, 2026-08-21
 started: ""
@@ -23,13 +23,14 @@ release: "[[Eratic Skunk]]"
 population and the unit stated, **so that** I can read the state of a release in seconds and
 know what every figure counted.
 
-The item count and the items-denominator progress have shipped (2026-08-28), as a summary
+The item count and the items-denominator progress shipped first (2026-08-28), as a summary
 strip on the single-release screen — one bar, one percentage, one sentence, drawn from the
 same `ReleaseRow` the index's own band already computed rather than a second derivation. The
-rest has not: the estimated and completed effort, the estimate-denominator progress, the
-blocked and risk counts, and the unestimated figure are all still nothing yet. The figures
-derive from the same membership [[The scope of a release as a tree]] resolves; nothing here
-is stored.
+rest shipped 2026-09-02: the estimated and completed effort, the estimate-denominator
+progress, the blocked and risk counts, and the unestimated figure, each of them a criterion
+of [[Release readiness]] counted or the same predicate read for a sum. The figures derive
+from the same membership [[The scope of a release as a tree]] resolves; nothing here is
+stored.
 
 ## Use case
 
@@ -62,9 +63,12 @@ is stored.
 
 - **1a — the release has no members.** Every figure reads as nothing to count, and none of them
   reads as zero. A release nobody has filled is not a release that is done.
-- **2a — the estimate key is unconfigured.** The effort figures and the estimate denominator
-  are absent and named as unconfigured; the item count and the item-denominator progress still
-  answer.
+- **2a — the estimate key is unconfigured.** The effort figures, the estimate denominator
+  **and the unestimated figure** are absent and named as unconfigured; the item count and the
+  item-denominator progress still answer. **Amended 2026-09-02**: this read "the effort figures
+  and the estimate denominator" until the harness drew an unestimated count beside `Effort is
+  not configured` — the count reads the same key as the sums, so a screen showing one without
+  the others contradicts itself.
 - **2b — a member's estimate is not a finite number.** It is unestimated, whatever it says —
   the same predicate [[A definition of ready]] uses, and for the same reason: a `TBD` counted
   as an estimate reports a release as sized on the strength of a placeholder.
@@ -111,7 +115,26 @@ and the summary strip that draws them is `src/view/release/renderScope.ts`, not 
 `src/domain/releaseOptions.ts`, never `src/domain/viewOptions.ts`, which is the backlog view's
 own options module and reaches no property this screen reads.
 
-The REST of this note's figures — the effort totals, the estimate-denominator progress, the
-blocked and risk counts, the unestimated figure — are still nothing yet, and whichever module
-eventually derives them should follow the same rule: read the population `releaseScope`
-(`src/domain/releases.ts`) already resolves, rather than a second walk of the model.
+**Corrected 2026-09-02** for the REST of this note's figures, which have now shipped. They are
+`src/domain/releaseReadiness.ts`, which walks the population `releaseScope`
+(`src/domain/releases.ts`) already resolved rather than the model a second time, and which
+returns the criteria and the figures together from one call — the effort sums, the unestimated
+count, the blocked count and the critical-risk count. The blocked and critical-risk figures ARE
+their criterion's own outstanding count, so neither can become a second opinion about a number
+with one right answer. The effort sums and the unestimated count are their own pass over the
+members, but through the same predicate the estimate criterion reads (`estimateValue` and
+`isEstimated`), so a total and a verdict cannot disagree about which members are estimated.
+
+They are drawn by `src/view/release/renderReadiness.ts`, called from
+`src/view/release/renderScope.ts` — the chip row from `drawHeader`, the figures from the
+`drawSummary` that `drawHeader` calls.
+
+The estimate-denominator progress is **one figure with its denominator inside it** — `9 of 15
+pts (60%)` — rather than a sum and a second percentage beside the items bar: two percentages on
+one strip read as competing, and the strip wraps.
+
+The **double-count qualifier** — a member carrying an estimate while a descendant in the same
+release carries one — is NOT here and is deliberately deferred to [[Capacity against
+commitment]], which owns that figure. Until it lands the effort total is wrong in a vault whose
+parent estimates are aggregates; `releaseReadiness.ts` carries a `ponytail:` comment saying so
+at the sum rather than leaving the gap silent.
