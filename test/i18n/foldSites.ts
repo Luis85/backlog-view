@@ -18,13 +18,18 @@
  * exactly the set of sites that changed category — which is the reviewable act, and the
  * one place in this feature where a careless sweep is worse than no change at all. A
  * reviewer reading a `why` that plainly describes a needle and a haystack (the shelf's
- * title search, the folder and tag suggests, the prompt's duplicate warning) is reading a
- * site that is expected to move, not a misclassification that was missed. Four more say
- * UNCERTAIN in the `why` itself: two label folds and a type name lowered into a sentence
- * are presentation rather than either half of this split, and the sentence ones would
- * follow the CATALOG locale if they moved at all, which is a different rule from the one
- * the matching sites take. Identity is where an undecided fold sits — it is the safe
- * answer, not the researched one.
+ * title search, the folder and tag suggests) is reading a site that is expected to move,
+ * not a misclassification that was missed.
+ *
+ * **A `why` beginning `UNCERTAIN — ` says the call was not decided.** Grep that spelling
+ * for the list rather than trusting a count here: three earlier drafts of this paragraph
+ * each carried a number that was wrong by the time it was read, and a number typed into a
+ * comment is checked by nobody. Two shapes are in it — a label or a type name lowered for
+ * the middle of a sentence, which is presentation rather than either half of this split
+ * and would follow the CATALOG locale if it moved at all; and the prompt's duplicate
+ * warning, which compares what the user typed against a list they can see, so it is
+ * matching-SHAPED, but what it decides is whether a warning appears. Identity is where an
+ * undecided fold sits — it is the safe answer, not the researched one.
  *
  * One entry per CALL EXPRESSION, not per line and not per distinct spelling: a single line
  * can carry two folds, and a spelling like `typeName.toLowerCase()` occurs eight times in
