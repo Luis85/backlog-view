@@ -35,8 +35,18 @@ compiler API, on 2026-09-02, counting CALL EXPRESSIONS rather than lines or matc
 
 | Instrument | `toLowerCase` | `localeCompare` | `toUpperCase` | `compareText` |
 | --- | --- | --- | --- | --- |
-| `grep -o` | 113 | 3 | 3 | — |
-| AST walk | **105** in 25 files | **0** | **1** | **7** in 5 files |
+| `grep -o` | 113 | 3 | 3 | 5 |
+| AST walk | **105** in 25 files | **0** | **1** | **5** in 4 files |
+
+The `compareText` column undercounts against the row label on purpose, and that is worth
+stating rather than fixing by widening the walk: it is a CALL-EXPRESSION count, matching
+`toLowerCase` and `toUpperCase`, but two of the seven `localeCompare` calls this task moved
+became `values.sort(compareText)` in `src/domain/vocabulary.ts` — the function passed as a
+REFERENCE, not called — which no call-expression walk can see. Counting identifier
+references instead (less the import and `t.ts`'s own declaration) gives **7 in 5 files**:
+`ui/prompts.ts` 1, `view/estimation/renderTable.ts` 1, `domain/vocabulary.ts` 2,
+`domain/model.ts` 2, `domain/shelf.ts` 1. The table's 5 is what a call-expression walk
+sees; 7 is every place a comparison collates.
 
 Every difference between the two rows is a comment, and that is the whole reason both rows
 are here: all four figures this PBI's note has carried over its life — 41, 47, 118 and
@@ -103,8 +113,10 @@ different name, which is the shape that actually worries. The honest sentence in
 
 ## Outcome
 
-`compareText`, `foldForMatch` and `formatNumber` ship; 7 collations, 8 matching folds and
-14 counts follow the requested locale; 105 identity folds do not, and are enumerated with
+`compareText`, `foldForMatch` and `formatNumber` ship; 7 collation sites (5 call
+expressions in 4 files, plus 2 references passed straight to `sort` in
+`domain/vocabulary.ts` — see Evidence above), 8 matching folds and 14 counts follow the
+requested locale; 105 identity folds do not, and are enumerated with
 what each one decides. Three things this round found and deliberately did not fix, recorded
 here so they are visible rather than absent:
 

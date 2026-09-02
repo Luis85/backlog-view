@@ -59,10 +59,16 @@ alphabet and the filter finds what is plainly on screen.
 **Nothing in `src/` collates any more, and the fix is the shape rather than the zero.**
 This note found four `localeCompare` calls; by the time the work ran there were seven, the
 three extra having arrived with the estimation table, the resource roster and the shelf's
-own sort. All seven are `compareText` now — five files, one `Intl.Collator` built per
-`setLocale` in the REQUESTED locale — and `eslint.config.mjs` bans the method in `src/`,
-so the zero holds for code nobody has written yet rather than for the code that was
-measured.
+own sort. All seven are `compareText` now, though a call-counting instrument sees only
+five of them: the final review's Minor 8 changed `src/domain/vocabulary.ts`'s two sites
+from `values.sort((a, b) => compareText(a, b))` to `values.sort(compareText)`, passing the
+function as a REFERENCE rather than calling it — invisible to anything that walks call
+expressions, which is exactly the `foo(` vs `foo<T>(` hazard the root `CLAUDE.md` names.
+Five call expressions in four files (`domain/model.ts`, `domain/shelf.ts`, `ui/prompts.ts`,
+`view/estimation/renderTable.ts`) plus those two references in `vocabulary.ts` account for
+all seven, in five files total, each behind one `Intl.Collator` built per `setLocale` in
+the REQUESTED locale. `eslint.config.mjs` bans the method in `src/`, so the zero holds for
+code nobody has written yet rather than for the code that was measured.
 
 Called with no locale argument, `localeCompare` used the *host's* default, which is the
 operating system's language rather than Obsidian's. So a user running Obsidian in one
@@ -101,9 +107,11 @@ exposed it. Found by review on PR #167.
 ## Case folding is the same split again
 
 **The counts, and the instrument that produced them.** On 2026-09-02, over `src/**/*.ts`:
-**113 / 0 / 1 / 7** — `grep -o 'toLowerCase('` returns 113, no `localeCompare` call
-expression survives, one `toUpperCase()` call does, and seven `compareText` calls in five
-files are where the collation went.
+**113 / 0 / 1 / 5** — `grep -o 'toLowerCase('` returns 113, no `localeCompare` call
+expression survives, one `toUpperCase()` call does, and five `compareText` CALL
+EXPRESSIONS in four files are where the collation went — plus two more `compareText`
+REFERENCES the same walk cannot see (below), for seven collation sites in five files
+total.
 
 Each of those needs its calibration said out loud, because three of this note's earlier
 figures were an instrument reading something other than what its sentence claimed:
@@ -120,6 +128,13 @@ figures were an instrument reading something other than what its sentence claime
   in `src/`, all of them prose in `src/i18n/t.ts` explaining why the method is banned.
 - **1 is `capitalize` in `domain/estimationSettings.ts`** — see the `toUpperCase` paragraph
   below. Grep returns three there as well, the other two being comments.
+- **5 undercounts by exactly the same shape as `foo(` missing `foo<T>(`.**
+  `src/domain/vocabulary.ts` passes `compareText` straight to `.sort` twice —
+  `values.sort(compareText)` — which collates without a call expression to find. Counting
+  identifier references instead (less the import and `t.ts`'s own declaration) gives **7 in
+  5 files**: `ui/prompts.ts` 1, `view/estimation/renderTable.ts` 1, `domain/vocabulary.ts`
+  2, `domain/model.ts` 2, `domain/shelf.ts` 1. Both numbers are right and answer different
+  questions; 5 is what a call-expression walk sees, 7 is every place a comparison collates.
 
 The whole classification — every fold in `src/`, with what each one decides — is
 `test/i18n/foldSites.ts`, and that is where the next contributor should read it rather than
