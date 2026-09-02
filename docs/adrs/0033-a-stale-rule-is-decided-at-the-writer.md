@@ -1,7 +1,7 @@
 ---
 adr: 33
 title: A rule that can go stale between plan and apply is decided at the writer
-status: Accepted
+status: Proposed
 date: 2026-09-02
 area: architecture
 ---
@@ -66,6 +66,16 @@ rather than narrowed: the planner is still pure, still node-tested, and still th
 a use case's batch is composed.
 
 ## Consequences
+
+**`Proposed`, not `Accepted`, until [[Dates ride the release join]] lands.** This README
+defines `Accepted` as "in force — the code follows it", and no code follows this yet. Worse
+for the stronger reading: the decision is not even true of one example named above, since
+`computeReleaseWrites` still returns an empty plan from the captured membership and
+[[Joining a release dates the work]] 6c concedes that no writer check runs in that race —
+[[A pick compared against the model reads as a no-op]] owns moving all three planners and is
+its own increment. Flipping this record to `Accepted` is part of that task's definition of
+done. Recorded after review (Codex, PR #242) read the status against this README's own
+vocabulary.
 
 **The plan no longer fully describes the write.** Reading `computeReleaseWrites` alone no
 longer tells you what lands on disk, and the flag is the only thing linking the two halves.

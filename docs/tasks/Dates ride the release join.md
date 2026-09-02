@@ -72,7 +72,18 @@ questions per end:
 - Would writing it reverse the span against the end that stands? Skip it if so — in both
   directions.
 - Is this pick still a join? The membership must be read **before** `applyLinks` overwrites
-  it, the way `leaving` already captures the departing state.
+  it, the way `leaving` already captures the departing state — and read with the **same
+  semantics the planner uses**, which is the part an implementer will otherwise get wrong.
+
+  `computeReleaseWrites` asks `!item.releaseMultiple && item.releaseEntry?.file?.path ===
+  target.file.path`: **resolved path, and cardinality beside it.** A raw-text comparison
+  fails in both directions, and its own comment says why one of them was a shipped defect. An
+  alias or a differently-spelled relative link to the picked release reads as a non-match, so
+  the write calls it a join and tops up the dates on a note that was already a member. A
+  `release: [R, E]` whose first entry IS the target reads as a match, so the write calls it a
+  no-op — but that note must still be repaired to the one value a membership is, and the
+  repair IS the join. Its race test must drive both shapes, not only the plain one, or an
+  implementation passes the stated test while violating 2a. Found by review (Codex, PR #242).
 
 **The flag is never `applyAxis`'s default.** That function is shared with the horizon drag,
 the timeline resize and the iteration join, and the iteration join overwrites always by
@@ -90,6 +101,12 @@ Nothing is drawn, no sentence is added, no stylesheet partial is touched, and
 `move.releaseAnnounced` is left alone: the view cannot know whether the dates landed, and a
 sentence claiming a schedule it cannot verify is worse than one that only claims the
 membership.
+
+[ADR 0033](../adrs/0033-a-stale-rule-is-decided-at-the-writer.md) is the decision this task
+carries out, and it stands at `status: Proposed` because `docs/adrs/README.md` reserves
+`Accepted` for a record the code follows. **Flipping it to `Accepted` is part of this task's
+definition of done**, in the same commit as the work — nothing else will, and an ADR left
+`Proposed` after its own implementation lands understates the rule that now binds.
 
 `CHANGELOG.md` gains its `[Unreleased]` entry in the same pull request, per `RELEASING.md`.
 
