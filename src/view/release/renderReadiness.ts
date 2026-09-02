@@ -187,6 +187,14 @@ export function drawReadinessFigures(
 ): void {
 	const total = readiness.estimatedEffort.value;
 	const done = readiness.completedEffort.value;
+	// Named before the unconfigured branch below, and NOT folded into it: an overflowed sum
+	// has a bound key and answering members, so "not configured" would send the reader to the
+	// wrong place. `unestimated` still draws — that count did not overflow.
+	if (readiness.estimatedEffort.invalid) {
+		sumEl.createSpan({ cls: 'pbl-rel-unreadable', text: t('release.scope.effortUnreadable') });
+		drawUnestimated(sumEl, readiness);
+		return;
+	}
 	if (total === null) {
 		// The estimate key itself is unbound, so none of the three figures answers.
 		sumEl.createSpan({ cls: 'pbl-rel-unreadable', text: t('release.scope.effortUnconfigured') });
@@ -204,17 +212,23 @@ export function drawReadinessFigures(
 	// rule is not a check".
 	if (estimatedMembers > 0) drawEffort(sumEl, total, done);
 	else sumEl.createSpan({ cls: 'pbl-rel-unreadable', text: t('release.scope.effortNothingToSum') });
-	if (readiness.unestimated.value !== null) {
-		sumEl.createSpan({
-			cls: 'pbl-rel-figure',
-			text: t('release.scope.unestimated', { count: readiness.unestimated.value }),
-		});
-	}
+	drawUnestimated(sumEl, readiness);
 	// Step 5 again, for the figures rather than the chips. All three read ONE key, which is
 	// why one sentence covers them — the reason `estimateKey` is one option and not three.
 	// Hidden text only: `drawSummary` already owns the strip's tooltip for the progress
 	// figure, and overwriting it would trade this provenance for that one.
 	sumEl.createSpan({ cls: 'pbl-sr-only', text: t('release.scope.provenanceEstimate', { property: settings.estimateKey }) });
+}
+
+/** The unestimated count, drawn by both the ordinary path and the overflowed one — that
+ *  count is a number of MEMBERS and cannot overflow, so an unreadable total does not take
+ *  it down with it. */
+function drawUnestimated(sumEl: HTMLElement, readiness: ReleaseReadiness): void {
+	if (readiness.unestimated.value === null) return;
+	sumEl.createSpan({
+		cls: 'pbl-rel-figure',
+		text: t('release.scope.unestimated', { count: readiness.unestimated.value }),
+	});
 }
 
 function drawEffort(sumEl: HTMLElement, total: number, done: number | null): void {

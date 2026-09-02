@@ -63,6 +63,14 @@ function counted(value: number): ReleaseFigure<number> {
 	return { value, invalid: false, unconfigured: false };
 }
 
+/**
+ * A figure whose inputs were all readable and whose ANSWER is not. One shape, one caller:
+ * the effort sums, where individually finite estimates can add up past `Number.MAX_VALUE`.
+ * `invalid` rather than `unconfigured`, because the key IS bound and the members DID answer
+ * — "go and fix a value" is a different instruction from "go and bind a property".
+ */
+const OVERFLOWED: ReleaseFigure<number> = { value: null, invalid: true, unconfigured: false };
+
 function unconfiguredCriterion(key: ReleaseCriterion['key']): ReleaseCriterion {
 	return { key, verdict: 'unconfigured', cleared: null, outstanding: null, unreadable: null };
 }
@@ -306,6 +314,16 @@ function effortFigures(
 		// The member's OWN workflow, so a Deliverable answers by its own — the reader the
 		// progress bar above this already uses.
 		if (doneReadable && ownWorkflowReading(entry.item).done) completed += entry.value;
+	}
+	// **A finite estimate can still overflow a finite TOTAL.** `estimateValue` refuses a
+	// non-finite value, which closes that door per member and not for their sum: two members
+	// at `1e308` are each accepted and add to `Infinity`, which reaches the strip as an
+	// infinite total and a `NaN` percentage — the exact "looks measured and is not" defect
+	// this module exists to prevent, through the one door a per-value reader cannot close.
+	// Raised by a review bot. Tested at `estimated` alone: every estimate is non-negative, so
+	// `completed <= estimated` and a finite total cannot carry an infinite completion.
+	if (!Number.isFinite(estimated)) {
+		return { unestimated: counted(missing), estimatedEffort: OVERFLOWED, completedEffort: OVERFLOWED };
 	}
 	// ponytail: a member whose descendant in the same release also carries an estimate is
 	// double counted here. Naming those members is `Capacity against commitment`'s own

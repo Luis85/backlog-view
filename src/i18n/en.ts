@@ -2028,6 +2028,14 @@ export const en = {
 	 * `release.scope.effortUnconfigured`, which is the key itself being unbound.
 	 */
 	'release.scope.effortNothingToSum': 'No estimates to sum',
+	/**
+	 * The estimate key is bound, the members answered, and the SUM is not a number a screen
+	 * can show — estimates that are each finite adding past `Number.MAX_VALUE`. A third
+	 * sentence beside `effortUnconfigured` (nothing bound) and `effortNothingToSum` (nobody
+	 * answered), because the reader's next move differs in each: bind a property, write some
+	 * estimates, or go and fix the value that is absurd.
+	 */
+	'release.scope.effortUnreadable': 'Effort does not add up to a readable total',
 	'release.scope.unestimated': '{count} unestimated',
 	/**
 	 * Main flow step 5 of `docs/requirements/Summing up a release.md` — "every figure names

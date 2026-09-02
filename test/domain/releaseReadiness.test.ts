@@ -549,4 +549,22 @@ describe('the critical risk predicate', () => {
 		const withContext = readinessOf(contextRiskVault(), 'R.md', RISK);
 		expect(withContext.criticalRisks).toEqual(readinessOf(multiRiskVault(), 'R.md', RISK).criticalRisks);
 	});
+
+	it('refuses a total that overflowed, rather than drawing an infinite one', () => {
+		// Every estimate here is individually finite, so `estimateValue` accepts each one —
+		// and their SUM is not. `Infinity` reaches the strip as an infinite total and a `NaN`
+		// percentage, which is the "a figure that looks measured and is not" defect this
+		// module exists to prevent, arriving through the one door the per-value reader cannot
+		// close. Raised by a review bot.
+		const vault = new FakeVault();
+		vault.addFile('R.md', { frontmatter: { type: 'Release' } });
+		vault.addFile('A.md', { frontmatter: { type: 'PBI', order: 1, release: '[[R]]', effort: 1e308 } });
+		vault.addFile('B.md', { frontmatter: { type: 'PBI', order: 2, release: '[[R]]', effort: 1e308 } });
+		const readiness = readinessOf(vault, 'R.md', { estimateKey: 'effort' });
+		expect(readiness.estimatedEffort.invalid).toBe(true);
+		expect(readiness.estimatedEffort.value).toBeNull();
+		expect(readiness.completedEffort.invalid).toBe(true);
+		// The COUNT of unestimated members is still readable: nothing overflowed there.
+		expect(readiness.unestimated.value).toBe(0);
+	});
 });

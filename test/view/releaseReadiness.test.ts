@@ -30,6 +30,10 @@ describe("a release's readiness on screen", () => {
 		vault.addFile('NoEst.md', { frontmatter: { type: 'Release' } });
 		vault.addFile('N1.md', { frontmatter: { type: 'PBI', order: 1, release: '[[NoEst]]' } });
 		vault.addFile('N2.md', { frontmatter: { type: 'PBI', order: 2, release: '[[NoEst]]', effort: 'TBD' } });
+		// Each estimate finite, their sum not — the one door the per-value reader cannot close.
+		vault.addFile('Huge.md', { frontmatter: { type: 'Release' } });
+		vault.addFile('H1.md', { frontmatter: { type: 'PBI', order: 1, release: '[[Huge]]', effort: 1e308 } });
+		vault.addFile('H2.md', { frontmatter: { type: 'PBI', order: 2, release: '[[Huge]]', effort: 1e308 } });
 		return vault;
 	}
 
@@ -177,6 +181,19 @@ describe("a release's readiness on screen", () => {
 		// Still says how many carry none, and never a total that would read as measured.
 		expect(strip?.textContent).toContain('2 unestimated');
 		expect(strip?.textContent).not.toContain('pts');
+	});
+
+	it('names an unreadable total rather than drawing an infinite one', () => {
+		// The domain refuses the overflowed sum; this is the half that decides what the
+		// reader SEES. Not folded into "not configured": the key is bound and the members
+		// answered, so that sentence would send them to the wrong place.
+		const { containerEl } = openScope(CONFIGURED, 'Huge.md');
+		const strip = containerEl.querySelector('.pbl-rel-summary');
+		expect(strip?.textContent).toContain('Effort does not add up to a readable total');
+		expect(strip?.textContent).not.toContain('Infinity');
+		expect(strip?.textContent).not.toContain('NaN');
+		// The unestimated COUNT is a number of members and cannot overflow, so it survives.
+		expect(strip?.textContent).toContain('0 unestimated');
 	});
 
 	it('plans no write while the screen renders', () => {
