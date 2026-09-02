@@ -270,6 +270,11 @@ export class ViewStateController {
 		if (this.state.setLaneCollapsed(identity, collapsed)) this.hooks.renderTreeContent();
 	}
 
+	/** Bits only — see `BacklogViewHost.setLanesCollapsed`: the bulk caller renders once. */
+	setLanesCollapsed(identities: string[], collapsed: boolean): void {
+		for (const identity of identities) this.state.setLaneCollapsed(identity, collapsed);
+	}
+
 	columnCollapsed(scope: ColumnScope, value: string | null, autoCollapse: boolean): boolean {
 		return this.state.columnCollapsed(scope, value, autoCollapse);
 	}
