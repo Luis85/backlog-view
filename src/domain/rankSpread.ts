@@ -91,8 +91,16 @@ function spreadAround(sequence: BacklogItem[]): SpreadResult {
 		.filter((item) => item.outsideFilter && item.order !== null)
 		.map((item) => item.order as number)
 		.sort((a, b) => a - b);
-	const above = (floor: number | null): number | null =>
-		fixed.find((order) => floor === null || order > floor) ?? null;
+	// A cursor rather than a search from zero, the same shape and the same argument as
+	// `above` in `computeInitWrites`: `flush` is the only caller, the floor it is asked
+	// about is only ever raised (the `continue` guard below refuses any rank at or under
+	// it), so a fixed rank once passed can never be wanted again. With no floor yet
+	// nothing is skipped, which is the lowest fixed rank — what `find` answered.
+	let at = 0;
+	const above = (floor: number | null): number | null => {
+		while (at < fixed.length && floor !== null && fixed[at] <= floor) at++;
+		return fixed[at] ?? null;
+	};
 	const writes: ItemWrite[] = [];
 	let run: BacklogItem[] = [];
 	let floor: number | null = null;

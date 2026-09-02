@@ -173,6 +173,27 @@ describe('spreading around rows the base excluded', () => {
 		expect(placed).not.toContain(3000);
 		expect(placed).not.toContain(1000);
 	});
+
+	it('reads the fixed ranks forward only, and never past one the next run still needs', () => {
+		// Three immovable ranks, one of them (the Feature, 50) drawn AFTER a higher one and
+		// so skipped by the floor guard. The leading run answers to the lowest fixed rank
+		// with no floor at all, and the run after the Epic has to be given 200 as its
+		// ceiling — not the 50 already behind it and not nothing. Every number here is a
+		// consequence of which fixed rank each run was measured against.
+		const vault = new FakeVault();
+		vault.addFile('Root.md', { frontmatter: { type: 'Epic', order: 1 } });
+		vault.addFile('Epic.md', { frontmatter: { type: 'Epic', order: 100 } });
+		vault.addFile('PBI One.md', { frontmatter: { type: 'PBI', order: 2 }, parentLink: 'Epic' });
+		vault.addFile('Feature.md', { frontmatter: { type: 'Feature', order: 50 }, parentLink: 'Epic' });
+		vault.addFile('PBI Two.md', { frontmatter: { type: 'PBI', order: 3 }, parentLink: 'Feature' });
+		vault.addFile('Epic Top.md', { frontmatter: { type: 'Epic', order: 200 } });
+		vault.addFile('PBI Three.md', { frontmatter: { type: 'PBI', order: 4 }, parentLink: 'Epic Top' });
+		const results = vault.entries().filter((e) => /^(Root|PBI)/.test(e.file.path));
+		const model = buildModel(vault.app, results, settings);
+		expect(drawn(model)).toEqual(['Root.md', 'PBI One.md', 'PBI Two.md', 'PBI Three.md']);
+
+		expect(writes(computeSeedWrites(model)).map((w) => w.order)).toEqual([-950, 133.333333, 166.666667, 1200]);
+	});
 });
 
 describe('rows that cannot be given distinct ranks', () => {
