@@ -87,6 +87,16 @@ describe('anchoredOrder', () => {
 		expect(anchoredOrder(list, list[0], 'after')).toEqual({ refusal: 'gapSpent' });
 	});
 
+	it('places a midpoint in a gap whose width overflows to Infinity', () => {
+		// The whole float range between two hand-edited ranks: `next - prev` is Infinity, so
+		// the plain subtraction makes the midpoint non-finite and the strictly-between test
+		// refuses a gap that holds every number there is. `readNumber` accepts both bounds,
+		// so the inputs are reachable. The safe form is asked only when the subtraction is
+		// not finite, which is why the ordinary midpoint above still answers exactly 2000.
+		const list = ranked(-1e308, 1e308);
+		expect(anchoredOrder(list, list[0], 'after')).toEqual({ order: 0 });
+	});
+
 	it('keeps a midpoint distinct from both neighbours past four decimals', () => {
 		// A gap of 0.00003 leaves room on the six-decimal grid, so this subdivides. The true
 		// midpoint (1000.000015) needs six decimals to survive rounding — at four

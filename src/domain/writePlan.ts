@@ -811,7 +811,13 @@ function midpoint(prev: number, next: number): RankResult {
 	// migrated" has the same hole: one stray null or one unrelated tie, anywhere, flips it
 	// for a subtree that is perfectly seeded. A neighbourhood question has no such hole.
 	if (prev === next) return { refusal: 'tied' };
-	const mid = roundOrder(prev + (next - prev) / 2);
+	// The subtraction overflows across the full float range (`-1e308` to `1e308`), and a
+	// non-finite midpoint fails the test below — reporting `gapSpent` over a gap that holds
+	// every number there is. Halving each end first cannot overflow, but it is NOT
+	// bit-identical to the subtraction, so it is reached only where the ordinary form has
+	// already given up its answer. `roundOrder` returns a value it cannot round unchanged,
+	// so the test below is still asked of a real number.
+	const mid = roundOrder(Number.isFinite(next - prev) ? prev + (next - prev) / 2 : prev / 2 + next / 2);
 	return mid > prev && mid < next ? { order: mid } : { refusal: 'gapSpent' };
 }
 

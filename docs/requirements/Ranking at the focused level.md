@@ -132,7 +132,11 @@ from.
   `(ceiling - floor) / (n + 1)` and `ceiling / (n + 1) - floor / (n + 1)` are not
   bit-identical, so it would perturb every ordinary spread to repair one that essentially
   never happens. The `Infinity` this same overflow used to WRITE was a different matter and
-  was fixed, in `roundOrder`.
+  was fixed, in `roundOrder`. So is `midpoint`'s own subtraction, fixed 2026-09-02: it
+  refused the same enormous gap as `gapSpent`, and there the safe form costs nothing,
+  because it is asked ONLY where `next - prev` is already non-finite and the ordinary
+  midpoint keeps computing exactly what it always did.
+  **Checked by** `test/domain/rankedPlacement.test.ts` — "places a midpoint in a gap whose width overflows to Infinity"
 - **3a — the model was rebuilt between opening the menu and clicking it.** The row the
   menu named is re-resolved by path against the live model, and the peers and the
   population are read off that model too. A `DropTarget` finds its anchor by identity, so
