@@ -21,11 +21,12 @@ import { expect, it, vi } from 'vitest';
  */
 
 /**
- * A real budget for every case in the five files that import this, because every one of
+ * A real budget for every case in the seven files that import this, because every one of
  * them WRITES A TREE TO DISK AND SPAWNS NODE — a cost of its own, unlike anything else in
  * this suite, and one the 5s default was never chosen for. Under whole-suite contention
  * the first case in each file is the one that pays for the cold spawn, and those are
- * exactly the five that started timing out as the suite grew; each passes in well under a
+ * exactly the ones that started timing out as the suite grew — five files then, seven
+ * now, which is why the count above is derived from the imports rather than restated; each passes in well under a
  * second when run alone. Slack for a subprocess, not licence for a slow check: a case that
  * genuinely needs 20s is planting a corpus far larger than a delta against `baseRegister`.
  *
