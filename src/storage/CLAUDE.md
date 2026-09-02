@@ -240,6 +240,17 @@ whole thing from the file resolved correctly while silently dropping both.
   while whatever it applies to is unconfigured, so restoring the configuration restores
   the choice. The price, accepted knowingly: working position does not sync across
   devices.
+- **Changing one pref is `updateViewPrefs`, not a `saveViewState` call built by hand.**
+  `saveViewState` writes the WHOLE snapshot, so a caller changing one pick has to spread
+  the other prefs and the folds back in, and dropping either spread is a silent loss: the
+  value it set is there, and everything it did not name is gone. Four callers were each
+  spelling that out correctly — the release pick, the My Work pick, the estimation sort and
+  the scope folds' flags — and **nothing would have caught a fifth getting it wrong**: the
+  whole suite stayed green with the prefs spread deleted (measured 2026-09-02). It is one
+  function with the rule in it now, checked in `test/storage/viewStateSafety.test.ts`.
+  `folds` is deliberately not offered the same treatment — a fold write is a whole map by
+  nature — and nothing MAKES a fifth caller use it: what holds is that the four do and that
+  breaking the rule inside the helper now fails.
 - The store's key only has to be UNIQUE, never parsed: each entry carries its own
   `base`, because a view name may contain anything a user can type ("Sprint #3" is an
   ordinary name) and splitting the key on a separator misreads the base path — which

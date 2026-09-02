@@ -1,5 +1,5 @@
 import { App } from 'obsidian';
-import { loadViewState, saveViewState, ViewPrefs } from '../storage/viewStateStore';
+import { loadViewState, saveViewState, updateViewPrefs } from '../storage/viewStateStore';
 import { resolveViewIdentity, ViewIdentity } from '../storage/viewIdentity';
 import { ScopeRow, childRows } from '../domain/scopeRows';
 
@@ -207,12 +207,10 @@ export function setScopeFlag(host: FoldHost, key: 'releaseHideDone' | 'myWorkHid
 		flags[key] = next;
 		sessionFlags.set(host, flags);
 	} else {
-		const state = loadViewState(host.app, id);
 		// `undefined` for the default rather than `false`: absence IS the off state, and a
 		// stored `false` would be a value meaning "none" — `readPrefs`'s own rule
-		// (`storage/viewStateStore.ts`).
-		const prefs: ViewPrefs = { ...state.prefs, [key]: next ? true : undefined };
-		saveViewState(host.app, id, { ...state, prefs });
+		// (`storage/viewStateStore.ts`), which `updateViewPrefs` passes straight through.
+		updateViewPrefs(host.app, id, { [key]: next ? true : undefined });
 	}
 	host.render();
 }

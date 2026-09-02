@@ -65,10 +65,25 @@ seven-line comment arguing that guard is unreachable — every row either tree d
 `displayType` answers `''` only for an item both off the ladder and untyped.
 
 **Both draw from that same walk, so they cannot both be right**, and nothing checked
-either. The guard is KEPT in the shared function, and that is the cheap direction rather
-than a verdict: an unreachable guard costs a comparison, while removing one that turns out
-to be reachable draws an empty badge box on a real row. Settling it means a test over
-`scopeRows`' output, which is its own change and is not owed by this one.
+either. The guard was KEPT in the shared function, as the cheap direction rather than a
+verdict: an unreachable guard costs a comparison, while removing one that turns out to be
+reachable draws an empty badge box on a real row.
+
+**Settled 2026-09-02, and `renderTree.ts` was right.** It is a property of `displayType`
+rather than of this walk, which is why the check went to
+`test/domain/itemTypes.test.ts` rather than over `scopeRows`' output as this note first
+supposed: `typeName` reaches an item through `readString`, which nulls a blank, a
+whitespace-only and an absent value alike; every ladder is `LEVELS` or `TEST_LEVELS`, so
+none is ever empty; and an untyped item's `levelIndex` is `childLevelIndex`, clamped into
+that ladder's own range. No item in any projection can make `displayType` answer nothing,
+so the guard is gone.
+
+Four cases pin it, driven through the real model rather than asserted from that paragraph —
+an untyped root and an untyped chain walking past the ladder's end, a type on no ladder at
+all, the three blank spellings of a `type` key, and a category pass over the whole
+one-of-everything fixture. Two of the three mechanisms were watched failing: unclamping
+`nextLevelIndex` fails the deep chain, and making `readString` keep a trimmed empty string
+fails the blank case.
 
 ## Acceptance criteria
 
@@ -96,7 +111,7 @@ immediately afterwards (a rollup on one, a next-marker on the other).
 
 1. **`myWorkView.ts` and `releaseView.ts` are the other family** — 2 groups, 40 lines,
    unchanged by this. Not looked at here.
-2. **Whether the badge guard is reachable**, above.
+2. ~~**Whether the badge guard is reachable**~~ — answered above, 2026-09-02.
 3. **No live-vault check is owed by this change** and one is not claimed either way: it
    moves code without changing what is drawn, and the harness plus 286 scope tests are what
    say so. A change that altered either row's appearance would owe one.
