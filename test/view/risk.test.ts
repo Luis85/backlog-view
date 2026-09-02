@@ -218,7 +218,6 @@ describe('the risk chip', () => {
 		vault.addFile('Epic A.md', { frontmatter: { type: 'Epic', order: 10, risk: '3 - Low' } });
 		const { containerEl, view } = makeView(vault, { ...configured, stateProperty: 'note.status' }, visible);
 		const tree = treeOf(containerEl);
-		const viewEl = containerEl.querySelector('.pbl-view');
 		const paneWidth = (px: number) => {
 			Object.defineProperty(tree, 'clientWidth', { value: px, configurable: true });
 			view.onDataUpdated();
@@ -233,7 +232,8 @@ describe('the risk chip', () => {
 		// and this pane is too narrow only once the chip's own column is counted.
 		paneWidth(500);
 		expect(drawn()).toBe(0);
-		expect(viewEl?.classList.contains('pbl-hide-meta')).toBe(false);
+		expect(view.columnFit?.rollupDropped).toBe(false);
+		expect(rowByTitle(containerEl, 'Epic A').querySelector('.pbl-meta-col')).not.toBeNull();
 	});
 });
 

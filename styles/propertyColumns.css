@@ -23,12 +23,11 @@
 	overflow: hidden;
 }
 
-/* The rollup is not in the user's order — it is pinned past the end of it — so it does
-   not drop by not being rendered the way a column does, and it drops last: only once no
-   column is shown and the pane cannot hold even this. */
-.pbl-view.pbl-hide-meta .pbl-meta-col {
-	display: none;
-}
+/* No rule here hides the rollup. It is not in the user's order — it is pinned past the
+   end of it — and it drops last, only once no column is shown and the pane cannot hold
+   even this; but it drops the way a column does, by not being rendered. `renderRollup`
+   and `renderColumnHeader` both read the one stored verdict (`host.columnFit`), which is
+   what `.pbl-view.pbl-hide-meta .pbl-meta-col` used to do for the rows alone. */
 
 /* `--pbl-prop-w` is set on the cell by `sizeCell` (src/view/render/columns.ts) and
    resolves the width the tree element publishes for THIS column, so a drag moves the
