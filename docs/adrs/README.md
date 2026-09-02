@@ -99,4 +99,5 @@ record itself changes. Open a record for its current status, area and any
 - [0030 — `domain/` is the kernel](0030-domain-is-the-kernel.md)
 - [0031 — The manual is a document, not a catalog](0031-the-manual-is-a-document-not-a-catalog.md)
 - [0032 — Lint the Markdown a person reads, and only for what renders wrong](0032-lint-the-markdown-a-person-reads.md)
-- [0033 — Order is a global rank](0033-order-is-a-global-rank.md)
+- [0033 — A rule that can go stale between plan and apply is decided at the writer](0033-a-stale-rule-is-decided-at-the-writer.md)
+- [0034 — Order is a global rank](0034-order-is-a-global-rank.md)

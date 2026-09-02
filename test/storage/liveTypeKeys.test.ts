@@ -14,6 +14,7 @@ import {
 	computeIterationWrites,
 	computeReleaseWrites,
 } from '../../src/domain/writePlan';
+import { CivilDate } from '../../src/domain/noteFields';
 import { settingsFrom } from '../helpers/settings';
 import { FakeVault } from '../helpers/vault';
 
@@ -194,6 +195,10 @@ describe('the ✨ backfill stubs no key a release may not hold', () => {
  * unresolved for as long as it sits there.
  */
 const releaseSettings = settingsFrom({ releaseProperty: 'note.release' });
+/** This suite is about the live TYPE, not the clock, so a fixed day stands in for today. */
+const TODAY: CivilDate = { year: 2026, month: 1, day: 1 };
+/** What a join carries beside the link here: no release states a date, so only the start. */
+const JOIN_AXIS = { fillOnly: true, start: '2026-01-01' };
 
 describe('the writer asks the LIVE type about a release membership', () => {
 	it('refuses a membership the note was retyped out from under', async () => {
@@ -204,10 +209,10 @@ describe('the writer asks the LIVE type about a release membership', () => {
 		const item = model.byPath.get('1.0.md');
 		const release = model.byPath.get('2.4.md');
 		if (!item || !release) throw new Error('fixture did not build');
-		const writes = computeReleaseWrites(item, release, releaseSettings);
+		const writes = computeReleaseWrites(item, release, releaseSettings, TODAY);
 		// The plan is legitimate — this is a refusal at the boundary, not a plan that was
 		// empty all along, which is the way a test like this passes on nothing.
-		expect(writes).toEqual([{ file: item.file, release: release.file }]);
+		expect(writes).toEqual([{ file: item.file, release: release.file, axis: JOIN_AXIS }]);
 
 		vault.fm('1.0.md').type = 'Milestone';
 		const outcome = await applyWrites(vault.app, releaseSettings, writes);
@@ -227,8 +232,8 @@ describe('the writer asks the LIVE type about a release membership', () => {
 		const item = model.byPath.get('1.0.md');
 		const release = model.byPath.get('2.4.md');
 		if (!item || !release) throw new Error('fixture did not build');
-		const writes = computeReleaseWrites(item, release, releaseSettings);
-		expect(writes).toEqual([{ file: item.file, release: release.file }]);
+		const writes = computeReleaseWrites(item, release, releaseSettings, TODAY);
+		expect(writes).toEqual([{ file: item.file, release: release.file, axis: JOIN_AXIS }]);
 
 		vault.fm('1.0.md').type = 'Test case';
 		const outcome = await applyWrites(vault.app, releaseSettings, writes);
@@ -251,7 +256,7 @@ describe('the writer asks the LIVE type about a release membership', () => {
 		const release = model.byPath.get('2.4.md');
 		if (!item || !release) throw new Error('fixture did not build');
 
-		await applyWrites(vault.app, releaseSettings, computeReleaseWrites(item, release, releaseSettings));
+		await applyWrites(vault.app, releaseSettings, computeReleaseWrites(item, release, releaseSettings, TODAY));
 
 		expect(vault.fm('1.1.md')['release']).toBe('[[2.4]]');
 	});
@@ -280,8 +285,8 @@ describe('the writer asks the LIVE type about a release membership', () => {
 		// model, and the task is on the plan ladder because of it.
 		expect(model.byPath.has('S.md')).toBe(false);
 		expect(inPlan(item)).toBe(true);
-		const writes = computeReleaseWrites(item, release, excluded);
-		expect(writes).toEqual([{ file: task, release: release.file }]);
+		const writes = computeReleaseWrites(item, release, excluded, TODAY);
+		expect(writes).toEqual([{ file: task, release: release.file, axis: JOIN_AXIS }]);
 
 		const outcome = await applyWrites(vault.app, excluded, writes);
 
@@ -300,7 +305,7 @@ describe('the writer asks the LIVE type about a release membership', () => {
 		const item = model.byPath.get('1.0.md');
 		const release = model.byPath.get('2.4.md');
 		if (!item || !release) throw new Error('fixture did not build');
-		const writes = computeReleaseWrites(item, release, releaseSettings);
+		const writes = computeReleaseWrites(item, release, releaseSettings, TODAY);
 
 		vault.fm('2.4.md').type = 'Epic';
 		const outcome = await applyWrites(vault.app, releaseSettings, writes);

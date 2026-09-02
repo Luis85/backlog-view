@@ -29,7 +29,7 @@ is visible rather than assumed.
 
 **Three cases added on 2026-08-31 are outside that run and have never been checked**, and
 they are the largest gap this suite has: the global rank
-([ADR 0033](../../adrs/0033-order-is-a-global-rank.md)) shipped with its commands, its
+([ADR 0034](../../adrs/0034-order-is-a-global-rank.md)) shipped with its commands, its
 dialogs, its notices and its cross-parent drag driven in jsdom alone, and every pull
 request in the epic said so rather than letting a green build stand in for eyes.
 

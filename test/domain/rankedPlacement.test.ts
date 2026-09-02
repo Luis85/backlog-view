@@ -116,7 +116,7 @@ describe('anchoredOrder', () => {
  * a peer to aim at.
  *
  * Asked through `dropPlacement` rather than of `orderForTarget` beside it, which is the
- * rule ADR 0033 states for every production caller and so may not be broken for a test:
+ * rule ADR 0034 states for every production caller and so may not be broken for a test:
  * an export only the test used is the door the ADR's own shipped bug came through. A
  * null `dragged` is the creation case — nothing to take out of the population — and none
  * of these fixtures is tied, so the fallback between the two is inert here.

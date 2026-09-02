@@ -24,13 +24,20 @@ function fixture(opts: {
 	release: string | null;
 	spelling?: unknown;
 	settings?: ReturnType<typeof settingsWith>;
+	/** What the RELEASE note states as its own ship date, under the default `target-date` key. */
+	releaseDate?: string;
+	/** What the ITEM already holds — the dates a planner that filtered would drop. */
+	own?: Record<string, unknown>;
 }) {
 	const vault = new FakeVault();
-	vault.addFile('Releases/2.4.md', { frontmatter: { type: 'Release' } });
+	vault.addFile('Releases/2.4.md', {
+		frontmatter: { type: 'Release', ...(opts.releaseDate ? { 'target-date': opts.releaseDate } : {}) },
+	});
 	vault.addFile('PBI-1.md', {
 		frontmatter: {
 			type: 'PBI',
 			order: 10,
+			...opts.own,
 			...(opts.release !== null ? { release: opts.spelling ?? '[[Releases/2.4]]' } : {}),
 		},
 	});
@@ -62,25 +69,29 @@ function fixture(opts: {
 describe('planning one release membership', () => {
 	it('writes the picked release onto the item, and nothing else', () => {
 		const { item, target, settings } = fixture({ release: null });
-		const writes = computeReleaseWrites(item, target, settings);
-		expect(writes).toEqual([{ file: item.file, release: target.file }]);
+		const writes = computeReleaseWrites(item, target, settings, TODAY);
+		// The link, and the two candidates that ride it. This release states no date, so
+		// there is no due to carry — 3b, and `undefined` rather than a `null` that deletes.
+		expect(writes).toEqual([
+			{ file: item.file, release: target.file, axis: { fillOnly: true, start: '2026-01-01' } },
+		]);
 	});
 
 	it('plans NOTHING when the item is already in that release', () => {
 		// The checkmark is asked of this output, so an agreeing re-pick must be empty —
 		// not a write the applier happens to no-op, which would spend the undo slot.
 		const { item, target, settings } = fixture({ release: '2.4.md' });
-		expect(computeReleaseWrites(item, target, settings)).toEqual([]);
+		expect(computeReleaseWrites(item, target, settings, TODAY)).toEqual([]);
 	});
 
 	it('compares by PATH, so two spellings of one note are one release', () => {
 		const { item, target, settings } = fixture({ release: '2.4.md', spelling: '[[Releases/2.4|2.4]]' });
-		expect(computeReleaseWrites(item, target, settings)).toEqual([]);
+		expect(computeReleaseWrites(item, target, settings, TODAY)).toEqual([]);
 	});
 
 	it('REMOVES the key for a "no release" pick, never writes it empty', () => {
 		const { item, settings } = fixture({ release: '2.4.md' });
-		expect(computeReleaseWrites(item, null, settings)).toEqual([{ file: item.file, release: null }]);
+		expect(computeReleaseWrites(item, null, settings, TODAY)).toEqual([{ file: item.file, release: null }]);
 	});
 
 	it('REMOVES the key for a "no release" pick even when the key holds an empty value', () => {
@@ -96,7 +107,7 @@ describe('planning one release membership', () => {
 
 		expect(item.ownKeys.release).toBe(true);
 		expect(item.releaseEntry).toBeNull();
-		expect(computeReleaseWrites(item, null, settingsWith({ releaseKey: 'release' }))).toEqual([
+		expect(computeReleaseWrites(item, null, settingsWith({ releaseKey: 'release' }), TODAY)).toEqual([
 			{ file: item.file, release: null },
 		]);
 	});
@@ -106,7 +117,7 @@ describe('planning one release membership', () => {
 		// `release: ''` reads as no entry while the key visibly holds something, and
 		// asking the entry would tick the None checkmark on a note that is not empty.
 		const { item, settings } = fixture({ release: null });
-		expect(computeReleaseWrites(item, null, settings)).toEqual([]);
+		expect(computeReleaseWrites(item, null, settings, TODAY)).toEqual([]);
 	});
 
 	it('rewrites a membership the note spells TWICE, even to the release it names first', () => {
@@ -124,7 +135,9 @@ describe('planning one release membership', () => {
 		// Not vacuous: the first entry really does resolve to the release being picked, so
 		// the path comparison this test exists for answers "already there".
 		expect(item.releaseEntry?.file?.path).toBe(target.file.path);
-		expect(computeReleaseWrites(item, target, settings)).toEqual([{ file: item.file, release: target.file }]);
+		expect(computeReleaseWrites(item, target, settings, TODAY)).toEqual([
+			{ file: item.file, release: target.file, axis: { fillOnly: true, start: '2026-01-01' } },
+		]);
 	});
 
 	it('REMOVES a two-valued key for a "no release" pick', () => {
@@ -133,12 +146,12 @@ describe('planning one release membership', () => {
 		// whole key off. Asserted rather than assumed — this is the other half of the
 		// repair, and the only one that was already correct.
 		const { item, settings } = fixture({ release: '2.4.md', spelling: ['[[Releases/2.4]]', '[[Releases/2.5]]'] });
-		expect(computeReleaseWrites(item, null, settings)).toEqual([{ file: item.file, release: null }]);
+		expect(computeReleaseWrites(item, null, settings, TODAY)).toEqual([{ file: item.file, release: null }]);
 	});
 
 	it('plans nothing at all when the key is unbound', () => {
 		const { item, target } = fixture({ release: null });
-		expect(computeReleaseWrites(item, target, settingsWith({ releaseKey: '' }))).toEqual([]);
+		expect(computeReleaseWrites(item, target, settingsWith({ releaseKey: '' }), TODAY)).toEqual([]);
 	});
 });
 
@@ -172,9 +185,102 @@ describe('cardinality, read the same way at both ends', () => {
 			// The fixture reaches the state its name claims before anything is concluded
 			// from it: this is the READER's verdict, and it is what the plan must match.
 			expect(readAsMembership()).toBe(shape.member);
-			expect(computeReleaseWrites(item, target, settings)).toEqual(
-				shape.member ? [] : [{ file: item.file, release: target.file }],
+			expect(computeReleaseWrites(item, target, settings, TODAY)).toEqual(
+				shape.member ? [] : [{ file: item.file, release: target.file, axis: { fillOnly: true, start: '2026-01-01' } }],
 			);
+		});
+	}
+});
+
+/**
+ * **The planner carries; it decides nothing** ([ADR 0033](../../docs/adrs/0033-a-stale-rule-is-decided-at-the-writer.md)).
+ * Every assertion here is about the two VALUES a join contributes — the release's own date
+ * and today — and about the flag that tells the writer to decide the rest. What each end
+ * would take is stated; whether it is taken is `test/storage/releaseWrite.test.ts`'s.
+ */
+describe('the candidates a join carries', () => {
+	const dated = settingsWith({ releaseKey: 'release', startKey: 'start', targetKey: 'due' });
+
+	it('carries BOTH candidates even where the item’s own dates would suppress each in turn', () => {
+		// The item holds a due in the past — which suppresses today as a start — and a start
+		// of its own, which suppresses the release's date as a due. A planner that filtered
+		// would carry neither, and the writer could reinstate neither: an end dropped at plan
+		// time is gone, and the live note is exactly what may have moved since.
+		const { item, target } = fixture({
+			release: null,
+			settings: dated,
+			releaseDate: '2026-09-30',
+			own: { start: '2025-12-01', due: '2025-12-15' },
+		});
+		expect(computeReleaseWrites(item, target, dated, TODAY)).toEqual([
+			{ file: item.file, release: target.file, axis: { fillOnly: true, start: '2026-01-01', target: '2026-09-30' } },
+		]);
+	});
+
+	it('takes today as an ARGUMENT, so a fixed date makes a fixed batch', () => {
+		// A planner that read a clock could not be checked this way at all — the assertion
+		// names the day, and `src/domain/writePlan.ts` reads none.
+		const { item, target } = fixture({ release: null, settings: dated, releaseDate: '2026-09-30' });
+		const other: CivilDate = { year: 2030, month: 6, day: 5 };
+		expect(computeReleaseWrites(item, target, dated, other)[0]?.axis).toEqual({
+			fillOnly: true,
+			start: '2030-06-05',
+			target: '2026-09-30',
+		});
+	});
+
+	it('carries no due where the release states a date nobody can read', () => {
+		// 3b, at the only end that can keep it: `undefined` leaves the key alone where a
+		// `null` would DELETE the item's own due. `readSoleDate` refuses a list outright,
+		// which is the shape that would otherwise report a date the release never stated.
+		const { item, target } = fixture({ release: null, settings: dated });
+		const unreadable = fixture({ release: null, settings: dated, releaseDate: 'when it is ready' });
+		expect(computeReleaseWrites(item, target, dated, TODAY)[0]?.axis).toEqual({ fillOnly: true, start: '2026-01-01' });
+		expect(computeReleaseWrites(unreadable.item, unreadable.target, dated, TODAY)[0]?.axis).toEqual({
+			fillOnly: true,
+			start: '2026-01-01',
+		});
+	});
+
+	it('leaves the dates off a "no release" pick entirely', () => {
+		// 5a: leaving a release is not a reschedule, so the removal carries no axis at all —
+		// not an axis of nulls, which would delete two keys nobody asked about.
+		const { item } = fixture({ release: '2.4.md', settings: dated, own: { start: '2025-12-01' } });
+		expect(computeReleaseWrites(item, null, dated, TODAY)).toEqual([{ file: item.file, release: null }]);
+	});
+});
+
+/**
+ * **A category invariant, asked of the planner rather than of the paths someone thought
+ * of** (PBI 5b). Every entry point routes through this one function, so a state written on
+ * a release move — now, or from an entry point not yet built — fails here.
+ */
+describe('no plan this module produces ever names a state', () => {
+	const dated = settingsWith({ releaseKey: 'release', startKey: 'start', targetKey: 'due', stateKey: 'status' });
+	const shapes: { name: string; release: string | null; to: 'target' | null }[] = [
+		{ name: 'a join', release: null, to: 'target' },
+		{ name: 'a move from one release to another', release: '2.4.md', to: 'target' },
+		{ name: 'a removal', release: '2.4.md', to: null },
+		{ name: 'an agreeing re-pick', release: '2.4.md', to: 'target' },
+	];
+
+	for (const shape of shapes) {
+		it(`names no state on ${shape.name}`, () => {
+			const { item, target } = fixture({
+				release: shape.release,
+				settings: dated,
+				releaseDate: '2026-09-30',
+				// A state the note DOES hold, so the assertion is not vacuous: a planner that
+				// copied one across would have something to copy.
+				own: { status: 'In progress' },
+				...(shape.name === 'a move from one release to another' ? { spelling: '[[Releases/2.5]]' } : {}),
+			});
+			for (const write of computeReleaseWrites(item, shape.to === null ? null : target, dated, TODAY)) {
+				expect(write.state).toBeUndefined();
+				expect(write.removeStateKey).toBeUndefined();
+				expect(write.deliverableState).toBeUndefined();
+				expect(write.testState).toBeUndefined();
+			}
 		});
 	}
 });

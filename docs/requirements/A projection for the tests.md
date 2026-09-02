@@ -239,7 +239,7 @@ base settings are saved on the view, working position on the device.
   feature inherits rather than one it may widen.
   **The premise of that argument was superseded on 2026-08-30 and the conclusion outlived
   it**, which is why the passage above is kept as written rather than rewritten.
-  [ADR 0033](../adrs/0033-order-is-a-global-rank.md) made `order` one rank over everything
+  [ADR 0034](../adrs/0034-order-is-a-global-rank.md) made `order` one rank over everything
   the Base returns, so the third list is now every LOADED item (`model.ranked`) rather than
   every parentless one, and `computeInsertOrder`, `endOfSiblingsOrder` and the renumber path
   named above are deleted — a placement takes a midpoint and writes one note, or refuses.
@@ -310,7 +310,7 @@ base settings are saved on the view, working position on the device.
   **loaded** real root group admits: no drop or creation in either projection produces two
   parentless notes sharing an `order` **among the notes the model holds**, and no projection's
   slice of that group is ever what a number is computed against. Since
-  [ADR 0033](../adrs/0033-order-is-a-global-rank.md) the group is every loaded item rather
+  [ADR 0034](../adrs/0034-order-is-a-global-rank.md) the group is every loaded item rather
   than the parentless ones, which can only widen the guarantee, and the renumber half of it
   is now guaranteed by there being no renumber path at all. Asserted on a model holding
   suites and Epics interleaved by order — the arrangement where ranking against the visible
@@ -327,7 +327,7 @@ base settings are saved on the view, working position on the device.
   widening.
 - **Creation** is asserted separately from the drop, on a last suite at 10 with a hidden
   plan root at 20: it is a different entry point — it had a helper of its own
-  (`endOfSiblingsOrder`, a maximum rather than a midpoint) until ADR 0033 routed every rank
+  (`endOfSiblingsOrder`, a maximum rather than a midpoint) until ADR 0034 routed every rank
   through `dropPlacement` — it fails on a different arrangement, and a criterion written about drops alone
   passed this PBI for two rounds while creation still handed the new suite the Epic's own
   number.
@@ -469,7 +469,7 @@ the two were identical without a focus. That is the layer guide's own rule
 (*every data operation must use `realRoots`*) becoming load-bearing: an `order` was scoped
 to the notes sharing a parent, and a `Test suite` and an `Epic` share the null one. It is
 smaller than the code it replaced and collision-free by construction, so 2d's three lists
-need no fourth mechanism — creation was already handed the real group. ADR 0033 widened the
+need no fourth mechanism — creation was already handed the real group. ADR 0034 widened the
 rank space again without disturbing either half: the peers still say where, and the number
 now comes from `model.ranked`.
 

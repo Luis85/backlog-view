@@ -12,7 +12,7 @@ import { en } from '../../src/i18n/en';
  * arithmetic then has to live with, so a false sentence here builds a vault that
  * refuses drops rather than merely misleading someone.
  *
- * Every case asks the STATE the prose is in, never its wording. Under ADR 0033 the old
+ * Every case asks the STATE the prose is in, never its wording. Under ADR 0034 the old
  * advice — a number scoped to one parent, ties harmless, a group renumbered when a move
  * needs room — went false while the tests over it went on passing, which is exactly how
  * the same three claims survived in the shipped manual.

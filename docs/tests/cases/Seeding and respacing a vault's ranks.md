@@ -24,7 +24,7 @@ A verification to run.
 
 ## Why this exists
 
-[ADR 0033](../../adrs/0033-order-is-a-global-rank.md) made `order` one rank over
+[ADR 0034](../../adrs/0034-order-is-a-global-rank.md) made `order` one rank over
 everything the base returns, and the two palette commands are how an existing vault gets
 there. Both open a confirmation dialog, and **no part of either dialog has been seen in
 Obsidian** — `test/commands/rank.test.ts` drives them through the Modal mock, which

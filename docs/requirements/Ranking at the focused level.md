@@ -180,7 +180,7 @@ from.
   place a row around one changes nothing and says which rows.
 - **A focus-level rank is also a rank among the item's own siblings.** There is one
   `order`, so ordering the PBI backlog reorders each PBI inside its own Feature as well.
-  That is the price of a single rank and it is not a defect (ADR 0033).
+  That is the price of a single rank and it is not a defect (ADR 0034).
 
 ## Where it lives
 
@@ -206,7 +206,7 @@ Tests: `test/domain/rankedPlacement.test.ts`, `test/domain/modelRanking.test.ts`
 `test/view/backfillFocusOrder.test.ts`.
 
 What `order` now MEANS — one rank over everything the Base returns, rather than a number
-scoped to a sibling group — is [ADR 0033](../adrs/0033-order-is-a-global-rank.md), which
+scoped to a sibling group — is [ADR 0034](../adrs/0034-order-is-a-global-rank.md), which
 also records the two limitations this use case inherits: the rank space is the Base's
 population and not the vault, and the peer fallback that keeps an unseeded vault working
 is silent about which of the two regimes answered.

@@ -32,7 +32,7 @@ across notes I never touched.
 **Main flow**
 
 1. `order` is a **fractional rank**, not an index — and since
-   [ADR 0032](../adrs/0033-order-is-a-global-rank.md) it is one rank over everything the
+   [ADR 0032](../adrs/0034-order-is-a-global-rank.md) it is one rank over everything the
    Base returns rather than a number scoped to a sibling group.
 2. A drop between two items takes the **midpoint** of the two ranks that neighbour that
    position in the ranked population. Where the user aimed decides the anchor; the

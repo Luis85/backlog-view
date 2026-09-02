@@ -64,7 +64,7 @@ release screen — the sentences are picked by `refusalKey` at the call site, so
 a branch in `scopeCreate.ts` and new keys, not a change to the shared ones — or the two
 rank commands stop being gated on the backlog view and take their population from whatever
 Bases view is active. The second is much wider than this note: it is a question about what
-the rank space IS when the active view is not the backlog, and ADR 0033 says the space is
+the rank space IS when the active view is not the backlog, and ADR 0034 says the space is
 the Base's population, which the release view also has.
 
 ## Impact

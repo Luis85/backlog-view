@@ -136,7 +136,7 @@ export function toolbarPosition(projection: Projection): Projection {
  * at a time.
  *
  * What it is NOT is the ranking group. `order` is one rank over everything the Base
- * returns (ADR 0033), and a `Test suite` and an `Epic` share the null parent — so a new
+ * returns (ADR 0034), and a `Test suite` and an `Epic` share the null parent — so a new
  * root is POSITIONED among `model.realRoots` and takes its NUMBER from `model.ranked`,
  * and no projection may narrow either. Those two parted company with the same ADR, which
  * is why `src/domain/CLAUDE.md` now states four lists rather than three; conflating any

@@ -201,7 +201,7 @@ optional
 property is called and suggests, and `adoptableProperties`) ·
 `src/domain/rankBackfill.ts` (`computeInitWrites`, over `initWriteFor` and
 `missingKeyStubs` — the whole-tree pass, beside `writePlan.ts` rather than in it for the
-rule ADR 0033 already states about `rankSpread.ts`) ·
+rule ADR 0034 already states about `rankSpread.ts`) ·
 `src/domain/rankArithmetic.ts` (`rankBetween`, the arithmetic every placement shares, and
 the `roundOrder` grid it lands on) · `src/domain/writePlan.ts` (`ItemWrite`, the record
 every plan here produces) ·

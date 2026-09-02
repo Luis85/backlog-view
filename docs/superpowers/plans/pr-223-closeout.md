@@ -2,7 +2,7 @@
 
 ## Global Constraints
 
-- `CLAUDE.md`, `src/domain/CLAUDE.md` and `docs/adrs/0033-order-is-a-global-rank.md` bind.
+- `CLAUDE.md`, `src/domain/CLAUDE.md` and `docs/adrs/0034-order-is-a-global-rank.md` bind.
 - `npm run check` must pass whole, exit 0.
 - An invariant asserted in a comment gets a test that fails without it, and the test is
   WATCHED failing, for the RIGHT reason.

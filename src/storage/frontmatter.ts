@@ -26,7 +26,7 @@ import { ItemWrite, TagDelta } from '../domain/writePlan';
 import { wikilinkTo } from './createNote';
 import { DependsOnRestore, dependsOnRestore, restoreDependsOn } from './dependsOnWrite';
 import { setOwn } from './ownProperty';
-import { axisEntries, stubKeys, touchedKeys } from './writeKeys';
+import { AxisEntry, landsMembership, plannedAxis, stubKeys, touchedKeys } from './writeKeys';
 
 /**
  * The ONLY module that writes frontmatter. Everything upstream decides what a
@@ -248,14 +248,22 @@ function applyInto(
 	// one-item list reads as no state here and as `Done` there: two answers to one
 	// question, and the boundary rule believes the wrong one.
 	const leaving = settings.stateKey ? readString(ownValue(fm, settings.stateKey)) : null;
+	// Which axis keys this write LANDS, decided from one snapshot taken before `applyLinks`
+	// replaces the membership and before any end is written — a check inside `applyAxis`'s
+	// own loop would judge the target against a start it wrote itself. Everything but the
+	// release join lands every key it names; see {@link plannedAxis}.
+	const axis = plannedAxis(app, fm, settings, write);
+	// Read here for `plannedAxis`' own reason — before the link it judges is replaced. A
+	// settled fill-only join keeps its own spelling rather than taking the canonical one.
+	const links = landsMembership(app, fm, settings, write) ? write : { ...write, release: undefined };
 	applyHierarchy(app, fm, settings, write);
-	applyLinks(app, fm, settings, write);
+	applyLinks(app, fm, settings, links);
 	// The stateKey may be unset (progress tracking off) — never write to an empty key.
 	if (write.removeStateKey && settings.stateKey) delete fm[settings.stateKey];
 	else if (write.state !== undefined && settings.stateKey) setOwn(fm, settings.stateKey, write.state);
 	applySecondaryStates(fm, settings, write);
 	applyStamps(fm, settings, write, leaving);
-	applyAxis(fm, settings, write);
+	applyAxis(fm, axis);
 	applyLabels(fm, settings, write);
 	// Stubs last, and only where the LIVE note still has no such key. Presence is asked
 	// here rather than trusted from the plan for the reason the tag delta and the start
@@ -345,9 +353,13 @@ function applySecondaryStates(fm: Record<string, unknown>, settings: BacklogSett
  * The roadmap's placement keys, by the same two rules the hierarchy and state writes
  * follow: never an unconfigured key, and a null REMOVES rather than blanks —
  * unscheduled is a state a note returns to, not a pair of empty strings.
+ *
+ * It takes the entries rather than the write, because WHICH of them land is decided
+ * before the first one is written (`plannedAxis`): the fill-only rule the release join
+ * carries has to read both ends of the live note, and this loop writes one of them.
  */
-function applyAxis(fm: Record<string, unknown>, settings: BacklogSettings, write: ItemWrite): void {
-	for (const { field, key, value } of axisEntries(settings, write.axis)) {
+function applyAxis(fm: Record<string, unknown>, entries: AxisEntry[]): void {
+	for (const { field, key, value } of entries) {
 		if (value === null) {
 			// A removal for a key that is not there changes nothing, and `captureInverse`
 			// already reports that by capturing no inverse — but deleting a missing key

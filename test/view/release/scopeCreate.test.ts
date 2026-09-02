@@ -437,7 +437,7 @@ describe('creating a child from a release scope row', () => {
 
 	it('creates nothing while a batch holds the plugin-wide lock', async () => {
 		// This screen's creation was the last ranked creation path outside an exclusive
-		// section (ADR 0033 lists the paths that produce a rank). Both halves are inside it,
+		// section (ADR 0034 lists the paths that produce a rank). Both halves are inside it,
 		// not just the write: `dropPlacement` reads `view.model`, which the gate deliberately
 		// holds stale until the batch it is deferring ends, so a rank taken beside a running
 		// Seed or Respace is computed against numbers the rewrite has already replaced and

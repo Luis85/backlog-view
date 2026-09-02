@@ -48,7 +48,7 @@ gives each level its own board — without the levels above them taking up the s
   Those rows are *not* a real sibling group — they are items from all over the tree that
   share a level — and a reparent there is a question about parentage that nothing in this
   screen answers. RANKING them is no longer refused: since
-  [ADR 0032](../adrs/0033-order-is-a-global-rank.md) every item shares one rank, so rows
+  [ADR 0032](../adrs/0034-order-is-a-global-rank.md) every item shares one rank, so rows
   from different parents can be ordered against each other and a focus-level drag writes
   a number that still means something when the focus clears. That is its own use case —
   [[Ranking at the focused level]] — including the price: one rank, so ordering the

@@ -3,7 +3,7 @@ import { DropTarget, isUnrankedContext } from './dropTargets';
 import { BacklogItem, BacklogModel } from './model';
 import { isReleaseType, PlacementEnd } from './itemTypes';
 import { statedEnds } from './bars';
-import { readDate, sameValue } from './noteFields';
+import { CivilDate, readDate, sameValue } from './noteFields';
 import { daysBetween, formatCivil } from './timeline';
 import { BacklogSettings, isDoneValue, isStartedValue } from './settings';
 import { OptionalField } from './optionalProperties';
@@ -200,6 +200,21 @@ export interface AxisWrite {
 	 * those mean a date rather than a displacement and have no base to be stale.
 	 */
 	from?: Partial<Record<PlacementEnd, string | null>>;
+
+	/**
+	 * **Fill only what the note leaves empty, decided at the WRITER** — the release join's
+	 * rule and nobody else's ([ADR 0033](../../docs/adrs/0033-a-stale-rule-is-decided-at-the-writer.md)).
+	 *
+	 * A flag rather than a default, because `applyAxis` is shared with the horizon drag,
+	 * the timeline resize and the iteration join, and the iteration join OVERWRITES on
+	 * purpose ([[An iteration's timeframe schedules its items]] 2a). A rule learned as a
+	 * habit there would retire that one without anyone editing the note that states it.
+	 *
+	 * Not an `AxisField`, so `axisEntries` (`storage/writeKeys.ts`) neither emits it as an
+	 * entry nor lets it disturb `touchedKeys`: a flag is not a key, and a write the writer
+	 * suppresses changes no value and so captures no inverse either.
+	 */
+	fillOnly?: boolean;
 }
 
 /**
@@ -440,10 +455,34 @@ export function computeIterationWrites(item: BacklogItem, target: BacklogItem | 
  * happens to no-op, which would spend the undo slot on nothing.
  *
  * **No `timeframeOf`, deliberately** — unlike joining an iteration, joining a release
- * copies nothing else onto the item: not its parent, not its order, not its state, and no
- * dates. The plan writes the membership key and nothing beside it.
+ * copies nothing else onto the item: not its parent, not its order, and not its state.
+ *
+ * **It carries two DATES and decides neither** ([[Joining a release dates the work]]). A
+ * join rides both candidates on the same `ItemWrite` as the link — the release's own ship
+ * date, and today — and states no rule about either: whether each lands is three questions
+ * about the note as the batch reaches it (does it still hold that end, would writing it
+ * reverse the span, is this pick still a join), and only the writer can ask them. An end
+ * this function filtered out is an end the writer cannot reinstate, which is why filtering
+ * here is the defect rather than the optimisation (ADR 0033).
+ *
+ * One `ItemWrite`, for `computeIterationWrites`' reason: two records naming one file
+ * capture two inverses, and an undo could then return the link and keep the dates.
+ *
+ * `today` is an ARGUMENT because this module is pure domain and reads no clock — the
+ * precedent `promptCreateItem` and `renderRoadmap` already set. Neither candidate is gated
+ * on a key here either: `axisEntries` drops an unconfigured one, which is 4d's rule kept in
+ * the one place that knows what is on disk.
+ *
+ * The release's date is `readSoleDate`'s answer, carried by the model as
+ * `BacklogItem.releaseDate` — so a release stating none, or one nobody can read, carries
+ * `undefined` rather than a `null` that would DELETE the item's own due (3b).
  */
-export function computeReleaseWrites(item: BacklogItem, target: BacklogItem | null, settings: BacklogSettings): ItemWrite[] {
+export function computeReleaseWrites(
+	item: BacklogItem,
+	target: BacklogItem | null,
+	settings: BacklogSettings,
+	today: CivilDate,
+): ItemWrite[] {
 	if (!settings.releaseKey) return [];
 	// A None pick is asked of PRESENCE (`ownKeys`), never of the PARSED entry — the split
 	// `computeIterationWrites` states above. A hand-edited `release: ''` reads as no entry
@@ -462,7 +501,10 @@ export function computeReleaseWrites(item: BacklogItem, target: BacklogItem | nu
 	// already names EXACTLY ONE release and it is the target; every other shape is rewritten
 	// to the one value a membership is.
 	const settled = !item.releaseMultiple && item.releaseEntry?.file?.path === target.file.path;
-	return settled ? [] : [{ file: item.file, release: target.file }];
+	if (settled) return [];
+	const due = target.releaseDate.value;
+	const axis: AxisWrite = { fillOnly: true, start: formatCivil(today), ...(due ? { target: formatCivil(due) } : {}) };
+	return [{ file: item.file, release: target.file, axis }];
 }
 
 /**
@@ -738,7 +780,7 @@ function neighbourPair(
  * child of a parent, a drop inside a leaf — which is why the anchor is stated over the
  * DESTINATION rather than over the peers.
  *
- * **Not exported, and that is the rule ADR 0033 states rather than a tidy-up**: every
+ * **Not exported, and that is the rule ADR 0034 states rather than a tidy-up**: every
  * placement goes through `dropPlacement`, because a caller reaching this function
  * directly skips the dragged-row filter and the peer fallback — which is the shipped bug
  * the ADR records (`newItemOrder` made a legacy vault one a user could drag around and
@@ -786,7 +828,7 @@ export function computeDropWrites(dragged: BacklogItem, target: DropTarget, rank
  * worked and a `New <child>` beside it refused.
  *
  * The name still says `drop` because a drop is the placement everything else is measured
- * against, and the register (ADR 0033) names it.
+ * against, and the register (ADR 0034) names it.
  */
 export function dropPlacement(dragged: BacklogItem | null, target: DropTarget, ranked: BacklogItem[]): RankResult {
 	const global = orderForTarget(

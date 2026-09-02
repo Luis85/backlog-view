@@ -205,7 +205,7 @@ above is a change to it, not a replacement for it.
   every note missing `type` or `order` — over a real backlog, hundreds of files. Two of the
   three cases counted here when this was written are gone: the re-typing cascade down a
   moved subtree (2026-08-11), and `renumberWrites` itself with the sibling-scoped rank
-  ([ADR 0032](../adrs/0033-order-is-a-global-rank.md), 2026-08-30) — a drop writes one note
+  ([ADR 0032](../adrs/0034-order-is-a-global-rank.md), 2026-08-30) — a drop writes one note
   now. **This is a re-evidencing and not a retraction**: the backfill remains, and the two
   commands that arrived with the global rank, `Seed ranks from the hierarchy` and
   `Respace ranks`, each rewrite the rank of every note the base returns in a single batch.

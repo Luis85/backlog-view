@@ -53,7 +53,7 @@ lands, the three ways to make the same move, and where `order` comes from.
    the view rather than scoped to a parent, with unranked items sorting last in whatever
    the Base's own sort produces. It says what that buys the reader — a between-drop takes
    a value between the two neighbours, so it writes the dropped note alone and the rows
-   around it keep the numbers they had ([ADR 0032](../adrs/0033-order-is-a-global-rank.md)).
+   around it keep the numbers they had ([ADR 0032](../adrs/0034-order-is-a-global-rank.md)).
 5. It closes with what a move does *not* do: re-type anything, ever.
 
 **Extensions**

@@ -18,7 +18,7 @@ import { ItemWrite } from './writePlan';
  * The ✨ backfill's plan: what the whole tree is MISSING, worked out without touching
  * anything.
  *
- * Beside `writePlan.ts` rather than in it for the rule ADR 0033 already states about
+ * Beside `writePlan.ts` rather than in it for the rule ADR 0034 already states about
  * `rankSpread.ts` — every plan there places ONE row against its neighbours, and this is a
  * whole-tree pass. It shares that file's `ItemWrite` because a type belongs with the code
  * that produces it, and the rank arithmetic every placement shares (`rankArithmetic.ts`)

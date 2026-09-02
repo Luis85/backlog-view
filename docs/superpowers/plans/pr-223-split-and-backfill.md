@@ -3,7 +3,7 @@
 ## Global Constraints
 
 - `CLAUDE.md`, `src/domain/CLAUDE.md`, `src/storage/CLAUDE.md`, `src/view/CLAUDE.md` and
-  `docs/adrs/0033-order-is-a-global-rank.md` bind.
+  `docs/adrs/0034-order-is-a-global-rank.md` bind.
 - `npm run check` whole, foreground, exit 0, at every commit.
 - 400 CODE-line cap per `src/` file (`skipBlankLines`, `skipComments`), 450 in `test/`.
 - `domain/` stays pure: no DOM, no vault writes, no imports from view/storage/commands.
