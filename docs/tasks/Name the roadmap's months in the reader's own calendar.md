@@ -94,9 +94,17 @@ own calendar vocabulary. Japanese is the locale it asks in, because `年月日` 
 letter with English — a label still spelled from an array cannot pass, at a site this round
 forgot or at one added later.
 
-Seven assertions, each watched failing first: restoring `MONTH_LABELS` fails three,
+Eight assertions, each watched failing first: restoring `MONTH_LABELS` fails three,
 dropping `timeZone` fails the zone one, dropping `calendar` fails the Persian one, and
 moving the formatter inside `formatDate` fails four including the construction count.
+
+The eighth is about the file itself rather than the code. Driving the zone case means
+setting `process.env.TZ`, and CI's `zone` leg runs this whole suite under
+`TZ=Pacific/Kiritimati` — so a `delete` in the teardown would hand every test after this
+file the runner's UTC while that leg went on reporting it had run east of the date line.
+The teardown restores the value it found, and the last test in the file asserts it did.
+Locally, in UTC, that assertion passes either way; `TZ=Pacific/Kiritimati npx vitest run
+test/i18n/timelineLabels.test.ts` is where it was watched failing.
 
 ## What this cost elsewhere
 

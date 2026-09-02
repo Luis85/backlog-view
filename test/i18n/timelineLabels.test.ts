@@ -131,8 +131,17 @@ describe('the dated axis names its cells in the reader’s locale', () => {
  * catch: the zone it reads the instant in, and how often it is built.
  */
 describe('what the calendar formatters are pinned to', () => {
+	/**
+	 * The zone is RESTORED, never deleted — CI has a `zone` leg that runs this whole suite
+	 * under `TZ=Pacific/Kiritimati`, and a `delete` here would hand every test after this
+	 * file the runner's UTC while the leg went on reporting that it had run east of the
+	 * date line.
+	 */
+	const hostZone = process.env.TZ;
+
 	afterEach(() => {
-		delete process.env.TZ;
+		if (hostZone === undefined) delete process.env.TZ;
+		else process.env.TZ = hostZone;
 		resetLocale();
 	});
 
@@ -169,6 +178,16 @@ describe('what the calendar formatters are pinned to', () => {
 			// The Persian year the same instant falls in, which no cell may name.
 			expect(labelsAt('month').join(' ')).not.toContain('۱۴۰۵');
 		});
+	});
+
+	/**
+	 * The restore above, checked rather than described — under CI's `zone` leg, where
+	 * `hostZone` is `Pacific/Kiritimati` rather than undefined. Ordered last, so it reads
+	 * what the zone test's own `afterEach` left behind. Locally, in UTC, it passes either
+	 * way; run this file with `TZ=Pacific/Kiritimati` to watch it fail on a `delete`.
+	 */
+	it('leaves the host zone exactly as it found it', () => {
+		expect(process.env.TZ).toBe(hostZone);
 	});
 
 	/**
