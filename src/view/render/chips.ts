@@ -244,7 +244,7 @@ export function assigneeLabel(host: BacklogViewHost, item: BacklogItem): string 
 	return resourceLabelsOf(host.model).get(path) ?? assigneeName(item);
 }
 
-interface LabelChip {
+export interface LabelChip {
 	valueOf: (host: BacklogViewHost, item: BacklogItem) => string | null;
 	cls: string;
 	unsetCls: string;
@@ -366,7 +366,7 @@ const DATE_CHIPS: Record<'start' | 'target', DateChip> = {
 	},
 };
 
-interface DateChip {
+export interface DateChip {
 	/** Which end this chip writes — the one the prompt is narrowed to, and the one the type must use. */
 	end: PlacementEnd;
 	readingOf: (item: BacklogItem) => FieldReading<CivilDate>;

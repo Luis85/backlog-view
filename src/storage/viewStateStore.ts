@@ -382,7 +382,7 @@ interface StoredEntry {
 type StoredMap = Record<string, StoredEntry>;
 
 /** A stored value this plugin recognises, or `undefined` for one it does not. */
-type Reader<T> = (value: unknown) => T | undefined;
+export type Reader<T> = (value: unknown) => T | undefined;
 
 function oneOf(allowed: readonly string[]): Reader<string> {
 	return (value) => (typeof value === 'string' && allowed.includes(value) ? value : undefined);

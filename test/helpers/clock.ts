@@ -1,4 +1,5 @@
 import { beforeEach, vi } from 'vitest';
+import { FROZEN_TODAY } from './frozenDay';
 
 /**
  * One frozen day for the whole suite.
@@ -36,10 +37,22 @@ import { beforeEach, vi } from 'vitest';
  * The day itself is the last one this suite passed CI on, and it is arbitrary in every
  * other respect. Move it and the four tests above must be re-derived, which is the cost
  * that made it worth pinning rather than following the clock.
+ *
+ * **`PBL_SHIFT_DAYS` moves the frozen day, and that is all `npm run clock` is.** It prices
+ * exactly the cost named in the paragraph above — how many tests a move of the pin would
+ * make re-derivable — rather than hunting a live defect, because a frozen suite cannot have
+ * one: today does not arrive. The knob lives HERE rather than in a second setup file that
+ * shifts the real clock, which is what it was until 2026-09-02. That spelling worked only
+ * by accident: `mergeConfig` APPENDS `setupFiles` rather than replacing them, so the freeze
+ * was installed first and the shifter captured the FAKE `Date` as its own `REAL` — the
+ * probe was measuring the frozen day plus the shift while its config, its own docstring and
+ * the register all said it was measuring the real one. Two mechanisms, one of them relying
+ * on an undocumented merge order, for a number one constant produces.
+ *
+ * The constant itself is in `frozenDay.ts`, which does nothing — see there for why the
+ * check under this file cannot read it from here.
  */
 process.env.TZ = 'UTC';
-
-const FROZEN_TODAY = new Date('2026-08-31T12:00:00.000Z');
 
 vi.useFakeTimers({ toFake: ['Date'], now: FROZEN_TODAY });
 beforeEach(() => {

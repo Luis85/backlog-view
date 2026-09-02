@@ -51,14 +51,23 @@ a watched-failing test" — stay in [`../CLAUDE.md`](../CLAUDE.md).
   `vi.useFakeTimers({ toFake: ['Date'] })` before `setSystemTime` — a bare `setSystemTime`
   is not undone by the harness's `useRealTimers`, and leaked into a later test in the same
   file the first time it was tried.
-- **`npm run clock` runs the whole suite with `Date` shifted** — `PBL_SHIFT_DAYS=1460 npm
-  run clock`. It reports rather than gates, like `npm run perf`, and is not part of `npm
-  run check`. It exists for the one class of defect a green suite cannot see: a test that
-  passes today and fails on a date nobody chose. Only `Date`'s no-argument construction and
-  `now()` move, so a fixture naming an explicit date still gets it — the fixture stays put
-  while today moves under it. Measured 2026-09-02: clean at +0, +180, +1095 and +1460;
-  **69 tests across 19 files fail at +1825**, which is the roadmap suites' everyday
-  `2026-08-…` fixtures and a separate decision. Re-measure rather than quoting that.
+- **`npm run clock` moves the FROZEN day** — `PBL_SHIFT_DAYS=1460 npm run clock`. It
+  reports rather than gates, like `npm run perf`, and is not part of `npm run check`. Only
+  the pin moves: a fixture naming an explicit date still gets it, so the fixture stays put
+  while today moves under it. **What it prices is not a live defect — it is the cost of
+  moving the pin.** The freeze above removed "a test that passes today and fails on a date
+  nobody chose" from this suite outright, because today does not arrive; what is left is
+  `clock.ts`'s own closing sentence, *"move it and the four tests above must be
+  re-derived"*, asked of the whole suite instead of four tests. Measured 2026-09-02: clean
+  at +0, +180, +1095 and +1460; **66 tests across 17 files fail at +1825**, which is the
+  roadmap suites' everyday `2026-08-…` fixtures. Re-measure rather than quoting that — that
+  number has now moved three times, and the last move was the instrument's own three
+  failures leaving it.
+  Two mechanisms did this until 2026-09-02, and the second one worked by accident:
+  `scripts/vitest.clock.mts` read as REPLACING `setupFiles` while `mergeConfig` appends, so
+  a shifter meant to move the real clock captured the already-faked `Date` and moved the
+  frozen one. Same answer, undocumented reason. One constant does it now
+  (`test/helpers/frozenDay.ts`), and both those files are deleted.
 - `test/helpers/view.ts` — the view harness every `test/view/*.test.ts` file shares:
   `makeView`, `refresh`, `fixture`, the row/tree accessors, `drag`, `key`, `stubRect`,
   `flush`, `submitPrompt`, and `useViewHarness()` for the per-test reset. Call
