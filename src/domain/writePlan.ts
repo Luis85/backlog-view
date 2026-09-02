@@ -1177,13 +1177,19 @@ function initWriteFor(item: BacklogItem, settings: BacklogSettings, nextOrder: (
  *   both. The sibling half of the guarantee needs nothing else: an unranked row sorts LAST
  *   in its group (`compareSiblings`), so every ranked sibling is drawn before the blank and
  *   is already under the floor.
- * - Below: only rows that could share a focus list with the blank (`focusKey`) constrain
- *   it. A row at another level is never `inRankOrder`'s peer and never `compareSiblings`',
- *   so nothing requires the blank to rank below it — and bounding against it refused whole
- *   vaults for nothing. `Epic A(1000) > blank Feature` drawn before `Epic B(2000) > an Epic
- *   ranked 10` is the shape: the 10 is drawn later and below the floor, the two rows can
- *   never appear in one list, and the blank was skipped. That is worst on exactly the
- *   heterogeneous legacy vault this action exists to migrate.
+ * - Below: only rows that could share a FOCUS list with the blank (`focusKey`) bound the
+ *   ceiling. A row at another level is never `inRankOrder`'s peer, but it CAN be
+ *   `compareSiblings`' peer by sharing the blank's parent — and that is not a hole in the
+ *   bound: a ranked sibling always sorts before an unranked one, so no sibling ever
+ *   supplies a ceiling from later in the walk, ranked or not. Only a same-focus-key row can
+ *   do that. `Epic A(1000) > blank Feature` drawn before `Epic B(2000) > an Epic ranked 10`
+ *   is the shape: the 10 is drawn later and below the floor, the two rows can never appear
+ *   in one FOCUS list, and the blank was skipped. That is worst on exactly the
+ *   heterogeneous legacy vault this action exists to migrate. **Being left blank is a
+ *   different question, and it is NOT scoped to `focusKey` alone**: a refusal poisons the
+ *   blank's sibling group too (`isPoisoned`), because a `compareSiblings` peer at another
+ *   level — sharing a parent rather than a focus key — draws adjacent to it just the same
+ *   and would otherwise be ranked ahead of it once the sibling itself stayed blank.
  * - Below, second bound: the smallest rank in the vault ABOVE the floor, whatever level it
  *   is at. Not part of the guarantee — it is what keeps the value in a free gap, so the
  *   backfill can never mint the duplicate rank that `dropPlacement` reads as a legacy
@@ -1271,7 +1277,8 @@ export function computeInitWrites(model: BacklogModel, settings: BacklogSettings
 		while (above < occupied.length && occupied[above] <= (floor ?? -Infinity)) above++;
 		const placed = rankBetween(floor, lowerOf(ceiling, occupied[above] ?? null));
 		if ('refusal' in placed) return (unplaceable++, poisoned.add(focusKey(item)).add(item.parent), null);
-		return (floor = placed.order);
+		floor = placed.order;
+		return placed.order;
 	};
 	for (let i = 0; i < drawn.length; i++) {
 		const item = drawn[i];
@@ -1310,7 +1317,6 @@ function lowerOf(a: number | null, b: number | null): number | null {
 function isPoisoned(poisoned: Set<number | BacklogItem | null>, item: BacklogItem): boolean {
 	return poisoned.has(focusKey(item)) || poisoned.has(item.parent);
 }
-
 
 /** Orders are fractional ranks, kept to six decimals — the grid `midpoint` refuses against.
  *  Exported for `rankSpread.ts`: the whole-population rewrites land on the same grid, and

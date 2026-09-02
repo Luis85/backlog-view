@@ -144,6 +144,39 @@ describe('the backfill and the focused order', () => {
 		expect(titlesOf(containerEl)).toEqual(before);
 	});
 
+	it('poisons the ROOT sibling group too, when the shared parent is null', async () => {
+		// The same rule as the test above, but for the group `isPoisoned`'s own comment
+		// names and nothing else here tests: `null`, the top-level group. `A` (an `Epic`,
+		// key 0) and `Bug1` (a `Bug`, an extra type — key `EXTRA_TYPE_RANK`) are both ROOTS,
+		// so both share the null parent, and neither shares the other's focus key. `A` is
+		// refused for the familiar reason — its nested `A1` ranks below the floor `X`
+		// raised — and a refusal that only poisons the focus key leaves `Bug1` free to take
+		// a number, sorting it ahead of the still-blank `A`.
+		const vault = new FakeVault();
+		vault.addFile('X.md', { frontmatter: { type: 'Epic', order: 100 } });
+		vault.addFile('A.md', { frontmatter: { type: 'Epic' } });
+		vault.addFile('A1.md', { frontmatter: { type: 'Epic', order: 50 }, parentLink: 'A' });
+		vault.addFile('Bug1.md', { frontmatter: { type: 'Bug' } });
+		const { view, containerEl } = makeView(vault, noOptionalProperties());
+		const before = titlesOf(containerEl);
+		expect(before).toEqual(['X', 'A', 'A1', 'Bug1']);
+
+		initButton(containerEl)?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await flush();
+
+		// Neither blank root is placeable, so no write lands at all — no "updated" notice,
+		// only the skip.
+		expect(Notice.messages).toEqual([
+			'2 items were left without a rank, because no number fits where they are drawn. Run "Seed ranks from the hierarchy" from the command palette to renumber the whole backlog.',
+		]);
+
+		refresh(view, vault);
+
+		expect(vault.fm('A.md')['order']).toBeUndefined();
+		expect(vault.fm('Bug1.md')['order']).toBeUndefined();
+		expect(titlesOf(containerEl)).toEqual(before);
+	});
+
 	it('says the rank was skipped rather than claiming there was nothing to do', async () => {
 		// The same vault as above, asked what the user is TOLD. A refused rank used to be
 		// reduced to `null` inside the plan, so the action reported the one outcome that
