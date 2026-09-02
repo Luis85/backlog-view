@@ -12,6 +12,7 @@ source: "Raised by a review bot against the ported clock helper on PR #237, repr
 files:
   - test/helpers/clock.ts
   - test/verification/frozenClock.test.ts
+  - test/domain/stamps.test.ts
 started: ""
 finished: ""
 horizon: ""
@@ -69,3 +70,27 @@ line restored; the four protected suites were then run green at both extremes,
 
 The existing instant assertion stays. It is a different claim and both are load-bearing:
 one pins when the suite thinks it is, the other pins what it calls that.
+
+## What pinning UTC would have cost, if it were left alone
+
+**A zone pinned for the whole suite silences the one test that asks whether `dateStamp`
+reads a LOCAL date at all.** `test/domain/stamps.test.ts`'s "is the local date, not the UTC
+one" builds `new Date(2026, 7, 2, 23, 30)` from local components and expects `2026-08-02`.
+Under UTC that instant IS 23:30Z, so `toISOString().slice(0, 10)` returns the same string
+the local getters do: the swap the test exists to catch would pass it.
+
+Raised by a review bot against the first version of this fix, and the finding is wider than
+it was stated. **CI has always run UTC, so that test has never discriminated there** — it
+only had teeth on a contributor's machine west of Greenwich, by luck of where they live.
+Pinning the suite to UTC would have removed that last accidental coverage.
+
+The answer is not to leave the suite unpinned. It is to let that one test name its own
+zone: it sets `process.env.TZ` to `America/Los_Angeles`, asserts, and restores in a
+`finally`, so it discriminates on **every** machine rather than on some. Verified by
+mutation — `dateStamp` swapped to `toISOString().slice(0, 10)` fails it
+(`expected '2026-08-03' to be '2026-08-02'`), and passes again when restored.
+
+The general rule this is an instance of: **a test that depends on ambient environment is
+checking whatever the environment happens to be, which is not the same as checking the
+invariant.** Pinning the ambient value is right; the tests that are ABOUT that value have to
+set it themselves.

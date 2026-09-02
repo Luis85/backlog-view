@@ -150,8 +150,28 @@ describe('the stamp value', () => {
 	it('is the local date, not the UTC one', () => {
 		// 23:30 on the 2nd, for anyone west of Greenwich, is still the 2nd — toISOString
 		// would call it the 3rd and date the work to a day the user had not reached.
-		const evening = new Date(2026, 7, 2, 23, 30);
-		expect(dateStamp(evening)).toBe('2026-08-02');
+		//
+		// **Run in a named non-UTC zone, and that is what gives this test teeth.** The
+		// assertion can only tell a local reader from a UTC one where the two disagree, and
+		// under UTC they never do: `new Date(2026, 7, 2, 23, 30)` is 23:30Z there, so
+		// `toISOString().slice(0, 10)` returns the same `2026-08-02` the local getters do and
+		// the swap this test exists to catch would pass. CI has always run UTC, so it has
+		// always been vacuous there; `test/helpers/clock.ts` now pins UTC for every worker,
+		// which would have made it vacuous everywhere. Naming the zone here is what makes it
+		// discriminate on every machine instead of only on a contributor's who happens to
+		// live west of Greenwich.
+		//
+		// Node re-reads `process.env.TZ` on the next `Date` operation, so the assignment
+		// takes effect immediately and the restore in `finally` keeps the rest of the suite
+		// on the frozen zone.
+		const pinned = process.env.TZ;
+		process.env.TZ = 'America/Los_Angeles';
+		try {
+			const evening = new Date(2026, 7, 2, 23, 30);
+			expect(dateStamp(evening)).toBe('2026-08-02');
+		} finally {
+			process.env.TZ = pinned;
+		}
 	});
 
 	it('pads month and day to the shape Obsidian parses', () => {
